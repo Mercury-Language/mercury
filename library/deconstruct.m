@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -122,7 +122,7 @@
     %
     % Note that this predicate only returns an answer when NonCanon is
     % do_not_allow or canonicalize.  If you need the include_details_cc
-    % behaviour use deconstruct__arg_cc/3.
+    % behaviour use deconstruct.arg_cc/3.
     %
 :- some [ArgT] pred arg(T, noncanon_handling, int, ArgT).
 :- mode arg(in, in(do_not_allow), in, out) is semidet.
@@ -130,9 +130,9 @@
 :- mode arg(in, in(canonicalize_or_do_not_allow), in, out) is semidet.
 
     % arg_cc/3 is similar to arg/4, except that it handles arguments with
-    % non-canonical types. See the documentation of std_util__arg_cc.
+    % non-canonical types. See the documentation of std_util.arg_cc.
     %
-:- pred arg_cc(T::in, int::in, std_util__maybe_arg::out) is cc_multi.
+:- pred arg_cc(T::in, int::in, std_util.maybe_arg::out) is cc_multi.
 
     % named_arg(Data, NonCanon, Name, Argument)
     %
@@ -148,7 +148,7 @@
     % named_arg_cc/3 is similar to named_arg/4, except that it handles
     % arguments with non-canonical types.
     %
-:- pred named_arg_cc(T::in, string::in, std_util__maybe_arg::out) is cc_multi.
+:- pred named_arg_cc(T::in, string::in, std_util.maybe_arg::out) is cc_multi.
 
     % det_arg(Data, NonCanon, Index, Argument)
     %
@@ -202,7 +202,7 @@
     %
     % Note that this predicate only returns an answer when NonCanon is
     % do_not_allow or canonicalize.  If you need the include_details_cc
-    % behaviour use deconstruct__limited_deconstruct_cc/3.
+    % behaviour use deconstruct.limited_deconstruct_cc/3.
     %
 :- pred limited_deconstruct(T, noncanon_handling, int, string, int,
     list(univ)).
@@ -211,7 +211,7 @@
 :- mode limited_deconstruct(in, in(canonicalize), in, out, out, out)
     is semidet.
 
-    % See the documentation of std_util__limited_deconstruct_cc.
+    % See the documentation of std_util.limited_deconstruct_cc.
     %
 :- pred limited_deconstruct_cc(T::in, int::in,
     maybe({string, int, list(univ)})::out) is cc_multi.
@@ -264,7 +264,7 @@ arg(Term, NonCanon, Index, Argument) :-
         univ_arg_can(Term, Index, Univ)
     ;
         NonCanon = include_details_cc,
-        error("deconstruct__arg called with include_details_cc")
+        error("deconstruct.arg called with include_details_cc")
     ),
     Argument = univ_value(Univ).
 
@@ -273,7 +273,7 @@ arg_cc(Term, Index, MaybeArg) :-
     ( Success \= 0 ->
         MaybeArg = 'new arg'(univ_value(Univ))
     ;
-        MaybeArg = std_util__no_arg
+        MaybeArg = std_util.no_arg
     ).
 
 named_arg(Term, NonCanon, Name, Argument) :-
@@ -285,7 +285,7 @@ named_arg(Term, NonCanon, Name, Argument) :-
         univ_named_arg_can(Term, Name, Univ)
     ;
         NonCanon = include_details_cc,
-        error("deconstruct__named_arg called with include_details_cc")
+        error("deconstruct.named_arg called with include_details_cc")
     ),
     Argument = univ_value(Univ).
 
@@ -294,7 +294,7 @@ named_arg_cc(Term, Name, MaybeArg) :-
     ( Success \= 0 ->
         MaybeArg = 'new arg'(univ_value(Univ))
     ;
-        MaybeArg = std_util__no_arg
+        MaybeArg = std_util.no_arg
     ).
 
     % This is a dummy value of type `univ'. It is used only to ensure that
@@ -444,13 +444,13 @@ limited_deconstruct_cc(Term, MaxArity, MaybeResult) :-
 }").
 
 functor_dna(Term::in, Functor::out, Arity::out) :-
-    rtti_implementation__deconstruct(Term,
+    rtti_implementation.deconstruct(Term,
         do_not_allow, Functor, Arity, _Arguments).
 functor_can(Term::in, Functor::out, Arity::out) :-
-    rtti_implementation__deconstruct(Term,
+    rtti_implementation.deconstruct(Term,
         canonicalize, Functor, Arity, _Arguments).
 functor_idcc(Term::in, Functor::out, Arity::out) :-
-    rtti_implementation__deconstruct(Term,
+    rtti_implementation.deconstruct(Term,
         include_details_cc, Functor, Arity, _Arguments).
 
 %-----------------------------------------------------------------------------%
@@ -635,18 +635,18 @@ functor_idcc(Term::in, Functor::out, Arity::out) :-
 % just constructing one univ for the argument selected.
 
 univ_arg_dna(Term::in, Index::in, Arg::out) :-
-    rtti_implementation__deconstruct(Term, do_not_allow,
+    rtti_implementation.deconstruct(Term, do_not_allow,
         _Functor, _Arity, Arguments),
-    list__index0(Arguments, Index, Arg).
+    list.index0(Arguments, Index, Arg).
 univ_arg_can(Term::in, Index::in, Arg::out) :-
-    rtti_implementation__deconstruct(Term, canonicalize,
+    rtti_implementation.deconstruct(Term, canonicalize,
         _Functor, _Arity, Arguments),
-    list__index0(Arguments, Index, Arg).
+    list.index0(Arguments, Index, Arg).
 univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
         Success::out) :-
-    rtti_implementation__deconstruct(Term, include_details_cc,
+    rtti_implementation.deconstruct(Term, include_details_cc,
         _Functor, _Arity, Arguments),
-    ( list__index0(Arguments, Index, Arg) ->
+    ( list.index0(Arguments, Index, Arg) ->
         Argument = Arg,
         Success = 1
     ;
@@ -833,13 +833,13 @@ univ_arg_idcc(Term::in, Index::in, DummyUniv::in, Argument::out,
 }").
 
 deconstruct_dna(Term::in, Functor::out, Arity::out, Arguments::out) :-
-    rtti_implementation__deconstruct(Term, do_not_allow,
+    rtti_implementation.deconstruct(Term, do_not_allow,
         Functor, Arity, Arguments).
 deconstruct_can(Term::in, Functor::out, Arity::out, Arguments::out) :-
-    rtti_implementation__deconstruct(Term, canonicalize,
+    rtti_implementation.deconstruct(Term, canonicalize,
         Functor, Arity, Arguments).
 deconstruct_idcc(Term::in, Functor::out, Arity::out, Arguments::out) :-
-    rtti_implementation__deconstruct(Term, include_details_cc,
+    rtti_implementation.deconstruct(Term, include_details_cc,
         Functor, Arity, Arguments).
 
     % XXX The Mercury implementations of all of these limited_* procedures
@@ -847,18 +847,18 @@ deconstruct_idcc(Term::in, Functor::out, Arity::out, Arguments::out) :-
     % when Arity > MaxArity.
 limited_deconstruct_dna(Term::in, MaxArity::in,
         Functor::out, Arity::out, Arguments::out) :-
-    rtti_implementation__deconstruct(Term, do_not_allow,
+    rtti_implementation.deconstruct(Term, do_not_allow,
         Functor, Arity, Arguments),
     Arity =< MaxArity.
 limited_deconstruct_can(Term::in, MaxArity::in,
         Functor::out, Arity::out, Arguments::out) :-
-    rtti_implementation__deconstruct(Term, canonicalize,
+    rtti_implementation.deconstruct(Term, canonicalize,
         Functor, Arity, Arguments),
     Arity =< MaxArity.
 limited_deconstruct_idcc(Term::in, _MaxArity::in,
         Functor::out, Arity::out, Arguments::out) :-
     % For this one, the caller checks Arity =< MaxArity.
-    rtti_implementation__deconstruct(Term, include_details_cc,
+    rtti_implementation.deconstruct(Term, include_details_cc,
         Functor, Arity, Arguments).
 
 %-----------------------------------------------------------------------------%

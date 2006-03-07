@@ -78,10 +78,10 @@
 %
 % There are two stages in pretty printing an object of some
 % type T:
-% 1. convert the object to a pprint__doc using the
+% 1. convert the object to a pprint.doc using the
 %    constructor functions described below or by simply
-%    calling pprint__to_doc/[1,2];
-% 2. call pprint__write/[4,5] or pprint__to_string/2
+%    calling pprint.to_doc/[1,2];
+% 2. call pprint.write/[4,5] or pprint.to_string/2
 %    passing the display width and the doc.
 %
 %
@@ -255,7 +255,7 @@
     % type class, it is simpler to just apply the doc/1
     % method to these types.
     %
-:- func poly(string__poly_type) = doc.
+:- func poly(string.poly_type) = doc.
 
     % Shorthand for doc ++ line ++ doc.
     %
@@ -345,7 +345,7 @@
 :- func word_wrapped(string) = doc.
 
     % Convert arbitrary terms to docs.  This requires
-    % std_util__functor/3 to work on all components of the
+    % std_util.functor/3 to work on all components of the
     % object being converted.  The second version places a
     % maximum depth on terms which are otherwise truncated
     % in the manner described in the documentation for the
@@ -367,7 +367,7 @@
     %
 :- pred write(int::in, T::in, io::di, io::uo) is det <= doc(T).
 
-:- pred write(io__output_stream::in, int::in, T::in, io::di, io::uo) is det
+:- pred write(io.output_stream::in, int::in, T::in, io::di, io::uo) is det
     <= doc(T).
 
 %-----------------------------------------------------------------------------%
@@ -411,7 +411,7 @@
 
 %-----------------------------------------------------------------------------%
 
-doc(X) = doc(int__max_int, X).
+doc(X) = doc(int.max_int, X).
 
 %-----------------------------------------------------------------------------%
 
@@ -435,22 +435,22 @@ text(S)                 = 'TEXT'(S).
 line                    = 'LINE'.
 group(X)                = 'GROUP'(doc(X)).
 
-poly(s(S))              = text(string__format("%s", [s(S)])).
-poly(c(C))              = text(string__format("%c", [c(C)])).
-poly(i(I))              = text(string__format("%d", [i(I)])).
-poly(f(F))              = text(string__format("%f", [f(F)])).
+poly(s(S))              = text(string.format("%s", [s(S)])).
+poly(c(C))              = text(string.format("%c", [c(C)])).
+poly(i(I))              = text(string.format("%d", [i(I)])).
+poly(f(F))              = text(string.format("%f", [f(F)])).
 
 %-----------------------------------------------------------------------------%
 
 to_string(W, X) = S :-
     layout_best(pred(H::in, T::in, [H | T]::out) is det, W, X, [], Ss),
-    S = string__append_list(list__reverse(Ss)).
+    S = string.append_list(list.reverse(Ss)).
 
 write(W, X, !IO) :-
-    layout_best(io__write_string, W, doc(X), !IO).
+    layout_best(io.write_string, W, doc(X), !IO).
 
 write(Stream, W, X, !IO) :-
-    layout_best(io__write_string(Stream), W, doc(X), !IO).
+    layout_best(io.write_string(Stream), W, doc(X), !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -500,7 +500,7 @@ lb(P, W, K0, K, I, 'LABEL'(L, X), S0, S) :-
     lb(P, W, K0, K, I ++ L, X, S0, S).
 
 lb(P, _, _,  K, I, 'LINE',        S0, S) :-
-    K = string__length(I),
+    K = string.length(I),
     P("\n", S0, S1),
     P(I,    S1, S ).
 
@@ -513,7 +513,7 @@ lb(P, W, K0, K, I, 'DOC'(D, U),   S0, S) :-
     lb(P, W, K0, K, I, to_doc(D, univ_value(U)), S0, S).
 
 lb(P, _, K0, K, _, 'TEXT'(T),     S0, S) :-
-    K = K0 + string__length(T),
+    K = K0 + string.length(T),
     P(T, S0, S).
 
 %-----------------------------------------------------------------------------%
@@ -535,7 +535,7 @@ ff('LINE',        R) = R.
 ff('GROUP'(X),    R) = ff(X, R).
 ff('DOC'(D, U),   R) = ff(to_doc(D, univ_value(U)), R).
 ff('TEXT'(S),     R) = R - L :-
-    L = string__length(S),
+    L = string.length(S),
     R > L.
 
 %-----------------------------------------------------------------------------%
@@ -567,14 +567,14 @@ layout_flat(P, K0, K, 'DOC'(D, U),   S0, S) :-
     layout_flat(P, K0, K, to_doc(D, univ_value(U)), S0, S).
 
 layout_flat(P, K0, K, 'TEXT'(T),     S0, S) :-
-    K = K0 + string__length(T),
+    K = K0 + string.length(T),
     P(T, S0, S).
 
 %-----------------------------------------------------------------------------%
 
 :- func extend(string, int) = string.
 
-extend(I, J) = I ++ string__duplicate_char(' ', J).
+extend(I, J) = I ++ string.duplicate_char(' ', J).
 
 %-----------------------------------------------------------------------------%
 
@@ -612,7 +612,7 @@ packed(N,  Sep,  [X1, X2 | Xs]) =
 
 %-----------------------------------------------------------------------------%
 
-packed(Sep, Xs) = packed(int__max_int, Sep, Xs).
+packed(Sep, Xs) = packed(int.max_int, Sep, Xs).
 
 %-----------------------------------------------------------------------------%
 
@@ -625,18 +625,18 @@ packed_cs(Xs) = packed(", ", Xs).
 %-----------------------------------------------------------------------------%
 
 packed_cs_to_depth(Depth, Xs) =
-    packed_cs(Depth, list__map(to_doc(Depth), Xs)).
+    packed_cs(Depth, list.map(to_doc(Depth), Xs)).
 
 %-----------------------------------------------------------------------------%
 
 packed_cs_univ_args(Depth, UnivArgs) =
-    packed_cs(Depth, list__map(func(UA) = 'DOC'(Depth, UA), UnivArgs)).
+    packed_cs(Depth, list.map(func(UA) = 'DOC'(Depth, UA), UnivArgs)).
 
 %-----------------------------------------------------------------------------%
 
 word_wrapped(String) =
-    packed(space, list__map(func(Word) = text(Word),
-                            string__words(char__is_whitespace, String))).
+    packed(space, list.map(func(Word) = text(Word),
+                            string.words(char.is_whitespace, String))).
 
 %-----------------------------------------------------------------------------%
 
@@ -658,7 +658,7 @@ ellipsis                = text("...").
 
 %-----------------------------------------------------------------------------%
 
-to_doc(X) = to_doc(int__max_int, X).
+to_doc(X) = to_doc(int.max_int, X).
 
 %-----------------------------------------------------------------------------%
 
@@ -997,7 +997,7 @@ var_to_doc(Depth, V) =
 
 sparse_bitset_to_doc(Depth, A) =
     group("sparse_bitset" ++
-        parentheses(list_to_doc(Depth - 1, sparse_bitset__to_sorted_list(A)))).
+        parentheses(list_to_doc(Depth - 1, sparse_bitset.to_sorted_list(A)))).
 
 %-----------------------------------------------------------------------------%
 
@@ -1014,7 +1014,7 @@ list_to_doc(Depth, Xs) =
 :- func array_to_doc(int, array(T)) = doc.
 
 array_to_doc(Depth, A) =
-    group("array" ++ parentheses(list_to_doc(Depth - 1, array__to_list(A)))).
+    group("array" ++ parentheses(list_to_doc(Depth - 1, array.to_list(A)))).
 
 %-----------------------------------------------------------------------------%
 
@@ -1032,7 +1032,7 @@ tuple_to_doc(Depth, Tuple) = Doc :-
 :- func map_to_doc(int, map(T1, T2)) = doc.
 
 map_to_doc(Depth, X) = Doc :-
-    KVs = list__map(mk_map_pair, map__to_assoc_list(X)),
+    KVs = list.map(mk_map_pair, map.to_assoc_list(X)),
     Doc = group("map" ++ parentheses(list_to_doc(Depth - 1, KVs))).
 
 :- func mk_map_pair(pair(K, V)) = map_pair(K, V).

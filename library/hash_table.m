@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2003-2005 The University of Melbourne
+% Copyright (C) 2001, 2003-2006 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -256,19 +256,19 @@
 
 new(HashPred, N, MaxOccupancy) = HT :-
     (      if N =< 1 then
-            throw(software_error("hash_table__new_hash_table: N =< 1"))
-      else if N >= int__bits_per_int then
+            throw(software_error("hash_table.new_hash_table: N =< 1"))
+      else if N >= int.bits_per_int then
             throw(software_error(
-                "hash_table__new_hash_table: N >= int__bits_per_int"))
+                "hash_table.new_hash_table: N >= int.bits_per_int"))
       else if MaxOccupancy =< 0.0 ; 1.0 =< MaxOccupancy  then
             throw(software_error(
-                "hash_table__new_hash_table: MaxOccupancy not in (0.0, 1.0)"))
+                "hash_table.new_hash_table: MaxOccupancy not in (0.0, 1.0)"))
       else
             NumBuckets   = 1 << N,
             MaxOccupants = ceiling_to_int(float(NumBuckets) * MaxOccupancy),
-            Bitmap       = bitmap__new(NumBuckets, no),
-            Keys         = array__make_empty_array,
-            Values       = array__make_empty_array,
+            Bitmap       = bitmap.new(NumBuckets, no),
+            Keys         = array.make_empty_array,
+            Values       = array.make_empty_array,
             HT           = ht(NumBuckets, 0, MaxOccupants, HashPred, Bitmap,
                                 Keys, Values)
     ).
@@ -307,7 +307,7 @@ find_slot(HT, K) = H :-
 %:- mode find_slot_2(in, in, in, in) = out is det.
 
 find_slot_2(HT, K, H0, Delta) = H :-
-    ( if bitmap__is_clear(HT ^ bitmap, H0) then
+    ( if bitmap.is_clear(HT ^ bitmap, H0) then
         H  = H0
       else if HT ^ keys ^ elem(H0) = K then
         H  = H0
@@ -324,16 +324,16 @@ set(HT0, K, V) = HT :-
         % set up the hash table (the arrays are currently empty because we
         % need values to initialise them with).
         %
-    ( if array__size(HT0 ^ values) = 0 then
+    ( if array.size(HT0 ^ values) = 0 then
         HT = set(
                 (( HT0
-                        ^ keys   := array__init(HT0 ^ num_buckets, K) )
-                        ^ values := array__init(HT0 ^ num_buckets, V) ),
+                        ^ keys   := array.init(HT0 ^ num_buckets, K) )
+                        ^ values := array.init(HT0 ^ num_buckets, V) ),
                 K, V
              )
       else
         H = find_slot(HT0, K),
-        ( if bitmap__is_set(HT0 ^ bitmap, H) then
+        ( if bitmap.is_set(HT0 ^ bitmap, H) then
             HT = ( HT0 ^ values ^ elem(H) := V )
           else
             HT =
@@ -342,7 +342,7 @@ set(HT0, K, V) = HT :-
                   else
                     (((( HT0
                             ^ num_occupants    := HT0 ^ num_occupants + 1 )
-                            ^ bitmap           := bitmap__set(HT0 ^ bitmap, H))
+                            ^ bitmap           := bitmap.set(HT0 ^ bitmap, H))
                             ^ keys ^ elem(H)   := K )
                             ^ values ^ elem(H) := V )
                 )
@@ -359,18 +359,18 @@ search(HT, K, search(HT, K)).
 
 search(HT, K) = V :-
     H = find_slot(HT, K),
-    bitmap__is_set(HT ^ bitmap, H),
+    bitmap.is_set(HT ^ bitmap, H),
     V = HT ^ values ^ elem(H).
 
 %-----------------------------------------------------------------------------%
 
 det_insert(HT0, K, V) = HT :-
     H = find_slot(HT0, K),
-    ( if bitmap__is_set(HT0 ^ bitmap, H) then
-        throw(software_error("hash_table__det_insert: key already present"))
+    ( if bitmap.is_set(HT0 ^ bitmap, H) then
+        throw(software_error("hash_table.det_insert: key already present"))
       else if HT0 ^ num_occupants = HT0 ^ max_occupants then
         HT = set(expand(HT0), K, V)
-      else if array__size(HT0 ^ values) = 0 then
+      else if array.size(HT0 ^ values) = 0 then
         % If this is the first entry in the hash table, then we use it to
         % set up the hash table (the arrays are currently empty because we
         % need values to initialise them with).
@@ -379,7 +379,7 @@ det_insert(HT0, K, V) = HT :-
       else
         HT = (((( HT0
                 ^ num_occupants    := HT0 ^ num_occupants + 1 )
-                ^ bitmap           := bitmap__set(HT0 ^ bitmap, H) )
+                ^ bitmap           := bitmap.set(HT0 ^ bitmap, H) )
                 ^ keys ^ elem(H)   := K )
                 ^ values ^ elem(H) := V )
     ).
@@ -391,8 +391,8 @@ det_insert(K, V, HT, det_insert(HT, K, V)).
 
 det_update(HT0, K, V) = HT :-
     H = find_slot(HT0, K),
-    ( if bitmap__is_clear(HT0 ^ bitmap, H) then
-        throw(software_error("hash_table__det_update: key not found"))
+    ( if bitmap.is_clear(HT0 ^ bitmap, H) then
+        throw(software_error("hash_table.det_update: key not found"))
       else
         HT = HT0 ^ values ^ elem(H) := V
     ).
@@ -405,7 +405,7 @@ det_update(K, V, HT, det_update(HT, K, V)).
 lookup(HT, K) =
     ( if V = search(HT, K)
       then V
-      else throw(software_error("hash_table__lookup: key not found"))
+      else throw(software_error("hash_table.lookup: key not found"))
     ).
 
 elem(K, HT) = lookup(HT, K).
@@ -413,7 +413,7 @@ elem(K, HT) = lookup(HT, K).
 %-----------------------------------------------------------------------------%
 
 delete(HT, K) =
-    HT ^ bitmap := bitmap__clear(HT ^ bitmap, find_slot(HT, K)).
+    HT ^ bitmap := bitmap.clear(HT ^ bitmap, find_slot(HT, K)).
 
 
 delete(K, HT, delete(HT, K)).
@@ -429,7 +429,7 @@ to_assoc_list(HT) = to_assoc_list_2(0, HT, []).
 to_assoc_list_2(I, HT, AList) =
     ( if I >= HT ^ num_buckets then
         AList
-      else if bitmap__is_clear(HT ^ bitmap, I) then
+      else if bitmap.is_clear(HT ^ bitmap, I) then
         to_assoc_list_2(I + 1, HT, AList)
       else
         to_assoc_list_2(I + 1, HT,
@@ -461,9 +461,9 @@ expand(HT0) = HT :-
 
     NBs = NBs0 + NBs0,
     MOs = MOs0 + MOs0,
-    BM  = bitmap__new(NBs, no),
-    Ks  = array__make_empty_array,
-    Vs  = array__make_empty_array,
+    BM  = bitmap.new(NBs, no),
+    Ks  = array.make_empty_array,
+    Vs  = array.make_empty_array,
 
     HT1 = ht(NBs, 0, MOs, HP, BM, Ks, Vs),
 
@@ -479,7 +479,7 @@ expand(HT0) = HT :-
 reinsert_bindings(I, NumBuckets, Bitmap, Keys, Values, HT) =
     ( if I >= NumBuckets then
         HT
-      else if bitmap__is_clear(Bitmap, I) then
+      else if bitmap.is_clear(Bitmap, I) then
         reinsert_bindings(I + 1, NumBuckets, Bitmap, Keys, Values, HT)
       else
         reinsert_bindings(I + 1, NumBuckets, Bitmap, Keys, Values,
@@ -502,23 +502,23 @@ int_double_hash(N, H1, H2) :-
     % There are almost certainly better ones out there...
     %
 string_double_hash(S, H1, H2) :-
-    H1 = string__hash(S),
-    H2 = string__foldl(func(C, N) = char__to_int(C) + N, S, 0).
+    H1 = string.hash(S),
+    H2 = string.foldl(func(C, N) = char.to_int(C) + N, S, 0).
 
 %-----------------------------------------------------------------------------%
 
     % There are almost certainly better ones out there...
     %
 float_double_hash(F, H1, H2) :-
-    H1 = float__hash(F),
-    H2 = float__hash(F * F).
+    H1 = float.hash(F),
+    H2 = float.hash(F * F).
 
 %-----------------------------------------------------------------------------%
 
     % There are almost certainly better ones out there...
     %
 char_double_hash(C, H1, H2) :-
-    int_double_hash(char__to_int(C), H1, H2).
+    int_double_hash(char.to_int(C), H1, H2).
 
 %-----------------------------------------------------------------------------%
 
@@ -548,7 +548,7 @@ generic_double_hash(T, Ha, Hb) :-
       else if dynamic_cast_to_array(T, Array) then
 
         {Ha, Hb} =
-            array__foldl(
+            array.foldl(
                 ( func(X, {HA0, HB0}) = {HA, HB} :-
                     generic_double_hash(X, HXA, HXB),
                     double_munge(HXA, HA0, HA, HXB, HB0, HB)
@@ -562,7 +562,7 @@ generic_double_hash(T, Ha, Hb) :-
         deconstruct(T, FunctorName, Arity, Args),
         string_double_hash(FunctorName, Ha0, Hb0),
         double_munge(Arity, Ha0, Ha1, Arity, Hb0, Hb1),
-        list__foldl2(
+        list.foldl2(
             ( pred(U::in, HA0::in, HA::out, HB0::in, HB::out) is det :-
                 generic_double_hash(U, HUA, HUB),
                 double_munge(HUA, HA0, HA, HUB, HB0, HB)
@@ -594,7 +594,7 @@ double_munge(X, Ha0, Ha, Y, Hb0, Hb) :-
 
 munge(N, X, Y) =
     (X `unchecked_left_shift` N) `xor`
-    (X `unchecked_right_shift` (int__bits_per_int - N)) `xor`
+    (X `unchecked_right_shift` (int.bits_per_int - N)) `xor`
     Y.
 
 %-----------------------------------------------------------------------------%
@@ -612,7 +612,7 @@ fold(Fn, HT, X) = fold_0(0, Fn, HT, X).
 fold_0(I, Fn, HT, X) =
     ( if I >= HT ^ num_buckets then
         X
-      else if bitmap__is_clear(HT ^ bitmap, I) then
+      else if bitmap.is_clear(HT ^ bitmap, I) then
         fold_0(I + 1, Fn, HT, X)
       else
         fold_0(I + 1, Fn, HT,

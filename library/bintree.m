@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-1995, 1997, 1999, 2002-2005 The University of Melbourne.
+% Copyright (C) 1993-1995, 1997, 1999, 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,7 +17,7 @@
 % This file provides a straight-forward binary search tree implementation of
 % a map (dictionary).
 %
-% bintree__insert, bintree__update, and bintree__set differ only in how they
+% bintree.insert, bintree.update, and bintree.set differ only in how they
 % handle the case where the value being inserted already exists in the tree.
 % `insert' will only insert new keys, and will fail if you attempt to insert
 % an existing key into the tree. `update' will only allow you to modify the
@@ -36,96 +36,96 @@
 
 :- type bintree(K, V).
 
-:- pred bintree__init(bintree(K, V)::uo) is det.
+:- pred bintree.init(bintree(K, V)::uo) is det.
 
-:- pred bintree__insert(bintree(K, V)::in, K::in, V::in, bintree(K, V)::out)
+:- pred bintree.insert(bintree(K, V)::in, K::in, V::in, bintree(K, V)::out)
     is semidet.
 
-:- pred bintree__update(bintree(K, V)::in, K::in, V::in, bintree(K, V)::out)
+:- pred bintree.update(bintree(K, V)::in, K::in, V::in, bintree(K, V)::out)
     is semidet.
 
-:- pred bintree__set(bintree(K, V), K, V, bintree(K, V)).
-:- mode bintree__set(di, di, di, uo) is det.
-:- mode bintree__set(in, in, in, out) is det.
+:- pred bintree.set(bintree(K, V), K, V, bintree(K, V)).
+:- mode bintree.set(di, di, di, uo) is det.
+:- mode bintree.set(in, in, in, out) is det.
 
-:- func bintree__set(bintree(K, V), K, V) = bintree(K, V).
+:- func bintree.set(bintree(K, V), K, V) = bintree(K, V).
 
-:- pred bintree__search(bintree(K, V), K, V).
-:- mode bintree__search(in, in, in) is semidet. % implied
-:- mode bintree__search(in, in, out) is semidet.
+:- pred bintree.search(bintree(K, V), K, V).
+:- mode bintree.search(in, in, in) is semidet. % implied
+:- mode bintree.search(in, in, out) is semidet.
 
-:- pred bintree__lookup(bintree(K, V)::in, K::in, V::out) is det.
-:- func bintree__lookup(bintree(K, V), K) = V.
+:- pred bintree.lookup(bintree(K, V)::in, K::in, V::out) is det.
+:- func bintree.lookup(bintree(K, V), K) = V.
 
     % Search for a key-value pair using the key. If there is no entry
     % for the given key, returns the pair for the next lower key instead.
     % Fails if there is no key with the given or lower value.
     %
-:- pred bintree__lower_bound_search(bintree(K, V)::in, K::in, K::out, V::out)
+:- pred bintree.lower_bound_search(bintree(K, V)::in, K::in, K::out, V::out)
     is semidet.
 
     % Search for a key-value pair using the key. If there is no entry
     % for the given key, returns the pair for the next lower key instead.
     % Aborts if there is no key with the given or lower value.
     %
-:- pred bintree__lower_bound_lookup(bintree(K, V)::in, K::in, K::out, V::out)
+:- pred bintree.lower_bound_lookup(bintree(K, V)::in, K::in, K::out, V::out)
     is det.
 
     % Search for a key-value pair using the key. If there is no entry
     % for the given key, returns the pair for the next higher key instead.
     % Fails if there is no key with the given or higher value.
     %
-:- pred bintree__upper_bound_search(bintree(K, V)::in, K::in, K::out, V::out)
+:- pred bintree.upper_bound_search(bintree(K, V)::in, K::in, K::out, V::out)
     is semidet.
 
     % Search for a key-value pair using the key. If there is no entry
     % for the given key, returns the pair for the next higher key instead.
     % Aborts if there is no key with the given or higher value.
     %
-:- pred bintree__upper_bound_lookup(bintree(K, V)::in, K::in, K::out, V::out)
+:- pred bintree.upper_bound_lookup(bintree(K, V)::in, K::in, K::out, V::out)
     is det.
 
-:- pred bintree__delete(bintree(K, V)::in, K::in, bintree(K, V)::out) is det.
-:- func bintree__delete(bintree(K, V), K) = bintree(K, V).
+:- pred bintree.delete(bintree(K, V)::in, K::in, bintree(K, V)::out) is det.
+:- func bintree.delete(bintree(K, V), K) = bintree(K, V).
 
-:- pred bintree__remove(bintree(K, V)::in, K::in, V::out, bintree(K, V)::out)
+:- pred bintree.remove(bintree(K, V)::in, K::in, V::out, bintree(K, V)::out)
     is semidet.
 
-:- pred bintree__keys(bintree(K, _V)::in, list(K)::out) is det.
-:- func bintree__keys(bintree(K, _V)) = list(K).
+:- pred bintree.keys(bintree(K, _V)::in, list(K)::out) is det.
+:- func bintree.keys(bintree(K, _V)) = list(K).
 
-:- pred bintree__values(bintree(_K, V)::in, list(V)::out) is det.
-:- func bintree__values(bintree(_K, V)) = list(V).
+:- pred bintree.values(bintree(_K, V)::in, list(V)::out) is det.
+:- func bintree.values(bintree(_K, V)) = list(V).
 
-:- pred bintree__from_list(assoc_list(K, V)::in, bintree(K, V)::out) is det.
-:- func bintree__from_list(assoc_list(K, V)) = bintree(K, V).
+:- pred bintree.from_list(assoc_list(K, V)::in, bintree(K, V)::out) is det.
+:- func bintree.from_list(assoc_list(K, V)) = bintree(K, V).
 
-:- pred bintree__from_sorted_list(assoc_list(K, V)::in, bintree(K, V)::out)
+:- pred bintree.from_sorted_list(assoc_list(K, V)::in, bintree(K, V)::out)
     is det.
-:- func bintree__from_sorted_list(assoc_list(K, V)) = bintree(K, V).
+:- func bintree.from_sorted_list(assoc_list(K, V)) = bintree(K, V).
 
-:- pred bintree__from_corresponding_lists(list(K)::in, list(V)::in,
+:- pred bintree.from_corresponding_lists(list(K)::in, list(V)::in,
     bintree(K, V)::out) is det.
-:- func bintree__from_corresponding_lists(list(K), list(V)) = bintree(K, V).
+:- func bintree.from_corresponding_lists(list(K), list(V)) = bintree(K, V).
 
-:- pred bintree__to_list(bintree(K, V)::in, assoc_list(K, V)::out) is det.
-:- func bintree__to_list(bintree(K, V)) = assoc_list(K, V).
+:- pred bintree.to_list(bintree(K, V)::in, assoc_list(K, V)::out) is det.
+:- func bintree.to_list(bintree(K, V)) = assoc_list(K, V).
 
     % Count the number of elements in a tree.
     %
-:- pred bintree__count(bintree(_K, _V)::in, int::out) is det.
-:- func bintree__count(bintree(_K, _V)) = int.
+:- pred bintree.count(bintree(_K, _V)::in, int::out) is det.
+:- func bintree.count(bintree(_K, _V)) = int.
 
     % Count the depth of a tree.
     %
-:- pred bintree__depth(bintree(_K, _V)::in, int::out) is det.
-:- func bintree__depth(bintree(_K, _V)) = int.
+:- pred bintree.depth(bintree(_K, _V)::in, int::out) is det.
+:- func bintree.depth(bintree(_K, _V)) = int.
 
-:- pred bintree__branching_factor(bintree(_K, _V)::in, int::out, int::out)
+:- pred bintree.branching_factor(bintree(_K, _V)::in, int::out, int::out)
     is det.
 
-:- pred bintree__balance(bintree(K, V)::in, bintree(K, V)::out) is det.
-:- func bintree__balance(bintree(K, V)) = bintree(K, V).
+:- pred bintree.balance(bintree(K, V)::in, bintree(K, V)::out) is det.
+:- func bintree.balance(bintree(K, V)) = bintree(K, V).
 
 %-----------------------------------------------------------------------------%
 
@@ -142,84 +142,84 @@
 
 %-----------------------------------------------------------------------------%
 
-bintree__init(empty).
+bintree.init(empty).
 
 %-----------------------------------------------------------------------------%
 
-bintree__insert(empty, Key, Value, tree(Key, Value, empty, empty)).
-bintree__insert(tree(Key0, Value0, Left, Right), Key, Value, Tree) :-
+bintree.insert(empty, Key, Value, tree(Key, Value, empty, empty)).
+bintree.insert(tree(Key0, Value0, Left, Right), Key, Value, Tree) :-
     compare(Result, Key0, Key),
     ( Result = (=) ->
         fail
     ; Result = (<) ->
-        bintree__insert(Right, Key, Value, NewRight),
+        bintree.insert(Right, Key, Value, NewRight),
         Tree = tree(Key0, Value0, Left, NewRight)
     ;
-        bintree__insert(Left, Key, Value, NewLeft),
+        bintree.insert(Left, Key, Value, NewLeft),
         Tree = tree(Key0, Value0, NewLeft, Right)
     ).
 
 %-----------------------------------------------------------------------------%
 
-bintree__update(empty, _Key, _Value, _Tree) :-
+bintree.update(empty, _Key, _Value, _Tree) :-
     fail.
-bintree__update(tree(Key0, Value0, Left, Right), Key, Value, Tree) :-
+bintree.update(tree(Key0, Value0, Left, Right), Key, Value, Tree) :-
     compare(Result, Key0, Key),
     ( Result = (=) ->
         Tree = tree(Key0, Value, Left, Right)
     ; Result = (<) ->
-        bintree__update(Right, Key, Value, NewRight),
+        bintree.update(Right, Key, Value, NewRight),
         Tree = tree(Key0, Value0, Left, NewRight)
     ;
-        bintree__update(Left, Key, Value, NewLeft),
+        bintree.update(Left, Key, Value, NewLeft),
         Tree = tree(Key0, Value0, NewLeft, Right)
     ).
 
 %-----------------------------------------------------------------------------%
 
-bintree__set(empty, Key, Value, tree(Key, Value, empty, empty)).
-bintree__set(tree(Key0, Value0, Left, Right), Key, Value, Tree) :-
+bintree.set(empty, Key, Value, tree(Key, Value, empty, empty)).
+bintree.set(tree(Key0, Value0, Left, Right), Key, Value, Tree) :-
     compare(Result, Key0, Key),
     ( Result = (=) ->
         Tree = tree(Key0, Value, Left, Right)
     ; Result = (<) ->
-        bintree__set(Right, Key, Value, NewRight),
+        bintree.set(Right, Key, Value, NewRight),
         Tree = tree(Key0, Value0, Left, NewRight)
     ;
-        bintree__set(Left, Key, Value, NewLeft),
+        bintree.set(Left, Key, Value, NewLeft),
         Tree = tree(Key0, Value0, NewLeft, Right)
     ).
 
 %-----------------------------------------------------------------------------%
 
-bintree__search(tree(K0, V0, Left, Right), K, V) :-
+bintree.search(tree(K0, V0, Left, Right), K, V) :-
     compare(Result, K0, K),
     ( Result = (=) ->
         V = V0
     ; Result = (<) ->
-        bintree__search(Right, K, V)
+        bintree.search(Right, K, V)
     ;
-        bintree__search(Left, K, V)
+        bintree.search(Left, K, V)
     ).
 
 %-----------------------------------------------------------------------------%
 
-bintree__lookup(Tree, K, V) :-
-    ( bintree__search(Tree, K, V0) ->
+bintree.lookup(Tree, K, V) :-
+    ( bintree.search(Tree, K, V0) ->
         V = V0
     ;
-        report_lookup_error("bintree__lookup: key not found", K, V)
+        report_lookup_error("bintree.lookup: key not found", K, V)
     ).
 
 %-----------------------------------------------------------------------------%
 
-bintree__lower_bound_search(tree(K0, V0, Left, Right), SearchK, K, V) :-
+bintree.lower_bound_search(tree(K0, V0, Left, Right), SearchK, K, V) :-
     compare(Result, K0, SearchK),
     ( Result = (=) ->
         K = K0,
         V = V0
     ; Result = (<) ->
-        ( bintree__lower_bound_search(Right, SearchK, Kp, Vp) ->
+        ( bintree.lower_bound_search(Right, SearchK, Kp, Vp) ->
             K = Kp,
             V = Vp
         ;
@@ -227,29 +227,29 @@ bintree__lower_bound_search(tree(K0, V0, Left, Right), SearchK, K, V) :-
             V = V0
         )
     ;
-        bintree__lower_bound_search(Left, SearchK, K, V)
+        bintree.lower_bound_search(Left, SearchK, K, V)
     ).
 
-bintree__lower_bound_lookup(Tree, SearchK, K, V) :-
-    ( bintree__lower_bound_search(Tree, SearchK, K0, V0) ->
+bintree.lower_bound_lookup(Tree, SearchK, K, V) :-
+    ( bintree.lower_bound_search(Tree, SearchK, K0, V0) ->
         K = K0,
         V = V0
     ;
-        report_lookup_error("bintree__lower_bound_lookup: " ++
+        report_lookup_error("bintree.lower_bound_lookup: " ++
             "key not found", SearchK, V)
     ).
 
 %-----------------------------------------------------------------------------%
 
-bintree__upper_bound_search(tree(K0, V0, Left, Right), SearchK, K, V) :-
+bintree.upper_bound_search(tree(K0, V0, Left, Right), SearchK, K, V) :-
     compare(Result, K0, SearchK),
     ( Result = (=) ->
         K = K0,
         V = V0
     ; Result = (<) ->
-        bintree__upper_bound_search(Right, SearchK, K, V)
+        bintree.upper_bound_search(Right, SearchK, K, V)
     ;
-        ( bintree__upper_bound_search(Left, SearchK, Kp, Vp) ->
+        ( bintree.upper_bound_search(Left, SearchK, Kp, Vp) ->
             K = Kp,
             V = Vp
         ;
@@ -258,139 +258,139 @@ bintree__upper_bound_search(tree(K0, V0, Left, Right), SearchK, K, V) :-
         )
     ).
 
-bintree__upper_bound_lookup(Tree, SearchK, K, V) :-
-    ( bintree__upper_bound_search(Tree, SearchK, K0, V0) ->
+bintree.upper_bound_lookup(Tree, SearchK, K, V) :-
+    ( bintree.upper_bound_search(Tree, SearchK, K0, V0) ->
         K = K0,
         V = V0
     ;
-        report_lookup_error("bintree__lower_bound_lookup: key not found",
+        report_lookup_error("bintree.lower_bound_lookup: key not found",
             SearchK, V)
     ).
 
 %-----------------------------------------------------------------------------%
 
-bintree__delete(empty, _K, empty).
-bintree__delete(tree(K0, V0, Left, Right), K, Tree) :-
+bintree.delete(empty, _K, empty).
+bintree.delete(tree(K0, V0, Left, Right), K, Tree) :-
     compare(Result, K0, K),
     ( Result = (=) ->
-        bintree__fixup(Left, Right, Tree)
+        bintree.fixup(Left, Right, Tree)
     ; Result = (<) ->
-        bintree__delete(Right, K, Tree1),
+        bintree.delete(Right, K, Tree1),
         Tree = tree(K0, V0, Left, Tree1)
     ;
-        bintree__delete(Left, K, Tree1),
+        bintree.delete(Left, K, Tree1),
         Tree = tree(K0, V0, Tree1, Right)
     ).
 
 %-----------------------------------------------------------------------------%
 
-bintree__remove(tree(K0, V0, Left, Right), K, V, Tree) :-
+bintree.remove(tree(K0, V0, Left, Right), K, V, Tree) :-
     compare(Result, K0, K),
     ( Result = (=) ->
         V = V0,
-        bintree__fixup(Left, Right, Tree)
+        bintree.fixup(Left, Right, Tree)
     ; Result = (<) ->
-        bintree__remove(Right, K, V, Tree1),
+        bintree.remove(Right, K, V, Tree1),
         Tree = tree(K0, V0, Left, Tree1)
     ;
-        bintree__remove(Left, K, V, Tree1),
+        bintree.remove(Left, K, V, Tree1),
         Tree = tree(K0, V0, Tree1, Right)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred bintree__fixup(bintree(K, V)::in, bintree(K, V)::in,
+:- pred bintree.fixup(bintree(K, V)::in, bintree(K, V)::in,
     bintree(K, V)::out) is det.
 
-bintree__fixup(Left, Right, Tree) :-
+bintree.fixup(Left, Right, Tree) :-
     ( Left = empty ->
         Tree = Right
     ; Right = empty ->
         Tree = Left
     ;
-        bintree__right_depth(Left, LD),
-        bintree__left_depth(Right, RD),
+        bintree.right_depth(Left, LD),
+        bintree.left_depth(Right, RD),
         ( LD > RD ->
-            bintree__knock_left(Left, K, V, Left1),
+            bintree.knock_left(Left, K, V, Left1),
             Right1 = Right
         ;
-            bintree__knock_right(Right, K, V, Right1),
+            bintree.knock_right(Right, K, V, Right1),
             Left1 = Left
         ),
         Tree = tree(K, V, Left1, Right1)
     ).
 
-:- pred bintree__right_depth(bintree(_K, _V)::in, int::out) is det.
+:- pred bintree.right_depth(bintree(_K, _V)::in, int::out) is det.
 
-bintree__right_depth(empty, 0).
-bintree__right_depth(tree(_K, _V, _Left, Right), N) :-
-    bintree__right_depth(Right, M),
+bintree.right_depth(empty, 0).
+bintree.right_depth(tree(_K, _V, _Left, Right), N) :-
+    bintree.right_depth(Right, M),
     N = M + 1.
 
-:- pred bintree__left_depth(bintree(_K, _V)::in, int::out) is det.
+:- pred bintree.left_depth(bintree(_K, _V)::in, int::out) is det.
 
-bintree__left_depth(empty, 0).
-bintree__left_depth(tree(_K, _V, Left, _Right), N) :-
-    bintree__left_depth(Left, M),
+bintree.left_depth(empty, 0).
+bintree.left_depth(tree(_K, _V, Left, _Right), N) :-
+    bintree.left_depth(Left, M),
     N = M + 1.
 
-:- pred bintree__knock_left(bintree(K, V)::in, K::out, V::out,
+:- pred bintree.knock_left(bintree(K, V)::in, K::out, V::out,
     bintree(K, V)::out) is det.
 
-bintree__knock_left(empty, _, _, _) :-
-    error("bintree__knock_left: empty tree").
-bintree__knock_left(tree(K0, V0, Left, Right), K, V, Tree) :-
+bintree.knock_left(empty, _, _, _) :-
+    error("bintree.knock_left: empty tree").
+bintree.knock_left(tree(K0, V0, Left, Right), K, V, Tree) :-
     ( Right = empty ->
         K = K0,
         V = V0,
         Tree = Left
     ;
-        bintree__knock_left(Right, K, V, Right1),
+        bintree.knock_left(Right, K, V, Right1),
         Tree = tree(K0, V0, Left, Right1)
     ).
 
-:- pred bintree__knock_right(bintree(K, V)::in, K::out, V::out,
+:- pred bintree.knock_right(bintree(K, V)::in, K::out, V::out,
     bintree(K, V)::out) is det.
 
-bintree__knock_right(empty, _, _, _) :-
-    error("bintree__knock_right: empty tree").
-bintree__knock_right(tree(K0, V0, Left, Right), K, V, Tree) :-
+bintree.knock_right(empty, _, _, _) :-
+    error("bintree.knock_right: empty tree").
+bintree.knock_right(tree(K0, V0, Left, Right), K, V, Tree) :-
     ( Left = empty ->
         K = K0,
         V = V0,
         Tree = Right
     ;
-        bintree__knock_right(Left, K, V, Left1),
+        bintree.knock_right(Left, K, V, Left1),
         Tree = tree(K0, V0, Left1, Right)
     ).
 
 %-----------------------------------------------------------------------------%
 
-bintree__from_list(List, Tree) :-
-    bintree__from_list_2(List, empty, Tree).
+bintree.from_list(List, Tree) :-
+    bintree.from_list_2(List, empty, Tree).
 
-:- pred bintree__from_list_2(assoc_list(K, V)::in, bintree(K, V)::in,
+:- pred bintree.from_list_2(assoc_list(K, V)::in, bintree(K, V)::in,
     bintree(K, V)::out) is det.
 
-bintree__from_list_2([], Tree, Tree).
-bintree__from_list_2([K - V | List], Tree0, Tree) :-
-    ( bintree__insert(Tree0, K, V, Tree1) ->
+bintree.from_list_2([], Tree, Tree).
+bintree.from_list_2([K - V | List], Tree0, Tree) :-
+    ( bintree.insert(Tree0, K, V, Tree1) ->
         Tree2 = Tree1
     ;
-        report_lookup_error("bintree__from_list: key already present", K, V)
+        report_lookup_error("bintree.from_list: key already present", K, V)
     ),
-    bintree__from_list_2(List, Tree2, Tree).
+    bintree.from_list_2(List, Tree2, Tree).
 
 %-----------------------------------------------------------------------------%
 
-bintree__from_sorted_list(List, Tree) :-
-    list__length(List, Length),
-    bintree__from_sorted_list_2(Length, List, Tree, _).
+bintree.from_sorted_list(List, Tree) :-
+    list.length(List, Length),
+    bintree.from_sorted_list_2(Length, List, Tree, _).
 
-:- pred bintree__from_sorted_list_2(int::in, assoc_list(K, V)::in,
+:- pred bintree.from_sorted_list_2(int::in, assoc_list(K, V)::in,
     bintree(K, V)::out, assoc_list(K, V)::out) is det.
 
-bintree__from_sorted_list_2(Num, List0, Tree, List) :-
+bintree.from_sorted_list_2(Num, List0, Tree, List) :-
     ( Num = 0 ->
         List = List0,
         Tree = empty
@@ -398,117 +398,117 @@ bintree__from_sorted_list_2(Num, List0, Tree, List) :-
         Num1 = Num - 1,
         SmallHalf = Num1 // 2,
         BigHalf = Num1 - SmallHalf,
-        bintree__from_sorted_list_2(SmallHalf, List0, LeftSubTree, List1),
+        bintree.from_sorted_list_2(SmallHalf, List0, LeftSubTree, List1),
         (
             List1 = [HeadKey - HeadValue | List2],
             Tree = tree(HeadKey, HeadValue, LeftSubTree, RightSubTree),
-            bintree__from_sorted_list_2(BigHalf, List2, RightSubTree, List)
+            bintree.from_sorted_list_2(BigHalf, List2, RightSubTree, List)
         ;
             List1 = [],
-            error("bintree__from_sorted_list_2")
+            error("bintree.from_sorted_list_2")
         )
     ).
 
 %-----------------------------------------------------------------------------%
 
-bintree__balance(Tree0, Tree) :-
-    bintree__to_list(Tree0, List),
-    bintree__from_sorted_list(List, Tree).
+bintree.balance(Tree0, Tree) :-
+    bintree.to_list(Tree0, List),
+    bintree.from_sorted_list(List, Tree).
 
 %-----------------------------------------------------------------------------%
 
-bintree__from_corresponding_lists(Keys, Values, Tree) :-
-    ( bintree__from_corresponding_lists_2(Keys, Values, empty, Tree0) ->
+bintree.from_corresponding_lists(Keys, Values, Tree) :-
+    ( bintree.from_corresponding_lists_2(Keys, Values, empty, Tree0) ->
         Tree = Tree0
     ;
-        error("bintree__from_corresponding_lists: " ++
+        error("bintree.from_corresponding_lists: " ++
             "lists are of different lengths")
     ).
 
-:- pred bintree__from_corresponding_lists_2(list(K)::in, list(V)::in,
+:- pred bintree.from_corresponding_lists_2(list(K)::in, list(V)::in,
     bintree(K, V)::in, bintree(K, V)::out) is semidet.
 
-bintree__from_corresponding_lists_2([], [], Tree, Tree).
-bintree__from_corresponding_lists_2([K | Ks], [V | Vs], Tree0, Tree) :-
-    ( bintree__insert(Tree0, K, V, Tree1) ->
+bintree.from_corresponding_lists_2([], [], Tree, Tree).
+bintree.from_corresponding_lists_2([K | Ks], [V | Vs], Tree0, Tree) :-
+    ( bintree.insert(Tree0, K, V, Tree1) ->
         Tree2 = Tree1
     ;
         report_lookup_error(
-            "bintree__from_corresponding_lists: key already present", K, V)
+            "bintree.from_corresponding_lists: key already present", K, V)
     ),
-    bintree__from_corresponding_lists_2(Ks, Vs, Tree2, Tree).
+    bintree.from_corresponding_lists_2(Ks, Vs, Tree2, Tree).
 
 %-----------------------------------------------------------------------------%
 
-bintree__to_list(Tree, List) :-
-    bintree__to_list_2(Tree, [], List).
+bintree.to_list(Tree, List) :-
+    bintree.to_list_2(Tree, [], List).
 
-:- pred bintree__to_list_2(bintree(K, V)::in, assoc_list(K, V)::in,
+:- pred bintree.to_list_2(bintree(K, V)::in, assoc_list(K, V)::in,
     assoc_list(K, V)::out) is det.
 
-bintree__to_list_2(empty, List, List).
-bintree__to_list_2(tree(K, V, Left, Right), List0, List) :-
-    bintree__to_list_2(Right, List0, List1),
-    bintree__to_list_2(Left, [K - V | List1], List).
+bintree.to_list_2(empty, List, List).
+bintree.to_list_2(tree(K, V, Left, Right), List0, List) :-
+    bintree.to_list_2(Right, List0, List1),
+    bintree.to_list_2(Left, [K - V | List1], List).
 
 %-----------------------------------------------------------------------------%
 
-bintree__keys(Tree, List) :-
-    bintree__keys_2(Tree, [], List).
+bintree.keys(Tree, List) :-
+    bintree.keys_2(Tree, [], List).
 
-:- pred bintree__keys_2(bintree(K, _V)::in, list(K)::in, list(K)::out) is det.
+:- pred bintree.keys_2(bintree(K, _V)::in, list(K)::in, list(K)::out) is det.
 
-bintree__keys_2(empty, List, List).
-bintree__keys_2(tree(K, _V, Left, Right), List0, List) :-
-    bintree__keys_2(Right, List0, List1),
-    bintree__keys_2(Left, [K | List1], List).
+bintree.keys_2(empty, List, List).
+bintree.keys_2(tree(K, _V, Left, Right), List0, List) :-
+    bintree.keys_2(Right, List0, List1),
+    bintree.keys_2(Left, [K | List1], List).
 
 %-----------------------------------------------------------------------------%
 
-bintree__values(Tree, List) :-
-    bintree__values_2(Tree, [], List).
+bintree.values(Tree, List) :-
+    bintree.values_2(Tree, [], List).
 
-:- pred bintree__values_2(bintree(_K, V)::in, list(V)::in, list(V)::out)
+:- pred bintree.values_2(bintree(_K, V)::in, list(V)::in, list(V)::out)
     is det.
 
-bintree__values_2(empty, List, List).
-bintree__values_2(tree(_K, V, Left, Right), List0, List) :-
-    bintree__values_2(Right, List0, List1),
-    bintree__values_2(Left, [V | List1], List).
+bintree.values_2(empty, List, List).
+bintree.values_2(tree(_K, V, Left, Right), List0, List) :-
+    bintree.values_2(Right, List0, List1),
+    bintree.values_2(Left, [V | List1], List).
 
 %-----------------------------------------------------------------------------%
 
-bintree__count(empty, 0).
-bintree__count(tree(_K, _V, Left, Right), Count) :-
-    bintree__count(Right, RightCount),
-    bintree__count(Left, LeftCount),
+bintree.count(empty, 0).
+bintree.count(tree(_K, _V, Left, Right), Count) :-
+    bintree.count(Right, RightCount),
+    bintree.count(Left, LeftCount),
     ChildCount = LeftCount + RightCount,
     Count = ChildCount + 1.
 
-bintree__depth(empty, 0).
-bintree__depth(tree(_K, _V, Left, Right), Depth) :-
-    bintree__depth(Right, RightDepth),
-    bintree__depth(Left, LeftDepth),
-    int__max(LeftDepth, RightDepth, SubDepth),
+bintree.depth(empty, 0).
+bintree.depth(tree(_K, _V, Left, Right), Depth) :-
+    bintree.depth(Right, RightDepth),
+    bintree.depth(Left, LeftDepth),
+    int.max(LeftDepth, RightDepth, SubDepth),
     Depth = SubDepth + 1.
 
-bintree__branching_factor(empty, 0, 0).
-bintree__branching_factor(tree(_K, _V, L, R), Ones, Twos) :-
+bintree.branching_factor(empty, 0, 0).
+bintree.branching_factor(tree(_K, _V, L, R), Ones, Twos) :-
     ( L = empty ->
         ( R = empty ->
             Ones = 0,
             Twos = 0
         ;
-            bintree__branching_factor(R, Ones0, Twos),
+            bintree.branching_factor(R, Ones0, Twos),
             Ones = Ones0 + 1
         )
     ;
         ( R = empty ->
-            bintree__branching_factor(L, Ones0, Twos),
+            bintree.branching_factor(L, Ones0, Twos),
             Ones = Ones0 + 1
         ;
-            bintree__branching_factor(L, Ones1, Twos1),
-            bintree__branching_factor(R, Ones2, Twos2),
+            bintree.branching_factor(L, Ones1, Twos1),
+            bintree.branching_factor(R, Ones2, Twos2),
             Ones = Ones1 + Ones2,
             Twos0 = Twos1 + Twos2,
             Twos = Twos0 + 1
@@ -520,38 +520,38 @@ bintree__branching_factor(tree(_K, _V, L, R), Ones, Twos) :-
 % Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
 %   Function forms added.
 
-bintree__set(BT1, K, V) = BT2 :-
-    bintree__set(BT1, K, V, BT2).
+bintree.set(BT1, K, V) = BT2 :-
+    bintree.set(BT1, K, V, BT2).
 
-bintree__lookup(BT, K) = V :-
-    bintree__lookup(BT, K, V).
+bintree.lookup(BT, K) = V :-
+    bintree.lookup(BT, K, V).
 
-bintree__delete(BT1, K) = BT2 :-
-    bintree__delete(BT1, K, BT2).
+bintree.delete(BT1, K) = BT2 :-
+    bintree.delete(BT1, K, BT2).
 
-bintree__keys(BT) = Ks :-
-    bintree__keys(BT, Ks).
+bintree.keys(BT) = Ks :-
+    bintree.keys(BT, Ks).
 
-bintree__values(BT) = Vs :-
-    bintree__values(BT, Vs).
+bintree.values(BT) = Vs :-
+    bintree.values(BT, Vs).
 
-bintree__from_list(AL) = BT :-
-    bintree__from_list(AL, BT).
+bintree.from_list(AL) = BT :-
+    bintree.from_list(AL, BT).
 
-bintree__from_sorted_list(AL) = BT :-
-    bintree__from_sorted_list(AL, BT).
+bintree.from_sorted_list(AL) = BT :-
+    bintree.from_sorted_list(AL, BT).
 
-bintree__from_corresponding_lists(Ks, Vs) = BT :-
-    bintree__from_corresponding_lists(Ks, Vs, BT).
+bintree.from_corresponding_lists(Ks, Vs) = BT :-
+    bintree.from_corresponding_lists(Ks, Vs, BT).
 
-bintree__to_list(BT) = AL :-
-    bintree__to_list(BT, AL).
+bintree.to_list(BT) = AL :-
+    bintree.to_list(BT, AL).
 
-bintree__count(BT) = N :-
-    bintree__count(BT, N).
+bintree.count(BT) = N :-
+    bintree.count(BT, N).
 
-bintree__depth(BT) = N :-
-    bintree__depth(BT, N).
+bintree.depth(BT) = N :-
+    bintree.depth(BT, N).
 
-bintree__balance(BT1) = BT2 :-
-    bintree__balance(BT1, BT2).
+bintree.balance(BT1) = BT2 :-
+    bintree.balance(BT1, BT2).

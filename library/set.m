@@ -24,146 +24,146 @@
 
 :- type set(T).
 
-    % `set__init(Set)' is true iff `Set' is an empty set.
+    % `set.init(Set)' is true iff `Set' is an empty set.
     %
-:- pred set__init(set(T)::uo) is det.
-:- func set__init = set(T).
+:- pred set.init(set(T)::uo) is det.
+:- func set.init = set(T).
 
-    % `set__list_to_set(List, Set)' is true iff `Set' is the set
+    % `set.list_to_set(List, Set)' is true iff `Set' is the set
     % containing only the members of `List'.
     %
-:- pred set__list_to_set(list(T)::in, set(T)::out) is det.
-:- func set__list_to_set(list(T)) = set(T).
+:- pred set.list_to_set(list(T)::in, set(T)::out) is det.
+:- func set.list_to_set(list(T)) = set(T).
 
     % Synonyms for set.list_to_set/1.
     %
-:- func set__from_list(list(T)) = set(T).
-:- func set__set(list(T)) = set(T).
+:- func set.from_list(list(T)) = set(T).
+:- func set.set(list(T)) = set(T).
 
-    % `set__sorted_list_to_set(List, Set)' is true iff `Set' is the set
+    % `set.sorted_list_to_set(List, Set)' is true iff `Set' is the set
     % containing only the members of `List'.  `List' must be sorted
     % and must not contain any duplicates.
     %
-:- pred set__sorted_list_to_set(list(T)::in, set(T)::out) is det.
-:- func set__sorted_list_to_set(list(T)) = set(T).
+:- pred set.sorted_list_to_set(list(T)::in, set(T)::out) is det.
+:- func set.sorted_list_to_set(list(T)) = set(T).
 
     % A synonym for set.sorted_list_to_set/1.
     %
-:- func set__from_sorted_list(list(T)) = set(T).
+:- func set.from_sorted_list(list(T)) = set(T).
 
-    % `set__to_sorted_list(Set, List)' is true iff `List' is the list
+    % `set.to_sorted_list(Set, List)' is true iff `List' is the list
     % of all the members of `Set', in sorted order without any
     % duplicates.
     %
-:- pred set__to_sorted_list(set(T)::in, list(T)::out) is det.
-:- func set__to_sorted_list(set(T)) = list(T).
+:- pred set.to_sorted_list(set(T)::in, list(T)::out) is det.
+:- func set.to_sorted_list(set(T)) = list(T).
 
-    % `set__singleton_set(Set, Elem)' is true iff `Set' is the set
+    % `set.singleton_set(Set, Elem)' is true iff `Set' is the set
     % containing just the single element `Elem'.
     %
-:- pred set__singleton_set(set(T), T).
-:- mode set__singleton_set(in, out) is semidet.
-:- mode set__singleton_set(out, in) is det.
+:- pred set.singleton_set(set(T), T).
+:- mode set.singleton_set(in, out) is semidet.
+:- mode set.singleton_set(out, in) is det.
 
-:- func set__make_singleton_set(T) = set(T).
+:- func set.make_singleton_set(T) = set(T).
 
-    % `set__equal(SetA, SetB)' is true iff
+    % `set.equal(SetA, SetB)' is true iff
     % `SetA' and `SetB' contain the same elements.
     %
-:- pred set__equal(set(T)::in, set(T)::in) is semidet.
+:- pred set.equal(set(T)::in, set(T)::in) is semidet.
 
-:- pred set__empty(set(T)::in) is semidet.
+:- pred set.empty(set(T)::in) is semidet.
 
-:- pred set__non_empty(set(T)::in) is semidet.
+:- pred set.non_empty(set(T)::in) is semidet.
 
-    % `set__subset(SetA, SetB)' is true iff `SetA' is a subset of `SetB'.
+    % `set.subset(SetA, SetB)' is true iff `SetA' is a subset of `SetB'.
     %
-:- pred set__subset(set(T)::in, set(T)::in) is semidet.
+:- pred set.subset(set(T)::in, set(T)::in) is semidet.
 
-    % `set__superset(SetA, SetB)' is true iff `SetA' is a
+    % `set.superset(SetA, SetB)' is true iff `SetA' is a
     % superset of `SetB'.
     %
-:- pred set__superset(set(T)::in, set(T)::in) is semidet.
+:- pred set.superset(set(T)::in, set(T)::in) is semidet.
 
-    % `set__member(X, Set)' is true iff `X' is a member of `Set'.
+    % `set.member(X, Set)' is true iff `X' is a member of `Set'.
     %
-:- pred set__member(T, set(T)).
-:- mode set__member(in, in) is semidet.
-:- mode set__member(out, in) is nondet.
+:- pred set.member(T, set(T)).
+:- mode set.member(in, in) is semidet.
+:- mode set.member(out, in) is nondet.
 
     % `set_is_member(X, Set, Result)' returns
     % `Result = yes' iff `X' is a member of `Set'.
     %
-:- pred set__is_member(T::in, set(T)::in, bool::out) is det.
+:- pred set.is_member(T::in, set(T)::in, bool::out) is det.
 
-    % `set__contains(Set, X)' is true iff `X' is a member of `Set'.
+    % `set.contains(Set, X)' is true iff `X' is a member of `Set'.
     %
-:- pred set__contains(set(T)::in, T::in) is semidet.
+:- pred set.contains(set(T)::in, T::in) is semidet.
 
-    % `set__insert(Set0, X, Set)' is true iff `Set' is the union of
+    % `set.insert(Set0, X, Set)' is true iff `Set' is the union of
     % `Set0' and the set containing only `X'.
     %
-:- pred set__insert(set(T)::in, T::in, set(T)::out) is det.
+:- pred set.insert(set(T)::in, T::in, set(T)::out) is det.
 
     % XXX rwab1: I think we should reverse the args. here for
     % higher order programming.
     %
-:- func set__insert(set(T), T) = set(T).
+:- func set.insert(set(T), T) = set(T).
 
-    % `set__insert_list(Set0, Xs, Set)' is true iff `Set' is the union of
+    % `set.insert_list(Set0, Xs, Set)' is true iff `Set' is the union of
     % `Set0' and the set containing only the members of `Xs'.
     %
-:- pred set__insert_list(set(T)::in, list(T)::in, set(T)::out) is det.
+:- pred set.insert_list(set(T)::in, list(T)::in, set(T)::out) is det.
 
     % XXX rwab1: I think we should reverse the args. here for
     % higher order programming.
     %
-:- func set__insert_list(set(T), list(T)) = set(T).
+:- func set.insert_list(set(T), list(T)) = set(T).
 
-    % `set__delete(Set0, X, Set)' is true iff `Set' is the relative
+    % `set.delete(Set0, X, Set)' is true iff `Set' is the relative
     % complement of `Set0' and the set containing only `X', i.e.
     % if `Set' is the set which contains all the elements of `Set0'
     % except `X'.
     %
-:- pred set__delete(set(T)::in, T::in, set(T)::out) is det.
+:- pred set.delete(set(T)::in, T::in, set(T)::out) is det.
 
     % XXX rwab1: I think we should reverse the args. here for
     % higher order programming.
     %
-:- func set__delete(set(T), T) = set(T).
+:- func set.delete(set(T), T) = set(T).
 
-    % `set__delete_list(Set0, Xs, Set)' is true iff `Set' is the relative
+    % `set.delete_list(Set0, Xs, Set)' is true iff `Set' is the relative
     % complement of `Set0' and the set containing only the members of
     % `Xs'.
     %
-:- pred set__delete_list(set(T)::in, list(T)::in, set(T)::out) is det.
+:- pred set.delete_list(set(T)::in, list(T)::in, set(T)::out) is det.
 
     % XXX rwab1: I think we should reverse the args. here for
     % higher order programming.
     %
-:- func set__delete_list(set(T), list(T)) = set(T).
+:- func set.delete_list(set(T), list(T)) = set(T).
 
-    % `set__remove(Set0, X, Set)' is true iff `Set0' contains `X',
+    % `set.remove(Set0, X, Set)' is true iff `Set0' contains `X',
     % and `Set' is the relative complement of `Set0' and the set
     % containing only `X', i.e.  if `Set' is the set which contains
     % all the elements of `Set0' except `X'.
     %
-:- pred set__remove(set(T)::in, T::in, set(T)::out) is semidet.
+:- pred set.remove(set(T)::in, T::in, set(T)::out) is semidet.
 
-    % `set__remove_list(Set0, Xs, Set)' is true iff `Xs' does not
+    % `set.remove_list(Set0, Xs, Set)' is true iff `Xs' does not
     % contain any duplicates, `Set0' contains every member of `Xs',
     % and `Set' is the relative complement of `Set0' and the set
     % containing only the members of `Xs'.
     %
-:- pred set__remove_list(set(T)::in, list(T)::in, set(T)::out) is semidet.
+:- pred set.remove_list(set(T)::in, list(T)::in, set(T)::out) is semidet.
 
-    % `set__remove_least(Set0, Elem, Set)' is true iff
+    % `set.remove_least(Set0, Elem, Set)' is true iff
     % `Set0' is not empty, `Elem' is the smallest element in `Set0'
     % (with elements ordered using the standard ordering given
     % by compare/3), and `Set' is the set containing all the
     % elements of `Set0' except `Elem'.
     %
-:- pred set__remove_least(set(T)::in, T::out, set(T)::out) is semidet.
+:- pred set.remove_least(set(T)::in, T::out, set(T)::out) is semidet.
 
     % `set_union(SetA, SetB, Set)' is true iff `Set' is the union of
     % `SetA' and `SetB'.  If the sets are known to be of different
@@ -174,21 +174,21 @@
     % will make it less likely that you will encounter problems if
     % the implementation is changed.)
     %
-:- pred set__union(set(T)::in, set(T)::in, set(T)::out) is det.
-:- func set__union(set(T), set(T)) = set(T).
+:- pred set.union(set(T)::in, set(T)::in, set(T)::out) is det.
+:- func set.union(set(T), set(T)) = set(T).
 
-    % `set__union_list(A, B)' is true iff `B' is the union of
+    % `set.union_list(A, B)' is true iff `B' is the union of
     % all the sets in `A'.
     %
-:- func set__union_list(list(set(T))) = set(T).
+:- func set.union_list(list(set(T))) = set(T).
 
-    % `set__power_union(A, B)' is true iff `B' is the union of
+    % `set.power_union(A, B)' is true iff `B' is the union of
     % all the sets in `A'.
     %
-:- pred set__power_union(set(set(T))::in, set(T)::out) is det.
-:- func set__power_union(set(set(T))) = set(T).
+:- pred set.power_union(set(set(T))::in, set(T)::out) is det.
+:- func set.power_union(set(set(T))) = set(T).
 
-    % `set__intersect(SetA, SetB, Set)' is true iff `Set' is the
+    % `set.intersect(SetA, SetB, Set)' is true iff `Set' is the
     % intersection of `SetA' and `SetB'. If the two sets are
     % known to be unequal in size, then making SetA be the larger
     % set will usually be more efficient.
@@ -198,99 +198,99 @@
     % will make it less likely that you will encounter problems if
     % the implementation is changed.)
     %
-:- pred set__intersect(set(T)::in, set(T)::in, set(T)::out) is det.
-:- func set__intersect(set(T), set(T)) = set(T).
+:- pred set.intersect(set(T)::in, set(T)::in, set(T)::out) is det.
+:- func set.intersect(set(T), set(T)) = set(T).
 
-    % `set__power_intersect(A, B)' is true iff `B' is the intersection of
+    % `set.power_intersect(A, B)' is true iff `B' is the intersection of
     % all the sets in `A'.
     %
-:- pred set__power_intersect(set(set(T))::in, set(T)::out) is det.
-:- func set__power_intersect(set(set(T))) = set(T).
+:- pred set.power_intersect(set(set(T))::in, set(T)::out) is det.
+:- func set.power_intersect(set(set(T))) = set(T).
 
-    % `set__intersect_list(A, B)' is true iff `B' is the intersection of
+    % `set.intersect_list(A, B)' is true iff `B' is the intersection of
     % all the sets in `A'.
     %
-:- func set__intersect_list(list(set(T))) = set(T).
+:- func set.intersect_list(list(set(T))) = set(T).
 
-    % `set__difference(SetA, SetB, Set)' is true iff `Set' is the
+    % `set.difference(SetA, SetB, Set)' is true iff `Set' is the
     % set containing all the elements of `SetA' except those that
     % occur in `SetB'.
     %
-:- pred set__difference(set(T)::in, set(T)::in, set(T)::out) is det.
-:- func set__difference(set(T), set(T)) = set(T).
+:- pred set.difference(set(T)::in, set(T)::in, set(T)::out) is det.
+:- func set.difference(set(T), set(T)) = set(T).
 
-    % `set__count(Set, Count)' is true iff `Set' has `Count' elements.
+    % `set.count(Set, Count)' is true iff `Set' has `Count' elements.
     %
-:- pred set__count(set(T)::in, int::out) is det.
-:- func set__count(set(T)) = int.
+:- pred set.count(set(T)::in, int::out) is det.
+:- func set.count(set(T)) = int.
 
     % Support for higher order set processing.
 
     % map(F, S) =
-    %   list_to_set(list__map(F, to_sorted_list(S))).
+    %   list_to_set(list.map(F, to_sorted_list(S))).
     %
-:- func set__map(func(T1) = T2, set(T1)) = set(T2).
+:- func set.map(func(T1) = T2, set(T1)) = set(T2).
 
-    % set__map_fold(P, S0, S, A0, A) :-
-    %   L0 = set__to_sorted_list(S0),
-    %   list__map_foldl(P, L0, L, A0, A),
-    %   S = set__list_to_set(L).
+    % set.map_fold(P, S0, S, A0, A) :-
+    %   L0 = set.to_sorted_list(S0),
+    %   list.map_foldl(P, L0, L, A0, A),
+    %   S = set.list_to_set(L).
     %
-:- pred set__map_fold(pred(T1, T2, T3, T3), set(T1), set(T2), T3, T3).
-:- mode set__map_fold(pred(in, out, in, out) is det, in, out, in, out) is det.
+:- pred set.map_fold(pred(T1, T2, T3, T3), set(T1), set(T2), T3, T3).
+:- mode set.map_fold(pred(in, out, in, out) is det, in, out, in, out) is det.
 
-    % set__filter(P, S) =
-    %   sorted_list_to_set(list__filter(P, to_sorted_list(S))).
+    % set.filter(P, S) =
+    %   sorted_list_to_set(list.filter(P, to_sorted_list(S))).
     %
-:- func set__filter(pred(T1), set(T1)) = set(T1).
-:- mode set__filter(pred(in) is semidet, in) = out is det.
+:- func set.filter(pred(T1), set(T1)) = set(T1).
+:- mode set.filter(pred(in) is semidet, in) = out is det.
 
-    % set__filter_map(PF, S) =
-    %   list_to_set(list__filter_map(PF, to_sorted_list(S))).
+    % set.filter_map(PF, S) =
+    %   list_to_set(list.filter_map(PF, to_sorted_list(S))).
     %
-:- func set__filter_map(func(T1) = T2, set(T1)) = set(T2).
-:- mode set__filter_map(func(in) = out is semidet, in) = out is det.
+:- func set.filter_map(func(T1) = T2, set(T1)) = set(T2).
+:- mode set.filter_map(func(in) = out is semidet, in) = out is det.
 
-    % set__fold(F, S, A) =
-    %   list__foldl(F, to_sorted_list(S), A).
+    % set.fold(F, S, A) =
+    %   list.foldl(F, to_sorted_list(S), A).
     %
-:- func set__fold(func(T, A) = A, set(T), A) = A.
+:- func set.fold(func(T, A) = A, set(T), A) = A.
 
-:- pred set__fold(pred(T, A, A), set(T), A, A).
-:- mode set__fold(pred(in, di, uo) is det, in, di, uo) is det.
-:- mode set__fold(pred(in, in, out) is det, in, in, out) is det.
-:- mode set__fold(pred(in, in, out) is semidet, in, in, out) is semidet.
+:- pred set.fold(pred(T, A, A), set(T), A, A).
+:- mode set.fold(pred(in, di, uo) is det, in, di, uo) is det.
+:- mode set.fold(pred(in, in, out) is det, in, in, out) is det.
+:- mode set.fold(pred(in, in, out) is semidet, in, in, out) is semidet.
 
-:- pred set__fold2(pred(T, A, A, B, B), set(T), A, A, B, B).
-:- mode set__fold2(pred(in, in, out, di, uo) is det, in,
+:- pred set.fold2(pred(T, A, A, B, B), set(T), A, A, B, B).
+:- mode set.fold2(pred(in, in, out, di, uo) is det, in,
     in, out, di, uo) is det.
-:- mode set__fold2(pred(in, in, out, in, out) is det, in,
+:- mode set.fold2(pred(in, in, out, in, out) is det, in,
     in, out, in, out) is det.
-:- mode set__fold2(pred(in, in, out, in, out) is semidet,
+:- mode set.fold2(pred(in, in, out, in, out) is semidet,
     in, in, out, in, out) is semidet.
 
-:- pred set__fold3(pred(T, A, A, B, B, C, C), set(T), A, A, B, B, C, C).
-:- mode set__fold3(pred(in, in, out, in, out, di, uo) is det, in,
+:- pred set.fold3(pred(T, A, A, B, B, C, C), set(T), A, A, B, B, C, C).
+:- mode set.fold3(pred(in, in, out, in, out, di, uo) is det, in,
     in, out, in, out, di, uo) is det.
-:- mode set__fold3(pred(in, in, out, in, out, in, out) is det, in,
+:- mode set.fold3(pred(in, in, out, in, out, in, out) is det, in,
     in, out, in, out, in, out) is det.
-:- mode set__fold3(pred(in, in, out, in, out, in, out) is semidet, in,
+:- mode set.fold3(pred(in, in, out, in, out, in, out) is semidet, in,
     in, out, in, out, in, out) is semidet.
 
-:- pred set__fold4(pred(T, A, A, B, B, C, C, D, D), set(T), A, A, B, B,
+:- pred set.fold4(pred(T, A, A, B, B, C, C, D, D), set(T), A, A, B, B,
         C, C, D, D).
-:- mode set__fold4(pred(in, in, out, in, out, in, out, in, out) is det, in,
+:- mode set.fold4(pred(in, in, out, in, out, in, out, in, out) is det, in,
     in, out, in, out, in, out, in, out) is det.
-:- mode set__fold4(pred(in, in, out, in, out, in, out, di, uo) is det, in,
+:- mode set.fold4(pred(in, in, out, in, out, in, out, di, uo) is det, in,
     in, out, in, out, in, out, di, uo) is det.
-:- mode set__fold4(pred(in, in, out, in, out, in, out, in, out) is semidet, in,
+:- mode set.fold4(pred(in, in, out, in, out, in, out, in, out) is semidet, in,
     in, out, in, out, in, out, in, out) is semidet.
     
-    % set__divide(Pred, Set, TruePart, FalsePart):
+    % set.divide(Pred, Set, TruePart, FalsePart):
     % TruePart consists of those elements of Set for which Pred succeeds;
     % FalsePart consists of those elements of Set for which Pred fails.
     %
-:- pred set__divide(pred(T)::in(pred(in) is semidet), set(T)::in,
+:- pred set.divide(pred(T)::in(pred(in) is semidet), set(T)::in,
     set(T)::out, set(T)::out) is det.
 
     % set_divide_by_set(DivideBySet, Set, InPart, OutPart):
@@ -298,7 +298,7 @@
     % DivideBySet; OutPart consists of those elements of which are
     % not in DivideBySet.
     %
-:- pred set__divide_by_set(set(T)::in, set(T)::in, set(T)::out, set(T)::out)
+:- pred set.divide_by_set(set(T)::in, set(T)::in, set(T)::out, set(T)::out)
     is det.
 
 %--------------------------------------------------------------------------%
@@ -313,27 +313,27 @@
 
 :- import_module term.  % for var/1.
 
-:- pragma type_spec(set__list_to_set/2, T = var(_)).
-:- pragma type_spec(set__list_to_set/1, T = var(_)).
+:- pragma type_spec(set.list_to_set/2, T = var(_)).
+:- pragma type_spec(set.list_to_set/1, T = var(_)).
 
-:- pragma type_spec(set__member(in, in), T = var(_)).
+:- pragma type_spec(set.member(in, in), T = var(_)).
 
-:- pragma type_spec(set__contains(in, in), T = var(_)).
+:- pragma type_spec(set.contains(in, in), T = var(_)).
 
-:- pragma type_spec(set__insert/3, T = var(_)).
-:- pragma type_spec(set__insert/2, T = var(_)).
+:- pragma type_spec(set.insert/3, T = var(_)).
+:- pragma type_spec(set.insert/2, T = var(_)).
 
-:- pragma type_spec(set__insert_list/3, T = var(_)).
-:- pragma type_spec(set__insert_list/2, T = var(_)).
+:- pragma type_spec(set.insert_list/3, T = var(_)).
+:- pragma type_spec(set.insert_list/2, T = var(_)).
 
-:- pragma type_spec(set__union/3, T = var(_)).
-:- pragma type_spec(set__union/2, T = var(_)).
+:- pragma type_spec(set.union/3, T = var(_)).
+:- pragma type_spec(set.union/2, T = var(_)).
 
-:- pragma type_spec(set__intersect/3, T = var(_)).
-:- pragma type_spec(set__intersect/2, T = var(_)).
+:- pragma type_spec(set.intersect/3, T = var(_)).
+:- pragma type_spec(set.intersect/2, T = var(_)).
 
-:- pragma type_spec(set__difference/3, T = var(_)).
-:- pragma type_spec(set__difference/2, T = var(_)).
+:- pragma type_spec(set.difference/3, T = var(_)).
+:- pragma type_spec(set.difference/2, T = var(_)).
 
 %-----------------------------------------------------------------------------%
 
@@ -345,179 +345,179 @@
 
 :- type set(T) ==   set_ordlist(T).
 
-set__list_to_set(List, Set) :-
-    set_ordlist__list_to_set(List, Set).
+set.list_to_set(List, Set) :-
+    set_ordlist.list_to_set(List, Set).
 
-set__from_list(List) = set_ordlist__from_list(List).
+set.from_list(List) = set_ordlist.from_list(List).
 
-set__set(List) = set_ordlist__from_list(List).
+set.set(List) = set_ordlist.from_list(List).
 
-set__sorted_list_to_set(List, Set) :-
-    set_ordlist__sorted_list_to_set(List, Set).
+set.sorted_list_to_set(List, Set) :-
+    set_ordlist.sorted_list_to_set(List, Set).
 
-set__from_sorted_list(List) = set_ordlist__from_sorted_list(List).
+set.from_sorted_list(List) = set_ordlist.from_sorted_list(List).
 
-set__to_sorted_list(Set, List) :-
-    set_ordlist__to_sorted_list(Set, List).
+set.to_sorted_list(Set, List) :-
+    set_ordlist.to_sorted_list(Set, List).
 
-set__insert_list(Set0, List, Set) :-
-    set_ordlist__insert_list(Set0, List, Set).
+set.insert_list(Set0, List, Set) :-
+    set_ordlist.insert_list(Set0, List, Set).
 
-set__insert(Set0, X, Set) :-
-    set_ordlist__insert(Set0, X, Set).
+set.insert(Set0, X, Set) :-
+    set_ordlist.insert(Set0, X, Set).
 
-set__init(Set) :-
-    set_ordlist__init(Set).
+set.init(Set) :-
+    set_ordlist.init(Set).
 
-set__singleton_set(Set, X) :-
-    set_ordlist__singleton_set(Set, X).
+set.singleton_set(Set, X) :-
+    set_ordlist.singleton_set(Set, X).
 
-set__equal(SetA, SetB) :-
-    set_ordlist__equal(SetA, SetB).
+set.equal(SetA, SetB) :-
+    set_ordlist.equal(SetA, SetB).
 
-set__empty(Set) :-
-    set_ordlist__empty(Set).
+set.empty(Set) :-
+    set_ordlist.empty(Set).
 
-set__non_empty(Set) :-
-    \+ set_ordlist__empty(Set).
+set.non_empty(Set) :-
+    \+ set_ordlist.empty(Set).
 
-set__subset(SetA, SetB) :-
-    set_ordlist__subset(SetA, SetB).
+set.subset(SetA, SetB) :-
+    set_ordlist.subset(SetA, SetB).
 
-set__superset(SetA, SetB) :-
-    set_ordlist__superset(SetA, SetB).
+set.superset(SetA, SetB) :-
+    set_ordlist.superset(SetA, SetB).
 
-:- pragma promise_pure(set__member/2).
+:- pragma promise_pure(set.member/2).
 
-set__member(X::in, Set::in) :-
-    set_ordlist__is_member(X, Set, yes).
-set__member(X::out, Set::in) :-
-    set_ordlist__member(X, Set).
+set.member(X::in, Set::in) :-
+    set_ordlist.is_member(X, Set, yes).
+set.member(X::out, Set::in) :-
+    set_ordlist.member(X, Set).
 
-set__is_member(X, Set, Result) :-
-    set_ordlist__is_member(X, Set, Result).
+set.is_member(X, Set, Result) :-
+    set_ordlist.is_member(X, Set, Result).
 
-set__contains(Set, X) :-
-    set_ordlist__contains(Set, X).
+set.contains(Set, X) :-
+    set_ordlist.contains(Set, X).
 
-set__delete_list(Set0, List, Set) :-
-    set_ordlist__delete_list(Set0, List, Set).
+set.delete_list(Set0, List, Set) :-
+    set_ordlist.delete_list(Set0, List, Set).
 
-set__delete(Set0, X, Set) :-
-    set_ordlist__delete(Set0, X, Set).
+set.delete(Set0, X, Set) :-
+    set_ordlist.delete(Set0, X, Set).
 
-set__remove_list(Set0, List, Set) :-
-    set_ordlist__remove_list(Set0, List, Set).
+set.remove_list(Set0, List, Set) :-
+    set_ordlist.remove_list(Set0, List, Set).
 
-set__remove(Set0, X, Set) :-
-    set_ordlist__remove(Set0, X, Set).
+set.remove(Set0, X, Set) :-
+    set_ordlist.remove(Set0, X, Set).
 
-set__remove_least(Set0, X, Set) :-
-    set_ordlist__remove_least(Set0, X, Set).
+set.remove_least(Set0, X, Set) :-
+    set_ordlist.remove_least(Set0, X, Set).
 
-set__union(SetA, SetB, Set) :-
-    set_ordlist__union(SetA, SetB, Set).
+set.union(SetA, SetB, Set) :-
+    set_ordlist.union(SetA, SetB, Set).
 
-set__union_list(Sets) = set_ordlist__union_list(Sets).
+set.union_list(Sets) = set_ordlist.union_list(Sets).
 
-set__power_union(Sets, Set) :-
-    set_ordlist__power_union(Sets, Set).
+set.power_union(Sets, Set) :-
+    set_ordlist.power_union(Sets, Set).
 
-set__intersect(SetA, SetB, Set) :-
-    set_ordlist__intersect(SetA, SetB, Set).
+set.intersect(SetA, SetB, Set) :-
+    set_ordlist.intersect(SetA, SetB, Set).
 
-set__power_intersect(Sets, Set) :-
-    set_ordlist__power_intersect(Sets, Set).
+set.power_intersect(Sets, Set) :-
+    set_ordlist.power_intersect(Sets, Set).
 
-set__intersect_list(Sets) = set_ordlist__intersect_list(Sets).
+set.intersect_list(Sets) = set_ordlist.intersect_list(Sets).
 
-set__difference(SetA, SetB, Set) :-
-    set_ordlist__difference(SetA, SetB, Set).
+set.difference(SetA, SetB, Set) :-
+    set_ordlist.difference(SetA, SetB, Set).
 
-set__count(Set, Count) :-
-    set_ordlist__count(Set, Count).
+set.count(Set, Count) :-
+    set_ordlist.count(Set, Count).
 
 %--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cam.sri.com> 24/04/99
 %   Function forms added.
 
-set__list_to_set(Xs) = S :-
-    set__list_to_set(Xs, S).
+set.list_to_set(Xs) = S :-
+    set.list_to_set(Xs, S).
 
-set__sorted_list_to_set(Xs) = S :-
-    set__sorted_list_to_set(Xs, S).
+set.sorted_list_to_set(Xs) = S :-
+    set.sorted_list_to_set(Xs, S).
 
-set__to_sorted_list(S) = Xs :-
-    set__to_sorted_list(S, Xs).
+set.to_sorted_list(S) = Xs :-
+    set.to_sorted_list(S, Xs).
 
-set__init = S :-
-    set__init(S).
+set.init = S :-
+    set.init(S).
 
-set__make_singleton_set(T) = S :-
-    set__singleton_set(S, T).
+set.make_singleton_set(T) = S :-
+    set.singleton_set(S, T).
 
-set__insert(S1, T) = S2 :-
-    set__insert(S1, T, S2).
+set.insert(S1, T) = S2 :-
+    set.insert(S1, T, S2).
 
-set__insert_list(S1, Xs) = S2 :-
-    set__insert_list(S1, Xs, S2).
+set.insert_list(S1, Xs) = S2 :-
+    set.insert_list(S1, Xs, S2).
 
-set__delete(S1, T) = S2 :-
-    set__delete(S1, T, S2).
+set.delete(S1, T) = S2 :-
+    set.delete(S1, T, S2).
 
-set__delete_list(S1, Xs) = S2 :-
-    set__delete_list(S1, Xs, S2).
+set.delete_list(S1, Xs) = S2 :-
+    set.delete_list(S1, Xs, S2).
 
-set__union(S1, S2) = S3 :-
-    set__union(S1, S2, S3).
+set.union(S1, S2) = S3 :-
+    set.union(S1, S2, S3).
 
-set__power_union(SS) = S :-
-    set__power_union(SS, S).
+set.power_union(SS) = S :-
+    set.power_union(SS, S).
 
-set__intersect(S1, S2) = S3 :-
-    set__intersect(S1, S2, S3).
+set.intersect(S1, S2) = S3 :-
+    set.intersect(S1, S2, S3).
 
-set__power_intersect(SS) = S :-
-    set__power_intersect(SS, S).
+set.power_intersect(SS) = S :-
+    set.power_intersect(SS, S).
 
-set__difference(S1, S2) = S3 :-
-    set__difference(S1, S2, S3).
+set.difference(S1, S2) = S3 :-
+    set.difference(S1, S2, S3).
 
-set__count(S) = N :-
-    set__count(S, N).
+set.count(S) = N :-
+    set.count(S, N).
 
-set__map(F, S1) = S2 :-
-    S2 = set__list_to_set(list__map(F, set__to_sorted_list(S1))).
+set.map(F, S1) = S2 :-
+    S2 = set.list_to_set(list.map(F, set.to_sorted_list(S1))).
 
-set__map_fold(P, S0, S, A0, A) :-
-    L0 = set__to_sorted_list(S0),
-    list__map_foldl(P, L0, L, A0, A),
-    S = set__list_to_set(L).
+set.map_fold(P, S0, S, A0, A) :-
+    L0 = set.to_sorted_list(S0),
+    list.map_foldl(P, L0, L, A0, A),
+    S = set.list_to_set(L).
 
-set__filter(P, S1) = S2 :-
-    S2 = set__sorted_list_to_set(list__filter(P, set__to_sorted_list(S1))).
+set.filter(P, S1) = S2 :-
+    S2 = set.sorted_list_to_set(list.filter(P, set.to_sorted_list(S1))).
 
-set__filter_map(PF, S1) = S2 :-
-    S2 = set__list_to_set(list__filter_map(PF, set__to_sorted_list(S1))).
+set.filter_map(PF, S1) = S2 :-
+    S2 = set.list_to_set(list.filter_map(PF, set.to_sorted_list(S1))).
 
-set__fold(F, S, A) = B :-
-    B = list__foldl(F, set__to_sorted_list(S), A).
+set.fold(F, S, A) = B :-
+    B = list.foldl(F, set.to_sorted_list(S), A).
 
-set__fold(F, S, !A) :-
-    list__foldl(F, set__to_sorted_list(S), !A).
+set.fold(F, S, !A) :-
+    list.foldl(F, set.to_sorted_list(S), !A).
 
-set__fold2(F, S, !A, !B) :-
-    list__foldl2(F, set__to_sorted_list(S), !A, !B).
+set.fold2(F, S, !A, !B) :-
+    list.foldl2(F, set.to_sorted_list(S), !A, !B).
 
-set__fold3(F, S, !A, !B, !C) :-
-    list__foldl3(F, set__to_sorted_list(S), !A, !B, !C).
+set.fold3(F, S, !A, !B, !C) :-
+    list.foldl3(F, set.to_sorted_list(S), !A, !B, !C).
 
-set__fold4(F, S, !A, !B, !C, !D) :-
-    list__foldl4(F, set__to_sorted_list(S), !A, !B, !C, !D).
+set.fold4(F, S, !A, !B, !C, !D) :-
+    list.foldl4(F, set.to_sorted_list(S), !A, !B, !C, !D).
 
-set__divide(P, Set, TruePart, FalsePart) :-
-    set_ordlist__divide(P, Set, TruePart, FalsePart).
+set.divide(P, Set, TruePart, FalsePart) :-
+    set_ordlist.divide(P, Set, TruePart, FalsePart).
 
-set__divide_by_set(DivideBySet, Set, TruePart, FalsePart) :-
-    set_ordlist__divide_by_set(DivideBySet, Set, TruePart, FalsePart).
+set.divide_by_set(DivideBySet, Set, TruePart, FalsePart) :-
+    set_ordlist.divide_by_set(DivideBySet, Set, TruePart, FalsePart).

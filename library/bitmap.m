@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2005 The University of Melbourne
+% Copyright (C) 2001-2002, 2004-2006 The University of Melbourne
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -164,7 +164,7 @@
 :- import_module require.
 
     % A bitmap is represented as an array of ints where each int stores
-    % int__bits_per_int bits.  The first element of the array (index 0)
+    % int.bits_per_int bits.  The first element of the array (index 0)
     % is used to hold the number of bits in the bitmap.  This avoids
     % having to create a new bitmap cell on each update.
     %
@@ -178,10 +178,10 @@
 
 new(N, B) = BM :-
     ( if N < 0 then
-        throw(software_error("bitmap__new: negative size"))
+        throw(software_error("bitmap.new: negative size"))
       else
         X    = initializer(B),
-        BM0  = (array__init(num_ints_required(N), X) ^ elem(0) := N),
+        BM0  = (array.init(num_ints_required(N), X) ^ elem(0) := N),
         BM   = clear_filler_bits(BM0)
     ).
 
@@ -193,12 +193,12 @@ resize(BM0, N, B) = BM :-
       else
         X       = initializer(B),
         NumInts = num_ints_required(N),
-        BM1     = array__resize(BM0, NumInts, X),
+        BM1     = array.resize(BM0, NumInts, X),
 
             % Now we need to ensure that bits N, N+1, N+2, ... up to
             % the word boundary are initialized properly.
             %
-        int__min(num_bits(BM0), N, M),
+        int.min(num_bits(BM0), N, M),
         Offset  = int_offset(M - 1),
         Mask    = bitsmask(M - 1),          % For bits we need to preserve.
         Bits    = \(Mask) /\ X,             % Bits we need to fill in.
@@ -247,19 +247,19 @@ in_range(BM, I) :- 0 =< I, I < num_bits(BM).
 set(BM, I) =
     ( if in_range(BM, I)
       then BM ^ elem(int_offset(I)) := BM ^ elem(int_offset(I)) \/ bitmask(I)
-      else throw(software_error("bitmap__set: out of range"))
+      else throw(software_error("bitmap.set: out of range"))
     ).
 
 clear(BM, I) =
     ( if in_range(BM, I)
       then BM ^ elem(int_offset(I)) := BM ^ elem(int_offset(I)) /\ \bitmask(I)
-      else throw(software_error("bitmap__clear: out of range"))
+      else throw(software_error("bitmap.clear: out of range"))
     ).
 
 flip(BM, I) =
     ( if in_range(BM, I)
       then BM ^ elem(int_offset(I)) := BM ^ elem(int_offset(I)) `xor` bitmask(I)
-      else throw(software_error("bitmap__flip: out of range"))
+      else throw(software_error("bitmap.flip: out of range"))
     ).
 
 set(I, BM, set(BM, I)).
@@ -290,13 +290,13 @@ unsafe_flip(I, BM, unsafe_flip(BM, I)).
 is_set(BM, I) :-
     ( if in_range(BM, I)
       then BM ^ elem(int_offset(I)) /\ bitmask(I) \= 0
-      else throw(software_error("bitmap__is_set: out of range"))
+      else throw(software_error("bitmap.is_set: out of range"))
     ).
 
 is_clear(BM, I) :-
     ( if in_range(BM, I)
       then BM ^ elem(int_offset(I)) /\ bitmask(I) = 0
-      else throw(software_error("bitmap__is_clear: out of range"))
+      else throw(software_error("bitmap.is_clear: out of range"))
     ).
 
 % ---------------------------------------------------------------------------- %
@@ -317,7 +317,7 @@ unsafe_get(BM, I) = ( if unsafe_is_clear(BM, I) then no else yes ).
 
 % ---------------------------------------------------------------------------- %
 
-copy(BM) = array__copy(BM).
+copy(BM) = array.copy(BM).
 
 % ---------------------------------------------------------------------------- %
 
@@ -337,7 +337,7 @@ complement_2(WordI, BM) =
 
 union(BMa, BMb) =
     ( if num_bits(BMa) > num_bits(BMb) then
-        zip(int_offset(num_bits(BMb) - 1), (\/), BMb, bitmap__copy(BMa))
+        zip(int_offset(num_bits(BMb) - 1), (\/), BMb, bitmap.copy(BMa))
       else
         zip(int_offset(num_bits(BMa) - 1), (\/), BMa, BMb)
     ).
@@ -346,7 +346,7 @@ union(BMa, BMb) =
 
 intersect(BMa, BMb) =
     ( if num_bits(BMa) > num_bits(BMb) then
-        zip(int_offset(num_bits(BMb) - 1), (/\), BMb, bitmap__copy(BMa))
+        zip(int_offset(num_bits(BMb) - 1), (/\), BMb, bitmap.copy(BMa))
       else
         zip(int_offset(num_bits(BMa) - 1), (/\), BMa, BMb)
     ).
@@ -355,7 +355,7 @@ intersect(BMa, BMb) =
 
 difference(BMa, BMb) =
     ( if num_bits(BMa) > num_bits(BMb) then
-        zip(int_offset(num_bits(BMb) - 1), Xor, BMb, bitmap__copy(BMa))
+        zip(int_offset(num_bits(BMb) - 1), Xor, BMb, bitmap.copy(BMa))
       else
         zip(int_offset(num_bits(BMa) - 1), Xor, BMa, BMb)
     )
@@ -397,29 +397,29 @@ num_ints_required(N) = 1 + ( if N > 0 then int_offset(N) else 0 ).
     % We add the extra 1 on because elem(0) is used to store the number
     % of bits in the bitmap; the data are stored in the following elements.
     %
-int_offset(I) = 1 + int__quot_bits_per_int(I).
+int_offset(I) = 1 + int.quot_bits_per_int(I).
 
 % ---------------------------------------------------------------------------- %
 
     % Construct the bitmask for a given bit in a word.
     %
-    % E.g. assuming int__bits_per_int = 8 and I = 11 then
+    % E.g. assuming int.bits_per_int = 8 and I = 11 then
     % bitmask(I) = 2'00001000
     %
 :- func bitmask(int) = int.
 
     % NOTE: it would be nicer to use /\ with a bitmask here rather
     % than rem.  Do modern back-ends do the decent thing here if
-    % int__bits_per_int is the expected power of two?
+    % int.bits_per_int is the expected power of two?
     %
-bitmask(I) = 1 `unchecked_left_shift` int__rem_bits_per_int(I).
+bitmask(I) = 1 `unchecked_left_shift` int.rem_bits_per_int(I).
 
 % ---------------------------------------------------------------------------- %
 
     % Construct the bitmask for all the bits up to and including
     % the given bit in a word.
     %
-    % E.g. assuming int__bits_per_int = 8 and I = 11 then
+    % E.g. assuming int.bits_per_int = 8 and I = 11 then
     % bitmask(I) = 2'00001111
     %
 :- func bitsmask(int) = int.

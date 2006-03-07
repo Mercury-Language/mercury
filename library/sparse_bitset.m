@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2005 The University of Melbourne.
+% Copyright (C) 2000-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,7 @@
 % Efficiency notes:
 %
 % A sparse bitset is represented as a sorted list of pairs of integers.
-% For a pair `Offset - Bits', `Offset' is a multiple of `int__bits_per_int'.
+% For a pair `Offset - Bits', `Offset' is a multiple of `int.bits_per_int'.
 % The bits of `Bits' describe which of the elements of the range
 % `Offset' .. `Offset + bits_per_int - 1' are in the set.
 % Pairs with the same value of `Offset' are merged.
@@ -508,7 +508,7 @@ foldr2(P, sparse_bitset(Set), !Acc1, !Acc2) :-
 :- pragma type_spec(do_foldr_pred/4, T = int).
 :- pragma type_spec(do_foldr_pred/4, T = var(_)).
 
-    % We don't just use list__foldr here because the overhead of allocating
+    % We don't just use list.foldr here because the overhead of allocating
     % the closure for fold_bits is significant for the compiler's runtime,
     % so it's best to avoid that even if `--optimize-higher-order' is not set.
 do_foldr_pred(_, [], !Acc).
@@ -538,7 +538,7 @@ do_foldr_pred(P, [H | T], !Acc) :-
 :- pragma type_spec(do_foldr2_pred/6, T = int).
 :- pragma type_spec(do_foldr2_pred/6, T = var(_)).
 
-    % We don't just use list__foldr here because the overhead of allocating
+    % We don't just use list.foldr here because the overhead of allocating
     % the closure for fold_bits is significant for the compiler's runtime,
     % so it's best to avoid that even if `--optimize-higher-order' is not set.
 do_foldr2_pred(_, [], !Acc1, !Acc2).
@@ -574,7 +574,7 @@ fold_bits(Dir, P, Offset, Bits, Size, !Acc) :-
         ;
             % We only apply `from_int/1' to integers returned
             % by `to_int/1', so it should never fail.
-            error("sparse_bitset.m: `enum__from_int/1' failed")
+            error("sparse_bitset.m: `enum.from_int/1' failed")
         )
     ;
         HalfSize = unchecked_right_shift(Size, 1),
@@ -627,7 +627,7 @@ fold2_bits(Dir, P, Offset, Bits, Size, !Acc1, !Acc2) :-
         ;
             % We only apply `from_int/1' to integers returned
             % by `to_int/1', so it should never fail.
-            error("sparse_bitset.m: `enum__from_int/1' failed")
+            error("sparse_bitset.m: `enum.from_int/1' failed")
         )
     ;
         HalfSize = unchecked_right_shift(Size, 1),
@@ -656,7 +656,7 @@ fold2_bits(Dir, P, Offset, Bits, Size, !Acc1, !Acc2) :-
 
 % XXX could make this more efficient.
 
-filter(P, S) = S ^ to_sorted_list ^ list__filter(P) ^ sorted_list_to_set.
+filter(P, S) = S ^ to_sorted_list ^ list.filter(P) ^ sorted_list_to_set.
 
 %-----------------------------------------------------------------------------%
 
@@ -667,7 +667,7 @@ count(Set) = foldl((func(_, Acc) = Acc + 1), Set, 0).
 make_singleton_set(A) = insert(init, A).
 
 insert(sparse_bitset(Set), Elem) =
-        sparse_bitset(insert_2(Set, enum__to_int(Elem))).
+        sparse_bitset(insert_2(Set, enum.to_int(Elem))).
 
 :- func insert_2(bitset_impl, int) = bitset_impl.
 
@@ -710,7 +710,7 @@ remove_list(Set0, Elems) = Set :-
 %-----------------------------------------------------------------------------%
 
 remove_leq(sparse_bitset(Set), Elem) =
-    sparse_bitset(remove_leq_2(Set, enum__to_int(Elem))).
+    sparse_bitset(remove_leq_2(Set, enum.to_int(Elem))).
 
 :- func remove_leq_2(bitset_impl, int) = bitset_impl.
 
@@ -737,7 +737,7 @@ remove_leq_2([Data | Rest], Index) = Result :-
 %-----------------------------------------------------------------------------%
 
 remove_gt(sparse_bitset(Set), Elem) =
-    sparse_bitset(remove_gt_2(Set, enum__to_int(Elem))).
+    sparse_bitset(remove_gt_2(Set, enum.to_int(Elem))).
 
 :- func remove_gt_2(bitset_impl, int) = bitset_impl.
 
@@ -773,7 +773,7 @@ remove_least(sparse_bitset(Set0), Elem, sparse_bitset(Set)) :-
     ;
         % We only apply `from_int/1' to integers returned
         % by `to_int/1', so it should never fail.
-        error("sparse_bitset.m: `enum__from_int/1' failed")
+        error("sparse_bitset.m: `enum.from_int/1' failed")
     ),
     Bits = clear_bit(Bits0, Bit),
     ( Bits = 0 ->
@@ -823,7 +823,7 @@ list_to_set(List) =
 
 list_to_set_2([], List) = List.
 list_to_set_2([H | T], List0) = List :-
-    bits_for_index(enum__to_int(H), Offset, Bits0),
+    bits_for_index(enum.to_int(H), Offset, Bits0),
     list_to_set_3(T, Offset, Bits0, Bits, [], Rest),
     List1 = insert_bitset_elem(make_bitset_elem(Offset, Bits), List0),
     List = list_to_set_2(Rest, List1).
@@ -837,7 +837,7 @@ list_to_set_2([H | T], List0) = List :-
 
 list_to_set_3([], _, !Bits, !Rest).
 list_to_set_3([H | T], Offset, !Bits, !Rest) :-
-    BitToSet = enum__to_int(H) - Offset,
+    BitToSet = enum.to_int(H) - Offset,
     ( BitToSet >= 0, BitToSet < bits_per_int ->
         !:Bits = set_bit(!.Bits, BitToSet)
     ;
@@ -880,10 +880,10 @@ sorted_list_to_set_2([H | T]) = Set :-
 :- pragma type_spec(sorted_list_to_set_3/5, T = int).
 
 sorted_list_to_set_3(Elem, [], Offset, Bits, []) :-
-    bits_for_index(enum__to_int(Elem), Offset, Bits).
+    bits_for_index(enum.to_int(Elem), Offset, Bits).
 sorted_list_to_set_3(Elem1, [Elem2 | Elems], Offset, Bits, Rest) :-
     sorted_list_to_set_3(Elem2, Elems, Offset0, Bits0, Rest0),
-    bits_for_index(enum__to_int(Elem1), Offset1, Bits1),
+    bits_for_index(enum.to_int(Elem1), Offset1, Bits1),
     ( Offset1 = Offset0 ->
         Bits = Bits1 \/ Bits0,
         Offset = Offset1,
@@ -903,7 +903,7 @@ superset(Superset, Set) :- subset(Set, Superset).
 %-----------------------------------------------------------------------------%
 
 contains(sparse_bitset(Set), Elem) :-
-    contains_2(Set, enum__to_int(Elem)).
+    contains_2(Set, enum.to_int(Elem)).
 
 :- pred contains_2(bitset_impl::in, int::in) is semidet.
 
@@ -929,7 +929,7 @@ member(Elem::out, sparse_bitset(Set)::in) :-
     ;
         % We only apply `from_int/1' to integers returned
         % by `to_int/1', so it should never fail.
-        error("sparse_bitset.m: `enum__from_int/1' failed")
+        error("sparse_bitset.m: `enum.from_int/1' failed")
     ).
 
 :- pred member_2(int::out, bitset_impl::in) is nondet.
@@ -1062,7 +1062,7 @@ difference_2(Set1, Set2) = Set :-
 :- pragma inline(bits_for_index/3).
 
 bits_for_index(Index, Offset, Bits) :-
-    Offset = int__floor_to_multiple_of_bits_per_int(Index),
+    Offset = int.floor_to_multiple_of_bits_per_int(Index),
     BitToSet = Index - Offset,
     Bits = set_bit(0, BitToSet).
 

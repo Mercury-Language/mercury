@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2005 The University of Melbourne.
+% Copyright (C) 1998-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -216,33 +216,33 @@
 table_loop_setup(_, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_loop_setup").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_loop_setup").
 
 table_loop_setup_shortcut(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_loop_setup_shortcut").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_loop_setup_shortcut").
 
 table_loop_mark_as_inactive(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_loop_mark_as_inactive").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_loop_mark_as_inactive").
 
 table_loop_mark_as_inactive_and_fail(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_loop_mark_as_inactive"),
+    impure private_builtin.imp,
+    private_builtin.sorry("table_loop_mark_as_inactive"),
     fail.
 
 table_loop_mark_as_active_and_fail(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_loop_mark_as_active"),
+    impure private_builtin.imp,
+    private_builtin.sorry("table_loop_mark_as_active"),
     fail.
 
 %-----------------------------------------------------------------------------%
@@ -511,112 +511,112 @@ table_loop_mark_as_active_and_fail(_) :-
 table_memo_det_setup(_, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_memo_det_setup").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_det_setup").
 
 table_memo_det_setup_shortcut(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_memo_det_setup_shortcut").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_det_setup_shortcut").
 
 table_memo_semi_setup(_, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_memo_semi_setup").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_semi_setup").
 
 table_memo_semi_setup_shortcut(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_memo_semi_setup_shortcut").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_semi_setup_shortcut").
 
 table_memo_mark_as_failed(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_memo_mark_as_failed"),
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_mark_as_failed"),
     fail.
 
 table_memo_mark_as_succeeded(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_memo_mark_as_succeeded").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_mark_as_succeeded").
 
 table_memo_mark_as_incomplete(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_memo_mark_as_incomplete").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_mark_as_incomplete").
 
 table_memo_mark_as_active_and_fail(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_memo_mark_as_active_and_fail").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_mark_as_active_and_fail").
 
 table_memo_mark_as_complete_and_fail(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_memo_mark_as_complete_and_fail").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_mark_as_complete_and_fail").
 
 table_memo_create_answer_block(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_memo_create_answer_block").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_create_answer_block").
 
 table_memo_fill_answer_block_shortcut(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_memo_fill_answer_block_shortcut").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_fill_answer_block_shortcut").
 
 table_memo_get_answer_block(_, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    semipure private_builtin__semip,
-    private_builtin__sorry("table_memo_get_answer_block").
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_memo_get_answer_block").
 
 table_memo_non_return_all_shortcut(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    semipure private_builtin__semip,
-    private_builtin__sorry("table_memo_non_return_all_shortcut").
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_memo_non_return_all_shortcut").
 
 table_memo_get_answer_block_shortcut(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    semipure private_builtin__semip,
-    private_builtin__sorry("table_memo_get_answer_block_shortcut").
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_memo_get_answer_block_shortcut").
 
 table_memo_non_get_answer_table(_, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    semipure private_builtin__semip,
-    private_builtin__sorry("table_memo_non_get_answer_table").
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_memo_non_get_answer_table").
 
 table_memo_non_answer_is_not_duplicate(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_memo_non_answer_is_not_duplicate").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_non_answer_is_not_duplicate").
 
 table_memo_non_answer_is_not_duplicate_shortcut(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry(
+    impure private_builtin.imp,
+    private_builtin.sorry(
         "table_memo_non_answer_is_not_duplicate_shortcut").
 
 table_memo_non_create_answer_block_shortcut(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_memo_non_create_answer_block_shortcut").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_memo_non_create_answer_block_shortcut").
 
 %-----------------------------------------------------------------------------%
 
@@ -658,7 +658,7 @@ table_memo_non_create_answer_block_shortcut(_) :-
     % right by calling this procedure than by hand-writing insts for a
     % unification.
     %
-:- pred table_io_copy_io_state(io__state::di, io__state::uo) is det.
+:- pred table_io_copy_io_state(io.state::di, io.state::uo) is det.
 
     % Calls to these predicates bracket the code of foreign_procs with
     % the tabled_for_io_unitize annotation. The left bracket procedure
@@ -757,26 +757,26 @@ table_io_copy_io_state(IO, IO).
 table_io_in_range(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_io_in_range").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_io_in_range").
 
 table_io_has_occurred(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_io_has_occurred").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_io_has_occurred").
 
 table_io_left_bracket_unitized_goal(_TraceEnabled) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_io_left_bracket_unitized_goal").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_io_left_bracket_unitized_goal").
 
 table_io_right_bracket_unitized_goal(_TraceEnabled) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_io_right_bracket_unitized_goal").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_io_right_bracket_unitized_goal").
 
 %-----------------------------------------------------------------------------%
 
@@ -939,38 +939,38 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
 table_mm_return_all_shortcut(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    semipure private_builtin__semip,
-    private_builtin__sorry("table_mm_return_all_shortcut").
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_mm_return_all_shortcut").
 
 table_mm_get_answer_table(_, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    semipure private_builtin__semip,
-    private_builtin__sorry("table_mm_get_answer_table").
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_mm_get_answer_table").
 
 table_mm_answer_is_not_duplicate(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_mm_answer_is_not_duplicate").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_mm_answer_is_not_duplicate").
 
 table_mm_answer_is_not_duplicate_shortcut(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_mm_answer_is_not_duplicate_shortcut").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_mm_answer_is_not_duplicate_shortcut").
 
 table_mm_create_answer_block(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_mm_create_answer_block").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_mm_create_answer_block").
 
 table_mm_fill_answer_block_shortcut(_) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_mm_fill_answer_block_shortcut").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_mm_fill_answer_block_shortcut").
 
 %-----------------------------------------------------------------------------%
 
@@ -1196,28 +1196,28 @@ table_mm_fill_answer_block_shortcut(_) :-
 ").
 
 table_mmos_save_inputs :-
-    impure private_builtin__imp.
+    impure private_builtin.imp.
 
 table_mmos_setup_consumer(_, _, Consumer) :-
-    impure private_builtin__imp,
+    impure private_builtin.imp,
     % Required only to avoid warnings; never executed.
     pretend_to_generate_value(Consumer).
 
 table_mmos_get_answer_table(_, TrieNode) :-
-    semipure private_builtin__semip,
+    semipure private_builtin.semip,
     % Required only to avoid warnings; never executed.
     pretend_to_generate_value(TrieNode).
 
 table_mmos_create_answer_block(_, _, AnswerBlock) :-
-    impure private_builtin__imp,
+    impure private_builtin.imp,
     % Required only to avoid warnings; never executed.
     pretend_to_generate_value(AnswerBlock).
 
 table_mmos_return_answer(_, _) :-
-    impure private_builtin__imp.
+    impure private_builtin.imp.
 
 table_mmos_completion(_) :-
-    impure private_builtin__imp.
+    impure private_builtin.imp.
 
     % Required only to avoid warnings; never executed.
     %
@@ -1333,7 +1333,7 @@ pretend_to_generate_value(Bogus) :-
     % Save an I/O state in the given answer block at the given offset.
     %
 :- impure pred table_save_io_state_answer(ml_answer_block::in, int::in,
-    io__state::ui) is det.
+    io.state::ui) is det.
 
     % Save any type of answer in the given answer block at the given
     % offset.
@@ -1368,7 +1368,7 @@ pretend_to_generate_value(Bogus) :-
     % Restore an I/O state from the given answer block at the given offset.
     %
 :- semipure pred table_restore_io_state_answer(ml_answer_block::in, int::in,
-    io__state::uo) is det.
+    io.state::uo) is det.
 
     % Restore any type of answer from the given answer block at the
     % given offset.
@@ -1586,128 +1586,128 @@ table_error(Message) :-
 table_lookup_insert_int(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_lookup_insert_int").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_int").
 
 table_lookup_insert_start_int(_, _, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_lookup_insert_start_int").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_start_int").
 
 table_lookup_insert_char(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_lookup_insert_char").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_char").
 
 table_lookup_insert_string(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_lookup_insert_string").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_string").
 
 table_lookup_insert_float(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_lookup_insert_float").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_float").
 
 table_lookup_insert_enum(_, _, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_lookup_insert_enum").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_enum").
 
 table_lookup_insert_user(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_lookup_insert_user").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_user").
 
 table_lookup_insert_poly(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_lookup_insert_poly").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_lookup_insert_poly").
 
 table_save_int_answer(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_save_int_answer").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_int_answer").
 
 table_save_char_answer(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_save_char_answer").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_char_answer").
 
 table_save_string_answer(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_save_string_answer").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_string_answer").
 
 table_save_float_answer(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_save_float_answer").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_float_answer").
 
 table_save_io_state_answer(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_save_io_state_answer").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_io_state_answer").
 
 table_save_any_answer(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_save_any_answer").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_save_any_answer").
 
 table_restore_int_answer(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    semipure private_builtin__semip,
-    private_builtin__sorry("table_restore_int_answer").
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_restore_int_answer").
 
 table_restore_char_answer(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    semipure private_builtin__semip,
-    private_builtin__sorry("table_restore_char_answer").
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_restore_char_answer").
 
 table_restore_string_answer(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    semipure private_builtin__semip,
-    private_builtin__sorry("table_restore_string_answer").
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_restore_string_answer").
 
 table_restore_float_answer(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    semipure private_builtin__semip,
-    private_builtin__sorry("table_restore_float_answer").
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_restore_float_answer").
 
 table_restore_io_state_answer(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    semipure private_builtin__semip,
-    private_builtin__sorry("table_restore_io_state_answer").
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_restore_io_state_answer").
 
 table_restore_any_answer(_, _, _) :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    semipure private_builtin__semip,
-    private_builtin__sorry("table_restore_any_answer").
+    semipure private_builtin.semip,
+    private_builtin.sorry("table_restore_any_answer").
 
 table_report_statistics :-
     % This version is only used for back-ends for which there is no
     % matching foreign_proc version.
-    impure private_builtin__imp,
-    private_builtin__sorry("table_report_statistics").
+    impure private_builtin.imp,
+    private_builtin.sorry("table_report_statistics").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

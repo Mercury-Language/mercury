@@ -8,26 +8,26 @@ Test "forward_search fail" passed.
 Test "reverse_search succ 1" passed.
 Test "reverse_search succ 2" passed.
 Test "reverse_search fail" passed.
-Test "lookup throw" threw exception: software_error("map__lookup: key not found\n\tKey Type: int\n\tKey Value: 10\n\tValue Type: int")
-Test "reverse_lookup throw" threw exception: software_error("map__lookup: key not found\n\tKey Type: int\n\tKey Value: 1\n\tValue Type: int")
+Test "lookup throw" threw exception: software_error("map.lookup: key not found\n\tKey Type: int\n\tKey Value: 10\n\tValue Type: int")
+Test "reverse_lookup throw" threw exception: software_error("map.lookup: key not found\n\tKey Type: int\n\tKey Value: 1\n\tValue Type: int")
 Test "keys" passed.
 Test "values" passed.
 Test "insert fail on key" passed.
 Test "insert fail on value 1" passed.
 Test "insert fail on value 2" passed.
-Test "insert throw on key" threw exception: software_error("map__det_insert: key already present\n\tKey Type: int\n\tKey Value: 2\n\tValue Type: int")
-Test "insert throw on value 1" threw exception: software_error("map__det_insert: key already present\n\tKey Type: int\n\tKey Value: 20\n\tValue Type: int")
-Test "insert throw on value 2" threw exception: software_error("map__det_insert: key already present\n\tKey Type: int\n\tKey Value: 21\n\tValue Type: int")
+Test "insert throw on key" threw exception: software_error("map.det_insert: key already present\n\tKey Type: int\n\tKey Value: 2\n\tValue Type: int")
+Test "insert throw on value 1" threw exception: software_error("map.det_insert: key already present\n\tKey Type: int\n\tKey Value: 20\n\tValue Type: int")
+Test "insert throw on value 2" threw exception: software_error("map.det_insert: key already present\n\tKey Type: int\n\tKey Value: 21\n\tValue Type: int")
 Test "update fail on key" passed.
 Test "update fail on value 1" passed.
 Test "update fail on value 2" passed.
 Test "update fail on value 3" passed.
 Test "update fail on value 4" passed.
-Test "update throw on key" threw exception: software_error("map__det_update: key not found\n\tKey Type: int\n\tKey Value: -1\n\tValue Type: int")
-Test "update throw on value 1" threw exception: software_error("map__det_insert: key already present\n\tKey Type: int\n\tKey Value: 20\n\tValue Type: int")
-Test "update throw on value 2" threw exception: software_error("map__det_insert: key already present\n\tKey Type: int\n\tKey Value: 21\n\tValue Type: int")
-Test "update throw on value 3" threw exception: software_error("map__det_insert: key already present\n\tKey Type: int\n\tKey Value: 30\n\tValue Type: int")
-Test "update throw on value 4" threw exception: software_error("map__det_insert: key already present\n\tKey Type: int\n\tKey Value: 31\n\tValue Type: int")
+Test "update throw on key" threw exception: software_error("map.det_update: key not found\n\tKey Type: int\n\tKey Value: -1\n\tValue Type: int")
+Test "update throw on value 1" threw exception: software_error("map.det_insert: key already present\n\tKey Type: int\n\tKey Value: 20\n\tValue Type: int")
+Test "update throw on value 2" threw exception: software_error("map.det_insert: key already present\n\tKey Type: int\n\tKey Value: 21\n\tValue Type: int")
+Test "update throw on value 3" threw exception: software_error("map.det_insert: key already present\n\tKey Type: int\n\tKey Value: 30\n\tValue Type: int")
+Test "update throw on value 4" threw exception: software_error("map.det_insert: key already present\n\tKey Type: int\n\tKey Value: 31\n\tValue Type: int")
 Test "set succeed 1" passed.
 Test "set succeed 2" passed.
 Test "set succeed 3" passed.

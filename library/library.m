@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2005 The University of Melbourne.
+% Copyright (C) 1993-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -18,7 +18,7 @@
 
 :- interface.
 
-:- pred library__version(string::out) is det.
+:- pred library.version(string::out) is det.
 
 :- implementation.
 
@@ -141,14 +141,14 @@
 
 % :- import_module unsafe.
 
-% library__version must be implemented using pragma foreign_proc,
+% library.version must be implemented using pragma foreign_proc,
 % so we can get at the MR_VERSION and MR_FULLARCH configuration
 % parameters.  We can't just generate library.m from library.m.in
 % at configuration time, because that would cause bootstrapping problems --
 % we might not have a Mercury compiler around to compile library.m with.
 
 :- pragma foreign_proc("C",
-    library__version(Version::out),
+    library.version(Version::out),
     [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     MR_ConstString version_string =
@@ -161,7 +161,7 @@
 ").
 
 :- pragma foreign_proc("C#",
-    library__version(Version::out),
+    library.version(Version::out),
     [will_not_call_mercury, promise_pure],
 "
     Version = mercury.runtime.Constants.MR_VERSION + "" configured for ""
@@ -169,7 +169,7 @@
 ").
 
 :- pragma foreign_proc("Java",
-    library__version(Version::out),
+    library.version(Version::out),
     [will_not_call_mercury, promise_pure],
 "
     Version = mercury.runtime.Constants.MR_VERSION + "" configured for ""

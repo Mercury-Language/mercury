@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -10,7 +10,7 @@
 % Authors: fjh, zs
 % Stability: medium
 
-% This module exports the predicate getopt_io__process_options/6,
+% This module exports the predicate getopt_io.process_options/6,
 % which can be used to parse command-line options.
 %
 % This version allows both short (single-character) options
@@ -92,8 +92,8 @@
 :- import_module set.
 :- import_module std_util.
 
-% getopt_io__process_options(OptionOps, Args, NonOptionArgs, Result)
-% getopt_io__process_options(OptionOps, Args, OptionArgs, NonOptionArgs, Result)
+% getopt_io.process_options(OptionOps, Args, NonOptionArgs, Result)
+% getopt_io.process_options(OptionOps, Args, OptionArgs, NonOptionArgs, Result)
 %
 %   Scans through 'Args' looking for options, places all the option
 %   arguments in `OptionArgs', places all the non-option arguments in
@@ -126,18 +126,18 @@
 %   The canonical examples of special options are -O options in compilers,
 %   which set many other options at once.
 
-:- pred getopt_io__process_options(option_ops(OptionType)::in(option_ops),
+:- pred getopt_io.process_options(option_ops(OptionType)::in(option_ops),
     list(string)::in, list(string)::out, maybe_option_table(OptionType)::out,
     io::di, io::uo) is det.
 
-:- pred getopt_io__process_options(option_ops(OptionType)::in(option_ops),
+:- pred getopt_io.process_options(option_ops(OptionType)::in(option_ops),
     list(string)::in, list(string)::out, list(string)::out,
     maybe_option_table(OptionType)::out, io::di, io::uo) is det.
 
-% getopt_io__process_options_track(OptionOps, Args, OptionArgs,
+% getopt_io.process_options_track(OptionOps, Args, OptionArgs,
 %       NonOptionArgs, OptionTable0, Result, OptionsSet)
 
-:- pred getopt_io__process_options_track(
+:- pred getopt_io.process_options_track(
     option_ops_track(OptionType)::in(option_ops_track),
     list(string)::in, list(string)::out, list(string)::out,
     option_table(OptionType)::in, maybe_option_table(OptionType)::out,
@@ -255,31 +255,31 @@
     % an option of the specified type; if it is not found, they
     % report an error by calling error/1.
 
-:- pred getopt_io__lookup_bool_option(option_table(Option)::in, Option::in,
+:- pred getopt_io.lookup_bool_option(option_table(Option)::in, Option::in,
     bool::out) is det.
-:- func getopt_io__lookup_bool_option(option_table(Option), Option) = bool.
+:- func getopt_io.lookup_bool_option(option_table(Option), Option) = bool.
 
-:- pred getopt_io__lookup_int_option(option_table(Option)::in, Option::in,
+:- pred getopt_io.lookup_int_option(option_table(Option)::in, Option::in,
     int::out) is det.
-:- func getopt_io__lookup_int_option(option_table(Option), Option) = int.
+:- func getopt_io.lookup_int_option(option_table(Option), Option) = int.
 
-:- pred getopt_io__lookup_string_option(option_table(Option)::in, Option::in,
+:- pred getopt_io.lookup_string_option(option_table(Option)::in, Option::in,
     string::out) is det.
-:- func getopt_io__lookup_string_option(option_table(Option), Option) = string.
+:- func getopt_io.lookup_string_option(option_table(Option), Option) = string.
 
-:- pred getopt_io__lookup_maybe_int_option(option_table(Option)::in, Option::in,
+:- pred getopt_io.lookup_maybe_int_option(option_table(Option)::in, Option::in,
     maybe(int)::out) is det.
-:- func getopt_io__lookup_maybe_int_option(option_table(Option), Option) =
+:- func getopt_io.lookup_maybe_int_option(option_table(Option), Option) =
     maybe(int).
 
-:- pred getopt_io__lookup_maybe_string_option(option_table(Option)::in,
+:- pred getopt_io.lookup_maybe_string_option(option_table(Option)::in,
     Option::in, maybe(string)::out) is det.
-:- func getopt_io__lookup_maybe_string_option(option_table(Option), Option) =
+:- func getopt_io.lookup_maybe_string_option(option_table(Option), Option) =
     maybe(string).
 
-:- pred getopt_io__lookup_accumulating_option(option_table(Option)::in,
+:- pred getopt_io.lookup_accumulating_option(option_table(Option)::in,
     Option::in, list(string)::out) is det.
-:- func getopt_io__lookup_accumulating_option(option_table(Option), Option) =
+:- func getopt_io.lookup_accumulating_option(option_table(Option), Option) =
     list(string).
 
 %-----------------------------------------------------------------------------%
@@ -334,20 +334,20 @@ init_option_table(OptionDefaultsPred, OptionTable) :-
             OptionDataPair = Option - OptionData,
             call(OptionDefaultsPred, Option, OptionData)
         ), OptionDefaultsList),
-    map__from_assoc_list(OptionDefaultsList, OptionTable).
+    map.from_assoc_list(OptionDefaultsList, OptionTable).
 
 init_option_table_multi(OptionDefaultsPred, OptionTable) :-
     solutions((pred(OptionDataPair::out) is multi :-
             OptionDataPair = Option - OptionData,
             call(OptionDefaultsPred, Option, OptionData)
         ), OptionDefaultsList),
-    map__from_assoc_list(OptionDefaultsList, OptionTable).
+    map.from_assoc_list(OptionDefaultsList, OptionTable).
 
-getopt_io__process_options(OptionOps, Args0, NonOptionArgs, Result, !IO) :-
-    getopt_io__process_options(OptionOps, Args0, _OptionArgs, NonOptionArgs,
+getopt_io.process_options(OptionOps, Args0, NonOptionArgs, Result, !IO) :-
+    getopt_io.process_options(OptionOps, Args0, _OptionArgs, NonOptionArgs,
         Result, !IO).
 
-getopt_io__process_options(OptionOps, Args0, OptionArgs, NonOptionArgs, Result,
+getopt_io.process_options(OptionOps, Args0, OptionArgs, NonOptionArgs, Result,
         !IO) :-
     (
         OptionOps = option_ops(Short, Long, Defaults),
@@ -367,40 +367,40 @@ getopt_io__process_options(OptionOps, Args0, OptionArgs, NonOptionArgs, Result,
         init_option_table_multi(Defaults, OptionTable0)
     ),
     Internal = option_ops_internal(Short, Long, MaybeSpecial),
-    getopt_io__process_arguments(Args0, NonOptionArgs, Internal,
-        [], RevOptionArgs, OptionTable0, Result, set__init, _OptionsSet, !IO),
-    OptionArgs = list__reverse(RevOptionArgs).
+    getopt_io.process_arguments(Args0, NonOptionArgs, Internal,
+        [], RevOptionArgs, OptionTable0, Result, set.init, _OptionsSet, !IO),
+    OptionArgs = list.reverse(RevOptionArgs).
 
-getopt_io__process_options_track(OptionOps, Args0, OptionArgs, NonOptionArgs,
+getopt_io.process_options_track(OptionOps, Args0, OptionArgs, NonOptionArgs,
         OptionTable0, Result, OptionsSet, !IO) :-
     OptionOps = option_ops_track(Short, Long, Special),
     Internal = option_ops_internal(Short, Long, track(Special)),
-    getopt_io__process_arguments(Args0, NonOptionArgs, Internal,
-        [], RevOptionArgs, OptionTable0, Result, set__init, OptionsSet, !IO),
-    OptionArgs = list__reverse(RevOptionArgs).
+    getopt_io.process_arguments(Args0, NonOptionArgs, Internal,
+        [], RevOptionArgs, OptionTable0, Result, set.init, OptionsSet, !IO),
+    OptionArgs = list.reverse(RevOptionArgs).
 
-:- pred getopt_io__process_arguments(list(string)::in, list(string)::out,
+:- pred getopt_io.process_arguments(list(string)::in, list(string)::out,
     option_ops_internal(OptionType)::in(option_ops_internal), list(string)::in,
     list(string)::out, option_table(OptionType)::in,
     maybe_option_table(OptionType)::out,
     set(OptionType)::in, set(OptionType)::out, io::di, io::uo) is det.
 
-getopt_io__process_arguments([], [], _, OptionArgs, OptionArgs,
+getopt_io.process_arguments([], [], _, OptionArgs, OptionArgs,
         OptionTable, ok(OptionTable), !OptionsSet, !IO).
-getopt_io__process_arguments([Option | Args0], Args, OptionOps,
+getopt_io.process_arguments([Option | Args0], Args, OptionOps,
         OptionArgs0, OptionArgs, OptionTable0, Result, !OptionsSet, !IO) :-
     ( Option = "--" ->  % "--" terminates option processing
         OptionArgs = OptionArgs0,
         Args = Args0,
         Result = ok(OptionTable0)
-    ; string__append("--no-", LongOption, Option) ->
+    ; string.append("--no-", LongOption, Option) ->
         LongOptionPred = OptionOps ^ long_option,
         ( call(LongOptionPred, LongOption, Flag) ->
-            string__append("--", LongOption, OptName),
+            string.append("--", LongOption, OptName),
             process_negated_option(OptName, Flag, OptionOps,
                 OptionTable0, Result1, !OptionsSet),
             ( Result1 = ok(OptionTable1) ->
-                getopt_io__process_arguments(Args0, Args, OptionOps,
+                getopt_io.process_arguments(Args0, Args, OptionOps,
                     [Option | OptionArgs0], OptionArgs, OptionTable1, Result,
                     !OptionsSet, !IO)
             ;
@@ -409,18 +409,18 @@ getopt_io__process_arguments([Option | Args0], Args, OptionOps,
                 Args = Args0
             )
         ;
-            string__append_list(["unrecognized option `", Option, "'"],
+            string.append_list(["unrecognized option `", Option, "'"],
                 ErrorMsg),
             Result = error(ErrorMsg),
             OptionArgs = OptionArgs0,
             Args = Args0
         )
-    ; string__append("--", LongOptionStr, Option) ->
+    ; string.append("--", LongOptionStr, Option) ->
         LongOptionPred = OptionOps ^ long_option,
-        ( string__sub_string_search(LongOptionStr, "=", OptionLen) ->
-            string__split(LongOptionStr, OptionLen, LongOption,
+        ( string.sub_string_search(LongOptionStr, "=", OptionLen) ->
+            string.split(LongOptionStr, OptionLen, LongOption,
                 EqualOptionArg),
-            ( string__first_char(EqualOptionArg, '=', OptionArg) ->
+            ( string.first_char(EqualOptionArg, '=', OptionArg) ->
                 MaybeArg = yes(OptionArg)
             ;
                 error("bad split of --longoption=arg")
@@ -431,36 +431,36 @@ getopt_io__process_arguments([Option | Args0], Args, OptionOps,
         ),
         OptionName = "--" ++ LongOption,
         ( call(LongOptionPred, LongOption, Flag) ->
-            ( map__search(OptionTable0, Flag, OptionData) ->
-                getopt_io__handle_long_option(OptionName, Flag, OptionData,
+            ( map.search(OptionTable0, Flag, OptionData) ->
+                getopt_io.handle_long_option(OptionName, Flag, OptionData,
                     MaybeArg, Args0, Args, OptionOps,
                     [Option | OptionArgs0], OptionArgs,
                     OptionTable0, Result, !OptionsSet, !IO)
             ;
-                string__append_list(["unknown type for option `", Option, "'"],
+                string.append_list(["unknown type for option `", Option, "'"],
                     ErrorMsg),
                 Result = error(ErrorMsg),
                 OptionArgs = OptionArgs0,
                 Args = Args0
             )
         ;
-            string__append("unrecognized option `", OptionName, Tmp),
-            string__append(Tmp, "'", ErrorMsg),
+            string.append("unrecognized option `", OptionName, Tmp),
+            string.append(Tmp, "'", ErrorMsg),
             Result = error(ErrorMsg),
             OptionArgs = OptionArgs0,
             Args = Args0
         )
-    ; string__first_char(Option, '-', ShortOptions), ShortOptions \= "" ->
-        string__to_char_list(ShortOptions, ShortOptionsList),
+    ; string.first_char(Option, '-', ShortOptions), ShortOptions \= "" ->
+        string.to_char_list(ShortOptions, ShortOptionsList),
         % Process a single negated option `-x-'.
         ( ShortOptionsList = [SingleShortOpt, '-'] ->
             ShortOptionPred = OptionOps ^ short_option,
             ( call(ShortOptionPred, SingleShortOpt, Flag) ->
-                string__from_char_list(['-', SingleShortOpt], OptName),
+                string.from_char_list(['-', SingleShortOpt], OptName),
                 process_negated_option(OptName, Flag, OptionOps,
                     OptionTable0, Result1, !OptionsSet),
                 ( Result1 = ok(OptionTable1) ->
-                    getopt_io__process_arguments(Args0, Args, OptionOps,
+                    getopt_io.process_arguments(Args0, Args, OptionOps,
                         [Option | OptionArgs0], OptionArgs,
                         OptionTable1, Result, !OptionsSet, !IO)
                 ;
@@ -469,7 +469,7 @@ getopt_io__process_arguments([Option | Args0], Args, OptionOps,
                     Args = Args0
                 )
             ;
-                string__append_list(["unrecognized option `-", ShortOptions,
+                string.append_list(["unrecognized option `-", ShortOptions,
                     "'"], ErrorMsg),
                 Result = error(ErrorMsg),
                 OptionArgs = OptionArgs0,
@@ -481,11 +481,11 @@ getopt_io__process_arguments([Option | Args0], Args, OptionOps,
             % or part of it may be the argument of an option.
             % The first element of Args0 may also be an argument
             % of an option.
-            getopt_io__handle_short_options(ShortOptionsList, OptionOps,
+            getopt_io.handle_short_options(ShortOptionsList, OptionOps,
                 Args0, Args1, [Option | OptionArgs0], OptionArgs1,
                 OptionTable0, Result1, !OptionsSet, !IO),
             ( Result1 = ok(OptionTable1) ->
-                getopt_io__process_arguments(Args1, Args, OptionOps,
+                getopt_io.process_arguments(Args1, Args, OptionOps,
                     OptionArgs1, OptionArgs, OptionTable1, Result, !OptionsSet,
                     !IO)
             ;
@@ -498,23 +498,23 @@ getopt_io__process_arguments([Option | Args0], Args, OptionOps,
         % It's a normal non-option argument.
         % As a GNU extension, keep searching for options
         % in the remaining arguments.
-        getopt_io__process_arguments(Args0, Args1, OptionOps,
+        getopt_io.process_arguments(Args0, Args1, OptionOps,
             OptionArgs0, OptionArgs, OptionTable0, Result, !OptionsSet, !IO),
         Args = [Option | Args1]
     ).
 
-:- pred getopt_io__handle_long_option(string::in, OptionType::in, option_data::in,
+:- pred getopt_io.handle_long_option(string::in, OptionType::in, option_data::in,
     maybe(string)::in, list(string)::in, list(string)::out,
     option_ops_internal(OptionType)::in(option_ops_internal), list(string)::in,
     list(string)::out, option_table(OptionType)::in,
     maybe_option_table(OptionType)::out,
     set(OptionType)::in, set(OptionType)::out, io::di, io::uo) is det.
 
-getopt_io__handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
+getopt_io.handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
         Args0, Args, OptionOps, OptionArgs0, OptionArgs, OptionTable0, Result,
         !OptionsSet, !IO) :-
     (
-        getopt_io__need_arg(OptionData, yes),
+        getopt_io.need_arg(OptionData, yes),
         MaybeOptionArg0 = no
     ->
         ( Args0 = [Arg | ArgsTail] ->
@@ -537,23 +537,23 @@ getopt_io__handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
     ( MissingArg = yes ->
         Args = Args0,
         OptionArgs = OptionArgs1,
-        string__append_list(["option `", Option, "' needs an argument"],
+        string.append_list(["option `", Option, "' needs an argument"],
             ErrorMsg),
         Result = error(ErrorMsg)
     ;
-        getopt_io__need_arg(OptionData, no),
+        getopt_io.need_arg(OptionData, no),
         MaybeOptionArg = yes(_)
     ->
         Args = Args0,
         OptionArgs = OptionArgs1,
-        string__append_list(["option `", Option,
+        string.append_list(["option `", Option,
             "' does not allow an argument"], ErrorMsg),
         Result = error(ErrorMsg)
     ;
-        getopt_io__process_option(OptionData, Option, Flag, MaybeOptionArg,
+        getopt_io.process_option(OptionData, Option, Flag, MaybeOptionArg,
             OptionOps, OptionTable0, Result1, !OptionsSet, !IO),
         ( Result1 = ok(OptionTable1) ->
-            getopt_io__process_arguments(Args1, Args, OptionOps,
+            getopt_io.process_arguments(Args1, Args, OptionOps,
                 OptionArgs1, OptionArgs, OptionTable1, Result, !OptionsSet,
                 !IO)
         ;
@@ -563,22 +563,22 @@ getopt_io__handle_long_option(Option, Flag, OptionData, MaybeOptionArg0,
         )
     ).
 
-:- pred getopt_io__handle_short_options(list(char)::in,
+:- pred getopt_io.handle_short_options(list(char)::in,
     option_ops_internal(OptionType)::in(option_ops_internal), list(string)::in,
     list(string)::out, list(string)::in, list(string)::out,
     option_table(OptionType)::in,
     maybe_option_table(OptionType)::out,
     set(OptionType)::in, set(OptionType)::out, io::di, io::uo) is det.
 
-getopt_io__handle_short_options([], _, Args, Args, OptionArgs, OptionArgs,
+getopt_io.handle_short_options([], _, Args, Args, OptionArgs, OptionArgs,
         OptionTable, ok(OptionTable), !OptionsSet, !IO).
-getopt_io__handle_short_options([Opt | Opts0], OptionOps, Args0, Args,
+getopt_io.handle_short_options([Opt | Opts0], OptionOps, Args0, Args,
         OptionArgs0, OptionArgs, OptionTable0, Result, !OptionsSet, !IO) :-
     ShortOptionPred = OptionOps ^ short_option,
     ( call(ShortOptionPred, Opt, Flag) ->
-        ( map__search(OptionTable0, Flag, OptionData) ->
-            ( getopt_io__need_arg(OptionData, yes) ->
-                getopt_io__get_short_option_arg(Opts0, Arg, Args0, Args1,
+        ( map.search(OptionTable0, Flag, OptionData) ->
+            ( getopt_io.need_arg(OptionData, yes) ->
+                getopt_io.get_short_option_arg(Opts0, Arg, Args0, Args1,
                     OptionArgs0, OptionArgs1),
                 MaybeOptionArg = yes(Arg),
                 Opts1 = []
@@ -588,11 +588,11 @@ getopt_io__handle_short_options([Opt | Opts0], OptionOps, Args0, Args,
                 OptionArgs1 = OptionArgs0,
                 Args1 = Args0
             ),
-            string__from_char_list(['-', Opt], Option),
-            getopt_io__process_option(OptionData, Option, Flag, MaybeOptionArg,
+            string.from_char_list(['-', Opt], Option),
+            getopt_io.process_option(OptionData, Option, Flag, MaybeOptionArg,
                 OptionOps, OptionTable0, Result1, !OptionsSet, !IO),
             ( Result1 = ok(OptionTable1) ->
-                getopt_io__handle_short_options(Opts1, OptionOps, Args1, Args,
+                getopt_io.handle_short_options(Opts1, OptionOps, Args1, Args,
                     OptionArgs1, OptionArgs, OptionTable1, Result, !OptionsSet,
                     !IO)
             ;
@@ -601,27 +601,27 @@ getopt_io__handle_short_options([Opt | Opts0], OptionOps, Args0, Args,
                 Args = Args1
             )
         ;
-            string__char_to_string(Opt, OptString),
-            string__append_list(["unknown type for option `-",
+            string.char_to_string(Opt, OptString),
+            string.append_list(["unknown type for option `-",
                 OptString, "'"], ErrorMsg),
             Result = error(ErrorMsg),
             OptionArgs = OptionArgs0,
             Args = Args0
         )
     ;
-        string__char_to_string(Opt, OptString),
-        string__append_list(["unrecognized option `-", OptString, "'"],
+        string.char_to_string(Opt, OptString),
+        string.append_list(["unrecognized option `-", OptString, "'"],
             ErrorMsg),
         Result = error(ErrorMsg),
         OptionArgs = OptionArgs0,
         Args = Args0
     ).
 
-:- pred getopt_io__get_short_option_arg(list(char)::in, string::out,
+:- pred getopt_io.get_short_option_arg(list(char)::in, string::out,
     list(string)::in, list(string)::out, list(string)::in, list(string)::out)
     is det.
 
-getopt_io__get_short_option_arg(Opts, Arg, Args0, Args,
+getopt_io.get_short_option_arg(Opts, Arg, Args0, Args,
         OptionArgs0, OptionArgs) :-
     (
         Opts = [],
@@ -631,165 +631,165 @@ getopt_io__get_short_option_arg(Opts, Arg, Args0, Args,
         Arg = ArgPrime,
         Args = ArgsPrime
     ;
-        string__from_char_list(Opts, Arg),
+        string.from_char_list(Opts, Arg),
         OptionArgs = OptionArgs0,
         Args = Args0
     ).
 
-:- pred getopt_io__process_option(option_data::in, string::in, OptionType::in,
+:- pred getopt_io.process_option(option_data::in, string::in, OptionType::in,
     maybe(string)::in, option_ops_internal(OptionType)::in(option_ops_internal),
     option_table(OptionType)::in,
     maybe_option_table(OptionType)::out,
     set(OptionType)::in, set(OptionType)::out, io::di, io::uo) is det.
 
-getopt_io__process_option(bool(_), _Option, Flag, MaybeArg, _OptionOps,
+getopt_io.process_option(bool(_), _Option, Flag, MaybeArg, _OptionOps,
         OptionTable0, Result, !OptionsSet, !IO) :-
-    svset__insert(Flag, !OptionsSet),
+    svset.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(_Arg),
-        map__set(OptionTable0, Flag, bool(no), OptionTable),
+        map.set(OptionTable0, Flag, bool(no), OptionTable),
         Result = ok(OptionTable)
     ;
         MaybeArg = no,
-        map__set(OptionTable0, Flag, bool(yes), OptionTable),
+        map.set(OptionTable0, Flag, bool(yes), OptionTable),
         Result = ok(OptionTable)
     ).
-getopt_io__process_option(int(_), Option, Flag, MaybeArg, _OptionOps,
+getopt_io.process_option(int(_), Option, Flag, MaybeArg, _OptionOps,
         OptionTable0, Result, !OptionsSet, !IO) :-
-    svset__insert(Flag, !OptionsSet),
+    svset.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
-        ( string__to_int(Arg, IntArg) ->
-            map__set(OptionTable0, Flag, int(IntArg), OptionTable),
+        ( string.to_int(Arg, IntArg) ->
+            map.set(OptionTable0, Flag, int(IntArg), OptionTable),
             Result = ok(OptionTable)
         ;
-            getopt_io__numeric_argument(Option, Arg, Result)
+            getopt_io.numeric_argument(Option, Arg, Result)
         )
     ;
         MaybeArg = no,
-        error("integer argument expected in getopt_io__process_option")
+        error("integer argument expected in getopt_io.process_option")
     ).
-getopt_io__process_option(string(_), _Option, Flag, MaybeArg, _OptionOps,
+getopt_io.process_option(string(_), _Option, Flag, MaybeArg, _OptionOps,
         OptionTable0, Result, !OptionsSet, !IO) :-
-    svset__insert(Flag, !OptionsSet),
+    svset.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
-        map__set(OptionTable0, Flag, string(Arg), OptionTable),
+        map.set(OptionTable0, Flag, string(Arg), OptionTable),
         Result = ok(OptionTable)
     ;
         MaybeArg = no,
-        error("string argument expected in getopt_io__process_option")
+        error("string argument expected in getopt_io.process_option")
     ).
-getopt_io__process_option(maybe_int(_), Option, Flag, MaybeArg, _OptionOps,
+getopt_io.process_option(maybe_int(_), Option, Flag, MaybeArg, _OptionOps,
         OptionTable0, Result, !OptionsSet, !IO) :-
-    svset__insert(Flag, !OptionsSet),
+    svset.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
-        ( string__to_int(Arg, IntArg) ->
-            map__set(OptionTable0, Flag, maybe_int(yes(IntArg)), OptionTable),
+        ( string.to_int(Arg, IntArg) ->
+            map.set(OptionTable0, Flag, maybe_int(yes(IntArg)), OptionTable),
             Result = ok(OptionTable)
         ;
-            getopt_io__numeric_argument(Option, Arg, Result)
+            getopt_io.numeric_argument(Option, Arg, Result)
         )
     ;
         MaybeArg = no,
-        error("integer argument expected in getopt_io__process_option")
+        error("integer argument expected in getopt_io.process_option")
     ).
-getopt_io__process_option(maybe_string(_), _Option, Flag, MaybeArg, _OptionOps,
+getopt_io.process_option(maybe_string(_), _Option, Flag, MaybeArg, _OptionOps,
         OptionTable0, Result, !OptionsSet, !IO) :-
-    svset__insert(Flag, !OptionsSet),
+    svset.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
-        map__set(OptionTable0, Flag, maybe_string(yes(Arg)), OptionTable),
+        map.set(OptionTable0, Flag, maybe_string(yes(Arg)), OptionTable),
         Result = ok(OptionTable)
     ;
         MaybeArg = no,
-        error("string argument expected in getopt_io__process_option")
+        error("string argument expected in getopt_io.process_option")
     ).
-getopt_io__process_option(accumulating(List0), _Option, Flag, MaybeArg, _OptionOps,
+getopt_io.process_option(accumulating(List0), _Option, Flag, MaybeArg, _OptionOps,
         OptionTable0, Result, !OptionsSet, !IO) :-
-    svset__insert(Flag, !OptionsSet),
+    svset.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
-        list__append(List0, [Arg], List),
-        map__set(OptionTable0, Flag, accumulating(List), OptionTable),
+        list.append(List0, [Arg], List),
+        map.set(OptionTable0, Flag, accumulating(List), OptionTable),
         Result = ok(OptionTable)
     ;
         MaybeArg = no,
-        error("acumulating argument expected in getopt_io__process_option")
+        error("acumulating argument expected in getopt_io.process_option")
     ).
-getopt_io__process_option(special, Option, Flag, MaybeArg, OptionOps,
+getopt_io.process_option(special, Option, Flag, MaybeArg, OptionOps,
         OptionTable0, Result, !OptionsSet, !IO) :-
-    svset__insert(Flag, !OptionsSet),
+    svset.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(_Arg),
-        error("no special argument expected in getopt_io__process_option")
+        error("no special argument expected in getopt_io.process_option")
     ;
         MaybeArg = no,
-        getopt_io__process_special(Option, Flag, none,
+        getopt_io.process_special(Option, Flag, none,
             OptionOps, OptionTable0, Result, !OptionsSet)
     ).
-getopt_io__process_option(bool_special, Option, Flag, MaybeArg, OptionOps,
+getopt_io.process_option(bool_special, Option, Flag, MaybeArg, OptionOps,
         OptionTable0, Result, !OptionsSet, !IO) :-
-    svset__insert(Flag, !OptionsSet),
+    svset.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(_Arg),
-        getopt_io__process_special(Option, Flag, bool(no),
+        getopt_io.process_special(Option, Flag, bool(no),
             OptionOps, OptionTable0, Result, !OptionsSet)
     ;
         MaybeArg = no,
-        getopt_io__process_special(Option, Flag, bool(yes),
+        getopt_io.process_special(Option, Flag, bool(yes),
             OptionOps, OptionTable0, Result, !OptionsSet)
     ).
-getopt_io__process_option(int_special, Option, Flag, MaybeArg, OptionOps,
+getopt_io.process_option(int_special, Option, Flag, MaybeArg, OptionOps,
         OptionTable0, Result, !OptionsSet, !IO) :-
-    svset__insert(Flag, !OptionsSet),
+    svset.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
-        ( string__to_int(Arg, IntArg) ->
-            getopt_io__process_special(Option, Flag, int(IntArg),
+        ( string.to_int(Arg, IntArg) ->
+            getopt_io.process_special(Option, Flag, int(IntArg),
                 OptionOps, OptionTable0, Result, !OptionsSet)
         ;
-            getopt_io__numeric_argument(Option, Arg, Result)
+            getopt_io.numeric_argument(Option, Arg, Result)
         )
     ;
         MaybeArg = no,
-        error("int_special argument expected in getopt_io__process_option")
+        error("int_special argument expected in getopt_io.process_option")
     ).
-getopt_io__process_option(string_special, Option, Flag, MaybeArg, OptionOps,
+getopt_io.process_option(string_special, Option, Flag, MaybeArg, OptionOps,
         OptionTable0, Result, !OptionsSet, !IO) :-
-    svset__insert(Flag, !OptionsSet),
+    svset.insert(Flag, !OptionsSet),
     (
         MaybeArg = yes(Arg),
-        getopt_io__process_special(Option, Flag, string(Arg),
+        getopt_io.process_special(Option, Flag, string(Arg),
             OptionOps, OptionTable0, Result, !OptionsSet)
     ;
         MaybeArg = no,
-        error("string_special argument expected in getopt_io__process_option")
+        error("string_special argument expected in getopt_io.process_option")
     ).
-getopt_io__process_option(maybe_string_special, Option, Flag, MaybeArg, OptionOps,
+getopt_io.process_option(maybe_string_special, Option, Flag, MaybeArg, OptionOps,
         OptionTable0, Result, !OptionsSet, !IO) :-
     (
         MaybeArg = yes(_Arg),
-        getopt_io__process_special(Option, Flag, maybe_string(MaybeArg),
+        getopt_io.process_special(Option, Flag, maybe_string(MaybeArg),
             OptionOps, OptionTable0, Result, !OptionsSet)
     ;
         MaybeArg = no,
         error("maybe_string_special argument expected " ++
-            "in getopt_io__process_option")
+            "in getopt_io.process_option")
     ).
-getopt_io__process_option(file_special, _Option, _Flag, MaybeArg, OptionOps,
+getopt_io.process_option(file_special, _Option, _Flag, MaybeArg, OptionOps,
         OptionTable0, Result, !OptionsSet, !IO) :-
     (
         MaybeArg = yes(FileName),
-        io__see(FileName, SeeRes, !IO),
+        io.see(FileName, SeeRes, !IO),
         (
             SeeRes = ok,
-            io__read_file_as_string(ReadRes, !IO),
+            io.read_file_as_string(ReadRes, !IO),
             (
                 ReadRes = ok(Contents),
-                Words = string__words(Contents),
-                getopt_io__process_arguments(Words, Args, OptionOps,
+                Words = string.words(Contents),
+                getopt_io.process_arguments(Words, Args, OptionOps,
                     [], _OptionArgs, OptionTable0, Result0, !OptionsSet, !IO),
                 (
                     Args = [],
@@ -801,18 +801,18 @@ getopt_io__process_option(file_special, _Option, _Flag, MaybeArg, OptionOps,
                 )
             ;
                 ReadRes = error(_, Error),
-                io__error_message(Error, Msg),
+                io.error_message(Error, Msg),
                 Result = error("cannot read " ++ FileName ++ ": " ++ Msg)
             ),
-            io__seen(!IO)
+            io.seen(!IO)
         ;
             SeeRes = error(Error),
-            io__error_message(Error, Msg),
+            io.error_message(Error, Msg),
             Result = error("cannot open " ++ FileName ++ ": " ++ Msg)
         )
     ;
         MaybeArg = no,
-        error("file_special argument expected in getopt_io__process_option")
+        error("file_special argument expected in getopt_io.process_option")
     ).
 
 :- pred process_negated_option(string::in, OptionType::in,
@@ -822,86 +822,86 @@ getopt_io__process_option(file_special, _Option, _Flag, MaybeArg, OptionOps,
 
 process_negated_option(Option, Flag, OptionOps, OptionTable0, Result,
         !OptionsSet) :-
-    ( map__search(OptionTable0, Flag, OptionData) ->
+    ( map.search(OptionTable0, Flag, OptionData) ->
         (
             OptionData = bool(_),
-            svset__insert(Flag, !OptionsSet),
-            map__set(OptionTable0, Flag, bool(no), OptionTable),
+            svset.insert(Flag, !OptionsSet),
+            map.set(OptionTable0, Flag, bool(no), OptionTable),
             Result = ok(OptionTable)
         ;
             OptionData = maybe_int(_),
-            svset__insert(Flag, !OptionsSet),
-            map__set(OptionTable0, Flag, maybe_int(no), OptionTable),
+            svset.insert(Flag, !OptionsSet),
+            map.set(OptionTable0, Flag, maybe_int(no), OptionTable),
             Result = ok(OptionTable)
         ;
             OptionData = maybe_string(_),
-            svset__insert(Flag, !OptionsSet),
-            map__set(OptionTable0, Flag, maybe_string(no), OptionTable),
+            svset.insert(Flag, !OptionsSet),
+            map.set(OptionTable0, Flag, maybe_string(no), OptionTable),
             Result = ok(OptionTable)
         ;
             OptionData = accumulating(_),
-            svset__insert(Flag, !OptionsSet),
-            map__set(OptionTable0, Flag, accumulating([]), OptionTable),
+            svset.insert(Flag, !OptionsSet),
+            map.set(OptionTable0, Flag, accumulating([]), OptionTable),
             Result = ok(OptionTable)
         ;
             OptionData = bool_special,
-            svset__insert(Flag, !OptionsSet),
-            getopt_io__process_special(Option, Flag, bool(no),
+            svset.insert(Flag, !OptionsSet),
+            getopt_io.process_special(Option, Flag, bool(no),
                 OptionOps, OptionTable0, Result, !OptionsSet)
         ;
             OptionData = maybe_string_special,
-            svset__insert(Flag, !OptionsSet),
-            getopt_io__process_special(Option, Flag, maybe_string(no),
+            svset.insert(Flag, !OptionsSet),
+            getopt_io.process_special(Option, Flag, maybe_string(no),
                 OptionOps, OptionTable0, Result, !OptionsSet)
         ;
             OptionData = int_special,
-            string__append_list(["cannot negate option `", Option, "' --",
+            string.append_list(["cannot negate option `", Option, "' --",
                 "only boolean, maybe and accumulating options can be negated"],
                 ErrorMsg),
             Result = error(ErrorMsg)
         ;
             OptionData = string_special,
-            string__append_list(["cannot negate option `", Option, "' --",
+            string.append_list(["cannot negate option `", Option, "' --",
                 "only boolean, maybe and accumulating options can be negated"],
                 ErrorMsg),
             Result = error(ErrorMsg)
         ;
             OptionData = int(_),
-            string__append_list(["cannot negate option `", Option, "' --",
+            string.append_list(["cannot negate option `", Option, "' --",
                 "only boolean, maybe and accumulating options can be negated"],
                 ErrorMsg),
             Result = error(ErrorMsg)
         ;
             OptionData = string(_),
-            string__append_list(["cannot negate option `", Option, "' --",
+            string.append_list(["cannot negate option `", Option, "' --",
                 "only boolean, maybe and accumulating options can be negated"],
                 ErrorMsg),
             Result = error(ErrorMsg)
         ;
             OptionData = special,
-            string__append_list(["cannot negate option `", Option, "' --",
+            string.append_list(["cannot negate option `", Option, "' --",
                 "only boolean, maybe and accumulating options can be negated"],
                 ErrorMsg),
             Result = error(ErrorMsg)
         ;
             OptionData = file_special,
-            string__append_list(["cannot negate option `", Option, "' --",
+            string.append_list(["cannot negate option `", Option, "' --",
                 "only boolean, maybe and accumulating options can be negated"],
                 ErrorMsg),
             Result = error(ErrorMsg)
         )
     ;
-        string__append_list(["unknown type for option `", Option, "'"],
+        string.append_list(["unknown type for option `", Option, "'"],
             ErrorMsg),
         Result = error(ErrorMsg)
     ).
 
-:- pred getopt_io__process_special(string::in, OptionType::in, special_data::in,
+:- pred getopt_io.process_special(string::in, OptionType::in, special_data::in,
     option_ops_internal(OptionType)::in(option_ops_internal),
     option_table(OptionType)::in, maybe_option_table(OptionType)::out,
     set(OptionType)::in, set(OptionType)::out) is det.
 
-getopt_io__process_special(Option, Flag, OptionData, OptionOps,
+getopt_io.process_special(Option, Flag, OptionData, OptionOps,
         OptionTable0, Result, !OptionsSet) :-
     MaybeHandler = OptionOps ^ special_handler,
     (
@@ -911,7 +911,7 @@ getopt_io__process_special(Option, Flag, OptionData, OptionOps,
         ->
             Result = Result0
         ;
-            string__append_list(["the handler of option `",
+            string.append_list(["the handler of option `",
                 Option, "' failed"], ErrorMsg),
             Result = error(ErrorMsg)
         )
@@ -921,85 +921,85 @@ getopt_io__process_special(Option, Flag, OptionData, OptionOps,
             call(TrackHandler, Flag, OptionData, OptionTable0, Result0,
                 NewOptionsSet)
         ->
-            set__union(NewOptionsSet, !OptionsSet),
+            set.union(NewOptionsSet, !OptionsSet),
             Result = Result0
         ;
-            string__append_list(["the handler of option `",
+            string.append_list(["the handler of option `",
                 Option, "' failed"], ErrorMsg),
             Result = error(ErrorMsg)
         )
     ;
         MaybeHandler = none,
-        string__append_list(["option `", Option, "' has no handler"],
+        string.append_list(["option `", Option, "' has no handler"],
             ErrorMsg),
         Result = error(ErrorMsg)
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred getopt_io__need_arg(option_data::in, bool::out) is det.
+:- pred getopt_io.need_arg(option_data::in, bool::out) is det.
 
-getopt_io__need_arg(bool(_), no).
-getopt_io__need_arg(int(_), yes).
-getopt_io__need_arg(string(_), yes).
-getopt_io__need_arg(maybe_int(_), yes).
-getopt_io__need_arg(maybe_string(_), yes).
-getopt_io__need_arg(accumulating(_), yes).
-getopt_io__need_arg(special, no).
-getopt_io__need_arg(bool_special, no).
-getopt_io__need_arg(int_special, yes).
-getopt_io__need_arg(string_special, yes).
-getopt_io__need_arg(maybe_string_special, yes).
-getopt_io__need_arg(file_special, yes).
+getopt_io.need_arg(bool(_), no).
+getopt_io.need_arg(int(_), yes).
+getopt_io.need_arg(string(_), yes).
+getopt_io.need_arg(maybe_int(_), yes).
+getopt_io.need_arg(maybe_string(_), yes).
+getopt_io.need_arg(accumulating(_), yes).
+getopt_io.need_arg(special, no).
+getopt_io.need_arg(bool_special, no).
+getopt_io.need_arg(int_special, yes).
+getopt_io.need_arg(string_special, yes).
+getopt_io.need_arg(maybe_string_special, yes).
+getopt_io.need_arg(file_special, yes).
 
-:- pred getopt_io__numeric_argument(string::in, string::in,
+:- pred getopt_io.numeric_argument(string::in, string::in,
     maybe_option_table(OptionType)::out) is det.
 
-getopt_io__numeric_argument(Option, Arg, Result) :-
-    string__append_list(["option `", Option,
+getopt_io.numeric_argument(Option, Arg, Result) :-
+    string.append_list(["option `", Option,
         "' requires a numeric argument; `", Arg, "' is not numeric"],
         ErrorMsg),
     Result = error(ErrorMsg).
 
 %-----------------------------------------------------------------------------%
 
-getopt_io__lookup_bool_option(OptionTable, Opt, Val) :-
-    ( map__lookup(OptionTable, Opt, bool(Val0)) ->
+getopt_io.lookup_bool_option(OptionTable, Opt, Val) :-
+    ( map.lookup(OptionTable, Opt, bool(Val0)) ->
         Val = Val0
     ;
         error("Expected bool option and didn't get one.")
     ).
 
-getopt_io__lookup_int_option(OptionTable, Opt, Val) :-
-    ( map__lookup(OptionTable, Opt, int(Val0)) ->
+getopt_io.lookup_int_option(OptionTable, Opt, Val) :-
+    ( map.lookup(OptionTable, Opt, int(Val0)) ->
         Val = Val0
     ;
         error("Expected int option and didn't get one.")
     ).
 
-getopt_io__lookup_string_option(OptionTable, Opt, Val) :-
-    ( map__lookup(OptionTable, Opt, string(Val0)) ->
+getopt_io.lookup_string_option(OptionTable, Opt, Val) :-
+    ( map.lookup(OptionTable, Opt, string(Val0)) ->
         Val = Val0
     ;
         error("Expected string option and didn't get one.")
     ).
 
-getopt_io__lookup_maybe_int_option(OptionTable, Opt, Val) :-
-    ( map__lookup(OptionTable, Opt, maybe_int(Val0)) ->
+getopt_io.lookup_maybe_int_option(OptionTable, Opt, Val) :-
+    ( map.lookup(OptionTable, Opt, maybe_int(Val0)) ->
         Val = Val0
     ;
         error("Expected maybe_int option and didn't get one.")
     ).
 
-getopt_io__lookup_maybe_string_option(OptionTable, Opt, Val) :-
-    ( map__lookup(OptionTable, Opt, maybe_string(Val0)) ->
+getopt_io.lookup_maybe_string_option(OptionTable, Opt, Val) :-
+    ( map.lookup(OptionTable, Opt, maybe_string(Val0)) ->
         Val = Val0
     ;
         error("Expected maybe_string option and didn't get one.")
     ).
 
-getopt_io__lookup_accumulating_option(OptionTable, Opt, Val) :-
-    ( map__lookup(OptionTable, Opt, accumulating(Val0)) ->
+getopt_io.lookup_accumulating_option(OptionTable, Opt, Val) :-
+    ( map.lookup(OptionTable, Opt, accumulating(Val0)) ->
         Val = Val0
     ;
         error("Expected accumulating option and didn't get one.")
@@ -1010,20 +1010,20 @@ getopt_io__lookup_accumulating_option(OptionTable, Opt, Val) :-
 % Ralph Becket <rwab1@cl.cam.ac.uk> 29/04/99
 %   Functional forms added.
 
-getopt_io__lookup_bool_option(OT, Opt) = B :-
-    getopt_io__lookup_bool_option(OT, Opt, B).
+getopt_io.lookup_bool_option(OT, Opt) = B :-
+    getopt_io.lookup_bool_option(OT, Opt, B).
 
-getopt_io__lookup_int_option(OT, Opt) = N :-
-    getopt_io__lookup_int_option(OT, Opt, N).
+getopt_io.lookup_int_option(OT, Opt) = N :-
+    getopt_io.lookup_int_option(OT, Opt, N).
 
-getopt_io__lookup_string_option(OT, Opt) = S :-
-    getopt_io__lookup_string_option(OT, Opt, S).
+getopt_io.lookup_string_option(OT, Opt) = S :-
+    getopt_io.lookup_string_option(OT, Opt, S).
 
-getopt_io__lookup_maybe_int_option(OT, Opt) = MN :-
-    getopt_io__lookup_maybe_int_option(OT, Opt, MN).
+getopt_io.lookup_maybe_int_option(OT, Opt) = MN :-
+    getopt_io.lookup_maybe_int_option(OT, Opt, MN).
 
-getopt_io__lookup_maybe_string_option(OT, Opt) =MS :-
-    getopt_io__lookup_maybe_string_option(OT, Opt, MS).
+getopt_io.lookup_maybe_string_option(OT, Opt) =MS :-
+    getopt_io.lookup_maybe_string_option(OT, Opt, MS).
 
-getopt_io__lookup_accumulating_option(OT, Opt) =Ss :-
-    getopt_io__lookup_accumulating_option(OT, Opt, Ss).
+getopt_io.lookup_accumulating_option(OT, Opt) =Ss :-
+    getopt_io.lookup_accumulating_option(OT, Opt, Ss).

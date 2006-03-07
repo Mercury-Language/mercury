@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997, 2004-2005 The University of Melbourne.
+% Copyright (C) 1997, 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -28,13 +28,13 @@
 
     % unsafe_perform_io/1 performs I/O, in an unsafe manner.
     % It can be used to call a goal that does I/O or has
-    % side effects from a context where you do not have an io__state.
+    % side effects from a context where you do not have an io.state.
     % It can be useful for printf-style debugging.
     % But backtracking over a call to `unsafe_perform_io'
     % can be very dangerous indeed, because with certain
     % memory allocation policies it can result in dangling pointers.
     %
-:- impure pred unsafe_perform_io(pred(io__state, io__state)).
+:- impure pred unsafe_perform_io(pred(io.state, io.state)).
 :- mode unsafe_perform_io(pred(di, uo) is det) is det.
 :- mode unsafe_perform_io(pred(di, uo) is cc_multi) is det.
 
@@ -73,7 +73,7 @@
     call_io_pred_cc_multi(P);
 }").
 
-:- pred call_io_pred(pred(io__state, io__state), io__state, io__state).
+:- pred call_io_pred(pred(io.state, io.state), io.state, io.state).
 :- mode call_io_pred(pred(di, uo) is det, di, uo) is det.
 :- mode call_io_pred(pred(di, uo) is cc_multi, di, uo) is cc_multi.
 

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1999,2001-2005 The University of Melbourne.
+% Copyright (C) 1999,2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -22,7 +22,7 @@
 
 	% Force a garbage collection.
 	%
-:- pred garbage_collect(io__state::di, io__state::uo) is det.
+:- pred garbage_collect(io.state::di, io.state::uo) is det.
 
 	% Force a garbage collection.
 	% Note that this version is not really impure, but it needs to be
@@ -69,7 +69,7 @@ garbage_collect(!IO) :-
 ").
 
 garbage_collect :-
-	impure private_builtin__imp.
+	impure private_builtin.imp.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

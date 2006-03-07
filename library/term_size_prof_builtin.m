@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005 The University of Melbourne.
+% Copyright (C) 2003, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -43,7 +43,7 @@
     %
 :- impure pred increment_size(T::in, int::in) is det.
 
-    % This function is exactly like int__plus, and is also implemented
+    % This function is exactly like int.plus, and is also implemented
     % as a builtin. It is duplicated in this module because only predicates
     % and functions in builtin modules like this one are immune to dead
     % procedure elimination.
@@ -163,7 +163,7 @@ measure_size_acc(_Value, Size0, Size) :-
 }").
 
 increment_size(_Value, _Incr) :-
-    impure private_builtin__imp.
+    impure private_builtin.imp.
 
 %---------------------------------------------------------------------------%
 
@@ -211,7 +211,7 @@ increment_size(_Value, _Incr) :-
 ").
 
 complexity_is_active(IsActive) :-
-    impure private_builtin__imp,
+    impure private_builtin.imp,
     ( semidet_succeed ->
         error("complexity_mark_active: not implemented")
     ;
@@ -220,19 +220,19 @@ complexity_is_active(IsActive) :-
     ).
 
 complexity_call_proc(Slot) :-
-    impure private_builtin__imp,
+    impure private_builtin.imp,
     % Required only to avoid warnings; never executed.
-    private_builtin__unsafe_type_cast(0, Slot).
+    private_builtin.unsafe_type_cast(0, Slot).
 
 complexity_exit_proc(_Slot) :-
-    impure private_builtin__imp.
+    impure private_builtin.imp.
 
 complexity_fail_proc(_Slot) :-
-    impure private_builtin__imp,
+    impure private_builtin.imp,
     fail.
 
 complexity_redo_proc(_Slot) :-
-    impure private_builtin__imp,
+    impure private_builtin.imp,
     fail.
 
 %---------------------------------------------------------------------------%

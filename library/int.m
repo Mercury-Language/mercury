@@ -47,39 +47,39 @@
 
     % absolute value
     %
-:- func int__abs(int) = int.
-:- pred int__abs(int::in, int::out) is det.
+:- func int.abs(int) = int.
+:- pred int.abs(int::in, int::out) is det.
 
     % maximum
     %
-:- func int__max(int, int) = int.
-:- pred int__max(int::in, int::in, int::out) is det.
+:- func int.max(int, int) = int.
+:- pred int.max(int::in, int::in, int::out) is det.
 
     % minimum
     %
-:- func int__min(int, int) = int.
-:- pred int__min(int::in, int::in, int::out) is det.
+:- func int.min(int, int) = int.
+:- pred int.min(int::in, int::in, int::out) is det.
 
     % conversion of integer to floating point
-    % OBSOLETE: use float__float/1 instead.
+    % OBSOLETE: use float.float/1 instead.
     %
 :- pragma obsolete(int.to_float/2).
-:- pred int__to_float(int::in, float::out) is det.
+:- pred int.to_float(int::in, float::out) is det.
 
     % exponentiation
-    % int__pow(X, Y, Z): Z is X raised to the Yth power
-    % Throws a `math__domain_error' exception if Y is negative.
+    % int.pow(X, Y, Z): Z is X raised to the Yth power
+    % Throws a `math.domain_error' exception if Y is negative.
     %
-:- func int__pow(int, int) = int.
-:- pred int__pow(int::in, int::in, int::out) is det.
+:- func int.pow(int, int) = int.
+:- pred int.pow(int::in, int::in, int::out) is det.
 
     % base 2 logarithm
-    % int__log2(X) = N is the least integer such that 2 to the
+    % int.log2(X) = N is the least integer such that 2 to the
     % power N is greater than or equal to X.
-    % Throws a `math__domain_error' exception if X is not positive.
+    % Throws a `math.domain_error' exception if X is not positive.
     %
-:- func int__log2(int) = int.
-:- pred int__log2(int::in, int::out) is det.
+:- func int.log2(int) = int.
+:- pred int.log2(int::in, int::out) is det.
 
     % addition
     %
@@ -88,12 +88,12 @@
 :- mode uo  + in  = in  is det.
 :- mode in  + uo  = in  is det.
 
-:- func int__plus(int, int) = int.
+:- func int.plus(int, int) = int.
 
     % multiplication
     %
 :- func (int::in) * (int::in) = (int::uo) is det.
-:- func int__times(int, int) = int.
+:- func int.times(int, int) = int.
 
     % subtraction
     %
@@ -102,12 +102,12 @@
 :- mode uo  - in  = in  is det.
 :- mode in  - uo  = in  is det.
 
-:- func int__minus(int, int) = int.
+:- func int.minus(int, int) = int.
 
     % flooring integer division
     % Truncates towards minus infinity, e.g. (-10) // 3 = (-4).
     %
-    % Throws a `math__domain_error' exception if the right operand
+    % Throws a `math.domain_error' exception if the right operand
     % is zero. See the comments at the top of math.m to find out how to
     % disable domain checks.
     %
@@ -118,7 +118,7 @@
     % `div' has nicer mathematical properties for negative operands,
     % but `//' is typically more efficient.
     %
-    % Throws a `math__domain_error' exception if the right operand
+    % Throws a `math.domain_error' exception if the right operand
     % is zero. See the comments at the top of math.m to find out how to
     % disable domain checks.
     %
@@ -144,7 +144,7 @@
     % `mod' has nicer mathematical properties for negative X,
     % but `rem' is typically more efficient.
     %
-    % Throws a `math__domain_error' exception if the right operand
+    % Throws a `math.domain_error' exception if the right operand
     % is zero. See the comments at the top of math.m to find out how to
     % disable domain checks.
     %
@@ -163,7 +163,7 @@
 
     % unchecked_left_shift(X, Y) is the same as X << Y
     % except that the behaviour is undefined if Y is negative,
-    % or greater than or equal to the result of `int__bits_per_int/1'.
+    % or greater than or equal to the result of `int.bits_per_int/1'.
     % It will typically be implemented more efficiently than X << Y.
     %
 :- func unchecked_left_shift(int::in, int::in) = (int::uo) is det.
@@ -177,7 +177,7 @@
 
     % unchecked_right_shift(X, Y) is the same as X >> Y
     % except that the behaviour is undefined if Y is negative,
-    % or greater than or equal to the result of `int__bits_per_int/1'.
+    % or greater than or equal to the result of `int.bits_per_int/1'.
     % It will typically be implemented more efficiently than X >> Y.
     %
 :- func unchecked_right_shift(int::in, int::in) = (int::uo) is det.
@@ -200,10 +200,10 @@
 
     % bitwise exclusive or (xor)
     %
-:- func int__xor(int, int) = int.
-:- mode int__xor(in, in) = uo is det.
-:- mode int__xor(in, uo) = in is det.
-:- mode int__xor(uo, in) = in is det.
+:- func int.xor(int, int) = int.
+:- mode int.xor(in, in) = uo is det.
+:- mode int.xor(in, uo) = in is det.
+:- mode int.xor(uo, in) = in is det.
 
     % bitwise complement
     %
@@ -223,87 +223,87 @@
 :- mode is(uo, di) is det.
 :- mode is(out, in) is det.
 
-    % int__max_int is the maximum value of an int
+    % int.max_int is the maximum value of an int
     % on this machine.
     %
-:- func int__max_int = int.
-:- pred int__max_int(int::out) is det.
+:- func int.max_int = int.
+:- pred int.max_int(int::out) is det.
 
-    % int__min_int is the minimum value of an int
+    % int.min_int is the minimum value of an int
     % on this machine.
     %
-:- func int__min_int = int.
-:- pred int__min_int(int::out) is det.
+:- func int.min_int = int.
+:- pred int.min_int(int::out) is det.
 
-    % int__bits_per_int is the number of bits in an int
+    % int.bits_per_int is the number of bits in an int
     % on this machine.
     %
-:- func int__bits_per_int = int.
-:- pred int__bits_per_int(int::out) is det.
+:- func int.bits_per_int = int.
+:- pred int.bits_per_int(int::out) is det.
 
     % fold_up(F, Low, High, !Acc) <=> list.foldl(F, Low .. High, !Acc)
     %
     % NOTE: fold_up/5 is undefined if High = int.max_int.
     %
-:- pred int__fold_up(pred(int, T, T), int, int, T, T).
-:- mode int__fold_up(pred(in, in, out) is det, in, in, in, out) is det.
-:- mode int__fold_up(pred(in, di, uo) is det, in, in, di, uo) is det.
-:- mode int__fold_up(pred(in, array_di, array_uo) is det, in, in,
+:- pred int.fold_up(pred(int, T, T), int, int, T, T).
+:- mode int.fold_up(pred(in, in, out) is det, in, in, in, out) is det.
+:- mode int.fold_up(pred(in, di, uo) is det, in, in, di, uo) is det.
+:- mode int.fold_up(pred(in, array_di, array_uo) is det, in, in,
     array_di, array_uo) is det.
-:- mode int__fold_up(pred(in, in, out) is semidet, in, in, in, out)
+:- mode int.fold_up(pred(in, in, out) is semidet, in, in, in, out)
     is semidet.
-:- mode int__fold_up(pred(in, in, out) is nondet, in, in, in, out)
+:- mode int.fold_up(pred(in, in, out) is nondet, in, in, in, out)
     is nondet.
-:- mode int__fold_up(pred(in, di, uo) is cc_multi, in, in, di, uo)
+:- mode int.fold_up(pred(in, di, uo) is cc_multi, in, in, di, uo)
     is cc_multi.
-:- mode int__fold_up(pred(in, in, out) is cc_multi, in, in, in, out)
+:- mode int.fold_up(pred(in, in, out) is cc_multi, in, in, in, out)
     is cc_multi.
 
     % fold_up(F, Low, High, Acc) <=> list.foldl(F, Low .. High, Acc)
     %
     % NOTE: fold_up/4 is undefined if High = int.max_int.
     %
-:- func int__fold_up(func(int, T) = T, int, int, T) = T.
+:- func int.fold_up(func(int, T) = T, int, int, T) = T.
 
     % fold_down(F, Low, High, !Acc) <=> list.foldr(F, Low .. High, !Acc)
     %
     % NOTE: fold_down/5 is undefined if Low int.min_int.
     %
-:- pred int__fold_down(pred(int, T, T), int, int, T, T).
-:- mode int__fold_down(pred(in, in, out) is det, in, in, in, out) is det.
-:- mode int__fold_down(pred(in, di, uo) is det, in, in, di, uo) is det.
-:- mode int__fold_down(pred(in, array_di, array_uo) is det, in, in,
+:- pred int.fold_down(pred(int, T, T), int, int, T, T).
+:- mode int.fold_down(pred(in, in, out) is det, in, in, in, out) is det.
+:- mode int.fold_down(pred(in, di, uo) is det, in, in, di, uo) is det.
+:- mode int.fold_down(pred(in, array_di, array_uo) is det, in, in,
     array_di, array_uo) is det.
-:- mode int__fold_down(pred(in, in, out) is semidet, in, in, in, out)
+:- mode int.fold_down(pred(in, in, out) is semidet, in, in, in, out)
     is semidet.
-:- mode int__fold_down(pred(in, in, out) is nondet, in, in, in, out)
+:- mode int.fold_down(pred(in, in, out) is nondet, in, in, in, out)
     is nondet.
-:- mode int__fold_down(pred(in, di, uo) is cc_multi, in, in, di, uo)
+:- mode int.fold_down(pred(in, di, uo) is cc_multi, in, in, di, uo)
     is cc_multi.
-:- mode int__fold_down(pred(in, in, out) is cc_multi, in, in, in, out)
+:- mode int.fold_down(pred(in, in, out) is cc_multi, in, in, in, out)
     is cc_multi.
 
     % fold_down(F, Low, High, Acc) <=> list.foldr(F, Low .. High, Acc)
     %
     % NOTE: fold_down/4 is undefined if Low = int.min_int.
     %
-:- func int__fold_down(func(int, T) = T, int, int, T) = T.
+:- func int.fold_down(func(int, T) = T, int, int, T) = T.
 
     % fold_up2(F, Low, High, !Acc1, Acc2) <=>
     %   list.foldl2(F, Low .. High, !Acc1, !Acc2)
     %
     % NOTE: fold_up2/7 is undefined if High = int.max_int.
     %
-:- pred int__fold_up2(pred(int, T, T, U, U), int, int, T, T, U, U).
-:- mode int__fold_up2(pred(in, in, out, in, out) is det, in, in, in, out,
+:- pred int.fold_up2(pred(int, T, T, U, U), int, int, T, T, U, U).
+:- mode int.fold_up2(pred(in, in, out, in, out) is det, in, in, in, out,
     in, out) is det.
-:- mode int__fold_up2(pred(in, in, out, in, out) is semidet, in, in,
+:- mode int.fold_up2(pred(in, in, out, in, out) is semidet, in, in,
     in, out, in, out) is semidet.
-:- mode int__fold_up2(pred(in, in, out, in, out) is nondet, in, in,
+:- mode int.fold_up2(pred(in, in, out, in, out) is nondet, in, in,
     in, out, in, out) is nondet.
-:- mode int__fold_up2(pred(in, in, out, di, uo) is det, in, in, in, out,
+:- mode int.fold_up2(pred(in, in, out, di, uo) is det, in, in, in, out,
     di, uo) is det.
-:- mode int__fold_up2(pred(in, di, uo, di, uo) is det, in, in, di, uo,
+:- mode int.fold_up2(pred(in, di, uo, di, uo) is det, in, in, di, uo,
     di, uo) is det.
 
     % fold_down2(F, Low, High, !Acc1, !Acc2) <=>
@@ -311,16 +311,16 @@
     %
     % NOTE: fold_down2/7 is undefined if Low = int.min_int.
     %
-:- pred int__fold_down2(pred(int, T, T, U, U), int, int, T, T, U, U).
-:- mode int__fold_down2(pred(in, in, out, in, out) is det, in, in, in, out,
+:- pred int.fold_down2(pred(int, T, T, U, U), int, int, T, T, U, U).
+:- mode int.fold_down2(pred(in, in, out, in, out) is det, in, in, in, out,
     in, out) is det.
-:- mode int__fold_down2(pred(in, in, out, in, out) is semidet, in, in,
+:- mode int.fold_down2(pred(in, in, out, in, out) is semidet, in, in,
     in, out, in, out) is semidet.
-:- mode int__fold_down2(pred(in, in, out, in, out) is nondet, in, in,
+:- mode int.fold_down2(pred(in, in, out, in, out) is nondet, in, in,
     in, out, in, out) is nondet.
-:- mode int__fold_down2(pred(in, in, out, di, uo) is det, in, in, in, out,
+:- mode int.fold_down2(pred(in, in, out, di, uo) is det, in, in, in, out,
     di, uo) is det.
-:- mode int__fold_down2(pred(in, di, uo, di, uo) is det, in, in, di, uo,
+:- mode int.fold_down2(pred(in, di, uo, di, uo) is det, in, in, di, uo,
     di, uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -358,21 +358,21 @@
     % Used by floor_to_multiple_of_bits_per_int, placed
     % here to make sure they go in the `.opt' file.
 
-    % int__quot_bits_per_int(X) = X // bits_per_int.
+    % int.quot_bits_per_int(X) = X // bits_per_int.
     %
-:- func int__quot_bits_per_int(int) = int.
+:- func int.quot_bits_per_int(int) = int.
 
-    % int__times_bits_per_int(X) = X * bits_per_int.
+    % int.times_bits_per_int(X) = X * bits_per_int.
     %
-:- func int__times_bits_per_int(int) = int.
+:- func int.times_bits_per_int(int) = int.
 
     % Used by bitmap.m.  Like the ones above, the purpose of
     % defining this in C is to make it clearer to gcc that
     % this can be optimized.
 
-    % int__rem_bits_per_int(X) = X `rem` bits_per_int.
+    % int.rem_bits_per_int(X) = X `rem` bits_per_int.
     %
-:- func int__rem_bits_per_int(int) = int.
+:- func int.rem_bits_per_int(int) = int.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -410,7 +410,7 @@ X // Y = Div :-
         domain_checks,
         Y = 0
     ->
-        throw(math__domain_error("int.'//'"))
+        throw(math.domain_error("int.'//'"))
     ;
         Div = unchecked_quotient(X, Y)
     ).
@@ -424,7 +424,7 @@ X rem Y = Rem :-
         domain_checks,
         Y = 0
     ->
-        throw(math__domain_error("int.rem"))
+        throw(math.domain_error("int.rem"))
     ;
         Rem = unchecked_rem(X, Y)
     ).
@@ -478,7 +478,7 @@ floor_to_multiple_of_bits_per_int(X) = Floor :-
 X mod Y = X - (X div Y) * Y.
 
 X << Y = Z :-
-    int__bits_per_int(IntBits),
+    int.bits_per_int(IntBits),
     ( Y >= 0 ->
         ( Y >= IntBits ->
             Z = 0
@@ -496,7 +496,7 @@ X << Y = Z :-
     % Note: this assumes two's complement arithmetic.
     % tests/hard_coded/shift_test.m will fail if this is not the case.
 X >> Y = Z :-
-    int__bits_per_int(IntBits),
+    int.bits_per_int(IntBits),
     ( Y >= 0 ->
         ( Y >= IntBits ->
             Z = (if X >= 0 then 0 else -1)
@@ -519,52 +519,52 @@ even(X):-
 odd(X):-
     (X /\ 1) \= 0.
 
-int__abs(Num) = Abs :-
-    int__abs(Num, Abs).
+int.abs(Num) = Abs :-
+    int.abs(Num, Abs).
 
-int__abs(Num, Abs) :-
+int.abs(Num, Abs) :-
     ( Num < 0 ->
         Abs = 0 - Num
     ;
         Abs = Num
     ).
 
-int__max(X, Y) = Max :-
-    int__max(X, Y, Max).
+int.max(X, Y) = Max :-
+    int.max(X, Y, Max).
 
-int__max(X, Y, Max) :-
+int.max(X, Y, Max) :-
     ( X > Y ->
         Max = X
     ;
         Max = Y
     ).
 
-int__min(X, Y) = Min :-
-    int__min(X, Y, Min).
+int.min(X, Y) = Min :-
+    int.min(X, Y, Min).
 
-int__min(X, Y, Min) :-
+int.min(X, Y, Min) :-
     ( X < Y ->
         Min = X
     ;
         Min = Y
     ).
 
-int__pow(Base, Exp) = Result :-
-    int__pow(Base, Exp, Result).
+int.pow(Base, Exp) = Result :-
+    int.pow(Base, Exp, Result).
 
-int__pow(Base, Exp, Result) :-
+int.pow(Base, Exp, Result) :-
     ( domain_checks, Exp < 0 ->
-        throw(math__domain_error("int.pow"))
+        throw(math.domain_error("int.pow"))
     ;
-        Result = int__multiply_by_pow(1, Base, Exp)
+        Result = int.multiply_by_pow(1, Base, Exp)
     ).
 
     % Returns Scale0 * (Base ** Exp).
     % Requires that Exp >= 0.
     %
-:- func int__multiply_by_pow(int, int, int) = int.
+:- func int.multiply_by_pow(int, int, int) = int.
 
-int__multiply_by_pow(Scale0, Base, Exp) = Result :-
+int.multiply_by_pow(Scale0, Base, Exp) = Result :-
     ( Exp = 0 ->
         Result = Scale0
     ;
@@ -573,30 +573,30 @@ int__multiply_by_pow(Scale0, Base, Exp) = Result :-
         ;
             Scale1 = Scale0
         ),
-        Result = int__multiply_by_pow(Scale1, Base * Base, Exp div 2)
+        Result = int.multiply_by_pow(Scale1, Base * Base, Exp div 2)
     ).
 
-int__log2(X) = N :-
-    int__log2(X, N).
+int.log2(X) = N :-
+    int.log2(X, N).
 
-int__log2(X, N) :-
+int.log2(X, N) :-
     ( domain_checks, X =< 0 ->
-        throw(math__domain_error("int__log2"))
+        throw(math.domain_error("int.log2"))
     ;
-        int__log2_2(X, 0, N)
+        int.log2_2(X, 0, N)
     ).
 
-:- pred int__log2_2(int, int, int).
-:- mode int__log2_2(in, in, out) is det.
+:- pred int.log2_2(int, int, int).
+:- mode int.log2_2(in, in, out) is det.
 
-int__log2_2(X, N0, N) :-
+int.log2_2(X, N0, N) :-
     ( X = 1 ->
         N = N0
     ;
         X1 = X + 1,
         X2 = X1 // 2,
         N1 = N0 + 1,
-        int__log2_2(X2, N1, N)
+        int.log2_2(X2, N1, N)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -609,19 +609,19 @@ is(X, X).
 %-----------------------------------------------------------------------------%
 
 :- pragma foreign_proc("C",
-    int__to_float(IntVal::in, FloatVal::out),
+    int.to_float(IntVal::in, FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     FloatVal = IntVal;
 ").
 :- pragma foreign_proc("C#",
-    int__to_float(IntVal::in, FloatVal::out),
+    int.to_float(IntVal::in, FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     FloatVal = (double) IntVal;
 ").
 :- pragma foreign_proc("Java",
-    int__to_float(IntVal::in, FloatVal::out),
+    int.to_float(IntVal::in, FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     FloatVal = (double) IntVal;
@@ -636,7 +636,7 @@ is(X, X).
 ").
 
 :- pragma foreign_proc("C",
-    int__max_int(Max::out),
+    int.max_int(Max::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     if (sizeof(MR_Integer) == sizeof(int)) {
@@ -649,7 +649,7 @@ is(X, X).
 ").
 
 :- pragma foreign_proc("C",
-    int__min_int(Min::out),
+    int.min_int(Min::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     if (sizeof(MR_Integer) == sizeof(int)) {
@@ -662,49 +662,49 @@ is(X, X).
 ").
 
 :- pragma foreign_proc("C",
-    int__bits_per_int(Bits::out),
+    int.bits_per_int(Bits::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     Bits = ML_BITS_PER_INT;
 ").
 
 :- pragma foreign_proc("C",
-    int__quot_bits_per_int(Int::in) = (Div::out),
+    int.quot_bits_per_int(Int::in) = (Div::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     Div = Int / ML_BITS_PER_INT;
 ").
 
 :- pragma foreign_proc("C",
-    int__times_bits_per_int(Int::in) = (Result::out),
+    int.times_bits_per_int(Int::in) = (Result::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     Result = Int * ML_BITS_PER_INT;
 ").
 
 :- pragma foreign_proc("C",
-    int__rem_bits_per_int(Int::in) = (Rem::out),
+    int.rem_bits_per_int(Int::in) = (Rem::out),
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
     Rem = Int % ML_BITS_PER_INT;
 ").
 
 :- pragma foreign_proc("C#",
-    int__max_int(Max::out),
+    int.max_int(Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Max = System.Int32.MaxValue;
 ").
 
 :- pragma foreign_proc("C#",
-    int__min_int(Min::out),
+    int.min_int(Min::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Min = System.Int32.MinValue;
 ").
 
 :- pragma foreign_proc("C#",
-    int__bits_per_int(Bits::out),
+    int.bits_per_int(Bits::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     // we are using int32 in the compiler.
@@ -713,81 +713,81 @@ is(X, X).
 ").
 
 :- pragma foreign_proc("Java",
-    int__max_int(Max::out),
+    int.max_int(Max::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Max = java.lang.Integer.MAX_VALUE;
 ").
 
 :- pragma foreign_proc("Java",
-    int__min_int(Min::out),
+    int.min_int(Min::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Min = java.lang.Integer.MIN_VALUE;
 ").
 
 :- pragma foreign_proc("Java",
-    int__bits_per_int(Bits::out),
+    int.bits_per_int(Bits::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     // Java ints are 32 bits.
     Bits = 32;
 ").
 
-int__quot_bits_per_int(Int::in) = (Result::out) :-
-    Result = Int // int__bits_per_int.
+int.quot_bits_per_int(Int::in) = (Result::out) :-
+    Result = Int // int.bits_per_int.
 
-int__times_bits_per_int(Int::in) = (Result::out) :-
-    Result = Int * int__bits_per_int.
+int.times_bits_per_int(Int::in) = (Result::out) :-
+    Result = Int * int.bits_per_int.
 
-int__rem_bits_per_int(Int::in) = (Result::out) :-
-    Result = Int rem int__bits_per_int.
+int.rem_bits_per_int(Int::in) = (Result::out) :-
+    Result = Int rem int.bits_per_int.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 % Ralph Becket <rwab1@cl.cam.ac.uk> 27/04/99
 %   Functional forms added.
 
-int__max_int = X :-
-    int__max_int(X).
+int.max_int = X :-
+    int.max_int(X).
 
-int__min_int = X :-
-    int__min_int(X).
+int.min_int = X :-
+    int.min_int(X).
 
-int__bits_per_int = X :-
-    int__bits_per_int(X).
-
-%-----------------------------------------------------------------------------%
-
-int__fold_up(P, Lo, Hi, !A) :-
-    ( if    Lo =< Hi
-      then  P(Lo, !A), int__fold_up(P, Lo + 1, Hi, !A)
-      else  true
-    ).
-
-int__fold_up(F, Lo, Hi, A) =
-    ( if Lo =< Hi then int__fold_up(F, Lo + 1, Hi, F(Lo, A)) else A ).
-
-int__fold_up2(P, Lo, Hi, !A, !B) :-
-    ( if    Lo =< Hi
-      then  P(Lo, !A, !B), int__fold_up2(P, Lo + 1, Hi, !A, !B)
-      else  true
-    ).
+int.bits_per_int = X :-
+    int.bits_per_int(X).
 
 %-----------------------------------------------------------------------------%
 
-int__fold_down(P, Lo, Hi, !A) :-
+int.fold_up(P, Lo, Hi, !A) :-
     ( if    Lo =< Hi
-      then  P(Hi, !A), int__fold_down(P, Lo, Hi - 1, !A)
+      then  P(Lo, !A), int.fold_up(P, Lo + 1, Hi, !A)
       else  true
     ).
 
-int__fold_down(F, Lo, Hi, A) =
-    ( if Lo =< Hi then int__fold_down(F, Lo, Hi - 1, F(Hi, A)) else A ).
+int.fold_up(F, Lo, Hi, A) =
+    ( if Lo =< Hi then int.fold_up(F, Lo + 1, Hi, F(Lo, A)) else A ).
 
-int__fold_down2(P, Lo, Hi, !A, !B) :-
+int.fold_up2(P, Lo, Hi, !A, !B) :-
     ( if    Lo =< Hi
-      then  P(Hi, !A, !B), int__fold_down2(P, Lo, Hi - 1, !A, !B)
+      then  P(Lo, !A, !B), int.fold_up2(P, Lo + 1, Hi, !A, !B)
+      else  true
+    ).
+
+%-----------------------------------------------------------------------------%
+
+int.fold_down(P, Lo, Hi, !A) :-
+    ( if    Lo =< Hi
+      then  P(Hi, !A), int.fold_down(P, Lo, Hi - 1, !A)
+      else  true
+    ).
+
+int.fold_down(F, Lo, Hi, A) =
+    ( if Lo =< Hi then int.fold_down(F, Lo, Hi - 1, F(Hi, A)) else A ).
+
+int.fold_down2(P, Lo, Hi, !A, !B) :-
+    ( if    Lo =< Hi
+      then  P(Hi, !A, !B), int.fold_down2(P, Lo, Hi - 1, !A, !B)
       else  true
     ).
 

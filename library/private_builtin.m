@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -119,7 +119,7 @@
 
 :- pragma foreign_code("C#", "
 
-// The dummy_var is used to represent io__states and other Mercury
+// The dummy_var is used to represent io.states and other Mercury
 // parameters that are not really passed around.  Occasionally a dummy variable
 // will be used by the code generator as an lval, so we use
 // private_builtin:dummy_var as that lval.
@@ -147,8 +147,8 @@ builtin_compare_int(R, X, Y) :-
 builtin_unify_character(C, C).
 
 builtin_compare_character(R, X, Y) :-
-    char__to_int(X, XI),
-    char__to_int(Y, YI),
+    char.to_int(X, XI),
+    char.to_int(Y, YI),
     ( XI < YI ->
         R = (<)
     ; XI = YI ->
@@ -488,7 +488,7 @@ public static int MR_PREDICATE                          = 0;
 public static int MR_FUNCTION                           = 1;
 
 public static bool
-special__Unify____type_info_1_0(
+special.Unify..type_info_1_0(
     object[] type_info, object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(""unify for type_info"");
@@ -496,7 +496,7 @@ special__Unify____type_info_1_0(
 }
 
 public static bool
-special__Unify____typeclass_info_1_0(
+special.Unify..typeclass_info_1_0(
     object[] type_info, object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(""unify for typeclass_info"");
@@ -504,7 +504,7 @@ special__Unify____typeclass_info_1_0(
 }
 
 public static bool
-special__Unify____base_typeclass_info_1_0(
+special.Unify..base_typeclass_info_1_0(
     object[] type_info, object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(""unify for base_typeclass_info"");
@@ -512,7 +512,7 @@ special__Unify____base_typeclass_info_1_0(
 }
 
 public static bool
-special__Unify____type_ctor_info_1_0(
+special.Unify..type_ctor_info_1_0(
     object[] type_info, object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(""unify for type_ctor_info"");
@@ -520,28 +520,28 @@ special__Unify____type_ctor_info_1_0(
 }
 
 public static void
-special__Compare____type_ctor_info_1_0(
+special.Compare..type_ctor_info_1_0(
     object[] type_info, ref object[] result, object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(""compare for type_ctor_info"");
 }
 
 public static void
-special__Compare____type_info_1_0(
+special.Compare..type_info_1_0(
     object[] type_info, ref object[] result, object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(""compare for type_info"");
 }
 
 public static void
-special__Compare____typeclass_info_1_0(
+special.Compare..typeclass_info_1_0(
     object[] type_info, ref object[] result, object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(""compare for typeclass_info"");
 }
 
 public static void
-special__Compare____base_typeclass_info_1_0(
+special.Compare..base_typeclass_info_1_0(
     object[] type_info, ref object[] result, object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(""compare for base_typeclass_info"");
@@ -907,7 +907,7 @@ special__Compare____base_typeclass_info_1_0(
 ").
 
 trailed_nondet_pragma_foreign_code :-
-    Msg = string__append_list([
+    Msg = string.append_list([
         "Sorry, not implemented:\n",
         "for the MLDS back-end (`--high-level-code')\n",
         "nondet `pragma c_code' or `pragma foreign_code'\n",
@@ -998,7 +998,7 @@ trailed_nondet_pragma_foreign_code :-
             MR_ENGINE(MR_eng_heap_zone2->MR_zone_min),
             MR_ENGINE(MR_eng_heap_zone2->MR_zone_hardmax));
 #else
-    MR_fatal_error(""private_builtin__gc_trace/2: ""
+    MR_fatal_error(""private_builtin.gc_trace/2: ""
         ""called when accurate GC not enabled"");
 #endif
 ").
@@ -1082,7 +1082,7 @@ trailed_nondet_pragma_foreign_code :-
 ").
 
 reclaim_heap_nondet_pragma_foreign_code :-
-    Msg = string__append_list([
+    Msg = string.append_list([
         "Sorry, not implemented:\n",
         "for the MLDS back-end (`--high-level-code')\n",
         "nondet `pragma c_code' or `pragma foreign_code'\n",
@@ -1098,7 +1098,7 @@ reclaim_heap_nondet_pragma_foreign_code :-
 :- pragma foreign_code("C#", "
     
 public static bool
-special__Unify__private_builtin__heap_pointer_0_0(object[] x, object[] y)
+special.Unify.private_builtin.heap_pointer_0_0(object[] x, object[] y)
 {
     mercury.runtime.Errors.fatal_error(
         ""called unify for type `private_builtin:heap_pointer'"");
@@ -1106,7 +1106,7 @@ special__Unify__private_builtin__heap_pointer_0_0(object[] x, object[] y)
 }
 
 public static void
-special__Compare__private_builtin__heap_pointer_0_0(
+special.Compare.private_builtin.heap_pointer_0_0(
     ref object[] result, object[] x, object[] y)
 {
     mercury.runtime.Errors.fatal_error(
@@ -1114,14 +1114,14 @@ special__Compare__private_builtin__heap_pointer_0_0(
 }
 
 public static bool
-special__Unify__private_builtin__ref_1_0(
+special.Unify.private_builtin.ref_1_0(
     object[] type_info, object[] x, object[] y)
 {
     return x == y;
 }
 
 public static void
-special__Compare__private_builtin__ref_1_0(
+special.Compare.private_builtin.ref_1_0(
     object[] type_info, ref object[] result, object[] x, object[] y)
 {
     mercury.runtime.Errors.fatal_error(
@@ -1407,7 +1407,7 @@ no_clauses(PredName) :-
     public static final int MR_PREDICATE    = 0;
     public static final int MR_FUNCTION     = 1;
 
-    // The dummy_var is used to represent io__states and other Mercury
+    // The dummy_var is used to represent io.states and other Mercury
     // parameters that are not really passed around.  Occasionally a dummy
     // variable will be used by the code generator as an lval, so we use
     // private_builtin:dummy_var as that lval.
@@ -1423,7 +1423,7 @@ no_clauses(PredName) :-
     //
 
     public static boolean
-    __Unify____ref_1_0(mercury.runtime.TypeInfo_Struct ti,
+    .Unify..ref_1_0(mercury.runtime.TypeInfo_Struct ti,
         mercury.private_builtin.Ref_1 x,
         mercury.private_builtin.Ref_1 y)
     {
@@ -1433,7 +1433,7 @@ no_clauses(PredName) :-
     }
 
     public static boolean
-    __Unify____heap_pointer_0_0 (mercury.private_builtin.Heap_pointer_0 x,
+    .Unify..heap_pointer_0_0 (mercury.private_builtin.Heap_pointer_0 x,
         mercury.private_builtin.Heap_pointer_0 y)
     {
         // stub only
@@ -1441,7 +1441,7 @@ no_clauses(PredName) :-
     }
 
     public static boolean
-    __Unify____type_ctor_info_1_0(mercury.runtime.TypeInfo_Struct ti,
+    .Unify..type_ctor_info_1_0(mercury.runtime.TypeInfo_Struct ti,
         mercury.runtime.TypeCtorInfo_Struct x,
         mercury.runtime.TypeCtorInfo_Struct y)
     {
@@ -1451,7 +1451,7 @@ no_clauses(PredName) :-
     }
 
     public static boolean
-    __Unify____type_info_1_0(mercury.runtime.TypeInfo_Struct ti,
+    .Unify..type_info_1_0(mercury.runtime.TypeInfo_Struct ti,
         mercury.runtime.TypeInfo_Struct x,
         mercury.runtime.TypeInfo_Struct y)
     {
@@ -1461,7 +1461,7 @@ no_clauses(PredName) :-
     }
 
     public static boolean
-    __Unify____base_typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
+    .Unify..base_typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
         java.lang.Object[] x, java.lang.Object[] y)
     {
         // stub only
@@ -1469,7 +1469,7 @@ no_clauses(PredName) :-
     }
 
     public static boolean
-    __Unify____typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
+    .Unify..typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
         java.lang.Object[] x, java.lang.Object[] y)
     {
         // stub only
@@ -1478,7 +1478,7 @@ no_clauses(PredName) :-
     }
 
     public static mercury.builtin.Comparison_result_0
-    __Compare____ref_1_0(mercury.runtime.TypeInfo_Struct ti,
+    .Compare..ref_1_0(mercury.runtime.TypeInfo_Struct ti,
         mercury.private_builtin.Ref_1 x,
         mercury.private_builtin.Ref_1 y)
     {
@@ -1488,7 +1488,7 @@ no_clauses(PredName) :-
     }
 
     public static mercury.builtin.Comparison_result_0
-    __Compare____heap_pointer_0_0 (mercury.private_builtin.Heap_pointer_0 x,
+    .Compare..heap_pointer_0_0 (mercury.private_builtin.Heap_pointer_0 x,
         mercury.private_builtin.Heap_pointer_0 y)
     {
         // stub only
@@ -1496,7 +1496,7 @@ no_clauses(PredName) :-
     }
 
     public static mercury.builtin.Comparison_result_0
-    __Compare____type_ctor_info_1_0(mercury.runtime.TypeInfo_Struct ti,
+    .Compare..type_ctor_info_1_0(mercury.runtime.TypeInfo_Struct ti,
         mercury.runtime.TypeCtorInfo_Struct x,
         mercury.runtime.TypeCtorInfo_Struct y)
     {
@@ -1506,7 +1506,7 @@ no_clauses(PredName) :-
     }
 
     public static mercury.builtin.Comparison_result_0
-    __Compare____type_info_1_0(mercury.runtime.TypeInfo_Struct ti,
+    .Compare..type_info_1_0(mercury.runtime.TypeInfo_Struct ti,
         mercury.runtime.TypeInfo_Struct x,
         mercury.runtime.TypeInfo_Struct y)
     {
@@ -1516,7 +1516,7 @@ no_clauses(PredName) :-
     }
 
     public static mercury.builtin.Comparison_result_0
-    __Compare____base_typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
+    .Compare..base_typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
         java.lang.Object[] x, java.lang.Object[] y)
     {
         // stub only
@@ -1524,7 +1524,7 @@ no_clauses(PredName) :-
     }
 
     public static mercury.builtin.Comparison_result_0
-    __Compare____typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
+    .Compare..typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
         java.lang.Object[] x, java.lang.Object[] y)
     {
         // stub only

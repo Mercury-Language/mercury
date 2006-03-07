@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000, 2003-2005 The University of Melbourne.
+% Copyright (C) 1997-2000, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -38,13 +38,13 @@
 
 :- pred '>='(integer::in, integer::in) is semidet.
 
-:- func integer__integer(int) = integer.
+:- func integer.integer(int) = integer.
 
-:- func integer__to_string(integer) = string.
+:- func integer.to_string(integer) = string.
 
-:- func integer__from_string(string::in) = (integer::out) is semidet.
+:- func integer.from_string(string::in) = (integer::out) is semidet.
 
-:- func integer__det_from_string(string) = integer.
+:- func integer.det_from_string(string) = integer.
 
 :- func '+'(integer) = integer.
 
@@ -83,18 +83,18 @@
 
 :- func \ integer = integer.
 
-:- func integer__abs(integer) = integer.
+:- func integer.abs(integer) = integer.
 
-:- func integer__pow(integer, integer) = integer.
+:- func integer.pow(integer, integer) = integer.
 :- pragma obsolete(integer.pow/3).
-:- pred integer__pow(integer::in, integer::in, integer::out) is det.
+:- pred integer.pow(integer::in, integer::in, integer::out) is det.
 
-:- func integer__float(integer) = float.
-:- func integer__int(integer) = int.
+:- func integer.float(integer) = float.
+:- func integer.int(integer) = int.
 
-:- func integer__zero = integer.
+:- func integer.zero = integer.
 
-:- func integer__one = integer.
+:- func integer.one = integer.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -278,9 +278,9 @@ X `xor` Y =
         big_xor(X, Y)
     ).
 
-\ X = big_neg(big_plus(X, integer__one)).
+\ X = big_neg(big_plus(X, integer.one)).
 
-integer__abs(N) = big_abs(N).
+integer.abs(N) = big_abs(N).
 
 :- func big_abs(integer) = integer.
 
@@ -330,7 +330,7 @@ big_rem(X, Y) = Rem :-
 big_div(X, Y) = Div :-
     big_quot_rem(X, Y, Trunc, Rem),
     ( integer_signum(Y) * integer_signum(Rem) < 0 ->
-        Div = Trunc - integer__one
+        Div = Trunc - integer.one
     ;
         Div = Trunc
     ).
@@ -365,15 +365,15 @@ pos_right_shift(i(Len, Digits), I) = Integer :-
         Integer = decap(rightshift(Mod, log2base - Mod,
             i(Len - Div, Digits), 0))
     ;
-        Integer = integer__zero
+        Integer = integer.zero
     ).
 
 :- func rightshift(int, int, integer, int) = integer.
 
-rightshift(_Mod, _InvMod, i(_Len, []), _Carry) = integer__zero.
+rightshift(_Mod, _InvMod, i(_Len, []), _Carry) = integer.zero.
 rightshift(Mod, InvMod, i(Len, [H | T]), Carry) = Integer :-
     ( Len =< 0 ->
-        Integer = integer__zero
+        Integer = integer.zero
     ;
         NewH = Carry \/ (H >> Mod),
         NewCarry = (H /\ (basemask >> InvMod)) << InvMod,
@@ -448,7 +448,7 @@ or_pairs(i(L1, D1), i(L2, D2)) = Integer :-
         i(_, DsT) = or_pairs(i(L1 - 1, T1), i(L2, D2)),
         Integer = i(L1, [H1 | DsT])
     ;
-        error("integer__or_pairs")
+        error("integer.or_pairs")
     ).
 
 :- func or_pairs_equal(list(digit), list(digit)) = list(digit).
@@ -473,7 +473,7 @@ xor_pairs(i(L1, D1), i(L2, D2)) = Integer :-
         i(_, DsT) = xor_pairs(i(L1 - 1, T1), i(L2, D2)),
         Integer = i(L1, [H1 | DsT])
     ;
-        error("integer__xor_pairs")
+        error("integer.xor_pairs")
     ).
 
 :- func xor_pairs_equal(list(digit), list(digit)) = list(digit).
@@ -481,7 +481,7 @@ xor_pairs(i(L1, D1), i(L2, D2)) = Integer :-
 xor_pairs_equal([], _) = [].
 xor_pairs_equal([_ | _], []) = [].
 xor_pairs_equal([X | Xs], [Y | Ys]) =
-    [int__xor(X, Y) | xor_pairs_equal(Xs, Ys)].
+    [int.xor(X, Y) | xor_pairs_equal(Xs, Ys)].
 
 :- func big_and(integer, integer) = integer.
 
@@ -499,7 +499,7 @@ and_pairs(i(L1, D1), i(L2, D2)) = Integer :-
         i(_, DsT) = and_pairs(i(L1 - 1, T1), i(L2, D2)),
         Integer = i(L2, DsT)
     ;
-        error("integer__and_pairs")
+        error("integer.and_pairs")
     ).
 
 :- func and_pairs_equal(list(digit), list(digit)) = list(digit).
@@ -524,7 +524,7 @@ and_not_pairs(i(L1, D1), i(L2, D2)) = Integer :-
         i(_, DsT) = and_not_pairs(i(L1 - 1, T1), i(L2, D2)),
         Integer = i(L1, [H1 | DsT])
     ;
-        error("integer__and_not_pairs")
+        error("integer.and_not_pairs")
     ).
 
 :- func and_not_pairs_equal(list(digit), list(digit)) = list(digit).
@@ -552,9 +552,9 @@ pos_cmp(X, Y) = Result :-
 :- func big_plus(integer, integer) = integer.
 
 big_plus(X, Y) = Sum :-
-    ( X = integer__zero ->
+    ( X = integer.zero ->
         Sum = Y
-    ; Y = integer__zero ->
+    ; Y = integer.zero ->
         Sum = X
     ;
         AbsX = big_abs(X),
@@ -570,7 +570,7 @@ big_plus(X, Y) = Sum :-
             ; C = (>) ->
                 Sum = big_sign(SignX, pos_minus(AbsX, AbsY))
             ;
-                Sum = integer__zero
+                Sum = integer.zero
             )
         )
     ).
@@ -590,24 +590,24 @@ integer(N) = int_to_integer(N).
 
 int_to_integer(D) = Int :-
     ( D = 0 ->
-        Int = integer__zero
+        Int = integer.zero
     ; D > 0, D < base ->
         Int = i(1, [D])
     ; D < 0, D > -base ->
         Int = i(-1, [D])
     ;
-        ( int__min_int(D) ->
-            % were we to call int__abs, int overflow might occur.
-            Int = integer(D + 1) - integer__one
+        ( int.min_int(D) ->
+            % were we to call int.abs, int overflow might occur.
+            Int = integer(D + 1) - integer.one
         ;
-            Int = big_sign(D, pos_int_to_digits(int__abs(D)))
+            Int = big_sign(D, pos_int_to_digits(int.abs(D)))
         )
     ).
 
 :- func shortint_to_integer(int) = integer.
 
 shortint_to_integer(D) =
-    ( D = 0 -> integer__zero ; D > 0 -> i(1, [D]) ; i(-1, [D]) ).
+    ( D = 0 -> integer.zero ; D > 0 -> i(1, [D]) ; i(-1, [D]) ).
 
 :- func signum(int) = int.
 
@@ -619,7 +619,7 @@ integer_signum(i(Sign, _)) = signum(Sign).
 
 :- func pos_int_to_digits(int) = integer.
 
-pos_int_to_digits(D) = pos_int_to_digits_2(D, integer__zero).
+pos_int_to_digits(D) = pos_int_to_digits_2(D, integer.zero).
 
 :- func pos_int_to_digits_2(int, integer) = integer.
 
@@ -636,7 +636,7 @@ pos_int_to_digits_2(D, Tail) = Result :-
 :- func mul_base(integer) = integer.
 
 mul_base(i(Len, Digits)) =
-    ( Digits = [] -> integer__zero ; i(Len + 1, mul_base_2(Digits)) ).
+    ( Digits = [] -> integer.zero ; i(Len + 1, mul_base_2(Digits)) ).
 
 :- func mul_base_2(list(digit)) = list(digit).
 
@@ -685,7 +685,7 @@ add_pairs(Div, i(L1, D1), i(L2, D2), Ds) :-
         chop(H1 + Div1, Div, Mod),
         Ds = [Mod | Ds1]
     ;
-        error("integer__add_pairs")
+        error("integer.add_pairs")
     ).
 
 :- pred add_pairs_equal(digit::out, list(digit)::in, list(digit)::in,
@@ -715,7 +715,7 @@ diff_pairs(Div, i(L1, D1), i(L2, D2), Ds) :-
         chop(H1 + Div1, Div, Mod),
         Ds = [Mod | Ds1]
     ;
-        error("integer__diff_pairs")
+        error("integer.diff_pairs")
     ).
 
 :- pred diff_pairs_equal(digit::out, list(digit)::in, list(digit)::in,
@@ -731,9 +731,9 @@ diff_pairs_equal(Div, [X | Xs], [Y | Ys], [Mod | TailDs]) :-
 
 pos_mul(i(L1, Ds1), i(L2, Ds2)) =
     ( L1 < L2 ->
-        pos_mul_list(Ds1, integer__zero, i(L2, Ds2))
+        pos_mul_list(Ds1, integer.zero, i(L2, Ds2))
     ;
-        pos_mul_list(Ds2, integer__zero, i(L1, Ds1))
+        pos_mul_list(Ds2, integer.zero, i(L1, Ds1))
     ).
 
 :- func pos_mul_list(list(digit), integer, integer) = integer.
@@ -747,10 +747,10 @@ pos_mul_list([X | Xs], Carry, Y) =
 
 big_quot_rem(X, Y, Quot, Rem) :-
     ( big_iszero(Y) ->
-        error("integer__big_quot_rem: division by zero")
+        error("integer.big_quot_rem: division by zero")
     ; big_iszero(X) ->
-        Quot = integer__zero,
-        Rem  = integer__zero
+        Quot = integer.zero,
+        Rem  = integer.zero
     ;
         X = i(SignX, _),
         Y = i(SignY, _),
@@ -783,11 +783,11 @@ quot_rem(U, V, Quot, Rem) :-
         V0 = head(V),
         ( V0 < basediv2 ->
             M = base div (V0 + 1),
-            quot_rem_2(integer__zero, mul_by_digit(M, U),
+            quot_rem_2(integer.zero, mul_by_digit(M, U),
                 mul_by_digit(M, V), QuotZeros, R),
             Rem = div_by_digit(M, R)
         ;
-            quot_rem_2(integer__zero, U, V, QuotZeros, Rem)
+            quot_rem_2(integer.zero, U, V, QuotZeros, Rem)
         ),
         Quot = decap(QuotZeros)
     ).
@@ -844,12 +844,12 @@ length(i(L, _)) = L.
 
 :- func decap(integer) = integer.
 
-decap(i(_, [])) = integer__zero.
+decap(i(_, [])) = integer.zero.
 decap(i(L, [H | T])) = ( H = 0 -> decap(i(L - 1, T)) ; i(L, [H | T]) ).
 
 :- func head(integer) = digit.
 
-head(I) = (I = i(_, [Hd|_T]) ->  Hd ; func_error("integer__head: []") ).
+head(I) = (I = i(_, [Hd|_T]) ->  Hd ; func_error("integer.head: []") ).
 
 :- func head_tail(integer) = digit.
 
@@ -857,18 +857,18 @@ head_tail(I) =
     (I = i(_, [_ | [HT | _]]) ->
         HT
     ;
-        func_error("integer__head_tail: []")
+        func_error("integer.head_tail: []")
     ).
 
 :- func tail(integer) = integer.
 
-tail(i(_, [])) = func_error("integer__tail: []").
+tail(i(_, [])) = func_error("integer.tail: []").
 tail(i(Len, [_ | Tail])) = i(Len - 1, Tail).
 
 :- func integer_append(integer, digit) = integer.
 
 integer_append(i(L, List), Digit) = i(L + 1, NewList) :-
-    list__append(List, [Digit], NewList).
+    list.append(List, [Digit], NewList).
 
 :- func integer_prepend(digit, integer) = integer.
 
@@ -876,12 +876,12 @@ integer_prepend(Digit, i(L, List)) = i(L + 1, [Digit | List]).
 
 :- func div_by_digit(digit, integer) = integer.
 
-div_by_digit(_, i(_, [])) = integer__zero.
+div_by_digit(_, i(_, [])) = integer.zero.
 div_by_digit(Digit, i(_, [X | Xs])) = div_by_digit_1(X, Xs, Digit).
 
 :- func div_by_digit_1(digit, list(digit), digit) = integer.
 
-div_by_digit_1(X, [], D) = ( Q = 0 -> integer__zero ; i(1, [Q]) ) :-
+div_by_digit_1(X, [], D) = ( Q = 0 -> integer.zero ; i(1, [Q]) ) :-
     Q = X div D.
 div_by_digit_1(X, [H | T], D) = Integer :-
     Q = X div D,
@@ -909,11 +909,11 @@ pos_geq(Xs, Ys) :-
     C = pos_cmp(Xs, Ys),
     ( C = (>) ; C = (=) ).
 
-integer__pow(A, N, integer.pow(A, N)).
+integer.pow(A, N, integer.pow(A, N)).
 
-integer__pow(A, N) = P :-
+integer.pow(A, N) = P :-
     ( big_isnegative(N) ->
-        error("integer__pow: negative exponent")
+        error("integer.pow: negative exponent")
     ;
         P = big_pow(A, N)
     ).
@@ -921,25 +921,25 @@ integer__pow(A, N) = P :-
 :- func big_pow(integer, integer) = integer.
 
 big_pow(A, N) =
-    ( N = integer__zero ->
-        integer__one
-    ; N = integer__one ->
+    ( N = integer.zero ->
+        integer.one
+    ; N = integer.one ->
         A
-    ; A = integer__one ->
-        integer__one
-    ; A = integer__zero ->
-        integer__zero
+    ; A = integer.one ->
+        integer.one
+    ; A = integer.zero ->
+        integer.zero
     ; N = i(_, [Head | Tail]) ->
         bits_pow_list(Tail, A, bits_pow_head(Head, A))
     ;
-        integer__zero
+        integer.zero
     ).
 
 :- func bits_pow_head(int, integer) = integer.
 
 bits_pow_head(H, A) =
     ( H = 0 ->
-        integer__one
+        integer.one
     ; H /\ lowbitmask = 1 ->
         A * bits_pow_head(H /\ evenmask, A)
     ;
@@ -967,18 +967,18 @@ bits_pow(Shifts, H, A, Accum) =
 
 big_sqr(A) = A * A.
 
-integer__float(i(_, List)) = float_list(float__float(base), 0.0, List).
+integer.float(i(_, List)) = float_list(float.float(base), 0.0, List).
 
 :- func float_list(float, float, list(int)) = float.
 
 float_list(_, Accum, []) = Accum.
 float_list(FBase, Accum, [H | T]) =
-    float_list(FBase, Accum * FBase + float__float(H), T).
+    float_list(FBase, Accum * FBase + float.float(H), T).
 
-integer__int(Integer) = Int :-
+integer.int(Integer) = Int :-
     (
-        Integer >= integer(int__min_int),
-        Integer =< integer(int__max_int)
+        Integer >= integer(int.min_int),
+        Integer =< integer(int.max_int)
     ->
         Integer = i(_Sign, Digits),
         Int = int_list(Digits, 0)
@@ -991,21 +991,21 @@ integer__int(Integer) = Int :-
 int_list([], Accum) = Accum.
 int_list([H | T], Accum) = int_list(T, Accum * base + H).
 
-integer__zero = i(0, []).
+integer.zero = i(0, []).
 
-integer__one = i(1, [1]).
+integer.one = i(1, [1]).
 
 %-----------------------------------------------------------------------------%
 %
 % Converting strings to integers.
 %
 
-integer__from_string(S) = Big :-
-    string__to_char_list(S, Cs),
+integer.from_string(S) = Big :-
+    string.to_char_list(S, Cs),
     string_to_integer(Cs) = Big.
 
-integer__det_from_string(S) =
-    ( I = integer__from_string(S) ->
+integer.det_from_string(S) =
+    ( I = integer.from_string(S) ->
         I
     ;
         func_error(
@@ -1019,7 +1019,7 @@ string_to_integer(CCs0 @ [C | Cs]) = Integer :-
         Integer = big_sign(-1, string_to_integer(Cs))
     ;
         CCs = ( C = ('+') -> Cs ; CCs0),
-        Integer = string_to_integer_acc(CCs, integer__zero)
+        Integer = string_to_integer_acc(CCs, integer.zero)
     ).
 
 :- func string_to_integer_acc(list(char)::in, integer::in) = (integer::out)
@@ -1031,9 +1031,9 @@ string_to_integer_acc([C | Cs], Acc) = Result :-
         % It is needed to guarantee termination with --reorder-conj.
         % Without it, the value of `Digit0 - Z' might be negative and
         % then the call to pos_int_to_digits/1 may not terminate.
-    ( char__is_digit(C) ->
-        Digit0 = char__to_int(C),
-        Z = char__to_int('0'),
+    ( char.is_digit(C) ->
+        Digit0 = char.to_int(C),
+        Z = char.to_int('0'),
         Digit = pos_int_to_digits(Digit0 - Z),
         NewAcc = pos_plus(Digit, mul_by_digit(10, Acc)),
         Result = string_to_integer_acc(Cs, NewAcc)
@@ -1046,7 +1046,7 @@ string_to_integer_acc([C | Cs], Acc) = Result :-
 % Converting integers to strings.
 %
 
-integer__to_string(i(Sign, Digits)) = SignStr ++ digits_to_string(AbsDigits) :-
+integer.to_string(i(Sign, Digits)) = SignStr ++ digits_to_string(AbsDigits) :-
     ( Sign < 0 ->
         SignStr = "-",
         neg_list(Digits, AbsDigits)
@@ -1062,9 +1062,9 @@ digits_to_string(Digits @ [_|_]) = Str :-
     printbase_rep(printbase_pos_int_to_digits(base),
         Digits, i(_, DigitsInPrintBase)),
     ( DigitsInPrintBase = [Head | Tail] ->
-        string__int_to_string(Head, SHead),
+        string.int_to_string(Head, SHead),
         digits_to_strings(Tail, Ss, []),
-        string__append_list([SHead | Ss], Str)
+        string.append_list([SHead | Ss], Str)
     ;
         error("integer.digits_to_string/1: empty list")
     ).
@@ -1080,7 +1080,7 @@ digits_to_strings([H | T]) -->
 
 :- pred printbase_rep(integer::in, list(digit)::in, integer::out) is det.
 
-printbase_rep(Base, Digits, printbase_rep_1(Digits, Base, integer__zero)).
+printbase_rep(Base, Digits, printbase_rep_1(Digits, Base, integer.zero)).
 
 :- func printbase_rep_1(list(digit), integer, integer) = integer.
 
@@ -1093,8 +1093,8 @@ printbase_rep_1([X|Xs], Base, Carry) =
 :- pred digit_to_string(digit::in, string::out) is det.
 
 digit_to_string(D, S) :-
-    string__int_to_string(D, S1),
-    string__pad_left(S1, '0', log10printbase, S).
+    string.int_to_string(D, S1),
+    string.pad_left(S1, '0', log10printbase, S).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1112,7 +1112,7 @@ log10printbase = 4.
 :- func printbase_pos_int_to_digits(int) = integer.
 
 printbase_pos_int_to_digits(D) =
-    printbase_pos_int_to_digits_2(D, integer__zero).
+    printbase_pos_int_to_digits_2(D, integer.zero).
 
 :- func printbase_pos_int_to_digits_2(int, integer) = integer.
 
@@ -1168,7 +1168,7 @@ printbase_add_pairs(Div, i(L1, D1), i(L2, D2), Ds) :-
         printbase_chop(H1 + Div1, Div, Mod),
         Ds = [Mod | Ds1]
     ;
-        error("integer__printbase_add_pairs")
+        error("integer.printbase_add_pairs")
     ).
 
 :- pred printbase_add_pairs_equal(digit::out, list(digit)::in, list(digit)::in,
@@ -1184,9 +1184,9 @@ printbase_add_pairs_equal(Div, [X | Xs], [Y | Ys], [Mod | TailDs]) :-
 
 printbase_pos_mul(i(L1, Ds1), i(L2, Ds2)) =
     ( L1 < L2 ->
-        printbase_pos_mul_list(Ds1, integer__zero, i(L2, Ds2))
+        printbase_pos_mul_list(Ds1, integer.zero, i(L2, Ds2))
     ;
-        printbase_pos_mul_list(Ds2, integer__zero, i(L1, Ds1))
+        printbase_pos_mul_list(Ds2, integer.zero, i(L1, Ds1))
     ).
 
 :- func printbase_pos_mul_list(list(digit), integer, integer) = integer.

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2003, 2005 The University of Melbourne.
+% Copyright (C) 1997-2003, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -67,6 +67,7 @@ is/2 is currently defined in int.m, for historical reasons.
 	% if the index is out of range.
 	%
 :- pred det_arg(int::in, T::in, univ::out) is det.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -77,18 +78,18 @@ is/2 is currently defined in int.m, for historical reasons.
 % we use module qualifiers here to avoid
 % overriding the builtin Prolog versions
 
-'prolog__=='(X, X).
-'prolog__\\=='(X, Y) :- X \= Y.
+'=='(X, X).
+'\\=='(X, Y) :- X \= Y.
 
-'prolog__=:='(X, X).
-'prolog__=\\='(X, Y) :- X \= Y.
+'=:='(X, X).
+'=\\='(X, Y) :- X \= Y.
 
-'prolog__=..'(Term, Functor - Args) :-
+'=..'(Term, Functor - Args) :-
 	deconstruct(Term, Functor, _Arity, Args).
 
 % we use a module qualifier here to avoid
 % overriding the builtin Prolog version
-prolog__arg(ArgumentIndex, Type, argument(Type, ArgumentIndex - 1)).
+prolog.arg(ArgumentIndex, Type, argument(Type, ArgumentIndex - 1)).
 
 det_arg(ArgumentIndex, Type, Argument) :-
 	( arg(ArgumentIndex, Type, Arg) ->

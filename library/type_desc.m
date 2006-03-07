@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -80,13 +80,13 @@
     % get_functor/5 and construct/3 will fail if used upon a value of
     % this type.)
     %
-:- func type_of(T::unused) = (type_desc__type_desc::out) is det.
+:- func type_of(T::unused) = (type_desc.type_desc::out) is det.
 
     % The predicate has_type/2 is basically an existentially typed inverse
     % to the function type_of/1. It constrains the type of the first argument
     % to be the type represented by the second argument.
     %
-:- some [T] pred has_type(T::unused, type_desc__type_desc::in) is det.
+:- some [T] pred has_type(T::unused, type_desc.type_desc::in) is det.
 
     % type_name(Type) returns the name of the specified type
     % (e.g. type_name(type_of([2,3])) = "list:list(int)").
@@ -94,7 +94,7 @@
     % Builtin types (those defined in builtin.m) will not have
     % a module qualifier.
     %
-:- func type_name(type_desc__type_desc) = string.
+:- func type_name(type_desc.type_desc) = string.
 
     % type_ctor_and_args(Type, TypeCtor, TypeArgs):
     %
@@ -114,8 +114,8 @@
     % constructor `bar/0', not `foo/0'. (If you don't want them expanded,
     %% you can use the reverse mode of make_type/2 instead.)
     %
-:- pred type_ctor_and_args(type_desc__type_desc::in,
-    type_desc__type_ctor_desc::out, list(type_desc__type_desc)::out) is det.
+:- pred type_ctor_and_args(type_desc.type_desc::in,
+    type_desc.type_ctor_desc::out, list(type_desc.type_desc)::out) is det.
 
     % pseudo_type_ctor_and_args(Type, TypeCtor, TypeArgs):
     %
@@ -126,55 +126,55 @@
     % Similar to type_ctor_and_args, but works on pseudo_type_infos.
     % Fails if the input pseudo_type_info is a variable.
     %
-:- pred pseudo_type_ctor_and_args(type_desc__pseudo_type_desc::in,
-    type_desc__type_ctor_desc::out, list(type_desc__pseudo_type_desc)::out)
+:- pred pseudo_type_ctor_and_args(type_desc.pseudo_type_desc::in,
+    type_desc.type_ctor_desc::out, list(type_desc.pseudo_type_desc)::out)
     is semidet.
 
     % type_ctor(Type) = TypeCtor :-
     %   type_ctor_and_args(Type, TypeCtor, _).
     %
-:- func type_ctor(type_desc__type_desc) = type_desc__type_ctor_desc.
+:- func type_ctor(type_desc.type_desc) = type_desc.type_ctor_desc.
 
     % pseudo_type_ctor(Type) = TypeCtor :-
     %   pseudo_type_ctor_and_args(Type, TypeCtor, _).
     %
-:- func pseudo_type_ctor(type_desc__pseudo_type_desc) =
-    type_desc__type_ctor_desc is semidet.
+:- func pseudo_type_ctor(type_desc.pseudo_type_desc) =
+    type_desc.type_ctor_desc is semidet.
 
     % type_args(Type) = TypeArgs :-
     %   type_ctor_and_args(Type, _, TypeArgs).
     %
-:- func type_args(type_desc__type_desc) = list(type_desc__type_desc).
+:- func type_args(type_desc.type_desc) = list(type_desc.type_desc).
 
     % pseudo_type_args(Type) = TypeArgs :-
     %   pseudo_type_ctor_and_args(Type, _, TypeArgs).
     %
-:- func pseudo_type_args(type_desc__pseudo_type_desc) =
-    list(type_desc__pseudo_type_desc) is semidet.
+:- func pseudo_type_args(type_desc.pseudo_type_desc) =
+    list(type_desc.pseudo_type_desc) is semidet.
 
     % type_ctor_name(TypeCtor) returns the name of specified type constructor.
     % (e.g. type_ctor_name(type_ctor(type_of([2,3]))) = "list").
     %
-:- func type_ctor_name(type_desc__type_ctor_desc) = string.
+:- func type_ctor_name(type_desc.type_ctor_desc) = string.
 
     % type_ctor_module_name(TypeCtor) returns the module name of specified
     % type constructor.
     % (e.g. type_ctor_module_name(type_ctor(type_of(2))) = "builtin").
     %
-:- func type_ctor_module_name(type_desc__type_ctor_desc) = string.
+:- func type_ctor_module_name(type_desc.type_ctor_desc) = string.
 
     % type_ctor_arity(TypeCtor) returns the arity of specified
     % type constructor.
     % (e.g. type_ctor_arity(type_ctor(type_of([2,3]))) = 1).
     %
-:- func type_ctor_arity(type_desc__type_ctor_desc) = int.
+:- func type_ctor_arity(type_desc.type_ctor_desc) = int.
 
     % type_ctor_name_and_arity(TypeCtor, ModuleName, TypeName, Arity) :-
     %   Name = type_ctor_name(TypeCtor),
     %   ModuleName = type_ctor_module_name(TypeCtor),
     %   Arity = type_ctor_arity(TypeCtor).
     %
-:- pred type_ctor_name_and_arity(type_desc__type_ctor_desc::in,
+:- pred type_ctor_name_and_arity(type_desc.type_ctor_desc::in,
     string::out, string::out, int::out) is det.
 
     % make_type(TypeCtor, TypeArgs) = Type:
@@ -190,8 +190,8 @@
     % type (and hence this reverse mode of make_type/2 may be more useful
     % for some purposes than the type_ctor/1 function).
     %
-:- func make_type(type_desc__type_ctor_desc, list(type_desc__type_desc)) =
-    type_desc__type_desc.
+:- func make_type(type_desc.type_ctor_desc, list(type_desc.type_desc)) =
+    type_desc.type_desc.
 :- mode make_type(in, in) = out is semidet.
 :- mode make_type(out, out) = in is cc_multi.
 
@@ -201,8 +201,8 @@
     % to the specified argument types. Aborts if the length of `TypeArgs'
     % is not the same as the arity of `TypeCtor'.
     %
-:- func det_make_type(type_desc__type_ctor_desc, list(type_desc__type_desc)) =
-    type_desc__type_desc.
+:- func det_make_type(type_desc.type_ctor_desc, list(type_desc.type_desc)) =
+    type_desc.type_desc.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -230,11 +230,11 @@
     "ML_call_rtti_compare_type_infos").
 
 :- pred call_rtti_compare_type_infos(comparison_result::out,
-    rtti_implementation__type_info::in, rtti_implementation__type_info::in)
+    rtti_implementation.type_info::in, rtti_implementation.type_info::in)
     is det.
 
 call_rtti_compare_type_infos(Res, T1, T2) :-
-    rtti_implementation__compare_type_infos(Res, T1, T2).
+    rtti_implementation.compare_type_infos(Res, T1, T2).
 
 :- pragma foreign_code("C#", "
 
@@ -252,7 +252,7 @@ public static int MR_compare_type_info(object[] t1, object[] t2) {
 }
 
 public static void
-special___Compare___type_ctor_desc_0_0(
+special._Compare._type_ctor_desc_0_0(
     ref object[] result, object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(
@@ -260,7 +260,7 @@ special___Compare___type_ctor_desc_0_0(
 }
 
 public static bool
-special___Unify___type_ctor_desc_0_0(object[] x, object[] y)
+special._Unify._type_ctor_desc_0_0(object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(
         ""foreign code for unifying type_ctor_descs"");
@@ -268,7 +268,7 @@ special___Unify___type_ctor_desc_0_0(object[] x, object[] y)
 }
 
 public static void
-special___Compare___type_desc_0_0(
+special._Compare._type_desc_0_0(
     ref object[] result, object[] x, object[] y)
 {
     mercury.type_desc.mercury_code.ML_call_rtti_compare_type_infos(
@@ -276,13 +276,13 @@ special___Compare___type_desc_0_0(
 }
 
 public static bool
-special___Unify___type_desc_0_0(object[] x, object[] y)
+special._Unify._type_desc_0_0(object[] x, object[] y)
 {
     return (MR_compare_type_info(x, y) == 0);
 }
 
 public static void
-special___Compare___pseudo_type_desc_0_0(
+special._Compare._pseudo_type_desc_0_0(
     ref object[] result, object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(
@@ -290,7 +290,7 @@ special___Compare___pseudo_type_desc_0_0(
 }
 
 public static bool
-special___Unify___pseudo_type_desc_0_0(object[] x, object[] y)
+special._Unify._pseudo_type_desc_0_0(object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(
         ""foreign code for unifying pseudo_type_desc"");
@@ -305,7 +305,7 @@ special___Unify___pseudo_type_desc_0_0(object[] x, object[] y)
 
 pseudo_type_desc_is_ground(PseudoTypeDesc) :-
     pseudo_type_ctor_and_args(PseudoTypeDesc, _TypeCtor, ArgPseudos),
-    list__all_true(pseudo_type_desc_is_ground, ArgPseudos).
+    list.all_true(pseudo_type_desc_is_ground, ArgPseudos).
 
 pseudo_type_desc_to_rep(PseudoTypeDesc) = PseudoTypeRep :-
     ( pseudo_type_ctor_and_args(PseudoTypeDesc, TypeCtor, ArgPseudos) ->
@@ -376,7 +376,7 @@ is_exist_pseudo_type_desc(_PseudoTypeDesc, -1) :-
 type_desc_to_pseudo_type_desc(_TypeDesc) = _PseudoTypeDesc :-
     % The backends in which we use this definition of this predicate
     % don't yet support pseudo_type_descs.
-    private_builtin__sorry("type_desc_to_pseudo_type_desc").
+    private_builtin.sorry("type_desc_to_pseudo_type_desc").
 
 ground_pseudo_type_desc_to_type_desc(PseudoTypeDesc) = TypeDesc :-
     ( pseudo_type_desc_is_ground(PseudoTypeDesc) ->
@@ -467,33 +467,33 @@ type_name(Type) = TypeName :-
             ModuleName = "builtin", Name = "{}"
         ->
             type_arg_names(ArgTypes, IsFunc, ArgTypeNames),
-            list__append(ArgTypeNames, ["}"], TypeStrings0),
+            list.append(ArgTypeNames, ["}"], TypeStrings0),
             TypeStrings = ["{" | TypeStrings0],
-            string__append_list(TypeStrings, UnqualifiedTypeName)
+            string.append_list(TypeStrings, UnqualifiedTypeName)
         ;
             IsFunc = yes,
             ArgTypes = [FuncRetType]
         ->
             FuncRetTypeName = type_name(FuncRetType),
-            string__append_list(["((func) = ", FuncRetTypeName, ")"],
+            string.append_list(["((func) = ", FuncRetTypeName, ")"],
                 UnqualifiedTypeName)
         ;
             type_arg_names(ArgTypes, IsFunc, ArgTypeNames),
             (
                 IsFunc = no,
-                list__append(ArgTypeNames, [")"], TypeStrings0)
+                list.append(ArgTypeNames, [")"], TypeStrings0)
             ;
                 IsFunc = yes,
                 TypeStrings0 = ArgTypeNames
             ),
             TypeNameStrings = [Name, "(" | TypeStrings0],
-            string__append_list(TypeNameStrings, UnqualifiedTypeName)
+            string.append_list(TypeNameStrings, UnqualifiedTypeName)
         )
     ),
     ( ModuleName = "builtin" ->
         TypeName = UnqualifiedTypeName
     ;
-        string__append_list([ModuleName, ".", UnqualifiedTypeName], TypeName)
+        string.append_list([ModuleName, ".", UnqualifiedTypeName], TypeName)
     ).
 
     % Turn the types into a list of strings representing an argument list,
@@ -504,7 +504,7 @@ type_name(Type) = TypeName :-
     %   ["TypeName1", ",", "TypeName2", ") = ", "ReturnTypeName"]
     % It is the caller's reponsibility to add matching parentheses.
     %
-:- pred type_arg_names(list(type_desc__type_desc)::in, bool::in,
+:- pred type_arg_names(list(type_desc.type_desc)::in, bool::in,
     list(string)::out) is det.
 
 type_arg_names([], _, []).
@@ -622,11 +622,11 @@ det_make_type(TypeCtor, ArgTypes) = Type :-
 ").
 
 type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
-    rtti_implementation__type_ctor_and_args(
-        rtti_implementation__unsafe_cast(TypeDesc),
+    rtti_implementation.type_ctor_and_args(
+        rtti_implementation.unsafe_cast(TypeDesc),
         TypeCtorDesc0, ArgTypes0),
-    TypeCtorDesc = rtti_implementation__unsafe_cast(TypeCtorDesc0),
-    ArgTypes = rtti_implementation__unsafe_cast(ArgTypes0).
+    TypeCtorDesc = rtti_implementation.unsafe_cast(TypeCtorDesc0),
+    ArgTypes = rtti_implementation.unsafe_cast(ArgTypes0).
 
 :- pragma foreign_proc("C",
     pseudo_type_ctor_and_args(PseudoTypeDesc::in, TypeCtorDesc::out,
@@ -648,7 +648,7 @@ type_ctor_and_args(TypeDesc::in, TypeCtorDesc::out, ArgTypes::out) :-
 
 pseudo_type_ctor_and_args(_, _, _) :-
     % The non-C backends can't (yet) handle pseudo_type_infos.
-    private_builtin__sorry("pseudo_type_ctor_and_args").
+    private_builtin.sorry("pseudo_type_ctor_and_args").
 
 % This is the forwards mode of make_type/2: given a type constructor and
 % a list of argument types, check that the length of the argument types
@@ -763,8 +763,8 @@ pseudo_type_ctor_and_args(_, _, _) :-
 
 type_ctor_name_and_arity(TypeCtorDesc::in, ModuleName::out,
         TypeCtorName::out, TypeCtorArity::out) :-
-    rtti_implementation__type_ctor_name_and_arity(
-        rtti_implementation__unsafe_cast(TypeCtorDesc),
+    rtti_implementation.type_ctor_name_and_arity(
+        rtti_implementation.unsafe_cast(TypeCtorDesc),
         ModuleName, TypeCtorName, TypeCtorArity).
 
 %-----------------------------------------------------------------------------%
@@ -776,7 +776,7 @@ type_ctor_name_and_arity(TypeCtorDesc::in, ModuleName::out,
     % XXX This code relies on the type "type_desc.type_desc" being the
     % same type as the builtin type "typeinfo".
     %
-:- func get_type_info_for_type_info = type_desc__type_desc.
+:- func get_type_info_for_type_info = type_desc.type_desc.
 
 :- pragma export(get_type_info_for_type_info = out,
     "ML_get_type_info_for_type_info").
@@ -806,14 +806,14 @@ get_type_info_for_type_info = TypeDesc :-
     }
 
     public static boolean
-    __Unify____type_desc_0_0(mercury.type_desc.Type_desc_0 x,
+    .Unify..type_desc_0_0(mercury.type_desc.Type_desc_0 x,
         mercury.type_desc.Type_desc_0 y)
     {
         return x.struct.unify(y.struct);
     }
 
     public static boolean
-    __Unify____type_ctor_desc_0_0(mercury.type_desc.Type_ctor_desc_0 x,
+    .Unify..type_ctor_desc_0_0(mercury.type_desc.Type_ctor_desc_0 x,
         mercury.type_desc.Type_ctor_desc_0 y)
     {
         // stub only
@@ -822,7 +822,7 @@ get_type_info_for_type_info = TypeDesc :-
     }
 
     public static mercury.builtin.Comparison_result_0
-    __Compare____type_desc_0_0(mercury.type_desc.Type_desc_0 x,
+    .Compare..type_desc_0_0(mercury.type_desc.Type_desc_0 x,
         mercury.type_desc.Type_desc_0 y)
     {
         // stub only
@@ -831,7 +831,7 @@ get_type_info_for_type_info = TypeDesc :-
     }
 
     public static mercury.builtin.Comparison_result_0
-    __Compare____type_ctor_desc_0_0(mercury.type_desc.Type_ctor_desc_0 x,
+    .Compare..type_ctor_desc_0_0(mercury.type_desc.Type_ctor_desc_0 x,
         mercury.type_desc.Type_ctor_desc_0 y)
     {
         // stub only

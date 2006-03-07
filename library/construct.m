@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,7 +33,7 @@
     % functors have the same name, the one with the lower arity
     % will have the lower number.
     %
-:- func num_functors(type_desc__type_desc) = int.
+:- func num_functors(type_desc.type_desc) = int.
 
     % get_functor(Type, FunctorNumber, FunctorName, Arity, ArgTypes)
     %
@@ -43,8 +43,8 @@
     % Fails if the type is not a discriminated union type, or if
     % FunctorNumber is out of range.
     %
-:- pred get_functor(type_desc__type_desc::in, int::in, string::out, int::out,
-    list(type_desc__pseudo_type_desc)::out) is semidet.
+:- pred get_functor(type_desc.type_desc::in, int::in, string::out, int::out,
+    list(type_desc.pseudo_type_desc)::out) is semidet.
 
     % get_functor_with_names(Type, FunctorNumber, FunctorName, Arity, ArgTypes,
     %   ArgNames)
@@ -55,8 +55,8 @@
     % field name of each functor argument, if any.  Fails if the type is
     % not a discriminated union type, or if FunctorNumber is out of range.
     %
-:- pred get_functor_with_names(type_desc__type_desc::in, int::in, string::out,
-    int::out, list(type_desc__pseudo_type_desc)::out, list(maybe(string))::out)
+:- pred get_functor_with_names(type_desc.type_desc::in, int::in, string::out,
+    int::out, list(type_desc.pseudo_type_desc)::out, list(maybe(string))::out)
     is semidet.
 
     % get_functor_ordinal(Type, I, Ordinal)
@@ -66,7 +66,7 @@
     % in lexicographic order. Fails if the type is not a discriminated
     % union type, or if I is out of range.
     %
-:- pred get_functor_ordinal(type_desc__type_desc::in, int::in, int::out)
+:- pred get_functor_ordinal(type_desc.type_desc::in, int::in, int::out)
     is semidet.
 
     % construct(TypeInfo, I, Args) = Term
@@ -79,7 +79,7 @@
     % functor, or if the types of the arguments do not match
     % the expected argument types of that functor.
     %
-:- func construct(type_desc__type_desc::in, int::in, list(univ)::in)
+:- func construct(type_desc.type_desc::in, int::in, list(univ)::in)
     = (univ::out) is semidet.
 
     % construct_tuple(Args) = Term
@@ -111,7 +111,7 @@
     MR_restore_transient_registers();
 }").
 
-num_functors(TypeDesc) = rtti_implementation__num_functors(TypeDesc).
+num_functors(TypeDesc) = rtti_implementation.num_functors(TypeDesc).
 
 get_functor(TypeInfo, FunctorNumber, FunctorName, Arity,
             PseudoTypeInfoList) :-
@@ -124,17 +124,17 @@ get_functor_with_names(TypeDesc, I, Functor, Arity,
         PseudoTypeInfoList, ArgNameList0),
     ArgNameList = map(null_to_no, ArgNameList0).
 
-:- pred get_functor_internal(type_desc__type_desc::in, int::in, string::out,
-    int::out, list(type_desc__pseudo_type_desc)::out) is semidet.
+:- pred get_functor_internal(type_desc.type_desc::in, int::in, string::out,
+    int::out, list(type_desc.pseudo_type_desc)::out) is semidet.
 
 get_functor_internal(TypeInfo, FunctorNumber, FunctorName, Arity,
         MaybeTypeInfoList) :-
-    rtti_implementation__get_functor(TypeInfo, FunctorNumber,
+    rtti_implementation.get_functor(TypeInfo, FunctorNumber,
         FunctorName, Arity, TypeInfoList),
     % The backends in which we use this definition of this predicate
     % don't yet support function symbols with existential types, which is
     % the only kind of function symbol in which we may want to return unbound.
-    MaybeTypeInfoList = list__map(type_desc_to_pseudo_type_desc, TypeInfoList).
+    MaybeTypeInfoList = list.map(type_desc_to_pseudo_type_desc, TypeInfoList).
 
 :- pragma foreign_proc("C",
     get_functor_internal(TypeDesc::in, FunctorNumber::in, FunctorName::out,
@@ -194,18 +194,18 @@ get_functor_internal(TypeInfo, FunctorNumber, FunctorName, Arity,
     SUCCESS_INDICATOR = success;
 }").
 
-:- pred get_functor_with_names_internal(type_desc__type_desc::in, int::in,
-    string::out, int::out, list(type_desc__pseudo_type_desc)::out,
+:- pred get_functor_with_names_internal(type_desc.type_desc::in, int::in,
+    string::out, int::out, list(type_desc.pseudo_type_desc)::out,
     list(string)::out) is semidet.
 
 get_functor_with_names_internal(TypeDesc, FunctorNumber, FunctorName, Arity,
         MaybeTypeInfoList, Names) :-
-    rtti_implementation__get_functor_with_names(TypeDesc, FunctorNumber,
+    rtti_implementation.get_functor_with_names(TypeDesc, FunctorNumber,
         FunctorName, Arity, TypeInfoList, Names),
     % The backends in which we use this definition of this predicate
     % don't yet support function symbols with existential types, which is
     % the only kind of function symbol in which we may want to return unbound.
-    MaybeTypeInfoList = list__map(type_desc_to_pseudo_type_desc, TypeInfoList).
+    MaybeTypeInfoList = list.map(type_desc_to_pseudo_type_desc, TypeInfoList).
 
 :- pragma foreign_proc("C",
     get_functor_with_names_internal(TypeDesc::in, FunctorNumber::in,
@@ -803,9 +803,9 @@ null_to_no(S) = ( if null(S) then no else yes(S) ).
 }").
 
 construct_tuple(Args) =
-    construct_tuple_2(Args, list__map(univ_type, Args), list__length(Args)).
+    construct_tuple_2(Args, list.map(univ_type, Args), list.length(Args)).
 
-:- func construct_tuple_2(list(univ), list(type_desc__type_desc), int) = univ.
+:- func construct_tuple_2(list(univ), list(type_desc.type_desc), int) = univ.
 
 :- pragma foreign_proc("C",
     construct_tuple_2(Args::in, ArgTypes::in, Arity::in) = (Term::out),

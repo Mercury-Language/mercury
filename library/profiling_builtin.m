@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2005 The University of Melbourne.
+% Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1514,176 +1514,176 @@
     % matching foreign_proc version.
 
 prepare_for_normal_call(_) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("prepare_for_normal_call").
+    impure private_builtin.imp,
+    private_builtin.sorry("prepare_for_normal_call").
 prepare_for_special_call(_, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("prepare_for_special_call").
+    impure private_builtin.imp,
+    private_builtin.sorry("prepare_for_special_call").
 prepare_for_ho_call(_, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("prepare_for_ho_call").
+    impure private_builtin.imp,
+    private_builtin.sorry("prepare_for_ho_call").
 prepare_for_method_call(_, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("prepare_for_method_call").
+    impure private_builtin.imp,
+    private_builtin.sorry("prepare_for_method_call").
 prepare_for_callback(_) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("prepare_for_callback").
+    impure private_builtin.imp,
+    private_builtin.sorry("prepare_for_callback").
 prepare_for_tail_call(_) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("prepare_for_tail_call").
+    impure private_builtin.imp,
+    private_builtin.sorry("prepare_for_tail_call").
 
 det_call_port_code_ac(_, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("det_call_port_code_ac").
+    impure private_builtin.imp,
+    private_builtin.sorry("det_call_port_code_ac").
 det_call_port_code_sr(_, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("det_call_port_code_sr").
+    impure private_builtin.imp,
+    private_builtin.sorry("det_call_port_code_sr").
 det_exit_port_code_ac(_, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("det_exit_port_code_ac").
+    impure private_builtin.imp,
+    private_builtin.sorry("det_exit_port_code_ac").
 det_exit_port_code_sr(_, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("det_exit_port_code_sr").
+    impure private_builtin.imp,
+    private_builtin.sorry("det_exit_port_code_sr").
 semi_call_port_code_ac(_, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("semi_call_port_code_ac").
+    impure private_builtin.imp,
+    private_builtin.sorry("semi_call_port_code_ac").
 semi_call_port_code_sr(_, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("semi_call_port_code_sr").
+    impure private_builtin.imp,
+    private_builtin.sorry("semi_call_port_code_sr").
 semi_exit_port_code_ac(_, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("semi_exit_port_code_ac").
+    impure private_builtin.imp,
+    private_builtin.sorry("semi_exit_port_code_ac").
 semi_exit_port_code_sr(_, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("semi_exit_port_code_sr").
+    impure private_builtin.imp,
+    private_builtin.sorry("semi_exit_port_code_sr").
 semi_fail_port_code_ac(_, _) :-
-    impure private_builtin__imp,
+    impure private_builtin.imp,
     semidet_succeed,
-    private_builtin__sorry("semi_fail_port_code_ac").
+    private_builtin.sorry("semi_fail_port_code_ac").
 semi_fail_port_code_sr(_, _, _) :-
-    impure private_builtin__imp,
+    impure private_builtin.imp,
     semidet_succeed,
-    private_builtin__sorry("semi_fail_port_code_sr").
+    private_builtin.sorry("semi_fail_port_code_sr").
 non_call_port_code_ac(_, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("non_call_port_code_ac").
+    impure private_builtin.imp,
+    private_builtin.sorry("non_call_port_code_ac").
 non_call_port_code_sr(_, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("non_call_port_code_sr").
+    impure private_builtin.imp,
+    private_builtin.sorry("non_call_port_code_sr").
 non_exit_port_code_ac(_, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("non_exit_port_code_ac").
+    impure private_builtin.imp,
+    private_builtin.sorry("non_exit_port_code_ac").
 non_exit_port_code_sr(_, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("non_exit_port_code_sr").
+    impure private_builtin.imp,
+    private_builtin.sorry("non_exit_port_code_sr").
 non_fail_port_code_ac(_, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("non_fail_port_code_ac").
+    impure private_builtin.imp,
+    private_builtin.sorry("non_fail_port_code_ac").
 non_fail_port_code_sr(_, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("non_fail_port_code_sr").
+    impure private_builtin.imp,
+    private_builtin.sorry("non_fail_port_code_sr").
 non_redo_port_code_ac(_, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("non_redo_port_code_ac").
+    impure private_builtin.imp,
+    private_builtin.sorry("non_redo_port_code_ac").
 non_redo_port_code_sr(_, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("non_redo_port_code_sr").
+    impure private_builtin.imp,
+    private_builtin.sorry("non_redo_port_code_sr").
 save_and_zero_activation_info_ac(_, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("save_and_zero_activation_info_ac").
+    impure private_builtin.imp,
+    private_builtin.sorry("save_and_zero_activation_info_ac").
 save_and_zero_activation_info_sr(_) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("save_and_zero_activation_info_sr").
+    impure private_builtin.imp,
+    private_builtin.sorry("save_and_zero_activation_info_sr").
 rezero_activation_info_ac :-
-    impure private_builtin__imp,
-    private_builtin__sorry("rezero_activation_info_ac").
+    impure private_builtin.imp,
+    private_builtin.sorry("rezero_activation_info_ac").
 rezero_activation_info_sr :-
-    impure private_builtin__imp,
-    private_builtin__sorry("rezero_activation_info_sr").
+    impure private_builtin.imp,
+    private_builtin.sorry("rezero_activation_info_sr").
 reset_activation_info_ac(_, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("reset_activation_info_ac").
+    impure private_builtin.imp,
+    private_builtin.sorry("reset_activation_info_ac").
 reset_activation_info_sr(_) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("reset_activation_info_sr").
+    impure private_builtin.imp,
+    private_builtin.sorry("reset_activation_info_sr").
 save_recursion_depth_1(_, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("save_recursion_depth_1").
+    impure private_builtin.imp,
+    private_builtin.sorry("save_recursion_depth_1").
 save_recursion_depth_2(_, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("save_recursion_depth_2").
+    impure private_builtin.imp,
+    private_builtin.sorry("save_recursion_depth_2").
 save_recursion_depth_3(_, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("save_recursion_depth_3").
+    impure private_builtin.imp,
+    private_builtin.sorry("save_recursion_depth_3").
 save_recursion_depth_4(_, _, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("save_recursion_depth_4").
+    impure private_builtin.imp,
+    private_builtin.sorry("save_recursion_depth_4").
 save_recursion_depth_5(_, _, _, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("save_recursion_depth_5").
+    impure private_builtin.imp,
+    private_builtin.sorry("save_recursion_depth_5").
 save_recursion_depth_6(_, _, _, _, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("save_recursion_depth_6").
+    impure private_builtin.imp,
+    private_builtin.sorry("save_recursion_depth_6").
 save_recursion_depth_7(_, _, _, _, _, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("save_recursion_depth_7").
+    impure private_builtin.imp,
+    private_builtin.sorry("save_recursion_depth_7").
 save_recursion_depth_8(_, _, _, _, _, _, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("save_recursion_depth_8").
+    impure private_builtin.imp,
+    private_builtin.sorry("save_recursion_depth_8").
 save_recursion_depth_9(_, _, _, _, _, _, _, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("save_recursion_depth_9").
+    impure private_builtin.imp,
+    private_builtin.sorry("save_recursion_depth_9").
 restore_recursion_depth_exit_1(_, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("restore_recursion_depth_exit_1").
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_exit_1").
 restore_recursion_depth_exit_2(_, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("restore_recursion_depth_exit_2").
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_exit_2").
 restore_recursion_depth_exit_3(_, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("restore_recursion_depth_exit_3").
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_exit_3").
 restore_recursion_depth_exit_4(_, _, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("restore_recursion_depth_exit_4").
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_exit_4").
 restore_recursion_depth_exit_5(_, _, _, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("restore_recursion_depth_exit_5").
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_exit_5").
 restore_recursion_depth_exit_6(_, _, _, _, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("restore_recursion_depth_exit_6").
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_exit_6").
 restore_recursion_depth_exit_7(_, _, _, _, _, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("restore_recursion_depth_exit_7").
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_exit_7").
 restore_recursion_depth_exit_8(_, _, _, _, _, _, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("restore_recursion_depth_exit_8").
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_exit_8").
 restore_recursion_depth_exit_9(_, _, _, _, _, _, _, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("restore_recursion_depth_exit_9").
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_exit_9").
 restore_recursion_depth_fail_1(_, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("restore_recursion_depth_fail_1").
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_fail_1").
 restore_recursion_depth_fail_2(_, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("restore_recursion_depth_fail_2").
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_fail_2").
 restore_recursion_depth_fail_3(_, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("restore_recursion_depth_fail_3").
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_fail_3").
 restore_recursion_depth_fail_4(_, _, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("restore_recursion_depth_fail_4").
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_fail_4").
 restore_recursion_depth_fail_5(_, _, _, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("restore_recursion_depth_fail_5").
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_fail_5").
 restore_recursion_depth_fail_6(_, _, _, _, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("restore_recursion_depth_fail_6").
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_fail_6").
 restore_recursion_depth_fail_7(_, _, _, _, _, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("restore_recursion_depth_fail_7").
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_fail_7").
 restore_recursion_depth_fail_8(_, _, _, _, _, _, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("restore_recursion_depth_fail_8").
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_fail_8").
 restore_recursion_depth_fail_9(_, _, _, _, _, _, _, _, _, _, _) :-
-    impure private_builtin__imp,
-    private_builtin__sorry("restore_recursion_depth_fail_9").
+    impure private_builtin.imp,
+    private_builtin.sorry("restore_recursion_depth_fail_9").

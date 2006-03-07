@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2005 The University of Melbourne.
+% Copyright (C) 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -192,13 +192,13 @@
 
 new(HashPred, N, MaxOccupancy) = HT :-
     (      if N =< 1 then
-            throw(software_error("version_hash_table__new: N =< 1"))
-      else if N >= int__bits_per_int then
+            throw(software_error("version_hash_table.new: N =< 1"))
+      else if N >= int.bits_per_int then
             throw(software_error(
-                "version_hash_table__new: N >= int__bits_per_int"))
+                "version_hash_table.new: N >= int.bits_per_int"))
       else if MaxOccupancy =< 0.0 ; 1.0 =< MaxOccupancy  then
             throw(software_error(
-                "version_hash_table__new: MaxOccupancy not in (0.0, 1.0)"))
+                "version_hash_table.new: MaxOccupancy not in (0.0, 1.0)"))
       else
             NumBuckets   = 1 << N,
             MaxOccupants = ceiling_to_int(float(NumBuckets) * MaxOccupancy),
@@ -294,7 +294,7 @@ det_insert(HT0, K, V) = HT :-
     B = HT0 ^ buckets ^ elem(H),
     (
         B  = full(_, _),
-        error("version_hash_table__det_update: key already present")
+        error("version_hash_table.det_update: key already present")
     ;
         B  = empty,
         HT =
@@ -315,7 +315,7 @@ det_update(HT0, K, V) = HT :-
     B = HT0 ^ buckets ^ elem(H),
     (
         B = empty,
-        error("version_hash_table__det_update: key not found")
+        error("version_hash_table.det_update: key not found")
     ;
         B = full(_, _),
         HT = ( HT0 ^ buckets ^ elem(H) := full(K, V) )
@@ -328,7 +328,7 @@ det_update(K, V, HT, det_update(HT, K, V)).
 lookup(HT, K) =
     ( if   V = search(HT, K)
       then V
-      else func_error("version_hash_table__lookup: key not found")
+      else func_error("version_hash_table.lookup: key not found")
     ).
 
 HT ^ elem(K) = lookup(HT, K).
@@ -397,23 +397,23 @@ int_double_hash(N, H1, H2) :-
     % There are almost certainly better ones out there...
     %
 string_double_hash(S, H1, H2) :-
-    H1 = string__hash(S),
-    H2 = string__foldl(func(C, N) = char__to_int(C) + N, S, 0).
+    H1 = string.hash(S),
+    H2 = string.foldl(func(C, N) = char.to_int(C) + N, S, 0).
 
 %------------------------------------------------------------------------------%
 
     % There are almost certainly better ones out there...
     %
 float_double_hash(F, H1, H2) :-
-    H1 = float__hash(F),
-    H2 = float__hash(F * F).
+    H1 = float.hash(F),
+    H2 = float.hash(F * F).
 
 %------------------------------------------------------------------------------%
 
     % There are almost certainly better ones out there...
     %
 char_double_hash(C, H1, H2) :-
-    int_double_hash(char__to_int(C), H1, H2).
+    int_double_hash(char.to_int(C), H1, H2).
 
 %-----------------------------------------------------------------------------%
 
@@ -443,7 +443,7 @@ generic_double_hash(T, Ha, Hb) :-
       else if dynamic_cast_to_array(T, Array) then
 
         {Ha, Hb} =
-            array__foldl(
+            array.foldl(
                 ( func(X, {HA0, HB0}) = {HA, HB} :-
                     generic_double_hash(X, HXA, HXB),
                     double_munge(HXA, HA0, HA, HXB, HB0, HB)
@@ -457,7 +457,7 @@ generic_double_hash(T, Ha, Hb) :-
         deconstruct(T, FunctorName, Arity, Args),
         string_double_hash(FunctorName, Ha0, Hb0),
         double_munge(Arity, Ha0, Ha1, Arity, Hb0, Hb1),
-        list__foldl2(
+        list.foldl2(
             ( pred(U::in, HA0::in, HA::out, HB0::in, HB::out) is det :-
                 generic_double_hash(U, HUA, HUB),
                 double_munge(HUA, HA0, HA, HUB, HB0, HB)
@@ -487,7 +487,7 @@ double_munge(X, Ha0, Ha, Y, Hb0, Hb) :-
 
 munge(N, X, Y) =
     (X `unchecked_left_shift` N) `xor`
-    (X `unchecked_right_shift` (int__bits_per_int - N)) `xor`
+    (X `unchecked_right_shift` (int.bits_per_int - N)) `xor`
     Y.
 
 %-----------------------------------------------------------------------------%

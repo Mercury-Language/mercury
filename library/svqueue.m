@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2004-2005 The University of Melbourne.
+% Copyright (C) 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -24,70 +24,70 @@
 :- import_module list.
 :- import_module queue.
 
-    % `svqueue__put(Elem, Queue0, Queue)' is true iff `Queue' is
+    % `svqueue.put(Elem, Queue0, Queue)' is true iff `Queue' is
     % the queue which results from appending `Elem' onto the end
     % of `Queue0'.
     %
-:- pred svqueue__put(T::in, queue(T)::in, queue(T)::out) is det.
+:- pred svqueue.put(T::in, queue(T)::in, queue(T)::out) is det.
 
-    % `svqueue__put_list(Elems, Queue0, Queue)' is true iff `Queue'
+    % `svqueue.put_list(Elems, Queue0, Queue)' is true iff `Queue'
     % is the queue which results from inserting the items in the
     % list `Elems' into `Queue0'.
     %
-:- pred svqueue__put_list(list(T)::in, queue(T)::in, queue(T)::out) is det.
+:- pred svqueue.put_list(list(T)::in, queue(T)::in, queue(T)::out) is det.
 
-    % `svqueue__get(Elem, Queue0, Queue)' is true iff `Queue0' is
+    % `svqueue.get(Elem, Queue0, Queue)' is true iff `Queue0' is
     % a non-empty queue whose first element is `Elem', and `Queue'
     % the queue which results from removing that element from
     % the front of `Queue0'.
     %
-:- pred svqueue__get(T::out, queue(T)::in, queue(T)::out) is semidet.
+:- pred svqueue.get(T::out, queue(T)::in, queue(T)::out) is semidet.
 
-    % `svqueue__delete_all(Elem, Queue0, Queue)' is true iff `Queue' is
+    % `svqueue.delete_all(Elem, Queue0, Queue)' is true iff `Queue' is
     % the same queue as `Queue0' with all occurences of `Elem' removed
     % from it.
     %
-:- pred svqueue__delete_all(T::in, queue(T)::in, queue(T)::out) is det.
+:- pred svqueue.delete_all(T::in, queue(T)::in, queue(T)::out) is det.
 
-    % `svqueue__put_on_front(Elem, Queue0, Queue)' pushes `Elem' on to
+    % `svqueue.put_on_front(Elem, Queue0, Queue)' pushes `Elem' on to
     % the front of `Queue0', giving `Queue'.
     %
-:- pred svqueue__put_on_front(T::in, queue(T)::in, queue(T)::out) is det.
+:- pred svqueue.put_on_front(T::in, queue(T)::in, queue(T)::out) is det.
 
-    % `svqueue__put_list_on_front(Queue0, Elems, Queue)' pushes `Elems'
+    % `svqueue.put_list_on_front(Queue0, Elems, Queue)' pushes `Elems'
     % on to the front of `Queue0', giving `Queue' (the Nth member
     % of `Elems' becomes the Nth member from the front of `Queue').
     %
-:- pred svqueue__put_list_on_front(list(T)::in, queue(T)::in, queue(T)::out)
+:- pred svqueue.put_list_on_front(list(T)::in, queue(T)::in, queue(T)::out)
     is det.
 
-    % `queue__get_from_back(Elem, Queue0, Queue)' removes `Elem' from
+    % `queue.get_from_back(Elem, Queue0, Queue)' removes `Elem' from
     % the back of `Queue0', giving `Queue'.
     %
-:- pred svqueue__get_from_back(T::out, queue(T)::in, queue(T)::out) is semidet.
+:- pred svqueue.get_from_back(T::out, queue(T)::in, queue(T)::out) is semidet.
 
 %--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
 
 :- implementation.
 
-svqueue__put(Elem, Queue0, Queue) :-
-    queue__put(Queue0, Elem, Queue).
+svqueue.put(Elem, Queue0, Queue) :-
+    queue.put(Queue0, Elem, Queue).
 
-svqueue__put_list(List, Queue0, Queue) :-
-    queue__put_list(Queue0, List, Queue).
+svqueue.put_list(List, Queue0, Queue) :-
+    queue.put_list(Queue0, List, Queue).
 
-svqueue__get(Elem, Queue0, Queue) :-
-    queue__get(Queue0, Elem, Queue).
+svqueue.get(Elem, Queue0, Queue) :-
+    queue.get(Queue0, Elem, Queue).
 
-svqueue__delete_all(Elem, Queue0, Queue) :-
-    queue__delete_all(Queue0, Elem, Queue).
+svqueue.delete_all(Elem, Queue0, Queue) :-
+    queue.delete_all(Queue0, Elem, Queue).
 
-svqueue__put_on_front(Elem, Queue0, Queue) :-
-    queue__put_on_front(Queue0, Elem, Queue).
+svqueue.put_on_front(Elem, Queue0, Queue) :-
+    queue.put_on_front(Queue0, Elem, Queue).
 
-svqueue__put_list_on_front(Elems, Queue0, Queue) :-
-    queue__put_list_on_front(Queue0, Elems, Queue).
+svqueue.put_list_on_front(Elems, Queue0, Queue) :-
+    queue.put_list_on_front(Queue0, Elems, Queue).
 
-svqueue__get_from_back(Elem, Queue0, Queue) :-
-    queue__get_from_back(Queue0, Elem, Queue).
+svqueue.get_from_back(Elem, Queue0, Queue) :-
+    queue.get_from_back(Queue0, Elem, Queue).

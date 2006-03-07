@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1997, 2000-2005 The University of Melbourne.
+% Copyright (C) 1994-1997, 2000-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -34,18 +34,18 @@
 
 % Stores and keys are indexed by a type S of typeclass store(S) that
 % is used to distinguish between different stores.  By using an
-% existential type declaration for store__new (see below), we use the
+% existential type declaration for store.new (see below), we use the
 % type system to ensure at compile time that you never attempt to use
 % a key from one store to access a different store.
 
 :- typeclass store(S).
 :- type store(S).
 
-:- instance store(io__state).
+:- instance store(io.state).
 :- instance store(store(S)).
 
     % initialize a new store
-:- some [S] pred store__new(store(S)::uo) is det.
+:- some [S] pred store.new(store(S)::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -56,29 +56,29 @@
     % a mutable variable holding a value of type T in store S
     %
 :- type generic_mutvar(T, S).
-:- type io_mutvar(T) == generic_mutvar(T, io__state).
+:- type io_mutvar(T) == generic_mutvar(T, io.state).
 :- type store_mutvar(T, S) == generic_mutvar(T, store(S)).
 
     % Create a new mutable variable, initialized with the specified value.
     %
-:- pred store__new_mutvar(T::in, generic_mutvar(T, S)::out, S::di, S::uo)
+:- pred store.new_mutvar(T::in, generic_mutvar(T, S)::out, S::di, S::uo)
     is det <= store(S).
 
     % copy_mutvar(OldMutvar, NewMutvar, S0, S) is equivalent to the sequence
     %   get_mutvar(OldMutvar, Value, S0, S1),
     %   new_mutvar(NewMutvar, Value, S1, S )
     %
-:- pred store__copy_mutvar(generic_mutvar(T, S)::in, generic_mutvar(T, S)::out,
+:- pred store.copy_mutvar(generic_mutvar(T, S)::in, generic_mutvar(T, S)::out,
     S::di, S::uo) is det <= store(S).
 
     % Lookup the value stored in a given mutable variable.
     %
-:- pred store__get_mutvar(generic_mutvar(T, S)::in, T::out,
+:- pred store.get_mutvar(generic_mutvar(T, S)::in, T::out,
     S::di, S::uo) is det <= store(S).
 
     % Replace the value stored in a given mutable variable.
     %
-:- pred store__set_mutvar(generic_mutvar(T, S)::in, T::in,
+:- pred store.set_mutvar(generic_mutvar(T, S)::in, T::in,
     S::di, S::uo) is det <= store(S).
 
     % new_cyclic_mutvar(Func, Mutvar):
@@ -100,10 +100,10 @@
     %       store(S)::di, store(S)::uo) is det.
     %
     %   init_cl(X, CList, !Store) :-
-    %       store__new_cyclic_mutvar(func(CL) = node(X, CL), CList,
+    %       store.new_cyclic_mutvar(func(CL) = node(X, CL), CList,
     %       !Store).
     %
-:- pred store__new_cyclic_mutvar((func(generic_mutvar(T, S)) = T)::in,
+:- pred store.new_cyclic_mutvar((func(generic_mutvar(T, S)) = T)::in,
     generic_mutvar(T, S)::out, S::di, S::uo) is det <= store(S).
 
 %-----------------------------------------------------------------------------%
@@ -116,7 +116,7 @@
     % A reference to value of type T in store S.
     %
 :- type generic_ref(T, S).
-:- type io_ref(T, S) == generic_ref(T, io__state).
+:- type io_ref(T, S) == generic_ref(T, io.state).
 :- type store_ref(T, S) == generic_ref(T, store(S)).
 
     % new_ref(Val, Ref):
@@ -129,7 +129,7 @@
     % It does however allocate one cell to hold the reference;
     % you can use new_arg_ref to avoid that.)
     %
-:- pred store__new_ref(T::di, generic_ref(T, S)::out,
+:- pred store.new_ref(T::di, generic_ref(T, S)::out,
     S::di, S::uo) is det <= store(S).
 
     % ref_functor(Ref, Functor, Arity):
@@ -137,7 +137,7 @@
     % Given a reference to a term, return the functor and arity
     % of that term.
     %
-:- pred store__ref_functor(generic_ref(T, S)::in, string::out, int::out,
+:- pred store.ref_functor(generic_ref(T, S)::in, string::out, int::out,
     S::di, S::uo) is det <= store(S).
 
     % arg_ref(Ref, ArgNum, ArgRef):
@@ -149,7 +149,7 @@
     % It is an error if the argument number is out of range,
     % or if the argument reference has the wrong type.
     %
-:- pred store__arg_ref(generic_ref(T, S)::in, int::in,
+:- pred store.arg_ref(generic_ref(T, S)::in, int::in,
     generic_ref(ArgT, S)::out, S::di, S::uo) is det <= store(S).
 
     % new_arg_ref(Val, ArgNum, ArgRef):
@@ -160,7 +160,7 @@
     % It is an error if the argument number is out of range,
     % or if the argument reference has the wrong type.
     %
-:- pred store__new_arg_ref(T::di, int::in, generic_ref(ArgT, S)::out,
+:- pred store.new_arg_ref(T::di, int::in, generic_ref(ArgT, S)::out,
     S::di, S::uo) is det <= store(S).
 
     % set_ref(Ref, ValueRef):
@@ -171,7 +171,7 @@
     % update the store so that the term referred to by Ref
     % is replaced with the term referenced by ValueRef.
     %
-:- pred store__set_ref(generic_ref(T, S)::in, generic_ref(T, S)::in,
+:- pred store.set_ref(generic_ref(T, S)::in, generic_ref(T, S)::in,
     S::di, S::uo) is det <= store(S).
 
     % set_ref_value(Ref, Value):
@@ -181,7 +181,7 @@
     % update the store so that the term referred to by Ref
     % is replaced with Value.
     %
-:- pred store__set_ref_value(generic_ref(T, S)::in, T::di,
+:- pred store.set_ref_value(generic_ref(T, S)::in, T::di,
     S::di, S::uo) is det <= store(S).
 
     % Given a reference to a term, return that term.
@@ -190,12 +190,12 @@
     % is most efficient with atomic terms.
     % XXX current implementation buggy (does shallow copy)
     %
-:- pred store__copy_ref_value(generic_ref(T, S)::in, T::uo,
+:- pred store.copy_ref_value(generic_ref(T, S)::in, T::uo,
     S::di, S::uo) is det <= store(S).
 
     % Same as above, but without making a copy. Destroys the store.
     %
-:- pred store__extract_ref_value(S::di, generic_ref(T, S)::in, T::out)
+:- pred store.extract_ref_value(S::di, generic_ref(T, S)::in, T::out)
     is det <= store(S).
 
 %-----------------------------------------------------------------------------%
@@ -219,10 +219,10 @@
     % or if the argument is a `no_tag' type,
     % then the behaviour is undefined, and probably harmful.
 
-:- pred store__unsafe_arg_ref(generic_ref(T, S)::in, int::in,
+:- pred store.unsafe_arg_ref(generic_ref(T, S)::in, int::in,
     generic_ref(ArgT, S)::out, S::di, S::uo) is det <= store(S).
 
-:- pred store__unsafe_new_arg_ref(T::di, int::in, generic_ref(ArgT, S)::out,
+:- pred store.unsafe_new_arg_ref(T::di, int::in, generic_ref(ArgT, S)::out,
     S::di, S::uo) is det <= store(S).
 
 %-----------------------------------------------------------------------------%
@@ -241,7 +241,7 @@
 
 :- typeclass store(T) where [].
 :- instance store(store(S)) where [].
-:- instance store(io__state) where [].
+:- instance store(io.state) where [].
 
 % The store type itself is just a dummy type,
 % with no real representation.
@@ -267,25 +267,25 @@ store_compare(_, _, _) :-
 :- type generic_mutvar(T, S) ---> mutvar(private_builtin.ref(T)).
 :- type generic_ref(T, S) ---> ref(private_builtin.ref(T)).
 
-store__new(S) :-
-    store__do_init(S).
+store.new(S) :-
+    store.do_init(S).
 
-:- some [S] pred store__do_init(store(S)::uo) is det.
+:- some [S] pred store.do_init(store(S)::uo) is det.
 
 :- pragma foreign_proc("C",
-    store__do_init(_S0::uo),
+    store.do_init(_S0::uo),
     [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     /* TypeInfo_for_S */
 ").
 :- pragma foreign_proc("C#",
-    store__do_init(_S0::uo),
+    store.do_init(_S0::uo),
     [will_not_call_mercury, promise_pure],
 "
     // TypeInfo_for_S
 ").
 :- pragma foreign_proc("Java",
-    store__do_init(_S0::uo),
+    store.do_init(_S0::uo),
     [will_not_call_mercury, promise_pure],
 "
     // TypeInfo_for_S
@@ -360,7 +360,7 @@ copy_mutvar(Mutvar, Copy, !S) :-
     get_mutvar(Mutvar, Value, !S),
     new_mutvar(Value, Copy, !S).
 
-:- pred store__unsafe_new_uninitialized_mutvar(generic_mutvar(T, S)::out,
+:- pred store.unsafe_new_uninitialized_mutvar(generic_mutvar(T, S)::out,
     S::di, S::uo) is det <= store(S).
 
 :- pragma foreign_proc("C",
@@ -380,10 +380,10 @@ copy_mutvar(Mutvar, Copy, !S) :-
     Mutvar = new mercury.std_util.Mutvar(null);
 ").
 
-store__new_cyclic_mutvar(Func, MutVar, !Store) :-
-    store__unsafe_new_uninitialized_mutvar(MutVar, !Store),
+store.new_cyclic_mutvar(Func, MutVar, !Store) :-
+    store.unsafe_new_uninitialized_mutvar(MutVar, !Store),
     Value = apply(Func, MutVar),
-    store__set_mutvar(MutVar, Value, !Store).
+    store.set_mutvar(MutVar, Value, !Store).
 
 %-----------------------------------------------------------------------------%
 
@@ -493,7 +493,7 @@ copy_ref_value(Ref, Val) -->
     % making a copy; it is unsafe because the store could later be modified,
     % changing the returned value.
     %
-:- pred store__unsafe_ref_value(generic_ref(T, S)::in, T::uo,
+:- pred store.unsafe_ref_value(generic_ref(T, S)::in, T::uo,
     S::di, S::uo) is det <= store(S).
 
 :- pragma foreign_proc("C",
@@ -540,13 +540,13 @@ ref_functor(Ref, Functor, Arity, !Store) :-
     if (!MR_arg(type_info, (MR_Word *) Ref, ArgNum, &arg_type_info,
         &arg_ref, MR_NONCANON_ABORT))
     {
-        MR_fatal_error(""store__arg_ref: argument number out of range"");
+        MR_fatal_error(""store.arg_ref: argument number out of range"");
     }
 
     if (MR_compare_type_info(arg_type_info, exp_arg_type_info) !=
         MR_COMPARE_EQUAL)
     {
-        MR_fatal_error(""store__arg_ref: argument has wrong type"");
+        MR_fatal_error(""store.arg_ref: argument has wrong type"");
     }
 
     MR_restore_transient_registers();
@@ -585,13 +585,13 @@ ref_functor(Ref, Functor, Arity, !Store) :-
     if (!MR_arg(type_info, (MR_Word *) &Val, ArgNum, &arg_type_info,
         &arg_ref, MR_NONCANON_ABORT))
     {
-        MR_fatal_error(""store__new_arg_ref: argument number out of range"");
+        MR_fatal_error(""store.new_arg_ref: argument number out of range"");
     }
 
     if (MR_compare_type_info(arg_type_info, exp_arg_type_info) !=
         MR_COMPARE_EQUAL)
     {
-        MR_fatal_error(""store__new_arg_ref: argument has wrong type"");
+        MR_fatal_error(""store.new_arg_ref: argument has wrong type"");
     }
 
     MR_restore_transient_registers();

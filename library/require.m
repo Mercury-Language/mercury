@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-1999, 2003, 2005 The University of Melbourne.
+% Copyright (C) 1993-1999, 2003, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -83,7 +83,7 @@ require(Goal, Message) :-
 report_lookup_error(Msg, K, V) :-
     KeyType = type_name(type_of(K)),
     ValueType = type_name(type_of(V)),
-    string__append_list(
+    string.append_list(
         [Msg,
         "\n\tKey Type: ",
         KeyType,
@@ -97,7 +97,7 @@ report_lookup_error(Msg, K, V) :-
 
 report_lookup_error(Msg, K) :-
     KeyType = type_name(type_of(K)),
-    string__append_list(
+    string.append_list(
         [Msg,
         "\n\tKey Type: ",
         KeyType,

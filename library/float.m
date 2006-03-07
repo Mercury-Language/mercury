@@ -43,7 +43,7 @@
 % for intermediate results, the results may depend on the
 % level of optimization, in particular inlining and evaluation
 % of constant expressions.
-% For example, the goal `1.0/9.0 = std_util__id(1.0)/9.0' may fail.
+% For example, the goal `1.0/9.0 = std_util.id(1.0)/9.0' may fail.
 
 %---------------------------------------------------------------------------%
 
@@ -67,7 +67,7 @@
 :- func (float::in) * (float::in) = (float::uo) is det.
 
 	% division
-	% Throws a `math__domain_error' exception if the right operand is zero.
+	% Throws a `math.domain_error' exception if the right operand is zero.
     % See the comments at the top of math.m to find out how to disable
     % this check.
 	%
@@ -140,9 +140,9 @@
 :- func min(float, float) = float.
 
 	% pow(Base, Exponent) returns Base raised to the power Exponent.
-	% Fewer domain restrictions than math__pow: works for negative Base,
-	% and float__pow(B, 0) = 1.0 for all B, even B=0.0.
-	% Only pow(0, <negative>) throws a `math__domain_error' exception.
+	% Fewer domain restrictions than math.pow: works for negative Base,
+	% and float.pow(B, 0) = 1.0 for all B, even B=0.0.
+	% Only pow(0, <negative>) throws a `math.domain_error' exception.
 	%
 :- func pow(float, int) = float.
 
@@ -170,13 +170,13 @@
 	%
 	% max = (1 - radix ** mantissa_digits) * radix ** max_exponent
 	%
-:- func float__max = float.
+:- func float.max = float.
 
 	% Minimum normalised positive floating-point number
 	%
 	% min = radix ** (min_exponent - 1)
 	%
-:- func float__min = float.
+:- func float.min = float.
 
 	% Smallest number x such that 1.0 + x \= 1.0
 	% This represents the largest relative spacing of two
@@ -184,31 +184,31 @@
 	%
 	% epsilon = radix ** (1 - mantissa_digits)
 	%
-:- func float__epsilon = float.
+:- func float.epsilon = float.
 
 	% Radix of the floating-point representation.
 	% In the literature, this is sometimes referred to as `b'.
 	%
-:- func float__radix = int.
+:- func float.radix = int.
 
 	% The number of base-radix digits in the mantissa.  In the
 	% literature, this is sometimes referred to as `p' or `t'.
 	%
-:- func float__mantissa_digits = int.
+:- func float.mantissa_digits = int.
 
 	% Minimum negative integer such that:
 	%	radix ** (min_exponent - 1)
 	% is a normalised floating-point number.  In the literature,
 	% this is sometimes referred to as `e_min'.
 	%
-:- func float__min_exponent = int.
+:- func float.min_exponent = int.
 
 	% Maximum integer such that:
 	%	radix ** (max_exponent - 1)
 	% is a normalised floating-point number.  In the literature,
 	% this is sometimes referred to as `e_max'.
 	%
-:- func float__max_exponent = int.
+:- func float.max_exponent = int.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -240,7 +240,7 @@
 :- pragma inline('/'/2).
 X / Y = Z :-
 	( domain_checks, Y = 0.0 ->
-		throw(math__domain_error("float:'/'"))
+		throw(math.domain_error("float:'/'"))
 	;
 		Z = unchecked_quotient(X, Y)
 	).
@@ -312,19 +312,19 @@ X / Y = Z :-
 ").
 
 :- pragma foreign_proc("C",
-	float__ceiling_to_int(X :: in) = (Ceil :: out),
+	float.ceiling_to_int(X :: in) = (Ceil :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Ceil = (MR_Integer) ceil(X);
 ").
 :- pragma foreign_proc("C#",
-	float__ceiling_to_int(X :: in) = (Ceil :: out),
+	float.ceiling_to_int(X :: in) = (Ceil :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Ceil = System.Convert.ToInt32(System.Math.Ceiling(X));
 ").
 :- pragma foreign_proc("Java",
-	float__ceiling_to_int(X :: in) = (Ceil :: out),
+	float.ceiling_to_int(X :: in) = (Ceil :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	if (X > (double) java.lang.Integer.MAX_VALUE ||
@@ -338,19 +338,19 @@ X / Y = Z :-
 ").
 
 :- pragma foreign_proc("C",
-	float__floor_to_int(X :: in) = (Floor :: out),
+	float.floor_to_int(X :: in) = (Floor :: out),
 	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	Floor = (MR_Integer) floor(X);
 ").
 :- pragma foreign_proc("C#",
-	float__floor_to_int(X :: in) = (Floor :: out),
+	float.floor_to_int(X :: in) = (Floor :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Floor = System.Convert.ToInt32(System.Math.Floor(X));
 ").
 :- pragma foreign_proc("Java",
-	float__floor_to_int(X :: in) = (Floor :: out),
+	float.floor_to_int(X :: in) = (Floor :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	if (X >= (double) java.lang.Integer.MAX_VALUE + 1 ||
@@ -364,19 +364,19 @@ X / Y = Z :-
 ").
 
 :- pragma foreign_proc("C",
-	float__round_to_int(X :: in) = (Round :: out),
+	float.round_to_int(X :: in) = (Round :: out),
 	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	Round = (MR_Integer) floor(X + 0.5);
 ").
 :- pragma foreign_proc("C#",
-	float__round_to_int(X :: in) = (Round :: out),
+	float.round_to_int(X :: in) = (Round :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Round = System.Convert.ToInt32(System.Math.Floor(X + 0.5));
 ").
 :- pragma foreign_proc("Java",
-	float__round_to_int(X :: in) = (Round :: out),
+	float.round_to_int(X :: in) = (Round :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	if (X >= (double) java.lang.Integer.MAX_VALUE + 0.5 ||
@@ -390,19 +390,19 @@ X / Y = Z :-
 ").
 
 :- pragma foreign_proc("C",
-	float__truncate_to_int(X :: in) = (Trunc :: out),
+	float.truncate_to_int(X :: in) = (Trunc :: out),
 	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	Trunc = (MR_Integer) X;
 ").
 :- pragma foreign_proc("C#",
-	float__truncate_to_int(X :: in) = (Trunc :: out),
+	float.truncate_to_int(X :: in) = (Trunc :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Trunc = System.Convert.ToInt32(X);
 ").
 :- pragma foreign_proc("Java",
-	float__truncate_to_int(X :: in) = (Trunc :: out),
+	float.truncate_to_int(X :: in) = (Trunc :: out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	if (X >= (double) java.lang.Integer.MAX_VALUE + 1 ||
@@ -420,36 +420,36 @@ X / Y = Z :-
 % Miscellaneous functions
 %
 
-float__abs(Num) = Abs :-
+float.abs(Num) = Abs :-
 	( Num =< 0.0 ->
 		Abs = - Num
 	;
 		Abs = Num
 	).
 
-float__max(X, Y) = Max :-
+float.max(X, Y) = Max :-
 	( X >= Y ->
 		Max = X
 	;
 		Max = Y
 	).
 
-float__min(X, Y) = Min :-
+float.min(X, Y) = Min :-
 	( X =< Y ->
 		Min = X
 	;
 		Min = Y
 	).
 
-float__pow(Base, Exp) = Ans :-
+float.pow(Base, Exp) = Ans :-
 	( Exp >= 0 ->
-		Ans = float__multiply_by_pow(1.0, Base, Exp)
+		Ans = float.multiply_by_pow(1.0, Base, Exp)
 	;
 		( domain_checks, Base = 0.0 ->
-			throw(math__domain_error("float:pow"))
+			throw(math.domain_error("float:pow"))
 		;
 			Ans = unchecked_quotient(1.0,
-				float__multiply_by_pow(1.0, Base, -Exp))
+				float.multiply_by_pow(1.0, Base, -Exp))
 			% See below re use of unchecked_quotient.
 		)
 	).
@@ -458,9 +458,9 @@ float__pow(Base, Exp) = Ans :-
 	% Requires that Exp >= 0.
 	% Uses a simple "Russian peasants" algorithm.  O(lg(Exp+1)).
     %
-:- func float__multiply_by_pow(float, float, int) = float.
+:- func float.multiply_by_pow(float, float, int) = float.
 
-float__multiply_by_pow(Scale0, Base, Exp) = Result :-
+float.multiply_by_pow(Scale0, Base, Exp) = Result :-
 	( Exp = 0 ->
 		Result = Scale0
 	;
@@ -469,15 +469,15 @@ float__multiply_by_pow(Scale0, Base, Exp) = Result :-
 		;
 			Scale1 = Scale0
 		),
-		Result = float__multiply_by_pow(Scale1, Base * Base, Exp div 2)
+		Result = float.multiply_by_pow(Scale1, Base * Base, Exp div 2)
 	).
 
-	% The reason for using unchecked_quotient in float__pow is so
-	% that float__pow(+/-0.5, -1111) gives +/-infinity rather than
+	% The reason for using unchecked_quotient in float.pow is so
+	% that float.pow(+/-0.5, -1111) gives +/-infinity rather than
 	% a domain error.  (N.B. This relies on unchecked_quotient(1.0,
 	% +/-0.0) giving +/-infinity, whereas the documentation in
 	% float.m says that the results are undefined.)
-	% Using Result = float__multiply_by_pow(1.0, 1.0 / Base, -Exp)
+	% Using Result = float.multiply_by_pow(1.0, 1.0 / Base, -Exp)
 	% would give the right behaviour for underflow, but isn't
 	% generally as accurate.
 
@@ -488,22 +488,22 @@ float__multiply_by_pow(Scale0, Base, Exp) = Result :-
 	% end of that loop at which point Acc can be simply assigned from the
 	% then-current value of Base.  This optimization would be especially
 	% valuable for expensive `*' operations; maybe provide a
-	% std_util__monoid_pow(func(T,T)=T MonoidOperator, T Identity, int
+	% std_util.monoid_pow(func(T,T)=T MonoidOperator, T Identity, int
 	% Exp, T Base) = T Result function to complement the existing
-	% std_util__pow function.)
+	% std_util.pow function.)
 
 %---------------------------------------------------------------------------%
 
 	% In hashing a float in .NET or Java, we ensure that the value is
 	% non-negative, as this condition is not guaranteed by either API.
 :- pragma foreign_proc("C",
-	float__hash(F::in) = (H::out),
+	float.hash(F::in) = (H::out),
 	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	H = MR_hash_float(F);
 ").
 :- pragma foreign_proc("C#",
-	float__hash(F::in) = (H::out),
+	float.hash(F::in) = (H::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	int Code = F.GetHashCode();
@@ -514,7 +514,7 @@ float__multiply_by_pow(Scale0, Base, Exp) = Result :-
 	}
 ").
 :- pragma foreign_proc("Java",
-	float__hash(F::in) = (H::out),
+	float.hash(F::in) = (H::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	int Code = (new java.lang.Double(F)).hashCode();
@@ -613,26 +613,26 @@ is_nan_or_inf(Float) :-
 ").
 
 :- pragma foreign_proc("C",
-	float__max = (Max::out),
+	float.max = (Max::out),
 	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	Max = ML_FLOAT_MAX;
 ").
 :- pragma foreign_proc("C#",
-	float__max = (Max::out),
+	float.max = (Max::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Max = System.Double.MaxValue;
 ").
 :- pragma foreign_proc("Java",
-	float__max = (Max::out),
+	float.max = (Max::out),
 	[will_not_call_mercury, promise_pure, thread_safe],
 "
 	Max = java.lang.Double.MAX_VALUE;
 ").
 
 :- pragma foreign_proc("C",
-	float__min = (Min::out),
+	float.min = (Min::out),
 	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	Min = ML_FLOAT_MIN;
@@ -650,10 +650,10 @@ is_nan_or_inf(Float) :-
 %	so can't be used, so we use the same constant as for .NET, as the
 %	Java Language Specification also describes Java doubles as 64 bit IEEE.
 %
-float__min = 2.2250738585072014e-308.
+float.min = 2.2250738585072014e-308.
 
 :- pragma foreign_proc("C",
-	float__epsilon = (Eps::out),
+	float.epsilon = (Eps::out),
 	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	Eps = ML_FLOAT_EPSILON;
@@ -672,10 +672,10 @@ float__min = 2.2250738585072014e-308.
 %	The Java API doesn't provide an epsilon constant, so we use the
 %	same constant, which is ok since Java defines doubles as 64 bit IEEE.
 %
-float__epsilon = 2.2204460492503131e-16.
+float.epsilon = 2.2204460492503131e-16.
 
 :- pragma foreign_proc("C",
-	float__radix = (Radix::out),
+	float.radix = (Radix::out),
 	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	Radix = ML_FLOAT_RADIX;
@@ -690,10 +690,10 @@ float__epsilon = 2.2204460492503131e-16.
 %	same constant as .NET, which is ok since Java defines doubles as 64 bit
 %	IEEE.
 %
-float__radix = 2.
+float.radix = 2.
 
 :- pragma foreign_proc("C",
-	float__mantissa_digits = (MantDig::out),
+	float.mantissa_digits = (MantDig::out),
 	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	MantDig = ML_FLOAT_MANT_DIG;
@@ -706,10 +706,10 @@ float__radix = 2.
 %	same constant as .NET, which is ok since Java defines doubles as 64 bit
 %	IEEE.
 %
-float__mantissa_digits = 53.
+float.mantissa_digits = 53.
 
 :- pragma foreign_proc("C",
-	float__min_exponent = (MinExp::out),
+	float.min_exponent = (MinExp::out),
 	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	MinExp = ML_FLOAT_MIN_EXP;
@@ -722,10 +722,10 @@ float__mantissa_digits = 53.
 %	same constant as .NET, which is ok since Java defines doubles as 64 bit
 %	IEEE.
 %
-float__min_exponent = -1021.
+float.min_exponent = -1021.
 
 :- pragma foreign_proc("C",
-	float__max_exponent = (MaxExp::out),
+	float.max_exponent = (MaxExp::out),
 	[will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
 "
 	MaxExp = ML_FLOAT_MAX_EXP;
@@ -738,7 +738,7 @@ float__min_exponent = -1021.
 %	same constant as .NET, which is ok since Java defines doubles as 64 bit
 %	IEEE.
 %
-float__max_exponent = 1024.
+float.max_exponent = 1024.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

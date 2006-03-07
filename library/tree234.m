@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-1997,1999-2000,2002-2005 The University of Melbourne.
+% Copyright (C) 1994-1997,1999-2000,2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -24,170 +24,170 @@
 
 :- type tree234(K, V).
 
-:- func tree234__init = tree234(K, V).
-:- pred tree234__init(tree234(K, V)::uo) is det.
+:- func tree234.init = tree234(K, V).
+:- pred tree234.init(tree234(K, V)::uo) is det.
 
-:- pred tree234__is_empty(tree234(K, V)::in) is semidet.
+:- pred tree234.is_empty(tree234(K, V)::in) is semidet.
 
-:- pred tree234__member(tree234(K, V)::in, K::out, V::out) is nondet.
+:- pred tree234.member(tree234(K, V)::in, K::out, V::out) is nondet.
 
-:- pred tree234__search(tree234(K, V)::in, K::in, V::out) is semidet.
+:- pred tree234.search(tree234(K, V)::in, K::in, V::out) is semidet.
 
-:- func tree234__lookup(tree234(K, V), K) = V.
-:- pred tree234__lookup(tree234(K, V)::in, K::in, V::out) is det.
+:- func tree234.lookup(tree234(K, V), K) = V.
+:- pred tree234.lookup(tree234(K, V)::in, K::in, V::out) is det.
 
     % Search for a key-value pair using the key.  If there is no entry
     % for the given key, returns the pair for the next lower key instead.
     % Fails if there is no key with the given or lower value.
     %
-:- pred tree234__lower_bound_search(tree234(K, V)::in, K::in, K::out, V::out)
+:- pred tree234.lower_bound_search(tree234(K, V)::in, K::in, K::out, V::out)
     is semidet.
 
     % Search for a key-value pair using the key.  If there is no entry
     % for the given key, returns the pair for the next lower key instead.
     % Aborts if there is no key with the given or lower value.
     %
-:- pred tree234__lower_bound_lookup(tree234(K, V)::in, K::in, K::out, V::out)
+:- pred tree234.lower_bound_lookup(tree234(K, V)::in, K::in, K::out, V::out)
     is det.
 
     % Search for a key-value pair using the key.  If there is no entry
     % for the given key, returns the pair for the next higher key instead.
     % Fails if there is no key with the given or higher value.
     %
-:- pred tree234__upper_bound_search(tree234(K, V)::in, K::in, K::out, V::out)
+:- pred tree234.upper_bound_search(tree234(K, V)::in, K::in, K::out, V::out)
     is semidet.
 
     % Search for a key-value pair using the key.  If there is no entry
     % for the given key, returns the pair for the next higher key instead.
     % Aborts if there is no key with the given or higher value.
     %
-:- pred tree234__upper_bound_lookup(tree234(K, V)::in, K::in, K::out, V::out)
+:- pred tree234.upper_bound_lookup(tree234(K, V)::in, K::in, K::out, V::out)
     is det.
 
-:- func tree234__max_key(tree234(K, V)) = K is semidet.
+:- func tree234.max_key(tree234(K, V)) = K is semidet.
 
-:- func tree234__min_key(tree234(K, V)) = K is semidet.
+:- func tree234.min_key(tree234(K, V)) = K is semidet.
 
-:- pred tree234__insert(tree234(K, V)::in, K::in, V::in, tree234(K, V)::out)
+:- pred tree234.insert(tree234(K, V)::in, K::in, V::in, tree234(K, V)::out)
     is semidet.
 
-:- func tree234__set(tree234(K, V), K, V) = tree234(K, V).
-:- pred tree234__set(tree234(K, V)::in, K::in, V::in, tree234(K, V)::out)
+:- func tree234.set(tree234(K, V), K, V) = tree234(K, V).
+:- pred tree234.set(tree234(K, V)::in, K::in, V::in, tree234(K, V)::out)
     is det.
 
-:- func tree234__delete(tree234(K, V), K) = tree234(K, V).
-:- pred tree234__delete(tree234(K, V)::in, K::in, tree234(K, V)::out) is det.
+:- func tree234.delete(tree234(K, V), K) = tree234(K, V).
+:- pred tree234.delete(tree234(K, V)::in, K::in, tree234(K, V)::out) is det.
 
-:- pred tree234__remove(tree234(K, V), K, V, tree234(K, V)).
-:- mode tree234__remove(in, in, out, out) is semidet.
+:- pred tree234.remove(tree234(K, V), K, V, tree234(K, V)).
+:- mode tree234.remove(in, in, out, out) is semidet.
 
-:- pred tree234__remove_smallest(tree234(K, V), K, V, tree234(K, V)).
-:- mode tree234__remove_smallest(in, out, out, out) is semidet.
+:- pred tree234.remove_smallest(tree234(K, V), K, V, tree234(K, V)).
+:- mode tree234.remove_smallest(in, out, out, out) is semidet.
 
     % Given a tree234, return a list of all the keys in the tree.
     % The list that is returned is in sorted order.
     %
-:- func tree234__keys(tree234(K, V)) = list(K).
-:- pred tree234__keys(tree234(K, V)::in, list(K)::out) is det.
+:- func tree234.keys(tree234(K, V)) = list(K).
+:- pred tree234.keys(tree234(K, V)::in, list(K)::out) is det.
 
-:- func tree234__values(tree234(K, V)) = list(V).
-:- pred tree234__values(tree234(K, V)::in, list(V)::out) is det.
+:- func tree234.values(tree234(K, V)) = list(V).
+:- pred tree234.values(tree234(K, V)::in, list(V)::out) is det.
 
-:- pred tree234__update(tree234(K, V)::in, K::in, V::in, tree234(K, V)::out)
+:- pred tree234.update(tree234(K, V)::in, K::in, V::in, tree234(K, V)::out)
     is semidet.
 
     % Update the value at the given key by applying the supplied
     % transformation to it.  This is faster than first searching for
     % the value and then updating it.
     %
-:- pred tree234__transform_value(pred(V, V)::in(pred(in, out) is det), K::in,
+:- pred tree234.transform_value(pred(V, V)::in(pred(in, out) is det), K::in,
     tree234(K, V)::in, tree234(K, V)::out) is semidet.
 
     % Count the number of elements in a tree.
     %
-:- func tree234__count(tree234(K, V)) = int.
-:- pred tree234__count(tree234(K, V)::in, int::out) is det.
+:- func tree234.count(tree234(K, V)) = int.
+:- pred tree234.count(tree234(K, V)::in, int::out) is det.
 
-:- func tree234__assoc_list_to_tree234(assoc_list(K, V)) = tree234(K, V).
-:- pred tree234__assoc_list_to_tree234(assoc_list(K, V)::in,
+:- func tree234.assoc_list_to_tree234(assoc_list(K, V)) = tree234(K, V).
+:- pred tree234.assoc_list_to_tree234(assoc_list(K, V)::in,
     tree234(K, V)::out) is det.
 
     % Given a tree234, return an association list of all the
     % keys and values in the tree.  The association list that
     % is returned is sorted on the keys.
     %
-:- func tree234__tree234_to_assoc_list(tree234(K, V)) = assoc_list(K, V).
-:- pred tree234__tree234_to_assoc_list(tree234(K, V)::in,
+:- func tree234.tree234_to_assoc_list(tree234(K, V)) = assoc_list(K, V).
+:- pred tree234.tree234_to_assoc_list(tree234(K, V)::in,
     assoc_list(K, V)::out) is det.
 
-:- func tree234__foldl(func(K, V, A) = A, tree234(K, V), A) = A.
+:- func tree234.foldl(func(K, V, A) = A, tree234(K, V), A) = A.
 
-:- pred tree234__foldl(pred(K, V, A, A), tree234(K, V), A, A).
-:- mode tree234__foldl(pred(in, in, in, out) is det, in, in, out) is det.
-:- mode tree234__foldl(pred(in, in, in, out) is semidet, in, in, out)
+:- pred tree234.foldl(pred(K, V, A, A), tree234(K, V), A, A).
+:- mode tree234.foldl(pred(in, in, in, out) is det, in, in, out) is det.
+:- mode tree234.foldl(pred(in, in, in, out) is semidet, in, in, out)
     is semidet.
-:- mode tree234__foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
+:- mode tree234.foldl(pred(in, in, di, uo) is det, in, di, uo) is det.
 
-:- pred tree234__foldl2(pred(K, V, A, A, B, B), tree234(K, V), A, A, B, B).
-:- mode tree234__foldl2(pred(in, in, in, out, in, out) is det,
+:- pred tree234.foldl2(pred(K, V, A, A, B, B), tree234(K, V), A, A, B, B).
+:- mode tree234.foldl2(pred(in, in, in, out, in, out) is det,
     in, in, out, in, out) is det.
-:- mode tree234__foldl2(pred(in, in, in, out, in, out) is semidet,
+:- mode tree234.foldl2(pred(in, in, in, out, in, out) is semidet,
     in, in, out, in, out) is semidet.
-:- mode tree234__foldl2(pred(in, in, in, out, di, uo) is det,
+:- mode tree234.foldl2(pred(in, in, in, out, di, uo) is det,
     in, in, out, di, uo) is det.
-:- mode tree234__foldl2(pred(in, in, di, uo, di, uo) is det,
+:- mode tree234.foldl2(pred(in, in, di, uo, di, uo) is det,
     in, di, uo, di, uo) is det.
 
-:- pred tree234__foldl3(pred(K, V, A, A, B, B, C, C), tree234(K, V),
+:- pred tree234.foldl3(pred(K, V, A, A, B, B, C, C), tree234(K, V),
 	A, A, B, B, C, C).
-:- mode tree234__foldl3(pred(in, in, in, out, in, out, in, out) is det,
+:- mode tree234.foldl3(pred(in, in, in, out, in, out, in, out) is det,
     in, in, out, in, out, in, out) is det.
-:- mode tree234__foldl3(pred(in, in, in, out, in, out, in, out) is semidet,
+:- mode tree234.foldl3(pred(in, in, in, out, in, out, in, out) is semidet,
     in, in, out, in, out, in, out) is semidet.
-:- mode tree234__foldl3(pred(in, in, in, out, in, out, di, uo) is det,
+:- mode tree234.foldl3(pred(in, in, in, out, in, out, di, uo) is det,
     in, in, out, in, out, di, uo) is det.
-:- mode tree234__foldl3(pred(in, in, in, out, di, uo, di, uo) is det,
+:- mode tree234.foldl3(pred(in, in, in, out, di, uo, di, uo) is det,
     in, in, out, di, uo, di, uo) is det.
-:- mode tree234__foldl3(pred(in, in, di, uo, di, uo, di, uo) is det,
+:- mode tree234.foldl3(pred(in, in, di, uo, di, uo, di, uo) is det,
     in, di, uo, di, uo, di, uo) is det.
 
-:- pred tree234__foldl4(pred(K, V, A, A, B, B, C, C, D, D), tree234(K, V),
+:- pred tree234.foldl4(pred(K, V, A, A, B, B, C, C, D, D), tree234(K, V),
 	A, A, B, B, C, C, D, D).
-:- mode tree234__foldl4(pred(in, in, in, out, in, out, in, out, in, out)
+:- mode tree234.foldl4(pred(in, in, in, out, in, out, in, out, in, out)
 	is det,
 	in, in, out, in, out, in, out, in, out) is det.
-:- mode tree234__foldl4(pred(in, in, in, out, in, out, in, out, in, out)
+:- mode tree234.foldl4(pred(in, in, in, out, in, out, in, out, in, out)
 	is semidet,
 	in, in, out, in, out, in, out, in, out) is semidet.
-:- mode tree234__foldl4(pred(in, in, in, out, in, out, in, out, di, uo) is det,
+:- mode tree234.foldl4(pred(in, in, in, out, in, out, in, out, di, uo) is det,
 	in, in, out, in, out, in, out, di, uo) is det.
-:- mode tree234__foldl4(pred(in, in, in, out, in, out, di, uo, di, uo) is det,
+:- mode tree234.foldl4(pred(in, in, in, out, in, out, di, uo, di, uo) is det,
 	in, in, out, in, out, di, uo, di, uo) is det.
-:- mode tree234__foldl4(pred(in, in, in, out, di, uo, di, uo, di, uo) is det,
+:- mode tree234.foldl4(pred(in, in, in, out, di, uo, di, uo, di, uo) is det,
 	in, in, out, di, uo, di, uo, di, uo) is det.
-:- mode tree234__foldl4(pred(in, in, di, uo, di, uo, di, uo, di, uo) is det,
+:- mode tree234.foldl4(pred(in, in, di, uo, di, uo, di, uo, di, uo) is det,
 	in, di, uo, di, uo, di, uo, di, uo) is det.
 
-:- func tree234__map_values(func(K, V) = W, tree234(K, V)) = tree234(K, W).
+:- func tree234.map_values(func(K, V) = W, tree234(K, V)) = tree234(K, W).
 
-:- pred tree234__map_values(pred(K, V, W), tree234(K, V), tree234(K, W)).
-:- mode tree234__map_values(pred(in, in, out) is det, in, out) is det.
-:- mode tree234__map_values(pred(in, in, out) is semidet, in, out) is semidet.
+:- pred tree234.map_values(pred(K, V, W), tree234(K, V), tree234(K, W)).
+:- mode tree234.map_values(pred(in, in, out) is det, in, out) is det.
+:- mode tree234.map_values(pred(in, in, out) is semidet, in, out) is semidet.
 
-:- pred tree234__map_foldl(pred(K, V, W, A, A), tree234(K, V), tree234(K, W),
+:- pred tree234.map_foldl(pred(K, V, W, A, A), tree234(K, V), tree234(K, W),
     A, A).
-:- mode tree234__map_foldl(pred(in, in, out, di, uo) is det,
+:- mode tree234.map_foldl(pred(in, in, out, di, uo) is det,
     in, out, di, uo) is det.
-:- mode tree234__map_foldl(pred(in, in, out, in, out) is det,
+:- mode tree234.map_foldl(pred(in, in, out, in, out) is det,
     in, out, in, out) is det.
-:- mode tree234__map_foldl(pred(in, in, out, in, out) is semidet,
+:- mode tree234.map_foldl(pred(in, in, out, in, out) is semidet,
     in, out, in, out) is semidet.
 
-:- pred tree234__map_foldl2(pred(K, V, W, A, A, B, B),
+:- pred tree234.map_foldl2(pred(K, V, W, A, A, B, B),
     tree234(K, V), tree234(K, W), A, A, B, B).
-:- mode tree234__map_foldl2(pred(in, in, out, in, out, in, out) is det,
+:- mode tree234.map_foldl2(pred(in, in, out, in, out, in, out) is det,
     in, out, in, out, in, out) is det.
-:- mode tree234__map_foldl2(pred(in, in, out, in, out, in, out) is semidet,
+:- mode tree234.map_foldl2(pred(in, in, out, in, out, in, out) is semidet,
     in, out, in, out, in, out) is semidet.
 
 %------------------------------------------------------------------------------%
@@ -200,15 +200,15 @@
 
 :- interface.
 
-:- pragma type_spec(tree234__search/3, K = var(_)).
-:- pragma type_spec(tree234__search/3, K = int).
+:- pragma type_spec(tree234.search/3, K = var(_)).
+:- pragma type_spec(tree234.search/3, K = int).
 
-:- pragma type_spec(tree234__lookup/3, K = var(_)).
+:- pragma type_spec(tree234.lookup/3, K = var(_)).
 
-:- pragma type_spec(tree234__set(in, in, in, out), K = var(_)).
+:- pragma type_spec(tree234.set(in, in, in, out), K = var(_)).
 
-:- pragma type_spec(tree234__update(in, in, in, out), K = var(_)).
-:- pragma type_spec(tree234__update(in, in, in, out), K = int).
+:- pragma type_spec(tree234.update(in, in, in, out), K = var(_)).
+:- pragma type_spec(tree234.update(in, in, in, out), K = int).
 
 %-----------------------------------------------------------------------------%
 
@@ -257,24 +257,24 @@
 
 %------------------------------------------------------------------------------%
 
-tree234__init(empty).
+tree234.init(empty).
 
-tree234__is_empty(Tree) :-
+tree234.is_empty(Tree) :-
     Tree = empty.
 
 %------------------------------------------------------------------------------%
 
-tree234__member(empty, _K, _V) :- fail.
-tree234__member(two(K0, V0, T0, T1), K, V) :-
+tree234.member(empty, _K, _V) :- fail.
+tree234.member(two(K0, V0, T0, T1), K, V) :-
     (
         K = K0,
         V = V0
     ;
-        tree234__member(T0, K, V)
+        tree234.member(T0, K, V)
     ;
-        tree234__member(T1, K, V)
+        tree234.member(T1, K, V)
     ).
-tree234__member(three(K0, V0, K1, V1, T0, T1, T2), K, V) :-
+tree234.member(three(K0, V0, K1, V1, T0, T1, T2), K, V) :-
     (
         K = K0,
         V = V0
@@ -282,13 +282,13 @@ tree234__member(three(K0, V0, K1, V1, T0, T1, T2), K, V) :-
         K = K1,
         V = V1
     ;
-        tree234__member(T0, K, V)
+        tree234.member(T0, K, V)
     ;
-        tree234__member(T1, K, V)
+        tree234.member(T1, K, V)
     ;
-        tree234__member(T2, K, V)
+        tree234.member(T2, K, V)
     ).
-tree234__member(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), K, V) :-
+tree234.member(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), K, V) :-
     (
         K = K0,
         V = V0
@@ -299,18 +299,18 @@ tree234__member(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), K, V) :-
         K = K2,
         V = V2
     ;
-        tree234__member(T0, K, V)
+        tree234.member(T0, K, V)
     ;
-        tree234__member(T1, K, V)
+        tree234.member(T1, K, V)
     ;
-        tree234__member(T2, K, V)
+        tree234.member(T2, K, V)
     ;
-        tree234__member(T3, K, V)
+        tree234.member(T3, K, V)
     ).
 
 %------------------------------------------------------------------------------%
 
-tree234__search(T, K, V) :-
+tree234.search(T, K, V) :-
     (
         T = empty,
         fail
@@ -319,20 +319,20 @@ tree234__search(T, K, V) :-
         compare(Result, K, K0),
         (
             Result = (<),
-            tree234__search(T0, K, V)
+            tree234.search(T0, K, V)
         ;
             Result = (=),
             V = V0
         ;
             Result = (>),
-            tree234__search(T1, K, V)
+            tree234.search(T1, K, V)
         )
     ;
         T = three(K0, V0, K1, V1, T0, T1, T2),
         compare(Result0, K, K0),
         (
             Result0 = (<),
-            tree234__search(T0, K, V)
+            tree234.search(T0, K, V)
         ;
             Result0 = (=),
             V = V0
@@ -341,13 +341,13 @@ tree234__search(T, K, V) :-
             compare(Result1, K, K1),
             (
                 Result1 = (<),
-                tree234__search(T1, K, V)
+                tree234.search(T1, K, V)
             ;
                 Result1 = (=),
                 V = V1
             ;
                 Result1 = (>),
-                tree234__search(T2, K, V)
+                tree234.search(T2, K, V)
             )
         )
     ;
@@ -358,13 +358,13 @@ tree234__search(T, K, V) :-
             compare(Result0, K, K0),
             (
                 Result0 = (<),
-                tree234__search(T0, K, V)
+                tree234.search(T0, K, V)
             ;
                 Result0 = (=),
                 V = V0
             ;
                 Result0 = (>),
-                tree234__search(T1, K, V)
+                tree234.search(T1, K, V)
             )
         ;
             Result1 = (=),
@@ -374,27 +374,27 @@ tree234__search(T, K, V) :-
             compare(Result2, K, K2),
             (
                 Result2 = (<),
-                tree234__search(T2, K, V)
+                tree234.search(T2, K, V)
             ;
                 Result2 = (=),
                 V = V2
             ;
                 Result2 = (>),
-                tree234__search(T3, K, V)
+                tree234.search(T3, K, V)
             )
         )
     ).
 
-tree234__lookup(T, K, V) :-
-    ( tree234__search(T, K, V0) ->
+tree234.lookup(T, K, V) :-
+    ( tree234.search(T, K, V0) ->
         V = V0
     ;
-        report_lookup_error("tree234__lookup: key not found.", K, V)
+        report_lookup_error("tree234.lookup: key not found.", K, V)
     ).
 
 %------------------------------------------------------------------------------%
 
-tree234__lower_bound_search(T, SearchK, K, V) :-
+tree234.lower_bound_search(T, SearchK, K, V) :-
     (
         T = empty,
         fail
@@ -403,14 +403,14 @@ tree234__lower_bound_search(T, SearchK, K, V) :-
         compare(Result, SearchK, K0),
         (
             Result = (<),
-            tree234__lower_bound_search(T0, SearchK, K, V)
+            tree234.lower_bound_search(T0, SearchK, K, V)
         ;
             Result = (=),
             K = SearchK,
             V = V0
         ;
             Result = (>),
-            ( tree234__lower_bound_search(T1, SearchK, Kp, Vp) ->
+            ( tree234.lower_bound_search(T1, SearchK, Kp, Vp) ->
                 K = Kp,
                 V = Vp
             ;
@@ -424,7 +424,7 @@ tree234__lower_bound_search(T, SearchK, K, V) :-
         compare(Result0, SearchK, K0),
         (
             Result0 = (<),
-            tree234__lower_bound_search(T0, SearchK, K, V)
+            tree234.lower_bound_search(T0, SearchK, K, V)
         ;
             Result0 = (=),
             K = SearchK,
@@ -434,7 +434,7 @@ tree234__lower_bound_search(T, SearchK, K, V) :-
             compare(Result1, SearchK, K1),
             (
                 Result1 = (<),
-                ( tree234__lower_bound_search(T1, SearchK, Kp, Vp) ->
+                ( tree234.lower_bound_search(T1, SearchK, Kp, Vp) ->
                     K = Kp,
                     V = Vp
                 ;
@@ -448,7 +448,7 @@ tree234__lower_bound_search(T, SearchK, K, V) :-
                 V = V1
             ;
                 Result1 = (>),
-                ( tree234__lower_bound_search(T2, SearchK, Kp, Vp) ->
+                ( tree234.lower_bound_search(T2, SearchK, Kp, Vp) ->
                     K = Kp,
                     V = Vp
                 ;
@@ -465,14 +465,14 @@ tree234__lower_bound_search(T, SearchK, K, V) :-
             compare(Result0, SearchK, K0),
             (
                 Result0 = (<),
-                tree234__lower_bound_search(T0, SearchK, K, V)
+                tree234.lower_bound_search(T0, SearchK, K, V)
             ;
                 Result0 = (=),
                 K = SearchK,
                 V = V0
             ;
                 Result0 = (>),
-                ( tree234__lower_bound_search(T1, SearchK, Kp, Vp) ->
+                ( tree234.lower_bound_search(T1, SearchK, Kp, Vp) ->
                     K = Kp,
                     V = Vp
                 ;
@@ -489,7 +489,7 @@ tree234__lower_bound_search(T, SearchK, K, V) :-
             compare(Result2, SearchK, K2),
             (
                 Result2 = (<),
-                ( tree234__lower_bound_search(T2, SearchK, Kp, Vp) ->
+                ( tree234.lower_bound_search(T2, SearchK, Kp, Vp) ->
                     K = Kp,
                     V = Vp
                 ;
@@ -502,7 +502,7 @@ tree234__lower_bound_search(T, SearchK, K, V) :-
                 V = V2
             ;
                 Result2 = (>),
-                ( tree234__lower_bound_search(T3, SearchK, Kp, Vp) ->
+                ( tree234.lower_bound_search(T3, SearchK, Kp, Vp) ->
                     K = Kp,
                     V = Vp
                 ;
@@ -513,18 +513,18 @@ tree234__lower_bound_search(T, SearchK, K, V) :-
         )
     ).
 
-tree234__lower_bound_lookup(T, SearchK, K, V) :-
-    ( tree234__lower_bound_search(T, SearchK, K0, V0) ->
+tree234.lower_bound_lookup(T, SearchK, K, V) :-
+    ( tree234.lower_bound_search(T, SearchK, K0, V0) ->
         K = K0,
         V = V0
     ;
-        report_lookup_error("tree234__lower_bound_lookup: key not found.",
+        report_lookup_error("tree234.lower_bound_lookup: key not found.",
             SearchK, V)
     ).
 
 %------------------------------------------------------------------------------%
 
-tree234__upper_bound_search(T, SearchK, K, V) :-
+tree234.upper_bound_search(T, SearchK, K, V) :-
     (
         T = empty,
         fail
@@ -533,7 +533,7 @@ tree234__upper_bound_search(T, SearchK, K, V) :-
         compare(Result, SearchK, K0),
         (
             Result = (<),
-            ( tree234__upper_bound_search(T0, SearchK, Kp, Vp) ->
+            ( tree234.upper_bound_search(T0, SearchK, Kp, Vp) ->
                 K = Kp,
                 V = Vp
             ;
@@ -547,14 +547,14 @@ tree234__upper_bound_search(T, SearchK, K, V) :-
             V = V0
         ;
             Result = (>),
-            tree234__upper_bound_search(T1, SearchK, K, V)
+            tree234.upper_bound_search(T1, SearchK, K, V)
         )
     ;
         T = three(K0, V0, K1, V1, T0, T1, T2),
         compare(Result0, SearchK, K0),
         (
             Result0 = (<),
-            ( tree234__upper_bound_search(T0, SearchK, Kp, Vp) ->
+            ( tree234.upper_bound_search(T0, SearchK, Kp, Vp) ->
                 K = Kp,
                 V = Vp
             ;
@@ -570,7 +570,7 @@ tree234__upper_bound_search(T, SearchK, K, V) :-
             compare(Result1, SearchK, K1),
             (
                 Result1 = (<),
-                ( tree234__upper_bound_search(T1, SearchK, Kp, Vp) ->
+                ( tree234.upper_bound_search(T1, SearchK, Kp, Vp) ->
                     K = Kp,
                     V = Vp
                 ;
@@ -583,7 +583,7 @@ tree234__upper_bound_search(T, SearchK, K, V) :-
                 V = V1
             ;
                 Result1 = (>),
-                tree234__upper_bound_search(T2, SearchK, K, V)
+                tree234.upper_bound_search(T2, SearchK, K, V)
             )
         )
     ;
@@ -594,7 +594,7 @@ tree234__upper_bound_search(T, SearchK, K, V) :-
             compare(Result0, SearchK, K0),
             (
                 Result0 = (<),
-                ( tree234__upper_bound_search(T0, SearchK, Kp, Vp) ->
+                ( tree234.upper_bound_search(T0, SearchK, Kp, Vp) ->
                     K = Kp,
                     V = Vp
                 ;
@@ -607,7 +607,7 @@ tree234__upper_bound_search(T, SearchK, K, V) :-
                 V = V0
             ;
                 Result0 = (>),
-                ( tree234__upper_bound_search(T1, SearchK, Kp, Vp) ->
+                ( tree234.upper_bound_search(T1, SearchK, Kp, Vp) ->
                     K = Kp,
                     V = Vp
                 ;
@@ -624,7 +624,7 @@ tree234__upper_bound_search(T, SearchK, K, V) :-
             compare(Result2, SearchK, K2),
             (
                 Result2 = (<),
-                ( tree234__upper_bound_search(T2, SearchK, Kp, Vp) ->
+                ( tree234.upper_bound_search(T2, SearchK, Kp, Vp) ->
                     K = Kp,
                     V = Vp
                 ;
@@ -637,39 +637,39 @@ tree234__upper_bound_search(T, SearchK, K, V) :-
                 V = V2
             ;
                 Result2 = (>),
-                tree234__upper_bound_search(T3, SearchK, K, V)
+                tree234.upper_bound_search(T3, SearchK, K, V)
             )
         )
     ).
 
-tree234__upper_bound_lookup(T, SearchK, K, V) :-
-    ( tree234__upper_bound_search(T, SearchK, K0, V0) ->
+tree234.upper_bound_lookup(T, SearchK, K, V) :-
+    ( tree234.upper_bound_search(T, SearchK, K0, V0) ->
         K = K0,
         V = V0
     ;
-        report_lookup_error("tree234__upper_bound_lookup: key not found.",
+        report_lookup_error("tree234.upper_bound_lookup: key not found.",
             SearchK, V)
     ).
 
 %------------------------------------------------------------------------------%
 
-tree234__max_key(T0) = MaxKey :-
+tree234.max_key(T0) = MaxKey :-
     ( T0 = two(NodeMaxKey, _, _, NodeMaxSubtree)
     ; T0 = three(_, _, NodeMaxKey, _, _, _, NodeMaxSubtree)
     ; T0 = four(_, _, _, _, NodeMaxKey, _, _, _, _, NodeMaxSubtree)
     ),
-    ( MaxSubtreeKey = tree234__max_key(NodeMaxSubtree) ->
+    ( MaxSubtreeKey = tree234.max_key(NodeMaxSubtree) ->
         MaxKey = MaxSubtreeKey
     ;
         MaxKey = NodeMaxKey
     ).
 
-tree234__min_key(T0) = MinKey :-
+tree234.min_key(T0) = MinKey :-
     ( T0 = two(NodeMinKey, _, NodeMinSubtree, _)
     ; T0 = three(NodeMinKey, _, _, _, NodeMinSubtree, _, _)
     ; T0 = four(NodeMinKey, _, _, _, _, _, NodeMinSubtree, _, _, _)
     ),
-    ( MinSubtreeKey = tree234__min_key(NodeMinSubtree) ->
+    ( MinSubtreeKey = tree234.min_key(NodeMinSubtree) ->
         MinKey = MinSubtreeKey
     ;
         MinKey = NodeMinKey
@@ -677,7 +677,7 @@ tree234__min_key(T0) = MinKey :-
 
 %------------------------------------------------------------------------------%
 
-tree234__update(Tin, K, V, Tout) :-
+tree234.update(Tin, K, V, Tout) :-
     (
         Tin = empty,
         fail
@@ -686,14 +686,14 @@ tree234__update(Tin, K, V, Tout) :-
         compare(Result, K, K0),
         (
             Result = (<),
-            tree234__update(T0, K, V, NewT0),
+            tree234.update(T0, K, V, NewT0),
             Tout = two(K0, V0, NewT0, T1)
         ;
             Result = (=),
             Tout = two(K0, V, T0, T1)
         ;
             Result = (>),
-            tree234__update(T1, K, V, NewT1),
+            tree234.update(T1, K, V, NewT1),
             Tout = two(K0, V0, T0, NewT1)
         )
     ;
@@ -701,7 +701,7 @@ tree234__update(Tin, K, V, Tout) :-
         compare(Result0, K, K0),
         (
             Result0 = (<),
-            tree234__update(T0, K, V, NewT0),
+            tree234.update(T0, K, V, NewT0),
             Tout = three(K0, V0, K1, V1, NewT0, T1, T2)
         ;
             Result0 = (=),
@@ -711,14 +711,14 @@ tree234__update(Tin, K, V, Tout) :-
             compare(Result1, K, K1),
             (
                 Result1 = (<),
-                tree234__update(T1, K, V, NewT1),
+                tree234.update(T1, K, V, NewT1),
                 Tout = three(K0, V0, K1, V1, T0, NewT1, T2)
             ;
                 Result1 = (=),
                 Tout = three(K0, V0, K1, V, T0, T1, T2)
             ;
                 Result1 = (>),
-                tree234__update(T2, K, V, NewT2),
+                tree234.update(T2, K, V, NewT2),
                 Tout = three(K0, V0, K1, V1, T0, T1, NewT2)
             )
         )
@@ -730,14 +730,14 @@ tree234__update(Tin, K, V, Tout) :-
             compare(Result0, K, K0),
             (
                 Result0 = (<),
-                tree234__update(T0, K, V, NewT0),
+                tree234.update(T0, K, V, NewT0),
                 Tout = four(K0, V0, K1, V1, K2, V2, NewT0, T1, T2, T3)
             ;
                 Result0 = (=),
                 Tout = four(K0, V, K1, V1, K2, V2, T0, T1, T2, T3)
             ;
                 Result0 = (>),
-                tree234__update(T1, K, V, NewT1),
+                tree234.update(T1, K, V, NewT1),
                 Tout = four(K0, V0, K1, V1, K2, V2, T0, NewT1, T2, T3)
             )
         ;
@@ -748,14 +748,14 @@ tree234__update(Tin, K, V, Tout) :-
             compare(Result2, K, K2),
             (
                 Result2 = (<),
-                tree234__update(T2, K, V, NewT2),
+                tree234.update(T2, K, V, NewT2),
                 Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, NewT2, T3)
             ;
                 Result2 = (=),
                 Tout = four(K0, V0, K1, V1, K2, V, T0, T1, T2, T3)
             ;
                 Result2 = (>),
-                tree234__update(T3, K, V, NewT3),
+                tree234.update(T3, K, V, NewT3),
                 Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, NewT3)
             )
         )
@@ -763,7 +763,7 @@ tree234__update(Tin, K, V, Tout) :-
 
 %------------------------------------------------------------------------------%
 
-tree234__transform_value(P, K, Tin, Tout) :-
+tree234.transform_value(P, K, Tin, Tout) :-
     (
         Tin = empty,
         fail
@@ -772,7 +772,7 @@ tree234__transform_value(P, K, Tin, Tout) :-
         compare(Result, K, K0),
         (
             Result = (<),
-            tree234__transform_value(P, K, T0, NewT0),
+            tree234.transform_value(P, K, T0, NewT0),
             Tout = two(K0, V0, NewT0, T1)
         ;
             Result = (=),
@@ -780,7 +780,7 @@ tree234__transform_value(P, K, Tin, Tout) :-
             Tout = two(K0, VNew, T0, T1)
         ;
             Result = (>),
-            tree234__transform_value(P, K, T1, NewT1),
+            tree234.transform_value(P, K, T1, NewT1),
             Tout = two(K0, V0, T0, NewT1)
         )
     ;
@@ -788,7 +788,7 @@ tree234__transform_value(P, K, Tin, Tout) :-
         compare(Result0, K, K0),
         (
             Result0 = (<),
-            tree234__transform_value(P, K, T0, NewT0),
+            tree234.transform_value(P, K, T0, NewT0),
             Tout = three(K0, V0, K1, V1, NewT0, T1, T2)
         ;
             Result0 = (=),
@@ -799,7 +799,7 @@ tree234__transform_value(P, K, Tin, Tout) :-
             compare(Result1, K, K1),
             (
                 Result1 = (<),
-                tree234__transform_value(P, K, T1, NewT1),
+                tree234.transform_value(P, K, T1, NewT1),
                 Tout = three(K0, V0, K1, V1, T0, NewT1, T2)
             ;
                 Result1 = (=),
@@ -807,7 +807,7 @@ tree234__transform_value(P, K, Tin, Tout) :-
                 Tout = three(K0, V0, K1, VNew, T0, T1, T2)
             ;
                 Result1 = (>),
-                tree234__transform_value(P, K, T2, NewT2),
+                tree234.transform_value(P, K, T2, NewT2),
                 Tout = three(K0, V0, K1, V1, T0, T1, NewT2)
             )
         )
@@ -819,7 +819,7 @@ tree234__transform_value(P, K, Tin, Tout) :-
             compare(Result0, K, K0),
             (
                 Result0 = (<),
-                tree234__transform_value(P, K, T0, NewT0),
+                tree234.transform_value(P, K, T0, NewT0),
                 Tout = four(K0, V0, K1, V1, K2, V2, NewT0, T1, T2, T3)
             ;
                 Result0 = (=),
@@ -827,7 +827,7 @@ tree234__transform_value(P, K, Tin, Tout) :-
                 Tout = four(K0, VNew, K1, V1, K2, V2, T0, T1, T2, T3)
             ;
                 Result0 = (>),
-                tree234__transform_value(P, K, T1, NewT1),
+                tree234.transform_value(P, K, T1, NewT1),
                 Tout = four(K0, V0, K1, V1, K2, V2, T0, NewT1, T2, T3)
             )
         ;
@@ -839,7 +839,7 @@ tree234__transform_value(P, K, Tin, Tout) :-
             compare(Result2, K, K2),
             (
                 Result2 = (<),
-                tree234__transform_value(P, K, T2, NewT2),
+                tree234.transform_value(P, K, T2, NewT2),
                 Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, NewT2, T3)
             ;
                 Result2 = (=),
@@ -847,7 +847,7 @@ tree234__transform_value(P, K, Tin, Tout) :-
                 Tout = four(K0, V0, K1, V1, K2, VNew, T0, T1, T2, T3)
             ;
                 Result2 = (>),
-                tree234__transform_value(P, K, T3, NewT3),
+                tree234.transform_value(P, K, T3, NewT3),
                 Tout = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, NewT3)
             )
         )
@@ -882,12 +882,12 @@ tree234__transform_value(P, K, Tin, Tout) :-
 
 %------------------------------------------------------------------------------%
 
-:- pred tree234__split_four(tree234(K, V), K, V, tree234(K, V), tree234(K, V)).
-:- mode tree234__split_four(di_four, uo, uo, uo_two, uo_two) is det.
-% :- mode tree234__split_four(sdi_four, out, out, suo_two, suo_two) is det.
-:- mode tree234__split_four(in_four, out, out, out_two, out_two) is det.
+:- pred tree234.split_four(tree234(K, V), K, V, tree234(K, V), tree234(K, V)).
+:- mode tree234.split_four(di_four, uo, uo, uo_two, uo_two) is det.
+% :- mode tree234.split_four(sdi_four, out, out, suo_two, suo_two) is det.
+:- mode tree234.split_four(in_four, out, out, out_two, out_two) is det.
 
-tree234__split_four(Tin, MidK, MidV, Sub0, Sub1) :-
+tree234.split_four(Tin, MidK, MidV, Sub0, Sub1) :-
     Tin = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
     Sub0 = two(K0, V0, T0, T1),
     MidK = K1,
@@ -896,7 +896,7 @@ tree234__split_four(Tin, MidK, MidV, Sub0, Sub1) :-
 
 %------------------------------------------------------------------------------%
 
-% tree234__insert is implemented using the simple top-down
+% tree234.insert is implemented using the simple top-down
 % approach described in eg Sedgwick which splits 4 nodes into
 % two 2 nodes on the downward traversal of the tree as we
 % search for the right place to insert the new key-value pair.
@@ -906,40 +906,40 @@ tree234__split_four(Tin, MidK, MidV, Sub0, Sub1) :-
 % tree itself is empty.
 % This algorithm is O(lgN).
 
-tree234__insert(Tin, K, V, Tout) :-
+tree234.insert(Tin, K, V, Tout) :-
     (
         Tin = empty,
         Tout = two(K, V, empty, empty)
     ;
         Tin = two(_, _, _, _),
-        tree234__insert2(Tin, K, V, Tout)
+        tree234.insert2(Tin, K, V, Tout)
     ;
         Tin = three(_, _, _, _, _, _, _),
-        tree234__insert3(Tin, K, V, Tout)
+        tree234.insert3(Tin, K, V, Tout)
     ;
         Tin = four(_, _, _, _, _, _, _, _, _, _),
-        tree234__split_four(Tin, MidK, MidV, Sub0, Sub1),
+        tree234.split_four(Tin, MidK, MidV, Sub0, Sub1),
         compare(Result1, K, MidK),
         (
             Result1 = (<),
-            tree234__insert2(Sub0, K, V, NewSub0),
+            tree234.insert2(Sub0, K, V, NewSub0),
             Tout = two(MidK, MidV, NewSub0, Sub1)
         ;
             Result1 = (=),
             fail
         ;
             Result1 = (>),
-            tree234__insert2(Sub1, K, V, NewSub1),
+            tree234.insert2(Sub1, K, V, NewSub1),
             Tout = two(MidK, MidV, Sub0, NewSub1)
         )
     ).
 
-:- pred tree234__insert2(tree234(K, V), K, V, tree234(K, V)).
-% :- mode tree234__insert2(di_two, di, di, uo) is semidet.
-% :- mode tree234__insert2(sdi_two, in, in, uo_tree234) is semidet.
-:- mode tree234__insert2(in_two, in, in, out) is semidet.
+:- pred tree234.insert2(tree234(K, V), K, V, tree234(K, V)).
+% :- mode tree234.insert2(di_two, di, di, uo) is semidet.
+% :- mode tree234.insert2(sdi_two, in, in, uo_tree234) is semidet.
+:- mode tree234.insert2(in_two, in, in, out) is semidet.
 
-tree234__insert2(two(K0, V0, T0, T1), K, V, Tout) :-
+tree234.insert2(two(K0, V0, T0, T1), K, V, Tout) :-
     (
         T0 = empty
         % T1 = empty implied by T0 = empty
@@ -961,27 +961,27 @@ tree234__insert2(two(K0, V0, T0, T1), K, V, Tout) :-
             Result = (<),
             (
                 T0 = four(_, _, _, _, _, _, _, _, _, _),
-                tree234__split_four(T0, MT0K, MT0V, T00, T01),
+                tree234.split_four(T0, MT0K, MT0V, T00, T01),
                 compare(Result1, K, MT0K),
                 (
                     Result1 = (<),
-                    tree234__insert2(T00, K, V, NewT00),
+                    tree234.insert2(T00, K, V, NewT00),
                     Tout = three(MT0K, MT0V, K0, V0, NewT00, T01, T1)
                 ;
                     Result1 = (=),
                     fail
                 ;
                     Result1 = (>),
-                    tree234__insert2(T01, K, V, NewT01),
+                    tree234.insert2(T01, K, V, NewT01),
                     Tout = three(MT0K, MT0V, K0, V0, T00, NewT01, T1)
                 )
             ;
                 T0 = three(_, _, _, _, _, _, _),
-                tree234__insert3(T0, K, V, NewT0),
+                tree234.insert3(T0, K, V, NewT0),
                 Tout = two(K0, V0, NewT0, T1)
             ;
                 T0 = two(_, _, _, _),
-                tree234__insert2(T0, K, V, NewT0),
+                tree234.insert2(T0, K, V, NewT0),
                 Tout = two(K0, V0, NewT0, T1)
             ;
                 T0 = empty,
@@ -995,27 +995,27 @@ tree234__insert2(two(K0, V0, T0, T1), K, V, Tout) :-
             Result = (>),
             (
                 T1 = four(_, _, _, _, _, _, _, _, _, _),
-                tree234__split_four(T1, MT1K, MT1V, T10, T11),
+                tree234.split_four(T1, MT1K, MT1V, T10, T11),
                 compare(Result1, K, MT1K),
                 (
                     Result1 = (<),
-                    tree234__insert2(T10, K, V, NewT10),
+                    tree234.insert2(T10, K, V, NewT10),
                     Tout = three(K0, V0, MT1K, MT1V, T0, NewT10, T11)
                 ;
                     Result1 = (=),
                     fail
                 ;
                     Result1 = (>),
-                    tree234__insert2(T11, K, V, NewT11),
+                    tree234.insert2(T11, K, V, NewT11),
                     Tout = three(K0, V0, MT1K, MT1V, T0, T10, NewT11)
                 )
             ;
                 T1 = three(_, _, _, _, _, _, _),
-                tree234__insert3(T1, K, V, NewT1),
+                tree234.insert3(T1, K, V, NewT1),
                 Tout = two(K0, V0, T0, NewT1)
             ;
                 T1 = two(_, _, _, _),
-                tree234__insert2(T1, K, V, NewT1),
+                tree234.insert2(T1, K, V, NewT1),
                 Tout = two(K0, V0, T0, NewT1)
             ;
                 T1 = empty,
@@ -1025,12 +1025,12 @@ tree234__insert2(two(K0, V0, T0, T1), K, V, Tout) :-
         )
     ).
 
-:- pred tree234__insert3(tree234(K, V), K, V, tree234(K, V)).
-% :- mode tree234__insert3(di_three, di, di, uo) is semidet.
-% :- mode tree234__insert3(sdi_three, in, in, uo_tree234) is semidet.
-:- mode tree234__insert3(in_three, in, in, out) is semidet.
+:- pred tree234.insert3(tree234(K, V), K, V, tree234(K, V)).
+% :- mode tree234.insert3(di_three, di, di, uo) is semidet.
+% :- mode tree234.insert3(sdi_three, in, in, uo_tree234) is semidet.
+:- mode tree234.insert3(in_three, in, in, out) is semidet.
 
-tree234__insert3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
+tree234.insert3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
     (
         T0 = empty
         % T1 = empty implied by T0 = empty
@@ -1063,11 +1063,11 @@ tree234__insert3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
             Result0 = (<),
             (
                 T0 = four(_, _, _, _, _, _, _, _, _, _),
-                tree234__split_four(T0, MT0K, MT0V, T00, T01),
+                tree234.split_four(T0, MT0K, MT0V, T00, T01),
                 compare(ResultM, K, MT0K),
                 (
                     ResultM = (<),
-                    tree234__insert2(T00, K, V, NewT00),
+                    tree234.insert2(T00, K, V, NewT00),
                     Tout = four(MT0K, MT0V, K0, V0, K1, V1,
                         NewT00, T01, T1, T2)
                 ;
@@ -1075,17 +1075,17 @@ tree234__insert3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
                     fail
                 ;
                     ResultM = (>),
-                    tree234__insert2(T01, K, V, NewT01),
+                    tree234.insert2(T01, K, V, NewT01),
                     Tout = four(MT0K, MT0V, K0, V0, K1, V1,
                         T00, NewT01, T1, T2)
                 )
             ;
                 T0 = three(_, _, _, _, _, _, _),
-                tree234__insert3(T0, K, V, NewT0),
+                tree234.insert3(T0, K, V, NewT0),
                 Tout = three(K0, V0, K1, V1, NewT0, T1, T2)
             ;
                 T0 = two(_, _, _, _),
-                tree234__insert2(T0, K, V, NewT0),
+                tree234.insert2(T0, K, V, NewT0),
                 Tout = three(K0, V0, K1, V1, NewT0, T1, T2)
             ;
                 T0 = empty,
@@ -1102,11 +1102,11 @@ tree234__insert3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
                 Result1 = (<),
                 (
                     T1 = four(_, _, _, _, _, _, _, _, _, _),
-                    tree234__split_four(T1, MT1K, MT1V, T10, T11),
+                    tree234.split_four(T1, MT1K, MT1V, T10, T11),
                     compare(ResultM, K, MT1K),
                     (
                         ResultM = (<),
-                        tree234__insert2(T10, K, V, NewT10),
+                        tree234.insert2(T10, K, V, NewT10),
                         Tout = four(K0, V0, MT1K, MT1V, K1, V1,
                             T0, NewT10, T11, T2)
                     ;
@@ -1114,17 +1114,17 @@ tree234__insert3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
                         fail
                     ;
                         ResultM = (>),
-                        tree234__insert2(T11, K, V, NewT11),
+                        tree234.insert2(T11, K, V, NewT11),
                         Tout = four(K0, V0, MT1K, MT1V, K1, V1,
                             T0, T10, NewT11, T2)
                     )
                 ;
                     T1 = three(_, _, _, _, _, _, _),
-                    tree234__insert3(T1, K, V, NewT1),
+                    tree234.insert3(T1, K, V, NewT1),
                     Tout = three(K0, V0, K1, V1, T0, NewT1, T2)
                 ;
                     T1 = two(_, _, _, _),
-                    tree234__insert2(T1, K, V, NewT1),
+                    tree234.insert2(T1, K, V, NewT1),
                     Tout = three(K0, V0, K1, V1, T0, NewT1, T2)
                 ;
                     T1 = empty,
@@ -1138,12 +1138,12 @@ tree234__insert3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
                 Result1 = (>),
                 (
                     T2 = four(_, _, _, _, _, _, _, _, _, _),
-                    tree234__split_four(T2, MT2K, MT2V,
+                    tree234.split_four(T2, MT2K, MT2V,
                         T20, T21),
                     compare(ResultM, K, MT2K),
                     (
                         ResultM = (<),
-                        tree234__insert2(T20, K, V, NewT20),
+                        tree234.insert2(T20, K, V, NewT20),
                         Tout = four(K0, V0, K1, V1, MT2K, MT2V,
                             T0, T1, NewT20, T21)
                     ;
@@ -1151,17 +1151,17 @@ tree234__insert3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
                         fail
                     ;
                         ResultM = (>),
-                        tree234__insert2(T21, K, V, NewT21),
+                        tree234.insert2(T21, K, V, NewT21),
                         Tout = four(K0, V0, K1, V1, MT2K, MT2V,
                             T0, T1, T20, NewT21)
                     )
                 ;
                     T2 = three(_, _, _, _, _, _, _),
-                    tree234__insert3(T2, K, V, NewT2),
+                    tree234.insert3(T2, K, V, NewT2),
                     Tout = three(K0, V0, K1, V1, T0, T1, NewT2)
                 ;
                     T2 = two(_, _, _, _),
-                    tree234__insert2(T2, K, V, NewT2),
+                    tree234.insert2(T2, K, V, NewT2),
                     Tout = three(K0, V0, K1, V1, T0, T1, NewT2)
                 ;
                     T2 = empty,
@@ -1174,19 +1174,19 @@ tree234__insert3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
 
 %------------------------------------------------------------------------------%
 
-% tree234__set uses the same algorithm as used for tree234__insert,
+% tree234.set uses the same algorithm as used for tree234.insert,
 % except that instead of failing for equal keys, we replace the value.
 
-tree234__set(Tin, K, V, Tout) :-
+tree234.set(Tin, K, V, Tout) :-
     (
         Tin = empty,
         Tout = two(K, V, empty, empty)
     ;
         Tin = two(_, _, _, _),
-        tree234__set2(Tin, K, V, Tout)
+        tree234.set2(Tin, K, V, Tout)
     ;
         Tin = three(_, _, _, _, _, _, _),
-        tree234__set3(Tin, K, V, Tout)
+        tree234.set3(Tin, K, V, Tout)
     ;
         Tin = four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
         compare(Result1, K, K1),
@@ -1194,7 +1194,7 @@ tree234__set(Tin, K, V, Tout) :-
             Result1 = (<),
             Sub0 = two(K0, V0, T0, T1),
             Sub1 = two(K2, V2, T2, T3),
-            tree234__set2(Sub0, K, V, NewSub0),
+            tree234.set2(Sub0, K, V, NewSub0),
             Tout = two(K1, V1, NewSub0, Sub1)
         ;
             Result1 = (=),
@@ -1203,18 +1203,18 @@ tree234__set(Tin, K, V, Tout) :-
             Result1 = (>),
             Sub0 = two(K0, V0, T0, T1),
             Sub1 = two(K2, V2, T2, T3),
-            tree234__set2(Sub1, K, V, NewSub1),
+            tree234.set2(Sub1, K, V, NewSub1),
             Tout = two(K1, V1, Sub0, NewSub1)
         )
     ).
 
-:- pred tree234__set2(tree234(K, V), K, V, tree234(K, V)).
-:- mode tree234__set2(di_two, di, di, uo) is det.
-% :- mode tree234__set2(sdi_two, in, in, uo_tree234) is det.
-:- mode tree234__set2(in_two, in, in, out) is det.
-:- pragma type_spec(tree234__set2(in_two, in, in, out), K = var(_)).
+:- pred tree234.set2(tree234(K, V), K, V, tree234(K, V)).
+:- mode tree234.set2(di_two, di, di, uo) is det.
+% :- mode tree234.set2(sdi_two, in, in, uo_tree234) is det.
+:- mode tree234.set2(in_two, in, in, out) is det.
+:- pragma type_spec(tree234.set2(in_two, in, in, out), K = var(_)).
 
-tree234__set2(two(K0, V0, T0, T1), K, V, Tout) :-
+tree234.set2(two(K0, V0, T0, T1), K, V, Tout) :-
     (
         T0 = empty
         % T1 = empty implied by T0 = empty
@@ -1236,27 +1236,27 @@ tree234__set2(two(K0, V0, T0, T1), K, V, Tout) :-
             Result = (<),
             (
                 T0 = four(_, _, _, _, _, _, _, _, _, _),
-                tree234__split_four(T0, MT0K, MT0V, T00, T01),
+                tree234.split_four(T0, MT0K, MT0V, T00, T01),
                 compare(Result1, K, MT0K),
                 (
                     Result1 = (<),
-                    tree234__set2(T00, K, V, NewT00),
+                    tree234.set2(T00, K, V, NewT00),
                     Tout = three(MT0K, MT0V, K0, V0, NewT00, T01, T1)
                 ;
                     Result1 = (=),
                     Tout = three(MT0K, V, K0, V0, T00, T01, T1)
                 ;
                     Result1 = (>),
-                    tree234__set2(T01, K, V, NewT01),
+                    tree234.set2(T01, K, V, NewT01),
                     Tout = three(MT0K, MT0V, K0, V0, T00, NewT01, T1)
                 )
             ;
                 T0 = three(_, _, _, _, _, _, _),
-                tree234__set3(T0, K, V, NewT0),
+                tree234.set3(T0, K, V, NewT0),
                 Tout = two(K0, V0, NewT0, T1)
             ;
                 T0 = two(_, _, _, _),
-                tree234__set2(T0, K, V, NewT0),
+                tree234.set2(T0, K, V, NewT0),
                 Tout = two(K0, V0, NewT0, T1)
             ;
                 T0 = empty,
@@ -1270,27 +1270,27 @@ tree234__set2(two(K0, V0, T0, T1), K, V, Tout) :-
             Result = (>),
             (
                 T1 = four(_, _, _, _, _, _, _, _, _, _),
-                tree234__split_four(T1, MT1K, MT1V, T10, T11),
+                tree234.split_four(T1, MT1K, MT1V, T10, T11),
                 compare(Result1, K, MT1K),
                 (
                     Result1 = (<),
-                    tree234__set2(T10, K, V, NewT10),
+                    tree234.set2(T10, K, V, NewT10),
                     Tout = three(K0, V0, MT1K, MT1V, T0, NewT10, T11)
                 ;
                     Result1 = (=),
                     Tout = three(K0, V0, MT1K, V, T0, T10, T11)
                 ;
                     Result1 = (>),
-                    tree234__set2(T11, K, V, NewT11),
+                    tree234.set2(T11, K, V, NewT11),
                     Tout = three(K0, V0, MT1K, MT1V, T0, T10, NewT11)
                 )
             ;
                 T1 = three(_, _, _, _, _, _, _),
-                tree234__set3(T1, K, V, NewT1),
+                tree234.set3(T1, K, V, NewT1),
                 Tout = two(K0, V0, T0, NewT1)
             ;
                 T1 = two(_, _, _, _),
-                tree234__set2(T1, K, V, NewT1),
+                tree234.set2(T1, K, V, NewT1),
                 Tout = two(K0, V0, T0, NewT1)
             ;
                 T1 = empty,
@@ -1300,13 +1300,13 @@ tree234__set2(two(K0, V0, T0, T1), K, V, Tout) :-
         )
     ).
 
-:- pred tree234__set3(tree234(K, V), K, V, tree234(K, V)).
-:- mode tree234__set3(di_three, di, di, uo) is det.
-% :- mode tree234__set3(sdi_three, in, in, uo_tree234) is det.
-:- mode tree234__set3(in_three, in, in, out) is det.
-:- pragma type_spec(tree234__set3(in_three, in, in, out), K = var(_)).
+:- pred tree234.set3(tree234(K, V), K, V, tree234(K, V)).
+:- mode tree234.set3(di_three, di, di, uo) is det.
+% :- mode tree234.set3(sdi_three, in, in, uo_tree234) is det.
+:- mode tree234.set3(in_three, in, in, out) is det.
+:- pragma type_spec(tree234.set3(in_three, in, in, out), K = var(_)).
 
-tree234__set3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
+tree234.set3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
     (
         T0 = empty
         % T1 = empty implied by T0 = empty
@@ -1339,11 +1339,11 @@ tree234__set3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
             Result0 = (<),
             (
                 T0 = four(_, _, _, _, _, _, _, _, _, _),
-                tree234__split_four(T0, MT0K, MT0V, T00, T01),
+                tree234.split_four(T0, MT0K, MT0V, T00, T01),
                 compare(ResultM, K, MT0K),
                 (
                     ResultM = (<),
-                    tree234__set2(T00, K, V, NewT00),
+                    tree234.set2(T00, K, V, NewT00),
                     Tout = four(MT0K, MT0V, K0, V0, K1, V1,
                         NewT00, T01, T1, T2)
                 ;
@@ -1351,17 +1351,17 @@ tree234__set3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
                     Tout = four(MT0K, V, K0, V0, K1, V1, T00, T01, T1, T2)
                 ;
                     ResultM = (>),
-                    tree234__set2(T01, K, V, NewT01),
+                    tree234.set2(T01, K, V, NewT01),
                     Tout = four(MT0K, MT0V, K0, V0, K1, V1,
                         T00, NewT01, T1, T2)
                 )
             ;
                 T0 = three(_, _, _, _, _, _, _),
-                tree234__set3(T0, K, V, NewT0),
+                tree234.set3(T0, K, V, NewT0),
                 Tout = three(K0, V0, K1, V1, NewT0, T1, T2)
             ;
                 T0 = two(_, _, _, _),
-                tree234__set2(T0, K, V, NewT0),
+                tree234.set2(T0, K, V, NewT0),
                 Tout = three(K0, V0, K1, V1, NewT0, T1, T2)
             ;
                 T0 = empty,
@@ -1378,11 +1378,11 @@ tree234__set3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
                 Result1 = (<),
                 (
                     T1 = four(_, _, _, _, _, _, _, _, _, _),
-                    tree234__split_four(T1, MT1K, MT1V, T10, T11),
+                    tree234.split_four(T1, MT1K, MT1V, T10, T11),
                     compare(ResultM, K, MT1K),
                     (
                         ResultM = (<),
-                        tree234__set2(T10, K, V, NewT10),
+                        tree234.set2(T10, K, V, NewT10),
                         Tout = four(K0, V0, MT1K, MT1V, K1, V1,
                             T0, NewT10, T11, T2)
                     ;
@@ -1390,17 +1390,17 @@ tree234__set3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
                         Tout = four(K0, V0, MT1K, V, K1, V1, T0, T10, T11, T2)
                     ;
                         ResultM = (>),
-                        tree234__set2(T11, K, V, NewT11),
+                        tree234.set2(T11, K, V, NewT11),
                         Tout = four(K0, V0, MT1K, MT1V, K1, V1,
                             T0, T10, NewT11, T2)
                     )
                 ;
                     T1 = three(_, _, _, _, _, _, _),
-                    tree234__set3(T1, K, V, NewT1),
+                    tree234.set3(T1, K, V, NewT1),
                     Tout = three(K0, V0, K1, V1, T0, NewT1, T2)
                 ;
                     T1 = two(_, _, _, _),
-                    tree234__set2(T1, K, V, NewT1),
+                    tree234.set2(T1, K, V, NewT1),
                     Tout = three(K0, V0, K1, V1, T0, NewT1, T2)
                 ;
                     T1 = empty,
@@ -1414,11 +1414,11 @@ tree234__set3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
                 Result1 = (>),
                 (
                     T2 = four(_, _, _, _, _, _, _, _, _, _),
-                    tree234__split_four(T2, MT2K, MT2V, T20, T21),
+                    tree234.split_four(T2, MT2K, MT2V, T20, T21),
                     compare(ResultM, K, MT2K),
                     (
                         ResultM = (<),
-                        tree234__set2(T20, K, V, NewT20),
+                        tree234.set2(T20, K, V, NewT20),
                         Tout = four(K0, V0, K1, V1, MT2K, MT2V,
                             T0, T1, NewT20, T21)
                     ;
@@ -1426,17 +1426,17 @@ tree234__set3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
                         Tout = four(K0, V0, K1, V1, MT2K, V, T0, T1, T20, T21)
                     ;
                         ResultM = (>),
-                        tree234__set2(T21, K, V, NewT21),
+                        tree234.set2(T21, K, V, NewT21),
                         Tout = four(K0, V0, K1, V1, MT2K, MT2V,
                             T0, T1, T20, NewT21)
                     )
                 ;
                     T2 = three(_, _, _, _, _, _, _),
-                    tree234__set3(T2, K, V, NewT2),
+                    tree234.set3(T2, K, V, NewT2),
                     Tout = three(K0, V0, K1, V1, T0, T1, NewT2)
                 ;
                     T2 = two(_, _, _, _),
-                    tree234__set2(T2, K, V, NewT2),
+                    tree234.set2(T2, K, V, NewT2),
                     Tout = three(K0, V0, K1, V1, T0, T1, NewT2)
                 ;
                     T2 = empty,
@@ -1450,17 +1450,17 @@ tree234__set3(three(K0, V0, K1, V1, T0, T1, T2), K, V, Tout) :-
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
-tree234__delete(Tin, K, Tout) :-
-    tree234__delete_2(Tin, K, Tout, _).
+tree234.delete(Tin, K, Tout) :-
+    tree234.delete_2(Tin, K, Tout, _).
 
     % When deleting an item from a tree, the height of the tree may be
     % reduced by one. The last argument says whether this has occurred.
 
-:- pred tree234__delete_2(tree234(K, V), K, tree234(K, V), bool).
-:- mode tree234__delete_2(di, in, uo, out) is det.
-:- mode tree234__delete_2(in, in, out, out) is det.
+:- pred tree234.delete_2(tree234(K, V), K, tree234(K, V), bool).
+:- mode tree234.delete_2(di, in, uo, out) is det.
+:- mode tree234.delete_2(in, in, out, out) is det.
 
-tree234__delete_2(Tin, K, Tout, RH) :-
+tree234.delete_2(Tin, K, Tout, RH) :-
     (
         Tin = empty,
         Tout = empty,
@@ -1470,7 +1470,7 @@ tree234__delete_2(Tin, K, Tout, RH) :-
         compare(Result0, K, K0),
         (
             Result0 = (<),
-            tree234__delete_2(T0, K, NewT0, RHT0),
+            tree234.delete_2(T0, K, NewT0, RHT0),
             (
                 RHT0 = yes,
                 fix_2node_t0(K0, V0, NewT0, T1, Tout, RH)
@@ -1481,7 +1481,7 @@ tree234__delete_2(Tin, K, Tout, RH) :-
             )
         ;
             Result0 = (=),
-            ( tree234__remove_smallest_2(T1, ST1K, ST1V, NewT1, RHT1)
+            ( tree234.remove_smallest_2(T1, ST1K, ST1V, NewT1, RHT1)
             ->
                 (
                     RHT1 = yes,
@@ -1499,7 +1499,7 @@ tree234__delete_2(Tin, K, Tout, RH) :-
             )
         ;
             Result0 = (>),
-            tree234__delete_2(T1, K, NewT1, RHT1),
+            tree234.delete_2(T1, K, NewT1, RHT1),
             (
                 RHT1 = yes,
                 fix_2node_t1(K0, V0, T0, NewT1, Tout, RH)
@@ -1514,7 +1514,7 @@ tree234__delete_2(Tin, K, Tout, RH) :-
         compare(Result0, K, K0),
         (
             Result0 = (<),
-            tree234__delete_2(T0, K, NewT0, RHT0),
+            tree234.delete_2(T0, K, NewT0, RHT0),
             (
                 RHT0 = yes,
                 fix_3node_t0(K0, V0, K1, V1, NewT0, T1, T2, Tout, RH)
@@ -1525,7 +1525,7 @@ tree234__delete_2(Tin, K, Tout, RH) :-
             )
         ;
             Result0 = (=),
-            ( tree234__remove_smallest_2(T1, ST1K, ST1V, NewT1, RHT1)
+            ( tree234.remove_smallest_2(T1, ST1K, ST1V, NewT1, RHT1)
             ->
                 (
                     RHT1 = yes,
@@ -1545,7 +1545,7 @@ tree234__delete_2(Tin, K, Tout, RH) :-
             compare(Result1, K, K1),
             (
                 Result1 = (<),
-                tree234__delete_2(T1, K, NewT1, RHT1),
+                tree234.delete_2(T1, K, NewT1, RHT1),
                 (
                     RHT1 = yes,
                     fix_3node_t1(K0, V0, K1, V1, T0, NewT1, T2, Tout, RH)
@@ -1556,7 +1556,7 @@ tree234__delete_2(Tin, K, Tout, RH) :-
                 )
             ;
                 Result1 = (=),
-                ( tree234__remove_smallest_2(T2, ST2K, ST2V, NewT2, RHT2) ->
+                ( tree234.remove_smallest_2(T2, ST2K, ST2V, NewT2, RHT2) ->
                     (
                         RHT2 = yes,
                         fix_3node_t2(K0, V0, ST2K, ST2V,
@@ -1573,7 +1573,7 @@ tree234__delete_2(Tin, K, Tout, RH) :-
                 )
             ;
                 Result1 = (>),
-                tree234__delete_2(T2, K, NewT2, RHT2),
+                tree234.delete_2(T2, K, NewT2, RHT2),
                 (
                     RHT2 = yes,
                     fix_3node_t2(K0, V0, K1, V1, T0, T1, NewT2, Tout, RH)
@@ -1592,7 +1592,7 @@ tree234__delete_2(Tin, K, Tout, RH) :-
             compare(Result0, K, K0),
             (
                 Result0 = (<),
-                tree234__delete_2(T0, K, NewT0, RHT0),
+                tree234.delete_2(T0, K, NewT0, RHT0),
                 (
                     RHT0 = yes,
                     fix_4node_t0(K0, V0, K1, V1, K2, V2,
@@ -1604,7 +1604,7 @@ tree234__delete_2(Tin, K, Tout, RH) :-
                 )
             ;
                 Result0 = (=),
-                ( tree234__remove_smallest_2(T1, ST1K, ST1V, NewT1, RHT1) ->
+                ( tree234.remove_smallest_2(T1, ST1K, ST1V, NewT1, RHT1) ->
                     (
                         RHT1 = yes,
                         fix_4node_t1(ST1K, ST1V, K1, V1, K2, V2,
@@ -1622,7 +1622,7 @@ tree234__delete_2(Tin, K, Tout, RH) :-
                 )
             ;
                 Result0 = (>),
-                tree234__delete_2(T1, K, NewT1, RHT1),
+                tree234.delete_2(T1, K, NewT1, RHT1),
                 (
                     RHT1 = yes,
                     fix_4node_t1(K0, V0, K1, V1, K2, V2,
@@ -1635,7 +1635,7 @@ tree234__delete_2(Tin, K, Tout, RH) :-
             )
         ;
             Result1 = (=),
-            ( tree234__remove_smallest_2(T2, ST2K, ST2V, NewT2, RHT2) ->
+            ( tree234.remove_smallest_2(T2, ST2K, ST2V, NewT2, RHT2) ->
                 (
                     RHT2 = yes,
                     fix_4node_t2(K0, V0, ST2K, ST2V, K2, V2,
@@ -1656,7 +1656,7 @@ tree234__delete_2(Tin, K, Tout, RH) :-
             compare(Result2, K, K2),
             (
                 Result2 = (<),
-                tree234__delete_2(T2, K, NewT2, RHT2),
+                tree234.delete_2(T2, K, NewT2, RHT2),
                 (
                     RHT2 = yes,
                     fix_4node_t2(K0, V0, K1, V1, K2, V2,
@@ -1668,7 +1668,7 @@ tree234__delete_2(Tin, K, Tout, RH) :-
                 )
             ;
                 Result2 = (=),
-                ( tree234__remove_smallest_2(T3, ST3K, ST3V, NewT3, RHT3) ->
+                ( tree234.remove_smallest_2(T3, ST3K, ST3V, NewT3, RHT3) ->
                     (
                         RHT3 = yes,
                         fix_4node_t3(K0, V0, K1, V1, ST3K, ST3V,
@@ -1686,7 +1686,7 @@ tree234__delete_2(Tin, K, Tout, RH) :-
                 )
             ;
                 Result2 = (>),
-                tree234__delete_2(T3, K, NewT3, RHT3),
+                tree234.delete_2(T3, K, NewT3, RHT3),
                 (
                     RHT3 = yes,
                     fix_4node_t3(K0, V0, K1, V1, K2, V2,
@@ -1702,16 +1702,16 @@ tree234__delete_2(Tin, K, Tout, RH) :-
 
 %------------------------------------------------------------------------------%
 
-    % We use the same algorithm as tree234__delete.
+    % We use the same algorithm as tree234.delete.
 
-tree234__remove(Tin, K, V, Tout) :-
-    tree234__remove_2(Tin, K, V, Tout, _).
+tree234.remove(Tin, K, V, Tout) :-
+    tree234.remove_2(Tin, K, V, Tout, _).
 
-:- pred tree234__remove_2(tree234(K, V), K, V, tree234(K, V), bool).
-:- mode tree234__remove_2(di, in, uo, uo, out) is semidet.
-:- mode tree234__remove_2(in, in, out, out, out) is semidet.
+:- pred tree234.remove_2(tree234(K, V), K, V, tree234(K, V), bool).
+:- mode tree234.remove_2(di, in, uo, uo, out) is semidet.
+:- mode tree234.remove_2(in, in, out, out, out) is semidet.
 
-tree234__remove_2(Tin, K, V, Tout, RH) :-
+tree234.remove_2(Tin, K, V, Tout, RH) :-
     (
         Tin = empty,
         fail
@@ -1720,7 +1720,7 @@ tree234__remove_2(Tin, K, V, Tout, RH) :-
         compare(Result0, K, K0),
         (
             Result0 = (<),
-            tree234__remove_2(T0, K, V, NewT0, RHT0),
+            tree234.remove_2(T0, K, V, NewT0, RHT0),
             (
                 RHT0 = yes,
                 fix_2node_t0(K0, V0, NewT0, T1, Tout, RH)
@@ -1731,7 +1731,7 @@ tree234__remove_2(Tin, K, V, Tout, RH) :-
             )
         ;
             Result0 = (=),
-            ( tree234__remove_smallest_2(T1, ST1K, ST1V, NewT1, RHT1) ->
+            ( tree234.remove_smallest_2(T1, ST1K, ST1V, NewT1, RHT1) ->
                 (
                     RHT1 = yes,
                     fix_2node_t1(ST1K, ST1V, T0, NewT1, Tout, RH)
@@ -1748,7 +1748,7 @@ tree234__remove_2(Tin, K, V, Tout, RH) :-
             V = V0
         ;
             Result0 = (>),
-            tree234__remove_2(T1, K, V, NewT1, RHT1),
+            tree234.remove_2(T1, K, V, NewT1, RHT1),
             (
                 RHT1 = yes,
                 fix_2node_t1(K0, V0, T0, NewT1, Tout, RH)
@@ -1763,7 +1763,7 @@ tree234__remove_2(Tin, K, V, Tout, RH) :-
         compare(Result0, K, K0),
         (
             Result0 = (<),
-            tree234__remove_2(T0, K, V, NewT0, RHT0),
+            tree234.remove_2(T0, K, V, NewT0, RHT0),
             (
                 RHT0 = yes,
                 fix_3node_t0(K0, V0, K1, V1, NewT0, T1, T2, Tout, RH)
@@ -1774,7 +1774,7 @@ tree234__remove_2(Tin, K, V, Tout, RH) :-
             )
         ;
             Result0 = (=),
-            ( tree234__remove_smallest_2(T1, ST1K, ST1V, NewT1, RHT1) ->
+            ( tree234.remove_smallest_2(T1, ST1K, ST1V, NewT1, RHT1) ->
                 (
                     RHT1 = yes,
                     fix_3node_t1(ST1K, ST1V, K1, V1, T0, NewT1, T2, Tout, RH)
@@ -1794,7 +1794,7 @@ tree234__remove_2(Tin, K, V, Tout, RH) :-
             compare(Result1, K, K1),
             (
                 Result1 = (<),
-                tree234__remove_2(T1, K, V, NewT1, RHT1),
+                tree234.remove_2(T1, K, V, NewT1, RHT1),
                 (
                     RHT1 = yes,
                     fix_3node_t1(K0, V0, K1, V1, T0, NewT1, T2, Tout, RH)
@@ -1805,7 +1805,7 @@ tree234__remove_2(Tin, K, V, Tout, RH) :-
                 )
             ;
                 Result1 = (=),
-                ( tree234__remove_smallest_2(T2, ST2K, ST2V, NewT2, RHT2) ->
+                ( tree234.remove_smallest_2(T2, ST2K, ST2V, NewT2, RHT2) ->
                     (
                         RHT2 = yes,
                         fix_3node_t2(K0, V0, ST2K, ST2V,
@@ -1823,7 +1823,7 @@ tree234__remove_2(Tin, K, V, Tout, RH) :-
                 V = V1
             ;
                 Result1 = (>),
-                tree234__remove_2(T2, K, V, NewT2, RHT2),
+                tree234.remove_2(T2, K, V, NewT2, RHT2),
                 (
                     RHT2 = yes,
                     fix_3node_t2(K0, V0, K1, V1, T0, T1, NewT2, Tout, RH)
@@ -1842,7 +1842,7 @@ tree234__remove_2(Tin, K, V, Tout, RH) :-
             compare(Result0, K, K0),
             (
                 Result0 = (<),
-                tree234__remove_2(T0, K, V, NewT0, RHT0),
+                tree234.remove_2(T0, K, V, NewT0, RHT0),
                 (
                     RHT0 = yes,
                     fix_4node_t0(K0, V0, K1, V1, K2, V2,
@@ -1854,7 +1854,7 @@ tree234__remove_2(Tin, K, V, Tout, RH) :-
                 )
             ;
                 Result0 = (=),
-                ( tree234__remove_smallest_2(T1, ST1K, ST1V, NewT1, RHT1) ->
+                ( tree234.remove_smallest_2(T1, ST1K, ST1V, NewT1, RHT1) ->
                     (
                         RHT1 = yes,
                         fix_4node_t1(ST1K, ST1V, K1, V1, K2, V2,
@@ -1873,7 +1873,7 @@ tree234__remove_2(Tin, K, V, Tout, RH) :-
                 V = V0
             ;
                 Result0 = (>),
-                tree234__remove_2(T1, K, V, NewT1, RHT1),
+                tree234.remove_2(T1, K, V, NewT1, RHT1),
                 (
                     RHT1 = yes,
                     fix_4node_t1(K0, V0, K1, V1, K2, V2,
@@ -1886,7 +1886,7 @@ tree234__remove_2(Tin, K, V, Tout, RH) :-
             )
         ;
             Result1 = (=),
-            ( tree234__remove_smallest_2(T2, ST2K, ST2V, NewT2, RHT2) ->
+            ( tree234.remove_smallest_2(T2, ST2K, ST2V, NewT2, RHT2) ->
                 (
                     RHT2 = yes,
                     fix_4node_t2(K0, V0, ST2K, ST2V, K2, V2,
@@ -1907,7 +1907,7 @@ tree234__remove_2(Tin, K, V, Tout, RH) :-
             compare(Result2, K, K2),
             (
                 Result2 = (<),
-                tree234__remove_2(T2, K, V, NewT2, RHT2),
+                tree234.remove_2(T2, K, V, NewT2, RHT2),
                 (
                     RHT2 = yes,
                     fix_4node_t2(K0, V0, K1, V1, K2, V2,
@@ -1919,7 +1919,7 @@ tree234__remove_2(Tin, K, V, Tout, RH) :-
                 )
             ;
                 Result2 = (=),
-                ( tree234__remove_smallest_2(T3, ST3K, ST3V, NewT3, RHT3) ->
+                ( tree234.remove_smallest_2(T3, ST3K, ST3V, NewT3, RHT3) ->
                     (
                         RHT3 = yes,
                         fix_4node_t3(K0, V0, K1, V1, ST3K, ST3V,
@@ -1938,7 +1938,7 @@ tree234__remove_2(Tin, K, V, Tout, RH) :-
                 V = V2
             ;
                 Result2 = (>),
-                tree234__remove_2(T3, K, V, NewT3, RHT3),
+                tree234.remove_2(T3, K, V, NewT3, RHT3),
                 (
                     RHT3 = yes,
                     fix_4node_t3(K0, V0, K1, V1, K2, V2,
@@ -1954,17 +1954,17 @@ tree234__remove_2(Tin, K, V, Tout, RH) :-
 
 %------------------------------------------------------------------------------%
 
-    % The algorithm we use similar to tree234__delete, except that we
+    % The algorithm we use similar to tree234.delete, except that we
     % always go down the left subtree.
 
-tree234__remove_smallest(Tin, K, V, Tout) :-
-    tree234__remove_smallest_2(Tin, K, V, Tout, _).
+tree234.remove_smallest(Tin, K, V, Tout) :-
+    tree234.remove_smallest_2(Tin, K, V, Tout, _).
 
-:- pred tree234__remove_smallest_2(tree234(K, V), K, V, tree234(K, V), bool).
-:- mode tree234__remove_smallest_2(di, uo, uo, uo, out) is semidet.
-:- mode tree234__remove_smallest_2(in, out, out, out, out) is semidet.
+:- pred tree234.remove_smallest_2(tree234(K, V), K, V, tree234(K, V), bool).
+:- mode tree234.remove_smallest_2(di, uo, uo, uo, out) is semidet.
+:- mode tree234.remove_smallest_2(in, out, out, out, out) is semidet.
 
-tree234__remove_smallest_2(Tin, K, V, Tout, RH) :-
+tree234.remove_smallest_2(Tin, K, V, Tout, RH) :-
     (
         Tin = empty,
         fail
@@ -1976,7 +1976,7 @@ tree234__remove_smallest_2(Tin, K, V, Tout, RH) :-
             Tout = T1,
             RH = yes
         ;
-            tree234__remove_smallest_2(T0, K, V, NewT0, RHT0),
+            tree234.remove_smallest_2(T0, K, V, NewT0, RHT0),
             (
                 RHT0 = yes,
                 fix_2node_t0(K0, V0, NewT0, T1, Tout, RH)
@@ -1994,7 +1994,7 @@ tree234__remove_smallest_2(Tin, K, V, Tout, RH) :-
             Tout = two(K1, V1, T1, T2),
             RH = no
         ;
-            tree234__remove_smallest_2(T0, K, V, NewT0, RHT0),
+            tree234.remove_smallest_2(T0, K, V, NewT0, RHT0),
             (
                 RHT0 = yes,
                 fix_3node_t0(K0, V0, K1, V1, NewT0, T1, T2, Tout, RH)
@@ -2012,7 +2012,7 @@ tree234__remove_smallest_2(Tin, K, V, Tout, RH) :-
             Tout = three(K1, V1, K2, V2, T1, T2, T3),
             RH = no
         ;
-            tree234__remove_smallest_2(T0, K, V, NewT0, RHT0),
+            tree234.remove_smallest_2(T0, K, V, NewT0, RHT0),
             (
                 RHT0 = yes,
                 fix_4node_t0(K0, V0, K1, V1, K2, V2,
@@ -2343,268 +2343,268 @@ fix_4node_t3(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3, Tout, RH) :-
 
 %------------------------------------------------------------------------------%
 
-tree234__keys(Tree, Keys) :-
-    tree234__keys_2(Tree, [], Keys).
+tree234.keys(Tree, Keys) :-
+    tree234.keys_2(Tree, [], Keys).
 
-:- pred tree234__keys_2(tree234(K, V), list(K), list(K)).
-:- mode tree234__keys_2(in, in, out) is det.
+:- pred tree234.keys_2(tree234(K, V), list(K), list(K)).
+:- mode tree234.keys_2(in, in, out) is det.
 
-tree234__keys_2(empty, List, List).
-tree234__keys_2(two(K0, _V0, T0, T1), L0, L) :-
-    tree234__keys_2(T1, L0, L1),
-    tree234__keys_2(T0, [K0 | L1], L).
-tree234__keys_2(three(K0, _V0, K1, _V1, T0, T1, T2), L0, L) :-
-    tree234__keys_2(T2, L0, L1),
-    tree234__keys_2(T1, [K1 | L1], L2),
-    tree234__keys_2(T0, [K0 | L2], L).
-tree234__keys_2(four(K0, _V0, K1, _V1, K2, _V2, T0, T1, T2, T3), L0, L) :-
-    tree234__keys_2(T3, L0, L1),
-    tree234__keys_2(T2, [K2 | L1], L2),
-    tree234__keys_2(T1, [K1 | L2], L3),
-    tree234__keys_2(T0, [K0 | L3], L).
-
-%------------------------------------------------------------------------------%
-
-tree234__values(Tree, Values) :-
-    tree234__values_2(Tree, [], Values).
-
-:- pred tree234__values_2(tree234(K, V), list(V), list(V)).
-:- mode tree234__values_2(in, in, out) is det.
-
-tree234__values_2(empty, List, List).
-tree234__values_2(two(_K0, V0, T0, T1), L0, L) :-
-    tree234__values_2(T1, L0, L1),
-    tree234__values_2(T0, [V0 | L1], L).
-tree234__values_2(three(_K0, V0, _K1, V1, T0, T1, T2), L0, L) :-
-    tree234__values_2(T2, L0, L1),
-    tree234__values_2(T1, [V1 | L1], L2),
-    tree234__values_2(T0, [V0 | L2], L).
-tree234__values_2(four(_K0, V0, _K1, V1, _K2, V2, T0, T1, T2, T3), L0, L) :-
-    tree234__values_2(T3, L0, L1),
-    tree234__values_2(T2, [V2 | L1], L2),
-    tree234__values_2(T1, [V1 | L2], L3),
-    tree234__values_2(T0, [V0 | L3], L).
+tree234.keys_2(empty, List, List).
+tree234.keys_2(two(K0, _V0, T0, T1), L0, L) :-
+    tree234.keys_2(T1, L0, L1),
+    tree234.keys_2(T0, [K0 | L1], L).
+tree234.keys_2(three(K0, _V0, K1, _V1, T0, T1, T2), L0, L) :-
+    tree234.keys_2(T2, L0, L1),
+    tree234.keys_2(T1, [K1 | L1], L2),
+    tree234.keys_2(T0, [K0 | L2], L).
+tree234.keys_2(four(K0, _V0, K1, _V1, K2, _V2, T0, T1, T2, T3), L0, L) :-
+    tree234.keys_2(T3, L0, L1),
+    tree234.keys_2(T2, [K2 | L1], L2),
+    tree234.keys_2(T1, [K1 | L2], L3),
+    tree234.keys_2(T0, [K0 | L3], L).
 
 %------------------------------------------------------------------------------%
 
-tree234__assoc_list_to_tree234(AssocList, Tree) :-
-    tree234__assoc_list_to_tree234_2(AssocList, empty, Tree).
+tree234.values(Tree, Values) :-
+    tree234.values_2(Tree, [], Values).
 
-:- pred tree234__assoc_list_to_tree234_2(assoc_list(K, V)::in,
+:- pred tree234.values_2(tree234(K, V), list(V), list(V)).
+:- mode tree234.values_2(in, in, out) is det.
+
+tree234.values_2(empty, List, List).
+tree234.values_2(two(_K0, V0, T0, T1), L0, L) :-
+    tree234.values_2(T1, L0, L1),
+    tree234.values_2(T0, [V0 | L1], L).
+tree234.values_2(three(_K0, V0, _K1, V1, T0, T1, T2), L0, L) :-
+    tree234.values_2(T2, L0, L1),
+    tree234.values_2(T1, [V1 | L1], L2),
+    tree234.values_2(T0, [V0 | L2], L).
+tree234.values_2(four(_K0, V0, _K1, V1, _K2, V2, T0, T1, T2, T3), L0, L) :-
+    tree234.values_2(T3, L0, L1),
+    tree234.values_2(T2, [V2 | L1], L2),
+    tree234.values_2(T1, [V1 | L2], L3),
+    tree234.values_2(T0, [V0 | L3], L).
+
+%------------------------------------------------------------------------------%
+
+tree234.assoc_list_to_tree234(AssocList, Tree) :-
+    tree234.assoc_list_to_tree234_2(AssocList, empty, Tree).
+
+:- pred tree234.assoc_list_to_tree234_2(assoc_list(K, V)::in,
     tree234(K, V)::in, tree234(K, V)::out) is det.
 
-tree234__assoc_list_to_tree234_2([], Tree, Tree).
-tree234__assoc_list_to_tree234_2([K - V | Rest], Tree0, Tree) :-
-    tree234__set(Tree0, K, V, Tree1),
-    tree234__assoc_list_to_tree234_2(Rest, Tree1, Tree).
+tree234.assoc_list_to_tree234_2([], Tree, Tree).
+tree234.assoc_list_to_tree234_2([K - V | Rest], Tree0, Tree) :-
+    tree234.set(Tree0, K, V, Tree1),
+    tree234.assoc_list_to_tree234_2(Rest, Tree1, Tree).
 
 %------------------------------------------------------------------------------%
 
-tree234__tree234_to_assoc_list(Tree, AssocList) :-
-    tree234__tree234_to_assoc_list_2(Tree, [], AssocList).
+tree234.tree234_to_assoc_list(Tree, AssocList) :-
+    tree234.tree234_to_assoc_list_2(Tree, [], AssocList).
 
-:- pred tree234__tree234_to_assoc_list_2(tree234(K, V)::in,
+:- pred tree234.tree234_to_assoc_list_2(tree234(K, V)::in,
     assoc_list(K, V)::in, assoc_list(K, V)::out) is det.
 
-tree234__tree234_to_assoc_list_2(empty, List, List).
-tree234__tree234_to_assoc_list_2(two(K0, V0, T0, T1), L0, L) :-
-    tree234__tree234_to_assoc_list_2(T1, L0, L1),
-    tree234__tree234_to_assoc_list_2(T0, [K0 - V0 | L1], L).
-tree234__tree234_to_assoc_list_2(three(K0, V0, K1, V1, T0, T1, T2), L0, L) :-
-    tree234__tree234_to_assoc_list_2(T2, L0, L1),
-    tree234__tree234_to_assoc_list_2(T1, [K1 - V1 | L1], L2),
-    tree234__tree234_to_assoc_list_2(T0, [K0 - V0 | L2], L).
-tree234__tree234_to_assoc_list_2(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
+tree234.tree234_to_assoc_list_2(empty, List, List).
+tree234.tree234_to_assoc_list_2(two(K0, V0, T0, T1), L0, L) :-
+    tree234.tree234_to_assoc_list_2(T1, L0, L1),
+    tree234.tree234_to_assoc_list_2(T0, [K0 - V0 | L1], L).
+tree234.tree234_to_assoc_list_2(three(K0, V0, K1, V1, T0, T1, T2), L0, L) :-
+    tree234.tree234_to_assoc_list_2(T2, L0, L1),
+    tree234.tree234_to_assoc_list_2(T1, [K1 - V1 | L1], L2),
+    tree234.tree234_to_assoc_list_2(T0, [K0 - V0 | L2], L).
+tree234.tree234_to_assoc_list_2(four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
                     L0, L) :-
-    tree234__tree234_to_assoc_list_2(T3, L0, L1),
-    tree234__tree234_to_assoc_list_2(T2, [K2 - V2 | L1], L2),
-    tree234__tree234_to_assoc_list_2(T1, [K1 - V1 | L2], L3),
-    tree234__tree234_to_assoc_list_2(T0, [K0 - V0 | L3], L).
+    tree234.tree234_to_assoc_list_2(T3, L0, L1),
+    tree234.tree234_to_assoc_list_2(T2, [K2 - V2 | L1], L2),
+    tree234.tree234_to_assoc_list_2(T1, [K1 - V1 | L2], L3),
+    tree234.tree234_to_assoc_list_2(T0, [K0 - V0 | L3], L).
 
 %------------------------------------------------------------------------------%
 
-tree234__foldl(_Pred, empty, !A).
-tree234__foldl(Pred, two(K, V, T0, T1), !A) :-
-    tree234__foldl(Pred, T0, !A),
+tree234.foldl(_Pred, empty, !A).
+tree234.foldl(Pred, two(K, V, T0, T1), !A) :-
+    tree234.foldl(Pred, T0, !A),
     call(Pred, K, V, !A),
-    tree234__foldl(Pred, T1, !A).
-tree234__foldl(Pred, three(K0, V0, K1, V1, T0, T1, T2), !A) :-
-    tree234__foldl(Pred, T0, !A),
+    tree234.foldl(Pred, T1, !A).
+tree234.foldl(Pred, three(K0, V0, K1, V1, T0, T1, T2), !A) :-
+    tree234.foldl(Pred, T0, !A),
     call(Pred, K0, V0, !A),
-    tree234__foldl(Pred, T1, !A),
+    tree234.foldl(Pred, T1, !A),
     call(Pred, K1, V1, !A),
-    tree234__foldl(Pred, T2, !A).
-tree234__foldl(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), !A) :-
-    tree234__foldl(Pred, T0, !A),
+    tree234.foldl(Pred, T2, !A).
+tree234.foldl(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), !A) :-
+    tree234.foldl(Pred, T0, !A),
     call(Pred, K0, V0, !A),
-    tree234__foldl(Pred, T1, !A),
+    tree234.foldl(Pred, T1, !A),
     call(Pred, K1, V1, !A),
-    tree234__foldl(Pred, T2, !A),
+    tree234.foldl(Pred, T2, !A),
     call(Pred, K2, V2, !A),
-    tree234__foldl(Pred, T3, !A).
+    tree234.foldl(Pred, T3, !A).
 
-tree234__foldl2(_Pred, empty, !A, !B).
-tree234__foldl2(Pred, two(K, V, T0, T1), !A, !B) :-
-    tree234__foldl2(Pred, T0, !A, !B),
+tree234.foldl2(_Pred, empty, !A, !B).
+tree234.foldl2(Pred, two(K, V, T0, T1), !A, !B) :-
+    tree234.foldl2(Pred, T0, !A, !B),
     call(Pred, K, V, !A, !B),
-    tree234__foldl2(Pred, T1, !A, !B).
-tree234__foldl2(Pred, three(K0, V0, K1, V1, T0, T1, T2), !A, !B) :-
-    tree234__foldl2(Pred, T0, !A, !B),
+    tree234.foldl2(Pred, T1, !A, !B).
+tree234.foldl2(Pred, three(K0, V0, K1, V1, T0, T1, T2), !A, !B) :-
+    tree234.foldl2(Pred, T0, !A, !B),
     call(Pred, K0, V0, !A, !B),
-    tree234__foldl2(Pred, T1, !A, !B),
+    tree234.foldl2(Pred, T1, !A, !B),
     call(Pred, K1, V1, !A, !B),
-    tree234__foldl2(Pred, T2, !A, !B).
-tree234__foldl2(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), !A, !B) :-
-    tree234__foldl2(Pred, T0, !A, !B),
+    tree234.foldl2(Pred, T2, !A, !B).
+tree234.foldl2(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3), !A, !B) :-
+    tree234.foldl2(Pred, T0, !A, !B),
     call(Pred, K0, V0, !A, !B),
-    tree234__foldl2(Pred, T1, !A, !B),
+    tree234.foldl2(Pred, T1, !A, !B),
     call(Pred, K1, V1, !A, !B),
-    tree234__foldl2(Pred, T2, !A, !B),
+    tree234.foldl2(Pred, T2, !A, !B),
     call(Pred, K2, V2, !A, !B),
-    tree234__foldl2(Pred, T3, !A, !B).
+    tree234.foldl2(Pred, T3, !A, !B).
 
-tree234__foldl3(_Pred, empty, !A, !B, !C).
-tree234__foldl3(Pred, two(K, V, T0, T1), !A, !B, !C) :-
-    tree234__foldl3(Pred, T0, !A, !B, !C),
+tree234.foldl3(_Pred, empty, !A, !B, !C).
+tree234.foldl3(Pred, two(K, V, T0, T1), !A, !B, !C) :-
+    tree234.foldl3(Pred, T0, !A, !B, !C),
     call(Pred, K, V, !A, !B, !C),
-    tree234__foldl3(Pred, T1, !A, !B, !C).
-tree234__foldl3(Pred, three(K0, V0, K1, V1, T0, T1, T2), !A, !B, !C) :-
-    tree234__foldl3(Pred, T0, !A, !B, !C),
+    tree234.foldl3(Pred, T1, !A, !B, !C).
+tree234.foldl3(Pred, three(K0, V0, K1, V1, T0, T1, T2), !A, !B, !C) :-
+    tree234.foldl3(Pred, T0, !A, !B, !C),
     call(Pred, K0, V0, !A, !B, !C),
-    tree234__foldl3(Pred, T1, !A, !B, !C),
+    tree234.foldl3(Pred, T1, !A, !B, !C),
     call(Pred, K1, V1, !A, !B, !C),
-    tree234__foldl3(Pred, T2, !A, !B, !C).
-tree234__foldl3(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
+    tree234.foldl3(Pred, T2, !A, !B, !C).
+tree234.foldl3(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
         !A, !B, !C) :-
-    tree234__foldl3(Pred, T0, !A, !B, !C),
+    tree234.foldl3(Pred, T0, !A, !B, !C),
     call(Pred, K0, V0, !A, !B, !C),
-    tree234__foldl3(Pred, T1, !A, !B, !C),
+    tree234.foldl3(Pred, T1, !A, !B, !C),
     call(Pred, K1, V1, !A, !B, !C),
-    tree234__foldl3(Pred, T2, !A, !B, !C),
+    tree234.foldl3(Pred, T2, !A, !B, !C),
     call(Pred, K2, V2, !A, !B, !C),
-    tree234__foldl3(Pred, T3, !A, !B, !C).
+    tree234.foldl3(Pred, T3, !A, !B, !C).
 
-tree234__foldl4(_Pred, empty, !A, !B, !C, !D).
-tree234__foldl4(Pred, two(K, V, T0, T1), !A, !B, !C, !D) :-
-	tree234__foldl4(Pred, T0, !A, !B, !C, !D),
+tree234.foldl4(_Pred, empty, !A, !B, !C, !D).
+tree234.foldl4(Pred, two(K, V, T0, T1), !A, !B, !C, !D) :-
+	tree234.foldl4(Pred, T0, !A, !B, !C, !D),
 	call(Pred, K, V, !A, !B, !C, !D),
-	tree234__foldl4(Pred, T1, !A, !B, !C, !D).
-tree234__foldl4(Pred, three(K0, V0, K1, V1, T0, T1, T2), !A, !B, !C, !D) :-
-	tree234__foldl4(Pred, T0, !A, !B, !C, !D),
+	tree234.foldl4(Pred, T1, !A, !B, !C, !D).
+tree234.foldl4(Pred, three(K0, V0, K1, V1, T0, T1, T2), !A, !B, !C, !D) :-
+	tree234.foldl4(Pred, T0, !A, !B, !C, !D),
 	call(Pred, K0, V0, !A, !B, !C, !D),
-	tree234__foldl4(Pred, T1, !A, !B, !C, !D),
+	tree234.foldl4(Pred, T1, !A, !B, !C, !D),
 	call(Pred, K1, V1, !A, !B, !C, !D),
-	tree234__foldl4(Pred, T2, !A, !B, !C, !D).
-tree234__foldl4(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
+	tree234.foldl4(Pred, T2, !A, !B, !C, !D).
+tree234.foldl4(Pred, four(K0, V0, K1, V1, K2, V2, T0, T1, T2, T3),
 		!A, !B, !C, !D) :-
-	tree234__foldl4(Pred, T0, !A, !B, !C, !D),
+	tree234.foldl4(Pred, T0, !A, !B, !C, !D),
 	call(Pred, K0, V0, !A, !B, !C, !D),
-	tree234__foldl4(Pred, T1, !A, !B, !C, !D),
+	tree234.foldl4(Pred, T1, !A, !B, !C, !D),
 	call(Pred, K1, V1, !A, !B, !C, !D),
-	tree234__foldl4(Pred, T2, !A, !B, !C, !D),
+	tree234.foldl4(Pred, T2, !A, !B, !C, !D),
 	call(Pred, K2, V2, !A, !B, !C, !D),
-	tree234__foldl4(Pred, T3, !A, !B, !C, !D).
+	tree234.foldl4(Pred, T3, !A, !B, !C, !D).
 
 %------------------------------------------------------------------------------%
 
-tree234__map_values(_Pred, empty, empty).
-tree234__map_values(Pred, Tree0, Tree) :-
+tree234.map_values(_Pred, empty, empty).
+tree234.map_values(Pred, Tree0, Tree) :-
     Tree0 = two(K0, V0, Left0, Right0),
     call(Pred, K0, V0, W0),
-    tree234__map_values(Pred, Left0, Left),
-    tree234__map_values(Pred, Right0, Right),
+    tree234.map_values(Pred, Left0, Left),
+    tree234.map_values(Pred, Right0, Right),
     Tree  = two(K0, W0, Left, Right).
-tree234__map_values(Pred, Tree0, Tree) :-
+tree234.map_values(Pred, Tree0, Tree) :-
     Tree0 = three(K0, V0, K1, V1, Left0, Middle0, Right0),
     call(Pred, K0, V0, W0),
     call(Pred, K1, V1, W1),
-    tree234__map_values(Pred, Left0, Left),
-    tree234__map_values(Pred, Middle0, Middle),
-    tree234__map_values(Pred, Right0, Right),
+    tree234.map_values(Pred, Left0, Left),
+    tree234.map_values(Pred, Middle0, Middle),
+    tree234.map_values(Pred, Right0, Right),
     Tree  = three(K0, W0, K1, W1, Left, Middle, Right).
-tree234__map_values(Pred, Tree0, Tree) :-
+tree234.map_values(Pred, Tree0, Tree) :-
     Tree0 = four(K0, V0, K1, V1, K2, V2, Left0, LMid0, RMid0, Right0),
     call(Pred, K0, V0, W0),
     call(Pred, K1, V1, W1),
     call(Pred, K2, V2, W2),
-    tree234__map_values(Pred, Left0, Left),
-    tree234__map_values(Pred, LMid0, LMid),
-    tree234__map_values(Pred, RMid0, RMid),
-    tree234__map_values(Pred, Right0, Right),
+    tree234.map_values(Pred, Left0, Left),
+    tree234.map_values(Pred, LMid0, LMid),
+    tree234.map_values(Pred, RMid0, RMid),
+    tree234.map_values(Pred, Right0, Right),
     Tree  = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right).
 
 %------------------------------------------------------------------------------%
 
-tree234__map_foldl(_Pred, empty, empty, !A).
-tree234__map_foldl(Pred, Tree0, Tree, !A) :-
+tree234.map_foldl(_Pred, empty, empty, !A).
+tree234.map_foldl(Pred, Tree0, Tree, !A) :-
     Tree0 = two(K0, V0, Left0, Right0),
     Tree  = two(K0, W0, Left, Right),
-    tree234__map_foldl(Pred, Left0, Left, !A),
+    tree234.map_foldl(Pred, Left0, Left, !A),
     call(Pred, K0, V0, W0, !A),
-    tree234__map_foldl(Pred, Right0, Right, !A).
-tree234__map_foldl(Pred, Tree0, Tree, !A) :-
+    tree234.map_foldl(Pred, Right0, Right, !A).
+tree234.map_foldl(Pred, Tree0, Tree, !A) :-
     Tree0 = three(K0, V0, K1, V1, Left0, Middle0, Right0),
     Tree  = three(K0, W0, K1, W1, Left, Middle, Right),
-    tree234__map_foldl(Pred, Left0, Left, !A),
+    tree234.map_foldl(Pred, Left0, Left, !A),
     call(Pred, K0, V0, W0, !A),
-    tree234__map_foldl(Pred, Middle0, Middle, !A),
+    tree234.map_foldl(Pred, Middle0, Middle, !A),
     call(Pred, K1, V1, W1, !A),
-    tree234__map_foldl(Pred, Right0, Right, !A).
-tree234__map_foldl(Pred, Tree0, Tree, !A) :-
+    tree234.map_foldl(Pred, Right0, Right, !A).
+tree234.map_foldl(Pred, Tree0, Tree, !A) :-
     Tree0 = four(K0, V0, K1, V1, K2, V2, Left0, LMid0, RMid0, Right0),
     Tree  = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right),
-    tree234__map_foldl(Pred, Left0, Left, !A),
+    tree234.map_foldl(Pred, Left0, Left, !A),
     call(Pred, K0, V0, W0, !A),
-    tree234__map_foldl(Pred, LMid0, LMid, !A),
+    tree234.map_foldl(Pred, LMid0, LMid, !A),
     call(Pred, K1, V1, W1, !A),
-    tree234__map_foldl(Pred, RMid0, RMid, !A),
+    tree234.map_foldl(Pred, RMid0, RMid, !A),
     call(Pred, K2, V2, W2, !A),
-    tree234__map_foldl(Pred, Right0, Right, !A).
+    tree234.map_foldl(Pred, Right0, Right, !A).
 
-tree234__map_foldl2(_Pred, empty, empty, !A, !B).
-tree234__map_foldl2(Pred, Tree0, Tree, !A, !B) :-
+tree234.map_foldl2(_Pred, empty, empty, !A, !B).
+tree234.map_foldl2(Pred, Tree0, Tree, !A, !B) :-
     Tree0 = two(K0, V0, Left0, Right0),
     Tree  = two(K0, W0, Left, Right),
-    tree234__map_foldl2(Pred, Left0, Left, !A, !B),
+    tree234.map_foldl2(Pred, Left0, Left, !A, !B),
     call(Pred, K0, V0, W0, !A, !B),
-    tree234__map_foldl2(Pred, Right0, Right, !A, !B).
-tree234__map_foldl2(Pred, Tree0, Tree, !A, !B) :-
+    tree234.map_foldl2(Pred, Right0, Right, !A, !B).
+tree234.map_foldl2(Pred, Tree0, Tree, !A, !B) :-
     Tree0 = three(K0, V0, K1, V1, Left0, Middle0, Right0),
     Tree  = three(K0, W0, K1, W1, Left, Middle, Right),
-    tree234__map_foldl2(Pred, Left0, Left, !A, !B),
+    tree234.map_foldl2(Pred, Left0, Left, !A, !B),
     call(Pred, K0, V0, W0, !A, !B),
-    tree234__map_foldl2(Pred, Middle0, Middle, !A, !B),
+    tree234.map_foldl2(Pred, Middle0, Middle, !A, !B),
     call(Pred, K1, V1, W1, !A, !B),
-    tree234__map_foldl2(Pred, Right0, Right, !A, !B).
-tree234__map_foldl2(Pred, Tree0, Tree, !A, !B) :-
+    tree234.map_foldl2(Pred, Right0, Right, !A, !B).
+tree234.map_foldl2(Pred, Tree0, Tree, !A, !B) :-
     Tree0 = four(K0, V0, K1, V1, K2, V2, Left0, LMid0, RMid0, Right0),
     Tree  = four(K0, W0, K1, W1, K2, W2, Left, LMid, RMid, Right),
-    tree234__map_foldl2(Pred, Left0, Left, !A, !B),
+    tree234.map_foldl2(Pred, Left0, Left, !A, !B),
     call(Pred, K0, V0, W0, !A, !B),
-    tree234__map_foldl2(Pred, LMid0, LMid, !A, !B),
+    tree234.map_foldl2(Pred, LMid0, LMid, !A, !B),
     call(Pred, K1, V1, W1, !A, !B),
-    tree234__map_foldl2(Pred, RMid0, RMid, !A, !B),
+    tree234.map_foldl2(Pred, RMid0, RMid, !A, !B),
     call(Pred, K2, V2, W2, !A, !B),
-    tree234__map_foldl2(Pred, Right0, Right, !A, !B).
+    tree234.map_foldl2(Pred, Right0, Right, !A, !B).
 
 %------------------------------------------------------------------------------%
 
     % count the number of elements in a tree
-tree234__count(empty, 0).
-tree234__count(two(_, _, T0, T1), N) :-
-    tree234__count(T0, N0),
-    tree234__count(T1, N1),
+tree234.count(empty, 0).
+tree234.count(two(_, _, T0, T1), N) :-
+    tree234.count(T0, N0),
+    tree234.count(T1, N1),
     N = 1 + N0 + N1.
-tree234__count(three(_, _, _, _, T0, T1, T2), N) :-
-    tree234__count(T0, N0),
-    tree234__count(T1, N1),
-    tree234__count(T2, N2),
+tree234.count(three(_, _, _, _, T0, T1, T2), N) :-
+    tree234.count(T0, N0),
+    tree234.count(T1, N1),
+    tree234.count(T2, N2),
     N = 2 + N0 + N1 + N2.
-tree234__count(four(_, _, _, _, _, _, T0, T1, T2, T3), N) :-
-    tree234__count(T0, N0),
-    tree234__count(T1, N1),
-    tree234__count(T2, N2),
-    tree234__count(T3, N3),
+tree234.count(four(_, _, _, _, _, _, T0, T1, T2, T3), N) :-
+    tree234.count(T0, N0),
+    tree234.count(T1, N1),
+    tree234.count(T2, N2),
+    tree234.count(T3, N3),
     N = 3 + N0 + N1 + N2 + N3.
 
 %-----------------------------------------------------------------------------%
@@ -2612,37 +2612,37 @@ tree234__count(four(_, _, _, _, _, _, T0, T1, T2, T3), N) :-
 % Ralph Becket <rwab1@cl.cam.ac.uk> 30/04/99
 %       Function forms added.
 
-tree234__init = T :-
-    tree234__init(T).
+tree234.init = T :-
+    tree234.init(T).
 
-tree234__lookup(T, K) = V :-
-    tree234__lookup(T, K, V).
+tree234.lookup(T, K) = V :-
+    tree234.lookup(T, K, V).
 
-tree234__set(T1, K, V) = T2 :-
-    tree234__set(T1, K, V, T2).
+tree234.set(T1, K, V) = T2 :-
+    tree234.set(T1, K, V, T2).
 
-tree234__delete(T1, K) = T2 :-
-    tree234__delete(T1, K, T2).
+tree234.delete(T1, K) = T2 :-
+    tree234.delete(T1, K, T2).
 
-tree234__keys(T) = Ks :-
-    tree234__keys(T, Ks).
+tree234.keys(T) = Ks :-
+    tree234.keys(T, Ks).
 
-tree234__values(T) = Vs :-
-    tree234__values(T, Vs).
+tree234.values(T) = Vs :-
+    tree234.values(T, Vs).
 
-tree234__count(T) = N :-
-    tree234__count(T, N).
+tree234.count(T) = N :-
+    tree234.count(T, N).
 
-tree234__assoc_list_to_tree234(AL) = T :-
-    tree234__assoc_list_to_tree234(AL, T).
+tree234.assoc_list_to_tree234(AL) = T :-
+    tree234.assoc_list_to_tree234(AL, T).
 
-tree234__tree234_to_assoc_list(T) = AL :-
-    tree234__tree234_to_assoc_list(T, AL).
+tree234.tree234_to_assoc_list(T) = AL :-
+    tree234.tree234_to_assoc_list(T, AL).
 
-tree234__foldl(F, T, A) = B :-
+tree234.foldl(F, T, A) = B :-
     P = ( pred(W::in, X::in, Y::in, Z::out) is det :- Z = F(W, X, Y) ),
-    tree234__foldl(P, T, A, B).
+    tree234.foldl(P, T, A, B).
 
-tree234__map_values(F, T1) = T2 :-
+tree234.map_values(F, T1) = T2 :-
     P = ( pred(X::in, Y::in, Z::out) is det :- Z = F(X, Y) ),
-    tree234__map_values(P, T1, T2).
+    tree234.map_values(P, T1, T2).

@@ -29,7 +29,7 @@
 %
 % The parser is a relatively straight-forward top-down recursive descent
 % parser, made somewhat complicated by the need to handle operator
-% precedences.  It uses `lexer__get_token_list' to read a list of tokens.
+% precedences.  It uses `lexer.get_token_list' to read a list of tokens.
 % It uses the routines in module `ops' to look up operator precedences.
 %
 %-----------------------------------------------------------------------------%
@@ -66,7 +66,7 @@
     %
     % Reads a term from the current input stream. The string is the filename
     % to use for the current input stream; this is used in constructing the
-    % term__contexts in the read term. This interface is used to support
+    % term.contexts in the read term. This interface is used to support
     % the `:- pragma source_file' directive.
     %
 :- pred read_term(string::in, read_term(T)::out, io::di, io::uo) is det.
@@ -161,43 +161,43 @@
 %-----------------------------------------------------------------------------%
 
 read_term(Result, !IO) :-
-    io__input_stream_name(FileName, !IO),
-    read_term_with_op_table(ops__init_mercury_op_table, FileName, Result, !IO).
+    io.input_stream_name(FileName, !IO),
+    read_term_with_op_table(ops.init_mercury_op_table, FileName, Result, !IO).
 
 read_term_with_op_table(Ops, Result, !IO) :-
-    io__input_stream_name(FileName, !IO),
+    io.input_stream_name(FileName, !IO),
     read_term_with_op_table(Ops, FileName, Result, !IO).
 
 read_term(FileName, Result, !IO) :-
-    read_term_with_op_table(ops__init_mercury_op_table, FileName, Result, !IO).
+    read_term_with_op_table(ops.init_mercury_op_table, FileName, Result, !IO).
 
 read_term_with_op_table(Ops, FileName, Result, !IO) :-
-    lexer__get_token_list(Tokens, !IO),
+    lexer.get_token_list(Tokens, !IO),
     parse_tokens_with_op_table(Ops, FileName, Tokens, Result).
 
 read_term_from_string(FileName, String, EndPos, Result) :-
-    read_term_from_string_with_op_table(ops__init_mercury_op_table, FileName,
+    read_term_from_string_with_op_table(ops.init_mercury_op_table, FileName,
         String, EndPos, Result).
 
 read_term_from_string_with_op_table(Ops, FileName, String, EndPos, Result) :-
-    string__length(String, Len),
+    string.length(String, Len),
     StartPos = posn(1, 0, 0),
     read_term_from_string_with_op_table(Ops, FileName, String, Len,
         StartPos, EndPos, Result).
 
 read_term_from_string(FileName, String, Len, StartPos, EndPos, Result) :-
-    read_term_from_string_with_op_table(ops__init_mercury_op_table,
+    read_term_from_string_with_op_table(ops.init_mercury_op_table,
         FileName, String, Len, StartPos, EndPos, Result).
 
 read_term_from_string_with_op_table(Ops, FileName, String, Len,
         StartPos, EndPos, Result) :-
-    lexer__string_get_token_list(String, Len, Tokens, StartPos, EndPos),
+    lexer.string_get_token_list(String, Len, Tokens, StartPos, EndPos),
     parse_tokens_with_op_table(Ops, FileName, Tokens, Result).
 
 %-----------------------------------------------------------------------------%
 
 parse_tokens(FileName, Tokens, Result) :-
-    parse_tokens_with_op_table(ops__init_mercury_op_table, FileName, Tokens,
+    parse_tokens_with_op_table(ops.init_mercury_op_table, FileName, Tokens,
         Result).
 
 parse_tokens_with_op_table(Ops, FileName, Tokens, Result) :-
@@ -222,8 +222,8 @@ check_for_errors(error(ErrorMessage, ErrorTokens), _VarSet, Tokens,
     ;
         % Find the token that caused the error.
         ( ErrorTokens = token_cons(ErrorTok, ErrorTokLineNum, _) ->
-            lexer__token_to_string(ErrorTok, TokString),
-            string__append_list( ["Syntax error at ", TokString, ": ",
+            lexer.token_to_string(ErrorTok, TokString),
+            string.append_list( ["Syntax error at ", TokString, ": ",
                 ErrorMessage], Message),
             LineNum = ErrorTokLineNum
         ;
@@ -232,7 +232,7 @@ check_for_errors(error(ErrorMessage, ErrorTokens), _VarSet, Tokens,
             ;
                 error("check_for_errors")
             ),
-            string__append("Syntax error: ", ErrorMessage, Message)
+            string.append("Syntax error: ", ErrorMessage, Message)
         )
     ),
     Result = error(Message, LineNum).
@@ -241,7 +241,7 @@ check_for_errors(ok(Term), VarSet, Tokens, LeftOverTokens, Result) :-
     ( check_for_bad_token(Tokens, Message, LineNum) ->
         Result = error(Message, LineNum)
     ; LeftOverTokens = token_cons(Token, LineNum, _) ->
-        lexer__token_to_string(Token, TokString),
+        lexer.token_to_string(Token, TokString),
         Message = "Syntax error: unexpected " ++ TokString,
         Result = error(Message, LineNum)
     ;
@@ -252,16 +252,16 @@ check_for_errors(ok(Term), VarSet, Tokens, LeftOverTokens, Result) :-
 
 check_for_bad_token(token_cons(Token, LineNum, Tokens), Message, LineNum) :-
     ( Token = io_error(IO_Error) ->
-        io__error_message(IO_Error, IO_ErrorMessage),
-        string__append("I/O error: ", IO_ErrorMessage, Message)
+        io.error_message(IO_Error, IO_ErrorMessage),
+        string.append("I/O error: ", IO_ErrorMessage, Message)
     ; Token = junk(Char) ->
-        char__to_int(Char, Code),
-        string__int_to_base_string(Code, 10, Decimal),
-        string__int_to_base_string(Code, 16, Hex),
-        string__append_list(["Syntax error: Illegal character 0x", Hex,
+        char.to_int(Char, Code),
+        string.int_to_base_string(Code, 10, Decimal),
+        string.int_to_base_string(Code, 16, Hex),
+        string.append_list(["Syntax error: Illegal character 0x", Hex,
             " (", Decimal, ") in input"], Message)
     ; Token = error(ErrorMessage) ->
-        string__append("Syntax error: ", ErrorMessage, Message)
+        string.append("Syntax error: ", ErrorMessage, Message)
     ;
         check_for_bad_token(Tokens, Message, LineNum)
     ).
@@ -287,7 +287,7 @@ parse_whole_term(Term, !PS) :-
 
 parse_term(Term, !PS) :-
     get_ops_table(!.PS, OpTable),
-    parse_term_2(ops__max_priority(OpTable) + 1, ordinary_term, Term, !PS).
+    parse_term_2(ops.max_priority(OpTable) + 1, ordinary_term, Term, !PS).
 
 :- pred parse_arg(parse(term(T))::out,
     state(Ops, T)::in, state(Ops, T)::out) is det <= op_table(Ops).
@@ -295,11 +295,11 @@ parse_term(Term, !PS) :-
 parse_arg(Term, !PS) :-
     get_ops_table(!.PS, OpTable),
     % XXX We should do the following:
-    %   ArgPriority = ops__arg_priority(OpTable),
+    %   ArgPriority = ops.arg_priority(OpTable),
     % but that would mean we can't, for example, parse '::'/2 in arguments
     % the way we want to.  Perhaps a better solution would be to change the
     % priority of '::'/2, but we need to analyse the impact of that further.
-    ArgPriority = ops__max_priority(OpTable) + 1,
+    ArgPriority = ops.max_priority(OpTable) + 1,
     parse_term_2(ArgPriority, argument, Term, !PS).
 
 :- pred parse_list_elem(parse(term(T))::out,
@@ -308,10 +308,10 @@ parse_arg(Term, !PS) :-
 parse_list_elem(Term, !PS) :-
     get_ops_table(!.PS, OpTable),
     % XXX We should do the following:
-    %   ArgPriority = ops__arg_priority(OpTable),
+    %   ArgPriority = ops.arg_priority(OpTable),
     % but that would mean we can't, for example, parse promise_pure/0 in
     % foreign attribute lists.
-    ArgPriority = ops__max_priority(OpTable) + 1,
+    ArgPriority = ops.max_priority(OpTable) + 1,
     parse_term_2(ArgPriority, list_elem, Term, !PS).
 
 :- pred parse_term_2(int::in, term_kind::in, parse(term(T))::out,
@@ -338,7 +338,7 @@ parse_left_term(MaxPriority, TermKind, OpPriority, Term, !PS) :-
         ->
             get_term_context(!.PS, Context, TermContext),
             NegX = 0 - X,
-            Term = ok(term__functor(term__integer(NegX), [], TermContext)),
+            Term = ok(term.functor(term.integer(NegX), [], TermContext)),
             OpPriority = 0
         ;
             % Check for unary minus of float.
@@ -347,14 +347,14 @@ parse_left_term(MaxPriority, TermKind, OpPriority, Term, !PS) :-
         ->
             get_term_context(!.PS, Context, TermContext),
             NegF = 0.0 - F,
-            Term = ok(term__functor(term__float(NegF), [], TermContext)),
+            Term = ok(term.functor(term.float(NegF), [], TermContext)),
             OpPriority = 0
         ;
             % Check for binary prefix op.
             Token = name(Op),
             \+ peek_token(open_ct, !.PS, _),
             get_ops_table(!.PS, OpTable),
-            ops__lookup_binary_prefix_op(OpTable, Op, BinOpPriority,
+            ops.lookup_binary_prefix_op(OpTable, Op, BinOpPriority,
                 RightAssoc, RightRightAssoc),
             BinOpPriority =< MaxPriority,
             peek_token(NextToken, !PS),
@@ -371,7 +371,7 @@ parse_left_term(MaxPriority, TermKind, OpPriority, Term, !PS) :-
                     !PS),
                 ( RightRightResult = ok(RightRightTerm) ->
                     get_term_context(!.PS, Context, TermContext),
-                    Term = ok(term__functor(term__atom(Op),
+                    Term = ok(term.functor(term.atom(Op),
                         [RightTerm, RightRightTerm], TermContext))
                 ;
                     % Propagate error upwards.
@@ -386,7 +386,7 @@ parse_left_term(MaxPriority, TermKind, OpPriority, Term, !PS) :-
             Token = name(Op),
             \+ peek_token(open_ct, !.PS, _),
             get_ops_table(!.PS, OpTable),
-            ops__lookup_prefix_op(OpTable, Op, UnOpPriority, RightAssoc),
+            ops.lookup_prefix_op(OpTable, Op, UnOpPriority, RightAssoc),
             UnOpPriority =< MaxPriority,
             peek_token(NextToken, !PS),
             could_start_term(NextToken, yes)
@@ -397,7 +397,7 @@ parse_left_term(MaxPriority, TermKind, OpPriority, Term, !PS) :-
             OpPriority = UnOpPriority,
             ( RightResult = ok(RightTerm) ->
                 get_term_context(!.PS, Context, TermContext),
-                Term = ok(term__functor(term__atom(Op), [RightTerm],
+                Term = ok(term.functor(term.atom(Op), [RightTerm],
                     TermContext))
             ;
                 % Propagate error upwards.
@@ -436,7 +436,7 @@ parse_rest(MaxPriority, TermKind, LeftPriority, LeftTerm, Term, !PS) :-
             % in an infix manner.
             Op0 = "`",
             get_ops_table(!.PS, OpTable),
-            ops__lookup_operator_term(OpTable, OpPriority0,
+            ops.lookup_operator_term(OpTable, OpPriority0,
                 LeftAssoc0, RightAssoc0)
         ->
             OpPriority = OpPriority0,
@@ -449,7 +449,7 @@ parse_rest(MaxPriority, TermKind, LeftPriority, LeftTerm, Term, !PS) :-
             VariableTerm = [],
             Qualifier = no,
             get_ops_table(!.PS, OpTable),
-            ops__lookup_infix_op(OpTable, Op, OpPriority,
+            ops.lookup_infix_op(OpTable, Op, OpPriority,
                 LeftAssoc, RightAssoc)
         ),
         OpPriority =< MaxPriority,
@@ -459,15 +459,15 @@ parse_rest(MaxPriority, TermKind, LeftPriority, LeftTerm, Term, !PS) :-
         parse_term_2(RightPriority, TermKind, RightTerm0, !PS),
         ( RightTerm0 = ok(RightTerm) ->
             get_term_context(!.PS, Context, TermContext),
-            OpTerm0 = term__functor(term__atom(Op),
-                list__append(VariableTerm, [LeftTerm, RightTerm]),
+            OpTerm0 = term.functor(term.atom(Op),
+                list.append(VariableTerm, [LeftTerm, RightTerm]),
                 TermContext),
             (
                 Qualifier = no,
                 OpTerm = OpTerm0
             ;
                 Qualifier = yes(QTerm),
-                OpTerm = term__functor(term__atom("."), [QTerm, OpTerm0],
+                OpTerm = term.functor(term.atom("."), [QTerm, OpTerm0],
                     TermContext)
             ),
             parse_rest(MaxPriority, TermKind, OpPriority, OpTerm, Term, !PS)
@@ -479,12 +479,12 @@ parse_rest(MaxPriority, TermKind, LeftPriority, LeftTerm, Term, !PS) :-
         % Postfix op.
         get_token(name(Op), Context, !PS),
         get_ops_table(!.PS, OpTable),
-        ops__lookup_postfix_op(OpTable, Op, OpPriority, LeftAssoc),
+        ops.lookup_postfix_op(OpTable, Op, OpPriority, LeftAssoc),
         OpPriority =< MaxPriority,
         check_priority(LeftAssoc, OpPriority, LeftPriority)
     ->
         get_term_context(!.PS, Context, TermContext),
-        OpTerm = term__functor(term__atom(Op), [LeftTerm], TermContext),
+        OpTerm = term.functor(term.atom(Op), [LeftTerm], TermContext),
         parse_rest(MaxPriority, TermKind, OpPriority, OpTerm, Term, !PS)
     ;
         Term = ok(LeftTerm)
@@ -511,7 +511,7 @@ parse_backquoted_operator(Qualifier, OpName, VariableTerm, !PS) :-
     ).
 
 :- pred parse_backquoted_operator_2(maybe(term(T))::in, maybe(term(T))::out,
-    term__context::in, string::in, string::out,
+    term.context::in, string::in, string::out,
     state(Ops, T)::in, state(Ops, T)::out) is det <= op_table(Ops).
 
 parse_backquoted_operator_2(Qualifier0, Qualifier, OpCtxt0, OpName0, OpName,
@@ -528,7 +528,7 @@ parse_backquoted_operator_2(Qualifier0, Qualifier, OpCtxt0, OpName0, OpName,
     ->
         get_term_context(!.PS, SepContext, SepCtxt),
         get_term_context(!.PS, NameContext, OpCtxt1),
-        QTerm1 = term__functor(atom(OpName0), [], OpCtxt0),
+        QTerm1 = term.functor(atom(OpName0), [], OpCtxt0),
         (
             Qualifier0 = no,
             Qualifier1 = yes(QTerm1)
@@ -586,7 +586,7 @@ parse_simple_term_2(name(Atom), Context, Prec, Term, !PS) :-
         parse_args(Args0, !PS),
         (
             Args0 = ok(Args),
-            Term = ok(term__functor(term__atom(Atom), Args, TermContext))
+            Term = ok(term.functor(term.atom(Atom), Args, TermContext))
         ;
             % Propagate error upwards.
             Args0 = error(Message, Tokens),
@@ -594,29 +594,29 @@ parse_simple_term_2(name(Atom), Context, Prec, Term, !PS) :-
         )
     ;
         get_ops_table(!.PS, OpTable),
-        ( ops__lookup_op(OpTable, Atom) ->
-            Prec > ops__max_priority(OpTable)
+        ( ops.lookup_op(OpTable, Atom) ->
+            Prec > ops.max_priority(OpTable)
         ;
             true
         ),
-        Term = ok(term__functor(term__atom(Atom), [], TermContext))
+        Term = ok(term.functor(term.atom(Atom), [], TermContext))
     ).
 
 parse_simple_term_2(variable(VarName), _, _, Term, !PS) :-
     add_var(VarName, Var, !PS),
-    Term = ok(term__variable(Var)).
+    Term = ok(term.variable(Var)).
 
 parse_simple_term_2(integer(Int), Context, _, Term, !PS) :-
     get_term_context(!.PS, Context, TermContext),
-    Term = ok(term__functor(term__integer(Int), [], TermContext)).
+    Term = ok(term.functor(term.integer(Int), [], TermContext)).
 
 parse_simple_term_2(float(Float), Context, _, Term, !PS) :-
     get_term_context(!.PS, Context, TermContext),
-    Term = ok(term__functor(term__float(Float), [], TermContext)).
+    Term = ok(term.functor(term.float(Float), [], TermContext)).
 
 parse_simple_term_2(string(String), Context, _, Term, !PS) :-
     get_term_context(!.PS, Context, TermContext),
-    Term = ok(term__functor(term__string(String), [], TermContext)).
+    Term = ok(term.functor(term.string(String), [], TermContext)).
 
 parse_simple_term_2(open, _, _, Term, !PS) :-
     parse_term(Term0, !PS),
@@ -655,7 +655,7 @@ parse_simple_term_2(open_curly, Context, _, Term, !PS) :-
         ( SubTerm0 = ok(SubTerm) ->
             conjunction_to_list(SubTerm, ArgTerms),
             ( get_token(close_curly, !PS) ->
-                Term = ok(term__functor(term__atom("{}"), ArgTerms,
+                Term = ok(term.functor(term.atom("{}"), ArgTerms,
                     TermContext))
             ;
                 unexpected("expecting `}' or operator", Term, !PS)
@@ -669,7 +669,7 @@ parse_simple_term_2(open_curly, Context, _, Term, !PS) :-
 :- pred conjunction_to_list(term(T)::in, list(term(T))::out) is det.
 
 conjunction_to_list(Term, ArgTerms) :-
-    ( Term = term__functor(term__atom(","), [LeftTerm, RightTerm], _) ->
+    ( Term = term.functor(term.atom(","), [LeftTerm, RightTerm], _) ->
         conjunction_to_list(RightTerm, ArgTerms0),
         ArgTerms = [LeftTerm | ArgTerms0]
     ;
@@ -692,7 +692,7 @@ check_for_higher_order_term(Term0, Context, Term, !PS) :-
         parse_args(Args0, !PS),
         (
             Args0 = ok(Args),
-            Term2 = ok(term__functor(term__atom(""), [Term1 | Args],
+            Term2 = ok(term.functor(term.atom(""), [Term1 | Args],
                 TermContext)),
             check_for_higher_order_term(Term2, Context, Term, !PS)
         ;
@@ -704,7 +704,7 @@ check_for_higher_order_term(Term0, Context, Term, !PS) :-
         Term = Term0
     ).
 
-:- pred parse_special_atom(string::in, term__context::in,
+:- pred parse_special_atom(string::in, term.context::in,
     parse(term(T))::out,
     state(Ops, T)::in, state(Ops, T)::out) is det <= op_table(Ops).
 
@@ -713,14 +713,14 @@ parse_special_atom(Atom, TermContext, Term, !PS) :-
         parse_args(Args0, !PS),
         (
             Args0 = ok(Args),
-            Term = ok(term__functor(term__atom(Atom), Args, TermContext))
+            Term = ok(term.functor(term.atom(Atom), Args, TermContext))
         ;
             % Propagate error upwards.
             Args0 = error(Message, Tokens),
             Term = error(Message, Tokens)
         )
     ;
-        Term = ok(term__functor(term__atom(Atom), [], TermContext))
+        Term = ok(term.functor(term.atom(Atom), [], TermContext))
     ).
 
 :- pred parse_list(parse(term(T))::out,
@@ -744,7 +744,7 @@ parse_list_2(Arg, List, !PS) :-
         ( Token = comma ->
             parse_list(Tail0, !PS),
             ( Tail0 = ok(Tail) ->
-                List = ok(term__functor(term__atom("[|]"), [Arg, Tail],
+                List = ok(term.functor(term.atom("[|]"), [Arg, Tail],
                     TermContext))
             ;
                 % Propagate error.
@@ -754,7 +754,7 @@ parse_list_2(Arg, List, !PS) :-
             parse_arg(Tail0, !PS),
             ( Tail0 = ok(Tail) ->
                 ( get_token(close_list, !PS) ->
-                    List = ok(term__functor(term__atom("[|]"), [Arg, Tail],
+                    List = ok(term.functor(term.atom("[|]"), [Arg, Tail],
                         TermContext))
                 ;
                     unexpected("expecting ']' or operator", List, !PS)
@@ -764,8 +764,8 @@ parse_list_2(Arg, List, !PS) :-
                 List = Tail0
             )
         ; Token = close_list ->
-            Tail = term__functor(term__atom("[]"), [], TermContext),
-            List = ok(term__functor(term__atom("[|]"), [Arg, Tail],
+            Tail = term.functor(term.atom("[]"), [], TermContext),
+            List = ok(term.functor(term.atom("[|]"), [Arg, Tail],
                 TermContext))
         ;
             unexpected_tok(Token, Context,
@@ -900,8 +900,8 @@ unexpected_tok(Token, Context, UsualMessage, Error, !PS) :-
         ; Token = comma, Op = ","
         ),
         get_ops_table(!.PS, OpTable),
-        ( ops__lookup_infix_op(OpTable, Op, _, _, _)
-        ; ops__lookup_postfix_op(OpTable, Op, _, _)
+        ( ops.lookup_infix_op(OpTable, Op, _, _, _)
+        ; ops.lookup_postfix_op(OpTable, Op, _, _)
         )
     ->
         error(!.PS, "operator precedence error", Error)
@@ -948,8 +948,8 @@ could_start_term(integer_dot(_), no).
     state(Ops, T)::out) is det <= op_table(Ops).
 
 init_state(Ops, FileName, Tokens, ParserState) :-
-    varset__init(VarSet),
-    map__init(Names),
+    varset.init(VarSet),
+    map.init(Names),
     ParserState = state(FileName, Ops, VarSet, Tokens, Names).
 
 :- pred final_state(state(Ops, T)::in, varset(T)::out,
@@ -1004,17 +1004,17 @@ peek_token(Token, Context, ParserState, ParserState) :-
 add_var(VarName, Var, ParserState0, ParserState) :-
     ( VarName = "_" ->
         VarSet0 = parser_state_get_varset(ParserState0),
-        varset__new_var(VarSet0, Var, VarSet),
+        varset.new_var(VarSet0, Var, VarSet),
         ParserState = parser_state_set_varset(ParserState0, VarSet)
     ;
         Names0 = parser_state_get_var_names(ParserState0),
-        ( map__search(Names0, VarName, Var0) ->
+        ( map.search(Names0, VarName, Var0) ->
             Var = Var0,
             ParserState = ParserState0
         ;
             VarSet0 = parser_state_get_varset(ParserState0),
-            varset__new_named_var(VarSet0, VarName, Var, VarSet),
-            map__det_insert(Names0, VarName, Var, Names),
+            varset.new_named_var(VarSet0, VarName, Var, VarSet),
+            map.det_insert(Names0, VarName, Var, Names),
             ParserState1 = parser_state_set_varset(ParserState0, VarSet),
             ParserState = parser_state_set_var_names(ParserState1, Names)
         )
@@ -1029,7 +1029,7 @@ get_ops_table(ParserState, OpTable) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred check_priority(ops__assoc::in, int::in, int::in) is semidet.
+:- pred check_priority(ops.assoc::in, int::in, int::in) is semidet.
 
 check_priority(y, MaxPriority, Priority) :-
     Priority =< MaxPriority.
@@ -1037,11 +1037,11 @@ check_priority(x, MaxPriority, Priority) :-
     Priority < MaxPriority.
 
 :- pred get_term_context(state(Ops, T)::in, token_context::in,
-    term__context::out) is det.
+    term.context::out) is det.
 
 get_term_context(ParserState, TokenContext, TermContext) :-
     FileName = parser_state_get_stream_name(ParserState),
-    term__context_init(FileName, TokenContext, TermContext).
+    term.context_init(FileName, TokenContext, TermContext).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

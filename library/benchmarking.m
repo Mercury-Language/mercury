@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -831,7 +831,7 @@ repeat(N) :-
 %  Impure integer references.
 %  This type is implemented in C.
 %  It is represented as a pointer to a single word on the heap.
-:- type int_reference ---> int_reference(private_builtin__ref(int)).
+:- type int_reference ---> int_reference(private_builtin.ref(int)).
 
 %  In Java, this is implemented as a class to wrap the int.
 :- pragma foreign_code("Java",

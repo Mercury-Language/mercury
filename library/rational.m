@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003-2005 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -30,17 +30,17 @@
 
 :- pred '>='(rational::in, rational::in) is semidet.
 
-:- func rational__rational(int) = rational.
+:- func rational.rational(int) = rational.
 
-:- func rational__rational(int, int) = rational.
+:- func rational.rational(int, int) = rational.
 
-:- func rational__from_integer(integer) = rational.
+:- func rational.from_integer(integer) = rational.
 
-:- func rational__from_integers(integer, integer) = rational.
+:- func rational.from_integers(integer, integer) = rational.
 
     % New programs should use rational.from_integers/2.
 :- pragma obsolete(rational_from_integers/2).
-:- func rational__rational_from_integers(integer, integer) = rational.
+:- func rational.rational_from_integers(integer, integer) = rational.
 
 % :- func float(rational) = float.
 
@@ -56,17 +56,17 @@
 
 :- func rational / rational = rational.
 
-:- func rational__numer(rational) = integer.
+:- func rational.numer(rational) = integer.
 
-:- func rational__denom(rational) = integer.
+:- func rational.denom(rational) = integer.
 
-:- func rational__abs(rational) = rational.
+:- func rational.abs(rational) = rational.
 
-:- func rational__reciprocal(rational) = rational.
+:- func rational.reciprocal(rational) = rational.
 
-:- func rational__one = rational.
+:- func rational.one = rational.
 
-:- func rational__zero = rational.
+:- func rational.zero = rational.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -110,24 +110,24 @@
     Cmp = cmp(R1, R2),
     (Cmp = (>) ; Cmp = (=)).
 
-rational__rational(Int) = rational_norm(integer(Int), integer__one).
+rational.rational(Int) = rational_norm(integer(Int), integer.one).
 
-rational__rational(Num, Den) = rational_norm(integer(Num), integer(Den)).
+rational.rational(Num, Den) = rational_norm(integer(Num), integer(Den)).
 
-rational__from_integer(Integer) = rational_norm(Integer, integer__one).
+rational.from_integer(Integer) = rational_norm(Integer, integer.one).
 
-rational__from_integers(Num, Den) = rational_norm(Num, Den).
+rational.from_integers(Num, Den) = rational_norm(Num, Den).
 
 rational_from_integers(Num, Den) = rational_norm(Num, Den).
 
 %% XXX: There are ways to do this in some cases even if the
 %% float conversions would overflow.
-% rational__float(r(Num, Den)) =
-%   float:'/'(integer__float(Num), integer__float(Den)).
+% rational.float(r(Num, Den)) =
+%   float:'/'(integer.float(Num), integer.float(Den)).
 
-rational__one = r(integer__one, integer__one).
+rational.one = r(integer.one, integer.one).
 
-rational__zero = r(integer__zero, integer__one).
+rational.zero = r(integer.zero, integer.one).
 
 '+'(Rat) = Rat.
 
@@ -150,55 +150,55 @@ r(An, Ad) * r(Bn, Bd) = rational_norm(Numer, Denom) :-
 
 R1 / R2 = R1 * reciprocal(R2).
 
-rational__reciprocal(r(Num, Den)) =
-    ( Num = integer__zero ->
+rational.reciprocal(r(Num, Den)) =
+    ( Num = integer.zero ->
         func_error("rational.reciprocal: division by zero")
     ;
-        r(signum(Num) * Den, integer__abs(Num))
+        r(signum(Num) * Den, integer.abs(Num))
     ).
 
-rational__numer(r(Num, _)) = Num.
+rational.numer(r(Num, _)) = Num.
 
-rational__denom(r(_, Den)) = Den.
+rational.denom(r(_, Den)) = Den.
 
-rational__abs(r(Num, Den)) = r(integer__abs(Num), Den).
+rational.abs(r(Num, Den)) = r(integer.abs(Num), Den).
 
 :- func rational_norm(integer, integer) = rational.
 
 rational_norm(Num, Den) = Rat :-
-    ( Den = integer__zero ->
-        error("rational__rational_norm: division by zero")
-    ; Num = integer__zero ->
-        Rat = r(integer__zero, integer__one)
+    ( Den = integer.zero ->
+        error("rational.rational_norm: division by zero")
+    ; Num = integer.zero ->
+        Rat = r(integer.zero, integer.one)
     ;
         G    = gcd(Num, Den),
         Num2 = Num * signum(Den),
-        Den2 = integer__abs(Den),
+        Den2 = integer.abs(Den),
         Rat  = r(Num2 // G, Den2 // G)
     ).
 
 :- func gcd(integer, integer) = integer.
 
-gcd(A, B) = gcd_2(integer__abs(A), integer__abs(B)).
+gcd(A, B) = gcd_2(integer.abs(A), integer.abs(B)).
 
 :- func gcd_2(integer, integer) = integer.
 
-gcd_2(A, B) = ( B = integer__zero -> A ; gcd_2(B, A rem B) ).
+gcd_2(A, B) = ( B = integer.zero -> A ; gcd_2(B, A rem B) ).
 
 :- func lcm(integer, integer) = integer.
 
 lcm(A, B) =
-    ( A = integer__zero -> integer__zero
-    ; B = integer__zero -> integer__zero
-    ; integer__abs((A // gcd(A, B)) * B)
+    ( A = integer.zero -> integer.zero
+    ; B = integer.zero -> integer.zero
+    ; integer.abs((A // gcd(A, B)) * B)
     ).
 
 :- func signum(integer) = integer.
 
 signum(N) =
-    ( N = integer__zero -> integer__zero
-    ; N < integer__zero -> -integer__one
-    ; integer__one
+    ( N = integer.zero -> integer.zero
+    ; N < integer.zero -> -integer.one
+    ; integer.one
     ).
 
 :- func cmp(rational, rational) = comparison_result.
@@ -215,12 +215,12 @@ cmp(R1, R2) = Cmp :-
 
 :- pred is_zero(rational::in) is semidet.
 
-is_zero(r(integer__zero, _)).
+is_zero(r(integer.zero, _)).
 
 :- pred is_negative(rational::in) is semidet.
 
 is_negative(r(Num, _)) :-
-    Num < integer__zero.
+    Num < integer.zero.
 
 %------------------------------------------------------------------------------%
 :- end_module rational.
