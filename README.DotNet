@@ -13,15 +13,18 @@ However, enough is implemented correctly to bootstrap the Mercury
 compiler, and to pass more than 90% of the applicable tests in the Mercury
 test suite.
 
-The port is currently targetted at the Microsoft .NET Framework SDK version 1.
+The port is currently targeted at the Microsoft .NET Framework SDK versions
+1 and 1.1.  We recommend version 1.1.   
 
 PREREQUISITES
 
 In order to try this system you will need 
 
-	- The Microsoft .NET Framework SDK version 1, which can be
-	  downloaded for free from
-		<http://msdn.microsoft.com/net/>
+	- The Microsoft .NET Framework SDK version 1 or 1.1, which can be
+	  downloaded for free from:
+	  
+		<http://msdn.microsoft.com/netframework/>
+	  
 	  If you are an MSDN Universal subscriber you can also order
 	  CDs as part of your subscription.
 	  
@@ -35,7 +38,8 @@ In order to try this system you will need
 		  Microsoft Windows 2000 (SP 2 recommended)
 		  Microsoft Windows XP Professional
 
-	  We have tested only on Windows 2000 (with SP 2).
+	  We have tested only on Windows 2000 (with SP 2) and
+	  Windows XP Home.
 
 	- Cygwin (see README.MS-Windows for how to install).
   	  The Mercury compiler still runs as a native compiler, built
@@ -56,7 +60,7 @@ In order to try this system you will need
 
 call "C:\Program Files\Microsoft Visual Studio.NET\Common7\Tools\vsvars32.bat"
 	  
-	  into your cygwin.bat file (installed on the desktop by cygwin),
+	  into your cygwin.bat file (installed on the desktop by Cygwin),
 	  after the line that says @echo off.
 	  Substitute your Visual Studio installation path for the default path
 	  given here.
@@ -69,7 +73,8 @@ call "C:\Program Files\Microsoft Visual Studio.NET\Common7\Tools\vsvars32.bat"
 	  from either the source or binary distribution.
 
 	  If you're reading this file from somewhere other than the
-	  Mercury distribution, try the Mercury homepage at
+	  Mercury distribution, try the Mercury homepage at:
+
 	  	<http://www.cs.mu.oz.au/mercury/>
 
 -----------------------------------------------------------------------------
@@ -128,14 +133,17 @@ Frameworks using C# and Mercury's foreign language interface.
 
 For example:
 
-:- pred to_string(T::in, string::out) is det.
-:- pragma foreign_proc("C#", to_string(T::in, Str::out), [],
-"{
-        Str = T.ToString();
-}").
+	:- pred to_string(T::in, string::out) is det.
+	:- pragma foreign_proc("C#",
+		to_string(T::in, Str::out),
+		[promise_pure, will_not_call_mercury],
+	"
+		Str = T.ToString();
+	").
 
 For more information about the foreign language interface, refer to the Mercury
 Language Reference Manual, which you can find at:
+
 	<http://www.cs.mu.oz.au/mercury/information/documentation.html>
 
 The implementation will put this C# in a separate file, which will be
@@ -178,11 +186,11 @@ RESOURCES
 
 You might find the following pages useful:
 
-	http://www.cs.mu.oz.au/research/mercury/dotnet.html
+	<http://www.cs.mu.oz.au/research/mercury/dotnet.html>
 
-	http://msdn.microsoft.com/net/
+	<http://msdn.microsoft.com/netframework/>
 
-	http://www.gotdotnet.com/
+	<http://www.gotdotnet.com/>
 
 -----------------------------------------------------------------------------
 

@@ -4,8 +4,11 @@ INTRODUCTION
 
 Mercury has been ported to use the Microsoft Visual C++ compiler.  It
 has been tested with both version 6.0 and 7.0.  However not all
-dependencies on Cygwin have been removed and cygwin is still required
+dependencies on Cygwin have been removed and Cygwin is still required
 for installation (see README.MS-Windows).
+
+If you wish to use Microsoft Visual C++ Toolkit 2003, or Microsoft
+Visual C++ Express 2005, you will require the Platform SDK.
 
 -----------------------------------------------------------------------------
 
@@ -20,7 +23,7 @@ executables built with the install of Mercury will be linked with MS
 Visual C runtime, instead of the standard libC runtime.
 
 Also ensure that the environment variable TMPDIR exists and is set to
-".".  This avoids problems with mixing cygwin and windows paths.
+".".  This avoids problems with mixing Cygwin and Windows paths.
 
 -----------------------------------------------------------------------------
 
@@ -30,26 +33,41 @@ In order to save time in compilation the source distribution comes with
 prebuilt C files.  These C files are generated using the asm_fast grade
 which is incompatible with hlc.gc.  In order to alleviate this problem:
 
-1. Install cygwin (avoid the bug in sscanf with 1.3.1-1)
+1. Install Cygwin (avoid the bug in sscanf with 1.3.1-1)
 
 2. Install an asm_fast grade version of the compiler which uses gcc as
    the C compiler.  This can be done from a source or binary
    distribution.  Follow standard instructions.  I suggest:
 
-   a) configure --prefix /usr/local/mercury-0.10.1
+   a) configure --prefix /usr/local/mercury-<VERSION>
+      (See the file VERSION in the top-level directory of the Mercury
+       distribution for details of the Mercury version number scheme.)
    b) make install
 
    Ensure your path has been modified so you can see the new mmc once it
    is built.  For example:
 
-   a) edit /etc/profile and add /usr/local/mercury-0.10.1 to PATH
+   a) edit /etc/profile and add /usr/local/mercury-<VERSION> to PATH
 
 3. To build a version of the mercury compiler with MSVC++ instead of
    gcc, remotely check out a fresh version of the compiler, eg.
 
    a) cvs -d :pserver:guest@cvs.mercury.cs.mu.oz.au:/home/mercury1/repository login
    (password is guest)
-   b) cvs -d :pserver:guest@cvs.mercury.cs.mu.oz.au:/home/mercury1/repository co -r version-0_10_1 mercury
+   b) cvs -d :pserver:guest@cvs.mercury.cs.mu.oz.au:/home/mercury1/repository co mercury
+
+   Alternatively, you can just run mmake realclean to create a fresh version
+   of the compiler.
+   
+   If you wish to checkout a specific release of Mercury, use the -r option
+   to co and one of the following release tags:
+
+   	Release		Release Tag
+	-------		-----------
+	0.11.0		version-0_11_0
+	0.12.0		version-0_12_0
+	0.12.1		version-0_12_1
+	0.12.2		version-0_12_2
 
    Then to use MSVC++ to build the compiler issue the following configure
    command.  (You must be able to run MSVC++ from command line):
@@ -72,13 +90,13 @@ If you want to install on the machine, foo, in the directory \usr\local
 you need to add `--prefix //foo/usr/local' as an option to configure.
 
 Then ensure that the directory that you wish to install into is mounted
-somewhere, ie
+somewhere, i.e.
 
-mount //foo/usr/local /temp_mount_point
+	mount //foo/usr/local /temp_mount_point
 
 and then use that mount point as the location to install into
 
-make install INSTALL_PREFIX=/temp_mount_point
+	make install INSTALL_PREFIX=/temp_mount_point
 
 This avoids the problem that
 

@@ -22,13 +22,13 @@ install it.  Cygwin version 1.3.1 is buggy and should not be used, but
 Cygwin 1.1.* or Cygwin 1.3.2 or later should be OK.  Recent versions of
 Cygwin can be installed directly from:
 
-	http://sources.redhat.com/cygwin/setup.exe
+	<http://sources.redhat.com/cygwin/setup.exe>
 
 This program will download and install the required components.
 
 If you want more information on Cygwin, see the site:
 
-	http://sources.redhat.com/cygwin/
+	<http://sources.redhat.com/cygwin/>
 
 If you're going to use a binary distribution of Mercury for Windows,
 you need to make sure that you get a version of Cygwin that is
@@ -58,8 +58,8 @@ From a cygwin command shell, use the `cd' command to change directory
 to the directory where you saved the source or binary distribution that
 you downloaded, and then use `tar zxf <filename>' to unpack it,
 where <filename> is the filename that you downloaded, e.g.
-mercury-compiler-<version>.tar.gz (for the source distribution), or
-mercury-<version>.i686-pc-cygwin-windows.tar.gz (for the binary distribution).
+mercury-compiler-<VERSION>.tar.gz (for the source distribution), or
+mercury-<VERSION>.i686-pc-cygwin-windows.tar.gz (for the binary distribution).
 
 Note that other programs which understand tar.gz files (e.g. WinZip)
 may not be able to unpack them in the correct manner for use with Cygwin.
@@ -143,13 +143,16 @@ OTHER PACKAGES YOU MIGHT NEED
 If you want to use the mtags tool from the Mercury distribution, you'll
 need to install perl.  A binary distribution of Perl is available at the
 Cygwin porting project:
-	http://www.student.uni-koeln.de/cygwin/
+	
+	<http://www.student.uni-koeln.de/cygwin/>
 
 If you want to build your own Mercury releases from the CVS sources, you
 will need a previously installed Mercury compiler (for example, one of
 the recent releases of the day).  You will also need GNU autoconf, which
-can be downloaded from 
-	ftp://ftp.gnu.org/pub/gnu/autoconf/
+can be downloaded from:
+
+	<ftp://ftp.gnu.org/pub/gnu/autoconf/>
+
 Autoconf should configure, build and install directly from the source
 package.
 
