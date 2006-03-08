@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2005 The University of Melbourne.
+** Copyright (C) 1997-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -275,16 +275,16 @@ extern  void        MR_schedule(MR_Context *ctxt);
         MR_Context  *f_n_c_context;                             \
         int         fork_new_context_i;                         \
                                                                 \
-        f_n_c_context = MR_create_context();                    \
+        f_n_c_context = MR_create_context("fork_new_context", NULL); \
         MR_IF_MR_THREAD_SAFE(                                   \
-            f_n_c_context->owner_thread = NULL;                 \
+            f_n_c_context->MR_ctxt_owner_thread = (MercuryThread) NULL; \
         )                                                       \
         for (fork_new_context_i = (numslots);                   \
             fork_new_context_i > 0;                             \
             fork_new_context_i--)                               \
         {                                                       \
-            *(f_n_c_context->context_sp) = MR_stackvar(fork_new_context_i); \
             f_n_c_context->MR_ctxt_sp++;                        \
+            *(f_n_c_context->MR_ctxt_sp) = MR_stackvar(fork_new_context_i); \
         }                                                       \
         f_n_c_context->MR_ctxt_resume = (child);                \
         MR_schedule(f_n_c_context);                             \
@@ -448,13 +448,13 @@ extern  void        MR_schedule(MR_Context *ctxt);
                     MR_ENGINE(MR_eng_context).MR_ctxt_cutstack_zone;          \
                 save_context_c->MR_ctxt_pnegstack_zone =                      \
                     MR_ENGINE(MR_eng_context).MR_ctxt_pnegstack_zone;         \
-                assert(MR_gen_stack == (MR_GenStackFrame *)                   \
+                MR_assert(MR_gen_stack == (MR_GenStackFrame *)                \
                     MR_ENGINE(MR_eng_context).MR_ctxt_genstack_zone->         \
                         MR_zone_min);                                         \
-                assert(MR_cut_stack == (MR_CutStackFrame *)                   \
+                MR_assert(MR_cut_stack == (MR_CutStackFrame *)                \
                     MR_ENGINE(MR_eng_context).MR_ctxt_cutstack_zone->         \
                         MR_zone_min);                                         \
-                assert(MR_pneg_stack == (MR_PNegStackFrame *)                 \
+                MR_assert(MR_pneg_stack == (MR_PNegStackFrame *)              \
                     MR_ENGINE(MR_eng_context).MR_ctxt_pnegstack_zone->        \
                         MR_zone_min);                                         \
           )                                                                   \
@@ -476,6 +476,7 @@ struct MR_Sync_Term_Struct {
         MR_SyncTerm *st;                                            \
                                                                     \
         st = (MR_SyncTerm *) sync_term;                             \
+        MR_assert(st != NULL);                                      \
         MR_IF_THREAD_SAFE(                                          \
             pthread_mutex_init(&(st->MR_st_lock), MR_MUTEX_ATTR);   \
         )                                                           \
@@ -488,14 +489,15 @@ struct MR_Sync_Term_Struct {
         MR_SyncTerm *st;                                            \
                                                                     \
         st = (MR_SyncTerm *) sync_term;                             \
+        MR_assert(st != NULL);                                      \
         MR_LOCK(&(st->MR_st_lock), "terminate");                    \
         (st->MR_st_count)--;                                        \
         if (st->MR_st_count == 0) {                                 \
-            assert(st->MR_st_parent != NULL);                       \
+            MR_assert(st->MR_st_parent != NULL);                    \
             MR_UNLOCK(&(st->MR_st_lock), "terminate i");            \
             MR_schedule(st->MR_st_parent);                          \
         } else {                                                    \
-            assert(st->MR_st_count > 0);                            \
+            MR_assert(st->MR_st_count > 0);                         \
             MR_UNLOCK(&(st->MR_st_lock), "terminate ii");           \
         }                                                           \
         MR_destroy_context(MR_ENGINE(MR_eng_this_context));         \
@@ -507,13 +509,14 @@ struct MR_Sync_Term_Struct {
         MR_SyncTerm *st;                                            \
                                                                     \
         st = (MR_SyncTerm *) sync_term;                             \
+        MR_assert(st != NULL);                                      \
         MR_LOCK(&(st->MR_st_lock), "continue");                     \
         (st->MR_st_count)--;                                        \
         if (st->MR_st_count == 0) {                                 \
             MR_UNLOCK(&(st->MR_st_lock), "continue i");             \
             MR_GOTO((where_to));                                    \
         }                                                           \
-        assert(st->MR_st_count > 0);                                \
+        MR_assert(st->MR_st_count > 0);                             \
         MR_save_context(MR_ENGINE(MR_eng_this_context));            \
         MR_ENGINE(MR_eng_this_context)->MR_ctxt_resume = (where_to);\
         st->MR_st_parent = MR_ENGINE(MR_eng_this_context);          \

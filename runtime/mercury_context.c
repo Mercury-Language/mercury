@@ -6,7 +6,7 @@ INIT mercury_sys_init_scheduler_wrapper
 ENDINIT
 */
 /*
-** Copyright (C) 1995-2005 The University of Melbourne.
+** Copyright (C) 1995-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -109,7 +109,8 @@ MR_init_context(MR_Context *c, const char *id, MR_Generator *gen)
             0, MR_detstack_size, MR_next_offset(),
             MR_detstack_zone_size, MR_default_handler);
     }
-    c->MR_ctxt_sp = c->MR_ctxt_detstack_zone->MR_zone_min;
+    /* sp points to the last used word, not to the first free word. */
+    c->MR_ctxt_sp = c->MR_ctxt_detstack_zone->MR_zone_min - 1;
 
     if (c->MR_ctxt_nondetstack_zone != NULL) {
         MR_reset_redzone(c->MR_ctxt_nondetstack_zone);

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000,2002-2005 University of Melbourne.
+% Copyright (C) 1998-2000,2002-2006 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -264,7 +264,9 @@ copy_outputs(_, [], _, empty).
 copy_outputs(CI, [Var | Vars], SpSlot, Code) :-
     code_info__get_variable_slot(CI, Var, SrcSlot),
     ( SrcSlot = stackvar(SlotNum) ->
-        NegSlotNum = (- SlotNum),
+        % The stack pointer points to the last used word on the stack.
+        % We want MR_sp[-0] = MR_sv(1), MR_sp[-1] = MR_sv(2), etc.
+        NegSlotNum = (1 - SlotNum),
         DestSlot = field(yes(0), lval(SpSlot), const(int_const(NegSlotNum)))
     ;
         unexpected(this_file,
