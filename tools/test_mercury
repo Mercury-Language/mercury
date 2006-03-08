@@ -229,11 +229,6 @@ case $HOST in
 	aral)		OPTIMIZE="-O3" ;;
 	ceres)		OPTIMIZE="-O5" ;;	# hlc
 	uranus)		OPTIMIZE="-O3" ;;
-	sophie)		OPTIMIZE="-O5 --intermodule-optimization" ;;
-	boadicea)	OPTIMIZE="-O4 --intermodule-optimization" ;;
-	surprise)	OPTIMIZE="-O3 --intermodule-optimization" ;;
-	lively)		OPTIMIZE="-O5 --intermodule-optimization" ;; # hlc
-	polychrest)	OPTIMIZE="-O4 --intermodule-optimization --introduce-accumulators" ;;
 esac
 
 # on some systems, the file system we're using does not support links
@@ -282,8 +277,6 @@ esac
 # run_all_tests_from_cron.
 case $HOST in
 	earth|ceres|aral|jupiter|swordfish|saturn|uranus)
-		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
-	sophie|boadicea|surprise|lively|polychrest)
 		INSTALL_DIR=/home/$HOST/public/$INSTALL_DIR_NAME/$FULLARCH ;;
 	*)		
 		INSTALL_DIR=$TOPDIR/$INSTALL_DIR_NAME/$FULLARCH ;;
@@ -416,7 +409,8 @@ case $HOST in
 					asm_fast.gc.mm		\
 					hlc.gc			\
 					hlc.gc.tr		\
-					hlc.par.gc		"
+					hlc.par.gc		\
+					asm_fast.gc.par"
 		;;					
 	jupiter)
 		# Ensure that the nogc grades get installed and tested
@@ -425,15 +419,16 @@ case $HOST in
 		;;
 	earth)
 		CONFIG_OPTS="--disable-dotnet-grades"
-		INSTALL_LIBGRADES="asm_fast.gc		\
-				asm_fast.gc.tr		\
-				asm_fast.gc.debug.tr 	\
-				asm_fast.gc.prof 	\
-				asm_fast.gc.profdeep 	\
-				asm_fast.gc.tsc 	\
-				hlc.gc 			\
-				hlc.par.gc		\
-				asm_fast.gc.tr.decldebug"
+		INSTALL_LIBGRADES="asm_fast.gc			\
+				asm_fast.gc.tr			\
+				asm_fast.gc.debug.tr 		\
+				asm_fast.gc.prof 		\
+				asm_fast.gc.profdeep 		\
+				asm_fast.gc.tsc	 		\
+				hlc.gc 				\
+				hlc.par.gc			\
+				asm_fast.gc.tr.decldebug	\
+				asm_fast.gc.par"
 		;;
 	aral)
 		#
@@ -482,61 +477,6 @@ case $HOST in
 		;; 
 	uranus)
 		CONFIG_OPTS=""
-		;;
-
-	sophie)
-		CONFIG_OPTS=""
-		INSTALL_LIBGRADES="asm_fast.gc				\
-					asm_fast			\
-					asm_fast.gc.tr			\
-					asm_fast.gc.decldebug		\
-					hlc				\
-					hlc.gc				\
-					hl.gc				\
-					hl.gc.tr"
-		;;
-	boadicea)
-		CONFIG_OPTS=""
-		INSTALL_LIBGRADES="asm_fast.gc				\
-					hlc.gc				\
-					hlc.gc.tr			\
-					asm_fast.gc.tr.decldebug	\
-					asm_fast.gc.tr			\
-					asm_fast.gc.tr.prof		\
-					asm_fast.gc.tr.memprof		\
-					asm_fast.gc.tr.profdeep"
-		;;
-	surprise)
-		CONFIG_OPTS=""
-		INSTALL_LIBGRADES="asm_fast.gc		\
-					none		\
-					none.gc		\
-					none.gc.tr	\
-					none.gc.profdeep	\
-					none.gc.profdeep.tr"
-		;;
-	lively)
-		CONFIG_OPTS=""
-		DEFAULT_GRADE="hlc.gc"
-		export DEFAULT_GRADE
-		INSTALL_GRADE="hlc.gc"
-		INSTALL_LIBGRADES="hlc.gc.prof 		\
-					hlc		\
-					hlc.gc.tr 	\
-					hlc.gc.tr.prof	\
-					hlc.gc.tr.memprof \
-					hlc.par.gc	\
-					asm_fast.gc	\
-					asm_fast.gc.tr.debug"
-		;;
-	polychrest)
-		CONFIG_OPTS=""
-		INSTALL_LIBGRADES="asm_fast.gc	\
-					asm_fast.gc.tr.debug	\
-					hlc.gc			\
-					asm_fast.gc.mm		\
-					reg.gc.mm		\
-					none.gc.mm"
 		;;
 	*)	
 		CONFIG_OPTS="" ;;

@@ -114,20 +114,32 @@ ALL_MINIMAL_PROGS = $(MINIMAL_NONLOOP_PROGS)
 # Tabling does not yet work in .rt grades
 ifneq "$(findstring .gc,$(GRADE))" ""
 	ifneq "$(findstring .rt,$(GRADE))" ""
-		PROGS=
+		PROGS0=
 		NONLOOP_PROGS=
 	else
 		ifneq "$(findstring mm,$(GRADE))" ""
-			PROGS=$(ALL_SIMPLE_PROGS) $(ALL_MINIMAL_PROGS)
+			PROGS0=$(ALL_SIMPLE_PROGS) $(ALL_MINIMAL_PROGS)
 			NONLOOP_PROGS=$(SIMPLE_NONLOOP_PROGS) \
 				$(MINIMAL_NONLOOP_PROGS)
 		else
-			PROGS=$(ALL_SIMPLE_PROGS)
+			PROGS0=$(ALL_SIMPLE_PROGS)
 			NONLOOP_PROGS=$(SIMPLE_NONLOOP_PROGS)
 		endif
 	endif
 else
-	PROGS=
+	PROGS0=
+endif
+
+# Tabling is buggy in the lowlevel .par grades so it's
+# disabled for now.
+ifeq "$(findstring .par,$(GRADE))" ""
+	PROGS=$(PROGS0)
+else
+	ifeq "$(findstring hl,$(GRADE))" ""
+		PROGS=
+	else
+		PROGS=$(PROGS0)
+	endif
 endif
 
 TESTS = $(PROGS)
