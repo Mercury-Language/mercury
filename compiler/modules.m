@@ -2110,6 +2110,7 @@ pragma_allowed_in_interface(tabled(_, _, _, _, _), no).
 pragma_allowed_in_interface(reserve_tag(_, _), yes).
 pragma_allowed_in_interface(promise_pure(_, _), no).
 pragma_allowed_in_interface(promise_semipure(_, _), no).
+pragma_allowed_in_interface(promise_equivalent_clauses(_, _), no).
 pragma_allowed_in_interface(unused_args(_, _, _, _, _), no).
 pragma_allowed_in_interface(exceptions(_, _, _, _, _), no).
 pragma_allowed_in_interface(trailing_info(_, _, _, _, _), no).
@@ -7633,6 +7634,7 @@ reorderable_item(pragma(_, Pragma)) = Reorderable :-
     ; Pragma = obsolete(_, _), Reorderable = yes
     ; Pragma = promise_pure(_, _), Reorderable = yes
     ; Pragma = promise_semipure(_, _), Reorderable = yes
+    ; Pragma = promise_equivalent_clauses(_, _), Reorderable = yes
     ; Pragma = reserve_tag(_, _), Reorderable = yes
     ; Pragma = source_file(_), Reorderable = no
     ; Pragma = tabled(_, _, _, _, _), Reorderable = yes
@@ -7712,6 +7714,7 @@ chunkable_item(pragma(_, Pragma)) = Reorderable :-
     ; Pragma = obsolete(_, _), Reorderable = yes
     ; Pragma = promise_pure(_, _), Reorderable = yes
     ; Pragma = promise_semipure(_, _), Reorderable = yes
+    ; Pragma = promise_equivalent_clauses(_, _), Reorderable = yes
     ; Pragma = reserve_tag(_, _), Reorderable = yes
     ; Pragma = source_file(_), Reorderable = no
     ; Pragma = tabled(_, _, _, _, _), Reorderable = yes

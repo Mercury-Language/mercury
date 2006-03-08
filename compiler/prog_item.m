@@ -513,6 +513,12 @@
     % Purity pragmas
     %
 
+    ;       promise_equivalent_clauses(
+                eqv_clauses_name        :: sym_name,
+                eqv_clauses_arity       :: arity
+                % Predname, Arity
+            )
+
     ;       promise_pure(
                 pure_name               :: sym_name,
                 pure_arity              :: arity

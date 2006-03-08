@@ -285,16 +285,14 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, NumErrors, !IO) :-
     pred_info_get_promised_purity(!.PredInfo, PromisedPurity),
     some [!ClausesInfo] (
         pred_info_clauses_info(!.PredInfo, !:ClausesInfo),
-        ProcIds = pred_info_procids(!.PredInfo),
         clauses_info_clauses(Clauses0, !ClausesInfo),
         clauses_info_vartypes(!.ClausesInfo, VarTypes0),
         clauses_info_varset(!.ClausesInfo, VarSet0),
         RunPostTypecheck = yes,
         PurityInfo0 = purity_info(ModuleInfo, RunPostTypecheck,
             !.PredInfo, VarTypes0, VarSet0, [], dont_make_implicit_promises),
-        pred_info_get_goal_type(!.PredInfo, GoalType),
-        compute_purity(GoalType, Clauses0, Clauses, ProcIds,
-            purity_pure, Purity, PurityInfo0, PurityInfo),
+        compute_purity(Clauses0, Clauses, !.PredInfo, purity_pure, Purity,
+            PurityInfo0, PurityInfo),
         PurityInfo = purity_info(_, _, !:PredInfo,
             VarTypes, VarSet, RevMessages, _),
         clauses_info_set_vartypes(VarTypes, !ClausesInfo),
@@ -397,37 +395,46 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
         true
     ).
 
-    % Infer the purity of a single (non-pragma c_code) predicate.
+    % Infer the purity of a single (non-foreign_proc) predicate.
     %
-:- pred compute_purity(goal_type::in, list(clause)::in, list(clause)::out,
-    list(proc_id)::in, purity::in, purity::out,
+:- pred compute_purity(list(clause)::in, list(clause)::out,
+    pred_info::in, purity::in, purity::out,
     purity_info::in, purity_info::out) is det.
 
-compute_purity(_, [], [], _, !Purity, !Info).
-compute_purity(GoalType, [Clause0 | Clauses0], [Clause | Clauses], ProcIds,
-        !Purity, !Info) :-
-    Clause0 = clause(Ids, Body0 - Info0, Lang, Context),
-    compute_expr_purity(Body0, Body, Info0, Bodypurity0, !Info),
+compute_purity([], [], _, !Purity, !Info).
+compute_purity([Clause0 | Clauses0], [Clause | Clauses], PredInfo, !Purity,
+        !Info) :-
+    Clause0 = clause(Ids, GoalExpr0 - GoalInfo0, Lang, Context),
+    compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo0, BodyPurity0, !Info),
     % If this clause doesn't apply to all modes of this procedure,
     % i.e. the procedure has different clauses for different modes,
-    % then we must treat it as impure.
-    % the default impurity of foreign_proc procedures is handled when
+    % then we must treat it as impure, unless the programmer has promised
+    % that the clauses are semantically equivalent.
+    %
+    % The default impurity of foreign_proc procedures is handled when
     % processing the foreign_proc goal -- they are not counted as impure
-    % here simply because they have different clauses for different modes
+    % here simply because they have different clauses for different modes.
     (
-        ( applies_to_all_modes(Clause0, ProcIds)
-        ; GoalType = pragmas
+        (
+            ProcIds = pred_info_procids(PredInfo),
+            applies_to_all_modes(Clause0, ProcIds)
+        ;
+            pred_info_get_markers(PredInfo, Markers),
+            check_marker(Markers, promised_equivalent_clauses)
+        ;
+            pred_info_get_goal_type(PredInfo, GoalType),
+            GoalType = pragmas
         )
     ->
-        Clausepurity = purity_pure
+        ClausePurity = purity_pure
     ;
-        Clausepurity = purity_impure
+        ClausePurity = purity_impure
     ),
-    worst_purity(Bodypurity0, Clausepurity) = Bodypurity,
-    add_goal_info_purity_feature(Bodypurity, Info0, Info),
-    !:Purity = worst_purity(!.Purity, Bodypurity),
-    Clause = clause(Ids, Body - Info, Lang, Context),
-    compute_purity(GoalType, Clauses0, Clauses, ProcIds, !Purity, !Info).
+    BodyPurity = worst_purity(BodyPurity0, ClausePurity),
+    add_goal_info_purity_feature(BodyPurity, GoalInfo0, GoalInfo),
+    !:Purity = worst_purity(!.Purity, BodyPurity),
+    Clause = clause(Ids, GoalExpr - GoalInfo, Lang, Context),
+    compute_purity(Clauses0, Clauses, PredInfo, !Purity, !Info).
 
 :- pred applies_to_all_modes(clause::in, list(proc_id)::in) is semidet.
 

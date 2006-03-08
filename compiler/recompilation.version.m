@@ -584,6 +584,8 @@ is_pred_pragma(tabled(_, Name, Arity, MaybePredOrFunc, _),
         yes(MaybePredOrFunc - Name / Arity)).
 is_pred_pragma(promise_pure(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(promise_semipure(Name, Arity), yes(no - Name / Arity)).
+is_pred_pragma(promise_equivalent_clauses(Name, Arity),
+        yes(no - Name / Arity)).
 is_pred_pragma(termination_info(PredOrFunc, Name, Modes, _, _),
         yes(yes(PredOrFunc) - Name / Arity)) :-
     adjust_func_arity(PredOrFunc, Arity, list__length(Modes)).  

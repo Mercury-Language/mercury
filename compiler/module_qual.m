@@ -1099,6 +1099,7 @@ qualify_pragma(X@fact_table(_, _, _), X, !Info, !IO).
 qualify_pragma(X@reserve_tag(_, _), X, !Info, !IO).
 qualify_pragma(X@promise_pure(_, _), X, !Info, !IO).
 qualify_pragma(X@promise_semipure(_, _), X, !Info, !IO).
+qualify_pragma(X@promise_equivalent_clauses(_, _), X, !Info, !IO).
 qualify_pragma(termination_info(PredOrFunc, SymName, ModeList0, Args, Term),
         termination_info(PredOrFunc, SymName, ModeList, Args, Term),
         !Info, !IO) :-

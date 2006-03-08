@@ -1773,6 +1773,7 @@ should_output_marker(user_marked_no_inline, yes).
 should_output_marker(heuristic_inline, no).
 should_output_marker(promised_pure, yes).
 should_output_marker(promised_semipure, yes).
+should_output_marker(promised_equivalent_clauses, yes).
 should_output_marker(terminates, yes).
 should_output_marker(does_not_terminate, yes).
     % Termination should only be checked in the defining module.

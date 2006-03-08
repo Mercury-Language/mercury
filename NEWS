@@ -15,6 +15,9 @@ Changes to the Mercury language:
 * We now have support for impure module-local mutable variables.
 * We now have support for recognizing switches in which multiple switch arms
   have shared code.
+* A new pragma allows programmers to promise that in a predicate or function
+  defined by mode-specific clauses, the mode-specific definitions have
+  equivalent semantics.
 * We now allow users to control how each argument of a `pragma memo' predicate
   is tabled.
 * Support for the old-style lambda, mode and pragma syntax has been removed.
@@ -33,7 +36,7 @@ Changes to the Mercury compiler:
   involving single-solution contexts.
 * We have significantly improved the compiler's performance on predicates
   with many clauses.
-* We have deleted the old --split-c-files option, as it conflicted with the
+  * We have deleted the old --split-c-files option, as it conflicted with the
   implementation of module initialisation and finalisation.
 
 Portability Improvements:
@@ -162,6 +165,21 @@ Changes to the Mercury language:
 	),
 	... shared code ...
   )
+
+* If a predicate or function is defined by mode-specific clauses, like this:
+
+	reversible_sort(Raw::in, Sorted::out) :-
+		list.sort(Raw, Sorted).
+	reversible_sort(Raw::out, Sorted::in) :-
+		is_sorted(Sorted),
+		list.perm(Sorted, Raw).
+
+  the compiler by default assumes that the definitions of the different modes
+  have different semantics. Programmers can tell the compiler that the
+  mode-specific definitions, though syntactically distinct, are semantically
+  equivalent by including a pragma:
+
+  :- pragma promise_equivalent_clauses(reverse_sort/2).
 
 * To ensure soundness, goals in negated contexts using non-local variables
   with dynamic modes (inst "any") must now be marked as impure.

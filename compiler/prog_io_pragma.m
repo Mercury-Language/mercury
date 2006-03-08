@@ -945,6 +945,13 @@ parse_pragma_type(ModuleName, "fact_table", PragmaTerms, ErrorTerm, _VarSet,
             "`:- pragma fact_table' declaration", ErrorTerm)
     ).
 
+parse_pragma_type(ModuleName, "promise_equivalent_clauses", PragmaTerms,
+        ErrorTerm, _VarSet, Result) :-
+    parse_simple_pragma(ModuleName, "promise_equivalent_clauses",
+        (pred(Name::in, Arity::in, Pragma::out) is det :-
+            Pragma = promise_equivalent_clauses(Name, Arity)),
+        PragmaTerms, ErrorTerm, Result).
+
 parse_pragma_type(ModuleName, "promise_pure", PragmaTerms, ErrorTerm, _VarSet,
         Result) :-
     parse_simple_pragma(ModuleName, "promise_pure",

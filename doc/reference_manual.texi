@@ -2891,9 +2891,12 @@ As you can see, in this case the two clauses are @emph{not} equivalent.
 
 Because of this possibility, predicates or functions which are defined
 using different code for different modes are by default assumed to be
-impure; the programmer must either (1) carefully ensure that the
-logical meaning of the clauses is the same for all modes,
-in which case a @samp{pragma promise_pure} declaration can be used
+impure; the programmer must either
+(1) carefully ensure that the logical meaning of the clauses
+is the same for all modes,
+which can be declared to the compiler
+through a @samp{pragma promise_equivalent_clauses} declaration,
+or a @samp{pragma promise_pure} declaration,
 or (2) declare the predicate or function as impure.
 @xref{Impurity}.
 
@@ -2902,8 +2905,20 @@ append do have the same declarative semantics, so we can safely use
 the first approach:
 
 @example
+	:- pragma promise_equivalent_clauses(append/3).
+@end example
+
+The pragma
+
+@example
 	:- pragma promise_pure(append/3).
 @end example
+
+would also promise that the clauses are equivalent,
+but on top of that would also promise that the code of each clause is pure.
+Sometimes, if some clauses contain impure code,
+that is a promise that the programmer wants to make,
+but this extra promise is unnecessary in this case.
 
 In the example with @samp{var/1} above, the two clauses have different
 semantics, so the predicate must be declared as impure:

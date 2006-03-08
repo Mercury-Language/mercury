@@ -142,6 +142,7 @@ ORDINARY_PROGS=	\
 	pragma_import \
 	pragma_inline \
 	pretty_printing \
+	promise_equivalent_clauses \
 	promise_equivalent_solutions_test \
 	promise_equiv_with_svars \
 	pure_mutable \

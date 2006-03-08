@@ -1005,6 +1005,7 @@ marker_name(is_impure, "impure").
 marker_name(is_semipure, "semipure").
 marker_name(promised_pure, "promise_pure").
 marker_name(promised_semipure, "promise_semipure").
+marker_name(promised_equivalent_clauses, "promise_equivalent_clauses").
 marker_name(terminates, "terminates").
 marker_name(check_termination, "check_termination").
 marker_name(does_not_terminate, "does_not_terminate").

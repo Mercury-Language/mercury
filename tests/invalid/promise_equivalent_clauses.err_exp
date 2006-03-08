@@ -1,0 +1,5 @@
+promise_equivalent_clauses.m:033: In predicate
+promise_equivalent_clauses.m:033:   `promise_equivalent_clauses.rsort/2':
+promise_equivalent_clauses.m:033:   purity error: predicate is impure.
+promise_equivalent_clauses.m:033:   It must be declared `impure' or promised
+promise_equivalent_clauses.m:033:   pure.

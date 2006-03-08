@@ -272,6 +272,11 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
         add_pred_marker("promise_semipure", Name, Arity, ImportStatus,
             Context, promised_semipure, [], !ModuleInfo, !IO)
     ;
+        Pragma = promise_equivalent_clauses(Name, Arity),
+        add_pred_marker("promise_equivalent_clauses", Name, Arity,
+            ImportStatus, Context, promised_equivalent_clauses, [],
+            !ModuleInfo, !IO)
+    ;
         % Handle pragma termination_info decls later on, in pass 3 --
         % we need to add function default modes before handling
         % these pragmas

@@ -52,8 +52,8 @@
     term__context::in, module_info::in, module_info::out, io::di, io::uo)
     is det.
 
-    % add_pred_marker(ModuleInfo0, PragmaName, Name, Arity, Status,
-    %   Context, Marker, ConflictMarkers, ModuleInfo, !IO):
+    % add_pred_marker(PragmaName, Name, Arity, Status,
+    %   Context, Marker, ConflictMarkers, !ModuleInfo, !IO):
     %
     % Adds Marker to the marker list of the pred(s) with give Name and Arity,
     % updating the ModuleInfo. If the named pred does not exist, or the pred
@@ -1447,8 +1447,7 @@ do_add_pred_marker(PragmaName, Name, Arity, Status, MustBeExported, Context,
             MustBeExported, Preds0, Preds, WrongStatus),
         (
             WrongStatus = yes,
-            pragma_status_error(Name, Arity, Context, PragmaName,
-                !IO),
+            pragma_status_error(Name, Arity, Context, PragmaName, !IO),
             module_info_incr_errors(!ModuleInfo)
         ;
             WrongStatus = no
@@ -1469,7 +1468,7 @@ do_add_pred_marker(PragmaName, Name, Arity, Status, MustBeExported, Context,
 
 get_matching_pred_ids(Module0, Name, Arity, PredIds) :-
     module_info_get_predicate_table(Module0, PredTable0),
-    % check that the pragma is module qualified.
+    % Check that the pragma is module qualified.
     (
         Name = unqualified(_),
         unexpected(this_file, "get_matching_pred_ids: unqualified name")

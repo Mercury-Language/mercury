@@ -628,6 +628,10 @@ mercury_output_item(_UnqualifiedItemNames, pragma(_, Pragma), Context, !IO) :-
         mercury_output_pragma_decl(Pred, Arity, predicate, "promise_semipure",
             no, !IO)
     ;
+        Pragma = promise_equivalent_clauses(Pred, Arity),
+        mercury_output_pragma_decl(Pred, Arity, predicate,
+            "promise_equivalent_clauses", no, !IO)
+    ;
         Pragma = termination_info(PredOrFunc, PredName, ModeList,
             MaybePragmaArgSizeInfo, MaybePragmaTerminationInfo),
         write_pragma_termination_info(PredOrFunc, PredName, ModeList,

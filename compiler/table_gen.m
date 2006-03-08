@@ -1898,6 +1898,7 @@ keep_marker(is_impure) = yes.
 keep_marker(is_semipure) = yes.
 keep_marker(promised_pure) = yes.
 keep_marker(promised_semipure) = yes.
+keep_marker(promised_equivalent_clauses) = yes.
 keep_marker(terminates) = yes.
 keep_marker(does_not_terminate) = yes.
 keep_marker(check_termination) = no.
