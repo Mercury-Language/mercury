@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2005 The University of Melbourne.
+% Copyright (C) 2001, 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -191,7 +191,7 @@
                 user_arity        :: int,
                 user_mode         :: int
             )
-    ;       
+    ;
             uci_pred(
                 uci_type_name   :: string,
                 uci_type_module :: string,
@@ -468,209 +468,209 @@ dummy_clique_ptr = clique_ptr(-1).
 
 valid_clique_ptr(Deep, clique_ptr(CliqueNum)) :-
     CliqueNum > 0,
-    array__in_bounds(Deep ^ clique_members, CliqueNum).
+    array.in_bounds(Deep ^ clique_members, CliqueNum).
 
 valid_proc_dynamic_ptr(Deep, proc_dynamic_ptr(PDI)) :-
     PDI > 0,
-    array__in_bounds(Deep ^ proc_dynamics, PDI).
+    array.in_bounds(Deep ^ proc_dynamics, PDI).
 
 valid_proc_static_ptr(Deep, proc_static_ptr(PSI)) :-
     PSI > 0,
-    array__in_bounds(Deep ^ proc_statics, PSI).
+    array.in_bounds(Deep ^ proc_statics, PSI).
 
 valid_call_site_dynamic_ptr(Deep, call_site_dynamic_ptr(CSDI)) :-
     CSDI > 0,
-    array__in_bounds(Deep ^ call_site_dynamics, CSDI).
+    array.in_bounds(Deep ^ call_site_dynamics, CSDI).
 
 valid_call_site_static_ptr(Deep, call_site_static_ptr(CSSI)) :-
     CSSI > 0,
-    array__in_bounds(Deep ^ call_site_statics, CSSI).
+    array.in_bounds(Deep ^ call_site_statics, CSSI).
 
 %-----------------------------------------------------------------------------%
 
 valid_proc_dynamic_ptr_raw(ProcDynamics, proc_dynamic_ptr(PDI)) :-
     PDI > 0,
-    array__in_bounds(ProcDynamics, PDI).
+    array.in_bounds(ProcDynamics, PDI).
 
 valid_proc_static_ptr_raw(ProcStatics, proc_static_ptr(PSI)) :-
     PSI > 0,
-    array__in_bounds(ProcStatics, PSI).
+    array.in_bounds(ProcStatics, PSI).
 
 valid_call_site_dynamic_ptr_raw(CallSiteDynamics,
         call_site_dynamic_ptr(CSDI)) :-
     CSDI > 0,
-    array__in_bounds(CallSiteDynamics, CSDI).
+    array.in_bounds(CallSiteDynamics, CSDI).
 
 valid_call_site_static_ptr_raw(CallSiteStatics, call_site_static_ptr(CSSI)) :-
     CSSI > 0,
-    array__in_bounds(CallSiteStatics, CSSI).
+    array.in_bounds(CallSiteStatics, CSSI).
 
 %-----------------------------------------------------------------------------%
 
 lookup_call_site_dynamics(CallSiteDynamics, CSDPtr, CSD) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    ( CSDI > 0, array__in_bounds(CallSiteDynamics, CSDI) ->
-        array__lookup(CallSiteDynamics, CSDI, CSD)
+    ( CSDI > 0, array.in_bounds(CallSiteDynamics, CSDI) ->
+        array.lookup(CallSiteDynamics, CSDI, CSD)
     ;
         error("lookup_call_site_dynamics: bounds error")
     ).
 
 lookup_call_site_statics(CallSiteStatics, CSSPtr, CSS) :-
     CSSPtr = call_site_static_ptr(CSSI),
-    ( CSSI > 0, array__in_bounds(CallSiteStatics, CSSI) ->
-        array__lookup(CallSiteStatics, CSSI, CSS)
+    ( CSSI > 0, array.in_bounds(CallSiteStatics, CSSI) ->
+        array.lookup(CallSiteStatics, CSSI, CSS)
     ;
         error("lookup_call_site_statics: bounds error")
     ).
 
 lookup_proc_dynamics(ProcDynamics, PDPtr, PD) :-
     PDPtr = proc_dynamic_ptr(PDI),
-    ( PDI > 0, array__in_bounds(ProcDynamics, PDI) ->
-        array__lookup(ProcDynamics, PDI, PD)
+    ( PDI > 0, array.in_bounds(ProcDynamics, PDI) ->
+        array.lookup(ProcDynamics, PDI, PD)
     ;
         error("lookup_proc_dynamics: bounds error")
     ).
 
 lookup_proc_statics(ProcStatics, PSPtr, PS) :-
     PSPtr = proc_static_ptr(PSI),
-    ( PSI > 0, array__in_bounds(ProcStatics, PSI) ->
-        array__lookup(ProcStatics, PSI, PS)
+    ( PSI > 0, array.in_bounds(ProcStatics, PSI) ->
+        array.lookup(ProcStatics, PSI, PS)
     ;
         error("lookup_proc_statics: bounds error")
     ).
 
 lookup_clique_index(CliqueIndex, PDPtr, CliquePtr) :-
     PDPtr = proc_dynamic_ptr(PDI),
-    ( PDI > 0, array__in_bounds(CliqueIndex, PDI) ->
-        array__lookup(CliqueIndex, PDI, CliquePtr)
+    ( PDI > 0, array.in_bounds(CliqueIndex, PDI) ->
+        array.lookup(CliqueIndex, PDI, CliquePtr)
     ;
         error("lookup_clique_index: bounds error")
     ).
 
 lookup_clique_members(CliqueMembers, CliquePtr, PDPtrs) :-
     CliquePtr = clique_ptr(CI),
-    ( array__in_bounds(CliqueMembers, CI) ->
-        array__lookup(CliqueMembers, CI, PDPtrs)
+    ( array.in_bounds(CliqueMembers, CI) ->
+        array.lookup(CliqueMembers, CI, PDPtrs)
     ;
         error("lookup_clique_members: bounds error")
     ).
 
 lookup_clique_parents(CliqueParents, CliquePtr, CSDPtr) :-
     CliquePtr = clique_ptr(CI),
-    ( array__in_bounds(CliqueParents, CI) ->
-        array__lookup(CliqueParents, CI, CSDPtr)
+    ( array.in_bounds(CliqueParents, CI) ->
+        array.lookup(CliqueParents, CI, CSDPtr)
     ;
         error("lookup_clique_parents: bounds error")
     ).
 
 lookup_clique_maybe_child(CliqueMaybeChild, CSDPtr, MaybeCliquePtr) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    ( CSDI > 0, array__in_bounds(CliqueMaybeChild, CSDI) ->
-        array__lookup(CliqueMaybeChild, CSDI, MaybeCliquePtr)
+    ( CSDI > 0, array.in_bounds(CliqueMaybeChild, CSDI) ->
+        array.lookup(CliqueMaybeChild, CSDI, MaybeCliquePtr)
     ;
         error("lookup_clique_maybe_child: bounds error")
     ).
 
 lookup_proc_callers(ProcCallers, PSPtr, Callers) :-
     PSPtr = proc_static_ptr(PSI),
-    ( PSI > 0, array__in_bounds(ProcCallers, PSI) ->
-        array__lookup(ProcCallers, PSI, Callers)
+    ( PSI > 0, array.in_bounds(ProcCallers, PSI) ->
+        array.lookup(ProcCallers, PSI, Callers)
     ;
         error("lookup_proc_callers: bounds error")
     ).
 
 lookup_call_site_static_map(CallSiteStaticMap, CSDPtr, CSSPtr) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    ( CSDI > 0, array__in_bounds(CallSiteStaticMap, CSDI) ->
-        array__lookup(CallSiteStaticMap, CSDI, CSSPtr)
+    ( CSDI > 0, array.in_bounds(CallSiteStaticMap, CSDI) ->
+        array.lookup(CallSiteStaticMap, CSDI, CSSPtr)
     ;
         error("lookup_call_site_static_map: bounds error")
     ).
 
 lookup_call_site_calls(CallSiteCalls, CSSPtr, Calls) :-
     CSSPtr = call_site_static_ptr(CSSI),
-    ( CSSI > 0, array__in_bounds(CallSiteCalls, CSSI) ->
-        array__lookup(CallSiteCalls, CSSI, Calls)
+    ( CSSI > 0, array.in_bounds(CallSiteCalls, CSSI) ->
+        array.lookup(CallSiteCalls, CSSI, Calls)
     ;
         error("lookup_call_site_static_map: bounds error")
     ).
 
 lookup_pd_own(PDOwns, PDPtr, PDOwn) :-
     PDPtr = proc_dynamic_ptr(PDI),
-    ( PDI > 0, array__in_bounds(PDOwns, PDI) ->
-        array__lookup(PDOwns, PDI, PDOwn)
+    ( PDI > 0, array.in_bounds(PDOwns, PDI) ->
+        array.lookup(PDOwns, PDI, PDOwn)
     ;
         error("lookup_pd_own: bounds error")
     ).
 
 lookup_pd_desc(PDDescs, PDPtr, PDDesc) :-
     PDPtr = proc_dynamic_ptr(PDI),
-    ( PDI > 0, array__in_bounds(PDDescs, PDI) ->
-        array__lookup(PDDescs, PDI, PDDesc)
+    ( PDI > 0, array.in_bounds(PDDescs, PDI) ->
+        array.lookup(PDDescs, PDI, PDDesc)
     ;
         error("lookup_pd_desc: bounds error")
     ).
 
 lookup_csd_own(CSDOwns, CSDPtr, CSDOwn) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    ( CSDI > 0, array__in_bounds(CSDOwns, CSDI) ->
-        array__lookup(CSDOwns, CSDI, CSDOwn)
+    ( CSDI > 0, array.in_bounds(CSDOwns, CSDI) ->
+        array.lookup(CSDOwns, CSDI, CSDOwn)
     ;
         error("lookup_csd_own: bounds error")
     ).
 
 lookup_csd_desc(CSDDescs, CSDPtr, CSDDesc) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    ( CSDI > 0, array__in_bounds(CSDDescs, CSDI) ->
-        array__lookup(CSDDescs, CSDI, CSDDesc)
+    ( CSDI > 0, array.in_bounds(CSDDescs, CSDI) ->
+        array.lookup(CSDDescs, CSDI, CSDDesc)
     ;
         error("lookup_csd_desc: bounds error")
     ).
 
 lookup_ps_own(PSOwns, PSPtr, PSOwn) :-
     PSPtr = proc_static_ptr(PSI),
-    ( PSI > 0, array__in_bounds(PSOwns, PSI) ->
-        array__lookup(PSOwns, PSI, PSOwn)
+    ( PSI > 0, array.in_bounds(PSOwns, PSI) ->
+        array.lookup(PSOwns, PSI, PSOwn)
     ;
         error("lookup_ps_own: bounds error")
     ).
 
 lookup_ps_desc(PSDescs, PSPtr, PSDesc) :-
     PSPtr = proc_static_ptr(PSI),
-    ( PSI > 0, array__in_bounds(PSDescs, PSI) ->
-        array__lookup(PSDescs, PSI, PSDesc)
+    ( PSI > 0, array.in_bounds(PSDescs, PSI) ->
+        array.lookup(PSDescs, PSI, PSDesc)
     ;
         error("lookup_ps_desc: bounds error")
     ).
 
 lookup_css_own(CSSOwns, CSSPtr, CSSOwn) :-
     CSSPtr = call_site_static_ptr(CSSI),
-    ( CSSI > 0, array__in_bounds(CSSOwns, CSSI) ->
-        array__lookup(CSSOwns, CSSI, CSSOwn)
+    ( CSSI > 0, array.in_bounds(CSSOwns, CSSI) ->
+        array.lookup(CSSOwns, CSSI, CSSOwn)
     ;
         error("lookup_css_own: bounds error")
     ).
 
 lookup_css_desc(CSSDescs, CSSPtr, CSSDesc) :-
     CSSPtr = call_site_static_ptr(CSSI),
-    ( CSSI > 0, array__in_bounds(CSSDescs, CSSI) ->
-        array__lookup(CSSDescs, CSSI, CSSDesc)
+    ( CSSI > 0, array.in_bounds(CSSDescs, CSSI) ->
+        array.lookup(CSSDescs, CSSI, CSSDesc)
     ;
         error("lookup_css_desc: bounds error")
     ).
 
 lookup_pd_comp_table(PDCompTables, PDPtr, CompTable) :-
     PDPtr = proc_dynamic_ptr(PDI),
-    ( PDI > 0, array__in_bounds(PDCompTables, PDI) ->
-        array__lookup(PDCompTables, PDI, CompTable)
+    ( PDI > 0, array.in_bounds(PDCompTables, PDI) ->
+        array.lookup(PDCompTables, PDI, CompTable)
     ;
         error("lookup_pd_comp_table: bounds error")
     ).
 
 lookup_csd_comp_table(CSDCompTables, CSDPtr, CompTable) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    ( CSDI > 0, array__in_bounds(CSDCompTables, CSDI) ->
-        array__lookup(CSDCompTables, CSDI, CompTable)
+    ( CSDI > 0, array.in_bounds(CSDCompTables, CSDI) ->
+        array.lookup(CSDCompTables, CSDI, CompTable)
     ;
         error("lookup_csd_comp_table: bounds error")
     ).
@@ -726,105 +726,105 @@ deep_lookup_csd_comp_table(Deep, CSDPtr, CompTable) :-
 
 deep_lookup_pd_own(Deep, PDPtr, Own) :-
     PDPtr = proc_dynamic_ptr(PDI),
-    array__lookup(Deep ^ pd_own, PDI, Own).
+    array.lookup(Deep ^ pd_own, PDI, Own).
 
 deep_lookup_pd_desc(Deep, PDPtr, Desc) :-
     PDPtr = proc_dynamic_ptr(PDI),
-    array__lookup(Deep ^ pd_desc, PDI, Desc).
+    array.lookup(Deep ^ pd_desc, PDI, Desc).
 
 deep_lookup_csd_own(Deep, CSDPtr, Own) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    array__lookup(Deep ^ call_site_dynamics, CSDI, CSD),
+    array.lookup(Deep ^ call_site_dynamics, CSDI, CSD),
     Own = CSD ^ csd_own_prof.
 
 deep_lookup_csd_desc(Deep, CSDPtr, Desc) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    array__lookup(Deep ^ csd_desc, CSDI, Desc).
+    array.lookup(Deep ^ csd_desc, CSDI, Desc).
 
 deep_lookup_ps_own(Deep, PSPtr, Own) :-
     PSPtr = proc_static_ptr(PSI),
-    array__lookup(Deep ^ ps_own, PSI, Own).
+    array.lookup(Deep ^ ps_own, PSI, Own).
 
 deep_lookup_ps_desc(Deep, PSPtr, Desc) :-
     PSPtr = proc_static_ptr(PSI),
-    array__lookup(Deep ^ ps_desc, PSI, Desc).
+    array.lookup(Deep ^ ps_desc, PSI, Desc).
 
 deep_lookup_css_own(Deep, CSSPtr, Own) :-
     CSSPtr = call_site_static_ptr(CSSI),
-    array__lookup(Deep ^ css_own, CSSI, Own).
+    array.lookup(Deep ^ css_own, CSSI, Own).
 
 deep_lookup_css_desc(Deep, CSSPtr, Desc) :-
     CSSPtr = call_site_static_ptr(CSSI),
-    array__lookup(Deep ^ css_desc, CSSI, Desc).
+    array.lookup(Deep ^ css_desc, CSSI, Desc).
 
 %-----------------------------------------------------------------------------%
 
 update_call_site_dynamics(CSDPtr, CSD, CallSiteDynamics0, CallSiteDynamics) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    array__set(CallSiteDynamics0, CSDI, CSD, CallSiteDynamics).
+    array.set(CallSiteDynamics0, CSDI, CSD, CallSiteDynamics).
 
 update_call_site_statics(CSSPtr, CSS, CallSiteStatics0, CallSiteStatics) :-
     CSSPtr = call_site_static_ptr(CSSI),
-    array__set(CallSiteStatics0, CSSI, CSS, CallSiteStatics).
+    array.set(CallSiteStatics0, CSSI, CSS, CallSiteStatics).
 
 update_proc_dynamics(PDPtr, PD, ProcDynamics0, ProcDynamics) :-
     PDPtr = proc_dynamic_ptr(PDI),
-    array__set(ProcDynamics0, PDI, PD, ProcDynamics).
+    array.set(ProcDynamics0, PDI, PD, ProcDynamics).
 
 update_proc_statics(PSPtr, PS, ProcStatics0, ProcStatics) :-
     PSPtr = proc_static_ptr(PSI),
-    array__set(ProcStatics0, PSI, PS, ProcStatics).
+    array.set(ProcStatics0, PSI, PS, ProcStatics).
 
 update_call_site_static_map(CSDPtr, CSSPtr,
         CallSiteStaticMap0, CallSiteStaticMap) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    array__set(CallSiteStaticMap0, CSDI, CSSPtr, CallSiteStaticMap).
+    array.set(CallSiteStaticMap0, CSDI, CSSPtr, CallSiteStaticMap).
 
 update_proc_callers(PSPtr, CSDPtrs, ProcCallers0, ProcCallers) :-
     PSPtr = proc_static_ptr(PSI),
-    array__set(ProcCallers0, PSI, CSDPtrs, ProcCallers).
+    array.set(ProcCallers0, PSI, CSDPtrs, ProcCallers).
 
 update_ps_own(PSPtr, Own, PSOwns0, PSOwns) :-
     PSPtr = proc_static_ptr(PSI),
-    array__set(PSOwns0, PSI, Own, PSOwns).
+    array.set(PSOwns0, PSI, Own, PSOwns).
 
 update_ps_desc(PSPtr, Desc, PSDescs0, PSDescs) :-
     PSPtr = proc_static_ptr(PSI),
-    array__set(PSDescs0, PSI, Desc, PSDescs).
+    array.set(PSDescs0, PSI, Desc, PSDescs).
 
 update_css_own(CSSPtr, Own, CSSOwns0, CSSOwns) :-
     CSSPtr = call_site_static_ptr(CSSI),
-    array__set(CSSOwns0, CSSI, Own, CSSOwns).
+    array.set(CSSOwns0, CSSI, Own, CSSOwns).
 
 update_css_desc(CSSPtr, Desc, CSSDescs0, CSSDescs) :-
     CSSPtr = call_site_static_ptr(CSSI),
-    array__set(CSSDescs0, CSSI, Desc, CSSDescs).
+    array.set(CSSDescs0, CSSI, Desc, CSSDescs).
 
 %-----------------------------------------------------------------------------%
 
 deep_update_csd_desc(CSDPtr, CSDDesc, Deep0, Deep) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    array__set(u(Deep0 ^ csd_desc), CSDI, CSDDesc, CSDDescs),
+    array.set(u(Deep0 ^ csd_desc), CSDI, CSDDesc, CSDDescs),
     Deep = Deep0 ^ csd_desc := CSDDescs.
 
 deep_update_pd_desc(PDPtr, PDDesc, Deep0, Deep) :-
     PDPtr = proc_dynamic_ptr(PDI),
-    array__set(u(Deep0 ^ pd_desc), PDI, PDDesc, PDDescs),
+    array.set(u(Deep0 ^ pd_desc), PDI, PDDesc, PDDescs),
     Deep = Deep0 ^ pd_desc := PDDescs.
 
 deep_update_pd_own(PDPtr, PDOwn, Deep0, Deep) :-
     PDPtr = proc_dynamic_ptr(PDI),
-    array__set(u(Deep0 ^ pd_own), PDI, PDOwn, PDOwns),
+    array.set(u(Deep0 ^ pd_own), PDI, PDOwn, PDOwns),
     Deep = Deep0 ^ pd_own := PDOwns.
 
 deep_update_pd_comp_table(PDPtr, CompTable, Deep0, Deep) :-
     PDPtr = proc_dynamic_ptr(PDI),
-    array__set(u(Deep0 ^ pd_comp_table), PDI, CompTable, PDCompTables),
+    array.set(u(Deep0 ^ pd_comp_table), PDI, CompTable, PDCompTables),
     Deep = Deep0 ^ pd_comp_table := PDCompTables.
 
 deep_update_csd_comp_table(CSDPtr, CompTable, Deep0, Deep) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
-    array__set(u(Deep0 ^ csd_comp_table), CSDI, CompTable, CSDCompTables),
+    array.set(u(Deep0 ^ csd_comp_table), CSDI, CompTable, CSDCompTables),
     Deep = Deep0 ^ csd_comp_table := CSDCompTables.
 
 %-----------------------------------------------------------------------------%
@@ -855,16 +855,16 @@ extract_user_quanta(InitDeep,
     InitDeep ^ init_profile_stats ^ user_quanta).
 
 extract_max_css(InitDeep, MaxCSS) :-
-    array__max(InitDeep ^ init_call_site_statics, MaxCSS).
+    array.max(InitDeep ^ init_call_site_statics, MaxCSS).
 
 extract_max_ps(InitDeep, MaxPS) :-
-    array__max(InitDeep ^ init_proc_statics, MaxPS).
+    array.max(InitDeep ^ init_proc_statics, MaxPS).
 
 extract_max_csd(InitDeep, MaxCSD) :-
-    array__max(InitDeep ^ init_call_site_dynamics, MaxCSD).
+    array.max(InitDeep ^ init_call_site_dynamics, MaxCSD).
 
 extract_max_pd(InitDeep, MaxPD) :-
-    array__max(InitDeep ^ init_proc_dynamics, MaxPD).
+    array.max(InitDeep ^ init_proc_dynamics, MaxPD).
 
 extract_init_call_site_dynamics(InitDeep, InitDeep ^ init_call_site_dynamics).
 

@@ -13,7 +13,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds__mode_util.
+:- module check_hlds.mode_util.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -295,7 +295,7 @@ mode_to_arg_mode_2(ModuleInfo, Mode, Type, ContainingTypes, ArgMode) :-
         type_is_no_tag_type(ModuleInfo, Type, FunctorName, ArgType),
         % Avoid infinite recursion.
         type_to_ctor_and_args(Type, TypeCtor, _TypeArgs),
-        \+ list__member(TypeCtor, ContainingTypes)
+        \+ list.member(TypeCtor, ContainingTypes)
     ->
         % The arg_mode will be determined by the mode and type of the
         % functor's argument, so we figure out the mode and type of the
@@ -392,7 +392,7 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         InstName = unify_inst(_, _, _, _),
         module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_unify_insts(InstTable, UnifyInstTable),
-        map__lookup(UnifyInstTable, InstName, MaybeInst),
+        map.lookup(UnifyInstTable, InstName, MaybeInst),
         ( MaybeInst = known(Inst0, _) ->
             Inst = Inst0
         ;
@@ -402,7 +402,7 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         InstName = merge_inst(A, B),
         module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_merge_insts(InstTable, MergeInstTable),
-        map__lookup(MergeInstTable, A - B, MaybeInst),
+        map.lookup(MergeInstTable, A - B, MaybeInst),
         ( MaybeInst = known(Inst0) ->
             Inst = Inst0
         ;
@@ -412,7 +412,7 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         InstName = ground_inst(_, _, _, _),
         module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_ground_insts(InstTable, GroundInstTable),
-        map__lookup(GroundInstTable, InstName, MaybeInst),
+        map.lookup(GroundInstTable, InstName, MaybeInst),
         ( MaybeInst = known(Inst0, _) ->
             Inst = Inst0
         ;
@@ -422,7 +422,7 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         InstName = any_inst(_, _, _, _),
         module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_any_insts(InstTable, AnyInstTable),
-        map__lookup(AnyInstTable, InstName, MaybeInst),
+        map.lookup(AnyInstTable, InstName, MaybeInst),
         ( MaybeInst = known(Inst0, _) ->
             Inst = Inst0
         ;
@@ -432,7 +432,7 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         InstName = shared_inst(SharedInstName),
         module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_shared_insts(InstTable, SharedInstTable),
-        map__lookup(SharedInstTable, SharedInstName, MaybeInst),
+        map.lookup(SharedInstTable, SharedInstName, MaybeInst),
         ( MaybeInst = known(Inst0) ->
             Inst = Inst0
         ;
@@ -443,7 +443,7 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_mostly_uniq_insts(InstTable,
             NondetLiveInstTable),
-        map__lookup(NondetLiveInstTable, NondetLiveInstName, MaybeInst),
+        map.lookup(NondetLiveInstTable, NondetLiveInstName, MaybeInst),
         ( MaybeInst = known(Inst0) ->
             Inst = Inst0
         ;
@@ -454,8 +454,8 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_user_insts(InstTable, UserInstTable),
         user_inst_table_get_inst_defns(UserInstTable, InstDefns),
-        list__length(Args, Arity),
-        ( map__search(InstDefns, Name - Arity, InstDefn) ->
+        list.length(Args, Arity),
+        ( map.search(InstDefns, Name - Arity, InstDefn) ->
             InstDefn = hlds_inst_defn(_VarSet, Params, InstBody, _C, _),
             inst_lookup_subst_args(InstBody, Params, Name, Args, Inst)
         ;
@@ -463,13 +463,13 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         )
     ;
         InstName = typed_ground(Uniq, Type),
-        map__init(Subst),
+        map.init(Subst),
         propagate_type_into_inst(ModuleInfo, Subst, Type,
             ground(Uniq, none), Inst)
     ;
         InstName = typed_inst(Type, TypedInstName),
         inst_lookup(ModuleInfo, TypedInstName, Inst0),
-        map__init(Subst),
+        map.init(Subst),
         propagate_type_into_inst(ModuleInfo, Subst, Type, Inst0, Inst)
     ).
 
@@ -507,7 +507,7 @@ propagate_types_into_inst_list(_, _, [_ | _], [], []) :-
 
 propagate_type_into_mode(ModuleInfo, Type, Mode0, Mode) :-
     mode_get_insts(ModuleInfo, Mode0, InitialInst0, FinalInst0),
-    map__init(Subst),
+    map.init(Subst),
     propagate_type_into_inst_lazily(ModuleInfo, Subst, Type,
         InitialInst0, InitialInst),
     propagate_type_into_inst_lazily(ModuleInfo, Subst, Type,
@@ -599,7 +599,7 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
         ;
             constructors_to_bound_insts(ModuleInfo, Uniq,
                 Constructors, BoundInsts0),
-            list__sort_and_remove_dups(BoundInsts0, BoundInsts),
+            list.sort_and_remove_dups(BoundInsts0, BoundInsts),
             Inst = bound(Uniq, BoundInsts)
         )
     ;
@@ -607,7 +607,7 @@ propagate_ctor_info(ModuleInfo, Type, Constructors, Inst0, Inst) :-
         PredInstInfo0 = pred_inst_info(PredOrFunc, Modes0, Det),
         (
             type_is_higher_order(Type, _Purity, PredOrFunc, _, ArgTypes),
-            list__same_length(ArgTypes, Modes0)
+            list.same_length(ArgTypes, Modes0)
         ->
             propagate_types_into_mode_list(ModuleInfo, ArgTypes, Modes0, Modes)
         ;
@@ -685,7 +685,7 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
         apply_type_subst(Type0, Subst, Type),
         (
             type_is_higher_order(Type, _Purity, PredOrFunc, _, ArgTypes),
-            list__same_length(ArgTypes, Modes0)
+            list.same_length(ArgTypes, Modes0)
         ->
             propagate_types_into_mode_list(ModuleInfo, ArgTypes, Modes0, Modes)
         ;
@@ -741,11 +741,11 @@ propagate_ctor_info_lazily(ModuleInfo, Subst, Type0, Inst0, Inst) :-
 default_higher_order_func_inst(ModuleInfo, PredArgTypes, PredInstInfo) :-
     In = (ground(shared, none) -> ground(shared, none)),
     Out = (free -> ground(shared, none)),
-    list__length(PredArgTypes, NumPredArgs),
+    list.length(PredArgTypes, NumPredArgs),
     NumFuncArgs = NumPredArgs - 1,
-    list__duplicate(NumFuncArgs, In, FuncArgModes),
+    list.duplicate(NumFuncArgs, In, FuncArgModes),
     FuncRetMode = Out,
-    list__append(FuncArgModes, [FuncRetMode], PredArgModes0),
+    list.append(FuncArgModes, [FuncRetMode], PredArgModes0),
     propagate_types_into_mode_list(ModuleInfo, PredArgTypes,
         PredArgModes0, PredArgModes),
     PredInstInfo = pred_inst_info(function, PredArgModes, det).
@@ -766,7 +766,7 @@ constructors_to_bound_insts_2(ModuleInfo, Uniq, [Ctor | Ctors], ArgInst,
         [BoundInst | BoundInsts]) :-
     Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
     ctor_arg_list_to_inst_list(Args, ArgInst, Insts),
-    list__length(Insts, Arity),
+    list.length(Insts, Arity),
     BoundInst = functor(cons(Name, Arity), Insts),
     constructors_to_bound_insts_2(ModuleInfo, Uniq, Ctors,
         ArgInst, BoundInsts).
@@ -785,21 +785,21 @@ propagate_ctor_info_2(ModuleInfo, Type, BoundInsts0, BoundInsts) :-
     (
         type_is_tuple(Type, TupleArgTypes)
     ->
-        list__map(propagate_ctor_info_tuple(ModuleInfo, TupleArgTypes),
+        list.map(propagate_ctor_info_tuple(ModuleInfo, TupleArgTypes),
             BoundInsts0, BoundInsts)
     ;
         type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
         TypeCtor = qualified(TypeModule, _) - _,
         module_info_get_type_table(ModuleInfo, TypeTable),
-        map__search(TypeTable, TypeCtor, TypeDefn),
-        hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
-        hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+        map.search(TypeTable, TypeCtor, TypeDefn),
+        hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
+        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         Constructors = TypeBody ^ du_type_ctors
     ->
-        map__from_corresponding_lists(TypeParams, TypeArgs, ArgSubst),
+        map.from_corresponding_lists(TypeParams, TypeArgs, ArgSubst),
         propagate_ctor_info_3(ModuleInfo, ArgSubst, TypeModule, Constructors,
             BoundInsts0, BoundInsts1),
-        list__sort(BoundInsts1, BoundInsts)
+        list.sort(BoundInsts1, BoundInsts)
     ;
         % Builtin types don't need processing.
         BoundInsts = BoundInsts0
@@ -812,11 +812,11 @@ propagate_ctor_info_tuple(ModuleInfo, TupleArgTypes, BoundInst0, BoundInst) :-
     BoundInst0 = functor(Functor, ArgInsts0),
     (
         Functor = cons(unqualified("{}"), _),
-        list__length(ArgInsts0, ArgInstsLen),
-        list__length(TupleArgTypes, TupleArgTypesLen),
+        list.length(ArgInsts0, ArgInstsLen),
+        list.length(TupleArgTypes, TupleArgTypesLen),
         ArgInstsLen = TupleArgTypesLen
     ->
-        map__init(Subst),
+        map.init(Subst),
         propagate_types_into_inst_list(ModuleInfo, Subst, TupleArgTypes,
             ArgInsts0, ArgInsts)
     ;
@@ -846,15 +846,15 @@ propagate_ctor_info_3(ModuleInfo, Subst, TypeModule, Constructors,
         ConsId = cons(ConsName, Arity),
         GetCons = (pred(Ctor::in) is semidet :-
                 Ctor = ctor(_, _, ConsName, CtorArgs),
-                list__length(CtorArgs, Arity)
+                list.length(CtorArgs, Arity)
             ),
-        list__filter(GetCons, Constructors, [Constructor])
+        list.filter(GetCons, Constructors, [Constructor])
     ->
         Constructor = ctor(_ExistQVars, _Constraints, _Name, Args),
         GetArgTypes = (pred(CtorArg::in, ArgType::out) is det :-
                 CtorArg = _ArgName - ArgType
             ),
-        list__map(GetArgTypes, Args, ArgTypes),
+        list.map(GetArgTypes, Args, ArgTypes),
         propagate_types_into_inst_list(ModuleInfo, Subst, ArgTypes,
             ArgInsts0, ArgInsts),
         BoundInst = functor(ConsId, ArgInsts)
@@ -872,7 +872,7 @@ propagate_ctor_info_3(ModuleInfo, Subst, TypeModule, Constructors,
 
 apply_type_subst(Type0, Subst, Type) :-
     % optimize common case
-    ( map__is_empty(Subst) ->
+    ( map.is_empty(Subst) ->
         Type = Type0
     ;
         apply_subst_to_type(Subst, Type0, Type)
@@ -897,10 +897,10 @@ mode_get_insts_semidet(_ModuleInfo, (InitialInst -> FinalInst),
         InitialInst, FinalInst).
 mode_get_insts_semidet(ModuleInfo, user_defined_mode(Name, Args),
         Initial, Final) :-
-    list__length(Args, Arity),
+    list.length(Args, Arity),
     module_info_get_mode_table(ModuleInfo, Modes),
     mode_table_get_mode_defns(Modes, ModeDefns),
-    map__search(ModeDefns, Name - Arity, HLDS_Mode),
+    map.search(ModeDefns, Name - Arity, HLDS_Mode),
     HLDS_Mode = hlds_mode_defn(_VarSet, Params, ModeDefn, _Context, _Status),
     ModeDefn = eqv_mode(Mode0),
     mode_substitute_arg_list(Mode0, Params, Args, Mode),
@@ -965,7 +965,7 @@ recompute_instmap_delta_1(RecomputeAtomic, Goal0 - GoalInfo0, Goal - GoalInfo,
     ),
 
     % If the initial instmap is unreachable so is the final instmap.
-    ( instmap__is_unreachable(InstMap0) ->
+    ( instmap.is_unreachable(InstMap0) ->
         instmap_delta_init_unreachable(UnreachableInstMapDelta),
         goal_info_set_instmap_delta(UnreachableInstMapDelta,
             GoalInfo1, GoalInfo)
@@ -1043,7 +1043,7 @@ recompute_instmap_delta_2(Atomic, if_then_else(Vars, Cond0, Then0, Else0),
         InstMap0, InstMapDelta, !RI) :-
     recompute_instmap_delta_1(Atomic, Cond0, Cond, VarTypes, InstMap0,
         InstMapDeltaCond, !RI),
-    instmap__apply_instmap_delta(InstMap0, InstMapDeltaCond, InstMapCond),
+    instmap.apply_instmap_delta(InstMap0, InstMapDeltaCond, InstMapCond),
     recompute_instmap_delta_1(Atomic, Then0, Then, VarTypes, InstMapCond,
         InstMapDeltaThen, !RI),
     recompute_instmap_delta_1(Atomic, Else0, Else, VarTypes, InstMap0,
@@ -1081,7 +1081,7 @@ recompute_instmap_delta_2(Atomic, unify(LHS, RHS0, UniMode0, Uni, Context),
             LambdaVars, Modes, Det, Goal0)
     ->
         ModuleInfo0 = !.RI ^ module_info,
-        instmap__pre_lambda_update(ModuleInfo0, LambdaVars, Modes,
+        instmap.pre_lambda_update(ModuleInfo0, LambdaVars, Modes,
             InstMap0, InstMap),
         recompute_instmap_delta_1(Atomic, Goal0, Goal, VarTypes,
             InstMap, _, !RI),
@@ -1104,7 +1104,7 @@ recompute_instmap_delta_2(_,
         foreign_proc(A, PredId, ProcId, Args, ExtraArgs, F), GoalInfo,
         foreign_proc(A, PredId, ProcId, Args, ExtraArgs, F),
         VarTypes, InstMap, InstMapDelta, !RI) :-
-    ArgVars = list__map(foreign_arg_var, Args),
+    ArgVars = list.map(foreign_arg_var, Args),
     recompute_instmap_delta_call(PredId, ProcId,
         ArgVars, VarTypes, InstMap, InstMapDelta0, !RI),
     (
@@ -1113,8 +1113,8 @@ recompute_instmap_delta_2(_,
     ;
         ExtraArgs = [_ | _],
         goal_info_get_instmap_delta(GoalInfo, OldInstMapDelta),
-        ExtraArgVars = list__map(foreign_arg_var, ExtraArgs),
-        instmap_delta_restrict(set__list_to_set(ExtraArgVars),
+        ExtraArgVars = list.map(foreign_arg_var, ExtraArgs),
+        instmap_delta_restrict(set.list_to_set(ExtraArgVars),
             OldInstMapDelta, ExtraArgsInstMapDelta),
         instmap_delta_apply_instmap_delta(InstMapDelta0,
             ExtraArgsInstMapDelta, large_base, InstMapDelta)
@@ -1137,7 +1137,7 @@ recompute_instmap_delta_conj(Atomic, [Goal0 | Goals0], [Goal | Goals],
         VarTypes, InstMap0, InstMapDelta, !RI) :-
     recompute_instmap_delta_1(Atomic, Goal0, Goal, VarTypes, InstMap0,
         InstMapDelta0, !RI),
-    instmap__apply_instmap_delta(InstMap0, InstMapDelta0, InstMap1),
+    instmap.apply_instmap_delta(InstMap0, InstMapDelta0, InstMap1),
     recompute_instmap_delta_conj(Atomic, Goals0, Goals, VarTypes, InstMap1,
         InstMapDelta1, !RI),
     instmap_delta_apply_instmap_delta(InstMapDelta0, InstMapDelta1,
@@ -1227,8 +1227,8 @@ recompute_instmap_delta_cases_2(_Atomic, _Var, [], [],
 recompute_instmap_delta_cases_2(Atomic, Var, [Case0 | Cases0], [Case | Cases],
         VarTypes, InstMap0, NonLocals, [InstMapDelta | InstMapDeltas], !RI) :-
     Case0 = case(Functor, Goal0),
-    map__lookup(VarTypes, Var, Type),
-    update_module_info(instmap__bind_var_to_functor(Var, Type, Functor,
+    map.lookup(VarTypes, Var, Type),
+    update_module_info(instmap.bind_var_to_functor(Var, Type, Functor,
         InstMap0), InstMap1, !RI),
     recompute_instmap_delta_1(Atomic, Goal0, Goal, VarTypes, InstMap1,
         InstMapDelta0, !RI),
@@ -1261,7 +1261,7 @@ recompute_instmap_delta_call(PredId, ProcId, Args, VarTypes, InstMap,
 
         % Compute the inst_var substitution from the initial insts
         % of the called procedure and the insts of the argument variables.
-        map__init(InstVarSub0),
+        map.init(InstVarSub0),
         update_module_info(compute_inst_var_sub(Args, VarTypes, InstMap,
             InitialInsts, InstVarSub0), InstVarSub, !RI),
 
@@ -1291,9 +1291,9 @@ compute_inst_var_sub([Arg | Args], VarTypes, InstMap, [Inst | Insts],
     % This is similar to modecheck_var_has_inst.
     SaveModuleInfo = !.ModuleInfo,
     SaveSub = !.Sub,
-    ( instmap__is_reachable(InstMap) ->
-        instmap__lookup_var(InstMap, Arg, ArgInst),
-        map__lookup(VarTypes, Arg, Type),
+    ( instmap.is_reachable(InstMap) ->
+        instmap.lookup_var(InstMap, Arg, ArgInst),
+        map.lookup(VarTypes, Arg, Type),
         ( inst_matches_initial(ArgInst, Inst, Type, !ModuleInfo, !Sub) ->
             true
         ;
@@ -1324,8 +1324,8 @@ recompute_instmap_delta_call_2([], _, [_ | _], _, !ModuleInfo) :-
 recompute_instmap_delta_call_2([Arg | Args], InstMap, [Mode0 | Modes0],
         [Mode | Modes], !ModuleInfo) :-
     % This is similar to modecheck_set_var_inst.
-    ( instmap__is_reachable(InstMap) ->
-        instmap__lookup_var(InstMap, Arg, ArgInst0),
+    ( instmap.is_reachable(InstMap) ->
+        instmap.lookup_var(InstMap, Arg, ArgInst0),
         mode_get_insts(!.ModuleInfo, Mode0, _, FinalInst),
         (
             abstractly_unify_inst(dead, ArgInst0, FinalInst,
@@ -1358,7 +1358,7 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
         % as in the old instmap.
         %
         goal_info_get_instmap_delta(GoalInfo, OldInstMapDelta),
-        instmap__lookup_var(InstMap, Var, InitialInst),
+        instmap.lookup_var(InstMap, Var, InitialInst),
         ( instmap_delta_search_var(OldInstMapDelta, Var, FinalInst1) ->
             % XXX we need to merge the information in InitialInst
             % and FinalInst1. In puzzle_detism_bug, InitialInst
@@ -1376,7 +1376,7 @@ recompute_instmap_delta_unify(Uni, UniMode0, UniMode, GoalInfo,
                 UMode = ((_ - Inst0) -> (_ - Inst)),
                 Mode = (Inst0 -> Inst)
             ),
-        list__map(UniModeToRhsMode, UniModes, Modes),
+        list.map(UniModeToRhsMode, UniModes, Modes),
         instmap_delta_from_mode_list([Var | Vars],
             [(InitialInst -> FinalInst) |  Modes],
             ModuleInfo, InstMapDelta),
@@ -1463,8 +1463,8 @@ normalise_inst(ModuleInfo, Type, Inst0, NormalisedInst) :-
 fixup_switch_var(Var, InstMap0, InstMap, Goal0, Goal) :-
     Goal0 = GoalExpr - GoalInfo0,
     goal_info_get_instmap_delta(GoalInfo0, InstMapDelta0),
-    instmap__lookup_var(InstMap0, Var, Inst0),
-    instmap__lookup_var(InstMap, Var, Inst),
+    instmap.lookup_var(InstMap0, Var, Inst0),
+    instmap.lookup_var(InstMap, Var, Inst),
     ( Inst = Inst0 ->
         GoalInfo = GoalInfo0
     ;

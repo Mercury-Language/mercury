@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2005 The University of Melbourne.
+% Copyright (C) 2001, 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -197,10 +197,10 @@ add_own_to_own(PI1, PI2) = SumPI :-
         Quanta, Allocs, Words).
 
 sum_own_infos(Owns) =
-    list__foldl(add_own_to_own, Owns, zero_own_prof_info).
+    list.foldl(add_own_to_own, Owns, zero_own_prof_info).
 
 sum_inherit_infos(Inherits) =
-    list__foldl(add_inherit_to_inherit, Inherits, zero_inherit_prof_info).
+    list.foldl(add_inherit_to_inherit, Inherits, zero_inherit_prof_info).
 
 compress_profile(Exits, Fails, Redos, Excps, Quanta, Allocs, Words) = PI :-
     (
@@ -302,31 +302,31 @@ decompress_profile(Own, Calls, Exits, Fails, Redos, Excps,
 
 own_to_string(all(Exits, Fails, Redos, Excps, Quanta, Allocs, Words)) =
     "all(" ++
-    string__int_to_string(Exits) ++ ", " ++
-    string__int_to_string(Fails) ++ ", " ++
-    string__int_to_string(Redos) ++ ", " ++
-    string__int_to_string(Excps) ++ ", " ++
-    string__int_to_string(Quanta) ++ ", " ++
-    string__int_to_string(Allocs) ++ ", " ++
-    string__int_to_string(Words) ++
+    string.int_to_string(Exits) ++ ", " ++
+    string.int_to_string(Fails) ++ ", " ++
+    string.int_to_string(Redos) ++ ", " ++
+    string.int_to_string(Excps) ++ ", " ++
+    string.int_to_string(Quanta) ++ ", " ++
+    string.int_to_string(Allocs) ++ ", " ++
+    string.int_to_string(Words) ++
     ")".
 own_to_string(det(Exits, Quanta, Allocs, Words)) =
     "det(" ++
-    string__int_to_string(Exits) ++ ", " ++
-    string__int_to_string(Quanta) ++ ", " ++
-    string__int_to_string(Allocs) ++ ", " ++
-    string__int_to_string(Words) ++
+    string.int_to_string(Exits) ++ ", " ++
+    string.int_to_string(Quanta) ++ ", " ++
+    string.int_to_string(Allocs) ++ ", " ++
+    string.int_to_string(Words) ++
     ")".
 own_to_string(fast_det(Exits, Allocs, Words)) =
     "fast_det(" ++
-    string__int_to_string(Exits) ++ ", " ++
-    string__int_to_string(Allocs) ++ ", " ++
-    string__int_to_string(Words) ++
+    string.int_to_string(Exits) ++ ", " ++
+    string.int_to_string(Allocs) ++ ", " ++
+    string.int_to_string(Words) ++
     ")".
 own_to_string(fast_nomem_semi(Exits, Fails)) =
     "fast_det(" ++
-    string__int_to_string(Exits) ++ ", " ++
-    string__int_to_string(Fails) ++
+    string.int_to_string(Exits) ++ ", " ++
+    string.int_to_string(Fails) ++
     ")".
 
 is_inactive(all(0, 0, 0, 0, _, _, _)).

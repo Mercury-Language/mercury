@@ -14,7 +14,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module hlds__hlds_pred.
+:- module hlds.hlds_pred.
 :- interface.
 
 :- import_module check_hlds.mode_constraint_robdd.
@@ -140,7 +140,7 @@
 
     % The rtti_proc_label type holds all the information about a procedure
     % that we need to compute the entry label for that procedure
-    % in the target language (the llds__code_addr or mlds__code_addr).
+    % in the target language (the llds.code_addr or mlds.code_addr).
 
 :- type rtti_proc_label
     --->    rtti_proc_label(
@@ -450,30 +450,30 @@ type_info_locn_set_var(Var, typeclass_info(_, Num), typeclass_info(Var, Num)).
 :- type typeclass_info_constraint_map == map(prog_var, prog_constraint).
 
 rtti_varmaps_init(rtti_varmaps(TCIMap, TIMap, TypeMap, ConstraintMap)) :-
-    map__init(TCIMap),
-    map__init(TIMap),
-    map__init(TypeMap),
-    map__init(ConstraintMap).
+    map.init(TCIMap),
+    map.init(TIMap),
+    map.init(TypeMap),
+    map.init(ConstraintMap).
 
 rtti_varmaps_no_tvars(VarMaps) :-
-    map__is_empty(VarMaps ^ ti_varmap).
+    map.is_empty(VarMaps ^ ti_varmap).
 
 rtti_lookup_type_info_locn(VarMaps, TVar, Locn) :-
-    map__lookup(VarMaps ^ ti_varmap, TVar, Locn).
+    map.lookup(VarMaps ^ ti_varmap, TVar, Locn).
 
 rtti_search_type_info_locn(VarMaps, TVar, Locn) :-
-    map__search(VarMaps ^ ti_varmap, TVar, Locn).
+    map.search(VarMaps ^ ti_varmap, TVar, Locn).
 
 rtti_lookup_typeclass_info_var(VarMaps, Constraint, ProgVar) :-
-    map__lookup(VarMaps ^ tci_varmap, Constraint, ProgVar).
+    map.lookup(VarMaps ^ tci_varmap, Constraint, ProgVar).
 
 rtti_search_typeclass_info_var(VarMaps, Constraint, ProgVar) :-
-    map__search(VarMaps ^ tci_varmap, Constraint, ProgVar).
+    map.search(VarMaps ^ tci_varmap, Constraint, ProgVar).
 
 rtti_varmaps_var_info(VarMaps, Var, VarInfo) :-
-    ( map__search(VarMaps ^ ti_type_map, Var, Type) ->
+    ( map.search(VarMaps ^ ti_type_map, Var, Type) ->
         VarInfo = type_info_var(Type)
-    ; map__search(VarMaps ^ tci_constraint_map, Var, Constraint) ->
+    ; map.search(VarMaps ^ tci_constraint_map, Var, Constraint) ->
         VarInfo = typeclass_info_var(Constraint)
     ;
         VarInfo = non_rtti_var
@@ -481,13 +481,13 @@ rtti_varmaps_var_info(VarMaps, Var, VarInfo) :-
 
 rtti_det_insert_type_info_locn(TVar, Locn, !VarMaps) :-
     Map0 = !.VarMaps ^ ti_varmap,
-    map__det_insert(Map0, TVar, Locn, Map),
+    map.det_insert(Map0, TVar, Locn, Map),
     !:VarMaps = !.VarMaps ^ ti_varmap := Map,
     maybe_check_type_info_var(Locn, TVar, !VarMaps).
 
 rtti_set_type_info_locn(TVar, Locn, !VarMaps) :-
     Map0 = !.VarMaps ^ ti_varmap,
-    map__set(Map0, TVar, Locn, Map),
+    map.set(Map0, TVar, Locn, Map),
     !:VarMaps = !.VarMaps ^ ti_varmap := Map,
     maybe_check_type_info_var(Locn, TVar, !VarMaps).
 
@@ -495,7 +495,7 @@ rtti_set_type_info_locn(TVar, Locn, !VarMaps) :-
     rtti_varmaps::in, rtti_varmaps::out) is det.
 
 maybe_check_type_info_var(type_info(Var), TVar, !VarMaps) :-
-    ( map__search(!.VarMaps ^ ti_type_map, Var, Type) ->
+    ( map.search(!.VarMaps ^ ti_type_map, Var, Type) ->
         ( Type = variable(TVar, _) ->
             true
         ;
@@ -508,18 +508,18 @@ maybe_check_type_info_var(typeclass_info(_, _), _, !VarMaps).
 
 rtti_det_insert_typeclass_info_var(Constraint, ProgVar, !VarMaps) :-
     Map0 = !.VarMaps ^ tci_constraint_map,
-    map__det_insert(Map0, ProgVar, Constraint, Map),
+    map.det_insert(Map0, ProgVar, Constraint, Map),
     !:VarMaps = !.VarMaps ^ tci_constraint_map := Map.
 
 rtti_set_typeclass_info_var(Constraint, ProgVar, !VarMaps) :-
     Map0 = !.VarMaps ^ tci_constraint_map,
-    map__set(Map0, ProgVar, Constraint, Map),
+    map.set(Map0, ProgVar, Constraint, Map),
     !:VarMaps = !.VarMaps ^ tci_constraint_map := Map.
 
 rtti_reuse_typeclass_info_var(ProgVar, !VarMaps) :-
-    ( map__search(!.VarMaps ^ tci_constraint_map, ProgVar, Constraint) ->
+    ( map.search(!.VarMaps ^ tci_constraint_map, ProgVar, Constraint) ->
         Map0 = !.VarMaps ^ tci_varmap,
-        map__set(Map0, Constraint, ProgVar, Map),
+        map.set(Map0, Constraint, ProgVar, Map),
         !:VarMaps = !.VarMaps ^ tci_varmap := Map
     ;
         unexpected(this_file,
@@ -528,12 +528,12 @@ rtti_reuse_typeclass_info_var(ProgVar, !VarMaps) :-
 
 rtti_det_insert_type_info_type(ProgVar, Type, !VarMaps) :-
     Map0 = !.VarMaps ^ ti_type_map,
-    map__det_insert(Map0, ProgVar, Type, Map),
+    map.det_insert(Map0, ProgVar, Type, Map),
     !:VarMaps = !.VarMaps ^ ti_type_map := Map.
 
 rtti_set_type_info_type(ProgVar, Type, !VarMaps) :-
     Map0 = !.VarMaps ^ ti_type_map,
-    map__set(Map0, ProgVar, Type, Map),
+    map.set(Map0, ProgVar, Type, Map),
     !:VarMaps = !.VarMaps ^ ti_type_map := Map.
 
 rtti_var_info_duplicate(Var, NewVar, !VarMaps) :-
@@ -549,7 +549,7 @@ rtti_var_info_duplicate(Var, NewVar, !VarMaps) :-
     ).
 
 rtti_varmaps_tvars(VarMaps, TVars) :-
-    map__keys(VarMaps ^ ti_varmap, TVars).
+    map.keys(VarMaps ^ ti_varmap, TVars).
 
 rtti_varmaps_types(VarMaps, Types) :-
     solutions(rtti_varmaps_is_known_type(VarMaps), Types).
@@ -557,40 +557,40 @@ rtti_varmaps_types(VarMaps, Types) :-
 :- pred rtti_varmaps_is_known_type(rtti_varmaps::in, mer_type::out) is nondet.
 
 rtti_varmaps_is_known_type(VarMaps, Type) :-
-    map__values(VarMaps ^ ti_type_map, Types),
-    list__member(Type, Types).
+    map.values(VarMaps ^ ti_type_map, Types),
+    list.member(Type, Types).
 rtti_varmaps_is_known_type(VarMaps, Type) :-
-    map__values(VarMaps ^ tci_constraint_map, Constraints),
-    list__member(constraint(_, Types), Constraints),
-    list__member(Type, Types).
+    map.values(VarMaps ^ tci_constraint_map, Constraints),
+    list.member(constraint(_, Types), Constraints),
+    list.member(Type, Types).
 
 rtti_varmaps_reusable_constraints(VarMaps, Constraints) :-
-    map__keys(VarMaps ^ tci_varmap, Constraints).
+    map.keys(VarMaps ^ tci_varmap, Constraints).
 
 rtti_varmaps_rtti_prog_vars(VarMaps, Vars) :-
-    map__keys(VarMaps ^ ti_type_map, TIVars),
-    map__keys(VarMaps ^ tci_constraint_map, TCIVars),
-    list__append(TIVars, TCIVars, Vars).
+    map.keys(VarMaps ^ ti_type_map, TIVars),
+    map.keys(VarMaps ^ tci_constraint_map, TCIVars),
+    list.append(TIVars, TCIVars, Vars).
 
 apply_substitutions_to_rtti_varmaps(TRenaming, TSubst, Subst, !RttiVarMaps) :-
     (
         % Optimize the simple case.
-        map__is_empty(Subst),
-        map__is_empty(TSubst),
-        map__is_empty(TRenaming)
+        map.is_empty(Subst),
+        map.is_empty(TSubst),
+        map.is_empty(TRenaming)
     ->
         true
     ;
         !.RttiVarMaps = rtti_varmaps(TCIMap0, TIMap0, TypeMap0,
             ConstraintMap0),
-        map__foldl(apply_substs_to_tci_map(TRenaming, TSubst, Subst),
-            TCIMap0, map__init, TCIMap),
-        map__foldl(apply_substs_to_ti_map(TRenaming, TSubst, Subst),
-            TIMap0, map__init, TIMap),
-        map__foldl(apply_substs_to_type_map(TRenaming, TSubst, Subst),
-            TypeMap0, map__init, TypeMap),
-        map__foldl(apply_substs_to_constraint_map(TRenaming, TSubst, Subst),
-            ConstraintMap0, map__init, ConstraintMap),
+        map.foldl(apply_substs_to_tci_map(TRenaming, TSubst, Subst),
+            TCIMap0, map.init, TCIMap),
+        map.foldl(apply_substs_to_ti_map(TRenaming, TSubst, Subst),
+            TIMap0, map.init, TIMap),
+        map.foldl(apply_substs_to_type_map(TRenaming, TSubst, Subst),
+            TypeMap0, map.init, TypeMap),
+        map.foldl(apply_substs_to_constraint_map(TRenaming, TSubst, Subst),
+            ConstraintMap0, map.init, ConstraintMap),
         !:RttiVarMaps = rtti_varmaps(TCIMap, TIMap, TypeMap, ConstraintMap)
     ).
 
@@ -598,7 +598,7 @@ apply_substitutions_to_rtti_varmaps(TRenaming, TSubst, Subst, !RttiVarMaps) :-
     prog_var::in, prog_var::out) is det.
 
 apply_subst_to_prog_var(Subst, Var0, Var) :-
-    ( map__search(Subst, Var0, Var1) ->
+    ( map.search(Subst, Var0, Var1) ->
         Var = Var1
     ;
         Var = Var0
@@ -613,7 +613,7 @@ apply_substs_to_tci_map(TRenaming, TSubst, Subst, Constraint0, Var0, !Map) :-
         Constraint1),
     apply_rec_subst_to_prog_constraint(TSubst, Constraint1, Constraint),
     apply_subst_to_prog_var(Subst, Var0, Var),
-    svmap__set(Constraint, Var, !Map).
+    svmap.set(Constraint, Var, !Map).
 
     % Update a map entry from tvar to type_info_locn, using the type renaming
     % and substitution to rename tvars and a variable substitution to rename
@@ -633,7 +633,7 @@ apply_substs_to_ti_map(TRenaming, TSubst, Subst, TVar, Locn, !Map) :-
     apply_variable_renaming_to_tvar(TRenaming, TVar, NewTVar1),
     % We don't use the correct kinds here, but that doesn't matter because
     % the resulting kind will be thrown away anyway.
-    apply_rec_subst_to_tvar(map__init, TSubst, NewTVar1, NewType),
+    apply_rec_subst_to_tvar(map.init, TSubst, NewTVar1, NewType),
     (
         % If the tvar is still a variable, insert it into the map with the
         % new var.
@@ -641,7 +641,7 @@ apply_substs_to_ti_map(TRenaming, TSubst, Subst, TVar, Locn, !Map) :-
     ->
         % Don't abort if two old type variables map to the same new type
         % variable.
-        svmap__set(NewTVar, NewLocn, !Map)
+        svmap.set(NewTVar, NewLocn, !Map)
     ;
         true
     ).
@@ -654,14 +654,14 @@ apply_substs_to_type_map(TRenaming, TSubst, Subst, Var0, Type0, !Map) :-
     apply_variable_renaming_to_type(TRenaming, Type0, Type1),
     apply_rec_subst_to_type(TSubst, Type1, Type),
     apply_subst_to_prog_var(Subst, Var0, Var),
-    ( map__search(!.Map, Var, ExistingType) ->
+    ( map.search(!.Map, Var, ExistingType) ->
         ( Type = ExistingType ->
             true
         ;
             unexpected(this_file, "inconsistent type_infos")
         )
     ;
-        svmap__det_insert(Var, Type, !Map)
+        svmap.det_insert(Var, Type, !Map)
     ).
 
 :- pred apply_substs_to_constraint_map(tvar_renaming::in, tsubst::in,
@@ -675,27 +675,27 @@ apply_substs_to_constraint_map(TRenaming, TSubst, Subst, Var0, Constraint0,
         Constraint1),
     apply_rec_subst_to_prog_constraint(TSubst, Constraint1, Constraint),
     apply_subst_to_prog_var(Subst, Var0, Var),
-    ( map__search(!.Map, Var, ExistingConstraint) ->
+    ( map.search(!.Map, Var, ExistingConstraint) ->
         ( Constraint = ExistingConstraint ->
             true
         ;
             unexpected(this_file, "inconsistent typeclass_infos")
         )
     ;
-        svmap__det_insert(Var, Constraint, !Map)
+        svmap.det_insert(Var, Constraint, !Map)
     ).
 
 rtti_varmaps_transform_types(Pred, !RttiVarMaps) :-
     TciMap0 = !.RttiVarMaps ^ tci_varmap,
     TypeMap0 = !.RttiVarMaps ^ ti_type_map,
     ConstraintMap0 = !.RttiVarMaps ^ tci_constraint_map,
-    map__foldl(apply_constraint_key_transformation(Pred), TciMap0,
-    map__init, TciMap),
+    map.foldl(apply_constraint_key_transformation(Pred), TciMap0,
+    map.init, TciMap),
     Pred2 = (pred(_::in, V::in, W::out) is det :-
             Pred(V, W)
     ),
-    map__map_values(Pred2, TypeMap0, TypeMap),
-    map__map_values(apply_constraint_value_transformation(Pred),
+    map.map_values(Pred2, TypeMap0, TypeMap),
+    map.map_values(apply_constraint_value_transformation(Pred),
         ConstraintMap0, ConstraintMap),
     !:RttiVarMaps = !.RttiVarMaps ^ tci_varmap := TciMap,
     !:RttiVarMaps = !.RttiVarMaps ^ ti_type_map := TypeMap,
@@ -708,9 +708,9 @@ rtti_varmaps_transform_types(Pred, !RttiVarMaps) :-
 
 apply_constraint_key_transformation(Pred, Constraint0, Var, !Map) :-
     Constraint0 = constraint(Name, Args0),
-    list__map(Pred, Args0, Args),
+    list.map(Pred, Args0, Args),
     Constraint = constraint(Name, Args),
-    svmap__set(Constraint, Var, !Map).
+    svmap.set(Constraint, Var, !Map).
 
 :- pred apply_constraint_value_transformation(
     pred(mer_type, mer_type)::in(pred(in, out) is det),
@@ -718,7 +718,7 @@ apply_constraint_key_transformation(Pred, Constraint0, Var, !Map) :-
 
 apply_constraint_value_transformation(Pred, _, Constraint0, Constraint) :-
     Constraint0 = constraint(Name, Args0),
-    list__map(Pred, Args0, Args),
+    list.map(Pred, Args0, Args),
     Constraint = constraint(Name, Args).
 
 rtti_varmaps_overlay(VarMapsA, VarMapsB, VarMaps) :-
@@ -727,13 +727,13 @@ rtti_varmaps_overlay(VarMapsA, VarMapsB, VarMaps) :-
 
         % Prefer VarMapsB for this information.
         %
-    map__overlay(TCImapA, TCImapB, TCImap),
-    map__overlay(TImapA, TImapB, TImap),
+    map.overlay(TCImapA, TCImapB, TCImap),
+    map.overlay(TImapA, TImapB, TImap),
 
         % On the other hand, we insist that this information is consistent.
         %
-    map__merge(TypeMapA, TypeMapB, TypeMap),
-    map__merge(ConstraintMapA, ConstraintMapB, ConstraintMap),
+    map.merge(TypeMapA, TypeMapB, TypeMap),
+    map.merge(ConstraintMapA, ConstraintMapB, ConstraintMap),
 
     VarMaps = rtti_varmaps(TCImap, TImap, TypeMap, ConstraintMap).
 
@@ -880,9 +880,9 @@ rtti_varmaps_overlay(VarMapsA, VarMapsB, VarMaps) :-
 :- implementation.
 
 clauses_info_init(Arity, ClausesInfo) :-
-    map__init(VarTypes),
-    map__init(TVarNameMap),
-    varset__init(VarSet0),
+    map.init(VarTypes),
+    map.init(TVarNameMap),
+    varset.init(VarSet0),
     make_n_fresh_vars("HeadVar__", Arity, HeadVars, VarSet0, VarSet),
     rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = no,
@@ -891,9 +891,9 @@ clauses_info_init(Arity, ClausesInfo) :-
         HeadVars, ClausesRep, RttiVarMaps, HasForeignClauses).
 
 clauses_info_init_for_assertion(HeadVars, ClausesInfo) :-
-    map__init(VarTypes),
-    map__init(TVarNameMap),
-    varset__init(VarSet),
+    map.init(VarTypes),
+    map.init(TVarNameMap),
+    varset.init(VarSet),
     rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = no,
     set_clause_list([], ClausesRep),
@@ -951,7 +951,7 @@ get_clause_list_any_order(ClausesRep, Clauses) :-
 get_clause_list(ClausesRep, Clauses) :-
     (
         ClausesRep = rev(RevClauses),
-        list__reverse(RevClauses, Clauses)
+        list.reverse(RevClauses, Clauses)
     ;
         ClausesRep = forw(Clauses)
     ;
@@ -968,7 +968,7 @@ clauses_info_clauses(Clauses, !CI) :-
     ClausesRep = !.CI ^ clauses_rep,
     (
         ClausesRep = rev(RevClauses),
-        list__reverse(RevClauses, Clauses),
+        list.reverse(RevClauses, Clauses),
         !:CI = !.CI ^ clauses_rep := both(RevClauses, Clauses)
     ;
         ClausesRep = forw(Clauses)
@@ -985,7 +985,7 @@ add_clause(Clause, !ClausesRep) :-
         !:ClausesRep = rev(RevClauses)
     ;
         !.ClausesRep = forw(Clauses0),
-        list__reverse(Clauses0, RevClauses0),
+        list.reverse(Clauses0, RevClauses0),
         RevClauses = [Clause | RevClauses0],
         !:ClausesRep = rev(RevClauses)
     ;
@@ -1091,7 +1091,7 @@ add_clause(Clause, !ClausesRep) :-
     ;       opt_exported
                 % A local item for which the import-status has been changed
                 % due to its presence in the .opt files
-                % (intermod__adjust_pred_import_status).
+                % (intermod.adjust_pred_import_status).
     ;       abstract_exported
                 % Describes a type with only an abstract declaration exported.
     ;       pseudo_exported
@@ -1245,7 +1245,7 @@ add_clause(Clause, !ClausesRep) :-
                         % clauses (usually facts) for which the compiler's
                         % quadratic behavior during mode checking (in
                         % inst_match.bound_inst_list_contains_instname and
-                        % instmap__merge) would be unacceptable.
+                        % instmap.merge) would be unacceptable.
 
     % An abstract set of attributes.
 :- type pred_attributes.
@@ -1671,8 +1671,8 @@ in_in_unification_proc_id(0).
     % it on demand, but it is probably more efficient this way.
     %
 next_mode_id(Procs, ModeId) :-
-    map__to_assoc_list(Procs, List),
-    list__length(List, ModeInt),
+    map.to_assoc_list(Procs, List),
+    list.length(List, ModeInt),
     proc_id_to_int(ModeId, ModeInt).
 
 status_is_exported(imported(_),             no).
@@ -1699,7 +1699,7 @@ status_is_exported_to_non_submodules(Status, Result) :-
 
 status_is_imported(Status, Imported) :-
     status_defined_in_this_module(Status, InThisModule),
-    bool__not(InThisModule, Imported).
+    bool.not(InThisModule, Imported).
 
 status_defined_in_this_module(imported(_),              no).
 status_defined_in_this_module(external(_),              no).
@@ -1851,16 +1851,16 @@ pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context, Origin,
         PredInfo) :-
     unqualify_name(SymName, PredName),
     sym_name_get_module_name(SymName, ModuleName, PredModuleName),
-    prog_type__vars_list(ArgTypes, TVars),
-    list__delete_elems(TVars, ExistQVars, HeadTypeParams),
+    prog_type.vars_list(ArgTypes, TVars),
+    list.delete_elems(TVars, ExistQVars, HeadTypeParams),
     Attributes = [],
     % XXX kind inference:
     % we assume all tvars have kind `star'.
-    map__init(Kinds),
-    map__init(ExistQVarBindings),
+    map.init(Kinds),
+    map.init(ExistQVarBindings),
     UnprovenBodyConstraints = [],
-    set__init(Assertions),
-    map__init(Procs),
+    set.init(Assertions),
+    map.init(Procs),
     PredInfo = pred_info(PredModuleName, PredName, Arity, PredOrFunc,
         Context, Origin, Status, GoalType, Markers, Attributes,
         ArgTypes, TypeVarSet, TypeVarSet, Kinds, ExistQVars, ExistQVarBindings,
@@ -1871,33 +1871,33 @@ pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context, Origin,
 pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
         Markers, ArgTypes, TypeVarSet, ExistQVars, ClassContext,
         Assertions, ProcInfo, ProcId, PredInfo) :-
-    list__length(ArgTypes, Arity),
+    list.length(ArgTypes, Arity),
     proc_info_varset(ProcInfo, VarSet),
     proc_info_vartypes(ProcInfo, VarTypes),
     proc_info_headvars(ProcInfo, HeadVars),
     unqualify_name(SymName, PredName),
     Attributes = [],
-    map__init(ClassProofs),
-    map__init(ClassConstraintMap),
-    prog_type__vars_list(ArgTypes, TVars),
-    list__delete_elems(TVars, ExistQVars, HeadTypeParams),
+    map.init(ClassProofs),
+    map.init(ClassConstraintMap),
+    prog_type.vars_list(ArgTypes, TVars),
+    list.delete_elems(TVars, ExistQVars, HeadTypeParams),
     % XXX kind inference:
     % we assume all tvars have kind `star'.
-    map__init(Kinds),
-    map__init(ExistQVarBindings),
+    map.init(Kinds),
+    map.init(ExistQVarBindings),
     UnprovenBodyConstraints = [],
 
     % The empty list of clauses is a little white lie.
     Clauses = forw([]),
-    map__init(TVarNameMap),
+    map.init(TVarNameMap),
     proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
     HasForeignClauses = no,
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
         HeadVars, Clauses, RttiVarMaps, HasForeignClauses),
 
-    map__init(Procs0),
+    map.init(Procs0),
     next_mode_id(Procs0, ProcId),
-    map__det_insert(Procs0, ProcId, ProcInfo, Procs),
+    map.det_insert(Procs0, ProcId, ProcInfo, Procs),
 
     PredInfo = pred_info(ModuleName, PredName, Arity, PredOrFunc,
         Context, Origin, Status, clauses, Markers, Attributes,
@@ -1912,7 +1912,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
         IsAddressTaken, ModuleInfo0, ModuleInfo, PredProcId) :-
     Goal0 = _GoalExpr - GoalInfo,
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
-    instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+    instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
 
     % XXX The set of existentially quantified type variables
     % here might not be correct.
@@ -1929,11 +1929,11 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
     (
         TypeInfoLiveness = yes,
         goal_info_get_nonlocals(GoalInfo, NonLocals),
-        goal_util__extra_nonlocal_typeinfos(RttiVarMaps, VarTypes0,
+        goal_util.extra_nonlocal_typeinfos(RttiVarMaps, VarTypes0,
             ExistQVars, NonLocals, ExtraTypeInfos0),
-        set__delete_list(ExtraTypeInfos0, ArgVars0, ExtraTypeInfos1),
-        set__to_sorted_list(ExtraTypeInfos1, ExtraTypeInfos),
-        list__append(ExtraTypeInfos, ArgVars0, ArgVars)
+        set.delete_list(ExtraTypeInfos0, ArgVars0, ExtraTypeInfos1),
+        set.to_sorted_list(ExtraTypeInfos1, ExtraTypeInfos),
+        list.append(ExtraTypeInfos, ArgVars0, ArgVars)
     ;
         TypeInfoLiveness = no,
         ArgVars = ArgVars0,
@@ -1949,10 +1949,10 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
     SymName = qualified(ModuleName, PredName),
 
         % Remove unneeded variables from the vartypes and varset.
-    goal_util__goal_vars(Goal0, GoalVars0),
-    set__insert_list(GoalVars0, ArgVars, GoalVars),
-    map__select(VarTypes0, GoalVars, VarTypes),
-    varset__select(VarSet0, GoalVars, VarSet),
+    goal_util.goal_vars(Goal0, GoalVars0),
+    set.insert_list(GoalVars0, ArgVars, GoalVars),
+    map.select(VarTypes0, GoalVars, VarTypes),
+    varset.select(VarSet0, GoalVars, VarSet),
 
         % Approximate the termination information for the new procedure.
     ( goal_cannot_loop(ModuleInfo0, Goal0) ->
@@ -1967,7 +1967,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
         RttiVarMaps, IsAddressTaken, ProcInfo0),
     proc_info_set_maybe_termination_info(TermInfo, ProcInfo0, ProcInfo),
 
-    set__init(Assertions),
+    set.init(Assertions),
 
     pred_info_create(ModuleName, SymName, predicate, Context, Origin,
         ExportStatus, Markers, ArgTypes, TVarSet, ExistQVars,
@@ -1987,9 +1987,9 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
 compute_arg_types_modes([], _, _, _, [], []).
 compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
         [Type | Types], [Mode | Modes]) :-
-    map__lookup(VarTypes, Var, Type),
-    instmap__lookup_var(InstMap0, Var, Inst0),
-    instmap__lookup_var(InstMap, Var, Inst),
+    map.lookup(VarTypes, Var, Type),
+    instmap.lookup_var(InstMap0, Var, Inst0),
+    instmap.lookup_var(InstMap, Var, Inst),
     Mode = (Inst0 -> Inst),
     compute_arg_types_modes(Vars, VarTypes, InstMap0, InstMap,
         Types, Modes).
@@ -2048,15 +2048,15 @@ pred_info_set_procedures(X, PI, PI ^ procedures := X).
 
 pred_info_all_procids(PredInfo) = ProcIds :-
     ProcTable = PredInfo ^ procedures,
-    map__keys(ProcTable, ProcIds).
+    map.keys(ProcTable, ProcIds).
 
 pred_info_procids(PredInfo) = ValidProcIds :-
     AllProcIds = pred_info_all_procids(PredInfo),
     ProcTable = PredInfo ^ procedures,
     IsValid = (pred(ProcId::in) is semidet :-
-        ProcInfo = map__lookup(ProcTable, ProcId),
+        ProcInfo = map.lookup(ProcTable, ProcId),
         proc_info_is_valid_mode(ProcInfo)),
-    list__filter(IsValid, AllProcIds, ValidProcIds).
+    list.filter(IsValid, AllProcIds, ValidProcIds).
 
 pred_info_non_imported_procids(PredInfo) = ProcIds :-
     pred_info_import_status(PredInfo, ImportStatus),
@@ -2067,7 +2067,7 @@ pred_info_non_imported_procids(PredInfo) = ProcIds :-
     ; ImportStatus = pseudo_imported ->
         ProcIds0 = pred_info_procids(PredInfo),
         % for pseduo_imported preds, procid 0 is imported
-        list__delete_all(ProcIds0, 0, ProcIds)
+        list.delete_all(ProcIds0, 0, ProcIds)
     ;
         ProcIds = pred_info_procids(PredInfo)
     ).
@@ -2081,7 +2081,7 @@ pred_info_all_non_imported_procids(PredInfo) = ProcIds :-
     ; ImportStatus = pseudo_imported ->
         ProcIds0 = pred_info_procids(PredInfo),
         % for pseduo_imported preds, procid 0 is imported
-        list__delete_all(ProcIds0, 0, ProcIds)
+        list.delete_all(ProcIds0, 0, ProcIds)
     ;
         ProcIds = pred_info_procids(PredInfo)
     ).
@@ -2105,7 +2105,7 @@ pred_info_exported_procids(PredInfo) = ProcIds :-
 
 pred_info_remove_procid(ProcId, !PredInfo) :-
     pred_info_procedures(!.PredInfo, Procs0),
-    map__delete(Procs0, ProcId, Procs),
+    map.delete(Procs0, ProcId, Procs),
     pred_info_set_procedures(Procs, !PredInfo).
 
 pred_info_arg_types(PredInfo, PredInfo ^ decl_typevarset,
@@ -2117,11 +2117,11 @@ pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes, !PredInfo) :-
 	!:PredInfo = !.PredInfo ^ arg_types := ArgTypes.
 
 pred_info_proc_info(PredInfo, ProcId, ProcInfo) :-
-    ProcInfo = map__lookup(PredInfo ^ procedures, ProcId).
+    ProcInfo = map.lookup(PredInfo ^ procedures, ProcId).
 
 pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo) :-
     PredInfo = PredInfo0 ^ procedures :=
-        map__set(PredInfo0 ^ procedures, ProcId, ProcInfo).
+        map.set(PredInfo0 ^ procedures, ProcId, ProcInfo).
 
 pred_info_is_imported(PredInfo) :-
     pred_info_import_status(PredInfo, Status),
@@ -2169,7 +2169,7 @@ procedure_is_exported(ModuleInfo, PredInfo, ProcId) :-
         module_info_get_type_table(ModuleInfo, TypeTable),
         % If the search fails, then TypeCtor must be a builtin type
         % constructor, such as the tuple constructor.
-        map__search(TypeTable, TypeCtor, TypeDefn),
+        map.search(TypeTable, TypeCtor, TypeDefn),
         get_type_defn_in_exported_eqv(TypeDefn, yes),
         (
             SpecialId = spec_pred_unify,
@@ -2281,10 +2281,10 @@ terminates_to_markers(depends_on_mercury_calls, []).
 
 pred_info_get_univ_quant_tvars(PredInfo, UnivQVars) :-
     pred_info_arg_types(PredInfo, ArgTypes),
-    prog_type__vars_list(ArgTypes, ArgTypeVars0),
-    list__sort_and_remove_dups(ArgTypeVars0, ArgTypeVars),
+    prog_type.vars_list(ArgTypes, ArgTypeVars0),
+    list.sort_and_remove_dups(ArgTypeVars0, ArgTypeVars),
     pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
-    list__delete_elems(ArgTypeVars, ExistQVars, UnivQVars).
+    list.delete_elems(ArgTypeVars, ExistQVars, UnivQVars).
 
 %-----------------------------------------------------------------------------%
 
@@ -2301,12 +2301,12 @@ pred_info_get_call_id(PredInfo, PredOrFunc - qualified(Module, Name)/Arity) :-
 init_markers([]).
 
 check_marker(Markers, Marker) :-
-    list__member(Marker, Markers).
+    list.member(Marker, Markers).
 
 add_marker(Marker, Markers, [Marker | Markers]).
 
 remove_marker(Marker, Markers0, Markers) :-
-    list__delete_all(Markers0, Marker, Markers).
+    list.delete_all(Markers0, Marker, Markers).
 
 markers_to_marker_list(Markers, Markers).
 
@@ -2317,12 +2317,12 @@ marker_list_to_markers(Markers, Markers).
 init_attributes([]).
 
 check_attribute(Attributes, Attribute) :-
-    list__member(Attribute, Attributes).
+    list.member(Attribute, Attributes).
 
 add_attribute(Attribute, Attributes, [Attribute | Attributes]).
 
 remove_attribute(Attribute, Attributes0, Attributes) :-
-    list__delete_all(Attributes0, Attribute, Attributes).
+    list.delete_all(Attributes0, Attribute, Attributes).
 
 attributes_to_attribute_list(Attributes, Attributes).
 
@@ -2729,7 +2729,7 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred non_special_body_should_use_typeinfo_liveness(globals::in,
     bool::out) is det.
 
-    % If the procedure has a input/output pair of io__state arguments,
+    % If the procedure has a input/output pair of io.state arguments,
     % return the positions of those arguments in the argument list.
     % The positions are given as argument numbers, with the first argument
     % in proc_info_headvars being position 1, and so on. The first output
@@ -2973,19 +2973,19 @@ proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     % This is what `det_analysis.m' wants. det_analysis.m
     % will later provide the correct inferred determinism for it.
 
-    make_n_fresh_vars("HeadVar__", Arity, HeadVars, varset__init, BodyVarSet),
-    varset__init(InstVarSet),
-    map__from_corresponding_lists(HeadVars, Types, BodyTypes),
+    make_n_fresh_vars("HeadVar__", Arity, HeadVars, varset.init, BodyVarSet),
+    varset.init(InstVarSet),
+    map.from_corresponding_lists(HeadVars, Types, BodyTypes),
     ModeErrors = [],
     InferredDet = erroneous,
-    map__init(StackSlots),
-    set__init(InitialLiveness),
+    map.init(StackSlots),
+    set.init(InitialLiveness),
     ArgInfo = no,
     goal_info_init(GoalInfo),
     ClauseBody = conj(plain_conj, []) - GoalInfo,
     CanProcess = yes,
     rtti_varmaps_init(RttiVarMaps),
-    Term2Info = term_constr_main__term2_info_init,
+    Term2Info = term_constr_main.term2_info_init,
     NewProc = proc_info(MContext, BodyVarSet, BodyTypes, HeadVars, InstVarSet,
         DeclaredModes, Modes, no, MaybeArgLives, MaybeDet, InferredDet,
         ClauseBody, CanProcess, ModeErrors, RttiVarMaps, eval_normal,
@@ -3013,11 +3013,11 @@ proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet,
 proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet, HeadModes,
         MaybeDeclaredDetism, Detism, Goal, RttiVarMaps, IsAddressTaken,
         ProcInfo) :-
-    map__init(StackSlots),
-    set__init(Liveness),
+    map.init(StackSlots),
+    set.init(Liveness),
     MaybeHeadLives = no,
     ModeErrors = [],
-    Term2Info = term_constr_main__term2_info_init,
+    Term2Info = term_constr_main.term2_info_init,
     ProcSubInfo = proc_sub_info(no, no, Term2Info, IsAddressTaken,
         StackSlots, no, Liveness, no, no, no, no, no, no),
     ProcInfo = proc_info(Context, VarSet, VarTypes, HeadVars,
@@ -3112,8 +3112,8 @@ proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-
     proc_info_headvars(ProcInfo, HeadVars),
     proc_info_argmodes(ProcInfo, ArgModes),
     mode_list_get_initial_insts(ModuleInfo, ArgModes, InitialInsts),
-    assoc_list__from_corresponding_lists(HeadVars, InitialInsts, InstAL),
-    instmap__from_assoc_list(InstAL, InstMap).
+    assoc_list.from_corresponding_lists(HeadVars, InitialInsts, InstAL),
+    instmap.from_assoc_list(InstAL, InstMap).
 
 proc_info_declared_argmodes(ProcInfo, ArgModes) :-
     proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
@@ -3190,19 +3190,20 @@ proc_info_set_structure_sharing(Sharing, !ProcInfo) :-
 
 proc_info_get_typeinfo_vars(Vars, VarTypes, RttiVarMaps, TypeInfoVars) :-
     TVarMap = RttiVarMaps ^ ti_varmap,
-    set__to_sorted_list(Vars, VarList),
+    set.to_sorted_list(Vars, VarList),
     proc_info_get_typeinfo_vars_2(VarList, VarTypes, TVarMap, TypeInfoVarList),
-    set__list_to_set(TypeInfoVarList, TypeInfoVars).
+    set.list_to_set(TypeInfoVarList, TypeInfoVars).
 
-    % auxiliary predicate - traverses variables and builds a list of
+    % Auxiliary predicate - traverses variables and builds a list of
     % variables that store typeinfos for these variables.
+    %
 :- pred proc_info_get_typeinfo_vars_2(list(prog_var)::in,
     vartypes::in, type_info_varmap::in, list(prog_var)::out) is det.
 
 proc_info_get_typeinfo_vars_2([], _, _, []).
 proc_info_get_typeinfo_vars_2([Var | Vars], VarTypes, TVarMap, TypeInfoVars) :-
-    ( map__search(VarTypes, Var, Type) ->
-        prog_type__vars(Type, TypeVars),
+    ( map.search(VarTypes, Var, Type) ->
+        prog_type.vars(Type, TypeVars),
         (
             TypeVars = [],
             % Optimize common case,
@@ -3218,14 +3219,14 @@ proc_info_get_typeinfo_vars_2([Var | Vars], VarTypes, TVarMap, TypeInfoVars) :-
             % typeclass_info. Either get the type_info variable or
             % the typeclass_info variable.
             LookupVar = (pred(TVar::in, TVarVar::out) is det :-
-                    map__lookup(TVarMap, TVar, Locn),
+                    map.lookup(TVarMap, TVar, Locn),
                     type_info_locn_var(Locn, TVarVar)
                 ),
-            list__map(LookupVar, TypeVars, TypeInfoVars0),
+            list.map(LookupVar, TypeVars, TypeInfoVars0),
 
             proc_info_get_typeinfo_vars_2(Vars, VarTypes, TVarMap,
                 TypeInfoVars1),
-            list__append(TypeInfoVars0, TypeInfoVars1, TypeInfoVars)
+            list.append(TypeInfoVars0, TypeInfoVars1, TypeInfoVars)
         )
     ;
         unexpected(this_file,
@@ -3238,7 +3239,7 @@ proc_info_maybe_complete_with_typeinfo_vars(Vars0, TypeInfoLiveness,
         TypeInfoLiveness = yes,
         proc_info_get_typeinfo_vars(Vars0, VarTypes, RttiVarMaps,
             TypeInfoVars),
-        set__union(Vars0, TypeInfoVars, Vars)
+        set.union(Vars0, TypeInfoVars, Vars)
     ;
         TypeInfoLiveness = no,
         Vars = Vars0
@@ -3246,25 +3247,25 @@ proc_info_maybe_complete_with_typeinfo_vars(Vars0, TypeInfoLiveness,
 
 proc_info_ensure_unique_names(!ProcInfo) :-
     proc_info_vartypes(!.ProcInfo, VarTypes),
-    map__keys(VarTypes, AllVars),
+    map.keys(VarTypes, AllVars),
     proc_info_varset(!.ProcInfo, VarSet0),
-    varset__ensure_unique_names(AllVars, "p", VarSet0, VarSet),
+    varset.ensure_unique_names(AllVars, "p", VarSet0, VarSet),
     proc_info_set_varset(VarSet, !ProcInfo).
 
 proc_info_create_var_from_type(Type, MaybeName, NewVar, !ProcInfo) :-
     proc_info_varset(!.ProcInfo, VarSet0),
     proc_info_vartypes(!.ProcInfo, VarTypes0),
-    varset__new_maybe_named_var(VarSet0, MaybeName, NewVar, VarSet),
-    map__det_insert(VarTypes0, NewVar, Type, VarTypes),
+    varset.new_maybe_named_var(VarSet0, MaybeName, NewVar, VarSet),
+    map.det_insert(VarTypes0, NewVar, Type, VarTypes),
     proc_info_set_varset(VarSet, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo).
 
 proc_info_create_vars_from_types(Types, NewVars, !ProcInfo) :-
-    list__length(Types, NumVars),
+    list.length(Types, NumVars),
     proc_info_varset(!.ProcInfo, VarSet0),
     proc_info_vartypes(!.ProcInfo, VarTypes0),
-    varset__new_vars(VarSet0, NumVars, NewVars, VarSet),
-    map__det_insert_from_corresponding_lists(VarTypes0, NewVars,
+    varset.new_vars(VarSet0, NumVars, NewVars, VarSet),
+    map.det_insert_from_corresponding_lists(VarTypes0, NewVars,
         Types, VarTypes),
     proc_info_set_varset(VarSet, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo).
@@ -3273,28 +3274,28 @@ proc_info_instantiated_head_vars(ModuleInfo, ProcInfo, ChangedInstHeadVars) :-
     proc_info_headvars(ProcInfo, HeadVars),
     proc_info_argmodes(ProcInfo, ArgModes),
     proc_info_vartypes(ProcInfo, VarTypes),
-    assoc_list__from_corresponding_lists(HeadVars, ArgModes, HeadVarModes),
+    assoc_list.from_corresponding_lists(HeadVars, ArgModes, HeadVarModes),
     IsInstChanged = (pred(VarMode::in, Var::out) is semidet :-
         VarMode = Var - Mode,
-        map__lookup(VarTypes, Var, Type),
+        map.lookup(VarTypes, Var, Type),
         mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
         \+ inst_matches_binding(Inst1, Inst2, Type, ModuleInfo)
     ),
-    list__filter_map(IsInstChanged, HeadVarModes, ChangedInstHeadVars).
+    list.filter_map(IsInstChanged, HeadVarModes, ChangedInstHeadVars).
 
 proc_info_uninstantiated_head_vars(ModuleInfo, ProcInfo,
         UnchangedInstHeadVars) :-
     proc_info_headvars(ProcInfo, HeadVars),
     proc_info_argmodes(ProcInfo, ArgModes),
     proc_info_vartypes(ProcInfo, VarTypes),
-    assoc_list__from_corresponding_lists(HeadVars, ArgModes, HeadVarModes),
+    assoc_list.from_corresponding_lists(HeadVars, ArgModes, HeadVarModes),
     IsInstUnchanged = (pred(VarMode::in, Var::out) is semidet :-
         VarMode = Var - Mode,
-        map__lookup(VarTypes, Var, Type),
+        map.lookup(VarTypes, Var, Type),
         mode_get_insts(ModuleInfo, Mode, Inst1, Inst2),
         inst_matches_binding(Inst1, Inst2, Type, ModuleInfo)
     ),
-    list__filter_map(IsInstUnchanged, HeadVarModes, UnchangedInstHeadVars).
+    list.filter_map(IsInstUnchanged, HeadVarModes, UnchangedInstHeadVars).
 
 proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId, Globals,
         InterfaceTypeInfoLiveness) :-
@@ -3306,7 +3307,7 @@ proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId, Globals,
     ;
         pred_info_import_status(PredInfo, Status),
         pred_info_procedures(PredInfo, ProcTable),
-        map__lookup(ProcTable, ProcId, ProcInfo),
+        map.lookup(ProcTable, ProcId, ProcInfo),
         proc_info_is_address_taken(ProcInfo, IsAddressTaken),
         non_special_interface_should_use_typeinfo_liveness(Status,
             IsAddressTaken, Globals, InterfaceTypeInfoLiveness)
@@ -3328,10 +3329,10 @@ non_special_interface_should_use_typeinfo_liveness(Status, IsAddressTaken,
             % variable bound to a heap cell argument. The only way
             % to ensure that this is possible is to preserve the
             % ability to access the typeinfo of any variable.
-            globals__lookup_bool_option(Globals,
+            globals.lookup_bool_option(Globals,
                 record_term_sizes_as_words, yes)
         ;
-            globals__lookup_bool_option(Globals,
+            globals.lookup_bool_option(Globals,
                 record_term_sizes_as_cells, yes)
         ;
             non_special_body_should_use_typeinfo_liveness(Globals, yes)
@@ -3354,7 +3355,7 @@ body_should_use_typeinfo_liveness(PredInfo, Globals, BodyTypeInfoLiveness) :-
     ).
 
 non_special_body_should_use_typeinfo_liveness(Globals, BodyTypeInfoLiveness) :-
-    globals__lookup_bool_option(Globals, body_typeinfo_liveness,
+    globals.lookup_bool_option(Globals, body_typeinfo_liveness,
         BodyTypeInfoLiveness).
 
 proc_info_has_io_state_pair(ModuleInfo, ProcInfo, InArgNum, OutArgNum) :-
@@ -3366,7 +3367,7 @@ proc_info_has_io_state_pair(ModuleInfo, ProcInfo, InArgNum, OutArgNum) :-
 
 proc_info_has_io_state_pair_from_details(ModuleInfo, HeadVars, ArgModes,
         VarTypes, InArgNum, OutArgNum) :-
-    assoc_list__from_corresponding_lists(HeadVars, ArgModes, HeadVarsModes),
+    assoc_list.from_corresponding_lists(HeadVars, ArgModes, HeadVarsModes),
     proc_info_has_io_state_pair_2(HeadVarsModes, ModuleInfo, VarTypes,
         1, no, MaybeIn, no, MaybeOut),
     (
@@ -3388,7 +3389,7 @@ proc_info_has_io_state_pair_2([], _, _, _, !MaybeIn, !MaybeOut).
 proc_info_has_io_state_pair_2([Var - Mode | VarModes], ModuleInfo, VarTypes,
         ArgNum, !MaybeIn, !MaybeOut) :-
     (
-        map__lookup(VarTypes, Var, VarType),
+        map.lookup(VarTypes, Var, VarType),
         type_is_io_state(VarType)
     ->
         ( mode_is_fully_input(ModuleInfo, Mode) ->
@@ -3397,9 +3398,9 @@ proc_info_has_io_state_pair_2([Var - Mode | VarModes], ModuleInfo, VarTypes,
                 !:MaybeIn = yes(ArgNum)
             ;
                 !.MaybeIn = yes(_),
-                % Procedures with two input arguments of type io__state
+                % Procedures with two input arguments of type io.state
                 % (e.g. the automatically generated unification or comparison
-                % procedure for the io__state type) do not fall into the
+                % procedure for the io.state type) do not fall into the
                 % one input/one output pattern we are looking for.
                 fail
             )
@@ -3409,7 +3410,7 @@ proc_info_has_io_state_pair_2([Var - Mode | VarModes], ModuleInfo, VarTypes,
                 !:MaybeOut = yes(ArgNum)
             ;
                 !.MaybeOut = yes(_),
-                % Procedures with two output arguments of type io__state
+                % Procedures with two output arguments of type io.state
                 % do not fall into the one input/one output pattern we are
                 % looking for.
                 fail
@@ -3435,7 +3436,7 @@ find_lowest_unused_proc_id(ProcTable, CloneProcId) :-
     is det.
 
 find_lowest_unused_proc_id_2(TrialProcId, ProcTable, CloneProcId) :-
-    ( map__search(ProcTable, TrialProcId, _) ->
+    ( map.search(ProcTable, TrialProcId, _) ->
         find_lowest_unused_proc_id_2(TrialProcId + 1, ProcTable, CloneProcId)
     ;
         CloneProcId = TrialProcId
@@ -3452,16 +3453,16 @@ ensure_all_headvars_are_named(!ProcInfo) :-
 
 ensure_all_headvars_are_named_2([], _, !VarSet).
 ensure_all_headvars_are_named_2([Var | Vars], SeqNum, !VarSet) :-
-    ( varset__search_name(!.VarSet, Var, _Name) ->
+    ( varset.search_name(!.VarSet, Var, _Name) ->
         true
     ;
         Name = "HeadVar__" ++ int_to_string(SeqNum),
-        varset__name_var(!.VarSet, Var, Name, !:VarSet)
+        varset.name_var(!.VarSet, Var, Name, !:VarSet)
     ),
     ensure_all_headvars_are_named_2(Vars, SeqNum + 1, !VarSet).
 
 var_is_of_dummy_type(ModuleInfo, VarTypes, Var) :-
-    map__lookup(VarTypes, Var, Type),
+    map.lookup(VarTypes, Var, Type),
     is_dummy_argument_type(ModuleInfo, Type).
 
 %-----------------------------------------------------------------------------%
@@ -3534,7 +3535,7 @@ is_field_access_function_name(ModuleInfo, FuncName, Arity,
         FieldName = FuncName
     ),
     module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
-    map__contains(CtorFieldTable, FieldName).
+    map.contains(CtorFieldTable, FieldName).
 
 pred_info_is_field_access_function(ModuleInfo, PredInfo) :-
     pred_info_is_pred_or_func(PredInfo) = function,
@@ -3588,8 +3589,8 @@ builtin_state(ModuleInfo, CallerPredId, PredId, ProcId) = BuiltinState :-
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
     module_info_get_globals(ModuleInfo, Globals),
-    globals__lookup_bool_option(Globals, allow_inlining, AllowInlining),
-    globals__lookup_bool_option(Globals, inline_builtins, InlineBuiltins),
+    globals.lookup_bool_option(Globals, allow_inlining, AllowInlining),
+    globals.lookup_bool_option(Globals, inline_builtins, InlineBuiltins),
     (
         % The automatically generated "recursive" call in the
         % goal for each builtin must be generated inline, or
@@ -3613,12 +3614,12 @@ builtin_state(ModuleInfo, CallerPredId, PredId, ProcId) = BuiltinState :-
 is_inline_builtin(ModuleName, PredName, ProcId, Arity) :-
     Arity =< 3,
     prog_varset_init(VarSet),
-    varset__new_vars(VarSet, Arity, Args, _),
-    builtin_ops__translate_builtin(ModuleName, PredName, ProcId, Args, _).
+    varset.new_vars(VarSet, Arity, Args, _),
+    builtin_ops.translate_builtin(ModuleName, PredName, ProcId, Args, _).
 
 :- pred prog_varset_init(prog_varset::out) is det.
 
-prog_varset_init(VarSet) :- varset__init(VarSet).
+prog_varset_init(VarSet) :- varset.init(VarSet).
 
 is_unify_or_compare_pred(PredInfo) :-
     pred_info_get_origin(PredInfo, special_pred(_)). % XXX bug

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2005 The University of Melbourne.
+% Copyright (C) 2001, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -75,7 +75,7 @@ find_top_procs(Sort, InclDesc, Scope, Limit, Deep) = MaybeTopPSIs :-
     ;
         SortCompatible = yes,
         ProcStatics = Deep ^ proc_statics,
-        array__max(ProcStatics, MaxProcStatic),
+        array.max(ProcStatics, MaxProcStatic),
         PSIs0 = 1 .. MaxProcStatic,
         deep_lookup_proc_dynamics(Deep, Deep ^ root, RootPD),
         RootPD ^ pd_proc_static = proc_static_ptr(RootPSI),
@@ -84,13 +84,11 @@ find_top_procs(Sort, InclDesc, Scope, Limit, Deep) = MaybeTopPSIs :-
             ComparisonResult =
                 compare_procs_fallback(RawSortFunc, Deep, PSI1, PSI2)
         ),
-        list__sort(SortPred, PSIs, DescendingPSIs),
+        list.sort(SortPred, PSIs, DescendingPSIs),
         (
             Limit = rank_range(First, Last),
-            (
-                list__drop(First - 1, DescendingPSIs, RemainingPSIs)
-            ->
-                list__take_upto(Last - First + 1, RemainingPSIs, TopPSIs),
+            ( list.drop(First - 1, DescendingPSIs, RemainingPSIs) ->
+                list.take_upto(Last - First + 1, RemainingPSIs, TopPSIs),
                 MaybeTopPSIs = ok(TopPSIs)
             ;
                 MaybeTopPSIs = ok([])
@@ -107,7 +105,7 @@ find_top_procs(Sort, InclDesc, Scope, Limit, Deep) = MaybeTopPSIs :-
                 ThresholdPred = (pred(PSI::in) is semidet :-
                     RawThresholdPred(Deep, Threshold, PSI)
                 ),
-                list__takewhile(ThresholdPred, DescendingPSIs, TopPSIs, _),
+                list.takewhile(ThresholdPred, DescendingPSIs, TopPSIs, _),
                 MaybeTopPSIs = ok(TopPSIs)
             )
         )
@@ -210,8 +208,8 @@ find_threshold_predicate(words,  self_and_desc, yes, threshold_ps_words_both).
 
 compare_ps_calls_self_overall(Deep, PSI1, PSI2) = Result :-
     PSOwn = Deep ^ ps_own,
-    array__lookup(PSOwn, PSI1, Own1),
-    array__lookup(PSOwn, PSI2, Own2),
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI2, Own2),
     OwnCalls1 = calls(Own1),
     OwnCalls2 = calls(Own2),
     compare(Result, OwnCalls2, OwnCalls1).
@@ -220,8 +218,8 @@ compare_ps_calls_self_overall(Deep, PSI1, PSI2) = Result :-
 
 compare_ps_redos_self_overall(Deep, PSI1, PSI2) = Result :-
     PSOwn = Deep ^ ps_own,
-    array__lookup(PSOwn, PSI1, Own1),
-    array__lookup(PSOwn, PSI2, Own2),
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI2, Own2),
     OwnRedos1 = redos(Own1),
     OwnRedos2 = redos(Own2),
     compare(Result, OwnRedos2, OwnRedos1).
@@ -230,8 +228,8 @@ compare_ps_redos_self_overall(Deep, PSI1, PSI2) = Result :-
 
 compare_ps_time_self_overall(Deep, PSI1, PSI2) = Result :-
     PSOwn = Deep ^ ps_own,
-    array__lookup(PSOwn, PSI1, Own1),
-    array__lookup(PSOwn, PSI2, Own2),
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI2, Own2),
     OwnQuanta1 = quanta(Own1),
     OwnQuanta2 = quanta(Own2),
     compare(Result, OwnQuanta2, OwnQuanta1).
@@ -240,8 +238,8 @@ compare_ps_time_self_overall(Deep, PSI1, PSI2) = Result :-
 
 compare_ps_time_self_percall(Deep, PSI1, PSI2) = Result :-
     PSOwn = Deep ^ ps_own,
-    array__lookup(PSOwn, PSI1, Own1),
-    array__lookup(PSOwn, PSI2, Own2),
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI2, Own2),
     Calls1 = calls(Own1),
     Calls2 = calls(Own2),
     OwnQuanta1 = quanta(Own1),
@@ -255,10 +253,10 @@ compare_ps_time_self_percall(Deep, PSI1, PSI2) = Result :-
 compare_ps_time_both_overall(Deep, PSI1, PSI2) = Result :-
     PSOwn = Deep ^ ps_own,
     PSDesc = Deep ^ ps_desc,
-    array__lookup(PSOwn, PSI1, Own1),
-    array__lookup(PSOwn, PSI2, Own2),
-    array__lookup(PSDesc, PSI1, Desc1),
-    array__lookup(PSDesc, PSI2, Desc2),
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI2, Own2),
+    array.lookup(PSDesc, PSI1, Desc1),
+    array.lookup(PSDesc, PSI2, Desc2),
     OwnQuanta1 = quanta(Own1),
     OwnQuanta2 = quanta(Own2),
     DescQuanta1 = inherit_quanta(Desc1),
@@ -272,10 +270,10 @@ compare_ps_time_both_overall(Deep, PSI1, PSI2) = Result :-
 compare_ps_time_both_percall(Deep, PSI1, PSI2) = Result :-
     PSOwn = Deep ^ ps_own,
     PSDesc = Deep ^ ps_desc,
-    array__lookup(PSOwn, PSI1, Own1),
-    array__lookup(PSOwn, PSI2, Own2),
-    array__lookup(PSDesc, PSI1, Desc1),
-    array__lookup(PSDesc, PSI2, Desc2),
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI2, Own2),
+    array.lookup(PSDesc, PSI1, Desc1),
+    array.lookup(PSDesc, PSI2, Desc2),
     Calls1 = calls(Own1),
     Calls2 = calls(Own2),
     OwnQuanta1 = quanta(Own1),
@@ -292,8 +290,8 @@ compare_ps_time_both_percall(Deep, PSI1, PSI2) = Result :-
 
 compare_ps_allocs_self_overall(Deep, PSI1, PSI2) = Result :-
     PSOwn = Deep ^ ps_own,
-    array__lookup(PSOwn, PSI1, Own1),
-    array__lookup(PSOwn, PSI2, Own2),
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI2, Own2),
     OwnAlloc1 = allocs(Own1),
     OwnAlloc2 = allocs(Own2),
     compare(Result, OwnAlloc2, OwnAlloc1).
@@ -302,8 +300,8 @@ compare_ps_allocs_self_overall(Deep, PSI1, PSI2) = Result :-
 
 compare_ps_allocs_self_percall(Deep, PSI1, PSI2) = Result :-
     PSOwn = Deep ^ ps_own,
-    array__lookup(PSOwn, PSI1, Own1),
-    array__lookup(PSOwn, PSI2, Own2),
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI2, Own2),
     Calls1 = calls(Own1),
     Calls2 = calls(Own2),
     OwnAlloc1 = allocs(Own1),
@@ -317,10 +315,10 @@ compare_ps_allocs_self_percall(Deep, PSI1, PSI2) = Result :-
 compare_ps_allocs_both_overall(Deep, PSI1, PSI2) = Result :-
     PSOwn = Deep ^ ps_own,
     PSDesc = Deep ^ ps_desc,
-    array__lookup(PSOwn, PSI1, Own1),
-    array__lookup(PSOwn, PSI2, Own2),
-    array__lookup(PSDesc, PSI1, Desc1),
-    array__lookup(PSDesc, PSI2, Desc2),
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI2, Own2),
+    array.lookup(PSDesc, PSI1, Desc1),
+    array.lookup(PSDesc, PSI2, Desc2),
     OwnAlloc1 = allocs(Own1),
     OwnAlloc2 = allocs(Own2),
     DescAlloc1 = inherit_allocs(Desc1),
@@ -334,10 +332,10 @@ compare_ps_allocs_both_overall(Deep, PSI1, PSI2) = Result :-
 compare_ps_allocs_both_percall(Deep, PSI1, PSI2) = Result :-
     PSOwn = Deep ^ ps_own,
     PSDesc = Deep ^ ps_desc,
-    array__lookup(PSOwn, PSI1, Own1),
-    array__lookup(PSOwn, PSI2, Own2),
-    array__lookup(PSDesc, PSI1, Desc1),
-    array__lookup(PSDesc, PSI2, Desc2),
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI2, Own2),
+    array.lookup(PSDesc, PSI1, Desc1),
+    array.lookup(PSDesc, PSI2, Desc2),
     Calls1 = calls(Own1),
     Calls2 = calls(Own2),
     OwnAlloc1 = allocs(Own1),
@@ -354,8 +352,8 @@ compare_ps_allocs_both_percall(Deep, PSI1, PSI2) = Result :-
 
 compare_ps_words_self_overall(Deep, PSI1, PSI2) = Result :-
     PSOwn = Deep ^ ps_own,
-    array__lookup(PSOwn, PSI1, Own1),
-    array__lookup(PSOwn, PSI2, Own2),
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI2, Own2),
     OwnWords1 = words(Own1),
     OwnWords2 = words(Own2),
     compare(Result, OwnWords2, OwnWords1).
@@ -364,8 +362,8 @@ compare_ps_words_self_overall(Deep, PSI1, PSI2) = Result :-
 
 compare_ps_words_self_percall(Deep, PSI1, PSI2) = Result :-
     PSOwn = Deep ^ ps_own,
-    array__lookup(PSOwn, PSI1, Own1),
-    array__lookup(PSOwn, PSI2, Own2),
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI2, Own2),
     Calls1 = calls(Own1),
     Calls2 = calls(Own2),
     OwnWords1 = words(Own1),
@@ -379,10 +377,10 @@ compare_ps_words_self_percall(Deep, PSI1, PSI2) = Result :-
 compare_ps_words_both_overall(Deep, PSI1, PSI2) = Result :-
     PSOwn = Deep ^ ps_own,
     PSDesc = Deep ^ ps_desc,
-    array__lookup(PSOwn, PSI1, Own1),
-    array__lookup(PSOwn, PSI2, Own2),
-    array__lookup(PSDesc, PSI1, Desc1),
-    array__lookup(PSDesc, PSI2, Desc2),
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI2, Own2),
+    array.lookup(PSDesc, PSI1, Desc1),
+    array.lookup(PSDesc, PSI2, Desc2),
     OwnWords1 = words(Own1),
     OwnWords2 = words(Own2),
     DescWords1 = inherit_words(Desc1),
@@ -396,10 +394,10 @@ compare_ps_words_both_overall(Deep, PSI1, PSI2) = Result :-
 compare_ps_words_both_percall(Deep, PSI1, PSI2) = Result :-
     PSOwn = Deep ^ ps_own,
     PSDesc = Deep ^ ps_desc,
-    array__lookup(PSOwn, PSI1, Own1),
-    array__lookup(PSOwn, PSI2, Own2),
-    array__lookup(PSDesc, PSI1, Desc1),
-    array__lookup(PSDesc, PSI2, Desc2),
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI2, Own2),
+    array.lookup(PSDesc, PSI1, Desc1),
+    array.lookup(PSDesc, PSI2, Desc2),
     Calls1 = calls(Own1),
     Calls2 = calls(Own2),
     OwnWords1 = words(Own1),
@@ -418,7 +416,7 @@ compare_ps_words_both_percall(Deep, PSI1, PSI2) = Result :-
 
 filter_ps_calls_self(Deep, PSI1) :-
     PSOwn = Deep ^ ps_own,
-    array__lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI1, Own1),
     OwnCalls1 = calls(Own1),
     OwnCalls1 > 0.
 
@@ -426,7 +424,7 @@ filter_ps_calls_self(Deep, PSI1) :-
 
 filter_ps_redos_self(Deep, PSI1) :-
     PSOwn = Deep ^ ps_own,
-    array__lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI1, Own1),
     OwnCalls1 = redos(Own1),
     OwnCalls1 > 0.
 
@@ -434,7 +432,7 @@ filter_ps_redos_self(Deep, PSI1) :-
 
 filter_ps_time_self(Deep, PSI1) :-
     PSOwn = Deep ^ ps_own,
-    array__lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI1, Own1),
     OwnQuanta1 = quanta(Own1),
     OwnQuanta1 > 0.
 
@@ -443,8 +441,8 @@ filter_ps_time_self(Deep, PSI1) :-
 filter_ps_time_both(Deep, PSI1) :-
     PSOwn = Deep ^ ps_own,
     PSDesc = Deep ^ ps_desc,
-    array__lookup(PSOwn, PSI1, Own1),
-    array__lookup(PSDesc, PSI1, Desc1),
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSDesc, PSI1, Desc1),
     OwnQuanta1 = quanta(Own1),
     DescQuanta1 = inherit_quanta(Desc1),
     TotalQuanta1 = OwnQuanta1 + DescQuanta1,
@@ -454,7 +452,7 @@ filter_ps_time_both(Deep, PSI1) :-
 
 filter_ps_allocs_self(Deep, PSI1) :-
     PSOwn = Deep ^ ps_own,
-    array__lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI1, Own1),
     OwnAlloc1 = allocs(Own1),
     OwnAlloc1 > 0.
 
@@ -463,8 +461,8 @@ filter_ps_allocs_self(Deep, PSI1) :-
 filter_ps_allocs_both(Deep, PSI1) :-
     PSOwn = Deep ^ ps_own,
     PSDesc = Deep ^ ps_desc,
-    array__lookup(PSOwn, PSI1, Own1),
-    array__lookup(PSDesc, PSI1, Desc1),
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSDesc, PSI1, Desc1),
     OwnAlloc1 = allocs(Own1),
     DescAlloc1 = inherit_allocs(Desc1),
     TotalAlloc1 = OwnAlloc1 + DescAlloc1,
@@ -474,7 +472,7 @@ filter_ps_allocs_both(Deep, PSI1) :-
 
 filter_ps_words_self(Deep, PSI1) :-
     PSOwn = Deep ^ ps_own,
-    array__lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSOwn, PSI1, Own1),
     OwnWords1 = words(Own1),
     OwnWords1 > 0.
 
@@ -483,8 +481,8 @@ filter_ps_words_self(Deep, PSI1) :-
 filter_ps_words_both(Deep, PSI1) :-
     PSOwn = Deep ^ ps_own,
     PSDesc = Deep ^ ps_desc,
-    array__lookup(PSOwn, PSI1, Own1),
-    array__lookup(PSDesc, PSI1, Desc1),
+    array.lookup(PSOwn, PSI1, Own1),
+    array.lookup(PSDesc, PSI1, Desc1),
     OwnWords1 = words(Own1),
     DescWords1 = inherit_words(Desc1),
     TotalWords1 = OwnWords1 + DescWords1,
@@ -496,7 +494,7 @@ filter_ps_words_both(Deep, PSI1) :-
 
 threshold_ps_time_self(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
-    array__lookup(PSOwn, PSI, Own),
+    array.lookup(PSOwn, PSI, Own),
     RootOwn = root_own_info(Deep),
     RootDesc = root_desc_info(Deep),
     OwnQuanta = quanta(Own),
@@ -510,8 +508,8 @@ threshold_ps_time_self(Deep, Threshold, PSI) :-
 threshold_ps_time_both(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
     PSDesc = Deep ^ ps_desc,
-    array__lookup(PSOwn, PSI, Own),
-    array__lookup(PSDesc, PSI, Desc),
+    array.lookup(PSOwn, PSI, Own),
+    array.lookup(PSDesc, PSI, Desc),
     RootOwn = root_own_info(Deep),
     RootDesc = root_desc_info(Deep),
     OwnQuanta = quanta(Own),
@@ -526,7 +524,7 @@ threshold_ps_time_both(Deep, Threshold, PSI) :-
 
 threshold_ps_allocs_self(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
-    array__lookup(PSOwn, PSI, Own),
+    array.lookup(PSOwn, PSI, Own),
     RootOwn = root_own_info(Deep),
     RootDesc = root_desc_info(Deep),
     OwnAlloc = allocs(Own),
@@ -540,8 +538,8 @@ threshold_ps_allocs_self(Deep, Threshold, PSI) :-
 threshold_ps_allocs_both(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
     PSDesc = Deep ^ ps_desc,
-    array__lookup(PSOwn, PSI, Own),
-    array__lookup(PSDesc, PSI, Desc),
+    array.lookup(PSOwn, PSI, Own),
+    array.lookup(PSDesc, PSI, Desc),
     RootOwn = root_own_info(Deep),
     RootDesc = root_desc_info(Deep),
     OwnAlloc = allocs(Own),
@@ -556,7 +554,7 @@ threshold_ps_allocs_both(Deep, Threshold, PSI) :-
 
 threshold_ps_words_self(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
-    array__lookup(PSOwn, PSI, Own),
+    array.lookup(PSOwn, PSI, Own),
     RootOwn = root_own_info(Deep),
     RootDesc = root_desc_info(Deep),
     OwnWords = words(Own),
@@ -570,8 +568,8 @@ threshold_ps_words_self(Deep, Threshold, PSI) :-
 threshold_ps_words_both(Deep, Threshold, PSI) :-
     PSOwn = Deep ^ ps_own,
     PSDesc = Deep ^ ps_desc,
-    array__lookup(PSOwn, PSI, Own),
-    array__lookup(PSDesc, PSI, Desc),
+    array.lookup(PSOwn, PSI, Own),
+    array.lookup(PSDesc, PSI, Desc),
     RootOwn = root_own_info(Deep),
     RootDesc = root_desc_info(Deep),
     OwnWords = words(Own),
@@ -664,7 +662,7 @@ sort_line_groups(Criteria, Groups) = SortedGroups :-
             CompFunc = compare_line_groups_by_words_total_percall
         )
     ),
-    SortedGroups = list__sort(compare_groups_fallback(CompFunc), Groups).
+    SortedGroups = list.sort(compare_groups_fallback(CompFunc), Groups).
 
 :- type compare_line_groups_func(FL, LL) ==
     (func(line_group(FL, LL), line_group(FL, LL)) = comparison_result).
@@ -905,7 +903,7 @@ compare_line_groups_by_words_total_percall(Group1, Group2) = Result :-
 %-----------------------------------------------------------------------------%
 
 sum_line_group_measurements(LineGroups, Own, Desc) :-
-    list__foldl2(accumulate_line_group_measurements, LineGroups,
+    list.foldl2(accumulate_line_group_measurements, LineGroups,
         zero_own_prof_info, Own, zero_inherit_prof_info, Desc).
 
 :- pred accumulate_line_group_measurements(line_group(FL, LL)::in,

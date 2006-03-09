@@ -20,7 +20,7 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds__modecheck_call.
+:- module check_hlds.modecheck_call.
 :- interface.
 
 :- import_module check_hlds.mode_info.
@@ -104,7 +104,7 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
     mode_info_get_may_change_called_proc(!.ModeInfo, MayChangeCalledProc),
     mode_info_get_preds(!.ModeInfo, Preds),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    map__lookup(Preds, PredId, PredInfo),
+    map.lookup(Preds, PredId, PredInfo),
     pred_info_get_purity(PredInfo, Purity),
     pred_info_procedures(PredInfo, Procs),
     ( MayChangeCalledProc = may_not_change_called_proc ->
@@ -128,7 +128,7 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
         ProcIds = [],
         \+ check_marker(Markers, infer_modes)
     ->
-        set__init(WaitingVars),
+        set.init(WaitingVars),
         mode_info_error(WaitingVars, mode_error_no_mode_decl, !ModeInfo),
         TheProcId = invalid_proc_id,
         ArgVars = ArgVars0,
@@ -140,7 +140,7 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
         )
     ->
         TheProcId = ProcId,
-        map__lookup(Procs, ProcId, ProcInfo),
+        map.lookup(Procs, ProcId, ProcInfo),
 
         % Check that `ArgsVars0' have livenesses which match the
         % expected livenesses.
@@ -172,7 +172,7 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
         mode_info_get_errors(!.ModeInfo, OldErrors),
         mode_info_set_errors([], !ModeInfo),
 
-        set__init(WaitingVars0),
+        set.init(WaitingVars0),
         modecheck_find_matching_modes(ProcIds, PredId, Procs, ArgVars0,
             [], RevMatchingProcIds, WaitingVars0, WaitingVars1, !ModeInfo),
 
@@ -183,17 +183,17 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
             ExtraGoals = no_extra_goals
         ;
             RevMatchingProcIds = [_|_],
-            list__reverse(RevMatchingProcIds, MatchingProcIds),
+            list.reverse(RevMatchingProcIds, MatchingProcIds),
             choose_best_match(!.ModeInfo, MatchingProcIds, PredId, Procs,
                 ArgVars0, TheProcId, InstVarSub, ProcArgModes),
-            map__lookup(Procs, TheProcId, ProcInfo),
+            map.lookup(Procs, TheProcId, ProcInfo),
             CalleeModeErrors = ProcInfo ^ mode_errors,
             ( CalleeModeErrors = [_|_] ->
                 % mode error in callee for this mode
                 ArgVars = ArgVars0,
-                WaitingVars = set__list_to_set(ArgVars),
+                WaitingVars = set.list_to_set(ArgVars),
                 ExtraGoals = no_extra_goals,
-                instmap__lookup_vars(ArgVars, InstMap, ArgInsts),
+                instmap.lookup_vars(ArgVars, InstMap, ArgInsts),
                 mode_info_set_call_arg_context(0, !ModeInfo),
                 mode_info_error(WaitingVars,
                     mode_error_in_callee(ArgVars, ArgInsts, PredId, TheProcId,
@@ -207,7 +207,7 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
 
         % Restore the error list, appending any new error(s).
         mode_info_get_errors(!.ModeInfo, NewErrors),
-        list__append(OldErrors, NewErrors, Errors),
+        list.append(OldErrors, NewErrors, Errors),
         mode_info_set_errors(Errors, !ModeInfo)
     ).
 
@@ -219,10 +219,10 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
     % (of the appropriate arity)
     %
     mode_info_get_instmap(!.ModeInfo, InstMap0),
-    instmap__lookup_var(InstMap0, PredVar, PredVarInst0),
+    instmap.lookup_var(InstMap0, PredVar, PredVarInst0),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     inst_expand(ModuleInfo0, PredVarInst0, PredVarInst),
-    list__length(Args0, Arity),
+    list.length(Args0, Arity),
     (
         PredVarInst = ground(_Uniq, GroundInstInfo),
         (
@@ -233,13 +233,13 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
             % assume the default function mode.
             GroundInstInfo = none,
             mode_info_get_var_types(!.ModeInfo, VarTypes),
-            map__lookup(VarTypes, PredVar, Type),
+            map.lookup(VarTypes, PredVar, Type),
             type_is_higher_order(Type, _Purity, function, _, ArgTypes),
             PredInstInfo = pred_inst_info_standard_func_mode(
-                list__length(ArgTypes))
+                list.length(ArgTypes))
         ),
         PredInstInfo = pred_inst_info(PredOrFunc, Modes0, Det0),
-        list__length(Modes0, Arity)
+        list.length(Modes0, Arity)
     ->
         Det = Det0,
         Modes = Modes0,
@@ -248,7 +248,7 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
             !ModeInfo),
 
         ( determinism_components(Det, _, at_most_zero) ->
-            instmap__init_unreachable(Instmap),
+            instmap.init_unreachable(Instmap),
             mode_info_set_instmap(Instmap, !ModeInfo)
         ;
             true
@@ -256,7 +256,7 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
     ;
         % the error occurred in argument 1, i.e. the pred term
         mode_info_set_call_arg_context(1, !ModeInfo),
-        set__singleton_set(WaitingVars, PredVar),
+        set.singleton_set(WaitingVars, PredVar),
         mode_info_error(WaitingVars,
             mode_error_higher_order_pred_var(PredOrFunc, PredVar, PredVarInst,
                 Arity),
@@ -318,7 +318,7 @@ no_matching_modes(PredId, ArgVars, DeterminismKnown, WaitingVars, TheProcId,
     % Otherwise, report an error.
     %
     mode_info_get_preds(!.ModeInfo, Preds),
-    map__lookup(Preds, PredId, PredInfo),
+    map.lookup(Preds, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     ( check_marker(Markers, infer_modes) ->
         insert_new_mode(PredId, ArgVars, DeterminismKnown, TheProcId,
@@ -327,12 +327,12 @@ no_matching_modes(PredId, ArgVars, DeterminismKnown, WaitingVars, TheProcId,
         % of the called predicate, so we set the instmap to unreachable,
         % indicating that we have no information about the modes at this
         % point in the computation.
-        instmap__init_unreachable(Instmap),
+        instmap.init_unreachable(Instmap),
         mode_info_set_instmap(Instmap, !ModeInfo)
     ;
         TheProcId = invalid_proc_id,    % dummy value
         mode_info_get_instmap(!.ModeInfo, InstMap),
-        instmap__lookup_vars(ArgVars, InstMap, ArgInsts),
+        instmap.lookup_vars(ArgVars, InstMap, ArgInsts),
         mode_info_set_call_arg_context(0, !ModeInfo),
         mode_info_error(WaitingVars,
             mode_error_no_matching_mode(ArgVars, ArgInsts), !ModeInfo)
@@ -352,7 +352,7 @@ modecheck_find_matching_modes([ProcId | ProcIds], PredId, Procs, ArgVars0,
 
     % Find the initial insts and the final livenesses of the arguments
     % for this mode of the called pred.
-    map__lookup(Procs, ProcId, ProcInfo),
+    map.lookup(Procs, ProcId, ProcInfo),
     proc_info_argmodes(ProcInfo, ProcArgModes0),
     proc_info_inst_varset(ProcInfo, ProcInstVarSet),
     mode_info_get_instvarset(!.ModeInfo, InstVarSet),
@@ -393,7 +393,7 @@ modecheck_find_matching_modes([ProcId | ProcIds], PredId, Procs, ArgVars0,
         Errors = [FirstError | _],
         mode_info_set_errors([], !ModeInfo),
         FirstError = mode_error_info(ErrorWaitingVars, _, _, _),
-        set__union(!.WaitingVars, ErrorWaitingVars, !:WaitingVars)
+        set.union(!.WaitingVars, ErrorWaitingVars, !:WaitingVars)
     ;
         Errors = [],
         NewMatch = proc_mode(ProcId, InstVarSub, ProcArgModes),
@@ -431,7 +431,7 @@ modecheck_end_of_call(ProcInfo, Purity, ProcArgModes, ArgVars0, ArgOffset,
     proc_info_never_succeeds(ProcInfo, NeverSucceeds),
     (
         NeverSucceeds = yes,
-        instmap__init_unreachable(Instmap),
+        instmap.init_unreachable(Instmap),
         mode_info_set_instmap(Instmap, !ModeInfo)
     ;
         NeverSucceeds = no
@@ -454,18 +454,18 @@ insert_new_mode(PredId, ArgVars, MaybeDet, ProcId, !ModeInfo) :-
     get_var_insts_and_lives(ArgVars, !.ModeInfo, InitialInsts, ArgLives),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     module_info_preds(ModuleInfo0, Preds0),
-    map__lookup(Preds0, PredId, PredInfo0),
+    map.lookup(Preds0, PredId, PredInfo0),
     pred_info_context(PredInfo0, Context),
-    list__length(ArgVars, Arity),
-    list__duplicate(Arity, not_reached, FinalInsts),
+    list.length(ArgVars, Arity),
+    list.duplicate(Arity, not_reached, FinalInsts),
     inst_lists_to_mode_list(InitialInsts, FinalInsts, Modes),
     mode_info_get_instvarset(!.ModeInfo, InstVarSet),
 
-    % Call unify_proc__request_proc, which will create the new procedure,
+    % Call unify_proc.request_proc, which will create the new procedure,
     % set its "can-process" flag to `no', and insert it into the queue
     % of requested procedures.
     %
-    unify_proc__request_proc(PredId, Modes, InstVarSet, yes(ArgLives),
+    unify_proc.request_proc(PredId, Modes, InstVarSet, yes(ArgLives),
         MaybeDet, Context, ProcId, ModuleInfo0, ModuleInfo),
 
     mode_info_set_module_info(ModuleInfo, !ModeInfo),
@@ -484,8 +484,8 @@ get_var_insts_and_lives([Var | Vars], ModeInfo,
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     mode_info_get_instmap(ModeInfo, InstMap),
     mode_info_get_var_types(ModeInfo, VarTypes),
-    instmap__lookup_var(InstMap, Var, Inst0),
-    map__lookup(VarTypes, Var, Type),
+    instmap.lookup_var(InstMap, Var, Inst0),
+    map.lookup(VarTypes, Var, Type),
     normalise_inst(ModuleInfo, Type, Inst0, Inst),
 
     mode_info_var_is_live(ModeInfo, Var, IsLive0),
@@ -525,8 +525,8 @@ get_var_insts_and_lives([Var | Vars], ModeInfo,
     %
 modes_are_indistinguishable(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
     pred_info_procedures(PredInfo, Procs),
-    map__lookup(Procs, ProcId, ProcInfo),
-    map__lookup(Procs, OtherProcId, OtherProcInfo),
+    map.lookup(Procs, ProcId, ProcInfo),
+    map.lookup(Procs, OtherProcId, OtherProcInfo),
 
     %
     % Compare the initial insts of the arguments
@@ -573,8 +573,8 @@ modes_are_indistinguishable(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
     %
 modes_are_identical_bar_cc(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
     pred_info_procedures(PredInfo, Procs),
-    map__lookup(Procs, ProcId, ProcInfo),
-    map__lookup(Procs, OtherProcId, OtherProcInfo),
+    map.lookup(Procs, ProcId, ProcInfo),
+    map.lookup(Procs, OtherProcId, OtherProcInfo),
 
     %
     % Compare the initial insts of the arguments
@@ -672,7 +672,7 @@ choose_best_match(ModeInfo,
     %
     (
         \+ (
-            list__member(proc_mode(OtherProcId, _, _), ProcIds),
+            list.member(proc_mode(OtherProcId, _, _), ProcIds),
             compare_proc(ModeInfo, OtherProcId, ProcId, ArgVars, Procs, better)
         )
     ->
@@ -695,8 +695,8 @@ choose_best_match(ModeInfo,
     list(prog_var)::in, proc_table::in, match::out) is det.
 
 compare_proc(ModeInfo, ProcId, OtherProcId, ArgVars, Procs, Compare) :-
-    map__lookup(Procs, ProcId, ProcInfo),
-    map__lookup(Procs, OtherProcId, OtherProcInfo),
+    map.lookup(Procs, ProcId, ProcInfo),
+    map.lookup(Procs, OtherProcId, OtherProcInfo),
     %
     % Compare the initial insts of the arguments
     %
@@ -704,7 +704,7 @@ compare_proc(ModeInfo, ProcId, OtherProcId, ArgVars, Procs, Compare) :-
     proc_info_argmodes(OtherProcInfo, OtherProcArgModes),
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     mode_info_get_var_types(ModeInfo, VarTypes),
-    list__map(map__lookup(VarTypes), ArgVars, ArgTypes),
+    list.map(map.lookup(VarTypes), ArgVars, ArgTypes),
     mode_list_get_initial_insts(ModuleInfo, ProcArgModes, InitialInsts),
     mode_list_get_initial_insts(ModuleInfo, OtherProcArgModes,
         OtherInitialInsts),

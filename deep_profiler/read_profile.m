@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2005 The University of Melbourne.
+% Copyright (C) 2001, 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -48,13 +48,13 @@
     ;       csd.
 
 read_call_graph(FileName, Res, !IO) :-
-    io__see_binary(FileName, Res0, !IO),
+    io.see_binary(FileName, Res0, !IO),
     (
         Res0 = ok,
         read_id_string(Res1, !IO),
         (
             Res1 = ok(_),
-            io_combinator__maybe_error_sequence_10(
+            io_combinator.maybe_error_sequence_10(
                 read_fixed_size_int,
                 read_fixed_size_int,
                 read_fixed_size_int,
@@ -86,7 +86,7 @@ read_call_graph(FileName, Res, !IO) :-
             (
                 Res2 = ok(InitDeep),
                 read_nodes(InitDeep, Res, !IO),
-                io__seen_binary(!IO)
+                io.seen_binary(!IO)
             ;
                 Res2 = error(Err),
                 Res = error(Err)
@@ -97,7 +97,7 @@ read_call_graph(FileName, Res, !IO) :-
         )
     ;
         Res0 = error(Err),
-        io__error_message(Err, Msg),
+        io.error_message(Err, Msg),
         Res = error(Msg)
     ).
 
@@ -105,7 +105,7 @@ read_call_graph(FileName, Res, !IO) :-
     io::di, io::uo) is det.
 
 read_id_string(Res, !IO) :-
-    read_n_byte_string(string__length(id_string), Res0, !IO),
+    read_n_byte_string(string.length(id_string), Res0, !IO),
     (
         Res0 = ok(String),
         ( String = id_string ->
@@ -140,19 +140,19 @@ init_deep(MaxCSD, MaxCSS, MaxPD, MaxPS, TicksPerSec, InstrumentQuanta,
     InitDeep = initial_deep(
         InitStats,
         make_pdptr(RootPDI),
-        array__init(MaxCSD + 1,
+        array.init(MaxCSD + 1,
             call_site_dynamic(
                 make_dummy_pdptr,
                 make_dummy_pdptr,
                 zero_own_prof_info
             )),
-        array__init(MaxPD + 1, proc_dynamic(make_dummy_psptr, array([]))),
-        array__init(MaxCSS + 1,
+        array.init(MaxPD + 1, proc_dynamic(make_dummy_psptr, array([]))),
+        array.init(MaxCSS + 1,
             call_site_static(
                 make_dummy_psptr, -1,
                 normal_call(make_dummy_psptr, ""), -1, ""
             )),
-        array__init(MaxPS + 1,
+        array.init(MaxPS + 1,
             proc_static(dummy_proc_id, "", "", "", "", -1, no,
                 array([]), not_zeroed))
     ).
@@ -221,7 +221,7 @@ read_nodes(InitDeep0, Res, !IO) :-
         Res = ok(InitDeep0)
     ;
         Res0 = error(Err),
-        io__error_message(Err, Msg),
+        io.error_message(Err, Msg),
         Res = error(Msg)
     ).
 
@@ -230,8 +230,8 @@ read_nodes(InitDeep0, Res, !IO) :-
 
 read_call_site_static(Res, !IO) :-
     % DEBUGSITE
-    % io__write_string("reading call_site_static.\n"),
-    io_combinator__maybe_error_sequence_4(
+    % io.write_string("reading call_site_static.\n"),
+    io_combinator.maybe_error_sequence_4(
         read_ptr(css),
         read_call_site_kind_and_callee,
         read_num,
@@ -249,11 +249,11 @@ read_call_site_static(Res, !IO) :-
         Res1 = ok({CallSiteStatic, CSSI}),
         Res = ok2(CallSiteStatic, CSSI)
         % DEBUGSITE
-        % io__write_string("read call_site_static ", !IO),
-        % io__write_int(CSSI, !IO),
-        % io__write_string(": ", !IO),
-        % io__write(CallSiteStatic, !IO),
-        % io__write_string("\n", !IO)
+        % io.write_string("read call_site_static ", !IO),
+        % io.write_int(CSSI, !IO),
+        % io.write_string(": ", !IO),
+        % io.write(CallSiteStatic, !IO),
+        % io.write_string("\n", !IO)
     ;
         Res1 = error(Err),
         Res = error2(Err)
@@ -265,8 +265,8 @@ read_call_site_static(Res, !IO) :-
 
 read_proc_static(Res, !IO) :-
     % DEBUGSITE
-    % io__write_string("reading proc_static.\n", !IO),
-    io_combinator__maybe_error_sequence_6(
+    % io.write_string("reading proc_static.\n", !IO),
+    io_combinator.maybe_error_sequence_6(
         read_ptr(ps),
         read_proc_id,
         read_string,
@@ -283,7 +283,7 @@ read_proc_static(Res, !IO) :-
         read_n_things(N, read_ptr(css), Res2, !IO),
         (
             Res2 = ok(CSSIs),
-            CSSPtrs = list__map(make_cssptr, CSSIs),
+            CSSPtrs = list.map(make_cssptr, CSSIs),
             DeclModule = decl_module(Id),
             RefinedStr = refined_proc_id_to_string(Id),
             RawStr = raw_proc_id_to_string(Id),
@@ -301,11 +301,11 @@ read_proc_static(Res, !IO) :-
                 IsInInterface, array(CSSPtrs), not_zeroed),
             Res = ok2(ProcStatic, PSI)
             % DEBUGSITE
-            % io__write_string("read proc_static ", !IO),
-            % io__write_int(PSI, !IO),
-            % io__write_string(": ", !IO),
-            % io__write(ProcStatic, !IO),
-            % io__write_string("\n", !IO)
+            % io.write_string("read proc_static ", !IO),
+            % io.write_int(PSI, !IO),
+            % io.write_string(": ", !IO),
+            % io.write(ProcStatic, !IO),
+            % io.write_string("\n", !IO)
         ;
             Res2 = error(Err),
             Res = error2(Err)
@@ -341,7 +341,7 @@ read_proc_id(Res, !IO) :-
     io::di, io::uo) is det.
 
 read_proc_id_uci_pred(Res, !IO) :-
-    io_combinator__maybe_error_sequence_6(
+    io_combinator.maybe_error_sequence_6(
         read_string,
         read_string,
         read_string,
@@ -360,7 +360,7 @@ read_proc_id_uci_pred(Res, !IO) :-
     io::di, io::uo) is det.
 
 read_proc_id_user_defined(PredOrFunc, Res, !IO) :-
-    io_combinator__maybe_error_sequence_5(
+    io_combinator.maybe_error_sequence_5(
         read_string,
         read_string,
         read_string,
@@ -378,16 +378,16 @@ read_proc_id_user_defined(PredOrFunc, Res, !IO) :-
 
 raw_proc_id_to_string(uci_pred(TypeName, TypeModule, _DefModule,
         PredName, Arity, Mode)) =
-    string__append_list(
+    string.append_list(
         [PredName, " for ", TypeModule, ".", TypeName,
-        "/", string__int_to_string(Arity),
-        " mode ", string__int_to_string(Mode)]).
+        "/", string.int_to_string(Arity),
+        " mode ", string.int_to_string(Mode)]).
 raw_proc_id_to_string(user_defined(PredOrFunc, DeclModule, _DefModule,
         Name, Arity, Mode)) =
-    string__append_list([DeclModule, ".", Name,
-        "/", string__int_to_string(Arity),
+    string.append_list([DeclModule, ".", Name,
+        "/", string.int_to_string(Arity),
         ( PredOrFunc = function -> "+1" ; "" ),
-        "-", string__int_to_string(Mode)]).
+        "-", string.int_to_string(Mode)]).
 
 :- func refined_proc_id_to_string(proc_id) = string.
 
@@ -404,63 +404,63 @@ refined_proc_id_to_string(uci_pred(TypeName, TypeModule, _DefModule,
     ; RawPredName = "__Initialise__" ->
         PredName = "Initialise"
     ;
-        string__append("unknown special predicate name ", RawPredName, Msg),
+        string.append("unknown special predicate name ", RawPredName, Msg),
         error(Msg)
     ),
-    Name0 = string__append_list([PredName, " for ", TypeModule, ".", TypeName,
-        "/", string__int_to_string(Arity)]),
+    Name0 = string.append_list([PredName, " for ", TypeModule, ".", TypeName,
+        "/", string.int_to_string(Arity)]),
     ( Mode = 0 ->
         Name = Name0
     ;
-        Name = string__append_list([Name0, " mode ", int_to_string(Mode)])
+        Name = string.append_list([Name0, " mode ", int_to_string(Mode)])
     ).
 refined_proc_id_to_string(user_defined(PredOrFunc, DeclModule, _DefModule,
         ProcName, Arity, Mode)) = Name :-
     (
-        string__append("TypeSpecOf__", ProcName1, ProcName),
-        ( string__append("pred__", ProcName2A, ProcName1) ->
+        string.append("TypeSpecOf__", ProcName1, ProcName),
+        ( string.append("pred__", ProcName2A, ProcName1) ->
             ProcName2 = ProcName2A
-        ; string__append("func__", ProcName2B, ProcName1) ->
+        ; string.append("func__", ProcName2B, ProcName1) ->
             ProcName2 = ProcName2B
-        ; string__append("pred_or_func__", ProcName2C, ProcName1) ->
+        ; string.append("pred_or_func__", ProcName2C, ProcName1) ->
             ProcName2 = ProcName2C
         ;
             error("typespec: neither pred nor func")
         ),
-        string__to_char_list(ProcName2, ProcName2Chars),
+        string.to_char_list(ProcName2, ProcName2Chars),
         fix_type_spec_suffix(ProcName2Chars, ProcNameChars, SpecInfo)
     ->
-        RefinedProcName = string__from_char_list(ProcNameChars),
-        Name = string__append_list([DeclModule, ".", RefinedProcName,
-            "/", string__int_to_string(Arity),
+        RefinedProcName = string.from_char_list(ProcNameChars),
+        Name = string.append_list([DeclModule, ".", RefinedProcName,
+            "/", string.int_to_string(Arity),
             ( PredOrFunc = function -> "+1" ; "" ),
-            "-", string__int_to_string(Mode),
+            "-", string.int_to_string(Mode),
             " [", SpecInfo, "]"])
     ;
-        string__append("IntroducedFrom__", ProcName1, ProcName),
-        ( string__append("pred__", ProcName2A, ProcName1) ->
+        string.append("IntroducedFrom__", ProcName1, ProcName),
+        ( string.append("pred__", ProcName2A, ProcName1) ->
             ProcName2 = ProcName2A
-        ; string__append("func__", ProcName2B, ProcName1) ->
+        ; string.append("func__", ProcName2B, ProcName1) ->
             ProcName2 = ProcName2B
         ;
             error("lambda: neither pred nor func")
         ),
-        string__to_char_list(ProcName2, ProcName2Chars),
+        string.to_char_list(ProcName2, ProcName2Chars),
         split_lambda_name(ProcName2Chars, Segments),
         glue_lambda_name(Segments, ContainingNameChars,
             LineNumberChars)
     ->
-        string__from_char_list(ContainingNameChars, ContainingName),
-        string__from_char_list(LineNumberChars, LineNumber),
-        Name = string__append_list([DeclModule, ".", ContainingName,
+        string.from_char_list(ContainingNameChars, ContainingName),
+        string.from_char_list(LineNumberChars, LineNumber),
+        Name = string.append_list([DeclModule, ".", ContainingName,
             " lambda line ", LineNumber,
-            "/", string__int_to_string(Arity),
+            "/", string.int_to_string(Arity),
             ( PredOrFunc = function -> "+1" ; "" )])
     ;
-        Name = string__append_list([DeclModule, ".", ProcName,
-            "/", string__int_to_string(Arity),
+        Name = string.append_list([DeclModule, ".", ProcName,
+            "/", string.int_to_string(Arity),
             ( PredOrFunc = function -> "+1" ; "" ),
-            "-", string__int_to_string(Mode)])
+            "-", string.int_to_string(Mode)])
     ).
 
 :- pred fix_type_spec_suffix(list(char)::in, list(char)::out, string::out)
@@ -469,8 +469,8 @@ refined_proc_id_to_string(user_defined(PredOrFunc, DeclModule, _DefModule,
 fix_type_spec_suffix(Chars0, Chars, SpecInfoStr) :-
     ( Chars0 = ['_', '_', '[' | SpecInfo0 ] ->
         Chars = [],
-        list__takewhile(non_right_bracket, SpecInfo0, SpecInfo, _),
-        string__from_char_list(SpecInfo, SpecInfoStr)
+        list.takewhile(non_right_bracket, SpecInfo0, SpecInfo, _),
+        string.from_char_list(SpecInfo, SpecInfoStr)
     ; Chars0 = [Char | TailChars0] ->
         fix_type_spec_suffix(TailChars0, TailChars, SpecInfoStr),
         Chars = [Char | TailChars]
@@ -513,7 +513,7 @@ glue_lambda_name(Segments, PredName, LineNumber) :-
         ( PredName1 = [] ->
             PredName = Segment
         ;
-            list__append(Segment, ['_', '_' | PredName1], PredName)
+            list.append(Segment, ['_', '_' | PredName1], PredName)
         )
     ;
         fail
@@ -524,8 +524,8 @@ glue_lambda_name(Segments, PredName, LineNumber) :-
 
 read_proc_dynamic(Res, !IO) :-
     % DEBUGSITE
-    % io__write_string("reading proc_dynamic.\n", !IO),
-    io_combinator__maybe_error_sequence_3(
+    % io.write_string("reading proc_dynamic.\n", !IO),
+    io_combinator.maybe_error_sequence_3(
         read_ptr(pd),
         read_ptr(ps),
         read_num,
@@ -542,11 +542,11 @@ read_proc_dynamic(Res, !IO) :-
             ProcDynamic = proc_dynamic(PSPtr, array(Refs)),
             Res = ok2(ProcDynamic, PDI)
             % DEBUGSITE
-            % io__write_string("read proc_dynamic ", !IO),
-            % io__write_int(PDI, !IO),
-            % io__write_string(": ", !IO),
-            % io__write(ProcDynamic, !IO),
-            % io__write_string("\n", !IO)
+            % io.write_string("read proc_dynamic ", !IO),
+            % io.write_int(PDI, !IO),
+            % io.write_string(": ", !IO),
+            % io.write(ProcDynamic, !IO),
+            % io.write_string("\n", !IO)
         ;
             Res2 = error(Err),
             Res = error2(Err)
@@ -561,7 +561,7 @@ read_proc_dynamic(Res, !IO) :-
 
 read_call_site_dynamic(Res, !IO) :-
     % DEBUGSITE
-    % io__write_string("reading call_site_dynamic.\n", !IO),
+    % io.write_string("reading call_site_dynamic.\n", !IO),
     read_ptr(csd, Res1, !IO),
     (
         Res1 = ok(CSDI),
@@ -577,12 +577,12 @@ read_call_site_dynamic(Res, !IO) :-
                     CallerPDPtr, PDPtr, Profile),
                 Res = ok2(CallSiteDynamic, CSDI)
                 % DEBUGSITE
-                % io__write_string("read call_site_dynamic ",
+                % io.write_string("read call_site_dynamic ",
                 %   !IO),
-                % io__write_int(CSDI, !IO),
-                % io__write_string(": ", !IO),
-                % io__write(CallSiteDynamic, !IO),
-                % io__write_string("\n", !IO)
+                % io.write_int(CSDI, !IO),
+                % io.write_string(": ", !IO),
+                % io.write(CallSiteDynamic, !IO),
+                % io.write_string("\n", !IO)
             ;
                 Res3 = error(Err),
                 Res = error2(Err)
@@ -668,7 +668,7 @@ maybe_read_num_handle_error(MaskWord, MaskValue, Num, !MaybeError, !IO) :-
 
 read_call_site_slot(Res, !IO) :-
     % DEBUGSITE
-    % io__write_string("reading call_site_slot.\n", !IO),
+    % io.write_string("reading call_site_slot.\n", !IO),
     read_call_site_kind(Res1, !IO),
     (
         Res1 = ok(Kind),
@@ -679,10 +679,10 @@ read_call_site_slot(Res, !IO) :-
                 CSDPtr = make_csdptr(CSDI),
                 Res = ok(normal(CSDPtr))
                 % DEBUGSITE
-                % io__write_string("normal call_site slot ",
+                % io.write_string("normal call_site slot ",
                 %   !IO),
-                % io__write_int(CSDI, !IO),
-                % io__write_string("\n", !IO)
+                % io.write_int(CSDI, !IO),
+                % io.write_string("\n", !IO)
             ;
                 Res2 = error(Err),
                 Res = error(Err)
@@ -700,13 +700,13 @@ read_call_site_slot(Res, !IO) :-
             read_multi_call_site_csdis(Res2, !IO),
             (
                 Res2 = ok(CSDIs),
-                CSDPtrs = list__map(make_csdptr, CSDIs),
+                CSDPtrs = list.map(make_csdptr, CSDIs),
                 Res = ok(multi(Zeroed, array(CSDPtrs)))
                 % DEBUGSITE
-                % io__write_string("multi call_site slots ",
+                % io.write_string("multi call_site slots ",
                 %   !IO),
-                % io__write(CSDIs, !IO),
-                % io__write_string("\n", !IO)
+                % io.write(CSDIs, !IO),
+                % io.write_string("\n", !IO)
             ;
                 Res2 = error(Err),
                 Res = error(Err)
@@ -738,7 +738,7 @@ read_multi_call_site_csdis(Res, !IO) :-
 
 read_multi_call_site_csdis_2(CSDIs0, Res, !IO) :-
     % DEBUGSITE
-    % io__format("reading multi_call_site_csdi.\n", [], !IO),
+    % io.format("reading multi_call_site_csdi.\n", [], !IO),
     read_deep_byte(Res0, !IO),
     (
         Res0 = ok(Byte),
@@ -783,9 +783,9 @@ read_call_site_kind(Res, !IO) :-
             Res = error(Msg)
         )
         % DEBUGSITE
-        % io__write_string("call_site_kind ", !IO),
-        % io__write(Res, !IO),
-        % io__write_string("\n", !IO)
+        % io.write_string("call_site_kind ", !IO),
+        % io.write(Res, !IO),
+        % io.write_string("\n", !IO)
     ;
         Res0 = error(Err),
         Res = error(Err)
@@ -829,9 +829,9 @@ read_call_site_kind_and_callee(Res, !IO) :-
             Res = error(Msg)
         )
         % DEBUGSITE
-        % io__write_string("call_site_kind_and_callee ", !IO),
-        % io__write(Res, !IO),
-        % io__write_string("\n", !IO)
+        % io.write_string("call_site_kind_and_callee ", !IO),
+        % io.write(Res, !IO),
+        % io.write_string("\n", !IO)
     ;
         Res0 = error(Err),
         Res = error(Err)
@@ -899,10 +899,10 @@ read_n_byte_string(Length, Res, !IO) :-
     (
         Res1 = ok(Bytes),
         (
-            map((pred(I::in, C::out) is semidet :- char__to_int(C, I)),
+            map((pred(I::in, C::out) is semidet :- char.to_int(C, I)),
                 Bytes, Chars)
         ->
-            string__from_char_list(Chars, Str),
+            string.from_char_list(Chars, Str),
             Res = ok(Str)
         ;
             Res = error("string contained bad char")
@@ -912,9 +912,9 @@ read_n_byte_string(Length, Res, !IO) :-
         Res = error(Err)
     ).
     % DEBUGSITE
-    % io__write_string("string ", !IO),
-    % io__write(Res, !IO),
-    % io__write_string("\n", !IO).
+    % io.write_string("string ", !IO),
+    % io.write(Res, !IO),
+    % io.write_string("\n", !IO).
 
 :- pred read_ptr(ptr_kind::in, maybe_error(int)::out,
     io::di, io::uo) is det.
@@ -922,18 +922,18 @@ read_n_byte_string(Length, Res, !IO) :-
 read_ptr(_Kind, Res, !IO) :-
     read_num1(0, Res, !IO).
     % DEBUGSITE
-    % io__write_string("ptr ", !IO),
-    % io__write(Res, !IO),
-    % io__write_string("\n", !IO).
+    % io.write_string("ptr ", !IO),
+    % io.write(Res, !IO),
+    % io.write_string("\n", !IO).
 
 :- pred read_num(maybe_error(int)::out, io::di, io::uo) is det.
 
 read_num(Res, !IO) :-
     read_num1(0, Res, !IO).
     % DEBUGSITE
-    % io__write_string("num ", !IO),
-    % io__write(Res, !IO),
-    % io__write_string("\n", !IO).
+    % io.write_string("num ", !IO),
+    % io.write(Res, !IO),
+    % io.write_string("\n", !IO).
 
 :- pred read_num1(int::in, maybe_error(int)::out,
     io::di, io::uo) is det.
@@ -953,7 +953,7 @@ read_num1(Num0, Res, !IO) :-
         Res = error("unexpected end of file")
     ;
         Res0 = error(Err),
-        io__error_message(Err, Msg),
+        io.error_message(Err, Msg),
         Res = error(Msg)
     ).
 
@@ -1025,9 +1025,9 @@ read_n_bytes(N, Bytes0, Res, !IO) :-
 read_deep_byte(Res, !IO) :-
     read_byte(Res0, !IO),
     % DEBUGSITE
-    % io__write_string("byte ", !IO),
-    % io__write(Res, !IO),
-    % io__write_string("\n", !IO),
+    % io.write_string("byte ", !IO),
+    % io.write(Res, !IO),
+    % io.write_string("\n", !IO),
     (
         Res0 = ok(Byte),
         Res = ok(Byte)
@@ -1036,7 +1036,7 @@ read_deep_byte(Res, !IO) :-
         Res = error("unexpected end of file")
     ;
         Res0 = error(Err),
-        io__error_message(Err, Msg),
+        io.error_message(Err, Msg),
         Res = error(Msg)
     ).
 
@@ -1045,11 +1045,11 @@ read_deep_byte(Res, !IO) :-
 :- pred deep_insert(array(T)::in, int::in, T::in, array(T)::out) is det.
 
 deep_insert(A0, Ind, Thing, A) :-
-    array__max(A0, Max),
+    array.max(A0, Max),
     ( Ind > Max ->
         error("deep_insert: array bounds violation")
-        % array__lookup(A0, 0, X),
-        % array__resize(u(A0), 2 * (Max + 1), X, A1),
+        % array.lookup(A0, 0, X),
+        % array.resize(u(A0), 2 * (Max + 1), X, A1),
         % deep_insert(A1, Ind, Thing, A)
     ;
         set(u(A0), Ind, Thing, A)

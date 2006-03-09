@@ -16,7 +16,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds__mode_constraints.
+:- module check_hlds.mode_constraints.
 :- interface.
 
 :- import_module check_hlds.abstract_mode_constraints.
@@ -60,8 +60,8 @@
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module mode_robdd.
-% :- import_module mode_robdd__check.
-% :- import_module mode_robdd__tfeir.
+% :- import_module mode_robdd.check.
+% :- import_module mode_robdd.tfeir.
 :- import_module mode_robdd.tfeirn.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_data.
@@ -107,9 +107,9 @@
 
 process_module(!ModuleInfo, !IO) :-
     module_info_predids(!.ModuleInfo, PredIds),
-    globals__io_lookup_bool_option(simple_mode_constraints, Simple, !IO),
-    globals__io_lookup_bool_option(prop_mode_constraints, New, !IO),
-    list__foldl2(hhf__process_pred(Simple), PredIds, !ModuleInfo, !IO),
+    globals.io_lookup_bool_option(simple_mode_constraints, Simple, !IO),
+    globals.io_lookup_bool_option(prop_mode_constraints, New, !IO),
+    list.foldl2(hhf.process_pred(Simple), PredIds, !ModuleInfo, !IO),
 
     get_predicate_sccs(!.ModuleInfo, SCCs),
 
@@ -117,12 +117,12 @@ process_module(!ModuleInfo, !IO) :-
         New = no,
 
         % Stage 1: Process SCCs bottom-up to determine variable producers.
-        list__foldl3(process_scc(Simple), SCCs,
-            !ModuleInfo, map__init, PredConstraintMap, !IO),
+        list.foldl3(process_scc(Simple), SCCs,
+            !ModuleInfo, map.init, PredConstraintMap, !IO),
 
         % Stage 2: Process SCCs top-down to determine execution order of
         % conjuctions and which modes are needed for each predicate.
-        mode_ordering(PredConstraintMap, list__reverse(SCCs),
+        mode_ordering(PredConstraintMap, list.reverse(SCCs),
             !ModuleInfo, !IO),
 
         % Stage 3, which would turn the results of the mode analysis
@@ -138,11 +138,11 @@ process_module(!ModuleInfo, !IO) :-
 
         % Stage 1: Process SCCs bottom-up to determine constraints on
         % variable producers and consumers.
-        list__foldl3(prop_mode_constraints__process_scc,
+        list.foldl3(prop_mode_constraints.process_scc,
             SCCs, !ModuleInfo, var_info_init, VarInfo,
             map.init, AbstractModeConstraints),
 
-        globals__io_lookup_bool_option(debug_mode_constraints, Debug, !IO),
+        globals.io_lookup_bool_option(debug_mode_constraints, Debug, !IO),
         (   Debug = yes,
             ConstraintVarset = mc_varset(VarInfo),
             pretty_print_pred_constraints_map(!.ModuleInfo, ConstraintVarset,
@@ -200,7 +200,7 @@ process_scc(Simple, SCC, !ModuleInfo, !PredConstraintMap,
     some [!ModeConstraint, !ModeConstraintInfo] (
         !:ModeConstraint = one,
         !:ModeConstraintInfo = init_mode_constraint_info(Simple),
-        list__foldl2(number_robdd_variables_in_pred, SCC, !ModuleInfo,
+        list.foldl2(number_robdd_variables_in_pred, SCC, !ModuleInfo,
             !ModeConstraintInfo),
 
         save_threshold(Threshold, !ModeConstraintInfo),
@@ -215,9 +215,9 @@ process_scc(Simple, SCC, !ModuleInfo, !PredConstraintMap,
         Insert = (pred(PredId::in, PCM0::in, PCM::out) is det :-
             NewPCI = pci(!.ModeConstraint,
                 !.ModeConstraintInfo ^ pred_id := PredId),
-            map__det_insert(PCM0, PredId, NewPCI, PCM)
+            map.det_insert(PCM0, PredId, NewPCI, PCM)
         ),
-        list__foldl(Insert, SCC, !PredConstraintMap)
+        list.foldl(Insert, SCC, !PredConstraintMap)
         % clear_caches(!IO).
     ).
 
@@ -273,8 +273,8 @@ update_md_info(P, R, !C) :-
     % the end of the analysis.
     % This allows us to use `restrict_threshold' during the analysis
     % to remove all unwanted variables.
-    % `Restrict_threshold' is much faster than using `robdd__filter'
-    % or `robdd__restrict'.
+    % `Restrict_threshold' is much faster than using `robdd.filter'
+    % or `robdd.restrict'.
     %
 :- pred number_robdd_variables_in_pred(pred_id::in,
     module_info::in, module_info::out,
@@ -293,16 +293,16 @@ number_robdd_variables_in_pred(PredId, !ModuleInfo, !MCI) :-
     % equivalent variables, avoiding adding lots of equivalence constraints
     % to the ROBDD. This is a good thing since equivalence constraints tend
     % to cause exponential explosions in ROBDDs. We achieve this by passing
-    % `OmitModeEquivPrefix = yes' to `goal_path__fill_slots_in_clauses'.
+    % `OmitModeEquivPrefix = yes' to `goal_path.fill_slots_in_clauses'.
 
     OmitModeEquivPrefix = yes,
-    goal_path__fill_slots_in_clauses(!.ModuleInfo, OmitModeEquivPrefix,
+    goal_path.fill_slots_in_clauses(!.ModuleInfo, OmitModeEquivPrefix,
         PredInfo0, PredInfo1),
 
     pred_info_clauses_info(PredInfo1, ClausesInfo0),
     clauses_info_headvars(ClausesInfo0, HeadVars),
     InstGraph = PredInfo1 ^ inst_graph_info ^ implementation_inst_graph,
-    inst_graph__foldl_reachable_from_list(
+    inst_graph.foldl_reachable_from_list(
         ( pred(V::in, S0::in, S::out) is det :-
             mode_constraint_var(in(V), _, S0, S1),
             mode_constraint_var(out(V), _, S1, S2),
@@ -316,11 +316,11 @@ number_robdd_variables_in_pred(PredId, !ModuleInfo, !MCI) :-
         clauses_info_vartypes(ClausesInfo0, VarTypes),
         NRInfo0 = number_robdd_info(!.MCI, !.ModuleInfo, VarTypes),
 
-        list__map_foldl(
+        list.map_foldl(
             (pred(Clause0::in, Clause::out, S0::in, S::out) is det :-
                 Clause0 = clause(A, Goal0, C, D),
                 number_robdd_variables_in_goal(InstGraph,
-                    set__init, _, Goal0, Goal, S0, S),
+                    set.init, _, Goal0, Goal, S0, S),
                 Clause = clause(A, Goal, C, D)
         ), Clauses0, Clauses, NRInfo0, NRInfo),
 
@@ -377,7 +377,7 @@ number_robdd_variables_in_goal_2(InstGraph, _, _, NonLocals, Occurring,
         Then0, Then, !RInfo),
     number_robdd_variables_in_goal(InstGraph, NonLocals, OccElse,
         Else0, Else, !RInfo),
-    Occurring = OccCond `set__union` OccThen `set__union` OccElse.
+    Occurring = OccCond `set.union` OccThen `set.union` OccElse.
 number_robdd_variables_in_goal_2(_, _, _, _, _, shorthand(_), _, !RInfo) :-
     unexpected(this_file, "number_robdd_variables_in_goal_2: shorthand").
 
@@ -402,7 +402,7 @@ number_robdd_variables_in_goal_2(InstGraph, GoalPath, ParentNonLocals, _,
 number_robdd_variables_in_goal_2(InstGraph, GoalPath, ParentNonLocals, _,
         Occurring, GoalExpr, GoalExpr, !RInfo) :-
     GoalExpr = foreign_proc(_, _, _, Args, _, _),
-    ArgVars = list__map(foreign_arg_var, Args),
+    ArgVars = list.map(foreign_arg_var, Args),
     number_robdd_variables_at_goal_path(InstGraph, GoalPath,
         ParentNonLocals, ArgVars, Occurring, !RInfo).
 
@@ -422,15 +422,15 @@ number_robdd_variables_in_rhs(InstGraph, GoalPath, Vars, !RHS, !NRInfo) :-
     Vars = LambdaNonLocals,
     VarTypes = !.NRInfo ^ vartypes,
     ModuleInfo = !.NRInfo ^ module_info,
-    goal_path__fill_slots_in_goal(LambdaGoal0, VarTypes, ModuleInfo,
+    goal_path.fill_slots_in_goal(LambdaGoal0, VarTypes, ModuleInfo,
         LambdaGoal1),
     update_mc_info(enter_lambda_goal(GoalPath), !NRInfo),
 
     % Number arguments to the lambda goal, i.e. the nonlocals and the
     % lambda-quantified variables.
-    LambdaHeadVars = LambdaNonLocals `list__append` LambdaVars,
+    LambdaHeadVars = LambdaNonLocals `list.append` LambdaVars,
     update_mc_info(pred(in, out) is det -->
-        inst_graph__foldl_reachable_from_list(
+        inst_graph.foldl_reachable_from_list(
             ( pred(V::in, in, out) is det -->
                 mode_constraint_var(in(V), _),
                 mode_constraint_var(out(V), _),
@@ -438,7 +438,7 @@ number_robdd_variables_in_rhs(InstGraph, GoalPath, Vars, !RHS, !NRInfo) :-
             ), InstGraph, LambdaHeadVars), !NRInfo),
 
     % Number variables within the lambda goal.
-    number_robdd_variables_in_goal(InstGraph, set__init, _Occurring,
+    number_robdd_variables_in_goal(InstGraph, set.init, _Occurring,
         LambdaGoal1, LambdaGoal, !NRInfo),
 
     update_mc_info(leave_lambda_goal, !NRInfo),
@@ -450,12 +450,11 @@ number_robdd_variables_in_rhs(InstGraph, GoalPath, Vars, !RHS, !NRInfo) :-
 
 number_robdd_variables_at_goal_path(InstGraph, GoalPath, ParentNonLocals,
         Vars0, Occurring, !NRInfo) :-
-    solutions_set(inst_graph__reachable_from_list(InstGraph, Vars0),
-        Occurring),
-    Vars = set__to_sorted_list(ParentNonLocals `set__union`
-        set__list_to_set(Vars0)),
+    solutions_set(inst_graph.reachable_from_list(InstGraph, Vars0), Occurring),
+    Vars = set.to_sorted_list(ParentNonLocals `set.union`
+        set.list_to_set(Vars0)),
     % XXX We may be able to make this more efficient.
-    inst_graph__foldl_reachable_from_list(
+    inst_graph.foldl_reachable_from_list(
         (pred(V::in, S0::in, S::out) is det :-
             update_mc_info(mode_constraint_var(V `at` GoalPath), _, S0, S)
         ), InstGraph, Vars, !NRInfo).
@@ -465,28 +464,28 @@ number_robdd_variables_at_goal_path(InstGraph, GoalPath, ParentNonLocals,
     number_robdd_info::in, number_robdd_info::out) is det.
 
 number_robdd_variables_in_goals(_, _, Occurring, [], [], !RInfo) :-
-    set__init(Occurring).
+    set.init(Occurring).
 number_robdd_variables_in_goals(InstGraph, NonLocals, Occurring,
         [Goal0 | Goals0], [Goal | Goals], !RInfo) :-
     number_robdd_variables_in_goal(InstGraph, NonLocals, Occurring0,
         Goal0, Goal, !RInfo),
     number_robdd_variables_in_goals(InstGraph, NonLocals, Occurring1,
         Goals0, Goals, !RInfo),
-    Occurring = Occurring0 `set__union` Occurring1.
+    Occurring = Occurring0 `set.union` Occurring1.
 
 :- pred number_robdd_variables_in_cases(inst_graph::in, set(prog_var)::in,
     set(prog_var)::out, list(case)::in, list(case)::out,
     number_robdd_info::in, number_robdd_info::out) is det.
 
 number_robdd_variables_in_cases(_, _, Occurring, [], [], !RInfo) :-
-    set__init(Occurring).
+    set.init(Occurring).
 number_robdd_variables_in_cases(InstGraph, NonLocals, Occurring,
         [case(C, Goal0) | Cases0], [case(C, Goal) | Cases], !RInfo) :-
     number_robdd_variables_in_goal(InstGraph, NonLocals, Occurring0,
         Goal0, Goal, !RInfo),
     number_robdd_variables_in_cases(InstGraph, NonLocals, Occurring1,
         Cases0, Cases, !RInfo),
-    Occurring = Occurring0 `set__union` Occurring1.
+    Occurring = Occurring0 `set.union` Occurring1.
 
 :- pred process_scc_pass_1(list(pred_id)::in,
     list(pred_id)::in, module_info::in,
@@ -526,21 +525,21 @@ process_pred(PredId, SCC, !ModuleInfo, !ModeConstraint,
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     write_pred_progress_message("% Calculating mode constraints for ",
         PredId, !.ModuleInfo, !IO),
-    io__flush_output(!IO),
+    io.flush_output(!IO),
 
     InstGraph = PredInfo0 ^ inst_graph_info ^ implementation_inst_graph,
     pred_info_procedures(PredInfo0, ProcTable0),
     pred_info_clauses_info(PredInfo0, ClausesInfo0),
     clauses_info_headvars(ClausesInfo0, HeadVars),
 
-    HOModes0 = map__init,
-    ( ( map__is_empty(ProcTable0) ; pred_info_infer_modes(PredInfo0) ) ->
+    HOModes0 = map.init,
+    ( ( map.is_empty(ProcTable0) ; pred_info_infer_modes(PredInfo0) ) ->
         DeclConstraint = one,
         HOModes = HOModes0,
         PredInfo1 = PredInfo0
     ;
         ModeDeclInfo0 = mode_decl_info(!.ModeConstraintInfo, HOModes0),
-        map__map_foldl2(
+        map.map_foldl2(
             mode_decl_to_constraint(!.ModuleInfo,
                 InstGraph, HeadVars, PredInfo0),
             ProcTable0, ProcTable,
@@ -558,7 +557,7 @@ process_pred(PredId, SCC, !ModuleInfo, !ModeConstraint,
     %   format("mode_decl_%d.dot", [i(PredIdInt)]), !IO),
     % robdd_to_dot(ModeConstraint1, ProgVarSet, ModeConstraintInfo1,
     %   format("mode_constraint1_%d.dot", [i(PredIdInt)]), !IO),
-    % io__flush_output(!IO),
+    % io.flush_output(!IO),
 
     ( pred_info_is_imported(PredInfo1) ->
         PredInfo = PredInfo1
@@ -594,32 +593,32 @@ process_pred_2(PredId, ModeConstraint, ModeConstraintInfo0,
     % DEBUGGING CODE
     % dump_mode_constraints(!.ModuleInfo, PredInfo0, InstGraph,
     %   ModeConstraint, ModeConstraintInfo0),
-    % io__flush_output(!IO),
+    % io.flush_output(!IO),
     %
-    % list__foldl((pred(M - _::in, di, uo) is det -->
-    %   map__foldl((pred(_MV::in, Val::in, di, uo) is det -->
-    %       io__write_string(Val = yes -> "1 " ; "0 ")
+    % list.foldl((pred(M - _::in, di, uo) is det -->
+    %   map.foldl((pred(_MV::in, Val::in, di, uo) is det -->
+    %       io.write_string(Val = yes -> "1 " ; "0 ")
     %   ), M),
-    %   io__nl
+    %   io.nl
     % ), Modes),
     %
-    % io__nl(!IO),
+    % io.nl(!IO),
     %
-    % solutions(inst_graph__reachable_from_list(InstGraph, HeadVars),
+    % solutions(inst_graph.reachable_from_list(InstGraph, HeadVars),
     %   ReachVars),
-    % list__map_foldl((pred(PV::in, MV::out, in, out) is det -->
+    % list.map_foldl((pred(PV::in, MV::out, in, out) is det -->
     %   mode_constraint_var(in(PV), MV)
     % ), ReachVars, InVars, ModeConstraintInfo0, ModeConstraintInfo),
     %
     % InVarConstraint = restrict_filter((pred(in(V)::in) is semidet :-
-    %       list__member(V, ReachVars)),
+    %       list.member(V, ReachVars)),
     %   ModeConstraintInfo, ModeConstraint),
-    % aggregate(fundamental_mode(set__list_to_set(InVars), InVarConstraint),
+    % aggregate(fundamental_mode(set.list_to_set(InVars), InVarConstraint),
     %   (pred(M::in, di, uo) is det -->
-    %       map__foldl((pred(_MV::in, Val::in, di, uo) is det -->
-    %           io__write_string(Val = yes -> "1 " ; "0 ")
+    %       map.foldl((pred(_MV::in, Val::in, di, uo) is det -->
+    %           io.write_string(Val = yes -> "1 " ; "0 ")
     %       ), M),
-    %   io__nl
+    %   io.nl
     % ), !IO),
 
     % DMO justify or delete
@@ -631,8 +630,8 @@ process_pred_2(PredId, ModeConstraint, ModeConstraintInfo0,
     % clauses_info_varset(ClausesInfo, ProgVarSet),
     % pred_info_name(PredInfo, Name),
     % robdd_to_dot(ModeConstraint, ProgVarSet, ModeConstraintInfo,
-    %   Name `string__append` ".dot", !IO),
-    % io__flush_output(!IO),
+    %   Name `string.append` ".dot", !IO),
+    % io.flush_output(!IO),
 
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
@@ -693,7 +692,7 @@ save_thresh(Thresh, !GCInfo) :-
 
 add_atomic_goal(GoalPath, !GCInfo) :-
     AtomicGoals = !.GCInfo ^ atomic_goals,
-    !:GCInfo = !.GCInfo ^ atomic_goals := AtomicGoals `set__insert` GoalPath.
+    !:GCInfo = !.GCInfo ^ atomic_goals := AtomicGoals `set.insert` GoalPath.
 
 :- type mode_decl_info
     --->    mode_decl_info(
@@ -765,8 +764,8 @@ process_mode_decl_for_proc(ModuleInfo, InstGraph, HeadVars,
 process_mode_decl(ModuleInfo, InstGraph, HeadVars,
         InitialFree, InitialBound, InitialHO,
         FinalFree, FinalBound, FinalHO, ArgModes, !Constraint, !MDI) :-
-    assoc_list__from_corresponding_lists(HeadVars, ArgModes, VarModes),
-    list__foldl2(process_arg_modes(ModuleInfo, InstGraph,
+    assoc_list.from_corresponding_lists(HeadVars, ArgModes, VarModes),
+    list.foldl2(process_arg_modes(ModuleInfo, InstGraph,
         InitialFree, InitialBound, InitialHO, FinalFree, FinalBound, FinalHO),
         VarModes, one, NewConstraint, !MDI),
     !:Constraint = !.Constraint + NewConstraint.
@@ -787,10 +786,10 @@ process_arg_modes(ModuleInfo, InstGraph,
     mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
     process_inst(ModuleInfo, InstGraph,
         InitialFree, InitialBound, InitialHO, InitialInst,
-        set__init, Var, !Constraint, !MDI),
+        set.init, Var, !Constraint, !MDI),
     process_inst(ModuleInfo, InstGraph,
         FinalFree, FinalBound, FinalHO, FinalInst,
-        set__init, Var, !Constraint, !MDI).
+        set.init, Var, !Constraint, !MDI).
 
 :- func initial(prog_var) = rep_var.
 
@@ -860,7 +859,7 @@ call_out(Path, Var, C0, C, !MCI) :-
 
 process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO, Inst,
         Seen, Var, !Constraint, !MDI) :-
-    ( Var `set__member` Seen ->
+    ( Var `set.member` Seen ->
         true
     ;
         ( Inst = defined_inst(InstName) ->
@@ -900,18 +899,18 @@ do_process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO,
             S = S0
         )), !:Constraint, !MDI),
 
-    map__lookup(InstGraph, Var, node(Functors, _)),
-    map__foldl2(
+    map.lookup(InstGraph, Var, node(Functors, _)),
+    map.foldl2(
         (pred(ConsId::in, Vs::in, C0::in, C::out, S0::in, S::out)
             is det :-
         ( Inst = bound(_, BIs) ->
             ( cons_id_in_bound_insts(ConsId, BIs, Insts) ->
-                assoc_list__from_corresponding_lists(Vs,
+                assoc_list.from_corresponding_lists(Vs,
                     Insts, VarInsts),
-                list__foldl2((pred((V - I)::in, C1::in, C2::out,
+                list.foldl2((pred((V - I)::in, C1::in, C2::out,
                         T0::in, T::out) is det :-
                     process_inst(ModuleInfo, InstGraph,
-                        Free, Bound, DoHO, I, Seen `set__insert` Var,
+                        Free, Bound, DoHO, I, Seen `set.insert` Var,
                         V, C1, C2, T0, T)
                     ), VarInsts, C0, C, S0, S)
             ;
@@ -919,9 +918,9 @@ do_process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO,
                 S = S0
             )
         ;
-            list__foldl2(
+            list.foldl2(
                 process_inst(ModuleInfo, InstGraph,
-                    Free, Bound, DoHO, Inst, Seen `set__insert` Var),
+                    Free, Bound, DoHO, Inst, Seen `set.insert` Var),
                 Vs, C0, C, S0, S)
         )), Functors, !Constraint, !MDI),
     (
@@ -930,7 +929,7 @@ do_process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO,
     ->
         HoModes0 = !.MDI ^ ho_modes,
         update_mc_info(get_prog_var_level(Var), VarLevel, !MDI),
-        multi_map__set(HoModes0, VarLevel, ArgModes, HoModes),
+        multi_map.set(HoModes0, VarLevel, ArgModes, HoModes),
         !:MDI = !.MDI ^ ho_modes := HoModes
     ;
         true
@@ -945,28 +944,28 @@ do_process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO,
 process_clauses_info(ModuleInfo, SCC, !ClausesInfo,
         InstGraph, HOModes0, !Constraint, !ConstraintInfo, !IO) :-
     clauses_info_varset(!.ClausesInfo, VarSet0),
-    globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     (
         VeryVerbose = yes,
-        inst_graph__dump(InstGraph, VarSet0, !IO)
+        inst_graph.dump(InstGraph, VarSet0, !IO)
     ;
         VeryVerbose = no
     ),
 
     clauses_info_headvars(!.ClausesInfo, HeadVars),
-    map__foldl2(input_output_constraints(HeadVars, InstGraph),
+    map.foldl2(input_output_constraints(HeadVars, InstGraph),
         InstGraph, !Constraint, !ConstraintInfo),
 
     clauses_info_clauses(Clauses, !ClausesInfo),
-    list__map(pred(clause(_, Goal, _, _)::in, Goal::out) is det, Clauses,
+    list.map(pred(clause(_, Goal, _, _)::in, Goal::out) is det, Clauses,
         Goals),
     DisjGoal = disj(Goals),
     EmptyGoalPath = [],
-    AtomicGoals0 = set__init,
+    AtomicGoals0 = set.init,
     Info0 = goal_constraints_info(ModuleInfo, SCC, InstGraph, HeadVars,
-        VarSet0, AtomicGoals0, !.ConstraintInfo, HOModes0, map__init),
-    NonLocals = set__list_to_set(HeadVars),
-    GoalVars = set__sorted_list_to_set(map__sorted_keys(InstGraph)),
+        VarSet0, AtomicGoals0, !.ConstraintInfo, HOModes0, map.init),
+    NonLocals = set.list_to_set(HeadVars),
+    GoalVars = set.sorted_list_to_set(map.sorted_keys(InstGraph)),
 
     goal_constraints_2(EmptyGoalPath, NonLocals, GoalVars, _CanSucceed,
         DisjGoal, _, !Constraint, Info0, Info1),
@@ -978,13 +977,13 @@ process_clauses_info(ModuleInfo, SCC, !ClausesInfo,
 
     % robdd_to_dot(!.Constraint, Info2 ^ prog_varset,
     %   Info2 ^ mc_info, "before_higher_order.dot, !IO"),
-    % io__flush_output(!IO),
+    % io.flush_output(!IO),
 
     higher_order_call_constraints(!Constraint, Info2, Info),
 
     % robdd_to_dot(!.Constraint, Info ^ prog_varset,
     %   Info ^ mc_info, "after_higher_order.dot", !IO),
-    % io__flush_output(!IO),
+    % io.flush_output(!IO),
 
     clauses_info_set_varset(Info ^ prog_varset, !ClausesInfo),
     !:ConstraintInfo = Info ^ mc_info.
@@ -994,18 +993,18 @@ process_clauses_info(ModuleInfo, SCC, !ClausesInfo,
     % variables and relationships of boundedness on input and output.
     %
 :- pred input_output_constraints(list(prog_var)::in, inst_graph::in,
-    prog_var::in, inst_graph__node::in,
+    prog_var::in, inst_graph.node::in,
     mode_constraint::in, mode_constraint::out,
     mode_constraint_info::in, mode_constraint_info::out) is det.
 
 input_output_constraints(HeadVars, InstGraph, V, Node, !Constraint, !MCI) :-
     % For each node V not reachable from an argument node, add
     %   Vin = 0
-    inst_graph__top_level_node(InstGraph, V, TopLevel),
+    inst_graph.top_level_node(InstGraph, V, TopLevel),
     mode_constraint_var(in(V), V_in, !MCI),
     mode_constraint_var(out(V), V_out, !MCI),
     mode_constraint_var(V `at` [], V_, !MCI),
-    ( TopLevel `list__member` HeadVars ->
+    ( TopLevel `list.member` HeadVars ->
         % For each variable V in the instantiation graph, add
         %   (Vout = Vin + V), ~(Vin * V)
         !:Constraint = !.Constraint ^ io_constraint(V_in, V_out, V_)
@@ -1016,9 +1015,9 @@ input_output_constraints(HeadVars, InstGraph, V, Node, !Constraint, !MCI) :-
     % For each node V in the graph with child f with child W, add
     %   Wout -> Vout, Win -> Vin
     Node = node(Functors, _),
-    map__values(Functors, Children0),
-    list__condense(Children0, Children),
-    list__foldl2((pred(W::in, Cs0::in, Cs::out, S0::in, S::out) is det :-
+    map.values(Functors, Children0),
+    list.condense(Children0, Children),
+    list.foldl2((pred(W::in, Cs0::in, Cs::out, S0::in, S::out) is det :-
             ( W = V ->
                 Cs = Cs0,
                 S = S0
@@ -1048,15 +1047,15 @@ goal_constraints(ParentNonLocals, CanSucceed, GoalExpr0 - GoalInfo0,
 
     % Number the vars we want to keep for this goal.
     % XXX
-    list__foldl((pred(V::in, S0::in, S::out) is det :-
+    list.foldl((pred(V::in, S0::in, S::out) is det :-
             get_var(V `at` GoalPath, _, S0, S)
-        ), set__to_sorted_list(Vars), !GCInfo),
+        ), set.to_sorted_list(Vars), !GCInfo),
     save_thresh(Threshold, !GCInfo),
 
     goal_info_get_nonlocals(GoalInfo0, NonLocals),
 
     InstGraph = !.GCInfo ^ inst_graph,
-    NonLocalReachable = solutions_set(inst_graph__reachable_from_list(
+    NonLocalReachable = solutions_set(inst_graph.reachable_from_list(
         InstGraph, to_sorted_list(NonLocals))),
     LocalVars = Vars `difference` NonLocalReachable,
 
@@ -1081,29 +1080,29 @@ goal_constraints(ParentNonLocals, CanSucceed, GoalExpr0 - GoalInfo0,
     % ModuleInfo = !GCInfo ^ module_info,
     % ProgVarset = !GCInfo ^ prog_varset,
     % functor(GoalExpr, Functor, _),
-    % unsafe_perform_io(io__format("\nFunctor: %s\n", [s(Functor)])),
+    % unsafe_perform_io(io.format("\nFunctor: %s\n", [s(Functor)])),
     % unsafe_perform_io(dump_constraints(ModuleInfo, ProgVarset,
     %   !.Constraint)),
 
     % DMO document
-    % constrict_to_vars(set__to_sorted_list(NonLocals), Vars,
+    % constrict_to_vars(set.to_sorted_list(NonLocals), Vars,
     %   GoalPath, !Constraint, !GCInfo)
 
     % DEBUGGING CODE
     % size(Constraint1, NumNodes1, Depth1),
-    % unsafe_perform_io(io__format(
+    % unsafe_perform_io(io.format(
     %   "Pre restrict Size: %d, Depth: %d\n",
     %   [i(NumNodes1), i(Depth1)])),
-    % unsafe_perform_io(io__flush_output),
+    % unsafe_perform_io(io.flush_output),
 
     !:Constraint = restrict_threshold(Threshold, !.Constraint),
 
     % DEBUGGING CODE
     % size(Constraint2, NumNodes2, Depth2),
-    % unsafe_perform_io(io__format(
+    % unsafe_perform_io(io.format(
     %   "Post restrict Size: %d, Depth: %d\n",
     %   [i(NumNodes2), i(Depth2)])),
-    % unsafe_perform_io(io__flush_output),
+    % unsafe_perform_io(io.flush_output),
 
     constrain_non_occurring_vars(CanSucceed, ParentNonLocals, Vars,
         GoalPath, !Constraint, !GCInfo),
@@ -1126,12 +1125,12 @@ goal_constraints_2(GoalPath, NonLocals, _, CanSucceed, conj(ConjType, Goals0),
         conj(ConjType, Goals), !Constraint, !GCInfo) :-
     (
         ConjType = plain_conj,
-        multi_map__init(Usage0),
+        multi_map.init(Usage0),
 
-        Usage = list__foldl(func(G, U0) =
-            list__foldl((func(V, U1) = U :-
-                multi_map__set(U1, V, goal_path(G), U)),
-                set__to_sorted_list(vars(G)), U0),
+        Usage = list.foldl(func(G, U0) =
+            list.foldl((func(V, U1) = U :-
+                multi_map.set(U1, V, goal_path(G), U)),
+                set.to_sorted_list(vars(G)), U0),
             Goals0, Usage0),
 
         known_vars(ensure_normalised(!.Constraint), KnownTrue, KnownFalse),
@@ -1157,13 +1156,13 @@ goal_constraints_2(GoalPath, NonLocals, Vars, CanSucceed, disj(Goals0),
         disj(Goals), !Constraint, !GCInfo) :-
     disj_constraints(NonLocals, CanSucceed, !Constraint, Goals0, Goals,
         [], DisjunctPaths, !GCInfo),
-    list__foldl2((pred(V::in, Cons0::in, Cons::out, in, out) is det -->
+    list.foldl2((pred(V::in, Cons0::in, Cons::out, in, out) is det -->
         get_var(V `at` GoalPath, Vgp),
-        list__foldl2((pred(Path::in, C0::in, C::out, in, out) is det -->
+        list.foldl2((pred(Path::in, C0::in, C::out, in, out) is det -->
             get_var(V `at` Path, VPath),
             { C = C0 ^ eq_vars(Vgp, VPath) }
         ), DisjunctPaths, Cons0, Cons)
-    ), set__to_sorted_list(Vars), !Constraint, !GCInfo).
+    ), set.to_sorted_list(Vars), !Constraint, !GCInfo).
 
 goal_constraints_2(GoalPath, _NonLocals, _, CanSucceed, GoalExpr0, GoalExpr,
         !Constraint, !GCInfo) :-
@@ -1182,7 +1181,7 @@ goal_constraints_2(GoalPath, _NonLocals, _, CanSucceed, GoalExpr, GoalExpr,
 
     CanSucceed = ( pred_can_succeed(PredInfo) -> yes ; no ),
 
-    ( PredId `list__member` SCC ->
+    ( PredId `list.member` SCC ->
         % This is a recursive call.
         % XXX we currently assume that all recursive calls are to the
         % same mode of the predicate.
@@ -1197,9 +1196,9 @@ goal_constraints_2(GoalPath, _NonLocals, _, CanSucceed, GoalExpr, GoalExpr,
             % to obtain the constraints for the call.
 
             pred_info_procedures(PredInfo, ProcTable),
-            map__values(ProcTable, ProcInfos),
+            map.values(ProcTable, ProcInfos),
             update_md_info((pred(C::out, S0::in, S::out) is det :-
-                list__foldl2(
+                list.foldl2(
                     process_mode_decl_for_proc(ModuleInfo,
                         InstGraph, Args, ignore, call_in(GoalPath), no,
                         false_var(goal_path(GoalPath)), call_out(GoalPath),
@@ -1216,19 +1215,19 @@ goal_constraints_2(GoalPath, _NonLocals, _, CanSucceed, GoalExpr, GoalExpr,
             pred_info_clauses_info(PredInfo, PredClausesInfo),
             clauses_info_headvars(PredClausesInfo, PredHeadVars),
             solutions((pred((V - W)::out) is nondet :-
-                inst_graph__corresponding_nodes_from_lists(
+                inst_graph.corresponding_nodes_from_lists(
                     PredInstGraph, InstGraph, PredHeadVars, Args, V, W)
                 ), CorrespondingNodes),
-            list__foldl2((pred(ArgMap::in, Cn0::in, Cn::out,
+            list.foldl2((pred(ArgMap::in, Cn0::in, Cn::out,
                     S0::in, S::out) is det :-
                 ArgMap = InArgs - OutArgs,
-                list__foldl2((pred((V - W)::in, C0::in, C::out,
+                list.foldl2((pred((V - W)::in, C0::in, C::out,
                         T0::in, T::out) is det :-
                     get_var(W `at` GoalPath, Wgp, T0, T1),
                     get_var(out(W), Wout, T1, T),
-                    ( map__lookup(InArgs, V, yes) ->
+                    ( map.lookup(InArgs, V, yes) ->
                         C = C0 ^ var(Wout) ^ not_var(Wgp)
-                    ; map__lookup(OutArgs, V, yes) ->
+                    ; map.lookup(OutArgs, V, yes) ->
                         C = C0 ^ var(Wgp)
                     ;
                         C = C0 ^ not_var(Wgp)
@@ -1253,7 +1252,7 @@ goal_constraints_2(GoalPath, _NonLocals, _Vars, CanSucceed, GoalExpr, GoalExpr,
         % once we know the higher order mode of the Var we are calling.
         HoCalls0 = !.GCInfo ^ ho_calls,
         update_mc_info(get_prog_var_level(Var), VarLevel, !GCInfo),
-        multi_map__set(HoCalls0, VarLevel, GoalPath - Args, HoCalls),
+        multi_map.set(HoCalls0, VarLevel, GoalPath - Args, HoCalls),
         !:GCInfo = !.GCInfo ^ ho_calls := HoCalls,
 
         CanSucceed = yes % XXX should check this
@@ -1275,11 +1274,11 @@ goal_constraints_2(GoalPath, NonLocals, Vars, CanSucceed,
 
     CanSucceed = yes,
 
-    list__foldl2((pred(V::in, C0::in, C::out, in, out) is det -->
+    list.foldl2((pred(V::in, C0::in, C::out, in, out) is det -->
             get_var(V `at` GoalPath, Vgp),
             get_var(V `at` goal_path(Goal), Vneg),
             { C = C0 ^ eq_vars(Vgp, Vneg) }
-        ), set__to_sorted_list(Vars), !Constraint, !GCInfo),
+        ), set.to_sorted_list(Vars), !Constraint, !GCInfo),
 
     % Make sure the negation doesn't bind any nonlocal variables.
     negation_constraints(GoalPath, NonLocals, !Constraint, !GCInfo).
@@ -1289,11 +1288,11 @@ goal_constraints_2(GoalPath, NonLocals, Vars, CanSucceed, scope(Reason, Goal0),
     goal_constraints(NonLocals, CanSucceed, Goal0, Goal, !Constraint,
         !GCInfo),
 
-    list__foldl2((pred(V::in, C0::in, C::out, in, out) is det -->
+    list.foldl2((pred(V::in, C0::in, C::out, in, out) is det -->
             get_var(V `at` GoalPath, Vgp),
             get_var(V `at` goal_path(Goal), Vexist),
             { C = C0 ^ eq_vars(Vgp, Vexist) }
-        ), set__to_sorted_list(Vars), !Constraint, !GCInfo).
+        ), set.to_sorted_list(Vars), !Constraint, !GCInfo).
 
 goal_constraints_2(GoalPath, NonLocals, Vars, CanSucceed,
         if_then_else(IteNonLocals, Cond0, Then0, Else0),
@@ -1315,12 +1314,12 @@ goal_constraints_2(GoalPath, NonLocals, Vars, CanSucceed,
     CanSucceed = (CanSucceedC `and` CanSucceedT) `or` CanSucceedE,
 
     InstGraph = !.GCInfo ^ inst_graph,
-    NonLocalReachable = solutions(inst_graph__reachable_from_list(
+    NonLocalReachable = solutions(inst_graph.reachable_from_list(
         InstGraph, to_sorted_list(NonLocals))),
 
     % Make sure variables have the same bindings in both the then and else
     % branches.
-    list__foldl2((pred(V::in, C0::in, C::out, S0::in, S::out) is det :-
+    list.foldl2((pred(V::in, C0::in, C::out, S0::in, S::out) is det :-
             get_var(V `at` GoalPath, Vgp, S0, S1),
             get_var(V `at` goal_path(Then0), Vthen, S1, S2),
             get_var(V `at` goal_path(Else0), Velse, S2, S),
@@ -1329,11 +1328,11 @@ goal_constraints_2(GoalPath, NonLocals, Vars, CanSucceed,
 
     % Make sure variables are bound in at most one of the cond and then
     % goals.
-    list__foldl2((pred(V::in, C0::in, C::out, S0::in, S::out) is det :-
+    list.foldl2((pred(V::in, C0::in, C::out, S0::in, S::out) is det :-
             get_var(V `at` goal_path(Cond0), Vcond, S0, S1),
             get_var(V `at` goal_path(Then0), Vthen, S1, S),
             C = C0 ^ not_both(Vcond, Vthen)
-        ), set__to_sorted_list(vars(Cond0) `set__union` vars(Then0)),
+        ), set.to_sorted_list(vars(Cond0) `set.union` vars(Then0)),
         !Constraint, !GCInfo),
 
     % Local variables bound in cond, then or else should be treated as
@@ -1342,7 +1341,7 @@ goal_constraints_2(GoalPath, NonLocals, Vars, CanSucceed,
     % be satisfied.)
     Locals = to_sorted_list(
         Vars `difference` sorted_list_to_set(NonLocalReachable)),
-    list__foldl2((pred(V::in, C0::in, C::out, S0::in, S::out) is det :-
+    list.foldl2((pred(V::in, C0::in, C::out, S0::in, S::out) is det :-
             get_var(V `at` goal_path(Cond), Vcond, S0, S1),
             get_var(V `at` goal_path(Then), Vthen, S1, S2),
             get_var(V `at` goal_path(Else), Velse, S2, S3),
@@ -1368,8 +1367,8 @@ goal_constraints_2(_,_,_,_,shorthand(_),_,_,_,_,_) :-
 
 conj_constraints(UseKnownVars, KnownTrue, KnownFalse, GoalPath, UsageMap,
         !Constraint, !GCInfo) :-
-    UsageList = map__to_assoc_list(UsageMap), % XXX needed for deep profiler
-    list__foldl2(
+    UsageList = map.to_assoc_list(UsageMap), % XXX needed for deep profiler
+    list.foldl2(
         conj_constraints_process_var(UseKnownVars, KnownTrue, KnownFalse,
             GoalPath),
         UsageList, !Constraint, !GCInfo).
@@ -1382,7 +1381,7 @@ conj_constraints(UseKnownVars, KnownTrue, KnownFalse, GoalPath, UsageMap,
 
 conj_constraints_process_var(UseKnownVars, KnownTrue, KnownFalse, GoalPath,
         Var - Paths, !Constraint, !GCInfo) :-
-    list__map_foldl((pred(P::in, CV::out, in, out) is det -->
+    list.map_foldl((pred(P::in, CV::out, in, out) is det -->
         get_var(Var `at` P, CV)
     ), Paths, ConstraintVars, !GCInfo),
     get_var(Var `at` GoalPath, VConj, !GCInfo),
@@ -1449,7 +1448,7 @@ conj_subgoal_constraints(NonLocals, CanSucceed, !Constraint,
         !GCInfo),
     conj_subgoal_constraints(NonLocals, CanSucceed1, !Constraint,
         Goals0, Goals, !GCInfo),
-    CanSucceed = CanSucceed0 `bool__and` CanSucceed1.
+    CanSucceed = CanSucceed0 `bool.and` CanSucceed1.
 
 :- pred disj_constraints(set(prog_var)::in, can_succeed::out,
     mode_constraint::in, mode_constraint::out,
@@ -1464,7 +1463,7 @@ disj_constraints(NonLocals, CanSucceed, !Constraint,
         !Constraint, !GCInfo),
     disj_constraints(NonLocals, CanSucceed1, !Constraint,
         Goals0, Goals, [goal_path(Goal) | Paths0], Paths, !GCInfo),
-    CanSucceed = CanSucceed0 `bool__or` CanSucceed1.
+    CanSucceed = CanSucceed0 `bool.or` CanSucceed1.
 
     % See 1.2.3 The literals themselves
 :- pred unify_constraints(prog_var::in, goal_path::in, unify_rhs::in,
@@ -1476,7 +1475,7 @@ unify_constraints(A, GoalPath, RHS, RHS, !Constraint, !GCInfo) :-
     InstGraph = !.GCInfo ^ inst_graph,
     Generator =
         (pred((V - W)::out) is multi :-
-            inst_graph__corresponding_nodes(InstGraph, A, B, V, W)
+            inst_graph.corresponding_nodes(InstGraph, A, B, V, W)
         ),
     Accumulator =
         (pred((V - W)::in, C0::in, C::out, S0::in, S::out) is det :-
@@ -1501,7 +1500,7 @@ unify_constraints(A, GoalPath, RHS, RHS, !Constraint, !GCInfo) :-
     ( update_mc_info(using_simple_mode_constraints, !GCInfo) ->
         % In the simple system a var-functor unification must be either
         % a construction or a deconstruction.
-        list__map_foldl(
+        list.map_foldl(
             ( pred(ProgVar::in, RepVar::out, S0::in, S::out) is det :-
                 get_var(ProgVar `at` GoalPath, RepVar, S0, S)
             ), Args, ArgsGp0, !GCInfo),
@@ -1520,7 +1519,7 @@ unify_constraints(A, GoalPath, RHS, RHS, !Constraint, !GCInfo) :-
         %   ) }
     ;
         InstGraph = !.GCInfo ^ inst_graph,
-        inst_graph__foldl_reachable_from_list2(
+        inst_graph.foldl_reachable_from_list2(
             ( pred(V::in, C0::in, C::out, S0::in, S::out) is det :-
                 ( V \= A ->
                     get_var(V `at` GoalPath, Vgp, S0, S),
@@ -1537,14 +1536,14 @@ unify_constraints(Var, GoalPath, RHS0, RHS, !Constraint, !GCInfo) :-
     InstGraph = !.GCInfo ^ inst_graph,
 
     % Variable Var is made ground by this goal.
-    inst_graph__foldl_reachable2(
+    inst_graph.foldl_reachable2(
         ( pred(V::in, Cn0::in, Cn::out, in, out) is det -->
             get_var(V `at` GoalPath, Vgp),
             { Cn = Cn0 ^ var(Vgp) }
         ), InstGraph, Var, !Constraint, !GCInfo),
 
     % The lambda NonLocals are not bound by this goal.
-    inst_graph__foldl_reachable_from_list2(
+    inst_graph.foldl_reachable_from_list2(
         ( pred(V::in, Cn0::in, Cn::out, in, out) is det -->
             get_var(V `at` GoalPath, Vgp),
             { Cn = Cn0 ^ not_var(Vgp) }
@@ -1553,7 +1552,7 @@ unify_constraints(Var, GoalPath, RHS0, RHS, !Constraint, !GCInfo) :-
     % Record the higher-order mode of this lambda goal.
     HoModes0 = !.GCInfo ^ ho_modes,
     update_mc_info(get_prog_var_level(Var), VarLevel, !GCInfo),
-    multi_map__set(HoModes0, VarLevel, Modes, HoModes),
+    multi_map.set(HoModes0, VarLevel, Modes, HoModes),
     !:GCInfo = !.GCInfo ^ ho_modes := HoModes,
 
     % Analyse the lambda goal.
@@ -1562,7 +1561,7 @@ unify_constraints(Var, GoalPath, RHS0, RHS, !Constraint, !GCInfo) :-
     % XXX rather than adding `in' modes for lambda nonlocals we
     % should just place a constraint `V_prod = 0' for all nodes
     % reachable from these variables in the lambda goal.
-    ArgModes = list__duplicate(length(NonLocals), in_mode) ++ Modes,
+    ArgModes = list.duplicate(length(NonLocals), in_mode) ++ Modes,
     LambdaHeadVars = NonLocals ++ LambdaVars,
     ModuleInfo = !.GCInfo ^ module_info,
     update_md_info(process_mode_decl(ModuleInfo,
@@ -1578,27 +1577,27 @@ unify_constraints(Var, GoalPath, RHS0, RHS, !Constraint, !GCInfo) :-
 
     % DEBUGGING CODE
     % size(!.Constraint, NumNodes3, Depth3, _),
-    % unsafe_perform_io(io__format(
+    % unsafe_perform_io(io.format(
     %   "Pre lambda Size: %d, Depth: %d\n",
     %   [i(NumNodes3), i(Depth3)])),
 
     update_mc_info((pred(C::out, S0::in, S::out) is det :-
-            map__foldl2(input_output_constraints(LambdaHeadVars, InstGraph),
+            map.foldl2(input_output_constraints(LambdaHeadVars, InstGraph),
                 InstGraph, !.Constraint, C, S0, S)
         ), !:Constraint, !GCInfo),
 
     % DEBUGGING CODE
     % size(!.Constraint, NumNodes5, Depth5, _),
-    % unsafe_perform_io(io__format(
+    % unsafe_perform_io(io.format(
     %   "lambda io_constraints Size: %d, Depth: %d\n",
     %   [i(NumNodes5), i(Depth5)])),
 
-    goal_constraints(set__init, _CanSucceed, Goal0, Goal, !Constraint,
+    goal_constraints(set.init, _CanSucceed, Goal0, Goal, !Constraint,
         !GCInfo),
 
     % DEBUGGING CODE
     % size(Constraint, NumNodes, Depth),
-    % unsafe_perform_io(io__format(
+    % unsafe_perform_io(io.format(
     %   "post lambda Size: %d, Depth: %d\n",
     %   [i(NumNodes), i(Depth)])),
 
@@ -1614,7 +1613,7 @@ call_constraints(GoalPath, PredId, HeadVars, Args, !Constraint, !GCInfo) :-
     Generator =
         (pred((V - W)::out) is nondet :-
             corresponding_members(HeadVars, Args, X, Y),
-            inst_graph__corresponding_nodes(InstGraph, X, Y, V, W)
+            inst_graph.corresponding_nodes(InstGraph, X, Y, V, W)
         ),
     Accumulator =
         (pred((V - W)::in, C0::in, C::out, S0::in, S::out) is det :-
@@ -1637,15 +1636,15 @@ higher_order_call_constraints(Constraint0, Constraint, !GCInfo) :-
     InstGraph = !.GCInfo ^ inst_graph,
     update_md_info(
         (pred(Constraint1::out, in, out) is det -->
-        map__foldl2(
+        map.foldl2(
             (pred(HoVarLevel::in, Calls::in, Cons0::in, Cons::out,
                 in, out) is det -->
             update_mc_info(set_level_from_var(HoVarLevel)),
-            ( { map__search(HoModes, HoVarLevel, ArgModesList) } ->
-                list__foldl2(
+            ( { map.search(HoModes, HoVarLevel, ArgModesList) } ->
+                list.foldl2(
                 (pred((GoalPath - Args)::in, C0::in, C::out,
                     in, out) is det -->
-                    list__foldl2(
+                    list.foldl2(
                     process_mode_decl(
                         ModuleInfo, InstGraph, Args, ignore,
                         call_in(GoalPath), no,
@@ -1666,7 +1665,7 @@ higher_order_call_constraints(Constraint0, Constraint, !GCInfo) :-
 
 negation_constraints(GoalPath, NonLocals, !Constraint, !GCInfo) :-
     InstGraph = !.GCInfo ^ inst_graph,
-    inst_graph__foldl_reachable_from_list2(
+    inst_graph.foldl_reachable_from_list2(
         (pred(V::in, C0::in, C::out, in, out) is det -->
             get_var(V `at` GoalPath, Vgp),
             { C = C0 ^ not_var(Vgp) }
@@ -1679,7 +1678,7 @@ negation_constraints(GoalPath, NonLocals, !Constraint, !GCInfo) :-
 
 generic_call_constrain_var(Var, GoalPath, !Constraint, !GCInfo) :-
     InstGraph = !.GCInfo ^ inst_graph,
-    inst_graph__foldl_reachable2(
+    inst_graph.foldl_reachable2(
         ( pred(V::in, C0::in, C::out, in, out) is det -->
             get_var(out(V), Vout),
             get_var(V `at` GoalPath, Vgp),
@@ -1699,22 +1698,22 @@ constrict_to_vars(NonLocals, GoalVars, GoalPath, !Constraint, !Info) :-
     set(goal_path)::in, inst_graph::in, rep_var::in) is semidet.
 
 keep_var(_, _, _, AtomicGoals, _, _V `at` GoalPath) :-
-    set__member(GoalPath, AtomicGoals).
+    set.member(GoalPath, AtomicGoals).
 keep_var(NonLocals, GoalVars, GoalPath, _AtomicGoals, InstGraph, RepVar) :-
     (
         ( RepVar = in(V)
         ; RepVar = out(V)
         ; RepVar = V `at` _
         ),
-        set__member(V, GoalVars)
+        set.member(V, GoalVars)
     )
     =>
     (
-        list__member(NonLocal, NonLocals),
-        inst_graph__reachable(InstGraph, NonLocal, V),
+        list.member(NonLocal, NonLocals),
+        inst_graph.reachable(InstGraph, NonLocal, V),
         \+ (
             RepVar = _ `at` GoalPath1,
-            list__remove_suffix(GoalPath1, GoalPath, [_|_])
+            list.remove_suffix(GoalPath1, GoalPath, [_|_])
         )
     ).
 
@@ -1724,7 +1723,7 @@ keep_var(NonLocals, GoalVars, GoalPath, _AtomicGoals, InstGraph, RepVar) :-
 
 get_predicate_sccs(ModuleInfo, SCCs) :-
     % Obtain the SCCs for the module.
-    dependency_graph__build_pred_dependency_graph(ModuleInfo,
+    dependency_graph.build_pred_dependency_graph(ModuleInfo,
         do_not_include_imported, DepInfo),
     hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs0),
 
@@ -1746,12 +1745,12 @@ get_predicate_sccs(ModuleInfo, SCCs) :-
 
 extract_mode_decl_preds(_ModuleInfo, [], !DeclaredPreds).
 extract_mode_decl_preds(ModuleInfo, [SCC0 | SCCs0], !DeclaredPreds) :-
-    list__filter(pred_has_mode_decl(ModuleInfo), SCC0, Declared, SCC),
+    list.filter(pred_has_mode_decl(ModuleInfo), SCC0, Declared, SCC),
     (
         Declared = []
     ;
         Declared = [_ | _],
-        list__foldl(
+        list.foldl(
             (pred(Pred::in, Preds0::in, Preds::out) is det :-
                 Preds = [[Pred] | Preds0]
             ), Declared, !DeclaredPreds)
@@ -1774,7 +1773,7 @@ pred_has_mode_decl(ModuleInfo, PredId) :-
 
 add_imported_preds(ModuleInfo, SCCs0, SCCs) :-
     module_info_predids(ModuleInfo, PredIds),
-    list__filter_map(
+    list.filter_map(
         (pred(PredId::in, [PredId]::out) is semidet :-
             module_info_pred_info(ModuleInfo, PredId, PredInfo),
             pred_info_is_imported(PredInfo)
@@ -1821,7 +1820,7 @@ equivalent_sym_names(qualified(QualA, S), qualified(QualB, S)) :-
     goal_constraints_info::in, goal_constraints_info::out) is det.
 
 constrain_local_vars(Locals, GoalPath, !Constraint, !GCInfo) :-
-    list__foldl2((pred(V::in, C0::in, C::out, in, out) is det -->
+    list.foldl2((pred(V::in, C0::in, C::out, in, out) is det -->
         get_var(V `at` GoalPath, Vgp),
         get_var(out(V), Vout),
         ( update_mc_info(using_simple_mode_constraints) ->
@@ -1844,9 +1843,9 @@ constrain_non_occurring_vars(yes, ParentNonLocals, OccurringVars, GoalPath,
     InstGraph = !.GCInfo ^ inst_graph,
     Generator =
         (pred(V::out) is nondet :-
-            set__member(U, ParentNonLocals),
-            inst_graph__reachable(InstGraph, U, V),
-            \+ set__member(V, OccurringVars)
+            set.member(U, ParentNonLocals),
+            inst_graph.reachable(InstGraph, U, V),
+            \+ set.member(V, OccurringVars)
         ),
     Accumulator =
         (pred(V::in, Vs0::in, Vs::out, in, out) is det -->
@@ -1858,9 +1857,9 @@ constrain_non_occurring_vars(yes, ParentNonLocals, OccurringVars, GoalPath,
     !:Constraint = !.Constraint ^ conj_not_vars(NonOccurringVars).
 
 %   aggregate2((pred(V::out) is nondet :-
-%       set__member(U, ParentNonLocals),
-%       inst_graph__reachable(InstGraph, U, V),
-%       \+ set__member(V, OccurringVars)
+%       set.member(U, ParentNonLocals),
+%       inst_graph.reachable(InstGraph, U, V),
+%       \+ set.member(V, OccurringVars)
 %       ), (pred(V::in, C0::in, C::out, in, out) is det -->
 %           get_var(V `at` GoalPath, VGP),
 %           { C = C0 ^ not_var(VGP) }
@@ -1874,16 +1873,16 @@ constrain_non_occurring_vars(yes, ParentNonLocals, OccurringVars, GoalPath,
 share_ho_modes(VarA, VarB, HoModes0, HoModes, !MCI) :-
     get_prog_var_level(VarA, A, !MCI),
     get_prog_var_level(VarB, B, !MCI),
-    ( map__search(HoModes0, A, AModes) ->
-        ( map__search(HoModes0, B, BModes) ->
-            Modes = list__sort_and_remove_dups(AModes `list__append` BModes),
-            map__det_update(HoModes0, A, Modes, HoModes1),
-            map__det_update(HoModes1, B, Modes, HoModes)
+    ( map.search(HoModes0, A, AModes) ->
+        ( map.search(HoModes0, B, BModes) ->
+            Modes = list.sort_and_remove_dups(AModes `list.append` BModes),
+            map.det_update(HoModes0, A, Modes, HoModes1),
+            map.det_update(HoModes1, B, Modes, HoModes)
         ;
-            map__det_insert(HoModes0, B, AModes, HoModes)
+            map.det_insert(HoModes0, B, AModes, HoModes)
         )
-    ; map__search(HoModes0, B, BModes) ->
-        map__det_insert(HoModes0, A, BModes, HoModes)
+    ; map.search(HoModes0, B, BModes) ->
+        map.det_insert(HoModes0, A, BModes, HoModes)
     ;
         HoModes = HoModes0
     ).
@@ -1895,18 +1894,18 @@ share_ho_modes(VarA, VarB, HoModes0, HoModes, !MCI) :-
     mode_constraint_info::in, arg_modes_map::out) is nondet.
 
 arg_modes_map(HeadVars, InstGraph, Constraint0, Info0, ArgModes) :-
-    solutions(inst_graph__reachable_from_list(InstGraph, HeadVars), Vars),
-    list__map_foldl((pred(PV::in, (MV - in(PV))::out, in, out) is det -->
+    solutions(inst_graph.reachable_from_list(InstGraph, HeadVars), Vars),
+    list.map_foldl((pred(PV::in, (MV - in(PV))::out, in, out) is det -->
         mode_constraint_var(in(PV), MV)), Vars, InVars, Info0, Info1),
-    list__map_foldl((pred(PV::in, (MV - out(PV))::out, in, out) is det -->
+    list.map_foldl((pred(PV::in, (MV - out(PV))::out, in, out) is det -->
         mode_constraint_var(out(PV), MV)), Vars, OutVars, Info0, Info1),
-    MVars = list__sort_and_remove_dups(InVars `list__append` OutVars),
-    MVarKeys = assoc_list__keys(MVars),
+    MVars = list.sort_and_remove_dups(InVars `list.append` OutVars),
+    MVarKeys = assoc_list.keys(MVars),
     Constraint = restrict_filter(
-        (pred(V::in) is semidet :- list__member(V, MVarKeys)),
+        (pred(V::in) is semidet :- list.member(V, MVarKeys)),
         ensure_normalised(Constraint0)),
-    ArgModes0 = map__init - map__init,
-    list__foldl2(arg_modes_map_2, MVars, Constraint, _,
+    ArgModes0 = map.init - map.init,
+    list.foldl2(arg_modes_map_2, MVars, Constraint, _,
         ArgModes0, ArgModes).
 
 :- pred arg_modes_map_2(pair(mode_constraint_var, rep_var)::in,
@@ -1925,10 +1924,10 @@ arg_modes_map_2(MV - RV, Constraint0, Constraint, ArgModes0, ArgModes) :-
     ArgModes0 = InModes0 - OutModes0,
     (
         RV = in(PV),
-        ArgModes = map__det_insert(InModes0, PV, Bool) - OutModes0
+        ArgModes = map.det_insert(InModes0, PV, Bool) - OutModes0
     ;
         RV = out(PV),
-        ArgModes = InModes0 - map__det_insert(OutModes0, PV, Bool)
+        ArgModes = InModes0 - map.det_insert(OutModes0, PV, Bool)
     ).
 
 % :- type labelling == map(mode_constraint_var, bool).
@@ -1957,16 +1956,16 @@ arg_modes_map_2(MV - RV, Constraint0, Constraint, ArgModes0, ArgModes) :-
 %       set(mode_constraint_var)) = labelling.
 %
 % true_false_sets_to_labelling_map(TrueVars, FalseVars) =
-%   list__foldl(func(V, M) = map__det_insert(M, V, no),
-%       set__to_sorted_list(FalseVars),
-%       list__foldl(func(V, M) = map__det_insert(M, V, yes),
-%           set__to_sorted_list(TrueVars), map__init)).
+%   list.foldl(func(V, M) = map.det_insert(M, V, no),
+%       set.to_sorted_list(FalseVars),
+%       list.foldl(func(V, M) = map.det_insert(M, V, yes),
+%           set.to_sorted_list(TrueVars), map.init)).
 %
 %   % implied_mode(L0, L1) is true iff mode L0 is implied by mode L1.
 % :- pred implied_mode(labelling::in, labelling::in) is semidet.
 %
 % implied_mode(L0, L1) :-
-%   all [V] ( map__member(L1, V, yes) => map__lookup(L0, V, yes) ).
+%   all [V] ( map.member(L1, V, yes) => map.lookup(L0, V, yes) ).
 %
 % :- pred split_constraint_into_modes(pred_id::in, list(prog_var)::in,
 %   inst_graph::in, mode_constraint::in, list(labelling)::out,
@@ -1974,15 +1973,15 @@ arg_modes_map_2(MV - RV, Constraint0, Constraint, ArgModes0, ArgModes) :-
 %
 % split_constraint_into_modes(PredId, HeadVars, InstGraph, ModeConstraint0,
 %       Labellings) -->
-%   { solutions(inst_graph__reachable_from_list(InstGraph, HeadVars),
+%   { solutions(inst_graph.reachable_from_list(InstGraph, HeadVars),
 %       ReachVars) },
-%   list__map_foldl((pred(PV::in, MV::out, in, out) is det -->
+%   list.map_foldl((pred(PV::in, MV::out, in, out) is det -->
 %       mode_constraint_var(in(PV), MV)
 %   ), ReachVars, InVars),
 %
 %   get_interesting_vars_for_pred(PredId, InterestingVars),
 %   { solutions((pred(Labelling::out) is nondet :-
-%       fundamental_mode(set__list_to_set(InVars), ModeConstraint0,
+%       fundamental_mode(set.list_to_set(InVars), ModeConstraint0,
 %           ModeConstraint1),
 %       labelling(InterestingVars, ModeConstraint1, Labelling)
 %   ), Labellings) }.
@@ -2010,7 +2009,7 @@ vars(_ - GoalInfo) = OccurringVars :-
 pred_can_succeed(PredInfo) :-
     pred_info_procedures(PredInfo, ProcTable),
     some [ProcInfo] (
-        map__member(ProcTable, _ProcId, ProcInfo),
+        map.member(ProcTable, _ProcId, ProcInfo),
         proc_can_succeed(ProcInfo)
     ).
 
@@ -2039,7 +2038,7 @@ proc_can_succeed(ProcInfo) :-
 %   mode_constraint_info::in, io::di, io::uo) is det.
 %
 % conj_to_dot(MC, VS, CI) -->
-%   robdd_to_dot(MC, VS, CI, string__format("conj%d.dot", [i(conjnum)])).
+%   robdd_to_dot(MC, VS, CI, string.format("conj%d.dot", [i(conjnum)])).
 %
 % :- impure func conjnum = int.
 %

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2005 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -47,23 +47,23 @@ make_pipe_cmd(PipeName) = Cmd :-
     ( CmdName = "" ->
         error("make_pipe_cmd: do not know what command to use")
     ;
-        string__format("%s %s", [s(CmdName), s(PipeName)], Cmd)
+        string.format("%s %s", [s(CmdName), s(PipeName)], Cmd)
     ).
 
 server_name(ServerName, !IO) :-
-    io__make_temp(TmpFile, !IO),
+    io.make_temp(TmpFile, !IO),
     hostname_cmd(HostnameCmd),
     ServerRedirectCmd =
-        string__format("%s > %s", [s(HostnameCmd), s(TmpFile)]),
-    io__call_system(ServerRedirectCmd, Res1, !IO),
+        string.format("%s > %s", [s(HostnameCmd), s(TmpFile)]),
+    io.call_system(ServerRedirectCmd, Res1, !IO),
     ( Res1 = ok(0) ->
-        io__open_input(TmpFile, TmpRes, !IO),
+        io.open_input(TmpFile, TmpRes, !IO),
         ( TmpRes = ok(TmpStream) ->
-            io__read_file_as_string(TmpStream, TmpReadRes, !IO),
+            io.read_file_as_string(TmpStream, TmpReadRes, !IO),
             (
                 TmpReadRes = ok(ServerNameNl),
                 (
-                    string__remove_suffix(ServerNameNl,
+                    string.remove_suffix(ServerNameNl,
                         "\n", ServerNamePrime)
                 ->
                     ServerName = ServerNamePrime
@@ -74,11 +74,11 @@ server_name(ServerName, !IO) :-
                 TmpReadRes = error(_, _),
                 error("cannot read server's name")
             ),
-            io__close_input(TmpStream, !IO)
+            io.close_input(TmpStream, !IO)
         ;
             error("cannot open file to find the server's name")
         ),
-        io__remove_file(TmpFile, _, !IO)
+        io.remove_file(TmpFile, _, !IO)
     ;
         error("cannot execute cmd to find the server's name")
     ).

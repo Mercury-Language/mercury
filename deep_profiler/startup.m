@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2005 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -28,7 +28,7 @@
 %-----------------------------------------------------------------------------%
 
 :- pred read_and_startup(string::in, list(string)::in, bool::in,
-    maybe(io__output_stream)::in, list(string)::in, maybe_error(deep)::out,
+    maybe(io.output_stream)::in, list(string)::in, maybe_error(deep)::out,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -88,7 +88,7 @@ read_and_startup(Machine, DataFileNames, Canonical, MaybeOutputStream,
             "is not yet implemented")
     ).
 
-:- pred startup(string::in, string::in, bool::in, maybe(io__output_stream)::in,
+:- pred startup(string::in, string::in, bool::in, maybe(io.output_stream)::in,
     list(string)::in, initial_deep::in, deep::out, io::di, io::uo) is det.
 
 startup(Machine, DataFileName, Canonical, MaybeOutputStream, DumpStages,
@@ -101,7 +101,7 @@ startup(Machine, DataFileName, Canonical, MaybeOutputStream, DumpStages,
     maybe_report_msg(MaybeOutputStream,
         "% Mapping static call sites to containing procedures...\n", !IO),
     array_foldl2_from_1(record_css_containers_module_procs, ProcStatics0,
-        u(CallSiteStatics0), CallSiteStatics, map__init, ModuleProcs),
+        u(CallSiteStatics0), CallSiteStatics, map.init, ModuleProcs),
     maybe_report_msg(MaybeOutputStream,
         "% Done.\n", !IO),
     maybe_report_stats(MaybeOutputStream, !IO),
@@ -133,13 +133,13 @@ startup(Machine, DataFileName, Canonical, MaybeOutputStream, DumpStages,
     maybe_dump(DataFileName, DumpStages, 20,
         dump_initial_deep(yes, no, yes, yes, yes, yes, InitDeep), !IO),
 
-    array__max(InitDeep ^ init_proc_dynamics, PDMax),
+    array.max(InitDeep ^ init_proc_dynamics, PDMax),
     NPDs = PDMax + 1,
-    array__max(InitDeep ^ init_call_site_dynamics, CSDMax),
+    array.max(InitDeep ^ init_call_site_dynamics, CSDMax),
     NCSDs = CSDMax + 1,
-    array__max(InitDeep ^ init_proc_statics, PSMax),
+    array.max(InitDeep ^ init_proc_statics, PSMax),
     NPSs = PSMax + 1,
-    array__max(InitDeep ^ init_call_site_statics, CSSMax),
+    array.max(InitDeep ^ init_call_site_statics, CSSMax),
     NCSSs = CSSMax + 1,
 
     maybe_report_msg(MaybeOutputStream,
@@ -166,10 +166,10 @@ startup(Machine, DataFileName, Canonical, MaybeOutputStream, DumpStages,
         % the [lower] clique. We need to compute this information
         % so that we can print clique-based timing summaries in
         % the browser.
-    array__max(Cliques, CliqueMax),
+    array.max(Cliques, CliqueMax),
     NCliques = CliqueMax + 1,
-    array__init(NCliques, call_site_dynamic_ptr(-1), CliqueParents0),
-    array__init(NCSDs, no, CliqueMaybeChildren0),
+    array.init(NCliques, call_site_dynamic_ptr(-1), CliqueParents0),
+    array.init(NCSDs, no, CliqueMaybeChildren0),
     array_foldl2_from_1(construct_clique_parents(InitDeep, CliqueIndex),
         CliqueIndex,
         CliqueParents0, CliqueParents,
@@ -181,7 +181,7 @@ startup(Machine, DataFileName, Canonical, MaybeOutputStream, DumpStages,
 
     maybe_report_msg(MaybeOutputStream,
         "% Finding procedure callers...\n", !IO),
-    array__init(NPSs, [], ProcCallers0),
+    array.init(NPSs, [], ProcCallers0),
     array_foldl_from_1(construct_proc_callers(InitDeep),
         CallSiteDynamics, ProcCallers0, ProcCallers),
     maybe_report_msg(MaybeOutputStream,
@@ -190,7 +190,7 @@ startup(Machine, DataFileName, Canonical, MaybeOutputStream, DumpStages,
 
     maybe_report_msg(MaybeOutputStream,
         "% Constructing call site static map...\n", !IO),
-    array__init(NCSDs, call_site_static_ptr(-1), CallSiteStaticMap0),
+    array.init(NCSDs, call_site_static_ptr(-1), CallSiteStaticMap0),
     array_foldl_from_1(construct_call_site_caller(InitDeep),
         ProcDynamics, CallSiteStaticMap0, CallSiteStaticMap),
     maybe_report_msg(MaybeOutputStream,
@@ -199,7 +199,7 @@ startup(Machine, DataFileName, Canonical, MaybeOutputStream, DumpStages,
 
     maybe_report_msg(MaybeOutputStream,
         "% Finding call site calls...\n", !IO),
-    array__init(NCSSs, map__init, CallSiteCalls0),
+    array.init(NCSSs, map.init, CallSiteCalls0),
     array_foldl_from_1(construct_call_site_calls(InitDeep),
         ProcDynamics, CallSiteCalls0, CallSiteCalls),
     maybe_report_msg(MaybeOutputStream,
@@ -209,19 +209,19 @@ startup(Machine, DataFileName, Canonical, MaybeOutputStream, DumpStages,
     maybe_report_msg(MaybeOutputStream,
         "% Propagating time up call graph...\n", !IO),
 
-    array__init(NCSDs, zero_inherit_prof_info, CSDDesc0),
-    array__init(NPDs, zero_own_prof_info, PDOwn0),
+    array.init(NCSDs, zero_inherit_prof_info, CSDDesc0),
+    array.init(NPDs, zero_own_prof_info, PDOwn0),
     array_foldl_from_1(sum_call_sites_in_proc_dynamic,
         CallSiteDynamics, PDOwn0, PDOwn),
-    array__init(NPDs, zero_inherit_prof_info, PDDesc0),
-    array__init(NPSs, zero_own_prof_info, PSOwn0),
-    array__init(NPSs, zero_inherit_prof_info, PSDesc0),
-    array__init(NCSSs, zero_own_prof_info, CSSOwn0),
-    array__init(NCSSs, zero_inherit_prof_info, CSSDesc0),
-    array__init(NPDs, map__init, PDCompTable0),
-    array__init(NCSDs, map__init, CSDCompTable0),
+    array.init(NPDs, zero_inherit_prof_info, PDDesc0),
+    array.init(NPSs, zero_own_prof_info, PSOwn0),
+    array.init(NPSs, zero_inherit_prof_info, PSDesc0),
+    array.init(NCSSs, zero_own_prof_info, CSSOwn0),
+    array.init(NCSSs, zero_inherit_prof_info, CSSDesc0),
+    array.init(NPDs, map.init, PDCompTable0),
+    array.init(NCSDs, map.init, CSDCompTable0),
 
-    ModuleData = map__map_values(initialize_module_data, ModuleProcs),
+    ModuleData = map.map_values(initialize_module_data, ModuleProcs),
     Deep0 = deep(InitStats, Machine, DataFileName, Root,
         CallSiteDynamics, ProcDynamics, CallSiteStatics, ProcStatics,
         CliqueIndex, Cliques, CliqueParents, CliqueMaybeChildren,
@@ -258,15 +258,15 @@ initialize_module_data(_ModuleName, PSPtrs) =
     pred(io, io)::in(pred(di, uo) is det), io::di, io::uo) is det.
 
 maybe_dump(BaseName, DumpStages, ThisStageNum, Action, !IO) :-
-    string__int_to_string(ThisStageNum, ThisStage),
-    ( list__member(ThisStage, DumpStages) ->
-        string__append_list([BaseName, ".deepdump.", ThisStage], FileName),
-        io__open_output(FileName, OpenRes, !IO),
+    string.int_to_string(ThisStageNum, ThisStage),
+    ( list.member(ThisStage, DumpStages) ->
+        string.append_list([BaseName, ".deepdump.", ThisStage], FileName),
+        io.open_output(FileName, OpenRes, !IO),
         (
             OpenRes = ok(FileStream),
-            io__set_output_stream(FileStream, CurStream, !IO),
+            io.set_output_stream(FileStream, CurStream, !IO),
             Action(!IO),
-            io__set_output_stream(CurStream, _, !IO)
+            io.set_output_stream(CurStream, _, !IO)
         ;
             OpenRes = error(Error),
             io.error_message(Error, Msg),
@@ -287,13 +287,13 @@ maybe_dump(BaseName, DumpStages, ThisStageNum, Action, !IO) :-
 record_css_containers_module_procs(PSI, PS, !CallSiteStatics, !ModuleProcs) :-
     CSSPtrs = PS ^ ps_sites,
     PSPtr = proc_static_ptr(PSI),
-    array__max(CSSPtrs, MaxCS),
+    array.max(CSSPtrs, MaxCS),
     record_css_containers_2(MaxCS, PSPtr, CSSPtrs, !CallSiteStatics),
     DeclModule = PS ^ ps_decl_module,
-    ( map__search(!.ModuleProcs, DeclModule, PSPtrs0) ->
-        svmap__det_update(DeclModule, [PSPtr | PSPtrs0], !ModuleProcs)
+    ( map.search(!.ModuleProcs, DeclModule, PSPtrs0) ->
+        svmap.det_update(DeclModule, [PSPtr | PSPtrs0], !ModuleProcs)
     ;
-        svmap__det_insert(DeclModule, [PSPtr], !ModuleProcs)
+        svmap.det_insert(DeclModule, [PSPtr], !ModuleProcs)
     ).
 
 :- pred record_css_containers_2(int::in, proc_static_ptr::in,
@@ -303,7 +303,7 @@ record_css_containers_module_procs(PSI, PS, !CallSiteStatics, !ModuleProcs) :-
 
 record_css_containers_2(SlotNum, PSPtr, CSSPtrs, !CallSiteStatics) :-
     ( SlotNum >= 0 ->
-        array__lookup(CSSPtrs, SlotNum, CSSPtr),
+        array.lookup(CSSPtrs, SlotNum, CSSPtr),
         lookup_call_site_statics(!.CallSiteStatics, CSSPtr, CSS0),
         CSS0 = call_site_static(PSPtr0, SlotNum0,
             Kind, LineNumber, GoalPath),
@@ -390,18 +390,18 @@ construct_clique_parents_2(InitDeep, CliqueIndex, ParentCliquePtr, CSDPtr,
         !CliqueParents, !CliqueMaybeChildren) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
     ( CSDI > 0 ->
-        array__lookup(InitDeep ^ init_call_site_dynamics, CSDI, CSD),
+        array.lookup(InitDeep ^ init_call_site_dynamics, CSDI, CSD),
         ChildPDPtr = CSD ^ csd_callee,
         ChildPDPtr = proc_dynamic_ptr(ChildPDI),
         ( ChildPDI > 0 ->
-            array__lookup(CliqueIndex, ChildPDI, ChildCliquePtr),
+            array.lookup(CliqueIndex, ChildPDI, ChildCliquePtr),
             ( ChildCliquePtr \= ParentCliquePtr ->
                 ChildCliquePtr = clique_ptr(ChildCliqueNum),
                 % impure unsafe_perform_io(
                 %   write_pdi_cn_csd(ChildPDI,
                 %       ChildCliqueNum, CSDI)),
-                svarray__set(ChildCliqueNum, CSDPtr, !CliqueParents),
-                svarray__set(CSDI, yes(ChildCliquePtr), !CliqueMaybeChildren)
+                svarray.set(ChildCliqueNum, CSDPtr, !CliqueParents),
+                svarray.set(CSDI, yes(ChildCliquePtr), !CliqueMaybeChildren)
             ;
                 true
             )
@@ -440,7 +440,7 @@ construct_call_site_caller(InitDeep, _PDI, PD, !CallSiteStaticMap) :-
     CSDArraySlots = PD ^ pd_sites,
     lookup_proc_statics(InitDeep ^ init_proc_statics, PSPtr, PS),
     CSSPtrs = PS ^ ps_sites,
-    array__max(CSDArraySlots, MaxCS),
+    array.max(CSDArraySlots, MaxCS),
     construct_call_site_caller_2(MaxCS,
         InitDeep ^ init_call_site_dynamics, CSSPtrs, CSDArraySlots,
         !CallSiteStaticMap).
@@ -454,8 +454,8 @@ construct_call_site_caller(InitDeep, _PDI, PD, !CallSiteStaticMap) :-
 construct_call_site_caller_2(SlotNum, Deep, CSSPtrs, CSDArraySlots,
         !CallSiteStaticMap) :-
     ( SlotNum >= 0 ->
-        array__lookup(CSDArraySlots, SlotNum, CSDArraySlot),
-        array__lookup(CSSPtrs, SlotNum, CSSPtr),
+        array.lookup(CSDArraySlots, SlotNum, CSDArraySlot),
+        array.lookup(CSSPtrs, SlotNum, CSSPtr),
         (
             CSDArraySlot = normal(CSDPtr),
             construct_call_site_caller_3(Deep, CSSPtr, -1, CSDPtr,
@@ -495,9 +495,9 @@ construct_call_site_caller_3(CallSiteDynamics, CSSPtr, _Dummy, CSDPtr,
 construct_call_site_calls(InitDeep, _PDI, PD, !CallSiteCalls) :-
     PSPtr = PD ^ pd_proc_static,
     CSDArraySlots = PD ^ pd_sites,
-    array__max(CSDArraySlots, MaxCS),
+    array.max(CSDArraySlots, MaxCS),
     PSPtr = proc_static_ptr(PSI),
-    array__lookup(InitDeep ^ init_proc_statics, PSI, PS),
+    array.lookup(InitDeep ^ init_proc_statics, PSI, PS),
     CSSPtrs = PS ^ ps_sites,
     CallSiteDynamics = InitDeep ^ init_call_site_dynamics,
     ProcDynamics = InitDeep ^ init_proc_dynamics,
@@ -514,8 +514,8 @@ construct_call_site_calls(InitDeep, _PDI, PD, !CallSiteCalls) :-
 construct_call_site_calls_2(CallSiteDynamics, ProcDynamics, SlotNum,
         CSSPtrs, CSDArraySlots, !CallSiteCalls) :-
     ( SlotNum >= 0 ->
-        array__lookup(CSDArraySlots, SlotNum, CSDArraySlot),
-        array__lookup(CSSPtrs, SlotNum, CSSPtr),
+        array.lookup(CSDArraySlots, SlotNum, CSDArraySlot),
+        array.lookup(CSSPtrs, SlotNum, CSSPtr),
         (
             CSDArraySlot = normal(CSDPtr),
             construct_call_site_calls_3(CallSiteDynamics,
@@ -544,22 +544,22 @@ construct_call_site_calls_3(CallSiteDynamics, ProcDynamics, CSSPtr,
         _Dummy, CSDPtr, !CallSiteCalls) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
     ( CSDI > 0 ->
-        array__lookup(CallSiteDynamics, CSDI, CSD),
+        array.lookup(CallSiteDynamics, CSDI, CSD),
         PDPtr = CSD ^ csd_callee,
         PDPtr = proc_dynamic_ptr(PDI),
-        array__lookup(ProcDynamics, PDI, PD),
+        array.lookup(ProcDynamics, PDI, PD),
         PSPtr = PD ^ pd_proc_static,
 
         CSSPtr = call_site_static_ptr(CSSI),
-        array__lookup(!.CallSiteCalls, CSSI, CallMap0),
-        ( map__search(CallMap0, PSPtr, CallList0) ->
+        array.lookup(!.CallSiteCalls, CSSI, CallMap0),
+        ( map.search(CallMap0, PSPtr, CallList0) ->
             CallList = [CSDPtr | CallList0],
-            map__det_update(CallMap0, PSPtr, CallList, CallMap)
+            map.det_update(CallMap0, PSPtr, CallList, CallMap)
         ;
             CallList = [CSDPtr],
-            map__det_insert(CallMap0, PSPtr, CallList, CallMap)
+            map.det_insert(CallMap0, PSPtr, CallList, CallMap)
         ),
-        svarray__set(CSSI, CallMap, !CallSiteCalls)
+        svarray.set(CSSI, CallMap, !CallSiteCalls)
     ;
         true
     ).
@@ -574,9 +574,9 @@ sum_call_sites_in_proc_dynamic(_, CSD, !PDOwnArray) :-
     PDPtr = CSD ^ csd_callee,
     PDPtr = proc_dynamic_ptr(PDI),
     ( PDI > 0 ->
-        array__lookup(!.PDOwnArray, PDI, ProcOwn0),
+        array.lookup(!.PDOwnArray, PDI, ProcOwn0),
         ProcOwn = add_own_to_own(CalleeOwn, ProcOwn0),
-        svarray__set(PDI, ProcOwn, !PDOwnArray)
+        svarray.set(PDI, ProcOwn, !PDOwnArray)
     ;
         error("sum_call_sites_in_proc_dynamic: invalid pdptr")
     ).
@@ -612,7 +612,7 @@ summarize_proc_dynamic(PDOwnArray, PDDescArray, PDCompTableArray, PDI, PD,
     lookup_pd_own(PDOwnArray, PDPtr, PDOwn),
     lookup_pd_desc(PDDescArray, PDPtr, PDDesc0),
     lookup_pd_comp_table(PDCompTableArray, PDPtr, PDCompTable),
-    ( map__search(PDCompTable, PSPtr, InnerTotal) ->
+    ( map.search(PDCompTable, PSPtr, InnerTotal) ->
         PDDesc = subtract_inherit_from_inherit(InnerTotal, PDDesc0)
     ;
         PDDesc = PDDesc0
@@ -661,7 +661,7 @@ summarize_call_site_dynamic(CallSiteStaticMap, CallSiteStatics,
         lookup_csd_desc(CSDDescs, CSDPtr, CSDDesc0),
         lookup_csd_comp_table(CSDCompTableArray, CSDPtr, CSDCompTable),
         lookup_call_site_statics(CallSiteStatics, CSSPtr, CSS),
-        ( map__search(CSDCompTable, CSS ^ css_container, InnerTotal) ->
+        ( map.search(CSDCompTable, CSS ^ css_container, InnerTotal) ->
             CSDDesc = subtract_inherit_from_inherit(InnerTotal, CSDDesc0)
         ;
             CSDDesc = CSDDesc0
@@ -682,14 +682,14 @@ summarize_call_site_dynamic(CallSiteStaticMap, CallSiteStatics,
 
 summarize_modules(Deep0, Deep) :-
     ModuleData0 = Deep0 ^ module_data,
-    ModuleData = map__map_values(summarize_module_costs(Deep0), ModuleData0),
+    ModuleData = map.map_values(summarize_module_costs(Deep0), ModuleData0),
     Deep = Deep0 ^ module_data := ModuleData.
 
 :- func summarize_module_costs(deep, string, module_data) = module_data.
 
 summarize_module_costs(Deep, _ModuleName, ModuleData0) = ModuleData :-
     ModuleData0 = module_data(Own0, Desc0, PSPtrs),
-    list__foldl2(accumulate_ps_costs(Deep), PSPtrs, Own0, Own, Desc0, Desc),
+    list.foldl2(accumulate_ps_costs(Deep), PSPtrs, Own0, Own, Desc0, Desc),
     ModuleData = module_data(Own, Desc, PSPtrs).
 
 :- pred accumulate_ps_costs(deep::in, proc_static_ptr::in,
@@ -708,9 +708,9 @@ accumulate_ps_costs(Deep, PSPtr, Own0, Own, Desc0, Desc) :-
     deep::in, deep::out) is det.
 
 propagate_to_clique(CliqueNumber, Members, !Deep) :-
-    array__lookup(!.Deep ^ clique_parents, CliqueNumber, ParentCSDPtr),
-    list__foldl3(propagate_to_proc_dynamic(CliqueNumber, ParentCSDPtr),
-        Members, !Deep, map__init, SumTable, map__init, OverrideMap),
+    array.lookup(!.Deep ^ clique_parents, CliqueNumber, ParentCSDPtr),
+    list.foldl3(propagate_to_proc_dynamic(CliqueNumber, ParentCSDPtr),
+        Members, !Deep, map.init, SumTable, map.init, OverrideMap),
     ( valid_call_site_dynamic_ptr(!.Deep, ParentCSDPtr) ->
         deep_lookup_call_site_dynamics(!.Deep, ParentCSDPtr, ParentCSD),
         ParentOwn = ParentCSD ^ csd_own_prof,
@@ -731,8 +731,8 @@ propagate_to_clique(CliqueNumber, Members, !Deep) :-
 propagate_to_proc_dynamic(CliqueNumber, ParentCSDPtr, PDPtr, !Deep,
         !SumTable, !OverrideTable) :-
     flat_call_sites(!.Deep ^ proc_dynamics, PDPtr, CSDPtrs),
-    list__foldl2(propagate_to_call_site(CliqueNumber, PDPtr),
-        CSDPtrs, !Deep, map__init, PDCompTable),
+    list.foldl2(propagate_to_call_site(CliqueNumber, PDPtr),
+        CSDPtrs, !Deep, map.init, PDCompTable),
     deep_update_pd_comp_table(PDPtr, PDCompTable, !Deep),
 
     deep_lookup_pd_desc(!.Deep, PDPtr, ProcDesc),
@@ -787,24 +787,24 @@ propagate_to_call_site(CliqueNumber, PDPtr, CSDPtr, !Deep, !PDCompTable) :-
     = compensation_table.
 
 add_comp_tables(CompTableA, CompTableB) = CompTable :-
-    ( map__is_empty(CompTableA) ->
+    ( map.is_empty(CompTableA) ->
         CompTable = CompTableB
-    ; map__is_empty(CompTableB) ->
+    ; map.is_empty(CompTableB) ->
         CompTable = CompTableA
     ;
-        CompTable = map__union(add_inherit_to_inherit, CompTableA, CompTableB)
+        CompTable = map.union(add_inherit_to_inherit, CompTableA, CompTableB)
     ).
 
 :- func apply_override(compensation_table, compensation_table)
     = compensation_table.
 
 apply_override(CompTableA, CompTableB) = CompTable :-
-    ( map__is_empty(CompTableA) ->
+    ( map.is_empty(CompTableA) ->
         CompTable = CompTableB
-    ; map__is_empty(CompTableB) ->
+    ; map.is_empty(CompTableB) ->
         CompTable = CompTableA
     ;
-        CompTable = map__union(select_override_comp, CompTableA, CompTableB)
+        CompTable = map.union(select_override_comp, CompTableA, CompTableB)
     ).
 
 :- func select_override_comp(inherit_prof_info, inherit_prof_info)
@@ -816,11 +816,11 @@ select_override_comp(OverrideComp, _) = OverrideComp.
     proc_static_ptr, inherit_prof_info) = compensation_table.
 
 add_to_override(CompTable0, PSPtr, PDTotal) = CompTable :-
-    ( map__search(CompTable0, PSPtr, Comp0) ->
+    ( map.search(CompTable0, PSPtr, Comp0) ->
         Comp = add_inherit_to_inherit(Comp0, PDTotal),
-        map__det_update(CompTable0, PSPtr, Comp, CompTable)
+        map.det_update(CompTable0, PSPtr, Comp, CompTable)
     ;
-        map__det_insert(CompTable0, PSPtr, PDTotal, CompTable)
+        map.det_insert(CompTable0, PSPtr, PDTotal, CompTable)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -837,13 +837,13 @@ flat_call_sites(ProcDynamics, PDPtr, CSDPtrs) :-
     list(call_site_dynamic_ptr)::out, is_zeroed::out) is det.
 
 flatten_call_sites(CallSiteArray, CSDPtrs, IsZeroed) :-
-    array__to_list(CallSiteArray, CallSites),
-    list__foldl2(gather_call_site_csdptrs, CallSites, [], CSDPtrsList0,
+    array.to_list(CallSiteArray, CallSites),
+    list.foldl2(gather_call_site_csdptrs, CallSites, [], CSDPtrsList0,
         not_zeroed, IsZeroed),
-    list__reverse(CSDPtrsList0, CSDPtrsList),
-    list__condense(CSDPtrsList, CSDPtrs).
+    list.reverse(CSDPtrsList0, CSDPtrsList),
+    list.condense(CSDPtrsList, CSDPtrs).
 
-:- pred gather_call_site_csdptrs(call_site_array_slot::in, 
+:- pred gather_call_site_csdptrs(call_site_array_slot::in,
     list(list(call_site_dynamic_ptr))::in,
     list(list(call_site_dynamic_ptr))::out,
     is_zeroed::in, is_zeroed::out) is det.
@@ -860,8 +860,8 @@ gather_call_site_csdptrs(Slot, CSDPtrs0, CSDPtrs1, IsZeroed0, IsZeroed) :-
         IsZeroed = IsZeroed0
     ;
         Slot = multi(IsZeroed1, PtrArray),
-        array__to_list(PtrArray, PtrList0),
-        list__filter((pred(CSDPtr::in) is semidet :-
+        array.to_list(PtrArray, PtrList0),
+        list.filter((pred(CSDPtr::in) is semidet :-
             CSDPtr = call_site_dynamic_ptr(CSDI),
             CSDI > 0
         ), PtrList0, PtrList1),
@@ -875,24 +875,24 @@ gather_call_site_csdptrs(Slot, CSDPtrs0, CSDPtrs1, IsZeroed0, IsZeroed) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_report_stats(maybe(io__output_stream)::in,
+:- pred maybe_report_stats(maybe(io.output_stream)::in,
     io::di, io::uo) is det.
 
-% XXX: io__report_stats writes to stderr, which mdprof_cgi has closed.
+% XXX: io.report_stats writes to stderr, which mdprof_cgi has closed.
 % We want to write the report to _OutputStream, but the library doesn't
 % support that yet.
 %
 % The stats are needed only when writing the deep profiling paper anyway.
 
 maybe_report_stats(yes(_OutputStream), !IO).
-    % io__report_stats("standard", !IO).
+    % io.report_stats("standard", !IO).
 maybe_report_stats(no, !IO).
 
-:- pred maybe_report_msg(maybe(io__output_stream)::in, string::in,
+:- pred maybe_report_msg(maybe(io.output_stream)::in, string::in,
     io::di, io::uo) is det.
 
 maybe_report_msg(yes(OutputStream), Msg, !IO) :-
-    io__write_string(OutputStream, Msg, !IO),
+    io.write_string(OutputStream, Msg, !IO),
     flush_output(OutputStream, !IO).
 maybe_report_msg(no, _, !IO).
 

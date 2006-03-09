@@ -10,12 +10,12 @@
 % Main author: zs.
 %
 % This module contains code that can be helpful in the formatting of
-% error messages. It builds upon parse_tree__error_util, and extends it
+% error messages. It builds upon parse_tree.error_util, and extends it
 % with predicates that access HLDS data structures.
 %
 %-----------------------------------------------------------------------------%
 
-:- module hlds__hlds_error_util.
+:- module hlds.hlds_error_util.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -85,7 +85,7 @@
 %-----------------------------------------------------------------------------%
 
     % NOTE: the code of this predicate duplicates the functionality of
-    % hlds_out__write_pred_id. Changes here should be made there as well.
+    % hlds_out.write_pred_id. Changes here should be made there as well.
     %
 describe_one_pred_name(Module, ShouldModuleQualify, PredId) = Pieces :-
     module_info_pred_info(Module, PredId, PredInfo),
@@ -124,8 +124,8 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
         ;
             Prefix = [pred_or_func(PredOrFunc)]
         ),
-        string__int_to_string(OrigArity, ArityPart),
-        string__append_list([
+        string.int_to_string(OrigArity, ArityPart),
+        string.append_list([
             "`",
             module_qualification(ModuleName, ShouldModuleQualify),
             PredName,
@@ -142,10 +142,10 @@ describe_one_pred_name_mode(Module, ShouldModuleQualify, PredId, InstVarSet,
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    list__length(ArgModes0, NumArgModes),
+    list.length(ArgModes0, NumArgModes),
     % We need to strip off the extra type_info arguments inserted at the
     % front by polymorphism.m - we only want the last `Arity' of them.
-    ( list__drop(NumArgModes - Arity, ArgModes0, ArgModes) ->
+    ( list.drop(NumArgModes - Arity, ArgModes0, ArgModes) ->
         strip_builtin_qualifiers_from_mode_list(ArgModes, StrippedArgModes)
     ;
         unexpected(this_file, "describe_one_pred_name_mode: bad argument list")
@@ -160,7 +160,7 @@ describe_one_pred_name_mode(Module, ShouldModuleQualify, PredId, InstVarSet,
         ArgModesPart = arg_modes_to_string(InstVarSet, FuncArgModes)
             ++ " = " ++ mercury_mode_to_string(FuncRetMode, InstVarSet)
     ),
-    string__append_list([
+    string.append_list([
         "`",
         module_qualification(ModuleName, ShouldModuleQualify),
         PredName,
@@ -169,7 +169,7 @@ describe_one_pred_name_mode(Module, ShouldModuleQualify, PredId, InstVarSet,
     Pieces = [words(Descr)].
 
 describe_several_pred_names(Module, ShouldModuleQualify, PredIds) = Pieces :-
-    PiecesList = list__map(describe_one_pred_name(Module, ShouldModuleQualify),
+    PiecesList = list.map(describe_one_pred_name(Module, ShouldModuleQualify),
         PredIds),
     Pieces = component_lists_to_pieces(PiecesList).
 
@@ -177,7 +177,7 @@ describe_one_proc_name(Module, ShouldModuleQualify, proc(PredId, ProcId))
         = Pieces :-
     PredPieces = describe_one_pred_name(Module, ShouldModuleQualify, PredId),
     proc_id_to_int(ProcId, ProcIdInt),
-    string__int_to_string(ProcIdInt, ProcIdStr),
+    string.int_to_string(ProcIdInt, ProcIdStr),
     Pieces = PredPieces ++ [words("mode"), words(ProcIdStr)].
 
 describe_one_proc_name_mode(Module, ShouldModuleQualify, proc(PredId, ProcId))
@@ -189,21 +189,21 @@ describe_one_proc_name_mode(Module, ShouldModuleQualify, proc(PredId, ProcId))
         PredId, InstVarSet, ArgModes).
 
 describe_several_proc_names(Module, ShouldModuleQualify, PPIds) = Pieces :-
-    PiecesList = list__map(describe_one_proc_name(Module, ShouldModuleQualify),
+    PiecesList = list.map(describe_one_proc_name(Module, ShouldModuleQualify),
         PPIds),
     Pieces = component_lists_to_pieces(PiecesList).
 
 describe_one_call_site(Module, ShouldModuleQualify, PPId - Context) = Pieces :-
     ProcNamePieces = describe_one_proc_name(Module, ShouldModuleQualify,
         PPId),
-    term__context_file(Context, FileName),
-    term__context_line(Context, LineNumber),
-    string__int_to_string(LineNumber, LineNumberStr),
+    term.context_file(Context, FileName),
+    term.context_line(Context, LineNumber),
+    string.int_to_string(LineNumber, LineNumberStr),
     Pieces = ProcNamePieces ++
         [words("at"), fixed(FileName ++ ":" ++ LineNumberStr)].
 
 describe_several_call_sites(Module, ShouldModuleQualify, Sites) = Pieces :-
-    PiecesList = list__map(describe_one_call_site(Module, ShouldModuleQualify),
+    PiecesList = list.map(describe_one_call_site(Module, ShouldModuleQualify),
         Sites),
     Pieces = component_lists_to_pieces(PiecesList).
 
@@ -213,7 +213,7 @@ module_qualification(ModuleName, ShouldModuleQualify) = ModuleQualification :-
     (
         ShouldModuleQualify = should_module_qualify,
         sym_name_to_string(ModuleName, ModuleNameString),
-        ModuleQualification = string__append(ModuleNameString, ".")
+        ModuleQualification = ModuleNameString ++ "."
     ;
         ShouldModuleQualify = should_not_module_qualify,
         ModuleQualification = ""

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2005 The University of Melbourne.
+% Copyright (C) 2001, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -29,7 +29,7 @@
 
     % Performs a foldl on all the elements of the given array, starting at
     % index 1.
-    % 
+    %
 :- pred array_foldl_from_1(pred(int, T, U, U), array(T), U, U).
 :- mode array_foldl_from_1(pred(in, in, di, uo) is det, in, di, uo) is det.
 :- mode array_foldl_from_1(pred(in, in, array_di, array_uo) is det, in,
@@ -38,7 +38,7 @@
 
     % Performs a foldl on all the elements of the given array, starting at
     % index 0.
-    % 
+    %
 :- pred array_foldl_from_0(pred(int, T, U, U), array(T), U, U).
 :- mode array_foldl_from_0(pred(in, in, di, uo) is det, in, di, uo) is det.
 :- mode array_foldl_from_0(pred(in, in, array_di, array_uo) is det, in,
@@ -47,7 +47,7 @@
 
     % Performs a foldl on all the elements of the given array between the two
     % index values given by the first two arguments, both inclusive.
-    % 
+    %
 :- pred array_foldl(int, int, pred(int, T, U, U), array(T), U, U).
 :- mode array_foldl(in, in, pred(in, in, di, uo) is det, in, di, uo) is det.
 :- mode array_foldl(in, in, pred(in, in, array_di, array_uo) is det, in,
@@ -56,7 +56,7 @@
 
     % Performs a foldl2 on all the elements of the given array, starting at
     % index 1.
-    % 
+    %
 :- pred array_foldl2_from_1(pred(int, T, U, U, V, V), array(T), U, U, V, V).
 :- mode array_foldl2_from_1(pred(in, in, di, uo, di, uo) is det,
     in, di, uo, di, uo) is det.
@@ -72,7 +72,7 @@
 
     % Performs a foldl2 on all the elements of the given array between the two
     % index values given by the first two arguments, both inclusive.
-    % 
+    %
 :- pred array_foldl2(int, int, pred(int, T, U, U, V, V), array(T), U, U, V, V).
 :- mode array_foldl2(in, in, pred(in, in, di, uo, di, uo) is det, in,
     di, uo, di, uo) is det.
@@ -87,17 +87,17 @@
 :- mode array_foldl2(in, in, pred(in, in, in, out, in, out) is det, in,
     in, out, in, out) is det.
 
-    % Performs the same computation as list__foldl; the only difference is
+    % Performs the same computation as list.foldl; the only difference is
     % that the accumulator is an array and has an array mode.
-    % 
+    %
 :- pred array_list_foldl(pred(T, array(U), array(U)), list(T),
     array(U), array(U)).
 :- mode array_list_foldl(pred(in, array_di, array_uo) is det, in,
     array_di, array_uo) is det.
 
-    % Performs the same computation as list__foldl2; the only difference is
+    % Performs the same computation as list.foldl2; the only difference is
     % that the accumulators are arrays and have array modes.
-    % 
+    %
 :- pred array_list_foldl2(pred(T, array(U), array(U), array(V), array(V)),
     list(T), array(U), array(U), array(V), array(V)).
 :- mode array_list_foldl2(pred(in, array_di, array_uo, array_di, array_uo)
@@ -105,7 +105,7 @@
 
     % Performs a map on all the elements of the given array, starting at index
     % 0.
-    % 
+    %
 :- pred array_map_from_0(pred(T, T), array(T), array(T)).
 :- mode array_map_from_0(pred(in, out) is det, array_di, array_uo) is det.
 
@@ -133,29 +133,29 @@
 ").
 
 array_foldl_from_1(P, A, !AccU) :-
-    array__max(A, Max),
+    array.max(A, Max),
     array_foldl(1, Max, P, A, !AccU).
 
 array_foldl_from_0(P, A, !AccU) :-
-    array__max(A, Max),
+    array.max(A, Max),
     array_foldl(0, Max, P, A, !AccU).
 
 array_foldl(N, Max, P, A, !AccU) :-
     ( N =< Max ->
-        array__lookup(A, N, E),
+        array.lookup(A, N, E),
         P(N, E, !AccU),
         array_foldl(N + 1, Max, P, A, !AccU)
     ;
-        true    
+        true
     ).
 
 array_foldl2_from_1(P, A, !AccU, !AccV) :-
-    array__max(A, Max),
+    array.max(A, Max),
     array_foldl2(1, Max, P, A, !AccU, !AccV).
 
 array_foldl2(N, Max, P, A, !AccU, !AccV) :-
     ( N =< Max ->
-        array__lookup(A, N, E),
+        array.lookup(A, N, E),
         P(N, E, !AccU, !AccV),
         array_foldl2(N + 1, Max, P, A, !AccU, !AccV)
     ;
@@ -173,11 +173,11 @@ array_list_foldl2(P, [X | Xs], !AccU, !AccV) :-
     array_list_foldl2(P, Xs, !AccU, !AccV).
 
 array_map_from_0(P, !AccU) :-
-    array__max(!.AccU, Max),
+    array.max(!.AccU, Max),
     array_map(0, Max, P, !AccU).
 
 array_map_from_1(P, !AccU) :-
-    array__max(!.AccU, Max),
+    array.max(!.AccU, Max),
     array_map(1, Max, P, !AccU).
 
 :- pred array_map(int, int, pred(T, T), array(T), array(T)).
@@ -187,9 +187,9 @@ array_map(N, Size, Closure, !Array) :-
     ( N >= Size ->
         true
     ;
-        array__lookup(!.Array, N, OldElem),
+        array.lookup(!.Array, N, OldElem),
         Closure(OldElem, NewElem),
-        array__set(!.Array, N, NewElem, !:Array),
+        array.set(!.Array, N, NewElem, !:Array),
         array_map(N + 1, Size, Closure, !Array)
     ).
 

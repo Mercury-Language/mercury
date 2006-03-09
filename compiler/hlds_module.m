@@ -22,7 +22,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module hlds__hlds_module.
+:- module hlds.hlds_module.
 :- interface.
 
 :- import_module analysis.
@@ -693,41 +693,41 @@
 module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
         ModuleInfo) :-
     predicate_table_init(PredicateTable),
-    unify_proc__init_requests(Requests),
-    map__init(UnifyPredMap),
-    map__init(Types),
+    unify_proc.init_requests(Requests),
+    map.init(UnifyPredMap),
+    map.init(Types),
     inst_table_init(Insts),
     mode_table_init(Modes),
-    map__init(Ctors),
-    set__init(StratPreds),
-    map__init(UnusedArgInfo),
-    map__init(ExceptionInfo),
-    map__init(TrailingInfo),
+    map.init(Ctors),
+    set.init(StratPreds),
+    map.init(UnusedArgInfo),
+    map.init(ExceptionInfo),
+    map.init(TrailingInfo),
 
-    set__init(TypeSpecPreds),
-    set__init(TypeSpecForcePreds),
-    map__init(SpecMap),
-    map__init(PragmaMap),
+    set.init(TypeSpecPreds),
+    set.init(TypeSpecForcePreds),
+    map.init(SpecMap),
+    map.init(PragmaMap),
     TypeSpecInfo = type_spec_info(TypeSpecPreds, TypeSpecForcePreds,
         SpecMap, PragmaMap),
 
-    map__init(ClassTable),
-    map__init(InstanceTable),
-    map__init(SuperClassTable),
+    map.init(ClassTable),
+    map.init(InstanceTable),
+    map.init(SuperClassTable),
 
     % the builtin modules are automatically imported
     get_implicit_dependencies(Items, Globals, ImportDeps, UseDeps),
-    set__list_to_set(ImportDeps `list__append` UseDeps, ImportedModules),
-    set__init(IndirectlyImportedModules),
+    set.list_to_set(ImportDeps ++ UseDeps, ImportedModules),
+    set.init(IndirectlyImportedModules),
 
     assertion_table_init(AssertionTable),
     exclusive_table_init(ExclusiveTable),
-    map__init(FieldNameTable),
+    map.init(FieldNameTable),
 
-    map__init(NoTagTypes),
+    map.init(NoTagTypes),
     ModuleSubInfo = module_sub_info(Name, Globals, no, [], [], [], [], no, 0,
         [], [], StratPreds, UnusedArgInfo, ExceptionInfo, TrailingInfo,
-        map.init, counter__init(1), ImportedModules,
+        map.init, counter.init(1), ImportedModules,
         IndirectlyImportedModules, TypeSpecInfo, NoTagTypes, no, [],
         init_analysis_info(mmc), [], []),
     ModuleInfo = module_info(ModuleSubInfo, PredicateTable, Requests,
@@ -823,9 +823,9 @@ module_info_get_complexity_proc_infos(MI,
     %
 module_info_new_user_init_pred(SymName, CName, MI0, MI) :-
     InitPredCNames0 = MI0 ^ sub_info ^ user_init_pred_c_names,
-    UserInitPredNo = list__length(InitPredCNames0),
+    UserInitPredNo = list.length(InitPredCNames0),
     module_info_get_name(MI0, ModuleSymName),
-    ModuleName = prog_foreign__sym_name_mangle(ModuleSymName),
+    ModuleName = prog_foreign.sym_name_mangle(ModuleSymName),
     CName = string.format("%s__user_init_pred_%d",
         [s(ModuleName), i(UserInitPredNo)]),
     InitPredCNames = InitPredCNames0 ++ [SymName - CName],
@@ -833,7 +833,7 @@ module_info_new_user_init_pred(SymName, CName, MI0, MI) :-
 
 module_info_user_init_pred_c_name(MI, SymName, CName) :-
     InitPredCNames = MI ^ sub_info ^ user_init_pred_c_names,
-    ( assoc_list__search(InitPredCNames, SymName, CName0) ->
+    ( assoc_list.search(InitPredCNames, SymName, CName0) ->
         CName = CName0
     ;
         module_info_get_name(MI, ModuleSymName),
@@ -858,7 +858,7 @@ module_info_new_user_final_pred(SymName, CName, MI0, MI) :-
 
 module_info_user_final_pred_c_name(MI, SymName, CName) :-
     FinalPredCNames = MI ^ sub_info ^ user_final_pred_c_names,
-    ( assoc_list__search(FinalPredCNames, SymName, CName0) ->
+    ( assoc_list.search(FinalPredCNames, SymName, CName0) ->
         CName = CName0
     ;
         module_info_get_name(MI, ModuleSymName),
@@ -908,11 +908,11 @@ module_info_set_model_non_pragma_counter(NewVal, MI,
     MI ^ sub_info ^ model_non_pragma_counter := NewVal).
 module_add_imported_module_specifiers(ModuleSpecifiers, MI,
     MI ^ sub_info ^ imported_module_specifiers :=
-        set__insert_list(MI ^ sub_info ^ imported_module_specifiers,
+        set.insert_list(MI ^ sub_info ^ imported_module_specifiers,
             ModuleSpecifiers)).
 module_add_indirectly_imported_module_specifiers(Modules, MI,
     MI ^ sub_info ^ indirectly_imported_module_specifiers :=
-        set__insert_list(MI ^ sub_info ^ indirectly_imported_module_specifiers,
+        set.insert_list(MI ^ sub_info ^ indirectly_imported_module_specifiers,
             Modules)).
 module_info_set_type_spec_info(NewVal, MI,
     MI ^ sub_info ^ type_spec_info := NewVal).
@@ -936,12 +936,12 @@ module_info_preds(MI, Preds) :-
 
 module_info_pred_info(MI, PredId, PredInfo) :-
     module_info_preds(MI, Preds),
-    ( map__search(Preds, PredId, PredInfoPrime) ->
+    ( map.search(Preds, PredId, PredInfoPrime) ->
         PredInfo = PredInfoPrime
     ;
         pred_id_to_int(PredId, PredInt),
-        string__int_to_string(PredInt, PredStr),
-        string__append("cannot find predicate number ", PredStr, Msg),
+        string.int_to_string(PredInt, PredStr),
+        string.append("cannot find predicate number ", PredStr, Msg),
         unexpected(this_file, Msg)
     ).
 
@@ -954,7 +954,7 @@ module_info_proc_info(MI, PredId, ProcId, ProcInfo) :-
 module_info_pred_proc_info(MI, PredId, ProcId, PredInfo, ProcInfo) :-
     module_info_pred_info(MI, PredId, PredInfo),
     pred_info_procedures(PredInfo, Procs),
-    map__lookup(Procs, ProcId, ProcInfo).
+    map.lookup(Procs, ProcId, ProcInfo).
 
 module_info_pred_proc_info(MI, proc(PredId, ProcId), PredInfo, ProcInfo) :-
     module_info_pred_proc_info(MI, PredId, ProcId, PredInfo, ProcInfo).
@@ -985,7 +985,7 @@ module_info_set_preds(Preds, !MI) :-
 
 module_info_set_pred_info(PredId, PredInfo, !MI) :-
     module_info_preds(!.MI, Preds0),
-    map__set(Preds0, PredId, PredInfo, Preds),
+    map.set(Preds0, PredId, PredInfo, Preds),
     module_info_set_preds(Preds, !MI).
 
 module_info_set_pred_proc_info(proc(PredId, ProcId), PredInfo, ProcInfo,
@@ -995,13 +995,13 @@ module_info_set_pred_proc_info(proc(PredId, ProcId), PredInfo, ProcInfo,
 
 module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo, !MI) :-
     pred_info_procedures(PredInfo0, Procs0),
-    map__set(Procs0, ProcId, ProcInfo, Procs),
+    map.set(Procs0, ProcId, ProcInfo, Procs),
     pred_info_set_procedures(Procs, PredInfo0, PredInfo),
     module_info_set_pred_info(PredId, PredInfo, !MI).
 
 module_info_typeids(MI, TypeCtors) :-
     module_info_get_type_table(MI, Types),
-    map__keys(Types, TypeCtors).
+    map.keys(Types, TypeCtors).
 
 module_info_instids(MI, InstIds) :-
     module_info_get_inst_table(MI, InstTable),
@@ -1014,7 +1014,7 @@ module_info_modeids(MI, ModeIds) :-
 
 module_info_consids(MI, ConsIds) :-
     module_info_get_cons_table(MI, Ctors),
-    map__keys(Ctors, ConsIds).
+    map.keys(Ctors, ConsIds).
 
 module_info_dependency_info(MI, DepInfo) :-
     module_info_get_maybe_dependency_info(MI, MaybeDepInfo),
@@ -1054,7 +1054,7 @@ module_info_next_lambda_count(Context, Count, !MI) :-
 
 module_info_next_model_non_pragma_count(Count, !MI) :-
     module_info_get_model_non_pragma_counter(!.MI, Counter0),
-    counter__allocate(Count, Counter0, Counter),
+    counter.allocate(Count, Counter0, Counter),
     module_info_set_model_non_pragma_counter(Counter, !MI).
 
 module_info_optimize(!ModuleInfo) :-
@@ -1063,7 +1063,7 @@ module_info_optimize(!ModuleInfo) :-
     module_info_set_predicate_table(Preds, !ModuleInfo),
 
     module_info_get_type_table(!.ModuleInfo, Types0),
-    map__optimize(Types0, Types),
+    map.optimize(Types0, Types),
     module_info_set_type_table(Types, !ModuleInfo),
 
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
@@ -1077,7 +1077,7 @@ module_info_optimize(!ModuleInfo) :-
     module_info_set_mode_table(Modes, !ModuleInfo),
 
     module_info_get_cons_table(!.ModuleInfo, Ctors0),
-    map__optimize(Ctors0, Ctors),
+    map.optimize(Ctors0, Ctors),
     module_info_set_cons_table(Ctors, !ModuleInfo).
 
 visible_module(VisibleModule, ModuleInfo) :-
@@ -1086,10 +1086,10 @@ visible_module(VisibleModule, ModuleInfo) :-
     (
         VisibleModule = ThisModule
     ;
-        set__member(VisibleModule, ImportedModules)
+        set.member(VisibleModule, ImportedModules)
     ;
         ParentModules = get_ancestors(ThisModule),
-        list__member(VisibleModule, ParentModules)
+        list.member(VisibleModule, ParentModules)
     ).
 
 module_info_get_all_deps(ModuleInfo, AllImports) :-
@@ -1098,8 +1098,8 @@ module_info_get_all_deps(ModuleInfo, AllImports) :-
     module_info_get_imported_module_specifiers(ModuleInfo, DirectImports),
     module_info_get_indirectly_imported_module_specifiers(ModuleInfo,
         IndirectImports),
-    AllImports = (IndirectImports `set__union` DirectImports)
-        `set__union` set__list_to_set(Parents).
+    AllImports = set.union_list([IndirectImports, DirectImports,
+        set.list_to_set(Parents)]).
 
 module_add_foreign_decl(Lang, IsLocal, ForeignDecl, Context, !Module) :-
     module_info_get_foreign_decl(!.Module, ForeignDeclIndex0),
@@ -1172,7 +1172,7 @@ module_add_fact_table_file(FileName, !Module) :-
             ).
 
 hlds_dependency_info_init(DepInfo) :-
-    relation__init(DepRel),
+    relation.init(DepRel),
     DepOrd = [],
     DepInfo = dependency_info(DepRel, DepOrd).
 
@@ -1517,27 +1517,27 @@ predicate_table_init(PredicateTable) :-
         AccessibilityTable,
         Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
         Func_N_Index, Func_NA_Index, Func_MNA_Index),
-    map__init(Preds),
-    NextPredId = hlds_pred__initial_pred_id,
+    map.init(Preds),
+    NextPredId = hlds_pred.initial_pred_id,
     PredIds = [],
-    map__init(AccessibilityTable),
-    map__init(Pred_N_Index),
-    map__init(Pred_NA_Index),
-    map__init(Pred_MNA_Index),
-    map__init(Func_N_Index),
-    map__init(Func_NA_Index),
-    map__init(Func_MNA_Index).
+    map.init(AccessibilityTable),
+    map.init(Pred_N_Index),
+    map.init(Pred_NA_Index),
+    map.init(Pred_MNA_Index),
+    map.init(Func_N_Index),
+    map.init(Func_NA_Index),
+    map.init(Func_MNA_Index).
 
 predicate_table_optimize(PredicateTable0, PredicateTable) :-
     PredicateTable0 = predicate_table(A, B, C, D,
         Pred_N_Index0, Pred_NA_Index0, Pred_MNA_Index0,
         Func_N_Index0, Func_NA_Index0, Func_MNA_Index0),
-    map__optimize(Pred_N_Index0, Pred_N_Index),
-    map__optimize(Pred_NA_Index0, Pred_NA_Index),
-    map__optimize(Pred_MNA_Index0, Pred_MNA_Index),
-    map__optimize(Func_N_Index0, Func_N_Index),
-    map__optimize(Func_NA_Index0, Func_NA_Index),
-    map__optimize(Func_MNA_Index0, Func_MNA_Index),
+    map.optimize(Pred_N_Index0, Pred_N_Index),
+    map.optimize(Pred_NA_Index0, Pred_NA_Index),
+    map.optimize(Pred_MNA_Index0, Pred_MNA_Index),
+    map.optimize(Func_N_Index0, Func_N_Index),
+    map.optimize(Func_NA_Index0, Func_NA_Index),
+    map.optimize(Func_MNA_Index0, Func_MNA_Index),
     PredicateTable = predicate_table(A, B, C, D,
         Pred_N_Index, Pred_NA_Index, Pred_MNA_Index,
         Func_N_Index, Func_NA_Index, Func_MNA_Index).
@@ -1550,16 +1550,16 @@ predicate_table_set_preds(Preds, PredicateTable,
 predicate_table_get_predids(PredicateTable, PredicateTable ^ pred_ids).
 
 predicate_table_remove_predid(PredId, PredicateTable0, PredicateTable) :-
-    list__delete_all(PredicateTable0 ^ pred_ids, PredId, PredIds),
+    list.delete_all(PredicateTable0 ^ pred_ids, PredId, PredIds),
     PredicateTable = PredicateTable0 ^ pred_ids := PredIds.
 
 predicate_table_remove_predicate(PredId, PredicateTable0, PredicateTable) :-
     PredicateTable0 = predicate_table(Preds0, NextPredId, PredIds0,
         AccessibilityTable0,
         PredN0, PredNA0, PredMNA0, FuncN0, FuncNA0, FuncMNA0),
-    list__delete_all(PredIds0, PredId, PredIds),
-    map__det_remove(Preds0, PredId, PredInfo, Preds),
-    map__det_remove(AccessibilityTable0, PredId, _, AccessibilityTable),
+    list.delete_all(PredIds0, PredId, PredIds),
+    map.det_remove(Preds0, PredId, PredInfo, Preds),
+    map.det_remove(AccessibilityTable0, PredId, _, AccessibilityTable),
     Module = pred_info_module(PredInfo),
     Name = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
@@ -1597,14 +1597,14 @@ predicate_table_remove_from_index(Module, Name, Arity, PredId,
     map(T, list(pred_id))::in, map(T, list(pred_id))::out) is det.
 
 do_remove_from_index(T, PredId, Index0, Index) :-
-    ( map__search(Index0, T, NamePredIds0) ->
-        list__delete_all(NamePredIds0, PredId, NamePredIds),
+    ( map.search(Index0, T, NamePredIds0) ->
+        list.delete_all(NamePredIds0, PredId, NamePredIds),
         (
             NamePredIds = [],
-            map__delete(Index0, T, Index)
+            map.delete(Index0, T, Index)
         ;
             NamePredIds = [_ | _],
-            map__det_update(Index0, T, NamePredIds, Index)
+            map.det_update(Index0, T, NamePredIds, Index)
         )
     ;
         Index = Index0
@@ -1615,21 +1615,21 @@ do_remove_from_index(T, PredId, Index0, Index) :-
     is det.
 
 do_remove_from_m_n_a_index(Module, Name, Arity, PredId, MNA0, MNA) :-
-    map__lookup(MNA0, Module - Name, Arities0),
-    map__lookup(Arities0, Arity, PredIds0),
-    list__delete_all(PredIds0, PredId, PredIds),
+    map.lookup(MNA0, Module - Name, Arities0),
+    map.lookup(Arities0, Arity, PredIds0),
+    list.delete_all(PredIds0, PredId, PredIds),
     (
         PredIds = [],
-        map__delete(Arities0, Arity, Arities),
-        ( map__is_empty(Arities) ->
-            map__delete(MNA0, Module - Name, MNA)
+        map.delete(Arities0, Arity, Arities),
+        ( map.is_empty(Arities) ->
+            map.delete(MNA0, Module - Name, MNA)
         ;
-            map__det_update(MNA0, Module - Name, Arities, MNA)
+            map.det_update(MNA0, Module - Name, Arities, MNA)
         )
     ;
         PredIds = [_ | _],
-        map__det_update(Arities0, Arity, PredIds, Arities),
-        map__det_update(MNA0, Module - Name, Arities, MNA)
+        map.det_update(Arities0, Arity, PredIds, Arities),
+        map.det_update(MNA0, Module - Name, Arities, MNA)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1638,7 +1638,7 @@ do_remove_from_m_n_a_index(Module, Name, Arity, PredId, MNA0, MNA) :-
     predicate_table::out) is det.
 
 predicate_table_reverse_predids(PredicateTable0, PredicateTable) :-
-    list__reverse(PredicateTable0 ^ pred_ids, PredIds),
+    list.reverse(PredicateTable0 ^ pred_ids, PredIds),
     PredicateTable = PredicateTable0 ^ pred_ids := PredIds.
 
 %-----------------------------------------------------------------------------%
@@ -1713,14 +1713,14 @@ predicate_table_search_name(PredicateTable, Name, PredIds) :-
     ;
         FuncPredIds = []
     ),
-    list__append(FuncPredIds, PredPredIds, PredIds),
+    list.append(FuncPredIds, PredPredIds, PredIds),
     PredIds = [_ | _].
 
 predicate_table_search_pred_name(PredicateTable, PredName, PredIds) :-
-    map__search(PredicateTable ^ pred_name_index, PredName, PredIds).
+    map.search(PredicateTable ^ pred_name_index, PredName, PredIds).
 
 predicate_table_search_func_name(PredicateTable, FuncName, PredIds) :-
-    map__search(PredicateTable ^ func_name_index, FuncName, PredIds).
+    map.search(PredicateTable ^ func_name_index, FuncName, PredIds).
 
 %-----------------------------------------------------------------------------%
 
@@ -1746,7 +1746,7 @@ predicate_table_search_module_name(PredicateTable, IsFullyQualified,
     ;
         FuncPredIds = []
     ),
-    list__append(FuncPredIds, PredPredIds, PredIds),
+    list.append(FuncPredIds, PredPredIds, PredIds),
     PredIds = [_ | _].
 
 :- pred predicate_table_search_pred_module_name(predicate_table::in,
@@ -1756,9 +1756,9 @@ predicate_table_search_module_name(PredicateTable, IsFullyQualified,
 predicate_table_search_pred_module_name(PredicateTable, IsFullyQualified,
         Module, PredName, PredIds) :-
     Pred_MNA_Index = PredicateTable ^ pred_module_name_arity_index,
-    map__search(Pred_MNA_Index, Module - PredName, Arities),
-    map__values(Arities, PredIdLists),
-    list__condense(PredIdLists, PredIds0),
+    map.search(Pred_MNA_Index, Module - PredName, Arities),
+    map.values(Arities, PredIdLists),
+    list.condense(PredIdLists, PredIds0),
     maybe_filter_pred_ids_matching_module(IsFullyQualified,
         Module, PredicateTable, PredIds0, PredIds).
 
@@ -1769,9 +1769,9 @@ predicate_table_search_pred_module_name(PredicateTable, IsFullyQualified,
 predicate_table_search_func_module_name(PredicateTable, IsFullyQualified,
         Module, FuncName, PredIds) :-
     Func_MNA_Index = PredicateTable ^ func_module_name_arity_index,
-    map__search(Func_MNA_Index, Module - FuncName, Arities),
-    map__values(Arities, PredIdLists),
-    list__condense(PredIdLists, PredIds0),
+    map.search(Func_MNA_Index, Module - FuncName, Arities),
+    map.values(Arities, PredIdLists),
+    list.condense(PredIdLists, PredIds0),
     maybe_filter_pred_ids_matching_module(IsFullyQualified,
         Module, PredicateTable, PredIds0, PredIds).
 
@@ -1794,18 +1794,18 @@ predicate_table_search_name_arity(PredicateTable, Name, Arity, PredIds) :-
     ;
         FuncPredIds = []
     ),
-    list__append(FuncPredIds, PredPredIds, PredIds),
+    list.append(FuncPredIds, PredPredIds, PredIds),
     PredIds = [_ | _].
 
 predicate_table_search_pred_name_arity(PredicateTable, PredName, Arity,
         PredIds) :-
     PredNameArityIndex = PredicateTable ^ pred_name_arity_index,
-    map__search(PredNameArityIndex, PredName / Arity, PredIds).
+    map.search(PredNameArityIndex, PredName / Arity, PredIds).
 
 predicate_table_search_func_name_arity(PredicateTable, FuncName, Arity,
         PredIds) :-
     FuncNameArityIndex = PredicateTable ^ func_name_arity_index,
-    map__search(FuncNameArityIndex, FuncName / Arity, PredIds).
+    map.search(FuncNameArityIndex, FuncName / Arity, PredIds).
 
 %-----------------------------------------------------------------------------%
 
@@ -1827,22 +1827,22 @@ predicate_table_search_m_n_a(PredicateTable, IsFullyQualified,
     ;
         FuncPredIds = []
     ),
-    list__append(FuncPredIds, PredPredIds, PredIds),
+    list.append(FuncPredIds, PredPredIds, PredIds),
     PredIds = [_ | _].
 
 predicate_table_search_pred_m_n_a(PredicateTable, IsFullyQualified,
         Module, PredName, Arity, !:PredIds) :-
     P_MNA_Index = PredicateTable ^ pred_module_name_arity_index,
-    map__search(P_MNA_Index, Module - PredName, ArityIndex),
-    map__search(ArityIndex, Arity, !:PredIds),
+    map.search(P_MNA_Index, Module - PredName, ArityIndex),
+    map.search(ArityIndex, Arity, !:PredIds),
     maybe_filter_pred_ids_matching_module(IsFullyQualified, Module,
         PredicateTable, !PredIds).
 
 predicate_table_search_func_m_n_a(PredicateTable, IsFullyQualified,
         Module, FuncName, Arity, !:PredIds) :-
     F_MNA_Index = PredicateTable ^ func_module_name_arity_index,
-    map__search(F_MNA_Index, Module - FuncName, ArityIndex),
-    map__search(ArityIndex, Arity, !:PredIds),
+    map.search(F_MNA_Index, Module - FuncName, ArityIndex),
+    map.search(ArityIndex, Arity, !:PredIds),
     maybe_filter_pred_ids_matching_module(IsFullyQualified, Module,
         PredicateTable, !PredIds).
 
@@ -1855,13 +1855,13 @@ maybe_filter_pred_ids_matching_module(may_be_partially_qualified, _, _,
 maybe_filter_pred_ids_matching_module(is_fully_qualified, ModuleName,
         PredicateTable, !PredIds) :-
     predicate_table_get_preds(PredicateTable, Preds),
-    list__filter(pred_id_matches_module(Preds, ModuleName), !PredIds).
+    list.filter(pred_id_matches_module(Preds, ModuleName), !PredIds).
 
 :- pred pred_id_matches_module(pred_table::in, module_name::in, pred_id::in)
     is semidet.
 
 pred_id_matches_module(Preds, ModuleName, PredId) :-
-    map__lookup(Preds, PredId, PredInfo),
+    map.lookup(Preds, PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo).
 
 %-----------------------------------------------------------------------------%
@@ -1917,7 +1917,7 @@ predicate_table_restrict(PartialQualInfo, PredIds, OrigPredicateTable,
     % in the predicate table is the same as the PredIds list argument here
     % (if we used foldl, it would get reversed, since each new predicate
     % inserted into the table gets its pred_id added at the start of the list).
-    list__foldr(reinsert_for_restrict(PartialQualInfo, Preds,
+    list.foldr(reinsert_for_restrict(PartialQualInfo, Preds,
         AccessibilityTable), PredIds, PredicateTable0, PredicateTable).
 
 :- pred reinsert_for_restrict(partial_qualifier_info::in, pred_table::in,
@@ -1926,8 +1926,8 @@ predicate_table_restrict(PartialQualInfo, PredIds, OrigPredicateTable,
 
 reinsert_for_restrict(PartialQualInfo, Preds, AccessibilityTable, PredId,
         !Table) :-
-    PredInfo = map__lookup(Preds, PredId),
-    Access = map__lookup(AccessibilityTable, PredId),
+    PredInfo = map.lookup(Preds, PredId),
+    Access = map.lookup(AccessibilityTable, PredId),
     Access = access(Unqualified, PartiallyQualified),
     (
         Unqualified = yes,
@@ -1951,8 +1951,8 @@ reinsert_for_restrict(PartialQualInfo, Preds, AccessibilityTable, PredId,
 
 predicate_table_reset(PredicateTable0, PredicateTable) :-
     NextPredId = PredicateTable0 ^ next_pred_id,
-    PredicateTable = predicate_table(map__init, NextPredId, [], map__init,
-        map__init, map__init, map__init, map__init, map__init, map__init).
+    PredicateTable = predicate_table(map.init, NextPredId, [], map.init,
+        map.init, map.init, map.init, map.init, map.init, map.init).
 
 %-----------------------------------------------------------------------------%
 
@@ -1986,7 +1986,7 @@ predicate_table_insert_2(MaybePredId, PredInfo, NeedQual, MaybeQualInfo,
         % Allocate a new pred_id.
         MaybePredId = no,
         PredId = NextPredId0,
-        hlds_pred__next_pred_id(PredId, NextPredId)
+        hlds_pred.next_pred_id(PredId, NextPredId)
     ),
     % Insert the pred_id into either the function or predicate indices,
     % as appropriate.
@@ -2022,7 +2022,7 @@ predicate_table_insert_2(MaybePredId, PredInfo, NeedQual, MaybeQualInfo,
     PredIds = [PredId | PredIds0],
 
     % Save the pred_info for this pred_id.
-    map__det_insert(Preds0, PredId, PredInfo, Preds),
+    map.det_insert(Preds0, PredId, PredInfo, Preds),
 
     !:PredicateTable = predicate_table(Preds, NextPredId, PredIds,
         AccessibilityTable,
@@ -2041,11 +2041,11 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
     (
         NeedQual = may_be_unqualified,
         % Insert the unqualified name into the name index.
-        svmulti_map__set(Name, PredId, !N_Index),
+        svmulti_map.set(Name, PredId, !N_Index),
 
         % Insert the unqualified name/arity into the name/arity index.
         NA = Name / Arity,
-        svmulti_map__set(NA, PredId, !NA_Index),
+        svmulti_map.set(NA, PredId, !NA_Index),
 
         AccessibleByUnqualifiedName = yes
     ;
@@ -2058,7 +2058,7 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
         % Insert partially module-qualified versions of the name into the
         % module.name/arity index.
         get_partial_qualifiers(Module, QualInfo, PartialQuals),
-        list__foldl((pred(AncModule::in, MNAs0::in, MNAs::out) is det :-
+        list.foldl((pred(AncModule::in, MNAs0::in, MNAs::out) is det :-
                 insert_into_mna_index(AncModule, Name, Arity, PredId,
                     MNAs0, MNAs)
             ), PartialQuals, !MNA_Index),
@@ -2072,20 +2072,20 @@ predicate_table_do_insert(Module, Name, Arity, NeedQual, MaybeQualInfo,
     insert_into_mna_index(Module, Name, Arity, PredId, !MNA_Index),
     Access = access(AccessibleByUnqualifiedName,
         AccessibleByPartiallyQualifiedNames),
-    svmap__set(PredId, Access, !AccessibilityTable).
+    svmap.set(PredId, Access, !AccessibilityTable).
 
 :- pred insert_into_mna_index(module_name::in, string::in, arity::in,
     pred_id::in, module_name_arity_index::in,
     module_name_arity_index::out) is det.
 
 insert_into_mna_index(Module, Name, Arity, PredId, !MNA_Index) :-
-    ( map__search(!.MNA_Index, Module - Name, MN_Arities0) ->
-        multi_map__set(MN_Arities0, Arity, PredId, MN_Arities),
-        svmap__det_update(Module - Name, MN_Arities, !MNA_Index)
+    ( map.search(!.MNA_Index, Module - Name, MN_Arities0) ->
+        multi_map.set(MN_Arities0, Arity, PredId, MN_Arities),
+        svmap.det_update(Module - Name, MN_Arities, !MNA_Index)
     ;
-        map__init(MN_Arities0),
-        map__det_insert(MN_Arities0, Arity, [PredId], MN_Arities),
-        svmap__det_insert(Module - Name, MN_Arities, !MNA_Index)
+        map.init(MN_Arities0),
+        map.det_insert(MN_Arities0, Arity, [PredId], MN_Arities),
+        svmap.det_insert(Module - Name, MN_Arities, !MNA_Index)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2141,7 +2141,7 @@ find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ArgTypes,
             % Lookup the universal constraints on the condidate predicate.
             pred_info_get_class_context(PredInfo, ProgConstraints),
             ProgConstraints = constraints(UnivConstraints, _),
-            list__length(UnivConstraints, NumConstraints),
+            list.length(UnivConstraints, NumConstraints),
             ConstraintSearch(NumConstraints, ProvenConstraints),
             univ_constraints_match(ProvenConstraints, UnivConstraints)
         )
@@ -2186,15 +2186,15 @@ univ_constraints_match([], []).
 univ_constraints_match([ProvenConstraint | ProvenConstraints],
         [CalleeConstraint | CalleeConstraints]) :-
     ProvenConstraint = constraint(Name, ProvenArgs),
-    list__length(ProvenArgs, Arity),
+    list.length(ProvenArgs, Arity),
     CalleeConstraint = constraint(Name, CalleeArgs),
-    list__length(CalleeArgs, Arity),
+    list.length(CalleeArgs, Arity),
     univ_constraints_match(ProvenConstraints, CalleeConstraints).
 
 get_pred_id(IsFullyQualified, SymName, PredOrFunc, TVarSet,
         ArgTypes, ModuleInfo, PredId) :-
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
-    list__length(ArgTypes, Arity),
+    list.length(ArgTypes, Arity),
     (
         predicate_table_search_pf_sym_arity(PredicateTable, IsFullyQualified,
             PredOrFunc, SymName, Arity, PredIds),
@@ -2218,11 +2218,11 @@ get_pred_id_and_proc_id(IsFullyQualified, SymName, PredOrFunc, TVarSet,
     ;
         % Undefined/invalid pred or func. The type-checker should ensure
         % that this never happens
-        list__length(ArgTypes, Arity),
-        PredOrFuncStr = prog_out__pred_or_func_to_str(PredOrFunc),
-        mdbcomp__prim_data__sym_name_to_string(SymName, Name2),
-        string__int_to_string(Arity, ArityString),
-        string__append_list(["get_pred_id_and_proc_id: ",
+        list.length(ArgTypes, Arity),
+        PredOrFuncStr = prog_out.pred_or_func_to_str(PredOrFunc),
+        mdbcomp.prim_data.sym_name_to_string(SymName, Name2),
+        string.int_to_string(Arity, ArityString),
+        string.append_list(["get_pred_id_and_proc_id: ",
             "undefined/invalid ", PredOrFuncStr,
             "\n`", Name2, "/", ArityString, "'"], Msg),
         unexpected(this_file, Msg)
@@ -2238,18 +2238,18 @@ get_proc_id(ModuleInfo, PredId, ProcId) :-
         Name = pred_info_name(PredInfo),
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         Arity = pred_info_orig_arity(PredInfo),
-        PredOrFuncStr = prog_out__pred_or_func_to_str(PredOrFunc),
-        string__int_to_string(Arity, ArityString),
+        PredOrFuncStr = prog_out.pred_or_func_to_str(PredOrFunc),
+        string.int_to_string(Arity, ArityString),
         (
             ProcIds = [],
-            string__append_list([
+            string.append_list([
                 "cannot take address of ", PredOrFuncStr,
                 "\n`", Name, "/", ArityString, "' with no modes.\n",
                 "(Sorry, confused by earlier errors -- bailing out.)"],
                 Message)
         ;
             ProcIds = [_ | _],
-            string__append_list([
+            string.append_list([
                 "sorry, not implemented: ",
                 "taking address of ", PredOrFuncStr,
                 "\n`", Name, "/", ArityString, "' with multiple modes.\n",
@@ -2293,8 +2293,8 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
     ->
         PredId = PredId0
     ;
-        string__int_to_string(Arity, ArityS),
-        string__append_list(["can't locate ", ProcName, "/", ArityS],
+        string.int_to_string(Arity, ArityS),
+        string.append_list(["can't locate ", ProcName, "/", ArityS],
             ErrorMessage),
         unexpected(this_file, ErrorMessage)
     ),
@@ -2306,16 +2306,16 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
             ProcId = ProcId0
         ;
             unexpected(this_file,
-                string__format("expected single mode for %s/%d",
+                string.format("expected single mode for %s/%d",
                     [s(ProcName), i(Arity)]))
         )
     ;
         ModeNo = mode_no(N),
-        ( list__index0(ProcIds, N, ProcId0) ->
+        ( list.index0(ProcIds, N, ProcId0) ->
             ProcId = ProcId0
         ;
             unexpected(this_file,
-                string__format("there is no mode %d for %s/%d",
+                string.format("there is no mode %d for %s/%d",
                     [i(N), s(ProcName), i(Arity)]))
         )
     ).
@@ -2324,24 +2324,24 @@ lookup_builtin_pred_proc_id(Module, ModuleName, ProcName, PredOrFunc,
 
 predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity) :-
     module_info_preds(ModuleInfo, Preds),
-    map__lookup(Preds, PredId, PredInfo),
+    map.lookup(Preds, PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo).
 
 predicate_module(ModuleInfo, PredId, ModuleName) :-
     module_info_preds(ModuleInfo, Preds),
-    map__lookup(Preds, PredId, PredInfo),
+    map.lookup(Preds, PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo).
 
 predicate_name(ModuleInfo, PredId, PredName) :-
     module_info_preds(ModuleInfo, Preds),
-    map__lookup(Preds, PredId, PredInfo),
+    map.lookup(Preds, PredId, PredInfo),
     PredName = pred_info_name(PredInfo).
 
 predicate_arity(ModuleInfo, PredId, Arity) :-
     module_info_preds(ModuleInfo, Preds),
-    map__lookup(Preds, PredId, PredInfo),
+    map.lookup(Preds, PredId, PredInfo),
     Arity = pred_info_orig_arity(PredInfo).
 
 %-----------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -11,7 +11,7 @@
 
 % Main authors: fjh, conway.
 
-:- module hlds__hlds_data.
+:- module hlds.hlds_data.
 
 :- interface.
 
@@ -55,7 +55,7 @@
 :- type hlds_cons_defn
     --->    hlds_cons_defn(
                 % maybe add tvarset here?
-                % you can get the tvarset from the hlds__type_defn.
+                % you can get the tvarset from the hlds.type_defn.
                 cons_exist_tvars    :: existq_tvars,
                                     % existential type vars
 
@@ -126,7 +126,7 @@
     % An hlds_type_defn holds the information about a type definition.
 :- type hlds_type_defn.
 
-:- pred hlds_data__set_type_defn(tvarset::in, list(type_param)::in,
+:- pred set_type_defn(tvarset::in, list(type_param)::in,
     tvar_kind_map::in, hlds_type_body::in, import_status::in, bool::in,
     need_qualifier::in, prog_context::in, hlds_type_defn::out) is det.
 
@@ -326,8 +326,8 @@
 :- type tag_bits    ==  int.    % actually only 2 (or maybe 3) bits
 
     % The type definitions for no_tag types have information mirrored in a
-    % separate table for faster lookups. mode_util__mode_to_arg_mode makes
-    % heavy use of type_util__type_is_no_tag_type.
+    % separate table for faster lookups. mode_util.mode_to_arg_mode makes
+    % heavy use of type_util.type_is_no_tag_type.
     %
 :- type no_tag_type
     --->    no_tag_type(
@@ -431,7 +431,7 @@ get_secondary_tag(shared_with_reserved_addresses(_ReservedAddresses, TagValue))
                 type_defn_context           :: prog_context
             ).
 
-hlds_data__set_type_defn(Tvarset, Params, Kinds, Body, Status, InExportedEqv,
+set_type_defn(Tvarset, Params, Kinds, Body, Status, InExportedEqv,
         NeedQual, Context, Defn) :-
     Defn = hlds_type_defn(Tvarset, Params, Kinds, Body, Status,
         InExportedEqv, NeedQual, Context).
@@ -598,14 +598,14 @@ set_type_defn_in_exported_eqv(InExportedEqv, Defn,
 
 inst_table_init(inst_table(UserInsts, UnifyInsts, MergeInsts, GroundInsts,
             AnyInsts, SharedInsts, NondetLiveInsts)) :-
-    map__init(UserInstDefns),
+    map.init(UserInstDefns),
     UserInsts = user_inst_table(UserInstDefns, []),
-    map__init(UnifyInsts),
-    map__init(MergeInsts),
-    map__init(GroundInsts),
-    map__init(SharedInsts),
-    map__init(AnyInsts),
-    map__init(NondetLiveInsts).
+    map.init(UnifyInsts),
+    map.init(MergeInsts),
+    map.init(GroundInsts),
+    map.init(SharedInsts),
+    map.init(AnyInsts),
+    map.init(NondetLiveInsts).
 
 inst_table_get_user_insts(InstTable, InstTable ^ inst_table_user).
 inst_table_get_unify_insts(InstTable, InstTable ^ inst_table_unify).
@@ -639,14 +639,14 @@ user_inst_table_get_inst_ids(UserInstTable,
 user_inst_table_insert(InstId, InstDefn, UserInstTable0, UserInstTable) :-
     UserInstTable0 = user_inst_table(InstDefns0, InstIds0),
     InstDefns0 = UserInstTable0 ^ uinst_table_defns,
-    map__insert(InstDefns0, InstId, InstDefn, InstDefns),
+    map.insert(InstDefns0, InstId, InstDefn, InstDefns),
     InstIds = [InstId | InstIds0],
     UserInstTable = user_inst_table(InstDefns, InstIds).
 
 user_inst_table_optimize(UserInstTable0, UserInstTable) :-
     UserInstTable0 = user_inst_table(InstDefns0, InstIds0),
-    map__optimize(InstDefns0, InstDefns),
-    list__sort(InstIds0, InstIds),
+    map.optimize(InstDefns0, InstDefns),
+    list.sort(InstIds0, InstIds),
     UserInstTable = user_inst_table(InstDefns, InstIds).
 
 %-----------------------------------------------------------------------------%
@@ -727,19 +727,19 @@ mode_table_get_mode_ids(ModeTable, ModeTable ^ mode_table_ids).
 
 mode_table_insert(ModeId, ModeDefn, ModeTable0, ModeTable) :-
     ModeTable0 = mode_table(ModeDefns0, ModeIds0),
-    map__insert(ModeDefns0, ModeId, ModeDefn, ModeDefns),
+    map.insert(ModeDefns0, ModeId, ModeDefn, ModeDefns),
     ModeIds = [ModeId | ModeIds0],
     ModeTable = mode_table(ModeDefns, ModeIds).
 
 mode_table_init(mode_table(ModeDefns, [])) :-
-    map__init(ModeDefns).
+    map.init(ModeDefns).
 
 mode_table_optimize(ModeTable0, ModeTable) :-
     ModeTable0 = mode_table(ModeDefns0, ModeIds0),
-    map__optimize(ModeDefns0, ModeDefns),   % NOP
+    map.optimize(ModeDefns0, ModeDefns),   % NOP
     % Sort the list of mode_ids for quick conversion to a set by module_qual
     % when qualifying the modes of lambda expressions.
-    list__sort(ModeIds0, ModeIds),
+    list.sort(ModeIds0, ModeIds),
     ModeTable = mode_table(ModeDefns, ModeIds).
 
 %-----------------------------------------------------------------------------%
@@ -855,7 +855,7 @@ restrict_list_elements(Elements, List) =
 
 restrict_list_elements_2(_, _, []) = [].
 restrict_list_elements_2(Elements, Index, [X | Xs]) =
-    ( set__member(Index, Elements) ->
+    ( set.member(Index, Elements) ->
         [X | restrict_list_elements_2(Elements, Index + 1, Xs)]
     ;
         restrict_list_elements_2(Elements, Index + 1, Xs)
@@ -1261,19 +1261,19 @@ search_hlds_constraint_list_2(ConstraintMap, ConstraintType, GoalPath, Count,
     --->    assertion_table(assert_id, map(assert_id, pred_id)).
 
 assertion_table_init(assertion_table(0, AssertionMap)) :-
-    map__init(AssertionMap).
+    map.init(AssertionMap).
 
 assertion_table_add_assertion(Assertion, Id, !AssertionTable) :-
     !.AssertionTable = assertion_table(Id, AssertionMap0),
-    map__det_insert(AssertionMap0, Id, Assertion, AssertionMap),
+    map.det_insert(AssertionMap0, Id, Assertion, AssertionMap),
     !:AssertionTable = assertion_table(Id + 1, AssertionMap).
 
 assertion_table_lookup(AssertionTable, Id, Assertion) :-
     AssertionTable = assertion_table(_MaxId, AssertionMap),
-    map__lookup(AssertionMap, Id, Assertion).
+    map.lookup(AssertionMap, Id, Assertion).
 
 assertion_table_pred_ids(assertion_table(_, AssertionMap), PredIds) :-
-    map__values(AssertionMap, PredIds).
+    map.values(AssertionMap, PredIds).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1337,19 +1337,19 @@ assertion_table_pred_ids(assertion_table(_, AssertionMap), PredIds) :-
 :- type exclusive_table     ==  multi_map(pred_id, exclusive_id).
 
 exclusive_table_init(ExclusiveTable) :-
-    multi_map__init(ExclusiveTable).
+    multi_map.init(ExclusiveTable).
 
 exclusive_table_lookup(ExclusiveTable, PredId, ExclusiveIds) :-
-    multi_map__lookup(ExclusiveTable, PredId, ExclusiveIds).
+    multi_map.lookup(ExclusiveTable, PredId, ExclusiveIds).
 
 exclusive_table_search(ExclusiveTable, Id, ExclusiveIds) :-
-    multi_map__search(ExclusiveTable, Id, ExclusiveIds).
+    multi_map.search(ExclusiveTable, Id, ExclusiveIds).
 
 exclusive_table_optimize(ExclusiveTable0, ExclusiveTable) :-
-    multi_map__optimize(ExclusiveTable0, ExclusiveTable).
+    multi_map.optimize(ExclusiveTable0, ExclusiveTable).
 
 exclusive_table_add(ExclusiveId, PredId, ExclusiveTable0, ExclusiveTable) :-
-    multi_map__set(ExclusiveTable0, PredId, ExclusiveId, ExclusiveTable).
+    multi_map.set(ExclusiveTable0, PredId, ExclusiveId, ExclusiveTable).
 
 %-----------------------------------------------------------------------------%
 

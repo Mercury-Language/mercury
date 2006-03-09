@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2005 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -86,21 +86,21 @@
     %   Write the term Term to ToFileName, making it is new contents.
     %   If Debug is `yes', write it to the file `/tmp/.send_term'
     %   as well.
-    %   
+    %
 :- pred send_term(string::in, bool::in, T::in, io::di, io::uo) is det.
 
     % send_string(ToFileName, Debug, Str):
     %   Write the string Str to ToFileName, making it is new contents.
     %   If Debug is `yes', write it to the file `/tmp/.send_string'
     %   as well.
-    %   
+    %
 :- pred send_string(string::in, bool::in, string::in, io::di, io::uo) is det.
 
     % recv_term(FromFileName, Debug, Term):
     %   Read the contents of FromFileName, which should be a single
     %   Mercury term. If Debug is `yes', write the result of the read
     %   to the file `/tmp/.recv_term' as well.
-    %   
+    %
 :- pred recv_term(string::in, bool::in, T::out, io::di, io::uo) is det.
 
     % recv_string(FromFileName, Debug, Str):
@@ -161,7 +161,7 @@
     --->    rank_range(int, int)
                     % rank_range(M, N): display procedures
                     % with rank M to N, both inclusive.
-    
+
     ;       threshold(float).
                     % threshold(Percent): display
                     % procedures whose cost is at least
@@ -189,10 +189,10 @@
                     % whether contour exclusion should be
                     % applied
             pref_time :: time_format,
-            
+
             pref_inactive :: inactive_items
                     % Whether we should show modules/procs
-                    % that haven't been called. 
+                    % that haven't been called.
         ).
 
 :- type port_fields
@@ -361,12 +361,12 @@ want_dir = server_dir.
 want_prefix = "mdprof_want".
 
 want_file_name =
-    want_dir ++ "/" ++ want_prefix ++ string__int_to_string(getpid).
+    want_dir ++ "/" ++ want_prefix ++ string.int_to_string(getpid).
 
 response_file_name(DataFileName, QueryNum) =
     server_dir ++ "/" ++
     "mdprof_response" ++ filename_mangle(DataFileName) ++
-    string__int_to_string(QueryNum).
+    string.int_to_string(QueryNum).
 
 contour_file_name(DataFileName) =
     DataFileName ++ ".contour".
@@ -378,9 +378,9 @@ server_dir = "/var/tmp".
 :- func filename_mangle(string) = string.
 
 filename_mangle(FileName) = MangledFileName :-
-    FileNameChars = string__to_char_list(FileName),
+    FileNameChars = string.to_char_list(FileName),
     MangledFileNameChars = filename_mangle_2(FileNameChars),
-    MangledFileName = string__from_char_list(MangledFileNameChars).
+    MangledFileName = string.from_char_list(MangledFileNameChars).
 
     % This mangling scheme ensures that (a) the mangled filename doesn't
     % contain any slashes, and (b) two different original filenames will
@@ -400,21 +400,21 @@ filename_mangle_2([First | Rest]) = MangledChars :-
     ).
 
 send_term(ToPipeName, Debug, Data, !IO) :-
-    io__open_output(ToPipeName, Res, !IO),
+    io.open_output(ToPipeName, Res, !IO),
     ( Res = ok(ToStream) ->
-        io__write(ToStream, Data, !IO),
-        io__write_string(ToStream, ".\n", !IO),
-        io__close_output(ToStream, !IO)
+        io.write(ToStream, Data, !IO),
+        io.write_string(ToStream, ".\n", !IO),
+        io.close_output(ToStream, !IO)
     ;
         error("send_term: couldn't open pipe")
     ),
     (
         Debug = yes,
-        io__open_output("/tmp/.send_term", Res2, !IO),
+        io.open_output("/tmp/.send_term", Res2, !IO),
         ( Res2 = ok(DebugStream) ->
-            io__write(DebugStream, Data, !IO),
-            io__write_string(DebugStream, ".\n", !IO),
-            io__close_output(DebugStream, !IO)
+            io.write(DebugStream, Data, !IO),
+            io.write_string(DebugStream, ".\n", !IO),
+            io.close_output(DebugStream, !IO)
         ;
             error("send_term: couldn't debug")
         )
@@ -423,19 +423,19 @@ send_term(ToPipeName, Debug, Data, !IO) :-
     ).
 
 send_string(ToPipeName, Debug, Data, !IO) :-
-    io__open_output(ToPipeName, Res, !IO),
+    io.open_output(ToPipeName, Res, !IO),
     ( Res = ok(ToStream) ->
-        io__write_string(ToStream, Data, !IO),
-        io__close_output(ToStream, !IO)
+        io.write_string(ToStream, Data, !IO),
+        io.close_output(ToStream, !IO)
     ;
         error("send_string: couldn't open pipe")
     ),
     (
         Debug = yes,
-        io__open_output("/tmp/.send_string", Res2, !IO),
+        io.open_output("/tmp/.send_string", Res2, !IO),
         ( Res2 = ok(DebugStream) ->
-            io__write_string(DebugStream, Data, !IO),
-            io__close_output(DebugStream, !IO)
+            io.write_string(DebugStream, Data, !IO),
+            io.close_output(DebugStream, !IO)
         ;
             error("send_string: couldn't debug")
         )
@@ -444,22 +444,22 @@ send_string(ToPipeName, Debug, Data, !IO) :-
     ).
 
 recv_term(FromPipeName, Debug, Resp, !IO) :-
-    io__open_input(FromPipeName, Res0, !IO),
+    io.open_input(FromPipeName, Res0, !IO),
     ( Res0 = ok(FromStream) ->
-        io__read(FromStream, Res1, !IO),
+        io.read(FromStream, Res1, !IO),
         ( Res1 = ok(Resp0) ->
             Resp = Resp0
         ;
             error("recv_term: read failed")
         ),
-        io__close_input(FromStream, !IO),
+        io.close_input(FromStream, !IO),
         (
             Debug = yes,
-            io__open_output("/tmp/.recv_term", Res2, !IO),
+            io.open_output("/tmp/.recv_term", Res2, !IO),
             ( Res2 = ok(DebugStream) ->
-                io__write(DebugStream, Res1, !IO),
-                io__write_string(DebugStream, ".\n", !IO),
-                io__close_output(DebugStream, !IO)
+                io.write(DebugStream, Res1, !IO),
+                io.write_string(DebugStream, ".\n", !IO),
+                io.close_output(DebugStream, !IO)
             ;
                 error("recv_term: couldn't debug")
             )
@@ -471,22 +471,22 @@ recv_term(FromPipeName, Debug, Resp, !IO) :-
     ).
 
 recv_string(FromPipeName, Debug, Resp, !IO) :-
-    io__open_input(FromPipeName, Res0, !IO),
+    io.open_input(FromPipeName, Res0, !IO),
     ( Res0 = ok(FromStream) ->
-        io__read_file_as_string(FromStream, Res1, !IO),
+        io.read_file_as_string(FromStream, Res1, !IO),
         ( Res1 = ok(Resp0) ->
             Resp = Resp0
         ;
             error("recv_string: read failed")
         ),
-        io__close_input(FromStream, !IO),
+        io.close_input(FromStream, !IO),
         (
             Debug = yes,
-            io__open_output("/tmp/.recv_string", Res2, !IO),
+            io.open_output("/tmp/.recv_string", Res2, !IO),
             ( Res2 = ok(DebugStream) ->
-                io__write(DebugStream, Res1, !IO),
-                io__write_string(DebugStream, ".\n", !IO),
-                io__close_output(DebugStream, !IO)
+                io.write(DebugStream, Res1, !IO),
+                io.write_string(DebugStream, ".\n", !IO),
+                io.close_output(DebugStream, !IO)
             ;
                 error("recv_string: couldn't debug")
             )
@@ -517,9 +517,9 @@ machine_datafile_cmd_pref_to_url(Machine, DataFileName, Cmd, Preferences) =
     Machine ++
     "/cgi-bin/mdprof_cgi?" ++
     cmd_to_string(Cmd) ++
-    string__char_to_string(query_separator_char) ++
+    string.char_to_string(query_separator_char) ++
     preferences_to_string(Preferences) ++
-    string__char_to_string(query_separator_char) ++
+    string.char_to_string(query_separator_char) ++
     DataFileName.
 
 :- func cmd_to_string(cmd) = string.
@@ -533,7 +533,7 @@ cmd_to_string(Cmd) = CmdStr :-
         CmdStr = "restart"
     ;
         Cmd = timeout(Minutes),
-        CmdStr = string__format("timeout%c%d",
+        CmdStr = string.format("timeout%c%d",
             [c(cmd_separator_char), i(Minutes)])
     ;
         Cmd = menu,
@@ -542,25 +542,25 @@ cmd_to_string(Cmd) = CmdStr :-
         Cmd = root(MaybePercent),
         (
             MaybePercent = yes(Percent),
-            CmdStr = string__format("root%c%d",
+            CmdStr = string.format("root%c%d",
                 [c(cmd_separator_char), i(Percent)])
         ;
             MaybePercent = no,
-            CmdStr = string__format("root%c%s",
+            CmdStr = string.format("root%c%s",
                 [c(cmd_separator_char), s("no")])
         )
     ;
         Cmd = clique(CliqueNum),
-        CmdStr = string__format("clique%c%d",
+        CmdStr = string.format("clique%c%d",
             [c(cmd_separator_char), i(CliqueNum)])
     ;
         Cmd = proc(ProcNum),
-        CmdStr = string__format("proc%c%d",
+        CmdStr = string.format("proc%c%d",
             [c(cmd_separator_char), i(ProcNum)])
     ;
         Cmd = proc_callers(ProcNum, GroupCallers, BunchNum),
         GroupCallersStr = caller_groups_to_string(GroupCallers),
-        CmdStr = string__format("proc_callers%c%d%c%s%c%d",
+        CmdStr = string.format("proc_callers%c%d%c%s%c%d",
             [c(cmd_separator_char), i(ProcNum),
             c(cmd_separator_char), s(GroupCallersStr),
             c(cmd_separator_char), i(BunchNum)])
@@ -569,7 +569,7 @@ cmd_to_string(Cmd) = CmdStr :-
         CmdStr = "modules"
     ;
         Cmd = module(ModuleName),
-        CmdStr = string__format("module%c%s",
+        CmdStr = string.format("module%c%s",
             [c(cmd_separator_char), s(ModuleName)])
     ;
         Cmd = top_procs(Limit, CostKind, InclDesc, Scope),
@@ -577,30 +577,30 @@ cmd_to_string(Cmd) = CmdStr :-
         CostKindStr = cost_kind_to_string(CostKind),
         InclDescStr = incl_desc_to_string(InclDesc),
         ScopeStr = scope_to_string(Scope),
-        CmdStr = string__format("top_procs%c%s%c%s%c%s%c%s",
+        CmdStr = string.format("top_procs%c%s%c%s%c%s%c%s",
             [c(cmd_separator_char), s(LimitStr),
             c(cmd_separator_char), s(CostKindStr),
             c(cmd_separator_char), s(InclDescStr),
             c(cmd_separator_char), s(ScopeStr)])
     ;
         Cmd = proc_static(PSI),
-        CmdStr = string__format("proc_static%c%d",
+        CmdStr = string.format("proc_static%c%d",
             [c(cmd_separator_char), i(PSI)])
     ;
         Cmd = proc_dynamic(PDI),
-        CmdStr = string__format("proc_dynamic%c%d",
+        CmdStr = string.format("proc_dynamic%c%d",
             [c(cmd_separator_char), i(PDI)])
     ;
         Cmd = call_site_static(CSSI),
-        CmdStr = string__format("call_site_static%c%d",
+        CmdStr = string.format("call_site_static%c%d",
             [c(cmd_separator_char), i(CSSI)])
     ;
         Cmd = call_site_dynamic(CSDI),
-        CmdStr = string__format("call_site_dynamic%c%d",
+        CmdStr = string.format("call_site_dynamic%c%d",
             [c(cmd_separator_char), i(CSDI)])
     ;
         Cmd = raw_clique(CI),
-        CmdStr = string__format("raw_clique%c%d",
+        CmdStr = string.format("raw_clique%c%d",
             [c(cmd_separator_char), i(CI)])
     ).
 
@@ -612,12 +612,12 @@ preferences_to_string(Pref) = PrefStr :-
     (
         MaybeAncestorLimit = yes(AncestorLimit),
         MaybeAncestorLimitStr =
-            string__format("%d", [i(AncestorLimit)])
+            string.format("%d", [i(AncestorLimit)])
     ;
         MaybeAncestorLimit = no,
         MaybeAncestorLimitStr = "no"
     ),
-    PrefStr = string__format("%s%c%s%c%s%c%s%c%s%c%s%c%s%c%s%c%s",
+    PrefStr = string.format("%s%c%s%c%s%c%s%c%s%c%s%c%s%c%s%c%s",
         [s(fields_to_string(Fields)),
         c(pref_separator_char), s(box_to_string(Box)),
         c(pref_separator_char), s(colour_scheme_to_string(Colour)),
@@ -645,7 +645,7 @@ url_component_to_maybe_cmd(QueryString) = MaybeCmd :-
         Pieces = ["root", MaybePercentStr],
         ( MaybePercentStr = "no" ->
             MaybePercent = no
-        ; string__to_int(MaybePercentStr, Percent) ->
+        ; string.to_int(MaybePercentStr, Percent) ->
             MaybePercent = yes(Percent)
         ;
             fail
@@ -654,18 +654,18 @@ url_component_to_maybe_cmd(QueryString) = MaybeCmd :-
         MaybeCmd = yes(root(MaybePercent))
     ;
         Pieces = ["clique", CliqueNumStr],
-        string__to_int(CliqueNumStr, CliqueNum)
+        string.to_int(CliqueNumStr, CliqueNum)
     ->
         MaybeCmd = yes(clique(CliqueNum))
     ;
         Pieces = ["proc", PSIStr],
-        string__to_int(PSIStr, PSI)
+        string.to_int(PSIStr, PSI)
     ->
         MaybeCmd = yes(proc(PSI))
     ;
         Pieces = ["proc_callers", PSIStr, GroupCallersStr, BunchNumStr],
-        string__to_int(PSIStr, PSI),
-        string__to_int(BunchNumStr, BunchNum),
+        string.to_int(PSIStr, PSI),
+        string.to_int(BunchNumStr, BunchNum),
         string_to_caller_groups(GroupCallersStr, GroupCallers)
     ->
         MaybeCmd = yes(proc_callers(PSI, GroupCallers, BunchNum))
@@ -692,32 +692,32 @@ url_component_to_maybe_cmd(QueryString) = MaybeCmd :-
         MaybeCmd = yes(menu)
     ;
         Pieces = ["proc_static", PSIStr],
-        string__to_int(PSIStr, PSI)
+        string.to_int(PSIStr, PSI)
     ->
         MaybeCmd = yes(proc_static(PSI))
     ;
         Pieces = ["proc_dynamic", PDIStr],
-        string__to_int(PDIStr, PDI)
+        string.to_int(PDIStr, PDI)
     ->
         MaybeCmd = yes(proc_dynamic(PDI))
     ;
         Pieces = ["call_site_static", CSSIStr],
-        string__to_int(CSSIStr, CSSI)
+        string.to_int(CSSIStr, CSSI)
     ->
         MaybeCmd = yes(call_site_static(CSSI))
     ;
         Pieces = ["call_site_dynamic", CSDIStr],
-        string__to_int(CSDIStr, CSDI)
+        string.to_int(CSDIStr, CSDI)
     ->
         MaybeCmd = yes(call_site_dynamic(CSDI))
     ;
         Pieces = ["raw_clique", CliqueNumStr],
-        string__to_int(CliqueNumStr, CliqueNum)
+        string.to_int(CliqueNumStr, CliqueNum)
     ->
         MaybeCmd = yes(raw_clique(CliqueNum))
     ;
         Pieces = ["timeout", TimeOutStr],
-        string__to_int(TimeOutStr, TimeOut)
+        string.to_int(TimeOutStr, TimeOut)
     ->
         MaybeCmd = yes(timeout(TimeOut))
     ;
@@ -741,7 +741,7 @@ url_component_to_maybe_pref(QueryString) = MaybePreferences :-
         string_to_fields(FieldsStr, Fields),
         string_to_box(BoxStr, Box),
         string_to_colour_scheme(ColourStr, Colour),
-        ( string__to_int(MaybeAncestorLimitStr, AncestorLimit) ->
+        ( string.to_int(MaybeAncestorLimitStr, AncestorLimit) ->
             MaybeAncestorLimit = yes(AncestorLimit)
         ; MaybeAncestorLimitStr = "no" ->
             MaybeAncestorLimit = no
@@ -824,11 +824,11 @@ string_to_memory_fields("wp", memory_and_percall(words)).
 
 fields_to_string(fields(Port, Time, Allocs, Memory)) =
     port_fields_to_string(Port) ++
-    string__char_to_string(field_separator_char) ++
+    string.char_to_string(field_separator_char) ++
     time_fields_to_string(Time) ++
-    string__char_to_string(field_separator_char) ++
+    string.char_to_string(field_separator_char) ++
     alloc_fields_to_string(Allocs) ++
-    string__char_to_string(field_separator_char) ++
+    string.char_to_string(field_separator_char) ++
     memory_fields_to_string(Memory).
 
 :- pred string_to_fields(string::in, fields::out) is semidet.
@@ -891,9 +891,9 @@ string_to_incl_desc("both", self_and_desc).
 :- func limit_to_string(display_limit) = string.
 
 limit_to_string(rank_range(Lo, Hi)) =
-    string__format("%d%c%d", [i(Lo), c(limit_separator_char), i(Hi)]).
+    string.format("%d%c%d", [i(Lo), c(limit_separator_char), i(Hi)]).
 limit_to_string(threshold(Threshold)) =
-    string__format("%f", [f(Threshold)]).
+    string.format("%f", [f(Threshold)]).
 
 :- pred string_to_limit(string::in, display_limit::out) is semidet.
 
@@ -901,12 +901,12 @@ string_to_limit(LimitStr, Limit) :-
     (
         split(LimitStr, limit_separator_char, Pieces),
         Pieces = [FirstStr, LastStr],
-        string__to_int(FirstStr, First),
-        string__to_int(LastStr, Last)
+        string.to_int(FirstStr, First),
+        string.to_int(LastStr, Last)
     ->
         Limit = rank_range(First, Last)
     ;
-        string__to_float(LimitStr, Threshold)
+        string.to_float(LimitStr, Threshold)
     ->
         Limit = threshold(Threshold)
     ;
@@ -929,11 +929,11 @@ order_criteria_to_string(by_context) = "context".
 order_criteria_to_string(by_name) = "name".
 order_criteria_to_string(by_cost(CostKind, InclDesc, Scope)) =
     "cost" ++
-    string__char_to_string(criteria_separator_char) ++
+    string.char_to_string(criteria_separator_char) ++
     cost_kind_to_string(CostKind) ++
-    string__char_to_string(criteria_separator_char) ++
+    string.char_to_string(criteria_separator_char) ++
     incl_desc_to_string(InclDesc) ++
-    string__char_to_string(criteria_separator_char) ++
+    string.char_to_string(criteria_separator_char) ++
     scope_to_string(Scope).
 
 :- pred string_to_order_criteria(string::in, order_criteria::out) is semidet.
@@ -1026,7 +1026,7 @@ string_to_colour_scheme("none", none).
 :- func box_to_string(box) = string.
 
 box_to_string(Box) = String :-
-    string_to_box(String, Box). 
+    string_to_box(String, Box).
 
 :- pred string_to_box(string, box).
 :- mode string_to_box(in, out) is semidet.

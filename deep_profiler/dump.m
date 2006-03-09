@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -62,7 +62,7 @@ dump_initial_deep(ProfStats, Restrict, DumpCSDs, DumpPDs, DumpCSSs, DumpPSs,
         Restrict = no,
         Restriction = none
     ),
-    ( 
+    (
         ProfStats = yes,
         dump_init_profile_stats(Stats, !IO),
         dump_init_root(InitRoot, !IO)
@@ -93,7 +93,7 @@ dump_initial_deep(ProfStats, Restrict, DumpCSDs, DumpPDs, DumpCSSs, DumpPSs,
     ;
         DumpPSs = no
     ).
-    
+
 %----------------------------------------------------------------------------%
 %
 % Restricting static structures to those referenced by dynamic ones
@@ -121,7 +121,7 @@ get_static_ptrs_from_dynamic_proc(ProcStatics, _, ProcDynamic, !PS_Ptrs,
     svset.insert(ProcStaticPtr, !PS_Ptrs),
     lookup_proc_statics(ProcStatics, ProcStaticPtr, ProcStatic),
     CSSs = array.to_list(ProcStatic ^ ps_sites),
-    svset.insert_list(CSSs, !CSS_Ptrs).     
+    svset.insert_list(CSSs, !CSS_Ptrs).
 
 %----------------------------------------------------------------------------%
 %
@@ -159,7 +159,7 @@ dump_init_profile_stats(Stats, !IO) :-
 dump_init_root(proc_dynamic_ptr(Root), !IO) :-
     io.write_string("INITIAL ROOT:\n", !IO),
     io.format("\tinitial root = %d\n", [i(Root)], !IO),
-    io.nl(!IO). 
+    io.nl(!IO).
 
 %----------------------------------------------------------------------------%
 
@@ -181,7 +181,7 @@ dump_call_site_dynamic(Index, CallSiteDynamic, !IO) :-
     io.format("\tcsd_caller = pd%d\n", [i(CallerPDI)], !IO),
     io.format("\tcsd_callee = pd%d\n", [i(CalleePDI)], !IO),
     dump_own_prof_info(Own, !IO),
-    io.nl(!IO). 
+    io.nl(!IO).
 
 :- pred dump_own_prof_info(own_prof_info::in, io::di, io::uo) is det.
 
@@ -230,7 +230,7 @@ dump_own_prof_info(Own, !IO) :-
     ).
 
 %----------------------------------------------------------------------------%
-    
+
 :- pred dump_init_proc_dynamics(proc_dynamics::in, proc_statics::in,
     io::di, io::uo) is det.
 
@@ -243,7 +243,7 @@ dump_init_proc_dynamics(ProcDynamics, ProcStatics, !IO) :-
 
 dump_proc_dynamic(ProcStatics, Index, ProcDynamic, !IO) :-
     ProcDynamic = proc_dynamic(PSPtr, Sites),
-    PSPtr = proc_static_ptr(PSI),   
+    PSPtr = proc_static_ptr(PSI),
     lookup_proc_statics(ProcStatics, PSPtr, PS),
     ( PS ^ ps_refined_id = "" ->
         RefinedPSId = "UNKNOWN_PS"
@@ -254,7 +254,7 @@ dump_proc_dynamic(ProcStatics, Index, ProcDynamic, !IO) :-
     io.format("\tpd_proc_static = %d (%s)\n", [i(PSI), s(RefinedPSId)],
         !IO),
     array_foldl_from_0(dump_call_site_array_slot, Sites, !IO),
-    io.nl(!IO). 
+    io.nl(!IO).
 
 :- pred dump_call_site_array_slot(int::in, call_site_array_slot::in,
     io::di, io::uo) is det.
@@ -265,10 +265,10 @@ dump_call_site_array_slot(Index, CSA_slot, !IO) :-
 
 :- func call_site_array_slot_to_string(call_site_array_slot) = string.
 
-call_site_array_slot_to_string(normal(call_site_dynamic_ptr(CSDI))) = 
+call_site_array_slot_to_string(normal(call_site_dynamic_ptr(CSDI))) =
     string.format("normal(csd%d)", [i(CSDI)]).
 call_site_array_slot_to_string(multi(_, _)) = "multi".
-    
+
 %----------------------------------------------------------------------------%
 
 :- pred dump_init_call_site_statics(restriction::in, call_site_statics::in,
@@ -284,7 +284,7 @@ dump_init_call_site_statics(Restriction, CallStatics, !IO) :-
 
 dump_call_site_static(Restriction, Index, CallSiteStatic, !IO) :-
     (
-        ( 
+        (
             Restriction = none
         ;
             Restriction = these(_, UsedCallSiteStatics),
@@ -322,14 +322,14 @@ dump_init_proc_statics(Restriction, ProcStatics, !IO) :-
     io::di, io::uo) is det.
 
 dump_proc_static(Restriction, Index, ProcStatic, !IO) :-
-    ( 
+    (
         (
             Restriction = none
         ;
             Restriction = these(UsedProcStatics, _),
             set.member(proc_static_ptr(Index), UsedProcStatics)
         )
-    ->   
+    ->
         ProcStatic = proc_static(Id, DeclModule, RefinedId, RawId,
             FileName, LineNumber, InInterface, Sites, IsZeroed),
         IdStr = dump_proc_id(Id),
@@ -385,7 +385,7 @@ dump_proc_id(Proc) = Str :-
     (
         PredOrFunc = predicate,
         Suffix = ""
-    ;   
+    ;
         PredOrFunc = function,
         Suffix = "+1"
     ),

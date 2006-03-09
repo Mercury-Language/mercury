@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2001, 2003-2005 The University of Melbourne.
+% Copyright (C) 1994-2001, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,7 +14,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds__mode_info.
+:- module check_hlds.mode_info.
 :- interface.
 
 :- import_module check_hlds.delay_info.
@@ -407,19 +407,19 @@
 mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMapping0,
         HowToCheck, MayChangeProc, ModeInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
-    globals__lookup_bool_option(Globals, debug_modes, DebugModes),
-    globals__lookup_int_option(Globals, debug_modes_pred_id,
+    globals.lookup_bool_option(Globals, debug_modes, DebugModes),
+    globals.lookup_int_option(Globals, debug_modes_pred_id,
         DebugModesPredId),
     pred_id_to_int(PredId, PredIdInt),
     (
         DebugModes = yes,
         ( DebugModesPredId >= 0 => DebugModesPredId = PredIdInt )
     ->
-        globals__lookup_bool_option(Globals, debug_modes_verbose,
+        globals.lookup_bool_option(Globals, debug_modes_verbose,
             DebugVerbose),
-        globals__lookup_bool_option(Globals, debug_modes_minimal,
+        globals.lookup_bool_option(Globals, debug_modes_minimal,
             DebugMinimal),
-        globals__lookup_bool_option(Globals, debug_modes_statistics,
+        globals.lookup_bool_option(Globals, debug_modes_statistics,
             Statistics),
         Flags = debug_flags(DebugVerbose, DebugMinimal, Statistics),
         Debug = yes(Flags)
@@ -427,23 +427,23 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMapping0,
         Debug = no
     ),
 
-    instmap__init_unreachable(Unreachable),
+    instmap.init_unreachable(Unreachable),
     mode_context_init(ModeContext),
     LockedVars = [],
-    delay_info__init(DelayInfo),
+    delay_info.init(DelayInfo),
     ErrorList = [],
     WarningList = [],
         % look up the varset and var types
     module_info_preds(ModuleInfo, Preds),
-    map__lookup(Preds, PredId, PredInfo),
+    map.lookup(Preds, PredId, PredInfo),
     pred_info_procedures(PredInfo, Procs),
-    map__lookup(Procs, ProcId, ProcInfo),
+    map.lookup(Procs, ProcId, ProcInfo),
     proc_info_varset(ProcInfo, VarSet),
     proc_info_vartypes(ProcInfo, VarTypes),
     proc_info_inst_varset(ProcInfo, InstVarSet),
 
-    bag__from_set(LiveVars, LiveVarsBag),
-    bag__from_set(LiveVars, NondetLiveVarsBag),
+    bag.from_set(LiveVars, LiveVarsBag),
+    bag.from_set(LiveVars, NondetLiveVarsBag),
 
     Changed = no,
     CheckingExtraGoals = no,
@@ -556,11 +556,11 @@ mode_info_set_instmap(InstMap, !MI) :-
     InstMap0 = !.MI ^ instmap,
     !:MI = !.MI ^ instmap := InstMap,
     (
-        instmap__is_unreachable(InstMap),
-        instmap__is_reachable(InstMap0)
+        instmap.is_unreachable(InstMap),
+        instmap.is_reachable(InstMap0)
     ->
         DelayInfo0 = !.MI ^ delay_info,
-        delay_info__bind_all_vars(DelayInfo0, DelayInfo),
+        delay_info.bind_all_vars(DelayInfo0, DelayInfo),
         !:MI = !.MI ^ delay_info := DelayInfo
     ;
         true
@@ -569,7 +569,7 @@ mode_info_set_instmap(InstMap, !MI) :-
 %-----------------------------------------------------------------------------%
 
 mode_info_get_num_errors(ModeInfo, NumErrors) :-
-    list__length(ModeInfo^errors, NumErrors).
+    list.length(ModeInfo^errors, NumErrors).
 
 %-----------------------------------------------------------------------------%
 
@@ -584,8 +584,8 @@ mode_info_get_num_errors(ModeInfo, NumErrors) :-
 mode_info_add_live_vars(NewLiveVars, !MI) :-
     LiveVars0 = !.MI ^ live_vars,
     NondetLiveVars0 = !.MI ^ nondet_live_vars,
-    svbag__insert_set(NewLiveVars, LiveVars0, LiveVars),
-    svbag__insert_set(NewLiveVars, NondetLiveVars0, NondetLiveVars),
+    svbag.insert_set(NewLiveVars, LiveVars0, LiveVars),
+    svbag.insert_set(NewLiveVars, NondetLiveVars0, NondetLiveVars),
     !:MI = !.MI ^ live_vars := LiveVars,
     !:MI = !.MI ^ nondet_live_vars := NondetLiveVars.
 
@@ -595,15 +595,15 @@ mode_info_add_live_vars(NewLiveVars, !MI) :-
 mode_info_remove_live_vars(OldLiveVars, !MI) :-
     LiveVars0 = !.MI ^ live_vars,
     NondetLiveVars0 = !.MI ^ nondet_live_vars,
-    svbag__det_remove_set(OldLiveVars, LiveVars0, LiveVars),
-    svbag__det_remove_set(OldLiveVars, NondetLiveVars0, NondetLiveVars),
+    svbag.det_remove_set(OldLiveVars, LiveVars0, LiveVars),
+    svbag.det_remove_set(OldLiveVars, NondetLiveVars0, NondetLiveVars),
     !:MI = !.MI ^ live_vars := LiveVars,
     !:MI = !.MI ^ nondet_live_vars := NondetLiveVars,
         % when a variable becomes dead, we may be able to wake
         % up a goal which is waiting on that variable
-    set__to_sorted_list(OldLiveVars, VarList),
+    set.to_sorted_list(OldLiveVars, VarList),
     DelayInfo0 = !.MI ^ delay_info,
-    delay_info__bind_var_list(VarList, DelayInfo0, DelayInfo),
+    delay_info.bind_var_list(VarList, DelayInfo0, DelayInfo),
     !:MI = !.MI ^ delay_info := DelayInfo.
 
     % Check whether a list of variables are live or not
@@ -616,7 +616,7 @@ mode_info_var_list_is_live(ModeInfo, [Var | Vars], [Live | Lives]) :-
     % Check whether a variable is live or not
 
 mode_info_var_is_live(ModeInfo, Var, Result) :-
-    ( bag__contains(ModeInfo ^ live_vars, Var) ->
+    ( bag.contains(ModeInfo ^ live_vars, Var) ->
         Result = live
     ;
         Result = dead
@@ -625,21 +625,21 @@ mode_info_var_is_live(ModeInfo, Var, Result) :-
     % Check whether a variable is nondet_live or not.
 
 mode_info_var_is_nondet_live(ModeInfo, Var, Result) :-
-    ( bag__contains(ModeInfo ^ nondet_live_vars, Var) ->
+    ( bag.contains(ModeInfo ^ nondet_live_vars, Var) ->
         Result = live
     ;
         Result = dead
     ).
 
 mode_info_get_liveness(ModeInfo, LiveVars) :-
-    bag__to_list_without_duplicates(ModeInfo ^ live_vars, SortedList),
-    set__sorted_list_to_set(SortedList, LiveVars).
+    bag.to_list_without_duplicates(ModeInfo ^ live_vars, SortedList),
+    set.sorted_list_to_set(SortedList, LiveVars).
 
 %-----------------------------------------------------------------------------%
 
 mode_info_get_types_of_vars(ModeInfo, Vars, TypesOfVars) :-
     mode_info_get_var_types(ModeInfo, VarTypes),
-    map__apply_to_list(Vars, VarTypes, TypesOfVars).
+    map.apply_to_list(Vars, VarTypes, TypesOfVars).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -658,7 +658,7 @@ mode_info_unlock_vars(Reason, Vars, !ModeInfo) :-
     mode_info_get_locked_vars(!.ModeInfo, LockedVars0),
     (
         LockedVars0 = [Reason - TheseVars | LockedVars1],
-        set__equal(TheseVars, Vars)
+        set.equal(TheseVars, Vars)
     ->
         LockedVars = LockedVars1
     ;
@@ -675,7 +675,7 @@ mode_info_var_is_locked(ModeInfo, Var, Reason) :-
     var_lock_reason::out) is semidet.
 
 mode_info_var_is_locked_2([ThisReason - Set | Sets], Var, Reason) :-
-    ( set__member(Var, Set) ->
+    ( set.member(Var, Set) ->
         Reason = ThisReason
     ;
         mode_info_var_is_locked_2(Sets, Var, Reason)
@@ -713,7 +713,7 @@ mode_info_error(Vars, ModeError, !ModeInfo) :-
 
 mode_info_add_error(ModeErrorInfo, !ModeInfo) :-
     mode_info_get_errors(!.ModeInfo, Errors0),
-    list__append(Errors0, [ModeErrorInfo], Errors),
+    list.append(Errors0, [ModeErrorInfo], Errors),
     mode_info_set_errors(Errors, !ModeInfo).
 
 mode_info_warning(ModeWarning, !ModeInfo) :-
@@ -724,7 +724,7 @@ mode_info_warning(ModeWarning, !ModeInfo) :-
 
 mode_info_add_warning(ModeWarningInfo, !ModeInfo) :-
     mode_info_get_warnings(!.ModeInfo, Warnings0),
-    list__append(Warnings0, [ModeWarningInfo], Warnings),
+    list.append(Warnings0, [ModeWarningInfo], Warnings),
     mode_info_set_warnings(Warnings, !ModeInfo).
 
 mode_info_need_to_requantify(!ModeInfo) :-

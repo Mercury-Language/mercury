@@ -13,7 +13,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module hlds__hlds_goal.
+:- module hlds.hlds_goal.
 :- interface.
 
 :- import_module hlds.hlds_llds.
@@ -411,7 +411,7 @@
 
     % Get a description of a generic_call goal.
     %
-:- pred hlds_goal__generic_call_id(generic_call::in, call_id::out) is det.
+:- pred generic_call_id(generic_call::in, call_id::out) is det.
 
     % Determine whether a generic_call is calling
     % a predicate or a function.
@@ -873,7 +873,7 @@
     hlds_goal_info::in, hlds_goal_info::out) is det.
 :- pred goal_info_has_feature(hlds_goal_info::in, goal_feature::in) is semidet.
 
-:- pred goal_set_context(term__context::in, hlds_goal::in, hlds_goal::out)
+:- pred goal_set_context(term.context::in, hlds_goal::in, hlds_goal::out)
     is det.
 
 :- pred goal_add_feature(goal_feature::in, hlds_goal::in, hlds_goal::out)
@@ -1364,11 +1364,11 @@ make_foreign_args(Vars, NamesModesBoxes, Types, Args) :-
 % Predicates dealing with generic_calls
 %
 
-hlds_goal__generic_call_id(higher_order(_, Purity, PorF, Arity),
+generic_call_id(higher_order(_, Purity, PorF, Arity),
         generic_call(higher_order(Purity, PorF, Arity))).
-hlds_goal__generic_call_id(class_method(_, _, ClassId, MethodId),
+generic_call_id(class_method(_, _, ClassId, MethodId),
         generic_call(class_method(ClassId, MethodId))).
-hlds_goal__generic_call_id(cast(CastType), generic_call(cast(CastType))).
+generic_call_id(cast(CastType), generic_call(cast(CastType))).
 
 generic_call_pred_or_func(higher_order(_, _, PredOrFunc, _)) = PredOrFunc.
 generic_call_pred_or_func(class_method(_, _, _, CallId)) =
@@ -1384,7 +1384,7 @@ simple_call_id_pred_or_func(PredOrFunc - _) = PredOrFunc.
 % Information stored with all kinds of goals
 %
 
-    % NB. Don't forget to check goal_util__name_apart_goalinfo
+    % NB. Don't forget to check goal_util.name_apart_goalinfo
     % if this structure is modified.
 :- type hlds_goal_info
     --->    goal_info(
@@ -1471,9 +1471,9 @@ simple_call_id_pred_or_func(PredOrFunc - _) = PredOrFunc.
 goal_info_init(GoalInfo) :-
     Detism = erroneous,
     instmap_delta_init_unreachable(InstMapDelta),
-    set__init(NonLocals),
-    term__context_init(Context),
-    set__init(Features),
+    set.init(NonLocals),
+    term.context_init(Context),
+    set.init(Features),
     GoalInfo = goal_info(Detism, InstMapDelta, Context, NonLocals,
         Features, [], no, no_code_gen_info, hlds_goal_extra_info_init).
 
@@ -1482,13 +1482,13 @@ goal_info_init(GoalInfo) :-
 goal_info_init(Context, GoalInfo) :-
     Detism = erroneous,
     instmap_delta_init_unreachable(InstMapDelta),
-    set__init(NonLocals),
-    set__init(Features),
+    set.init(NonLocals),
+    set.init(Features),
     GoalInfo = goal_info(Detism, InstMapDelta, Context, NonLocals,
         Features, [], no, no_code_gen_info, hlds_goal_extra_info_init).
 
 goal_info_init(NonLocals, InstMapDelta, Detism, Purity, GoalInfo) :-
-    term__context_init(Context),
+    term.context_init(Context),
     purity_features(Purity, _, Features),
     GoalInfo = goal_info(Detism, InstMapDelta, Context, NonLocals,
         list_to_set(Features), [], no, no_code_gen_info,
@@ -1513,35 +1513,35 @@ goal_info_get_occurring_vars(GoalInfo, OccurringVars) :-
     ( GoalInfo ^ maybe_mode_constraint_info = yes(MCI) ->
         OccurringVars = MCI ^ mci_occurring_vars
     ;
-        OccurringVars = set__init
+        OccurringVars = set.init
     ).
 
 goal_info_get_producing_vars(GoalInfo, ProducingVars) :-
     ( GoalInfo ^ maybe_mode_constraint_info = yes(MCI) ->
         ProducingVars = MCI ^ mci_producing_vars
     ;
-        ProducingVars = set__init
+        ProducingVars = set.init
     ).
 
 goal_info_get_consuming_vars(GoalInfo, ConsumingVars) :-
     ( GoalInfo ^ maybe_mode_constraint_info = yes(MCI) ->
         ConsumingVars = MCI ^ mci_consuming_vars
     ;
-        ConsumingVars = set__init
+        ConsumingVars = set.init
     ).
 
 goal_info_get_make_visible_vars(GoalInfo, MakeVisibleVars) :-
     ( GoalInfo ^ maybe_mode_constraint_info = yes(MCI) ->
         MakeVisibleVars = MCI ^ mci_make_visible_vars
     ;
-        MakeVisibleVars = set__init
+        MakeVisibleVars = set.init
     ).
 
 goal_info_get_need_visible_vars(GoalInfo, NeedVisibleVars) :-
     ( GoalInfo ^ maybe_mode_constraint_info = yes(MCI) ->
         NeedVisibleVars = MCI ^ mci_need_visible_vars
     ;
-        NeedVisibleVars = set__init
+        NeedVisibleVars = set.init
     ).
 
 goal_info_set_determinism(Determinism, GoalInfo,
@@ -1575,10 +1575,10 @@ goal_info_set_occurring_vars(OccurringVars, !GoalInfo) :-
         MCI = MCI0 ^ mci_occurring_vars := OccurringVars
     ;
         MMCI0 = no,
-        set__init(ProducingVars),
-        set__init(ConsumingVars),
-        set__init(MakeVisibleVars),
-        set__init(NeedVisibleVars),
+        set.init(ProducingVars),
+        set.init(ConsumingVars),
+        set.init(MakeVisibleVars),
+        set.init(NeedVisibleVars),
         MCI = mode_constraint_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
@@ -1591,10 +1591,10 @@ goal_info_set_producing_vars(ProducingVars, !GoalInfo) :-
         MCI = MCI0 ^ mci_producing_vars := ProducingVars
     ;
         MMCI0 = no,
-        set__init(OccurringVars),
-        set__init(ConsumingVars),
-        set__init(MakeVisibleVars),
-        set__init(NeedVisibleVars),
+        set.init(OccurringVars),
+        set.init(ConsumingVars),
+        set.init(MakeVisibleVars),
+        set.init(NeedVisibleVars),
         MCI = mode_constraint_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
@@ -1607,10 +1607,10 @@ goal_info_set_consuming_vars(ConsumingVars, !GoalInfo) :-
         MCI = MCI0 ^ mci_consuming_vars := ConsumingVars
     ;
         MMCI0 = no,
-        set__init(OccurringVars),
-        set__init(ProducingVars),
-        set__init(MakeVisibleVars),
-        set__init(NeedVisibleVars),
+        set.init(OccurringVars),
+        set.init(ProducingVars),
+        set.init(MakeVisibleVars),
+        set.init(NeedVisibleVars),
         MCI = mode_constraint_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
@@ -1623,10 +1623,10 @@ goal_info_set_make_visible_vars(MakeVisibleVars, !GoalInfo) :-
         MCI = MCI0 ^ mci_make_visible_vars := MakeVisibleVars
     ;
         MMCI0 = no,
-        set__init(OccurringVars),
-        set__init(ProducingVars),
-        set__init(ConsumingVars),
-        set__init(NeedVisibleVars),
+        set.init(OccurringVars),
+        set.init(ProducingVars),
+        set.init(ConsumingVars),
+        set.init(NeedVisibleVars),
         MCI = mode_constraint_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
@@ -1639,10 +1639,10 @@ goal_info_set_need_visible_vars(NeedVisibleVars, !GoalInfo) :-
         MCI = MCI0 ^ mci_need_visible_vars := NeedVisibleVars
     ;
         MMCI0 = no,
-        set__init(OccurringVars),
-        set__init(ProducingVars),
-        set__init(ConsumingVars),
-        set__init(MakeVisibleVars),
+        set.init(OccurringVars),
+        set.init(ProducingVars),
+        set.init(ConsumingVars),
+        set.init(MakeVisibleVars),
         MCI = mode_constraint_goal_info(OccurringVars, ProducingVars,
             ConsumingVars, MakeVisibleVars, NeedVisibleVars)
     ),
@@ -1681,8 +1681,8 @@ add_goal_info_purity_feature(Purity, !GoalInfo) :-
     ;
         purity_features(Purity, FeaturesToRemove, FeaturesToAdd),
         goal_info_get_features(!.GoalInfo, Features0),
-        Features = set__union(list_to_set(FeaturesToAdd),
-            set__difference(Features0, list_to_set(FeaturesToRemove))),
+        Features = set.union(list_to_set(FeaturesToAdd),
+            set.difference(Features0, list_to_set(FeaturesToRemove))),
         goal_info_set_features(Features, !GoalInfo)
     ).
 
@@ -1713,17 +1713,17 @@ goal_info_is_impure(GoalInfo) :-
 
 goal_info_add_feature(Feature, !GoalInfo) :-
     goal_info_get_features(!.GoalInfo, Features0),
-    set__insert(Features0, Feature, Features),
+    set.insert(Features0, Feature, Features),
     goal_info_set_features(Features, !GoalInfo).
 
 goal_info_remove_feature(Feature, !GoalInfo) :-
     goal_info_get_features(!.GoalInfo, Features0),
-    set__delete(Features0, Feature, Features),
+    set.delete(Features0, Feature, Features),
     goal_info_set_features(Features, !GoalInfo).
 
 goal_info_has_feature(GoalInfo, Feature) :-
     goal_info_get_features(GoalInfo, Features),
-    set__member(Feature, Features).
+    set.member(Feature, Features).
 
 %-----------------------------------------------------------------------------%
 
@@ -1746,8 +1746,8 @@ goal_has_feature(_Goal - GoalInfo, Feature) :-
 
 goal_path_to_string(Path, PathStr) :-
     goal_path_steps_to_strings(Path, StepStrs),
-    list__reverse(StepStrs, RevStepStrs),
-    string__append_list(RevStepStrs, PathStr).
+    list.reverse(StepStrs, RevStepStrs),
+    string.append_list(RevStepStrs, PathStr).
 
 :- pred goal_path_steps_to_strings(goal_path::in, list(string)::out) is det.
 
@@ -1763,14 +1763,14 @@ goal_path_steps_to_strings([Step | Steps], [StepStr | StepStrs]) :-
 :- pred goal_path_step_to_string(goal_path_step::in, string::out) is det.
 
 goal_path_step_to_string(conj(N), Str) :-
-    string__int_to_string(N, NStr),
-    string__append_list(["c", NStr, ";"], Str).
+    string.int_to_string(N, NStr),
+    string.append_list(["c", NStr, ";"], Str).
 goal_path_step_to_string(disj(N), Str) :-
-    string__int_to_string(N, NStr),
-    string__append_list(["d", NStr, ";"], Str).
+    string.int_to_string(N, NStr),
+    string.append_list(["d", NStr, ";"], Str).
 goal_path_step_to_string(switch(N, _), Str) :-
-    string__int_to_string(N, NStr),
-    string__append_list(["s", NStr, ";"], Str).
+    string.int_to_string(N, NStr),
+    string.append_list(["s", NStr, ";"], Str).
 goal_path_step_to_string(ite_cond, "?;").
 goal_path_step_to_string(ite_then, "t;").
 goal_path_step_to_string(ite_else, "e;").
@@ -1830,7 +1830,7 @@ disj_list_to_goal(DisjList, GoalInfo, Goal) :-
 conjoin_goal_and_goal_list(Goal0, Goals, Goal) :-
     Goal0 = GoalExpr0 - GoalInfo0,
     ( GoalExpr0 = conj(plain_conj, GoalList0) ->
-        list__append(GoalList0, Goals, GoalList),
+        list.append(GoalList0, Goals, GoalList),
         GoalExpr = conj(plain_conj, GoalList)
     ;
         GoalExpr = conj(plain_conj, [Goal0 | Goals])
@@ -1870,7 +1870,7 @@ all_negated([conj(plain_conj, NegatedConj) - _GoalInfo | NegatedGoals],
         Goals) :-
     all_negated(NegatedConj, Goals1),
     all_negated(NegatedGoals, Goals2),
-    list__append(Goals1, Goals2, Goals).
+    list.append(Goals1, Goals2, Goals).
 
 %-----------------------------------------------------------------------------%
 
@@ -1972,7 +1972,7 @@ goal_is_atomic(shorthand(_)) = no.
 
 true_goal = true_goal_expr - GoalInfo :-
     instmap_delta_init_reachable(InstMapDelta),
-    goal_info_init(set__init, InstMapDelta, det, purity_pure, GoalInfo).
+    goal_info_init(set.init, InstMapDelta, det, purity_pure, GoalInfo).
 
 true_goal_expr = conj(plain_conj, []).
 
@@ -1982,7 +1982,7 @@ true_goal_with_context(Context) = Goal - GoalInfo :-
 
 fail_goal = fail_goal_expr - GoalInfo :-
     instmap_delta_init_unreachable(InstMapDelta),
-    goal_info_init(set__init, InstMapDelta, failure, purity_pure, GoalInfo).
+    goal_info_init(set.init, InstMapDelta, failure, purity_pure, GoalInfo).
 
 fail_goal_expr = disj([]).
 
@@ -1996,10 +1996,10 @@ goal_list_nonlocals(Goals, NonLocals) :-
     UnionNonLocals = (pred(Goal::in, Vars0::in, Vars::out) is det :-
         Goal = _ - GoalInfo,
         goal_info_get_nonlocals(GoalInfo, Vars1),
-        set__union(Vars0, Vars1, Vars)
+        set.union(Vars0, Vars1, Vars)
     ),
-    set__init(NonLocals0),
-    list__foldl(UnionNonLocals, Goals, NonLocals0, NonLocals).
+    set.init(NonLocals0),
+    list.foldl(UnionNonLocals, Goals, NonLocals0, NonLocals).
 
 goal_list_instmap_delta(Goals, InstMapDelta) :-
     ApplyDelta = (pred(Goal::in, Delta0::in, Delta::out) is det :-
@@ -2008,7 +2008,7 @@ goal_list_instmap_delta(Goals, InstMapDelta) :-
         instmap_delta_apply_instmap_delta(Delta0, Delta1, test_size, Delta)
     ),
     instmap_delta_init_reachable(InstMapDelta0),
-    list__foldl(ApplyDelta, Goals, InstMapDelta0, InstMapDelta).
+    list.foldl(ApplyDelta, Goals, InstMapDelta0, InstMapDelta).
 
 goal_list_determinism(Goals, Determinism) :-
     ComputeDeterminism = (pred(Goal::in, Det0::in, Det::out) is det :-
@@ -2016,14 +2016,14 @@ goal_list_determinism(Goals, Determinism) :-
         goal_info_get_determinism(GoalInfo, Det1),
         det_conjunction_detism(Det0, Det1, Det)
     ),
-    list__foldl(ComputeDeterminism, Goals, det, Determinism).
+    list.foldl(ComputeDeterminism, Goals, det, Determinism).
 
 goal_list_purity(Goals, Purity) :-
     ComputePurity = (func(_ - GoalInfo, Purity0) = Purity1 :-
         infer_goal_info_purity(GoalInfo, GoalPurity),
         worst_purity(GoalPurity, Purity0) = Purity1
     ),
-    Purity = list__foldl(ComputePurity, Goals, purity_pure).
+    Purity = list.foldl(ComputePurity, Goals, purity_pure).
 
 %-----------------------------------------------------------------------------%
 
@@ -2035,9 +2035,9 @@ set_goal_contexts(Context, Goal0 - GoalInfo0, Goal - GoalInfo) :-
     hlds_goal_expr::out) is det.
 
 set_goal_contexts_2(Context, conj(ConjType, Goals0), conj(ConjType, Goals)) :-
-    list__map(set_goal_contexts(Context), Goals0, Goals).
+    list.map(set_goal_contexts(Context), Goals0, Goals).
 set_goal_contexts_2(Context, disj(Goals0), disj(Goals)) :-
-    list__map(set_goal_contexts(Context), Goals0, Goals).
+    list.map(set_goal_contexts(Context), Goals0, Goals).
 set_goal_contexts_2(Context, if_then_else(Vars, Cond0, Then0, Else0),
         if_then_else(Vars, Cond, Then, Else)) :-
     set_goal_contexts(Context, Cond0, Cond),
@@ -2045,7 +2045,7 @@ set_goal_contexts_2(Context, if_then_else(Vars, Cond0, Then0, Else0),
     set_goal_contexts(Context, Else0, Else).
 set_goal_contexts_2(Context, switch(Var, CanFail, Cases0),
         switch(Var, CanFail, Cases)) :-
-    list__map(
+    list.map(
         (pred(case(ConsId, Goal0)::in, case(ConsId, Goal)::out) is det :-
             set_goal_contexts(Context, Goal0, Goal)
         ), Cases0, Cases).
@@ -2131,32 +2131,32 @@ make_const_construction_alloc_in_proc(ConsId, Type, MaybeName, Goal, Var,
 
 make_int_const_construction_alloc(Int, MaybeName, Goal, Var,
         !VarTypes, !VarSet) :-
-    svvarset__new_maybe_named_var(MaybeName, Var, !VarSet),
-    svmap__det_insert(Var, int_type, !VarTypes),
+    svvarset.new_maybe_named_var(MaybeName, Var, !VarSet),
+    svmap.det_insert(Var, int_type, !VarTypes),
     make_int_const_construction(Var, Int, Goal).
 
 make_string_const_construction_alloc(String, MaybeName, Goal, Var,
         !VarTypes, !VarSet) :-
-    svvarset__new_maybe_named_var(MaybeName, Var, !VarSet),
-    svmap__det_insert(Var, string_type, !VarTypes),
+    svvarset.new_maybe_named_var(MaybeName, Var, !VarSet),
+    svmap.det_insert(Var, string_type, !VarTypes),
     make_string_const_construction(Var, String, Goal).
 
 make_float_const_construction_alloc(Float, MaybeName, Goal, Var,
         !VarTypes, !VarSet) :-
-    svvarset__new_maybe_named_var(MaybeName, Var, !VarSet),
-    svmap__det_insert(Var, float_type, !VarTypes),
+    svvarset.new_maybe_named_var(MaybeName, Var, !VarSet),
+    svmap.det_insert(Var, float_type, !VarTypes),
     make_float_const_construction(Var, Float, Goal).
 
 make_char_const_construction_alloc(Char, MaybeName, Goal, Var,
         !VarTypes, !VarSet) :-
-    svvarset__new_maybe_named_var(MaybeName, Var, !VarSet),
-    svmap__det_insert(Var, char_type, !VarTypes),
+    svvarset.new_maybe_named_var(MaybeName, Var, !VarSet),
+    svmap.det_insert(Var, char_type, !VarTypes),
     make_char_const_construction(Var, Char, Goal).
 
 make_const_construction_alloc(ConsId, Type, MaybeName, Goal, Var,
         !VarTypes, !VarSet) :-
-    svvarset__new_maybe_named_var(MaybeName, Var, !VarSet),
-    svmap__det_insert(Var, Type, !VarTypes),
+    svvarset.new_maybe_named_var(MaybeName, Var, !VarSet),
+    svmap.det_insert(Var, Type, !VarTypes),
     make_const_construction(Var, ConsId, Goal).
 
 make_int_const_construction(Var, Int, Goal) :-
@@ -2169,7 +2169,7 @@ make_float_const_construction(Var, Float, Goal) :-
     make_const_construction(Var, float_const(Float), Goal).
 
 make_char_const_construction(Var, Char, Goal) :-
-    string__char_to_string(Char, String),
+    string.char_to_string(Char, String),
     make_const_construction(Var, cons(unqualified(String), 0), Goal).
 
 make_const_construction(Var, ConsId, Goal - GoalInfo) :-
@@ -2180,50 +2180,50 @@ make_const_construction(Var, ConsId, Goal - GoalInfo) :-
         construct_dynamically, cell_is_unique, no_construct_sub_info),
     Context = unify_context(explicit, []),
     Goal = unify(Var, RHS, Mode, Unification, Context),
-    set__singleton_set(NonLocals, Var),
+    set.singleton_set(NonLocals, Var),
     instmap_delta_init_reachable(InstMapDelta0),
     instmap_delta_insert(Var, Inst, InstMapDelta0, InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, det, purity_pure, GoalInfo).
 
 construct_functor(Var, ConsId, Args, Goal) :-
-    list__length(Args, Arity),
+    list.length(Args, Arity),
     Rhs = functor(ConsId, no, Args),
     UnifyMode = (free_inst -> ground_inst) - (ground_inst -> ground_inst),
     UniMode = ((free_inst - ground_inst) -> (ground_inst - ground_inst)),
-    list__duplicate(Arity, UniMode, UniModes),
+    list.duplicate(Arity, UniMode, UniModes),
     Unification = construct(Var, ConsId, Args, UniModes,
         construct_dynamically, cell_is_unique, no_construct_sub_info),
     UnifyContext = unify_context(explicit, []),
     Unify = unify(Var, Rhs, UnifyMode, Unification, UnifyContext),
-    set__list_to_set([Var | Args], NonLocals),
+    set.list_to_set([Var | Args], NonLocals),
     instmap_delta_from_assoc_list([Var - ground_inst], InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, det, purity_pure, GoalInfo),
     Goal = Unify - GoalInfo.
 
 deconstruct_functor(Var, ConsId, Args, Goal) :-
-    list__length(Args, Arity),
+    list.length(Args, Arity),
     Rhs = functor(ConsId, no, Args),
     UnifyMode = (ground_inst -> free_inst) - (ground_inst -> ground_inst),
     UniMode = ((ground_inst - free_inst) -> (ground_inst - ground_inst)),
-    list__duplicate(Arity, UniMode, UniModes),
+    list.duplicate(Arity, UniMode, UniModes),
     UnifyContext = unify_context(explicit, []),
     Unification = deconstruct(Var, ConsId, Args, UniModes, cannot_fail,
         cannot_cgc),
     Unify = unify(Var, Rhs, UnifyMode, Unification, UnifyContext),
-    set__list_to_set([Var | Args], NonLocals),
-    list__duplicate(Arity, ground_inst, DeltaValues),
-    assoc_list__from_corresponding_lists(Args, DeltaValues, DeltaAL),
+    set.list_to_set([Var | Args], NonLocals),
+    list.duplicate(Arity, ground_inst, DeltaValues),
+    assoc_list.from_corresponding_lists(Args, DeltaValues, DeltaAL),
     instmap_delta_from_assoc_list(DeltaAL, InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, det, purity_pure, GoalInfo),
     Goal = Unify - GoalInfo.
 
 construct_tuple(Tuple, Args, Goal) :-
-    list__length(Args, Arity),
+    list.length(Args, Arity),
     ConsId = cons(unqualified("{}"), Arity),
     construct_functor(Tuple, ConsId, Args, Goal).
 
 deconstruct_tuple(Tuple, Args, Goal) :-
-    list__length(Args, Arity),
+    list.length(Args, Arity),
     ConsId = cons(unqualified("{}"), Arity),
     deconstruct_functor(Tuple, ConsId, Args, Goal).
 
@@ -2231,7 +2231,7 @@ deconstruct_tuple(Tuple, Args, Goal) :-
 
 get_pragma_foreign_var_names(MaybeVarNames, VarNames) :-
     get_pragma_foreign_var_names_2(MaybeVarNames, [], VarNames0),
-    list__reverse(VarNames0, VarNames).
+    list.reverse(VarNames0, VarNames).
 
 :- pred get_pragma_foreign_var_names_2(list(maybe(pair(string, mer_mode)))::in,
     list(string)::in, list(string)::out) is det.

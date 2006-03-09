@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,7 +13,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module hlds__hlds_code_util.
+:- module hlds.hlds_code_util.
 :- interface.
 
 :- import_module hlds.hlds_data.
@@ -65,9 +65,9 @@
 
 are_equivalence_types_expanded(ModuleInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
-    globals__lookup_bool_option(Globals, highlevel_data, HighLevelData),
+    globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     HighLevelData = yes,
-    globals__get_target(Globals, Target),
+    globals.get_target(Globals, Target),
     ( Target = il
     ; Target = java
     ).
@@ -100,9 +100,9 @@ cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo) = Tag :-
         % Handle the `character' type specially.
         Type = builtin(character),
         Name = unqualified(ConsName),
-        string__char_to_string(Char, ConsName)
+        string.char_to_string(Char, ConsName)
     ->
-        char__to_int(Char, CharCode),
+        char.to_int(Char, CharCode),
         Tag = int_constant(CharCode)
     ;
         % Tuples do not need a tag. Note that unary tuples are not treated
@@ -123,8 +123,8 @@ cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo) = Tag :-
         % Given the type_ctor, lookup up the constructor tag table
         % for that type.
         module_info_get_type_table(ModuleInfo, TypeTable),
-        map__lookup(TypeTable, TypeCtor, TypeDefn),
-        hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+        map.lookup(TypeTable, TypeCtor, TypeDefn),
+        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         ( ConsTable0 = TypeBody ^ du_type_cons_tag_values ->
             ConsTable = ConsTable0
         ;
@@ -132,7 +132,7 @@ cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo) = Tag :-
         ),
 
         % Finally look up the cons_id in the table.
-        map__lookup(ConsTable, cons(Name, Arity), Tag)
+        map.lookup(ConsTable, cons(Name, Arity), Tag)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -141,8 +141,8 @@ make_instance_string(InstanceTypes, InstanceString) :-
     % Note that for historical reasons, builtin types are treated as being
     % unqualified (`int') rather than being qualified (`builtin.int')
     % at this point.
-    list__map(type_to_string, InstanceTypes, InstanceStrings),
-    string__append_list(InstanceStrings, InstanceString).
+    list.map(type_to_string, InstanceTypes, InstanceStrings),
+    string.append_list(InstanceStrings, InstanceString).
 
 :- pred type_to_string(mer_type::in, string::out) is det.
 
@@ -150,7 +150,7 @@ type_to_string(Type, String) :-
     ( type_to_ctor_and_args(Type, TypeCtor, _) ->
         TypeCtor = TypeName - TypeArity,
         sym_name_to_string(TypeName, "__", TypeNameString),
-        string__int_to_string(TypeArity, TypeArityString),
+        string.int_to_string(TypeArity, TypeArityString),
         String = TypeNameString ++ "__arity" ++ TypeArityString ++ "__"
     ;
         unexpected(this_file, "type_to_string: invalid type")

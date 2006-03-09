@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,7 +14,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module hlds__hlds_llds.
+:- module hlds.hlds_llds.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -622,8 +622,8 @@ get_details(llds_code_gen_info(LLDSInfo)) = LLDSInfo.
 :- func init_llds_code_gen_details = llds_code_gen_details.
 
 init_llds_code_gen_details =
-    llds_code_gen_details(set__init, set__init, set__init, set__init,
-    no, map__init, no_resume_point, no_need).
+    llds_code_gen_details(set.init, set.init, set.init, set.init,
+    no, map.init, no_resume_point, no_need).
 
 %-----------------------------------------------------------------------------%
 
@@ -691,9 +691,9 @@ rename_vars_in_llds_code_gen_info(Must, Subn, Details0, Details) :-
     map(prog_var, abs_locn)::in, map(prog_var, abs_locn)::out) is det.
 
 rename_vars_in_var_locn_map(Must, Subn, VarLocnMap0, VarLocnMap) :-
-    map__to_assoc_list(VarLocnMap0, VarLocnList0),
+    map.to_assoc_list(VarLocnMap0, VarLocnList0),
     rename_vars_in_var_locn_list(Must, Subn, VarLocnList0, VarLocnList),
-    map__from_assoc_list(VarLocnList, VarLocnMap).
+    map.from_assoc_list(VarLocnList, VarLocnMap).
 
 :- pred rename_vars_in_var_locn_list(bool::in, map(prog_var, prog_var)::in,
     assoc_list(prog_var, abs_locn)::in,

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2005 The University of Melbourne.
+% Copyright (C) 2001, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -38,18 +38,18 @@
 %-----------------------------------------------------------------------------%
 
 split(Str0, SplitChar, Strs) :-
-    string__to_char_list(Str0, Chars0),
+    string.to_char_list(Str0, Chars0),
     split_2(Chars0, SplitChar, Strs).
 
 :- pred split_2(list(char)::in, char::in, list(string)::out) is det.
 
 split_2(Chars, SplitChar, PieceStrs) :-
     ( find_split_char(Chars, SplitChar, Before, After) ->
-        string__from_char_list(Before, BeforeStr),
+        string.from_char_list(Before, BeforeStr),
         split_2(After, SplitChar, TailStrs),
         PieceStrs = [BeforeStr | TailStrs]
     ;
-        string__from_char_list(Chars, PieceStr),
+        string.from_char_list(Chars, PieceStr),
         PieceStrs = [PieceStr]
     ).
 
@@ -64,7 +64,7 @@ split_2(Chars, SplitChar, PieceStrs) :-
 
 find_split_char(Chars, SplitChar, Before, After) :-
     find_split_char_2(Chars, SplitChar, [], BeforeRev, After),
-    list__reverse(BeforeRev, Before).
+    list.reverse(BeforeRev, Before).
 
 :- pred find_split_char_2(list(char)::in, char::in, list(char)::in,
     list(char)::out, list(char)::out) is semidet.

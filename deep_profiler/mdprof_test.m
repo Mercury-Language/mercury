@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -50,9 +50,9 @@
 %-----------------------------------------------------------------------------%
 
 main(!IO) :-
-    io__progname_base("mdprof_test", ProgName, !IO),
-    io__command_line_arguments(Args0, !IO),
-    getopt__process_options(option_ops_multi(short, long, defaults),
+    io.progname_base("mdprof_test", ProgName, !IO),
+    io.command_line_arguments(Args0, !IO),
+    getopt.process_options(option_ops_multi(short, long, defaults),
         Args0, Args, MaybeOptions),
     (
         MaybeOptions = ok(Options),
@@ -75,7 +75,7 @@ main(!IO) :-
             Help = no,
             Version = no
         ->
-            ( 
+            (
                 Verify = no,
                 main2(ProgName, Args, Options, !IO)
             ;
@@ -87,8 +87,8 @@ main(!IO) :-
         )
     ;
         MaybeOptions = error(Msg),
-        io__set_exit_status(1, !IO),
-        io__format("%s: error parsing options: %s\n",
+        io.set_exit_status(1, !IO),
+        io.format("%s: error parsing options: %s\n",
             [s(ProgName), s(Msg)], !IO)
     ).
 
@@ -108,7 +108,7 @@ main2(ProgName, Args, Options, !IO) :-
             MaybeOutput = no
         ;
             Verbose = yes,
-            io__stdout_stream(Stdout, !IO),
+            io.stdout_stream(Stdout, !IO),
             MaybeOutput = yes(Stdout)
         ),
         read_and_startup(Machine, [FileName], Canonical, MaybeOutput,
@@ -125,12 +125,12 @@ main2(ProgName, Args, Options, !IO) :-
             )
         ;
             Res = error(Error),
-            io__set_exit_status(1, !IO),
-            io__format("%s: error reading data file: %s\n",
+            io.set_exit_status(1, !IO),
+            io.format("%s: error reading data file: %s\n",
                 [s(ProgName), s(Error)], !IO)
         )
     ;
-        io__set_exit_status(1, !IO),
+        io.set_exit_status(1, !IO),
         write_help_message(ProgName, !IO)
     ).
 
@@ -147,9 +147,9 @@ main2(ProgName, Args, Options, !IO) :-
 
 :- pred verify_profile(string::in, list(string)::in, option_table::in,
     io::di, io::uo) is det.
-    
+
 verify_profile(ProgName, Args0, Options, !IO) :-
-    ( 
+    (
         Args0 = [],
         Args  = ["Deep.data"]
     ;
@@ -172,39 +172,39 @@ verify_profile_2(ProgName, Options, FileName, !IO) :-
         io.set_exit_status(1, !IO),
         io.format("%s: error reading data file: %s\n",
             [s(ProgName), s(Error)], !IO)
-    ).    
+    ).
 
 %-----------------------------------------------------------------------------%
 
 :- pred write_version_message(string::in, io::di, io::uo) is det.
 
 write_version_message(ProgName, !IO) :-
-    library__version(Version),
-    io__write_string(ProgName, !IO),
-    io__write_string(": Mercury deep profiler", !IO),
-    io__nl(!IO),
-    io__write_string(Version, !IO),
-    io__nl(!IO).
+    library.version(Version),
+    io.write_string(ProgName, !IO),
+    io.write_string(": Mercury deep profiler", !IO),
+    io.nl(!IO),
+    io.write_string(Version, !IO),
+    io.nl(!IO).
 
 :- pred write_help_message(string::in, io::di, io::uo) is det.
 
 write_help_message(ProgName) -->
-    io__format("Usage: %s [<options>] <filename>\n", [s(ProgName)]),
-    io__format("<filename> must name a deep profiling data file.\n", []),
-    io__format("You should specify one of the following options:\n", []),
-    io__format("--help      Generate this help message.\n", []),
-    io__format("--version   Report the program's version number.\n", []),
-    io__format("--verbose   Generate progress messages during startup.\n", []),
-    io__format("--test      Test the deep profiler, generating all\n", []),
-    io__format("            possible web pages of the popular types.\n", []),
-    io__format("--verify-profile\n", []),
-    io__format("            Verify that <filename> is a well-formed\n",
+    io.format("Usage: %s [<options>] <filename>\n", [s(ProgName)]),
+    io.format("<filename> must name a deep profiling data file.\n", []),
+    io.format("You should specify one of the following options:\n", []),
+    io.format("--help      Generate this help message.\n", []),
+    io.format("--version   Report the program's version number.\n", []),
+    io.format("--verbose   Generate progress messages during startup.\n", []),
+    io.format("--test      Test the deep profiler, generating all\n", []),
+    io.format("            possible web pages of the popular types.\n", []),
+    io.format("--verify-profile\n", []),
+    io.format("            Verify that <filename> is a well-formed\n",
         []),
-    io__format("            deep profiling data file.\n", []),
+    io.format("            deep profiling data file.\n", []),
     io.nl,
-    io__format("You may also specify the following options:.\n", []),
-    io__format("--test-dir <dirname>\n", []),
-    io__format("            Put the generated web pages into <dirname>.\n",
+    io.format("You may also specify the following options:.\n", []),
+    io.format("--test-dir <dirname>\n", []),
+    io.format("            Put the generated web pages into <dirname>.\n",
         []).
     % --canonical-clique is not documented because it is not yet supported
 
@@ -214,11 +214,11 @@ write_help_message(ProgName) -->
     io::di, io::uo) is cc_multi.
 
 test_server(DirName, Pref, Deep, !IO) :-
-    string__format("test -d %s || mkdir -p %s", [s(DirName), s(DirName)], Cmd),
-    io__call_system(Cmd, _, !IO),
-    array__max(Deep ^ clique_members, NumCliques),
+    string.format("test -d %s || mkdir -p %s", [s(DirName), s(DirName)], Cmd),
+    io.call_system(Cmd, _, !IO),
+    array.max(Deep ^ clique_members, NumCliques),
     test_cliques(1, NumCliques, DirName, Pref, Deep, !IO),
-    array__max(Deep ^ proc_statics, NumProcStatics),
+    array.max(Deep ^ proc_statics, NumProcStatics),
     test_procs(1, NumProcStatics, DirName, Pref, Deep, !IO).
 
 :- pred test_cliques(int::in, int::in, string::in, preferences::in, deep::in,
@@ -256,27 +256,27 @@ write_test_html(DirName, BaseName, Num, HTML, !IO) :-
     %
     % XXX consider splitting up this predicate
     Bunch = (Num - 1) // 1000,
-    string__format("%s/%s_%04d",
+    string.format("%s/%s_%04d",
         [s(DirName), s(BaseName), i(Bunch)], BunchName),
     ( (Num - 1) rem 1000 = 0 ->
-        string__format("test -d %s || mkdir -p %s",
+        string.format("test -d %s || mkdir -p %s",
             [s(BunchName), s(BunchName)], Cmd),
-        io__call_system(Cmd, _, !IO)
+        io.call_system(Cmd, _, !IO)
     ;
         true
     ),
-    string__format("%s/%s_%06d.html",
+    string.format("%s/%s_%06d.html",
         [s(BunchName), s(BaseName), i(Num)], FileName),
-    io__open_output(FileName, Res, !IO),
+    io.open_output(FileName, Res, !IO),
     (
         Res = ok(Stream),
-        io__write_string(Stream, HTML, !IO),
-        io__close_output(Stream, !IO),
-        string__format("gzip %s", [s(FileName)], GzipCmd),
-        io__call_system(GzipCmd, _, !IO)
+        io.write_string(Stream, HTML, !IO),
+        io.close_output(Stream, !IO),
+        string.format("gzip %s", [s(FileName)], GzipCmd),
+        io.call_system(GzipCmd, _, !IO)
     ;
         Res = error(Err),
-        io__error_message(Err, ErrMsg),
+        io.error_message(Err, ErrMsg),
         error(ErrMsg)
     ).
 

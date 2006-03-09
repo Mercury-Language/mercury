@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2005 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -32,7 +32,7 @@
 :- import_module io.
 
 %-----------------------------------------------------------------------------%
-    
+
     % Add the given file name to the list of files to be cleaned up.
     %
 :- pred register_file_for_cleanup(string::in, io::di, io::uo) is det.

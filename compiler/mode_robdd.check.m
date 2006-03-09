@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2005 The University of Melbourne.
+% Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -17,7 +17,7 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module mode_robdd__check.
+:- module mode_robdd.check.
 
 :- interface.
 
@@ -202,15 +202,15 @@ check_robdd(X1, X2) = mode_robdd(X1, X2) :-
 % report_robdd_error(R1, R2) -->
 % 	% { R12 = R1 * (~ R2) },
 % 	% { R21 = R2 * (~ R1) },
-% 	io__write_string("ROBDD representations differ\n"),
-% 	{ P = (pred(V::in, di, uo) is det --> io__write_int(var_to_int(V))) },
+% 	io.write_string("ROBDD representations differ\n"),
+% 	{ P = (pred(V::in, di, uo) is det --> io.write_int(var_to_int(V))) },
 % 	robdd_to_dot(R1, P, "r1.dot"),
 % 	robdd_to_dot(R2, P, "r2.dot").
-% 	% io__write_string("R1 - R2:\n"),
-% 	% pprint__write(80, to_doc(R12)),
-% 	% io__write_string("\nR2 - R1:\n"),
-% 	% pprint__write(80, to_doc(R21)),
-% 	% io__nl.
+% 	% io.write_string("R1 - R2:\n"),
+% 	% pprint.write(80, to_doc(R12)),
+% 	% io.write_string("\nR2 - R1:\n"),
+% 	% pprint.write(80, to_doc(R21)),
+% 	% io.nl.
 
 %-----------------------------------------------------------------------------%
 

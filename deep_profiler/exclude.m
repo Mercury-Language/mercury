@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2004-2005 The University of Melbourne.
+% Copyright (C) 2001, 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,7 @@
 % excluded procedures below the line and the non-excluded procedures above;
 % and when looking at the callers of a procedure, the system uses the nearest
 % ancestor that is above the line.
-% 
+%
 % The read_exclude_file procedure reads in the file that specifies the set of
 % excluded procedures. The exclusion file should consist of a sequence of
 % lines, and each line should contain two words. The first word should be
@@ -85,7 +85,7 @@
 :- type exclusion_type
     --->    all_procedures      % Exclude all procedures in the
                                 % named module.
-    ;       internal_procedures.    % Exclude all procedures in the 
+    ;       internal_procedures.    % Exclude all procedures in the
                                     % named module, except those
                                     % which are exported from the
                                     % module.
@@ -93,11 +93,11 @@
 %-----------------------------------------------------------------------------%
 
 read_exclude_file(FileName, Deep, Res, !IO) :-
-    io__open_input(FileName, Res0, !IO),
+    io.open_input(FileName, Res0, !IO),
     (
         Res0 = ok(InputStream),
         read_exclude_lines(FileName, InputStream, [], Res1, !IO),
-        io__close_input(InputStream, !IO),
+        io.close_input(InputStream, !IO),
         (
             Res1 = ok(Specs),
             validate_exclude_lines(FileName, Specs, Deep, Res)
@@ -107,25 +107,25 @@ read_exclude_file(FileName, Deep, Res, !IO) :-
         )
     ;
         Res0 = error(Err),
-        io__error_message(Err, Msg),
+        io.error_message(Err, Msg),
         Res = error(Msg)
     ).
 
-:- pred read_exclude_lines(string::in, io__input_stream::in,
+:- pred read_exclude_lines(string::in, io.input_stream::in,
     list(exclude_spec)::in, maybe_error(list(exclude_spec))::out,
     io::di, io::uo) is det.
 
 read_exclude_lines(FileName, InputStream, RevSpecs0, Res, !IO) :-
-    io__read_line_as_string(InputStream, Res0, !IO),
+    io.read_line_as_string(InputStream, Res0, !IO),
     (
         Res0 = ok(Line0),
-        ( string__remove_suffix(Line0, "\n", LinePrime) ->
+        ( string.remove_suffix(Line0, "\n", LinePrime) ->
             Line = LinePrime
         ;
             Line = Line0
         ),
         (
-            Words = string__words(char__is_whitespace, Line),
+            Words = string.words(char.is_whitespace, Line),
             Words = [Scope, ModuleName],
             (
                 Scope = "all",
@@ -139,7 +139,7 @@ read_exclude_lines(FileName, InputStream, RevSpecs0, Res, !IO) :-
             RevSpecs1 = [Spec | RevSpecs0],
             read_exclude_lines(FileName, InputStream, RevSpecs1, Res, !IO)
         ;
-            Msg = string__format(
+            Msg = string.format(
                 "file %s contains badly formatted line: %s",
                 [s(FileName), s(Line)]),
             Res = error(Msg)
@@ -149,7 +149,7 @@ read_exclude_lines(FileName, InputStream, RevSpecs0, Res, !IO) :-
         Res = ok(RevSpecs0)
     ;
         Res0 = error(Err),
-        io__error_message(Err, Msg),
+        io.error_message(Err, Msg),
         Res = error(Msg)
     ).
 
@@ -157,16 +157,16 @@ read_exclude_lines(FileName, InputStream, RevSpecs0, Res, !IO) :-
     maybe_error(set(exclude_spec))::out) is det.
 
 validate_exclude_lines(FileName, Specs, Deep, Res) :-
-    list__filter(has_valid_module_name(Deep), Specs, ValidSpecs, InvalidSpecs),
+    list.filter(has_valid_module_name(Deep), Specs, ValidSpecs, InvalidSpecs),
     (
         InvalidSpecs = [],
-        set__list_to_set(ValidSpecs, ModuleSpecSet),
+        set.list_to_set(ValidSpecs, ModuleSpecSet),
         Res = ok(ModuleSpecSet)
     ;
         InvalidSpecs = [_ | _],
-        InvalidModuleNames = list__map(spec_to_module_name, InvalidSpecs),
-        BadNames = string__join_list(", ", InvalidModuleNames),
-        Msg = string__format("file %s contains bad module names: %s",
+        InvalidModuleNames = list.map(spec_to_module_name, InvalidSpecs),
+        BadNames = string.join_list(", ", InvalidModuleNames),
+        Msg = string.format("file %s contains bad module names: %s",
             [s(FileName), s(BadNames)]),
         Res = error(Msg)
     ).
@@ -174,7 +174,7 @@ validate_exclude_lines(FileName, Specs, Deep, Res) :-
 :- pred has_valid_module_name(deep::in, exclude_spec::in) is semidet.
 
 has_valid_module_name(Deep, Spec) :-
-    map__search(Deep ^ module_data, spec_to_module_name(Spec), _).
+    map.search(Deep ^ module_data, spec_to_module_name(Spec), _).
 
 :- func spec_to_module_name(exclude_spec) = string.
 
@@ -191,7 +191,7 @@ apply_contour_exclusion(Deep, ExcludedSpecs, CSDPtr0) = CSDPtr :-
         deep_lookup_proc_statics(Deep, PSPtr, PS),
         ModuleName = PS ^ ps_decl_module,
         (
-            set__member(ExclSpec, ExcludedSpecs),
+            set.member(ExclSpec, ExcludedSpecs),
             ExclSpec = exclude_spec(ModuleName, ExclType),
             (
                 ExclType = all_procedures

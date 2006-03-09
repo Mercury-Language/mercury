@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2005 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -129,7 +129,7 @@
 :- func deep_cmd_pref_to_url(preferences, deep, cmd) = string.
 
 :- func plural(int) = string.
-    
+
     % Convert any special characters in a string into appropriate HTML
     % escapes.
     %
@@ -165,14 +165,14 @@ banner_style(Pref) = HTML :-
     Fields = Pref ^ pref_fields,
 
     GroupNum0 = 0,
-    IdStyle = string__format("  TD.id     { %s }\n",
+    IdStyle = string.format("  TD.id     { %s }\n",
         [s(select_colgroup_background(Pref, GroupNum0))]),
     GroupNum1 = GroupNum0 + 1,
     ( Fields ^ port_fields = no_port ->
         PortStyle = "",
         GroupNum2 = GroupNum1
     ;
-        PortStyle = string__format("  TD.port   { %s }\n",
+        PortStyle = string.format("  TD.port   { %s }\n",
             [s(select_colgroup_background(Pref, GroupNum1))]),
         GroupNum2 = GroupNum1 + 1
     ),
@@ -180,7 +180,7 @@ banner_style(Pref) = HTML :-
         TimeStyle = "",
         GroupNum3 = GroupNum2
     ;
-        TimeStyle = string__format("  TD.time   { %s }\n",
+        TimeStyle = string.format("  TD.time   { %s }\n",
             [s(select_colgroup_background(Pref, GroupNum2))]),
         GroupNum3 = GroupNum2 + 1
     ),
@@ -188,14 +188,14 @@ banner_style(Pref) = HTML :-
         AllocStyle = "",
         GroupNum4 = GroupNum3
     ;
-        AllocStyle = string__format("  TD.alloc  { %s }\n",
+        AllocStyle = string.format("  TD.alloc  { %s }\n",
             [s(select_colgroup_background(Pref, GroupNum3))]),
         GroupNum4 = GroupNum3 + 1
     ),
     ( Fields ^ memory_fields = no_memory ->
         MemoryStyle = ""
     ;
-        MemoryStyle = string__format("  TD.memory { %s }\n",
+        MemoryStyle = string.format("  TD.memory { %s }\n",
             [s(select_colgroup_background(Pref, GroupNum4))])
     ),
     HTML =
@@ -217,7 +217,7 @@ select_colgroup_background(Pref, N) = HTML :-
         ;
             Background = odd_background
         ),
-        string__format("background: %s", [s(Background)], HTML)
+        string.format("background: %s", [s(Background)], HTML)
     ;
         Pref ^ pref_colour = none,
         HTML = ""
@@ -250,11 +250,11 @@ page_footer(Cmd, Pref, Deep) =
     "<p>\n" ++
     footer_pref_toggles(Cmd, Pref, Deep) ++
     "<br>\n" ++
-    string__format("<A HREF=""%s"">Menu</A>\n",
+    string.format("<A HREF=""%s"">Menu</A>\n",
         [s(deep_cmd_pref_to_url(Pref, Deep, menu))]) ++
-    string__format("<A HREF=""%s"">Restart</A>\n",
+    string.format("<A HREF=""%s"">Restart</A>\n",
         [s(deep_cmd_pref_to_url(Pref, Deep, restart))]) ++
-    string__format("<A HREF=""%s"">Quit</A>\n",
+    string.format("<A HREF=""%s"">Quit</A>\n",
         [s(deep_cmd_pref_to_url(Pref, Deep, quit))]) ++
     "</BODY>\n" ++
     "</HTML>\n".
@@ -263,58 +263,58 @@ page_footer(Cmd, Pref, Deep) =
 
 footer_pref_toggles(Cmd, Pref, Deep) = AllToggles :-
     RelevantToggles = command_relevant_toggles(Cmd),
-    ( list__member(toggle_fields, RelevantToggles) ->
+    ( list.member(toggle_fields, RelevantToggles) ->
         FieldToggle = footer_field_toggle(Cmd, Pref, Deep)
     ;
         FieldToggle = ""
     ),
-    ( list__member(toggle_ancestor_limit, RelevantToggles) ->
+    ( list.member(toggle_ancestor_limit, RelevantToggles) ->
         AncestorToggle =
             footer_ancestor_toggle(Cmd, Pref, Deep) ++
             "<br>\n"
     ;
         AncestorToggle = ""
     ),
-    ( list__member(toggle_order_criteria, RelevantToggles) ->
+    ( list.member(toggle_order_criteria, RelevantToggles) ->
         OrderToggle =
             footer_order_criteria_toggle(Cmd, Pref, Deep) ++
             "<br>\n"
     ;
         OrderToggle = ""
     ),
-    ( list__member(toggle_summarize, RelevantToggles) ->
+    ( list.member(toggle_summarize, RelevantToggles) ->
         SummarizeToggle = footer_summarize_toggle(Cmd, Pref, Deep)
     ;
         SummarizeToggle = ""
     ),
-    ( list__member(toggle_contour, RelevantToggles) ->
+    ( list.member(toggle_contour, RelevantToggles) ->
         ContourToggle = footer_contour_toggle(Cmd, Pref, Deep)
     ;
         ContourToggle = ""
     ),
-    ( list__member(toggle_time_format, RelevantToggles) ->
+    ( list.member(toggle_time_format, RelevantToggles) ->
         TimeFormatToggle = footer_time_format_toggle(Cmd, Pref, Deep)
     ;
         TimeFormatToggle = ""
     ),
-    ( list__member(toggle_colour, RelevantToggles) ->
+    ( list.member(toggle_colour, RelevantToggles) ->
         ColourToggle = footer_colour_toggle(Cmd, Pref, Deep)
     ;
         ColourToggle = ""
     ),
-    ( list__member(toggle_box, RelevantToggles) ->
+    ( list.member(toggle_box, RelevantToggles) ->
         BoxToggle = footer_box_toggle(Cmd, Pref, Deep)
     ;
         BoxToggle = ""
     ),
-    ( list__member(toggle_inactive_modules, RelevantToggles) ->
+    ( list.member(toggle_inactive_modules, RelevantToggles) ->
         InactiveModuleToggle =
             footer_inactive_modules_toggle(Cmd, Pref, Deep)
     ;
         InactiveModuleToggle = ""
     ),
-    ( list__member(toggle_inactive_procs, RelevantToggles) ->
-        InactiveProcsToggle = 
+    ( list.member(toggle_inactive_procs, RelevantToggles) ->
+        InactiveProcsToggle =
             footer_inactive_procs_toggle(Cmd, Pref, Deep)
     ;
         InactiveProcsToggle = ""
@@ -386,7 +386,7 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
         Port1Fields = Fields ^ port_fields := no_port,
         Port1Pref = Pref ^ pref_fields := Port1Fields,
         Port1Msg = "No port counts",
-        Port1Toggle = string__format("<A HREF=""%s"">%s</A>\n",
+        Port1Toggle = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Port1Pref, Deep, Cmd)),
             s(Port1Msg)])
     ),
@@ -396,7 +396,7 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
         Port2Fields = Fields ^ port_fields := port,
         Port2Pref = Pref ^ pref_fields := Port2Fields,
         Port2Msg = "Port counts",
-        Port2Toggle = string__format("<A HREF=""%s"">%s</A>\n",
+        Port2Toggle = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Port2Pref, Deep, Cmd)),
             s(Port2Msg)])
     ),
@@ -406,7 +406,7 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
         Time1Fields = Fields ^ time_fields := no_time,
         Time1Pref = Pref ^ pref_fields := Time1Fields,
         Time1Msg = "No time info",
-        Time1Toggle = string__format("<A HREF=""%s"">%s</A>\n",
+        Time1Toggle = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Time1Pref, Deep, Cmd)),
             s(Time1Msg)])
     ),
@@ -416,7 +416,7 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
         Time2Fields = Fields ^ time_fields := ticks,
         Time2Pref = Pref ^ pref_fields := Time2Fields,
         Time2Msg = "Ticks",
-        Time2Toggle = string__format("<A HREF=""%s"">%s</A>\n",
+        Time2Toggle = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Time2Pref, Deep, Cmd)),
             s(Time2Msg)])
     ),
@@ -426,7 +426,7 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
         Time3Fields = Fields ^ time_fields := time,
         Time3Pref = Pref ^ pref_fields := Time3Fields,
         Time3Msg = "Times",
-        Time3Toggle = string__format("<A HREF=""%s"">%s</A>\n",
+        Time3Toggle = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Time3Pref, Deep, Cmd)),
             s(Time3Msg)])
     ),
@@ -436,7 +436,7 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
         Time4Fields = Fields ^ time_fields := ticks_and_time,
         Time4Pref = Pref ^ pref_fields := Time4Fields,
         Time4Msg = "Ticks and times",
-        Time4Toggle = string__format("<A HREF=""%s"">%s</A>\n",
+        Time4Toggle = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Time4Pref, Deep, Cmd)),
             s(Time4Msg)])
     ),
@@ -446,7 +446,7 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
         Time5Fields = Fields ^ time_fields := time_and_percall,
         Time5Pref = Pref ^ pref_fields := Time5Fields,
         Time5Msg = "Times and per-call times",
-        Time5Toggle = string__format("<A HREF=""%s"">%s</A>\n",
+        Time5Toggle = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Time5Pref, Deep, Cmd)),
             s(Time5Msg)])
     ),
@@ -457,7 +457,7 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
             ticks_and_time_and_percall,
         Time6Pref = Pref ^ pref_fields := Time6Fields,
         Time6Msg = "Ticks and times and per-call times",
-        Time6Toggle = string__format("<A HREF=""%s"">%s</A>\n",
+        Time6Toggle = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Time6Pref, Deep, Cmd)),
             s(Time6Msg)])
     ),
@@ -467,7 +467,7 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
         Alloc1Fields = Fields ^ alloc_fields := no_alloc,
         Alloc1Pref = Pref ^ pref_fields := Alloc1Fields,
         Alloc1Msg = "No allocations",
-        Alloc1Toggle = string__format("<A HREF=""%s"">%s</A>\n",
+        Alloc1Toggle = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Alloc1Pref, Deep, Cmd)),
             s(Alloc1Msg)])
     ),
@@ -477,7 +477,7 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
         Alloc2Fields = Fields ^ alloc_fields := alloc,
         Alloc2Pref = Pref ^ pref_fields := Alloc2Fields,
         Alloc2Msg = "Allocations",
-        Alloc2Toggle = string__format("<A HREF=""%s"">%s</A>\n",
+        Alloc2Toggle = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Alloc2Pref, Deep, Cmd)),
             s(Alloc2Msg)])
     ),
@@ -487,7 +487,7 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
         Alloc3Fields = Fields ^ alloc_fields := alloc_and_percall,
         Alloc3Pref = Pref ^ pref_fields := Alloc3Fields,
         Alloc3Msg = "Allocations and per-call allocations",
-        Alloc3Toggle = string__format("<A HREF=""%s"">%s</A>\n",
+        Alloc3Toggle = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Alloc3Pref, Deep, Cmd)),
             s(Alloc3Msg)])
     ),
@@ -497,7 +497,7 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
         Memory1Fields = Fields ^ memory_fields := no_memory,
         Memory1Pref = Pref ^ pref_fields := Memory1Fields,
         Memory1Msg = "No memory info",
-        Memory1Toggle = string__format("<A HREF=""%s"">%s</A>\n",
+        Memory1Toggle = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Memory1Pref, Deep, Cmd)),
             s(Memory1Msg)])
     ),
@@ -507,7 +507,7 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
         Memory2Fields = Fields ^ memory_fields := memory(words),
         Memory2Pref = Pref ^ pref_fields := Memory2Fields,
         Memory2Msg = "Words",
-        Memory2Toggle = string__format("<A HREF=""%s"">%s</A>\n",
+        Memory2Toggle = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Memory2Pref, Deep, Cmd)),
             s(Memory2Msg)])
     ),
@@ -517,7 +517,7 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
         Memory3Fields = Fields ^ memory_fields := memory(bytes),
         Memory3Pref = Pref ^ pref_fields := Memory3Fields,
         Memory3Msg = "Bytes",
-        Memory3Toggle = string__format("<A HREF=""%s"">%s</A>\n",
+        Memory3Toggle = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Memory3Pref, Deep, Cmd)),
             s(Memory3Msg)])
     ),
@@ -528,7 +528,7 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
             memory_and_percall(words),
         Memory4Pref = Pref ^ pref_fields := Memory4Fields,
         Memory4Msg = "Words and per-call words",
-        Memory4Toggle = string__format("<A HREF=""%s"">%s</A>\n",
+        Memory4Toggle = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Memory4Pref, Deep, Cmd)),
             s(Memory4Msg)])
     ),
@@ -539,14 +539,14 @@ footer_field_toggle(Cmd, Pref, Deep) = HTML :-
             memory_and_percall(bytes),
         Memory5Pref = Pref ^ pref_fields := Memory5Fields,
         Memory5Msg = "Bytes and per-call bytes",
-        Memory5Toggle = string__format("<A HREF=""%s"">%s</A>\n",
+        Memory5Toggle = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Memory5Pref, Deep, Cmd)),
             s(Memory5Msg)])
     ),
     ( Fields = default_fields ->
         DefaultMsg  = "Restore defaults",
         DefaultPref = Pref ^ pref_fields := default_fields,
-        DefaultToggle = string__format("<A HREF=""%s"">%s</A>\n",
+        DefaultToggle = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(DefaultPref, Deep, Cmd)),
             s(DefaultMsg)])
     ;
@@ -604,15 +604,15 @@ footer_ancestor_toggle(Cmd, Pref, Deep) = HTML :-
         Msg5 = "Unlimited ancestors",
         Pref5 = Pref ^ pref_anc := no
     ),
-    Toggle1 = string__format("<A HREF=""%s"">%s</A>\n",
+    Toggle1 = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Pref1, Deep, Cmd)), s(Msg1)]),
-    Toggle2 = string__format("<A HREF=""%s"">%s</A>\n",
+    Toggle2 = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Pref2, Deep, Cmd)), s(Msg2)]),
-    Toggle3 = string__format("<A HREF=""%s"">%s</A>\n",
+    Toggle3 = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Pref3, Deep, Cmd)), s(Msg3)]),
-    Toggle4 = string__format("<A HREF=""%s"">%s</A>\n",
+    Toggle4 = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Pref4, Deep, Cmd)), s(Msg4)]),
-    Toggle5 = string__format("<A HREF=""%s"">%s</A>\n",
+    Toggle5 = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Pref5, Deep, Cmd)), s(Msg5)]),
     (
         Display1 = yes,
@@ -644,7 +644,7 @@ footer_box_toggle(Cmd, Pref, Deep) = HTML :-
         Pref1 = Pref ^ pref_box := nobox,
         Msg1 = "Unbox"
     ),
-    HTML = string__format("<A HREF=""%s"">%s</A>\n",
+    HTML = string.format("<A HREF=""%s"">%s</A>\n",
         [s(deep_cmd_pref_to_url(Pref1, Deep, Cmd)), s(Msg1)]).
 
 :- func footer_colour_toggle(cmd, preferences, deep) = string.
@@ -659,7 +659,7 @@ footer_colour_toggle(Cmd, Pref, Deep) = HTML :-
         Pref1 = Pref ^ pref_colour := none,
         Msg1 = "Fade column groups"
     ),
-    HTML = string__format("<A HREF=""%s"">%s</A>\n",
+    HTML = string.format("<A HREF=""%s"">%s</A>\n",
         [s(deep_cmd_pref_to_url(Pref1, Deep, Cmd)), s(Msg1)]).
 
 :- func footer_summarize_toggle(cmd, preferences, deep) = string.
@@ -674,7 +674,7 @@ footer_summarize_toggle(Cmd, Pref, Deep) = HTML :-
         Pref1 = Pref ^ pref_summarize := summarize,
         Msg1 = "Summarize higher order calls"
     ),
-    HTML = string__format("<A HREF=""%s"">%s</A>\n",
+    HTML = string.format("<A HREF=""%s"">%s</A>\n",
         [s(deep_cmd_pref_to_url(Pref1, Deep, Cmd)), s(Msg1)]).
 
 :- func footer_contour_toggle(cmd, preferences, deep) = string.
@@ -689,7 +689,7 @@ footer_contour_toggle(Cmd, Pref, Deep) = HTML :-
         Pref1 = Pref ^ pref_contour := no_contour,
         Msg1 = "Don't apply contour exclusion"
     ),
-    HTML = string__format("<A HREF=""%s"">%s</A>\n",
+    HTML = string.format("<A HREF=""%s"">%s</A>\n",
         [s(deep_cmd_pref_to_url(Pref1, Deep, Cmd)), s(Msg1)]).
 
 :- func footer_time_format_toggle(cmd, preferences, deep) = string.
@@ -715,10 +715,10 @@ footer_time_format_toggle(Cmd, Pref, Deep) = HTML :-
         Msg2  = "Time in s, us"
     ),
     HTML =
-        string__format("<A HREF=""%s"">%s</A>\n",
+        string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Pref1, Deep, Cmd)),
             s(Msg1)]) ++
-        string__format("<A HREF=""%s"">%s</A>\n",
+        string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Pref2, Deep, Cmd)),
             s(Msg2)]).
 
@@ -768,9 +768,9 @@ toggle_criteria(Criteria, UpdateCriteria, UpdateCostCriteria) = HTML :-
         Criteria2 = by_name,
         Msg2 = "Sort by name"
     ),
-    Toggle1 = string__format("<A HREF=""%s"">%s</A>\n",
+    Toggle1 = string.format("<A HREF=""%s"">%s</A>\n",
         [s(UpdateCriteria(Criteria1)), s(Msg1)]),
-    Toggle2 = string__format("<A HREF=""%s"">%s</A>\n",
+    Toggle2 = string.format("<A HREF=""%s"">%s</A>\n",
         [s(UpdateCriteria(Criteria2)), s(Msg2)]),
     ( Criteria = by_cost(CostKind, InclDesc, Scope) ->
         ToggleRest = toggle_cost_criteria(CostKind, InclDesc, Scope,
@@ -784,9 +784,9 @@ toggle_criteria(Criteria, UpdateCriteria, UpdateCostCriteria) = HTML :-
     update_cost_criteria_func) = string.
 
 toggle_cost_criteria(CostKind, InclDesc, Scope, UpdateCriteria) = Toggles :-
-    ( CostKind \= calls ->  
+    ( CostKind \= calls ->
         MsgCalls = "Sort by calls",
-        ToggleCalls = string__format("<A HREF=""%s"">%s</A>\n",
+        ToggleCalls = string.format("<A HREF=""%s"">%s</A>\n",
             [s(UpdateCriteria(calls, InclDesc, Scope)),
             s(MsgCalls)])
     ;
@@ -800,25 +800,25 @@ toggle_cost_criteria(CostKind, InclDesc, Scope, UpdateCriteria) = Toggles :-
     ;
         ToggleRedos = ""
     ),
-    ( CostKind \= time ->   
+    ( CostKind \= time ->
         MsgTime = "Sort by time",
-        ToggleTime = string__format("<A HREF=""%s"">%s</A>\n",
+        ToggleTime = string.format("<A HREF=""%s"">%s</A>\n",
             [s(UpdateCriteria(time, InclDesc, Scope)),
             s(MsgTime)])
     ;
         ToggleTime = ""
     ),
-    ( CostKind \= allocs -> 
+    ( CostKind \= allocs ->
         MsgAllocs = "Sort by allocations",
-        ToggleAllocs = string__format("<A HREF=""%s"">%s</A>\n",
+        ToggleAllocs = string.format("<A HREF=""%s"">%s</A>\n",
             [s(UpdateCriteria(allocs, InclDesc, Scope)),
             s(MsgAllocs)])
     ;
         ToggleAllocs = ""
     ),
-    ( CostKind \= words ->  
+    ( CostKind \= words ->
         MsgWords = "Sort by words",
-        ToggleWords = string__format("<A HREF=""%s"">%s</A>\n",
+        ToggleWords = string.format("<A HREF=""%s"">%s</A>\n",
             [s(UpdateCriteria(words, InclDesc, Scope)),
             s(MsgWords)])
     ;
@@ -827,26 +827,26 @@ toggle_cost_criteria(CostKind, InclDesc, Scope, UpdateCriteria) = Toggles :-
     (
         InclDesc = self,
         MsgDesc = "Include descendants",
-        ToggleDesc = string__format("<A HREF=""%s"">%s</A>\n",
+        ToggleDesc = string.format("<A HREF=""%s"">%s</A>\n",
             [s(UpdateCriteria(CostKind, self_and_desc, Scope)),
             s(MsgDesc)])
     ;
         InclDesc = self_and_desc,
         MsgDesc = "Exclude descendants",
-        ToggleDesc = string__format("<A HREF=""%s"">%s</A>\n",
+        ToggleDesc = string.format("<A HREF=""%s"">%s</A>\n",
             [s(UpdateCriteria(CostKind, self, Scope)),
             s(MsgDesc)])
     ),
     (
         Scope = per_call,
         MsgScope = "Count overall cost",
-        ToggleScope = string__format("<A HREF=""%s"">%s</A>\n",
+        ToggleScope = string.format("<A HREF=""%s"">%s</A>\n",
             [s(UpdateCriteria(CostKind, InclDesc, overall)),
             s(MsgScope)])
     ;
         Scope = overall,
         MsgScope = "Count per-call cost",
-        ToggleScope = string__format("<A HREF=""%s"">%s</A>\n",
+        ToggleScope = string.format("<A HREF=""%s"">%s</A>\n",
             [s(UpdateCriteria(CostKind, InclDesc, per_call)),
             s(MsgScope)])
     ),
@@ -871,7 +871,7 @@ footer_inactive_modules_toggle(Cmd, Pref0, Deep) = HTML :-
         Msg  = "Show inactive modules",
         Pref = Pref0 ^ pref_inactive := inactive_items(Procs, show)
     ),
-    HTML = string__format("<A HREF=""%s"">%s</A>\n",
+    HTML = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Pref, Deep, Cmd)),
             s(Msg)]).
 
@@ -880,7 +880,7 @@ footer_inactive_modules_toggle(Cmd, Pref0, Deep) = HTML :-
 footer_inactive_procs_toggle(Cmd, Pref0, Deep) = HTML :-
     Pref0 ^ pref_inactive = inactive_items(Procs, Modules),
     (
-        Procs = show, 
+        Procs = show,
         Msg = "Hide inactive procedures",
         Pref = Pref0 ^ pref_inactive := inactive_items(hide, Modules)
     ;
@@ -888,7 +888,7 @@ footer_inactive_procs_toggle(Cmd, Pref0, Deep) = HTML :-
         Msg = "Show inactive procedures",
         Pref = Pref0 ^ pref_inactive := inactive_items(show, Modules)
     ),
-    HTML = string__format("<A HREF=""%s"">%s</A>\n",
+    HTML = string.format("<A HREF=""%s"">%s</A>\n",
             [s(deep_cmd_pref_to_url(Pref, Deep, Cmd)),
             s(Msg)]).
 
@@ -925,7 +925,7 @@ criteria_to_description(by_cost(CostKind, InclDesc, Scope)) =
     cost_criteria_to_description(CostKind, InclDesc, Scope).
 
 cost_criteria_to_description(CostKind, InclDesc, Scope) = Desc :-
-    Desc = 
+    Desc =
         "ordered by " ++
         incl_desc_to_description(InclDesc) ++ " " ++
         cost_kind_to_description(CostKind) ++ " " ++
@@ -965,29 +965,29 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
         Source = WrapFunc("Source", by_context),
         FirstRow0 =
             "<TR>\n" ++
-            string__format("<TH ALIGN=LEFT ROWSPAN=2>%s\n",
+            string.format("<TH ALIGN=LEFT ROWSPAN=2>%s\n",
                 [s(Source)]) ++
-            string__format("<TH ALIGN=LEFT ROWSPAN=2>%s\n",
+            string.format("<TH ALIGN=LEFT ROWSPAN=2>%s\n",
                 [s(ProcName)])
     ;
         IdFields = rank_proc,
         FirstRow0 =
             "<TR>\n" ++
             "<TH ALIGN=LEFT ROWSPAN=2>Rank\n" ++
-            string__format("<TH ALIGN=LEFT ROWSPAN=2>%s\n",
+            string.format("<TH ALIGN=LEFT ROWSPAN=2>%s\n",
                 [s(ProcName)])
     ;
         IdFields = rank_module,
         FirstRow0 =
             "<TR>\n" ++
             "<TH ALIGN=LEFT ROWSPAN=2>Rank\n" ++
-            string__format("<TH ALIGN=LEFT ROWSPAN=2>%s\n",
+            string.format("<TH ALIGN=LEFT ROWSPAN=2>%s\n",
                 [s(ModuleName)])
     ;
         IdFields = proc,
         FirstRow0 =
             "<TR>\n" ++
-            string__format("<TH ALIGN=LEFT ROWSPAN=2>%s\n",
+            string.format("<TH ALIGN=LEFT ROWSPAN=2>%s\n",
                 [s(ProcName)])
     ),
     SecondRow0 = "<TR>\n",
@@ -1010,7 +1010,7 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
         TicksSelfOverall = WrapFunc("Self",
             by_cost(time, self, overall)),
         TicksSelfHeading =
-            string__format("<TH ALIGN=RIGHT>%s\n",
+            string.format("<TH ALIGN=RIGHT>%s\n",
                 [s(TicksSelfOverall)]),
         TicksSelfFields = 1
     ;
@@ -1026,7 +1026,7 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
                 by_cost(time, self, overall))
         ),
         TimeSelfHeading =
-            string__format("<TH ALIGN=RIGHT>%s\n",
+            string.format("<TH ALIGN=RIGHT>%s\n",
                 [s(TimeSelfOverall)]),
         TimeSelfFields = 1
     ;
@@ -1044,7 +1044,7 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
         TimeSelfPerCall = WrapFunc("/call",
             by_cost(time, self, per_call)),
         TimeSelfPerCallHeading =
-            string__format("<TH ALIGN=RIGHT>%s\n",
+            string.format("<TH ALIGN=RIGHT>%s\n",
                 [s(TimeSelfPerCall)]),
         TimeSelfPerCallFields = 1
     ;
@@ -1055,7 +1055,7 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
         TicksTotalOverall = WrapFunc("Total",
             by_cost(time, self_and_desc, overall)),
         TicksTotalHeading =
-            string__format("<TH ALIGN=RIGHT>%s\n",
+            string.format("<TH ALIGN=RIGHT>%s\n",
                 [s(TicksTotalOverall)]),
         TicksTotalFields = 1
     ;
@@ -1071,7 +1071,7 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
                 by_cost(time, self_and_desc, overall))
         ),
         TimeTotalHeading =
-            string__format("<TH ALIGN=RIGHT>%s\n",
+            string.format("<TH ALIGN=RIGHT>%s\n",
                 [s(TimeTotalOverall)]),
         TimeTotalFields = 1
     ;
@@ -1092,7 +1092,7 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
         TimeTotalPerCall = WrapFunc("/call",
             by_cost(time, self_and_desc, per_call)),
         TimeTotalPerCallHeading =
-            string__format("<TH ALIGN=RIGHT>%s\n",
+            string.format("<TH ALIGN=RIGHT>%s\n",
                 [s(TimeTotalPerCall)]),
         TimeTotalPerCallFields = 1
     ;
@@ -1111,17 +1111,17 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
         TimeTotalPercentHeading ++ TimeTotalPerCallHeading,
     ( show_quanta(Fields) = yes, show_times(Fields) = yes ->
         FirstRow2 = FirstRow1 ++
-            string__format(
+            string.format(
                 "<TH COLSPAN=%d>Clock ticks and times\n",
                 [i(TimeFields)])
     ; show_quanta(Fields) = yes ->
         FirstRow2 = FirstRow1 ++
-            string__format(
+            string.format(
                 "<TH COLSPAN=%d>Clock ticks\n",
                 [i(TimeFields)])
     ; show_times(Fields) = yes ->
         FirstRow2 = FirstRow1 ++
-            string__format(
+            string.format(
                 "<TH COLSPAN=%d>Time\n",
                 [i(TimeFields)])
     ;
@@ -1131,7 +1131,7 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
         AllocsSelfOverall = WrapFunc("Self",
             by_cost(allocs, self, overall)),
         AllocsSelfHeading =
-            string__format("<TH ALIGN=RIGHT>%s\n",
+            string.format("<TH ALIGN=RIGHT>%s\n",
                 [s(AllocsSelfOverall)]) ++
             "<TH ALIGN=RIGHT>%\n",
         AllocsSelfFields = 2
@@ -1143,7 +1143,7 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
         AllocsSelfPerCall = WrapFunc("/call",
             by_cost(allocs, self, per_call)),
         AllocsSelfPerCallHeading =
-            string__format("<TH ALIGN=RIGHT>%s\n",
+            string.format("<TH ALIGN=RIGHT>%s\n",
                 [s(AllocsSelfPerCall)]),
         AllocsSelfPerCallFields = 1
     ;
@@ -1154,7 +1154,7 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
         AllocsTotalOverall = WrapFunc("Total",
             by_cost(allocs, self_and_desc, overall)),
         AllocsTotalHeading =
-            string__format("<TH ALIGN=RIGHT>%s\n",
+            string.format("<TH ALIGN=RIGHT>%s\n",
                 [s(AllocsTotalOverall)]) ++
             "<TH ALIGN=RIGHT>%\n",
         AllocsTotalFields = 2
@@ -1166,7 +1166,7 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
         AllocsTotalPerCall = WrapFunc("/call",
             by_cost(allocs, self_and_desc, per_call)),
         AllocsTotalPerCallHeading =
-            string__format("<TH ALIGN=RIGHT>%s\n",
+            string.format("<TH ALIGN=RIGHT>%s\n",
                 [s(AllocsTotalPerCall)]),
         AllocsTotalPerCallFields = 1
     ;
@@ -1181,7 +1181,7 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
         AllocsTotalHeading ++ AllocsTotalPerCallHeading,
     ( show_alloc(Fields) = yes ->
         FirstRow3 = FirstRow2 ++
-            string__format(
+            string.format(
                 "<TH COLSPAN=%d>Memory allocations\n",
                 [i(AllocsFields)])
     ;
@@ -1191,7 +1191,7 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
         MemorySelfOverall = WrapFunc("Self",
             by_cost(words, self, overall)),
         MemorySelfHeading =
-            string__format("<TH ALIGN=RIGHT>%s\n",
+            string.format("<TH ALIGN=RIGHT>%s\n",
                 [s(MemorySelfOverall)]) ++
             "<TH ALIGN=RIGHT>%\n",
         MemorySelfFields = 2
@@ -1203,7 +1203,7 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
         MemorySelfPerCall = WrapFunc("/call",
             by_cost(words, self, per_call)),
         MemorySelfPerCallHeading =
-            string__format("<TH ALIGN=RIGHT>%s\n",
+            string.format("<TH ALIGN=RIGHT>%s\n",
                 [s(MemorySelfPerCall)]),
         MemorySelfPerCallFields = 1
     ;
@@ -1214,7 +1214,7 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
         MemoryTotalOverall = WrapFunc("Total",
             by_cost(words, self_and_desc, overall)),
         MemoryTotalHeading =
-            string__format("<TH ALIGN=RIGHT>%s\n",
+            string.format("<TH ALIGN=RIGHT>%s\n",
                 [s(MemoryTotalOverall)]) ++
             "<TH ALIGN=RIGHT>%\n",
         MemoryTotalFields = 2
@@ -1226,7 +1226,7 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
         MemoryTotalPerCall = WrapFunc("/call",
             by_cost(words, self_and_desc, per_call)),
         MemoryTotalPerCallHeading =
-            string__format("<TH ALIGN=RIGHT>%s\n",
+            string.format("<TH ALIGN=RIGHT>%s\n",
                 [s(MemoryTotalPerCall)]),
         MemoryTotalPerCallFields = 1
     ;
@@ -1243,13 +1243,13 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
         (
             Units = words,
             FirstRow4 = FirstRow3 ++
-                string__format(
+                string.format(
                     "<TH COLSPAN=%d>Memory words\n",
                     [i(MemoryFields)])
         ;
             Units = bytes,
             FirstRow4 = FirstRow3 ++
-                string__format(
+                string.format(
                     "<TH COLSPAN=%d>Memory bytes\n",
                     [i(MemoryFields)])
         )
@@ -1266,11 +1266,11 @@ fields_header(Pref, IdFields, TotalsDisp, WrapFunc) = HTML :-
 %-----------------------------------------------------------------------------%
 
 header_row(Heading, Pref, IdFields, TotalsDisp) = Separator :-
-    Separator = string__format("<TR><TD COLSPAN=%d>%s</TD></TR>\n",
+    Separator = string.format("<TR><TD COLSPAN=%d>%s</TD></TR>\n",
         [i(table_width(Pref, IdFields, TotalsDisp)), s(Heading)]).
 
 separator_row(Pref, IdFields, TotalsDisp) = Separator :-
-    Separator = string__format("<TR><TD COLSPAN=%d></TD></TR>\n",
+    Separator = string.format("<TR><TD COLSPAN=%d></TD></TR>\n",
         [i(table_width(Pref, IdFields, TotalsDisp))]).
 
 :- func table_width(preferences, id_fields, totals_disposition) = int.
@@ -1349,14 +1349,14 @@ table_width(Pref, IdFields, TotalsDisp) = Width :-
 add_context(Context, LineGroup0) = LineGroup :-
     LineGroup0 =
         line_group(FileName, LineNumber, Name, Own, Desc, HTML0, LaterLines),
-    HTML = string__format("<TD CLASS=id>%s</TD>%s", [s(Context), s(HTML0)]),
+    HTML = string.format("<TD CLASS=id>%s</TD>%s", [s(Context), s(HTML0)]),
     LineGroup =
         line_group(FileName, LineNumber, Name, Own, Desc, HTML, LaterLines).
 
 add_self_context(LineGroup0) = LineGroup :-
     LineGroup0 =
         line_group(FileName, LineNumber, Name, Own, Desc, HTML0, LaterLines),
-    HTML = string__format("<TD CLASS=id>%s:%d</TD>%s",
+    HTML = string.format("<TD CLASS=id>%s:%d</TD>%s",
         [s(FileName), i(LineNumber), s(HTML0)]),
     LineGroup =
         line_group(FileName, LineNumber, Name, Own, Desc, HTML, LaterLines).
@@ -1370,7 +1370,7 @@ add_ranks_2(_Rank, []) = [].
 add_ranks_2(Rank, [LineGroup0 | LineGroups0]) = [LineGroup | LineGroups] :-
     LineGroup0 =
         line_group(FileName, LineNumber, Name, Own, Desc, HTML0, LaterLines),
-    HTML = string__format("<TD CLASS=id>%d</TD>%s", [i(Rank), s(HTML0)]),
+    HTML = string.format("<TD CLASS=id>%d</TD>%s", [i(Rank), s(HTML0)]),
     LineGroup =
         line_group(FileName, LineNumber, Name, Own, Desc, HTML, LaterLines),
     LineGroups = add_ranks_2(Rank + 1, LineGroups0).
@@ -1403,8 +1403,8 @@ one_id_line_group_to_html(Pref, Deep, TotalsDisp, LineGroup) =
     own_and_desc_to_html(LineGroup ^ group_own, LineGroup ^ group_desc,
         Pref, Deep, TotalsDisp) ++
     "</TR>\n" ++
-    string__append_list(
-        list__map(one_id_line_to_html(Pref, Deep, TotalsDisp),
+    string.append_list(
+        list.map(one_id_line_to_html(Pref, Deep, TotalsDisp),
             LineGroup ^ group_later_lines ^ sub_line_list)).
 
 two_id_line_to_html(Pref, Deep, TotalsDisp, LineGroup) =
@@ -1420,8 +1420,8 @@ two_id_line_group_to_html(Pref, Deep, TotalsDisp, LineGroup) =
     own_and_desc_to_html(LineGroup ^ group_own, LineGroup ^ group_desc,
         Pref, Deep, TotalsDisp) ++
     "</TR>\n" ++
-    string__append_list(
-        list__map(two_id_line_to_html(Pref, Deep, TotalsDisp),
+    string.append_list(
+        list.map(two_id_line_to_html(Pref, Deep, TotalsDisp),
             LineGroup ^ group_later_lines ^ sub_line_list)).
 
 %-----------------------------------------------------------------------------%
@@ -1473,25 +1473,25 @@ own_and_desc_to_html(Own, Desc, Pref, Deep, TotalsDisp) = HTML :-
     Fields = Pref ^ pref_fields,
     ( show_port_counts(Fields) = yes ->
         PortHTML =
-            string__format("<TD CLASS=port ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=port ALIGN=RIGHT>%s</TD>\n",
                 [s(commas(Calls))]) ++
-            string__format("<TD CLASS=port ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=port ALIGN=RIGHT>%s</TD>\n",
                 [s(commas(Exits))]) ++
-            string__format("<TD CLASS=port ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=port ALIGN=RIGHT>%s</TD>\n",
                 [s(commas(Fails))]) ++
-            string__format("<TD CLASS=port ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=port ALIGN=RIGHT>%s</TD>\n",
                 [s(commas(Redos))]) ++
-            string__format("<TD CLASS=port ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=port ALIGN=RIGHT>%s</TD>\n",
                 [s(commas(Excps))])
     ;
         PortHTML = ""
     ),
     ( show_quanta(Fields) = yes ->
         QuantaSelfHTML =
-            string__format("<TD CLASS=time ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=time ALIGN=RIGHT>%s</TD>\n",
                 [s(commas(OwnQuanta))]),
         QuantaTotalHTML =
-            string__format("<TD CLASS=time ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=time ALIGN=RIGHT>%s</TD>\n",
                 [s(commas(TotalQuanta))])
     ;
         QuantaSelfHTML = "",
@@ -1499,10 +1499,10 @@ own_and_desc_to_html(Own, Desc, Pref, Deep, TotalsDisp) = HTML :-
     ),
     ( show_times(Fields) = yes ->
         TimeSelfHTML =
-            string__format("<TD CLASS=time ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=time ALIGN=RIGHT>%s</TD>\n",
                 [s(overall_time(Pref, Deep, OwnQuanta))]),
         TimeTotalHTML =
-            string__format("<TD CLASS=time ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=time ALIGN=RIGHT>%s</TD>\n",
                 [s(overall_time(Pref, Deep, TotalQuanta))])
     ;
         TimeSelfHTML = "",
@@ -1510,10 +1510,10 @@ own_and_desc_to_html(Own, Desc, Pref, Deep, TotalsDisp) = HTML :-
     ),
     ( ( show_quanta(Fields) = yes ; show_times(Fields) = yes ) ->
         QuantaPropSelfHTML =
-            string__format("<TD CLASS=time ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=time ALIGN=RIGHT>%s</TD>\n",
                 [s(OwnQuantaProp)]),
         QuantaPropTotalHTML =
-            string__format("<TD CLASS=time ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=time ALIGN=RIGHT>%s</TD>\n",
                 [s(TotalQuantaProp)])
     ;
         QuantaPropSelfHTML = "",
@@ -1521,11 +1521,11 @@ own_and_desc_to_html(Own, Desc, Pref, Deep, TotalsDisp) = HTML :-
     ),
     ( show_per_times(Fields) = yes ->
         TimePerCallSelfHTML =
-            string__format("<TD CLASS=time ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=time ALIGN=RIGHT>%s</TD>\n",
                 [s(per_call_time(Pref, Deep,
                     OwnQuanta, Calls))]),
         TimePerCallTotalHTML =
-            string__format("<TD CLASS=time ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=time ALIGN=RIGHT>%s</TD>\n",
                 [s(per_call_time(Pref, Deep,
                     TotalQuanta, Calls))])
     ;
@@ -1534,14 +1534,14 @@ own_and_desc_to_html(Own, Desc, Pref, Deep, TotalsDisp) = HTML :-
     ),
     ( show_alloc(Fields) = yes ->
         AllocSelfHTML =
-            string__format("<TD CLASS=alloc ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=alloc ALIGN=RIGHT>%s</TD>\n",
                 [s(commas(OwnAllocs))]) ++
-            string__format("<TD CLASS=alloc ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=alloc ALIGN=RIGHT>%s</TD>\n",
                 [s(OwnAllocProp)]),
         AllocTotalHTML =
-            string__format("<TD CLASS=alloc ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=alloc ALIGN=RIGHT>%s</TD>\n",
                 [s(commas(TotalAllocs))]) ++
-            string__format("<TD CLASS=alloc ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=alloc ALIGN=RIGHT>%s</TD>\n",
                 [s(TotalAllocProp)])
     ;
         AllocSelfHTML = "",
@@ -1549,10 +1549,10 @@ own_and_desc_to_html(Own, Desc, Pref, Deep, TotalsDisp) = HTML :-
     ),
     ( show_per_alloc(Fields) = yes ->
         AllocPerCallSelfHTML =
-            string__format("<TD CLASS=alloc ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=alloc ALIGN=RIGHT>%s</TD>\n",
                 [s(count_per_call(OwnAllocs, Calls))]),
         AllocPerCallTotalHTML =
-            string__format("<TD CLASS=alloc ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=alloc ALIGN=RIGHT>%s</TD>\n",
                 [s(count_per_call(TotalAllocs, Calls))])
     ;
         AllocPerCallSelfHTML = "",
@@ -1560,14 +1560,14 @@ own_and_desc_to_html(Own, Desc, Pref, Deep, TotalsDisp) = HTML :-
     ),
     ( show_memory(Fields) = yes(_) ->
         MemorySelfHTML =
-            string__format("<TD CLASS=memory ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=memory ALIGN=RIGHT>%s</TD>\n",
                 [s(commas(OwnMemory))]) ++
-            string__format("<TD CLASS=memory ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=memory ALIGN=RIGHT>%s</TD>\n",
                 [s(OwnMemoryProp)]),
         MemoryTotalHTML =
-            string__format("<TD CLASS=memory ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=memory ALIGN=RIGHT>%s</TD>\n",
                 [s(commas(TotalMemory))]) ++
-            string__format("<TD CLASS=memory ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=memory ALIGN=RIGHT>%s</TD>\n",
                 [s(TotalMemoryProp)])
     ;
         MemorySelfHTML = "",
@@ -1575,10 +1575,10 @@ own_and_desc_to_html(Own, Desc, Pref, Deep, TotalsDisp) = HTML :-
     ),
     ( show_per_memory(Fields) = yes(_) ->
         MemoryPerCallSelfHTML =
-            string__format("<TD CLASS=memory ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=memory ALIGN=RIGHT>%s</TD>\n",
                 [s(count_per_call(OwnMemory, Calls))]),
         MemoryPerCallTotalHTML =
-            string__format("<TD CLASS=memory ALIGN=RIGHT>%s</TD>\n",
+            string.format("<TD CLASS=memory ALIGN=RIGHT>%s</TD>\n",
                 [s(count_per_call(TotalMemory, Calls))])
     ;
         MemoryPerCallSelfHTML = "",
@@ -1688,19 +1688,19 @@ format_time(Pref, Time) = TimeStr :-
 :- func two_decimal_fraction(float) = string.
 
 two_decimal_fraction(Measure) = Representation :-
-    string__format("%.2f", [f(Measure)], Str0),
-    string__to_char_list(Str0, Chars0),
-    list__reverse(Chars0, RevChars0),
+    string.format("%.2f", [f(Measure)], Str0),
+    string.to_char_list(Str0, Chars0),
+    list.reverse(Chars0, RevChars0),
     (
         RevChars0 = [Hundredth, Tenth, DecimalPoint | WholeRevChars0],
-        char__is_digit(Hundredth),
-        char__is_digit(Tenth)
+        char.is_digit(Hundredth),
+        char.is_digit(Tenth)
         % DecimalPoint = ('.')
     ->
         WholeRevChars = add_commas(WholeRevChars0),
         RevChars = [Hundredth, Tenth, DecimalPoint | WholeRevChars],
-        Chars = list__reverse(RevChars),
-        string__from_char_list(Chars, Representation)
+        Chars = list.reverse(RevChars),
+        string.from_char_list(Chars, Representation)
     ;
         error("two_decimal_fraction: malformed number")
     ).
@@ -1708,23 +1708,23 @@ two_decimal_fraction(Measure) = Representation :-
 :- func four_decimal_fraction(float) = string.
 
 four_decimal_fraction(Measure) = Representation :-
-    string__format("%.4f", [f(Measure)], Str0),
-    string__to_char_list(Str0, Chars0),
-    list__reverse(Chars0, RevChars0),
+    string.format("%.4f", [f(Measure)], Str0),
+    string.to_char_list(Str0, Chars0),
+    list.reverse(Chars0, RevChars0),
     (
         RevChars0 = [TenThousandth, Thousandth, Hundredth, Tenth,
             DecimalPoint | WholeRevChars0],
-        char__is_digit(TenThousandth),
-        char__is_digit(Thousandth),
-        char__is_digit(Hundredth),
-        char__is_digit(Tenth)
+        char.is_digit(TenThousandth),
+        char.is_digit(Thousandth),
+        char.is_digit(Hundredth),
+        char.is_digit(Tenth)
         % DecimalPoint = ('.')
     ->
         WholeRevChars = add_commas(WholeRevChars0),
         RevChars = [TenThousandth, Thousandth, Hundredth, Tenth,
             DecimalPoint | WholeRevChars],
-        Chars = list__reverse(RevChars),
-        string__from_char_list(Chars, Representation)
+        Chars = list.reverse(RevChars),
+        string.from_char_list(Chars, Representation)
     ;
         error("four_decimal_fraction: malformed number")
     ).
@@ -1732,10 +1732,10 @@ four_decimal_fraction(Measure) = Representation :-
 :- func commas(int) = string.
 
 commas(Num) = Str :-
-    string__format("%d", [i(Num)], Str0),
-    string__to_char_list(Str0, Chars0),
+    string.format("%d", [i(Num)], Str0),
+    string.to_char_list(Str0, Chars0),
     reverse(Chars0, RevChars0),
-    string__from_char_list(reverse(add_commas(RevChars0)), Str).
+    string.from_char_list(reverse(add_commas(RevChars0)), Str).
 
 :- func add_commas(list(char)) = list(char).
 
@@ -1752,7 +1752,7 @@ percentage(Fraction, Whole) = PercentageStr :-
         PercentageStr = "N/A"
     ;
         Percentage = 100.0 * float(Fraction) / float(Whole),
-        PercentageStr = string__format("%5.2f", [f(Percentage)])
+        PercentageStr = string.format("%5.2f", [f(Percentage)])
     ).
 
 lookup_ticks_per_sec(Stats, TicksPerSec, Assumed) :-
@@ -1919,18 +1919,18 @@ proc_static_to_html_ref(Pref, Deep, PSPtr) = HTML :-
     URL = deep_cmd_pref_to_url(Pref, Deep, proc(PSI)),
     deep_lookup_proc_statics(Deep, PSPtr, PS),
     ProcName = PS ^ ps_refined_id,
-    HTML = string__format("<A HREF=""%s"">%s</A>",
+    HTML = string.format("<A HREF=""%s"">%s</A>",
         [s(URL), s(escape_html_string(ProcName))]).
 
 module_name_to_html_ref(Pref, Deep, ModuleName) = HTML :-
     URL = deep_cmd_pref_to_url(Pref, Deep, module(ModuleName)),
-    HTML = string__format("<A HREF=""%s"">%s</A>",
+    HTML = string.format("<A HREF=""%s"">%s</A>",
         [s(URL), s(escape_html_string(ModuleName))]).
 
 clique_ptr_to_html_ref(Pref, Deep, ProcName, CliquePtr) = HTML :-
     CliquePtr = clique_ptr(CliqueNum),
     URL = deep_cmd_pref_to_url(Pref, Deep, clique(CliqueNum)),
-    HTML = string__format("<A HREF=""%s"">%s</A>",
+    HTML = string.format("<A HREF=""%s"">%s</A>",
         [s(URL), s(escape_html_string(ProcName))]).
 
 deep_cmd_pref_to_url(Pref, Deep, Cmd) =
@@ -1948,7 +1948,7 @@ plural(N) = Plural :-
 
 %-----------------------------------------------------------------------------%
 
-% This code was pretty much taken directly from extras/cgi/html.m. 
+% This code was pretty much taken directly from extras/cgi/html.m.
 
 escape_html_string(String) = EscapedString :-
     string.to_char_list(String, Chars),
@@ -1982,7 +1982,7 @@ special_html_char('>', "&gt;").
 :- pred insert(list(T)::in, list(T)::out, list(T)::in) is det.
 
 insert(NewChars, Chars, Chars0) :-
-    list__append(NewChars, Chars0, Chars).
+    list.append(NewChars, Chars0, Chars).
 
 %-----------------------------------------------------------------------------%
 :- end_module html_format.

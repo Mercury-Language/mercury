@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2005 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -59,7 +59,7 @@ find_cliques(InitDeep, BottomUpPDPtrCliqueList) :-
     % we want the final list in reverse order anyway because the propagation
     % algorithm works bottom up.
     %
-    list__foldl(accumulate_pdptr_lists, TopDownPDICliqueList,
+    list.foldl(accumulate_pdptr_lists, TopDownPDICliqueList,
         [], BottomUpPDPtrCliqueList).
 
 :- pred accumulate_pdptr_lists(set(int)::in, list(list(proc_dynamic_ptr))::in,
@@ -73,8 +73,8 @@ accumulate_pdptr_lists(PDISet, PDPtrLists0, PDPtrLists) :-
     is det.
 
 pdi_set_to_pdptr_list(PDISet, PDPtrList) :-
-    set__to_sorted_list(PDISet, PDIList),
-    list__map(pdi_to_pdptr, PDIList, PDPtrList).
+    set.to_sorted_list(PDISet, PDIList),
+    list.map(pdi_to_pdptr, PDIList, PDPtrList).
 
 :- pred pdi_to_pdptr(int::in, proc_dynamic_ptr::out) is det.
 
@@ -94,8 +94,8 @@ make_graph(InitDeep, Graph) :-
 
 add_pd_arcs(InitDeep, PDI, PD, !Graph) :-
     CallSiteRefArray = PD ^ pd_sites,
-    array__to_list(CallSiteRefArray, CallSiteRefList),
-    list__foldl(add_call_site_arcs(InitDeep, PDI), CallSiteRefList,
+    array.to_list(CallSiteRefArray, CallSiteRefList),
+    list.foldl(add_call_site_arcs(InitDeep, PDI), CallSiteRefList,
         !Graph).
 
 :- pred add_call_site_arcs(initial_deep::in, int::in, call_site_array_slot::in,
@@ -107,8 +107,8 @@ add_call_site_arcs(InitDeep, FromPDI, CallSiteSlot, !Graph) :-
         add_csd_arcs(InitDeep, FromPDI, CSDPtr, !Graph)
     ;
         CallSiteSlot = multi(_, CSDPtrArray),
-        array__to_list(CSDPtrArray, CSDPtrs),
-        list__foldl(add_csd_arcs(InitDeep, FromPDI), CSDPtrs, !Graph)
+        array.to_list(CSDPtrArray, CSDPtrs),
+        list.foldl(add_csd_arcs(InitDeep, FromPDI), CSDPtrs, !Graph)
     ).
 
 :- pred add_csd_arcs(initial_deep::in, int::in, call_site_dynamic_ptr::in,
@@ -119,7 +119,7 @@ add_call_site_arcs(InitDeep, FromPDI, CallSiteSlot, !Graph) :-
 add_csd_arcs(InitDeep, FromPDI, CSDPtr, !Graph) :-
     CSDPtr = call_site_dynamic_ptr(CSDI),
     ( CSDI > 0 ->
-        array__lookup(InitDeep ^ init_call_site_dynamics, CSDI, CSD),
+        array.lookup(InitDeep ^ init_call_site_dynamics, CSDI, CSD),
         ToPDPtr = CSD ^ csd_callee,
         ToPDPtr = proc_dynamic_ptr(ToPDI),
         % impure unsafe_perform_io(write_arc(FromPDI, ToPDI, CSDI)),
@@ -132,7 +132,7 @@ add_csd_arcs(InitDeep, FromPDI, CSDPtr, !Graph) :-
 
 make_clique_indexes(NPDs, CliqueList, Cliques, CliqueIndex) :-
     Cliques = array(CliqueList),
-    array__init(NPDs, clique_ptr(-1), CliqueIndex0),
+    array.init(NPDs, clique_ptr(-1), CliqueIndex0),
     %
     % For each clique, add entries to the CliqueIndex array, which maps every
     % proc_dynamic_ptr back to the clique to which it belongs.
@@ -163,20 +163,20 @@ index_clique_member(CliqueNum, PDPtr, !CliqueIndex) :-
 
 % :- pred write_arc(int::in, int::in, int::in, io::di, io::uo)
 %   is det.
-% 
+%
 % write_arc(FromPDI, ToPDI, CSDI, !IO) :-
-%   io__format("arc from pd %d to pd %d through csd %d\n",
+%   io.format("arc from pd %d to pd %d through csd %d\n",
 %       [i(FromPDI), i(ToPDI), i(CSDI)], !IO).
-% 
+%
 % :- pred write_pdi_cn(int::in, int::in, io::di, io::uo) is det.
-% 
+%
 % write_pdi_cn(PDI, CN, !IO) :-
-%   io__write_string("pdi ", !IO),
-%   io__write_int(PDI, !IO),
-%   io__write_string(" -> clique ", !IO),
-%   io__write_int(CN, !IO),
-%   io__nl(!IO),
-%   io__flush_output(!IO).
+%   io.write_string("pdi ", !IO),
+%   io.write_int(PDI, !IO),
+%   io.write_string(" -> clique ", !IO),
+%   io.write_int(CN, !IO),
+%   io.nl(!IO),
+%   io.flush_output(!IO).
 %
 
 %-----------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2005 The University of Melbourne.
+% Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -60,10 +60,10 @@
 
 main(!IO) :-
     write_html_header(!IO),
-    io__get_environment_var("QUERY_STRING", MaybeQueryString, !IO),
+    io.get_environment_var("QUERY_STRING", MaybeQueryString, !IO),
     (
         MaybeQueryString = yes(QueryString0),
-        getopt__process_options(
+        getopt.process_options(
             option_ops_multi(short, long, defaults), [], _, MaybeOptions),
         (
             MaybeOptions = ok(Options)
@@ -81,9 +81,9 @@ main(!IO) :-
         ; Pieces = [FileName] ->
             process_query(menu, no, FileName, Options, !IO)
         ;
-            io__set_exit_status(1, !IO),
+            io.set_exit_status(1, !IO),
             % Give the simplest URL in the error message.
-            io__write_string("Bad URL; expected filename\n", !IO)
+            io.write_string("Bad URL; expected filename\n", !IO)
         )
     ;
         MaybeQueryString = no,
@@ -93,12 +93,12 @@ main(!IO) :-
 :- pred process_command_line(io::di, io::uo) is cc_multi.
 
 process_command_line(!IO) :-
-    io__progname_base(mdprof_cgi_progname, ProgName, !IO),
-    io__command_line_arguments(Args0, !IO),
-    % io__write_string("Args0: ", !IO),
-    % io__write_list(Args0, " ", write_bracketed_string, !IO),
-    % io__nl(!IO),
-    getopt__process_options(option_ops_multi(short, long, defaults),
+    io.progname_base(mdprof_cgi_progname, ProgName, !IO),
+    io.command_line_arguments(Args0, !IO),
+    % io.write_string("Args0: ", !IO),
+    % io.write_list(Args0, " ", write_bracketed_string, !IO),
+    % io.nl(!IO),
+    getopt.process_options(option_ops_multi(short, long, defaults),
         Args0, Args, MaybeOptions),
     (
         MaybeOptions = ok(Options),
@@ -123,8 +123,8 @@ process_command_line(!IO) :-
         )
     ;
         MaybeOptions = error(Msg),
-        io__set_exit_status(1, !IO),
-        io__format("%s: error parsing options: %s\n",
+        io.set_exit_status(1, !IO),
+        io.format("%s: error parsing options: %s\n",
             [s(ProgName), s(Msg)], !IO)
     ).
 
@@ -135,12 +135,12 @@ mdprof_cgi_progname = "mdprof_cgi".
 :- pred write_version_message(string::in, io::di, io::uo) is det.
 
 write_version_message(ProgName, !IO) :-
-    library__version(Version) ,
-    io__write_string(ProgName, !IO),
-    io__write_string(": Mercury deep profiler", !IO),
-    io__nl(!IO),
-    io__write_string(Version, !IO),
-    io__nl(!IO).
+    library.version(Version) ,
+    io.write_string(ProgName, !IO),
+    io.write_string(": Mercury deep profiler", !IO),
+    io.nl(!IO),
+    io.write_string(Version, !IO),
+    io.nl(!IO).
 
 :- pred write_help_message(string::in, io::di, io::uo) is det.
 
@@ -148,10 +148,10 @@ write_help_message(ProgName, !IO) :-
     % The options are deliberately not documented; they change
     % quite rapidly, based on the debugging needs of the moment.
     % The optional filename argument is also for implementors only.
-    io__format("Usage: %s\n", [s(ProgName)], !IO),
-    io__format("This program doesn't expect any arguments;\n", [], !IO),
-    io__format("instead it decides what to do based on the\n", [], !IO),
-    io__format("QUERY_STRING environment variable.\n", [], !IO).
+    io.format("Usage: %s\n", [s(ProgName)], !IO),
+    io.format("This program doesn't expect any arguments;\n", [], !IO),
+    io.format("instead it decides what to do based on the\n", [], !IO),
+    io.format("QUERY_STRING environment variable.\n", [], !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -166,9 +166,9 @@ process_args(ProgName, Args, Options, !IO) :-
         % easier.
         process_query(default_cmd(Options), no, FileName, Options, !IO)
     ;
-        io__set_exit_status(1, !IO),
+        io.set_exit_status(1, !IO),
         write_help_message(ProgName, !IO)
-        % io__write_list(Args, " ", write_bracketed_string)
+        % io.write_list(Args, " ", write_bracketed_string)
     ).
 
 % This predicate is for debugging the command line given to mdprof_cgi by the
@@ -178,15 +178,15 @@ process_args(ProgName, Args, Options, !IO) :-
 %   is det.
 %
 % write_bracketed_string(S, !IO) :-
-%   io__write_string("<", !IO),
-%   io__write_string(S, !IO),
-%   io__write_string(">", !IO).
+%   io.write_string("<", !IO),
+%   io.write_string(S, !IO),
+%   io.write_string(">", !IO).
 
 :- pred write_html_header(io::di, io::uo) is det.
 
 write_html_header(!IO) :-
-    io__write_string(html_header_text, !IO),
-    io__flush_output(!IO).
+    io.write_string(html_header_text, !IO),
+    io.flush_output(!IO).
 
 :- func html_header_text = string.
 
@@ -239,8 +239,8 @@ process_query(Cmd, MaybePrefStr, DataFileName, Options, !IO) :-
     ;
         release_lock(Debug, MutexFile, !IO),
         remove_want_file(WantFile, !IO),
-        io__set_exit_status(1, !IO),
-        io__write_string("mdprof internal error: bad fifo count", !IO)
+        io.set_exit_status(1, !IO),
+        io.write_string("mdprof internal error: bad fifo count", !IO)
     ).
 
     % Handle the given query using the existing server. Delete the mutex and
@@ -257,14 +257,14 @@ handle_query_from_existing_server(Cmd, Pref, ToServerPipe, FromServerPipe,
     release_lock(Debug, MutexFile, !IO),
     remove_want_file(WantFile, !IO),
     recv_string(FromServerPipe, Debug, ResponseFileName, !IO),
-    CatCmd = string__format("cat %s", [s(ResponseFileName)]),
-    io__call_system(CatCmd, _, !IO),
+    CatCmd = string.format("cat %s", [s(ResponseFileName)]),
+    io.call_system(CatCmd, _, !IO),
     (
         Debug = yes
         % Leave the response file to be examined.
     ;
         Debug = no,
-        io__remove_file(ResponseFileName, _, !IO)
+        io.remove_file(ResponseFileName, _, !IO)
     ).
 
     % Handle the given query and then become the new server. Delete the mutex
@@ -283,7 +283,7 @@ handle_query_from_new_server(Cmd, Pref, FileName, ToServerPipe, FromServerPipe,
     lookup_bool_option(Options, record_startup, RecordStartup),
     (
         RecordStartup = yes,
-        io__open_output(StartupFile, StartupStreamRes, !IO),
+        io.open_output(StartupFile, StartupStreamRes, !IO),
         (
             StartupStreamRes = ok(StartupStream0),
             MaybeStartupStream = yes(StartupStream0),
@@ -303,12 +303,12 @@ handle_query_from_new_server(Cmd, Pref, FileName, ToServerPipe, FromServerPipe,
         try_exec(Cmd, Pref, Deep, HTML, !IO),
         (
             MaybeStartupStream = yes(StartupStream1),
-            io__format(StartupStream1, "query 0 output:\n%s\n",
+            io.format(StartupStream1, "query 0 output:\n%s\n",
                 [s(HTML)], !IO),
             % If we don't flush the output before the fork, it will
             % be flushed twice, once by the parent process and
             % once by the child process.
-            io__flush_output(StartupStream1, !IO)
+            io.flush_output(StartupStream1, !IO)
         ;
             MaybeStartupStream = no
         ),
@@ -318,14 +318,14 @@ handle_query_from_new_server(Cmd, Pref, FileName, ToServerPipe, FromServerPipe,
             % debugging.
             release_lock(Debug, MutexFile, !IO),
             remove_want_file(WantFile, !IO),
-            io__write_string(HTML, !IO)
+            io.write_string(HTML, !IO)
         ;
             ServerProcess = yes,
             make_pipes(FileName, Success, !IO),
             (
                 Success = yes,
-                io__write_string(HTML, !IO),
-                io__flush_output(!IO),
+                io.write_string(HTML, !IO),
+                io.flush_output(!IO),
                 start_server(Options,
                     ToServerPipe, FromServerPipe,
                     MaybeStartupStream,
@@ -334,23 +334,23 @@ handle_query_from_new_server(Cmd, Pref, FileName, ToServerPipe, FromServerPipe,
                 Success = no,
                 release_lock(Debug, MutexFile, !IO),
                 remove_want_file(WantFile, !IO),
-                io__set_exit_status(1, !IO),
-                io__write_string("could not make pipes\n", !IO)
+                io.set_exit_status(1, !IO),
+                io.write_string("could not make pipes\n", !IO)
             )
         )
     ;
         Res = error(Error),
         release_lock(Debug, MutexFile, !IO),
         remove_want_file(WantFile, !IO),
-        io__set_exit_status(1, !IO),
-        io__format("error reading data file: %s\n", [s(Error)], !IO)
+        io.set_exit_status(1, !IO),
+        io.format("error reading data file: %s\n", [s(Error)], !IO)
     ).
 
     % Become the new server. Delete the mutex and want files when we get out
     % of the critical region.
     %
 :- pred start_server(option_table::in, string::in, string::in,
-    maybe(io__output_stream)::in, string::in, string::in, deep::in,
+    maybe(io.output_stream)::in, string::in, string::in, deep::in,
     io::di, io::uo) is cc_multi.
 
 start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
@@ -386,16 +386,16 @@ start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
             % The binary streams are clones of the text streams,
             % and we must close them too to let the web server
             % finish displaying the page.
-            io__stdin_stream(StdIn, !IO),
-            io__close_input(StdIn, !IO),
-            io__stdout_stream(StdOut, !IO),
-            io__close_output(StdOut, !IO),
-            io__stderr_stream(StdErr, !IO),
-            io__close_output(StdErr, !IO),
-            io__binary_input_stream(BinaryStdIn, !IO),
-            io__close_binary_input(BinaryStdIn, !IO),
-            io__binary_output_stream(BinaryStdOut, !IO),
-            io__close_binary_output(BinaryStdOut, !IO)
+            io.stdin_stream(StdIn, !IO),
+            io.close_input(StdIn, !IO),
+            io.stdout_stream(StdOut, !IO),
+            io.close_output(StdOut, !IO),
+            io.stderr_stream(StdErr, !IO),
+            io.close_output(StdErr, !IO),
+            io.binary_input_stream(BinaryStdIn, !IO),
+            io.close_binary_input(BinaryStdIn, !IO),
+            io.binary_output_stream(BinaryStdOut, !IO),
+            io.close_binary_output(BinaryStdOut, !IO)
         ;
             ChildHasParent = child_has_no_parent,
             % We don't actually have a parent process, so we need
@@ -433,11 +433,11 @@ start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
         % This deletes all the files created by the process, including
         % WantFile and MutexFile, with MutexFile being deleted last.
         delete_cleanup_files(!IO),
-        io__set_exit_status(1, !IO)
+        io.set_exit_status(1, !IO)
     ).
 
 :- pred server_loop(string::in, string::in, int::in,
-    maybe(io__output_stream)::in, bool::in, bool::in, int::in, deep::in,
+    maybe(io.output_stream)::in, bool::in, bool::in, int::in, deep::in,
     io::di, io::uo) is cc_multi.
 
 server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
@@ -447,11 +447,11 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
     recv_term(ToServerPipe, Debug, CmdPref0, !IO),
     (
         MaybeStartupStream = yes(StartupStream0),
-        io__format(StartupStream0, "server loop query %d\n",
+        io.format(StartupStream0, "server loop query %d\n",
             [i(QueryNum)], !IO),
-        io__write(StartupStream0, CmdPref0, !IO),
-        io__nl(StartupStream0, !IO),
-        io__flush_output(StartupStream0, !IO)
+        io.write(StartupStream0, CmdPref0, !IO),
+        io.nl(StartupStream0, !IO),
+        io.flush_output(StartupStream0, !IO)
     ;
         MaybeStartupStream = no
     ),
@@ -483,23 +483,23 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
 
     ResponseFileName =
         response_file_name(Deep0 ^ data_file_name, QueryNum),
-    io__open_output(ResponseFileName, ResponseRes, !IO),
+    io.open_output(ResponseFileName, ResponseRes, !IO),
     (
         ResponseRes = ok(ResponseStream)
     ;
         ResponseRes = error(_),
         error("cannot open response file")
     ),
-    io__write_string(ResponseStream, HTML, !IO),
-    io__close_output(ResponseStream, !IO),
+    io.write_string(ResponseStream, HTML, !IO),
+    io.close_output(ResponseStream, !IO),
 
     send_string(FromServerPipe, Debug, ResponseFileName, !IO),
 
     (
         MaybeStartupStream = yes(StartupStream1),
-        io__format(StartupStream1, "query %d output:\n%s\n",
+        io.format(StartupStream1, "query %d output:\n%s\n",
             [i(QueryNum), s(HTML)], !IO),
-        io__flush_output(StartupStream1, !IO)
+        io.flush_output(StartupStream1, !IO)
     ;
         MaybeStartupStream = no
     ),
@@ -529,8 +529,8 @@ make_pipes(FileName, Success, !IO) :-
     FromServerPipe = from_server_pipe_name(FileName),
     MakeToServerPipeCmd = make_pipe_cmd(ToServerPipe),
     MakeFromServerPipeCmd = make_pipe_cmd(FromServerPipe),
-    io__call_system(MakeToServerPipeCmd, ToServerRes, !IO),
-    io__call_system(MakeFromServerPipeCmd, FromServerRes, !IO),
+    io.call_system(MakeToServerPipeCmd, ToServerRes, !IO),
+    io.call_system(MakeFromServerPipeCmd, FromServerRes, !IO),
     (
         ToServerRes = ok(0),
         FromServerRes = ok(0)
@@ -545,8 +545,8 @@ make_pipes(FileName, Success, !IO) :-
         % remove a named pipe we did succeed in creating, then
         % something is so screwed up that probably there is nothing
         % we can do to fix the situation.
-        io__remove_file(ToServerPipe, _, !IO),
-        io__remove_file(FromServerPipe, _, !IO),
+        io.remove_file(ToServerPipe, _, !IO),
+        io.remove_file(FromServerPipe, _, !IO),
         Success = no
     ).
 
