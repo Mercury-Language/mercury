@@ -410,7 +410,7 @@ case $HOST in
 					hlc.gc			\
 					hlc.gc.tr		\
 					hlc.par.gc		\
-					asm_fast.gc.par"
+					asm_fast.par.gc"
 		;;					
 	jupiter)
 		# Ensure that the nogc grades get installed and tested
@@ -428,7 +428,7 @@ case $HOST in
 				hlc.gc 				\
 				hlc.par.gc			\
 				asm_fast.gc.tr.decldebug	\
-				asm_fast.gc.par"
+				asm_fast.par.gc"
 		;;
 	aral)
 		#
