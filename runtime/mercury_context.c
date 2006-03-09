@@ -109,8 +109,7 @@ MR_init_context(MR_Context *c, const char *id, MR_Generator *gen)
             0, MR_detstack_size, MR_next_offset(),
             MR_detstack_zone_size, MR_default_handler);
     }
-    /* sp points to the last used word, not to the first free word. */
-    c->MR_ctxt_sp = c->MR_ctxt_detstack_zone->MR_zone_min - 1;
+    c->MR_ctxt_sp = c->MR_ctxt_detstack_zone->MR_zone_min;
 
     if (c->MR_ctxt_nondetstack_zone != NULL) {
         MR_reset_redzone(c->MR_ctxt_nondetstack_zone);
