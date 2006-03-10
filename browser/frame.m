@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2003, 2005 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -48,7 +48,7 @@
 
     % Juxtapose (horizontally glue) two frames, top-aligned.
     %
-:- func frame__hglue(frame, frame) = frame.
+:- func hglue(frame, frame) = frame.
 
     % Clip a frame to the rectangle ((0,0),(X,Y)) where origin is on the
     % top-left. Coordinate axes go down and right.
@@ -71,7 +71,7 @@ from_string(Str) = [Str].
 
 vglue(TopFrame, BottomFrame) = StackedFrame :-
     % Glue frames vertically (stack). Align to left.
-    list__append(TopFrame, BottomFrame, StackedFrame).
+    list.append(TopFrame, BottomFrame, StackedFrame).
 
 hglue(LeftFrame, RightFrame) = GluedFrame :-
     % Glue frames horizontally (juxtapose). align to top.
@@ -90,8 +90,8 @@ hglue(LeftFrame, RightFrame) = GluedFrame :-
         RightFrameNew = RightFrame
     ),
     frame_right_pad(LeftFrameNew, PaddedLeftFrameNew),
-    util__zip_with((pred(S1::in, S2::in, S3::out) is det :-
-            string__append(S1, S2, S3)),
+    util.zip_with((pred(S1::in, S2::in, S3::out) is det :-
+            string.append(S1, S2, S3)),
         PaddedLeftFrameNew, RightFrameNew, GluedFrame).
 
     % Add right padding. That is, add whitespace on right so that
@@ -100,18 +100,18 @@ hglue(LeftFrame, RightFrame) = GluedFrame :-
 :- pred frame_right_pad(frame::in, frame::out) is det.
 
 frame_right_pad(Frame, PaddedFrame) :-
-    Lengths = list__map((func(Str) = string__length(Str)), Frame),
-    list__foldl(int__max, Lengths, 0, MaxLen),
-    list__map(subtract(MaxLen), Lengths, Paddings),
-    list__map(add_right_padding,
-        assoc_list__from_corresponding_lists(Frame, Paddings), PaddedFrame).
+    Lengths = list.map((func(Str) = string.length(Str)), Frame),
+    list.foldl(int.max, Lengths, 0, MaxLen),
+    list.map(subtract(MaxLen), Lengths, Paddings),
+    list.map(add_right_padding,
+        assoc_list.from_corresponding_lists(Frame, Paddings), PaddedFrame).
 
 :- pred add_right_padding(pair(string, int)::in, string::out) is det.
 
 add_right_padding(Str - Len, PaddedFrameStr) :-
-    list__duplicate(Len, ' ', PadChars),
-    string__from_char_list(PadChars, Padding),
-    string__append(Str, Padding, PaddedFrameStr).
+    list.duplicate(Len, ' ', PadChars),
+    string.from_char_list(PadChars, Padding),
+    string.append(Str, Padding, PaddedFrameStr).
 
     % We need this since Mercury has no Haskell-ese operation sections.
     %
@@ -125,24 +125,24 @@ subtract(M, X, Z) :-
 :- func frame_lower_pad(frame, int) = frame.
 
 frame_lower_pad(Frame, PadLines) = PaddedFrame :-
-    list__duplicate(PadLines, "", Padding),
-    list__append(Frame, Padding, PaddedFrame).
+    list.duplicate(PadLines, "", Padding),
+    list.append(Frame, Padding, PaddedFrame).
 
 hsize(Frame) = HSize :-
-    Lengths = list__map(func(Str) = string__length(Str), Frame),
-    list__foldl(int__max, Lengths, 0, MaxLen),
+    Lengths = list.map(func(Str) = string.length(Str), Frame),
+    list.foldl(int.max, Lengths, 0, MaxLen),
     HSize = MaxLen.
 
 vsize(Frame) = VSize :-
     length(Frame, VSize).
 
 clip(X-Y, Frame) = ClippedFrame :-
-    list__take_upto(Y, Frame, YClippedFrame),
-    list__map(left(X), YClippedFrame, ClippedFrame).
+    list.take_upto(Y, Frame, YClippedFrame),
+    list.map(left(X), YClippedFrame, ClippedFrame).
 
 :- pred left(int::in, string::in, string::out) is det.
 
 left(N, Str, Left) :-
-    string__left(Str, N, Left).
+    string.left(Str, N, Left).
 
 %---------------------------------------------------------------------------%

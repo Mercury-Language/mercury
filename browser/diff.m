@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -40,34 +40,34 @@ report_diffs(Drop, Max, Univ1, Univ2, !IO) :-
         Type1 = Type2
     ->
         compute_diffs(Univ1, Univ2, [], [], RevDiffs),
-        list__reverse(RevDiffs, AllDiffs),
-        list__length(AllDiffs, NumAllDiffs),
+        list.reverse(RevDiffs, AllDiffs),
+        list.length(AllDiffs, NumAllDiffs),
         (
-            list__drop(Drop, AllDiffs, Diffs),
+            list.drop(Drop, AllDiffs, Diffs),
             Diffs = [_ | _]
         ->
             FirstShown = Drop + 1,
             LastShown = min(Drop + Max, NumAllDiffs),
             ( FirstShown = LastShown ->
-                io__format("There are %d diffs, showing diff %d:\n",
+                io.format("There are %d diffs, showing diff %d:\n",
                     [i(NumAllDiffs), i(FirstShown)], !IO)
             ;
-                io__format("There are %d diffs, showing diffs %d-%d:\n",
+                io.format("There are %d diffs, showing diffs %d-%d:\n",
                     [i(NumAllDiffs), i(FirstShown), i(LastShown)], !IO)
             ),
-            list__take_upto(Max, Diffs, ShowDiffs),
-            list__foldl2(show_diff, ShowDiffs, Drop, _, !IO)
+            list.take_upto(Max, Diffs, ShowDiffs),
+            list.foldl2(show_diff, ShowDiffs, Drop, _, !IO)
         ;
             ( NumAllDiffs = 0 ->
-                io__write_string("There are no diffs.\n", !IO)
+                io.write_string("There are no diffs.\n", !IO)
             ; NumAllDiffs = 1 ->
-                io__write_string("There is only one diff.\n", !IO)
+                io.write_string("There is only one diff.\n", !IO)
             ;
-                io__format("There are only %d diffs.\n", [i(NumAllDiffs)], !IO)
+                io.format("There are only %d diffs.\n", [i(NumAllDiffs)], !IO)
             )
         )
     ;
-        io__write_string("The two values are of different types.\n", !IO)
+        io.write_string("The two values are of different types.\n", !IO)
     ).
 
 :- type term_path_diff
@@ -82,7 +82,7 @@ compute_diffs(Univ1, Univ2, !.RevPath, !RevDiffs) :-
     ( Functor1 = Functor2 ->
         compute_arg_diffs(Args1, Args2, !.RevPath, 1, !RevDiffs)
     ;
-        list__reverse(!.RevPath, Path),
+        list.reverse(!.RevPath, Path),
         !:RevDiffs = [term_path_diff(Path, Univ1, Univ2) | !.RevDiffs]
     ).
 
@@ -104,26 +104,26 @@ compute_arg_diffs([Arg1 | Args1], [Arg2 | Args2], !.RevPath, ArgNum,
 
 show_diff(Diff, !DiffNum, !IO) :-
     !:DiffNum = !.DiffNum + 1,
-    io__format("%d: ", [i(!.DiffNum)], !IO),
+    io.format("%d: ", [i(!.DiffNum)], !IO),
     Diff = term_path_diff(Path, Univ1, Univ2),
     (
         Path = [],
-        io__write_string("mismatch at root", !IO)
+        io.write_string("mismatch at root", !IO)
     ;
         Path = [Posn | Posns],
-        io__write_int(Posn, !IO),
+        io.write_int(Posn, !IO),
         show_path_rest(Posns, !IO)
     ),
-    io__write_string(": ", !IO),
+    io.write_string(": ", !IO),
     functor(univ_value(Univ1), include_details_cc, Functor1, Arity1),
     functor(univ_value(Univ2), include_details_cc, Functor2, Arity2),
-    io__format("%s/%d vs %s/%d\n",
+    io.format("%s/%d vs %s/%d\n",
         [s(Functor1), i(Arity1), s(Functor2), i(Arity2)], !IO).
 
 :- pred show_path_rest(list(int)::in, io::di, io::uo) is det.
 
 show_path_rest([], !IO).
 show_path_rest([Posn | Posns], !IO) :-
-    io__write_string("/", !IO),
-    io__write_int(Posn, !IO),
+    io.write_string("/", !IO),
+    io.write_int(Posn, !IO),
     show_path_rest(Posns, !IO).

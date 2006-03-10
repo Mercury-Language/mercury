@@ -1,4 +1,6 @@
 %-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
 % Copyright (C) 1999-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -30,16 +32,18 @@
 
 :- pred rep_to_univ(term_rep::in, univ::out) is det.
 
-	% argumnet(Term, N, Subterm).
-	% True iff Subterm is the Nth argument of Term.
-	%
+    % argumnet(Term, N, Subterm):
+    %
+    % True iff Subterm is the Nth argument of Term.
+    %
 :- pred argument(term_rep::in, int::in, term_rep::out) is semidet.
 
 :- pred deref_path(term_rep::in, term_path::in, term_rep::out) is semidet.
 
-	% field_pos(FieldName, Term, N).
-	% True iff argument N of Term has the name FieldName.
-	%
+    % field_pos(FieldName, Term, N):
+    %
+    % True iff argument N of Term has the name FieldName.
+    %
 :- pred field_pos(string::in, term_rep::in, int::out) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -54,119 +58,114 @@
 :- import_module mdb.declarative_debugger.
 
 :- type term_rep
-	---> term_rep(univ)
-	where
-		equality is term_rep_equal,
-		comparison is term_rep_compare.
+    ---> term_rep(univ)
+    where
+        equality is term_rep_equal,
+        comparison is term_rep_compare.
 
 :- pred term_rep_equal(term_rep::in, term_rep::in) is semidet.
 
 term_rep_equal(Rep1, Rep2) :-
-	(=) = promise_only_solution(comp_rep_2(Rep1, Rep2)).
+    (=) = promise_only_solution(comp_rep_2(Rep1, Rep2)).
 
 :- pred comp_rep_2(term_rep::in, term_rep::in, builtin.comparison_result::uo)
-	is cc_multi.
+    is cc_multi.
 
 comp_rep_2(Rep1, Rep2, Result) :-
-	builtin.compare_representation(Result, Rep1, Rep2).
+    builtin.compare_representation(Result, Rep1, Rep2).
 
 :- pred term_rep_compare(builtin.comparison_result::uo, term_rep::in,
-	term_rep::in) is det.
+    term_rep::in) is det.
 
 term_rep_compare(Result, Rep1, Rep2) :-
-	Result = promise_only_solution(comp_rep_2(Rep1, Rep2)).
+    Result = promise_only_solution(comp_rep_2(Rep1, Rep2)).
 
 univ_to_rep(Univ0, term_rep(Univ)) :- cc_multi_equal(Univ0, Univ).
 
 rep_to_univ(Rep, Univ) :-
-	Univ = promise_only_solution(
-		pred(U::out) is cc_multi :- Rep = term_rep(U)
-	).
+    Univ = promise_only_solution(
+        pred(U::out) is cc_multi :- Rep = term_rep(U)
+    ).
 
 deref_path(Term, Path, SubTerm):-
-	(
-		Path = [],
-		SubTerm = Term
-	;
-		Path = [Head | Tail],
-		argument(Term, Head, NextSubTerm),
-		deref_path(NextSubTerm, Tail, SubTerm)
-	).
+    (
+        Path = [],
+        SubTerm = Term
+    ;
+        Path = [Head | Tail],
+        argument(Term, Head, NextSubTerm),
+        deref_path(NextSubTerm, Tail, SubTerm)
+    ).
 
 argument(Term, N, Arg) :-
-	%
-	% There is only one representation of a subterm, given
-	% the representation of the containing term and a term path.
-	%
-	promise_equivalent_solutions [MaybeArg] (
-		rep_to_univ(Term, Univ),
-		% Argument indexes in the term path start from one, but
-		% the argument function wants argument indexes to
-		% start from zero.
-		argument_cc(univ_value(Univ), N - 1, MaybeSubUniv),
-		(
-			MaybeSubUniv = yes(SubUniv),
-			univ_to_rep(SubUniv, Arg0),
-			MaybeArg = yes(Arg0)
-		;
-			MaybeSubUniv = no,
-			MaybeArg = no
-		)
-	),
-	MaybeArg = yes(Arg).
+    %
+    % There is only one representation of a subterm, given
+    % the representation of the containing term and a term path.
+    %
+    promise_equivalent_solutions [MaybeArg] (
+        rep_to_univ(Term, Univ),
+        % Argument indexes in the term path start from one, but
+        % the argument function wants argument indexes to
+        % start from zero.
+        argument_cc(univ_value(Univ), N - 1, MaybeSubUniv),
+        (
+            MaybeSubUniv = yes(SubUniv),
+            univ_to_rep(SubUniv, Arg0),
+            MaybeArg = yes(Arg0)
+        ;
+            MaybeSubUniv = no,
+            MaybeArg = no
+        )
+    ),
+    MaybeArg = yes(Arg).
 
 field_pos(FieldName, Term, Pos) :-
-	%
-	% There is only one or zero positions of a field
-	% given a representation of a term and the field name.
-	%
-	promise_equivalent_solutions [MaybePos] (
-		rep_to_univ(Term, Univ),
-		Value = univ_value(Univ),
-		deconstruct_cc(Value, Functor, Arity, _Args),
-		Type = type_of(Value),
-		find_functor(1, num_functors(Type), Type, Functor, Arity,
-			MaybeFunctorNum),
-		(
-			MaybeFunctorNum = yes(FunctorNum),
-			(
-				get_functor_with_names(Type, FunctorNum - 1, 
-					_FunctorName, _Arity, _ArgTypes,
-					ArgNames)
-			->
-				(
-					nth_member_search(ArgNames,
-						yes(FieldName), Pos0)
-				->
-					MaybePos = yes(Pos0)
-				;
-					MaybePos = no
-				)
-			;
-				throw(internal_error("field_pos",
-					"get_functor_with_names " ++
-					"couldn't find functor"))
-			)
-		;
-			MaybeFunctorNum = no,
-			throw(internal_error("field_pos",
-				"find_functor couldn't find functor"))
-		)
-	),
-	MaybePos = yes(Pos).
+    %
+    % There is only one or zero positions of a field
+    % given a representation of a term and the field name.
+    %
+    promise_equivalent_solutions [MaybePos] (
+        rep_to_univ(Term, Univ),
+        Value = univ_value(Univ),
+        deconstruct_cc(Value, Functor, Arity, _Args),
+        Type = type_of(Value),
+        find_functor(1, num_functors(Type), Type, Functor, Arity,
+            MaybeFunctorNum),
+        (
+            MaybeFunctorNum = yes(FunctorNum),
+            (
+                get_functor_with_names(Type, FunctorNum - 1, 
+                    _FunctorName, _Arity, _ArgTypes, ArgNames)
+            ->
+                ( nth_member_search(ArgNames, yes(FieldName), Pos0) ->
+                    MaybePos = yes(Pos0)
+                ;
+                    MaybePos = no
+                )
+            ;
+                throw(internal_error("field_pos",
+                    "get_functor_with_names couldn't find functor"))
+            )
+        ;
+            MaybeFunctorNum = no,
+            throw(internal_error("field_pos",
+                "find_functor couldn't find functor"))
+        )
+    ),
+    MaybePos = yes(Pos).
 
 :- pred find_functor(int::in, int::in, type_desc::in, string::in, int::in,
-	maybe(int)::out) is det.
+    maybe(int)::out) is det.
 
-find_functor(Current, NumFunctors, Type, FunctorName, Arity, MaybeFunctorNum)
-		:-
-	( if Current =< NumFunctors then
-		( get_functor(Type, Current - 1, FunctorName, Arity, _) ->
-			MaybeFunctorNum = yes(Current)
-		;
-			find_functor(Current + 1, NumFunctors, Type,
-				FunctorName, Arity, MaybeFunctorNum)
-		)
-	else
-		MaybeFunctorNum = no
-	).
+find_functor(Current, NumFunctors, Type, FunctorName, Arity,
+        MaybeFunctorNum) :-
+    ( Current =< NumFunctors ->
+        ( get_functor(Type, Current - 1, FunctorName, Arity, _) ->
+            MaybeFunctorNum = yes(Current)
+        ;
+            find_functor(Current + 1, NumFunctors, Type,
+                FunctorName, Arity, MaybeFunctorNum)
+        )
+    ;
+        MaybeFunctorNum = no
+    ).

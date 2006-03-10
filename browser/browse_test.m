@@ -1,5 +1,7 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2003, 2005 The University of Melbourne.
+% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
+% Copyright (C) 1998-2000, 2003, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -20,8 +22,8 @@
 :- implementation.
 
 :- import_module mdb.
-:- import_module mdb__browse.
-:- import_module mdb__browser_info.
+:- import_module mdb.browse.
+:- import_module mdb.browser_info.
 
 :- import_module assoc_list.
 :- import_module int.
@@ -30,46 +32,45 @@
 :- import_module string.
 :- import_module tree234.
 
-main -->
-	{ Filename = "/etc/fstab" },
-	{ EXIT_FAILURE = 1 },
-	{ EXIT_SUCCESS = 0 },
-	io__open_input(Filename, Result),
-	( { Result = ok(WordsStream) } ->
-		read_words(WordsStream, Words),
-		io__close_input(WordsStream),
-		{ assoc_list__from_corresponding_lists(Words, Words,
-			AssocList) },
-		{ tree234__assoc_list_to_tree234(AssocList, Tree) },
-		io__stdin_stream(StdIn),
-		io__stdout_stream(StdOut),
-		{ browser_info__init_persistent_state(State0) },
-		io__write_string("list:"),
-		io__nl,
-		browse__browse(AssocList, StdIn, StdOut, _, State0, State1),
-		io__write_string("tree:"),
-		io__nl,
-		browse__browse(Tree, StdIn, StdOut, _, State1, State2),
-		io__write_string("stream:"),
-		io__nl,
-		browse__browse(StdIn, StdIn, StdOut, _, State2, _),
-		io__set_exit_status(EXIT_SUCCESS)
-	;
-		io__write_string("Can't open input file.\n"),
-		io__set_exit_status(EXIT_FAILURE)
-	).
+main(!IO) :-
+    Filename = "/etc/fstab",
+    EXIT_FAILURE = 1,
+    EXIT_SUCCESS = 0,
+    io.open_input(Filename, Result, !IO),
+    ( Result = ok(WordsStream) ->
+        read_words(WordsStream, Words, !IO),
+        io.close_input(WordsStream, !IO),
+        assoc_list.from_corresponding_lists(Words, Words, AssocList),
+        tree234.assoc_list_to_tree234(AssocList, Tree),
+        io.stdin_stream(StdIn, !IO),
+        io.stdout_stream(StdOut, !IO),
+        browser_info.init_persistent_state(State0),
+        io.write_string("list:", !IO),
+        io.nl(!IO),
+        browse.browse(AssocList, StdIn, StdOut, _, State0, State1, !IO),
+        io.write_string("tree:", !IO),
+        io.nl(!IO),
+        browse.browse(Tree, StdIn, StdOut, _, State1, State2, !IO),
+        io.write_string("stream:", !IO),
+        io.nl(!IO),
+        browse.browse(StdIn, StdIn, StdOut, _, State2, _, !IO),
+        io.set_exit_status(EXIT_SUCCESS, !IO)
+    ;
+        io.write_string("Can't open input file.\n", !IO),
+        io.set_exit_status(EXIT_FAILURE, !IO)
+    ).
 
-:- pred read_words(io__input_stream::in, list(string)::out,
-	io__state::di, io__state::uo) is det.
+:- pred read_words(io.input_stream::in, list(string)::out,
+    io.state::di, io.state::uo) is det.
 
-read_words(Stream, Words) -->
-	io__read_word(Stream, Result),
-	( { Result = ok(Chars) } ->
-		{ string__from_char_list(Chars, Word) },
-		read_words(Stream, Rest),
-		{ Words = [Word | Rest] }
-	;
-		{ Words = [] }
-	).
+read_words(Stream, Words, !IO) :-
+    io.read_word(Stream, Result, !IO),
+    ( Result = ok(Chars) ->
+        string.from_char_list(Chars, Word),
+        read_words(Stream, Rest, !IO),
+        Words = [Word | Rest]
+    ;
+        Words = []
+    ).
 
 %---------------------------------------------------------------------------%

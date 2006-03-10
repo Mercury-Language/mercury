@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2005 The University of Melbourne.
+% Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -168,18 +168,18 @@
 :- import_module std_util.
 :- import_module string.
 
-    % sized_pretty__univ_to_string_line(Univ, LineWidth, Lines, String)
+    % univ_to_string_line(Univ, LineWidth, Lines, String):
+    %
     % Converts the term in Univ to a string that fits into Lines lines
     % of width LineWidth. It may throw an exception or cause a runtime
     % abort if the term in question has no canonical representation.
     %
-:- pred sized_pretty__univ_to_string_line(browser_db::in, univ::in,
+:- pred univ_to_string_line(browser_db::in, univ::in,
     int::in, int::in, string::out) is cc_multi.
 
-    % The same as sized_pretty__univ_to_string_line, except works on
-    % browser_terms.
+    % The same as univ_to_string_line, except works on browser_terms.
     %
-:- pred sized_pretty__browser_term_to_string_line(browser_db::in,
+:- pred browser_term_to_string_line(browser_db::in,
     browser_term::in, int::in, int::in, string::out) is cc_multi.
 
 %---------------------------------------------------------------------------%
@@ -192,7 +192,9 @@
 :- import_module pprint.
 :- import_module require.
 
-:- type no_measure_params --->  no_measure_params.
+:- type no_measure_params
+    --->    no_measure_params.
+
 :- type measure_params
     --->    measure_params(int).    % This parameter specifies Linewidth
 
@@ -271,12 +273,12 @@
     % given a limit of character_count(LineWidth - 1) instead of
     % character_count(LineWidth - 3).
     %
-sized_pretty__univ_to_string_line(BrowserDb, Univ, LineWidth, Lines, String) :-
-    sized_pretty__browser_term_to_string_line(BrowserDb, plain_term(Univ),
+univ_to_string_line(BrowserDb, Univ, LineWidth, Lines, String) :-
+    browser_term_to_string_line(BrowserDb, plain_term(Univ),
         LineWidth, Lines, String).
 
-sized_pretty__browser_term_to_string_line(BrowserDb, BrowserTerm,
-        LineWidth, Lines, String) :-
+browser_term_to_string_line(BrowserDb, BrowserTerm, LineWidth, Lines,
+        String) :-
     Params = measure_params(LineWidth),
     functor_browser_term_cc(BrowserDb, BrowserTerm, _Functor, Arity,
         MaybeReturn),
@@ -305,7 +307,7 @@ sized_pretty__browser_term_to_string_line(BrowserDb, BrowserTerm,
     ;
         Doc = to_doc_sized(AnnotTerm)
     ),
-    String = pprint__to_string(LineWidth, Doc).
+    String = pprint.to_string(LineWidth, Doc).
 
 %---------------------------------------------------------------------------%
 
@@ -461,8 +463,8 @@ second_pass(BrowserDb, OldSizeTerm, Params, Limit, NewSizeTerm) :-
                 process_args(BrowserDb, NewParams, MaybeArgs,
                     InitLimit, SplitLimit, NewArgs, NewSize0),
                 NewSize = add_measures(FSize, NewSize0, NewParams),
-                Result0 = list__map(check_if_exact, NewArgs),
-                list__remove_adjacent_dups(Result0, Result),
+                Result0 = list.map(check_if_exact, NewArgs),
+                list.remove_adjacent_dups(Result0, Result),
                 ( Result = [yes] ->
                     NewSizeTerm = exact(BrowserTerm, NewSize, Functor, Arity,
                         NewArgs)
@@ -592,7 +594,7 @@ to_doc_sized(at_least(BrowserTerm, _, not_deconstructed)) = Doc :-
         Doc = text(Functor) `<>` text("/") `<>` poly(i(Arity))
     ;
         BrowserTerm = synthetic_term(Functor, Args, MaybeReturn),
-        list__length(Args, Arity),
+        list.length(Args, Arity),
         (
             MaybeReturn = yes(_),
             Doc = text(Functor) `<>` text("/") `<>`
@@ -619,8 +621,8 @@ to_doc_sized(exact(_, _, Functor, Arity, MaybeArgs)) = Doc :-
 to_doc_sized_2(Functor, _Arity, []) = text(Functor).
 
 to_doc_sized_2(Functor, Arity, [HeadArg|Tail]) = Doc :-
-    Args = list__map(handle_arg, [HeadArg|Tail]),
-    list__remove_adjacent_dups(Args, NewArgs),
+    Args = list.map(handle_arg, [HeadArg|Tail]),
+    list.remove_adjacent_dups(Args, NewArgs),
     ( NewArgs \= [nil] ->
         Doc = text(Functor) `<>`
             parentheses(group(nest(2,
@@ -669,7 +671,7 @@ compare_functor_count(functor_count(A), functor_count(B)) = R :-
 :- func max_functor_count(functor_count, functor_count) = functor_count.
 
 max_functor_count(functor_count(A), functor_count(B)) = functor_count(Max) :-
-    int__max(A, B, Max).
+    int.max(A, B, Max).
 
 :- func zero_functor_count = functor_count.
 
@@ -741,7 +743,7 @@ compare_char_count(char_count(A), char_count(B)) = R :-
 :- func max_char_count(char_count, char_count) = char_count.
 
 max_char_count(char_count(A), char_count(B)) = char_count(Max) :-
-    int__max(A, B, Max).
+    int.max(A, B, Max).
 
 :- func zero_char_count = char_count.
 
@@ -767,11 +769,11 @@ char_count_split(BrowserDb, BrowserTerm, Params, char_count(Limit), Arity,
     (
         MaybeReturn = yes(_),
         % Arity-1 times the string ", ", once "()", and once " = "
-        FunctorSize = string__length(Functor) + 2 * Arity + 3
+        FunctorSize = string.length(Functor) + 2 * Arity + 3
     ;
         MaybeReturn = no,
         % Arity-1 times the string ", ", and once "()"
-        FunctorSize = string__length(Functor) + 2 * Arity
+        FunctorSize = string.length(Functor) + 2 * Arity
     ),
     ( Arity = 0 ->
         MaybeArgLimit = no
@@ -934,10 +936,10 @@ size_count_split(BrowserDb, BrowserTerm, Params, Limit, Arity, Check,
     Params = measure_params(LineWidth),
     deconstruct_browser_term_cc(BrowserDb, BrowserTerm, Functor, ActualArity,
         Args, MaybeReturn),
-    FSize = string__length(Functor) + 2 * (ActualArity),
+    FSize = string.length(Functor) + 2 * (ActualArity),
     ( Check = yes ->
         get_arg_length(Args, TotalLength, MaxArgLength),
-        int__max(MaxArgLength, (string__length(Functor) + 1), MaxLength)
+        int.max(MaxArgLength, (string.length(Functor) + 1), MaxLength)
     ;
         TotalLength = 0,
         MaxLength = 0
@@ -999,9 +1001,9 @@ size_count_split(BrowserDb, BrowserTerm, Params, Limit, Arity, Check,
                 MaybeReturn = no,
                 FuncSuffixChars = 0
             ),
-            FunctorLength = string__length(Functor),
-            string__int_to_string(Arity, ArityStr),
-            string__length(ArityStr, ArityChars),
+            FunctorLength = string.length(Functor),
+            string.int_to_string(Arity, ArityStr),
+            string.length(ArityStr, ArityChars),
             FunctorSize = character_count(FunctorLength + 1
                 + ArityChars + FuncSuffixChars),
             NewLimit = Limit,
@@ -1041,15 +1043,15 @@ get_arg_length([HeadUniv | Rest], TotalLength, MaxLength) :-
         Correction = 3
     ),
     ( Arity = 0 ->
-        Length = string__length(Functor)
+        Length = string.length(Functor)
     ;
         % 2 is added because if a term has arguments then the
         % shortest way to print it is "functor/Arity"
         % Assuming Arity is a single digit
-        Length = string__length(Functor) + 2
+        Length = string.length(Functor) + 2
     ),
     TotalLength = Length + RestTotalLength,
-    int__max((Length + Correction), RestMaxLength, MaxLength),
+    int.max((Length + Correction), RestMaxLength, MaxLength),
     get_arg_length(Rest, RestTotalLength, RestMaxLength).
 
 %---------------------------------------------------------------------------%

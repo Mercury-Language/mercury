@@ -1,5 +1,7 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002, 2004-2005 The University of Melbourne.
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
+% Copyright (C) 2002, 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -24,28 +26,28 @@
 :- import_module std_util. 
 
 :- type io_action
-	--->	io_action(
-			io_action_proc_name	:: string,
-			io_action_pf		:: pred_or_func,
-			io_action_args		:: list(univ)
-		).
+    --->    io_action(
+                io_action_proc_name :: string,
+                io_action_pf        :: pred_or_func,
+                io_action_args      :: list(univ)
+            ).
 
 :- type maybe_tabled_io_action
-	--->	tabled(io_action)
-	;	untabled.
+    --->    tabled(io_action)
+    ;       untabled.
 
-:- type io_seq_num	== int.
+:- type io_seq_num  == int.
 
 :- type io_action_range
-	--->	io_action_range(
-			from_io_action		:: io_seq_num,
-			to_io_action		:: io_seq_num
-		).
+    --->    io_action_range(
+                from_io_action      :: io_seq_num,
+                to_io_action        :: io_seq_num
+            ).
 
 :- func io_action_to_browser_term(io_action) = browser_term.
 
 :- pred get_maybe_io_action(io_seq_num::in, maybe_tabled_io_action::out,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -60,55 +62,55 @@
 :- import_module svmap.
 
 get_maybe_io_action(IoActionNum, MaybeTabledIoAction, !IO) :-
-	pickup_io_action(IoActionNum, MaybeIoAction, !IO),
-	(
-		MaybeIoAction = yes(IoAction),
-		MaybeTabledIoAction = tabled(IoAction)
-	;
-		MaybeIoAction = no,
-		MaybeTabledIoAction = untabled
-	).
+    pickup_io_action(IoActionNum, MaybeIoAction, !IO),
+    (
+        MaybeIoAction = yes(IoAction),
+        MaybeTabledIoAction = tabled(IoAction)
+    ;
+        MaybeIoAction = no,
+        MaybeTabledIoAction = untabled
+    ).
 
 io_action_to_browser_term(IoAction) = Term :-
-	IoAction = io_action(ProcName, PredFunc, Args),
-	(
-		PredFunc = predicate,
-		IsFunc = no
-	;
-		PredFunc = function,
-		IsFunc = yes
-	),
-	Term = synthetic_term_to_browser_term(ProcName, Args, IsFunc).
+    IoAction = io_action(ProcName, PredFunc, Args),
+    (
+        PredFunc = predicate,
+        IsFunc = no
+    ;
+        PredFunc = function,
+        IsFunc = yes
+    ),
+    Term = synthetic_term_to_browser_term(ProcName, Args, IsFunc).
 
 :- pred pickup_io_action(int::in, maybe(io_action)::out,
-	io__state::di, io__state::uo) is det.
+    io.state::di, io.state::uo) is det.
 
 :- pragma foreign_proc("C",
-	pickup_io_action(SeqNum::in, MaybeIOAction::out, S0::di, S::uo),
-	[thread_safe, promise_pure, tabled_for_io, may_call_mercury],
+    pickup_io_action(SeqNum::in, MaybeIOAction::out, S0::di, S::uo),
+    [thread_safe, promise_pure, tabled_for_io, may_call_mercury],
 "{
-	const char	*problem;
-	const char	*proc_name;
-	MR_Bool		is_func;
-	MR_Word		args;
-	MR_bool		io_action_tabled;
-	MR_String	ProcName;
+    const char  *problem;
+    const char  *proc_name;
+    MR_Bool     is_func;
+    MR_Word     args;
+    MR_bool     io_action_tabled;
+    MR_String   ProcName;
 
-	MR_save_transient_hp();
-	io_action_tabled = MR_trace_get_action(SeqNum, &proc_name, 
-		&is_func, &args);
-	MR_restore_transient_hp();
+    MR_save_transient_hp();
+    io_action_tabled = MR_trace_get_action(SeqNum, &proc_name, &is_func,
+        &args);
+    MR_restore_transient_hp();
 
-	/* cast away const */
-	ProcName = (MR_String) (MR_Integer) proc_name;
-	if (io_action_tabled) {
-		MaybeIOAction = MR_IO_ACTION_make_yes_io_action(
-			ProcName, is_func, args);
-	} else {
-		MaybeIOAction = MR_IO_ACTION_make_no_io_action();
-	}
+    /* cast away const */
+    ProcName = (MR_String) (MR_Integer) proc_name;
+    if (io_action_tabled) {
+        MaybeIOAction = MR_IO_ACTION_make_yes_io_action(ProcName, is_func,
+            args);
+    } else {
+        MaybeIOAction = MR_IO_ACTION_make_no_io_action();
+    }
 
-	S = S0;
+    S = S0;
 }").
 
 :- func make_no_io_action = maybe(io_action).
@@ -118,12 +120,12 @@ make_no_io_action = no.
 
 :- func make_yes_io_action(string, bool, list(univ)) = maybe(io_action).
 :- pragma export(make_yes_io_action(in, in, in) = out, 
-	"MR_IO_ACTION_make_yes_io_action").
-	
+    "MR_IO_ACTION_make_yes_io_action").
+    
 make_yes_io_action(ProcName, yes, Args) = 
-	yes(io_action(ProcName, function, Args)).
+    yes(io_action(ProcName, function, Args)).
 make_yes_io_action(ProcName, no, Args) = 
-	yes(io_action(ProcName, predicate, Args)).
+    yes(io_action(ProcName, predicate, Args)).
 
 pickup_io_action(_, _, _, _) :-
-	private_builtin__sorry("pickup_io_action").
+    private_builtin.sorry("pickup_io_action").

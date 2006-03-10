@@ -1,5 +1,7 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -25,15 +27,11 @@
 :- import_module list.
 :- import_module string.
 
-
-
 :- type search_path.
 :- type line_no    == int.
 :- type path_name  == string.
 :- type file_name  == string.
 :- type c_file_ptr.                     % For passing `FILE *' arguments.
-
-
 
     % Construct an empty search_path structure.
     %
@@ -44,41 +42,42 @@
     %
 :- func get_list_path(search_path::in) = (list(path_name)::out) is det.
 :- pred set_list_path(list(path_name)::in,
-        search_path::in, search_path::out) is det.
+    search_path::in, search_path::out) is det.
 :- pred clear_list_path(search_path::in, search_path::out) is det.
 
-    % push_list_path(Dir, !Path)
-    %   Push Dir on to the stack of directories searched for
-    %   FileName matches by list_file/7.
+    % push_list_path(Dir, !Path):
+    %
+    % Push Dir on to the stack of directories searched for FileName
+    % matches by list_file/7.
     %
 :- pred push_list_path(path_name::in, search_path::in, search_path::out)
-        is det.
+    is det.
 
-    % pop_list_path(!Path)
-    %   Pop the last Dir pushed on to the stack of directories.
-    %   Does nothing if the search path stack is empty.
+    % pop_list_path(!Path):
+    %
+    % Pop the last Dir pushed on to the stack of directories.
+    % Does nothing if the search path stack is empty.
     %
 :- pred pop_list_path(search_path::in, search_path::out) is det.
 
     % list_file(OutStrm, ErrStrm, FileName, FirstLine, LastLine, MarkLine,
-    %   Path, !IO)
+    %   Path, !IO):
     %
-    %   Print, on OutStrm, the lines from FileName with numbers in the range
-    %   FirstLine ..  LastLine (the first line is numbered 1).
-    %   The line numbered MarkLine is marked with a chevron, all
-    %   other lines are indented appropriately.
+    % Print, on OutStrm, the lines from FileName with numbers in the range
+    % FirstLine ..  LastLine (the first line is numbered 1).
+    % The line numbered MarkLine is marked with a chevron, all
+    % other lines are indented appropriately.
     %
-    %   A file matching FileName is searched for by first looking
-    %   in the current working directory or, failing that, by
-    %   prepending each Dir on the search path stack in
-    %   turn until a match is found.  If no match is found then
-    %   an error message is printed.
+    % A file matching FileName is searched for by first looking
+    % in the current working directory or, failing that, by
+    % prepending each Dir on the search path stack in
+    % turn until a match is found.  If no match is found then
+    % an error message is printed.
     %
-    %   Any errors are reported on ErrStrm.
+    % Any errors are reported on ErrStrm.
     %
-:- pred list_file(c_file_ptr::in, c_file_ptr::in,
-        file_name::in, line_no::in, line_no::in, line_no::in,
-        search_path::in, io::di, io::uo) is det.
+:- pred list_file(c_file_ptr::in, c_file_ptr::in, file_name::in, line_no::in,
+    line_no::in, line_no::in, search_path::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -92,32 +91,26 @@
 :- import_module map.
 :- import_module std_util.
 
-
-
 :- type search_path  == list(path_name).
 
-
-
 :- pragma foreign_type("C", c_file_ptr, "FILE *", [can_pass_as_mercury_type]).
-
-
 
     % These predicates are called from trace/mercury_trace_internal.c.
     %
 :- pragma export(new_list_path = out,
-        "MR_LISTING_new_list_path").
+    "MR_LISTING_new_list_path").
 :- pragma export(get_list_path(in) = out,
-        "MR_LISTING_get_list_path").
+    "MR_LISTING_get_list_path").
 :- pragma export(set_list_path(in, in, out),
-        "MR_LISTING_set_list_path").
+    "MR_LISTING_set_list_path").
 :- pragma export(clear_list_path(in, out),
-        "MR_LISTING_clear_list_path").
+    "MR_LISTING_clear_list_path").
 :- pragma export(push_list_path(in, in, out),
-        "MR_LISTING_push_list_path").
+    "MR_LISTING_push_list_path").
 :- pragma export(pop_list_path(in, out),
-        "MR_LISTING_pop_list_path").
+    "MR_LISTING_pop_list_path").
 :- pragma export(list_file(in, in, in, in, in, in, in, di, uo),
-        "MR_LISTING_list_file").
+    "MR_LISTING_list_file").
 
 %-----------------------------------------------------------------------------%
 
@@ -156,7 +149,6 @@ list_file(OutStrm, ErrStrm, FileName, FirstLine, LastLine, MarkLine, Path,
         write_to_c_file(ErrStrm, "\n", !IO)
     ).
 
-
 :- pred write_to_c_file(c_file_ptr::in, string::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
@@ -174,7 +166,7 @@ list_file(OutStrm, ErrStrm, FileName, FirstLine, LastLine, MarkLine, Path,
     % (including the path component) and input stream handle.
     %
 :- pred find_and_open_file(search_path::in, file_name::in,
-        maybe(c_file_ptr)::out, io::di, io::uo) is det.
+    maybe(c_file_ptr)::out, io::di, io::uo) is det.
 
 find_and_open_file([], _, no, !IO).
 
@@ -189,7 +181,6 @@ find_and_open_file([Dir | Path], FileName, Result, !IO) :-
         find_and_open_file(Path, FileName, Result, !IO)
     ).
 
-
 :- func mercury_stream_to_c_FILE_star(io.input_stream) = c_file_ptr.
 
 :- pragma foreign_proc("C",
@@ -202,17 +193,16 @@ find_and_open_file([Dir | Path], FileName, Result, !IO) :-
 %-----------------------------------------------------------------------------%
 
     % print_lines_in_range(InStrm, OutStrm, ThisLine, FirstLine, LastLine,
-    %   MarkLine, !IO)
+    %   MarkLine, !IO):
     %
-    %   Print the lines numbered FirstLine to LastLine from InStrm
-    %   on OutStrm (the current line number is taken as ThisLine).
-    %   Each line is printed indented with "  ", except for the line
-    %   numbered MarkLine, if it occurs in the range FirstLine .. LastLine,
-    %   which is indented with "> ".
+    % Print the lines numbered FirstLine to LastLine from InStrm
+    % on OutStrm (the current line number is taken as ThisLine).
+    % Each line is printed indented with "  ", except for the line
+    % numbered MarkLine, if it occurs in the range FirstLine .. LastLine,
+    % which is indented with "> ".
     %
 :- pred print_lines_in_range(c_file_ptr::in, c_file_ptr::in,
-        line_no::in, line_no::in, line_no::in, line_no::in, io::di, io::uo)
-        is det.
+    line_no::in, line_no::in, line_no::in, line_no::in, io::di, io::uo) is det.
 
 :- pragma foreign_proc("C",
     print_lines_in_range(InStrm::in, OutStrm::in, ThisLine::in, FirstLine::in,

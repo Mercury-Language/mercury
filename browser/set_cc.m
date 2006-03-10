@@ -1,5 +1,7 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2002-2003 The University of Melbourne.
+% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
+% Copyright (C) 2002-2003, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -14,57 +16,51 @@
 
 %---------------------------------------------------------------------------%
 
-:- module mdb__set_cc.
+:- module mdb.set_cc.
 
 :- interface.
 :- import_module bool.
 
 :- type set_cc(T).
 
-:- pred set_cc__init(set_cc(T)).
-:- mode set_cc__init(uo) is det.
+:- pred init(set_cc(T)::uo) is det.
 
-:- pred set_cc__is_empty(set_cc(T)).
-:- mode set_cc__is_empty(in) is semidet.
+:- pred is_empty(set_cc(T)::in) is semidet.
 
-:- pred set_cc__member(T, set_cc(T), bool).
-:- mode set_cc__member(in, in, out) is cc_multi.
+:- pred member(T::in, set_cc(T)::in, bool::out) is cc_multi.
 
-:- pred set_cc__insert(set_cc(T), T, set_cc(T)).
-:- mode set_cc__insert(in, in, out) is cc_multi.
+:- pred insert(set_cc(T)::in, T::in, set_cc(T)::out) is cc_multi.
 
-:- pred set_cc__delete(set_cc(T), T, set_cc(T)).
-:- mode set_cc__delete(in, in, out) is cc_multi.
+:- pred delete(set_cc(T)::in, T::in, set_cc(T)::out) is cc_multi.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module mdb__tree234_cc.
+:- import_module mdb.tree234_cc.
 
 :- import_module std_util.
 
 :- type set_cc(T) == tree234_cc(T, unit).
 
-set_cc__init(S) :-
-	tree234_cc__init(S).
+init(S) :-
+    tree234_cc.init(S).
 
-set_cc__is_empty(S) :-
-	tree234_cc__is_empty(S).
+is_empty(S) :-
+    tree234_cc.is_empty(S).
 
-set_cc__member(T, S, Bool) :-
-	tree234_cc__search(S, T, Maybe),
-	(
-		Maybe = yes(_),
-		Bool = yes
-	;
-		Maybe = no,
-		Bool = no
-	).
+member(T, S, Bool) :-
+    tree234_cc.search(S, T, Maybe),
+    (
+        Maybe = yes(_),
+        Bool = yes
+    ;
+        Maybe = no,
+        Bool = no
+    ).
 
-set_cc__insert(S0, T, S) :-
-	tree234_cc__set(S0, T, unit, S).
+insert(S0, T, S) :-
+    tree234_cc.set(S0, T, unit, S).
 
-set_cc__delete(S0, T, S) :-
-	tree234_cc__delete(S0, T, S).
-
+delete(S0, T, S) :-
+    tree234_cc.delete(S0, T, S).
