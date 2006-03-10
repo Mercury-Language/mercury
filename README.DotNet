@@ -205,24 +205,17 @@ A. The main advantage is easy access to the wide range of libraries for the
 Q. Does it work with other .NET Common Language Runtime implementations,
    such as Mono, Portable.Net, or Rotor?
 
-A. Some parts of the Mercury standard library implementation for .NET
-   are implemented using Managed C++ (Microsoft's extensions to C++
-   to support .NET).  So you need the Microsoft .NET SDK (which includes
-   the command-line version of Microsoft's C++ compiler) to build the
-   Mercury standard library in the `il' grade.
-
-   In theory, once you have done that, it should be possible to
-   build Mercury programs in the `il' grade using any ECMA-compliant
-   IL assembler that provides the same command-line interface as
-   the Microsoft ilasm.exe program, and to execute them using any
-   ECMA-complaint .NET CLR implementation.  However, we have not yet
-   tried using other .NET CLR implementations.
+A. In theory, it should be possible to build Mercury programs in the
+  `il' grade using any ECMA-compliant IL assembler that provides the same
+   command-line interface as the Microsoft ilasm.exe program, and to execute
+   them using any ECMA-complaint .NET CLR implementation.  However, we have
+   not yet tried using other .NET CLR implementations.
 
 
 Q. Does it work with versions of the Microsoft .NET Framework SDK greater
-   than 1.0?
+   than 2.0?
 
-A. We don't know, because we've only tried it with version 1.0.
+A. We don't know, because we've only tried it with version 1.0 and 1.1.
    If you have a later version, try it out yourself and let us know
    whether it works!
 
