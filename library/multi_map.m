@@ -121,7 +121,7 @@
 :- pred multi_map.keys(multi_map(K, _V)::in, list(K)::out) is det.
 
     % Given a multi_map, return a list of all the data values in the
-    % multi_map
+    % multi_map.
     %
 :- func multi_map.values(multi_map(_K, V)) = list(V).
 :- pred multi_map.values(multi_map(_K, V)::in, list(V)::out) is det.

@@ -139,6 +139,14 @@
     %
 :- func eqvclass.remove_equivalent_elements(eqvclass(T), T) = eqvclass(T).
 
+    % Given a function, divide each partition in the original equivalence class
+    % so that two elements of the original partition end up in the same
+    % partition in the new equivalence class if and only if the function maps
+    % them to the same value.
+    %
+:- func eqvclass.divide_equivalence_classes(func(T) = U, eqvclass(T))
+    = eqvclass(T).
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -203,6 +211,7 @@ eqvclass.add_element(Element, Id, !EqvClass) :-
     map.det_insert(PartitionMap0, Id, Partition, PartitionMap),
     !:EqvClass = eqvclass(Counter, PartitionMap, ElementMap).
 
+eqvclass.ensure_equivalence(EqvClass0, ElementA, ElementB, EqvClass) :-
     % The following code is logically equivalent to this code:
     %
     % eqvclass.ensure_equivalence(EqvClass0, ElementA, ElementB, EqvClass) :-
@@ -217,8 +226,6 @@ eqvclass.add_element(Element, Id, !EqvClass) :-
     % However, the above code allocates significantly more memory than the code
     % below, because it can create an equivalence class for an element and then
     % just throw that equivalence class away.
-
-eqvclass.ensure_equivalence(EqvClass0, ElementA, ElementB, EqvClass) :-
     ElementMap0 = EqvClass0 ^ keys,
     ( map.search(ElementMap0, ElementA, IdA) ->
         ( map.search(ElementMap0, ElementB, IdB) ->
@@ -257,10 +264,10 @@ eqvclass.ensure_equivalence(EqvClass0, ElementA, ElementB, EqvClass) :-
         )
     ).
 
+eqvclass.new_equivalence(EqvClass0, ElementA, ElementB, EqvClass) :-
     % This code is the same as eqvclass.ensure_equivalence, with the
     % exception that we abort if IdA = IdB in EqvClass0.
 
-eqvclass.new_equivalence(EqvClass0, ElementA, ElementB, EqvClass) :-
     ElementMap0 = EqvClass0 ^ keys,
     ( map.search(ElementMap0, ElementA, IdA) ->
         ( map.search(ElementMap0, ElementB, IdB) ->
@@ -309,8 +316,7 @@ eqvclass.ensure_corresponding_equivalences([H1 | T1], [H2 | T2], !EqvClass) :-
     eqvclass.ensure_corresponding_equivalences(T1, T2, !EqvClass).
 
 eqvclass.ensure_corresponding_equivalences(L1, L2, EqvClass0) = EqvClass :-
-    eqvclass.ensure_corresponding_equivalences(L1, L2,
-        EqvClass0, EqvClass).
+    eqvclass.ensure_corresponding_equivalences(L1, L2, EqvClass0, EqvClass).
 
 :- pred eqvclass.add_equivalence(partition_id::in, partition_id::in,
     eqvclass(T)::in, eqvclass(T)::out) is det.
@@ -486,4 +492,67 @@ eqvclass.remove_equivalent_elements(eqvclass(Id, P0, E0), X) =
     ;
         P = P0,
         E = E0
+    ).
+
+divide_equivalence_classes(F, E0) = E :-
+    E0 = eqvclass(Counter0, Partitions0, Keys0),
+    map.foldl3(divide_equivalence_classes_2(F), Partitions0,
+        Counter0, Counter, Partitions0, Partitions, Keys0, Keys),
+    E = eqvclass(Counter, Partitions, Keys).
+
+:- pred divide_equivalence_classes_2((func(T) = U)::in,
+    partition_id::in, set(T)::in,
+    counter::in, counter::out,
+    map(partition_id, set(T))::in, map(partition_id, set(T))::out,
+    map(T, partition_id)::in, map(T, partition_id)::out) is det.
+
+divide_equivalence_classes_2(F, Id, ItemSet, !Counter, !Partitions, !Keys) :-
+    set.to_sorted_list(ItemSet, ItemList),
+    (
+        ItemList = [],
+        error("divide_equivalence_classes_2: empty partition")
+    ;
+        ItemList = [Item | Items],
+        MainValue = F(Item),
+        map.init(Map0),
+        map.det_insert(Map0, MainValue, Id, Map1),
+        list.foldl4(divide_equivalence_classes_3(F, Id), Items,
+            Map1, _Map, !Counter, !Partitions, !Keys)
+    ).
+
+:- pred divide_equivalence_classes_3((func(T) = U)::in, partition_id::in,
+    T::in, map(U, partition_id)::in, map(U, partition_id)::out,
+    counter::in, counter::out,
+    map(partition_id, set(T))::in, map(partition_id, set(T))::out,
+    map(T, partition_id)::in, map(T, partition_id)::out) is det.
+
+divide_equivalence_classes_3(F, MainId, Item, !Map, !Counter, !Partitions,
+        !Keys) :-
+    Value = F(Item),
+    ( map.search(!.Map, Value, Id) ->
+        ( Id = MainId ->
+            true
+        ;
+            map.lookup(!.Partitions, MainId, MainSet0),
+            set.delete(MainSet0, Item, MainSet),
+            svmap.det_update(MainId, MainSet, !Partitions),
+
+            map.lookup(!.Partitions, Id, Set0),
+            set.insert(Set0, Item, Set),
+            svmap.det_update(Id, Set, !Partitions),
+
+            svmap.det_update(Item, Id, !Keys)
+        )
+    ;
+        counter.allocate(NewId, !Counter),
+        svmap.det_insert(Value, NewId, !Map),
+
+        map.lookup(!.Partitions, MainId, MainSet0),
+        set.delete(MainSet0, Item, MainSet),
+        svmap.det_update(MainId, MainSet, !Partitions),
+
+        Set = set.make_singleton_set(Item),
+        svmap.det_insert(NewId, Set, !Partitions),
+
+        svmap.det_update(Item, NewId, !Keys)
     ).

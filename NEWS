@@ -201,6 +201,9 @@ Changes to the Mercury language:
 
 Changes to the Mercury standard library:
 
+* We have added the function `divide_equivalence_classes' to the `eqvclass'
+  module.
+
 * We have added an `injection' module, for reversible maps that are injective.
 
 * We have added list.foldl_corresponding/5, list.foldl2_corresponding/7,
