@@ -29,7 +29,7 @@ MGNUCFLAGS-io =	--no-ansi
 # This is needed to avoid errors on the calls that implement e.g. io.format/3
 # in terms of io.format/4, and string.format/2 in terms of string.format/3.
 # varset.trans_opt includes the relevant part of string.opt.
-# MCFLAGS-io     = --no-warn-unknown-format-calls
-# MCFLAGS-string = --no-warn-unknown-format-calls
+MCFLAGS-io     = --no-warn-unknown-format-calls
+MCFLAGS-string = --no-warn-unknown-format-calls
 
 MCFLAGS-mer_std = --no-warn-nothing-exported

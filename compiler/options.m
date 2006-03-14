@@ -847,7 +847,7 @@ option_defaults_2(warning_option, [
     warn_dead_procs                     -   bool(no),
     warn_table_with_inline              -   bool(yes),
     warn_non_term_special_preds         -   bool(yes),
-    warn_known_bad_format_calls         -   bool(no),
+    warn_known_bad_format_calls         -   bool(yes),
     warn_unknown_format_calls           -   bool(no)
 ]).
 option_defaults_2(verbosity_option, [

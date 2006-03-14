@@ -367,9 +367,10 @@ EOF
 		# when doing this test because term size profiling
 		# requires an LLDS grade.
 		# This also tests for the --shlib-linker-intall-name-flag
-		# option.
+		# and --warn-known-bad-format-calls options.
 		$BOOTSTRAP_MC \
 			--grade none.gc \
+			--warn-known-bad-format-calls \
 			--record-term-sizes-as-words \
 			--output-grade-string \
 			--shlib-linker-install-name-flag "-dummy_flag" \
