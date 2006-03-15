@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2005 The University of Melbourne.
+% Copyright (C) 1999-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,7 +22,7 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module ml_backend__ilds.
+:- module ml_backend.ilds.
 :- interface.
 
 :- import_module assoc_list.
@@ -34,13 +34,13 @@
 
     % Returns the maximum stack usage of a list of IL instructions.
     %
-:- func calculate_max_stack(list(ilds__instr)) = int.
+:- func calculate_max_stack(list(ilds.instr)) = int.
 
     % A method parameter.
     %
 :- type param == pair(
-            ilds__type,     % type of the parameter
-            maybe(ilds__id) % name of the parameter (if any)
+            il_type,       % Type of the parameter.
+            maybe(ilds.id) % Name of the parameter (if any).
         ).
 
     % A method signature.
@@ -59,25 +59,25 @@
                 call_conv,
                 ret_type,
                 class_member_name,
-                list(ilds__type)
+                list(il_type)
             )
 %   ;       methodref(
 %               call_conv,
 %               ret_type,
 %               class_name,
-%               list(ilds__type)
+%               list(il_type)
 %           )
     ;       local_method(
                 call_conv,
                 ret_type,
                 member_name,
-                list(ilds__type)
+                list(il_type)
             ).
 
     % A field reference.
     %
 :- type fieldref
-    --->    fieldref(ilds__type, class_member_name).
+    --->    fieldref(il_type, class_member_name).
 
 %-----------------------------------------------------------------------------%
 
@@ -108,16 +108,16 @@
     % 
 :- type assembly_name
     --->    module(
-                il_module_name              :: ilds__id,
-                containing_assembly_name    :: ilds__id
+                il_module_name              :: ilds.id,
+                containing_assembly_name    :: ilds.id
 
             )
     ;       assembly(
-                ilds__id
+                ilds.id
             ).
 
-:- type namespace_qual_name == list(ilds__id).
-:- type nested_class_name == list(ilds__id).
+:- type namespace_qual_name == list(ilds.id).
+:- type nested_class_name == list(ilds.id).
 
     % An assembly- and namespace-qualified class name is a structured name.
     % E.g. the ILASM name [Foo]Bar1.Bar2.Baz1/Baz2/Quux is
@@ -152,7 +152,7 @@
     ;       cctor           % class constructor (initializes
                             % non-instance fields).
 
-    ;       id(ilds__id).   % ordinary method or field name
+    ;       id(ilds.id).   % ordinary method or field name
 
     % Calling conventions.
     % 
@@ -180,10 +180,10 @@
     --->    void
     ;       simple_type(simple_type).
 
-:- type ilds__type
-    --->    ilds__type(list(ilds__type_modifier), simple_type).
+:- type il_type
+    --->    il_type(list(ilds.type_modifier), simple_type).
 
-:- type ilds__type_modifier
+:- type ilds.type_modifier
     --->    const
     ;       readonly
     ;       volatile.
@@ -210,11 +210,11 @@
     ;       class(class_name)
     ;       valuetype(class_name)
     ;       interface(class_name)
-    ;       '[]'(ilds__type, bounds)    % An array.
-    ;       '&'(ilds__type)             % A managed pointer.
-    ;       '*'(ilds__type).            % A transient pointer (could become
-                                         % managed or unmanaged depending on
-                                         % usage).
+    ;       '[]'(il_type, bounds)       % An array.
+    ;       '&'(il_type)                % A managed pointer.
+    ;       '*'(il_type).               % A transient pointer (could become
+                                        % managed or unmanaged depending on
+                                        % usage).
 
 :- type bounds == list(bound).
 
@@ -227,7 +227,7 @@
     % This initial character can be followed by any number of alphabetic
     % characters, decimal digits, ">", "<", or "_".
     %
-:- type ilds__id == string.
+:- type ilds.id == string.
 
     % XXX Should really limit this, but we don't really support
     % the alignment instruction just yet.
@@ -248,7 +248,7 @@
     % A variable (local or argument) can be referred to by name or index
     %
 :- type variable
-    --->    name(ilds__id)
+    --->    name(ilds.id)
     ;       index(index).
 
 :- type index == int.
@@ -260,7 +260,7 @@
     % Local variables, they all have names.
     % This should probably be the same as params.
     %
-:- type locals == assoc_list(ilds__id, ilds__type).
+:- type locals == assoc_list(ilds.id, il_type).
 
     % Blocks can be just scope for locals, can surround a block of
     % handwritten code, or can introduce try or catch code.
@@ -359,36 +359,36 @@
 
     % OBJECT MODEL INSTRUCTIONS
 
-    ;       box(ilds__type)         % convert pointer to reference
+    ;       box(il_type)            % convert pointer to reference
     ;       callvirt(methodref)     % call a method associated with obj
-    ;       castclass(ilds__type)   % cast obj to class
-    ;       cpobj(ilds__type)       % copy a value type
-    ;       initobj(ilds__type)     % initialize a value type
-    ;       isinst(ilds__type)      % test if obj is an instance
+    ;       castclass(il_type)        % cast obj to class
+    ;       cpobj(ilds.il_type)       % copy a value type
+    ;       initobj(il_type)          % initialize a value type
+    ;       isinst(il_type)           % test if obj is an instance
     ;       ldelem(simple_type)     % load an element of an array
-    ;       ldelema(ilds__type)     % load address of element of array
+    ;       ldelema(ilds.il_type)     % load address of element of array
     ;       ldfld(fieldref)         % load value of field of obj
     ;       ldflda(fieldref)        % load field address of obj
     ;       ldlen                   % load length of array
-    ;       ldobj(ilds__type)       % copy value type to stack
+    ;       ldobj(ilds.il_type)       % copy value type to stack
     ;       ldsfld(fieldref)        % load static field of a class
     ;       ldsflda(fieldref)       % load static field address
     ;       ldstr(string)           % load a literal string
     ;       ldtoken(signature)      % load runtime rep of metadata token
     ;       ldvirtftn(methodref)    % push a pointer to a virtual method
-    ;       mkrefany(ilds__type)    % push a refany pointer of type class
-    ;       newarr(ilds__type)      % create a zero based 1D array
+    ;       mkrefany(ilds.il_type)    % push a refany pointer of type class
+    ;       newarr(ilds.il_type)      % create a zero based 1D array
     ;       newobj(methodref)       % create new obj and call constructor
     ;       refanytype              % extract type info from refany nth arg
-    ;       refanyval(ilds__type)   % extract type info from refany nth arg
+    ;       refanyval(ilds.il_type)   % extract type info from refany nth arg
     ;       rethrow                 % rethrow an exception
-    ;       sizeof(ilds__type)      % push the sizeof a value type
+    ;       sizeof(ilds.il_type)      % push the sizeof a value type
     ;       stelem(simple_type)     % store an element of an array
     ;       stfld(fieldref)         % store into a field of an object
-    ;       stobj(ilds__type)
+    ;       stobj(ilds.il_type)
     ;       stsfld(fieldref)        % replace the value of field with val
     ;       throw                   % throw an exception
-    ;       unbox(ilds__type).      % convert boxed value type to raw form
+    ;       unbox(ilds.il_type).      % convert boxed value type to raw form
 
     % Locations marked as dead by ann_dead -- positive numbers are stack slots,
     % negative numbers are locals.
@@ -409,25 +409,25 @@
 
     % Get the namespace portion of a class name.
     %
-:- func get_class_namespace(ilds__class_name) = ilds__namespace_qual_name.
+:- func get_class_namespace(ilds.class_name) = ilds.namespace_qual_name.
 
     % Get the non-namespace portion of a class name.
     %
-:- func get_class_suffix(ilds__class_name) = list(ilds__id).
+:- func get_class_suffix(ilds.class_name) = list(ilds.id).
 
     % Add an extra identifier to the end of an IL namespace name, e.g.
     % append Foo to [mercury]mercury.runtime to make
     % [mercury]mercury.runtime.Foo
     %
-:- func append_toplevel_class_name(ilds__namespace_name, ilds__id) =
-    ilds__class_name.
+:- func append_toplevel_class_name(ilds.namespace_name, ilds.id) =
+    ilds.class_name.
 
     % Add an extra identifier to the end of an IL class name, e.g.
     % append Bar to [mercury]mercury.runtime.Foo to make
     % [mercury]mercury.runtime.Foo/Bar
     %
-:- func append_nested_class_name(ilds__class_name, ilds__nested_class_name) =
-    ilds__class_name.
+:- func append_nested_class_name(ilds.class_name, ilds.nested_class_name) =
+    ilds.class_name.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -443,7 +443,7 @@
 get_class_suffix(structured_name(_, OuterClassFullName, NestedClass))
         = SuffixName :-
     (
-        list__last(OuterClassFullName, Last)
+        list.last(OuterClassFullName, Last)
     ->
         SuffixName = [Last | NestedClass]
     ;
@@ -453,8 +453,8 @@ get_class_suffix(structured_name(_, OuterClassFullName, NestedClass))
 
 get_class_namespace(structured_name(_, FullName, _)) = NamespaceName :-
     (
-        list__last(FullName, Last),
-        list__remove_suffix(FullName, [Last], NamespaceName0)
+        list.last(FullName, Last),
+        list.remove_suffix(FullName, [Last], NamespaceName0)
     ->
         NamespaceName0 = NamespaceName
     ;
@@ -466,7 +466,7 @@ append_toplevel_class_name(structured_name(Assembly, Namespace, NestedClass),
         Class) = structured_name(Assembly, ClassName, []) :-
     expect(unify(NestedClass, []), this_file,
         "append_toplevel_class_name: namespace name has nested class?"),
-    list__append(Namespace, [Class], ClassName).
+    list.append(Namespace, [Class], ClassName).
 
 append_nested_class_name(StructuredName0, ExtraNestedClasses)
         = StructuredName :-
@@ -477,7 +477,7 @@ append_nested_class_name(StructuredName0, ExtraNestedClasses)
 calculate_max_stack(Instrs) =
     calculate_max_stack_2(Instrs, 0, 0).
 
-:- func calculate_max_stack_2(list(ilds__instr), int, int) = int.
+:- func calculate_max_stack_2(list(ilds.instr), int, int) = int.
 
 calculate_max_stack_2([], _, Max) = Max.
 calculate_max_stack_2([I | Instrs], Current, Max) =
@@ -504,7 +504,7 @@ calculate_max_stack_2([I | Instrs], Current, Max) =
     % Stack height is measured in stack items (each item can be a different
     % size in bits).
     %
-:- func get_stack_difference(ilds__instr) = int.
+:- func get_stack_difference(ilds.instr) = int.
 
 get_stack_difference(end_block(_, _))           = 0.
 get_stack_difference(comment(_))                = 0.
