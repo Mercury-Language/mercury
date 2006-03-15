@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2005 The University of Melbourne.
+** Copyright (C) 1997-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -432,7 +432,7 @@
 ** 
 ** MR_STACK_FRAME_STATS
 ** If you want to gather statistics about the number and size of stack frames,
-** then set this macro to a string giving the name of the file to which which
+** then set this macro to a string giving the name of the file to which
 ** the statistics should be appended when the program exits.
 ** 
 ** MR_COMPARE_BY_RTTI
