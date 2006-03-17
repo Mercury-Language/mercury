@@ -1239,6 +1239,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
                     words("Error: trailed mutable in non-trailing grade.")
                 ],
                 write_error_pieces(Context, 0, NonTrailingError, !IO),
+                io.set_exit_status(1, !IO),
                 %
                 % This is just a dummy value.
                 %
