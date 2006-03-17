@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-2005 The University of Melbourne.
+** Copyright (C) 1993-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -645,6 +645,7 @@
 
 #define MR_virtual_succip 		MR_saved_succip(MR_fake_reg)
 #define MR_virtual_hp 			MR_saved_hp(MR_fake_reg)
+#define MR_virtual_hp_word		MR_saved_hp_word(MR_fake_reg)
 #define MR_virtual_sp 			MR_saved_sp(MR_fake_reg)
 #define MR_virtual_curfr 		MR_saved_curfr(MR_fake_reg)
 #define MR_virtual_maxfr 		MR_saved_maxfr(MR_fake_reg)

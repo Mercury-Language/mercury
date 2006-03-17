@@ -2,7 +2,7 @@
 ** vim:sw=4 ts=4 expandtab
 */
 /*
-** Copyright (C) 1998-2005 The University of Melbourne.
+** Copyright (C) 1998-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -161,7 +161,7 @@ MR_garbage_collect(void)
     ** The new heap pointer starts at the bottom of the new heap.
     */
     swap_heaps();
-    MR_virtual_hp = new_heap->MR_zone_min;
+    MR_virtual_hp_word = (MR_Word) new_heap->MR_zone_min;
 
     /*
     ** Copy any roots on the stack
@@ -950,7 +950,7 @@ notify_gc_end(const MR_MemoryZone *old_heap, const MR_MemoryZone *new_heap,
 
         /* XXX restore this, it appears to get clobbered */
         fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
-        MR_virtual_hp = new_hp;
+        MR_virtual_hp_word = (MR_Word) new_hp;
         fprintf(stderr, "MR_virtual_hp: %lx\n", (long) MR_virtual_hp);
 
         fprintf(stderr, "old heap: %ld bytes, new heap: %ld bytes\n",
