@@ -157,3 +157,23 @@ Autoconf should configure, build and install directly from the source
 package.
 
 -----------------------------------------------------------------------------
+
+MEMORY ALLOCATION
+
+By default no Cygwin program can allocate more than 384 MB of memory
+(program+data).  It is possible to exceed this limit, especially if one
+is using a debugging grade.  In which case the runtime will report the
+following error
+
+	"GC Warning: Out of Memory!  Returning NIL!"
+
+To increase the maximum amount of memory a cygwin program can consume
+execute the following command, replacing 1024 with a value that makes
+sense for your system.
+
+regtool -i set /HKLM/Software/Cygnus\ Solutions/Cygwin/heap_chunk_in_mb 1024
+
+See <http://cygwin.com/cygwin-ug-net/setup-maxmem.html> for more
+details.
+
+-----------------------------------------------------------------------------
