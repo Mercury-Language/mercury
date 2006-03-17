@@ -77,7 +77,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module transform_hlds__inlining.
+:- module transform_hlds.inlining.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -205,18 +205,18 @@ inlining(!ModuleInfo, !IO) :-
     %   this threshold then we don't inline it.
     % - whether we're in an MLDS grade
     %
-    globals__io_get_globals(Globals, !IO),
-    globals__lookup_bool_option(Globals, inline_simple, Simple),
-    globals__lookup_bool_option(Globals, inline_single_use, SingleUse),
-    globals__lookup_int_option(Globals, inline_call_cost, CallCost),
-    globals__lookup_int_option(Globals, inline_compound_threshold,
+    globals.io_get_globals(Globals, !IO),
+    globals.lookup_bool_option(Globals, inline_simple, Simple),
+    globals.lookup_bool_option(Globals, inline_single_use, SingleUse),
+    globals.lookup_int_option(Globals, inline_call_cost, CallCost),
+    globals.lookup_int_option(Globals, inline_compound_threshold,
         CompoundThreshold),
-    globals__lookup_int_option(Globals, inline_simple_threshold,
+    globals.lookup_int_option(Globals, inline_simple_threshold,
         SimpleThreshold),
-    globals__lookup_int_option(Globals, inline_vars_threshold, VarThreshold),
-    globals__lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-    globals__io_get_trace_level(TraceLevel, !IO),
-    AnyTracing = bool__not(given_trace_level_is_none(TraceLevel)),
+    globals.lookup_int_option(Globals, inline_vars_threshold, VarThreshold),
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+    globals.io_get_trace_level(TraceLevel, !IO),
+    AnyTracing = bool.not(given_trace_level_is_none(TraceLevel)),
     Params = params(Simple, SingleUse, CallCost, CompoundThreshold,
         SimpleThreshold, VarThreshold, HighLevelCode, AnyTracing),
 
@@ -230,9 +230,9 @@ inlining(!ModuleInfo, !IO) :-
         ; CompoundThreshold > 0
         )
     ->
-        dead_proc_elim__analyze(!.ModuleInfo, NeededMap)
+        dead_proc_elim.analyze(!.ModuleInfo, NeededMap)
     ;
-        map__init(NeededMap)
+        map.init(NeededMap)
     ),
     %
     % Build the call graph and extract the topological sort.
@@ -248,8 +248,8 @@ inlining(!ModuleInfo, !IO) :-
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
     hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
-    list__condense(SCCs, PredProcs),
-    set__init(InlinedProcs0),
+    list.condense(SCCs, PredProcs),
+    set.init(InlinedProcs0),
     do_inlining(PredProcs, NeededMap, Params, InlinedProcs0, !ModuleInfo, !IO),
 
     % The dependency graph is now out of date and needs to be rebuilt.
@@ -282,7 +282,7 @@ mark_predproc(PredProcId, NeededMap, Params, ModuleInfo, !InlinedProcs, !IO) :-
         PredProcId = proc(PredId, ProcId),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         pred_info_procedures(PredInfo, Procs),
-        map__lookup(Procs, ProcId, ProcInfo),
+        map.lookup(Procs, ProcId, ProcInfo),
         proc_info_goal(ProcInfo, CalledGoal),
         Entity = proc(PredId, ProcId),
 
@@ -292,7 +292,7 @@ mark_predproc(PredProcId, NeededMap, Params, ModuleInfo, !InlinedProcs, !IO) :-
             is_simple_goal(CalledGoal, SimpleThreshold)
         ;
             CompoundThreshold > 0,
-            map__search(NeededMap, Entity, Needed),
+            map.search(NeededMap, Entity, Needed),
             Needed = yes(NumUses),
             goal_size(CalledGoal, Size),
             % The size increase due to inlining at a call site is not Size,
@@ -302,7 +302,7 @@ mark_predproc(PredProcId, NeededMap, Params, ModuleInfo, !InlinedProcs, !IO) :-
             (Size - CallCost) * NumUses =< CompoundThreshold
         ;
             SingleUse = yes,
-            map__search(NeededMap, Entity, Needed),
+            map.search(NeededMap, Entity, Needed),
             Needed = yes(NumUses),
             NumUses = 1
         ),
@@ -369,7 +369,7 @@ is_flat_simple_goal_list([Goal | Goals]) :-
 
 mark_proc_as_inlined(proc(PredId, ProcId), ModuleInfo,
         !InlinedProcs, !IO) :-
-    set__insert(!.InlinedProcs, proc(PredId, ProcId), !:InlinedProcs),
+    set.insert(!.InlinedProcs, proc(PredId, ProcId), !:InlinedProcs),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ( pred_info_requested_inlining(PredInfo) ->
         true
@@ -449,9 +449,9 @@ in_predproc(PredProcId, InlinedProcs, Params, !ModuleInfo, !IO) :-
 
     some [!PredInfo, !ProcInfo] (
         module_info_preds(!.ModuleInfo, PredTable0),
-        map__lookup(PredTable0, PredId, !:PredInfo),
+        map.lookup(PredTable0, PredId, !:PredInfo),
         pred_info_procedures(!.PredInfo, ProcTable0),
-        map__lookup(ProcTable0, ProcId, !:ProcInfo),
+        map.lookup(ProcTable0, ProcId, !:ProcInfo),
 
         pred_info_get_univ_quant_tvars(!.PredInfo, UnivQTVars),
         pred_info_typevarset(!.PredInfo, TypeVarSet0),
@@ -499,7 +499,7 @@ in_predproc(PredProcId, InlinedProcs, Params, !ModuleInfo, !IO) :-
             DidInlining = no
         ),
 
-        map__det_update(ProcTable0, ProcId, !.ProcInfo, ProcTable),
+        map.det_update(ProcTable0, ProcId, !.ProcInfo, ProcTable),
         pred_info_set_procedures(ProcTable, !PredInfo),
 
         (
@@ -509,14 +509,14 @@ in_predproc(PredProcId, InlinedProcs, Params, !ModuleInfo, !IO) :-
             PurityChanged = no
         ),
 
-        map__det_update(PredTable0, PredId, !.PredInfo, PredTable),
+        map.det_update(PredTable0, PredId, !.PredInfo, PredTable),
         module_info_set_preds(PredTable, !ModuleInfo)
     ),
 
     % If the determinism of some sub-goals has changed, then we re-run
     % determinism analysis, because propagating the determinism information
     % through the procedure may lead to more efficient code.
-    globals__io_get_globals(Globals, !IO),
+    globals.io_get_globals(Globals, !IO),
     (
         DetChanged = yes,
         det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, _, _, _)
@@ -613,13 +613,13 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
         ;
             UserReq = no,
             % Okay, but will we exceed the number-of-variables threshold?
-            varset__vars(VarSet0, ListOfVars),
-            list__length(ListOfVars, ThisMany),
+            varset.vars(VarSet0, ListOfVars),
+            list.length(ListOfVars, ThisMany),
 
             % We need to find out how many variables the Callee has.
             proc_info_varset(ProcInfo, CalleeVarSet),
-            varset__vars(CalleeVarSet, CalleeListOfVars),
-            list__length(CalleeListOfVars, CalleeThisMany),
+            varset.vars(CalleeVarSet, CalleeListOfVars),
+            list.length(CalleeListOfVars, CalleeThisMany),
             TotalVars = ThisMany + CalleeThisMany,
             TotalVars =< VarThresh
         )
@@ -631,7 +631,7 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
         % If some of the output variables are not used in the calling
         % procedure, requantify the procedure.
         goal_info_get_nonlocals(GoalInfo0, NonLocals),
-        ( set__list_to_set(ArgVars) = NonLocals ->
+        ( set.list_to_set(ArgVars) = NonLocals ->
             Requantify = Requantify0
         ;
             Requantify = yes
@@ -712,8 +712,8 @@ do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
     % for type variables which have been substituted away,
     % because those entries simply won't be used.
 
-    map__apply_to_list(HeadVars, CalleeVarTypes1, HeadTypes),
-    map__apply_to_list(ArgVars, VarTypes0, ArgTypes),
+    map.apply_to_list(HeadVars, CalleeVarTypes1, HeadTypes),
+    map.apply_to_list(ArgVars, VarTypes0, ArgTypes),
 
     pred_info_get_exist_quant_tvars(PredInfo, CalleeExistQVars),
     get_type_substitution(HeadTypes, ArgTypes, HeadTypeParams,
@@ -735,9 +735,8 @@ do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
     ),
 
     % Now rename apart the variables in the called goal.
-    rename_goal(HeadVars, ArgVars, VarSet0, CalleeVarSet,
-        VarSet, VarTypes1, CalleeVarTypes, VarTypes, Subn,
-        CalledGoal, Goal),
+    rename_goal(HeadVars, ArgVars, VarSet0, CalleeVarSet, VarSet, VarTypes1,
+        CalleeVarTypes, VarTypes, Subn, CalledGoal, Goal),
 
     apply_substitutions_to_rtti_varmaps(TypeRenaming, TypeSubn, Subn,
         CalleeRttiVarMaps0, CalleeRttiVarMaps1),
@@ -751,7 +750,8 @@ do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
 
 get_type_substitution(HeadTypes, ArgTypes,
         HeadTypeParams, CalleeExistQVars, TypeSubn) :-
-    ( CalleeExistQVars = [] ->
+    (
+        CalleeExistQVars = [],
         ( type_list_subsumes(HeadTypes, ArgTypes, TypeSubn0) ->
             TypeSubn = TypeSubn0
         ;
@@ -764,13 +764,14 @@ get_type_substitution(HeadTypes, ArgTypes,
             % In those cases, we don't need to worry about the type
             % substitution. (Perhaps it would be better if polymorphism
             % introduced calls to unsafe_type_cast/2 for such cases.)
-            map__init(TypeSubn)
+            map.init(TypeSubn)
         )
     ;
+        CalleeExistQVars = [_ | _],
         % For calls to existentially type preds, we may need to bind
         % type variables in the caller, not just those in the callee.
         (
-            map__init(TypeSubn0),
+            map.init(TypeSubn0),
             type_unify_list(HeadTypes, ArgTypes, HeadTypeParams,
                 TypeSubn0, TypeSubn1)
         ->
@@ -781,15 +782,14 @@ get_type_substitution(HeadTypes, ArgTypes,
         )
     ).
 
-rename_goal(HeadVars, ArgVars, VarSet0, CalleeVarSet,
-        VarSet, VarTypes1, CalleeVarTypes, VarTypes, Subn,
-        CalledGoal, Goal) :-
-    map__from_corresponding_lists(HeadVars, ArgVars, Subn0),
-    varset__vars(CalleeVarSet, CalleeListOfVars),
-    goal_util__create_variables(CalleeListOfVars,
+rename_goal(HeadVars, ArgVars, VarSet0, CalleeVarSet, VarSet, VarTypes1,
+        CalleeVarTypes, VarTypes, Subn, CalledGoal, Goal) :-
+    map.from_corresponding_lists(HeadVars, ArgVars, Subn0),
+    varset.vars(CalleeVarSet, CalleeListOfVars),
+    goal_util.create_variables(CalleeListOfVars,
         CalleeVarSet, CalleeVarTypes,
         VarSet0, VarSet, VarTypes1, VarTypes, Subn0, Subn),
-    goal_util__must_rename_vars_in_goal(Subn, CalledGoal, Goal).
+    goal_util.must_rename_vars_in_goal(Subn, CalledGoal, Goal).
 
 %-----------------------------------------------------------------------------%
 
@@ -827,7 +827,7 @@ inlining_in_conj([Goal0 | Goals0], Goals, !Info) :-
     inlining_in_goal(Goal0, Goal1, !Info),
     goal_to_conj_list(Goal1, Goal1List),
     inlining_in_conj(Goals0, Goals1, !Info),
-    list__append(Goal1List, Goals1, Goals).
+    list.append(Goal1List, Goals1, Goals).
 
 %-----------------------------------------------------------------------------%
 
@@ -856,7 +856,7 @@ should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
         UserReq = yes
     ;
         ( check_marker(Markers, heuristic_inline)
-        ; set__member(proc(PredId, ProcId), InlinedProcs)
+        ; set.member(proc(PredId, ProcId), InlinedProcs)
         )
     ->
         UserReq = no
@@ -867,7 +867,7 @@ should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
 can_inline_proc(PredId, ProcId, BuiltinState, InlinePromisedPure,
         CallingPredMarkers, ModuleInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
-    globals__lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
     can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
         InlinePromisedPure, CallingPredMarkers, ModuleInfo).
 
@@ -889,7 +889,7 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
     % for imported types.
     \+ (
         pred_info_is_pseudo_imported(PredInfo),
-        hlds_pred__in_in_unification_proc_id(ProcId)
+        hlds_pred.in_in_unification_proc_id(ProcId)
     ),
 
     % Only try to inline procedures which are evaluated using normal
@@ -929,7 +929,7 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
     % Only inline foreign_code if it is appropriate for
     % the target language.
     module_info_get_globals(ModuleInfo, Globals),
-    globals__get_target(Globals, Target),
+    globals.get_target(Globals, Target),
     (
         (
             CalledGoal = foreign_proc(ForeignAttributes,

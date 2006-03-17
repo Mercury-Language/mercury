@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2005 The University of Melbourne.
+% Copyright (C) 1993-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,7 +12,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module hlds__make_hlds__add_mode.
+:- module hlds.make_hlds.add_mode.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -64,9 +64,9 @@ module_add_inst_defn(VarSet, Name, Args, InstDefn, Cond, Context,
     %
     % check if the inst is infinitely recursive (at the top level)
     %
-    Arity = list__length(Args),
+    Arity = list.length(Args),
     InstId = Name - Arity,
-    TestArgs = list__duplicate(Arity, not_reached),
+    TestArgs = list.duplicate(Arity, not_reached),
     check_for_cyclic_inst(Insts, InstId, InstId, TestArgs, [], Context,
         InvalidMode, !IO).
 
@@ -80,7 +80,7 @@ insts_add(_, _, _, abstract_inst, _, _, _, !Insts, !IO) :-
     sorry(this_file, "abstract insts not implemented").
 insts_add(VarSet, Name, Args, eqv_inst(Body), _Cond, Context, Status, !Insts,
         !IO) :-
-    list__length(Args, Arity),
+    list.length(Args, Arity),
     (
         I = hlds_inst_defn(VarSet, Args, eqv_inst(Body), Context, Status),
         user_inst_table_insert(Name - Arity, I, !Insts)
@@ -93,7 +93,7 @@ insts_add(VarSet, Name, Args, eqv_inst(Body), _Cond, Context, Status, !Insts,
         % XXX we should record each error using
         %    module_info_incr_errors
         user_inst_table_get_inst_defns(!.Insts, InstDefns),
-        map__lookup(InstDefns, Name - Arity, OrigI),
+        map.lookup(InstDefns, Name - Arity, OrigI),
         OrigI = hlds_inst_defn(_, _, _, OrigContext, _),
         multiple_def_error(Status, Name, Arity, "inst", Context, OrigContext,
             _, !IO)
@@ -107,20 +107,20 @@ insts_add(VarSet, Name, Args, eqv_inst(Body), _Cond, Context, Status, !Insts,
 
 check_for_cyclic_inst(UserInstTable, OrigInstId, InstId0, Args0, Expansions0,
         Context, InvalidMode, !IO) :-
-    ( list__member(InstId0, Expansions0) ->
+    ( list.member(InstId0, Expansions0) ->
         report_circular_equiv_error("inst", OrigInstId, InstId0, Expansions0,
             Context, !IO),
         InvalidMode = yes
     ;
         user_inst_table_get_inst_defns(UserInstTable, InstDefns),
         (
-            map__search(InstDefns, InstId0, InstDefn),
+            map.search(InstDefns, InstId0, InstDefn),
             InstDefn = hlds_inst_defn(_, Params, Body, _, _),
             Body = eqv_inst(EqvInst0),
             inst_substitute_arg_list(Params, Args0, EqvInst0, EqvInst),
             EqvInst = defined_inst(user_inst(Name, Args))
         ->
-            Arity = list__length(Args),
+            Arity = list.length(Args),
             InstId = Name - Arity,
             Expansions = [InstId0 | Expansions0],
             check_for_cyclic_inst(UserInstTable, OrigInstId, InstId, Args,
@@ -145,7 +145,7 @@ module_add_mode_defn(VarSet, Name, Params, ModeDefn, Cond, Context,
 
 modes_add(VarSet, Name, Args, eqv_mode(Body), _Cond, Context, Status,
         !Modes, InvalidMode, !IO) :-
-    list__length(Args, Arity),
+    list.length(Args, Arity),
     ModeId = Name - Arity,
     (
         I = hlds_mode_defn(VarSet, Args, eqv_mode(Body), Context, Status),
@@ -154,7 +154,7 @@ modes_add(VarSet, Name, Args, eqv_mode(Body), _Cond, Context, Status,
         true
     ;
         mode_table_get_mode_defns(!.Modes, ModeDefns),
-        map__lookup(ModeDefns, ModeId, OrigI),
+        map.lookup(ModeDefns, ModeId, OrigI),
         OrigI = hlds_mode_defn(_, _, _, OrigContext, _),
         % XXX we should record each error using
         %   module_info_incr_errors
@@ -171,19 +171,19 @@ modes_add(VarSet, Name, Args, eqv_mode(Body), _Cond, Context, Status,
 
 check_for_cyclic_mode(ModeTable, OrigModeId, ModeId0, Expansions0, Context,
         InvalidMode, !IO) :-
-    ( list__member(ModeId0, Expansions0) ->
+    ( list.member(ModeId0, Expansions0) ->
         report_circular_equiv_error("mode", OrigModeId, ModeId0,
             Expansions0, Context, !IO),
         InvalidMode = yes
     ;
         mode_table_get_mode_defns(ModeTable, ModeDefns),
         (
-            map__search(ModeDefns, ModeId0, ModeDefn),
+            map.search(ModeDefns, ModeId0, ModeDefn),
             ModeDefn = hlds_mode_defn(_, _, Body, _, _),
             Body = eqv_mode(EqvMode),
             EqvMode = user_defined_mode(Name, Args)
         ->
-            Arity = list__length(Args),
+            Arity = list.length(Args),
             ModeId = Name - Arity,
             Expansions = [ModeId0 | Expansions0],
             check_for_cyclic_mode(ModeTable, OrigModeId, ModeId, Expansions,
@@ -211,14 +211,14 @@ report_circular_equiv_error(Kind, OrigId, Id, Expansions, Context, !IO) :-
         % where <kind> is either "inst" or "mode".
         %
         Kinds = (if Expansions = [_] then Kind else Kind ++ "s"),
-        ExpansionPieces = list__map(
+        ExpansionPieces = list.map(
             (func(SymName - Arity) =
                 sym_name_and_arity(SymName / Arity)),
             Expansions),
         Pieces = [words("Error: circular equivalence"), fixed(Kinds)]
             ++ component_list_to_pieces(ExpansionPieces) ++ [suffix(".")],
-        error_util__write_error_pieces(Context, 0, Pieces, !IO),
-        io__set_exit_status(1, !IO)
+        write_error_pieces(Context, 0, Pieces, !IO),
+        io.set_exit_status(1, !IO)
     ;
         % We have an inst `OrigId' which is not itself circular,
         % but which is defined in terms of `Id' which is circular.

@@ -74,8 +74,8 @@
 %-----------------------------------------------------------------------------%
 
 nonpure_get_pred_decl(ModuleName, Name, Type, Inst) = GetPredDecl :-
-    VarSet = varset__init,
-    InstVarSet = varset__init,
+    VarSet = varset.init,
+    InstVarSet = varset.init,
     ExistQVars = [],
     Constraints = constraints([], []),
     GetPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
@@ -85,8 +85,8 @@ nonpure_get_pred_decl(ModuleName, Name, Type, Inst) = GetPredDecl :-
         true /* condition */, purity_semipure, Constraints).
 
 nonpure_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
-    VarSet = varset__init,
-    InstVarSet = varset__init,
+    VarSet = varset.init,
+    InstVarSet = varset.init,
     ExistQVars = [],
     Constraints = constraints([], []),
     SetPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
@@ -96,8 +96,8 @@ nonpure_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
         true /* condition */, purity_impure, Constraints).
 
 pure_get_pred_decl(ModuleName, Name, Type, Inst) = GetPredDecl :-
-    VarSet = varset__init,
-    InstVarSet = varset__init,
+    VarSet = varset.init,
+    InstVarSet = varset.init,
     ExistQVars = [],
     Constraints = constraints([], []),
     GetPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
@@ -109,8 +109,8 @@ pure_get_pred_decl(ModuleName, Name, Type, Inst) = GetPredDecl :-
         true /* condition */, purity_pure, Constraints).
 
 pure_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
-    VarSet = varset__init,
-    InstVarSet = varset__init,
+    VarSet = varset.init,
+    InstVarSet = varset.init,
     ExistQVars = [],
     Constraints = constraints([], []),
     SetPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
@@ -122,8 +122,8 @@ pure_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
         true /* condition */, purity_pure, Constraints).
 
 init_pred_decl(ModuleName, Name) = InitPredDecl :-
-    VarSet = varset__init,
-    InstVarSet = varset__init,
+    VarSet = varset.init,
+    InstVarSet = varset.init,
     ExistQVars = [],
     Constraints = constraints([], []),
     InitPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars,

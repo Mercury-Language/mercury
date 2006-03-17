@@ -14,7 +14,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module parse_tree__prog_mode.
+:- module parse_tree.prog_mode.
 :- interface.
 
 :- import_module parse_tree.prog_data.
@@ -215,7 +215,7 @@ mode_substitute_arg_list(Mode0, Params, Args, Mode) :-
         Mode = Mode0    % optimize common case
     ;
         Params = [_ | _],
-        map__from_corresponding_lists(Params, Args, Subst),
+        map.from_corresponding_lists(Params, Args, Subst),
         mode_apply_substitution(Subst, Mode0, Mode)
     ).
 
@@ -225,7 +225,7 @@ inst_substitute_arg_list(Params, Args, Inst0, Inst) :-
         Inst = Inst0    % optimize common case
     ;
         Params = [_ | _],
-        map__from_corresponding_lists(Params, Args, Subst),
+        map.from_corresponding_lists(Params, Args, Subst),
         inst_apply_substitution(Subst, Inst0, Inst)
     ).
 
@@ -243,7 +243,7 @@ mode_apply_substitution(Subst, user_defined_mode(Name, Args0),
     inst_list_apply_substitution_2(Subst, Args0, Args).
 
 inst_list_apply_substitution(Subst, Insts0, Insts) :-
-    ( map__is_empty(Subst) ->
+    ( map.is_empty(Subst) ->
         Insts = Insts0
     ;
         inst_list_apply_substitution_2(Subst, Insts0, Insts)
@@ -272,19 +272,19 @@ inst_apply_substitution(Subst, bound(Uniq, Alts0), bound(Uniq, Alts)) :-
     alt_list_apply_substitution(Subst, Alts0, Alts).
 inst_apply_substitution(_, not_reached, not_reached).
 inst_apply_substitution(Subst, inst_var(Var), Result) :-
-    ( map__search(Subst, Var, Replacement) ->
+    ( map.search(Subst, Var, Replacement) ->
         Result = Replacement
     ;
         Result = inst_var(Var)
     ).
 inst_apply_substitution(Subst, constrained_inst_vars(Vars, Inst0), Result) :-
-    ( set__singleton_set(Vars, Var0) ->
+    ( set.singleton_set(Vars, Var0) ->
         Var = Var0
     ;
         unexpected(this_file,
             "inst_apply_substitution: multiple inst_vars found")
     ),
-    ( map__search(Subst, Var, Replacement) ->
+    ( map.search(Subst, Var, Replacement) ->
         Result = Replacement
         % XXX Should probably have a sanity check here that
         % Replacement =< Inst0
@@ -339,7 +339,7 @@ ground_inst_info_apply_substitution(Subst, Uniq, GII0, ground(Uniq, GII)) :-
     GII = higher_order(pred_inst_info(PredOrFunc, Modes, Det)).
 
 mode_list_apply_substitution(Subst, Modes0, Modes) :-
-    ( map__is_empty(Subst) ->
+    ( map.is_empty(Subst) ->
         Modes = Modes0
     ;
         mode_list_apply_substitution_2(Subst, Modes0, Modes)
@@ -356,8 +356,8 @@ mode_list_apply_substitution_2(Subst, [A0 | As0], [A | As]) :-
 %-----------------------------------------------------------------------------%
 
 rename_apart_inst_vars(VarSet, NewVarSet, Modes0, Modes) :-
-    varset__merge_subst(VarSet, NewVarSet, _, Sub),
-    list__map(rename_apart_inst_vars_in_mode(Sub), Modes0, Modes).
+    varset.merge_subst(VarSet, NewVarSet, _, Sub),
+    list.map(rename_apart_inst_vars_in_mode(Sub), Modes0, Modes).
 
 :- pred rename_apart_inst_vars_in_mode(substitution(inst_var_type)::in,
     mer_mode::in, mer_mode::out) is det.
@@ -367,7 +367,7 @@ rename_apart_inst_vars_in_mode(Sub, I0 -> F0, I -> F) :-
     rename_apart_inst_vars_in_inst(Sub, F0, F).
 rename_apart_inst_vars_in_mode(Sub, user_defined_mode(Name, Insts0),
         user_defined_mode(Name, Insts)) :-
-    list__map(rename_apart_inst_vars_in_inst(Sub), Insts0, Insts).
+    list.map(rename_apart_inst_vars_in_inst(Sub), Insts0, Insts).
 
 :- pred rename_apart_inst_vars_in_inst(substitution(inst_var_type)::in,
     mer_inst::in, mer_inst::out) is det.
@@ -376,13 +376,13 @@ rename_apart_inst_vars_in_inst(_, any(U), any(U)).
 rename_apart_inst_vars_in_inst(_, free, free).
 rename_apart_inst_vars_in_inst(_, free(T), free(T)).
 rename_apart_inst_vars_in_inst(Sub, bound(U, BIs0), bound(U, BIs)) :-
-    list__map((pred(functor(C, Is0)::in, functor(C, Is)::out) is det :-
-        list__map(rename_apart_inst_vars_in_inst(Sub), Is0, Is)),
+    list.map((pred(functor(C, Is0)::in, functor(C, Is)::out) is det :-
+        list.map(rename_apart_inst_vars_in_inst(Sub), Is0, Is)),
         BIs0, BIs).
 rename_apart_inst_vars_in_inst(Sub, ground(U, GI0), ground(U, GI)) :-
     (
         GI0 = higher_order(pred_inst_info(PoF, Modes0, Det)),
-        list__map(rename_apart_inst_vars_in_mode(Sub), Modes0, Modes),
+        list.map(rename_apart_inst_vars_in_mode(Sub), Modes0, Modes),
         GI = higher_order(pred_inst_info(PoF, Modes, Det))
     ;
         GI0 = none,
@@ -390,7 +390,7 @@ rename_apart_inst_vars_in_inst(Sub, ground(U, GI0), ground(U, GI)) :-
     ).
 rename_apart_inst_vars_in_inst(_, not_reached, not_reached).
 rename_apart_inst_vars_in_inst(Sub, inst_var(Var0), inst_var(Var)) :-
-    ( map__search(Sub, Var0, term__variable(Var1)) ->
+    ( map.search(Sub, Var0, term.variable(Var1)) ->
         Var = Var1
     ;
         Var = Var0
@@ -398,8 +398,8 @@ rename_apart_inst_vars_in_inst(Sub, inst_var(Var0), inst_var(Var)) :-
 rename_apart_inst_vars_in_inst(Sub, constrained_inst_vars(Vars0, Inst0),
         constrained_inst_vars(Vars, Inst)) :-
     rename_apart_inst_vars_in_inst(Sub, Inst0, Inst),
-    Vars = set__map(func(Var0) =
-        ( map__search(Sub, Var0, term__variable(Var)) ->
+    Vars = set.map(func(Var0) =
+        ( map.search(Sub, Var0, term.variable(Var)) ->
             Var
         ;
             Var0
@@ -412,14 +412,14 @@ rename_apart_inst_vars_in_inst(Sub, defined_inst(Name0), defined_inst(Name)) :-
     ).
 rename_apart_inst_vars_in_inst(Sub, abstract_inst(Sym, Insts0),
         abstract_inst(Sym, Insts)) :-
-    list__map(rename_apart_inst_vars_in_inst(Sub), Insts0, Insts).
+    list.map(rename_apart_inst_vars_in_inst(Sub), Insts0, Insts).
 
 :- pred rename_apart_inst_vars_in_inst_name(substitution(inst_var_type)::in,
     inst_name::in, inst_name::out) is semidet.
 
 rename_apart_inst_vars_in_inst_name(Sub, user_inst(Sym, Insts0),
         user_inst(Sym, Insts)) :-
-    list__map(rename_apart_inst_vars_in_inst(Sub), Insts0, Insts).
+    list.map(rename_apart_inst_vars_in_inst(Sub), Insts0, Insts).
 rename_apart_inst_vars_in_inst_name(Sub, typed_inst(Type, Name0),
         typed_inst(Type, Name)) :-
     rename_apart_inst_vars_in_inst_name(Sub, Name0, Name).
@@ -493,22 +493,22 @@ functors_to_cons_ids([Functor | Functors], [ConsId | ConsIds]) :-
 %-----------------------------------------------------------------------------%
 
 get_arg_insts(not_reached, _ConsId, Arity, ArgInsts) :-
-    list__duplicate(Arity, not_reached, ArgInsts).
+    list.duplicate(Arity, not_reached, ArgInsts).
 get_arg_insts(ground(Uniq, _PredInst), _ConsId, Arity, ArgInsts) :-
-    list__duplicate(Arity, ground(Uniq, none), ArgInsts).
+    list.duplicate(Arity, ground(Uniq, none), ArgInsts).
 get_arg_insts(bound(_Uniq, List), ConsId, Arity, ArgInsts) :-
     ( get_arg_insts_2(List, ConsId, ArgInsts0) ->
         ArgInsts = ArgInsts0
     ;
         % The code is unreachable.
-        list__duplicate(Arity, not_reached, ArgInsts)
+        list.duplicate(Arity, not_reached, ArgInsts)
     ).
 get_arg_insts(free, _ConsId, Arity, ArgInsts) :-
-    list__duplicate(Arity, free, ArgInsts).
+    list.duplicate(Arity, free, ArgInsts).
 get_arg_insts(free(_Type), _ConsId, Arity, ArgInsts) :-
-    list__duplicate(Arity, free, ArgInsts).
+    list.duplicate(Arity, free, ArgInsts).
 get_arg_insts(any(Uniq), _ConsId, Arity, ArgInsts) :-
-    list__duplicate(Arity, any(Uniq), ArgInsts).
+    list.duplicate(Arity, any(Uniq), ArgInsts).
 
 :- pred get_arg_insts_2(list(bound_inst)::in, cons_id::in, list(mer_inst)::out)
     is semidet.
@@ -528,7 +528,7 @@ mode_id_to_int(_ - X, X).
     % The interesting part is strip_builtin_qualifier_from_sym_name;
     % the rest is basically just recursive traversals.
 strip_builtin_qualifiers_from_mode_list(Modes0, Modes) :-
-    list__map(strip_builtin_qualifiers_from_mode, Modes0, Modes).
+    list.map(strip_builtin_qualifiers_from_mode, Modes0, Modes).
 
 :- pred strip_builtin_qualifiers_from_mode(mer_mode::in, mer_mode::out) is det.
 
@@ -563,7 +563,7 @@ strip_builtin_qualifier_from_sym_name(SymName0, SymName) :-
     ).
 
 strip_builtin_qualifiers_from_inst_list(Insts0, Insts) :-
-    list__map(strip_builtin_qualifiers_from_inst, Insts0, Insts).
+    list.map(strip_builtin_qualifiers_from_inst, Insts0, Insts).
 
 strip_builtin_qualifiers_from_inst(inst_var(V), inst_var(V)).
 strip_builtin_qualifiers_from_inst(constrained_inst_vars(Vars, Inst0),
@@ -589,7 +589,7 @@ strip_builtin_qualifiers_from_inst(abstract_inst(Name0, Args0),
     list(bound_inst)::out) is det.
 
 strip_builtin_qualifiers_from_bound_inst_list(Insts0, Insts) :-
-    list__map(strip_builtin_qualifiers_from_bound_inst, Insts0, Insts).
+    list.map(strip_builtin_qualifiers_from_bound_inst, Insts0, Insts).
 
 :- pred strip_builtin_qualifiers_from_bound_inst(bound_inst::in,
     bound_inst::out) is det.
@@ -598,7 +598,7 @@ strip_builtin_qualifiers_from_bound_inst(BoundInst0, BoundInst) :-
     BoundInst0 = functor(ConsId0, Insts0),
     strip_builtin_qualifier_from_cons_id(ConsId0, ConsId),
     BoundInst = functor(ConsId, Insts),
-    list__map(strip_builtin_qualifiers_from_inst, Insts0, Insts).
+    list.map(strip_builtin_qualifiers_from_inst, Insts0, Insts).
 
 :- pred strip_builtin_qualifiers_from_inst_name(inst_name::in, inst_name::out)
     is det.

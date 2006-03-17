@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000, 2003, 2005 The University of Melbourne.
+% Copyright (C) 2000, 2003, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -10,12 +10,12 @@
 % Main author: petdr.
 %
 % Define a type goal_store(Key) which allows a hlds_goal to be stored in a
-% dictionary like structure.  However there some operations on this dictionary
-% which are specific to hlds_goals.
+% dictionary like structure. However, there some operations on this dictionary
+% that are specific to hlds_goals.
 %
 %-----------------------------------------------------------------------------%
 
-:- module transform_hlds__goal_store.
+:- module transform_hlds.goal_store.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -32,18 +32,18 @@
 :- type stored_goal == pair(hlds_goal, instmap).
 :- type goal_store(T).
 
-:- pred goal_store__init(goal_store(T)::out) is det.
-:- func goal_store__init = goal_store(T).
+:- pred goal_store_init(goal_store(T)::out) is det.
+:- func goal_store_init = goal_store(T).
 
-:- pred goal_store__det_insert(T::in, stored_goal::in,
+:- pred goal_store_det_insert(T::in, stored_goal::in,
     goal_store(T)::in, goal_store(T)::out) is det.
 
-:- pred goal_store__lookup(goal_store(T)::in, T::in, stored_goal::out) is det.
+:- pred goal_store_lookup(goal_store(T)::in, T::in, stored_goal::out) is det.
 
-:- pred goal_store__member(goal_store(T)::in, T::out, stored_goal::out)
+:- pred goal_store_member(goal_store(T)::in, T::out, stored_goal::out)
     is nondet.
 
-:- pred goal_store__all_ancestors(goal_store(T)::in, T::in, vartypes::in,
+:- pred goal_store_all_ancestors(goal_store(T)::in, T::in, vartypes::in,
     module_info::in, bool::in, set(T)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -59,48 +59,46 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type goal_store(T) == map__map(T, stored_goal).
+:- type goal_store(T) == map.map(T, stored_goal).
 
 %-----------------------------------------------------------------------------%
 
-goal_store__init(GS) :-
-    map__init(GS).
+goal_store_init(GS) :-
+    map.init(GS).
 
-goal_store__init = GS :-
-    goal_store__init(GS).
+goal_store_init = GS :-
+    goal_store_init(GS).
 
-goal_store__det_insert(Id, Goal, GS0, GS) :-
-    map__det_insert(GS0, Id, Goal, GS).
+goal_store_det_insert(Id, Goal, GS0, GS) :-
+    map.det_insert(GS0, Id, Goal, GS).
 
-goal_store__lookup(GS, Id, Goal) :-
-    map__lookup(GS, Id, Goal).
+goal_store_lookup(GS, Id, Goal) :-
+    map.lookup(GS, Id, Goal).
 
-goal_store__member(GoalStore, Key, Goal) :-
-    map__member(GoalStore, Key, Goal).
+goal_store_member(GoalStore, Key, Goal) :-
+    map.member(GoalStore, Key, Goal).
 
-all_ancestors(GoalStore, StartId, VarTypes, ModuleInfo, FullyStrict,
+goal_store_all_ancestors(GoalStore, StartId, VarTypes, ModuleInfo, FullyStrict,
         AncestorIds) :-
-    AncestorIds = ancestors_2(GoalStore, [StartId], set__init,
+    AncestorIds = ancestors_2(GoalStore, [StartId], set.init,
         VarTypes, ModuleInfo, FullyStrict).
 
 :- func ancestors_2(goal_store(T), list(T), set(T), vartypes, module_info,
     bool) = set(T).
 
 ancestors_2(_GoalStore, [], _VisitedIds, _VarTypes, _ModuleInfo, _FullyStrict)
-        = set__init.
+        = set.init.
 ancestors_2(GoalStore, [Id|Ids], VisitedIds, VarTypes, ModuleInfo, FullyStrict)
         =  AncestorIds :-
-    (
-        set__member(Id, VisitedIds)
-    ->
+    ( set.member(Id, VisitedIds) ->
         AncestorIds = ancestors_2(GoalStore, Ids, VisitedIds, VarTypes,
             ModuleInfo, FullyStrict)
     ;
         Ancestors = direct_ancestors(GoalStore, Id, VarTypes, ModuleInfo,
             FullyStrict),
-        AncestorIds = set__list_to_set(Ancestors) `union`
+        AncestorIds = set.list_to_set(Ancestors) `union`
             ancestors_2(GoalStore, Ancestors `append` Ids,
-                set__insert(VisitedIds, Id), VarTypes, ModuleInfo, FullyStrict)
+                set.insert(VisitedIds, Id), VarTypes, ModuleInfo, FullyStrict)
     ).
 
 :- func direct_ancestors(goal_store(T), T, vartypes, module_info, bool)
@@ -116,10 +114,10 @@ direct_ancestors(GoalStore, StartId, VarTypes, ModuleInfo, FullyStrict)
 
 direct_ancestor(GoalStore, StartId, VarTypes, ModuleInfo, FullyStrict,
         EarlierId) :-
-    goal_store__lookup(GoalStore, StartId, LaterGoal - LaterInstMap),
-    goal_store__member(GoalStore, EarlierId, EarlierGoal - EarlierInstMap),
+    goal_store_lookup(GoalStore, StartId, LaterGoal - LaterInstMap),
+    goal_store_member(GoalStore, EarlierId, EarlierGoal - EarlierInstMap),
     compare((<), EarlierId, StartId),
-    not goal_util__can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
+    not goal_util.can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
         EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal).
 
 %-----------------------------------------------------------------------------%

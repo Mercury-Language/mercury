@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000,2002-2005 The University of Melbourne.
+% Copyright (C) 1994-2000,2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,7 +13,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__tag_switch.
+:- module ll_backend.tag_switch.
 :- interface.
 
 :- import_module backend_libs.switch_util.
@@ -197,23 +197,23 @@ generate_tag_switch(Cases, Var, CodeModel, CanFail, SwitchGoalInfo, EndLabel,
     % Group the cases based on primary tag value and find out how many
     % constructors share each primary tag value.
 
-    code_info__get_module_info(!.CI, ModuleInfo),
-    code_info__get_proc_info(!.CI, ProcInfo),
+    code_info.get_module_info(!.CI, ModuleInfo),
+    code_info.get_proc_info(!.CI, ProcInfo),
     proc_info_vartypes(ProcInfo, VarTypes),
-    map__lookup(VarTypes, Var, Type),
-    switch_util__get_ptag_counts(Type, ModuleInfo,
+    map.lookup(VarTypes, Var, Type),
+    switch_util.get_ptag_counts(Type, ModuleInfo,
         MaxPrimary, PtagCountMap),
-    map__to_assoc_list(PtagCountMap, PtagCountList),
-    map__init(PtagCaseMap0),
-    switch_util__group_cases_by_ptag(Cases, PtagCaseMap0, PtagCaseMap),
+    map.to_assoc_list(PtagCountMap, PtagCountList),
+    map.init(PtagCaseMap0),
+    switch_util.group_cases_by_ptag(Cases, PtagCaseMap0, PtagCaseMap),
 
-    map__count(PtagCaseMap, PtagsUsed),
-    code_info__get_globals(!.CI, Globals),
-    globals__lookup_int_option(Globals, dense_switch_size,
+    map.count(PtagCaseMap, PtagsUsed),
+    code_info.get_globals(!.CI, Globals),
+    globals.lookup_int_option(Globals, dense_switch_size,
         DenseSwitchSize),
-    globals__lookup_int_option(Globals, try_switch_size,
+    globals.lookup_int_option(Globals, try_switch_size,
         TrySwitchSize),
-    globals__lookup_int_option(Globals, binary_switch_size,
+    globals.lookup_int_option(Globals, binary_switch_size,
         BinarySwitchSize),
     ( PtagsUsed >= DenseSwitchSize ->
         PrimaryMethod = jump_table
@@ -234,14 +234,14 @@ generate_tag_switch(Cases, Var, CodeModel, CanFail, SwitchGoalInfo, EndLabel,
     % or if the "register" we get is likely to be slower than
     % recomputing the tag from scratch.
 
-    code_info__produce_variable_in_reg(Var, VarCode, VarLval, !CI),
+    code_info.produce_variable_in_reg(Var, VarCode, VarLval, !CI),
     VarRval = lval(VarLval),
-    code_info__acquire_reg(r, PtagReg, !CI),
-    code_info__release_reg(PtagReg, !CI),
+    code_info.acquire_reg(r, PtagReg, !CI),
+    code_info.release_reg(PtagReg, !CI),
     (
         PrimaryMethod \= jump_table,
         PtagsUsed >= 2,
-        globals__lookup_int_option(Globals, num_real_r_regs, NumRealRegs),
+        globals.lookup_int_option(Globals, num_real_r_regs, NumRealRegs),
         (
             NumRealRegs = 0
         ;
@@ -264,14 +264,14 @@ generate_tag_switch(Cases, Var, CodeModel, CanFail, SwitchGoalInfo, EndLabel,
     % We generate FailCode and EndCode here because the last case within
     % a primary tag may not be the last case overall.
 
-    code_info__get_next_label(FailLabel, !CI),
+    code_info.get_next_label(FailLabel, !CI),
     FailLabelCode = node([label(FailLabel) - "switch has failed"]),
     (
         CanFail = cannot_fail,
         FailCode = node([goto(do_not_reached) - "oh-oh, det switch failed"])
     ;
         CanFail = can_fail,
-        code_info__generate_failure(FailCode, !CI)
+        code_info.generate_failure(FailCode, !CI)
     ),
     LabelledFailCode = tree(FailLabelCode, FailCode),
 
@@ -279,14 +279,14 @@ generate_tag_switch(Cases, Var, CodeModel, CanFail, SwitchGoalInfo, EndLabel,
 
     (
         PrimaryMethod = binary_search,
-        switch_util__order_ptags_by_value(0, MaxPrimary, PtagCaseMap,
+        switch_util.order_ptags_by_value(0, MaxPrimary, PtagCaseMap,
             PtagCaseList),
         generate_primary_binary_search(PtagCaseList, 0, MaxPrimary, PtagRval,
             VarRval, CodeModel, CanFail, SwitchGoalInfo, EndLabel, FailLabel,
             PtagCountMap, !MaybeEnd, CasesCode, !CI)
     ;
         PrimaryMethod = jump_table,
-        switch_util__order_ptags_by_value(0, MaxPrimary, PtagCaseMap,
+        switch_util.order_ptags_by_value(0, MaxPrimary, PtagCaseMap,
             PtagCaseList),
         generate_primary_jump_table(PtagCaseList, 0, MaxPrimary, VarRval,
             CodeModel, SwitchGoalInfo, EndLabel, FailLabel, PtagCountMap,
@@ -297,13 +297,13 @@ generate_tag_switch(Cases, Var, CodeModel, CanFail, SwitchGoalInfo, EndLabel,
         CasesCode = tree(SwitchCode, TableCode)
     ;
         PrimaryMethod = try_chain,
-        switch_util__order_ptags_by_count(PtagCountList, PtagCaseMap,
+        switch_util.order_ptags_by_count(PtagCountList, PtagCaseMap,
             PtagCaseList0),
         (
             CanFail = cannot_fail,
             PtagCaseList0 = [MostFreqCase | OtherCases]
         ->
-            list__append(OtherCases, [MostFreqCase], PtagCaseList)
+            list.append(OtherCases, [MostFreqCase], PtagCaseList)
         ;
             PtagCaseList = PtagCaseList0
         ),
@@ -312,7 +312,7 @@ generate_tag_switch(Cases, Var, CodeModel, CanFail, SwitchGoalInfo, EndLabel,
             empty, empty, !MaybeEnd, CasesCode, !CI)
     ;
         PrimaryMethod = try_me_else_chain,
-        switch_util__order_ptags_by_count(PtagCountList, PtagCaseMap,
+        switch_util.order_ptags_by_count(PtagCountList, PtagCaseMap,
             PtagCaseList),
         generate_primary_try_me_else_chain(PtagCaseList, PtagRval, VarRval,
             CodeModel, CanFail, SwitchGoalInfo, EndLabel, FailLabel,
@@ -337,7 +337,7 @@ generate_primary_try_me_else_chain([PtagGroup | PtagGroups], TagRval, VarRval,
         CodeModel, CanFail, SwitchGoalInfo, EndLabel, FailLabel, PtagCountMap,
         !MaybeEnd, Code, !CI) :-
     PtagGroup = Primary - ptag_case(StagLoc, StagGoalMap),
-    map__lookup(PtagCountMap, Primary, CountInfo),
+    map.lookup(PtagCountMap, Primary, CountInfo),
     CountInfo = StagLoc1 - MaxSecondary,
     expect(unify(StagLoc, StagLoc1), this_file,
         "generate_primary_try_me_else_chain: secondary tag locations differ"),
@@ -346,8 +346,8 @@ generate_primary_try_me_else_chain([PtagGroup | PtagGroups], TagRval, VarRval,
         ; CanFail = can_fail
         )
     ->
-        code_info__remember_position(!.CI, BranchStart),
-        code_info__get_next_label(ElseLabel, !CI),
+        code_info.remember_position(!.CI, BranchStart),
+        code_info.get_next_label(ElseLabel, !CI),
         TestRval = binop(ne, TagRval,
             unop(mktag, const(int_const(Primary)))),
         TestCode = node([
@@ -360,7 +360,7 @@ generate_primary_try_me_else_chain([PtagGroup | PtagGroups], TagRval, VarRval,
         ThisTagCode = tree_list([TestCode, TagCode, ElseCode]),
         (
             PtagGroups = [_ | _],
-            code_info__reset_to_position(BranchStart, !CI),
+            code_info.reset_to_position(BranchStart, !CI),
             generate_primary_try_me_else_chain(PtagGroups, TagRval, VarRval,
                 CodeModel, CanFail, SwitchGoalInfo, EndLabel, FailLabel,
                 PtagCountMap, !MaybeEnd, OtherTagsCode, !CI),
@@ -398,7 +398,7 @@ generate_primary_try_chain([PtagGroup | PtagGroups], TagRval, VarRval,
         CodeModel, CanFail, SwitchGoalInfo, EndLabel, FailLabel, PtagCountMap,
         PrevTests0, PrevCases0, !MaybeEnd, Code, !CI) :-
     PtagGroup = Primary - ptag_case(StagLoc, StagGoalMap),
-    map__lookup(PtagCountMap, Primary, CountInfo),
+    map.lookup(PtagCountMap, Primary, CountInfo),
     CountInfo = StagLoc1 - MaxSecondary,
     expect(unify(StagLoc, StagLoc1), this_file,
         "secondary tag locations differ in generate_primary_try_chain"),
@@ -407,8 +407,8 @@ generate_primary_try_chain([PtagGroup | PtagGroups], TagRval, VarRval,
         ; CanFail = can_fail
         )
     ->
-        code_info__remember_position(!.CI, BranchStart),
-        code_info__get_next_label(ThisPtagLabel, !CI),
+        code_info.remember_position(!.CI, BranchStart),
+        code_info.get_next_label(ThisPtagLabel, !CI),
         TestRval = binop(eq, TagRval,
             unop(mktag, const(int_const(Primary)))),
         TestCode = node([
@@ -422,7 +422,7 @@ generate_primary_try_chain([PtagGroup | PtagGroups], TagRval, VarRval,
         PrevCases = tree(tree(LabelCode, TagCode), PrevCases0),
         (
             PtagGroups = [_ | _],
-            code_info__reset_to_position(BranchStart, !CI),
+            code_info.reset_to_position(BranchStart, !CI),
             generate_primary_try_chain(PtagGroups, TagRval, VarRval, CodeModel,
                 CanFail, SwitchGoalInfo, EndLabel, FailLabel, PtagCountMap,
                 PrevTests, PrevCases, !MaybeEnd, Code, !CI)
@@ -471,12 +471,12 @@ generate_primary_jump_table(PtagGroups, CurPrimary, MaxPrimary, VarRval,
         NextPrimary = CurPrimary + 1,
         ( PtagGroups = [CurPrimary - PrimaryInfo | PtagGroups1] ->
             PrimaryInfo = ptag_case(StagLoc, StagGoalMap),
-            map__lookup(PtagCountMap, CurPrimary, CountInfo),
+            map.lookup(PtagCountMap, CurPrimary, CountInfo),
             CountInfo = StagLoc1 - MaxSecondary,
             expect(unify(StagLoc, StagLoc1), this_file,
                 "secondary tag locations differ " ++
                 "in generate_primary_jump_table"),
-            code_info__get_next_label(NewLabel, !CI),
+            code_info.get_next_label(NewLabel, !CI),
             LabelCode = node([
                 label(NewLabel) - "start of a case in primary tag switch"
             ]),
@@ -487,11 +487,11 @@ generate_primary_jump_table(PtagGroups, CurPrimary, MaxPrimary, VarRval,
                     EndLabel, FailLabel, !MaybeEnd, ThisTagCode, !CI)
             ;
                 PtagGroups1 = [_ | _],
-                code_info__remember_position(!.CI, BranchStart),
+                code_info.remember_position(!.CI, BranchStart),
                 generate_primary_tag_code(StagGoalMap, CurPrimary,
                     MaxSecondary, StagLoc, VarRval, CodeModel, SwitchGoalInfo,
                     EndLabel, FailLabel, !MaybeEnd, ThisTagCode, !CI),
-                code_info__reset_to_position(BranchStart, !CI)
+                code_info.reset_to_position(BranchStart, !CI)
             ),
             generate_primary_jump_table(PtagGroups1, NextPrimary, MaxPrimary,
                 VarRval, CodeModel, SwitchGoalInfo, EndLabel, FailLabel,
@@ -528,8 +528,8 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, VarRval,
             % There is no code for this tag.
             (
                 CanFail = can_fail,
-                string__int_to_string(CurPrimary, PtagStr),
-                string__append("no code for ptag ", PtagStr, Comment),
+                string.int_to_string(CurPrimary, PtagStr),
+                string.append("no code for ptag ", PtagStr, Comment),
                 Code = node([goto(label(FailLabel)) - Comment])
             ;
                 CanFail = cannot_fail,
@@ -540,7 +540,7 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, VarRval,
             expect(unify(CurPrimary, CurPrimaryPrime), this_file,
                 "generate_primary_binary_search: cur_primary mismatch"),
             PrimaryInfo = ptag_case(StagLoc, StagGoalMap),
-            map__lookup(PtagCountMap, CurPrimary, CountInfo),
+            map.lookup(PtagCountMap, CurPrimary, CountInfo),
             CountInfo = StagLoc1 - MaxSecondary,
             expect(unify(StagLoc, StagLoc1), this_file,
                 "secondary tag locations differ " ++
@@ -560,26 +560,26 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, VarRval,
             PtagGroup = Ptag - _,
             Ptag =< LowRangeEnd
         ),
-        list__filter(InLowGroup, PtagGroups, LowGroups, HighGroups),
-        code_info__get_next_label(NewLabel, !CI),
-        string__int_to_string(MinPtag, LowStartStr),
-        string__int_to_string(LowRangeEnd, LowEndStr),
-        string__int_to_string(HighRangeStart, HighStartStr),
-        string__int_to_string(MaxPtag, HighEndStr),
-        string__append_list(["fallthrough for ptags ",
+        list.filter(InLowGroup, PtagGroups, LowGroups, HighGroups),
+        code_info.get_next_label(NewLabel, !CI),
+        string.int_to_string(MinPtag, LowStartStr),
+        string.int_to_string(LowRangeEnd, LowEndStr),
+        string.int_to_string(HighRangeStart, HighStartStr),
+        string.int_to_string(MaxPtag, HighEndStr),
+        string.append_list(["fallthrough for ptags ",
             LowStartStr, " to ", LowEndStr], IfComment),
-        string__append_list(["code for ptags ", HighStartStr,
+        string.append_list(["code for ptags ", HighStartStr,
             " to ", HighEndStr], LabelComment),
         LowRangeEndConst = const(int_const(LowRangeEnd)),
         TestRval = binop(int_gt, PtagRval, LowRangeEndConst),
         IfCode = node([if_val(TestRval, label(NewLabel)) - IfComment]),
         LabelCode = node([label(NewLabel) - LabelComment]),
 
-        code_info__remember_position(!.CI, BranchStart),
+        code_info.remember_position(!.CI, BranchStart),
         generate_primary_binary_search(LowGroups, MinPtag, LowRangeEnd,
             PtagRval, VarRval, CodeModel, CanFail, SwitchGoalInfo,
             EndLabel, FailLabel, PtagCountMap, !MaybeEnd, LowRangeCode, !CI),
-        code_info__reset_to_position(BranchStart, !CI),
+        code_info.reset_to_position(BranchStart, !CI),
         generate_primary_binary_search(HighGroups, HighRangeStart, MaxPtag,
             PtagRval, VarRval, CodeModel, CanFail, SwitchGoalInfo,
             EndLabel, FailLabel, PtagCountMap, !MaybeEnd, HighRangeCode, !CI),
@@ -601,7 +601,7 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, VarRval,
 generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc, Rval,
         CodeModel, SwitchGoalInfo, EndLabel, FailLabel, !MaybeEnd, Code,
         !CI) :-
-    map__to_assoc_list(GoalMap, GoalList),
+    map.to_assoc_list(GoalMap, GoalList),
     (
         StagLoc = none
     ->
@@ -609,11 +609,11 @@ generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc, Rval,
         ( GoalList = [-1 - stag_goal(ConsId, Goal)] ->
             Comment = "case " ++ cons_id_to_string(ConsId),
             CommentCode = node([comment(Comment) - ""]),
-            trace__maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
+            trace.maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
                 TraceCode, !CI),
-            code_gen__generate_goal(CodeModel, Goal, GoalCode, !CI),
+            code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
             goal_info_get_store_map(SwitchGoalInfo, StoreMap),
-            code_info__generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
+            code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
             GotoCode = node([
                 goto(label(EndLabel)) - "skip to end of primary tag switch"
             ]),
@@ -626,12 +626,12 @@ generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc, Rval,
         )
     ;
         % There is a secondary tag, so figure out how to switch on it
-        code_info__get_globals(!.CI, Globals),
-        globals__lookup_int_option(Globals, dense_switch_size,
+        code_info.get_globals(!.CI, Globals),
+        globals.lookup_int_option(Globals, dense_switch_size,
             DenseSwitchSize),
-        globals__lookup_int_option(Globals, binary_switch_size,
+        globals.lookup_int_option(Globals, binary_switch_size,
             BinarySwitchSize),
-        globals__lookup_int_option(Globals, try_switch_size, TrySwitchSize),
+        globals.lookup_int_option(Globals, try_switch_size, TrySwitchSize),
         ( MaxSecondary >= DenseSwitchSize ->
             SecondaryMethod = jump_table
         ; MaxSecondary >= BinarySwitchSize ->
@@ -651,12 +651,12 @@ generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc, Rval,
             Comment = "compute local sec tag to switch on"
         ),
 
-        code_info__acquire_reg(r, StagReg, !CI),
-        code_info__release_reg(StagReg, !CI),
+        code_info.acquire_reg(r, StagReg, !CI),
+        code_info.release_reg(StagReg, !CI),
         (
             SecondaryMethod \= jump_table,
             MaxSecondary >= 2,
-            globals__lookup_int_option(Globals, num_real_r_regs, NumRealRegs),
+            globals.lookup_int_option(Globals, num_real_r_regs, NumRealRegs),
             (
                 NumRealRegs = 0
             ;
@@ -674,7 +674,7 @@ generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc, Rval,
             StagRval = OrigStagRval
         ),
         (
-            list__length(GoalList, GoalCount),
+            list.length(GoalList, GoalCount),
             FullGoalCount = MaxSecondary + 1,
             FullGoalCount = GoalCount
         ->
@@ -735,17 +735,17 @@ generate_secondary_try_me_else_chain([Case0 | Cases0], StagRval, CodeModel,
         ; CanFail = can_fail
         )
     ->
-        code_info__remember_position(!.CI, BranchStart),
-        code_info__get_next_label(ElseLabel, !CI),
+        code_info.remember_position(!.CI, BranchStart),
+        code_info.get_next_label(ElseLabel, !CI),
         TestCode = node([
             if_val(binop(ne, StagRval, const(int_const(Secondary))),
                 label(ElseLabel))
                 - "test remote sec tag only"
         ]),
-        trace__maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
+        trace.maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
             TraceCode, !CI),
-        code_gen__generate_goal(CodeModel, Goal, GoalCode, !CI),
-        code_info__generate_branch_end(StoreMap, !MaybeEnd,
+        code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
+        code_info.generate_branch_end(StoreMap, !MaybeEnd,
             SaveCode, !CI),
         GotoLabelCode = node([
             goto(label(EndLabel)) - "skip to end of secondary tag switch",
@@ -755,7 +755,7 @@ generate_secondary_try_me_else_chain([Case0 | Cases0], StagRval, CodeModel,
             SaveCode, GotoLabelCode]),
         (
             Cases0 = [_ | _],
-            code_info__reset_to_position(BranchStart, !CI),
+            code_info.reset_to_position(BranchStart, !CI),
             generate_secondary_try_me_else_chain(Cases0, StagRval, CodeModel,
                 CanFail, SwitchGoalInfo, EndLabel, FailLabel, !MaybeEnd,
                 OtherCode, !CI),
@@ -768,10 +768,10 @@ generate_secondary_try_me_else_chain([Case0 | Cases0], StagRval, CodeModel,
             Code = tree(ThisCode, FailCode)
         )
     ;
-        trace__maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
+        trace.maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
             TraceCode, !CI),
-        code_gen__generate_goal(CodeModel, Goal, GoalCode, !CI),
-        code_info__generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
+        code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
+        code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
         GotoCode = node([
             goto(label(EndLabel)) - "skip to end of secondary tag switch"
         ]),
@@ -801,8 +801,8 @@ generate_secondary_try_chain([Case0 | Cases0], StagRval, CodeModel, CanFail,
         ; CanFail = can_fail
         )
     ->
-        code_info__remember_position(!.CI, BranchStart),
-        code_info__get_next_label(ThisStagLabel, !CI),
+        code_info.remember_position(!.CI, BranchStart),
+        code_info.get_next_label(ThisStagLabel, !CI),
         TestCode = node([
             if_val(binop(eq, StagRval, const(int_const(Secondary))),
                 label(ThisStagLabel))
@@ -812,10 +812,10 @@ generate_secondary_try_chain([Case0 | Cases0], StagRval, CodeModel, CanFail,
             label(ThisStagLabel)
                 - ("handle next secondary tag for " ++ Comment)
         ]),
-        trace__maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
+        trace.maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
             TraceCode, !CI),
-        code_gen__generate_goal(CodeModel, Goal, GoalCode, !CI),
-        code_info__generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
+        code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
+        code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
         GotoCode = node([
             goto(label(EndLabel)) - "skip to end of secondary tag switch"
         ]),
@@ -825,7 +825,7 @@ generate_secondary_try_chain([Case0 | Cases0], StagRval, CodeModel, CanFail,
         PrevCases = tree(ThisCode, PrevCases0),
         (
             Cases0 = [_ | _],
-            code_info__reset_to_position(BranchStart, !CI),
+            code_info.reset_to_position(BranchStart, !CI),
             generate_secondary_try_chain(Cases0, StagRval, CodeModel, CanFail,
                 SwitchGoalInfo, EndLabel, FailLabel, PrevTests, PrevCases,
                 !MaybeEnd, Code, !CI)
@@ -839,10 +839,10 @@ generate_secondary_try_chain([Case0 | Cases0], StagRval, CodeModel, CanFail,
         )
     ;
         CommentCode = node([comment(Comment) - ""]),
-        trace__maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
+        trace.maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
             TraceCode, !CI),
-        code_gen__generate_goal(CodeModel, Goal, GoalCode, !CI),
-        code_info__generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
+        code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
+        code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
         GotoCode = node([
             goto(label(EndLabel)) - "skip to end of secondary tag switch"
         ]),
@@ -871,22 +871,22 @@ generate_secondary_jump_table(CaseList, CurSecondary, MaxSecondary, CodeModel,
         NextSecondary = CurSecondary + 1,
         ( CaseList = [CurSecondary - stag_goal(ConsId, Goal) | CaseList1] ->
             Comment = "case " ++ cons_id_to_string(ConsId),
-            code_info__get_next_label(NewLabel, !CI),
+            code_info.get_next_label(NewLabel, !CI),
             LabelCode = node([
                 label(NewLabel) -
                     ("start of " ++ Comment ++ " in secondary tag switch")
             ]),
-            code_info__remember_position(!.CI, BranchStart),
-            trace__maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
+            code_info.remember_position(!.CI, BranchStart),
+            trace.maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
                 TraceCode, !CI),
-            code_gen__generate_goal(CodeModel, Goal, GoalCode, !CI),
+            code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
             goal_info_get_store_map(SwitchGoalInfo, StoreMap),
-            code_info__generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
+            code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
             (
                 CaseList1 = []
             ;
                 CaseList1 = [_ | _],
-                code_info__reset_to_position(BranchStart, !CI)
+                code_info.reset_to_position(BranchStart, !CI)
             ),
             GotoCode = node([
                 goto(label(EndLabel)) - "branch to end of tag switch"
@@ -927,8 +927,8 @@ generate_secondary_binary_search(StagGoals, MinStag, MaxStag, StagRval,
             % There is no code for this tag.
             (
                 CanFail = can_fail,
-                string__int_to_string(CurSec, StagStr),
-                string__append("no code for ptag ", StagStr, Comment),
+                string.int_to_string(CurSec, StagStr),
+                string.append("no code for ptag ", StagStr, Comment),
                 Code = node([goto(label(FailLabel)) - Comment])
             ;
                 CanFail = cannot_fail,
@@ -940,11 +940,11 @@ generate_secondary_binary_search(StagGoals, MinStag, MaxStag, StagRval,
             CommentCode = node([comment(Comment) - ""]),
             expect(unify(CurSec, CurSecPrime), this_file,
                 "generate_secondary_binary_search: cur_secondary mismatch"),
-            trace__maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
+            trace.maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
                 TraceCode, !CI),
-            code_gen__generate_goal(CodeModel, Goal, GoalCode, !CI),
+            code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
             goal_info_get_store_map(SwitchGoalInfo, StoreMap),
-            code_info__generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
+            code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
             Code = tree_list([CommentCode, TraceCode, GoalCode, SaveCode])
         ;
             StagGoals = [_, _ | _],
@@ -959,26 +959,26 @@ generate_secondary_binary_search(StagGoals, MinStag, MaxStag, StagRval,
             StagGoal = Stag - _,
             Stag =< LowRangeEnd
         ),
-        list__filter(InLowGroup, StagGoals, LowGoals, HighGoals),
-        code_info__get_next_label(NewLabel, !CI),
-        string__int_to_string(MinStag, LowStartStr),
-        string__int_to_string(LowRangeEnd, LowEndStr),
-        string__int_to_string(HighRangeStart, HighStartStr),
-        string__int_to_string(MaxStag, HighEndStr),
-        string__append_list(["fallthrough for stags ",
+        list.filter(InLowGroup, StagGoals, LowGoals, HighGoals),
+        code_info.get_next_label(NewLabel, !CI),
+        string.int_to_string(MinStag, LowStartStr),
+        string.int_to_string(LowRangeEnd, LowEndStr),
+        string.int_to_string(HighRangeStart, HighStartStr),
+        string.int_to_string(MaxStag, HighEndStr),
+        string.append_list(["fallthrough for stags ",
             LowStartStr, " to ", LowEndStr], IfComment),
-        string__append_list(["code for stags ", HighStartStr,
+        string.append_list(["code for stags ", HighStartStr,
             " to ", HighEndStr], LabelComment),
         LowRangeEndConst = const(int_const(LowRangeEnd)),
         TestRval = binop(int_gt, StagRval, LowRangeEndConst),
         IfCode = node([if_val(TestRval, label(NewLabel)) - IfComment]),
         LabelCode = node([label(NewLabel) - LabelComment ]),
 
-        code_info__remember_position(!.CI, BranchStart),
+        code_info.remember_position(!.CI, BranchStart),
         generate_secondary_binary_search(LowGoals, MinStag, LowRangeEnd,
             StagRval, CodeModel, CanFail, SwitchGoalInfo, EndLabel, FailLabel,
             !MaybeEnd, LowRangeCode, !CI),
-        code_info__reset_to_position(BranchStart, !CI),
+        code_info.reset_to_position(BranchStart, !CI),
         generate_secondary_binary_search(HighGoals, HighRangeStart, MaxStag,
             StagRval, CodeModel, CanFail, SwitchGoalInfo, EndLabel, FailLabel,
             !MaybeEnd, HighRangeCode, !CI),

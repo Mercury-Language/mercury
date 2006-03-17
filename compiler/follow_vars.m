@@ -27,7 +27,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__follow_vars.
+:- module ll_backend.follow_vars.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -77,8 +77,8 @@
 find_final_follow_vars(ProcInfo, FollowVarsMap, NextNonReserved) :-
     proc_info_arg_info(ProcInfo, ArgInfo),
     proc_info_headvars(ProcInfo, HeadVars),
-    assoc_list__from_corresponding_lists(ArgInfo, HeadVars, ArgInfoHeadVars),
-    map__init(FollowVarsMap0),
+    assoc_list.from_corresponding_lists(ArgInfo, HeadVars, ArgInfoHeadVars),
+    map.init(FollowVarsMap0),
     find_final_follow_vars_2(ArgInfoHeadVars,
         FollowVarsMap0, FollowVarsMap, 1, NextNonReserved).
 
@@ -91,8 +91,8 @@ find_final_follow_vars_2([arg_info(RegNum, Mode) - Var | ArgInfoVars],
         !FollowVarsMap, !NextNonReserved) :-
     ( Mode = top_out ->
         Locn = abs_reg(RegNum),
-        svmap__det_insert(Var, Locn, !FollowVarsMap),
-        int__max(RegNum + 1, !NextNonReserved)
+        svmap.det_insert(Var, Locn, !FollowVarsMap),
+        int.max(RegNum + 1, !NextNonReserved)
     ;
         true
     ),
@@ -209,9 +209,9 @@ find_follow_vars_in_goal_expr(Goal @ unify(_, _, _, Unify, _), Goal,
         !FollowVarsMap, !NextNonReserved) :-
     (
         Unify = assign(LVar, RVar),
-        map__search(!.FollowVarsMap, LVar, DesiredLoc)
+        map.search(!.FollowVarsMap, LVar, DesiredLoc)
     ->
-        svmap__set(RVar, DesiredLoc, !FollowVarsMap)
+        svmap.set(RVar, DesiredLoc, !FollowVarsMap)
     ;
         true
     ).
@@ -232,16 +232,16 @@ find_follow_vars_in_goal_expr(
         true
     ;
         determinism_to_code_model(Det, CodeModel),
-        map__apply_to_list(Args, VarTypes, Types),
+        map.apply_to_list(Args, VarTypes, Types),
         make_arg_infos(Types, Modes, CodeModel, ModuleInfo, ArgInfos),
-        assoc_list__from_corresponding_lists(Args, ArgInfos, ArgsInfos),
-        arg_info__partition_args(ArgsInfos, InVarInfos, _),
-        assoc_list__keys(InVarInfos, InVars),
+        assoc_list.from_corresponding_lists(Args, ArgInfos, ArgsInfos),
+        arg_info.partition_args(ArgsInfos, InVarInfos, _),
+        assoc_list.keys(InVarInfos, InVars),
         module_info_get_globals(ModuleInfo, Globals),
-        call_gen__generic_call_info(Globals, GenericCall,
+        call_gen.generic_call_info(Globals, GenericCall,
             length(InVars), _, SpecifierArgInfos, FirstInput, _),
         find_follow_vars_from_arginfo(SpecifierArgInfos,
-            map__init, !:FollowVarsMap, 1, _),
+            map.init, !:FollowVarsMap, 1, _),
         find_follow_vars_from_sequence(InVars, FirstInput,
             !FollowVarsMap, !:NextNonReserved)
     ).
@@ -265,8 +265,8 @@ find_follow_vars_in_call(PredId, ProcId, Args, ModuleInfo,
         FollowVarsMap, NextNonReserved) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     proc_info_arg_info(ProcInfo, ArgInfo),
-    assoc_list__from_corresponding_lists(Args, ArgInfo, ArgsInfos),
-    find_follow_vars_from_arginfo(ArgsInfos, map__init, FollowVarsMap,
+    assoc_list.from_corresponding_lists(Args, ArgInfo, ArgsInfos),
+    find_follow_vars_from_arginfo(ArgsInfos, map.init, FollowVarsMap,
         1, NextNonReserved).
 
 :- pred find_follow_vars_from_arginfo(assoc_list(prog_var, arg_info)::in,
@@ -278,7 +278,7 @@ find_follow_vars_from_arginfo([ArgVar - arg_info(RegNum, Mode) | ArgsInfos],
         !FollowVarsMap, !NextNonReserved) :-
     ( Mode = top_in ->
         Locn = abs_reg(RegNum),
-        ( svmap__insert(ArgVar, Locn, !FollowVarsMap) ->
+        ( svmap.insert(ArgVar, Locn, !FollowVarsMap) ->
             true    % FollowVarsMap is updated
         ;
             % The call is not in superhomogeneous form: this
@@ -288,7 +288,7 @@ find_follow_vars_from_arginfo([ArgVar - arg_info(RegNum, Mode) | ArgsInfos],
             % we would give to this appearance of the variable.
             true    % FollowVarsMap is not updated
         ),
-        int__max(RegNum + 1, !NextNonReserved)
+        int.max(RegNum + 1, !NextNonReserved)
     ;
         true
     ),
@@ -304,7 +304,7 @@ find_follow_vars_from_sequence([], NextRegNum, !FollowVarsMap, NextRegNum).
 find_follow_vars_from_sequence([InVar | InVars], NextRegNum, !FollowVarsMap,
         NextNonReserved) :-
     Locn = abs_reg(NextRegNum),
-    ( map__insert(!.FollowVarsMap, InVar, Locn, !:FollowVarsMap) ->
+    ( map.insert(!.FollowVarsMap, InVar, Locn, !:FollowVarsMap) ->
         true    % FollowVarsMap is updated
     ;
         % The call is not in superhomogeneous form: this argument has

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2001, 2003-2005 The University of Melbourne.
+% Copyright (C) 1996-2001, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,7 +17,7 @@
 % roughly     Head --> G1, G2, {G3}, G4.
 % becomes     Head(!DCG) :- G1(!DCG), G2(!DCG), G3, G4(!DCG).
 
-:- module parse_tree__prog_io_dcg.
+:- module parse_tree.prog_io_dcg.
 
 :- interface.
 
@@ -59,8 +59,8 @@
 
 parse_dcg_clause(ModuleName, VarSet0, DCG_Head, DCG_Body, DCG_Context,
         Result) :-
-    varset__coerce(VarSet0, ProgVarSet0),
-    new_dcg_var(ProgVarSet0, ProgVarSet1, counter__init(0), Counter0,
+    varset.coerce(VarSet0, ProgVarSet0),
+    new_dcg_var(ProgVarSet0, ProgVarSet1, counter.init(0), Counter0,
         DCG_0_Var),
     parse_dcg_goal(DCG_Body, Body, ProgVarSet1, ProgVarSet, Counter0, _Counter,
         DCG_0_Var, DCG_Var),
@@ -72,7 +72,7 @@ parse_dcg_clause(ModuleName, VarSet0, DCG_Head, DCG_Body, DCG_Context,
 %-----------------------------------------------------------------------------%
 
 parse_dcg_pred_goal(GoalTerm, Goal, DCGVar0, DCGVar, !VarSet) :-
-    new_dcg_var(!VarSet, counter__init(0), Counter0, DCGVar0),
+    new_dcg_var(!VarSet, counter.init(0), Counter0, DCGVar0),
     parse_dcg_goal(GoalTerm, Goal, !VarSet, Counter0, _Counter,
         DCGVar0, DCGVar).
 
@@ -84,11 +84,11 @@ parse_dcg_pred_goal(GoalTerm, Goal, DCGVar0, DCGVar, !VarSet) :-
     counter::in, counter::out, prog_var::out) is det.
 
 new_dcg_var(!VarSet, !Counter, DCG_0_Var) :-
-    counter__allocate(N, !Counter),
-    string__int_to_string(N, StringN),
-    string__append("DCG_", StringN, VarName),
-    varset__new_var(!.VarSet, DCG_0_Var, !:VarSet),
-    varset__name_var(!.VarSet, DCG_0_Var, VarName, !:VarSet).
+    counter.allocate(N, !Counter),
+    string.int_to_string(N, StringN),
+    string.append("DCG_", StringN, VarName),
+    varset.new_var(!.VarSet, DCG_0_Var, !:VarSet),
+    varset.name_var(!.VarSet, DCG_0_Var, VarName, !:VarSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -100,20 +100,20 @@ new_dcg_var(!VarSet, !Counter, DCG_0_Var) :-
 parse_dcg_goal(Term, Goal, !VarSet, !Counter, !Var) :-
     % First, figure out the context for the goal.
     (
-        Term = term__functor(_, _, Context)
+        Term = term.functor(_, _, Context)
     ;
-        Term = term__variable(_),
-        term__context_init(Context)
+        Term = term.variable(_),
+        term.context_init(Context)
     ),
     % Next, parse it.
     (
-        term__coerce(Term, ProgTerm),
+        term.coerce(Term, ProgTerm),
         sym_name_and_args(ProgTerm, SymName, Args0)
     ->
         % First check for the special cases:
         (
             SymName = unqualified(Functor),
-            list__map(term__coerce, Args0, Args1),
+            list.map(term.coerce, Args0, Args1),
             parse_dcg_goal_2(Functor, Args1, Context, Goal1,
                 !VarSet, !Counter, !Var)
         ->
@@ -123,7 +123,7 @@ parse_dcg_goal(Term, Goal, !VarSet, !Counter, !Var) :-
             % as the DCG output var from this goal, and append the DCG argument
             % pair to the non-terminal's argument list.
             new_dcg_var(!VarSet, !Counter, Var),
-            Args = Args0 ++ [term__variable(!.Var), term__variable(Var)],
+            Args = Args0 ++ [term.variable(!.Var), term.variable(Var)],
             Goal = call(SymName, Args, purity_pure) - Context,
             !:Var = Var
         )
@@ -132,9 +132,9 @@ parse_dcg_goal(Term, Goal, !VarSet, !Counter, !Var) :-
         % Just translate it into a call to call/3 - the typechecker
         % will catch calls to numbers and strings.
         new_dcg_var(!VarSet, !Counter, Var),
-        term__coerce(Term, ProgTerm),
+        term.coerce(Term, ProgTerm),
         Goal = call(unqualified("call"),
-            [ProgTerm, term__variable(!.Var), term__variable(Var)],
+            [ProgTerm, term.variable(!.Var), term.variable(Var)],
             purity_pure) - Context,
         !:Var = Var
     ).
@@ -209,7 +209,7 @@ parse_dcg_goal_2("promise_impure_implicit", [G], Context, Goal,
 parse_dcg_goal_2("[]", [], Context, Goal, !VarSet, !Counter, Var0, Var) :-
     % Empty list - just unify the input and output DCG args.
     new_dcg_var(!VarSet, !Counter, Var),
-    Goal = unify(term__variable(Var0), term__variable(Var), purity_pure)
+    Goal = unify(term.variable(Var0), term.variable(Var), purity_pure)
         - Context.
 
 parse_dcg_goal_2("[|]", [X, Xs], Context, Goal, !VarSet, !Counter,
@@ -217,21 +217,21 @@ parse_dcg_goal_2("[|]", [X, Xs], Context, Goal, !VarSet, !Counter,
     % Non-empty list of terminals. Append the DCG output arg as the new tail
     % of the list, and unify the result with the DCG input arg.
     new_dcg_var(!VarSet, !Counter, Var),
-    ConsTerm0 = term__functor(term__atom("[|]"), [X, Xs], Context),
-    term__coerce(ConsTerm0, ConsTerm),
-    term_list_append_term(ConsTerm, term__variable(Var), Term),
-    Goal = unify(term__variable(Var0), Term, purity_pure) - Context.
+    ConsTerm0 = term.functor(term.atom("[|]"), [X, Xs], Context),
+    term.coerce(ConsTerm0, ConsTerm),
+    term_list_append_term(ConsTerm, term.variable(Var), Term),
+    Goal = unify(term.variable(Var0), Term, purity_pure) - Context.
 
 parse_dcg_goal_2("=", [A0], Context, Goal, !VarSet, !Counter, Var, Var) :-
     % Call to '='/1 - unify argument with DCG input arg.
-    term__coerce(A0, A),
-    Goal = unify(A, term__variable(Var), purity_pure) - Context.
+    term.coerce(A0, A),
+    Goal = unify(A, term.variable(Var), purity_pure) - Context.
 
 parse_dcg_goal_2(":=", [A0], Context, Goal, !VarSet, !Counter, _Var0, Var) :-
     % Call to ':='/1 - unify argument with DCG output arg.
     new_dcg_var(!VarSet, !Counter, Var),
-    term__coerce(A0, A),
-    Goal = unify(A, term__variable(Var), purity_pure) - Context.
+    term.coerce(A0, A),
+    Goal = unify(A, term.variable(Var), purity_pure) - Context.
 
 % parse_dcg_goal_2("->", [Cond0, Then0], Context, VarSet0, Counter0, Var0,
 %       Goal, VarSet, Counter, Var) :-
@@ -242,12 +242,12 @@ parse_dcg_goal_2(":=", [A0], Context, Goal, !VarSet, !Counter, _Var0, Var) :-
 %   ( Var = Var0 ->
 %       Goal = if_then(SomeVars, StateVars, Cond, Then) - Context
 %   ;
-%       Unify = unify(term__variable(Var), term__variable(Var0)),
+%       Unify = unify(term.variable(Var), term.variable(Var0)),
 %       Goal = if_then_else(SomeVars, StateVars, Cond, Then,
 %                   Unify - Context) - Context
 %   ).
 
-parse_dcg_goal_2("if", [term__functor(term__atom("then"), [Cond0, Then0], _)],
+parse_dcg_goal_2("if", [term.functor(term.atom("then"), [Cond0, Then0], _)],
         Context, Goal, !VarSet, !Counter, Var0, Var) :-
     % If-then (NU-Prolog syntax).
     parse_dcg_if_then(Cond0, Then0, Context, SomeVars, StateVars,
@@ -255,7 +255,7 @@ parse_dcg_goal_2("if", [term__functor(term__atom("then"), [Cond0, Then0], _)],
     ( Var = Var0 ->
         Goal = if_then(SomeVars, StateVars, Cond, Then) - Context
     ;
-        Unify = unify(term__variable(Var), term__variable(Var0), purity_pure),
+        Unify = unify(term.variable(Var), term.variable(Var0), purity_pure),
         Goal = if_then_else(SomeVars, StateVars, Cond, Then, Unify - Context)
             - Context
     ).
@@ -274,7 +274,7 @@ parse_dcg_goal_2("&", [A0, B0], Context, (A & B) - Context,
 parse_dcg_goal_2(";", [A0, B0], Context, Goal, !VarSet, !Counter, Var0, Var) :-
     % Disjunction or if-then-else (Prolog syntax).
     (
-        A0 = term__functor(term__atom("->"), [Cond0, Then0], _Context)
+        A0 = term.functor(term.atom("->"), [Cond0, Then0], _Context)
     ->
         parse_dcg_if_then_else(Cond0, Then0, B0, Context, Goal,
             !VarSet, !Counter, Var0, Var)
@@ -286,27 +286,27 @@ parse_dcg_goal_2(";", [A0, B0], Context, Goal, !VarSet, !Counter, Var0, Var) :-
             Goal = (A1 ; B1) - Context
         ; VarA = Var0 ->
             Var = VarB,
-            Unify = unify(term__variable(Var), term__variable(VarA),
+            Unify = unify(term.variable(Var), term.variable(VarA),
                 purity_pure),
             append_to_disjunct(A1, Unify, Context, A2),
             Goal = (A2 ; B1) - Context
         ; VarB = Var0 ->
             Var = VarA,
-            Unify = unify(term__variable(Var), term__variable(VarB),
+            Unify = unify(term.variable(Var), term.variable(VarB),
                 purity_pure),
             append_to_disjunct(B1, Unify, Context, B2),
             Goal = (A1 ; B2) - Context
         ;
             Var = VarB,
-            prog_util__rename_in_goal(VarA, VarB, A1, A2),
+            prog_util.rename_in_goal(VarA, VarB, A1, A2),
             Goal = (A2 ; B1) - Context
         )
     ).
 
 parse_dcg_goal_2("else", [IF, Else0], _, Goal, !VarSet, !Counter, !Var) :-
     % If-then-else (NU-Prolog syntax).
-    IF = term__functor(term__atom("if"),
-        [term__functor(term__atom("then"), [Cond0, Then0], _)], Context),
+    IF = term.functor(term.atom("if"),
+        [term.functor(term.atom("then"), [Cond0, Then0], _)], Context),
     parse_dcg_if_then_else(Cond0, Then0, Else0, Context, Goal,
         !VarSet, !Counter, !Var).
 
@@ -325,8 +325,8 @@ parse_dcg_goal_2("all", [QVars, A0], Context, GoalExpr - Context,
     % Universal quantification.
     % Extract any state variables in the quantifier.
     parse_quantifier_vars(QVars, StateVars0, Vars0),
-    list__map(term__coerce_var, StateVars0, StateVars),
-    list__map(term__coerce_var, Vars0, Vars),
+    list.map(term.coerce_var, StateVars0, StateVars),
+    list.map(term.coerce_var, Vars0, Vars),
 
     parse_dcg_goal(A0, A @ (GoalExprA - ContextA), !VarSet, !Counter, !Var),
     (
@@ -352,8 +352,8 @@ parse_dcg_goal_2("some", [QVars, A0], Context, GoalExpr - Context,
     % Existential quantification.
     % Extract any state variables in the quantifier.
     parse_quantifier_vars(QVars, StateVars0, Vars0),
-    list__map(term__coerce_var, StateVars0, StateVars),
-    list__map(term__coerce_var, Vars0, Vars),
+    list.map(term.coerce_var, StateVars0, StateVars),
+    list.map(term.coerce_var, Vars0, Vars),
 
     parse_dcg_goal(A0, A @ (GoalExprA - ContextA), !VarSet, !Counter, !Var),
     (
@@ -390,7 +390,7 @@ parse_dcg_goal_with_purity(G, Purity, Goal, !VarSet, !Counter, !Var) :-
         % descriptive for these errors.
         Goal1 = _ - Context,
         purity_name(Purity, PurityString),
-        term__coerce(G, G1),
+        term.coerce(G, G1),
         Goal = call(unqualified(PurityString), [G1], purity_pure) - Context
     ).
 
@@ -412,14 +412,14 @@ append_to_disjunct(Disjunct0, Goal, Context, Disjunct) :-
 
 parse_some_vars_dcg_goal(A0, SomeVars, StateVars, A, !VarSet, !Counter,
         !Var) :-
-    ( A0 = term__functor(term__atom("some"), [QVars0, A1], _Context) ->
-        term__coerce(QVars0, QVars),
+    ( A0 = term.functor(term.atom("some"), [QVars0, A1], _Context) ->
+        term.coerce(QVars0, QVars),
         ( parse_quantifier_vars(QVars, StateVars0, SomeVars0) ->
             SomeVars = SomeVars0,
             StateVars = StateVars0
         ;
             % XXX A hack because we do not do error checking in this module.
-            term__vars(QVars, SomeVars),
+            term.vars(QVars, SomeVars),
             StateVars = []
         ),
         A2 = A1
@@ -464,7 +464,7 @@ parse_dcg_if_then(Cond0, Then0, Context, SomeVars, StateVars, Cond, Then,
         Var1 = Var2
     ->
         new_dcg_var(!VarSet, !Counter, Var),
-        Unify = unify(term__variable(Var), term__variable(Var2), purity_pure),
+        Unify = unify(term.variable(Var), term.variable(Var2), purity_pure),
         Then = (Then1, Unify - Context) - Context
     ;
         Then = Then1,
@@ -486,14 +486,14 @@ parse_dcg_if_then_else(Cond0, Then0, Else0, Context, Goal,
         Else = Else1
     ; VarThen = Var0 ->
         Var = VarElse,
-        Unify = unify(term__variable(Var), term__variable(VarThen),
+        Unify = unify(term.variable(Var), term.variable(VarThen),
             purity_pure),
         Then = (Then1, Unify - Context) - Context,
         Else = Else1
     ; VarElse = Var0 ->
         Var = VarThen,
         Then = Then1,
-        Unify = unify(term__variable(Var), term__variable(VarElse),
+        Unify = unify(term.variable(Var), term.variable(VarElse),
             purity_pure),
         Else = (Else1, Unify - Context) - Context
     ;
@@ -507,7 +507,7 @@ parse_dcg_if_then_else(Cond0, Then0, Else0, Context, Goal,
         % in the condition.
 
         Var = VarElse,
-        prog_util__rename_in_goal(VarThen, VarElse, Then1, Then),
+        prog_util.rename_in_goal(VarThen, VarElse, Then1, Then),
         Else = Else1
     ),
     Goal = if_then_else(SomeVars, StateVars, Cond, Then, Else) - Context.
@@ -521,11 +521,11 @@ parse_dcg_if_then_else(Cond0, Then0, Else0, Context, Goal,
     is semidet.
 
 term_list_append_term(List0, Term, List) :-
-    ( List0 = term__functor(term__atom("[]"), [], _Context) ->
+    ( List0 = term.functor(term.atom("[]"), [], _Context) ->
         List = Term
     ;
-        List0 = term__functor(term__atom("[|]"), [Head, Tail0], Context2),
-        List = term__functor(term__atom("[|]"), [Head, Tail], Context2),
+        List0 = term.functor(term.atom("[|]"), [Head, Tail0], Context2),
+        List = term.functor(term.atom("[|]"), [Head, Tail], Context2),
         term_list_append_term(Tail0, Term, Tail)
     ).
 
@@ -534,6 +534,6 @@ term_list_append_term(List0, Term, List) :-
 
 process_dcg_clause(ok(Name, Args0), VarSet, Var0, Var, Body,
         ok(clause(user, VarSet, predicate, Name, Args, Body))) :-
-    list__map(term__coerce, Args0, Args1),
-    list__append(Args1, [term__variable(Var0), term__variable(Var)], Args).
+    list.map(term.coerce, Args0, Args1),
+    list.append(Args1, [term.variable(Var0), term.variable(Var)], Args).
 process_dcg_clause(error(Message, Term), _, _, _, _, error(Message, Term)).

@@ -13,12 +13,12 @@
 % Ralph Becket <rafe@cs.mu.oz.au>
 % Fri Dec 31 14:45:18 EST 2004
 %
-% A constraint solver targetted specifically at David Overton's
+% A constraint solver targeted specifically at David Overton's
 % constraint-based mode analysis.
 %
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds__mcsolver.
+:- module check_hlds.mcsolver.
 
 :- interface.
 
@@ -146,27 +146,26 @@
 
     % Complex constraints.
     %
-:- type complex_cstrt       --->    eqv_disj(var, vars)
-                                        % var <-> OR(vars)
-                            ;       at_most_one(vars)
-                            ;       exactly_one(vars)
-                            ;       disj_of_assgts(list(assgts)).
-                                        % Each element of the list is a
-                                        % list of assignments which should
-                                        % occur concurrently.
+:- type complex_cstrt
+    --->    eqv_disj(var, vars)
+                % var <-> OR(vars)
+    ;       at_most_one(vars)
+    ;       exactly_one(vars)
+    ;       disj_of_assgts(list(assgts)).
+                % Each element of the list is a list of assignments
+                % which should occur concurrently.
+
 :- type complex_cstrts      ==      list(complex_cstrt).
 
-    % Map from a variable to the complex constraints it participates
-    % in.
+    % Map from a variable to the complex constraints it participates in.
     %
 :- type complex_cstrt_map   ==      multi_map(var, complex_cstrt).
 
-    % A propagation graph is an optimised representation of a set
-    % of binary implication constraints.  It is comprised of a pair
-    % of mappings from vars to consequent assignments, where the
-    % LHS of the pair is the mapping when the var in question is
-    % bound to `yes' and the RHS is the mapping when the var in
-    % question is bound to `no'.
+    % A propagation graph is an optimised representation of a set of
+    % binary implication constraints. It consists of a pair of mappings
+    % from vars to consequent assignments, where the LHS of the pair
+    % is the mapping when the var in question is bound to `yes'
+    % and the RHS is the mapping when the var in question is bound to `no'.
     %
 :- type prop_graph          ==      pair(multi_map(var, assgt)).
 
@@ -254,8 +253,8 @@ prepare_abstract_constraint(disj(Formulae), !PCs) :-
     then
         disjunction_of_assignments(DisjOfAssgts, !PCs)
     else
-        compiler_util.sorry(this_file, "Disjuction of constraints."
-            ++ " - general case.")
+        compiler_util.sorry(this_file,
+            "Disjuction of constraints - general case.")
     ).
 
     % Prepares an atomic constraint (as described in
@@ -291,7 +290,6 @@ equivalent(X, Y, PCs0, PCs) :-
 %-----------------------------------------------------------------------------%
 
 equivalent([], PCs, PCs).
-
 equivalent([X | Xs], PCs0, PCs) :-
     list.foldl(equivalent(X), Xs, PCs0, PCs).
 

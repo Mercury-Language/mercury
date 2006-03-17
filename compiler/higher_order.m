@@ -969,7 +969,7 @@ instance_matches(ClassTypes, Instance, Constraints, UnconstrainedTVarTypes,
 
     % XXX kind inference:
     % we assume all tvars have kind `star'.
-    map__init(KindMap),
+    map.init(KindMap),
     apply_rec_subst_to_tvar_list(KindMap, Subst, UnconstrainedTVars0,
         UnconstrainedTVarTypes).
 
@@ -1734,7 +1734,7 @@ version_matches(Params, ModuleInfo, Request, Version, Match) :-
     % XXX kind inference:
     % we assume all tvars have kind `star'
 
-    map__init(KindMap),
+    map.init(KindMap),
     apply_variable_renaming_to_tvar_kind_map(TVarRenaming, KindMap,
         RenamedKindMap),
     apply_variable_renaming_to_tvar_list(TVarRenaming,
@@ -2624,7 +2624,7 @@ output_higher_order_args(ModuleInfo, NumToDrop, Indent, [HOArg | HOArgs],
         CurriedHOArgs, IsConst),
     io.write_string("% ", !IO),
     list.duplicate(Indent + 1, "  ", Spaces),
-    list.foldl(io__write_string, Spaces, !IO),
+    list.foldl(io.write_string, Spaces, !IO),
     (
         IsConst = yes,
         io.write_string("const ", !IO)
@@ -2788,7 +2788,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
     ),
 
     % Add in the extra typeinfo vars.
-    list.map(polymorphism__build_type_info_type,
+    list.map(polymorphism.build_type_info_type,
         ExtraTypeInfoTVarTypes, ExtraTypeInfoTypes),
     proc_info_create_vars_from_types(ExtraTypeInfoTypes, ExtraTypeInfoVars,
         !NewProcInfo),
@@ -3183,7 +3183,7 @@ substitute_rtti_var_info(_, non_rtti_var, non_rtti_var).
 :- func higher_order_args_size(list(higher_order_arg)) = int.
 
 higher_order_args_size(Args) =
-    list.foldl(int__max, list__map(higher_order_arg_size, Args), 0).
+    list.foldl(int.max, list.map(higher_order_arg_size, Args), 0).
 
 :- func higher_order_arg_size(higher_order_arg) = int.
 
@@ -3193,7 +3193,7 @@ higher_order_arg_size(HOArg) =
 :- func higher_order_args_depth(list(higher_order_arg)) = int.
 
 higher_order_args_depth(Args) =
-    list.foldl(int__max, list__map(higher_order_arg_depth, Args), 0).
+    list.foldl(int.max, list.map(higher_order_arg_depth, Args), 0).
 
 :- func higher_order_arg_depth(higher_order_arg) = int.
 

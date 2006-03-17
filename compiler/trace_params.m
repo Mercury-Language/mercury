@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2005 The University of Melbourne.
+% Copyright (C) 2000-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,7 +33,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module libs__trace_params.
+:- module libs.trace_params.
 
 :- interface.
 
@@ -272,7 +272,7 @@ trace_level_needs_meaningful_var_names(decl_rep) = yes.
 trace_needs_return_info(TraceLevel, TraceSuppressItems) = Need :-
     (
         trace_level_has_return_info(TraceLevel) = yes,
-        \+ set__member(return_info, TraceSuppressItems)
+        \+ set.member(return_info, TraceSuppressItems)
     ->
         Need = yes
     ;
@@ -282,7 +282,7 @@ trace_needs_return_info(TraceLevel, TraceSuppressItems) = Need :-
 trace_needs_all_var_names(TraceLevel, TraceSuppressItems) = Need :-
     (
         trace_level_has_all_var_names(TraceLevel) = yes,
-        \+ set__member(all_var_names, TraceSuppressItems)
+        \+ set.member(all_var_names, TraceSuppressItems)
     ->
         Need = yes
     ;
@@ -292,7 +292,7 @@ trace_needs_all_var_names(TraceLevel, TraceSuppressItems) = Need :-
 trace_needs_proc_body_reps(TraceLevel, TraceSuppressItems) = Need :-
     (
         trace_level_has_proc_body_reps(TraceLevel) = yes,
-        \+ set__member(proc_body_reps, TraceSuppressItems)
+        \+ set.member(proc_body_reps, TraceSuppressItems)
     ->
         Need = yes
     ;
@@ -319,16 +319,16 @@ trace_level_has_proc_body_reps(deep) = no.
 trace_level_has_proc_body_reps(decl_rep) = yes.
 
 convert_trace_suppress(SuppressString, SuppressItemSet) :-
-    SuppressWords = string__words(char_is_comma, SuppressString),
-    list__map(convert_item_name, SuppressWords, SuppressItemLists),
-    list__condense(SuppressItemLists, SuppressItems),
-    set__list_to_set(SuppressItems, SuppressItemSet).
+    SuppressWords = string.words(char_is_comma, SuppressString),
+    list.map(convert_item_name, SuppressWords, SuppressItemLists),
+    list.condense(SuppressItemLists, SuppressItems),
+    set.list_to_set(SuppressItems, SuppressItemSet).
 
 :- pred char_is_comma(char::in) is semidet.
 
 char_is_comma(',').
 
-default_trace_suppress = set__init.
+default_trace_suppress = set.init.
 
 :- func convert_port_name(string) = trace_port is semidet.
 
@@ -389,7 +389,7 @@ convert_item_name(String, Names) :-
     ( convert_port_name(String) = PortName ->
         Names = [port(PortName)]
     ; convert_port_class_name(String) = PortNames ->
-        list__map(wrap_port, PortNames, Names)
+        list.map(wrap_port, PortNames, Names)
     ; convert_other_name(String) = OtherName ->
         Names = [OtherName]
     ;
@@ -453,10 +453,10 @@ trace_level_allows_port_suppression(decl_rep) = no.
 trace_needs_port(TraceLevel, TraceSuppressItems, Port) = NeedsPort :-
     (
         trace_port_category(Port) = Category,
-        list__member(Category, trace_level_port_categories(TraceLevel)),
+        list.member(Category, trace_level_port_categories(TraceLevel)),
         \+ (
             trace_level_allows_port_suppression(TraceLevel) = yes,
-            set__member(port(Port), TraceSuppressItems)
+            set.member(port(Port), TraceSuppressItems)
         )
     ->
         NeedsPort = yes
@@ -465,7 +465,7 @@ trace_needs_port(TraceLevel, TraceSuppressItems, Port) = NeedsPort :-
     ).
 
 encode_suppressed_events(SuppressedEvents) = SuppressedEventsInt :-
-    set__fold(maybe_add_suppressed_event, SuppressedEvents,
+    set.fold(maybe_add_suppressed_event, SuppressedEvents,
         0, SuppressedEventsInt).
 
 :- pred maybe_add_suppressed_event(trace_suppress_item::in, int::in, int::out)

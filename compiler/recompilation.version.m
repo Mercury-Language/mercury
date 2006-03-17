@@ -13,7 +13,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module recompilation__version.
+:- module recompilation.version.
 :- interface.
 
 :- import_module libs.timestamp.
@@ -77,10 +77,10 @@ compute_version_numbers(SourceFileTime, Items, MaybeOldItems,
     ;
         % There were no old version numbers, so every item
         % gets the same timestamp as the source module.
-        OldItemVersionNumbers = init_item_id_set(map__init),
-        GatheredOldItems = init_item_id_set(map__init),
-        map__init(OldInstanceItems),
-        map__init(OldInstanceVersionNumbers)
+        OldItemVersionNumbers = init_item_id_set(map.init),
+        GatheredOldItems = init_item_id_set(map.init),
+        map.init(OldInstanceItems),
+        map.init(OldInstanceVersionNumbers)
     ),
 
     compute_item_version_numbers(SourceFileTime,
@@ -99,7 +99,7 @@ compute_item_version_numbers(SourceFileTime,
         GatheredItems, GatheredOldItems,
         OldVersionNumbers, VersionNumbers) :-
     VersionNumbers = map_ids(compute_item_version_numbers_2(SourceFileTime,
-        GatheredOldItems, OldVersionNumbers), GatheredItems, map__init).
+        GatheredOldItems, OldVersionNumbers), GatheredItems, map.init).
 
 :- func compute_item_version_numbers_2(timestamp, gathered_items,
     item_version_numbers, item_type,
@@ -108,7 +108,7 @@ compute_item_version_numbers(SourceFileTime,
 
 compute_item_version_numbers_2(SourceFileTime, GatheredOldItems,
         OldVersionNumbers, ItemType, Items0) =
-    map__map_values(compute_item_version_numbers_3(SourceFileTime,
+    map.map_values(compute_item_version_numbers_3(SourceFileTime,
         GatheredOldItems, OldVersionNumbers, ItemType), Items0).
 
 :- func compute_item_version_numbers_3(timestamp, gathered_items,
@@ -119,9 +119,9 @@ compute_item_version_numbers_3(SourceFileTime, GatheredOldItems,
         OldVersionNumbers, ItemType, NameArity, Items) =
     (
         OldIds = extract_ids(GatheredOldItems, ItemType),
-        map__search(OldIds, NameArity, OldItems),
+        map.search(OldIds, NameArity, OldItems),
         items_are_unchanged(OldItems, Items),
-        map__search(extract_ids(OldVersionNumbers, ItemType), NameArity,
+        map.search(extract_ids(OldVersionNumbers, ItemType), NameArity,
             OldVersionNumber)
     ->
         OldVersionNumber
@@ -136,12 +136,12 @@ compute_item_version_numbers_3(SourceFileTime, GatheredOldItems,
 compute_instance_version_numbers(SourceFileTime,
         InstanceItems, OldInstanceItems,
         OldInstanceVersionNumbers, InstanceVersionNumbers) :-
-    InstanceVersionNumbers = map__map_values(
+    InstanceVersionNumbers = map.map_values(
         (func(ClassId, Items) = VersionNumber :-
             (
-                map__search(OldInstanceItems, ClassId, OldItems),
+                map.search(OldInstanceItems, ClassId, OldItems),
                 items_are_unchanged(OldItems, Items),
-                map__search(OldInstanceVersionNumbers, ClassId,
+                map.search(OldInstanceVersionNumbers, ClassId,
                     OldVersionNumber)
             ->
                 VersionNumber = OldVersionNumber
@@ -156,9 +156,9 @@ compute_instance_version_numbers(SourceFileTime,
     gathered_items::out, instance_item_map::out) is det.
 
 gather_items(Section, Items, GatheredItems, Instances) :-
-    list__reverse(Items, RevItems),
-    Info0 = gathered_item_info(init_item_id_set(map__init), [], [], map__init),
-    list__foldl2(gather_items_2, RevItems, Section, _, Info0, Info1),
+    list.reverse(Items, RevItems),
+    Info0 = gathered_item_info(init_item_id_set(map.init), [], [], map.init),
+    list.foldl2(gather_items_2, RevItems, Section, _, Info0, Info1),
 
     % Items which could appear in _OtherItems (those which aren't gathered
     % into the list for another type of item) can't appear in the interface
@@ -167,8 +167,8 @@ gather_items(Section, Items, GatheredItems, Instances) :-
     % `--intermodule-optimization'.
     Info1 = gathered_item_info(GatheredItems1, PragmaItems,
         _OtherItems, Instances),
-    list__reverse(PragmaItems, RevPragmaItems),
-    list__foldl(distribute_pragma_items, RevPragmaItems,
+    list.reverse(PragmaItems, RevPragmaItems),
+    list.foldl(distribute_pragma_items, RevPragmaItems,
         GatheredItems1, GatheredItems).
 
 :- pred distribute_pragma_items(
@@ -201,7 +201,7 @@ distribute_pragma_items({ItemId, ItemAndContext, Section}, !GatheredItems) :-
     ),
 
     % Pragmas can apply to typeclass methods.
-    map__map_values(distribute_pragma_items_class_items(MaybePredOrFunc,
+    map.map_values(distribute_pragma_items_class_items(MaybePredOrFunc,
         SymName, Arity, ItemAndContext, Section),
         extract_ids(!.GatheredItems, typeclass_item), GatheredTypeClasses),
     !:GatheredItems = update_ids(!.GatheredItems, typeclass_item,
@@ -217,10 +217,10 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
         ItemAndContext, Section, _, !ClassItems) :-
     (
         % Does this pragma match any of the methods of this class.
-        list__member(_ - ClassItem, !.ClassItems),
+        list.member(_ - ClassItem, !.ClassItems),
         ClassItem = typeclass(_, _, _, _, Interface, _) - _,
         Interface = concrete(Methods),
-        list__member(Method, Methods),
+        list.member(Method, Methods),
         Method = pred_or_func(_, _, _, MethodPredOrFunc, SymName,
             TypesAndModes, WithType, _, _, _, _, _, _),
         ( MaybePredOrFunc = yes(MethodPredOrFunc)
@@ -229,7 +229,7 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
         (
             WithType = no,
             adjust_func_arity(MethodPredOrFunc, Arity,
-                list__length(TypesAndModes))
+                list.length(TypesAndModes))
         ;
             % We don't know the actual arity, so just match on the name
             % and pred_or_func.
@@ -301,7 +301,7 @@ gather_items_2(ItemAndContext, !Section, !Info) :-
             NameItem = Item,
             BodyItem = Item
         ),
-        TypeCtor = Name - list__length(Args),
+        TypeCtor = Name - list.length(Args),
         GatheredItems0 = !.Info ^ gathered_items,
         add_gathered_item(NameItem, item_id(type_item, TypeCtor),
             ItemContext, !.Section, yes, GatheredItems0, GatheredItems1),
@@ -312,13 +312,13 @@ gather_items_2(ItemAndContext, !Section, !Info) :-
         Item = instance(_, ClassName, ClassArgs, _, _, _)
     ->
         Instances0 = !.Info ^ instances,
-        ClassArity = list__length(ClassArgs),
-        ( map__search(Instances0, ClassName - ClassArity, InstanceItems0) ->
+        ClassArity = list.length(ClassArgs),
+        ( map.search(Instances0, ClassName - ClassArity, InstanceItems0) ->
             InstanceItems = InstanceItems0
         ;
             InstanceItems = []
         ),
-        map__set(Instances0, ClassName - ClassArity,
+        map.set(Instances0, ClassName - ClassArity,
             [!.Section - (Item - ItemContext) | InstanceItems], Instances),
         !:Info = !.Info ^ instances := Instances
     ;
@@ -332,7 +332,7 @@ gather_items_2(ItemAndContext, !Section, !Info) :-
         WithInst = yes(_)
     ->
         GatheredItems0 = !.Info ^ gathered_items,
-        ItemName = SymName - list__length(Modes),
+        ItemName = SymName - list.length(Modes),
         add_gathered_item(Item, item_id(predicate_item, ItemName),
             ItemContext, !.Section, yes, GatheredItems0, GatheredItems1),
         add_gathered_item(Item, item_id(function_item, ItemName),
@@ -368,7 +368,7 @@ add_gathered_item(Item, ItemId, ItemContext, Section, AddIfNotExisting,
     unqualify_name(SymName, Name),
     IdMap0 = extract_ids(!.GatheredItems, ItemType),
     NameArity = Name - Arity,
-    ( map__search(IdMap0, NameArity, MatchingItems0) ->
+    ( map.search(IdMap0, NameArity, MatchingItems0) ->
         MatchingItems = MatchingItems0
     ;
         MatchingItems = []
@@ -403,8 +403,8 @@ add_gathered_item_2(Item, ItemType, NameArity, ItemContext, Section,
         ; WithInst = yes(_)
         )
     ->
-        TypesWithoutModes = list__map((func(Type) = type_only(Type)), Types),
-        varset__init(EmptyInstVarSet),
+        TypesWithoutModes = list.map((func(Type) = type_only(Type)), Types),
+        varset.init(EmptyInstVarSet),
         PredOrFuncItem = pred_or_func(TVarSet, EmptyInstVarSet, ExistQVars,
             PredOrFunc, PredName, TypesWithoutModes, WithType, no, no, Cond,
             Purity, ClassContext),
@@ -427,8 +427,8 @@ add_gathered_item_2(Item, ItemType, NameArity, ItemContext, Section,
     ;
         Item ^ tc_class_methods = concrete(Methods0)
     ->
-        MethodsList = list__map(split_class_method_types_and_modes, Methods0),
-        list__condense(MethodsList, Methods),
+        MethodsList = list.map(split_class_method_types_and_modes, Methods0),
+        list.condense(MethodsList, Methods),
         TypeclassItem = Item ^ tc_class_methods := concrete(Methods),
         MatchingItems = [Section - (TypeclassItem - ItemContext)
             | MatchingItems0]
@@ -437,7 +437,7 @@ add_gathered_item_2(Item, ItemType, NameArity, ItemContext, Section,
     ),
 
     IdMap0 = extract_ids(!.GatheredItems, ItemType),
-    map__set(IdMap0, NameArity, MatchingItems, IdMap),
+    map.set(IdMap0, NameArity, MatchingItems, IdMap),
     !:GatheredItems = update_ids(!.GatheredItems, ItemType, IdMap).
 
 :- func split_class_method_types_and_modes(class_method) = class_methods.
@@ -455,7 +455,7 @@ split_class_method_types_and_modes(Method0) = Items :-
         ; WithInst = yes(_)
         )
     ->
-        TypesWithoutModes = list__map((func(Type) = type_only(Type)), Types),
+        TypesWithoutModes = list.map((func(Type) = type_only(Type)), Types),
         (
             WithInst = yes(_),
             % MaybePredOrFunc needs to be `no' here because when the item
@@ -467,22 +467,22 @@ split_class_method_types_and_modes(Method0) = Items :-
             MaybePredOrFunc = yes(PredOrFunc)
         ),
         PredOrFuncModeItem = pred_or_func_mode(InstVarSet, MaybePredOrFunc,
-            SymName, Modes, WithInst, MaybeDet, Cond, term__context_init),
+            SymName, Modes, WithInst, MaybeDet, Cond, term.context_init),
         PredOrFuncModeItems = [PredOrFuncModeItem]
     ;
         TypesWithoutModes = TypesAndModes,
         PredOrFuncModeItems = []
     ),
-    varset__init(EmptyInstVarSet),
+    varset.init(EmptyInstVarSet),
     PredOrFuncItem = pred_or_func(TVarSet, EmptyInstVarSet, ExistQVars,
         PredOrFunc, SymName, TypesWithoutModes, WithType, no, no, Cond, Purity,
-        ClassContext, term__context_init),
+        ClassContext, term.context_init),
     Items = [PredOrFuncItem | PredOrFuncModeItems].
 split_class_method_types_and_modes(Method0) = [Method] :-
     % Always strip the context from the item -- this is needed
     % so the items can be easily tested for equality.
     Method0 = pred_or_func_mode(A, B, C, D, E, F, G, _),
-    Method = pred_or_func_mode(A, B, C, D, E, F, G, term__context_init).
+    Method = pred_or_func_mode(A, B, C, D, E, F, G, term.context_init).
 
 :- pred item_to_item_id(item::in, item_id::out) is semidet.
 
@@ -494,13 +494,13 @@ item_to_item_id(Item, ItemId) :-
 item_to_item_id_2(clause(_, _, _, _, _, _), no).
 item_to_item_id_2(type_defn(_, Name, Params, _, _),
         yes(item_id(type_item, Name - Arity))) :-
-    list__length(Params, Arity).
+    list.length(Params, Arity).
 item_to_item_id_2(inst_defn(_, Name, Params, _, _),
         yes(item_id(inst_item, Name - Arity))) :-
-    list__length(Params, Arity).
+    list.length(Params, Arity).
 item_to_item_id_2(mode_defn(_, Name, Params, _, _),
         yes(item_id(mode_item, Name - Arity))) :-
-    list__length(Params, Arity).
+    list.length(Params, Arity).
 item_to_item_id_2(module_defn(_, _), no).
 item_to_item_id_2(Item, yes(item_id(ItemType, SymName - Arity))) :-
     Item = pred_or_func(_, _, _, PredOrFunc, SymName, TypesAndModes, WithType,
@@ -511,10 +511,10 @@ item_to_item_id_2(Item, yes(item_id(ItemType, SymName - Arity))) :-
     % so this will work.
     (
         WithType = no,
-        adjust_func_arity(PredOrFunc, Arity, list__length(TypesAndModes))
+        adjust_func_arity(PredOrFunc, Arity, list.length(TypesAndModes))
     ;
         WithType = yes(_),
-        Arity = list__length(TypesAndModes)
+        Arity = list.length(TypesAndModes)
     ),
     ItemType = pred_or_func_to_item_type(PredOrFunc).
 
@@ -522,7 +522,7 @@ item_to_item_id_2(Item, ItemId) :-
     Item = pred_or_func_mode(_, MaybePredOrFunc, SymName, Modes, _, _, _),
     (
         MaybePredOrFunc = yes(PredOrFunc),
-        adjust_func_arity(PredOrFunc, Arity, list__length(Modes)),
+        adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
         ItemType = pred_or_func_to_item_type(PredOrFunc),
         ItemId = yes(item_id(ItemType, SymName - Arity))
     ;
@@ -539,7 +539,7 @@ item_to_item_id_2(promise(_, _, _, _), no).
 item_to_item_id_2(Item,
         yes(item_id(typeclass_item, ClassName - ClassArity))) :-
     Item = typeclass(_, _, ClassName, ClassVars, _, _),
-    list__length(ClassVars, ClassArity).
+    list.length(ClassVars, ClassArity).
 
     % Instances are handled separately (unlike other items, the module
     % qualifier on an instance declaration is the module containing
@@ -560,7 +560,7 @@ is_pred_pragma(foreign_import_module(_, _), no).
 is_pred_pragma(foreign_code(_, _), no).
 is_pred_pragma(foreign_proc(_, Name, PredOrFunc, Args, _, _, _),
         yes(yes(PredOrFunc) - Name / Arity)) :-
-    adjust_func_arity(PredOrFunc, Arity, list__length(Args)).
+    adjust_func_arity(PredOrFunc, Arity, list.length(Args)).
 is_pred_pragma(type_spec(Name, _, Arity, MaybePredOrFunc, _, _, _, _),
         yes(MaybePredOrFunc - Name / Arity)).
 is_pred_pragma(inline(Name, Arity), yes(no - Name / Arity)).
@@ -568,7 +568,7 @@ is_pred_pragma(no_inline(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(obsolete(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(export(Name, PredOrFunc, Modes, _),
         yes(yes(PredOrFunc) - Name / Arity)) :-
-    adjust_func_arity(PredOrFunc, Arity, list__length(Modes)).
+    adjust_func_arity(PredOrFunc, Arity, list.length(Modes)).
     % Pragma import declarations are never used directly by Mercury code.
 is_pred_pragma(import(_, _, _, _, _), no).
 is_pred_pragma(source_file(_), no).
@@ -588,19 +588,19 @@ is_pred_pragma(promise_equivalent_clauses(Name, Arity),
         yes(no - Name / Arity)).
 is_pred_pragma(termination_info(PredOrFunc, Name, Modes, _, _),
         yes(yes(PredOrFunc) - Name / Arity)) :-
-    adjust_func_arity(PredOrFunc, Arity, list__length(Modes)).  
+    adjust_func_arity(PredOrFunc, Arity, list.length(Modes)).  
 is_pred_pragma(structure_sharing(PredOrFunc, Name, Modes, _, _, _),
         yes(yes(PredOrFunc) - Name / Arity)) :-
-    adjust_func_arity(PredOrFunc, Arity, list__length(Modes)).  
+    adjust_func_arity(PredOrFunc, Arity, list.length(Modes)).  
 is_pred_pragma(termination2_info(PredOrFunc, Name, Modes, _, _, _),
         yes(yes(PredOrFunc) - Name / Arity)) :-
-    adjust_func_arity(PredOrFunc, Arity, list__length(Modes)).  
+    adjust_func_arity(PredOrFunc, Arity, list.length(Modes)).  
 is_pred_pragma(terminates(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(does_not_terminate(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(check_termination(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(mode_check_clauses(Name, Arity), yes(no - Name / Arity)).
 
-    % XXX This is a bit brittle (need to be careful with term__contexts).
+    % XXX This is a bit brittle (need to be careful with term.contexts).
     % For example, it won't work for clauses.
     % It will never succeed when it shouldn't, so it will never
     % cause a necessary recompilation to be missed.
@@ -681,15 +681,13 @@ item_is_unchanged(pragma(_, PragmaType1), Item2) = Result :-
                 MaybePredOrFunc, MaybeModes, TypeSubst2,
                 TVarSet2, _)
         ->
-            assoc_list__keys_and_values(TypeSubst1, TVars1, Types1),
-            assoc_list__keys_and_values(TypeSubst2, TVars2, Types2),
+            assoc_list.keys_and_values(TypeSubst1, TVars1, Types1),
+            assoc_list.keys_and_values(TypeSubst2, TVars2, Types2),
             % XXX kind inference:
             % we assume vars have kind `star'.
-            KindMap = map__init,
-            prog_type__var_list_to_type_list(KindMap, TVars1,
-                TVarTypes1),
-            prog_type__var_list_to_type_list(KindMap, TVars2,
-                TVarTypes2),
+            KindMap = map.init,
+            prog_type.var_list_to_type_list(KindMap, TVars1, TVarTypes1),
+            prog_type.var_list_to_type_list(KindMap, TVars2, TVarTypes2),
             (
                 type_list_is_unchanged(
                     TVarSet1, TVarTypes1 ++ Types1,
@@ -808,8 +806,8 @@ pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndModes1,
                     "pred_or_func_type_matches: type_and_mode")
             )
         ),
-    Types1 = list__map(GetArgTypes, TypesAndModes1),
-    Types2 = list__map(GetArgTypes, TypesAndModes2),
+    Types1 = list.map(GetArgTypes, TypesAndModes1),
+    Types2 = list.map(GetArgTypes, TypesAndModes2),
     (
         MaybeWithType1 = yes(WithType1),
         MaybeWithType2 = yes(WithType2),
@@ -829,14 +827,14 @@ pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndModes1,
     %
     % XXX kind inference: we assume all tvars have kind `star'.
 
-    map__init(KindMap2),
+    map.init(KindMap2),
     apply_variable_renaming_to_tvar_kind_map(Renaming, KindMap2,
         RenamedKindMap2),
     apply_variable_renaming_to_tvar_list(Renaming, ExistQVars2,
         RenamedExistQVars2),
     apply_rec_subst_to_tvar_list(RenamedKindMap2, Types2ToTypes1Subst,
         RenamedExistQVars2, SubstExistQTypes2),
-    ( prog_type__type_list_to_var_list(SubstExistQTypes2, SubstExistQVars2) ->
+    ( prog_type.type_list_to_var_list(SubstExistQTypes2, SubstExistQVars2) ->
         ExistQVars1 = SubstExistQVars2
     ;
         unexpected(this_file, "pred_or_func_type_is_unchanged: non-var")
@@ -870,26 +868,26 @@ type_list_is_unchanged(TVarSet1, Types1, TVarSet2, Types2,
 
     ( all [VarInItem1, VarInItem2]
         (
-            map__member(Types2ToTypes1Subst, VarInItem2, SubstTerm),
+            map.member(Types2ToTypes1Subst, VarInItem2, SubstTerm),
             % Note that since the type comes from a substitution,
             % it will not contain a kind annotation.
             SubstTerm = variable(VarInItem1, _)
         )
     =>
         (
-            varset__lookup_name(TVarSet, VarInItem1, VarName1),
-            varset__lookup_name(TVarSet, VarInItem2, VarName2),
+            varset.lookup_name(TVarSet, VarInItem1, VarName1),
+            varset.lookup_name(TVarSet, VarInItem2, VarName2),
             (
                 VarName1 = VarName2
             ;
                 % Variables written to interface files are always named,
                 % even if the variable in the source code was not, so we can't
-                % just use varset__search_name to check whether the variables
+                % just use varset.search_name to check whether the variables
                 % are named.
                 VarIsNotNamed =
                     (pred(VarName::in) is semidet :-
-                        string__append("V_", VarNum, VarName),
-                        string__to_int(VarNum, _)
+                        string.append("V_", VarNum, VarName),
+                        string.to_int(VarNum, _)
                     ),
                 VarIsNotNamed(VarName1),
                 VarIsNotNamed(VarName2)
@@ -903,18 +901,18 @@ type_list_is_unchanged(TVarSet1, Types1, TVarSet2, Types2,
 
 pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, MaybeWithInst1,
         InstVarSet2, Modes2, MaybeWithInst2) :-
-    varset__coerce(InstVarSet1, VarSet1),
-    varset__coerce(InstVarSet2, VarSet2),
+    varset.coerce(InstVarSet1, VarSet1),
+    varset.coerce(InstVarSet2, VarSet2),
 
     % Apply the substitution to the modes so that the inst variables
     % from both declarations being checked are contained in the same
     % inst_varset, then check that they are identical.
-    varset__merge_subst(VarSet1, VarSet2, _, InstSubst),
+    varset.merge_subst(VarSet1, VarSet2, _, InstSubst),
 
-    % Treat modes as terms here to use term__list_subsumes, which does just
+    % Treat modes as terms here to use term.list_subsumes, which does just
     % what we want here.
-    ModeTerms1 = list__map(mode_to_term, Modes1),
-    ModeTerms2 = list__map(mode_to_term, Modes2),
+    ModeTerms1 = list.map(mode_to_term, Modes1),
+    ModeTerms2 = list.map(mode_to_term, Modes2),
     (
         MaybeWithInst1 = yes(Inst1),
         MaybeWithInst2 = yes(Inst2),
@@ -929,10 +927,10 @@ pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, MaybeWithInst1,
         AllModeTerms2 = ModeTerms2
     ),
 
-    term__apply_substitution_to_list(AllModeTerms2, InstSubst,
+    term.apply_substitution_to_list(AllModeTerms2, InstSubst,
         SubstAllModeTerms2),
-    term__list_subsumes(AllModeTerms1, SubstAllModeTerms2, _),
-    term__list_subsumes(SubstAllModeTerms2, AllModeTerms1, _).
+    term.list_subsumes(AllModeTerms1, SubstAllModeTerms2, _),
+    term.list_subsumes(SubstAllModeTerms2, AllModeTerms1, _).
 
     % Combined typeclass method type and mode declarations are split as for
     % ordinary predicate declarations, so the varsets won't necessarily match
@@ -976,32 +974,32 @@ class_methods_are_unchanged([Method1 | Methods1], [Method2 | Methods2]) :-
 write_version_numbers(AllVersionNumbers, !IO) :-
     AllVersionNumbers = version_numbers(VersionNumbers,
         InstanceVersionNumbers),
-    VersionNumbersList = list__filter_map(
+    VersionNumbersList = list.filter_map(
         (func(ItemType) = (ItemType - ItemVersions) is semidet :-
             ItemVersions = extract_ids(VersionNumbers, ItemType),
-            \+ map__is_empty(ItemVersions)
+            \+ map.is_empty(ItemVersions)
         ),
         [type_item, type_body_item, mode_item, inst_item,
             predicate_item, function_item, typeclass_item]),
-    io__write_string("{\n\t", !IO),
-    io__write_list(VersionNumbersList, ",\n\t",
+    io.write_string("{\n\t", !IO),
+    io.write_list(VersionNumbersList, ",\n\t",
         write_item_type_and_versions, !IO),
-    ( map__is_empty(InstanceVersionNumbers) ->
+    ( map.is_empty(InstanceVersionNumbers) ->
         true
     ;
         (
             VersionNumbersList = []
         ;
             VersionNumbersList = [_ | _],
-            io__write_string(",\n\t", !IO)
+            io.write_string(",\n\t", !IO)
         ),
-        io__write_string("instance(", !IO),
-        map__to_assoc_list(InstanceVersionNumbers, InstanceAL),
-        io__write_list(InstanceAL, ",\n\n\t",
+        io.write_string("instance(", !IO),
+        map.to_assoc_list(InstanceVersionNumbers, InstanceAL),
+        io.write_list(InstanceAL, ",\n\n\t",
             write_symname_arity_version_number, !IO),
-        io__write_string(")\n\t", !IO)
+        io.write_string(")\n\t", !IO)
     ),
-    io__write_string("\n}", !IO).
+    io.write_string("\n}", !IO).
 
 :- pred write_item_type_and_versions(
     pair(item_type, map(pair(string, int), version_number))::in,
@@ -1009,12 +1007,12 @@ write_version_numbers(AllVersionNumbers, !IO) :-
 
 write_item_type_and_versions(ItemType - ItemVersions, !IO) :-
     string_to_item_type(ItemTypeStr, ItemType),
-    io__write_string(ItemTypeStr, !IO),
-    io__write_string("(\n\t\t", !IO),
-    map__to_assoc_list(ItemVersions, ItemVersionsList),
-    io__write_list(ItemVersionsList, ",\n\t\t",
+    io.write_string(ItemTypeStr, !IO),
+    io.write_string("(\n\t\t", !IO),
+    map.to_assoc_list(ItemVersions, ItemVersionsList),
+    io.write_list(ItemVersionsList, ",\n\t\t",
         write_name_arity_version_number, !IO),
-    io__write_string("\n\t)", !IO).
+    io.write_string("\n\t)", !IO).
 
 :- pred write_name_arity_version_number(
     pair(pair(string, int), version_number)::in, io::di, io::uo) is det.
@@ -1023,9 +1021,9 @@ write_name_arity_version_number(NameArity - VersionNumber, !IO) :-
     NameArity = Name - Arity,
     mercury_output_bracketed_sym_name(unqualified(Name),
         next_to_graphic_token, !IO),
-    io__write_string("/", !IO),
-    io__write_int(Arity, !IO),
-    io__write_string(" - ", !IO),
+    io.write_string("/", !IO),
+    io.write_int(Arity, !IO),
+    io.write_string(" - ", !IO),
     write_version_number(VersionNumber, !IO).
 
 :- pred write_symname_arity_version_number(
@@ -1034,9 +1032,9 @@ write_name_arity_version_number(NameArity - VersionNumber, !IO) :-
 write_symname_arity_version_number(SymNameArity - VersionNumber, !IO) :-
     SymNameArity = SymName - Arity,
     mercury_output_bracketed_sym_name(SymName, next_to_graphic_token, !IO),
-    io__write_string("/", !IO),
-    io__write_int(Arity, !IO),
-    io__write_string(" - ", !IO),
+    io.write_string("/", !IO),
+    io.write_int(Arity, !IO),
+    io.write_string(" - ", !IO),
     write_version_number(VersionNumber, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -1047,7 +1045,7 @@ version_numbers_version_number = 1.
 
 parse_version_numbers(VersionNumbersTerm, Result) :-
     (
-        VersionNumbersTerm = term__functor(term__atom("{}"),
+        VersionNumbersTerm = term.functor(term.atom("{}"),
             VersionNumbersTermList0, _)
     ->
         VersionNumbersTermList = VersionNumbersTermList0
@@ -1058,9 +1056,9 @@ parse_version_numbers(VersionNumbersTerm, Result) :-
         Result0),
     (
         Result0 = ok(List),
-        VersionNumbers0 = version_numbers(init_item_id_set(map__init),
-            map__init),
-        VersionNumbers = list__foldl(
+        VersionNumbers0 = version_numbers(init_item_id_set(map.init),
+            map.init),
+        VersionNumbers = list.foldl(
             (func(VNResult, version_numbers(VNs0, Instances0)) =
                     version_numbers(VNs, Instances) :-
                 (
@@ -1087,25 +1085,25 @@ parse_version_numbers(VersionNumbersTerm, Result) :-
 
 parse_item_type_version_numbers(Term, Result) :-
     (
-        Term = term__functor(term__atom(ItemTypeStr), ItemsVNsTerms, _),
+        Term = term.functor(term.atom(ItemTypeStr), ItemsVNsTerms, _),
         string_to_item_type(ItemTypeStr, ItemType)
     ->
         ParseName =
             (pred(NameTerm::in, Name::out) is semidet :-
-                NameTerm = term__functor(term__atom(Name), [], _)
+                NameTerm = term.functor(term.atom(Name), [], _)
             ),
         map_parser(parse_item_version_number(ParseName), ItemsVNsTerms,
             Result0),
         (
             Result0 = ok(VNsAL),
-            map__from_assoc_list(VNsAL, VNsMap),
+            map.from_assoc_list(VNsAL, VNsMap),
             Result = ok(items(ItemType, VNsMap))
         ;
             Result0 = error(A, B),
             Result = error(A, B)
         )
     ;
-        Term = term__functor(term__atom("instance"),
+        Term = term.functor(term.atom("instance"),
             InstanceVNsTerms, _)
     ->
         ParseName =
@@ -1116,7 +1114,7 @@ parse_item_type_version_numbers(Term, Result) :-
             InstanceVNsTerms, Result1),
         (
             Result1 = ok(VNsAL),
-            map__from_assoc_list(VNsAL, VNsMap),
+            map.from_assoc_list(VNsAL, VNsMap),
             Result = ok(instances(VNsMap))
         ;
             Result1 = error(A, B),
@@ -1131,12 +1129,12 @@ parse_item_type_version_numbers(Term, Result) :-
 
 parse_item_version_number(ParseName, Term, Result) :-
     (
-        Term = term__functor(term__atom("-"),
+        Term = term.functor(term.atom("-"),
             [ItemNameArityTerm, VersionNumberTerm], _),
-        ItemNameArityTerm = term__functor(term__atom("/"),
+        ItemNameArityTerm = term.functor(term.atom("/"),
             [NameTerm, ArityTerm], _),
         ParseName(NameTerm, Name),
-        ArityTerm = term__functor(term__integer(Arity), _, _),
+        ArityTerm = term.functor(term.integer(Arity), _, _),
         VersionNumber = term_to_version_number(VersionNumberTerm)
     ->
         Result = ok((Name - Arity) - VersionNumber)

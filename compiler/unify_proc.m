@@ -44,7 +44,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds__unify_proc.
+:- module check_hlds.unify_proc.
 :- interface.
 
 :- import_module check_hlds.mode_info.
@@ -195,8 +195,8 @@
 %-----------------------------------------------------------------------------%
 
 init_requests(Requests) :-
-    map__init(UnifyReqMap),
-    queue__init(ReqQueue),
+    map.init(UnifyReqMap),
+    queue.init(ReqQueue),
     Requests = proc_requests(UnifyReqMap, ReqQueue).
 
 %-----------------------------------------------------------------------------%
@@ -242,19 +242,19 @@ search_mode_num(ModuleInfo, TypeCtor, UniMode, Determinism, ProcId) :-
         inst_is_ground_or_any(ModuleInfo, XInitial),
         inst_is_ground_or_any(ModuleInfo, YInitial)
     ->
-        hlds_pred__in_in_unification_proc_id(ProcId)
+        hlds_pred.in_in_unification_proc_id(ProcId)
     ;
         XInitial = not_reached
     ->
-        hlds_pred__in_in_unification_proc_id(ProcId)
+        hlds_pred.in_in_unification_proc_id(ProcId)
     ;
         YInitial = not_reached
     ->
-        hlds_pred__in_in_unification_proc_id(ProcId)
+        hlds_pred.in_in_unification_proc_id(ProcId)
     ;
         module_info_get_proc_requests(ModuleInfo, Requests),
         get_unify_req_map(Requests, UnifyReqMap),
-        map__search(UnifyReqMap, TypeCtor - UniMode, ProcId)
+        map.search(UnifyReqMap, TypeCtor - UniMode, ProcId)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -266,7 +266,7 @@ request_unify(UnifyId, InstVarSet, Determinism, Context, !ModuleInfo) :-
     module_info_get_maybe_recompilation_info(!.ModuleInfo, MaybeRecompInfo0),
     (
         MaybeRecompInfo0 = yes(RecompInfo0),
-        recompilation__record_used_item(type_body_item, TypeCtor, TypeCtor,
+        recompilation.record_used_item(type_body_item, TypeCtor, TypeCtor,
             RecompInfo0, RecompInfo),
         module_info_set_maybe_recompilation_info(yes(RecompInfo), !ModuleInfo)
     ;
@@ -280,8 +280,8 @@ request_unify(UnifyId, InstVarSet, Determinism, Context, !ModuleInfo) :-
             search_mode_num(!.ModuleInfo, TypeCtor, UnifyMode, Determinism, _)
         ;
             module_info_get_type_table(!.ModuleInfo, TypeTable),
-            map__search(TypeTable, TypeCtor, TypeDefn),
-            hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+            map.search(TypeTable, TypeCtor, TypeDefn),
+            hlds_data.get_type_defn_body(TypeDefn, TypeBody),
             (
                 TypeCtor = TypeName - _TypeArity,
                 TypeName = qualified(TypeModuleName, _),
@@ -298,7 +298,7 @@ request_unify(UnifyId, InstVarSet, Determinism, Context, !ModuleInfo) :-
         % Lookup the pred_id for the unification procedure that we are
         % going to generate.
         module_info_get_special_pred_map(!.ModuleInfo, SpecialPredMap),
-        ( map__search(SpecialPredMap, spec_pred_unify - TypeCtor, PredId0) ->
+        ( map.search(SpecialPredMap, spec_pred_unify - TypeCtor, PredId0) ->
             PredId = PredId0
         ;
             % We generate unification predicates for most imported types
@@ -313,8 +313,8 @@ request_unify(UnifyId, InstVarSet, Determinism, Context, !ModuleInfo) :-
         % For polymorphic types, add extra modes for the type_infos.
         in_mode(InMode),
         TypeCtor = _ - TypeArity,
-        list__duplicate(TypeArity, InMode, TypeInfoModes),
-        list__append(TypeInfoModes, ArgModes0, ArgModes),
+        list.duplicate(TypeArity, InMode, TypeInfoModes),
+        list.append(TypeInfoModes, ArgModes0, ArgModes),
 
         ArgLives = no,  % XXX ArgLives should be part of the UnifyId
 
@@ -324,7 +324,7 @@ request_unify(UnifyId, InstVarSet, Determinism, Context, !ModuleInfo) :-
         % Save the proc_id for this unify_proc_id.
         module_info_get_proc_requests(!.ModuleInfo, Requests0),
         get_unify_req_map(Requests0, UnifyReqMap0),
-        map__set(UnifyReqMap0, UnifyId, ProcId, UnifyReqMap),
+        map.set(UnifyReqMap0, UnifyId, ProcId, UnifyReqMap),
         set_unify_req_map(UnifyReqMap, Requests0, Requests),
         module_info_set_proc_requests(Requests, !ModuleInfo)
     ).
@@ -333,8 +333,8 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
         !ModuleInfo) :-
     % Create a new proc_info for this procedure.
     module_info_preds(!.ModuleInfo, Preds0),
-    map__lookup(Preds0, PredId, PredInfo0),
-    list__length(ArgModes, Arity),
+    map.lookup(Preds0, PredId, PredInfo0),
+    list.length(ArgModes, Arity),
     DeclaredArgModes = no,
     add_new_proc(InstVarSet, Arity, ArgModes, DeclaredArgModes, ArgLives,
         MaybeDet, Context, address_is_not_taken, PredInfo0, PredInfo1, ProcId),
@@ -343,7 +343,7 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
     % and mark the procedure as one that cannot be processed yet.
     pred_info_procedures(PredInfo1, Procs1),
     pred_info_clauses_info(PredInfo1, ClausesInfo),
-    map__lookup(Procs1, ProcId, ProcInfo0),
+    map.lookup(Procs1, ProcId, ProcInfo0),
     proc_info_set_can_process(no, ProcInfo0, ProcInfo1),
 
     copy_clauses_to_proc(ProcId, ClausesInfo, ProcInfo1, ProcInfo2),
@@ -351,15 +351,15 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
     proc_info_goal(ProcInfo2, Goal0),
     set_goal_contexts(Context, Goal0, Goal),
     proc_info_set_goal(Goal, ProcInfo2, ProcInfo),
-    map__det_update(Procs1, ProcId, ProcInfo, Procs2),
+    map.det_update(Procs1, ProcId, ProcInfo, Procs2),
     pred_info_set_procedures(Procs2, PredInfo1, PredInfo2),
-    map__det_update(Preds0, PredId, PredInfo2, Preds2),
+    map.det_update(Preds0, PredId, PredInfo2, Preds2),
     module_info_set_preds(Preds2, !ModuleInfo),
 
     % Insert the pred_proc_id into the request queue.
     module_info_get_proc_requests(!.ModuleInfo, Requests0),
     get_req_queue(Requests0, ReqQueue0),
-    queue__put(ReqQueue0, proc(PredId, ProcId), ReqQueue),
+    queue.put(ReqQueue0, proc(PredId, ProcId), ReqQueue),
     set_req_queue(ReqQueue, Requests0, Requests),
     module_info_set_proc_requests(Requests, !ModuleInfo).
 
@@ -372,7 +372,7 @@ modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo, Changed,
     module_info_get_proc_requests(!.ModuleInfo, Requests0),
     get_req_queue(Requests0, RequestQueue0),
     (
-        queue__get(RequestQueue0, PredProcId, RequestQueue1)
+        queue.get(RequestQueue0, PredProcId, RequestQueue1)
     ->
         set_req_queue(RequestQueue1, Requests0, Requests1),
         module_info_set_proc_requests(Requests1, !ModuleInfo),
@@ -385,7 +385,7 @@ modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo, Changed,
         %
         PredProcId = proc(PredId, _ProcId),
         module_info_predids(!.ModuleInfo, ValidPredIds),
-        ( list__member(PredId, ValidPredIds) ->
+        ( list.member(PredId, ValidPredIds) ->
             queued_proc_progress_message(PredProcId, HowToCheckGoal,
                 !.ModuleInfo, !IO),
             modecheck_queued_proc(HowToCheckGoal, PredProcId,
@@ -395,7 +395,7 @@ modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo, Changed,
         ),
         modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo,
             Changed2, !IO),
-        bool__or(Changed1, Changed2, Changed)
+        bool.or(Changed1, Changed2, Changed)
     ;
         Changed = no
     ).
@@ -404,27 +404,28 @@ modecheck_queued_procs(HowToCheckGoal, !OldPredTable, !ModuleInfo, Changed,
     module_info::in, io::di, io::uo) is det.
 
 queued_proc_progress_message(PredProcId, HowToCheckGoal, ModuleInfo, !IO) :-
-    globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
-    ( VeryVerbose = yes ->
+    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    (
+        VeryVerbose = yes,
         ( HowToCheckGoal = check_unique_modes ->
-            io__write_string("% Analyzing modes, determinism, " ++
+            io.write_string("% Analyzing modes, determinism, " ++
                 "and unique-modes for\n% ", !IO)
         ;
-            io__write_string("% Mode-analyzing ", !IO)
+            io.write_string("% Mode-analyzing ", !IO)
         ),
         PredProcId = proc(PredId, ProcId),
-        hlds_out__write_pred_proc_id(ModuleInfo, PredId, ProcId, !IO),
-        io__write_string("\n", !IO)
+        hlds_out.write_pred_proc_id(ModuleInfo, PredId, ProcId, !IO),
+        io.write_string("\n", !IO)
 %       /*****
 %       mode_list_get_initial_insts(Modes, ModuleInfo1,
 %           InitialInsts),
-%       io__write_string("% Initial insts: `", !IO),
-%       varset__init(InstVarSet),
+%       io.write_string("% Initial insts: `", !IO),
+%       varset.init(InstVarSet),
 %       mercury_output_inst_list(InitialInsts, InstVarSet, !IO),
-%       io__write_string("'\n", !IO)
+%       io.write_string("'\n", !IO)
 %       *****/
     ;
-        true
+        VeryVerbose = no
     ).
 
 :- pred modecheck_queued_proc(how_to_check_goal::in, pred_proc_id::in,
@@ -436,19 +437,19 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
     % Mark the procedure as ready to be processed.
     PredProcId = proc(PredId, ProcId),
     module_info_preds(!.ModuleInfo, Preds0),
-    map__lookup(Preds0, PredId, PredInfo0),
+    map.lookup(Preds0, PredId, PredInfo0),
     pred_info_procedures(PredInfo0, Procs0),
-    map__lookup(Procs0, ProcId, ProcInfo0),
+    map.lookup(Procs0, ProcId, ProcInfo0),
     proc_info_set_can_process(yes, ProcInfo0, ProcInfo1),
-    map__det_update(Procs0, ProcId, ProcInfo1, Procs1),
+    map.det_update(Procs0, ProcId, ProcInfo1, Procs1),
     pred_info_set_procedures(Procs1, PredInfo0, PredInfo1),
-    map__det_update(Preds0, PredId, PredInfo1, Preds1),
+    map.det_update(Preds0, PredId, PredInfo1, Preds1),
     module_info_set_preds(Preds1, !ModuleInfo),
 
     % Modecheck the procedure.
     modecheck_proc(ProcId, PredId, !ModuleInfo, NumErrors, Changed1, !IO),
     ( NumErrors \= 0 ->
-        io__set_exit_status(1, !IO),
+        io.set_exit_status(1, !IO),
         module_info_remove_predid(PredId, !ModuleInfo),
         Changed = Changed1
     ;
@@ -457,9 +458,9 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
             detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO),
             determinism_check_proc(ProcId, PredId, !ModuleInfo, !IO),
             save_proc_info(ProcId, PredId, !.ModuleInfo, !OldPredTable),
-            unique_modes__check_proc(ProcId, PredId, !ModuleInfo, Changed2,
+            unique_modes.check_proc(ProcId, PredId, !ModuleInfo, Changed2,
                 !IO),
-            bool__or(Changed1, Changed2, Changed)
+            bool.or(Changed1, Changed2, Changed)
         ;
             Changed = Changed1
         )
@@ -474,11 +475,11 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredTable, !ModuleInfo,
 save_proc_info(ProcId, PredId, ModuleInfo, !OldPredTable) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
         _PredInfo, ProcInfo),
-    map__lookup(!.OldPredTable, PredId, OldPredInfo0),
+    map.lookup(!.OldPredTable, PredId, OldPredInfo0),
     pred_info_procedures(OldPredInfo0, OldProcTable0),
-    map__set(OldProcTable0, ProcId, ProcInfo, OldProcTable),
+    map.set(OldProcTable0, ProcId, ProcInfo, OldProcTable),
     pred_info_set_procedures(OldProcTable, OldPredInfo0, OldPredInfo),
-    map__det_update(!.OldPredTable, PredId, OldPredInfo, !:OldPredTable).
+    map.det_update(!.OldPredTable, PredId, OldPredInfo, !:OldPredTable).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -489,9 +490,9 @@ add_lazily_generated_unify_pred(TypeCtor, PredId, !ModuleInfo) :-
 
         % Build a hlds_type_body for the tuple constructor, which will
         % be used by generate_clause_info.
-        varset__init(TVarSet0),
-        varset__new_vars(TVarSet0, TupleArity, TupleArgTVars, TVarSet),
-        prog_type.var_list_to_type_list(map__init, TupleArgTVars,
+        varset.init(TVarSet0),
+        varset.new_vars(TVarSet0, TupleArity, TupleArgTVars, TVarSet),
+        prog_type.var_list_to_type_list(map.init, TupleArgTVars,
             TupleArgTypes),
 
         % Tuple constructors can't be existentially quantified.
@@ -499,13 +500,13 @@ add_lazily_generated_unify_pred(TypeCtor, PredId, !ModuleInfo) :-
         ClassConstraints = [],
 
         MakeUnamedField = (func(ArgType) = no - ArgType),
-        CtorArgs = list__map(MakeUnamedField, TupleArgTypes),
+        CtorArgs = list.map(MakeUnamedField, TupleArgTypes),
 
         Ctor = ctor(ExistQVars, ClassConstraints, CtorSymName, CtorArgs),
 
         CtorSymName = unqualified("{}"),
         ConsId = cons(CtorSymName, TupleArity),
-        map__from_assoc_list([ConsId - single_functor], ConsTagValues),
+        map.from_assoc_list([ConsId - single_functor], ConsTagValues),
         UnifyPred = no,
         IsEnum = not_enum_or_dummy,
         IsForeign = no,
@@ -515,7 +516,7 @@ add_lazily_generated_unify_pred(TypeCtor, PredId, !ModuleInfo) :-
             ReservedTag, IsForeign),
         construct_type(TypeCtor, TupleArgTypes, Type),
 
-        term__context_init(Context)
+        term.context_init(Context)
     ;
         collect_type_defn(!.ModuleInfo, TypeCtor, Type, TVarSet, TypeBody,
             Context)
@@ -555,27 +556,27 @@ add_lazily_generated_special_pred(SpecialId, Item, TVarSet, Type, TypeCtor,
     % Add the declaration and maybe clauses.
     (
         Item = clauses,
-        make_hlds__add_special_pred_for_real(SpecialId, TVarSet,
-            Type, TypeCtor, TypeBody, Context, PredStatus, !ModuleInfo)
+        add_special_pred_for_real(SpecialId, TVarSet, Type, TypeCtor,
+            TypeBody, Context, PredStatus, !ModuleInfo)
     ;
         Item = declaration,
-        make_hlds__add_special_pred_decl_for_real(SpecialId, TVarSet,
-            Type, TypeCtor, Context, PredStatus, !ModuleInfo)
+        add_special_pred_decl_for_real(SpecialId, TVarSet, Type, TypeCtor,
+            Context, PredStatus, !ModuleInfo)
     ),
 
     module_info_get_special_pred_map(!.ModuleInfo, SpecialPredMap),
-    map__lookup(SpecialPredMap, SpecialId - TypeCtor, PredId),
+    map.lookup(SpecialPredMap, SpecialId - TypeCtor, PredId),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
 
     % The clauses are generated with all type information computed,
     % so just go on to post_typecheck.
     (
         Item = clauses,
-        post_typecheck__finish_pred_no_io(!.ModuleInfo,
+        post_typecheck.finish_pred_no_io(!.ModuleInfo,
             ErrorProcs, PredInfo0, PredInfo)
     ;
         Item = declaration,
-        post_typecheck__finish_imported_pred_no_io(!.ModuleInfo,
+        post_typecheck.finish_imported_pred_no_io(!.ModuleInfo,
             ErrorProcs,  PredInfo0, PredInfo)
     ),
     expect(unify(ErrorProcs, []), this_file,
@@ -590,7 +591,7 @@ add_lazily_generated_special_pred(SpecialId, Item, TVarSet, Type, TypeCtor,
     % Such calls can be generated by generate_clause_info,
     % but unification predicates which contain such calls are never
     % generated lazily.
-    polymorphism__process_generated_pred(PredId, !ModuleInfo).
+    polymorphism.process_generated_pred(PredId, !ModuleInfo).
 
 :- type unify_pred_item
     --->    declaration
@@ -601,13 +602,13 @@ add_lazily_generated_special_pred(SpecialId, Item, TVarSet, Type, TypeCtor,
 
 collect_type_defn(ModuleInfo, TypeCtor, Type, TVarSet, TypeBody, Context) :-
     module_info_get_type_table(ModuleInfo, Types),
-    map__lookup(Types, TypeCtor, TypeDefn),
-    hlds_data__get_type_defn_tvarset(TypeDefn, TVarSet),
-    hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
-    hlds_data__get_type_defn_kind_map(TypeDefn, KindMap),
-    hlds_data__get_type_defn_body(TypeDefn, TypeBody),
-    hlds_data__get_type_defn_status(TypeDefn, TypeStatus),
-    hlds_data__get_type_defn_context(TypeDefn, Context),
+    map.lookup(Types, TypeCtor, TypeDefn),
+    hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet),
+    hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
+    hlds_data.get_type_defn_kind_map(TypeDefn, KindMap),
+    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+    hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
+    hlds_data.get_type_defn_context(TypeDefn, Context),
 
     expect(special_pred_is_generated_lazily(ModuleInfo, TypeCtor, TypeBody,
         TypeStatus), this_file, "add_lazily_generated_unify_pred"),
@@ -658,7 +659,7 @@ generate_clause_info(SpecialPredId, Type, TypeBody, Context, ModuleInfo,
         ),
         info_extract(!.Info, VarSet, Types)
     ),
-    map__init(TVarNameMap),
+    map.init(TVarNameMap),
     rtti_varmaps_init(RttiVarMaps),
     set_clause_list(Clauses, ClausesRep),
     HasForeignClauses = yes,
@@ -672,7 +673,7 @@ generate_clause_info(SpecialPredId, Type, TypeBody, Context, ModuleInfo,
 generate_initialise_clauses(_Type, TypeBody, X, Context, Clauses, !Info) :-
     info_get_module_info(!.Info, ModuleInfo),
     (
-        type_util__type_body_has_solver_type_details(ModuleInfo,
+        type_util.type_body_has_solver_type_details(ModuleInfo,
             TypeBody, SolverTypeDetails)
     ->
         % Just generate a call to the specified predicate, which is
@@ -704,8 +705,8 @@ generate_initialise_clauses(_Type, TypeBody, X, Context, Clauses, !Info) :-
             unexpected(this_file,
                 "generate_initialise_clauses: type_to_ctor_and_args failed")
         ),
-        PredName = special_pred__special_pred_name(spec_pred_init, TypeCtor),
-        hlds_module__module_info_get_name(ModuleInfo, ModuleName),
+        PredName = special_pred.special_pred_name(spec_pred_init, TypeCtor),
+        hlds_module.module_info_get_name(ModuleInfo, ModuleName),
         TypeCtor = TypeSymName - _TypeArity,
         sym_name_get_module_name(TypeSymName, ModuleName, TypeModuleName),
         InitPred = qualified(TypeModuleName, PredName),
@@ -1259,7 +1260,7 @@ generate_du_unify_clauses([], _X, _Y, _Context, [], !Info).
 generate_du_unify_clauses([Ctor | Ctors], X, Y, Context, [Clause | Clauses],
         !Info) :-
     Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes),
-    list__length(ArgTypes, FunctorArity),
+    list.length(ArgTypes, FunctorArity),
     FunctorConsId = cons(FunctorName, FunctorArity),
     (
         ArgTypes = [],
@@ -1336,7 +1337,7 @@ generate_du_index_clauses([], _X, _Index, _Context, _N, [], !Info).
 generate_du_index_clauses([Ctor | Ctors], X, Index, Context, N,
         [Clause | Clauses], !Info) :-
     Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes),
-    list__length(ArgTypes, FunctorArity),
+    list.length(ArgTypes, FunctorArity),
     FunctorConsId = cons(FunctorName, FunctorArity),
     make_fresh_vars(ArgTypes, ExistQTVars, ArgVars, !Info),
     create_atomic_complicated_unification(X,
@@ -1365,9 +1366,9 @@ generate_du_compare_clauses(Type, Ctors, Res, H1, H2, Context, Clauses,
         Ctors = [_ | _],
         info_get_module_info(!.Info, ModuleInfo),
         module_info_get_globals(ModuleInfo, Globals),
-        globals__lookup_int_option(Globals, compare_specialization,
+        globals.lookup_int_option(Globals, compare_specialization,
             CompareSpec),
-        list__length(Ctors, NumCtors),
+        list.length(Ctors, NumCtors),
         ( NumCtors =< CompareSpec ->
             generate_du_quad_compare_clauses(
                 Ctors, Res, H1, H2, Context, Clauses, !Info)
@@ -1638,7 +1639,7 @@ generate_compare_cases([Ctor | Ctors], R, X, Y, Context, [Case | Cases],
 
 generate_compare_case(Ctor, R, X, Y, Context, Kind, Case, !Info) :-
     Ctor = ctor(ExistQTVars, _Constraints, FunctorName, ArgTypes),
-    list__length(ArgTypes, FunctorArity),
+    list.length(ArgTypes, FunctorArity),
     FunctorConsId = cons(FunctorName, FunctorArity),
     (
         ArgTypes = [],
@@ -1685,8 +1686,8 @@ generate_asymmetric_compare_case(Ctor1, Ctor2, CompareOp, R, X, Y, Context,
         Case, !Info) :-
     Ctor1 = ctor(ExistQTVars1, _Constraints1, FunctorName1, ArgTypes1),
     Ctor2 = ctor(ExistQTVars2, _Constraints2, FunctorName2, ArgTypes2),
-    list__length(ArgTypes1, FunctorArity1),
-    list__length(ArgTypes2, FunctorArity2),
+    list.length(ArgTypes1, FunctorArity1),
+    list.length(ArgTypes2, FunctorArity2),
     FunctorConsId1 = cons(FunctorName1, FunctorArity1),
     FunctorConsId2 = cons(FunctorName2, FunctorArity2),
     make_fresh_vars(ArgTypes1, ExistQTVars1, Vars1, !Info),
@@ -1758,7 +1759,7 @@ compare_args_2([_Name - Type | ArgTypes], ExistQTVars, [X | Xs], [Y | Ys], R,
     % which would be a type error, we call `typed_compare', which is a builtin
     % that first compares their types and then compares their values.
     (
-        list__member(ExistQTVar, ExistQTVars),
+        list.member(ExistQTVar, ExistQTVars),
         type_contains_var(Type, ExistQTVar)
     ->
         ComparePred = "typed_compare"
@@ -1806,7 +1807,7 @@ generate_return_equal(ResultVar, Context, Goal) :-
 
 build_call(Name, ArgVars, Context, Goal, !Info) :-
     info_get_module_info(!.Info, ModuleInfo),
-    list__length(ArgVars, Arity),
+    list.length(ArgVars, Arity),
     %
     % We assume that the special preds compare/3, index/2, and unify/2
     % are the only public builtins called by code generated by this module.
@@ -1816,7 +1817,7 @@ build_call(Name, ArgVars, Context, Goal, !Info) :-
     ;
         MercuryBuiltin = mercury_private_builtin_module
     ),
-    goal_util__generate_simple_call(MercuryBuiltin, Name, predicate,
+    goal_util.generate_simple_call(MercuryBuiltin, Name, predicate,
         mode_no(0), erroneous, ArgVars, [], [], ModuleInfo, Context, Goal).
 
 :- pred build_specific_call(mer_type::in, special_pred_id::in,
@@ -1828,11 +1829,11 @@ build_specific_call(Type, SpecialPredId, ArgVars, InstmapDelta, Detism,
         Context, Goal, !Info) :-
     info_get_module_info(!.Info, ModuleInfo),
     (
-        polymorphism__get_special_proc(Type, SpecialPredId, ModuleInfo,
+        polymorphism.get_special_proc(Type, SpecialPredId, ModuleInfo,
             PredName, PredId, ProcId)
     ->
         GoalExpr = call(PredId, ProcId, ArgVars, not_builtin, no, PredName),
-        set__list_to_set(ArgVars, NonLocals),
+        set.list_to_set(ArgVars, NonLocals),
         goal_info_init(NonLocals, InstmapDelta, Detism, purity_pure,
             GoalInfo0),
         goal_info_set_context(Context, GoalInfo0, GoalInfo),
@@ -1851,8 +1852,8 @@ build_specific_call(Type, SpecialPredId, ArgVars, InstmapDelta, Detism,
     prog_var::out, unify_proc_info::in, unify_proc_info::out) is det.
 
 make_fresh_named_var_from_type(Type, BaseName, Num, Var, !Info) :-
-    string__int_to_string(Num, NumStr),
-    string__append(BaseName, NumStr, Name),
+    string.int_to_string(Num, NumStr),
+    string.append(BaseName, NumStr, Name),
     info_new_named_var(Type, Name, Var, !Info).
 
 :- pred make_fresh_named_vars_from_types(list(mer_type)::in, string::in,
@@ -1879,7 +1880,7 @@ make_fresh_vars_from_types([Type | Types], [Var | Vars], !Info) :-
 make_fresh_vars(CtorArgs, ExistQTVars, Vars, !Info) :-
     (
         ExistQTVars = [],
-        assoc_list__values(CtorArgs, ArgTypes),
+        assoc_list.values(CtorArgs, ArgTypes),
         make_fresh_vars_from_types(ArgTypes, Vars, !Info)
     ;
         ExistQTVars = [_ | _],
@@ -1891,8 +1892,8 @@ make_fresh_vars(CtorArgs, ExistQTVars, Vars, !Info) :-
         % up to typecheck.m to infer their types.
         %
         info_get_varset(!.Info, VarSet0),
-        list__length(CtorArgs, NumVars),
-        varset__new_vars(VarSet0, NumVars, Vars, VarSet),
+        list.length(CtorArgs, NumVars),
+        varset.new_vars(VarSet0, NumVars, Vars, VarSet),
         info_set_varset(VarSet, !Info)
     ).
 
@@ -1914,7 +1915,7 @@ unify_var_lists(ArgTypes, ExistQVars, Vars1, Vars2, Goal, !Info) :-
 unify_var_lists_2([], _, [], [], [], !Info).
 unify_var_lists_2([_Name - Type | ArgTypes], ExistQTVars, [X | Xs], [Y | Ys],
         [Goal | Goals], !Info) :-
-    term__context_init(Context),
+    term.context_init(Context),
 
     (
         info_get_module_info(!.Info, ModuleInfo),
@@ -1928,7 +1929,7 @@ unify_var_lists_2([_Name - Type | ArgTypes], ExistQTVars, [X | Xs], [Y | Ys],
         % a builtin that first checks that their types are equal and then
         % unifies the values.
 
-        list__member(ExistQTVar, ExistQTVars),
+        list.member(ExistQTVar, ExistQTVars),
         type_contains_var(Type, ExistQTVar)
     ->
         build_call("typed_unify", [X, Y], Context, Goal, !Info)
@@ -1982,20 +1983,22 @@ equal_functor = functor(equal_cons_id, no, []).
             ).
 
 info_init(ModuleInfo, UPI) :-
-    varset__init(VarSet),
-    map__init(Types),
+    varset.init(VarSet),
+    map.init(Types),
     rtti_varmaps_init(RttiVarMaps),
     UPI = unify_proc_info(VarSet, Types, RttiVarMaps, ModuleInfo).
 
-info_new_var(Type, Var, UPI,
-        (UPI ^ varset := VarSet) ^ vartypes := Types) :-
-    varset__new_var(UPI ^ varset, Var, VarSet),
-    map__det_insert(UPI ^ vartypes, Var, Type, Types).
+info_new_var(Type, Var, !UPI) :-
+    varset.new_var(!.UPI ^ varset, Var, VarSet),
+    map.det_insert(!.UPI ^ vartypes, Var, Type, VarTypes),
+    !:UPI = !.UPI ^ varset := VarSet,
+    !:UPI = !.UPI ^ vartypes := VarTypes.
 
-info_new_named_var(Type, Name, Var, UPI,
-        (UPI ^ varset := VarSet) ^ vartypes := Types) :-
-    varset__new_named_var(UPI ^ varset, Name, Var, VarSet),
-    map__det_insert(UPI ^ vartypes, Var, Type, Types).
+info_new_named_var(Type, Name, Var, !UPI) :-
+    varset.new_named_var(!.UPI ^ varset, Name, Var, VarSet),
+    map.det_insert(!.UPI ^ vartypes, Var, Type, VarTypes),
+    !:UPI = !.UPI ^ varset := VarSet,
+    !:UPI = !.UPI ^ vartypes := VarTypes.
 
 info_extract(UPI, UPI ^ varset, UPI ^ vartypes).
 

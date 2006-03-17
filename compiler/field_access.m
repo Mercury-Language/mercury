@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1993-2005 The University of Melbourne.
+% Copyright (C) 1993-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,7 +12,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module hlds__make_hlds__field_access.
+:- module hlds.make_hlds.field_access.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -136,10 +136,9 @@ expand_set_field_function_call_2(Context, MainContext, SubContext0,
     make_fresh_arg_vars(FieldArgs, FieldArgVars, !VarSet, !SInfo, !IO),
     (
         FieldNames = [_ | _],
-        varset__new_var(!.VarSet, SubTermInputVar, !:VarSet),
-        varset__new_var(!.VarSet, SubTermOutputVar, !:VarSet),
-        SetArgs = list__append(FieldArgVars,
-            [TermInputVar, SubTermOutputVar]),
+        varset.new_var(!.VarSet, SubTermInputVar, !:VarSet),
+        varset.new_var(!.VarSet, SubTermOutputVar, !:VarSet),
+        SetArgs = FieldArgVars ++ [TermInputVar, SubTermOutputVar],
         construct_field_access_function_call(set, Context,
             MainContext, SubContext0, FieldName, TermOutputVar,
             SetArgs, purity_pure, Functor, UpdateGoal, !QualInfo),
@@ -147,11 +146,11 @@ expand_set_field_function_call_2(Context, MainContext, SubContext0,
         % Extract the field containing the field to update.
         construct_field_access_function_call(get, Context,
             MainContext, SubContext0, FieldName, SubTermInputVar,
-            list__append(FieldArgVars, [TermInputVar]), purity_pure, _,
+            list.append(FieldArgVars, [TermInputVar]), purity_pure, _,
             GetSubFieldGoal, !QualInfo),
 
         % Recursively update the field.
-        SubTermInputArgNumber = 2 + list__length(FieldArgs),
+        SubTermInputArgNumber = 2 + list.length(FieldArgs),
         TermInputContext = Functor - SubTermInputArgNumber,
         SubContext = [TermInputContext | SubContext0],
         expand_set_field_function_call_2(Context, MainContext,
@@ -159,10 +158,10 @@ expand_set_field_function_call_2(Context, MainContext, SubContext0,
             SubTermOutputVar, !VarSet, _, FieldSubContext, Goals0,
             !ModuleInfo, !QualInfo, !SInfo, !IO),
 
-        list__append([GetSubFieldGoal | Goals0], [UpdateGoal], Goals1)
+        Goals1 = [GetSubFieldGoal | Goals0] ++ [UpdateGoal]
     ;
         FieldNames = [],
-        SetArgs = list__append(FieldArgVars, [TermInputVar, FieldValueVar]),
+        SetArgs = FieldArgVars ++ [TermInputVar, FieldValueVar],
         construct_field_access_function_call(set, Context,
             MainContext, SubContext0, FieldName, TermOutputVar,
             SetArgs, purity_pure, Functor, Goal, !QualInfo),
@@ -217,16 +216,16 @@ expand_get_field_function_call_2(Context, MainContext, SubContext0,
         TermInputVar, Purity, !VarSet, Functor, FieldSubContext, Goals,
         !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     make_fresh_arg_vars(FieldArgs, FieldArgVars, !VarSet, !SInfo, !IO),
-    GetArgVars = list__append(FieldArgVars, [TermInputVar]),
+    GetArgVars = FieldArgVars ++ [TermInputVar],
     (
         FieldNames = [_ | _],
-        varset__new_var(!.VarSet, SubTermInputVar, !:VarSet),
+        varset.new_var(!.VarSet, SubTermInputVar, !:VarSet),
         construct_field_access_function_call(get, Context, MainContext,
             SubContext0, FieldName, SubTermInputVar, GetArgVars, Purity,
             Functor, Goal, !QualInfo),
 
         % recursively extract until we run out of field names
-        TermInputArgNumber = 1 + list__length(FieldArgVars),
+        TermInputArgNumber = 1 + list.length(FieldArgVars),
         TermInputContext = Functor - TermInputArgNumber,
         SubContext = [TermInputContext | SubContext0],
         expand_get_field_function_call_2(Context, MainContext,
@@ -258,14 +257,14 @@ construct_field_access_function_call(AccessType, Context, MainContext,
         SubContext, FieldName, RetArg, Args, Purity, Functor, Goal,
         !QualInfo) :-
     field_access_function_name(AccessType, FieldName, FuncName),
-    list__length(Args, Arity),
+    list.length(Args, Arity),
     Functor = cons(FuncName, Arity),
     make_atomic_unification(RetArg, functor(Functor, no, Args),
         Context, MainContext, SubContext, Purity, Goal, !QualInfo).
 
 parse_field_list(Term, MaybeFieldNames) :-
     (
-        Term = term__functor(term__atom("^"),
+        Term = term.functor(term.atom("^"),
             [FieldNameTerm, OtherFieldNamesTerm], _)
     ->
         (
@@ -284,8 +283,7 @@ parse_field_list(Term, MaybeFieldNames) :-
                     ok([FieldName - Args | FieldNames1])
             )
         ;
-            MaybeFieldNames = error("expected field name",
-                FieldNameTerm)
+            MaybeFieldNames = error("expected field name", FieldNameTerm)
         )
     ;
         (

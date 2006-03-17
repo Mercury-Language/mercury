@@ -23,7 +23,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module hlds__arg_info.
+:- module hlds.arg_info.
 :- interface.
 
 :- import_module hlds.code_model.
@@ -128,7 +128,7 @@
 
 generate_arg_info(ModuleInfo0, ModuleInfo) :-
     module_info_preds(ModuleInfo0, Preds),
-    map__keys(Preds, PredIds),
+    map.keys(Preds, PredIds),
     generate_pred_arg_info(PredIds, ModuleInfo0, ModuleInfo).
 
 :- pred generate_pred_arg_info(list(pred_id)::in,
@@ -137,7 +137,7 @@ generate_arg_info(ModuleInfo0, ModuleInfo) :-
 generate_pred_arg_info([], !ModuleInfo).
 generate_pred_arg_info([PredId | PredIds], !ModuleInfo) :-
     module_info_preds(!.ModuleInfo, PredTable),
-    map__lookup(PredTable, PredId, PredInfo),
+    map.lookup(PredTable, PredId, PredInfo),
     generate_proc_list_arg_info(PredId, pred_info_procids(PredInfo),
         !ModuleInfo),
     generate_pred_arg_info(PredIds, !ModuleInfo).
@@ -148,16 +148,16 @@ generate_pred_arg_info([PredId | PredIds], !ModuleInfo) :-
 generate_proc_list_arg_info(_PredId, [], !ModuleInfo).
 generate_proc_list_arg_info(PredId, [ProcId | ProcIds], !ModuleInfo) :-
     module_info_preds(!.ModuleInfo, PredTable0),
-    map__lookup(PredTable0, PredId, PredInfo0),
+    map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_procedures(PredInfo0, ProcTable0),
     pred_info_arg_types(PredInfo0, ArgTypes),
-    map__lookup(ProcTable0, ProcId, ProcInfo0),
+    map.lookup(ProcTable0, ProcId, ProcInfo0),
 
     generate_proc_arg_info(ArgTypes, !.ModuleInfo, ProcInfo0, ProcInfo),
 
-    map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+    map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
     pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-    map__det_update(PredTable0, PredId, PredInfo, PredTable),
+    map.det_update(PredTable0, PredId, PredInfo, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo),
     generate_proc_list_arg_info(PredId, ProcIds, !ModuleInfo).
 
@@ -261,7 +261,7 @@ unify_arg_info(model_non, _) :-
 
 partition_args(Args, Ins, Outs) :-
     partition_args(Args, Ins, Outs0, Unuseds),
-    list__append(Outs0, Unuseds, Outs).
+    list.append(Outs0, Unuseds, Outs).
 
 partition_args([], [], [], []).
 partition_args([Var - ArgInfo | Rest], !:Ins, !:Outs, !:Unuseds) :-
@@ -297,14 +297,14 @@ partition_proc_args(ProcInfo, ModuleInfo, Inputs, Outputs, Unuseds) :-
     proc_info_headvars(ProcInfo, Vars),
     proc_info_argmodes(ProcInfo, Modes),
     proc_info_vartypes(ProcInfo, VarTypes),
-    map__apply_to_list(Vars, VarTypes, Types),
+    map.apply_to_list(Vars, VarTypes, Types),
     do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
         Inputs, Outputs, Unuseds).
 
 partition_proc_call_args(ProcInfo, VarTypes, ModuleInfo, Vars,
         Inputs, Outputs, Unuseds) :-
     proc_info_argmodes(ProcInfo, Modes),
-    map__apply_to_list(Vars, VarTypes, Types),
+    map.apply_to_list(Vars, VarTypes, Types),
     do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
         Inputs, Outputs, Unuseds).
 
@@ -321,8 +321,8 @@ do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
         !:Inputs, !:Outputs, !:Unuseds) :-
     (
         partition_proc_args_2(Vars, Types, Modes, ModuleInfo,
-            set__init, !:Inputs, set__init, !:Outputs,
-            set__init, !:Unuseds)
+            set.init, !:Inputs, set.init, !:Outputs,
+            set.init, !:Unuseds)
     ->
         true
     ;
@@ -342,13 +342,13 @@ partition_proc_args_2([Var | Vars], [Type | Types], [Mode | Modes],
     mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
     (
         ArgMode = top_in,
-        svset__insert(Var, !Inputs)
+        svset.insert(Var, !Inputs)
     ;
         ArgMode = top_out,
-        svset__insert(Var, !Outputs)
+        svset.insert(Var, !Outputs)
     ;
         ArgMode = top_unused,
-        svset__insert(Var, !Unuseds)
+        svset.insert(Var, !Unuseds)
     ),
     partition_proc_args_2(Vars, Types, Modes, ModuleInfo,
         !Inputs, !Outputs, !Unuseds).

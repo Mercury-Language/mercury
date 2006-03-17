@@ -1436,11 +1436,11 @@ modecheck_goal_expr(not(SubGoal0), GoalInfo0, not(SubGoal), !ModeInfo, !IO) :-
 modecheck_goal_expr(scope(Reason, SubGoal0), _GoalInfo, GoalExpr,
         !ModeInfo, !IO) :-
     ( Reason = from_ground_term(TermVar) ->
-        % The original goal does no quantification, so deleting
-        % the `scope' is OK, and it is necessary for avoiding
-        % bad performance in later compiler phases, such as
-        % simplification. This deletion undoes the insertion
-        % done in the base case of unravel_unification in make_hlds.m.
+        % The original goal does no quantification, so deleting the `scope'
+        % is OK, and it is necessary for avoiding bad performance in
+        % later compiler phases, such as simplification. This deletion
+        % undoes the insertion done in the base case of unravel_unification
+        % in superhomogeneous.m.
         (
             mode_info_get_instmap(!.ModeInfo, InstMap0),
             instmap.lookup_var(InstMap0, TermVar, InstOfVar),
@@ -1944,7 +1944,7 @@ modecheck_conj_list(Goals0, Goals, !ModeInfo, !IO) :-
     mode_info_get_may_initialise_solver_vars(MayInitEntryValue, !.ModeInfo),
 
     mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
-    delay_info.enter_conj(DelayInfo0, DelayInfo1),
+    delay_info_enter_conj(DelayInfo0, DelayInfo1),
     mode_info_set_delay_info(DelayInfo1, !ModeInfo),
 
     mode_info_get_live_vars(!.ModeInfo, LiveVars1),
@@ -1959,7 +1959,7 @@ modecheck_conj_list(Goals0, Goals, !ModeInfo, !IO) :-
         [], RevImpurityErrors0, !ModeInfo, !IO),
 
     mode_info_get_delay_info(!.ModeInfo, DelayInfo2),
-    delay_info.leave_conj(DelayInfo2, DelayedGoals0, DelayInfo3),
+    delay_info_leave_conj(DelayInfo2, DelayedGoals0, DelayInfo3),
     mode_info_set_delay_info(DelayInfo3, !ModeInfo),
 
         % Otherwise try scheduling by inserting solver
@@ -2102,7 +2102,7 @@ modecheck_conj_list_3(Goal0, Goals0, Goals, !ImpurityErrors, !ModeInfo, !IO) :-
         mode_info_set_errors([], !ModeInfo),
         mode_info_set_instmap(InstMap0, !ModeInfo),
         mode_info_add_live_vars(NonLocalVars, !ModeInfo),
-        delay_info.delay_goal(DelayInfo0, FirstErrorInfo, Goal0, DelayInfo1),
+        delay_info_delay_goal(DelayInfo0, FirstErrorInfo, Goal0, DelayInfo1),
         %  delaying an impure goal is an impurity error
         (
             Impure = yes,
@@ -2125,7 +2125,7 @@ modecheck_conj_list_3(Goal0, Goals0, Goals, !ImpurityErrors, !ModeInfo, !IO) :-
 
         % Next, we attempt to wake up any pending goals,
         % and then continue scheduling the rest of the goal.
-    delay_info.wakeup_goals(WokenGoals, DelayInfo1, DelayInfo),
+    delay_info_wakeup_goals(WokenGoals, DelayInfo1, DelayInfo),
     list.append(WokenGoals, Goals0, Goals1),
     (
         WokenGoals = []
@@ -2288,7 +2288,7 @@ modecheck_delayed_goals_try_det(DelayedGoals0, DelayedGoals, Goals,
             Goals1 = InitGoals ++ Goals0,
 
             mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
-            delay_info.enter_conj(DelayInfo0, DelayInfo1),
+            delay_info_enter_conj(DelayInfo0, DelayInfo1),
             mode_info_set_delay_info(DelayInfo1, !ModeInfo),
 
             mode_info_add_goals_live_vars(InitGoals, !ModeInfo),
@@ -2297,7 +2297,7 @@ modecheck_delayed_goals_try_det(DelayedGoals0, DelayedGoals, Goals,
                 !IO),
 
             mode_info_get_delay_info(!.ModeInfo, DelayInfo2),
-            delay_info.leave_conj(DelayInfo2, DelayedGoals, DelayInfo3),
+            delay_info_leave_conj(DelayInfo2, DelayedGoals, DelayInfo3),
             mode_info_set_delay_info(DelayInfo3, !ModeInfo)
         ;
             % We couldn't identify a deterministic solution.
@@ -2569,7 +2569,7 @@ modecheck_delayed_goals_eager(DelayedGoals0, DelayedGoals, Goals,
         Goals0 = list.map(hlds_goal_from_delayed_goal, DelayedGoals0),
 
         mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
-        delay_info.enter_conj(DelayInfo0, DelayInfo1),
+        delay_info_enter_conj(DelayInfo0, DelayInfo1),
         mode_info_set_delay_info(DelayInfo1, !ModeInfo),
 
         mode_info_set_may_initialise_solver_vars(yes, !ModeInfo),
@@ -2578,7 +2578,7 @@ modecheck_delayed_goals_eager(DelayedGoals0, DelayedGoals, Goals,
         mode_info_set_may_initialise_solver_vars(no, !ModeInfo),
 
         mode_info_get_delay_info(!.ModeInfo, DelayInfo2),
-        delay_info.leave_conj(DelayInfo2, DelayedGoals1, DelayInfo3),
+        delay_info_leave_conj(DelayInfo2, DelayedGoals1, DelayInfo3),
         mode_info_set_delay_info(DelayInfo3, !ModeInfo),
 
             % See if we scheduled any goals.
@@ -2618,7 +2618,7 @@ hlds_goal_from_delayed_goal(delayed_goal(_WaitingVars, _ModeError, Goal)) =
 
 check_for_impurity_error(Goal, Goals, !ImpurityErrors, !ModeInfo, !IO) :-
     mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
-    delay_info.leave_conj(DelayInfo0, DelayedGoals0, DelayInfo1),
+    delay_info_leave_conj(DelayInfo0, DelayedGoals0, DelayInfo1),
     mode_info_set_delay_info(DelayInfo1, !ModeInfo),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_info_get_predid(!.ModeInfo, PredId),
@@ -2631,7 +2631,7 @@ check_for_impurity_error(Goal, Goals, !ImpurityErrors, !ModeInfo, !IO) :-
         NonHeadVarUnificationGoals0, NonHeadVarUnificationGoals,
         !ImpurityErrors, !ModeInfo, !IO),
     mode_info_get_delay_info(!.ModeInfo, DelayInfo2),
-    delay_info.enter_conj(DelayInfo2, DelayInfo3),
+    delay_info_enter_conj(DelayInfo2, DelayInfo3),
     redelay_goals(HeadVarUnificationGoals, DelayInfo3, DelayInfo),
     mode_info_set_delay_info(DelayInfo, !ModeInfo),
     (
@@ -2691,7 +2691,7 @@ get_all_waiting_vars_2([delayed_goal(Vars1, _, _) | Rest], Vars0, Vars) :-
 redelay_goals([], DelayInfo, DelayInfo).
 redelay_goals([DelayedGoal | DelayedGoals], DelayInfo0, DelayInfo) :-
     DelayedGoal = delayed_goal(_WaitingVars, ModeErrorInfo, Goal),
-    delay_info.delay_goal(DelayInfo0, ModeErrorInfo, Goal, DelayInfo1),
+    delay_info_delay_goal(DelayInfo0, ModeErrorInfo, Goal, DelayInfo1),
     redelay_goals(DelayedGoals, DelayInfo1, DelayInfo).
 
 %-----------------------------------------------------------------------------%
@@ -3038,7 +3038,7 @@ modecheck_set_var_inst(Var0, FinalInst, MaybeUInst, !ModeInfo) :-
             instmap.set(Var0, Inst, InstMap0, InstMap),
             mode_info_set_instmap(InstMap, !ModeInfo),
             mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
-            delay_info.bind_var(Var0, DelayInfo0, DelayInfo),
+            delay_info_bind_var(Var0, DelayInfo0, DelayInfo),
             mode_info_set_delay_info(DelayInfo, !ModeInfo)
         )
     ;

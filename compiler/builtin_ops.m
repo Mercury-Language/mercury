@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2001, 2003-2005 The University of Melbourne.
+% Copyright (C) 1999-2001, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -92,8 +92,8 @@
     % for this module to depend on back-end specific stuff like MLDS types.
 :- type array_elem_type
     --->    elem_type_string    % ml_string_type
-    ;       elem_type_int       % mlds__native_int_type
-    ;       elem_type_generic.  % mlds__generic_type
+    ;       elem_type_int       % mlds_native_int_type
+    ;       elem_type_generic.  % mlds_generic_type
 
     % translate_builtin:
     %

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998, 2000-2005 The University of Melbourne.
+% Copyright (C) 1995-1998, 2000-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -37,7 +37,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds__inst_match.
+:- module check_hlds.inst_match.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -417,7 +417,7 @@ sub(Info) = Sub :-
 :- func init_inst_match_info(module_info) = inst_match_info.
 
 init_inst_match_info(ModuleInfo) =
-    inst_match_info(ModuleInfo, set__init, no, none, match, yes).
+    inst_match_info(ModuleInfo, set.init, no, none, match, yes).
 
 :- pred swap_sub(
     pred(inst_match_info, inst_match_info)::in(pred(in, out) is semidet),
@@ -446,12 +446,12 @@ swap_calculate_sub(none) = none.
 
 inst_matches_initial_2(InstA, InstB, MaybeType, !Info) :-
     ThisExpansion = inst_match_inputs(InstA, InstB, MaybeType),
-    ( set__member(ThisExpansion, !.Info ^ expansions) ->
+    ( set.member(ThisExpansion, !.Info ^ expansions) ->
         true
     ;
         inst_expand(!.Info ^ module_info, InstA, InstA2),
         inst_expand(!.Info ^ module_info, InstB, InstB2),
-        set__insert(!.Info ^ expansions, ThisExpansion, Expansions1),
+        set.insert(!.Info ^ expansions, ThisExpansion, Expansions1),
         handle_inst_var_subs(inst_matches_initial_2,
             inst_matches_initial_4, InstA2, InstB2, MaybeType,
             !.Info ^ expansions := Expansions1, !:Info)
@@ -565,7 +565,7 @@ inst_matches_initial_4(ground(UniqA, _GII_A), bound(UniqB, ListB), MaybeType,
     MaybeType = yes(Type),
         % We can only check this case properly if the type is known.
     compare_uniqueness(!.Info ^ uniqueness_comparison, UniqA, UniqB),
-    bound_inst_list_is_complete_for_type(set__init, !.Info ^ module_info,
+    bound_inst_list_is_complete_for_type(set.init, !.Info ^ module_info,
         ListB, Type),
     ground_matches_initial_bound_inst_list(UniqA, ListB, yes(Type),
         !Info).
@@ -582,7 +582,7 @@ inst_matches_initial_4(abstract_inst(_,_), any(shared), _, !Info).
 inst_matches_initial_4(abstract_inst(_,_), free, _, !Info).
 inst_matches_initial_4(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
         _Type, !Info) :-
-    list__duplicate(length(ArgsA), no, MaybeTypes),
+    list.duplicate(length(ArgsA), no, MaybeTypes),
         % XXX how do we get the argument types for an abstract inst?
     inst_list_matches_initial(ArgsA, ArgsB, MaybeTypes, !Info).
 inst_matches_initial_4(not_reached, _, _, !Info).
@@ -600,7 +600,7 @@ ground_matches_initial_bound_inst_list(_, [], _, !Info).
 ground_matches_initial_bound_inst_list(Uniq, [functor(ConsId, Args) | List],
         MaybeType, !Info) :-
     maybe_get_cons_id_arg_types(!.Info ^ module_info, MaybeType, ConsId,
-        list__length(Args), MaybeTypes),
+        list.length(Args), MaybeTypes),
     ground_matches_initial_inst_list(Uniq, Args, MaybeTypes, !Info),
     ground_matches_initial_bound_inst_list(Uniq, List, MaybeType, !Info).
 
@@ -625,19 +625,19 @@ ground_matches_initial_inst_list(Uniq, [Inst | Insts], [Type | Types],
 bound_inst_list_is_complete_for_type(Expansions, ModuleInfo, BoundInsts,
         Type) :-
     % Is this a type for which cons_ids are recorded in the type_table?
-    type_util__cons_id_arg_types(ModuleInfo, Type, _, _),
+    type_util.cons_id_arg_types(ModuleInfo, Type, _, _),
 
     % Is there a bound_inst for each cons_id in the type_table?
     all [ConsId, ArgTypes] (
-        type_util__cons_id_arg_types(ModuleInfo, Type, ConsId, ArgTypes)
+        type_util.cons_id_arg_types(ModuleInfo, Type, ConsId, ArgTypes)
     =>
         (
-            list__member(functor(ConsId0, ArgInsts), BoundInsts),
-            % Cons_ids returned from type_util__cons_id_arg_types
+            list.member(functor(ConsId0, ArgInsts), BoundInsts),
+            % Cons_ids returned from type_util.cons_id_arg_types
             % are not module-qualified so we need to call
             % equivalent_cons_ids instead of just using `=/2'.
             equivalent_cons_ids(ConsId0, ConsId),
-            list__map(inst_is_complete_for_type(Expansions, ModuleInfo),
+            list.map(inst_is_complete_for_type(Expansions, ModuleInfo),
                 ArgInsts, ArgTypes)
         )
     ).
@@ -647,11 +647,11 @@ bound_inst_list_is_complete_for_type(Expansions, ModuleInfo, BoundInsts,
 
 inst_is_complete_for_type(Expansions, ModuleInfo, Inst, Type) :-
     ( Inst = defined_inst(Name) ->
-        ( set__member(Name, Expansions) ->
+        ( set.member(Name, Expansions) ->
             true
         ;
             inst_lookup(ModuleInfo, Name, ExpandedInst),
-            inst_is_complete_for_type(Expansions `set__insert` Name,
+            inst_is_complete_for_type(Expansions `set.insert` Name,
                 ModuleInfo, ExpandedInst, Type)
         )
     ; Inst = bound(_, List) ->
@@ -725,7 +725,7 @@ greater_than_disregard_module_qual(ConsIdA, ConsIdB) :-
 update_inst_var_sub(InstVars, InstA, MaybeType, !Info) :-
     (
         !.Info ^ maybe_sub  = yes(_),
-        set__fold(update_inst_var_sub_2(InstA, MaybeType),
+        set.fold(update_inst_var_sub_2(InstA, MaybeType),
             InstVars, !Info)
     ;
         !.Info ^ maybe_sub  = no
@@ -762,7 +762,7 @@ ground_inst_info_matches_initial(GroundInstInfoA, none, _, _, !Info) :-
 ground_inst_info_matches_initial(none, higher_order(PredInstB), _, Type,
         !Info) :-
     PredInstB = pred_inst_info(function, ArgModes, _Det),
-    Arity = list__length(ArgModes),
+    Arity = list.length(ArgModes),
     PredInstA = pred_inst_info_standard_func_mode(Arity),
     pred_inst_matches_2(PredInstA, PredInstB, Type, !Info).
 ground_inst_info_matches_initial(higher_order(PredInstA),
@@ -905,7 +905,7 @@ bound_inst_list_matches_initial([X | Xs], [Y | Ys], MaybeType, !Info) :-
     Y = functor(ConsIdY, ArgsY),
     ( equivalent_cons_ids(ConsIdX, ConsIdY) ->
         maybe_get_cons_id_arg_types(!.Info ^ module_info, MaybeType,
-            ConsIdX, list__length(ArgsX), MaybeTypes),
+            ConsIdX, list.length(ArgsX), MaybeTypes),
         inst_list_matches_initial(ArgsX, ArgsY, MaybeTypes, !Info),
         bound_inst_list_matches_initial(Xs, Ys, MaybeType, !Info)
     ;
@@ -962,14 +962,14 @@ inst_matches_final(InstA, InstB, Type, ModuleInfo) :-
 
 inst_matches_final_2(InstA, InstB, MaybeType, !Info) :-
     ThisExpansion = inst_match_inputs(InstA, InstB, MaybeType),
-    ( set__member(ThisExpansion, !.Info ^ expansions) ->
+    ( set.member(ThisExpansion, !.Info ^ expansions) ->
         true
     ; InstA = InstB ->
         true
     ;
         inst_expand(!.Info ^ module_info, InstA, InstA2),
         inst_expand(!.Info ^ module_info, InstB, InstB2),
-        set__insert(!.Info ^ expansions, ThisExpansion, Expansions1),
+        set.insert(!.Info ^ expansions, ThisExpansion, Expansions1),
         handle_inst_var_subs(inst_matches_final_2,
             inst_matches_final_3, InstA2, InstB2, MaybeType,
             !.Info ^ expansions := Expansions1, !:Info)
@@ -1024,7 +1024,7 @@ inst_matches_final_3(ground(UniqA, GroundInstInfoA), bound(UniqB, ListB),
     (
         MaybeType = yes(Type),
         % We can only do this check if the type is known.
-        bound_inst_list_is_complete_for_type(set__init,
+        bound_inst_list_is_complete_for_type(set.init,
             !.Info ^ module_info, ListB, Type)
     ;
         true
@@ -1041,7 +1041,7 @@ inst_matches_final_3(ground(UniqA, GroundInstInfoA),
 inst_matches_final_3(abstract_inst(_, _), any(shared), _, !Info).
 inst_matches_final_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
         _MaybeType, !Info) :-
-    list__duplicate(length(ArgsA), no, MaybeTypes),
+    list.duplicate(length(ArgsA), no, MaybeTypes),
         % XXX how do we get the argument types for an abstract inst?
     inst_list_matches_final(ArgsA, ArgsB, MaybeTypes, !Info).
 inst_matches_final_3(not_reached, _, _, !Info).
@@ -1050,7 +1050,7 @@ inst_matches_final_3(constrained_inst_vars(InstVarsA, InstA), InstB, MaybeType,
     ( InstB = constrained_inst_vars(InstVarsB, InstB1) ->
         % Constrained_inst_vars match_final only if InstVarsA contains
         % all the variables in InstVarsB
-        InstVarsB `set__subset` InstVarsA,
+        InstVarsB `set.subset` InstVarsA,
         inst_matches_final_2(InstA, InstB1, MaybeType, !Info)
     ;
         inst_matches_final_2(InstA, InstB, MaybeType, !Info)
@@ -1065,7 +1065,7 @@ ground_inst_info_matches_final(GroundInstInfoA, none, _, !Info) :-
         GroundInstInfoA).
 ground_inst_info_matches_final(none, higher_order(PredInstB), Type, !Info) :-
     PredInstB = pred_inst_info(function, ArgModes, _Det),
-    Arity = list__length(ArgModes),
+    Arity = list.length(ArgModes),
     PredInstA = pred_inst_info_standard_func_mode(Arity),
     pred_inst_matches_2(PredInstA, PredInstB, Type, !Info).
 ground_inst_info_matches_final(higher_order(PredInstA),
@@ -1101,7 +1101,7 @@ bound_inst_list_matches_final([X | Xs], [Y | Ys], MaybeType, !Info) :-
     Y = functor(ConsIdY, ArgsY),
     ( equivalent_cons_ids(ConsIdX, ConsIdY) ->
         maybe_get_cons_id_arg_types(!.Info ^ module_info, MaybeType,
-            ConsIdX, list__length(ArgsX), MaybeTypes),
+            ConsIdX, list.length(ArgsX), MaybeTypes),
         inst_list_matches_final(ArgsX, ArgsY, MaybeTypes, !Info),
         bound_inst_list_matches_final(Xs, Ys, MaybeType, !Info)
     ;
@@ -1133,14 +1133,14 @@ inst_matches_binding_allow_any_any(InstA, InstB, Type, ModuleInfo) :-
 
 inst_matches_binding_2(InstA, InstB, MaybeType, !Info) :-
     ThisExpansion = inst_match_inputs(InstA, InstB, MaybeType),
-    ( set__member(ThisExpansion, !.Info ^ expansions) ->
+    ( set.member(ThisExpansion, !.Info ^ expansions) ->
         true
     ;
         inst_expand_and_remove_constrained_inst_vars(
             !.Info ^ module_info, InstA, InstA2),
         inst_expand_and_remove_constrained_inst_vars(
             !.Info ^ module_info, InstB, InstB2),
-        set__insert(!.Info ^ expansions, ThisExpansion, Expansions1),
+        set.insert(!.Info ^ expansions, ThisExpansion, Expansions1),
         inst_matches_binding_3(InstA2, InstB2, MaybeType,
             !.Info ^ expansions := Expansions1, !:Info)
     ).
@@ -1184,7 +1184,7 @@ inst_matches_binding_3(ground(_UniqA, _), bound(_UniqB, ListB), MaybeType,
     (
         MaybeType = yes(Type),
         % We can only do this check if the type is known.
-        bound_inst_list_is_complete_for_type(set__init,
+        bound_inst_list_is_complete_for_type(set.init,
             !.Info ^ module_info, ListB, Type)
     ;
         true
@@ -1199,7 +1199,7 @@ inst_matches_binding_3(ground(_UniqA, GroundInstInfoA),
         MaybeType, !.Info ^ module_info).
 inst_matches_binding_3(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
         _MaybeType, !Info) :-
-    list__duplicate(length(ArgsA), no, MaybeTypes),
+    list.duplicate(length(ArgsA), no, MaybeTypes),
         % XXX how do we get the argument types for an abstract inst?
     inst_list_matches_binding(ArgsA, ArgsB, MaybeTypes, !Info).
 inst_matches_binding_3(not_reached, _, _, !Info).
@@ -1211,7 +1211,7 @@ ground_inst_info_matches_binding(_, none, _, _).
 ground_inst_info_matches_binding(none, higher_order(PredInstB), MaybeType,
         ModuleInfo) :-
     PredInstB = pred_inst_info(function, ArgModes, _Det),
-    Arity = list__length(ArgModes),
+    Arity = list.length(ArgModes),
     PredInstA = pred_inst_info_standard_func_mode(Arity),
     pred_inst_matches_1(PredInstA, PredInstB, MaybeType, ModuleInfo).
 ground_inst_info_matches_binding(higher_order(PredInstA),
@@ -1247,7 +1247,7 @@ bound_inst_list_matches_binding([X | Xs], [Y | Ys], MaybeType, !Info) :-
     Y = functor(ConsIdY, ArgsY),
     ( equivalent_cons_ids(ConsIdX, ConsIdY) ->
         maybe_get_cons_id_arg_types(!.Info ^ module_info, MaybeType,
-            ConsIdX, list__length(ArgsX), MaybeTypes),
+            ConsIdX, list.length(ArgsX), MaybeTypes),
         inst_list_matches_binding(ArgsX, ArgsY, MaybeTypes, !Info),
         bound_inst_list_matches_binding(Xs, Ys, MaybeType, !Info)
     ;
@@ -1347,9 +1347,8 @@ inst_is_ground(ModuleInfo, Inst) :-
     is semidet.
 
 inst_is_ground(ModuleInfo, MaybeType, Inst) :-
-    set__init(Expansions0),
-    inst_is_ground_1(ModuleInfo, MaybeType, Inst,
-        Expansions0, _Expansions).
+    set.init(Expansions0),
+    inst_is_ground_1(ModuleInfo, MaybeType, Inst, Expansions0, _Expansions).
 
     % The third arg is the set of insts which have already been expanded - we
     % use this to avoid going into an infinite loop.
@@ -1358,16 +1357,15 @@ inst_is_ground(ModuleInfo, MaybeType, Inst) :-
     set(mer_inst)::in, set(mer_inst)::out) is semidet.
 
 inst_is_ground_1(ModuleInfo, MaybeType, Inst, !Expansions) :-
-    ( set__member(Inst, !.Expansions) ->
+    ( set.member(Inst, !.Expansions) ->
         true
     ;
         ( Inst \= any(_) ->
-            svset__insert(Inst, !Expansions)
+            svset.insert(Inst, !Expansions)
         ;
             true
         ),
-        inst_is_ground_2(ModuleInfo, MaybeType, Inst,
-            !Expansions)
+        inst_is_ground_2(ModuleInfo, MaybeType, Inst, !Expansions)
     ).
 
 :- pred inst_is_ground_2(module_info::in, maybe(mer_type)::in, mer_inst::in,
@@ -1394,7 +1392,7 @@ inst_is_ground_2(ModuleInfo, MaybeType, any(Uniq), !Expansions) :-
     % `any', or the equivalent.  Fails for abstract insts.
     %
 inst_is_ground_or_any(ModuleInfo, Inst) :-
-    set__init(Expansions0),
+    set.init(Expansions0),
     inst_is_ground_or_any_2(ModuleInfo, Inst, Expansions0, _Expansions).
 
     % The third arg is the set of insts which have already been expanded - we
@@ -1416,10 +1414,10 @@ inst_is_ground_or_any_2(ModuleInfo, Inst, !Expansions) :-
     inst_is_ground_or_any_2(ModuleInfo, Inst2, !Expansions).
 inst_is_ground_or_any_2(ModuleInfo, Inst, !Expansions) :-
     Inst = defined_inst(InstName),
-    ( set__member(Inst, !.Expansions) ->
+    ( set.member(Inst, !.Expansions) ->
         true
     ;
-        svset__insert(Inst, !Expansions),
+        svset.insert(Inst, !Expansions),
         inst_lookup(ModuleInfo, InstName, Inst2),
         inst_is_ground_or_any_2(ModuleInfo, Inst2, !Expansions)
     ).
@@ -1428,7 +1426,7 @@ inst_is_ground_or_any_2(ModuleInfo, Inst, !Expansions) :-
     % insts are not considered unique.
     %
 inst_is_unique(ModuleInfo, Inst) :-
-    set__init(Expansions0),
+    set.init(Expansions0),
     inst_is_unique_2(ModuleInfo, Inst, Expansions0, _Expansions).
 
     % The third arg is the set of insts which have already been expanded - we
@@ -1450,10 +1448,10 @@ inst_is_unique_2(ModuleInfo, Inst, !Expansions) :-
     inst_is_unique_2(ModuleInfo, Inst2, !Expansions).
 inst_is_unique_2(ModuleInfo, Inst, !Expansions) :-
     Inst = defined_inst(InstName),
-    ( set__member(Inst, !.Expansions) ->
+    ( set.member(Inst, !.Expansions) ->
         true
     ;
-        svset__insert(Inst, !Expansions),
+        svset.insert(Inst, !Expansions),
         inst_lookup(ModuleInfo, InstName, Inst2),
         inst_is_unique_2(ModuleInfo, Inst2, !Expansions)
     ).
@@ -1462,7 +1460,7 @@ inst_is_unique_2(ModuleInfo, Inst, !Expansions) :-
     % mostly_unique, or free.  Abstract insts are not considered unique.
     %
 inst_is_mostly_unique(ModuleInfo, Inst) :-
-    set__init(Expansions0),
+    set.init(Expansions0),
     inst_is_mostly_unique_2(ModuleInfo, Inst, Expansions0, _Expansions).
 
     % The third arg is the set of insts which have already been expanded - we
@@ -1488,10 +1486,10 @@ inst_is_mostly_unique_2(ModuleInfo, Inst, !Expansions) :-
     inst_is_mostly_unique_2(ModuleInfo, Inst2, !Expansions).
 inst_is_mostly_unique_2(ModuleInfo, Inst, !Expansions) :-
     Inst = defined_inst(InstName),
-    ( set__member(Inst, !.Expansions) ->
+    ( set.member(Inst, !.Expansions) ->
         true
     ;
-        svset__insert(Inst, !Expansions),
+        svset.insert(Inst, !Expansions),
         inst_lookup(ModuleInfo, InstName, Inst2),
         inst_is_mostly_unique_2(ModuleInfo, Inst2, !Expansions)
     ).
@@ -1501,9 +1499,8 @@ inst_is_mostly_unique_2(ModuleInfo, Inst, !Expansions) :-
     % or free.  It fails for abstract insts.
     %
 inst_is_not_partly_unique(ModuleInfo, Inst) :-
-    set__init(Expansions0),
-    inst_is_not_partly_unique_2(ModuleInfo, Inst,
-        Expansions0, _Expansions).
+    set.init(Expansions0),
+    inst_is_not_partly_unique_2(ModuleInfo, Inst, Expansions0, _Expansions).
 
     % The third arg is the set of insts which have already
     % been expanded - we use this to avoid going into an
@@ -1525,10 +1522,10 @@ inst_is_not_partly_unique_2(ModuleInfo, Inst, !Expansions) :-
     inst_is_not_partly_unique_2(ModuleInfo, Inst2, !Expansions).
 inst_is_not_partly_unique_2(ModuleInfo, Inst, !Expansions) :-
     Inst = defined_inst(InstName),
-    ( set__member(Inst, !.Expansions) ->
+    ( set.member(Inst, !.Expansions) ->
         true
     ;
-        svset__insert(Inst, !Expansions),
+        svset.insert(Inst, !Expansions),
         inst_lookup(ModuleInfo, InstName, Inst2),
         inst_is_not_partly_unique_2(ModuleInfo, Inst2, !Expansions)
     ).
@@ -1538,9 +1535,8 @@ inst_is_not_partly_unique_2(ModuleInfo, Inst, !Expansions) :-
     % insts.
     %
 inst_is_not_fully_unique(ModuleInfo, Inst) :-
-    set__init(Expansions0),
-    inst_is_not_fully_unique_2(ModuleInfo, Inst,
-        Expansions0, _Expansions).
+    set.init(Expansions0),
+    inst_is_not_fully_unique_2(ModuleInfo, Inst, Expansions0, _Expansions).
 
     % The third arg is the set of insts which have already been expanded - we
     % use this to avoid going into an infinite loop.
@@ -1569,10 +1565,10 @@ inst_is_not_fully_unique_2(ModuleInfo, Inst, !Expansions) :-
     inst_is_not_fully_unique_2(ModuleInfo, Inst2, !Expansions).
 inst_is_not_fully_unique_2(ModuleInfo, Inst, !Expansions) :-
     Inst = defined_inst(InstName),
-    ( set__member(Inst, !.Expansions) ->
+    ( set.member(Inst, !.Expansions) ->
         true
     ;
-        svset__insert(Inst, !Expansions),
+        svset.insert(Inst, !Expansions),
         inst_lookup(ModuleInfo, InstName, Inst2),
         inst_is_not_fully_unique_2(ModuleInfo, Inst2, !Expansions)
     ).
@@ -1589,7 +1585,7 @@ bound_inst_list_is_ground([], _, _).
 bound_inst_list_is_ground([functor(Name, Args) | BoundInsts], MaybeType,
         ModuleInfo) :-
     maybe_get_cons_id_arg_types(ModuleInfo, MaybeType, Name,
-        list__length(Args), MaybeTypes),
+        list.length(Args), MaybeTypes),
     inst_list_is_ground(Args, MaybeTypes, ModuleInfo),
     bound_inst_list_is_ground(BoundInsts, MaybeType, ModuleInfo).
 
@@ -1631,7 +1627,7 @@ bound_inst_list_is_ground_2([], _, _, !Expansions).
 bound_inst_list_is_ground_2([functor(Name, Args) | BoundInsts], MaybeType,
         ModuleInfo, !Expansions) :-
     maybe_get_cons_id_arg_types(ModuleInfo, MaybeType, Name,
-        list__length(Args), MaybeTypes),
+        list.length(Args), MaybeTypes),
     inst_list_is_ground_2(Args, MaybeTypes, ModuleInfo, !Expansions),
     bound_inst_list_is_ground_2(BoundInsts, MaybeType, ModuleInfo,
         !Expansions).
@@ -1688,7 +1684,7 @@ bound_inst_list_is_not_fully_unique_2([functor(_Name, Args) | BoundInsts],
 %-----------------------------------------------------------------------------%
 
 inst_list_is_ground(Insts, ModuleInfo) :-
-    MaybeTypes = list__duplicate(list__length(Insts), no),
+    MaybeTypes = list.duplicate(list.length(Insts), no),
     inst_list_is_ground(Insts, MaybeTypes, ModuleInfo).
 
 :- pred inst_list_is_ground(list(mer_inst)::in, list(maybe(mer_type))::in,
@@ -1815,7 +1811,7 @@ inst_list_is_ground_or_any_or_dead([Inst | Insts], [Live | Lives],
 %-----------------------------------------------------------------------------%
 
 inst_contains_instname(Inst, ModuleInfo, InstName) :-
-    set__init(Expansions0),
+    set.init(Expansions0),
     inst_contains_instname_2(Inst, ModuleInfo, InstName, yes,
         Expansions0, _Expansions).
 
@@ -1840,13 +1836,13 @@ inst_contains_instname_2(defined_inst(InstName1), ModuleInfo, InstName,
     ( InstName = InstName1 ->
         Result = yes
     ;
-        ( set__member(InstName1, !.Expansions) ->
+        ( set.member(InstName1, !.Expansions) ->
             Result = no
         ;
             inst_lookup(ModuleInfo, InstName1, Inst1),
-            svset__insert(InstName1, !Expansions),
-            inst_contains_instname_2(Inst1, ModuleInfo,
-                InstName, Result, !Expansions)
+            svset.insert(InstName1, !Expansions),
+            inst_contains_instname_2(Inst1, ModuleInfo, InstName, Result,
+                !Expansions)
         )
     ).
 inst_contains_instname_2(bound(_Uniq, ArgInsts), ModuleInfo,
@@ -1973,7 +1969,7 @@ mode_contains_inst_var(Mode, InstVar) :-
         ( Inst = Initial ; Inst = Final )
     ;
         Mode = user_defined_mode(_Name, Insts),
-        list__member(Inst, Insts)
+        list.member(Inst, Insts)
     ),
     inst_contains_inst_var(Inst, InstVar).
 
@@ -1988,13 +1984,13 @@ mode_contains_inst_var(Mode, InstVar) :-
     uniqueness::in, mer_inst::out) is semidet.
 
 maybe_any_to_bound(yes(Type), ModuleInfo, Uniq, Inst) :-
-    \+ type_util__is_solver_type(ModuleInfo, Type),
+    \+ type_util.is_solver_type(ModuleInfo, Type),
     (
         type_constructors(Type, ModuleInfo, Constructors)
     ->
         constructors_to_bound_any_insts(ModuleInfo, Uniq,
             Constructors, BoundInsts0),
-        list__sort_and_remove_dups(BoundInsts0, BoundInsts),
+        list.sort_and_remove_dups(BoundInsts0, BoundInsts),
         Inst = bound(Uniq, BoundInsts)
     ;
         type_may_contain_solver_type(Type, ModuleInfo)

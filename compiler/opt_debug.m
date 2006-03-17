@@ -12,7 +12,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__opt_debug.
+:- module ll_backend.opt_debug.
 
 :- interface.
 
@@ -140,15 +140,15 @@
 msg(OptDebug, LabelNo, Msg, !IO) :-
     (
         OptDebug = yes,
-        io__write_string("\n", !IO),
-        io__write_string(Msg, !IO),
+        io.write_string("\n", !IO),
+        io.write_string(Msg, !IO),
         ( LabelNo >= 0 ->
-            io__write_string(", next label no: ", !IO),
-            io__write_int(LabelNo, !IO)
+            io.write_string(", next label no: ", !IO),
+            io.write_int(LabelNo, !IO)
         ;
             true
         ),
-        io__write_string("\n", !IO)
+        io.write_string("\n", !IO)
     ;
         OptDebug = no
     ).
@@ -156,7 +156,7 @@ msg(OptDebug, LabelNo, Msg, !IO) :-
 maybe_dump_instrs(OptDebug, ProcLabel, Instrs, !IO) :-
     (
         OptDebug = yes,
-        globals__io_lookup_bool_option(auto_comments, PrintComments,
+        globals.io_lookup_bool_option(auto_comments, PrintComments,
             !IO),
         dump_instrs_2(Instrs, ProcLabel, PrintComments, !IO)
     ;
@@ -169,32 +169,32 @@ maybe_dump_instrs(OptDebug, ProcLabel, Instrs, !IO) :-
 dump_instrs_2([], _ProcLabel, _PrintComments, !IO).
 dump_instrs_2([Uinstr - Comment | Instrs], ProcLabel, PrintComments, !IO) :-
     ( Uinstr = label(_) ->
-        io__write_string(dump_instr(ProcLabel, PrintComments, Uinstr), !IO)
+        io.write_string(dump_instr(ProcLabel, PrintComments, Uinstr), !IO)
     ; Uinstr = comment(InstrComment) ->
-        io__write_string("\t% ", !IO),
-        string__foldl(print_comment_char, InstrComment, !IO)
+        io.write_string("\t% ", !IO),
+        string.foldl(print_comment_char, InstrComment, !IO)
     ;
-        io__write_string("\t", !IO),
-        io__write_string(dump_instr(ProcLabel, PrintComments, Uinstr), !IO)
+        io.write_string("\t", !IO),
+        io.write_string(dump_instr(ProcLabel, PrintComments, Uinstr), !IO)
     ),
     (
         PrintComments = yes,
         Comment \= ""
     ->
-        io__write_string("\n\t\t" ++ Comment, !IO)
+        io.write_string("\n\t\t" ++ Comment, !IO)
     ;
         true
     ),
-    io__nl(!IO),
+    io.nl(!IO),
     dump_instrs_2(Instrs, ProcLabel, PrintComments, !IO).
 
 :- pred print_comment_char(char::in, io::di, io::uo) is det.
 
 print_comment_char(C, !IO) :-
     ( C = '\n' ->
-        io__write_string("\n\t% ", !IO)
+        io.write_string("\n\t% ", !IO)
     ;
-        io__write_char(C, !IO)
+        io.write_char(C, !IO)
     ).
 
 dump_intlist([]) = "".
@@ -202,10 +202,10 @@ dump_intlist([H | T]) =
     " " ++ int_to_string(H) ++ dump_intlist(T).
 
 dump_livemap(Livemap) =
-    dump_livemaplist(map__to_assoc_list(Livemap)).
+    dump_livemaplist(map.to_assoc_list(Livemap)).
 
 dump_livemap(ProcLabel, Livemap) =
-    dump_livemaplist(ProcLabel, map__to_assoc_list(Livemap)).
+    dump_livemaplist(ProcLabel, map.to_assoc_list(Livemap)).
 
 dump_livemaplist([]) = "".
 dump_livemaplist([Label - Lvalset | Livemaplist]) =
@@ -218,7 +218,7 @@ dump_livemaplist(ProcLabel, [Label - Lvalset | Livemaplist]) =
         ++ dump_livemaplist(ProcLabel, Livemaplist).
 
 dump_livevals(Lvalset) =
-    dump_livelist(set__to_sorted_list(Lvalset)).
+    dump_livelist(set.to_sorted_list(Lvalset)).
 
 dump_livelist(Lvals) =
     dump_livelist_2(Lvals, "").
@@ -258,7 +258,7 @@ dump_lval(sp) = "sp".
 dump_lval(field(MT, N, F)) = Str :-
     (
         MT = yes(T),
-        string__int_to_string(T, T_str)
+        string.int_to_string(T, T_str)
     ;
         MT = no,
         T_str = "no"
@@ -274,7 +274,7 @@ dump_lval(mem_ref(R)) =
 dump_rval(lval(Lval)) =
     dump_lval(Lval).
 dump_rval(var(Var)) =
-    "var(" ++ int_to_string(term__var_to_int(Var)) ++ ")".
+    "var(" ++ int_to_string(term.var_to_int(Var)) ++ ")".
 dump_rval(mkword(T, N)) =
     "mkword(" ++ int_to_string(T) ++ ", " ++ dump_rval(N) ++ ")".
 dump_rval(const(C)) =
@@ -331,7 +331,7 @@ dump_const(data_addr_const(DataAddr, MaybeOffset)) = Str :-
     ).
 
 dump_data_addr(data_addr(ModuleName, DataName)) =
-    "data_addr(" ++ mdbcomp__prim_data__sym_name_to_string(ModuleName) ++ ", "
+    "data_addr(" ++ sym_name_to_string(ModuleName) ++ ", "
         ++ dump_data_name(DataName) ++ ")".
 dump_data_addr(rtti_addr(ctor_rtti_id(RttiTypeCtor, DataName))) =
     "rtti_addr(" ++ dump_rtti_type_ctor(RttiTypeCtor) ++ ", "
@@ -426,8 +426,8 @@ dump_rtti_type_class_name(tc_name(ModuleName, ClassName, Arity)) = Str :-
         ++ name_mangle(ClassName) ++ int_to_string(Arity) ++ ")".
 
 dump_rtti_type_class_instance_types(TCTypes) = Str :-
-    EncodedTCTypes = list__map(rtti__encode_tc_instance_type, TCTypes),
-    string__append_list(EncodedTCTypes, TypesStr),
+    EncodedTCTypes = list.map(rtti.encode_tc_instance_type, TCTypes),
+    string.append_list(EncodedTCTypes, TypesStr),
     Str = "tc_instance(" ++ TypesStr ++ ")".
 
 dump_layout_name(label_layout(ProcLabel, LabelNum, LabelVars)) = Str :-
@@ -497,7 +497,7 @@ dump_unop(hash_string) = "hash_string".
 dump_unop(bitwise_complement) = "bitwise_complement".
 
 dump_binop(Op) =
-    llds_out__binary_op_to_string(Op).
+    llds_out.binary_op_to_string(Op).
 
 dump_maybe_rvals([], _) = "".
 dump_maybe_rvals([MR | MRs], N) = Str :-
@@ -558,7 +558,7 @@ dump_label(entry(_, ProcLabel)) =
     dump_proclabel(ProcLabel).
 
 dump_label(CurProcLabel, internal(N, ProcLabel)) = Str :-
-    string__int_to_string(N, N_str),
+    string.int_to_string(N, N_str),
     ( CurProcLabel = ProcLabel ->
         Str = "local_" ++ N_str
     ;
@@ -698,14 +698,14 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
             T_str = "no"
         ;
             MaybeTag = yes(Tag),
-            string__int_to_string(Tag, T_str)
+            string.int_to_string(Tag, T_str)
         ),
         (
             MaybeOffset = no,
             O_str = "no"
         ;
             MaybeOffset = yes(Offset),
-            string__int_to_string(Offset, O_str)
+            string.int_to_string(Offset, O_str)
         ),
         Str = "incr_hp(" ++ dump_lval(Lval) ++ ", " ++ T_str ++ ", " ++ O_str
             ++ ", " ++ dump_rval(Size) ++ ")"

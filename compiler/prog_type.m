@@ -684,7 +684,7 @@ strip_builtin_qualifiers_from_type(kinded(Type0, Kind), kinded(Type, Kind)) :-
     strip_builtin_qualifiers_from_type(Type0, Type).
 
 strip_builtin_qualifiers_from_type_list(Types0, Types) :-
-    list__map(strip_builtin_qualifiers_from_type, Types0, Types).
+    list.map(strip_builtin_qualifiers_from_type, Types0, Types).
 
 %-----------------------------------------------------------------------------%
 
@@ -764,15 +764,15 @@ is_introduced_type_info_type_category(type_cat_user_ctor) = no.
 
 put_typeinfo_vars_first(VarsList, VarTypes) =
         TypeInfoVarsList ++ NonTypeInfoVarsList :-
-    list__filter((pred(Var::in) is semidet :-
-            Type = map__lookup(VarTypes, Var),
+    list.filter((pred(Var::in) is semidet :-
+            Type = map.lookup(VarTypes, Var),
             is_introduced_type_info_type(Type)),
         VarsList, TypeInfoVarsList, NonTypeInfoVarsList).
 
 remove_new_prefix(unqualified(Name0), unqualified(Name)) :-
-    string__append("new ", Name, Name0).
+    string.append("new ", Name, Name0).
 remove_new_prefix(qualified(Module, Name0), qualified(Module, Name)) :-
-    string__append("new ", Name, Name0).
+    string.append("new ", Name, Name0).
 
 %-----------------------------------------------------------------------------%
 
@@ -825,7 +825,7 @@ io_state_type = defined(Name, [], star) :-
     % use of integers/floats/strings as type names should
     % be rejected by the parser in prog_io.m, not in module_qual.m.
 
-make_type_ctor(term__atom(Name), Arity, unqualified(Name) - Arity).
+make_type_ctor(term.atom(Name), Arity, unqualified(Name) - Arity).
 
 %-----------------------------------------------------------------------------%
 
@@ -862,12 +862,12 @@ qualify_cons_id(Type, Args, ConsId0, ConsId, InstConsId) :-
     ->
         ConsId = ConsId0,
         InstConsId = cell_inst_cons_id(type_info_cell(CellCtor),
-            list__length(Args))
+            list.length(Args))
     ;
         ConsId0 = typeclass_info_cell_constructor
     ->
         ConsId = typeclass_info_cell_constructor,
-        InstConsId = cell_inst_cons_id(typeclass_info_cell, list__length(Args))
+        InstConsId = cell_inst_cons_id(typeclass_info_cell, list.length(Args))
     ;
         ConsId = ConsId0,
         InstConsId = ConsId
@@ -932,8 +932,8 @@ type_with_constructors_should_be_no_tag(Globals, TypeCtor, ReserveTagPragma,
         MaybeArgName),
     (
         ReserveTagPragma = no,
-        globals__lookup_bool_option(Globals, reserve_tag, no),
-        globals__lookup_bool_option(Globals, unboxed_no_tag_types, yes)
+        globals.lookup_bool_option(Globals, reserve_tag, no),
+        globals.lookup_bool_option(Globals, unboxed_no_tag_types, yes)
     ;
         % Dummy types always need to be treated as no-tag types as the
         % low-level C back end just passes around rubbish for them. When e.g.
@@ -1238,8 +1238,8 @@ type_list_subsumes(TypesA, TypesB, TypeSubst) :-
     % TypesA subsumes TypesB iff TypesA can be unified with TypesB
     % without binding any of the type variables in TypesB.
     %
-    prog_type__vars_list(TypesB, TypesBVars),
-    map__init(TypeSubst0),
+    prog_type.vars_list(TypesB, TypesBVars),
+    map.init(TypeSubst0),
     type_unify_list(TypesA, TypesB, TypesBVars, TypeSubst0, TypeSubst).
 
 type_list_subsumes_det(TypesA, TypesB, TypeSubst) :-
@@ -1282,7 +1282,7 @@ arg_type_list_subsumes(TVarSet, ActualArgTypes, CalleeTVarSet, PredKindMap,
         ParentExistQVars = [_ | _],
         apply_rec_subst_to_tvar_list(ParentKindMap, ParentToActualSubst,
             ParentExistQVars, ActualExistQTypes),
-        all [T] (list__member(T, ActualExistQTypes) => T = variable(_, _))
+        all [T] (list.member(T, ActualExistQTypes) => T = variable(_, _))
 
         % It might make sense to also check that the type substitution
         % did not bind any existentially typed variables to universally
@@ -1294,7 +1294,7 @@ arg_type_list_subsumes(TVarSet, ActualArgTypes, CalleeTVarSet, PredKindMap,
 
 apply_partial_map_to_list(_PartialMap, [], []).
 apply_partial_map_to_list(PartialMap, [X | Xs], [Y | Ys]) :-
-    ( map__search(PartialMap, X, Y0) ->
+    ( map.search(PartialMap, X, Y0) ->
         Y = Y0
     ;
         Y = X

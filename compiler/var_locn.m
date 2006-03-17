@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000-2005 The University of Melbourne.
+% Copyright (C) 2000-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -17,7 +17,7 @@
 
 %----------------------------------------------------------------------------%
 
-:- module ll_backend__var_locn.
+:- module ll_backend.var_locn.
 :- interface.
 
 :- import_module parse_tree.prog_data.
@@ -485,23 +485,23 @@
 
 init_state(VarLocs, Liveness, VarSet, VarTypes, StackSlots, FollowVars,
         Options, VarLocnInfo) :-
-    map__init(VarStateMap0),
-    map__init(LocVarMap0),
+    map.init(VarStateMap0),
+    map.init(LocVarMap0),
     init_state_2(VarLocs, yes(Liveness), VarStateMap0, VarStateMap,
         LocVarMap0, LocVarMap),
-    exprn_aux__init_exprn_opts(Options, ExprnOpts),
+    exprn_aux.init_exprn_opts(Options, ExprnOpts),
     FollowVars = abs_follow_vars(FollowVarMap, NextNonReserved),
-    set__init(AcquiredRegs),
+    set.init(AcquiredRegs),
     VarLocnInfo = var_locn_info(VarSet, VarTypes, StackSlots, ExprnOpts,
         FollowVarMap, NextNonReserved, VarStateMap, LocVarMap,
         AcquiredRegs, 0, []).
 
 reinit_state(VarLocs, !VarLocnInfo) :-
-    map__init(VarStateMap0),
-    map__init(LocVarMap0),
+    map.init(VarStateMap0),
+    map.init(LocVarMap0),
     init_state_2(VarLocs, no, VarStateMap0, VarStateMap,
         LocVarMap0, LocVarMap),
-    set__init(AcquiredRegs),
+    set.init(AcquiredRegs),
     !.VarLocnInfo = var_locn_info(VarSet, VarTypes, StackSlots, ExprnOpts,
         FollowVarMap, NextNonReserved, _, _, _, _, _),
     !:VarLocnInfo = var_locn_info(VarSet, VarTypes, StackSlots, ExprnOpts,
@@ -517,7 +517,7 @@ init_state_2([Var - Lval |  Rest], MaybeLiveness, !VarStateMap, !LocVarMap) :-
     expect(is_root_lval(Lval), this_file, "init_state_2: unexpected lval"),
     (
         MaybeLiveness = yes(Liveness),
-        \+ set__member(Var, Liveness)
+        \+ set.member(Var, Liveness)
     ->
         % If a variable is not live, then we do not record its
         % state. If we did, then the variable will never die
@@ -527,13 +527,13 @@ init_state_2([Var - Lval |  Rest], MaybeLiveness, !VarStateMap, !LocVarMap) :-
         % storing the value of a "live" variable.
         true
     ;
-        ( map__search(!.VarStateMap, Var, _) ->
+        ( map.search(!.VarStateMap, Var, _) ->
             unexpected(this_file, "init_state_2: repeated variable")
         ;
-            set__singleton_set(NewLocs, Lval),
-            set__init(Using),
+            set.singleton_set(NewLocs, Lval),
+            set.init(Using),
             State = state(NewLocs, no, no, Using, alive),
-            map__det_insert(!.VarStateMap, Var, State, !:VarStateMap)
+            map.det_insert(!.VarStateMap, Var, State, !:VarStateMap)
         ),
         make_var_depend_on_lval_roots(Var, Lval, !LocVarMap)
     ),
@@ -543,9 +543,9 @@ init_state_2([Var - Lval |  Rest], MaybeLiveness, !VarStateMap, !LocVarMap) :-
 
 get_var_locations(VLI, VarLocations) :-
     get_var_state_map(VLI, VarStateMap),
-    map__to_assoc_list(VarStateMap, VarLocList),
-    list__filter_map(convert_live_to_lval_set, VarLocList, LiveVarLocList),
-    map__from_assoc_list(LiveVarLocList, VarLocations).
+    map.to_assoc_list(VarStateMap, VarLocList),
+    list.filter_map(convert_live_to_lval_set, VarLocList, LiveVarLocList),
+    map.from_assoc_list(LiveVarLocList, VarLocations).
 
 :- pred convert_live_to_lval_set(pair(prog_var, var_state)::in,
     pair(prog_var, set(lval))::out) is semidet.
@@ -556,12 +556,12 @@ convert_live_to_lval_set(Var - State, Var - Lvals) :-
 %----------------------------------------------------------------------------%
 
 clobber_all_regs(OkToDeleteAny, !VLI) :-
-    set_acquired(set__init, !VLI),
+    set_acquired(set.init, !VLI),
     set_locked(0, !VLI),
     set_exceptions([], !VLI),
     get_loc_var_map(!.VLI, LocVarMap0),
     get_var_state_map(!.VLI, VarStateMap0),
-    map__keys(LocVarMap0, Locs),
+    map.keys(LocVarMap0, Locs),
     clobber_regs_in_maps(Locs, OkToDeleteAny,
         LocVarMap0, LocVarMap, VarStateMap0, VarStateMap),
     set_loc_var_map(LocVarMap, !VLI),
@@ -569,7 +569,7 @@ clobber_all_regs(OkToDeleteAny, !VLI) :-
 
 clobber_regs(Regs, !VLI) :-
     get_acquired(!.VLI, Acquired0),
-    Acquired = set__delete_list(Acquired0, Regs),
+    Acquired = set.delete_list(Acquired0, Regs),
     set_acquired(Acquired, !VLI),
     get_loc_var_map(!.VLI, LocVarMap0),
     get_var_state_map(!.VLI, VarStateMap0),
@@ -587,11 +587,11 @@ clobber_regs_in_maps([Lval | Lvals], OkToDeleteAny,
         !LocVarMap, !VarStateMap) :-
     (
         Lval = reg(_, _),
-        map__search(!.LocVarMap, Lval, DependentVarsSet)
+        map.search(!.LocVarMap, Lval, DependentVarsSet)
     ->
-        map__delete(!.LocVarMap, Lval, !:LocVarMap),
-        set__to_sorted_list(DependentVarsSet, DependentVars),
-        list__foldl(clobber_lval_in_var_state_map(Lval, [], OkToDeleteAny),
+        map.delete(!.LocVarMap, Lval, !:LocVarMap),
+        set.to_sorted_list(DependentVarsSet, DependentVars),
+        list.foldl(clobber_lval_in_var_state_map(Lval, [], OkToDeleteAny),
             DependentVars, !VarStateMap)
     ;
         true
@@ -622,25 +622,25 @@ clobber_lval_in_var_state_map(Lval, OkToDeleteVars, OkToDeleteAny, Var,
 
 try_clobber_lval_in_var_state_map(Lval, OkToDeleteVars, OkToDeleteAny, Var,
         !VarStateMap) :-
-    map__lookup(!.VarStateMap, Var, State0),
+    map.lookup(!.VarStateMap, Var, State0),
     State0 = state(LvalSet0, MaybeConstRval, MaybeExprRval, Using,
         DeadOrAlive),
-    LvalSet = set__filter(lval_does_not_support_lval(Lval), LvalSet0),
+    LvalSet = set.filter(lval_does_not_support_lval(Lval), LvalSet0),
     State = state(LvalSet, MaybeConstRval, MaybeExprRval, Using,
         DeadOrAlive),
     (
         nonempty_state(State)
     ;
-        list__member(Var, OkToDeleteVars)
+        list.member(Var, OkToDeleteVars)
     ;
         OkToDeleteAny = yes
     ;
         DeadOrAlive = dead,
-        set__to_sorted_list(Using, UsingVars),
+        set.to_sorted_list(Using, UsingVars),
         recursive_using_vars_dead_and_ok_to_delete(UsingVars,
             !.VarStateMap, OkToDeleteVars)
     ),
-    map__det_update(!.VarStateMap, Var, State, !:VarStateMap).
+    map.det_update(!.VarStateMap, Var, State, !:VarStateMap).
 
 :- pred recursive_using_vars_dead_and_ok_to_delete(
     list(prog_var)::in, var_state_map::in, list(prog_var)::in) is semidet.
@@ -649,12 +649,12 @@ recursive_using_vars_dead_and_ok_to_delete([], _, _).
 recursive_using_vars_dead_and_ok_to_delete([Var | Vars], VarStateMap,
         OkToDeleteVars) :-
     (
-        list__member(Var, OkToDeleteVars)
+        list.member(Var, OkToDeleteVars)
     ;
-        map__lookup(VarStateMap, Var, State),
+        map.lookup(VarStateMap, Var, State),
         State = state(_, _, _, Using, DeadOrAlive),
         DeadOrAlive = dead,
-        set__to_sorted_list(Using, UsingVars),
+        set.to_sorted_list(Using, UsingVars),
         recursive_using_vars_dead_and_ok_to_delete(UsingVars,
             VarStateMap, OkToDeleteVars)
     ),
@@ -666,24 +666,24 @@ recursive_using_vars_dead_and_ok_to_delete([Var | Vars], VarStateMap,
 assign_var_to_var(Var, OldVar, !VLI) :-
     check_var_is_unknown(!.VLI, Var),
     get_var_state_map(!.VLI, VarStateMap0),
-    map__lookup(VarStateMap0, OldVar, OldState0),
+    map.lookup(VarStateMap0, OldVar, OldState0),
     OldState0 = state(Lvals, MaybeConstRval, MaybeExprRval,
         Using0, DeadOrAlive),
     (
         MaybeExprRval = yes(_),
-        State = state(Lvals, MaybeConstRval, yes(var(OldVar)), set__init,
+        State = state(Lvals, MaybeConstRval, yes(var(OldVar)), set.init,
             alive),
-        set__insert(Using0, Var, Using),
+        set.insert(Using0, Var, Using),
         OldState = state(Lvals, MaybeConstRval, MaybeExprRval, Using,
             DeadOrAlive),
-        map__det_update(VarStateMap0, OldVar, OldState, VarStateMap1)
+        map.det_update(VarStateMap0, OldVar, OldState, VarStateMap1)
     ;
         MaybeExprRval = no,
-        set__init(Empty),
+        set.init(Empty),
         State = state(Lvals, MaybeConstRval, no, Empty, alive),
         VarStateMap1 = VarStateMap0
     ),
-    map__det_insert(VarStateMap1, Var, State, VarStateMap),
+    map.det_insert(VarStateMap1, Var, State, VarStateMap),
     set_var_state_map(VarStateMap, !VLI),
 
     get_loc_var_map(!.VLI, LocVarMap0),
@@ -696,7 +696,7 @@ assign_lval_to_var(ModuleInfo, Var, Lval0, StaticCellInfo, Code, !VLI) :-
     check_var_is_unknown(!.VLI, Var),
     ( Lval0 = field(yes(Ptag), var(BaseVar), const(int_const(Offset))) ->
         get_var_state_map(!.VLI, VarStateMap0),
-        map__lookup(VarStateMap0, BaseVar, BaseState),
+        map.lookup(VarStateMap0, BaseVar, BaseState),
         BaseState = state(BaseVarLvals, MaybeConstBaseVarRval,
             _MaybeExprRval, _UsingVars, _DeadOrAlive),
         (
@@ -710,22 +710,22 @@ assign_lval_to_var(ModuleInfo, Var, Lval0, StaticCellInfo, Code, !VLI) :-
                 SelectedArgRval)
         ->
             MaybeConstRval = yes(SelectedArgRval),
-            Lvals = set__map(add_field_offset(yes(Ptag),
+            Lvals = set.map(add_field_offset(yes(Ptag),
                 const(int_const(Offset))), BaseVarLvals),
-            set__init(Using),
+            set.init(Using),
             State = state(Lvals, MaybeConstRval, no, Using, alive),
-            map__det_insert(VarStateMap0, Var, State, VarStateMap),
+            map.det_insert(VarStateMap0, Var, State, VarStateMap),
             set_var_state_map(VarStateMap, !VLI),
 
             get_loc_var_map(!.VLI, LocVarMap0),
             make_var_depend_on_lvals_roots(Var, Lvals, LocVarMap0, LocVarMap),
             set_loc_var_map(LocVarMap, !VLI)
         ;
-            set__init(Lvals),
+            set.init(Lvals),
             Expr = lval(Lval0),
-            set__init(Using),
+            set.init(Using),
             State = state(Lvals, no, yes(Expr), Using, alive),
-            map__det_insert(VarStateMap0, Var, State, VarStateMap1),
+            map.det_insert(VarStateMap0, Var, State, VarStateMap1),
             add_use_ref(BaseVar, Var, VarStateMap1, VarStateMap),
             set_var_state_map(VarStateMap, !VLI)
         ),
@@ -734,9 +734,9 @@ assign_lval_to_var(ModuleInfo, Var, Lval0, StaticCellInfo, Code, !VLI) :-
         materialize_vars_in_lval(ModuleInfo, Lval0, Lval, Code, !VLI),
 
         get_var_state_map(!.VLI, VarStateMap0),
-        set__singleton_set(LvalSet, Lval),
-        State = state(LvalSet, no, no, set__init, alive),
-        map__det_insert(VarStateMap0, Var, State, VarStateMap),
+        set.singleton_set(LvalSet, Lval),
+        State = state(LvalSet, no, no, set.init, alive),
+        map.det_insert(VarStateMap0, Var, State, VarStateMap),
         set_var_state_map(VarStateMap, !VLI),
 
         get_loc_var_map(!.VLI, LocVarMap0),
@@ -757,8 +757,8 @@ assign_const_to_var(Var, ConstRval0, !VLI) :-
     get_var_state_map(!.VLI, VarStateMap0),
     get_exprn_opts(!.VLI, ExprnOpts),
     ( expr_is_constant(VarStateMap0, ExprnOpts, ConstRval0, ConstRval) ->
-        State = state(set__init, yes(ConstRval), no, set__init, alive),
-        map__det_insert(VarStateMap0, Var, State, VarStateMap),
+        State = state(set.init, yes(ConstRval), no, set.init, alive),
+        map.det_insert(VarStateMap0, Var, State, VarStateMap),
         set_var_state_map(VarStateMap, !VLI)
     ;
         unexpected(this_file, "set_var_state_map: supposed constant isn't")
@@ -770,11 +770,11 @@ assign_expr_to_var(Var, Rval, empty, !VLI) :-
     check_var_is_unknown(!.VLI, Var),
 
     get_var_state_map(!.VLI, VarStateMap0),
-    State = state(set__init, no, yes(Rval), set__init, alive),
-    map__det_insert(VarStateMap0, Var, State, VarStateMap1),
+    State = state(set.init, no, yes(Rval), set.init, alive),
+    map.det_insert(VarStateMap0, Var, State, VarStateMap1),
 
-    exprn_aux__vars_in_rval(Rval, ContainedVars0),
-    list__remove_dups(ContainedVars0, ContainedVars),
+    exprn_aux.vars_in_rval(Rval, ContainedVars0),
+    list.remove_dups(ContainedVars0, ContainedVars),
     add_use_refs(ContainedVars, Var, VarStateMap1, VarStateMap),
     set_var_state_map(VarStateMap, !VLI).
 
@@ -790,11 +790,11 @@ add_use_refs([ContainedVar | ContainedVars], UsingVar, !VarStateMap) :-
     var_state_map::in, var_state_map::out) is det.
 
 add_use_ref(ContainedVar, UsingVar, !VarStateMap) :-
-    map__lookup(!.VarStateMap, ContainedVar, State0),
+    map.lookup(!.VarStateMap, ContainedVar, State0),
     State0 = state(Lvals, MaybeConstRval, MaybeExprRval, Using0, DeadOrAlive),
-    set__insert(Using0, UsingVar, Using),
+    set.insert(Using0, UsingVar, Using),
     State = state(Lvals, MaybeConstRval, MaybeExprRval, Using, DeadOrAlive),
-    map__det_update(!.VarStateMap, ContainedVar, State, !:VarStateMap).
+    map.det_update(!.VarStateMap, ContainedVar, State, !:VarStateMap).
 
 %----------------------------------------------------------------------------%
 
@@ -839,7 +839,7 @@ assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag, Vector,
 
     select_preferred_reg_or_stack_check(!.VLI, Var, Lval),
     get_var_name(!.VLI, Var, VarName),
-    list__length(Vector, Size),
+    list.length(Vector, Size),
     (
         ReserveWordAtStart = yes,
         (
@@ -860,7 +860,7 @@ assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag, Vector,
     CellCode = node([
         incr_hp(Lval, yes(Ptag), TotalOffset,
             const(int_const(TotalSize)), TypeMsg)
-            - string__append("Allocating heap for ", VarName)
+            - string.append("Allocating heap for ", VarName)
     ]),
     set_magic_var_location(Var, Lval, !VLI),
     (
@@ -895,7 +895,7 @@ assign_cell_args(ModuleInfo, [MaybeRval0 | MaybeRvals0], Ptag, Base, Offset,
                     !VLI)
             ),
             get_vartypes(!.VLI, VarTypes),
-            map__lookup(VarTypes, Var, Type),
+            map.lookup(VarTypes, Var, Type),
             ( is_dummy_argument_type(ModuleInfo, Type) ->
                 AssignCode = empty
             ;
@@ -934,12 +934,12 @@ add_additional_lval_for_var(Var, Lval, !VLI) :-
     set_loc_var_map(LocVarMap, !VLI),
 
     get_var_state_map(!.VLI, VarStateMap0),
-    map__lookup(VarStateMap0, Var, State0),
+    map.lookup(VarStateMap0, Var, State0),
     State0 = state(LvalSet0, MaybeConstRval, MaybeExprRval0,
         Using, DeadOrAlive),
-    set__insert(LvalSet0, Lval, LvalSet),
+    set.insert(LvalSet0, Lval, LvalSet),
     State = state(LvalSet, MaybeConstRval, no, Using, DeadOrAlive),
-    map__det_update(VarStateMap0, Var, State, VarStateMap),
+    map.det_update(VarStateMap0, Var, State, VarStateMap),
     set_var_state_map(VarStateMap, !VLI),
 
     remove_use_refs(MaybeExprRval0, Var, !VLI).
@@ -950,8 +950,8 @@ add_additional_lval_for_var(Var, Lval, !VLI) :-
 remove_use_refs(MaybeExprRval, UsingVar, !VLI) :-
     (
         MaybeExprRval = yes(ExprRval),
-        exprn_aux__vars_in_rval(ExprRval, ContainedVars0),
-        list__remove_dups(ContainedVars0, ContainedVars),
+        exprn_aux.vars_in_rval(ExprRval, ContainedVars0),
+        list.remove_dups(ContainedVars0, ContainedVars),
         remove_use_refs_2(ContainedVars, UsingVar, !VLI)
     ;
         MaybeExprRval = no
@@ -963,18 +963,18 @@ remove_use_refs(MaybeExprRval, UsingVar, !VLI) :-
 remove_use_refs_2([], _, !VLI).
 remove_use_refs_2([ContainedVar | ContainedVars], UsingVar, !VLI) :-
     get_var_state_map(!.VLI, VarStateMap0),
-    map__lookup(VarStateMap0, ContainedVar, State0),
+    map.lookup(VarStateMap0, ContainedVar, State0),
     State0 = state(Lvals, MaybeConstRval, MaybeExprRval, Using0, DeadOrAlive),
-    ( set__remove(Using0, UsingVar, Using1) ->
+    ( set.remove(Using0, UsingVar, Using1) ->
         Using = Using1
     ;
         unexpected(this_file, "remove_use_refs_2: using ref not present")
     ),
     State = state(Lvals, MaybeConstRval, MaybeExprRval, Using, DeadOrAlive),
-    map__det_update(VarStateMap0, ContainedVar, State, VarStateMap),
+    map.det_update(VarStateMap0, ContainedVar, State, VarStateMap),
     set_var_state_map(VarStateMap, !VLI),
     (
-        set__empty(Using),
+        set.empty(Using),
         DeadOrAlive = dead
     ->
         var_becomes_dead(ContainedVar, no, !VLI)
@@ -998,9 +998,9 @@ set_magic_var_location(Var, Lval, !VLI) :-
     set_loc_var_map(LocVarMap, !VLI),
 
     get_var_state_map(!.VLI, VarStateMap0),
-    set__singleton_set(LvalSet, Lval),
-    State = state(LvalSet, no, no, set__init, alive),
-    map__det_insert(VarStateMap0, Var, State, VarStateMap),
+    set.singleton_set(LvalSet, Lval),
+    State = state(LvalSet, no, no, set.init, alive),
+    map.det_insert(VarStateMap0, Var, State, VarStateMap),
     set_var_state_map(VarStateMap, !VLI).
 
 %----------------------------------------------------------------------------%
@@ -1009,7 +1009,7 @@ set_magic_var_location(Var, Lval, !VLI) :-
 
 check_var_is_unknown(VLI, Var) :-
     get_var_state_map(VLI, VarStateMap0),
-    ( map__search(VarStateMap0, Var, _) ->
+    ( map.search(VarStateMap0, Var, _) ->
         get_var_name(VLI, Var, Name),
         Msg = "assign_to_var: existing definition of variable " ++ Name,
         unexpected(this_file, Msg)
@@ -1021,9 +1021,9 @@ check_var_is_unknown(VLI, Var) :-
 
 produce_var(ModuleInfo, Var, Rval, Code, !VLI) :-
     get_var_state_map(!.VLI, VarStateMap),
-    map__lookup(VarStateMap, Var, State),
+    map.lookup(VarStateMap, Var, State),
     State = state(Lvals, MaybeConstRval, MaybeExprRval, _, _),
-    set__to_sorted_list(Lvals, LvalsList),
+    set.to_sorted_list(Lvals, LvalsList),
     (
         maybe_select_lval_or_rval(LvalsList, MaybeConstRval, Rval1)
     ->
@@ -1031,9 +1031,9 @@ produce_var(ModuleInfo, Var, Rval, Code, !VLI) :-
         Code = empty
     ;
         MaybeExprRval = yes(var(ExprVar)),
-        map__lookup(VarStateMap, ExprVar, ExprState),
+        map.lookup(VarStateMap, ExprVar, ExprState),
         ExprState = state(ExprLvals, ExprMaybeConstRval, _, _, _),
-        set__to_sorted_list(ExprLvals, ExprLvalsList),
+        set.to_sorted_list(ExprLvals, ExprLvalsList),
         maybe_select_lval_or_rval(ExprLvalsList, ExprMaybeConstRval, Rval2)
     ->
         % This path is designed to generate efficient code
@@ -1048,9 +1048,9 @@ produce_var(ModuleInfo, Var, Rval, Code, !VLI) :-
 
 produce_var_in_reg(ModuleInfo, Var, Lval, Code, !VLI) :-
     get_var_state_map(!.VLI, VarStateMap),
-    map__lookup(VarStateMap, Var, State),
+    map.lookup(VarStateMap, Var, State),
     State = state(Lvals, _, _, _, _),
-    set__to_sorted_list(Lvals, LvalList),
+    set.to_sorted_list(Lvals, LvalList),
     ( select_reg_lval(LvalList, SelectLval) ->
         Lval = SelectLval,
         Code = empty
@@ -1061,9 +1061,9 @@ produce_var_in_reg(ModuleInfo, Var, Lval, Code, !VLI) :-
 
 produce_var_in_reg_or_stack(ModuleInfo, Var, Lval, Code, !VLI) :-
     get_var_state_map(!.VLI, VarStateMap),
-    map__lookup(VarStateMap, Var, State),
+    map.lookup(VarStateMap, Var, State),
     State = state(Lvals, _, _, _, _),
-    set__to_sorted_list(Lvals, LvalList),
+    set.to_sorted_list(Lvals, LvalList),
     ( select_reg_or_stack_lval(LvalList, SelectLval) ->
         Lval = SelectLval,
         Code = empty
@@ -1094,8 +1094,8 @@ place_vars(ModuleInfo, VarLocns, Code, !VLI) :-
     % stack slots.) However, we do make one exception: if the variable being
     % moved by a freeing up operation is in VarLocns, then it is OK to move it
     % to the location assigned to it by VarLocns.
-    assoc_list__values(VarLocns, Lvals),
-    code_util__max_mentioned_reg(Lvals, MaxReg),
+    assoc_list.values(VarLocns, Lvals),
+    code_util.max_mentioned_reg(Lvals, MaxReg),
     lock_regs(MaxReg, VarLocns, !VLI),
     actually_place_vars(ModuleInfo, VarLocns, Code, !VLI),
     unlock_regs(!VLI).
@@ -1118,15 +1118,15 @@ place_var(ModuleInfo, Var, Target, Code, !VLI) :-
 
 actually_place_var(ModuleInfo, Var, Target, ForbiddenLvals, Code, !VLI) :-
     get_acquired(!.VLI, Acquired),
-    ( set__member(Target, Acquired) ->
+    ( set.member(Target, Acquired) ->
         unexpected(this_file, "actually_place_var: target is acquired reg")
     ;
         true
     ),
     get_var_state_map(!.VLI, VarStateMap0),
-    map__lookup(VarStateMap0, Var, State0),
+    map.lookup(VarStateMap0, Var, State0),
     State0 = state(Lvals0, _, _, _, _),
-    ( set__member(Target, Lvals0) ->
+    ( set.member(Target, Lvals0) ->
         Code = empty
     ;
         free_up_lval(ModuleInfo, Target, [Var], ForbiddenLvals, FreeCode,
@@ -1161,16 +1161,16 @@ actually_place_var(ModuleInfo, Var, Target, ForbiddenLvals, Code, !VLI) :-
             get_var_name(!.VLI, Var, VarName),
             (
                 ForbiddenLvals = [],
-                string__append("Placing ", VarName, Msg)
+                string.append("Placing ", VarName, Msg)
             ;
                 ForbiddenLvals = [_ | _],
-                string__int_to_string(list__length(ForbiddenLvals),
+                string.int_to_string(list.length(ForbiddenLvals),
                     LengthStr),
-                string__append_list(["Placing ", VarName,
+                string.append_list(["Placing ", VarName,
                     " (depth ", LengthStr, ")"], Msg)
             ),
             get_vartypes(!.VLI, VarTypes),
-            map__lookup(VarTypes, Var, Type),
+            map.lookup(VarTypes, Var, Type),
             ( is_dummy_argument_type(ModuleInfo, Type) ->
                 AssignCode = empty
             ;
@@ -1185,13 +1185,13 @@ actually_place_var(ModuleInfo, Var, Target, ForbiddenLvals, Code, !VLI) :-
 
 record_clobbering(Target, Assigns, !VLI) :-
     get_loc_var_map(!.VLI, LocVarMap1),
-    ( map__search(LocVarMap1, Target, DependentVarsSet) ->
-        set__to_sorted_list(DependentVarsSet, DependentVars),
-        map__delete(LocVarMap1, Target, LocVarMap),
+    ( map.search(LocVarMap1, Target, DependentVarsSet) ->
+        set.to_sorted_list(DependentVarsSet, DependentVars),
+        map.delete(LocVarMap1, Target, LocVarMap),
         set_loc_var_map(LocVarMap, !VLI),
 
         get_var_state_map(!.VLI, VarStateMap2),
-        list__foldl(clobber_lval_in_var_state_map(Target, Assigns, no),
+        list.foldl(clobber_lval_in_var_state_map(Target, Assigns, no),
             DependentVars, VarStateMap2, VarStateMap),
         set_var_state_map(VarStateMap, !VLI)
     ;
@@ -1222,10 +1222,10 @@ record_clobbering(Target, Assigns, !VLI) :-
 free_up_lval(ModuleInfo, Lval, ToBeAssignedVars, ForbiddenLvals, Code, !VLI) :-
     (
         get_loc_var_map(!.VLI, LocVarMap0),
-        map__search(LocVarMap0, Lval, AffectedVarSet),
-        set__to_sorted_list(AffectedVarSet, AffectedVars),
+        map.search(LocVarMap0, Lval, AffectedVarSet),
+        set.to_sorted_list(AffectedVarSet, AffectedVars),
         get_var_state_map(!.VLI, VarStateMap0),
-        \+ list__foldl(
+        \+ list.foldl(
             try_clobber_lval_in_var_state_map(Lval, ToBeAssignedVars, no),
             AffectedVars, VarStateMap0, _)
     ->
@@ -1260,9 +1260,9 @@ free_up_lval_with_copy(ModuleInfo, Lval, ToBeAssignedVars, ForbiddenLvals,
         Code, !VLI) :-
     (
         get_loc_var_map(!.VLI, LocVarMap0),
-        map__search(LocVarMap0, Lval, AffectedVarSet),
-        set__delete_list(AffectedVarSet, ToBeAssignedVars, EffAffectedVarSet),
-        set__to_sorted_list(EffAffectedVarSet, EffAffectedVars),
+        map.search(LocVarMap0, Lval, AffectedVarSet),
+        set.delete_list(AffectedVarSet, ToBeAssignedVars, EffAffectedVarSet),
+        set.to_sorted_list(EffAffectedVarSet, EffAffectedVars),
 
         get_var_state_map(!.VLI, VarStateMap0),
         (
@@ -1270,8 +1270,8 @@ free_up_lval_with_copy(ModuleInfo, Lval, ToBeAssignedVars, ForbiddenLvals,
                 OccupyingVar, OtherSources)
         ->
             MovedVar = OccupyingVar,
-            list__delete_all(EffAffectedVars, MovedVar, OtherVars),
-            list__foldl(ensure_copies_are_present(Lval, OtherSources),
+            list.delete_all(EffAffectedVars, MovedVar, OtherVars),
+            list.foldl(ensure_copies_are_present(Lval, OtherSources),
                 OtherVars, !VLI)
         ;
             EffAffectedVars = [MovedVar]
@@ -1280,7 +1280,7 @@ free_up_lval_with_copy(ModuleInfo, Lval, ToBeAssignedVars, ForbiddenLvals,
         CheckInUse = no,
         select_preferred_reg_or_stack(!.VLI, MovedVar, Pref, CheckInUse),
         \+ Pref = Lval,
-        \+ list__member(Pref, ForbiddenLvals),
+        \+ list.member(Pref, ForbiddenLvals),
         ( \+ lval_in_use(!.VLI, Pref) ->
             true
         ;
@@ -1321,12 +1321,12 @@ free_up_lval_with_copy(ModuleInfo, Lval, ToBeAssignedVars, ForbiddenLvals,
 
 find_one_occupying_var([Var | Vars], Lval, VarStateMap, OccupyingVar,
         OtherSources) :-
-    map__lookup(VarStateMap, Var, State),
+    map.lookup(VarStateMap, Var, State),
     State = state(LvalSet, _, _, _, _),
-    ( set__member(Lval, LvalSet) ->
+    ( set.member(Lval, LvalSet) ->
         OccupyingVar = Var,
-        set__delete(LvalSet, Lval, OtherSourceSet),
-        set__to_sorted_list(OtherSourceSet, OtherSources)
+        set.delete(LvalSet, Lval, OtherSourceSet),
+        set.to_sorted_list(OtherSourceSet, OtherSources)
     ;
         find_one_occupying_var(Vars, Lval, VarStateMap, OccupyingVar,
             OtherSources)
@@ -1337,14 +1337,14 @@ find_one_occupying_var([Var | Vars], Lval, VarStateMap, OccupyingVar,
 
 ensure_copies_are_present(OneSource, OtherSources, Var, !VLI) :-
     get_var_state_map(!.VLI, VarStateMap0),
-    map__lookup(VarStateMap0, Var, State0),
+    map.lookup(VarStateMap0, Var, State0),
     State0 = state(LvalSet0, MaybeConstRval, MaybeExprRval, Using,
         DeadOrAlive),
-    set__to_sorted_list(LvalSet0, Lvals0),
-    list__foldl(ensure_copies_are_present_lval(OtherSources, OneSource),
+    set.to_sorted_list(LvalSet0, Lvals0),
+    list.foldl(ensure_copies_are_present_lval(OtherSources, OneSource),
         Lvals0, LvalSet0, LvalSet),
     State = state(LvalSet, MaybeConstRval, MaybeExprRval, Using, DeadOrAlive),
-    map__det_update(VarStateMap0, Var, State, VarStateMap),
+    map.det_update(VarStateMap0, Var, State, VarStateMap),
     set_var_state_map(VarStateMap, !VLI),
 
     get_loc_var_map(!.VLI, LocVarMap0),
@@ -1359,7 +1359,7 @@ ensure_copies_are_present_lval([], _, _, !LvalSet).
 ensure_copies_are_present_lval([OtherSource | OtherSources], OneSource, Lval,
         !LvalSet) :-
     SubstLval = substitute_lval_in_lval(OneSource, OtherSource, Lval),
-    set__insert(!.LvalSet, SubstLval, !:LvalSet),
+    set.insert(!.LvalSet, SubstLval, !:LvalSet),
     ensure_copies_are_present_lval(OtherSources, OneSource, Lval, !LvalSet).
 
 %----------------------------------------------------------------------------%
@@ -1382,19 +1382,19 @@ record_copy(Old, New, !VLI) :-
     expect(is_root_lval(New), this_file, "record_copy: non-root New lval"),
     get_var_state_map(!.VLI, VarStateMap0),
     get_loc_var_map(!.VLI, LocVarMap0),
-    set__list_to_set([Old, New], AssignSet),
+    set.list_to_set([Old, New], AssignSet),
     get_var_set_roots(AssignSet, NoDupRootLvals),
         % Convert the list of root lvals to the list of sets of
         % affected vars; if a root lval is not in LocVarMap0,
         % then it does not affect any variables.
-    list__filter_map(map__search(LocVarMap0), NoDupRootLvals,
+    list.filter_map(map.search(LocVarMap0), NoDupRootLvals,
         AffectedVarSets),
         % Take the union of the list of sets of affected vars.
-    list__foldl(set__union, AffectedVarSets,
-        set__init, AffectedVarSet),
+    list.foldl(set.union, AffectedVarSets,
+        set.init, AffectedVarSet),
         % Convert the union set to a list of affected vars.
-    set__to_sorted_list(AffectedVarSet, AffectedVars),
-    list__foldl2(record_copy_for_var(Old, New), AffectedVars,
+    set.to_sorted_list(AffectedVarSet, AffectedVars),
+    list.foldl2(record_copy_for_var(Old, New), AffectedVars,
         VarStateMap0, VarStateMap, LocVarMap0, LocVarMap),
     set_loc_var_map(LocVarMap, !VLI),
     set_var_state_map(VarStateMap, !VLI).
@@ -1438,19 +1438,19 @@ record_copy(Old, New, !VLI) :-
     loc_var_map::in, loc_var_map::out) is det.
 
 record_copy_for_var(Old, New, Var, !VarStateMap, !LocVarMap) :-
-    map__lookup(!.VarStateMap, Var, State0),
+    map.lookup(!.VarStateMap, Var, State0),
     State0 = state(LvalSet0, MaybeConstRval, MaybeExprRval,
         Using, DeadOrAlive),
     Token = reg(r, -42),
-    LvalSet1 = set__map(substitute_lval_in_lval(Old, Token), LvalSet0),
-    set__union(LvalSet0, LvalSet1, LvalSet2),
-    LvalSet3 = set__filter(lval_does_not_support_lval(New), LvalSet2),
-    LvalSet = set__map(substitute_lval_in_lval(Token, New), LvalSet3),
+    LvalSet1 = set.map(substitute_lval_in_lval(Old, Token), LvalSet0),
+    set.union(LvalSet0, LvalSet1, LvalSet2),
+    LvalSet3 = set.filter(lval_does_not_support_lval(New), LvalSet2),
+    LvalSet = set.map(substitute_lval_in_lval(Token, New), LvalSet3),
     State = state(LvalSet, MaybeConstRval, MaybeExprRval,
         Using, DeadOrAlive),
     expect(nonempty_state(State), this_file,
         "record_copy_for_var: empty state"),
-    map__det_update(!.VarStateMap, Var, State, !:VarStateMap),
+    map.det_update(!.VarStateMap, Var, State, !:VarStateMap),
     record_change_in_root_dependencies(LvalSet0, LvalSet, Var, !LocVarMap).
 
 :- pred record_change_in_root_dependencies(set(lval)::in,
@@ -1459,19 +1459,19 @@ record_copy_for_var(Old, New, Var, !VarStateMap, !LocVarMap) :-
 record_change_in_root_dependencies(OldLvalSet, NewLvalSet, Var, !LocVarMap) :-
     get_var_set_roots(OldLvalSet, OldRootLvals),
     get_var_set_roots(NewLvalSet, NewRootLvals),
-    set__list_to_set(OldRootLvals, OldRootLvalSet),
-    set__list_to_set(NewRootLvals, NewRootLvalSet),
-    set__difference(NewRootLvalSet, OldRootLvalSet, InsertSet),
-    set__difference(OldRootLvalSet, NewRootLvalSet, DeleteSet),
-    set__to_sorted_list(InsertSet, Inserts),
-    set__to_sorted_list(DeleteSet, Deletes),
-    list__foldl(make_var_depend_on_root_lval(Var), Inserts, !LocVarMap),
-    list__foldl(make_var_not_depend_on_root_lval(Var), Deletes, !LocVarMap).
+    set.list_to_set(OldRootLvals, OldRootLvalSet),
+    set.list_to_set(NewRootLvals, NewRootLvalSet),
+    set.difference(NewRootLvalSet, OldRootLvalSet, InsertSet),
+    set.difference(OldRootLvalSet, NewRootLvalSet, DeleteSet),
+    set.to_sorted_list(InsertSet, Inserts),
+    set.to_sorted_list(DeleteSet, Deletes),
+    list.foldl(make_var_depend_on_root_lval(Var), Inserts, !LocVarMap),
+    list.foldl(make_var_not_depend_on_root_lval(Var), Deletes, !LocVarMap).
 
 :- func substitute_lval_in_lval(lval, lval, lval) = lval.
 
 substitute_lval_in_lval(Old, New, Lval0) = Lval :-
-    exprn_aux__substitute_lval_in_lval(Old, New, Lval0, Lval).
+    exprn_aux.substitute_lval_in_lval(Old, New, Lval0, Lval).
 
 %----------------------------------------------------------------------------%
 
@@ -1490,7 +1490,7 @@ substitute_lval_in_lval(Old, New, Lval0) = Lval :-
     %
 var_becomes_dead(Var, FirstTime, !VLI) :-
     get_var_state_map(!.VLI, VarStateMap0),
-    ( map__search(VarStateMap0, Var, State0) ->
+    ( map.search(VarStateMap0, Var, State0) ->
         State0 = state(Lvals, MaybeConstRval, MaybeExprRval, Using,
             DeadOrAlive0),
         (
@@ -1500,20 +1500,20 @@ var_becomes_dead(Var, FirstTime, !VLI) :-
         ;
             DeadOrAlive0 = alive
         ),
-        ( set__empty(Using) ->
-            map__det_remove(VarStateMap0, Var, _, VarStateMap),
+        ( set.empty(Using) ->
+            map.det_remove(VarStateMap0, Var, _, VarStateMap),
             set_var_state_map(VarStateMap, !VLI),
 
             get_loc_var_map(!.VLI, LocVarMap0),
             get_var_set_roots(Lvals, NoDupRootLvals),
-            list__foldl(make_var_not_depend_on_root_lval(Var),
+            list.foldl(make_var_not_depend_on_root_lval(Var),
                 NoDupRootLvals, LocVarMap0, LocVarMap),
             set_loc_var_map(LocVarMap, !VLI),
 
             remove_use_refs(MaybeExprRval, Var, !VLI)
         ;
             State = state(Lvals, MaybeConstRval, MaybeExprRval, Using, dead),
-            map__det_update(VarStateMap0, Var, State, VarStateMap),
+            map.det_update(VarStateMap0, Var, State, VarStateMap),
             set_var_state_map(VarStateMap, !VLI)
         )
     ;
@@ -1527,11 +1527,11 @@ var_becomes_dead(Var, FirstTime, !VLI) :-
 :- pred get_var_set_roots(set(lval)::in, list(lval)::out) is det.
 
 get_var_set_roots(Lvals, NoDupRootLvals) :-
-    set__to_sorted_list(Lvals, LvalList),
-    code_util__lvals_in_lvals(LvalList, ContainedLvals),
-    list__append(LvalList, ContainedLvals, AllLvals),
-    list__filter(is_root_lval, AllLvals, RootLvals),
-    list__sort_and_remove_dups(RootLvals, NoDupRootLvals).
+    set.to_sorted_list(Lvals, LvalList),
+    code_util.lvals_in_lvals(LvalList, ContainedLvals),
+    list.append(LvalList, ContainedLvals, AllLvals),
+    list.filter(is_root_lval, AllLvals, RootLvals),
+    list.sort_and_remove_dups(RootLvals, NoDupRootLvals).
 
 %----------------------------------------------------------------------------%
 
@@ -1644,7 +1644,7 @@ select_preferred_reg(VLI, Var, Lval) :-
 select_preferred_reg(VLI, Var, CheckInUse, Avoid, Lval) :-
     get_follow_var_map(VLI, FollowVarMap),
     (
-        map__search(FollowVarMap, Var, PrefLocn),
+        map.search(FollowVarMap, Var, PrefLocn),
         ( PrefLocn = abs_reg(_)
         ; PrefLocn = any_reg
         )
@@ -1658,7 +1658,7 @@ select_preferred_reg(VLI, Var, CheckInUse, Avoid, Lval) :-
             ;
                 CheckInUse = no
             ),
-            \+ list__member(PrefLval, Avoid)
+            \+ list.member(PrefLval, Avoid)
         ->
             Lval = PrefLval
         ;
@@ -1690,7 +1690,7 @@ select_preferred_reg_or_stack_check(VLI, Var, Lval) :-
 select_preferred_reg_or_stack(VLI, Var, Lval, CheckInUse) :-
     get_follow_var_map(VLI, FollowVarMap),
     (
-        map__search(FollowVarMap, Var, PrefLocn),
+        map.search(FollowVarMap, Var, PrefLocn),
         ( PrefLocn = abs_reg(_)
         ; PrefLocn = any_reg
         )
@@ -1712,7 +1712,7 @@ select_preferred_reg_or_stack(VLI, Var, Lval, CheckInUse) :-
     ;
         (
             get_stack_slots(VLI, StackSlots),
-            map__search(StackSlots, Var, StackSlotLocn),
+            map.search(StackSlots, Var, StackSlotLocn),
             StackSlot = stack_slot_to_lval(StackSlotLocn),
             (
                 CheckInUse = yes,
@@ -1760,7 +1760,7 @@ get_spare_reg_2(VLI, Avoid, N0, Lval) :-
     TryLval = reg(r, N0),
     ( lval_in_use(VLI, TryLval) ->
         get_spare_reg_2(VLI, Avoid, N0 + 1, Lval)
-    ; list__member(TryLval, Avoid) ->
+    ; list.member(TryLval, Avoid) ->
         get_spare_reg_2(VLI, Avoid, N0 + 1, Lval)
     ;
         Lval = TryLval
@@ -1771,10 +1771,10 @@ lval_in_use(VLI, Lval) :-
     get_acquired(VLI, Acquired),
     get_locked(VLI, Locked),
     (
-        map__search(LocVarMap, Lval, UsingVars),
-        \+ set__empty(UsingVars)
+        map.search(LocVarMap, Lval, UsingVars),
+        \+ set.empty(UsingVars)
     ;
-        set__member(Lval, Acquired)
+        set.member(Lval, Acquired)
     ;
         Lval = reg(r, N),
         N =< Locked
@@ -1792,15 +1792,15 @@ reg_is_not_locked_for_var(VLI, RegNum, Var) :-
     get_locked(VLI, Locked),
     get_exceptions(VLI, Exceptions),
     Reg = reg(r, RegNum),
-    \+ set__member(Reg, Acquired),
-    RegNum =< Locked => list__member(Var - Reg, Exceptions).
+    \+ set.member(Reg, Acquired),
+    RegNum =< Locked => list.member(Var - Reg, Exceptions).
 
 %----------------------------------------------------------------------------%
 
 acquire_reg(Lval, !VLI) :-
     get_spare_reg(!.VLI, Lval),
     get_acquired(!.VLI, Acquired0),
-    set__insert(Acquired0, Lval, Acquired),
+    set.insert(Acquired0, Lval, Acquired),
     set_acquired(Acquired, !VLI).
 
 acquire_reg_require_given(Lval, !VLI) :-
@@ -1810,7 +1810,7 @@ acquire_reg_require_given(Lval, !VLI) :-
         true
     ),
     get_acquired(!.VLI, Acquired0),
-    set__insert(Acquired0, Lval, Acquired),
+    set.insert(Acquired0, Lval, Acquired),
     set_acquired(Acquired, !VLI).
 
 acquire_reg_prefer_given(Pref, Lval, !VLI) :-
@@ -1821,7 +1821,7 @@ acquire_reg_prefer_given(Pref, Lval, !VLI) :-
         Lval = PrefLval
     ),
     get_acquired(!.VLI, Acquired0),
-    set__insert(Acquired0, Lval, Acquired),
+    set.insert(Acquired0, Lval, Acquired),
     set_acquired(Acquired, !VLI).
 
 acquire_reg_start_at_given(Start, Lval, !VLI) :-
@@ -1831,14 +1831,14 @@ acquire_reg_start_at_given(Start, Lval, !VLI) :-
     ;
         Lval = StartLval,
         get_acquired(!.VLI, Acquired0),
-        set__insert(Acquired0, Lval, Acquired),
+        set.insert(Acquired0, Lval, Acquired),
         set_acquired(Acquired, !VLI)
     ).
 
 release_reg(Lval, !VLI) :-
     get_acquired(!.VLI, Acquired0),
-    ( set__member(Lval, Acquired0) ->
-        set__delete(Acquired0, Lval, Acquired),
+    ( set.member(Lval, Acquired0) ->
+        set.delete(Acquired0, Lval, Acquired),
         set_acquired(Acquired, !VLI)
     ;
         unexpected(this_file, "release_reg: unacquired reg")
@@ -1858,12 +1858,12 @@ unlock_regs(!VLI) :-
 
 max_reg_in_use(VLI, Max) :-
     get_loc_var_map(VLI, LocVarMap),
-    map__keys(LocVarMap, VarLocs),
-    code_util__max_mentioned_reg(VarLocs, Max1),
+    map.keys(LocVarMap, VarLocs),
+    code_util.max_mentioned_reg(VarLocs, Max1),
     get_acquired(VLI, Acquired),
-    set__to_sorted_list(Acquired, AcquiredList),
-    code_util__max_mentioned_reg(AcquiredList, Max2),
-    int__max(Max1, Max2, Max).
+    set.to_sorted_list(Acquired, AcquiredList),
+    code_util.max_mentioned_reg(AcquiredList, Max2),
+    int.max(Max1, Max2, Max).
 
 %----------------------------------------------------------------------------%
 
@@ -1880,14 +1880,14 @@ cell_is_constant(VarStateMap, ExprnOpts, [yes(Rval0) | MaybeRvals],
     % expr_is_constant(VarStateMap, ExprnOpts, Rval0, Rval):
     % Check if Rval0 is a constant rval, after substituting the values of the
     % variables inside it. Returns the substituted, ground rval in Rval.
-    % Note that this predicate is similar to code_exprn__expr_is_constant,
+    % Note that this predicate is similar to code_exprn.expr_is_constant,
     % but it uses its own version of the variable state data structure.
     %
 :- pred expr_is_constant(var_state_map::in, exprn_opts::in,
     rval::in, rval::out) is semidet.
 
 expr_is_constant(_, ExprnOpts, const(Const), const(Const)) :-
-    exprn_aux__const_is_constant(Const, ExprnOpts, yes).
+    exprn_aux.const_is_constant(Const, ExprnOpts, yes).
 expr_is_constant(VarStateMap, ExprnOpts,
         unop(Op, Expr0), unop(Op, Expr)) :-
     expr_is_constant(VarStateMap, ExprnOpts, Expr0, Expr).
@@ -1899,7 +1899,7 @@ expr_is_constant(VarStateMap, ExprnOpts,
         mkword(Tag, Expr0), mkword(Tag, Expr)) :-
     expr_is_constant(VarStateMap, ExprnOpts, Expr0, Expr).
 expr_is_constant(VarStateMap, ExprnOpts, var(Var), Rval) :-
-    map__search(VarStateMap, Var, State),
+    map.search(VarStateMap, Var, State),
     State = state(_, yes(Rval), _, _, _),
     expect(expr_is_constant(VarStateMap, ExprnOpts, Rval, _),
         this_file, "non-constant rval in variable state").
@@ -2075,12 +2075,12 @@ materialize_vars_in_mem_ref(ModuleInfo, MemRef0, MemRef, Avoid, Code, !VLI) :-
 
 find_var_availability(VLI, Var, MaybePrefer, Avail) :-
     get_var_state_map(VLI, VarStateMap),
-    map__lookup(VarStateMap, Var, State),
+    map.lookup(VarStateMap, Var, State),
     State = state(Lvals, MaybeConstRval, _, _, _),
-    set__to_sorted_list(Lvals, LvalsList),
+    set.to_sorted_list(Lvals, LvalsList),
     (
         MaybePrefer = yes(Prefer),
-        list__member(Prefer, LvalsList)
+        list.member(Prefer, LvalsList)
     ->
         Rval = lval(Prefer),
         Avail = available(Rval)
@@ -2099,7 +2099,7 @@ find_var_availability(VLI, Var, MaybePrefer, Avail) :-
 materialize_var(ModuleInfo, Var, MaybePrefer, StoreIfReq, Avoid, Rval, Code,
         !VLI) :-
     get_var_state_map(!.VLI, VarStateMap),
-    map__lookup(VarStateMap, Var, State),
+    map.lookup(VarStateMap, Var, State),
     State = state(_Lvals, _MaybeConstRval, MaybeExprRval, UsingVars,
         _DeadOrAlive),
     (
@@ -2112,7 +2112,7 @@ materialize_var(ModuleInfo, Var, MaybePrefer, StoreIfReq, Avoid, Rval, Code,
         ExprCode, !VLI),
     (
         StoreIfReq = yes,
-        set__count(UsingVars, NumUsingVars),
+        set.count(UsingVars, NumUsingVars),
         NumUsingVars > 1
     ->
         select_preferred_reg_avoid(!.VLI, Var, Avoid, Lval),
@@ -2134,14 +2134,14 @@ materialize_var(ModuleInfo, Var, MaybePrefer, StoreIfReq, Avoid, Rval, Code,
 
 make_var_depend_on_lvals_roots(Var, Lvals, !LocVarMap) :-
     get_var_set_roots(Lvals, NoDupRootLvals),
-    list__foldl(make_var_depend_on_root_lval(Var),
+    list.foldl(make_var_depend_on_root_lval(Var),
         NoDupRootLvals, !LocVarMap).
 
 :- pred make_var_depend_on_lval_roots(prog_var::in,
     lval::in, loc_var_map::in, loc_var_map::out) is det.
 
 make_var_depend_on_lval_roots(Var, Lval, !LocVarMap) :-
-    set__singleton_set(Lvals, Lval),
+    set.singleton_set(Lvals, Lval),
     make_var_depend_on_lvals_roots(Var, Lvals, !LocVarMap).
 
 :- pred make_var_depend_on_root_lval(prog_var::in, lval::in,
@@ -2150,12 +2150,12 @@ make_var_depend_on_lval_roots(Var, Lval, !LocVarMap) :-
 make_var_depend_on_root_lval(Var, Lval, !LocVarMap) :-
     expect(is_root_lval(Lval),
         this_file, "make_var_depend_on_root_lval: non-root lval"),
-    ( map__search(!.LocVarMap, Lval, Vars0) ->
-        set__insert(Vars0, Var, Vars),
-        map__det_update(!.LocVarMap, Lval, Vars, !:LocVarMap)
+    ( map.search(!.LocVarMap, Lval, Vars0) ->
+        set.insert(Vars0, Var, Vars),
+        map.det_update(!.LocVarMap, Lval, Vars, !:LocVarMap)
     ;
-        set__singleton_set(Vars, Var),
-        map__det_insert(!.LocVarMap, Lval, Vars, !:LocVarMap)
+        set.singleton_set(Vars, Var),
+        map.det_insert(!.LocVarMap, Lval, Vars, !:LocVarMap)
     ).
 
     % Update LocVarMap0 to reflect that Var is no longer dependent
@@ -2167,12 +2167,12 @@ make_var_depend_on_root_lval(Var, Lval, !LocVarMap) :-
 make_var_not_depend_on_root_lval(Var, Lval, !LocVarMap) :-
     expect(is_root_lval(Lval), this_file,
         "make_var_depend_on_root_lval: non-root lval"),
-    ( map__search(!.LocVarMap, Lval, Vars0) ->
-        set__delete(Vars0, Var, Vars),
-        ( set__empty(Vars) ->
-            map__det_remove(!.LocVarMap, Lval, _, !:LocVarMap)
+    ( map.search(!.LocVarMap, Lval, Vars0) ->
+        set.delete(Vars0, Var, Vars),
+        ( set.empty(Vars) ->
+            map.det_remove(!.LocVarMap, Lval, _, !:LocVarMap)
         ;
-            map__det_update(!.LocVarMap, Lval, Vars, !:LocVarMap)
+            map.det_update(!.LocVarMap, Lval, Vars, !:LocVarMap)
         )
     ;
         unexpected(this_file, "make_var_not_depend_on_root_lval: no record")
@@ -2263,7 +2263,7 @@ set_follow_vars(abs_follow_vars(FollowVarMap, NextNonReserved), !VLI) :-
 
 get_var_name(VLI, Var, Name) :-
     get_varset(VLI, VarSet),
-    varset__lookup_name(VarSet, Var, Name).
+    varset.lookup_name(VarSet, Var, Name).
 
 %----------------------------------------------------------------------------%
 
@@ -2271,7 +2271,7 @@ get_var_name(VLI, Var, Name) :-
 
 nonempty_state(State) :-
     State = state(LvalSet, MaybeConstRval, MaybeExprRval, _, _),
-    ( set__non_empty(LvalSet)
+    ( set.non_empty(LvalSet)
     ; MaybeConstRval = yes(_)
     ; MaybeExprRval = yes(_)
     ).

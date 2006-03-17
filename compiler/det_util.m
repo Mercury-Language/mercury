@@ -15,7 +15,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds__det_util.
+:- module check_hlds.det_util.
 :- interface.
 
 :- import_module hlds.hlds_data.
@@ -115,11 +115,11 @@ delete_unreachable_cases([Case | Cases0], [ConsId | ConsIds], Cases) :-
     ).
 
 interpret_unify(X, var(Y), !Subst) :-
-    term__unify(term__variable(X), term__variable(Y), !Subst).
+    term.unify(variable(X), variable(Y), !Subst).
 interpret_unify(X, functor(ConsId, _, ArgVars), !Subst) :-
-    term__var_list_to_term_list(ArgVars, ArgTerms),
+    term.var_list_to_term_list(ArgVars, ArgTerms),
     cons_id_and_args_to_term(ConsId, ArgTerms, RhsTerm),
-    term__unify(term__variable(X), RhsTerm, !Subst).
+    term.unify(variable(X), RhsTerm, !Subst).
 interpret_unify(_X, lambda_goal(_, _, _, _, _, _, _, _), !Subst).
     % For ease of implementation we just ignore unifications with lambda terms.
     % This is a safe approximation, it just prevents us from optimizing them
@@ -128,9 +128,9 @@ interpret_unify(_X, lambda_goal(_, _, _, _, _, _, _, _), !Subst).
 det_lookup_detism(DetInfo, PredId, ModeId, Detism) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
     module_info_preds(ModuleInfo, PredTable),
-    map__lookup(PredTable, PredId, PredInfo),
+    map.lookup(PredTable, PredId, PredInfo),
     pred_info_procedures(PredInfo, ProcTable),
-    map__lookup(ProcTable, ModeId, ProcInfo),
+    map.lookup(ProcTable, ModeId, ProcInfo),
     proc_info_interface_determinism(ProcInfo, Detism).
 
 det_get_proc_info(DetInfo, ProcInfo) :-
@@ -138,23 +138,23 @@ det_get_proc_info(DetInfo, ProcInfo) :-
     det_info_get_pred_id(DetInfo, PredId),
     det_info_get_proc_id(DetInfo, ProcId),
     module_info_preds(ModuleInfo, PredTable),
-    map__lookup(PredTable, PredId, PredInfo),
+    map.lookup(PredTable, PredId, PredInfo),
     pred_info_procedures(PredInfo, ProcTable),
-    map__lookup(ProcTable, ProcId, ProcInfo).
+    map.lookup(ProcTable, ProcId, ProcInfo).
 
 det_lookup_var_type(ModuleInfo, ProcInfo, Var, TypeDefn) :-
     proc_info_vartypes(ProcInfo, VarTypes),
-    map__lookup(VarTypes, Var, Type),
+    map.lookup(VarTypes, Var, Type),
     ( type_to_ctor_and_args(Type, TypeCtor, _) ->
         module_info_get_type_table(ModuleInfo, TypeTable),
-        map__search(TypeTable, TypeCtor, TypeDefn)
+        map.search(TypeTable, TypeCtor, TypeDefn)
     ;
         unexpected(this_file, "det_lookup_var_type")
     ).
 
 det_no_output_vars(Vars, InstMap, InstMapDelta, DetInfo) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
-    instmap__no_output_vars(InstMap, InstMapDelta, Vars,
+    instmap.no_output_vars(InstMap, InstMapDelta, Vars,
         DetInfo ^ vartypes, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -171,9 +171,9 @@ det_no_output_vars(Vars, InstMap, InstMapDelta, DetInfo) :-
             ).
 
 det_info_init(ModuleInfo, VarTypes, PredId, ProcId, Globals, DetInfo) :-
-    globals__lookup_bool_option(Globals, reorder_conj, ReorderConj),
-    globals__lookup_bool_option(Globals, reorder_disj, ReorderDisj),
-    globals__lookup_bool_option(Globals, fully_strict, FullyStrict),
+    globals.lookup_bool_option(Globals, reorder_conj, ReorderConj),
+    globals.lookup_bool_option(Globals, reorder_disj, ReorderDisj),
+    globals.lookup_bool_option(Globals, fully_strict, FullyStrict),
     DetInfo = det_info(ModuleInfo, VarTypes, PredId, ProcId,
         ReorderConj, ReorderDisj, FullyStrict).
 

@@ -18,7 +18,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module backend_libs__foreign.
+:- module backend_libs.foreign.
 :- interface.
 
 :- import_module hlds.hlds_data.
@@ -181,17 +181,17 @@
 filter_decls(WantedLang, Decls0, LangDecls, NotLangDecls) :-
     IsWanted = (pred(foreign_decl_code(Lang, _, _, _)::in) is semidet :-
         WantedLang = Lang),
-    list__filter(IsWanted, Decls0, LangDecls, NotLangDecls).
+    list.filter(IsWanted, Decls0, LangDecls, NotLangDecls).
 
 filter_imports(WantedLang, Imports0, LangImports, NotLangImports) :-
     IsWanted = (pred(foreign_import_module(Lang, _, _)::in) is semidet :-
         WantedLang = Lang),
-    list__filter(IsWanted, Imports0, LangImports, NotLangImports).
+    list.filter(IsWanted, Imports0, LangImports, NotLangImports).
 
 filter_bodys(WantedLang, Bodys0, LangBodys, NotLangBodys) :-
     IsWanted = (pred(foreign_body_code(Lang, _, _)::in) is semidet :-
         WantedLang = Lang),
-    list__filter(IsWanted, Bodys0, LangBodys, NotLangBodys).
+    list.filter(IsWanted, Bodys0, LangBodys, NotLangBodys).
 
 extrude_pragma_implementation([], _PragmaVars, _PredName, _PredOrFunc,
         _Context, !ModuleInfo, !NewAttributes, !Impl) :-
@@ -205,7 +205,7 @@ extrude_pragma_implementation([TargetLang | TargetLangs], _PragmaVars,
 
     % If the foreign language is available as a target language,
     % we don't need to do anything.
-    ( list__member(ForeignLanguage, [TargetLang | TargetLangs]) ->
+    ( list.member(ForeignLanguage, [TargetLang | TargetLangs]) ->
         true
     ;
         set_foreign_language(TargetLang, !Attributes),
@@ -348,11 +348,11 @@ make_pragma_import(PredInfo, ProcInfo, C_Function, Context, PragmaImpl, VarSet,
 
     % Build a list of argument variables, together with their names, modes,
     % and types.
-    varset__init(VarSet0),
-    list__length(Modes, Arity),
-    varset__new_vars(VarSet0, Arity, Vars, VarSet),
+    varset.init(VarSet0),
+    list.length(Modes, Arity),
+    varset.new_vars(VarSet0, Arity, Vars, VarSet),
     create_pragma_vars(Vars, Modes, 0, PragmaVars),
-    assoc_list__from_corresponding_lists(PragmaVars, ArgTypes,
+    assoc_list.from_corresponding_lists(PragmaVars, ArgTypes,
         PragmaVarsAndTypes),
 
     % Construct parts of the C_code string for calling a C_function.  This C
@@ -367,7 +367,7 @@ make_pragma_import(PredInfo, ProcInfo, C_Function, Context, PragmaImpl, VarSet,
     proc_info_declared_determinism(ProcInfo, MaybeDeclaredDetism),
     handle_return_value(Context, MaybeDeclaredDetism, CodeModel, PredOrFunc,
         PragmaVarsAndTypes, ArgPragmaVarsAndTypes, Return, !ModuleInfo, !IO),
-    assoc_list__keys(ArgPragmaVarsAndTypes, ArgPragmaVars),
+    assoc_list.keys(ArgPragmaVarsAndTypes, ArgPragmaVars),
     create_pragma_import_c_code(ArgPragmaVars, !.ModuleInfo, "", Variables),
 
     % Make an import implementation.
@@ -404,7 +404,7 @@ handle_return_value(Context, MaybeDeclaredDetism, CodeModel, PredOrFunc,
             RetArg = pragma_var(_, RetArgName, RetMode, _) - RetType,
             mode_to_arg_mode(!.ModuleInfo, RetMode, RetType, RetArgMode),
             RetArgMode = top_out,
-            \+ type_util__is_dummy_argument_type(!.ModuleInfo, RetType)
+            \+ type_util.is_dummy_argument_type(!.ModuleInfo, RetType)
         ->
             C_Code0 = RetArgName ++ " = "
         ;
@@ -438,12 +438,12 @@ handle_return_value(Context, MaybeDeclaredDetism, CodeModel, PredOrFunc,
         % be used.
         C_Code0 = "\n#error ""cannot import nondet procedure""\n"
     ),
-    list__filter(include_import_arg(!.ModuleInfo), !Args).
+    list.filter(include_import_arg(!.ModuleInfo), !Args).
 
     % include_import_arg(M, Arg):
     %
     % Succeeds iff Arg should be included in the arguments of the C function.
-    % Fails if `Arg' has a type such as `io__state' that is just a dummy
+    % Fails if `Arg' has a type such as `io.state' that is just a dummy
     % argument that should not be passed to C.
     %
 :- pred include_import_arg(module_info::in, pair(pragma_var, mer_type)::in)
@@ -452,7 +452,7 @@ handle_return_value(Context, MaybeDeclaredDetism, CodeModel, PredOrFunc,
 include_import_arg(ModuleInfo, pragma_var(_Var, _Name, Mode, _Box) - Type) :-
     mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
     ArgMode \= top_unused,
-    \+ type_util__is_dummy_argument_type(ModuleInfo, Type).
+    \+ type_util.is_dummy_argument_type(ModuleInfo, Type).
 
     % create_pragma_vars(Vars, Modes, ArgNum0, PragmaVars):
     %
@@ -468,8 +468,8 @@ create_pragma_vars([Var | Vars], [Mode | Modes], ArgNum0,
         [PragmaVar | PragmaVars]) :-
     % Figure out a name for the C variable which will hold this argument.
     ArgNum = ArgNum0 + 1,
-    string__int_to_string(ArgNum, ArgNumString),
-    string__append("Arg", ArgNumString, ArgName),
+    string.int_to_string(ArgNum, ArgNumString),
+    string.append("Arg", ArgNumString, ArgName),
     PragmaVar = pragma_var(Var, ArgName, Mode, native_if_possible),
     create_pragma_vars(Vars, Modes, ArgNum, PragmaVars).
 create_pragma_vars([_ | _], [], _, _) :-
@@ -533,9 +533,9 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
     module_info_get_type_table(ModuleInfo, Types),
     (
         type_to_ctor_and_args(Type, TypeCtor, _),
-        map__search(Types, TypeCtor, TypeDefn)
+        map.search(Types, TypeCtor, TypeDefn)
     ->
-        hlds_data__get_type_defn_body(TypeDefn, Body),
+        hlds_data.get_type_defn_body(TypeDefn, Body),
         ( Body = foreign_type(ForeignTypeBody) ->
             foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody,
                 ForeignTypeName, _, Assertions),
@@ -557,7 +557,7 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
         MaybeUserEqComp, Assertions) :-
     ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava),
     module_info_get_globals(ModuleInfo, Globals),
-    globals__get_target(Globals, Target),
+    globals.get_target(Globals, Target),
     (
         Target = c,
         (
@@ -676,7 +676,7 @@ to_type_string(java, mercury(Type)) = Result :-
 
 decl_guard(ModuleName) = UppercaseModuleName ++ "_DECL_GUARD" :-
     MangledModuleName = sym_name_mangle(ModuleName),
-    string__to_upper(MangledModuleName, UppercaseModuleName).
+    string.to_upper(MangledModuleName, UppercaseModuleName).
 
 %-----------------------------------------------------------------------------%
 

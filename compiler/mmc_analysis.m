@@ -14,7 +14,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module transform_hlds__mmc_analysis.
+:- module transform_hlds.mmc_analysis.
 :- interface.
 
 :- import_module analysis.
@@ -25,7 +25,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type mmc ---> mmc.
+:- type mmc
+    --->    mmc.
 
 :- instance compiler(mmc).
 
@@ -36,7 +37,7 @@
     proc_id) = func_id.
 
 :- pred module_id_func_id(module_info::in, pred_proc_id::in,
-        module_id::out, func_id::out) is det.
+    module_id::out, func_id::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -115,7 +116,7 @@ mmc_module_id_to_write_file_name(ModuleId, Ext, FileName, !IO) :-
 :- pred mmc_module_is_local(module_id::in, bool::out, io::di, io::uo) is det.
 
 mmc_module_is_local(ModuleId, IsLocal, !IO) :-
-    globals__io_lookup_accumulating_option(local_module_id, LocalModuleIds,
+    globals.io_lookup_accumulating_option(local_module_id, LocalModuleIds,
         !IO),
     IsLocal = (if ModuleId `list.member` LocalModuleIds then yes else no).
 
@@ -126,8 +127,7 @@ module_id_to_module_name(ModuleId) = ModuleName :-
     string_to_sym_name(ModuleId, ".", ModuleName).
 
 pred_or_func_name_arity_to_func_id(PredOrFunc, Name, Arity, ProcId) = FuncId :-
-    FuncId0 = simple_call_id_to_string(PredOrFunc
-        - unqualified(Name)/Arity),
+    FuncId0 = simple_call_id_to_string(PredOrFunc - unqualified(Name)/Arity),
     proc_id_to_int(ProcId, ProcInt),
     FuncId = FuncId0 ++ "-" ++ int_to_string(ProcInt).
 

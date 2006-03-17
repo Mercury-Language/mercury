@@ -28,7 +28,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- module check_hlds__common.
+:- module check_hlds.common.
 :- interface.
 
 :- import_module check_hlds.simplify.
@@ -225,13 +225,13 @@
 %---------------------------------------------------------------------------%
 
 common_info_init = CommonInfo :-
-    eqvclass__init(VarEqv0),
-    map__init(StructMap0),
-    map__init(SeenCalls0),
+    eqvclass.init(VarEqv0),
+    map.init(StructMap0),
+    map.init(SeenCalls0),
     CommonInfo = common_info(VarEqv0, StructMap0, StructMap0, SeenCalls0).
 
 common_info_clear_structs(!Info) :-
-    !:Info = !.Info ^ since_call_structs := map__init.
+    !:Info = !.Info ^ since_call_structs := map.init.
 
 %---------------------------------------------------------------------------%
 
@@ -293,7 +293,7 @@ optimise_construct(Var, ConsId, ArgVars, Mode, Goal0, Goal,
         TypeCtor = lookup_var_type_ctor(!.Info, Var),
         simplify_info_get_common_info(!.Info, CommonInfo0),
         VarEqv0 = CommonInfo0 ^ var_eqv,
-        list__map_foldl(eqvclass__ensure_element_partition_id,
+        list.map_foldl(eqvclass.ensure_element_partition_id,
             ArgVars, ArgVarIds, VarEqv0, VarEqv1),
         AllStructMap0 = CommonInfo0 ^ all_structs,
         (
@@ -304,13 +304,13 @@ optimise_construct(Var, ConsId, ArgVars, Mode, Goal0, Goal,
             goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
             instmap_delta_search_var(InstMapDelta, Var, _),
 
-            map__search(AllStructMap0, TypeCtor, ConsIdMap0),
-            map__search(ConsIdMap0, ConsId, Structs),
+            map.search(AllStructMap0, TypeCtor, ConsIdMap0),
+            map.search(ConsIdMap0, ConsId, Structs),
             find_matching_cell_construct(Structs, VarEqv1, ArgVarIds,
                 OldStruct)
         ->
             OldStruct = structure(OldVar, _),
-            sveqvclass__ensure_equivalence(Var, OldVar, VarEqv1, VarEqv),
+            sveqvclass.ensure_equivalence(Var, OldVar, VarEqv1, VarEqv),
             CommonInfo = CommonInfo0 ^ var_eqv := VarEqv,
             simplify_info_set_common_info(CommonInfo, !Info),
             (
@@ -326,7 +326,7 @@ optimise_construct(Var, ConsId, ArgVars, Mode, Goal0, Goal,
                 generate_assign(Var, OldVar, UniMode, GoalInfo0,
                     Goal - GoalInfo, !Info),
                 simplify_info_set_requantify(!Info),
-                pd_cost__goal(Goal0 - GoalInfo0, Cost),
+                goal_cost(Goal0 - GoalInfo0, Cost),
                 simplify_info_incr_cost_delta(Cost, !Info)
             )
         ;
@@ -360,7 +360,7 @@ optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, Mode,
         TypeCtor = lookup_var_type_ctor(!.Info, Var),
         simplify_info_get_common_info(!.Info, CommonInfo0),
         VarEqv0 = CommonInfo0 ^ var_eqv,
-        eqvclass__ensure_element_partition_id(Var, VarId, VarEqv0, VarEqv1),
+        eqvclass.ensure_element_partition_id(Var, VarId, VarEqv0, VarEqv1),
         SinceCallStructMap0 = CommonInfo0 ^ since_call_structs,
         (
             % Do not delete deconstruction unifications inserted by
@@ -369,19 +369,19 @@ optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, Mode,
             \+ goal_info_has_feature(GoalInfo, stack_opt),
             \+ goal_info_has_feature(GoalInfo, tuple_opt),
 
-            map__search(SinceCallStructMap0, TypeCtor, ConsIdMap0),
-            map__search(ConsIdMap0, ConsId, Structs),
+            map.search(SinceCallStructMap0, TypeCtor, ConsIdMap0),
+            map.search(ConsIdMap0, ConsId, Structs),
             find_matching_cell_deconstruct(Structs, VarEqv1, VarId, OldStruct)
         ->
             OldStruct = structure(_, OldArgVars),
-            eqvclass__ensure_corresponding_equivalences(ArgVars,
+            eqvclass.ensure_corresponding_equivalences(ArgVars,
                 OldArgVars, VarEqv1, VarEqv),
             CommonInfo = CommonInfo0 ^ var_eqv := VarEqv,
             simplify_info_set_common_info(CommonInfo, !Info),
             create_output_unifications(GoalInfo0, ArgVars, OldArgVars,
                 UniModes, Goals, !Info),
             Goal = conj(plain_conj, Goals),
-            pd_cost__goal(Goal0 - GoalInfo0, Cost),
+            goal_cost(Goal0 - GoalInfo0, Cost),
             simplify_info_incr_cost_delta(Cost, !Info),
             simplify_info_set_requantify(!Info),
             (
@@ -402,7 +402,7 @@ optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, Mode,
 
 lookup_var_type_ctor(Info, Var) = TypeCtor :-
     simplify_info_get_var_types(Info, VarTypes),
-    map__lookup(VarTypes, Var, Type),
+    map.lookup(VarTypes, Var, Type),
     ( type_to_ctor_and_args(Type, TypeCtorPrime, _) ->
         TypeCtor = TypeCtorPrime
     ;
@@ -448,7 +448,7 @@ ids_vars_match([Id | Ids], [Var | Vars], VarEqv) :-
     eqvclass(prog_var)::in) is semidet.
 
 id_var_match(Id, Var, VarEqv) :-
-    eqvclass__partition_id(VarEqv, Var, VarId),
+    eqvclass.partition_id(VarEqv, Var, VarId),
     Id = VarId.
 
 %---------------------------------------------------------------------------%
@@ -475,17 +475,17 @@ record_cell_in_maps(TypeCtor, ConsId, Struct, VarEqv, !Info) :-
     structure::in, struct_map::in, struct_map::out) is det.
 
 do_record_cell_in_struct_map(TypeCtor, ConsId, Struct, !StructMap) :-
-    ( map__search(!.StructMap, TypeCtor, ConsIdMap0) ->
-        ( map__search(ConsIdMap0, ConsId, Structs0) ->
+    ( map.search(!.StructMap, TypeCtor, ConsIdMap0) ->
+        ( map.search(ConsIdMap0, ConsId, Structs0) ->
             Structs = [Struct | Structs0],
-            map__det_update(ConsIdMap0, ConsId, Structs, ConsIdMap)
+            map.det_update(ConsIdMap0, ConsId, Structs, ConsIdMap)
         ;
-            map__det_insert(ConsIdMap0, ConsId, [Struct], ConsIdMap)
+            map.det_insert(ConsIdMap0, ConsId, [Struct], ConsIdMap)
         ),
-        svmap__det_update(TypeCtor, ConsIdMap, !StructMap)
+        svmap.det_update(TypeCtor, ConsIdMap, !StructMap)
     ;
-        map__det_insert(map__init, ConsId, [Struct], ConsIdMap),
-        svmap__det_insert(TypeCtor, ConsIdMap, !StructMap)
+        map.det_insert(map.init, ConsId, [Struct], ConsIdMap),
+        svmap.det_insert(TypeCtor, ConsIdMap, !StructMap)
     ).
 
 %---------------------------------------------------------------------------%
@@ -496,7 +496,7 @@ do_record_cell_in_struct_map(TypeCtor, ConsId, Struct, !StructMap) :-
 record_equivalence(Var1, Var2, !Info) :-
     simplify_info_get_common_info(!.Info, CommonInfo0),
     VarEqv0 = CommonInfo0 ^ var_eqv,
-    eqvclass__ensure_equivalence(VarEqv0, Var1, Var2, VarEqv),
+    eqvclass.ensure_equivalence(VarEqv0, Var1, Var2, VarEqv),
     CommonInfo = CommonInfo0 ^ var_eqv := VarEqv,
     simplify_info_set_common_info(CommonInfo, !Info).
 
@@ -555,7 +555,7 @@ optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
     simplify_info_get_common_info(!.Info, CommonInfo0),
     Eqv0 = CommonInfo0 ^ var_eqv,
     SeenCalls0 = CommonInfo0 ^ seen_calls,
-    ( map__search(SeenCalls0, SeenCall, SeenCallsList0) ->
+    ( map.search(SeenCalls0, SeenCall, SeenCallsList0) ->
         (
             find_previous_call(SeenCallsList0, InputArgs, Eqv0,
                 OutputArgs2, PrevContext)
@@ -569,10 +569,10 @@ optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
             (
                 simplify_do_warn_calls(!.Info),
                 % Don't warn for cases such as:
-                % set__init(Set1 : set(int)),
-                % set__init(Set2 : set(float)).
-                map__apply_to_list(OutputArgs, VarTypes, OutputArgTypes1),
-                map__apply_to_list(OutputArgs2, VarTypes, OutputArgTypes2),
+                % set.init(Set1 : set(int)),
+                % set.init(Set2 : set(float)).
+                map.apply_to_list(OutputArgs, VarTypes, OutputArgTypes1),
+                map.apply_to_list(OutputArgs2, VarTypes, OutputArgTypes2),
                 types_match_exactly_list(OutputArgTypes1, OutputArgTypes2)
             ->
                 goal_info_get_context(GoalInfo, Context),
@@ -583,7 +583,7 @@ optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
                 true
             ),
             CommonInfo = CommonInfo0,
-            pd_cost__goal(Goal0 - GoalInfo, Cost),
+            goal_cost(Goal0 - GoalInfo, Cost),
             simplify_info_incr_cost_delta(Cost, !Info),
             simplify_info_set_requantify(!Info),
             goal_info_get_determinism(GoalInfo, Detism0),
@@ -595,7 +595,7 @@ optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
         ;
             goal_info_get_context(GoalInfo, Context),
             ThisCall = call_args(Context, InputArgs, OutputArgs),
-            map__det_update(SeenCalls0, SeenCall, [ThisCall | SeenCallsList0],
+            map.det_update(SeenCalls0, SeenCall, [ThisCall | SeenCallsList0],
                 SeenCalls),
             CommonInfo = CommonInfo0 ^ seen_calls := SeenCalls,
             Goal = Goal0
@@ -603,7 +603,7 @@ optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
     ;
         goal_info_get_context(GoalInfo, Context),
         ThisCall = call_args(Context, InputArgs, OutputArgs),
-        map__det_insert(SeenCalls0, SeenCall, [ThisCall], SeenCalls),
+        map.det_insert(SeenCalls0, SeenCall, [ThisCall], SeenCalls),
         CommonInfo = CommonInfo0 ^ seen_calls := SeenCalls,
         Goal = Goal0
     ),
@@ -628,7 +628,7 @@ partition_call_args(VarTypes, ModuleInfo, [ArgMode | ArgModes],
     partition_call_args(VarTypes, ModuleInfo, ArgModes, Args,
         InputArgs1, OutputArgs1, OutputModes1),
     mode_get_insts(ModuleInfo, ArgMode, InitialInst, FinalInst),
-    map__lookup(VarTypes, Arg, Type),
+    map.lookup(VarTypes, Arg, Type),
     ( inst_matches_binding(InitialInst, FinalInst, Type, ModuleInfo) ->
         InputArgs = [Arg | InputArgs1],
         OutputArgs = OutputArgs1,
@@ -695,8 +695,8 @@ vars_are_equiv(X, Y, VarEqv) :-
     (
         X = Y
     ;
-        eqvclass__partition_id(VarEqv, X, Id),
-        eqvclass__partition_id(VarEqv, Y, Id)
+        eqvclass.partition_id(VarEqv, X, Id),
+        eqvclass.partition_id(VarEqv, Y, Id)
     ).
 
 %---------------------------------------------------------------------------%
@@ -753,10 +753,10 @@ create_output_unifications(GoalInfo, OutputArgs, OldOutputArgs, UniModes,
 generate_assign(ToVar, FromVar, UniMode, _, Goal, !Info) :-
     apply_induced_tsubst(ToVar, FromVar, !Info),
     simplify_info_get_var_types(!.Info, VarTypes),
-    map__lookup(VarTypes, ToVar, ToVarType),
-    map__lookup(VarTypes, FromVar, FromVarType),
+    map.lookup(VarTypes, ToVar, ToVarType),
+    map.lookup(VarTypes, FromVar, FromVarType),
 
-    set__list_to_set([ToVar, FromVar], NonLocals),
+    set.list_to_set([ToVar, FromVar], NonLocals),
     UniMode = ((_ - ToVarInst0) -> (_ - ToVarInst)),
     ( types_match_exactly(ToVarType, FromVarType) ->
         UnifyMode = (ToVarInst0 -> ToVarInst) - (ToVarInst -> ToVarInst),
@@ -839,7 +839,7 @@ apply_induced_tsubst(ToVar, FromVar, !Info) :-
     (
         calculate_induced_tsubst(ToVarRttiInfo, FromVarRttiInfo, TSubst)
     ->
-        ( map__is_empty(TSubst) ->
+        ( map.is_empty(TSubst) ->
             true
         ;
             simplify_info_apply_type_substitution(TSubst, !Info)
@@ -876,17 +876,17 @@ calculate_induced_tsubst(ToVarRttiInfo, FromVarRttiInfo, TSubst) :-
         FromVarRttiInfo = type_info_var(FromVarTypeInfoType),
         ToVarRttiInfo = type_info_var(ToVarTypeInfoType),
         type_unify(FromVarTypeInfoType, ToVarTypeInfoType, [],
-            map__init, TSubst)
+            map.init, TSubst)
     ;
         FromVarRttiInfo = typeclass_info_var(FromVarConstraint),
         ToVarRttiInfo = typeclass_info_var(ToVarConstraint),
         FromVarConstraint = constraint(Name, FromArgs),
         ToVarConstraint = constraint(Name, ToArgs),
-        type_unify_list(FromArgs, ToArgs, [], map__init, TSubst)
+        type_unify_list(FromArgs, ToArgs, [], map.init, TSubst)
     ;
         FromVarRttiInfo = non_rtti_var,
         ToVarRttiInfo = non_rtti_var,
-        map__init(TSubst)
+        map.init(TSubst)
     ).
 
 %---------------------------------------------------------------------------%

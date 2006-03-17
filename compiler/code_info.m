@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -26,7 +26,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- module ll_backend__code_info.
+:- module ll_backend.code_info.
 :- interface.
 
 :- import_module hlds.code_model.
@@ -420,20 +420,20 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
     proc_info_varset(ProcInfo, VarSet),
     proc_info_vartypes(ProcInfo, VarTypes),
     proc_info_stack_slots(ProcInfo, StackSlots),
-    globals__get_options(Globals, Options),
-    globals__get_trace_level(Globals, TraceLevel),
+    globals.get_options(Globals, Options),
+    globals.get_trace_level(Globals, TraceLevel),
     ( eff_trace_level_is_none(PredInfo, ProcInfo, TraceLevel) = no ->
-        trace__fail_vars(ModuleInfo, ProcInfo, FailVars),
+        trace.fail_vars(ModuleInfo, ProcInfo, FailVars),
         MaybeFailVars = yes(FailVars),
-        set__union(Liveness, FailVars, EffLiveness)
+        set.union(Liveness, FailVars, EffLiveness)
     ;
         MaybeFailVars = no,
         EffLiveness = Liveness
     ),
-    var_locn__init_state(ArgList, EffLiveness, VarSet, VarTypes, StackSlots,
+    var_locn.init_state(ArgList, EffLiveness, VarSet, VarTypes, StackSlots,
         FollowVars, Options, VarLocnInfo),
-    stack__init(ResumePoints),
-    globals__lookup_bool_option(Globals, allow_hijacks, AllowHijack),
+    stack.init(ResumePoints),
+    globals.lookup_bool_option(Globals, allow_hijacks, AllowHijack),
     (
         AllowHijack = yes,
         Hijack = allowed
@@ -443,15 +443,15 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
     ),
     DummyFailInfo = fail_info(ResumePoints, resume_point_unknown,
         may_be_different, not_inside_non_condition, Hijack),
-    map__init(TempContentMap),
-    set__init(TempsInUse),
-    set__init(Zombies),
-    map__init(LayoutMap),
+    map.init(TempContentMap),
+    set.init(TempsInUse),
+    set.init(Zombies),
+    map.init(LayoutMap),
     max_var_slot(StackSlots, VarSlotMax),
-    trace__reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals,
+    trace.reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals,
         FixedSlots, _),
-    int__max(VarSlotMax, FixedSlots, SlotMax),
-    globals__lookup_bool_option(Globals, opt_no_return_calls,
+    int.max(VarSlotMax, FixedSlots, SlotMax),
+    globals.lookup_bool_option(Globals, opt_no_return_calls,
         OptNoReturnCalls),
     CodeInfo0 = code_info(
         code_info_static(
@@ -475,12 +475,12 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
             DummyFailInfo   % init_fail_info will override this dummy value
         ),
         code_info_persistent(
-            counter__init(1),
+            counter.init(1),
             SaveSuccip,
             LayoutMap,
             0,
             TempContentMap,
-            counter__init(1),
+            counter.init(1),
             [],
             -1,
             no,
@@ -499,7 +499,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
 init_maybe_trace_info(TraceLevel, Globals, ModuleInfo, PredInfo,
         ProcInfo, TraceSlotInfo, !CI) :-
     ( eff_trace_level_is_none(PredInfo, ProcInfo, TraceLevel) = no ->
-        trace__setup(ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo,
+        trace.setup(ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo,
             TraceInfo, !CI),
         set_maybe_trace_info(yes(TraceInfo), !CI)
     ;
@@ -710,7 +710,7 @@ set_static_cell_info(SCI, CI,
     %
 :- pred succip_is_used(code_info::in, code_info::out) is det.
 
-:- pred add_trace_layout_for_label(label::in, term__context::in,
+:- pred add_trace_layout_for_label(label::in, term.context::in,
     trace_port::in, bool::in, goal_path::in, layout_label_info::in,
     code_info::in, code_info::out) is det.
 
@@ -737,19 +737,19 @@ set_static_cell_info(SCI, CI,
 
 get_stack_slots(CI, StackSlots) :-
     get_var_locn_info(CI, VarLocnInfo),
-    var_locn__get_stack_slots(VarLocnInfo, StackSlots).
+    var_locn.get_stack_slots(VarLocnInfo, StackSlots).
 
 get_follow_var_map(CI, FollowVarMap) :-
     get_var_locn_info(CI, VarLocnInfo),
-    var_locn__get_follow_var_map(VarLocnInfo, FollowVarMap).
+    var_locn.get_follow_var_map(VarLocnInfo, FollowVarMap).
 
 get_next_non_reserved(CI, NextNonReserved) :-
     get_var_locn_info(CI, VarLocnInfo),
-    var_locn__get_next_non_reserved(VarLocnInfo, NextNonReserved).
+    var_locn.get_next_non_reserved(VarLocnInfo, NextNonReserved).
 
 set_follow_vars(FollowVars, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__set_follow_vars(FollowVars, VarLocnInfo0, VarLocnInfo),
+    var_locn.set_follow_vars(FollowVars, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 %-----------------------------------------------------------------------------%
@@ -798,7 +798,7 @@ post_goal_update(GoalInfo, !CI) :-
     make_vars_forward_live(PostBirths, !CI),
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
     get_instmap(!.CI, InstMap0),
-    instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+    instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
     set_instmap(InstMap, !CI).
 
 %---------------------------------------------------------------------------%
@@ -815,7 +815,7 @@ get_var_types(CI) = VarTypes :-
     proc_info_vartypes(ProcInfo, VarTypes).
 
 variable_type(CI, Var) = Type :-
-    map__lookup(get_var_types(CI), Var, Type).
+    map.lookup(get_var_types(CI), Var, Type).
 
 lookup_type_defn(CI, Type) = TypeDefn :-
     get_module_info(CI, ModuleInfo),
@@ -825,7 +825,7 @@ lookup_type_defn(CI, Type) = TypeDefn :-
         unexpected(this_file, "unknown type in lookup_type_defn")
     ),
     module_info_get_type_table(ModuleInfo, TypeTable),
-    map__lookup(TypeTable, TypeCtor, TypeDefn).
+    map.lookup(TypeTable, TypeCtor, TypeDefn).
 
 cons_id_to_tag(CI, Var, ConsId) = ConsTag :-
     get_module_info(CI, ModuleInfo),
@@ -857,14 +857,14 @@ get_pred_proc_arginfo(CI, PredId, ProcId) = ArgInfo :-
 current_resume_point_vars(CI) = ResumeVars :-
     get_fail_info(CI, FailInfo),
     FailInfo = fail_info(ResumePointStack, _, _, _, _),
-    stack__top_det(ResumePointStack, ResumePointInfo),
+    stack.top_det(ResumePointStack, ResumePointInfo),
     pick_first_resume_point(ResumePointInfo, ResumeMap, _),
-    map__keys(ResumeMap, ResumeMapVarList),
-    set__list_to_set(ResumeMapVarList, ResumeVars).
+    map.keys(ResumeMap, ResumeMapVarList),
+    set.list_to_set(ResumeMapVarList, ResumeVars).
 
 variable_to_string(CI, Var) = Name :-
     get_varset(CI, Varset),
-    varset__lookup_name(Varset, Var, Name).
+    varset.lookup_name(Varset, Var, Name).
 
 %---------------------------------------------------------------------------%
 
@@ -875,7 +875,7 @@ make_entry_label(CI, ModuleInfo, PredId, ProcId, Immed0) = PredAddress :-
     ;
         Immed0 = yes,
         get_globals(CI, Globals),
-        globals__lookup_int_option(Globals, procs_per_c_function,
+        globals.lookup_int_option(Globals, procs_per_c_function,
             ProcsPerFunc),
         get_pred_id(CI, CurPredId),
         get_proc_id(CI, CurProcId),
@@ -888,7 +888,7 @@ get_next_label(Label, !CI) :-
     get_pred_id(!.CI, PredId),
     get_proc_id(!.CI, ProcId),
     get_label_counter(!.CI, C0),
-    counter__allocate(N, C0, C),
+    counter.allocate(N, C0, C),
     set_label_counter(C, !CI),
     make_internal_label(ModuleInfo, PredId, ProcId, N, Label).
 
@@ -905,7 +905,7 @@ add_trace_layout_for_label(Label, Context, Port, IsHidden, Path, Layout,
         Label = entry(_, _),
         unexpected(this_file, "add_trace_layout_for_label: entry")
     ),
-    ( map__search(Internals0, LabelNum, Internal0) ->
+    ( map.search(Internals0, LabelNum, Internal0) ->
         Internal0 = internal_layout_info(Exec0, Resume, Return),
         (
             Exec0 = no
@@ -915,10 +915,10 @@ add_trace_layout_for_label(Label, Context, Port, IsHidden, Path, Layout,
                 "adding trace layout for already known label")
         ),
         Internal = internal_layout_info(Exec, Resume, Return),
-        map__det_update(Internals0, LabelNum, Internal, Internals)
+        map.det_update(Internals0, LabelNum, Internal, Internals)
     ;
         Internal = internal_layout_info(Exec, no, no),
-        map__det_insert(Internals0, LabelNum, Internal, Internals)
+        map.det_insert(Internals0, LabelNum, Internal, Internals)
     ),
     set_layout_info(Internals, !CI).
 
@@ -931,7 +931,7 @@ add_resume_layout_for_label(Label, LayoutInfo, !CI) :-
         Label = entry(_, _),
         unexpected(this_file, "add_trace_layout_for_label: entry")
     ),
-    ( map__search(Internals0, LabelNum, Internal0) ->
+    ( map.search(Internals0, LabelNum, Internal0) ->
         Internal0 = internal_layout_info(Exec, Resume0, Return),
         (
             Resume0 = no
@@ -940,10 +940,10 @@ add_resume_layout_for_label(Label, LayoutInfo, !CI) :-
             unexpected(this_file, "adding gc layout for already known label")
         ),
         Internal = internal_layout_info(Exec, Resume, Return),
-        map__det_update(Internals0, LabelNum, Internal, Internals)
+        map.det_update(Internals0, LabelNum, Internal, Internals)
     ;
         Internal = internal_layout_info(no, Resume, no),
-        map__det_insert(Internals0, LabelNum, Internal, Internals)
+        map.det_insert(Internals0, LabelNum, Internal, Internals)
     ),
     set_layout_info(Internals, !CI).
 
@@ -953,8 +953,8 @@ add_resume_layout_for_label(Label, LayoutInfo, !CI) :-
 get_active_temps_data(CI, Temps) :-
     get_temps_in_use(CI, TempsInUse),
     get_temp_content_map(CI, TempContentMap),
-    map__select(TempContentMap, TempsInUse, TempsInUseContentMap),
-    map__to_assoc_list(TempsInUseContentMap, Temps).
+    map.select(TempContentMap, TempsInUse, TempsInUseContentMap),
+    map.to_assoc_list(TempsInUseContentMap, Temps).
 
 get_cur_proc_label(CI, ProcLabel) :-
     get_module_info(CI, ModuleInfo),
@@ -964,7 +964,7 @@ get_cur_proc_label(CI, ProcLabel) :-
 
 get_next_closure_seq_no(SeqNo, !CI) :-
     get_closure_seq_counter(!.CI, C0),
-    counter__allocate(SeqNo, C0, C),
+    counter.allocate(SeqNo, C0, C),
     set_closure_seq_counter(C, !CI).
 
 add_closure_layout(ClosureLayout, !CI) :-
@@ -1048,14 +1048,14 @@ generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code, !CI) :-
     % each variable should go. We don't need to reset the follow_vars
     % afterwards, since every goal following a branched control structure
     % must in any case be annotated with its own follow_var set.
-    map__to_assoc_list(StoreMap, AbsVarLocs),
-    map__from_assoc_list(AbsVarLocs, FollowVarsMap),
-    assoc_list__values(AbsVarLocs, AbsLocs),
-    code_util__max_mentioned_abs_reg(AbsLocs, MaxMentionedReg),
+    map.to_assoc_list(StoreMap, AbsVarLocs),
+    map.from_assoc_list(AbsVarLocs, FollowVarsMap),
+    assoc_list.values(AbsVarLocs, AbsLocs),
+    code_util.max_mentioned_abs_reg(AbsLocs, MaxMentionedReg),
     set_follow_vars(abs_follow_vars(FollowVarsMap, MaxMentionedReg + 1), !CI),
     get_instmap(!.CI, InstMap),
-    ( instmap__is_reachable(InstMap) ->
-        VarLocs = assoc_list__map_values(key_abs_locn_to_lval, AbsVarLocs),
+    ( instmap.is_reachable(InstMap) ->
+        VarLocs = assoc_list.map_values(key_abs_locn_to_lval, AbsVarLocs),
         place_vars(VarLocs, Code, !CI)
     ;
         % With --opt-no-return-call, the variables that we would have
@@ -1116,7 +1116,7 @@ generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, Code, !CI) :-
         % structure includes every slot in use at the end of any branch.
         get_temps_in_use(EndCodeInfo0, TempsInUse0),
         get_temps_in_use(EndCodeInfo1, TempsInUse1),
-        set__union(TempsInUse0, TempsInUse1, TempsInUse),
+        set.union(TempsInUse0, TempsInUse1, TempsInUse),
         set_temps_in_use(TempsInUse, EndCodeInfoA, EndCodeInfo)
     ),
     MaybeEnd = yes(branch_end_info(EndCodeInfo)).
@@ -1142,10 +1142,10 @@ after_all_branches(StoreMap, MaybeEnd, !CI) :-
     code_info::in, code_info::out) is det.
 
 remake_with_store_map(StoreMap, !CI) :-
-    map__to_assoc_list(StoreMap, VarLocns),
-    VarLvals = assoc_list__map_values(key_abs_locn_to_lval, VarLocns),
+    map.to_assoc_list(StoreMap, VarLocns),
+    VarLvals = assoc_list.map_values(key_abs_locn_to_lval, VarLocns),
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__reinit_state(VarLvals, VarLocnInfo0, VarLocnInfo),
+    var_locn.reinit_state(VarLvals, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 save_hp_in_branch(Code, Slot, Pos0, Pos) :-
@@ -1441,8 +1441,8 @@ prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
         (
             CurfrMaxfr = must_be_equal,
             ResumeKnown = resume_point_known(has_been_done),
-            stack__pop(ResumePoints, TopResumePoint, RestResumePoints),
-            stack__is_empty(RestResumePoints),
+            stack.pop(ResumePoints, TopResumePoint, RestResumePoints),
+            stack.is_empty(RestResumePoints),
             TopResumePoint = stack_only(_, do_fail)
         ->
             HijackInfo = disj_quarter_hijack,
@@ -1504,7 +1504,7 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
         HijackInfo = disj_quarter_hijack,
         expect(unify(CurfrMaxfr, must_be_equal), this_file,
             "maxfr may differ from curfr in disj_quarter_hijack"),
-        stack__top_det(ResumePoints, ResumePoint),
+        stack.top_det(ResumePoints, ResumePoint),
         pick_stack_resume_point(ResumePoint, _, StackLabel),
         LabelConst = const(code_addr_const(StackLabel)),
         % peephole.m looks for the "curfr==maxfr" pattern in the comment.
@@ -1641,7 +1641,7 @@ prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code, !CI) :-
 ite_enter_then(HijackInfo, ThenCode, ElseCode, !CI) :-
     get_fail_info(!.CI, FailInfo0),
     FailInfo0 = fail_info(ResumePoints0, ResumeKnown0, CurfrMaxfr, _, Allow),
-    stack__pop_det(ResumePoints0, _, ResumePoints),
+    stack.pop_det(ResumePoints0, _, ResumePoints),
     HijackInfo = ite_info(HijackResumeKnown, OldCondEnv, HijackType),
     (
         HijackType = ite_no_hijack,
@@ -1661,7 +1661,7 @@ ite_enter_then(HijackInfo, ThenCode, ElseCode, !CI) :-
         ])
     ;
         HijackType = ite_quarter_hijack,
-        stack__top_det(ResumePoints, ResumePoint),
+        stack.top_det(ResumePoints, ResumePoint),
         ( maybe_pick_stack_resume_point(ResumePoint, _, StackLabel) ->
             LabelConst = const(code_addr_const(StackLabel)),
             ThenCode = node([
@@ -1717,8 +1717,8 @@ enter_simple_neg(ResumeVars, GoalInfo, FailInfo0, !CI) :-
     % Therefore the only part of ResumePoint that matters is the set of
     % variables in the resume map; the other parts of ResumePoint
     % (the locations, the code address) will not be referenced.
-    set__to_sorted_list(ResumeVars, ResumeVarList),
-    map__init(ResumeMap0),
+    set.to_sorted_list(ResumeVars, ResumeVarList),
+    map.init(ResumeMap0),
     make_fake_resume_map(ResumeVarList, ResumeMap0, ResumeMap),
     ResumePoint = orig_only(ResumeMap, do_redo),
     effect_resume_point(ResumePoint, model_semi, Code, !CI),
@@ -1735,8 +1735,8 @@ leave_simple_neg(GoalInfo, FailInfo, !CI) :-
 make_fake_resume_map([], ResumeMap, ResumeMap).
 make_fake_resume_map([Var | Vars], ResumeMap0, ResumeMap) :-
         % a visibly fake location
-    set__singleton_set(Locns, reg(r, -1)),
-    map__det_insert(ResumeMap0, Var, Locns, ResumeMap1),
+    set.singleton_set(Locns, reg(r, -1)),
+    map.det_insert(ResumeMap0, Var, Locns, ResumeMap1),
     make_fake_resume_map(Vars, ResumeMap1, ResumeMap).
 
 %---------------------------------------------------------------------------%
@@ -1822,9 +1822,9 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
     get_fail_info(!.CI, FailInfo0),
     FailInfo0 = fail_info(ResumePoints0, ResumeKnown, CurfrMaxfr, CondEnv,
         Allow),
-    stack__top_det(ResumePoints0, TopResumePoint),
+    stack.top_det(ResumePoints0, TopResumePoint),
     clone_resume_point(TopResumePoint, NewResumePoint, !CI),
-    stack__push(ResumePoints0, NewResumePoint, ResumePoints),
+    stack.push(ResumePoints0, NewResumePoint, ResumePoints),
     FailInfo = fail_info(ResumePoints, resume_point_known(has_been_done),
         CurfrMaxfr, CondEnv, Allow),
     set_fail_info(FailInfo, !CI),
@@ -1842,7 +1842,7 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
         create_temp_frame(StackLabel,
             "prepare for temp frame commit", TempFrameCode, !CI),
         get_globals(!.CI, Globals),
-        globals__lookup_bool_option(Globals, use_minimal_model_stack_copy_cut,
+        globals.lookup_bool_option(Globals, use_minimal_model_stack_copy_cut,
             UseMinimalModelStackCopyCut),
         HijackInfo = commit_temp_frame(MaxfrSlot, UseMinimalModelStackCopyCut),
         (
@@ -1860,13 +1860,13 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
             Components = [
                 pragma_c_raw_code(
                     "\t\tMR_save_transient_registers();\n",
-                    cannot_branch_away, live_lvals_info(set__init)),
+                    cannot_branch_away, live_lvals_info(set.init)),
                 pragma_c_raw_code(
                     "\t\tMR_commit_mark();\n",
-                    cannot_branch_away, live_lvals_info(set__init)),
+                    cannot_branch_away, live_lvals_info(set.init)),
                 pragma_c_raw_code(
                     "\t\tMR_restore_transient_registers();\n",
-                    cannot_branch_away, live_lvals_info(set__init))
+                    cannot_branch_away, live_lvals_info(set.init))
             ],
             MarkCode = node([
                 pragma_c([], Components, will_not_call_mercury,
@@ -1941,7 +1941,7 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
             % See the comment in prepare_for_semi_commit above.
             Components = [
                 pragma_c_raw_code("\t\tMR_commit_cut();\n",
-                    cannot_branch_away, live_lvals_info(set__init))
+                    cannot_branch_away, live_lvals_info(set.init))
             ],
             CutCode = node([
                 pragma_c([], Components, will_not_call_mercury, no, no, no,
@@ -1956,7 +1956,7 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
     ;
         HijackInfo = commit_quarter_hijack,
         FailInfo = fail_info(ResumePoints, _, _, _, _),
-        stack__top_det(ResumePoints, TopResumePoint),
+        stack.top_det(ResumePoints, TopResumePoint),
         pick_stack_resume_point(TopResumePoint, _, StackLabel),
         StackLabelConst = const(code_addr_const(StackLabel)),
         SuccessUndoCode = node([
@@ -2056,19 +2056,19 @@ effect_resume_point(ResumePoint, CodeModel, Code, !CI) :-
     get_fail_info(!.CI, FailInfo0),
     FailInfo0 = fail_info(ResumePoints0, _ResumeKnown, CurfrMaxfr,
         CondEnv, Allow),
-    ( stack__top(ResumePoints0, OldResumePoint) ->
+    ( stack.top(ResumePoints0, OldResumePoint) ->
         pick_first_resume_point(OldResumePoint, OldMap, _),
         pick_first_resume_point(ResumePoint, NewMap, _),
-        map__keys(OldMap, OldKeys),
-        map__keys(NewMap, NewKeys),
-        set__list_to_set(OldKeys, OldKeySet),
-        set__list_to_set(NewKeys, NewKeySet),
-        expect(set__subset(OldKeySet, NewKeySet), this_file,
+        map.keys(OldMap, OldKeys),
+        map.keys(NewMap, NewKeys),
+        set.list_to_set(OldKeys, OldKeySet),
+        set.list_to_set(NewKeys, NewKeySet),
+        expect(set.subset(OldKeySet, NewKeySet), this_file,
             "non-nested resume point variable sets")
     ;
         true
     ),
-    stack__push(ResumePoints0, ResumePoint, ResumePoints),
+    stack.push(ResumePoints0, ResumePoint, ResumePoints),
     ( CodeModel = model_non ->
         pick_stack_resume_point(ResumePoint, _, StackLabel),
         LabelConst = const(code_addr_const(StackLabel)),
@@ -2089,7 +2089,7 @@ pop_resume_point(!CI) :-
     get_fail_info(!.CI, FailInfo0),
     FailInfo0 = fail_info(ResumePoints0, ResumeKnown, CurfrMaxfr,
         CondEnv, Allow),
-    stack__pop_det(ResumePoints0, _, ResumePoints),
+    stack.pop_det(ResumePoints0, _, ResumePoints),
     FailInfo = fail_info(ResumePoints, ResumeKnown, CurfrMaxfr,
         CondEnv, Allow),
     set_fail_info(FailInfo, !CI).
@@ -2099,7 +2099,7 @@ pop_resume_point(!CI) :-
 top_resume_point(CI, ResumePoint) :-
     get_fail_info(CI, FailInfo),
     FailInfo = fail_info(ResumePoints, _, _, _, _),
-    stack__top_det(ResumePoints, ResumePoint).
+    stack.top_det(ResumePoints, ResumePoint).
 
 set_resume_point_to_unknown(!CI) :-
     get_fail_info(!.CI, FailInfo0),
@@ -2122,13 +2122,13 @@ generate_failure(Code, !CI) :-
     FailInfo = fail_info(ResumePoints, ResumeKnown, _, _, _),
     (
         ResumeKnown = resume_point_known(_),
-        stack__top_det(ResumePoints, TopResumePoint),
+        stack.top_det(ResumePoints, TopResumePoint),
         ( pick_matching_resume_addr(!.CI, TopResumePoint, FailureAddress0) ->
             FailureAddress = FailureAddress0,
             PlaceCode = empty
         ;
             pick_first_resume_point(TopResumePoint, Map, FailureAddress),
-            map__to_assoc_list(Map, AssocList),
+            map.to_assoc_list(Map, AssocList),
             remember_position(!.CI, CurPos),
             pick_and_place_vars(AssocList, _, PlaceCode, !CI),
             reset_to_position(CurPos, !CI)
@@ -2145,16 +2145,16 @@ fail_if_rval_is_false(Rval0, Code, !CI) :-
     FailInfo = fail_info(ResumePoints, ResumeKnown, _, _, _),
     (
         ResumeKnown = resume_point_known(_),
-        stack__top_det(ResumePoints, TopResumePoint),
+        stack.top_det(ResumePoints, TopResumePoint),
         ( pick_matching_resume_addr(!.CI, TopResumePoint, FailureAddress0) ->
             % We branch away if the test *fails*
-            code_util__neg_rval(Rval0, Rval),
+            code_util.neg_rval(Rval0, Rval),
             Code = node([
                 if_val(Rval, FailureAddress0) - "Test for failure"
             ])
         ;
             pick_first_resume_point(TopResumePoint, Map, FailureAddress),
-            map__to_assoc_list(Map, AssocList),
+            map.to_assoc_list(Map, AssocList),
             get_next_label(SuccessLabel, !CI),
             remember_position(!.CI, CurPos),
             pick_and_place_vars(AssocList, _, PlaceCode, !CI),
@@ -2176,7 +2176,7 @@ fail_if_rval_is_false(Rval0, Code, !CI) :-
     ;
         ResumeKnown = resume_point_unknown,
         % We branch away if the test *fails*
-        code_util__neg_rval(Rval0, Rval),
+        code_util.neg_rval(Rval0, Rval),
         Code = node([
             if_val(Rval, do_redo) - "Test for failure"
         ])
@@ -2187,15 +2187,15 @@ fail_if_rval_is_false(Rval0, Code, !CI) :-
 failure_is_direct_branch(CI, CodeAddr) :-
     get_fail_info(CI, FailInfo),
     FailInfo = fail_info(ResumePoints, resume_point_known(_), _, _, _),
-    stack__top(ResumePoints, TopResumePoint),
+    stack.top(ResumePoints, TopResumePoint),
     pick_matching_resume_addr(CI, TopResumePoint, CodeAddr).
 
 may_use_nondet_tailcall(CI, TailCallStatus) :-
     get_fail_info(CI, FailInfo),
     FailInfo = fail_info(ResumePoints0, ResumeKnown, _, _, _),
     (
-        stack__pop(ResumePoints0, ResumePoint1, ResumePoints1),
-        stack__is_empty(ResumePoints1),
+        stack.pop(ResumePoints0, ResumePoint1, ResumePoints1),
+        stack.is_empty(ResumePoints1),
         ResumePoint1 = stack_only(_, do_fail)
     ->
         (
@@ -2257,16 +2257,16 @@ pick_matching_resume_addr(CI, ResumeMaps, Addr) :-
 :- pred match_resume_loc(resume_map::in, resume_map::in) is semidet.
 
 match_resume_loc(Map, Locations0) :-
-    map__keys(Map, KeyList),
-    set__list_to_set(KeyList, Keys),
-    map__select(Locations0, Keys, Locations),
-    map__to_assoc_list(Locations, List),
+    map.keys(Map, KeyList),
+    set.list_to_set(KeyList, Keys),
+    map.select(Locations0, Keys, Locations),
+    map.to_assoc_list(Locations, List),
     (
-        list__member(Var - Actual, List)
+        list.member(Var - Actual, List)
     =>
         (
-            map__search(Map, Var, Lvals),
-            set__subset(Lvals, Actual)
+            map.search(Map, Var, Lvals),
+            set.subset(Lvals, Actual)
         )
     ).
 
@@ -2301,7 +2301,7 @@ maybe_pick_stack_resume_point(stack_and_orig(Map, Addr, _, _),
 %---------------------------------------------------------------------------%
 
 produce_vars(Vars, Map, Code, !CI) :-
-    set__to_sorted_list(Vars, VarList),
+    set.to_sorted_list(Vars, VarList),
     produce_vars_2(VarList, Map, Code, !CI).
 
 :- pred produce_vars_2(list(prog_var)::in,
@@ -2309,12 +2309,12 @@ produce_vars(Vars, Map, Code, !CI) :-
     code_tree::out, code_info::in, code_info::out) is det.
 
 produce_vars_2([], Map, empty, !CI) :-
-    map__init(Map).
+    map.init(Map).
 produce_vars_2([V | Vs], Map, Code, !CI) :-
     produce_vars_2(Vs, Map0, Code0, !CI),
     produce_variable_in_reg_or_stack(V, Code1, Lval, !CI),
-    set__singleton_set(Lvals, Lval),
-    map__set(Map0, V, Lvals, Map),
+    set.singleton_set(Lvals, Lval),
+    map.set(Map0, V, Lvals, Map),
     Code = tree(Code0, Code1).
 
 flush_resume_vars_to_stack(Code, !CI) :-
@@ -2327,9 +2327,9 @@ flush_resume_vars_to_stack(Code, !CI) :-
 compute_resume_var_stack_locs(CI, VarLocs) :-
     get_fail_info(CI, FailInfo),
     FailInfo = fail_info(ResumePointStack, _, _, _, _),
-    stack__top_det(ResumePointStack, ResumePoint),
+    stack.top_det(ResumePointStack, ResumePoint),
     pick_stack_resume_point(ResumePoint, StackMap, _),
-    map__to_assoc_list(StackMap, VarLocSets),
+    map.to_assoc_list(StackMap, VarLocSets),
     pick_var_places(VarLocSets, VarLocs).
 
 %---------------------------------------------------------------------------%
@@ -2367,19 +2367,19 @@ init_fail_info(CodeModel, MaybeFailVars, ResumePoint, !CI) :-
     (
         MaybeFailVars = yes(FailVars),
         get_stack_slots(!.CI, StackSlots),
-        map__select(StackSlots, FailVars, AbsStackMap),
-        map__to_assoc_list(AbsStackMap, AbsStackList),
-        StackList0 = assoc_list__map_values(key_stack_slot_to_lval,
+        map.select(StackSlots, FailVars, AbsStackMap),
+        map.to_assoc_list(AbsStackMap, AbsStackList),
+        StackList0 = assoc_list.map_values(key_stack_slot_to_lval,
             AbsStackList),
         make_singleton_sets(StackList0, StackList),
-        map__from_assoc_list(StackList, StackMap)
+        map.from_assoc_list(StackList, StackMap)
     ;
         MaybeFailVars = no,
-        map__init(StackMap)
+        map.init(StackMap)
     ),
     ResumePoint = stack_only(StackMap, ResumeAddress),
-    stack__init(ResumeStack0),
-    stack__push(ResumeStack0, ResumePoint, ResumeStack),
+    stack.init(ResumeStack0),
+    stack.push(ResumeStack0, ResumePoint, ResumeStack),
     get_fail_info(!.CI, FailInfo0),
     FailInfo0 = fail_info(_, _, _, _, Allow),
     FailInfo = fail_info(ResumeStack, ResumeKnown, CurfrMaxfr,
@@ -2390,7 +2390,7 @@ init_fail_info(CodeModel, MaybeFailVars, ResumePoint, !CI) :-
 
 make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
     get_stack_slots(!.CI, StackSlots),
-    map__select(FullMap, ResumeVars, OrigMap),
+    map.select(FullMap, ResumeVars, OrigMap),
     (
         ResumeLocs = orig_only,
         get_next_label(OrigLabel, !CI),
@@ -2424,18 +2424,18 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
     map(prog_var, set(lval))::out) is det.
 
 make_stack_resume_map(ResumeVars, StackSlots, StackMap) :-
-    map__select(StackSlots, ResumeVars, StackMap0),
-    map__to_assoc_list(StackMap0, AbsStackList),
-    StackList0 = assoc_list__map_values(key_stack_slot_to_lval, AbsStackList),
+    map.select(StackSlots, ResumeVars, StackMap0),
+    map.to_assoc_list(StackMap0, AbsStackList),
+    StackList0 = assoc_list.map_values(key_stack_slot_to_lval, AbsStackList),
     make_singleton_sets(StackList0, StackList),
-    map__from_assoc_list(StackList, StackMap).
+    map.from_assoc_list(StackList, StackMap).
 
 :- pred make_singleton_sets(assoc_list(prog_var, lval)::in,
     assoc_list(prog_var, set(lval))::out) is det.
 
 make_singleton_sets([], []).
 make_singleton_sets([V - L | Rest0], [V - Ls | Rest]) :-
-    set__singleton_set(Ls, L),
+    set.singleton_set(Ls, L),
     make_singleton_sets(Rest0, Rest).
 
 %---------------------------------------------------------------------------%
@@ -2493,7 +2493,7 @@ generate_resume_point(ResumePoint, Code, !CI) :-
         ]),
         set_var_locations(Map1, !CI),
         generate_resume_layout(Label1, Map1, !CI),
-        map__to_assoc_list(Map2, AssocList2),
+        map.to_assoc_list(Map2, AssocList2),
         place_resume_vars(AssocList2, PlaceCode, !CI),
         Label2Code = node([
             label(Label2) - "orig failure continuation after stack"
@@ -2508,7 +2508,7 @@ generate_resume_point(ResumePoint, Code, !CI) :-
             label(Label1) - "orig failure continuation before stack"
         ]),
         set_var_locations(Map1, !CI),
-        map__to_assoc_list(Map2, AssocList2),
+        map.to_assoc_list(Map2, AssocList2),
         place_resume_vars(AssocList2, PlaceCode, !CI),
         Label2Code = node([
             label(Label2) - "stack failure continuation after orig"
@@ -2532,7 +2532,7 @@ extract_label_from_code_addr(CodeAddr, Label) :-
 
 place_resume_vars([], empty, !CI).
 place_resume_vars([Var - TargetSet | Rest], Code, !CI) :-
-    set__to_sorted_list(TargetSet, Targets),
+    set.to_sorted_list(TargetSet, Targets),
     place_resume_var(Var, Targets, FirstCode, !CI),
     Code = tree(FirstCode, RestCode),
     place_resume_vars(Rest, RestCode, !CI).
@@ -2554,10 +2554,10 @@ place_resume_var(Var, [Target | Targets], Code, !CI) :-
     code_info::in, code_info::out) is det.
 
 set_var_locations(Map, !CI) :-
-    map__to_assoc_list(Map, LvalList0),
+    map.to_assoc_list(Map, LvalList0),
     flatten_varlval_list(LvalList0, LvalList),
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__reinit_state(LvalList, VarLocnInfo0, VarLocnInfo),
+    var_locn.reinit_state(LvalList, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 :- pred flatten_varlval_list(assoc_list(prog_var, set(lval))::in,
@@ -2566,9 +2566,9 @@ set_var_locations(Map, !CI) :-
 flatten_varlval_list([], []).
 flatten_varlval_list([V - Rvals | Rest0], All) :-
     flatten_varlval_list(Rest0, Rest),
-    set__to_sorted_list(Rvals, RvalList),
+    set.to_sorted_list(Rvals, RvalList),
     flatten_varlval_list_2(RvalList, V, Rest1),
-    list__append(Rest1, Rest, All).
+    list.append(Rest1, Rest, All).
 
 :- pred flatten_varlval_list_2(list(lval)::in, prog_var::in,
     assoc_list(prog_var, lval)::out) is det.
@@ -2579,7 +2579,7 @@ flatten_varlval_list_2([R | Rs], V, [V - R | Rest]) :-
 
 resume_point_vars(ResumePoint, Vars) :-
     pick_first_resume_point(ResumePoint, ResumeMap, _),
-    map__keys(ResumeMap, Vars).
+    map.keys(ResumeMap, Vars).
 
 resume_point_stack_addr(ResumePoint, StackAddr) :-
     pick_stack_resume_point(ResumePoint, _, StackAddr).
@@ -2702,27 +2702,27 @@ clone_resume_point(ResumePoint0, ResumePoint, !CI) :-
 get_known_variables(CI, VarList) :-
     get_forward_live_vars(CI, ForwardLiveVars),
     ResumeVars = current_resume_point_vars(CI),
-    set__union(ForwardLiveVars, ResumeVars, Vars),
-    set__to_sorted_list(Vars, VarList).
+    set.union(ForwardLiveVars, ResumeVars, Vars),
+    set.to_sorted_list(Vars, VarList).
 
 variable_is_forward_live(CI, Var) :-
     get_forward_live_vars(CI, Liveness),
-    set__member(Var, Liveness).
+    set.member(Var, Liveness).
 
 add_forward_live_vars(Births, !CI) :-
     get_forward_live_vars(!.CI, Liveness0),
-    set__union(Liveness0, Births, Liveness),
+    set.union(Liveness0, Births, Liveness),
     set_forward_live_vars(Liveness, !CI).
 
 rem_forward_live_vars(Deaths, !CI) :-
     get_forward_live_vars(!.CI, Liveness0),
-    set__difference(Liveness0, Deaths, Liveness),
+    set.difference(Liveness0, Deaths, Liveness),
     set_forward_live_vars(Liveness, !CI).
 
 make_vars_forward_live(Vars, !CI) :-
     get_stack_slots(!.CI, StackSlots),
     get_var_locn_info(!.CI, VarLocnInfo0),
-    set__to_sorted_list(Vars, VarList),
+    set.to_sorted_list(Vars, VarList),
     make_vars_forward_live_2(VarList, StackSlots, 1,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
@@ -2733,20 +2733,20 @@ make_vars_forward_live(Vars, !CI) :-
 
 make_vars_forward_live_2([], _, _, !VarLocnInfo).
 make_vars_forward_live_2([Var | Vars], StackSlots, N0, !VarLocnInfo) :-
-    ( map__search(StackSlots, Var, Slot) ->
+    ( map.search(StackSlots, Var, Slot) ->
         Lval = stack_slot_to_lval(Slot),
         N1 = N0
     ;
         find_unused_reg(!.VarLocnInfo, N0, N1),
         Lval = reg(r, N1)
     ),
-    var_locn__set_magic_var_location(Var, Lval, !VarLocnInfo),
+    var_locn.set_magic_var_location(Var, Lval, !VarLocnInfo),
     make_vars_forward_live_2(Vars, StackSlots, N1, !VarLocnInfo).
 
 :- pred find_unused_reg(var_locn_info::in, int::in, int::out) is det.
 
 find_unused_reg(VLI, N0, N) :-
-    ( var_locn__lval_in_use(VLI, reg(r, N0)) ->
+    ( var_locn.lval_in_use(VLI, reg(r, N0)) ->
         find_unused_reg(VLI, N0 + 1, N)
     ;
         N = N0
@@ -2760,12 +2760,12 @@ make_vars_forward_dead(Vars, !CI) :-
 
 maybe_make_vars_forward_dead(Vars0, FirstTime, !CI) :-
     ResumeVars = current_resume_point_vars(!.CI),
-    set__intersect(Vars0, ResumeVars, FlushVars),
+    set.intersect(Vars0, ResumeVars, FlushVars),
     get_zombies(!.CI, Zombies0),
-    set__union(Zombies0, FlushVars, Zombies),
+    set.union(Zombies0, FlushVars, Zombies),
     set_zombies(Zombies, !CI),
-    set__difference(Vars0, Zombies, Vars),
-    set__to_sorted_list(Vars, VarList),
+    set.difference(Vars0, Zombies, Vars),
+    set.to_sorted_list(Vars, VarList),
     maybe_make_vars_forward_dead_2(VarList, FirstTime, !CI).
 
 :- pred maybe_make_vars_forward_dead_2(list(prog_var)::in, bool::in,
@@ -2774,13 +2774,13 @@ maybe_make_vars_forward_dead(Vars0, FirstTime, !CI) :-
 maybe_make_vars_forward_dead_2([], _, !CI).
 maybe_make_vars_forward_dead_2([V | Vs], FirstTime, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__var_becomes_dead(V, FirstTime, VarLocnInfo0, VarLocnInfo),
+    var_locn.var_becomes_dead(V, FirstTime, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI),
     maybe_make_vars_forward_dead_2(Vs, FirstTime, !CI).
 
 pickup_zombies(Zombies, !CI) :-
     get_zombies(!.CI, Zombies),
-    set_zombies(set__init, !CI).
+    set_zombies(set.init, !CI).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -3170,12 +3170,12 @@ maybe_discard_and_release_ticket(MaybeTicketSlot, Code, !CI) :-
 
 variable_locations(CI, Lvals) :-
     get_var_locn_info(CI, VarLocnInfo),
-    var_locn__get_var_locations(VarLocnInfo, Lvals).
+    var_locn.get_var_locations(VarLocnInfo, Lvals).
 
 :- func rval_map_to_lval_map(prog_var, set(rval)) = set(lval).
 
 rval_map_to_lval_map(_Var, Rvals) =
-    set__filter_map(rval_is_lval, Rvals).
+    set.filter_map(rval_is_lval, Rvals).
 
 :- func rval_is_lval(rval) = lval is semidet.
 
@@ -3183,35 +3183,35 @@ rval_is_lval(lval(Lval)) = Lval.
 
 set_var_location(Var, Lval, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__check_and_set_magic_var_location(Var, Lval,
+    var_locn.check_and_set_magic_var_location(Var, Lval,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 assign_var_to_var(Var, AssignedVar, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__assign_var_to_var(Var, AssignedVar, VarLocnInfo0, VarLocnInfo),
+    var_locn.assign_var_to_var(Var, AssignedVar, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 assign_lval_to_var(Var, Lval, Code, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_static_cell_info(!.CI, StaticCellInfo),
     get_module_info(!.CI, ModuleInfo),
-    var_locn__assign_lval_to_var(ModuleInfo, Var, Lval, StaticCellInfo, Code,
+    var_locn.assign_lval_to_var(ModuleInfo, Var, Lval, StaticCellInfo, Code,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 assign_const_to_var(Var, ConstRval, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__assign_const_to_var(Var, ConstRval, VarLocnInfo0, VarLocnInfo),
+    var_locn.assign_const_to_var(Var, ConstRval, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 assign_expr_to_var(Var, Rval, Code, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     (
-        code_util__lvals_in_rval(Rval, Lvals),
+        code_util.lvals_in_rval(Rval, Lvals),
         Lvals = []
     ->
-        var_locn__assign_expr_to_var(Var, Rval, Code,
+        var_locn.assign_expr_to_var(Var, Rval, Code,
         VarLocnInfo0, VarLocnInfo)
     ;
         unexpected(this_file, "assign_expr_to_var: non-var lvals")
@@ -3223,7 +3223,7 @@ assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector, MaybeSize,
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_static_cell_info(!.CI, StaticCellInfo0),
     get_module_info(!.CI, ModuleInfo),
-    var_locn__assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
+    var_locn.assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
         Vector, MaybeSize, TypeMsg, Code, StaticCellInfo0, StaticCellInfo,
         VarLocnInfo0, VarLocnInfo),
     set_static_cell_info(StaticCellInfo, !CI),
@@ -3232,7 +3232,7 @@ assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector, MaybeSize,
 place_var(Var, Lval, Code, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_module_info(!.CI, ModuleInfo),
-    var_locn__place_var(ModuleInfo, Var, Lval, Code,
+    var_locn.place_var(ModuleInfo, Var, Lval, Code,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
@@ -3241,8 +3241,8 @@ place_var(Var, Lval, Code, !CI) :-
 
 pick_and_place_vars(VarLocSets, LiveLocs, Code, !CI) :-
     pick_var_places(VarLocSets, VarLocs),
-    assoc_list__values(VarLocs, Locs),
-    set__list_to_set(Locs, LiveLocs),
+    assoc_list.values(VarLocs, Locs),
+    set.list_to_set(Locs, LiveLocs),
     place_vars(VarLocs, Code, !CI).
 
 :- pred pick_var_places(assoc_list(prog_var, set(lval))::in,
@@ -3252,7 +3252,7 @@ pick_var_places([], []).
 pick_var_places([Var - LvalSet | VarLvalSets], VarLvals) :-
     pick_var_places(VarLvalSets, VarLvals0),
     (
-        set__to_sorted_list(LvalSet, LvalList),
+        set.to_sorted_list(LvalSet, LvalList),
         LvalList = [Lval | _]
     ->
         VarLvals = [Var - Lval | VarLvals0]
@@ -3266,34 +3266,34 @@ pick_var_places([Var - LvalSet | VarLvalSets], VarLvals) :-
 place_vars(VarLocs, Code, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_module_info(!.CI, ModuleInfo),
-    var_locn__place_vars(ModuleInfo, VarLocs, Code, VarLocnInfo0, VarLocnInfo),
+    var_locn.place_vars(ModuleInfo, VarLocs, Code, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 produce_variable(Var, Code, Rval, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_module_info(!.CI, ModuleInfo),
-    var_locn__produce_var(ModuleInfo, Var, Rval, Code,
+    var_locn.produce_var(ModuleInfo, Var, Rval, Code,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 produce_variable_in_reg(Var, Code, Lval, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_module_info(!.CI, ModuleInfo),
-    var_locn__produce_var_in_reg(ModuleInfo, Var, Lval, Code,
+    var_locn.produce_var_in_reg(ModuleInfo, Var, Lval, Code,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 produce_variable_in_reg_or_stack(Var, Code, Lval, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_module_info(!.CI, ModuleInfo),
-    var_locn__produce_var_in_reg_or_stack(ModuleInfo, Var, Lval, Code,
+    var_locn.produce_var_in_reg_or_stack(ModuleInfo, Var, Lval, Code,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 materialize_vars_in_lval(Lval0, Lval, Code, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_module_info(!.CI, ModuleInfo),
-    var_locn__materialize_vars_in_lval(ModuleInfo, Lval0, Lval, Code,
+    var_locn.materialize_vars_in_lval(ModuleInfo, Lval0, Lval, Code,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
@@ -3302,16 +3302,16 @@ acquire_reg_for_var(Var, Lval, !CI) :-
     get_next_non_reserved(!.CI, NextNonReserved),
     get_var_locn_info(!.CI, VarLocnInfo0),
     (
-        map__search(FollowVarsMap, Var, PrefLocn),
+        map.search(FollowVarsMap, Var, PrefLocn),
         PrefLocn = abs_reg(PrefRegNum),
         PrefRegNum >= 1
     ->
-        var_locn__acquire_reg_prefer_given(PrefRegNum, Lval,
+        var_locn.acquire_reg_prefer_given(PrefRegNum, Lval,
         VarLocnInfo0, VarLocnInfo)
     ;
-        % XXX We should only get a register if the map__search
+        % XXX We should only get a register if the map.search
         % succeeded; otherwise we should put the var in its stack slot.
-        var_locn__acquire_reg_start_at_given(NextNonReserved, Lval,
+        var_locn.acquire_reg_start_at_given(NextNonReserved, Lval,
             VarLocnInfo0, VarLocnInfo)
     ),
     set_var_locn_info(VarLocnInfo, !CI).
@@ -3319,24 +3319,24 @@ acquire_reg_for_var(Var, Lval, !CI) :-
 acquire_reg(Type, Lval, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     expect(unify(Type, r), this_file, "acquire_reg: unknown reg type"),
-    var_locn__acquire_reg(Lval, VarLocnInfo0, VarLocnInfo),
+    var_locn.acquire_reg(Lval, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 release_reg(Lval, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__release_reg(Lval, VarLocnInfo0, VarLocnInfo),
+    var_locn.release_reg(Lval, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 reserve_r1(Code, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_module_info(!.CI, ModuleInfo),
-    var_locn__clear_r1(ModuleInfo, Code, VarLocnInfo0, VarLocnInfo1),
-    var_locn__acquire_reg_require_given(reg(r, 1), VarLocnInfo1, VarLocnInfo),
+    var_locn.clear_r1(ModuleInfo, Code, VarLocnInfo0, VarLocnInfo1),
+    var_locn.acquire_reg_require_given(reg(r, 1), VarLocnInfo1, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 clear_r1(empty, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__release_reg(reg(r, 1), VarLocnInfo0, VarLocnInfo),
+    var_locn.release_reg(reg(r, 1), VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 %---------------------------------------------------------------------------%
@@ -3346,8 +3346,8 @@ setup_return(VarArgInfos, OutLocs, Code, !CI) :-
 
 setup_call(GoalInfo, ArgInfos, LiveLocs, Code, !CI) :-
     partition_args(ArgInfos, InArgInfos, OutArgInfos, _UnusedArgInfos),
-    assoc_list__keys(OutArgInfos, OutVars),
-    set__list_to_set(OutVars, OutVarSet),
+    assoc_list.keys(OutArgInfos, OutVars),
+    set.list_to_set(OutVars, OutVarSet),
     goal_info_get_determinism(GoalInfo, Detism),
     get_opt_no_return_calls(!.CI, OptNoReturnCalls),
     get_module_info(!.CI, ModuleInfo),
@@ -3371,28 +3371,28 @@ setup_call(GoalInfo, ArgInfos, LiveLocs, Code, !CI) :-
             % is delayed until the first call after the setup of the
             % resume point.
             compute_resume_var_stack_locs(!.CI, ResumeVarLocs),
-            list__append(ResumeVarLocs, ForwardVarLocs, StackVarLocs)
+            list.append(ResumeVarLocs, ForwardVarLocs, StackVarLocs)
         ;
             StackVarLocs = ForwardVarLocs
         ),
         VarTypes = get_var_types(!.CI),
-        list__filter(valid_stack_slot(ModuleInfo, VarTypes), StackVarLocs,
+        list.filter(valid_stack_slot(ModuleInfo, VarTypes), StackVarLocs,
             RealStackVarLocs, DummyStackVarLocs)
     ),
     get_var_locn_info(!.CI, VarLocnInfo0),
     var_arg_info_to_lval(InArgInfos, InArgLocs),
-    list__append(RealStackVarLocs, InArgLocs, AllRealLocs),
-    var_locn__place_vars(ModuleInfo, DummyStackVarLocs ++ AllRealLocs, Code,
+    list.append(RealStackVarLocs, InArgLocs, AllRealLocs),
+    var_locn.place_vars(ModuleInfo, DummyStackVarLocs ++ AllRealLocs, Code,
         VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI),
-    assoc_list__values(AllRealLocs, LiveLocList),
-    set__list_to_set(LiveLocList, LiveLocs).
+    assoc_list.values(AllRealLocs, LiveLocList),
+    set.list_to_set(LiveLocList, LiveLocs).
 
 :- pred valid_stack_slot(module_info::in, vartypes::in,
     pair(prog_var, lval)::in) is semidet.
 
 valid_stack_slot(ModuleInfo, VarTypes, Var - Lval) :-
-    map__lookup(VarTypes, Var, Type),
+    map.lookup(VarTypes, Var, Type),
     ( is_dummy_argument_type(ModuleInfo, Type) ->
         fail
     ;
@@ -3414,19 +3414,19 @@ valid_stack_slot(ModuleInfo, VarTypes, Var - Lval) :-
     code_info::in, code_info::out) is det.
 
 setup_call_args(AllArgsInfos, Direction, LiveLocs, Code, !CI) :-
-    list__filter(call_arg_in_selected_dir(Direction),
+    list.filter(call_arg_in_selected_dir(Direction),
         AllArgsInfos, ArgsInfos),
     var_arg_info_to_lval(ArgsInfos, ArgsLocns),
     get_module_info(!.CI, ModuleInfo),
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__place_vars(ModuleInfo, ArgsLocns, Code,
+    var_locn.place_vars(ModuleInfo, ArgsLocns, Code,
         VarLocnInfo0, VarLocnInfo1),
     set_var_locn_info(VarLocnInfo1, !CI),
-    assoc_list__values(ArgsLocns, LiveLocList),
-    set__list_to_set(LiveLocList, LiveLocs),
-    assoc_list__keys(ArgsLocns, ArgVars),
+    assoc_list.values(ArgsLocns, LiveLocList),
+    set.list_to_set(LiveLocList, LiveLocs),
+    assoc_list.keys(ArgsLocns, ArgVars),
     which_variables_are_forward_live(!.CI, ArgVars,
-        set__init, DeadVars),
+        set.init, DeadVars),
     make_vars_forward_dead(DeadVars, !CI).
 
 :- pred var_arg_info_to_lval(assoc_list(prog_var, arg_info)::in,
@@ -3436,7 +3436,7 @@ var_arg_info_to_lval([], []).
 var_arg_info_to_lval([Var - ArgInfo | RestInfos],
         [Var - Lval | RestLvals]) :-
     ArgInfo = arg_info(Loc, _Mode),
-    code_util__arg_loc_to_register(Loc, Lval),
+    code_util.arg_loc_to_register(Loc, Lval),
     var_arg_info_to_lval(RestInfos, RestLvals).
 
 :- pred which_variables_are_forward_live(code_info::in,
@@ -3447,7 +3447,7 @@ which_variables_are_forward_live(CI, [Var | Vars], !DeadVars) :-
     ( variable_is_forward_live(CI, Var) ->
         true
     ;
-        set__insert(!.DeadVars, Var, !:DeadVars)
+        set.insert(!.DeadVars, Var, !:DeadVars)
     ),
     which_variables_are_forward_live(CI, Vars, !DeadVars).
 
@@ -3465,32 +3465,32 @@ call_arg_in_selected_dir(Direction, _ - arg_info(_, Mode)) :-
 
 lock_regs(N, Exceptions, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__lock_regs(N, Exceptions, VarLocnInfo0, VarLocnInfo),
+    var_locn.lock_regs(N, Exceptions, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 unlock_regs(!CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__unlock_regs(VarLocnInfo0, VarLocnInfo),
+    var_locn.unlock_regs(VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 clear_all_registers(OkToDeleteAny, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__clobber_all_regs(OkToDeleteAny, VarLocnInfo0, VarLocnInfo),
+    var_locn.clobber_all_regs(OkToDeleteAny, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 clobber_regs(Regs, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
-    var_locn__clobber_regs(Regs, VarLocnInfo0, VarLocnInfo),
+    var_locn.clobber_regs(Regs, VarLocnInfo0, VarLocnInfo),
     set_var_locn_info(VarLocnInfo, !CI).
 
 save_variables(OutArgs, SavedLocs, Code, !CI) :-
     compute_forward_live_var_saves(!.CI, OutArgs, VarLocs),
-    assoc_list__values(VarLocs, SavedLocList),
-    set__list_to_set(SavedLocList, SavedLocs),
+    assoc_list.values(VarLocs, SavedLocList),
+    set.list_to_set(SavedLocList, SavedLocs),
     place_vars(VarLocs, Code, !CI).
 
 save_variables_on_stack(Vars, Code, !CI) :-
-    list__map(associate_stack_slot(!.CI), Vars, VarLocs),
+    list.map(associate_stack_slot(!.CI), Vars, VarLocs),
     place_vars(VarLocs, Code, !CI).
 
 :- pred compute_forward_live_var_saves(code_info::in,
@@ -3498,16 +3498,16 @@ save_variables_on_stack(Vars, Code, !CI) :-
 
 compute_forward_live_var_saves(CI, OutArgs, VarLocs) :-
     get_known_variables(CI, Variables0),
-    set__list_to_set(Variables0, Vars0),
+    set.list_to_set(Variables0, Vars0),
     TypeInfoLiveness = body_typeinfo_liveness(CI),
     get_proc_info(CI, ProcInfo),
     proc_info_vartypes(ProcInfo, VarTypes),
     proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
     proc_info_maybe_complete_with_typeinfo_vars(Vars0, TypeInfoLiveness,
         VarTypes, RttiVarMaps, Vars1),
-    set__difference(Vars1, OutArgs, Vars),
-    set__to_sorted_list(Vars, Variables),
-    list__map(associate_stack_slot(CI), Variables, VarLocs).
+    set.difference(Vars1, OutArgs, Vars),
+    set.to_sorted_list(Vars, Variables),
+    list.map(associate_stack_slot(CI), Variables, VarLocs).
 
 :- pred associate_stack_slot(code_info::in, prog_var::in,
     pair(prog_var, lval)::out) is det.
@@ -3517,7 +3517,7 @@ associate_stack_slot(CI, Var, Var - Slot) :-
 
 max_reg_in_use(CI, Max) :-
     get_var_locn_info(CI, VarLocnInfo),
-    var_locn__max_reg_in_use(VarLocnInfo, Max).
+    var_locn.max_reg_in_use(VarLocnInfo, Max).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -3553,12 +3553,12 @@ generate_call_stack_vn_livevals(CI, OutputArgs, LiveVals) :-
     get_known_variables(CI, KnownVarList0),
     get_module_info(CI, ModuleInfo),
     VarTypes = get_var_types(CI),
-    list__filter(var_is_of_dummy_type(ModuleInfo, VarTypes), KnownVarList0,
+    list.filter(var_is_of_dummy_type(ModuleInfo, VarTypes), KnownVarList0,
         _, KnownVarList),
-    set__list_to_set(KnownVarList, KnownVars),
-    set__difference(KnownVars, OutputArgs, LiveVars),
-    set__to_sorted_list(LiveVars, LiveVarList),
-    generate_stack_var_vn(CI, LiveVarList, set__init, LiveVals1),
+    set.list_to_set(KnownVarList, KnownVars),
+    set.difference(KnownVars, OutputArgs, LiveVars),
+    set.to_sorted_list(LiveVars, LiveVarList),
+    generate_stack_var_vn(CI, LiveVarList, set.init, LiveVals1),
     get_active_temps_data(CI, Temps),
     generate_call_temp_vn(Temps, LiveVals1, LiveVals).
 
@@ -3568,7 +3568,7 @@ generate_call_stack_vn_livevals(CI, OutputArgs, LiveVals) :-
 generate_stack_var_vn(_, [], !Vals).
 generate_stack_var_vn(CI, [V | Vs], !Vals) :-
     get_variable_slot(CI, V, Lval),
-    set__insert(!.Vals, Lval, !:Vals),
+    set.insert(!.Vals, Lval, !:Vals),
     generate_stack_var_vn(CI, Vs, !Vals).
 
 :- pred generate_call_temp_vn(assoc_list(lval, slot_contents)::in,
@@ -3576,7 +3576,7 @@ generate_stack_var_vn(CI, [V | Vs], !Vals) :-
 
 generate_call_temp_vn([], !Vals).
 generate_call_temp_vn([Lval - _ | Temps], !Vals) :-
-    set__insert(!.Vals, Lval, !:Vals),
+    set.insert(!.Vals, Lval, !:Vals),
     generate_call_temp_vn(Temps, !Vals).
 
 :- pred generate_input_var_vn(list(arg_loc)::in,
@@ -3584,8 +3584,8 @@ generate_call_temp_vn([Lval - _ | Temps], !Vals) :-
 
 generate_input_var_vn([], !Vals).
 generate_input_var_vn([InputArgLoc | InputArgLocs], !Vals) :-
-    code_util__arg_loc_to_register(InputArgLoc, Lval),
-    set__insert(!.Vals, Lval, !:Vals),
+    code_util.arg_loc_to_register(InputArgLoc, Lval),
+    set.insert(!.Vals, Lval, !:Vals),
     generate_input_var_vn(InputArgLocs, !Vals).
 
 %---------------------------------------------------------------------------%
@@ -3596,11 +3596,11 @@ generate_return_live_lvalues(CI, OutputArgLocs, ReturnInstMap,
     get_known_variables(CI, Vars0),
     get_module_info(CI, ModuleInfo),
     VarTypes = get_var_types(CI),
-    list__filter(var_is_of_dummy_type(ModuleInfo, VarTypes), Vars0, _, Vars),
+    list.filter(var_is_of_dummy_type(ModuleInfo, VarTypes), Vars0, _, Vars),
     get_active_temps_data(CI, Temps),
     get_proc_info(CI, ProcInfo),
     get_globals(CI, Globals),
-    continuation_info__generate_return_live_lvalues(OutputArgLocs,
+    continuation_info.generate_return_live_lvalues(OutputArgLocs,
         ReturnInstMap, Vars, VarLocs, Temps, ProcInfo, ModuleInfo,
         Globals, OkToDeleteAny, LiveLvalues).
 
@@ -3609,14 +3609,14 @@ generate_return_live_lvalues(CI, OutputArgLocs, ReturnInstMap,
 
 generate_resume_layout(Label, ResumeMap, !CI) :-
     get_globals(!.CI, Globals),
-    globals__lookup_bool_option(Globals, agc_stack_layout, AgcStackLayout),
+    globals.lookup_bool_option(Globals, agc_stack_layout, AgcStackLayout),
     (
         AgcStackLayout = yes,
         get_active_temps_data(!.CI, Temps),
         get_instmap(!.CI, InstMap),
         get_proc_info(!.CI, ProcInfo),
         get_module_info(!.CI, ModuleInfo),
-        continuation_info__generate_resume_layout(ResumeMap, Temps, InstMap,
+        continuation_info.generate_resume_layout(ResumeMap, Temps, InstMap,
             ProcInfo, ModuleInfo, Layout),
         add_resume_layout_for_label(Label, Layout, !CI)
     ;
@@ -3691,11 +3691,11 @@ acquire_temp_slot(Item, StackVar, !CI) :-
     IsTempUsable = (pred(TempContent::in, Lval::out) is semidet :-
         TempContent = Lval - ContentType,
         ContentType = Item,
-        \+ set__member(Lval, TempsInUse0)
+        \+ set.member(Lval, TempsInUse0)
     ),
     get_temp_content_map(!.CI, TempContentMap0),
-    map__to_assoc_list(TempContentMap0, TempContentList),
-    list__filter_map(IsTempUsable, TempContentList, UsableLvals),
+    map.to_assoc_list(TempContentMap0, TempContentList),
+    list.filter_map(IsTempUsable, TempContentList, UsableLvals),
     (
         UsableLvals = [UsableLval | _],
         StackVar = UsableLval
@@ -3707,28 +3707,28 @@ acquire_temp_slot(Item, StackVar, !CI) :-
         Slot = VarSlots + TempSlots,
         stack_variable(!.CI, Slot, StackVar),
         set_max_temp_slot_count(TempSlots, !CI),
-        map__det_insert(TempContentMap0, StackVar, Item, TempContentMap),
+        map.det_insert(TempContentMap0, StackVar, Item, TempContentMap),
         set_temp_content_map(TempContentMap, !CI)
     ),
-    set__insert(TempsInUse0, StackVar, TempsInUse),
+    set.insert(TempsInUse0, StackVar, TempsInUse),
     set_temps_in_use(TempsInUse, !CI).
 
 release_temp_slot(StackVar, !CI) :-
     get_temps_in_use(!.CI, TempsInUse0),
-    set__delete(TempsInUse0, StackVar, TempsInUse),
+    set.delete(TempsInUse0, StackVar, TempsInUse),
     set_temps_in_use(TempsInUse, !CI).
 
 %---------------------------------------------------------------------------%
 
 get_variable_slot(CI, Var, Slot) :-
     get_stack_slots(CI, StackSlots),
-    ( map__search(StackSlots, Var, SlotLocn) ->
+    ( map.search(StackSlots, Var, SlotLocn) ->
         Slot = stack_slot_to_lval(SlotLocn)
     ;
         Name = variable_to_string(CI, Var),
-        term__var_to_int(Var, Num),
-        string__int_to_string(Num, NumStr),
-        string__append_list(["get_variable_slot: variable `",
+        term.var_to_int(Var, Num),
+        string.int_to_string(Num, NumStr),
+        string.append_list(["get_variable_slot: variable `",
             Name, "' (", NumStr, ") not found"], Str),
         unexpected(this_file, Str)
     ).
@@ -3741,20 +3741,19 @@ get_total_stackslot_count(CI, NumSlots) :-
 :- pred max_var_slot(stack_slots::in, int::out) is det.
 
 max_var_slot(StackSlots, SlotCount) :-
-    map__values(StackSlots, StackSlotList),
+    map.values(StackSlots, StackSlotList),
     max_var_slot_2(StackSlotList, 0, SlotCount).
 
-:- pred max_var_slot_2(list(stack_slot)::in, int::in, int::out)
-    is det.
+:- pred max_var_slot_2(list(stack_slot)::in, int::in, int::out) is det.
 
 max_var_slot_2([], !Max).
 max_var_slot_2([L | Ls], !Max) :-
     (
         L = det_slot(N),
-        int__max(N, !Max)
+        int.max(N, !Max)
     ;
         L = nondet_slot(N),
-        int__max(N, !Max)
+        int.max(N, !Max)
     ),
     max_var_slot_2(Ls, !Max).
 

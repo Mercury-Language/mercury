@@ -13,14 +13,14 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module ll_backend__middle_rec.
+:- module ll_backend.middle_rec.
 :- interface.
 
 :- import_module hlds.hlds_goal.
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.llds.
 
-:- pred middle_rec__match_and_generate(hlds_goal::in, code_tree::out,
+:- pred match_and_generate(hlds_goal::in, code_tree::out,
     code_info::in, code_info::out) is semidet.
 
 %---------------------------------------------------------------------------%
@@ -56,7 +56,7 @@
 
 %---------------------------------------------------------------------------%
 
-middle_rec__match_and_generate(Goal, Instrs, !CI) :-
+match_and_generate(Goal, Instrs, !CI) :-
     Goal = GoalExpr - GoalInfo,
     GoalExpr = switch(Var, cannot_fail, [Case1, Case2]),
     Case1 = case(ConsId1, Goal1),
@@ -109,9 +109,9 @@ contains_simple_recursive_call_conj([Goal | Goals], CodeInfo) :-
 is_recursive_call(Goal, CodeInfo) :-
     Goal = call(CallPredId, CallProcId, _, BuiltinState, _, _),
     BuiltinState = not_builtin,
-    code_info__get_pred_id(CodeInfo, PredId),
+    code_info.get_pred_id(CodeInfo, PredId),
     PredId = CallPredId,
-    code_info__get_proc_id(CodeInfo, ProcId),
+    code_info.get_proc_id(CodeInfo, ProcId),
     ProcId = CallProcId.
 
     % contains_only_builtins(G) returns `yes' if G is a leaf procedure,
@@ -227,66 +227,65 @@ contains_only_builtins_list([Goal | Goals]) = OnlyBuiltins :-
 
 middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
         Instrs, !CI) :-
-    code_info__get_stack_slots(!.CI, StackSlots),
-    code_info__get_varset(!.CI, VarSet),
+    code_info.get_stack_slots(!.CI, StackSlots),
+    code_info.get_varset(!.CI, VarSet),
     SlotsComment = explain_stack_slots(StackSlots, VarSet),
-    code_info__get_module_info(!.CI, ModuleInfo),
-    code_info__get_pred_id(!.CI, PredId),
-    code_info__get_proc_id(!.CI, ProcId),
-    code_util__make_local_entry_label(ModuleInfo, PredId, ProcId, no,
+    code_info.get_module_info(!.CI, ModuleInfo),
+    code_info.get_pred_id(!.CI, PredId),
+    code_info.get_proc_id(!.CI, ProcId),
+    code_util.make_local_entry_label(ModuleInfo, PredId, ProcId, no,
         EntryLabel),
 
-    code_info__pre_goal_update(SwitchGoalInfo, no, !CI),
-    unify_gen__generate_tag_test(Var, BaseConsId, branch_on_success,
+    code_info.pre_goal_update(SwitchGoalInfo, no, !CI),
+    unify_gen.generate_tag_test(Var, BaseConsId, branch_on_success,
         BaseLabel, EntryTestCode, !CI),
-    tree__flatten(EntryTestCode, EntryTestListList),
-    list__condense(EntryTestListList, EntryTestList),
+    tree.flatten(EntryTestCode, EntryTestListList),
+    list.condense(EntryTestListList, EntryTestList),
 
     goal_info_get_store_map(SwitchGoalInfo, StoreMap),
-    code_info__remember_position(!.CI, BranchStart),
-    code_gen__generate_goal(model_det, Base, BaseGoalCode, !CI),
-    code_info__generate_branch_end(StoreMap, no, MaybeEnd1,
+    code_info.remember_position(!.CI, BranchStart),
+    code_gen.generate_goal(model_det, Base, BaseGoalCode, !CI),
+    code_info.generate_branch_end(StoreMap, no, MaybeEnd1,
         BaseSaveCode, !CI),
-    code_info__reset_to_position(BranchStart, !CI),
-    code_gen__generate_goal(model_det, Recursive, RecGoalCode, !CI),
-    code_info__generate_branch_end(StoreMap, MaybeEnd1, MaybeEnd,
+    code_info.reset_to_position(BranchStart, !CI),
+    code_gen.generate_goal(model_det, Recursive, RecGoalCode, !CI),
+    code_info.generate_branch_end(StoreMap, MaybeEnd1, MaybeEnd,
         RecSaveCode, !CI),
 
-    code_info__post_goal_update(SwitchGoalInfo, !CI),
-    code_info__after_all_branches(StoreMap, MaybeEnd, !CI),
+    code_info.post_goal_update(SwitchGoalInfo, !CI),
+    code_info.after_all_branches(StoreMap, MaybeEnd, !CI),
 
-    ArgModes = code_info__get_arginfo(!.CI),
-    HeadVars = code_info__get_headvars(!.CI),
-    assoc_list__from_corresponding_lists(HeadVars, ArgModes, Args),
-    code_info__setup_return(Args, LiveArgs, EpilogCode, !CI),
+    ArgModes = code_info.get_arginfo(!.CI),
+    HeadVars = code_info.get_headvars(!.CI),
+    assoc_list.from_corresponding_lists(HeadVars, ArgModes, Args),
+    code_info.setup_return(Args, LiveArgs, EpilogCode, !CI),
 
     BaseCode = tree(BaseGoalCode, tree(BaseSaveCode, EpilogCode)),
     RecCode = tree(RecGoalCode, tree(RecSaveCode, EpilogCode)),
     LiveValCode = [livevals(LiveArgs) - ""],
 
-    tree__flatten(BaseCode, BaseListList),
-    list__condense(BaseListList, BaseList),
-    tree__flatten(RecCode, RecListList),
-    list__condense(RecListList, RecList),
+    tree.flatten(BaseCode, BaseListList),
+    list.condense(BaseListList, BaseList),
+    tree.flatten(RecCode, RecListList),
+    list.condense(RecListList, RecList),
 
     % In the code we generate, the base instruction sequence is executed
     % in situations where this procedure has no stack frame. If this
     % sequence refers to stackvars, it will be to some other procedure's
     % variables, which is obviously incorrect.
-    opt_util__block_refers_stackvars(BaseList, no),
+    opt_util.block_refers_stackvars(BaseList, no),
 
-    list__append(BaseList, RecList, AvoidList),
-    middle_rec__find_unused_register(AvoidList, AuxReg),
+    list.append(BaseList, RecList, AvoidList),
+    find_unused_register(AvoidList, AuxReg),
 
-    middle_rec__split_rec_code(RecList, BeforeList0, AfterList),
-    middle_rec__add_counter_to_livevals(BeforeList0, AuxReg, BeforeList),
+    split_rec_code(RecList, BeforeList0, AfterList),
+    add_counter_to_livevals(BeforeList0, AuxReg, BeforeList),
 
-    code_info__get_next_label(Loop1Label, !CI),
-    code_info__get_next_label(Loop2Label, !CI),
-    code_info__get_total_stackslot_count(!.CI, FrameSize),
+    code_info.get_next_label(Loop1Label, !CI),
+    code_info.get_next_label(Loop2Label, !CI),
+    code_info.get_total_stackslot_count(!.CI, FrameSize),
 
-    middle_rec__generate_downloop_test(EntryTestList,
-        Loop1Label, Loop1Test),
+    generate_downloop_test(EntryTestList, Loop1Label, Loop1Test),
 
     ( FrameSize = 0 ->
         MaybeIncrSp = [],
@@ -305,7 +304,7 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
                 label(Loop2Label))
                 - "test on upward loop"]
     ;
-        PushMsg = code_gen__push_msg(ModuleInfo, PredId, ProcId),
+        PushMsg = code_gen.push_msg(ModuleInfo, PredId, ProcId),
         MaybeIncrSp = [incr_sp(FrameSize, PushMsg) - ""],
         MaybeDecrSp = [decr_sp(FrameSize) - ""],
         InitAuxReg =  [assign(AuxReg, lval(sp))
@@ -324,7 +323,7 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
 
     (
         AfterList = [],
-        list__condense([
+        list.condense([
             [
                 label(EntryLabel) - "Procedure entry point",
                 comment(SlotsComment) - ""
@@ -351,9 +350,9 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
         % apply this version of the optimization, or we must consistently
         % substitute the labels (which will be referred to only from within the
         % BaseList instructions themselves). We choose the former course.
-        middle_rec__find_labels(BaseList, BaseLabels),
+        find_labels(BaseList, BaseLabels),
         BaseLabels = [],
-        list__condense([
+        list.condense([
             [
                 label(EntryLabel) - "Procedure entry point",
                 comment(SlotsComment) - ""
@@ -407,7 +406,7 @@ generate_downloop_test([Instr0 | Instrs0], Target, Instrs) :-
                 "generate_downloop_test: " ++
                 "if_val followed by other instructions")
         ),
-        code_util__neg_rval(Test, NewTest),
+        code_util.neg_rval(Test, NewTest),
         Instrs = [if_val(NewTest, label(Target)) - "test on downward loop"]
     ;
         generate_downloop_test(Instrs0, Target, Instrs1),
@@ -424,7 +423,7 @@ split_rec_code([], _, _) :-
 split_rec_code([Instr0 | Instrs1], Before, After) :-
     ( Instr0 = call(_, _, _, _, _, _) - _ ->
         (
-            opt_util__skip_comments(Instrs1, Instrs2),
+            opt_util.skip_comments(Instrs1, Instrs2),
             Instrs2 = [Instr2 | Instrs3],
             Instr2 = label(_) - _
         ->
@@ -440,200 +439,198 @@ split_rec_code([Instr0 | Instrs1], Before, After) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred middle_rec__add_counter_to_livevals(list(instruction)::in, lval::in,
+:- pred add_counter_to_livevals(list(instruction)::in, lval::in,
     list(instruction)::out) is det.
 
-middle_rec__add_counter_to_livevals([], _Lval, []).
-middle_rec__add_counter_to_livevals([I0 | Is0], Lval, [I | Is]) :-
+add_counter_to_livevals([], _Lval, []).
+add_counter_to_livevals([I0 | Is0], Lval, [I | Is]) :-
     ( I0 = livevals(Lives0) - Comment ->
-        set__insert(Lives0, Lval, Lives),
+        set.insert(Lives0, Lval, Lives),
         I = livevals(Lives) - Comment
     ;
         I = I0
     ),
-    middle_rec__add_counter_to_livevals(Is0, Lval, Is).
+    add_counter_to_livevals(Is0, Lval, Is).
 
 %---------------------------------------------------------------------------%
 
-:- pred middle_rec__find_unused_register(list(instruction)::in, lval::out)
+:- pred find_unused_register(list(instruction)::in, lval::out)
     is det.
 
-middle_rec__find_unused_register(Instrs, UnusedReg) :-
-    set__init(Used0),
-    middle_rec__find_used_registers(Instrs, Used0, Used1),
-    set__to_sorted_list(Used1, UsedList),
-    middle_rec__find_unused_register_2(UsedList, 1, UnusedReg).
+find_unused_register(Instrs, UnusedReg) :-
+    set.init(Used0),
+    find_used_registers(Instrs, Used0, Used1),
+    set.to_sorted_list(Used1, UsedList),
+    find_unused_register_2(UsedList, 1, UnusedReg).
 
-:- pred middle_rec__find_unused_register_2(list(int)::in, int::in, lval::out)
-    is det.
+:- pred find_unused_register_2(list(int)::in, int::in, lval::out) is det.
 
-middle_rec__find_unused_register_2([], N, reg(r, N)).
-middle_rec__find_unused_register_2([H | T], N, Reg) :-
+find_unused_register_2([], N, reg(r, N)).
+find_unused_register_2([H | T], N, Reg) :-
     ( N < H ->
         Reg = reg(r, N)
     ;
         N1 = N + 1,
-        middle_rec__find_unused_register_2(T, N1, Reg)
+        find_unused_register_2(T, N1, Reg)
     ).
 
-:- pred middle_rec__find_used_registers(list(instruction)::in,
+:- pred find_used_registers(list(instruction)::in,
     set(int)::in, set(int)::out) is det.
 
-middle_rec__find_used_registers([], !Used).
-middle_rec__find_used_registers([Instr - _ | Instrs], !Used) :-
-    middle_rec__find_used_registers_instr(Instr, !Used),
-    middle_rec__find_used_registers(Instrs, !Used).
+find_used_registers([], !Used).
+find_used_registers([Instr - _ | Instrs], !Used) :-
+    find_used_registers_instr(Instr, !Used),
+    find_used_registers(Instrs, !Used).
 
-:- pred middle_rec__find_used_registers_instr(instr::in,
+:- pred find_used_registers_instr(instr::in,
     set(int)::in, set(int)::out) is det.
 
-middle_rec__find_used_registers_instr(comment(_), !Used).
-middle_rec__find_used_registers_instr(livevals(LvalSet), !Used) :-
-    set__to_sorted_list(LvalSet, LvalList),
-    middle_rec__find_used_registers_lvals(LvalList, !Used).
-middle_rec__find_used_registers_instr(block(_, _, Instrs), !Used) :-
-    middle_rec__find_used_registers(Instrs, !Used).
-middle_rec__find_used_registers_instr(assign(Lval, Rval), !Used) :-
-    middle_rec__find_used_registers_lval(Lval, !Used),
-    middle_rec__find_used_registers_rval(Rval, !Used).
-middle_rec__find_used_registers_instr(call(_, _, _, _, _, _), !Used).
-middle_rec__find_used_registers_instr(mkframe(_, _), !Used).
-middle_rec__find_used_registers_instr(label(_), !Used).
-middle_rec__find_used_registers_instr(goto(_), !Used).
-middle_rec__find_used_registers_instr(computed_goto(Rval, _), !Used) :-
-    middle_rec__find_used_registers_rval(Rval, !Used).
-middle_rec__find_used_registers_instr(c_code(_, _), !Used).
-middle_rec__find_used_registers_instr(if_val(Rval, _), !Used) :-
-    middle_rec__find_used_registers_rval(Rval, !Used).
-middle_rec__find_used_registers_instr(save_maxfr(Lval), !Used) :-
-    middle_rec__find_used_registers_lval(Lval, !Used).
-middle_rec__find_used_registers_instr(restore_maxfr(Lval), !Used) :-
-    middle_rec__find_used_registers_lval(Lval, !Used).
-middle_rec__find_used_registers_instr(incr_hp(Lval, _, _, Rval, _), !Used) :-
-    middle_rec__find_used_registers_lval(Lval, !Used),
-    middle_rec__find_used_registers_rval(Rval, !Used).
-middle_rec__find_used_registers_instr(mark_hp(Lval), !Used) :-
-    middle_rec__find_used_registers_lval(Lval, !Used).
-middle_rec__find_used_registers_instr(restore_hp(Rval), !Used) :-
-    middle_rec__find_used_registers_rval(Rval, !Used).
-middle_rec__find_used_registers_instr(free_heap(Rval), !Used) :-
-    middle_rec__find_used_registers_rval(Rval, !Used).
-middle_rec__find_used_registers_instr(store_ticket(Lval), !Used) :-
-    middle_rec__find_used_registers_lval(Lval, !Used).
-middle_rec__find_used_registers_instr(reset_ticket(Rval, _Rsn), !Used) :-
-    middle_rec__find_used_registers_rval(Rval, !Used).
-middle_rec__find_used_registers_instr(discard_ticket, !Used).
-middle_rec__find_used_registers_instr(prune_ticket, !Used).
-middle_rec__find_used_registers_instr(mark_ticket_stack(Lval), !Used) :-
-    middle_rec__find_used_registers_lval(Lval, !Used).
-middle_rec__find_used_registers_instr(prune_tickets_to(Rval), !Used) :-
-    middle_rec__find_used_registers_rval(Rval, !Used).
-middle_rec__find_used_registers_instr(incr_sp(_, _), !Used).
-middle_rec__find_used_registers_instr(decr_sp(_), !Used).
-middle_rec__find_used_registers_instr(decr_sp_and_return(_), !Used).
-middle_rec__find_used_registers_instr(pragma_c(_, Components,
+find_used_registers_instr(comment(_), !Used).
+find_used_registers_instr(livevals(LvalSet), !Used) :-
+    set.to_sorted_list(LvalSet, LvalList),
+    find_used_registers_lvals(LvalList, !Used).
+find_used_registers_instr(block(_, _, Instrs), !Used) :-
+    find_used_registers(Instrs, !Used).
+find_used_registers_instr(assign(Lval, Rval), !Used) :-
+    find_used_registers_lval(Lval, !Used),
+    find_used_registers_rval(Rval, !Used).
+find_used_registers_instr(call(_, _, _, _, _, _), !Used).
+find_used_registers_instr(mkframe(_, _), !Used).
+find_used_registers_instr(label(_), !Used).
+find_used_registers_instr(goto(_), !Used).
+find_used_registers_instr(computed_goto(Rval, _), !Used) :-
+    find_used_registers_rval(Rval, !Used).
+find_used_registers_instr(c_code(_, _), !Used).
+find_used_registers_instr(if_val(Rval, _), !Used) :-
+    find_used_registers_rval(Rval, !Used).
+find_used_registers_instr(save_maxfr(Lval), !Used) :-
+    find_used_registers_lval(Lval, !Used).
+find_used_registers_instr(restore_maxfr(Lval), !Used) :-
+    find_used_registers_lval(Lval, !Used).
+find_used_registers_instr(incr_hp(Lval, _, _, Rval, _), !Used) :-
+    find_used_registers_lval(Lval, !Used),
+    find_used_registers_rval(Rval, !Used).
+find_used_registers_instr(mark_hp(Lval), !Used) :-
+    find_used_registers_lval(Lval, !Used).
+find_used_registers_instr(restore_hp(Rval), !Used) :-
+    find_used_registers_rval(Rval, !Used).
+find_used_registers_instr(free_heap(Rval), !Used) :-
+    find_used_registers_rval(Rval, !Used).
+find_used_registers_instr(store_ticket(Lval), !Used) :-
+    find_used_registers_lval(Lval, !Used).
+find_used_registers_instr(reset_ticket(Rval, _Rsn), !Used) :-
+    find_used_registers_rval(Rval, !Used).
+find_used_registers_instr(discard_ticket, !Used).
+find_used_registers_instr(prune_ticket, !Used).
+find_used_registers_instr(mark_ticket_stack(Lval), !Used) :-
+    find_used_registers_lval(Lval, !Used).
+find_used_registers_instr(prune_tickets_to(Rval), !Used) :-
+    find_used_registers_rval(Rval, !Used).
+find_used_registers_instr(incr_sp(_, _), !Used).
+find_used_registers_instr(decr_sp(_), !Used).
+find_used_registers_instr(decr_sp_and_return(_), !Used).
+find_used_registers_instr(pragma_c(_, Components,
         _, _, _, _, _, _, _), !Used) :-
-    middle_rec__find_used_registers_components(Components, !Used).
-middle_rec__find_used_registers_instr(init_sync_term(Lval, _), !Used) :-
-    middle_rec__find_used_registers_lval(Lval, !Used).
-middle_rec__find_used_registers_instr(fork(_, _, _), !Used).
-middle_rec__find_used_registers_instr(join_and_terminate(Lval), !Used) :-
-    middle_rec__find_used_registers_lval(Lval, !Used).
-middle_rec__find_used_registers_instr(join_and_continue(Lval, _), !Used) :-
-    middle_rec__find_used_registers_lval(Lval, !Used).
+    find_used_registers_components(Components, !Used).
+find_used_registers_instr(init_sync_term(Lval, _), !Used) :-
+    find_used_registers_lval(Lval, !Used).
+find_used_registers_instr(fork(_, _, _), !Used).
+find_used_registers_instr(join_and_terminate(Lval), !Used) :-
+    find_used_registers_lval(Lval, !Used).
+find_used_registers_instr(join_and_continue(Lval, _), !Used) :-
+    find_used_registers_lval(Lval, !Used).
 
-:- pred middle_rec__find_used_registers_components(
+:- pred find_used_registers_components(
     list(pragma_c_component)::in,
     set(int)::in, set(int)::out) is det.
 
-middle_rec__find_used_registers_components([], !Used).
-middle_rec__find_used_registers_components([Comp | Comps], !Used) :-
-    middle_rec__find_used_registers_component(Comp, !Used),
-    middle_rec__find_used_registers_components(Comps, !Used).
+find_used_registers_components([], !Used).
+find_used_registers_components([Comp | Comps], !Used) :-
+    find_used_registers_component(Comp, !Used),
+    find_used_registers_components(Comps, !Used).
 
-:- pred middle_rec__find_used_registers_component(pragma_c_component::in,
+:- pred find_used_registers_component(pragma_c_component::in,
     set(int)::in, set(int)::out) is det.
 
-middle_rec__find_used_registers_component(pragma_c_inputs(In), !Used) :-
+find_used_registers_component(pragma_c_inputs(In), !Used) :-
     insert_pragma_c_input_registers(In, !Used).
-middle_rec__find_used_registers_component(pragma_c_outputs(Out), !Used) :-
+find_used_registers_component(pragma_c_outputs(Out), !Used) :-
     insert_pragma_c_output_registers(Out, !Used).
-middle_rec__find_used_registers_component(pragma_c_user_code(_, _), !Used).
-middle_rec__find_used_registers_component(pragma_c_raw_code(_, _, _), !Used).
-middle_rec__find_used_registers_component(pragma_c_fail_to(_), !Used).
-middle_rec__find_used_registers_component(pragma_c_noop, !Used).
+find_used_registers_component(pragma_c_user_code(_, _), !Used).
+find_used_registers_component(pragma_c_raw_code(_, _, _), !Used).
+find_used_registers_component(pragma_c_fail_to(_), !Used).
+find_used_registers_component(pragma_c_noop, !Used).
 
-:- pred middle_rec__find_used_registers_lvals(list(lval)::in,
+:- pred find_used_registers_lvals(list(lval)::in,
     set(int)::in, set(int)::out) is det.
 
-middle_rec__find_used_registers_lvals([], !Used).
-middle_rec__find_used_registers_lvals([Lval | Lvals], !Used) :-
-    middle_rec__find_used_registers_lval(Lval, !Used),
-    middle_rec__find_used_registers_lvals(Lvals, !Used).
+find_used_registers_lvals([], !Used).
+find_used_registers_lvals([Lval | Lvals], !Used) :-
+    find_used_registers_lval(Lval, !Used),
+    find_used_registers_lvals(Lvals, !Used).
 
-:- pred middle_rec__find_used_registers_lval(lval::in,
+:- pred find_used_registers_lval(lval::in,
     set(int)::in, set(int)::out) is det.
 
-middle_rec__find_used_registers_lval(Lval, !Used) :-
+find_used_registers_lval(Lval, !Used) :-
     ( Lval = reg(r, N) ->
         copy(N, N1),
-        set__insert(!.Used, N1, !:Used)
+        set.insert(!.Used, N1, !:Used)
     ; Lval = field(_, Rval, FieldNum) ->
-        middle_rec__find_used_registers_rval(Rval, !Used),
-        middle_rec__find_used_registers_rval(FieldNum, !Used)
+        find_used_registers_rval(Rval, !Used),
+        find_used_registers_rval(FieldNum, !Used)
     ; Lval = lvar(_) ->
         unexpected(this_file, "lvar found in find_used_registers_lval")
     ;
         true
     ).
 
-:- pred middle_rec__find_used_registers_rval(rval::in,
-    set(int)::in, set(int)::out) is det.
+:- pred find_used_registers_rval(rval::in, set(int)::in, set(int)::out) is det.
 
-middle_rec__find_used_registers_rval(Rval, !Used) :-
+find_used_registers_rval(Rval, !Used) :-
     (
         Rval = lval(Lval),
-        middle_rec__find_used_registers_lval(Lval, !Used)
+        find_used_registers_lval(Lval, !Used)
     ;
         Rval = var(_),
         unexpected(this_file, "var found in find_used_registers_rval")
     ;
         Rval = mkword(_, Rval1),
-        middle_rec__find_used_registers_rval(Rval1, !Used)
+        find_used_registers_rval(Rval1, !Used)
     ;
         Rval = const(_)
     ;
         Rval = unop(_, Rval1),
-        middle_rec__find_used_registers_rval(Rval1, !Used)
+        find_used_registers_rval(Rval1, !Used)
     ;
         Rval = binop(_, Rval1, Rval2),
-        middle_rec__find_used_registers_rval(Rval1, !Used),
-        middle_rec__find_used_registers_rval(Rval2, !Used)
+        find_used_registers_rval(Rval1, !Used),
+        find_used_registers_rval(Rval2, !Used)
     ;
         Rval = mem_addr(MemRef),
-        middle_rec__find_used_registers_mem_ref(MemRef, !Used)
+        find_used_registers_mem_ref(MemRef, !Used)
     ).
 
-:- pred middle_rec__find_used_registers_mem_ref(mem_ref::in,
+:- pred find_used_registers_mem_ref(mem_ref::in,
     set(int)::in, set(int)::out) is det.
 
-middle_rec__find_used_registers_mem_ref(stackvar_ref(_), !Used).
-middle_rec__find_used_registers_mem_ref(framevar_ref(_), !Used).
-middle_rec__find_used_registers_mem_ref(heap_ref(Rval, _, _), !Used) :-
-    middle_rec__find_used_registers_rval(Rval, !Used).
+find_used_registers_mem_ref(stackvar_ref(_), !Used).
+find_used_registers_mem_ref(framevar_ref(_), !Used).
+find_used_registers_mem_ref(heap_ref(Rval, _, _), !Used) :-
+    find_used_registers_rval(Rval, !Used).
 
-:- pred middle_rec__find_used_registers_maybe_rvals(list(maybe(rval))::in,
+:- pred find_used_registers_maybe_rvals(list(maybe(rval))::in,
     set(int)::in, set(int)::out) is det.
 
-middle_rec__find_used_registers_maybe_rvals([], !Used).
-middle_rec__find_used_registers_maybe_rvals([MaybeRval | MaybeRvals], !Used) :-
+find_used_registers_maybe_rvals([], !Used).
+find_used_registers_maybe_rvals([MaybeRval | MaybeRvals], !Used) :-
     (
         MaybeRval = no
     ;
         MaybeRval = yes(Rval),
-        middle_rec__find_used_registers_rval(Rval, !Used)
+        find_used_registers_rval(Rval, !Used)
     ),
-    middle_rec__find_used_registers_maybe_rvals(MaybeRvals, !Used).
+    find_used_registers_maybe_rvals(MaybeRvals, !Used).
 
 :- pred insert_pragma_c_input_registers(list(pragma_c_input)::in,
     set(int)::in, set(int)::out) is det.
@@ -641,7 +638,7 @@ middle_rec__find_used_registers_maybe_rvals([MaybeRval | MaybeRvals], !Used) :-
 insert_pragma_c_input_registers([], !Used).
 insert_pragma_c_input_registers([Input | Inputs], !Used) :-
     Input = pragma_c_input(_, _, _, _, Rval, _, _),
-    middle_rec__find_used_registers_rval(Rval, !Used),
+    find_used_registers_rval(Rval, !Used),
     insert_pragma_c_input_registers(Inputs, !Used).
 
 :- pred insert_pragma_c_output_registers(list(pragma_c_output)::in,
@@ -650,32 +647,31 @@ insert_pragma_c_input_registers([Input | Inputs], !Used) :-
 insert_pragma_c_output_registers([], !Used).
 insert_pragma_c_output_registers([Output | Outputs], !Used) :-
     Output = pragma_c_output(Lval, _, _, _, _, _, _),
-    middle_rec__find_used_registers_lval(Lval, !Used),
+    find_used_registers_lval(Lval, !Used),
     insert_pragma_c_output_registers(Outputs, !Used).
 
 %---------------------------------------------------------------------------%
 
     % Find all the labels defined in an instruction sequence.
     %
-:- pred middle_rec__find_labels(list(instruction)::in, list(label)::out)
-    is det.
+:- pred find_labels(list(instruction)::in, list(label)::out) is det.
 
-middle_rec__find_labels(Instrs, Label2) :-
-    middle_rec__find_labels_2(Instrs, [], Label2).
+find_labels(Instrs, Label2) :-
+    find_labels_2(Instrs, [], Label2).
 
-:- pred middle_rec__find_labels_2(list(instruction)::in,
+:- pred find_labels_2(list(instruction)::in,
     list(label)::in, list(label)::out) is det.
 
-middle_rec__find_labels_2([], !Labels).
-middle_rec__find_labels_2([Instr - _ | Instrs], !Labels) :-
+find_labels_2([], !Labels).
+find_labels_2([Instr - _ | Instrs], !Labels) :-
     ( Instr = label(Label) ->
         !:Labels = [Label | !.Labels]
     ; Instr = block(_, _, Block) ->
-        middle_rec__find_labels_2(Block, !Labels)
+        find_labels_2(Block, !Labels)
     ;
         true
     ),
-    middle_rec__find_labels_2(Instrs, !Labels).
+    find_labels_2(Instrs, !Labels).
 
 %---------------------------------------------------------------------------%
 

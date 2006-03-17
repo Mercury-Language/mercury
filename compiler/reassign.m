@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,7 +14,7 @@
 % entirely within extended basic blocks.
 %
 % It is intended for instruction sequences such as the following extract
-% from tree234__search:
+% from tree234.search:
 %
 %   MR_r1 = MR_stackvar(3);
 %   MR_r2 = MR_stackvar(4);
@@ -22,7 +22,7 @@
 %   MR_r4 = MR_stackvar(2);
 %   MR_succip = (MR_Code *) MR_stackvar(5);
 %   if ((MR_tag(MR_r3) != MR_mktag((MR_Integer) 1))) {
-%       MR_GOTO_LABEL(mercury__x3__search_3_0_i1);
+%       MR_GOTO_LABEL(mercury.x3.search_3_0_i1);
 %   }
 %   MR_stackvar(1) = MR_r3;
 %   MR_stackvar(2) = MR_r4;
@@ -95,7 +95,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__reassign.
+:- module ll_backend.reassign.
 :- interface.
 
 :- import_module ll_backend.llds.
@@ -126,8 +126,8 @@
 :- type dependent_lval_map  ==  map(lval, set(lval)).
 
 remove_reassign(Instrs0, Instrs) :-
-    remove_reassign_loop(Instrs0, map__init, map__init, [], RevInstrs),
-    list__reverse(RevInstrs, Instrs).
+    remove_reassign_loop(Instrs0, map.init, map.init, [], RevInstrs),
+    list.reverse(RevInstrs, Instrs).
 
 :- pred remove_reassign_loop(list(instruction)::in, known_contents::in,
     dependent_lval_map::in, list(instruction)::in, list(instruction)::out)
@@ -149,7 +149,7 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
     ;
         Uinstr0 = assign(Target, Source),
         (
-            map__search(!.KnownContentsMap, Target, KnownContents),
+            map.search(!.KnownContentsMap, Target, KnownContents),
             KnownContents = Source
         ->
             % By not including Instr0 in !:RevInstrs, we are deleting Instr0.
@@ -174,40 +174,40 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         Uinstr0 = call(_, _, _, _, _, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         % The call may clobber any lval.
-        !:KnownContentsMap = map__init,
-        !:DepLvalMap = map__init
+        !:KnownContentsMap = map.init,
+        !:DepLvalMap = map.init
     ;
         Uinstr0 = mkframe(_, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
-        !:KnownContentsMap = map__init,
-        !:DepLvalMap = map__init
+        !:KnownContentsMap = map.init,
+        !:DepLvalMap = map.init
     ;
         Uinstr0 = label(_),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         % We don't know what is stored where at the instructions that
         % jump here.
-        !:KnownContentsMap = map__init,
-        !:DepLvalMap = map__init
+        !:KnownContentsMap = map.init,
+        !:DepLvalMap = map.init
     ;
         Uinstr0 = goto(_),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         % The value of !:KnownContentsMap doesn't really matter since the next
         % instruction (which must be a label) will reset it to empty anyway.
-        !:KnownContentsMap = map__init,
-        !:DepLvalMap = map__init
+        !:KnownContentsMap = map.init,
+        !:DepLvalMap = map.init
     ;
         Uinstr0 = computed_goto(_, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         % The value of !:KnownContentsMap doesn't really matter since the next
         % instruction (which must be a label) will reset it to empty anyway.
-        !:KnownContentsMap = map__init,
-        !:DepLvalMap = map__init
+        !:KnownContentsMap = map.init,
+        !:DepLvalMap = map.init
     ;
         Uinstr0 = c_code(_, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         % The C code may clobber any lval.
-        !:KnownContentsMap = map__init,
-        !:DepLvalMap = map__init
+        !:KnownContentsMap = map.init,
+        !:DepLvalMap = map.init
     ;
         Uinstr0 = if_val(_, _),
         !:RevInstrs = [Instr0 | !.RevInstrs]
@@ -245,8 +245,8 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         Uinstr0 = reset_ticket(_, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         % The reset operation may modify any lval.
-        !:KnownContentsMap = map__init,
-        !:DepLvalMap = map__init
+        !:KnownContentsMap = map.init,
+        !:DepLvalMap = map.init
     ;
         Uinstr0 = prune_ticket,
         !:RevInstrs = [Instr0 | !.RevInstrs]
@@ -268,28 +268,28 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         !:RevInstrs = [Instr0 | !.RevInstrs],
         % All stackvars now refer to new locations. Rather than delete
         % only stackvars from KnownContentsMap, we delete everything.
-        !:KnownContentsMap = map__init,
-        !:DepLvalMap = map__init
+        !:KnownContentsMap = map.init,
+        !:DepLvalMap = map.init
     ;
         Uinstr0 = decr_sp(_),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         % All stackvars now refer to new locations. Rather than delete
         % only stackvars from KnownContentsMap, we delete everything.
-        !:KnownContentsMap = map__init,
-        !:DepLvalMap = map__init
+        !:KnownContentsMap = map.init,
+        !:DepLvalMap = map.init
     ;
         Uinstr0 = decr_sp_and_return(_),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         % All stackvars now refer to new locations. Rather than delete
         % only stackvars from KnownContentsMap, we delete everything.
-        !:KnownContentsMap = map__init,
-        !:DepLvalMap = map__init
+        !:KnownContentsMap = map.init,
+        !:DepLvalMap = map.init
     ;
         Uinstr0 = pragma_c(_, _, _, _, _, _, _, _, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         % The C code may clobber any lval.
-        !:KnownContentsMap = map__init,
-        !:DepLvalMap = map__init
+        !:KnownContentsMap = map.init,
+        !:DepLvalMap = map.init
     ;
         Uinstr0 = init_sync_term(Target, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
@@ -301,21 +301,21 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         % by the fork instruction, so the value of !:KnownContentsMap doesn't
         % really matter since the next instruction (which must be a label)
         % will reset it to empty anyway.
-        !:KnownContentsMap = map__init,
-        !:DepLvalMap = map__init
+        !:KnownContentsMap = map.init,
+        !:DepLvalMap = map.init
     ;
         Uinstr0 = join_and_terminate(_),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         % The value of KnownContentsMap doesn't really matter since this
         % instruction terminates the execution of this thread.
-        !:KnownContentsMap = map__init,
-        !:DepLvalMap = map__init
+        !:KnownContentsMap = map.init,
+        !:DepLvalMap = map.init
     ;
         Uinstr0 = join_and_continue(_, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         % Other threads may modify any lval.
-        !:KnownContentsMap = map__init,
-        !:DepLvalMap = map__init
+        !:KnownContentsMap = map.init,
+        !:DepLvalMap = map.init
     ),
     remove_reassign_loop(Instrs0, !.KnownContentsMap, !.DepLvalMap,
         !RevInstrs).
@@ -335,9 +335,9 @@ no_implicit_alias_target(framevar(_)).
     dependent_lval_map::in, dependent_lval_map::out) is det.
 
 clobber_dependents(Target, !KnownContentsMap, !DepLvalMap) :-
-    ( map__search(!.DepLvalMap, Target, DepLvals) ->
-        set__fold(clobber_dependent, DepLvals, !KnownContentsMap),
-        map__delete(!.DepLvalMap, Target, !:DepLvalMap)
+    ( map.search(!.DepLvalMap, Target, DepLvals) ->
+        set.fold(clobber_dependent, DepLvals, !KnownContentsMap),
+        map.delete(!.DepLvalMap, Target, !:DepLvalMap)
     ;
         true
     ),
@@ -347,13 +347,13 @@ clobber_dependents(Target, !KnownContentsMap, !DepLvalMap) :-
     % way the known contents map. This is a conservative approximation of the
     % desired behaviour, which would invalidate only the entries of lvals
     % that may be referred to via this mem_ref.
-    code_util__lvals_in_rval(lval(Target), SubLvals),
+    code_util.lvals_in_rval(lval(Target), SubLvals),
     (
-        list__member(SubLval, SubLvals),
+        list.member(SubLval, SubLvals),
         SubLval = mem_ref(_)
     ->
-        !:KnownContentsMap = map__init,
-        !:DepLvalMap = map__init
+        !:KnownContentsMap = map.init,
+        !:DepLvalMap = map.init
     ;
         true
     ).
@@ -362,15 +362,15 @@ clobber_dependents(Target, !KnownContentsMap, !DepLvalMap) :-
     is det.
 
 clobber_dependent(Dependent, KnownContentsMap0, KnownContentsMap) :-
-    map__delete(KnownContentsMap0, Dependent, KnownContentsMap).
+    map.delete(KnownContentsMap0, Dependent, KnownContentsMap).
 
 :- pred record_known(lval::in, rval::in,
     known_contents::in, known_contents::out,
     dependent_lval_map::in, dependent_lval_map::out) is det.
 
 record_known(TargetLval, SourceRval, !KnownContentsMap, !DepLvalMap) :-
-    code_util__lvals_in_rval(SourceRval, SourceSubLvals),
-    ( list__member(TargetLval, SourceSubLvals) ->
+    code_util.lvals_in_rval(SourceRval, SourceSubLvals),
+    ( list.member(TargetLval, SourceSubLvals) ->
         % The act of assigning to TargetLval has modified the value of
         % SourceRval, so we can't eliminate any copy of this assignment
         % or its converse.
@@ -392,31 +392,31 @@ record_known(TargetLval, SourceRval, !KnownContentsMap, !DepLvalMap) :-
 
 record_known_lval_rval(TargetLval, SourceRval, !KnownContentsMap,
         !DepLvalMap) :-
-    ( map__search(!.KnownContentsMap, TargetLval, OldRval) ->
+    ( map.search(!.KnownContentsMap, TargetLval, OldRval) ->
         % TargetLval no longer depends on the lvals in OldRval;
         % it depends on the lvals in SourceRval instead. If any lvals
         % occur in both, we delete TargetLval from their entries here
         % and will add it back in a few lines later on.
         %
         % TargetLval still depends on the lvals inside it.
-        code_util__lvals_in_rval(OldRval, OldSubLvals),
-        list__foldl(make_not_dependent(TargetLval), OldSubLvals, !DepLvalMap)
+        code_util.lvals_in_rval(OldRval, OldSubLvals),
+        list.foldl(make_not_dependent(TargetLval), OldSubLvals, !DepLvalMap)
     ;
         true
     ),
-    code_util__lvals_in_lval(TargetLval, TargetSubLvals),
-    code_util__lvals_in_rval(SourceRval, SourceSubLvals),
-    list__append(TargetSubLvals, SourceSubLvals, AllSubLvals),
-    list__foldl(make_dependent(TargetLval), AllSubLvals, !DepLvalMap),
-    svmap__set(TargetLval, SourceRval, !KnownContentsMap).
+    code_util.lvals_in_lval(TargetLval, TargetSubLvals),
+    code_util.lvals_in_rval(SourceRval, SourceSubLvals),
+    list.append(TargetSubLvals, SourceSubLvals, AllSubLvals),
+    list.foldl(make_dependent(TargetLval), AllSubLvals, !DepLvalMap),
+    svmap.set(TargetLval, SourceRval, !KnownContentsMap).
 
 :- pred make_not_dependent(lval::in, lval::in,
     dependent_lval_map::in, dependent_lval_map::out) is det.
 
 make_not_dependent(Target, SubLval, !DepLvalMap) :-
-    ( map__search(!.DepLvalMap, SubLval, DepLvals0) ->
-        set__delete(DepLvals0, Target, DepLvals),
-        svmap__det_update(SubLval, DepLvals, !DepLvalMap)
+    ( map.search(!.DepLvalMap, SubLval, DepLvals0) ->
+        set.delete(DepLvals0, Target, DepLvals),
+        svmap.det_update(SubLval, DepLvals, !DepLvalMap)
     ;
         true
     ).
@@ -425,12 +425,12 @@ make_not_dependent(Target, SubLval, !DepLvalMap) :-
     dependent_lval_map::in, dependent_lval_map::out) is det.
 
 make_dependent(Target, SubLval, !DepLvalMap) :-
-    ( map__search(!.DepLvalMap, SubLval, DepLvals0) ->
-        set__insert(DepLvals0, Target, DepLvals),
-        svmap__det_update(SubLval, DepLvals, !DepLvalMap)
+    ( map.search(!.DepLvalMap, SubLval, DepLvals0) ->
+        set.insert(DepLvals0, Target, DepLvals),
+        svmap.det_update(SubLval, DepLvals, !DepLvalMap)
     ;
-        DepLvals = set__make_singleton_set(Target),
-        svmap__det_insert(SubLval, DepLvals, !DepLvalMap)
+        DepLvals = set.make_singleton_set(Target),
+        svmap.det_insert(SubLval, DepLvals, !DepLvalMap)
     ).
 
 %-----------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -134,36 +134,35 @@
 %-----------------------------------------------------------------------------%
 
 apply_variable_renaming_to_tvar_kind_map(Renaming, KindMap0, KindMap) :-
-    map__foldl(apply_variable_renaming_to_tvar_kind_map_2(Renaming),
-        KindMap0, map__init, KindMap).
+    map.foldl(apply_variable_renaming_to_tvar_kind_map_2(Renaming),
+        KindMap0, map.init, KindMap).
 
 :- pred apply_variable_renaming_to_tvar_kind_map_2(tvar_renaming::in, tvar::in,
     kind::in, tvar_kind_map::in, tvar_kind_map::out) is det.
 
 apply_variable_renaming_to_tvar_kind_map_2(Renaming, TVar0, Kind, !KindMap) :-
     apply_variable_renaming_to_tvar(Renaming, TVar0, TVar),
-    svmap__det_insert(TVar, Kind, !KindMap).
+    svmap.det_insert(TVar, Kind, !KindMap).
 
 %-----------------------------------------------------------------------------%
 
 apply_variable_renaming_to_tvar(Renaming, TVar0, TVar) :-
-    ( map__search(Renaming, TVar0, TVar1) ->
+    ( map.search(Renaming, TVar0, TVar1) ->
         TVar = TVar1
     ;
         TVar = TVar0
     ).
 
 apply_subst_to_tvar(KindMap, Subst, TVar, Type) :-
-    ( map__search(Subst, TVar, Type0) ->
+    ( map.search(Subst, TVar, Type0) ->
         apply_subst_to_type(Subst, Type0, Type)
     ;
         get_tvar_kind(KindMap, TVar, Kind),
         Type = variable(TVar, Kind)
     ).
 
-
 apply_rec_subst_to_tvar(KindMap, Subst, TVar, Type) :-
-    ( map__search(Subst, TVar, Type0) ->
+    ( map.search(Subst, TVar, Type0) ->
         apply_rec_subst_to_type(Subst, Type0, Type)
     ;
         get_tvar_kind(KindMap, TVar, Kind),
@@ -173,13 +172,13 @@ apply_rec_subst_to_tvar(KindMap, Subst, TVar, Type) :-
 %-----------------------------------------------------------------------------%
 
 apply_variable_renaming_to_tvar_list(Renaming, TVars0, TVars) :-
-    list__map(apply_variable_renaming_to_tvar(Renaming), TVars0, TVars).
+    list.map(apply_variable_renaming_to_tvar(Renaming), TVars0, TVars).
 
 apply_subst_to_tvar_list(KindMap, Subst, TVars, Types) :-
-    list__map(apply_subst_to_tvar(KindMap, Subst), TVars, Types).
+    list.map(apply_subst_to_tvar(KindMap, Subst), TVars, Types).
 
 apply_rec_subst_to_tvar_list(KindMap, Subst, TVars, Types) :-
-    list__map(apply_rec_subst_to_tvar(KindMap, Subst), TVars, Types).
+    list.map(apply_rec_subst_to_tvar(KindMap, Subst), TVars, Types).
 
 %-----------------------------------------------------------------------------%
 
@@ -214,7 +213,7 @@ apply_variable_renaming_to_type(Renaming, kinded(Type0, Kind),
     apply_variable_renaming_to_type(Renaming, Type0, Type).
 
 apply_subst_to_type(Subst, Type0 @ variable(TVar, Kind), Type) :-
-    ( map__search(Subst, TVar, Type1) ->
+    ( map.search(Subst, TVar, Type1) ->
         ensure_type_has_kind(Kind, Type1, Type)
     ;
         Type = Type0
@@ -239,7 +238,7 @@ apply_subst_to_type(Subst, tuple(Args0, Kind), tuple(Args, Kind)) :-
     apply_subst_to_type_list(Subst, Args0, Args).
 apply_subst_to_type(Subst, apply_n(TVar, Args0, Kind), Type) :-
     apply_subst_to_type_list(Subst, Args0, Args),
-    ( map__search(Subst, TVar, AppliedType) ->
+    ( map.search(Subst, TVar, AppliedType) ->
         apply_type_args(AppliedType, Args, Type)
     ;
         Type = apply_n(TVar, Args, Kind)
@@ -248,7 +247,7 @@ apply_subst_to_type(Subst, kinded(Type0, Kind), kinded(Type, Kind)) :-
     apply_subst_to_type(Subst, Type0, Type).
 
 apply_rec_subst_to_type(Subst, Type0 @ variable(TVar, Kind), Type) :-
-    ( map__search(Subst, TVar, Type1) ->
+    ( map.search(Subst, TVar, Type1) ->
         ensure_type_has_kind(Kind, Type1, Type2),
         apply_rec_subst_to_type(Subst, Type2, Type)
     ;
@@ -274,7 +273,7 @@ apply_rec_subst_to_type(Subst, tuple(Args0, Kind), tuple(Args, Kind)) :-
     apply_rec_subst_to_type_list(Subst, Args0, Args).
 apply_rec_subst_to_type(Subst, apply_n(TVar, Args0, Kind), Type) :-
     apply_rec_subst_to_type_list(Subst, Args0, Args),
-    ( map__search(Subst, TVar, AppliedType0) ->
+    ( map.search(Subst, TVar, AppliedType0) ->
         apply_rec_subst_to_type(Subst, AppliedType0, AppliedType),
         apply_type_args(AppliedType, Args, Type)
     ;
@@ -286,18 +285,18 @@ apply_rec_subst_to_type(Subst, kinded(Type0, Kind), kinded(Type, Kind)) :-
 %-----------------------------------------------------------------------------%
 
 apply_variable_renaming_to_type_list(Renaming, Types0, Types) :-
-    list__map(apply_variable_renaming_to_type(Renaming), Types0, Types).
+    list.map(apply_variable_renaming_to_type(Renaming), Types0, Types).
 
 apply_subst_to_type_list(Subst, Types0, Types) :-
-    list__map(apply_subst_to_type(Subst), Types0, Types).
+    list.map(apply_subst_to_type(Subst), Types0, Types).
 
 apply_rec_subst_to_type_list(Subst, Types0, Types) :-
-    list__map(apply_rec_subst_to_type(Subst), Types0, Types).
+    list.map(apply_rec_subst_to_type(Subst), Types0, Types).
 
 %-----------------------------------------------------------------------------%
 
 apply_variable_renaming_to_vartypes(Renaming, !Map) :-
-    map__map_values(apply_variable_renaming_to_vartypes_2(Renaming), !Map).
+    map.map_values(apply_variable_renaming_to_vartypes_2(Renaming), !Map).
 
 :- pred apply_variable_renaming_to_vartypes_2(tvar_renaming::in, prog_var::in,
     mer_type::in, mer_type::out) is det.
@@ -306,7 +305,7 @@ apply_variable_renaming_to_vartypes_2(Renaming, _, !Type) :-
     apply_variable_renaming_to_type(Renaming, !Type).
 
 apply_subst_to_vartypes(Subst, !VarTypes) :-
-    map__map_values(apply_subst_to_vartypes_2(Subst), !VarTypes).
+    map.map_values(apply_subst_to_vartypes_2(Subst), !VarTypes).
 
 :- pred apply_subst_to_vartypes_2(tsubst::in, prog_var::in,
     mer_type::in, mer_type::out) is det.
@@ -315,7 +314,7 @@ apply_subst_to_vartypes_2(Subst, _, !Type) :-
     apply_subst_to_type(Subst, !Type).
 
 apply_rec_subst_to_vartypes(Subst, !VarTypes) :-
-    map__map_values(apply_rec_subst_to_vartypes_2(Subst), !VarTypes).
+    map.map_values(apply_rec_subst_to_vartypes_2(Subst), !VarTypes).
 
 :- pred apply_rec_subst_to_vartypes_2(tsubst::in, prog_var::in,
     mer_type::in, mer_type::out) is det.
@@ -399,10 +398,10 @@ apply_variable_renaming_to_prog_constraint_list(Renaming, !Constraints) :-
         !Constraints).
 
 apply_subst_to_prog_constraint_list(Subst, !Constraints) :-
-    list__map(apply_subst_to_prog_constraint(Subst), !Constraints).
+    list.map(apply_subst_to_prog_constraint(Subst), !Constraints).
 
 apply_rec_subst_to_prog_constraint_list(Subst, !Constraints) :-
-    list__map(apply_rec_subst_to_prog_constraint(Subst), !Constraints).
+    list.map(apply_rec_subst_to_prog_constraint(Subst), !Constraints).
 
 %-----------------------------------------------------------------------------%
 

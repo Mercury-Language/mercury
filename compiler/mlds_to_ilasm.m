@@ -69,7 +69,7 @@
 %-----------------------------------------------------------------------------%
 
 output_mlds(MLDS, !IO) :-
-    ModuleName = mlds.get_module_name(MLDS),
+    ModuleName = mlds_get_module_name(MLDS),
     module_name_to_file_name(ModuleName, ".il", yes, ILAsmFile, !IO),
     output_to_file(ILAsmFile, output_assembler(MLDS), Result, !IO),
 
@@ -89,7 +89,7 @@ output_mlds(MLDS, !IO) :-
     io::di, io::uo) is det.
 
 output_foreign_file(MLDS, ForeignLang, !IO) :-
-    ModuleName = mlds.get_module_name(MLDS),
+    ModuleName = mlds_get_module_name(MLDS),
     (
         ForeignModuleName = foreign_language_module_name(ModuleName,
             ForeignLang),
@@ -140,10 +140,10 @@ output_assembler(MLDS, ForeignLangs, !IO) :-
     globals.io_lookup_bool_option(verifiable_code, Verifiable, !IO),
     ( Peephole = yes ->
         VerifyOnly = no,
-        il_peephole.optimize(VerifyOnly, ILAsm0, ILAsm)
+        il_peephole_optimize(VerifyOnly, ILAsm0, ILAsm)
     ; Verifiable = yes ->
         VerifyOnly = yes,
-        il_peephole.optimize(VerifyOnly, ILAsm0, ILAsm)
+        il_peephole_optimize(VerifyOnly, ILAsm0, ILAsm)
     ;
         ILAsm0 = ILAsm
     ),

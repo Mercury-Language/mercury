@@ -14,7 +14,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module hlds__goal_form.
+:- module hlds.goal_form.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -345,13 +345,13 @@ goal_cannot_loop_aux(MaybeModuleInfo, Goal) :-
     is semidet.
 
 goal_cannot_loop_expr(MaybeModuleInfo, conj(plain_conj, Goals)) :-
-    list__member(Goal, Goals) =>
+    list.member(Goal, Goals) =>
         goal_cannot_loop_aux(MaybeModuleInfo, Goal).
 goal_cannot_loop_expr(MaybeModuleInfo, disj(Goals)) :-
-    list__member(Goal, Goals) =>
+    list.member(Goal, Goals) =>
         goal_cannot_loop_aux(MaybeModuleInfo, Goal).
 goal_cannot_loop_expr(MaybeModuleInfo, switch(_Var, _Category, Cases)) :-
-    list__member(Case, Cases) =>
+    list.member(Case, Cases) =>
         (
             Case = case(_, Goal),
             goal_cannot_loop_aux(MaybeModuleInfo, Goal)
@@ -700,8 +700,8 @@ count_recursive_calls_2(if_then_else(_, Cond, Then, Else), PredId, ProcId,
     count_recursive_calls(Else, PredId, ProcId, EMin, EMax),
     CTMin = CMin + TMin,
     CTMax = CMax + TMax,
-    int__min(CTMin, EMin, Min),
-    int__max(CTMax, EMax, Max).
+    int.min(CTMin, EMin, Min),
+    int.max(CTMax, EMax, Max).
 count_recursive_calls_2(shorthand(_), _, _, _, _) :-
     % these should have been expanded out by now
     unexpected(this_file, "count_recursive_calls_2: unexpected shorthand").
@@ -730,8 +730,8 @@ count_recursive_calls_disj([Goal | Goals], PredId, ProcId, Min, Max) :-
         Goals = [_ | _],
         count_recursive_calls(Goal, PredId, ProcId, Min0, Max0),
         count_recursive_calls_disj(Goals, PredId, ProcId, Min1, Max1),
-        int__min(Min0, Min1, Min),
-        int__max(Max0, Max1, Max)
+        int.min(Min0, Min1, Min),
+        int.max(Max0, Max1, Max)
     ).
 
 :- pred count_recursive_calls_cases(list(case)::in, pred_id::in, proc_id::in,
@@ -748,8 +748,8 @@ count_recursive_calls_cases([case(_, Goal) | Cases], PredId, ProcId,
         Cases = [_ | _],
         count_recursive_calls(Goal, PredId, ProcId, Min0, Max0),
         count_recursive_calls_cases(Cases, PredId, ProcId, Min1, Max1),
-        int__min(Min0, Min1, Min),
-        int__max(Max0, Max1, Max)
+        int.min(Min0, Min1, Min),
+        int.max(Max0, Max1, Max)
     ).
 %-----------------------------------------------------------------------------%
 %

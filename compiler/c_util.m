@@ -17,7 +17,7 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module backend_libs__c_util.
+:- module backend_libs.c_util.
 :- interface.
 
 :- import_module backend_libs.builtin_ops.
@@ -167,18 +167,18 @@
 % Line numbering.
 
 set_line_num(File, Line, !IO) :-
-    globals__io_lookup_bool_option(line_numbers, LineNumbers, !IO),
+    globals.io_lookup_bool_option(line_numbers, LineNumbers, !IO),
     (
         LineNumbers = yes,
         (
             Line > 0,
             File \= ""
         ->
-            io__write_string("#line ", !IO),
-            io__write_int(Line, !IO),
-            io__write_string(" """, !IO),
+            io.write_string("#line ", !IO),
+            io.write_int(Line, !IO),
+            io.write_string(" """, !IO),
             output_quoted_string(File, !IO),
-            io__write_string("""\n", !IO)
+            io.write_string("""\n", !IO)
         ;
             reset_line_num(!IO)
         )
@@ -189,19 +189,19 @@ set_line_num(File, Line, !IO) :-
 reset_line_num(!IO) :-
     % We want to generate another #line directive to reset the C compiler's
     % idea of what it is processing back to the file we are generating.
-    io__get_output_line_number(Line, !IO),
-    io__output_stream_name(FileName, !IO),
-    globals__io_lookup_bool_option(line_numbers, LineNumbers, !IO),
+    io.get_output_line_number(Line, !IO),
+    io.output_stream_name(FileName, !IO),
+    globals.io_lookup_bool_option(line_numbers, LineNumbers, !IO),
     (
         Line > 0,
         FileName \= "",
         LineNumbers = yes
     ->
-        io__write_string("#line ", !IO),
-        io__write_int(Line + 1, !IO),
-        io__write_string(" """, !IO),
+        io.write_string("#line ", !IO),
+        io.write_int(Line + 1, !IO),
+        io.write_string(" """, !IO),
         output_quoted_string(FileName, !IO),
-        io__write_string("""\n", !IO)
+        io.write_string("""\n", !IO)
     ;
         true
     ).
@@ -211,7 +211,7 @@ reset_line_num(!IO) :-
 % String and character handling.
 
 output_quoted_string(S0, !IO) :-
-    output_quoted_multi_string(string__length(S0), S0, !IO).
+    output_quoted_multi_string(string.length(S0), S0, !IO).
 
 output_quoted_multi_string(Len, S, !IO) :-
     output_quoted_multi_string_2(0, Len, S, !IO).
@@ -229,14 +229,14 @@ output_quoted_multi_string_2(Cur, Len, S, !IO) :-
             Cur \= 0,
             Cur mod 512 = 0
         ->
-            io__write_string("\" \"", !IO)
+            io.write_string("\" \"", !IO)
         ;
             true
         ),
 
         % We must use unsafe index, because we want to be able to access chars
         % beyond the first NUL.
-        string__unsafe_index(S, Cur, Char),
+        string.unsafe_index(S, Cur, Char),
         output_quoted_char(Char, !IO),
         
         % Check for trigraph sequences in string literals. We break the
@@ -247,11 +247,11 @@ output_quoted_multi_string_2(Cur, Len, S, !IO) :-
             Cur < Len + 2
         ->
             (
-                string__unsafe_index(S, Cur + 1, '?'),
-                string__unsafe_index(S, Cur + 2, ThirdChar),
+                string.unsafe_index(S, Cur + 1, '?'),
+                string.unsafe_index(S, Cur + 2, ThirdChar),
                 is_trigraph_char(ThirdChar)
             ->
-                io__write_string("\" \"", !IO)
+                io.write_string("\" \"", !IO)
             ;
                 true
             )
@@ -266,15 +266,15 @@ output_quoted_multi_string_2(Cur, Len, S, !IO) :-
 
 output_quoted_char(Char, !IO) :-
     quote_char(Char, EscapedChars),
-    io__write_string(EscapedChars, !IO).
+    io.write_string(EscapedChars, !IO).
 
 quote_char(Char, QuotedChar) :-
     quote_one_char(Char, [], RevQuotedChar),
-    string__from_rev_char_list(RevQuotedChar, QuotedChar).
+    string.from_rev_char_list(RevQuotedChar, QuotedChar).
 
 quote_string(String, QuotedString) :-
-    string__foldl(quote_one_char, String, [], RevQuotedChars),
-    string__from_rev_char_list(RevQuotedChars, QuotedString).
+    string.foldl(quote_one_char, String, [], RevQuotedChars),
+    string.from_rev_char_list(RevQuotedChars, QuotedString).
 
 :- pred quote_one_char(char::in, list(char)::in, list(char)::out) is det.
 
@@ -283,7 +283,7 @@ quote_one_char(Char, RevChars0, RevChars) :-
         RevChars = [EscapeChar, '\\' | RevChars0]
     ; is_c_source_char(Char) ->
         RevChars = [Char | RevChars0]
-    ; char__to_int(Char, 0) ->
+    ; char.to_int(Char, 0) ->
         RevChars = ['0', '\\' | RevChars0]
     ;
         escape_any_char(Char, EscapeChars),
@@ -323,8 +323,8 @@ is_trigraph_char('-').
 :- pred is_c_source_char(char::in) is semidet.
 
 is_c_source_char(Char) :-
-    ( char__is_alnum(Char)
-    ; string__contains_char(c_graphic_chars, Char)
+    ( char.is_alnum(Char)
+    ; string.contains_char(c_graphic_chars, Char)
     ).
 
     % This returns a string containing all the characters that the C standard
@@ -335,7 +335,7 @@ is_c_source_char(Char) :-
 
 c_graphic_chars = " !\"#%&'()*+,-./:;<=>?[\\]^_{|}~".
 
-    % reverse_append(Xs, Ys, Zs) <=> Zs = list__reverse(Xs) ++ Ys.
+    % reverse_append(Xs, Ys, Zs) <=> Zs = list.reverse(Xs) ++ Ys.
     %
 :- pred reverse_append(list(T)::in, list(T)::in, list(T)::out) is det.
 
@@ -350,10 +350,10 @@ reverse_append([X | Xs], L0, L) :-
     % of characters is the same as the Mercury compiler's.
     %
 escape_any_char(Char, EscapeCodeChars) :-
-    char__to_int(Char, Int),
-    string__int_to_base_string(Int, 8, OctalString0),
-    string__pad_left(OctalString0, '0', 3, OctalString),
-    EscapeCodeChars = ['\\' | string__to_char_list(OctalString)].
+    char.to_int(Char, Int),
+    string.int_to_base_string(Int, 8, OctalString0),
+    string.pad_left(OctalString0, '0', 3, OctalString),
+    EscapeCodeChars = ['\\' | string.to_char_list(OctalString)].
 
 %-----------------------------------------------------------------------------%
 %
@@ -361,7 +361,7 @@ escape_any_char(Char, EscapeCodeChars) :-
 %
 % XXX These routines do not yet handle infinities and NaNs properly.
 
-make_float_literal(Float) = string__format("%#.17g", [f(Float)]).
+make_float_literal(Float) = string.format("%#.17g", [f(Float)]).
     % This is used by the C, Java, and IL back-ends,
     % so the output must be valid syntax in all three languages.
     %
@@ -370,7 +370,7 @@ make_float_literal(Float) = string__format("%#.17g", [f(Float)]).
     % to strings and back again without losing precision.
 
 output_float_literal(Float, !IO) :-
-    io__write_string(make_float_literal(Float), !IO).
+    io.write_string(make_float_literal(Float), !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -429,12 +429,12 @@ binary_infix_op(int_ge, ">=").
 %-----------------------------------------------------------------------------%
 
 output_c_file_intro_and_grade(SourceFileName, Version, !IO) :-
-    globals__io_lookup_int_option(num_tag_bits, NumTagBits, !IO),
-    string__int_to_string(NumTagBits, NumTagBitsStr),
-    globals__io_lookup_bool_option(unboxed_float, UnboxedFloat, !IO),
+    globals.io_lookup_int_option(num_tag_bits, NumTagBits, !IO),
+    string.int_to_string(NumTagBits, NumTagBitsStr),
+    globals.io_lookup_bool_option(unboxed_float, UnboxedFloat, !IO),
     UnboxedFloatStr = convert_bool_to_string(UnboxedFloat),
 
-    io__write_strings([
+    io.write_strings([
         "/*\n",
         "** Automatically generated from `", SourceFileName, "'\n",
         "** by the Mercury compiler,\n",

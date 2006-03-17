@@ -1,5 +1,7 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2000, 2003-2005 The University of Melbourne.
+% vim: ft=mercury ts=4 sw=4 et
+%---------------------------------------------------------------------------%
+% Copyright (C) 1996-2000, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -19,7 +21,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- module backend_libs__base_typeclass_info.
+:- module backend_libs.base_typeclass_info.
 :- interface.
 
 :- import_module backend_libs.rtti.
@@ -29,8 +31,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred base_typeclass_info__generate_rtti(module_info::in,
-	list(rtti_data)::out) is det.
+:- pred generate_base_typeclass_info_rtti(module_info::in,
+    list(rtti_data)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -62,103 +64,101 @@
 
 %---------------------------------------------------------------------------%
 
-generate_rtti(ModuleInfo, RttiDataList) :-
-	module_info_get_name(ModuleInfo, ModuleName),
-	module_info_get_instance_table(ModuleInfo, InstanceTable),
-	map__to_assoc_list(InstanceTable, AllInstances),
-	gen_infos_for_classes(AllInstances, ModuleName, ModuleInfo,
-		[], RttiDataList).
+generate_base_typeclass_info_rtti(ModuleInfo, RttiDataList) :-
+    module_info_get_name(ModuleInfo, ModuleName),
+    module_info_get_instance_table(ModuleInfo, InstanceTable),
+    map.to_assoc_list(InstanceTable, AllInstances),
+    gen_infos_for_classes(AllInstances, ModuleName, ModuleInfo,
+        [], RttiDataList).
 
 :- pred gen_infos_for_classes(
-	assoc_list(class_id, list(hlds_instance_defn))::in, module_name::in,
-	module_info::in, list(rtti_data)::in, list(rtti_data)::out) is det.
+    assoc_list(class_id, list(hlds_instance_defn))::in, module_name::in,
+    module_info::in, list(rtti_data)::in, list(rtti_data)::out) is det.
 
 gen_infos_for_classes([], _ModuleName, _ModuleInfo, !RttiDataList).
 gen_infos_for_classes([C|Cs], ModuleName, ModuleInfo, !RttiDataList) :-
-	gen_infos_for_instance_list(C, ModuleName, ModuleInfo, !RttiDataList),
-	gen_infos_for_classes(Cs, ModuleName, ModuleInfo, !RttiDataList).
+    gen_infos_for_instance_list(C, ModuleName, ModuleInfo, !RttiDataList),
+    gen_infos_for_classes(Cs, ModuleName, ModuleInfo, !RttiDataList).
 
-	% XXX make it use an accumulator
+    % XXX make it use an accumulator
 :- pred gen_infos_for_instance_list(
-	pair(class_id, list(hlds_instance_defn))::in, module_name::in,
-	module_info::in, list(rtti_data)::in, list(rtti_data)::out) is det.
+    pair(class_id, list(hlds_instance_defn))::in, module_name::in,
+    module_info::in, list(rtti_data)::in, list(rtti_data)::out) is det.
 
 gen_infos_for_instance_list(_ - [], _, _, !RttiDataList).
 gen_infos_for_instance_list(ClassId - [InstanceDefn | Is], ModuleName,
-		ModuleInfo, !RttiDataList) :-
-	gen_infos_for_instance_list(ClassId - Is, ModuleName, ModuleInfo,
-		!RttiDataList),
-	InstanceDefn = hlds_instance_defn(InstanceModule, ImportStatus,
-		_TermContext, InstanceConstraints, InstanceTypes, Body,
-		PredProcIds, _Varset, _SuperClassProofs),
-	(
-		Body = concrete(_),
-		% Only make the base_typeclass_info if the instance
-		% declaration originally came from _this_ module.
-		status_defined_in_this_module(ImportStatus, yes)
-	->
-		make_instance_string(InstanceTypes, InstanceString),
-		gen_body(PredProcIds, InstanceTypes, InstanceConstraints,
-			ModuleInfo, ClassId, BaseTypeClassInfo),
-		TCName = generate_class_name(ClassId),
-		RttiData = base_typeclass_info(TCName, InstanceModule,
-			InstanceString, BaseTypeClassInfo),
-		!:RttiDataList = [RttiData | !.RttiDataList]
-	;
-		% The instance decl is from another module,
-		% or is abstract, so we don't bother including it.
-		true
-	).
+        ModuleInfo, !RttiDataList) :-
+    gen_infos_for_instance_list(ClassId - Is, ModuleName, ModuleInfo,
+        !RttiDataList),
+    InstanceDefn = hlds_instance_defn(InstanceModule, ImportStatus,
+        _TermContext, InstanceConstraints, InstanceTypes, Body,
+        PredProcIds, _Varset, _SuperClassProofs),
+    (
+        Body = concrete(_),
+        % Only make the base_typeclass_info if the instance
+        % declaration originally came from _this_ module.
+        status_defined_in_this_module(ImportStatus, yes)
+    ->
+        make_instance_string(InstanceTypes, InstanceString),
+        gen_body(PredProcIds, InstanceTypes, InstanceConstraints,
+            ModuleInfo, ClassId, BaseTypeClassInfo),
+        TCName = generate_class_name(ClassId),
+        RttiData = base_typeclass_info(TCName, InstanceModule,
+            InstanceString, BaseTypeClassInfo),
+        !:RttiDataList = [RttiData | !.RttiDataList]
+    ;
+        % The instance decl is from another module,
+        % or is abstract, so we don't bother including it.
+        true
+    ).
 
 %----------------------------------------------------------------------------%
 
 :- pred gen_body(maybe(list(hlds_class_proc))::in, list(mer_type)::in,
-	list(prog_constraint)::in, module_info::in, class_id::in,
-	base_typeclass_info::out) is det.
+    list(prog_constraint)::in, module_info::in, class_id::in,
+    base_typeclass_info::out) is det.
 
 gen_body(no, _, _, _, _, _) :-
-	unexpected(this_file, "pred_proc_ids should have " ++
-		"been filled in by check_typeclass.m").
+    unexpected(this_file, "pred_proc_ids should have " ++
+        "been filled in by check_typeclass.m").
 gen_body(yes(PredProcIds0), Types, Constraints, ModuleInfo, ClassId,
-		BaseTypeClassInfo) :-
-	prog_type__vars_list(Types, TypeVars),
-	get_unconstrained_tvars(TypeVars, Constraints, Unconstrained),
-	list__length(Constraints, NumConstraints),
-	list__length(Unconstrained, NumUnconstrained),
-	NumExtra = NumConstraints + NumUnconstrained,
-	ExtractPredProcId = (pred(HldsPredProc::in, PredProc::out) is det :-
-		(
-			HldsPredProc = hlds_class_proc(PredId, ProcId),
-			PredProc = proc(PredId, ProcId)
-		)),
-	list__map(ExtractPredProcId, PredProcIds0, PredProcIds),
-	construct_proc_labels(PredProcIds, ModuleInfo,
-		ProcLabels),
-	gen_superclass_count(ClassId, ModuleInfo,
-		SuperClassCount, ClassArity),
-	list__length(ProcLabels, NumMethods),
-	BaseTypeClassInfo = base_typeclass_info(NumExtra, NumConstraints,
-		SuperClassCount, ClassArity, NumMethods, ProcLabels).
+        BaseTypeClassInfo) :-
+    prog_type.vars_list(Types, TypeVars),
+    get_unconstrained_tvars(TypeVars, Constraints, Unconstrained),
+    list.length(Constraints, NumConstraints),
+    list.length(Unconstrained, NumUnconstrained),
+    NumExtra = NumConstraints + NumUnconstrained,
+    ExtractPredProcId = (pred(HldsPredProc::in, PredProc::out) is det :-
+        (
+            HldsPredProc = hlds_class_proc(PredId, ProcId),
+            PredProc = proc(PredId, ProcId)
+        )),
+    list.map(ExtractPredProcId, PredProcIds0, PredProcIds),
+    construct_proc_labels(PredProcIds, ModuleInfo, ProcLabels),
+    gen_superclass_count(ClassId, ModuleInfo, SuperClassCount, ClassArity),
+    list.length(ProcLabels, NumMethods),
+    BaseTypeClassInfo = base_typeclass_info(NumExtra, NumConstraints,
+        SuperClassCount, ClassArity, NumMethods, ProcLabels).
 
 :- pred construct_proc_labels(list(pred_proc_id)::in,
-	module_info::in, list(rtti_proc_label)::out) is det.
+    module_info::in, list(rtti_proc_label)::out) is det.
 
 construct_proc_labels([], _, []).
 construct_proc_labels([proc(PredId, ProcId) | Procs], ModuleInfo,
-		[ProcLabel | ProcLabels]) :-
-	ProcLabel = rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId),
-	construct_proc_labels(Procs, ModuleInfo, ProcLabels).
+        [ProcLabel | ProcLabels]) :-
+    ProcLabel = rtti.make_rtti_proc_label(ModuleInfo, PredId, ProcId),
+    construct_proc_labels(Procs, ModuleInfo, ProcLabels).
 
 %----------------------------------------------------------------------------%
 
 :- pred gen_superclass_count(class_id::in, module_info::in,
-	int::out, int::out) is det.
+    int::out, int::out) is det.
 
 gen_superclass_count(ClassId, ModuleInfo, NumSuperClasses, ClassArity) :-
-	module_info_get_class_table(ModuleInfo, ClassTable),
-	map__lookup(ClassTable, ClassId, ClassDefn),
-	list__length(ClassDefn ^ class_supers, NumSuperClasses),
-	list__length(ClassDefn ^ class_vars, ClassArity).
+    module_info_get_class_table(ModuleInfo, ClassTable),
+    map.lookup(ClassTable, ClassId, ClassDefn),
+    list.length(ClassDefn ^ class_supers, NumSuperClasses),
+    list.length(ClassDefn ^ class_vars, ClassArity).
 
 %----------------------------------------------------------------------------%
 

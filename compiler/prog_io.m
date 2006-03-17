@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------e
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
-% Copyright (C) 1993-2005 The University of Melbourne.
+% Copyright (C) 1993-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -55,7 +55,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module parse_tree__prog_io.
+:- module parse_tree.prog_io.
 :- interface.
 
 :- import_module libs.timestamp.
@@ -107,12 +107,12 @@
 :- pred read_module(open_file(FileInfo)::in(open_file),
     module_name::in, bool::in, module_error::out, maybe(FileInfo)::out,
     module_name::out, message_list::out, item_list::out,
-    maybe(io__res(timestamp))::out, io::di, io::uo) is det.
+    maybe(io.res(timestamp))::out, io::di, io::uo) is det.
 
 :- pred read_module_if_changed(open_file(FileInfo)::in(open_file),
     module_name::in, timestamp::in, module_error::out,
     maybe(FileInfo)::out, module_name::out, message_list::out,
-    item_list::out, maybe(io__res(timestamp))::out, io::di, io::uo) is det.
+    item_list::out, maybe(io.res(timestamp))::out, io::di, io::uo) is det.
 
     % Same as read_module, but use intermod_directories instead of
     % search_directories when searching for the file.
@@ -316,7 +316,7 @@ read_module_if_changed(OpenFile, DefaultModuleName,
         ModuleName, Messages, Items, MaybeModuleTimestamp, !IO).
 
 read_opt_file(FileName, DefaultModuleName, Error, Messages, Items, !IO) :-
-    globals__io_lookup_accumulating_option(intermod_directories, Dirs, !IO),
+    globals.io_lookup_accumulating_option(intermod_directories, Dirs, !IO),
     read_module_2(search_for_file(Dirs, FileName),
         DefaultModuleName, no, no, Error, _, ModuleName, Messages,
         Items, _, !IO),
@@ -327,17 +327,17 @@ check_module_has_expected_name(FileName, ExpectedName, ActualName, !IO) :-
     ( ActualName \= ExpectedName ->
         sym_name_to_string(ActualName, ActualString),
         sym_name_to_string(ExpectedName, ExpectedString),
-        io__write_strings([
+        io.write_strings([
             "Error: file `", FileName, "' contains the wrong module.\n",
             "Expected module `", ExpectedString,
                 "', found module `", ActualString, "'.\n"
         ], !IO),
-        io__set_exit_status(1, !IO)
+        io.set_exit_status(1, !IO)
     ;
         true
     ).
 
-    % This implementation uses io__read_term to read in the program one term
+    % This implementation uses io.read_term to read in the program one term
     % at a time, and then converts those terms into clauses and declarations,
     % checking for errors as it goes. Note that rather than using difference
     % lists, we just build up the lists of items and messages in reverse order
@@ -347,19 +347,19 @@ check_module_has_expected_name(FileName, ExpectedName, ActualName, !IO) :-
 :- pred read_module_2(open_file(T)::in(open_file), module_name::in,
     maybe(timestamp)::in, bool::in, module_error::out, maybe(T)::out,
     module_name::out, message_list::out, item_list::out,
-    maybe(io__res(timestamp))::out, io::di, io::uo) is det.
+    maybe(io.res(timestamp))::out, io::di, io::uo) is det.
 
 read_module_2(OpenFile, DefaultModuleName, MaybeOldTimestamp, ReturnTimestamp,
         Error, MaybeFileData, ModuleName, Messages, Items,
         MaybeModuleTimestamp, !IO) :-
-    io__input_stream(OldInputStream, !IO),
+    io.input_stream(OldInputStream, !IO),
     OpenFile(OpenResult, !IO),
     (
         OpenResult = ok(FileData),
         MaybeFileData = yes(FileData),
         ( ReturnTimestamp = yes ->
-            io__input_stream_name(InputStreamName, !IO),
-            io__file_modification_time(InputStreamName, TimestampResult, !IO),
+            io.input_stream_name(InputStreamName, !IO),
+            io.file_modification_time(InputStreamName, TimestampResult, !IO),
             (
                 TimestampResult = ok(Timestamp),
                 MaybeModuleTimestamp = yes(ok(time_t_to_timestamp(Timestamp)))
@@ -387,11 +387,11 @@ read_module_2(OpenFile, DefaultModuleName, MaybeOldTimestamp, ReturnTimestamp,
             read_all_items(DefaultModuleName, ModuleName, Messages, Items,
                 Error, !IO)
         ),
-        io__set_input_stream(OldInputStream, ModuleInputStream, !IO),
-        io__close_input(ModuleInputStream, !IO)
+        io.set_input_stream(OldInputStream, ModuleInputStream, !IO),
+        io.close_input(ModuleInputStream, !IO)
     ;
         OpenResult = error(Message0),
-        io__progname_base("mercury_compile", Progname, !IO),
+        io.progname_base("mercury_compile", Progname, !IO),
         Message = Progname ++ ": " ++ Message0,
         dummy_term(Term),
         Messages = [Message - Term],
@@ -406,10 +406,10 @@ search_for_file(Dirs, FileName, Result, !IO) :-
     search_for_file_returning_dir(Dirs, FileName, Result0, !IO),
     (
         Result0 = ok(Dir),
-        ( dir__this_directory(Dir) ->
+        ( dir.this_directory(Dir) ->
             PathName = FileName
         ;
-            PathName = dir__make_path_name(Dir, FileName)
+            PathName = dir.make_path_name(Dir, FileName)
         ),
         Result = ok(PathName)
     ;
@@ -425,14 +425,14 @@ search_for_file_returning_dir(Dirs, FileName, R, !IO) :-
 
 search_for_file_returning_dir([], AllDirs, FileName, error(Msg), !IO) :-
     Msg = append_list(["cannot find `", FileName, "' in directories ",
-        string__join_list(", ", AllDirs)]).
+        string.join_list(", ", AllDirs)]).
 search_for_file_returning_dir([Dir | Dirs], AllDirs, FileName, R, !IO) :-
-    ( dir__this_directory(Dir) ->
+    ( dir.this_directory(Dir) ->
         ThisFileName = FileName
     ;
-        ThisFileName = dir__make_path_name(Dir, FileName)
+        ThisFileName = dir.make_path_name(Dir, FileName)
     ),
-    io__see(ThisFileName, R0, !IO),
+    io.see(ThisFileName, R0, !IO),
     ( R0 = ok ->
         R = ok(Dir)
     ;
@@ -558,7 +558,7 @@ check_end_module(EndModule, !Messages, !Items, !Error) :-
 :- pred dummy_term(term::out) is det.
 
 dummy_term(Term) :-
-    term__context_init(Context),
+    term.context_init(Context),
     dummy_term_with_context(Context, Term).
 
     % Create a dummy term with the specified context.
@@ -566,24 +566,24 @@ dummy_term(Term) :-
     % context, but for which we don't want to print out the term
     % (or for which the term isn't available to be printed out).
     %
-:- pred dummy_term_with_context(term__context::in, term::out) is det.
+:- pred dummy_term_with_context(term.context::in, term::out) is det.
 
 dummy_term_with_context(Context, Term) :-
-    Term = term__functor(term__atom(""), [], Context).
+    Term = term.functor(term.atom(""), [], Context).
 
 %-----------------------------------------------------------------------------%
 
 find_module_name(FileName, MaybeModuleName, !IO) :-
-    io__open_input(FileName, OpenRes, !IO),
+    io.open_input(FileName, OpenRes, !IO),
     (
         OpenRes = ok(InputStream),
-        io__set_input_stream(InputStream, OldInputStream, !IO),
-        ( string__remove_suffix(FileName, ".m", PartialFileName0) ->
+        io.set_input_stream(InputStream, OldInputStream, !IO),
+        ( string.remove_suffix(FileName, ".m", PartialFileName0) ->
             PartialFileName = PartialFileName0
         ;
             PartialFileName = FileName
         ),
-        ( dir__basename(PartialFileName, BaseName0) ->
+        ( dir.basename(PartialFileName, BaseName0) ->
             BaseName = BaseName0
         ;
             BaseName = ""
@@ -592,18 +592,18 @@ find_module_name(FileName, MaybeModuleName, !IO) :-
         read_first_item(DefaultModuleName, FileName,
             ModuleName, RevMessages, _, _, _, !IO),
         MaybeModuleName = yes(ModuleName),
-        prog_out__write_messages(list__reverse(RevMessages), !IO),
-        io__set_input_stream(OldInputStream, _, !IO),
-        io__close_input(InputStream, !IO)
+        prog_out.write_messages(list.reverse(RevMessages), !IO),
+        io.set_input_stream(OldInputStream, _, !IO),
+        io.close_input(InputStream, !IO)
     ;
         OpenRes = error(Error),
-        io__progname_base("mercury_compile", Progname, !IO),
-        io__write_string(Progname, !IO),
-        io__write_string(": error opening `", !IO),
-        io__write_string(FileName, !IO),
-        io__write_string("': ", !IO),
-        io__write_string(io__error_message(Error), !IO),
-        io__write_string(".\n", !IO),
+        io.progname_base("mercury_compile", Progname, !IO),
+        io.write_string(Progname, !IO),
+        io.write_string(": error opening `", !IO),
+        io.write_string(FileName, !IO),
+        io.write_string("': ", !IO),
+        io.write_string(io.error_message(Error), !IO),
+        io.write_string(".\n", !IO),
         MaybeModuleName = no
     ).
 
@@ -620,14 +620,13 @@ find_module_name(FileName, MaybeModuleName, !IO) :-
     %
     % We use a continuation-passing style here.
     %
-:- pred read_all_items(module_name::in, module_name::out,
-    message_list::out, item_list::out, module_error::out,
-    io__state::di, io__state::uo) is det.
+:- pred read_all_items(module_name::in, module_name::out, message_list::out,
+    item_list::out, module_error::out, io::di, io::uo) is det.
 
 read_all_items(DefaultModuleName, ModuleName, Messages, Items, Error, !IO) :-
     % Read all the items (the first one is handled specially).
-    io__input_stream(Stream, !IO),
-    io__input_stream_name(Stream, SourceFileName, !IO),
+    io.input_stream(Stream, !IO),
+    io.input_stream_name(Stream, SourceFileName, !IO),
     read_first_item(DefaultModuleName, SourceFileName, ModuleName,
         RevMessages0, RevItems0, MaybeSecondTerm, Error0, !IO),
     (
@@ -650,8 +649,8 @@ read_all_items(DefaultModuleName, ModuleName, Messages, Items, Error, !IO) :-
     get_end_module(ModuleName, RevItems1, RevItems, EndModule),
     check_end_module(EndModule, RevMessages1, RevMessages, Items0, Items,
         Error1, Error),
-    list__reverse(RevMessages, Messages),
-    list__reverse(RevItems, Items0).
+    list.reverse(RevMessages, Messages),
+    list.reverse(RevItems, Items0).
 
     % We need to jump through a few hoops when reading the first item,
     % to allow the initial `:- module' declaration to be optional.
@@ -667,17 +666,17 @@ read_all_items(DefaultModuleName, ModuleName, Messages, Items, Error, !IO) :-
     %
 :- pred read_first_item(module_name::in, file_name::in, module_name::out,
     message_list::out, item_list::out, maybe(read_term)::out,
-    module_error::out, io__state::di, io__state::uo) is det.
+    module_error::out, io.state::di, io.state::uo) is det.
 
 read_first_item(DefaultModuleName, SourceFileName, ModuleName,
         Messages, Items, MaybeSecondTerm, Error, !IO) :-
-    globals__io_lookup_bool_option(warn_missing_module_name, WarnMissing, !IO),
-    globals__io_lookup_bool_option(warn_wrong_module_name, WarnWrong, !IO),
+    globals.io_lookup_bool_option(warn_missing_module_name, WarnMissing, !IO),
+    globals.io_lookup_bool_option(warn_wrong_module_name, WarnWrong, !IO),
 
     % Parse the first term, treating it as occurring within the scope
     % of the special "root" module (so that any `:- module' declaration
     % is taken to be a non-nested module unless explicitly qualified).
-    parser__read_term(SourceFileName, MaybeFirstTerm, !IO),
+    parser.read_term(SourceFileName, MaybeFirstTerm, !IO),
     root_module_name(RootModuleName),
     process_read_term(RootModuleName, MaybeFirstTerm, MaybeFirstItem),
     (
@@ -704,7 +703,7 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
             Messages = []
         ;
             sym_name_to_string(StartModuleName, StartModuleNameString),
-            string__append_list(["source file `", SourceFileName,
+            string.append_list(["source file `", SourceFileName,
                 "' contains module named `",
                 StartModuleNameString, "'"],
                 WrongModuleWarning),
@@ -727,7 +726,7 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
         ( MaybeFirstItem = ok(_FirstItem, FirstContext0) ->
             FirstContext = FirstContext0
         ;
-            term__context_init(SourceFileName, 1, FirstContext)
+            term.context_init(SourceFileName, 1, FirstContext)
         ),
         (
             WarnMissing = yes,
@@ -750,15 +749,15 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
         Error = no_module_errors
     ).
 
-:- pred make_module_decl(module_name::in, term__context::in,
+:- pred make_module_decl(module_name::in, term.context::in,
     item_and_context::out) is det.
 
 make_module_decl(ModuleName, Context, Item - Context) :-
-    varset__init(EmptyVarSet),
+    varset.init(EmptyVarSet),
     ModuleDefn = module(ModuleName),
     Item = module_defn(EmptyVarSet, ModuleDefn).
 
-:- pred maybe_add_warning(bool::in, read_term::in, term__context::in,
+:- pred maybe_add_warning(bool::in, read_term::in, term.context::in,
     string::in, message_list::in, message_list::out) is det.
 
 maybe_add_warning(DoWarn, MaybeTerm, Context, Warning, !Messages) :-
@@ -778,12 +777,12 @@ maybe_add_warning(DoWarn, MaybeTerm, Context, Warning, !Messages) :-
 
     % The code below was carefully optimized to run efficiently in NU-Prolog.
     % We used to call read_item(MaybeItem) - which does all the work for
-    % a single item - via io__gc_call/1, which called the goal with
+    % a single item - via io.gc_call/1, which called the goal with
     % garbage collection. But optimizing for NU-Prolog is no longer a concern.
 
 :- pred read_items_loop(module_name::in, file_name::in,
     message_list::in, message_list::out, item_list::in, item_list::out,
-    module_error::in,module_error::out, io__state::di, io__state::uo) is det.
+    module_error::in,module_error::out, io.state::di, io.state::uo) is det.
 
 read_items_loop(ModuleName, SourceFileName, !Msgs, !Items, !Error, !IO) :-
     read_item(ModuleName, SourceFileName, MaybeItem, !IO),
@@ -795,7 +794,7 @@ read_items_loop(ModuleName, SourceFileName, !Msgs, !Items, !Error, !IO) :-
 :- pred read_items_loop_2(maybe_item_or_eof::in, module_name::in,
     file_name::in, message_list::in, message_list::out,
     item_list::in, item_list::out, module_error::in, module_error::out,
-    io__state::di, io__state::uo) is det.
+    io.state::di, io.state::uo) is det.
 
 read_items_loop_2(eof, _ModuleName, _SourceFile, !Msgs, !Items, !Error, !IO).
     % If the next item was end-of-file, then we're done.
@@ -804,7 +803,7 @@ read_items_loop_2(syntax_error(ErrorMsg, LineNumber), ModuleName,
         SourceFileName, !Msgs, !Items, _Error0, Error, !IO) :-
     % If the next item was a syntax error, then insert it in the list
     % of messages and continue looping.
-    term__context_init(SourceFileName, LineNumber, Context),
+    term.context_init(SourceFileName, LineNumber, Context),
     dummy_term_with_context(Context, Term),
     ThisError = ErrorMsg - Term,
     !:Msgs = [ThisError | !.Msgs],
@@ -827,7 +826,7 @@ read_items_loop_2(ok(Item0, Context), ModuleName0, SourceFileName0,
         Warning = item_warning(MaybeOption, Msg, Term),
         (
             MaybeOption = yes(Option),
-            globals__io_lookup_bool_option(Option, Warn, !IO)
+            globals.io_lookup_bool_option(Option, Warn, !IO)
         ;
             MaybeOption = no,
             Warn = yes
@@ -836,7 +835,7 @@ read_items_loop_2(ok(Item0, Context), ModuleName0, SourceFileName0,
             Warn = yes,
             add_warning(Msg, Term, !Msgs),
 
-            globals__io_lookup_bool_option(halt_at_warn, Halt, !IO),
+            globals.io_lookup_bool_option(halt_at_warn, Halt, !IO),
             (
                 Halt = yes,
                 !:Error = some_module_errors
@@ -922,7 +921,7 @@ make_pseudo_include_module_decl(Varset, Context, ModuleSpecifier) =
     --->    eof
     ;       syntax_error(file_name, int)
     ;       error(string, term)
-    ;       ok(item, term__context).
+    ;       ok(item, term.context).
 
     % Read_item/1 reads a single item, and if it is a valid term parses it.
     %
@@ -930,7 +929,7 @@ make_pseudo_include_module_decl(Varset, Context, ModuleSpecifier) =
     io::di, io::uo) is det.
 
 read_item(ModuleName, SourceFileName, MaybeItem, !IO) :-
-    parser__read_term(SourceFileName, MaybeTerm, !IO),
+    parser.read_term(SourceFileName, MaybeTerm, !IO),
     process_read_term(ModuleName, MaybeTerm, MaybeItem).
 
 :- pred process_read_term(module_name::in, read_term::in,
@@ -950,15 +949,15 @@ convert_item(ok(Item, Context), ok(Item, Context)).
 convert_item(error(M, T), error(M, T)).
 
 parse_item(ModuleName, VarSet, Term, Result) :-
-    ( Term = term__functor(term__atom(":-"), [Decl], _DeclContext) ->
+    ( Term = term.functor(term.atom(":-"), [Decl], _DeclContext) ->
         % It's a declaration.
         parse_decl(ModuleName, VarSet, Decl, Result)
-    ; Term = term__functor(term__atom("-->"), [DCG_H, DCG_B], DCG_Context) ->
+    ; Term = term.functor(term.atom("-->"), [DCG_H, DCG_B], DCG_Context) ->
         % It's a DCG clause.
         parse_dcg_clause(ModuleName, VarSet, DCG_H, DCG_B, DCG_Context, Result)
     ;
         % It's either a fact or a rule
-        ( Term = term__functor(term__atom(":-"), [H, B], TermContext) ->
+        ( Term = term.functor(term.atom(":-"), [H, B], TermContext) ->
             % It's a rule.
             Head = H,
             Body = B,
@@ -966,19 +965,19 @@ parse_item(ModuleName, VarSet, Term, Result) :-
         ;
             % It's a fact.
             Head = Term,
-            ( Head = term__functor(_Functor, _Args, HeadContext) ->
+            ( Head = term.functor(_Functor, _Args, HeadContext) ->
                 TheContext = HeadContext
             ;
                 % Term consists of just a single variable - the context
                 % has been lost.
-                term__context_init(TheContext)
+                term.context_init(TheContext)
             ),
-            Body = term__functor(term__atom("true"), [], TheContext)
+            Body = term.functor(term.atom("true"), [], TheContext)
         ),
-        varset__coerce(VarSet, ProgVarSet),
+        varset.coerce(VarSet, ProgVarSet),
         parse_goal(Body, Body2, ProgVarSet, ProgVarSet2),
         (
-            Head = term__functor(term__atom("="), [FuncHead0, FuncResult], _),
+            Head = term.functor(term.atom("="), [FuncHead0, FuncResult], _),
             FuncHead = desugar_field_access(FuncHead0)
         ->
             parse_implicitly_qualified_term(ModuleName, FuncHead, Head,
@@ -997,20 +996,20 @@ parse_item(ModuleName, VarSet, Term, Result) :-
 
 process_pred_clause(ok(Name, Args0), VarSet, Body,
         ok(clause(user, VarSet, predicate, Name, Args, Body))) :-
-    list__map(term__coerce, Args0, Args).
+    list.map(term.coerce, Args0, Args).
 process_pred_clause(error(ErrMessage, Term0), _, _, error(ErrMessage, Term)) :-
-    term__coerce(Term0, Term).
+    term.coerce(Term0, Term).
 
 :- pred process_func_clause(maybe_functor::in, term::in, prog_varset::in,
     goal::in, maybe1(item)::out) is det.
 
 process_func_clause(ok(Name, Args0), Result0, VarSet, Body,
         ok(clause(user, VarSet, function, Name, Args, Body))) :-
-    list__append(Args0, [Result0], Args1),
-    list__map(term__coerce, Args1, Args).
+    list.append(Args0, [Result0], Args1),
+    list.map(term.coerce, Args1, Args).
 process_func_clause(error(ErrMessage, Term0), _, _, _,
         error(ErrMessage, Term)) :-
-    term__coerce(Term0, Term).
+    term.coerce(Term0, Term).
 
 %-----------------------------------------------------------------------------%
 
@@ -1044,7 +1043,7 @@ parse_decl(ModuleName, VarSet, F, Result) :-
     maybe_item_and_context::out) is det.
 
 parse_decl_2(ModuleName, VarSet, F, Attributes, Result) :-
-    ( F = term__functor(term__atom(Atom), Args, Context) ->
+    ( F = term.functor(term.atom(Atom), Args, Context) ->
         ( parse_decl_attribute(Atom, Args, Attribute, SubTerm) ->
             NewAttributes = [Attribute - F | Attributes],
             parse_decl_2(ModuleName, VarSet, SubTerm, NewAttributes, Result)
@@ -1199,12 +1198,12 @@ process_decl(_ModuleName, VarSet, "export_op", [OpSpec], Attributes, Result) :-
         OpSpec, Attributes, VarSet, Result).
 
 process_decl(_ModuleName, VarSet0, "interface", [], Attributes, Result) :-
-    varset__coerce(VarSet0, VarSet),
+    varset.coerce(VarSet0, VarSet),
     Result0 = ok(module_defn(VarSet, interface)),
     check_no_attributes(Result0, Attributes, Result).
 
 process_decl(_ModuleName, VarSet0, "implementation", [], Attributes, Result) :-
-    varset__coerce(VarSet0, VarSet),
+    varset.coerce(VarSet0, VarSet),
     Result0 = ok(module_defn(VarSet, implementation)),
     check_no_attributes(Result0, Attributes, Result).
 
@@ -1214,7 +1213,7 @@ process_decl(ModuleName, VarSet, "external", Args, Attributes, Result) :-
         MaybeBackend = no
     ;
         Args = [BackendArg, PredSpec],
-        BackendArg = term__functor(term__atom(Functor), [], _),
+        BackendArg = term.functor(term.atom(Functor), [], _),
         (
             Functor = "high_level_backend",
             Backend = high_level_backend
@@ -1234,7 +1233,7 @@ process_decl(DefaultModuleName, VarSet0, "module", [ModuleName], Attributes,
     parse_module_name(DefaultModuleName, ModuleName, Result0),
     (
         Result0 = ok(ModuleNameSym),
-        varset__coerce(VarSet0, VarSet),
+        varset.coerce(VarSet0, VarSet),
         Result1 = ok(module_defn(VarSet, module(ModuleNameSym)))
     ;
         Result0 = error(A, B),
@@ -1247,7 +1246,7 @@ process_decl(DefaultModuleName, VarSet0, "include_module", [ModuleNames],
     parse_list(parse_module_name(DefaultModuleName), ModuleNames, Result0),
     (
         Result0 = ok(ModuleNameSyms),
-        varset__coerce(VarSet0, VarSet),
+        varset.coerce(VarSet0, VarSet),
         Result1 = ok(module_defn(VarSet, include_module(ModuleNameSyms)))
     ;
         Result0 = error(A, B),
@@ -1267,7 +1266,7 @@ process_decl(DefaultModuleName, VarSet0, "end_module", [ModuleName],
     parse_module_name(ParentOfDefaultModuleName, ModuleName, Result0),
     (
         Result0 = ok(ModuleNameSym),
-        varset__coerce(VarSet0, VarSet),
+        varset.coerce(VarSet0, VarSet),
         Result1 = ok(module_defn(VarSet, end_module(ModuleNameSym)))
     ;
         Result0 = error(A, B),
@@ -1311,17 +1310,17 @@ process_decl(ModuleName, VarSet0, "version_numbers",
         Attributes, Result) :-
     parse_module_specifier(ModuleNameTerm, ModuleNameResult),
     (
-        VersionNumberTerm = term__functor(term__integer(VersionNumber), [], _),
+        VersionNumberTerm = term.functor(term.integer(VersionNumber), [], _),
         VersionNumber = version_numbers_version_number
     ->
         (
             ModuleNameResult = ok(ModuleName)
         ->
-            recompilation__version__parse_version_numbers(VersionNumbersTerm,
+            recompilation.version.parse_version_numbers(VersionNumbersTerm,
                 Result0),
             (
                 Result0 = ok(VersionNumbers),
-                varset__coerce(VarSet0, VarSet),
+                varset.coerce(VarSet0, VarSet),
                 Result1 = module_defn(VarSet, version_numbers(ModuleName,
                     VersionNumbers)),
                 check_no_attributes(ok(Result1), Attributes, Result)
@@ -1334,7 +1333,7 @@ process_decl(ModuleName, VarSet0, "version_numbers",
                 ModuleNameTerm)
         )
     ;
-        ( VersionNumberTerm = term__functor(_, _, Context) ->
+        ( VersionNumberTerm = term.functor(_, _, Context) ->
             Msg = "interface file needs to be recreated, " ++
                 "the version numbers are out of date",
             dummy_term_with_context(Context, DummyTerm),
@@ -1387,7 +1386,7 @@ check_no_attributes(Result0, Attributes, Result) :-
         Attributes = [Attr - Term | _]
     ->
         attribute_description(Attr, AttrDescr),
-        string__append(AttrDescr, " not allowed here", Message),
+        string.append(AttrDescr, " not allowed here", Message),
         Result = error(Message, Term)
     ;
         Result = Result0
@@ -1409,7 +1408,7 @@ attribute_description(solver_type, "solver type specifier").
     list(term)::in, decl_attrs::in, maybe1(item)::out) is semidet.
 
 parse_promise(ModuleName, PromiseType, VarSet, [Term], Attributes, Result) :-
-    varset__coerce(VarSet, ProgVarSet0),
+    varset.coerce(VarSet, ProgVarSet0),
     parse_goal(Term, Goal0, ProgVarSet0, ProgVarSet),
 
     % Get universally quantified variables.
@@ -1423,7 +1422,7 @@ parse_promise(ModuleName, PromiseType, VarSet, [Term], Attributes, Result) :-
         )
     ;
         get_quant_vars(univ, ModuleName, Attributes, _, [], UnivVars0),
-        list__map(term__coerce_var, UnivVars0, UnivVars),
+        list.map(term.coerce_var, UnivVars0, UnivVars),
         Goal0 = Goal
     ),
     Result = ok(promise(PromiseType, Goal, ProgVarSet, UnivVars)).
@@ -1435,7 +1434,7 @@ parse_promise(ModuleName, PromiseType, VarSet, [Term], Attributes, Result) :-
 
 parse_type_decl(ModuleName, VarSet, TypeDecl, Attributes, Result) :-
     (
-        TypeDecl = term__functor(term__atom(Name), Args, _),
+        TypeDecl = term.functor(term.atom(Name), Args, _),
         parse_type_decl_type(ModuleName, Name, Args, Attributes, Cond, R)
     ->
         R1 = R,
@@ -1453,14 +1452,14 @@ parse_type_decl(ModuleName, VarSet, TypeDecl, Attributes, Result) :-
 
 make_type_defn(VarSet0, Cond, processed_type_body(Name, Args, TypeDefn),
         type_defn(VarSet, Name, Args, TypeDefn, Cond)) :-
-    varset__coerce(VarSet0, VarSet).
+    varset.coerce(VarSet0, VarSet).
 
 :- pred make_external(varset::in, maybe(backend)::in, sym_name_specifier::in,
     item::out) is det.
 
 make_external(VarSet0, MaybeBackend, SymSpec,
         module_defn(VarSet, external(MaybeBackend, SymSpec))) :-
-    varset__coerce(VarSet0, VarSet).
+    varset.coerce(VarSet0, VarSet).
 
 :- pred get_is_solver_type(is_solver_type::out,
     decl_attrs::in, decl_attrs::out) is det.
@@ -1480,7 +1479,7 @@ get_is_solver_type(IsSolverType, !Attributes) :-
     is det.
 
 add_warning(Warning, Term, Msgs, [Msg - Term | Msgs]) :-
-    string__append("Warning: ", Warning, Msg).
+    string.append("Warning: ", Warning, Msg).
 
     % Add an error message to the list of messages.
     %
@@ -1488,7 +1487,7 @@ add_warning(Warning, Term, Msgs, [Msg - Term | Msgs]) :-
     is det.
 
 add_error(Error, Term, Msgs, [Msg - Term | Msgs]) :-
-    string__append("Error: ", Error, Msg).
+    string.append("Error: ", Error, Msg).
 
 %-----------------------------------------------------------------------------%
 
@@ -1568,7 +1567,7 @@ parse_type_decl_type(ModuleName, "where", [H, B], Attributes0, Condition, R) :-
 
 du_type_rhs_ctors_and_where_terms(Term, CtorsTerm, MaybeWhereTerm) :-
     (
-        Term = term__functor(term__atom("where"), [CtorsTerm0, WhereTerm],
+        Term = term.functor(term.atom("where"), [CtorsTerm0, WhereTerm],
             _Context)
     ->
         CtorsTerm      = CtorsTerm0,
@@ -1811,7 +1810,7 @@ parse_mutable_decl(_ModuleName, _VarSet, Terms, Result) :-
     Terms = [NameTerm, TypeTerm, ValueTerm, InstTerm | OptMutAttrsTerm],
     parse_mutable_name(NameTerm, NameResult),
     parse_mutable_type(TypeTerm, TypeResult),
-    term__coerce(ValueTerm, Value),
+    term.coerce(ValueTerm, Value),
     parse_mutable_inst(InstTerm, InstResult),
     (
         OptMutAttrsTerm = [],
@@ -1850,7 +1849,7 @@ parse_mutable_decl(_ModuleName, _VarSet, Terms, Result) :-
 :- pred parse_mutable_name(term::in, maybe1(string)::out) is det.
 
 parse_mutable_name(NameTerm, NameResult) :-
-    ( NameTerm = term__functor(atom(Name), [], _) ->
+    ( NameTerm = term.functor(atom(Name), [], _) ->
         NameResult = ok(Name)
     ;
         NameResult = error("invalid mutable name", NameTerm)
@@ -1859,7 +1858,7 @@ parse_mutable_name(NameTerm, NameResult) :-
 :- pred parse_mutable_type(term::in, maybe1(mer_type)::out) is det.
 
 parse_mutable_type(TypeTerm, TypeResult) :-
-    ( term__contains_var(TypeTerm, _) ->
+    ( term.contains_var(TypeTerm, _) ->
         TypeResult = error("the type in a mutable declaration " ++
             "cannot contain variables", TypeTerm)
     ;
@@ -1869,7 +1868,7 @@ parse_mutable_type(TypeTerm, TypeResult) :-
 :- pred parse_mutable_inst(term::in, maybe1(mer_inst)::out) is det.
 
 parse_mutable_inst(InstTerm, InstResult) :-
-    ( term__contains_var(InstTerm, _) ->
+    ( term.contains_var(InstTerm, _) ->
         InstResult = error("the inst in a mutable declaration " ++
             "cannot contain variables", InstTerm)
     ; convert_inst(no_allow_constrained_inst_var, InstTerm, Inst) ->
@@ -1936,7 +1935,7 @@ process_mutable_attribute(attach_to_io_state(AttachToIOState), !Attributes) :-
 
 parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
     (
-        MutAttrTerm = term__functor(term__atom(String), [], _),
+        MutAttrTerm = term.functor(term.atom(String), [], _),
         (
             String  = "untrailed",
             MutAttr = trailed(untrailed)
@@ -1989,7 +1988,7 @@ parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
 parse_type_decl_where_part_if_present(IsSolverType, ModuleName, Term0, Term,
         Result) :-
     (
-        Term0  = term__functor(term__atom("where"), [Term1, WhereTerm],
+        Term0  = term.functor(term.atom("where"), [Term1, WhereTerm],
             _Context)
     ->
         Term   = Term1,
@@ -2069,7 +2068,7 @@ parse_where_attribute(_Parser, ok(no), no,         no       ).
 
 parse_where_attribute( Parser, Result, yes(Term0), MaybeRest) :-
     (
-        Term0 = term__functor(term__atom(","), [Term1, Term], _Context)
+        Term0 = term.functor(term.atom(","), [Term1, Term], _Context)
     ->
         Result         = Parser(Term1),
         MaybeRestIfYes = yes(Term)
@@ -2095,8 +2094,8 @@ parse_where_attribute( Parser, Result, yes(Term0), MaybeRest) :-
     maybe1(maybe(T)).
 
 parse_where_is(Name, Parser, Term) = Result :-
-    ( Term = term__functor(term__atom("is"), [LHS, RHS], _Context1) ->
-        ( LHS = term__functor(term__atom(Name), [], _Context2) ->
+    ( Term = term.functor(term.atom("is"), [LHS, RHS], _Context1) ->
+        ( LHS = term.functor(term.atom(Name), [], _Context2) ->
             RHSResult = Parser(RHS),
             (
                 RHSResult = ok(ParsedRHS),
@@ -2116,7 +2115,7 @@ parse_where_is(Name, Parser, Term) = Result :-
 
 parse_where_type_is_abstract_noncanonical(Term) =
     (
-        Term = term__functor(term__atom("type_is_abstract_noncanonical"), [],
+        Term = term.functor(term.atom("type_is_abstract_noncanonical"), [],
             _Context)
     ->
         ok(yes(unit))
@@ -2148,8 +2147,8 @@ parse_where_pred_is(ModuleName, Term) = Result :-
 
 parse_where_inst_is(_ModuleName, Term) =
     (
-        prog_io_util__convert_inst(no_allow_constrained_inst_var, Term, Inst),
-        not prog_mode__inst_contains_unconstrained_var(Inst)
+        prog_io_util.convert_inst(no_allow_constrained_inst_var, Term, Inst),
+        not prog_mode.inst_contains_unconstrained_var(Inst)
     ->
         ok(Inst)
     ;
@@ -2159,14 +2158,12 @@ parse_where_inst_is(_ModuleName, Term) =
 :- func parse_where_type_is(module_name, term) = maybe1(mer_type).
 
 parse_where_type_is(_ModuleName, Term) = Result :-
-    prog_io_util__parse_type(Term, Result).
+    prog_io_util.parse_type(Term, Result).
 
 :- func parse_where_mutable_is(module_name, term) = maybe1(list(item)).
 
 parse_where_mutable_is(ModuleName, Term) = Result :-
-    (
-        Term = term__functor(term__atom("mutable"), _Args, _Ctxt)
-    ->
+    ( Term = term.functor(term.atom("mutable"), _Args, _Ctxt) ->
         parse_mutable_decl_term(ModuleName, Term, Result0),
         (
             Result0 = ok(Mutable),
@@ -2175,9 +2172,7 @@ parse_where_mutable_is(ModuleName, Term) = Result :-
             Result0 = error(Err, Trm),
             Result  = error(Err, Trm)
         )
-    ;
-        list_term_to_term_list(Term, Terms)
-    ->
+    ; list_term_to_term_list(Term, Terms) ->
         map_parser(parse_mutable_decl_term(ModuleName), Terms, Result)
     ;
         Result = error("expected a mutable declaration or a list of " ++
@@ -2189,8 +2184,8 @@ parse_where_mutable_is(ModuleName, Term) = Result :-
 
 parse_mutable_decl_term(ModuleName, Term, Result) :-
     (
-        Term = term__functor(term__atom("mutable"), Args, _Ctxt),
-        varset__init(VarSet),
+        Term = term.functor(term.atom("mutable"), Args, _Ctxt),
+        varset.init(VarSet),
         parse_mutable_decl(ModuleName, VarSet, Args, Result0)
     ->
         Result = Result0
@@ -2373,12 +2368,12 @@ make_maybe_where_details(
 
 get_determinism(B, Body, Determinism) :-
     (
-        B = term__functor(term__atom("is"), Args, _Context1),
+        B = term.functor(term.atom("is"), Args, _Context1),
         Args = [Body1, Determinism1]
     ->
         Body = Body1,
         (
-            Determinism1 = term__functor(term__atom(Determinism2), [],
+            Determinism1 = term.functor(term.atom(Determinism2), [],
                 _Context2),
             standard_det(Determinism2, Determinism3)
         ->
@@ -2399,7 +2394,7 @@ get_determinism(B, Body, Determinism) :-
 
 get_with_inst(Body0, Body, WithInst) :-
     (
-        Body0 = term__functor(term__atom("with_inst"), [Body1, Inst1], _)
+        Body0 = term.functor(term.atom("with_inst"), [Body1, Inst1], _)
     ->
         ( convert_inst(allow_constrained_inst_var, Inst1, Inst) ->
             WithInst = ok(yes(Inst))
@@ -2417,7 +2412,7 @@ get_with_inst(Body0, Body, WithInst) :-
 
 get_with_type(Body0, Body, Result) :-
     (
-        Body0 = term__functor(TypeQualifier, [Body1, Type1], _),
+        Body0 = term.functor(TypeQualifier, [Body1, Type1], _),
         (
             TypeQualifier = term.atom("with_type")
         ;
@@ -2461,7 +2456,7 @@ get_condition(Body, Body, true).
 %
 % get_condition(B, Body, Condition) :-
 %   (
-%       B = term__functor(term__atom("where"), [Body1, Condition1],
+%       B = term.functor(term.atom("where"), [Body1, Condition1],
 %           _Context)
 %   ->
 %       Body = Body1,
@@ -2500,7 +2495,7 @@ process_solver_type(ModuleName, Head, MaybeSolverTypeDetails, MaybeUserEqComp,
             (
                 RepnType = SolverTypeDetails ^ representation_type,
                 type_contains_var(RepnType, Var),
-                not list__member(Var, Params)
+                not list.member(Var, Params)
             ->
                 Result = error("free type variable in " ++
                     "representation type", Head)
@@ -2532,9 +2527,9 @@ process_eqv_type_2(error(Error, Term), _, error(Error, Term)).
 process_eqv_type_2(ok(Name, Params), Body0, Result) :-
     % Check that all the variables in the body occur in the head.
     (
-        term__contains_var(Body0, Var),
-        term__coerce_var(Var, TVar),
-        \+ list__member(TVar, Params)
+        term.contains_var(Body0, Var),
+        term.coerce_var(Var, TVar),
+        \+ list.member(TVar, Params)
     ->
         Result = error("free type parameter in RHS of type definition", Body0)
     ;
@@ -2582,12 +2577,12 @@ process_du_type_2(Functor, Params, Body, Ctors, MaybeUserEqComp, Result) :-
         % Check that all type variables in the body are either explicitly
         % existentially quantified or occur in the head.
 
-        list__member(Ctor, Ctors),
+        list.member(Ctor, Ctors),
         Ctor = ctor(ExistQVars, _Constraints, _CtorName, CtorArgs),
-        assoc_list__values(CtorArgs, CtorArgTypes),
+        assoc_list.values(CtorArgs, CtorArgTypes),
         type_list_contains_var(CtorArgTypes, Var),
-        \+ list__member(Var, ExistQVars),
-        \+ list__member(Var, Params)
+        \+ list.member(Var, ExistQVars),
+        \+ list.member(Var, Params)
     ->
         Result = error("free type parameter in RHS of type definition", Body)
     ;
@@ -2595,10 +2590,10 @@ process_du_type_2(Functor, Params, Body, Ctors, MaybeUserEqComp, Result) :-
         % occur in the head (maybe this should just be a warning, not an error?
         % If we were to allow it, we would need to rename them apart.)
 
-        list__member(Ctor, Ctors),
+        list.member(Ctor, Ctors),
         Ctor = ctor(ExistQVars, _Constraints, _CtorName, _CtorArgs),
-        list__member(Var, ExistQVars),
-        list__member(Var, Params)
+        list.member(Var, ExistQVars),
+        list.member(Var, Params)
     ->
         Result = error("type variable has overlapping scopes " ++
             "(explicit type quantifier shadows argument type)", Body)
@@ -2606,13 +2601,13 @@ process_du_type_2(Functor, Params, Body, Ctors, MaybeUserEqComp, Result) :-
         % Check that all type variables in existential quantifiers occur
         % somewhere in the constructor argument types or constraints.
 
-        list__member(Ctor, Ctors),
+        list.member(Ctor, Ctors),
         Ctor = ctor(ExistQVars, Constraints, _CtorName, CtorArgs),
-        list__member(Var, ExistQVars),
-        assoc_list__values(CtorArgs, CtorArgTypes),
+        list.member(Var, ExistQVars),
+        assoc_list.values(CtorArgs, CtorArgTypes),
         \+ type_list_contains_var(CtorArgTypes, Var),
         constraint_list_get_tvars(Constraints, ConstraintTVars),
-        \+ list__member(Var, ConstraintTVars)
+        \+ list.member(Var, ConstraintTVars)
     ->
         Result = error("type variable in existential quantifier " ++
             "does not occur in arguments or constraints of constructor", Body)
@@ -2620,12 +2615,12 @@ process_du_type_2(Functor, Params, Body, Ctors, MaybeUserEqComp, Result) :-
         % Check that all type variables in existential constraints occur in
         % the existential quantifiers.
 
-        list__member(Ctor, Ctors),
+        list.member(Ctor, Ctors),
         Ctor = ctor(ExistQVars, Constraints, _CtorName, _CtorArgs),
-        list__member(Constraint, Constraints),
+        list.member(Constraint, Constraints),
         Constraint = constraint(_Name, ConstraintArgs),
         type_list_contains_var(ConstraintArgs, Var),
-        \+ list__member(Var, ExistQVars)
+        \+ list.member(Var, ExistQVars)
     ->
         Result = error("type variables in class constraints introduced " ++
             "with `=>' must be explicitly existentially quantified " ++
@@ -2663,10 +2658,10 @@ process_abstract_type_2(ok(Functor, Params), IsSolverType, Result) :-
 %-----------------------------------------------------------------------------%
 
 parse_type_defn_head(ModuleName, Head, Body, Result) :-
-    ( Head = term__variable(_) ->
-        % `Head' has no term__context, so we need to get the
+    ( Head = term.variable(_) ->
+        % `Head' has no term.context, so we need to get the
         % context from `Body'
-        ( Body = term__functor(_, _, Context) ->
+        ( Body = term.functor(_, _, Context) ->
             dummy_term_with_context(Context, ErrorTerm)
         ;
             dummy_term(ErrorTerm)
@@ -2693,13 +2688,13 @@ parse_type_defn_head_3(Name, Args, Head, Result) :-
     ( var_list_to_term_list(Params0, Args) ->
         % Check that all the head arg variables are distinct.
         (
-            list__member(_, Params0, [Param | OtherParams]),
-            list__member(Param, OtherParams)
+            list.member(_, Params0, [Param | OtherParams]),
+            list.member(Param, OtherParams)
         ->
             Result = error("repeated type parameters "
                 ++ "in LHS of type defn", Head)
         ;
-            list__map(term__coerce_var, Params0, Params),
+            list.map(term.coerce_var, Params0, Params),
             Result = ok(Name, Params)
         )
     ;
@@ -2752,9 +2747,9 @@ convert_constructors_2( ModuleName, [Term | Terms]) = Result :-
 :- func convert_constructor(module_name, term) = maybe1(constructor).
 
 convert_constructor(ModuleName, Term0) = Result :-
-    ( Term0 = term__functor(term__atom("some"), [Vars, Term1], _Context) ->
+    ( Term0 = term.functor(term.atom("some"), [Vars, Term1], _Context) ->
         ( parse_list_of_vars(Vars, ExistQVars0) ->
-            list__map(term__coerce_var, ExistQVars0, ExistQVars),
+            list.map(term.coerce_var, ExistQVars0, ExistQVars),
             Result = convert_constructor_2(ModuleName, ExistQVars,
                 Term0, Term1)
         ;
@@ -2779,7 +2774,7 @@ convert_constructor_2(ModuleName, ExistQVars, Term0, Term1) = Result :-
             % Note that as a special case, one level of curly braces around
             % the constructor are ignored. This is to allow you to define
             % ';'/2 and 'some'/2 constructors.
-            Term2 = term__functor(term__atom("{}"), [Term3], _Context)
+            Term2 = term.functor(term.atom("{}"), [Term3], _Context)
         ->
             Term4 = Term3
         ;
@@ -2868,8 +2863,8 @@ process_pred_or_func_2(PredOrFunc, ok(F, As0), PredType, VarSet0,
                     pred_or_func_decl_string(PredOrFunc), PredType)
             ;
                 get_purity(Purity, Attributes0, Attributes),
-                varset__coerce(VarSet0, TVarSet),
-                varset__coerce(VarSet0, IVarSet),
+                varset.coerce(VarSet0, TVarSet),
+                varset.coerce(VarSet0, IVarSet),
                 Result0 = ok(pred_or_func(TVarSet, IVarSet, ExistQVars,
                     PredOrFunc, F, As, WithType, WithInst, MaybeDet, Cond,
                     Purity, ClassContext)),
@@ -2955,17 +2950,17 @@ get_class_context_and_inst_constraints(ModuleName, RevAttributes0,
     % existentially quantified, and if not, issue a warning or
     % error message.)
 
-    list__reverse(RevAttributes0, Attributes0),
+    list.reverse(RevAttributes0, Attributes0),
     get_quant_vars(univ, ModuleName, Attributes0, Attributes1,
         [], _UnivQVars),
     get_quant_vars(exist, ModuleName, Attributes1, Attributes2,
         [], ExistQVars0),
-    list__map(term__coerce_var, ExistQVars0, ExistQVars),
+    list.map(term.coerce_var, ExistQVars0, ExistQVars),
     get_constraints(univ, ModuleName, Attributes2,
         Attributes3, MaybeUnivConstraints),
     get_constraints(exist, ModuleName, Attributes3,
         Attributes, MaybeExistConstraints),
-    list__reverse(Attributes, RevAttributes),
+    list.reverse(Attributes, RevAttributes),
 
     combine_quantifier_results(MaybeUnivConstraints, MaybeExistConstraints,
         ExistQVars, MaybeContext).
@@ -2979,7 +2974,7 @@ combine_quantifier_results(ok(_, _), error(Msg, Term), _, error(Msg, Term)).
 combine_quantifier_results(ok(UnivConstraints, InstConstraints0),
     ok(ExistConstraints, InstConstraints1), ExistQVars,
     ok(ExistQVars, constraints(UnivConstraints, ExistConstraints),
-        InstConstraints0 `map__merge` InstConstraints1)).
+        InstConstraints0 `map.merge` InstConstraints1)).
 
 :- pred get_quant_vars(quantifier_type::in, module_name::in,
     decl_attrs::in, decl_attrs::out, list(var)::in, list(var)::out) is det.
@@ -2988,7 +2983,7 @@ get_quant_vars(QuantType, ModuleName, !Attributes, !Vars) :-
     (
         !.Attributes = [quantifier(QuantType, QuantVars) - _ | !:Attributes]
     ->
-        list__append(!.Vars, QuantVars, !:Vars),
+        list.append(!.Vars, QuantVars, !:Vars),
         get_quant_vars(QuantType, ModuleName, !Attributes, !Vars)
     ;
         true
@@ -3011,7 +3006,7 @@ get_constraints(QuantType, ModuleName, !Attributes, MaybeConstraints) :-
         combine_constraint_list_results(MaybeConstraints1,
             MaybeConstraints0, MaybeConstraints)
     ;
-        MaybeConstraints = ok([], map__init)
+        MaybeConstraints = ok([], map.init)
     ).
 
 :- pred combine_constraint_list_results(maybe_class_and_inst_constraints::in,
@@ -3021,7 +3016,7 @@ get_constraints(QuantType, ModuleName, !Attributes, MaybeConstraints) :-
 combine_constraint_list_results(error(Msg, Term), _, error(Msg, Term)).
 combine_constraint_list_results(ok(_, _), error(Msg, Term), error(Msg, Term)).
 combine_constraint_list_results(ok(CC0, IC0), ok(CC1, IC1),
-        ok(CC0 ++ CC1, IC0 `map__merge` IC1)).
+        ok(CC0 ++ CC1, IC0 `map.merge` IC1)).
 
 :- pred get_existential_constraints_from_term(module_name::in,
     term::in, term::out, maybe1(list(prog_constraint))::out) is det.
@@ -3029,7 +3024,7 @@ combine_constraint_list_results(ok(CC0, IC0), ok(CC1, IC1),
 get_existential_constraints_from_term(ModuleName, !PredType,
         MaybeExistentialConstraints) :-
     (
-        !.PredType = term__functor(term__atom("=>"),
+        !.PredType = term.functor(term.atom("=>"),
             [!:PredType, ExistentialConstraints], _)
     ->
         parse_class_constraints(ModuleName, ExistentialConstraints,
@@ -3089,7 +3084,7 @@ process_func(ModuleName, VarSet, Term, Cond, MaybeDet, Attributes0, Result) :-
 process_func_2(ModuleName, VarSet, Term, Cond, MaybeDet, ExistQVars,
         Constraints, InstConstraints, Attributes, Result) :-
     (
-        Term = term__functor(term__atom("="),
+        Term = term.functor(term.atom("="),
             [FuncTerm0, ReturnTypeTerm], _Context),
         FuncTerm = desugar_field_access(FuncTerm0)
     ->
@@ -3132,9 +3127,9 @@ process_func_3(ok(F, As0), FuncTerm, ReturnTypeTerm, FullTerm, VarSet0,
                     FuncTerm)
             ;
                 get_purity(Purity, Attributes0, Attributes),
-                varset__coerce(VarSet0, TVarSet),
-                varset__coerce(VarSet0, IVarSet),
-                list__append(As, [ReturnType], Args),
+                varset.coerce(VarSet0, TVarSet),
+                varset.coerce(VarSet0, IVarSet),
+                list.append(As, [ReturnType], Args),
                 (
                     inst_var_constraints_are_consistent_in_type_and_modes(Args)
                 ->
@@ -3194,7 +3189,7 @@ process_mode(ModuleName, VarSet, Term, Cond, Attributes, WithInst, MaybeDet,
         Result) :-
     (
         WithInst = no,
-        Term = term__functor(term__atom("="), [FuncTerm0, ReturnTypeTerm],
+        Term = term.functor(term.atom("="), [FuncTerm0, ReturnTypeTerm],
             _Context),
         FuncTerm = desugar_field_access(FuncTerm0)
     ->
@@ -3222,9 +3217,9 @@ process_pred_or_func_mode(ok(F, As0), ModuleName, PredMode, VarSet0, WithInst,
             Attributes, MaybeConstraints),
         (
             MaybeConstraints = ok(_, _, InstConstraints),
-            list__map(constrain_inst_vars_in_mode(InstConstraints),
+            list.map(constrain_inst_vars_in_mode(InstConstraints),
                 As1, As),
-            varset__coerce(VarSet0, VarSet),
+            varset.coerce(VarSet0, VarSet),
             ( inst_var_constraints_are_consistent_in_modes(As) ->
                 (
                     WithInst = no,
@@ -3265,14 +3260,14 @@ process_func_mode(ok(F, As0), ModuleName, FuncMode, RetMode0, FullTerm,
             Attributes, MaybeConstraints),
         (
             MaybeConstraints = ok(_, _, InstConstraints),
-            list__map(constrain_inst_vars_in_mode(InstConstraints), As1, As),
+            list.map(constrain_inst_vars_in_mode(InstConstraints), As1, As),
             (
                 convert_mode(allow_constrained_inst_var, RetMode0, RetMode1)
             ->
                 constrain_inst_vars_in_mode(InstConstraints,
                     RetMode1, RetMode),
-                varset__coerce(VarSet0, VarSet),
-                list__append(As, [RetMode], ArgModes),
+                varset.coerce(VarSet0, VarSet),
+                list.append(As, [RetMode], ArgModes),
                 ( inst_var_constraints_are_consistent_in_modes(ArgModes) ->
                     Result0 = ok(pred_or_func_mode(VarSet, yes(function), F,
                         ArgModes, no, MaybeDet, Cond))
@@ -3300,14 +3295,14 @@ process_func_mode(error(M, T), _, _, _, _, _, _, _, _, error(M, T)).
 %-----------------------------------------------------------------------------%
 
 constrain_inst_vars_in_mode(Mode0, Mode) :-
-    constrain_inst_vars_in_mode(map__init, Mode0, Mode).
+    constrain_inst_vars_in_mode(map.init, Mode0, Mode).
 
 constrain_inst_vars_in_mode(InstConstraints, I0 -> F0, I -> F) :-
     constrain_inst_vars_in_inst(InstConstraints, I0, I),
     constrain_inst_vars_in_inst(InstConstraints, F0, F).
 constrain_inst_vars_in_mode(InstConstraints, user_defined_mode(Name, Args0),
         user_defined_mode(Name, Args)) :-
-    list__map(constrain_inst_vars_in_inst(InstConstraints), Args0, Args).
+    list.map(constrain_inst_vars_in_inst(InstConstraints), Args0, Args).
 
 :- pred constrain_inst_vars_in_inst(inst_var_sub::in,
     mer_inst::in, mer_inst::out) is det.
@@ -3316,8 +3311,8 @@ constrain_inst_vars_in_inst(_, any(U), any(U)).
 constrain_inst_vars_in_inst(_, free, free).
 constrain_inst_vars_in_inst(_, free(T), free(T)).
 constrain_inst_vars_in_inst(InstConstraints, bound(U, BIs0), bound(U, BIs)) :-
-    list__map((pred(functor(C, Is0)::in, functor(C, Is)::out) is det :-
-        list__map(constrain_inst_vars_in_inst(InstConstraints), Is0, Is)),
+    list.map((pred(functor(C, Is0)::in, functor(C, Is)::out) is det :-
+        list.map(constrain_inst_vars_in_inst(InstConstraints), Is0, Is)),
         BIs0, BIs).
 constrain_inst_vars_in_inst(_, ground(U, none), ground(U, none)).
 constrain_inst_vars_in_inst(InstConstraints,
@@ -3330,7 +3325,7 @@ constrain_inst_vars_in_inst(InstConstraints,
         constrained_inst_vars(Vars, Inst)) :-
     constrain_inst_vars_in_inst(InstConstraints, Inst0, Inst1),
     ( Inst1 = constrained_inst_vars(Vars2, Inst2) ->
-        Vars = Vars0 `set__union` Vars2,
+        Vars = Vars0 `set.union` Vars2,
         Inst = Inst2
     ;
         Vars = Vars0,
@@ -3338,8 +3333,8 @@ constrain_inst_vars_in_inst(InstConstraints,
     ).
 constrain_inst_vars_in_inst(_, not_reached, not_reached).
 constrain_inst_vars_in_inst(InstConstraints, inst_var(Var),
-        constrained_inst_vars(set__make_singleton_set(Var), Inst)) :-
-    ( map__search(InstConstraints, Var, Inst0) ->
+        constrained_inst_vars(set.make_singleton_set(Var), Inst)) :-
+    ( map.search(InstConstraints, Var, Inst0) ->
         Inst = Inst0
     ;
         Inst = ground(shared, none)
@@ -3349,14 +3344,14 @@ constrain_inst_vars_in_inst(InstConstraints, defined_inst(Name0),
     constrain_inst_vars_in_inst_name(InstConstraints, Name0, Name).
 constrain_inst_vars_in_inst(InstConstraints, abstract_inst(N, Is0),
         abstract_inst(N, Is)) :-
-    list__map(constrain_inst_vars_in_inst(InstConstraints), Is0, Is).
+    list.map(constrain_inst_vars_in_inst(InstConstraints), Is0, Is).
 
 :- pred constrain_inst_vars_in_pred_inst_info(inst_var_sub::in,
     pred_inst_info::in, pred_inst_info::out) is det.
 
 constrain_inst_vars_in_pred_inst_info(InstConstraints, PII0, PII) :-
     PII0 = pred_inst_info(PredOrFunc, Modes0, Det),
-    list__map(constrain_inst_vars_in_mode(InstConstraints), Modes0, Modes),
+    list.map(constrain_inst_vars_in_mode(InstConstraints), Modes0, Modes),
     PII = pred_inst_info(PredOrFunc, Modes, Det).
 
 :- pred constrain_inst_vars_in_inst_name(inst_var_sub::in,
@@ -3364,7 +3359,7 @@ constrain_inst_vars_in_pred_inst_info(InstConstraints, PII0, PII) :-
 
 constrain_inst_vars_in_inst_name(InstConstraints, Name0, Name) :-
     ( Name0 = user_inst(SymName, Args0) ->
-        list__map(constrain_inst_vars_in_inst(InstConstraints), Args0, Args),
+        list.map(constrain_inst_vars_in_inst(InstConstraints), Args0, Args),
         Name = user_inst(SymName, Args)
     ;
         Name = Name0
@@ -3373,23 +3368,23 @@ constrain_inst_vars_in_inst_name(InstConstraints, Name0, Name) :-
 %-----------------------------------------------------------------------------%
 
 inst_var_constraints_are_consistent_in_modes(Modes) :-
-    inst_var_constraints_are_consistent_in_modes(Modes, map__init, _).
+    inst_var_constraints_are_consistent_in_modes(Modes, map.init, _).
 
 :- pred inst_var_constraints_are_consistent_in_modes(list(mer_mode)::in,
     inst_var_sub::in, inst_var_sub::out) is semidet.
 
 inst_var_constraints_are_consistent_in_modes(Modes, !Sub) :-
-    list__foldl(inst_var_constraints_are_consistent_in_mode, Modes, !Sub).
+    list.foldl(inst_var_constraints_are_consistent_in_mode, Modes, !Sub).
 
 :- pred inst_var_constraints_are_consistent_in_type_and_modes(
     list(type_and_mode)::in) is semidet.
 
 inst_var_constraints_are_consistent_in_type_and_modes(TypeAndModes) :-
-    list__foldl((pred(TypeAndMode::in, in, out) is semidet -->
+    list.foldl((pred(TypeAndMode::in, in, out) is semidet -->
         ( { TypeAndMode = type_only(_) }
         ; { TypeAndMode = type_and_mode(_, Mode) },
             inst_var_constraints_are_consistent_in_mode(Mode)
-        )), TypeAndModes, map__init, _).
+        )), TypeAndModes, map.init, _).
 
 :- pred inst_var_constraints_are_consistent_in_mode(mer_mode::in,
     inst_var_sub::in, inst_var_sub::out) is semidet.
@@ -3405,7 +3400,7 @@ inst_var_constraints_are_consistent_in_mode(user_defined_mode(_, ArgInsts),
     inst_var_sub::in, inst_var_sub::out) is semidet.
 
 inst_var_constraints_are_consistent_in_insts(Insts, !Sub) :-
-    list__foldl(inst_var_constraints_are_consistent_in_inst, Insts, !Sub).
+    list.foldl(inst_var_constraints_are_consistent_in_inst, Insts, !Sub).
 
 :- pred inst_var_constraints_are_consistent_in_inst(mer_inst::in,
     inst_var_sub::in, inst_var_sub::out) is semidet.
@@ -3414,7 +3409,7 @@ inst_var_constraints_are_consistent_in_inst(any(_), !Sub).
 inst_var_constraints_are_consistent_in_inst(free, !Sub).
 inst_var_constraints_are_consistent_in_inst(free(_), !Sub).
 inst_var_constraints_are_consistent_in_inst(bound(_, BoundInsts), !Sub) :-
-    list__foldl((pred(functor(_, Insts)::in, in, out) is semidet -->
+    list.foldl((pred(functor(_, Insts)::in, in, out) is semidet -->
         inst_var_constraints_are_consistent_in_insts(Insts)),
         BoundInsts, !Sub).
 inst_var_constraints_are_consistent_in_inst(ground(_, GroundInstInfo), !Sub) :-
@@ -3438,13 +3433,13 @@ inst_var_constraints_are_consistent_in_inst(abstract_inst(_, Insts), !Sub) :-
     inst_var_constraints_are_consistent_in_insts(Insts, !Sub).
 inst_var_constraints_are_consistent_in_inst(
         constrained_inst_vars(InstVars, Inst), !Sub) :-
-    set__fold((pred(InstVar::in, in, out) is semidet -->
-        ( Inst0 =^ map__elem(InstVar) ->
+    set.fold((pred(InstVar::in, in, out) is semidet -->
+        ( Inst0 =^ map.elem(InstVar) ->
             % Check that the inst_var constraint is consistent with
             % the previous constraint on this inst_var.
             { Inst = Inst0 }
         ;
-            ^ map__elem(InstVar) := Inst
+            ^ map.elem(InstVar) := Inst
         )), InstVars, !Sub),
     inst_var_constraints_are_consistent_in_inst(Inst, !Sub).
 
@@ -3457,7 +3452,7 @@ inst_var_constraints_are_consistent_in_inst(
 
 parse_inst_decl(ModuleName, VarSet, InstDefn, Result) :-
     (
-        InstDefn = term__functor(term__atom(Op), [H, B], _Context),
+        InstDefn = term.functor(term.atom(Op), [H, B], _Context),
         Op = "=="
     ->
         get_condition(B, Body, Condition),
@@ -3466,17 +3461,17 @@ parse_inst_decl(ModuleName, VarSet, InstDefn, Result) :-
     ;
         % XXX This is for `abstract inst' declarations,
         % which are not really supported.
-        InstDefn = term__functor(term__atom("is"),
-            [Head, term__functor(term__atom("private"), [], _)], _)
+        InstDefn = term.functor(term.atom("is"),
+            [Head, term.functor(term.atom("private"), [], _)], _)
     ->
         Condition = true,
         convert_abstract_inst_defn(ModuleName, Head, R),
         process_maybe1(make_inst_defn(VarSet, Condition), R, Result)
     ;
-        InstDefn = term__functor(term__atom("--->"), [H, B], Context)
+        InstDefn = term.functor(term.atom("--->"), [H, B], Context)
     ->
         get_condition(B, Body, Condition),
-        Body1 = term__functor(term__atom("bound"), [Body], Context),
+        Body1 = term.functor(term.atom("bound"), [Body], Context),
         convert_inst_defn(ModuleName, H, Body1, R),
         % We should check the condition for errs (don't bother at the moment,
         % since we ignore conditions anyhow :-)
@@ -3502,19 +3497,19 @@ convert_inst_defn_2(error(M, T), _, _, error(M, T)).
 convert_inst_defn_2(ok(Name, ArgTerms), Head, Body, Result) :-
     (
         % Check that all the head args are variables.
-        term__var_list_to_term_list(Args, ArgTerms)
+        term.var_list_to_term_list(Args, ArgTerms)
     ->
         (
             % Check that all the head arg variables are distinct.
-            list__member(Arg2, Args, [Arg2|OtherArgs]),
-            list__member(Arg2, OtherArgs)
+            list.member(Arg2, Args, [Arg2|OtherArgs]),
+            list.member(Arg2, OtherArgs)
         ->
             Result = error("repeated inst parameters in LHS of inst defn",
                 Head)
         ;
             % Check that all the variables in the body occur in the head.
-            term__contains_var(Body, Var2),
-            \+ list__member(Var2, Args)
+            term.contains_var(Body, Var2),
+            \+ list.member(Var2, Args)
         ->
             Result = error("free inst parameter in RHS of inst definition",
                 Body)
@@ -3533,7 +3528,7 @@ convert_inst_defn_2(ok(Name, ArgTerms), Head, Body, Result) :-
                 convert_inst(no_allow_constrained_inst_var, Body,
                     ConvertedBody)
             ->
-                list__map(term__coerce_var, Args, InstArgs),
+                list.map(term.coerce_var, Args, InstArgs),
                 Result = ok(processed_inst_body(Name, InstArgs,
                         eqv_inst(ConvertedBody)))
             ;
@@ -3566,17 +3561,17 @@ convert_abstract_inst_defn_2(error(M, T), _, error(M, T)).
 convert_abstract_inst_defn_2(ok(Name, ArgTerms), Head, Result) :-
     (
         % Check that all the head args are variables.
-        term__var_list_to_term_list(Args, ArgTerms)
+        term.var_list_to_term_list(Args, ArgTerms)
     ->
         (
             % Check that all the head arg variables are distinct.
-            list__member(Arg2, Args, [Arg2|OtherArgs]),
-            list__member(Arg2, OtherArgs)
+            list.member(Arg2, Args, [Arg2|OtherArgs]),
+            list.member(Arg2, OtherArgs)
         ->
             Result = error("repeated inst parameters " ++
                 "in abstract inst definition", Head)
         ;
-            list__map(term__coerce_var, Args, InstArgs),
+            list.map(term.coerce_var, Args, InstArgs),
             Result = ok(processed_inst_body(Name, InstArgs, abstract_inst))
         )
     ;
@@ -3588,7 +3583,7 @@ convert_abstract_inst_defn_2(ok(Name, ArgTerms), Head, Result) :-
 
 make_inst_defn(VarSet0, Cond, processed_inst_body(Name, Params, InstDefn),
         inst_defn(VarSet, Name, Params, InstDefn, Cond)) :-
-    varset__coerce(VarSet0, VarSet).
+    varset.coerce(VarSet0, VarSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -3608,7 +3603,7 @@ parse_mode_decl(ModuleName, VarSet, ModeDefn, Attributes, Result) :-
 
 :- pred mode_op(term::in, term::out, term::out) is semidet.
 
-mode_op(term__functor(term__atom(Op), [H, B], _), H, B) :-
+mode_op(term.functor(term.atom(Op), [H, B], _), H, B) :-
     Op = "==".
 
 :- type processed_mode_body
@@ -3633,19 +3628,19 @@ convert_mode_defn_2(error(M, T), _, _, error(M, T)).
 convert_mode_defn_2(ok(Name, ArgTerms), Head, Body, Result) :-
     (
         % Check that all the head args are variables.
-        term__var_list_to_term_list(Args, ArgTerms)
+        term.var_list_to_term_list(Args, ArgTerms)
     ->
         (
             % Check that all the head arg variables are distinct.
-            list__member(Arg2, Args, [Arg2|OtherArgs]),
-            list__member(Arg2, OtherArgs)
+            list.member(Arg2, Args, [Arg2|OtherArgs]),
+            list.member(Arg2, OtherArgs)
         ->
             Result = error("repeated parameters in LHS of mode defn",
                 Head)
         ;
             % Check that all the variables in the body occur in the head.
-            term__contains_var(Body, Var2),
-            \+ list__member(Var2, Args)
+            term.contains_var(Body, Var2),
+            \+ list.member(Var2, Args)
         ->
             Result = error("free inst parameter in RHS of mode definition",
                 Body)
@@ -3655,7 +3650,7 @@ convert_mode_defn_2(ok(Name, ArgTerms), Head, Body, Result) :-
                 convert_mode(no_allow_constrained_inst_var, Body,
                     ConvertedBody)
             ->
-                list__map(term__coerce_var, Args, InstArgs),
+                list.map(term.coerce_var, Args, InstArgs),
                 Result = ok(processed_mode_body(Name, InstArgs,
                     eqv_mode(ConvertedBody)))
             ;
@@ -3680,7 +3675,7 @@ convert_type_and_mode_list(InstConstraints, [H0|T0], [H|T]) :-
     is semidet.
 
 convert_type_and_mode(InstConstraints, Term, Result) :-
-    ( Term = term__functor(term__atom("::"), [TypeTerm, ModeTerm], _Context) ->
+    ( Term = term.functor(term.atom("::"), [TypeTerm, ModeTerm], _Context) ->
         parse_type(TypeTerm, ok(Type)),
         convert_mode(allow_constrained_inst_var, ModeTerm, Mode0),
         constrain_inst_vars_in_mode(InstConstraints, Mode0, Mode),
@@ -3695,7 +3690,7 @@ convert_type_and_mode(InstConstraints, Term, Result) :-
 
 make_mode_defn(VarSet0, Cond, processed_mode_body(Name, Params, ModeDefn),
         mode_defn(VarSet, Name, Params, ModeDefn, Cond)) :-
-    varset__coerce(VarSet0, VarSet).
+    varset.coerce(VarSet0, VarSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -3719,7 +3714,7 @@ parse_symlist_decl(ParserPred, MakeSymListPred, MakeModuleDefnPred,
 
 make_module_defn(MakeSymListPred, MakeModuleDefnPred, VarSet0, T,
         module_defn(VarSet, ModuleDefn)) :-
-    varset__coerce(VarSet0, VarSet),
+    varset.coerce(VarSet0, VarSet),
     call(MakeSymListPred, T, SymList),
     call(MakeModuleDefnPred, SymList, ModuleDefn).
 
@@ -3789,7 +3784,7 @@ make_op(X, op(X)).
 :- pred parse_symbol_specifier(term::in, maybe1(sym_specifier)::out) is det.
 
 parse_symbol_specifier(MainTerm, Result) :-
-    ( MainTerm = term__functor(term__atom(Functor), [Term], _Context) ->
+    ( MainTerm = term.functor(term.atom(Functor), [Term], _Context) ->
         ( Functor = "cons" ->
             parse_constructor_specifier(Term, Result0),
             process_maybe1(make_cons_symbol_specifier, Result0, Result)
@@ -3881,7 +3876,7 @@ parse_module_specifier(Term, Result) :-
     maybe1(module_name)::out) is det.
 
 parse_module_name(DefaultModuleName, Term, Result) :-
-    ( Term = term__variable(_) ->
+    ( Term = term.variable(_) ->
         dummy_term(ErrorContext),
         Result = error("module names starting with " ++
             "capital letters must be quoted using " ++
@@ -3911,7 +3906,7 @@ parse_module_name(DefaultModuleName, Term, Result) :-
 
 parse_constructor_specifier(Term, Result) :-
     (
-        Term = term__functor(term__atom("::"), [NameArgsTerm, TypeTerm],
+        Term = term.functor(term.atom("::"), [NameArgsTerm, TypeTerm],
             _Context)
     ->
         parse_arg_types_specifier(NameArgsTerm, NameArgsResult),
@@ -3933,7 +3928,7 @@ parse_constructor_specifier(Term, Result) :-
     is det.
 
 parse_predicate_specifier(Term, Result) :-
-    ( Term = term__functor(term__atom("/"), [_,_], _Context) ->
+    ( Term = term.functor(term.atom("/"), [_,_], _Context) ->
         parse_symbol_name_specifier(Term, NameResult),
             process_maybe1(make_arity_predicate_specifier, NameResult, Result)
     ;
@@ -3975,7 +3970,7 @@ make_arity_predicate_specifier(Result, sym(Result)).
     is det.
 
 parse_arg_types_specifier(Term, Result) :-
-    ( Term = term__functor(term__atom("/"), [_,_], _Context) ->
+    ( Term = term.functor(term.atom("/"), [_,_], _Context) ->
         parse_symbol_name_specifier(Term, NameResult),
             process_maybe1(make_arity_predicate_specifier, NameResult, Result)
     ;
@@ -4026,10 +4021,10 @@ parse_symbol_name_specifier(Term, Result) :-
 parse_implicitly_qualified_symbol_name_specifier(DefaultModule, Term,
         Result) :-
     (
-        Term = term__functor(term__atom("/"), [NameTerm, ArityTerm], _Context)
+        Term = term.functor(term.atom("/"), [NameTerm, ArityTerm], _Context)
     ->
         (
-            ArityTerm = term__functor(term__integer(Arity), [], _Context2)
+            ArityTerm = term.functor(term.integer(Arity), [], _Context2)
         ->
             ( Arity >= 0 ->
                 parse_implicitly_qualified_symbol_name(DefaultModule, NameTerm,
@@ -4076,14 +4071,14 @@ make_name_specifier(Name, name(Name)).
 
 parse_symbol_name(Term, Result) :-
     (
-        Term = term__functor(term__atom(FunctorName), [ModuleTerm, NameTerm],
+        Term = term.functor(term.atom(FunctorName), [ModuleTerm, NameTerm],
             _Context),
         ( FunctorName = ":"
         ; FunctorName = "."
         )
     ->
         (
-            NameTerm = term__functor(term__atom(Name), [], _Context1)
+            NameTerm = term.functor(term.atom(Name), [], _Context1)
         ->
             parse_symbol_name(ModuleTerm, ModuleResult),
             (
@@ -4091,22 +4086,22 @@ parse_symbol_name(Term, Result) :-
                 Result = ok(qualified(Module, Name))
             ;
                 ModuleResult = error(_, _),
-                term__coerce(Term, ErrorTerm),
+                term.coerce(Term, ErrorTerm),
                 Result = error("module name identifier " ++
                     "expected before ':' in qualified " ++
                     "symbol name", ErrorTerm)
             )
         ;
-            term__coerce(Term, ErrorTerm),
+            term.coerce(Term, ErrorTerm),
             Result = error("identifier expected after ':' " ++
                 "in qualified symbol name", ErrorTerm)
         )
     ;
-        ( Term = term__functor(term__atom(Name), [], _Context3) ->
+        ( Term = term.functor(term.atom(Name), [], _Context3) ->
             string_to_sym_name(Name, "__", SymName),
             Result = ok(SymName)
         ;
-            term__coerce(Term, ErrorTerm),
+            term.coerce(Term, ErrorTerm),
             Result = error("symbol name expected", ErrorTerm)
         )
     ).
@@ -4152,7 +4147,7 @@ parse_implicitly_qualified_term(DefaultModName, Term, ContainingTerm, Msg,
             SymName = qualified(ModName, _),
             \+ match_sym_name(ModName, DefaultModName)
         ->
-            term__coerce(Term, ErrorTerm),
+            term.coerce(Term, ErrorTerm),
             Result = error("module qualifier in definition " ++
                 "does not match preceding " ++ "
                 `:- module' declaration", ErrorTerm)
@@ -4166,42 +4161,42 @@ parse_implicitly_qualified_term(DefaultModName, Term, ContainingTerm, Msg,
 
 parse_qualified_term(Term, ContainingTerm, Msg, Result) :-
     (
-        Term = term__functor(term__atom(FunctorName),
+        Term = term.functor(term.atom(FunctorName),
             [ModuleTerm, NameArgsTerm], _),
         FunctorName = "."
     ->
-        ( NameArgsTerm = term__functor(term__atom(Name), Args, _) ->
+        ( NameArgsTerm = term.functor(term.atom(Name), Args, _) ->
             parse_symbol_name(ModuleTerm, ModuleResult),
             (
                 ModuleResult = ok(Module),
                 Result = ok(qualified(Module, Name), Args)
             ;
                 ModuleResult = error(_, _),
-                term__coerce(Term, ErrorTerm),
+                term.coerce(Term, ErrorTerm),
                 Result = error("module name identifier " ++
                     "expected before '.' in " ++
                     "qualified symbol name", ErrorTerm)
             )
         ;
-            term__coerce(Term, ErrorTerm),
+            term.coerce(Term, ErrorTerm),
             Result = error("identifier expected after '.' " ++
                 "in qualified symbol name", ErrorTerm)
         )
     ;
-        ( Term = term__functor(term__atom(Name), Args, _) ->
+        ( Term = term.functor(term.atom(Name), Args, _) ->
             string_to_sym_name(Name, "__", SymName),
             Result = ok(SymName, Args)
         ;
-            string__append("atom expected in ", Msg, ErrorMsg),
-            % Since variables don't have any term__context, if Term is
+            string.append("atom expected in ", Msg, ErrorMsg),
+            % Since variables don't have any term.context, if Term is
             % a variable, we use ContainingTerm instead (hopefully that
-            % _will_ have a term__context).
-            ( Term = term__variable(_) ->
+            % _will_ have a term.context).
+            ( Term = term.variable(_) ->
                 ErrorTerm0 = ContainingTerm
             ;
                 ErrorTerm0 = Term
             ),
-            term__coerce(ErrorTerm0, ErrorTerm),
+            term.coerce(ErrorTerm0, ErrorTerm),
             Result = error(ErrorMsg, ErrorTerm)
         )
     ).
@@ -4267,7 +4262,7 @@ make_op_specifier(X, sym(X)).
 
 convert_constructor_arg_list(_ModuleName, []) = ok([]).
 convert_constructor_arg_list( ModuleName, [Term | Terms]) = Result :-
-    ( Term = term__functor(term__atom("::"), [NameTerm, TypeTerm], _) ->
+    ( Term = term.functor(term.atom("::"), [NameTerm, TypeTerm], _) ->
         parse_implicitly_qualified_term(ModuleName, NameTerm, Term,
             "field name", NameResult),
         (

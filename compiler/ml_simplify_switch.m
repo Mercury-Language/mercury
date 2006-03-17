@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001, 2003-2005 The University of Melbourne.
+% Copyright (C) 2000-2001, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,13 +22,13 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ml_backend__ml_simplify_switch.
+:- module ml_backend.ml_simplify_switch.
 :- interface.
 
 :- import_module ml_backend.mlds.
 :- import_module ml_backend.ml_code_util.
 
-:- pred ml_simplify_switch(mlds__stmt::in, mlds__context::in,
+:- pred ml_simplify_switch(mlds_stmt::in, mlds_context::in,
     statement::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -66,16 +66,16 @@ ml_simplify_switch(Stmt0, MLDS_Context, Statement, !Info) :-
         target_supports_computed_goto(Globals),
         \+ (
             target_supports_int_switch(Globals),
-            globals__lookup_bool_option(Globals, prefer_switch, yes)
+            globals.lookup_bool_option(Globals, prefer_switch, yes)
         ),
 
         % Is the switch big enough?
-        list__length(Cases, NumCases),
-        globals__lookup_int_option(Globals, dense_switch_size, DenseSize),
+        list.length(Cases, NumCases),
+        globals.lookup_int_option(Globals, dense_switch_size, DenseSize),
         NumCases >= DenseSize,
 
         % ... and dense enough?
-        globals__lookup_int_option(Globals, dense_switch_req_density,
+        globals.lookup_int_option(Globals, dense_switch_req_density,
             ReqDensity),
         is_dense_switch(Cases, ReqDensity)
     ->
@@ -94,7 +94,7 @@ ml_simplify_switch(Stmt0, MLDS_Context, Statement, !Info) :-
         is_integral_type(Type),
         \+ (
             target_supports_int_switch(Globals),
-            globals__lookup_bool_option(Globals, prefer_switch, yes)
+            globals.lookup_bool_option(Globals, prefer_switch, yes)
         )
     ->
         Statement = ml_switch_to_if_else_chain(Cases, Default, Rval,
@@ -116,17 +116,17 @@ ml_simplify_switch(Stmt0, MLDS_Context, Statement, !Info) :-
 
 :- pred is_integral_type(mlds_type::in) is semidet.
 
-is_integral_type(mlds__native_int_type).
-is_integral_type(mlds__native_char_type).
-is_integral_type(mlds__mercury_type(_, type_cat_int, _)).
-is_integral_type(mlds__mercury_type(_, type_cat_char, _)).
-is_integral_type(mlds__mercury_type(_, type_cat_enum, _)).
+is_integral_type(mlds_native_int_type).
+is_integral_type(mlds_native_char_type).
+is_integral_type(mercury_type(_, type_cat_int, _)).
+is_integral_type(mercury_type(_, type_cat_char, _)).
+is_integral_type(mercury_type(_, type_cat_enum, _)).
 
-:- pred is_dense_switch(list(mlds__switch_case)::in, int::in) is semidet.
+:- pred is_dense_switch(list(mlds_switch_case)::in, int::in) is semidet.
 
 is_dense_switch(Cases, ReqDensity) :-
     % Need at least two cases
-    NumCases = list__length(Cases),
+    NumCases = list.length(Cases),
     NumCases > 2,
 
     % The switch needs to be dense enough.
@@ -141,8 +141,8 @@ is_dense_switch(Cases, ReqDensity) :-
     % we can make the jump table large enough to hold all
     % of the values for the type.
     %
-:- pred maybe_eliminate_default(mlds__switch_range::in,
-    list(mlds__switch_case)::in, mlds__switch_default::in, int::in,
+:- pred maybe_eliminate_default(mlds_switch_range::in,
+    list(mlds_switch_case)::in, mlds_switch_default::in, int::in,
     int::out, int::out, bool::out) is det.
 
 maybe_eliminate_default(Range, Cases, Default, ReqDensity,
@@ -151,7 +151,7 @@ maybe_eliminate_default(Range, Cases, Default, ReqDensity,
         Default \= default_is_unreachable,
         Range = range(Min, Max),
         TypeRange = Max - Min + 1,
-        NumCases = list__length(Cases),
+        NumCases = list.length(Cases),
         NoDefaultDensity = calc_density(NumCases, TypeRange),
         NoDefaultDensity > ReqDensity
     ->
@@ -180,28 +180,28 @@ calc_density(NumCases, Range) = Density :-
 
     % Find the highest and lowest case values in a list of cases.
     %
-:- pred find_first_and_last_case(list(mlds__switch_case)::in,
+:- pred find_first_and_last_case(list(mlds_switch_case)::in,
     int::out, int::out) is det.
 
 find_first_and_last_case(Cases, Min, Max) :-
-    list__foldl2(find_first_and_last_case_2, Cases, 0, Min, 0, Max).
+    list.foldl2(find_first_and_last_case_2, Cases, 0, Min, 0, Max).
 
-:- pred find_first_and_last_case_2(mlds__switch_case::in,
+:- pred find_first_and_last_case_2(mlds_switch_case::in,
     int::in, int::out, int::in, int::out) is det.
 
 find_first_and_last_case_2(Case, !Min, !Max) :-
     Case = CaseConds - _CaseStatement,
-    list__foldl2(find_first_and_last_case_3, CaseConds, !Min, !Max).
+    list.foldl2(find_first_and_last_case_3, CaseConds, !Min, !Max).
 
-:- pred find_first_and_last_case_3(mlds__case_match_cond::in,
+:- pred find_first_and_last_case_3(mlds_case_match_cond::in,
     int::in, int::out, int::in, int::out) is det.
 
 find_first_and_last_case_3(match_value(Rval), !Min, !Max) :-
     (
         Rval = const(int_const(Val))
     ->
-        int__min(Val, !Min),
-        int__max(Val, !Max)
+        int.min(Val, !Min),
+        int.max(Val, !Max)
     ;
         unexpected(this_file, "find_first_and_last_case_3: non-int case")
     ).
@@ -211,8 +211,8 @@ find_first_and_last_case_3(match_range(MinRval, MaxRval),
         MinRval = const(int_const(RvalMin)),
         MaxRval = const(int_const(RvalMax))
     ->
-        int__min(RvalMin, !Min),
-        int__max(RvalMax, !Max)
+        int.min(RvalMin, !Min),
+        int.max(RvalMax, !Max)
     ;
         unexpected(this_file, "find_first_and_last_case_3: non-int case")
     ).
@@ -221,10 +221,10 @@ find_first_and_last_case_3(match_range(MinRval, MaxRval),
 
     % Generate code for a switch using a dense jump table.
     %
-:- pred generate_dense_switch(list(mlds__switch_case)::in,
-    mlds__switch_default::in, int::in, int::in, bool::in,
-    mlds_type::in, mlds_rval::in, mlds__context::in,
-    mlds__defns::out, statements::out,
+:- pred generate_dense_switch(list(mlds_switch_case)::in,
+    mlds_switch_default::in, int::in, int::in, bool::in,
+    mlds_type::in, mlds_rval::in, mlds_context::in,
+    mlds_defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
@@ -239,7 +239,7 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
 
     % Now generate the jump table.
     ml_gen_new_label(EndLabel, !Info),
-    map__init(CaseLabelsMap0),
+    map.init(CaseLabelsMap0),
     generate_cases(Cases, EndLabel, CaseLabelsMap0,
         CaseLabelsMap, CasesDecls, CasesCode, !Info),
     ml_gen_new_label(DefaultLabel, !Info),
@@ -288,9 +288,9 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
     ),
     Decls = CasesDecls.
 
-:- pred generate_cases(list(mlds__switch_case)::in, mlds__label::in,
+:- pred generate_cases(list(mlds_switch_case)::in, mlds_label::in,
     case_labels_map::in, case_labels_map::out,
-    mlds__defns::out, statements::out,
+    mlds_defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 generate_cases([], _EndLabel, CaseLabelsMap, CaseLabelsMap, [], [], !Info).
@@ -308,9 +308,9 @@ generate_cases([Case | Cases], EndLabel, CaseLabelsMap0,
     % by adding a label at the front and a `goto <EndLabel>' at the end.
     % It also inserts the label for this case into the CaseLabelsMap.
     %
-:- pred generate_case(mlds__switch_case::in, mlds__label::in,
+:- pred generate_case(mlds_switch_case::in, mlds_label::in,
     case_labels_map::in, case_labels_map::out,
-    mlds__defns::out, statements::out,
+    mlds_defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 generate_case(Case, EndLabel, CaseLabelsMap0, CaseLabelsMap,
@@ -336,9 +336,9 @@ generate_case(Case, EndLabel, CaseLabelsMap0, CaseLabelsMap,
 % We build up a map which records which label should be used for
 % each case value.
 
-:- type case_labels_map == map(int, mlds__label).
+:- type case_labels_map == map(int, mlds_label).
 
-:- pred insert_cases_into_map(mlds__case_match_conds::in, mlds__label::in,
+:- pred insert_cases_into_map(mlds_case_match_conds::in, mlds_label::in,
     case_labels_map::in, case_labels_map::out) is det.
 
 insert_cases_into_map([], _ThisLabel, !CaseLabelsMap).
@@ -346,12 +346,12 @@ insert_cases_into_map([Cond|Conds], ThisLabel, !CaseLabelsMap) :-
     insert_case_into_map(Cond, ThisLabel, !CaseLabelsMap),
     insert_cases_into_map(Conds, ThisLabel, !CaseLabelsMap).
 
-:- pred insert_case_into_map(mlds__case_match_cond::in, mlds__label::in,
+:- pred insert_case_into_map(mlds_case_match_cond::in, mlds_label::in,
     case_labels_map::in, case_labels_map::out) is det.
 
 insert_case_into_map(match_value(Rval), ThisLabel, !CaseLabelsMap) :-
     ( Rval = const(int_const(Val)) ->
-        map__det_insert(!.CaseLabelsMap, Val, ThisLabel, !:CaseLabelsMap)
+        map.det_insert(!.CaseLabelsMap, Val, ThisLabel, !:CaseLabelsMap)
     ;
         unexpected(this_file, "insert_case_into_map: non-int case")
     ).
@@ -366,14 +366,14 @@ insert_case_into_map(match_range(MinRval, MaxRval), ThisLabel,
         unexpected(this_file, "insert_case_into_map: non-int case")
     ).
 
-:- pred insert_range_into_map(int::in, int::in, mlds__label::in,
+:- pred insert_range_into_map(int::in, int::in, mlds_label::in,
     case_labels_map::in, case_labels_map::out) is det.
 
 insert_range_into_map(Min, Max, ThisLabel, !CaseLabelsMap) :-
     ( Min > Max ->
         true
     ;
-        map__det_insert(!.CaseLabelsMap, Min, ThisLabel, !:CaseLabelsMap),
+        map.det_insert(!.CaseLabelsMap, Min, ThisLabel, !:CaseLabelsMap),
         insert_range_into_map(Min + 1, Max, ThisLabel, !CaseLabelsMap)
     ).
 
@@ -384,14 +384,14 @@ insert_range_into_map(Min, Max, ThisLabel, !CaseLabelsMap) :-
     % the map, this function returns the list of labels to use for the case
     % values.
     %
-:- func get_case_labels(int, int, map(int, mlds__label), mlds__label)
-    = list(mlds__label).
+:- func get_case_labels(int, int, map(int, mlds_label), mlds_label)
+    = list(mlds_label).
 
 get_case_labels(ThisVal, LastVal, CaseLabelsMap, DefaultLabel) = CaseLabels :-
     ( ThisVal > LastVal ->
         CaseLabels = []
     ;
-        ( map__search(CaseLabelsMap, ThisVal, CaseLabel0) ->
+        ( map.search(CaseLabelsMap, ThisVal, CaseLabel0) ->
             CaseLabel = CaseLabel0
         ;
             CaseLabel = DefaultLabel
@@ -406,8 +406,8 @@ get_case_labels(ThisVal, LastVal, CaseLabelsMap, DefaultLabel) = CaseLabels :-
     % Convert an int switch to a chain of if-then-elses that test each case
     % in turn.
     %
-:- func ml_switch_to_if_else_chain(mlds__switch_cases, mlds__switch_default,
-    mlds_rval, mlds__context) = statement.
+:- func ml_switch_to_if_else_chain(mlds_switch_cases, mlds_switch_default,
+    mlds_rval, mlds_context) = statement.
 
 ml_switch_to_if_else_chain([], Default, _Rval, MLDS_Context) = Statement :-
     (
@@ -440,7 +440,7 @@ ml_switch_to_if_else_chain([Case | Cases], Default, SwitchRval, MLDS_Context) =
     % case conditions matches the specified rval (which must have integral
     % type).
     %
-:- func ml_gen_case_match_conds(mlds__case_match_conds, mlds_rval) = mlds_rval.
+:- func ml_gen_case_match_conds(mlds_case_match_conds, mlds_rval) = mlds_rval.
 
 ml_gen_case_match_conds([], _) = const(false).
 ml_gen_case_match_conds([Cond], SwitchRval) =
@@ -453,7 +453,7 @@ ml_gen_case_match_conds([Cond1, Cond2 | Conds], SwitchRval) =
     % Generate an rval which will be true iff the specified case condition
     % matches the specified rval (which must have integral type).
     %
-:- func ml_gen_case_match_cond(mlds__case_match_cond, mlds_rval) = mlds_rval.
+:- func ml_gen_case_match_cond(mlds_case_match_cond, mlds_rval) = mlds_rval.
 
 ml_gen_case_match_cond(match_value(CaseRval), SwitchRval) =
     binop(eq, CaseRval, SwitchRval).

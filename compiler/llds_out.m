@@ -16,7 +16,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__llds_out.
+:- module ll_backend.llds_out.
 :- interface.
 
 :- import_module backend_libs.builtin_ops.
@@ -223,74 +223,74 @@
 :- type decl_set == set_tree234(decl_id).
 
 decl_set_init(DeclSet) :-
-    DeclSet = set_tree234__init.
+    DeclSet = set_tree234.init.
 
 decl_set_insert(DeclId, DeclSet0, DeclSet) :-
-    set_tree234__insert(DeclId, DeclSet0, DeclSet).
+    set_tree234.insert(DeclId, DeclSet0, DeclSet).
 
 decl_set_is_member(DeclId, DeclSet) :-
-    set_tree234__contains(DeclSet, DeclId).
+    set_tree234.contains(DeclSet, DeclId).
 
 %-----------------------------------------------------------------------------%
 
 output_llds(CFile, ComplexityProcs, StackLayoutLabels, !IO) :-
     CFile = c_file(ModuleName, _, _, _, _, _, _, _, _),
     module_name_to_file_name(ModuleName, ".c", yes, FileName, !IO),
-    io__open_output(FileName, Result, !IO),
+    io.open_output(FileName, Result, !IO),
     (
         Result = ok(FileStream),
         decl_set_init(DeclSet0),
         output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
             FileStream, DeclSet0, _, !IO),
-        io__close_output(FileStream, !IO)
+        io.close_output(FileStream, !IO)
     ;
         Result = error(Error),
-        io__progname_base("llds.m", ProgName, !IO),
-        io__write_string("\n", !IO),
-        io__write_string(ProgName, !IO),
-        io__write_string(": can't open `", !IO),
-        io__write_string(FileName, !IO),
-        io__write_string("' for output:\n", !IO),
-        io__write_string(io__error_message(Error), !IO),
-        io__write_string("\n", !IO),
-        io__set_exit_status(1, !IO)
+        io.progname_base("llds.m", ProgName, !IO),
+        io.write_string("\n", !IO),
+        io.write_string(ProgName, !IO),
+        io.write_string(": can't open `", !IO),
+        io.write_string(FileName, !IO),
+        io.write_string("' for output:\n", !IO),
+        io.write_string(io.error_message(Error), !IO),
+        io.write_string("\n", !IO),
+        io.set_exit_status(1, !IO)
     ).
 
 :- pred output_c_file_mercury_headers(io::di, io::uo) is det.
 
 output_c_file_mercury_headers(!IO) :-
-    globals__io_get_trace_level(TraceLevel, !IO),
+    globals.io_get_trace_level(TraceLevel, !IO),
     ( given_trace_level_is_none(TraceLevel) = no ->
-        io__write_string("#include ""mercury_imp.h""\n", !IO),
-        io__write_string("#include ""mercury_trace_base.h""\n", !IO)
+        io.write_string("#include ""mercury_imp.h""\n", !IO),
+        io.write_string("#include ""mercury_trace_base.h""\n", !IO)
     ;
-        io__write_string("#include ""mercury_imp.h""\n", !IO)
+        io.write_string("#include ""mercury_imp.h""\n", !IO)
     ),
-    globals__io_lookup_bool_option(profile_deep, DeepProfile, !IO),
+    globals.io_lookup_bool_option(profile_deep, DeepProfile, !IO),
     (
         DeepProfile = yes,
-        io__write_string("#include ""mercury_deep_profiling.h""\n", !IO)
+        io.write_string("#include ""mercury_deep_profiling.h""\n", !IO)
     ;
         DeepProfile = no
     ),
-    globals__io_lookup_bool_option(generate_bytecode, GenBytecode, !IO),
+    globals.io_lookup_bool_option(generate_bytecode, GenBytecode, !IO),
     (
         GenBytecode = yes,
-        io__write_string("#include ""mb_interface_stub.h""\n", !IO)
+        io.write_string("#include ""mb_interface_stub.h""\n", !IO)
     ;
         GenBytecode = no
     ).
 
 :- pred output_single_c_file(c_file::in, list(complexity_proc_info)::in,
-    map(label, data_addr)::in, io__output_stream::in,
+    map(label, data_addr)::in, io.output_stream::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
         FileStream, !DeclSet, !IO) :-
     CFile = c_file(ModuleName, C_HeaderLines, UserForeignCode, Exports,
         Vars, Datas, Modules, UserInitPredCNames, UserFinalPredCNames),
-    library__version(Version),
-    io__set_output_stream(FileStream, OutputStream, !IO),
+    library.version(Version),
+    io.set_output_stream(FileStream, OutputStream, !IO),
     module_name_to_file_name(ModuleName, ".m", no, SourceFileName, !IO),
     output_c_file_intro_and_grade(SourceFileName, Version, !IO),
     output_init_comment(ModuleName, UserInitPredCNames,
@@ -298,30 +298,30 @@ output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
     output_c_file_mercury_headers(!IO),
 
     output_foreign_header_include_lines(C_HeaderLines, !IO),
-    io__write_string("\n", !IO),
+    io.write_string("\n", !IO),
 
     gather_c_file_labels(Modules, Labels),
-    classify_comp_gen_c_data(Datas, multi_map__init, CommonMap,
+    classify_comp_gen_c_data(Datas, multi_map.init, CommonMap,
         [], CommonDatas0, [], RttiDatas, [], LayoutDatas),
-    multi_map__to_assoc_list(CommonMap, CommonAssocList),
-    list__foldl2(output_common_decl_group, CommonAssocList, !DeclSet, !IO),
+    multi_map.to_assoc_list(CommonMap, CommonAssocList),
+    list.foldl2(output_common_decl_group, CommonAssocList, !DeclSet, !IO),
     output_rtti_data_decl_list(RttiDatas, !DeclSet, !IO),
     output_c_label_decls(StackLayoutLabels, Labels, !DeclSet, !IO),
-    list__foldl2(output_comp_gen_c_var, Vars, !DeclSet, !IO),
-    list__reverse(CommonDatas0, CommonDatas),
-    list__foldl2(output_common_data_defn, CommonDatas, !DeclSet, !IO),
-    list__foldl2(output_rtti_data_defn, RttiDatas, !DeclSet, !IO),
+    list.foldl2(output_comp_gen_c_var, Vars, !DeclSet, !IO),
+    list.reverse(CommonDatas0, CommonDatas),
+    list.foldl2(output_common_data_defn, CommonDatas, !DeclSet, !IO),
+    list.foldl2(output_rtti_data_defn, RttiDatas, !DeclSet, !IO),
     order_layout_datas(LayoutDatas, OrderedLayoutDatas),
-    list__foldl2(output_layout_data_defn, OrderedLayoutDatas, !DeclSet, !IO),
+    list.foldl2(output_layout_data_defn, OrderedLayoutDatas, !DeclSet, !IO),
 
-    list__foldl2(output_comp_gen_c_module(StackLayoutLabels), Modules,
+    list.foldl2(output_comp_gen_c_module(StackLayoutLabels), Modules,
         !DeclSet, !IO),
-    list__foldl(output_user_foreign_code, UserForeignCode, !IO),
-    list__foldl(io__write_string, Exports, !IO),
-    io__write_string("\n", !IO),
+    list.foldl(output_user_foreign_code, UserForeignCode, !IO),
+    list.foldl(io.write_string, Exports, !IO),
+    io.write_string("\n", !IO),
     output_c_module_init_list(ModuleName, Modules, Datas, Vars,
         ComplexityProcs, StackLayoutLabels, !DeclSet, !IO),
-    io__set_output_stream(OutputStream, _, !IO).
+    io.set_output_stream(OutputStream, _, !IO).
 
 :- pred order_layout_datas(list(layout_data)::in, list(layout_data)::out)
     is det.
@@ -329,10 +329,10 @@ output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
 order_layout_datas(LayoutDatas0, LayoutDatas) :-
     order_layout_datas_2(LayoutDatas0, [], ProcLayouts,
         [], LabelLayouts, [], OtherLayouts),
-    % list__reverse(RevProcLayouts, ProcLayouts),
-    % list__reverse(RevLabelLayouts, LabelLayouts),
-    % list__reverse(RevOtherLayouts, OtherLayouts),
-    list__condense([ProcLayouts, LabelLayouts, OtherLayouts], LayoutDatas).
+    % list.reverse(RevProcLayouts, ProcLayouts),
+    % list.reverse(RevLabelLayouts, LabelLayouts),
+    % list.reverse(RevOtherLayouts, OtherLayouts),
+    list.condense([ProcLayouts, LabelLayouts, OtherLayouts], LayoutDatas).
 
 :- pred order_layout_datas_2(list(layout_data)::in,
     list(layout_data)::in, list(layout_data)::out,
@@ -361,9 +361,9 @@ output_c_module_init_list(ModuleName, Modules, Datas, Vars, ComplexityProcs,
     MustInit = (pred(Module::in) is semidet :-
         module_defines_label_with_layout(Module, StackLayoutLabels)
     ),
-    list__filter(MustInit, Modules, AlwaysInitModules, MaybeInitModules),
-    list__chunk(AlwaysInitModules, 40, AlwaysInitModuleBunches),
-    list__chunk(MaybeInitModules, 40, MaybeInitModuleBunches),
+    list.filter(MustInit, Modules, AlwaysInitModules, MaybeInitModules),
+    list.chunk(AlwaysInitModules, 40, AlwaysInitModuleBunches),
+    list.chunk(MaybeInitModules, 40, MaybeInitModuleBunches),
 
     output_init_bunch_defs(AlwaysInitModuleBunches, ModuleName,
         "always", 0, !IO),
@@ -376,51 +376,51 @@ output_c_module_init_list(ModuleName, Modules, Datas, Vars, ComplexityProcs,
             "maybe", 0, !IO)
     ),
 
-    io__write_string("/* suppress gcc -Wmissing-decls warnings */\n", !IO),
-    io__write_string("void ", !IO),
+    io.write_string("/* suppress gcc -Wmissing-decls warnings */\n", !IO),
+    io.write_string("void ", !IO),
     output_init_name(ModuleName, !IO),
-    io__write_string("init(void);\n", !IO),
+    io.write_string("init(void);\n", !IO),
 
-    io__write_string("void ", !IO),
+    io.write_string("void ", !IO),
     output_init_name(ModuleName, !IO),
-    io__write_string("init_type_tables(void);\n", !IO),
-    io__write_string("void ", !IO),
+    io.write_string("init_type_tables(void);\n", !IO),
+    io.write_string("void ", !IO),
     output_init_name(ModuleName, !IO),
-    io__write_string("init_debugger(void);\n", !IO),
+    io.write_string("init_debugger(void);\n", !IO),
 
-    io__write_string("#ifdef MR_DEEP_PROFILING\n", !IO),
-    io__write_string("void ", !IO),
+    io.write_string("#ifdef MR_DEEP_PROFILING\n", !IO),
+    io.write_string("void ", !IO),
     output_init_name(ModuleName, !IO),
-    io__write_string("write_out_proc_statics(FILE *fp);\n", !IO),
-    io__write_string("#endif\n", !IO),
+    io.write_string("write_out_proc_statics(FILE *fp);\n", !IO),
+    io.write_string("#endif\n", !IO),
 
-    io__write_string("#ifdef MR_RECORD_TERM_SIZES\n", !IO),
-    io__write_string("void ", !IO),
+    io.write_string("#ifdef MR_RECORD_TERM_SIZES\n", !IO),
+    io.write_string("void ", !IO),
     output_init_name(ModuleName, !IO),
-    io__write_string("init_complexity_procs(void);\n", !IO),
-    io__write_string("#endif\n", !IO),
+    io.write_string("init_complexity_procs(void);\n", !IO),
+    io.write_string("#endif\n", !IO),
 
-    globals__io_lookup_bool_option(allow_table_reset, TableReset, !IO),
+    globals.io_lookup_bool_option(allow_table_reset, TableReset, !IO),
     (
         TableReset = yes,
-        io__write_string("void ", !IO),
+        io.write_string("void ", !IO),
         output_init_name(ModuleName, !IO),
-        io__write_string("reset_tables(void);\n", !IO)
+        io.write_string("reset_tables(void);\n", !IO)
     ;
         TableReset = no
     ),
 
-    io__write_string("\n", !IO),
+    io.write_string("\n", !IO),
 
-    io__write_string("void ", !IO),
+    io.write_string("void ", !IO),
     output_init_name(ModuleName, !IO),
-    io__write_string("init(void)\n", !IO),
-    io__write_string("{\n", !IO),
-    io__write_string("\tstatic MR_bool done = MR_FALSE;\n", !IO),
-    io__write_string("\tif (done) {\n", !IO),
-    io__write_string("\t\treturn;\n", !IO),
-    io__write_string("\t}\n", !IO),
-    io__write_string("\tdone = MR_TRUE;\n", !IO),
+    io.write_string("init(void)\n", !IO),
+    io.write_string("{\n", !IO),
+    io.write_string("\tstatic MR_bool done = MR_FALSE;\n", !IO),
+    io.write_string("\tif (done) {\n", !IO),
+    io.write_string("\t\treturn;\n", !IO),
+    io.write_string("\t}\n", !IO),
+    io.write_string("\tdone = MR_TRUE;\n", !IO),
 
     output_init_bunch_calls(AlwaysInitModuleBunches, ModuleName,
         "always", 0, !IO),
@@ -438,73 +438,73 @@ output_c_module_init_list(ModuleName, Modules, Datas, Vars, ComplexityProcs,
     % once the debugger has been modified to call do_init_modules_debugger()
     % and all debuggable object files created before this change have been
     % overwritten, it can be deleted.
-    io__write_string("\t", !IO),
+    io.write_string("\t", !IO),
     output_init_name(ModuleName, !IO),
-    io__write_string("init_debugger();\n", !IO),
-    io__write_string("}\n\n", !IO),
+    io.write_string("init_debugger();\n", !IO),
+    io.write_string("}\n\n", !IO),
 
-    io__write_string("void ", !IO),
+    io.write_string("void ", !IO),
     output_init_name(ModuleName, !IO),
-    io__write_string("init_type_tables(void)\n", !IO),
-    io__write_string("{\n", !IO),
-    io__write_string("\tstatic MR_bool done = MR_FALSE;\n", !IO),
-    io__write_string("\tif (done) {\n", !IO),
-    io__write_string("\t\treturn;\n", !IO),
-    io__write_string("\t}\n", !IO),
-    io__write_string("\tdone = MR_TRUE;\n", !IO),
+    io.write_string("init_type_tables(void)\n", !IO),
+    io.write_string("{\n", !IO),
+    io.write_string("\tstatic MR_bool done = MR_FALSE;\n", !IO),
+    io.write_string("\tif (done) {\n", !IO),
+    io.write_string("\t\treturn;\n", !IO),
+    io.write_string("\t}\n", !IO),
+    io.write_string("\tdone = MR_TRUE;\n", !IO),
     output_type_tables_init_list(Datas, !IO),
-    io__write_string("}\n\n", !IO),
+    io.write_string("}\n\n", !IO),
 
     output_debugger_init_list_decls(Datas, !DeclSet, !IO),
-    io__write_string("\n", !IO),
-    io__write_string("void ", !IO),
+    io.write_string("\n", !IO),
+    io.write_string("void ", !IO),
     output_init_name(ModuleName, !IO),
-    io__write_string("init_debugger(void)\n", !IO),
-    io__write_string("{\n", !IO),
-    io__write_string("\tstatic MR_bool done = MR_FALSE;\n", !IO),
-    io__write_string("\tif (done) {\n", !IO),
-    io__write_string("\t\treturn;\n", !IO),
-    io__write_string("\t}\n", !IO),
-    io__write_string("\tdone = MR_TRUE;\n", !IO),
+    io.write_string("init_debugger(void)\n", !IO),
+    io.write_string("{\n", !IO),
+    io.write_string("\tstatic MR_bool done = MR_FALSE;\n", !IO),
+    io.write_string("\tif (done) {\n", !IO),
+    io.write_string("\t\treturn;\n", !IO),
+    io.write_string("\t}\n", !IO),
+    io.write_string("\tdone = MR_TRUE;\n", !IO),
     output_debugger_init_list(Datas, !IO),
-    io__write_string("}\n\n", !IO),
+    io.write_string("}\n\n", !IO),
 
-    io__write_string("#ifdef MR_DEEP_PROFILING\n", !IO),
+    io.write_string("#ifdef MR_DEEP_PROFILING\n", !IO),
     output_write_proc_static_list_decls(Datas, !DeclSet, !IO),
-    io__write_string("\nvoid ", !IO),
+    io.write_string("\nvoid ", !IO),
     output_init_name(ModuleName, !IO),
-    io__write_string("write_out_proc_statics(FILE *fp)\n", !IO),
-    io__write_string("{\n", !IO),
+    io.write_string("write_out_proc_statics(FILE *fp)\n", !IO),
+    io.write_string("{\n", !IO),
     output_write_proc_static_list(Datas, !IO),
-    io__write_string("}\n", !IO),
-    io__write_string("\n#endif\n\n", !IO),
+    io.write_string("}\n", !IO),
+    io.write_string("\n#endif\n\n", !IO),
 
-    io__write_string("#ifdef MR_RECORD_TERM_SIZES\n", !IO),
+    io.write_string("#ifdef MR_RECORD_TERM_SIZES\n", !IO),
     output_complexity_arg_info_arrays(ComplexityProcs, !IO),
-    io__write_string("\nvoid ", !IO),
+    io.write_string("\nvoid ", !IO),
     output_init_name(ModuleName, !IO),
-    io__write_string("init_complexity_procs(void)\n", !IO),
-    io__write_string("{\n", !IO),
+    io.write_string("init_complexity_procs(void)\n", !IO),
+    io.write_string("{\n", !IO),
     output_init_complexity_proc_list(ComplexityProcs, !IO),
-    io__write_string("}\n", !IO),
-    io__write_string("\n#endif\n\n", !IO),
+    io.write_string("}\n", !IO),
+    io.write_string("\n#endif\n\n", !IO),
 
     (
         TableReset = yes,
-        io__write_string("void ", !IO),
+        io.write_string("void ", !IO),
         output_init_name(ModuleName, !IO),
-        io__write_string("reset_tables(void)\n", !IO),
-        io__write_string("{\n", !IO),
-        list__foldl(output_init_reset_table, Vars, !IO),
-        io__write_string("}\n\n", !IO)
+        io.write_string("reset_tables(void)\n", !IO),
+        io.write_string("{\n", !IO),
+        list.foldl(output_init_reset_table, Vars, !IO),
+        io.write_string("}\n\n", !IO)
     ;
         TableReset = no
     ),
 
-    io__write_string(
+    io.write_string(
         "/* ensure everything is compiled with the same grade */\n",
         !IO),
-    io__write_string(
+    io.write_string(
         "static const void *const MR_grade = &MR_GRADE_VAR;\n", !IO).
 
 :- pred module_defines_label_with_layout(comp_gen_c_module::in,
@@ -513,23 +513,23 @@ output_c_module_init_list(ModuleName, Modules, Datas, Vars, ComplexityProcs,
 module_defines_label_with_layout(Module, StackLayoutLabels) :-
     % Checking whether the set is empty or not
     % allows us to avoid calling gather_c_module_labels.
-    \+ map__is_empty(StackLayoutLabels),
+    \+ map.is_empty(StackLayoutLabels),
     Module = comp_gen_c_module(_, Procedures),
     gather_c_module_labels(Procedures, Labels),
-    list__member(Label, Labels),
-    map__search(StackLayoutLabels, Label, _).
+    list.member(Label, Labels),
+    map.search(StackLayoutLabels, Label, _).
 
 :- pred output_init_bunch_defs(list(list(comp_gen_c_module))::in,
     module_name::in, string::in, int::in, io::di, io::uo) is det.
 
 output_init_bunch_defs([], _, _, _, !IO).
 output_init_bunch_defs([Bunch | Bunches], ModuleName, InitStatus, Seq, !IO) :-
-    io__write_string("static void ", !IO),
+    io.write_string("static void ", !IO),
     output_bunch_name(ModuleName, InitStatus, Seq, !IO),
-    io__write_string("(void)\n", !IO),
-    io__write_string("{\n", !IO),
+    io.write_string("(void)\n", !IO),
+    io.write_string("{\n", !IO),
     output_init_bunch_def(Bunch, ModuleName, !IO),
-    io__write_string("}\n\n", !IO),
+    io.write_string("}\n\n", !IO),
     NextSeq = Seq + 1,
     output_init_bunch_defs(Bunches, ModuleName, InitStatus, NextSeq, !IO).
 
@@ -539,9 +539,9 @@ output_init_bunch_defs([Bunch | Bunches], ModuleName, InitStatus, Seq, !IO) :-
 output_init_bunch_def([], _, !IO).
 output_init_bunch_def([Module | Modules], ModuleName, !IO) :-
     Module = comp_gen_c_module(C_ModuleName, _),
-    io__write_string("\t", !IO),
-    io__write_string(C_ModuleName, !IO),
-    io__write_string("();\n", !IO),
+    io.write_string("\t", !IO),
+    io.write_string(C_ModuleName, !IO),
+    io.write_string("();\n", !IO),
     output_init_bunch_def(Modules, ModuleName, !IO).
 
 :- pred output_init_bunch_calls(list(list(comp_gen_c_module))::in,
@@ -549,9 +549,9 @@ output_init_bunch_def([Module | Modules], ModuleName, !IO) :-
 
 output_init_bunch_calls([], _, _, _, !IO).
 output_init_bunch_calls([_ | Bunches], ModuleName, InitStatus, Seq, !IO) :-
-    io__write_string("\t", !IO),
+    io.write_string("\t", !IO),
     output_bunch_name(ModuleName, InitStatus, Seq, !IO),
-    io__write_string("();\n", !IO),
+    io.write_string("();\n", !IO),
     NextSeq = Seq + 1,
     output_init_bunch_calls(Bunches, ModuleName, InitStatus, NextSeq, !IO).
 
@@ -564,7 +564,7 @@ output_init_bunch_calls([_ | Bunches], ModuleName, InitStatus, Seq, !IO) :-
 output_c_data_init_list([], !IO).
 output_c_data_init_list([Data | Datas], !IO) :-
     ( Data = rtti_data(RttiData) ->
-        rtti_out__init_rtti_data_if_nec(RttiData, !IO)
+        rtti_out.init_rtti_data_if_nec(RttiData, !IO)
     ;
         true
     ),
@@ -578,7 +578,7 @@ output_c_data_init_list([Data | Datas], !IO) :-
 output_type_tables_init_list([], !IO).
 output_type_tables_init_list([Data | Datas], !IO) :-
     ( Data = rtti_data(RttiData) ->
-        rtti_out__register_rtti_data_if_nec(RttiData, !IO)
+        rtti_out.register_rtti_data_if_nec(RttiData, !IO)
     ;
         true
     ),
@@ -616,11 +616,11 @@ output_debugger_init_list([Data | Datas], !IO) :-
         Data = layout_data(LayoutData),
         LayoutData = module_layout_data(ModuleName, _,_,_,_,_,_,_)
     ->
-        io__write_string("\tif (MR_register_module_layout != NULL) {\n", !IO),
-        io__write_string("\t\t(*MR_register_module_layout)(", !IO),
-        io__write_string("\n\t\t\t&", !IO),
+        io.write_string("\tif (MR_register_module_layout != NULL) {\n", !IO),
+        io.write_string("\t\t(*MR_register_module_layout)(", !IO),
+        io.write_string("\n\t\t\t&", !IO),
         output_layout_name(module_layout(ModuleName), !IO),
-        io__write_string(");\n\t}\n", !IO)
+        io.write_string(");\n\t}\n", !IO)
     ;
         true
     ),
@@ -657,13 +657,13 @@ output_write_proc_static_list([Data | Datas], !IO) :-
         Kind = proc_layout_proc_id(UserOrUCI),
         (
             UserOrUCI = user,
-            io__write_string("\tMR_write_out_user_proc_static(fp,\n\t\t&", !IO)
+            io.write_string("\tMR_write_out_user_proc_static(fp,\n\t\t&", !IO)
         ;
             UserOrUCI = uci,
-            io__write_string("\tMR_write_out_uci_proc_static(fp,\n\t\t&", !IO)
+            io.write_string("\tMR_write_out_uci_proc_static(fp,\n\t\t&", !IO)
         ),
         output_layout_name(proc_layout(RttiProcLabel, Kind), !IO),
-        io__write_string(");\n", !IO)
+        io.write_string(");\n", !IO)
     ;
         true
     ),
@@ -680,13 +680,13 @@ complexity_arg_info_array_name(ProcNum) =
 output_complexity_arg_info_arrays([], !IO).
 output_complexity_arg_info_arrays([Info | Infos], !IO) :-
     Info = complexity_proc_info(ProcNum, _, Args),
-    io__write_string("\nMR_ComplexityArgInfo ", !IO),
-    io__write_string(complexity_arg_info_array_name(ProcNum), !IO),
-    io__write_string("[", !IO),
-    io__write_int(list__length(Args), !IO),
-    io__write_string("] = {\n", !IO),
+    io.write_string("\nMR_ComplexityArgInfo ", !IO),
+    io.write_string(complexity_arg_info_array_name(ProcNum), !IO),
+    io.write_string("[", !IO),
+    io.write_int(list.length(Args), !IO),
+    io.write_string("] = {\n", !IO),
     output_complexity_arg_info_array(Args, !IO),
-    io__write_string("};\n", !IO),
+    io.write_string("};\n", !IO),
     output_complexity_arg_info_arrays(Infos, !IO).
 
 :- pred output_complexity_arg_info_array(list(complexity_arg_info)::in,
@@ -695,27 +695,27 @@ output_complexity_arg_info_arrays([Info | Infos], !IO) :-
 output_complexity_arg_info_array([], !IO).
 output_complexity_arg_info_array([Arg | Args], !IO) :-
     Arg = complexity_arg_info(MaybeName, Kind),
-    io__write_string("{ ", !IO),
+    io.write_string("{ ", !IO),
     (
         MaybeName = yes(Name),
-        io__write_string("""", !IO),
-        io__write_string(Name, !IO),
-        io__write_string(""", ", !IO)
+        io.write_string("""", !IO),
+        io.write_string(Name, !IO),
+        io.write_string(""", ", !IO)
     ;
         MaybeName = no,
-        io__write_string("NULL, ", !IO)
+        io.write_string("NULL, ", !IO)
     ),
     (
         Kind = complexity_input_variable_size,
-        io__write_string("MR_COMPLEXITY_INPUT_VAR_SIZE", !IO)
+        io.write_string("MR_COMPLEXITY_INPUT_VAR_SIZE", !IO)
     ;
         Kind = complexity_input_fixed_size,
-        io__write_string("MR_COMPLEXITY_INPUT_FIX_SIZE", !IO)
+        io.write_string("MR_COMPLEXITY_INPUT_FIX_SIZE", !IO)
     ;
         Kind = complexity_output,
-        io__write_string("MR_COMPLEXITY_OUTPUT", !IO)
+        io.write_string("MR_COMPLEXITY_OUTPUT", !IO)
     ),
-    io__write_string(" },\n", !IO),
+    io.write_string(" },\n", !IO),
     output_complexity_arg_info_array(Args, !IO).
 
 :- pred output_init_complexity_proc_list(list(complexity_proc_info)::in,
@@ -724,18 +724,18 @@ output_complexity_arg_info_array([Arg | Args], !IO) :-
 output_init_complexity_proc_list([], !IO).
 output_init_complexity_proc_list([Info | Infos], !IO) :-
     Info = complexity_proc_info(ProcNum, FullProcName, ArgInfos),
-    io__write_string("\tMR_init_complexity_proc(", !IO),
-    io__write_int(ProcNum, !IO),
-    io__write_string(", """, !IO),
-    c_util__output_quoted_string(FullProcName, !IO),
-    io__write_string(""", ", !IO),
-    list__filter(complexity_arg_is_profiled, ArgInfos, ProfiledArgInfos),
-    io__write_int(list__length(ProfiledArgInfos), !IO),
-    io__write_string(", ", !IO),
-    io__write_int(list__length(ArgInfos), !IO),
-    io__write_string(", ", !IO),
-    io__write_string(complexity_arg_info_array_name(ProcNum), !IO),
-    io__write_string(");\n", !IO),
+    io.write_string("\tMR_init_complexity_proc(", !IO),
+    io.write_int(ProcNum, !IO),
+    io.write_string(", """, !IO),
+    c_util.output_quoted_string(FullProcName, !IO),
+    io.write_string(""", ", !IO),
+    list.filter(complexity_arg_is_profiled, ArgInfos, ProfiledArgInfos),
+    io.write_int(list.length(ProfiledArgInfos), !IO),
+    io.write_string(", ", !IO),
+    io.write_int(list.length(ArgInfos), !IO),
+    io.write_string(", ", !IO),
+    io.write_string(complexity_arg_info_array_name(ProcNum), !IO),
+    io.write_string(");\n", !IO),
     output_init_complexity_proc_list(Infos, !IO).
 
 :- pred complexity_arg_is_profiled(complexity_arg_info::in) is semidet.
@@ -747,9 +747,9 @@ complexity_arg_is_profiled(complexity_arg_info(_, Kind)) :-
 
 output_init_reset_table(Var, !IO) :-
     Var = tabling_pointer_var(_Module, ProcLabel),
-    io__write_string("\t", !IO),
+    io.write_string("\t", !IO),
     output_tabling_pointer_var_name(ProcLabel, !IO),
-    io__write_string(".MR_integer = 0;\n", !IO).
+    io.write_string(".MR_integer = 0;\n", !IO).
 
     % Output a comment to tell mkinit what functions to call from
     % <module>_init.c.
@@ -759,40 +759,40 @@ output_init_reset_table(Var, !IO) :-
 
 output_init_comment(ModuleName, UserInitPredCNames, UserFinalPredCNames,
         !IO) :-
-    io__write_string("/*\n", !IO),
-    io__write_string("INIT ", !IO),
+    io.write_string("/*\n", !IO),
+    io.write_string("INIT ", !IO),
     output_init_name(ModuleName, !IO),
-    io__write_string("init\n", !IO),
-    list__foldl(output_required_user_init_comment, UserInitPredCNames, !IO),
-    list__foldl(output_required_user_final_comment, UserFinalPredCNames, !IO),
-    io__write_string("ENDINIT\n", !IO),
-    io__write_string("*/\n\n", !IO).
+    io.write_string("init\n", !IO),
+    list.foldl(output_required_user_init_comment, UserInitPredCNames, !IO),
+    list.foldl(output_required_user_final_comment, UserFinalPredCNames, !IO),
+    io.write_string("ENDINIT\n", !IO),
+    io.write_string("*/\n\n", !IO).
 
 :- pred output_required_user_init_comment(string::in, io::di, io::uo) is det.
 
 output_required_user_init_comment(CName, !IO) :-
-    io__write_string("REQUIRED_INIT ", !IO),
-    io__write_string(CName, !IO),
-    io__nl(!IO).
+    io.write_string("REQUIRED_INIT ", !IO),
+    io.write_string(CName, !IO),
+    io.nl(!IO).
 
 :- pred output_required_user_final_comment(string::in, io::di, io::uo) is det.
 
 output_required_user_final_comment(CName, !IO) :-
-    io__write_string("REQUIRED_FINAL ", !IO),
-    io__write_string(CName, !IO),
-    io__nl(!IO).
+    io.write_string("REQUIRED_FINAL ", !IO),
+    io.write_string(CName, !IO),
+    io.nl(!IO).
 
 :- pred output_bunch_name(module_name::in, string::in, int::in, io::di, io::uo)
     is det.
 
 output_bunch_name(ModuleName, InitStatus, Number, !IO) :-
-    io__write_string("mercury__", !IO),
+    io.write_string("mercury__", !IO),
     MangledModuleName = sym_name_mangle(ModuleName),
-    io__write_string(MangledModuleName, !IO),
-    io__write_string("_", !IO),
-    io__write_string(InitStatus, !IO),
-    io__write_string("_bunch_", !IO),
-    io__write_int(Number, !IO).
+    io.write_string(MangledModuleName, !IO),
+    io.write_string("_", !IO),
+    io.write_string(InitStatus, !IO),
+    io.write_string("_bunch_", !IO),
+    io.write_int(Number, !IO).
 
 :- pred classify_comp_gen_c_data(list(comp_gen_c_data)::in,
     multi_map(int, common_data)::in,
@@ -808,7 +808,7 @@ classify_comp_gen_c_data([Data | Datas], !CommonMap, !CommonList,
         Data = common_data(CommonData),
         CommonData = common_data(_ModuleName, _CellNum, TypeAndValue),
         TypeNum = common_cell_get_type_num(TypeAndValue),
-        multi_map__set(!.CommonMap, TypeNum, CommonData, !:CommonMap),
+        multi_map.set(!.CommonMap, TypeNum, CommonData, !:CommonMap),
         !:CommonList = [CommonData | !.CommonList]
     ;
         Data = rtti_data(Rtti),
@@ -824,7 +824,7 @@ classify_comp_gen_c_data([Data | Datas], !CommonMap, !CommonList,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_common_decl_group(TypeNum - CommonDatas, !DeclSet, !IO) :-
-    io__write_string("\n", !IO),
+    io.write_string("\n", !IO),
     (
         CommonDatas = [CommonData | _],
         CommonData = common_data(_, _, TypeAndValue)
@@ -837,27 +837,27 @@ output_common_decl_group(TypeNum - CommonDatas, !DeclSet, !IO) :-
         true
     ;
         output_const_term_type(TypeAndValue, "", "", 0, _, !IO),
-        io__write_string("\n", !IO),
+        io.write_string("\n", !IO),
         decl_set_insert(TypeDeclId, !DeclSet)
     ),
     % There should be a macro MR_DEF_COMMON<n> for every n up to
     % ChunkSize.
     ChunkSize = 10,
-    list__chunk(list__reverse(CommonDatas), ChunkSize, CommonDataChunks),
-    list__foldl2(output_common_decl_shorthand_chunk(TypeNum),
+    list.chunk(list.reverse(CommonDatas), ChunkSize, CommonDataChunks),
+    list.foldl2(output_common_decl_shorthand_chunk(TypeNum),
         CommonDataChunks, !DeclSet, !IO).
 
 :- pred output_common_decl_shorthand_chunk(int::in, list(common_data)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_common_decl_shorthand_chunk(TypeNum, CommonDatas, !DeclSet, !IO) :-
-    io__write_string("MR_DEF_COMMON", !IO),
-    io__write_int(list__length(CommonDatas), !IO),
-    io__write_string("(", !IO),
-    io__write_int(TypeNum, !IO),
-    io__write_string(",", !IO),
+    io.write_string("MR_DEF_COMMON", !IO),
+    io.write_int(list.length(CommonDatas), !IO),
+    io.write_string("(", !IO),
+    io.write_int(TypeNum, !IO),
+    io.write_string(",", !IO),
     output_common_decl_shorthand_chunk_entries(CommonDatas, !DeclSet, !IO),
-    io__write_string(")\n", !IO).
+    io.write_string(")\n", !IO).
 
 :- pred output_common_decl_shorthand_chunk_entries(list(common_data)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
@@ -872,10 +872,10 @@ output_common_decl_shorthand_chunk_entries([CommonData | CommonDatas],
     VarName = common(CellNum, TypeNum),
     VarDeclId = data_addr(data_addr(ModuleName, VarName)),
     decl_set_insert(VarDeclId, !DeclSet),
-    io__write_int(CellNum, !IO),
+    io.write_int(CellNum, !IO),
     (
         CommonDatas = [_ | _],
-        io__write_string(",", !IO),
+        io.write_string(",", !IO),
         output_common_decl_shorthand_chunk_entries(CommonDatas, !DeclSet, !IO)
     ;
         CommonDatas = []
@@ -885,9 +885,9 @@ output_common_decl_shorthand_chunk_entries([CommonData | CommonDatas],
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_common_decl_chunk(TypeNum, CommonDatas, !DeclSet, !IO) :-
-    io__write_string("const struct ", !IO),
+    io.write_string("const struct ", !IO),
     output_common_cell_type_name(TypeNum, !IO),
-    io__nl(!IO),
+    io.nl(!IO),
     output_common_decl_chunk_entries(CommonDatas, !DeclSet, !IO).
 
 :- pred output_common_decl_chunk_entries(list(common_data)::in,
@@ -904,11 +904,11 @@ output_common_decl_chunk_entries([CommonData | CommonDatas], !DeclSet, !IO) :-
     decl_set_insert(VarDeclId, !DeclSet),
     (
         CommonDatas = [_ | _],
-        io__write_string(",\n", !IO),
+        io.write_string(",\n", !IO),
         output_common_decl_chunk_entries(CommonDatas, !DeclSet, !IO)
     ;
         CommonDatas = [],
-        io__write_string(";\n", !IO)
+        io.write_string(";\n", !IO)
     ).
 
     % output_c_data_type_def outputs the given the type definition.
@@ -931,7 +931,7 @@ output_c_data_type_def(layout_data(LayoutData), !DeclSet, !IO) :-
 
 output_common_data_decl(common_data(ModuleName, CellNum, TypeAndValue),
         !DeclSet, !IO) :-
-    io__write_string("\n", !IO),
+    io.write_string("\n", !IO),
 
     % The code for data local to a Mercury module should normally be visible
     % only within the C file generated for that module. However, if we generate
@@ -943,7 +943,7 @@ output_common_data_decl(common_data(ModuleName, CellNum, TypeAndValue),
         true
     ;
         output_const_term_type(TypeAndValue, "", "", 0, _, !IO),
-        io__write_string("\n", !IO),
+        io.write_string("\n", !IO),
         decl_set_insert(TypeDeclId, !DeclSet)
     ),
     VarName = common(CellNum, TypeNum),
@@ -958,31 +958,30 @@ output_common_data_decl(common_data(ModuleName, CellNum, TypeAndValue),
 
 output_comp_gen_c_module(StackLayoutLabels,
         comp_gen_c_module(ModuleName, Procedures), !DeclSet, !IO) :-
-    io__write_string("\n", !IO),
-    list__foldl2(output_c_procedure_decls(StackLayoutLabels),
+    io.write_string("\n", !IO),
+    list.foldl2(output_c_procedure_decls(StackLayoutLabels),
         Procedures, !DeclSet, !IO),
-    io__write_string("\n", !IO),
-    io__write_string("MR_BEGIN_MODULE(", !IO),
-    io__write_string(ModuleName, !IO),
-    io__write_string(")\n", !IO),
+    io.write_string("\n", !IO),
+    io.write_string("MR_BEGIN_MODULE(", !IO),
+    io.write_string(ModuleName, !IO),
+    io.write_string(")\n", !IO),
     gather_c_module_labels(Procedures, Labels),
     output_c_label_inits(StackLayoutLabels, Labels, !IO),
-    io__write_string("MR_BEGIN_CODE\n", !IO),
-    io__write_string("\n", !IO),
-    globals__io_lookup_bool_option(auto_comments, PrintComments, !IO),
-    globals__io_lookup_bool_option(emit_c_loops, EmitCLoops, !IO),
-    list__foldl(output_c_procedure(PrintComments, EmitCLoops), Procedures,
-        !IO),
-    io__write_string("MR_END_MODULE\n", !IO).
+    io.write_string("MR_BEGIN_CODE\n", !IO),
+    io.write_string("\n", !IO),
+    globals.io_lookup_bool_option(auto_comments, PrintComments, !IO),
+    globals.io_lookup_bool_option(emit_c_loops, EmitCLoops, !IO),
+    list.foldl(output_c_procedure(PrintComments, EmitCLoops), Procedures, !IO),
+    io.write_string("MR_END_MODULE\n", !IO).
 
 :- pred output_comp_gen_c_var(comp_gen_c_var::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_comp_gen_c_var(tabling_pointer_var(ModuleName, ProcLabel),
         !DeclSet, !IO) :-
-    io__write_string("\nMR_TableNode ", !IO),
+    io.write_string("\nMR_TableNode ", !IO),
     output_tabling_pointer_var_name(ProcLabel, !IO),
-    io__write_string(" = { 0 };\n", !IO),
+    io.write_string(" = { 0 };\n", !IO),
     DataAddr = data_addr(ModuleName, tabling_pointer(ProcLabel)),
     decl_set_insert(data_addr(DataAddr), !DeclSet).
 
@@ -1001,7 +1000,7 @@ output_comp_gen_c_data(layout_data(LayoutData), !DeclSet, !IO) :-
 
 output_common_data_defn(common_data(ModuleName, CellNum, TypeAndValue),
         !DeclSet, !IO) :-
-    io__write_string("\n", !IO),
+    io.write_string("\n", !IO),
     Args = common_cell_get_rvals(TypeAndValue),
     output_rvals_decls(Args, !DeclSet, !IO),
 
@@ -1017,18 +1016,18 @@ output_common_data_defn(common_data(ModuleName, CellNum, TypeAndValue),
 output_user_foreign_code(user_foreign_code(Lang, Foreign_Code, Context),
         !IO) :-
     ( Lang = c ->
-        globals__io_lookup_bool_option(auto_comments, PrintComments, !IO),
+        globals.io_lookup_bool_option(auto_comments, PrintComments, !IO),
         (
             PrintComments = yes,
-            io__write_string("/* ", !IO),
-            prog_out__write_context(Context, !IO),
-            io__write_string(" pragma foreign_code */\n", !IO)
+            io.write_string("/* ", !IO),
+            prog_out.write_context(Context, !IO),
+            io.write_string(" pragma foreign_code */\n", !IO)
         ;
             PrintComments = no
         ),
         output_set_line_num(Context, !IO),
-        io__write_string(Foreign_Code, !IO),
-        io__write_string("\n", !IO),
+        io.write_string(Foreign_Code, !IO),
+        io.write_string("\n", !IO),
         output_reset_line_num(!IO)
     ;
         unexpected(this_file, "output_user_foreign_code: unimplemented: " ++
@@ -1039,7 +1038,7 @@ output_user_foreign_code(user_foreign_code(Lang, Foreign_Code, Context),
     io::di, io::uo) is det.
 
 output_foreign_header_include_lines(Decls, !IO) :-
-    list__foldl2(output_foreign_header_include_line, Decls, set__init, _, !IO).
+    list.foldl2(output_foreign_header_include_line, Decls, set.init, _, !IO).
 
 :- pred output_foreign_header_include_line(foreign_decl_code::in,
     set(string)::in, set(string)::out, io::di, io::uo) is det.
@@ -1047,24 +1046,24 @@ output_foreign_header_include_lines(Decls, !IO) :-
 output_foreign_header_include_line(Decl, !AlreadyDone, !IO) :-
     Decl = foreign_decl_code(Lang, _IsLocal, Code, Context),
     ( Lang = c ->
-        ( set__member(Code, !.AlreadyDone) ->
+        ( set.member(Code, !.AlreadyDone) ->
             true
         ;
-            set__insert(!.AlreadyDone, Code, !:AlreadyDone),
-            globals__io_lookup_bool_option(auto_comments, PrintComments, !IO),
+            set.insert(!.AlreadyDone, Code, !:AlreadyDone),
+            globals.io_lookup_bool_option(auto_comments, PrintComments, !IO),
             (
                 PrintComments = yes,
-                io__write_string("/* ", !IO),
-                prog_out__write_context(Context, !IO),
-                io__write_string(" pragma foreign_decl_code( ", !IO),
-                io__write(Lang, !IO),
-                io__write_string(" */\n", !IO)
+                io.write_string("/* ", !IO),
+                prog_out.write_context(Context, !IO),
+                io.write_string(" pragma foreign_decl_code( ", !IO),
+                io.write(Lang, !IO),
+                io.write_string(" */\n", !IO)
             ;
                 PrintComments = no
             ),
             output_set_line_num(Context, !IO),
-            io__write_string(Code, !IO),
-            io__write_string("\n", !IO),
+            io.write_string(Code, !IO),
+            io.write_string("\n", !IO),
             output_reset_line_num(!IO)
         )
     ;
@@ -1077,16 +1076,16 @@ output_foreign_header_include_line(Decl, !AlreadyDone, !IO) :-
 
 output_c_label_decls(StackLayoutLabels, Labels, !DeclSet, !IO) :-
     group_c_labels_with_layouts(StackLayoutLabels, Labels,
-        multi_map__init, DeclLLMap, multi_map__init, LocalLabels,
+        multi_map.init, DeclLLMap, multi_map.init, LocalLabels,
         [], RevAddrsToDecl, [], RevOtherLabels),
-    multi_map__to_assoc_list(DeclLLMap, DeclLLList),
-    list__foldl2(output_label_layout_decls, DeclLLList, !DeclSet, !IO),
-    multi_map__to_assoc_list(LocalLabels, LocalLabelList),
-    list__foldl2(output_local_label_decls, LocalLabelList, !DeclSet, !IO),
-    list__reverse(RevAddrsToDecl, AddrsToDecl),
-    list__foldl2(output_stack_layout_decl, AddrsToDecl, !DeclSet, !IO),
-    list__reverse(RevOtherLabels, OtherLabels),
-    list__foldl2(output_c_label_decl(StackLayoutLabels), OtherLabels,
+    multi_map.to_assoc_list(DeclLLMap, DeclLLList),
+    list.foldl2(output_label_layout_decls, DeclLLList, !DeclSet, !IO),
+    multi_map.to_assoc_list(LocalLabels, LocalLabelList),
+    list.foldl2(output_local_label_decls, LocalLabelList, !DeclSet, !IO),
+    list.reverse(RevAddrsToDecl, AddrsToDecl),
+    list.foldl2(output_stack_layout_decl, AddrsToDecl, !DeclSet, !IO),
+    list.reverse(RevOtherLabels, OtherLabels),
+    list.foldl2(output_c_label_decl(StackLayoutLabels), OtherLabels,
         !DeclSet, !IO).
 
 :- pred group_c_labels_with_layouts(map(label, data_addr)::in, list(label)::in,
@@ -1101,20 +1100,20 @@ group_c_labels_with_layouts(StackLayoutLabels, [Label | Labels],
         !DeclLLMap, !OtherLocalMap, !RevAddrsToDecl, !RevOthers) :-
     (
         Label = internal(LabelNum, ProcLabel),
-        ( map__search(StackLayoutLabels, Label, DataAddr) ->
+        ( map.search(StackLayoutLabels, Label, DataAddr) ->
             (
                 DataAddr = layout_addr(LayoutName),
                 LayoutName = label_layout(ProcLabel, LabelNum,
                     LabelVars),
                 LabelVars = label_has_var_info
             ->
-                svmulti_map__set(ProcLabel, LabelNum, !DeclLLMap)
+                svmulti_map.set(ProcLabel, LabelNum, !DeclLLMap)
             ;
-                svmulti_map__set(ProcLabel, LabelNum, !OtherLocalMap),
+                svmulti_map.set(ProcLabel, LabelNum, !OtherLocalMap),
                 !:RevAddrsToDecl = [DataAddr | !.RevAddrsToDecl]
             )
         ;
-            svmulti_map__set(ProcLabel, LabelNum, !OtherLocalMap)
+            svmulti_map.set(ProcLabel, LabelNum, !OtherLocalMap)
         )
     ;
         Label = entry(_, _),
@@ -1129,23 +1128,23 @@ group_c_labels_with_layouts(StackLayoutLabels, [Label | Labels],
 output_label_layout_decls(ProcLabel - LabelNums0, !DeclSet, !IO) :-
     % There must be a macro of the form MR_DECL_LL<n> for every <n>
     % up to MaxChunkSize.
-    list__reverse(LabelNums0, LabelNums),
+    list.reverse(LabelNums0, LabelNums),
     MaxChunkSize = 10,
-    list__chunk(LabelNums, MaxChunkSize, LabelNumChunks),
-    list__foldl2(output_label_layout_decl_group(ProcLabel), LabelNumChunks,
+    list.chunk(LabelNums, MaxChunkSize, LabelNumChunks),
+    list.foldl2(output_label_layout_decl_group(ProcLabel), LabelNumChunks,
         !DeclSet, !IO).
 
 :- pred output_label_layout_decl_group(proc_label::in, list(int)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_label_layout_decl_group(ProcLabel, LabelNums, !DeclSet, !IO) :-
-    io__write_string("MR_DECL_LL", !IO),
-    io__write_int(list__length(LabelNums), !IO),
-    io__write_string("(", !IO),
+    io.write_string("MR_DECL_LL", !IO),
+    io.write_int(list.length(LabelNums), !IO),
+    io.write_string("(", !IO),
     output_proc_label(ProcLabel, no, !IO),
-    io__write_string(", ", !IO),
-    io__write_list(LabelNums, ",", io__write_int, !IO),
-    io__write_string(")\n", !IO).
+    io.write_string(", ", !IO),
+    io.write_list(LabelNums, ",", io.write_int, !IO),
+    io.write_string(")\n", !IO).
 
 :- pred output_local_label_decls(pair(proc_label, list(int))::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
@@ -1153,27 +1152,27 @@ output_label_layout_decl_group(ProcLabel, LabelNums, !DeclSet, !IO) :-
 output_local_label_decls(ProcLabel - LabelNums0, !DeclSet, !IO) :-
     % There must be a macro of the form MR_decl_label<n> for every <n>
     % up to MaxChunkSize.
-    list__reverse(LabelNums0, LabelNums),
+    list.reverse(LabelNums0, LabelNums),
     MaxChunkSize = 8,
-    list__chunk(LabelNums, MaxChunkSize, LabelNumChunks),
-    list__foldl2(output_local_label_decl_group(ProcLabel), LabelNumChunks,
+    list.chunk(LabelNums, MaxChunkSize, LabelNumChunks),
+    list.foldl2(output_local_label_decl_group(ProcLabel), LabelNumChunks,
         !DeclSet, !IO),
-    list__foldl(insert_var_info_label_layout_decl(ProcLabel), LabelNums,
+    list.foldl(insert_var_info_label_layout_decl(ProcLabel), LabelNums,
         !DeclSet),
-    list__foldl(insert_code_addr_decl(ProcLabel), LabelNums, !DeclSet).
+    list.foldl(insert_code_addr_decl(ProcLabel), LabelNums, !DeclSet).
 
 :- pred output_local_label_decl_group(proc_label::in, list(int)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_local_label_decl_group(ProcLabel, LabelNums, !DeclSet, !IO) :-
-    io__write_string("MR_decl_label", !IO),
-    io__write_int(list__length(LabelNums), !IO),
-    io__write_string("(", !IO),
+    io.write_string("MR_decl_label", !IO),
+    io.write_int(list.length(LabelNums), !IO),
+    io.write_string("(", !IO),
     output_proc_label(ProcLabel, no, !IO),
-    io__write_string(", ", !IO),
-    io__write_list(LabelNums, ",", io__write_int, !IO),
-    io__write_string(")\n", !IO),
-    list__foldl(insert_code_addr_decl(ProcLabel), LabelNums, !DeclSet).
+    io.write_string(", ", !IO),
+    io.write_list(LabelNums, ",", io.write_int, !IO),
+    io.write_string(")\n", !IO),
+    list.foldl(insert_code_addr_decl(ProcLabel), LabelNums, !DeclSet).
 
 :- pred insert_var_info_label_layout_decl(proc_label::in, int::in,
     decl_set::in, decl_set::out) is det.
@@ -1198,7 +1197,7 @@ output_c_label_decl(StackLayoutLabels, Label, !DeclSet, !IO) :-
     %
     % Declare the stack layout entry for this label, if needed.
     %
-    ( map__search(StackLayoutLabels, Label, DataAddr) ->
+    ( map.search(StackLayoutLabels, Label, DataAddr) ->
         (
             Label = internal(LabelNum, ProcLabel),
             DataAddr = layout_addr(LayoutName),
@@ -1211,13 +1210,13 @@ output_c_label_decl(StackLayoutLabels, Label, !DeclSet, !IO) :-
                 LabelVars = label_has_no_var_info,
                 Macro = "MR_DECL_LLNVI"
             ),
-            io__write_string(Macro, !IO),
-            io__write_string("(", !IO),
+            io.write_string(Macro, !IO),
+            io.write_string("(", !IO),
             output_proc_label(ProcLabel, no, !IO),
-            io__write_string(", ", !IO),
-            io__write_int(LabelNum, !IO),
+            io.write_string(", ", !IO),
+            io.write_int(LabelNum, !IO),
             % The final semicolon is in the macro definition.
-            io__write_string(")\n", !IO),
+            io.write_string(")\n", !IO),
             % The macro declares both the label layout structure
             % and the label.
             AlreadyDeclaredLabel = yes
@@ -1246,10 +1245,10 @@ output_c_label_decl(StackLayoutLabels, Label, !DeclSet, !IO) :-
             Label = internal(_, _),
             DeclMacro = "MR_decl_label("
         ),
-        io__write_string(DeclMacro, !IO),
-        io__write_string("", !IO),
+        io.write_string(DeclMacro, !IO),
+        io.write_string("", !IO),
         output_label(Label, no, !IO),
-        io__write_string(")\n", !IO)
+        io.write_string(")\n", !IO)
     ;
         AlreadyDeclaredLabel = yes
     ),
@@ -1265,14 +1264,14 @@ output_stack_layout_decl(DataAddr, !DeclSet, !IO) :-
     io::di, io::uo) is det.
 
 output_c_label_inits(StackLayoutLabels, Labels, !IO) :-
-    group_c_labels(StackLayoutLabels, Labels, multi_map__init, NoLayoutMap,
-        multi_map__init, LayoutMap, [], RevOtherLabels),
-    list__reverse(RevOtherLabels, OtherLabels),
-    list__foldl(output_c_label_init(StackLayoutLabels), OtherLabels, !IO),
-    multi_map__to_assoc_list(NoLayoutMap, NoLayoutList),
-    multi_map__to_assoc_list(LayoutMap, LayoutList),
-    list__foldl(output_c_label_init_group(""), NoLayoutList, !IO),
-    list__foldl(output_c_label_init_group("_sl"), LayoutList, !IO).
+    group_c_labels(StackLayoutLabels, Labels, multi_map.init, NoLayoutMap,
+        multi_map.init, LayoutMap, [], RevOtherLabels),
+    list.reverse(RevOtherLabels, OtherLabels),
+    list.foldl(output_c_label_init(StackLayoutLabels), OtherLabels, !IO),
+    multi_map.to_assoc_list(NoLayoutMap, NoLayoutList),
+    multi_map.to_assoc_list(LayoutMap, LayoutList),
+    list.foldl(output_c_label_init_group(""), NoLayoutList, !IO),
+    list.foldl(output_c_label_init_group("_sl"), LayoutList, !IO).
 
 :- pred group_c_labels(map(label, data_addr)::in, list(label)::in,
     multi_map(proc_label, int)::in, multi_map(proc_label, int)::out,
@@ -1284,10 +1283,10 @@ group_c_labels(StackLayoutLabels, [Label | Labels], !NoLayoutMap, !LayoutMap,
         !RevOthers) :-
     (
         Label = internal(LabelNum, ProcLabel),
-        ( map__search(StackLayoutLabels, Label, _DataAddr) ->
-            svmulti_map__set(ProcLabel, LabelNum, !LayoutMap)
+        ( map.search(StackLayoutLabels, Label, _DataAddr) ->
+            svmulti_map.set(ProcLabel, LabelNum, !LayoutMap)
         ;
-            svmulti_map__set(ProcLabel, LabelNum, !NoLayoutMap)
+            svmulti_map.set(ProcLabel, LabelNum, !NoLayoutMap)
         )
     ;
         Label = entry(_, _),
@@ -1300,32 +1299,32 @@ group_c_labels(StackLayoutLabels, [Label | Labels], !NoLayoutMap, !LayoutMap,
     pair(proc_label, list(int))::in, io::di, io::uo) is det.
 
 output_c_label_init_group(Suffix, ProcLabel - RevLabelNums, !IO) :-
-    list__reverse(RevLabelNums, LabelNums),
+    list.reverse(RevLabelNums, LabelNums),
     % There must be macros of the form MR_init_label<n> and
     % MR_init_label_sl<n> for every <n> up to MaxChunkSize.
     MaxChunkSize = 8,
-    list__chunk(LabelNums, MaxChunkSize, LabelNumChunks),
-    list__foldl(output_c_label_init_chunk(Suffix, ProcLabel),
+    list.chunk(LabelNums, MaxChunkSize, LabelNumChunks),
+    list.foldl(output_c_label_init_chunk(Suffix, ProcLabel),
         LabelNumChunks, !IO).
 
 :- pred output_c_label_init_chunk(string::in,
     proc_label::in, list(int)::in, io::di, io::uo) is det.
 
 output_c_label_init_chunk(Suffix, ProcLabel, LabelNums, !IO) :-
-    io__write_string("\tMR_init_label", !IO),
-    io__write_string(Suffix, !IO),
-    io__write_int(list__length(LabelNums), !IO),
-    io__write_string("(", !IO),
+    io.write_string("\tMR_init_label", !IO),
+    io.write_string(Suffix, !IO),
+    io.write_int(list.length(LabelNums), !IO),
+    io.write_string("(", !IO),
     output_proc_label(ProcLabel, no, !IO),
-    io__write_string(",", !IO),
-    io__write_list(LabelNums, ",", io__write_int, !IO),
-    io__write_string(")\n", !IO).
+    io.write_string(",", !IO),
+    io.write_list(LabelNums, ",", io.write_int, !IO),
+    io.write_string(")\n", !IO).
 
 :- pred output_c_label_init(map(label, data_addr)::in, label::in,
     io::di, io::uo) is det.
 
 output_c_label_init(StackLayoutLabels, Label, !IO) :-
-    ( map__search(StackLayoutLabels, Label, DataAddr) ->
+    ( map.search(StackLayoutLabels, Label, DataAddr) ->
         SuffixOpen = "_sl(",
         ( DataAddr = layout_addr(proc_layout(_, _)) ->
             % Labels whose stack layouts are proc layouts may need
@@ -1356,15 +1355,15 @@ output_c_label_init(StackLayoutLabels, Label, !IO) :-
         % These should have been separated out by group_c_labels.
         unexpected(this_file, "output_c_label_init: internal/2")
     ),
-    io__write_string(TabInitMacro, !IO),
-    io__write_string(SuffixOpen, !IO),
+    io.write_string(TabInitMacro, !IO),
+    io.write_string(SuffixOpen, !IO),
     output_proc_label(ProcLabel, no, !IO),
-    io__write_string(");\n", !IO),
+    io.write_string(");\n", !IO),
     (
         InitProcLayout = yes,
-        io__write_string("\tMR_INIT_PROC_LAYOUT_ADDR(", !IO),
+        io.write_string("\tMR_INIT_PROC_LAYOUT_ADDR(", !IO),
         output_label(Label, !IO),
-        io__write_string(");\n", !IO)
+        io.write_string(");\n", !IO)
     ;
         InitProcLayout = no
     ).
@@ -1379,7 +1378,7 @@ label_is_proc_entry(entry(_, _), yes).
 
 output_c_procedure_decls(StackLayoutLabels, Proc, !DeclSet, !IO) :-
     Proc = c_procedure(_Name, _Arity, _PredProcId, Instrs, _, _, _),
-    list__foldl2(output_instruction_decls(StackLayoutLabels), Instrs,
+    list.foldl2(output_instruction_decls(StackLayoutLabels), Instrs,
         !DeclSet, !IO).
 
 :- pred output_c_procedure(bool::in, bool::in, c_procedure::in,
@@ -1390,34 +1389,34 @@ output_c_procedure(PrintComments, EmitCLoops, Proc, !IO) :-
     proc_id_to_int(ProcId, ModeNum),
     (
         PrintComments = yes,
-        io__write_string("\n/*-------------------------------------", !IO),
-        io__write_string("------------------------------------*/\n", !IO)
+        io.write_string("\n/*-------------------------------------", !IO),
+        io.write_string("------------------------------------*/\n", !IO)
     ;
         PrintComments = no
     ),
     (
         PrintComments = yes,
-        io__write_string("/* code for predicate '", !IO),
+        io.write_string("/* code for predicate '", !IO),
             % Now that we have unused_args.m mangling predicate
             % names, we should probably demangle them here.
-        io__write_string(Name, !IO),
-        io__write_string("'/", !IO),
-        io__write_int(Arity, !IO),
-        io__write_string(" in mode ", !IO),
-        io__write_int(ModeNum, !IO),
-        io__write_string(" */\n", !IO)
+        io.write_string(Name, !IO),
+        io.write_string("'/", !IO),
+        io.write_int(Arity, !IO),
+        io.write_string(" in mode ", !IO),
+        io.write_int(ModeNum, !IO),
+        io.write_string(" */\n", !IO)
     ;
         PrintComments = no
     ),
 
     find_caller_label(Instrs, CallerLabel),
-    find_cont_labels(Instrs, bintree_set__init, ContLabelSet),
+    find_cont_labels(Instrs, bintree_set.init, ContLabelSet),
     (
         EmitCLoops = yes,
-        find_while_labels(Instrs, bintree_set__init, WhileSet)
+        find_while_labels(Instrs, bintree_set.init, WhileSet)
     ;
         EmitCLoops = no,
-        WhileSet = bintree_set__init
+        WhileSet = bintree_set.init
     ),
     output_instruction_list(Instrs, PrintComments,
         CallerLabel - ContLabelSet, WhileSet, !IO).
@@ -1462,11 +1461,11 @@ find_cont_labels([Instr - _ | Instrs], !ContLabelSet) :-
             Const = code_addr_const(label(ContLabel))
         )
     ->
-        bintree_set__insert(!.ContLabelSet, ContLabel, !:ContLabelSet)
+        bintree_set.insert(!.ContLabelSet, ContLabel, !:ContLabelSet)
     ;
         Instr = fork(Label1, Label2, _)
     ->
-        bintree_set__insert_list(!.ContLabelSet, [Label1, Label2],
+        bintree_set.insert_list(!.ContLabelSet, [Label1, Label2],
             !:ContLabelSet)
     ;
         Instr = block(_, _, Block)
@@ -1505,7 +1504,7 @@ find_while_labels([Instr0 - _ | Instrs0], !WhileSet) :-
         is_while_label(Label, Instrs0, Instrs1, 0, UseCount),
         UseCount > 0
     ->
-        bintree_set__insert(!.WhileSet, Label, !:WhileSet),
+        bintree_set.insert(!.WhileSet, Label, !:WhileSet),
         find_while_labels(Instrs1, !WhileSet)
     ;
         find_while_labels(Instrs0, !WhileSet)
@@ -1566,7 +1565,7 @@ output_instr_decls(_, comment(_), !DeclSet, !IO).
 output_instr_decls(_, livevals(_), !DeclSet, !IO).
 output_instr_decls( StackLayoutLabels, block(_TempR, _TempF, Instrs),
         !DeclSet, !IO) :-
-    list__foldl2(output_instruction_decls(StackLayoutLabels), Instrs,
+    list.foldl2(output_instruction_decls(StackLayoutLabels), Instrs,
         !DeclSet, !IO).
 output_instr_decls(_, assign(Lval, Rval), !DeclSet, !IO) :-
     output_lval_decls(Lval, !DeclSet, !IO),
@@ -1588,19 +1587,19 @@ output_instr_decls(_, mkframe(FrameInfo, MaybeFailureContinuation),
         ;
             true
         ),
-        io__write_string("struct ", !IO),
-        io__write_string(StructName, !IO),
-        io__write_string(" {\n", !IO),
+        io.write_string("struct ", !IO),
+        io.write_string(StructName, !IO),
+        io.write_string(" {\n", !IO),
         (
             MaybeStructFieldsContext = yes(StructFieldsContext),
             output_set_line_num(StructFieldsContext, !IO),
-            io__write_string(StructFields, !IO),
+            io.write_string(StructFields, !IO),
             output_reset_line_num(!IO)
         ;
             MaybeStructFieldsContext = no,
-            io__write_string(StructFields, !IO)
+            io.write_string(StructFields, !IO)
         ),
-        io__write_string("\n};\n", !IO),
+        io.write_string("\n};\n", !IO),
         decl_set_insert(pragma_c_struct(StructName), !DeclSet)
     ;
         true
@@ -1649,19 +1648,19 @@ output_instr_decls(StackLayoutLabels, pragma_c(_, Comps, _, _,
         MaybeLayoutLabel, MaybeOnlyLayoutLabel, _, _, _), !DeclSet, !IO) :-
     (
         MaybeLayoutLabel = yes(Label),
-        map__lookup(StackLayoutLabels, Label, DataAddr),
+        map.lookup(StackLayoutLabels, Label, DataAddr),
         output_stack_layout_decl(DataAddr, !DeclSet, !IO)
     ;
         MaybeLayoutLabel = no
     ),
     (
         MaybeOnlyLayoutLabel = yes(OnlyLabel),
-        map__lookup(StackLayoutLabels, OnlyLabel, OnlyDataAddr),
+        map.lookup(StackLayoutLabels, OnlyLabel, OnlyDataAddr),
         output_stack_layout_decl(OnlyDataAddr, !DeclSet, !IO)
     ;
         MaybeOnlyLayoutLabel = no
     ),
-    list__foldl2(output_pragma_c_component_decls, Comps, !DeclSet, !IO).
+    list.foldl2(output_pragma_c_component_decls, Comps, !DeclSet, !IO).
 output_instr_decls(_, init_sync_term(Lval, _), !DeclSet, !IO) :-
     output_lval_decls(Lval, !DeclSet, !IO).
 output_instr_decls(_, fork(Child, Parent, _), !DeclSet, !IO) :-
@@ -1698,9 +1697,9 @@ output_instruction_list([Instr0 - Comment0 | Instrs], PrintComments, ProfInfo,
         !IO),
     (
         Instr0 = label(Label),
-        bintree_set__is_member(Label, WhileSet)
+        bintree_set.is_member(Label, WhileSet)
     ->
-        io__write_string("\twhile (1) {\n", !IO),
+        io.write_string("\twhile (1) {\n", !IO),
         output_instruction_list_while(Instrs, Label,
             PrintComments, ProfInfo, WhileSet, !IO)
         % The matching close brace is printed in output_instruction_list
@@ -1716,27 +1715,27 @@ output_instruction_list([Instr0 - Comment0 | Instrs], PrintComments, ProfInfo,
     io::di, io::uo) is det.
 
 output_instruction_list_while([], _, _, _, _, !IO) :-
-    io__write_string("\tbreak; } /* end while */\n", !IO).
+    io.write_string("\tbreak; } /* end while */\n", !IO).
 output_instruction_list_while([Instr0 - Comment0 | Instrs], Label,
         PrintComments, ProfInfo, WhileSet, !IO) :-
     ( Instr0 = label(_) ->
-        io__write_string("\tbreak; } /* end while */\n", !IO),
+        io.write_string("\tbreak; } /* end while */\n", !IO),
         output_instruction_list([Instr0 - Comment0 | Instrs],
             PrintComments, ProfInfo, WhileSet, !IO)
     ; Instr0 = goto(label(Label)) ->
-        io__write_string("\t/* continue */ } /* end while */\n", !IO),
+        io.write_string("\t/* continue */ } /* end while */\n", !IO),
         output_instruction_list(Instrs, PrintComments, ProfInfo, WhileSet, !IO)
     ; Instr0 = if_val(Rval, label(Label)) ->
-        io__write_string("\tif (", !IO),
+        io.write_string("\tif (", !IO),
         output_test_rval(Rval, !IO),
-        io__write_string(")\n\t\tcontinue;\n", !IO),
+        io.write_string(")\n\t\tcontinue;\n", !IO),
         (
             PrintComments = yes,
             Comment0 \= ""
         ->
-            io__write_string("\t\t/* ", !IO),
-            io__write_string(Comment0, !IO),
-            io__write_string(" */\n", !IO)
+            io.write_string("\t\t/* ", !IO),
+            io.write_string(Comment0, !IO),
+            io.write_string(" */\n", !IO)
         ;
             true
         ),
@@ -1765,20 +1764,20 @@ output_instruction_list_while_block([Instr0 - Comment0 | Instrs], Label,
     ( Instr0 = label(_) ->
         unexpected(this_file, "label in block")
     ; Instr0 = goto(label(Label)) ->
-        io__write_string("\tcontinue;\n", !IO),
+        io.write_string("\tcontinue;\n", !IO),
         expect(unify(Instrs, []), this_file,
             "output_instruction_list_while_block: code after goto")
     ; Instr0 = if_val(Rval, label(Label)) ->
-        io__write_string("\tif (", !IO),
+        io.write_string("\tif (", !IO),
         output_test_rval(Rval, !IO),
-        io__write_string(")\n\t\tcontinue;\n", !IO),
+        io.write_string(")\n\t\tcontinue;\n", !IO),
         (
             PrintComments = yes,
             Comment0 \= ""
         ->
-            io__write_string("\t\t/* ", !IO),
-            io__write_string(Comment0, !IO),
-            io__write_string(" */\n", !IO)
+            io.write_string("\t\t/* ", !IO),
+            io.write_string(Comment0, !IO),
+            io.write_string(" */\n", !IO)
         ;
             true
         ),
@@ -1814,9 +1813,9 @@ output_instruction_and_comment(Instr, Comment, PrintComments, ProfInfo, !IO) :-
         ( Comment = "" ->
             true
         ;
-            io__write_string("\t\t/* ", !IO),
-            io__write_string(Comment, !IO),
-            io__write_string("*/\n", !IO)
+            io.write_string("\t\t/* ", !IO),
+            io.write_string(Comment, !IO),
+            io.write_string("*/\n", !IO)
         )
     ).
 
@@ -1824,10 +1823,10 @@ output_instruction_and_comment(Instr, Comment, PrintComments, ProfInfo, !IO) :-
     % Normally we use output_instruction_and_comment/6.
     %
 output_debug_instruction_and_comment(Instr, Comment, PrintComments, !IO) :-
-    bintree_set__init(ContLabelSet),
+    bintree_set.init(ContLabelSet),
     DummyModule = unqualified("DEBUG"),
     DummyPredName = "DEBUG",
-    proc_id_to_int(hlds_pred__initial_proc_id, InitialProcIdInt),
+    proc_id_to_int(hlds_pred.initial_proc_id, InitialProcIdInt),
     ProcLabel = proc(DummyModule, predicate, DummyModule,
         DummyPredName, 0, InitialProcIdInt),
     ProfInfo = entry(local, ProcLabel) - ContLabelSet,
@@ -1838,10 +1837,10 @@ output_debug_instruction_and_comment(Instr, Comment, PrintComments, !IO) :-
     % Normally we use output_instruction/4.
     %
 output_debug_instruction(Instr, !IO) :-
-    bintree_set__init(ContLabelSet),
+    bintree_set.init(ContLabelSet),
     DummyModule = unqualified("DEBUG"),
     DummyPredName = "DEBUG",
-    proc_id_to_int(hlds_pred__initial_proc_id, InitialProcIdInt),
+    proc_id_to_int(hlds_pred.initial_proc_id, InitialProcIdInt),
     ProcLabel = proc(DummyModule, predicate, DummyModule,
         DummyPredName, 0, InitialProcIdInt),
     ProfInfo = entry(local, ProcLabel) - ContLabelSet,
@@ -1850,18 +1849,18 @@ output_debug_instruction(Instr, !IO) :-
 :- pred output_block_start(int::in, int::in, io::di, io::uo) is det.
 
 output_block_start(TempR, TempF, !IO) :-
-    io__write_string("\t{\n", !IO),
+    io.write_string("\t{\n", !IO),
     ( TempR > 0 ->
-        io__write_string("\tMR_Word ", !IO),
+        io.write_string("\tMR_Word ", !IO),
         output_temp_decls(TempR, "r", !IO),
-        io__write_string(";\n", !IO)
+        io.write_string(";\n", !IO)
     ;
         true
     ),
     ( TempF > 0 ->
-        io__write_string("\tMR_Float ", !IO),
+        io.write_string("\tMR_Float ", !IO),
         output_temp_decls(TempF, "f", !IO),
-        io__write_string(";\n", !IO)
+        io.write_string(";\n", !IO)
     ;
         true
     ).
@@ -1869,33 +1868,33 @@ output_block_start(TempR, TempF, !IO) :-
 :- pred output_block_end(io::di, io::uo) is det.
 
 output_block_end(!IO) :-
-    io__write_string("\t}\n", !IO).
+    io.write_string("\t}\n", !IO).
 
 :- pred output_instruction(instr::in, pair(label, bintree_set(label))::in,
     io::di, io::uo) is det.
 
 output_instruction(comment(Comment), _, !IO) :-
-    io__write_strings(["/*", Comment, "*/\n"], !IO).
+    io.write_strings(["/*", Comment, "*/\n"], !IO).
 
 output_instruction(livevals(LiveVals), _, !IO) :-
-    io__write_string("/*\n* Live lvalues:\n", !IO),
-    set__to_sorted_list(LiveVals, LiveValsList),
+    io.write_string("/*\n* Live lvalues:\n", !IO),
+    set.to_sorted_list(LiveVals, LiveValsList),
     output_livevals(LiveValsList, !IO),
-    io__write_string("*/\n", !IO).
+    io.write_string("*/\n", !IO).
 
 output_instruction(block(TempR, TempF, Instrs), ProfInfo, !IO) :-
     output_block_start(TempR, TempF, !IO),
-    globals__io_lookup_bool_option(auto_comments, PrintComments, !IO),
+    globals.io_lookup_bool_option(auto_comments, PrintComments, !IO),
     output_instruction_list(Instrs, PrintComments, ProfInfo,
-        bintree_set__init, !IO),
+        bintree_set.init, !IO),
     output_block_end(!IO).
 
 output_instruction(assign(Lval, Rval), _, !IO) :-
-    io__write_string("\t", !IO),
+    io.write_string("\t", !IO),
     output_lval_for_assign(Lval, Type, !IO),
-    io__write_string(" = ", !IO),
+    io.write_string(" = ", !IO),
     output_rval_as_type(Rval, Type, !IO),
-    io__write_string(";\n", !IO).
+    io.write_string(";\n", !IO).
 
 output_instruction(call(Target, ContLabel, LiveVals, _, _, _), ProfInfo,
         !IO) :-
@@ -1904,8 +1903,8 @@ output_instruction(call(Target, ContLabel, LiveVals, _, _, _), ProfInfo,
     output_gc_livevals(LiveVals, !IO).
 
 output_instruction(c_code(C_Code_String, _), _, !IO) :-
-    io__write_string("\t", !IO),
-    io__write_string(C_Code_String, !IO).
+    io.write_string("\t", !IO),
+    io.write_string(C_Code_String, !IO).
 
 output_instruction(mkframe(FrameInfo, MaybeFailCont), _, !IO) :-
     (
@@ -1914,51 +1913,51 @@ output_instruction(mkframe(FrameInfo, MaybeFailCont), _, !IO) :-
             MaybeStruct = yes(pragma_c_struct(StructName, _, _)),
             (
                 MaybeFailCont = yes(FailCont),
-                io__write_string("\tMR_mkpragmaframe(""", !IO),
-                c_util__output_quoted_string(Msg, !IO),
-                io__write_string(""", ", !IO),
-                io__write_int(Num, !IO),
-                io__write_string(", ", !IO),
-                io__write_string(StructName, !IO),
-                io__write_string(", ", !IO),
+                io.write_string("\tMR_mkpragmaframe(""", !IO),
+                c_util.output_quoted_string(Msg, !IO),
+                io.write_string(""", ", !IO),
+                io.write_int(Num, !IO),
+                io.write_string(", ", !IO),
+                io.write_string(StructName, !IO),
+                io.write_string(", ", !IO),
                 output_code_addr(FailCont, !IO),
-                io__write_string(");\n", !IO)
+                io.write_string(");\n", !IO)
             ;
                 MaybeFailCont = no,
-                io__write_string("\tMR_mkpragmaframe_no_redoip(""", !IO),
-                c_util__output_quoted_string(Msg, !IO),
-                io__write_string(""", ", !IO),
-                io__write_int(Num, !IO),
-                io__write_string(", ", !IO),
-                io__write_string(StructName, !IO),
-                io__write_string(");\n", !IO)
+                io.write_string("\tMR_mkpragmaframe_no_redoip(""", !IO),
+                c_util.output_quoted_string(Msg, !IO),
+                io.write_string(""", ", !IO),
+                io.write_int(Num, !IO),
+                io.write_string(", ", !IO),
+                io.write_string(StructName, !IO),
+                io.write_string(");\n", !IO)
             )
         ;
             MaybeStruct = no,
             (
                 MaybeFailCont = yes(FailCont),
-                io__write_string("\tMR_mkframe(""", !IO),
-                c_util__output_quoted_string(Msg, !IO),
-                io__write_string(""", ", !IO),
-                io__write_int(Num, !IO),
-                io__write_string(", ", !IO),
+                io.write_string("\tMR_mkframe(""", !IO),
+                c_util.output_quoted_string(Msg, !IO),
+                io.write_string(""", ", !IO),
+                io.write_int(Num, !IO),
+                io.write_string(", ", !IO),
                 output_code_addr(FailCont, !IO),
-                io__write_string(");\n", !IO)
+                io.write_string(");\n", !IO)
             ;
                 MaybeFailCont = no,
-                io__write_string("\tMR_mkframe_no_redoip(""",
+                io.write_string("\tMR_mkframe_no_redoip(""",
                     !IO),
-                c_util__output_quoted_string(Msg, !IO),
-                io__write_string(""", ", !IO),
-                io__write_int(Num, !IO),
-                io__write_string(");\n", !IO)
+                c_util.output_quoted_string(Msg, !IO),
+                io.write_string(""", ", !IO),
+                io.write_int(Num, !IO),
+                io.write_string(");\n", !IO)
             )
         )
     ;
         FrameInfo = temp_frame(Kind),
         (
             Kind = det_stack_proc,
-            io__write_string("\tMR_mkdettempframe(", !IO),
+            io.write_string("\tMR_mkdettempframe(", !IO),
             (
                 MaybeFailCont = yes(FailCont),
                 output_code_addr(FailCont, !IO)
@@ -1966,10 +1965,10 @@ output_instruction(mkframe(FrameInfo, MaybeFailCont), _, !IO) :-
                 MaybeFailCont = no,
                 unexpected(this_file, "output_instruction: no failcont")
             ),
-            io__write_string(");\n", !IO)
+            io.write_string(");\n", !IO)
         ;
             Kind = nondet_stack_proc,
-            io__write_string("\tMR_mktempframe(", !IO),
+            io.write_string("\tMR_mktempframe(", !IO),
             (
                 MaybeFailCont = yes(FailCont),
                 output_code_addr(FailCont, !IO)
@@ -1977,7 +1976,7 @@ output_instruction(mkframe(FrameInfo, MaybeFailCont), _, !IO) :-
                 MaybeFailCont = no,
                 unexpected(this_file, "output_instruction: no failcont")
             ),
-            io__write_string(");\n", !IO)
+            io.write_string(");\n", !IO)
         )
     ).
 
@@ -1987,204 +1986,204 @@ output_instruction(label(Label), ProfInfo, !IO) :-
 
 output_instruction(goto(CodeAddr), ProfInfo, !IO) :-
     ProfInfo = CallerLabel - _,
-    io__write_string("\t", !IO),
+    io.write_string("\t", !IO),
     output_goto(CodeAddr, CallerLabel, !IO).
 
 output_instruction(computed_goto(Rval, Labels), _, !IO) :-
-    io__write_string("\tMR_COMPUTED_GOTO(", !IO),
+    io.write_string("\tMR_COMPUTED_GOTO(", !IO),
     output_rval_as_type(Rval, unsigned, !IO),
-    io__write_string(",\n\t\t", !IO),
+    io.write_string(",\n\t\t", !IO),
     output_label_list(Labels, !IO),
-    io__write_string(");\n", !IO).
+    io.write_string(");\n", !IO).
 
 output_instruction(if_val(Rval, Target), ProfInfo, !IO) :-
     ProfInfo = CallerLabel - _,
-    io__write_string("\tif (", !IO),
+    io.write_string("\tif (", !IO),
     output_test_rval(Rval, !IO),
-    io__write_string(") {\n\t\t", !IO),
+    io.write_string(") {\n\t\t", !IO),
     output_goto(Target, CallerLabel, !IO),
-    io__write_string("\t}\n", !IO).
+    io.write_string("\t}\n", !IO).
 
 output_instruction(save_maxfr(Lval), _, !IO) :-
-    io__write_string("\tMR_save_maxfr(", !IO),
+    io.write_string("\tMR_save_maxfr(", !IO),
     output_lval(Lval, !IO),
-    io__write_string(");\n", !IO).
+    io.write_string(");\n", !IO).
 
 output_instruction(restore_maxfr(Lval), _, !IO) :-
-    io__write_string("\tMR_restore_maxfr(", !IO),
+    io.write_string("\tMR_restore_maxfr(", !IO),
     output_lval(Lval, !IO),
-    io__write_string(");\n", !IO).
+    io.write_string(");\n", !IO).
 
 output_instruction(incr_hp(Lval, MaybeTag, MaybeOffset, Rval, TypeMsg),
         ProfInfo, !IO) :-
-    globals__io_lookup_bool_option(profile_memory, ProfMem, !IO),
+    globals.io_lookup_bool_option(profile_memory, ProfMem, !IO),
     (
         ProfMem = yes,
         (
             MaybeTag = no,
-            io__write_string("\tMR_offset_incr_hp_msg(", !IO),
+            io.write_string("\tMR_offset_incr_hp_msg(", !IO),
             output_lval_as_word(Lval, !IO)
         ;
             MaybeTag = yes(Tag),
-            io__write_string("\tMR_tag_offset_incr_hp_msg(", !IO),
+            io.write_string("\tMR_tag_offset_incr_hp_msg(", !IO),
             output_lval_as_word(Lval, !IO),
-            io__write_string(", ", !IO),
+            io.write_string(", ", !IO),
             output_tag(Tag, !IO)
         ),
-        io__write_string(", ", !IO),
+        io.write_string(", ", !IO),
         (
             MaybeOffset = no,
-            io__write_string("0, ", !IO)
+            io.write_string("0, ", !IO)
         ;
             MaybeOffset = yes(Offset),
-            io__write_int(Offset, !IO),
-            io__write_string(", ", !IO)
+            io.write_int(Offset, !IO),
+            io.write_string(", ", !IO)
         ),
         output_rval_as_type(Rval, word, !IO),
-        io__write_string(", ", !IO),
+        io.write_string(", ", !IO),
         ProfInfo = CallerLabel - _,
         output_label(CallerLabel, !IO),
-        io__write_string(", """, !IO),
-        c_util__output_quoted_string(TypeMsg, !IO),
-        io__write_string(""");\n", !IO)
+        io.write_string(", """, !IO),
+        c_util.output_quoted_string(TypeMsg, !IO),
+        io.write_string(""");\n", !IO)
     ;
         ProfMem = no,
         (
             MaybeTag = no,
             (
                 MaybeOffset = yes(_),
-                io__write_string("\tMR_offset_incr_hp(", !IO)
+                io.write_string("\tMR_offset_incr_hp(", !IO)
             ;
                 MaybeOffset = no,
-                io__write_string("\tMR_alloc_heap(", !IO)
+                io.write_string("\tMR_alloc_heap(", !IO)
             ),
             output_lval_as_word(Lval, !IO)
         ;
             MaybeTag = yes(Tag),
             (
                 MaybeOffset = yes(_),
-                io__write_string("\tMR_tag_offset_incr_hp(", !IO),
+                io.write_string("\tMR_tag_offset_incr_hp(", !IO),
                 output_lval_as_word(Lval, !IO),
-                io__write_string(", ", !IO),
+                io.write_string(", ", !IO),
                 output_tag(Tag, !IO)
             ;
                 MaybeOffset = no,
-                io__write_string("\tMR_tag_alloc_heap(", !IO),
+                io.write_string("\tMR_tag_alloc_heap(", !IO),
                 output_lval_as_word(Lval, !IO),
-                io__write_string(", ", !IO),
-                io__write_int(Tag, !IO)
+                io.write_string(", ", !IO),
+                io.write_int(Tag, !IO)
             )
         ),
-        io__write_string(", ", !IO),
+        io.write_string(", ", !IO),
         (
             MaybeOffset = yes(Offset),
-            io__write_int(Offset, !IO),
-            io__write_string(", ", !IO)
+            io.write_int(Offset, !IO),
+            io.write_string(", ", !IO)
         ;
             MaybeOffset = no
         ),
         output_rval_as_type(Rval, word, !IO),
-        io__write_string(");\n", !IO)
+        io.write_string(");\n", !IO)
     ).
 
 output_instruction(mark_hp(Lval), _, !IO) :-
-    io__write_string("\tMR_mark_hp(", !IO),
+    io.write_string("\tMR_mark_hp(", !IO),
     output_lval_as_word(Lval, !IO),
-    io__write_string(");\n", !IO).
+    io.write_string(");\n", !IO).
 
 output_instruction(restore_hp(Rval), _, !IO) :-
-    io__write_string("\tMR_restore_hp(", !IO),
+    io.write_string("\tMR_restore_hp(", !IO),
     output_rval_as_type(Rval, word, !IO),
-    io__write_string(");\n", !IO).
+    io.write_string(");\n", !IO).
 
 output_instruction(free_heap(Rval), _, !IO) :-
-    io__write_string("\tMR_free_heap(", !IO),
+    io.write_string("\tMR_free_heap(", !IO),
     output_rval_as_type(Rval, data_ptr, !IO),
-    io__write_string(");\n", !IO).
+    io.write_string(");\n", !IO).
 
 output_instruction(store_ticket(Lval), _, !IO) :-
-    io__write_string("\tMR_store_ticket(", !IO),
+    io.write_string("\tMR_store_ticket(", !IO),
     output_lval_as_word(Lval, !IO),
-    io__write_string(");\n", !IO).
+    io.write_string(");\n", !IO).
 
 output_instruction(reset_ticket(Rval, Reason), _, !IO) :-
-    io__write_string("\tMR_reset_ticket(", !IO),
+    io.write_string("\tMR_reset_ticket(", !IO),
     output_rval_as_type(Rval, word, !IO),
-    io__write_string(", ", !IO),
+    io.write_string(", ", !IO),
     output_reset_trail_reason(Reason, !IO),
-    io__write_string(");\n", !IO).
+    io.write_string(");\n", !IO).
 
 output_instruction(discard_ticket, _, !IO) :-
-    io__write_string("\tMR_discard_ticket();\n", !IO).
+    io.write_string("\tMR_discard_ticket();\n", !IO).
 
 output_instruction(prune_ticket, _, !IO) :-
-    io__write_string("\tMR_prune_ticket();\n", !IO).
+    io.write_string("\tMR_prune_ticket();\n", !IO).
 
 output_instruction(mark_ticket_stack(Lval), _, !IO) :-
-    io__write_string("\tMR_mark_ticket_stack(", !IO),
+    io.write_string("\tMR_mark_ticket_stack(", !IO),
     output_lval_as_word(Lval, !IO),
-    io__write_string(");\n", !IO).
+    io.write_string(");\n", !IO).
 
 output_instruction(prune_tickets_to(Rval), _, !IO) :-
-    io__write_string("\tMR_prune_tickets_to(", !IO),
+    io.write_string("\tMR_prune_tickets_to(", !IO),
     output_rval_as_type(Rval, word, !IO),
-    io__write_string(");\n", !IO).
+    io.write_string(");\n", !IO).
 
 output_instruction(incr_sp(N, _Msg), _, !IO) :-
-    io__write_string("\tMR_incr_sp(", !IO),
-    io__write_int(N, !IO),
-    io__write_string(");\n", !IO).
+    io.write_string("\tMR_incr_sp(", !IO),
+    io.write_int(N, !IO),
+    io.write_string(");\n", !IO).
     % Use the code below instead of the code above if you want to run
     % tools/framesize on the output of the compiler.
-    % io__write_string("\tMR_incr_sp_push_msg(", !IO),
-    % io__write_int(N, !IO),
-    % io__write_string(", """, !IO),
-    % c_util__output_quoted_string(Msg, !IO),
-    % io__write_string(""");\n", !IO).
+    % io.write_string("\tMR_incr_sp_push_msg(", !IO),
+    % io.write_int(N, !IO),
+    % io.write_string(", """, !IO),
+    % c_util.output_quoted_string(Msg, !IO),
+    % io.write_string(""");\n", !IO).
 
 output_instruction(decr_sp(N), _, !IO) :-
-    io__write_string("\tMR_decr_sp(", !IO),
-    io__write_int(N, !IO),
-    io__write_string(");\n", !IO).
+    io.write_string("\tMR_decr_sp(", !IO),
+    io.write_int(N, !IO),
+    io.write_string(");\n", !IO).
 
 output_instruction(decr_sp_and_return(N), _, !IO) :-
-    io__write_string("\tMR_decr_sp_and_return(", !IO),
-    io__write_int(N, !IO),
-    io__write_string(");\n", !IO).
+    io.write_string("\tMR_decr_sp_and_return(", !IO),
+    io.write_int(N, !IO),
+    io.write_string(");\n", !IO).
 
 output_instruction(pragma_c(Decls, Components, _, _, _, _, _, _, _), _, !IO) :-
-    io__write_string("\t{\n", !IO),
+    io.write_string("\t{\n", !IO),
     output_pragma_decls(Decls, !IO),
-    list__foldl(output_pragma_c_component, Components, !IO),
-    io__write_string("\t}\n", !IO).
+    list.foldl(output_pragma_c_component, Components, !IO),
+    io.write_string("\t}\n", !IO).
 
 output_instruction(init_sync_term(Lval, N), _, !IO) :-
-    io__write_string("\tMR_init_sync_term(", !IO),
+    io.write_string("\tMR_init_sync_term(", !IO),
     output_lval_as_word(Lval, !IO),
-    io__write_string(", ", !IO),
-    io__write_int(N, !IO),
-    io__write_string(");\n", !IO).
+    io.write_string(", ", !IO),
+    io.write_int(N, !IO),
+    io.write_string(");\n", !IO).
 
 output_instruction(fork(Child, Parent, Lval), _, !IO) :-
-    io__write_string("\tMR_fork_new_context(", !IO),
+    io.write_string("\tMR_fork_new_context(", !IO),
     output_label_as_code_addr(Child, !IO),
-    io__write_string(", ", !IO),
+    io.write_string(", ", !IO),
     output_label_as_code_addr(Parent, !IO),
-    io__write_string(", ", !IO),
-    io__write_int(Lval, !IO),
-    io__write_string(");\n", !IO).
+    io.write_string(", ", !IO),
+    io.write_int(Lval, !IO),
+    io.write_string(");\n", !IO).
 
 output_instruction(join_and_terminate(Lval), _, !IO) :-
-    io__write_string("\tMR_join_and_terminate(", !IO),
+    io.write_string("\tMR_join_and_terminate(", !IO),
     output_lval(Lval, !IO),
-    io__write_string(");\n", !IO).
+    io.write_string(");\n", !IO).
 
 output_instruction(join_and_continue(Lval, Label), _, !IO) :-
-    io__write_string("\tMR_join_and_continue(", !IO),
+    io.write_string("\tMR_join_and_continue(", !IO),
     output_lval(Lval, !IO),
-    io__write_string(", ", !IO),
+    io.write_string(", ", !IO),
     output_label_as_code_addr(Label, !IO),
-    io__write_string(");\n", !IO).
+    io.write_string(");\n", !IO).
 
 :- pred output_pragma_c_component(pragma_c_component::in, io::di, io::uo)
     is det.
@@ -2201,24 +2200,24 @@ output_pragma_c_component(pragma_c_user_code(MaybeContext, C_Code), !IO) :-
             % just in case it starts with a proprocessor directive.
         (
             MaybeContext = yes(Context),
-            io__write_string("{\n", !IO),
+            io.write_string("{\n", !IO),
             output_set_line_num(Context, !IO),
-            io__write_string(C_Code, !IO),
-            io__write_string(";}\n", !IO),
+            io.write_string(C_Code, !IO),
+            io.write_string(";}\n", !IO),
             output_reset_line_num(!IO)
         ;
             MaybeContext = no,
-            io__write_string("{\n", !IO),
-            io__write_string(C_Code, !IO),
-            io__write_string(";}\n", !IO)
+            io.write_string("{\n", !IO),
+            io.write_string(C_Code, !IO),
+            io.write_string(";}\n", !IO)
         )
     ).
 output_pragma_c_component(pragma_c_raw_code(C_Code, _, _), !IO) :-
-    io__write_string(C_Code, !IO).
+    io.write_string(C_Code, !IO).
 output_pragma_c_component(pragma_c_fail_to(Label), !IO) :-
-    io__write_string("if (!" ++ pragma_succ_ind_name ++ ") MR_GOTO_LAB(", !IO),
+    io.write_string("if (!" ++ pragma_succ_ind_name ++ ") MR_GOTO_LAB(", !IO),
     output_label(Label, no, !IO),
-    io__write_string(");\n", !IO).
+    io.write_string(");\n", !IO).
 output_pragma_c_component(pragma_c_noop, !IO).
 
     % Output the local variable declarations at the top of the
@@ -2231,18 +2230,18 @@ output_pragma_decls([Decl | Decls], !IO) :-
     (
         % Apart from special cases, the local variables are MR_Words
         Decl = pragma_c_arg_decl(_Type, TypeString, VarName),
-        io__write_string("\t", !IO),
-        io__write_string(TypeString, !IO),
-        io__write_string("\t", !IO),
-        io__write_string(VarName, !IO),
-        io__write_string(";\n", !IO)
+        io.write_string("\t", !IO),
+        io.write_string(TypeString, !IO),
+        io.write_string("\t", !IO),
+        io.write_string(VarName, !IO),
+        io.write_string(";\n", !IO)
     ;
         Decl = pragma_c_struct_ptr_decl(StructTag, VarName),
-        io__write_string("\tstruct ", !IO),
-        io__write_string(StructTag, !IO),
-        io__write_string("\t*", !IO),
-        io__write_string(VarName, !IO),
-        io__write_string(";\n", !IO)
+        io.write_string("\tstruct ", !IO),
+        io.write_string(StructTag, !IO),
+        io.write_string("\t*", !IO),
+        io.write_string(VarName, !IO),
+        io.write_string(";\n", !IO)
     ),
     output_pragma_decls(Decls, !IO).
 
@@ -2283,11 +2282,11 @@ output_pragma_inputs([Input | Inputs], !IO) :-
 output_pragma_input(Input, !IO) :-
     Input = pragma_c_input(VarName, _VarType, _IsDummy, OrigType, Rval,
         MaybeForeignTypeInfo, BoxPolicy),
-    io__write_string("\t", !IO),
+    io.write_string("\t", !IO),
     (
         BoxPolicy = always_boxed,
-        io__write_string(VarName, !IO),
-        io__write_string(" = ", !IO),
+        io.write_string(VarName, !IO),
+        io.write_string(" = ", !IO),
         output_rval_as_type(Rval, word, !IO)
     ;
         BoxPolicy = native_if_possible,
@@ -2301,28 +2300,28 @@ output_pragma_input(Input, !IO) :-
             % invokes memcpy when given a word-sized type.
             (
                 ( c_type_is_word_sized_int_or_ptr(ForeignType)
-                ; list__member(can_pass_as_mercury_type, Assertions)
+                ; list.member(can_pass_as_mercury_type, Assertions)
                 )
             ->
                 % Note that for this cast to be correct the foreign
                 % type must be a word sized integer or pointer type.
-                io__write_string(VarName, !IO),
-                io__write_string(" = ", !IO),
-                io__write_string("(" ++ ForeignType ++ ") ", !IO),
+                io.write_string(VarName, !IO),
+                io.write_string(" = ", !IO),
+                io.write_string("(" ++ ForeignType ++ ") ", !IO),
                 output_rval_as_type(Rval, word, !IO)
             ;
-                io__write_string("MR_MAYBE_UNBOX_FOREIGN_TYPE(", !IO),
-                io__write_string(ForeignType, !IO),
-                io__write_string(", ", !IO),
+                io.write_string("MR_MAYBE_UNBOX_FOREIGN_TYPE(", !IO),
+                io.write_string(ForeignType, !IO),
+                io.write_string(", ", !IO),
                 output_rval_as_type(Rval, word, !IO),
-                io__write_string(", ", !IO),
-                io__write_string(VarName, !IO),
-                io__write_string(")", !IO)
+                io.write_string(", ", !IO),
+                io.write_string(VarName, !IO),
+                io.write_string(")", !IO)
             )
         ;
             MaybeForeignTypeInfo = no,
-            io__write_string(VarName, !IO),
-            io__write_string(" = ", !IO),
+            io.write_string(VarName, !IO),
+            io.write_string(" = ", !IO),
             ( OrigType = builtin(string) ->
                 output_llds_type_cast(string, !IO),
                 output_rval_as_type(Rval, word, !IO)
@@ -2333,7 +2332,7 @@ output_pragma_input(Input, !IO) :-
             )
         )
     ),
-    io__write_string(";\n", !IO).
+    io.write_string(";\n", !IO).
 
     % Output declarations for any lvals used for the outputs.
     %
@@ -2372,88 +2371,88 @@ output_pragma_outputs([Output | Outputs], !IO) :-
 output_pragma_output(Output, !IO) :-
     Output = pragma_c_output(Lval, _VarType, _IsDummy, OrigType, VarName,
         MaybeForeignType, BoxPolicy),
-    io__write_string("\t", !IO),
+    io.write_string("\t", !IO),
     (
         BoxPolicy = always_boxed,
         output_lval_as_word(Lval, !IO),
-        io__write_string(" = ", !IO),
-        io__write_string(VarName, !IO)
+        io.write_string(" = ", !IO),
+        io.write_string(VarName, !IO)
     ;
         BoxPolicy = native_if_possible,
         (
             MaybeForeignType = yes(ForeignTypeInfo),
             ForeignTypeInfo = pragma_c_foreign_type(ForeignType, Assertions),
-            ( list__member(can_pass_as_mercury_type, Assertions) ->
+            ( list.member(can_pass_as_mercury_type, Assertions) ->
                 output_lval_as_word(Lval, !IO),
-                io__write_string(" = ", !IO),
+                io.write_string(" = ", !IO),
                 output_llds_type_cast(word, !IO),
-                io__write_string(VarName, !IO)
+                io.write_string(VarName, !IO)
             ;
-                io__write_string("MR_MAYBE_BOX_FOREIGN_TYPE(", !IO),
-                io__write_string(ForeignType, !IO),
-                io__write_string(", ", !IO),
-                io__write_string(VarName, !IO),
-                io__write_string(", ", !IO),
+                io.write_string("MR_MAYBE_BOX_FOREIGN_TYPE(", !IO),
+                io.write_string(ForeignType, !IO),
+                io.write_string(", ", !IO),
+                io.write_string(VarName, !IO),
+                io.write_string(", ", !IO),
                 output_lval_as_word(Lval, !IO),
-                io__write_string(")", !IO)
+                io.write_string(")", !IO)
             )
         ;
             MaybeForeignType = no,
             output_lval_as_word(Lval, !IO),
-            io__write_string(" = ", !IO),
+            io.write_string(" = ", !IO),
             (
                 OrigType = builtin(string)
             ->
                 output_llds_type_cast(word, !IO),
-                io__write_string(VarName, !IO)
+                io.write_string(VarName, !IO)
             ;
                 OrigType = builtin(float)
             ->
-                io__write_string("MR_float_to_word(", !IO),
-                io__write_string(VarName, !IO),
-                io__write_string(")", !IO)
+                io.write_string("MR_float_to_word(", !IO),
+                io.write_string(VarName, !IO),
+                io.write_string(")", !IO)
             ;
-                io__write_string(VarName, !IO)
+                io.write_string(VarName, !IO)
             )
         )
     ),
-    io__write_string(";\n", !IO).
+    io.write_string(";\n", !IO).
 
 :- pred output_reset_trail_reason(reset_trail_reason::in, io::di, io::uo)
     is det.
 
 output_reset_trail_reason(undo, !IO) :-
-    io__write_string("MR_undo", !IO).
+    io.write_string("MR_undo", !IO).
 output_reset_trail_reason(commit, !IO) :-
-    io__write_string("MR_commit", !IO).
+    io.write_string("MR_commit", !IO).
 output_reset_trail_reason(solve, !IO) :-
-    io__write_string("MR_solve", !IO).
+    io.write_string("MR_solve", !IO).
 output_reset_trail_reason(exception, !IO) :-
-    io__write_string("MR_exception", !IO).
+    io.write_string("MR_exception", !IO).
 output_reset_trail_reason(retry, !IO) :-
-    io__write_string("MR_retry", !IO).
+    io.write_string("MR_retry", !IO).
 output_reset_trail_reason(gc, !IO) :-
-    io__write_string("MR_gc", !IO).
+    io.write_string("MR_gc", !IO).
 
 :- pred output_livevals(list(lval)::in, io::di, io::uo) is det.
 
 output_livevals([], !IO).
 output_livevals([Lval | Lvals], !IO) :-
-    io__write_string("*\t", !IO),
+    io.write_string("*\t", !IO),
     output_lval(Lval, !IO),
-    io__write_string("\n", !IO),
+    io.write_string("\n", !IO),
     output_livevals(Lvals, !IO).
 
 :- pred output_gc_livevals(list(liveinfo)::in, io::di, io::uo) is det.
 
 output_gc_livevals(LiveVals, !IO) :-
-    globals__io_lookup_bool_option(auto_comments, PrintAutoComments, !IO),
+    globals.io_lookup_bool_option(auto_comments, PrintAutoComments, !IO),
     (
         PrintAutoComments = yes,
-        io__write_string("/*\n", !IO),
-        io__write_string("* Garbage collection livevals info\n", !IO),
+        io.write_string("/*\n", !IO),
+        io.write_string("* Garbage collection livevals info\n", !IO),
         output_gc_livevals_2(LiveVals, !IO),
-        io__write_string("*/\n", !IO)
+        io.write_string("*/\n", !IO)
     ;
         PrintAutoComments = no
     ).
@@ -2463,14 +2462,14 @@ output_gc_livevals(LiveVals, !IO) :-
 output_gc_livevals_2([], !IO).
 output_gc_livevals_2([LiveInfo | LiveInfos], !IO) :-
     LiveInfo = live_lvalue(Locn, LiveValueType, TypeParams),
-    io__write_string("*\t", !IO),
+    io.write_string("*\t", !IO),
     output_layout_locn(Locn, !IO),
-    io__write_string("\t", !IO),
+    io.write_string("\t", !IO),
     output_live_value_type(LiveValueType, !IO),
-    io__write_string("\t", !IO),
-    map__to_assoc_list(TypeParams, TypeParamList),
+    io.write_string("\t", !IO),
+    map.to_assoc_list(TypeParams, TypeParamList),
     output_gc_livevals_params(TypeParamList, !IO),
-    io__write_string("\n", !IO),
+    io.write_string("\n", !IO),
     output_gc_livevals_2(LiveInfos, !IO).
 
 :- pred output_gc_livevals_params(assoc_list(tvar, set(layout_locn))::in,
@@ -2478,12 +2477,12 @@ output_gc_livevals_2([LiveInfo | LiveInfos], !IO) :-
 
 output_gc_livevals_params([], !IO).
 output_gc_livevals_params([Var - LocnSet | Locns], !IO) :-
-    term__var_to_int(Var, VarInt),
-    io__write_int(VarInt, !IO),
-    io__write_string(" - ", !IO),
-    set__to_sorted_list(LocnSet, LocnList),
+    term.var_to_int(Var, VarInt),
+    io.write_int(VarInt, !IO),
+    io.write_string(" - ", !IO),
+    set.to_sorted_list(LocnSet, LocnList),
     output_layout_locns(LocnList, !IO),
-    io__write_string("  ", !IO),
+    io.write_string("  ", !IO),
     output_gc_livevals_params(Locns, !IO).
 
 :- pred output_layout_locns(list(layout_locn)::in, io::di, io::uo) is det.
@@ -2495,7 +2494,7 @@ output_layout_locns([Locn | Locns], !IO) :-
         Locns = []
     ;
         Locns = [_ | _],
-        io__write_string(" and ", !IO),
+        io.write_string(" and ", !IO),
         output_layout_locns(Locns, !IO)
     ).
 
@@ -2507,53 +2506,53 @@ output_layout_locn(Locn, !IO) :-
         output_lval(Lval, !IO)
     ;
         Locn = indirect(Lval, Offset),
-        io__write_string("offset ", !IO),
-        io__write_int(Offset, !IO),
-        io__write_string(" from ", !IO),
+        io.write_string("offset ", !IO),
+        io.write_int(Offset, !IO),
+        io.write_string(" from ", !IO),
         output_lval(Lval, !IO)
     ).
 
 :- pred output_live_value_type(live_value_type::in, io::di, io::uo) is det.
 
 output_live_value_type(succip, !IO) :-
-    io__write_string("type succip", !IO).
+    io.write_string("type succip", !IO).
 output_live_value_type(curfr, !IO) :-
-    io__write_string("type curfr", !IO).
+    io.write_string("type curfr", !IO).
 output_live_value_type(maxfr, !IO) :-
-    io__write_string("type maxfr", !IO).
+    io.write_string("type maxfr", !IO).
 output_live_value_type(redofr, !IO) :-
-    io__write_string("type redofr", !IO).
+    io.write_string("type redofr", !IO).
 output_live_value_type(redoip, !IO) :-
-    io__write_string("type redoip", !IO).
+    io.write_string("type redoip", !IO).
 output_live_value_type(hp, !IO) :-
-    io__write_string("type hp", !IO).
+    io.write_string("type hp", !IO).
 output_live_value_type(trail_ptr, !IO) :-
-    io__write_string("type trail_ptr", !IO).
+    io.write_string("type trail_ptr", !IO).
 output_live_value_type(ticket, !IO) :-
-    io__write_string("type ticket", !IO).
+    io.write_string("type ticket", !IO).
 output_live_value_type(unwanted, !IO) :-
-    io__write_string("unwanted", !IO).
+    io.write_string("unwanted", !IO).
 output_live_value_type(var(Var, Name, Type, LldsInst), !IO) :-
-    io__write_string("var(", !IO),
-    term__var_to_int(Var, VarInt),
-    io__write_int(VarInt, !IO),
-    io__write_string(", ", !IO),
-    io__write_string(Name, !IO),
-    io__write_string(", ", !IO),
+    io.write_string("var(", !IO),
+    term.var_to_int(Var, VarInt),
+    io.write_int(VarInt, !IO),
+    io.write_string(", ", !IO),
+    io.write_string(Name, !IO),
+    io.write_string(", ", !IO),
         % XXX Fake type varset
-    varset__init(NewTVarset),
+    varset.init(NewTVarset),
     mercury_output_type(NewTVarset, no, Type, !IO),
-    io__write_string(", ", !IO),
+    io.write_string(", ", !IO),
     (
         LldsInst = ground,
-        io__write_string("ground", !IO)
+        io.write_string("ground", !IO)
     ;
         LldsInst = partial(Inst),
             % XXX Fake inst varset
-        varset__init(NewIVarset),
+        varset.init(NewIVarset),
         mercury_output_inst(Inst, NewIVarset, !IO)
     ),
-    io__write_string(")", !IO).
+    io.write_string(")", !IO).
 
 :- pred output_temp_decls(int::in, string::in, io::di, io::uo) is det.
 
@@ -2566,13 +2565,13 @@ output_temp_decls(N, Type, !IO) :-
 output_temp_decls_2(Next, Max, Type, !IO) :-
     ( Next =< Max ->
         ( Next > 1 ->
-            io__write_string(", ", !IO)
+            io.write_string(", ", !IO)
         ;
             true
         ),
-        io__write_string("MR_temp", !IO),
-        io__write_string(Type, !IO),
-        io__write_int(Next, !IO),
+        io.write_string("MR_temp", !IO),
+        io.write_string(Type, !IO),
+        io.write_int(Next, !IO),
         output_temp_decls_2(Next + 1, Max, Type, !IO)
     ;
         true
@@ -2615,8 +2614,8 @@ output_rval_decls(const(Const), FirstIndent, LaterIndent, !N, !DeclSet, !IO) :-
         % then for each float constant which we might want to box we declare
         % a static const variable holding that constant.
         %
-        globals__io_lookup_bool_option(unboxed_float, UnboxedFloat, !IO),
-        globals__io_lookup_bool_option(static_ground_terms, StaticGroundTerms,
+        globals.io_lookup_bool_option(unboxed_float, UnboxedFloat, !IO),
+        globals.io_lookup_bool_option(static_ground_terms, StaticGroundTerms,
             !IO),
         (
             UnboxedFloat = no,
@@ -2628,10 +2627,10 @@ output_rval_decls(const(Const), FirstIndent, LaterIndent, !N, !DeclSet, !IO) :-
                 true
             ;
                 decl_set_insert(FloatLabel, !DeclSet),
-                FloatString = c_util__make_float_literal( FloatVal),
+                FloatString = c_util.make_float_literal( FloatVal),
                 output_indent(FirstIndent, LaterIndent, !.N, !IO),
                 !:N = !.N + 1,
-                io__write_strings(["static const MR_Float ",
+                io.write_strings(["static const MR_Float ",
                     "mercury_float_const_", FloatName, " = ", FloatString,
                     ";\n"
                 ], !IO)
@@ -2654,9 +2653,9 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent,
         % then for each float constant which we might want to box we declare
         % a static const variable holding that constant.
         %
-    ( c_util__float_op(Op, OpStr) ->
-        globals__io_lookup_bool_option(unboxed_float, UnboxFloat, !IO),
-        globals__io_lookup_bool_option(static_ground_terms, StaticGroundTerms,
+    ( c_util.float_op(Op, OpStr) ->
+        globals.io_lookup_bool_option(unboxed_float, UnboxFloat, !IO),
+        globals.io_lookup_bool_option(static_ground_terms, StaticGroundTerms,
             !IO),
         (
             UnboxFloat = no,
@@ -2670,21 +2669,21 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent,
                 decl_set_insert(FloatLabel, !DeclSet),
                 output_indent(FirstIndent, LaterIndent, !.N, !IO),
                 !:N = !.N + 1,
-                io__write_string("static const ", !IO),
+                io.write_string("static const ", !IO),
                 output_llds_type(float, !IO),
-                io__write_string(" mercury_float_const_", !IO),
-                io__write_string(FloatName, !IO),
-                io__write_string(" = ", !IO),
+                io.write_string(" mercury_float_const_", !IO),
+                io.write_string(FloatName, !IO),
+                io.write_string(" = ", !IO),
                 % Note that we just output the expression here, and let the C
                 % compiler evaluate it, rather than evaluating it ourselves.
                 % This avoids having to deal with some nasty issues regarding
                 % floating point accuracy when doing cross-compilation.
                 output_rval_as_type(Rval1, float, !IO),
-                io__write_string(" ", !IO),
-                io__write_string(OpStr, !IO),
-                io__write_string(" ", !IO),
+                io.write_string(" ", !IO),
+                io.write_string(OpStr, !IO),
+                io.write_string(" ", !IO),
                 output_rval_as_type(Rval2, float, !IO),
-                io__write_string(";\n", !IO)
+                io.write_string(";\n", !IO)
             )
         ;
             true
@@ -2764,10 +2763,10 @@ float_const_binop_expr_name(Op, Arg1, Arg2, Name) :-
 float_literal_name(Float, FloatName) :-
     % The name of the variable is based on the value of the float const, with
     % "pt" instead of ".", "plus" instead of "+", and "neg" instead of "-".
-    FloatName0 = c_util__make_float_literal(Float),
-    string__replace_all(FloatName0, ".", "pt", FloatName1),
-    string__replace_all(FloatName1, "+", "plus", FloatName2),
-    string__replace_all(FloatName2, "-", "neg", FloatName).
+    FloatName0 = c_util.make_float_literal(Float),
+    string.replace_all(FloatName0, ".", "pt", FloatName1),
+    string.replace_all(FloatName1, "+", "plus", FloatName2),
+    string.replace_all(FloatName2, "-", "neg", FloatName).
 
     % Succeed iff the binary operator is an operator whose return
     % type is float; bind the output string to a name for that operator
@@ -2796,11 +2795,11 @@ common_cell_get_type_num(TypeAndValue) = TypeNum :-
 common_cell_get_rvals(TypeAndValue) = Rvals :-
     (
         TypeAndValue = plain_type_and_value(_, RvalsTypes),
-        assoc_list__keys(RvalsTypes, Rvals)
+        assoc_list.keys(RvalsTypes, Rvals)
     ;
         TypeAndValue = grouped_type_and_value(_, Groups),
-        RvalLists = list__map(common_group_get_rvals, Groups),
-        list__condense(RvalLists, Rvals)
+        RvalLists = list.map(common_group_get_rvals, Groups),
+        list.condense(RvalLists, Rvals)
     ).
 
 :- func common_group_get_rvals(common_cell_arg_group) = list(rval).
@@ -2837,19 +2836,19 @@ common_group_get_rvals(common_cell_ungrouped_arg(_, Rval)) = [Rval].
 output_const_term_type(TypeAndValue, FirstIndent, LaterIndent, !N, !IO) :-
     output_indent(FirstIndent, LaterIndent, !.N, !IO),
     !:N = !.N + 1,
-    io__write_string("struct ", !IO),
+    io.write_string("struct ", !IO),
     TypeNum = common_cell_get_type_num(TypeAndValue),
     output_common_cell_type_name(TypeNum, !IO),
-    io__write_string(" {\n", !IO),
+    io.write_string(" {\n", !IO),
     (
         TypeAndValue = plain_type_and_value(_, ArgsTypes),
-        assoc_list__values(ArgsTypes, Types),
+        assoc_list.values(ArgsTypes, Types),
         output_cons_arg_types(Types, "\t", 1, !IO)
     ;
         TypeAndValue = grouped_type_and_value(_, ArgGroups),
         output_cons_arg_group_types(ArgGroups, "\t", 1, !IO)
     ),
-    io__write_string("};\n", !IO).
+    io.write_string("};\n", !IO).
 
 :- pred output_const_term_decl_or_defn(common_cell_type_and_value::in,
     module_name::in, int::in, bool::in, bool::in,
@@ -2861,22 +2860,22 @@ output_const_term_decl_or_defn(TypeAndValue, ModuleName, CellNum, Exported,
     !:N = !.N + 1,
     (
         Exported = yes,
-        io__write_string("const struct ", !IO)
+        io.write_string("const struct ", !IO)
     ;
         Exported = no,
-        io__write_string("static const struct ", !IO)
+        io.write_string("static const struct ", !IO)
     ),
     TypeNum = common_cell_get_type_num(TypeAndValue),
     output_common_cell_type_name(TypeNum, !IO),
-    io__write_string(" ", !IO),
+    io.write_string(" ", !IO),
     VarDeclId = data_addr(ModuleName, common(CellNum, TypeNum)),
     output_decl_id(data_addr(VarDeclId), !IO),
     (
         IsDefn = no,
-        io__write_string(";\n", !IO)
+        io.write_string(";\n", !IO)
     ;
         IsDefn = yes,
-        io__write_string(" =\n{\n", !IO),
+        io.write_string(" =\n{\n", !IO),
         (
             TypeAndValue = plain_type_and_value(_, ArgsTypes),
             output_cons_args(ArgsTypes, !IO)
@@ -2884,8 +2883,8 @@ output_const_term_decl_or_defn(TypeAndValue, ModuleName, CellNum, Exported,
             TypeAndValue = grouped_type_and_value(_, ArgGroups),
             output_cons_arg_groups(ArgGroups, !IO)
         ),
-        io__write_string(LaterIndent, !IO),
-        io__write_string("};\n", !IO)
+        io.write_string(LaterIndent, !IO),
+        io.write_string("};\n", !IO)
     ).
 
     % Return true if a data structure of the given type will eventually
@@ -2934,11 +2933,11 @@ output_decl_id(typeclass_constraint_struct(_Name), !IO) :-
 
 output_cons_arg_types([], _, _, !IO).
 output_cons_arg_types([Type | Types], Indent, ArgNum, !IO) :-
-    io__write_string(Indent, !IO),
+    io.write_string(Indent, !IO),
     output_llds_type(Type, !IO),
-    io__write_string(" f", !IO),
-    io__write_int(ArgNum, !IO),
-    io__write_string(";\n", !IO),
+    io.write_string(" f", !IO),
+    io.write_int(ArgNum, !IO),
+    io.write_string(";\n", !IO),
     output_cons_arg_types(Types, Indent, ArgNum + 1, !IO).
 
 :- pred output_cons_arg_group_types(list(common_cell_arg_group)::in,
@@ -2946,21 +2945,21 @@ output_cons_arg_types([Type | Types], Indent, ArgNum, !IO) :-
 
 output_cons_arg_group_types([], _, _, !IO).
 output_cons_arg_group_types([Group | Groups], Indent, ArgNum, !IO) :-
-    io__write_string(Indent, !IO),
+    io.write_string(Indent, !IO),
     (
         Group = common_cell_grouped_args(Type, ArraySize, _),
         output_llds_type(Type, !IO),
-        io__write_string(" f", !IO),
-        io__write_int(ArgNum, !IO),
-        io__write_string("[", !IO),
-        io__write_int(ArraySize, !IO),
-        io__write_string("];\n", !IO)
+        io.write_string(" f", !IO),
+        io.write_int(ArgNum, !IO),
+        io.write_string("[", !IO),
+        io.write_int(ArraySize, !IO),
+        io.write_string("];\n", !IO)
     ;
         Group = common_cell_ungrouped_arg(Type, _),
         output_llds_type(Type, !IO),
-        io__write_string(" f", !IO),
-        io__write_int(ArgNum, !IO),
-        io__write_string(";\n", !IO)
+        io.write_string(" f", !IO),
+        io.write_int(ArgNum, !IO),
+        io.write_string(";\n", !IO)
     ),
     output_cons_arg_group_types(Groups, Indent, ArgNum + 1, !IO).
 
@@ -2972,8 +2971,8 @@ output_cons_arg_group_types([Group | Groups], Indent, ArgNum, !IO) :-
 :- pred rval_type_as_arg(rval::in, llds_type::out, io::di, io::uo) is det.
 
 rval_type_as_arg(Rval, ArgType, !IO) :-
-    llds__rval_type(Rval, Type),
-    globals__io_lookup_bool_option(unboxed_float, UnboxFloat, !IO),
+    llds.rval_type(Rval, Type),
+    globals.io_lookup_bool_option(unboxed_float, UnboxFloat, !IO),
     (
         Type = float,
         UnboxFloat = no
@@ -2988,40 +2987,40 @@ rval_type_as_arg(Rval, ArgType, !IO) :-
 :- pred output_llds_type_cast(llds_type::in, io::di, io::uo) is det.
 
 output_llds_type_cast(LLDSType, !IO) :-
-    io__write_string("(", !IO),
+    io.write_string("(", !IO),
     output_llds_type(LLDSType, !IO),
-    io__write_string(") ", !IO).
+    io.write_string(") ", !IO).
 
 :- pred output_llds_type(llds_type::in, io::di, io::uo) is det.
 
 output_llds_type(int_least8, !IO) :-
-    io__write_string("MR_int_least8_t", !IO).
+    io.write_string("MR_int_least8_t", !IO).
 output_llds_type(uint_least8, !IO) :-
-    io__write_string("MR_uint_least8_t", !IO).
+    io.write_string("MR_uint_least8_t", !IO).
 output_llds_type(int_least16, !IO) :-
-    io__write_string("MR_int_least16_t", !IO).
+    io.write_string("MR_int_least16_t", !IO).
 output_llds_type(uint_least16, !IO) :-
-    io__write_string("MR_uint_least16_t", !IO).
+    io.write_string("MR_uint_least16_t", !IO).
 output_llds_type(int_least32, !IO) :-
-    io__write_string("MR_int_least32_t", !IO).
+    io.write_string("MR_int_least32_t", !IO).
 output_llds_type(uint_least32, !IO) :-
-    io__write_string("MR_uint_least32_t", !IO).
+    io.write_string("MR_uint_least32_t", !IO).
 output_llds_type(bool, !IO) :-
-    io__write_string("MR_Integer", !IO).
+    io.write_string("MR_Integer", !IO).
 output_llds_type(integer, !IO) :-
-    io__write_string("MR_Integer", !IO).
+    io.write_string("MR_Integer", !IO).
 output_llds_type(unsigned, !IO) :-
-    io__write_string("MR_Unsigned", !IO).
+    io.write_string("MR_Unsigned", !IO).
 output_llds_type(float, !IO) :-
-    io__write_string("MR_Float", !IO).
+    io.write_string("MR_Float", !IO).
 output_llds_type(word, !IO) :-
-    io__write_string("MR_Word", !IO).
+    io.write_string("MR_Word", !IO).
 output_llds_type(string, !IO) :-
-    io__write_string("MR_String", !IO).
+    io.write_string("MR_String", !IO).
 output_llds_type(data_ptr, !IO) :-
-    io__write_string("MR_Word *", !IO).
+    io.write_string("MR_Word *", !IO).
 output_llds_type(code_ptr, !IO) :-
-    io__write_string("MR_Code *", !IO).
+    io.write_string("MR_Code *", !IO).
 
     % Output the arguments, each on its own line prefixing with Indent,
     % and with a cast appropriate to its type if necessary.
@@ -3041,11 +3040,11 @@ output_cons_args([Rval - Type | RvalsTypes], !IO) :-
     ),
     (
         RvalsTypes = [_ | _],
-        io__write_string(",\n", !IO),
+        io.write_string(",\n", !IO),
         output_cons_args(RvalsTypes, !IO)
     ;
         RvalsTypes = [],
-        io__write_string("\n", !IO)
+        io.write_string("\n", !IO)
     ).
 
 :- pred output_cons_arg_groups(list(common_cell_arg_group)::in, io::di, io::uo)
@@ -3055,10 +3054,10 @@ output_cons_arg_groups([], !IO).
 output_cons_arg_groups([Group | Groups], !IO) :-
     (
         Group = common_cell_grouped_args(Type, _, Rvals),
-        io__write_string("{\n", !IO),
+        io.write_string("{\n", !IO),
         (
             direct_field_int_constant(Type) = yes,
-            list__map(project_int_constant, Rvals, Ints)
+            list.map(project_int_constant, Rvals, Ints)
         ->
             Check = check_int_const_sizes,
             (
@@ -3071,7 +3070,7 @@ output_cons_arg_groups([Group | Groups], !IO) :-
         ;
             output_cons_arg_group_elements(Type, Rvals, !IO)
         ),
-        io__write_string("}", !IO)
+        io.write_string("}", !IO)
     ;
         Group = common_cell_ungrouped_arg(Type, Rval),
         (
@@ -3085,11 +3084,11 @@ output_cons_arg_groups([Group | Groups], !IO) :-
     ),
     (
         Groups = [_ | _],
-        io__write_string(",\n", !IO),
+        io.write_string(",\n", !IO),
         output_cons_arg_groups(Groups, !IO)
     ;
         Groups = [],
-        io__write_string("\n", !IO)
+        io.write_string("\n", !IO)
     ).
 
 :- pred output_cons_arg_group_elements(llds_type::in, list(rval)::in,
@@ -3100,25 +3099,25 @@ output_cons_arg_group_elements(Type, [Rval | Rvals], !IO) :-
     output_rval_as_type(Rval, Type, !IO),
     (
         Rvals = [_ | _],
-        io__write_string(",\n", !IO),
+        io.write_string(",\n", !IO),
         output_cons_arg_group_elements(Type, Rvals, !IO)
     ;
         Rvals = [],
-        io__write_string("\n", !IO)
+        io.write_string("\n", !IO)
     ).
 
 :- pred output_cons_arg_group_ints(list(int)::in, io::di, io::uo) is det.
 
 output_cons_arg_group_ints([], !IO).
 output_cons_arg_group_ints([Int | Ints], !IO) :-
-    io__write_int(Int, !IO),
+    io.write_int(Int, !IO),
     (
         Ints = [_ | _],
-        io__write_string(",\n", !IO),
+        io.write_string(",\n", !IO),
         output_cons_arg_group_ints(Ints, !IO)
     ;
         Ints = [],
-        io__write_string("\n", !IO)
+        io.write_string("\n", !IO)
     ).
 
 :- pred output_cons_arg_group_ints_check(list(int)::in, llds_type::in,
@@ -3129,11 +3128,11 @@ output_cons_arg_group_ints_check([Int | Ints], Type, !IO) :-
     output_int_const(Int, Type, !IO),
     (
         Ints = [_ | _],
-        io__write_string(",\n", !IO),
+        io.write_string(",\n", !IO),
         output_cons_arg_group_ints_check(Ints, Type, !IO)
     ;
         Ints = [],
-        io__write_string("\n", !IO)
+        io.write_string("\n", !IO)
     ).
 
 :- pred project_int_constant(rval::in, int::out) is semidet.
@@ -3156,14 +3155,14 @@ output_int_const(N, Type, !IO) :-
     (
         Check = yes,
         ( ok_int_const(N, Type) ->
-            io__write_int(N, !IO)
+            io.write_int(N, !IO)
         ;
             unexpected(this_file,
                 "output_int_const: constant does not fit in type")
         )
     ;
         Check = no,
-        io__write_int(N, !IO)
+        io.write_int(N, !IO)
     ).
 
 :- pred ok_int_const(int::in, llds_type::in) is semidet.
@@ -3280,7 +3279,7 @@ need_code_addr_decls(imported(_), yes, !IO).
 need_code_addr_decls(succip, no, !IO).
 need_code_addr_decls(do_succeed(_), no, !IO).
 need_code_addr_decls(do_redo, NeedDecl, !IO) :-
-    globals__io_lookup_bool_option(use_macro_for_redo_fail, UseMacro, !IO),
+    globals.io_lookup_bool_option(use_macro_for_redo_fail, UseMacro, !IO),
     (
         UseMacro = yes,
         NeedDecl = no
@@ -3289,7 +3288,7 @@ need_code_addr_decls(do_redo, NeedDecl, !IO) :-
         NeedDecl = yes
     ).
 need_code_addr_decls(do_fail, NeedDecl, !IO) :-
-    globals__io_lookup_bool_option(use_macro_for_redo_fail, UseMacro, !IO),
+    globals.io_lookup_bool_option(use_macro_for_redo_fail, UseMacro, !IO),
     (
         UseMacro = yes,
         NeedDecl = no
@@ -3308,53 +3307,53 @@ need_code_addr_decls(do_not_reached, yes, !IO).
 output_code_addr_decls(label(Label), !IO) :-
     output_label_as_code_addr_decls(Label, !IO).
 output_code_addr_decls(imported(ProcLabel), !IO) :-
-    io__write_string("MR_decl_entry(", !IO),
+    io.write_string("MR_decl_entry(", !IO),
     output_proc_label(ProcLabel, no, !IO),
-    io__write_string(");\n", !IO).
+    io.write_string(");\n", !IO).
 output_code_addr_decls(succip, !IO).
 output_code_addr_decls(do_succeed(_), !IO).
 output_code_addr_decls(do_redo, !IO) :-
-    globals__io_lookup_bool_option(use_macro_for_redo_fail, UseMacro, !IO),
+    globals.io_lookup_bool_option(use_macro_for_redo_fail, UseMacro, !IO),
     (
         UseMacro = yes
     ;
         UseMacro = no,
-        io__write_string("MR_declare_entry(", !IO),
-        io__write_string("MR_do_redo", !IO),
-        io__write_string(");\n", !IO)
+        io.write_string("MR_declare_entry(", !IO),
+        io.write_string("MR_do_redo", !IO),
+        io.write_string(");\n", !IO)
     ).
 output_code_addr_decls(do_fail, !IO) :-
-    globals__io_lookup_bool_option(use_macro_for_redo_fail, UseMacro, !IO),
+    globals.io_lookup_bool_option(use_macro_for_redo_fail, UseMacro, !IO),
     (
         UseMacro = yes
     ;
         UseMacro = no,
-        io__write_string("MR_declare_entry(", !IO),
-        io__write_string("MR_do_fail", !IO),
-        io__write_string(");\n", !IO)
+        io.write_string("MR_declare_entry(", !IO),
+        io.write_string("MR_do_fail", !IO),
+        io.write_string(");\n", !IO)
     ).
 output_code_addr_decls(do_trace_redo_fail_shallow, !IO) :-
-    io__write_string("MR_declare_entry(MR_do_trace_redo_fail_shallow);\n",
+    io.write_string("MR_declare_entry(MR_do_trace_redo_fail_shallow);\n",
         !IO).
 output_code_addr_decls(do_trace_redo_fail_deep, !IO) :-
-    io__write_string("MR_declare_entry(MR_do_trace_redo_fail_deep);\n", !IO).
+    io.write_string("MR_declare_entry(MR_do_trace_redo_fail_deep);\n", !IO).
 output_code_addr_decls(do_call_closure(Variant), !IO) :-
-    io__write_string("MR_declare_entry(mercury__do_call_closure_", !IO),
-    io__write_string(ho_call_variant_to_string(Variant), !IO),
-    io__write_string(");\n", !IO).
+    io.write_string("MR_declare_entry(mercury__do_call_closure_", !IO),
+    io.write_string(ho_call_variant_to_string(Variant), !IO),
+    io.write_string(");\n", !IO).
 output_code_addr_decls(do_call_class_method(Variant), !IO) :-
-    io__write_string("MR_declare_entry(mercury__do_call_class_method_", !IO),
-    io__write_string(ho_call_variant_to_string(Variant), !IO),
-    io__write_string(");\n", !IO).
+    io.write_string("MR_declare_entry(mercury__do_call_class_method_", !IO),
+    io.write_string(ho_call_variant_to_string(Variant), !IO),
+    io.write_string(");\n", !IO).
 output_code_addr_decls(do_not_reached, !IO) :-
-    io__write_string("MR_declare_entry(MR_do_not_reached);\n", !IO).
+    io.write_string("MR_declare_entry(MR_do_not_reached);\n", !IO).
 
 :- pred output_label_as_code_addr_decls(label::in, io::di, io::uo) is det.
 
 output_label_as_code_addr_decls(entry(exported, ProcLabel), !IO) :-
-    io__write_string("MR_decl_entry(", !IO),
+    io.write_string("MR_decl_entry(", !IO),
     output_label(entry(exported, ProcLabel), no, !IO),
-    io__write_string(");\n", !IO).
+    io.write_string(");\n", !IO).
 output_label_as_code_addr_decls(entry(local, _ProcLabel), !IO).
 output_label_as_code_addr_decls(entry(c_local, _), !IO).
 output_label_as_code_addr_decls(internal(_, _), !IO).
@@ -3381,15 +3380,15 @@ output_data_addr_decls_2(DataAddr, FirstIndent, LaterIndent, !N, !IO) :-
         DataAddr = data_addr(ModuleName, DataVarName),
         output_data_addr_storage_type_name(ModuleName, DataVarName, no,
             LaterIndent, !IO),
-        io__write_string(";\n", !IO)
+        io.write_string(";\n", !IO)
     ;
         DataAddr = rtti_addr(RttiId),
         output_rtti_id_storage_type_name_no_decl(RttiId, no, !IO),
-        io__write_string(";\n", !IO)
+        io.write_string(";\n", !IO)
     ;
         DataAddr = layout_addr(LayoutName),
         output_layout_name_storage_type_name(LayoutName, no, !IO),
-        io__write_string(";\n", !IO)
+        io.write_string(";\n", !IO)
     ).
 
 output_data_addrs_decls([], _, _, !N, !DeclSet, !IO).
@@ -3421,7 +3420,7 @@ c_data_linkage_string(DefaultLinkage, BeingDefined) = LinkageStr :-
 c_data_const_string(Globals, InclCodeAddr) =
     (
         InclCodeAddr = yes,
-        globals__have_static_code_addresses(Globals, no)
+        globals.have_static_code_addresses(Globals, no)
     ->
         ""
     ;
@@ -3440,17 +3439,17 @@ output_data_addr_storage_type_name(ModuleName, DataVarName, BeingDefined,
         LaterIndent, !IO) :-
     data_name_linkage(DataVarName, Linkage),
     LinkageStr = c_data_linkage_string(Linkage, BeingDefined),
-    io__write_string(LinkageStr, !IO),
+    io.write_string(LinkageStr, !IO),
 
     InclCodeAddr = data_name_may_include_non_static_code_address(DataVarName),
-    globals__io_get_globals(Globals, !IO),
-    io__write_string(c_data_const_string(Globals, InclCodeAddr), !IO),
+    globals.io_get_globals(Globals, !IO),
+    io.write_string(c_data_const_string(Globals, InclCodeAddr), !IO),
 
-    io__write_string("struct ", !IO),
+    io.write_string("struct ", !IO),
     output_data_addr(ModuleName, DataVarName, !IO),
-    io__write_string("_struct\n", !IO),
-    io__write_string(LaterIndent, !IO),
-    io__write_string("\t", !IO),
+    io.write_string("_struct\n", !IO),
+    io.write_string(LaterIndent, !IO),
+    io.write_string("\t", !IO),
     output_data_addr(ModuleName, DataVarName, !IO).
 
 :- pred data_name_linkage(data_name::in, linkage::out) is det.
@@ -3464,9 +3463,9 @@ data_name_linkage(tabling_pointer(_), static).
 
 output_indent(FirstIndent, LaterIndent, N0, !IO) :-
     ( N0 > 0 ->
-        io__write_string(LaterIndent, !IO)
+        io.write_string(LaterIndent, !IO)
     ;
-        io__write_string(FirstIndent, !IO)
+        io.write_string(FirstIndent, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3477,14 +3476,14 @@ output_indent(FirstIndent, LaterIndent, N0, !IO) :-
 maybe_output_update_prof_counter(Label, CallerLabel - ContLabelSet, !IO) :-
     % If ProfileTime is no, the definition of MR_update_prof_current_proc
     % is empty anyway.
-    globals__io_lookup_bool_option(profile_time, ProfileTime, !IO),
+    globals.io_lookup_bool_option(profile_time, ProfileTime, !IO),
     (
-        bintree_set__is_member(Label, ContLabelSet),
+        bintree_set.is_member(Label, ContLabelSet),
         ProfileTime = yes
     ->
-        io__write_string("\tMR_update_prof_current_proc(MR_LABEL_AP(", !IO),
+        io.write_string("\tMR_update_prof_current_proc(MR_LABEL_AP(", !IO),
         output_label(CallerLabel, no, !IO),
-        io__write_string("));\n", !IO)
+        io.write_string("));\n", !IO)
     ;
         true
     ).
@@ -3499,126 +3498,126 @@ maybe_output_update_prof_counter(Label, CallerLabel - ContLabelSet, !IO) :-
 output_goto(label(Label), CallerLabel, !IO) :-
     (
         Label = entry(exported, _),
-        globals__io_lookup_bool_option(profile_calls, ProfileCalls, !IO),
+        globals.io_lookup_bool_option(profile_calls, ProfileCalls, !IO),
         (
             ProfileCalls = yes,
-            io__write_string("MR_tailcall(", !IO),
+            io.write_string("MR_tailcall(", !IO),
             output_label_as_code_addr(Label, !IO),
-            io__write_string(",\n\t\t", !IO),
+            io.write_string(",\n\t\t", !IO),
             output_label_as_code_addr(CallerLabel, !IO),
-            io__write_string(");\n", !IO)
+            io.write_string(");\n", !IO)
         ;
             ProfileCalls = no,
-            io__write_string("MR_np_tailcall_ent(", !IO),
+            io.write_string("MR_np_tailcall_ent(", !IO),
             output_label(Label, no, !IO),
-            io__write_string(");\n", !IO)
+            io.write_string(");\n", !IO)
         )
     ;
         Label = entry(local, _),
-        globals__io_lookup_bool_option(profile_calls, ProfileCalls, !IO),
+        globals.io_lookup_bool_option(profile_calls, ProfileCalls, !IO),
         (
             ProfileCalls = yes,
-            io__write_string("MR_tailcall(", !IO),
+            io.write_string("MR_tailcall(", !IO),
             output_label_as_code_addr(Label, !IO),
-            io__write_string(",\n\t\t", !IO),
+            io.write_string(",\n\t\t", !IO),
             output_label_as_code_addr(CallerLabel, !IO),
-            io__write_string(");\n", !IO)
+            io.write_string(");\n", !IO)
         ;
             ProfileCalls = no,
-            io__write_string("MR_np_tailcall_ent(", !IO),
+            io.write_string("MR_np_tailcall_ent(", !IO),
             output_label(Label, no, !IO),
-            io__write_string(");\n", !IO)
+            io.write_string(");\n", !IO)
         )
     ;
         Label = entry(c_local, _),
-        globals__io_lookup_bool_option(profile_calls, ProfileCalls, !IO),
+        globals.io_lookup_bool_option(profile_calls, ProfileCalls, !IO),
         (
             ProfileCalls = yes,
-            io__write_string("MR_localtailcall(", !IO),
+            io.write_string("MR_localtailcall(", !IO),
             output_label(Label, !IO),
-            io__write_string(",\n\t\t", !IO),
+            io.write_string(",\n\t\t", !IO),
             output_label_as_code_addr(CallerLabel, !IO),
-            io__write_string(");\n", !IO)
+            io.write_string(");\n", !IO)
         ;
             ProfileCalls = no,
-            io__write_string("MR_np_localtailcall(", !IO),
+            io.write_string("MR_np_localtailcall(", !IO),
             output_label(Label, no, !IO),
-            io__write_string(");\n", !IO)
+            io.write_string(");\n", !IO)
         )
     ;
         Label = internal(_, _),
-        io__write_string("MR_GOTO_LAB(", !IO),
+        io.write_string("MR_GOTO_LAB(", !IO),
         output_label(Label, no, !IO),
-        io__write_string(");\n", !IO)
+        io.write_string(");\n", !IO)
     ).
 output_goto(imported(ProcLabel), CallerLabel, !IO) :-
-    globals__io_lookup_bool_option(profile_calls, ProfileCalls, !IO),
+    globals.io_lookup_bool_option(profile_calls, ProfileCalls, !IO),
     (
         ProfileCalls = yes,
-        io__write_string("MR_tailcall(MR_ENTRY(", !IO),
+        io.write_string("MR_tailcall(MR_ENTRY(", !IO),
         output_proc_label(ProcLabel, !IO),
-        io__write_string("),\n\t\t", !IO),
+        io.write_string("),\n\t\t", !IO),
         output_label_as_code_addr(CallerLabel, !IO),
-        io__write_string(");\n", !IO)
+        io.write_string(");\n", !IO)
     ;
         ProfileCalls = no,
-        io__write_string("MR_np_tailcall_ent(", !IO),
+        io.write_string("MR_np_tailcall_ent(", !IO),
         output_proc_label(ProcLabel, no, !IO),
-        io__write_string(");\n", !IO)
+        io.write_string(");\n", !IO)
     ).
 output_goto(succip, _, !IO) :-
-    io__write_string("MR_proceed();\n", !IO).
+    io.write_string("MR_proceed();\n", !IO).
 output_goto(do_succeed(Last), _, !IO) :-
     (
         Last = no,
-        io__write_string("MR_succeed();\n", !IO)
+        io.write_string("MR_succeed();\n", !IO)
     ;
         Last = yes,
-        io__write_string("MR_succeed_discard();\n", !IO)
+        io.write_string("MR_succeed_discard();\n", !IO)
     ).
 output_goto(do_redo, _, !IO) :-
-    globals__io_lookup_bool_option(use_macro_for_redo_fail, UseMacro, !IO),
+    globals.io_lookup_bool_option(use_macro_for_redo_fail, UseMacro, !IO),
     (
         UseMacro = yes,
-        io__write_string("MR_redo();\n", !IO)
+        io.write_string("MR_redo();\n", !IO)
     ;
         UseMacro = no,
-        io__write_string("MR_GOTO(MR_ENTRY(MR_do_redo));\n", !IO)
+        io.write_string("MR_GOTO(MR_ENTRY(MR_do_redo));\n", !IO)
     ).
 output_goto(do_fail, _, !IO) :-
-    globals__io_lookup_bool_option(use_macro_for_redo_fail, UseMacro, !IO),
+    globals.io_lookup_bool_option(use_macro_for_redo_fail, UseMacro, !IO),
     (
         UseMacro = yes,
-        io__write_string("MR_fail();\n", !IO)
+        io.write_string("MR_fail();\n", !IO)
     ;
         UseMacro = no,
-        io__write_string("MR_GOTO(MR_ENTRY(MR_do_fail));\n", !IO)
+        io.write_string("MR_GOTO(MR_ENTRY(MR_do_fail));\n", !IO)
     ).
 output_goto(do_trace_redo_fail_shallow, _, !IO) :-
-    io__write_string("MR_GOTO(MR_ENTRY(MR_do_trace_redo_fail_shallow));\n",
+    io.write_string("MR_GOTO(MR_ENTRY(MR_do_trace_redo_fail_shallow));\n",
         !IO).
 output_goto(do_trace_redo_fail_deep, _, !IO) :-
-    io__write_string("MR_GOTO(MR_ENTRY(MR_do_trace_redo_fail_deep));\n", !IO).
+    io.write_string("MR_GOTO(MR_ENTRY(MR_do_trace_redo_fail_deep));\n", !IO).
 output_goto(do_call_closure(Variant), CallerLabel, !IO) :-
     % see comment in output_call for why we use `noprof_' etc. here
-    io__write_string("MR_set_prof_ho_caller_proc(", !IO),
+    io.write_string("MR_set_prof_ho_caller_proc(", !IO),
     output_label_as_code_addr(CallerLabel, !IO),
-    io__write_string(");\n\t", !IO),
-    io__write_string("MR_np_tailcall_ent(do_call_closure_", !IO),
-    io__write_string(ho_call_variant_to_string(Variant), !IO),
-    io__write_string(");\n", !IO).
+    io.write_string(");\n\t", !IO),
+    io.write_string("MR_np_tailcall_ent(do_call_closure_", !IO),
+    io.write_string(ho_call_variant_to_string(Variant), !IO),
+    io.write_string(");\n", !IO).
 output_goto(do_call_class_method(Variant), CallerLabel, !IO) :-
     % see comment in output_call for why we use `noprof_' etc. here
-    io__write_string("MR_set_prof_ho_caller_proc(", !IO),
+    io.write_string("MR_set_prof_ho_caller_proc(", !IO),
     output_label_as_code_addr(CallerLabel, !IO),
-    io__write_string(");\n\t", !IO),
-    io__write_string("MR_np_tailcall_ent(do_call_class_method_", !IO),
-    io__write_string(ho_call_variant_to_string(Variant), !IO),
-    io__write_string(");\n", !IO).
+    io.write_string(");\n\t", !IO),
+    io.write_string("MR_np_tailcall_ent(do_call_class_method_", !IO),
+    io.write_string(ho_call_variant_to_string(Variant), !IO),
+    io.write_string(");\n", !IO).
 output_goto(do_not_reached, CallerLabel, !IO) :-
-    io__write_string("MR_tailcall(MR_ENTRY(MR_do_not_reached),\n\t\t", !IO),
+    io.write_string("MR_tailcall(MR_ENTRY(MR_do_not_reached),\n\t\t", !IO),
     output_label_as_code_addr(CallerLabel, !IO),
-    io__write_string(");\n", !IO).
+    io.write_string(");\n", !IO).
 
     % Note that we also do some optimization here by outputting `localcall'
     % rather than `call' for calls to local labels, or `call_localret' for
@@ -3632,7 +3631,7 @@ output_goto(do_not_reached, CallerLabel, !IO) :-
     is det.
 
 output_call(Target, Continuation, CallerLabel, !IO) :-
-    io__write_string("\t", !IO),
+    io.write_string("\t", !IO),
     % For profiling, we ignore calls to do_call_closure and
     % do_call_class_method, because in general they lead to cycles in the call
     % graph that screw up the profile. By generating a `noprof_call' rather
@@ -3647,11 +3646,11 @@ output_call(Target, Continuation, CallerLabel, !IO) :-
         )
     ->
         ProfileCall = no,
-        io__write_string("MR_set_prof_ho_caller_proc(", !IO),
+        io.write_string("MR_set_prof_ho_caller_proc(", !IO),
         output_label_as_code_addr(CallerLabel, !IO),
-        io__write_string(");\n\t", !IO)
+        io.write_string(");\n\t", !IO)
     ;
-        globals__io_lookup_bool_option(profile_calls, ProfileCall, !IO)
+        globals.io_lookup_bool_option(profile_calls, ProfileCall, !IO)
     ),
     (
         Target = label(Label),
@@ -3660,9 +3659,9 @@ output_call(Target, Continuation, CallerLabel, !IO) :-
     ->
         (
             ProfileCall = yes,
-            io__write_string("MR_localcall(", !IO),
+            io.write_string("MR_localcall(", !IO),
             output_label(Label, !IO),
-            io__write_string(",\n\t\t", !IO),
+            io.write_string(",\n\t\t", !IO),
             output_code_addr(Continuation, !IO)
         ;
             ProfileCall = no,
@@ -3670,32 +3669,32 @@ output_call(Target, Continuation, CallerLabel, !IO) :-
                 NeedsPrefix, Wrapper),
             (
                 NeedsPrefix = no,
-                io__write_string("MR_noprof_localcall(", !IO),
+                io.write_string("MR_noprof_localcall(", !IO),
                 output_label(Label, no, !IO),
-                io__write_string(",\n\t\t", !IO),
-                io__write_string(BaseStr, !IO),
+                io.write_string(",\n\t\t", !IO),
+                io.write_string(BaseStr, !IO),
                 output_code_addr_from_pieces(BaseStr,
                     NeedsPrefix, Wrapper, !IO)
             ;
                 NeedsPrefix = yes,
                 Wrapper = entry,
-                io__write_string("MR_np_localcall_ent(", !IO),
+                io.write_string("MR_np_localcall_ent(", !IO),
                 output_label(Label, no, !IO),
-                io__write_string(",\n\t\t", !IO),
-                io__write_string(BaseStr, !IO)
+                io.write_string(",\n\t\t", !IO),
+                io.write_string(BaseStr, !IO)
             ;
                 NeedsPrefix = yes,
                 Wrapper = label,
-                io__write_string("MR_np_localcall_lab(", !IO),
+                io.write_string("MR_np_localcall_lab(", !IO),
                 output_label(Label, no, !IO),
-                io__write_string(",\n\t\t", !IO),
-                io__write_string(BaseStr, !IO)
+                io.write_string(",\n\t\t", !IO),
+                io.write_string(BaseStr, !IO)
             ;
                 NeedsPrefix = yes,
                 Wrapper = none,
-                io__write_string("MR_np_localcall(", !IO),
+                io.write_string("MR_np_localcall(", !IO),
                 output_label(Label, no, !IO),
-                io__write_string(",\n\t\t", !IO),
+                io.write_string(",\n\t\t", !IO),
                 output_code_addr_from_pieces(BaseStr,
                     NeedsPrefix, Wrapper, !IO)
             )
@@ -3706,26 +3705,26 @@ output_call(Target, Continuation, CallerLabel, !IO) :-
     ->
         (
             ProfileCall = yes,
-            io__write_string("MR_call_localret(", !IO),
+            io.write_string("MR_call_localret(", !IO),
             output_code_addr(Target, !IO),
-            io__write_string(",\n\t\t", !IO),
+            io.write_string(",\n\t\t", !IO),
             output_label(ContLabel, !IO)
         ;
             ProfileCall = no,
             code_addr_to_string_base(Target, BaseStr, NeedsPrefix, Wrapper),
             (
                 NeedsPrefix = no,
-                io__write_string("MR_noprof_call_localret(", !IO),
+                io.write_string("MR_noprof_call_localret(", !IO),
                 output_code_addr_from_pieces(BaseStr,
                     NeedsPrefix, Wrapper, !IO),
-                io__write_string(",\n\t\t", !IO),
+                io.write_string(",\n\t\t", !IO),
                 output_label(ContLabel, !IO)
             ;
                 NeedsPrefix = yes,
                 Wrapper = entry,
-                io__write_string("MR_np_call_localret_ent(", !IO),
-                io__write_string(BaseStr, !IO),
-                io__write_string(",\n\t\t", !IO),
+                io.write_string("MR_np_call_localret_ent(", !IO),
+                io.write_string(BaseStr, !IO),
+                io.write_string(",\n\t\t", !IO),
                 output_label(ContLabel, no, !IO)
             ;
                 NeedsPrefix = yes,
@@ -3737,33 +3736,33 @@ output_call(Target, Continuation, CallerLabel, !IO) :-
             ;
                 NeedsPrefix = yes,
                 Wrapper = none,
-                io__write_string("MR_np_call_localret(", !IO),
+                io.write_string("MR_np_call_localret(", !IO),
                 output_code_addr_from_pieces(BaseStr,
                     NeedsPrefix, Wrapper, !IO),
-                io__write_string(",\n\t\t", !IO),
+                io.write_string(",\n\t\t", !IO),
                 output_label(ContLabel, no, !IO)
             )
         )
     ;
         (
             ProfileCall = yes,
-            io__write_string("MR_call(", !IO)
+            io.write_string("MR_call(", !IO)
         ;
             ProfileCall = no,
-            io__write_string("MR_noprof_call(", !IO)
+            io.write_string("MR_noprof_call(", !IO)
         ),
         output_code_addr(Target, !IO),
-        io__write_string(",\n\t\t", !IO),
+        io.write_string(",\n\t\t", !IO),
         output_code_addr(Continuation, !IO)
     ),
     (
         ProfileCall = yes,
-        io__write_string(",\n\t\t", !IO),
+        io.write_string(",\n\t\t", !IO),
         output_label_as_code_addr(CallerLabel, !IO)
     ;
         ProfileCall = no
     ),
-    io__write_string(");\n", !IO).
+    io.write_string(");\n", !IO).
 
 output_code_addr(CodeAddr, !IO) :-
     code_addr_to_string_base(CodeAddr, BaseStr, NeedsPrefix, Wrapper),
@@ -3782,38 +3781,38 @@ output_code_addr_from_pieces(BaseStr, NeedsPrefix, Wrapper, !IO) :-
         Wrapper = none,
         (
             NeedsPrefix = yes,
-            io__write_string(mercury_label_prefix, !IO)
+            io.write_string(mercury_label_prefix, !IO)
         ;
             NeedsPrefix = no
         ),
-        io__write_string(BaseStr, !IO)
+        io.write_string(BaseStr, !IO)
     ;
         Wrapper = entry,
         (
             NeedsPrefix = yes,
             % The _AP version of the macro adds the prefix.
-            io__write_string("MR_ENTRY_AP(", !IO),
-            io__write_string(BaseStr, !IO),
-            io__write_string(")", !IO)
+            io.write_string("MR_ENTRY_AP(", !IO),
+            io.write_string(BaseStr, !IO),
+            io.write_string(")", !IO)
         ;
             NeedsPrefix = no,
-            io__write_string("MR_ENTRY(", !IO),
-            io__write_string(BaseStr, !IO),
-            io__write_string(")", !IO)
+            io.write_string("MR_ENTRY(", !IO),
+            io.write_string(BaseStr, !IO),
+            io.write_string(")", !IO)
         )
     ;
         Wrapper = label,
         (
             NeedsPrefix = yes,
             % The _AP version of the macro adds the prefix.
-            io__write_string("MR_LABEL_AP(", !IO),
-            io__write_string(BaseStr, !IO),
-            io__write_string(")", !IO)
+            io.write_string("MR_LABEL_AP(", !IO),
+            io.write_string(BaseStr, !IO),
+            io.write_string(")", !IO)
         ;
             NeedsPrefix = no,
-            io__write_string("MR_LABEL(", !IO),
-            io__write_string(BaseStr, !IO),
-            io__write_string(")", !IO)
+            io.write_string("MR_LABEL(", !IO),
+            io.write_string(BaseStr, !IO),
+            io.write_string(")", !IO)
         )
     ).
 
@@ -3875,7 +3874,7 @@ output_maybe_data_addr(MaybeDataAddr, !IO) :-
         output_data_addr(DataAddr, !IO)
     ;
         MaybeDataAddr = no,
-        io__write_string("NULL", !IO)
+        io.write_string("NULL", !IO)
     ).
 
     % Output a list of maybe data addresses, with a `no' meaning NULL.
@@ -3885,10 +3884,10 @@ output_maybe_data_addr(MaybeDataAddr, !IO) :-
 
 output_maybe_data_addrs([], !IO).
 output_maybe_data_addrs([MaybeDataAddr | MaybeDataAddrs], !IO) :-
-    io__write_string("\t", !IO),
-    io__write_list([MaybeDataAddr | MaybeDataAddrs], ",\n\t",
+    io.write_string("\t", !IO),
+    io.write_list([MaybeDataAddr | MaybeDataAddrs], ",\n\t",
         output_maybe_data_addr, !IO),
-    io__write_string("\n", !IO).
+    io.write_string("\n", !IO).
 
     % Output a list of data addresses.
     %
@@ -3896,9 +3895,9 @@ output_maybe_data_addrs([MaybeDataAddr | MaybeDataAddrs], !IO) :-
 
 output_data_addrs([], !IO).
 output_data_addrs([DataAddr | DataAddrs], !IO) :-
-    io__write_string("\t", !IO),
-    io__write_list([DataAddr | DataAddrs], ",\n\t", output_data_addr, !IO),
-    io__write_string("\n", !IO).
+    io.write_string("\t", !IO),
+    io.write_list([DataAddr | DataAddrs], ",\n\t", output_data_addr, !IO),
+    io.write_string("\n", !IO).
 
     % Output a data address.
     %
@@ -3916,7 +3915,7 @@ output_data_addr(_ModuleName, VarName, !IO) :-
     (
         VarName = common(CellNum, _TypeNum),
         output_common_prefix(common_prefix_var, !IO),
-        io__write_int(CellNum, !IO)
+        io.write_int(CellNum, !IO)
     ;
         VarName = tabling_pointer(ProcLabel),
         output_tabling_pointer_var_name(ProcLabel, !IO)
@@ -3926,7 +3925,7 @@ output_data_addr(_ModuleName, VarName, !IO) :-
 
 output_common_cell_type_name(TypeNum, !IO) :-
     output_common_prefix(common_prefix_type, !IO),
-    io__write_int(TypeNum, !IO).
+    io.write_int(TypeNum, !IO).
 
 :- type common_prefix
     --->    common_prefix_var
@@ -3937,17 +3936,17 @@ output_common_cell_type_name(TypeNum, !IO) :-
 output_common_prefix(Prefix, !IO) :-
     (
         Prefix = common_prefix_var,
-        io__write_string(mercury_common_prefix, !IO)
+        io.write_string(mercury_common_prefix, !IO)
     ;
         Prefix = common_prefix_type,
-        io__write_string(mercury_common_type_prefix, !IO)
+        io.write_string(mercury_common_type_prefix, !IO)
     ).
 
 :- pred output_label_as_code_addr(label::in, io::di, io::uo) is det.
 
 output_label_as_code_addr(Label, !IO) :-
     label_as_code_addr_to_string(Label, Str),
-    io__write_string(Str, !IO).
+    io.write_string(Str, !IO).
 
 :- func label_is_external_to_c_module(label) = bool.
 
@@ -3973,41 +3972,41 @@ label_as_code_addr_to_string(Label, Str) :-
 
 output_label_list([], !IO).
 output_label_list([Label | Labels], !IO) :-
-    io__write_string("MR_LABEL_AP(", !IO),
+    io.write_string("MR_LABEL_AP(", !IO),
     output_label(Label, no, !IO),
-    io__write_string(")", !IO),
+    io.write_string(")", !IO),
     output_label_list_2(Labels, !IO).
 
 :- pred output_label_list_2(list(label)::in, io::di, io::uo) is det.
 
 output_label_list_2([], !IO).
 output_label_list_2([Label | Labels], !IO) :-
-    io__write_string(" MR_AND\n\t\t", !IO),
-    io__write_string("MR_LABEL_AP(", !IO),
+    io.write_string(" MR_AND\n\t\t", !IO),
+    io.write_string("MR_LABEL_AP(", !IO),
     output_label(Label, no, !IO),
-    io__write_string(")", !IO),
+    io.write_string(")", !IO),
     output_label_list_2(Labels, !IO).
 
 :- pred output_label_defn(label::in, io::di, io::uo) is det.
 
 output_label_defn(entry(exported, ProcLabel), !IO) :-
-    io__write_string("MR_define_entry(", !IO),
+    io.write_string("MR_define_entry(", !IO),
     output_label(entry(exported, ProcLabel), !IO),
-    io__write_string(");\n", !IO).
+    io.write_string(");\n", !IO).
 output_label_defn(entry(local, ProcLabel), !IO) :-
-    io__write_string("MR_def_static(", !IO),
+    io.write_string("MR_def_static(", !IO),
     output_proc_label(ProcLabel, no, !IO),
-    io__write_string(")\n", !IO).
+    io.write_string(")\n", !IO).
 output_label_defn(entry(c_local, ProcLabel), !IO) :-
-    io__write_string("MR_def_local(", !IO),
+    io.write_string("MR_def_local(", !IO),
     output_proc_label(ProcLabel, no, !IO),
-    io__write_string(")\n", !IO).
+    io.write_string(")\n", !IO).
 output_label_defn(internal(Num, ProcLabel), !IO) :-
-    io__write_string("MR_def_label(", !IO),
+    io.write_string("MR_def_label(", !IO),
     output_proc_label(ProcLabel, no, !IO),
-    io__write_string(",", !IO),
-    io__write_int(Num, !IO),
-    io__write_string(")\n", !IO).
+    io.write_string(",", !IO),
+    io.write_int(Num, !IO),
+    io.write_string(")\n", !IO).
 
 % Entry labels should generate the same code, regardless of the entry label
 % type, because we may refer to an entry label via different entry label types
@@ -4019,40 +4018,40 @@ output_label_defn(internal(Num, ProcLabel), !IO) :-
 
 output_label(Label, !IO) :-
     LabelStr = label_to_c_string(Label, yes),
-    io__write_string(LabelStr, !IO).
+    io.write_string(LabelStr, !IO).
 
 output_label(Label, AddPrefix, !IO) :-
     LabelStr = label_to_c_string(Label, AddPrefix),
-    io__write_string(LabelStr, !IO).
+    io.write_string(LabelStr, !IO).
 
 label_to_c_string(entry(_, ProcLabel), AddPrefix) =
     proc_label_to_c_string(ProcLabel, AddPrefix).
 label_to_c_string(internal(Num, ProcLabel), AddPrefix) = LabelStr :-
     ProcLabelStr = proc_label_to_c_string(ProcLabel, AddPrefix),
-    string__int_to_string(Num, NumStr),
-    string__append("_i", NumStr, NumSuffix),
-    string__append(ProcLabelStr, NumSuffix, LabelStr).
+    string.int_to_string(Num, NumStr),
+    string.append("_i", NumStr, NumSuffix),
+    string.append(ProcLabelStr, NumSuffix, LabelStr).
 
 :- pred output_reg(reg_type::in, int::in, io::di, io::uo) is det.
 
 output_reg(r, N, !IO) :-
-    io__write_string(reg_to_string(r, N), !IO).
+    io.write_string(reg_to_string(r, N), !IO).
 output_reg(f, _, !IO) :-
     sorry(this_file, "Floating point registers not implemented").
 
 :- pred output_tag(tag::in, io::di, io::uo) is det.
 
 output_tag(Tag, !IO) :-
-    io__write_string("MR_mktag(", !IO),
-    io__write_int(Tag, !IO),
-    io__write_string(")", !IO).
+    io.write_string("MR_mktag(", !IO),
+    io.write_int(Tag, !IO),
+    io.write_string(")", !IO).
 
     % Output an rval, converted to the specified type
     %
 :- pred output_rval_as_type(rval::in, llds_type::in, io::di, io::uo) is det.
 
 output_rval_as_type(Rval, DesiredType, !IO) :-
-    llds__rval_type(Rval, ActualType),
+    llds.rval_type(Rval, ActualType),
     ( types_match(DesiredType, ActualType) ->
         % No casting needed.
         output_rval(Rval, !IO)
@@ -4061,9 +4060,9 @@ output_rval_as_type(Rval, DesiredType, !IO) :-
         % Convertions to/from float must be treated specially;
         % for the others, we can just use a cast.
         ( DesiredType = float ->
-            io__write_string("MR_word_to_float(", !IO),
+            io.write_string("MR_word_to_float(", !IO),
             output_rval(Rval, !IO),
-            io__write_string(")", !IO)
+            io.write_string(")", !IO)
         ; ActualType = float ->
             ( DesiredType = word ->
                 output_float_rval_as_word(Rval, !IO)
@@ -4155,8 +4154,8 @@ output_float_rval(Rval, IsPtr, !IO) :-
     % For float constant expressions, if we're using boxed boxed floats
     % and --static-ground-terms is enabled, we just refer to the static const
     % which we declared earlier.
-    globals__io_lookup_bool_option(unboxed_float, UnboxFloat, !IO),
-    globals__io_lookup_bool_option(static_ground_terms, StaticGroundTerms,
+    globals.io_lookup_bool_option(unboxed_float, UnboxFloat, !IO),
+    globals.io_lookup_bool_option(static_ground_terms, StaticGroundTerms,
         !IO),
     (
         UnboxFloat = no,
@@ -4171,8 +4170,8 @@ output_float_rval(Rval, IsPtr, !IO) :-
             Cast = word
         ),
         output_llds_type_cast(Cast, !IO),
-        io__write_string("&mercury_float_const_", !IO),
-        io__write_string(FloatName, !IO)
+        io.write_string("&mercury_float_const_", !IO),
+        io.write_string(FloatName, !IO)
     ;
         (
             IsPtr = yes,
@@ -4180,9 +4179,9 @@ output_float_rval(Rval, IsPtr, !IO) :-
         ;
             IsPtr = no
         ),
-        io__write_string("MR_float_to_word(", !IO),
+        io.write_string("MR_float_to_word(", !IO),
         output_rval(Rval, !IO),
-        io__write_string(")", !IO)
+        io.write_string(")", !IO)
     ).
 
 :- pred output_test_rval(rval::in, io::di, io::uo) is det.
@@ -4191,109 +4190,109 @@ output_test_rval(Test, !IO) :-
     (
         is_int_cmp(Test, Left, RightConst, OpStr, _)
     ->
-        io__write_string(OpStr, !IO),
-        io__write_string("(", !IO),
+        io.write_string(OpStr, !IO),
+        io.write_string("(", !IO),
         output_rval(Left, !IO),
-        io__write_string(",", !IO),
-        io__write_int(RightConst, !IO),
-        io__write_string(")", !IO)
+        io.write_string(",", !IO),
+        io.write_int(RightConst, !IO),
+        io.write_string(")", !IO)
     ;
         Test = unop(logical_not, InnerTest),
         is_int_cmp(InnerTest, Left, RightConst, _, NegOpStr)
     ->
-        io__write_string(NegOpStr, !IO),
-        io__write_string("(", !IO),
+        io.write_string(NegOpStr, !IO),
+        io.write_string("(", !IO),
         output_rval(Left, !IO),
-        io__write_string(",", !IO),
-        io__write_int(RightConst, !IO),
-        io__write_string(")", !IO)
+        io.write_string(",", !IO),
+        io.write_int(RightConst, !IO),
+        io.write_string(")", !IO)
     ;
         is_ptag_test(Test, Rval, Ptag, Negated)
     ->
         (
             Negated = no,
-            io__write_string("MR_PTAG_TEST(", !IO)
+            io.write_string("MR_PTAG_TEST(", !IO)
         ;
             Negated = yes,
-            io__write_string("MR_PTAG_TESTR(", !IO)
+            io.write_string("MR_PTAG_TESTR(", !IO)
         ),
         output_rval(Rval, !IO),
-        io__write_string(",", !IO),
-        io__write_int(Ptag, !IO),
-        io__write_string(")", !IO)
+        io.write_string(",", !IO),
+        io.write_int(Ptag, !IO),
+        io.write_string(")", !IO)
     ;
         Test = unop(logical_not, InnerTest),
         is_ptag_test(InnerTest, Rval, Ptag, Negated)
     ->
         (
             Negated = no,
-            io__write_string("MR_PTAG_TESTR(", !IO)
+            io.write_string("MR_PTAG_TESTR(", !IO)
         ;
             Negated = yes,
-            io__write_string("MR_PTAG_TEST(", !IO)
+            io.write_string("MR_PTAG_TEST(", !IO)
         ),
         output_rval(Rval, !IO),
-        io__write_string(",", !IO),
-        io__write_int(Ptag, !IO),
-        io__write_string(")", !IO)
+        io.write_string(",", !IO),
+        io.write_int(Ptag, !IO),
+        io.write_string(")", !IO)
     ;
         Test = binop(logical_and, Left, Right),
         is_ptag_test(Left, Rval, Ptag, no),
         is_remote_stag_test(Right, Rval, Ptag, Stag)
     ->
-        io__write_string("MR_RTAGS_TEST(", !IO),
+        io.write_string("MR_RTAGS_TEST(", !IO),
         output_rval(Rval, !IO),
-        io__write_string(",", !IO),
-        io__write_int(Ptag, !IO),
-        io__write_string(",", !IO),
-        io__write_int(Stag, !IO),
-        io__write_string(")", !IO)
+        io.write_string(",", !IO),
+        io.write_int(Ptag, !IO),
+        io.write_string(",", !IO),
+        io.write_int(Stag, !IO),
+        io.write_string(")", !IO)
     ;
         Test = unop(logical_not, InnerTest),
         InnerTest = binop(logical_and, Left, Right),
         is_ptag_test(Left, Rval, Ptag, no),
         is_remote_stag_test(Right, Rval, Ptag, Stag)
     ->
-        io__write_string("MR_RTAGS_TESTR(", !IO),
+        io.write_string("MR_RTAGS_TESTR(", !IO),
         output_rval(Rval, !IO),
-        io__write_string(",", !IO),
-        io__write_int(Ptag, !IO),
-        io__write_string(",", !IO),
-        io__write_int(Stag, !IO),
-        io__write_string(")", !IO)
+        io.write_string(",", !IO),
+        io.write_int(Ptag, !IO),
+        io.write_string(",", !IO),
+        io.write_int(Stag, !IO),
+        io.write_string(")", !IO)
     ;
         is_local_stag_test(Test, Rval, Ptag, Stag, Negated)
     ->
         (
             Negated = no,
-            io__write_string("MR_LTAGS_TEST(", !IO)
+            io.write_string("MR_LTAGS_TEST(", !IO)
         ;
             Negated = yes,
-            io__write_string("MR_LTAGS_TESTR(", !IO)
+            io.write_string("MR_LTAGS_TESTR(", !IO)
         ),
         output_rval(Rval, !IO),
-        io__write_string(",", !IO),
-        io__write_int(Ptag, !IO),
-        io__write_string(",", !IO),
-        io__write_int(Stag, !IO),
-        io__write_string(")", !IO)
+        io.write_string(",", !IO),
+        io.write_int(Ptag, !IO),
+        io.write_string(",", !IO),
+        io.write_int(Stag, !IO),
+        io.write_string(")", !IO)
     ;
         Test = unop(logical_not, InnerTest),
         is_local_stag_test(InnerTest, Rval, Ptag, Stag, Negated)
     ->
         (
             Negated = no,
-            io__write_string("MR_LTAGS_TESTR(", !IO)
+            io.write_string("MR_LTAGS_TESTR(", !IO)
         ;
             Negated = yes,
-            io__write_string("MR_LTAGS_TEST(", !IO)
+            io.write_string("MR_LTAGS_TEST(", !IO)
         ),
         output_rval(Rval, !IO),
-        io__write_string(",", !IO),
-        io__write_int(Ptag, !IO),
-        io__write_string(",", !IO),
-        io__write_int(Stag, !IO),
-        io__write_string(")", !IO)
+        io.write_string(",", !IO),
+        io.write_int(Ptag, !IO),
+        io.write_string(",", !IO),
+        io.write_int(Stag, !IO),
+        io.write_string(")", !IO)
     ;
         output_rval_as_type(Test, bool, !IO)
     ).
@@ -4370,47 +4369,47 @@ output_rval(const(Const), !IO) :-
     output_rval_const(Const, !IO).
 output_rval(unop(UnaryOp, Exprn), !IO) :-
     output_unary_op(UnaryOp, !IO),
-    io__write_string("(", !IO),
-    llds__unop_arg_type(UnaryOp, ArgType),
+    io.write_string("(", !IO),
+    llds.unop_arg_type(UnaryOp, ArgType),
     output_rval_as_type(Exprn, ArgType, !IO),
-    io__write_string(")", !IO).
+    io.write_string(")", !IO).
 output_rval(binop(Op, X, Y), !IO) :-
     (
         Op = array_index(_Type)
     ->
-        io__write_string("(", !IO),
+        io.write_string("(", !IO),
         output_rval_as_type(X, data_ptr, !IO),
-        io__write_string(")[", !IO),
+        io.write_string(")[", !IO),
         output_rval_as_type(Y, integer, !IO),
-        io__write_string("]", !IO)
+        io.write_string("]", !IO)
     ;
-        c_util__string_compare_op(Op, OpStr)
+        c_util.string_compare_op(Op, OpStr)
     ->
-        io__write_string("(strcmp((char *)", !IO),
+        io.write_string("(strcmp((char *)", !IO),
         output_rval_as_type(X, word, !IO),
-        io__write_string(", (char *)", !IO),
+        io.write_string(", (char *)", !IO),
         output_rval_as_type(Y, word, !IO),
-        io__write_string(")", !IO),
-        io__write_string(" ", !IO),
-        io__write_string(OpStr, !IO),
-        io__write_string(" ", !IO),
-        io__write_string("0)", !IO)
+        io.write_string(")", !IO),
+        io.write_string(" ", !IO),
+        io.write_string(OpStr, !IO),
+        io.write_string(" ", !IO),
+        io.write_string("0)", !IO)
     ;
-        ( c_util__float_compare_op(Op, OpStr1) ->
+        ( c_util.float_compare_op(Op, OpStr1) ->
             OpStr = OpStr1
-        ; c_util__float_op(Op, OpStr2) ->
+        ; c_util.float_op(Op, OpStr2) ->
             OpStr = OpStr2
         ;
             fail
         )
     ->
-        io__write_string("(", !IO),
+        io.write_string("(", !IO),
         output_rval_as_type(X, float, !IO),
-        io__write_string(" ", !IO),
-        io__write_string(OpStr, !IO),
-        io__write_string(" ", !IO),
+        io.write_string(" ", !IO),
+        io.write_string(OpStr, !IO),
+        io.write_string(" ", !IO),
         output_rval_as_type(Y, float, !IO),
-        io__write_string(")", !IO)
+        io.write_string(")", !IO)
     ;
 % XXX broken for C == minint
 % (since `NewC is 0 - C' overflows)
@@ -4421,49 +4420,49 @@ output_rval(binop(Op, X, Y), !IO) :-
 %       NewOp = (-),
 %       NewC is 0 - C,
 %       NewY = const(int_const(NewC)),
-%       io__write_string("("),
+%       io.write_string("("),
 %       output_rval(X),
-%       io__write_string(" "),
+%       io.write_string(" "),
 %       output_binary_op(NewOp),
-%       io__write_string(" "),
+%       io.write_string(" "),
 %       output_rval(NewY),
-%       io__write_string(")")
+%       io.write_string(")")
 %   ;
         % special-case equality ops to avoid some unnecessary
         % casts -- there's no difference between signed and
         % unsigned equality, so if both args are unsigned, we
         % don't need to cast them to (Integer)
         ( Op = eq ; Op = ne ),
-        ( llds__rval_type(X, XType) ),
+        ( llds.rval_type(X, XType) ),
         ( XType = word ; XType = unsigned ),
-        ( llds__rval_type(Y, YType) ),
+        ( llds.rval_type(Y, YType) ),
         ( YType = word ; YType = unsigned )
     ->
-        io__write_string("(", !IO),
+        io.write_string("(", !IO),
         output_rval(X, !IO),
-        io__write_string(" ", !IO),
+        io.write_string(" ", !IO),
         output_binary_op(Op, !IO),
-        io__write_string(" ", !IO),
+        io.write_string(" ", !IO),
         output_rval(Y, !IO),
-        io__write_string(")", !IO)
+        io.write_string(")", !IO)
     ;
-        c_util__unsigned_compare_op(Op, OpStr)
+        c_util.unsigned_compare_op(Op, OpStr)
     ->
-        io__write_string("(", !IO),
+        io.write_string("(", !IO),
         output_rval_as_type(X, unsigned, !IO),
-        io__write_string(" ", !IO),
-        io__write_string(OpStr, !IO),
-        io__write_string(" ", !IO),
+        io.write_string(" ", !IO),
+        io.write_string(OpStr, !IO),
+        io.write_string(" ", !IO),
         output_rval_as_type(Y, unsigned, !IO),
-        io__write_string(")", !IO)
+        io.write_string(")", !IO)
     ;
-        io__write_string("(", !IO),
+        io.write_string("(", !IO),
         output_rval_as_type(X, integer, !IO),
-        io__write_string(" ", !IO),
+        io.write_string(" ", !IO),
         output_binary_op(Op, !IO),
-        io__write_string(" ", !IO),
+        io.write_string(" ", !IO),
         output_rval_as_type(Y, integer, !IO),
-        io__write_string(")", !IO)
+        io.write_string(")", !IO)
     ).
 output_rval(mkword(Tag, Exprn), !IO) :-
     (
@@ -4471,25 +4470,25 @@ output_rval(mkword(Tag, Exprn), !IO) :-
         DataAddr = data_addr(_, DataName),
         DataName = common(CellNum, _TypeNum)
     ->
-        io__write_string("MR_TAG_COMMON(", !IO),
-        io__write_int(Tag, !IO),
-        io__write_string(",", !IO),
-        io__write_int(CellNum, !IO),
-        io__write_string(")", !IO)
+        io.write_string("MR_TAG_COMMON(", !IO),
+        io.write_int(Tag, !IO),
+        io.write_string(",", !IO),
+        io.write_int(CellNum, !IO),
+        io.write_string(")", !IO)
     ;
         Exprn = unop(mkbody, const(int_const(Body)))
     ->
-        io__write_string("MR_tbmkword(", !IO),
-        io__write_int(Tag, !IO),
-        io__write_string(", ", !IO),
-        io__write_int(Body, !IO),
-        io__write_string(")", !IO)
+        io.write_string("MR_tbmkword(", !IO),
+        io.write_int(Tag, !IO),
+        io.write_string(", ", !IO),
+        io.write_int(Body, !IO),
+        io.write_string(")", !IO)
     ;
-        io__write_string("MR_tmkword(", !IO),
-        io__write_int(Tag, !IO),
-        io__write_string(", ", !IO),
+        io.write_string("MR_tmkword(", !IO),
+        io.write_int(Tag, !IO),
+        io.write_string(", ", !IO),
         output_rval_as_type(Exprn, data_ptr, !IO),
-        io__write_string(")", !IO)
+        io.write_string(")", !IO)
     ).
 output_rval(lval(Lval), !IO) :-
     % If a field is used as an rval, then we need to use the MR_const_field()
@@ -4498,22 +4497,22 @@ output_rval(lval(Lval), !IO) :-
     ( Lval = field(MaybeTag, Rval, FieldNumRval) ->
         (
             MaybeTag = yes(Tag),
-            io__write_string("MR_ctfield(", !IO),
-            io__write_int(Tag, !IO),
-            io__write_string(", ", !IO)
+            io.write_string("MR_ctfield(", !IO),
+            io.write_int(Tag, !IO),
+            io.write_string(", ", !IO)
         ;
             MaybeTag = no,
-            io__write_string("MR_const_mask_field(", !IO)
+            io.write_string("MR_const_mask_field(", !IO)
         ),
         output_rval(Rval, !IO),
-        io__write_string(", ", !IO),
+        io.write_string(", ", !IO),
         ( FieldNumRval = const(int_const(FieldNum)) ->
             % Avoid emitting the (MR_Integer) cast.
-            io__write_int(FieldNum, !IO)
+            io.write_int(FieldNum, !IO)
         ;
             output_rval(FieldNumRval, !IO)
         ),
-        io__write_string(")", !IO)
+        io.write_string(")", !IO)
     ;
         output_lval(Lval, !IO)
     ).
@@ -4523,32 +4522,32 @@ output_rval(mem_addr(MemRef), !IO) :-
     (
         MemRef = stackvar_ref(N),
         output_llds_type_cast(data_ptr, !IO),
-        io__write_string("&MR_sv(", !IO),
-        io__write_int(N, !IO),
-        io__write_string(")", !IO)
+        io.write_string("&MR_sv(", !IO),
+        io.write_int(N, !IO),
+        io.write_string(")", !IO)
     ;
         MemRef = framevar_ref(N),
         output_llds_type_cast(data_ptr, !IO),
-        io__write_string("&MR_fv(", !IO),
-        io__write_int(N, !IO),
-        io__write_string(")", !IO)
+        io.write_string("&MR_fv(", !IO),
+        io.write_int(N, !IO),
+        io.write_string(")", !IO)
     ;
         MemRef = heap_ref(Rval, Tag, FieldNum),
         output_llds_type_cast(data_ptr, !IO),
-        io__write_string("&MR_tfield(", !IO),
-        io__write_int(Tag, !IO),
-        io__write_string(", ", !IO),
+        io.write_string("&MR_tfield(", !IO),
+        io.write_int(Tag, !IO),
+        io.write_string(", ", !IO),
         output_rval(Rval, !IO),
-        io__write_string(", ", !IO),
-        io__write_int(FieldNum, !IO),
-        io__write_string(")", !IO)
+        io.write_string(", ", !IO),
+        io.write_int(FieldNum, !IO),
+        io.write_string(")", !IO)
     ).
 
 :- pred output_unary_op(unary_op::in, io::di, io::uo) is det.
 
 output_unary_op(Op, !IO) :-
-    c_util__unary_prefix_op(Op, OpString),
-    io__write_string(OpString, !IO).
+    c_util.unary_prefix_op(Op, OpString),
+    io.write_string(OpString, !IO).
 
 :- pred output_rval_const(rval_const::in, io::di, io::uo) is det.
 
@@ -4556,29 +4555,29 @@ output_rval_const(int_const(N), !IO) :-
     % We need to cast to (Integer) to ensure things like 1 << 32 work
     % when `Integer' is 64 bits but `int' is 32 bits.
     output_llds_type_cast(integer, !IO),
-    io__write_int(N, !IO).
+    io.write_int(N, !IO).
 output_rval_const(float_const(FloatVal), !IO) :-
     % The cast to (Float) here lets the C compiler do arithmetic in `float'
     % rather than `double' if `Float' is `float' not `double'.
     output_llds_type_cast(float, !IO),
-    c_util__output_float_literal(FloatVal, !IO).
+    c_util.output_float_literal(FloatVal, !IO).
 output_rval_const(string_const(String), !IO) :-
-    io__write_string("MR_string_const(""", !IO),
-    c_util__output_quoted_string(String, !IO),
-    string__length(String, StringLength),
-    io__write_string(""", ", !IO),
-    io__write_int(StringLength, !IO),
-    io__write_string(")", !IO).
+    io.write_string("MR_string_const(""", !IO),
+    c_util.output_quoted_string(String, !IO),
+    string.length(String, StringLength),
+    io.write_string(""", ", !IO),
+    io.write_int(StringLength, !IO),
+    io.write_string(")", !IO).
 output_rval_const(multi_string_const(Length, String), !IO) :-
-    io__write_string("MR_string_const(""", !IO),
-    c_util__output_quoted_multi_string(Length, String, !IO),
-    io__write_string(""", ", !IO),
-    io__write_int(Length, !IO),
-    io__write_string(")", !IO).
+    io.write_string("MR_string_const(""", !IO),
+    c_util.output_quoted_multi_string(Length, String, !IO),
+    io.write_string(""", ", !IO),
+    io.write_int(Length, !IO),
+    io.write_string(")", !IO).
 output_rval_const(true, !IO) :-
-    io__write_string("MR_TRUE", !IO).
+    io.write_string("MR_TRUE", !IO).
 output_rval_const(false, !IO) :-
-    io__write_string("MR_FALSE", !IO).
+    io.write_string("MR_FALSE", !IO).
 output_rval_const(code_addr_const(CodeAddress), !IO) :-
     output_code_addr(CodeAddress, !IO).
 output_rval_const(data_addr_const(DataAddr, MaybeOffset), !IO) :-
@@ -4595,9 +4594,9 @@ output_rval_const(data_addr_const(DataAddr, MaybeOffset), !IO) :-
             DataAddr = data_addr(_, DataName),
             DataName = common(CellNum, _TypeNum)
         ->
-            io__write_string("MR_COMMON(", !IO),
-            io__write_int(CellNum, !IO),
-            io__write_string(")", !IO)
+            io.write_string("MR_COMMON(", !IO),
+            io.write_int(CellNum, !IO),
+            io.write_string(")", !IO)
         ;
             DataAddr = rtti_addr(RttiId),
             rtti_id_emits_type_ctor_info(RttiId, Ctor),
@@ -4608,18 +4607,18 @@ output_rval_const(data_addr_const(DataAddr, MaybeOffset), !IO) :-
             output_type_ctor_addr(Module, Name, Arity, !IO)
         ;
             output_llds_type_cast(data_ptr, !IO),
-            io__write_string("&", !IO),
+            io.write_string("&", !IO),
             output_data_addr(DataAddr, !IO)
         )
     ;
         MaybeOffset = yes(Offset),
-        io__write_string("((", !IO),
+        io.write_string("((", !IO),
         output_llds_type_cast(data_ptr, !IO),
-        io__write_string("&", !IO),
+        io.write_string("&", !IO),
         output_data_addr(DataAddr, !IO),
-        io__write_string(") + ", !IO),
-        io__write_int(Offset, !IO),
-        io__write_string(")", !IO)
+        io.write_string(") + ", !IO),
+        io.write_int(Offset, !IO),
+        io.write_string(")", !IO)
     ).
 
 :- pred output_type_ctor_addr(module_name::in, string::in, int::in,
@@ -4649,19 +4648,19 @@ output_type_ctor_addr(Module0, Name, Arity, !IO) :-
                 fail
             )
         ->
-            io__write_string(Macro, !IO)
+            io.write_string(Macro, !IO)
         ;
             ModuleStr = "io",
             Name = "state"
         ->
-            io__write_string("MR_IO_CTOR_ADDR", !IO)
+            io.write_string("MR_IO_CTOR_ADDR", !IO)
         ;
             ModuleStr = "bool",
             Name = "bool"
         ->
-            io__write_string("MR_BOOL_CTOR_ADDR", !IO)
+            io.write_string("MR_BOOL_CTOR_ADDR", !IO)
         ;
-            io__write_strings(["MR_CTOR0_ADDR(", ModuleStr, ", ", Name, ")"],
+            io.write_strings(["MR_CTOR0_ADDR(", ModuleStr, ", ", Name, ")"],
                 !IO)
         )
     ; Arity = 1 ->
@@ -4669,34 +4668,34 @@ output_type_ctor_addr(Module0, Name, Arity, !IO) :-
             Name = "list",
             ModuleStr = "list"
         ->
-            io__write_string("MR_LIST_CTOR_ADDR", !IO)
+            io.write_string("MR_LIST_CTOR_ADDR", !IO)
         ;
             Name = "private_builtin",
             ModuleStr = "type_info"
         ->
-            io__write_string("MR_TYPE_INFO_CTOR_ADDR", !IO)
+            io.write_string("MR_TYPE_INFO_CTOR_ADDR", !IO)
         ;
-            io__write_strings(["MR_CTOR1_ADDR(", ModuleStr, ", ", Name, ")"],
+            io.write_strings(["MR_CTOR1_ADDR(", ModuleStr, ", ", Name, ")"],
                 !IO)
         )
     ;
-        io__write_strings(["MR_CTOR_ADDR(", ModuleStr, ", ", Name,
+        io.write_strings(["MR_CTOR_ADDR(", ModuleStr, ", ", Name,
             ", ", int_to_string(Arity), ")"], !IO)
     ).
 
 :- pred output_lval_as_word(lval::in, io::di, io::uo) is det.
 
 output_lval_as_word(Lval, !IO) :-
-    llds__lval_type(Lval, ActualType),
+    llds.lval_type(Lval, ActualType),
     ( types_match(word, ActualType) ->
         output_lval(Lval, !IO)
     ; ActualType = float ->
         % Sanity check -- if this happens, the LLDS is ill-typed.
         unexpected(this_file, "output_lval_as_word: got float")
     ;
-        io__write_string("MR_LVALUE_CAST(MR_Word,", !IO),
+        io.write_string("MR_LVALUE_CAST(MR_Word,", !IO),
         output_lval(Lval, !IO),
-        io__write_string(")", !IO)
+        io.write_string(")", !IO)
     ).
 
 :- pred output_lval(lval::in, io::di, io::uo) is det.
@@ -4709,83 +4708,83 @@ output_lval(stackvar(N), !IO) :-
     ;
         true
     ),
-    io__write_string("MR_sv(", !IO),
-    io__write_int(N, !IO),
-    io__write_string(")", !IO).
+    io.write_string("MR_sv(", !IO),
+    io.write_int(N, !IO),
+    io.write_string(")", !IO).
 output_lval(framevar(N), !IO) :-
     ( N =< 0 ->
         unexpected(this_file, "frame var out of range")
     ;
         true
     ),
-    io__write_string("MR_fv(", !IO),
-    io__write_int(N, !IO),
-    io__write_string(")", !IO).
+    io.write_string("MR_fv(", !IO),
+    io.write_int(N, !IO),
+    io.write_string(")", !IO).
 output_lval(succip, !IO) :-
-    io__write_string("MR_succip", !IO).
+    io.write_string("MR_succip", !IO).
 output_lval(sp, !IO) :-
-    io__write_string("MR_sp", !IO).
+    io.write_string("MR_sp", !IO).
 output_lval(hp, !IO) :-
-    io__write_string("MR_hp", !IO).
+    io.write_string("MR_hp", !IO).
 output_lval(maxfr, !IO) :-
-    io__write_string("MR_maxfr", !IO).
+    io.write_string("MR_maxfr", !IO).
 output_lval(curfr, !IO) :-
-    io__write_string("MR_curfr", !IO).
+    io.write_string("MR_curfr", !IO).
 output_lval(succfr(Rval), !IO) :-
-    io__write_string("MR_succfr_slot(", !IO),
+    io.write_string("MR_succfr_slot(", !IO),
     output_rval(Rval, !IO),
-    io__write_string(")", !IO).
+    io.write_string(")", !IO).
 output_lval(prevfr(Rval), !IO) :-
-    io__write_string("MR_prevfr_slot(", !IO),
+    io.write_string("MR_prevfr_slot(", !IO),
     output_rval(Rval, !IO),
-    io__write_string(")", !IO).
+    io.write_string(")", !IO).
 output_lval(redofr(Rval), !IO) :-
-    io__write_string("MR_redofr_slot(", !IO),
+    io.write_string("MR_redofr_slot(", !IO),
     output_rval(Rval, !IO),
-    io__write_string(")", !IO).
+    io.write_string(")", !IO).
 output_lval(redoip(Rval), !IO) :-
-    io__write_string("MR_redoip_slot(", !IO),
+    io.write_string("MR_redoip_slot(", !IO),
     output_rval(Rval, !IO),
-    io__write_string(")", !IO).
+    io.write_string(")", !IO).
 output_lval(succip(Rval), !IO) :-
-    io__write_string("MR_succip_slot(", !IO),
+    io.write_string("MR_succip_slot(", !IO),
     output_rval(Rval, !IO),
-    io__write_string(")", !IO).
+    io.write_string(")", !IO).
 output_lval(field(MaybeTag, Rval, FieldNumRval), !IO) :-
     (
         MaybeTag = yes(Tag),
-        io__write_string("MR_tfield(", !IO),
-        io__write_int(Tag, !IO),
-        io__write_string(", ", !IO)
+        io.write_string("MR_tfield(", !IO),
+        io.write_int(Tag, !IO),
+        io.write_string(", ", !IO)
     ;
         MaybeTag = no,
-        io__write_string("MR_mask_field(", !IO)
+        io.write_string("MR_mask_field(", !IO)
     ),
     output_rval(Rval, !IO),
-    io__write_string(", ", !IO),
+    io.write_string(", ", !IO),
     ( FieldNumRval = const(int_const(FieldNum)) ->
         % Avoid emitting the (MR_Integer) cast.
-        io__write_int(FieldNum, !IO)
+        io.write_int(FieldNum, !IO)
     ;
         output_rval(FieldNumRval, !IO)
     ),
-    io__write_string(")", !IO).
+    io.write_string(")", !IO).
 output_lval(lvar(_), !IO) :-
     unexpected(this_file, "output_lval/3: illegal to output an lvar.").
 output_lval(temp(Type, Num), !IO) :-
     (
         Type = r,
-        io__write_string("MR_tempr", !IO),
-        io__write_int(Num, !IO)
+        io.write_string("MR_tempr", !IO),
+        io.write_int(Num, !IO)
     ;
         Type = f,
-        io__write_string("MR_tempf", !IO),
-        io__write_int(Num, !IO)
+        io.write_string("MR_tempf", !IO),
+        io.write_int(Num, !IO)
     ).
 output_lval(mem_ref(Rval), !IO) :-
-    io__write_string("* (MR_Word *) (", !IO),
+    io.write_string("* (MR_Word *) (", !IO),
     output_rval(Rval, !IO),
-    io__write_string(")", !IO).
+    io.write_string(")", !IO).
 
 :- pred output_lval_for_assign(lval::in, llds_type::out, io::di, io::uo)
     is det.
@@ -4799,80 +4798,80 @@ output_lval_for_assign(stackvar(N), word, !IO) :-
     ;
         true
     ),
-    io__write_string("MR_sv(", !IO),
-    io__write_int(N, !IO),
-    io__write_string(")", !IO).
+    io.write_string("MR_sv(", !IO),
+    io.write_int(N, !IO),
+    io.write_string(")", !IO).
 output_lval_for_assign(framevar(N), word, !IO) :-
     ( N =< 0 ->
         unexpected(this_file, "frame var out of range")
     ;
         true
     ),
-    io__write_string("MR_fv(", !IO),
-    io__write_int(N, !IO),
-    io__write_string(")", !IO).
+    io.write_string("MR_fv(", !IO),
+    io.write_int(N, !IO),
+    io.write_string(")", !IO).
 output_lval_for_assign(succip, word, !IO) :-
-    io__write_string("MR_succip_word", !IO).
+    io.write_string("MR_succip_word", !IO).
 output_lval_for_assign(sp, word, !IO) :-
-    io__write_string("MR_sp_word", !IO).
+    io.write_string("MR_sp_word", !IO).
 output_lval_for_assign(hp, word, !IO) :-
-    io__write_string("MR_hp_word", !IO).
+    io.write_string("MR_hp_word", !IO).
 output_lval_for_assign(maxfr, word, !IO) :-
-    io__write_string("MR_maxfr_word", !IO).
+    io.write_string("MR_maxfr_word", !IO).
 output_lval_for_assign(curfr, word, !IO) :-
-    io__write_string("MR_curfr_word", !IO).
+    io.write_string("MR_curfr_word", !IO).
 output_lval_for_assign(succfr(Rval), word, !IO) :-
-    io__write_string("MR_succfr_slot_word(", !IO),
+    io.write_string("MR_succfr_slot_word(", !IO),
     output_rval(Rval, !IO),
-    io__write_string(")", !IO).
+    io.write_string(")", !IO).
 output_lval_for_assign(prevfr(Rval), word, !IO) :-
-    io__write_string("MR_prevfr_slot_word(", !IO),
+    io.write_string("MR_prevfr_slot_word(", !IO),
     output_rval(Rval, !IO),
-    io__write_string(")", !IO).
+    io.write_string(")", !IO).
 output_lval_for_assign(redofr(Rval), word, !IO) :-
-    io__write_string("MR_redofr_slot_word(", !IO),
+    io.write_string("MR_redofr_slot_word(", !IO),
     output_rval(Rval, !IO),
-    io__write_string(")", !IO).
+    io.write_string(")", !IO).
 output_lval_for_assign(redoip(Rval), word, !IO) :-
-    io__write_string("MR_redoip_slot_word(", !IO),
+    io.write_string("MR_redoip_slot_word(", !IO),
     output_rval(Rval, !IO),
-    io__write_string(")", !IO).
+    io.write_string(")", !IO).
 output_lval_for_assign(succip(Rval), word, !IO) :-
-    io__write_string("MR_succip_slot_word(", !IO),
+    io.write_string("MR_succip_slot_word(", !IO),
     output_rval(Rval, !IO),
-    io__write_string(")", !IO).
+    io.write_string(")", !IO).
 output_lval_for_assign(field(MaybeTag, Rval, FieldNumRval), word, !IO) :-
     (
         MaybeTag = yes(Tag),
-        io__write_string("MR_tfield(", !IO),
-        io__write_int(Tag, !IO),
-        io__write_string(", ", !IO)
+        io.write_string("MR_tfield(", !IO),
+        io.write_int(Tag, !IO),
+        io.write_string(", ", !IO)
     ;
         MaybeTag = no,
-        io__write_string("MR_mask_field(", !IO)
+        io.write_string("MR_mask_field(", !IO)
     ),
     output_rval(Rval, !IO),
-    io__write_string(", ", !IO),
+    io.write_string(", ", !IO),
     ( FieldNumRval = const(int_const(FieldNum)) ->
         % Avoid emitting the (MR_Integer) cast.
-        io__write_int(FieldNum, !IO)
+        io.write_int(FieldNum, !IO)
     ;
         output_rval(FieldNumRval, !IO)
     ),
-    io__write_string(")", !IO).
+    io.write_string(")", !IO).
 output_lval_for_assign(lvar(_), _, !IO) :-
     unexpected(this_file, "output_lval_for_assign: lvar").
 output_lval_for_assign(temp(RegType, Num), Type, !IO) :-
     (
         RegType = r,
         Type = word,
-        io__write_string("MR_tempr", !IO),
-        io__write_int(Num, !IO)
+        io.write_string("MR_tempr", !IO),
+        io.write_int(Num, !IO)
     ;
         RegType = f,
         Type = float,
-        io__write_string("MR_tempf", !IO),
-        io__write_int(Num, !IO)
+        io.write_string("MR_tempf", !IO),
+        io.write_int(Num, !IO)
     ).
 output_lval_for_assign(mem_ref(MemRef), word, !IO) :-
     output_lval(mem_ref(MemRef), !IO).
@@ -4882,28 +4881,28 @@ output_lval_for_assign(mem_ref(MemRef), word, !IO) :-
 :- pred output_set_line_num(prog_context::in, io::di, io::uo) is det.
 
 output_set_line_num(Context, !IO) :-
-    term__context_file(Context, File),
-    term__context_line(Context, Line),
-    c_util__set_line_num(File, Line, !IO).
+    term.context_file(Context, File),
+    term.context_line(Context, Line),
+    c_util.set_line_num(File, Line, !IO).
 
 :- pred output_reset_line_num(io::di, io::uo) is det.
 
 output_reset_line_num(!IO) :-
-    c_util__reset_line_num(!IO).
+    c_util.reset_line_num(!IO).
 
 %-----------------------------------------------------------------------------%
 
 :- pred output_binary_op(binary_op::in, io::di, io::uo) is det.
 
 output_binary_op(Op, !IO) :-
-    ( c_util__binary_infix_op(Op, String) ->
-        io__write_string(String, !IO)
+    ( c_util.binary_infix_op(Op, String) ->
+        io.write_string(String, !IO)
     ;
         unexpected(this_file, "output_binary_op/3: invalid binary operator")
     ).
 
 binary_op_to_string(Op) = Name :-
-    ( c_util__binary_infix_op(Op, Name0) ->
+    ( c_util.binary_infix_op(Op, Name0) ->
         Name = Name0
     ;
         % The following is just for debugging purposes -
@@ -4944,13 +4943,13 @@ max_virtual_r_reg = 1024.
 
 gather_c_file_labels(Modules, Labels) :-
     gather_labels_from_c_modules(Modules, [], Labels1),
-    list__reverse(Labels1, Labels).
+    list.reverse(Labels1, Labels).
 
 :- pred gather_c_module_labels(list(c_procedure)::in, list(label)::out) is det.
 
 gather_c_module_labels(Procs, Labels) :-
     gather_labels_from_c_procs(Procs, [], Labels1),
-    list__reverse(Labels1, Labels).
+    list.reverse(Labels1, Labels).
 
 %-----------------------------------------------------------------------------%
 
@@ -4992,7 +4991,7 @@ gather_labels_from_instrs([Instr | Instrs], !Labels) :-
 %-----------------------------------------------------------------------------%
 
 explain_stack_slots(StackSlots, VarSet) = Explanation :-
-    map__to_assoc_list(StackSlots, StackSlotsList),
+    map.to_assoc_list(StackSlots, StackSlotsList),
     explain_stack_slots_2(StackSlotsList, VarSet, "", Explanation1),
     Explanation = "\nStack slot assignments (if any):\n" ++ Explanation1.
 
@@ -5010,8 +5009,8 @@ explain_stack_slots_2([Var - Slot | Rest], VarSet, !Explanation) :-
         StackStr = "fv"
     ),
     int_to_string(SlotNum, SlotStr),
-    varset__lookup_name(VarSet, Var, VarName),
-    string__append_list([VarName, "\t ->\t", StackStr, SlotStr, "\n",
+    varset.lookup_name(VarSet, Var, VarName),
+    string.append_list([VarName, "\t ->\t", StackStr, SlotStr, "\n",
         !.Explanation], !:Explanation).
 
 %---------------------------------------------------------------------------%

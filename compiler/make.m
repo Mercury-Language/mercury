@@ -18,8 +18,8 @@
 :- module make.
 :- interface.
 
-:- include_module make__options_file.
-:- include_module make__util.
+:- include_module make.options_file.
+:- include_module make.util.
 
 :- import_module make.options_file.
 :- import_module mdbcomp.
@@ -33,15 +33,14 @@
 
 %-----------------------------------------------------------------------------%
 
-    % make__process_args(OptionArgs, NonOptionArgs).
+    % make.process_args(OptionArgs, NonOptionArgs).
     %
-:- pred make__process_args(options_variables::in, list(string)::in,
+:- pred make_process_args(options_variables::in, list(string)::in,
     list(file_name)::in, io::di, io::uo) is det.
 
-:- pred make__write_module_dep_file(module_imports::in,
-    io::di, io::uo) is det.
+:- pred make_write_module_dep_file(module_imports::in, io::di, io::uo) is det.
 
-:- func make__module_dep_file_extension = string.
+:- func make_module_dep_file_extension = string.
 
 :- type make_info.
 
@@ -50,10 +49,10 @@
 
 :- implementation.
 
-:- include_module make__dependencies.
-:- include_module make__module_dep_file.
-:- include_module make__module_target.
-:- include_module make__program_target.
+:- include_module make.dependencies.
+:- include_module make.module_dep_file.
+:- include_module make.module_target.
+:- include_module make.program_target.
 
 :- import_module hlds.
 :- import_module libs.
@@ -97,59 +96,61 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type make_info --->
-    make_info(
-        % The items field of each module_imports structure should be empty
-        % -- we're not trying to cache the items here.
-        module_dependencies     :: map(module_name, maybe(module_imports)),
+:- type make_info
+    --->    make_info(
+                % The items field of each module_imports structure should be
+                % empty -- we're not trying to cache the items here.
+                module_dependencies     :: map(module_name,
+                                            maybe(module_imports)),
 
-        file_timestamps         :: file_timestamps,
+                file_timestamps         :: file_timestamps,
 
-        % The original set of options passed to mmc, not including
-        % the targets to be made.
-        option_args             :: list(string),
+                % The original set of options passed to mmc, not including
+                % the targets to be made.
+                option_args             :: list(string),
 
-        % The contents of the Mercury.options file.
-        options_variables       :: options_variables,
+                % The contents of the Mercury.options file.
+                options_variables       :: options_variables,
 
-        dependency_status       :: map(dependency_file, dependency_status),
+                dependency_status       :: map(dependency_file,
+                                            dependency_status),
 
-        % For each module, the set of modules for
-        % which the `.int' files are read, excluding
-        % those read as a result of reading `.opt' files.
-        % The bool records whether there was an error
-        % in the dependencies.
-        % XXX Use a better representation for the sets.
-        cached_direct_imports   :: cached_direct_imports,
+                % For each module, the set of modules for which the `.int'
+                % files are read, excluding those read as a result of reading
+                % `.opt' files. The bool records whether there was an error
+                % in the dependencies.
+                % XXX Use a better representation for the sets.
+                cached_direct_imports   :: cached_direct_imports,
 
-        % The boolean is `yes' if the result is complete.
-        % XXX Use a better representation for the sets.
-        cached_transitive_dependencies  :: cached_transitive_dependencies,
+                % The boolean is `yes' if the result is complete.
+                % XXX Use a better representation for the sets.
+                cached_transitive_dependencies
+                                        :: cached_transitive_dependencies,
 
-        % Should the `.module_dep' files be rebuilt.
-        % Set to `no' for `mmc --make clean'.
-        rebuild_dependencies    :: bool,
+                % Should the `.module_dep' files be rebuilt.
+                % Set to `no' for `mmc --make clean'.
+                rebuild_dependencies    :: bool,
 
-        keep_going              :: bool,
+                keep_going              :: bool,
 
-        % Modules for which we have redirected output
-        % to a `.err' file during this invocation of mmc.
-        error_file_modules      :: set(module_name),
+                % Modules for which we have redirected output
+                % to a `.err' file during this invocation of mmc.
+                error_file_modules      :: set(module_name),
 
-        % Used for reporting which module imported
-        % a nonexistent module.
-        importing_module        :: maybe(module_name),
+                % Used for reporting which module imported a nonexistent
+                % module.
+                importing_module        :: maybe(module_name),
 
-        % Targets specified on the command line.
-        command_line_targets    :: set(pair(module_name, target_type)),
+                % Targets specified on the command line.
+                command_line_targets    :: set(pair(module_name, target_type)),
 
-        % The remaining number of analysis passes that we will allow on
-        % `suboptimal' modules.  It starts at the value of `--analysis-repeat'
-        % and decrements to zero as analysis passes on `suboptimal' modules are
-        % performed.  `invalid' modules are not affected as they will always be
-        % reanalysed.
-        reanalysis_passes       :: int
-    ).
+                % The remaining number of analysis passes that we will allow on
+                % `suboptimal' modules. It starts at the value of
+                % `--analysis-repeat' and decrements to zero as analysis passes
+                % on `suboptimal' modules are performed. `invalid' modules
+                % are not affected as they will always be reanalysed.
+                reanalysis_passes       :: int
+            ).
 
 :- type make_error
     --->    target_error(target_file)
@@ -223,12 +224,12 @@
 
 %-----------------------------------------------------------------------------%
 
-make__write_module_dep_file(Imports, !IO) :-
-    make__module_dep_file__write_module_dep_file(Imports, !IO).
+make_write_module_dep_file(Imports, !IO) :-
+    make.module_dep_file.write_module_dep_file(Imports, !IO).
 
-make__module_dep_file_extension = ".module_dep".
+make_module_dep_file_extension = ".module_dep".
 
-make__process_args(Variables, OptionArgs, Targets0, !IO) :-
+make_process_args(Variables, OptionArgs, Targets0, !IO) :-
     (
         Targets0 = [],
         lookup_main_target(Variables, MaybeMAIN_TARGET, !IO),
@@ -240,7 +241,7 @@ make__process_args(Variables, OptionArgs, Targets0, !IO) :-
             ;
                 Targets = [],
                 Continue = no,
-                io__write_string("** Error: no targets specified " ++
+                io.write_string("** Error: no targets specified " ++
                     "and `MAIN_TARGET' not defined.\n", !IO)
             )
         ;
@@ -255,11 +256,11 @@ make__process_args(Variables, OptionArgs, Targets0, !IO) :-
     ),
     (
         Continue = no,
-        io__set_exit_status(1, !IO)
+        io.set_exit_status(1, !IO)
     ;
         Continue = yes,
-        globals__io_lookup_bool_option(keep_going, KeepGoing, !IO),
-        globals__io_get_globals(Globals, !IO),
+        globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
+        globals.io_get_globals(Globals, !IO),
 
         %
         % Accept and ignore `.depend' targets.
@@ -267,25 +268,25 @@ make__process_args(Variables, OptionArgs, Targets0, !IO) :-
         % make depend step. The dependencies for
         % each module are regenerated on demand.
         %
-        NonDependTargets = list__filter(
+        NonDependTargets = list.filter(
             (pred(Target::in) is semidet :-
-                \+ string__remove_suffix(Target, ".depend", _)
+                \+ string.remove_suffix(Target, ".depend", _)
             ), Targets),
 
         %
         % Classify the remaining targets.
         %
-        list__map(classify_target(Globals), NonDependTargets,
+        list.map(classify_target(Globals), NonDependTargets,
             ClassifiedTargets),
 
         ShouldRebuildDeps = yes,
-        globals__io_lookup_int_option(analysis_repeat, AnalysisRepeat, !IO),
-        MakeInfo0 = make_info(map__init, map__init, OptionArgs, Variables,
-            map__init,
+        globals.io_lookup_int_option(analysis_repeat, AnalysisRepeat, !IO),
+        MakeInfo0 = make_info(map.init, map.init, OptionArgs, Variables,
+            map.init,
             init_cached_direct_imports,
             init_cached_transitive_dependencies,
             ShouldRebuildDeps, KeepGoing,
-            set__init, no, set__list_to_set(ClassifiedTargets),
+            set.init, no, set.list_to_set(ClassifiedTargets),
             AnalysisRepeat),
 
         %
@@ -297,7 +298,7 @@ make__process_args(Variables, OptionArgs, Targets0, !IO) :-
 
         (
             Success = no,
-            io__set_exit_status(1, !IO)
+            io.set_exit_status(1, !IO)
         ;
             Success = yes
         )
@@ -333,16 +334,16 @@ make_target(Target, Success, !Info, !IO) :-
 
 classify_target(Globals, FileName, ModuleName - TargetType) :-
     (
-        string__length(FileName, NameLength),
+        string.length(FileName, NameLength),
         search_backwards_for_dot(FileName, NameLength - 1, DotLocn),
-        string__split(FileName, DotLocn, ModuleNameStr0, Suffix),
+        string.split(FileName, DotLocn, ModuleNameStr0, Suffix),
         solutions(classify_target_2(Globals, ModuleNameStr0, Suffix),
             TargetFiles),
         TargetFiles = [TargetFile]
     ->
         TargetFile = ModuleName - TargetType
     ;
-        string__append("lib", ModuleNameStr, FileName)
+        string.append("lib", ModuleNameStr, FileName)
     ->
         TargetType = misc_target(build_library),
         file_name_to_module_name(ModuleNameStr, ModuleName)
@@ -361,26 +362,26 @@ classify_target_2(Globals, ModuleNameStr0, Suffix, ModuleName - TargetType) :-
         ModuleNameStr = ModuleNameStr0,
         TargetType = module_target(ModuleTargetType)
     ;
-        globals__lookup_string_option(Globals, library_extension, Suffix),
-        string__append("lib", ModuleNameStr1, ModuleNameStr0)
+        globals.lookup_string_option(Globals, library_extension, Suffix),
+        string.append("lib", ModuleNameStr1, ModuleNameStr0)
     ->
         ModuleNameStr = ModuleNameStr1,
         TargetType = linked_target(static_library)
     ;
-        globals__lookup_string_option(Globals, shared_library_extension,
+        globals.lookup_string_option(Globals, shared_library_extension,
             Suffix),
-        string__append("lib", ModuleNameStr1, ModuleNameStr0)
+        string.append("lib", ModuleNameStr1, ModuleNameStr0)
     ->
         ModuleNameStr = ModuleNameStr1,
         TargetType = linked_target(shared_library)
     ;
-        globals__lookup_string_option(Globals, executable_file_extension,
+        globals.lookup_string_option(Globals, executable_file_extension,
             Suffix)
     ->
         ModuleNameStr = ModuleNameStr0,
         TargetType = linked_target(executable)
     ;
-        string__append(Suffix1, "s", Suffix),
+        string.append(Suffix1, "s", Suffix),
         yes(Suffix1) = target_extension(Globals, ModuleTargetType),
         % Not yet implemented. `build_all' targets are only used by
         % tools/bootcheck, so it doesn't really matter.
@@ -410,7 +411,7 @@ classify_target_2(Globals, ModuleNameStr0, Suffix, ModuleName - TargetType) :-
         TargetType = misc_target(realclean)
     ;
         Suffix = ".install",
-        string__append("lib", ModuleNameStr1, ModuleNameStr0)
+        string.append("lib", ModuleNameStr1, ModuleNameStr0)
     ->
         ModuleNameStr = ModuleNameStr1,
         TargetType = misc_target(install_library)
@@ -423,7 +424,7 @@ classify_target_2(Globals, ModuleNameStr0, Suffix, ModuleName - TargetType) :-
 
 search_backwards_for_dot(String, Index, DotIndex) :-
     Index >= 0,
-    ( string__index_det(String, Index, '.') ->
+    ( string.index_det(String, Index, '.') ->
         DotIndex = Index
     ;
         search_backwards_for_dot(String, Index - 1, DotIndex)

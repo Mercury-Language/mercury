@@ -7,7 +7,7 @@
 %---------------------------------------------------------------------------%
 
 % File: prog_rep.m.
-% Author: zs.
+% Authors: zs, maclarty.
 
 % This module generates a representation of HLDS goals for the declarative
 % debugger. Since this representation is to be included in debuggable
@@ -17,7 +17,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- module ll_backend__prog_rep.
+:- module ll_backend.prog_rep.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -36,7 +36,7 @@
     % layout structures to a number that uniquely identifies that variable,
     % and to its name.
     %
-    % The integer returned by term__var_to_int are a dense set when we consider
+    % The integer returned by term.var_to_int are a dense set when we consider
     % all the original variables of a procedure. However, it can become less
     % dense when an optimization removes all references to a variable, and
     % becomes less dense still when we consider only variables that occur
@@ -88,7 +88,7 @@ represent_proc(HeadVars, Goal, InstMap0, VarTypes, VarNumMap,
         ModuleInfo, !StackInfo, ProcRepBytes) :-
     Goal = _ - GoalInfo,
     goal_info_get_context(GoalInfo, Context),
-    term__context_file(Context, FileName),
+    term.context_file(Context, FileName),
     MaxVarNum = map.foldl(max_var_num, VarNumMap, 0),
     ( MaxVarNum =< 255 ->
         VarNumRep = byte
@@ -102,7 +102,7 @@ represent_proc(HeadVars, Goal, InstMap0, VarTypes, VarNumMap,
     goal_to_byte_list(Goal, InstMap0, Info, !StackInfo, GoalBytes),
     ProcRepBytes0 = [VarNumRepByte] ++ FileNameBytes ++
         vars_to_byte_list(Info, HeadVars) ++ GoalBytes,
-    int32_to_byte_list(list__length(ProcRepBytes0) + 4, LimitBytes),
+    int32_to_byte_list(list.length(ProcRepBytes0) + 4, LimitBytes),
     ProcRepBytes = LimitBytes ++ ProcRepBytes0.
 
 %---------------------------------------------------------------------------%
@@ -148,7 +148,7 @@ goal_expr_to_byte_list(if_then_else(_, Cond, Then, Else), _, InstMap0, Info,
         !StackInfo, Bytes) :- 
     Cond = _ - CondGoalInfo,
     goal_info_get_instmap_delta(CondGoalInfo, InstMapDelta),
-    instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
+    instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
     goal_to_byte_list(Cond, InstMap0, Info, !StackInfo, CondBytes),
     goal_to_byte_list(Then, InstMap1, Info, !StackInfo, ThenBytes),
     goal_to_byte_list(Else, InstMap0, Info, !StackInfo, ElseBytes),
@@ -260,7 +260,7 @@ goal_expr_to_byte_list(call(PredId, _, Args, Builtin, _, _),
         AtomicBytes, _),
     module_info_pred_info(Info ^ module_info, PredId, PredInfo),
     ModuleSymName = pred_info_module(PredInfo),
-    mdbcomp__prim_data__sym_name_to_string(ModuleSymName, ModuleName),
+    mdbcomp.prim_data.sym_name_to_string(ModuleSymName, ModuleName),
     PredName = pred_info_name(PredInfo),
     string_to_byte_list(ModuleName, !StackInfo, ModuleNameBytes),
     string_to_byte_list(PredName, !StackInfo, PredNameBytes),
@@ -279,7 +279,7 @@ goal_expr_to_byte_list(call(PredId, _, Args, Builtin, _, _),
     ).
 goal_expr_to_byte_list(foreign_proc(_, _PredId, _, Args, _, _),
         GoalInfo, InstMap0, Info, !StackInfo, Bytes) :-
-    ArgVars = list__map(foreign_arg_var, Args),
+    ArgVars = list.map(foreign_arg_var, Args),
     atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, !StackInfo,
         AtomicBytes, _),
     Bytes = [goal_type_to_byte(goal_foreign)] ++
@@ -325,18 +325,18 @@ atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, !StackInfo, Bytes,
         BoundVars) :-
     goal_info_get_determinism(GoalInfo, Detism),
     goal_info_get_context(GoalInfo, Context),
-    term__context_file(Context, FileName0),
+    term.context_file(Context, FileName0),
     ( FileName0 = Info ^ filename ->
         FileName = ""
     ;
         FileName = FileName0
     ),
-    term__context_line(Context, LineNo),
+    term.context_line(Context, LineNo),
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
-    instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+    instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
     instmap_changed_vars(InstMap0, InstMap, Info ^ vartypes,
         Info ^ module_info, ChangedVars),
-    set__to_sorted_list(ChangedVars, BoundVars),
+    set.to_sorted_list(ChangedVars, BoundVars),
     string_to_byte_list(FileName, !StackInfo, FileNameBytes),
     Bytes = [represent_determinism(Detism)] ++
         FileNameBytes ++
@@ -352,13 +352,13 @@ cons_id_to_byte_list(SymName, !StackInfo, Bytes) :-
 :- func cons_id_to_string(cons_id) = string.
 
 cons_id_to_string(cons(SymName, _)) =
-    prog_rep__sym_base_name_to_string(SymName).
+    prog_rep.sym_base_name_to_string(SymName).
 cons_id_to_string(int_const(Int)) =
-    string__int_to_string(Int).
+    string.int_to_string(Int).
 cons_id_to_string(float_const(Float)) =
-    string__float_to_string(Float).
+    string.float_to_string(Float).
 cons_id_to_string(string_const(String)) =
-    string__append_list(["""", String, """"]).
+    string.append_list(["""", String, """"]).
 cons_id_to_string(pred_const(_, _)) = "$pred_const".
 cons_id_to_string(type_ctor_info_const(_, _, _)) =
     "$type_ctor_info_const".
@@ -390,7 +390,7 @@ conj_to_byte_list([Goal | Goals], InstMap0, Info, !StackInfo, Bytes) :-
     goal_to_byte_list(Goal, InstMap0, Info, !StackInfo, GoalBytes),
     Goal = _ - GoalInfo,
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
-    instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
+    instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap1),
     conj_to_byte_list(Goals, InstMap1, Info, !StackInfo, GoalsBytes),
     Bytes = GoalBytes ++ GoalsBytes.
 
@@ -437,26 +437,26 @@ cases_to_byte_list([case(_ConsId, Goal) | Cases], InstMap0, Info, !StackInfo,
     stack_layout_info::in, stack_layout_info::out, list(int)::out) is det.
 
 string_to_byte_list(String, !StackInfo, Bytes) :-
-    stack_layout__lookup_string_in_table(String, Index, !StackInfo),
+    stack_layout.lookup_string_in_table(String, Index, !StackInfo),
     int32_to_byte_list(Index, Bytes).
 
 :- func vars_to_byte_list(prog_rep_info, list(prog_var)) = list(int).
 
 vars_to_byte_list(Info, Vars) =
     length_to_byte_list(Vars) ++
-    list__condense(list__map(var_to_byte_list(Info), Vars)).
+    list.condense(list.map(var_to_byte_list(Info), Vars)).
 
 :- func maybe_vars_to_byte_list(prog_rep_info, list(maybe(prog_var))) = 
     list(int).
 
 maybe_vars_to_byte_list(Info, Vars) =
     length_to_byte_list(Vars) ++
-    list__condense(list__map(maybe_var_to_byte_list(Info), Vars)).
+    list.condense(list.map(maybe_var_to_byte_list(Info), Vars)).
 
 :- func var_to_byte_list(prog_rep_info, prog_var) = list(int).
 
 var_to_byte_list(Info, Var) = Bytes :-
-    map__lookup(Info ^ var_num_map, Var, VarNum - _),
+    map.lookup(Info ^ var_num_map, Var, VarNum - _),
     (
         Info ^ var_num_rep = byte,
         Bytes = [VarNum]
@@ -481,7 +481,7 @@ maybe_var_to_byte_list(Info, MaybeVar) = Bytes :-
 :- func length_to_byte_list(list(T)) = list(int).
 
 length_to_byte_list(List) = Bytes :-
-    short_to_byte_list(list__length(List), Bytes).
+    short_to_byte_list(list.length(List), Bytes).
 
 :- func lineno_to_byte_list(int) = list(int).
 

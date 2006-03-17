@@ -18,7 +18,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module libs__options.
+:- module libs.options.
 :- interface.
 
 :- import_module char.
@@ -804,7 +804,7 @@
 
 option_defaults(Option, Default) :-
     option_defaults_2(_Category, OptionsList),
-    list__member(Option - Default, OptionsList).
+    list.member(Option - Default, OptionsList).
 
 :- pred option_defaults_2(option_category, list(pair(option, option_data))).
 :- mode option_defaults_2(in, out) is det.
@@ -1100,14 +1100,14 @@ option_defaults_2(code_gen_option, [
     max_jump_table_size                 -   int(0),
                                         % 0 indicates any size.
     max_specialized_do_call_closure     -   int(5),
-                                        % mercury__do_call_closure_N
+                                        % mercury.do_call_closure_N
                                         % exists for N <= option_value;
                                         % set to -1 to disable.
                                         % Should be less than or equal to
                                         % max_spec_explicit_arg
                                         % in tools/make_spec_ho_call.
     max_specialized_do_call_class_method -  int(6),
-                                        % mercury__do_call_class_method_N
+                                        % mercury.do_call_class_method_N
                                         % exists for N <= option_value;
                                         % set to -1 to disable.
                                         % Should be less than or equal to
@@ -2218,58 +2218,58 @@ special_handler(grade, string(Grade), OptionTable0, Result) :-
         Result = error("invalid grade `" ++ Grade ++ "'")
     ).
 special_handler(il, none, OptionTable0, ok(OptionTable)) :-
-    map__set(OptionTable0, target, string("il"), OptionTable).
+    map.set(OptionTable0, target, string("il"), OptionTable).
 special_handler(il_only, none, OptionTable0, ok(OptionTable)) :-
-    map__set(OptionTable0, target, string("il"), OptionTable1),
-    map__set(OptionTable1, target_code_only, bool(yes), OptionTable).
+    map.set(OptionTable0, target, string("il"), OptionTable1),
+    map.set(OptionTable1, target_code_only, bool(yes), OptionTable).
 special_handler(compile_to_c, none, OptionTable0, ok(OptionTable)) :-
-    map__set(OptionTable0, target, string("c"), OptionTable1),
-    map__set(OptionTable1, target_code_only, bool(yes), OptionTable).
+    map.set(OptionTable0, target, string("c"), OptionTable1),
+    map.set(OptionTable1, target_code_only, bool(yes), OptionTable).
 special_handler(java, none, OptionTable0, ok(OptionTable)) :-
-    map__set(OptionTable0, target, string("java"), OptionTable).
+    map.set(OptionTable0, target, string("java"), OptionTable).
 special_handler(java_only, none, OptionTable0, ok(OptionTable)) :-
-    map__set(OptionTable0, target, string("java"), OptionTable1),
-    map__set(OptionTable1, target_code_only, bool(yes), OptionTable).
+    map.set(OptionTable0, target, string("java"), OptionTable1),
+    map.set(OptionTable1, target_code_only, bool(yes), OptionTable).
 special_handler(profiling, bool(Value), OptionTable0, ok(OptionTable)) :-
-    map__set(OptionTable0, profile_time, bool(Value), OptionTable1),
-    map__set(OptionTable1, profile_calls, bool(Value), OptionTable2),
-    map__set(OptionTable2, profile_memory, bool(no), OptionTable3),
-    map__set(OptionTable3, profile_deep, bool(no), OptionTable).
+    map.set(OptionTable0, profile_time, bool(Value), OptionTable1),
+    map.set(OptionTable1, profile_calls, bool(Value), OptionTable2),
+    map.set(OptionTable2, profile_memory, bool(no), OptionTable3),
+    map.set(OptionTable3, profile_deep, bool(no), OptionTable).
 special_handler(time_profiling, none, OptionTable0, ok(OptionTable)) :-
-    map__set(OptionTable0, profile_time, bool(yes), OptionTable1),
-    map__set(OptionTable1, profile_calls, bool(yes), OptionTable2),
-    map__set(OptionTable2, profile_memory, bool(no), OptionTable3),
-    map__set(OptionTable3, profile_deep, bool(no), OptionTable).
+    map.set(OptionTable0, profile_time, bool(yes), OptionTable1),
+    map.set(OptionTable1, profile_calls, bool(yes), OptionTable2),
+    map.set(OptionTable2, profile_memory, bool(no), OptionTable3),
+    map.set(OptionTable3, profile_deep, bool(no), OptionTable).
 special_handler(memory_profiling, none, OptionTable0, ok(OptionTable)) :-
-    map__set(OptionTable0, profile_time, bool(no), OptionTable1),
-    map__set(OptionTable1, profile_calls, bool(yes), OptionTable2),
-    map__set(OptionTable2, profile_memory, bool(yes), OptionTable3),
-    map__set(OptionTable3, profile_deep, bool(no), OptionTable).
+    map.set(OptionTable0, profile_time, bool(no), OptionTable1),
+    map.set(OptionTable1, profile_calls, bool(yes), OptionTable2),
+    map.set(OptionTable2, profile_memory, bool(yes), OptionTable3),
+    map.set(OptionTable3, profile_deep, bool(no), OptionTable).
 special_handler(deep_profiling, none, OptionTable0, ok(OptionTable)) :-
-    map__set(OptionTable0, profile_time, bool(no), OptionTable1),
-    map__set(OptionTable1, profile_calls, bool(no), OptionTable2),
-    map__set(OptionTable2, profile_memory, bool(no), OptionTable3),
-    map__set(OptionTable3, profile_deep, bool(yes), OptionTable).
+    map.set(OptionTable0, profile_time, bool(no), OptionTable1),
+    map.set(OptionTable1, profile_calls, bool(no), OptionTable2),
+    map.set(OptionTable2, profile_memory, bool(no), OptionTable3),
+    map.set(OptionTable3, profile_deep, bool(yes), OptionTable).
 special_handler(inlining, bool(Value), OptionTable0, ok(OptionTable)) :-
-    map__set(OptionTable0, inline_simple, bool(Value), OptionTable1),
-    map__set(OptionTable1, inline_builtins, bool(Value), OptionTable2),
-    map__set(OptionTable2, inline_single_use, bool(Value), OptionTable3),
+    map.set(OptionTable0, inline_simple, bool(Value), OptionTable1),
+    map.set(OptionTable1, inline_builtins, bool(Value), OptionTable2),
+    map.set(OptionTable2, inline_single_use, bool(Value), OptionTable3),
     (
         Value = yes,
-        map__set(OptionTable3, inline_compound_threshold, int(10), OptionTable)
+        map.set(OptionTable3, inline_compound_threshold, int(10), OptionTable)
     ;
         Value = no,
-        map__set(OptionTable3, inline_compound_threshold, int(0), OptionTable)
+        map.set(OptionTable3, inline_compound_threshold, int(0), OptionTable)
     ).
 special_handler(everything_in_one_c_function, none, OptionTable0,
         ok(OptionTable)) :-
-    map__set(OptionTable0, procs_per_c_function, int(0),
+    map.set(OptionTable0, procs_per_c_function, int(0),
         OptionTable).
 special_handler(reclaim_heap_on_failure, bool(Value), OptionTable0,
             ok(OptionTable)) :-
-    map__set(OptionTable0, reclaim_heap_on_semidet_failure, bool(Value),
+    map.set(OptionTable0, reclaim_heap_on_semidet_failure, bool(Value),
         OptionTable1),
-    map__set(OptionTable1, reclaim_heap_on_nondet_failure, bool(Value),
+    map.set(OptionTable1, reclaim_heap_on_nondet_failure, bool(Value),
         OptionTable).
 special_handler(strict_sequential, none, OptionTable0, ok(OptionTable)) :-
     override_options([
@@ -2279,7 +2279,7 @@ special_handler(strict_sequential, none, OptionTable0, ok(OptionTable)) :-
         ], OptionTable0, OptionTable).
 special_handler(inhibit_warnings, bool(Inhibit), OptionTable0,
         ok(OptionTable)) :-
-    bool__not(Inhibit, Enable),
+    bool.not(Inhibit, Enable),
     override_options([
             inhibit_accumulator_warnings    -   bool(Inhibit),
             warn_singleton_vars             -   bool(Enable),
@@ -2321,13 +2321,13 @@ special_handler(opt_level, int(N0), OptionTable0, ok(OptionTable)) :-
     ;
         N = N0
     ),
-    map__set(OptionTable0, opt_level_number, int(N), OptionTable1),
+    map.set(OptionTable0, opt_level_number, int(N), OptionTable1),
     set_opt_level(N, OptionTable1, OptionTable).
 special_handler(optimize_saved_vars, bool(Optimize),
         OptionTable0, ok(OptionTable)) :-
-    map__set(OptionTable0, optimize_saved_vars_const, bool(Optimize),
+    map.set(OptionTable0, optimize_saved_vars_const, bool(Optimize),
         OptionTable1),
-    map__set(OptionTable1, optimize_saved_vars_cell, bool(Optimize),
+    map.set(OptionTable1, optimize_saved_vars_cell, bool(Optimize),
         OptionTable).
 special_handler(mercury_library_directory_special, string(Dir),
         OptionTable0, ok(OptionTable)) :-
@@ -2336,7 +2336,7 @@ special_handler(mercury_library_directory_special, string(Dir),
 special_handler(mercury_library_special, string(Lib),
         OptionTable0, ok(OptionTable)) :-
     OptionTable =
-        list__foldl(append_to_accumulating_option, [
+        list.foldl(append_to_accumulating_option, [
             link_libraries                  - Lib,
             mercury_libraries               - Lib,
             init_files                      - (Lib ++ ".init")
@@ -2344,12 +2344,12 @@ special_handler(mercury_library_special, string(Lib),
 special_handler(mercury_standard_library_directory_special,
         maybe_string(MaybeStdLibDir), OptionTable0, ok(OptionTable)) :-
     OptionTable =
-        map__set(map__set(OptionTable0,
+        map.set(map.set(OptionTable0,
         mercury_standard_library_directory, maybe_string(MaybeStdLibDir)),
         mercury_configuration_directory, maybe_string(MaybeStdLibDir)).
 special_handler(mercury_configuration_directory_special,
         string(ConfDir), OptionTable0, ok(OptionTable)) :-
-    OptionTable = map__set(OptionTable0, mercury_configuration_directory,
+    OptionTable = map.set(OptionTable0, mercury_configuration_directory,
         maybe_string(yes(ConfDir))).
 special_handler(quoted_cflag, string(Flag),
         OptionTable0, ok(OptionTable)) :-
@@ -2396,10 +2396,10 @@ option_table_add_mercury_library_directory(OptionTable0, Dir) =
     % The link_library_directories for Mercury libraries are grade
     % dependent, so they need to be handled in handle_options.m
     % when we know the grade.
-    list__foldl(append_to_accumulating_option, [
-        search_directories          - dir__make_path_name(Dir, "ints"),
-        c_include_directory         - dir__make_path_name(Dir, "inc"),
-        init_file_directories       - dir__make_path_name(Dir, "modules"),
+    list.foldl(append_to_accumulating_option, [
+        search_directories          - dir.make_path_name(Dir, "ints"),
+        c_include_directory         - dir.make_path_name(Dir, "inc"),
+        init_file_directories       - dir.make_path_name(Dir, "modules"),
         mercury_library_directories - Dir
     ], OptionTable0).
 
@@ -2409,7 +2409,7 @@ option_table_add_mercury_library_directory(OptionTable0, Dir) =
 append_to_accumulating_option(Option - Value, OptionTable0) =
     OptionTable0 ^ elem(Option) :=
         accumulating(
-            getopt_io__lookup_accumulating_option(OptionTable0, Option)
+            getopt_io.lookup_accumulating_option(OptionTable0, Option)
         ++ [Value]).
 
 :- pred set_opt_level(int::in, option_table::in, option_table::out) is det.
@@ -2442,7 +2442,7 @@ enable_opt_levels(N0, N, OptionTable0, OptionTable) :-
 
 override_options([], OptionTable, OptionTable).
 override_options([Option - Value | Settings], OptionTable0, OptionTable) :-
-    map__set(OptionTable0, Option, Value, OptionTable1),
+    map.set(OptionTable0, Option, Value, OptionTable1),
     override_options(Settings, OptionTable1, OptionTable).
 
 %-----------------------------------------------------------------------------%
@@ -2502,7 +2502,7 @@ opt_level(1, OptionTable, [
     optimize_tailcalls          -   bool(yes)
     % dups?
 ]) :-
-    getopt_io__lookup_bool_option(OptionTable, have_delay_slot, DelaySlot).
+    getopt_io.lookup_bool_option(OptionTable, have_delay_slot, DelaySlot).
 
 % Optimization level 2: apply optimizations which have a good
 % payoff relative to their cost; but include optimizations
@@ -2621,23 +2621,23 @@ handle_quoted_flag(Option, Flag, Table,
     append_to_accumulating_option(Option - quote_arg(Flag), Table)).
 
 quote_arg(Arg0) = Arg :-
-    % XXX Instead of using dir__use_windows_paths, this should really
+    % XXX Instead of using dir.use_windows_paths, this should really
     % test whether we are using a Unix or Windows shell.
-    ( dir__use_windows_paths ->
+    ( dir.use_windows_paths ->
         ( ( string_contains_whitespace(Arg0) ; Arg0 = "" ) ->
             Arg = """" ++ Arg0 ++ """"
         ;
             Arg = Arg0
         )
     ;
-        ArgList = quote_arg_unix(string__to_char_list(Arg0)),
+        ArgList = quote_arg_unix(string.to_char_list(Arg0)),
         (
             ArgList = []
         ->
             Arg = """"""
         ;
-            list__member(Char, ArgList),
-            \+ ( char__is_alnum_or_underscore(Char)
+            list.member(Char, ArgList),
+            \+ ( char.is_alnum_or_underscore(Char)
             ; Char = ('-')
             ; Char = ('/')
             ; Char = ('.')
@@ -2645,9 +2645,9 @@ quote_arg(Arg0) = Arg :-
             ; Char = (':')
             )
         ->
-            Arg = """" ++ string__from_char_list(ArgList) ++ """"
+            Arg = """" ++ string.from_char_list(ArgList) ++ """"
         ;
-            Arg = string__from_char_list(ArgList)
+            Arg = string.from_char_list(ArgList)
         )
     ).
 
@@ -2681,8 +2681,8 @@ quote_char_unix('$').
 %-----------------------------------------------------------------------------%
 
 options_help -->
-    io__write_string("\t-?, -h, --help\n"),
-    io__write_string("\t\tPrint this usage message.\n"),
+    io.write_string("\t-?, -h, --help\n"),
+    io.write_string("\t\tPrint this usage message.\n"),
     options_help_warning,
     options_help_verbosity,
     options_help_output,
@@ -2706,7 +2706,7 @@ options_help -->
 :- pred options_help_warning(io::di, io::uo) is det.
 
 options_help_warning -->
-    io__write_string("\nWarning Options:\n"),
+    io.write_string("\nWarning Options:\n"),
     write_tabbed_lines([
         "-w, --inhibit-warnings",
         "\tDisable all warning messages.",
@@ -2811,7 +2811,7 @@ options_help_warning -->
 :- pred options_help_verbosity(io::di, io::uo) is det.
 
 options_help_verbosity -->
-    io__write_string("\nVerbosity Options:\n"),
+    io.write_string("\nVerbosity Options:\n"),
     write_tabbed_lines([
         "-v, --verbose",
         "\tOutput progress messages at each stage in the compilation.",
@@ -2898,7 +2898,7 @@ options_help_verbosity -->
 :- pred options_help_output(io::di, io::uo) is det.
 
 options_help_output -->
-    io__write_string("\nOutput Options:\n"),
+    io.write_string("\nOutput Options:\n"),
     write_tabbed_lines([
         "These options are mutually exclusive.",
         "Only the first one specified will apply.",
@@ -2976,7 +2976,7 @@ options_help_output -->
 :- pred options_help_aux_output(io::di, io::uo) is det.
 
 options_help_aux_output -->
-    io__write_string("\nAuxiliary Output Options:\n"),
+    io.write_string("\nAuxiliary Output Options:\n"),
     write_tabbed_lines([
         "--smart-recompilation",
         "\tWhen compiling, write program dependency information",
@@ -3032,9 +3032,9 @@ options_help_aux_output -->
 %       "\tactions, not the printing of actions or declarative",
 %       "\tdebugging. This reduces the size of the I/O action table.",
 %       "--trace-table-io-states",
-%       "\tWhen tabling I/O actions, table the io__state arguments",
+%       "\tWhen tabling I/O actions, table the io.state arguments",
 %       "\ttogether with the others. This should be required iff",
-%       "\tvalues of type io__state actually contain information.",
+%       "\tvalues of type io.state actually contain information.",
 %       "--trace-table-io-require",
 %       "\tRequire the tabling of I/O actions, i.e. generate an error",
 %       "\tif an I/O primitive does not have the tabled_for_io",
@@ -3132,8 +3132,8 @@ options_help_aux_output -->
 :- pred options_help_semantics(io::di, io::uo) is det.
 
 options_help_semantics -->
-    io__write_string("\nLanguage semantics options:\n"),
-    io__write_string("(See the Mercury language reference manual for detailed explanations.)\n"),
+    io.write_string("\nLanguage semantics options:\n"),
+    io.write_string("(See the Mercury language reference manual for detailed explanations.)\n"),
     write_tabbed_lines([
         "--no-reorder-conj",
         "\tExecute conjunctions left-to-right except where the modes imply",
@@ -3170,7 +3170,7 @@ options_help_semantics -->
 :- pred options_help_ctgc(io::di, io::uo) is det.
 
 options_help_ctgc -->
-    io__write_string("\nCompile Time Garbage Collection Options:\n"),
+    io.write_string("\nCompile Time Garbage Collection Options:\n"),
     write_tabbed_lines([
         "--structure-sharing",
         "\tPerform structure sharing analysis for all encountered",
@@ -3184,7 +3184,7 @@ options_help_ctgc -->
 :- pred options_help_termination(io::di, io::uo) is det.
 
 options_help_termination -->
-    io__write_string("\nTermination Analysis Options:\n"),
+    io.write_string("\nTermination Analysis Options:\n"),
     write_tabbed_lines([
         "--enable-term, --enable-termination",
         "\tAnalyse each predicate to discover if it terminates.",
@@ -3262,7 +3262,7 @@ options_help_termination -->
 :- pred options_help_compilation_model(io::di, io::uo) is det.
 
 options_help_compilation_model -->
-    io__write_string("\nCompilation model options:\n"),
+    io.write_string("\nCompilation model options:\n"),
     write_tabbed_lines([
         "The following compilation options affect the generated",
         "code in such a way that the entire program must be",
@@ -3288,7 +3288,7 @@ options_help_compilation_model -->
         "\twill result in an error at link time."
     ]),
 
-    io__write_string("\n    Target selection compilation model options:\n"),
+    io.write_string("\n    Target selection compilation model options:\n"),
     write_tabbed_lines([
         "--target c\t\t\t(grades: none, reg, jump, fast,",
         "\t\t\t\t\tasm_jump, asm_fast, hl, hlc)",
@@ -3336,8 +3336,8 @@ options_help_compilation_model -->
         "\tcode."
     ]),
 
-    io__write_string("\n    Optional feature compilation model options:\n"),
-    io__write_string("      Debugging\n"),
+    io.write_string("\n    Optional feature compilation model options:\n"),
+    io.write_string("      Debugging\n"),
     write_tabbed_lines([
         "--debug\t\t\t\t(grade modifier: `.debug')",
         "\tEnable Mercury-level debugging.",
@@ -3354,7 +3354,7 @@ options_help_compilation_model -->
         "\tThis option is not yet supported for the `--high-level-code'",
         "\tback-ends."
     ]),
-    io__write_string("      Profiling\n"),
+    io.write_string("      Profiling\n"),
     write_tabbed_lines([
         "-p, --profiling, --time-profiling",
         "\t\t\t\t(grade modifier: `.prof')",
@@ -3403,7 +3403,7 @@ options_help_compilation_model -->
         "\t--no-highlevel-code."
     ]),
 
-    io__write_string("      Miscellaneous optional features\n"),
+    io.write_string("      Miscellaneous optional features\n"),
     write_tabbed_lines([
         "--gc {none, boehm, mps, accurate, automatic}",
         "--garbage-collection {none, boehm, mps, accurate, automatic}",
@@ -3440,7 +3440,7 @@ options_help_compilation_model -->
         "\textend the stack when this is needed."
     ]),
 
-    io__write_string("\n    LLDS back-end compilation model options:\n"),
+    io.write_string("\n    LLDS back-end compilation model options:\n"),
     write_tabbed_lines([
 
         "--gcc-global-registers\t\t(grades: reg, fast, asm_fast)",
@@ -3469,7 +3469,7 @@ options_help_compilation_model -->
         "\tsystems running Unix.  On other systems it has no effect."
     ]),
 
-    io__write_string("\n    MLDS back-end compilation model options:\n"),
+    io.write_string("\n    MLDS back-end compilation model options:\n"),
     write_tabbed_lines([
 % These grades (hl_nest, and hlc_nest) are not yet documented,
 % because the --gcc-nested-functions option is not yet documented.
@@ -3528,7 +3528,7 @@ options_help_compilation_model -->
 %       "\trather than on the stack.",
 %
 %   ]),
-%   io__write_string("\n      IL back-end compilation model options:\n"),
+%   io.write_string("\n      IL back-end compilation model options:\n"),
 %   write_tabbed_lines([
 %
 % The --verifiable-code option is not yet documented because it is not yet fully
@@ -3562,8 +3562,8 @@ options_help_compilation_model -->
 %       "\tthe Microsoft CLR implementation, do not support them."
     ]),
 
-    io__write_string("\n    Developer compilation model options:\n"),
-    io__write_string("\n      Data representation\n"),
+    io.write_string("\n    Developer compilation model options:\n"),
+    io.write_string("\n      Data representation\n"),
     write_tabbed_lines([
         "--tags {none, low, high}      (This option is not for general use.)",
         "\tSpecify whether to use the low bits or the high bits of ",
@@ -3617,7 +3617,7 @@ options_help_compilation_model -->
 %       "\tBox no-tag types.  This option is disabled by default."
 
     ]),
-    io__write_string("\n      Developer optional features\n"),
+    io.write_string("\n      Developer optional features\n"),
     write_tabbed_lines([
         "--use-minimal-model-stack-copy",
         "(This option is not for general use.)",
@@ -3682,7 +3682,7 @@ options_help_compilation_model -->
 :- pred options_help_code_generation(io::di, io::uo) is det.
 
 options_help_code_generation -->
-    io__write_string("\nCode generation options:\n"),
+    io.write_string("\nCode generation options:\n"),
     write_tabbed_lines([
         "--low-level-debug",
         "\tEnables various low-level debugging stuff, that was in",
@@ -3757,7 +3757,7 @@ options_help_code_generation -->
 
     ]),
 
-    io__write_string("\n    Code generation target options:\n"),
+    io.write_string("\n    Code generation target options:\n"),
     write_tabbed_lines([
         "--branch-delay-slot    \t(This option is not for general use.)",
         "\tAssume that branch instructions have a delay slot.",
@@ -3778,7 +3778,7 @@ options_help_code_generation -->
 :- pred options_help_optimization(io::di, io::uo) is det.
 
 options_help_optimization -->
-    io__write_string("\nOptimization Options:\n"),
+    io.write_string("\nOptimization Options:\n"),
     write_tabbed_lines([
         "-O <n>, --opt-level <n>, --optimization-level <n>",
         "\tSet optimization level to <n>.",
@@ -3834,7 +3834,7 @@ options_help_optimization -->
 :- pred options_help_hlds_hlds_optimization(io::di, io::uo) is det.
 
 options_help_hlds_hlds_optimization -->
-    io__write_string("\n    High-level (HLDS -> HLDS) optimizations:\n"),
+    io.write_string("\n    High-level (HLDS -> HLDS) optimizations:\n"),
     write_tabbed_lines([
         "--no-inlining",
         "\tDisable all forms of inlining.",
@@ -4033,7 +4033,7 @@ options_help_hlds_hlds_optimization -->
 :- pred options_help_hlds_llds_optimization(io::di, io::uo) is det.
 
 options_help_hlds_llds_optimization -->
-    io__write_string("\n    Medium-level (HLDS -> LLDS) optimizations:\n"),
+    io.write_string("\n    Medium-level (HLDS -> LLDS) optimizations:\n"),
     write_tabbed_lines([
         "--no-smart-indexing",
         "\tGenerate switches as a simple if-then-else chains;",
@@ -4082,7 +4082,7 @@ options_help_hlds_llds_optimization -->
 :- pred options_help_llds_llds_optimization(io::di, io::uo) is det.
 
 options_help_llds_llds_optimization -->
-    io__write_string("\n    Low-level (LLDS -> LLDS) optimizations:\n"),
+    io.write_string("\n    Low-level (LLDS -> LLDS) optimizations:\n"),
     write_tabbed_lines([
         "--no-common-data",
         "\tDisable optimization of common data structures.",
@@ -4127,7 +4127,7 @@ options_help_llds_llds_optimization -->
 :- pred options_help_mlds_mlds_optimization(io::di, io::uo) is det.
 
 options_help_mlds_mlds_optimization -->
-    io__write_string("\n    MLDS -> MLDS optimizations:\n"),
+    io.write_string("\n    MLDS -> MLDS optimizations:\n"),
     write_tabbed_lines([
         "--no-mlds-optimize",
         "\tDisable the MLDS->MLDS optimization passes.",
@@ -4150,7 +4150,7 @@ options_help_mlds_mlds_optimization -->
 :- pred options_help_output_optimization(io::di, io::uo) is det.
 
 options_help_output_optimization -->
-    io__write_string("\n    Output-level (LLDS -> C) optimizations:\n"),
+    io.write_string("\n    Output-level (LLDS -> C) optimizations:\n"),
     write_tabbed_lines([
         "--use-macro-for-redo-fail",
         "\tEmit the fail or redo macro instead of a branch",
@@ -4173,7 +4173,7 @@ options_help_output_optimization -->
 :- pred options_help_target_code_compilation(io::di, io::uo) is det.
 
 options_help_target_code_compilation -->
-    io__write_string("\n    Target code compilation:\n"),
+    io.write_string("\n    Target code compilation:\n"),
     write_tabbed_lines([
         "\tNote that if you are using Mmake, you need to pass these",
         "\toptions to the target code compiler (e.g. `mgnuc')",
@@ -4274,7 +4274,7 @@ options_help_target_code_compilation -->
 :- pred options_help_link(io::di, io::uo) is det.
 
 options_help_link -->
-    io__write_string("\nLink Options:\n"),
+    io.write_string("\nLink Options:\n"),
     write_tabbed_lines([
         "-o <filename>, --output-file <filename>",
         "\tSpecify the name of the final executable.",
@@ -4397,7 +4397,7 @@ options_help_link -->
 :- pred options_help_build_system(io::di, io::uo) is det.
 
 options_help_build_system -->
-    io__write_string("\nBuild System Options:\n"),
+    io.write_string("\nBuild System Options:\n"),
     write_tabbed_lines([
         % `--invoked-by-mmc-make' is for internal use by the
         % compiler. `mmc --make' passes it as the first argument
@@ -4497,7 +4497,7 @@ options_help_build_system -->
 :- pred options_help_misc(io::di, io::uo) is det.
 
 options_help_misc -->
-    io__write_string("\nMiscellaneous Options:\n"),
+    io.write_string("\nMiscellaneous Options:\n"),
     write_tabbed_lines([
         "--filenames-from-stdin",
         "\tRead then compile a newline terminated module name or",
@@ -4518,9 +4518,9 @@ options_help_misc -->
 
 write_tabbed_lines([], !IO).
 write_tabbed_lines([Str | Strs], !IO) :-
-    io__write_char('\t', !IO),
-    io__write_string(Str, !IO),
-    io__write_char('\n', !IO),
+    io.write_char('\t', !IO),
+    io.write_string(Str, !IO),
+    io.write_char('\n', !IO),
     write_tabbed_lines(Strs, !IO).
 
 %-----------------------------------------------------------------------------%

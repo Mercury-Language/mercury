@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000, 2003-2005 The University of Melbourne.
+% Copyright (C) 2000, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,7 +14,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ml_backend__ml_tag_switch.
+:- module ml_backend.ml_tag_switch.
 
 :- interface.
 
@@ -29,7 +29,7 @@
     % Generate efficient indexing code for tag based switches.
     %
 :- pred generate(list(extended_case)::in, prog_var::in, code_model::in,
-    can_fail::in, prog_context::in, mlds__defns::out, statements::out,
+    can_fail::in, prog_context::in, mlds_defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -68,11 +68,11 @@ generate(Cases, Var, CodeModel, CanFail, Context, Decls, Statements, !Info) :-
 
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_variable_type(!.Info, Var, Type),
-    switch_util__get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap),
-    map__to_assoc_list(PtagCountMap, PtagCountList),
-    map__init(PtagCaseMap0),
-    switch_util__group_cases_by_ptag(Cases, PtagCaseMap0, PtagCaseMap),
-    switch_util__order_ptags_by_count(PtagCountList, PtagCaseMap,
+    switch_util.get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap),
+    map.to_assoc_list(PtagCountMap, PtagCountList),
+    map.init(PtagCaseMap0),
+    switch_util.group_cases_by_ptag(Cases, PtagCaseMap0, PtagCaseMap),
+    switch_util.order_ptags_by_count(PtagCountList, PtagCaseMap,
         PtagCaseList),
 
     % Generate the switch on the primary tag.
@@ -82,16 +82,16 @@ generate(Cases, Var, CodeModel, CanFail, Context, Decls, Statements, !Info) :-
 
     % Package up the results into a switch statement.
     Range = range(0, MaxPrimary),
-    SwitchStmt0 = switch(mlds__native_int_type, PTagRval, Range, MLDS_Cases,
+    SwitchStmt0 = switch(mlds_native_int_type, PTagRval, Range, MLDS_Cases,
         Default),
-    MLDS_Context = mlds__make_context(Context),
+    MLDS_Context = mlds_make_context(Context),
     ml_simplify_switch(SwitchStmt0, MLDS_Context, SwitchStatement, !Info),
     Decls = [],
     Statements = [SwitchStatement].
 
 :- pred gen_ptag_cases(ptag_case_list::in, prog_var::in,
     can_fail::in, code_model::in, ptag_count_map::in,
-    prog_context::in, list(mlds__switch_case)::out,
+    prog_context::in, list(mlds_switch_case)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 gen_ptag_cases([], _, _, _, _, _, [], !Info).
@@ -104,17 +104,17 @@ gen_ptag_cases([Case | Cases], Var, CanFail, CodeModel,
 
 :- pred gen_ptag_case(pair(tag_bits, ptag_case)::in,
     prog_var::in, can_fail::in, code_model::in, ptag_count_map::in,
-    prog_context::in, mlds__switch_case::out,
+    prog_context::in, mlds_switch_case::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 gen_ptag_case(Case, Var, CanFail, CodeModel, PtagCountMap, Context, MLDS_Case,
         !Info) :-
     Case = PrimaryTag - ptag_case(SecTagLocn, GoalMap),
-    map__lookup(PtagCountMap, PrimaryTag, CountInfo),
+    map.lookup(PtagCountMap, PrimaryTag, CountInfo),
     CountInfo = SecTagLocn1 - MaxSecondary,
     expect(unify(SecTagLocn, SecTagLocn1), this_file,
         "ml_tag_switch.m: secondary tag locations differ"),
-    map__to_assoc_list(GoalMap, GoalList),
+    map.to_assoc_list(GoalMap, GoalList),
     ( SecTagLocn = none ->
         % There is no secondary tag, so there is no switch on it.
         (
@@ -133,7 +133,7 @@ gen_ptag_case(Case, Var, CanFail, CodeModel, PtagCountMap, Context, MLDS_Case,
         ->
             CaseCanFail = cannot_fail
         ;
-            list__length(GoalList, GoalCount),
+            list.length(GoalList, GoalCount),
             FullGoalCount = MaxSecondary + 1,
             FullGoalCount = GoalCount
         ->
@@ -186,13 +186,13 @@ gen_stag_switch(Cases, PrimaryTag, StagLocn, Var, CodeModel, CanFail, Context,
 
     % Package up the results into a switch statement.
     Range = range_unknown, % XXX could do better
-    SwitchStmt = switch(mlds__native_int_type, STagRval, Range, MLDS_Cases,
+    SwitchStmt = switch(mlds_native_int_type, STagRval, Range, MLDS_Cases,
         Default),
-    MLDS_Context = mlds__make_context(Context),
+    MLDS_Context = mlds_make_context(Context),
     ml_simplify_switch(SwitchStmt, MLDS_Context, Statement, !Info).
 
 :- pred gen_stag_cases(stag_goal_list::in, code_model::in,
-    list(mlds__switch_case)::out, ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_switch_case)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
 gen_stag_cases([], _, [], !Info).
 gen_stag_cases([Case | Cases], CodeModel, [MLDS_Case | MLDS_Cases], !Info) :-
@@ -200,7 +200,7 @@ gen_stag_cases([Case | Cases], CodeModel, [MLDS_Case | MLDS_Cases], !Info) :-
     gen_stag_cases(Cases, CodeModel, MLDS_Cases, !Info).
 
 :- pred gen_stag_case(pair(tag_bits, stag_goal)::in,
-    code_model::in, mlds__switch_case::out,
+    code_model::in, mlds_switch_case::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 gen_stag_case(Case, CodeModel, MLDS_Case, !Info) :-

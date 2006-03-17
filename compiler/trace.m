@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2005 The University of Melbourne.
+% Copyright (C) 1997-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -45,7 +45,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__trace.
+:- module ll_backend.trace.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -136,13 +136,13 @@
     % although to handle them properly we need to record insts in stack
     % layouts), and those of dummy types.
     %
-:- pred trace__fail_vars(module_info::in, proc_info::in,
+:- pred fail_vars(module_info::in, proc_info::in,
     set(prog_var)::out) is det.
 
     % Figure out whether we need a slot for storing the value of maxfr
     % on entry, and record the result in the proc info.
     %
-:- pred trace__do_we_need_maxfr_slot(globals::in, pred_info::in, proc_info::in,
+:- pred do_we_need_maxfr_slot(globals::in, pred_info::in, proc_info::in,
     proc_info::out) is det.
 
     % Return the number of slots reserved for tracing information.
@@ -152,7 +152,7 @@
     % If so, the variable and its slot number are returned in the last
     % argument.
     %
-:- pred trace__reserved_slots(module_info::in, pred_info::in, proc_info::in,
+:- pred reserved_slots(module_info::in, pred_info::in, proc_info::in,
     globals::in, int::out, maybe(pair(prog_var, int))::out) is det.
 
     % Construct and return an abstract struct that represents the
@@ -160,37 +160,37 @@
     % info about the non-fixed slots used by the tracing system,
     % for eventual use in the constructing the procedure's layout structure.
     %
-:- pred trace__setup(module_info::in, pred_info::in, proc_info::in,
+:- pred setup(module_info::in, pred_info::in, proc_info::in,
     globals::in, trace_slot_info::out, trace_info::out,
     code_info::in, code_info::out) is det.
 
     % Generate code to fill in the reserved stack slots.
     %
-:- pred trace__generate_slot_fill_code(code_info::in, trace_info::in,
+:- pred generate_slot_fill_code(code_info::in, trace_info::in,
     code_tree::out) is det.
 
     % If we are doing execution tracing, generate code to prepare for a call.
     %
-:- pred trace__prepare_for_call(code_info::in, code_tree::out) is det.
+:- pred prepare_for_call(code_info::in, code_tree::out) is det.
 
     % If we are doing execution tracing, generate code for an internal
     % trace event. This predicate must be called just before generating code
     % for the given goal.
     %
-:- pred trace__maybe_generate_internal_event_code(hlds_goal::in,
+:- pred maybe_generate_internal_event_code(hlds_goal::in,
     hlds_goal_info::in, code_tree::out, code_info::in, code_info::out) is det.
 
     % If we are doing execution tracing, generate code for an trace event
     % that represents leaving a negated goal (via success or failure).
     %
-:- pred trace__maybe_generate_negated_event_code(hlds_goal::in,
+:- pred maybe_generate_negated_event_code(hlds_goal::in,
     hlds_goal_info::in, negation_end_port::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
     % If we are doing execution tracing, generate code for a nondet
     % pragma C code trace event.
     %
-:- pred trace__maybe_generate_pragma_event_code(nondet_pragma_trace_port::in,
+:- pred maybe_generate_pragma_event_code(nondet_pragma_trace_port::in,
     prog_context::in, code_tree::out, code_info::in, code_info::out) is det.
 
 :- type external_event_info
@@ -213,7 +213,7 @@
     % liveness information, since some of our callers also need this
     % information.
     %
-:- pred trace__generate_external_event_code(external_trace_port::in,
+:- pred generate_external_event_code(external_trace_port::in,
     trace_info::in, prog_context::in, maybe(external_event_info)::out,
     code_info::in, code_info::out) is det.
 
@@ -222,7 +222,7 @@
     % address of one of the labels in the runtime that calls MR_trace
     % for a redo event. Otherwise, generate empty code.
     %
-:- pred trace__maybe_setup_redo_event(trace_info::in, code_tree::out) is det.
+:- pred maybe_setup_redo_event(trace_info::in, code_tree::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -273,29 +273,29 @@
             )
     ;       nondet_pragma.
 
-trace__fail_vars(ModuleInfo, ProcInfo, FailVars) :-
+fail_vars(ModuleInfo, ProcInfo, FailVars) :-
     proc_info_headvars(ProcInfo, HeadVars),
     proc_info_argmodes(ProcInfo, Modes),
     proc_info_arg_info(ProcInfo, ArgInfos),
     proc_info_vartypes(ProcInfo, VarTypes),
     mode_list_get_final_insts(ModuleInfo, Modes, Insts),
     (
-        trace__build_fail_vars(HeadVars, Insts, ArgInfos,
+        build_fail_vars(HeadVars, Insts, ArgInfos,
             ModuleInfo, VarTypes, FailVarsList)
     ->
-        set__list_to_set(FailVarsList, FailVars)
+        set.list_to_set(FailVarsList, FailVars)
     ;
-        unexpected(this_file, "length mismatch in trace__fail_vars")
+        unexpected(this_file, "length mismatch in trace.fail_vars")
     ).
 
-trace__do_we_need_maxfr_slot(Globals, PredInfo0, !ProcInfo) :-
-    globals__get_trace_level(Globals, TraceLevel),
+do_we_need_maxfr_slot(Globals, PredInfo0, !ProcInfo) :-
+    globals.get_trace_level(Globals, TraceLevel),
     proc_info_interface_code_model(!.ProcInfo, CodeModel),
     (
         eff_trace_level_is_none(PredInfo0, !.ProcInfo, TraceLevel) = no,
         CodeModel \= model_non,
         proc_info_goal(!.ProcInfo, Goal),
-        code_util__goal_may_alloc_temp_frame(Goal)
+        code_util.goal_may_alloc_temp_frame(Goal)
     ->
         MaxfrFlag = yes
     ;
@@ -303,9 +303,8 @@ trace__do_we_need_maxfr_slot(Globals, PredInfo0, !ProcInfo) :-
     ),
     proc_info_set_need_maxfr_slot(MaxfrFlag, !ProcInfo).
 
-    % trace__reserved_slots and trace__setup cooperate in the allocation
-    % of stack slots for tracing purposes. The allocation is done in the
-    % following stages.
+    % reserved_slots and setup cooperate in the allocation of stack slots
+    % for tracing purposes. The allocation is done in the following stages.
     %
     % stage 1:  Allocate the fixed slots, slots 1, 2 and 3, to hold
     %           the event number of call, the call sequence number
@@ -374,15 +373,14 @@ trace__do_we_need_maxfr_slot(Globals, PredInfo0, !ProcInfo) :-
     % by the runtime system if they are guaranteed to exist. The runtime
     % system may of course also need to refer to slots allocated by later
     % stages, but before it does so, it needs to know whether those slots
-    % exist or not. This is why trace__setup returns TraceSlotInfo,
-    % which answers such questions, for later inclusion in the
-    % procedure's layout structure.
+    % exist or not. This is why setup returns TraceSlotInfo, which answers
+    % such questions, for later inclusion in the procedure's layout structure.
     
-trace__reserved_slots(_ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
+reserved_slots(_ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
         MaybeTableVarInfo) :-
-    globals__get_trace_level(Globals, TraceLevel),
-    globals__get_trace_suppress(Globals, TraceSuppress),
-    globals__lookup_bool_option(Globals, trace_table_io, TraceTableIo),
+    globals.get_trace_level(Globals, TraceLevel),
+    globals.get_trace_suppress(Globals, TraceSuppress),
+    globals.lookup_bool_option(Globals, trace_table_io, TraceTableIo),
     FixedSlots = eff_trace_level_needs_fixed_slots(PredInfo, ProcInfo,
         TraceLevel),
     (
@@ -416,7 +414,7 @@ trace__reserved_slots(_ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
             TraceTableIo = no,
             IoSeq = 0
         ),
-        globals__lookup_bool_option(Globals, use_trail, UseTrail),
+        globals.lookup_bool_option(Globals, use_trail, UseTrail),
         (
             UseTrail = yes,
             Trail = 2
@@ -445,19 +443,19 @@ trace__reserved_slots(_ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
         )
     ).
 
-trace__setup(_ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo,
-        TraceInfo, !CI) :-
-    CodeModel = code_info__get_proc_model(!.CI),
-    globals__get_trace_level(Globals, TraceLevel),
-    globals__get_trace_suppress(Globals, TraceSuppress),
-    globals__lookup_bool_option(Globals, trace_table_io, TraceTableIo),
+setup(_ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo, TraceInfo,
+        !CI) :-
+    CodeModel = code_info.get_proc_model(!.CI),
+    globals.get_trace_level(Globals, TraceLevel),
+    globals.get_trace_suppress(Globals, TraceSuppress),
+    globals.lookup_bool_option(Globals, trace_table_io, TraceTableIo),
     TraceRedo = eff_trace_needs_port(PredInfo, ProcInfo, TraceLevel,
         TraceSuppress, redo),
     (
         TraceRedo = yes,
         CodeModel = model_non
     ->
-        code_info__get_next_label(RedoLayoutLabel, !CI),
+        code_info.get_next_label(RedoLayoutLabel, !CI),
         MaybeRedoLayoutLabel = yes(RedoLayoutLabel),
         NextSlotAfterRedoLayout = 5
     ;
@@ -474,7 +472,7 @@ trace__setup(_ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo,
     ;
         FromFullSlot = yes,
         MaybeFromFullSlot = yes(NextSlotAfterRedoLayout),
-        CallFromFullSlot = llds__stack_slot_num_to_lval(
+        CallFromFullSlot = llds.stack_slot_num_to_lval(
             CodeModel, NextSlotAfterRedoLayout),
         MaybeFromFullSlotLval = yes(CallFromFullSlot),
         NextSlotAfterFromFull = NextSlotAfterRedoLayout + 1
@@ -482,7 +480,7 @@ trace__setup(_ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo,
     (
         TraceTableIo = yes,
         MaybeIoSeqSlot = yes(NextSlotAfterFromFull),
-        IoSeqLval = llds__stack_slot_num_to_lval(CodeModel,
+        IoSeqLval = llds.stack_slot_num_to_lval(CodeModel,
             NextSlotAfterFromFull),
         MaybeIoSeqLval = yes(IoSeqLval),
         NextSlotAfterIoSeq = NextSlotAfterFromFull + 1
@@ -492,13 +490,13 @@ trace__setup(_ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo,
         MaybeIoSeqLval = no,
         NextSlotAfterIoSeq = NextSlotAfterFromFull
     ),
-    globals__lookup_bool_option(Globals, use_trail, UseTrail),
+    globals.lookup_bool_option(Globals, use_trail, UseTrail),
     (
         UseTrail = yes,
         MaybeTrailSlot = yes(NextSlotAfterIoSeq),
-        TrailLval = llds__stack_slot_num_to_lval(CodeModel,
+        TrailLval = llds.stack_slot_num_to_lval(CodeModel,
             NextSlotAfterIoSeq),
-        TicketLval = llds__stack_slot_num_to_lval(CodeModel,
+        TicketLval = llds.stack_slot_num_to_lval(CodeModel,
             NextSlotAfterIoSeq + 1),
         MaybeTrailLvals = yes(TrailLval - TicketLval),
         NextSlotAfterTrail = NextSlotAfterIoSeq + 2
@@ -512,7 +510,7 @@ trace__setup(_ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo,
     (
         NeedMaxfr = yes,
         MaybeMaxfrSlot = yes(NextSlotAfterTrail),
-        MaxfrLval = llds__stack_slot_num_to_lval(CodeModel,
+        MaxfrLval = llds.stack_slot_num_to_lval(CodeModel,
             NextSlotAfterTrail),
         MaybeMaxfrLval = yes(MaxfrLval),
         NextSlotAfterMaxfr = NextSlotAfterTrail + 1
@@ -524,7 +522,7 @@ trace__setup(_ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo,
     ),
     ( proc_info_get_call_table_tip(ProcInfo, yes(_)) ->
         MaybeCallTableSlot = yes(NextSlotAfterMaxfr),
-        CallTableLval = llds__stack_slot_num_to_lval(CodeModel,
+        CallTableLval = llds.stack_slot_num_to_lval(CodeModel,
             NextSlotAfterMaxfr),
         MaybeCallTableLval = yes(CallTableLval)
     ;
@@ -537,27 +535,27 @@ trace__setup(_ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo,
         MaybeFromFullSlotLval, MaybeIoSeqLval, MaybeTrailLvals,
         MaybeMaxfrLval, MaybeCallTableLval, MaybeRedoLayoutLabel).
 
-trace__generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
-    CodeModel = code_info__get_proc_model(CI),
+generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
+    CodeModel = code_info.get_proc_model(CI),
     MaybeFromFullSlot  = TraceInfo ^ from_full_lval,
     MaybeIoSeqSlot     = TraceInfo ^ io_seq_lval,
     MaybeTrailLvals    = TraceInfo ^ trail_lvals,
     MaybeMaxfrLval     = TraceInfo ^ maxfr_lval,
     MaybeCallTableLval = TraceInfo ^ call_table_tip_lval,
     MaybeRedoLabel     = TraceInfo ^ redo_label,
-    trace__event_num_slot(CodeModel, EventNumLval),
-    trace__call_num_slot(CodeModel, CallNumLval),
-    trace__call_depth_slot(CodeModel, CallDepthLval),
-    trace__stackref_to_string(EventNumLval, EventNumStr),
-    trace__stackref_to_string(CallNumLval, CallNumStr),
-    trace__stackref_to_string(CallDepthLval, CallDepthStr),
-    string__append_list(["\t\tMR_trace_fill_std_slots(",
+    event_num_slot(CodeModel, EventNumLval),
+    call_num_slot(CodeModel, CallNumLval),
+    call_depth_slot(CodeModel, CallDepthLval),
+    stackref_to_string(EventNumLval, EventNumStr),
+    stackref_to_string(CallNumLval, CallNumStr),
+    stackref_to_string(CallDepthLval, CallDepthStr),
+    string.append_list(["\t\tMR_trace_fill_std_slots(",
         EventNumStr, ", ", CallNumStr, ", ", CallDepthStr, ");\n"
     ], FillThreeSlots),
     (
         MaybeIoSeqSlot = yes(IoSeqLval),
-        trace__stackref_to_string(IoSeqLval, IoSeqStr),
-        string__append_list([
+        stackref_to_string(IoSeqLval, IoSeqStr),
+        string.append_list([
             FillThreeSlots,
             "\t\t", IoSeqStr, " = MR_io_tabling_counter;\n"
         ], FillSlotsUptoIoSeq)
@@ -567,11 +565,11 @@ trace__generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
     ),
     (
         MaybeRedoLabel = yes(RedoLayoutLabel),
-        trace__redo_layout_slot(CodeModel, RedoLayoutLval),
-        trace__stackref_to_string(RedoLayoutLval, RedoLayoutStr),
+        redo_layout_slot(CodeModel, RedoLayoutLval),
+        stackref_to_string(RedoLayoutLval, RedoLayoutStr),
         LayoutAddrStr =
-            layout_out__make_label_layout_name(RedoLayoutLabel),
-        string__append_list([
+            layout_out.make_label_layout_name(RedoLayoutLabel),
+        string.append_list([
             FillSlotsUptoIoSeq,
             "\t\t", RedoLayoutStr,
                 " = (MR_Word) (const MR_Word *) &", LayoutAddrStr, ";\n"
@@ -588,9 +586,9 @@ trace__generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
         % only when the caller is deep traced, and everything inside
         % that test must be in C code.
         MaybeTrailLvals = yes(TrailLval - TicketLval),
-        trace__stackref_to_string(TrailLval, TrailLvalStr),
-        trace__stackref_to_string(TicketLval, TicketLvalStr),
-        string__append_list([
+        stackref_to_string(TrailLval, TrailLvalStr),
+        stackref_to_string(TicketLval, TicketLvalStr),
+        string.append_list([
             FillSlotsUptoRedo,
             "\t\tMR_mark_ticket_stack(", TicketLvalStr, ");\n",
             "\t\tMR_store_ticket(", TrailLvalStr, ");\n"
@@ -601,7 +599,7 @@ trace__generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
     ),
     (
         MaybeFromFullSlot = yes(CallFromFullSlot),
-        trace__stackref_to_string(CallFromFullSlot,
+        stackref_to_string(CallFromFullSlot,
             CallFromFullSlotStr),
         TraceStmt1 =
             "\t\t" ++ CallFromFullSlotStr ++ " = MR_trace_from_full;\n" ++
@@ -616,7 +614,7 @@ trace__generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
     ),
     TraceCode1 = node([
         pragma_c([], [pragma_c_raw_code(TraceStmt1, cannot_branch_away,
-            live_lvals_info(set__init))], will_not_call_mercury,
+            live_lvals_info(set.init))], will_not_call_mercury,
             no, no, MaybeLayoutLabel, no, yes, no)
             - ""
     ]),
@@ -631,11 +629,11 @@ trace__generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
     ),
     (
         MaybeCallTableLval = yes(CallTableLval),
-        trace__stackref_to_string(CallTableLval, CallTableLvalStr),
+        stackref_to_string(CallTableLval, CallTableLvalStr),
         TraceStmt3 = "\t\t" ++ CallTableLvalStr ++ " = 0;\n",
         TraceCode3 = node([
             pragma_c([], [pragma_c_raw_code(TraceStmt3, cannot_branch_away,
-                live_lvals_info(set__init))],
+                live_lvals_info(set.init))],
                 will_not_call_mercury, no, no, no, no, yes, no) - ""
         ])
     ;
@@ -644,14 +642,14 @@ trace__generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
     ),
     TraceCode = tree(TraceCode1, tree(TraceCode2, TraceCode3)).
 
-trace__prepare_for_call(CI, TraceCode) :-
-    code_info__get_maybe_trace_info(CI, MaybeTraceInfo),
-    CodeModel = code_info__get_proc_model(CI),
+prepare_for_call(CI, TraceCode) :-
+    code_info.get_maybe_trace_info(CI, MaybeTraceInfo),
+    CodeModel = code_info.get_proc_model(CI),
     (
         MaybeTraceInfo = yes(TraceInfo),
         MaybeFromFullSlot = TraceInfo ^ from_full_lval,
-        trace__call_depth_slot(CodeModel, CallDepthLval),
-        trace__stackref_to_string(CallDepthLval, CallDepthStr),
+        call_depth_slot(CodeModel, CallDepthLval),
+        stackref_to_string(CallDepthLval, CallDepthStr),
         (
             MaybeFromFullSlot = yes(_),
             MacroStr = "MR_trace_reset_depth_from_shallow"
@@ -661,15 +659,15 @@ trace__prepare_for_call(CI, TraceCode) :-
         ),
         ResetStmt = MacroStr ++ "(" ++ CallDepthStr ++ ");\n",
         TraceCode = node([
-            c_code(ResetStmt, live_lvals_info(set__init)) - ""
+            c_code(ResetStmt, live_lvals_info(set.init)) - ""
         ])
     ;
         MaybeTraceInfo = no,
         TraceCode = empty
     ).
 
-trace__maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
-    code_info__get_maybe_trace_info(!.CI, MaybeTraceInfo),
+maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
+    code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
     (
         MaybeTraceInfo = yes(TraceInfo),
         Goal = _ - GoalInfo,
@@ -701,8 +699,8 @@ trace__maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
             unexpected(this_file, "generate_internal_event_code: bad path")
         ),
         (
-            code_info__get_pred_info(!.CI, PredInfo),
-            code_info__get_proc_info(!.CI, ProcInfo),
+            code_info.get_pred_info(!.CI, PredInfo),
+            code_info.get_proc_info(!.CI, ProcInfo),
             eff_trace_needs_port(PredInfo, ProcInfo,
                 TraceInfo ^ trace_level,
                 TraceInfo ^ trace_suppress_items, Port) = yes
@@ -714,7 +712,7 @@ trace__maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
             ;
                 HideEvent = no
             ),
-            trace__generate_event_code(Port, internal(Path, PreDeaths),
+            generate_event_code(Port, internal(Path, PreDeaths),
                 TraceInfo, Context, HideEvent, _, _, Code, !CI)
         ;
             Code = empty
@@ -724,9 +722,8 @@ trace__maybe_generate_internal_event_code(Goal, OutsideGoalInfo, Code, !CI) :-
         Code = empty
     ).
 
-trace__maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code,
-        !CI) :-
-    code_info__get_maybe_trace_info(!.CI, MaybeTraceInfo),
+maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code, !CI) :-
+    code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
     (
         MaybeTraceInfo = yes(TraceInfo),
         (
@@ -736,8 +733,8 @@ trace__maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code,
             NegPort = neg_success,
             Port = neg_success
         ),
-        code_info__get_pred_info(!.CI, PredInfo),
-        code_info__get_proc_info(!.CI, ProcInfo),
+        code_info.get_pred_info(!.CI, PredInfo),
+        code_info.get_proc_info(!.CI, ProcInfo),
         eff_trace_needs_port(PredInfo, ProcInfo,
             TraceInfo ^ trace_level,
             TraceInfo ^ trace_suppress_items, Port) = yes
@@ -750,66 +747,66 @@ trace__maybe_generate_negated_event_code(Goal, OutsideGoalInfo, NegPort, Code,
         ;
             HideEvent = no
         ),
-        trace__generate_event_code(Port, negation_end(Path),
-            TraceInfo, Context, HideEvent, _, _, Code, !CI)
+        generate_event_code(Port, negation_end(Path), TraceInfo, Context,
+            HideEvent, _, _, Code, !CI)
     ;
         Code = empty
     ).
 
-trace__maybe_generate_pragma_event_code(PragmaPort, Context, Code, !CI) :-
-    code_info__get_maybe_trace_info(!.CI, MaybeTraceInfo),
+maybe_generate_pragma_event_code(PragmaPort, Context, Code, !CI) :-
+    code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
     (
         MaybeTraceInfo = yes(TraceInfo),
-        trace__convert_nondet_pragma_port_type(PragmaPort, Port),
-        code_info__get_pred_info(!.CI, PredInfo),
-        code_info__get_proc_info(!.CI, ProcInfo),
+        Port = convert_nondet_pragma_port_type(PragmaPort),
+        code_info.get_pred_info(!.CI, PredInfo),
+        code_info.get_proc_info(!.CI, ProcInfo),
         eff_trace_needs_port(PredInfo, ProcInfo,
             TraceInfo ^ trace_level,
             TraceInfo ^ trace_suppress_items, Port) = yes
     ->
-        trace__generate_event_code(Port, nondet_pragma, TraceInfo,
-            Context, no, _, _, Code, !CI)
+        generate_event_code(Port, nondet_pragma, TraceInfo, Context, no, _, _,
+            Code, !CI)
     ;
         Code = empty
     ).
 
-trace__generate_external_event_code(ExternalPort, TraceInfo, Context,
+generate_external_event_code(ExternalPort, TraceInfo, Context,
         MaybeExternalInfo, !CI) :-
-    trace__convert_external_port_type(ExternalPort, Port),
+    Port = convert_external_port_type(ExternalPort),
     (
-        code_info__get_pred_info(!.CI, PredInfo),
-        code_info__get_proc_info(!.CI, ProcInfo),
+        code_info.get_pred_info(!.CI, PredInfo),
+        code_info.get_proc_info(!.CI, ProcInfo),
         eff_trace_needs_port(PredInfo, ProcInfo,
             TraceInfo ^ trace_level,
             TraceInfo ^ trace_suppress_items, Port) = yes
     ->
-        trace__generate_event_code(Port, external, TraceInfo,
-            Context, no, Label, TvarDataMap, Code, !CI),
+        generate_event_code(Port, external, TraceInfo, Context, no, Label,
+            TvarDataMap, Code, !CI),
         MaybeExternalInfo = yes(external_event_info(Label,
             TvarDataMap, Code))
     ;
         MaybeExternalInfo = no
     ).
 
-:- pred trace__generate_event_code(trace_port::in, trace_port_info::in,
+:- pred generate_event_code(trace_port::in, trace_port_info::in,
     trace_info::in, prog_context::in, bool::in, label::out,
     map(tvar, set(layout_locn))::out, code_tree::out,
     code_info::in, code_info::out) is det.
 
-trace__generate_event_code(Port, PortInfo, TraceInfo, Context, HideEvent,
-        Label, TvarDataMap, Code, !CI) :-
-    code_info__get_next_label(Label, !CI),
-    code_info__get_known_variables(!.CI, LiveVars0),
+generate_event_code(Port, PortInfo, TraceInfo, Context, HideEvent, Label,
+        TvarDataMap, Code, !CI) :-
+    code_info.get_next_label(Label, !CI),
+    code_info.get_known_variables(!.CI, LiveVars0),
     (
         PortInfo = external,
         LiveVars = LiveVars0,
         Path = []
     ;
         PortInfo = internal(Path, PreDeaths),
-        ResumeVars = code_info__current_resume_point_vars(!.CI),
-        set__difference(PreDeaths, ResumeVars, RealPreDeaths),
-        set__to_sorted_list(RealPreDeaths, RealPreDeathList),
-        list__delete_elems(LiveVars0, RealPreDeathList, LiveVars)
+        ResumeVars = code_info.current_resume_point_vars(!.CI),
+        set.difference(PreDeaths, ResumeVars, RealPreDeaths),
+        set.to_sorted_list(RealPreDeaths, RealPreDeathList),
+        list.delete_elems(LiveVars0, RealPreDeathList, LiveVars)
     ;
         PortInfo = negation_end(Path),
         LiveVars = LiveVars0
@@ -825,38 +822,38 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context, HideEvent,
                 "bad nondet pragma port")
         )
     ),
-    VarTypes = code_info__get_var_types(!.CI),
-    code_info__get_varset(!.CI, VarSet),
-    code_info__get_instmap(!.CI, InstMap),
-    trace__produce_vars(LiveVars, VarSet, VarTypes, InstMap, Port,
-        set__init, TvarSet, [], VarInfoList, ProduceCode, !CI),
-    code_info__max_reg_in_use(!.CI, MaxReg),
-    code_info__get_max_reg_in_use_at_trace(!.CI, MaxTraceReg0),
+    VarTypes = code_info.get_var_types(!.CI),
+    code_info.get_varset(!.CI, VarSet),
+    code_info.get_instmap(!.CI, InstMap),
+    trace_produce_vars(LiveVars, VarSet, VarTypes, InstMap, Port,
+        set.init, TvarSet, [], VarInfoList, ProduceCode, !CI),
+    code_info.max_reg_in_use(!.CI, MaxReg),
+    code_info.get_max_reg_in_use_at_trace(!.CI, MaxTraceReg0),
     ( MaxTraceReg0 < MaxReg ->
-        code_info__set_max_reg_in_use_at_trace(MaxReg, !CI)
+        code_info.set_max_reg_in_use_at_trace(MaxReg, !CI)
     ;
         true
     ),
-    code_info__variable_locations(!.CI, VarLocs),
-    code_info__get_proc_info(!.CI, ProcInfo),
-    set__to_sorted_list(TvarSet, TvarList),
-    continuation_info__find_typeinfos_for_tvars(TvarList,
+    code_info.variable_locations(!.CI, VarLocs),
+    code_info.get_proc_info(!.CI, ProcInfo),
+    set.to_sorted_list(TvarSet, TvarList),
+    continuation_info.find_typeinfos_for_tvars(TvarList,
         VarLocs, ProcInfo, TvarDataMap),
 
     % compute the set of live lvals at the event
-    VarLvals = list__map(find_lval_in_var_info, VarInfoList),
-    map__values(TvarDataMap, TvarLocnSets),
-    TvarLocnSet = set__union_list(TvarLocnSets),
-    set__to_sorted_list(TvarLocnSet, TvarLocns),
-    TvarLvals = list__map(find_lval_in_layout_locn, TvarLocns),
-    list__append(VarLvals, TvarLvals, LiveLvals),
-    LiveLvalSet = set__list_to_set(LiveLvals),
+    VarLvals = list.map(find_lval_in_var_info, VarInfoList),
+    map.values(TvarDataMap, TvarLocnSets),
+    TvarLocnSet = set.union_list(TvarLocnSets),
+    set.to_sorted_list(TvarLocnSet, TvarLocns),
+    TvarLvals = list.map(find_lval_in_layout_locn, TvarLocns),
+    list.append(VarLvals, TvarLvals, LiveLvals),
+    LiveLvalSet = set.list_to_set(LiveLvals),
 
-    set__list_to_set(VarInfoList, VarInfoSet),
+    set.list_to_set(VarInfoList, VarInfoSet),
     LayoutLabelInfo = layout_label_info(VarInfoSet, TvarDataMap),
-    LabelStr = llds_out__label_to_c_string(Label, no),
-    string__append_list(["\t\tMR_EVENT(", LabelStr, ")\n"], TraceStmt),
-    code_info__add_trace_layout_for_label(Label, Context, Port, HideEvent,
+    LabelStr = llds_out.label_to_c_string(Label, no),
+    string.append_list(["\t\tMR_EVENT(", LabelStr, ")\n"], TraceStmt),
+    code_info.add_trace_layout_for_label(Label, Context, Port, HideEvent,
         Path, LayoutLabelInfo, !CI),
     (
         Port = fail,
@@ -869,10 +866,10 @@ trace__generate_event_code(Port, PortInfo, TraceInfo, Context, HideEvent,
         % generating it for the redo event would be much harder.
         % On the other hand, the address of the layout structure
         % for the redo event should be put into its fixed stack slot
-        % at procedure entry. Therefore trace__setup reserves a label
+        % at procedure entry. Therefore setup reserves a label
         % for the redo event, whose layout information is filled in
         % when we get to the fail event.
-        code_info__add_trace_layout_for_label(RedoLabel, Context, redo,
+        code_info.add_trace_layout_for_label(RedoLabel, Context, redo,
             HideEvent, Path, LayoutLabelInfo, !CI)
     ;
         true
@@ -904,7 +901,7 @@ find_lval_in_var_info(layout_var_info(LayoutLocn, _, _)) =
 find_lval_in_layout_locn(direct(Lval)) = Lval.
 find_lval_in_layout_locn(indirect(Lval, _)) = Lval.
 
-trace__maybe_setup_redo_event(TraceInfo, Code) :-
+maybe_setup_redo_event(TraceInfo, Code) :-
     TraceRedoLabel = TraceInfo ^ redo_label,
     (
         TraceRedoLabel = yes(_),
@@ -912,7 +909,7 @@ trace__maybe_setup_redo_event(TraceInfo, Code) :-
         (
             MaybeFromFullSlot = yes(Lval),
             % The code in the runtime looks for the from-full flag in
-            % framevar 5; see the comment before trace__reserved_slots.
+            % framevar 5; see the comment before reserved_slots.
             expect(unify(Lval, framevar(5)), this_file,
                 "from-full flag not stored in expected slot"),
             Code = node([
@@ -933,66 +930,64 @@ trace__maybe_setup_redo_event(TraceInfo, Code) :-
         Code = empty
     ).
 
-:- pred trace__produce_vars(list(prog_var)::in, prog_varset::in, vartypes::in,
+:- pred trace_produce_vars(list(prog_var)::in, prog_varset::in, vartypes::in,
     instmap::in, trace_port::in, set(tvar)::in, set(tvar)::out,
     list(layout_var_info)::in, list(layout_var_info)::out,
     code_tree::out, code_info::in, code_info::out) is det.
 
-trace__produce_vars([], _, _, _, _, !TVars, !VarInfos, empty, !CI).
-trace__produce_vars([Var | Vars], VarSet, VarTypes, InstMap, Port,
+trace_produce_vars([], _, _, _, _, !TVars, !VarInfos, empty, !CI).
+trace_produce_vars([Var | Vars], VarSet, VarTypes, InstMap, Port,
         !TVars, !VarInfos, tree(VarCode, VarsCode), !CI) :-
-    map__lookup(VarTypes, Var, Type),
-    code_info__get_module_info(!.CI, ModuleInfo),
+    map.lookup(VarTypes, Var, Type),
+    code_info.get_module_info(!.CI, ModuleInfo),
     ( is_dummy_argument_type(ModuleInfo, Type) ->
         VarCode = empty
     ;
-        trace__produce_var(Var, VarSet, InstMap, !TVars,
-            VarInfo, VarCode, !CI),
+        trace_produce_var(Var, VarSet, InstMap, !TVars, VarInfo, VarCode, !CI),
         !:VarInfos = [VarInfo | !.VarInfos]
     ),
-    trace__produce_vars(Vars, VarSet, VarTypes, InstMap, Port, !TVars,
+    trace_produce_vars(Vars, VarSet, VarTypes, InstMap, Port, !TVars,
         !VarInfos, VarsCode, !CI).
 
-:- pred trace__produce_var(prog_var::in, prog_varset::in, instmap::in,
+:- pred trace_produce_var(prog_var::in, prog_varset::in, instmap::in,
     set(tvar)::in, set(tvar)::out, layout_var_info::out, code_tree::out,
     code_info::in, code_info::out) is det.
 
-trace__produce_var(Var, VarSet, InstMap, !Tvars, VarInfo, VarCode, !CI) :-
-    code_info__produce_variable_in_reg_or_stack(Var, VarCode, Lval, !CI),
-    Type = code_info__variable_type(!.CI, Var),
-    code_info__get_module_info(!.CI, ModuleInfo),
-    ( varset__search_name(VarSet, Var, SearchName) ->
+trace_produce_var(Var, VarSet, InstMap, !Tvars, VarInfo, VarCode, !CI) :-
+    code_info.produce_variable_in_reg_or_stack(Var, VarCode, Lval, !CI),
+    Type = code_info.variable_type(!.CI, Var),
+    code_info.get_module_info(!.CI, ModuleInfo),
+    ( varset.search_name(VarSet, Var, SearchName) ->
         Name = SearchName
     ;
         Name = ""
     ),
-    instmap__lookup_var(InstMap, Var, Inst),
-    ( inst_match__inst_is_ground(ModuleInfo, Inst) ->
+    instmap.lookup_var(InstMap, Var, Inst),
+    ( inst_match.inst_is_ground(ModuleInfo, Inst) ->
         LldsInst = ground
     ;
         LldsInst = partial(Inst)
     ),
     LiveType = var(Var, Name, Type, LldsInst),
     VarInfo = layout_var_info(direct(Lval), LiveType, "trace"),
-    prog_type__vars(Type, TypeVars),
-    set__insert_list(!.Tvars, TypeVars, !:Tvars).
+    prog_type.vars(Type, TypeVars),
+    set.insert_list(!.Tvars, TypeVars, !:Tvars).
 
 %-----------------------------------------------------------------------------%
 
-:- pred trace__build_fail_vars(list(prog_var)::in, list(mer_inst)::in,
+:- pred build_fail_vars(list(prog_var)::in, list(mer_inst)::in,
     list(arg_info)::in, module_info::in, vartypes::in,
     list(prog_var)::out) is semidet.
 
-trace__build_fail_vars([], [], [], _, _, []).
-trace__build_fail_vars([Var | Vars], [Inst | Insts], [Info | Infos],
-        ModuleInfo, VarTypes, FailVars) :-
-    trace__build_fail_vars(Vars, Insts, Infos, ModuleInfo, VarTypes,
-        FailVars0),
+build_fail_vars([], [], [], _, _, []).
+build_fail_vars([Var | Vars], [Inst | Insts], [Info | Infos], ModuleInfo,
+        VarTypes, FailVars) :-
+    build_fail_vars(Vars, Insts, Infos, ModuleInfo, VarTypes, FailVars0),
     Info = arg_info(_Loc, ArgMode),
     (
         ArgMode = top_in,
         \+ inst_is_clobbered(ModuleInfo, Inst),
-        map__lookup(VarTypes, Var, Type),
+        map.lookup(VarTypes, Var, Type),
         \+ is_dummy_argument_type(ModuleInfo, Type)
     ->
         FailVars = [Var | FailVars0]
@@ -1002,20 +997,20 @@ trace__build_fail_vars([Var | Vars], [Inst | Insts], [Info | Infos],
 
 %-----------------------------------------------------------------------------%
 
-:- pred trace__code_model_to_string(code_model::in, string::out) is det.
+:- func trace_code_model_to_string(code_model) = string.
 
-trace__code_model_to_string(model_det,  "MR_MODEL_DET").
-trace__code_model_to_string(model_semi, "MR_MODEL_SEMI").
-trace__code_model_to_string(model_non,  "MR_MODEL_NON").
+trace_code_model_to_string(model_det) =  "MR_MODEL_DET".
+trace_code_model_to_string(model_semi) = "MR_MODEL_SEMI".
+trace_code_model_to_string(model_non) =  "MR_MODEL_NON".
 
-:- pred trace__stackref_to_string(lval::in, string::out) is det.
+:- pred stackref_to_string(lval::in, string::out) is det.
 
-trace__stackref_to_string(Lval, LvalStr) :-
+stackref_to_string(Lval, LvalStr) :-
     ( Lval = stackvar(Slot) ->
-        string__int_to_string(Slot, SlotString),
+        string.int_to_string(Slot, SlotString),
         LvalStr = "MR_sv(" ++ SlotString ++ ")"
     ; Lval = framevar(Slot) ->
-        string__int_to_string(Slot, SlotString),
+        string.int_to_string(Slot, SlotString),
         LvalStr = "MR_fv(" ++ SlotString ++ ")"
     ;
         unexpected(this_file, "non-stack lval in stackref_to_string")
@@ -1023,50 +1018,46 @@ trace__stackref_to_string(Lval, LvalStr) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred trace__convert_external_port_type(external_trace_port::in,
-    trace_port::out) is det.
+:- func convert_external_port_type(external_trace_port) = trace_port.
 
-trace__convert_external_port_type(call, call).
-trace__convert_external_port_type(exit, exit).
-trace__convert_external_port_type(fail, fail).
+convert_external_port_type(call) = call.
+convert_external_port_type(exit) = exit.
+convert_external_port_type(fail) = fail.
 
-:- pred trace__convert_nondet_pragma_port_type(nondet_pragma_trace_port::in,
-    trace_port::out) is det.
+:- func convert_nondet_pragma_port_type(nondet_pragma_trace_port) = trace_port.
 
-trace__convert_nondet_pragma_port_type(nondet_pragma_first,
-    nondet_pragma_first).
-trace__convert_nondet_pragma_port_type(nondet_pragma_later,
-    nondet_pragma_later).
+convert_nondet_pragma_port_type(nondet_pragma_first) = nondet_pragma_first.
+convert_nondet_pragma_port_type(nondet_pragma_later) = nondet_pragma_later.
 
 %-----------------------------------------------------------------------------%
 
-:- pred trace__event_num_slot(code_model::in, lval::out) is det.
-:- pred trace__call_num_slot(code_model::in, lval::out) is det.
-:- pred trace__call_depth_slot(code_model::in, lval::out) is det.
-:- pred trace__redo_layout_slot(code_model::in, lval::out) is det.
+:- pred event_num_slot(code_model::in, lval::out) is det.
+:- pred call_num_slot(code_model::in, lval::out) is det.
+:- pred call_depth_slot(code_model::in, lval::out) is det.
+:- pred redo_layout_slot(code_model::in, lval::out) is det.
 
-trace__event_num_slot(CodeModel, EventNumSlot) :-
+event_num_slot(CodeModel, EventNumSlot) :-
     ( CodeModel = model_non ->
         EventNumSlot  = framevar(1)
     ;
         EventNumSlot  = stackvar(1)
     ).
 
-trace__call_num_slot(CodeModel, CallNumSlot) :-
+call_num_slot(CodeModel, CallNumSlot) :-
     ( CodeModel = model_non ->
         CallNumSlot   = framevar(2)
     ;
         CallNumSlot   = stackvar(2)
     ).
 
-trace__call_depth_slot(CodeModel, CallDepthSlot) :-
+call_depth_slot(CodeModel, CallDepthSlot) :-
     ( CodeModel = model_non ->
         CallDepthSlot = framevar(3)
     ;
         CallDepthSlot = stackvar(3)
     ).
 
-trace__redo_layout_slot(CodeModel, RedoLayoutSlot) :-
+redo_layout_slot(CodeModel, RedoLayoutSlot) :-
     ( CodeModel = model_non ->
         RedoLayoutSlot = framevar(4)
     ;

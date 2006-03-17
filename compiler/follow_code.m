@@ -28,7 +28,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__follow_code.
+:- module ll_backend.follow_code.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -73,8 +73,8 @@
 move_follow_code_in_proc(_PredId, _ProcId, _PredInfo, !ProcInfo,
         !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
-    globals__lookup_bool_option(Globals, follow_code, FollowCode),
-    globals__lookup_bool_option(Globals, prev_code, PrevCode),
+    globals.lookup_bool_option(Globals, follow_code, FollowCode),
+    globals.lookup_bool_option(Globals, prev_code, PrevCode),
     Flags = FollowCode - PrevCode,
     proc_info_goal(!.ProcInfo, Goal0),
     proc_info_varset(!.ProcInfo, Varset0),
@@ -183,7 +183,7 @@ move_follow_code_in_cases([case(Cons, Goal0) | Goals0],
 
 move_follow_code_in_conj(Goals0, Goals, Flags, !R) :-
     move_follow_code_in_conj_2(Goals0, [], RevGoals, Flags, !R),
-    list__reverse(RevGoals, Goals).
+    list.reverse(RevGoals, Goals).
 
 :- pred move_follow_code_in_conj_2(list(hlds_goal)::in, list(hlds_goal)::in,
     list(hlds_goal)::out, pair(bool)::in, bool::in, bool::out) is det.
@@ -194,7 +194,7 @@ move_follow_code_in_conj_2([Goal0 | Goals0], !RevPrevGoals, Flags, !R) :-
     (
         PushFollowCode = yes,
         Goal0 = GoalExpr0 - _,
-        goal_util__goal_is_branched(GoalExpr0),
+        goal_util.goal_is_branched(GoalExpr0),
         move_follow_code_select(Goals0, FollowGoals, RestGoalsPrime),
         FollowGoals = [_ | _],
         move_follow_code_move_goals(Goal0, FollowGoals, Goal1Prime)
@@ -283,7 +283,7 @@ follow_code_conjoin_goal_and_goal_list(Goal0, FollowGoals, Goal) :-
     ;
         check_follow_code_detism(FollowGoals, Detism0),
         ( GoalExpr0 = conj(plain_conj, GoalList0) ->
-            list__append(GoalList0, FollowGoals, GoalList),
+            list.append(GoalList0, FollowGoals, GoalList),
             GoalExpr = conj(plain_conj, GoalList)
         ;
             GoalExpr = conj(plain_conj, [Goal0 | FollowGoals])

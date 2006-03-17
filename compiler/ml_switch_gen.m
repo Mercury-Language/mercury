@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -62,7 +62,7 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module ml_backend__ml_switch_gen.
+:- module ml_backend.ml_switch_gen.
 
 :- interface.
 
@@ -79,13 +79,13 @@
     %
 :- pred ml_gen_switch(prog_var::in, can_fail::in, list(case)::in,
     code_model::in, prog_context::in,
-    mlds__defns::out, statements::out,
+    mlds_defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate an appropriate default for a switch.
     %
 :- pred ml_switch_generate_default(can_fail::in, code_model::in,
-    prog_context::in, switch_default::out,
+    prog_context::in, mlds_switch_default::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Succeed iff the target supports the specified construct.
@@ -121,23 +121,23 @@
 
 %-----------------------------------------------------------------------------%
 
-ml_gen_switch(CaseVar, CanFail, Cases, CodeModel, Context,
-        Decls, Statements, !Info) :-
+ml_gen_switch(CaseVar, CanFail, Cases, CodeModel, Context, Decls, Statements,
+        !Info) :-
     % Lookup the representation of the constructors for the tag tests
     % and their corresponding priorities.
     ml_switch_lookup_tags(!.Info, Cases, CaseVar, TaggedCases0),
 
     % Sort the cases according to the priority of their tag tests.
-    list__sort_and_remove_dups(TaggedCases0, TaggedCases),
+    list.sort_and_remove_dups(TaggedCases0, TaggedCases),
 
     % Figure out what kind of switch this is.
-    ml_switch_gen__determine_category(!.Info, CaseVar, SwitchCategory),
+    SwitchCategory = determine_category(!.Info, CaseVar),
     ml_gen_info_get_globals(!.Info, Globals),
-    globals__lookup_bool_option(Globals, smart_indexing, Indexing),
+    globals.lookup_bool_option(Globals, smart_indexing, Indexing),
     (
         % Check for a switch on a type whose representation
         % uses reserved addresses.
-        list__member(Case, TaggedCases),
+        list.member(Case, TaggedCases),
         Case = case(_Priority, Tag, _ConsId, _Goal),
         (
             Tag = reserved_address(_)
@@ -157,27 +157,27 @@ ml_gen_switch(CaseVar, CanFail, Cases, CodeModel, Context,
 %       % Note that if/when the MLDS back-end supports execution
 %       % tracing, we would also need to check that tracing is not
 %       % enabled.
-%       list__length(TaggedCases, NumCases),
-%       globals__lookup_int_option(Globals, lookup_switch_size,
+%       list.length(TaggedCases, NumCases),
+%       globals.lookup_int_option(Globals, lookup_switch_size,
 %           LookupSize),
 %       NumCases >= LookupSize,
-%       globals__lookup_int_option(Globals, lookup_switch_req_density,
+%       globals.lookup_int_option(Globals, lookup_switch_req_density,
 %           ReqDensity),
-%       lookup_switch__is_lookup_switch(CaseVar, TaggedCases, GoalInfo,
+%       lookup_switch.is_lookup_switch(CaseVar, TaggedCases, GoalInfo,
 %           CanFail, ReqDensity,
 %           CodeModel, FirstVal, LastVal, NeedRangeCheck,
 %           NeedBitVecCheck, OutVars, CaseVals, !Info)
 %   ->
 %       MaybeEnd = MaybeEndPrime,
-%       ml_lookup_switch__generate(CaseVar, OutVars, CaseVals,
+%       ml_lookup_switch.generate(CaseVar, OutVars, CaseVals,
 %           FirstVal, LastVal, NeedRangeCheck, NeedBitVecCheck,
 %           Decls, Statements, !Info)
 %   ;
         % Try using a string hash switch.
         Indexing = yes,
         SwitchCategory = string_switch,
-        list__length(TaggedCases, NumCases),
-        globals__lookup_int_option(Globals, string_switch_size, StringSize),
+        list.length(TaggedCases, NumCases),
+        globals.lookup_int_option(Globals, string_switch_size, StringSize),
         NumCases >= StringSize,
         % We can implement string hash switches using either
         % computed gotos or int switches.
@@ -195,21 +195,21 @@ ml_gen_switch(CaseVar, CanFail, Cases, CodeModel, Context,
         % We may prefer to do a direct-mapped string switch.
         \+ (
             target_supports_string_switch(Globals),
-            globals__lookup_bool_option(Globals, prefer_switch, yes)
+            globals.lookup_bool_option(Globals, prefer_switch, yes)
         )
     ->
-        ml_string_switch__generate(TaggedCases, CaseVar, CodeModel,
+        ml_string_switch.generate(TaggedCases, CaseVar, CodeModel,
             CanFail, Context, Decls, Statements, !Info)
     ;
         % Try using a tag switch.
         Indexing = yes,
         SwitchCategory = tag_switch,
-        list__length(TaggedCases, NumCases),
-        globals__lookup_int_option(Globals, tag_switch_size, TagSize),
+        list.length(TaggedCases, NumCases),
+        globals.lookup_int_option(Globals, tag_switch_size, TagSize),
         NumCases >= TagSize,
         target_supports_int_switch(Globals)
     ->
-        ml_tag_switch__generate(TaggedCases, CaseVar, CodeModel,
+        ml_tag_switch.generate(TaggedCases, CaseVar, CodeModel,
             CanFail, Context, Decls, Statements, !Info)
     ;
         % Try using a "direct-mapped" switch. This also handles dense
@@ -236,8 +236,7 @@ ml_gen_switch(CaseVar, CanFail, Cases, CodeModel, Context,
 
 %-----------------------------------------------------------------------------%
 
-:- pred target_supports_switch(switch_category::in, globals::in)
-    is semidet.
+:- pred target_supports_switch(switch_category::in, globals::in) is semidet.
 
 target_supports_switch(SwitchCategory, Globals) :-
     (
@@ -249,19 +248,19 @@ target_supports_switch(SwitchCategory, Globals) :-
     ).
 
 target_supports_int_switch(Globals) :-
-    globals__get_target(Globals, Target),
+    globals.get_target(Globals, Target),
     target_supports_int_switch_2(Target) = yes.
 
 target_supports_string_switch(Globals) :-
-    globals__get_target(Globals, Target),
+    globals.get_target(Globals, Target),
     target_supports_string_switch_2(Target) = yes.
 
 target_supports_goto(Globals) :-
-    globals__get_target(Globals, Target),
+    globals.get_target(Globals, Target),
     target_supports_goto_2(Target) = yes.
 
 target_supports_computed_goto(Globals) :-
-    globals__get_target(Globals, Target),
+    globals.get_target(Globals, Target),
     target_supports_computed_goto_2(Target) = yes.
 
 :- func target_supports_int_switch_2(compilation_target) = bool.
@@ -300,14 +299,13 @@ target_supports_goto_2(java) = no.
     % We categorize switches according to whether the value being switched on
     % is an atomic type, a string, or something more complicated.
     %
-:- pred ml_switch_gen__determine_category(ml_gen_info::in, prog_var::in,
-    switch_category::out) is det.
+:- func determine_category(ml_gen_info, prog_var) = switch_category.
 
-ml_switch_gen__determine_category(Info, CaseVar, SwitchCategory) :-
+determine_category(Info, CaseVar) = SwitchCategory :-
     ml_variable_type(Info, CaseVar, Type),
     ml_gen_info_get_module_info(Info, ModuleInfo),
-    type_util__classify_type(ModuleInfo, Type) = TypeCategory,
-    SwitchCategory = switch_util__type_cat_to_switch_cat(TypeCategory).
+    type_util.classify_type(ModuleInfo, Type) = TypeCategory,
+    SwitchCategory = switch_util.type_cat_to_switch_cat(TypeCategory).
 
 %-----------------------------------------------------------------------------%
 
@@ -322,7 +320,7 @@ ml_switch_lookup_tags(Info, [Case | Cases], Var, [TaggedCase | TaggedCases]) :-
     Case = case(ConsId, Goal),
     ml_variable_type(Info, Var, Type),
     ml_cons_id_to_tag(Info, ConsId, Type, Tag),
-    Priority = switch_util__switch_priority(Tag),
+    Priority = switch_util.switch_priority(Tag),
     TaggedCase = case(Priority, Tag, ConsId, Goal),
     ml_switch_lookup_tags(Info, Cases, Var, TaggedCases).
 
@@ -332,7 +330,7 @@ ml_switch_lookup_tags(Info, [Case | Cases], Var, [TaggedCase | TaggedCases]) :-
     %
 :- pred ml_switch_generate_if_else_chain(list(extended_case)::in, prog_var::in,
     code_model::in, can_fail::in, prog_context::in,
-    mlds__defns::out, statements::out,
+    mlds_defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_switch_generate_if_else_chain([], _Var, CodeModel, CanFail, Context,
@@ -360,7 +358,7 @@ ml_switch_generate_if_else_chain([Case | Cases], Var, CodeModel, CanFail,
             CanFail, Context, RestDecls, RestStatements, !Info),
         Rest = ml_gen_block(RestDecls, RestStatements, Context),
         IfStmt = if_then_else(TagTestExpression, GoalStatement, yes(Rest)),
-        IfStatement = statement(IfStmt, mlds__make_context(Context)),
+        IfStatement = statement(IfStmt, mlds_make_context(Context)),
         Decls = TagTestDecls,
         Statements = TagTestStatements ++ [IfStatement]
     ).
@@ -372,34 +370,33 @@ ml_switch_generate_if_else_chain([Case | Cases], Var, CodeModel, CanFail,
     % language.
     %
 :- pred ml_switch_generate_mlds_switch(list(extended_case)::in, prog_var::in,
-    code_model::in, can_fail::in, prog_context::in,
-    mlds__defns::out, statements::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    code_model::in, can_fail::in, prog_context::in, mlds_defns::out,
+    statements::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_switch_generate_mlds_switch(Cases, Var, CodeModel, CanFail,
-        Context, Decls, Statements, !Info) :-
+ml_switch_generate_mlds_switch(Cases, Var, CodeModel, CanFail, Context,
+        Decls, Statements, !Info) :-
     ml_variable_type(!.Info, Var, Type),
     ml_gen_type(!.Info, Type, MLDS_Type),
     ml_gen_var(!.Info, Var, Lval),
-    Rval = mlds__lval(Lval),
+    Rval = lval(Lval),
     ml_switch_gen_range(!.Info, MLDS_Type, Range),
     ml_switch_generate_mlds_cases(Cases, CodeModel, MLDS_Cases, !Info),
     ml_switch_generate_default(CanFail, CodeModel, Context, Default, !Info),
     SwitchStmt0 = switch(MLDS_Type, Rval, Range, MLDS_Cases, Default),
-    MLDS_Context = mlds__make_context(Context),
+    MLDS_Context = mlds_make_context(Context),
     ml_simplify_switch(SwitchStmt0, MLDS_Context, SwitchStatement, !Info),
     Decls = [],
     Statements = [SwitchStatement].
 
 :- pred ml_switch_gen_range(ml_gen_info::in, mlds_type::in,
-    mlds__switch_range::out) is det.
+    mlds_switch_range::out) is det.
 
 ml_switch_gen_range(Info, MLDS_Type, Range) :-
     (
         ml_gen_info_get_module_info(Info, ModuleInfo),
         ExportedType = to_exported_type(ModuleInfo, Type),
         MLDS_Type = mercury_type(Type, TypeCategory, ExportedType),
-        switch_util__type_range(TypeCategory, Type, ModuleInfo,
+        switch_util.type_range(TypeCategory, Type, ModuleInfo,
             MinRange, MaxRange)
     ->
         Range = range(MinRange, MaxRange)
@@ -408,7 +405,7 @@ ml_switch_gen_range(Info, MLDS_Type, Range) :-
     ).
 
 :- pred ml_switch_generate_mlds_cases(list(extended_case)::in,
-    code_model::in, list(mlds__switch_case)::out,
+    code_model::in, list(mlds_switch_case)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_switch_generate_mlds_cases([], _, [], !Info).
@@ -418,7 +415,7 @@ ml_switch_generate_mlds_cases([Case | Cases], CodeModel,
     ml_switch_generate_mlds_cases(Cases, CodeModel, MLDS_Cases, !Info).
 
 :- pred ml_switch_generate_mlds_case(extended_case::in, code_model::in,
-    mlds__switch_case::out,
+    mlds_switch_case::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_switch_generate_mlds_case(Case, CodeModel, MLDS_Case, !Info) :-

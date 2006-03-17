@@ -9,7 +9,7 @@
 % This submodule of make_hlds handles the type and mode declarations
 % for predicates.
 
-:- module hlds__make_hlds__add_pred.
+:- module hlds.make_hlds.add_pred.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -104,12 +104,12 @@ module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
         MaybeModes0 = no,
         MaybeDet = yes(_)
     ->
-        list__length(Types, Arity),
+        list.length(Types, Arity),
         adjust_func_arity(function, FuncArity, Arity),
         in_mode(InMode),
-        list__duplicate(FuncArity, InMode, InModes),
+        list.duplicate(FuncArity, InMode, InModes),
         out_mode(OutMode),
-        list__append(InModes, [OutMode], ArgModes),
+        list.append(InModes, [OutMode], ArgModes),
         MaybeModes = yes(ArgModes)
     ;
         MaybeModes = MaybeModes0
@@ -151,7 +151,7 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
         Status = ItemStatus
     ),
     module_info_get_name(!.ModuleInfo, ModuleName),
-    list__length(Types, Arity),
+    list.length(Types, Arity),
     (
         PredName = unqualified(_PName),
         module_info_incr_errors(!ModuleInfo),
@@ -162,11 +162,11 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
         PredName = qualified(MNameOfPred, PName),
         module_info_get_predicate_table(!.ModuleInfo, PredTable0),
         clauses_info_init(Arity, ClausesInfo),
-        map__init(Proofs),
-        map__init(ConstraintMap),
+        map.init(Proofs),
+        map.init(ConstraintMap),
         purity_to_markers(Purity, PurityMarkers),
         markers_to_marker_list(PurityMarkers, MarkersList),
-        list__foldl(add_marker, MarkersList, Markers0, Markers),
+        list.foldl(add_marker, MarkersList, Markers0, Markers),
         pred_info_init(ModuleName, PredName, Arity, PredOrFunc, Context,
             user(PredName), Status, none, Markers, Types, TVarSet, ExistQVars,
             ClassContext, Proofs, ConstraintMap, ClausesInfo, PredInfo0),
@@ -194,7 +194,7 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
             ( pred_info_is_builtin(PredInfo0) ->
                 add_builtin(PredId, Types, PredInfo0, PredInfo),
                 predicate_table_get_preds(PredTable1, Preds1),
-                map__det_update(Preds1, PredId, PredInfo, Preds),
+                map.det_update(Preds1, PredId, PredInfo, Preds),
                 predicate_table_set_preds(Preds, PredTable1, PredTable)
             ;
                 PredTable = PredTable1
@@ -242,15 +242,15 @@ add_builtin(PredId, Types, !PredInfo) :-
 
     % Construct a clause containing that pseudo-recursive call.
     goal_info_init(Context, GoalInfo0),
-    set__list_to_set(HeadVars, NonLocals),
+    set.list_to_set(HeadVars, NonLocals),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
     Goal = GoalExpr - GoalInfo,
     Clause = clause([], Goal, mercury, Context),
 
     % Put the clause we just built into the pred_info,
     % annotateed with the appropriate types.
-    map__from_corresponding_lists(HeadVars, Types, VarTypes),
-    map__init(TVarNameMap),
+    map.from_corresponding_lists(HeadVars, Types, VarTypes),
+    map.init(TVarNameMap),
     rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = no,
     set_clause_list([Clause], ClausesRep),
@@ -278,7 +278,7 @@ do_add_new_proc(InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes,
     proc_info_init(Context, Arity, ArgTypes, MaybeDeclaredArgModes,
         ArgModes, MaybeArgLives, MaybeDet, IsAddressTaken, NewProc0),
     proc_info_set_inst_varset(InstVarSet, NewProc0, NewProc),
-    map__det_insert(Procs0, ModeId, NewProc, Procs),
+    map.det_insert(Procs0, ModeId, NewProc, Procs),
     pred_info_set_procedures(Procs, PredInfo0, PredInfo).
 
 %-----------------------------------------------------------------------------%
@@ -296,7 +296,7 @@ module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, MContext,
 
     module_info_get_name(!.ModuleInfo, ModuleName0),
     sym_name_get_module_name(PredName, ModuleName0, ModuleName),
-    list__length(Modes, Arity),
+    list.length(Modes, Arity),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
     (
         predicate_table_search_pf_sym_arity(PredicateTable0,
@@ -310,11 +310,11 @@ module_add_mode(InstVarSet, PredName, Modes, MaybeDet, Status, MContext,
     ),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable1),
     predicate_table_get_preds(PredicateTable1, Preds0),
-    map__lookup(Preds0, PredId, PredInfo0),
+    map.lookup(Preds0, PredId, PredInfo0),
 
     module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod,
         MContext, PredInfo0, PredInfo, ProcId, !IO),
-    map__det_update(Preds0, PredId, PredInfo, Preds),
+    map.det_update(Preds0, PredId, PredInfo, Preds),
     predicate_table_set_preds(Preds, PredicateTable1, PredicateTable),
     module_info_set_predicate_table(PredicateTable, !ModuleInfo),
     PredProcId = PredId - ProcId.
@@ -340,7 +340,7 @@ module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod, MContext,
             unspecified_det_for_exported(PredSymName, Arity, PredOrFunc,
                 MContext, !IO)
         ;
-            globals__io_lookup_bool_option(infer_det, InferDet, !IO),
+            globals.io_lookup_bool_option(infer_det, InferDet, !IO),
             (
                 InferDet = no,
                 unspecified_det_for_local(PredSymName, Arity, PredOrFunc,
@@ -389,8 +389,8 @@ preds_add_implicit(ModuleInfo, ModuleName, PredName, Arity, Status, Context,
 preds_add_implicit_for_assertion(HeadVars, ModuleInfo, ModuleName, PredName,
         Arity, Status, Context, PredOrFunc, PredId, !PredicateTable) :-
     clauses_info_init_for_assertion(HeadVars, ClausesInfo),
-    term__context_file(Context, FileName),
-    term__context_line(Context, LineNum),
+    term.context_file(Context, FileName),
+    term.context_line(Context, LineNum),
     preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName,
         Arity, Status, Context, assertion(FileName, LineNum),
         PredOrFunc, PredId, !PredicateTable).
@@ -402,11 +402,11 @@ preds_add_implicit_for_assertion(HeadVars, ModuleInfo, ModuleName, PredName,
 
 preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName, Arity,
         Status, Context, Origin, PredOrFunc, PredId, !PredicateTable) :-
-    varset__init(TVarSet0),
+    varset.init(TVarSet0),
     make_n_fresh_vars("T", Arity, TypeVars, TVarSet0, TVarSet),
-    prog_type.var_list_to_type_list(map__init, TypeVars, Types),
-    map__init(Proofs),
-    map__init(ConstraintMap),
+    prog_type.var_list_to_type_list(map.init, TypeVars, Types),
+    map.init(Proofs),
+    map.init(ConstraintMap),
         % The class context is empty since this is an implicit
         % definition. Inference will fill it in.
     ClassContext = constraints([], []),
@@ -441,7 +441,7 @@ unspecified_det_for_local(Name, Arity, PredOrFunc, Context, !IO) :-
         suffix(".")],
     write_error_pieces(Context, 0, Pieces, !IO),
     record_warning(!IO),
-    globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     (
         VerboseErrors = yes,
         VerbosePieces = [words("(This is an error because"),
@@ -465,7 +465,7 @@ unspecified_det_for_method(Name, Arity, PredOrFunc, Context, !IO) :-
         sym_name_and_arity(Name / Arity),
         suffix(".")],
     write_error_pieces(Context, 0, Pieces, !IO),
-    io__set_exit_status(1, !IO).
+    io.set_exit_status(1, !IO).
 
 :- pred unspecified_det_for_exported(sym_name::in, arity::in, pred_or_func::in,
     prog_context::in, io::di, io::uo) is det.
@@ -476,7 +476,7 @@ unspecified_det_for_exported(Name, Arity, PredOrFunc, Context, !IO) :-
         sym_name_and_arity(Name / Arity),
         suffix(".")],
     write_error_pieces(Context, 0, Pieces, !IO),
-    io__set_exit_status(1, !IO).
+    io.set_exit_status(1, !IO).
 
 :- pred unqualified_pred_error(sym_name::in, int::in, prog_context::in,
     io::di, io::uo) is det.
@@ -486,7 +486,7 @@ unqualified_pred_error(PredName, Arity, Context, !IO) :-
         sym_name_and_arity(PredName / Arity),
         words("should have been qualified by prog_io.m.")],
     write_error_pieces(Context, 0, Pieces, !IO),
-    io__set_exit_status(1, !IO).
+    io.set_exit_status(1, !IO).
 
 %-----------------------------------------------------------------------------%
 

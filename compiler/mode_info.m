@@ -430,7 +430,7 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMapping0,
     instmap.init_unreachable(Unreachable),
     mode_context_init(ModeContext),
     LockedVars = [],
-    delay_info.init(DelayInfo),
+    delay_info_init(DelayInfo),
     ErrorList = [],
     WarningList = [],
         % look up the varset and var types
@@ -560,7 +560,7 @@ mode_info_set_instmap(InstMap, !MI) :-
         instmap.is_reachable(InstMap0)
     ->
         DelayInfo0 = !.MI ^ delay_info,
-        delay_info.bind_all_vars(DelayInfo0, DelayInfo),
+        delay_info_bind_all_vars(DelayInfo0, DelayInfo),
         !:MI = !.MI ^ delay_info := DelayInfo
     ;
         true
@@ -599,11 +599,11 @@ mode_info_remove_live_vars(OldLiveVars, !MI) :-
     svbag.det_remove_set(OldLiveVars, NondetLiveVars0, NondetLiveVars),
     !:MI = !.MI ^ live_vars := LiveVars,
     !:MI = !.MI ^ nondet_live_vars := NondetLiveVars,
-        % when a variable becomes dead, we may be able to wake
-        % up a goal which is waiting on that variable
+        % When a variable becomes dead, we may be able to wake up a goal
+        % which is waiting on that variable
     set.to_sorted_list(OldLiveVars, VarList),
     DelayInfo0 = !.MI ^ delay_info,
-    delay_info.bind_var_list(VarList, DelayInfo0, DelayInfo),
+    delay_info_bind_var_list(VarList, DelayInfo0, DelayInfo),
     !:MI = !.MI ^ delay_info := DelayInfo.
 
     % Check whether a list of variables are live or not

@@ -165,7 +165,7 @@ generate_code(Lang, MLDS, !IO) :-
 
 :- pred output_language_specific_header_code(
     foreign_language::in(managed_lang), mercury_module_name::in,
-    mlds.imports::in, io::di, io::uo) is det.
+    mlds_imports::in, io::di, io::uo) is det.
 
 output_language_specific_header_code(csharp, _ModuleName, _Imports, !IO) :-
     get_il_data_rep(DataRep, !IO),
@@ -259,10 +259,10 @@ output_language_specific_header_code(managed_cplusplus, ModuleName, Imports,
     ).
 
 :- pred generate_foreign_header_code(foreign_language::in(managed_lang),
-    module_name::in, mlds.foreign_code::in, io::di, io::uo) is det.
+    module_name::in, mlds_foreign_code::in, io::di, io::uo) is det.
 
 generate_foreign_header_code(Lang, ModuleName, ForeignCode, !IO) :-
-    ForeignCode = mlds.foreign_code(RevHeaderCode, RevImports,
+    ForeignCode = mlds_foreign_code(RevHeaderCode, RevImports,
         _RevBodyCode, _ExportDefns),
     % Only MC++ can declare which assemblies it refers to in its
     % source file.  C# declares which assemblies it refers to via
@@ -320,10 +320,10 @@ generate_namespace_details(Lang, ClassName, NameSpaceFmtStr, Namespace) :-
     ).
 
 :- pred generate_foreign_code(foreign_language::in(managed_lang),
-    mlds_module_name::in, mlds.foreign_code::in, io::di, io::uo) is det.
+    mlds_module_name::in, mlds_foreign_code::in, io::di, io::uo) is det.
 
 generate_foreign_code(Lang, _ModuleName, ForeignCode, !IO) :-
-    ForeignCode = mlds.foreign_code(_RevHeaderCode, _RevImports,
+    ForeignCode = mlds_foreign_code(_RevHeaderCode, _RevImports,
         RevBodyCode, _ExportDefns),
     BodyCode = list.reverse(RevBodyCode),
     io.write_list(BodyCode, "\n",
@@ -340,23 +340,23 @@ generate_foreign_code(Lang, _ModuleName, ForeignCode, !IO) :-
     ), !IO).
 
 :- pred generate_method_code(foreign_language::in(managed_lang),
-    mlds_module_name::in, mlds.defn::in, io::di, io::uo) is det.
+    mlds_module_name::in, mlds_defn::in, io::di, io::uo) is det.
 
-generate_method_code(_, _, defn(export(_), _, _, _), !IO).
-generate_method_code(_, _, defn(data(_), _, _, _), !IO).
-generate_method_code(_, _, defn(type(_, _), _, _, _), !IO).
+generate_method_code(_, _, mlds_defn(export(_), _, _, _), !IO).
+generate_method_code(_, _, mlds_defn(data(_), _, _, _), !IO).
+generate_method_code(_, _, mlds_defn(type(_, _), _, _, _), !IO).
 generate_method_code(Lang, _ModuleName, Defn, !IO) :-
-    Defn = defn(function(PredLabel, ProcId, MaybeSeqNum, _PredId),
+    Defn = mlds_defn(function(PredLabel, ProcId, MaybeSeqNum, _PredId),
         _Context, _DeclFlags, Entity),
     (
         % XXX we ignore the attributes
-        Entity = mlds.function(_, Params, defined_here(Statement),
+        Entity = mlds_function(_, Params, defined_here(Statement),
             _Attributes),
         has_foreign_languages(Statement, Langs),
         list.member(Lang, Langs)
     ->
         get_il_data_rep(DataRep, !IO),
-        Params = mlds.func_params(Inputs, Outputs),
+        Params = mlds_func_params(Inputs, Outputs),
         (
             Outputs = [],
             ReturnType = void
@@ -398,7 +398,7 @@ generate_method_code(Lang, _ModuleName, Defn, !IO) :-
     ).
 
 :- pred write_statement(foreign_language::in(managed_lang),
-    mlds.arguments::in, statement::in, io::di, io::uo) is det.
+    mlds_arguments::in, statement::in, io::di, io::uo) is det.
 
 write_statement(Lang, Args, statement(Statement, Context), !IO) :-
     (
@@ -407,7 +407,7 @@ write_statement(Lang, Args, statement(Statement, Context), !IO) :-
             _Lvals, Code))
     ->
         list.foldl(write_outline_arg_init(Lang), OutlineArgs, !IO),
-        output_context(Lang, get_prog_context(Context), !IO),
+        output_context(Lang, mlds_get_prog_context(Context), !IO),
         io.write_string(Code, !IO),
         io.nl(!IO),
         output_reset_context(Lang, !IO),
@@ -478,9 +478,10 @@ write_outline_arg_final(Lang, out(_Type, VarName, Lval), !IO) :-
 write_outline_arg_final(_Lang, unused, !IO).
 
 :- pred write_declare_and_assign_local(foreign_language::in(managed_lang),
-    mlds.argument::in, io::di, io::uo) is det.
+    mlds_argument::in, io::di, io::uo) is det.
 
-write_declare_and_assign_local(Lang, argument(Name, Type, _GcCode), !IO) :-
+write_declare_and_assign_local(Lang, mlds_argument(Name, Type, _GcCode),
+        !IO) :-
     ( Name = data(var(VarName0)) ->
         VarName = VarName0
     ;
@@ -488,7 +489,7 @@ write_declare_and_assign_local(Lang, argument(Name, Type, _GcCode), !IO) :-
     ),
 
     % A pointer type is an output type.
-    ( Type = mlds.ptr_type(OutputType) ->
+    ( Type = mlds_ptr_type(OutputType) ->
         ( is_anonymous_variable(VarName) ->
             true
         ;
@@ -517,9 +518,9 @@ write_declare_and_assign_local(Lang, argument(Name, Type, _GcCode), !IO) :-
     ).
 
 :- pred write_assign_local_to_output(foreign_language::in(managed_lang),
-    mlds.argument::in, io::di, io::uo) is det.
+    mlds_argument::in, io::di, io::uo) is det.
 
-write_assign_local_to_output(Lang, argument(Name, Type, _GcCode), !IO) :-
+write_assign_local_to_output(Lang, mlds_argument(Name, Type, _GcCode), !IO) :-
     ( Name = data(var(VarName0)) ->
         VarName = VarName0
     ;
@@ -528,7 +529,7 @@ write_assign_local_to_output(Lang, argument(Name, Type, _GcCode), !IO) :-
 
     % A pointer type is an output type.
     (
-        Type = mlds.ptr_type(_OutputType),
+        Type = mlds_ptr_type(_OutputType),
         not is_anonymous_variable(VarName)
     ->
         (
@@ -545,9 +546,9 @@ write_assign_local_to_output(Lang, argument(Name, Type, _GcCode), !IO) :-
         true
     ).
 
-:- pred is_anonymous_variable(var_name::in) is semidet.
+:- pred is_anonymous_variable(mlds_var_name::in) is semidet.
 
-is_anonymous_variable(var_name(Name, _)) :-
+is_anonymous_variable(mlds_var_name(Name, _)) :-
     string.prefix(Name, "_").
 
 %-----------------------------------------------------------------------------%
@@ -693,13 +694,13 @@ write_field_selector(csharp, !IO) :-
 write_field_selector(managed_cplusplus, !IO) :-
     io.write_string("->", !IO).
 
-:- pred write_defn_decl(foreign_language::in(managed_lang), mlds.defn::in,
+:- pred write_defn_decl(foreign_language::in(managed_lang), mlds_defn::in,
     io::di, io::uo) is det.
 
 write_defn_decl(Lang, Defn, !IO) :-
-    Defn = mlds.defn(Name, _Context, _Flags, DefnBody),
+    Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
     (
-        DefnBody = data(Type, _Initializer, _GC_TraceCode),
+        DefnBody = mlds_data(Type, _Initializer, _GC_TraceCode),
         Name = data(var(VarName))
     ->
         write_parameter_type(Lang, Type, !IO),
@@ -720,10 +721,10 @@ write_parameter_type(Lang, Type, !IO) :-
     write_il_type_as_foreign_type(Lang, ILType, !IO).
 
 :- pred write_input_arg_as_foreign_type(foreign_language::in(managed_lang),
-    mlds.argument::in, io::di, io::uo) is det.
+    mlds_argument::in, io::di, io::uo) is det.
 
 write_input_arg_as_foreign_type(Lang, Arg, !IO) :-
-    Arg = mlds.argument(EntityName, Type, _GC_TraceCode),
+    Arg = mlds_argument(EntityName, Type, _GC_TraceCode),
     get_il_data_rep(DataRep, !IO),
     write_il_type_as_foreign_type(Lang, mlds_type_to_ilds_type(DataRep, Type),
         !IO),
@@ -978,16 +979,16 @@ write_class_name(Lang, structured_name(_Asm, DottedName, NestedClasses),
     ),
     io.write_list(DottedName ++ NestedClasses, Sep, io.write_string, !IO).
 
-:- pred write_mlds_var_name_for_local(mlds.var_name::in,
+:- pred write_mlds_var_name_for_local(mlds_var_name::in,
     io::di, io::uo) is det.
 
-write_mlds_var_name_for_local(var_name(Name, _MaybeNum), !IO) :-
+write_mlds_var_name_for_local(mlds_var_name(Name, _MaybeNum), !IO) :-
     io.write_string(Name, !IO).
 
-:- pred write_mlds_var_name_for_parameter(mlds.var_name::in,
+:- pred write_mlds_var_name_for_parameter(mlds_var_name::in,
     io::di, io::uo) is det.
 
-write_mlds_var_name_for_parameter(var_name(Name, MaybeNum), !IO) :-
+write_mlds_var_name_for_parameter(mlds_var_name(Name, MaybeNum), !IO) :-
     io.write_string(Name, !IO),
     (
         MaybeNum = yes(Num),

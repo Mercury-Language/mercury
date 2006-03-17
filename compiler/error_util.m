@@ -33,7 +33,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module parse_tree__error_util.
+:- module parse_tree.error_util.
 :- interface.
 
 :- import_module mdbcomp.prim_data.
@@ -380,11 +380,11 @@ write_error_pieces_maybe_with_context(IsFirst, MaybeContext,
             % indent
         (
             MaybeContext = yes(Context),
-            term__context_file(Context, FileName),
-            term__context_line(Context, LineNumber),
-            string__length(FileName, FileNameLength),
-            string__int_to_string(LineNumber, LineNumberStr),
-            string__length(LineNumberStr, LineNumberStrLength0),
+            term.context_file(Context, FileName),
+            term.context_line(Context, LineNumber),
+            string.length(FileName, FileNameLength),
+            string.int_to_string(LineNumber, LineNumberStr),
+            string.length(LineNumberStr, LineNumberStrLength0),
             ( LineNumberStrLength0 < 3 ->
                 LineNumberStrLength = 3
             ;
@@ -413,14 +413,14 @@ write_lines([], _, _, !IO).
 write_lines([Line | Lines], MaybeContext, FixedIndent, !IO) :-
     (
         MaybeContext = yes(Context),
-        prog_out__write_context(Context, !IO)
+        prog_out.write_context(Context, !IO)
     ;
         MaybeContext = no
     ),
     Line = line(LineIndent, LineWords),
     Indent = FixedIndent + LineIndent * indent_increment,
-    string__pad_left("", ' ', Indent, IndentStr),
-    io__write_string(IndentStr, !IO),
+    string.pad_left("", ' ', Indent, IndentStr),
+    io.write_string(IndentStr, !IO),
     write_line(LineWords, !IO),
     write_lines(Lines, MaybeContext, FixedIndent, !IO).
 
@@ -428,16 +428,16 @@ write_lines([Line | Lines], MaybeContext, FixedIndent, !IO) :-
 
 write_line([], !IO).
 write_line([Word | Words], !IO) :-
-    io__write_string(Word, !IO),
+    io.write_string(Word, !IO),
     write_line_rest(Words, !IO),
-    io__write_char('\n', !IO).
+    io.write_char('\n', !IO).
 
 :- pred write_line_rest(list(string)::in, io::di, io::uo) is det.
 
 write_line_rest([], !IO).
 write_line_rest([Word | Words], !IO) :-
-    io__write_char(' ', !IO),
-    io__write_string(Word, !IO),
+    io.write_char(' ', !IO),
+    io.write_string(Word, !IO),
     write_line_rest(Words, !IO).
 
 error_pieces_to_string([]) = "".
@@ -520,7 +520,7 @@ convert_components_to_paragraphs(Components, Paras) :-
 
 convert_components_to_paragraphs_acc([], RevWords0, !Paras) :-
     Strings = rev_words_to_strings(RevWords0),
-    list__reverse([paragraph(Strings, 0) | !.Paras], !:Paras).
+    list.reverse([paragraph(Strings, 0) | !.Paras], !:Paras).
 convert_components_to_paragraphs_acc([Component | Components], RevWords0,
         !Paras) :-
     (
@@ -573,7 +573,7 @@ convert_components_to_paragraphs_acc([Component | Components], RevWords0,
 :- func rev_words_to_strings(list(word)) = list(string).
 
 rev_words_to_strings(RevWords) = Strings :-
-    PorPs = list__reverse(rev_words_to_rev_plain_or_prefix(RevWords)),
+    PorPs = list.reverse(rev_words_to_rev_plain_or_prefix(RevWords)),
     Strings = join_prefixes(PorPs).
 
 :- func rev_words_to_rev_plain_or_prefix(list(word)) = list(plain_or_prefix).
@@ -652,7 +652,7 @@ break_into_words_from(String, Cur, Words0, Words) :-
     ( find_word_start(String, Cur, Start) ->
         find_word_end(String, Start, End),
         Length = End - Start + 1,
-        string__substring(String, Start, Length, WordStr),
+        string.substring(String, Start, Length, WordStr),
         Next = End + 1,
         break_into_words_from(String, Next, [word(WordStr) | Words0], Words)
     ;
@@ -662,8 +662,8 @@ break_into_words_from(String, Cur, Words0, Words) :-
 :- pred find_word_start(string::in, int::in, int::out) is semidet.
 
 find_word_start(String, Cur, WordStart) :-
-    string__index(String, Cur, Char),
-    ( char__is_whitespace(Char) ->
+    string.index(String, Cur, Char),
+    ( char.is_whitespace(Char) ->
         Next = Cur + 1,
         find_word_start(String, Next, WordStart)
     ;
@@ -674,8 +674,8 @@ find_word_start(String, Cur, WordStart) :-
 
 find_word_end(String, Cur, WordEnd) :-
     Next = Cur + 1,
-    ( string__index(String, Next, Char) ->
-        ( char__is_whitespace(Char) ->
+    ( string.index(String, Next, Char) ->
+        ( char.is_whitespace(Char) ->
             WordEnd = Cur
         ;
             find_word_end(String, Next, WordEnd)
@@ -754,7 +754,7 @@ group_nonfirst_line_words(Words, Indent, Max, Lines) :-
     list(string)::out, list(string)::out) is det.
 
 get_line_of_words(FirstWord, LaterWords, Indent, Max, Line, RestWords) :-
-    string__length(FirstWord, FirstWordLen),
+    string.length(FirstWord, FirstWordLen),
     Avail = Max - Indent * indent_increment,
     get_later_words(LaterWords, FirstWordLen, Avail, [FirstWord],
         Line, RestWords).
@@ -764,10 +764,10 @@ get_line_of_words(FirstWord, LaterWords, Indent, Max, Line, RestWords) :-
 
 get_later_words([], _, _, Line, Line, []).
 get_later_words([Word | Words], OldLen, Avail, Line0, Line, RestWords) :-
-    string__length(Word, WordLen),
+    string.length(Word, WordLen),
     NewLen = OldLen + 1 + WordLen,
     ( NewLen =< Avail ->
-        list__append(Line0, [Word], Line1),
+        list.append(Line0, [Word], Line1),
         get_later_words(Words, NewLen, Avail, Line1, Line, RestWords)
     ;
         Line = Line0,
@@ -777,11 +777,11 @@ get_later_words([Word | Words], OldLen, Avail, Line0, Line, RestWords) :-
 %-----------------------------------------------------------------------------%
 
 describe_sym_name_and_arity(SymName / Arity) =
-        string__append_list(["`", SymNameString, "/",
-            string__int_to_string(Arity), "'"]) :-
+        string.append_list(["`", SymNameString, "/",
+            string.int_to_string(Arity), "'"]) :-
     sym_name_to_string(SymName, SymNameString).
 
-describe_sym_name(SymName) = string__append_list(["`", SymNameString, "'"]) :-
+describe_sym_name(SymName) = string.append_list(["`", SymNameString, "'"]) :-
     sym_name_to_string(SymName, SymNameString).
 
 pred_or_func_to_string(predicate) = "predicate".
@@ -808,7 +808,7 @@ report_error_num_args(MaybePredOrFunc, Arity0, Arities0, !IO) :-
     % Adjust arities for functions.
     ( MaybePredOrFunc = yes(function) ->
         adjust_func_arity(function, Arity, Arity0),
-        list__map(
+        list.map(
             (pred(OtherArity0::in, OtherArity::out) is det :-
                 adjust_func_arity(function, OtherArity, OtherArity0)
             ),
@@ -817,26 +817,26 @@ report_error_num_args(MaybePredOrFunc, Arity0, Arities0, !IO) :-
         Arity = Arity0,
         Arities = Arities0
     ),
-    io__write_string("wrong number of arguments (", !IO),
-    io__write_int(Arity, !IO),
-    io__write_string("; should be ", !IO),
+    io.write_string("wrong number of arguments (", !IO),
+    io.write_int(Arity, !IO),
+    io.write_string("; should be ", !IO),
     report_error_right_num_args(Arities, !IO),
-    io__write_string(")", !IO).
+    io.write_string(")", !IO).
 
 :- pred report_error_right_num_args(list(int)::in, io::di, io::uo) is det.
 
 report_error_right_num_args([], !IO).
 report_error_right_num_args([Arity | Arities], !IO) :-
-    io__write_int(Arity, !IO),
+    io.write_int(Arity, !IO),
     (
         Arities = [],
         true
     ;
         Arities = [_],
-        io__write_string(" or ", !IO)
+        io.write_string(" or ", !IO)
     ;
         Arities = [_, _ | _],
-        io__write_string(", ", !IO)
+        io.write_string(", ", !IO)
     ),
     report_error_right_num_args(Arities, !IO).
 

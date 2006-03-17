@@ -104,13 +104,13 @@
             % .custom
             % A custom attribute.
     ;       custom(custom_decl)
-    
+
     %
     % Comments
     %
-    
+
     ;       comment_term(term)
-            
+
             % Print almost anything using pprint.to_doc
             % (see library/pprint.m for limitations).
     ;       some [T] comment_thing(T)
@@ -168,14 +168,14 @@
             )
 
     ;       custom(custom_decl)     % custom attribute
-    
+
     %
     % Comments
     %
-    
+
     ;       comment_term(term)
     ;       comment(string)
-            
+
             % print almost anything using pprint.to_doc
             % (see library/pprint.m for limitations).
     ;       some [T] comment_thing(T).
@@ -210,17 +210,17 @@
     % Declarations that can form the body of a method.
     %
 :- type method_body_decl
-    --->    emitbyte(int32)     
+    --->    emitbyte(int32)
             % raw byte output (danger! danger!)
             % "emits an int32 to the code section of the method" according
             % to the IL Assembly Language Programmers' Reference.
             % This probably means it can output IL bytecodes.
-                                
-    ;       maxstack(int32) 
+
+    ;       maxstack(int32)
             % "Defines the maximum size of the stack, specified by the int32"
             % But does it measure in bits, nibbles, bytes, words or
             % something else?
-           
+
     ;       entrypoint          % Is this "main"?
     ;       zeroinit            % Initialize locals to zero.
     ;       custom(custom_decl) % Custom attribute.
@@ -376,7 +376,7 @@
     % It's a good idea to do this anyway, as there is apparently a
     % performance hit if you use assembly references to a symbol that is
     % in the local assembly.
-    
+
 :- type ilasm_info
     --->    ilasm_info(
                 current_assembly :: ilds.id
@@ -462,18 +462,18 @@ output_decl(method(MethodHead, MethodDecls), !Info, !IO) :-
     io.write_string("}\n", !IO).
 output_decl(data(TLS, MaybeId, Body), !Info, !IO) :-
     io.write_string(".data ", !IO),
-    ( 
+    (
         TLS = yes,
         io.write_string("tls ", !IO)
     ;
-        TLS = no 
+        TLS = no
     ),
-    ( 
+    (
         MaybeId = yes(Id),
         output_id(Id, !IO),
         io.write_string(" = ", !IO)
     ;
-        MaybeId = no 
+        MaybeId = no
     ),
     output_data_body(Body, !IO).
 output_decl(comment_term(CommentTerm), !Info, !IO) :-
@@ -495,7 +495,7 @@ output_decl(comment_thing(Thing), !Info, !IO) :-
         write(70, Doc, !IO),
         io.nl(!IO)
     ;
-        PrintComments = no 
+        PrintComments = no
     ).
 output_decl(comment(CommentStr), !Info, !IO) :-
     globals.io_lookup_bool_option(auto_comments, PrintComments, !IO),

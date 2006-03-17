@@ -8,7 +8,7 @@
 %
 % This submodule of make_hlds handles the declarations of new types.
 
-:- module hlds__make_hlds__add_type.
+:- module hlds.make_hlds.add_type.
 :- interface.
 
 :- import_module hlds.hlds_data.
@@ -76,8 +76,8 @@
 
 module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         item_status(Status0, NeedQual), !ModuleInfo, !IO) :-
-    globals__io_get_globals(Globals, !IO),
-    list__length(Args, Arity),
+    globals.io_get_globals(Globals, !IO),
+    list.length(Args, Arity),
     TypeCtor = Name - Arity,
     convert_type_defn(TypeDefn, TypeCtor, Globals, Body0),
     module_info_get_type_table(!.ModuleInfo, Types0),
@@ -86,7 +86,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
             Body0 = abstract_type(_)
         ;
             Body0 = du_type(_, _, _, _, _, _),
-            string__suffix(term__context_file(Context), ".int2")
+            string.suffix(term.context_file(Context), ".int2")
             % If the type definition comes from a .int2 file then
             % we need to treat it as abstract.  The constructors
             % may only be used by the mode system for comparing
@@ -100,11 +100,11 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
     (
         % the type is exported if *any* occurrence is exported,
         % even a previous abstract occurrence
-        map__search(Types0, TypeCtor, OldDefn0)
+        map.search(Types0, TypeCtor, OldDefn0)
     ->
-        hlds_data__get_type_defn_status(OldDefn0, OldStatus),
+        hlds_data.get_type_defn_status(OldDefn0, OldStatus),
         combine_status(Status1, OldStatus, Status),
-        hlds_data__get_type_defn_body(OldDefn0, OldBody0),
+        hlds_data.get_type_defn_body(OldDefn0, OldBody0),
         combine_is_solver_type(OldBody0, OldBody, Body0, Body),
         ( is_solver_type_is_inconsistent(OldBody, Body) ->
             % The existing definition has an is_solver_type
@@ -116,11 +116,10 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
                 words("error: all definitions of a type must"),
                 words("have consistent `solver'"),
                 words("annotations")],
-            error_util__write_error_pieces(Context, 0, Pieces0,
-                !IO),
+            write_error_pieces(Context, 0, Pieces0, !IO),
             MaybeOldDefn = no
         ;
-            hlds_data__set_type_defn_body(OldBody, OldDefn0, OldDefn),
+            hlds_data.set_type_defn_body(OldBody, OldDefn0, OldDefn),
             MaybeOldDefn = yes(OldDefn)
         )
     ;
@@ -131,53 +130,53 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
     % XXX kind inference:
     % We set the kinds to `star'.  This will be different when we have a
     % kind system.
-    map__init(KindMap),
-    hlds_data__set_type_defn(TVarSet, Args, KindMap, Body, Status, no,
+    map.init(KindMap),
+    hlds_data.set_type_defn(TVarSet, Args, KindMap, Body, Status, no,
         NeedQual, Context, T),
     (
         MaybeOldDefn = no,
         Body = foreign_type(_)
     ->
-        TypeStr = error_util__describe_sym_name_and_arity(Name / Arity),
+        TypeStr = describe_sym_name_and_arity(Name / Arity),
         ErrorPieces = [
             words("Error: type "),
             fixed(TypeStr),
             words("defined as foreign_type without being declared.")
         ],
-        error_util__write_error_pieces(Context, 0, ErrorPieces, !IO),
+        write_error_pieces(Context, 0, ErrorPieces, !IO),
         module_info_incr_errors(!ModuleInfo)
     ;
         MaybeOldDefn = yes(OldDefn1),
         Body = foreign_type(_),
-        hlds_data__get_type_defn_status(OldDefn1, OldStatus1),
-        hlds_data__get_type_defn_body(OldDefn1, OldBody1),
+        hlds_data.get_type_defn_status(OldDefn1, OldStatus1),
+        hlds_data.get_type_defn_body(OldDefn1, OldBody1),
         OldBody1 = abstract_type(_),
         status_is_exported_to_non_submodules(OldStatus1, no),
         status_is_exported_to_non_submodules(Status0, yes)
     ->
-        TypeStr = error_util__describe_sym_name_and_arity(Name / Arity),
+        TypeStr = describe_sym_name_and_arity(Name / Arity),
         ErrorPieces = [
             words("Error: pragma foreign_type "),
             fixed(TypeStr),
             words("must have the same visibility as the type declaration.")
         ],
-        error_util__write_error_pieces(Context, 0, ErrorPieces, !IO),
+        write_error_pieces(Context, 0, ErrorPieces, !IO),
         module_info_incr_errors(!ModuleInfo)
     ;
         % if there was an existing non-abstract definition for the type
         MaybeOldDefn = yes(T2),
-        hlds_data__get_type_defn_tvarset(T2, TVarSet_2),
-        hlds_data__get_type_defn_tparams(T2, Params_2),
-        hlds_data__get_type_defn_kind_map(T2, KindMap_2),
-        hlds_data__get_type_defn_body(T2, Body_2),
-        hlds_data__get_type_defn_context(T2, OrigContext),
-        hlds_data__get_type_defn_status(T2, OrigStatus),
-        hlds_data__get_type_defn_in_exported_eqv(T2, OrigInExportedEqv),
-        hlds_data__get_type_defn_need_qualifier(T2, OrigNeedQual),
+        hlds_data.get_type_defn_tvarset(T2, TVarSet_2),
+        hlds_data.get_type_defn_tparams(T2, Params_2),
+        hlds_data.get_type_defn_kind_map(T2, KindMap_2),
+        hlds_data.get_type_defn_body(T2, Body_2),
+        hlds_data.get_type_defn_context(T2, OrigContext),
+        hlds_data.get_type_defn_status(T2, OrigStatus),
+        hlds_data.get_type_defn_in_exported_eqv(T2, OrigInExportedEqv),
+        hlds_data.get_type_defn_need_qualifier(T2, OrigNeedQual),
         Body_2 \= abstract_type(_)
     ->
-        globals__io_get_target(Target, !IO),
-        globals__io_lookup_bool_option(make_optimization_interface,
+        globals.io_get_target(Target, !IO),
+        globals.io_lookup_bool_option(make_optimization_interface,
             MakeOptInt, !IO),
         ( Body = foreign_type(_) ->
             module_info_contains_foreign_type(!ModuleInfo)
@@ -192,10 +191,10 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
             ( Status = OrigStatus ->
                 true
             ;
-                hlds_data__set_type_defn(TVarSet_2, Params_2, KindMap_2,
+                hlds_data.set_type_defn(TVarSet_2, Params_2, KindMap_2,
                     Body_2, Status, OrigInExportedEqv, OrigNeedQual,
                     OrigContext, T3),
-                map__det_update(Types0, TypeCtor, T3, Types),
+                map.det_update(Types0, TypeCtor, T3, Types),
                 module_info_set_type_table(Types, !ModuleInfo)
             )
         ;
@@ -203,9 +202,9 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
                 NewBody)
         ->
             ( check_foreign_type_visibility(OrigStatus, Status1) ->
-                hlds_data__set_type_defn(TVarSet_2, Params_2, KindMap_2,
+                hlds_data.set_type_defn(TVarSet_2, Params_2, KindMap_2,
                     NewBody, Status, OrigInExportedEqv, NeedQual, Context, T3),
-                map__det_update(Types0, TypeCtor, T3, Types),
+                map.det_update(Types0, TypeCtor, T3, Types),
                 module_info_set_type_table(Types, !ModuleInfo)
             ;
                 module_info_incr_errors(!ModuleInfo),
@@ -215,7 +214,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
                     words("error: all definitions of a"),
                     words("type must have the same"),
                     words("visibility")],
-                error_util__write_error_pieces(Context, 0,
+                write_error_pieces(Context, 0,
                     Pieces, !IO)
             )
         ;
@@ -230,7 +229,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
                 OrigContext, _, !IO)
         )
     ;
-        map__set(Types0, TypeCtor, T, Types),
+        map.set(Types0, TypeCtor, T, Types),
         module_info_set_type_table(Types, !ModuleInfo),
         (
             % XXX we can't handle abstract exported
@@ -240,7 +239,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
             % but the callee expects no type_infos
             Body = eqv_type(EqvType),
             Status = abstract_exported,
-            list__member(Var, Args),
+            list.member(Var, Args),
             \+ type_contains_var(EqvType, Var)
         ->
             Pieces = [words("Sorry, not implemented:"),
@@ -248,8 +247,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
                 words("with monomorphic definition,"),
                 words("exported as abstract type.")],
             write_error_pieces(Context, 0, Pieces, !IO),
-            globals__io_lookup_bool_option(verbose_errors,
-                VerboseErrors, !IO),
+            globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
             (
                 VerboseErrors = yes,
                 write_error_pieces(Context, 0, abstract_monotype_workaround,
@@ -258,7 +256,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
                 VerboseErrors = no,
                 globals.io_set_extra_error_info(yes, !IO)
             ),
-            io__set_exit_status(1, !IO)
+            io.set_exit_status(1, !IO)
         ;
             true
         )
@@ -328,12 +326,12 @@ check_foreign_type_visibility(OldStatus, NewDefnStatus) :-
     ).
 
 process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !IO) :-
-    hlds_data__get_type_defn_context(TypeDefn, Context),
-    hlds_data__get_type_defn_tvarset(TypeDefn, TVarSet),
-    hlds_data__get_type_defn_tparams(TypeDefn, Args),
-    hlds_data__get_type_defn_body(TypeDefn, Body),
-    hlds_data__get_type_defn_status(TypeDefn, Status),
-    hlds_data__get_type_defn_need_qualifier(TypeDefn, NeedQual),
+    hlds_data.get_type_defn_context(TypeDefn, Context),
+    hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet),
+    hlds_data.get_type_defn_tparams(TypeDefn, Args),
+    hlds_data.get_type_defn_body(TypeDefn, Body),
+    hlds_data.get_type_defn_status(TypeDefn, Status),
+    hlds_data.get_type_defn_need_qualifier(TypeDefn, NeedQual),
     (
         ConsList = Body ^ du_type_ctors,
         UserEqCmp = Body ^ du_type_usereq,
@@ -350,14 +348,14 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !IO) :-
                 module_info_set_ctor_field_table(CtorFields, M1, M)
         ), NewFoundError, !ModuleInfo, !IO),
 
-        globals__io_get_globals(Globals, !IO),
+        globals.io_get_globals(Globals, !IO),
         (
             type_with_constructors_should_be_no_tag(Globals, TypeCtor,
                 ReservedTag, ConsList, UserEqCmp, Name, CtorArgType, _)
         ->
             NoTagType = no_tag_type(Args, Name, CtorArgType),
             module_info_get_no_tag_types(!.ModuleInfo, NoTagTypes0),
-            map__set(NoTagTypes0, TypeCtor, NoTagType, NoTagTypes),
+            map.set(NoTagTypes0, TypeCtor, NoTagType, NoTagTypes),
             module_info_set_no_tag_types(NoTagTypes, !ModuleInfo)
         ;
             true
@@ -392,7 +390,7 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !IO) :-
         % XXX kind inference:
         % We set the kinds to `star'.  This will be different when we have
         % a kind system.
-        prog_type.var_list_to_type_list(map__init, Args, ArgTypes),
+        prog_type.var_list_to_type_list(map.init, Args, ArgTypes),
         construct_type(TypeCtor, ArgTypes, Type),
         add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
             !ModuleInfo)
@@ -411,7 +409,7 @@ check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError, !ModuleInfo,
     TypeCtor = Name - Arity,
     module_info_get_globals(!.ModuleInfo, Globals),
     generating_code(GeneratingCode, !IO),
-    globals__get_target(Globals, Target),
+    globals.get_target(Globals, Target),
     ( have_foreign_type_for_backend(Target, ForeignTypeBody, yes) ->
         FoundError = no
     ; GeneratingCode = yes ->
@@ -437,13 +435,13 @@ check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError, !ModuleInfo,
         ; Target = java, LangStr = "Java"
         ; Target = asm, LangStr = "C"
         ),
-        TypeStr = error_util__describe_sym_name_and_arity(Name/Arity),
+        TypeStr = describe_sym_name_and_arity(Name/Arity),
         ErrorPieces = [
             words("Error: no"), words(LangStr),
             words("`pragma foreign_type' declaration for"),
             fixed(TypeStr) | VerboseErrorPieces
         ],
-        error_util__write_error_pieces(Context, 0, ErrorPieces, !IO),
+        write_error_pieces(Context, 0, ErrorPieces, !IO),
         FoundError = yes,
         module_info_incr_errors(!ModuleInfo)
     ;
@@ -455,7 +453,7 @@ check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError, !ModuleInfo,
     %
 :- pred generating_code(bool::out, io::di, io::uo) is det.
 
-generating_code(bool__not(NotGeneratingCode), !IO) :-
+generating_code(bool.not(NotGeneratingCode), !IO) :-
     io_lookup_bool_option(make_short_interface, MakeShortInterface, !IO),
     io_lookup_bool_option(make_interface, MakeInterface, !IO),
     io_lookup_bool_option(make_private_interface, MakePrivateInterface, !IO),
@@ -469,7 +467,7 @@ generating_code(bool__not(NotGeneratingCode), !IO) :-
     io_lookup_bool_option(typecheck_only, TypeCheckOnly, !IO),
     io_lookup_bool_option(errorcheck_only, ErrorCheckOnly, !IO),
     io_lookup_bool_option(output_grade_string, OutputGradeString, !IO),
-    bool__or_list([MakeShortInterface, MakeInterface,
+    bool.or_list([MakeShortInterface, MakeInterface,
         MakePrivateInterface, MakeTransOptInterface,
         GenSrcFileMapping, GenDepends, GenDependFile, ConvertToMercury,
         TypeCheckOnly, ErrorCheckOnly, OutputGradeString],
@@ -665,13 +663,13 @@ ctors_add([Ctor | Rest], TypeCtor, TVarSet, NeedQual, PQInfo, Context,
     % Also check that there is at most one definition of a given
     % cons_id in each type.
     %
-    ( map__search(!.Ctors, QualifiedConsId, QualifiedConsDefns0) ->
+    ( map.search(!.Ctors, QualifiedConsId, QualifiedConsDefns0) ->
         QualifiedConsDefns1 = QualifiedConsDefns0
     ;
         QualifiedConsDefns1 = []
     ),
     (
-        list__member(OtherConsDefn, QualifiedConsDefns1),
+        list.member(OtherConsDefn, QualifiedConsDefns1),
         OtherConsDefn = hlds_cons_defn(_, _, _, TypeCtor, _)
     ->
         % XXX we should record each error using module_info_incr_errors
@@ -685,29 +683,29 @@ ctors_add([Ctor | Rest], TypeCtor, TVarSet, NeedQual, PQInfo, Context,
             words("multiply defined.")
         ],
         write_error_pieces(Context, 0, ErrMsg, !IO),
-        io__set_exit_status(1, !IO),
+        io.set_exit_status(1, !IO),
         QualifiedConsDefns = QualifiedConsDefns1
     ;
         QualifiedConsDefns = [ConsDefn | QualifiedConsDefns1]
     ),
-    svmap__set(QualifiedConsId, QualifiedConsDefns, !Ctors),
+    svmap.set(QualifiedConsId, QualifiedConsDefns, !Ctors),
 
     ( QualifiedConsId = cons(qualified(Module, ConsName), Arity) ->
         % Add unqualified version of the cons_id to the
         % cons_table, if appropriate.
         ( NeedQual = may_be_unqualified ->
             UnqualifiedConsId = cons(unqualified(ConsName), Arity),
-            multi_map__set(!.Ctors, UnqualifiedConsId, ConsDefn, !:Ctors)
+            multi_map.set(!.Ctors, UnqualifiedConsId, ConsDefn, !:Ctors)
         ;
             true
         ),
 
         % Add partially qualified versions of the cons_id
         get_partial_qualifiers(Module, PQInfo, PartialQuals),
-        list__map_foldl(add_ctor(ConsName, Arity, ConsDefn),
+        list.map_foldl(add_ctor(ConsName, Arity, ConsDefn),
             PartialQuals, _PartiallyQualifiedConsIds, !Ctors),
 
-        assoc_list__keys(Args, FieldNames),
+        assoc_list.keys(Args, FieldNames),
         FirstField = 1,
 
         add_ctor_field_names(FieldNames, NeedQual, PartialQuals, TypeCtor,
@@ -724,7 +722,7 @@ ctors_add([Ctor | Rest], TypeCtor, TVarSet, NeedQual, PQInfo, Context,
 
 add_ctor(ConsName, Arity, ConsDefn, ModuleQual, ConsId, CtorsIn, CtorsOut) :-
     ConsId = cons(qualified(ModuleQual, ConsName), Arity),
-    multi_map__set(CtorsIn, ConsId, ConsDefn, CtorsOut).
+    multi_map.set(CtorsIn, ConsId, ConsDefn, CtorsOut).
 
 :- pred add_ctor_field_names(list(maybe(ctor_field_name))::in,
     need_qualifier::in, list(module_name)::in, type_ctor::in, cons_id::in,
@@ -766,7 +764,7 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
         % user-defined override functions for the builtin field
         % access functions must be unique within a module.
         %
-        map__search(!.FieldNameTable, FieldName, ConflictingDefns)
+        map.search(!.FieldNameTable, FieldName, ConflictingDefns)
     ->
         ( ConflictingDefns = [ConflictingDefn] ->
             ConflictingDefn = hlds_ctor_field_defn(OrigContext, _, _, _, _)
@@ -778,36 +776,29 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
         % XXX we should record each error
         % using module_info_incr_errors
         FieldDefn = hlds_ctor_field_defn(Context, _, _, _, _),
-        mdbcomp__prim_data__sym_name_to_string(FieldName, FieldString),
-        ErrorPieces = [
-            words("Error: field"),
-            fixed(string__append_list(["`", FieldString, "'"])),
-            words("multiply defined.")
-        ],
-        error_util__write_error_pieces(Context, 0, ErrorPieces, !IO),
+        sym_name_to_string(FieldName, FieldString),
+        ErrorPieces = [words("Error: field"), quote(FieldString),
+            words("multiply defined.")],
+        write_error_pieces(Context, 0, ErrorPieces, !IO),
 
-        % This type of error doesn't fit well with
-        % how error_util does things -- error_util.m
-        % wants to write everything with a single context.
-        prog_out__write_context(OrigContext, !IO),
-        io__write_string("  Here is the previous definition of field `", !IO),
-        io__write_string(FieldString, !IO),
-        io__write_string("'.\n", !IO),
-        io__set_exit_status(1, !IO)
+        PrevPieces = [words("Here is the previous definition of field"),
+            quote(FieldString), suffix(".")],
+        write_error_pieces_not_first_line(OrigContext, 0, PrevPieces, !IO),
+        io.set_exit_status(1, !IO)
     ;
         unqualify_name(FieldName, UnqualFieldName),
 
         % Add an unqualified version of the field name to the
         % table, if appropriate.
         ( NeedQual = may_be_unqualified ->
-            multi_map__set(!.FieldNameTable, unqualified(UnqualFieldName),
+            multi_map.set(!.FieldNameTable, unqualified(UnqualFieldName),
                 FieldDefn, !:FieldNameTable)
         ;
             true
         ),
 
         % Add partially qualified versions of the cons_id
-        list__foldl(do_add_ctor_field(UnqualFieldName, FieldDefn),
+        list.foldl(do_add_ctor_field(UnqualFieldName, FieldDefn),
             [FieldModule | PartialQuals], !FieldNameTable)
     ).
 
@@ -815,7 +806,7 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
     module_name::in, ctor_field_table::in, ctor_field_table::out) is det.
 
 do_add_ctor_field(FieldName, FieldNameDefn, ModuleName, !FieldNameTable) :-
-    multi_map__set(!.FieldNameTable, qualified(ModuleName, FieldName),
+    multi_map.set(!.FieldNameTable, qualified(ModuleName, FieldName),
         FieldNameDefn, !:FieldNameTable).
 
 %----------------------------------------------------------------------------%

@@ -17,7 +17,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module top_level__mercury_compile.
+:- module top_level.mercury_compile.
 :- interface.
 
 :- import_module io.
@@ -200,11 +200,11 @@ real_main(!IO) :-
     gc_init(!IO),
 
         % All messages go to stderr
-    io__stderr_stream(StdErr, !IO),
-    io__set_output_stream(StdErr, _, !IO),
-    io__command_line_arguments(Args0, !IO),
+    io.stderr_stream(StdErr, !IO),
+    io.set_output_stream(StdErr, _, !IO),
+    io.command_line_arguments(Args0, !IO),
 
-    % read_args_file and globals__io_printing_usage may attempt
+    % read_args_file and globals.io_printing_usage may attempt
     % to look up options, so we need to initialize the globals.
     handle_options([], _, _, _, _, !IO),
 
@@ -215,7 +215,7 @@ real_main(!IO) :-
         % by the parent `mmc --make' process.
         %
 
-        options_file__read_args_file(ArgFile, MaybeArgs1, !IO),
+        options_file.read_args_file(ArgFile, MaybeArgs1, !IO),
         (
             MaybeArgs1 = yes(Args1),
             process_options(Args1, OptionArgs, NonOptionArgs, _, !IO),
@@ -273,7 +273,7 @@ real_main(!IO) :-
         main_2(Errors, Variables, OptionArgs, NonOptionArgs, Link, !IO)
     ;
         MaybeMCFlags = no,
-        io__set_exit_status(1, !IO)
+        io.set_exit_status(1, !IO)
     ).
 
 :- pred real_main_2(list(string)::in, maybe(list(string))::out,
@@ -293,7 +293,7 @@ real_main_2(MCFlags0, MaybeMCFlags, Args0, Variables0, Variables, !IO) :-
         MaybeMCFlags = no
     ;
         Errors = [],
-        globals__io_lookup_maybe_string_option(config_file,
+        globals.io_lookup_maybe_string_option(config_file,
             MaybeConfigFile, !IO),
         (
             MaybeConfigFile = yes(ConfigFile),
@@ -351,60 +351,60 @@ gc_init(!IO).
 main_2(Errors @ [_ | _], _, _, _, _, !IO) :-
     usage_errors(Errors, !IO).
 main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
-    globals__io_get_globals(Globals, !IO),
-    globals__lookup_bool_option(Globals, version, Version),
-    globals__lookup_bool_option(Globals, help, Help),
-    globals__lookup_bool_option(Globals, generate_source_file_mapping,
+    globals.io_get_globals(Globals, !IO),
+    globals.lookup_bool_option(Globals, version, Version),
+    globals.lookup_bool_option(Globals, help, Help),
+    globals.lookup_bool_option(Globals, generate_source_file_mapping,
         GenerateMapping),
-    globals__lookup_bool_option(Globals, output_grade_string,
+    globals.lookup_bool_option(Globals, output_grade_string,
         OutputGrade),
-    globals__lookup_bool_option(Globals, output_link_command,
+    globals.lookup_bool_option(Globals, output_link_command,
         OutputLinkCommand),
-    globals__lookup_bool_option(Globals, output_shared_lib_link_command,
+    globals.lookup_bool_option(Globals, output_shared_lib_link_command,
         OutputShLibLinkCommand),
-    globals__lookup_bool_option(Globals, filenames_from_stdin,
+    globals.lookup_bool_option(Globals, filenames_from_stdin,
         FileNamesFromStdin),
-    globals__lookup_bool_option(Globals, make, Make),
+    globals.lookup_bool_option(Globals, make, Make),
     ( Version = yes ->
-        io__stdout_stream(Stdout, !IO),
-        io__set_output_stream(Stdout, OldOutputStream, !IO),
+        io.stdout_stream(Stdout, !IO),
+        io.set_output_stream(Stdout, OldOutputStream, !IO),
         display_compiler_version(!IO),
-        io__set_output_stream(OldOutputStream, _, !IO)
+        io.set_output_stream(OldOutputStream, _, !IO)
     ; Help = yes ->
-        io__stdout_stream(Stdout, !IO),
-        io__set_output_stream(Stdout, OldOutputStream, !IO),
+        io.stdout_stream(Stdout, !IO),
+        io.set_output_stream(Stdout, OldOutputStream, !IO),
         long_usage(!IO),
-        io__set_output_stream(OldOutputStream, _, !IO)
+        io.set_output_stream(OldOutputStream, _, !IO)
     ; OutputGrade = yes ->
         % When Mmake asks for the grade, it really wants
         % the directory component to use. This is consistent
         % with scripts/canonical_grade.
         grade_directory_component(Globals, Grade),
-        io__stdout_stream(Stdout, !IO),
-        io__write_string(Stdout, Grade, !IO),
-        io__write_string(Stdout, "\n", !IO)
+        io.stdout_stream(Stdout, !IO),
+        io.write_string(Stdout, Grade, !IO),
+        io.write_string(Stdout, "\n", !IO)
     ; OutputLinkCommand = yes ->
-        globals__lookup_string_option(Globals, link_executable_command,
+        globals.lookup_string_option(Globals, link_executable_command,
             LinkCommand),
-        io__stdout_stream(Stdout, !IO),
-        io__write_string(Stdout, LinkCommand, !IO),
-        io__write_string(Stdout, "\n", !IO)
+        io.stdout_stream(Stdout, !IO),
+        io.write_string(Stdout, LinkCommand, !IO),
+        io.write_string(Stdout, "\n", !IO)
     ; OutputShLibLinkCommand = yes ->
-        globals__lookup_string_option(Globals, link_shared_lib_command,
+        globals.lookup_string_option(Globals, link_shared_lib_command,
             LinkCommand),
-        io__stdout_stream(Stdout, !IO),
-        io__write_string(Stdout, LinkCommand, !IO),
-        io__write_string(Stdout, "\n", !IO)
+        io.stdout_stream(Stdout, !IO),
+        io.write_string(Stdout, LinkCommand, !IO),
+        io.write_string(Stdout, "\n", !IO)
     ; GenerateMapping = yes ->
-        source_file_map__write_source_file_map(Args, !IO)
+        source_file_map.write_source_file_map(Args, !IO)
     ; Make = yes ->
-        make__process_args(OptionVariables, OptionArgs, Args, !IO)
+        make_process_args(OptionVariables, OptionArgs, Args, !IO)
     ; Args = [], FileNamesFromStdin = no ->
         usage(!IO)
     ;
         process_all_args(OptionVariables, OptionArgs,
             Args, ModulesToLink, FactTableObjFiles, !IO),
-        io__get_exit_status(ExitStatus, !IO),
+        io.get_exit_status(ExitStatus, !IO),
         ( ExitStatus = 0 ->
             (
                 Link = yes,
@@ -412,7 +412,7 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
             ->
                 file_name_to_module_name(FirstModule,
                     MainModuleName),
-                globals__get_target(Globals, Target),
+                globals.get_target(Globals, Target),
                 ( Target = java ->
                     % For Java, at the "link" step we just
                     % generate a shell script; the actual
@@ -435,14 +435,14 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
             % hint about it.  Of course, we should only output the
             % hint when we have further information to give the user.
             
-            globals__lookup_bool_option(Globals, verbose_errors,
+            globals.lookup_bool_option(Globals, verbose_errors,
                 VerboseErrors),
-            globals__get_extra_error_info(Globals, ExtraErrorInfo), 
+            globals.get_extra_error_info(Globals, ExtraErrorInfo), 
             (
                 VerboseErrors = no,
                 (
                     ExtraErrorInfo = yes,
-                    io__write_string("For more information, " ++
+                    io.write_string("For more information, " ++
                         "recompile with `-E'.\n", !IO)
                 ;
                     ExtraErrorInfo = no
@@ -451,10 +451,10 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
                 VerboseErrors = yes
             )
         ),
-        globals__lookup_bool_option(Globals, statistics, Statistics),
+        globals.lookup_bool_option(Globals, statistics, Statistics),
         (
             Statistics = yes,
-            io__report_stats("full_memory_stats", !IO)
+            io.report_stats("full_memory_stats", !IO)
         ;
             Statistics = no
         )
@@ -473,10 +473,10 @@ process_all_args(OptionVariables, OptionArgs, Args, ModulesToLink,
     % assembler files for each module.
     % So if we're generating code using the GCC back-end,
     % we need to call run_gcc_backend here at the top level.
-    globals__io_get_globals(Globals, !IO),
+    globals.io_get_globals(Globals, !IO),
     ( compiling_to_asm(Globals) ->
         ( Args = [FirstArg | OtherArgs] ->
-            globals__lookup_bool_option(Globals, smart_recompilation, Smart),
+            globals.lookup_bool_option(Globals, smart_recompilation, Smart),
             (
                 Smart = yes,
                 (
@@ -493,7 +493,7 @@ process_all_args(OptionVariables, OptionArgs, Args, ModulesToLink,
                         "`--target asm' with `--smart-recompilation' " ++
                         "with more than one module to compile.",
                     write_error_pieces_plain([words(Msg)], !IO),
-                    io__set_exit_status(1, !IO),
+                    io.set_exit_status(1, !IO),
                     ModulesToLink = [],
                     FactTableObjFiles = []
                 )
@@ -510,7 +510,7 @@ process_all_args(OptionVariables, OptionArgs, Args, ModulesToLink,
             Msg = "Sorry, not implemented: `--target asm' " ++
                 "with `--filenames-from-stdin",
             write_error_pieces_plain([words(Msg)], !IO),
-            io__set_exit_status(1, !IO),
+            io.set_exit_status(1, !IO),
             ModulesToLink = [],
             FactTableObjFiles = []
         )
@@ -525,7 +525,7 @@ process_all_args(OptionVariables, OptionArgs, Args, ModulesToLink,
 :- pred compiling_to_asm(globals::in) is semidet.
 
 compiling_to_asm(Globals) :-
-    globals__get_target(Globals, asm),
+    globals.get_target(Globals, asm),
     % even if --target asm is specified,
     % it can be overridden by other options:
     OptionList = [convert_to_mercury, generate_dependencies,
@@ -534,10 +534,10 @@ compiling_to_asm(Globals) :-
         make_optimization_interface, make_transitive_opt_interface,
         make_analysis_registry,
         typecheck_only, errorcheck_only],
-    BoolList = list__map((func(Opt) = Bool :-
-        globals__lookup_bool_option(Globals, Opt, Bool)),
+    BoolList = list.map((func(Opt) = Bool :-
+        globals.lookup_bool_option(Globals, Opt, Bool)),
         OptionList),
-    bool__or_list(BoolList) = no.
+    bool.or_list(BoolList) = no.
 
 :- pred compile_using_gcc_backend(options_variables::in, list(string)::in,
     file_or_module::in,
@@ -559,7 +559,7 @@ compile_using_gcc_backend(OptionVariables, OptionArgs, FirstFileOrModule,
     % this is needed to handle the case where
     % the module name does not match the file
     % name, e.g. file "browse.m" containing
-    % ":- module mdb__browse." as its first item.
+    % ":- module mdb.browse." as its first item.
     % Rather than reading in the source file here,
     % we just pick a name
     % for the asm file based on the file name argument,
@@ -583,14 +583,14 @@ compile_using_gcc_backend(OptionVariables, OptionArgs, FirstFileOrModule,
     % and then we'll continue with the normal work of
     % the compilation, which will be done by the callback
     % function (`process_args').
-    maybe_mlds_to_gcc__run_gcc_backend(FirstModuleName, CallBack,
+    maybe_mlds_to_gcc.run_gcc_backend(FirstModuleName, CallBack,
         ModulesToLink, !IO),
 
     % Now we know what the real module name was, so we
     % can rename the assembler file if needed (see above).
     ( ModulesToLink = [Module | _] ->
         file_name_to_module_name(Module, ModuleName),
-        globals__io_lookup_bool_option(pic, Pic, !IO),
+        globals.io_lookup_bool_option(pic, Pic, !IO),
         AsmExt = (Pic = yes -> ".pic_s" ; ".s"),
         module_name_to_file_name(ModuleName, AsmExt, yes, AsmFile, !IO),
         ( ModuleName \= FirstModuleName ->
@@ -603,17 +603,17 @@ compile_using_gcc_backend(OptionVariables, OptionArgs, FirstFileOrModule,
 
         % Invoke the assembler to produce an object file,
         % if needed.
-        globals__io_lookup_bool_option(target_code_only, TargetCodeOnly, !IO),
+        globals.io_lookup_bool_option(target_code_only, TargetCodeOnly, !IO),
         (
             Result = ok,
             TargetCodeOnly = no
         ->
-            io__output_stream(OutputStream, !IO),
+            io.output_stream(OutputStream, !IO),
             get_linked_target_type(TargetType, !IO),
             get_object_code_type(TargetType, PIC, !IO),
             compile_with_module_options(ModuleName, OptionVariables,
                 OptionArgs,
-                compile_target_code__assemble(OutputStream, PIC, ModuleName),
+                compile_target_code.assemble(OutputStream, PIC, ModuleName),
                 AssembleOK, !IO),
             maybe_set_exit_status(AssembleOK, !IO)
         ;
@@ -625,35 +625,35 @@ compile_using_gcc_backend(OptionVariables, OptionArgs, FirstFileOrModule,
         true
     ).
 
-:- pred do_rename_file(string::in, string::in, io__res::out,
+:- pred do_rename_file(string::in, string::in, io.res::out,
     io::di, io::uo) is det.
 
 do_rename_file(OldFileName, NewFileName, Result, !IO) :-
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
-    globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     maybe_write_string(Verbose, "% Renaming `", !IO),
     maybe_write_string(Verbose, OldFileName, !IO),
     maybe_write_string(Verbose, "' as `", !IO),
     maybe_write_string(Verbose, NewFileName, !IO),
     maybe_write_string(Verbose, "'...", !IO),
     maybe_flush_output(Verbose, !IO),
-    io__rename_file(OldFileName, NewFileName, Result0, !IO),
+    io.rename_file(OldFileName, NewFileName, Result0, !IO),
     ( Result0 = error(Error0) ->
         maybe_write_string(VeryVerbose, " failed.\n", !IO),
         maybe_flush_output(VeryVerbose, !IO),
-        io__error_message(Error0, ErrorMsg0),
+        io.error_message(Error0, ErrorMsg0),
         % On some systems, we need to remove the existing file
         % first, if any.  So try again that way.
         maybe_write_string(VeryVerbose, "% Removing `", !IO),
         maybe_write_string(VeryVerbose, OldFileName, !IO),
         maybe_write_string(VeryVerbose, "'...", !IO),
         maybe_flush_output(VeryVerbose, !IO),
-        io__remove_file(NewFileName, Result1, !IO),
+        io.remove_file(NewFileName, Result1, !IO),
         ( Result1 = error(Error1) ->
             maybe_write_string(Verbose, " failed.\n", !IO),
             maybe_flush_output(Verbose, !IO),
-            io__error_message(Error1, ErrorMsg1),
-            string__append_list(["can't rename file `", OldFileName,
+            io.error_message(Error1, ErrorMsg1),
+            string.append_list(["can't rename file `", OldFileName,
                 "' as `", NewFileName, "': ", ErrorMsg0,
                 "; and can't remove file `", NewFileName, "': ", ErrorMsg1],
                 Message),
@@ -667,12 +667,12 @@ do_rename_file(OldFileName, NewFileName, Result, !IO) :-
             maybe_write_string(VeryVerbose, NewFileName, !IO),
             maybe_write_string(VeryVerbose, "' again...", !IO),
             maybe_flush_output(VeryVerbose, !IO),
-            io__rename_file(OldFileName, NewFileName, Result2, !IO),
+            io.rename_file(OldFileName, NewFileName, Result2, !IO),
             ( Result2 = error(Error2) ->
                 maybe_write_string(Verbose, " failed.\n", !IO),
                 maybe_flush_output(Verbose, !IO),
-                io__error_message(Error2, ErrorMsg),
-                string__append_list(
+                io.error_message(Error2, ErrorMsg),
+                string.append_list(
                     ["can't rename file `", OldFileName, "' as `", NewFileName,
                     "': ", ErrorMsg], Message),
                 report_error(Message, !IO)
@@ -699,7 +699,7 @@ process_args_no_fact_table(OptionVariables, OptionArgs, Args, ModulesToLink,
 
 process_args(OptionVariables, OptionArgs, Args, ModulesToLink,
         FactTableObjFiles, !IO) :-
-    globals__io_lookup_bool_option(filenames_from_stdin, FileNamesFromStdin,
+    globals.io_lookup_bool_option(filenames_from_stdin, FileNamesFromStdin,
         !IO),
     (
         FileNamesFromStdin = yes,
@@ -723,24 +723,24 @@ process_stdin_arg_list(OptionVariables, OptionArgs, !Modules,
     ;
         !.Modules = []
     ),
-    io__read_line_as_string(FileResult, !IO),
+    io.read_line_as_string(FileResult, !IO),
     (
         FileResult = ok(Line),
         Arg = string.rstrip(Line),
         process_arg(OptionVariables, OptionArgs, Arg, Module,
             FactTableObjFileList, !IO),
-        list__append(Module, !Modules),
-        list__append(FactTableObjFileList, !FactTableObjFiles),
+        list.append(Module, !Modules),
+        list.append(FactTableObjFileList, !FactTableObjFiles),
         process_stdin_arg_list(OptionVariables, OptionArgs,
             !Modules, !FactTableObjFiles, !IO)
     ;
         FileResult = eof
     ;
         FileResult = error(Error),
-        io__error_message(Error, Msg),
-        io__write_string("Error reading module name: ", !IO),
-        io__write_string(Msg, !IO),
-        io__set_exit_status(1, !IO)
+        io.error_message(Error, Msg),
+        io.write_string("Error reading module name: ", !IO),
+        io.write_string(Msg, !IO),
+        io.set_exit_status(1, !IO)
     ).
 
 :- pred process_arg_list(options_variables::in, list(string)::in,
@@ -751,8 +751,8 @@ process_arg_list(OptionVariables, OptionArgs, Args, Modules, FactTableObjFiles,
         !IO) :-
     process_arg_list_2(OptionVariables, OptionArgs, Args, ModulesList,
         FactTableObjFileLists, !IO),
-    list__condense(ModulesList, Modules),
-    list__condense(FactTableObjFileLists, FactTableObjFiles).
+    list.condense(ModulesList, Modules),
+    list.condense(FactTableObjFileLists, FactTableObjFiles).
 
 :- pred process_arg_list_2(options_variables::in, list(string)::in,
     list(string)::in, list(list(string))::out, list(list(string))::out,
@@ -785,7 +785,7 @@ process_arg_list_2(OptionVariables, OptionArgs, [Arg | Args],
 process_arg(OptionVariables, OptionArgs, Arg, ModulesToLink, FactTableObjFiles,
         !IO) :-
     FileOrModule = string_to_file_or_module(Arg),
-    globals__io_lookup_bool_option(invoked_by_mmc_make, InvokedByMake, !IO),
+    globals.io_lookup_bool_option(invoked_by_mmc_make, InvokedByMake, !IO),
     (
         InvokedByMake = no,
         build_with_module_options(file_or_module_to_module_name(FileOrModule),
@@ -821,7 +821,7 @@ process_arg_build(FileOrModule, OptionVariables, OptionArgs, _, yes,
 
 process_arg_2(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
         FactTableObjFiles, !IO) :-
-    globals__io_lookup_bool_option(generate_dependencies, GenerateDeps, !IO),
+    globals.io_lookup_bool_option(generate_dependencies, GenerateDeps, !IO),
     ( GenerateDeps = yes,
         ModulesToLink = [],
         FactTableObjFiles = [],
@@ -833,7 +833,7 @@ process_arg_2(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
             generate_module_dependencies(ModuleName, !IO)
         )
     ; GenerateDeps = no,
-        globals__io_lookup_bool_option(generate_dependency_file,
+        globals.io_lookup_bool_option(generate_dependency_file,
             GenerateDepFile, !IO),
         ( GenerateDepFile = yes,
             ModulesToLink = [],
@@ -858,7 +858,7 @@ process_arg_2(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
 :- func string_to_file_or_module(string) = file_or_module.
 
 string_to_file_or_module(String) = FileOrModule :-
-    ( string__remove_suffix(String, ".m", FileName) ->
+    ( string.remove_suffix(String, ".m", FileName) ->
         % If the argument name ends in `.m', then we assume it is
         % a file name.
         FileOrModule = file(FileName)
@@ -885,9 +885,9 @@ file_or_module_to_module_name(module(ModuleName)) = ModuleName.
 
 read_module(module(ModuleName), ReturnTimestamp, ModuleName, FileName,
         MaybeTimestamp, Items, Error, !ReadModules, !IO) :-
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
     maybe_write_string(Verbose, "% Parsing module `", !IO),
-    mdbcomp__prim_data__sym_name_to_string(ModuleName, ModuleNameString),
+    sym_name_to_string(ModuleName, ModuleNameString),
     maybe_write_string(Verbose, ModuleNameString, !IO),
     maybe_write_string(Verbose, "' and imported interfaces...\n", !IO),
     (
@@ -896,7 +896,7 @@ read_module(module(ModuleName), ReturnTimestamp, ModuleName, FileName,
         find_read_module(!.ReadModules, ModuleName, ".m", ReturnTimestamp,
             Items0, MaybeTimestamp0, Error0, FileName0)
     ->
-        map__delete(!.ReadModules, ModuleName - ".m", !:ReadModules),
+        map.delete(!.ReadModules, ModuleName - ".m", !:ReadModules),
         FileName = FileName0,
         Items = Items0,
         Error = Error0,
@@ -909,11 +909,11 @@ read_module(module(ModuleName), ReturnTimestamp, ModuleName, FileName,
         read_mod(ModuleName, ".m", "Reading module", Search, ReturnTimestamp,
             Items, Error, FileName, MaybeTimestamp, !IO)
     ),
-    globals__io_lookup_bool_option(statistics, Stats, !IO),
+    globals.io_lookup_bool_option(statistics, Stats, !IO),
     maybe_report_stats(Stats, !IO).
 read_module(file(FileName), ReturnTimestamp, ModuleName, SourceFileName,
         MaybeTimestamp, Items, Error, !ReadModules, !IO) :-
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
     maybe_write_string(Verbose, "% Parsing file `", !IO),
     maybe_write_string(Verbose, FileName, !IO),
     maybe_write_string(Verbose, "' and imported interfaces...\n", !IO),
@@ -925,7 +925,7 @@ read_module(file(FileName), ReturnTimestamp, ModuleName, SourceFileName,
         find_read_module(!.ReadModules, DefaultModuleName, ".m",
             ReturnTimestamp, Items0, MaybeTimestamp0, Error0, _)
     ->
-        map__delete(!.ReadModules, ModuleName - ".m", !:ReadModules),
+        map.delete(!.ReadModules, ModuleName - ".m", !:ReadModules),
         ModuleName = DefaultModuleName,
         Items = Items0,
         Error = Error0,
@@ -946,12 +946,12 @@ read_module(file(FileName), ReturnTimestamp, ModuleName, SourceFileName,
         % This will be fixed when mmake functionality
         % is moved into the compiler.
         %
-        globals__io_lookup_bool_option(smart_recompilation, Smart, !IO),
+        globals.io_lookup_bool_option(smart_recompilation, Smart, !IO),
         (
             Smart = yes,
             ModuleName \= DefaultModuleName
         ->
-            globals__io_lookup_bool_option(warn_smart_recompilation, Warn,
+            globals.io_lookup_bool_option(warn_smart_recompilation, Warn,
                 !IO),
             (
                 Warn = yes,
@@ -968,14 +968,14 @@ read_module(file(FileName), ReturnTimestamp, ModuleName, SourceFileName,
             ;
                 Warn = no
             ),
-            globals__io_set_option(smart_recompilation, bool(no), !IO)
+            globals.io_set_option(smart_recompilation, bool(no), !IO)
         ;
             true
         )
     ),
-    globals__io_lookup_bool_option(detailed_statistics, Stats, !IO),
+    globals.io_lookup_bool_option(detailed_statistics, Stats, !IO),
     maybe_report_stats(Stats, !IO),
-    string__append(FileName, ".m", SourceFileName).
+    string.append(FileName, ".m", SourceFileName).
 
 :- pred process_module(options_variables::in, list(string)::in,
     file_or_module::in, list(string)::out, list(string)::out,
@@ -983,17 +983,17 @@ read_module(file(FileName), ReturnTimestamp, ModuleName, SourceFileName,
 
 process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
         FactTableObjFiles, !IO) :-
-    globals__io_get_globals(Globals, !IO),
-    globals__lookup_bool_option(Globals, halt_at_syntax_errors,
+    globals.io_get_globals(Globals, !IO),
+    globals.lookup_bool_option(Globals, halt_at_syntax_errors,
         HaltSyntax),
-    globals__lookup_bool_option(Globals, make_interface, MakeInterface),
-    globals__lookup_bool_option(Globals, make_short_interface,
+    globals.lookup_bool_option(Globals, make_interface, MakeInterface),
+    globals.lookup_bool_option(Globals, make_short_interface,
         MakeShortInterface),
-    globals__lookup_bool_option(Globals, make_private_interface,
+    globals.lookup_bool_option(Globals, make_private_interface,
         MakePrivateInterface),
-    globals__lookup_bool_option(Globals, convert_to_mercury,
+    globals.lookup_bool_option(Globals, convert_to_mercury,
         ConvertToMercury),
-    globals__lookup_bool_option(Globals, generate_item_version_numbers,
+    globals.lookup_bool_option(Globals, generate_item_version_numbers,
         GenerateVersionNumbers),
     (
         ( MakeInterface = yes ->
@@ -1010,12 +1010,12 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
         )
     ->
         read_module(FileOrModule, ReturnTimestamp, ModuleName, FileName,
-            MaybeTimestamp, Items, Error, map__init, _, !IO),
+            MaybeTimestamp, Items, Error, map.init, _, !IO),
         ( halt_at_module_error(HaltSyntax, Error) ->
             true
         ;
             split_into_submodules(ModuleName, Items, SubModuleList, !IO),
-            list__foldl(apply_process_module(ProcessModule,
+            list.foldl(apply_process_module(ProcessModule,
                 FileName, ModuleName, MaybeTimestamp), SubModuleList, !IO)
         ),
         ModulesToLink = [],
@@ -1024,7 +1024,7 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
         ConvertToMercury = yes
     ->
         read_module(FileOrModule, no, ModuleName, _, _,
-            Items, Error, map__init, _, !IO),
+            Items, Error, map.init, _, !IO),
         ( halt_at_module_error(HaltSyntax, Error) ->
             true
         ;
@@ -1035,9 +1035,9 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
         ModulesToLink = [],
         FactTableObjFiles = []
     ;
-        globals__lookup_bool_option(Globals, smart_recompilation,
+        globals.lookup_bool_option(Globals, smart_recompilation,
             Smart),
-        globals__get_target(Globals, Target),
+        globals.get_target(Globals, Target),
         (
             Smart = yes,
             (
@@ -1058,7 +1058,7 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
             find_smart_recompilation_target_files(ModuleName, Globals,
                 FindTargetFiles),
             find_timestamp_files(ModuleName, Globals, FindTimestampFiles),
-            recompilation__check__should_recompile(ModuleName, FindTargetFiles,
+            recompilation.check.should_recompile(ModuleName, FindTargetFiles,
                 FindTimestampFiles, ModulesToRecompile0, ReadModules, !IO),
             (
                 Target = asm,
@@ -1076,7 +1076,7 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
             )
         ;
             Smart = no,
-            map__init(ReadModules),
+            map.init(ReadModules),
             ModulesToRecompile = all_modules
         ),
         ( ModulesToRecompile = some_modules([]) ->
@@ -1134,7 +1134,7 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
         ModulesToLink, FactTableObjFiles, !IO) :-
     read_module(FileOrModule, yes, ModuleName, FileName,
         MaybeTimestamp, Items, Error, ReadModules0, ReadModules, !IO),
-    globals__io_lookup_bool_option(halt_at_syntax_errors, HaltSyntax, !IO),
+    globals.io_lookup_bool_option(halt_at_syntax_errors, HaltSyntax, !IO),
     ( halt_at_module_error(HaltSyntax, Error) ->
         ModulesToLink = [],
         FactTableObjFiles = []
@@ -1142,16 +1142,16 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
         split_into_submodules(ModuleName, Items, SubModuleList0, !IO),
         ( MaybeModulesToRecompile = some_modules(ModulesToRecompile) ->
             ToRecompile = (pred((SubModule - _)::in) is semidet :-
-                list__member(SubModule, ModulesToRecompile)
+                list.member(SubModule, ModulesToRecompile)
             ),
-            list__filter(ToRecompile, SubModuleList0, SubModuleListToCompile)
+            list.filter(ToRecompile, SubModuleList0, SubModuleListToCompile)
         ;
             SubModuleListToCompile = SubModuleList0
         ),
-        assoc_list__keys(SubModuleList0, NestedSubModules0),
-        list__delete_all(NestedSubModules0, ModuleName, NestedSubModules),
+        assoc_list.keys(SubModuleList0, NestedSubModules0),
+        list.delete_all(NestedSubModules0, ModuleName, NestedSubModules),
 
-        globals__io_get_globals(Globals, !IO),
+        globals.io_get_globals(Globals, !IO),
         find_timestamp_files(ModuleName, Globals, FindTimestampFiles),
         
         globals.io_lookup_bool_option(trace_prof, TraceProf, !IO),
@@ -1169,18 +1169,18 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
             % there should never be part of an execution trace
             % anyway; they are effectively language primitives.
             % (They may still be parts of stack traces.)
-            globals__io_lookup_bool_option(trace_stack_layout, TSL, !IO),
-            globals__io_get_trace_level(TraceLevel, !IO),
+            globals.io_lookup_bool_option(trace_stack_layout, TSL, !IO),
+            globals.io_get_trace_level(TraceLevel, !IO),
 
-            globals__io_set_option(trace_stack_layout, bool(no), !IO),
-            globals__io_set_trace_level_none(!IO),
+            globals.io_set_option(trace_stack_layout, bool(no), !IO),
+            globals.io_set_trace_level_none(!IO),
 
             compile_all_submodules(FileName, ModuleName, NestedSubModules,
                 MaybeTimestamp, ReadModules, FindTimestampFiles,
                 SubModuleListToCompile, ModulesToLink, FactTableObjFiles, !IO),
 
-            globals__io_set_option(trace_stack_layout, bool(TSL), !IO),
-            globals__io_set_trace_level(TraceLevel, !IO)
+            globals.io_set_option(trace_stack_layout, bool(TSL), !IO),
+            globals.io_set_trace_level(TraceLevel, !IO)
         ;
             compile_all_submodules(FileName, ModuleName, NestedSubModules,
                 MaybeTimestamp, ReadModules, FindTimestampFiles,
@@ -1192,7 +1192,7 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
     % compile each sub-module to its own C file.
     % XXX it would be better to do something like
     %
-    %   list__map2_foldl(compile_to_llds, SubModuleList,
+    %   list.map2_foldl(compile_to_llds, SubModuleList,
     %       LLDS_FragmentList),
     %   merge_llds_fragments(LLDS_FragmentList, LLDS),
     %   output_pass(LLDS_FragmentList)
@@ -1208,11 +1208,11 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
 compile_all_submodules(FileName, SourceFileModuleName, NestedSubModules,
         MaybeTimestamp, ReadModules, FindTimestampFiles,
         SubModuleList, ModulesToLink, FactTableObjFiles, !IO) :-
-    list__map_foldl(compile(FileName, SourceFileModuleName, NestedSubModules,
+    list.map_foldl(compile(FileName, SourceFileModuleName, NestedSubModules,
             MaybeTimestamp, ReadModules, FindTimestampFiles),
         SubModuleList, FactTableObjFileLists, !IO),
-    list__map(module_to_link, SubModuleList, ModulesToLink),
-    list__condense(FactTableObjFileLists, FactTableObjFiles).
+    list.map(module_to_link, SubModuleList, ModulesToLink),
+    list.condense(FactTableObjFileLists, FactTableObjFiles).
 
 :- pred make_interface(file_name::in, module_name::in, maybe(timestamp)::in,
     pair(module_name, item_list)::in, io::di, io::uo) is det.
@@ -1257,7 +1257,7 @@ module_to_link(ModuleName - _Items, ModuleToLink) :-
 
 compile_with_module_options(ModuleName, OptionVariables, OptionArgs,
         Compile, Succeeded, !IO) :-
-    globals__io_lookup_bool_option(invoked_by_mmc_make, InvokedByMake, !IO),
+    globals.io_lookup_bool_option(invoked_by_mmc_make, InvokedByMake, !IO),
     (
         InvokedByMake = yes,
         % `mmc --make' has already set up the options.
@@ -1288,7 +1288,7 @@ compile_with_module_options(ModuleName, OptionVariables, OptionArgs,
 
 find_smart_recompilation_target_files(TopLevelModuleName,
         Globals, FindTargetFiles) :-
-    globals__get_target(Globals, CompilationTarget),
+    globals.get_target(Globals, CompilationTarget),
     ( CompilationTarget = c, TargetSuffix = ".c"
     ; CompilationTarget = il, TargetSuffix = ".il"
     ; CompilationTarget = java, TargetSuffix = ".java"
@@ -1320,8 +1320,8 @@ usual_find_target_files(CompilationTarget, TargetSuffix, TopLevelModuleName,
     find_timestamp_file_names::out(find_timestamp_file_names)) is det.
 
 find_timestamp_files(TopLevelModuleName, Globals, FindTimestampFiles) :-
-    globals__lookup_bool_option(Globals, pic, Pic),
-    globals__get_target(Globals, CompilationTarget),
+    globals.lookup_bool_option(Globals, pic, Pic),
+    globals.get_target(Globals, CompilationTarget),
     (
         CompilationTarget = c,
         TimestampSuffix = ".c_date"
@@ -1409,9 +1409,9 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles,
     module_imports_get_module_name(Module, ModuleName),
     % If we are only typechecking or error checking, then we should not
     % modify any files, this includes writing to .d files.
-    globals__io_lookup_bool_option(typecheck_only, TypeCheckOnly, !IO),
-    globals__io_lookup_bool_option(errorcheck_only, ErrorCheckOnly, !IO),
-    bool__or(TypeCheckOnly, ErrorCheckOnly, DontWriteDFile),
+    globals.io_lookup_bool_option(typecheck_only, TypeCheckOnly, !IO),
+    globals.io_lookup_bool_option(errorcheck_only, ErrorCheckOnly, !IO),
+    bool.or(TypeCheckOnly, ErrorCheckOnly, DontWriteDFile),
     pre_hlds_pass(Module, DontWriteDFile, HLDS1, QualInfo, MaybeTimestamps,
         UndefTypes, UndefModes, Errors1, !DumpInfo, !IO),
     frontend_pass(QualInfo, UndefTypes, UndefModes, Errors1, Errors2,
@@ -1420,24 +1420,24 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles,
         Errors1 = no,
         Errors2 = no
     ->
-        globals__io_lookup_bool_option(verbose, Verbose, !IO),
-        globals__io_lookup_bool_option(statistics, Stats, !IO),
+        globals.io_lookup_bool_option(verbose, Verbose, !IO),
+        globals.io_lookup_bool_option(statistics, Stats, !IO),
         maybe_write_dependency_graph(Verbose, Stats, HLDS20, HLDS21, !IO),
-        globals__io_lookup_bool_option(make_optimization_interface,
+        globals.io_lookup_bool_option(make_optimization_interface,
             MakeOptInt, !IO),
-        globals__io_lookup_bool_option(make_transitive_opt_interface,
+        globals.io_lookup_bool_option(make_transitive_opt_interface,
             MakeTransOptInt, !IO),
-        globals__io_lookup_bool_option(make_analysis_registry,
+        globals.io_lookup_bool_option(make_analysis_registry,
             MakeAnalysisRegistry, !IO),
         ( TypeCheckOnly = yes ->
             FactTableObjFiles = []
         ; ErrorCheckOnly = yes ->
             % we may still want to run `unused_args' so that we get
             % the appropriate warnings
-            globals__io_lookup_bool_option(warn_unused_args, UnusedArgs, !IO),
+            globals.io_lookup_bool_option(warn_unused_args, UnusedArgs, !IO),
             (
                 UnusedArgs = yes,
-                globals__io_set_option(optimize_unused_args, bool(no), !IO),
+                globals.io_set_option(optimize_unused_args, bool(no), !IO),
                 maybe_unused_args(Verbose, Stats, HLDS21, _HLDS22, !IO)
             ;
                 UnusedArgs = no
@@ -1460,9 +1460,9 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles,
     ;
         % If the number of errors is > 0, make sure that the compiler
         % exits with a non-zero exit status.
-        io__get_exit_status(ExitStatus, !IO),
+        io.get_exit_status(ExitStatus, !IO),
         ( ExitStatus = 0 ->
-            io__set_exit_status(1, !IO)
+            io.set_exit_status(1, !IO)
         ;
             true
         ),
@@ -1477,13 +1477,13 @@ mercury_compile(Module, NestedSubModules, FindTimestampFiles,
 mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
         MaybeTimestamps, ModuleName, !.HLDS, FactTableBaseFiles, !DumpInfo,
         !IO) :-
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
-    globals__io_lookup_bool_option(statistics, Stats, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(statistics, Stats, !IO),
     maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO),
     middle_pass(ModuleName, !HLDS, !DumpInfo, !IO),
-    globals__io_lookup_bool_option(highlevel_code, HighLevelCode, !IO),
-    globals__io_get_target(Target, !IO),
-    globals__io_lookup_bool_option(target_code_only, TargetCodeOnly, !IO),
+    globals.io_lookup_bool_option(highlevel_code, HighLevelCode, !IO),
+    globals.io_get_target(Target, !IO),
+    globals.io_lookup_bool_option(target_code_only, TargetCodeOnly, !IO),
 
     %
     % Remove any existing `.used' file before writing the
@@ -1493,7 +1493,7 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
     % `.used' file is written.
     %
     module_name_to_file_name(ModuleName, ".used", no, UsageFileName, !IO),
-    io__remove_file(UsageFileName, _, !IO),
+    io.remove_file(UsageFileName, _, !IO),
 
     module_info_get_num_errors(!.HLDS, NumErrors),
     ( NumErrors = 0 ->
@@ -1507,8 +1507,8 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             % <module>.mh containing function prototypes
             % for the `:- pragma export'ed procedures.
             %
-            export__get_foreign_export_decls(!.HLDS, ExportDecls),
-            export__produce_header_file(ExportDecls, ModuleName, !IO)
+            export.get_foreign_export_decls(!.HLDS, ExportDecls),
+            export.produce_header_file(ExportDecls, ModuleName, !IO)
         ;
             true
         ),
@@ -1521,8 +1521,8 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
                 TargetCodeOnly = no,
                 HasMain = mlds_has_main(MLDS),
                 mlds_to_il_assembler(MLDS, !IO),
-                io__output_stream(OutputStream, !IO),
-                compile_target_code__il_assemble(OutputStream, ModuleName,
+                io.output_stream(OutputStream, !IO),
+                compile_target_code.il_assemble(OutputStream, ModuleName,
                     HasMain, Succeeded, !IO),
                 maybe_set_exit_status(Succeeded, !IO)
             ),
@@ -1534,10 +1534,10 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
                 TargetCodeOnly = yes
             ;
                 TargetCodeOnly = no,
-                io__output_stream(OutputStream, !IO),
+                io.output_stream(OutputStream, !IO),
                 module_name_to_file_name(ModuleName, ".java", no, JavaFile,
                     !IO),
-                compile_target_code__compile_java_file(OutputStream, JavaFile,
+                compile_target_code.compile_java_file(OutputStream, JavaFile,
                     Succeeded, !IO),
                 maybe_set_exit_status(Succeeded, !IO)
             ),
@@ -1576,8 +1576,8 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
                 get_object_code_type(TargetType, PIC, !IO),
                 maybe_pic_object_file_extension(PIC, Obj, !IO),
                 module_name_to_file_name(ModuleName, Obj, yes, O_File, !IO),
-                io__output_stream(OutputStream, !IO),
-                compile_target_code__compile_c_file(OutputStream, PIC, C_File,
+                io.output_stream(OutputStream, !IO),
+                compile_target_code.compile_c_file(OutputStream, PIC, C_File,
                     O_File, CompileOK, !IO),
                 maybe_set_exit_status(CompileOK, !IO)
             ),
@@ -1587,16 +1587,16 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
             output_pass(!.HLDS, GlobalData, LLDS, ModuleName,
                 _CompileErrors, FactTableBaseFiles, !IO)
         ),
-        recompilation__usage__write_usage_file(!.HLDS, NestedSubModules,
+        recompilation.usage.write_usage_file(!.HLDS, NestedSubModules,
             MaybeTimestamps, !IO),
         FindTimestampFiles(ModuleName, TimestampFiles, !IO),
-        list__foldl(touch_datestamp, TimestampFiles, !IO)
+        list.foldl(touch_datestamp, TimestampFiles, !IO)
     ;
         % If the number of errors is > 0, make sure that the compiler
         % exits with a non-zero exit status.
-        io__get_exit_status(ExitStatus, !IO),
+        io.get_exit_status(ExitStatus, !IO),
         ( ExitStatus = 0 ->
-            io__set_exit_status(1, !IO)
+            io.set_exit_status(1, !IO)
         ;
             true
         ),
@@ -1612,14 +1612,14 @@ mercury_compile_asm_c_code(ModuleName, !IO) :-
     module_name_to_file_name(ModuleName, ".c", no, CCode_C_File, !IO),
     ForeignModuleName = foreign_language_module_name(ModuleName, c),
     module_name_to_file_name(ForeignModuleName, Obj, yes, CCode_O_File, !IO),
-    io__output_stream(OutputStream, !IO),
-    compile_target_code__compile_c_file(OutputStream, PIC,
+    io.output_stream(OutputStream, !IO),
+    compile_target_code.compile_c_file(OutputStream, PIC,
         CCode_C_File, CCode_O_File, CompileOK, !IO),
     maybe_set_exit_status(CompileOK, !IO),
     % add this object file to the list
     % of extra object files to link in
-    globals__io_lookup_accumulating_option(link_objects, LinkObjects, !IO),
-    globals__io_set_option(link_objects,
+    globals.io_lookup_accumulating_option(link_objects, LinkObjects, !IO),
+    globals.io_set_option(link_objects,
         accumulating([CCode_O_File | LinkObjects]), !IO).
 
     % return `yes' iff this module defines the main/2 entry point.
@@ -1638,7 +1638,7 @@ mlds_has_main(MLDS) =
 :- pred get_linked_target_type(linked_target_type::out, io::di, io::uo) is det.
 
 get_linked_target_type(LinkedTargetType, !IO) :-
-    globals__io_lookup_bool_option(compile_to_shared_lib, MakeSharedLib, !IO),
+    globals.io_lookup_bool_option(compile_to_shared_lib, MakeSharedLib, !IO),
     ( MakeSharedLib = yes ->
         LinkedTargetType = shared_library
     ;
@@ -1655,15 +1655,15 @@ get_linked_target_type(LinkedTargetType, !IO) :-
 
 pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
         MaybeTimestamps, UndefTypes, UndefModes, FoundError, !DumpInfo, !IO) :-
-    globals__io_get_globals(Globals, !IO),
-    globals__lookup_bool_option(Globals, statistics, Stats),
-    globals__lookup_bool_option(Globals, verbose, Verbose),
-    globals__lookup_bool_option(Globals, invoked_by_mmc_make, MMCMake),
+    globals.io_get_globals(Globals, !IO),
+    globals.lookup_bool_option(Globals, statistics, Stats),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, invoked_by_mmc_make, MMCMake),
     DontWriteDFile1 = DontWriteDFile0 `or` MMCMake,
 
     % Don't write the `.d' file when making the `.opt' file because
     % we can't work out the full transitive implementation dependencies.
-    globals__lookup_bool_option(Globals, make_optimization_interface,
+    globals.lookup_bool_option(Globals, make_optimization_interface,
         MakeOptInt),
     DontWriteDFile = DontWriteDFile1 `or` MakeOptInt,
 
@@ -1694,13 +1694,13 @@ pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
     expand_equiv_types(Module, Items2, Verbose, Stats, Items, CircularTypes,
         EqvMap, RecompInfo0, RecompInfo, !IO),
     mq_info_set_recompilation_info(RecompInfo, MQInfo0, MQInfo),
-    bool__or(UndefTypes0, CircularTypes, UndefTypes1),
+    bool.or(UndefTypes0, CircularTypes, UndefTypes1),
 
     make_hlds(Module, Items, MQInfo, EqvMap, Verbose, Stats, HLDS0, QualInfo,
         UndefTypes2, UndefModes2, FoundError, !IO),
 
-    bool__or(UndefTypes1, UndefTypes2, UndefTypes),
-    bool__or(UndefModes0, UndefModes2, UndefModes),
+    bool.or(UndefTypes1, UndefTypes2, UndefTypes),
+    bool.or(UndefModes0, UndefModes2, UndefModes),
 
     maybe_dump_hlds(HLDS0, 1, "initial", !DumpInfo, !IO),
 
@@ -1710,11 +1710,11 @@ pre_hlds_pass(ModuleImports0, DontWriteDFile0, HLDS1, QualInfo,
         DontWriteDFile = no,
         module_info_get_all_deps(HLDS0, AllDeps),
         write_dependency_file(ModuleImports0, AllDeps, MaybeTransOptDeps, !IO),
-        globals__lookup_bool_option(Globals,
+        globals.lookup_bool_option(Globals,
             generate_mmc_make_module_dependencies, OutputMMCMakeDeps),
         (
             OutputMMCMakeDeps = yes,
-            make__write_module_dep_file(ModuleImports0, !IO)
+            make_write_module_dep_file(ModuleImports0, !IO)
         ;
             OutputMMCMakeDeps = no
         )
@@ -1739,7 +1739,7 @@ module_qualify_items(Items0, Items, ModuleName, Verbose, Stats, MQInfo,
         NumErrors, UndefTypes, UndefModes, !IO) :-
     maybe_write_string(Verbose, "% Module qualifying items...\n", !IO),
     maybe_flush_output(Verbose, !IO),
-    module_qual__module_qualify_items(Items0, Items, ModuleName, yes,
+    module_qual.module_qualify_items(Items0, Items, ModuleName, yes,
         MQInfo, NumErrors, UndefTypes, UndefModes, !IO),
     maybe_write_string(Verbose, "% done.\n", !IO),
     maybe_report_stats(Stats, !IO).
@@ -1750,14 +1750,14 @@ module_qualify_items(Items0, Items, ModuleName, Verbose, Stats, MQInfo,
 
 maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, Imports, Error,
         !IO) :-
-    globals__io_get_globals(Globals, !IO),
-    globals__lookup_bool_option(Globals, intermodule_optimization,
+    globals.io_get_globals(Globals, !IO),
+    globals.lookup_bool_option(Globals, intermodule_optimization,
         IntermodOpt),
-    globals__lookup_bool_option(Globals, use_opt_files, UseOptInt),
-    globals__lookup_bool_option(Globals, make_optimization_interface,
+    globals.lookup_bool_option(Globals, use_opt_files, UseOptInt),
+    globals.lookup_bool_option(Globals, make_optimization_interface,
         MakeOptInt),
-    globals__lookup_bool_option(Globals, transitive_optimization, TransOpt),
-    globals__lookup_bool_option(Globals, make_transitive_opt_interface,
+    globals.lookup_bool_option(Globals, transitive_optimization, TransOpt),
+    globals.lookup_bool_option(Globals, make_transitive_opt_interface,
         MakeTransOptInt),
     (
         ( UseOptInt = yes
@@ -1767,7 +1767,7 @@ maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, Imports, Error,
     ->
         maybe_write_string(Verbose, "% Reading .opt files...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        intermod__grab_optfiles(Imports0, Imports1, Error1, !IO),
+        intermod.grab_optfiles(Imports0, Imports1, Error1, !IO),
         maybe_write_string(Verbose, "% Done.\n", !IO)
     ;
         Imports1 = Imports0,
@@ -1778,14 +1778,14 @@ maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, Imports, Error,
             MaybeTransOptDeps = yes(TransOptDeps),
             % When creating the trans_opt file, only import the
             % trans_opt files which are lower in the ordering.
-            trans_opt__grab_optfiles(TransOptDeps, Imports1, Imports, Error2,
+            trans_opt.grab_optfiles(TransOptDeps, Imports1, Imports, Error2,
                 !IO)
         ;
             MaybeTransOptDeps = no,
             Imports = Imports1,
             Error2 = no,
             module_imports_get_module_name(Imports, ModuleName),
-            globals__lookup_bool_option(Globals, warn_missing_trans_opt_deps,
+            globals.lookup_bool_option(Globals, warn_missing_trans_opt_deps,
                 WarnNoTransOptDeps),
             (
                 WarnNoTransOptDeps = yes,
@@ -1812,9 +1812,9 @@ maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, Imports, Error,
             % not creating the .opt or .trans opt file, then import
             % the trans_opt files for all the modules that are
             % imported (or used), and for all ancestor modules.
-            list__condense([Imports0 ^ parent_deps,
+            list.condense([Imports0 ^ parent_deps,
                 Imports0 ^ int_deps, Imports0 ^ impl_deps], TransOptFiles),
-            trans_opt__grab_optfiles(TransOptFiles, Imports1, Imports, Error2,
+            trans_opt.grab_optfiles(TransOptFiles, Imports1, Imports, Error2,
                 !IO)
         ;
             TransOpt = no,
@@ -1822,7 +1822,7 @@ maybe_grab_optfiles(Imports0, Verbose, MaybeTransOptDeps, Imports, Error,
             Error2 = no
         )
     ),
-    bool__or(Error1, Error2, Error).
+    bool.or(Error1, Error2, Error).
 
 :- pred expand_equiv_types(module_name::in, item_list::in, bool::in, bool::in,
     item_list::out, bool::out, eqv_map::out,
@@ -1833,7 +1833,7 @@ expand_equiv_types(ModuleName, Items0, Verbose, Stats, Items, CircularTypes,
     EqvMap, RecompInfo0, RecompInfo, !IO) :-
     maybe_write_string(Verbose, "% Expanding equivalence types...", !IO),
     maybe_flush_output(Verbose, !IO),
-    equiv_type__expand_eqv_types(ModuleName, Items0, Items, CircularTypes,
+    equiv_type.expand_eqv_types(ModuleName, Items0, Items, CircularTypes,
         EqvMap, RecompInfo0, RecompInfo, !IO),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
@@ -1850,14 +1850,14 @@ make_hlds(Module, Items, MQInfo, EqvMap, Verbose, Stats, HLDS, QualInfo,
     parse_tree_to_hlds(Prog, MQInfo, EqvMap, HLDS, QualInfo,
         UndefTypes, UndefModes, !IO),
     module_info_get_num_errors(HLDS, NumErrors),
-    io__get_exit_status(Status, !IO),
+    io.get_exit_status(Status, !IO),
     (
         ( Status \= 0
         ; NumErrors > 0
         )
     ->
         FoundSemanticError = yes,
-        io__set_exit_status(1, !IO)
+        io.set_exit_status(1, !IO)
     ;
         FoundSemanticError = no
     ),
@@ -1875,18 +1875,18 @@ frontend_pass(QualInfo0, FoundUndefTypeError, FoundUndefModeError, !FoundError,
         !HLDS, !DumpInfo, !IO) :-
     % We can't continue after an undefined type error, since typecheck
     % would get internal errors.
-    globals__io_get_globals(Globals, !IO),
-    globals__lookup_bool_option(Globals, verbose, Verbose),
+    globals.io_get_globals(Globals, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
     (
         FoundUndefTypeError = yes,
         !:FoundError = yes,
         maybe_write_string(Verbose,
             "% Program contains undefined type error(s).\n", !IO),
-        io__set_exit_status(1, !IO)
+        io.set_exit_status(1, !IO)
     ;
         FoundUndefTypeError = no,
         maybe_write_string(Verbose, "% Checking typeclasses...\n", !IO),
-        check_typeclass__check_typeclasses(QualInfo0, QualInfo, !HLDS,
+        check_typeclass.check_typeclasses(QualInfo0, QualInfo, !HLDS,
             FoundTypeclassError, !IO),
         maybe_dump_hlds(!.HLDS, 5, "typeclass", !DumpInfo, !IO),
         set_module_recomp_info(QualInfo, !HLDS),
@@ -1909,12 +1909,12 @@ frontend_pass(QualInfo0, FoundUndefTypeError, FoundUndefModeError, !FoundError,
 
 frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
         !IO) :-
-    globals__io_get_globals(Globals, !IO),
-    globals__lookup_bool_option(Globals, verbose, Verbose),
-    globals__lookup_bool_option(Globals, statistics, Stats),
-    globals__lookup_bool_option(Globals, intermodule_optimization, Intermod),
-    globals__lookup_bool_option(Globals, use_opt_files, UseOptFiles),
-    globals__lookup_bool_option(Globals, make_optimization_interface,
+    globals.io_get_globals(Globals, !IO),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
+    globals.lookup_bool_option(Globals, intermodule_optimization, Intermod),
+    globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
+    globals.lookup_bool_option(Globals, make_optimization_interface,
         MakeOptInt),
     (
         ( Intermod = yes
@@ -1943,7 +1943,7 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
         FoundTypeError = yes,
         maybe_write_string(Verbose,
             "% Program contains type error(s).\n", !IO),
-        io__set_exit_status(1, !IO)
+        io.set_exit_status(1, !IO)
     ;
         FoundTypeError = no,
         maybe_write_string(Verbose, "% Program is type-correct.\n", !IO)
@@ -1963,12 +1963,12 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
         maybe_write_string(Verbose,
             "% Program contains undefined inst " ++
             "or undefined mode error(s).\n", !IO),
-        io__set_exit_status(1, !IO)
+        io.set_exit_status(1, !IO)
     ; ExceededTypeCheckIterationLimit = yes ->
         % FoundTypeError will always be true here, so we've already
         % printed a message about the program containing type errors.
         !:FoundError = yes,
-        io__set_exit_status(1, !IO)
+        io.set_exit_status(1, !IO)
     ;
         puritycheck(Verbose, Stats, !HLDS, FoundTypeError,
             FoundPostTypecheckError, !IO),
@@ -1979,7 +1979,7 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
         %
         % Stop here if `--typecheck-only' was specified.
         %
-        globals__lookup_bool_option(Globals, typecheck_only, TypecheckOnly),
+        globals.lookup_bool_option(Globals, typecheck_only, TypecheckOnly),
         (
             TypecheckOnly = yes
         ->
@@ -2024,27 +2024,27 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
-    globals__io_get_globals(Globals, !IO),
-    globals__lookup_bool_option(Globals, intermodule_optimization, Intermod),
-    globals__lookup_bool_option(Globals, intermod_unused_args, IntermodArgs),
-    globals__lookup_accumulating_option(Globals, intermod_directories,
+    globals.io_get_globals(Globals, !IO),
+    globals.lookup_bool_option(Globals, intermodule_optimization, Intermod),
+    globals.lookup_bool_option(Globals, intermod_unused_args, IntermodArgs),
+    globals.lookup_accumulating_option(Globals, intermod_directories,
         IntermodDirs),
-    globals__lookup_bool_option(Globals, use_opt_files, UseOptFiles),
-    globals__lookup_bool_option(Globals, verbose, Verbose),
-    globals__lookup_bool_option(Globals, statistics, Stats),
-    globals__lookup_bool_option(Globals, termination, Termination),
-    globals__lookup_bool_option(Globals, termination2, Termination2),
-    globals__lookup_bool_option(Globals, structure_sharing_analysis, 
+    globals.lookup_bool_option(Globals, use_opt_files, UseOptFiles),
+    globals.lookup_bool_option(Globals, verbose, Verbose),
+    globals.lookup_bool_option(Globals, statistics, Stats),
+    globals.lookup_bool_option(Globals, termination, Termination),
+    globals.lookup_bool_option(Globals, termination2, Termination2),
+    globals.lookup_bool_option(Globals, structure_sharing_analysis, 
         SharingAnalysis), 
-    globals__lookup_bool_option(Globals, analyse_exceptions,
+    globals.lookup_bool_option(Globals, analyse_exceptions,
         ExceptionAnalysis),
-    globals__lookup_bool_option(Globals, analyse_closures,
+    globals.lookup_bool_option(Globals, analyse_closures,
         ClosureAnalysis),
-    globals__lookup_bool_option(Globals, analyse_trail_usage,
+    globals.lookup_bool_option(Globals, analyse_trail_usage,
         TrailingAnalysis),
     (
         MakeOptInt = yes,
-        intermod__write_optfile(!HLDS, !IO),
+        intermod.write_optfile(!HLDS, !IO),
 
         % If intermod_unused_args is being performed, run polymorphism,
         % mode analysis and determinism analysis, then run unused_args
@@ -2110,7 +2110,7 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
                     TrailingAnalysis = no
                 )
             ;
-                io__set_exit_status(1, !IO)
+                io.set_exit_status(1, !IO)
             )
         ;
             true
@@ -2131,7 +2131,7 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
             search_for_file(IntermodDirs, OptName, Found, !IO),
             ( Found = ok(_) ->
                 UpdateStatus = yes,
-                io__seen(!IO)
+                io.seen(!IO)
             ;
                 UpdateStatus = no
             )
@@ -2140,7 +2140,7 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
         ),
         (
             UpdateStatus = yes,
-            intermod__adjust_pred_import_status(!HLDS, !IO)
+            intermod.adjust_pred_import_status(!HLDS, !IO)
         ;
             UpdateStatus = no
         )
@@ -2150,9 +2150,9 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
     io::di, io::uo) is det.
 
 output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
-    globals__io_lookup_bool_option(statistics, Stats, !IO),
-    globals__io_lookup_bool_option(analyse_closures, ClosureAnalysis, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(statistics, Stats, !IO),
+    globals.io_lookup_bool_option(analyse_closures, ClosureAnalysis, !IO),
     %
     % Closure analysis assumes that lambda expressions have
     % been converted into separate predicates.
@@ -2176,16 +2176,16 @@ output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 167, "trail_usage", !DumpInfo, !IO),
     maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 193, "structure_sharing", !DumpInfo, !IO),
-    trans_opt__write_optfile(!.HLDS, !IO).
+    trans_opt.write_optfile(!.HLDS, !IO).
 
 :- pred output_analysis_file(module_name::in,
     module_info::in, dump_info::in, dump_info::out,
     io::di, io::uo) is det.
 
 output_analysis_file(ModuleName, !.HLDS, !DumpInfo, !IO) :-
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
-    globals__io_lookup_bool_option(statistics, Stats, !IO),
-    globals__io_lookup_bool_option(analyse_closures, ClosureAnalysis, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(statistics, Stats, !IO),
+    globals.io_lookup_bool_option(analyse_closures, ClosureAnalysis, !IO),
     %
     % Closure analysis assumes that lambda expressions have
     % been converted into separate predicates.
@@ -2215,15 +2215,15 @@ output_analysis_file(ModuleName, !.HLDS, !DumpInfo, !IO) :-
     ModuleId = module_name_to_module_id(ModuleName),
     ImportedModuleIds = set.map(module_name_to_module_id,
         ImportedModules),
-    analysis__write_analysis_files(mmc, ModuleId, ImportedModuleIds,
+    analysis.write_analysis_files(mmc, ModuleId, ImportedModuleIds,
         AnalysisInfo, _AnalysisInfo, !IO).
 
 :- pred frontend_pass_by_phases(module_info::in, module_info::out,
     bool::out, dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !IO) :-
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
-    globals__io_lookup_bool_option(statistics, Stats, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(statistics, Stats, !IO),
 
     maybe_polymorphism(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 30, "polymorphism", !DumpInfo, !IO),
@@ -2259,7 +2259,7 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !IO) :-
         maybe_dump_hlds(!.HLDS, 65, "frontend_simplify", !DumpInfo, !IO),
 
         % Work out whether we encountered any errors.
-        io__get_exit_status(ExitStatus, !IO),
+        io.get_exit_status(ExitStatus, !IO),
         (
             FoundModeError = no,
             FoundDetError = no,
@@ -2284,8 +2284,8 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !IO) :-
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
-    globals__io_lookup_bool_option(statistics, Stats, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(statistics, Stats, !IO),
 
     maybe_read_experimental_complexity_file(!HLDS, !IO),
 
@@ -2428,14 +2428,14 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
 
 backend_pass(!HLDS, GlobalData, LLDS, !DumpInfo, !IO) :-
     module_info_get_name(!.HLDS, ModuleName),
-    globals__io_lookup_bool_option(unboxed_float, UnboxFloat, !IO),
-    globals__io_lookup_bool_option(common_data, DoCommonData, !IO),
+    globals.io_lookup_bool_option(unboxed_float, UnboxFloat, !IO),
+    globals.io_lookup_bool_option(common_data, DoCommonData, !IO),
     StaticCellInfo0 = init_static_cell_info(ModuleName, UnboxFloat,
         DoCommonData),
     global_data_init(StaticCellInfo0, GlobalData0),
 
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
-    globals__io_lookup_bool_option(statistics, Stats, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(statistics, Stats, !IO),
 
     % map_args_to_regs affects the interface to a predicate,
     % so it must be done in one phase immediately before code generation
@@ -2443,7 +2443,7 @@ backend_pass(!HLDS, GlobalData, LLDS, !DumpInfo, !IO) :-
     map_args_to_regs(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 305, "args_to_regs", !DumpInfo, !IO),
 
-    globals__io_lookup_bool_option(trad_passes, TradPasses, !IO),
+    globals.io_lookup_bool_option(trad_passes, TradPasses, !IO),
     (
         TradPasses = no,
         backend_pass_by_phases(!HLDS, GlobalData0, GlobalData, LLDS, !DumpInfo,
@@ -2460,8 +2460,8 @@ backend_pass(!HLDS, GlobalData, LLDS, !DumpInfo, !IO) :-
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 backend_pass_by_phases(!HLDS, !GlobalData, LLDS, !DumpInfo, !IO) :-
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
-    globals__io_lookup_bool_option(statistics, Stats, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(statistics, Stats, !IO),
 
     maybe_saved_vars(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 310, "saved_vars_const", !DumpInfo, !IO),
@@ -2502,17 +2502,17 @@ backend_pass_by_phases(!HLDS, !GlobalData, LLDS, !DumpInfo, !IO) :-
 
 backend_pass_by_preds(!HLDS, !GlobalData, LLDS, !IO) :-
     module_info_predids(!.HLDS, PredIds),
-    globals__io_lookup_bool_option(optimize_proc_dups, ProcDups, !IO),
+    globals.io_lookup_bool_option(optimize_proc_dups, ProcDups, !IO),
     (
         ProcDups = no,
         OrderedPredIds = PredIds,
         MaybeDupProcMap = no
     ;
         ProcDups = yes,
-        dependency_graph__build_pred_dependency_graph(!.HLDS,
+        dependency_graph.build_pred_dependency_graph(!.HLDS,
             do_not_include_imported, DepInfo),
         hlds_dependency_info_get_dependency_ordering(DepInfo, PredSCCs),
-        list__condense(PredSCCs, OrderedPredIds),
+        list.condense(PredSCCs, OrderedPredIds),
         MaybeDupProcMap = yes(map.init)
     ),
     backend_pass_by_preds_2(OrderedPredIds, !HLDS, !GlobalData,
@@ -2520,27 +2520,27 @@ backend_pass_by_preds(!HLDS, !GlobalData, LLDS, !IO) :-
 
 :- pred backend_pass_by_preds_2(list(pred_id)::in,
     module_info::in, module_info::out, global_data::in, global_data::out,
-    maybe(map(mdbcomp__prim_data__proc_label,
-        mdbcomp__prim_data__proc_label))::in,
+    maybe(map(mdbcomp.prim_data.proc_label,
+        mdbcomp.prim_data.proc_label))::in,
     list(c_procedure)::out, io::di, io::uo) is det.
 
 backend_pass_by_preds_2([], !HLDS, !GlobalData, _, [], !IO).
 backend_pass_by_preds_2([PredId | PredIds], !HLDS,
         !GlobalData, !.MaybeDupProcMap, Code, !IO) :-
     module_info_preds(!.HLDS, PredTable),
-    map__lookup(PredTable, PredId, PredInfo),
+    map.lookup(PredTable, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
     (
         ProcIds = [],
         ProcList = []
     ;
         ProcIds = [_ | _],
-        globals__io_lookup_bool_option(verbose, Verbose, !IO),
+        globals.io_lookup_bool_option(verbose, Verbose, !IO),
         (
             Verbose = yes,
-            io__write_string("% Generating code for ", !IO),
-            hlds_out__write_pred_id(!.HLDS, PredId, !IO),
-            io__write_string("\n", !IO)
+            io.write_string("% Generating code for ", !IO),
+            hlds_out.write_pred_id(!.HLDS, PredId, !IO),
+            io.write_string("\n", !IO)
         ;
             Verbose = no
         ),
@@ -2555,25 +2555,25 @@ backend_pass_by_preds_2([PredId | PredIds], !HLDS,
             % modules, we must switch off the tracing of such preds on a
             % pred-by-pred basis; module-by-module wouldn't work.
             module_info_get_globals(!.HLDS, Globals0),
-            globals__get_trace_level(Globals0, TraceLevel),
-            globals__set_trace_level_none(Globals0, Globals1),
+            globals.get_trace_level(Globals0, TraceLevel),
+            globals.set_trace_level_none(Globals0, Globals1),
             module_info_set_globals(Globals1, !HLDS),
             copy(Globals1, Globals1Unique),
-            globals__io_set_globals(Globals1Unique, !IO),
+            globals.io_set_globals(Globals1Unique, !IO),
             backend_pass_by_preds_3(ProcIds, PredId, PredInfo, !HLDS,
                 !GlobalData, IdProcList, !IO),
             module_info_get_globals(!.HLDS, Globals2),
-            globals__set_trace_level(TraceLevel, Globals2, Globals),
+            globals.set_trace_level(TraceLevel, Globals2, Globals),
             module_info_set_globals(Globals, !HLDS),
             copy(Globals, GlobalsUnique),
-            globals__io_set_globals(GlobalsUnique, !IO)
+            globals.io_set_globals(GlobalsUnique, !IO)
         ;
             backend_pass_by_preds_3(ProcIds, PredId, PredInfo, !HLDS,
                 !GlobalData, IdProcList, !IO)
         ),
         (
             !.MaybeDupProcMap = no,
-            assoc_list__values(IdProcList, ProcList)
+            assoc_list.values(IdProcList, ProcList)
         ;
             !.MaybeDupProcMap = yes(DupProcMap0),
             eliminate_duplicate_procs(IdProcList, ProcList,
@@ -2583,11 +2583,11 @@ backend_pass_by_preds_2([PredId | PredIds], !HLDS,
     ),
     backend_pass_by_preds_2(PredIds, !HLDS, !GlobalData, !.MaybeDupProcMap,
         TailPredsCode, !IO),
-    list__append(ProcList, TailPredsCode, Code).
+    list.append(ProcList, TailPredsCode, Code).
 
 :- pred backend_pass_by_preds_3(list(proc_id)::in, pred_id::in, pred_info::in,
     module_info::in, module_info::out, global_data::in, global_data::out,
-    assoc_list(mdbcomp__prim_data__proc_label, c_procedure)::out,
+    assoc_list(mdbcomp.prim_data.proc_label, c_procedure)::out,
     io::di, io::uo) is det.
 
 backend_pass_by_preds_3([], _, _, !HLDS, !GlobalData, [], !IO).
@@ -2595,7 +2595,7 @@ backend_pass_by_preds_3([ProcId | ProcIds], PredId, PredInfo, !HLDS,
         !GlobalData, [ProcLabel - Proc | Procs], !IO) :-
     ProcLabel = make_proc_label(!.HLDS, PredId, ProcId),
     pred_info_procedures(PredInfo, ProcTable),
-    map__lookup(ProcTable, ProcId, ProcInfo),
+    map.lookup(ProcTable, ProcId, ProcInfo),
     backend_pass_by_preds_4(PredInfo, ProcInfo, _, ProcId, PredId, !HLDS,
         !GlobalData, Proc, !IO),
     backend_pass_by_preds_3(ProcIds, PredId, PredInfo, !HLDS, !GlobalData,
@@ -2609,7 +2609,7 @@ backend_pass_by_preds_3([ProcId | ProcIds], PredId, PredInfo, !HLDS,
 backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
         !GlobalData, ProcCode, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals__lookup_bool_option(Globals, optimize_saved_vars_const,
+    globals.lookup_bool_option(Globals, optimize_saved_vars_const,
         SavedVarsConst),
     (
         SavedVarsConst = yes,
@@ -2617,7 +2617,7 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
     ;
         SavedVarsConst = no
     ),
-    globals__lookup_bool_option(Globals, optimize_saved_vars_cell,
+    globals.lookup_bool_option(Globals, optimize_saved_vars_cell,
         SavedVarsCell),
     (
         SavedVarsCell = yes,
@@ -2625,8 +2625,8 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
     ;
         SavedVarsCell = no
     ),
-    globals__lookup_bool_option(Globals, follow_code, FollowCode),
-    globals__lookup_bool_option(Globals, prev_code, PrevCode),
+    globals.lookup_bool_option(Globals, follow_code, FollowCode),
+    globals.lookup_bool_option(Globals, prev_code, PrevCode),
     (
         ( FollowCode = yes
         ; PrevCode = yes
@@ -2669,11 +2669,11 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
         "% Allocating storage locations for live vars in ",
         PredId, ProcId, !.HLDS, !IO),
     allocate_store_maps(final_allocation, PredId, !.HLDS, !ProcInfo),
-    globals__io_get_trace_level(TraceLevel, !IO),
+    globals.io_get_trace_level(TraceLevel, !IO),
     ( given_trace_level_is_none(TraceLevel) = no ->
         write_proc_progress_message("% Calculating goal paths in ",
             PredId, ProcId, !.HLDS, !IO),
-        goal_path__fill_slots(!.HLDS, !ProcInfo)
+        fill_goal_path_slots(!.HLDS, !ProcInfo)
     ;
         true
     ),
@@ -2681,7 +2681,7 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
         PredId, ProcId, !.HLDS, !IO),
     generate_proc_code(PredInfo, !.ProcInfo, ProcId, PredId, !.HLDS,
         !GlobalData, ProcCode0),
-    globals__lookup_bool_option(Globals, optimize, Optimize),
+    globals.lookup_bool_option(Globals, optimize, Optimize),
     (
         Optimize = yes,
         optimize_proc(!.GlobalData, ProcCode0, ProcCode, !IO)
@@ -2693,7 +2693,7 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
     write_proc_progress_message(
         "% Generating call continuation information for ",
         PredId, ProcId, !.HLDS, !IO),
-    continuation_info__maybe_process_proc_llds(Instructions, PredProcId,
+    continuation_info.maybe_process_proc_llds(Instructions, PredProcId,
         !.HLDS, !GlobalData).
 
 %-----------------------------------------------------------------------------%
@@ -2710,7 +2710,7 @@ puritycheck(Verbose, Stats, !HLDS, FoundTypeError, FoundPostTypecheckError,
     ( NumErrors \= NumErrors0 ->
         maybe_write_string(Verbose,
             "% Program contains purity error(s).\n", !IO),
-        io__set_exit_status(1, !IO)
+        io.set_exit_status(1, !IO)
     ;
         maybe_write_string(Verbose,
             "% Program is purity-correct.\n", !IO)
@@ -2732,7 +2732,7 @@ modecheck(Verbose, Stats, !HLDS, FoundModeError, UnsafeToContinue, !IO) :-
         FoundModeError = yes,
         maybe_write_string(Verbose, "% Program contains mode error(s).\n",
             !IO),
-        io__set_exit_status(1, !IO)
+        io.set_exit_status(1, !IO)
     ;
         FoundModeError = no,
         maybe_write_string(Verbose, "% Program is mode-correct.\n", !IO)
@@ -2743,12 +2743,12 @@ modecheck(Verbose, Stats, !HLDS, FoundModeError, UnsafeToContinue, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_mode_constraints(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(mode_constraints, ModeConstraints, !IO),
+    globals.io_lookup_bool_option(mode_constraints, ModeConstraints, !IO),
     (
         ModeConstraints = yes,
         maybe_write_string(Verbose, "% Dumping mode constraints...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        maybe_benchmark_modes(mode_constraints__process_module,
+        maybe_benchmark_modes(mode_constraints.process_module,
             "mode-constraints", !HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
@@ -2760,15 +2760,15 @@ maybe_mode_constraints(Verbose, Stats, !HLDS, !IO) :-
     is det), string::in, T1::in, T2::out, io::di, io::uo) is det.
 
 maybe_benchmark_modes(Pred, Stage, A0, A, !IO) :-
-    globals__io_lookup_bool_option(benchmark_modes, BenchmarkModes, !IO),
+    globals.io_lookup_bool_option(benchmark_modes, BenchmarkModes, !IO),
     (
         BenchmarkModes = yes,
-        globals__io_lookup_int_option(benchmark_modes_repeat, Repeats, !IO),
-        io__format("%s %d ", [s(Stage), i(Repeats)], !IO),
+        globals.io_lookup_int_option(benchmark_modes_repeat, Repeats, !IO),
+        io.format("%s %d ", [s(Stage), i(Repeats)], !IO),
         promise_equivalent_solutions [A, Time, !:IO] (
             do_io_benchmark(Pred, Repeats, A0, A - Time, !IO)
         ),
-        io__format("%d ms\n", [i(Time)], !IO)
+        io.format("%d ms\n", [i(Time)], !IO)
     ;
         BenchmarkModes = no,
         Pred(A0, A, !IO)
@@ -2794,7 +2794,7 @@ detect_switches(Verbose, Stats, !HLDS, !IO) :-
     io::di, io::uo) is det.
 
 detect_cse(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(common_goal, CommonGoal, !IO),
+    globals.io_lookup_bool_option(common_goal, CommonGoal, !IO),
     (
         CommonGoal = yes,
         maybe_write_string(Verbose,
@@ -2817,7 +2817,7 @@ check_determinism(Verbose, Stats, !HLDS, FoundError, !IO) :-
         FoundError = yes,
         maybe_write_string(Verbose,
             "% Program contains determinism error(s).\n", !IO),
-        io__set_exit_status(1, !IO)
+        io.set_exit_status(1, !IO)
     ;
         FoundError = no,
         maybe_write_string(Verbose, "% Program is determinism-correct.\n", !IO)
@@ -2859,9 +2859,9 @@ mercury_compile.maybe_exception_analysis(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_termination(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_get_globals(Globals, !IO),
-    globals__lookup_bool_option(Globals, polymorphism, Polymorphism),
-    globals__lookup_bool_option(Globals, termination, Termination),
+    globals.io_get_globals(Globals, !IO),
+    globals.lookup_bool_option(Globals, polymorphism, Polymorphism),
+    globals.lookup_bool_option(Globals, termination, Termination),
     % Termination analysis requires polymorphism to be run,
     % since it does not handle complex unification
     (
@@ -2880,8 +2880,8 @@ maybe_termination(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_termination2(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(polymorphism, Polymorphism, !IO),
-    globals__io_lookup_bool_option(termination2, Termination2, !IO),
+    globals.io_lookup_bool_option(polymorphism, Polymorphism, !IO),
+    globals.io_lookup_bool_option(termination2, Termination2, !IO),
     % Termination analysis requires polymorphism to be run,
     % as termination analysis does not handle complex unification.
     ( 
@@ -2889,7 +2889,7 @@ maybe_termination2(Verbose, Stats, !HLDS, !IO) :-
         Termination2 = yes
     ->
         maybe_write_string(Verbose, "% Detecting termination 2...\n", !IO),
-        term_constr_main__pass(!HLDS, !IO),
+        term_constr_main.pass(!HLDS, !IO),
         maybe_write_string(Verbose, "% Termination 2 checking done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -2917,13 +2917,13 @@ check_unique_modes(Verbose, Stats, !HLDS, FoundError, !IO) :-
     maybe_write_string(Verbose,
         "% Checking for backtracking over unique modes...\n", !IO),
     module_info_get_num_errors(!.HLDS, NumErrors0),
-    unique_modes__check_module(!HLDS, !IO),
+    unique_modes.check_module(!HLDS, !IO),
     module_info_get_num_errors(!.HLDS, NumErrors),
     ( NumErrors \= NumErrors0 ->
         FoundError = yes,
         maybe_write_string(Verbose,
             "% Program contains unique mode error(s).\n", !IO),
-        io__set_exit_status(1, !IO)
+        io.set_exit_status(1, !IO)
     ;
         FoundError = no,
         maybe_write_string(Verbose, "% Program is unique-mode-correct.\n", !IO)
@@ -2936,18 +2936,18 @@ check_unique_modes(Verbose, Stats, !HLDS, FoundError, !IO) :-
 check_stratification(Verbose, Stats, !HLDS, FoundError,
         !IO) :-
     module_info_get_stratified_preds(!.HLDS, StratifiedPreds),
-    globals__io_lookup_bool_option(warn_non_stratification, Warn, !IO),
+    globals.io_lookup_bool_option(warn_non_stratification, Warn, !IO),
     (
-        ( \+ set__empty(StratifiedPreds)
+        ( \+ set.empty(StratifiedPreds)
         ; Warn = yes
         )
     ->
         maybe_write_string(Verbose,
             "% Checking stratification...\n", !IO),
-        io__get_exit_status(OldStatus, !IO),
-        io__set_exit_status(0, !IO),
-        stratify__check_stratification(!HLDS, !IO),
-        io__get_exit_status(NewStatus, !IO),
+        io.get_exit_status(OldStatus, !IO),
+        io.set_exit_status(0, !IO),
+        stratify.check_stratification(!HLDS, !IO),
+        io.get_exit_status(NewStatus, !IO),
         ( NewStatus \= 0 ->
             FoundError = yes,
             maybe_write_string(Verbose,
@@ -2955,7 +2955,7 @@ check_stratification(Verbose, Stats, !HLDS, FoundError,
         ;
             FoundError = no,
             maybe_write_string(Verbose, "% done.\n", !IO),
-            io__set_exit_status(OldStatus, !IO)
+            io.set_exit_status(OldStatus, !IO)
         ),
         maybe_report_stats(Stats, !IO)
     ;
@@ -2966,7 +2966,7 @@ check_stratification(Verbose, Stats, !HLDS, FoundError,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(warn_dead_procs, WarnDead, !IO),
+    globals.io_lookup_bool_option(warn_dead_procs, WarnDead, !IO),
     (
         WarnDead = yes,
         maybe_write_string(Verbose, "% Warning about dead procedures...\n",
@@ -2985,7 +2985,7 @@ maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO) :-
 %       `pragma type_spec' declarations.  So we can't use the
 %       code below.  Instead we need to keep original HLDS.
 %
-%       %%% globals__io_lookup_bool_option(optimize_dead_procs,
+%       %%% globals.io_lookup_bool_option(optimize_dead_procs,
 %       %%%     OptimizeDead, !IO),
 %       %%% ( OptimizeDead = yes ->
 %       %%%     !:HLDS = HLDS1
@@ -3089,7 +3089,7 @@ simplify(Warn, SimplifyPass, Verbose, Stats, Process, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_mark_static_terms(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(static_ground_terms, StaticGroundTerms,
+    globals.io_lookup_bool_option(static_ground_terms, StaticGroundTerms,
         !IO),
     (
         StaticGroundTerms = yes,
@@ -3109,13 +3109,13 @@ maybe_mark_static_terms(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(use_trail, UseTrail, !IO),
+    globals.io_lookup_bool_option(use_trail, UseTrail, !IO),
     (
         UseTrail = no,
         EmitTrailOps = no
     ;
         UseTrail = yes,
-        globals__io_lookup_bool_option(disable_trail_ops, DisableTrailOps,
+        globals.io_lookup_bool_option(disable_trail_ops, DisableTrailOps,
             !IO),
         (
             DisableTrailOps = yes,
@@ -3157,10 +3157,10 @@ maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_add_heap_ops(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_get_gc_method(GC, !IO),
-    globals__io_lookup_bool_option(reclaim_heap_on_semidet_failure,
+    globals.io_get_gc_method(GC, !IO),
+    globals.io_lookup_bool_option(reclaim_heap_on_semidet_failure,
         SemidetReclaim, !IO),
-    globals__io_lookup_bool_option(reclaim_heap_on_nondet_failure,
+    globals.io_lookup_bool_option(reclaim_heap_on_nondet_failure,
         NondetReclaim, !IO),
     (
         gc_is_conservative(GC) = yes
@@ -3188,7 +3188,7 @@ maybe_add_heap_ops(Verbose, Stats, !HLDS, !IO) :-
             "`--reclaim-heap-on-nondet-failure'. " ++
             "Use `--(no-)reclaim-heap-on-failure' instead.",
         write_error_pieces_plain([words(Msg)], !IO),
-        io__set_exit_status(1, !IO)
+        io.set_exit_status(1, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3197,19 +3197,19 @@ maybe_add_heap_ops(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_write_dependency_graph(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(show_dependency_graph, ShowDepGraph, !IO),
+    globals.io_lookup_bool_option(show_dependency_graph, ShowDepGraph, !IO),
     (
         ShowDepGraph = yes,
         maybe_write_string(Verbose, "% Writing dependency graph...", !IO),
         module_info_get_name(!.HLDS, ModuleName),
         module_name_to_file_name(ModuleName, ".dependency_graph", yes,
             FileName, !IO),
-        io__open_output(FileName, Res, !IO),
+        io.open_output(FileName, Res, !IO),
         ( Res = ok(FileStream) ->
-            io__set_output_stream(FileStream, OutputStream, !IO),
-            dependency_graph__write_dependency_graph(!HLDS, !IO),
-            io__set_output_stream(OutputStream, _, !IO),
-            io__close_output(FileStream, !IO),
+            io.set_output_stream(FileStream, OutputStream, !IO),
+            dependency_graph.write_dependency_graph(!HLDS, !IO),
+            io.set_output_stream(OutputStream, _, !IO),
+            io.close_output(FileStream, !IO),
             maybe_write_string(Verbose, " done.\n", !IO)
         ;
             report_error("unable to write dependency graph.", !IO)
@@ -3226,8 +3226,8 @@ maybe_write_dependency_graph(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(profile_calls, ProfileCalls, !IO),
-    globals__io_lookup_bool_option(profile_time, ProfileTime, !IO),
+    globals.io_lookup_bool_option(profile_calls, ProfileCalls, !IO),
+    globals.io_lookup_bool_option(profile_time, ProfileTime, !IO),
     (
         ( ProfileCalls = yes
         ; ProfileTime = yes
@@ -3238,12 +3238,12 @@ maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
         maybe_flush_output(Verbose, !IO),
         module_info_get_name(!.HLDS, ModuleName),
         module_name_to_file_name(ModuleName, ".prof", yes, ProfFileName, !IO),
-        io__open_output(ProfFileName, Res, !IO),
+        io.open_output(ProfFileName, Res, !IO),
         ( Res = ok(FileStream) ->
-            io__set_output_stream(FileStream, OutputStream, !IO),
-            dependency_graph__write_prof_dependency_graph(!HLDS, !IO),
-            io__set_output_stream(OutputStream, _, !IO),
-            io__close_output(FileStream, !IO)
+            io.set_output_stream(FileStream, OutputStream, !IO),
+            dependency_graph.write_prof_dependency_graph(!HLDS, !IO),
+            io.set_output_stream(OutputStream, _, !IO),
+            io.close_output(FileStream, !IO)
         ;
             report_error("unable to write profiling static call graph.", !IO)
         ),
@@ -3261,7 +3261,7 @@ maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
 tabling(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Transforming tabled predicates...", !IO),
     maybe_flush_output(Verbose, !IO),
-    table_gen__process_module(!HLDS, !IO),
+    table_gen.process_module(!HLDS, !IO),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -3273,7 +3273,7 @@ tabling(Verbose, Stats, !HLDS, !IO) :-
 process_lambdas(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Transforming lambda expressions...", !IO),
     maybe_flush_output(Verbose, !IO),
-    lambda__process_module(!HLDS),
+    lambda.process_module(!HLDS),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -3285,7 +3285,7 @@ process_lambdas(Verbose, Stats, !HLDS, !IO) :-
 expand_equiv_types_hlds(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Fully expanding equivalence types...", !IO),
     maybe_flush_output(Verbose, !IO),
-    equiv_type_hlds__replace_in_hlds(!HLDS),
+    equiv_type_hlds.replace_in_hlds(!HLDS),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -3295,13 +3295,13 @@ expand_equiv_types_hlds(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_polymorphism(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(polymorphism, Polymorphism, !IO),
+    globals.io_lookup_bool_option(polymorphism, Polymorphism, !IO),
     (
         Polymorphism = yes,
         maybe_write_string(Verbose,
             "% Transforming polymorphic unifications...", !IO),
         maybe_flush_output(Verbose, !IO),
-        polymorphism__process_module(!HLDS, !IO),
+        polymorphism.process_module(!HLDS, !IO),
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -3318,13 +3318,13 @@ maybe_polymorphism(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_type_ctor_infos(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(type_ctor_info, TypeCtorInfo, !IO),
+    globals.io_lookup_bool_option(type_ctor_info, TypeCtorInfo, !IO),
     (
         TypeCtorInfo = yes,
         maybe_write_string(Verbose,
             "% Generating type_ctor_info structures...", !IO),
         maybe_flush_output(Verbose, !IO),
-        type_ctor_info__generate_hlds(!HLDS),
+        type_ctor_info.generate_hlds(!HLDS),
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -3335,14 +3335,14 @@ maybe_type_ctor_infos(Verbose, Stats, !HLDS, !IO) :-
     bool::in, bool::in, dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 maybe_bytecodes(HLDS0, ModuleName, Verbose, Stats, !DumpInfo, !IO) :-
-    globals__io_lookup_bool_option(generate_bytecode, GenBytecode, !IO),
+    globals.io_lookup_bool_option(generate_bytecode, GenBytecode, !IO),
     (
         GenBytecode = yes,
         map_args_to_regs(Verbose, Stats, HLDS0, HLDS1, !IO),
         maybe_dump_hlds(HLDS1, 505, "bytecode_args_to_regs", !DumpInfo, !IO),
         maybe_write_string(Verbose, "% Generating bytecodes...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        bytecode_gen__gen_module(HLDS1, Bytecode, !IO),
+        bytecode_gen.gen_module(HLDS1, Bytecode, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO),
         module_name_to_file_name(ModuleName, ".bytedebug", yes, BytedebugFile,
@@ -3403,9 +3403,9 @@ maybe_tuple_arguments(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_higher_order(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(optimize_higher_order, HigherOrder, !IO),
+    globals.io_lookup_bool_option(optimize_higher_order, HigherOrder, !IO),
     % --type-specialization implies --user-guided-type-specialization.
-    globals__io_lookup_bool_option(user_guided_type_specialization, Types,
+    globals.io_lookup_bool_option(user_guided_type_specialization, Types,
         !IO),
 
     % Always produce the specialized versions for which
@@ -3416,7 +3416,7 @@ maybe_higher_order(Verbose, Stats, !HLDS, !IO) :-
     (
         ( HigherOrder = yes
         ; Types = yes
-        ; \+ set__empty(TypeSpecPreds)
+        ; \+ set.empty(TypeSpecPreds)
         )
     ->
         maybe_write_string(Verbose,
@@ -3435,10 +3435,10 @@ maybe_higher_order(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_do_inlining(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(allow_inlining, Allow, !IO),
-    globals__io_lookup_bool_option(inline_simple, Simple, !IO),
-    globals__io_lookup_bool_option(inline_single_use, SingleUse, !IO),
-    globals__io_lookup_int_option(inline_compound_threshold, Threshold, !IO),
+    globals.io_lookup_bool_option(allow_inlining, Allow, !IO),
+    globals.io_lookup_bool_option(inline_simple, Simple, !IO),
+    globals.io_lookup_bool_option(inline_single_use, SingleUse, !IO),
+    globals.io_lookup_int_option(inline_compound_threshold, Threshold, !IO),
     (
         Allow = yes,
         ( Simple = yes
@@ -3459,10 +3459,10 @@ maybe_do_inlining(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_deforestation(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(deforestation, Deforest, !IO),
+    globals.io_lookup_bool_option(deforestation, Deforest, !IO),
 
     % --constraint-propagation implies --local-constraint-propagation.
-    globals__io_lookup_bool_option(local_constraint_propagation, Constraints,
+    globals.io_lookup_bool_option(local_constraint_propagation, Constraints,
         !IO),
     (
         ( Deforest = yes
@@ -3500,7 +3500,7 @@ maybe_deforestation(Verbose, Stats, !HLDS, !IO) :-
     io::di, io::uo) is det.
 
 maybe_loop_inv(Verbose, Stats, !HLDS, !DumpInfo, !IO) :-
-    globals__io_lookup_bool_option(loop_invariants, LoopInv, !IO),
+    globals.io_lookup_bool_option(loop_invariants, LoopInv, !IO),
     (
         LoopInv = yes,
         % We run the mark_static pass because we need the construct_how flag
@@ -3523,7 +3523,7 @@ maybe_loop_inv(Verbose, Stats, !HLDS, !DumpInfo, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_delay_construct(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(delay_construct, DelayConstruct, !IO),
+    globals.io_lookup_bool_option(delay_construct, DelayConstruct, !IO),
     (
         DelayConstruct = yes,
         maybe_write_string(Verbose,
@@ -3541,10 +3541,10 @@ maybe_delay_construct(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_unused_args(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_get_globals(Globals, !IO),
-    globals__lookup_bool_option(Globals, intermod_unused_args, Intermod),
-    globals__lookup_bool_option(Globals, optimize_unused_args, Optimize),
-    globals__lookup_bool_option(Globals, warn_unused_args, Warn),
+    globals.io_get_globals(Globals, !IO),
+    globals.lookup_bool_option(Globals, intermod_unused_args, Intermod),
+    globals.lookup_bool_option(Globals, optimize_unused_args, Optimize),
+    globals.lookup_bool_option(Globals, warn_unused_args, Warn),
     (
         ( Optimize = yes
         ; Warn = yes
@@ -3553,7 +3553,7 @@ maybe_unused_args(Verbose, Stats, !HLDS, !IO) :-
     ->
         maybe_write_string(Verbose, "% Finding unused arguments ...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-        unused_args__process_module(!HLDS, !IO),
+        unused_args.process_module(!HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -3564,14 +3564,14 @@ maybe_unused_args(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_unneeded_code(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(unneeded_code, UnneededCode, !IO),
+    globals.io_lookup_bool_option(unneeded_code, UnneededCode, !IO),
     (
         UnneededCode = yes,
         maybe_write_string(Verbose,
             "% Removing unneeded code from procedure bodies...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         process_all_nonimported_procs(
-            update_module_io(unneeded_code__process_proc_msg), !HLDS, !IO),
+            update_module_io(unneeded_code.process_proc_msg), !HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -3582,7 +3582,7 @@ maybe_unneeded_code(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(optimize_dead_procs, Dead, !IO),
+    globals.io_lookup_bool_option(optimize_dead_procs, Dead, !IO),
     (
         Dead = yes,
         maybe_write_string(Verbose, "% Eliminating dead procedures...\n", !IO),
@@ -3598,7 +3598,7 @@ maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO) :- 
-    globals__io_lookup_bool_option(structure_sharing_analysis, 
+    globals.io_lookup_bool_option(structure_sharing_analysis, 
         Sharing, !IO), 
     (
         Sharing = yes, 
@@ -3617,8 +3617,8 @@ maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_term_size_prof(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(record_term_sizes_as_words, AsWords, !IO),
-    globals__io_lookup_bool_option(record_term_sizes_as_cells, AsCells, !IO),
+    globals.io_lookup_bool_option(record_term_sizes_as_words, AsWords, !IO),
+    globals.io_lookup_bool_option(record_term_sizes_as_cells, AsCells, !IO),
     (
         AsWords = yes,
         AsCells = yes,
@@ -3642,7 +3642,7 @@ maybe_term_size_prof(Verbose, Stats, !HLDS, !IO) :-
             "% Applying term size profiling transformation...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         process_all_nonimported_procs(
-            update_module_io(size_prof__process_proc_msg(Transform)),
+            update_module_io(size_prof.process_proc_msg(Transform)),
             !HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
@@ -3654,12 +3654,12 @@ maybe_term_size_prof(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_read_experimental_complexity_file(!HLDS, !IO) :-
-    globals__io_lookup_string_option(experimental_complexity, FileName, !IO),
-    globals__io_lookup_bool_option(record_term_sizes_as_words,
+    globals.io_lookup_string_option(experimental_complexity, FileName, !IO),
+    globals.io_lookup_bool_option(record_term_sizes_as_words,
         RecordTermSizesAsWords, !IO),
-    globals__io_lookup_bool_option(record_term_sizes_as_cells,
+    globals.io_lookup_bool_option(record_term_sizes_as_cells,
         RecordTermSizesAsCells, !IO),
-    bool__or(RecordTermSizesAsWords, RecordTermSizesAsCells,
+    bool.or(RecordTermSizesAsWords, RecordTermSizesAsCells,
         RecordTermSizes),
     ( FileName = "" ->
 %       While we could include the following sanity check, it is overly
@@ -3686,7 +3686,7 @@ maybe_read_experimental_complexity_file(!HLDS, !IO) :-
             report_error("the --experimental-complexity option " ++
                 "requires a term size profiling grade", !IO)
         ),
-        complexity__read_spec_file(FileName, MaybeNumProcMap, !IO),
+        complexity.read_spec_file(FileName, MaybeNumProcMap, !IO),
         (
             MaybeNumProcMap = ok(NumProcs - ProcMap),
             module_info_set_maybe_complexity_proc_map(yes(NumProcs - ProcMap),
@@ -3710,7 +3710,7 @@ maybe_experimental_complexity(Verbose, Stats, !HLDS, !IO) :-
             "% Applying complexity experiment transformation...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         process_all_nonimported_procs(
-            update_module_io(complexity__process_proc_msg(NumProcs, ProcMap)),
+            update_module_io(complexity.process_proc_msg(NumProcs, ProcMap)),
             !HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
@@ -3720,7 +3720,7 @@ maybe_experimental_complexity(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_deep_profiling(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(profile_deep, ProfileDeep, !IO),
+    globals.io_lookup_bool_option(profile_deep, ProfileDeep, !IO),
     (
         ProfileDeep = yes,
         maybe_write_string(Verbose,
@@ -3737,14 +3737,14 @@ maybe_deep_profiling(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_introduce_accumulators(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(introduce_accumulators, Optimize, !IO),
+    globals.io_lookup_bool_option(introduce_accumulators, Optimize, !IO),
     (
         Optimize = yes,
         maybe_write_string(Verbose,
             "% Attempting to introduce accumulators...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         process_all_nonimported_procs(
-            update_module_io(accumulator__process_proc), !HLDS, !IO),
+            update_module_io(accumulator.process_proc), !HLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -3755,7 +3755,7 @@ maybe_introduce_accumulators(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_lco(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(optimize_constructor_last_call, LCO, !IO),
+    globals.io_lookup_bool_option(optimize_constructor_last_call, LCO, !IO),
     (
         LCO = yes,
         maybe_write_string(Verbose,
@@ -3786,7 +3786,7 @@ map_args_to_regs(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_saved_vars(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(optimize_saved_vars_const, SavedVars, !IO),
+    globals.io_lookup_bool_option(optimize_saved_vars_const, SavedVars, !IO),
     (
         SavedVars = yes,
         maybe_write_string(Verbose,
@@ -3804,7 +3804,7 @@ maybe_saved_vars(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_stack_opt(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(optimize_saved_vars_cell, SavedVars, !IO),
+    globals.io_lookup_bool_option(optimize_saved_vars_cell, SavedVars, !IO),
     (
         SavedVars = yes,
         maybe_write_string(Verbose,
@@ -3822,8 +3822,8 @@ maybe_stack_opt(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_followcode(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(follow_code, FollowCode, !IO),
-    globals__io_lookup_bool_option(prev_code, PrevCode, !IO),
+    globals.io_lookup_bool_option(follow_code, FollowCode, !IO),
+    globals.io_lookup_bool_option(prev_code, PrevCode, !IO),
     (
         ( FollowCode = yes
         ; PrevCode = yes
@@ -3876,11 +3876,11 @@ allocate_store_map(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_goal_paths(Verbose, Stats, !HLDS, !IO) :-
-    globals__io_get_trace_level(TraceLevel, !IO),
+    globals.io_get_trace_level(TraceLevel, !IO),
     ( given_trace_level_is_none(TraceLevel) = no ->
         maybe_write_string(Verbose, "% Calculating goal paths...", !IO),
         maybe_flush_output(Verbose, !IO),
-        process_all_nonimported_procs(update_proc(goal_path__fill_slots),
+        process_all_nonimported_procs(update_proc(fill_goal_path_slots),
             !HLDS, !IO),
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
@@ -3903,7 +3903,7 @@ generate_code(HLDS, Verbose, Stats, !GlobalData, LLDS, !IO) :-
     list(c_procedure)::in, list(c_procedure)::out, io::di, io::uo) is det.
 
 maybe_do_optimize(GlobalData, Verbose, Stats, !LLDS, !IO) :-
-    globals__io_lookup_bool_option(optimize, Optimize, !IO),
+    globals.io_lookup_bool_option(optimize, Optimize, !IO),
     (
         Optimize = yes,
         maybe_write_string(Verbose, "% Doing optimizations...\n", !IO),
@@ -3923,7 +3923,7 @@ maybe_generate_stack_layouts(HLDS, LLDS, Verbose, Stats, !GlobalData, !IO) :-
     maybe_write_string(Verbose,
         "% Generating call continuation information...", !IO),
     maybe_flush_output(Verbose, !IO),
-    continuation_info__maybe_process_llds(LLDS, HLDS, !GlobalData),
+    continuation_info.maybe_process_llds(LLDS, HLDS, !GlobalData),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -3935,7 +3935,7 @@ maybe_generate_stack_layouts(HLDS, LLDS, Verbose, Stats, !GlobalData, !IO) :-
     % interface.
     % This stuff mostly just gets passed directly to the LLDS unchanged, but
     % we do do a bit of code generation -- for example, we call
-    % export__get_foreign_export_{decls,defns} here, which do the generation
+    % export.get_foreign_export_{decls,defns} here, which do the generation
     % of C code for `pragma export' declarations.
     %
 :- pred get_c_interface_info(module_info::in, foreign_language::in,
@@ -3946,14 +3946,14 @@ get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
     module_info_get_foreign_decl(HLDS, ForeignDecls),
     module_info_get_foreign_import_module(HLDS, ForeignImports),
     module_info_get_foreign_body_code(HLDS, ForeignBodyCode),
-    foreign__filter_decls(UseForeignLanguage, ForeignDecls,
+    foreign.filter_decls(UseForeignLanguage, ForeignDecls,
         WantedForeignDecls, _OtherDecls),
-    foreign__filter_imports(UseForeignLanguage, ForeignImports,
+    foreign.filter_imports(UseForeignLanguage, ForeignImports,
         WantedForeignImports, _OtherImports),
-    foreign__filter_bodys(UseForeignLanguage, ForeignBodyCode,
+    foreign.filter_bodys(UseForeignLanguage, ForeignBodyCode,
         WantedForeignBodys, _OtherBodys),
-    export__get_foreign_export_decls(HLDS, Foreign_ExportDecls),
-    export__get_foreign_export_defns(HLDS, Foreign_ExportDefns),
+    export.get_foreign_export_decls(HLDS, Foreign_ExportDecls),
+    export.get_foreign_export_defns(HLDS, Foreign_ExportDefns),
 
     Foreign_InterfaceInfo = foreign_interface_info(ModuleName,
         WantedForeignDecls, WantedForeignImports,
@@ -3969,8 +3969,8 @@ get_c_interface_info(HLDS, UseForeignLanguage, Foreign_InterfaceInfo) :-
 
 output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
         FactTableObjFiles, !IO) :-
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
-    globals__io_lookup_bool_option(statistics, Stats, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(statistics, Stats, !IO),
     %
     % Here we generate the LLDS representations for
     % various data structures used for RTTI, type classes,
@@ -3978,16 +3978,16 @@ output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
     % XXX this should perhaps be part of backend_pass
     % rather than output_pass.
     %
-    type_ctor_info__generate_rtti(HLDS, TypeCtorRttiData),
-    base_typeclass_info__generate_rtti(HLDS, OldTypeClassInfoRttiData),
-    globals__io_lookup_bool_option(new_type_class_rtti, NewTypeClassRtti, !IO),
-    type_class_info__generate_rtti(HLDS, NewTypeClassRtti,
+    type_ctor_info.generate_rtti(HLDS, TypeCtorRttiData),
+    generate_base_typeclass_info_rtti(HLDS, OldTypeClassInfoRttiData),
+    globals.io_lookup_bool_option(new_type_class_rtti, NewTypeClassRtti, !IO),
+    generate_type_class_info_rtti(HLDS, NewTypeClassRtti,
         NewTypeClassInfoRttiData),
-    list__append(OldTypeClassInfoRttiData, NewTypeClassInfoRttiData,
+    list.append(OldTypeClassInfoRttiData, NewTypeClassInfoRttiData,
         TypeClassInfoRttiData),
-    list__map(llds__wrap_rtti_data, TypeCtorRttiData, TypeCtorTables),
-    list__map(llds__wrap_rtti_data, TypeClassInfoRttiData, TypeClassInfos),
-    stack_layout__generate_llds(HLDS, GlobalData0, GlobalData, StackLayouts,
+    list.map(llds.wrap_rtti_data, TypeCtorRttiData, TypeCtorTables),
+    list.map(llds.wrap_rtti_data, TypeClassInfoRttiData, TypeClassInfos),
+    stack_layout.generate_llds(HLDS, GlobalData0, GlobalData, StackLayouts,
         LayoutLabels),
     %
     % Here we perform some optimizations on the LLDS data.
@@ -4004,7 +4004,7 @@ output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
     %
     % Next we put it all together and output it to one or more C files.
     %
-    list__condense([StaticCells, ClosureLayouts, StackLayouts,
+    list.condense([StaticCells, ClosureLayouts, StackLayouts,
         TypeCtorTables, TypeClassInfos], AllData),
     construct_c_file(HLDS, C_InterfaceInfo, Procs, GlobalVars, AllData, CFile,
         !IO),
@@ -4013,22 +4013,22 @@ output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
         Verbose, Stats, !IO),
 
     C_InterfaceInfo = foreign_interface_info(_, _, _, _, C_ExportDecls, _),
-    export__produce_header_file(C_ExportDecls, ModuleName, !IO),
+    export.produce_header_file(C_ExportDecls, ModuleName, !IO),
 
     %
     % Finally we invoke the C compiler to compile it.
     %
-    globals__io_lookup_bool_option(target_code_only, TargetCodeOnly, !IO),
+    globals.io_lookup_bool_option(target_code_only, TargetCodeOnly, !IO),
     (
         TargetCodeOnly = no,
-        io__output_stream(OutputStream, !IO),
+        io.output_stream(OutputStream, !IO),
         c_to_obj(OutputStream, ModuleName, CompileOK, !IO),
         module_get_fact_table_files(HLDS, FactTableBaseFiles),
-        list__map2_foldl(compile_fact_table_file(OutputStream),
+        list.map2_foldl(compile_fact_table_file(OutputStream),
             FactTableBaseFiles, FactTableObjFiles, FactTableCompileOKs, !IO),
-        bool__and_list([CompileOK | FactTableCompileOKs], AllOk),
+        bool.and_list([CompileOK | FactTableCompileOKs], AllOk),
         maybe_set_exit_status(AllOk, !IO),
-        bool__not(AllOk, CompileErrors)
+        bool.not(AllOk, CompileErrors)
     ;
         TargetCodeOnly = yes,
         CompileErrors = no,
@@ -4046,18 +4046,18 @@ construct_c_file(ModuleInfo, C_InterfaceInfo, Procedures, GlobalVars, AllData,
     C_InterfaceInfo = foreign_interface_info(ModuleSymName, C_HeaderCode0,
         C_Includes, C_BodyCode0, _C_ExportDecls, C_ExportDefns),
     MangledModuleName = sym_name_mangle(ModuleSymName),
-    string__append(MangledModuleName, "_module", ModuleName),
-    globals__io_lookup_int_option(procs_per_c_function, ProcsPerFunc, !IO),
+    string.append(MangledModuleName, "_module", ModuleName),
+    globals.io_lookup_int_option(procs_per_c_function, ProcsPerFunc, !IO),
     get_c_body_code(C_BodyCode0, C_BodyCode),
     ( ProcsPerFunc = 0 ->
         % ProcsPerFunc = 0 really means infinity -
         % we store all the procs in a single function.
         ChunkedModules = [comp_gen_c_module(ModuleName, Procedures)]
     ;
-        list__chunk(Procedures, ProcsPerFunc, ChunkedProcs),
+        list.chunk(Procedures, ProcsPerFunc, ChunkedProcs),
         combine_chunks(ChunkedProcs, ModuleName, ChunkedModules)
     ),
-    list__map_foldl(make_foreign_import_header_code, C_Includes,
+    list.map_foldl(make_foreign_import_header_code, C_Includes,
         C_IncludeHeaderCode, !IO),
 
     % The lists are reversed because insertions into them are at the front.
@@ -4065,10 +4065,10 @@ construct_c_file(ModuleInfo, C_InterfaceInfo, Procedures, GlobalVars, AllData,
     % C_IncludeHeaderCode may include our own header file, which defines
     % the module's guard macro, which in turn #ifdefs out the stuff between
     % Start and End.
-    list__filter(foreign_decl_code_is_local, list__reverse(C_HeaderCode0),
+    list.filter(foreign_decl_code_is_local, list.reverse(C_HeaderCode0),
         C_LocalHeaderCode, C_ExportedHeaderCode),
     make_decl_guards(ModuleSymName, Start, End),
-    C_HeaderCode = list__reverse(C_IncludeHeaderCode) ++
+    C_HeaderCode = list.reverse(C_IncludeHeaderCode) ++
         C_LocalHeaderCode ++ [Start | C_ExportedHeaderCode] ++ [End],
 
     module_info_user_init_pred_c_names(ModuleInfo, UserInitPredCNames),
@@ -4091,9 +4091,9 @@ make_decl_guards(ModuleName, StartGuard, EndGuard) :-
     Start = "#ifndef " ++ Define ++ "\n#define " ++ Define ++ "\n",
     End = "\n#endif",
     StartGuard = foreign_decl_code(c, foreign_decl_is_exported, Start,
-        term__context_init),
+        term.context_init),
     EndGuard = foreign_decl_code(c, foreign_decl_is_exported, End,
-        term__context_init).
+        term.context_init).
 
 :- pred make_foreign_import_header_code(foreign_import_module::in,
     foreign_decl_code::out, io::di, io::uo) is det.
@@ -4144,14 +4144,14 @@ combine_chunks(ChunkList, ModName, Modules) :-
 
 combine_chunks_2([], _ModName, _N, []).
 combine_chunks_2([Chunk | Chunks], ModuleName, Num, [Module | Modules]) :-
-    string__int_to_string(Num, NumString),
-    string__append(ModuleName, NumString, ThisModuleName),
+    string.int_to_string(Num, NumString),
+    string.append(ModuleName, NumString, ThisModuleName),
     Module = comp_gen_c_module(ThisModuleName, Chunk),
     Num1 = Num + 1,
     combine_chunks_2(Chunks, ModuleName, Num1, Modules).
 
 :- pred output_llds(module_name::in, c_file::in,
-    list(complexity_proc_info)::in, map(llds__label, llds__data_addr)::in,
+    list(complexity_proc_info)::in, map(llds.label, llds.data_addr)::in,
     bool::in, bool::in, io::di, io::uo) is det.
 
 output_llds(ModuleName, LLDS0, ComplexityProcs, StackLayoutLabels,
@@ -4167,7 +4167,7 @@ output_llds(ModuleName, LLDS0, ComplexityProcs, StackLayoutLabels,
     maybe_flush_output(Verbose, !IO),
     maybe_report_stats(Stats, !IO).
 
-:- pred c_to_obj(io__output_stream::in, module_name::in, bool::out,
+:- pred c_to_obj(io.output_stream::in, module_name::in, bool::out,
     io::di, io::uo) is det.
 
 c_to_obj(ErrorStream, ModuleName, Succeeded, !IO) :-
@@ -4176,19 +4176,19 @@ c_to_obj(ErrorStream, ModuleName, Succeeded, !IO) :-
     maybe_pic_object_file_extension(PIC, Obj, !IO),
     module_name_to_file_name(ModuleName, ".c", no, C_File, !IO),
     module_name_to_file_name(ModuleName, Obj, yes, O_File, !IO),
-    compile_target_code__compile_c_file(ErrorStream, PIC, C_File, O_File,
+    compile_target_code.compile_c_file(ErrorStream, PIC, C_File, O_File,
         Succeeded, !IO).
 
-:- pred compile_fact_table_file(io__output_stream::in, string::in,
+:- pred compile_fact_table_file(io.output_stream::in, string::in,
     string::out, bool::out, io::di, io::uo) is det.
 
 compile_fact_table_file(ErrorStream, BaseName, O_File, Succeeded, !IO) :-
     get_linked_target_type(LinkedTargetType, !IO),
     get_object_code_type(LinkedTargetType, PIC, !IO),
     maybe_pic_object_file_extension(PIC, Obj, !IO),
-    string__append(BaseName, ".c", C_File),
-    string__append(BaseName, Obj, O_File),
-    compile_target_code__compile_c_file(ErrorStream, PIC, C_File, O_File,
+    string.append(BaseName, ".c", C_File),
+    string.append(BaseName, Obj, O_File),
+    compile_target_code.compile_c_file(ErrorStream, PIC, C_File, O_File,
         Succeeded, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -4200,8 +4200,8 @@ compile_fact_table_file(ErrorStream, BaseName, O_File, Succeeded, !IO) :-
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
-    globals__io_lookup_bool_option(statistics, Stats, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(statistics, Stats, !IO),
 
     simplify(no, ml_backend, Verbose, Stats,
         process_all_nonimported_procs, !HLDS, !IO),
@@ -4245,7 +4245,7 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
     % chain_gc_stack_frame pass of ml_elim_nested,
     % because we need to unlink the stack frame from the
     % stack chain before tail calls.
-    globals__io_lookup_bool_option(optimize_tailcalls, OptimizeTailCalls, !IO),
+    globals.io_lookup_bool_option(optimize_tailcalls, OptimizeTailCalls, !IO),
     (
         OptimizeTailCalls = yes,
         maybe_write_string(Verbose, "% Detecting tail calls...\n", !IO),
@@ -4260,7 +4260,7 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
 
     % Warning about non-tail calls needs to come after detection
     % of tail calls
-    globals__io_lookup_bool_option(warn_non_tail_recursion, WarnTailCalls,
+    globals.io_lookup_bool_option(warn_non_tail_recursion, WarnTailCalls,
         !IO),
     (
         OptimizeTailCalls = yes,
@@ -4286,17 +4286,17 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
     % However, we need to disable optimize_initializations,
     % because ml_elim_nested doesn't correctly handle
     % code containing initializations.
-    globals__io_lookup_bool_option(optimize, Optimize, !IO),
+    globals.io_lookup_bool_option(optimize, Optimize, !IO),
     (
         Optimize = yes,
-        globals__io_lookup_bool_option(optimize_initializations,
+        globals.io_lookup_bool_option(optimize_initializations,
             OptimizeInitializations, !IO),
-        globals__io_set_option(optimize_initializations, bool(no), !IO),
+        globals.io_set_option(optimize_initializations, bool(no), !IO),
         maybe_write_string(Verbose, "% Optimizing MLDS...\n", !IO),
-        ml_optimize__optimize(MLDS20, MLDS25, !IO),
+        ml_optimize.optimize(MLDS20, MLDS25, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
 
-        globals__io_set_option(optimize_initializations,
+        globals.io_set_option(optimize_initializations,
             bool(OptimizeInitializations), !IO)
     ;
         Optimize = no,
@@ -4317,7 +4317,7 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
     % generates.
     %
 
-    globals__io_get_gc_method(GC, !IO),
+    globals.io_get_gc_method(GC, !IO),
     ( GC = accurate ->
         maybe_write_string(Verbose,
             "% Threading GC stack frames...\n", !IO),
@@ -4329,7 +4329,7 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
     maybe_report_stats(Stats, !IO),
     maybe_dump_mlds(MLDS30, 30, "gc_frames", !IO),
 
-    globals__io_lookup_bool_option(gcc_nested_functions, NestedFuncs, !IO),
+    globals.io_lookup_bool_option(gcc_nested_functions, NestedFuncs, !IO),
     (
         NestedFuncs = no,
         maybe_write_string(Verbose, "% Flattening nested functions...\n", !IO),
@@ -4349,7 +4349,7 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
     (
         Optimize = yes,
         maybe_write_string(Verbose, "% Optimizing MLDS again...\n", !IO),
-        ml_optimize__optimize(MLDS35, MLDS40, !IO),
+        ml_optimize.optimize(MLDS35, MLDS40, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
         Optimize = no,
@@ -4364,20 +4364,20 @@ mlds_backend(!HLDS, MLDS, !DumpInfo, !IO) :-
 :- pred mlds_gen_rtti_data(module_info::in, mlds::in, mlds::out) is det.
 
 mlds_gen_rtti_data(HLDS, MLDS0, MLDS) :-
-    type_ctor_info__generate_rtti(HLDS, TypeCtorRtti),
-    base_typeclass_info__generate_rtti(HLDS, TypeClassInfoRtti),
+    type_ctor_info.generate_rtti(HLDS, TypeCtorRtti),
+    generate_base_typeclass_info_rtti(HLDS, TypeClassInfoRtti),
 
     module_info_get_globals(HLDS, Globals),
-    globals__lookup_bool_option(Globals, new_type_class_rtti,
+    globals.lookup_bool_option(Globals, new_type_class_rtti,
         NewTypeClassRtti),
-    type_class_info__generate_rtti(HLDS, NewTypeClassRtti,
+    generate_type_class_info_rtti(HLDS, NewTypeClassRtti,
         NewTypeClassInfoRttiData),
-    list__condense([TypeCtorRtti, TypeClassInfoRtti,
+    list.condense([TypeCtorRtti, TypeClassInfoRtti,
         NewTypeClassInfoRttiData], RttiData),
     RttiDefns = rtti_data_list_to_mlds(HLDS, RttiData),
     MLDS0 = mlds(ModuleName, ForeignCode, Imports, Defns0, InitPreds,
         FinalPreds),
-    list__append(RttiDefns, Defns0, Defns),
+    list.append(RttiDefns, Defns0, Defns),
     MLDS = mlds(ModuleName, ForeignCode, Imports, Defns,
         InitPreds, FinalPreds).
 
@@ -4386,45 +4386,45 @@ mlds_gen_rtti_data(HLDS, MLDS0, MLDS) :-
 :- pred mlds_to_high_level_c(mlds::in, io::di, io::uo) is det.
 
 mlds_to_high_level_c(MLDS, !IO) :-
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
-    globals__io_lookup_bool_option(statistics, Stats, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(statistics, Stats, !IO),
 
     maybe_write_string(Verbose, "% Converting MLDS to C...\n", !IO),
-    mlds_to_c__output_mlds(MLDS, "", !IO),
+    mlds_to_c.output_mlds(MLDS, "", !IO),
     maybe_write_string(Verbose, "% Finished converting MLDS to C.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
 :- pred mlds_to_java(module_info::in, mlds::in, io::di, io::uo) is det.
 
 mlds_to_java(ModuleInfo, MLDS, !IO) :-
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
-    globals__io_lookup_bool_option(statistics, Stats, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(statistics, Stats, !IO),
 
     maybe_write_string(Verbose, "% Converting MLDS to Java...\n", !IO),
-    mlds_to_java__output_mlds(ModuleInfo, MLDS, !IO),
+    mlds_to_java.output_mlds(ModuleInfo, MLDS, !IO),
     maybe_write_string(Verbose, "% Finished converting MLDS to Java.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
 :- pred maybe_mlds_to_gcc(mlds::in, bool::out, io::di, io::uo) is det.
 
 maybe_mlds_to_gcc(MLDS, ContainsCCode, !IO) :-
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
-    globals__io_lookup_bool_option(statistics, Stats, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(statistics, Stats, !IO),
 
     maybe_write_string(Verbose,
         "% Passing MLDS to GCC and compiling to assembler...\n", !IO),
-    maybe_mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode, !IO),
+    maybe_mlds_to_gcc.compile_to_asm(MLDS, ContainsCCode, !IO),
     maybe_write_string(Verbose, "% Finished compiling to assembler.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
 :- pred mlds_to_il_assembler(mlds::in, io::di, io::uo) is det.
 
 mlds_to_il_assembler(MLDS, !IO) :-
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
-    globals__io_lookup_bool_option(statistics, Stats, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(statistics, Stats, !IO),
 
     maybe_write_string(Verbose, "% Converting MLDS to IL...\n", !IO),
-    mlds_to_ilasm__output_mlds(MLDS, !IO),
+    mlds_to_ilasm.output_mlds(MLDS, !IO),
     maybe_write_string(Verbose, "% Finished converting MLDS to IL.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -4439,7 +4439,7 @@ mlds_to_il_assembler(MLDS, !IO) :-
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
-    globals__io_lookup_accumulating_option(dump_hlds, DumpStages, !IO),
+    globals.io_lookup_accumulating_option(dump_hlds, DumpStages, !IO),
     StageNumStr = stage_num_str(StageNum),
     ( should_dump_stage(StageNum, StageNumStr, StageName, DumpStages) ->
         module_info_get_name(HLDS, ModuleName),
@@ -4451,13 +4451,13 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
             HLDS = PrevHLDS
         ->
             CurDumpFileName = PrevDumpFileName,
-            io__open_output(DumpFileName, Res, !IO),
+            io.open_output(DumpFileName, Res, !IO),
             ( Res = ok(FileStream) ->
-                io__write_string(FileStream, "This stage is identical " ++
+                io.write_string(FileStream, "This stage is identical " ++
                     "to the stage in " ++ PrevDumpFileName ++ ".\n", !IO),
-                io__close_output(FileStream, !IO)
+                io.close_output(FileStream, !IO)
             ;
-                globals__io_lookup_bool_option(verbose, Verbose, !IO),
+                globals.io_lookup_bool_option(verbose, Verbose, !IO),
                 maybe_write_string(Verbose, "\n", !IO),
                 Msg = "can't open file `" ++ DumpFileName ++ "' for output.",
                 report_error(Msg, !IO)
@@ -4475,9 +4475,9 @@ maybe_dump_hlds(HLDS, StageNum, StageName, !DumpInfo, !IO) :-
 
 stage_num_str(StageNum) = StageNumStr :-
     int_to_string(StageNum, StageNumStr0),
-    ( string__length(StageNumStr0, 1) ->
+    ( string.length(StageNumStr0, 1) ->
         StageNumStr = "00" ++ StageNumStr0
-    ; string__length(StageNumStr0, 2) ->
+    ; string.length(StageNumStr0, 2) ->
         StageNumStr = "0" ++ StageNumStr0
     ;
         StageNumStr = StageNumStr0
@@ -4487,7 +4487,7 @@ stage_num_str(StageNum) = StageNumStr :-
     is semidet.
 
 should_dump_stage(StageNum, StageNumStr, StageName, DumpStages) :-
-    list__member(DumpStage, DumpStages),
+    list.member(DumpStage, DumpStages),
     (
         StageName = DumpStage
     ;
@@ -4496,31 +4496,31 @@ should_dump_stage(StageNum, StageNumStr, StageName, DumpStages) :-
         (
             DumpStage = StageNumStr
         ;
-            string__append("0", DumpStage, StageNumStr)
+            string.append("0", DumpStage, StageNumStr)
         ;
-            string__append("00", DumpStage, StageNumStr)
+            string.append("00", DumpStage, StageNumStr)
         )
     ;
-        string__append(From, "+", DumpStage),
-        string__to_int(From, FromInt),
+        string.append(From, "+", DumpStage),
+        string.to_int(From, FromInt),
         StageNum >= FromInt
     ).
 
 :- pred dump_hlds(string::in, module_info::in, io::di, io::uo) is det.
 
 dump_hlds(DumpFile, HLDS, !IO) :-
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
-    globals__io_lookup_bool_option(statistics, Stats, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(statistics, Stats, !IO),
     maybe_write_string(Verbose, "% Dumping out HLDS to `", !IO),
     maybe_write_string(Verbose, DumpFile, !IO),
     maybe_write_string(Verbose, "'...", !IO),
     maybe_flush_output(Verbose, !IO),
-    io__open_output(DumpFile, Res, !IO),
+    io.open_output(DumpFile, Res, !IO),
     ( Res = ok(FileStream) ->
-        io__set_output_stream(FileStream, OutputStream, !IO),
-        hlds_out__write_hlds(0, HLDS, !IO),
-        io__set_output_stream(OutputStream, _, !IO),
-        io__close_output(FileStream, !IO),
+        io.set_output_stream(FileStream, OutputStream, !IO),
+        hlds_out.write_hlds(0, HLDS, !IO),
+        io.set_output_stream(OutputStream, _, !IO),
+        io.close_output(FileStream, !IO),
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
@@ -4532,26 +4532,26 @@ dump_hlds(DumpFile, HLDS, !IO) :-
 :- pred maybe_dump_mlds(mlds::in, int::in, string::in, io::di, io::uo) is det.
 
 maybe_dump_mlds(MLDS, StageNum, StageName, !IO) :-
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
-    globals__io_lookup_accumulating_option(dump_mlds, DumpStages, !IO),
-    globals__io_lookup_accumulating_option(verbose_dump_mlds,
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_accumulating_option(dump_mlds, DumpStages, !IO),
+    globals.io_lookup_accumulating_option(verbose_dump_mlds,
         VerboseDumpStages, !IO),
     StageNumStr = stage_num_str(StageNum),
     ( should_dump_stage(StageNum, StageNumStr, StageName, DumpStages) ->
         maybe_write_string(Verbose, "% Dumping out MLDS as C...\n", !IO),
         maybe_flush_output(Verbose, !IO),
         DumpSuffix = "_dump." ++ StageNumStr ++ "-" ++ StageName,
-        mlds_to_c__output_mlds(MLDS, DumpSuffix, !IO),
+        mlds_to_c.output_mlds(MLDS, DumpSuffix, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ;
         true
     ),
     ( should_dump_stage(StageNum, StageNumStr, StageName, VerboseDumpStages) ->
         maybe_write_string(Verbose, "% Dumping out raw MLDS...\n", !IO),
-        ModuleName = mlds__get_module_name(MLDS),
+        ModuleName = mlds_get_module_name(MLDS),
         module_name_to_file_name(ModuleName, ".mlds_dump", yes, BaseFileName,
             !IO),
-        string__append_list([BaseFileName, ".", StageNumStr, "-", StageName],
+        string.append_list([BaseFileName, ".", StageNumStr, "-", StageName],
             DumpFile),
         dump_mlds(DumpFile, MLDS, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
@@ -4562,24 +4562,24 @@ maybe_dump_mlds(MLDS, StageNum, StageName, !IO) :-
 :- pred dump_mlds(string::in, mlds::in, io::di, io::uo) is det.
 
 dump_mlds(DumpFile, MLDS, !IO) :-
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
-    globals__io_lookup_bool_option(statistics, Stats, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(statistics, Stats, !IO),
     maybe_write_string(Verbose, "% Dumping out MLDS to `", !IO),
     maybe_write_string(Verbose, DumpFile, !IO),
     maybe_write_string(Verbose, "'...", !IO),
     maybe_flush_output(Verbose, !IO),
-    io__open_output(DumpFile, Res, !IO),
+    io.open_output(DumpFile, Res, !IO),
     ( Res = ok(FileStream) ->
-        io__set_output_stream(FileStream, OutputStream, !IO),
-        pprint__write(80, pprint__to_doc(MLDS), !IO),
-        io__nl(!IO),
-        io__set_output_stream(OutputStream, _, !IO),
-        io__close_output(FileStream, !IO),
+        io.set_output_stream(FileStream, OutputStream, !IO),
+        pprint.write(80, pprint.to_doc(MLDS), !IO),
+        io.nl(!IO),
+        io.set_output_stream(OutputStream, _, !IO),
+        io.close_output(FileStream, !IO),
         maybe_write_string(Verbose, " done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
         maybe_write_string(Verbose, "\n", !IO),
-        string__append_list(["can't open file `", DumpFile, "' for output."],
+        string.append_list(["can't open file `", DumpFile, "' for output."],
             ErrorMessage),
         report_error(ErrorMessage, !IO)
     ).

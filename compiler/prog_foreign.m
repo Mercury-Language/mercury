@@ -87,7 +87,7 @@
     --->    user_foreign_code(
                 foreign_language,   % language of this code
                 string,             % code
-                term__context       % source code location
+                term.context        % source code location
             ).
 
     % The code for `pragma export' is generated directly as strings
@@ -311,10 +311,10 @@ prefer_foreign_language(_Globals, il, Lang1, Lang2) = Comp :-
     PreferredList = [il, csharp, managed_cplusplus],
 
     FindLangPriority = (func(L) = X :-
-        ( list__nth_member_search(PreferredList, L, X0) ->
+        ( list.nth_member_search(PreferredList, L, X0) ->
             X = X0
         ;
-            X = list__length(PreferredList) + 1
+            X = list.length(PreferredList) + 1
         )),
     N1 = FindLangPriority(Lang1),
     N2 = FindLangPriority(Lang2),
@@ -360,12 +360,12 @@ name_mangle(Name) = MangledName :-
     % require changes to extras/dynamic_linking/name_mangle.m,
     % profiler/demangle.m, util/mdemangle.c and compiler/name_mangle.m.
 
-    ( string__is_alnum_or_underscore(Name) ->
+    ( string.is_alnum_or_underscore(Name) ->
         % Any names that start with `f_' are changed so that they start with
         % `f__', so that we can use names starting with `f_' (followed by
         % anything except an underscore) without fear of name collisions.
 
-        ( string__append("f_", Suffix, Name) ->
+        ( string.append("f_", Suffix, Name) ->
             MangledName = "f__" ++ Suffix
         ;
             MangledName = Name
@@ -375,7 +375,7 @@ name_mangle(Name) = MangledName :-
     ).
 
 qualify_name(Module0, Name0) = Name :-
-    string__append_list([Module0, "__", Name0], Name).
+    string.append_list([Module0, "__", Name0], Name).
 
 convert_to_valid_c_identifier(String) = Name :-
     ( name_conversion_table(String, Name0) ->
@@ -420,14 +420,14 @@ name_conversion_table("[]", "f_nil").
 :- func convert_to_valid_c_identifier_2(string) = string.
 
 convert_to_valid_c_identifier_2(String) = Name :-
-    ( string__first_char(String, Char, Rest) ->
+    ( string.first_char(String, Char, Rest) ->
         % XXX This will cause ABI incompatibilities between compilers which are
         % built in grades that have different character representations.
-        char__to_int(Char, Code),
-        string__int_to_string(Code, CodeString),
-        string__append("_", CodeString, ThisCharString),
+        char.to_int(Char, Code),
+        string.int_to_string(Code, CodeString),
+        string.append("_", CodeString, ThisCharString),
         Name0 = convert_to_valid_c_identifier_2(Rest),
-        string__append(ThisCharString, Name0, Name)
+        string.append(ThisCharString, Name0, Name)
     ;
         % String is the empty string
         Name = String

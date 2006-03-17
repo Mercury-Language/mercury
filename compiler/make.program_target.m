@@ -13,7 +13,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module make__program_target.
+:- module make.program_target.
 :- interface.
 
 %-----------------------------------------------------------------------------%
@@ -72,7 +72,7 @@ make_linked_target(MainModuleName - FileType, Succeeded, !Info, !IO) :-
         % The analysis of one module may invalidate the results of a module we
         % analysed earlier, so this step must be carried out until all the
         % `.analysis' files are in a valid state before we can continue.
-        globals__io_lookup_bool_option(intermodule_analysis,
+        globals.io_lookup_bool_option(intermodule_analysis,
             IntermoduleAnalysis, !IO),
         (
             IntermoduleAnalysis = yes,
@@ -99,7 +99,7 @@ make_linked_target(MainModuleName - FileType, Succeeded, !Info, !IO) :-
 make_linked_target_2(MainModuleName - FileType, _, Succeeded, !Info, !IO) :-
     find_reachable_local_modules(MainModuleName, DepsSuccess,
         AllModules, !Info, !IO),
-    globals__io_lookup_bool_option(keep_going, KeepGoing, !IO),
+    globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
     (
         DepsSuccess = no,
         KeepGoing = no
@@ -110,7 +110,7 @@ make_linked_target_2(MainModuleName - FileType, _, Succeeded, !Info, !IO) :-
 
         % Build the `.c' files first so that errors are reported
         % as soon as possible.
-        globals__io_get_target(CompilationTarget, !IO),
+        globals.io_get_target(CompilationTarget, !IO),
         (
             CompilationTarget = c,
             IntermediateTargetType = c_code,
@@ -131,14 +131,14 @@ make_linked_target_2(MainModuleName - FileType, _, Succeeded, !Info, !IO) :-
         ),
 
         get_target_modules(IntermediateTargetType,
-            set__to_sorted_list(AllModules), ObjModules, !Info, !IO),
+            set.to_sorted_list(AllModules), ObjModules, !Info, !IO),
         IntermediateTargets = make_dependency_list(ObjModules,
             IntermediateTargetType),
         ObjTargets = make_dependency_list(ObjModules, ObjectTargetType),
 
-        list__map_foldl2(get_foreign_object_targets(PIC),
+        list.map_foldl2(get_foreign_object_targets(PIC),
             ObjModules, ForeignObjTargetsList, !Info, !IO),
-        ForeignObjTargets = list__condense(ForeignObjTargetsList),
+        ForeignObjTargets = list.condense(ForeignObjTargetsList),
 
         foldl2_maybe_stop_at_error(KeepGoing,
             foldl2_maybe_stop_at_error(KeepGoing, make_module_target),
@@ -146,7 +146,7 @@ make_linked_target_2(MainModuleName - FileType, _, Succeeded, !Info, !IO) :-
             BuildDepsSucceeded, !Info, !IO),
 
         linked_target_file_name(MainModuleName, FileType, OutputFileName, !IO),
-        get_file_timestamp([dir__this_directory], OutputFileName,
+        get_file_timestamp([dir.this_directory], OutputFileName,
             MaybeTimestamp, !Info, !IO),
         check_dependencies(OutputFileName, MaybeTimestamp, BuildDepsSucceeded,
             ObjTargets, BuildDepsResult, !Info, !IO),
@@ -173,7 +173,7 @@ make_linked_target_2(MainModuleName - FileType, _, Succeeded, !Info, !IO) :-
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_target_modules(TargetType, AllModules, TargetModules, !Info, !IO) :-
-    globals__io_get_target(CompilationTarget, !IO),
+    globals.io_get_target(CompilationTarget, !IO),
     (
         (
             TargetType = errors
@@ -186,7 +186,7 @@ get_target_modules(TargetType, AllModules, TargetModules, !Info, !IO) :-
     ->
         % `.err' and `.s' files are only produced for the
         % top-level module in each source file.
-        list__foldl3(get_target_modules_2, AllModules,
+        list.foldl3(get_target_modules_2, AllModules,
             [], TargetModules, !Info, !IO)
     ;
         TargetModules = AllModules
@@ -215,7 +215,7 @@ get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info, !IO) :-
     % Find externally compiled foreign code files for
     % `:- pragma foreign_proc' declarations.
 
-    globals__io_get_target(CompilationTarget, !IO),
+    globals.io_get_target(CompilationTarget, !IO),
     get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
     (
         MaybeImports = yes(Imports)
@@ -226,17 +226,16 @@ get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info, !IO) :-
     (
         CompilationTarget = asm,
         Imports ^ foreign_code = contains_foreign_code(Langs),
-        set__member(c, Langs)
+        set.member(c, Langs)
     ->
-        ForeignObjectTargets =
-            [target(ModuleName - foreign_object(PIC, c))]
+        ForeignObjectTargets = [target(ModuleName - foreign_object(PIC, c))]
     ;
         CompilationTarget = il,
         Imports ^ foreign_code = contains_foreign_code(Langs)
     ->
-        ForeignObjectTargets = list__map(
+        ForeignObjectTargets = list.map(
             (func(L) = target(ModuleName - foreign_il_asm(L))
-            ), set__to_sorted_list(Langs))
+            ), set.to_sorted_list(Langs))
     ;
         ForeignObjectTargets = []
     ),
@@ -248,7 +247,7 @@ get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info, !IO) :-
         ; CompilationTarget = asm
         )
     ->
-        FactObjectTargets = list__map(
+        FactObjectTargets = list.map(
             (func(FactFile) =
                 target(ModuleName - fact_table_object(PIC, FactFile))
             ),
@@ -261,13 +260,13 @@ get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info, !IO) :-
 :- pred build_linked_target(module_name::in, linked_target_type::in,
     file_name::in, maybe_error(timestamp)::in, set(module_name)::in,
     list(module_name)::in, compilation_target::in, pic::in,
-    bool::in, dependencies_result::in, io__output_stream::in,
+    bool::in, dependencies_result::in, io.output_stream::in,
     bool::out, make_info::in, make_info::out, io::di, io::uo) is det.
 
 build_linked_target(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
         AllModules, ObjModules, CompilationTarget, PIC, DepsSuccess,
         BuildDepsResult, ErrorStream, Succeeded, !Info, !IO) :-
-    globals__io_lookup_maybe_string_option(pre_link_command,
+    globals.io_lookup_maybe_string_option(pre_link_command,
         MaybePreLinkCommand, !IO),
     (
         MaybePreLinkCommand = yes(PreLinkCommand),
@@ -292,34 +291,34 @@ build_linked_target(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
 :- pred build_linked_target_2(module_name::in, linked_target_type::in,
     file_name::in, maybe_error(timestamp)::in, set(module_name)::in,
     list(module_name)::in, compilation_target::in, pic::in,
-    bool::in, dependencies_result::in, io__output_stream::in, bool::out,
+    bool::in, dependencies_result::in, io.output_stream::in, bool::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
         AllModules, ObjModules, CompilationTarget, PIC, DepsSuccess,
         BuildDepsResult, ErrorStream, Succeeded, !Info, !IO) :-
-    globals__io_lookup_accumulating_option(link_objects, LinkObjects, !IO),
+    globals.io_lookup_accumulating_option(link_objects, LinkObjects, !IO),
 
     % Clear the option -- we'll pass the list of files directly.
-    globals__io_set_option(link_objects, accumulating([]), !IO),
+    globals.io_set_option(link_objects, accumulating([]), !IO),
 
     % Remake the `_init.o' file.
     % XXX We should probably make a `_init.o' file for shared
     % libraries linked using dlopen().
-    AllModulesList = set__to_sorted_list(AllModules),
+    AllModulesList = set.to_sorted_list(AllModules),
     (
         FileType = executable,
         ( CompilationTarget = c
         ; CompilationTarget = asm
         )
     ->
-        compile_target_code__make_init_obj_file(ErrorStream,
+        compile_target_code.make_init_obj_file(ErrorStream,
             MainModuleName, AllModulesList, InitObjectResult, !IO),
         (
             InitObjectResult = yes(InitObject),
             % We may need to update the timestamp of the `_init.o' file.
             !:Info = !.Info ^ file_timestamps :=
-                map__delete(!.Info ^ file_timestamps, InitObject),
+                map.delete(!.Info ^ file_timestamps, InitObject),
             InitObjects = [InitObject],
             DepsResult2 = BuildDepsResult
         ;
@@ -335,17 +334,17 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
     ObjectsToCheck = InitObjects ++ LinkObjects,
 
     % Report errors if any of the extra objects aren't present.
-    list__map_foldl2(dependency_status,
-        list__map((func(F) = file(F, no)), ObjectsToCheck),
+    list.map_foldl2(dependency_status,
+        list.map((func(F) = file(F, no)), ObjectsToCheck),
         ExtraObjStatus, !Info, !IO),
 
     DepsResult3 =
-        ( list__member(error, ExtraObjStatus) -> error ; DepsResult2 ),
+        ( list.member(error, ExtraObjStatus) -> error ; DepsResult2 ),
     BuildDepsSuccess = ( DepsResult3 \= error -> yes ; no ),
-    list__map_foldl2(get_file_timestamp([dir__this_directory]),
+    list.map_foldl2(get_file_timestamp([dir.this_directory]),
         ObjectsToCheck, ExtraObjectTimestamps, !Info, !IO),
     check_dependency_timestamps(OutputFileName, MaybeTimestamp,
-        BuildDepsSuccess, ObjectsToCheck, io__write,
+        BuildDepsSuccess, ObjectsToCheck, io.write,
         ExtraObjectTimestamps, ExtraObjectDepsResult, !IO),
 
     DepsResult4 = ( DepsSuccess = yes -> DepsResult3 ; error ),
@@ -359,13 +358,13 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
         Succeeded = no
     ;
         DepsResult = up_to_date,
-        globals__io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs,
+        globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs,
             !IO),
         (
             UseGradeSubdirs = yes,
             maybe_symlink_or_copy_linked_target_message(
                 MainModuleName - linked_target(FileType), !IO),
-            compile_target_code__post_link_make_symlink_or_copy(ErrorStream,
+            compile_target_code.post_link_make_symlink_or_copy(ErrorStream,
                 FileType, MainModuleName, Succeeded, !IO)
         ;
             UseGradeSubdirs = no,
@@ -381,7 +380,7 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
         % procedures and fact tables. We don't need to include these in the
         % timestamp checking above -- they will have been checked when the
         % module's object file was built.
-        list__map_foldl2(
+        list.map_foldl2(
             (pred(ModuleName::in, ForeignFiles::out,
                 MakeInfo0::in, MakeInfo::out, !.IO::di, !:IO::uo) is det :-
             get_module_dependencies(ModuleName, MaybeImports,
@@ -396,12 +395,12 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
                     "build_linked_target: error in dependencies")
             )
             ), AllModulesList, ExtraForeignFiles, !Info, !IO),
-        ForeignObjects = list__map(
+        ForeignObjects = list.map(
             (func(foreign_code_file(_, _, ObjFile)) = ObjFile),
-            list__condense(ExtraForeignFiles)),
+            list.condense(ExtraForeignFiles)),
 
         maybe_pic_object_file_extension(PIC, ObjExtToUse, !IO),
-        list__map_foldl(
+        list.map_foldl(
             (pred(ObjModule::in, ObjToLink::out, !.IO::di, !:IO::uo) is det :-
                 module_name_to_file_name(ObjModule,
                     ObjExtToUse, no, ObjToLink, !IO)
@@ -415,7 +414,7 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
             % Run the link in a separate process so it can be killed
             % if an interrupt is received.
             call_in_forked_process(
-                compile_target_code__link(ErrorStream,
+                compile_target_code.link(ErrorStream,
                     FileType, MainModuleName, AllObjects),
                 Succeeded, !IO)
         ;
@@ -423,7 +422,7 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
             % Run the link in a separate process so it can
             % be killed if an interrupt is received.
             call_in_forked_process(
-                compile_target_code__link(ErrorStream,
+                compile_target_code.link(ErrorStream,
                     FileType, MainModuleName, AllObjects),
                 Succeeded, !IO)
         ;
@@ -434,18 +433,18 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
             create_java_shell_script(MainModuleName, Succeeded, !IO)
         ),
         !:Info = !.Info ^ command_line_targets :=
-            set__delete(!.Info ^ command_line_targets,
+            set.delete(!.Info ^ command_line_targets,
                 MainModuleName - linked_target(FileType)),
         (
             Succeeded = yes,
             !:Info = !.Info ^ file_timestamps :=
-                map__delete(!.Info ^ file_timestamps, OutputFileName)
+                map.delete(!.Info ^ file_timestamps, OutputFileName)
         ;
             Succeeded = no,
             file_error(OutputFileName, !IO)
         )
     ),
-    globals__io_set_option(link_objects, accumulating(LinkObjects), !IO).
+    globals.io_set_option(link_objects, accumulating(LinkObjects), !IO).
 
     % join_string_list(Strings, Prefix, Suffix, Serarator, Result)
     %
@@ -460,11 +459,11 @@ join_string_list([], _Prefix, _Suffix, _Separator, "").
 join_string_list([String | Strings], Prefix, Suffix, Separator, Result) :-
     (
         Strings = [],
-        string__append_list([Prefix, String, Suffix], Result)
+        string.append_list([Prefix, String, Suffix], Result)
     ;
         Strings = [_ | _],
         join_string_list(Strings, Prefix, Suffix, Separator, Result0),
-        string__append_list([Prefix, String, Suffix, Separator,
+        string.append_list([Prefix, String, Suffix, Separator,
             Result0], Result)
     ).
 
@@ -474,7 +473,7 @@ join_string_list([String | Strings], Prefix, Suffix, Separator, Result) :-
 
 linked_target_cleanup(MainModuleName, FileType, OutputFileName,
         CompilationTarget, !Info, !IO) :-
-    remove_file(OutputFileName, !Info, !IO),
+    make_remove_file(OutputFileName, !Info, !IO),
     (
         FileType = executable,
         ( CompilationTarget = c
@@ -511,22 +510,22 @@ make_misc_target(MainModuleName - TargetType, _, Succeeded, !Info, !IO) :-
     find_reachable_local_modules(MainModuleName, Succeeded0, AllModulesSet,
         !Info, !IO),
     !:Info = !.Info ^ rebuild_dependencies := RebuildDeps,
-    AllModules = set__to_sorted_list(AllModulesSet),
+    AllModules = set.to_sorted_list(AllModulesSet),
     (
         TargetType = clean,
         Succeeded = yes,
-        list__foldl2(make_module_clean, AllModules, !Info, !IO),
+        list.foldl2(make_module_clean, AllModules, !Info, !IO),
         remove_init_files(MainModuleName, !Info, !IO)
     ;
         TargetType = realclean,
         Succeeded = yes,
         make_main_module_realclean(MainModuleName, !Info, !IO),
-        list__foldl2(make_module_realclean, AllModules, !Info, !IO)
+        list.foldl2(make_module_realclean, AllModules, !Info, !IO)
     ;
         TargetType = build_all(ModuleTargetType),
         get_target_modules(ModuleTargetType, AllModules, TargetModules,
             !Info, !IO),
-        globals__io_lookup_bool_option(keep_going, KeepGoing, !IO),
+        globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
         ( Succeeded0 = no, KeepGoing = no ->
             Succeeded = no
         ;
@@ -545,7 +544,7 @@ make_misc_target(MainModuleName - TargetType, _, Succeeded, !Info, !IO) :-
         ShortInts = make_dependency_list(AllModules,
             unqualified_short_interface),
         LongInts = make_dependency_list(AllModules, long_interface),
-        globals__io_lookup_bool_option(intermodule_optimization,
+        globals.io_lookup_bool_option(intermodule_optimization,
             Intermod, !IO),
         (
             Intermod = yes,
@@ -554,7 +553,7 @@ make_misc_target(MainModuleName - TargetType, _, Succeeded, !Info, !IO) :-
             Intermod = no,
             OptFiles = []
         ),
-        globals__io_lookup_bool_option(keep_going, KeepGoing, !IO),
+        globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
         foldl2_maybe_stop_at_error(KeepGoing,
             foldl2_maybe_stop_at_error(KeepGoing, make_module_target),
             [ShortInts, LongInts, OptFiles],
@@ -562,14 +561,14 @@ make_misc_target(MainModuleName - TargetType, _, Succeeded, !Info, !IO) :-
         (
             IntSucceeded = yes,
             % Errors while making the `.init' file should be very rare.
-            io__output_stream(ErrorStream, !IO),
-            compile_target_code__make_init_file(ErrorStream, MainModuleName,
+            io.output_stream(ErrorStream, !IO),
+            compile_target_code.make_init_file(ErrorStream, MainModuleName,
                 AllModules, InitSucceeded, !IO),
             (
                 InitSucceeded = yes,
                 make_linked_target(MainModuleName - static_library,
                     StaticSucceeded, !Info, !IO),
-                compile_target_code__shared_libraries_supported(
+                compile_target_code.shared_libraries_supported(
                     SharedLibsSupported, !IO),
                 (
                     StaticSucceeded = yes,
@@ -614,7 +613,7 @@ build_analysis_files(MainModuleName, AllModules, Succeeded0, Succeeded,
         !Info, !IO) :-
     get_target_modules(analysis_registry, AllModules, TargetModules0,
         !Info, !IO),
-    globals__io_lookup_bool_option(keep_going, KeepGoing, !IO),
+    globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
     ( Succeeded0 = no, KeepGoing = no ->
         Succeeded = no
     ;
@@ -641,7 +640,7 @@ build_analysis_files(MainModuleName, AllModules, Succeeded0, Succeeded,
 
 build_analysis_files_2(MainModuleName, TargetModules, LocalModulesOpts,
         Succeeded0, Succeeded, !Info, !IO) :-
-    globals__io_lookup_bool_option(keep_going, KeepGoing, !IO),
+    globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
     foldl2_maybe_stop_at_error(KeepGoing,
         make_module_target_extra_options(LocalModulesOpts),
         make_dependency_list(TargetModules, analysis_registry),
@@ -657,14 +656,14 @@ build_analysis_files_2(MainModuleName, TargetModules, LocalModulesOpts,
     ReanalyseSuboptimal = (if ReanalysisPasses > 1 then yes else no),
     modules_needing_reanalysis(ReanalyseSuboptimal, TargetModules,
         InvalidModules, SuboptimalModules, !IO),
-    ( list__is_not_empty(InvalidModules) ->
+    ( list.is_not_empty(InvalidModules) ->
         maybe_reanalyse_modules_message(!IO),
-        list__foldl(reset_analysis_registry_dependency_status,
+        list.foldl(reset_analysis_registry_dependency_status,
             InvalidModules, !Info),
         build_analysis_files_2(MainModuleName, TargetModules, LocalModulesOpts,
             Succeeded0, Succeeded, !Info, !IO)
-    ; list__is_not_empty(SuboptimalModules) ->
-        list__foldl(reset_analysis_registry_dependency_status,
+    ; list.is_not_empty(SuboptimalModules) ->
+        list.foldl(reset_analysis_registry_dependency_status,
             SuboptimalModules, !Info),
         !:Info = !.Info ^ reanalysis_passes := ReanalysisPasses - 1,
         maybe_reanalyse_modules_message(!IO),
@@ -683,18 +682,18 @@ build_analysis_files_2(MainModuleName, TargetModules, LocalModulesOpts,
     list(module_name)::in, list(module_name)::out) is det.
 
 reverse_ordered_modules(ModuleDeps, Modules0, Modules) :-
-    list__foldl2(add_module_relations(lookup_module_imports(ModuleDeps)),
-        Modules0, relation__init, _IntRel, relation__init, ImplRel),
-    relation__atsort(ImplRel, Order0),
-    list__reverse(Order0, Order1),
-    list__map(set__to_sorted_list, Order1, Order2),
-    list__condense(Order2, Modules).
+    list.foldl2(add_module_relations(lookup_module_imports(ModuleDeps)),
+        Modules0, relation.init, _IntRel, relation.init, ImplRel),
+    relation.atsort(ImplRel, Order0),
+    list.reverse(Order0, Order1),
+    list.map(set.to_sorted_list, Order1, Order2),
+    list.condense(Order2, Modules).
 
 :- func lookup_module_imports(map(module_name, maybe(module_imports)),
     module_name) = module_imports.
 
 lookup_module_imports(ModuleDeps, ModuleName) = ModuleImports :-
-    map__lookup(ModuleDeps, ModuleName, MaybeModuleImports),
+    map.lookup(ModuleDeps, ModuleName, MaybeModuleImports),
     (
         MaybeModuleImports = yes(ModuleImports)
     ;
@@ -764,35 +763,35 @@ reset_analysis_registry_dependency_status(ModuleName, Info,
 install_library(MainModuleName, Succeeded, !Info, !IO) :-
     find_reachable_local_modules(MainModuleName, DepsSuccess, AllModules0,
         !Info, !IO),
-    AllModules = set__to_sorted_list(AllModules0) ,
+    AllModules = set.to_sorted_list(AllModules0) ,
     make_install_dirs(DirSucceeded, LinkSucceeded, !IO),
     (
         DepsSuccess = yes,
         DirSucceeded = yes
     ->
-        globals__io_lookup_string_option(install_prefix, Prefix, !IO),
+        globals.io_lookup_string_option(install_prefix, Prefix, !IO),
 
         ModulesDir = Prefix/"lib"/"mercury"/"modules",
         module_name_to_file_name(MainModuleName, ".init", no, InitFileName,
             !IO),
         install_file(InitFileName, ModulesDir, InitSucceeded, !IO),
 
-        list__map_foldl2(install_ints_and_headers(LinkSucceeded), AllModules,
+        list.map_foldl2(install_ints_and_headers(LinkSucceeded), AllModules,
             IntsSucceeded, !Info, !IO),
 
-        globals__io_get_globals(Globals, !IO),
+        globals.io_get_globals(Globals, !IO),
         grade_directory_component(Globals, Grade),
         install_library_grade_files(LinkSucceeded, Grade, MainModuleName,
             AllModules, GradeSucceeded, !Info, !IO),
         (
             InitSucceeded = yes,
-            bool__and_list(IntsSucceeded) = yes,
+            bool.and_list(IntsSucceeded) = yes,
             GradeSucceeded = yes
         ->
             % XXX With Mmake, LIBGRADES is target-specific.
-            globals__io_lookup_accumulating_option(libgrades, LibGrades0, !IO),
-            globals__io_lookup_bool_option(keep_going, KeepGoing, !IO),
-            LibGrades = list__delete_all(LibGrades0, Grade),
+            globals.io_lookup_accumulating_option(libgrades, LibGrades0, !IO),
+            globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
+            LibGrades = list.delete_all(LibGrades0, Grade),
             foldl2_maybe_stop_at_error(KeepGoing,
                 install_library_grade(LinkSucceeded,
                     MainModuleName, AllModules),
@@ -812,8 +811,7 @@ install_ints_and_headers(SubdirLinkSucceeded, ModuleName, Succeeded, !Info,
     get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
     (
         MaybeImports = yes(Imports),
-        globals__io_lookup_bool_option(intermodule_optimization,
-            Intermod, !IO),
+        globals.io_lookup_bool_option(intermodule_optimization, Intermod, !IO),
         ( Intermod = yes ->
             % `.int0' files are imported by `.opt' files.
             (
@@ -827,15 +825,15 @@ install_ints_and_headers(SubdirLinkSucceeded, ModuleName, Succeeded, !Info,
             Exts = []
         ),
 
-        globals__io_lookup_string_option(install_prefix, Prefix, !IO),
+        globals.io_lookup_string_option(install_prefix, Prefix, !IO),
         LibDir = Prefix/"lib"/"mercury",
-        list__map_foldl(
+        list.map_foldl(
             install_subdir_file(SubdirLinkSucceeded, LibDir/"ints",
                 ModuleName),
             ["int", "int2", "int3", "module_dep" | Exts],
             Results, !IO),
 
-        globals__io_get_target(Target, !IO),
+        globals.io_get_target(Target, !IO),
         (
             % `.mh' files are (were) only generated for modules containing
             % `:- pragma export' declarations.
@@ -857,7 +855,7 @@ install_ints_and_headers(SubdirLinkSucceeded, ModuleName, Succeeded, !Info,
         ;
             HeaderSucceeded = yes
         ),
-        Succeeded = bool__and_list([HeaderSucceeded | Results])
+        Succeeded = bool.and_list([HeaderSucceeded | Results])
     ;
         MaybeImports = no,
         Succeeded = no
@@ -889,7 +887,7 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules, Grade, Succeeded,
 
 install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
         Info0, Succeeded, !IO) :-
-    globals__io_get_globals(OrigGlobals, !IO),
+    globals.io_get_globals(OrigGlobals, !IO),
 
     % Set up so that grade-dependent files for the current grade
     % don't overwrite the files for the default grade.
@@ -898,9 +896,9 @@ install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
 
     verbose_msg(
         (pred(!.IO::di, !:IO::uo) is det :-
-            io__write_string("Installing grade ", !IO),
-            io__write_string(Grade, !IO),
-            io__nl(!IO)
+            io.write_string("Installing grade ", !IO),
+            io.write_string(Grade, !IO),
+            io.nl(!IO)
         ), !IO),
 
     lookup_mmc_options(Info0 ^ options_variables, MaybeMCFlags, !IO),
@@ -923,14 +921,14 @@ install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
         % Remove the grade-dependent targets from the status map
         % (we need to rebuild them in the new grade).
         StatusMap0 = Info0 ^ dependency_status,
-        StatusMap = map__from_assoc_list(list__filter(
+        StatusMap = map.from_assoc_list(list.filter(
             (pred((File - _)::in) is semidet :-
                 \+ (
                     File = target(_ - Target),
                     target_is_grade_or_arch_dependent(Target)
                 )
             ),
-            map__to_assoc_list(StatusMap0))),
+            map.to_assoc_list(StatusMap0))),
         Info1 = (Info0 ^ dependency_status := StatusMap)
             ^ option_args := OptionArgs,
         make_misc_target(ModuleName - build_library, LibSucceeded,
@@ -939,7 +937,7 @@ install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
             LibSucceeded = yes,
             % `GradeDir' differs from `Grade' in that it is in canonical form,
             % and it does not include any `.picreg' component.
-            globals__io_get_globals(Globals, !IO),
+            globals.io_get_globals(Globals, !IO),
             grade_directory_component(Globals, GradeDir),
             install_library_grade_files(LinkSucceeded0, GradeDir,
                 ModuleName, AllModules, Succeeded, Info2, Info3, !IO),
@@ -949,7 +947,7 @@ install_library_grade_2(LinkSucceeded0, Grade, ModuleName, AllModules,
             Succeeded = no
         )
     ),
-    globals__io_set_globals(unsafe_promise_unique(OrigGlobals), !IO).
+    globals.io_set_globals(unsafe_promise_unique(OrigGlobals), !IO).
 
     % Install the `.a', `.so', `.jar', `.opt' and `.mih' files for the current
     % grade.
@@ -972,7 +970,7 @@ install_library_grade_files(LinkSucceeded0, GradeDir, ModuleName, AllModules,
             !IO),
         linked_target_file_name(ModuleName, java_archive, JarFileName, !IO),
 
-        globals__io_lookup_string_option(install_prefix, Prefix, !IO),
+        globals.io_lookup_string_option(install_prefix, Prefix, !IO),
 
         ( GradeDir = "java" ->
             GradeLibDir = Prefix/"lib"/"mercury"/"lib"/"java",
@@ -990,10 +988,10 @@ install_library_grade_files(LinkSucceeded0, GradeDir, ModuleName, AllModules,
             )
         ),
 
-        list__map_foldl2(
+        list.map_foldl2(
             install_grade_ints_and_headers(LinkSucceeded, GradeDir),
             AllModules, IntsHeadersSucceeded, !Info, !IO),
-        Succeeded = bool__and_list([LibsSucceeded | IntsHeadersSucceeded])
+        Succeeded = bool.and_list([LibsSucceeded | IntsHeadersSucceeded])
     ;
         DirResult = no,
         Succeeded = no
@@ -1009,11 +1007,11 @@ install_grade_ints_and_headers(LinkSucceeded, GradeDir, ModuleName, Succeeded,
     get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
     (
         MaybeImports = yes(Imports),
-        globals__io_lookup_string_option(install_prefix, Prefix, !IO),
+        globals.io_lookup_string_option(install_prefix, Prefix, !IO),
         LibDir = Prefix/"lib"/"mercury",
 
-        globals__io_get_target(Target, !IO),
-        globals__io_lookup_bool_option(highlevel_code, HighLevelCode, !IO),
+        globals.io_get_target(Target, !IO),
+        globals.io_lookup_bool_option(highlevel_code, HighLevelCode, !IO),
         (
             (
                 Target = c,
@@ -1039,8 +1037,7 @@ install_grade_ints_and_headers(LinkSucceeded, GradeDir, ModuleName, Succeeded,
         ),
 
         GradeIntDir = LibDir/"ints"/GradeDir,
-        globals__io_lookup_bool_option(intermodule_optimization, Intermod,
-            !IO),
+        globals.io_lookup_bool_option(intermodule_optimization, Intermod, !IO),
         (
             Intermod = yes,
             install_subdir_file(LinkSucceeded, GradeIntDir, ModuleName, "opt",
@@ -1050,7 +1047,7 @@ install_grade_ints_and_headers(LinkSucceeded, GradeDir, ModuleName, Succeeded,
             OptSucceeded = yes
         ),
 
-        globals__io_lookup_bool_option(intermodule_analysis, IntermodAnalysis,
+        globals.io_lookup_bool_option(intermodule_analysis, IntermodAnalysis,
             !IO),
         (
             IntermodAnalysis = yes,
@@ -1106,22 +1103,22 @@ maybe_install_library_file(Linkage, FileName, InstallDir, Succeeded, !IO) :-
 install_file(FileName, InstallDir, Succeeded, !IO) :-
     verbose_msg(
         (pred(!.IO::di, !:IO::uo) is det :-
-            io__write_string("Installing file ", !IO),
-            io__write_string(FileName, !IO),
-            io__write_string(" in ", !IO),
-            io__write_string(InstallDir, !IO),
-            io__nl(!IO)
+            io.write_string("Installing file ", !IO),
+            io.write_string(FileName, !IO),
+            io.write_string(" in ", !IO),
+            io.write_string(InstallDir, !IO),
+            io.nl(!IO)
         ), !IO),
-    globals__io_lookup_string_option(install_command, InstallCommand, !IO),
-    Command = string__join_list("   ", list__map(quote_arg,
+    globals.io_lookup_string_option(install_command, InstallCommand, !IO),
+    Command = string.join_list("   ", list.map(quote_arg,
         [InstallCommand, FileName, InstallDir])),
-    io__output_stream(OutputStream, !IO),
+    io.output_stream(OutputStream, !IO),
     invoke_system_command(OutputStream, verbose, Command, Succeeded, !IO).
 
 :- pred make_install_dirs(bool::out, bool::out, io::di, io::uo) is det.
 
 make_install_dirs(Result, LinkResult, !IO) :-
-    globals__io_lookup_string_option(install_prefix, Prefix, !IO),
+    globals.io_lookup_string_option(install_prefix, Prefix, !IO),
     LibDir = Prefix/"lib"/"mercury",
     make_directory(LibDir/"inc", Result1, !IO),
     make_directory(LibDir/"modules", Result2, !IO),
@@ -1132,15 +1129,15 @@ make_install_dirs(Result, LinkResult, !IO) :-
 
     Subdirs = ["int0", "int", "int2", "int3", "opt", "trans_opt",
         "mh", "mih", "module_dep"],
-    list__map_foldl(make_install_symlink(IntsSubdir), Subdirs, LinkResults,
+    list.map_foldl(make_install_symlink(IntsSubdir), Subdirs, LinkResults,
         !IO),
-    LinkResult = bool__and_list(LinkResults),
+    LinkResult = bool.and_list(LinkResults),
     (
         LinkResult = yes,
         Results = Results0
     ;
         LinkResult = no,
-        list__map_foldl(
+        list.map_foldl(
             (pred(Ext::in, MkDirResult::out, !.IO::di, !:IO::uo) is det:-
                 make_directory(IntsSubdir/(Ext ++ "s"), MkDirResult, !IO)
             ), Subdirs, MkDirResults, !IO),
@@ -1152,7 +1149,7 @@ make_install_dirs(Result, LinkResult, !IO) :-
     io::di, io::uo) is det.
 
 make_grade_install_dirs(Grade, Result, LinkResult, !IO) :-
-    globals__io_lookup_string_option(install_prefix, Prefix, !IO),
+    globals.io_lookup_string_option(install_prefix, Prefix, !IO),
     LibDir = Prefix/"lib"/"mercury",
 
     GradeIntsSubdir = LibDir/"ints"/Grade/"Mercury",
@@ -1164,9 +1161,9 @@ make_grade_install_dirs(Grade, Result, LinkResult, !IO) :-
     Results0 = [Result1, Result2],
 
     make_install_symlink(GradeIncSubdir, "mih", LinkResult0, !IO),
-    list__map_foldl(make_install_symlink(GradeIntsSubdir),
+    list.map_foldl(make_install_symlink(GradeIntsSubdir),
         ["opt", "trans_opt", "analysis"], LinkResults, !IO),
-    LinkResult = bool__and_list([LinkResult0 | LinkResults]),
+    LinkResult = bool.and_list([LinkResult0 | LinkResults]),
     (
         LinkResult = yes,
         Results = Results0
@@ -1180,16 +1177,16 @@ make_grade_install_dirs(Grade, Result, LinkResult, !IO) :-
     ),
     print_mkdir_errors(Results, Result, !IO).
 
-:- pred print_mkdir_errors(list(io__res)::in, bool::out,
+:- pred print_mkdir_errors(list(io.res)::in, bool::out,
     io::di, io::uo) is det.
 
 print_mkdir_errors([], yes, !IO).
 print_mkdir_errors([ok | Rest], Succeeded, !IO) :-
     print_mkdir_errors(Rest, Succeeded, !IO).
 print_mkdir_errors([error(Error) | Rest], no, !IO) :-
-    io__write_string("Error creating installation directories: ", !IO),
-    io__write_string(io__error_message(Error), !IO),
-    io__nl(!IO),
+    io.write_string("Error creating installation directories: ", !IO),
+    io.write_string(io.error_message(Error), !IO),
+    io.nl(!IO),
     print_mkdir_errors(Rest, _, !IO).
 
 :- pred make_install_symlink(string::in, string::in, bool::out,
@@ -1208,7 +1205,7 @@ make_install_symlink(Subdir, Ext, Succeeded, !IO) :-
 
 make_grade_clean(ModuleName, AllModules, !Info, !IO) :-
     make_main_module_realclean(ModuleName, !Info, !IO),
-    list__foldl2(make_module_clean, AllModules, !Info, !IO).
+    list.foldl2(make_module_clean, AllModules, !Info, !IO).
 
 :- pred make_main_module_realclean(module_name::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
@@ -1221,34 +1218,34 @@ make_main_module_realclean(ModuleName, !Info, !IO) :-
     linked_target_file_name(ModuleName, java_archive, JarFileName, !IO),
 
     % Remove the symlinks created for `--use-grade-subdirs'.
-    globals__io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
-    globals__io_set_option(use_grade_subdirs, bool(no), !IO),
+    globals.io_lookup_bool_option(use_grade_subdirs, UseGradeSubdirs, !IO),
+    globals.io_set_option(use_grade_subdirs, bool(no), !IO),
     linked_target_file_name(ModuleName, executable, ThisDirExeFileName, !IO),
     linked_target_file_name(ModuleName, static_library,
         ThisDirLibFileName, !IO),
     linked_target_file_name(ModuleName, shared_library,
         ThisDirSharedLibFileName, !IO),
     linked_target_file_name(ModuleName, java_archive, ThisDirJarFileName, !IO),
-    globals__io_set_option(use_grade_subdirs, bool(UseGradeSubdirs), !IO),
+    globals.io_set_option(use_grade_subdirs, bool(UseGradeSubdirs), !IO),
 
-    list__foldl2(remove_file,
+    list.foldl2(make_remove_file,
         [ExeFileName, LibFileName, SharedLibFileName, JarFileName,
         ThisDirExeFileName, ThisDirLibFileName,
         ThisDirSharedLibFileName, ThisDirJarFileName],
         !Info, !IO),
-    remove_file(ModuleName, ".init", !Info, !IO),
+    make_remove_file(ModuleName, ".init", !Info, !IO),
     remove_init_files(ModuleName, !Info, !IO).
 
 :- pred remove_init_files(module_name::in, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
 remove_init_files(ModuleName, !Info, !IO) :-
-    globals__io_lookup_string_option(object_file_extension, ObjExt, !IO),
-    globals__io_lookup_string_option(pic_object_file_extension, PicObjExt,
+    globals.io_lookup_string_option(object_file_extension, ObjExt, !IO),
+    globals.io_lookup_string_option(pic_object_file_extension, PicObjExt,
         !IO),
-    globals__io_lookup_string_option(link_with_pic_object_file_extension,
+    globals.io_lookup_string_option(link_with_pic_object_file_extension,
         LinkWithPicObjExt, !IO),
-    list__foldl2(remove_file(ModuleName), ["_init.c", "_init" ++ ObjExt,
+    list.foldl2(make_remove_file(ModuleName), ["_init.c", "_init" ++ ObjExt,
         "_init" ++ PicObjExt, "_init" ++ LinkWithPicObjExt],
         !Info, !IO).
 
@@ -1256,11 +1253,11 @@ remove_init_files(ModuleName, !Info, !IO) :-
     io::di, io::uo) is det.
 
 make_module_clean(ModuleName, !Info, !IO) :-
-    list__foldl2(remove_target_file(ModuleName),
+    list.foldl2(make_remove_target_file(ModuleName),
         [errors, c_code, c_header(mih), il_code, java_code],
         !Info, !IO),
 
-    list__foldl2(remove_file(ModuleName), [".used", ".prof"], !Info, !IO),
+    list.foldl2(make_remove_file(ModuleName), [".used", ".prof"], !Info, !IO),
 
     get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
     (
@@ -1271,26 +1268,26 @@ make_module_clean(ModuleName, !Info, !IO) :-
         FactTableFiles = []
     ),
 
-    list__foldl2(
+    list.foldl2(
         (pred(FactTableFile::in, !.Info::in, !:Info::out, di, uo) is det -->
             fact_table_file_name(ModuleName, FactTableFile,
                 ".c", no, FactTableCFile),
-            remove_file(FactTableCFile, !Info)
+            make_remove_file(FactTableCFile, !Info)
         ), FactTableFiles, !Info, !IO),
 
     CCodeModule = foreign_language_module_name(ModuleName, c),
-    remove_target_file(CCodeModule, c_code, !Info, !IO),
+    make_remove_target_file(CCodeModule, c_code, !Info, !IO),
 
     % Remove object and assembler files.
-    list__foldl2(
+    list.foldl2(
         (pred(PIC::in, !.Info::in, !:Info::out, !.IO::di, !:IO::uo) is det :-
-        remove_target_file(ModuleName, object_code(PIC), !Info, !IO),
-        remove_target_file(ModuleName, asm_code(PIC), !Info, !IO),
-        remove_target_file(ModuleName, foreign_object(PIC, c), !Info, !IO),
-        list__foldl2(
+        make_remove_target_file(ModuleName, object_code(PIC), !Info, !IO),
+        make_remove_target_file(ModuleName, asm_code(PIC), !Info, !IO),
+        make_remove_target_file(ModuleName, foreign_object(PIC, c), !Info, !IO),
+        list.foldl2(
             (pred(FactTableFile::in, !.Info::in, !:Info::out,
                     !.IO::di, !:IO::uo) is det :-
-                remove_target_file(ModuleName,
+                make_remove_target_file(ModuleName,
                     fact_table_object(PIC, FactTableFile), !Info, !IO)
             ), FactTableFiles, !Info, !IO)
         ),
@@ -1298,15 +1295,15 @@ make_module_clean(ModuleName, !Info, !IO) :-
 
     % Remove IL foreign code files.
     CSharpModule = foreign_language_module_name(ModuleName, csharp),
-    remove_file(CSharpModule, foreign_language_file_extension(csharp),
+    make_remove_file(CSharpModule, foreign_language_file_extension(csharp),
         !Info, !IO),
-    remove_target_file(CSharpModule, foreign_il_asm(csharp), !Info, !IO),
+    make_remove_target_file(CSharpModule, foreign_il_asm(csharp), !Info, !IO),
 
     McppModule = foreign_language_module_name(ModuleName, managed_cplusplus),
-    remove_file(McppModule,
+    make_remove_file(McppModule,
         foreign_language_file_extension(managed_cplusplus),
         !Info, !IO),
-    remove_target_file(McppModule, foreign_il_asm(managed_cplusplus),
+    make_remove_target_file(McppModule, foreign_il_asm(managed_cplusplus),
         !Info, !IO).
 
 :- pred make_module_realclean(module_name::in, make_info::in, make_info::out,
@@ -1314,7 +1311,7 @@ make_module_clean(ModuleName, !Info, !IO) :-
 
 make_module_realclean(ModuleName, !Info, !IO) :-
     make_module_clean(ModuleName, !Info, !IO),
-    list__foldl2(remove_target_file(ModuleName),
+    list.foldl2(make_remove_target_file(ModuleName),
         [
             private_interface, 
             long_interface, 
@@ -1325,9 +1322,9 @@ make_module_realclean(ModuleName, !Info, !IO) :-
             c_header(mh)
         ],
         !Info, !IO),
-    remove_file(ModuleName, module_dep_file_extension, !Info, !IO),
-    remove_file(ModuleName, ".imdg", !Info, !IO),
-    remove_file(ModuleName, ".request", !Info, !IO).
+    make_remove_file(ModuleName, make_module_dep_file_extension, !Info, !IO),
+    make_remove_file(ModuleName, ".imdg", !Info, !IO),
+    make_remove_file(ModuleName, ".request", !Info, !IO).
 
 %-----------------------------------------------------------------------------%
 

@@ -43,9 +43,9 @@
 :- import_module std_util.
 :- import_module term.
 
-:- include_module recompilation__check.
-:- include_module recompilation__usage.
-:- include_module recompilation__version.
+:- include_module recompilation.check.
+:- include_module recompilation.usage.
+:- include_module recompilation.version.
 
     % Identify a particular version of a program item.
     % This could be done using a timestamp or a hash value.
@@ -125,15 +125,15 @@
 
 :- func init_recompilation_info(module_name) = recompilation_info.
 
-    % recompilation__add_used_item(ItemType, UnqualifiedId, QualifiedId,
+    % recompilation.add_used_item(ItemType, UnqualifiedId, QualifiedId,
     %   !Info).
     %
     % Record a reference to UnqualifiedId, for which QualifiedId
     % is the only match. If a new declaration is added so that
     % QualifiedId is not the only match, we need to recompile.
     %
-:- pred recompilation__record_used_item(item_type::in, item_name::in,
-    item_name::in, recompilation_info::in, recompilation_info::out) is det.
+:- pred record_used_item(item_type::in, item_name::in, item_name::in,
+    recompilation_info::in, recompilation_info::out) is det.
 
     % For each imported item we need to record which equivalence types
     % are used because equiv_type.m removes all references to the
@@ -146,7 +146,7 @@
     % of the `with_type` annotation, so that needs to be recorded
     % here as well.
     %
-:- pred recompilation__record_expanded_items(item_id::in, set(item_id)::in,
+:- pred record_expanded_items(item_id::in, set(item_id)::in,
     recompilation_info::in, recompilation_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -267,13 +267,13 @@
 
 term_to_version_number(Term) = term_to_timestamp(Term).
 
-term_to_timestamp(term__functor(term__string(TimestampString), [], _)) =
+term_to_timestamp(term.functor(term.string(TimestampString), [], _)) =
     string_to_timestamp(TimestampString).
 
 write_version_number(VersionNumber, !IO) :-
-    io__write_string("""", !IO),
-    io__write_string(timestamp_to_string(VersionNumber), !IO),
-    io__write_string("""", !IO).
+    io.write_string("""", !IO),
+    io.write_string(timestamp_to_string(VersionNumber), !IO),
+    io.write_string("""", !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -308,8 +308,8 @@ init_item_id_set(Simple, PorF, Cons) =
     item_id_set(Simple, Simple, Simple, Simple, Simple, Cons, PorF, PorF,
         PorF).
 
-init_used_items = item_id_set(map__init, map__init, map__init, map__init,
-    map__init, map__init, map__init, map__init, map__init).
+init_used_items = item_id_set(map.init, map.init, map.init, map.init,
+    map.init, map.init, map.init, map.init, map.init).
 
 extract_simple_item_set(Items, type_item) = Items ^ types.
 extract_simple_item_set(Items, type_body_item) = Items ^ type_bodies.
@@ -355,7 +355,7 @@ update_ids(Items, mutable_item, IdMap) = Items ^ mutables := IdMap.
 
 map_ids(Func, Items0, Init) = Items :-
     Items1 = init_item_id_set(Init),
-    Items = list__foldl(
+    Items = list.foldl(
         (func(ItemType, NewItems0) =
             update_ids(NewItems0, ItemType,
                 Func(ItemType, extract_ids(Items0, ItemType)))
@@ -382,11 +382,11 @@ init_recompilation_info(ModuleName) =
     recompilation_info(
         ModuleName,
         init_used_items,
-        map__init,
-        map__init
+        map.init,
+        map.init
     ).
 
-recompilation__record_used_item(ItemType, Id, QualifiedId, !Info) :-
+record_used_item(ItemType, Id, QualifiedId, !Info) :-
     (
         % Don't record builtin items (QualifiedId may be unqualified
         % for predicates, functions and functors because they aren't
@@ -406,35 +406,34 @@ recompilation__record_used_item(ItemType, Id, QualifiedId, !Info) :-
         UnqualifiedId = UnqualifiedName - Arity,
         Id = SymName - _,
         ModuleQualifier = find_module_qualifier(SymName),
-        ( map__search(IdSet0, UnqualifiedId, MatchingNames0) ->
+        ( map.search(IdSet0, UnqualifiedId, MatchingNames0) ->
             MatchingNames1 = MatchingNames0
         ;
-            map__init(MatchingNames1)
+            map.init(MatchingNames1)
         ),
-        ( map__contains(MatchingNames1, ModuleQualifier) ->
+        ( map.contains(MatchingNames1, ModuleQualifier) ->
             true
         ;
-            map__det_insert(MatchingNames1, ModuleQualifier,
+            map.det_insert(MatchingNames1, ModuleQualifier,
                 ModuleName, MatchingNames),
-            map__set(IdSet0, UnqualifiedId,
-                MatchingNames, IdSet),
+            map.set(IdSet0, UnqualifiedId, MatchingNames, IdSet),
             ItemSet = update_ids(ItemSet0, ItemType, IdSet),
             !:Info = !.Info ^ used_items := ItemSet
         )
     ).
 
-recompilation__record_expanded_items(Item, ExpandedItems, !Info) :-
-    ( set__empty(ExpandedItems) ->
+record_expanded_items(Item, ExpandedItems, !Info) :-
+    ( set.empty(ExpandedItems) ->
         true
     ;
         DepsMap0 = !.Info ^ dependencies,
-        ( map__search(DepsMap0, Item, Deps0) ->
+        ( map.search(DepsMap0, Item, Deps0) ->
             Deps1 = Deps0
         ;
-            set__init(Deps1)
+            set.init(Deps1)
         ),
-        set__union(Deps1, ExpandedItems, Deps),
-        map__set(DepsMap0, Item, Deps, DepsMap),
+        set.union(Deps1, ExpandedItems, Deps),
+        map.set(DepsMap0, Item, Deps, DepsMap),
         !:Info = !.Info ^ dependencies := DepsMap
     ).
 

@@ -18,7 +18,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ml_backend__mark_static_terms.
+:- module ml_backend.mark_static_terms.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -58,7 +58,7 @@
 mark_static_terms(_ModuleInfo, !Proc) :-
     % The ModuleInfo argument is there just for passes_aux.
     proc_info_goal(!.Proc, Goal0),
-    map__init(StaticInfo0),
+    map.init(StaticInfo0),
     goal_mark_static_terms(Goal0, Goal, StaticInfo0, _StaticInfo),
     proc_info_set_goal(Goal, !Proc).
 
@@ -121,7 +121,7 @@ goal_expr_mark_static_terms(shorthand(_), _, !SI) :-
     static_info::in, static_info::out) is det.
 
 conj_mark_static_terms(Goals0, Goals, !SI) :-
-    list__map_foldl(goal_mark_static_terms, Goals0, Goals, !SI).
+    list.map_foldl(goal_mark_static_terms, Goals0, Goals, !SI).
 
 :- pred disj_mark_static_terms(hlds_goals::in, hlds_goals::out,
     static_info::in) is det.
@@ -153,10 +153,10 @@ unification_mark_static_terms(Unification0, Unification, !StaticVars) :-
         (
             % If all the arguments are static, then the newly constructed
             % variable is static too.
-            list__map(map__search(!.StaticVars), ArgVars, StaticArgs)
+            list.map(map.search(!.StaticVars), ArgVars, StaticArgs)
         ->
             HowToConstruct = construct_statically(StaticArgs),
-            svmap__det_insert(Var, static_cons(ConsId, ArgVars, StaticArgs),
+            svmap.det_insert(Var, static_cons(ConsId, ArgVars, StaticArgs),
                 !StaticVars)
         ;
             HowToConstruct = HowToConstruct0
@@ -179,7 +179,7 @@ unification_mark_static_terms(Unification0, Unification, !StaticVars) :-
 %           % then the newly extracted argument variables
 %           % are static too
 %           % (XXX is the "cannot fail" bit really necessary?)
-%           map__search(StaticVars0, Var, Data),
+%           map.search(StaticVars0, Var, Data),
 %           CanFail = cannot_fail
 %       ->
 %           XXX insert ArgVars into StaticVars0
@@ -192,9 +192,9 @@ unification_mark_static_terms(Unification0, Unification, !StaticVars) :-
         (
             % If the variable being assign from is static,
             % then the variable being assigned to is static too.
-            map__search(!.StaticVars, SourceVar, Data)
+            map.search(!.StaticVars, SourceVar, Data)
         ->
-            svmap__det_insert(TargetVar, Data, !StaticVars)
+            svmap.det_insert(TargetVar, Data, !StaticVars)
         ;
             true
         )

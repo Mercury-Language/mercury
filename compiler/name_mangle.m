@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2005 The University of Melbourne.
+% Copyright (C) 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -23,7 +23,7 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module backend_libs__name_mangle.
+:- module backend_libs.name_mangle.
 :- interface.
 
 :- import_module backend_libs.rtti.
@@ -114,7 +114,7 @@ output_proc_label(ProcLabel, !IO) :-
 
 output_proc_label(ProcLabel, AddPrefix, !IO) :-
     ProcLabelString = proc_label_to_c_string(ProcLabel, AddPrefix),
-    io__write_string(ProcLabelString, !IO).
+    io.write_string(ProcLabelString, !IO).
 
 proc_label_to_c_string(proc(DefiningModule, PredOrFunc, PredModule,
         PredName, Arity, ModeInt), AddPrefix) = ProcLabelString :-
@@ -125,9 +125,9 @@ proc_label_to_c_string(proc(DefiningModule, PredOrFunc, PredModule,
     ;
         OrigArity = Arity
     ),
-    string__int_to_string(OrigArity, ArityString),
-    string__int_to_string(ModeInt, ModeNumString),
-    string__append_list([LabelName, "_", ArityString, "_", ModeNumString],
+    string.int_to_string(OrigArity, ArityString),
+    string.int_to_string(ModeInt, ModeNumString),
+    string.append_list([LabelName, "_", ArityString, "_", ModeNumString],
         ProcLabelString).
 
     % For a special proc, output a label of the form:
@@ -143,8 +143,8 @@ proc_label_to_c_string(special_proc(Module, SpecialPredId, TypeModule,
         unqualified(""), PredName, DummyArity, AddPrefix),
 
     % Figure out the ModeNumString.
-    string__int_to_string(TypeArity, TypeArityString),
-    string__int_to_string(ModeInt, ModeNumString),
+    string.int_to_string(TypeArity, TypeArityString),
+    string.int_to_string(ModeInt, ModeNumString),
 
     % Mangle all the relevent names.
     MangledModule = sym_name_mangle(Module),
@@ -162,7 +162,7 @@ proc_label_to_c_string(special_proc(Module, SpecialPredId, TypeModule,
         QualifiedMangledTypeName),
 
     % Join it all together.
-    string__append_list([LabelName, "_", FullyQualifiedMangledTypeName,
+    string.append_list([LabelName, "_", FullyQualifiedMangledTypeName,
         "_", TypeArityString, "_", ModeNumString],
         ProcLabelString).
 
@@ -220,12 +220,12 @@ dont_module_qualify_name(Name, Arity) :-
         Name = "main",
         Arity = 2
     ;
-        string__prefix(Name, "__")
+        string.prefix(Name, "__")
     ).
 
 name_doesnt_need_mangling(Name) :-
-    string__is_alnum_or_underscore(Name),
-    \+ string__append("f_", _Suffix, Name).
+    string.is_alnum_or_underscore(Name),
+    \+ string.append("f_", _Suffix, Name).
 
 sym_name_doesnt_need_mangling(unqualified(Name)) :-
     name_doesnt_need_mangling(Name).
@@ -239,38 +239,38 @@ sym_name_doesnt_need_mangling(qualified(ModuleName, PlainName)) :-
 :- func maybe_qualify_name(string, string) = string.
 
 maybe_qualify_name(Module0, Name0) = Name :-
-    string__append(Module0, "__", UnderscoresModule),
-    ( string__append(UnderscoresModule, _, Name0) ->
+    string.append(Module0, "__", UnderscoresModule),
+    ( string.append(UnderscoresModule, _, Name0) ->
         Name = Name0
     ;
-        string__append(UnderscoresModule, Name0, Name)
+        string.append(UnderscoresModule, Name0, Name)
     ).
 
 %-----------------------------------------------------------------------------%
 
 output_base_typeclass_info_name(TCName, TypeNames, !IO) :-
     Str = make_base_typeclass_info_name(TCName, TypeNames),
-    io__write_string(mercury_data_prefix, !IO),
-    io__write_string("__", !IO),
-    io__write_string(Str, !IO).
+    io.write_string(mercury_data_prefix, !IO),
+    io.write_string("__", !IO),
+    io.write_string(Str, !IO).
 
 make_base_typeclass_info_name(TCName, TypeNames) = Str :-
     TCName = tc_name(ModuleName, ClassName, ClassArity),
     ClassSym = qualified(ModuleName, ClassName),
     MangledClassString = sym_name_mangle(ClassSym),
-    string__int_to_string(ClassArity, ArityString),
+    string.int_to_string(ClassArity, ArityString),
     MangledTypeNames = name_mangle(TypeNames),
-    string__append_list(["base_typeclass_info_", MangledClassString,
+    string.append_list(["base_typeclass_info_", MangledClassString,
         "__arity", ArityString, "__", MangledTypeNames], Str).
 
 %-----------------------------------------------------------------------------%
 
 output_init_name(ModuleName, !IO) :-
     InitName = make_init_name(ModuleName),
-    io__write_string(InitName, !IO).
+    io.write_string(InitName, !IO).
 
 output_tabling_pointer_var_name(ProcLabel, !IO) :-
-    io__write_string("mercury_var__table_root__", !IO),
+    io.write_string("mercury_var__table_root__", !IO),
     output_proc_label(ProcLabel, !IO).
 
 %-----------------------------------------------------------------------------%

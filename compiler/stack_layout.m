@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2005 University of Melbourne.
+% Copyright (C) 1997-2006 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -25,7 +25,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- module ll_backend__stack_layout.
+:- module ll_backend.stack_layout.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -113,20 +113,20 @@
 generate_llds(ModuleInfo0, !GlobalData, Layouts, LayoutLabels) :-
     global_data_get_all_proc_layouts(!.GlobalData, ProcLayoutList),
     module_info_get_globals(ModuleInfo0, Globals),
-    globals__lookup_bool_option(Globals, agc_stack_layout, AgcLayout),
-    globals__lookup_bool_option(Globals, trace_stack_layout, TraceLayout),
-    globals__lookup_bool_option(Globals, procid_stack_layout,
+    globals.lookup_bool_option(Globals, agc_stack_layout, AgcLayout),
+    globals.lookup_bool_option(Globals, trace_stack_layout, TraceLayout),
+    globals.lookup_bool_option(Globals, procid_stack_layout,
         ProcIdLayout),
-    globals__get_trace_level(Globals, TraceLevel),
-    globals__get_trace_suppress(Globals, TraceSuppress),
-    globals__have_static_code_addresses(Globals, StaticCodeAddr),
-    map__init(LayoutLabels0),
+    globals.get_trace_level(Globals, TraceLevel),
+    globals.get_trace_suppress(Globals, TraceSuppress),
+    globals.have_static_code_addresses(Globals, StaticCodeAddr),
+    map.init(LayoutLabels0),
 
-    map__init(StringMap0),
-    map__init(LabelTables0),
+    map.init(StringMap0),
+    map.init(LabelTables0),
     StringTable0 = string_table(StringMap0, [], 0),
     global_data_get_static_cell_info(!.GlobalData, StaticCellInfo0),
-    counter__init(1, LabelCounter0),
+    counter.init(1, LabelCounter0),
     LayoutInfo0 = stack_layout_info(ModuleInfo0,
         AgcLayout, TraceLayout, ProcIdLayout, StaticCodeAddr,
         LabelCounter0, [], [], [], LayoutLabels0, [],
@@ -134,9 +134,9 @@ generate_llds(ModuleInfo0, !GlobalData, Layouts, LayoutLabels) :-
     lookup_string_in_table("", _, LayoutInfo0, LayoutInfo1),
     lookup_string_in_table("<too many variables>", _,
         LayoutInfo1, LayoutInfo2),
-    list__foldl(construct_layouts, ProcLayoutList, LayoutInfo2, LayoutInfo),
+    list.foldl(construct_layouts, ProcLayoutList, LayoutInfo2, LayoutInfo),
     LabelsCounter = LayoutInfo ^ label_counter,
-    counter__allocate(NumLabels, LabelsCounter, _),
+    counter.allocate(NumLabels, LabelsCounter, _),
     TableIoDecls = LayoutInfo ^ table_infos,
     ProcLayouts = LayoutInfo ^ proc_layouts,
     InternalLayouts = LayoutInfo ^ internal_layouts,
@@ -147,20 +147,20 @@ generate_llds(ModuleInfo0, !GlobalData, Layouts, LayoutLabels) :-
     global_data_set_static_cell_info(LayoutInfo ^ static_cell_info,
         !GlobalData),
     StringTable = string_table(_, RevStringList, StringOffset),
-    list__reverse(RevStringList, StringList),
+    list.reverse(RevStringList, StringList),
     concat_string_list(StringList, StringOffset, ConcatStrings),
 
-    list__condense([TableIoDecls, ProcLayouts, InternalLayouts], Layouts0),
+    list.condense([TableIoDecls, ProcLayouts, InternalLayouts], Layouts0),
     (
         TraceLayout = yes,
         module_info_get_name(ModuleInfo0, ModuleName),
-        globals__lookup_bool_option(Globals, rtti_line_numbers, LineNumbers),
+        globals.lookup_bool_option(Globals, rtti_line_numbers, LineNumbers),
         (
             LineNumbers = yes,
             EffLabelTables = LabelTables
         ;
             LineNumbers = no,
-            map__init(EffLabelTables)
+            map.init(EffLabelTables)
         ),
         format_label_tables(EffLabelTables, SourceFileLayouts),
         SuppressedEvents = encode_suppressed_events(TraceSuppress),
@@ -241,13 +241,13 @@ concat_string_list(Strings, Len, string_with_0s(Result)) :-
 % So we check that.
 concat_string_list_2(StringsList, _Len, StringWithNulls) :-
     (
-        char__to_int(NullChar, 0),
-        NullCharString = string__char_to_string(NullChar),
-        string__length(NullCharString, 1)
+        char.to_int(NullChar, 0),
+        NullCharString = string.char_to_string(NullChar),
+        string.length(NullCharString, 1)
     ->
-        StringsWithNullsList = list__map(func(S) = S ++ NullCharString,
+        StringsWithNullsList = list.map(func(S) = S ++ NullCharString,
             StringsList),
-        StringWithNulls = string__append_list(StringsWithNullsList)
+        StringWithNulls = string.append_list(StringsWithNullsList)
     ;
         % the Mercury implementation's string representation
         % doesn't support strings containing null characters
@@ -260,8 +260,8 @@ concat_string_list_2(StringsList, _Len, StringWithNulls) :-
     list(file_layout_data)::out) is det.
 
 format_label_tables(LabelTableMap, SourceFileLayouts) :-
-    map__to_assoc_list(LabelTableMap, LabelTableList),
-    list__map(format_label_table, LabelTableList, SourceFileLayouts).
+    map.to_assoc_list(LabelTableMap, LabelTableList),
+    list.map(format_label_table, LabelTableList, SourceFileLayouts).
 
 :- pred format_label_table(pair(string, label_table)::in,
     file_layout_data::out) is det.
@@ -269,23 +269,23 @@ format_label_tables(LabelTableMap, SourceFileLayouts) :-
 format_label_table(FileName - LineNoMap,
         file_layout_data(FileName, FilteredList)) :-
     % This step should produce a list ordered on line numbers.
-    map__to_assoc_list(LineNoMap, LineNoList),
+    map.to_assoc_list(LineNoMap, LineNoList),
     % And this step should preserve that order.
     flatten_label_table(LineNoList, [], FlatLineNoList),
     Filter = (pred(LineNoInfo::in, FilteredLineNoInfo::out) is det :-
         LineNoInfo = LineNo - (Label - _IsReturn),
         FilteredLineNoInfo = LineNo - Label
     ),
-    list__map(Filter, FlatLineNoList, FilteredList).
+    list.map(Filter, FlatLineNoList, FilteredList).
 
 :- pred flatten_label_table(assoc_list(int, list(line_no_info))::in,
     assoc_list(int, line_no_info)::in,
     assoc_list(int, line_no_info)::out) is det.
 
 flatten_label_table([], RevList, List) :-
-    list__reverse(RevList, List).
+    list.reverse(RevList, List).
 flatten_label_table([LineNo - LinesInfos | Lines], RevList0, List) :-
-    list__foldl(add_line_no(LineNo), LinesInfos, RevList0, RevList1),
+    list.foldl(add_line_no(LineNo), LinesInfos, RevList0, RevList1),
     flatten_label_table(Lines, RevList1, List).
 
 :- pred add_line_no(int::in, line_no_info::in,
@@ -328,12 +328,12 @@ construct_layouts(ProcLayoutInfo, !Info) :-
         MaybeTableIoDecl,
         _NeedsAllNames,
         _MaybeDeepProfInfo),
-    map__to_assoc_list(InternalMap, Internals),
+    map.to_assoc_list(InternalMap, Internals),
     compute_var_number_map(HeadVars, VarSet, Internals, Goal, VarNumMap),
 
     ProcLabel = get_proc_label(EntryLabel),
     get_procid_stack_layout(!.Info, ProcIdLayout0),
-    bool__or(ProcIdLayout0, ForceProcIdLayout, ProcIdLayout),
+    bool.or(ProcIdLayout0, ForceProcIdLayout, ProcIdLayout),
     (
         ( ProcIdLayout = yes
         ; MaybeTableIoDecl = yes(_)
@@ -350,14 +350,14 @@ construct_layouts(ProcLayoutInfo, !Info) :-
         ),
         valid_proc_layout(ProcLayoutInfo)
     ->
-        list__map_foldl(
+        list.map_foldl(
             construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap),
             Internals, InternalLayouts, !Info)
     ;
         InternalLayouts = []
     ),
     get_label_tables(!.Info, LabelTables0),
-    list__foldl(update_label_table, InternalLayouts,
+    list.foldl(update_label_table, InternalLayouts,
         LabelTables0, LabelTables),
     set_label_tables(LabelTables, !Info),
     construct_proc_layout(ProcLayoutInfo, Kind, VarNumMap, !Info).
@@ -400,25 +400,25 @@ update_label_table({ProcLabel, LabelNum, LabelVars, InternalInfo},
 
 update_label_table_2(ProcLabel, LabelNum, LabelVars, Context,
         IsReturn, !LabelTables) :-
-    term__context_file(Context, File),
-    term__context_line(Context, Line),
-    ( map__search(!.LabelTables, File, LabelTable0) ->
+    term.context_file(Context, File),
+    term.context_line(Context, Line),
+    ( map.search(!.LabelTables, File, LabelTable0) ->
         LabelLayout = label_layout(ProcLabel, LabelNum, LabelVars),
-        ( map__search(LabelTable0, Line, LineInfo0) ->
+        ( map.search(LabelTable0, Line, LineInfo0) ->
             LineInfo = [LabelLayout - IsReturn | LineInfo0],
-            map__det_update(LabelTable0, Line, LineInfo, LabelTable),
-            svmap__det_update(File, LabelTable, !LabelTables)
+            map.det_update(LabelTable0, Line, LineInfo, LabelTable),
+            svmap.det_update(File, LabelTable, !LabelTables)
         ;
             LineInfo = [LabelLayout - IsReturn],
-            map__det_insert(LabelTable0, Line, LineInfo, LabelTable),
-            svmap__det_update(File, LabelTable, !LabelTables)
+            map.det_insert(LabelTable0, Line, LineInfo, LabelTable),
+            svmap.det_update(File, LabelTable, !LabelTables)
         )
     ; context_is_valid(Context) ->
-        map__init(LabelTable0),
+        map.init(LabelTable0),
         LabelLayout = label_layout(ProcLabel, LabelNum, LabelVars),
         LineInfo = [LabelLayout - IsReturn],
-        map__det_insert(LabelTable0, Line, LineInfo, LabelTable),
-        svmap__det_insert(File, LabelTable, !LabelTables)
+        map.det_insert(LabelTable0, Line, LineInfo, LabelTable),
+        svmap.det_insert(File, LabelTable, !LabelTables)
     ;
         % We don't have a valid context for this label,
         % so we don't enter it into any tables.
@@ -445,8 +445,8 @@ find_valid_return_context([TargetContext | TargetContexts],
 :- pred context_is_valid(prog_context::in) is semidet.
 
 context_is_valid(Context) :-
-    term__context_file(Context, File),
-    term__context_line(Context, Line),
+    term.context_file(Context, File),
+    term.context_line(Context, Line),
     File \= "",
     Line > 0.
 
@@ -584,14 +584,14 @@ construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
         MaybeTableInfo, NeedsAllNames, VarNumMap, ExecTrace, !Info) :-
     construct_var_name_vector(VarNumMap,
         NeedsAllNames, MaxVarNum, VarNameVector, !Info),
-    list__map(convert_var_to_int(VarNumMap), HeadVars, HeadVarNumVector),
+    list.map(convert_var_to_int(VarNumMap), HeadVars, HeadVarNumVector),
     ModuleInfo = !.Info ^ module_info,
     (
         NeedGoalRep = no,
         ProcBytes = []
     ;
         NeedGoalRep = yes,
-        prog_rep__represent_proc(HeadVars, Goal, InstMap, VarTypes, VarNumMap,
+        prog_rep.represent_proc(HeadVars, Goal, InstMap, VarTypes, VarNumMap,
             ModuleInfo, !Info, ProcBytes)
     ),
     (
@@ -654,15 +654,15 @@ encode_exec_trace_flags(ModuleInfo, HeadVars, ArgModes, VarTypes, !Flags) :-
 
 construct_var_name_vector(VarNumMap, NeedsAllNames, MaxVarNum, Offsets,
         !Info) :-
-    map__values(VarNumMap, VarNames0),
+    map.values(VarNumMap, VarNames0),
     (
         NeedsAllNames = yes,
         VarNames = VarNames0
     ;
         NeedsAllNames = no,
-        list__filter(var_has_name, VarNames0, VarNames)
+        list.filter(var_has_name, VarNames0, VarNames)
     ),
-    list__sort(VarNames, SortedVarNames),
+    list.sort(VarNames, SortedVarNames),
     ( SortedVarNames = [FirstVarNum - _ | _] ->
         MaxVarNum0 = FirstVarNum,
         construct_var_name_rvals(SortedVarNames, 1, MaxVarNum0, MaxVarNum,
@@ -705,15 +705,15 @@ construct_var_name_rvals([Var - Name | VarNamesTail], CurNum,
 
 compute_var_number_map(HeadVars, VarSet, Internals, Goal, VarNumMap) :-
     some [!VarNumMap, !Counter] (
-        !:VarNumMap = map__init,
-        !:Counter = counter__init(1), % to match term__var_supply_init
-        goal_util__goal_vars(Goal, GoalVarSet),
-        set__to_sorted_list(GoalVarSet, GoalVars),
-        list__foldl2(add_var_to_var_number_map(VarSet), GoalVars,
+        !:VarNumMap = map.init,
+        !:Counter = counter.init(1), % to match term.var_supply_init
+        goal_util.goal_vars(Goal, GoalVarSet),
+        set.to_sorted_list(GoalVarSet, GoalVars),
+        list.foldl2(add_var_to_var_number_map(VarSet), GoalVars,
             !VarNumMap, !Counter),
-        list__foldl2(add_var_to_var_number_map(VarSet), HeadVars,
+        list.foldl2(add_var_to_var_number_map(VarSet), HeadVars,
             !VarNumMap, !Counter),
-        list__foldl2(internal_var_number_map, Internals, !VarNumMap,
+        list.foldl2(internal_var_number_map, Internals, !VarNumMap,
             !.Counter, _),
         VarNumMap = !.VarNumMap
     ).
@@ -749,20 +749,20 @@ internal_var_number_map(_Label - Internal, !VarNumMap, !Counter) :-
 
 label_layout_var_number_map(LabelLayout, !VarNumMap, !Counter) :-
     LabelLayout = layout_label_info(VarInfoSet, _),
-    VarInfos = set__to_sorted_list(VarInfoSet),
+    VarInfos = set.to_sorted_list(VarInfoSet),
     FindVar = (pred(VarInfo::in, Var - Name::out) is semidet :-
         VarInfo = layout_var_info(_, LiveValueType, _),
         LiveValueType = var(Var, Name, _, _)
     ),
-    list__filter_map(FindVar, VarInfos, VarsNames),
-    list__foldl2(add_named_var_to_var_number_map, VarsNames,
+    list.filter_map(FindVar, VarInfos, VarsNames),
+    list.foldl2(add_named_var_to_var_number_map, VarsNames,
         !VarNumMap, !Counter).
 
 :- pred add_var_to_var_number_map(prog_varset::in, prog_var::in,
     var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
 
 add_var_to_var_number_map(VarSet, Var, !VarNumMap, !Counter) :-
-    ( varset__search_name(VarSet, Var, VarName) ->
+    ( varset.search_name(VarSet, Var, VarName) ->
         Name = VarName
     ;
         Name = ""
@@ -773,12 +773,12 @@ add_var_to_var_number_map(VarSet, Var, !VarNumMap, !Counter) :-
     var_num_map::in, var_num_map::out, counter::in, counter::out) is det.
 
 add_named_var_to_var_number_map(Var - Name, !VarNumMap, !Counter) :-
-    ( map__search(!.VarNumMap, Var, _) ->
+    ( map.search(!.VarNumMap, Var, _) ->
         % Name shouldn't differ from the name recorded in !.VarNumMap.
         true
     ;
-        counter__allocate(VarNum, !Counter),
-        map__det_insert(!.VarNumMap, Var, VarNum - Name, !:VarNumMap)
+        counter.allocate(VarNum, !Counter),
+        map.det_insert(!.VarNumMap, Var, VarNum - Name, !:VarNumMap)
     ).
 
 %---------------------------------------------------------------------------%
@@ -796,16 +796,16 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
     Internal = internal_layout_info(Trace, Resume, Return),
     (
         Trace = no,
-        set__init(TraceLiveVarSet),
-        map__init(TraceTypeVarMap)
+        set.init(TraceLiveVarSet),
+        map.init(TraceTypeVarMap)
     ;
         Trace = yes(trace_port_layout_info(_,_,_,_, TraceLayout)),
         TraceLayout = layout_label_info(TraceLiveVarSet, TraceTypeVarMap)
     ),
     (
         Resume = no,
-        set__init(ResumeLiveVarSet),
-        map__init(ResumeTypeVarMap)
+        set.init(ResumeLiveVarSet),
+        map.init(ResumeTypeVarMap)
     ;
         Resume = yes(ResumeLayout),
         ResumeLayout = layout_label_info(ResumeLiveVarSet, ResumeTypeVarMap)
@@ -857,8 +857,8 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
     get_agc_stack_layout(!.Info, AgcStackLayout),
     (
         Return = no,
-        set__init(ReturnLiveVarSet),
-        map__init(ReturnTypeVarMap)
+        set.init(ReturnLiveVarSet),
+        map.init(ReturnTypeVarMap)
     ;
         Return = yes(return_layout_info(_, ReturnLayout)),
         ReturnLayout = layout_label_info(ReturnLiveVarSet0, ReturnTypeVarMap0),
@@ -872,11 +872,11 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
             % tracing, so we are interested only in (a) variables, not
             % temporaries, (b) only named variables, and (c) only those
             % on the stack, not the return values.
-            set__to_sorted_list(ReturnLiveVarSet0, ReturnLiveVarList0),
+            set.to_sorted_list(ReturnLiveVarSet0, ReturnLiveVarList0),
             select_trace_return(
                 ReturnLiveVarList0, ReturnTypeVarMap0,
                 ReturnLiveVarList, ReturnTypeVarMap),
-            set__list_to_set(ReturnLiveVarList, ReturnLiveVarSet)
+            set.list_to_set(ReturnLiveVarList, ReturnLiveVarSet)
         )
     ),
     (
@@ -888,11 +888,11 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
         LabelVars = label_has_no_var_info
     ;
         % XXX Ignore differences in insts inside layout_var_infos.
-        set__union(TraceLiveVarSet, ResumeLiveVarSet, LiveVarSet0),
-        set__union(LiveVarSet0, ReturnLiveVarSet, LiveVarSet),
-        map__union(set__intersect, TraceTypeVarMap, ResumeTypeVarMap,
+        set.union(TraceLiveVarSet, ResumeLiveVarSet, LiveVarSet0),
+        set.union(LiveVarSet0, ReturnLiveVarSet, LiveVarSet),
+        map.union(set.intersect, TraceTypeVarMap, ResumeTypeVarMap,
             TypeVarMap0),
-        map__union(set__intersect, TypeVarMap0, ReturnTypeVarMap, TypeVarMap),
+        map.union(set.intersect, TypeVarMap0, ReturnTypeVarMap, TypeVarMap),
         construct_livelval_rvals(LiveVarSet, VarNumMap, TypeVarMap,
             EncodedLength, LiveValRval, NamesRval, TypeParamRval, !Info),
         VarInfo = label_var_info(EncodedLength, LiveValRval, NamesRval,
@@ -933,7 +933,7 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
 
 construct_livelval_rvals(LiveLvalSet, VarNumMap, TVarLocnMap,
         EncodedLength, LiveValRval, NamesRval, TypeParamRval, !Info) :-
-    set__to_sorted_list(LiveLvalSet, LiveLvals),
+    set.to_sorted_list(LiveLvalSet, LiveLvals),
     sort_livevals(LiveLvals, SortedLiveLvals),
     construct_liveval_arrays(SortedLiveLvals, VarNumMap,
         EncodedLength, LiveValRval, NamesRval, !Info),
@@ -946,7 +946,7 @@ construct_livelval_rvals(LiveLvalSet, VarNumMap, TVarLocnMap,
     rval::out, static_cell_info::in, static_cell_info::out) is det.
 
 construct_tvar_vector(TVarLocnMap, TypeParamRval, !StaticCellInfo) :-
-    ( map__is_empty(TVarLocnMap) ->
+    ( map.is_empty(TVarLocnMap) ->
         TypeParamRval = const(int_const(0))
     ;
         construct_tvar_rvals(TVarLocnMap, Vector),
@@ -958,9 +958,9 @@ construct_tvar_vector(TVarLocnMap, TypeParamRval, !StaticCellInfo) :-
     assoc_list(rval, llds_type)::out) is det.
 
 construct_tvar_rvals(TVarLocnMap, Vector) :-
-    map__to_assoc_list(TVarLocnMap, TVarLocns),
+    map.to_assoc_list(TVarLocnMap, TVarLocns),
     construct_type_param_locn_vector(TVarLocns, 1, TypeParamLocs),
-    list__length(TypeParamLocs, TypeParamsLength),
+    list.length(TypeParamLocs, TypeParamsLength),
     LengthRval = const(int_const(TypeParamsLength)),
     Vector = [LengthRval - uint_least32 | TypeParamLocs].
 
@@ -985,7 +985,7 @@ select_trace_return(Infos, TVars, TraceReturnInfos, TVars) :-
         ( Locn = direct(Lval) ; Locn = indirect(Lval, _)),
         ( Lval = stackvar(_) ; Lval = framevar(_) )
     ),
-    list__filter(IsNamedReturnVar, Infos, TraceReturnInfos).
+    list.filter(IsNamedReturnVar, Infos, TraceReturnInfos).
 
     % Given a list of layout_var_infos, put the ones that tracing can be
     % interested in (whether at an internal port or for uplevel printing)
@@ -1005,7 +1005,7 @@ sort_livevals(OrigInfos, FinalInfos) :-
         LvalType = var(_, Name, _, _),
         Name \= ""
     ),
-    list__filter(IsNamedVar, OrigInfos, NamedVarInfos0, OtherInfos0),
+    list.filter(IsNamedVar, OrigInfos, NamedVarInfos0, OtherInfos0),
     CompareVarInfos = (pred(Var1::in, Var2::in, Result::out) is det :-
         Var1 = layout_var_info(Lval1, LiveType1, _),
         Var2 = layout_var_info(Lval2, LiveType2, _),
@@ -1018,9 +1018,9 @@ sort_livevals(OrigInfos, FinalInfos) :-
             Result = NameResult
         )
     ),
-    list__sort(CompareVarInfos, NamedVarInfos0, NamedVarInfos),
-    list__sort(CompareVarInfos, OtherInfos0, OtherInfos),
-    list__append(NamedVarInfos, OtherInfos, FinalInfos).
+    list.sort(CompareVarInfos, NamedVarInfos0, NamedVarInfos),
+    list.sort(CompareVarInfos, OtherInfos0, OtherInfos),
+    list.append(NamedVarInfos, OtherInfos, FinalInfos).
 
 :- pred get_name_from_live_value_type(live_value_type::in,
     string::out) is det.
@@ -1046,10 +1046,10 @@ get_name_from_live_value_type(LiveType, Name) :-
 construct_type_param_locn_vector([], _, []).
 construct_type_param_locn_vector([TVar - Locns | TVarLocns], CurSlot,
         Vector) :-
-    term__var_to_int(TVar, TVarNum),
+    term.var_to_int(TVar, TVarNum),
     NextSlot = CurSlot + 1,
     ( TVarNum = CurSlot ->
-        ( set__remove_least(Locns, LeastLocn, _) ->
+        ( set.remove_least(Locns, LeastLocn, _) ->
             Locn = LeastLocn
         ;
             unexpected(this_file, "tvar has empty set of locations")
@@ -1094,13 +1094,13 @@ construct_type_param_locn_vector([TVar - Locns | TVarLocns], CurSlot,
 
 construct_liveval_arrays(VarInfos, VarNumMap, EncodedLength,
         TypeLocnVector, NumVector, !Info) :-
-    int__pow(2, short_count_bits, BytesLimit),
+    int.pow(2, short_count_bits, BytesLimit),
     construct_liveval_array_infos(VarInfos, VarNumMap,
         0, BytesLimit, IntArrayInfo, ByteArrayInfo, !Info),
 
-    list__length(IntArrayInfo, IntArrayLength),
-    list__length(ByteArrayInfo, ByteArrayLength),
-    list__append(IntArrayInfo, ByteArrayInfo, AllArrayInfo),
+    list.length(IntArrayInfo, IntArrayLength),
+    list.length(ByteArrayInfo, ByteArrayLength),
+    list.append(IntArrayInfo, ByteArrayInfo, AllArrayInfo),
 
     EncodedLength = IntArrayLength << short_count_bits + ByteArrayLength,
 
@@ -1115,13 +1115,13 @@ construct_liveval_arrays(VarInfos, VarNumMap, EncodedLength,
         NumRvals = [NumRval | NumRvals0]
     ),
 
-    list__map(SelectTypes, AllArrayInfo, AllTypeRvalsTypes),
-    list__map(SelectLocns, IntArrayInfo, IntLocns),
-    list__map(associate_type(uint_least32), IntLocns, IntLocnsTypes),
-    list__map(SelectLocns, ByteArrayInfo, ByteLocns),
-    list__map(associate_type(uint_least8), ByteLocns, ByteLocnsTypes),
-    list__append(IntLocnsTypes, ByteLocnsTypes, AllLocnsTypes),
-    list__append(AllTypeRvalsTypes, AllLocnsTypes, TypeLocnVectorRvalsTypes),
+    list.map(SelectTypes, AllArrayInfo, AllTypeRvalsTypes),
+    list.map(SelectLocns, IntArrayInfo, IntLocns),
+    list.map(associate_type(uint_least32), IntLocns, IntLocnsTypes),
+    list.map(SelectLocns, ByteArrayInfo, ByteLocns),
+    list.map(associate_type(uint_least8), ByteLocns, ByteLocnsTypes),
+    list.append(IntLocnsTypes, ByteLocnsTypes, AllLocnsTypes),
+    list.append(AllTypeRvalsTypes, AllLocnsTypes, TypeLocnVectorRvalsTypes),
     get_static_cell_info(!.Info, StaticCellInfo0),
     add_static_cell(TypeLocnVectorRvalsTypes, TypeLocnVectorAddr,
         StaticCellInfo0, StaticCellInfo1),
@@ -1131,9 +1131,9 @@ construct_liveval_arrays(VarInfos, VarNumMap, EncodedLength,
     get_trace_stack_layout(!.Info, TraceStackLayout),
     (
         TraceStackLayout = yes,
-        list__foldl(AddRevNums, AllArrayInfo, [], RevVarNumRvals),
-        list__reverse(RevVarNumRvals, VarNumRvals),
-        list__map(associate_type(uint_least16), VarNumRvals, VarNumRvalsTypes),
+        list.foldl(AddRevNums, AllArrayInfo, [], RevVarNumRvals),
+        list.reverse(RevVarNumRvals, VarNumRvals),
+        list.map(associate_type(uint_least16), VarNumRvals, VarNumRvalsTypes),
         get_static_cell_info(!.Info, StaticCellInfo2),
         add_static_cell(VarNumRvalsTypes, NumVectorAddr,
             StaticCellInfo2, StaticCellInfo),
@@ -1205,13 +1205,13 @@ construct_liveval_num_rval(VarNumMap,
     int::out) is det.
 
 convert_var_to_int(VarNumMap, Var, VarNum) :-
-    map__lookup(VarNumMap, Var, VarNum0 - _),
+    map.lookup(VarNumMap, Var, VarNum0 - _),
     % The variable number has to fit into two bytes. We reserve the largest
     % such number (Limit) to mean that the variable number is too large
     % to be represented. This ought not to happen, since compilation
     % would be glacial at best for procedures with that many variables.
     Limit = (1 << (2 * byte_bits)) - 1,
-    int__min(VarNum0, Limit, VarNum).
+    int.min(VarNum0, Limit, VarNum).
 
 %---------------------------------------------------------------------------%
 
@@ -1242,9 +1242,9 @@ construct_closure_layout(CallerProcLabel, SeqNo,
 
 construct_closure_arg_rvals(ClosureArgs, ClosureArgRvalsTypes,
         !StaticCellInfo) :-
-    list__map_foldl(construct_closure_arg_rval, ClosureArgs, ArgRvalsTypes,
+    list.map_foldl(construct_closure_arg_rval, ClosureArgs, ArgRvalsTypes,
         !StaticCellInfo),
-    list__length(ArgRvalsTypes, Length),
+    list.length(ArgRvalsTypes, Length),
     ClosureArgRvalsTypes =
         [const(int_const(Length)) - integer | ArgRvalsTypes].
 
@@ -1261,7 +1261,7 @@ construct_closure_arg_rval(ClosureArg, ArgRval - ArgRvalType,
     % we can take the variable number directly from the procedure's tvar set.
     ExistQTvars = [],
     NumUnivQTvars = -1,
-    ll_pseudo_type_info__construct_typed_llds_pseudo_type_info(Type,
+    ll_pseudo_type_info.construct_typed_llds_pseudo_type_info(Type,
         NumUnivQTvars, ExistQTvars, !StaticCellInfo, ArgRval, ArgRvalType).
 
 %---------------------------------------------------------------------------%
@@ -1297,12 +1297,12 @@ make_table_data(RttiProcLabel, Kind, TableInfo, TableData,
 convert_table_arg_info(TableArgInfos, NumPTIs,
         PTIVectorRval, TVarVectorRval, !StaticCellInfo) :-
     TableArgInfos = table_arg_infos(Args, TVarSlotMap),
-    list__length(Args, NumPTIs),
-    list__map_foldl(construct_table_arg_pti_rval, Args, PTIRvalsTypes,
+    list.length(Args, NumPTIs),
+    list.map_foldl(construct_table_arg_pti_rval, Args, PTIRvalsTypes,
         !StaticCellInfo),
     add_static_cell(PTIRvalsTypes, PTIVectorAddr, !StaticCellInfo),
     PTIVectorRval = const(data_addr_const(PTIVectorAddr, no)),
-    map__map_values(convert_slot_to_locn_map, TVarSlotMap, TVarLocnMap),
+    map.map_values(convert_slot_to_locn_map, TVarSlotMap, TVarLocnMap),
     construct_tvar_vector(TVarLocnMap, TVarVectorRval, !StaticCellInfo).
 
 :- pred convert_slot_to_locn_map(tvar::in, table_locn::in,
@@ -1316,7 +1316,7 @@ convert_slot_to_locn_map(_TVar, SlotLocn, LvalLocns) :-
         SlotLocn = indirect(SlotNum, Offset),
         LvalLocn = indirect(reg(r, SlotNum), Offset)
     ),
-    LvalLocns = set__make_singleton_set(LvalLocn).
+    LvalLocns = set.make_singleton_set(LvalLocn).
 
 :- pred construct_table_arg_pti_rval(
     table_arg_info::in, pair(rval, llds_type)::out,
@@ -1327,7 +1327,7 @@ construct_table_arg_pti_rval(ClosureArg, ArgRval - ArgRvalType,
     ClosureArg = table_arg_info(_, _, Type),
     ExistQTvars = [],
     NumUnivQTvars = -1,
-    ll_pseudo_type_info__construct_typed_llds_pseudo_type_info(Type,
+    ll_pseudo_type_info.construct_typed_llds_pseudo_type_info(Type,
         NumUnivQTvars, ExistQTvars, !StaticCellInfo, ArgRval, ArgRvalType).
 
 %---------------------------------------------------------------------------%
@@ -1371,7 +1371,7 @@ represent_live_value_type(var(_, _, Type, _), Rval, LldsType, !Info) :-
     ExistQTvars = [],
     NumUnivQTvars = -1,
     get_static_cell_info(!.Info, StaticCellInfo0),
-    ll_pseudo_type_info__construct_typed_llds_pseudo_type_info(Type,
+    ll_pseudo_type_info.construct_typed_llds_pseudo_type_info(Type,
         NumUnivQTvars, ExistQTvars, StaticCellInfo0, StaticCellInfo,
         Rval, LldsType),
     set_static_cell_info(StaticCellInfo, !Info).
@@ -1575,7 +1575,7 @@ byte_bits = 8.
 %---------------------------------------------------------------------------%
 
 represent_determinism_rval(Detism,
-    const(int_const(code_model__represent_determinism(Detism)))).
+    const(int_const(code_model.represent_determinism(Detism)))).
 
 %---------------------------------------------------------------------------%
 
@@ -1664,7 +1664,7 @@ get_static_cell_info(LI, LI ^ static_cell_info).
 
 allocate_label_number(LabelNum, !LI) :-
     Counter0 = !.LI ^ label_counter,
-    counter__allocate(LabelNum, Counter0, Counter),
+    counter.allocate(LabelNum, Counter0, Counter),
     !:LI = !.LI ^ label_counter := Counter.
 
 :- pred add_table_data(layout_data::in,
@@ -1683,7 +1683,7 @@ add_proc_layout_data(ProcLayout, ProcLayoutName, Label, !LI) :-
     ProcLayouts0 = !.LI ^ proc_layouts,
     ProcLayouts = [ProcLayout | ProcLayouts0],
     LabelSet0 = !.LI ^ label_set,
-    map__det_insert(LabelSet0, Label, layout_addr(ProcLayoutName), LabelSet),
+    map.det_insert(LabelSet0, Label, layout_addr(ProcLayoutName), LabelSet),
     ProcLayoutNames0 = !.LI ^ proc_layout_name_list,
     ProcLayoutNames = [ProcLayoutName | ProcLayoutNames0],
     !:LI = !.LI ^ proc_layouts := ProcLayouts,
@@ -1699,7 +1699,7 @@ add_internal_layout_data(InternalLayout, Label, LayoutName,
     InternalLayouts0 = !.LI ^ internal_layouts,
     InternalLayouts = [InternalLayout | InternalLayouts0],
     LabelSet0 = !.LI ^ label_set,
-    map__det_insert(LabelSet0, Label, layout_addr(LayoutName), LabelSet),
+    map.det_insert(LabelSet0, Label, layout_addr(LayoutName), LabelSet),
     !:LI = !.LI ^ internal_layouts := InternalLayouts,
     !:LI = !.LI ^ label_set := LabelSet.
 
@@ -1732,10 +1732,10 @@ set_static_cell_info(SCI, LI, LI ^ static_cell_info := SCI).
 lookup_string_in_table(String, Offset, !Info) :-
     StringTable0 = !.Info ^ string_table,
     StringTable0 = string_table(TableMap0, TableList0, TableOffset0),
-    ( map__search(TableMap0, String, OldOffset) ->
+    ( map.search(TableMap0, String, OldOffset) ->
         Offset = OldOffset
     ;
-        string__length(String, Length),
+        string.length(String, Length),
         TableOffset = TableOffset0 + Length + 1,
         % We use a 32 bit unsigned integer to represent the offset.
         % Computing that limit exactly without getting an overflow
@@ -1750,7 +1750,7 @@ lookup_string_in_table(String, Offset, !Info) :-
         TableOffset < (1 << ((4 * byte_bits) - 2))
     ->
         Offset = TableOffset0,
-        map__det_insert(TableMap0, String, TableOffset0, TableMap),
+        map.det_insert(TableMap0, String, TableOffset0, TableMap),
         TableList = [String | TableList0],
         StringTable = string_table(TableMap, TableList, TableOffset),
         set_string_table(StringTable, !Info)

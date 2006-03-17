@@ -296,7 +296,7 @@ number_robdd_variables_in_pred(PredId, !ModuleInfo, !MCI) :-
     % `OmitModeEquivPrefix = yes' to `goal_path.fill_slots_in_clauses'.
 
     OmitModeEquivPrefix = yes,
-    goal_path.fill_slots_in_clauses(!.ModuleInfo, OmitModeEquivPrefix,
+    fill_goal_path_slots_in_clauses(!.ModuleInfo, OmitModeEquivPrefix,
         PredInfo0, PredInfo1),
 
     pred_info_clauses_info(PredInfo1, ClausesInfo0),
@@ -422,7 +422,7 @@ number_robdd_variables_in_rhs(InstGraph, GoalPath, Vars, !RHS, !NRInfo) :-
     Vars = LambdaNonLocals,
     VarTypes = !.NRInfo ^ vartypes,
     ModuleInfo = !.NRInfo ^ module_info,
-    goal_path.fill_slots_in_goal(LambdaGoal0, VarTypes, ModuleInfo,
+    fill_goal_path_slots_in_goal(LambdaGoal0, VarTypes, ModuleInfo,
         LambdaGoal1),
     update_mc_info(enter_lambda_goal(GoalPath), !NRInfo),
 

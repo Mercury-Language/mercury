@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2003-2005 The University of Melbourne.
+% Copyright (C) 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -19,7 +19,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- module backend_libs__type_class_info.
+:- module backend_libs.type_class_info.
 :- interface.
 
 :- import_module backend_libs.rtti.
@@ -31,7 +31,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred type_class_info__generate_rtti(module_info::in, bool::in,
+:- pred generate_type_class_info_rtti(module_info::in, bool::in,
     list(rtti_data)::out) is det.
 
 :- func generate_class_constraint(prog_constraint) = tc_constraint.
@@ -71,15 +71,15 @@
 % typed arguments. We generate descriptors for type class instances only if
 % requested to generate all the descriptors we can.
 
-generate_rtti(ModuleInfo, GenerateAll, !:RttiDatas) :-
+generate_type_class_info_rtti(ModuleInfo, GenerateAll, !:RttiDatas) :-
     module_info_get_class_table(ModuleInfo, ClassTable),
-    map__to_assoc_list(ClassTable, Classes),
-    list__foldl(generate_class_decl(ModuleInfo), Classes, [], !:RttiDatas),
+    map.to_assoc_list(ClassTable, Classes),
+    list.foldl(generate_class_decl(ModuleInfo), Classes, [], !:RttiDatas),
     (
         GenerateAll = yes,
         module_info_get_instance_table(ModuleInfo, InstanceTable),
-        map__to_assoc_list(InstanceTable, Instances),
-        list__foldl(generate_instance_decls(ModuleInfo), Instances, !RttiDatas)
+        map.to_assoc_list(InstanceTable, Instances),
+        list.foldl(generate_instance_decls(ModuleInfo), Instances, !RttiDatas)
     ;
         GenerateAll = no
     ).
@@ -95,7 +95,7 @@ generate_class_decl(ModuleInfo, ClassId - ClassDefn, !RttiDatas) :-
     ( status_defined_in_this_module(ImportStatus, yes) ->
         TCId = generate_class_id(ModuleInfo, ClassId, ClassDefn),
         Supers = ClassDefn ^ class_supers,
-        TCSupers = list__map(generate_class_constraint, Supers),
+        TCSupers = list.map(generate_class_constraint, Supers),
         TCVersion = type_class_info_rtti_version,
         RttiData = type_class_decl(tc_decl(TCId, TCVersion, TCSupers)),
         !:RttiDatas = [RttiData | !.RttiDatas]
@@ -109,9 +109,9 @@ generate_class_id(ModuleInfo, ClassId, ClassDefn) = TCId :-
     TCName = generate_class_name(ClassId),
     ClassVars = ClassDefn ^ class_vars,
     ClassVarSet = ClassDefn ^ class_tvarset,
-    list__map(varset__lookup_name(ClassVarSet), ClassVars, VarNames),
+    list.map(varset.lookup_name(ClassVarSet), ClassVars, VarNames),
     Interface = ClassDefn ^ class_hlds_interface,
-    MethodIds = list__map(generate_method_id(ModuleInfo), Interface),
+    MethodIds = list.map(generate_method_id(ModuleInfo), Interface),
     TCId = tc_id(TCName, VarNames, MethodIds).
 
 :- func generate_method_id(module_info, hlds_class_proc) = tc_method_id.
@@ -131,7 +131,7 @@ generate_method_id(ModuleInfo, ClassProc) = MethodId :-
     list(rtti_data)::in, list(rtti_data)::out) is det.
 
 generate_instance_decls(ModuleInfo, ClassId - Instances, !RttiDatas) :-
-    list__foldl(generate_maybe_instance_decl(ModuleInfo, ClassId),
+    list.foldl(generate_maybe_instance_decl(ModuleInfo, ClassId),
         Instances, !RttiDatas).
 
 :- pred generate_maybe_instance_decl(module_info::in,
@@ -160,12 +160,12 @@ generate_maybe_instance_decl(ModuleInfo, ClassId, InstanceDefn, !RttiDatas) :-
 generate_instance_decl(ModuleInfo, ClassId, Instance) = RttiData :-
     TCName = generate_class_name(ClassId),
     InstanceTypes = Instance ^ instance_types,
-    InstanceTCTypes = list__map(generate_tc_type, InstanceTypes),
+    InstanceTCTypes = list.map(generate_tc_type, InstanceTypes),
     TVarSet = Instance ^ instance_tvarset,
-    varset__vars(TVarSet, TVars),
-    TVarNums = list__map(term__var_to_int, TVars),
-    TVarLength = list__length(TVarNums),
-    ( list__last(TVarNums, LastTVarNum) ->
+    varset.vars(TVarSet, TVars),
+    TVarNums = list.map(term.var_to_int, TVars),
+    TVarLength = list.length(TVarNums),
+    ( list.last(TVarNums, LastTVarNum) ->
         expect(unify(TVarLength, LastTVarNum), this_file,
             "generate_instance_decl: tvar num mismatch"),
         NumTypeVars = TVarLength
@@ -173,11 +173,11 @@ generate_instance_decl(ModuleInfo, ClassId, Instance) = RttiData :-
         NumTypeVars = 0
     ),
     Constraints = Instance ^ instance_constraints,
-    TCConstraints = list__map(generate_class_constraint, Constraints),
+    TCConstraints = list.map(generate_class_constraint, Constraints),
     MaybeInterface = Instance ^ instance_hlds_interface,
     (
         MaybeInterface = yes(Interface),
-        MethodProcLabels = list__map(generate_method_proc_label(ModuleInfo),
+        MethodProcLabels = list.map(generate_method_proc_label(ModuleInfo),
             Interface)
     ;
         MaybeInterface = no,
@@ -205,16 +205,16 @@ generate_class_name(class_id(SymName, Arity)) = TCName :-
     TCName = tc_name(ModuleName, ClassName, Arity).
 
 generate_class_constraint(constraint(ClassName, Types)) = TCConstr :-
-    Arity = list__length(Types),
+    Arity = list.length(Types),
     ClassId = class_id(ClassName, Arity),
     TCClassName = generate_class_name(ClassId),
-    ClassTypes = list__map(generate_tc_type, Types),
+    ClassTypes = list.map(generate_tc_type, Types),
     TCConstr = tc_constraint(TCClassName, ClassTypes).
 
 :- func generate_tc_type(mer_type) = tc_type.
 
 generate_tc_type(Type) = TCType :-
-    pseudo_type_info__construct_maybe_pseudo_type_info(Type, -1, [], TCType).
+    pseudo_type_info.construct_maybe_pseudo_type_info(Type, -1, [], TCType).
 
 %---------------------------------------------------------------------------%
 

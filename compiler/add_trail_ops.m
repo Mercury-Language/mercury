@@ -50,7 +50,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ml_backend__add_trail_ops.
+:- module ml_backend.add_trail_ops.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -187,7 +187,7 @@ goal_expr_add_trail_ops(not(InnerGoal), OuterGoalInfo, Goal, !Info) :-
         % The "then" part of the if-then-else will be unreachable, but to
         % preserve the invariants that the MLDS back-end relies on, we need to
         % make sure that it can't fail. So we use a call to
-        % `private_builtin__unused' (which will call error/1) rather than
+        % `private_builtin.unused' (which will call error/1) rather than
         % `fail' for the "then" part.
         mercury_private_builtin_module(PrivateBuiltin),
         generate_simple_call(PrivateBuiltin, "unused", predicate, only_mode,
@@ -323,7 +323,7 @@ goal_expr_add_trail_ops(shorthand(_), _, _, !Info) :-
     trail_ops_info::in, trail_ops_info::out) is det.
 
 conj_add_trail_ops(Goals0, Goals, !Info) :-
-    list__map_foldl(goal_add_trail_ops, Goals0, Goals, !Info).
+    list.map_foldl(goal_add_trail_ops, Goals0, Goals, !Info).
 
 :- pred disj_add_trail_ops(hlds_goals::in, bool::in, bool::in,
     code_model::in, prog_var::in, hlds_goals::out,
@@ -602,8 +602,8 @@ new_ticket_counter_var(Var, !Info) :-
 new_var(Name, Type, Var, !Info) :-
     VarSet0 = !.Info ^ varset,
     VarTypes0 = !.Info ^ var_types,
-    varset__new_named_var(VarSet0, Name, Var, VarSet),
-    map__det_insert(VarTypes0, Var, Type, VarTypes),
+    varset.new_named_var(VarSet0, Name, Var, VarSet),
+    map.det_insert(VarTypes0, Var, Type, VarTypes),
     !:Info = !.Info ^ varset := VarSet,
     !:Info = !.Info ^ var_types := VarTypes.
 
@@ -621,12 +621,12 @@ ticket_counter_type = c_pointer_type.
 
 :- pred trail_generate_call(string::in, determinism::in, list(prog_var)::in,
     list(goal_feature)::in, assoc_list(prog_var, mer_inst)::in,
-    module_info::in, term__context::in, hlds_goal::out) is det.
+    module_info::in, term.context::in, hlds_goal::out) is det.
 
 trail_generate_call(PredName, Detism, Args, Features, InstMap, ModuleInfo,
         Context, CallGoal) :-
     mercury_private_builtin_module(BuiltinModule),
-    goal_util__generate_simple_call(BuiltinModule, PredName, predicate,
+    goal_util.generate_simple_call(BuiltinModule, PredName, predicate,
         only_mode, Detism, Args, Features, InstMap, ModuleInfo,
         Context, CallGoal).
 

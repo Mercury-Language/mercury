@@ -33,7 +33,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds__post_typecheck.
+:- module check_hlds.post_typecheck.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -215,10 +215,10 @@ check_type_bindings(ModuleInfo, PredId, !PredInfo, ReportErrs, NumErrors,
             UnprovenConstraints0),
         UnprovenConstraints0 = [_ | _]
     ->
-        list__sort_and_remove_dups(UnprovenConstraints0, UnprovenConstraints),
+        list.sort_and_remove_dups(UnprovenConstraints0, UnprovenConstraints),
         report_unsatisfied_constraints(UnprovenConstraints, PredId,
             !.PredInfo, ModuleInfo, !IO),
-        list__length(UnprovenConstraints, NumErrors)
+        list.length(UnprovenConstraints, NumErrors)
     ;
         NumErrors = 0
     ),
@@ -227,8 +227,8 @@ check_type_bindings(ModuleInfo, PredId, !PredInfo, ReportErrs, NumErrors,
     pred_info_get_head_type_params(!.PredInfo, HeadTypeParams),
     clauses_info_varset(ClausesInfo0, VarSet),
     clauses_info_vartypes(ClausesInfo0, VarTypesMap0),
-    map__to_assoc_list(VarTypesMap0, VarTypesList),
-    set__init(Set0),
+    map.to_assoc_list(VarTypesMap0, VarTypesList),
+    set.init(Set0),
     check_type_bindings_2(VarTypesList, HeadTypeParams, [], Errs, Set0, Set),
     (
         Errs = []
@@ -260,12 +260,12 @@ check_type_bindings(ModuleInfo, PredId, !PredInfo, ReportErrs, NumErrors,
 
 check_type_bindings_2([], _, !Errs, !Set).
 check_type_bindings_2([Var - Type | VarTypes], HeadTypeParams, !Errs, !Set) :-
-    prog_type__vars(Type, TVars),
-    set__list_to_set(TVars, TVarsSet0),
-    set__delete_list(TVarsSet0, HeadTypeParams, TVarsSet1),
-    ( \+ set__empty(TVarsSet1) ->
+    prog_type.vars(Type, TVars),
+    set.list_to_set(TVars, TVarsSet0),
+    set.delete_list(TVarsSet0, HeadTypeParams, TVarsSet1),
+    ( \+ set.empty(TVarsSet1) ->
         !:Errs = [Var - Type | !.Errs],
-        set__union(!.Set, TVarsSet1, !:Set)
+        set.union(!.Set, TVarsSet1, !:Set)
     ;
         true
     ),
@@ -282,9 +282,9 @@ bind_type_vars_to_void(UnboundTypeVarsSet, !VarTypes, !Proofs,
     % Create a substitution that maps all of the unbound type variables
     % to `void'.
     MapToVoid = (pred(TVar::in, Subst0::in, Subst::out) is det :-
-            map__det_insert(Subst0, TVar, void_type, Subst)
+            map.det_insert(Subst0, TVar, void_type, Subst)
         ),
-    set__fold(MapToVoid, UnboundTypeVarsSet, map__init, VoidSubst),
+    set.fold(MapToVoid, UnboundTypeVarsSet, map.init, VoidSubst),
 
     % Then apply the substitution we just created to the various maps.
     apply_subst_to_vartypes(VoidSubst, !VarTypes),
@@ -348,29 +348,29 @@ report_unresolved_type_warning(Errs, PredId, PredInfo, ModuleInfo, VarSet,
     pred_info_typevarset(PredInfo, TypeVarSet),
     pred_info_context(PredInfo, Context),
 
-    prog_out__write_context(Context, !IO),
-    io__write_string("In ", !IO),
-    hlds_out__write_pred_id(ModuleInfo, PredId, !IO),
-    io__write_string(":\n", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("In ", !IO),
+    hlds_out.write_pred_id(ModuleInfo, PredId, !IO),
+    io.write_string(":\n", !IO),
 
-    prog_out__write_context(Context, !IO),
-    io__write_string("  warning: unresolved polymorphism.\n", !IO),
-    prog_out__write_context(Context, !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  warning: unresolved polymorphism.\n", !IO),
+    prog_out.write_context(Context, !IO),
     ( Errs = [_] ->
-        io__write_string("  The variable with an unbound type was:\n", !IO)
+        io.write_string("  The variable with an unbound type was:\n", !IO)
     ;
-        io__write_string("  The variables with unbound types were:\n", !IO)
+        io.write_string("  The variables with unbound types were:\n", !IO)
     ),
     write_type_var_list(Errs, Context, VarSet, TypeVarSet, !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  The unbound type variable(s) will be implicitly\n",
+    prog_out.write_context(Context, !IO),
+    io.write_string("  The unbound type variable(s) will be implicitly\n",
         !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  bound to the builtin type `void'.\n", !IO),
-    globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  bound to the builtin type `void'.\n", !IO),
+    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     (
         VerboseErrors = yes,
-        io__write_strings([
+        io.write_strings([
 "\tThe body of the clause contains a call to a polymorphic predicate,\n",
 "\tbut I can't determine which version should be called,\n",
 "\tbecause the type variables listed above didn't get bound.\n",
@@ -389,12 +389,12 @@ report_unresolved_type_warning(Errs, PredId, PredInfo, ModuleInfo, VarSet,
 
 write_type_var_list([], _, _, _, !IO).
 write_type_var_list([Var - Type | Rest], Context, VarSet, TVarSet, !IO) :-
-    prog_out__write_context(Context, !IO),
-    io__write_string("      ", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("      ", !IO),
     mercury_output_var(Var, VarSet, no, !IO),
-    io__write_string(": ", !IO),
+    io.write_string(": ", !IO),
     mercury_output_type(TVarSet, no, Type, !IO),
-    io__nl(!IO),
+    io.nl(!IO),
     write_type_var_list(Rest, Context, VarSet, TVarSet, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -411,7 +411,7 @@ resolve_pred_overloading(Args0, CallerPredInfo, ModuleInfo, !PredName,
         pred_info_get_markers(CallerPredInfo, Markers),
         pred_info_clauses_info(CallerPredInfo, ClausesInfo),
         clauses_info_vartypes(ClausesInfo, VarTypes),
-        map__apply_to_list(Args0, VarTypes, ArgTypes),
+        map.apply_to_list(Args0, VarTypes, ArgTypes),
         resolve_pred_overloading(ModuleInfo, Markers, ArgTypes, TVarSet,
             !PredName, !:PredId)
     ;
@@ -463,7 +463,7 @@ finish_imported_pred_no_io(ModuleInfo, Errors, !PredInfo) :-
         pred_info_clauses_info(!.PredInfo, ClausesInfo0),
         clauses_info_headvars(ClausesInfo0, HeadVars),
         pred_info_arg_types(!.PredInfo, ArgTypes),
-        map__from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
+        map.from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
         clauses_info_set_vartypes(VarTypes, ClausesInfo0, ClausesInfo),
         pred_info_set_clauses_info(ClausesInfo, !PredInfo)
     ),
@@ -491,7 +491,7 @@ finish_promise(PromiseType, PromiseId, !Module, !IO) :-
     % to any local symbols.
     module_info_pred_info(!.Module, PromiseId, PredInfo),
     ( pred_info_is_exported(PredInfo) ->
-        assertion__in_interface_check(Goal, PredInfo, !Module, !IO)
+        assertion.in_interface_check(Goal, PredInfo, !Module, !IO)
     ;
         true
     ).
@@ -511,8 +511,8 @@ store_promise(PromiseType, PromiseId, !Module, Goal) :-
         assertion_table_add_assertion(PromiseId, AssertionId,
             AssertTable0, AssertTable),
         module_info_set_assertion_table(AssertTable, !Module),
-        assertion__goal(AssertionId, !.Module, Goal),
-        assertion__record_preds_used_in(Goal, AssertionId, !Module)
+        assertion.goal(AssertionId, !.Module, Goal),
+        assertion.record_preds_used_in(Goal, AssertionId, !Module)
     ;
         % Case for exclusivity.
         (
@@ -524,7 +524,7 @@ store_promise(PromiseType, PromiseId, !Module, Goal) :-
         promise_ex_goal(PromiseId, !.Module, Goal),
         predids_from_goal(Goal, PredIds),
         module_info_get_exclusive_table(!.Module, Table0),
-        list__foldl(exclusive_table_add(PromiseId), PredIds, Table0, Table),
+        list.foldl(exclusive_table_add(PromiseId), PredIds, Table0, Table),
         module_info_set_exclusive_table(Table, !Module)
     ;
         % Case for exhaustiveness -- XXX not yet implemented.
@@ -540,9 +540,9 @@ promise_ex_goal(ExclusiveDecl, Module, Goal) :-
     pred_info_clauses_info(PredInfo, ClausesInfo),
     clauses_info_clauses_only(ClausesInfo, Clauses),
     ( Clauses = [clause(_ProcIds, Goal0, _Lang, _Context)] ->
-        assertion__normalise_goal(Goal0, Goal)
+        assertion.normalise_goal(Goal0, Goal)
     ;
-        unexpected(this_file, "promise_ex__goal: not an promise")
+        unexpected(this_file, "promise_ex.goal: not an promise")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -556,7 +556,7 @@ check_type_of_main(PredInfo, !IO) :-
         pred_info_orig_arity(PredInfo) = 2,
         pred_info_is_exported(PredInfo)
     ->
-        % Check that the arguments of main/2 have type `io__state'.
+        % Check that the arguments of main/2 have type `io.state'.
         pred_info_arg_types(PredInfo, ArgTypes),
         (
             ArgTypes = [Arg1, Arg2],
@@ -566,10 +566,10 @@ check_type_of_main(PredInfo, !IO) :-
             true
         ;
             pred_info_context(PredInfo, Context),
-            error_util__write_error_pieces(Context, 0,
+            error_util.write_error_pieces(Context, 0,
                 [words("Error: arguments of main/2"),
                 words("must have type `io.state'.")], !IO),
-            io__set_exit_status(1, !IO)
+            io.set_exit_status(1, !IO)
         )
     ;
         true
@@ -598,10 +598,10 @@ propagate_types_into_modes(ModuleInfo, ErrorProcs, !PredInfo) :-
     proc_table::in, proc_table::out) is det.
 
 propagate_types_into_proc_modes(_, [], _,
-        ErrorProcs, list__reverse(ErrorProcs), !Procs).
+        ErrorProcs, list.reverse(ErrorProcs), !Procs).
 propagate_types_into_proc_modes(ModuleInfo, [ProcId | ProcIds], ArgTypes,
         !ErrorProcs, !Procs) :-
-    map__lookup(!.Procs, ProcId, ProcInfo0),
+    map.lookup(!.Procs, ProcId, ProcInfo0),
     proc_info_argmodes(ProcInfo0, ArgModes0),
     propagate_types_into_mode_list(ModuleInfo, ArgTypes,
         ArgModes0, ArgModes),
@@ -614,7 +614,7 @@ propagate_types_into_proc_modes(ModuleInfo, [ProcId | ProcIds], ArgTypes,
         !:ErrorProcs = [ProcId | !.ErrorProcs]
     ;
         proc_info_set_argmodes(ArgModes, ProcInfo0, ProcInfo),
-        svmap__det_update(ProcId, ProcInfo, !Procs)
+        svmap.det_update(ProcId, ProcInfo, !Procs)
     ),
     propagate_types_into_proc_modes(ModuleInfo, ProcIds, ArgTypes,
         !ErrorProcs, !Procs).
@@ -629,7 +629,7 @@ report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs, !PredInfo, !IO) :-
     ;
         ErrorProcs = [_ | _],
         pred_info_procedures(!.PredInfo, ProcTable0),
-        list__foldl2(report_unbound_inst_var_error(ModuleInfo, PredId),
+        list.foldl2(report_unbound_inst_var_error(ModuleInfo, PredId),
             ErrorProcs, ProcTable0, ProcTable, !IO),
         pred_info_set_procedures(ProcTable, !PredInfo)
     ).
@@ -640,17 +640,17 @@ report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs, !PredInfo, !IO) :-
 
 report_unbound_inst_var_error(ModuleInfo, PredId, ProcId, Procs0, Procs,
         !IO) :-
-    map__lookup(Procs0, ProcId, ProcInfo),
+    map.lookup(Procs0, ProcId, ProcInfo),
     unbound_inst_var_error(PredId, ProcInfo, ModuleInfo, !IO),
     % delete this mode, to avoid internal errors
-    map__det_remove(Procs0, ProcId, _, Procs).
+    map.det_remove(Procs0, ProcId, _, Procs).
 
 :- pred unbound_inst_var_error(pred_id::in, proc_info::in, module_info::in,
     io::di, io::uo) is det.
 
 unbound_inst_var_error(PredId, ProcInfo, ModuleInfo, !IO) :-
     proc_info_context(ProcInfo, Context),
-    io__set_exit_status(1, !IO),
+    io.set_exit_status(1, !IO),
     Pieces = [words("In mode declaration for")] ++
         describe_one_pred_name(ModuleInfo, should_not_module_qualify, PredId)
         ++ [suffix(":"), nl,
@@ -709,9 +709,9 @@ check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
         [ProcId | ProcIds], Removed, !PredInfo, !IO) :-
     ( modes_are_indistinguishable(ProcId, ProcId1, !.PredInfo, ModuleInfo) ->
         pred_info_import_status(!.PredInfo, Status),
-        globals__io_lookup_bool_option(intermodule_optimization,
+        globals.io_lookup_bool_option(intermodule_optimization,
             Intermod, !IO),
-        globals__io_lookup_bool_option(make_optimization_interface,
+        globals.io_lookup_bool_option(make_optimization_interface,
             MakeOptInt, !IO),
         (
             % With `--intermodule-optimization' we can read
@@ -742,8 +742,8 @@ check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
 
 resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         GoalInfo0, ModuleInfo, !PredInfo, !VarTypes, !VarSet, Goal) :-
-    map__lookup(!.VarTypes, X0, TypeOfX),
-    list__length(ArgVars0, Arity),
+    map.lookup(!.VarTypes, X0, TypeOfX),
+    list.length(ArgVars0, Arity),
     (
         % Is the function symbol apply/N or ''/N, representing a higher-order
         % function call? Or the impure/semipure equivalents impure_apply/N
@@ -761,7 +761,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % Convert the higher-order function call (apply/N) into a higher-order
         % predicate call (i.e., replace `X = apply(F, A, B, C)'
         % with `call(F, A, B, C, X)')
-        list__append(FuncArgVars, [X0], ArgVars),
+        list.append(FuncArgVars, [X0], ArgVars),
         Modes = [],
         Det = erroneous,
         adjust_func_arity(function, Arity, FullArity),
@@ -801,8 +801,8 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % which subsume the actual argument/return types of this function call,
         % and which have universal constraints consistent with what we expect.
         pred_info_typevarset(!.PredInfo, TVarSet),
-        map__apply_to_list(ArgVars0, !.VarTypes, ArgTypes0),
-        list__append(ArgTypes0, [TypeOfX], ArgTypes),
+        map.apply_to_list(ArgVars0, !.VarTypes, ArgTypes0),
+        list.append(ArgTypes0, [TypeOfX], ArgTypes),
         pred_info_get_constraint_map(!.PredInfo, ConstraintMap),
         goal_info_get_goal_path(GoalInfo0, GoalPath),
         ConstraintSearch = search_hlds_constraint_list(ConstraintMap, unproven,
@@ -814,7 +814,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % replace `X = f(A, B, C)' with `f(A, B, C, X)'.
         %
         ProcId = invalid_proc_id,
-        list__append(ArgVars0, [X0], ArgVars),
+        list.append(ArgVars0, [X0], ArgVars),
         FuncCallUnifyContext = call_unify_context(X0,
             functor(ConsId0, no, ArgVars0), UnifyContext),
         FuncCall = call(PredId, ProcId, ArgVars, not_builtin,
@@ -833,7 +833,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         \+ pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
 
         % Find the pred_id of the constant.
-        map__apply_to_list(ArgVars0, !.VarTypes, ArgTypes0),
+        map.apply_to_list(ArgVars0, !.VarTypes, ArgTypes0),
         AllArgTypes = ArgTypes0 ++ HOArgTypes,
         pred_info_typevarset(!.PredInfo, TVarSet),
         pred_info_get_markers(!.PredInfo, Markers),
@@ -864,7 +864,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % otherwise there would have been an error reported for unresolved
         % overloading.
         pred_info_typevarset(!.PredInfo, TVarSet),
-        map__apply_to_list(ArgVars0, !.VarTypes, ArgTypes0),
+        map.apply_to_list(ArgVars0, !.VarTypes, ArgTypes0),
         \+ find_matching_constructor(ModuleInfo, TVarSet, ConsId0,
             TypeOfX, ArgTypes0)
     ->
@@ -897,19 +897,19 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
 find_matching_constructor(ModuleInfo, TVarSet, ConsId, Type, ArgTypes) :-
     type_to_ctor_and_args(Type, TypeCtor, _),
     module_info_get_cons_table(ModuleInfo, ConsTable),
-    map__search(ConsTable, ConsId, ConsDefns),
-    list__member(ConsDefn, ConsDefns),
+    map.search(ConsTable, ConsId, ConsDefns),
+    list.member(ConsDefn, ConsDefns),
 
     % Overloading resolution ignores the class constraints.
     ConsDefn = hlds_cons_defn(ConsExistQVars, _, ConsArgs, ConsTypeCtor, _),
     ConsTypeCtor = TypeCtor,
 
     module_info_get_type_table(ModuleInfo, Types),
-    map__search(Types, TypeCtor, TypeDefn),
-    hlds_data__get_type_defn_tvarset(TypeDefn, TypeTVarSet),
-    hlds_data__get_type_defn_kind_map(TypeDefn, TypeKindMap),
+    map.search(Types, TypeCtor, TypeDefn),
+    hlds_data.get_type_defn_tvarset(TypeDefn, TypeTVarSet),
+    hlds_data.get_type_defn_kind_map(TypeDefn, TypeKindMap),
 
-    assoc_list__values(ConsArgs, ConsArgTypes),
+    assoc_list.values(ConsArgs, ConsArgTypes),
     arg_type_list_subsumes(TVarSet, ArgTypes, TypeTVarSet, TypeKindMap,
         ConsExistQVars, ConsArgTypes).
 
@@ -951,7 +951,7 @@ finish_field_access_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
 
 translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
         UnifyContext, FieldVar, TermInputVar, OldGoalInfo, GoalExpr) :-
-    map__lookup(!.VarTypes, TermInputVar, TermType),
+    map.lookup(!.VarTypes, TermInputVar, TermType),
     get_constructor_containing_field(ModuleInfo, TermType, FieldName,
         ConsId, FieldNumber),
 
@@ -969,8 +969,8 @@ translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
     % by typecheck.m because the result can't be well-typed).
     (
         ExistQVars = [_ | _],
-        map__lookup(!.VarTypes, FieldVar, FieldType),
-        list__index1_det(ArgTypes0, FieldNumber, FieldArgType),
+        map.lookup(!.VarTypes, FieldVar, FieldType),
+        list.index1_det(ArgTypes0, FieldNumber, FieldArgType),
         ( type_list_subsumes([FieldArgType], [FieldType], FieldSubst) ->
             apply_rec_subst_to_type_list(FieldSubst, ArgTypes0, ArgTypes)
         ;
@@ -988,7 +988,7 @@ translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
     make_new_vars(TypesBeforeField, VarsBeforeField, !VarTypes, !VarSet),
     make_new_vars(TypesAfterField, VarsAfterField, !VarTypes, !VarSet),
 
-    list__append(VarsBeforeField, [FieldVar | VarsAfterField], ArgVars),
+    list.append(VarsBeforeField, [FieldVar | VarsAfterField], ArgVars),
 
     goal_info_get_nonlocals(OldGoalInfo, RestrictNonLocals),
     create_atomic_unification_with_nonlocals(TermInputVar,
@@ -1006,7 +1006,7 @@ translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
 translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
         FieldName, UnifyContext, FieldVar, TermInputVar, TermOutputVar,
         OldGoalInfo, Goal) :-
-    map__lookup(!.VarTypes, TermInputVar, TermType),
+    map.lookup(!.VarTypes, TermInputVar, TermType),
 
     get_constructor_containing_field(ModuleInfo, TermType, FieldName,
         ConsId0, FieldNumber),
@@ -1023,11 +1023,11 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
     make_new_vars(TypesAfterField, VarsAfterField, !VarTypes, !VarSet),
 
     % Build a goal to deconstruct the input.
-    list__append(VarsBeforeField, [SingletonFieldVar | VarsAfterField],
+    list.append(VarsBeforeField, [SingletonFieldVar | VarsAfterField],
         DeconstructArgs),
     goal_info_get_nonlocals(OldGoalInfo, OldNonLocals),
-    list__append(VarsBeforeField, VarsAfterField, NonLocalArgs),
-    set__insert_list(OldNonLocals, NonLocalArgs,
+    list.append(VarsBeforeField, VarsAfterField, NonLocalArgs),
+    set.insert_list(OldNonLocals, NonLocalArgs,
         DeconstructRestrictNonLocals),
 
     create_atomic_unification_with_nonlocals(TermInputVar,
@@ -1036,10 +1036,8 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
         UnifyContext, DeconstructGoal),
 
     % Build a goal to construct the output.
-    list__append(VarsBeforeField, [FieldVar | VarsAfterField],
-        ConstructArgs),
-    set__insert_list(OldNonLocals, NonLocalArgs,
-        ConstructRestrictNonLocals),
+    list.append(VarsBeforeField, [FieldVar | VarsAfterField], ConstructArgs),
+    set.insert_list(OldNonLocals, NonLocalArgs, ConstructRestrictNonLocals),
 
     % If the cons_id is existentially quantified, add a `new' prefix
     % so that polymorphism.m adds the appropriate type_infos.
@@ -1052,8 +1050,7 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
             remove_new_prefix(ConsName, ConsName0),
             ConsId = cons(ConsName, ConsArity)
         ;
-            unexpected(this_file,
-                "translate_set_function: invalid cons_id")
+            unexpected(this_file, "translate_set_function: invalid cons_id")
         )
     ),
 
@@ -1075,10 +1072,10 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
 get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalPath, ConsId,
         TermType, ActualArgTypes, ActualExistQVars, !PredInfo) :-
     % Split the list of argument types at the named field.
-    type_util__get_type_and_cons_defn(ModuleInfo, TermType, ConsId,
+    type_util.get_type_and_cons_defn(ModuleInfo, TermType, ConsId,
         TypeDefn, ConsDefn),
     ConsDefn = hlds_cons_defn(ConsExistQVars, ConsConstraints, ConsArgs, _, _),
-    assoc_list__values(ConsArgs, ConsArgTypes),
+    assoc_list.values(ConsArgs, ConsArgTypes),
 
     (
         ConsExistQVars = [],
@@ -1087,11 +1084,11 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalPath, ConsId,
     ;
         ConsExistQVars = [_ | _],
         % Rename apart the existentially quantified type variables.
-        list__length(ConsExistQVars, NumExistQVars),
+        list.length(ConsExistQVars, NumExistQVars),
         pred_info_typevarset(!.PredInfo, TVarSet0),
-        varset__new_vars(TVarSet0, NumExistQVars, ParentExistQVars, TVarSet),
+        varset.new_vars(TVarSet0, NumExistQVars, ParentExistQVars, TVarSet),
         pred_info_set_typevarset(TVarSet, !PredInfo),
-        map__from_corresponding_lists(ConsExistQVars, ParentExistQVars,
+        map.from_corresponding_lists(ConsExistQVars, ParentExistQVars,
             ConsToParentRenaming),
         apply_variable_renaming_to_type_list(ConsToParentRenaming,
             ConsArgTypes, ParentArgTypes),
@@ -1104,7 +1101,7 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalPath, ConsId,
             % so that the varmaps remain meaningful.
             %
         pred_info_get_constraint_map(!.PredInfo, ConstraintMap),
-        list__length(ConsConstraints, NumConstraints),
+        list.length(ConsConstraints, NumConstraints),
         lookup_hlds_constraint_list(ConstraintMap, assumed, GoalPath,
             NumConstraints, ActualConstraints),
         constraint_list_subsumes_det(ParentConstraints, ActualConstraints,
@@ -1114,7 +1111,7 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalPath, ConsId,
 
             % The kinds will be ignored when the types are converted back
             % to tvars.
-        map__init(KindMap),
+        map.init(KindMap),
         apply_rec_subst_to_tvar_list(KindMap, ExistTSubst, ParentExistQVars,
             ActualExistQVarTypes),
         ( type_list_to_var_list(ActualExistQVarTypes, ActualExistQVars0) ->
@@ -1123,9 +1120,9 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalPath, ConsId,
             unexpected(this_file, "existq_tvar bound to non-var")
         )
     ),
-    hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
+    hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
     ( type_to_ctor_and_args(TermType, _, TypeArgs) ->
-        map__from_corresponding_lists(TypeParams, TypeArgs, UnivTSubst)
+        map.from_corresponding_lists(TypeParams, TypeArgs, UnivTSubst)
     ;
         unexpected(this_file,
             "get_cons_id_arg_types_adding_existq_tvars: " ++
@@ -1139,7 +1136,7 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalPath, ConsId,
 
 constraint_list_subsumes_det(ConstraintsA, ConstraintsB, Subst) :-
     constraint_list_get_tvars(ConstraintsB, TVarsB),
-    map__init(Subst0),
+    map.init(Subst0),
     (
         unify_constraint_list(ConstraintsA, ConstraintsB, TVarsB,
             Subst0, Subst1)
@@ -1165,7 +1162,7 @@ unify_constraint_list([A | As], [B | Bs], TVars, !Subst) :-
 
 split_list_at_index(Index, List, Before, At, After) :-
     (
-        list__split_list(Index - 1, List, Before0, AtAndAfter),
+        list.split_list(Index - 1, List, Before0, AtAndAfter),
         AtAndAfter = [At0 | After0]
     ->
         Before = Before0,
@@ -1192,8 +1189,8 @@ get_constructor_containing_field(ModuleInfo, TermType, FieldName,
             "get_constructor_containing_field: type_to_ctor_and_args failed")
     ),
     module_info_get_type_table(ModuleInfo, Types),
-    map__lookup(Types, TermTypeCtor, TermTypeDefn),
-    hlds_data__get_type_defn_body(TermTypeDefn, TermTypeBody),
+    map.lookup(Types, TermTypeCtor, TermTypeDefn),
+    hlds_data.get_type_defn_body(TermTypeDefn, TermTypeBody),
     ( Ctors = TermTypeBody ^ du_type_ctors ->
         get_constructor_containing_field_2(Ctors, FieldName, ConsId,
             FieldNumber)
@@ -1214,7 +1211,7 @@ get_constructor_containing_field_2([Ctor | Ctors], FieldName,
         get_constructor_containing_field_3(CtorArgs,
             FieldName, 1, FieldNumber0)
     ->
-        list__length(CtorArgs, Arity),
+        list.length(CtorArgs, Arity),
         ConsId = cons(SymName, Arity),
         FieldNumber = FieldNumber0
     ;
@@ -1254,8 +1251,8 @@ create_atomic_unification_with_nonlocals(Var, RHS, OldGoalInfo,
     Goal0 = GoalExpr0 - GoalInfo0,
 
     % Compute the nonlocals of the goal.
-    set__list_to_set(VarsList, NonLocals1),
-    set__intersect(RestrictNonLocals, NonLocals1, NonLocals),
+    set.list_to_set(VarsList, NonLocals1),
+    set.intersect(RestrictNonLocals, NonLocals1, NonLocals),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
 
     % Use the goal path from the original goal, so that the constraint_ids

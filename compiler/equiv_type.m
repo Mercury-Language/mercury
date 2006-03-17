@@ -15,7 +15,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module parse_tree__equiv_type.
+:- module parse_tree.equiv_type.
 :- interface.
 
 :- import_module mdbcomp.prim_data.
@@ -130,20 +130,20 @@
     % definitions.  Then we go through the item list and replace them.
     %
 expand_eqv_types(ModuleName, Items0, Items, Error, EqvMap, !Info, !IO) :-
-    map__init(EqvMap0),
-    map__init(EqvInstMap0),
+    map.init(EqvMap0),
+    map.init(EqvInstMap0),
     build_eqv_map(Items0, EqvMap0, EqvMap, EqvInstMap0, EqvInstMap),
     replace_in_item_list(ModuleName, Items0, EqvMap, EqvInstMap,
         [], RevItems, [], ErrorList, !Info),
-    list__reverse(RevItems, Items),
+    list.reverse(RevItems, Items),
     (
         ErrorList = [],
         Error = no
     ;
         ErrorList = [_ | _],
-        list__foldl(report_error, list__reverse(ErrorList), !IO),
+        list.foldl(report_error, list.reverse(ErrorList), !IO),
         Error = yes,
-        io__set_exit_status(1, !IO)
+        io.set_exit_status(1, !IO)
     ).
 
     % We need to expand equivalence insts in
@@ -178,13 +178,12 @@ build_eqv_map([Item - _Context | Items0], !EqvMap, !EqvInstMap) :-
         skip_abstract_imported_items(Items0, Items)
     ; Item = type_defn(VarSet, Name, Args, eqv_type(Body), _Cond) ->
         Items = Items0,
-        list__length(Args, Arity),
-        svmap__set(Name - Arity, eqv_type_body(VarSet, Args, Body), !EqvMap)
+        list.length(Args, Arity),
+        svmap.set(Name - Arity, eqv_type_body(VarSet, Args, Body), !EqvMap)
     ; Item = inst_defn(VarSet, Name, Args, eqv_inst(Body), _) ->
         Items = Items0,
-        list__length(Args, Arity),
-        svmap__set(Name - Arity, eqv_inst_body(VarSet, Args, Body),
-            !EqvInstMap)
+        list.length(Args, Arity),
+        svmap.set(Name - Arity, eqv_inst_body(VarSet, Args, Body), !EqvInstMap)
     ;
         Items = Items0
     ),
@@ -270,7 +269,7 @@ replace_in_item(ModuleName,
         Context, EqvMap, _EqvInstMap,
         type_defn(VarSet, Name, TArgs, TypeDefn, Cond),
         Error, !Info) :-
-    list__length(TArgs, Arity),
+    list.length(TArgs, Arity),
     maybe_record_expanded_items(ModuleName, Name,
         !.Info, UsedTypeCtors0),
     replace_in_type_defn(EqvMap, Name - Arity, TypeDefn0,
@@ -305,7 +304,7 @@ replace_in_item(ModuleName,
         Det0, Det, ExpandedItems0, ExpandedItems, Errors),
 
     ItemType = pred_or_func_to_item_type(PredOrFunc),
-    list__length(TypesAndModes, Arity),
+    list.length(TypesAndModes, Arity),
     adjust_func_arity(PredOrFunc, OrigArity, Arity),
     finish_recording_expanded_items(
         item_id(ItemType, PredName - OrigArity), ExpandedItems, !Info).
@@ -335,7 +334,7 @@ replace_in_item(ModuleName,
     (
         MaybePredOrFunc = yes(PredOrFunc),
         ItemType = pred_or_func_to_item_type(PredOrFunc),
-        list__length(Modes, Arity),
+        list.length(Modes, Arity),
         adjust_func_arity(PredOrFunc, OrigArity, Arity),
         finish_recording_expanded_items(
             item_id(ItemType, PredName - OrigArity), ExpandedItems, !Info)
@@ -350,7 +349,7 @@ replace_in_item(ModuleName,
         typeclass(Constraints, FunDeps, ClassName, Vars,
             ClassInterface, VarSet),
         Errors, !Info) :-
-    list__length(Vars, Arity),
+    list.length(Vars, Arity),
     maybe_record_expanded_items(ModuleName, ClassName,
         !.Info, ExpandedItems0),
     replace_in_prog_constraint_list(EqvMap,
@@ -382,14 +381,14 @@ replace_in_item(ModuleName,
     ->
         UsedTypeCtors0 = no
     ;
-        UsedTypeCtors0 = yes(ModuleName - set__init)
+        UsedTypeCtors0 = yes(ModuleName - set.init)
     ),
     replace_in_prog_constraint_list(EqvMap,
         Constraints0, Constraints, VarSet0, VarSet1,
         UsedTypeCtors0, UsedTypeCtors1),
     replace_in_type_list(EqvMap, Ts0, Ts, _, _,
         VarSet1, VarSet, UsedTypeCtors1, UsedTypeCtors),
-    list__length(Ts0, Arity),
+    list.length(Ts0, Arity),
     finish_recording_expanded_items(
         item_id(typeclass_item, ClassName - Arity), UsedTypeCtors, !Info).
 
@@ -425,7 +424,7 @@ replace_in_item(ModuleName,
         [], !Info) :-
     QualName = qualified(ModuleName, MutName),
     maybe_record_expanded_items(ModuleName, QualName, !.Info, ExpandedItems0),
-    TVarSet0 = varset__init,
+    TVarSet0 = varset.init,
     replace_in_type(EqvMap, Type0, Type, _TypeChanged, TVarSet0, _TVarSet,
         ExpandedItems0, ExpandedItems1),
     replace_in_inst(Inst0, EqvInstMap, Inst,
@@ -473,7 +472,7 @@ replace_in_prog_constraints(EqvMap, Cs0, Cs, !VarSet, !Info) :-
     is det.
 
 replace_in_prog_constraint_list(EqvMap, !Cs, !VarSet, !Info) :-
-    list__map_foldl2(replace_in_prog_constraint(EqvMap), !Cs, !VarSet, !Info).
+    list.map_foldl2(replace_in_prog_constraint(EqvMap), !Cs, !VarSet, !Info).
 
 replace_in_prog_constraint(EqvMap, Constraint0, Constraint, !VarSet, !Info) :-
     Constraint0 = constraint(ClassName, Ts0),
@@ -489,7 +488,7 @@ replace_in_prog_constraint(EqvMap, Constraint0, Constraint, !VarSet, !Info) :-
 
 replace_in_class_interface(ClassInterface0, EqvMap, EqvInstMap,
         ClassInterface, !Errors, !Info) :-
-    list__map_foldl2(replace_in_class_method(EqvMap, EqvInstMap),
+    list.map_foldl2(replace_in_class_method(EqvMap, EqvInstMap),
         ClassInterface0, ClassInterface, !Errors, !Info).
 
 :- pred replace_in_class_method(eqv_map::in, eqv_inst_map::in,
@@ -545,7 +544,7 @@ replace_in_subst(EqvMap, [Var - Type0 | Subst0],
 %-----------------------------------------------------------------------------%
 
 replace_in_ctors(EqvMap, !Ctors, !VarSet, !Info) :-
-    list__map_foldl2(replace_in_ctor(EqvMap), !Ctors, !VarSet, !Info).
+    list.map_foldl2(replace_in_ctor(EqvMap), !Ctors, !VarSet, !Info).
 
 :- pred replace_in_ctor(eqv_map::in,
     constructor::in, constructor::out, tvarset::in, tvarset::out,
@@ -647,7 +646,7 @@ replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded, Type0, Type,
         Type0 = defined(SymName, TArgs0, Kind),
         replace_in_type_list_2(EqvMap, TypeCtorsAlreadyExpanded,
             TArgs0, TArgs, ArgsChanged, no, Circ0, !VarSet, !Info),
-        Arity = list__length(TArgs),
+        Arity = list.length(TArgs),
         TypeCtor = SymName - Arity,
         replace_type_ctor(EqvMap, TypeCtorsAlreadyExpanded,
             Type0, TypeCtor, TArgs, Kind, Type, ArgsChanged, Changed,
@@ -666,8 +665,8 @@ replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded, Type0, Type,
             replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded,
                 Ret0, Ret, RetChanged, RetCirc, !VarSet, !Info),
             MaybeRet = yes(Ret),
-            Changed = bool__or(ArgsChanged, RetChanged),
-            Circ = bool__or(ArgsCirc, RetCirc)
+            Changed = bool.or(ArgsChanged, RetChanged),
+            Circ = bool.or(ArgsCirc, RetCirc)
         ;
             MaybeRet0 = no,
             MaybeRet = no,
@@ -723,21 +722,21 @@ replace_in_type_2(EqvMap, TypeCtorsAlreadyExpanded, Type0, Type,
 
 replace_type_ctor(EqvMap, TypeCtorsAlreadyExpanded, Type0,
         TypeCtor, TArgs, Kind, Type, !Changed, !Circ, !VarSet, !Info) :-
-    ( list__member(TypeCtor, TypeCtorsAlreadyExpanded) ->
+    ( list.member(TypeCtor, TypeCtorsAlreadyExpanded) ->
         AlreadyExpanded = yes
     ;
         AlreadyExpanded = no
     ),
     (
-        map__search(EqvMap, TypeCtor, eqv_type_body(EqvVarSet, Args0, Body0)),
+        map.search(EqvMap, TypeCtor, eqv_type_body(EqvVarSet, Args0, Body0)),
 
-        % Don't merge in the variable names from the type declaration to
-        % avoid creating multiple variables with the same name so that
-        % `varset__create_name_var_map' can be used on the resulting
-        % tvarset.  make_hlds uses `varset__create_name_var_map' to match
-        % up type variables in `:- pragma type_spec' declarations and
-        % explicit type qualifications with the type variables in the
-        % predicate's declaration.
+        % Don't merge in the variable names from the type declaration to avoid
+        % creating multiple variables with the same name so that
+        % `varset.create_name_var_map' can be used on the resulting tvarset.
+        % make_hlds uses `varset.create_name_var_map' to match up type
+        % variables in `:- pragma type_spec' declarations and explicit type
+        % qualifications with the type variables in the predicate's
+        % declaration.
 
         tvarset_merge_renaming_without_names(!.VarSet, EqvVarSet, !:VarSet,
             Renaming),
@@ -745,10 +744,10 @@ replace_type_ctor(EqvMap, TypeCtorsAlreadyExpanded, Type0,
         AlreadyExpanded = no
     ->
         !:Changed = yes,
-        map__apply_to_list(Args0, Renaming, Args),
+        map.apply_to_list(Args0, Renaming, Args),
         apply_variable_renaming_to_type(Renaming, Body0, Body1),
         record_expanded_item(item_id(type_item, TypeCtor), !Info),
-        map__from_corresponding_lists(Args, TArgs, Subst),
+        map.from_corresponding_lists(Args, TArgs, Subst),
         apply_subst_to_type(Subst, Body1, Body),
         replace_in_type_2(EqvMap, [TypeCtor | TypeCtorsAlreadyExpanded], Body,
             Type, _, !:Circ, !VarSet, !Info)
@@ -761,14 +760,14 @@ replace_type_ctor(EqvMap, TypeCtorsAlreadyExpanded, Type0,
             !.Changed = no,
             Type = Type0
         ),
-        bool__or(AlreadyExpanded, !Circ)
+        bool.or(AlreadyExpanded, !Circ)
     ).
 
 :- pred replace_in_inst(mer_inst::in, eqv_inst_map::in, mer_inst::out,
     equiv_type_info::in, equiv_type_info::out) is det.
 
 replace_in_inst(Inst0, EqvInstMap, Inst, !Info) :-
-    replace_in_inst(Inst0, EqvInstMap, set__init, Inst, !Info).
+    replace_in_inst(Inst0, EqvInstMap, set.init, Inst, !Info).
 
 :- pred replace_in_inst(mer_inst::in, eqv_inst_map::in,
     set(inst_id)::in, mer_inst::out,
@@ -778,17 +777,17 @@ replace_in_inst(Inst0, EqvInstMap, ExpandedInstIds, Inst, !Info) :-
     ( Inst0 = defined_inst(user_inst(SymName, ArgInsts)) ->
         InstId = SymName - length(ArgInsts),
         (
-            set__member(InstId, ExpandedInstIds)
+            set.member(InstId, ExpandedInstIds)
         ->
             Inst = Inst0
         ;
-            map__search(EqvInstMap, InstId,
+            map.search(EqvInstMap, InstId,
                 eqv_inst_body(_, EqvInstParams, EqvInst))
         ->
             inst_substitute_arg_list(EqvInstParams, ArgInsts, EqvInst, Inst1),
             record_expanded_item(item_id(inst_item, InstId), !Info),
             replace_in_inst(Inst1, EqvInstMap,
-                set__insert(ExpandedInstIds, InstId), Inst, !Info)
+                set.insert(ExpandedInstIds, InstId), Inst, !Info)
         ;
             Inst = Inst0
         )
@@ -844,13 +843,13 @@ replace_in_pred_type(PredName, PredOrFunc, Context, EqvMap, EqvInstMap,
         ExtraTypesAndModes = []
     ; ExtraModes = [] ->
         Errors = Errors1,
-        ExtraTypesAndModes = list__map((func(Type) = type_only(Type)),
+        ExtraTypesAndModes = list.map((func(Type) = type_only(Type)),
             ExtraTypes)
     ; length(ExtraTypes) `with_type` int = length(ExtraModes) ->
         Errors = Errors1,
-        assoc_list__from_corresponding_lists(ExtraTypes, ExtraModes,
+        assoc_list.from_corresponding_lists(ExtraTypes, ExtraModes,
             ExtraTypesModes),
-        ExtraTypesAndModes = list__map(
+        ExtraTypesAndModes = list.map(
             (func(Type - Mode) = type_and_mode(Type, Mode)),
             ExtraTypesModes)
     ;
@@ -877,7 +876,7 @@ replace_in_pred_type(PredName, PredOrFunc, Context, EqvMap, EqvInstMap,
     ;
         ExtraTypesAndModes = [_ | _],
         OrigItemId = item_id(pred_or_func_to_item_type(PredOrFunc),
-            PredName - list__length(TypesAndModes0)),
+            PredName - list.length(TypesAndModes0)),
         record_expanded_item(OrigItemId, !Info),
         TypesAndModes = TypesAndModes1 ++ ExtraTypesAndModes
     ).
@@ -941,7 +940,7 @@ replace_in_pred_mode(PredName, OrigArity, Context, DeclType,
     is det.
 
 replace_in_tms(EqvMap, !TMs, !VarSet, !Info) :-
-    list__map_foldl2(replace_in_tm(EqvMap), !TMs, !VarSet, !Info).
+    list.map_foldl2(replace_in_tm(EqvMap), !TMs, !VarSet, !Info).
 
 :- pred replace_in_tm(eqv_map::in,
     type_and_mode::in, type_and_mode::out, tvarset::in, tvarset::out,
@@ -965,7 +964,7 @@ maybe_record_expanded_items(ModuleName, SymName, yes(_),
     ( SymName = qualified(ModuleName, _) ->
         MaybeInfo = no
     ;
-        MaybeInfo = yes(ModuleName - set__init)
+        MaybeInfo = yes(ModuleName - set.init)
     ).
 
 :- pred record_expanded_item(item_id::in,
@@ -985,7 +984,7 @@ record_expanded_item_2(ItemId, ModuleName - Items0,
         % We don't need to record local types.
         Items = Items0
     ;
-        Items = set__insert(Items0, ItemId)
+        Items = set.insert(Items0, ItemId)
     ).
 
 finish_recording_expanded_items(_, no, no, no).
@@ -994,7 +993,7 @@ finish_recording_expanded_items(_, yes(_), no, _) :-
     unexpected(this_file, "finish_recording_expanded_items").
 finish_recording_expanded_items(Item, yes(_ - ExpandedItems),
         yes(Info0), yes(Info)) :-
-    recompilation__record_expanded_items(Item, ExpandedItems, Info0, Info).
+    recompilation.record_expanded_items(Item, ExpandedItems, Info0, Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -1014,11 +1013,11 @@ report_error(circular_equivalence(Item) - Context, !IO) :-
     ).
 report_error(invalid_with_type(SymName, PredOrFunc) - Context, !IO) :-
     Pieces = [words("In type declaration for"),
-        words(error_util__pred_or_func_to_string(PredOrFunc)),
-        fixed(error_util__describe_sym_name(SymName)),
+        words(error_util.pred_or_func_to_string(PredOrFunc)),
+        fixed(error_util.describe_sym_name(SymName)),
         suffix(":"), nl,
         words("error: expected higher order"),
-        words(error_util__pred_or_func_to_string(PredOrFunc)),
+        words(error_util.pred_or_func_to_string(PredOrFunc)),
         words("type after `with_type`.")],
     write_error_pieces(Context, 0, Pieces, !IO).
 report_error(invalid_with_inst(DeclType, SymName, MaybePredOrFunc) - Context,
@@ -1030,18 +1029,18 @@ report_error(invalid_with_inst(DeclType, SymName, MaybePredOrFunc) - Context,
         MaybePredOrFunc = no, PredOrFuncStr = ""
     ;
         MaybePredOrFunc = yes(PredOrFunc),
-        PredOrFuncStr = error_util__pred_or_func_to_string(PredOrFunc)
+        PredOrFuncStr = error_util.pred_or_func_to_string(PredOrFunc)
     ),
     Pieces = [words("In"), words(DeclStr), words("for"), words(PredOrFuncStr),
-        fixed(error_util__describe_sym_name(SymName)), suffix(":"), nl,
+        fixed(error_util.describe_sym_name(SymName)), suffix(":"), nl,
         words("error: expected higher order "), words(PredOrFuncStr),
         words("inst after `with_inst`.")],
     write_error_pieces(Context, 0, Pieces, !IO).
 report_error(non_matching_with_type_with_inst(SymName, PredOrFunc) - Context,
         !IO) :-
     Pieces = [words("In type declaration for"),
-        words(error_util__pred_or_func_to_string(PredOrFunc)),
-        fixed(error_util__describe_sym_name(SymName)),
+        words(error_util.pred_or_func_to_string(PredOrFunc)),
+        fixed(error_util.describe_sym_name(SymName)),
         suffix(":"), nl,
         words("error: the `with_type` and `with_inst`"),
         words("annotations are incompatible.")],

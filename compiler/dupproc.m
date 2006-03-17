@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,10 +16,9 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__dupproc.
+:- module ll_backend.dupproc.
 :- interface.
 
-% :- import_module hlds__hlds_pred.
 :- import_module ll_backend.llds.
 :- import_module mdbcomp.prim_data.
 
@@ -59,7 +58,7 @@ eliminate_duplicate_procs(IdProcs, Procs, !DupProcMap) :-
         standardize_proc(Proc1, StdProc1, !.DupProcMap),
         eliminate_dup_procs([Id1 - StdProc1], IdProcsTail, FinalIdProcsTail,
             !DupProcMap),
-        assoc_list__values(FinalIdProcsTail, FinalProcsTail),
+        assoc_list.values(FinalIdProcsTail, FinalProcsTail),
         Procs = [Proc1 | FinalProcsTail]
     ).
 
@@ -79,14 +78,14 @@ eliminate_dup_procs(ModelStdProcs0, [Id - Proc0 | IdProcs0],
         MaybeProc = yes(ProcPrime)
     ->
         Proc = ProcPrime,
-        map__det_insert(!.DupProcMap, Id, MatchingId, !:DupProcMap),
+        map.det_insert(!.DupProcMap, Id, MatchingId, !:DupProcMap),
         ModelStdProcs = ModelStdProcs0
     ;
         Proc = Proc0,
         standardize_proc(Proc0, StdProc0, !.DupProcMap),
         % Since the number of procedures per predicate is tiny,
         % the quadratic behavior here is not a problem.
-        list__append(ModelStdProcs0, [Id - StdProc0], ModelStdProcs)
+        list.append(ModelStdProcs0, [Id - StdProc0], ModelStdProcs)
     ),
     eliminate_dup_procs(ModelStdProcs, IdProcs0, IdProcs, !DupProcMap).
 
@@ -96,7 +95,7 @@ eliminate_dup_procs(ModelStdProcs0, [Id - Proc0 | IdProcs0],
 
 find_matching_model_proc([ModelId - ModelStdProc | ModelIdProcs], Id, Proc,
         DupProcMap, MatchingId) :-
-    map__det_insert(DupProcMap, Id, ModelId, AugDupProcMap),
+    map.det_insert(DupProcMap, Id, ModelId, AugDupProcMap),
     standardize_proc(Proc, StdProc, AugDupProcMap),
     StdInstrs = StdProc ^ cproc_code,
     ModelStdInstrs = ModelStdProc ^ cproc_code,
@@ -123,8 +122,8 @@ maybe_redirect_proc(Proc0, Target, MaybeProc) :-
     get_prologue(Instrs0, LabelInstr, _Comments, LaterInstrs),
     Redirect = goto(label(entry(local, Target))) -
         "Redirect to procedure with identical body",
-    list__filter(disallowed_instr, LaterInstrs, DisallowedInstrs),
-    list__length(LaterInstrs, NumLaterInstrs),
+    list.filter(disallowed_instr, LaterInstrs, DisallowedInstrs),
+    list.length(LaterInstrs, NumLaterInstrs),
     (
         DisallowedInstrs = [],
         % The threshold here is a guess. I don't think the precise value
@@ -293,7 +292,7 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
     map(proc_label, proc_label)::in) is det.
 
 standardize_proc_label(ProcLabel, StdProcLabel, DupProcMap) :-
-    ( map__search(DupProcMap, ProcLabel, FoundProcLabel) ->
+    ( map.search(DupProcMap, ProcLabel, FoundProcLabel) ->
         StdProcLabel = FoundProcLabel
     ;
         StdProcLabel = ProcLabel

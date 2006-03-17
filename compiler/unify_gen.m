@@ -16,7 +16,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module ll_backend__unify_gen.
+:- module ll_backend.unify_gen.
 :- interface.
 
 :- import_module hlds.code_model.
@@ -90,7 +90,7 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI) :-
     ),
     (
         Uni = assign(Left, Right),
-        ( code_info__variable_is_forward_live(!.CI, Left) ->
+        ( code_info.variable_is_forward_live(!.CI, Left) ->
             generate_assignment(Left, Right, Code, !CI)
         ;
             Code = empty
@@ -105,7 +105,7 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI) :-
             SubInfo = construct_sub_info(MaybeTakeAddr, MaybeSize)
         ),
         (
-            ( code_info__variable_is_forward_live(!.CI, Var)
+            ( code_info.variable_is_forward_live(!.CI, Var)
             ; MaybeTakeAddr = yes(_)
             )
         ->
@@ -151,8 +151,8 @@ generate_unification(CodeModel, Uni, GoalInfo, Code, !CI) :-
     code_info::in, code_info::out) is det.
 
 generate_assignment(VarA, VarB, empty, !CI) :-
-    ( code_info__variable_is_forward_live(!.CI, VarA) ->
-        code_info__assign_var_to_var(VarA, VarB, !CI)
+    ( code_info.variable_is_forward_live(!.CI, VarA) ->
+        code_info.assign_var_to_var(VarA, VarB, !CI)
     ;
         % For free-free unifications, the mode analysis reports them as
         % assignment to the dead variable. For such unifications we of course
@@ -171,10 +171,10 @@ generate_assignment(VarA, VarB, empty, !CI) :-
     code_info::in, code_info::out) is det.
 
 generate_test(VarA, VarB, Code, !CI) :-
-    code_info__produce_variable(VarA, CodeA, ValA, !CI),
-    code_info__produce_variable(VarB, CodeB, ValB, !CI),
+    code_info.produce_variable(VarA, CodeA, ValA, !CI),
+    code_info.produce_variable(VarB, CodeB, ValB, !CI),
     CodeAB = tree(CodeA, CodeB),
-    Type = code_info__variable_type(!.CI, VarA),
+    Type = code_info.variable_type(!.CI, VarA),
     ( Type = builtin(string) ->
         Op = str_eq
     ; Type = builtin(float) ->
@@ -182,13 +182,13 @@ generate_test(VarA, VarB, Code, !CI) :-
     ;
         Op = eq
     ),
-    code_info__fail_if_rval_is_false(binop(Op, ValA, ValB), FailCode, !CI),
+    code_info.fail_if_rval_is_false(binop(Op, ValA, ValB), FailCode, !CI),
     Code = tree(CodeAB, FailCode).
 
 %---------------------------------------------------------------------------%
 
 generate_tag_test(Var, ConsId, Sense, ElseLab, Code, !CI) :-
-    code_info__produce_variable(Var, VarCode, Rval, !CI),
+    code_info.produce_variable(Var, VarCode, Rval, !CI),
     % As an optimization, for data types with exactly two alternatives,
     % one of which is a constant, we make sure that we test against the
     % constant (negating the result of the test, if needed),
@@ -197,11 +197,11 @@ generate_tag_test(Var, ConsId, Sense, ElseLab, Code, !CI) :-
         ConsId = cons(_, Arity),
         Arity > 0
     ->
-        Type = code_info__variable_type(!.CI, Var),
-        TypeDefn = code_info__lookup_type_defn(!.CI, Type),
-        hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+        Type = code_info.variable_type(!.CI, Var),
+        TypeDefn = code_info.lookup_type_defn(!.CI, Type),
+        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         ( ConsTable = TypeBody ^ du_type_cons_tag_values ->
-            map__to_assoc_list(ConsTable, ConsList),
+            map.to_assoc_list(ConsTable, ConsList),
             (
                 ConsList = [ConsId - _, OtherConsId - _],
                 OtherConsId = cons(_, 0)
@@ -221,31 +221,31 @@ generate_tag_test(Var, ConsId, Sense, ElseLab, Code, !CI) :-
     ;
         Reverse = no
     ),
-    VarName = code_info__variable_to_string(!.CI, Var),
-    ConsIdName = hlds_out__cons_id_to_string(ConsId),
+    VarName = code_info.variable_to_string(!.CI, Var),
+    ConsIdName = hlds_out.cons_id_to_string(ConsId),
     (
         Reverse = no,
-        string__append_list(["checking that ", VarName, " has functor ",
+        string.append_list(["checking that ", VarName, " has functor ",
             ConsIdName], Comment),
         CommentCode = node([comment(Comment) - ""]),
-        Tag = code_info__cons_id_to_tag(!.CI, Var, ConsId),
+        Tag = code_info.cons_id_to_tag(!.CI, Var, ConsId),
         generate_tag_test_rval_2(Tag, Rval, TestRval)
     ;
         Reverse = yes(TestConsId),
-        string__append_list(["checking that ", VarName, " has functor ",
+        string.append_list(["checking that ", VarName, " has functor ",
             ConsIdName, " (inverted test)"], Comment),
         CommentCode = node([comment(Comment) - ""]),
-        Tag = code_info__cons_id_to_tag(!.CI, Var, TestConsId),
+        Tag = code_info.cons_id_to_tag(!.CI, Var, TestConsId),
         generate_tag_test_rval_2(Tag, Rval, NegTestRval),
-        code_util__neg_rval(NegTestRval, TestRval)
+        code_util.neg_rval(NegTestRval, TestRval)
     ),
-    code_info__get_next_label(ElseLab, !CI),
+    code_info.get_next_label(ElseLab, !CI),
     (
         Sense = branch_on_success,
         TheRval = TestRval
     ;
         Sense = branch_on_failure,
-        code_util__neg_rval(TestRval, TheRval)
+        code_util.neg_rval(TestRval, TheRval)
     ),
     TestCode = node([if_val(TheRval, label(ElseLab)) - "tag test"]),
     Code = tree(VarCode, tree(CommentCode, TestCode)).
@@ -256,8 +256,8 @@ generate_tag_test(Var, ConsId, Sense, ElseLab, Code, !CI) :-
     rval::out, code_tree::out, code_info::in, code_info::out) is det.
 
 generate_tag_test_rval(Var, ConsId, TestRval, Code, !CI) :-
-    code_info__produce_variable(Var, Code, Rval, !CI),
-    Tag = code_info__cons_id_to_tag(!.CI, Var, ConsId),
+    code_info.produce_variable(Var, Code, Rval, !CI),
+    Tag = code_info.cons_id_to_tag(!.CI, Var, ConsId),
     generate_tag_test_rval_2(Tag, Rval, TestRval).
 
 :- pred generate_tag_test_rval_2(cons_tag::in, rval::in, rval::out)
@@ -331,7 +331,7 @@ generate_tag_test_rval_2(ConsTag, Rval, TestRval) :-
                 unop(logical_not, EqualRA), InnerTestRval0)
         ),
         generate_tag_test_rval_2(ThisTag, Rval, MatchesThisTag),
-        TestRval = list__foldr(CheckReservedAddrs, ReservedAddrs,
+        TestRval = list.foldr(CheckReservedAddrs, ReservedAddrs,
             MatchesThisTag)
     ).
 
@@ -361,7 +361,7 @@ generate_reserved_address(reserved_object(_, _, _)) = _ :-
 
 generate_construction(Var, ConsId, Args, Modes, TakeAddr, MaybeSize, GoalInfo,
         Code, !CI) :-
-    Tag = code_info__cons_id_to_tag(!.CI, Var, ConsId),
+    Tag = code_info.cons_id_to_tag(!.CI, Var, ConsId),
     generate_construction_2(Tag, Var, Args, Modes, TakeAddr, MaybeSize,
         GoalInfo, Code, !CI).
 
@@ -374,15 +374,15 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         GoalInfo, Code, !CI) :-
     (
         ConsTag = string_constant(String),
-        code_info__assign_const_to_var(Var, const(string_const(String)), !CI),
+        code_info.assign_const_to_var(Var, const(string_const(String)), !CI),
         Code = empty
     ;
         ConsTag = int_constant(Int),
-        code_info__assign_const_to_var(Var, const(int_const(Int)), !CI),
+        code_info.assign_const_to_var(Var, const(int_const(Int)), !CI),
         Code = empty
     ;
         ConsTag = float_constant(Float),
-        code_info__assign_const_to_var(Var, const(float_const(Float)), !CI),
+        code_info.assign_const_to_var(Var, const(float_const(Float)), !CI),
         Code = empty
     ;
         ConsTag = no_tag,
@@ -392,7 +392,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         ->
             (
                 TakeAddr = [],
-                Type = code_info__variable_type(!.CI, Arg),
+                Type = code_info.variable_type(!.CI, Arg),
                 generate_sub_unify(ref(Var), ref(Arg), Mode, Type, Code, !CI)
             ;
                 TakeAddr = [_ | _],
@@ -410,14 +410,14 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
             Var, Args, Modes, TakeAddr, MaybeSize, GoalInfo, Code, !CI)
     ;
         ConsTag = unshared_tag(Ptag),
-        code_info__get_module_info(!.CI, ModuleInfo),
+        code_info.get_module_info(!.CI, ModuleInfo),
         var_types(!.CI, Args, ArgTypes),
         generate_cons_args(Args, ArgTypes, Modes, 0, 1, TakeAddr, ModuleInfo,
             Rvals, FieldAddrs),
         construct_cell(Var, Ptag, Rvals, MaybeSize, FieldAddrs, Code, !CI)
     ;
         ConsTag = shared_remote_tag(Ptag, Sectag),
-        code_info__get_module_info(!.CI, ModuleInfo),
+        code_info.get_module_info(!.CI, ModuleInfo),
         var_types(!.CI, Args, ArgTypes),
         generate_cons_args(Args, ArgTypes, Modes, 1, 1, TakeAddr, ModuleInfo,
             Rvals0, FieldAddrs),
@@ -426,7 +426,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         construct_cell(Var, Ptag, Rvals, MaybeSize, FieldAddrs, Code, !CI)
     ;
         ConsTag = shared_local_tag(Bits1, Num1),
-        code_info__assign_const_to_var(Var,
+        code_info.assign_const_to_var(Var,
             mkword(Bits1, unop(mkbody, const(int_const(Num1)))), !CI),
         Code = empty
     ;
@@ -435,7 +435,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
             "generate_construction_2: type_ctor_info constant has args"),
         RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
         DataAddr = rtti_addr(ctor_rtti_id(RttiTypeCtor, type_ctor_info)),
-        code_info__assign_const_to_var(Var,
+        code_info.assign_const_to_var(Var,
             const(data_addr_const(DataAddr, no)), !CI),
         Code = empty
     ;
@@ -443,7 +443,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         expect(unify(Args, []), this_file,
             "generate_construction_2: base_typeclass_info constant has args"),
         TCName = generate_class_name(ClassId),
-        code_info__assign_const_to_var(Var,
+        code_info.assign_const_to_var(Var,
             const(data_addr_const(rtti_addr(tc_rtti_id(TCName,
                 base_typeclass_info(ModuleName, Instance))), no)), !CI),
         Code = empty
@@ -451,18 +451,18 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         ConsTag = tabling_pointer_constant(PredId, ProcId),
         expect(unify(Args, []), this_file,
             "generate_construction_2: tabling_pointer constant has args"),
-        code_info__get_module_info(!.CI, ModuleInfo),
+        code_info.get_module_info(!.CI, ModuleInfo),
         ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
         module_info_get_name(ModuleInfo, ModuleName),
         DataAddr = data_addr(ModuleName, tabling_pointer(ProcLabel)),
-        code_info__assign_const_to_var(Var,
+        code_info.assign_const_to_var(Var,
             const(data_addr_const(DataAddr, no)), !CI),
         Code = empty
     ;
         ConsTag = deep_profiling_proc_layout_tag(PredId, ProcId),
         expect(unify(Args, []), this_file,
             "generate_construction_2: deep_profiling_proc_static has args"),
-        code_info__get_module_info(!.CI, ModuleInfo),
+        code_info.get_module_info(!.CI, ModuleInfo),
         RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
         Origin = RttiProcLabel ^ pred_info_origin,
         ( Origin = special_pred(_) ->
@@ -472,25 +472,24 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         ),
         ProcKind = proc_layout_proc_id(UserOrUCI),
         DataAddr = layout_addr(proc_layout(RttiProcLabel, ProcKind)),
-        code_info__assign_const_to_var(Var,
+        code_info.assign_const_to_var(Var,
             const(data_addr_const(DataAddr, no)), !CI),
         Code = empty
     ;
         ConsTag = table_io_decl_tag(PredId, ProcId),
         expect(unify(Args, []), this_file,
             "generate_construction_2: table_io_decl has args"),
-        code_info__get_module_info(!.CI, ModuleInfo),
+        code_info.get_module_info(!.CI, ModuleInfo),
         RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
         DataAddr = layout_addr(table_io_decl(RttiProcLabel)),
-        code_info__assign_const_to_var(Var,
+        code_info.assign_const_to_var(Var,
             const(data_addr_const(DataAddr, no)), !CI),
         Code = empty
     ;
         ConsTag = reserved_address(RA),
         expect(unify(Args, []), this_file,
             "generate_construction_2: reserved_address constant has args"),
-        code_info__assign_const_to_var(Var, generate_reserved_address(RA),
-            !CI),
+        code_info.assign_const_to_var(Var, generate_reserved_address(RA), !CI),
         Code = empty
     ;
         ConsTag = shared_with_reserved_addresses(_RAs, ThisTag),
@@ -517,11 +516,11 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
     code_info::in, code_info::out) is det.
 
 generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
-    code_info__get_module_info(!.CI, ModuleInfo),
+    code_info.get_module_info(!.CI, ModuleInfo),
     module_info_preds(ModuleInfo, Preds),
-    map__lookup(Preds, PredId, PredInfo),
+    map.lookup(Preds, PredId, PredInfo),
     pred_info_procedures(PredInfo, Procs),
-    map__lookup(Procs, ProcId, ProcInfo),
+    map.lookup(Procs, ProcId, ProcInfo),
 
     % We handle currying of a higher-order pred variable as a special case.
     % We recognize
@@ -570,30 +569,30 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
         % This optimization distorts deep profiles, so don't perform it
         % in deep profiling grades.
         module_info_get_globals(ModuleInfo, Globals),
-        globals__lookup_bool_option(Globals, profile_deep, Deep),
+        globals.lookup_bool_option(Globals, profile_deep, Deep),
         Deep = no
     ->
         (
             CallArgs = [],
             % If there are no new arguments, we can just use the old closure.
-            code_info__assign_var_to_var(Var, CallPred, !CI),
+            code_info.assign_var_to_var(Var, CallPred, !CI),
             Code = empty
         ;
             CallArgs = [_ | _],
-            code_info__get_next_label(LoopStart, !CI),
-            code_info__get_next_label(LoopTest, !CI),
-            code_info__acquire_reg(r, LoopCounter, !CI),
-            code_info__acquire_reg(r, NumOldArgs, !CI),
-            code_info__acquire_reg(r, NewClosure, !CI),
+            code_info.get_next_label(LoopStart, !CI),
+            code_info.get_next_label(LoopTest, !CI),
+            code_info.acquire_reg(r, LoopCounter, !CI),
+            code_info.acquire_reg(r, NumOldArgs, !CI),
+            code_info.acquire_reg(r, NewClosure, !CI),
             Zero = const(int_const(0)),
             One = const(int_const(1)),
             Two = const(int_const(2)),
             Three = const(int_const(3)),
-            list__length(CallArgs, NumNewArgs),
+            list.length(CallArgs, NumNewArgs),
             NumNewArgs_Rval = const(int_const(NumNewArgs)),
             NumNewArgsPlusThree = NumNewArgs + 3,
             NumNewArgsPlusThree_Rval = const(int_const(NumNewArgsPlusThree)),
-            code_info__produce_variable(CallPred, OldClosureCode,
+            code_info.produce_variable(CallPred, OldClosureCode,
                 OldClosure, !CI),
             NewClosureCode = node([
                 comment("build new closure from old closure") - "",
@@ -635,42 +634,42 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
             ]),
             generate_extra_closure_args(CallArgs, LoopCounter, NewClosure,
                 ExtraArgsCode, !CI),
-            code_info__release_reg(LoopCounter, !CI),
-            code_info__release_reg(NumOldArgs, !CI),
-            code_info__release_reg(NewClosure, !CI),
-            code_info__assign_lval_to_var(Var, NewClosure, AssignCode, !CI),
+            code_info.release_reg(LoopCounter, !CI),
+            code_info.release_reg(NumOldArgs, !CI),
+            code_info.release_reg(NewClosure, !CI),
+            code_info.assign_lval_to_var(Var, NewClosure, AssignCode, !CI),
             Code = tree_list([OldClosureCode, NewClosureCode, ExtraArgsCode,
                  AssignCode])
         )
     ;
-        CodeAddr = code_info__make_entry_label(!.CI, ModuleInfo,
+        CodeAddr = code_info.make_entry_label(!.CI, ModuleInfo,
             PredId, ProcId, no),
-        code_util__extract_proc_label_from_code_addr(CodeAddr, ProcLabel),
+        code_util.extract_proc_label_from_code_addr(CodeAddr, ProcLabel),
         CallArgsRval = const(code_addr_const(CodeAddr)),
-        continuation_info__generate_closure_layout( ModuleInfo, PredId, ProcId,
+        continuation_info.generate_closure_layout( ModuleInfo, PredId, ProcId,
             ClosureInfo),
         module_info_get_name(ModuleInfo, ModuleName),
         goal_info_get_context(GoalInfo, Context),
-        term__context_file(Context, FileName),
-        term__context_line(Context, LineNumber),
+        term.context_file(Context, FileName),
+        term.context_line(Context, LineNumber),
         goal_info_get_goal_path(GoalInfo, GoalPath),
         goal_path_to_string(GoalPath, GoalPathStr),
-        code_info__get_cur_proc_label(!.CI, CallerProcLabel),
-        code_info__get_next_closure_seq_no(SeqNo, !CI),
-        code_info__get_static_cell_info(!.CI, StaticCellInfo0),
+        code_info.get_cur_proc_label(!.CI, CallerProcLabel),
+        code_info.get_next_closure_seq_no(SeqNo, !CI),
+        code_info.get_static_cell_info(!.CI, StaticCellInfo0),
         hlds.hlds_pred.pred_info_get_origin(PredInfo, PredOrigin),
-        stack_layout__construct_closure_layout(CallerProcLabel,
+        stack_layout.construct_closure_layout(CallerProcLabel,
             SeqNo, ClosureInfo, ProcLabel, ModuleName, FileName, LineNumber,
             PredOrigin, GoalPathStr, StaticCellInfo0, StaticCellInfo,
             ClosureLayoutRvalsTypes, Data),
-        code_info__set_static_cell_info(StaticCellInfo, !CI),
-        code_info__add_closure_layout(Data, !CI),
+        code_info.set_static_cell_info(StaticCellInfo, !CI),
+        code_info.add_closure_layout(Data, !CI),
         % For now, closures always have zero size, and the size slot
         % is never looked at.
-        code_info__add_static_cell(ClosureLayoutRvalsTypes, ClosureDataAddr,
+        code_info.add_static_cell(ClosureLayoutRvalsTypes, ClosureDataAddr,
             !CI),
         ClosureLayoutRval = const(data_addr_const(ClosureDataAddr, no)),
-        list__length(Args, NumArgs),
+        list.length(Args, NumArgs),
         proc_info_arg_info(ProcInfo, ArgInfo),
         generate_pred_args(Args, ArgInfo, PredArgs),
         Vector = [
@@ -679,7 +678,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
             yes(const(int_const(NumArgs)))
             | PredArgs
         ],
-        code_info__assign_cell_to_var(Var, no, 0, Vector, no, "closure",
+        code_info.assign_cell_to_var(Var, no, 0, Vector, no, "closure",
             Code, !CI)
     ).
 
@@ -689,7 +688,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
 generate_extra_closure_args([], _, _, empty, !CI).
 generate_extra_closure_args([Var | Vars], LoopCounter, NewClosure, Code,
         !CI) :-
-    code_info__produce_variable(Var, Code0, Value, !CI),
+    code_info.produce_variable(Var, Code0, Value, !CI),
     One = const(int_const(1)),
     Code1 = node([
         assign(field(yes(0), lval(NewClosure), lval(LoopCounter)), Value)
@@ -735,8 +734,7 @@ generate_cons_args(Vars, Types, Modes, FirstOffset, FirstArgNum, TakeAddr,
     % Create a list of maybe(rval) for the arguments for a construction
     % unification. For each argument which is input to the construction
     % unification, we produce `yes(var(Var))', but if the argument is free,
-    % we just produce `no', meaning don't generate an assignment to that
-    % field.
+    % we just produce `no', meaning don't generate an assignment to that field.
     %
 :- pred generate_cons_args_2(list(prog_var)::in, list(mer_type)::in,
     list(uni_mode)::in, int::in, int::in, list(int)::in, module_info::in,
@@ -772,7 +770,7 @@ generate_cons_args_2([Var | Vars], [Type | Types], [UniMode | UniModes],
     code_info::in, code_info::out) is det.
 
 construct_cell(Var, Ptag, MaybeRvals, MaybeSize, FieldAddrs, Code, !CI) :-
-    VarType = code_info__variable_type(!.CI, Var),
+    VarType = code_info.variable_type(!.CI, Var),
     var_type_msg(VarType, VarTypeMsg),
     % If we're doing accurate GC, then for types which hold RTTI that
     % will be traversed by the collector at GC-time, we need to allocate
@@ -781,8 +779,8 @@ construct_cell(Var, Ptag, MaybeRvals, MaybeSize, FieldAddrs, Code, !CI) :-
     % in the "from" space, but this can't be done for objects which will be
     % referenced during the garbage collection process.
     (
-        code_info__get_globals(!.CI, Globals),
-        globals__get_gc_method(Globals, GCMethod),
+        code_info.get_globals(!.CI, Globals),
+        globals.get_gc_method(Globals, GCMethod),
         GCMethod = accurate,
         is_introduced_type_info_type(VarType)
     ->
@@ -790,7 +788,7 @@ construct_cell(Var, Ptag, MaybeRvals, MaybeSize, FieldAddrs, Code, !CI) :-
     ;
         ReserveWordAtStart = no
     ),
-    code_info__assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals,
+    code_info.assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals,
         MaybeSize, VarTypeMsg, CellCode, !CI),
     (
         FieldAddrs = [],
@@ -824,9 +822,9 @@ generate_field_take_address_assigns([FieldNum - Var | FieldAddrs],
     is det.
 
 var_types(CI, Vars, Types) :-
-    code_info__get_proc_info(CI, ProcInfo),
+    code_info.get_proc_info(CI, ProcInfo),
     proc_info_vartypes(ProcInfo, VarTypes),
-    map__apply_to_list(Vars, VarTypes, Types).
+    map.apply_to_list(Vars, VarTypes, Types).
 
 %---------------------------------------------------------------------------%
 
@@ -859,15 +857,14 @@ make_fields_and_argvars([Var | Vars], Rval, Field0, TagNum,
     code_info::in, code_info::out) is det.
 
 generate_det_deconstruction(Var, Cons, Args, Modes, Code, !CI) :-
-    Tag = code_info__cons_id_to_tag(!.CI, Var, Cons),
+    Tag = code_info.cons_id_to_tag(!.CI, Var, Cons),
     generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI).
 
 :- pred generate_det_deconstruction_2(prog_var::in, cons_id::in,
     list(prog_var)::in, list(uni_mode)::in, cons_tag::in,
     code_tree::out, code_info::in, code_info::out) is det.
 
-generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code,
-        !CI) :-
+generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
     % For constants, if the deconstruction is det, then we already know
     % the value of the constant, so Code = empty.
     (
@@ -903,8 +900,8 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code,
             Args = [Arg],
             Modes = [Mode]
         ->
-            VarType = code_info__variable_type(!.CI, Var),
-            code_info__get_module_info(!.CI, ModuleInfo),
+            VarType = code_info.variable_type(!.CI, Var),
+            code_info.get_module_info(!.CI, ModuleInfo),
             ( is_dummy_argument_type(ModuleInfo, VarType) ->
                 % We must handle this case specially. If we didn't, the
                 % generated code would copy the reference to the Var's
@@ -912,16 +909,16 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code,
                 % for negative N, to be the location of Arg, and since Arg
                 % may not be a dummy type, it would actually use that location.
                 % This can happen in the unify/compare routines for e.g.
-                % io__state.
+                % io.state.
                 ( variable_is_forward_live(!.CI, Arg) ->
-                    code_info__assign_const_to_var(Arg, const(int_const(0)),
+                    code_info.assign_const_to_var(Arg, const(int_const(0)),
                         !CI)
                 ;
                     true
                 ),
                 Code = empty
             ;
-                ArgType = code_info__variable_type(!.CI, Arg),
+                ArgType = code_info.variable_type(!.CI, Arg),
                 generate_sub_unify(ref(Var), ref(Arg), Mode, ArgType, Code,
                     !CI)
             )
@@ -973,9 +970,9 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code,
 
 generate_semi_deconstruction(Var, Tag, Args, Modes, Code, !CI) :-
     generate_tag_test(Var, Tag, branch_on_success, SuccLab, TagTestCode, !CI),
-    code_info__remember_position(!.CI, AfterUnify),
-    code_info__generate_failure(FailCode, !CI),
-    code_info__reset_to_position(AfterUnify, !CI),
+    code_info.remember_position(!.CI, AfterUnify),
+    code_info.generate_failure(FailCode, !CI),
+    code_info.reset_to_position(AfterUnify, !CI),
     generate_det_deconstruction(Var, Tag, Args, Modes, DeconsCode, !CI),
     SuccessLabelCode = node([label(SuccLab) - ""]),
     Code = tree_list([TagTestCode, FailCode, SuccessLabelCode, DeconsCode]).
@@ -1015,7 +1012,7 @@ generate_unify_args_2([L | Ls], [R | Rs], [M | Ms], [T | Ts], Code, !CI) :-
 
 generate_sub_unify(L, R, Mode, Type, Code, !CI) :-
     Mode = ((LI - RI) -> (LF - RF)),
-    code_info__get_module_info(!.CI, ModuleInfo),
+    code_info.get_module_info(!.CI, ModuleInfo),
     mode_to_arg_mode(ModuleInfo, (LI -> LF), Type, LeftMode),
     mode_to_arg_mode(ModuleInfo, (RI -> RF), Type, RightMode),
     (
@@ -1066,21 +1063,21 @@ generate_sub_assign(Left, Right, Code, !CI) :-
         Right = ref(Var),
         % Assignment from a variable to an lvalue - cannot cache
         % so generate immediately.
-        code_info__produce_variable(Var, SourceCode, Source, !CI),
-        code_info__materialize_vars_in_lval(Lval0, Lval, MaterializeCode, !CI),
+        code_info.produce_variable(Var, SourceCode, Source, !CI),
+        code_info.materialize_vars_in_lval(Lval0, Lval, MaterializeCode, !CI),
         CopyCode = node([assign(Lval, Source) - "Copy value"]),
         Code = tree_list([SourceCode, MaterializeCode, CopyCode])
     ;
         Left = ref(Lvar),
-        ( code_info__variable_is_forward_live(!.CI, Lvar) ->
+        ( code_info.variable_is_forward_live(!.CI, Lvar) ->
             (
                 Right = lval(Lval),
                 % Assignment of a value to a variable, generate now.
-                code_info__assign_lval_to_var(Lvar, Lval, Code, !CI)
+                code_info.assign_lval_to_var(Lvar, Lval, Code, !CI)
             ;
                 Right = ref(Rvar),
                 % Assignment of a variable to a variable, so cache it.
-                code_info__assign_var_to_var(Lvar, Rvar, !CI),
+                code_info.assign_var_to_var(Lvar, Rvar, !CI),
                 Code = empty
             )
         ;
@@ -1095,9 +1092,9 @@ generate_sub_assign(Left, Right, Code, !CI) :-
 var_type_msg(Type, Msg) :-
     ( type_to_ctor_and_args(Type, TypeCtor, _) ->
         TypeCtor = TypeSym - TypeArity,
-        mdbcomp__prim_data__sym_name_to_string(TypeSym, TypeSymStr),
-        string__int_to_string(TypeArity, TypeArityStr),
-        string__append_list([TypeSymStr, "/", TypeArityStr], Msg)
+        mdbcomp.prim_data.sym_name_to_string(TypeSym, TypeSymStr),
+        string.int_to_string(TypeArity, TypeArityStr),
+        string.append_list([TypeSymStr, "/", TypeArityStr], Msg)
     ;
         unexpected(this_file, "type is still a type variable in var_type_msg")
     ).

@@ -30,7 +30,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module hlds__quantification.
+:- module hlds.quantification.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -254,7 +254,7 @@ implicitly_quantify_goal_2(RecomputeNonLocals, OutsideVars0, Warnings,
     get_varset(QuantInfo, !:Varset),
     get_vartypes(QuantInfo, !:VarTypes),
     get_warnings(QuantInfo, Warnings0),
-    list__reverse(Warnings0, Warnings).
+    list.reverse(Warnings0, Warnings).
 
 :- pred implicitly_quantify_goal(hlds_goal::in, hlds_goal::out,
     quant_info::in, quant_info::out) is det.
@@ -344,7 +344,7 @@ implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
     ;
         warn_overlapping_scope(RenameVars, Context, !Info),
         rename_apart(RenameVars, RenameMap, Goal0, Goal1, !Info),
-        goal_util__rename_var_list(no, RenameMap, Vars0, Vars),
+        goal_util.rename_var_list(no, RenameMap, Vars0, Vars),
         (
             Reason1 = exist_quant(_),
             % We have already handled this case.
@@ -354,7 +354,7 @@ implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
             Reason = Reason1
         ;
             Reason1 = promise_solutions(PromiseVars0, Kind),
-            goal_util__rename_var_list(no, RenameMap,
+            goal_util.rename_var_list(no, RenameMap,
                 PromiseVars0, PromiseVars),
             Reason = promise_solutions(PromiseVars, Kind)
         ;
@@ -437,8 +437,8 @@ implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
     ;
         warn_overlapping_scope(RenameVars, Context, !Info),
         rename_apart(RenameVars, RenameMap, Cond0, Cond1, !Info),
-        goal_util__rename_vars_in_goal(RenameMap, Then0, Then1),
-        goal_util__rename_var_list(no, RenameMap, Vars0, Vars)
+        goal_util.rename_vars_in_goal(RenameMap, Then0, Then1),
+        goal_util.rename_var_list(no, RenameMap, Vars0, Vars)
     ),
     insert_list(QuantVars, Vars, QuantVars1),
     get_nonlocals_to_recompute(!.Info, NonLocalsToRecompute),
@@ -475,8 +475,8 @@ implicitly_quantify_goal_2(Expr, Expr, _, !Info) :-
 
 implicitly_quantify_goal_2(Expr, Expr, _, !Info) :-
     Expr = generic_call(GenericCall, CallArgVars, _, _),
-    goal_util__generic_call_vars(GenericCall, ArgVars0),
-    list__append(ArgVars0, CallArgVars, ArgVars),
+    goal_util.generic_call_vars(GenericCall, ArgVars0),
+    list.append(ArgVars0, CallArgVars, ArgVars),
     implicitly_quantify_atomic_goal(ArgVars, !Info).
 
 implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
@@ -533,9 +533,9 @@ implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
 
 implicitly_quantify_goal_2(Expr, Expr, _, !Info) :-
     Expr = foreign_proc(_, _, _, Args, ExtraArgs, _),
-    Vars = list__map(foreign_arg_var, Args),
-    ExtraVars = list__map(foreign_arg_var, ExtraArgs),
-    list__append(Vars, ExtraVars, AllVars),
+    Vars = list.map(foreign_arg_var, Args),
+    ExtraVars = list.map(foreign_arg_var, ExtraArgs),
+    list.append(Vars, ExtraVars, AllVars),
     implicitly_quantify_atomic_goal(AllVars, !Info).
 
 implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
@@ -690,7 +690,7 @@ implicitly_quantify_unify_rhs(_, Context, !RHS, !Unification, !Info) :-
 
     union(RenameVars0, RenameVars1, RenameVars),
     rename_apart(RenameVars, RenameMap, Goal0, Goal1, !Info),
-    goal_util__rename_var_list(no, RenameMap, LambdaVars0, LambdaVars),
+    goal_util.rename_var_list(no, RenameMap, LambdaVars0, LambdaVars),
 
     % Quantified variables cannot be pushed inside a lambda goal,
     % so we insert the quantified vars into the outside vars set,
@@ -730,7 +730,7 @@ implicitly_quantify_unify_rhs(_, Context, !RHS, !Unification, !Info) :-
     %
     Goal = _ - LambdaGoalInfo,
     goal_info_get_nonlocals(LambdaGoalInfo, LambdaGoalNonLocals),
-    list__filter(contains(LambdaGoalNonLocals),
+    list.filter(contains(LambdaGoalNonLocals),
         LambdaNonLocals0, LambdaNonLocals),
 
     %
@@ -755,9 +755,9 @@ implicitly_quantify_unify_rhs(_, Context, !RHS, !Unification, !Info) :-
             expect(unify(MaybeSize, no), this_file,
                 "lambda term has size info")
         ),
-        map__from_corresponding_lists(Args0, ArgModes0, ArgModesMap),
+        map.from_corresponding_lists(Args0, ArgModes0, ArgModesMap),
         to_sorted_list(NonLocals, Args),
-        map__apply_to_list(Args, ArgModesMap, ArgModes),
+        map.apply_to_list(Args, ArgModesMap, ArgModes),
         !:Unification = construct(ConstructVar, ConsId, Args,
             ArgModes, HowToConstruct, Uniq, SubInfo)
     ;
@@ -956,7 +956,7 @@ goal_vars_2(NonLocalsToRecompute, unify(LHS, RHS, _, Unification, _),
     unify_rhs_vars(NonLocalsToRecompute, RHS, MaybeSetArgs, !Set, !LambdaSet).
 
 goal_vars_2(_, generic_call(GenericCall, ArgVars1, _, _), !Set, !LambdaSet) :-
-    goal_util__generic_call_vars(GenericCall, ArgVars0),
+    goal_util.generic_call_vars(GenericCall, ArgVars0),
     insert_list(!.Set, ArgVars0, !:Set),
     insert_list(!.Set, ArgVars1, !:Set).
 
@@ -1022,9 +1022,9 @@ goal_vars_2(NonLocalsToRecompute, if_then_else(Vars, Cond, Then, Else),
     union(!.LambdaSet, ElseLambdaSet, !:LambdaSet).
 
 goal_vars_2(_, foreign_proc(_, _, _, Args, ExtraArgs, _), !Set, !LambdaSet) :-
-    Vars = list__map(foreign_arg_var, Args),
-    ExtraVars = list__map(foreign_arg_var, ExtraArgs),
-    list__append(Vars, ExtraVars, AllVars),
+    Vars = list.map(foreign_arg_var, Args),
+    ExtraVars = list.map(foreign_arg_var, ExtraArgs),
+    list.append(Vars, ExtraVars, AllVars),
     insert_list(!.Set, AllVars, !:Set).
 
 goal_vars_2(NonLocalsToRecompute, shorthand(ShorthandGoal), !Set,
@@ -1143,15 +1143,15 @@ rename_apart(RenameSet, RenameMap, !Goal, !Info) :-
         ; NonLocalsToRecompute = code_gen_nonlocals
         )
     ->
-        map__init(RenameMap)
+        map.init(RenameMap)
     ;
         to_sorted_list(RenameSet, RenameList),
         get_varset(!.Info, Varset0),
         get_vartypes(!.Info, VarTypes0),
-        map__init(RenameMap0),
-        goal_util__create_variables(RenameList, Varset0, VarTypes0,
+        map.init(RenameMap0),
+        goal_util.create_variables(RenameList, Varset0, VarTypes0,
             Varset0, Varset, VarTypes0, VarTypes, RenameMap0, RenameMap),
-        goal_util__rename_vars_in_goal(RenameMap, !Goal),
+        goal_util.rename_vars_in_goal(RenameMap, !Goal),
         set_varset(Varset, !Info),
         set_vartypes(VarTypes, !Info)
 
@@ -1160,7 +1160,7 @@ rename_apart(RenameSet, RenameMap, !Goal, !Info) :-
         % This is a performance improvement because it keeps the size
         % of the seen var set down.
         % get_seen(!.Info, SeenVars0),
-        % map__values(RenameMap, NewVarsList),
+        % map.values(RenameMap, NewVarsList),
         % insert_list(SeenVars0, NewVarsList, SeenVars),
         % set_seen(SeenVars, !Info)
     ).
@@ -1193,11 +1193,11 @@ set_goal_nonlocals(NonLocals0, NonLocals, !GoalInfo, !Info) :-
 
 :- func bitset_to_set(set_of_var) = set(prog_var).
 
-bitset_to_set(Bitset) = set__sorted_list_to_set(to_sorted_list(Bitset)).
+bitset_to_set(Bitset) = set.sorted_list_to_set(to_sorted_list(Bitset)).
 
 :- func set_to_bitset(set(prog_var)) = set_of_var.
 
-set_to_bitset(Bitset) = sorted_list_to_set(set__to_sorted_list(Bitset)).
+set_to_bitset(Bitset) = sorted_list_to_set(set.to_sorted_list(Bitset)).
 
 %-----------------------------------------------------------------------------%
 

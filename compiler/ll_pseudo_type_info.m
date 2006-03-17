@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000,2002-2003, 2005 The University of Melbourne.
+% Copyright (C) 2000,2002-2003, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -21,7 +21,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- module ll_backend__ll_pseudo_type_info.
+:- module ll_backend.ll_pseudo_type_info.
 :- interface.
 
 :- import_module ll_backend.global_data.
@@ -77,7 +77,7 @@ construct_llds_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars,
 
 construct_typed_llds_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars,
         !StaticCellInfo, PseudoRval, LldsType) :-
-    pseudo_type_info__construct_pseudo_type_info(Type, NumUnivQTvars,
+    pseudo_type_info.construct_pseudo_type_info(Type, NumUnivQTvars,
         ExistQTvars, Pseudo),
     convert_pseudo_type_info(Pseudo, !StaticCellInfo, PseudoRval, LldsType).
 
@@ -102,7 +102,7 @@ convert_pseudo_type_info(Pseudo, !StaticCellInfo, Rval, LldsType) :-
             !StaticCellInfo, Rval, LldsType)
     ;
         Pseudo = var_arity_pseudo_type_info(VarArityId, Args),
-        list__length(Args, Arity),
+        list.length(Args, Arity),
         ArityArg = const(int_const(Arity)),
         RttiTypeCtor = var_arity_id_to_rtti_type_ctor(VarArityId),
         convert_compound_pseudo_type_info(RttiTypeCtor, [ArityArg],
@@ -125,7 +125,7 @@ convert_plain_type_info(TypeInfo, !StaticCellInfo, Rval, LldsType) :-
             !StaticCellInfo, Rval, LldsType)
     ;
         TypeInfo = var_arity_type_info(VarArityId, Args),
-        list__length(Args, Arity),
+        list.length(Args, Arity),
         ArityArg = const(int_const(Arity)),
         RttiTypeCtor = var_arity_id_to_rtti_type_ctor(VarArityId),
         convert_compound_type_info(RttiTypeCtor, [ArityArg], Args,
@@ -143,7 +143,7 @@ convert_compound_pseudo_type_info(RttiTypeCtor, ArgRvals0, Args,
         ctor_rtti_id(RttiTypeCtor, type_ctor_info)),
     TypeCtorInfoRval = const(data_addr_const(TypeCtorInfoDataAddr, no)),
     LldsType = data_ptr,
-    list__map_foldl((pred(A::in, AR::out, SCI0::in, SCI::out) is det :-
+    list.map_foldl((pred(A::in, AR::out, SCI0::in, SCI::out) is det :-
         (
             A = pseudo(PTI),
             convert_pseudo_type_info(PTI, SCI0, SCI, AR, _LldsType)
@@ -152,7 +152,7 @@ convert_compound_pseudo_type_info(RttiTypeCtor, ArgRvals0, Args,
             convert_plain_type_info(TI, SCI0, SCI, AR, _LldsType)
         )
     ), Args, ArgRvals1, !StaticCellInfo),
-    list__append(ArgRvals0, ArgRvals1, ArgRvals),
+    list.append(ArgRvals0, ArgRvals1, ArgRvals),
     add_static_cell_natural_types([TypeCtorInfoRval | ArgRvals], DataAddr,
         !StaticCellInfo),
     Rval = const(data_addr_const(DataAddr, no)).
@@ -168,10 +168,10 @@ convert_compound_type_info(RttiTypeCtor, ArgRvals0, Args, !StaticCellInfo,
         ctor_rtti_id(RttiTypeCtor, TypeCtorInfoData)),
     TypeCtorInfoRval = const(data_addr_const(TypeCtorInfoDataAddr, no)),
     LldsType = data_ptr,
-    list__map_foldl((pred(A::in, AR::out, SCI0::in, SCI::out) is det :-
+    list.map_foldl((pred(A::in, AR::out, SCI0::in, SCI::out) is det :-
         convert_plain_type_info(A, SCI0, SCI, AR, _LldsType)
     ), Args, ArgRvals1, !StaticCellInfo),
-    list__append(ArgRvals0, ArgRvals1, ArgRvals),
+    list.append(ArgRvals0, ArgRvals1, ArgRvals),
     add_static_cell_natural_types([TypeCtorInfoRval | ArgRvals], DataAddr,
         !StaticCellInfo),
     Rval = const(data_addr_const(DataAddr, no)).

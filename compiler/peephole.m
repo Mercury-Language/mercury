@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998,2002-2005 The University of Melbourne.
+% Copyright (C) 1994-1998,2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -12,7 +12,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__peephole.
+:- module ll_backend.peephole.
 
 :- interface.
 
@@ -24,7 +24,7 @@
 
     % Peephole optimize a list of instructions.
     %
-:- pred peephole__optimize(gc_method::in, list(instruction)::in,
+:- pred peephole.optimize(gc_method::in, list(instruction)::in,
     list(instruction)::out, bool::out) is det.
 
 :- pred combine_decr_sp(list(instruction)::in, list(instruction)::out) is det.
@@ -56,18 +56,18 @@
     % when we find a sequence we can't optimize, we back up and try
     % to optimize the sequence starting with the previous instruction.
     %
-peephole__optimize(GC_Method, Instrs0, Instrs, Mod) :-
-    peephole__invalid_opts(GC_Method, InvalidPatterns),
-    peephole__optimize_2(InvalidPatterns, Instrs0, Instrs, Mod).
+peephole.optimize(GC_Method, Instrs0, Instrs, Mod) :-
+    peephole.invalid_opts(GC_Method, InvalidPatterns),
+    peephole.optimize_2(InvalidPatterns, Instrs0, Instrs, Mod).
 
-:- pred peephole__optimize_2(list(pattern)::in, list(instruction)::in,
+:- pred peephole.optimize_2(list(pattern)::in, list(instruction)::in,
     list(instruction)::out, bool::out) is det.
 
-peephole__optimize_2(_, [], [], no).
-peephole__optimize_2(InvalidPatterns, [Instr0 - Comment | Instrs0],
+peephole.optimize_2(_, [], [], no).
+peephole.optimize_2(InvalidPatterns, [Instr0 - Comment | Instrs0],
         Instrs, Mod) :-
-    peephole__optimize_2(InvalidPatterns, Instrs0, Instrs1, Mod0),
-    peephole__opt_instr(Instr0, Comment, InvalidPatterns, Instrs1, Instrs,
+    peephole.optimize_2(InvalidPatterns, Instrs0, Instrs1, Mod0),
+    peephole.opt_instr(Instr0, Comment, InvalidPatterns, Instrs1, Instrs,
         Mod1),
     ( Mod0 = no, Mod1 = no ->
         Mod = no
@@ -78,17 +78,17 @@ peephole__optimize_2(InvalidPatterns, [Instr0 - Comment | Instrs0],
     % Try to optimize the beginning of the given instruction sequence.
     % If successful, try it again.
     %
-:- pred peephole__opt_instr(instr::in, string::in, list(pattern)::in,
+:- pred peephole.opt_instr(instr::in, string::in, list(pattern)::in,
     list(instruction)::in, list(instruction)::out, bool::out) is det.
 
-peephole__opt_instr(Instr0, Comment0, InvalidPatterns, Instrs0, Instrs, Mod) :-
+peephole.opt_instr(Instr0, Comment0, InvalidPatterns, Instrs0, Instrs, Mod) :-
     (
-        opt_util__skip_comments(Instrs0, Instrs1),
-        peephole__match(Instr0, Comment0, InvalidPatterns, Instrs1, Instrs2)
+        opt_util.skip_comments(Instrs0, Instrs1),
+        peephole.match(Instr0, Comment0, InvalidPatterns, Instrs1, Instrs2)
     ->
         (
             Instrs2 = [Instr2 - Comment2 | Instrs3],
-            peephole__opt_instr(Instr2, Comment2, InvalidPatterns,
+            peephole.opt_instr(Instr2, Comment2, InvalidPatterns,
                 Instrs3, Instrs, _)
         ;
             Instrs2 = [],
@@ -105,26 +105,26 @@ peephole__opt_instr(Instr0, Comment0, InvalidPatterns, Instrs0, Instrs, Mod) :-
     % Build a map that associates each label in a computed goto with the
     % values of the switch rval that cause a jump to it.
     %
-:- pred peephole__build_jump_label_map(list(label)::in, int::in,
+:- pred peephole.build_jump_label_map(list(label)::in, int::in,
     map(label, list(int))::in, map(label, list(int))::out) is det.
 
-peephole__build_jump_label_map([], _, !LabelMap).
-peephole__build_jump_label_map([Label | Labels], Val, !LabelMap) :-
-    ( map__search(!.LabelMap, Label, Vals0) ->
-        map__det_update(!.LabelMap, Label, [Val | Vals0], !:LabelMap)
+peephole.build_jump_label_map([], _, !LabelMap).
+peephole.build_jump_label_map([Label | Labels], Val, !LabelMap) :-
+    ( map.search(!.LabelMap, Label, Vals0) ->
+        map.det_update(!.LabelMap, Label, [Val | Vals0], !:LabelMap)
     ;
-        map__det_insert(!.LabelMap, Label, [Val], !:LabelMap)
+        map.det_insert(!.LabelMap, Label, [Val], !:LabelMap)
     ),
-    peephole__build_jump_label_map(Labels, Val + 1, !LabelMap).
+    peephole.build_jump_label_map(Labels, Val + 1, !LabelMap).
 
     % If one of the two labels has only one associated value, return it and
     % the associated value as the first two output arguments, and the
     % remaining label as the last output argument.
     %
-:- pred peephole__pick_one_val_label(pair(label, list(int))::in,
+:- pred peephole.pick_one_val_label(pair(label, list(int))::in,
     pair(label, list(int))::in, label::out, int::out, label::out) is semidet.
 
-peephole__pick_one_val_label(LabelVals1, LabelVals2, OneValLabel, Val,
+peephole.pick_one_val_label(LabelVals1, LabelVals2, OneValLabel, Val,
         OtherLabel) :-
     LabelVals1 = Label1 - Vals1,
     LabelVals2 = Label2 - Vals2,
@@ -142,7 +142,7 @@ peephole__pick_one_val_label(LabelVals1, LabelVals2, OneValLabel, Val,
 
     % Look for code patterns that can be optimized, and optimize them.
     %
-:- pred peephole__match(instr::in, string::in, list(pattern)::in,
+:- pred peephole.match(instr::in, string::in, list(pattern)::in,
     list(instruction)::in, list(instruction)::out) is semidet.
 
     % A `computed_goto' with all branches pointing to the same label
@@ -152,10 +152,10 @@ peephole__pick_one_val_label(LabelVals1, LabelVals2, OneValLabel, Val,
     % can be replaced with a conditional branch followed by an unconditional
     % goto.
     %
-peephole__match(computed_goto(SelectorRval, Labels), Comment, _,
+peephole.match(computed_goto(SelectorRval, Labels), Comment, _,
         Instrs0, Instrs) :-
-    peephole__build_jump_label_map(Labels, 0, map__init, LabelMap),
-    map__to_assoc_list(LabelMap, LabelValsList),
+    peephole.build_jump_label_map(Labels, 0, map.init, LabelMap),
+    map.to_assoc_list(LabelMap, LabelValsList),
     (
         LabelValsList = [Label - _]
     ->
@@ -163,7 +163,7 @@ peephole__match(computed_goto(SelectorRval, Labels), Comment, _,
         Instrs = [GotoInstr | Instrs0]
     ;
         LabelValsList = [LabelVals1, LabelVals2],
-        peephole__pick_one_val_label(LabelVals1, LabelVals2, OneValLabel,
+        peephole.pick_one_val_label(LabelVals1, LabelVals2, OneValLabel,
             Val, OtherLabel)
     ->
         CondRval = binop(eq, SelectorRval, const(int_const(Val))),
@@ -184,9 +184,9 @@ peephole__match(computed_goto(SelectorRval, Labels), Comment, _,
     % A conditional branch to a label followed by that label
     % can be eliminated.
     %
-peephole__match(if_val(Rval, CodeAddr), Comment, _, Instrs0, Instrs) :-
+peephole.match(if_val(Rval, CodeAddr), Comment, _, Instrs0, Instrs) :-
     (
-        opt_util__is_const_condition(Rval, Taken)
+        opt_util.is_const_condition(Rval, Taken)
     ->
         (
             Taken = yes,
@@ -196,14 +196,14 @@ peephole__match(if_val(Rval, CodeAddr), Comment, _, Instrs0, Instrs) :-
             Instrs = Instrs0
         )
     ;
-        opt_util__skip_comments(Instrs0, Instrs1),
+        opt_util.skip_comments(Instrs0, Instrs1),
         Instrs1 = [Instr1 | _],
         Instr1 = goto(CodeAddr) - _
     ->
         Instrs = Instrs0
     ;
         CodeAddr = label(Label),
-        opt_util__is_this_label_next(Label, Instrs0, _)
+        opt_util.is_this_label_next(Label, Instrs0, _)
     ->
         Instrs = Instrs0
     ;
@@ -241,7 +241,7 @@ peephole__match(if_val(Rval, CodeAddr), Comment, _, Instrs0, Instrs) :-
     %   <straight,nostack instrs>   =>  <straight,nostack instrs>
     %   succeed                         proceed
     %
-peephole__match(mkframe(NondetFrameInfo, yes(Redoip1)), Comment, _,
+peephole.match(mkframe(NondetFrameInfo, yes(Redoip1)), Comment, _,
         Instrs0, Instrs) :-
     (
         % A mkframe sets curfr to point to the new frame
@@ -251,14 +251,14 @@ peephole__match(mkframe(NondetFrameInfo, yes(Redoip1)), Comment, _,
         ;
             AllowedBases = [maxfr]
         ),
-        opt_util__next_assign_to_redoip(Instrs0, AllowedBases, [], Redoip2,
+        opt_util.next_assign_to_redoip(Instrs0, AllowedBases, [], Redoip2,
             Skipped, Rest),
-        opt_util__touches_nondet_ctrl(Skipped, no)
+        opt_util.touches_nondet_ctrl(Skipped, no)
     ->
         Instrs1 = Skipped ++ Rest,
         Instrs = [mkframe(NondetFrameInfo, yes(Redoip2)) - Comment | Instrs1]
     ;
-        opt_util__skip_comments_livevals(Instrs0, Instrs1),
+        opt_util.skip_comments_livevals(Instrs0, Instrs1),
         Instrs1 = [Instr1 | Instrs2],
         Instr1 = if_val(Test, Target) - Comment2,
         (
@@ -315,8 +315,8 @@ peephole__match(mkframe(NondetFrameInfo, yes(Redoip1)), Comment, _,
     %   store_ticket(Lval)          =>  store_ticket(Lval)
     %   reset_ticket(Lval, _R)
     %
-peephole__match(store_ticket(Lval), Comment, _, Instrs0, Instrs) :-
-    opt_util__skip_comments(Instrs0, Instrs1),
+peephole.match(store_ticket(Lval), Comment, _, Instrs0, Instrs) :-
+    opt_util.skip_comments(Instrs0, Instrs1),
     Instrs1 = [reset_ticket(lval(Lval), _Reason) - _Comment2 | Instrs2],
     Instrs = [store_ticket(Lval) - Comment | Instrs2].
 
@@ -335,12 +335,12 @@ peephole__match(store_ticket(Lval), Comment, _, Instrs0, Instrs) :-
     % straight-line instructions, then we can discard the nondet stack
     % frame early.
     %
-peephole__match(assign(redoip(lval(Base)), Redoip), Comment, _,
+peephole.match(assign(redoip(lval(Base)), Redoip), Comment, _,
         Instrs0, Instrs) :-
     (
-        opt_util__next_assign_to_redoip(Instrs0, [Base], [], Redoip2,
+        opt_util.next_assign_to_redoip(Instrs0, [Base], [], Redoip2,
             Skipped, Rest),
-        opt_util__touches_nondet_ctrl(Skipped, no)
+        opt_util.touches_nondet_ctrl(Skipped, no)
     ->
         Instrs1 = Skipped ++ Rest,
         Instrs = [assign(redoip(lval(Base)),
@@ -348,11 +348,11 @@ peephole__match(assign(redoip(lval(Base)), Redoip), Comment, _,
     ;
         Base = curfr,
         Redoip = const(code_addr_const(do_fail)),
-        opt_util__straight_alternative(Instrs0, Between, After),
-        opt_util__touches_nondet_ctrl(Between, no),
-        string__sub_string_search(Comment, "curfr==maxfr", _)
+        opt_util.straight_alternative(Instrs0, Between, After),
+        opt_util.touches_nondet_ctrl(Between, no),
+        string.sub_string_search(Comment, "curfr==maxfr", _)
     ->
-        list__condense([Between,
+        list.condense([Between,
             [goto(do_succeed(yes)) - "early discard"], After], Instrs)
     ;
         fail
@@ -372,9 +372,9 @@ peephole__match(assign(redoip(lval(Base)), Redoip), Comment, _,
     %   succip = detstackvar(N)
     %   decr_sp N
     %
-peephole__match(incr_sp(N, _), _, InvalidPatterns, Instrs0, Instrs) :-
-    \+ list__member(incr_sp, InvalidPatterns),
-    ( opt_util__no_stackvars_til_decr_sp(Instrs0, N, Between, Remain) ->
+peephole.match(incr_sp(N, _), _, InvalidPatterns, Instrs0, Instrs) :-
+    \+ list.member(incr_sp, InvalidPatterns),
+    ( opt_util.no_stackvars_til_decr_sp(Instrs0, N, Between, Remain) ->
         Instrs = Between ++ Remain
     ;
         fail
@@ -384,9 +384,9 @@ peephole__match(incr_sp(N, _), _, InvalidPatterns, Instrs0, Instrs) :-
 
     % Given a GC method, return the list of invalid peephole optimizations.
     %
-:- pred peephole__invalid_opts(gc_method::in, list(pattern)::out) is det.
+:- pred peephole.invalid_opts(gc_method::in, list(pattern)::out) is det.
 
-peephole__invalid_opts(GC_Method, InvalidPatterns) :-
+peephole.invalid_opts(GC_Method, InvalidPatterns) :-
     ( GC_Method = accurate ->
         InvalidPatterns = [incr_sp]
     ;
@@ -400,10 +400,10 @@ combine_decr_sp([Instr0 | Instrs0], Instrs) :-
     combine_decr_sp(Instrs0, Instrs1),
     (
         Instr0 = assign(succip, lval(stackvar(N))) - _,
-        opt_util__skip_comments_livevals(Instrs1, Instrs2),
+        opt_util.skip_comments_livevals(Instrs1, Instrs2),
         Instrs2 = [Instr2 | Instrs3],
         Instr2 = decr_sp(N) - _,
-        opt_util__skip_comments_livevals(Instrs3, Instrs4),
+        opt_util.skip_comments_livevals(Instrs3, Instrs4),
         Instrs4 = [Instr4 | Instrs5],
         Instr4 = goto(succip) - Comment
     ->

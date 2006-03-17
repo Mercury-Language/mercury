@@ -15,7 +15,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds__switch_detection.
+:- module check_hlds.switch_detection.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -93,7 +93,7 @@ detect_switches(!ModuleInfo, !IO) :-
 detect_switches_in_preds([], !ModuleInfo, !IO).
 detect_switches_in_preds([PredId | PredIds], !ModuleInfo, !IO) :-
     module_info_preds(!.ModuleInfo, PredTable),
-    map__lookup(PredTable, PredId, PredInfo),
+    map.lookup(PredTable, PredId, PredInfo),
     detect_switches_in_pred(PredId, PredInfo, !ModuleInfo, !IO),
     detect_switches_in_preds(PredIds, !ModuleInfo, !IO).
 
@@ -121,9 +121,9 @@ detect_switches_in_procs([ProcId | ProcIds], PredId, !ModuleInfo) :-
 
 detect_switches_in_proc(ProcId, PredId, !ModuleInfo) :-
     module_info_preds(!.ModuleInfo, PredTable0),
-    map__lookup(PredTable0, PredId, PredInfo0),
+    map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_procedures(PredInfo0, ProcTable0),
-    map__lookup(ProcTable0, ProcId, ProcInfo0),
+    map.lookup(ProcTable0, ProcId, ProcInfo0),
 
     % To process each ProcInfo, we get the goal, initialize the instmap
     % based on the modes of the head vars, and pass these to
@@ -142,9 +142,9 @@ detect_switches_in_proc(ProcId, PredId, !ModuleInfo) :-
         Requant = no,
         ProcInfo = ProcInfo1
     ),
-    map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+    map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
     pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-    map__det_update(PredTable0, PredId, PredInfo, PredTable),
+    map.det_update(PredTable0, PredId, PredInfo, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -189,7 +189,7 @@ detect_switches_in_goal_2(ModuleInfo, VarTypes, InstMap0, GoalInfo,
         ;
             Goals0 = [_ | _],
             goal_info_get_nonlocals(GoalInfo, NonLocals),
-            set__to_sorted_list(NonLocals, NonLocalsList),
+            set.to_sorted_list(NonLocals, NonLocalsList),
             detect_switches_in_disj(NonLocalsList, Goals0, GoalInfo, InstMap0,
                 VarTypes, NonLocalsList, ModuleInfo, [], Goal, !Requant)
         )
@@ -234,7 +234,7 @@ detect_switches_in_goal_2(ModuleInfo, VarTypes, InstMap0, GoalInfo,
         ( RHS0 = lambda_goal(_, _, _, _, Vars, Modes, _, LambdaGoal0) ->
             % We need to insert the initial insts for the lambda variables
             % in the instmap before processing the lambda goal.
-            instmap__pre_lambda_update(ModuleInfo, Vars, Modes,
+            instmap.pre_lambda_update(ModuleInfo, Vars, Modes,
                 InstMap0, InstMap1),
             detect_switches_in_goal(ModuleInfo, VarTypes, InstMap1,
                 LambdaGoal0, LambdaGoal, !Requant),
@@ -266,7 +266,8 @@ detect_switches_in_goal_2(ModuleInfo, VarTypes, InstMap0, GoalInfo,
     % the sorted_case_list should always be sorted on cons_id -
     % `delete_unreachable_cases' relies on this.
 
-:- type again ---> again(prog_var, list(hlds_goal), sorted_case_list).
+:- type again
+    --->    again(prog_var, list(hlds_goal), sorted_case_list).
 
     % This is the interesting bit - we've found a non-empty disjunction,
     % and we've got a list of the non-local variables of that disjunction.
@@ -283,7 +284,7 @@ detect_switches_in_disj([Var | Vars], Goals0, GoalInfo, InstMap,
         VarTypes, AllVars, ModuleInfo, Again0, Goal, !Requant) :-
     % Can we do at least a partial switch on this variable?
     (
-        instmap__lookup_var(InstMap, Var, VarInst0),
+        instmap.lookup_var(InstMap, Var, VarInst0),
         inst_is_bound(ModuleInfo, VarInst0),
         partition_disj(Goals0, Var, GoalInfo, Left, CasesList, !Requant)
     ->
@@ -348,8 +349,8 @@ select_best_switch([Again | AgainList], BestAgain0, BestAgain) :-
     (
         Again = again(_, _, CasesList),
         BestAgain0 = again(_, _, BestCasesList),
-        list__length(CasesList, Length),
-        list__length(BestCasesList, BestLength),
+        list.length(CasesList, Length),
+        list.length(BestCasesList, BestLength),
         Length < BestLength
     ->
         BestAgain1 = BestAgain0
@@ -425,9 +426,9 @@ detect_switches_in_conj(ModuleInfo, VarTypes, InstMap0,
     is semidet.
 
 partition_disj(Goals0, Var, GoalInfo, Left, CasesList, !Requant) :-
-    map__init(Cases0),
+    map.init(Cases0),
     partition_disj_trial(Goals0, Var, [], Left1, Cases0, Cases1),
-    map__to_assoc_list(Cases1, CasesAssocList1),
+    map.to_assoc_list(Cases1, CasesAssocList1),
     CasesAssocList1 = [_ | _], % There must be at least one case.
     (
         Left1 = [],
@@ -437,7 +438,7 @@ partition_disj(Goals0, Var, GoalInfo, Left, CasesList, !Requant) :-
         Left1 = [_ | _],
         ( expand_sub_disjs(Var, Left1, Cases1, Cases) ->
             Left = [],
-            map__to_assoc_list(Cases, CasesAssocList),
+            map.to_assoc_list(Cases, CasesAssocList),
             CasesAssocList = [_ | _], % There must be at least one case.
             fix_case_list(CasesAssocList, GoalInfo, CasesList),
             !:Requant = yes
@@ -487,8 +488,8 @@ expand_sub_disj_process_conj(Var, ConjGoals, !.RevUnifies, GoalInfo,
                 GoalInfo, !Cases)
         ; FirstGoalExpr = disj(Disjuncts) ->
             Disjuncts = [_ | _],
-            list__reverse(!.RevUnifies, Unifies),
-            list__map(
+            list.reverse(!.RevUnifies, Unifies),
+            list.map(
                 create_expanded_conjunction(Unifies, RestGoals, GoalInfo),
                 Disjuncts, ExpandedConjunctions),
             partition_disj_trial(ExpandedConjunctions, Var, [], Left, !Cases),
@@ -521,12 +522,12 @@ partition_disj_trial([Goal0 | Goals], Var, !Left, !Cases) :-
         no, MaybeFunctor, unit, _, _),
     (
         MaybeFunctor = yes(Functor),
-        ( map__search(!.Cases, Functor, DisjList0) ->
+        ( map.search(!.Cases, Functor, DisjList0) ->
             DisjList = [Goal | DisjList0],
-            map__det_update(!.Cases, Functor, DisjList, !:Cases)
+            map.det_update(!.Cases, Functor, DisjList, !:Cases)
         ;
             DisjList = [Goal],
-            map__det_insert(!.Cases, Functor, DisjList, !:Cases)
+            map.det_insert(!.Cases, Functor, DisjList, !:Cases)
         )
     ;
         MaybeFunctor = no,
@@ -559,7 +560,7 @@ find_bind_var_for_switch_in_deconstruct(_UnifyVar, Goal0, Goals,
 %-----------------------------------------------------------------------------%
 
 find_bind_var(Var, ProcessUnify, !Goal, !Result, !Info, FoundDeconstruct) :-
-    map__init(Subst),
+    map.init(Subst),
     find_bind_var_2(Var, ProcessUnify, !Goal, Subst, _, !Result, !Info,
         DeconstructSearch),
     (
@@ -613,10 +614,10 @@ find_bind_var_2(Var, ProcessUnify, Goal0 - GoalInfo, Goal, !Subst, !Result,
             % Check whether the unification is a deconstruction unification
             % on either Var or on a variable aliased to Var.
             UnifyInfo0 = deconstruct(UnifyVar, _, _, _, _, _),
-            term__apply_rec_substitution(term__variable(Var),
-                !.Subst, term__variable(SubstVar)),
-            term__apply_rec_substitution(term__variable(UnifyVar),
-                !.Subst, term__variable(SubstUnifyVar)),
+            term.apply_rec_substitution(term.variable(Var),
+                !.Subst, term.variable(SubstVar)),
+            term.apply_rec_substitution(term.variable(UnifyVar),
+                !.Subst, term.variable(SubstUnifyVar)),
             SubstVar = SubstUnifyVar
         ->
             call(ProcessUnify, Var, Goal0 - GoalInfo, Goals, !Result, !Info),
@@ -670,18 +671,18 @@ conj_find_bind_var(Var, ProcessUnify, [Goal0 | Goals0], [Goal | Goals],
 
 cases_to_switch(CasesList, Var, VarTypes, _GoalInfo, InstMap, ModuleInfo,
         Goal, !Requant) :-
-    instmap__lookup_var(InstMap, Var, VarInst),
+    instmap.lookup_var(InstMap, Var, VarInst),
     ( inst_is_bound_to_functors(ModuleInfo, VarInst, Functors) ->
         functors_to_cons_ids(Functors, ConsIds0),
-        list__sort(ConsIds0, ConsIds),
+        list.sort(ConsIds0, ConsIds),
         delete_unreachable_cases(CasesList, ConsIds, CasesList1),
-        ( list__same_length(Functors, CasesList1) ->
+        ( list.same_length(Functors, CasesList1) ->
             CanFail = cannot_fail
         ;
             CanFail = can_fail
         )
     ;
-        map__lookup(VarTypes, Var, Type),
+        map.lookup(VarTypes, Var, Type),
         CasesList1 = CasesList,
         ( switch_covers_all_cases(ModuleInfo, Type, CasesList1) ->
             CanFail = cannot_fail
@@ -713,8 +714,8 @@ cases_to_switch(CasesList, Var, VarTypes, _GoalInfo, InstMap, ModuleInfo,
     sorted_case_list::in) is semidet.
 
 switch_covers_all_cases(ModuleInfo, Type, CasesList) :-
-    type_util__switch_type_num_functors(ModuleInfo, Type, NumFunctors),
-    list__length(CasesList, NumCases),
+    type_util.switch_type_num_functors(ModuleInfo, Type, NumFunctors),
+    list.length(CasesList, NumCases),
     NumCases = NumFunctors.
 
     % Convert the assoc_list(cons_id, list(hlds_goal)) back into a plain
@@ -727,7 +728,7 @@ fix_case_list([], _, []).
 fix_case_list([Functor - DisjList0 | Cases0], GoalInfo,
         [case(Functor, Goal) | Cases]) :-
     % We need to put the list back the right way around.
-    list__reverse(DisjList0, DisjList),
+    list.reverse(DisjList0, DisjList),
     disj_list_to_goal(DisjList, GoalInfo, Goal),
     fix_case_list(Cases0, GoalInfo, Cases).
 

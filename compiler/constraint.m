@@ -88,9 +88,8 @@ propagate_constraints_in_goal(Goal0, Goal, !Info, !IO) :-
     io::di, io::uo) is det.
 
 propagate_goal(Goal0, Constraints, Goal, !Info, !IO) :-
-    % We need to treat all single goals as conjunctions so that
-    % propagate_conj can move the constraints to the left of the goal
-    % if that is allowed.
+    % We need to treat all single goals as conjunctions so that propagate_conj
+    % can move the constraints to the left of the goal if that is allowed.
     Goal0 = _ - GoalInfo0,
     goal_info_get_features(GoalInfo0, Features0),
     goal_info_get_context(GoalInfo0, Context),
@@ -173,14 +172,13 @@ propagate_conj_sub_goal_2(scope(Reason, Goal0) - GoalInfo, Constraints,
 propagate_conj_sub_goal_2(not(NegGoal0) - GoalInfo, Constraints0,
         [not(NegGoal) - GoalInfo | Constraints], !Info, !IO) :-
     % We can't safely propagate constraints into a negation,
-    % because that would change the answers computed by the
-    % procedure.
+    % because that would change the answers computed by the procedure.
     propagate_goal(NegGoal0, [], NegGoal, !Info, !IO),
     flatten_constraints(Constraints0, Constraints).
 
 propagate_conj_sub_goal_2(Goal, Constraints0,
         [Goal | Constraints], !Info, !IO) :-
-    % propagate_conj will move the constraints to the left of the call
+    % Propagate_conj will move the constraints to the left of the call
     % if that is possible, so nothing needs to be done here.
     Goal = call(_, _, _, _, _, _) - _,
     flatten_constraints(Constraints0, Constraints).
@@ -211,12 +209,12 @@ propagate_conj_sub_goal_2(Goal, _, _, !Info, !IO) :-
 :- pred flatten_constraints(list(constraint)::in, hlds_goals::out) is det.
 
 flatten_constraints(Constraints0, Goals) :-
-    list__map((pred(Constraint::in, Lists::out) is det :-
+    list.map((pred(Constraint::in, Lists::out) is det :-
             Constraint = constraint(Goal, _, _, Constructs),
             Lists = [Constructs, [Goal]]
         ), Constraints0, GoalLists0),
-    list__condense(GoalLists0, GoalLists),
-    list__condense(GoalLists, Goals).
+    list.condense(GoalLists0, GoalLists),
+    list.condense(GoalLists, Goals).
 
 %-----------------------------------------------------------------------------%
 
@@ -250,10 +248,9 @@ propagate_cases(Var, Constraints, [case(ConsId, Goal0) | Cases0],
 %-----------------------------------------------------------------------------%
 
     % propagate_conj detects the constraints in a conjunction and
-    % moves them to as early as possible in the list. Some effort is
-    % made to keep the constraints in the same order as they are
-    % encountered to increase the likelihood of folding recursive
-    % calls.
+    % moves them to as early as possible in the list. Some effort is made
+    % to keep the constraints in the same order as they are encountered
+    % to increase the likelihood of folding recursive calls.
     %
 :- pred propagate_conj(hlds_goals::in, list(constraint)::in,
     hlds_goals::out, constraint_info::in, constraint_info::out,
@@ -288,11 +285,11 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
     Goal = _ - GoalInfo,
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
 
-    instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+    instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
     instmap_changed_vars(InstMap0, InstMap, VarTypes,
         ModuleInfo, ChangedVars0),
 
-    instmap__vars_list(InstMap, InstMapVars),
+    instmap.vars_list(InstMap, InstMapVars),
     %
     % Restrict the set of changed variables down to the set for
     % which the new inst is not an acceptable substitute for the
@@ -302,32 +299,32 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
     % `bound(shared, ...)'.
     %
     InCompatible = (pred(Var::in) is semidet :-
-            instmap__lookup_var(InstMap0, Var, InstBefore),
+            instmap.lookup_var(InstMap0, Var, InstBefore),
             instmap_delta_search_var(InstMapDelta, Var, InstAfter),
             \+ inst_matches_initial(InstAfter, InstBefore,
-                map__lookup(VarTypes, Var), ModuleInfo)
+                map.lookup(VarTypes, Var), ModuleInfo)
         ),
-    IncompatibleInstVars = set__list_to_set(
-        list__filter(InCompatible, InstMapVars)),
+    IncompatibleInstVars = set.list_to_set(
+        list.filter(InCompatible, InstMapVars)),
     %
     % This will consider variables with inst `any' to be bound by
     % the goal, so goals which have non-locals with inst `any' will
     % not be considered to be constraints. XXX This is too conservative.
     %
     Bound = (pred(Var::in) is semidet :-
-            instmap__lookup_var(InstMap0, Var, InstBefore),
+            instmap.lookup_var(InstMap0, Var, InstBefore),
             instmap_delta_search_var(InstMapDelta, Var, InstAfter),
             \+ inst_matches_binding(InstAfter, InstBefore,
-                map__lookup(VarTypes, Var), ModuleInfo)
+                map.lookup(VarTypes, Var), ModuleInfo)
         ),
-    BoundVars = set__list_to_set(list__filter(Bound, InstMapVars)),
+    BoundVars = set.list_to_set(list.filter(Bound, InstMapVars)),
 
     %
     % Make sure that variables with inst `any' are placed in
     % the changed vars set. XXX This is too conservative, but
     % avoids unexpected reorderings.
     %
-    set__union(ChangedVars0, BoundVars, ChangedVars),
+    set.union(ChangedVars0, BoundVars, ChangedVars),
 
     AnnotatedConjunct = annotated_conjunct(Goal, ChangedVars, BoundVars,
         IncompatibleInstVars),
@@ -342,49 +339,48 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
 :- type annotated_conj == list(annotated_conjunct).
 
 :- type annotated_conjunct
-    ---> annotated_conjunct(
-        hlds_goal,
+    --->    annotated_conjunct(
+                hlds_goal,
 
-            % All variables returned by instmap_changed_vars.
-        set(prog_var),
+                % All variables returned by instmap_changed_vars.
+                set(prog_var),
 
-            % All variables returned by instmap_changed_vars for
-            % which inst_matches_binding(NewInst, OldInst) fails.
-        set(prog_var),
+                % All variables returned by instmap_changed_vars for
+                % which inst_matches_binding(NewInst, OldInst) fails.
+                set(prog_var),
 
-            % Variables returned by instmap_changed_vars
-            % for which the new inst cannot be substituted
-            % for the old as an input to a goal
-            % (inst_matches_initial(NewInst, OldInst) fails).
-        set(prog_var)
-    ).
-
+                % Variables returned by instmap_changed_vars
+                % for which the new inst cannot be substituted
+                % for the old as an input to a goal
+                % (inst_matches_initial(NewInst, OldInst) fails).
+                set(prog_var)
+            ).
 
     % A constraint is a goal that may fail, has no outputs,
     % always terminates and will not throw an exception.
     %
 :- type constraint
-    ---> constraint(
-            % The constraint itself.
-        hlds_goal,
+    --->    constraint(
+                % The constraint itself.
+                hlds_goal,
 
-            % All variables returned by instmap_changed_vars.
-        set(prog_var),
+                % All variables returned by instmap_changed_vars.
+                set(prog_var),
 
-            % Variables returned by instmap_changed_vars
-            % for which the new inst cannot be substituted
-            % for the old as an input to a goal
-            % (inst_matches_initial(NewInst, OldInst) fails).
-        set(prog_var),
+                % Variables returned by instmap_changed_vars
+                % for which the new inst cannot be substituted
+                % for the old as an input to a goal
+                % (inst_matches_initial(NewInst, OldInst) fails).
+                set(prog_var),
 
-            % Goals to construct constants used by the constraint.
-            % (as in X = 2, Y < X). These need to be propagated
-            % with the constraint.
-        list(hlds_goal)
-    ).
+                % Goals to construct constants used by the constraint.
+                % (as in X = 2, Y < X). These need to be propagated
+                % with the constraint.
+                list(hlds_goal)
+            ).
 
     % Conjunction annotated with constraining goals.
-    % 
+    %
 :- type constrained_conj == assoc_list(hlds_goal, list(constraint)).
 
     % Pass backwards over the conjunction, annotating each conjunct
@@ -396,10 +392,10 @@ annotate_conj_output_vars([Goal | Goals], ModuleInfo, VarTypes, InstMap0,
 
 annotate_conj_constraints(_, [], Constraints0, Goals0, Goals, !Info, !IO) :-
     flatten_constraints(Constraints0, Constraints1),
-    list__map((pred(Goal::in, CnstrGoal::out) is det :-
+    list.map((pred(Goal::in, CnstrGoal::out) is det :-
             CnstrGoal = Goal - []
         ), Constraints1, Constraints),
-    list__append(Constraints, Goals0, Goals).
+    list.append(Constraints, Goals0, Goals).
 annotate_conj_constraints(ModuleInfo,
         [Conjunct | RevConjuncts0],
         Constraints0, Goals0, Goals, !Info, !IO) :-
@@ -407,27 +403,23 @@ annotate_conj_constraints(ModuleInfo,
         IncompatibleInstVars),
     Goal = GoalExpr - GoalInfo,
     goal_info_get_nonlocals(GoalInfo, NonLocals),
-    CI_ModuleInfo0 = !.Info ^ module_info, 
+    CI_ModuleInfo0 = !.Info ^ module_info,
     goal_can_loop_or_throw(Goal, GoalCanLoopOrThrow,
         CI_ModuleInfo0, CI_ModuleInfo, !IO),
     !:Info = !.Info ^ module_info := CI_ModuleInfo,
     (
-        % Propagate goals that can fail and have no output
-        % variables.  Propagating cc_nondet goals would be
-        % tricky, because we would need to be careful about
-        % reordering the constraints (the cc_nondet goal can't
-        % be moved before any goals which can fail).
-        %
+        % Propagate goals that can fail and have no output variables.
+        % Propagating cc_nondet goals would be tricky, because we would
+        % need to be careful about reordering the constraints (the cc_nondet
+        % goal can't be moved before any goals which can fail).
         goal_info_get_determinism(GoalInfo, Detism),
         ( Detism = semidet
         ; Detism = failure
         ),
-        %
-        % XXX This is probably a bit too conservative. For
-        % example, `any->any' moded non-locals are considered
-        % to be outputs.
-        %
-        set__empty(OutputVars),
+
+        % XXX This is probably a bit too conservative. For example,
+        % `any->any' moded non-locals are considered to be outputs.
+        set.empty(OutputVars),
 
         % Don't propagate impure goals.
         goal_info_is_pure(GoalInfo),
@@ -442,18 +434,15 @@ annotate_conj_constraints(ModuleInfo,
             IncompatibleInstVars, []),
         Constraints1 = [Constraint | Constraints0]
     ;
-        %
-        % Look for a simple goal which some constraint depends
-        % on which can be propagated backwards. This handles
-        % cases like X = 2, Y < X. This should only be done for
-        % goals which result in no execution at runtime, such as
-        % construction of static constants. Currently we only
-        % allow constructions of zero arity constants.
-        %
-        % Make a renamed copy of the goal, renaming within the
-        % constraint as well, so that a copy of the constant
-        % doesn't need to be kept on the stack.
-        %
+        % Look for a simple goal which some constraint depends on
+        % which can be propagated backwards. This handles cases like
+        % X = 2, Y < X. This should only be done for goals which result in
+        % no execution at runtime, such as construction of static constants.
+        % Currently we only allow constructions of zero arity constants.
+
+        % Make a renamed copy of the goal, renaming within the constraint
+        % as well, so that a copy of the constant doesn't need to be kept
+        % on the stack.
         Goal = unify(_, _, _, Unify, _) - _,
         Unify = construct(ConstructVar, _, [], _, _, _, _)
     ->
@@ -461,13 +450,12 @@ annotate_conj_constraints(ModuleInfo,
         add_constant_construction(ConstructVar, Goal,
             Constraints0, Constraints1, !Info),
 
-        % If the constraint was the only use of the constant,
-        % the old goal can be removed. We need to rerun
-        % quantification to work that out.
+        % If the constraint was the only use of the constant, the old goal
+        % can be removed. We need to rerun quantification to work that out.
         !:Info = !.Info ^ changed := yes
     ;
-        % Prune away the constraints after a goal that cannot
-        % succeed -- they can never be executed.
+        % Prune away the constraints after a goal that cannot succeed
+        % -- they can never be executed.
         goal_info_get_determinism(GoalInfo, Detism),
         determinism_components(Detism, _, at_most_zero)
     ->
@@ -482,37 +470,33 @@ annotate_conj_constraints(ModuleInfo,
         Constraints1 = [],
         flatten_constraints(Constraints0,
             ConstraintGoals),
-        list__map(add_empty_constraints, [Goal | ConstraintGoals],
+        list.map(add_empty_constraints, [Goal | ConstraintGoals],
             GoalsAndConstraints),
-        list__append(GoalsAndConstraints, Goals0, Goals1)
+        list.append(GoalsAndConstraints, Goals0, Goals1)
     ;
-        % Don't move goals which can fail before a goal which
-        % can loop or throw an exception if `--fully-strict' is set.
-        %
+        % Don't move goals which can fail before a goal which can loop
+        % or throw an exception if `--fully-strict' is set.
         \+ goal_cannot_loop_or_throw(ModuleInfo, Goal),
         module_info_get_globals(ModuleInfo, Globals),
-        globals__lookup_bool_option(Globals, fully_strict, yes)
+        globals.lookup_bool_option(Globals, fully_strict, yes)
     ->
-        filter_dependent_constraints(NonLocals,
-            ChangedVars, Constraints0, DependentConstraints,
-            IndependentConstraints),
+        filter_dependent_constraints(NonLocals, ChangedVars,
+            Constraints0, DependentConstraints, IndependentConstraints),
         flatten_constraints(IndependentConstraints,
             IndependentConstraintGoals),
-        list__map(add_empty_constraints, IndependentConstraintGoals,
+        list.map(add_empty_constraints, IndependentConstraintGoals,
             GoalsAndConstraints),
         Goals1 = [attach_constraints(Goal, DependentConstraints)
-                | GoalsAndConstraints] ++ Goals0,
+            | GoalsAndConstraints] ++ Goals0,
         Constraints1 = []
     ;
-        filter_dependent_constraints(NonLocals,
-            OutputVars, Constraints0, DependentConstraints,
-            IndependentConstraints),
+        filter_dependent_constraints(NonLocals, OutputVars,
+            Constraints0, DependentConstraints, IndependentConstraints),
         Constraints1 = IndependentConstraints,
-        Goals1 = [attach_constraints(Goal, DependentConstraints)
-            | Goals0]
+        Goals1 = [attach_constraints(Goal, DependentConstraints) | Goals0]
     ),
-    annotate_conj_constraints(ModuleInfo, RevConjuncts0,
-        Constraints1, Goals1, Goals, !Info, !IO).
+    annotate_conj_constraints(ModuleInfo, RevConjuncts0, Constraints1,
+        Goals1, Goals, !Info, !IO).
 
 :- pred add_empty_constraints(hlds_goal::in,
     pair(hlds_goal, list(constraint))::out) is det.
@@ -524,11 +508,11 @@ add_empty_constraints(Goal, Goal - []).
 
 attach_constraints(Goal, Constraints0) = Goal - Constraints :-
         ( Goal = call(_, _, _, _, _, _) - _ ->
-                Constraints = list__map(
-                    (func(constraint(Goal0, B, C, Constructs0)) =
-                        constraint(add_constraint_feature(Goal0), B, C,
-                            list__map(add_constraint_feature, Constructs0))
-                    ), Constraints0)
+            Constraints = list.map(
+                (func(constraint(Goal0, B, C, Constructs0)) =
+                    constraint(add_constraint_feature(Goal0), B, C,
+                        list.map(add_constraint_feature, Constructs0))
+                ), Constraints0)
         ;
                 Constraints = Constraints0
         ).
@@ -546,24 +530,22 @@ add_constraint_feature(Goal - GoalInfo0) = Goal - GoalInfo :-
 
 add_constant_construction(_, _, [], [], !Info).
 add_constant_construction(ConstructVar, Construct0,
-        [Constraint0 | Constraints0],
-        [Constraint | Constraints], !Info) :-
+        [Constraint0 | Constraints0], [Constraint | Constraints], !Info) :-
     Constraint0 = constraint(ConstraintGoal0, ChangedVars,
         IncompatibleInstVars, Constructs0),
     (
         ConstraintGoal0 = _ - ConstraintInfo,
-        goal_info_get_nonlocals(ConstraintInfo,
-            ConstraintNonLocals),
-        set__member(ConstructVar, ConstraintNonLocals)
+        goal_info_get_nonlocals(ConstraintInfo, ConstraintNonLocals),
+        set.member(ConstructVar, ConstraintNonLocals)
     ->
         VarSet0 = !.Info ^ varset,
         VarTypes0 = !.Info ^ vartypes,
-        varset__new_var(VarSet0, NewVar, VarSet),
-        map__lookup(VarTypes0, ConstructVar, VarType),
-        map__det_insert(VarTypes0, NewVar, VarType, VarTypes),
+        varset.new_var(VarSet0, NewVar, VarSet),
+        map.lookup(VarTypes0, ConstructVar, VarType),
+        map.det_insert(VarTypes0, NewVar, VarType, VarTypes),
         !:Info = !.Info ^ varset := VarSet,
         !:Info = !.Info ^ vartypes := VarTypes,
-        map__from_assoc_list([ConstructVar - NewVar], Subn),
+        map.from_assoc_list([ConstructVar - NewVar], Subn),
         rename_vars_in_goal(Subn, Construct0, Construct),
         Constructs = [Construct | Constructs0],
         rename_vars_in_goal(Subn, ConstraintGoal0, ConstraintGoal),
@@ -577,9 +559,9 @@ add_constant_construction(ConstructVar, Construct0,
 
 %-----------------------------------------------------------------------------%
 
-    % constraints__filter_dependent_constraints(GoalNonLocals,
+    % constraints.filter_dependent_constraints(GoalNonLocals,
     %   GoalOutputVars, Constraints, DependentConstraints,
-    %   IndependentConstraints)
+    %   IndependentConstraints):
     %
     % Find all constraints which depend on the output variables of
     % the current goal in the conjunction being processed.  The
@@ -589,15 +571,14 @@ add_constant_construction(ConstructVar, Construct0,
     % current goal allow that.
     %
 :- pred filter_dependent_constraints(set(prog_var)::in, set(prog_var)::in,
-    list(constraint)::in, list(constraint)::out, list(constraint)::out)
-    is det.
+    list(constraint)::in, list(constraint)::out, list(constraint)::out) is det.
 
 filter_dependent_constraints(NonLocals, GoalOutputVars, Constraints,
         Dependent, Independent) :-
     filter_dependent_constraints(NonLocals, GoalOutputVars, Constraints,
         [], RevDependent, [], RevIndependent),
-    list__reverse(RevDependent, Dependent),
-    list__reverse(RevIndependent, Independent).
+    list.reverse(RevDependent, Dependent),
+    list.reverse(RevIndependent, Independent).
 
 :- pred filter_dependent_constraints(set(prog_var)::in, set(prog_var)::in,
     list(constraint)::in,
@@ -614,36 +595,27 @@ filter_dependent_constraints(NonLocals, GoalOutputVars,
 
     (
         (
-            %
-            % A constraint is not independent of a goal
-            % if it uses any of the output variables
-            % of that goal.
-            %
-            set__intersect(ConstraintNonLocals, GoalOutputVars,
+            % A constraint is not independent of a goal if it uses
+            % any of the output variables of that goal.
+            set.intersect(ConstraintNonLocals, GoalOutputVars,
                 OutputVarsUsedByConstraint),
-            \+ set__empty(OutputVarsUsedByConstraint)
+            \+ set.empty(OutputVarsUsedByConstraint)
         ;
-            %
-            % A constraint is not independent of a goal
-            % if it changes the inst of a non-local of the goal
-            % in such a way that the new inst is incompatible
-            % with the old inst (e.g. by losing uniqueness),
-            %
-            set__intersect(NonLocals, IncompatibleInstVars,
+            % A constraint is not independent of a goal if it changes
+            % the inst of a non-local of the goal in such a way that
+            % the new inst is incompatible with the old inst (e.g. by
+            % losing uniqueness).
+            set.intersect(NonLocals, IncompatibleInstVars,
                 IncompatibleInstVarsUsedByGoal),
-            \+ set__empty(IncompatibleInstVarsUsedByGoal)
+            \+ set.empty(IncompatibleInstVarsUsedByGoal)
         ;
-            %
-            % A constraint is not independent of a goal if
-            % it uses any variables whose instantiatedness is
-            % changed by any the of the constraints already
-            % attached to the goal (the dependent constraints
-            % will be attached to the goal to be pushed into
-            % it by propagate_conj_sub_goal).
-            %
-            list__member(EarlierConstraint, !.RevDependent),
-            \+ can_reorder_constraints(EarlierConstraint,
-                Constraint)
+            % A constraint is not independent of a goal if it uses
+            % any variables whose instantiatedness is changed
+            % by any of the constraints already attached to the goal
+            % (the dependent constraints will be attached to the goal
+            % to be pushed into it by propagate_conj_sub_goal).
+            list.member(EarlierConstraint, !.RevDependent),
+            \+ can_reorder_constraints(EarlierConstraint, Constraint)
         )
     ->
         !:RevDependent = [Constraint | !.RevDependent]
@@ -662,9 +634,9 @@ can_reorder_constraints(EarlierConstraint, Constraint) :-
     Constraint = constraint(ConstraintGoal, _, _, _),
     ConstraintGoal = _ - ConstraintGoalInfo,
     goal_info_get_nonlocals(ConstraintGoalInfo, ConstraintNonLocals),
-    set__intersect(EarlierChangedVars, ConstraintNonLocals,
+    set.intersect(EarlierChangedVars, ConstraintNonLocals,
         EarlierConstraintIntersection),
-    set__empty(EarlierConstraintIntersection).
+    set.empty(EarlierConstraintIntersection).
 
 %-----------------------------------------------------------------------------%
 
@@ -672,20 +644,19 @@ can_reorder_constraints(EarlierConstraint, Constraint) :-
     %
 :- pred propagate_conj_constraints(constrained_conj::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
-    constraint_info::in, constraint_info::out,
-    io::di, io::uo) is det.
+    constraint_info::in, constraint_info::out, io::di, io::uo) is det.
 
 propagate_conj_constraints([], RevGoals, Goals, !Info, !IO) :-
-    list__reverse(RevGoals, Goals).
+    list.reverse(RevGoals, Goals).
 propagate_conj_constraints([Goal0 - Constraints0 | Goals0],
         RevGoals0, RevGoals, !Info, !IO) :-
     filter_complex_constraints(Constraints0,
         SimpleConstraints, ComplexConstraints0),
     propagate_conj_sub_goal(Goal0, SimpleConstraints, GoalList1, !Info, !IO),
     flatten_constraints(ComplexConstraints0, ComplexConstraints),
-    list__reverse(ComplexConstraints, RevComplexConstraints),
-    list__reverse(GoalList1, RevGoalList1),
-    list__condense([RevComplexConstraints, RevGoalList1, RevGoals0],
+    list.reverse(ComplexConstraints, RevComplexConstraints),
+    list.reverse(GoalList1, RevGoalList1),
+    list.condense([RevComplexConstraints, RevGoalList1, RevGoals0],
         RevGoals1),
     constraint_info_update_goal(Goal0, !Info),
     propagate_conj_constraints(Goals0, RevGoals1, RevGoals, !Info, !IO).
@@ -697,8 +668,8 @@ filter_complex_constraints(Constraints,
         SimpleConstraints, ComplexConstraints) :-
     filter_complex_constraints(Constraints,
         [], RevSimpleConstraints, [], RevComplexConstraints),
-    SimpleConstraints = list__reverse(RevSimpleConstraints),
-    ComplexConstraints = list__reverse(RevComplexConstraints).
+    SimpleConstraints = list.reverse(RevSimpleConstraints),
+    ComplexConstraints = list.reverse(RevComplexConstraints).
 
     % Don't attempt to push branched goals into other goals.
     %
@@ -718,17 +689,13 @@ filter_complex_constraints([Constraint | Constraints],
         % with the complex constraints we've already found.
         %
         \+ (
-            list__member(ComplexConstraint,
-                !.RevComplexConstraints),
-            \+ can_reorder_constraints(ComplexConstraint,
-                Constraint)
+            list.member(ComplexConstraint, !.RevComplexConstraints),
+            \+ can_reorder_constraints(ComplexConstraint, Constraint)
         )
     ->
-        !:RevSimpleConstraints =
-            [Constraint | !.RevSimpleConstraints]
+        !:RevSimpleConstraints = [Constraint | !.RevSimpleConstraints]
     ;
-        !:RevComplexConstraints =
-            [Constraint | !.RevComplexConstraints]
+        !:RevComplexConstraints = [Constraint | !.RevComplexConstraints]
     ),
     filter_complex_constraints(Constraints, !RevSimpleConstraints,
         !RevComplexConstraints).
@@ -749,13 +716,13 @@ goal_is_simple(Goal) :-
 %-----------------------------------------------------------------------------%
 
 :- type constraint_info
-    ---> constraint_info(
-        module_info :: module_info,
-        vartypes    :: vartypes,
-        varset      :: prog_varset,
-        instmap     :: instmap,
-        changed     :: bool     % has anything changed.
-    ).
+    --->    constraint_info(
+                module_info :: module_info,
+                vartypes    :: vartypes,
+                varset      :: prog_varset,
+                instmap     :: instmap,
+                changed     :: bool     % has anything changed.
+            ).
 
 constraint_info_init(ModuleInfo, VarTypes, VarSet, InstMap, ConstraintInfo) :-
     ConstraintInfo = constraint_info(ModuleInfo, VarTypes, VarSet,
@@ -763,8 +730,7 @@ constraint_info_init(ModuleInfo, VarTypes, VarSet, InstMap, ConstraintInfo) :-
 
 constraint_info_deconstruct(ConstraintInfo, ModuleInfo,
         VarTypes, VarSet, Changed) :-
-    ConstraintInfo = constraint_info(ModuleInfo, VarTypes, VarSet,
-        _, Changed).
+    ConstraintInfo = constraint_info(ModuleInfo, VarTypes, VarSet, _, Changed).
 
 :- pred constraint_info_update_goal(hlds_goal::in,
     constraint_info::in, constraint_info::out) is det.
@@ -772,7 +738,7 @@ constraint_info_deconstruct(ConstraintInfo, ModuleInfo,
 constraint_info_update_goal(_ - GoalInfo, !Info) :-
     InstMap0 = !.Info ^ instmap,
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
-    instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+    instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
     !:Info = !.Info ^ instmap := InstMap.
 
 :- pred constraint_info_bind_var_to_functor(prog_var::in, cons_id::in,
@@ -782,8 +748,8 @@ constraint_info_bind_var_to_functor(Var, ConsId, !Info) :-
     InstMap0 = !.Info ^ instmap,
     ModuleInfo0 = !.Info ^ module_info,
     VarTypes = !.Info ^ vartypes,
-    map__lookup(VarTypes, Var, Type),
-    instmap__bind_var_to_functor(Var, Type, ConsId, InstMap0, InstMap,
+    map.lookup(VarTypes, Var, Type),
+    instmap.bind_var_to_functor(Var, Type, ConsId, InstMap0, InstMap,
         ModuleInfo0, ModuleInfo),
     !:Info = !.Info ^ instmap := InstMap,
     !:Info = !.Info ^ module_info := ModuleInfo.
@@ -796,9 +762,10 @@ constraint_info_bind_var_to_functor(Var, ConsId, !Info) :-
     constraint_info::in, constraint_info::out) is det.
 
 constraint_info_update_changed(Constraints, !Info) :-
-    ( Constraints = [] ->
-        true
+    (
+        Constraints = []
     ;
+        Constraints = [_ | _],
         !:Info = !.Info ^ changed := yes
     ).
 
@@ -822,13 +789,13 @@ strip_constraint_markers(Goal - GoalInfo0) =
 strip_constraint_markers_expr(conj(ConjType, Goals)) =
         conj(ConjType, list.map(strip_constraint_markers, Goals)).
 strip_constraint_markers_expr(disj(Goals)) =
-        disj(list__map(strip_constraint_markers, Goals)).
+        disj(list.map(strip_constraint_markers, Goals)).
 strip_constraint_markers_expr(switch(Var, CanFail, Cases0)) =
         switch(Var, CanFail, Cases) :-
-    Cases = list__map(
-            (func(case(ConsId, Goal)) =
-                case(ConsId, strip_constraint_markers(Goal))
-            ), Cases0).
+    Cases = list.map(
+        (func(case(ConsId, Goal)) =
+            case(ConsId, strip_constraint_markers(Goal))
+        ), Cases0).
 strip_constraint_markers_expr(not(Goal)) =
         not(strip_constraint_markers(Goal)).
 strip_constraint_markers_expr(scope(Reason, Goal)) =

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1996, 1998-2005 The University of Melbourne.
+% Copyright (C) 1994-1996, 1998-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -57,7 +57,7 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module hlds__make_tags.
+:- module hlds.make_tags.
 :- interface.
 
 :- import_module hlds.hlds_data.
@@ -101,16 +101,16 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
         CtorTags, EnumDummy) :-
 
     % Work out how many tag bits and reserved addresses we've got to play with.
-    globals__lookup_int_option(Globals, num_tag_bits, NumTagBits),
-    globals__lookup_int_option(Globals, num_reserved_addresses,
+    globals.lookup_int_option(Globals, num_tag_bits, NumTagBits),
+    globals.lookup_int_option(Globals, num_reserved_addresses,
         NumReservedAddresses),
-    globals__lookup_int_option(Globals, num_reserved_objects,
+    globals.lookup_int_option(Globals, num_reserved_objects,
         NumReservedObjects),
-    globals__lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
 
     % Determine if we need to reserve a tag for use by HAL's Herbrand
     % constraint solver. (This also disables enumerations and no_tag types.)
-    globals__lookup_bool_option(Globals, reserve_tag, GlobalReserveTag),
+    globals.lookup_bool_option(Globals, reserve_tag, GlobalReserveTag),
     ReserveTag = GlobalReserveTag `or` ReservedTagPragma,
 
     (
@@ -122,11 +122,11 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
     ),
 
     % Now assign them.
-    map__init(CtorTags0),
+    map.init(CtorTags0),
     (
         % Try representing the type as an enumeration: all the constructors
         % must be constant, and we must be allowed to make unboxed enums.
-        globals__lookup_bool_option(Globals, unboxed_enums, yes),
+        globals.lookup_bool_option(Globals, unboxed_enums, yes),
         ctors_are_all_constants(Ctors),
         ReserveTag = no
     ->
@@ -145,7 +145,7 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
         ->
             SingleConsId = make_cons_id_from_qualified_sym_name(SingleFunc,
                 [SingleArg]),
-            map__set(CtorTags0, SingleConsId, no_tag, CtorTags)
+            map.set(CtorTags0, SingleConsId, no_tag, CtorTags)
         ;
             NumTagBits = 0
         ->
@@ -176,9 +176,9 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
             % Assign shared_with_reserved_address(...) representations
             % for the remaining constructors.
             RemainingCtors = LeftOverConstants ++ Functors,
-            ReservedAddresses = list__filter_map(
+            ReservedAddresses = list.filter_map(
                 (func(reserved_address(RA)) = RA is semidet),
-                map__values(CtorTags2)),
+                map.values(CtorTags2)),
             assign_unshared_tags(RemainingCtors, 0, 0, ReservedAddresses,
                 CtorTags2, CtorTags)
         ;
@@ -199,7 +199,7 @@ assign_enum_constants([Ctor | Rest], Val, !CtorTags) :-
     Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
     ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
     Tag = int_constant(Val),
-    svmap__set(ConsId, Tag, !CtorTags),
+    svmap.set(ConsId, Tag, !CtorTags),
     assign_enum_constants(Rest, Val + 1, !CtorTags).
 
     % Assign the representations null_pointer, small_pointer(1),
@@ -223,7 +223,7 @@ assign_reserved_numeric_addresses([Ctor | Rest], LeftOverConstants,
         ;
             Tag = reserved_address(small_pointer(Address))
         ),
-        svmap__set(ConsId, Tag, !CtorTags),
+        svmap.set(ConsId, Tag, !CtorTags),
         assign_reserved_numeric_addresses(Rest, LeftOverConstants,
             !CtorTags, Address + 1, NumReservedAddresses)
     ).
@@ -242,10 +242,10 @@ assign_reserved_symbolic_addresses([Ctor | Ctors], LeftOverConstants, TypeCtor,
         LeftOverConstants = [Ctor | Ctors]
     ;
         Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
-        Arity = list__length(Args),
+        Arity = list.length(Args),
         Tag = reserved_address(reserved_object(TypeCtor, Name, Arity)),
         ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
-        svmap__set(ConsId, Tag, !CtorTags),
+        svmap.set(ConsId, Tag, !CtorTags),
         assign_reserved_symbolic_addresses(Ctors, LeftOverConstants,
             TypeCtor, !CtorTags, Num + 1, Max)
     ).
@@ -289,7 +289,7 @@ assign_unshared_tags([Ctor | Rest], Val, MaxTag, ReservedAddresses,
         Rest = []
     ->
         Tag = maybe_add_reserved_addresses(ReservedAddresses, single_functor),
-        svmap__set(ConsId, Tag, !CtorTags)
+        svmap.set(ConsId, Tag, !CtorTags)
     ;
         % If we're about to run out of unshared tags, start assigning
         % shared remote tags instead.
@@ -301,7 +301,7 @@ assign_unshared_tags([Ctor | Rest], Val, MaxTag, ReservedAddresses,
     ;
         Tag = maybe_add_reserved_addresses(ReservedAddresses,
             unshared_tag(Val)),
-        svmap__set(ConsId, Tag, !CtorTags),
+        svmap.set(ConsId, Tag, !CtorTags),
         assign_unshared_tags(Rest, Val + 1, MaxTag, ReservedAddresses,
             !CtorTags)
     ).
@@ -317,7 +317,7 @@ assign_shared_remote_tags([Ctor | Rest], PrimaryVal, SecondaryVal,
     ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
     Tag = maybe_add_reserved_addresses(ReservedAddresses,
         shared_remote_tag(PrimaryVal, SecondaryVal)),
-    svmap__set(ConsId, Tag, !CtorTags),
+    svmap.set(ConsId, Tag, !CtorTags),
     SecondaryVal1 = SecondaryVal + 1,
     assign_shared_remote_tags(Rest, PrimaryVal, SecondaryVal1,
         ReservedAddresses, !CtorTags).
@@ -330,7 +330,7 @@ assign_shared_local_tags([Ctor | Rest], PrimaryVal, SecondaryVal, !CtorTags) :-
     Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
     ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
     Tag = shared_local_tag(PrimaryVal, SecondaryVal),
-    svmap__set(ConsId, Tag, !CtorTags),
+    svmap.set(ConsId, Tag, !CtorTags),
     SecondaryVal1 = SecondaryVal + 1,
     assign_shared_local_tags(Rest, PrimaryVal, SecondaryVal1, !CtorTags).
 
@@ -351,7 +351,7 @@ maybe_add_reserved_addresses(ReservedAddresses, Tag0) = Tag :-
 :- func max_num_tags(int) = int.
 
 max_num_tags(NumTagBits) = MaxTags :-
-    int__pow(2, NumTagBits, MaxTags).
+    int.pow(2, NumTagBits, MaxTags).
 
 %-----------------------------------------------------------------------------%
 

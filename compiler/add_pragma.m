@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module hlds__make_hlds__add_pragma.
+:- module hlds.make_hlds.add_pragma.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -37,7 +37,7 @@
     prog_context::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-:- pred add_pragma_type_spec(pragma_type::in(type_spec), term__context::in,
+:- pred add_pragma_type_spec(pragma_type::in(type_spec), term.context::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     io::di, io::uo) is det.
 
@@ -319,20 +319,20 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
 add_pragma_export(Origin, Name, PredOrFunc, Modes, C_Function, Context,
         !ModuleInfo, !IO) :-
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
-    list__length(Modes, Arity),
+    list.length(Modes, Arity),
     (
         predicate_table_search_pf_sym_arity(PredTable,
             may_be_partially_qualified, PredOrFunc, Name, Arity, [PredId])
     ->
         predicate_table_get_preds(PredTable, Preds),
-        map__lookup(Preds, PredId, PredInfo),
+        map.lookup(Preds, PredId, PredInfo),
         pred_info_procedures(PredInfo, Procs),
-        map__to_assoc_list(Procs, ExistingProcs),
+        map.to_assoc_list(Procs, ExistingProcs),
         (
             get_procedure_matching_declmodes(ExistingProcs, Modes,
                 !.ModuleInfo, ProcId)
         ->
-            map__lookup(Procs, ProcId, ProcInfo),
+            map.lookup(Procs, ProcId, ProcInfo),
             proc_info_declared_determinism(ProcInfo, MaybeDet),
             % We cannot catch those multi or nondet procedures that
             % don't have a determinism declaration until after
@@ -407,16 +407,16 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
         !IO) :-
     TypeCtor = TypeName - TypeArity,
     module_info_get_type_table(!.ModuleInfo, Types0),
-    TypeStr = error_util__describe_sym_name_and_arity(TypeName / TypeArity),
+    TypeStr = describe_sym_name_and_arity(TypeName / TypeArity),
     ErrorPieces1 = [
         words("In"),
         fixed("`pragma reserve_tag'"),
         words("declaration for"),
         fixed(TypeStr ++ ":")
     ],
-    ( map__search(Types0, TypeCtor, TypeDefn0) ->
-        hlds_data__get_type_defn_body(TypeDefn0, TypeBody0),
-        hlds_data__get_type_defn_status(TypeDefn0, TypeStatus),
+    ( map.search(Types0, TypeCtor, TypeDefn0) ->
+        hlds_data.get_type_defn_body(TypeDefn0, TypeBody0),
+        hlds_data.get_type_defn_status(TypeDefn0, TypeStatus),
         (
             not (
                 TypeStatus = PragmaStatus
@@ -434,7 +434,7 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
                 words("type definition.")
             ],
             write_error_pieces_not_first_line(Context, 0, ErrorPieces2, !IO),
-            io__set_exit_status(1, !IO),
+            io.set_exit_status(1, !IO),
             module_info_incr_errors(!ModuleInfo)
 
         ;
@@ -470,8 +470,8 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
                 ReservedTag, Globals, CtorTags, EnumDummy),
             TypeBody = du_type(Body, CtorTags, EnumDummy, MaybeUserEqComp,
                 ReservedTag, IsForeign),
-            hlds_data__set_type_defn_body(TypeBody, TypeDefn0, TypeDefn),
-            map__set(Types0, TypeCtor, TypeDefn, Types),
+            hlds_data.set_type_defn_body(TypeBody, TypeDefn0, TypeDefn),
+            map.set(Types0, TypeCtor, TypeDefn, Types),
             module_info_set_type_table(Types, !ModuleInfo)
         ;
             write_error_pieces(Context, 0, ErrorPieces1, !IO),
@@ -481,7 +481,7 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
                 words("is not a discriminated union type.")
             ],
             write_error_pieces_not_first_line(Context, 0, ErrorPieces2, !IO),
-            io__set_exit_status(1, !IO),
+            io.set_exit_status(1, !IO),
             module_info_incr_errors(!ModuleInfo)
         )
     ;
@@ -491,7 +491,7 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
             fixed(TypeStr ++ ".")
         ],
         write_error_pieces_not_first_line(Context, 0, ErrorPieces2, !IO),
-        io__set_exit_status(1, !IO),
+        io.set_exit_status(1, !IO),
         module_info_incr_errors(!ModuleInfo)
     ).
 
@@ -511,7 +511,7 @@ add_pragma_unused_args(PredOrFunc, SymName, Arity, ModeNum, UnusedArgs,
         module_info_get_unused_arg_info(!.ModuleInfo, UnusedArgInfo0),
         % convert the mode number to a proc_id
         proc_id_to_int(ProcId, ModeNum),
-        map__set(UnusedArgInfo0, proc(PredId, ProcId), UnusedArgs,
+        map.set(UnusedArgInfo0, proc(PredId, ProcId), UnusedArgs,
             UnusedArgInfo),
         module_info_set_unused_arg_info(UnusedArgInfo, !ModuleInfo)
     ;
@@ -546,10 +546,10 @@ add_pragma_exceptions(PredOrFunc, SymName, Arity, ModeNum, ThrowStatus,
     ;
         % XXX We'll just ignore this for the time being -
         % it causes errors with transitive-intermodule optimization.
-        %prog_out__write_context(Context, !IO),
-        %io__write_string("Internal compiler error: " ++
+        % prog_out.write_context(Context, !IO),
+        % io.write_string("Internal compiler error: " ++
         %   "unknown predicate in `pragma exceptions'.\n", !IO),
-        %module_info_incr_errors(!ModuleInfo)
+        % module_info_incr_errors(!ModuleInfo)
         true
     ).
 
@@ -575,10 +575,10 @@ add_pragma_trailing_info(PredOrFunc, SymName, Arity, ModeNum, TrailingStatus,
     ;
         % XXX We'll just ignore this for the time being -
         % it causes errors with transitive-intermodule optimization.
-        %prog_out__write_context(Context, !IO),
-        %io__write_string("Internal compiler error: " ++
+        % prog_out.write_context(Context, !IO),
+        % io.write_string("Internal compiler error: " ++
         %   "unknown predicate in `pragma trailing_info'.\n", !IO),
-        %module_info_incr_errors(!ModuleInfo)
+        % module_info_incr_errors(!ModuleInfo)
         true
     ).
 
@@ -600,7 +600,7 @@ add_pragma_type_spec(Pragma, Context, !ModuleInfo, !QualInfo, !IO) :-
         ),
         PredIds \= []
     ->
-        list__foldl3(add_pragma_type_spec_2(Pragma, Context), PredIds,
+        list.foldl3(add_pragma_type_spec_2(Pragma, Context), PredIds,
             !ModuleInfo, !QualInfo, !IO)
     ;
         undefined_pred_or_func_error(SymName, Arity, Context,
@@ -625,9 +625,9 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
         pred_info_procedures(PredInfo0, Procs0),
         handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes,
             ProcIds, Procs0, Procs, ModesOk, !ModuleInfo, !IO),
-        globals__io_lookup_bool_option(user_guided_type_specialization,
+        globals.io_lookup_bool_option(user_guided_type_specialization,
             DoTypeSpec, !IO),
-        globals__io_lookup_bool_option(smart_recompilation, Smart, !IO),
+        globals.io_lookup_bool_option(smart_recompilation, Smart, !IO),
         (
             ModesOk = yes,
             % Even if we aren't doing type specialization, we need
@@ -654,7 +654,7 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
             %
             PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
             adjust_func_arity(PredOrFunc, Arity, PredArity),
-            varset__init(ArgVarSet0),
+            varset.init(ArgVarSet0),
             make_n_fresh_vars("HeadVar__", PredArity, Args,
                 ArgVarSet0, ArgVarSet),
             % XXX We could use explicit type qualifications here
@@ -664,10 +664,10 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
             % -- the explicitly declared types are not kept in
             % sync with the predicate's tvarset after the first
             % pass of type checking.
-            % map__from_corresponding_lists(Args, Types, VarTypes0)
-            map__init(VarTypes0),
+            % map.from_corresponding_lists(Args, Types, VarTypes0)
+            map.init(VarTypes0),
             goal_info_init(GoalInfo0),
-            set__list_to_set(Args, NonLocals),
+            set.list_to_set(Args, NonLocals),
             goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo1),
             goal_info_set_context(Context, GoalInfo1, GoalInfo),
 
@@ -681,7 +681,7 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
             do_construct_pred_or_func_call(PredId, PredOrFunc,
                 SymName, Args, GoalInfo, Goal),
             Clause = clause(ProcIds, Goal, mercury, Context),
-            map__init(TVarNameMap),
+            map.init(TVarNameMap),
             rtti_varmaps_init(RttiVarMaps),
             HasForeignClauses = no,
             set_clause_list([Clause], ClausesRep),
@@ -689,8 +689,8 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
                 VarTypes0, Args, ClausesRep, RttiVarMaps, HasForeignClauses),
             pred_info_get_markers(PredInfo0, Markers0),
             add_marker(calls_are_fully_qualified, Markers0, Markers),
-            map__init(Proofs),
-            map__init(ConstraintMap),
+            map.init(Proofs),
+            map.init(ConstraintMap),
 
             ( pred_info_is_imported(PredInfo0) ->
                 Status = opt_imported
@@ -700,7 +700,7 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
 
             ModuleName = pred_info_module(PredInfo0),
             pred_info_get_origin(PredInfo0, OrigOrigin),
-            SubstDesc = list__map(subst_desc, Subst),
+            SubstDesc = list.map(subst_desc, Subst),
             Origin = transformed(type_specialization(SubstDesc),
                 OrigOrigin, PredId),
             pred_info_init(ModuleName, SpecName, PredArity, PredOrFunc,
@@ -719,12 +719,11 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
             module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo0),
             TypeSpecInfo0 = type_spec_info(ProcsToSpec0,
                 ForceVersions0, SpecMap0, PragmaMap0),
-            list__map((pred(ProcId::in, PredProcId::out) is det :-
+            list.map((pred(ProcId::in, PredProcId::out) is det :-
                     PredProcId = proc(PredId, ProcId)
                 ), ProcIds, PredProcIds),
-            set__insert_list(ProcsToSpec0, PredProcIds,
-                ProcsToSpec),
-            set__insert(ForceVersions0, NewPredId, ForceVersions),
+            set.insert_list(ProcsToSpec0, PredProcIds, ProcsToSpec),
+            set.insert(ForceVersions0, NewPredId, ForceVersions),
 
             ( Status = opt_imported ->
                 % For imported predicates dead_proc_elim.m
@@ -732,14 +731,14 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
                 % is used, the predicate to force the
                 % production of the specialised interface is
                 % also used.
-                multi_map__set(SpecMap0, PredId, NewPredId, SpecMap)
+                multi_map.set(SpecMap0, PredId, NewPredId, SpecMap)
             ;
                 SpecMap = SpecMap0
             ),
             Pragma = type_spec(SymName, SpecName, Arity, yes(PredOrFunc),
-                MaybeModes, map__to_assoc_list(RenamedSubst), TVarSet,
+                MaybeModes, map.to_assoc_list(RenamedSubst), TVarSet,
                 ExpandedItems),
-            multi_map__set(PragmaMap0, PredId, Pragma, PragmaMap),
+            multi_map.set(PragmaMap0, PredId, Pragma, PragmaMap),
             TypeSpecInfo = type_spec_info(ProcsToSpec, ForceVersions, SpecMap,
                 PragmaMap),
             module_info_set_type_spec_info(TypeSpecInfo,
@@ -750,7 +749,7 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
                 IsImported = yes,
                 ItemType = pred_or_func_to_item_type(PredOrFunc),
                 apply_to_recompilation_info(
-                    recompilation__record_expanded_items(
+                    recompilation.record_expanded_items(
                         item_id(ItemType, SymName - Arity), ExpandedItems),
                     !QualInfo)
             ;
@@ -775,6 +774,7 @@ subst_desc(TVar - Type) = var_to_int(TVar) - Type.
     % Type substitutions are also invalid if the replacement types are
     % not ground, however this is a (hopefully temporary) limitation
     % of the current implementation, so it only results in a warning.
+    %
 :- pred handle_pragma_type_spec_subst(prog_context::in,
     assoc_list(tvar, mer_type)::in, pred_info::in, tvarset::in, tvarset::out,
     list(mer_type)::out, existq_tvars::out, prog_constraints::out,
@@ -783,7 +783,7 @@ subst_desc(TVar - Type) = var_to_int(TVar) - Type.
 
 handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
         Types, ExistQVars, ClassContext, SubstOk, !ModuleInfo, !IO) :-
-    assoc_list__keys(Subst, VarsToSub),
+    assoc_list.keys(Subst, VarsToSub),
     (
         Subst = []
     ->
@@ -791,60 +791,60 @@ handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
             "handle_pragma_type_spec_subst: empty substitution")
     ;
         find_duplicate_list_elements(VarsToSub, MultiSubstVars0),
-        MultiSubstVars0 \= []
+        MultiSubstVars0 = [_ | _]
     ->
-        list__sort_and_remove_dups(MultiSubstVars0, MultiSubstVars),
+        list.sort_and_remove_dups(MultiSubstVars0, MultiSubstVars),
         report_multiple_subst_vars(PredInfo0, Context, TVarSet0,
             MultiSubstVars, !IO),
         module_info_incr_errors(!ModuleInfo),
-        io__set_exit_status(1, !IO),
+        io.set_exit_status(1, !IO),
         ExistQVars = [],
         Types = [],
         ClassContext = constraints([], []),
-        varset__init(TVarSet),
+        varset.init(TVarSet),
         SubstOk = no
     ;
         pred_info_typevarset(PredInfo0, CalledTVarSet),
-        varset__create_name_var_map(CalledTVarSet, NameVarIndex0),
-        list__filter((pred(Var::in) is semidet :-
-            varset__lookup_name(TVarSet0, Var, VarName),
-            \+ map__contains(NameVarIndex0, VarName)
+        varset.create_name_var_map(CalledTVarSet, NameVarIndex0),
+        list.filter((pred(Var::in) is semidet :-
+            varset.lookup_name(TVarSet0, Var, VarName),
+            \+ map.contains(NameVarIndex0, VarName)
         ), VarsToSub, UnknownVarsToSub),
         (
             UnknownVarsToSub = [],
             % Check that the substitution is not recursive.
-            set__list_to_set(VarsToSub, VarsToSubSet),
+            set.list_to_set(VarsToSub, VarsToSubSet),
 
-            assoc_list__values(Subst, SubstTypes0),
-            prog_type__vars_list(SubstTypes0, TVarsInSubstTypes0),
-            set__list_to_set(TVarsInSubstTypes0,
-                TVarsInSubstTypes),
+            assoc_list.values(Subst, SubstTypes0),
+            prog_type.vars_list(SubstTypes0, TVarsInSubstTypes0),
+            set.list_to_set(TVarsInSubstTypes0, TVarsInSubstTypes),
 
-            set__intersect(TVarsInSubstTypes, VarsToSubSet, RecSubstTVars0),
-            set__to_sorted_list(RecSubstTVars0, RecSubstTVars),
+            set.intersect(TVarsInSubstTypes, VarsToSubSet, RecSubstTVars0),
+            set.to_sorted_list(RecSubstTVars0, RecSubstTVars),
 
-            ( RecSubstTVars = [] ->
-                map__init(TVarRenaming0),
-                list__append(VarsToSub, TVarsInSubstTypes0, VarsToReplace),
+            (
+                RecSubstTVars = [],
+                map.init(TVarRenaming0),
+                list.append(VarsToSub, TVarsInSubstTypes0, VarsToReplace),
 
                 get_new_tvars(VarsToReplace, TVarSet0, CalledTVarSet, TVarSet,
                     NameVarIndex0, _, TVarRenaming0, TVarRenaming),
 
                 % Check that none of the existentially
                 % quantified variables were substituted.
-                map__apply_to_list(VarsToSub, TVarRenaming, RenamedVarsToSub),
+                map.apply_to_list(VarsToSub, TVarRenaming, RenamedVarsToSub),
                 pred_info_get_exist_quant_tvars(PredInfo0, ExistQVars),
-                list__filter((pred(RenamedVar::in) is semidet :-
-                    list__member(RenamedVar, ExistQVars)
+                list.filter((pred(RenamedVar::in) is semidet :-
+                    list.member(RenamedVar, ExistQVars)
                 ), RenamedVarsToSub, SubExistQVars),
                 (
                     SubExistQVars = [],
-                    map__init(TypeSubst0),
+                    map.init(TypeSubst0),
                     apply_variable_renaming_to_type_list(TVarRenaming,
                         SubstTypes0, SubstTypes),
-                    assoc_list__from_corresponding_lists(RenamedVarsToSub,
+                    assoc_list.from_corresponding_lists(RenamedVarsToSub,
                         SubstTypes, SubAL),
-                    list__foldl(map_set_from_pair, SubAL,
+                    list.foldl(map_set_from_pair, SubAL,
                         TypeSubst0, TypeSubst),
 
                     % Apply the substitution.
@@ -858,21 +858,22 @@ handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
                     SubExistQVars = [_ | _],
                     report_subst_existq_tvars(PredInfo0, Context,
                         SubExistQVars, !IO),
-                    io__set_exit_status(1, !IO),
+                    io.set_exit_status(1, !IO),
                     module_info_incr_errors(!ModuleInfo),
                     Types = [],
                     ClassContext = constraints([], []),
                     SubstOk = no
                 )
             ;
+                RecSubstTVars = [_ | _],
                 report_recursive_subst(PredInfo0, Context, TVarSet0,
                     RecSubstTVars, !IO),
-                io__set_exit_status(1, !IO),
+                io.set_exit_status(1, !IO),
                 module_info_incr_errors(!ModuleInfo),
                 ExistQVars = [],
                 Types = [],
                 ClassContext = constraints([], []),
-                varset__init(TVarSet),
+                varset.init(TVarSet),
                 SubstOk = no
             )
         ;
@@ -880,11 +881,11 @@ handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
             report_unknown_vars_to_subst(PredInfo0, Context, TVarSet0,
                 UnknownVarsToSub, !IO),
             module_info_incr_errors(!ModuleInfo),
-            io__set_exit_status(1, !IO),
+            io.set_exit_status(1, !IO),
             ExistQVars = [],
             Types = [],
             ClassContext = constraints([], []),
-            varset__init(TVarSet),
+            varset.init(TVarSet),
             SubstOk = no
         )
     ).
@@ -893,14 +894,14 @@ handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
     is det.
 
 map_set_from_pair(K - V, !Map) :-
-    svmap__set(K, V, !Map).
+    svmap.set(K, V, !Map).
 
 :- pred find_duplicate_list_elements(list(T)::in, list(T)::out) is det.
 
 find_duplicate_list_elements([], []).
 find_duplicate_list_elements([H | T], Vars) :-
     find_duplicate_list_elements(T, Vars0),
-    ( list__member(H, T) ->
+    ( list.member(H, T) ->
         Vars = [H | Vars0]
     ;
         Vars = Vars0
@@ -1001,13 +1002,13 @@ handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes, ProcIds,
         !Procs, ModesOk, !ModuleInfo, !IO) :-
     (
         MaybeModes = yes(Modes),
-        map__to_assoc_list(!.Procs, ExistingProcs),
+        map.to_assoc_list(!.Procs, ExistingProcs),
         (
             get_procedure_matching_argmodes(ExistingProcs, Modes,
                 !.ModuleInfo, ProcId)
         ->
-            map__lookup(!.Procs, ProcId, ProcInfo),
-            map__det_insert(map__init, ProcId, ProcInfo, !:Procs),
+            map.lookup(!.Procs, ProcId, ProcInfo),
+            map.det_insert(map.init, ProcId, ProcInfo, !:Procs),
             ProcIds = [ProcId],
             ModesOk = yes
         ;
@@ -1019,7 +1020,7 @@ handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes, ProcIds,
         )
     ;
         MaybeModes = no,
-        map__keys(!.Procs, ProcIds),
+        map.keys(!.Procs, ProcIds),
         ModesOk = yes
     ).
 
@@ -1062,11 +1063,11 @@ add_pragma_termination2_info(PredOrFunc, SymName, ModeList,
                     proc_info_set_termination2_info(!.TermInfo,
                         ProcInfo0, ProcInfo)
                 ),
-                map__det_update(ProcTable0, ProcId, ProcInfo,
+                map.det_update(ProcTable0, ProcId, ProcInfo,
                     ProcTable),
                 pred_info_set_procedures(ProcTable, PredInfo0,
                     PredInfo),
-                map__det_update(PredTable0, PredId, PredInfo,
+                map.det_update(PredTable0, PredId, PredInfo,
                     PredTable),
                 module_info_set_preds(PredTable, !ModuleInfo)
             ;
@@ -1100,7 +1101,7 @@ add_pragma_structure_sharing(_PredOrFunc, _SymName, _ModeList, _HeadVars,
 add_pragma_structure_sharing(PredOrFunc, SymName, ModeList, HeadVars,
         Types, yes(SharingDomain), Context, !ModuleInfo, !IO):-
     module_info_get_predicate_table(!.ModuleInfo, Preds),
-    list__length(ModeList, Arity),
+    list.length(ModeList, Arity),
     (
         predicate_table_search_pf_sym_arity(Preds, is_fully_qualified,
             PredOrFunc, SymName, Arity, PredIds),
@@ -1108,14 +1109,14 @@ add_pragma_structure_sharing(PredOrFunc, SymName, ModeList, HeadVars,
     ->
         ( PredIds = [PredId] ->
             module_info_preds(!.ModuleInfo, PredTable0),
-            map__lookup(PredTable0, PredId, PredInfo0),
+            map.lookup(PredTable0, PredId, PredInfo0),
             pred_info_procedures(PredInfo0, ProcTable0),
-            map__to_assoc_list(ProcTable0, ProcList),
+            map.to_assoc_list(ProcTable0, ProcList),
             (
                 get_procedure_matching_declmodes(ProcList, ModeList,
                     !.ModuleInfo, ProcId)
             ->
-                map__lookup(ProcTable0, ProcId, ProcInfo0),
+                map.lookup(ProcTable0, ProcId, ProcInfo0),
                
                 % Rename headvars/types to those used in the proc_info. 
                 proc_info_headvars(ProcInfo0, ProcHeadVars), 
@@ -1134,7 +1135,7 @@ add_pragma_structure_sharing(PredOrFunc, SymName, ModeList, HeadVars,
                 ;
                     unexpected(this_file, "Impossible situation.")
                 ),
-                map__from_corresponding_lists(RemHeadVars, ProcHeadVars,
+                map.from_corresponding_lists(RemHeadVars, ProcHeadVars,
                     MapHeadVars), 
                 pred_info_arg_types(PredInfo0, ArgTypes),
                 TypeSubst0 = map.init, 
@@ -1150,9 +1151,9 @@ add_pragma_structure_sharing(PredOrFunc, SymName, ModeList, HeadVars,
                     SharingDomain, RenamedSharingDomain), 
                 proc_info_set_structure_sharing(RenamedSharingDomain, 
                     ProcInfo0, ProcInfo), 
-                map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+                map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
                 pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-                map__det_update(PredTable0, PredId, PredInfo, PredTable),
+                map.det_update(PredTable0, PredId, PredInfo, PredTable),
                 module_info_set_preds(PredTable, !ModuleInfo)
             ;
                 module_info_incr_errors(!ModuleInfo),
@@ -1185,7 +1186,7 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList,
         MaybePragmaArgSizeInfo, MaybePragmaTerminationInfo,
         Context, !ModuleInfo, !IO) :-
     module_info_get_predicate_table(!.ModuleInfo, Preds),
-    list__length(ModeList, Arity),
+    list.length(ModeList, Arity),
     (
         predicate_table_search_pf_sym_arity(Preds, is_fully_qualified,
             PredOrFunc, SymName, Arity, PredIds),
@@ -1193,9 +1194,9 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList,
     ->
         ( PredIds = [PredId] ->
             module_info_preds(!.ModuleInfo, PredTable0),
-            map__lookup(PredTable0, PredId, PredInfo0),
+            map.lookup(PredTable0, PredId, PredInfo0),
             pred_info_procedures(PredInfo0, ProcTable0),
-            map__to_assoc_list(ProcTable0, ProcList),
+            map.to_assoc_list(ProcTable0, ProcList),
             (
                 get_procedure_matching_declmodes(ProcList, ModeList,
                     !.ModuleInfo, ProcId)
@@ -1204,14 +1205,14 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList,
                     Context, MaybeArgSizeInfo),
                 add_context_to_termination_info(MaybePragmaTerminationInfo,
                     Context, MaybeTerminationInfo),
-                map__lookup(ProcTable0, ProcId, ProcInfo0),
+                map.lookup(ProcTable0, ProcId, ProcInfo0),
                 proc_info_set_maybe_arg_size_info(MaybeArgSizeInfo,
                     ProcInfo0, ProcInfo1),
                 proc_info_set_maybe_termination_info(MaybeTerminationInfo,
                     ProcInfo1, ProcInfo),
-                map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+                map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
                 pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-                map__det_update(PredTable0, PredId, PredInfo, PredTable),
+                map.det_update(PredTable0, PredId, PredInfo, PredTable),
                 module_info_set_preds(PredTable, !ModuleInfo)
             ;
                 module_info_incr_errors(!ModuleInfo),
@@ -1240,14 +1241,14 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList,
 module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
         Status, Context, !ModuleInfo, !QualInfo, !IO) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
-    list__length(Modes, Arity),
+    list.length(Modes, Arity),
 
-    globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     (
         VeryVerbose = yes,
-        io__write_string("% Processing `:- pragma import' for ", !IO),
+        io.write_string("% Processing `:- pragma import' for ", !IO),
         write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
-        io__write_string("...\n", !IO)
+        io.write_string("...\n", !IO)
     ;
         VeryVerbose = no
     ),
@@ -1268,7 +1269,7 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
     % Lookup the pred_info for this pred, and check that it is valid.
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable2),
     predicate_table_get_preds(PredicateTable2, Preds0),
-    map__lookup(Preds0, PredId, PredInfo0),
+    map.lookup(Preds0, PredId, PredInfo0),
     % Opt_imported preds are initially tagged as imported and are tagged as
     % opt_imported only if/when we see a clause (including a `pragma import'
     % clause) for them.
@@ -1292,14 +1293,14 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
         pred_info_update_goal_type(pragmas, PredInfo1, PredInfo2),
             % Add the pragma declaration to the proc_info for this procedure.
         pred_info_procedures(PredInfo2, Procs),
-        map__to_assoc_list(Procs, ExistingProcs),
+        map.to_assoc_list(Procs, ExistingProcs),
         (
             get_procedure_matching_argmodes(ExistingProcs, Modes,
                 !.ModuleInfo, ProcId)
         ->
             pred_add_pragma_import(PredId, ProcId, Attributes, C_Function,
                 Context, PredInfo2, PredInfo, !ModuleInfo, !QualInfo, !IO),
-            map__det_update(Preds0, PredId, PredInfo, Preds),
+            map.det_update(Preds0, PredId, PredInfo, Preds),
             predicate_table_set_preds(Preds,
                 PredicateTable2, PredicateTable),
             module_info_set_predicate_table(PredicateTable, !ModuleInfo)
@@ -1323,8 +1324,8 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
 pred_add_pragma_import(PredId, ProcId, Attributes, C_Function, Context,
         !PredInfo, !ModuleInfo, !QualInfo, !IO) :-
     pred_info_procedures(!.PredInfo, Procs),
-    map__lookup(Procs, ProcId, ProcInfo),
-    foreign__make_pragma_import(!.PredInfo, ProcInfo, C_Function, Context,
+    map.lookup(Procs, ProcId, ProcInfo),
+    foreign.make_pragma_import(!.PredInfo, ProcInfo, C_Function, Context,
         PragmaImpl, VarSet, PragmaVars, ArgTypes, Arity, PredOrFunc,
         !ModuleInfo, !IO),
 
@@ -1353,8 +1354,8 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
     % with the actual thread safety attributes which we get from the
     % `--maybe-thread-safe' option.
     %
-    globals__io_get_globals(Globals, !IO),
-    globals__get_maybe_thread_safe(Globals, MaybeThreadSafe),
+    globals.io_get_globals(Globals, !IO),
+    globals.get_maybe_thread_safe(Globals, MaybeThreadSafe),
     ThreadSafe = Attributes0 ^ thread_safe,
     ( ThreadSafe = maybe_thread_safe ->
         (
@@ -1369,19 +1370,19 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
     ),
     module_info_get_name(!.ModuleInfo, ModuleName),
     PragmaForeignLanguage = foreign_language(Attributes),
-    list__length(PVars, Arity),
+    list.length(PVars, Arity),
         % print out a progress message
-    globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     (
         VeryVerbose = yes,
-        io__write_string("% Processing `:- pragma foreign_proc' for ", !IO),
+        io.write_string("% Processing `:- pragma foreign_proc' for ", !IO),
         write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
-        io__write_string("...\n", !IO)
+        io.write_string("...\n", !IO)
     ;
         VeryVerbose = no
     ),
 
-    globals__io_get_backend_foreign_languages(BackendForeignLangs, !IO),
+    globals.io_get_backend_foreign_languages(BackendForeignLangs, !IO),
 
         % Lookup the pred declaration in the predicate table.
         % (If it's not there, print an error message and insert
@@ -1404,7 +1405,7 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
     module_info_get_predicate_table(!.ModuleInfo, PredTable1),
     predicate_table_get_preds(PredTable1, Preds0),
     some [!PredInfo] (
-        map__lookup(Preds0, PredId, !:PredInfo),
+        map.lookup(Preds0, PredId, !:PredInfo),
         PredInfo0 = !.PredInfo,
 
         % opt_imported preds are initially tagged as imported and are
@@ -1423,7 +1424,7 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
         ->
             pred_info_clauses_info(!.PredInfo, CInfo0),
             clauses_info_clauses_only(CInfo0, ClauseList0),
-            ClauseList = list__map(
+            ClauseList = list.map(
                 (func(C) = Res :-
                     AllProcIds = pred_info_all_procids(!.PredInfo),
                     ( C = clause([], Goal, mercury, Ctxt) ->
@@ -1454,16 +1455,16 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
                 simple_call_id(PredOrFunc - PredName/Arity), suffix(".")],
             write_error_pieces(Context, 0, Pieces, !IO)
         ;
-                % Don't add clauses for foreign languages other
-                % than the ones we can generate code for.
-            not list__member(PragmaForeignLanguage, BackendForeignLangs)
+            % Don't add clauses for foreign languages other than the ones
+            % we can generate code for.
+            not list.member(PragmaForeignLanguage, BackendForeignLangs)
         ->
             pred_info_update_goal_type(pragmas, PredInfo0, !:PredInfo),
             module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
         ;
             % add the pragma declaration to the proc_info for this procedure
             pred_info_procedures(!.PredInfo, Procs),
-            map__to_assoc_list(Procs, ExistingProcs),
+            map.to_assoc_list(Procs, ExistingProcs),
             pragma_get_modes(PVars, Modes),
             (
                 % The inst variables for the foreign_proc declaration
@@ -1488,7 +1489,7 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
                     !ModuleInfo, !IO),
                 pred_info_set_clauses_info(Clauses, !PredInfo),
                 pred_info_update_goal_type(pragmas, !PredInfo),
-                map__det_update(Preds0, PredId, !.PredInfo, Preds),
+                map.det_update(Preds0, PredId, !.PredInfo, Preds),
                 predicate_table_set_preds(Preds, PredTable1, PredTable),
                 module_info_set_predicate_table(PredTable, !ModuleInfo),
                 pragma_get_var_infos(PVars, ArgInfoBox),
@@ -1527,7 +1528,7 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
             PredIds = PredIds0
         ;
             module_info_get_name(!.ModuleInfo, ModuleName),
-            string__format("`:- pragma %s' declaration",
+            string.format("`:- pragma %s' declaration",
                 [s(EvalMethodStr)], Message1),
             preds_add_implicit_report_error(ModuleName, PredOrFunc, PredName,
                 Arity, Status, no, Context, user(PredName), Message1, PredId,
@@ -1543,7 +1544,7 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
             PredIds = PredIds0
         ;
             module_info_get_name(!.ModuleInfo, ModuleName),
-            string__format("`:- pragma %s' declaration",
+            string.format("`:- pragma %s' declaration",
                 [s(EvalMethodStr)], Message1),
             preds_add_implicit_report_error(ModuleName, predicate, PredName,
                 Arity, Status, no, Context, user(PredName), Message1, PredId,
@@ -1551,7 +1552,7 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
             PredIds = [PredId]
         )
     ),
-    list__foldl2(
+    list.foldl2(
         module_add_pragma_tabled_2(EvalMethod, PredName, Arity,
             MaybePredOrFunc, MaybeModes, Context),
         PredIds, !ModuleInfo, !IO).
@@ -1563,7 +1564,7 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
 module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
         MaybeModes, Context, PredId, !ModuleInfo, !IO) :-
     ( EvalMethod0 = eval_minimal(_) ->
-        globals__io_lookup_bool_option(use_minimal_model_own_stacks,
+        globals.io_lookup_bool_option(use_minimal_model_own_stacks,
             OwnStacks, !IO),
         (
             OwnStacks = yes,
@@ -1579,7 +1580,7 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
     % Lookup the pred_info for this pred.
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable),
     predicate_table_get_preds(PredicateTable, Preds),
-    map__lookup(Preds, PredId, PredInfo0),
+    map.lookup(Preds, PredId, PredInfo0),
     (
         MaybePredOrFunc = yes(PredOrFunc0),
         PredOrFunc = PredOrFunc0
@@ -1590,14 +1591,14 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
     adjust_func_arity(PredOrFunc, Arity0, Arity),
 
     EvalMethodStr = eval_method_to_one_string(EvalMethod),
-    globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     (
         VeryVerbose = yes,
-        io__write_string("% Processing `:- pragma ", !IO),
-        io__write_string(EvalMethodStr, !IO),
-        io__write_string("' for ", !IO),
+        io.write_string("% Processing `:- pragma ", !IO),
+        io.write_string(EvalMethodStr, !IO),
+        io.write_string("' for ", !IO),
         write_simple_call_id(PredOrFunc, PredName/Arity, !IO),
-        io__write_string("...\n", !IO)
+        io.write_string("...\n", !IO)
     ;
         VeryVerbose = no
     ),
@@ -1636,7 +1637,7 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
         % Do we have to make sure the tabled preds are stratified?
         ( eval_method_needs_stratification(EvalMethod) = yes ->
             module_info_get_stratified_preds(!.ModuleInfo, StratPredIds0),
-            set__insert(StratPredIds0, PredId, StratPredIds),
+            set.insert(StratPredIds0, PredId, StratPredIds),
             module_info_set_stratified_preds(StratPredIds, !ModuleInfo)
         ;
             true
@@ -1644,7 +1645,7 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
 
         % Add the eval model to the proc_info for this procedure.
         pred_info_procedures(PredInfo0, ProcTable0),
-        map__to_assoc_list(ProcTable0, ExistingProcs),
+        map.to_assoc_list(ProcTable0, ExistingProcs),
         SimpleCallId = PredOrFunc - PredName/Arity,
         (
             MaybeModes = yes(Modes),
@@ -1652,7 +1653,7 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
                 get_procedure_matching_argmodes(ExistingProcs, Modes,
                     !.ModuleInfo, ProcId)
             ->
-                map__lookup(ProcTable0, ProcId, ProcInfo0),
+                map.lookup(ProcTable0, ProcId, ProcInfo0),
                 set_eval_method(ProcId, ProcInfo0, Context, SimpleCallId,
                     EvalMethod, ProcTable0, ProcTable, !ModuleInfo, !IO),
                 pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
@@ -1746,7 +1747,7 @@ set_eval_method(ProcId, ProcInfo0, Context, SimpleCallId, EvalMethod,
             (
                 MaybeError = no,
                 proc_info_set_eval_method(EvalMethod, ProcInfo0, ProcInfo),
-                svmap__det_update(ProcId, ProcInfo, !ProcTable)
+                svmap.det_update(ProcId, ProcInfo, !ProcTable)
             ;
                 MaybeError = yes(ArgMsg - ErrorMsg),
                 EvalMethodStr = eval_method_to_one_string(EvalMethod),
@@ -1883,7 +1884,7 @@ module_add_pragma_fact_table(Pred, Arity, FileName, Status, Context,
 
             module_add_fact_table_file(FileName, !ModuleInfo),
 
-            io__get_exit_status(ExitStatus, !IO),
+            io.get_exit_status(ExitStatus, !IO),
             ( ExitStatus = 1 ->
                 true
             ;
@@ -1895,7 +1896,7 @@ module_add_pragma_fact_table(Pred, Arity, FileName, Status, Context,
             )
         ;
             PredIDs1 = [_ | _],     % >1 predicate found
-            io__set_exit_status(1, !IO),
+            io.set_exit_status(1, !IO),
             Pieces = [words("In pragma fact_table for"),
                 sym_name_and_arity(Pred/Arity), suffix(":"), nl,
                 words("error: ambiguous predicate/function name.")],
@@ -1937,9 +1938,9 @@ module_add_fact_table_procedures([ProcID | ProcIDs], PrimaryProcID, ProcTable,
 module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
         PredOrFunc, Arity, ArgTypes, Status, Context, !ModuleInfo, !QualInfo,
         !IO) :-
-    map__lookup(ProcTable, ProcID, ProcInfo),
-    varset__init(ProgVarSet0),
-    varset__new_vars(ProgVarSet0, Arity, Vars, ProgVarSet),
+    map.lookup(ProcTable, ProcID, ProcInfo),
+    varset.init(ProgVarSet0),
+    varset.new_vars(ProgVarSet0, Arity, Vars, ProgVarSet),
     proc_info_argmodes(ProcInfo, Modes),
     proc_info_inst_varset(ProcInfo, InstVarSet),
     fact_table_pragma_vars(Vars, Modes, ProgVarSet, PragmaVars),
@@ -1982,7 +1983,7 @@ fact_table_pragma_vars(Vars0, Modes0, VarSet, PragmaVars0) :-
         Vars0 = [Var | VarsTail],
         Modes0 = [Mode | ModesTail]
     ->
-        varset__lookup_name(VarSet, Var, Name),
+        varset.lookup_name(VarSet, Var, Name),
         PragmaVar = pragma_var(Var, Name, Mode, native_if_possible),
         fact_table_pragma_vars(VarsTail, ModesTail, VarSet, PragmaVarsTail),
         PragmaVars0 = [PragmaVar | PragmaVarsTail]
@@ -2014,13 +2015,13 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
         % Find all the existing clauses for this mode, and
         % extract their implementation language and clause number
         % (that is, their index in the list).
-    globals__io_get_globals(Globals, !IO),
-    globals__io_get_target(Target, !IO),
+    globals.io_get_globals(Globals, !IO),
+    globals.io_get_target(Target, !IO),
     NewLang = foreign_language(Attributes0),
-    list__foldl2(decide_action(Globals, Target, NewLang, ProcId), ClauseList,
+    list.foldl2(decide_action(Globals, Target, NewLang, ProcId), ClauseList,
         add, FinalAction, 1, _),
 
-    globals__io_get_backend_foreign_languages(BackendForeignLanguages, !IO),
+    globals.io_get_backend_foreign_languages(BackendForeignLanguages, !IO),
     pragma_get_vars(PVars, Args0),
     pragma_get_var_infos(PVars, ArgInfo),
 
@@ -2028,26 +2029,26 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
     % If the foreign language not one of the backend languages, we will
     % have to generate an interface to it in a backend language.
     %
-    foreign__extrude_pragma_implementation(BackendForeignLanguages,
+    foreign.extrude_pragma_implementation(BackendForeignLanguages,
         PVars, PredName, PredOrFunc, Context, !ModuleInfo,
         Attributes0, Attributes, PragmaImpl0, PragmaImpl),
 
     %
     % Check for arguments occurring multiple times.
     %
-    bag__init(ArgBag0),
-    bag__insert_list(ArgBag0, Args0, ArgBag),
-    bag__to_assoc_list(ArgBag, ArgBagAL0),
-    list__filter(
+    bag.init(ArgBag0),
+    bag.insert_list(ArgBag0, Args0, ArgBag),
+    bag.to_assoc_list(ArgBag, ArgBagAL0),
+    list.filter(
         (pred(Arg::in) is semidet :-
             Arg = _ - Occurrences,
             Occurrences > 1
         ), ArgBagAL0, ArgBagAL),
-    assoc_list__keys(ArgBagAL, MultipleArgs),
+    assoc_list.keys(ArgBagAL, MultipleArgs),
 
     (
         MultipleArgs = [_ | _],
-        io__set_exit_status(1, !IO),
+        io.set_exit_status(1, !IO),
         adjust_func_arity(PredOrFunc, OrigArity, Arity),
         Pieces1 = [words("In `:- pragma foreign_proc' declaration for"),
             simple_call_id(PredOrFunc - PredName/OrigArity), suffix(":"), nl],
@@ -2073,7 +2074,7 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
         make_foreign_args(HeadVars, ArgInfo, OrigArgTypes, ForeignArgs),
         HldsGoal0 = foreign_proc(Attributes, PredId, ProcId, ForeignArgs, [],
             PragmaImpl) - GoalInfo,
-        map__init(EmptyVarTypes),
+        map.init(EmptyVarTypes),
         implicitly_quantify_clause_body(HeadVars, _Warnings,
             HldsGoal0, HldsGoal, VarSet0, VarSet, EmptyVarTypes, _),
         NewClause = clause([ProcId], HldsGoal, foreign_language(NewLang),
@@ -2086,10 +2087,10 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
             NewClauseList = [NewClause | ClauseList]
         ;
             FinalAction = replace(N),
-            list__replace_nth_det(ClauseList, N, NewClause, NewClauseList)
+            list.replace_nth_det(ClauseList, N, NewClause, NewClauseList)
         ;
             FinalAction = split_add(N, Clause),
-            list__replace_nth_det(ClauseList, N, Clause, NewClauseListTail),
+            list.replace_nth_det(ClauseList, N, Clause, NewClauseListTail),
             NewClauseList = [NewClause | NewClauseListTail]
         ),
         HasForeignClauses = yes,
@@ -2117,7 +2118,7 @@ is_applicable_for_current_backend(CurrentBackend, [Attr | Attrs]) = Result :-
     ).
 
 lookup_current_backend(CurrentBackend, !IO) :-
-    globals__io_lookup_bool_option(highlevel_code, HighLevel, !IO),
+    globals.io_lookup_bool_option(highlevel_code, HighLevel, !IO),
     (
         HighLevel = yes,
         CurrentBackend = high_level_backend
@@ -2156,7 +2157,7 @@ decide_action(Globals, Target, NewLang, ProcId, Clause, !Action, !ClauseNum) :-
         ClauseLang = mercury,
         ( ProcIds = [ProcId] ->
             !:Action = replace(!.ClauseNum)
-        ; list__delete_first(ProcIds, ProcId, MercuryProcIds) ->
+        ; list.delete_first(ProcIds, ProcId, MercuryProcIds) ->
             NewMercuryClause = clause(MercuryProcIds, Body, ClauseLang,
                 Context),
             !:Action = split_add(!.ClauseNum, NewMercuryClause)
@@ -2165,7 +2166,7 @@ decide_action(Globals, Target, NewLang, ProcId, Clause, !Action, !ClauseNum) :-
         )
     ;
         ClauseLang = foreign_language(OldLang),
-        ( list__member(ProcId, ProcIds) ->
+        ( list.member(ProcId, ProcIds) ->
             (
                 yes = prefer_foreign_language(Globals, Target,
                     OldLang, NewLang)
@@ -2189,7 +2190,7 @@ decide_action(Globals, Target, NewLang, ProcId, Clause, !Action, !ClauseNum) :-
     list(mer_mode)::in, module_info::in, proc_id::out) is semidet.
 
 get_procedure_matching_argmodes(Procs, Modes0, ModuleInfo, ProcId) :-
-    list__map(constrain_inst_vars_in_mode, Modes0, Modes),
+    list.map(constrain_inst_vars_in_mode, Modes0, Modes),
     get_procedure_matching_argmodes_2(Procs, Modes, ModuleInfo, ProcId).
 
 :- pred get_procedure_matching_argmodes_2(assoc_list(proc_id, proc_info)::in,
@@ -2213,7 +2214,7 @@ get_procedure_matching_argmodes_2([P | Procs], Modes, ModuleInfo, OurProcId) :-
 
 get_procedure_matching_argmodes_with_renaming(Procs, Modes0,
         ModuleInfo, ProcId) :-
-    list__map(constrain_inst_vars_in_mode, Modes0, Modes),
+    list.map(constrain_inst_vars_in_mode, Modes0, Modes),
     get_procedure_matching_argmodes_with_renaming_2(Procs, Modes,
         ModuleInfo, ProcId).
 
@@ -2233,7 +2234,7 @@ get_procedure_matching_argmodes_with_renaming_2([P | Procs], Modes,
     ).
 
 get_procedure_matching_declmodes(Procs, Modes0, ModuleInfo, ProcId) :-
-    list__map(constrain_inst_vars_in_mode, Modes0, Modes),
+    list.map(constrain_inst_vars_in_mode, Modes0, Modes),
     get_procedure_matching_declmodes_2(Procs, Modes, ModuleInfo, ProcId).
 
 :- pred get_procedure_matching_declmodes_2(assoc_list(proc_id, proc_info)::in,

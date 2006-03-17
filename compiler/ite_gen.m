@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -15,7 +15,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module ll_backend__ite_gen.
+:- module ll_backend.ite_gen.
 :- interface.
 
 :- import_module hlds.code_model.
@@ -25,11 +25,11 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred ite_gen__generate_ite(add_trail_ops::in, code_model::in,
+:- pred ite_gen.generate_ite(add_trail_ops::in, code_model::in,
     hlds_goal::in, hlds_goal::in, hlds_goal::in, hlds_goal_info::in,
     code_tree::out, code_info::in, code_info::out) is det.
 
-:- pred ite_gen__generate_negation(add_trail_ops::in, code_model::in,
+:- pred ite_gen.generate_negation(add_trail_ops::in, code_model::in,
     hlds_goal::in, hlds_goal_info::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
@@ -93,14 +93,14 @@ generate_ite(AddTrailOps, CodeModel, CondGoal0, ThenGoal, ElseGoal,
     % Make sure that the variables whose values will be needed on backtracking
     % to the else part are materialized into registers or stack slots.
     % Their locations are recorded in ResumeMap.
-    code_info__produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
+    code_info.produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
 
     % Maybe save the heap state current before the condition.
-    % This is after code_info__produce_vars since code that
+    % This is after code_info.produce_vars since code that
     % flushes the cache may allocate memory we must not "recover".
-    code_info__get_globals(!.CI, Globals),
+    code_info.get_globals(!.CI, Globals),
     (
-        globals__lookup_bool_option(Globals,
+        globals.lookup_bool_option(Globals,
             reclaim_heap_on_semidet_failure, yes),
         goal_may_allocate_heap(CondGoal)
     ->
@@ -108,32 +108,32 @@ generate_ite(AddTrailOps, CodeModel, CondGoal0, ThenGoal, ElseGoal,
     ;
         ReclaimHeap = no
     ),
-    code_info__maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI),
+    code_info.maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI),
 
     % Maybe save the current trail state before the condition.
-    code_info__maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot,
+    code_info.maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot,
         !CI),
 
-    code_info__remember_position(!.CI, BranchStart),
+    code_info.remember_position(!.CI, BranchStart),
 
-    code_info__prepare_for_ite_hijack(EffCodeModel, HijackInfo,
+    code_info.prepare_for_ite_hijack(EffCodeModel, HijackInfo,
         PrepareHijackCode, !CI),
 
-    code_info__make_resume_point(ResumeVars, ResumeLocs, ResumeMap,
+    code_info.make_resume_point(ResumeVars, ResumeLocs, ResumeMap,
         ResumePoint, !CI),
-    code_info__effect_resume_point(ResumePoint, EffCodeModel, EffectResumeCode,
+    code_info.effect_resume_point(ResumePoint, EffCodeModel, EffectResumeCode,
         !CI),
 
     % Generate the condition.
-    trace__maybe_generate_internal_event_code(CondGoal, IteGoalInfo,
+    trace.maybe_generate_internal_event_code(CondGoal, IteGoalInfo,
         CondTraceCode, !CI),
-    code_gen__generate_goal(CondCodeModel, CondGoal, CondCode, !CI),
+    code_gen.generate_goal(CondCodeModel, CondGoal, CondCode, !CI),
 
-    code_info__ite_enter_then(HijackInfo, ThenNeckCode, ElseNeckCode, !CI),
+    code_info.ite_enter_then(HijackInfo, ThenNeckCode, ElseNeckCode, !CI),
 
     % Kill again any variables that have become zombies.
-    code_info__pickup_zombies(Zombies, !CI),
-    code_info__make_vars_forward_dead(Zombies, !CI),
+    code_info.pickup_zombies(Zombies, !CI),
+    code_info.make_vars_forward_dead(Zombies, !CI),
 
     % Discard hp and prune trail ticket if the condition succeeded.
     ( CondCodeModel = model_non ->
@@ -142,49 +142,49 @@ generate_ite(AddTrailOps, CodeModel, CondGoal0, ThenGoal, ElseGoal,
         % into.  Nor can we prune the trail ticket that we allocated,
         % since the condition may have allocated other trail tickets
         % since then which have not yet been pruned.
-        code_info__maybe_reset_ticket(MaybeTicketSlot, solve, ResetTicketCode)
+        code_info.maybe_reset_ticket(MaybeTicketSlot, solve, ResetTicketCode)
     ;
-        code_info__maybe_release_hp(MaybeHpSlot, !CI),
-        code_info__maybe_reset_prune_and_release_ticket(
+        code_info.maybe_release_hp(MaybeHpSlot, !CI),
+        code_info.maybe_reset_prune_and_release_ticket(
             MaybeTicketSlot, commit, ResetTicketCode, !CI)
     ),
 
     goal_info_get_store_map(IteGoalInfo, StoreMap),
-    code_info__get_instmap(!.CI, EndCondInstMap),
-    ( instmap__is_unreachable(EndCondInstMap) ->
+    code_info.get_instmap(!.CI, EndCondInstMap),
+    ( instmap.is_unreachable(EndCondInstMap) ->
         % If the instmap indicates we cannot reach the then part,
         % do not attempt to generate it (may cause aborts).
         ThenTraceCode = empty,
         ThenCode = empty,
-        map__init(EmptyStoreMap),
-        code_info__generate_branch_end(EmptyStoreMap, no,
+        map.init(EmptyStoreMap),
+        code_info.generate_branch_end(EmptyStoreMap, no,
             MaybeEnd0, ThenSaveCode, !CI)
     ;
         % Generate the then branch.
-        trace__maybe_generate_internal_event_code(ThenGoal,
+        trace.maybe_generate_internal_event_code(ThenGoal,
             IteGoalInfo, ThenTraceCode, !CI),
-        code_gen__generate_goal(CodeModel, ThenGoal, ThenCode, !CI),
-        code_info__generate_branch_end(StoreMap, no,
+        code_gen.generate_goal(CodeModel, ThenGoal, ThenCode, !CI),
+        code_info.generate_branch_end(StoreMap, no,
             MaybeEnd0, ThenSaveCode, !CI)
     ),
 
     % Generate the entry to the else branch.
-    code_info__reset_to_position(BranchStart, !CI),
-    code_info__generate_resume_point(ResumePoint, ResumeCode, !CI),
+    code_info.reset_to_position(BranchStart, !CI),
+    code_info.generate_resume_point(ResumePoint, ResumeCode, !CI),
 
     % Restore the heap pointer and solver state if necessary.
-    code_info__maybe_restore_and_release_hp(MaybeHpSlot, RestoreHpCode, !CI),
-    code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot, undo,
+    code_info.maybe_restore_and_release_hp(MaybeHpSlot, RestoreHpCode, !CI),
+    code_info.maybe_reset_discard_and_release_ticket(MaybeTicketSlot, undo,
         RestoreTicketCode, !CI),
 
     % Generate the else branch.
-    trace__maybe_generate_internal_event_code(ElseGoal, IteGoalInfo,
+    trace.maybe_generate_internal_event_code(ElseGoal, IteGoalInfo,
         ElseTraceCode, !CI),
-    code_gen__generate_goal(CodeModel, ElseGoal, ElseCode, !CI),
-    code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
+    code_gen.generate_goal(CodeModel, ElseGoal, ElseCode, !CI),
+    code_info.generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
         ElseSaveCode, !CI),
 
-    code_info__get_next_label(EndLabel, !CI),
+    code_info.get_next_label(EndLabel, !CI),
     JumpToEndCode = node([
         goto(label(EndLabel)) - "Jump to the end of if-then-else"
     ]),
@@ -218,7 +218,7 @@ generate_ite(AddTrailOps, CodeModel, CondGoal0, ThenGoal, ElseGoal,
         ElseCode,
         ElseSaveCode,
         EndLabelCode]),
-    code_info__after_all_branches(StoreMap, MaybeEnd, !CI).
+    code_info.after_all_branches(StoreMap, MaybeEnd, !CI).
 
 %-----------------------------------------------------------------------------%
 
@@ -248,18 +248,18 @@ generate_negation(AddTrailOps, CodeModel, Goal0, NotGoalInfo, Code,
     (
         CodeModel = model_semi,
         GoalExpr = unify(_, _, _, simple_test(L, R), _),
-        code_info__failure_is_direct_branch(!.CI, CodeAddr),
-        code_info__get_globals(!.CI, Globals),
-        globals__lookup_bool_option(Globals, simple_neg, yes)
+        code_info.failure_is_direct_branch(!.CI, CodeAddr),
+        code_info.get_globals(!.CI, Globals),
+        globals.lookup_bool_option(Globals, simple_neg, yes)
     ->
         % Because we are generating the negated goal ourselves, we need to
         % apply the pre- and post-goal updates that would normally be applied
-        % by code_gen__generate_goal.
+        % by code_gen.generate_goal.
 
-        code_info__enter_simple_neg(ResumeVars, GoalInfo, SimpleNeg, !CI),
-        code_info__produce_variable(L, CodeL, ValL, !CI),
-        code_info__produce_variable(R, CodeR, ValR, !CI),
-        Type = code_info__variable_type(!.CI, L),
+        code_info.enter_simple_neg(ResumeVars, GoalInfo, SimpleNeg, !CI),
+        code_info.produce_variable(L, CodeL, ValL, !CI),
+        code_info.produce_variable(R, CodeR, ValR, !CI),
+        Type = code_info.variable_type(!.CI, L),
         ( Type = builtin(string) ->
             Op = str_eq
         ; Type = builtin(float) ->
@@ -270,7 +270,7 @@ generate_negation(AddTrailOps, CodeModel, Goal0, NotGoalInfo, Code,
         TestCode = node([
             if_val(binop(Op, ValL, ValR), CodeAddr) - "test inequality"
         ]),
-        code_info__leave_simple_neg(GoalInfo, SimpleNeg, !CI),
+        code_info.leave_simple_neg(GoalInfo, SimpleNeg, !CI),
         Code = tree(tree(CodeL, CodeR), TestCode)
     ;
         generate_negation_general(AddTrailOps, CodeModel, Goal, NotGoalInfo,
@@ -287,15 +287,15 @@ generate_negation(AddTrailOps, CodeModel, Goal0, NotGoalInfo, Code,
 generate_negation_general(AddTrailOps, CodeModel, Goal, NotGoalInfo,
         ResumeVars, ResumeLocs, Code, !CI) :-
 
-    code_info__produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
+    code_info.produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
     %
     % Maybe save the heap state current before the condition; this ought to be
     % after we make the failure continuation because that causes the cache to
     % get flushed.
     %
-    code_info__get_globals(!.CI, Globals),
+    code_info.get_globals(!.CI, Globals),
     (
-        globals__lookup_bool_option(Globals,
+        globals.lookup_bool_option(Globals,
             reclaim_heap_on_semidet_failure, yes),
         goal_may_allocate_heap(Goal)
     ->
@@ -303,32 +303,32 @@ generate_negation_general(AddTrailOps, CodeModel, Goal, NotGoalInfo,
     ;
         ReclaimHeap = no
     ),
-    code_info__maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI),
+    code_info.maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI),
 
-    code_info__maybe_save_ticket(AddTrailOps, SaveTicketCode,
+    code_info.maybe_save_ticket(AddTrailOps, SaveTicketCode,
         MaybeTicketSlot, !CI),
 
-    code_info__prepare_for_ite_hijack(CodeModel, HijackInfo,
+    code_info.prepare_for_ite_hijack(CodeModel, HijackInfo,
         PrepareHijackCode, !CI),
 
-    code_info__make_resume_point(ResumeVars, ResumeLocs, ResumeMap,
+    code_info.make_resume_point(ResumeVars, ResumeLocs, ResumeMap,
         ResumePoint, !CI),
-    code_info__effect_resume_point(ResumePoint, CodeModel,
+    code_info.effect_resume_point(ResumePoint, CodeModel,
         EffectResumeCode, !CI),
 
     % Generate the negated goal as a semi-deterministic goal; it cannot be
     % nondet, since mode correctness requires it to have no output vars.
-    trace__maybe_generate_internal_event_code(Goal, NotGoalInfo,
+    trace.maybe_generate_internal_event_code(Goal, NotGoalInfo,
         EnterTraceCode, !CI),
-    code_gen__generate_goal(model_semi, Goal, GoalCode, !CI),
+    code_gen.generate_goal(model_semi, Goal, GoalCode, !CI),
 
-    code_info__ite_enter_then(HijackInfo, ThenNeckCode, ElseNeckCode, !CI),
+    code_info.ite_enter_then(HijackInfo, ThenNeckCode, ElseNeckCode, !CI),
 
     % Kill again any variables that have become zombies.
-    code_info__pickup_zombies(Zombies, !CI),
-    code_info__make_vars_forward_dead(Zombies, !CI),
+    code_info.pickup_zombies(Zombies, !CI),
+    code_info.make_vars_forward_dead(Zombies, !CI),
 
-    code_info__get_forward_live_vars(!.CI, LiveVars),
+    code_info.get_forward_live_vars(!.CI, LiveVars),
 
     ( CodeModel = model_det ->
         % The then branch will never be reached.
@@ -336,31 +336,31 @@ generate_negation_general(AddTrailOps, CodeModel, Goal, NotGoalInfo,
         FailTraceCode = empty,
         FailCode = empty
     ;
-        code_info__remember_position(!.CI, AfterNegatedGoal),
+        code_info.remember_position(!.CI, AfterNegatedGoal),
         % The call to reset_ticket(..., commit) here is necessary
         % in order to properly detect floundering.
-        code_info__maybe_release_hp(MaybeHpSlot, !CI),
-        code_info__maybe_reset_prune_and_release_ticket(MaybeTicketSlot,
+        code_info.maybe_release_hp(MaybeHpSlot, !CI),
+        code_info.maybe_reset_prune_and_release_ticket(MaybeTicketSlot,
             commit, PruneTicketCode, !CI),
-        trace__maybe_generate_negated_event_code(Goal, NotGoalInfo,
+        trace.maybe_generate_negated_event_code(Goal, NotGoalInfo,
             neg_failure, FailTraceCode, !CI),
-        code_info__generate_failure(FailCode, !CI),
+        code_info.generate_failure(FailCode, !CI),
         % We want liveness after not(G) to be the same as after G.
         % Information about what variables are where will be set
-        % by code_info__generate_resume_point.
-        code_info__reset_to_position(AfterNegatedGoal, !CI)
+        % by code_info.generate_resume_point.
+        code_info.reset_to_position(AfterNegatedGoal, !CI)
     ),
 
     % Generate the entry to the else branch.
-    code_info__generate_resume_point(ResumePoint, ResumeCode, !CI),
+    code_info.generate_resume_point(ResumePoint, ResumeCode, !CI),
 
-    code_info__set_forward_live_vars(LiveVars, !CI),
+    code_info.set_forward_live_vars(LiveVars, !CI),
 
     % Restore the heap pointer and solver state if necessary.
-    code_info__maybe_restore_and_release_hp(MaybeHpSlot, RestoreHpCode, !CI),
-    code_info__maybe_reset_discard_and_release_ticket(MaybeTicketSlot, undo,
+    code_info.maybe_restore_and_release_hp(MaybeHpSlot, RestoreHpCode, !CI),
+    code_info.maybe_reset_discard_and_release_ticket(MaybeTicketSlot, undo,
         RestoreTicketCode, !CI),
-    trace__maybe_generate_negated_event_code(Goal, NotGoalInfo,
+    trace.maybe_generate_negated_event_code(Goal, NotGoalInfo,
         neg_success, SuccessTraceCode, !CI),
 
     make_pneg_context_wrappers(Globals, NotGoalInfo, PNegCondCode,
@@ -405,13 +405,13 @@ generate_negation_general(AddTrailOps, CodeModel, Goal, NotGoalInfo,
 
 make_pneg_context_wrappers(Globals, GoalInfo, PNegCondCode, PNegThenCode,
         PNegElseCode) :-
-    globals__lookup_bool_option(Globals, use_minimal_model_stack_copy_pneg,
+    globals.lookup_bool_option(Globals, use_minimal_model_stack_copy_pneg,
         UseMinimalModelStackCopyPNeg),
     (
         UseMinimalModelStackCopyPNeg = yes,
         goal_info_get_context(GoalInfo, Context),
-        term__context_file(Context, File),
-        term__context_line(Context, Line),
+        term.context_file(Context, File),
+        term.context_line(Context, Line),
         (
             File \= "",
             Line > 0
@@ -424,17 +424,17 @@ make_pneg_context_wrappers(Globals, GoalInfo, PNegCondCode, PNegThenCode,
         PNegCondComponents = [
             pragma_c_raw_code(
                 wrap_transient("\t\tMR_pneg_enter_cond();\n"),
-                cannot_branch_away, live_lvals_info(set__init))
+                cannot_branch_away, live_lvals_info(set.init))
         ],
         PNegThenComponents = [
             pragma_c_raw_code(
                 wrap_transient("\t\tMR_pneg_enter_then();\n"),
-                cannot_branch_away, live_lvals_info(set__init))
+                cannot_branch_away, live_lvals_info(set.init))
         ],
         PNegElseComponents = [
             pragma_c_raw_code(
                 wrap_transient("\t\tMR_pneg_enter_else(" ++ CtxtStr ++ ");\n"),
-                cannot_branch_away, live_lvals_info(set__init))
+                cannot_branch_away, live_lvals_info(set.init))
         ],
         PNegCondCode = node([
             pragma_c([], PNegCondComponents, will_not_call_mercury,
@@ -458,7 +458,7 @@ make_pneg_context_wrappers(Globals, GoalInfo, PNegCondCode, PNegThenCode,
 :- func wrap_transient(string) = string.
 
 wrap_transient(Code) =
-    string__append_list([
+    string.append_list([
         "\t\tMR_save_transient_registers();\n",
         Code,
         "\t\tMR_restore_transient_registers();\n"]).

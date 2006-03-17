@@ -28,7 +28,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds__stratify.
+:- module check_hlds.stratify.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -75,14 +75,14 @@
 :- import_module std_util.
 :- import_module string.
 
-stratify__check_stratification(!ModuleInfo, !IO) :-
+check_stratification(!ModuleInfo, !IO) :-
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
 
     hlds_dependency_info_get_dependency_graph(DepInfo, DepGraph0),
-    relation__atsort(DepGraph0, FOSCCs1),
+    relation.atsort(DepGraph0, FOSCCs1),
     dep_sets_to_lists_and_sets(FOSCCs1, [], FOSCCs),
-    globals__io_lookup_bool_option(warn_non_stratification, Warn, !IO),
+    globals.io_lookup_bool_option(warn_non_stratification, Warn, !IO),
     module_info_get_stratified_preds(!.ModuleInfo, StratifiedPreds),
     first_order_check_sccs(FOSCCs, StratifiedPreds, Warn, !ModuleInfo, !IO).
 
@@ -92,7 +92,7 @@ stratify__check_stratification(!ModuleInfo, !IO) :-
     % higher order proc is hidden in some complex data structure
     %
     % gen_conservative_graph(Module2, DepGraph0, DepGraph, HOInfo),
-    % relation__atsort(DepGraph, HOSCCs1),
+    % relation.atsort(DepGraph, HOSCCs1),
     % dep_sets_to_lists_and_sets(HOSCCs1, [], HOSCCs),
     % higher_order_check_sccs(HOSCCs, HOInfo, !ModuleInfo, !IO).
 
@@ -104,9 +104,9 @@ stratify__check_stratification(!ModuleInfo, !IO) :-
 
 dep_sets_to_lists_and_sets([], !DepList).
 dep_sets_to_lists_and_sets([PredProcSet | PredProcSets], !DepList) :-
-    set__to_sorted_list(PredProcSet, PredProcList),
-    list__map(get_proc_id, PredProcList, ProcList),
-    set__list_to_set(ProcList, ProcSet),
+    set.to_sorted_list(PredProcSet, PredProcList),
+    list.map(get_proc_id, PredProcList, ProcList),
+    set.list_to_set(ProcList, ProcSet),
     !:DepList = [PredProcList - ProcSet | !.DepList],
         dep_sets_to_lists_and_sets(PredProcSets, !DepList).
 
@@ -125,8 +125,8 @@ first_order_check_sccs([], _, _, !ModuleInfo, !IO).
 first_order_check_sccs([SCCl - SCCs | Rest], StratifiedPreds, Warn0,
         !ModuleInfo, !IO) :-
     (
-        set__intersect(SCCs, StratifiedPreds, Intersection),
-        set__empty(Intersection)
+        set.intersect(SCCs, StratifiedPreds, Intersection),
+        set.empty(Intersection)
     ->
         Warn = Warn0
     ;
@@ -155,7 +155,7 @@ first_order_check_scc_2([PredProcId | Remaining], WholeScc, Error, !ModuleInfo,
     PredProcId = proc(PredId, ProcId),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     pred_info_procedures(PredInfo, ProcTable),
-    map__lookup(ProcTable, ProcId, Proc),
+    map.lookup(ProcTable, ProcId, Proc),
     proc_info_goal(Proc, Goal - GoalInfo),
     first_order_check_goal(Goal, GoalInfo, no, WholeScc,
         PredProcId, Error, !ModuleInfo, !IO),
@@ -199,7 +199,7 @@ first_order_check_goal(foreign_proc(_Attributes, CPred, CProc, _, _, _),
         !ModuleInfo, !IO) :-
     (
         Negated = yes,
-        list__member(proc(CPred, CProc),  WholeScc)
+        list.member(proc(CPred, CProc),  WholeScc)
     ->
         goal_info_get_context(GoalInfo, Context),
         emit_message(ThisPredProcId, Context,
@@ -214,7 +214,7 @@ first_order_check_goal(call(CPred, CProc, _Args, _BuiltinState, _Contex, _Sym),
     Callee = proc(CPred, CProc),
     (
         Negated = yes,
-        list__member(Callee, WholeScc)
+        list.member(Callee, WholeScc)
     ->
         goal_info_get_context(GInfo, Context),
         emit_message(ThisPredProcId, Context,
@@ -277,21 +277,21 @@ higher_order_check_scc([PredProcId | Remaining], WholeScc, HOInfo,
         !ModuleInfo, !IO) :-
     PredProcId = proc(PredId, ProcId),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    globals__io_lookup_bool_option(warn_non_stratification, Warn, !IO),
+    globals.io_lookup_bool_option(warn_non_stratification, Warn, !IO),
     Error = no,
     (
         Warn = yes,
-        map__search(HOInfo, PredProcId, HigherOrderInfo)
+        map.search(HOInfo, PredProcId, HigherOrderInfo)
     ->
         HigherOrderInfo = info(HOCalls, _),
-        set__intersect(HOCalls, WholeScc, HOLoops),
-        ( set__empty(HOLoops) ->
+        set.intersect(HOCalls, WholeScc, HOLoops),
+        ( set.empty(HOLoops) ->
             HighOrderLoops = no
         ;
             HighOrderLoops = yes
         ),
         pred_info_procedures(PredInfo, ProcTable),
-        map__lookup(ProcTable, ProcId, Proc),
+        map.lookup(ProcTable, ProcId, Proc),
         proc_info_goal(Proc, Goal - GoalInfo),
         higher_order_check_goal(Goal, GoalInfo, no, WholeScc,
             PredProcId, HighOrderLoops, Error, !ModuleInfo, !IO)
@@ -439,9 +439,9 @@ higher_order_check_case_list([Case | Goals], Negated, WholeScc, ThisPredProcId,
 
 gen_conservative_graph(ModuleInfo, !DepGraph, HOInfo) :-
     get_call_info(ModuleInfo, ProcCalls, HOInfo0, CallsHO),
-    map__keys(ProcCalls, Callers),
+    map.keys(ProcCalls, Callers),
     iterate_solution(Callers, ProcCalls, CallsHO, HOInfo0, HOInfo),
-    map__to_assoc_list(HOInfo, HOInfoL),
+    map.to_assoc_list(HOInfo, HOInfoL),
     add_new_arcs(HOInfoL, CallsHO, !DepGraph).
 
     % For a given module, collects for each non imported procedure
@@ -453,9 +453,9 @@ gen_conservative_graph(ModuleInfo, !DepGraph, HOInfo) :-
     set(pred_proc_id)::out) is det.
 
 get_call_info(ModuleInfo, !:ProcCalls, !:HOInfo, !:CallsHO) :-
-    map__init(!:ProcCalls),
-    map__init(!:HOInfo),
-    set__init(!:CallsHO),
+    map.init(!:ProcCalls),
+    map.init(!:HOInfo),
+    set.init(!:CallsHO),
     module_info_predids(ModuleInfo, PredIds),
     expand_predids(PredIds, ModuleInfo, !ProcCalls, !HOInfo, !CallsHO).
 
@@ -483,8 +483,8 @@ iterate_solution(PredProcs, ProcCalls, CallsHO, !HOInfo) :-
 
 tc([], _, _, !HOInfo, !Changed).
 tc([PredProcId | PredProcIds], ProcCalls, CallsHO, !HOInfo, !Changed) :-
-    map__lookup(ProcCalls, PredProcId, PCalls),
-    set__to_sorted_list(PCalls, PCallsL),
+    map.lookup(ProcCalls, PredProcId, PCalls),
+    set.to_sorted_list(PCalls, PCallsL),
     merge_calls(PCallsL, PredProcId, CallsHO, yes, !HOInfo, !Changed),
     tc(PredProcIds, ProcCalls, CallsHO, !HOInfo, !Changed).
 
@@ -498,8 +498,8 @@ tc([PredProcId | PredProcIds], ProcCalls, CallsHO, !HOInfo, !Changed) :-
 
 merge_calls([], _, _, _, !HOInfo, !Changed).
 merge_calls([C | Cs], P, CallsHO, DoingFirstOrder, !HOInfo, !Changed) :-
-    ( map__search(!.HOInfo, C, CInfo) ->
-        map__lookup(!.HOInfo, P, PInfo),
+    ( map.search(!.HOInfo, C, CInfo) ->
+        map.lookup(!.HOInfo, P, PInfo),
         CInfo = info(CHaveAT0, CHOInOut),
         PInfo = info(PHaveAT0, PHOInOut),
         % First merge the first order info, if we need to.
@@ -508,19 +508,19 @@ merge_calls([C | Cs], P, CallsHO, DoingFirstOrder, !HOInfo, !Changed) :-
         ;
             (
                 CHOInOut = ho_in,
-                ( set__subset(PHaveAT0, CHaveAT0) ->
+                ( set.subset(PHaveAT0, CHaveAT0) ->
                     CHaveAT = CHaveAT0
                 ;
-                    set__union(PHaveAT0, CHaveAT0, CHaveAT),
+                    set.union(PHaveAT0, CHaveAT0, CHaveAT),
                     !:Changed = yes
                 ),
                 PHaveAT = PHaveAT0
             ;
                 CHOInOut = ho_out,
-                ( set__subset(CHaveAT0, PHaveAT0) ->
+                ( set.subset(CHaveAT0, PHaveAT0) ->
                     PHaveAT = PHaveAT0
                 ;
-                    set__union(CHaveAT0, PHaveAT0, PHaveAT),
+                    set.union(CHaveAT0, PHaveAT0, PHaveAT),
                     !:Changed = yes
                 ),
                 CHaveAT = CHaveAT0
@@ -530,7 +530,7 @@ merge_calls([C | Cs], P, CallsHO, DoingFirstOrder, !HOInfo, !Changed) :-
                     CHaveAT = CHaveAT0,
                     PHaveAT = PHaveAT0
                 ;
-                    set__union(CHaveAT0, PHaveAT0, NewHaveAT),
+                    set.union(CHaveAT0, PHaveAT0, NewHaveAT),
                     CHaveAT = NewHaveAT,
                     PHaveAT = NewHaveAT,
                     !:Changed = yes
@@ -542,17 +542,17 @@ merge_calls([C | Cs], P, CallsHO, DoingFirstOrder, !HOInfo, !Changed) :-
             ),
             NewCInfo = info(CHaveAT, CHOInOut),
             NewPInfo = info(PHaveAT, PHOInOut),
-            map__det_update(!.HOInfo, C, NewCInfo, !:HOInfo),
-            map__det_update(!.HOInfo, P, NewPInfo, !:HOInfo)
+            map.det_update(!.HOInfo, C, NewCInfo, !:HOInfo),
+            map.det_update(!.HOInfo, P, NewPInfo, !:HOInfo)
         ),
         % Then, if we need to, merge the higher order info.
         (
             DoingFirstOrder = yes,
-            set__member(P, CallsHO)
+            set.member(P, CallsHO)
         ->
-            map__lookup(!.HOInfo, P, PHOInfo),
+            map.lookup(!.HOInfo, P, PHOInfo),
             PHOInfo = info(PossibleCalls, _),
-            set__to_sorted_list(PossibleCalls, PossibleCallsL),
+            set.to_sorted_list(PossibleCalls, PossibleCallsL),
             merge_calls(PossibleCallsL, P, CallsHO, no, !HOInfo, !Changed)
         ;
             true
@@ -572,10 +572,10 @@ merge_calls([C | Cs], P, CallsHO, DoingFirstOrder, !HOInfo, !Changed) :-
 add_new_arcs([], _, !DepGraph).
 add_new_arcs([Caller - CallerInfo | Cs], CallsHO, !DepGraph) :-
     % Only add arcs for callers who call higher order procs.
-    ( set__member(Caller, CallsHO) ->
+    ( set.member(Caller, CallsHO) ->
         CallerInfo = info(PossibleCallees0, _),
-        set__to_sorted_list(PossibleCallees0, PossibleCallees),
-        relation__lookup_element(!.DepGraph, Caller, CallerKey),
+        set.to_sorted_list(PossibleCallees0, PossibleCallees),
+        relation.lookup_element(!.DepGraph, Caller, CallerKey),
         add_new_arcs2(PossibleCallees, CallerKey, !DepGraph)
     ;
         true
@@ -587,8 +587,8 @@ add_new_arcs([Caller - CallerInfo | Cs], CallsHO, !DepGraph) :-
 
 add_new_arcs2([], _, !DepGraph).
 add_new_arcs2([Callee | Cs], CallerKey, !DepGraph) :-
-    relation__lookup_element(!.DepGraph, Callee, CalleeKey),
-    relation__add(!.DepGraph, CallerKey, CalleeKey, !:DepGraph),
+    relation.lookup_element(!.DepGraph, Callee, CalleeKey),
+    relation.add(!.DepGraph, CallerKey, CalleeKey, !:DepGraph),
     add_new_arcs2(Cs, CallerKey, !DepGraph).
 
     % For each given pred id, pass all non imported procs onto the
@@ -620,17 +620,17 @@ expand_predids([PredId | PredIds], ModuleInfo, !ProcCalls, !HOInfo,
 process_procs([], _, _, _, _, !ProcCalls, !HOInfo, !CallsHO).
 process_procs([ProcId | Procs], ModuleInfo, PredId, ArgTypes, ProcTable,
         !ProcCalls, !HOInfo, !CallsHO) :-
-    map__lookup(ProcTable, ProcId, ProcInfo),
+    map.lookup(ProcTable, ProcId, ProcInfo),
     proc_info_argmodes(ProcInfo, ArgModes),
     proc_info_goal(ProcInfo, Goal - _GoalInfo),
     PredProcId = proc(PredId, ProcId),
     check_goal(Goal, Calls, HaveAT, CallsHigherOrder),
-    map__det_insert(!.ProcCalls, PredProcId, Calls, !:ProcCalls),
+    map.det_insert(!.ProcCalls, PredProcId, Calls, !:ProcCalls),
     higherorder_in_out(ArgTypes, ArgModes, ModuleInfo, HOInOut),
-    map__det_insert(!.HOInfo, PredProcId, info(HaveAT, HOInOut), !:HOInfo),
+    map.det_insert(!.HOInfo, PredProcId, info(HaveAT, HOInOut), !:HOInfo),
     (
         CallsHigherOrder = yes,
-        set__insert(!.CallsHO, PredProcId, !:CallsHO)
+        set.insert(!.CallsHO, PredProcId, !:CallsHO)
     ;
         CallsHigherOrder = no
     ),
@@ -689,8 +689,8 @@ higherorder_in_out1([Type | Types], [Mode | Modes], ModuleInfo,
     set(pred_proc_id)::out, bool::out) is det.
 
 check_goal(Goal, Calls, TakenAddrs, CallsHO) :-
-    set__init(Calls0),
-    set__init(TakenAddrs0),
+    set.init(Calls0),
+    set.init(TakenAddrs0),
     check_goal1(Goal, Calls0, Calls, TakenAddrs0, TakenAddrs, no, CallsHO).
 
 :- pred check_goal1(hlds_goal_expr::in,
@@ -709,7 +709,7 @@ check_goal1(unify(_Var, RHS, _Mode, Unification, _Context), !Calls,
             _Modes, _Determinism, Goal - _GoalInfo)
     ->
         get_called_procs(Goal, [], CalledProcs),
-        set__insert_list(!.HasAT, CalledProcs, !:HasAT)
+        set.insert_list(!.HasAT, CalledProcs, !:HasAT)
     ;
         % Currently when this pass is run the construct/4 case will not happen
         % as higher order constants have been transformed to lambda goals.
@@ -718,7 +718,7 @@ check_goal1(unify(_Var, RHS, _Mode, Unification, _Context), !Calls,
     ->
         ( ConsId = pred_const(ShroudedPredProcId, _) ->
             PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
-            set__insert(!.HasAT, PredProcId, !:HasAT)
+            set.insert(!.HasAT, PredProcId, !:HasAT)
         ;
             true
         )
@@ -728,7 +728,7 @@ check_goal1(unify(_Var, RHS, _Mode, Unification, _Context), !Calls,
 check_goal1(call(CPred, CProc, _Args, _Builtin, _Contex, _Sym), !Calls,
         !HasAT, !CallsHO) :-
     % Add this call to the call list.
-    set__insert(!.Calls, proc(CPred, CProc), !:Calls).
+    set.insert(!.Calls, proc(CPred, CProc), !:Calls).
 check_goal1(generic_call(_Var, _Vars, _Modes, _Det), !Calls, !HasAT, _, yes).
     % Record that the higher order call was made.
 check_goal1(conj(_ConjType, Goals), !Calls, !HasAT, !CallsHO) :-
@@ -867,7 +867,7 @@ emit_message(PPId, Context, Message, Error, !ModuleInfo, !IO) :-
         ErrOrWarnMsg = words("error:")
     ),
     ErrMsgMiddle = [ ErrOrWarnMsg, words(Message) ],
-    globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     (
         VerboseErrors = yes,
         ErrMsgFinal = [ nl,

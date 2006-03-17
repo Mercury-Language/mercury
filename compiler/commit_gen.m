@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003-2005 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -13,7 +13,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module ll_backend__commit_gen.
+:- module ll_backend.commit_gen.
 :- interface.
 
 :- import_module hlds.code_model.
@@ -47,38 +47,38 @@ generate_commit(AddTrailOps, OuterCodeModel, Goal, Code, !Info) :-
         OuterCodeModel = model_det,
         (
             InnerCodeModel = model_det,
-            code_gen__generate_goal(InnerCodeModel, Goal, Code, !Info)
+            code_gen.generate_goal(InnerCodeModel, Goal, Code, !Info)
         ;
             InnerCodeModel = model_semi,
             unexpected(this_file, "generate_commit: " ++
                 "semidet model in det context")
         ;
             InnerCodeModel = model_non,
-            code_info__prepare_for_det_commit(AddTrailOps, CommitInfo,
+            code_info.prepare_for_det_commit(AddTrailOps, CommitInfo,
                 PreCommit, !Info),
-            code_gen__generate_goal(InnerCodeModel, Goal, GoalCode, !Info),
-            code_info__generate_det_commit(CommitInfo, Commit, !Info),
+            code_gen.generate_goal(InnerCodeModel, Goal, GoalCode, !Info),
+            code_info.generate_det_commit(CommitInfo, Commit, !Info),
             Code = tree(PreCommit, tree(GoalCode, Commit))
         )
     ;
         OuterCodeModel = model_semi,
         (
             InnerCodeModel = model_det,
-            code_gen__generate_goal(InnerCodeModel, Goal, Code, !Info)
+            code_gen.generate_goal(InnerCodeModel, Goal, Code, !Info)
         ;
             InnerCodeModel = model_semi,
-            code_gen__generate_goal(InnerCodeModel, Goal, Code, !Info)
+            code_gen.generate_goal(InnerCodeModel, Goal, Code, !Info)
         ;
             InnerCodeModel = model_non,
-            code_info__prepare_for_semi_commit(AddTrailOps, CommitInfo,
+            code_info.prepare_for_semi_commit(AddTrailOps, CommitInfo,
                 PreCommit, !Info),
-            code_gen__generate_goal(InnerCodeModel, Goal, GoalCode, !Info),
-            code_info__generate_semi_commit(CommitInfo, Commit, !Info),
+            code_gen.generate_goal(InnerCodeModel, Goal, GoalCode, !Info),
+            code_info.generate_semi_commit(CommitInfo, Commit, !Info),
             Code = tree(PreCommit, tree(GoalCode, Commit))
         )
     ;
         OuterCodeModel = model_non,
-        code_gen__generate_goal(InnerCodeModel, Goal, Code, !Info)
+        code_gen.generate_goal(InnerCodeModel, Goal, Code, !Info)
     ).
 
 %---------------------------------------------------------------------------%

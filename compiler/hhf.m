@@ -17,7 +17,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module hlds__hhf.
+:- module hlds.hhf.
 :- interface.
 
 :- import_module hlds.hlds_pred.
@@ -69,7 +69,7 @@ process_pred(Simple, PredId, !ModuleInfo, !IO) :-
         clauses_info_varset(ClausesInfo, VarSet),
         some [!IG] (
             !:IG = PredInfo0 ^ inst_graph_info,
-            inst_graph__init(HeadVars, InstGraph),
+            inst_graph.init(HeadVars, InstGraph),
             !:IG = !.IG ^ implementation_inst_graph := InstGraph,
             !:IG = !.IG ^ interface_inst_graph := InstGraph,
             !:IG = !.IG ^ interface_vars := HeadVars,
@@ -94,8 +94,8 @@ process_pred(Simple, PredId, !ModuleInfo, !IO) :-
             !:IG = !.IG ^ interface_inst_graph := ImplementationInstGraph,
             solutions(
                 (pred(V::out) is nondet :-
-                    list__member(V0, HeadVars),
-                    inst_graph__reachable(ImplementationInstGraph,
+                    list.member(V0, HeadVars),
+                    inst_graph.reachable(ImplementationInstGraph,
                     V0, V)
                 ), InterfaceVars),
             !:IG = !.IG ^ interface_vars := InterfaceVars,
@@ -114,17 +114,17 @@ process_pred(Simple, PredId, !ModuleInfo, !IO) :-
 %       pred_info_clauses_info(PredInfo2, ClausesInfo2),
 %       clauses_info_headvars(ClausesInfo2, HeadVars),
 %       clauses_info_varset(ClausesInfo2, VarSet),
-%       inst_graph__init(HeadVars, InterfaceInstGraph),
+%       inst_graph.init(HeadVars, InterfaceInstGraph),
 %       InstGraphInfo0 = ( (PredInfo2 ^ inst_graph_info)
 %           ^ interface_inst_graph := InterfaceInstGraph )
 %           ^ interface_varset := VarSet,
-%       map__foldl(process_proc(ModuleInfo0, HeadVars),
+%       map.foldl(process_proc(ModuleInfo0, HeadVars),
 %           Procedures, InstGraphInfo0, InstGraphInfo1),
 % 
 %       % Calculate interface vars.
 %       solutions((pred(V::out) is nondet :-
-%               list__member(V0, HeadVars),
-%               inst_graph__reachable(InstGraph, V0, V)
+%               list.member(V0, HeadVars),
+%               inst_graph.reachable(InstGraph, V0, V)
 %           ), InterfaceVars),
 %       InstGraphInfo = InstGraphInfo1 ^ interface_vars :=
 %           InterfaceVars,
@@ -138,7 +138,7 @@ process_pred(Simple, PredId, !ModuleInfo, !IO) :-
 process_clauses_info(Simple, ModuleInfo, !ClausesInfo, InstGraph) :-
     clauses_info_varset(!.ClausesInfo, VarSet0),
     clauses_info_vartypes(!.ClausesInfo, VarTypes0),
-    inst_graph__init(VarTypes0 ^ keys, InstGraph0),
+    inst_graph.init(VarTypes0 ^ keys, InstGraph0),
     Info0 = hhf_info(InstGraph0, VarSet0, VarTypes0),
 
     clauses_info_headvars(!.ClausesInfo, HeadVars),
@@ -152,7 +152,7 @@ process_clauses_info(Simple, ModuleInfo, !ClausesInfo, InstGraph) :-
     %   Info1 = Info0
     %;
     %   Simple = no,
-        list__map_foldl(process_clause(HeadVars),
+        list.map_foldl(process_clause(HeadVars),
             Clauses0, Clauses, Info0, Info1)
     ),
 
@@ -165,7 +165,7 @@ process_clauses_info(Simple, ModuleInfo, !ClausesInfo, InstGraph) :-
     Info = hhf_info(InstGraph1, VarSet, VarTypes),
     (
         Simple = yes,
-        inst_graph__init(VarTypes ^ keys, InstGraph)
+        inst_graph.init(VarTypes ^ keys, InstGraph)
     ;
         Simple = no,
         InstGraph = InstGraph1
@@ -173,8 +173,8 @@ process_clauses_info(Simple, ModuleInfo, !ClausesInfo, InstGraph) :-
 
     % XXX do we need this (it slows things down a lot (i.e. uses 50%
     % of the runtime).
-    % varset__vars(VarSet1, Vars1),
-    % varset__ensure_unique_names(Vars1, "_", VarSet1, VarSet),
+    % varset.vars(VarSet1, Vars1),
+    % varset.ensure_unique_names(Vars1, "_", VarSet1, VarSet),
 
     clauses_info_set_varset(VarSet, !ClausesInfo),
     clauses_info_set_vartypes(VarTypes, !ClausesInfo).
@@ -237,7 +237,7 @@ process_goal_expr(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI) :-
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = conj(ConjType, Goals0),
-        list__map_foldl(process_goal(NonLocals), Goals0, Goals1, !HI),
+        list.map_foldl(process_goal(NonLocals), Goals0, Goals1, !HI),
         (
             ConjType = plain_conj,
             flatten_conj(Goals1, Goals)
@@ -248,7 +248,7 @@ process_goal_expr(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI) :-
         GoalExpr = conj(ConjType, Goals)
     ;
         GoalExpr0 = disj(Goals0),
-        list__map_foldl(goal_use_own_nonlocals, Goals0, Goals, !HI),
+        list.map_foldl(goal_use_own_nonlocals, Goals0, Goals, !HI),
         GoalExpr = disj(Goals)
     ;
         GoalExpr0 = switch(_, _, _),
@@ -294,8 +294,8 @@ process_unify(functor(ConsId0, IsExistConstruct, ArgsA), NonLocals, GoalInfo0,
     TypeOfX = !.HI ^ vartypes ^ det_elem(X),
     qualify_cons_id(TypeOfX, ArgsA, ConsId0, _, ConsId),
     InstGraph0 = !.HI ^ inst_graph,
-    map__lookup(InstGraph0, X, node(Functors0, MaybeParent)),
-    ( map__search(Functors0, ConsId, ArgsB) ->
+    map.lookup(InstGraph0, X, node(Functors0, MaybeParent)),
+    ( map.search(Functors0, ConsId, ArgsB) ->
         make_unifications(ArgsA, ArgsB, GoalInfo0, Mode, Unif, Context,
             Unifications),
         Args = ArgsB
@@ -303,14 +303,14 @@ process_unify(functor(ConsId0, IsExistConstruct, ArgsA), NonLocals, GoalInfo0,
         add_unifications(ArgsA, NonLocals, GoalInfo0, Mode, Unif, Context,
             Args, Unifications, !HI),
         InstGraph1 = !.HI ^ inst_graph,
-        map__det_insert(Functors0, ConsId, Args, Functors),
-        map__det_update(InstGraph1, X, node(Functors, MaybeParent),
+        map.det_insert(Functors0, ConsId, Args, Functors),
+        map.det_update(InstGraph1, X, node(Functors, MaybeParent),
             InstGraph2),
-        list__foldl(inst_graph__set_parent(X), Args, InstGraph2, InstGraph),
+        list.foldl(inst_graph.set_parent(X), Args, InstGraph2, InstGraph),
         !:HI = !.HI ^ inst_graph := InstGraph
     ),
     goal_info_get_nonlocals(GoalInfo0, GINonlocals0),
-    GINonlocals = GINonlocals0 `set__union` list_to_set(Args),
+    GINonlocals = GINonlocals0 `set.union` list_to_set(Args),
     goal_info_set_nonlocals(GINonlocals, GoalInfo0, GoalInfo),
     UnifyGoal = unify(X, functor(ConsId, IsExistConstruct, Args),
         Mode, Unif, Context) - GoalInfo,
@@ -328,7 +328,7 @@ make_unifications([], [_ | _], _, _, _, _, _) :-
 make_unifications([A | As], [B | Bs], GI0, M, U, C,
         [unify(A, var(B), M, U, C) - GI | Us]) :-
     goal_info_get_nonlocals(GI0, GINonlocals0),
-    GINonlocals = GINonlocals0 `set__insert` A `set__insert` B,
+    GINonlocals = GINonlocals0 `set.insert` A `set.insert` B,
     goal_info_set_nonlocals(GINonlocals, GI0, GI),
     make_unifications(As, Bs, GI0, M, U, C, Us).
 
@@ -342,24 +342,24 @@ add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals, !HI) :-
     InstGraph0 = !.HI ^ inst_graph,
     (
         ( 
-            map__lookup(InstGraph0, A, Node),
+            map.lookup(InstGraph0, A, Node),
             Node = node(_, parent(_))
         ;
-            A `set__member` NonLocals
+            A `set.member` NonLocals
         )
     ->
         VarSet0 = !.HI ^ varset,
         VarTypes0 = !.HI ^ vartypes,
-        varset__new_var(VarSet0, V, VarSet),
-        map__lookup(VarTypes0, A, Type),
-        map__det_insert(VarTypes0, V, Type, VarTypes),
-        map__init(Empty),
-        map__det_insert(InstGraph0, V, node(Empty, top_level), InstGraph),
+        varset.new_var(VarSet0, V, VarSet),
+        map.lookup(VarTypes0, A, Type),
+        map.det_insert(VarTypes0, V, Type, VarTypes),
+        map.init(Empty),
+        map.det_insert(InstGraph0, V, node(Empty, top_level), InstGraph),
         !:HI = !.HI ^ varset := VarSet,
         !:HI = !.HI ^ vartypes := VarTypes,
         !:HI = !.HI ^ inst_graph := InstGraph,
         goal_info_get_nonlocals(GI0, GINonlocals0),
-        GINonlocals = GINonlocals0 `set__insert` V,
+        GINonlocals = GINonlocals0 `set.insert` V,
         goal_info_set_nonlocals(GINonlocals, GI0, GI),
         Goals = [unify(A, var(V), M, U, C) - GI | Goals0]
     ;
@@ -373,7 +373,7 @@ flatten_conj([], []).
 flatten_conj([Goal | Goals0], Goals) :-
     flatten_conj(Goals0, Goals1),
     ( Goal = conj(plain_conj, SubGoals) - _ ->
-        list__append(SubGoals, Goals1, Goals)
+        list.append(SubGoals, Goals1, Goals)
     ;
         Goals = [Goal | Goals1]
     ).
@@ -383,8 +383,8 @@ flatten_conj([Goal | Goals0], Goals) :-
 
 complete_inst_graph(ModuleInfo, !HI) :-
     InstGraph0 = !.HI ^ inst_graph,
-    map__keys(InstGraph0, Vars),
-    list__foldl(complete_inst_graph_node(ModuleInfo, Vars), Vars, !HI).
+    map.keys(InstGraph0, Vars),
+    list.foldl(complete_inst_graph_node(ModuleInfo, Vars), Vars, !HI).
 
 :- pred complete_inst_graph_node(module_info::in, list(prog_var)::in,
     prog_var::in, hhf_info::in, hhf_info::out) is det.
@@ -392,11 +392,11 @@ complete_inst_graph(ModuleInfo, !HI) :-
 complete_inst_graph_node(ModuleInfo, BaseVars, Var, !HI) :-
     VarTypes0 = !.HI ^ vartypes,
     (
-        map__search(VarTypes0, Var, Type),
+        map.search(VarTypes0, Var, Type),
         type_constructors(Type, ModuleInfo, Constructors),
         type_to_ctor_and_args(Type, TypeId, _)
     ->
-        list__foldl(maybe_add_cons_id(Var, ModuleInfo, BaseVars, TypeId),
+        list.foldl(maybe_add_cons_id(Var, ModuleInfo, BaseVars, TypeId),
             Constructors, !HI)
     ;
         true
@@ -408,15 +408,15 @@ complete_inst_graph_node(ModuleInfo, BaseVars, Var, !HI) :-
 maybe_add_cons_id(Var, ModuleInfo, BaseVars, TypeId, Ctor, !HI) :-
     Ctor = ctor(_, _, Name, Args),
     ConsId = make_cons_id(Name, Args, TypeId),
-    map__lookup(!.HI ^ inst_graph, Var, node(Functors0, MaybeParent)),
-    ( map__contains(Functors0, ConsId) ->
+    map.lookup(!.HI ^ inst_graph, Var, node(Functors0, MaybeParent)),
+    ( map.contains(Functors0, ConsId) ->
         true
     ;
-        list__map_foldl(add_cons_id(Var, ModuleInfo, BaseVars),
-            Args, NewVars, !HI),
-        map__det_insert(Functors0, ConsId, NewVars, Functors),
+        list.map_foldl(add_cons_id(Var, ModuleInfo, BaseVars), Args, NewVars,
+            !HI),
+        map.det_insert(Functors0, ConsId, NewVars, Functors),
         !:HI = !.HI ^ inst_graph :=
-            map__det_update(!.HI ^ inst_graph, Var,
+            map.det_update(!.HI ^ inst_graph, Var,
                 node(Functors, MaybeParent))
     ).
 
@@ -433,10 +433,10 @@ add_cons_id(Var, ModuleInfo, BaseVars, Arg, NewVar, !HI) :-
     ->
         NewVar = NewVar0
     ;
-        varset__new_var(VarSet0, NewVar, VarSet),
-        map__det_insert(VarTypes0, NewVar, ArgType, VarTypes),
-        map__init(Empty),
-        map__det_insert(InstGraph0, NewVar, node(Empty, parent(Var)),
+        varset.new_var(VarSet0, NewVar, VarSet),
+        map.det_insert(VarTypes0, NewVar, ArgType, VarTypes),
+        map.init(Empty),
+        map.det_insert(InstGraph0, NewVar, node(Empty, parent(Var)),
             InstGraph),
         !:HI = hhf_info(InstGraph, VarSet, VarTypes),
         complete_inst_graph_node(ModuleInfo, BaseVars, NewVar, !HI)
@@ -447,13 +447,13 @@ add_cons_id(Var, ModuleInfo, BaseVars, Arg, NewVar, !HI) :-
 
 find_var_with_type(Var0, Type, InstGraph, VarTypes, BaseVars, Var) :-
     (
-        map__search(VarTypes, Var0, Type0),
+        map.search(VarTypes, Var0, Type0),
         same_type(Type0, Type)
     ->
         Var = Var0
     ;
-        map__lookup(InstGraph, Var0, node(_, parent(Var1))),
-        \+ Var1 `list__member` BaseVars,
+        map.lookup(InstGraph, Var0, node(_, parent(Var1))),
+        \+ Var1 `list.member` BaseVars,
         find_var_with_type(Var1, Type, InstGraph, VarTypes, BaseVars, Var)
     ).
 
@@ -500,18 +500,18 @@ same_type_list([A | As], [B | Bs]) :-
 %   proc_info_argmodes(ProcInfo, ArgModes),
 % 
 %   mode_list_get_initial_insts(ArgModes, ModuleInfo, InstsI),
-%   assoc_list__from_corresponding_lists(HeadVars, InstsI, VarInstsI),
-%   list__foldl(process_arg(ModuleInfo), VarInstsI, Info0, Info),
+%   assoc_list.from_corresponding_lists(HeadVars, InstsI, VarInstsI),
+%   list.foldl(process_arg(ModuleInfo), VarInstsI, Info0, Info),
 % 
 %   mode_list_get_final_insts(ArgModes, ModuleInfo, InstsF),
-%   assoc_list__from_corresponding_lists(HeadVars, InstsF, VarInstsF),
-%   list__foldl(process_arg(ModuleInfo), VarInstsF, Info0, Info).
+%   assoc_list.from_corresponding_lists(HeadVars, InstsF, VarInstsF),
+%   list.foldl(process_arg(ModuleInfo), VarInstsF, Info0, Info).
 % 
 % :- pred process_arg(module_info::in, pair(prog_var, inst)::in,
 %       inst_graph_info::in, inst_graph_info::out) is det.
 % 
 % process_arg(ModuleInfo, Var - Inst, Info0, Info) :-
-%   map__init(Seen0),
+%   map.init(Seen0),
 %   process_arg_inst(ModuleInfo, Var, Seen0, Inst, Info0, Info).
 % 
 % :- pred process_arg_inst(module_info::in, prog_var::in,
@@ -520,11 +520,11 @@ same_type_list([A | As], [B | Bs]) :-
 % 
 % process_arg_inst(ModuleInfo, Var, Seen0, Inst0, Info0, Info) :-
 %   ( Inst0 = defined_inst(InstName) ->
-%       map__det_insert(Seen0, InstName, Var, Seen),
+%       map.det_insert(Seen0, InstName, Var, Seen),
 %       inst_lookup(ModuleInfo, InstName, Inst),
 %       process_arg_inst(Inst, ModuleInfo, Var, Seen, Info0, Info)
 %   ; Inst0 = bound(_, BoundInsts) ->
-%       list__foldl(process_bound_inst(ModuleInfo, Var, Seen0),
+%       list.foldl(process_bound_inst(ModuleInfo, Var, Seen0),
 %           BoundInts, Info0, Info)
 %   ;
 %       Info = Info0

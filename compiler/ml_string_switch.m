@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,7 +17,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ml_backend__ml_string_switch.
+:- module ml_backend.ml_string_switch.
 :- interface.
 
 :- import_module backend_libs.switch_util.
@@ -27,7 +27,7 @@
 :- import_module parse_tree.prog_data.
 
 :- pred generate(cases_list::in, prog_var::in, code_model::in, can_fail::in,
-    prog_context::in, mlds__defns::out, statements::out,
+    prog_context::in, mlds_defns::out, statements::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -55,7 +55,7 @@
 :- import_module string.
 
 generate(Cases, Var, CodeModel, _CanFail, Context, Decls, Statements, !Info) :-
-    MLDS_Context = mlds__make_context(Context),
+    MLDS_Context = mlds_make_context(Context),
     % Compute the value we're going to switch on.
 
     ml_gen_var(!.Info, Var, VarLval),
@@ -66,17 +66,17 @@ generate(Cases, Var, CodeModel, _CanFail, Context, Decls, Statements, !Info) :-
     %   MR_String str;
 
     ml_gen_info_new_cond_var(SlotVarSeq, !Info),
-    SlotVarName = mlds__var_name(
-        string__format("slot_%d", [i(SlotVarSeq)]), no),
-    SlotVarType = mlds__native_int_type,
+    SlotVarName = mlds_var_name(
+        string.format("slot_%d", [i(SlotVarSeq)]), no),
+    SlotVarType = mlds_native_int_type,
     SlotVarGCTraceCode = no, % never need to trace ints
     SlotVarDefn = ml_gen_mlds_var_decl(var(SlotVarName), SlotVarType,
         SlotVarGCTraceCode, MLDS_Context),
     ml_gen_var_lval(!.Info, SlotVarName, SlotVarType, SlotVarLval),
 
     ml_gen_info_new_cond_var(StringVarSeq, !Info),
-    StringVarName = mlds__var_name(
-        string__format("str_%d", [i(StringVarSeq)]), no),
+    StringVarName = mlds_var_name(
+        string.format("str_%d", [i(StringVarSeq)]), no),
     StringVarType = ml_string_type,
     % This variable always points to an element of the string_table array,
     % which are all static constants; it can never point into the heap.
@@ -95,16 +95,16 @@ generate(Cases, Var, CodeModel, _CanFail, Context, Decls, Statements, !Info) :-
     % of cases up to the nearest power of two, and then double it. This should
     % hopefully ensure that we don't get too many hash collisions.
     %
-    list__length(Cases, NumCases),
-    int__log2(NumCases, LogNumCases),
-    int__pow(2, LogNumCases, RoundedNumCases),
+    list.length(Cases, NumCases),
+    int.log2(NumCases, LogNumCases),
+    int.pow(2, LogNumCases, RoundedNumCases),
     TableSize = 2 * RoundedNumCases,
     HashMask = TableSize - 1,
 
     % Compute the hash table.
-    switch_util__string_hash_cases(Cases, HashMask, HashValsMap),
-    map__to_assoc_list(HashValsMap, HashValsList),
-    switch_util__calc_hash_slots(HashValsList, HashValsMap, HashSlotsMap),
+    switch_util.string_hash_cases(Cases, HashMask, HashValsMap),
+    map.to_assoc_list(HashValsMap, HashValsList),
+    switch_util.calc_hash_slots(HashValsList, HashValsMap, HashSlotsMap),
 
     % Generate the code for when the hash lookup fails.
     ml_gen_failure(CodeModel, Context, FailStatements, !Info),
@@ -120,7 +120,7 @@ generate(Cases, Var, CodeModel, _CanFail, Context, Decls, Statements, !Info) :-
     ml_gen_info_new_const(NextSlotsSeq, !Info),
     ml_format_static_const_name(!.Info, "next_slots_table", NextSlotsSeq,
         NextSlotsName),
-    NextSlotsType = mlds__array_type(SlotVarType),
+    NextSlotsType = mlds_array_type(SlotVarType),
     NextSlotsDefn = ml_gen_static_const_defn(NextSlotsName,
         NextSlotsType, local, init_array(NextSlots), Context),
     ml_gen_var_lval(!.Info, NextSlotsName, NextSlotsType, NextSlotsLval),
@@ -128,7 +128,7 @@ generate(Cases, Var, CodeModel, _CanFail, Context, Decls, Statements, !Info) :-
     ml_gen_info_new_const(StringTableSeq, !Info),
     ml_format_static_const_name(!.Info, "string_table", StringTableSeq,
         StringTableName),
-    StringTableType = mlds__array_type(StringVarType),
+    StringTableType = mlds_array_type(StringVarType),
     StringTableDefn = ml_gen_static_const_defn(StringTableName,
         StringTableType, local, init_array(Strings), Context),
     ml_gen_var_lval(!.Info, StringTableName, StringTableType,
@@ -214,8 +214,8 @@ generate(Cases, Var, CodeModel, _CanFail, Context, Decls, Statements, !Info) :-
 
 :- pred gen_hash_slots(int::in, int::in,
     map(int, hash_slot)::in, code_model::in, prog_context::in,
-    list(mlds__initializer)::out, list(mlds__initializer)::out,
-    list(mlds__switch_case)::out,
+    list(mlds_initializer)::out, list(mlds_initializer)::out,
+    list(mlds_switch_case)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 gen_hash_slots(Slot, TableSize, HashSlotMap, CodeModel, Context, Strings,
@@ -225,7 +225,7 @@ gen_hash_slots(Slot, TableSize, HashSlotMap, CodeModel, Context, Strings,
         NextSlots = [],
         MLDS_Cases = []
     ;
-        MLDS_Context = mlds__make_context(Context),
+        MLDS_Context = mlds_make_context(Context),
         gen_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context, String,
             NextSlot, SlotCases, !Info),
         gen_hash_slots(Slot + 1, TableSize, HashSlotMap, CodeModel, Context,
@@ -236,13 +236,13 @@ gen_hash_slots(Slot, TableSize, HashSlotMap, CodeModel, Context, Strings,
     ).
 
 :- pred gen_hash_slot(int::in, map(int, hash_slot)::in,
-    code_model::in, mlds__context::in, mlds__initializer::out,
-    mlds__initializer::out, list(mlds__switch_case)::out,
+    code_model::in, mlds_context::in, mlds_initializer::out,
+    mlds_initializer::out, list(mlds_switch_case)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 gen_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context,
         init_obj(StringRval), init_obj(NextSlotRval), MLDS_Cases, !Info) :-
-    ( map__search(HashSlotMap, Slot, hash_slot(Case, Next)) ->
+    ( map.search(HashSlotMap, Slot, hash_slot(Case, Next)) ->
         NextSlotRval = const(int_const(Next)),
         Case = case(_, ConsTag, _, Goal),
         ( ConsTag = string_constant(String0) ->
@@ -253,7 +253,7 @@ gen_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context,
         StringRval = const(string_const(String)),
         ml_gen_goal(CodeModel, Goal, GoalStatement, !Info),
 
-        string__append_list(["case """, String, """"], CommentString),
+        string.append_list(["case """, String, """"], CommentString),
         Comment = statement(atomic(comment(CommentString)),
             MLDS_Context),
         CaseStatement = statement(block([], [Comment, GoalStatement]),

@@ -93,8 +93,8 @@
 % functions.
 %
 % Any non-variable arguments to the function are flattened into
-% unification goals (see make_hlds__unravel_unifications) which are
-% placed as pure goals before the function call itself.
+% unification goals (see unravel_unifications in superhomogeneous.m)
+% which are placed as pure goals before the function call itself.
 %
 % Wishlist:
 %   It would be nice to use impure functions in DCG goals as well as
@@ -113,7 +113,7 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds__purity.
+:- module check_hlds.purity.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -199,8 +199,8 @@
 %
 
 puritycheck(FoundTypeError, PostTypecheckError, !HLDS, !IO) :-
-    globals__io_lookup_bool_option(statistics, Statistics, !IO),
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(statistics, Statistics, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
 
     maybe_write_string(Verbose, "% Purity-checking clauses...\n", !IO),
     check_preds_purity(FoundTypeError, PostTypecheckError, !HLDS, !IO),
@@ -218,8 +218,8 @@ check_preds_purity(FoundTypeError, PostTypecheckError, !ModuleInfo, !IO) :-
 
     % Only report error messages for unbound type variables if we didn't get
     % any type errors already; this avoids a lot of spurious diagnostics.
-    ReportTypeErrors = bool__not(FoundTypeError),
-    post_typecheck__finish_preds(PredIds, ReportTypeErrors, NumErrors1,
+    ReportTypeErrors = bool.not(FoundTypeError),
+    post_typecheck.finish_preds(PredIds, ReportTypeErrors, NumErrors1,
         PostTypecheckError, !ModuleInfo, !IO),
 
     check_preds_purity_2(PredIds, !ModuleInfo, NumErrors1, NumErrors, !IO),
@@ -252,7 +252,7 @@ check_preds_purity_2([PredId | PredIds], !ModuleInfo, !NumErrors, !IO) :-
     % Finish processing of promise declarations.
     pred_info_get_goal_type(PredInfo, GoalType),
     ( GoalType = promise(PromiseType) ->
-        post_typecheck__finish_promise(PromiseType, PredId, !ModuleInfo, !IO)
+        post_typecheck.finish_promise(PromiseType, PredId, !ModuleInfo, !IO)
     ;
         true
     ),
@@ -297,9 +297,9 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, NumErrors, !IO) :-
             VarTypes, VarSet, RevMessages, _),
         clauses_info_set_vartypes(VarTypes, !ClausesInfo),
         clauses_info_set_varset(VarSet, !ClausesInfo),
-        Messages = list__reverse(RevMessages),
-        list__foldl(report_post_typecheck_message(ModuleInfo), Messages, !IO),
-        NumErrors0 = list__length(list__filter((pred(error(_)::in) is semidet),
+        Messages = list.reverse(RevMessages),
+        list.foldl(report_post_typecheck_message(ModuleInfo), Messages, !IO),
+        NumErrors0 = list.length(list.filter((pred(error(_)::in) is semidet),
             Messages)),
         clauses_info_set_clauses(Clauses, !ClausesInfo),
         pred_info_set_clauses_info(!.ClausesInfo, !PredInfo)
@@ -333,7 +333,7 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, NumErrors, !IO) :-
 
 repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
     pred_info_procedures(!.PredInfo, Procs0),
-    map__lookup(Procs0, ProcId, ProcInfo0),
+    map.lookup(Procs0, ProcId, ProcInfo0),
     proc_info_goal(ProcInfo0, Goal0),
     proc_info_vartypes(ProcInfo0, VarTypes0),
     proc_info_varset(ProcInfo0, VarSet0),
@@ -345,7 +345,7 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
     proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
     proc_info_set_vartypes(VarTypes, ProcInfo1, ProcInfo2),
     proc_info_set_varset(VarSet, ProcInfo2, ProcInfo),
-    map__det_update(Procs0, ProcId, ProcInfo, Procs),
+    map.det_update(Procs0, ProcId, ProcInfo, Procs),
     pred_info_set_procedures(Procs, !PredInfo),
 
     % A predicate should never become less pure after inlining, so update
@@ -445,7 +445,7 @@ applies_to_all_modes(clause(ClauseProcIds, _, _, _), ProcIds) :-
     ;
         % Otherwise the clause applies to the procids in the list.
         % Check if this is the same as the procids for this procedure.
-        list__sort(ClauseProcIds, SortedIds),
+        list.sort(ClauseProcIds, SortedIds),
         SortedIds = ProcIds
     ).
 
@@ -462,7 +462,7 @@ compute_expr_purity(Goal0, Goal, GoalInfo, ActualPurity, !Info) :-
     ModuleInfo = !.Info ^ module_info,
     (
         RunPostTypecheck = yes,
-        post_typecheck__resolve_pred_overloading(Vars, PredInfo,
+        post_typecheck.resolve_pred_overloading(Vars, PredInfo,
             ModuleInfo, Name0, Name, PredId0, PredId),
         (
             % Convert any calls to private_builtin.unsafe_type_cast
@@ -534,7 +534,7 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity, !Info) :-
             PredInfo0 = !.Info ^ pred_info,
             VarTypes0 = !.Info ^ vartypes,
             VarSet0 = !.Info ^ varset,
-            post_typecheck__resolve_unify_functor(Var, ConsId, Args, Mode,
+            post_typecheck.resolve_unify_functor(Var, ConsId, Args, Mode,
                 Unification, UnifyContext, GoalInfo, ModuleInfo,
                 PredInfo0, PredInfo, VarTypes0, VarTypes, VarSet0, VarSet,
                 Goal1),
@@ -636,7 +636,7 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
     % Check that the purity of the ConsId matches the purity of the
     % variable's type.
     VarTypes = !.Info ^ vartypes,
-    map__lookup(VarTypes, Var, TypeOfVar),
+    map.lookup(VarTypes, Var, TypeOfVar),
     (
         ConsId = cons(PName, _),
         type_is_higher_order(TypeOfVar, TypePurity, PredOrFunc,
@@ -644,8 +644,8 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
     ->
         PredInfo = !.Info ^ pred_info,
         pred_info_typevarset(PredInfo, TVarSet),
-        map__apply_to_list(Args, VarTypes, ArgTypes0),
-        list__append(ArgTypes0, VarArgTypes, PredArgTypes),
+        map.apply_to_list(Args, VarTypes, ArgTypes0),
+        list.append(ArgTypes0, VarArgTypes, PredArgTypes),
         ModuleInfo = !.Info ^ module_info,
         CallerPredInfo = !.Info ^ pred_info,
         pred_info_get_markers(CallerPredInfo, CallerMarkers),
@@ -880,7 +880,7 @@ error_inconsistent_promise(ModuleInfo, PredInfo, PredId, Purity, !IO) :-
     Pieces1 = PredContextPieces ++
         [words("warning: declared"), fixed(PurityName),
         words("but promised pure.")],
-    globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     (
         VerboseErrors = yes,
         Pieces = Pieces1 ++
@@ -932,7 +932,7 @@ warn_unnecessary_promise_pure(ModuleInfo, PredInfo, PredId, PromisedPurity,
         unexpected(this_file, "warn_unnecessary_promise_pure: promise_impure?")
     ),
     Pieces1 = [words("warning: unnecessary `" ++ Pragma ++ "' pragma."), nl],
-    globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     (
         VerboseErrors = yes,
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -998,7 +998,7 @@ error_inferred_impure(ModuleInfo, PredInfo, PredId, Purity, !IO) :-
     post_typecheck_message::in, io::di, io::uo) is det.
 
 report_post_typecheck_message(ModuleInfo, error(Message), !IO) :-
-    io__set_exit_status(1, !IO),
+    io.set_exit_status(1, !IO),
     (
         Message = missing_body_impurity_error(Context, PredId),
         error_missing_body_impurity_decl(ModuleInfo, PredId, Context, !IO)

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,7 +13,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module recompilation__check.
+:- module recompilation.check.
 :- interface.
 
 :- import_module mdbcomp.prim_data.
@@ -88,11 +88,11 @@
 
 should_recompile(ModuleName, FindTargetFiles, FindTimestampFiles,
         Info ^ modules_to_recompile, Info ^ read_modules, !IO) :-
-    globals__io_lookup_bool_option(find_all_recompilation_reasons,
+    globals.io_lookup_bool_option(find_all_recompilation_reasons,
         FindAll, !IO),
-    Info0 = recompilation_check_info(ModuleName, no, [], map__init,
-        init_item_id_set(map__init, map__init, map__init),
-        set__init, some_modules([]), FindAll, []),
+    Info0 = recompilation_check_info(ModuleName, no, [], map.init,
+        init_item_id_set(map.init, map.init, map.init),
+        set.init, some_modules([]), FindAll, []),
     should_recompile_2(no, FindTargetFiles, FindTimestampFiles, ModuleName,
         Info0, Info, !IO).
 
@@ -106,10 +106,10 @@ should_recompile_2(IsSubModule, FindTargetFiles, FindTimestampFiles,
         ModuleName, !Info, !IO) :-
     !:Info = (!.Info ^ module_name := ModuleName) ^ sub_modules := [],
     module_name_to_file_name(ModuleName, ".used", no, UsageFileName, !IO),
-    io__open_input(UsageFileName, MaybeVersionStream, !IO),
+    io.open_input(UsageFileName, MaybeVersionStream, !IO),
     (
         MaybeVersionStream = ok(VersionStream0),
-        io__set_input_stream(VersionStream0, OldInputStream, !IO),
+        io.set_input_stream(VersionStream0, OldInputStream, !IO),
 
         promise_equivalent_solutions [Result, !:IO] (
             should_recompile_3_try(IsSubModule, FindTimestampFiles,
@@ -136,15 +136,15 @@ should_recompile_2(IsSubModule, FindTargetFiles, FindTimestampFiles,
             FindTimestampFiles(ModuleName, TimestampFiles, !IO),
             write_recompilation_message(
                 write_not_recompiling_message(ModuleName), !IO),
-            list__foldl(touch_datestamp, TimestampFiles, !IO)
+            list.foldl(touch_datestamp, TimestampFiles, !IO)
         ;
             Reasons = [_ | _],
             add_module_to_recompile(ModuleName, !Info),
             write_recompilation_message(write_reasons_message(ModuleName,
-                list__reverse(Reasons)), !IO)
+                list.reverse(Reasons)), !IO)
         ),
-        io__set_input_stream(OldInputStream, VersionStream, !IO),
-        io__close_input(VersionStream, !IO),
+        io.set_input_stream(OldInputStream, VersionStream, !IO),
+        io.close_input(VersionStream, !IO),
 
         ModulesToRecompile = !.Info ^ modules_to_recompile,
         (
@@ -152,7 +152,7 @@ should_recompile_2(IsSubModule, FindTargetFiles, FindTimestampFiles,
         ;
             ModulesToRecompile = some_modules(_),
             !:Info = !.Info ^ is_inline_sub_module := yes,
-            list__foldl2(should_recompile_2(yes,
+            list.foldl2(should_recompile_2(yes,
                     FindTargetFiles, FindTimestampFiles),
                 !.Info ^ sub_modules, !Info, !IO)
         )
@@ -166,15 +166,15 @@ should_recompile_2(IsSubModule, FindTargetFiles, FindTimestampFiles,
 :- pred write_not_recompiling_message(module_name::in, io::di, io::uo) is det.
 
 write_not_recompiling_message(ModuleName, !IO) :-
-    io__write_string("Not recompiling module ", !IO),
-    prog_out__write_sym_name(ModuleName, !IO),
-    io__write_string(".\n", !IO).
+    io.write_string("Not recompiling module ", !IO),
+    prog_out.write_sym_name(ModuleName, !IO),
+    io.write_string(".\n", !IO).
 
 :- pred write_reasons_message(module_name::in, list(recompile_reason)::in,
     io::di, io::uo) is det.
 
 write_reasons_message(ModuleName, Reasons, !IO) :-
-    list__foldl(write_recompile_reason(ModuleName), Reasons, !IO).
+    list.foldl(write_recompile_reason(ModuleName), Reasons, !IO).
 
 :- pred write_not_found_reasons_message(string::in, module_name::in,
     io::di, io::uo) is det.
@@ -209,17 +209,17 @@ should_recompile_3(IsSubModule, FindTargetFiles, !Info, !IO) :-
     read_term_check_for_error_or_eof(!.Info, "usage file version number",
         VersionNumberTerm, !IO),
     (
-        VersionNumberTerm = term__functor(term__atom(","),
+        VersionNumberTerm = term.functor(term.atom(","),
             [UsageFileVersionNumberTerm,
             VersionNumbersVersionNumberTerm], _),
         UsageFileVersionNumberTerm =
-            term__functor( term__integer(usage_file_version_number), _, _),
+            term.functor( term.integer(usage_file_version_number), _, _),
         VersionNumbersVersionNumberTerm =
-            term__functor( term__integer(version_numbers_version_number), _, _)
+            term.functor( term.integer(version_numbers_version_number), _, _)
     ->
         true
     ;
-        io__input_stream_name(UsageFileName, !IO),
+        io.input_stream_name(UsageFileName, !IO),
         throw_syntax_error(
             file_error(UsageFileName,
                 "invalid usage file version number in file `"
@@ -270,9 +270,9 @@ should_recompile_3(IsSubModule, FindTargetFiles, !Info, !IO) :-
     read_term_check_for_error_or_eof(!.Info, "inline sub-modules",
         SubModulesTerm, !IO),
     (
-        SubModulesTerm = term__functor(term__atom("sub_modules"),
+        SubModulesTerm = term.functor(term.atom("sub_modules"),
             SubModuleTerms, _),
-        list__map(
+        list.map(
             (pred(Term::in, SubModule::out) is semidet :-
                 sym_name_and_args(Term, SubModule, [])
             ),
@@ -287,7 +287,7 @@ should_recompile_3(IsSubModule, FindTargetFiles, !Info, !IO) :-
 
     % Check whether the output files are present and up-to-date.
     FindTargetFiles(!.Info ^ module_name, TargetFiles, !IO),
-    list__foldl2(require_recompilation_if_not_up_to_date(RecordedTimestamp),
+    list.foldl2(require_recompilation_if_not_up_to_date(RecordedTimestamp),
         TargetFiles, !Info, !IO),
 
     % Read in the used items, used for checking for ambiguities with new items.
@@ -298,11 +298,11 @@ should_recompile_3(IsSubModule, FindTargetFiles, !Info, !IO) :-
     read_term_check_for_error_or_eof(!.Info, "used classes",
         UsedClassesTerm, !IO),
     (
-        UsedClassesTerm = term__functor(term__atom("used_classes"),
+        UsedClassesTerm = term.functor(term.atom("used_classes"),
             UsedClassTerms, _),
-        list__map(parse_name_and_arity_to_used, UsedClassTerms, UsedClasses)
+        list.map(parse_name_and_arity_to_used, UsedClassTerms, UsedClasses)
     ->
-        !:Info = !.Info ^ used_typeclasses := set__list_to_set(UsedClasses)
+        !:Info = !.Info ^ used_typeclasses := set.list_to_set(UsedClasses)
     ;
         Reason3 = syntax_error(get_term_context(UsedClassesTerm),
             "error in used_typeclasses term"),
@@ -316,7 +316,7 @@ should_recompile_3(IsSubModule, FindTargetFiles, !Info, !IO) :-
 
 require_recompilation_if_not_up_to_date(RecordedTimestamp, TargetFile,
         !Info, !IO) :-
-    io__file_modification_time(TargetFile, TargetModTimeResult, !IO),
+    io.file_modification_time(TargetFile, TargetModTimeResult, !IO),
     (
         TargetModTimeResult = ok(TargetModTime),
         compare(TargetModTimeCompare, time_t_to_timestamp(TargetModTime),
@@ -346,10 +346,10 @@ parse_module_timestamp(Info, Term, ModuleName, ModuleTimestamp) :-
     (
         Args = [ModuleNameTerm, SuffixTerm, TimestampTerm | MaybeOtherTerms],
         sym_name_and_args(ModuleNameTerm, ModuleName0, []),
-        SuffixTerm = term__functor(term__string(Suffix), [], _),
+        SuffixTerm = term.functor(term.string(Suffix), [], _),
         Timestamp = term_to_timestamp(TimestampTerm),
         (
-            MaybeOtherTerms = [term__functor(term__atom("used"), [], _)],
+            MaybeOtherTerms = [term.functor(term.atom("used"), [], _)],
             NeedQualifier = must_be_qualified
         ;
             MaybeOtherTerms = [],
@@ -370,9 +370,9 @@ parse_module_timestamp(Info, Term, ModuleName, ModuleTimestamp) :-
     term::in, resolved_used_items::out) is det.
 
 parse_used_items(Info, Term, UsedItems) :-
-    ( Term = term__functor(term__atom("used_items"), UsedItemTerms, _) ->
-        list__foldl(parse_used_item_set(Info), UsedItemTerms,
-            init_item_id_set(map__init, map__init, map__init), UsedItems)
+    ( Term = term.functor(term.atom("used_items"), UsedItemTerms, _) ->
+        list.foldl(parse_used_item_set(Info), UsedItemTerms,
+            init_item_id_set(map.init, map.init, map.init), UsedItems)
     ;
         Reason = syntax_error(get_term_context(Term), "error in used items"),
         throw_syntax_error(Reason, Info)
@@ -383,22 +383,22 @@ parse_used_items(Info, Term, UsedItems) :-
 
 parse_used_item_set(Info, Term, UsedItems0, UsedItems) :-
     (
-        Term = term__functor(term__atom(ItemTypeStr), ItemTerms, _),
+        Term = term.functor(term.atom(ItemTypeStr), ItemTerms, _),
         string_to_item_type(ItemTypeStr, ItemType)
     ->
         ( is_simple_item_type(ItemType) ->
-            list__foldl(parse_simple_item(Info), ItemTerms,
-                map__init, SimpleItems),
+            list.foldl(parse_simple_item(Info), ItemTerms,
+                map.init, SimpleItems),
             UsedItems = update_simple_item_set(UsedItems0,
                 ItemType, SimpleItems)
         ; is_pred_or_func_item_type(ItemType) ->
-            list__foldl(parse_pred_or_func_item(Info),
-                ItemTerms, map__init, PredOrFuncItems),
+            list.foldl(parse_pred_or_func_item(Info),
+                ItemTerms, map.init, PredOrFuncItems),
             UsedItems = update_pred_or_func_set(UsedItems0,
                 ItemType, PredOrFuncItems)
         ; ItemType = functor_item ->
-            list__foldl(parse_functor_item(Info),
-                ItemTerms, map__init, CtorItems),
+            list.foldl(parse_functor_item(Info),
+                ItemTerms, map.init, CtorItems),
             UsedItems = UsedItems0 ^ functors := CtorItems
         ;
             Reason = syntax_error(get_term_context(Term),
@@ -415,14 +415,14 @@ parse_used_item_set(Info, Term, UsedItems0, UsedItems) :-
 
 parse_simple_item(Info, Term, Set0, Set) :-
     (
-        Term = term__functor(term__atom("-"), [NameArityTerm, MatchesTerm], _),
+        Term = term.functor(term.atom("-"), [NameArityTerm, MatchesTerm], _),
         parse_name_and_arity(NameArityTerm, SymName, Arity)
     ->
         unqualify_name(SymName, Name),
         conjunction_to_list(MatchesTerm, MatchTermList),
-        list__foldl(parse_simple_item_match(Info), MatchTermList,
-            map__init, Matches),
-        map__det_insert(Set0, Name - Arity, Matches, Set)
+        list.foldl(parse_simple_item_match(Info), MatchTermList,
+            map.init, Matches),
+        map.det_insert(Set0, Name - Arity, Matches, Set)
     ;
         Reason = syntax_error(get_term_context(Term), "error in simple items"),
         throw_syntax_error(Reason, Info)
@@ -435,7 +435,7 @@ parse_simple_item(Info, Term, Set0, Set) :-
 parse_simple_item_match(Info, Term, Items0, Items) :-
     (
         (
-            Term = term__functor(term__atom("=>"),
+            Term = term.functor(term.atom("=>"),
                 [QualifierTerm, ModuleNameTerm], _)
         ->
             sym_name_and_args(QualifierTerm, Qualifier, []),
@@ -445,7 +445,7 @@ parse_simple_item_match(Info, Term, Items0, Items) :-
             Qualifier = ModuleName
         )
     ->
-        map__det_insert(Items0, Qualifier, ModuleName, Items)
+        map.det_insert(Items0, Qualifier, ModuleName, Items)
     ;
         Reason = syntax_error(get_term_context(Term),
             "error in simple item match"),
@@ -465,12 +465,12 @@ parse_pred_or_func_item_match(Info, Term, !Items) :-
     PredId = invalid_pred_id,
     (
         (
-            Term = term__functor(term__atom("=>"),
+            Term = term.functor(term.atom("=>"),
                 [QualifierTerm, MatchesTerm], _)
         ->
             sym_name_and_args(QualifierTerm, Qualifier, []),
             conjunction_to_list(MatchesTerm, MatchesList),
-            list__map(
+            list.map(
                 (pred(MatchTerm::in, Match::out) is semidet :-
                     sym_name_and_args(MatchTerm, MatchName, []),
                     Match = PredId - MatchName
@@ -481,7 +481,7 @@ parse_pred_or_func_item_match(Info, Term, !Items) :-
             Matches = [PredId - Qualifier]
         )
     ->
-        svmap__det_insert(Qualifier, set__list_to_set(Matches), !Items)
+        svmap.det_insert(Qualifier, set.list_to_set(Matches), !Items)
     ;
         Reason = syntax_error(get_term_context(Term),
             "error in pred or func match"),
@@ -499,13 +499,13 @@ parse_functor_item(Info, Term, !Set) :-
 
 parse_functor_matches(Info, Term, !Map) :-
     (
-        Term = term__functor(term__atom("=>"),
+        Term = term.functor(term.atom("=>"),
             [QualifierTerm, MatchesTerm], _),
         sym_name_and_args(QualifierTerm, Qualifier, [])
     ->
         conjunction_to_list(MatchesTerm, MatchesList),
-        list__map(parse_resolved_functor(Info), MatchesList, Matches),
-        svmap__det_insert(Qualifier, set__list_to_set(Matches), !Map)
+        list.map(parse_resolved_functor(Info), MatchesList, Matches),
+        svmap.det_insert(Qualifier, set.list_to_set(Matches), !Map)
     ;
         Reason = syntax_error(get_term_context(Term),
             "error in functor match"),
@@ -517,23 +517,23 @@ parse_functor_matches(Info, Term, !Map) :-
 
 parse_resolved_functor(Info, Term, Ctor) :-
     (
-        Term = term__functor(term__atom(PredOrFuncStr),
+        Term = term.functor(term.atom(PredOrFuncStr),
             [ModuleTerm, ArityTerm], _),
         ( PredOrFuncStr = "predicate", PredOrFunc = predicate
         ; PredOrFuncStr = "function", PredOrFunc = function
         ),
         sym_name_and_args(ModuleTerm, ModuleName, []),
-        ArityTerm = term__functor(term__integer(Arity), [], _)
+        ArityTerm = term.functor(term.integer(Arity), [], _)
     ->
         PredId = invalid_pred_id,
         Ctor = pred_or_func(PredId, ModuleName, PredOrFunc, Arity)
     ;
-        Term = term__functor(term__atom("ctor"), [NameArityTerm], _),
+        Term = term.functor(term.atom("ctor"), [NameArityTerm], _),
         parse_name_and_arity(NameArityTerm, TypeName, TypeArity)
     ->
         Ctor = constructor(TypeName - TypeArity)
     ;
-        Term = term__functor(term__atom("field"),
+        Term = term.functor(term.atom("field"),
             [TypeNameArityTerm, ConsNameArityTerm], _),
         parse_name_and_arity(TypeNameArityTerm, TypeName, TypeArity),
         parse_name_and_arity(ConsNameArityTerm, ConsName, ConsArity)
@@ -556,13 +556,13 @@ parse_resolved_functor(Info, Term, Ctor) :-
 
 parse_resolved_item_set(Info, ParseMatches, Term, Set0, Set) :-
     (
-        Term = term__functor(term__atom("-"), [NameTerm, MatchesTerm], _),
-        NameTerm = term__functor(term__atom(Name), [], _)
+        Term = term.functor(term.atom("-"), [NameTerm, MatchesTerm], _),
+        NameTerm = term.functor(term.atom(Name), [], _)
     ->
         conjunction_to_list(MatchesTerm, MatchTermList),
-        list__map(parse_resolved_item_arity_matches(Info, ParseMatches),
+        list.map(parse_resolved_item_arity_matches(Info, ParseMatches),
             MatchTermList, Matches),
-        map__det_insert(Set0, Name, Matches, Set)
+        map.det_insert(Set0, Name, Matches, Set)
     ;
         Reason = syntax_error(get_term_context(Term),
             "error in resolved item matches"),
@@ -576,16 +576,16 @@ parse_resolved_item_set(Info, ParseMatches, Term, Set0, Set) :-
 parse_resolved_item_arity_matches(Info, ParseMatches, Term,
         Arity - MatchMap) :-
     (
-        Term = term__functor(term__atom("-"), [ArityTerm, MatchesTerm], _),
-        ArityTerm = term__functor(term__integer(Arity0), [], _),
+        Term = term.functor(term.atom("-"), [ArityTerm, MatchesTerm], _),
+        ArityTerm = term.functor(term.integer(Arity0), [], _),
         conjunction_to_list(MatchesTerm, MatchTermList)
     ->
         Arity = Arity0,
-        list__foldl(
+        list.foldl(
             (pred(MatchTerm::in, Map0::in, Map::out) is det :-
                 ParseMatches(Info, MatchTerm, Map0, Map)
             ),
-            MatchTermList, map__init, MatchMap)
+            MatchTermList, map.init, MatchMap)
     ;
         Reason = syntax_error(get_term_context(Term),
             "error in resolved item matches"),
@@ -602,10 +602,10 @@ parse_resolved_item_arity_matches(Info, ParseMatches, Term,
     recompilation_check_info::out, io::di, io::uo) is det.
 
 check_imported_modules(!Info, !IO) :-
-    parser__read_term(TermResult, !IO),
+    parser.read_term(TermResult, !IO),
     (
         TermResult = term(_, Term),
-        ( Term = term__functor(term__atom("done"), [], _) ->
+        ( Term = term.functor(term.atom("done"), [], _) ->
             true
         ;
             check_imported_module(Term, !Info, !IO),
@@ -613,17 +613,17 @@ check_imported_modules(!Info, !IO) :-
         )
     ;
         TermResult = error(Message, Line),
-        io__input_stream_name(FileName, !IO),
-        Reason = syntax_error(term__context(FileName, Line), Message),
+        io.input_stream_name(FileName, !IO),
+        Reason = syntax_error(term.context(FileName, Line), Message),
         throw_syntax_error(Reason, !.Info)
     ;
         TermResult = eof,
         % There should always be an item `done.' at the end of the list
         % of modules to check. This is used to make sure that the writing
         % of the `.used' file was not interrupted.
-        io__input_stream_name(FileName, !IO),
-        io__get_line_number(Line, !IO),
-        Reason = syntax_error(term__context(FileName, Line),
+        io.input_stream_name(FileName, !IO),
+        io.get_line_number(Line, !IO),
+        Reason = syntax_error(term.context(FileName, Line),
             "unexpected end of file"),
         throw_syntax_error(Reason, !.Info)
     ).
@@ -634,7 +634,7 @@ check_imported_modules(!Info, !IO) :-
 
 check_imported_module(Term, !Info, !IO) :-
     (
-        Term = term__functor(term__atom("=>"),
+        Term = term.functor(term.atom("=>"),
             [TimestampTerm0, UsedItemsTerm0], _)
     ->
         TimestampTerm = TimestampTerm0,
@@ -659,9 +659,9 @@ check_imported_module(Term, !Info, !IO) :-
         MaybeNewTimestamp = MaybeNewTimestamp0,
         Error = Error0,
         FileName = FileName0,
-        Recorded = bool__yes
+        Recorded = bool.yes
     ;
-        Recorded = bool__no,
+        Recorded = bool.no,
         read_mod_if_changed(ImportedModuleName, Suffix,
             "Reading interface file for module", yes, RecordedTimestamp,
             Items, Error, FileName, MaybeNewTimestamp, !IO)
@@ -723,14 +723,14 @@ check_module_used_items(ModuleName, NeedQualifier, OldTimestamp,
         NewInstanceVersionNumbers),
 
     % Check whether any of the items which were used have changed.
-    list__foldl(check_item_version_numbers(ModuleName, UsedItemVersionNumbers,
+    list.foldl(check_item_version_numbers(ModuleName, UsedItemVersionNumbers,
             NewItemVersionNumbers),
         [type_item, type_body_item, inst_item, mode_item, typeclass_item,
             predicate_item, function_item], !Info),
 
     % Check whether added or modified items could cause name resolution
     % ambiguities with items which were used.
-    list__foldl(check_for_ambiguities(NeedQualifier, OldTimestamp,
+    list.foldl(check_for_ambiguities(NeedQualifier, OldTimestamp,
         UsedItemVersionNumbers), Items, !Info),
 
     % Check whether any instances of used typeclasses have been added,
@@ -739,15 +739,15 @@ check_module_used_items(ModuleName, NeedQualifier, OldTimestamp,
         NewInstanceVersionNumbers, !Info),
 
     % Check for new instances for used typeclasses.
-    ModuleInstances = set__sorted_list_to_set(
-        map__sorted_keys(NewInstanceVersionNumbers)),
-    UsedInstances = set__sorted_list_to_set(
-        map__sorted_keys(UsedInstanceVersionNumbers)),
+    ModuleInstances = set.sorted_list_to_set(
+        map.sorted_keys(NewInstanceVersionNumbers)),
+    UsedInstances = set.sorted_list_to_set(
+        map.sorted_keys(UsedInstanceVersionNumbers)),
 
     UsedClasses = !.Info ^ used_typeclasses,
-    set__difference(set__intersect(UsedClasses, ModuleInstances),
+    set.difference(set.intersect(UsedClasses, ModuleInstances),
         UsedInstances, AddedInstances),
-    ( [AddedInstance | _] = set__to_sorted_list(AddedInstances) ->
+    ( [AddedInstance | _] = set.to_sorted_list(AddedInstances) ->
         Reason1 = changed_or_added_instance(ModuleName, AddedInstance),
         record_recompilation_reason(Reason1, !Info)
     ;
@@ -768,7 +768,7 @@ make_item_id(Module, ItemType, Name - Arity) =
 check_item_version_numbers(ModuleName, UsedVersionNumbers, NewVersionNumbers,
         ItemType, !Info) :-
     NewItemTypeVersionNumbers = extract_ids(NewVersionNumbers, ItemType),
-    map__foldl(check_item_version_number(ModuleName,
+    map.foldl(check_item_version_number(ModuleName,
         NewItemTypeVersionNumbers, ItemType),
         extract_ids(UsedVersionNumbers, ItemType), !Info).
 
@@ -778,7 +778,7 @@ check_item_version_numbers(ModuleName, UsedVersionNumbers, NewVersionNumbers,
 
 check_item_version_number(ModuleName, NewItemTypeVersionNumbers, ItemType,
         NameArity, UsedVersionNumber, !Info) :-
-    ( map__search(NewItemTypeVersionNumbers, NameArity, NewVersionNumber) ->
+    ( map.search(NewItemTypeVersionNumbers, NameArity, NewVersionNumber) ->
         ( NewVersionNumber = UsedVersionNumber ->
             true
         ;
@@ -798,7 +798,7 @@ check_item_version_number(ModuleName, NewItemTypeVersionNumbers, ItemType,
 
 check_instance_version_numbers(ModuleName, UsedInstanceVersionNumbers,
         NewInstanceVersionNumbers, !Info) :-
-    map__foldl(check_instance_version_number(ModuleName,
+    map.foldl(check_instance_version_number(ModuleName,
         NewInstanceVersionNumbers), UsedInstanceVersionNumbers, !Info).
 
 :- pred check_instance_version_number(module_name::in,
@@ -807,7 +807,7 @@ check_instance_version_numbers(ModuleName, UsedInstanceVersionNumbers,
 
 check_instance_version_number(ModuleName, NewInstanceVersionNumbers,
         ClassId, UsedVersionNumber, !Info) :-
-    ( map__search(NewInstanceVersionNumbers, ClassId, NewVersionNumber) ->
+    ( map.search(NewInstanceVersionNumbers, ClassId, NewVersionNumber) ->
         ( UsedVersionNumber = NewVersionNumber ->
             true
         ;
@@ -833,7 +833,7 @@ check_for_ambiguities(_, _, _, clause(_, _, _, _, _, _) - _, !Info) :-
     unexpected(this_file, "check_for_ambiguities: clause").
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
         type_defn(_, Name, Params, Body, _) - _, !Info) :-
-    Arity = list__length(Params),
+    Arity = list.length(Params),
     check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
         VersionNumbers, type_item, Name, Arity, NeedsCheck, !Info),
     (
@@ -846,21 +846,21 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
         inst_defn(_, Name, Params, _, _) - _, !Info) :-
     check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
-        VersionNumbers, inst_item, Name, list__length(Params), _, !Info).
+        VersionNumbers, inst_item, Name, list.length(Params), _, !Info).
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
         mode_defn(_, Name, Params, _, _) - _, !Info) :-
     check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
-        VersionNumbers, mode_item, Name, list__length(Params), _, !Info).
+        VersionNumbers, mode_item, Name, list.length(Params), _, !Info).
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
         typeclass(_, _, Name, Params, Interface, _) - _, !Info) :-
     check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
-        VersionNumbers, typeclass_item, Name, list__length(Params),
+        VersionNumbers, typeclass_item, Name, list.length(Params),
         NeedsCheck, !Info),
     (
         NeedsCheck = yes,
         Interface = concrete(Methods)
     ->
-        list__foldl(check_class_method_for_ambiguities(NeedQualifier,
+        list.foldl(check_class_method_for_ambiguities(NeedQualifier,
             OldTimestamp, VersionNumbers), Methods, !Info)
     ;
         true
@@ -904,7 +904,7 @@ item_is_new_or_changed(UsedFileTimestamp, UsedVersionNumbers,
         ItemType, SymName, Arity) :-
     unqualify_name(SymName, Name),
     (
-        map__search(extract_ids(UsedVersionNumbers, ItemType), Name - Arity,
+        map.search(extract_ids(UsedVersionNumbers, ItemType), Name - Arity,
             UsedVersionNumber)
     ->
         % XXX This assumes that version numbers are timestamps.
@@ -929,10 +929,10 @@ check_for_simple_item_ambiguity(NeedQualifier, UsedFileTimestamp,
         UsedItemMap = extract_simple_item_set(UsedItems, ItemType),
         unqualify_name(SymName, Name),
         (
-            map__search(UsedItemMap, Name - Arity,
+            map.search(UsedItemMap, Name - Arity,
                 MatchingQualifiers)
         ->
-            map__foldl(
+            map.foldl(
                 check_for_simple_item_ambiguity_2(ItemType,
                     NeedQualifier, SymName, Arity),
                 MatchingQualifiers, !Info)
@@ -979,10 +979,10 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, NeedQualifier, OldTimestamp,
         VersionNumbers, PredOrFunc, SymName, Args, WithType, !Info) :-
     (
         WithType = no,
-        adjust_func_arity(PredOrFunc, Arity, list__length(Args))
+        adjust_func_arity(PredOrFunc, Arity, list.length(Args))
     ;
         WithType = yes(_),
-        Arity = list__length(Args)
+        Arity = list.length(Args)
     ),
     ItemType = pred_or_func_to_item_type(PredOrFunc),
     (
@@ -996,8 +996,8 @@ check_for_pred_or_func_item_ambiguity(NeedsCheck, NeedQualifier, OldTimestamp,
         UsedItems = !.Info ^ used_items,
         UsedItemMap = extract_pred_or_func_set(UsedItems, ItemType),
         unqualify_name(SymName, Name),
-        ( map__search(UsedItemMap, Name, MatchingArityList) ->
-            list__foldl(check_for_pred_or_func_item_ambiguity_1(WithType,
+        ( map.search(UsedItemMap, Name, MatchingArityList) ->
+            list.foldl(check_for_pred_or_func_item_ambiguity_1(WithType,
                 ItemType, NeedQualifier, SymName, Arity), MatchingArityList,
                 !Info)
         ;
@@ -1041,7 +1041,7 @@ check_for_pred_or_func_item_ambiguity_1(WithType, ItemType, NeedQualifier,
             MatchArity = Arity
         )
     ->
-        map__foldl(
+        map.foldl(
             check_for_pred_or_func_item_ambiguity_2(ItemType, NeedQualifier,
                 SymName, MatchArity),
             MatchingQualifiers, !Info)
@@ -1069,15 +1069,15 @@ check_for_pred_or_func_item_ambiguity_2(ItemType, NeedQualifier,
         match_sym_name(QualifiedName, SymName),
         \+ (
             SymName = qualified(PredModuleName, _),
-            set__member(_ - PredModuleName, OldMatchingModuleNames)
+            set.member(_ - PredModuleName, OldMatchingModuleNames)
         )
     ->
-        AmbiguousDecls = list__map(
+        AmbiguousDecls = list.map(
             (func(_ - OldMatchingModule) = Item :-
                 OldMatchingName = qualified(OldMatchingModule, Name),
                 Item = item_id(ItemType, OldMatchingName - Arity)
             ),
-            set__to_sorted_list(OldMatchingModuleNames)),
+            set.to_sorted_list(OldMatchingModuleNames)),
         Reason = item_ambiguity(item_id(ItemType, SymName - Arity),
             AmbiguousDecls),
         record_recompilation_reason(Reason, !Info)
@@ -1097,7 +1097,7 @@ check_type_defn_ambiguity_with_functor(_, _, abstract_type(_), !Info).
 check_type_defn_ambiguity_with_functor(_, _, eqv_type(_), !Info).
 check_type_defn_ambiguity_with_functor(NeedQualifier, TypeCtor,
         du_type(Ctors, _), !Info) :-
-    list__foldl(check_functor_ambiguities(NeedQualifier, TypeCtor), Ctors,
+    list.foldl(check_functor_ambiguities(NeedQualifier, TypeCtor), Ctors,
         !Info).
 check_type_defn_ambiguity_with_functor(_, _, foreign_type(_, _, _), !Info).
 check_type_defn_ambiguity_with_functor(_, _, solver_type(_, _), !Info).
@@ -1109,10 +1109,10 @@ check_type_defn_ambiguity_with_functor(_, _, solver_type(_, _), !Info).
 check_functor_ambiguities(NeedQualifier, TypeCtor,
         ctor(_, _, Name, Args), !Info) :-
     ResolvedCtor = constructor(TypeCtor),
-    Arity = list__length(Args),
+    Arity = list.length(Args),
     check_functor_ambiguities(NeedQualifier, Name, exact(Arity),
         ResolvedCtor, !Info),
-    list__foldl(check_field_ambiguities(NeedQualifier,
+    list.foldl(check_field_ambiguities(NeedQualifier,
         field(TypeCtor, Name - Arity)), Args, !Info).
 
 :- pred check_field_ambiguities(need_qualifier::in, resolved_functor::in,
@@ -1147,7 +1147,7 @@ check_functor_ambiguities(NeedQualifier, Name, MatchArity, ResolvedCtor,
     UsedItems = !.Info ^ used_items,
     unqualify_name(Name, UnqualName),
     UsedCtors = UsedItems ^ functors,
-    ( map__search(UsedCtors, UnqualName, UsedCtorAL) ->
+    ( map.search(UsedCtors, UnqualName, UsedCtorAL) ->
         check_functor_ambiguities_2(NeedQualifier, Name, MatchArity,
             ResolvedCtor, UsedCtorAL, !Info)
     ;
@@ -1165,8 +1165,8 @@ check_functor_ambiguities_2(NeedQualifier, Name, MatchArity,
     (
         MatchArity = exact(ArityToMatch),
         ( ArityToMatch = Arity ->
-            Check = bool__yes,
-            Continue = bool__no
+            Check = yes,
+            Continue = no
         ;
             Check = no,
             ( Arity < ArityToMatch ->
@@ -1191,7 +1191,7 @@ check_functor_ambiguities_2(NeedQualifier, Name, MatchArity,
     ),
     (
         Check = yes,
-        map__foldl(check_functor_ambiguity(NeedQualifier, Name, Arity,
+        map.foldl(check_functor_ambiguity(NeedQualifier, Name, Arity,
             ResolvedCtor), UsedCtorMap, !Info)
     ;
         Check = no
@@ -1222,11 +1222,11 @@ check_functor_ambiguity(NeedQualifier, SymName, Arity, ResolvedCtor,
         unqualify_name(SymName, Name),
         OldName = module_qualify_name(OldModuleQualifier, Name),
         match_sym_name(OldName, SymName),
-        \+ set__member(ResolvedCtor, OldResolvedCtors)
+        \+ set.member(ResolvedCtor, OldResolvedCtors)
     ->
         Reason = functor_ambiguity(
             module_qualify_name(OldModuleQualifier, Name),
-            Arity, ResolvedCtor, set__to_sorted_list(OldResolvedCtors)
+            Arity, ResolvedCtor, set.to_sorted_list(OldResolvedCtors)
         ),
         record_recompilation_reason(Reason, !Info)
     ;
@@ -1265,7 +1265,7 @@ check_functor_ambiguity(NeedQualifier, SymName, Arity, ResolvedCtor,
             )
 
     ;       syntax_error(
-                term__context,
+                term.context,
                 string
             )
 
@@ -1322,7 +1322,7 @@ add_module_to_recompile(Module, !Info) :-
 
 record_read_file(ModuleName, ModuleTimestamp, Items, Error, FileName, !Info) :-
     Imports0 = !.Info ^ read_modules,
-    map__set(Imports0, ModuleName - ModuleTimestamp ^ suffix,
+    map.set(Imports0, ModuleName - ModuleTimestamp ^ suffix,
         read_module(ModuleTimestamp, Items, Error, FileName), Imports),
     !:Info = !.Info ^ read_modules := Imports.
 
@@ -1332,7 +1332,7 @@ record_read_file(ModuleName, ModuleTimestamp, Items, Error, FileName, !Info) :-
     io::di, io::uo) is det.
 
 write_recompilation_message(P, !IO) :-
-    globals__io_lookup_bool_option(verbose_recompilation, Verbose, !IO),
+    globals.io_lookup_bool_option(verbose_recompilation, Verbose, !IO),
     (
         Verbose = yes,
         P(!IO)
@@ -1346,7 +1346,7 @@ write_recompilation_message(P, !IO) :-
 write_recompile_reason(ModuleName, Reason, !IO) :-
     recompile_reason_message(Reason, MaybeContext, ErrorPieces0),
     ErrorPieces = [words("Recompiling module"),
-        words(string__append(describe_sym_name(ModuleName), ":")), nl
+        words(string.append(describe_sym_name(ModuleName), ":")), nl
         | ErrorPieces0],
     write_error_pieces_maybe_with_context(MaybeContext, 0, ErrorPieces, !IO).
 
@@ -1362,7 +1362,7 @@ recompile_reason_message(module_changed(FileName), no,
         [words("file"), words("`" ++ FileName ++ "'"), words("has changed.")]).
 recompile_reason_message(item_ambiguity(Item, AmbiguousItems), no, Pieces) :-
     AmbiguousItemPieces = component_lists_to_pieces(
-        list__map(describe_item, AmbiguousItems)),
+        list.map(describe_item, AmbiguousItems)),
     Pieces = [words("addition of ") | describe_item(Item)]
         ++ [words("could cause an ambiguity with")]
         ++ AmbiguousItemPieces ++ [suffix(".")].
@@ -1370,14 +1370,14 @@ recompile_reason_message(functor_ambiguity(SymName, Arity,
         Functor, AmbiguousFunctors), no, Pieces) :-
     FunctorPieces = describe_functor(SymName, Arity, Functor),
     AmbiguousFunctorPieces = component_lists_to_pieces(
-        list__map(describe_functor(SymName, Arity), AmbiguousFunctors)),
+        list.map(describe_functor(SymName, Arity), AmbiguousFunctors)),
     Pieces = [words("addition of ") | FunctorPieces]
         ++ [words("could cause an ambiguity with")]
         ++ AmbiguousFunctorPieces ++ [suffix(".")].
 recompile_reason_message(changed_item(Item), no,
-        list__append(describe_item(Item), [words("was modified.")])).
+        list.append(describe_item(Item), [words("was modified.")])).
 recompile_reason_message(removed_item(Item), no,
-        list__append(describe_item(Item), [words("was removed.")])).
+        list.append(describe_item(Item), [words("was removed.")])).
 recompile_reason_message(
         changed_or_added_instance(ModuleName, ClassName - ClassArity),
         no,
@@ -1410,7 +1410,7 @@ describe_item(item_id(ItemType0, SymName - Arity)) = Pieces :-
     ),
     string_to_item_type(ItemTypeStr, ItemType),
     Pieces = [
-        words(string__append(BodyWords, ItemTypeStr)),
+        words(string.append(BodyWords, ItemTypeStr)),
         words(describe_sym_name_and_arity(SymName / Arity))
         ].
 
@@ -1451,30 +1451,30 @@ describe_functor(SymName, Arity,
     string::in, term::out, io::di, io::uo) is det.
 
 read_term_check_for_error_or_eof(Info, Item, Term, !IO) :-
-    parser__read_term(TermResult, !IO),
+    parser.read_term(TermResult, !IO),
     (
         TermResult = term(_, Term)
     ;
         TermResult = error(Message, Line),
-        io__input_stream_name(FileName, !IO),
-        Reason = syntax_error(term__context(FileName, Line), Message),
+        io.input_stream_name(FileName, !IO),
+        Reason = syntax_error(term.context(FileName, Line), Message),
         throw_syntax_error(Reason, Info)
     ;
         TermResult = eof,
-        io__input_stream_name(FileName, !IO),
-        io__get_line_number(Line, !IO),
-        Reason = syntax_error(term__context(FileName, Line),
+        io.input_stream_name(FileName, !IO),
+        io.get_line_number(Line, !IO),
+        Reason = syntax_error(term.context(FileName, Line),
             "unexpected end of file, expected " ++ Item ++ "."),
         throw_syntax_error(Reason, Info)
     ).
 
-:- func get_term_context(term) = term__context.
+:- func get_term_context(term) = term.context.
 
 get_term_context(Term) =
-    ( Term = term__functor(_, _, Context) ->
+    ( Term = term.functor(_, _, Context) ->
         Context
     ;
-        term__context_init
+        term.context_init
     ).
 
 :- pred record_recompilation_reason(recompile_reason::in,

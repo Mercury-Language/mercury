@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module hlds__make_hlds__add_clause.
+:- module hlds.make_hlds.add_clause.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -97,17 +97,17 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
     ),
     ArityAdjustment = ( if IllegalSVarResult = yes(_) then -1 else 0 ),
     Args = expand_bang_state_var_args(Args0),
-    globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     (
         VeryVerbose = yes,
-        io__write_string("% Processing clause for ", !IO),
+        io.write_string("% Processing clause for ", !IO),
         write_pred_or_func(PredOrFunc, !IO),
-        io__write_string(" `", !IO),
-        list__length(Args, PredArity0),
+        io.write_string(" `", !IO),
+        list.length(Args, PredArity0),
         PredArity = PredArity0 + ArityAdjustment,
         adjust_func_arity(PredOrFunc, OrigArity, PredArity),
-        prog_out__write_sym_name_and_arity(PredName/OrigArity, !IO),
-        io__write_string("'...\n", !IO)
+        prog_out.write_sym_name_and_arity(PredName/OrigArity, !IO),
+        io.write_string("'...\n", !IO)
     ;
         VeryVerbose = no
     ),
@@ -116,7 +116,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
         % (If it's not there, call maybe_undefined_pred_error
         % and insert an implicit declaration for the predicate.)
     module_info_get_name(!.ModuleInfo, ModuleName),
-    list__length(Args, Arity0),
+    list.length(Args, Arity0),
     Arity = Arity0 + ArityAdjustment,
     some [!PredInfo, !PredicateTable] (
         module_info_get_predicate_table(!.ModuleInfo, !:PredicateTable),
@@ -126,8 +126,8 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
         ->
             PredId = PredId0,
             ( GoalType = promise(_) ->
-                mdbcomp__prim_data__sym_name_to_string(PredName, NameString),
-                string__format("%s %s %s (%s).\n",
+                sym_name_to_string(PredName, NameString),
+                string.format("%s %s %s (%s).\n",
                     [s("Attempted to introduce a predicate"),
                     s("for a promise with an identical"),
                     s("name to an existing predicate"),
@@ -141,7 +141,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
             (
                 GoalType = promise(_)
             ->
-                term__term_list_to_var_list(Args, HeadVars),
+                term.term_list_to_var_list(Args, HeadVars),
                 preds_add_implicit_for_assertion(HeadVars, !.ModuleInfo,
                     ModuleName, PredName, Arity, Status, Context, PredOrFunc,
                     PredId, !PredicateTable),
@@ -157,7 +157,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
             % add an `infer_modes' marker, and then save the pred_info.
         module_info_get_predicate_table(!.ModuleInfo, !:PredicateTable),
         predicate_table_get_preds(!.PredicateTable, Preds0),
-        map__lookup(Preds0, PredId, !:PredInfo),
+        map.lookup(Preds0, PredId, !:PredInfo),
         % opt_imported preds are initially tagged as imported and are
         % tagged as opt_imported only if/when we see a clause for them
         ( Status = opt_imported ->
@@ -191,12 +191,12 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
             module_info_incr_errors(!ModuleInfo),
             CallIdString0 = simple_call_id_to_string(
                 PredOrFunc - PredName/Arity),
-            string__append(CallIdString0, ".", CallIdString),
+            string.append(CallIdString0, ".", CallIdString),
             ErrorPieces0 = [
                 words("Error: clause for automatically generated"),
                 words("field access"), fixed(CallIdString), nl
             ],
-            globals__io_lookup_bool_option(verbose_errors, Verbose, !IO),
+            globals.io_lookup_bool_option(verbose_errors, Verbose, !IO),
             (
                 Verbose = yes,
                 ErrorPieces1 = [
@@ -209,13 +209,13 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
                     words("give the field of the constructor a"),
                     words("different name.")
                 ],
-                list__append(ErrorPieces0, ErrorPieces1, ErrorPieces)
+                list.append(ErrorPieces0, ErrorPieces1, ErrorPieces)
             ;
                 Verbose = no,
-                globals__io_set_extra_error_info(yes, !IO),
+                globals.io_set_extra_error_info(yes, !IO),
                 ErrorPieces = ErrorPieces0
             ),
-            error_util__write_error_pieces(Context, 0, ErrorPieces, !IO)
+            write_error_pieces(Context, 0, ErrorPieces, !IO)
         ;
             % Ignore clauses for builtins. This makes bootstrapping
             % easier when redefining builtins to use normal Mercury code.
@@ -257,7 +257,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
             ;
                 ProcIds = [_ | _]
             ),
-            map__det_update(Preds0, PredId, !.PredInfo, Preds),
+            map.det_update(Preds0, PredId, !.PredInfo, Preds),
             predicate_table_set_preds(Preds, !PredicateTable),
             module_info_set_predicate_table(!.PredicateTable, !ModuleInfo),
             ( Status = opt_imported ->
@@ -298,7 +298,7 @@ select_applicable_modes(Args0, VarSet, Status, Context, PredId, PredInfo,
             ModeList = ModeList0
         ;
             qual_info_get_mq_info(!.QualInfo, MQInfo0),
-            module_qual__qualify_clause_mode_list(ModeList0, ModeList, Context,
+            module_qual.qualify_clause_mode_list(ModeList0, ModeList, Context,
                 MQInfo0, MQInfo, !IO),
             qual_info_set_mq_info(MQInfo, !QualInfo)
         ),
@@ -307,7 +307,7 @@ select_applicable_modes(Args0, VarSet, Status, Context, PredId, PredInfo,
         % Now find the procedure which matches these mode annotations.
         %
         pred_info_procedures(PredInfo, Procs),
-        map__to_assoc_list(Procs, ExistingProcs),
+        map.to_assoc_list(Procs, ExistingProcs),
         (
             get_procedure_matching_declmodes(ExistingProcs, ModeList,
                 !.ModuleInfo, ProcId)
@@ -403,8 +403,8 @@ add_annotation(_,         mixed, mixed).
 
 get_mode_annotation(Arg0, Arg, MaybeAnnotation) :-
     (
-        Arg0 = term__functor(term__atom("::"), [Arg1, ModeTerm], _),
-        convert_mode(allow_constrained_inst_var, term__coerce(ModeTerm), Mode)
+        Arg0 = term.functor(term.atom("::"), [Arg1, ModeTerm], _),
+        convert_mode(allow_constrained_inst_var, term.coerce(ModeTerm), Mode)
     ->
         Arg = Arg1,
         MaybeAnnotation = yes(Mode)
@@ -429,14 +429,14 @@ clauses_info_add_clause(ModeIds0, CVarSet, TVarSet0, Args, Body, Context,
         % which occur in the argument types of the predicate.
         % Type variables which only occur in explicit type
         % qualifications are local to the clause in which they appear.
-        varset__create_name_var_map(TVarSet0, TVarNameMap)
+        varset.create_name_var_map(TVarSet0, TVarNameMap)
     ;
         IsEmpty = no,
         TVarNameMap = TVarNameMap0
     ),
     update_qual_info(TVarNameMap, TVarSet0, ExplicitVarTypes0, Status,
         !QualInfo),
-    varset__merge_subst(VarSet0, CVarSet, VarSet1, Subst),
+    varset.merge_subst(VarSet0, CVarSet, VarSet1, Subst),
     add_clause_transform(Subst, HeadVars, Args, Body, Context, PredOrFunc,
         Arity, GoalType, Goal0, VarSet1, VarSet, Warnings, !ModuleInfo,
         !QualInfo, !IO),
@@ -459,13 +459,13 @@ clauses_info_add_clause(ModeIds0, CVarSet, TVarSet0, Args, Body, Context,
         (
             HasForeignClauses = yes,
             get_clause_list_any_order(ClausesRep0, AnyOrderClauseList),
-            ForeignModeIds = list__condense(list__filter_map(
+            ForeignModeIds = list.condense(list.filter_map(
                 (func(C) = ProcIds is semidet :-
                     C = clause(ProcIds, _, ClauseLang, _),
                     not ClauseLang = mercury
                 ),
                 AnyOrderClauseList)),
-            ModeIds = list__delete_elems(ModeIds0, ForeignModeIds),
+            ModeIds = list.delete_elems(ModeIds0, ForeignModeIds),
             (
                 ModeIds = [],
                 ClausesRep = ClausesRep0
@@ -496,7 +496,7 @@ add_clause_transform(Subst, HeadVars, Args0, Body0, Context, PredOrFunc, Arity,
         GoalType, Goal, !VarSet, Warnings, !ModuleInfo, !QualInfo, !IO) :-
     some [!SInfo] (
         prepare_for_head(!:SInfo),
-        term__apply_substitution_to_list(Args0, Subst, Args1),
+        term.apply_substitution_to_list(Args0, Subst, Args1),
         substitute_state_var_mappings(Args1, Args, !VarSet, !SInfo, !IO),
         HeadGoal0 = true_goal,
         ( GoalType = promise(_) ->
@@ -536,11 +536,11 @@ transform_goal(Goal0 - Context, Subst, Goal - GoalInfo, !VarSet,
 transform_goal_2(fail, _, _, disj([]) - GoalInfo, !VarSet, !ModuleInfo,
         !QualInfo, !SInfo, !IO) :-
     goal_info_init(GoalInfo),
-    prepare_for_next_conjunct(set__init, !VarSet, !SInfo).
+    prepare_for_next_conjunct(set.init, !VarSet, !SInfo).
 transform_goal_2(true, _, _, conj(plain_conj, []) - GoalInfo, !VarSet,
         !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     goal_info_init(GoalInfo),
-    prepare_for_next_conjunct(set__init, !VarSet, !SInfo).
+    prepare_for_next_conjunct(set.init, !VarSet, !SInfo).
 transform_goal_2(all(Vars0, Goal0), Context, Subst, Goal, !VarSet, !ModuleInfo,
         !QualInfo, !SInfo, !IO) :-
     % Convert `all [Vars] Goal' into `not some [Vars] not Goal'.
@@ -628,7 +628,7 @@ transform_goal_2((A0, B0), _, Subst, Goal, !VarSet, !ModuleInfo, !QualInfo,
         !SInfo, !IO),
     get_rev_conj(B0, Subst, R0, R,  !VarSet, !ModuleInfo, !QualInfo,
         !SInfo, !IO),
-    L = list__reverse(R),
+    L = list.reverse(R),
     goal_info_init(GoalInfo),
     conj_list_to_goal(L, GoalInfo, Goal).
 transform_goal_2((A0 & B0), _, Subst, Goal, !VarSet, !ModuleInfo, !QualInfo,
@@ -637,7 +637,7 @@ transform_goal_2((A0 & B0), _, Subst, Goal, !VarSet, !ModuleInfo, !QualInfo,
         !SInfo, !IO),
     get_rev_par_conj(A0, Subst, R0, R,  !VarSet, !ModuleInfo, !QualInfo,
         !SInfo, !IO),
-    L = list__reverse(R),
+    L = list.reverse(R),
     goal_info_init(GoalInfo),
     par_conj_list_to_goal(L, GoalInfo, Goal).
 transform_goal_2((A0 ; B0), Context, Subst, Goal, !VarSet, !ModuleInfo,
@@ -690,15 +690,15 @@ transform_goal_2(call(Name, Args0, Purity), Context, Subst, Goal, !VarSet,
         )
     ->
         prepare_for_call(!SInfo),
-        term__apply_substitution_to_list(Args1, Subst, Args2),
+        term.apply_substitution_to_list(Args1, Subst, Args2),
         transform_dcg_record_syntax(Operator, Args2, Context,
             Goal, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
         finish_call(!VarSet, !SInfo)
     ;
         prepare_for_call(!SInfo),
-        term__apply_substitution_to_list(Args1, Subst, Args),
+        term.apply_substitution_to_list(Args1, Subst, Args),
         make_fresh_arg_vars(Args, HeadVars, !VarSet, !SInfo, !IO),
-        list__length(Args, Arity),
+        list.length(Args, Arity),
         (
             % Check for a higher-order call,
             % i.e. a call to either call/N or ''/N.
@@ -707,14 +707,14 @@ transform_goal_2(call(Name, Args0, Purity), Context, Subst, Goal, !VarSet,
             ),
             HeadVars = [PredVar | RealHeadVars]
         ->
-            % initialize some fields to junk
+            % Initialize some fields to junk.
             Modes = [],
             Det = erroneous,
 
             GenericCall = higher_order(PredVar, Purity, predicate, Arity),
             Call = generic_call(GenericCall, RealHeadVars, Modes, Det),
 
-            hlds_goal__generic_call_id(GenericCall, CallId)
+            hlds_goal.generic_call_id(GenericCall, CallId)
         ;
             % initialize some fields to junk
             PredId = invalid_pred_id,
@@ -746,8 +746,8 @@ transform_goal_2(unify(A0, B0, Purity), Context, Subst, Goal, !VarSet,
         Goal = true_goal
     ;
         prepare_for_call(!SInfo),
-        term__apply_substitution(A0, Subst, A),
-        term__apply_substitution(B0, Subst, B),
+        term.apply_substitution(A0, Subst, A),
+        term.apply_substitution(B0, Subst, B),
         unravel_unification(A, B, Context, explicit, [], Purity, Goal,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
         finish_call(!VarSet, !SInfo)
@@ -777,7 +777,7 @@ convert_colon_state_vars(Context, [Colon0 | Colons0], [Colon | Colons],
     io::di, io::uo) is det.
 
 report_svar_unify_error(Context, VarSet, StateVar, !IO) :-
-    Name = varset__lookup_name(VarSet, StateVar),
+    Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [nl, words("Error:"), fixed("!" ++ Name),
         words("cannot appear as a unification argument."), nl,
         words("You probably meant"), fixed("!." ++ Name),
@@ -805,7 +805,7 @@ transform_dcg_record_syntax(Operator, ArgTerms0, Context, Goal, !VarSet,
         ;
             Operator = ":=",
             AccessType = set,
-            LHSTerm = term__functor(term__atom("^"), [FieldNameTerm0], _),
+            LHSTerm = term.functor(term.atom("^"), [FieldNameTerm0], _),
             FieldNameTerm = FieldNameTerm0,
             FieldValueTerm = RHSTerm
         )
@@ -820,35 +820,35 @@ transform_dcg_record_syntax(Operator, ArgTerms0, Context, Goal, !VarSet,
             MaybeFieldNames = error(Msg, ErrorTerm),
             invalid_goal("^", ArgTerms0, GoalInfo, Goal, !VarSet, !SInfo, !IO),
             qual_info_set_found_syntax_error(yes, !QualInfo),
-            io__set_exit_status(1, !IO),
-            prog_out__write_context(Context, !IO),
-            io__write_string("In DCG field ", !IO),
+            io.set_exit_status(1, !IO),
+            prog_out.write_context(Context, !IO),
+            io.write_string("In DCG field ", !IO),
             (
                 AccessType = set,
-                io__write_string("update", !IO)
+                io.write_string("update", !IO)
             ;
                 AccessType = get,
-                io__write_string("extraction", !IO)
+                io.write_string("extraction", !IO)
             ),
-            io__write_string(" goal:\n", !IO),
-            prog_out__write_context(Context, !IO),
-            io__write_string("  error: ", !IO),
-            io__write_string(Msg, !IO),
-            io__write_string(" at term `", !IO),
-            term_io__write_term(!.VarSet, ErrorTerm, !IO),
-            io__write_string("'.\n", !IO)
+            io.write_string(" goal:\n", !IO),
+            prog_out.write_context(Context, !IO),
+            io.write_string("  error: ", !IO),
+            io.write_string(Msg, !IO),
+            io.write_string(" at term `", !IO),
+            term_io.write_term(!.VarSet, ErrorTerm, !IO),
+            io.write_string("'.\n", !IO)
         )
     ;
         invalid_goal("^", ArgTerms0, GoalInfo, Goal, !VarSet, !SInfo, !IO),
         qual_info_set_found_syntax_error(yes, !QualInfo),
-        io__set_exit_status(1, !IO),
-        prog_out__write_context(Context, !IO),
-        io__write_string("Error: expected " ++
+        io.set_exit_status(1, !IO),
+        prog_out.write_context(Context, !IO),
+        io.write_string("Error: expected " ++
             "`Field =^ field1 ^ ... ^ fieldN'\n", !IO),
-        prog_out__write_context(Context, !IO),
-        io__write_string("  or `^ field1 ^ ... ^ fieldN := Field'.\n", !IO),
-        prog_out__write_context(Context, !IO),
-        io__write_string("  in DCG field access goal.\n", !IO)
+        prog_out.write_context(Context, !IO),
+        io.write_string("  or `^ field1 ^ ... ^ fieldN := Field'.\n", !IO),
+        prog_out.write_context(Context, !IO),
+        io.write_string("  in DCG field access goal.\n", !IO)
     ).
 
     % Produce an invalid goal.
@@ -944,7 +944,7 @@ qualify_lambda_mode_list(Modes0, Modes, Context, !QualInfo, !IO) :-
     qual_info_get_import_status(!.QualInfo, ImportStatus),
     ( ImportStatus \= opt_imported ->
         qual_info_get_mq_info(!.QualInfo, MQInfo0),
-        module_qual__qualify_lambda_mode_list(Modes0, Modes, Context,
+        module_qual.qualify_lambda_mode_list(Modes0, Modes, Context,
             MQInfo0, MQInfo, !IO),
         qual_info_set_mq_info(MQInfo, !QualInfo)
     ;
@@ -972,7 +972,7 @@ get_rev_conj(Goal, Subst, RevConj0, RevConj, !VarSet, !ModuleInfo, !QualInfo,
         transform_goal(Goal, Subst, Goal1, !VarSet, !ModuleInfo, !QualInfo,
             !SInfo, !IO),
         goal_to_conj_list(Goal1, ConjList),
-        RevConj = list__reverse(ConjList) ++ RevConj0
+        RevConj = list.reverse(ConjList) ++ RevConj0
     ).
 
     % get_rev_par_conj(Goal, Subst, RevParConj0, RevParConj) :
@@ -996,7 +996,7 @@ get_rev_par_conj(Goal, Subst, RevParConj0, RevParConj, !VarSet, !ModuleInfo,
         transform_goal(Goal, Subst, Goal1, !VarSet, !ModuleInfo, !QualInfo,
             !SInfo, !IO),
         goal_to_par_conj_list(Goal1, ParConjList),
-        RevParConj = list__reverse(ParConjList) ++ RevParConj0
+        RevParConj = list.reverse(ParConjList) ++ RevParConj0
     ).
 
     % get_disj(Goal, Subst, Disj0, Disj):

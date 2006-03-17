@@ -21,7 +21,7 @@
 % if the parse is successful, or `error(Message, Term)' if it is not.
 % The `Term' there should be the term which is syntactically incorrect.
 
-:- module parse_tree__prog_io_util.
+:- module parse_tree.prog_io_util.
 
 :- interface.
 
@@ -185,11 +185,11 @@ add_context(error(M, T), _, error(M, T)).
 add_context(ok(Item), Context, ok(Item, Context)).
 
 parse_name_and_arity(ModuleName, PredAndArityTerm, SymName, Arity) :-
-    PredAndArityTerm = term__functor(term__atom("/"),
+    PredAndArityTerm = term.functor(term.atom("/"),
         [PredNameTerm, ArityTerm], _),
     parse_implicitly_qualified_term(ModuleName,
         PredNameTerm, PredNameTerm, "", ok(SymName, [])),
-    ArityTerm = term__functor(term__integer(Arity), [], _).
+    ArityTerm = term.functor(term.integer(Arity), [], _).
 
 parse_name_and_arity(PredAndArityTerm, SymName, Arity) :-
     parse_name_and_arity(unqualified(""),
@@ -197,7 +197,7 @@ parse_name_and_arity(PredAndArityTerm, SymName, Arity) :-
 
 parse_pred_or_func_name_and_arity(ModuleName, PorFPredAndArityTerm,
         PredOrFunc, SymName, Arity) :-
-    PorFPredAndArityTerm = term__functor(term__atom(PredOrFuncStr), Args, _),
+    PorFPredAndArityTerm = term.functor(term.atom(PredOrFuncStr), Args, _),
     ( PredOrFuncStr = "pred", PredOrFunc = predicate
     ; PredOrFuncStr = "func", PredOrFunc = function
     ),
@@ -215,7 +215,7 @@ parse_pred_or_func_and_args(Term, PredOrFunc, SymName, ArgTerms) :-
     (
         MaybeRetTerm = yes(RetTerm),
         PredOrFunc = function,
-        list__append(ArgTerms0, [RetTerm], ArgTerms)
+        list.append(ArgTerms0, [RetTerm], ArgTerms)
     ;
         MaybeRetTerm = no,
         PredOrFunc = predicate,
@@ -225,7 +225,7 @@ parse_pred_or_func_and_args(Term, PredOrFunc, SymName, ArgTerms) :-
 parse_pred_or_func_and_args(MaybeModuleName, PredAndArgsTerm, ErrorTerm,
         Msg, PredAndArgsResult) :-
     (
-        PredAndArgsTerm = term__functor(term__atom("="),
+        PredAndArgsTerm = term.functor(term.atom("="),
             [FuncAndArgsTerm, FuncResultTerm], _)
     ->
         FunctorTerm = FuncAndArgsTerm,
@@ -250,10 +250,10 @@ parse_pred_or_func_and_args(MaybeModuleName, PredAndArgsTerm, ErrorTerm,
         PredAndArgsResult = error(ErrorMsg, Term)
     ).
 
-parse_list_of_vars(term__functor(term__atom("[]"), [], _), []).
-parse_list_of_vars(term__functor(term__atom("[|]"), [Head, Tail], _),
+parse_list_of_vars(term.functor(term.atom("[]"), [], _), []).
+parse_list_of_vars(term.functor(term.atom("[|]"), [Head, Tail], _),
         [V | Vs]) :-
-    Head = term__variable(V),
+    Head = term.variable(V),
     parse_list_of_vars(Tail, Vs).
 
     % XXX kind inference: We currently give all types kind `star'.
@@ -261,9 +261,9 @@ parse_list_of_vars(term__functor(term__atom("[|]"), [Head, Tail], _),
     %
 parse_type(Term, Result) :-
     (
-        Term = term__variable(Var0)
+        Term = term.variable(Var0)
     ->
-        term__coerce_var(Var0, Var),
+        term.coerce_var(Var0, Var),
         Result = ok(variable(Var, star))
     ;
         parse_builtin_type(Term, BuiltinType)
@@ -274,7 +274,7 @@ parse_type(Term, Result) :-
     ->
         Result = ok(higher_order(HOArgs, MaybeRet, Purity, EvalMethod))
     ;
-        Term = term__functor(term__atom("{}"), Args, _)
+        Term = term.functor(term.atom("{}"), Args, _)
     ->
         parse_types(Args, ArgsResult),
         (
@@ -287,7 +287,7 @@ parse_type(Term, Result) :-
     ;
         % We don't support apply/N types yet, so we just detect them
         % and report an error message.
-        Term = term__functor(term__atom(""), _, _)
+        Term = term.functor(term.atom(""), _, _)
     ->
         Result = error("ill-formed type", Term)
     ;
@@ -317,7 +317,7 @@ parse_types(Terms, Result) :-
     maybe1(list(mer_type))::out) is det.
 
 parse_types_2([], RevTypes, ok(Types)) :-
-    list__reverse(RevTypes, Types).
+    list.reverse(RevTypes, Types).
 parse_types_2([Term | Terms], RevTypes, Result) :-
     parse_type(Term, Result0),
     (
@@ -331,7 +331,7 @@ parse_types_2([Term | Terms], RevTypes, Result) :-
 :- pred parse_builtin_type(term::in, builtin_type::out) is semidet.
 
 parse_builtin_type(Term, BuiltinType) :-
-    Term = term__functor(term__atom(Name), [], _),
+    Term = term.functor(term.atom(Name), [], _),
     builtin_type_to_string(BuiltinType, Name).
 
     % If there are any ill-formed types in the argument then we just fail.
@@ -343,19 +343,19 @@ parse_builtin_type(Term, BuiltinType) :-
 
 parse_higher_order_type(Term0, ArgTypes, MaybeRet, Purity, lambda_normal) :-
     parse_purity_annotation(Term0, Purity, Term1),
-    ( Term1 = term__functor(term__atom("="), [FuncAndArgs, Ret], _) ->
-        FuncAndArgs = term__functor(term__atom("func"), Args, _),
+    ( Term1 = term.functor(term.atom("="), [FuncAndArgs, Ret], _) ->
+        FuncAndArgs = term.functor(term.atom("func"), Args, _),
         parse_type(Ret, ok(RetType)),
         MaybeRet = yes(RetType)
     ;
-        Term1 = term__functor(term__atom("pred"), Args, _),
+        Term1 = term.functor(term.atom("pred"), Args, _),
         MaybeRet = no
     ),
     parse_types(Args, ok(ArgTypes)).
 
 parse_purity_annotation(Term0, Purity, Term) :-
     (
-        Term0 = term__functor(term__atom(PurityName), [Term1], _),
+        Term0 = term.functor(term.atom(PurityName), [Term1], _),
         purity_name(Purity0, PurityName)
     ->
         Purity = Purity0,
@@ -365,39 +365,39 @@ parse_purity_annotation(Term0, Purity, Term) :-
         Term = Term0
     ).
 
-unparse_type(variable(TVar, _), term__variable(Var)) :-
-    Var = term__coerce_var(TVar).
+unparse_type(variable(TVar, _), term.variable(Var)) :-
+    Var = term.coerce_var(TVar).
 unparse_type(defined(SymName, Args, _), Term) :-
     unparse_type_list(Args, ArgTerms),
     unparse_qualified_term(SymName, ArgTerms, Term).
 unparse_type(builtin(BuiltinType), Term) :-
-    Context = term__context_init,
+    Context = term.context_init,
     builtin_type_to_string(BuiltinType, Name),
-    Term = term__functor(term__atom(Name), [], Context).
+    Term = term.functor(term.atom(Name), [], Context).
 unparse_type(higher_order(Args, MaybeRet, Purity, EvalMethod), Term) :-
-    Context = term__context_init,
+    Context = term.context_init,
     unparse_type_list(Args, ArgTerms),
     (
         MaybeRet = yes(Ret),
-        Term0 = term__functor(term__atom("func"), ArgTerms, Context),
+        Term0 = term.functor(term.atom("func"), ArgTerms, Context),
         maybe_add_lambda_eval_method(EvalMethod, Term0, Term1),
         unparse_type(Ret, RetTerm),
-        Term2 = term__functor(term__atom("="), [Term1, RetTerm], Context)
+        Term2 = term.functor(term.atom("="), [Term1, RetTerm], Context)
     ;
         MaybeRet = no,
-        Term0 = term__functor(term__atom("pred"), ArgTerms, Context),
+        Term0 = term.functor(term.atom("pred"), ArgTerms, Context),
         maybe_add_lambda_eval_method(EvalMethod, Term0, Term2)
     ),
     maybe_add_purity_annotation(Purity, Term2, Term).
 unparse_type(tuple(Args, _), Term) :-
-    Context = term__context_init,
+    Context = term.context_init,
     unparse_type_list(Args, ArgTerms),
-    Term = term__functor(term__atom("{}"), ArgTerms, Context).
+    Term = term.functor(term.atom("{}"), ArgTerms, Context).
 unparse_type(apply_n(TVar, Args, _), Term) :-
-    Context = term__context_init,
-    Var = term__coerce_var(TVar),
+    Context = term.context_init,
+    Var = term.coerce_var(TVar),
     unparse_type_list(Args, ArgTerms),
-    Term = term__functor(term__atom(""), [term__variable(Var) | ArgTerms],
+    Term = term.functor(term.atom(""), [term.variable(Var) | ArgTerms],
         Context).
 unparse_type(kinded(_, _), _) :-
     unexpected(this_file, "prog_io_util: kind annotation").
@@ -405,18 +405,18 @@ unparse_type(kinded(_, _), _) :-
 :- pred unparse_type_list(list(mer_type)::in, list(term)::out) is det.
 
 unparse_type_list(Types, Terms) :-
-    list__map(unparse_type, Types, Terms).
+    list.map(unparse_type, Types, Terms).
 
 :- pred unparse_qualified_term(sym_name::in, list(term)::in, term::out) is det.
 
 unparse_qualified_term(unqualified(Name), Args, Term) :-
-    Context = term__context_init,
-    Term = term__functor(term__atom(Name), Args, Context).
+    Context = term.context_init,
+    Term = term.functor(term.atom(Name), Args, Context).
 unparse_qualified_term(qualified(Qualifier, Name), Args, Term) :-
-    Context = term__context_init,
+    Context = term.context_init,
     unparse_qualified_term(Qualifier, [], QualTerm),
-    Term0 = term__functor(term__atom(Name), Args, Context),
-    Term = term__functor(term__atom("."), [QualTerm, Term0], Context).
+    Term0 = term.functor(term.atom(Name), Args, Context),
+    Term = term.functor(term.atom("."), [QualTerm, Term0], Context).
 
 :- pred maybe_add_lambda_eval_method(lambda_eval_method::in, term::in,
     term::out) is det.
@@ -427,11 +427,11 @@ maybe_add_lambda_eval_method(lambda_normal, Term, Term).
 
 maybe_add_purity_annotation(purity_pure, Term, Term).
 maybe_add_purity_annotation(purity_semipure, Term0, Term) :-
-    Context = term__context_init,
-    Term = term__functor(term__atom("semipure"), [Term0], Context).
+    Context = term.context_init,
+    Term = term.functor(term.atom("semipure"), [Term0], Context).
 maybe_add_purity_annotation(purity_impure, Term0, Term) :-
-    Context = term__context_init,
-    Term = term__functor(term__atom("impure"), [Term0], Context).
+    Context = term.context_init,
+    Term = term.functor(term.atom("impure"), [Term0], Context).
 
 convert_mode_list(_, [], []).
 convert_mode_list(AllowConstrainedInstVar, [H0 | T0], [H | T]) :-
@@ -440,7 +440,7 @@ convert_mode_list(AllowConstrainedInstVar, [H0 | T0], [H | T]) :-
 
 convert_mode(AllowConstrainedInstVar, Term, Mode) :-
     (
-        Term = term__functor(term__atom(">>"), [InstA, InstB], _)
+        Term = term.functor(term.atom(">>"), [InstA, InstB], _)
     ->
         convert_inst(AllowConstrainedInstVar, InstA, ConvertedInstA),
         convert_inst(AllowConstrainedInstVar, InstB, ConvertedInstB),
@@ -454,10 +454,10 @@ convert_mode(AllowConstrainedInstVar, Term, Mode) :-
         %   -> pred(<Mode1>, <Mode2>, ...) is <Det>
         %   )
 
-        Term = term__functor(term__atom("is"), [PredTerm, DetTerm], _),
-        PredTerm = term__functor(term__atom("pred"), ArgModesTerms, _)
+        Term = term.functor(term.atom("is"), [PredTerm, DetTerm], _),
+        PredTerm = term.functor(term.atom("pred"), ArgModesTerms, _)
     ->
-        DetTerm = term__functor(term__atom(DetString), [], _),
+        DetTerm = term.functor(term.atom(DetString), [], _),
         standard_det(DetString, Detism),
         convert_mode_list(AllowConstrainedInstVar, ArgModesTerms, ArgModes),
         PredInstInfo = pred_inst_info(predicate, ArgModes, Detism),
@@ -472,15 +472,15 @@ convert_mode(AllowConstrainedInstVar, Term, Mode) :-
         %   -> func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
         %   )
 
-        Term = term__functor(term__atom("is"), [EqTerm, DetTerm], _),
-        EqTerm = term__functor(term__atom("="), [FuncTerm, RetModeTerm], _),
-        FuncTerm = term__functor(term__atom("func"), ArgModesTerms, _)
+        Term = term.functor(term.atom("is"), [EqTerm, DetTerm], _),
+        EqTerm = term.functor(term.atom("="), [FuncTerm, RetModeTerm], _),
+        FuncTerm = term.functor(term.atom("func"), ArgModesTerms, _)
     ->
-        DetTerm = term__functor(term__atom(DetString), [], _),
+        DetTerm = term.functor(term.atom(DetString), [], _),
         standard_det(DetString, Detism),
         convert_mode_list(AllowConstrainedInstVar, ArgModesTerms, ArgModes0),
         convert_mode(AllowConstrainedInstVar, RetModeTerm, RetMode),
-        list__append(ArgModes0, [RetMode], ArgModes),
+        list.append(ArgModes0, [RetMode], ArgModes),
         FuncInstInfo = pred_inst_info(function, ArgModes, Detism),
         Inst = ground(shared, higher_order(FuncInstInfo)),
         Mode = (Inst -> Inst)
@@ -496,10 +496,10 @@ convert_inst_list(AllowConstrainedInstVar, [H0 | T0], [H | T]) :-
     convert_inst(AllowConstrainedInstVar, H0, H),
     convert_inst_list(AllowConstrainedInstVar, T0, T).
 
-convert_inst(_, term__variable(V0), inst_var(V)) :-
-    term__coerce_var(V0, V).
+convert_inst(_, term.variable(V0), inst_var(V)) :-
+    term.coerce_var(V0, V).
 convert_inst(AllowConstrainedInstVar, Term, Result) :-
-    Term = term__functor(term__atom(Name), Args0, _Context),
+    Term = term.functor(term.atom(Name), Args0, _Context),
     (
         convert_simple_builtin_inst(Name, Args0, Result0)
     ->
@@ -513,9 +513,9 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
         % and <Detism> is a determinism.
 
         Name = "is", Args0 = [PredTerm, DetTerm],
-        PredTerm = term__functor(term__atom("pred"), ArgModesTerm, _)
+        PredTerm = term.functor(term.atom("pred"), ArgModesTerm, _)
     ->
-        DetTerm = term__functor(term__atom(DetString), [], _),
+        DetTerm = term.functor(term.atom(DetString), [], _),
         standard_det(DetString, Detism),
         convert_mode_list(AllowConstrainedInstVar, ArgModesTerm, ArgModes),
         PredInst = pred_inst_info(predicate, ArgModes, Detism),
@@ -529,14 +529,14 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
         % <RetMode> is a mode, and <Detism> is a determinism.
 
         Name = "is", Args0 = [EqTerm, DetTerm],
-        EqTerm = term__functor(term__atom("="), [FuncTerm, RetModeTerm], _),
-        FuncTerm = term__functor(term__atom("func"), ArgModesTerm, _)
+        EqTerm = term.functor(term.atom("="), [FuncTerm, RetModeTerm], _),
+        FuncTerm = term.functor(term.atom("func"), ArgModesTerm, _)
     ->
-        DetTerm = term__functor(term__atom(DetString), [], _),
+        DetTerm = term.functor(term.atom(DetString), [], _),
         standard_det(DetString, Detism),
         convert_mode_list(AllowConstrainedInstVar, ArgModesTerm, ArgModes0),
         convert_mode(AllowConstrainedInstVar, RetModeTerm, RetMode),
-        list__append(ArgModes0, [RetMode], ArgModes),
+        list.append(ArgModes0, [RetMode], ArgModes),
         FuncInst = pred_inst_info(function, ArgModes, Detism),
         Result = ground(shared, higher_order(FuncInst))
 
@@ -553,11 +553,11 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
             Result)
     ; Name = "=<", Args0 = [VarTerm, InstTerm] ->
         AllowConstrainedInstVar = allow_constrained_inst_var,
-        VarTerm = term__variable(Var),
+        VarTerm = term.variable(Var),
         % Do not allow nested constrained_inst_vars.
         convert_inst(no_allow_constrained_inst_var, InstTerm, Inst),
-        Result = constrained_inst_vars(set__make_singleton_set(
-            term__coerce_var(Var)), Inst)
+        Result = constrained_inst_vars(set.make_singleton_set(
+            term.coerce_var(Var)), Inst)
     ;
         % Anything else must be a user-defined inst.
         parse_qualified_term(Term, Term, "inst", ok(QualifiedName, Args1)),
@@ -632,10 +632,10 @@ parse_bound_inst_list(AllowConstrainedInstVar, Disj, Uniqueness,
         bound(Uniqueness, Functors)) :-
     disjunction_to_list(Disj, List),
     convert_bound_inst_list(AllowConstrainedInstVar, List, Functors0),
-    list__sort(Functors0, Functors),
+    list.sort(Functors0, Functors),
     % Check that the list doesn't specify the same functor twice.
     \+ (
-        list__append(_, SubList, Functors),
+        list.append(_, SubList, Functors),
         SubList = [F1, F2 | _],
         F1 = functor(ConsId, _),
         F2 = functor(ConsId, _)
@@ -653,14 +653,14 @@ convert_bound_inst_list(AllowConstrainedInstVar, [H0 | T0], [H | T]) :-
     bound_inst::out) is semidet.
 
 convert_bound_inst(AllowConstrainedInstVar, InstTerm, functor(ConsId, Args)) :-
-    InstTerm = term__functor(Functor, Args0, _),
-    ( Functor = term__atom(_) ->
+    InstTerm = term.functor(Functor, Args0, _),
+    ( Functor = term.atom(_) ->
         parse_qualified_term(InstTerm, InstTerm, "inst", ok(SymName, Args1)),
-        list__length(Args1, Arity),
+        list.length(Args1, Arity),
         ConsId = cons(SymName, Arity)
     ;
         Args1 = Args0,
-        list__length(Args1, Arity),
+        list.length(Args1, Arity),
         ConsId = make_functor_cons_id(Functor, Arity)
     ),
     convert_inst_list(AllowConstrainedInstVar, Args1, Args).
@@ -674,7 +674,7 @@ conjunction_to_list(Term, List) :-
 list_to_conjunction(_, Term, [], Term).
 list_to_conjunction(Context, First, [Second | Rest], Term) :-
     list_to_conjunction(Context, Second, Rest, Tail),
-    Term = term__functor(term__atom(","), [First, Tail], Context).
+    Term = term.functor(term.atom(","), [First, Tail], Context).
 
 sum_to_list(Term, List) :-
     binop_term_to_list("+", Term, List).
@@ -691,7 +691,7 @@ binop_term_to_list(Op, Term, List) :-
     list(term(T))::out) is det.
 
 binop_term_to_list_2(Op, Term, !List) :-
-    ( Term = term__functor(term__atom(Op), [L, R], _Context) ->
+    ( Term = term.functor(term.atom(Op), [L, R], _Context) ->
         binop_term_to_list_2(Op, R, !List),
         binop_term_to_list_2(Op, L, !List)
     ;
@@ -759,11 +759,11 @@ parse_vars_and_state_vars(functor(atom("[|]"), [H, T], _), !:Os, !:Ds, !:Cs) :-
 
 list_term_to_term_list(Methods, MethodList) :-
     (
-        Methods = term__functor(term__atom("[|]"), [Head, Tail0], _),
+        Methods = term.functor(term.atom("[|]"), [Head, Tail0], _),
         list_term_to_term_list(Tail0, Tail),
         MethodList = [Head|Tail]
     ;
-        Methods = term__functor(term__atom("[]"), [], _),
+        Methods = term.functor(term.atom("[]"), [], _),
         MethodList = []
     ).
 
@@ -774,5 +774,5 @@ list_term_to_term_list(Methods, MethodList) :-
 this_file = "prog_io_util.m".
 
 %-----------------------------------------------------------------------------%
-:- end_module parse_tree__prog_io_util.
+:- end_module parse_tree.prog_io_util.
 %-----------------------------------------------------------------------------%

@@ -163,7 +163,7 @@ report_pred_call_error(PredCallId, !Info, !IO) :-
 
 typecheck_find_arities(_, [], []).
 typecheck_find_arities(Preds, [PredId | PredIds], [Arity | Arities]) :-
-    map__lookup(Preds, PredId, PredInfo),
+    map.lookup(Preds, PredId, PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
     typecheck_find_arities(Preds, PredIds, Arities).
 
@@ -173,16 +173,16 @@ typecheck_find_arities(Preds, [PredId | PredIds], [Arity | Arities]) :-
 report_error_pred_num_args(Info, PredOrFunc - SymName/Arity, Arities, !IO) :-
     write_context_and_pred_id(Info, !IO),
     typecheck_info_get_context(Info, Context),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  error: ", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  error: ", !IO),
     report_error_num_args(yes(PredOrFunc), Arity, Arities, !IO),
-    io__nl(!IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  in call to ", !IO),
-    prog_out__write_pred_or_func(PredOrFunc, !IO),
-    io__write_string(" `", !IO),
-    prog_out__write_sym_name(SymName, !IO),
-    io__write_string("'.\n", !IO).
+    io.nl(!IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  in call to ", !IO),
+    prog_out.write_pred_or_func(PredOrFunc, !IO),
+    io.write_string(" `", !IO),
+    prog_out.write_sym_name(SymName, !IO),
+    io.write_string("'.\n", !IO).
 
 :- pred report_error_func_instead_of_pred(typecheck_info::in, pred_or_func::in,
     simple_call_id::in, io::di, io::uo) is det.
@@ -215,51 +215,43 @@ report_error_undef_pred(Info, PredOrFunc - PredCallId, !IO) :-
         PredName = unqualified("->"),
         ( Arity = 2 ; Arity = 4 )
     ->
-        io__write_string("  error: `->' without `;'.\n", !IO),
-        globals__io_lookup_bool_option(verbose_errors, VerboseErrors,
-            !IO),
+        io.write_string("  error: `->' without `;'.\n", !IO),
+        globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
         (
             VerboseErrors = yes,
-            prog_out__write_context(Context, !IO),
-            io__write_string(
-                "  Note: the else part is not optional.\n",
-                !IO),
-            prog_out__write_context(Context, !IO),
-            io__write_string("  Every if-then must have an else.\n", !IO)
+            prog_out.write_context(Context, !IO),
+            io.write_string("  Note: the else part is not optional.\n", !IO),
+            prog_out.write_context(Context, !IO),
+            io.write_string("  Every if-then must have an else.\n", !IO)
         ;
             VerboseErrors = no,
-            globals__io_set_extra_error_info(yes, !IO)
+            globals.io_set_extra_error_info(yes, !IO)
         )
     ;
         PredName = unqualified("else"),
         ( Arity = 2 ; Arity = 4 )
     ->
-        io__write_string("  error: unmatched `else'.\n", !IO)
+        io.write_string("  error: unmatched `else'.\n", !IO)
     ;
         PredName = unqualified("if"),
         ( Arity = 2 ; Arity = 4 )
     ->
-        io__write_string("  error: `if' without `then' or `else'.\n",
-            !IO)
+        io.write_string("  error: `if' without `then' or `else'.\n", !IO)
     ;
         PredName = unqualified("then"),
         ( Arity = 2 ; Arity = 4 )
     ->
-        io__write_string("  error: `then' without `if' or `else'.\n",
-            !IO),
-        globals__io_lookup_bool_option(verbose_errors, VerboseErrors,
-            !IO),
+        io.write_string("  error: `then' without `if' or `else'.\n", !IO),
+        globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
         (
             VerboseErrors = yes,
-            prog_out__write_context(Context, !IO),
-            io__write_string("  Note: the `else' part is not optional.\n",
-                !IO),
-            prog_out__write_context(Context, !IO),
-            io__write_string(
-                "  Every if-then must have an `else'.\n", !IO)
+            prog_out.write_context(Context, !IO),
+            io.write_string("  Note: the `else' part is not optional.\n", !IO),
+            prog_out.write_context(Context, !IO),
+            io.write_string("  Every if-then must have an `else'.\n", !IO)
         ;
             VerboseErrors = no,
-            globals__io_set_extra_error_info(yes, !IO)
+            globals.io_set_extra_error_info(yes, !IO)
         )
     ;
         PredName = unqualified("apply"),
@@ -271,36 +263,35 @@ report_error_undef_pred(Info, PredOrFunc - PredCallId, !IO) :-
         Arity = 1,
         ( PurityString = "impure" ; PurityString = "semipure" )
     ->
-        io__write_string("  error: `", !IO),
-        io__write_string(PurityString, !IO),
-        io__write_string("' marker in an inappropriate place.\n", !IO),
-        globals__io_lookup_bool_option(verbose_errors, VerboseErrors,
-            !IO),
+        io.write_string("  error: `", !IO),
+        io.write_string(PurityString, !IO),
+        io.write_string("' marker in an inappropriate place.\n", !IO),
+        globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
         (
             VerboseErrors = yes,
-            prog_out__write_context(Context, !IO),
-            io__write_string("  Such markers only belong " ++
+            prog_out.write_context(Context, !IO),
+            io.write_string("  Such markers only belong " ++
                 "before predicate calls.\n", !IO)
         ;
             VerboseErrors = no,
-            globals__io_set_extra_error_info(yes, !IO)
+            globals.io_set_extra_error_info(yes, !IO)
         )
     ;
         PredName = unqualified("some"),
         Arity = 2
     ->
-        io__write_string("  syntax error in existential " ++
+        io.write_string("  syntax error in existential " ++
             "quantification: first\n", !IO),
-        prog_out__write_context(Context, !IO),
-        io__write_string("  argument of `some' should be " ++
+        prog_out.write_context(Context, !IO),
+        io.write_string("  argument of `some' should be " ++
             "a list of variables.\n", !IO)
     ;
-        io__write_string("  error: undefined ", !IO),
+        io.write_string("  error: undefined ", !IO),
         write_simple_call_id(PredOrFunc - PredCallId, !IO),
         ( PredName = qualified(ModuleQualifier, _) ->
             maybe_report_missing_import(Info, ModuleQualifier, !IO)
         ;
-            io__write_string(".\n", !IO)
+            io.write_string(".\n", !IO)
         )
     ).
 
@@ -311,7 +302,7 @@ report_error_apply_instead_of_pred(Info, !IO) :-
     typecheck_info_get_context(Info, Context),
     Pieces1 = [words("error: the language construct `apply'"),
         words("should be used as an expression, not as a goal."), nl],
-    globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     (
         VerboseErrors = yes,
         Pieces2 = [words("Perhaps you forgot to add"),
@@ -331,7 +322,7 @@ report_error_apply_instead_of_pred(Info, !IO) :-
             fixed("`my_apply(Func, X, Y) :- apply(Func, X, Y).'")]
     ;
         VerboseErrors = no,
-        globals__io_set_extra_error_info(yes, !IO),
+        globals.io_set_extra_error_info(yes, !IO),
         Pieces2 = []
     ),
     write_error_pieces_not_first_line(Context, 0, Pieces1 ++ Pieces2, !IO).
@@ -344,7 +335,7 @@ report_no_clauses(MessageKind, PredId, PredInfo, ModuleInfo, !IO) :-
         should_not_module_qualify, PredId),
     ErrorMsg = [words(MessageKind ++ ": no clauses for ") | PredPieces] ++
         [suffix(".")],
-    error_util__write_error_pieces(Context, 0, ErrorMsg, !IO).
+    error_util.write_error_pieces(Context, 0, ErrorMsg, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -353,20 +344,20 @@ report_warning_too_much_overloading(Info, !IO) :-
     make_pred_id_preamble(Info, Preamble),
     SmallWarning = [fixed(Preamble),
         words("warning: highly ambiguous overloading.") ],
-    globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     (
         VerboseErrors = yes,
         VerboseWarning = [
             words("This may cause type-checking to be very"),
             words("slow. It may also make your code"),
             words("difficult to understand.") ],
-        list__append(SmallWarning, VerboseWarning, Warning)
+        list.append(SmallWarning, VerboseWarning, Warning)
     ;
         VerboseErrors = no,
-        globals__io_set_extra_error_info(yes, !IO),
+        globals.io_set_extra_error_info(yes, !IO),
         Warning = SmallWarning
     ),
-    error_util__report_warning(Context, 0, Warning, !IO).
+    error_util.report_warning(Context, 0, Warning, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -376,30 +367,30 @@ report_error_unif_var_var(Info, X, Y, TypeAssignSet, !IO) :-
     typecheck_info_get_unify_context(Info, UnifyContext),
 
     write_context_and_pred_id(Info, !IO),
-    hlds_out__write_unify_context(UnifyContext, Context, !IO),
+    hlds_out.write_unify_context(UnifyContext, Context, !IO),
 
-    prog_out__write_context(Context, !IO),
-    io__write_string("  type error in unification of variable `", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  type error in unification of variable `", !IO),
     mercury_output_var(X, VarSet, no, !IO),
-    io__write_string("'\n", !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  and variable `", !IO),
+    io.write_string("'\n", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  and variable `", !IO),
     mercury_output_var(Y, VarSet, no, !IO),
-    io__write_string("'.\n", !IO),
+    io.write_string("'.\n", !IO),
 
-    prog_out__write_context(Context, !IO),
-    io__write_string("  `", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  `", !IO),
     mercury_output_var(X, VarSet, no, !IO),
-    io__write_string("'", !IO),
+    io.write_string("'", !IO),
     write_type_of_var(Info, Context, TypeAssignSet, X, !IO),
-    io__write_string(",\n", !IO),
+    io.write_string(",\n", !IO),
 
-    prog_out__write_context(Context, !IO),
-    io__write_string("  `", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  `", !IO),
     mercury_output_var(Y, VarSet, no, !IO),
-    io__write_string("'", !IO),
+    io.write_string("'", !IO),
     write_type_of_var(Info, Context, TypeAssignSet, Y, !IO),
-    io__write_string(".\n", !IO),
+    io.write_string(".\n", !IO),
 
     write_type_assign_set_msg(TypeAssignSet, VarSet, !IO).
 
@@ -410,69 +401,69 @@ report_error_lambda_var(Info, PredOrFunc, _EvalMethod, Var, ArgVars,
     typecheck_info_get_unify_context(Info, UnifyContext),
 
     write_context_and_pred_id(Info, !IO),
-    hlds_out__write_unify_context(UnifyContext, Context, !IO),
+    hlds_out.write_unify_context(UnifyContext, Context, !IO),
 
-    prog_out__write_context(Context, !IO),
-    io__write_string("  type error in unification of ", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  type error in unification of ", !IO),
     write_argument_name(VarSet, Var, !IO),
-    io__write_string("\n", !IO),
-    prog_out__write_context(Context, !IO),
+    io.write_string("\n", !IO),
+    prog_out.write_context(Context, !IO),
 
     (
         PredOrFunc = predicate,
-        io__write_string("  and `", !IO),
-        io__write_string("pred(", !IO),
+        io.write_string("  and `", !IO),
+        io.write_string("pred(", !IO),
         mercury_output_vars(ArgVars, VarSet, no, !IO),
-        io__write_string(") :- ...':\n", !IO)
+        io.write_string(") :- ...':\n", !IO)
     ;
         PredOrFunc = function,
         pred_args_to_func_args(ArgVars, FuncArgs, RetVar),
-        io__write_string("  and `", !IO),
-        io__write_string("func(", !IO),
+        io.write_string("  and `", !IO),
+        io.write_string("func(", !IO),
         mercury_output_vars(FuncArgs, VarSet, no, !IO),
-        io__write_string(") = ", !IO),
+        io.write_string(") = ", !IO),
         mercury_output_var(RetVar, VarSet, no, !IO),
-        io__write_string(" :- ...':\n", !IO)
+        io.write_string(" :- ...':\n", !IO)
     ),
 
-    prog_out__write_context(Context, !IO),
-    io__write_string("  ", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  ", !IO),
     write_argument_name(VarSet, Var, !IO),
     write_type_of_var(Info, Context, TypeAssignSet, Var, !IO),
-    io__write_string(",\n", !IO),
+    io.write_string(",\n", !IO),
 
-    prog_out__write_context(Context, !IO),
-    io__write_string("  lambda expression has type `", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  lambda expression has type `", !IO),
     (
         PredOrFunc = predicate,
-        io__write_string("pred", !IO),
+        io.write_string("pred", !IO),
         ( ArgVars = [] ->
             true
         ;
-            io__write_string("(_", !IO),
-            list__length(ArgVars, NumArgVars),
+            io.write_string("(_", !IO),
+            list.length(ArgVars, NumArgVars),
             NumArgVars1 = NumArgVars - 1,
-            list__duplicate(NumArgVars1, ", _", Strings),
-            io__write_strings(Strings, !IO),
-            io__write_string(")", !IO)
+            list.duplicate(NumArgVars1, ", _", Strings),
+            io.write_strings(Strings, !IO),
+            io.write_string(")", !IO)
         )
     ;
         PredOrFunc = function,
-        io__write_string("func", !IO),
+        io.write_string("func", !IO),
         pred_args_to_func_args(ArgVars, FuncArgs2, _),
         ( FuncArgs2 = [] ->
             true
         ;
-            io__write_string("(_", !IO),
-            list__length(FuncArgs2, NumArgVars),
+            io.write_string("(_", !IO),
+            list.length(FuncArgs2, NumArgVars),
             NumArgVars1 = NumArgVars - 1,
-            list__duplicate(NumArgVars1, ", _", Strings),
-            io__write_strings(Strings, !IO),
-            io__write_string(")", !IO)
+            list.duplicate(NumArgVars1, ", _", Strings),
+            io.write_strings(Strings, !IO),
+            io.write_string(")", !IO)
         ),
-        io__write_string(" = _", !IO)
+        io.write_string(" = _", !IO)
     ),
-    io__write_string("'.\n", !IO),
+    io.write_string("'.\n", !IO),
     write_type_assign_set_msg(TypeAssignSet, VarSet, !IO).
 
 report_error_functor_type(Info, Var, ConsDefnList, Functor, Arity,
@@ -482,28 +473,28 @@ report_error_functor_type(Info, Var, ConsDefnList, Functor, Arity,
     typecheck_info_get_unify_context(Info, UnifyContext),
 
     write_context_and_pred_id(Info, !IO),
-    hlds_out__write_unify_context(UnifyContext, Context, !IO),
+    hlds_out.write_unify_context(UnifyContext, Context, !IO),
 
-    prog_out__write_context(Context, !IO),
-    io__write_string("  type error in unification of ", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  type error in unification of ", !IO),
     write_argument_name(VarSet, Var, !IO),
-    io__write_string("\n", !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  and ", !IO),
+    io.write_string("\n", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  and ", !IO),
     write_functor_name(Functor, Arity, !IO),
-    io__write_string(".\n", !IO),
+    io.write_string(".\n", !IO),
 
-    prog_out__write_context(Context, !IO),
-    io__write_string("  ", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  ", !IO),
     write_argument_name(VarSet, Var, !IO),
     write_type_of_var(Info, Context, TypeAssignSet, Var, !IO),
-    io__write_string(",\n", !IO),
+    io.write_string(",\n", !IO),
 
-    prog_out__write_context(Context, !IO),
-    io__write_string("  ", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  ", !IO),
     write_functor_name(Functor, Arity, !IO),
     write_type_of_functor(Functor, Arity, Context, ConsDefnList, !IO),
-    io__write_string(".\n", !IO),
+    io.write_string(".\n", !IO),
 
     write_type_assign_set_msg(TypeAssignSet, VarSet, !IO).
 
@@ -513,40 +504,40 @@ report_error_functor_arg_types(Info, Var, ConsDefnList, Functor, Args,
     typecheck_info_get_varset(Info, VarSet),
     typecheck_info_get_unify_context(Info, UnifyContext),
     typecheck_info_get_module_info(Info, ModuleInfo),
-    list__length(Args, Arity),
+    list.length(Args, Arity),
 
     write_context_and_pred_id(Info, !IO),
-    hlds_out__write_unify_context(UnifyContext, Context, !IO),
+    hlds_out.write_unify_context(UnifyContext, Context, !IO),
 
-    prog_out__write_context(Context, !IO),
-    io__write_string("  in unification of ", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  in unification of ", !IO),
     write_argument_name(VarSet, Var, !IO),
-    io__write_string("\n", !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  and term `", !IO),
+    io.write_string("\n", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  and term `", !IO),
     strip_builtin_qualifier_from_cons_id(Functor, StrippedFunctor),
-    hlds_out__write_functor_cons_id(StrippedFunctor, Args, VarSet,
+    hlds_out.write_functor_cons_id(StrippedFunctor, Args, VarSet,
         ModuleInfo, no, !IO),
-    io__write_string("':\n", !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  type error in argument(s) of ", !IO),
+    io.write_string("':\n", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  type error in argument(s) of ", !IO),
     write_functor_name(StrippedFunctor, Arity, !IO),
-    io__write_string(".\n", !IO),
+    io.write_string(".\n", !IO),
 
-    ConsArgTypesSet = list__map(get_callee_arg_types, ArgsTypeAssignSet),
+    ConsArgTypesSet = list.map(get_callee_arg_types, ArgsTypeAssignSet),
 
     % If we know the type of the function symbol, and each argument
     % also has at most one possible type, then we prefer to print an
     % error message that mentions the actual and expected types of the
     % arguments only for the arguments in which the two types differ.
     (
-        list__all_same(ConsArgTypesSet),
+        list.all_same(ConsArgTypesSet),
         ConsArgTypesSet = [ConsArgTypes | _],
-        assoc_list__from_corresponding_lists(Args, ConsArgTypes, ArgExpTypes),
-        TypeAssigns = list__map(get_caller_arg_assign, ArgsTypeAssignSet),
+        assoc_list.from_corresponding_lists(Args, ConsArgTypes, ArgExpTypes),
+        TypeAssigns = list.map(get_caller_arg_assign, ArgsTypeAssignSet),
         find_mismatched_args(ArgExpTypes, TypeAssigns, 1,
             SimpleMismatches, ComplexMismatches, AllMismatches),
-        expect(list__is_not_empty(AllMismatches), this_file,
+        expect(list.is_not_empty(AllMismatches), this_file,
             "report_error_functor_arg_types: no mismatches"),
         ComplexMismatches = []
     ->
@@ -565,22 +556,22 @@ report_error_functor_arg_types(Info, Var, ConsDefnList, Functor, Args,
         %
         (
             % could the type of the functor be polymorphic?
-            list__member(ConsDefn, ConsDefnList),
+            list.member(ConsDefn, ConsDefnList),
             ConsDefn = cons_type_info(_, _, _, ConsArgTypes, _),
             ConsArgTypes \= []
         ->
             % if so, print out the type of `Var'
-            prog_out__write_context(Context, !IO),
-            io__write_string("  ", !IO),
+            prog_out.write_context(Context, !IO),
+            io.write_string("  ", !IO),
             write_argument_name(VarSet, Var, !IO),
             write_type_of_var(Info, Context, TypeAssignSet, Var, !IO),
-            io__write_string(",\n", !IO)
+            io.write_string(",\n", !IO)
         ;
             true 
         ),
 
-        prog_out__write_context(Context, !IO),
-        io__write_string("  ", !IO),
+        prog_out.write_context(Context, !IO),
+        io.write_string("  ", !IO),
         write_functor_name(Functor, Arity, !IO),
         write_type_of_functor(Functor, Arity, Context, ConsDefnList, !IO),
         write_types_of_vars(Args, VarSet, Context, Info, TypeAssignSet, !IO),
@@ -616,9 +607,9 @@ find_mismatched_args([Arg - ExpType | ArgExpTypes], TypeAssignSet, ArgNum0,
         SimpleMismatchesTail, ComplexMismatchesTail,
         AllMismatchesTail),
     get_type_stuff(TypeAssignSet, Arg, TypeStuffList),
-    list__filter_map(substitute_types_check_match(ExpType), TypeStuffList,
+    list.filter_map(substitute_types_check_match(ExpType), TypeStuffList,
         TypeMismatches0),
-    list__sort_and_remove_dups(TypeMismatches0, TypeMismatches),
+    list.sort_and_remove_dups(TypeMismatches0, TypeMismatches),
     (
         TypeMismatches = [],
         SimpleMismatches = SimpleMismatchesTail,
@@ -675,7 +666,7 @@ report_mismatched_args([Mismatch | Mismatches], First, VarSet, Functor,
         unexpected(this_file,
             "report_mismatched_args: more than one type mismatch")
     ),
-    prog_out__write_context(Context, !IO),
+    prog_out.write_context(Context, !IO),
     (
         % Handle higher-order syntax such as ''(F, A) specially:
         % output
@@ -689,41 +680,41 @@ report_mismatched_args([Mismatch | Mismatches], First, VarSet, Functor,
     ->
         (
             First = yes,
-            io__write_string("  Functor", !IO)
+            io.write_string("  Functor", !IO)
         ;
             First = no,
-            io__write_string("  argument ", !IO),
-            io__write_int(ArgNum - 1, !IO)
+            io.write_string("  argument ", !IO),
+            io.write_int(ArgNum - 1, !IO)
         )
     ;
         (
             First = yes,
-            io__write_string("  Argument ", !IO)
+            io.write_string("  Argument ", !IO)
         ;
             First = no,
-            io__write_string("  argument ", !IO)
+            io.write_string("  argument ", !IO)
         ),
-        io__write_int(ArgNum, !IO)
+        io.write_int(ArgNum, !IO)
     ),
-    ( varset__search_name(VarSet, Var, _) ->
-        io__write_string(" (", !IO),
+    ( varset.search_name(VarSet, Var, _) ->
+        io.write_string(" (", !IO),
         mercury_output_var(Var, VarSet, no, !IO),
-        io__write_string(")", !IO)
+        io.write_string(")", !IO)
     ;
         true
     ),
-    io__write_string(" has type `", !IO),
+    io.write_string(" has type `", !IO),
     output_type(ActType, TVarSet, HeadTypeParams, !IO),
-    io__write_string("',\n", !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  expected type was `", !IO),
+    io.write_string("',\n", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  expected type was `", !IO),
     output_type(ExpType, TVarSet, HeadTypeParams, !IO),
     (
         Mismatches = [],
-        io__write_string("'.\n", !IO)
+        io.write_string("'.\n", !IO)
     ;
         Mismatches = [_ | _],
-        io__write_string("';\n", !IO),
+        io.write_string("';\n", !IO),
         report_mismatched_args(Mismatches, no, VarSet, Functor,
             Context, !IO)
     ).
@@ -741,33 +732,33 @@ report_error_var(Info, Var, Type, TypeAssignSet0, !IO) :-
     write_context_and_pred_id(Info, !IO),
     write_call_context(Context, PredMarkers, CalledPredId, ArgNum,
         UnifyContext, !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  type error: ", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  type error: ", !IO),
     ( TypeStuffList = [SingleTypeStuff] ->
         write_argument_name(VarSet, Var, !IO),
         SingleTypeStuff = type_stuff(VType, TVarSet, TBinding, HeadTypeParams),
-        io__write_string(" has type `", !IO),
+        io.write_string(" has type `", !IO),
         write_type_b(VType, TVarSet, TBinding, HeadTypeParams, !IO),
-        io__write_string("',\n", !IO),
-        prog_out__write_context(Context, !IO),
-        io__write_string("  expected type was `", !IO),
+        io.write_string("',\n", !IO),
+        prog_out.write_context(Context, !IO),
+        io.write_string("  expected type was `", !IO),
         write_type_b(Type, TVarSet, TBinding, HeadTypeParams, !IO),
-        io__write_string("'.\n", !IO)
+        io.write_string("'.\n", !IO)
     ;
-        io__write_string("type of ", !IO),
+        io.write_string("type of ", !IO),
         write_argument_name(VarSet, Var, !IO),
-        io__write_string(" does not match its expected type;\n", !IO),
+        io.write_string(" does not match its expected type;\n", !IO),
 
-        prog_out__write_context(Context, !IO),
-        io__write_string("  ", !IO),
+        prog_out.write_context(Context, !IO),
+        io.write_string("  ", !IO),
         write_argument_name(VarSet, Var, !IO),
-        io__write_string(" has overloaded actual/expected types {\n", !IO),
+        io.write_string(" has overloaded actual/expected types {\n", !IO),
 
         write_var_type_stuff_list(Context, TypeStuffList, Type, !IO),
-        io__write_string("\n", !IO),
+        io.write_string("\n", !IO),
 
-        prog_out__write_context(Context, !IO),
-        io__write_string("  }.\n", !IO)
+        prog_out.write_context(Context, !IO),
+        io.write_string("  }.\n", !IO)
     ),
     write_type_assign_set_msg(TypeAssignSet0, VarSet, !IO).
 
@@ -782,34 +773,34 @@ report_error_arg_var(Info, Var, ArgTypeAssignSet0) -->
     write_context_and_pred_id(Info),
     write_call_context(Context, PredMarkers, CalledPredId, ArgNum,
         UnifyContext),
-    prog_out__write_context(Context),
-    io__write_string("  type error: "),
+    prog_out.write_context(Context),
+    io.write_string("  type error: "),
     ( { ArgTypeStuffList = [SingleArgTypeStuff] } ->
         write_argument_name(VarSet, Var),
         { SingleArgTypeStuff = arg_type_stuff(Type0, VType0, TVarSet,
             HeadTypeParams) },
-        io__write_string(" has type `"),
+        io.write_string(" has type `"),
         output_type(VType0, TVarSet, HeadTypeParams),
-        io__write_string("',\n"),
-        prog_out__write_context(Context),
-        io__write_string("  expected type was `"),
+        io.write_string("',\n"),
+        prog_out.write_context(Context),
+        io.write_string("  expected type was `"),
         output_type(Type0, TVarSet, HeadTypeParams),
-        io__write_string("'.\n")
+        io.write_string("'.\n")
     ;
-        io__write_string("type of "),
+        io.write_string("type of "),
         write_argument_name(VarSet, Var),
-        io__write_string(" does not match its expected type;\n"),
+        io.write_string(" does not match its expected type;\n"),
 
-        prog_out__write_context(Context),
-        io__write_string("  "),
+        prog_out.write_context(Context),
+        io.write_string("  "),
         write_argument_name(VarSet, Var),
-        io__write_string(" has overloaded actual/expected types {\n"),
+        io.write_string(" has overloaded actual/expected types {\n"),
 
         write_arg_type_stuff_list(Context, ArgTypeStuffList),
-        io__write_string("\n"),
+        io.write_string("\n"),
 
-        prog_out__write_context(Context),
-        io__write_string("  }.\n")
+        prog_out.write_context(Context),
+        io.write_string("  }.\n")
     ),
     write_args_type_assign_set_msg(ArgTypeAssignSet0, VarSet).
 
@@ -824,7 +815,7 @@ report_error_undef_cons(Info, ConsErrors, Functor, Arity, !IO) :-
     write_context_and_pred_id(Info, !IO),
     write_call_context(Context, PredMarkers, CalledPredId, ArgNum,
         UnifyContext, !IO),
-    prog_out__write_context(Context, !IO),
+    prog_out.write_context(Context, !IO),
     %
     % Check for some special cases, so that we can give
     % clearer error messages.
@@ -833,53 +824,53 @@ report_error_undef_cons(Info, ConsErrors, Functor, Arity, !IO) :-
         Functor = cons(unqualified(Name), _),
         language_builtin(Name, Arity)
     ->
-        io__write_string("  error: the language construct ", !IO),
-        hlds_out__write_cons_id(Functor, !IO),
-        io__write_string(" should be\n", !IO),
-        prog_out__write_context(Context, !IO),
-        io__write_string("  used as a goal, not as an expression.\n", !IO),
-        globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+        io.write_string("  error: the language construct ", !IO),
+        hlds_out.write_cons_id(Functor, !IO),
+        io.write_string(" should be\n", !IO),
+        prog_out.write_context(Context, !IO),
+        io.write_string("  used as a goal, not as an expression.\n", !IO),
+        globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
         (
             VerboseErrors = yes,
-            prog_out__write_context(Context, !IO),
-            io__write_string(
+            prog_out.write_context(Context, !IO),
+            io.write_string(
         "  If you are trying to use a goal as a boolean function,\n", !IO),
-            prog_out__write_context(Context, !IO),
-            io__write_string(
+            prog_out.write_context(Context, !IO),
+            io.write_string(
         "  you should write `if <goal> then yes else no' instead.\n", !IO),
             ( Name = "call" ->
-                prog_out__write_context(Context, !IO),
-                io__write_string(
+                prog_out.write_context(Context, !IO),
+                io.write_string(
         "  If you are trying to invoke a higher-order\n", !IO),
-                prog_out__write_context(Context, !IO),
-                io__write_string(
+                prog_out.write_context(Context, !IO),
+                io.write_string(
         "  function, you should use `apply', not `call'.\n", !IO),
-                prog_out__write_context(Context, !IO),
-                io__write_string(
+                prog_out.write_context(Context, !IO),
+                io.write_string(
         "  If you're trying to curry a higher-order predicate,\n", !IO),
-                prog_out__write_context(Context, !IO),
-                io__write_string(
+                prog_out.write_context(Context, !IO),
+                io.write_string(
         "  see the ""Creating higher-order terms"" section of the\n", !IO),
-                prog_out__write_context(Context, !IO),
-                io__write_string(
+                prog_out.write_context(Context, !IO),
+                io.write_string(
         "  Mercury Language Reference Manual.\n", !IO),
-                prog_out__write_context(Context, !IO),
-                io__write_string(
+                prog_out.write_context(Context, !IO),
+                io.write_string(
         "  If you really are trying to use `call' as an expression\n", !IO),
-                prog_out__write_context(Context, !IO),
-                io__write_string(
+                prog_out.write_context(Context, !IO),
+                io.write_string(
         "  and not as an application of the language builtin\n", !IO),
-                prog_out__write_context(Context, !IO),
-                io__write_string(
+                prog_out.write_context(Context, !IO),
+                io.write_string(
         "  call/N, make sure that you have the arity correct, and\n", !IO),
-                prog_out__write_context(Context, !IO),
-                io__write_string(
+                prog_out.write_context(Context, !IO),
+                io.write_string(
         "  that the functor `call' is actually defined (if it is\n", !IO),
-                prog_out__write_context(Context, !IO),
-                io__write_string(
+                prog_out.write_context(Context, !IO),
+                io.write_string(
         "  defined in a separate module, check that the module is\n", !IO),
-                prog_out__write_context(Context, !IO),
-                io__write_string(
+                prog_out.write_context(Context, !IO),
+                io.write_string(
         "  correctly imported).\n", !IO)
             ;
                 true 
@@ -888,81 +879,81 @@ report_error_undef_cons(Info, ConsErrors, Functor, Arity, !IO) :-
             VerboseErrors = no
         )
     ; Functor = cons(unqualified("else"), 2) ->
-        io__write_string("  error: unmatched `else'.\n", !IO)
+        io.write_string("  error: unmatched `else'.\n", !IO)
     ; Functor = cons(unqualified("if"), 2) ->
-        io__write_string("  error: `if' without `then' or `else'.\n", !IO)
+        io.write_string("  error: `if' without `then' or `else'.\n", !IO)
     ; Functor = cons(unqualified("then"), 2) ->
-        io__write_string("  error: `then' without `if' or `else'.\n", !IO),
-        globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+        io.write_string("  error: `then' without `if' or `else'.\n", !IO),
+        globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
         (   
             VerboseErrors = yes,
-            prog_out__write_context(Context, !IO),
-            io__write_string(
+            prog_out.write_context(Context, !IO),
+            io.write_string(
                 "  Note: the `else' part is not optional.\n", !IO),
-            prog_out__write_context(Context, !IO),
-            io__write_string(
+            prog_out.write_context(Context, !IO),
+            io.write_string(
                 "  Every if-then must have an `else'.\n", !IO)
         ;
             VerboseErrors = no  
         )
     ; Functor = cons(unqualified("->"), 2) ->
-        io__write_string("  error: `->' without `;'.\n", !IO),
-        globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+        io.write_string("  error: `->' without `;'.\n", !IO),
+        globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
         (
             VerboseErrors = yes,
-            prog_out__write_context(Context, !IO),
-            io__write_string(
+            prog_out.write_context(Context, !IO),
+            io.write_string(
                 "  Note: the else part is not optional.\n", !IO),
-            prog_out__write_context(Context, !IO),
-            io__write_string(
+            prog_out.write_context(Context, !IO),
+            io.write_string(
                 "  Every if-then must have an else.\n", !IO)
         ;
             VerboseErrors = no 
         )
     ; Functor = cons(unqualified("^"), 2) ->
-        io__write_string("  error: invalid use of field selection " ++
+        io.write_string("  error: invalid use of field selection " ++
             "operator (`^').\n", !IO),
-        globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+        globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
         (
             VerboseErrors = yes,
-            prog_out__write_context(Context, !IO),
-            io__write_string("  This is probably some kind " ++
+            prog_out.write_context(Context, !IO),
+            io.write_string("  This is probably some kind " ++
                 "of syntax error.\n", !IO),
-            prog_out__write_context(Context, !IO),
-            io__write_string("  The field name must be an " ++
+            prog_out.write_context(Context, !IO),
+            io.write_string("  The field name must be an " ++
                 "atom, not a variable or other term.\n", !IO)
         ;
             VerboseErrors = no 
         )
     ; Functor = cons(unqualified(":="), 2) ->
-        io__write_string("  error: invalid use of field update " ++
+        io.write_string("  error: invalid use of field update " ++
             "operator (`:=').\n", !IO),
-        globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+        globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
         ( 
             VerboseErrors = yes,
-            prog_out__write_context(Context, !IO),
-            io__write_string("  This is probably some kind " ++
+            prog_out.write_context(Context, !IO),
+            io.write_string("  This is probably some kind " ++
                 "of syntax error.\n", !IO)
         ;
             VerboseErrors = no 
         )
     ; Functor = cons(unqualified(":-"), 2) ->
-        io__write_string("  syntax error in lambda expression " ++
+        io.write_string("  syntax error in lambda expression " ++
             "(`:-').\n", !IO)
     ; Functor = cons(unqualified("-->"), 2) ->
-        io__write_string("  syntax error in DCG lambda expression " ++
+        io.write_string("  syntax error in DCG lambda expression " ++
             "(`-->').\n", !IO)
     ; Functor = cons(unqualified("."), 2) ->
-        io__write_string("  error: the list constructor is " ++
+        io.write_string("  error: the list constructor is " ++
             "now `[|]/2', not `./2'.\n", !IO)
     ; Functor = cons(unqualified("!"), 1) ->
-        io__write_string("  error: invalid use of `!' " ++
+        io.write_string("  error: invalid use of `!' " ++
             "state variable operator.\n", !IO),
-        globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+        globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
         ( 
             VerboseErrors = yes,
-            prog_out__write_context(Context, !IO),
-            io__write_string("  You probably meant to use " ++
+            prog_out.write_context(Context, !IO),
+            io.write_string("  You probably meant to use " ++
                 "`!.' or `!:'.\n", !IO)
         ;
             VerboseErrors = no 
@@ -973,7 +964,7 @@ report_error_undef_cons(Info, ConsErrors, Functor, Arity, !IO) :-
             typecheck_info_get_ctors(Info, ConsTable),
             solutions(
                 (pred(N::out) is nondet :-
-                    map__member(ConsTable, cons(Constructor, N), _),
+                    map.member(ConsTable, cons(Constructor, N), _),
                     N \= Arity
                 ), ActualArities),
             ActualArities \= []
@@ -981,10 +972,10 @@ report_error_undef_cons(Info, ConsErrors, Functor, Arity, !IO) :-
             report_wrong_arity_constructor(Constructor, Arity,
                 ActualArities, Context, !IO)
         ;
-            io__write_string("  error: undefined symbol `", !IO),
+            io.write_string("  error: undefined symbol `", !IO),
             strip_builtin_qualifier_from_cons_id(Functor, StrippedFunctor),
-            hlds_out__write_cons_id(StrippedFunctor, !IO),
-            io__write_string("'", !IO),
+            hlds_out.write_cons_id(StrippedFunctor, !IO),
+            io.write_string("'", !IO),
             (
                 Functor = cons(Constructor, _),
                 Constructor = qualified(ModQual, _)
@@ -995,12 +986,12 @@ report_error_undef_cons(Info, ConsErrors, Functor, Arity, !IO) :-
             ->
                 maybe_report_missing_import(Info, unqualified("list"), !IO)
             ;
-                io__write_string(".\n", !IO)
+                io.write_string(".\n", !IO)
             )
         ),
         (
             ConsErrors = [_|_],
-            list__foldl(report_cons_error(Context), ConsErrors, !IO)
+            list.foldl(report_cons_error(Context), ConsErrors, !IO)
         ;
             ConsErrors = []
         )
@@ -1031,14 +1022,14 @@ language_builtin("some", 2).
     prog_context::in, io::di, io::uo) is det.
 
 report_wrong_arity_constructor(Name, Arity, ActualArities, Context, !IO) :-
-    io__write_string("  error: ", !IO),
+    io.write_string("  error: ", !IO),
     MaybePredOrFunc = no,
     report_error_num_args(MaybePredOrFunc, Arity, ActualArities, !IO),
-    io__nl(!IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  in use of constructor `", !IO),
-    prog_out__write_sym_name(Name, !IO),
-    io__write_string("'.\n", !IO).
+    io.nl(!IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  in use of constructor `", !IO),
+    prog_out.write_sym_name(Name, !IO),
+    io.write_string("'.\n", !IO).
 
 :- pred report_cons_error(prog_context::in, cons_error::in, io::di, io::uo)
     is det.
@@ -1107,27 +1098,27 @@ report_cons_error(Context, ConsError, !IO) :-
 
 report_ambiguity_error(Info, TypeAssign1, TypeAssign2, !IO) :-
     write_typecheck_info_context(Info, !IO),
-    io__write_string(
+    io.write_string(
         "  error: ambiguous overloading causes type ambiguity.\n", !IO),
     typecheck_info_get_varset(Info, VarSet),
     type_assign_get_var_types(TypeAssign1, VarTypes1),
-    map__keys(VarTypes1, Vars1),
+    map.keys(VarTypes1, Vars1),
     report_ambiguity_error_2(Vars1, VarSet, Info, TypeAssign1, TypeAssign2,
         no, Found, !IO),
-    globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     typecheck_info_get_context(Info, Context),
     ( Found = no ->
-        prog_out__write_context(Context, !IO),
-        io__write_string("  One or more of the predicates or " ++
+        prog_out.write_context(Context, !IO),
+        io.write_string("  One or more of the predicates or " ++
             "functions called\n", !IO),
-        prog_out__write_context(Context, !IO),
-        io__write_string("  is declared in more than one module.\n",
+        prog_out.write_context(Context, !IO),
+        io.write_string("  is declared in more than one module.\n",
             !IO),
-        prog_out__write_context(Context, !IO),
-        io__write_string("  Try adding explicit module qualifiers.\n",
+        prog_out.write_context(Context, !IO),
+        io.write_string("  Try adding explicit module qualifiers.\n",
             !IO)
     ; VerboseErrors = yes ->
-        io__write_strings([
+        io.write_strings([
 "\tYou will need to add an explicit type qualification to resolve the\n",
 "\ttype ambiguity.\n",
 "\tThe way to add an explicit type qualification is to use ""with_type"".\n",
@@ -1154,8 +1145,8 @@ report_ambiguity_error_2([V | Vs], VarSet, Info, TypeAssign1,
     type_assign_get_head_type_params(TypeAssign1, HeadTypeParams1),
     type_assign_get_head_type_params(TypeAssign2, HeadTypeParams2),
     (
-        map__search(VarTypes1, V, Type1),
-        map__search(VarTypes2, V, Type2),
+        map.search(VarTypes1, V, Type1),
+        map.search(VarTypes2, V, Type2),
         apply_rec_subst_to_type(TypeBindings1, Type1, T1),
         apply_rec_subst_to_type(TypeBindings2, Type2, T2),
         \+ identical_types(T1, T2)
@@ -1163,21 +1154,21 @@ report_ambiguity_error_2([V | Vs], VarSet, Info, TypeAssign1,
         typecheck_info_get_context(Info, Context),
         (
             !.Found = no,
-            prog_out__write_context(Context, !IO),
-            io__write_string("  Possible type assignments include:\n", !IO)
+            prog_out.write_context(Context, !IO),
+            io.write_string("  Possible type assignments include:\n", !IO)
         ;
             !.Found = yes
         ),
         !:Found = yes,
-        prog_out__write_context(Context, !IO),
+        prog_out.write_context(Context, !IO),
         mercury_output_var(V, VarSet, no, !IO),
-        io__write_string(": ", !IO),
+        io.write_string(": ", !IO),
         type_assign_get_typevarset(TypeAssign1, TVarSet1),
         output_type(T1, TVarSet1, HeadTypeParams1, !IO),
-        io__write_string(" or ", !IO),
+        io.write_string(" or ", !IO),
         type_assign_get_typevarset(TypeAssign2, TVarSet2),
         output_type(T2, TVarSet2, HeadTypeParams2, !IO),
-        io__write_string("\n", !IO)
+        io.write_string("\n", !IO)
     ;
         true
     ),
@@ -1189,12 +1180,12 @@ report_ambiguity_error_2([V | Vs], VarSet, Info, TypeAssign1,
 report_unsatisfiable_constraints(TypeAssignSet, !Info, !IO) :-
     typecheck_info_get_context(!.Info, Context),
     write_context_and_pred_id(!.Info, !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  unsatisfiable typeclass constraint(s):\n", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  unsatisfiable typeclass constraint(s):\n", !IO),
 
         % XXX this won't be very pretty when there are
         % XXX multiple type_assigns.
-    io__write_list(TypeAssignSet, "\n", write_constraints(Context), !IO),
+    io.write_list(TypeAssignSet, "\n", write_constraints(Context), !IO),
     typecheck_info_set_found_error(yes, !Info).
 
 :- pred write_constraints(prog_context::in, type_assign::in, io::di, io::uo)
@@ -1210,14 +1201,14 @@ write_constraints(Context, TypeAssign, !IO) :-
     type_assign_get_type_bindings(TypeAssign, Bindings),
     apply_rec_subst_to_prog_constraint_list(Bindings,
         UnprovenProgConstraints0, UnprovenProgConstraints1),
-    list__sort_and_remove_dups(UnprovenProgConstraints1,
+    list.sort_and_remove_dups(UnprovenProgConstraints1,
         UnprovenProgConstraints),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  `", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  `", !IO),
     AppendVarnums = no,
-    io__write_list(UnprovenProgConstraints, "', `",
+    io.write_list(UnprovenProgConstraints, "', `",
         mercury_output_constraint(VarSet, AppendVarnums), !IO),
-    io__write_string("'.\n", !IO).
+    io.write_string("'.\n", !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1231,7 +1222,7 @@ report_missing_tvar_in_foreign_code(Info, VarName, !IO) :-
         [words("should define the variable"),
         fixed(add_quotes(VarName)), suffix(".")],
     write_error_pieces(Context, 0, Pieces, !IO),
-    io__set_exit_status(1, !IO).
+    io.set_exit_status(1, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1240,11 +1231,11 @@ report_missing_tvar_in_foreign_code(Info, VarName, !IO) :-
     io::di, io::uo) is det.
 
 write_types_of_vars([], _, _, _, _, !IO) :-
-    io__write_string(".\n", !IO).
+    io.write_string(".\n", !IO).
 write_types_of_vars([Var | Vars], VarSet, Context, Info, TypeAssignSet, !IO) :-
-    io__write_string(",\n", !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  ", !IO),
+    io.write_string(",\n", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  ", !IO),
     write_argument_name(VarSet, Var, !IO),
     write_type_of_var(Info, Context, TypeAssignSet, Var, !IO),
     write_types_of_vars(Vars, VarSet, Context, Info, TypeAssignSet, !IO).
@@ -1253,12 +1244,12 @@ write_types_of_vars([Var | Vars], VarSet, Context, Info, TypeAssignSet, !IO) :-
     is det.
 
 write_argument_name(VarSet, Var, !IO) :-
-    ( varset__search_name(VarSet, Var, _) ->
-        io__write_string("variable `", !IO),
+    ( varset.search_name(VarSet, Var, _) ->
+        io.write_string("variable `", !IO),
         mercury_output_var(Var, VarSet, no, !IO),
-        io__write_string("'", !IO)
+        io.write_string("'", !IO)
     ;
-        io__write_string("argument", !IO)
+        io.write_string("argument", !IO)
     ).
 
 :- pred write_functor_name(cons_id::in, int::in, io::di, io::uo) is det.
@@ -1266,21 +1257,21 @@ write_argument_name(VarSet, Var, !IO) :-
 write_functor_name(Functor, Arity, !IO) :-
     strip_builtin_qualifier_from_cons_id(Functor, StrippedFunctor),
     ( Arity = 0 ->
-        io__write_string("constant `", !IO),
+        io.write_string("constant `", !IO),
         ( Functor = cons(Name, _) ->
-            prog_out__write_sym_name(Name, !IO)
+            prog_out.write_sym_name(Name, !IO)
         ;
-            hlds_out__write_cons_id(StrippedFunctor, !IO)
+            hlds_out.write_cons_id(StrippedFunctor, !IO)
         ),
-        io__write_string("'", !IO)
+        io.write_string("'", !IO)
     ; Functor = cons(unqualified(""), _) ->
-        io__write_string("higher-order term (with arity ", !IO),
-        io__write_int(Arity - 1, !IO),
-        io__write_string(")", !IO)
+        io.write_string("higher-order term (with arity ", !IO),
+        io.write_int(Arity - 1, !IO),
+        io.write_string(")", !IO)
     ;
-        io__write_string("functor `", !IO),
-        hlds_out__write_cons_id(StrippedFunctor, !IO),
-        io__write_string("'", !IO)
+        io.write_string("functor `", !IO),
+        hlds_out.write_cons_id(StrippedFunctor, !IO),
+        io.write_string("'", !IO)
     ).
 
 :- pred write_type_of_var(typecheck_info::in, prog_context::in,
@@ -1288,17 +1279,17 @@ write_functor_name(Functor, Arity, !IO) :-
 
 write_type_of_var(_Info, Context, TypeAssignSet, Var, !IO) :-
     get_type_stuff(TypeAssignSet, Var, TypeStuffList),
-    TypeStrs0 = list__map(typestuff_to_typestr, TypeStuffList),
-    list__sort_and_remove_dups(TypeStrs0, TypeStrs),
+    TypeStrs0 = list.map(typestuff_to_typestr, TypeStuffList),
+    list.sort_and_remove_dups(TypeStrs0, TypeStrs),
     ( TypeStrs = [TypeStr] ->
-        io__write_string(" has type `", !IO),
-        io__write_string(TypeStr, !IO),
-        io__write_string("'", !IO)
+        io.write_string(" has type `", !IO),
+        io.write_string(TypeStr, !IO),
+        io.write_string("'", !IO)
     ;
-        io__write_string(" has overloaded type {\n", !IO),
+        io.write_string(" has overloaded type {\n", !IO),
         write_types_list(Context, TypeStrs, !IO),
-        prog_out__write_context(Context, !IO),
-        io__write_string("  }", !IO)
+        prog_out.write_context(Context, !IO),
+        io.write_string("  }", !IO)
     ).
 
 :- pred write_type_of_functor(cons_id::in, int::in, prog_context::in,
@@ -1306,22 +1297,22 @@ write_type_of_var(_Info, Context, TypeAssignSet, Var, !IO) :-
 
 write_type_of_functor(Functor, Arity, Context, ConsDefnList, !IO) :-
     ( ConsDefnList = [SingleDefn] ->
-        io__write_string(" has type ", !IO),
+        io.write_string(" has type ", !IO),
         ( Arity \= 0 ->
-            io__write_string("\n", !IO),
-            prog_out__write_context(Context, !IO),
-            io__write_string("  `", !IO)
+            io.write_string("\n", !IO),
+            prog_out.write_context(Context, !IO),
+            io.write_string("  `", !IO)
         ;
-            io__write_string("`", !IO)
+            io.write_string("`", !IO)
         ),
         write_cons_type(SingleDefn, Functor, Context, !IO),
-        io__write_string("'", !IO)
+        io.write_string("'", !IO)
     ;
-        io__write_string(" has overloaded type\n", !IO),
-        prog_out__write_context(Context, !IO),
-        io__write_string("  { ", !IO),
+        io.write_string(" has overloaded type\n", !IO),
+        prog_out.write_context(Context, !IO),
+        io.write_string("  { ", !IO),
         write_cons_type_list(ConsDefnList, Functor, Arity, Context, !IO),
-        io__write_string(" }", !IO)
+        io.write_string(" }", !IO)
     ).
 
 :- pred write_cons_type(cons_type_info::in, cons_id::in, prog_context::in,
@@ -1340,7 +1331,7 @@ write_cons_type(cons_type_info(TVarSet, ExistQVars, ConsType, ArgTypes, _),
         ;
             unexpected(this_file, "write_cons_type: invalid cons_id")
         ),
-        io__write_string(": ", !IO)
+        io.write_string(": ", !IO)
     ;
         ArgTypes = []
     ),
@@ -1357,11 +1348,11 @@ write_cons_type_list([ConsDefn | ConsDefns], Functor, Arity, Context, !IO) :-
     ;
         ConsDefns = [_ | _],
         ( Arity = 0 ->
-            io__write_string(", ", !IO)
+            io.write_string(", ", !IO)
         ;
-            io__write_string(",\n", !IO),
-            prog_out__write_context(Context, !IO),
-            io__write_string("  ", !IO)
+            io.write_string(",\n", !IO),
+            prog_out.write_context(Context, !IO),
+            io.write_string("  ", !IO)
         ),
         write_cons_type_list(ConsDefns, Functor, Arity, Context, !IO)
     ).
@@ -1370,40 +1361,40 @@ write_cons_type_list([ConsDefn | ConsDefns], Functor, Arity, Context, !IO) :-
     io::di, io::uo) is det.
 
 write_type_assign_set_msg(TypeAssignSet, VarSet, !IO) :-
-    globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     (
         VerboseErrors = yes,
         ( TypeAssignSet = [_] ->
-            io__write_string(
+            io.write_string(
                 "\tThe partial type assignment was:\n", !IO)
         ;
-            io__write_string("\tThe possible partial type " ++
+            io.write_string("\tThe possible partial type " ++
                 "assignments were:\n", !IO)
         ),
         write_type_assign_set(TypeAssignSet, VarSet, !IO)
     ;
         VerboseErrors = no,
-        globals__io_set_extra_error_info(yes, !IO)
+        globals.io_set_extra_error_info(yes, !IO)
     ).
 
 :- pred write_args_type_assign_set_msg(args_type_assign_set::in,
     prog_varset::in, io::di, io::uo) is det.
 
 write_args_type_assign_set_msg(ArgTypeAssignSet, VarSet, !IO) :-
-    globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     (
         VerboseErrors = yes,
         ( ArgTypeAssignSet = [_] ->
-            io__write_string(
+            io.write_string(
                 "\tThe partial type assignment was:\n", !IO)
         ;
-            io__write_string("\tThe possible partial type " ++
+            io.write_string("\tThe possible partial type " ++
                 "assignments were:\n", !IO)
         ),
         write_args_type_assign_set(ArgTypeAssignSet, VarSet, !IO)
     ;
         VerboseErrors = no,
-        globals__io_set_extra_error_info(yes, !IO)
+        globals.io_set_extra_error_info(yes, !IO)
     ).
 
 :- pred output_type(mer_type::in, tvarset::in, head_type_params::in,
@@ -1412,9 +1403,9 @@ write_args_type_assign_set_msg(ArgTypeAssignSet, VarSet, !IO) :-
 output_type(Type0, TVarSet, HeadTypeParams, !IO) :-
     strip_builtin_qualifiers_from_type(Type0, Type),
     unparse_type(Type, Term0),
-    list__map(term__coerce_var, HeadTypeParams, ExistQVars),
+    list.map(term.coerce_var, HeadTypeParams, ExistQVars),
     maybe_add_existential_quantifier(ExistQVars, Term0, Term),
-    varset__coerce(TVarSet, VarSet),
+    varset.coerce(TVarSet, VarSet),
     mercury_output_term(Term, VarSet, no, !IO).
 
 :- pred write_types_list(prog_context::in, list(string)::in,
@@ -1422,15 +1413,15 @@ output_type(Type0, TVarSet, HeadTypeParams, !IO) :-
 
 write_types_list(_Context, [], !IO).
 write_types_list(Context, [Type | Types], !IO) :-
-    prog_out__write_context(Context, !IO),
-    io__write_string("    ", !IO),
-    io__write_string(Type, !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("    ", !IO),
+    io.write_string(Type, !IO),
     (
         Types = [],
-        io__write_string("\n", !IO)
+        io.write_string("\n", !IO)
     ;
         Types = [_ | _],
-        io__write_string(",\n", !IO),
+        io.write_string(",\n", !IO),
         write_types_list(Context, Types, !IO)
     ).
 
@@ -1444,7 +1435,7 @@ write_type_stuff(type_stuff(Type, TVarSet, TypeBinding, HeadTypeParams),
     mer_type::in, io::di, io::uo) is det.
 
 write_var_type_stuff_list(Context, TypeStuffs, Type, !IO) :-
-    io__write_list(TypeStuffs, ",\n", write_var_type_stuff(Context, Type),
+    io.write_list(TypeStuffs, ",\n", write_var_type_stuff(Context, Type),
         !IO).
 
 :- pred write_var_type_stuff(prog_context::in, mer_type::in, type_stuff::in,
@@ -1452,12 +1443,12 @@ write_var_type_stuff_list(Context, TypeStuffs, Type, !IO) :-
 
 write_var_type_stuff(Context, Type, VarTypeStuff, !IO) :-
     VarTypeStuff = type_stuff(VarType, TVarSet, TypeBinding, HeadTypeParams),
-    prog_out__write_context(Context, !IO),
-    io__write_string("    (inferred) ", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("    (inferred) ", !IO),
     write_type_b(VarType, TVarSet, TypeBinding, HeadTypeParams, !IO),
-    io__write_string(",\n", !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("    (expected) ", !IO),
+    io.write_string(",\n", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("    (expected) ", !IO),
     write_type_b(Type, TVarSet, TypeBinding, HeadTypeParams, !IO).
 
 :- pred write_type_b(mer_type::in, tvarset::in, tsubst::in,
@@ -1471,19 +1462,19 @@ write_type_b(Type0, TypeVarSet, TypeBindings, HeadTypeParams, !IO) :-
     io::di, io::uo) is det.
 
 write_arg_type_stuff_list(Context, TypeStuffs, !IO) :-
-    io__write_list(TypeStuffs, ",\n", write_arg_type_stuff(Context), !IO).
+    io.write_list(TypeStuffs, ",\n", write_arg_type_stuff(Context), !IO).
 
 :- pred write_arg_type_stuff(prog_context::in, arg_type_stuff::in,
     io::di, io::uo) is det.
 
 write_arg_type_stuff(Context, ArgTypeStuff, !IO) :-
     ArgTypeStuff = arg_type_stuff(Type, VarType, TVarSet, HeadTypeParams),
-    prog_out__write_context(Context, !IO),
-    io__write_string("    (inferred) ", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("    (inferred) ", !IO),
     output_type(VarType, TVarSet, HeadTypeParams, !IO),
-    io__write_string(",\n", !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("    (expected) ", !IO),
+    io.write_string(",\n", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("    (expected) ", !IO),
     output_type(Type, TVarSet, HeadTypeParams, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -1506,10 +1497,10 @@ maybe_report_missing_import(Info, ModuleQualifier, !IO) :-
             match_sym_name(ModuleQualifier, VisibleModule)
         )
     ->
-        io__write_string("\n", !IO),
-        error_util__write_error_pieces(Context, 2,
+        io.write_string("\n", !IO),
+        error_util.write_error_pieces(Context, 2,
             [words("(the module "),
-            fixed(error_util__describe_sym_name(ModuleQualifier)),
+            fixed(error_util.describe_sym_name(ModuleQualifier)),
             words("has not been imported).")], !IO)
     ;
         % The module qualifier matches one or more of the
@@ -1519,10 +1510,10 @@ maybe_report_missing_import(Info, ModuleQualifier, !IO) :-
             ModuleInfo), UnimportedParents),
         UnimportedParents \= []
     ->
-        io__write_string("\n", !IO),
+        io.write_string("\n", !IO),
         report_unimported_parents(Context, UnimportedParents, !IO)
     ;
-        io__write_string(".\n", !IO)
+        io.write_string(".\n", !IO)
     ).
 
     % Nondeterministically return all the possible parent modules which could
@@ -1536,16 +1527,16 @@ get_unimported_parent(ModuleQualifier, ModuleInfo, UnimportedParent) :-
     visible_module(ModuleName, ModuleInfo),
     match_sym_name(ModuleQualifier, ModuleName),
     ParentModules = get_ancestors(ModuleName),
-    list__member(UnimportedParent, ParentModules),
+    list.member(UnimportedParent, ParentModules),
     \+ visible_module(UnimportedParent, ModuleInfo).
 
 :- pred report_unimported_parents(prog_context::in, list(module_name)::in,
     io::di, io::uo) is det.
 
 report_unimported_parents(Context, UnimportedParents, !IO) :-
-    UnimportedParentDescs = list__map(describe_sym_name, UnimportedParents),
+    UnimportedParentDescs = list.map(describe_sym_name, UnimportedParents),
     AllUnimportedParents = list_to_pieces(UnimportedParentDescs),
-    error_util__write_error_pieces(Context, 2,
+    error_util.write_error_pieces(Context, 2,
         ( AllUnimportedParents = [_] ->
             [words("(the possible parent module ")]
             ++ AllUnimportedParents
@@ -1563,12 +1554,12 @@ report_unimported_parents(Context, UnimportedParents, !IO) :-
 
 write_call_context(Context, PredMarkers, CallId, ArgNum, UnifyContext) -->
     ( { ArgNum = 0 } ->
-        hlds_out__write_unify_context(UnifyContext, Context)
+        hlds_out.write_unify_context(UnifyContext, Context)
     ;
-        prog_out__write_context(Context),
-        io__write_string("  in "),
-        hlds_out__write_call_arg_id(CallId, ArgNum, PredMarkers),
-        io__write_string(":\n")
+        prog_out.write_context(Context),
+        io.write_string("  in "),
+        hlds_out.write_call_arg_id(CallId, ArgNum, PredMarkers),
+        io.write_string(":\n")
     ).
 
 :- pred write_typecheck_info_context(typecheck_info::in, io::di, io::uo)
@@ -1577,7 +1568,7 @@ write_call_context(Context, PredMarkers, CallId, ArgNum, UnifyContext) -->
 write_typecheck_info_context(Info, !IO) :-
     write_context_and_pred_id(Info, !IO),
     typecheck_info_get_context(Info, Context),
-    prog_out__write_context(Context, !IO).
+    prog_out.write_context(Context, !IO).
 
 :- pred write_context_and_pred_id(typecheck_info::in, io::di, io::uo) is det.
 
@@ -1585,10 +1576,10 @@ write_context_and_pred_id(Info, !IO) :-
     typecheck_info_get_module_info(Info, ModuleInfo),
     typecheck_info_get_context(Info, Context),
     typecheck_info_get_predid(Info, PredId),
-    prog_out__write_context(Context, !IO),
-    io__write_string("In clause for ", !IO),
-    hlds_out__write_pred_id(ModuleInfo, PredId, !IO),
-    io__write_string(":\n", !IO).
+    prog_out.write_context(Context, !IO),
+    io.write_string("In clause for ", !IO),
+    hlds_out.write_pred_id(ModuleInfo, PredId, !IO),
+    io.write_string(":\n", !IO).
 
     % This is intended to supercede the above predicate - It performs the
     % same action, but instead of just writing to the output straight away
@@ -1616,7 +1607,7 @@ make_pred_id_preamble(Info, Preamble) :-
 :- pred identical_types(mer_type::in, mer_type::in) is semidet.
 
 identical_types(Type1, Type2) :-
-    map__init(TypeSubst0),
+    map.init(TypeSubst0),
     type_unify(Type1, Type2, [], TypeSubst0, TypeSubst),
     TypeSubst = TypeSubst0.
 
@@ -1643,7 +1634,7 @@ get_type_stuff([TypeAssign | TypeAssigns], Var, TypeStuffs) :-
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
     type_assign_get_typevarset(TypeAssign, TVarSet),
     type_assign_get_var_types(TypeAssign, VarTypes),
-    ( map__search(VarTypes, Var, Type0) ->
+    ( map.search(VarTypes, Var, Type0) ->
         Type = Type0
     ;
         % This shouldn't happen - how can a variable which has
@@ -1652,7 +1643,7 @@ get_type_stuff([TypeAssign | TypeAssigns], Var, TypeStuffs) :-
         Type = defined(unqualified("<any>"), [], star)
     ),
     TypeStuff = type_stuff(Type, TVarSet, TypeBindings, HeadTypeParams),
-    ( list__member(TypeStuff, TailTypeStuffs) ->
+    ( list.member(TypeStuff, TailTypeStuffs) ->
         TypeStuffs = TailTypeStuffs
     ;
         TypeStuffs = [TypeStuff | TailTypeStuffs]
@@ -1665,9 +1656,9 @@ typestuff_to_typestr(TypeStuff) = TypeStr :-
     apply_rec_subst_to_type(TypeBindings, Type0, Type1),
     strip_builtin_qualifiers_from_type(Type1, Type),
     unparse_type(Type, Term0),
-    list__map(term__coerce_var, HeadTypeParams, ExistQVars),
+    list.map(term.coerce_var, HeadTypeParams, ExistQVars),
     maybe_add_existential_quantifier(ExistQVars, Term0, Term),
-    varset__coerce(TypeVarSet, VarSet),
+    varset.coerce(TypeVarSet, VarSet),
     TypeStr = mercury_term_to_string(Term, VarSet, no).
 
     % Given an arg type assignment set and a variable id, return the list of
@@ -1692,7 +1683,7 @@ get_arg_type_stuff([ArgTypeAssign | ArgTypeAssigns], Var, ArgTypeStuffs) :-
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
     type_assign_get_typevarset(TypeAssign, TVarSet),
     type_assign_get_var_types(TypeAssign, VarTypes),
-    ( map__search(VarTypes, Var, VarType0) ->
+    ( map.search(VarTypes, Var, VarType0) ->
         VarType = VarType0
     ;
         % This shouldn't happen - how can a variable which has
@@ -1700,12 +1691,12 @@ get_arg_type_stuff([ArgTypeAssign | ArgTypeAssigns], Var, ArgTypeStuffs) :-
         % the correct type?
         VarType = defined(unqualified("<any>"), [], star)
     ),
-    list__index0_det(ArgTypes, 0, ArgType),
+    list.index0_det(ArgTypes, 0, ArgType),
     apply_rec_subst_to_type(TypeBindings, ArgType, ArgType2),
     apply_rec_subst_to_type(TypeBindings, VarType, VarType2),
     ArgTypeStuff = arg_type_stuff(ArgType2, VarType2, TVarSet,
         HeadTypeParams),
-    ( list__member(ArgTypeStuff, TailArgTypeStuffs) ->
+    ( list.member(ArgTypeStuff, TailArgTypeStuffs) ->
         ArgTypeStuffs = TailArgTypeStuffs
     ;
         ArgTypeStuffs = [ArgTypeStuff | TailArgTypeStuffs]
@@ -1720,23 +1711,23 @@ get_arg_type_stuff([ArgTypeAssign | ArgTypeAssigns], Var, ArgTypeStuffs) :-
     is det.
 
 maybe_add_existential_quantifier(HeadTypeParams, !Term) :-
-    term__vars(!.Term, Vars),
-    ExistQVars = set__to_sorted_list(set__intersect(
-        set__list_to_set(HeadTypeParams), set__list_to_set(Vars))),
+    term.vars(!.Term, Vars),
+    ExistQVars = set.to_sorted_list(set.intersect(
+        set.list_to_set(HeadTypeParams), set.list_to_set(Vars))),
     (
         ExistQVars = []
     ;
         ExistQVars = [_ | _],
         QTerm = make_list_term(ExistQVars),
-        !:Term = term__functor(term__atom("some"), [QTerm, !.Term],
-            term__context_init)
+        !:Term = term.functor(term.atom("some"), [QTerm, !.Term],
+            term.context_init)
     ).
 
 :- func make_list_term(list(var)) = term.
 
-make_list_term([]) = term__functor(term__atom("[]"), [], term__context_init).
-make_list_term([Var | Vars]) = term__functor(term__atom("[|]"),
-    [term__variable(Var), make_list_term(Vars)], term__context_init).
+make_list_term([]) = term.functor(term.atom("[]"), [], term.context_init).
+make_list_term([Var | Vars]) = term.functor(term.atom("[|]"),
+    [term.variable(Var), make_list_term(Vars)], term.context_init).
 
 %-----------------------------------------------------------------------------%
 
@@ -1747,7 +1738,7 @@ write_inference_messages([PredId | PredIds], ModuleInfo, !IO) :-
     (
         check_marker(Markers, infer_type),
         module_info_predids(ModuleInfo, ValidPredIds),
-        list__member(PredId, ValidPredIds),
+        list.member(PredId, ValidPredIds),
         \+ pred_info_get_goal_type(PredInfo, promise(_))
     ->
         write_inference_message(PredInfo, !IO)
@@ -1771,26 +1762,24 @@ write_inference_message(PredInfo, !IO) :-
     pred_info_get_class_context(PredInfo, ClassContext),
     pred_info_get_purity(PredInfo, Purity),
     MaybeDet = no,
-    prog_out__write_context(Context, !IO),
-    io__write_string("Inferred ", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("Inferred ", !IO),
     AppendVarNums = no,
     (
         PredOrFunc = predicate,
         mercury_output_pred_type(VarSet, ExistQVars, Name, Types,
-            MaybeDet, Purity, ClassContext, Context, AppendVarNums,
-            !IO)
+            MaybeDet, Purity, ClassContext, Context, AppendVarNums, !IO)
     ;
         PredOrFunc = function,
         pred_args_to_func_args(Types, ArgTypes, RetType),
-        mercury_output_func_type(VarSet, ExistQVars, Name, ArgTypes,
-            RetType, MaybeDet, Purity, ClassContext, Context,
-            AppendVarNums, !IO)
+        mercury_output_func_type(VarSet, ExistQVars, Name, ArgTypes, RetType,
+            MaybeDet, Purity, ClassContext, Context, AppendVarNums, !IO)
     ).
 
 checkpoint(Msg, !Info, !IO) :-
     typecheck_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
-    globals__lookup_bool_option(Globals, debug_types, DoCheckPoint),
+    globals.lookup_bool_option(Globals, debug_types, DoCheckPoint),
     (
         DoCheckPoint = yes,
         checkpoint_2(Msg, !.Info, !IO)
@@ -1801,12 +1790,12 @@ checkpoint(Msg, !Info, !IO) :-
 :- pred checkpoint_2(string::in, typecheck_info::in, io::di, io::uo) is det.
 
 checkpoint_2(Msg, T0, !IO) :-
-    io__write_string("At ", !IO),
-    io__write_string(Msg, !IO),
-    io__write_string(": ", !IO),
-    globals__io_lookup_bool_option(detailed_statistics, Statistics, !IO),
+    io.write_string("At ", !IO),
+    io.write_string(Msg, !IO),
+    io.write_string(": ", !IO),
+    globals.io_lookup_bool_option(detailed_statistics, Statistics, !IO),
     maybe_report_stats(Statistics, !IO),
-    io__write_string("\n", !IO),
+    io.write_string("\n", !IO),
     typecheck_info_get_type_assign_set(T0, TypeAssignSet),
     (
         Statistics = yes,
@@ -1815,8 +1804,7 @@ checkpoint_2(Msg, T0, !IO) :-
         type_assign_get_var_types(TypeAssign, VarTypes),
         checkpoint_tree_stats("\t`var -> type' map", VarTypes, !IO),
         type_assign_get_type_bindings(TypeAssign, TypeBindings),
-        checkpoint_tree_stats("\t`type var -> type' map", TypeBindings,
-            !IO)
+        checkpoint_tree_stats("\t`type var -> type' map", TypeBindings, !IO)
     ;
         true
     ),
@@ -1827,11 +1815,11 @@ checkpoint_2(Msg, T0, !IO) :-
     is det.
 
 checkpoint_tree_stats(Description, Tree, !IO) :-
-    map__count(Tree, Count),
-    io__write_string(Description, !IO),
-    io__write_string(": count = ", !IO),
-    io__write_int(Count, !IO),
-    io__write_string("\n", !IO).
+    map.count(Tree, Count),
+    io.write_string(Description, !IO),
+    io.write_string(": count = ", !IO),
+    io.write_int(Count, !IO),
+    io.write_string("\n", !IO).
 
 %-----------------------------------------------------------------------------%
 

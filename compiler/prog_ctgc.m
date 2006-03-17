@@ -143,7 +143,7 @@
 
 parse_unit_selector(Term) = UnitSelector :-
     (
-        Term = term__functor(term__atom(Cons), Args, _)
+        Term = term.functor(term.atom(Cons), Args, _)
     ->
         (
             Cons = "sel",
@@ -151,23 +151,23 @@ parse_unit_selector(Term) = UnitSelector :-
         ->
             (
                 sym_name_and_args(ConsTerm, ConsIdName, []),
-                ArityTerm = term__functor(term__integer(Arity), _, _),
-                PosTerm = term__functor(term__integer(Pos), _, _)
+                ArityTerm = term.functor(term.integer(Arity), _, _),
+                PosTerm = term.functor(term.integer(Pos), _, _)
             ->
                 ConsId = cons(ConsIdName, Arity),
                 UnitSelector = termsel(ConsId, Pos)
             ;
-                ConsTerm = term__functor(term__integer(X), _, _)
+                ConsTerm = term.functor(term.integer(X), _, _)
             ->
                 ConsId = int_const(X),
                 UnitSelector = termsel(ConsId, 0)
             ;
-                ConsTerm = term__functor(term__float(X), _, _)
+                ConsTerm = term.functor(term.float(X), _, _)
             ->
                 ConsId = float_const(X),
                 UnitSelector = termsel(ConsId, 0)
             ;
-                ConsTerm = term__functor(term__string(S), _, _)
+                ConsTerm = term.functor(term.string(S), _, _)
             ->
                 ConsId = string_const(S),
                 UnitSelector = termsel(ConsId, 0)
@@ -177,9 +177,9 @@ parse_unit_selector(Term) = UnitSelector :-
             )
         ;
             Cons = "typesel",
-            Args = [ TypeSelectorTerm ]
+            Args = [TypeSelectorTerm]
         ->
-            parse_type(term__coerce(TypeSelectorTerm), MaybeTypeSelector),
+            parse_type(term.coerce(TypeSelectorTerm), MaybeTypeSelector),
             (
                 MaybeTypeSelector = ok(TypeSelector),
                 UnitSelector = typesel(TypeSelector)
@@ -198,14 +198,13 @@ parse_unit_selector(Term) = UnitSelector :-
 
 parse_selector(Term) = Selector :-
     (
-        Term = term__functor(term__atom(Cons), Args, _)
+        Term = term.functor(term.atom(Cons), Args, _)
     ->
         (
             Cons = "[|]",
-            Args = [ First , Rest ]
+            Args = [First , Rest]
         ->
-            Selector = [ parse_unit_selector(First) |
-                parse_selector(Rest) ]
+            Selector = [parse_unit_selector(First) | parse_selector(Rest)]
         ;
             Selector = []
         )
@@ -215,23 +214,23 @@ parse_selector(Term) = Selector :-
 
 parse_datastruct(Term) = Datastruct :-
     (
-        Term = term__functor(term__atom(Cons), Args, _),
+        Term = term.functor(term.atom(Cons), Args, _),
         Cons = "cel",
-        Args = [ VarTerm, SelectorTerm ],
-        VarTerm = term__variable(Var)
+        Args = [VarTerm, SelectorTerm],
+        VarTerm = term.variable(Var)
     ->
-        Datastruct = selected_cel(term__coerce_var(Var),
+        Datastruct = selected_cel(term.coerce_var(Var),
             parse_selector(SelectorTerm))
     ;
-        unexpected(this_file, "parse_datastruct: error while parsing" ++
-            " datastruct.")
+        unexpected(this_file,
+            "parse_datastruct: error while parsing datastruct.")
     ).
 
 parse_structure_sharing_pair(Term) = SharingPair :-
     (
-        Term = term__functor(term__atom(Cons), Args, _),
+        Term = term.functor(term.atom(Cons), Args, _),
         Cons = "pair",
-        Args = [ First, Second ]
+        Args = [First, Second]
     ->
         SharingPair = parse_datastruct(First) - parse_datastruct(Second)
     ;
@@ -240,26 +239,26 @@ parse_structure_sharing_pair(Term) = SharingPair :-
 
 parse_structure_sharing(Term) = SharingPairs :-
     (
-        Term = term__functor(term__atom(Cons), Args, _),
+        Term = term.functor(term.atom(Cons), Args, _),
         (
             Cons = "[|]",
-            Args = [ SharingPairTerm, Rest],
-            SharingPairs0 = [ parse_structure_sharing_pair(SharingPairTerm) |
-            parse_structure_sharing(Rest) ]
+            Args = [SharingPairTerm, Rest],
+            SharingPairs0 = [parse_structure_sharing_pair(SharingPairTerm) |
+                parse_structure_sharing(Rest)]
         ;
             Cons = "[]",
             SharingPairs0 = []
         )
     ->
-            SharingPairs = SharingPairs0
+        SharingPairs = SharingPairs0
     ;
-            unexpected(this_file, "Error while parsing list of structure " ++
-                "sharing pairs.")
+        unexpected(this_file,
+            "Error while parsing list of structure sharing pairs.")
     ).
 
 parse_structure_sharing_domain(Term) = SharingAs :-
     (
-        Term = term__functor(term__atom(Cons), _, Context),
+        Term = term.functor(term.atom(Cons), _, Context),
         (
             Cons = "[|]",
             SharingAs0 = real(parse_structure_sharing(Term))
@@ -269,7 +268,7 @@ parse_structure_sharing_domain(Term) = SharingAs :-
         ;
             Cons = "top",
             context_to_string(Context, ContextMsg),
-            SharingAs0 = top([ "imported top: " ++ ContextMsg ++ "." ])
+            SharingAs0 = top(["imported top: " ++ ContextMsg ++ "."])
         )
     ->
         SharingAs = SharingAs0
@@ -292,9 +291,8 @@ selector_to_string(TVarSet, Selector) = String :-
         Selector = [_|_],
         SelectorStrings = list.map(unit_selector_to_string(TVarSet),
             Selector),
-        string.append_list(["[",
-            string.join_list(",", SelectorStrings),
-            "]"], String)
+        string.append_list(["[", string.join_list(",", SelectorStrings), "]"],
+            String)
     ).
 
 :- func unit_selector_to_string(tvarset, unit_selector) = string.
@@ -335,9 +333,7 @@ print_structure_sharing(ProgVarSet, TypeVarSet, MaybeLimit, Start, Sep, End,
     (
         MaybeLimit = yes(Limit),
         list.take_upto(Limit, SharingPairs0, SharingPairs),
-        (
-            Limit >= list.length(SharingPairs0)
-        ->
+        ( Limit >= list.length(SharingPairs0) ->
             CompleteList = yes
         ;
             CompleteList = no

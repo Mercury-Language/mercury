@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2005 The University of Melbourne.
+% Copyright (C) 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,7 +13,7 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__global_data.
+:- module ll_backend.global_data.
 :- interface.
 
 :- import_module hlds.hlds_pred.
@@ -142,45 +142,45 @@
 wrap_layout_data(LayoutData) = layout_data(LayoutData).
 
 global_data_init(StaticCellInfo, GlobalData) :-
-    map__init(EmptyDataMap),
-    map__init(EmptyLayoutMap),
+    map.init(EmptyDataMap),
+    map.init(EmptyLayoutMap),
     GlobalData = global_data(EmptyDataMap, EmptyLayoutMap, [], StaticCellInfo).
 
 global_data_add_new_proc_var(PredProcId, ProcVar, !GlobalData) :-
     ProcVarMap0 = !.GlobalData ^ proc_var_map,
-    map__det_insert(ProcVarMap0, PredProcId, ProcVar, ProcVarMap),
+    map.det_insert(ProcVarMap0, PredProcId, ProcVar, ProcVarMap),
     !:GlobalData = !.GlobalData ^ proc_var_map := ProcVarMap.
 
 global_data_add_new_proc_layout(PredProcId, ProcLayout, !GlobalData) :-
     ProcLayoutMap0 = !.GlobalData ^ proc_layout_map,
-    map__det_insert(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
+    map.det_insert(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
     !:GlobalData = !.GlobalData ^ proc_layout_map := ProcLayoutMap.
 
 global_data_update_proc_layout(PredProcId, ProcLayout, !GlobalData) :-
     ProcLayoutMap0 = !.GlobalData ^ proc_layout_map,
-    map__det_update(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
+    map.det_update(ProcLayoutMap0, PredProcId, ProcLayout, ProcLayoutMap),
     !:GlobalData = !.GlobalData ^ proc_layout_map := ProcLayoutMap.
 
 global_data_add_new_closure_layouts(NewClosureLayouts, !GlobalData) :-
     ClosureLayouts0 = !.GlobalData ^ closure_layouts,
-    list__append(NewClosureLayouts, ClosureLayouts0, ClosureLayouts),
+    list.append(NewClosureLayouts, ClosureLayouts0, ClosureLayouts),
     !:GlobalData = !.GlobalData ^ closure_layouts := ClosureLayouts.
 
 global_data_maybe_get_proc_layout(GlobalData, PredProcId, ProcLayout) :-
     ProcLayoutMap = GlobalData ^ proc_layout_map,
-    map__search(ProcLayoutMap, PredProcId, ProcLayout).
+    map.search(ProcLayoutMap, PredProcId, ProcLayout).
 
 global_data_get_proc_layout(GlobalData, PredProcId, ProcLayout) :-
     ProcLayoutMap = GlobalData ^ proc_layout_map,
-    map__lookup(ProcLayoutMap, PredProcId, ProcLayout).
+    map.lookup(ProcLayoutMap, PredProcId, ProcLayout).
 
 global_data_get_all_proc_vars(GlobalData, ProcVars) :-
     ProcVarMap = GlobalData ^ proc_var_map,
-    map__values(ProcVarMap, ProcVars).
+    map.values(ProcVarMap, ProcVars).
 
 global_data_get_all_proc_layouts(GlobalData, ProcLayouts) :-
     ProcLayoutMap = GlobalData ^ proc_layout_map,
-    map__values(ProcLayoutMap, ProcLayouts).
+    map.values(ProcLayoutMap, ProcLayouts).
 
 global_data_get_all_closure_layouts(GlobalData, ClosureLayouts) :-
     ClosureLayouts = GlobalData ^ closure_layouts.
@@ -226,13 +226,13 @@ global_data_set_static_cell_info(StaticCellInfo, !GlobalData) :-
             ).
 
 init_static_cell_info(BaseName, UnboxFloat, CommonData) = Info0 :-
-    map__init(Cells0),
-    map__init(CellMap0),
+    map.init(Cells0),
+    map.init(CellMap0),
     Info0 = static_cell_info(BaseName, UnboxFloat, CommonData,
-        counter__init(0), counter__init(0), Cells0, CellMap0).
+        counter.init(0), counter.init(0), Cells0, CellMap0).
 
 add_static_cell_natural_types(Args, DataAddr, !Info) :-
-    list__map(associate_natural_type(!.Info ^ unbox_float), Args, ArgsTypes),
+    list.map(associate_natural_type(!.Info ^ unbox_float), Args, ArgsTypes),
     add_static_cell(ArgsTypes, DataAddr, !Info).
 
 add_static_cell(ArgsTypes0, DataAddr, !Info) :-
@@ -253,31 +253,31 @@ add_static_cell(ArgsTypes0, DataAddr, !Info) :-
     static_cell_info::in, static_cell_info::out) is det.
 
 do_add_static_cell(ArgsTypes, CellType, CellArgs, DataAddr, !Info) :-
-    assoc_list__keys(ArgsTypes, Args),
+    assoc_list.keys(ArgsTypes, Args),
     CellGroupMap0 = !.Info ^ cell_group_map,
-    ( map__search(CellGroupMap0, CellType, CellGroup0) ->
+    ( map.search(CellGroupMap0, CellType, CellGroup0) ->
         TypeNum = CellGroup0 ^ cell_type_number,
         CellGroup1 = CellGroup0
     ;
         TypeNumCounter0 = !.Info ^ type_counter,
-        counter__allocate(TypeNum, TypeNumCounter0, TypeNumCounter),
+        counter.allocate(TypeNum, TypeNumCounter0, TypeNumCounter),
         !:Info = !.Info ^ type_counter := TypeNumCounter,
-        CellGroup1 = cell_type_group(TypeNum, map__init)
+        CellGroup1 = cell_type_group(TypeNum, map.init)
     ),
     MembersMap0 = CellGroup1 ^ cell_group_members,
     ModuleName = !.Info ^ module_name,
-    ( map__search(MembersMap0, Args, DataNamePrime) ->
+    ( map.search(MembersMap0, Args, DataNamePrime) ->
         DataName = DataNamePrime
     ;
         CellNumCounter0 = !.Info ^ cell_counter,
-        counter__allocate(CellNum, CellNumCounter0, CellNumCounter),
+        counter.allocate(CellNum, CellNumCounter0, CellNumCounter),
         !:Info = !.Info ^ cell_counter := CellNumCounter,
         DataName = common(CellNum, TypeNum),
         (
             !.Info ^ common_data = yes,
-            map__set(MembersMap0, Args, DataName, MembersMap),
+            map.set(MembersMap0, Args, DataName, MembersMap),
             CellGroup = CellGroup1 ^ cell_group_members := MembersMap,
-            map__set(CellGroupMap0, CellType, CellGroup, CellGroupMap),
+            map.set(CellGroupMap0, CellType, CellGroup, CellGroupMap),
             !:Info = !.Info ^ cell_group_map := CellGroupMap
         ;
             !.Info ^ common_data = no
@@ -294,7 +294,7 @@ do_add_static_cell(ArgsTypes, CellType, CellArgs, DataAddr, !Info) :-
             CellTypeAndValue = grouped_type_and_value(TypeNum, GroupedArgs)
         ),
         Cell = common_data(ModuleName, CellNum, CellTypeAndValue),
-        map__det_insert(Cells0, CellNum, Cell, Cells),
+        map.det_insert(Cells0, CellNum, Cell, Cells),
         !:Info = !.Info ^ cells := Cells
     ),
     DataAddr = data_addr(ModuleName, DataName).
@@ -307,14 +307,14 @@ compute_cell_type(ArgsTypes, CellType, CellTypeAndValue) :-
         ArgsTypes = [FirstArg - FirstArgType | LaterArgsTypes],
         threshold_group_types(FirstArgType, [FirstArg], LaterArgsTypes,
             TypeGroups, TypeAndArgGroups),
-        OldLength = list__length(ArgsTypes),
-        NewLength = list__length(TypeAndArgGroups),
+        OldLength = list.length(ArgsTypes),
+        NewLength = list.length(TypeAndArgGroups),
         OldLength >= NewLength * 2
     ->
         CellType = grouped_type(TypeGroups),
         CellTypeAndValue = grouped_args(TypeAndArgGroups)
     ;
-        CellType = plain_type(assoc_list__values(ArgsTypes)),
+        CellType = plain_type(assoc_list.values(ArgsTypes)),
         CellTypeAndValue = plain_args(ArgsTypes)
     ).
 
@@ -351,8 +351,8 @@ make_arg_groups(Type, RevArgs, TypeGroup, TypeAndArgGroup) :-
         TypeGroup = Type - 1,
         TypeAndArgGroup = common_cell_ungrouped_arg(Type, Arg)
     ;
-        list__length(RevArgs, NumArgs),
-        list__reverse(RevArgs, Args),
+        list.length(RevArgs, NumArgs),
+        list.reverse(RevArgs, Args),
         TypeGroup = Type - NumArgs,
         TypeAndArgGroup = common_cell_grouped_args(Type, NumArgs, Args)
     ).
@@ -360,11 +360,11 @@ make_arg_groups(Type, RevArgs, TypeGroup, TypeAndArgGroup) :-
 search_static_cell_offset(Info, DataAddr, Offset, Rval) :-
     DataAddr = data_addr(Info ^ module_name, DataName),
     DataName = common(CellNum, _),
-    map__search(Info ^ cells, CellNum, CommonData),
+    map.search(Info ^ cells, CellNum, CommonData),
     CommonData = common_data(_, _, TypeAndValue),
     (
         TypeAndValue = plain_type_and_value(_, ArgsTypes),
-        list__index0_det(ArgsTypes, Offset, Rval - _)
+        list.index0_det(ArgsTypes, Offset, Rval - _)
     ;
         TypeAndValue = grouped_type_and_value(_, ArgGroups),
         offset_into_group(ArgGroups, Offset, Rval)
@@ -379,7 +379,7 @@ offset_into_group([Group | Groups], Offset, Rval) :-
     (
         Group = common_cell_grouped_args(_, NumRvalsInGroup, Rvals),
         ( Offset < NumRvalsInGroup ->
-            list__index0_det(Rvals, Offset, Rval)
+            list.index0_det(Rvals, Offset, Rval)
         ;
             offset_into_group(Groups, Offset - NumRvalsInGroup, Rval)
         )
@@ -393,7 +393,7 @@ offset_into_group([Group | Groups], Offset, Rval) :-
     ).
 
 get_static_cells(Info) =
-    list__map(wrap_common_data, map__values(Info ^ cells)).
+    list.map(wrap_common_data, map.values(Info ^ cells)).
 
 :- func wrap_common_data(common_data) = comp_gen_c_data.
 
@@ -405,7 +405,7 @@ rval_type_as_arg(Rval, ExprnOpts, Type) :-
 :- pred natural_type(bool::in, rval::in, llds_type::out) is det.
 
 natural_type(UnboxFloat, Rval, Type) :-
-    llds__rval_type(Rval, Type0),
+    llds.rval_type(Rval, Type0),
     (
         Type0 = float,
         UnboxFloat = no

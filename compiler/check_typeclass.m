@@ -64,7 +64,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- module check_hlds__check_typeclass.
+:- module check_hlds.check_typeclass.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -73,9 +73,8 @@
 :- import_module bool.
 :- import_module io.
 
-:- pred check_typeclass__check_typeclasses(make_hlds_qual_info::in,
-    make_hlds_qual_info::out, module_info::in, module_info::out, bool::out,
-    io::di, io::uo) is det.
+:- pred check_typeclasses(make_hlds_qual_info::in, make_hlds_qual_info::out,
+    module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -121,10 +120,10 @@
 
 %---------------------------------------------------------------------------%
 
-check_typeclass__check_typeclasses(!QualInfo, !ModuleInfo, FoundError, !IO) :-
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
+check_typeclasses(!QualInfo, !ModuleInfo, FoundError, !IO) :-
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
     maybe_write_string(Verbose, "% Checking typeclass instances...\n", !IO),
-    check_typeclass__check_instance_decls(!QualInfo, !ModuleInfo,
+    check_typeclass.check_instance_decls(!QualInfo, !ModuleInfo,
         FoundInstanceError, !IO),
 
     maybe_write_string(Verbose, "% Checking for cyclic classes...\n", !IO),
@@ -149,32 +148,30 @@ check_typeclass__check_typeclasses(!QualInfo, !ModuleInfo, FoundError, !IO) :-
 :- type error_message == pair(prog_context, list(format_component)).
 :- type error_messages == list(error_message).
 
-:- pred check_typeclass__check_instance_decls(make_hlds_qual_info::in,
-    make_hlds_qual_info::out, module_info::in, module_info::out,
-    bool::out, io::di, io::uo) is det.
+:- pred check_instance_decls(make_hlds_qual_info::in, make_hlds_qual_info::out,
+    module_info::in, module_info::out, bool::out, io::di, io::uo) is det.
 
-check_typeclass__check_instance_decls(!QualInfo, !ModuleInfo, FoundError,
-        !IO) :-
+check_instance_decls(!QualInfo, !ModuleInfo, FoundError, !IO) :-
     module_info_get_class_table(!.ModuleInfo, ClassTable),
     module_info_get_instance_table(!.ModuleInfo, InstanceTable0),
-    map__to_assoc_list(InstanceTable0, InstanceList0),
-    list__map_foldl2(check_one_class(ClassTable), InstanceList0,
+    map.to_assoc_list(InstanceTable0, InstanceList0),
+    list.map_foldl2(check_one_class(ClassTable), InstanceList0,
         InstanceList, check_tc_info([], !.ModuleInfo, !.QualInfo),
         check_tc_info(Errors, !:ModuleInfo, !:QualInfo), !IO),
     (
         Errors = [],
-        map__from_assoc_list(InstanceList, InstanceTable),
+        map.from_assoc_list(InstanceList, InstanceTable),
         module_info_set_instance_table(InstanceTable, !ModuleInfo),
         FoundError = no
     ;
         Errors = [_ | _],
-        list__reverse(Errors, ErrorList),
+        list.reverse(Errors, ErrorList),
         WriteError = (pred(E::in, IO0::di, IO::uo) is det :-
             E = ErrorContext - ErrorPieces,
             write_error_pieces(ErrorContext, 0, ErrorPieces, IO0, IO)
         ),
-        list__foldl(WriteError, ErrorList, !IO),
-        io__set_exit_status(1, !IO),
+        list.foldl(WriteError, ErrorList, !IO),
+        io.set_exit_status(1, !IO),
         FoundError = yes
     ).
 
@@ -196,7 +193,7 @@ check_typeclass__check_instance_decls(!QualInfo, !ModuleInfo, FoundError,
 check_one_class(ClassTable, ClassId - InstanceDefns0,
     ClassId - InstanceDefns, !CheckTCInfo, !IO) :-
 
-    map__lookup(ClassTable, ClassId, ClassDefn),
+    map.lookup(ClassTable, ClassId, ClassDefn),
     ClassDefn = hlds_class_defn(ImportStatus, SuperClasses, _FunDeps,
         _Ancestors, ClassVars, _Kinds, Interface, ClassInterface,
         ClassVarSet, TermContext),
@@ -216,11 +213,11 @@ check_one_class(ClassTable, ClassId - InstanceDefns0,
     ;
         solutions(
             ( pred(PredId::out) is nondet :-
-                list__member(ClassProc, ClassInterface),
+                list.member(ClassProc, ClassInterface),
                 ClassProc = hlds_class_proc(PredId, _)
             ),
             PredIds),
-        list__map_foldl2(
+        list.map_foldl2(
             check_class_instance(ClassId, SuperClasses, ClassVars,
                 ClassInterface, Interface, ClassVarSet, PredIds),
             InstanceDefns0, InstanceDefns,
@@ -265,7 +262,7 @@ check_class_instance(ClassId, SuperClasses, Vars, HLDSClassInterface,
 
 :- pred check_concrete_class_instance(class_id::in, list(tvar)::in,
     hlds_class_interface::in, class_interface::in,
-    list(pred_id)::in, term__context::in,
+    list(pred_id)::in, term.context::in,
     instance_methods::in, hlds_instance_defn::in, hlds_instance_defn::out,
     error_messages::in, error_messages::out,
     module_info::in, module_info::out,
@@ -288,7 +285,7 @@ check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
         ClassInterface = concrete(_),
         InstanceCheckInfo0 = instance_check_info(!.InstanceDefn,
             [], !.Errors, !.ModuleInfo, !.QualInfo),
-        list__foldl2(check_instance_pred(ClassId, Vars, HLDSClassInterface),
+        list.foldl2(check_instance_pred(ClassId, Vars, HLDSClassInterface),
             PredIds, InstanceCheckInfo0, InstanceCheckInfo, !IO),
         InstanceCheckInfo = instance_check_info(!:InstanceDefn,
             RevInstanceMethods, !:Errors, !:ModuleInfo, !:QualInfo),
@@ -308,7 +305,7 @@ check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
 
         % Make sure the list of instance methods is in the same order
         % as the methods in the class definition. intermod.m relies on this.
-        OrderedInstanceMethods = list__reverse(RevInstanceMethods),
+        OrderedInstanceMethods = list.reverse(RevInstanceMethods),
 
         !:InstanceDefn = !.InstanceDefn ^ instance_hlds_interface
             := MaybePredProcs,
@@ -344,11 +341,11 @@ check_for_bogus_methods(InstanceMethods, ClassId, ClassPredIds, Context,
         predicate_table_search_pf_sym_arity(PredTable, is_fully_qualified,
             MethodPredOrFunc, MethodName, MethodPredArity, MatchingPredIds),
         some [PredId] (
-            list__member(PredId, MatchingPredIds),
-            list__member(PredId, ClassPredIds)
+            list.member(PredId, MatchingPredIds),
+            list.member(PredId, ClassPredIds)
         )
     ),
-    list__filter(DefnIsOK, InstanceMethods, _OKInstanceMethods,
+    list.filter(DefnIsOK, InstanceMethods, _OKInstanceMethods,
         BogusInstanceMethods),
     (
         BogusInstanceMethods = []
@@ -365,7 +362,7 @@ check_for_bogus_methods(InstanceMethods, ClassId, ClassPredIds, Context,
         ],
         ErrorMsgBody0 = list.map(format_method_name, BogusInstanceMethods),
         ErrorMsgBody1 = list.condense(ErrorMsgBody0),
-        ErrorMsgBody = list__append(ErrorMsgBody1, [suffix(".")]),
+        ErrorMsgBody = list.append(ErrorMsgBody1, [suffix(".")]),
         NewError = Context - ( ErrorMsgStart ++ ErrorMsgBody ),
         !:Errors = [NewError | !.Errors]
     ).
@@ -433,7 +430,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
     !.InstanceCheckInfo = instance_check_info(InstanceDefn0,
         OrderedMethods0, Errors0, ModuleInfo0, QualInfo0),
     solutions((pred(ProcId::out) is nondet :-
-            list__member(ClassProc, ClassInterface),
+            list.member(ClassProc, ClassInterface),
             ClassProc = hlds_class_proc(PredId, ProcId)
         ), ProcIds),
     module_info_pred_info(ModuleInfo0, PredId, PredInfo),
@@ -459,9 +456,9 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     adjust_func_arity(PredOrFunc, Arity, PredArity),
     pred_info_procedures(PredInfo, ProcTable),
-    list__map(
+    list.map(
         (pred(TheProcId::in, ModesAndDetism::out) is det :-
-            map__lookup(ProcTable, TheProcId, ProcInfo),
+            map.lookup(ProcTable, TheProcId, ProcInfo),
             proc_info_argmodes(ProcInfo, Modes),
             % If the determinism declaration on the method was omitted,
             % then make_hlds will have already issued an error message,
@@ -531,11 +528,10 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
         MakeClassProc = (pred(TheProcId::in, PredProcId::out) is det :-
                 PredProcId = hlds_class_proc(InstancePredId, TheProcId)
             ),
-        list__map(MakeClassProc, InstanceProcIds, InstancePredProcs1),
+        list.map(MakeClassProc, InstanceProcIds, InstancePredProcs1),
         (
             MaybeInstancePredProcs = yes(InstancePredProcs0),
-            list__append(InstancePredProcs0,
-                InstancePredProcs1, InstancePredProcs)
+            InstancePredProcs = InstancePredProcs0 ++ InstancePredProcs1
         ;
             MaybeInstancePredProcs = no,
             InstancePredProcs = InstancePredProcs1
@@ -552,10 +548,10 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
         sym_name_to_string(MethodName, MethodNameString),
         sym_name_to_string(ClassName, ClassNameString),
         PredOrFuncString = pred_or_func_to_string(PredOrFunc),
-        string__int_to_string(Arity, ArityString),
+        string.int_to_string(Arity, ArityString),
         InstanceTypesString = mercury_type_list_to_string(InstanceVarSet,
             InstanceTypes),
-        string__append_list([
+        string.append_list([
             "In instance declaration for `",
             ClassNameString, "(", InstanceTypesString, ")': ",
             "multiple implementations of type class ",
@@ -566,15 +562,15 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
         Heading =
             [I1Context - [words("First definition appears here.")],
             InstanceContext - [words(ErrorHeader)]],
-        list__map((pred(Definition::in, ContextAndError::out) is det :-
+        list.map((pred(Definition::in, ContextAndError::out) is det :-
             Definition = instance_method(_, _, _, _, TheContext),
             Error = [words("Subsequent definition appears here.")],
             ContextAndError = TheContext - Error
         ), [I2 | Is], SubsequentErrors),
 
         % Errors are built up in reverse.
-        list__append(SubsequentErrors, Heading, NewErrors),
-        list__append(NewErrors, Errors0, Errors),
+        list.append(SubsequentErrors, Heading, NewErrors),
+        list.append(NewErrors, Errors0, Errors),
         Info = instance_method_info(ModuleInfo, QualInfo, PredName, Arity,
             ExistQVars, ArgTypes, ClassContext, ArgModes, Errors, ArgTypeVars,
             Status, PredOrFunc)
@@ -618,7 +614,7 @@ get_matching_instance_defns(concrete(InstanceMethods), PredOrFunc, MethodName,
         MethodArity, ResultList) :-
     % First find the instance method definitions that match this
     % predicate/function's name and arity
-    list__filter(
+    list.filter(
         (pred(Method::in) is semidet :-
             Method = instance_method(PredOrFunc, MethodName, _MethodDefn,
                 MethodArity, _Context)
@@ -628,7 +624,7 @@ get_matching_instance_defns(concrete(InstanceMethods), PredOrFunc, MethodName,
         MatchingMethods = [First, _Second | _],
         First = instance_method(_, _, _, _, FirstContext),
         \+ (
-            list__member(DefnViaName, MatchingMethods),
+            list.member(DefnViaName, MatchingMethods),
             DefnViaName = instance_method(_, _, name(_), _, _)
         )
     ->
@@ -638,8 +634,8 @@ get_matching_instance_defns(concrete(InstanceMethods), PredOrFunc, MethodName,
         MethodToClause = (pred(Method::in, Clauses::out) is semidet :-
             Method = instance_method(_, _, Defn, _, _),
             Defn = clauses(Clauses)),
-        list__filter_map(MethodToClause, MatchingMethods, ClausesList),
-        list__condense(ClausesList, FlattenedClauses),
+        list.filter_map(MethodToClause, MatchingMethods, ClausesList),
+        list.condense(ClausesList, FlattenedClauses),
         CombinedMethod = instance_method(PredOrFunc, MethodName,
             clauses(FlattenedClauses), MethodArity, FirstContext),
         ResultList = [CombinedMethod]
@@ -675,7 +671,7 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
 
     % Work out what the type variables are bound to for this
     % instance, and update the class types appropriately.
-    map__from_corresponding_lists(ClassVars, InstanceTypes1, TypeSubst),
+    map.from_corresponding_lists(ClassVars, InstanceTypes1, TypeSubst),
     apply_subst_to_type_list(TypeSubst, ArgTypes0, ArgTypes1),
     apply_subst_to_prog_constraints(TypeSubst, ClassMethodClassContext0,
         ClassMethodClassContext1),
@@ -685,14 +681,14 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
     % the instance constraints.  (Type variables in the existq_tvars must
     % occur either in the argument types or in the class method context;
     % type variables in the instance types must appear in the arguments.)
-    prog_type__vars_list(ArgTypes1, ArgTVars),
+    prog_type.vars_list(ArgTypes1, ArgTVars),
     prog_constraints_get_tvars(ClassMethodClassContext1, MethodContextTVars),
     constraint_list_get_tvars(InstanceConstraints1, InstanceTVars),
-    list__condense([ArgTVars, MethodContextTVars, InstanceTVars], VarsToKeep0),
-    list__sort_and_remove_dups(VarsToKeep0, VarsToKeep),
+    list.condense([ArgTVars, MethodContextTVars, InstanceTVars], VarsToKeep0),
+    list.sort_and_remove_dups(VarsToKeep0, VarsToKeep),
 
     % Project away the unwanted type variables.
-    varset__squash(TVarSet1, VarsToKeep, TVarSet, SquashSubst),
+    varset.squash(TVarSet1, VarsToKeep, TVarSet, SquashSubst),
     apply_variable_renaming_to_type_list(SquashSubst, ArgTypes1, ArgTypes),
     apply_variable_renaming_to_prog_constraints(SquashSubst,
         ClassMethodClassContext1, ClassMethodClassContext),
@@ -706,13 +702,13 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
     % from the class method. This allows an instance method to have constraints
     % on it which are not part of the instance declaration as a whole.
     ClassMethodClassContext = constraints(UnivConstraints1, ExistConstraints),
-    list__append(InstanceConstraints, UnivConstraints1, UnivConstraints),
+    list.append(InstanceConstraints, UnivConstraints1, UnivConstraints),
     ClassContext = constraints(UnivConstraints, ExistConstraints),
 
     % Introduce a new predicate which calls the implementation
     % given in the instance declaration.
-    map__init(Proofs),
-    map__init(ConstraintMap),
+    map.init(Proofs),
+    map.init(ConstraintMap),
     add_marker(class_instance_method, Markers0, Markers1),
     ( InstancePredDefn = name(_) ->
         % For instance methods which are defined using the named syntax
@@ -754,7 +750,7 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
             MaybeDet, Context, address_is_taken,
             OldPredInfo, NewPredInfo, NewProcId)
     ),
-    list__map_foldl(AddProc, ArgModes, InstanceProcIds, PredInfo1, PredInfo),
+    list.map_foldl(AddProc, ArgModes, InstanceProcIds, PredInfo1, PredInfo),
 
     module_info_get_predicate_table(ModuleInfo1, PredicateTable1),
     module_info_get_partial_qualifier_info(ModuleInfo1, PQInfo),
@@ -784,10 +780,10 @@ make_introduced_pred_name(ClassId, MethodName, Arity, InstanceTypes,
     sym_name_to_string(ClassName, "__", ClassNameString),
     sym_name_to_string(MethodName, "__", MethodNameString),
     % Perhaps we should include the arity in this mangled string?
-    string__int_to_string(Arity, ArityString),
+    string.int_to_string(Arity, ArityString),
     make_instance_string(InstanceTypes, InstanceString),
-    string__append_list(
-        [check_typeclass__introduced_pred_name_prefix,
+    string.append_list(
+        [introduced_pred_name_prefix,
         ClassNameString, "____",
         InstanceString, "____",
         MethodNameString, "_",
@@ -798,9 +794,9 @@ make_introduced_pred_name(ClassId, MethodName, Arity, InstanceTypes,
     % The prefix added to the class method name for the predicate
     % used to call a class method for a specific instance.
     %
-:- func check_typeclass__introduced_pred_name_prefix = string.
+:- func introduced_pred_name_prefix = string.
 
-check_typeclass__introduced_pred_name_prefix = "ClassMethod_for_".
+introduced_pred_name_prefix = "ClassMethod_for_".
 
 %---------------------------------------------------------------------------%
 
@@ -828,7 +824,7 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
     apply_variable_renaming_to_tvar_list(Renaming, ClassVars0, ClassVars),
 
     % Calculate the bindings.
-    map__from_corresponding_lists(ClassVars, InstanceTypes, TypeSubst),
+    map.from_corresponding_lists(ClassVars, InstanceTypes, TypeSubst),
 
     module_info_get_class_table(ModuleInfo, ClassTable),
     module_info_get_instance_table(ModuleInfo, InstanceTable),
@@ -850,8 +846,8 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
         
     % Try to reduce the superclass constraints, using the declared instance
     % constraints and the usual context reduction rules.
-    map__init(ConstraintMap0),
-    typeclasses__reduce_context_by_rule_application(ClassTable,
+    map.init(ConstraintMap0),
+    typeclasses.reduce_context_by_rule_application(ClassTable,
         InstanceTable, SuperClassTable, ClassVars, TypeSubst, _,
         InstanceVarSet1, InstanceVarSet2,
         Proofs0, Proofs1, ConstraintMap0, _,
@@ -871,7 +867,7 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
             InstanceTypes),
         constraint_list_to_string(ClassVarSet, UnprovenConstraints,
             ConstraintsString),
-        string__append_list([
+        string.append_list([
             "In instance declaration for `",
             ClassNameString, "(", InstanceTypesString, ")': ",
             "superclass constraint(s) not satisfied: ",
@@ -889,7 +885,7 @@ constraint_list_to_string(VarSet, [C | Cs], String) :-
     retrieve_prog_constraint(C, P),
     String0 = mercury_constraint_to_string(VarSet, P),
     constraint_list_to_string_2(VarSet, Cs, String1),
-    string__append_list(["`", String0, "'", String1], String).
+    string.append_list(["`", String0, "'", String1], String).
 
 :- pred constraint_list_to_string_2(tvarset::in, list(hlds_constraint)::in,
     string::out) is det.
@@ -899,7 +895,7 @@ constraint_list_to_string_2(VarSet, [C | Cs], String) :-
     retrieve_prog_constraint(C, P),
     String0 = mercury_constraint_to_string(VarSet, P),
     constraint_list_to_string_2(VarSet, Cs, String1),
-    string__append_list([", `", String0, "'", String1], String).
+    string.append_list([", `", String0, "'", String1], String).
 
 %---------------------------------------------------------------------------%
 
@@ -1042,7 +1038,7 @@ check_for_corresponding_instances_2(Concretes, ClassId, AbstractInstance,
 
 check_for_cyclic_classes(!ModuleInfo, Errors, !IO) :-
     module_info_get_class_table(!.ModuleInfo, ClassTable0),
-    ClassIds = map__keys(ClassTable0),
+    ClassIds = map.keys(ClassTable0),
     foldl3(find_cycles([]), ClassIds, ClassTable0, ClassTable, set.init, _,
         [], Cycles),
     (
@@ -1290,7 +1286,7 @@ report_range_restriction_error(ClassId, InstanceDefn, Vars, !IO) :-
         words(choose_number(Vars, "is", "are")),
         words("not in the domain.")],
     write_error_pieces(Context, 0, Msg, !IO),
-    io__set_exit_status(1, !IO).
+    io.set_exit_status(1, !IO).
 
     % Check the consistency of each (unordered) pair of instances.
     %
@@ -1386,7 +1382,7 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
         
     write_error_pieces(ContextA, 0, ErrorPiecesA, !IO),
     write_error_pieces(ContextB, 0, ErrorPiecesB, !IO),
-    io__set_exit_status(1, !IO).
+    io.set_exit_status(1, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1631,7 +1627,7 @@ report_unbound_tvars_in_pred_context(Vars, PredInfo, !IO) :-
     ),
     write_error_pieces(Context, 0, Msg, !IO),
     maybe_report_unbound_tvars_explanation(Context, !IO),
-    io__set_exit_status(1, !IO).
+    io.set_exit_status(1, !IO).
 
 :- pred report_unbound_tvars_in_ctor_context(list(tvar)::in, type_ctor::in,
     hlds_type_defn::in, io::di, io::uo) is det.
@@ -1656,7 +1652,7 @@ report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn, !IO) :-
         words("not determined by the constructor's argument types.")],
     write_error_pieces(Context, 0, Msg, !IO),
     maybe_report_unbound_tvars_explanation(Context, !IO),
-    io__set_exit_status(1, !IO).
+    io.set_exit_status(1, !IO).
 
 :- pred maybe_report_unbound_tvars_explanation(prog_context::in,
     io::di, io::uo) is det.

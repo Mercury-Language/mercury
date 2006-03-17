@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -17,7 +17,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module backend_libs__export.
+:- module backend_libs.export.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -111,7 +111,7 @@ get_foreign_export_decls(HLDS, ForeignExportDecls) :-
     predicate_table_get_preds(PredicateTable, Preds),
 
     module_info_get_foreign_decl(HLDS, RevForeignDecls),
-    ForeignDecls = list__reverse(RevForeignDecls),
+    ForeignDecls = list.reverse(RevForeignDecls),
 
     module_info_get_pragma_exported_procs(HLDS, ExportedProcs),
     module_info_get_globals(HLDS, Globals),
@@ -269,7 +269,7 @@ to_c(Preds, [E | ExportedProcs], ModuleInfo, ExportedProcsCode) :-
     ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
     ProcLabelString = proc_label_to_c_string(ProcLabel, yes),
 
-    string__append_list([
+    string.append_list([
         "\n",
         DeclareString, "(", ProcLabelString, ");\n",
         "\n",
@@ -342,7 +342,7 @@ to_c(Preds, [E | ExportedProcs], ModuleInfo, ExportedProcsCode) :-
 get_export_info(Preds, PredId, ProcId, _Globals, ModuleInfo, HowToDeclareLabel,
         C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSucceed,
         ArgInfoTypes) :-
-    map__lookup(Preds, PredId, PredInfo),
+    map.lookup(Preds, PredId, PredInfo),
     pred_info_import_status(PredInfo, Status),
     (
         (
@@ -357,7 +357,7 @@ get_export_info(Preds, PredId, ProcId, _Globals, ModuleInfo, HowToDeclareLabel,
     ),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_procedures(PredInfo, ProcTable),
-    map__lookup(ProcTable, ProcId, ProcInfo),
+    map.lookup(ProcTable, ProcId, ProcInfo),
     proc_info_maybe_arg_info(ProcInfo, MaybeArgInfos),
     pred_info_arg_types(PredInfo, ArgTypes),
     (
@@ -369,7 +369,7 @@ get_export_info(Preds, PredId, ProcId, _Globals, ModuleInfo, HowToDeclareLabel,
         proc_info_arg_info(NewProcInfo, ArgInfos)
     ),
     proc_info_interface_code_model(ProcInfo, CodeModel),
-    assoc_list__from_corresponding_lists(ArgInfos, ArgTypes, ArgInfoTypes0),
+    assoc_list.from_corresponding_lists(ArgInfos, ArgTypes, ArgInfoTypes0),
 
     % Figure out what the C return type should be, and build the `return'
     % instructions (if any).
@@ -382,14 +382,14 @@ get_export_info(Preds, PredId, ProcId, _Globals, ModuleInfo, HowToDeclareLabel,
             RetArgMode = top_out,
             \+ is_dummy_argument_type(ModuleInfo, RetType)
         ->
-            Export_RetType = foreign__to_exported_type(ModuleInfo, RetType),
-            C_RetType = foreign__to_type_string(c, Export_RetType),
+            Export_RetType = foreign.to_exported_type(ModuleInfo, RetType),
+            C_RetType = foreign.to_type_string(c, Export_RetType),
             argloc_to_string(RetArgLoc, RetArgString0),
             convert_type_from_mercury(RetArgString0, RetType, RetArgString),
             MaybeDeclareRetval = "\t" ++ C_RetType ++ " return_value;\n",
             % We need to unbox non-word-sized foreign types
             % before returning them to C code
-            ( foreign__is_foreign_type(Export_RetType) = yes(_) ->
+            ( foreign.is_foreign_type(Export_RetType) = yes(_) ->
                 SetReturnValue = "\tMR_MAYBE_UNBOX_FOREIGN_TYPE("
                     ++ C_RetType ++ ", " ++ RetArgString
                     ++ ", return_value);\n"
@@ -414,7 +414,7 @@ get_export_info(Preds, PredId, ProcId, _Globals, ModuleInfo, HowToDeclareLabel,
         % to indicate success or failure.
         C_RetType = "MR_bool",
         MaybeDeclareRetval = "",
-        string__append_list([
+        string.append_list([
             "\tif (!MR_r1) {\n",
             "\t\tMR_restore_regs_from_mem(c_regs);\n",
             "\treturn MR_FALSE;\n",
@@ -425,7 +425,7 @@ get_export_info(Preds, PredId, ProcId, _Globals, ModuleInfo, HowToDeclareLabel,
         CodeModel = model_non,
         unexpected(this_file, "Attempt to export model_non procedure.")
     ),
-    list__filter(include_arg(ModuleInfo), ArgInfoTypes2, ArgInfoTypes).
+    list.filter(include_arg(ModuleInfo), ArgInfoTypes2, ArgInfoTypes).
 
     % include_arg(ArgInfoType):
     %
@@ -476,13 +476,13 @@ get_argument_declaration(ArgInfo, Type, Num, NameThem, ModuleInfo,
     ArgInfo = arg_info(_Loc, Mode),
     (
         NameThem = yes,
-        string__int_to_string(Num, NumString),
-        string__append(" Mercury__argument", NumString, ArgName)
+        string.int_to_string(Num, NumString),
+        string.append(" Mercury__argument", NumString, ArgName)
     ;
         NameThem = no,
         ArgName = ""
     ),
-    TypeString0 = foreign__to_type_string(c, ModuleInfo, Type),
+    TypeString0 = foreign.to_type_string(c, ModuleInfo, Type),
     ( Mode = top_out ->
         % output variables are passed as pointers
         TypeString = TypeString0 ++ " *"
@@ -500,16 +500,16 @@ get_input_args([AT | ATs], Num0, ModuleInfo, Result) :-
     Num = Num0 + 1,
     (
         Mode = top_in,
-        string__int_to_string(Num, NumString),
+        string.int_to_string(Num, NumString),
         ArgName0 = "Mercury__argument" ++ NumString,
         convert_type_to_mercury(ArgName0, Type, ArgName),
         argloc_to_string(ArgLoc, ArgLocString),
-        Export_Type = foreign__to_exported_type(ModuleInfo, Type),
+        Export_Type = foreign.to_exported_type(ModuleInfo, Type),
         % We need to box non-word-sized foreign types
         % before passing them to Mercury code
-        ( foreign__is_foreign_type(Export_Type) = yes(_) ->
-            C_Type = foreign__to_type_string(c, Export_Type),
-            string__append_list(["\tMR_MAYBE_BOX_FOREIGN_TYPE(",
+        ( foreign.is_foreign_type(Export_Type) = yes(_) ->
+            C_Type = foreign.to_type_string(c, Export_Type),
+            string.append_list(["\tMR_MAYBE_BOX_FOREIGN_TYPE(",
                 C_Type, ", ", ArgName, ", ", ArgLocString, ");\n"], InputArg)
         ;
             InputArg = "\t" ++ ArgLocString ++ " = " ++ ArgName ++ ";\n"
@@ -537,16 +537,16 @@ copy_output_args([AT | ATs], Num0, ModuleInfo, Result) :-
         OutputArg = ""
     ;
         Mode = top_out,
-        string__int_to_string(Num, NumString),
-        string__append("Mercury__argument", NumString, ArgName),
+        string.int_to_string(Num, NumString),
+        string.append("Mercury__argument", NumString, ArgName),
         argloc_to_string(ArgLoc, ArgLocString0),
         convert_type_from_mercury(ArgLocString0, Type, ArgLocString),
-        Export_Type = foreign__to_exported_type(ModuleInfo, Type),
+        Export_Type = foreign.to_exported_type(ModuleInfo, Type),
         % We need to unbox non-word-sized foreign types
         % before returning them to C code
-        ( foreign__is_foreign_type(Export_Type) = yes(_) ->
-            C_Type = foreign__to_type_string(c, Export_Type),
-            string__append_list(["\tMR_MAYBE_UNBOX_FOREIGN_TYPE(", C_Type,
+        ( foreign.is_foreign_type(Export_Type) = yes(_) ->
+            C_Type = foreign.to_type_string(c, Export_Type),
+            string.append_list(["\tMR_MAYBE_UNBOX_FOREIGN_TYPE(", C_Type,
                 ", ", ArgLocString, ", * ", ArgName, ");\n"], OutputArg)
         ;
             OutputArg = "\t*" ++ ArgName ++ " = " ++ ArgLocString ++ ";\n"
@@ -556,7 +556,7 @@ copy_output_args([AT | ATs], Num0, ModuleInfo, Result) :-
         OutputArg = ""
     ),
     copy_output_args(ATs, Num, ModuleInfo, TheRest),
-    string__append(OutputArg, TheRest, Result).
+    string.append(OutputArg, TheRest, Result).
 
     % convert an argument location (currently just a register number)
     % to a string representing a C code fragment that names it.
@@ -613,14 +613,14 @@ produce_header_file(ForeignExportDecls, ModuleName, !IO) :-
     ForeignExportDecls = foreign_export_decls(ForeignDecls, C_ExportDecls),
     HeaderExt = ".mh",
     module_name_to_file_name(ModuleName, HeaderExt, yes, FileName, !IO),
-    io__open_output(FileName ++ ".tmp", Result, !IO),
+    io.open_output(FileName ++ ".tmp", Result, !IO),
     (
         Result = ok(FileStream)
     ->
-        io__set_output_stream(FileStream, OutputStream, !IO),
+        io.set_output_stream(FileStream, OutputStream, !IO),
         module_name_to_file_name(ModuleName, ".m", no, SourceFileName, !IO),
-        library__version(Version),
-        io__write_strings([
+        library.version(Version),
+        io.write_strings([
             "/*\n",
             "** Automatically generated from `", SourceFileName, "'\n",
             "** by the Mercury compiler,\n",
@@ -628,9 +628,9 @@ produce_header_file(ForeignExportDecls, ModuleName, !IO) :-
             "** Do not edit.\n",
             "*/\n"], !IO),
         MangledModuleName = sym_name_mangle(ModuleName),
-        string__to_upper(MangledModuleName, UppercaseModuleName),
-        string__append(UppercaseModuleName, "_MH", GuardMacroName),
-        io__write_strings([
+        string.to_upper(MangledModuleName, UppercaseModuleName),
+        string.append(UppercaseModuleName, "_MH", GuardMacroName),
+        io.write_strings([
             "#ifndef ", GuardMacroName, "\n",
             "#define ", GuardMacroName, "\n",
             "\n",
@@ -650,33 +650,33 @@ produce_header_file(ForeignExportDecls, ModuleName, !IO) :-
             "#endif\n",
             "\n"], !IO),
 
-        io__write_strings([
+        io.write_strings([
             "#ifndef ", decl_guard(ModuleName), "\n",
             "#define ", decl_guard(ModuleName), "\n"], !IO),
-        list__foldl(output_foreign_decl(yes(foreign_decl_is_exported)),
+        list.foldl(output_foreign_decl(yes(foreign_decl_is_exported)),
             ForeignDecls, !IO),
-        io__write_string("\n#endif\n", !IO),
+        io.write_string("\n#endif\n", !IO),
 
         produce_header_file_2(C_ExportDecls, !IO),
-        io__write_strings([
+        io.write_strings([
             "\n",
             "#ifdef __cplusplus\n",
             "}\n",
             "#endif\n",
             "\n",
             "#endif /* ", GuardMacroName, " */\n"], !IO),
-        io__set_output_stream(OutputStream, _, !IO),
-        io__close_output(FileStream, !IO),
+        io.set_output_stream(OutputStream, _, !IO),
+        io.close_output(FileStream, !IO),
         % rename "<ModuleName>.mh.tmp" to "<ModuleName>.mh".
         update_interface(FileName, !IO)
     ;
-        io__progname_base("export.m", ProgName, !IO),
-        io__write_string("\n", !IO),
-        io__write_string(ProgName, !IO),
-        io__write_string(": can't open `", !IO),
-        io__write_string(FileName ++ ".tmp", !IO),
-        io__write_string("' for output\n", !IO),
-        io__set_exit_status(1, !IO)
+        io.progname_base("export.m", ProgName, !IO),
+        io.write_string("\n", !IO),
+        io.write_string(ProgName, !IO),
+        io.write_string(": can't open `", !IO),
+        io.write_string(FileName ++ ".tmp", !IO),
+        io.write_string("' for output\n", !IO),
+        io.set_exit_status(1, !IO)
     ).
 
 :- pred produce_header_file_2(list(foreign_export_decl)::in, io::di, io::uo)
@@ -687,12 +687,12 @@ produce_header_file_2([E | ExportedProcs], !IO) :-
     E = foreign_export_decl(Lang, C_RetType, C_Function, ArgDecls),
     ( Lang = c ->
         % Output the function header.
-        io__write_string(C_RetType, !IO),
-        io__write_string(" ", !IO),
-        io__write_string(C_Function, !IO),
-        io__write_string("(", !IO),
-        io__write_string(ArgDecls, !IO),
-        io__write_string(");\n", !IO)
+        io.write_string(C_RetType, !IO),
+        io.write_string(" ", !IO),
+        io.write_string(C_Function, !IO),
+        io.write_string("(", !IO),
+        io.write_string(ArgDecls, !IO),
+        io.write_string(");\n", !IO)
     ;
         sorry(this_file, "foreign languages other than C unimplemented")
     ),
@@ -712,12 +712,12 @@ output_foreign_decl(MaybeDesiredIsLocal, DeclCode, !IO) :-
             DesiredIsLocal = IsLocal
         )
     ->
-        term__context_file(Context, File),
-        term__context_line(Context, Line),
-        c_util__set_line_num(File, Line, !IO),
-        io__write_string(Code, !IO),
-        io__nl(!IO),
-        c_util__reset_line_num(!IO)
+        term.context_file(Context, File),
+        term.context_line(Context, Line),
+        c_util.set_line_num(File, Line, !IO),
+        io.write_string(Code, !IO),
+        io.nl(!IO),
+        c_util.reset_line_num(!IO)
     ;
         true
     ).

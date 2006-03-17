@@ -13,7 +13,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module make__util.
+:- module make.util.
 :- interface.
 
 %-----------------------------------------------------------------------------%
@@ -60,7 +60,7 @@
     %   Succeeded, !Info).
     %
     % Perform the given closure after updating the option_table in
-    % the globals in the io__state to contain the module-specific
+    % the globals in the io.state to contain the module-specific
     % options for the specified module and the extra options given
     % in the ExtraArgs.
     % Adds `--invoked-by-mmc-make' and `--use-subdirs' to the option
@@ -75,7 +75,7 @@
     %   OptionArgs, ExtraArgs, Builder, Succeeded, !Info).
     %
     % Perform the given closure after updating the option_table in
-    % the globals in the io__state to contain the module-specific
+    % the globals in the io.state to contain the module-specific
     % options for the specified module and the extra options given
     % in ExtraArgs and OptionArgs
     % Does not add `--invoked-by-mmc-make' and `--use-subdirs'
@@ -91,18 +91,18 @@
     % to append to the error file for the given module.
     %
 :- pred build_with_output_redirect(module_name::in,
-    build(io__output_stream)::in(build), bool::out,
+    build(io.output_stream)::in(build), bool::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
     % Produce an output stream which writes to the error file
     % for the given module.
     %
-:- pred redirect_output(module_name::in, maybe(io__output_stream)::out,
+:- pred redirect_output(module_name::in, maybe(io.output_stream)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
     % Close the module error output stream.
     %
-:- pred unredirect_output(module_name::in, io__output_stream::in,
+:- pred unredirect_output(module_name::in, io.output_stream::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -111,7 +111,7 @@
 :- inst build2 == (pred(in, in, out, in, out, di, uo) is det).
 
 :- pred build_with_module_options_and_output_redirect(module_name::in,
-    list(string)::in, build2(list(string), io__output_stream)::in(build2),
+    list(string)::in, build2(list(string), io.output_stream)::in(build2),
     bool::out, make_info::in, make_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -170,20 +170,20 @@
 
     % Remove the target file and the corresponding timestamp file.
     %
-:- pred remove_target_file(target_file::in, make_info::in, make_info::out,
+:- pred make_remove_target_file(target_file::in, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
     % Remove the target file and the corresponding timestamp file.
     %
-:- pred remove_target_file(module_name::in, module_target_type::in,
+:- pred make_remove_target_file(module_name::in, module_target_type::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-    % remove_file(ModuleName, Extension, !Info).
+    % make_remove_file(ModuleName, Extension, !Info).
     %
-:- pred remove_file(module_name::in, string::in, make_info::in, make_info::out,
-    io::di, io::uo) is det.
+:- pred make_remove_file(module_name::in, string::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
-:- pred remove_file(file_name::in, make_info::in, make_info::out,
+:- pred make_remove_file(file_name::in, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -237,7 +237,7 @@
     %
 :- pred maybe_make_target_message(target_file::in, io::di, io::uo) is det.
 
-:- pred maybe_make_target_message(io__output_stream::in, target_file::in,
+:- pred maybe_make_target_message(io.output_stream::in, target_file::in,
     io::di, io::uo) is det.
 
     % Write a message "Reanalysing invalid/suboptimal modules" if
@@ -335,7 +335,7 @@ build_with_module_options_and_output_redirect(ModuleName, ExtraOptions,
         Succeeded, !Info, !IO).
 
 :- pred build_with_module_options_and_output_redirect_2(module_name::in,
-    build2(list(string), io__output_stream)::in(build2), list(string)::in,
+    build2(list(string), io.output_stream)::in(build2), list(string)::in,
     bool::out, make_info::in, make_info::out, io::di, io::uo) is det.
 
 build_with_module_options_and_output_redirect_2(ModuleName, Build, AllOptions,
@@ -345,8 +345,8 @@ build_with_module_options_and_output_redirect_2(ModuleName, Build, AllOptions,
         Succeeded, !Info, !IO).
 
 :- pred build_with_module_options_and_output_redirect_3(list(string)::in,
-    build2(list(string), io__output_stream)::in(build2),
-    io__output_stream::in, bool::out, make_info::in, make_info::out,
+    build2(list(string), io.output_stream)::in(build2),
+    io.output_stream::in, bool::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
 build_with_module_options_and_output_redirect_3(AllOptions, Build,
@@ -394,7 +394,7 @@ build_with_module_options(InvokedByMmcMake, ModuleName, OptionVariables,
         Succeeded = no
     ;
         OptionsResult = yes(ModuleOptionArgs),
-        globals__io_get_globals(Globals, !IO),
+        globals.io_get_globals(Globals, !IO),
 
         % --invoked-by-mmc-make disables reading DEFAULT_MCFLAGS
         % from the environment (DEFAULT_MCFLAGS is included in
@@ -412,7 +412,7 @@ build_with_module_options(InvokedByMmcMake, ModuleName, OptionVariables,
             InvokedByMake = []
         ),
 
-        AllOptionArgs = list__condense([InvokedByMake, ModuleOptionArgs,
+        AllOptionArgs = list.condense([InvokedByMake, ModuleOptionArgs,
             OptionArgs, ExtraOptions, UseSubdirs]),
         handle_options(AllOptionArgs, OptionsErrors, _, _, _, !IO),
         (
@@ -424,7 +424,7 @@ build_with_module_options(InvokedByMmcMake, ModuleName, OptionVariables,
             OptionsErrors = [],
             Build(AllOptionArgs, Succeeded, Info0, Info, !IO),
             MaybeInfo = yes(Info),
-            globals__io_set_globals(unsafe_promise_unique(Globals), !IO)
+            globals.io_set_globals(unsafe_promise_unique(Globals), !IO)
         )
     ).
 
@@ -433,85 +433,85 @@ redirect_output(_ModuleName, MaybeErrorStream, !Info, !IO) :-
     % the part of the error file that relates to the current command. It will
     % be appended to the error file later.
 
-    io__make_temp(ErrorFileName, !IO),
-    io__open_output(ErrorFileName, ErrorFileRes, !IO),
+    io.make_temp(ErrorFileName, !IO),
+    io.open_output(ErrorFileName, ErrorFileRes, !IO),
     (
         ErrorFileRes = ok(ErrorOutputStream),
         MaybeErrorStream = yes(ErrorOutputStream)
     ;
         ErrorFileRes = error(IOError),
         MaybeErrorStream = no,
-        io__write_string("** Error opening `", !IO),
-        io__write_string(ErrorFileName, !IO),
-        io__write_string("' for output: ", !IO),
-        io__error_message(IOError, Msg),
-        io__write_string(Msg, !IO),
-        io__nl(!IO)
+        io.write_string("** Error opening `", !IO),
+        io.write_string(ErrorFileName, !IO),
+        io.write_string("' for output: ", !IO),
+        io.error_message(IOError, Msg),
+        io.write_string(Msg, !IO),
+        io.nl(!IO)
     ).
 
 unredirect_output(ModuleName, ErrorOutputStream, !Info, !IO) :-
-    io__output_stream_name(ErrorOutputStream, TmpErrorFileName, !IO),
-    io__close_output(ErrorOutputStream, !IO),
+    io.output_stream_name(ErrorOutputStream, TmpErrorFileName, !IO),
+    io.close_output(ErrorOutputStream, !IO),
 
-    io__open_input(TmpErrorFileName, TmpErrorInputRes, !IO),
+    io.open_input(TmpErrorFileName, TmpErrorInputRes, !IO),
     (
         TmpErrorInputRes = ok(TmpErrorInputStream),
         module_name_to_file_name(ModuleName, ".err", yes, ErrorFileName, !IO),
-        ( set__member(ModuleName, !.Info ^ error_file_modules) ->
-            io__open_append(ErrorFileName, ErrorFileRes, !IO)
+        ( set.member(ModuleName, !.Info ^ error_file_modules) ->
+            io.open_append(ErrorFileName, ErrorFileRes, !IO)
         ;
-            io__open_output(ErrorFileName, ErrorFileRes, !IO)
+            io.open_output(ErrorFileName, ErrorFileRes, !IO)
         ),
         (
             ErrorFileRes = ok(ErrorFileOutputStream),
-            globals__io_lookup_int_option(output_compile_error_lines,
+            globals.io_lookup_int_option(output_compile_error_lines,
                 LinesToWrite, !IO),
-            io__output_stream(CurrentOutputStream, !IO),
-            io__input_stream_foldl2_io(TmpErrorInputStream,
+            io.output_stream(CurrentOutputStream, !IO),
+            io.input_stream_foldl2_io(TmpErrorInputStream,
                 write_error_char(ErrorFileOutputStream, CurrentOutputStream),
                 LinesToWrite, TmpFileInputRes, !IO),
             (
                 TmpFileInputRes = ok(_)
             ;
                 TmpFileInputRes = error(_, TmpFileInputError),
-                io__write_string("Error reading `", !IO),
-                io__write_string(TmpErrorFileName, !IO),
-                io__write_string("': ", !IO),
-                io__write_string(io__error_message(TmpFileInputError), !IO),
-                io__nl(!IO)
+                io.write_string("Error reading `", !IO),
+                io.write_string(TmpErrorFileName, !IO),
+                io.write_string("': ", !IO),
+                io.write_string(io.error_message(TmpFileInputError), !IO),
+                io.nl(!IO)
             ),
 
-            io__close_output(ErrorFileOutputStream, !IO),
+            io.close_output(ErrorFileOutputStream, !IO),
 
             !:Info = !.Info ^ error_file_modules :=
-                set__insert(!.Info ^ error_file_modules, ModuleName)
+                set.insert(!.Info ^ error_file_modules, ModuleName)
         ;
             ErrorFileRes = error(Error),
-            io__write_string("Error opening `", !IO),
-            io__write_string(TmpErrorFileName, !IO),
-            io__write_string("': ", !IO),
-            io__write_string(io__error_message(Error), !IO),
-            io__nl(!IO)
+            io.write_string("Error opening `", !IO),
+            io.write_string(TmpErrorFileName, !IO),
+            io.write_string("': ", !IO),
+            io.write_string(io.error_message(Error), !IO),
+            io.nl(!IO)
         ),
-        io__close_input(TmpErrorInputStream, !IO)
+        io.close_input(TmpErrorInputStream, !IO)
     ;
         TmpErrorInputRes = error(Error),
-        io__write_string("Error opening `", !IO),
-        io__write_string(TmpErrorFileName, !IO),
-        io__write_string("': ", !IO),
-        io__write_string(io__error_message(Error), !IO),
-        io__nl(!IO)
+        io.write_string("Error opening `", !IO),
+        io.write_string(TmpErrorFileName, !IO),
+        io.write_string("': ", !IO),
+        io.write_string(io.error_message(Error), !IO),
+        io.nl(!IO)
     ),
-    io__remove_file(TmpErrorFileName, _, !IO).
+    io.remove_file(TmpErrorFileName, _, !IO).
 
-:- pred write_error_char(io__output_stream::in, io__output_stream::in,
+:- pred write_error_char(io.output_stream::in, io.output_stream::in,
     char::in, int::in, int::out, io::di, io::uo) is det.
 
 write_error_char(FullOutputStream, PartialOutputStream, Char,
         !LinesRemaining, !IO) :-
-    io__write_char(FullOutputStream, Char, !IO),
+    io.write_char(FullOutputStream, Char, !IO),
     ( !.LinesRemaining > 0 ->
-        io__write_char(PartialOutputStream, Char, !IO),
+        io.write_char(PartialOutputStream, Char, !IO),
         ( Char = '\n' ->
             !:LinesRemaining = !.LinesRemaining - 1
         ;
@@ -533,7 +533,7 @@ write_error_char(FullOutputStream, PartialOutputStream, Char,
 
 get_timestamp_file_timestamp(ModuleName - FileType, MaybeTimestamp,
         !Info, !IO) :-
-    globals__io_get_globals(Globals, !IO),
+    globals.io_get_globals(Globals, !IO),
     ( TimestampExt = timestamp_extension(Globals, FileType) ->
         module_name_to_file_name(ModuleName, TimestampExt, no, FileName, !IO)
     ;
@@ -544,17 +544,17 @@ get_timestamp_file_timestamp(ModuleName - FileType, MaybeTimestamp,
     % in the current directory. Timestamp files are
     % only used when processing a module, and only
     % modules in the current directory are processed.
-    SearchDirs = [dir__this_directory],
+    SearchDirs = [dir.this_directory],
     get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO).
 
 get_dependency_timestamp(file(FileName, MaybeOption), MaybeTimestamp,
         !Info, !IO) :-
     (
         MaybeOption = yes(Option),
-        globals__io_lookup_accumulating_option(Option, SearchDirs, !IO)
+        globals.io_lookup_accumulating_option(Option, SearchDirs, !IO)
     ;
         MaybeOption = no,
-        SearchDirs = [dir__this_directory]
+        SearchDirs = [dir.this_directory]
     ),
     get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO).
 get_dependency_timestamp(target(Target), MaybeTimestamp, !Info, !IO) :-
@@ -636,7 +636,7 @@ get_target_timestamp_2(Search, ModuleName - FileType, MaybeTimestamp,
         get_search_directories(FileType, SearchDirs, !IO)
     ;
         Search = no,
-        SearchDirs = [dir__this_directory]
+        SearchDirs = [dir.this_directory]
     ),
     get_file_timestamp(SearchDirs, FileName, MaybeTimestamp0, !Info, !IO),
     (
@@ -653,7 +653,7 @@ get_target_timestamp_2(Search, ModuleName - FileType, MaybeTimestamp,
         get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
         (
             MaybeImports = yes(Imports),
-            Imports ^ module_dir \= dir__this_directory
+            Imports ^ module_dir \= dir.this_directory
         ->
             MaybeTimestamp = ok(oldest_timestamp),
             !:Info = !.Info ^ file_timestamps ^ elem(FileName)
@@ -682,7 +682,7 @@ get_file_name(Search, ModuleName - FileType, FileName, !Info, !IO) :-
             module_name_to_file_name(ModuleName, ".m", no, FileName, !IO)
         )
     ;
-        globals__io_get_globals(Globals, !IO),
+        globals.io_get_globals(Globals, !IO),
         MaybeExt = target_extension(Globals, FileType),
         (
             MaybeExt = yes(Ext),
@@ -704,20 +704,20 @@ get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO) :-
     ( MaybeTimestamp0 = !.Info ^ file_timestamps ^ elem(FileName) ->
         MaybeTimestamp = MaybeTimestamp0
     ;
-        io__input_stream(OldInputStream, !IO),
+        io.input_stream(OldInputStream, !IO),
         search_for_file(SearchDirs, FileName, SearchResult, !IO),
         ( SearchResult = ok(_) ->
-            io__input_stream_name(FullFileName, !IO),
-            io__set_input_stream(OldInputStream, FileStream, !IO),
-            io__close_input(FileStream, !IO),
-            io__file_modification_time(FullFileName, TimeTResult, !IO),
+            io.input_stream_name(FullFileName, !IO),
+            io.set_input_stream(OldInputStream, FileStream, !IO),
+            io.close_input(FileStream, !IO),
+            io.file_modification_time(FullFileName, TimeTResult, !IO),
             (
                 TimeTResult = ok(TimeT),
                 Timestamp = time_t_to_timestamp(TimeT),
                 MaybeTimestamp = ok(Timestamp)
             ;
                 TimeTResult = error(Error),
-                MaybeTimestamp = error(io__error_message(Error))
+                MaybeTimestamp = error(io.error_message(Error))
             ),
             !:Info = !.Info ^ file_timestamps ^ elem(FileName)
                 := MaybeTimestamp
@@ -733,18 +733,18 @@ get_search_directories(FileType, SearchDirs, !IO) :-
     MaybeOpt = search_for_file_type(FileType),
     (
         MaybeOpt = yes(SearchDirOpt),
-        globals__io_lookup_accumulating_option(SearchDirOpt, SearchDirs0, !IO),
+        globals.io_lookup_accumulating_option(SearchDirOpt, SearchDirs0, !IO),
         % Make sure the current directory is searched
         % for C headers and libraries.
         SearchDirs =
-            ( list__member(dir__this_directory, SearchDirs0) ->
+            ( list.member(dir.this_directory, SearchDirs0) ->
                 SearchDirs0
             ;
-                [dir__this_directory | SearchDirs0]
+                [dir.this_directory | SearchDirs0]
             )
     ;
         MaybeOpt = no,
-        SearchDirs = [dir__this_directory]
+        SearchDirs = [dir.this_directory]
     ).
 
 find_oldest_timestamp(error(_) @ MaybeTimestamp, _) = MaybeTimestamp.
@@ -758,42 +758,42 @@ find_oldest_timestamp(ok(Timestamp1), ok(Timestamp2)) = ok(Timestamp) :-
 
 %-----------------------------------------------------------------------------%
 
-remove_target_file(ModuleName - FileType, !Info, !IO) :-
-    remove_target_file(ModuleName, FileType, !Info, !IO).
+make_remove_target_file(ModuleName - FileType, !Info, !IO) :-
+    make_remove_target_file(ModuleName, FileType, !Info, !IO).
 
-remove_target_file(ModuleName, FileType, !Info, !IO) :-
-    globals__io_get_globals(Globals, !IO),
+make_remove_target_file(ModuleName, FileType, !Info, !IO) :-
+    globals.io_get_globals(Globals, !IO),
     module_target_to_file_name(ModuleName, FileType, no, FileName, !IO),
-    remove_file(FileName, !Info, !IO),
+    make_remove_file(FileName, !Info, !IO),
     ( TimestampExt = timestamp_extension(Globals, FileType) ->
-        remove_file(ModuleName, TimestampExt, !Info, !IO)
+        make_remove_file(ModuleName, TimestampExt, !Info, !IO)
     ;
         true
     ).
 
-remove_file(ModuleName, Ext, !Info, !IO) :-
+make_remove_file(ModuleName, Ext, !Info, !IO) :-
     module_name_to_file_name(ModuleName, Ext, no, FileName, !IO),
-    remove_file(FileName, !Info, !IO).
+    make_remove_file(FileName, !Info, !IO).
 
-remove_file(FileName, !Info, !IO) :-
+make_remove_file(FileName, !Info, !IO) :-
     verbose_msg(report_remove_file(FileName), !IO),
-    io__remove_file(FileName, _, !IO),
+    io.remove_file(FileName, _, !IO),
     !:Info = !.Info ^ file_timestamps :=
-        map__delete(!.Info ^ file_timestamps, FileName).
+        map.delete(!.Info ^ file_timestamps, FileName).
 
 :- pred report_remove_file(string::in, io::di, io::uo) is det.
 
 report_remove_file(FileName, !IO) :-
-    io__write_string("Removing ", !IO),
-    io__write_string(FileName, !IO),
-    io__nl(!IO).
+    io.write_string("Removing ", !IO),
+    io.write_string(FileName, !IO),
+    io.nl(!IO).
 
 %-----------------------------------------------------------------------------%
 
-make_target_list(Ks, V) = list__map((func(K) = K - V), Ks).
+make_target_list(Ks, V) = list.map((func(K) = K - V), Ks).
 
 make_dependency_list(ModuleNames, FileType) =
-    list__map((func(Module) = target(Module - FileType)), ModuleNames).
+    list.map((func(Module) = target(Module - FileType)), ModuleNames).
 
 target_extension(_, source) = yes(".m").
 target_extension(_, errors) = yes(".err").
@@ -823,13 +823,13 @@ target_extension(_, foreign_il_asm(_)) = no.
 target_extension(_, fact_table_object(_, _)) = no.
 
 linked_target_file_name(ModuleName, executable, FileName) -->
-    globals__io_lookup_string_option(executable_file_extension, Ext),
+    globals.io_lookup_string_option(executable_file_extension, Ext),
     module_name_to_file_name(ModuleName, Ext, no, FileName).
 linked_target_file_name(ModuleName, static_library, FileName) -->
-    globals__io_lookup_string_option(library_extension, Ext),
+    globals.io_lookup_string_option(library_extension, Ext),
     module_name_to_lib_file_name("lib", ModuleName, Ext, no, FileName).
 linked_target_file_name(ModuleName, shared_library, FileName) -->
-    globals__io_lookup_string_option(shared_library_extension, Ext),
+    globals.io_lookup_string_option(shared_library_extension, Ext),
     module_name_to_lib_file_name("lib", ModuleName, Ext, no, FileName).
 linked_target_file_name(ModuleName, java_archive, FileName) -->
     module_name_to_file_name(ModuleName, ".jar", no, FileName).
@@ -852,7 +852,7 @@ module_target_to_search_file_name(ModuleName, TargetType, FileName, !IO) :-
 
 module_target_to_file_name(ModuleName, TargetType, MkDir, Search, FileName,
         !IO) :-
-    globals__io_get_globals(Globals, !IO),
+    globals.io_get_globals(Globals, !IO),
     target_extension(Globals, TargetType) = MaybeExt,
     (
         MaybeExt = yes(Ext),
@@ -911,7 +911,7 @@ timestamp_extension(_, intermodule_interface) = ".optdate".
 timestamp_extension(_, analysis_registry) = ".analysis_date".
 timestamp_extension(_, c_code) = ".c_date".
 timestamp_extension(Globals, c_header(_)) = Ext :-
-    globals__get_target(Globals, Target),
+    globals.get_target(Globals, Target),
     Ext = timestamp_extension(Globals,
         (Target = asm -> asm_code(non_pic) ; c_code)).
 timestamp_extension(_, il_code) = ".il_date".
@@ -970,21 +970,21 @@ target_is_grade_or_arch_dependent(fact_table_object(_, _), yes).
 %-----------------------------------------------------------------------------%
 
 debug_msg(P, !IO) :-
-    globals__io_lookup_bool_option(debug_make, Debug, !IO),
+    globals.io_lookup_bool_option(debug_make, Debug, !IO),
     (
         Debug = yes,
         P(!IO),
-        io__flush_output(!IO)
+        io.flush_output(!IO)
     ;
         Debug = no
     ).
 
 verbose_msg(P, !IO) :-
-    globals__io_lookup_bool_option(verbose_make, Verbose, !IO),
+    globals.io_lookup_bool_option(verbose_make, Verbose, !IO),
     (
         Verbose = yes,
         P(!IO),
-        io__flush_output(!IO)
+        io.flush_output(!IO)
     ;
         Verbose = no
     ).
@@ -993,69 +993,69 @@ debug_file_msg(TargetFile, Msg, !IO) :-
     debug_msg(
         (pred(di, uo) is det -->
             write_target_file(TargetFile),
-            io__write_string(": "),
-            io__write_string(Msg),
-            io__nl
+            io.write_string(": "),
+            io.write_string(Msg),
+            io.nl
         ), !IO).
 
 write_dependency_file(target(TargetFile), !IO) :-
     write_target_file(TargetFile, !IO).
 write_dependency_file(file(FileName, _), !IO) :-
-    io__write_string(FileName, !IO).
+    io.write_string(FileName, !IO).
 
 write_target_file(ModuleName - FileType, !IO) :-
     module_target_to_file_name(ModuleName, FileType, no, FileName, !IO),
-    io__write_string(FileName, !IO).
+    io.write_string(FileName, !IO).
 
 maybe_make_linked_target_message(TargetFile, !IO) :-
     verbose_msg(
         (pred(di, uo) is det -->
-            io__write_string("Making "),
-            io__write_string(TargetFile),
-            io__nl
+            io.write_string("Making "),
+            io.write_string(TargetFile),
+            io.nl
         ), !IO).
 
 maybe_make_target_message(TargetFile, !IO) :-
-    io__output_stream(OutputStream, !IO),
+    io.output_stream(OutputStream, !IO),
     maybe_make_target_message(OutputStream, TargetFile, !IO).
 
 maybe_make_target_message(OutputStream, TargetFile, !IO) :-
     verbose_msg(
         (pred(di, uo) is det -->
-            io__set_output_stream(OutputStream, OldOutputStream),
-            io__write_string("Making "),
+            io.set_output_stream(OutputStream, OldOutputStream),
+            io.write_string("Making "),
             write_target_file(TargetFile),
-            io__nl,
-            io__set_output_stream(OldOutputStream, _)
+            io.nl,
+            io.set_output_stream(OldOutputStream, _)
         ), !IO).
 
 maybe_reanalyse_modules_message(!IO) :-
-    io__output_stream(OutputStream, !IO),
+    io.output_stream(OutputStream, !IO),
     verbose_msg(
         (pred(!.IO::di, !:IO::uo) is det :-
-            io__set_output_stream(OutputStream, OldOutputStream, !IO),
-            io__write_string("Reanalysing invalid/suboptimal modules\n", !IO),
-            io__set_output_stream(OldOutputStream, _, !IO)
+            io.set_output_stream(OutputStream, OldOutputStream, !IO),
+            io.write_string("Reanalysing invalid/suboptimal modules\n", !IO),
+            io.set_output_stream(OldOutputStream, _, !IO)
         ), !IO).
 
 target_file_error(TargetFile, !IO) :-
-    io__write_string("** Error making `", !IO),
+    io.write_string("** Error making `", !IO),
     write_target_file(TargetFile, !IO),
-    io__write_string("'.\n", !IO).
+    io.write_string("'.\n", !IO).
 
 file_error(TargetFile, !IO) :-
-    io__write_string("** Error making `", !IO),
-    io__write_string(TargetFile, !IO),
-    io__write_string("'.\n", !IO).
+    io.write_string("** Error making `", !IO),
+    io.write_string(TargetFile, !IO),
+    io.write_string("'.\n", !IO).
 
 maybe_warn_up_to_date_target(Target, !Info, !IO) :-
-    globals__io_lookup_bool_option(warn_up_to_date, Warn, !IO),
+    globals.io_lookup_bool_option(warn_up_to_date, Warn, !IO),
     (
         Warn = yes,
-        ( set__member(Target, !.Info ^ command_line_targets) ->
-            io__write_string("** Nothing to be done for `", !IO),
+        ( set.member(Target, !.Info ^ command_line_targets) ->
+            io.write_string("** Nothing to be done for `", !IO),
             write_module_or_linked_target(Target, !IO),
-            io__write_string("'.\n", !IO)
+            io.write_string("'.\n", !IO)
         ;
             true
         )
@@ -1063,14 +1063,14 @@ maybe_warn_up_to_date_target(Target, !Info, !IO) :-
         Warn = no
     ),
     !:Info = !.Info ^ command_line_targets :=
-        set__delete(!.Info ^ command_line_targets, Target).
+        set.delete(!.Info ^ command_line_targets, Target).
 
 maybe_symlink_or_copy_linked_target_message(Target, !IO) :-
     verbose_msg(
         (pred(!.IO::di, !:IO::uo) is det :-
-            io__write_string("Making symlink/copy of ", !IO),
+            io.write_string("Making symlink/copy of ", !IO),
             write_module_or_linked_target(Target, !IO),
-            io__write_string("\n", !IO)
+            io.write_string("\n", !IO)
         ), !IO).
 
 :- pred write_module_or_linked_target(pair(module_name, target_type)::in,
@@ -1084,7 +1084,7 @@ write_module_or_linked_target(ModuleName - FileType, !IO) :-
         FileType = linked_target(LinkedTargetType),
         linked_target_file_name(ModuleName, LinkedTargetType, FileName,
             !IO),
-        io__write_string(FileName, !IO)
+        io.write_string(FileName, !IO)
     ;
         FileType = misc_target(_),
         unexpected(this_file,

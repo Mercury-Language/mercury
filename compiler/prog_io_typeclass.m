@@ -14,7 +14,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module parse_tree__prog_io_typeclass.
+:- module parse_tree.prog_io_typeclass.
 :- interface.
 
 :- import_module mdbcomp.prim_data.
@@ -72,7 +72,7 @@ parse_typeclass(ModuleName, VarSet, TypeClassTerm, Result) :-
     % XXX We should return an error if we get more than one arg, instead of
     % failing.
     TypeClassTerm = [Arg],
-    ( Arg = term__functor(term__atom("where"), [Name, Methods], _) ->
+    ( Arg = term.functor(term.atom("where"), [Name, Methods], _) ->
         parse_non_empty_class(ModuleName, Name, Methods, VarSet, Result)
     ;
         parse_class_head(ModuleName, Arg, VarSet, Result)
@@ -82,7 +82,7 @@ parse_typeclass(ModuleName, VarSet, TypeClassTerm, Result) :-
     maybe1(item)::out) is det.
 
 parse_non_empty_class(ModuleName, Name, Methods, VarSet, Result) :-
-    varset__coerce(VarSet, TVarSet),
+    varset.coerce(VarSet, TVarSet),
     parse_class_methods(ModuleName, Methods, VarSet, ParsedMethods),
     (
         ParsedMethods = ok(MethodList),
@@ -112,12 +112,10 @@ parse_non_empty_class(ModuleName, Name, Methods, VarSet, Result) :-
     maybe1(item)::out) is det.
 
 parse_class_head(ModuleName, Arg, VarSet, Result) :-
-    (
-        Arg = term__functor(term__atom("<="), [Name, Constraints], _)
-    ->
+    ( Arg = term.functor(term.atom("<="), [Name, Constraints], _) ->
         parse_constrained_class(ModuleName, Name, Constraints, VarSet, Result)
     ;
-        varset__coerce(VarSet, TVarSet),
+        varset.coerce(VarSet, TVarSet),
         parse_unconstrained_class(ModuleName, Arg, TVarSet, Result)
     ).
 
@@ -125,9 +123,8 @@ parse_class_head(ModuleName, Arg, VarSet, Result) :-
     varset::in, maybe1(item)::out) is det.
 
 parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
-    varset__coerce(VarSet, TVarSet),
-    parse_superclass_constraints(ModuleName, Constraints,
-        ParsedConstraints),
+    varset.coerce(VarSet, TVarSet),
+    parse_superclass_constraints(ModuleName, Constraints, ParsedConstraints),
     (
         ParsedConstraints = ok(ConstraintList, FunDeps),
         parse_unconstrained_class(ModuleName, Decl, TVarSet, Result0),
@@ -142,24 +139,24 @@ parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
             (
                 % Check for type variables in the constraints which do not
                 % occur in the type class parameters.
-                prog_type__constraint_list_get_tvars(ConstraintList,
+                prog_type.constraint_list_get_tvars(ConstraintList,
                     ConstrainedVars),
-                list__member(Var, ConstrainedVars),
-                \+ list__member(Var, Item ^ tc_class_params)
+                list.member(Var, ConstrainedVars),
+                \+ list.member(Var, Item ^ tc_class_params)
             ->
                 Result = error("type variable in superclass constraint " ++
                     "is not a parameter of this type class", Constraints)
             ;
                 % Check for type variables in the fundeps which do not occur
                 % in the type class parameters.
-                list__member(FunDep, FunDeps),
+                list.member(FunDep, FunDeps),
                 FunDep = fundep(Domain, Range),
                 (
-                    list__member(Var, Domain)
+                    list.member(Var, Domain)
                 ;
-                    list__member(Var, Range)
+                    list.member(Var, Range)
                 ),
-                \+ list__member(Var, Item ^ tc_class_params)
+                \+ list.member(Var, Item ^ tc_class_params)
             ->
                 Result = error("type variable in functional dependency " ++
                     "is not a parameter of this type class", Constraints)
@@ -226,11 +223,11 @@ parse_unconstrained_class(ModuleName, Name, TVarSet, Result) :-
         Name, Name, "typeclass declaration", MaybeClassName),
     (
         MaybeClassName = ok(ClassName, TermVars0),
-        list__map(term__coerce, TermVars0, TermVars),
+        list.map(term.coerce, TermVars0, TermVars),
         (
-            term__var_list_to_term_list(Vars, TermVars),
-            list__sort_and_remove_dups(TermVars, SortedTermVars),
-            list__length(SortedTermVars) = list__length(TermVars) : int
+            term.var_list_to_term_list(Vars, TermVars),
+            list.sort_and_remove_dups(TermVars, SortedTermVars),
+            list.length(SortedTermVars) = list.length(TermVars) : int
         ->
             Result = ok(typeclass([], [], ClassName, Vars, abstract, TVarSet))
         ;
@@ -250,7 +247,8 @@ parse_class_methods(ModuleName, Methods, VarSet, Result) :-
         % Convert the list of terms into a list of maybe1(class_method)s.
         list_term_to_term_list(Methods, MethodList)
     ->
-        list__map((pred(MethodTerm::in, Method::out) is det :-
+        list.map(
+            (pred(MethodTerm::in, Method::out) is det :-
                 % Turn the term into an item.
                 parse_decl(ModuleName, VarSet, MethodTerm, Item),
                 % Turn the item into a class_method.
@@ -267,13 +265,9 @@ parse_class_methods(ModuleName, Methods, VarSet, Result) :-
 
 item_to_class_method(error(String, Term), _, error(String, Term)).
 item_to_class_method(ok(Item, Context), Term, Result) :-
-    (
-        Item = pred_or_func(A, B, C, D, E, F, G, H, I, J, K, L)
-    ->
+    ( Item = pred_or_func(A, B, C, D, E, F, G, H, I, J, K, L) ->
         Result = ok(pred_or_func(A, B, C, D, E, F, G, H, I, J, K, L, Context))
-    ;
-        Item = pred_or_func_mode(A, B, C, D, E, F, G)
-    ->
+    ; Item = pred_or_func_mode(A, B, C, D, E, F, G) ->
         Result = ok(pred_or_func_mode(A, B, C, D, E, F, G, Context))
     ;
         Result = error("Only pred, func and mode declarations " ++
@@ -467,15 +461,15 @@ parse_arbitrary_constraint(ConstraintTerm, Result) :-
     is semidet.
 
 parse_inst_constraint(Term, InstVar, Inst) :-
-    Term = term__functor(term__atom("=<"), [Arg1, Arg2], _),
-    Arg1 = term__variable(InstVar0),
-    term__coerce_var(InstVar0, InstVar),
+    Term = term.functor(term.atom("=<"), [Arg1, Arg2], _),
+    Arg1 = term.variable(InstVar0),
+    term.coerce_var(InstVar0, InstVar),
     convert_inst(no_allow_constrained_inst_var, Arg2, Inst).
 
 :- pred parse_fundep(term::in, maybe1(arbitrary_constraint)::out) is semidet.
 
 parse_fundep(Term, Result) :-
-    Term = term__functor(term__atom("->"), [DomainTerm, RangeTerm], _),
+    Term = term.functor(term.atom("->"), [DomainTerm, RangeTerm], _),
     (
         parse_fundep_2(DomainTerm, Domain),
         parse_fundep_2(RangeTerm, Range)
@@ -490,15 +484,15 @@ parse_fundep(Term, Result) :-
 :- pred parse_fundep_2(term::in, list(tvar)::out) is semidet.
 
 parse_fundep_2(Term, TVars) :-
-    TypeTerm = term__coerce(Term),
+    TypeTerm = term.coerce(Term),
     conjunction_to_list(TypeTerm, List),
-    term__var_list_to_term_list(TVars, List).
+    term.var_list_to_term_list(TVars, List).
 
 :- pred constraint_is_not_simple(prog_constraint::in) is semidet.
 
 constraint_is_not_simple(constraint(_Name, Types)) :-
     some [Type] (
-        list__member(Type, Types),
+        list.member(Type, Types),
         type_is_nonvar(Type),
         type_is_nonground(Type)
     ).
@@ -509,8 +503,8 @@ parse_instance(ModuleName, VarSet, TypeClassTerm, Result) :-
     % XXX We should return an error if we get more than one arg,
     % instead of failing.
     TypeClassTerm = [Arg],
-    varset__coerce(VarSet, TVarSet),
-    ( Arg = term__functor(term__atom("where"), [Name, Methods], _) ->
+    varset.coerce(VarSet, TVarSet),
+    ( Arg = term.functor(term.atom("where"), [Name, Methods], _) ->
         parse_non_empty_instance(ModuleName, Name, Methods, VarSet, TVarSet,
             Result)
     ;
@@ -521,7 +515,7 @@ parse_instance(ModuleName, VarSet, TypeClassTerm, Result) :-
     maybe1(item)::out) is det.
 
 parse_instance_name(ModuleName, Arg, TVarSet, Result) :-
-    ( Arg = term__functor(term__atom("<="), [Name, Constraints], _) ->
+    ( Arg = term.functor(term.atom("<="), [Name, Constraints], _) ->
         parse_derived_instance(ModuleName, Name, Constraints, TVarSet, Result)
     ;
         parse_underived_instance(ModuleName, Arg, TVarSet, Result)
@@ -535,13 +529,9 @@ parse_derived_instance(ModuleName, Decl, Constraints, TVarSet, Result) :-
     (
         ParsedConstraints = ok(ConstraintList),
         parse_underived_instance(ModuleName, Decl, TVarSet, Result0),
-        (
-            Result0 = error(_, _)
-        ->
+        ( Result0 = error(_, _) ->
             Result = Result0
-        ;
-            Result0 = ok(instance(_, Name, Types, Body, VarSet, ModName))
-        ->
+        ; Result0 = ok(instance(_, Name, Types, Body, VarSet, ModName)) ->
             Result = ok(instance(ConstraintList, Name, Types, Body, VarSet,
                 ModName))
         ;
@@ -592,7 +582,7 @@ parse_underived_instance_2(ErrorTerm, ClassName, ok(Types), TVarSet,
         % Check that each type in the arguments of the instance decl
         % is a functor with vars as args.
         some [Type] (
-            list__member(Type, Types),
+            list.member(Type, Types),
             \+ type_is_functor_and_vars(Type)
         )
     ->
@@ -628,8 +618,9 @@ type_is_functor_and_vars(kinded(Type, _)) :-
 
 functor_args_are_variables(Args) :-
     all [Arg] (
-        list__member(Arg, Args)
-        => type_is_var(Arg)
+        list.member(Arg, Args)
+    =>
+        type_is_var(Arg)
     ).
 
 :- pred parse_non_empty_instance(module_name::in, term::in, term::in,
@@ -674,8 +665,8 @@ check_tvars_in_instance_constraint(ok(Item), InstanceTerm, Result) :-
         % on the instance declaration also occur in the type class
         % argument types in the instance declaration.
         (
-            prog_type__constraint_list_get_tvars(Constraints, TVars),
-            list__member(TVar, TVars),
+            prog_type.constraint_list_get_tvars(Constraints, TVars),
+            list.member(TVar, TVars),
             \+ type_list_contains_var(Types, TVar)
         ->
             Result = error("unbound type variable(s) " ++
@@ -694,7 +685,7 @@ check_tvars_in_instance_constraint(ok(Item), InstanceTerm, Result) :-
 parse_instance_methods(ModuleName, Methods, VarSet, Result) :-
     ( list_term_to_term_list(Methods, MethodList) ->
         % Convert the list of terms into a list of maybe1(class_method)s.
-        list__map(term_to_instance_method(ModuleName, VarSet), MethodList,
+        list.map(term_to_instance_method(ModuleName, VarSet), MethodList,
             Interface),
         find_errors(Interface, Result)
     ;
@@ -708,17 +699,17 @@ parse_instance_methods(ModuleName, Methods, VarSet, Result) :-
 
 term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
     (
-        MethodTerm = term__functor(term__atom("is"),
+        MethodTerm = term.functor(term.atom("is"),
             [ClassMethodTerm, InstanceMethod], TermContext)
     ->
         (
-            ClassMethodTerm = term__functor(term__atom("pred"),
-                [term__functor(term__atom("/"), [ClassMethod, Arity], _)], _)
+            ClassMethodTerm = term.functor(term.atom("pred"),
+                [term.functor(term.atom("/"), [ClassMethod, Arity], _)], _)
         ->
             (
                 parse_qualified_term(ClassMethod, ClassMethod,
                     "instance method", ok(ClassMethodName, [])),
-                Arity = term__functor(term__integer(ArityInt), [], _),
+                Arity = term.functor(term.integer(ArityInt), [], _),
                 parse_qualified_term(InstanceMethod, InstanceMethod,
                     "instance method", ok(InstanceMethodName, []))
             ->
@@ -729,13 +720,13 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
                     "is <InstanceMethod>'", MethodTerm)
             )
         ;
-            ClassMethodTerm = term__functor(term__atom("func"),
-                [term__functor(term__atom("/"), [ClassMethod, Arity], _)], _)
+            ClassMethodTerm = term.functor(term.atom("func"),
+                [term.functor(term.atom("/"), [ClassMethod, Arity], _)], _)
         ->
             (
                 parse_qualified_term(ClassMethod, ClassMethod,
                     "instance method", ok(ClassMethodName, [])),
-                Arity = term__functor(term__integer(ArityInt), [], _),
+                Arity = term.functor(term.integer(ArityInt), [], _),
                 parse_qualified_term(InstanceMethod, InstanceMethod,
                     "instance method", ok(InstanceMethodName, []))
             ->
@@ -765,7 +756,7 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
             Item = clause(_Origin, _VarNames, PredOrFunc, ClassMethodName,
                 HeadArgs, _ClauseBody)
         ->
-            adjust_func_arity(PredOrFunc, ArityInt, list__length(HeadArgs)),
+            adjust_func_arity(PredOrFunc, ArityInt, list.length(HeadArgs)),
             Result = ok(instance_method(PredOrFunc, ClassMethodName,
                 clauses([Item]), ArityInt, Context))
         ;

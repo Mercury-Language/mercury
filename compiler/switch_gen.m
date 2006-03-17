@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -43,7 +43,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__switch_gen.
+:- module ll_backend.switch_gen.
 :- interface.
 
 :- import_module hlds.code_model.
@@ -92,15 +92,15 @@ generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo, Code, !CI) :-
 
     goal_info_get_store_map(GoalInfo, StoreMap),
     SwitchCategory = determine_category(!.CI, CaseVar),
-    code_info__get_next_label(EndLabel, !CI),
+    code_info.get_next_label(EndLabel, !CI),
     lookup_tags(!.CI, Cases, CaseVar, TaggedCases0),
-    list__sort_and_remove_dups(TaggedCases0, TaggedCases),
-    code_info__get_globals(!.CI, Globals),
-    globals__lookup_bool_option(Globals, smart_indexing, Indexing),
+    list.sort_and_remove_dups(TaggedCases0, TaggedCases),
+    code_info.get_globals(!.CI, Globals),
+    globals.lookup_bool_option(Globals, smart_indexing, Indexing),
     (
         % Check for a switch on a type whose representation
         % uses reserved addresses.
-        list__member(Case, TaggedCases),
+        list.member(Case, TaggedCases),
         Case = case(_Priority, Tag, _ConsId, _Goal),
         (
             Tag = reserved_address(_)
@@ -114,12 +114,12 @@ generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo, Code, !CI) :-
     ;
         Indexing = yes,
         SwitchCategory = atomic_switch,
-        code_info__get_maybe_trace_info(!.CI, MaybeTraceInfo),
+        code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
         MaybeTraceInfo = no,
-        list__length(TaggedCases, NumCases),
-        globals__lookup_int_option(Globals, lookup_switch_size, LookupSize),
+        list.length(TaggedCases, NumCases),
+        globals.lookup_int_option(Globals, lookup_switch_size, LookupSize),
         NumCases >= LookupSize,
-        globals__lookup_int_option(Globals, lookup_switch_req_density,
+        globals.lookup_int_option(Globals, lookup_switch_req_density,
             ReqDensity),
         is_lookup_switch(CaseVar, TaggedCases, GoalInfo, CanFail, ReqDensity,
             StoreMap, no, MaybeEndPrime, CodeModel, FirstVal, LastVal,
@@ -132,12 +132,12 @@ generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo, Code, !CI) :-
     ;
         Indexing = yes,
         SwitchCategory = atomic_switch,
-        list__length(TaggedCases, NumCases),
-        globals__lookup_int_option(Globals, dense_switch_size, DenseSize),
+        list.length(TaggedCases, NumCases),
+        globals.lookup_int_option(Globals, dense_switch_size, DenseSize),
         NumCases >= DenseSize,
-        globals__lookup_int_option(Globals, dense_switch_req_density,
+        globals.lookup_int_option(Globals, dense_switch_req_density,
             ReqDensity),
-        dense_switch__is_dense_switch(!.CI, CaseVar, TaggedCases,
+        dense_switch.is_dense_switch(!.CI, CaseVar, TaggedCases,
             CanFail, ReqDensity, FirstVal, LastVal, CanFail1)
     ->
         generate_dense_switch(TaggedCases, FirstVal, LastVal, CaseVar,
@@ -145,8 +145,8 @@ generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo, Code, !CI) :-
     ;
         Indexing = yes,
         SwitchCategory = string_switch,
-        list__length(TaggedCases, NumCases),
-        globals__lookup_int_option(Globals, string_switch_size, StringSize),
+        list.length(TaggedCases, NumCases),
+        globals.lookup_int_option(Globals, string_switch_size, StringSize),
         NumCases >= StringSize
     ->
         generate_string_switch(TaggedCases, CaseVar, CodeModel, CanFail,
@@ -154,8 +154,8 @@ generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo, Code, !CI) :-
     ;
         Indexing = yes,
         SwitchCategory = tag_switch,
-        list__length(TaggedCases, NumCases),
-        globals__lookup_int_option(Globals, tag_switch_size, TagSize),
+        list.length(TaggedCases, NumCases),
+        globals.lookup_int_option(Globals, tag_switch_size, TagSize),
         NumCases >= TagSize
     ->
         generate_tag_switch(TaggedCases, CaseVar, CodeModel, CanFail,
@@ -166,7 +166,7 @@ generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo, Code, !CI) :-
         generate_all_cases(TaggedCases, CaseVar, CodeModel, CanFail, GoalInfo,
             EndLabel, no, MaybeEnd, Code, !CI)
     ),
-    code_info__after_all_branches(StoreMap, MaybeEnd, !CI).
+    code_info.after_all_branches(StoreMap, MaybeEnd, !CI).
 
 %-----------------------------------------------------------------------------%
 
@@ -176,10 +176,10 @@ generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo, Code, !CI) :-
 :- func determine_category(code_info, prog_var) = switch_category.
 
 determine_category(CI, CaseVar) = SwitchCategory :-
-    Type = code_info__variable_type(CI, CaseVar),
-    code_info__get_module_info(CI, ModuleInfo),
+    Type = code_info.variable_type(CI, CaseVar),
+    code_info.get_module_info(CI, ModuleInfo),
     classify_type(ModuleInfo, Type) = TypeCategory,
-    SwitchCategory = switch_util__type_cat_to_switch_cat(TypeCategory).
+    SwitchCategory = switch_util.type_cat_to_switch_cat(TypeCategory).
 
 %-----------------------------------------------------------------------------%
 
@@ -189,8 +189,8 @@ determine_category(CI, CaseVar) = SwitchCategory :-
 lookup_tags(_, [], _, []).
 lookup_tags(CI, [Case | Cases], Var, [TaggedCase | TaggedCases]) :-
     Case = case(ConsId, Goal),
-    Tag = code_info__cons_id_to_tag(CI, Var, ConsId),
-    Priority = switch_util__switch_priority(Tag),
+    Tag = code_info.cons_id_to_tag(CI, Var, ConsId),
+    Priority = switch_util.switch_priority(Tag),
     TaggedCase = case(Priority, Tag, ConsId, Goal),
     lookup_tags(CI, Cases, Var, TaggedCases).
 
@@ -230,7 +230,7 @@ lookup_tags(CI, [Case | Cases], Var, [TaggedCase | TaggedCases]) :-
 
 generate_all_cases(Cases0, Var, CodeModel, CanFail, GoalInfo, EndLabel,
         !MaybeEnd, Code, !CI) :-
-    code_info__produce_variable(Var, VarCode, _Rval, !CI),
+    code_info.produce_variable(Var, VarCode, _Rval, !CI),
     (
         CodeModel = model_det,
         CanFail = cannot_fail,
@@ -238,8 +238,8 @@ generate_all_cases(Cases0, Var, CodeModel, CanFail, GoalInfo, EndLabel,
         Case1 = case(_, _, _, Goal1),
         Case2 = case(_, _, _, Goal2)
     ->
-        code_info__get_pred_id(!.CI, PredId),
-        code_info__get_proc_id(!.CI, ProcId),
+        code_info.get_pred_id(!.CI, PredId),
+        code_info.get_proc_id(!.CI, ProcId),
         count_recursive_calls(Goal1, PredId, ProcId, Min1, Max1),
         count_recursive_calls(Goal2, PredId, ProcId, Min2, Max2),
         (
@@ -274,7 +274,7 @@ generate_cases([], _Var, _CodeModel, CanFail, _GoalInfo, EndLabel, !MaybeEnd,
         % At the end of a locally semidet switch, we fail because we came
         % across a tag which was not covered by one of the cases. It is
         % followed by the end of switch label to which the cases branch.
-        code_info__generate_failure(FailCode, !CI)
+        code_info.generate_failure(FailCode, !CI)
     ;
         CanFail = cannot_fail,
         FailCode = empty
@@ -284,19 +284,19 @@ generate_cases([], _Var, _CodeModel, CanFail, _GoalInfo, EndLabel, !MaybeEnd,
 
 generate_cases([case(_, _, Cons, Goal) | Cases], Var, CodeModel, CanFail,
         SwitchGoalInfo, EndLabel, !MaybeEnd, CasesCode, !CI) :-
-    code_info__remember_position(!.CI, BranchStart),
+    code_info.remember_position(!.CI, BranchStart),
     goal_info_get_store_map(SwitchGoalInfo, StoreMap),
     (
         ( Cases = [_|_]
         ; CanFail = can_fail
         )
     ->
-        unify_gen__generate_tag_test(Var, Cons, branch_on_failure, NextLabel,
+        unify_gen.generate_tag_test(Var, Cons, branch_on_failure, NextLabel,
             TestCode, !CI),
-        trace__maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
+        trace.maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
             TraceCode, !CI),
-        code_gen__generate_goal(CodeModel, Goal, GoalCode, !CI),
-        code_info__generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
+        code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
+        code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
         ElseCode = node([
             goto(label(EndLabel)) - "skip to the end of the switch",
             label(NextLabel) - "next case"
@@ -304,13 +304,13 @@ generate_cases([case(_, _, Cons, Goal) | Cases], Var, CodeModel, CanFail,
         ThisCaseCode = tree_list([TestCode, TraceCode, GoalCode, SaveCode,
              ElseCode])
     ;
-        trace__maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
+        trace.maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
             TraceCode, !CI),
-        code_gen__generate_goal(CodeModel, Goal, GoalCode, !CI),
-        code_info__generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
+        code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
+        code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
         ThisCaseCode = tree_list([TraceCode, GoalCode, SaveCode])
     ),
-    code_info__reset_to_position(BranchStart, !CI),
+    code_info.reset_to_position(BranchStart, !CI),
     generate_cases(Cases, Var, CodeModel, CanFail,
         SwitchGoalInfo, EndLabel, !MaybeEnd, OtherCasesCode, !CI),
     CasesCode = tree(ThisCaseCode, OtherCasesCode).

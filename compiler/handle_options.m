@@ -16,7 +16,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module libs__handle_options.
+:- module libs.handle_options.
 :- interface.
 
 :- import_module libs.globals.
@@ -97,10 +97,10 @@
 %-----------------------------------------------------------------------------%
 
 handle_options(Args0, Errors, OptionArgs, Args, Link, !IO) :-
-    % io__write_string("original arguments\n", !IO),
+    % io.write_string("original arguments\n", !IO),
     % dump_arguments(Args0, !IO),
     process_options(Args0, OptionArgs, Args, Result, !IO),
-    % io__write_string("final arguments\n", !IO),
+    % io.write_string("final arguments\n", !IO),
     % dump_arguments(Args, !IO),
     postprocess_options(Result, Errors, !IO),
     (
@@ -108,48 +108,48 @@ handle_options(Args0, Errors, OptionArgs, Args, Link, !IO) :-
         Link = no
     ;
         Errors = [],
-        globals__io_lookup_bool_option(generate_dependencies,
+        globals.io_lookup_bool_option(generate_dependencies,
             GenerateDependencies, !IO),
-        globals__io_lookup_bool_option(generate_dependency_file,
+        globals.io_lookup_bool_option(generate_dependency_file,
             GenerateDependencyFile, !IO),
-        globals__io_lookup_bool_option(make_interface, MakeInterface, !IO),
-        globals__io_lookup_bool_option(make_private_interface,
+        globals.io_lookup_bool_option(make_interface, MakeInterface, !IO),
+        globals.io_lookup_bool_option(make_private_interface,
             MakePrivateInterface, !IO),
-        globals__io_lookup_bool_option(make_short_interface,
+        globals.io_lookup_bool_option(make_short_interface,
             MakeShortInterface, !IO),
-        globals__io_lookup_bool_option(make_optimization_interface,
+        globals.io_lookup_bool_option(make_optimization_interface,
             MakeOptimizationInt, !IO),
-        globals__io_lookup_bool_option(make_transitive_opt_interface,
+        globals.io_lookup_bool_option(make_transitive_opt_interface,
             MakeTransOptInt, !IO),
-        globals__io_lookup_bool_option(make_analysis_registry,
+        globals.io_lookup_bool_option(make_analysis_registry,
             MakeAnalysisRegistry, !IO),
-        globals__io_lookup_bool_option(convert_to_mercury,
+        globals.io_lookup_bool_option(convert_to_mercury,
             ConvertToMercury, !IO),
-        globals__io_lookup_bool_option(typecheck_only, TypecheckOnly, !IO),
-        globals__io_lookup_bool_option(errorcheck_only, ErrorcheckOnly, !IO),
-        globals__io_lookup_bool_option(target_code_only,
+        globals.io_lookup_bool_option(typecheck_only, TypecheckOnly, !IO),
+        globals.io_lookup_bool_option(errorcheck_only, ErrorcheckOnly, !IO),
+        globals.io_lookup_bool_option(target_code_only,
             TargetCodeOnly, !IO),
-        globals__io_get_target(Target, !IO),
+        globals.io_get_target(Target, !IO),
         GenerateIL = (if Target = il then yes else no),
-        globals__io_lookup_bool_option(compile_only, CompileOnly, !IO),
-        bool__or_list([GenerateDependencies, GenerateDependencyFile,
+        globals.io_lookup_bool_option(compile_only, CompileOnly, !IO),
+        bool.or_list([GenerateDependencies, GenerateDependencyFile,
             MakeInterface, MakePrivateInterface, MakeShortInterface,
             MakeOptimizationInt, MakeTransOptInt, MakeAnalysisRegistry,
             ConvertToMercury, TypecheckOnly, ErrorcheckOnly, TargetCodeOnly,
             GenerateIL, CompileOnly],
             NotLink),
-        bool__not(NotLink, Link),
-        globals__io_lookup_bool_option(smart_recompilation, Smart, !IO),
+        bool.not(NotLink, Link),
+        globals.io_lookup_bool_option(smart_recompilation, Smart, !IO),
         (
             Smart = yes,
             Link = yes
         ->
             % XXX Currently smart recompilation doesn't check that all the
             % files needed to link are present and up-to-date, so disable it.
-            globals__io_get_globals(Globals0, !IO),
+            globals.io_get_globals(Globals0, !IO),
             disable_smart_recompilation("linking", Globals0, Globals1, !IO),
             unsafe_promise_unique(Globals1, Globals),
-            globals__io_set_globals(Globals, !IO)
+            globals.io_set_globals(Globals, !IO)
         ;
             true
         )
@@ -158,16 +158,16 @@ handle_options(Args0, Errors, OptionArgs, Args, Link, !IO) :-
 process_options(Args0, OptionArgs, Args, Result, !IO) :-
     OptionOps = option_ops(short_option, long_option,
         option_defaults, special_handler),
-    getopt_io__process_options(OptionOps, Args0, OptionArgs, Args, Result,
+    getopt_io.process_options(OptionOps, Args0, OptionArgs, Args, Result,
         !IO).
 
 :- pred dump_arguments(list(string)::in, io::di, io::uo) is det.
 
 dump_arguments([], !IO).
 dump_arguments([Arg | Args], !IO) :-
-    io__write_string("<", !IO),
-    io__write_string(Arg, !IO),
-    io__write_string(">\n", !IO),
+    io.write_string("<", !IO),
+    io.write_string(Arg, !IO),
+    io.write_string(">\n", !IO),
     dump_arguments(Args, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -203,7 +203,7 @@ postprocess_options(ok(OptionTable0), Errors, !IO) :-
 check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
         !Errors) :-
-    map__lookup(OptionTable0, target, Target0),
+    map.lookup(OptionTable0, target, Target0),
     (
         Target0 = string(TargetStr),
         convert_target(TargetStr, TargetPrime)
@@ -214,7 +214,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
         add_error("Invalid target option " ++
             "(must be `c', `asm', `il', or `java')", !Errors)
     ),
-    map__lookup(OptionTable0, gc, GC_Method0),
+    map.lookup(OptionTable0, gc, GC_Method0),
     (
         GC_Method0 = string(GC_MethodStr),
         convert_gc_method(GC_MethodStr, GC_MethodPrime)
@@ -226,7 +226,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
             "`conservative', `boehm', `mps', `accurate', or `automatic')",
             !Errors)
     ),
-    map__lookup(OptionTable0, tags, TagsMethod0),
+    map.lookup(OptionTable0, tags, TagsMethod0),
     (
         TagsMethod0 = string(TagsMethodStr),
         convert_tags_method(TagsMethodStr, TagsMethodPrime)
@@ -237,7 +237,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
         add_error("Invalid tags option " ++
             "(must be `none', `low' or `high')", !Errors)
     ),
-    map__lookup(OptionTable0, fact_table_hash_percent_full, PercentFull),
+    map.lookup(OptionTable0, fact_table_hash_percent_full, PercentFull),
     (
         PercentFull = int(Percent),
         Percent >= 1,
@@ -249,7 +249,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
             "`--fact-table-hash-percent-full'\n\t" ++
             "(must be an integer between 1 and 100)", !Errors)
     ),
-    map__lookup(OptionTable0, termination_norm, TermNorm0),
+    map.lookup(OptionTable0, termination_norm, TermNorm0),
     (
         TermNorm0 = string(TermNormStr),
         convert_termination_norm(TermNormStr, TermNormPrime)
@@ -261,7 +261,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
             "`--termination-norm'\n\t(must be " ++
             "`simple', `total' or `num-data-elems').", !Errors)
     ),
-    map__lookup(OptionTable0, termination2_norm, Term2Norm0),
+    map.lookup(OptionTable0, termination2_norm, Term2Norm0),
     (
         Term2Norm0 = string(Term2NormStr),
         convert_termination_norm(Term2NormStr, Term2NormPrime)
@@ -273,13 +273,13 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
             "`--termination2-norm'\n\t(must be" ++
             "`simple', `total' or `num-data-elems').", !Errors)
     ),
-    map__lookup(OptionTable0, force_disable_tracing, ForceDisableTracing),
+    map.lookup(OptionTable0, force_disable_tracing, ForceDisableTracing),
     ( ForceDisableTracing = bool(yes) ->
         TraceLevel = trace_level_none
     ;
-        map__lookup(OptionTable0, trace, Trace),
-        map__lookup(OptionTable0, exec_trace, ExecTraceOpt),
-        map__lookup(OptionTable0, decl_debug, DeclDebugOpt),
+        map.lookup(OptionTable0, trace, Trace),
+        map.lookup(OptionTable0, exec_trace, ExecTraceOpt),
+        map.lookup(OptionTable0, decl_debug, DeclDebugOpt),
         (
             Trace = string(TraceStr),
             ExecTraceOpt = bool(ExecTrace),
@@ -302,7 +302,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
                 "`decl', `rep' or `default').", !Errors)
         )
     ),
-    map__lookup(OptionTable0, suppress_trace, Suppress),
+    map.lookup(OptionTable0, suppress_trace, Suppress),
     (
         Suppress = string(SuppressStr),
         convert_trace_suppress(SuppressStr, TraceSuppressPrime)
@@ -312,7 +312,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
         TraceSuppress = default_trace_suppress, % dummy
         add_error("Invalid argument to option `--suppress-trace'.", !Errors)
     ),
-    map__lookup(OptionTable0, maybe_thread_safe, MaybeThreadSafeOption),
+    map.lookup(OptionTable0, maybe_thread_safe, MaybeThreadSafeOption),
     (
         MaybeThreadSafeOption = string(MaybeThreadSafeString),
         convert_maybe_thread_safe(MaybeThreadSafeString, MaybeThreadSafe0)
@@ -322,7 +322,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
         MaybeThreadSafe = no, % dummy
         add_error("Invalid argument to option `--maybe-thread-safe'.", !Errors)
     ),
-    map__lookup(OptionTable0, dump_hlds_alias, DumpAliasOption),
+    map.lookup(OptionTable0, dump_hlds_alias, DumpAliasOption),
     (
         DumpAliasOption = string(DumpAlias),
         DumpAlias = ""
@@ -332,7 +332,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
         DumpAliasOption = string(DumpAlias),
         convert_dump_alias(DumpAlias, DumpOptions)
     ->
-        map__set(OptionTable0, dump_hlds_options, string(DumpOptions),
+        map.set(OptionTable0, dump_hlds_options, string(DumpOptions),
             OptionTable)
     ;
         OptionTable = OptionTable0, % dummy
@@ -344,7 +344,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
 add_error(Error, Errors0, Errors) :-
     % We won't be appending enough errors for the quadratic complexity
     % of repeated appends to be a problem.
-    list__append(Errors0, [Error], Errors).
+    list.append(Errors0, [Error], Errors).
 
     % NOTE: each termination analyser has its own norm setting.
     %
@@ -358,17 +358,17 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe,
         !Errors, !IO) :-
     unsafe_promise_unique(OptionTable0, OptionTable1), % XXX
-    globals__io_init(OptionTable1, Target, GC_Method, TagsMethod0,
+    globals_io_init(OptionTable1, Target, GC_Method, TagsMethod0,
         TermNorm, Term2Norm, TraceLevel, TraceSuppress, MaybeThreadSafe, !IO),
 
     some [!Globals] (
-        globals__io_get_globals(!:Globals, !IO),
+        globals.io_get_globals(!:Globals, !IO),
 
         % Conservative GC implies --no-reclaim-heap-*
         ( gc_is_conservative(GC_Method) = yes ->
-            globals__set_option(reclaim_heap_on_semidet_failure, bool(no),
+            globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
                 !Globals),
-            globals__set_option(reclaim_heap_on_nondet_failure, bool(no),
+            globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
                 !Globals)
         ;
             true
@@ -378,7 +378,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         ( TagsMethod0 = none ->
             NumTagBits0 = 0
         ;
-            globals__lookup_int_option(!.Globals, num_tag_bits, NumTagBits0)
+            globals.lookup_int_option(!.Globals, num_tag_bits, NumTagBits0)
         ),
 
         % if --tags low but --num-tag-bits not specified,
@@ -389,7 +389,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             TagsMethod0 = low,
             NumTagBits0 = -1
         ->
-            globals__lookup_int_option(!.Globals, conf_low_tag_bits,
+            globals.lookup_int_option(!.Globals, conf_low_tag_bits,
                 NumTagBits1)
         ;
             NumTagBits1 = NumTagBits0
@@ -398,27 +398,27 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % if --num-tag-bits negative or unspecified, issue a warning
         % and assume --num-tag-bits 0
         ( NumTagBits1 < 0 ->
-            io__progname_base("mercury_compile", ProgName, !IO),
+            io.progname_base("mercury_compile", ProgName, !IO),
             report_warning(ProgName, !IO),
             report_warning(
                 ": warning: --num-tag-bits invalid or unspecified\n", !IO),
-            io__write_string(ProgName, !IO),
+            io.write_string(ProgName, !IO),
             report_warning(": using --num-tag-bits 0 (tags disabled)\n", !IO),
             NumTagBits = 0
         ;
             NumTagBits = NumTagBits1
         ),
 
-        globals__set_option(num_tag_bits, int(NumTagBits), !Globals),
+        globals.set_option(num_tag_bits, int(NumTagBits), !Globals),
         ( NumTagBits = 0 ->
             TagsMethod = none,
-            globals__set_tags_method(TagsMethod, !Globals)
+            globals.set_tags_method(TagsMethod, !Globals)
         ;
             TagsMethod = TagsMethod0
         ),
 
-        globals__lookup_bool_option(!.Globals, highlevel_data, HighLevelData),
-        globals__lookup_bool_option(!.Globals,
+        globals.lookup_bool_option(!.Globals, highlevel_data, HighLevelData),
+        globals.lookup_bool_option(!.Globals,
             automatic_intermodule_optimization, AutoIntermodOptimization),
 
         % Generating IL implies:
@@ -470,29 +470,29 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %         needed, so ensure that this dead code is removed.
 
         ( Target = il ->
-            globals__set_gc_method(automatic, !Globals),
-            globals__set_option(gc, string("automatic"), !Globals),
-            globals__set_option(reclaim_heap_on_nondet_failure, bool(no),
+            globals.set_gc_method(automatic, !Globals),
+            globals.set_option(gc, string("automatic"), !Globals),
+            globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
                 !Globals),
-            globals__set_option(reclaim_heap_on_semidet_failure, bool(no),
+            globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
                 !Globals),
-            globals__set_option(highlevel_code, bool(yes), !Globals),
-            globals__set_option(highlevel_data, bool(yes), !Globals),
-            globals__set_option(gcc_nested_functions, bool(no), !Globals),
-            globals__set_option(nondet_copy_out, bool(yes), !Globals),
-            globals__set_option(num_tag_bits, int(0), !Globals),
-            globals__set_option(unboxed_enums, bool(no), !Globals),
-            globals__set_option(unboxed_no_tag_types, bool(no), !Globals),
-            % globals__set_option(num_reserved_addresses, int(1), !Globals)
-            globals__set_option(static_ground_terms, bool(no), !Globals),
+            globals.set_option(highlevel_code, bool(yes), !Globals),
+            globals.set_option(highlevel_data, bool(yes), !Globals),
+            globals.set_option(gcc_nested_functions, bool(no), !Globals),
+            globals.set_option(nondet_copy_out, bool(yes), !Globals),
+            globals.set_option(num_tag_bits, int(0), !Globals),
+            globals.set_option(unboxed_enums, bool(no), !Globals),
+            globals.set_option(unboxed_no_tag_types, bool(no), !Globals),
+            % globals.set_option(num_reserved_addresses, int(1), !Globals)
+            globals.set_option(static_ground_terms, bool(no), !Globals),
 
             (
                 HighLevelData = yes,
                 AutoIntermodOptimization = yes
             ->
-                globals__set_option(intermodule_optimization, bool(yes),
+                globals.set_option(intermodule_optimization, bool(yes),
                     !Globals),
-                globals__set_option(optimize_dead_procs, bool(yes), !Globals)
+                globals.set_option(optimize_dead_procs, bool(yes), !Globals)
             ;
                 true
             ),
@@ -500,7 +500,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             % On the .NET backend we will be using a language independent
             % debugger not mdb.  Thus --debug has to imply --target-debug.
             ( given_trace_level_is_none(TraceLevel) = no ->
-                globals__set_option(target_debug, bool(yes), !Globals)
+                globals.set_option(target_debug, bool(yes), !Globals)
             ;
                 true
             )
@@ -511,9 +511,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % Set --put-nondet-env-on-heap if --verifiable-code is specified,
         % unless both --il-funcptr-types and --il-refany-fields
         % are specified.
-        globals__lookup_bool_option(!.Globals, il_funcptr_types,
+        globals.lookup_bool_option(!.Globals, il_funcptr_types,
             ILFuncPtrTypes),
-        globals__lookup_bool_option(!.Globals, il_refany_fields,
+        globals.lookup_bool_option(!.Globals, il_refany_fields,
             ILRefAnyFields),
         (
             ILFuncPtrTypes = yes,
@@ -564,27 +564,27 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %         needed, so ensure that this dead code is removed.
 
         ( Target = java ->
-            globals__set_gc_method(automatic, !Globals),
-            globals__set_option(gc, string("automatic"), !Globals),
-            globals__set_option(reclaim_heap_on_nondet_failure, bool(no),
+            globals.set_gc_method(automatic, !Globals),
+            globals.set_option(gc, string("automatic"), !Globals),
+            globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
                 !Globals),
-            globals__set_option(reclaim_heap_on_semidet_failure, bool(no),
+            globals.set_option(reclaim_heap_on_semidet_failure, bool(no),
                 !Globals),
-            globals__set_option(highlevel_code, bool(yes), !Globals),
-            globals__set_option(highlevel_data, bool(yes), !Globals),
-            globals__set_option(gcc_nested_functions, bool(no), !Globals),
-            globals__set_option(nondet_copy_out, bool(yes), !Globals),
-            globals__set_option(det_copy_out, bool(yes), !Globals),
-            globals__set_option(num_tag_bits, int(0), !Globals),
-            globals__set_option(unboxed_no_tag_types, bool(no), !Globals),
-            globals__set_option(static_ground_terms, bool(no), !Globals),
-            globals__set_option(put_nondet_env_on_heap, bool(yes), !Globals),
+            globals.set_option(highlevel_code, bool(yes), !Globals),
+            globals.set_option(highlevel_data, bool(yes), !Globals),
+            globals.set_option(gcc_nested_functions, bool(no), !Globals),
+            globals.set_option(nondet_copy_out, bool(yes), !Globals),
+            globals.set_option(det_copy_out, bool(yes), !Globals),
+            globals.set_option(num_tag_bits, int(0), !Globals),
+            globals.set_option(unboxed_no_tag_types, bool(no), !Globals),
+            globals.set_option(static_ground_terms, bool(no), !Globals),
+            globals.set_option(put_nondet_env_on_heap, bool(yes), !Globals),
 
             (
                 AutoIntermodOptimization = yes,
-                globals__set_option(intermodule_optimization, bool(yes),
+                globals.set_option(intermodule_optimization, bool(yes),
                     !Globals),
-                globals__set_option(optimize_dead_procs, bool(yes), !Globals)
+                globals.set_option(optimize_dead_procs, bool(yes), !Globals)
             ;
                 AutoIntermodOptimization = no
             )
@@ -594,7 +594,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % Generating assembler via the gcc back-end requires
         % using high-level code.
         ( Target = asm ->
-            globals__set_option(highlevel_code, bool(yes), !Globals)
+            globals.set_option(highlevel_code, bool(yes), !Globals)
         ;
             true
         ),
@@ -647,11 +647,11 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
         % If no --lib-linkage option has been specified, default to the
         % set of all possible linkages.
-        globals__lookup_accumulating_option(!.Globals, lib_linkages,
+        globals.lookup_accumulating_option(!.Globals, lib_linkages,
             LibLinkages0),
         (
             LibLinkages0 = [],
-            globals__set_option(lib_linkages,
+            globals.set_option(lib_linkages,
                 accumulating(["static", "shared"]), !Globals)
         ;
             LibLinkages0 = [_ | _]
@@ -711,10 +711,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             true
         ),
 
-        ( io__have_symlinks ->
+        ( io.have_symlinks ->
             true
         ;
-            globals__set_option(use_symlinks, bool(no), !Globals)
+            globals.set_option(use_symlinks, bool(no), !Globals)
         ),
 
         option_implies(verbose_check_termination, check_termination,bool(yes),
@@ -746,7 +746,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % without the extra information from the `.opt' files
         % is done when making the `.opt' file. With `--use-opt-files',
         % that doesn't happen.
-        globals__set_option(use_opt_files, bool(no), !Globals),
+        globals.set_option(use_opt_files, bool(no), !Globals),
 
         option_implies(smart_recompilation, generate_item_version_numbers,
             bool(yes), !Globals),
@@ -808,7 +808,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % in interface files for users of a library compiled with
         % inter-module optimization but not using inter-module
         % optimization themselves.
-        globals__lookup_bool_option(!.Globals, smart_recompilation, Smart),
+        globals.lookup_bool_option(!.Globals, smart_recompilation, Smart),
         maybe_disable_smart_recompilation(Smart, intermodule_optimization, yes,
             "`--intermodule-optimization'", !Globals, !IO),
         maybe_disable_smart_recompilation(Smart, use_opt_files, yes,
@@ -827,13 +827,13 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
         option_implies(very_verbose, verbose, bool(yes), !Globals),
         option_implies(verbose, verbose_commands, bool(yes), !Globals),
-        globals__lookup_bool_option(!.Globals, very_verbose, VeryVerbose),
-        globals__lookup_bool_option(!.Globals, statistics, Statistics),
+        globals.lookup_bool_option(!.Globals, very_verbose, VeryVerbose),
+        globals.lookup_bool_option(!.Globals, statistics, Statistics),
         (
             VeryVerbose = yes,
             Statistics = yes
         ->
-            globals__set_option(detailed_statistics, bool(yes), !Globals)
+            globals.set_option(detailed_statistics, bool(yes), !Globals)
         ;
             true
         ),
@@ -843,7 +843,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         option_implies(debug_modes_statistics, debug_modes, bool(yes),
             !Globals),
 
-        globals__lookup_int_option(!.Globals, debug_liveness, DebugLiveness),
+        globals.lookup_int_option(!.Globals, debug_liveness, DebugLiveness),
         (
             DebugLiveness >= 0,
             convert_dump_alias("all", AllDumpOptions)
@@ -852,45 +852,45 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
                 % interested in the goal annotations put on goals by
                 % the various phases of the liveness pass. The default
                 % dump options do not print these annotations.
-            globals__lookup_string_option(!.Globals, dump_hlds_options,
+            globals.lookup_string_option(!.Globals, dump_hlds_options,
                 DumpOptions0),
-            string__append(DumpOptions0, AllDumpOptions, DumpOptions1),
-            globals__set_option(dump_hlds_options, string(DumpOptions1),
+            string.append(DumpOptions0, AllDumpOptions, DumpOptions1),
+            globals.set_option(dump_hlds_options, string(DumpOptions1),
                 !Globals)
         ;
             true
         ),
 
         option_implies(debug_modes_verbose, debug_modes, bool(yes), !Globals),
-        globals__lookup_int_option(!.Globals, debug_modes_pred_id,
+        globals.lookup_int_option(!.Globals, debug_modes_pred_id,
             DebugModesPredId),
         ( DebugModesPredId > 0 ->
-            globals__set_option(debug_modes, bool(yes), !Globals)
+            globals.set_option(debug_modes, bool(yes), !Globals)
         ;
             true
         ),
 
-        globals__lookup_int_option(!.Globals, debug_opt_pred_id,
+        globals.lookup_int_option(!.Globals, debug_opt_pred_id,
             DebugOptPredId),
         ( DebugOptPredId > 0 ->
-            globals__set_option(debug_opt, bool(yes), !Globals)
+            globals.set_option(debug_opt, bool(yes), !Globals)
         ;
             true
         ),
 
-        globals__lookup_bool_option(!.Globals, debug_intermodule_analysis,
+        globals.lookup_bool_option(!.Globals, debug_intermodule_analysis,
             DebugIntermoduleAnalysis),
-        analysis__enable_debug_messages(DebugIntermoduleAnalysis, !IO),
+        analysis.enable_debug_messages(DebugIntermoduleAnalysis, !IO),
 
-        globals__lookup_int_option(!.Globals, dump_hlds_pred_id,
+        globals.lookup_int_option(!.Globals, dump_hlds_pred_id,
             DumpHLDSPredId),
         ( DumpHLDSPredId >= 0 ->
-            globals__lookup_string_option(!.Globals, dump_hlds_options,
+            globals.lookup_string_option(!.Globals, dump_hlds_options,
                 DumpOptions2),
             % Prevent the dumping of the mode and type tables.
-            string__replace_all(DumpOptions2, "M", "", DumpOptions3),
-            string__replace_all(DumpOptions3, "T", "", DumpOptions),
-            globals__set_option(dump_hlds_options, string(DumpOptions),
+            string.replace_all(DumpOptions2, "M", "", DumpOptions3),
+            string.replace_all(DumpOptions3, "T", "", DumpOptions),
+            globals.set_option(dump_hlds_options, string(DumpOptions),
                 !Globals)
         ;
             true
@@ -902,13 +902,13 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % Minimal model tabling is not compatible with high level code
         % or with trailing; see the comments in runtime/mercury_grade.h.
 
-        globals__lookup_bool_option(!.Globals, use_trail, UseTrail),
-        globals__lookup_bool_option(!.Globals, highlevel_code, HighLevel),
-        globals__lookup_bool_option(!.Globals, use_minimal_model_stack_copy,
+        globals.lookup_bool_option(!.Globals, use_trail, UseTrail),
+        globals.lookup_bool_option(!.Globals, highlevel_code, HighLevel),
+        globals.lookup_bool_option(!.Globals, use_minimal_model_stack_copy,
             UseMinimalModelStackCopy),
-        globals__lookup_bool_option(!.Globals, use_minimal_model_own_stacks,
+        globals.lookup_bool_option(!.Globals, use_minimal_model_own_stacks,
             UseMinimalModelOwnStacks),
-        bool__or(UseMinimalModelStackCopy, UseMinimalModelOwnStacks,
+        bool.or(UseMinimalModelStackCopy, UseMinimalModelOwnStacks,
             UseMinimalModel),
         (
             UseMinimalModelStackCopy = yes,
@@ -942,12 +942,12 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % information about the inlined calls.
         option_implies(profile_deep, allow_inlining, bool(no), !Globals),
 
-        globals__lookup_string_option(!.Globals, experimental_complexity,
+        globals.lookup_string_option(!.Globals, experimental_complexity,
             ExpComp),
         ( ExpComp = "" ->
             true
         ;
-            globals__set_option(allow_inlining, bool(no), !Globals)
+            globals.set_option(allow_inlining, bool(no), !Globals)
         ),
 
         % --decl-debug is an extension of --debug
@@ -975,14 +975,14 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % space overhead of trailing (mostly for extra code) as well unless the
         % user has explicitly requested it.
 
-        globals__lookup_bool_option(!.Globals, exec_trace, ExecTrace),
-        globals__lookup_bool_option(!.Globals, decl_debug, DeclDebug),
+        globals.lookup_bool_option(!.Globals, exec_trace, ExecTrace),
+        globals.lookup_bool_option(!.Globals, decl_debug, DeclDebug),
         (
             ExecTrace = yes,
             DeclDebug = no,
             UseMinimalModel = no
         ->
-            globals__set_option(use_trail, bool(yes), !Globals)
+            globals.set_option(use_trail, bool(yes), !Globals)
         ;
             true
         ),
@@ -1006,7 +1006,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %     paths across optimization levels
         %   - enabling stack layouts
         %   - enabling typeinfo liveness
-        globals__lookup_bool_option(!.Globals, trace_optimized,
+        globals.lookup_bool_option(!.Globals, trace_optimized,
             TraceOptimized),
         ( given_trace_level_is_none(TraceLevel) = no ->
             (
@@ -1015,32 +1015,32 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
                 % of the program, which makes it difficult to
                 % relate the trace to the source code (although
                 % it can be easily related to the transformed HLDS).
-                globals__set_option(allow_inlining, bool(no), !Globals),
-                globals__set_option(optimize_unused_args, bool(no), !Globals),
-                globals__set_option(optimize_higher_order, bool(no), !Globals),
-                globals__set_option(type_specialization, bool(no), !Globals),
-                globals__set_option(user_guided_type_specialization,
+                globals.set_option(allow_inlining, bool(no), !Globals),
+                globals.set_option(optimize_unused_args, bool(no), !Globals),
+                globals.set_option(optimize_higher_order, bool(no), !Globals),
+                globals.set_option(type_specialization, bool(no), !Globals),
+                globals.set_option(user_guided_type_specialization,
                     bool(no), !Globals),
-                globals__set_option(deforestation, bool(no), !Globals),
-                globals__set_option(constraint_propagation,
+                globals.set_option(deforestation, bool(no), !Globals),
+                globals.set_option(constraint_propagation,
                     bool(no), !Globals),
-                globals__set_option(local_constraint_propagation,
+                globals.set_option(local_constraint_propagation,
                     bool(no), !Globals),
-                globals__set_option(optimize_duplicate_calls,
+                globals.set_option(optimize_duplicate_calls,
                     bool(no), !Globals),
-                globals__set_option(optimize_constructor_last_call,
+                globals.set_option(optimize_constructor_last_call,
                     bool(no), !Globals),
-                globals__set_option(optimize_saved_vars_cell,
+                globals.set_option(optimize_saved_vars_cell,
                     bool(no), !Globals),
-                globals__set_option(loop_invariants, bool(no), !Globals),
-                globals__set_option(untuple, bool(no), !Globals),
-                globals__set_option(tuple, bool(no), !Globals),
+                globals.set_option(loop_invariants, bool(no), !Globals),
+                globals.set_option(untuple, bool(no), !Globals),
+                globals.set_option(tuple, bool(no), !Globals),
 
                 % For the IL backend we turn off optimize_peep
                 % so that we don't optimize away references to the
                 % local variables of a procedure.
                 ( Target = il ->
-                    globals__set_option(optimize_peep, bool(no), !Globals)
+                    globals.set_option(optimize_peep, bool(no), !Globals)
                 ;
                     true
                 )
@@ -1071,33 +1071,33 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
                 % hijacks, it would be slower as well, except in
                 % procedures that would have many nested hijacks,
                 % and such code is extremely rare.
-            globals__set_option(allow_hijacks, bool(no), !Globals),
+            globals.set_option(allow_hijacks, bool(no), !Globals),
                 % The following option prevents useless variables
                 % from cluttering the trace. Its explicit setting
                 % removes a source of variability in the goal paths
                 % reported by tracing.
-            globals__set_option(excess_assign, bool(yes), !Globals),
+            globals.set_option(excess_assign, bool(yes), !Globals),
                 % The explicit setting of the following option
                 % removes a source of variability in the goal paths
                 % reported by tracing.
-            globals__set_option(follow_code, bool(yes), !Globals),
+            globals.set_option(follow_code, bool(yes), !Globals),
                 % The following option selects a special-case
                 % code generator that cannot (yet) implement tracing.
-            globals__set_option(middle_rec, bool(no), !Globals),
+            globals.set_option(middle_rec, bool(no), !Globals),
                 % The following options cause the info required
                 % by tracing to be generated.
-            globals__set_option(trace_stack_layout, bool(yes), !Globals),
-            globals__set_option(body_typeinfo_liveness, bool(yes), !Globals),
+            globals.set_option(trace_stack_layout, bool(yes), !Globals),
+            globals.set_option(body_typeinfo_liveness, bool(yes), !Globals),
                 % To support up-level printing, we need to save
                 % variables across a call even if the call cannot
                 % succeed.
-            globals__set_option(opt_no_return_calls, bool(no), !Globals)
+            globals.set_option(opt_no_return_calls, bool(no), !Globals)
         ;
             true
         ),
 
         option_implies(profile_deep, procid_stack_layout, bool(yes), !Globals),
-        globals__lookup_bool_option(!.Globals, profile_deep, ProfileDeep),
+        globals.lookup_bool_option(!.Globals, profile_deep, ProfileDeep),
         (
             ProfileDeep = yes,
             (
@@ -1109,15 +1109,15 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
                 add_error("deep profiling is incompatible " ++
                     "with high level code", !Errors)
             ),
-            globals__set_option(optimize_constructor_last_call,
+            globals.set_option(optimize_constructor_last_call,
                 bool(no), !Globals),
-            globals__lookup_bool_option(!.Globals,
+            globals.lookup_bool_option(!.Globals,
                 use_lots_of_ho_specialization, LotsOfHOSpec),
             (
                 LotsOfHOSpec = yes,
                 True = bool(yes),
-                globals__set_option(optimize_higher_order, True, !Globals),
-                globals__set_option(higher_order_size_limit, int(999999),
+                globals.set_option(optimize_higher_order, True, !Globals),
+                globals.set_option(higher_order_size_limit, int(999999),
                     !Globals)
             ;
                 LotsOfHOSpec = no
@@ -1126,9 +1126,9 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             ProfileDeep = no
         ),
 
-        globals__lookup_bool_option(!.Globals, record_term_sizes_as_words,
+        globals.lookup_bool_option(!.Globals, record_term_sizes_as_words,
             RecordTermSizesAsWords),
-        globals__lookup_bool_option(!.Globals, record_term_sizes_as_cells,
+        globals.lookup_bool_option(!.Globals, record_term_sizes_as_cells,
             RecordTermSizesAsCells),
         (
             RecordTermSizesAsWords = yes,
@@ -1141,7 +1141,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             ; RecordTermSizesAsCells = yes
             )
         ->
-            globals__set_option(optimize_constructor_last_call, bool(no),
+            globals.set_option(optimize_constructor_last_call, bool(no),
                 !Globals),
             (
                 HighLevel = yes,
@@ -1245,22 +1245,22 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % which the current RTTI system can't handle.
         %
         ( GC_Method = accurate ->
-            globals__set_option(agc_stack_layout, bool(yes), !Globals),
-            globals__set_option(body_typeinfo_liveness, bool(yes), !Globals),
-            globals__set_option(allow_hijacks, bool(no), !Globals),
-            globals__set_option(optimize_frames, bool(no), !Globals),
-            globals__set_option(opt_no_return_calls, bool(no), !Globals),
-            globals__set_option(middle_rec, bool(no), !Globals),
-            globals__set_option(
+            globals.set_option(agc_stack_layout, bool(yes), !Globals),
+            globals.set_option(body_typeinfo_liveness, bool(yes), !Globals),
+            globals.set_option(allow_hijacks, bool(no), !Globals),
+            globals.set_option(optimize_frames, bool(no), !Globals),
+            globals.set_option(opt_no_return_calls, bool(no), !Globals),
+            globals.set_option(middle_rec, bool(no), !Globals),
+            globals.set_option(
                 reclaim_heap_on_semidet_failure, bool(no), !Globals),
-            globals__set_option(
+            globals.set_option(
                 reclaim_heap_on_nondet_failure, bool(no), !Globals),
 
             option_implies(highlevel_code, optimize_higher_order,
                 bool(no), !Globals),
 
-            globals__set_option(type_specialization, bool(no), !Globals),
-            globals__set_option(user_guided_type_specialization,
+            globals.set_option(type_specialization, bool(no), !Globals),
+            globals.set_option(user_guided_type_specialization,
                 bool(no), !Globals)
         ;
             true
@@ -1270,7 +1270,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % both assume (for accurate GC) that continuation environments
         % are always allocated on the stack, which means that things won't
         % if --gc accurate and --put-nondet-env-on-heap are both enabled.
-        globals__lookup_bool_option(!.Globals, put_nondet_env_on_heap,
+        globals.lookup_bool_option(!.Globals, put_nondet_env_on_heap,
             PutNondetEnvOnHeap),
         (
             HighLevel = yes,
@@ -1330,16 +1330,16 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % these extra pieces of code to be disabled. The disabled program will
         % work only if the program doesn't actually use minimal model tabling,
         % which makes it useful only for performance testing.
-        globals__lookup_bool_option(!.Globals,
+        globals.lookup_bool_option(!.Globals,
             disable_minimal_model_stack_copy_pneg, DisablePneg),
-        globals__lookup_bool_option(!.Globals,
+        globals.lookup_bool_option(!.Globals,
             disable_minimal_model_stack_copy_cut,
             DisableCut),
         (
             UseMinimalModelStackCopy = yes,
             DisablePneg = no
         ->
-            globals__set_option(use_minimal_model_stack_copy_pneg,
+            globals.set_option(use_minimal_model_stack_copy_pneg,
                 bool(yes), !Globals)
         ;
             true
@@ -1348,20 +1348,20 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             UseMinimalModelStackCopy = yes,
             DisableCut = no
         ->
-            globals__set_option(use_minimal_model_stack_copy_cut,
+            globals.set_option(use_minimal_model_stack_copy_cut,
                 bool(yes), !Globals)
         ;
             true
         ),
 
         % --dump-hlds and --statistics require compilation by phases
-        globals__lookup_accumulating_option(!.Globals, dump_hlds, DumpStages),
+        globals.lookup_accumulating_option(!.Globals, dump_hlds, DumpStages),
         (
             ( DumpStages = [_ | _]
             ; Statistics = yes
             )
         ->
-            globals__set_option(trad_passes, bool(no), !Globals)
+            globals.set_option(trad_passes, bool(no), !Globals)
         ;
             true
         ),
@@ -1412,32 +1412,32 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         option_implies(generate_source_file_mapping, warn_wrong_module_name,
             bool(no), !Globals),
 
-        globals__lookup_string_option(!.Globals, fullarch, FullArch),
+        globals.lookup_string_option(!.Globals, fullarch, FullArch),
 
         %
         % Add the standard library directory.
         %
-        globals__lookup_maybe_string_option(!.Globals,
+        globals.lookup_maybe_string_option(!.Globals,
             mercury_standard_library_directory, MaybeStdLibDir),
         (
             MaybeStdLibDir = yes(StdLibDir),
-            globals__get_options(!.Globals, OptionTable2),
-            globals__set_options(option_table_add_mercury_library_directory(
+            globals.get_options(!.Globals, OptionTable2),
+            globals.set_options(option_table_add_mercury_library_directory(
                 OptionTable2, StdLibDir), !Globals),
 
             %
             % Add `-L' and `-R' options for the location
             % of the GC libraries.
             %
-            globals__lookup_accumulating_option(!.Globals,
+            globals.lookup_accumulating_option(!.Globals,
                 link_library_directories, LinkLibDirs0),
-            globals__set_option(link_library_directories,
+            globals.set_option(link_library_directories,
                 accumulating([StdLibDir/"lib" | LinkLibDirs0]),
                 !Globals),
 
-            globals__lookup_accumulating_option(!.Globals,
+            globals.lookup_accumulating_option(!.Globals,
                 runtime_link_library_directories, Rpath0),
-            globals__set_option(runtime_link_library_directories,
+            globals.set_option(runtime_link_library_directories,
                 accumulating([StdLibDir/"lib" | Rpath0]), !Globals)
 
         ;
@@ -1447,13 +1447,13 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %
         % Add the path to mercury_conf.h.
         %
-        globals__lookup_maybe_string_option(!.Globals,
+        globals.lookup_maybe_string_option(!.Globals,
             mercury_configuration_directory, MaybeConfDir),
         (
             MaybeConfDir = yes(ConfDir),
-            globals__lookup_accumulating_option(!.Globals, c_include_directory,
+            globals.lookup_accumulating_option(!.Globals, c_include_directory,
                 CIncludeDirs0),
-            globals__set_option(c_include_directory,
+            globals.set_option(c_include_directory,
                 accumulating([ConfDir/"conf" | CIncludeDirs0]), !Globals)
         ;
             MaybeConfDir = no
@@ -1462,17 +1462,17 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %
         % Find the configuration file.
         %
-        globals__lookup_maybe_string_option(!.Globals, config_file,
+        globals.lookup_maybe_string_option(!.Globals, config_file,
             ConfigFile),
         % yes("") means `--config-file' was not passed on the command line.
         ( ConfigFile = yes("") ->
             (
                 MaybeConfDir = yes(ConfDir1),
-                globals__set_option(config_file, maybe_string(yes(
+                globals.set_option(config_file, maybe_string(yes(
                     ConfDir1/"conf"/"Mercury.config")), !Globals)
             ;
                 MaybeConfDir = no,
-                globals__set_option(config_file, maybe_string(no), !Globals)
+                globals.set_option(config_file, maybe_string(no), !Globals)
             )
         ;
             true
@@ -1483,43 +1483,43 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % These couldn't be handled by options.m because they are grade
         % dependent.
         %
-        globals__lookup_accumulating_option(!.Globals,
+        globals.lookup_accumulating_option(!.Globals,
             mercury_library_directories, MercuryLibDirs),
         grade_directory_component(!.Globals, GradeString),
         (
             MercuryLibDirs = [_ | _],
-            ExtraLinkLibDirs = list__map(
+            ExtraLinkLibDirs = list.map(
                 (func(MercuryLibDir) =
                     MercuryLibDir/"lib"/GradeString
                 ), MercuryLibDirs),
 
-            globals__lookup_accumulating_option(!.Globals,
+            globals.lookup_accumulating_option(!.Globals,
                 link_library_directories, LinkLibDirs),
-            globals__set_option(link_library_directories,
+            globals.set_option(link_library_directories,
                 accumulating(LinkLibDirs ++ ExtraLinkLibDirs), !Globals),
 
-            globals__lookup_accumulating_option(!.Globals,
+            globals.lookup_accumulating_option(!.Globals,
                 runtime_link_library_directories, Rpath),
-            globals__set_option(runtime_link_library_directories,
+            globals.set_option(runtime_link_library_directories,
                 accumulating(Rpath ++ ExtraLinkLibDirs), !Globals),
 
-            ExtraCIncludeDirs = list__map(
+            ExtraCIncludeDirs = list.map(
                 (func(MercuryLibDir) =
                     MercuryLibDir/"lib"/GradeString/"inc"
                 ), MercuryLibDirs),
-            globals__lookup_accumulating_option(!.Globals, c_include_directory,
+            globals.lookup_accumulating_option(!.Globals, c_include_directory,
                 CIncludeDirs),
-            globals__set_option(c_include_directory,
+            globals.set_option(c_include_directory,
                 accumulating(ExtraCIncludeDirs ++ CIncludeDirs), !Globals),
 
-            ExtraIntermodDirs = list__map(
+            ExtraIntermodDirs = list.map(
                 (func(MercuryLibDir) =
-                    dir__make_path_name(MercuryLibDir,
-                        dir__make_path_name("ints", GradeString))
+                    dir.make_path_name(MercuryLibDir,
+                        dir.make_path_name("ints", GradeString))
                 ), MercuryLibDirs),
-            globals__lookup_accumulating_option(!.Globals,
+            globals.lookup_accumulating_option(!.Globals,
                 intermod_directories, IntermodDirs0),
-            globals__set_option(intermod_directories,
+            globals.set_option(intermod_directories,
                 accumulating(ExtraIntermodDirs ++ IntermodDirs0), !Globals)
         ;
             MercuryLibDirs = []
@@ -1528,21 +1528,21 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % If --use-search-directories-for-intermod is true, append the
         % search directories to the list of directories to search for
         % .opt files.
-        globals__lookup_bool_option(!.Globals,
+        globals.lookup_bool_option(!.Globals,
             use_search_directories_for_intermod, UseSearchDirs),
         (
             UseSearchDirs = yes,
-            globals__lookup_accumulating_option(!.Globals,
+            globals.lookup_accumulating_option(!.Globals,
                 intermod_directories, IntermodDirs1),
-            globals__lookup_accumulating_option(!.Globals,
+            globals.lookup_accumulating_option(!.Globals,
                 search_directories, SearchDirs),
-            globals__set_option(intermod_directories,
+            globals.set_option(intermod_directories,
                 accumulating(IntermodDirs1 ++ SearchDirs), !Globals)
         ;
             UseSearchDirs = no
         ),
 
-        globals__lookup_bool_option(!.Globals, use_grade_subdirs,
+        globals.lookup_bool_option(!.Globals, use_grade_subdirs,
             UseGradeSubdirs),
         (
             UseGradeSubdirs = yes,
@@ -1556,12 +1556,12 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             % `--intermod-directory Mercury/<grade>/<fullarch>'
             % to find the `.opt' files in the current directory.
             %
-            globals__lookup_accumulating_option(!.Globals,
+            globals.lookup_accumulating_option(!.Globals,
                 intermod_directories, IntermodDirs2),
             GradeSubdirIntermodDirs =
                 ["Mercury"/GradeString/FullArch |
-                list__filter(isnt(unify(dir__this_directory)), IntermodDirs2)],
-            globals__set_option(intermod_directories,
+                list.filter(isnt(unify(dir.this_directory)), IntermodDirs2)],
+            globals.set_option(intermod_directories,
                 accumulating(GradeSubdirIntermodDirs), !Globals)
         ;
             UseGradeSubdirs = no
@@ -1573,7 +1573,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % name, so we need to add the full path to the
         % header files in the current directory.
         %
-        globals__lookup_bool_option(!.Globals, use_subdirs, UseSubdirs),
+        globals.lookup_bool_option(!.Globals, use_subdirs, UseSubdirs),
         (
             ( UseGradeSubdirs = yes ->
                 MihsSubdir = "Mercury"/GradeString/FullArch/"Mercury"/"mihs"
@@ -1583,11 +1583,11 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
                 fail
             )
         ->
-            globals__lookup_accumulating_option(!.Globals, c_include_directory,
+            globals.lookup_accumulating_option(!.Globals, c_include_directory,
                 CIncludeDirs1),
             SubdirCIncludeDirs =
-                [dir__this_directory, MihsSubdir | CIncludeDirs1],
-            globals__set_option(c_include_directory,
+                [dir.this_directory, MihsSubdir | CIncludeDirs1],
+            globals.set_option(c_include_directory,
                 accumulating(SubdirCIncludeDirs), !Globals)
         ;
             true
@@ -1631,17 +1631,17 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         ),
 
             % only set the backend foreign languages if they are unset
-        globals__lookup_accumulating_option(!.Globals,
+        globals.lookup_accumulating_option(!.Globals,
             backend_foreign_languages, CurrentBackendForeignLanguage),
         (
             CurrentBackendForeignLanguage = [],
-            globals__set_option(backend_foreign_languages,
+            globals.set_option(backend_foreign_languages,
                 accumulating(BackendForeignLanguages), !Globals)
         ;
             CurrentBackendForeignLanguage = [_ | _]
         ),
 
-        globals__lookup_int_option(!.Globals, compare_specialization,
+        globals.lookup_int_option(!.Globals, compare_specialization,
             CompareSpec),
         ( CompareSpec < 0 ->
             % This indicates that the option was not set by the user;
@@ -1650,10 +1650,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             % different performance tradeoffs.
             (
                 HighLevel = no,
-                globals__set_option(compare_specialization, int(13), !Globals)
+                globals.set_option(compare_specialization, int(13), !Globals)
             ;
                 HighLevel = yes,
-                globals__set_option(compare_specialization, int(14), !Globals)
+                globals.set_option(compare_specialization, int(14), !Globals)
             )
         ;
             true
@@ -1674,10 +1674,10 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             ),
             NumTagBits >= 2
         ->
-            globals__set_option(can_compare_constants_as_ints, bool(yes),
+            globals.set_option(can_compare_constants_as_ints, bool(yes),
                 !Globals)
         ;
-            globals__set_option(can_compare_constants_as_ints, bool(no),
+            globals.set_option(can_compare_constants_as_ints, bool(no),
                 !Globals)
         ),
 
@@ -1689,7 +1689,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         ),
 
         unsafe_promise_unique(!Globals),
-        globals__io_set_globals(!.Globals, !IO)
+        globals.io_set_globals(!.Globals, !IO)
     ).
 
     % These option implications only affect the low-level (LLDS) code
@@ -1735,7 +1735,7 @@ postprocess_options_lowlevel(!Globals) :-
         % the jump and label optimization having been done. They are turned
         % on above, but they still won't be executed unless optimize_repeat
         % is at least one.
-        globals__set_option(optimize_repeat, int(1), !Globals)
+        globals.set_option(optimize_repeat, int(1), !Globals)
     ;
         true
     ).
@@ -1748,10 +1748,10 @@ postprocess_options_lowlevel(!Globals) :-
     globals::in, globals::out) is det.
 
 option_implies(SourceOption, ImpliedOption, ImpliedOptionValue, !Globals) :-
-    globals__lookup_bool_option(!.Globals, SourceOption, SourceOptionValue),
+    globals.lookup_bool_option(!.Globals, SourceOption, SourceOptionValue),
     (
         SourceOptionValue = yes,
-        globals__set_option(ImpliedOption, ImpliedOptionValue, !Globals)
+        globals.set_option(ImpliedOption, ImpliedOptionValue, !Globals)
     ;
         SourceOptionValue = no
     ).
@@ -1765,12 +1765,12 @@ option_implies(SourceOption, ImpliedOption, ImpliedOptionValue, !Globals) :-
 
 option_neg_implies(SourceOption, ImpliedOption, ImpliedOptionValue,
         !Globals) :-
-    globals__lookup_bool_option(!.Globals, SourceOption, SourceOptionValue),
+    globals.lookup_bool_option(!.Globals, SourceOption, SourceOptionValue),
     (
         SourceOptionValue = yes
     ;
         SourceOptionValue = no,
-        globals__set_option(ImpliedOption, ImpliedOptionValue, !Globals)
+        globals.set_option(ImpliedOption, ImpliedOptionValue, !Globals)
     ).
 
     % option_requires(SourceBoolOption, RequiredOption, RequiredOptionValue,
@@ -1783,8 +1783,8 @@ option_neg_implies(SourceOption, ImpliedOption, ImpliedOptionValue,
 
 option_requires(SourceOption, RequiredOption, RequiredOptionValue,
         ErrorMessage, Globals, !Errors) :-
-    globals__lookup_bool_option(Globals, SourceOption, SourceOptionValue),
-    globals__lookup_option(Globals, RequiredOption, OptionValue),
+    globals.lookup_bool_option(Globals, SourceOption, SourceOptionValue),
+    globals.lookup_option(Globals, RequiredOption, OptionValue),
     (
         SourceOptionValue = yes,
         OptionValue \= RequiredOptionValue
@@ -1803,7 +1803,7 @@ option_requires(SourceOption, RequiredOption, RequiredOptionValue,
 
 maybe_disable_smart_recompilation(Smart, ConflictingOption,
         ValueToDisableSmart, OptionDescr, !Globals, !IO) :-
-    globals__lookup_bool_option(!.Globals, ConflictingOption, Value),
+    globals.lookup_bool_option(!.Globals, ConflictingOption, Value),
     (
         Smart = yes,
         Value = ValueToDisableSmart
@@ -1817,19 +1817,19 @@ maybe_disable_smart_recompilation(Smart, ConflictingOption,
     io::di, io::uo) is det.
 
 disable_smart_recompilation(OptionDescr, !Globals, !IO) :-
-    globals__set_option(smart_recompilation, bool(no), !Globals),
-    globals__lookup_bool_option(!.Globals, warn_smart_recompilation,
+    globals.set_option(smart_recompilation, bool(no), !Globals),
+    globals.lookup_bool_option(!.Globals, warn_smart_recompilation,
         WarnSmart),
     (
         WarnSmart = yes,
-        io__write_string("Warning: smart recompilation " ++
+        io.write_string("Warning: smart recompilation " ++
             "does not yet work with ", !IO),
-        io__write_string(OptionDescr, !IO),
-        io__write_string(".\n", !IO),
-        globals__lookup_bool_option(!.Globals, halt_at_warn, Halt),
+        io.write_string(OptionDescr, !IO),
+        io.write_string(".\n", !IO),
+        globals.lookup_bool_option(!.Globals, halt_at_warn, Halt),
         (
             Halt = yes,
-            io__set_exit_status(1, !IO)
+            io.set_exit_status(1, !IO)
         ;
             Halt = no
         )
@@ -1838,14 +1838,14 @@ disable_smart_recompilation(OptionDescr, !Globals, !IO) :-
     ).
 
 usage_errors(Errors, !IO) :-
-    io__progname_base("mercury_compile", ProgName, !IO),
-    list__foldl(write_error_plain_with_progname(ProgName), Errors, !IO),
-    io__set_exit_status(1, !IO),
+    io.progname_base("mercury_compile", ProgName, !IO),
+    list.foldl(write_error_plain_with_progname(ProgName), Errors, !IO),
+    io.set_exit_status(1, !IO),
     usage(!IO).
 
 display_compiler_version(!IO) :-
-    library__version(Version),
-    io__write_strings([
+    library.version(Version),
+    io.write_strings([
         "Mercury Compiler, version ", Version, "\n",
         "Copyright (C) 1993-2006 The University of Melbourne\n"
     ], !IO).
@@ -1853,11 +1853,11 @@ display_compiler_version(!IO) :-
 usage(!IO) :-
     % usage is called from many places; ensure that we don't print the
     % duplicate copies of the message.
-    globals__io_printing_usage(AlreadyPrinted, !IO),
+    globals.io_printing_usage(AlreadyPrinted, !IO),
     (
         AlreadyPrinted = no,
         display_compiler_version(!IO),
-        io__write_strings([
+        io.write_strings([
             "Usage: mmc [<options>] <arguments>\n",
             "Use `mmc --help' for more information.\n"
         ], !IO)
@@ -1869,17 +1869,17 @@ long_usage(!IO) :-
     % long_usage is called from only one place, so can't print duplicate
     % copies of the long usage message. We can print both a short and along
     % usage message, but there is no simple way to avoid that.
-    library__version(Version),
-    io__write_strings(["Mercury Compiler, version ", Version, "\n"], !IO),
-    io__write_string("Copyright (C) 1993-2006 " ++
+    library.version(Version),
+    io.write_strings(["Mercury Compiler, version ", Version, "\n"], !IO),
+    io.write_string("Copyright (C) 1993-2006 " ++
         "The University of Melbourne\n", !IO),
-    io__write_string("Usage: mmc [<options>] <arguments>\n", !IO),
-    io__write_string("Arguments:\n", !IO),
-    io__write_string("\tArguments ending in `.m' " ++
+    io.write_string("Usage: mmc [<options>] <arguments>\n", !IO),
+    io.write_string("Arguments:\n", !IO),
+    io.write_string("\tArguments ending in `.m' " ++
         "are assumed to be source file names.\n", !IO),
-    io__write_string("\tArguments that do not end in `.m' " ++
+    io.write_string("\tArguments that do not end in `.m' " ++
         "are assumed to be module names.\n", !IO),
-    io__write_string("Options:\n", !IO),
+    io.write_string("Options:\n", !IO),
     options_help(!IO).
 
 %-----------------------------------------------------------------------------%
@@ -1924,15 +1924,15 @@ long_usage(!IO) :-
 convert_grade_option(GradeString, Options0, Options) :-
     reset_grade_options(Options0, Options1),
     split_grade_string(GradeString, Components),
-    set__init(NoComps),
-    list__foldl2((pred(CompStr::in, Opts0::in, Opts::out,
+    set.init(NoComps),
+    list.foldl2((pred(CompStr::in, Opts0::in, Opts::out,
             CompSet0::in, CompSet::out) is semidet :-
         grade_component_table(CompStr, Comp, CompOpts, MaybeTargets,
             _),
             % Check that the component isn't mentioned
             % more than once.
-        \+ set__member(Comp, CompSet0),
-        set__insert(CompSet0, Comp, CompSet),
+        \+ set.member(Comp, CompSet0),
+        set.insert(CompSet0, Comp, CompSet),
         add_option_list(CompOpts, Opts0, Opts1),
 
             % XXX Here the behaviour matches what used to happen
@@ -1949,9 +1949,9 @@ convert_grade_option(GradeString, Options0, Options) :-
     option_table::out) is det.
 
 add_option_list(CompOpts, Opts0, Opts) :-
-    list__foldl((pred(Opt::in, Opts1::in, Opts2::out) is det :-
+    list.foldl((pred(Opt::in, Opts1::in, Opts2::out) is det :-
         Opt = Option - Data,
-        map__set(Opts1, Option, Data, Opts2)
+        map.set(Opts1, Option, Data, Opts2)
     ), CompOpts, Opts0, Opts).
 
 grade_directory_component(Globals, Grade) :-
@@ -1960,9 +1960,9 @@ grade_directory_component(Globals, Grade) :-
     % implied by the file names (.pic_o vs .o, `.a' vs `.so').
     %
     (
-        string__sub_string_search(Grade0, ".picreg", PicRegIndex),
-        string__split(Grade0, PicRegIndex, LeftPart, RightPart0),
-        string__append(".picreg", RightPart, RightPart0)
+        string.sub_string_search(Grade0, ".picreg", PicRegIndex),
+        string.split(Grade0, PicRegIndex, LeftPart, RightPart0),
+        string.append(".picreg", RightPart, RightPart0)
     ->
         Grade = LeftPart ++ RightPart
     ;
@@ -1970,7 +1970,7 @@ grade_directory_component(Globals, Grade) :-
     ).
 
 compute_grade(Globals, Grade) :-
-    globals__get_options(Globals, Options),
+    globals.get_options(Globals, Options),
     compute_grade_components(Options, Components),
     (
         Components = [],
@@ -1988,7 +1988,7 @@ construct_string([_ - Bit|Bits], Grade) :-
     (
         Bits = [_|_],
         construct_string(Bits, Grade0),
-        string__append_list([Bit, ".", Grade0], Grade)
+        string.append_list([Bit, ".", Grade0], Grade)
     ;
         Bits = [],
         Grade = Bit
@@ -2007,11 +2007,11 @@ compute_grade_components(Options, GradeComponents) :-
 			% ie
 			%	all [Opt, Value] (
 			%	    member(Opt - Value, CompOpts) =>
-			%		map__search(Options, Opt, Value)
+			%		map.search(Options, Opt, Value)
 			%	)
 		\+ (
-			list__member(Opt - Value, CompOpts),
-			\+ map__search(Options, Opt, Value)
+			list.member(Opt - Value, CompOpts),
+			\+ map.search(Options, Opt, Value)
 		),
 			% Don't include `.mm' or `.dmm' in grade strings
 			% because they are just synonyms for `.mmsc' and
@@ -2025,8 +2025,8 @@ compute_grade_components(Options, GradeComponents) :-
 			% possible targets.
 		(
             MaybeTargets = yes(Targets),
-			list__member(Target, Targets),
-			map__search(Options, target, Target)
+			list.member(Target, Targets),
+			map.search(Options, target, Target)
 		;
             MaybeTargets = no
 		),
@@ -2248,7 +2248,7 @@ reset_grade_options(Options0, Options) :-
     aggregate(grade_start_values,
         (pred(Pair::in, Opts0::in, Opts::out) is det :-
             Pair = Option - Value,
-            map__set(Opts0, Option, Value, Opts)
+            map.set(Opts0, Option, Value, Opts)
         ), Options0, Options).
 
 :- pred grade_start_values(pair(option, option_data)::out) is multi.
@@ -2278,7 +2278,7 @@ grade_start_values(extend_stacks_when_needed - bool(no)).
 :- pred split_grade_string(string::in, list(string)::out) is semidet.
 
 split_grade_string(GradeStr, Components) :-
-    string__to_char_list(GradeStr, Chars),
+    string.to_char_list(GradeStr, Chars),
     split_grade_string_2(Chars, Components).
 
 :- pred split_grade_string_2(list(char)::in, list(string)::out) is semidet.
@@ -2286,8 +2286,8 @@ split_grade_string(GradeStr, Components) :-
 split_grade_string_2([], []).
 split_grade_string_2(Chars, Components) :-
     Chars = [_|_],
-    list__takewhile(char_is_not('.'), Chars, ThisChars, RestChars0),
-    string__from_char_list(ThisChars, ThisComponent),
+    list.takewhile(char_is_not('.'), Chars, ThisChars, RestChars0),
+    string.from_char_list(ThisChars, ThisComponent),
     Components = [ThisComponent|RestComponents],
     (
         RestChars0 = [_|RestChars], % discard the `.'

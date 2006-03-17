@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module hlds__make_hlds__make_hlds_passes.
+:- module hlds.make_hlds.make_hlds_passes.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -49,7 +49,7 @@
     qual_info::in, qual_info::out, io::di, io::uo) is det.
 
 :- pred add_stratified_pred(string::in, sym_name::in, arity::in,
-    term__context::in, module_info::in, module_info::out, io::di, io::uo)
+    term.context::in, module_info::in, module_info::out, io::di, io::uo)
     is det.
 
     % add_pred_marker(PragmaName, Name, Arity, Status,
@@ -67,7 +67,7 @@
 :- inst add_marker_pred_info == (pred(in, out) is det).
 
 :- pred do_add_pred_marker(string::in, sym_name::in, arity::in,
-    import_status::in, bool::in, term__context::in,
+    import_status::in, bool::in, term.context::in,
     add_marker_pred_info::in(add_marker_pred_info),
     module_info::in, module_info::out, list(pred_id)::out,
     io::di, io::uo) is det.
@@ -129,13 +129,13 @@
 do_parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, ModuleInfo,
         QualInfo, InvalidTypes, InvalidModes, !IO) :-
     some [!Module] (
-        globals__io_get_globals(Globals, !IO),
+        globals.io_get_globals(Globals, !IO),
         mq_info_get_partial_qualifier_info(MQInfo0, PQInfo),
         module_info_init(Name, Items, Globals, PQInfo, no, !:Module),
         add_item_list_decls_pass_1(Items,
             item_status(local, may_be_unqualified), !Module,
             no, InvalidModes0, !IO),
-        globals__io_lookup_bool_option(statistics, Statistics, !IO),
+        globals.io_lookup_bool_option(statistics, Statistics, !IO),
         maybe_write_string(Statistics, "% Processed all items in pass 1\n",
             !IO),
         maybe_report_stats(Statistics, !IO),
@@ -153,7 +153,7 @@ do_parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, ModuleInfo,
         (
             InvalidTypes1 = no,
             module_info_get_type_table(!.Module, Types),
-            map__foldl3(process_type_defn, Types, no, InvalidTypes2, !Module,
+            map.foldl3(process_type_defn, Types, no, InvalidTypes2, !Module,
                 !IO)
         ;
             InvalidTypes1 = yes,
@@ -166,11 +166,11 @@ do_parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, ModuleInfo,
             Name = mercury_public_builtin_module,
             compiler_generated_rtti_for_builtins(!.Module)
         ->
-            varset__init(TVarSet),
+            varset.init(TVarSet),
             Body = abstract_type(non_solver_type),
-            term__context_init(Context),
+            term.context_init(Context),
             Status = local,
-            list__foldl(
+            list.foldl(
                 (pred(TypeCtor::in, M0::in, M::out) is det :-
                     construct_type(TypeCtor, [], Type),
                     add_special_preds(TVarSet, Type, TypeCtor, Body, Context,
@@ -205,12 +205,12 @@ do_parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, ModuleInfo,
     ).
 
 check_for_errors(P, FoundError, !ModuleInfo, !IO) :-
-    io__get_exit_status(BeforeStatus, !IO),
-    io__set_exit_status(0, !IO),
+    io.get_exit_status(BeforeStatus, !IO),
+    io.set_exit_status(0, !IO),
     module_info_get_num_errors(!.ModuleInfo, BeforeNumErrors),
     P(!ModuleInfo, !IO),
     module_info_get_num_errors(!.ModuleInfo, AfterNumErrors),
-    io__get_exit_status(AfterStatus, !IO),
+    io.get_exit_status(AfterStatus, !IO),
     (
         AfterStatus = 0,
         BeforeNumErrors = AfterNumErrors
@@ -220,7 +220,7 @@ check_for_errors(P, FoundError, !ModuleInfo, !IO) :-
         FoundError = yes
     ),
     ( BeforeStatus \= 0 ->
-        io__set_exit_status(BeforeStatus, !IO)
+        io.set_exit_status(BeforeStatus, !IO)
     ;
         true
     ).
@@ -243,7 +243,7 @@ add_item_list_decls_pass_1([Item - Context | Items], Status0, !ModuleInfo,
         !InvalidModes, !IO) :-
     add_item_decl_pass_1(Item, Context, Status0, Status1, !ModuleInfo,
         NewInvalidModes, !IO),
-    !:InvalidModes = bool__or(!.InvalidModes, NewInvalidModes),
+    !:InvalidModes = bool.or(!.InvalidModes, NewInvalidModes),
     add_item_list_decls_pass_1(Items, Status1, !ModuleInfo, !InvalidModes,
         !IO).
 
@@ -427,7 +427,7 @@ add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
     ; ModuleDefn = transitively_imported ->
         true
     ;
-        prog_out__write_context(Context, !IO),
+        prog_out.write_context(Context, !IO),
         report_warning("Warning: declaration not yet implemented.\n", !IO)
     ).
 add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !IO) :-
@@ -543,7 +543,7 @@ add_item_decl_pass_2(Item, _Context, !Status, !ModuleInfo, !IO) :-
         PredOrFunc = predicate
     ;
         PredOrFunc = function,
-        list__length(TypesAndModes, Arity),
+        list.length(TypesAndModes, Arity),
         adjust_func_arity(function, FuncArity, Arity),
         module_info_get_predicate_table(!.ModuleInfo, PredTable0),
         (
@@ -800,7 +800,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         PredOrFunc = predicate
     ;
         PredOrFunc = function,
-        list__length(TypesAndModes, PredArity),
+        list.length(TypesAndModes, PredArity),
         adjust_func_arity(function, FuncArity, PredArity),
         maybe_check_field_access_function(SymName, FuncArity, !.Status,
             Context, !.ModuleInfo, !IO)
@@ -817,7 +817,7 @@ add_item_clause(Item, !Status, _, !ModuleInfo, !QualInfo, !IO) :-
         apply_to_recompilation_info(
             (pred(RecompInfo0::in, RecompInfo::out) is det :-
                 RecompInfo = RecompInfo0 ^ version_numbers ^
-                    map__elem(ModuleName) := ModuleVersionNumbers
+                    map.elem(ModuleName) := ModuleVersionNumbers
             ),
             !QualInfo)
     ; module_defn_update_import_status(Defn, ItemStatus1) ->
@@ -850,7 +850,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
     ;
         Pragma = tabled(Type, Name, Arity, PredOrFunc, Mode)
     ->
-        globals__io_lookup_bool_option(type_layout, TypeLayout, !IO),
+        globals.io_lookup_bool_option(type_layout, TypeLayout, !IO),
         (
             TypeLayout = yes,
             module_add_pragma_tabled(Type, Name, Arity, PredOrFunc,
@@ -858,14 +858,14 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         ;
             TypeLayout = no,
             module_info_incr_errors(!ModuleInfo),
-            prog_out__write_context(Context, !IO),
-            io__write_string("Error: `:- pragma ", !IO),
+            prog_out.write_context(Context, !IO),
+            io.write_string("Error: `:- pragma ", !IO),
             EvalMethodS = eval_method_to_one_string(Type),
-            io__write_string(EvalMethodS, !IO),
-            io__write_string("' declaration requires the type_ctor_layout\n",
+            io.write_string(EvalMethodS, !IO),
+            io.write_string("' declaration requires the type_ctor_layout\n",
                 !IO),
-            prog_out__write_context(Context, !IO),
-            io__write_string("    structures. Use " ++
+            prog_out.write_context(Context, !IO),
+            io.write_string("    structures. Use " ++
                 "the --type-layout flag to enable them.\n", !IO)
         )
     ;
@@ -877,7 +877,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         % name length.  So we ignore these pragmas for the
         % Java back-end.
         %
-        globals__io_get_target(Target, !IO),
+        globals.io_get_target(Target, !IO),
         ( Target = java ->
             true
         ;
@@ -930,7 +930,7 @@ add_item_clause(promise(PromiseType, Goal, VarSet, UnivVars),
     % type variables as this implicity adds a universal
     % quantification of the typevariables needed.
     %
-    term__var_list_to_term_list(UnivVars, HeadVars),
+    term.var_list_to_term_list(UnivVars, HeadVars),
 
     % extra error checking for promise ex declarations
     ( PromiseType \= true ->
@@ -1377,9 +1377,9 @@ module_defn_update_import_status(abstract_imported,
 
 add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context, Status,
         !ModuleInfo, !QualInfo, !IO) :-
-    term__context_line(Context, Line),
-    term__context_file(Context, File),
-    string__format(prog_out__promise_to_string(PromiseType) ++
+    term.context_line(Context, Line),
+    term.context_file(Context, File),
+    string.format(prog_out.promise_to_string(PromiseType) ++
         "__%d__%s", [i(Line), s(File)], Name),
         %
         % Promise declarations are recorded as a predicate with a
@@ -1391,7 +1391,7 @@ add_promise_clause(PromiseType, HeadVars, VarSet, Goal, Context, Status,
         %
         % becomes
         %
-        % promise__lineno_filename(A, B, R) :-
+        % promise.lineno_filename(A, B, R) :-
         %   ( R = A + B <=> R = B + A ).
         %
     GoalType = promise(PromiseType) ,
@@ -1406,10 +1406,10 @@ add_stratified_pred(PragmaName, Name, Arity, Context, !ModuleInfo, !IO) :-
             Name, Arity, PredIds)
     ->
         module_info_get_stratified_preds(!.ModuleInfo, StratPredIds0),
-        set__insert_list(StratPredIds0, PredIds, StratPredIds),
+        set.insert_list(StratPredIds0, PredIds, StratPredIds),
         module_info_set_stratified_preds(StratPredIds, !ModuleInfo)
     ;
-        string__append_list(["`:- pragma ", PragmaName, "' declaration"],
+        string.append_list(["`:- pragma ", PragmaName, "' declaration"],
             Description),
         undefined_pred_or_func_error(Name, Arity, Context, Description, !IO),
         module_info_incr_errors(!ModuleInfo)
@@ -1457,7 +1457,7 @@ do_add_pred_marker(PragmaName, Name, Arity, Status, MustBeExported, Context,
         module_info_set_predicate_table(PredTable, !ModuleInfo)
     ;
         PredIds = [],
-        string__append_list(["`:- pragma ", PragmaName, "' declaration"],
+        string.append_list(["`:- pragma ", PragmaName, "' declaration"],
             Description),
         undefined_pred_or_func_error(Name, Arity, Context, Description, !IO),
         module_info_incr_errors(!ModuleInfo)
@@ -1499,9 +1499,9 @@ module_mark_as_external(PredName, Arity, Context, !ModuleInfo, !IO) :-
 module_mark_preds_as_external([], !ModuleInfo).
 module_mark_preds_as_external([PredId | PredIds], !ModuleInfo) :-
     module_info_preds(!.ModuleInfo, Preds0),
-    map__lookup(Preds0, PredId, PredInfo0),
+    map.lookup(Preds0, PredId, PredInfo0),
     pred_info_mark_as_external(PredInfo0, PredInfo),
-    map__det_update(Preds0, PredId, PredInfo, Preds),
+    map.det_update(Preds0, PredId, PredInfo, Preds),
     module_info_set_preds(Preds, !ModuleInfo),
     module_mark_preds_as_external(PredIds, !ModuleInfo).
 
@@ -1515,10 +1515,10 @@ module_mark_preds_as_external([PredId | PredIds], !ModuleInfo) :-
 pragma_check_markers(_, [], _, no).
 pragma_check_markers(PredTable, [PredId | PredIds], ConflictList,
         WasConflict) :-
-    map__lookup(PredTable, PredId, PredInfo),
+    map.lookup(PredTable, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     (
-        list__member(Marker, ConflictList),
+        list.member(Marker, ConflictList),
         check_marker(Markers, Marker)
     ->
         WasConflict = yes
@@ -1536,7 +1536,7 @@ pragma_check_markers(PredTable, [PredId | PredIds], ConflictList,
 pragma_add_marker([], _, _, _, !PredTable, no).
 pragma_add_marker([PredId | PredIds], UpdatePredInfo, Status, MustBeExported,
         !PredTable, WrongStatus) :-
-    map__lookup(!.PredTable, PredId, PredInfo0),
+    map.lookup(!.PredTable, PredId, PredInfo0),
     call(UpdatePredInfo, PredInfo0, PredInfo),
     (
         pred_info_is_exported(PredInfo),
@@ -1547,13 +1547,12 @@ pragma_add_marker([PredId | PredIds], UpdatePredInfo, Status, MustBeExported,
     ;
         WrongStatus0 = no
     ),
-    map__det_update(!.PredTable, PredId, PredInfo, !:PredTable),
+    map.det_update(!.PredTable, PredId, PredInfo, !:PredTable),
     pragma_add_marker(PredIds, UpdatePredInfo, Status,
         MustBeExported, !PredTable, WrongStatus1),
-    bool__or(WrongStatus0, WrongStatus1, WrongStatus).
+    bool.or(WrongStatus0, WrongStatus1, WrongStatus).
 
-:- pred add_marker_pred_info(marker::in, pred_info::in, pred_info::out)
-    is det.
+:- pred add_marker_pred_info(marker::in, pred_info::in, pred_info::out) is det.
 
 add_marker_pred_info(Marker, !PredInfo) :-
     pred_info_get_markers(!.PredInfo, Markers0),
@@ -1597,7 +1596,7 @@ check_field_access_function(_AccessType, FieldName, FuncName, FuncArity,
         % Abstract types have status `abstract_exported',
         % so errors won't be reported for local field
         % access functions for them.
-        map__search(CtorFieldTable, FieldName, [FieldDefn]),
+        map.search(CtorFieldTable, FieldName, [FieldDefn]),
         FieldDefn = hlds_ctor_field_defn(_, DefnStatus, _, _, _),
         DefnStatus = exported, FuncStatus \= exported
     ->
@@ -1617,8 +1616,8 @@ report_field_status_mismatch(Context, CallId, !IO) :-
         words("error: a field access function for an"),
         words("exported field must also be exported.")
     ],
-    error_util__write_error_pieces(Context, 0, ErrorPieces, !IO),
-    io__set_exit_status(1, !IO).
+    write_error_pieces(Context, 0, ErrorPieces, !IO),
+    io.set_exit_status(1, !IO).
 
 :- pred report_unexpected_decl(string::in, prog_context::in,
     io::di, io::uo) is det.
@@ -1627,7 +1626,7 @@ report_unexpected_decl(Descr, Context, !IO) :-
     Pieces = [words("Error: unexpected or incorrect"),
         words("`" ++ Descr ++ "' declaration.")],
     write_error_pieces(Context, 0, Pieces, !IO),
-    io__set_exit_status(1, !IO).
+    io.set_exit_status(1, !IO).
 
 :- pred pragma_status_error(sym_name::in, int::in, prog_context::in,
     string::in, io::di, io::uo) is det.
@@ -1638,7 +1637,7 @@ pragma_status_error(Name, Arity, Context, PragmaName, !IO) :-
         sym_name_and_arity(Name / Arity),
         words("must also be exported.")],
     write_error_pieces(Context, 0, Pieces, !IO),
-    io__set_exit_status(1, !IO).
+    io.set_exit_status(1, !IO).
 
 :- pred pragma_conflict_error(sym_name::in, int::in, prog_context::in,
     string::in, io::di, io::uo) is det.
@@ -1648,7 +1647,7 @@ pragma_conflict_error(Name, Arity, Context, PragmaName, !IO) :-
         words("declaration conflicts with previous pragma for"),
         sym_name_and_arity(Name / Arity), suffix(".")],
     write_error_pieces(Context, 0, Pieces, !IO),
-    io__set_exit_status(1, !IO).
+    io.set_exit_status(1, !IO).
 
 :- func this_file = string.
 

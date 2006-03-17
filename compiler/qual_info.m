@@ -11,7 +11,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module hlds__make_hlds__qual_info.
+:- module hlds.make_hlds.qual_info.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -140,10 +140,10 @@
 
 init_qual_info(MQInfo0, EqvMap, QualInfo) :-
     mq_info_set_need_qual_flag(may_be_unqualified, MQInfo0, MQInfo),
-    varset__init(TVarSet),
-    map__init(Renaming),
-    map__init(Index),
-    map__init(VarTypes),
+    varset.init(TVarSet),
+    map.init(Renaming),
+    map.init(Index),
+    map.init(VarTypes),
     FoundSyntaxError = no,
     QualInfo = qual_info(EqvMap, TVarSet, Renaming, Index, VarTypes,
         MQInfo, local, FoundSyntaxError).
@@ -152,7 +152,7 @@ update_qual_info(TVarNameMap, TVarSet, VarTypes, Status, !QualInfo) :-
     !.QualInfo = qual_info(EqvMap, _TVarSet0, _Renaming0, _TVarNameMap0,
         _VarTypes0, MQInfo, _Status, _FoundError),
     % The renaming for one clause is useless in the others.
-    map__init(Renaming),
+    map.init(Renaming),
     !:QualInfo = qual_info(EqvMap, TVarSet, Renaming, TVarNameMap,
         VarTypes, MQInfo, Status, no).
 
@@ -194,13 +194,13 @@ process_type_qualification(Var, Type0, VarSet, Context, !ModuleInfo,
         Type1 = Type0,
         MQInfo = MQInfo0
     ;
-        module_qual__qualify_type_qualification(Type0, Type1,
+        module_qual.qualify_type_qualification(Type0, Type1,
             Context, MQInfo0, MQInfo, !IO)
     ),
 
     % Find any new type variables introduced by this type, and
     % add them to the var-name index and the variable renaming.
-    prog_type__vars(Type1, TVars),
+    prog_type.vars(Type1, TVars),
     get_new_tvars(TVars, VarSet, TVarSet0, TVarSet1,
         TVarNameMap0, TVarNameMap, TVarRenaming0, TVarRenaming),
 
@@ -213,7 +213,7 @@ process_type_qualification(Var, Type0, VarSet, Context, !ModuleInfo,
     % because at the moment no recompilation.item_id can depend on a
     % clause item.
     RecordExpanded = no,
-    equiv_type__replace_in_type(EqvMap, Type2, Type, _, TVarSet1, TVarSet,
+    equiv_type.replace_in_type(EqvMap, Type2, Type, _, TVarSet1, TVarSet,
         RecordExpanded, _),
     update_var_types(Var, Type, Context, VarTypes0, VarTypes, !IO),
     !:QualInfo = qual_info(EqvMap, TVarSet, TVarRenaming,
@@ -232,7 +232,7 @@ update_var_types(Var, Type, Context, !VarTypes, !IO) :-
                 words("not match prior qualification.")
             ],
             write_error_pieces(Context, 0, ErrMsg, !IO),
-            io__set_exit_status(1, !IO)
+            io.set_exit_status(1, !IO)
         )
     ;
         svmap.det_insert(Var, Type, !VarTypes)
@@ -260,7 +260,7 @@ make_atomic_unification(Var, Rhs, Context, MainContext, SubContext, Purity,
 
 record_called_pred_or_func(PredOrFunc, SymName, Arity, !QualInfo) :-
     Id = SymName - Arity,
-    apply_to_recompilation_info(recompilation__record_used_item(
+    apply_to_recompilation_info(recompilation.record_used_item(
         pred_or_func_to_item_type(PredOrFunc), Id, Id), !QualInfo).
 
 :- pred record_used_functor(cons_id::in, qual_info::in, qual_info::out) is det.
@@ -280,7 +280,7 @@ construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args, GoalInfo, Goal,
         !QualInfo) :-
     do_construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args,
         GoalInfo, Goal),
-    list__length(Args, Arity),
+    list.length(Args, Arity),
     adjust_func_arity(PredOrFunc, OrigArity, Arity),
     record_called_pred_or_func(PredOrFunc, SymName, OrigArity, !QualInfo).
 
@@ -293,7 +293,7 @@ do_construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args,
     ;
         PredOrFunc = function,
         pred_args_to_func_args(Args, FuncArgs, RetArg),
-        list__length(FuncArgs, Arity),
+        list.length(FuncArgs, Arity),
         ConsId = cons(SymName, Arity),
         goal_info_get_context(GoalInfo, Context),
         create_atomic_complicated_unification(RetArg,

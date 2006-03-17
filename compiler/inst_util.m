@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2005 The University of Melbourne.
+% Copyright (C) 1997-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -37,7 +37,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds__inst_util.
+:- module check_hlds.inst_util.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -138,7 +138,6 @@
 
     % Return true if the given inst may restrict the set of function symbols
     % that may be successfully unified with the variable that has this inst.
-    % 
     %
 :- func inst_may_restrict_cons_ids(module_info, mer_inst) = bool.
 
@@ -172,7 +171,7 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, Inst, Det,
     ThisInstPair = unify_inst(Live, InstA, InstB, UnifyIsReal),
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_unify_insts(InstTable0, UnifyInsts0),
-    ( map__search(UnifyInsts0, ThisInstPair, Result) ->
+    ( map.search(UnifyInsts0, ThisInstPair, Result) ->
         ( Result = known(UnifyInst, UnifyDet) ->
             Inst0 = UnifyInst,
             Det = UnifyDet
@@ -187,7 +186,7 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, Inst, Det,
         Inst1 = Inst0
     ;
         % Insert ThisInstPair into the table with value `unknown'.
-        svmap__det_insert(ThisInstPair, unknown, UnifyInsts0, UnifyInsts1),
+        svmap.det_insert(ThisInstPair, unknown, UnifyInsts0, UnifyInsts1),
         inst_table_set_unify_insts(UnifyInsts1, InstTable0, InstTable1),
         module_info_set_inst_table(InstTable1, !ModuleInfo),
         % Unify the insts.
@@ -207,7 +206,7 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, Inst, Det,
         % Now update the value associated with ThisInstPair.
         module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_unify_insts(InstTable2, UnifyInsts2),
-        map__det_update(UnifyInsts2, ThisInstPair, known(Inst1, Det),
+        map.det_update(UnifyInsts2, ThisInstPair, known(Inst1, Det),
             UnifyInsts),
         inst_table_set_unify_insts(UnifyInsts, InstTable2, InstTable),
         module_info_set_inst_table(InstTable, !ModuleInfo)
@@ -537,7 +536,7 @@ abstractly_unify_inst_functor_2(live, any(Uniq), ConsId, ArgInsts,
         ArgLives, Real, Type, Inst, Det, !ModuleInfo) :-
     % We only allow `any' to unify with a functor if we know that
     % the type is not a solver type.
-    \+ type_util__is_solver_type(!.ModuleInfo, Type),
+    \+ type_util.is_solver_type(!.ModuleInfo, Type),
     make_any_inst_list_lives(ArgInsts, live, ArgLives, Uniq, Real,
         AnyArgInsts, Det, !ModuleInfo),
     Inst = bound(Uniq, [functor(ConsId, AnyArgInsts)]).
@@ -566,7 +565,7 @@ abstractly_unify_inst_functor_2(dead, free, ConsId, Args, _ArgLives, _Real, _,
 
 abstractly_unify_inst_functor_2(dead, any(Uniq), ConsId, ArgInsts,
         _ArgLives, Real, Type, Inst, Det, !ModuleInfo) :-
-    \+ type_util__is_solver_type(!.ModuleInfo, Type),
+    \+ type_util.is_solver_type(!.ModuleInfo, Type),
     make_any_inst_list(ArgInsts, dead, Uniq, Real, AnyArgInsts, Det,
         !ModuleInfo),
     Inst = bound(Uniq, [functor(ConsId, AnyArgInsts)]).
@@ -732,8 +731,7 @@ abstractly_unify_constrained_inst_vars(IsLive, InstVars, InstConstraint, InstB,
         Inst0 = constrained_inst_vars(InstVars0, Inst1)
     ->
         % Avoid nested constrained_inst_vars.
-        Inst = constrained_inst_vars(set__union(InstVars0, InstVars),
-            Inst1)
+        Inst = constrained_inst_vars(set.union(InstVars0, InstVars), Inst1)
     ;
         % We can keep the constrained_inst_vars.
         Inst = constrained_inst_vars(InstVars, Inst0)
@@ -911,7 +909,7 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
     inst_table_get_ground_insts(InstTable0, GroundInsts0),
     GroundInstKey = ground_inst(InstName, IsLive, Uniq, Real),
     (
-        map__search(GroundInsts0, GroundInstKey, Result)
+        map.search(GroundInsts0, GroundInstKey, Result)
     ->
         ( Result = known(GroundInst0, Det0) ->
             GroundInst = GroundInst0,
@@ -926,10 +924,8 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
     ;
         % Insert the inst name in the ground_inst table, with value `unknown'
         % for the moment.
-        svmap__det_insert(GroundInstKey, unknown,
-            GroundInsts0, GroundInsts1),
-        inst_table_set_ground_insts(GroundInsts1,
-            InstTable0, InstTable1),
+        svmap.det_insert(GroundInstKey, unknown, GroundInsts0, GroundInsts1),
+        inst_table_set_ground_insts(GroundInsts1, InstTable0, InstTable1),
         module_info_set_inst_table(InstTable1, !ModuleInfo),
 
         % Expand the inst name, and invoke ourself recursively on its
@@ -943,7 +939,7 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
         % value `known(GroundInst, Det)' in the ground_inst table.
         module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_ground_insts(InstTable2, GroundInsts2),
-        svmap__det_update(GroundInstKey, known(GroundInst, Det),
+        svmap.det_update(GroundInstKey, known(GroundInst, Det),
             GroundInsts2, GroundInsts),
         inst_table_set_ground_insts(GroundInsts, InstTable2, InstTable),
         module_info_set_inst_table(InstTable, !ModuleInfo)
@@ -1019,9 +1015,7 @@ make_any_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_any_insts(InstTable0, AnyInsts0),
     AnyInstKey = any_inst(InstName, IsLive, Uniq, Real),
-    (
-        map__search(AnyInsts0, AnyInstKey, Result)
-    ->
+    ( map.search(AnyInsts0, AnyInstKey, Result) ->
         ( Result = known(AnyInst0, Det0) ->
             AnyInst = AnyInst0,
             Det = Det0
@@ -1035,7 +1029,7 @@ make_any_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
     ;
         % Insert the inst name in the any_inst table, with value `unknown'
         % for the moment.
-        svmap__det_insert(AnyInstKey, unknown, AnyInsts0, AnyInsts1),
+        svmap.det_insert(AnyInstKey, unknown, AnyInsts0, AnyInsts1),
         inst_table_set_any_insts(AnyInsts1, InstTable0, InstTable1),
         module_info_set_inst_table(InstTable1, !ModuleInfo),
 
@@ -1050,8 +1044,7 @@ make_any_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
         % value `known(AnyInst, Det)' in the any_inst table.
         module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_any_insts(InstTable2, AnyInsts2),
-        svmap__det_update(AnyInstKey, known(AnyInst, Det),
-            AnyInsts2, AnyInsts),
+        svmap.det_update(AnyInstKey, known(AnyInst, Det), AnyInsts2, AnyInsts),
         inst_table_set_any_insts(AnyInsts, InstTable2, InstTable),
         module_info_set_inst_table(InstTable, !ModuleInfo)
     ),
@@ -1170,7 +1163,7 @@ make_shared_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
     % Check whether the inst name is already in the shared_inst table.
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_shared_insts(InstTable0, SharedInsts0),
-    ( map__search(SharedInsts0, InstName, Result) ->
+    ( map.search(SharedInsts0, InstName, Result) ->
         ( Result = known(SharedInst0) ->
             SharedInst = SharedInst0
         ;
@@ -1179,7 +1172,7 @@ make_shared_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
     ;
         % Insert the inst name in the shared_inst table, with value `unknown'
         % for the moment.
-        svmap__det_insert(InstName, unknown, SharedInsts0, SharedInsts1),
+        svmap.det_insert(InstName, unknown, SharedInsts0, SharedInsts1),
         inst_table_set_shared_insts(SharedInsts1, InstTable0, InstTable1),
         module_info_set_inst_table(InstTable1, !ModuleInfo),
 
@@ -1193,7 +1186,7 @@ make_shared_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
         % value `known(SharedInst)' in the shared_inst table.
         module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_shared_insts(InstTable2, SharedInsts2),
-        svmap__det_update(InstName, known(SharedInst),
+        svmap.det_update(InstName, known(SharedInst),
             SharedInsts2, SharedInsts),
         inst_table_set_shared_insts(SharedInsts,
             InstTable2, InstTable),
@@ -1260,7 +1253,7 @@ make_mostly_uniq_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
     % Check whether the inst name is already in the mostly_uniq_inst table.
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_mostly_uniq_insts(InstTable0, NondetLiveInsts0),
-    ( map__search(NondetLiveInsts0, InstName, Result) ->
+    ( map.search(NondetLiveInsts0, InstName, Result) ->
         ( Result = known(NondetLiveInst0) ->
             NondetLiveInst = NondetLiveInst0
         ;
@@ -1269,7 +1262,7 @@ make_mostly_uniq_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
     ;
         % Insert the inst name in the mostly_uniq_inst table, with value
         % `unknown' for the moment.
-        map__det_insert(NondetLiveInsts0, InstName, unknown, NondetLiveInsts1),
+        map.det_insert(NondetLiveInsts0, InstName, unknown, NondetLiveInsts1),
         inst_table_set_mostly_uniq_insts(NondetLiveInsts1,
             InstTable0, InstTable1),
         module_info_set_inst_table(InstTable1, !ModuleInfo),
@@ -1284,7 +1277,7 @@ make_mostly_uniq_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
         % value `known(NondetLiveInst)' in the mostly_uniq_inst table.
         module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_mostly_uniq_insts(InstTable2, NondetLiveInsts2),
-        svmap__det_update(InstName, known(NondetLiveInst),
+        svmap.det_update(InstName, known(NondetLiveInst),
             NondetLiveInsts2, NondetLiveInsts),
         inst_table_set_mostly_uniq_insts(NondetLiveInsts,
             InstTable2, InstTable),
@@ -1342,7 +1335,7 @@ inst_merge(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_merge_insts(InstTable0, MergeInstTable0),
     ThisInstPair = InstA - InstB,
-    ( map__search(MergeInstTable0, ThisInstPair, Result) ->
+    ( map.search(MergeInstTable0, ThisInstPair, Result) ->
         ( Result = known(MergedInst) ->
             Inst0 = MergedInst
         ;
@@ -1350,7 +1343,7 @@ inst_merge(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         )
     ;
         % Insert ThisInstPair into the table with value `unknown'.
-        map__det_insert(MergeInstTable0, ThisInstPair, unknown,
+        map.det_insert(MergeInstTable0, ThisInstPair, unknown,
             MergeInstTable1),
         inst_table_set_merge_insts(MergeInstTable1, InstTable0, InstTable1),
         module_info_set_inst_table(InstTable1, !ModuleInfo),
@@ -1361,7 +1354,7 @@ inst_merge(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         % Now update the value associated with ThisInstPair.
         module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_merge_insts(InstTable2, MergeInstTable2),
-        map__det_update(MergeInstTable2, ThisInstPair, known(Inst0),
+        map.det_update(MergeInstTable2, ThisInstPair, known(Inst0),
             MergeInstTable3),
         inst_table_set_merge_insts(MergeInstTable3, InstTable2, InstTable3),
         module_info_set_inst_table(InstTable3, !ModuleInfo)
@@ -1396,8 +1389,8 @@ inst_merge_3(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
     ( InstA = constrained_inst_vars(InstVarsA, InstA1) ->
         ( InstB = constrained_inst_vars(InstVarsB, InstB1) ->
             inst_merge(InstA1, InstB1, MaybeType, Inst0, !ModuleInfo),
-            InstVars = InstVarsA `set__intersect` InstVarsB,
-            ( set__non_empty(InstVars) ->
+            InstVars = InstVarsA `set.intersect` InstVarsB,
+            ( set.non_empty(InstVars) ->
                 Inst = constrained_inst_vars(InstVars, Inst0)
                 % We can keep the constrained_inst_vars here since
                 % Inst0 = InstA1 `lub` InstB1 and the original constraint
@@ -1508,7 +1501,7 @@ inst_merge_4(ground(UniqA, GroundInstInfoA), ground(UniqB, GroundInstInfoB),
 inst_merge_4(abstract_inst(Name, ArgsA), abstract_inst(Name, ArgsB),
         _, abstract_inst(Name, Args), !ModuleInfo) :-
     % We don't know the arguments types of an abstract inst.
-    MaybeTypes = list__duplicate(list__length(ArgsA), no),
+    MaybeTypes = list.duplicate(list.length(ArgsA), no),
     inst_list_merge(ArgsA, ArgsB, MaybeTypes, Args, !ModuleInfo).
 inst_merge_4(not_reached, Inst, _, Inst, !ModuleInfo).
 
@@ -1532,7 +1525,7 @@ merge_uniq(UniqA, UniqB, Merged) :-
 
 merge_uniq_bound(UniqA, UniqB, ListB, ModuleInfo, Uniq) :-
     merge_uniq(UniqA, UniqB, Uniq0),
-    set__init(Expansions0),
+    set.init(Expansions0),
     merge_bound_inst_list_uniq(ListB, Uniq0, ModuleInfo,
         Expansions0, _Expansions, Uniq).
 
@@ -1574,10 +1567,10 @@ merge_inst_uniq(abstract_inst(_,_), UniqB, _, !Expansions, Uniq) :-
     merge_uniq(shared, UniqB, Uniq).
 merge_inst_uniq(defined_inst(InstName), UniqB, ModuleInfo,
         !Expansions, Uniq) :-
-    ( set__member(InstName, !.Expansions) ->
+    ( set.member(InstName, !.Expansions) ->
         Uniq = UniqB
     ;
-        svset__insert(InstName, !Expansions),
+        svset.insert(InstName, !Expansions),
         inst_lookup(ModuleInfo, InstName, Inst),
         merge_inst_uniq(Inst, UniqB, ModuleInfo, !Expansions, Uniq)
     ).
@@ -1607,7 +1600,7 @@ inst_merge_bound_ground(UniqA, ListA, UniqB, MaybeType, Result, !ModuleInfo) :-
             type_constructors(Type, !.ModuleInfo, Constructors),
             constructors_to_bound_insts(!.ModuleInfo, UniqB, Constructors,
                 ListB0),
-            list__sort_and_remove_dups(ListB0, ListB),
+            list.sort_and_remove_dups(ListB0, ListB),
             inst_merge_4(bound(UniqA, ListA), bound(UniqB, ListB),
                 MaybeType, Result, !ModuleInfo)
         ;
@@ -1652,7 +1645,7 @@ bound_inst_list_merge(Xs, Ys, MaybeType, Zs, !ModuleInfo) :-
         Y = functor(ConsIdY, ArgsY),
         ( cons_ids_match(ConsIdX, ConsIdY) ->
             maybe_get_cons_id_arg_types(!.ModuleInfo, MaybeType,
-                ConsIdX, list__length(ArgsX), MaybeTypes),
+                ConsIdX, list.length(ArgsX), MaybeTypes),
             inst_list_merge(ArgsX, ArgsY, MaybeTypes, Args, !ModuleInfo),
             Z = functor(ConsIdX, Args),
             Zs = [Z | Zs1],
@@ -1670,7 +1663,7 @@ bound_inst_list_merge(Xs, Ys, MaybeType, Zs, !ModuleInfo) :-
 %-----------------------------------------------------------------------------%
 
 inst_contains_nonstandard_func_mode(ModuleInfo, Inst) :-
-    set__init(Expansions0),
+    set.init(Expansions0),
     inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst, Expansions0).
 
 :- pred inst_contains_nonstandard_func_mode_2(module_info::in, mer_inst::in,
@@ -1681,55 +1674,54 @@ inst_contains_nonstandard_func_mode_2(ModuleInfo, ground(_, GroundInstInfo),
     ground_inst_info_is_nonstandard_func_mode(ModuleInfo, GroundInstInfo).
 inst_contains_nonstandard_func_mode_2(ModuleInfo, bound(_, BoundInsts),
         Expansions) :-
-    list__member(functor(_, Insts), BoundInsts),
-    list__member(Inst, Insts),
+    list.member(functor(_, Insts), BoundInsts),
+    list.member(Inst, Insts),
     inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst, Expansions).
 inst_contains_nonstandard_func_mode_2(_, inst_var(_), _) :-
     unexpected(this_file, "internal error: uninstantiated inst parameter").
 inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst, Expansions0) :-
     Inst = defined_inst(InstName),
-    \+ set__member(Inst, Expansions0),
-    set__insert(Expansions0, Inst, Expansions1),
+    \+ set.member(Inst, Expansions0),
+    set.insert(Expansions0, Inst, Expansions1),
     inst_lookup(ModuleInfo, InstName, Inst2),
     inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst2, Expansions1).
 
 %-----------------------------------------------------------------------------%
 
 inst_contains_any(ModuleInfo, Inst) :-
-    set__init(Expansions),
+    set.init(Expansions),
     inst_contains_any_2(ModuleInfo, Inst, Expansions).
 
-
 :- pred inst_contains_any_2(module_info::in, (mer_inst)::in,
-        set(inst_name)::in) is semidet.
+    set(inst_name)::in) is semidet.
 
 inst_contains_any_2(_ModuleInfo, any(_), _Expansions).
 
 inst_contains_any_2(ModuleInfo, bound(_, BoundInsts), Expansions) :-
-    list__member(functor(_, Insts), BoundInsts),
-    list__member(Inst, Insts),
+    list.member(functor(_, Insts), BoundInsts),
+    list.member(Inst, Insts),
     inst_contains_any_2(ModuleInfo, Inst, Expansions).
 
 inst_contains_any_2(_ModuleInfo, inst_var(_), _Expansions) :-
     unexpected(this_file, "internal error: uninstantiated inst parameter").
 
 inst_contains_any_2(ModuleInfo, defined_inst(InstName), Expansions0) :-
-    \+ set__member(InstName, Expansions0),
-    Expansions = set__insert(Expansions0, InstName),
+    \+ set.member(InstName, Expansions0),
+    Expansions = set.insert(Expansions0, InstName),
     inst_lookup(ModuleInfo, InstName, Inst),
     inst_contains_any_2(ModuleInfo, Inst, Expansions).
 
 %-----------------------------------------------------------------------------%
 
 var_inst_contains_any(ModuleInfo, Instmap, Var) :-
-    instmap__lookup_var(Instmap, Var, Inst),
+    instmap.lookup_var(Instmap, Var, Inst),
     inst_contains_any(ModuleInfo, Inst).
 
 %-----------------------------------------------------------------------------%
 
 pred_inst_info_is_nonstandard_func_mode(ModuleInfo, PredInstInfo) :-
     PredInstInfo = pred_inst_info(function, ArgModes, _),
-    Arity = list__length(ArgModes),
+    Arity = list.length(ArgModes),
     \+ pred_inst_matches(PredInstInfo,
         pred_inst_info_standard_func_mode(Arity), ModuleInfo).
 
@@ -1741,7 +1733,7 @@ pred_inst_info_standard_func_mode(Arity) =
         pred_inst_info(function, ArgModes, det) :-
     in_mode(InMode),
     out_mode(OutMode),
-    ArgModes = list__duplicate(Arity - 1, InMode) ++ [OutMode].
+    ArgModes = list.duplicate(Arity - 1, InMode) ++ [OutMode].
 
 %-----------------------------------------------------------------------------%
 
@@ -1810,7 +1802,6 @@ inst_may_restrict_cons_ids(ModuleInfo, Inst) = MayRestrict :-
     ).
 
 %-----------------------------------------------------------------------------%
-
 
 :- func this_file = string.
 

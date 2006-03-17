@@ -17,7 +17,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds__cse_detection.
+:- module check_hlds.cse_detection.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -83,7 +83,7 @@ detect_cse(!ModuleInfo, !IO) :-
 detect_cse_in_preds([], !ModuleInfo, !IO).
 detect_cse_in_preds([PredId | PredIds], !ModuleInfo, !IO) :-
     module_info_preds(!.ModuleInfo, PredTable),
-    map__lookup(PredTable, PredId, PredInfo),
+    map.lookup(PredTable, PredId, PredInfo),
     detect_cse_in_pred(PredId, PredInfo, !ModuleInfo, !IO),
     detect_cse_in_preds(PredIds, !ModuleInfo, !IO).
 
@@ -104,18 +104,18 @@ detect_cse_in_procs([ProcId | ProcIds], PredId, !ModuleInfo, !IO) :-
 
 detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO) :-
     detect_cse_in_proc_2(ProcId, PredId, Redo, !ModuleInfo),
-    globals__io_lookup_bool_option(detailed_statistics, Statistics, !IO),
+    globals.io_lookup_bool_option(detailed_statistics, Statistics, !IO),
     maybe_report_stats(Statistics, !IO),
     (
         Redo = no
     ;
         Redo = yes,
-        globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+        globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
         (
             VeryVerbose = yes,
-            io__write_string("% Repeating mode check for ", !IO),
-            hlds_out__write_pred_id(!.ModuleInfo, PredId, !IO),
-            io__write_string("\n", !IO)
+            io.write_string("% Repeating mode check for ", !IO),
+            hlds_out.write_pred_id(!.ModuleInfo, PredId, !IO),
+            io.write_string("\n", !IO)
         ;
             VeryVerbose = no
         ),
@@ -128,9 +128,9 @@ detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO) :-
         ),
         (
             VeryVerbose = yes,
-            io__write_string("% Repeating switch detection for ", !IO),
-            hlds_out__write_pred_id(!.ModuleInfo, PredId, !IO),
-            io__write_string("\n", !IO)
+            io.write_string("% Repeating switch detection for ", !IO),
+            hlds_out.write_pred_id(!.ModuleInfo, PredId, !IO),
+            io.write_string("\n", !IO)
         ;
             VeryVerbose = no
         ),
@@ -138,10 +138,10 @@ detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO) :-
         maybe_report_stats(Statistics, !IO),
         (
             VeryVerbose = yes,
-            io__write_string("% Repeating common " ++
+            io.write_string("% Repeating common " ++
                 "deconstruction detection for ", !IO),
-            hlds_out__write_pred_id(!.ModuleInfo, PredId, !IO),
-            io__write_string("\n", !IO)
+            hlds_out.write_pred_id(!.ModuleInfo, PredId, !IO),
+            io.write_string("\n", !IO)
         ;
             VeryVerbose = no
         ),
@@ -161,9 +161,9 @@ detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO) :-
 
 detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
     module_info_preds(ModuleInfo0, PredTable0),
-    map__lookup(PredTable0, PredId, PredInfo0),
+    map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_procedures(PredInfo0, ProcTable0),
-    map__lookup(ProcTable0, ProcId, ProcInfo0),
+    map.lookup(ProcTable0, ProcId, ProcInfo0),
 
     % To process each ProcInfo, we get the goal, initialize the instmap
     % based on the modes of the head vars, and pass these to
@@ -195,9 +195,9 @@ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
         proc_info_set_vartypes(VarTypes, ProcInfo2, ProcInfo3),
         proc_info_set_rtti_varmaps(RttiVarMaps, ProcInfo3, ProcInfo),
 
-        map__det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
+        map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
         pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
-        map__det_update(PredTable0, PredId, PredInfo, PredTable),
+        map.det_update(PredTable0, PredId, PredInfo, PredTable),
         module_info_set_preds(PredTable, ModuleInfo0, ModuleInfo)
     ).
 
@@ -226,7 +226,7 @@ detect_cse_in_goal_1(Goal0 - GoalInfo, InstMap0, !CseInfo, Redo,
         Goal - GoalInfo, InstMap) :-
     detect_cse_in_goal_2(Goal0, GoalInfo, InstMap0, !CseInfo, Redo, Goal),
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
-    instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap).
+    instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap).
 
     % Here we process each of the different sorts of goals.
     %
@@ -246,7 +246,7 @@ detect_cse_in_goal_2(unify(LHS, RHS0, Mode, Unify,  UnifyContext), _, InstMap0,
             Vars, Modes, Det, Goal0)
     ->
         ModuleInfo = !.CseInfo ^ module_info,
-        instmap__pre_lambda_update(ModuleInfo, Vars, Modes, InstMap0, InstMap),
+        instmap.pre_lambda_update(ModuleInfo, Vars, Modes, InstMap0, InstMap),
         detect_cse_in_goal(Goal0, InstMap, !CseInfo, Redo, Goal),
         RHS = lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
             Vars, Modes, Det, Goal)
@@ -269,20 +269,20 @@ detect_cse_in_goal_2(disj(Goals0), GoalInfo, InstMap, !CseInfo, Redo, Goal) :-
         Goal = disj([])
     ;
         goal_info_get_nonlocals(GoalInfo, NonLocals),
-        set__to_sorted_list(NonLocals, NonLocalsList),
+        set.to_sorted_list(NonLocals, NonLocalsList),
         detect_cse_in_disj(NonLocalsList, Goals0, GoalInfo,
             InstMap, !CseInfo, Redo, Goal)
     ).
 detect_cse_in_goal_2(switch(Var, CanFail, Cases0), GoalInfo, InstMap,
         !CseInfo, Redo, Goal) :-
     goal_info_get_nonlocals(GoalInfo, NonLocals),
-    set__to_sorted_list(NonLocals, NonLocalsList),
+    set.to_sorted_list(NonLocals, NonLocalsList),
     detect_cse_in_cases(NonLocalsList, Var, CanFail, Cases0, GoalInfo,
         InstMap, !CseInfo, Redo, Goal).
 detect_cse_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo,
         InstMap, !CseInfo, Redo, Goal) :-
     goal_info_get_nonlocals(GoalInfo, NonLocals),
-    set__to_sorted_list(NonLocals, NonLocalsList),
+    set.to_sorted_list(NonLocals, NonLocalsList),
     detect_cse_in_ite(NonLocalsList, Vars, Cond0, Then0, Else0, GoalInfo,
         InstMap, !CseInfo, Redo, Goal).
 
@@ -326,7 +326,7 @@ detect_cse_in_disj([], Goals0, _, InstMap, !CseInfo, Redo, disj(Goals)) :-
 detect_cse_in_disj([Var | Vars], Goals0, GoalInfo0, InstMap,
         !CseInfo, Redo, Goal) :-
     (
-        instmap__lookup_var(InstMap, Var, VarInst0),
+        instmap.lookup_var(InstMap, Var, VarInst0),
         ModuleInfo = !.CseInfo ^ module_info,
         % XXX we only need inst_is_bound, but leave this as it is
         % until mode analysis can handle aliasing between free
@@ -352,7 +352,7 @@ detect_cse_in_disj_2([Goal0 | Goals0], InstMap0, !CseInfo, Redo,
         [Goal | Goals]) :-
     detect_cse_in_goal(Goal0, InstMap0, !CseInfo, Redo1, Goal),
     detect_cse_in_disj_2(Goals0, InstMap0, !CseInfo, Redo2, Goals),
-    bool__or(Redo1, Redo2, Redo).
+    bool.or(Redo1, Redo2, Redo).
 
 :- pred detect_cse_in_cases(list(prog_var)::in, prog_var::in, can_fail::in,
     list(case)::in, hlds_goal_info::in, instmap::in,
@@ -365,7 +365,7 @@ detect_cse_in_cases([Var | Vars], SwitchVar, CanFail, Cases0, GoalInfo,
         InstMap, !CseInfo, Redo, Goal) :-
     (
         Var \= SwitchVar,
-        instmap__lookup_var(InstMap, Var, VarInst0),
+        instmap.lookup_var(InstMap, Var, VarInst0),
         ModuleInfo = !.CseInfo ^ module_info,
         % XXX We only need inst_is_bound, but leave this as it is until
         % mode analysis can handle aliasing between free variables.
@@ -393,7 +393,7 @@ detect_cse_in_cases_2([Case0 | Cases0], InstMap, !CseInfo, Redo,
     detect_cse_in_goal(Goal0, InstMap, !CseInfo, Redo1, Goal),
     Case = case(Functor, Goal),
     detect_cse_in_cases_2(Cases0, InstMap, !CseInfo, Redo2, Cases),
-    bool__or(Redo1, Redo2, Redo).
+    bool.or(Redo1, Redo2, Redo).
 
 :- pred detect_cse_in_ite(list(prog_var)::in, list(prog_var)::in,
     hlds_goal::in, hlds_goal::in, hlds_goal::in, hlds_goal_info::in,
@@ -408,7 +408,7 @@ detect_cse_in_ite([Var | Vars], IfVars, Cond0, Then0, Else0, GoalInfo,
         InstMap, !CseInfo, Redo, Goal) :-
     (
         ModuleInfo = !.CseInfo ^ module_info,
-        instmap__lookup_var(InstMap, Var, VarInst0),
+        instmap.lookup_var(InstMap, Var, VarInst0),
         % XXX We only need inst_is_bound, but leave this as it is until
         % mode analysis can handle aliasing between free variables.
         inst_is_ground_or_any(ModuleInfo, VarInst0),
@@ -435,8 +435,8 @@ detect_cse_in_ite_2(Cond0, Then0, Else0, InstMap0, !CseInfo, Redo,
     detect_cse_in_goal_1(Cond0, InstMap0, !CseInfo, Redo1, Cond, InstMap1),
     detect_cse_in_goal(Then0, InstMap1, !CseInfo, Redo2, Then),
     detect_cse_in_goal(Else0, InstMap0, !CseInfo, Redo3, Else),
-    bool__or(Redo1, Redo2, Redo12),
-    bool__or(Redo12, Redo3, Redo).
+    bool.or(Redo1, Redo2, Redo12),
+    bool.or(Redo12, Redo3, Redo).
 
 %-----------------------------------------------------------------------------%
 
@@ -582,8 +582,8 @@ construct_common_unify(Var, GoalExpr0 - GoalInfo, !CseInfo, OldNewVars,
         goal_info_get_context(GoalInfo, Context),
         create_parallel_subterms(Args, Context, Ucontext,
             !CseInfo, OldNewVars, Replacements),
-        map__from_assoc_list(OldNewVars, Sub),
-        goal_util__rename_vars_in_goal(Sub,
+        map.from_assoc_list(OldNewVars, Sub),
+        goal_util.rename_vars_in_goal(Sub,
             GoalExpr1 - GoalInfo, HoistedGoal)
     ;
         unexpected(this_file, "non-unify goal in construct_common_unify")
@@ -611,9 +611,9 @@ create_parallel_subterm(OFV, Context, UnifyContext, !CseInfo, !OldNewVar,
         Goal) :-
     VarSet0 = !.CseInfo ^ varset,
     VarTypes0 = !.CseInfo ^ vartypes,
-    varset__new_var(VarSet0, NFV, VarSet),
-    map__lookup(VarTypes0, OFV, Type),
-    map__det_insert(VarTypes0, NFV, Type, VarTypes),
+    varset.new_var(VarSet0, NFV, VarSet),
+    map.lookup(VarTypes0, OFV, Type),
+    map.det_insert(VarTypes0, NFV, Type, VarTypes),
     !:OldNewVar = [OFV - NFV | !.OldNewVar],
     UnifyContext = unify_context(MainCtxt, SubCtxt),
     % It is ok to create complicated unifications here, because we rerun
@@ -641,10 +641,10 @@ find_similar_deconstruct(HoistedUnifyGoal, OldUnifyGoal, Context,
         OldUnifyInfo = deconstruct(_, OldFunctor, OldVars, _, _, _)
     ->
         HoistedFunctor = OldFunctor,
-        list__length(HoistedVars, HoistedVarsCount),
-        list__length(OldVars, OldVarsCount),
+        list.length(HoistedVars, HoistedVarsCount),
+        list.length(OldVars, OldVarsCount),
         HoistedVarsCount = OldVarsCount,
-        assoc_list__from_corresponding_lists(OldVars, HoistedVars,
+        assoc_list.from_corresponding_lists(OldVars, HoistedVars,
             OldHoistedVars),
         pair_subterms(OldHoistedVars, Context, OC, Replacements)
     ;
@@ -690,16 +690,16 @@ pair_subterms([OldVar - HoistedVar | OldHoistedVars], Context, UnifyContext,
 % As an example, consider a disjunction such as
 %
 %   (
-%       HeadVar__2_2 = x:u(TypeClassInfo_for_v_8, V_4),
+%       HeadVar.g2_2 = x:u(TypeClassInfo_for_v_8, V_4),
 %       ...
 %   ;
-%       HeadVar__2_2 = x:u(TypeClassInfo_for_v_14, V_6)
+%       HeadVar.g2_2 = x:u(TypeClassInfo_for_v_14, V_6)
 %       ...
 %   )
 %
 % The main part of cse_detection will replace this with
 %
-%   HeadVar__2_2 = x:u(V_17, V_16)
+%   HeadVar.g2_2 = x:u(V_17, V_16)
 %   (
 %       TypeClassInfo_for_v_8 = V_17,
 %       V_4 = V_16,
@@ -747,8 +747,8 @@ maybe_update_existential_data_structures(Unify, FirstOldNew, LaterOldNew,
         UnifyInfo = deconstruct(Var, ConsId, _, _, _, _),
         ModuleInfo = !.CseInfo ^ module_info,
         VarTypes = !.CseInfo ^ vartypes,
-        map__lookup(VarTypes, Var, Type),
-        type_util__is_existq_cons(ModuleInfo, Type, ConsId)
+        map.lookup(VarTypes, Var, Type),
+        type_util.is_existq_cons(ModuleInfo, Type, ConsId)
     ->
         update_existential_data_structures(FirstOldNew, LaterOldNew, !CseInfo)
     ;
@@ -760,9 +760,9 @@ maybe_update_existential_data_structures(Unify, FirstOldNew, LaterOldNew,
     cse_info::in, cse_info::out) is det.
 
 update_existential_data_structures(FirstOldNew, LaterOldNews, !CseInfo) :-
-    list__condense(LaterOldNews, LaterOldNew),
-    map__from_assoc_list(FirstOldNew, FirstOldNewMap),
-    map__from_assoc_list(LaterOldNew, LaterOldNewMap),
+    list.condense(LaterOldNews, LaterOldNew),
+    map.from_assoc_list(FirstOldNew, FirstOldNewMap),
+    map.from_assoc_list(LaterOldNew, LaterOldNewMap),
 
     RttiVarMaps0 = !.CseInfo ^ rtti_varmaps,
     VarTypes0 = !.CseInfo ^ vartypes,
@@ -773,25 +773,25 @@ update_existential_data_structures(FirstOldNew, LaterOldNews, !CseInfo) :-
     % that have had their locations moved.
     %
     rtti_varmaps_tvars(RttiVarMaps0, TvarsList),
-    list__foldl(find_type_info_locn_tvar_map(RttiVarMaps0, FirstOldNewMap),
-        TvarsList, map__init, NewTvarMap),
+    list.foldl(find_type_info_locn_tvar_map(RttiVarMaps0, FirstOldNewMap),
+        TvarsList, map.init, NewTvarMap),
 
     % Traverse TVarsList again, this time looking for locations in later
     % branches that merge with locations in the first branch. When we find one,
     % add a type substitution which represents the type variables that were
     % merged.
     %
-    list__foldl(find_merged_tvars(RttiVarMaps0, LaterOldNewMap, NewTvarMap),
-        TvarsList, map__init, Renaming),
+    list.foldl(find_merged_tvars(RttiVarMaps0, LaterOldNewMap, NewTvarMap),
+        TvarsList, map.init, Renaming),
 
     % Apply the full old->new map and the type substitution to the
     % rtti_varmaps, and apply the type substitution to the vartypes.
     %
-    list__append(FirstOldNew, LaterOldNew, OldNew),
-    map__from_assoc_list(OldNew, OldNewMap),
-    apply_substitutions_to_rtti_varmaps(Renaming, map__init, OldNewMap,
+    list.append(FirstOldNew, LaterOldNew, OldNew),
+    map.from_assoc_list(OldNew, OldNewMap),
+    apply_substitutions_to_rtti_varmaps(Renaming, map.init, OldNewMap,
         RttiVarMaps0, RttiVarMaps),
-    map__map_values(apply_tvar_rename(Renaming), VarTypes0, VarTypes),
+    map.map_values(apply_tvar_rename(Renaming), VarTypes0, VarTypes),
 
     !:CseInfo = !.CseInfo ^ rtti_varmaps := RttiVarMaps,
     !:CseInfo = !.CseInfo ^ vartypes := VarTypes.
@@ -809,9 +809,9 @@ apply_tvar_rename(Renaming, _Var, Type0, Type) :-
 find_type_info_locn_tvar_map(RttiVarMaps, FirstOldNewMap, Tvar, !NewTvarMap) :-
     rtti_lookup_type_info_locn(RttiVarMaps, Tvar, TypeInfoLocn0),
     type_info_locn_var(TypeInfoLocn0, Old),
-    ( map__search(FirstOldNewMap, Old, New) ->
+    ( map.search(FirstOldNewMap, Old, New) ->
         type_info_locn_set_var(New, TypeInfoLocn0, TypeInfoLocn),
-        svmap__det_insert(TypeInfoLocn, Tvar, !NewTvarMap)
+        svmap.det_insert(TypeInfoLocn, Tvar, !NewTvarMap)
     ;
         true
     ).
@@ -823,13 +823,13 @@ find_type_info_locn_tvar_map(RttiVarMaps, FirstOldNewMap, Tvar, !NewTvarMap) :-
 find_merged_tvars(RttiVarMaps, LaterOldNewMap, NewTvarMap, Tvar, !Renaming) :-
     rtti_lookup_type_info_locn(RttiVarMaps, Tvar, TypeInfoLocn0),
     type_info_locn_var(TypeInfoLocn0, Old),
-    ( map__search(LaterOldNewMap, Old, New) ->
+    ( map.search(LaterOldNewMap, Old, New) ->
         type_info_locn_set_var(New, TypeInfoLocn0, TypeInfoLocn),
-        map__lookup(NewTvarMap, TypeInfoLocn, NewTvar),
+        map.lookup(NewTvarMap, TypeInfoLocn, NewTvar),
         ( NewTvar = Tvar ->
             true
         ;
-            svmap__det_insert(Tvar, NewTvar, !Renaming)
+            svmap.det_insert(Tvar, NewTvar, !Renaming)
         )
     ;
         true

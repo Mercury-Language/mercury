@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2005 The University of Melbourne.
+% Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -15,7 +15,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module hlds__inst_graph.
+:- module hlds.inst_graph.
 :- interface.
 
 :- import_module parse_tree.prog_data.
@@ -198,25 +198,25 @@
 %-----------------------------------------------------------------------------%
 
 init(Vars, InstGraph) :-
-    map__init(InstGraph0),
-    list__foldl(init_var, Vars, InstGraph0, InstGraph).
+    map.init(InstGraph0),
+    list.foldl(init_var, Vars, InstGraph0, InstGraph).
 
 :- pred init_var(prog_var::in, inst_graph::in, inst_graph::out) is det.
 
 init_var(Var, InstGraph0, InstGraph) :-
-    map__det_insert(InstGraph0, Var, node(map__init, top_level), InstGraph).
+    map.det_insert(InstGraph0, Var, node(map.init, top_level), InstGraph).
 
 set_parent(Parent, Child, InstGraph0, InstGraph) :-
-    map__lookup(InstGraph0, Child, node(Functors, MaybeParent0)),
+    map.lookup(InstGraph0, Child, node(Functors, MaybeParent0)),
     ( MaybeParent0 = top_level ->
-        map__det_update(InstGraph0, Child, node(Functors, parent(Parent)),
+        map.det_update(InstGraph0, Child, node(Functors, parent(Parent)),
             InstGraph)
     ;
         unexpected(this_file, "set_parent: node already has parent")
     ).
 
 top_level_node(InstGraph, Var, TopLevel) :-
-    map__lookup(InstGraph, Var, node(_, MaybeParent)),
+    map.lookup(InstGraph, Var, node(_, MaybeParent)),
     (
         MaybeParent = parent(Parent),
         top_level_node(InstGraph, Parent, TopLevel)
@@ -226,23 +226,23 @@ top_level_node(InstGraph, Var, TopLevel) :-
     ).
 
 descendant(InstGraph, Var, Descendant) :-
-    set__init(Seen),
+    set.init(Seen),
     descendant_2(InstGraph, Seen, Var, Descendant).
 
 :- pred descendant_2(inst_graph::in, set(prog_var)::in, prog_var::in,
     prog_var::out) is nondet.
 
 descendant_2(InstGraph, Seen, Var, Descendant) :-
-    map__lookup(InstGraph, Var, node(Functors, _)),
-    map__member(Functors, _ConsId, Args),
-    list__member(Arg, Args),
+    map.lookup(InstGraph, Var, node(Functors, _)),
+    map.member(Functors, _ConsId, Args),
+    list.member(Arg, Args),
     (
         Descendant = Arg
     ;
-        ( Arg `set__member` Seen ->
+        ( Arg `set.member` Seen ->
             fail
         ;
-            descendant_2(InstGraph, Seen `set__insert` Arg, Arg, Descendant)
+            descendant_2(InstGraph, Seen `set.insert` Arg, Arg, Descendant)
         )
     ).
 
@@ -251,38 +251,38 @@ reachable(InstGraph, Var, Reachable) :-
     descendant(InstGraph, Var, Reachable).
 
 reachable_from_list(InstGraph, Vars, Reachable) :-
-    list__member(Var, Vars),
+    list.member(Var, Vars),
     reachable(InstGraph, Var, Reachable).
 
 foldl_reachable(P, InstGraph, Var, !Acc) :-
     % A possible alternate implementation:
     % aggregate(reachable(InstGraph, Var), P, !Acc).
-    foldl_reachable_aux(P, InstGraph, Var, set__init, !Acc).
+    foldl_reachable_aux(P, InstGraph, Var, set.init, !Acc).
 
 :- pred foldl_reachable_aux(pred(prog_var, T, T)::pred(in, in, out) is det,
     inst_graph::in, prog_var::in, set(prog_var)::in, T::in, T::out) is det.
 
 foldl_reachable_aux(P, InstGraph, Var, Seen, !Acc) :-
     P(Var, !Acc),
-    map__lookup(InstGraph, Var, node(Functors, _)),
-    map__foldl((pred(_ConsId::in, Args::in, MAcc0::in, MAcc::out) is det :-
-        list__foldl((pred(Arg::in, LAcc0::in, LAcc::out) is det :-
-            ( Arg `set__member` Seen ->
+    map.lookup(InstGraph, Var, node(Functors, _)),
+    map.foldl((pred(_ConsId::in, Args::in, MAcc0::in, MAcc::out) is det :-
+        list.foldl((pred(Arg::in, LAcc0::in, LAcc::out) is det :-
+            ( Arg `set.member` Seen ->
                 LAcc = LAcc0
             ;
-                foldl_reachable_aux(P, InstGraph, Arg, Seen `set__insert` Arg,
+                foldl_reachable_aux(P, InstGraph, Arg, Seen `set.insert` Arg,
                     LAcc0, LAcc)
             )
         ), Args, MAcc0, MAcc)
     ), Functors, !Acc).
 
 foldl_reachable_from_list(P, InstGraph, Vars) -->
-    list__foldl(foldl_reachable(P, InstGraph), Vars).
+    list.foldl(foldl_reachable(P, InstGraph), Vars).
 
 foldl_reachable2(P, InstGraph, Var, !Acc1, !Acc2) :-
     % A possible alternate implementation:
     % aggregate2(reachable(InstGraph, Var), P, !Acc1, !Acc2).
-    foldl_reachable_aux2(P, InstGraph, Var, set__init, !Acc1, !Acc2).
+    foldl_reachable_aux2(P, InstGraph, Var, set.init, !Acc1, !Acc2).
 
 :- pred foldl_reachable_aux2(
     pred(prog_var, T, T, U, U)::pred(in, in, out, in, out) is det,
@@ -291,23 +291,23 @@ foldl_reachable2(P, InstGraph, Var, !Acc1, !Acc2) :-
 
 foldl_reachable_aux2(P, InstGraph, Var, Seen, !Acc1, !Acc2) :-
     P(Var, !Acc1, !Acc2),
-    map__lookup(InstGraph, Var, node(Functors, _)) ,
-    map__foldl2((pred(_ConsId::in, Args::in, MAcc10::in, MAcc1::out,
+    map.lookup(InstGraph, Var, node(Functors, _)) ,
+    map.foldl2((pred(_ConsId::in, Args::in, MAcc10::in, MAcc1::out,
             MAcc20::in, MAcc2::out) is det :-
-        list__foldl2((pred(Arg::in, LAccA0::in, LAccA::out,
+        list.foldl2((pred(Arg::in, LAccA0::in, LAccA::out,
                 LAccB0::in, LAccB::out) is det :-
-            ( Arg `set__member` Seen ->
+            ( Arg `set.member` Seen ->
                 LAccA = LAccA0,
                 LAccB = LAccB0
             ;
-                foldl_reachable_aux2(P, InstGraph, Arg, Seen `set__insert` Arg,
+                foldl_reachable_aux2(P, InstGraph, Arg, Seen `set.insert` Arg,
                     LAccA0, LAccA, LAccB0, LAccB)
             )
         ), Args, MAcc10, MAcc1, MAcc20, MAcc2)
     ), Functors, !Acc1, !Acc2).
 
 foldl_reachable_from_list2(P, InstGraph, Vars, !Acc1, !Acc2) :-
-    list__foldl2(foldl_reachable2(P, InstGraph), Vars,
+    list.foldl2(foldl_reachable2(P, InstGraph), Vars,
         !Acc1, !Acc2).
 
 corresponding_nodes(InstGraph, A, B, V, W) :-
@@ -315,7 +315,7 @@ corresponding_nodes(InstGraph, A, B, V, W) :-
 
 corresponding_nodes(InstGraphA, InstGraphB, A, B, V, W) :-
     corresponding_nodes_2(InstGraphA, InstGraphB,
-        set__init, set__init, A, B, V, W).
+        set.init, set.init, A, B, V, W).
 
 :- pred corresponding_nodes_2(inst_graph::in, inst_graph::in,
     set(prog_var)::in, set(prog_var)::in, prog_var::in, prog_var::in,
@@ -324,30 +324,30 @@ corresponding_nodes(InstGraphA, InstGraphB, A, B, V, W) :-
 corresponding_nodes_2(_, _, _, _, A, B, A, B).
 corresponding_nodes_2(InstGraphA, InstGraphB, SeenA0, SeenB0, A, B, V, W) :-
     not (
-        A `set__member` SeenA0,
-        B `set__member` SeenB0
+        A `set.member` SeenA0,
+        B `set.member` SeenB0
     ),
 
-    map__lookup(InstGraphA, A, node(FunctorsA, _)),
-    map__lookup(InstGraphB, B, node(FunctorsB, _)),
+    map.lookup(InstGraphA, A, node(FunctorsA, _)),
+    map.lookup(InstGraphB, B, node(FunctorsB, _)),
 
-    SeenA = SeenA0 `set__insert` A,
-    SeenB = SeenB0 `set__insert` B,
+    SeenA = SeenA0 `set.insert` A,
+    SeenB = SeenB0 `set.insert` B,
 
-    ( map__member(FunctorsA, ConsId, ArgsA) ->
-        ( map__is_empty(FunctorsB) ->
-            list__member(V0, ArgsA),
+    ( map.member(FunctorsA, ConsId, ArgsA) ->
+        ( map.is_empty(FunctorsB) ->
+            list.member(V0, ArgsA),
             corresponding_nodes_2(InstGraphA, InstGraphB, SeenA, SeenB,
                 V0, B, V, W)
         ;
-            map__search(FunctorsB, ConsId, ArgsB),
+            map.search(FunctorsB, ConsId, ArgsB),
             corresponding_members(ArgsA, ArgsB, V0, W0),
             corresponding_nodes_2(InstGraphA, InstGraphB, SeenA, SeenB,
                 V0, W0, V, W)
         )
     ;
-        map__member(FunctorsB, _ConsId, ArgsB),
-        list__member(W0, ArgsB),
+        map.member(FunctorsB, _ConsId, ArgsB),
+        list.member(W0, ArgsB),
         corresponding_nodes_2(InstGraphA, InstGraphB, SeenA, SeenB,
             A, W0, V, W)
     ).
@@ -361,24 +361,24 @@ corresponding_members([_ | As], [_ | Bs], A, B) :-
     corresponding_members(As, Bs, A, B).
 
 merge(InstGraph0, VarSet0, NewInstGraph, NewVarSet, InstGraph, VarSet, Sub) :-
-    varset__merge_subst_without_names(VarSet0, NewVarSet, VarSet, Sub0),
+    varset.merge_subst_without_names(VarSet0, NewVarSet, VarSet, Sub0),
     (
-        map__map_values(pred(_::in, term__variable(V)::in, V::out) is semidet,
+        map.map_values(pred(_::in, term.variable(V)::in, V::out) is semidet,
             Sub0, Sub1)
     ->
         Sub = Sub1
     ;
         unexpected(this_file, "merge: non-variable terms in substitution")
     ),
-    map__foldl((pred(Var0::in, Node0::in, IG0::in, IG::out) is det :-
+    map.foldl((pred(Var0::in, Node0::in, IG0::in, IG::out) is det :-
         Node0 = node(Functors0, MaybeParent),
-        map__map_values(
+        map.map_values(
             (pred(_::in, Args0::in, Args::out) is det :-
-                map__apply_to_list(Args0, Sub, Args)),
+                map.apply_to_list(Args0, Sub, Args)),
             Functors0, Functors),
         Node = node(Functors, MaybeParent),
-        map__lookup(Sub, Var0, Var),
-        map__det_insert(IG0, Var, Node, IG)
+        map.lookup(Sub, Var0, Var),
+        map.det_insert(IG0, Var, Node, IG)
     ), NewInstGraph, InstGraph0, InstGraph).
 
 %-----------------------------------------------------------------------------%
@@ -386,9 +386,9 @@ merge(InstGraph0, VarSet0, NewInstGraph, NewVarSet, InstGraph, VarSet, Sub) :-
 % join(InstGraphA, VarSetA, InstGraphB, VarSetB,
 %       InstGraph, VarSet) :-
 %   solutions((pred(V::out) is nondet :-
-%           map__member(InstGraphB, V, node(_, top_level))
+%           map.member(InstGraphB, V, node(_, top_level))
 %       ), VarsB),
-%   list__foldl2(join_nodes(InstGraphB, VarSetB), VarsB, InstGraphA,
+%   list.foldl2(join_nodes(InstGraphB, VarSetB), VarsB, InstGraphA,
 %       InstGraph, VarSetA, VarSet).
 % 
 % :- pred join_nodes(inst_graph, prog_varset, prog_var, inst_graph, inst_graph,
@@ -400,45 +400,45 @@ merge(InstGraph0, VarSet0, NewInstGraph, NewVarSet, InstGraph, VarSet, Sub) :-
 %-----------------------------------------------------------------------------%
 
 dump(InstGraph, VarSet, !IO) :-
-    map__foldl(dump_node(VarSet), InstGraph, !IO).
+    map.foldl(dump_node(VarSet), InstGraph, !IO).
 
 :- pred dump_node(prog_varset::in, prog_var::in, node::in,
     io::di, io::uo) is det.
 
 dump_node(VarSet, Var, Node, !IO) :-
     Node = node(Functors, MaybeParent),
-    io__write_string("%% ", !IO),
-    term_io__write_variable(Var, VarSet, !IO),
-    io__write_string(": ", !IO),
+    io.write_string("%% ", !IO),
+    term_io.write_variable(Var, VarSet, !IO),
+    io.write_string(": ", !IO),
     (
         MaybeParent = parent(Parent),
-        term_io__write_variable(Parent, VarSet, !IO)
+        term_io.write_variable(Parent, VarSet, !IO)
     ;
         MaybeParent = top_level
     ),
-    io__nl(!IO),
-    map__foldl(dump_functor(VarSet), Functors, !IO).
+    io.nl(!IO),
+    map.foldl(dump_functor(VarSet), Functors, !IO).
 
 :- pred dump_functor(prog_varset::in, cons_id::in, list(prog_var)::in,
     io::di, io::uo) is det.
 
 dump_functor(VarSet, ConsId, Args, !IO) :-
-    io__write_string("%%\t", !IO),
-    hlds_out__write_cons_id(ConsId, !IO),
+    io.write_string("%%\t", !IO),
+    hlds_out.write_cons_id(ConsId, !IO),
     (
         Args = [_ | _],
-        io__write_char('(', !IO),
-        io__write_list(Args, ", ", dump_var(VarSet), !IO),
-        io__write_char(')', !IO)
+        io.write_char('(', !IO),
+        io.write_list(Args, ", ", dump_var(VarSet), !IO),
+        io.write_char(')', !IO)
     ;
         Args = []
     ),
-    io__nl(!IO).
+    io.nl(!IO).
 
 :- pred dump_var(prog_varset::in, prog_var::in, io::di, io::uo) is det.
 
 dump_var(VarSet, Var, !IO) :-
-    term_io__write_variable(Var, VarSet, !IO).
+    term_io.write_variable(Var, VarSet, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -464,8 +464,8 @@ dump_var(VarSet, Var, !IO) :-
             ).
 
 inst_graph_info_init = inst_graph_info(InstGraph, [], VarSet, InstGraph) :-
-    varset__init(VarSet),
-    map__init(InstGraph).
+    varset.init(VarSet),
+    map.init(InstGraph).
 
 %-----------------------------------------------------------------------------%
 

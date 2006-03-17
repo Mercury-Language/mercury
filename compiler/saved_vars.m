@@ -24,7 +24,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__saved_vars.
+:- module ll_backend.saved_vars.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -85,7 +85,7 @@ saved_vars_proc_no_io(TypeInfoLiveness, !ProcInfo, !ModuleInfo) :-
     final_slot_info(Varset1, VarTypes1, RttiVarMaps, SlotInfo),
     proc_info_headvars(!.ProcInfo, HeadVars),
 
-    % hlds_out__write_goal(Goal1, !.ModuleInfo, Varset1, 0, "\n"),
+    % hlds_out.write_goal(Goal1, !.ModuleInfo, Varset1, 0, "\n"),
 
     % Recompute the nonlocals for each goal.
     implicitly_quantify_clause_body(HeadVars, _Warnings, Goal1, Goal2,
@@ -95,7 +95,7 @@ saved_vars_proc_no_io(TypeInfoLiveness, !ProcInfo, !ModuleInfo) :-
     recompute_instmap_delta(no, Goal2, Goal, VarTypes,
         InstVarSet, InstMap0, !ModuleInfo),
 
-    % hlds_out__write_goal(Goal, !.ModuleInfo, Varset, 0, "\n"),
+    % hlds_out.write_goal(Goal, !.ModuleInfo, Varset, 0, "\n"),
 
     proc_info_set_goal(Goal, !ProcInfo),
     proc_info_set_varset(Varset, !ProcInfo),
@@ -184,7 +184,7 @@ saved_vars_in_conj([Goal0 | Goals0], Goals, NonLocals, !SlotInfo) :-
         goal_info_get_features(GoalInfo, Features),
         ( all [Feature]
             (
-                set__member(Feature, Features)
+                set.member(Feature, Features)
             =>
                 ok_to_duplicate(Feature) = yes
             )
@@ -194,10 +194,10 @@ saved_vars_in_conj([Goal0 | Goals0], Goals, NonLocals, !SlotInfo) :-
         OtherGoals = [First | _Rest],
         can_push(Var, First)
     ->
-        set__is_member(Var, NonLocals, IsNonLocal),
+        set.is_member(Var, NonLocals, IsNonLocal),
         saved_vars_delay_goal(OtherGoals, Goals1, Goal0, Var, IsNonLocal,
             !SlotInfo),
-        list__append(Constants, Goals1, Goals2),
+        list.append(Constants, Goals1, Goals2),
         saved_vars_in_conj(Goals2, Goals, NonLocals, !SlotInfo)
     ;
         saved_vars_in_goal(Goal0, Goal1, !SlotInfo),
@@ -260,7 +260,7 @@ skip_constant_constructs([Goal0 | Goals0], Constants, Others) :-
 can_push(Var, First) :-
     First = FirstExpr - FirstInfo,
     goal_info_get_nonlocals(FirstInfo, FirstNonLocals),
-    ( set__member(Var, FirstNonLocals) ->
+    ( set.member(Var, FirstNonLocals) ->
         (
             FirstExpr = conj(plain_conj, _)
         ;
@@ -311,36 +311,36 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
         !SlotInfo) :-
     Goal0 = Goal0Expr - Goal0Info,
     goal_info_get_nonlocals(Goal0Info, Goal0NonLocals),
-    ( set__member(Var, Goal0NonLocals) ->
+    ( set.member(Var, Goal0NonLocals) ->
         (
             Goal0Expr = unify(_, _, _, _, _),
             rename_var(Var, _NewVar, Subst, !SlotInfo),
-            goal_util__rename_vars_in_goal(Subst, Construct, NewConstruct),
-            goal_util__rename_vars_in_goal(Subst, Goal0, Goal1),
+            goal_util.rename_vars_in_goal(Subst, Construct, NewConstruct),
+            goal_util.rename_vars_in_goal(Subst, Goal0, Goal1),
             saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                 IsNonLocal, !SlotInfo),
             Goals = [NewConstruct, Goal1 | Goals1]
         ;
             Goal0Expr = call(_, _, _, _, _, _),
             rename_var(Var, _NewVar, Subst, !SlotInfo),
-            goal_util__rename_vars_in_goal(Subst, Construct, NewConstruct),
-            goal_util__rename_vars_in_goal(Subst, Goal0, Goal1),
+            goal_util.rename_vars_in_goal(Subst, Construct, NewConstruct),
+            goal_util.rename_vars_in_goal(Subst, Goal0, Goal1),
             saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                 IsNonLocal, !SlotInfo),
             Goals = [NewConstruct, Goal1 | Goals1]
         ;
             Goal0Expr = generic_call(_, _, _, _),
             rename_var(Var, _NewVar, Subst, !SlotInfo),
-            goal_util__rename_vars_in_goal(Subst, Construct, NewConstruct),
-            goal_util__rename_vars_in_goal(Subst, Goal0, Goal1),
+            goal_util.rename_vars_in_goal(Subst, Construct, NewConstruct),
+            goal_util.rename_vars_in_goal(Subst, Goal0, Goal1),
             saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                 IsNonLocal, !SlotInfo),
             Goals = [NewConstruct, Goal1 | Goals1]
         ;
             Goal0Expr = foreign_proc(_, _, _, _, _, _),
             rename_var(Var, _NewVar, Subst, !SlotInfo),
-            goal_util__rename_vars_in_goal(Subst, Construct, NewConstruct),
-            goal_util__rename_vars_in_goal(Subst, Goal0, Goal1),
+            goal_util.rename_vars_in_goal(Subst, Construct, NewConstruct),
+            goal_util.rename_vars_in_goal(Subst, Goal0, Goal1),
             saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                 IsNonLocal, !SlotInfo),
             Goals = [NewConstruct, Goal1 | Goals1]
@@ -360,8 +360,8 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
         ;
             Goal0Expr = scope(Reason, SomeGoal0),
             rename_var(Var, NewVar, Subst, !SlotInfo),
-            goal_util__rename_vars_in_goal(Subst, Construct, NewConstruct),
-            goal_util__rename_vars_in_goal(Subst, SomeGoal0, SomeGoal1),
+            goal_util.rename_vars_in_goal(Subst, Construct, NewConstruct),
+            goal_util.rename_vars_in_goal(Subst, SomeGoal0, SomeGoal1),
             push_into_goal(SomeGoal1, SomeGoal, NewConstruct, NewVar,
                 !SlotInfo),
             Goal1 = scope(Reason, SomeGoal) - Goal0Info,
@@ -371,8 +371,8 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
         ;
             Goal0Expr = not(NegGoal0),
             rename_var(Var, NewVar, Subst, !SlotInfo),
-            goal_util__rename_vars_in_goal(Subst, Construct, NewConstruct),
-            goal_util__rename_vars_in_goal(Subst, NegGoal0, NegGoal1),
+            goal_util.rename_vars_in_goal(Subst, Construct, NewConstruct),
+            goal_util.rename_vars_in_goal(Subst, NegGoal0, NegGoal1),
             push_into_goal(NegGoal1, NegGoal, NewConstruct, NewVar,
                 !SlotInfo),
             Goal1 = not(NegGoal) - Goal0Info,
@@ -446,10 +446,10 @@ push_into_goal(Goal0, Goal, Construct, Var, !SlotInfo) :-
 push_into_goal_rename(Goal0, Goal, Construct, Var, !SlotInfo) :-
     Goal0 = _ - GoalInfo0,
     goal_info_get_nonlocals(GoalInfo0, NonLocals),
-    ( set__member(Var, NonLocals) ->
+    ( set.member(Var, NonLocals) ->
         rename_var(Var, NewVar, Subst, !SlotInfo),
-        goal_util__rename_vars_in_goal(Subst, Construct, NewConstruct),
-        goal_util__rename_vars_in_goal(Subst, Goal0, Goal1),
+        goal_util.rename_vars_in_goal(Subst, Construct, NewConstruct),
+        goal_util.rename_vars_in_goal(Subst, Goal0, Goal1),
         push_into_goal(Goal1, Goal, NewConstruct, NewVar, !SlotInfo)
     ;
         saved_vars_in_goal(Goal0, Goal, !SlotInfo)
@@ -530,10 +530,10 @@ final_slot_info(Varset, VarTypes, RttiVarMaps, SlotInfo) :-
 
 rename_var(Var, NewVar, Substitution, !SlotInfo) :-
     !.SlotInfo = slot_info(Varset0, VarTypes0, RttiVarMaps0, TypeInfoLiveness),
-    varset__new_var(Varset0, NewVar, Varset),
-    map__from_assoc_list([Var - NewVar], Substitution),
-    map__lookup(VarTypes0, Var, Type),
-    map__det_insert(VarTypes0, NewVar, Type, VarTypes),
+    varset.new_var(Varset0, NewVar, Varset),
+    map.from_assoc_list([Var - NewVar], Substitution),
+    map.lookup(VarTypes0, Var, Type),
+    map.det_insert(VarTypes0, NewVar, Type, VarTypes),
     rtti_var_info_duplicate(Var, NewVar, RttiVarMaps0, RttiVarMaps),
     !:SlotInfo = slot_info(Varset, VarTypes, RttiVarMaps,
         TypeInfoLiveness).
@@ -553,8 +553,8 @@ rename_var(Var, NewVar, Substitution, !SlotInfo) :-
 slot_info_do_not_duplicate_var(SlotInfo, Var) :-
     SlotInfo = slot_info(_, VarTypes, _, TypeInfoLiveness),
     TypeInfoLiveness = yes,
-    map__lookup(VarTypes, Var, Type),
-    polymorphism__type_is_type_info_or_ctor_type(Type).
+    map.lookup(VarTypes, Var, Type),
+    polymorphism.type_is_type_info_or_ctor_type(Type).
 
 %-----------------------------------------------------------------------------%
 

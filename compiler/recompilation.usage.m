@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2005 University of Melbourne.
+% Copyright (C) 2001-2006 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,7 +13,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module recompilation__usage.
+:- module recompilation.usage.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -117,30 +117,30 @@ write_usage_file(ModuleInfo, NestedSubModules,
         MaybeRecompInfo = yes(RecompInfo),
         MaybeTimestamps = yes(Timestamps)
     ->
-        globals__io_lookup_bool_option(verbose, Verbose, !IO),
+        globals.io_lookup_bool_option(verbose, Verbose, !IO),
         maybe_write_string(Verbose,
             "% Writing recompilation compilation dependency information\n",
             !IO),
 
         module_info_get_name(ModuleInfo, ModuleName),
         module_name_to_file_name(ModuleName, ".used", yes, FileName, !IO),
-        io__open_output(FileName, FileResult, !IO),
+        io.open_output(FileName, FileResult, !IO),
         (
             FileResult = ok(Stream0),
-            io__set_output_stream(Stream0, OldStream, !IO),
+            io.set_output_stream(Stream0, OldStream, !IO),
             write_usage_file_2(ModuleInfo,
                 NestedSubModules, RecompInfo, Timestamps, !IO),
-            io__set_output_stream(OldStream, Stream, !IO),
-            io__close_output(Stream, !IO)
+            io.set_output_stream(OldStream, Stream, !IO),
+            io.close_output(Stream, !IO)
         ;
             FileResult = error(IOError),
-            io__error_message(IOError, IOErrorMessage),
-            io__write_string("\nError opening `", !IO),
-            io__write_string(FileName, !IO),
-            io__write_string("'for output: ", !IO),
-            io__write_string(IOErrorMessage, !IO),
-            io__write_string(".\n", !IO),
-            io__set_exit_status(1, !IO)
+            io.error_message(IOError, IOErrorMessage),
+            io.write_string("\nError opening `", !IO),
+            io.write_string(FileName, !IO),
+            io.write_string("'for output: ", !IO),
+            io.write_string(IOErrorMessage, !IO),
+            io.write_string(".\n", !IO),
+            io.set_exit_status(1, !IO)
         )
     ;
         true
@@ -152,29 +152,29 @@ write_usage_file(ModuleInfo, NestedSubModules,
 
 write_usage_file_2(ModuleInfo, NestedSubModules,
         RecompInfo, Timestamps, !IO) :-
-    io__write_int(usage_file_version_number, !IO),
-    io__write_string(",", !IO),
-    io__write_int(version_numbers_version_number, !IO),
-    io__write_string(".\n\n", !IO),
+    io.write_int(usage_file_version_number, !IO),
+    io.write_string(",", !IO),
+    io.write_int(version_numbers_version_number, !IO),
+    io.write_string(".\n\n", !IO),
 
     module_info_get_name(ModuleInfo, ThisModuleName),
-    map__lookup(Timestamps, ThisModuleName,
+    map.lookup(Timestamps, ThisModuleName,
         module_timestamp(_, ThisModuleTimestamp, _)),
-    io__write_string("(", !IO),
+    io.write_string("(", !IO),
     mercury_output_bracketed_sym_name(ThisModuleName, !IO),
-    io__write_string(", "".m"", ", !IO),
+    io.write_string(", "".m"", ", !IO),
     write_version_number(ThisModuleTimestamp, !IO),
-    io__write_string(").\n\n", !IO),
+    io.write_string(").\n\n", !IO),
 
     (
         NestedSubModules = [],
-        io__write_string("sub_modules.\n\n", !IO)
+        io.write_string("sub_modules.\n\n", !IO)
     ;
         NestedSubModules = [_ | _],
-        io__write_string("sub_modules(", !IO),
-        io__write_list(NestedSubModules, ", ",
+        io.write_string("sub_modules(", !IO),
+        io.write_list(NestedSubModules, ", ",
             mercury_output_bracketed_sym_name, !IO),
-        io__write_string(").\n\n", !IO)
+        io.write_string(").\n\n", !IO)
     ),
 
     UsedItems = RecompInfo ^ used_items,
@@ -183,9 +183,9 @@ write_usage_file_2(ModuleInfo, NestedSubModules,
         UsedClasses, ImportedItems, ModuleInstances),
 
     ( UsedItems = init_used_items ->
-        io__write_string("used_items.\n", !IO)
+        io.write_string("used_items.\n", !IO)
     ;
-        io__write_string("used_items(\n\t", !IO),
+        io.write_string("used_items(\n\t", !IO),
         some [!WriteComma] (
             !:WriteComma = no,
             write_simple_item_matches(type_item, ResolvedUsedItems,
@@ -206,25 +206,25 @@ write_usage_file_2(ModuleInfo, NestedSubModules,
                 !WriteComma, !IO),
             _ = !.WriteComma
         ),
-        io__write_string("\n).\n\n", !IO)
+        io.write_string("\n).\n\n", !IO)
     ),
 
-    ( set__empty(UsedClasses) ->
-        io__write_string("used_classes.\n", !IO)
+    ( set.empty(UsedClasses) ->
+        io.write_string("used_classes.\n", !IO)
     ;
-        io__write_string("used_classes(", !IO),
-        io__write_list(set__to_sorted_list(UsedClasses), ", ",
+        io.write_string("used_classes(", !IO),
+        io.write_list(set.to_sorted_list(UsedClasses), ", ",
             write_classname_and_arity, !IO),
-        io__write_string(").\n", !IO)
+        io.write_string(").\n", !IO)
     ),
 
-    map__foldl(write_module_name_and_used_items(RecompInfo, Timestamps,
+    map.foldl(write_module_name_and_used_items(RecompInfo, Timestamps,
         ModuleInstances), ImportedItems, !IO),
     % recompilation_check.m checks for this item when reading in the `.used'
     % file to make sure the earlier compilation wasn't interrupted in the
     % middle of writing the file.
-    io__nl(!IO),
-    io__write_string("done.\n", !IO).
+    io.nl(!IO),
+    io.write_string("done.\n", !IO).
 
 :- pred write_module_name_and_used_items(recompilation_info::in,
     module_timestamps::in, map(module_name, set(item_name))::in,
@@ -233,25 +233,25 @@ write_usage_file_2(ModuleInfo, NestedSubModules,
 
 write_module_name_and_used_items(RecompInfo, Timestamps, ModuleInstances,
         ModuleName, ModuleUsedItems, !IO) :-
-    io__nl(!IO),
-    io__write_string("(", !IO),
+    io.nl(!IO),
+    io.write_string("(", !IO),
     mercury_output_bracketed_sym_name(ModuleName, !IO),
-    io__write_string(", """, !IO),
-    map__lookup(Timestamps, ModuleName,
+    io.write_string(", """, !IO),
+    map.lookup(Timestamps, ModuleName,
         module_timestamp(Suffix, ModuleTimestamp, NeedQualifier)),
-    io__write_string(Suffix, !IO),
-    io__write_string(""", ", !IO),
+    io.write_string(Suffix, !IO),
+    io.write_string(""", ", !IO),
     write_version_number(ModuleTimestamp, !IO),
     ( NeedQualifier = must_be_qualified ->
-        io__write_string(", used)", !IO)
+        io.write_string(", used)", !IO)
     ;
-        io__write_string(")", !IO)
+        io.write_string(")", !IO)
     ),
     (
         % XXX We don't yet record all uses of items from these modules
         % in polymorphism.m, etc.
         \+ any_mercury_builtin_module(ModuleName),
-        map__search(RecompInfo ^ version_numbers, ModuleName, ModuleVersions)
+        map.search(RecompInfo ^ version_numbers, ModuleName, ModuleVersions)
     ->
         % Select out from the version numbers of all items in the imported
         % module the ones which are used.
@@ -260,28 +260,26 @@ write_module_name_and_used_items(RecompInfo, Timestamps, ModuleInstances,
         ModuleUsedItemVersions = map_ids(
             (func(ItemType, Ids0) = Ids :-
                 ModuleItemNames = extract_ids(ModuleUsedItems, ItemType),
-                map__select(Ids0, ModuleItemNames, Ids)
+                map.select(Ids0, ModuleItemNames, Ids)
             ),
-            ModuleItemVersions, map__init),
-        (
-            map__search(ModuleInstances, ModuleName, ModuleUsedInstances)
-        ->
-            map__select(ModuleInstanceVersions, ModuleUsedInstances,
+            ModuleItemVersions, map.init),
+        ( map.search(ModuleInstances, ModuleName, ModuleUsedInstances) ->
+            map.select(ModuleInstanceVersions, ModuleUsedInstances,
                 ModuleUsedInstanceVersions)
         ;
-            map__init(ModuleUsedInstanceVersions)
+            map.init(ModuleUsedInstanceVersions)
         ),
 
-        io__write_string(" => ", !IO),
+        io.write_string(" => ", !IO),
         ModuleUsedVersionNumbers =
             version_numbers(ModuleUsedItemVersions,
                 ModuleUsedInstanceVersions),
         write_version_numbers(ModuleUsedVersionNumbers, !IO),
-        io__write_string(".\n", !IO)
+        io.write_string(".\n", !IO)
     ;
         % If we don't have version numbers for a module we just recompile
         % if the interface file's timestamp changes.
-        io__write_string(".\n", !IO)
+        io.write_string(".\n", !IO)
     ).
 
 :- pred write_classname_and_arity(pair(class_name, arity)::in,
@@ -289,15 +287,15 @@ write_module_name_and_used_items(RecompInfo, Timestamps, ModuleInstances,
 
 write_classname_and_arity(ClassName - ClassArity, !IO) :-
     mercury_output_bracketed_sym_name(ClassName, !IO),
-    io__write_string("/", !IO),
-    io__write_int(ClassArity, !IO).
+    io.write_string("/", !IO),
+    io.write_int(ClassArity, !IO).
 
 :- pred write_comma_if_needed(bool::in, bool::out, io::di, io::uo) is det.
 
 write_comma_if_needed(!WriteComma, !IO) :-
     (
         !.WriteComma = yes,
-        io__write_string(",\n\t", !IO)
+        io.write_string(",\n\t", !IO)
     ;
         !.WriteComma = no
     ),
@@ -308,7 +306,7 @@ write_comma_if_needed(!WriteComma, !IO) :-
 
 write_simple_item_matches(ItemType, UsedItems, !WriteComma, !IO) :-
     Ids = extract_simple_item_set(UsedItems, ItemType),
-    ( map__is_empty(Ids) ->
+    ( map.is_empty(Ids) ->
         true
     ;
         write_comma_if_needed(!WriteComma, !IO),
@@ -320,11 +318,11 @@ write_simple_item_matches(ItemType, UsedItems, !WriteComma, !IO) :-
 
 write_simple_item_matches_2(ItemType, ItemSet, !IO) :-
     string_to_item_type(ItemTypeStr, ItemType),
-    io__write_string(ItemTypeStr, !IO),
-    io__write_string("(\n\t\t", !IO),
-    map__to_assoc_list(ItemSet, ItemList),
-    io__write_list(ItemList, ",\n\t\t", write_simple_item_matches_3, !IO),
-    io__write_string("\n\t)", !IO).
+    io.write_string(ItemTypeStr, !IO),
+    io.write_string("(\n\t\t", !IO),
+    map.to_assoc_list(ItemSet, ItemList),
+    io.write_list(ItemList, ",\n\t\t", write_simple_item_matches_3, !IO),
+    io.write_string("\n\t)", !IO).
 
 :- pred write_simple_item_matches_3(
     pair(pair(string, arity), map(module_qualifier, module_name))::in,
@@ -333,12 +331,12 @@ write_simple_item_matches_2(ItemType, ItemSet, !IO) :-
 write_simple_item_matches_3((Name - Arity) - Matches, !IO) :-
     mercury_output_bracketed_sym_name(unqualified(Name), next_to_graphic_token,
         !IO),
-    io__write_string("/", !IO),
-    io__write_int(Arity, !IO),
-    io__write_string(" - (", !IO),
-    map__to_assoc_list(Matches, MatchList),
-    io__write_list(MatchList, ", ", write_simple_item_matches_4, !IO),
-    io__write_string(")", !IO).
+    io.write_string("/", !IO),
+    io.write_int(Arity, !IO),
+    io.write_string(" - (", !IO),
+    map.to_assoc_list(Matches, MatchList),
+    io.write_list(MatchList, ", ", write_simple_item_matches_4, !IO),
+    io.write_string(")", !IO).
 
 :- pred write_simple_item_matches_4(pair(module_qualifier, module_name)::in,
     io::di, io::uo) is det.
@@ -348,7 +346,7 @@ write_simple_item_matches_4(Qualifier - ModuleName, !IO) :-
     ( Qualifier = ModuleName ->
         true
     ;
-        io__write_string(" => ", !IO),
+        io.write_string(" => ", !IO),
         mercury_output_bracketed_sym_name(ModuleName, !IO)
     ).
 
@@ -358,7 +356,7 @@ write_simple_item_matches_4(Qualifier - ModuleName, !IO) :-
 
 write_pred_or_func_matches(ItemType, UsedItems, !WriteComma, !IO) :-
     Ids = extract_pred_or_func_set(UsedItems, ItemType),
-    ( map__is_empty(Ids) ->
+    ( map.is_empty(Ids) ->
         true
     ;
         write_comma_if_needed(!WriteComma, !IO),
@@ -377,22 +375,22 @@ write_pred_or_func_matches_2(ItemType, ItemSet, !IO) :-
     io::di, io::uo) is det.
 
 write_pred_or_func_matches_3(Qualifier - PredIdModuleNames, !IO) :-
-    ModuleNames = assoc_list__values(set__to_sorted_list(PredIdModuleNames)),
+    ModuleNames = assoc_list.values(set.to_sorted_list(PredIdModuleNames)),
     mercury_output_bracketed_sym_name(Qualifier, !IO),
     ( ModuleNames = [Qualifier] ->
         true
     ;
-        io__write_string(" => (", !IO),
-        io__write_list(ModuleNames, ", ", mercury_output_bracketed_sym_name,
+        io.write_string(" => (", !IO),
+        io.write_list(ModuleNames, ", ", mercury_output_bracketed_sym_name,
             !IO),
-        io__write_string(")", !IO)
+        io.write_string(")", !IO)
     ).
 
 :- pred write_functor_matches(resolved_functor_set::in,
     bool::in, bool::out, io::di, io::uo) is det.
 
 write_functor_matches(Ids, !WriteComma, !IO) :-
-    ( map__is_empty(Ids) ->
+    ( map.is_empty(Ids) ->
         true
     ;
         write_comma_if_needed(!WriteComma, !IO),
@@ -405,10 +403,10 @@ write_functor_matches(Ids, !WriteComma, !IO) :-
 
 write_functor_matches_2(Qualifier - MatchingCtors, !IO) :-
     mercury_output_bracketed_sym_name(Qualifier, !IO),
-    io__write_string(" => (", !IO),
-    io__write_list(set__to_sorted_list(MatchingCtors), ", ",
+    io.write_string(" => (", !IO),
+    io.write_list(set.to_sorted_list(MatchingCtors), ", ",
         write_resolved_functor, !IO),
-    io__write_string(")", !IO).
+    io.write_string(")", !IO).
 
 :- type write_resolved_item(T) == pred(pair(module_qualifier, T), io, io).
 :- inst write_resolved_item == (pred(in, di, uo) is det).
@@ -419,12 +417,12 @@ write_functor_matches_2(Qualifier - MatchingCtors, !IO) :-
 
 write_resolved_item_set(ItemType, ItemSet, WriteMatches, !IO) :-
     string_to_item_type(ItemTypeStr, ItemType),
-    io__write_string(ItemTypeStr, !IO),
-    io__write_string("(\n\t\t", !IO),
-    map__to_assoc_list(ItemSet, ItemList),
-    io__write_list(ItemList, ",\n\t\t",
+    io.write_string(ItemTypeStr, !IO),
+    io.write_string("(\n\t\t", !IO),
+    map.to_assoc_list(ItemSet, ItemList),
+    io.write_list(ItemList, ",\n\t\t",
         write_resolved_item_set_2(WriteMatches), !IO),
-    io__write_string("\n\t)", !IO).
+    io.write_string("\n\t)", !IO).
 
 :- pred write_resolved_item_set_2(
     write_resolved_item(T)::in(write_resolved_item),
@@ -433,48 +431,48 @@ write_resolved_item_set(ItemType, ItemSet, WriteMatches, !IO) :-
 
 write_resolved_item_set_2(WriteMatches, Name - MatchesAL, !IO) :-
     mercury_output_bracketed_sym_name(unqualified(Name), !IO),
-    io__write_string(" - (", !IO),
-    io__write_list(MatchesAL, ",\n\t\t\t",
+    io.write_string(" - (", !IO),
+    io.write_list(MatchesAL, ",\n\t\t\t",
         write_resolved_item_set_3(WriteMatches), !IO),
-    io__write_string(")", !IO).
+    io.write_string(")", !IO).
 
 :- pred write_resolved_item_set_3(
     write_resolved_item(T)::in(write_resolved_item),
     pair(int, map(sym_name, T))::in, io::di, io::uo) is det.
 
 write_resolved_item_set_3(WriteMatches, Arity - Matches, !IO) :-
-    io__write_int(Arity, !IO),
-    io__write_string(" - (", !IO),
-    map__to_assoc_list(Matches, MatchList),
-    io__write_list(MatchList, ",\n\t\t\t\t", WriteMatches, !IO),
-    io__write_string(")", !IO).
+    io.write_int(Arity, !IO),
+    io.write_string(" - (", !IO),
+    map.to_assoc_list(Matches, MatchList),
+    io.write_list(MatchList, ",\n\t\t\t\t", WriteMatches, !IO),
+    io.write_string(")", !IO).
 
 :- pred write_resolved_functor(resolved_functor::in, io::di, io::uo) is det.
 
 write_resolved_functor(pred_or_func(_, ModuleName, PredOrFunc, Arity), !IO) :-
-    io__write(PredOrFunc, !IO),
-    io__write_string("(", !IO),
+    io.write(PredOrFunc, !IO),
+    io.write_string("(", !IO),
     mercury_output_bracketed_sym_name(ModuleName, !IO),
-    io__write_string(", ", !IO),
-    io__write_int(Arity, !IO),
-    io__write_string(")", !IO).
+    io.write_string(", ", !IO),
+    io.write_int(Arity, !IO),
+    io.write_string(")", !IO).
 write_resolved_functor(constructor(TypeName - Arity), !IO) :-
-    io__write_string("ctor(", !IO),
+    io.write_string("ctor(", !IO),
     mercury_output_bracketed_sym_name(TypeName, next_to_graphic_token, !IO),
-    io__write_string("/", !IO),
-    io__write_int(Arity, !IO),
-    io__write_string(")", !IO).
+    io.write_string("/", !IO),
+    io.write_int(Arity, !IO),
+    io.write_string(")", !IO).
 write_resolved_functor(field(TypeName - TypeArity, ConsName - ConsArity),
         !IO) :-
-    io__write_string("field(", !IO),
+    io.write_string("field(", !IO),
     mercury_output_bracketed_sym_name(TypeName, next_to_graphic_token, !IO),
-    io__write_string("/", !IO),
-    io__write_int(TypeArity, !IO),
-    io__write_string(", ", !IO),
+    io.write_string("/", !IO),
+    io.write_int(TypeArity, !IO),
+    io.write_string(", ", !IO),
     mercury_output_bracketed_sym_name(ConsName, next_to_graphic_token, !IO),
-    io__write_string("/", !IO),
-    io__write_int(ConsArity, !IO),
-    io__write_string(")", !IO).
+    io.write_string("/", !IO),
+    io.write_int(ConsArity, !IO),
+    io.write_string(")", !IO).
 
 usage_file_version_number = 2.
 
@@ -515,8 +513,8 @@ visible_modules(ModuleInfo, VisibleModule) :-
     imported_items::in, imported_items::out) is det.
 
 insert_into_imported_items_map(VisibleModule, !ImportedItemsMap) :-
-    ModuleItems = init_item_id_set(set__init),
-    svmap__det_insert(VisibleModule, ModuleItems, !ImportedItemsMap).
+    ModuleItems = init_item_id_set(set.init),
+    svmap.det_insert(VisibleModule, ModuleItems, !ImportedItemsMap).
 
     % Go over the set of imported items found to be used and
     % find the transitive closure of the imported items they use.
@@ -533,22 +531,22 @@ find_all_used_imported_items(ModuleInfo,
     % file, even if nothing was used from it. This will cause
     % recompilation_check.m to check for new items causing ambiguity
     % when the interface of the module changes.
-    map__init(ImportedItems0),
+    map.init(ImportedItems0),
     promise_equivalent_solutions [ImportedItems1] (
-        std_util__unsorted_aggregate(visible_modules(ModuleInfo),
+        std_util.unsorted_aggregate(visible_modules(ModuleInfo),
             insert_into_imported_items_map, ImportedItems0, ImportedItems1)
     ),
 
-    queue__init(ItemsToProcess0),
-    map__init(ModuleUsedClasses),
-    set__init(UsedClasses0),
+    queue.init(ItemsToProcess0),
+    map.init(ModuleUsedClasses),
+    set.init(UsedClasses0),
 
     UsedItems = item_id_set(Types, TypeBodies, Modes, Insts, Classes,
         _, _, _, _),
-    map__init(ResolvedCtors),
-    map__init(ResolvedPreds),
-    map__init(ResolvedFuncs),
-    map__init(ResolvedMutables),
+    map.init(ResolvedCtors),
+    map.init(ResolvedPreds),
+    map.init(ResolvedFuncs),
+    map.init(ResolvedMutables),
     ResolvedUsedItems0 = item_id_set(Types, TypeBodies, Modes, Insts,
         Classes, ResolvedCtors, ResolvedPreds, ResolvedFuncs,
         ResolvedMutables),
@@ -572,7 +570,7 @@ find_all_used_imported_items_2(UsedItems, !Info) :-
     % Find items used by imported instances for local classes.
     ModuleInfo = !.Info ^ module_info,
     module_info_get_instance_table(ModuleInfo, Instances),
-    map__foldl(find_items_used_by_instances, Instances, !Info),
+    map.foldl(find_items_used_by_instances, Instances, !Info),
 
     Predicates = UsedItems ^ predicates,
     find_items_used_by_preds(predicate, Predicates, !Info),
@@ -605,10 +603,10 @@ find_all_used_imported_items_2(UsedItems, !Info) :-
 
 process_imported_item_queue(!Info) :-
     Queue0 = !.Info ^ item_queue,
-    !:Info = !.Info ^ item_queue := queue__init,
+    !:Info = !.Info ^ item_queue := queue.init,
     process_imported_item_queue_2(Queue0, !Info),
     Queue = !.Info ^ item_queue,
-    ( queue__is_empty(Queue) ->
+    ( queue.is_empty(Queue) ->
         true
     ;
         process_imported_item_queue(!Info)
@@ -619,7 +617,7 @@ process_imported_item_queue(!Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 process_imported_item_queue_2(Queue0, !Info) :-
-    ( queue__get(Queue0, Item, Queue) ->
+    ( queue.get(Queue0, Item, Queue) ->
         Item = item_id(ItemType, ItemId),
         find_items_used_by_item(ItemType, ItemId, !Info),
         process_imported_item_queue_2(Queue, !Info)
@@ -660,15 +658,15 @@ do_record_used_pred_or_func(PredOrFunc, ModuleQualifier,
             OrigArity, MatchingPredIds)
     ->
         Recorded = yes,
-        PredModules = set__list_to_set(list__map(
+        PredModules = set.list_to_set(list.map(
             (func(PredId) = PredId - PredModule :-
                 module_info_pred_info(ModuleInfo, PredId, PredInfo),
                 PredModule = pred_info_module(PredInfo)
             ),
             MatchingPredIds)),
-        svmap__det_insert(ModuleQualifier, PredModules, !MatchingNames),
+        svmap.det_insert(ModuleQualifier, PredModules, !MatchingNames),
         unqualify_name(SymName, Name),
-        set__fold(find_items_used_by_pred(PredOrFunc, Name - Arity),
+        set.fold(find_items_used_by_pred(PredOrFunc, Name - Arity),
             PredModules, !Info)
     ;
         Recorded = no
@@ -698,13 +696,13 @@ do_record_used_functor(ModuleQualifier, SymName, Arity, Recorded,
 
     find_matching_functors(ModuleInfo, SymName, Arity, MatchingCtors),
     unqualify_name(SymName, Name),
-    set__fold(find_items_used_by_functor(Name, Arity), MatchingCtors, !Info),
+    set.fold(find_items_used_by_functor(Name, Arity), MatchingCtors, !Info),
 
-    ( set__empty(MatchingCtors) ->
+    ( set.empty(MatchingCtors) ->
         Recorded = no
     ;
         Recorded = yes,
-        svmap__det_insert(ModuleQualifier, MatchingCtors, !ResolvedCtorMap)
+        svmap.det_insert(ModuleQualifier, MatchingCtors, !ResolvedCtorMap)
     ).
 
 :- pred find_matching_functors(module_info::in,
@@ -713,21 +711,21 @@ do_record_used_functor(ModuleQualifier, SymName, Arity, Recorded,
 find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
     % Is it a constructor.
     module_info_get_cons_table(ModuleInfo, Ctors),
-    ( map__search(Ctors, cons(SymName, Arity), ConsDefns0) ->
+    ( map.search(Ctors, cons(SymName, Arity), ConsDefns0) ->
         ConsDefns1 = ConsDefns0
     ;
         ConsDefns1 = []
     ),
     (
         remove_new_prefix(SymName, SymNameMinusNew),
-        map__search(Ctors, cons(SymNameMinusNew, Arity), ConsDefns2)
+        map.search(Ctors, cons(SymNameMinusNew, Arity), ConsDefns2)
     ->
-        ConsDefns = list__append(ConsDefns1, ConsDefns2)
+        ConsDefns = list.append(ConsDefns1, ConsDefns2)
     ;
         ConsDefns = ConsDefns1
     ),
     MatchingConstructors =
-        list__map(
+        list.map(
             (func(ConsDefn) = Ctor :-
                 ConsDefn = hlds_cons_defn(_,_,_, TypeCtor, _),
                 Ctor = constructor(TypeCtor)
@@ -740,7 +738,7 @@ find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
         predicate_table_search_sym(PredicateTable,
             may_be_partially_qualified, SymName, PredIds)
     ->
-        MatchingPreds = list__filter_map(
+        MatchingPreds = list.filter_map(
             get_pred_or_func_ctors(ModuleInfo,
                 SymName, Arity),
             PredIds)
@@ -753,9 +751,9 @@ find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
         is_field_access_function_name(ModuleInfo, SymName, Arity,
             _, FieldName),
         module_info_get_ctor_field_table(ModuleInfo, CtorFields),
-        map__search(CtorFields, FieldName, FieldDefns)
+        map.search(CtorFields, FieldName, FieldDefns)
     ->
-        MatchingFields = list__map(
+        MatchingFields = list.map(
             (func(FieldDefn) = FieldCtor :-
                 FieldDefn = hlds_ctor_field_defn(_, _, TypeCtor, ConsId, _),
                 ( ConsId = cons(ConsName, ConsArity) ->
@@ -767,10 +765,8 @@ find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
     ;
         MatchingFields = []
     ),
-
-    ResolvedConstructors = set__list_to_set(list__condense(
-        [MatchingConstructors, MatchingPreds, MatchingFields])
-    ).
+    ResolvedConstructors = set.list_to_set(list.condense(
+        [MatchingConstructors, MatchingPreds, MatchingFields])).
 
 :- func get_pred_or_func_ctors(module_info, sym_name,
     arity, pred_id) = resolved_functor is semidet.
@@ -817,7 +813,7 @@ get_pred_or_func_ctors(ModuleInfo, _SymName, Arity, PredId) = ResolvedCtor :-
 record_resolved_item(SymName, Arity, RecordItem, !IdSet, !Info) :-
     unqualify_name(SymName, UnqualifiedName),
     ModuleQualifier = find_module_qualifier(SymName),
-    ( map__search(!.IdSet, UnqualifiedName, MatchingNames0) ->
+    ( map.search(!.IdSet, UnqualifiedName, MatchingNames0) ->
         MatchingNames1 = MatchingNames0
     ;
         MatchingNames1 = []
@@ -826,7 +822,7 @@ record_resolved_item(SymName, Arity, RecordItem, !IdSet, !Info) :-
         Recorded, MatchingNames1, MatchingNames, !Info),
     (
         Recorded = yes,
-        svmap__set(UnqualifiedName, MatchingNames, !IdSet)
+        svmap.set(UnqualifiedName, MatchingNames, !IdSet)
     ;
         Recorded = no
     ).
@@ -839,7 +835,7 @@ record_resolved_item(SymName, Arity, RecordItem, !IdSet, !Info) :-
 record_resolved_item_2(ModuleQualifier,
         SymName, Arity, RecordItem, Recorded, !List, !Info) :-
     !.List = [],
-    map__init(Map0),
+    map.init(Map0),
     record_resolved_item_3(ModuleQualifier, SymName, Arity, RecordItem,
         Recorded, Map0, Map, !Info),
     (
@@ -852,7 +848,7 @@ record_resolved_item_2(ModuleQualifier, SymName, Arity, RecordItem, Recorded,
         !List, !Info) :-
     !.List = [ThisArity - ArityMap0 | ListRest0],
     ( Arity < ThisArity ->
-        map__init(NewArityMap0),
+        map.init(NewArityMap0),
         record_resolved_item_3(ModuleQualifier, SymName, Arity, RecordItem,
             Recorded, NewArityMap0, NewArityMap, !Info),
         (
@@ -888,7 +884,7 @@ record_resolved_item_2(ModuleQualifier, SymName, Arity, RecordItem, Recorded,
 
 record_resolved_item_3(ModuleQualifier, SymName, Arity, RecordItem, Recorded,
         !ResolvedMap, !Info) :-
-    ( map__contains(!.ResolvedMap, ModuleQualifier) ->
+    ( map.contains(!.ResolvedMap, ModuleQualifier) ->
         Recorded = no
     ;
         RecordItem(ModuleQualifier, SymName, Arity, Recorded,
@@ -903,8 +899,8 @@ record_resolved_item_3(ModuleQualifier, SymName, Arity, RecordItem, Recorded,
 find_items_used_by_item(type_item, TypeCtor, !Info) :-
     ModuleInfo = !.Info ^ module_info,
     module_info_get_type_table(ModuleInfo, Types),
-    map__lookup(Types, TypeCtor, TypeDefn),
-    hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+    map.lookup(Types, TypeCtor, TypeDefn),
+    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     ( TypeBody = eqv_type(Type) ->
         % If we use an equivalence type we also use the type
         % it is equivalent to.
@@ -915,28 +911,28 @@ find_items_used_by_item(type_item, TypeCtor, !Info) :-
 find_items_used_by_item(type_body_item, TypeCtor, !Info) :-
     ModuleInfo = !.Info ^ module_info,
     module_info_get_type_table(ModuleInfo, Types),
-    map__lookup(Types, TypeCtor, TypeDefn),
-    hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+    map.lookup(Types, TypeCtor, TypeDefn),
+    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     find_items_used_by_type_body(TypeBody, !Info).
 find_items_used_by_item(mode_item, ModeId, !Info):-
     ModuleInfo = !.Info ^ module_info,
     module_info_get_mode_table(ModuleInfo, Modes),
     mode_table_get_mode_defns(Modes, ModeDefns),
-    map__lookup(ModeDefns, ModeId, ModeDefn),
+    map.lookup(ModeDefns, ModeId, ModeDefn),
     find_items_used_by_mode_defn(ModeDefn, !Info).
 find_items_used_by_item(inst_item, InstId, !Info):-
     ModuleInfo = !.Info ^ module_info,
     module_info_get_inst_table(ModuleInfo, Insts),
     inst_table_get_user_insts(Insts, UserInsts),
     user_inst_table_get_inst_defns(UserInsts, UserInstDefns),
-    map__lookup(UserInstDefns, InstId, InstDefn),
+    map.lookup(UserInstDefns, InstId, InstDefn),
     find_items_used_by_inst_defn(InstDefn, !Info).
 find_items_used_by_item(typeclass_item, ClassItemId, !Info) :-
     ClassItemId = ClassName - ClassArity,
     ClassId = class_id(ClassName, ClassArity),
     ModuleInfo = !.Info ^ module_info,
     module_info_get_class_table(ModuleInfo, Classes),
-    map__lookup(Classes, ClassId, ClassDefn),
+    map.lookup(Classes, ClassId, ClassDefn),
     Constraints = ClassDefn ^ class_supers,
     ClassInterface = ClassDefn ^ class_interface,
     find_items_used_by_class_constraints(Constraints, !Info),
@@ -944,11 +940,11 @@ find_items_used_by_item(typeclass_item, ClassItemId, !Info) :-
         ClassInterface = abstract
     ;
         ClassInterface = concrete(Methods),
-        list__foldl(find_items_used_by_class_method, Methods, !Info)
+        list.foldl(find_items_used_by_class_method, Methods, !Info)
     ),
     module_info_get_instance_table(ModuleInfo, Instances),
-    ( map__search(Instances, ClassId, InstanceDefns) ->
-        list__foldl(find_items_used_by_instance(ClassItemId), InstanceDefns,
+    ( map.search(Instances, ClassId, InstanceDefns) ->
+        list.foldl(find_items_used_by_instance(ClassItemId), InstanceDefns,
             !Info)
     ;
         true
@@ -973,7 +969,7 @@ find_items_used_by_instances(ClassId, InstanceDefns, !Info) :-
     NameArity = Name - Arity,
     ( item_is_local(!.Info, NameArity) ->
         record_expanded_items_used_by_item(typeclass_item, NameArity, !Info),
-        list__foldl(find_items_used_by_instance(NameArity), InstanceDefns,
+        list.foldl(find_items_used_by_instance(NameArity), InstanceDefns,
             !Info)
     ;
         true
@@ -995,13 +991,13 @@ find_items_used_by_instance(ClassId, Defn, !Info) :-
         find_items_used_by_class_constraints(Constraints, !Info),
         find_items_used_by_types(ArgTypes, !Info),
         ModuleInstances0 = !.Info ^ module_instances,
-        ( map__search(ModuleInstances0, InstanceModuleName, ClassIdsPrime) ->
+        ( map.search(ModuleInstances0, InstanceModuleName, ClassIdsPrime) ->
             ClassIds1 = ClassIdsPrime
         ;
-            set__init(ClassIds1)
+            set.init(ClassIds1)
         ),
-        set__insert(ClassIds1, ClassId, ClassIds),
-        map__set(ModuleInstances0, InstanceModuleName, ClassIds,
+        set.insert(ClassIds1, ClassId, ClassIds),
+        map.set(ModuleInstances0, InstanceModuleName, ClassIds,
             ModuleInstances),
         !:Info = !.Info ^ module_instances := ModuleInstances
     ).
@@ -1013,7 +1009,7 @@ find_items_used_by_class_method(Method, !Info) :-
     Method = pred_or_func(_, _, _, _, _, ArgTypesAndModes, _, _, _, _, _,
         Constraints, _),
     find_items_used_by_class_context(Constraints, !Info),
-    list__foldl(find_items_used_by_type_and_mode, ArgTypesAndModes, !Info).
+    list.foldl(find_items_used_by_type_and_mode, ArgTypesAndModes, !Info).
 find_items_used_by_class_method(Method, !Info) :-
     Method = pred_or_func_mode(_, _, _, Modes, _, _, _, _),
     find_items_used_by_modes(Modes, !Info).
@@ -1035,7 +1031,7 @@ find_items_used_by_type_and_mode(TypeAndMode, !Info) :-
 
 find_items_used_by_type_body(TypeBody, !Info) :-
     Ctors = TypeBody ^ du_type_ctors,
-    list__foldl(find_items_used_by_ctor, Ctors, !Info).
+    list.foldl(find_items_used_by_ctor, Ctors, !Info).
 find_items_used_by_type_body(eqv_type(Type), !Info) :-
     find_items_used_by_type(Type, !Info).
 find_items_used_by_type_body(abstract_type(_), !Info).
@@ -1049,7 +1045,7 @@ find_items_used_by_type_body(solver_type(_, _), !Info).
 find_items_used_by_ctor(Ctor, !Info) :-
     Ctor = ctor(_, Constraints, _, CtorArgs),
     find_items_used_by_class_constraints(Constraints, !Info),
-    list__foldl(find_items_used_by_ctor_arg, CtorArgs, !Info).
+    list.foldl(find_items_used_by_ctor_arg, CtorArgs, !Info).
 
 :- pred find_items_used_by_ctor_arg(constructor_arg::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
@@ -1081,14 +1077,14 @@ find_items_used_by_inst_defn(Defn, !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_preds(PredOrFunc, Set, !Info) :-
-    map__foldl(find_items_used_by_preds_2(PredOrFunc), Set, !Info).
+    map.foldl(find_items_used_by_preds_2(PredOrFunc), Set, !Info).
 
 :- pred find_items_used_by_preds_2(pred_or_func::in,
     pair(string, arity)::in, map(module_qualifier, module_name)::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_preds_2(PredOrFunc, Name - Arity, MatchingPredMap, !Info) :-
-    map__foldl(find_items_used_by_preds_3(
+    map.foldl(find_items_used_by_preds_3(
         PredOrFunc, Name, Arity), MatchingPredMap, !Info).
 
 :- pred find_items_used_by_preds_3(pred_or_func::in,
@@ -1133,7 +1129,7 @@ find_items_used_by_pred(PredOrFunc, Name - Arity, PredId - PredModule,
             MethodUnivConstraints = [constraint(ClassName0, ClassArgs) | _]
         ->
             ClassName = ClassName0,
-            ClassArity = list__length(ClassArgs)
+            ClassArity = list.length(ClassArgs)
         ;
             unexpected(this_file, "class method with no class constraints")
         ),
@@ -1146,15 +1142,15 @@ find_items_used_by_pred(PredOrFunc, Name - Arity, PredId - PredModule,
         pred_info_arg_types(PredInfo, ArgTypes),
         find_items_used_by_types(ArgTypes, !Info),
         pred_info_procedures(PredInfo, Procs),
-        map__foldl(find_items_used_by_proc_arg_modes, Procs, !Info),
+        map.foldl(find_items_used_by_proc_arg_modes, Procs, !Info),
         pred_info_get_class_context(PredInfo, ClassContext),
         find_items_used_by_class_context(ClassContext, !Info),
 
         % Record items used by `:- pragma type_spec' declarations.
         module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
         TypeSpecInfo = type_spec_info(_, _, _, PragmaMap),
-        ( map__search(PragmaMap, PredId, TypeSpecPragmas) ->
-            list__foldl(find_items_used_by_type_spec, TypeSpecPragmas, !Info)
+        ( map.search(PragmaMap, PredId, TypeSpecPragmas) ->
+            list.foldl(find_items_used_by_type_spec, TypeSpecPragmas, !Info)
         ;
             true
         )
@@ -1178,7 +1174,7 @@ find_items_used_by_type_spec(Pragma, !Info) :-
         ;
             MaybeModes = no
         ),
-        assoc_list__values(Subst, SubstTypes),
+        assoc_list.values(Subst, SubstTypes),
         find_items_used_by_types(SubstTypes, !Info)
     ;
         unexpected(this_file,
@@ -1189,14 +1185,14 @@ find_items_used_by_type_spec(Pragma, !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_functors(Set, !Info) :-
-    map__foldl(find_items_used_by_functors_2, Set, !Info).
+    map.foldl(find_items_used_by_functors_2, Set, !Info).
 
 :- pred find_items_used_by_functors_2(pair(string, arity)::in,
     map(module_qualifier, module_name)::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_functors_2(Name - Arity, MatchingCtorMap, !Info) :-
-    map__foldl(find_items_used_by_functors_3(Name, Arity), MatchingCtorMap,
+    map.foldl(find_items_used_by_functors_3(Name, Arity), MatchingCtorMap,
         !Info).
 
 :- pred find_items_used_by_functors_3(string::in, arity::in,
@@ -1225,7 +1221,7 @@ find_items_used_by_functor(_, _, ResolverFunctor, !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_simple_item_set(ItemType, Set, !Info) :-
-    map__foldl(find_items_used_by_simple_item_set_2(ItemType), Set, !Info).
+    map.foldl(find_items_used_by_simple_item_set_2(ItemType), Set, !Info).
 
 :- pred find_items_used_by_simple_item_set_2(item_type::in,
     pair(string, arity)::in, map(module_qualifier, module_name)::in,
@@ -1233,7 +1229,7 @@ find_items_used_by_simple_item_set(ItemType, Set, !Info) :-
 
 find_items_used_by_simple_item_set_2(ItemType, Name - Arity, MatchingIdMap,
         !Info) :-
-    map__foldl(find_items_used_by_simple_item_set_3(ItemType, Name, Arity),
+    map.foldl(find_items_used_by_simple_item_set_3(ItemType, Name, Arity),
         MatchingIdMap, !Info).
 
 :- pred find_items_used_by_simple_item_set_3(item_type::in,
@@ -1249,7 +1245,7 @@ find_items_used_by_simple_item_set_3(ItemType, Name, Arity, _, Module,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_types(Types, !Info) :-
-    list__foldl(find_items_used_by_type, Types, !Info).
+    list.foldl(find_items_used_by_type, Types, !Info).
 
 :- pred find_items_used_by_type(mer_type::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
@@ -1274,7 +1270,7 @@ find_items_used_by_type(Type, !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_modes(Modes, !Info) :-
-    list__foldl(find_items_used_by_mode, Modes, !Info).
+    list.foldl(find_items_used_by_mode, Modes, !Info).
 
 :- pred find_items_used_by_mode(mer_mode::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
@@ -1283,7 +1279,7 @@ find_items_used_by_mode((Inst1 -> Inst2), !Info) :-
     find_items_used_by_inst(Inst1, !Info),
     find_items_used_by_inst(Inst2, !Info).
 find_items_used_by_mode(user_defined_mode(ModeName, ArgInsts), !Info) :-
-    list__length(ArgInsts, ModeArity),
+    list.length(ArgInsts, ModeArity),
     maybe_record_item_to_process(mode_item, ModeName - ModeArity, !Info),
     find_items_used_by_insts(ArgInsts, !Info).
 
@@ -1291,7 +1287,7 @@ find_items_used_by_mode(user_defined_mode(ModeName, ArgInsts), !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_insts(Modes, !Info) :-
-    list__foldl(find_items_used_by_inst, Modes, !Info).
+    list.foldl(find_items_used_by_inst, Modes, !Info).
 
 :- pred find_items_used_by_inst(mer_inst::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
@@ -1300,7 +1296,7 @@ find_items_used_by_inst(any(_), !Info).
 find_items_used_by_inst(free, !Info).
 find_items_used_by_inst(free(_), !Info).
 find_items_used_by_inst(bound(_, BoundInsts), !Info) :-
-    list__foldl(find_items_used_by_bound_inst, BoundInsts, !Info).
+    list.foldl(find_items_used_by_bound_inst, BoundInsts, !Info).
 find_items_used_by_inst(ground(_, GroundInstInfo), !Info) :-
     (
         GroundInstInfo = higher_order(pred_inst_info(_, Modes, _)),
@@ -1315,7 +1311,7 @@ find_items_used_by_inst(constrained_inst_vars(_, Inst), !Info) :-
 find_items_used_by_inst(defined_inst(InstName), !Info) :-
     find_items_used_by_inst_name(InstName, !Info).
 find_items_used_by_inst(abstract_inst(Name, ArgInsts), !Info) :-
-    list__length(ArgInsts, Arity),
+    list.length(ArgInsts, Arity),
     maybe_record_item_to_process(inst_item, Name - Arity, !Info),
     find_items_used_by_insts(ArgInsts, !Info).
 
@@ -1335,7 +1331,7 @@ find_items_used_by_bound_inst(BoundInst, !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_inst_name(user_inst(Name, ArgInsts), !Info) :-
-    list__length(ArgInsts, Arity),
+    list.length(ArgInsts, Arity),
     maybe_record_item_to_process(inst_item, Name - Arity, !Info),
     find_items_used_by_insts(ArgInsts, !Info).
 find_items_used_by_inst_name(merge_inst(Inst1, Inst2), !Info) :-
@@ -1370,13 +1366,13 @@ find_items_used_by_class_context(constraints(Constraints1, Constraints2),
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_class_constraints(Constraints, !Info) :-
-    list__foldl(find_items_used_by_class_constraint, Constraints, !Info).
+    list.foldl(find_items_used_by_class_constraint, Constraints, !Info).
 
 :- pred find_items_used_by_class_constraint(prog_constraint::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_class_constraint(constraint(ClassName, ArgTypes), !Info) :-
-    ClassArity = list__length(ArgTypes),
+    ClassArity = list.length(ArgTypes),
     maybe_record_item_to_process(typeclass_item, ClassName - ClassArity,
         !Info),
     find_items_used_by_types(ArgTypes, !Info).
@@ -1387,26 +1383,22 @@ find_items_used_by_class_constraint(constraint(ClassName, ArgTypes), !Info) :-
 maybe_record_item_to_process(ItemType, NameArity, !Info) :-
     ( ItemType = typeclass_item ->
         Classes0 = !.Info ^ used_typeclasses,
-        set__insert(Classes0, NameArity, Classes),
+        set.insert(Classes0, NameArity, Classes),
         !:Info = !.Info ^ used_typeclasses := Classes
     ;
         true
     ),
 
-    (
-        item_is_recorded_used(!.Info, ItemType, NameArity)
-    ->
+    ( item_is_recorded_used(!.Info, ItemType, NameArity) ->
         % This item has already been recorded.
         true
-    ;
-        item_is_local(!.Info, NameArity)
-    ->
+    ; item_is_local(!.Info, NameArity) ->
         % Ignore local items. The items used by them have already been recorded
         % by module_qual.m.
         true
     ;
         Queue0 = !.Info ^ item_queue,
-        queue__put(Queue0, item_id(ItemType, NameArity), Queue),
+        queue.put(Queue0, item_id(ItemType, NameArity), Queue),
         !:Info = !.Info ^ item_queue := Queue,
 
         record_imported_item(ItemType, NameArity, !Info),
@@ -1419,9 +1411,9 @@ maybe_record_item_to_process(ItemType, NameArity, !Info) :-
 item_is_recorded_used(Info, ItemType, NameArity) :-
     ImportedItems = Info ^ imported_items,
     NameArity = qualified(ModuleName, Name) - Arity,
-    map__search(ImportedItems, ModuleName, ModuleIdSet),
+    map.search(ImportedItems, ModuleName, ModuleIdSet),
     ModuleItemIdSet = extract_ids(ModuleIdSet, ItemType),
-    set__member(Name - Arity, ModuleItemIdSet).
+    set.member(Name - Arity, ModuleItemIdSet).
 
 :- pred item_is_local(recompilation_usage_info::in,
     pair(sym_name, arity)::in) is semidet.
@@ -1443,30 +1435,31 @@ record_imported_item(ItemType, SymName - Arity, !Info) :-
     ),
 
     ImportedItems0 = !.Info ^ imported_items,
-    ( map__search(ImportedItems0, Module, ModuleItems0) ->
+    ( map.search(ImportedItems0, Module, ModuleItems0) ->
         ModuleItems1 = ModuleItems0
     ;
-        ModuleItems1 = init_item_id_set(set__init)
+        ModuleItems1 = init_item_id_set(set.init)
     ),
     ModuleItemIds0 = extract_ids(ModuleItems1, ItemType),
-    set__insert(ModuleItemIds0, Name - Arity, ModuleItemIds),
+    set.insert(ModuleItemIds0, Name - Arity, ModuleItemIds),
     ModuleItems = update_ids(ModuleItems1, ItemType, ModuleItemIds),
-    map__set(ImportedItems0, Module, ModuleItems, ImportedItems),
+    map.set(ImportedItems0, Module, ModuleItems, ImportedItems),
     !:Info = !.Info ^ imported_items := ImportedItems.
 
     % Uses of equivalence types have been expanded away by equiv_type.m.
     % equiv_type.m records which equivalence types were used by each
     % imported item.
+    %
 :- pred record_expanded_items_used_by_item(item_type::in, item_name::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 record_expanded_items_used_by_item(ItemType, NameArity, !Info) :-
     Dependencies = !.Info ^ dependencies,
     (
-        map__search(Dependencies, item_id(ItemType, NameArity), EquivTypes)
+        map.search(Dependencies, item_id(ItemType, NameArity), EquivTypes)
     ->
-        list__foldl(record_expanded_items_used_by_item_2,
-            set__to_sorted_list(EquivTypes), !Info)
+        list.foldl(record_expanded_items_used_by_item_2,
+            set.to_sorted_list(EquivTypes), !Info)
     ;
         true
     ).

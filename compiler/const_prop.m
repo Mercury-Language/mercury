@@ -20,7 +20,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module transform_hlds__const_prop.
+:- module transform_hlds.const_prop.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -93,10 +93,10 @@ evaluate_call(PredId, ProcId, Args, VarTypes, InstMap, ModuleInfo, Goal,
     predicate_name(ModuleInfo, PredId, PredName),
     proc_id_to_int(ProcId, ProcInt),
     LookupArgs = (func(Var) = arg_hlds_info(Var, Type, Inst) :-
-        instmap__lookup_var(InstMap, Var, Inst),
+        instmap.lookup_var(InstMap, Var, Inst),
         Type = VarTypes ^ det_elem(Var)
     ),
-    ArgHldsInfos = list__map(LookupArgs, Args),
+    ArgHldsInfos = list.map(LookupArgs, Args),
     evaluate_call_2(ModuleName, PredName, ProcInt, ArgHldsInfos,
        Goal, GoalInfo0, GoalInfo).
 
@@ -331,9 +331,9 @@ evaluate_det_call("string", Name, _, [X, Y, Z], Z, string_const(ZVal)) :-
     X ^ arg_inst = bound(_XUniq, [functor(string_const(XVal), [])]),
     Y ^ arg_inst = bound(_YUniq, [functor(string_const(YVal), [])]),
 
-        % We can only do the append if Z is free (this allows
-        % us to ignore the mode number and pick up both the
-        % predicate and function versions of append)
+        % We can only do the append if Z is free (this allows us to ignore
+        % the mode number and pick up both the predicate and function versions
+        % of append).
     Z ^ arg_inst = free,
     ZVal = XVal ++ YVal.
 
@@ -345,15 +345,14 @@ evaluate_det_call("string", Name, _, [X, Y, Z], Z, string_const(ZVal)) :-
     %   ModuleName.ProcName(ArgList)
     % whose mode is specified by ModeNum.
     %
-    % If the call is a semidet call with no outputs that can be
-    % statically evaluated, evaluate_test succeeds with
-    % Result being "yes" if the call will succeed and "no" if the
-    % call will fail.
-    % Otherwise (i.e. if the call is not semidet, has any outputs,
-    % or cannot be statically evaluated), evaluate_test fails.
+    % If the call is a semidet call with no outputs that can be statically
+    % evaluated, evaluate_test succeeds with Result being "yes" if the call
+    % will succeed and "no" if the call will fail. Otherwise (i.e. if the call
+    % is not semidet, has any outputs, or cannot be statically evaluated),
+    % evaluate_test fails.
     %
-:- pred evaluate_test(string::in, string::in, int::in,
-    list(arg_hlds_info)::in, bool::out) is semidet.
+:- pred evaluate_test(string::in, string::in, int::in, list(arg_hlds_info)::in,
+    bool::out) is semidet.
 
     % Integer comparisons
 
@@ -447,18 +446,16 @@ evaluate_test("private_builtin", "typed_unify", Mode, Args, Result) :-
         eval_unify(X, Y, Result)
     ).
 
-    % evaluate_semidet_call(ModuleName, ProcName, ModeNum,
-    %   Args, Result):
+    % evaluate_semidet_call(ModuleName, ProcName, ModeNum, Args, Result):
     %
     % This attempts to evaluate a call to
     %   ModuleName.ProcName(Args)
     % whose mode is specified by ModeNum.
     %
-    % If the call is a semidet call with one output that can be
-    % statically evaluated, evaluate_semidet_call succeeds with
-    % Result being "no" if the call will fail, or
-    % yes(OutputArg - OutputArgValue) if it will succeed, with
-    % OutputArg being whichever of the arguments is output,
+    % If the call is a semidet call with one output that can be statically
+    % evaluated, evaluate_semidet_call succeeds with Result being "no"
+    % if the call will fail, or yes(OutputArg - OutputArgValue) if it will
+    % succeed, with OutputArg being whichever of the arguments is output,
     % and with OutputArgVal being the computed value of OutputArg.
     %
     % Otherwise (i.e. if the call is not semidet, or has no outputs
@@ -474,8 +471,7 @@ evaluate_test("private_builtin", "typed_unify", Mode, Args, Result) :-
     is semidet.
 
 evaluate_semidet_call("std_util", "dynamic_cast", 0, Args, Result) :-
-    evaluate_semidet_call("private_builtin", "typed_unify", 1,
-        Args, Result).
+    evaluate_semidet_call("private_builtin", "typed_unify", 1, Args, Result).
 
 evaluate_semidet_call("private_builtin", "typed_unify", Mode, Args, Result) :-
     % mode 0 is the (in, in) mode
@@ -497,12 +493,11 @@ evaluate_semidet_call("private_builtin", "typed_unify", Mode, Args, Result) :-
     % This attempts to evaluate a call to
     %   builtin.unify(FirstArg, SecondArg)
     % with mode (in, in).
-    % If the unification can be statically evaluated,
-    % evaluate_builtin_test succeeds with Result being "yes"
-    % if the unification will succeed and "no" if the
-    % unification will fail.  Otherwise (i.e. if the unification
+    % If the unification can be statically evaluated, evaluate_builtin_test
+    % succeeds with Result being "yes" if the unification will succeed
+    % and "no" if the unification will fail. Otherwise (i.e. if the unification
     % cannot be statically evaluated), evaluate_unify fails.
-
+    %
 :- pred eval_unify(arg_hlds_info::in, arg_hlds_info::in, bool::out) is semidet.
 
 eval_unify(X, Y, Result) :-
@@ -537,8 +532,7 @@ eval_unify(X, Y, Result) :-
 make_assignment_goal(OutputArg, InputArg, Goal, !GoalInfo) :-
     make_assignment(OutputArg, InputArg, Goal),
     goal_info_get_instmap_delta(!.GoalInfo, Delta0),
-    instmap_delta_set(OutputArg ^ arg_var, InputArg ^ arg_inst,
-        Delta0, Delta),
+    instmap_delta_set(OutputArg ^ arg_var, InputArg ^ arg_inst, Delta0, Delta),
     goal_info_set_instmap_delta(Delta, !GoalInfo),
     goal_info_set_determinism(det, !GoalInfo).
 
@@ -568,6 +562,7 @@ make_assignment(OutputArg, InputArg, Goal) :-
 
     % recompute_instmap_delta is run by simplify.m if anything changes,
     % so the insts are not important here.
+    %
 :- pred make_construction(arg_hlds_info::in, cons_id::in, hlds_goal_expr::out)
     is det.
 

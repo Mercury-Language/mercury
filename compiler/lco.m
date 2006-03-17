@@ -102,7 +102,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module transform_hlds__lco.
+:- module transform_hlds.lco.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -192,24 +192,24 @@
 lco_modulo_constructors(!ModuleInfo) :-
     module_info_rebuild_dependency_info(!ModuleInfo, DepInfo),
     hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
-    list__foldl2(lco_scc, SCCs, map__init, _, !ModuleInfo).
+    list.foldl2(lco_scc, SCCs, map.init, _, !ModuleInfo).
 
 :- pred lco_scc(list(pred_proc_id)::in, variant_map::in, variant_map::out,
     module_info::in, module_info::out) is det.
 
 lco_scc(SCC, !VariantMap, !ModuleInfo) :-
     ModuleInfo0 = !.ModuleInfo,
-    list__foldl4(lco_proc(!.VariantMap, SCC), SCC, !ModuleInfo,
-        map__init, CurSCCVariantMap, map__init, CurSCCUpdateMap,
+    list.foldl4(lco_proc(!.VariantMap, SCC), SCC, !ModuleInfo,
+        map.init, CurSCCVariantMap, map.init, CurSCCUpdateMap,
         permitted, Permitted),
-    map__to_assoc_list(CurSCCVariantMap, CurSCCVariants),
-    map__to_assoc_list(CurSCCUpdateMap, CurSCCUpdates),
+    map.to_assoc_list(CurSCCVariantMap, CurSCCVariants),
+    map.to_assoc_list(CurSCCUpdateMap, CurSCCUpdates),
     (
         Permitted = permitted,
         CurSCCUpdates = [_ | _]
     ->
-        list__foldl(process_proc_update, CurSCCUpdates, !ModuleInfo),
-        list__foldl(process_proc_variant, CurSCCVariants, !ModuleInfo)
+        list.foldl(process_proc_update, CurSCCUpdates, !ModuleInfo),
+        list.foldl(process_proc_variant, CurSCCVariants, !ModuleInfo)
     ;
         !:ModuleInfo = ModuleInfo0
     ).
@@ -223,11 +223,11 @@ process_proc_update(PredProcId - NewProcInfo, !ModuleInfo) :-
     PredProcId = proc(PredId, ProcId),
 
     module_info_preds(!.ModuleInfo, Preds0),
-    map__lookup(Preds0, PredId, PredInfo0),
+    map.lookup(Preds0, PredId, PredInfo0),
     pred_info_procedures(PredInfo0, Procs0),
-    map__det_update(Procs0, ProcId, NewProcInfo, Procs),
+    map.det_update(Procs0, ProcId, NewProcInfo, Procs),
     pred_info_set_procedures(Procs, PredInfo0, PredInfo),
-    map__det_update(Preds0, PredId, PredInfo, Preds),
+    map.det_update(Preds0, PredId, PredInfo, Preds),
     module_info_set_preds(Preds, !ModuleInfo).
 
 :- pred process_proc_variant(pair(pred_proc_id, variant_id)::in,
@@ -245,7 +245,7 @@ process_proc_variant(PredProcId - VariantId, !ModuleInfo) :-
 
     some [!VariantPredInfo] (
         module_info_preds(!.ModuleInfo, Preds0),
-        map__lookup(Preds0, VariantPredId, !:VariantPredInfo),
+        map.lookup(Preds0, VariantPredId, !:VariantPredInfo),
         Name0 = pred_info_name(!.VariantPredInfo),
         pred_info_get_origin(!.VariantPredInfo, Origin0),
         create_variant_name(AddrOutArgPosns, Name0, Name),
@@ -256,10 +256,10 @@ process_proc_variant(PredProcId - VariantId, !ModuleInfo) :-
 
         % We throw away any other procs in the variant predicate, because
         % we create a separate predicate for each variant.
-        map__det_insert(map__init, VariantProcId, VariantProcInfo,
+        map.det_insert(map.init, VariantProcId, VariantProcInfo,
             VariantProcs),
         pred_info_set_procedures(VariantProcs, !VariantPredInfo),
-        map__det_update(Preds0, VariantPredId, !.VariantPredInfo, Preds),
+        map.det_update(Preds0, VariantPredId, !.VariantPredInfo, Preds),
         module_info_set_preds(Preds, !ModuleInfo)
     ).
 
@@ -302,8 +302,8 @@ lco_proc(LowerSCCVariants, SCC, CurProc, !ModuleInfo, !CurSCCVariants,
             proc_info_vartypes(ProcInfo0, VarTypes0),
             proc_info_headvars(ProcInfo0, HeadVars),
             proc_info_argmodes(ProcInfo0, ArgModes),
-            list__map(map__lookup(VarTypes0), HeadVars, ArgTypes),
-            arg_info__compute_in_and_out_vars(!.ModuleInfo, HeadVars,
+            list.map(map.lookup(VarTypes0), HeadVars, ArgTypes),
+            arg_info.compute_in_and_out_vars(!.ModuleInfo, HeadVars,
                 ArgModes, ArgTypes, _InputHeadVars, OutputHeadVars),
             proc_info_inferred_determinism(ProcInfo0, CurProcDetism),
             ConstInfo = lco_const_info(LowerSCCVariants, list_to_set(SCC),
@@ -324,7 +324,7 @@ lco_proc(LowerSCCVariants, SCC, CurProc, !ModuleInfo, !CurSCCVariants,
                     proc_info_set_vartypes(VarTypes, !ProcInfo),
                     proc_info_set_goal(Goal, !ProcInfo),
                     requantify_proc(!ProcInfo),
-                    svmap__det_insert(CurProc, !.ProcInfo, !CurSCCUpdates)
+                    svmap.det_insert(CurProc, !.ProcInfo, !CurSCCUpdates)
                 )
             ;
                 true
@@ -354,7 +354,7 @@ lco_in_goal(Goal0 - GoalInfo, Goal - GoalInfo, !Info, ConstInfo) :-
         Goal0 = conj(ConjType, Goals0),
         (
             ConjType = plain_conj,
-            lco_in_conj(list__reverse(Goals0), [], bag__init, MaybeGoals,
+            lco_in_conj(list.reverse(Goals0), [], bag.init, MaybeGoals,
                 !Info, ConstInfo),
             (
                 MaybeGoals = yes(Goals),
@@ -365,7 +365,7 @@ lco_in_goal(Goal0 - GoalInfo, Goal - GoalInfo, !Info, ConstInfo) :-
                 % unifications we can move before a recursive call,
                 % maybe it ends with a switch or if-then-else, some of whose
                 % arms fit that pattern.
-                ( list__split_last(Goals0, AllButLast, Last0) ->
+                ( list.split_last(Goals0, AllButLast, Last0) ->
                     lco_in_goal(Last0, Last, !Info, ConstInfo),
                     Goal = conj(plain_conj, AllButLast ++ [Last])
                 ;
@@ -381,7 +381,7 @@ lco_in_goal(Goal0 - GoalInfo, Goal - GoalInfo, !Info, ConstInfo) :-
         Goal0 = disj(Goals0),
         % There is no point in looking for tail calls in the non-last
         % disjuncts.
-        ( list__split_last(Goals0, AllButLast, Last0) ->
+        ( list.split_last(Goals0, AllButLast, Last0) ->
             lco_in_goal(Last0, Last, !Info, ConstInfo),
             Goal = disj(AllButLast ++ [Last])
         ;
@@ -480,7 +480,7 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
             SubInfo = construct_sub_info(no, _)
         ),
         all_true(acceptable_construct_mode(ModuleInfo), ArgUniModes),
-        map__lookup(VarTypes, ConstructedVar, ConstructedType),
+        map.lookup(VarTypes, ConstructedVar, ConstructedType),
         ConsTag = cons_id_to_tag(ConsId, ConstructedType, ModuleInfo),
         % The code generator can't handle the other tags. For example, it
         % doesn't make sense to the address of the field of a function symbol
@@ -491,15 +491,15 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
             ConsTag = shared_remote_tag(_, _)
         )
     ->
-        svbag__delete(ConstructedVar, !UnifyInputVars),
-        svbag__insert_list(ConstructArgs, !UnifyInputVars),
+        svbag.delete(ConstructedVar, !UnifyInputVars),
+        svbag.insert_list(ConstructArgs, !UnifyInputVars),
         !:Unifies = [RevGoal | !.Unifies],
         lco_in_conj(RevGoals, !.Unifies, !.UnifyInputVars, MaybeGoals,
             !Info, ConstInfo)
     ;
         RevGoalExpr = call(PredId, ProcId, Args, Builtin, UnifyContext,
             SymName),
-        set__member(proc(PredId, ProcId), ConstInfo ^ cur_scc),
+        set.member(proc(PredId, ProcId), ConstInfo ^ cur_scc),
         goal_info_get_determinism(RevGoalInfo, RevGoalDetism),
         RevGoalDetism = ConstInfo ^ cur_proc_detism,
 
@@ -509,26 +509,26 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
         classify_proc_call_args(ModuleInfo, VarTypes, Args, CalleeArgModes,
             _InArgs, OutArgs, UnusedArgs),
         UnusedArgs = [],
-        list__length(OutArgs, NumOutArgs),
+        list.length(OutArgs, NumOutArgs),
         CurrProcOutArgs = ConstInfo ^ cur_proc_outputs,
-        list__length(CurrProcOutArgs, NumCurrProcOutArgs),
+        list.length(CurrProcOutArgs, NumCurrProcOutArgs),
         NumOutArgs = NumCurrProcOutArgs,
 
-        assoc_list__from_corresponding_lists(OutArgs, CurrProcOutArgs,
+        assoc_list.from_corresponding_lists(OutArgs, CurrProcOutArgs,
             CallHeadPairs),
         find_args_to_pass_by_addr(CallHeadPairs, 1, Mismatches,
-            UpdatedCallOutArgs, map__init, Subst, !Info),
+            UpdatedCallOutArgs, map.init, Subst, !Info),
         % If there are no mismatches, we would create an identical "variant".
         % Such cases should be optimized using other means.
         Mismatches = [_ | _],
-        assoc_list__values(Mismatches, MismatchedCallArgs),
+        assoc_list.values(Mismatches, MismatchedCallArgs),
         % The variants we create return each output in only one place in
         % memory.
         all_true(occurs_once(!.UnifyInputVars), MismatchedCallArgs),
-        ensure_variant_exists(PredId, ProcId, assoc_list__keys(Mismatches),
+        ensure_variant_exists(PredId, ProcId, assoc_list.keys(Mismatches),
             VariantPredProcId, !Info)
     ->
-        list__map(update_construct(Subst), !.Unifies, UpdatedUnifies),
+        list.map(update_construct(Subst), !.Unifies, UpdatedUnifies),
         proc_info_argmodes(CalleeProcInfo, CalleeModes),
         update_call_args(ModuleInfo, VarTypes, CalleeModes, Args,
             UpdatedCallOutArgs, UpdatedArgs),
@@ -537,7 +537,7 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
             Builtin, UnifyContext, SymName),
         UpdatedGoalInfo = RevGoalInfo,
         UpdatedGoal = UpdatedGoalExpr - UpdatedGoalInfo,
-        Goals = list__reverse(RevGoals) ++ UpdatedUnifies ++ [UpdatedGoal],
+        Goals = list.reverse(RevGoals) ++ UpdatedUnifies ++ [UpdatedGoal],
         MaybeGoals = yes(Goals),
         !:Info = !.Info ^ changed := changed
     ;
@@ -558,7 +558,7 @@ update_call_args(_ModuleInfo, _VarTypes, [_ | _], [], _, _) :-
     unexpected(this_file, "update_call_args: mismatches lists").
 update_call_args(ModuleInfo, VarTypes, [CalleeMode | CalleeModes],
         [Arg | Args], !.UpdatedCallOutArgs, !:UpdatedArgs) :-
-    map__lookup(VarTypes, Arg, CalleeType),
+    map.lookup(VarTypes, Arg, CalleeType),
     mode_to_arg_mode(ModuleInfo, CalleeMode, CalleeType, ArgMode),
     (
         ArgMode = top_in,
@@ -596,7 +596,7 @@ classify_proc_call_args(ModuleInfo, VarTypes, [Arg | Args],
         [CalleeMode | CalleeModes], !:InArgs, !:OutArgs, !:UnusedArgs) :-
     classify_proc_call_args(ModuleInfo, VarTypes, Args, CalleeModes,
         !:InArgs, !:OutArgs, !:UnusedArgs),
-    map__lookup(VarTypes, Arg, CalleeType),
+    map.lookup(VarTypes, Arg, CalleeType),
     mode_to_arg_mode(ModuleInfo, CalleeMode, CalleeType, ArgMode),
     (
         ArgMode = top_in,
@@ -627,7 +627,7 @@ find_args_to_pass_by_addr([CallArg - HeadArg | CallHeadArgs], ArgNum,
     ;
         make_address_var(CallArg, UpdatedCallArg, !Info),
         Mismatches = [ArgNum - CallArg | MismatchesTail],
-        svmap__det_insert(CallArg, UpdatedCallArg, !Subst)
+        svmap.det_insert(CallArg, UpdatedCallArg, !Subst)
     ).
 
 :- pred make_address_var(prog_var::in, prog_var::out,
@@ -636,11 +636,11 @@ find_args_to_pass_by_addr([CallArg - HeadArg | CallHeadArgs], ArgNum,
 make_address_var(Var, AddrVar, !Info) :-
     VarSet0 = !.Info ^ var_set,
     VarTypes0 = !.Info ^ var_types,
-    varset__lookup_name(VarSet0, Var, "SCCcallarg", Name),
+    varset.lookup_name(VarSet0, Var, "SCCcallarg", Name),
     AddrName = "Addr" ++ Name,
-    varset__new_named_var(VarSet0, AddrName, AddrVar, VarSet),
-    map__lookup(VarTypes0, Var, FieldType),
-    map__det_insert(VarTypes0, AddrVar, make_ref_type(FieldType), VarTypes),
+    varset.new_named_var(VarSet0, AddrName, AddrVar, VarSet),
+    map.lookup(VarTypes0, Var, FieldType),
+    map.det_insert(VarTypes0, AddrVar, make_ref_type(FieldType), VarTypes),
     !:Info = !.Info ^ var_set := VarSet,
     !:Info = !.Info ^ var_types := VarTypes.
 
@@ -658,7 +658,7 @@ make_ref_type(FieldType) = PtrType :-
 
 ensure_variant_exists(PredId, ProcId, AddrArgNums, VariantPredProcId, !Info) :-
     CurSCCVariants0 = !.Info ^ cur_scc_variants,
-    ( map__search(CurSCCVariants0, proc(PredId, ProcId), ExistingVariant) ->
+    ( map.search(CurSCCVariants0, proc(PredId, ProcId), ExistingVariant) ->
         ExistingVariant = variant_id(ExistingAddrArgNums, VariantPredProcId),
         AddrArgNums = ExistingAddrArgNums
     ;
@@ -667,7 +667,7 @@ ensure_variant_exists(PredId, ProcId, AddrArgNums, VariantPredProcId, !Info) :-
         VariantPredProcId = proc(ClonePredId, ProcId),
         !:Info = !.Info ^ module_info := ModuleInfo,
         NewVariant = variant_id(AddrArgNums, VariantPredProcId),
-        map__det_insert(CurSCCVariants0, proc(PredId, ProcId), NewVariant,
+        map.det_insert(CurSCCVariants0, proc(PredId, ProcId), NewVariant,
             CurSCCVariants),
         !:Info = !.Info ^ cur_scc_variants := CurSCCVariants
     ).
@@ -743,7 +743,7 @@ update_construct_args(Subst, ArgNum, [OrigVar | OrigVars],
         [UpdatedVar | UpdatedVars], AddrArgs, !InstMapDelta) :-
     update_construct_args(Subst, ArgNum + 1, OrigVars, UpdatedVars,
         AddrArgsTail, !InstMapDelta),
-    ( map__search(Subst, OrigVar, AddrVar) ->
+    ( map.search(Subst, OrigVar, AddrVar) ->
         UpdatedVar = AddrVar,
         instmap_delta_set(AddrVar, ground(shared, none), !InstMapDelta),
         AddrArgs = [ArgNum | AddrArgsTail]
@@ -766,7 +766,7 @@ acceptable_construct_mode(ModuleInfo, UniMode) :-
 :- pred occurs_once(bag(prog_var)::in, prog_var::in) is semidet.
 
 occurs_once(Bag, Var) :-
-    bag__count_value(Bag, Var, 1).
+    bag.count_value(Bag, Var, 1).
 
 %-----------------------------------------------------------------------------%
 
@@ -811,7 +811,7 @@ make_addr_vars([_ | _], [], _, _, _, _, _, _, !VarSet, !VarTypes) :-
 make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
         [HeadVar | HeadVars], [Mode | Modes], !.AddrOutArgPosns,
         NextOutArgNum, ModuleInfo, VarToAddr, !VarSet, !VarTypes) :-
-    map__lookup(!.VarTypes, HeadVar0, HeadVarType),
+    map.lookup(!.VarTypes, HeadVar0, HeadVarType),
     mode_to_arg_mode(ModuleInfo, Mode0, HeadVarType, ArgMode),
     (
         ArgMode = top_in,
@@ -822,11 +822,11 @@ make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
     ;
         ArgMode = top_out,
         ( !.AddrOutArgPosns = [NextOutArgNum | !:AddrOutArgPosns] ->
-            varset__lookup_name(!.VarSet, HeadVar0, Name),
+            varset.lookup_name(!.VarSet, HeadVar0, Name),
             AddrName = "AddrOf" ++ Name,
-            svvarset__new_named_var(AddrName, AddrVar, !VarSet),
-            map__lookup(!.VarTypes, HeadVar0, OldType),
-            svmap__det_insert(AddrVar, make_ref_type(OldType), !VarTypes),
+            svvarset.new_named_var(AddrName, AddrVar, !VarSet),
+            map.lookup(!.VarTypes, HeadVar0, OldType),
+            svmap.det_insert(AddrVar, make_ref_type(OldType), !VarTypes),
             HeadVar = AddrVar,
             Mode = in_mode,
             make_addr_vars(HeadVars0, Modes0, HeadVars, Modes,
@@ -861,12 +861,12 @@ transform_variant_goal(ModuleInfo, VarToAddr, InstMap0,
         )
     ;
         GoalExpr0 = disj(Goals0),
-        list__map(transform_variant_goal(ModuleInfo, VarToAddr, InstMap0),
+        list.map(transform_variant_goal(ModuleInfo, VarToAddr, InstMap0),
             Goals0, Goals),
         GoalExpr = disj(Goals)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        list__map(transform_variant_case(ModuleInfo, VarToAddr, InstMap0),
+        list.map(transform_variant_case(ModuleInfo, VarToAddr, InstMap0),
             Cases0, Cases),
         GoalExpr = switch(Var, CanFail, Cases)
     ;
@@ -934,14 +934,14 @@ transform_variant_case(ModuleInfo, VarToAddr, InstMap0, case(ConsId, Goal0),
 transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0, GoalInfo,
         GoalExpr0, GoalExpr) :-
     update_instmap(GoalExpr0 - GoalInfo, InstMap0, InstMap1),
-    list__filter(is_grounding(ModuleInfo, InstMap0, InstMap1), VarToAddr,
+    list.filter(is_grounding(ModuleInfo, InstMap0, InstMap1), VarToAddr,
         GroundingVarToAddr),
     (
         GroundingVarToAddr = [],
         GoalExpr = GoalExpr0
     ;
         GroundingVarToAddr = [_ | _],
-        list__map(make_store_goal(ModuleInfo), GroundingVarToAddr, StoreGoals),
+        list.map(make_store_goal(ModuleInfo), GroundingVarToAddr, StoreGoals),
         GoalExpr = conj(plain_conj, [GoalExpr0 - GoalInfo | StoreGoals])
     ).
 
@@ -949,9 +949,9 @@ transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0, GoalInfo,
     pair(prog_var)::in) is semidet.
 
 is_grounding(ModuleInfo, InstMap0, InstMap, Var - _AddrVar) :-
-    instmap__lookup_var(InstMap0, Var, Inst0),
+    instmap.lookup_var(InstMap0, Var, Inst0),
     not inst_is_ground(ModuleInfo, Inst0),
-    instmap__lookup_var(InstMap, Var, Inst),
+    instmap.lookup_var(InstMap, Var, Inst),
     inst_is_ground(ModuleInfo, Inst).
 
 :- pred make_store_goal(module_info::in, pair(prog_var)::in,
@@ -960,7 +960,7 @@ is_grounding(ModuleInfo, InstMap0, InstMap, Var - _AddrVar) :-
 make_store_goal(ModuleInfo, Var - AddrVar, Goal) :-
     generate_simple_call(mercury_private_builtin_module, "store_at_ref",
         predicate, only_mode, det, [AddrVar, Var], [impure_goal], [],
-        ModuleInfo, term__context_init, Goal).
+        ModuleInfo, term.context_init, Goal).
 
 %-----------------------------------------------------------------------------%
 

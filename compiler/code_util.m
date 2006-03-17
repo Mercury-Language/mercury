@@ -13,7 +13,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__code_util.
+:- module ll_backend.code_util.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -129,7 +129,7 @@
 %---------------------------------------------------------------------------%
 
 make_entry_label(ModuleInfo, PredId, ProcId, Immed, ProcAddr) :-
-    RttiProcLabel = rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId),
+    RttiProcLabel = rtti.make_rtti_proc_label(ModuleInfo, PredId, ProcId),
     make_entry_label_from_rtti(RttiProcLabel, Immed, ProcAddr).
 
 make_entry_label_from_rtti(RttiProcLabel, Immed, ProcAddr) :-
@@ -142,7 +142,7 @@ make_entry_label_from_rtti(RttiProcLabel, Immed, ProcAddr) :-
     ).
 
 make_local_entry_label(ModuleInfo, PredId, ProcId, Immed, Label) :-
-    RttiProcLabel = rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId),
+    RttiProcLabel = rtti.make_rtti_proc_label(ModuleInfo, PredId, ProcId),
     make_local_entry_label_from_rtti(RttiProcLabel, Immed, Label).
 
 :- pred make_local_entry_label_from_rtti(rtti_proc_label::in,
@@ -219,7 +219,7 @@ max_mentioned_reg(Lvals, MaxRegNum) :-
 max_mentioned_reg_2([], !MaxRegNum).
 max_mentioned_reg_2([Lval | Lvals], !MaxRegNum) :-
     ( Lval = reg(r, N) ->
-        int__max(N, !MaxRegNum)
+        int.max(N, !MaxRegNum)
     ;
         true
     ),
@@ -233,7 +233,7 @@ max_mentioned_abs_reg(Lvals, MaxRegNum) :-
 max_mentioned_abs_reg_2([], !MaxRegNum).
 max_mentioned_abs_reg_2([Lval | Lvals], !MaxRegNum) :-
     ( Lval = abs_reg(N) ->
-        int__max(N, !MaxRegNum)
+        int.max(N, !MaxRegNum)
     ;
         true
     ),
@@ -378,7 +378,7 @@ lvals_in_lvals([], []).
 lvals_in_lvals([First | Rest], Lvals) :-
     lvals_in_lval(First, FirstLvals),
     lvals_in_lvals(Rest, RestLvals),
-    list__append(FirstLvals, RestLvals, Lvals).
+    list.append(FirstLvals, RestLvals, Lvals).
 
 lvals_in_rval(lval(Lval), [Lval | Lvals]) :-
     lvals_in_lval(Lval, Lvals).
@@ -391,7 +391,7 @@ lvals_in_rval(unop(_, Rval), Lvals) :-
 lvals_in_rval(binop(_, Rval1, Rval2), Lvals) :-
     lvals_in_rval(Rval1, Lvals1),
     lvals_in_rval(Rval2, Lvals2),
-    list__append(Lvals1, Lvals2, Lvals).
+    list.append(Lvals1, Lvals2, Lvals).
 lvals_in_rval(mem_addr(MemRef), Lvals) :-
     lvals_in_mem_ref(MemRef, Lvals).
 
@@ -416,7 +416,7 @@ lvals_in_lval(sp, []).
 lvals_in_lval(field(_, Rval1, Rval2), Lvals) :-
     lvals_in_rval(Rval1, Lvals1),
     lvals_in_rval(Rval2, Lvals2),
-    list__append(Lvals1, Lvals2, Lvals).
+    list.append(Lvals1, Lvals2, Lvals).
 lvals_in_lval(lvar(_), []).
 lvals_in_lval(temp(_, _), []).
 lvals_in_lval(mem_ref(Rval), Lvals) :-
@@ -434,7 +434,7 @@ lvals_in_mem_ref(heap_ref(Rval, _, _), Lvals) :-
 build_input_arg_list(ProcInfo, VarLvals) :-
     proc_info_headvars(ProcInfo, HeadVars),
     proc_info_arg_info(ProcInfo, ArgInfos),
-    assoc_list__from_corresponding_lists(HeadVars, ArgInfos, VarArgInfos),
+    assoc_list.from_corresponding_lists(HeadVars, ArgInfos, VarArgInfos),
     build_input_arg_list_2(VarArgInfos, VarLvals).
 
 :- pred build_input_arg_list_2(assoc_list(prog_var, arg_info)::in,

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1999, 2003-2005 The University of Melbourne.
+% Copyright (C) 1994-1999, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,7 +13,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__labelopt.
+:- module ll_backend.labelopt.
 :- interface.
 
 :- import_module ll_backend.llds.
@@ -68,8 +68,8 @@ labelopt_main(Final, LayoutLabelSet, Instrs0, Instrs, Mod) :-
 build_useset([], !Useset).
 build_useset([Instr | Instructions], !Useset) :-
     Instr = Uinstr - _Comment,
-    opt_util__instr_labels(Uinstr, Labels, _CodeAddresses),
-    svset__insert_list(Labels, !Useset),
+    opt_util.instr_labels(Uinstr, Labels, _CodeAddresses),
+    svset.insert_list(Labels, !Useset),
     build_useset(Instructions, !Useset).
 
 %-----------------------------------------------------------------------------%
@@ -91,7 +91,7 @@ build_useset([Instr | Instructions], !Useset) :-
 instr_list(Instrs0, Instrs, Useset, Mod) :-
     Fallthrough = yes,
     instr_list_2(Instrs0, [], RevInstrs, no, Mod, Fallthrough, Useset),
-    list__reverse(RevInstrs, Instrs).
+    list.reverse(RevInstrs, Instrs).
 
 :- pred instr_list_2(list(instruction)::in,
     list(instruction)::in, list(instruction)::out,
@@ -108,7 +108,7 @@ instr_list_2([Instr0 | Instrs0], !RevInstrs, !Mod, !.Fallthrough, Useset) :-
                 ; EntryType = local
                 )
             ;
-                set__member(Label, Useset)
+                set.member(Label, Useset)
             )
         ->
             !:RevInstrs = [Instr0 | !.RevInstrs],
@@ -124,7 +124,7 @@ instr_list_2([Instr0 | Instrs0], !RevInstrs, !Mod, !.Fallthrough, Useset) :-
             !.Fallthrough = no,
             eliminate(Instr0, no, !RevInstrs, !Mod)
         ),
-        opt_util__can_instr_fall_through(Uinstr0, Canfallthrough),
+        opt_util.can_instr_fall_through(Uinstr0, Canfallthrough),
         (
             Canfallthrough = yes
         ;

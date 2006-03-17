@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1996, 2004-2005 The University of Melbourne.
+% Copyright (C) 1995-1996, 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,7 +19,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module libs__graph_colour.
+:- module libs.graph_colour.
 :- interface.
 
 :- import_module set.
@@ -40,17 +40,17 @@
 %-----------------------------------------------------------------------------%
 
 group_elements(Constraints, Colours) :-
-    set__power_union(Constraints, AllVars),
-    set__init(EmptySet),
-    set__delete(Constraints, EmptySet, Constraints1),
-    set__to_sorted_list(Constraints1, ConstraintList),
+    set.power_union(Constraints, AllVars),
+    set.init(EmptySet),
+    set.delete(Constraints, EmptySet, Constraints1),
+    set.to_sorted_list(Constraints1, ConstraintList),
     find_all_colours(ConstraintList, AllVars, ColourList),
-    set__list_to_set(ColourList, Colours).
+    set.list_to_set(ColourList, Colours).
 
 %   % performance reducing sanity check....
 %   (
-%       set__power_union(Colours, AllColours),
-%       (set__member(Var, AllVars) => set__member(Var, AllColours))
+%       set.power_union(Colours, AllColours),
+%       (set.member(Var, AllVars) => set.member(Var, AllColours))
 %   ->
 %       error("group_elements: sanity check failed")
 %   ;
@@ -72,7 +72,7 @@ find_all_colours(ConstraintList, Vars, ColourList) :-
     ;
         ConstraintList = [_ | _],
         next_colour(Vars, ConstraintList, RemainingConstraints, Colour),
-        set__difference(Vars, Colour, RestVars),
+        set.difference(Vars, Colour, RestVars),
         find_all_colours(RemainingConstraints, RestVars, ColourList0),
         ColourList = [Colour | ColourList0]
     ).
@@ -98,10 +98,10 @@ next_colour(Vars0, ConstraintList, Remainder, SameColour) :-
             % See if there are sets that can share a colour with the
             % selected var.
             NotContaining = [_ | _],
-            ( set__empty(RestVars) ->
+            ( set.empty(RestVars) ->
                 % There were no variables left that could share a colour,
                 % so create a singleton set containing this variable.
-                set__singleton_set(SameColour, Var),
+                set.singleton_set(SameColour, Var),
                 ResidueSets = NotContaining
             ;
                 % If there is at least one variable that can share a colour
@@ -111,7 +111,7 @@ next_colour(Vars0, ConstraintList, Remainder, SameColour) :-
                 next_colour(RestVars, NotContaining, ResidueSets, SameColour0),
 
                 % Add this variable to the variables of the current colour.
-                set__insert(SameColour0, Var, SameColour)
+                set.insert(SameColour0, Var, SameColour)
             )
         ;
             NotContaining = [],
@@ -119,19 +119,19 @@ next_colour(Vars0, ConstraintList, Remainder, SameColour) :-
             % by assigning any variable a colour the same as the current
             % variable, so create a signleton set with the current var,
             % and assign the residue to the empty set.
-            set__singleton_set(SameColour, Var),
+            set.singleton_set(SameColour, Var),
             ResidueSets = []
         ),
         % The remaining constraints are the residue sets that could not be
         % satisfied by assigning any variable to the current colour, and the
         % constraints that were already satisfied by the assignment of the
         % current variable to this colour.
-        list__append(ResidueSets, WereContaining, Remainder)
+        list.append(ResidueSets, WereContaining, Remainder)
     ;
         % If there were no constraints, then no colours were needed.
         ConstraintList = [],
         Remainder = [],
-        set__init(SameColour)
+        set.init(SameColour)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -150,15 +150,15 @@ next_colour(Vars0, ConstraintList, Remainder, SameColour) :-
 divide_constraints(_Var, [], [], [], !Vars).
 divide_constraints(Var, [S | Ss], C, NC, !Vars) :-
     divide_constraints(Var, Ss, C0, NC0, !Vars),
-    ( set__member(Var, S) ->
-        set__delete(S, Var, T),
-        ( set__empty(T) ->
+    ( set.member(Var, S) ->
+        set.delete(S, Var, T),
+        ( set.empty(T) ->
             C = C0
         ;
             C = [T | C0]
         ),
         NC = NC0,
-        set__difference(!.Vars, T, !:Vars)
+        set.difference(!.Vars, T, !:Vars)
     ;
         C = C0,
         NC = [S | NC0]
@@ -172,7 +172,7 @@ divide_constraints(Var, [S | Ss], C, NC, !Vars) :-
 :- pred choose_var(set(T)::in, T::out, set(T)::out) is det.
 
 choose_var(Vars0, Var, Vars) :-
-    ( set__remove_least(Vars0, VarPrime, VarsPrime) ->
+    ( set.remove_least(Vars0, VarPrime, VarsPrime) ->
         Var = VarPrime,
         Vars = VarsPrime
     ;

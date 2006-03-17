@@ -14,7 +14,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module hlds__make_hlds__superhomogeneous.
+:- module hlds.make_hlds.superhomogeneous.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -182,7 +182,7 @@ insert_arg_unifications_2([Var | Vars], [Arg | Args], Context, ArgContext,
         ArgUnifyConj = [_ | _],
         insert_arg_unifications_2(Vars, Args, Context, ArgContext,
             N1, !Goals, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
-        list__append(ArgUnifyConj, !.Goals, !:Goals)
+        list.append(ArgUnifyConj, !.Goals, !:Goals)
     ).
 
 insert_arg_unifications_with_supplied_contexts(ArgVars, ArgTerms0, ArgContexts,
@@ -227,7 +227,7 @@ insert_arg_unifications_with_supplied_contexts_2(Vars, Terms, ArgContexts,
         insert_arg_unifications_with_supplied_contexts_2(VarsTail, TermsTail,
             ArgContextsTail, Context, !Goals, !VarSet, !ModuleInfo, !QualInfo,
             !SInfo, !IO),
-        list__append(UnifyConj, !.Goals, !:Goals)
+        list.append(UnifyConj, !.Goals, !:Goals)
     ;
         unexpected(this_file, "insert_arg_unifications_with_supplied_contexts")
     ).
@@ -240,13 +240,13 @@ insert_arg_unifications_with_supplied_contexts_2(Vars, Terms, ArgContexts,
 
 insert_arg_unification(Var, Arg, Context, ArgContext, N1, !VarSet,
         ArgUnifyConj, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
-    ( Arg = term__variable(Var) ->
+    ( Arg = term.variable(Var) ->
         % Skip unifications of the form `X = X'
         ArgUnifyConj = []
     ;
         arg_context_to_unify_context(ArgContext, N1, UnifyMainContext,
             UnifySubContext),
-        unravel_unification(term__variable(Var), Arg, Context,
+        unravel_unification(term.variable(Var), Arg, Context,
             UnifyMainContext, UnifySubContext, purity_pure, Goal,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
         goal_to_conj_list(Goal, ArgUnifyConj)
@@ -287,7 +287,7 @@ append_arg_unifications_2([Var|Vars], [Arg|Args], Context, ArgContext,
     N1 = N0 + 1,
     append_arg_unification(Var, Arg, Context, ArgContext, N1, ConjList,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
-    list__append(!.List, ConjList, !:List),
+    list.append(!.List, ConjList, !:List),
     append_arg_unifications_2(Vars, Args, Context, ArgContext, N1,
         !List, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO).
 
@@ -299,13 +299,13 @@ append_arg_unifications_2([Var|Vars], [Arg|Args], Context, ArgContext,
 
 append_arg_unification(Var, Arg, Context, ArgContext, N1, ConjList,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
-    ( Arg = term__variable(Var) ->
+    ( Arg = term.variable(Var) ->
         % skip unifications of the form `X = X'
         ConjList = []
     ;
         arg_context_to_unify_context(ArgContext, N1, UnifyMainContext,
             UnifySubContext),
-        unravel_unification(term__variable(Var), Arg, Context,
+        unravel_unification(term.variable(Var), Arg, Context,
             UnifyMainContext, UnifySubContext, purity_pure, Goal,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
         goal_to_conj_list(Goal, ConjList)
@@ -331,7 +331,7 @@ arg_context_to_unify_context(functor(ConsId, MainContext, SubContexts), ArgNum,
 
 make_fresh_arg_vars(Args, Vars, !VarSet, !SInfo, !IO) :-
     make_fresh_arg_vars_2(Args, [], Vars1, !VarSet, !SInfo, !IO),
-    list__reverse(Vars1, Vars).
+    list.reverse(Vars1, Vars).
 
 :- pred make_fresh_arg_vars_2(list(prog_term)::in, list(prog_var)::in,
     list(prog_var)::out, prog_varset::in,prog_varset::out,
@@ -345,12 +345,12 @@ make_fresh_arg_vars_2([Arg | Args], Vars0, Vars, !VarSet, !SInfo, !IO) :-
 make_fresh_arg_var(Arg0, Var, Vars0, !VarSet, !SInfo, !IO) :-
     substitute_state_var_mapping(Arg0, Arg, !VarSet, !SInfo, !IO),
     (
-        Arg = term__variable(ArgVar),
-        \+ list__member(ArgVar, Vars0)
+        Arg = term.variable(ArgVar),
+        \+ list.member(ArgVar, Vars0)
     ->
         Var = ArgVar
     ;
-        varset__new_var(!.VarSet, Var, !:VarSet)
+        varset.new_var(!.VarSet, Var, !:VarSet)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -375,7 +375,7 @@ unravel_unification(LHS0, RHS0, Context, MainContext, SubContext,
 
     % `X = Y' needs no unravelling.
 
-unravel_unification_2(term__variable(X), term__variable(Y), Context,
+unravel_unification_2(term.variable(X), term.variable(Y), Context,
         MainContext, SubContext, Purity, Goal, !VarSet,
         !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     make_atomic_unification(X, var(Y), Context, MainContext, SubContext,
@@ -390,33 +390,33 @@ unravel_unification_2(term__variable(X), term__variable(Y), Context,
     %   NewVar3 = A3.
     % In the trivial case `X = c', no unravelling occurs.
 
-unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
+unravel_unification_2(term.variable(X), RHS, Context, MainContext, SubContext,
         Purity, Goal, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
-    RHS = term__functor(F, Args1, FunctorContext),
+    RHS = term.functor(F, Args1, FunctorContext),
     substitute_state_var_mappings(Args1, Args, !VarSet, !SInfo, !IO),
     (
         % Handle explicit type qualification.
         (
-            F = term__atom("with_type")
+            F = term.atom("with_type")
         ;
-            F = term__atom(":")
+            F = term.atom(":")
         ),
         Args = [RVal, DeclType0]
     ->
         % DeclType0 is a prog_term, but it is really a type so we coerce it
         % to a generic term before parsing it.
-        term__coerce(DeclType0, DeclType1),
+        term.coerce(DeclType0, DeclType1),
         parse_type(DeclType1, DeclTypeResult),
         (
             DeclTypeResult = ok(DeclType),
-            varset__coerce(!.VarSet, DeclVarSet),
+            varset.coerce(!.VarSet, DeclVarSet),
             process_type_qualification(X, DeclType, DeclVarSet,
                 Context, !ModuleInfo, !QualInfo, !IO)
         ;
             DeclTypeResult = error(Msg, ErrorTerm),
             % The varset is a prog_varset even though it contains the names
             % of type variables in ErrorTerm, which is a generic term.
-            GenericVarSet = varset__coerce(!.VarSet),
+            GenericVarSet = varset.coerce(!.VarSet),
             TermStr = mercury_term_to_string(ErrorTerm, GenericVarSet, no),
             Pieces = [words("In explicit type qualification:"),
                     words(Msg),
@@ -425,29 +425,29 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
             write_error_pieces(Context, 0, Pieces, !IO),
             io.set_exit_status(1, !IO)
         ),
-        unravel_unification(term__variable(X), RVal, Context, MainContext,
+        unravel_unification(term.variable(X), RVal, Context, MainContext,
             SubContext, Purity, Goal, !VarSet, !ModuleInfo, !QualInfo,
             !SInfo, !IO)
     ;
         % Handle unification expressions.
-        F = term__atom("@"),
+        F = term.atom("@"),
         Args = [LVal, RVal]
     ->
-        unravel_unification(term__variable(X), LVal, Context,
+        unravel_unification(term.variable(X), LVal, Context,
             MainContext, SubContext, Purity, Goal1,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
-        unravel_unification(term__variable(X), RVal, Context,
+        unravel_unification(term.variable(X), RVal, Context,
             MainContext, SubContext, Purity, Goal2,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
         goal_info_init(GoalInfo),
         goal_to_conj_list(Goal1, ConjList1),
         goal_to_conj_list(Goal2, ConjList2),
-        list__append(ConjList1, ConjList2, ConjList),
+        list.append(ConjList1, ConjList2, ConjList),
         conj_list_to_goal(ConjList, GoalInfo, Goal)
     ;
         % Handle higher-order pred and func expressions.
         parse_rule_term(Context, RHS, HeadTerm0, GoalTerm1),
-        term__coerce(HeadTerm0, HeadTerm1),
+        term.coerce(HeadTerm0, HeadTerm1),
         parse_purity_annotation(HeadTerm1, LambdaPurity, HeadTerm),
         (
             parse_pred_expression(HeadTerm, EvalMethod0, Vars0, Modes0, Det0)
@@ -462,10 +462,10 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
             PredOrFunc = function
         )
     ->
-        add_clause__qualify_lambda_mode_list(Modes1, Modes, Context,
+        add_clause.qualify_lambda_mode_list(Modes1, Modes, Context,
             !QualInfo, !IO),
         Det = Det1,
-        term__coerce(GoalTerm1, GoalTerm),
+        term.coerce(GoalTerm1, GoalTerm),
         parse_goal(GoalTerm, ParsedGoal, !VarSet),
         build_lambda_expression(X, Purity, LambdaPurity, PredOrFunc,
             EvalMethod, Vars1, Modes, Det, ParsedGoal, Context, MainContext,
@@ -475,17 +475,17 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
         % same semantics as higher-order pred expressions,
         % but has two extra arguments, and the goal is expanded
         % as a DCG goal.
-        F = term__atom("-->"),
+        F = term.atom("-->"),
         Args = [PredTerm0, GoalTerm0],
-        term__coerce(PredTerm0, PredTerm1),
+        term.coerce(PredTerm0, PredTerm1),
         parse_purity_annotation(PredTerm1, DCGLambdaPurity, PredTerm),
         parse_dcg_pred_expression(PredTerm, EvalMethod, Vars0, Modes0, Det)
     ->
-        add_clause__qualify_lambda_mode_list(Modes0, Modes, Context, !QualInfo,
+        add_clause.qualify_lambda_mode_list(Modes0, Modes, Context, !QualInfo,
             !IO),
-        term__coerce(GoalTerm0, GoalTerm),
+        term.coerce(GoalTerm0, GoalTerm),
         parse_dcg_pred_goal(GoalTerm, ParsedGoal, DCG0, DCGn, !VarSet),
-        list__append(Vars0, [term__variable(DCG0), term__variable(DCGn)],
+        list.append(Vars0, [term.variable(DCG0), term.variable(DCGn)],
             Vars1),
         build_lambda_expression(X, Purity, DCGLambdaPurity, predicate,
             EvalMethod, Vars1, Modes, Det, ParsedGoal, Context, MainContext,
@@ -496,36 +496,36 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
     ;
         % handle if-then-else expressions
         (
-            F = term__atom("else"),
-            IfThenTerm = term__functor(
-                term__atom("if"),
-                [term__functor(term__atom("then"), [IfTerm0, ThenTerm], _)],
+            F = term.atom("else"),
+            IfThenTerm = term.functor(
+                term.atom("if"),
+                [term.functor(term.atom("then"), [IfTerm0, ThenTerm], _)],
                 _),
             Args = [IfThenTerm, ElseTerm]
         ;
-            F = term__atom(";"),
-            Args = [term__functor(term__atom("->"), [IfTerm0, ThenTerm], _),
+            F = term.atom(";"),
+            Args = [term.functor(term.atom("->"), [IfTerm0, ThenTerm], _),
                 ElseTerm]
         ),
-        term__coerce(IfTerm0, IfTerm),
+        term.coerce(IfTerm0, IfTerm),
         parse_some_vars_goal(IfTerm, Vars, StateVars, IfParseTree, !VarSet)
     ->
         BeforeSInfo = !.SInfo,
         prepare_for_if_then_else_expr(StateVars, !VarSet, !SInfo),
 
-        map__init(EmptySubst),
+        map.init(EmptySubst),
         transform_goal(IfParseTree, EmptySubst, IfGoal, !VarSet,
             !ModuleInfo, !QualInfo, !SInfo, !IO),
 
         finish_if_then_else_expr_condition(BeforeSInfo, !SInfo),
 
-        unravel_unification(term__variable(X), ThenTerm,
+        unravel_unification(term.variable(X), ThenTerm,
             Context, MainContext, SubContext, Purity, ThenGoal,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
 
         finish_if_then_else_expr_then_goal(StateVars, BeforeSInfo, !SInfo),
 
-        unravel_unification(term__variable(X), ElseTerm,
+        unravel_unification(term.variable(X), ElseTerm,
             Context, MainContext, SubContext, Purity,
             ElseGoal, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
 
@@ -535,7 +535,7 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
         Goal = IfThenElse - GoalInfo
     ;
         % handle field extraction expressions
-        F = term__atom("^"),
+        F = term.atom("^"),
         Args = [InputTerm, FieldNameTerm],
         parse_field_list(FieldNameTerm, FieldNameResult),
         FieldNameResult = ok(FieldNames)
@@ -551,9 +551,9 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO)
     ;
         % handle field update expressions
-        F = term__atom(":="),
+        F = term.atom(":="),
         Args = [FieldDescrTerm, FieldValueTerm],
-        FieldDescrTerm = term__functor(term__atom("^"),
+        FieldDescrTerm = term.functor(term.atom("^"),
             [InputTerm, FieldNameTerm], _),
         parse_field_list(FieldNameTerm, FieldNameResult),
         FieldNameResult = ok(FieldNames)
@@ -582,13 +582,13 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
         parse_qualified_term(RHS, RHS, "", MaybeFunctor),
         (
             MaybeFunctor = ok(FunctorName, FunctorArgs),
-            list__length(FunctorArgs, Arity),
+            list.length(FunctorArgs, Arity),
             ConsId = cons(FunctorName, Arity)
         ;
             % float, int or string constant
             %   - any errors will be caught by typechecking
             MaybeFunctor = error(_, _),
-            list__length(Args, Arity),
+            list.length(Args, Arity),
             ConsId = make_functor_cons_id(F, Arity),
             FunctorArgs = Args
         ),
@@ -648,9 +648,9 @@ unravel_unification_2(term__variable(X), RHS, Context, MainContext, SubContext,
 
     % Handle `f(...) = X' in the same way as `X = f(...)'.
 
-unravel_unification_2(term__functor(F, As, FC), term__variable(Y), C, MC, SC,
+unravel_unification_2(term.functor(F, As, FC), term.variable(Y), C, MC, SC,
         Purity, Goal, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
-    unravel_unification(term__variable(Y), term__functor(F, As, FC), C, MC, SC,
+    unravel_unification(term.variable(Y), term.functor(F, As, FC), C, MC, SC,
         Purity, Goal, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO).
 
     % If we find a unification of the form `f1(...) = f2(...)',
@@ -659,28 +659,28 @@ unravel_unification_2(term__functor(F, As, FC), term__variable(Y), C, MC, SC,
     % Note that we can't simplify it yet, because we might simplify
     % away type errors.
 
-unravel_unification_2(term__functor(LeftF, LeftAs, LeftC),
-        term__functor(RightF, RightAs, RightC),
+unravel_unification_2(term.functor(LeftF, LeftAs, LeftC),
+        term.functor(RightF, RightAs, RightC),
         Context, MainContext, SubContext,
         Purity, Goal, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
-    varset__new_var(!.VarSet, TmpVar, !:VarSet),
-    unravel_unification(term__variable(TmpVar),
-        term__functor(LeftF, LeftAs, LeftC),
+    varset.new_var(!.VarSet, TmpVar, !:VarSet),
+    unravel_unification(term.variable(TmpVar),
+        term.functor(LeftF, LeftAs, LeftC),
         Context, MainContext, SubContext,
         Purity, Goal0, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
-    unravel_unification(term__variable(TmpVar),
-        term__functor(RightF, RightAs, RightC),
+    unravel_unification(term.variable(TmpVar),
+        term.functor(RightF, RightAs, RightC),
         Context, MainContext, SubContext,
         Purity, Goal1, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
     goal_info_init(GoalInfo),
     goal_to_conj_list(Goal0, ConjList0),
     goal_to_conj_list(Goal1, ConjList1),
-    list__append(ConjList0, ConjList1, ConjList),
+    list.append(ConjList0, ConjList1, ConjList),
     conj_list_to_goal(ConjList, GoalInfo, Goal).
 
 :- pred ground_term(term(T)::in) is semidet.
 
-ground_term(term__functor(_, Terms, _)) :-
+ground_term(term.functor(_, Terms, _)) :-
     ground_terms(Terms).
 
 :- pred ground_terms(list(term(T))::in) is semidet.

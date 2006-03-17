@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2003, 2005 The University of Melbourne.
+% Copyright (C) 2001, 2003, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__wrap_blocks.
+:- module ll_backend.wrap_blocks.
 :- interface.
 
 :- import_module ll_backend.llds.
@@ -66,7 +66,7 @@ wrap_instrs([], R, F, RevSofar, []) :-
     ).
 wrap_instrs([Instr0 | Instrs0], R0, F0, RevSofar, Instrs) :-
     Instr0 = Uinstr0 - _Comment0,
-    opt_util__count_temps_instr(Uinstr0, R0, R1, F0, F1),
+    opt_util.count_temps_instr(Uinstr0, R0, R1, F0, F1),
     ( ( R1 > 0 ; F1 > 0) ->
         % We must close the block before a label, since you can jump
         % to a label from other blocks.
@@ -79,11 +79,11 @@ wrap_instrs([Instr0 | Instrs0], R0, F0, RevSofar, Instrs) :-
         % debugger/all_solutions to fail.
 
         ( ( Uinstr0 = label(_) ; Uinstr0 = call(_, _, _, _, _, _) ) ->
-            list__reverse(RevSofar, BlockInstrs),
+            list.reverse(RevSofar, BlockInstrs),
             wrap_instrs(Instrs0, 0, 0, [], Instrs1),
             Instrs = [block(R1, F1, BlockInstrs) - "", Instr0 | Instrs1]
-        ; opt_util__can_instr_fall_through(Uinstr0, no) ->
-            list__reverse([Instr0 | RevSofar], BlockInstrs),
+        ; opt_util.can_instr_fall_through(Uinstr0, no) ->
+            list.reverse([Instr0 | RevSofar], BlockInstrs),
             wrap_instrs(Instrs0, 0, 0, [], Instrs1),
             Instrs = [block(R1, F1, BlockInstrs) - "" | Instrs1]
         ;

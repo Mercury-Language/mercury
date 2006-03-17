@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -9,7 +9,7 @@
 % File: state_var.m.
 % Main author: rafe.
 
-:- module hlds__make_hlds__state_var.
+:- module hlds.make_hlds.state_var.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -306,7 +306,7 @@
 :- import_module term.
 :- import_module varset.
 
-new_svar_info = svar_info(in_head, 0, map__init, map__init, map__init).
+new_svar_info = svar_info(in_head, 0, map.init, map.init, map.init).
 
 :- pred svar_info `has_svar_colon_mapping_for` svar.
 :- mode in `has_svar_colon_mapping_for` in is semidet.
@@ -321,7 +321,7 @@ SInfo `has_svar_colon_mapping_for` StateVar :-
 
 SInfo `with_updated_svar` StateVar =
     ( SInfo ^ ctxt =  in_atom(UpdatedStateVars, ParentSInfo) ->
-        SInfo ^ ctxt := in_atom(set__insert(UpdatedStateVars, StateVar),
+        SInfo ^ ctxt := in_atom(set.insert(UpdatedStateVars, StateVar),
             ParentSInfo)
     ;
         SInfo
@@ -382,8 +382,7 @@ colon(Context, StateVar, Var, !VarSet, !SInfo, !IO) :-
     % Construct the initial and final mappings for a state variable.
     %
 :- pred new_local_state_var(svar::in, prog_var::out, prog_var::out,
-    prog_varset::in, prog_varset::out, svar_info::in, svar_info::out)
-    is det.
+    prog_varset::in, prog_varset::out, svar_info::in, svar_info::out) is det.
 
 new_local_state_var(StateVar, VarD, VarC, !VarSet, !SInfo) :-
     new_dot_state_var(StateVar, VarD, !VarSet, !SInfo),
@@ -392,35 +391,32 @@ new_local_state_var(StateVar, VarD, VarC, !VarSet, !SInfo) :-
     % Construct the initial and final mappings for a state variable.
     %
 :- pred new_dot_state_var(svar::in, prog_var::out,
-    prog_varset::in, prog_varset::out, svar_info::in, svar_info::out)
-    is det.
+    prog_varset::in, prog_varset::out, svar_info::in, svar_info::out) is det.
 
 new_dot_state_var(StateVar, VarD, !VarSet, !SInfo) :-
     N     = !.SInfo ^ num,
-    Name  = varset__lookup_name(!.VarSet, StateVar),
-    NameD = string__format("STATE_VARIABLE_%s_%d", [s(Name), i(N)]),
-    varset__new_named_var(!.VarSet, NameD, VarD, !:VarSet),
+    Name  = varset.lookup_name(!.VarSet, StateVar),
+    NameD = string.format("STATE_VARIABLE_%s_%d", [s(Name), i(N)]),
+    varset.new_named_var(!.VarSet, NameD, VarD, !:VarSet),
     !:SInfo = ( !.SInfo ^ dot ^ elem(StateVar) := VarD ).
 
 :- pred new_colon_state_var(svar::in, prog_var::out,
-    prog_varset::in, prog_varset::out, svar_info::in, svar_info::out)
-    is det.
+    prog_varset::in, prog_varset::out, svar_info::in, svar_info::out) is det.
 
 new_colon_state_var(StateVar, VarC, !VarSet, !SInfo) :-
     N     = !.SInfo ^ num,
-    Name  = varset__lookup_name(!.VarSet, StateVar),
-    NameC = string__format("STATE_VARIABLE_%s_%d", [s(Name), i(N)]),
-    varset__new_named_var(!.VarSet, NameC, VarC, !:VarSet),
+    Name  = varset.lookup_name(!.VarSet, StateVar),
+    NameC = string.format("STATE_VARIABLE_%s_%d", [s(Name), i(N)]),
+    varset.new_named_var(!.VarSet, NameC, VarC, !:VarSet),
     !:SInfo = ( !.SInfo ^ colon ^ elem(StateVar) := VarC ).
 
 :- pred new_final_state_var(svar::in, prog_var::out,
-    prog_varset::in, prog_varset::out, svar_info::in, svar_info::out)
-    is det.
+    prog_varset::in, prog_varset::out, svar_info::in, svar_info::out) is det.
 
 new_final_state_var(StateVar, VarC, !VarSet, !SInfo) :-
-    Name  = varset__lookup_name(!.VarSet, StateVar),
-    NameC = string__format("STATE_VARIABLE_%s",    [s(Name)]),
-    varset__new_named_var(!.VarSet, NameC, VarC, !:VarSet),
+    Name  = varset.lookup_name(!.VarSet, StateVar),
+    NameC = string.format("STATE_VARIABLE_%s",    [s(Name)]),
+    varset.new_named_var(!.VarSet, NameC, VarC, !:VarSet),
     !:SInfo = ( !.SInfo ^ colon ^ elem(StateVar) := VarC ).
 
 %-----------------------------------------------------------------------------%
@@ -437,8 +433,8 @@ prepare_for_lambda(!SInfo) :-
 prepare_for_body(FinalMap, !VarSet, !SInfo) :-
     FinalMap  = !.SInfo ^ colon,
     N         = !.SInfo ^ num + 1,
-    StateVars = list__merge_and_remove_dups(map__keys(!.SInfo ^ colon),
-        map__keys(!.SInfo ^ dot)),
+    StateVars = list.merge_and_remove_dups(map.keys(!.SInfo ^ colon),
+        map.keys(!.SInfo ^ dot)),
     next_svar_mappings(N, StateVars, !VarSet, Colon),
     !:SInfo   = !.SInfo ^ ctxt  := in_body,
     !:SInfo   = !.SInfo ^ num   := N,
@@ -459,7 +455,7 @@ finish_goals(Context, FinalSVarMap, Goals0, Goal, SInfo) :-
     = hlds_goals.
 
 svar_unifiers(MaybeFeature, Context, LHSMap, RHSMap) =
-    map__foldl(add_svar_unifier(MaybeFeature, RHSMap, Context), LHSMap, []).
+    map.foldl(add_svar_unifier(MaybeFeature, RHSMap, Context), LHSMap, []).
 
 :- func add_svar_unifier(maybe(goal_feature), svar_map, prog_context,
     svar, prog_var, hlds_goals) = hlds_goals.
@@ -492,7 +488,7 @@ svar_unification(MaybeFeature, Context, SVar, Var) = Unification :-
 %-----------------------------------------------------------------------------%
 
 prepare_for_local_state_vars(StateVars, !VarSet, !SInfo) :-
-    list__foldl2(add_new_local_state_var, StateVars, !VarSet, !SInfo).
+    list.foldl2(add_new_local_state_var, StateVars, !VarSet, !SInfo).
 
 :- pred add_new_local_state_var(svar::in,
     prog_varset::in, prog_varset::out, svar_info::in, svar_info::out) is det.
@@ -507,7 +503,7 @@ finish_local_state_vars(StateVars, Vars, SInfoBefore, !SInfo) :-
     InitColon = !.SInfo ^ colon,
     Dots    = svar_mappings(InitDot, StateVars),
     Colons  = svar_mappings(InitColon, StateVars),
-    Vars    = list__sort_and_remove_dups(Dots ++ Colons),
+    Vars    = list.sort_and_remove_dups(Dots ++ Colons),
     !:SInfo = !.SInfo ^ dot :=
         del_locals(StateVars, SInfoBefore ^ dot, InitDot),
     !:SInfo = !.SInfo ^ colon :=
@@ -526,11 +522,11 @@ svar_mappings(Map, [StateVar | StateVars]) =
 :- func del_locals(svars, svar_map, svar_map) = svar_map.
 
 del_locals(StateVars, MapBefore, Map) =
-    list__foldl(
+    list.foldl(
         func(K, M) =
             ( if   MapBefore ^ elem(K) =  V
               then M         ^ elem(K) := V
-              else map__delete(M, K)
+              else map.delete(M, K)
             ),
         StateVars,
         Map
@@ -546,8 +542,8 @@ finish_if_then_else(Context, Then0, Then, Else0, Else,
         % Them arm itself.  This is because the new mappings
         % appear only in a negated context.
         %
-    StateVars = list__merge_and_remove_dups(map__keys(SInfoT0 ^ dot),
-         map__keys(SInfoE  ^ dot)),
+    StateVars = list.merge_and_remove_dups(map.keys(SInfoT0 ^ dot),
+         map.keys(SInfoE  ^ dot)),
     Then0 = _ - GoalInfo,
     goal_to_conj_list(Then0, Thens0),
     add_then_arm_specific_unifiers(Context, StateVars,
@@ -592,7 +588,7 @@ add_then_arm_specific_unifiers(Context, [StateVar | StateVars],
         new_colon_state_var(StateVar, Dot, !VarSet, !SInfoT),
         !:Thens = [svar_unification(yes(dont_warn_singleton), Context,
             Dot, Dot0) | !.Thens],
-        prepare_for_next_conjunct(set__make_singleton_set(StateVar),
+        prepare_for_next_conjunct(set.make_singleton_set(StateVar),
             !VarSet, !SInfoT)
     ;
         true
@@ -606,7 +602,7 @@ add_then_arm_specific_unifiers(Context, [StateVar | StateVars],
     prog_varset::in, prog_varset::out, svar_map::out) is det.
 
 next_svar_mappings(N, StateVars, VarSet0, VarSet, Map) :-
-    next_svar_mappings_2(N, StateVars, VarSet0, VarSet, map__init, Map).
+    next_svar_mappings_2(N, StateVars, VarSet0, VarSet, map.init, Map).
 
 :- pred next_svar_mappings_2(int::in, svars::in,
     prog_varset::in, prog_varset::out, svar_map::in, svar_map::out) is det.
@@ -626,8 +622,8 @@ finish_negation(SInfoBefore, SInfoNeg, SInfo) :-
 
 finish_disjunction(Context, VarSet, DisjSInfos, Disjs, SInfo) :-
     SInfo      = reconciled_disj_svar_info(VarSet, DisjSInfos),
-    StateVars  = map__keys(SInfo ^ dot),
-    Disjs      = list__map( add_disj_unifiers(Context, SInfo, StateVars),
+    StateVars  = map.keys(SInfo ^ dot),
+    Disjs      = list.map( add_disj_unifiers(Context, SInfo, StateVars),
         DisjSInfos).
 
     % Each arm of a disjunction may have a different mapping for
@@ -648,15 +644,15 @@ reconciled_disj_svar_info(VarSet, [{_, SInfo0} | DisjSInfos]) = SInfo :-
         % over the whole disjunction (not all arms will necessarily
         % include !. and !: mappings for all state variables).
         %
-    Dots0   = set__sorted_list_to_set(map__keys(SInfo0 ^ dot)),
-    Colons0 = set__sorted_list_to_set(map__keys(SInfo0 ^ colon)),
+    Dots0   = set.sorted_list_to_set(map.keys(SInfo0 ^ dot)),
+    Colons0 = set.sorted_list_to_set(map.keys(SInfo0 ^ colon)),
     Dots    = union_dot_svars(Dots0, DisjSInfos),
     Colons  = union_colon_svars(Colons0, DisjSInfos),
 
         % Then we update SInfo0 to take the highest numbered
         % !. and !: mapping for each state variable.
         %
-    SInfo   = list__foldl(reconciled_svar_infos(VarSet, Dots, Colons),
+    SInfo   = list.foldl(reconciled_svar_infos(VarSet, Dots, Colons),
         DisjSInfos, SInfo0).
 
 :- func union_dot_svars(svar_set, hlds_goal_svar_infos) = svar_set.
@@ -664,7 +660,7 @@ reconciled_disj_svar_info(VarSet, [{_, SInfo0} | DisjSInfos]) = SInfo :-
 union_dot_svars(Dots, []                       ) = Dots.
 union_dot_svars(Dots, [{_, SInfo} | DisjSInfos]) =
     union_dot_svars(
-        Dots `union` set__sorted_list_to_set(map__keys(SInfo ^ dot)),
+        Dots `union` set.sorted_list_to_set(map.keys(SInfo ^ dot)),
         DisjSInfos
     ).
 
@@ -673,7 +669,7 @@ union_dot_svars(Dots, [{_, SInfo} | DisjSInfos]) =
 union_colon_svars(Colons, []                       ) = Colons.
 union_colon_svars(Colons, [{_, SInfo} | DisjSInfos]) =
     union_colon_svars(
-        Colons `union` set__sorted_list_to_set(map__keys(SInfo ^ colon)),
+        Colons `union` set.sorted_list_to_set(map.keys(SInfo ^ colon)),
         DisjSInfos
     ).
 
@@ -682,9 +678,9 @@ union_colon_svars(Colons, [{_, SInfo} | DisjSInfos]) =
 
 reconciled_svar_infos(VarSet, Dots, Colons,
         {_, SInfoX}, SInfo0) = SInfo :-
-    SInfo1 = set__fold(reconciled_svar_infos_dots(VarSet, SInfoX),
+    SInfo1 = set.fold(reconciled_svar_infos_dots(VarSet, SInfoX),
         Dots, SInfo0),
-    SInfo2 = set__fold(reconciled_svar_infos_colons(VarSet, SInfoX),
+    SInfo2 = set.fold(reconciled_svar_infos_colons(VarSet, SInfoX),
         Colons, SInfo1),
     SInfo  = ( SInfo2 ^ num := max(SInfo0 ^ num, SInfoX ^ num) ).
 
@@ -696,8 +692,8 @@ reconciled_svar_infos_dots(VarSet, SInfoX, StateVar, SInfo0) = SInfo :-
         DotX = SInfoX ^ dot ^ elem(StateVar),
         Dot0 = SInfo0 ^ dot ^ elem(StateVar)
     ->
-        NameX = varset__lookup_name(VarSet, DotX) `with_type` string,
-        Name0 = varset__lookup_name(VarSet, Dot0) `with_type` string,
+        NameX = varset.lookup_name(VarSet, DotX) `with_type` string,
+        Name0 = varset.lookup_name(VarSet, Dot0) `with_type` string,
         compare_svar_names(RDot, NameX, Name0),
         (
             RDot  = (<),
@@ -721,8 +717,8 @@ reconciled_svar_infos_colons(VarSet, SInfoX, StateVar, SInfo0) = SInfo :-
         ColonX = SInfoX ^ colon ^ elem(StateVar),
         Colon0 = SInfo0 ^ colon ^ elem(StateVar)
     ->
-        NameX = varset__lookup_name(VarSet, ColonX) `with_type` string,
-        Name0 = varset__lookup_name(VarSet, Colon0) `with_type` string,
+        NameX = varset.lookup_name(VarSet, ColonX) `with_type` string,
+        Name0 = varset.lookup_name(VarSet, Colon0) `with_type` string,
         compare_svar_names(RColon, NameX, Name0),
         (
             RColon = (<),
@@ -742,7 +738,7 @@ reconciled_svar_infos_colons(VarSet, SInfoX, StateVar, SInfo0) = SInfo :-
     = hlds_goal.
 
 add_disj_unifiers(Context, SInfo, StateVars, {GoalX, SInfoX}) = Goal :-
-    Unifiers = list__foldl(add_disj_unifier(Context, SInfo, SInfoX),
+    Unifiers = list.foldl(add_disj_unifier(Context, SInfo, SInfoX),
         StateVars, []),
     GoalX = _ - GoalInfo,
     goal_to_conj_list(GoalX, GoalsX),
@@ -812,7 +808,7 @@ prepare_for_call(ParentSInfo, SInfo) :-
     ( ParentSInfo ^ ctxt = in_atom(UpdatedStateVars, _GrandparentSInfo) ->
         Ctxt = in_atom(UpdatedStateVars, ParentSInfo)
     ;
-        Ctxt = in_atom(set__init, ParentSInfo)
+        Ctxt = in_atom(set.init, ParentSInfo)
     ),
     SInfo = ParentSInfo ^ ctxt := Ctxt.
 
@@ -878,10 +874,10 @@ prepare_for_next_conjunct(UpdatedStateVars, !VarSet, !SInfo) :-
     Dot0   = !.SInfo ^ dot,
     Colon0 = !.SInfo ^ colon,
     N      = !.SInfo ^ num + 1,
-    map__init(Nil),
-    map__foldl(next_dot_mapping(UpdatedStateVars, Dot0, Colon0), Colon0,
+    map.init(Nil),
+    map.foldl(next_dot_mapping(UpdatedStateVars, Dot0, Colon0), Colon0,
         Nil, Dot),
-    map__foldl2(next_colon_mapping(UpdatedStateVars, Colon0, N), Colon0,
+    map.foldl2(next_colon_mapping(UpdatedStateVars, Colon0, N), Colon0,
         !VarSet, Nil, Colon),
     !:SInfo  = !.SInfo ^ ctxt  := in_body,
     !:SInfo  = !.SInfo ^ num   := N,
@@ -929,15 +925,15 @@ next_colon_mapping(UpdatedStateVars, OldColon, N, StateVar, _,
     prog_varset::in, prog_varset::out, svar_map::in, svar_map::out) is det.
 
 next_svar_mapping(N, StateVar, Var, !VarSet, !Map) :-
-    Name = string__format("STATE_VARIABLE_%s_%d",
-        [s(varset__lookup_name(!.VarSet, StateVar)), i(N)]),
-    varset__new_named_var(!.VarSet, Name, Var, !:VarSet),
+    Name = string.format("STATE_VARIABLE_%s_%d",
+        [s(varset.lookup_name(!.VarSet, StateVar)), i(N)]),
+    varset.new_named_var(!.VarSet, Name, Var, !:VarSet),
     !:Map  = ( !.Map ^ elem(StateVar) := Var ).
 
 %-----------------------------------------------------------------------------%
 
 expand_bang_state_var_args(Args) =
-    list__foldr(expand_bang_state_var, Args, []).
+    list.foldr(expand_bang_state_var, Args, []).
 
 :- func expand_bang_state_var(prog_term, list(prog_term)) = list(prog_term).
 
@@ -958,7 +954,7 @@ expand_bang_state_var(T @ functor(Const, Args, Ctxt), Ts) =
 expand_bang_state_var_args_in_instance_method_heads(abstract) = abstract.
 
 expand_bang_state_var_args_in_instance_method_heads(concrete(Methods)) =
-    concrete(list__map(expand_method_bsvs, Methods)).
+    concrete(list.map(expand_method_bsvs, Methods)).
 
 :- func expand_method_bsvs(instance_method) = instance_method.
 
@@ -967,11 +963,11 @@ expand_method_bsvs(IM) = IM :-
 
 expand_method_bsvs(IM0) = IM :-
     IM0 = instance_method(PredOrFunc, Method, clauses(Cs0), Arity0, Ctxt),
-    Cs  = list__map(expand_item_bsvs, Cs0),
+    Cs  = list.map(expand_item_bsvs, Cs0),
         % Note that the condition should always succeed...
         %
     ( Cs = [clause(_, _, _, _, Args, _) | _] ->
-        adjust_func_arity(PredOrFunc, Arity, list__length(Args))
+        adjust_func_arity(PredOrFunc, Arity, list.length(Args))
     ;
         Arity = Arity0
     ),
@@ -1015,7 +1011,7 @@ substitute_state_var_mapping(Arg0, Arg, !VarSet, !SInfo, !IO) :-
 %-----------------------------------------------------------------------------%
 
 illegal_state_var_func_result(function, Args, StateVar) :-
-    list__last(Args, functor(atom("!"), [variable(StateVar)], _Ctxt)).
+    list.last(Args, functor(atom("!"), [variable(StateVar)], _Ctxt)).
 
 %-----------------------------------------------------------------------------%
 
@@ -1029,12 +1025,12 @@ lambda_args_contain_bang_state_var([Arg | Args], StateVar) :-
 %-----------------------------------------------------------------------------%
 
 report_illegal_state_var_update(Context, VarSet, StateVar, !IO) :-
-    Name = varset__lookup_name(VarSet, StateVar),
+    Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Error: cannot use"), fixed("!:" ++ Name),
         words("in this context;"), nl,
         words("however"), fixed("!." ++ Name), words("may be used here.")],
     write_error_pieces(Context, 0, Pieces, !IO),
-    io__set_exit_status(1, !IO).
+    io.set_exit_status(1, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1042,11 +1038,11 @@ report_illegal_state_var_update(Context, VarSet, StateVar, !IO) :-
     prog_varset::in, svar::in, io::di, io::uo) is det.
 
 report_non_visible_state_var(DorC, Context, VarSet, StateVar, !IO) :-
-    Name = varset__lookup_name(VarSet, StateVar),
+    Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Error: state variable"),
         fixed("!" ++ DorC ++ Name), words("is not visible in this context.")],
     write_error_pieces(Context, 0, Pieces, !IO),
-    io__set_exit_status(1, !IO).
+    io.set_exit_status(1, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -1054,7 +1050,7 @@ report_non_visible_state_var(DorC, Context, VarSet, StateVar, !IO) :-
     svar::in, io::di, io::uo) is det.
 
 report_unitialized_state_var(Context, VarSet, StateVar, !IO) :-
-    Name = varset__lookup_name(VarSet, StateVar),
+    Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Warning: reference to unitialized state variable"),
         fixed("!." ++ Name), suffix("."), nl],
     write_error_pieces(Context, 0, Pieces, !IO),
@@ -1063,24 +1059,24 @@ report_unitialized_state_var(Context, VarSet, StateVar, !IO) :-
 %-----------------------------------------------------------------------------%
 
 report_illegal_func_svar_result(Context, VarSet, StateVar, !IO) :-
-    Name = varset__lookup_name(VarSet, StateVar),
+    Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Error:"), fixed("!" ++ Name),
         words("cannot be a function result."), nl,
         words("You probably meant"), fixed("!." ++ Name),
         words("or"), fixed("!:" ++ Name), suffix("."), nl],
     write_error_pieces(Context, 0, Pieces, !IO),
-    io__set_exit_status(1, !IO).
+    io.set_exit_status(1, !IO).
 
 %-----------------------------------------------------------------------------%
 
 report_illegal_bang_svar_lambda_arg(Context, VarSet, StateVar, !IO) :-
-    Name = varset__lookup_name(VarSet, StateVar),
+    Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Error:"), fixed("!" ++ Name),
         words("cannot be a lambda argument."), nl,
         words("Perhaps you meant"), fixed("!." ++ Name),
         words("or"), fixed("!:" ++ Name), suffix("."), nl],
     write_error_pieces(Context, 0, Pieces, !IO),
-    io__set_exit_status(1, !IO).
+    io.set_exit_status(1, !IO).
 
 %-----------------------------------------------------------------------------%
 

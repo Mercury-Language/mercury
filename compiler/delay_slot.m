@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003-2005 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -47,7 +47,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__delay_slot.
+:- module ll_backend.delay_slot.
 :- interface.
 
 :- import_module ll_backend.llds.
@@ -79,7 +79,7 @@ fill_branch_delay_slot([Instr0 | Instrs0], Instrs) :-
         Instr3 = assign(stackvar(Size), lval(succip)) - C2
     ->
         fill_branch_delay_slot(Tail0, Tail1),
-        string__append(C2, " (early save in delay slot)", NewC2),
+        string.append(C2, " (early save in delay slot)", NewC2),
         EarlySave = assign(stackvar(0), lval(succip)) - NewC2,
         Instrs = [Instr0, EarlySave, Instr1, Instr2 | Tail1]
     ;

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001,2003-2005 The University of Melbourne.
+% Copyright (C) 1997-2001,2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -15,7 +15,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__basic_block.
+:- module ll_backend.basic_block.
 :- interface.
 
 :- import_module ll_backend.llds.
@@ -110,10 +110,10 @@
 
 create_basic_blocks(Instrs0, Comments, ProcLabel, !C, NewLabels, LabelSeq,
         BlockMap) :-
-    opt_util__get_prologue(Instrs0, LabelInstr, Comments, AfterLabelInstrs),
+    opt_util.get_prologue(Instrs0, LabelInstr, Comments, AfterLabelInstrs),
     Instrs1 = [LabelInstr | AfterLabelInstrs],
-    build_block_map(Instrs1, LabelSeq, ProcLabel, no, map__init, BlockMap,
-        set__init, NewLabels, !C).
+    build_block_map(Instrs1, LabelSeq, ProcLabel, no, map.init, BlockMap,
+        set.init, NewLabels, !C).
 
 %-----------------------------------------------------------------------------%
 
@@ -132,9 +132,9 @@ build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, ProcLabel, FallInto,
         LabelInstr = OrigInstr0,
         RestInstrs = OrigInstrs0
     ;
-        counter__allocate(N, !C),
+        counter.allocate(N, !C),
         Label = internal(N, ProcLabel),
-        svset__insert(Label, !NewLabels),
+        svset.insert(Label, !NewLabels),
         LabelInstr = label(Label) - "",
         RestInstrs = [OrigInstr0 | OrigInstrs0]
     ),
@@ -142,10 +142,10 @@ build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, ProcLabel, FallInto,
         take_until_end_of_block(RestInstrs, BlockInstrs, Instrs1),
         build_block_map(Instrs1, LabelSeq1, ProcLabel, NextFallInto, !BlockMap,
             !NewLabels, !C),
-        ( list__last(BlockInstrs, LastInstr) ->
+        ( list.last(BlockInstrs, LastInstr) ->
             LastInstr = LastUinstr - _,
-            opt_util__possible_targets(LastUinstr, SideLabels, _SideCodeAddrs),
-            opt_util__can_instr_fall_through(LastUinstr, NextFallInto)
+            opt_util.possible_targets(LastUinstr, SideLabels, _SideCodeAddrs),
+            opt_util.can_instr_fall_through(LastUinstr, NextFallInto)
         ;
             SideLabels = [],
             NextFallInto = yes
@@ -159,7 +159,7 @@ build_block_map([OrigInstr0 | OrigInstrs0], LabelSeq, ProcLabel, FallInto,
         ),
         BlockInfo = block_info(Label, LabelInstr, BlockInstrs, FallInto,
             SideLabels, MaybeFallThrough),
-        map__det_insert(!.BlockMap, Label, BlockInfo, !:BlockMap),
+        map.det_insert(!.BlockMap, Label, BlockInfo, !:BlockMap),
         LabelSeq = [Label | LabelSeq1]
     ).
 
@@ -174,7 +174,7 @@ take_until_end_of_block([Instr0 | Instrs0], BlockInstrs, Rest) :-
     ( Uinstr0 = label(_) ->
         BlockInstrs = [],
         Rest = [Instr0 | Instrs0]
-    ; opt_util__can_instr_branch_away(Uinstr0, yes) ->
+    ; opt_util.can_instr_branch_away(Uinstr0, yes) ->
         BlockInstrs = [Instr0],
         Rest = Instrs0
     ;
@@ -199,10 +199,10 @@ extend_basic_blocks([], [], !BlockMap, _NewLabels).
 extend_basic_blocks([Label | Labels], LabelSeq, !BlockMap, NewLabels) :-
     (
         Labels = [NextLabel | RestLabels],
-        set__member(NextLabel, NewLabels)
+        set.member(NextLabel, NewLabels)
     ->
-        map__lookup(!.BlockMap, Label, BlockInfo),
-        map__lookup(!.BlockMap, NextLabel, NextBlockInfo),
+        map.lookup(!.BlockMap, Label, BlockInfo),
+        map.lookup(!.BlockMap, NextLabel, NextBlockInfo),
         BlockInfo = block_info(BlockLabel, BlockLabelInstr, BlockInstrs,
             BlockFallInto, BlockSideLabels, BlockMaybeFallThrough),
         NextBlockInfo = block_info(NextBlockLabel, _, NextBlockInstrs,
@@ -218,8 +218,8 @@ extend_basic_blocks([Label | Labels], LabelSeq, !BlockMap, NewLabels) :-
         NewBlockInfo = block_info(BlockLabel, BlockLabelInstr,
             BlockInstrs ++ NextBlockInstrs, BlockFallInto,
             BlockSideLabels ++ NextBlockSideLabels, NextBlockMaybeFallThrough),
-        svmap__det_update(Label, NewBlockInfo, !BlockMap),
-        svmap__delete(NextLabel, !BlockMap),
+        svmap.det_update(Label, NewBlockInfo, !BlockMap),
+        svmap.delete(NextLabel, !BlockMap),
         extend_basic_blocks([Label | RestLabels], LabelSeq, !BlockMap,
             NewLabels)
     ;
@@ -232,9 +232,9 @@ extend_basic_blocks([Label | Labels], LabelSeq, !BlockMap, NewLabels) :-
 flatten_basic_blocks([], _, []).
 flatten_basic_blocks([Label | Labels], BlockMap, Instrs) :-
     flatten_basic_blocks(Labels, BlockMap, RestInstrs),
-    map__lookup(BlockMap, Label, BlockInfo),
+    map.lookup(BlockMap, Label, BlockInfo),
     BlockInfo = block_info(_, BlockLabelInstr, BlockInstrs, _, _, _),
-    list__append([BlockLabelInstr | BlockInstrs], RestInstrs, Instrs).
+    list.append([BlockLabelInstr | BlockInstrs], RestInstrs, Instrs).
 
 %-----------------------------------------------------------------------------%
 

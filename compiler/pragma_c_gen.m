@@ -20,7 +20,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- module ll_backend__pragma_c_gen.
+:- module ll_backend.pragma_c_gen.
 :- interface.
 
 :- import_module hlds.code_model.
@@ -35,14 +35,13 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred pragma_c_gen__generate_pragma_c_code(code_model::in,
+:- pred generate_pragma_c_code(code_model::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, hlds_goal_info::in,
     pragma_foreign_code_impl::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
-:- pred pragma_c_gen__struct_name(module_name::in, string::in, int::in,
-    proc_id::in, string::out) is det.
+:- func struct_name(module_name, string, int, proc_id) = string.
 
     % The name of the variable model_semi foreign_procs in C assign to
     % to indicate success or failure. Exported for llds_out.m.
@@ -287,13 +286,13 @@
 % The procedure prolog creates a nondet stack frame that includes space for
 % a struct that is saved across calls. Since the position of this struct in
 % the nondet stack frame is not known until the procedure prolog is created,
-% which is *after* the call to pragma_c_gen__generate_pragma_c_code, the
-% prolog will #define MR_ORDINARY_SLOTS as the number of ordinary slots
-% in the nondet frame. From the size of the fixed portion of the nondet stack
-% frame, from MR_ORDINARY_SLOTS and from the size of the save struct itself,
-% one can calculate the address of the save struct itself. The epilog will
-% #undef MR_ORDINARY_SLOTS. It need not do anything else, since all the normal
-% epilog stuff has been done in the code above.
+% which is *after* the call to generate_pragma_c_code, the prolog will #define
+% MR_ORDINARY_SLOTS as the number of ordinary slots in the nondet frame.
+% From the size of the fixed portion of the nondet stack frame, from
+% MR_ORDINARY_SLOTS and from the size of the save struct itself, one can
+% calculate the address of the save struct itself. The epilog will #undef
+% MR_ORDINARY_SLOTS. It need not do anything else, since all the normal epilog
+% stuff has been done in the code above.
 %
 % Unlike with ordinary pragma C codes, with nondet C codes there are never
 % any live variables to save at the start, except for the input variables,
@@ -346,13 +345,13 @@
 
 %---------------------------------------------------------------------------%
 
-pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
-        Args, ExtraArgs, GoalInfo, PragmaImpl, Code, !CI) :-
+generate_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
+        GoalInfo, PragmaImpl, Code, !CI) :-
     (
         PragmaImpl = ordinary(C_Code, Context),
         CanOptAwayUnnamedArgs = yes,
-        pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
-            PredId, ProcId, Args, ExtraArgs, C_Code, Context, GoalInfo,
+        ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
+            Args, ExtraArgs, C_Code, Context, GoalInfo,
             CanOptAwayUnnamedArgs, Code, !CI)
     ;
         PragmaImpl = nondet(Fields, FieldsContext, First, FirstContext,
@@ -360,8 +359,8 @@ pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
         expect(unify(ExtraArgs, []), this_file,
             "generate_pragma_c_code: extra args nondet"),
         CanOptAwayUnnamedArgs = yes,
-        pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes,
-            PredId, ProcId, Args, Fields, FieldsContext,
+        nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
+            Args, Fields, FieldsContext,
             First, FirstContext, Later, LaterContext,
             Treat, Shared, SharedContext, CanOptAwayUnnamedArgs, Code, !CI)
     ;
@@ -372,22 +371,21 @@ pragma_c_gen__generate_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 
         % The imported function was generated with all arguments present.
         CanOptAwayUnnamedArgs = no,
-        pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes,
-            PredId, ProcId, Args, ExtraArgs, C_Code, Context, GoalInfo,
+        ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
+            Args, ExtraArgs, C_Code, Context, GoalInfo,
             CanOptAwayUnnamedArgs, Code, !CI)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred pragma_c_gen__ordinary_pragma_c_code(code_model::in,
+:- pred ordinary_pragma_c_code(code_model::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
     maybe(prog_context)::in, hlds_goal_info::in, bool::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
-pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
-        Args, ExtraArgs, C_Code, Context, GoalInfo, CanOptAwayUnnamedArgs, 
-        Code, !CI) :-
+ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
+        C_Code, Context, GoalInfo, CanOptAwayUnnamedArgs, Code, !CI) :-
     % Extract the attributes.
     MayCallMercury = may_call_mercury(Attributes),
     ThreadSafe = thread_safe(Attributes),
@@ -404,16 +402,16 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
         ThreadSafe = not_thread_safe
     ),
     % First we need to get a list of input and output arguments.
-    ArgInfos = code_info__get_pred_proc_arginfo(!.CI, PredId, ProcId),
+    ArgInfos = code_info.get_pred_proc_arginfo(!.CI, PredId, ProcId),
     make_c_arg_list(Args, ArgInfos, OrigCArgs),
-    code_info__get_module_info(!.CI, ModuleInfo),
+    code_info.get_module_info(!.CI, ModuleInfo),
     make_extra_c_arg_list(ExtraArgs, ModuleInfo, ArgInfos, ExtraCArgs),
-    list__append(OrigCArgs, ExtraCArgs, CArgs),
+    list.append(OrigCArgs, ExtraCArgs, CArgs),
     pragma_select_in_args(CArgs, InCArgs),
     pragma_select_out_args(CArgs, OutCArgs),
 
     goal_info_get_post_deaths(GoalInfo, PostDeaths),
-    set__init(DeadVars0),
+    set.init(DeadVars0),
     find_dead_input_vars(InCArgs, PostDeaths, DeadVars0, DeadVars),
 
     % Generate code to <save live variables on stack>.
@@ -423,14 +421,14 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
     ;
         MayCallMercury = may_call_mercury,
         % The C code might call back Mercury code which clobbers the succip.
-        code_info__succip_is_used(!CI),
+        code_info.succip_is_used(!CI),
 
         % The C code might call back Mercury code which clobbers the
         % other registers, so we need to save any live variables
         % (other than the output args) onto the stack.
         get_c_arg_list_vars(OutCArgs, OutVars),
-        set__list_to_set(OutVars, OutVarsSet),
-        code_info__save_variables(OutVarsSet, _, SaveVarsCode, !CI)
+        set.list_to_set(OutVars, OutVarsSet),
+        code_info.save_variables(OutVarsSet, _, SaveVarsCode, !CI)
     ),
 
     % Generate the values of input variables.
@@ -443,15 +441,15 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
     % finished generating the code producing the input variables.
     % (The forward dead variables will be dead after the pragma_c_code,
     % but are live during its input phase.)
-    code_info__make_vars_forward_dead(DeadVars, !CI),
+    code_info.make_vars_forward_dead(DeadVars, !CI),
 
     % Generate <declaration of one local variable for each arg>.
     make_pragma_decls(CArgs, ModuleInfo, CanOptAwayUnnamedArgs, Decls),
 
     % Generate #define MR_PROC_LABEL <procedure label> /* see note (5) */
     % and #undef MR_PROC_LABEL.
-    code_info__get_pred_id(!.CI, CallerPredId),
-    code_info__get_proc_id(!.CI, CallerProcId),
+    code_info.get_pred_id(!.CI, CallerPredId),
+    code_info.get_proc_id(!.CI, CallerProcId),
     make_proc_label_hash_define(ModuleInfo, CallerPredId, CallerProcId,
         ProcLabelHashDefine, ProcLabelHashUndef),
 
@@ -462,33 +460,33 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
     (
         MayCallMercury = will_not_call_mercury,
         SaveRegsComp = pragma_c_raw_code("", cannot_branch_away,
-            live_lvals_info(set__init))
+            live_lvals_info(set.init))
     ;
         MayCallMercury = may_call_mercury,
         SaveRegsComp = pragma_c_raw_code("\tMR_save_registers();\n",
-            cannot_branch_away, live_lvals_info(set__init))
+            cannot_branch_away, live_lvals_info(set.init))
     ),
 
     % Code fragments to obtain and release the global lock.
     (
         ThreadSafe = thread_safe,
         ObtainLock = pragma_c_raw_code("", cannot_branch_away,
-            live_lvals_info(set__init)),
+            live_lvals_info(set.init)),
         ReleaseLock = pragma_c_raw_code("", cannot_branch_away,
-            live_lvals_info(set__init))
+            live_lvals_info(set.init))
     ;
         ThreadSafe = not_thread_safe,
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         Name = pred_info_name(PredInfo),
-        c_util__quote_string(Name, MangledName),
+        c_util.quote_string(Name, MangledName),
         ObtainLockStr = "\tMR_OBTAIN_GLOBAL_LOCK("""
             ++ MangledName ++ """);\n",
         ObtainLock = pragma_c_raw_code(ObtainLockStr, cannot_branch_away,
-            live_lvals_info(set__init)),
+            live_lvals_info(set.init)),
         ReleaseLockStr = "\tMR_RELEASE_GLOBAL_LOCK("""
             ++ MangledName ++ """);\n",
         ReleaseLock = pragma_c_raw_code(ReleaseLockStr, cannot_branch_away,
-            live_lvals_info(set__init))
+            live_lvals_info(set.init))
     ),
 
     % <The C code itself>
@@ -501,7 +499,7 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
             CheckSuccess_Comp = pragma_c_noop,
             MaybeFailLabel = no
         ;
-            code_info__get_next_label(FailLabel, !CI),
+            code_info.get_next_label(FailLabel, !CI),
             CheckSuccess_Comp = pragma_c_fail_to(FailLabel),
             MaybeFailLabel = yes(FailLabel)
         ),
@@ -510,18 +508,18 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
             "#undef SUCCESS_INDICATOR\n" ++
             "#define SUCCESS_INDICATOR " ++
                 pragma_succ_ind_name ++ "\n",
-            cannot_branch_away, live_lvals_info(set__init)),
+            cannot_branch_away, live_lvals_info(set.init)),
         UndefSuccessComp = pragma_c_raw_code(
             "#undef SUCCESS_INDICATOR\n" ++
             "#define SUCCESS_INDICATOR MR_r1\n",
-            cannot_branch_away, live_lvals_info(set__init))
+            cannot_branch_away, live_lvals_info(set.init))
     ;
         CheckSuccess_Comp = pragma_c_noop,
         MaybeFailLabel = no,
         DefSuccessComp = pragma_c_raw_code("", cannot_branch_away,
-            live_lvals_info(set__init)),
+            live_lvals_info(set.init)),
         UndefSuccessComp = pragma_c_raw_code("", cannot_branch_away,
-            live_lvals_info(set__init))
+            live_lvals_info(set.init))
     ),
 
     % #ifndef MR_CONSERVATIVE_GC
@@ -535,7 +533,7 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
         RestoreRegsComp = pragma_c_raw_code(
             "#ifndef MR_CONSERVATIVE_GC\n\t" ++
                 "MR_restore_registers();\n#endif\n",
-            cannot_branch_away, live_lvals_info(set__init)
+            cannot_branch_away, live_lvals_info(set.init)
         )
     ),
 
@@ -552,7 +550,7 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
         ;
             OkToDelete = yes
         ),
-        code_info__clear_all_registers(OkToDelete, !CI)
+        code_info.clear_all_registers(OkToDelete, !CI)
     ),
 
     % <assignment of the output values from local variables to registers>
@@ -592,8 +590,8 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
     %   <code to fail>
     %
     ( MaybeFailLabel = yes(TheFailLabel) ->
-        code_info__get_next_label(SkipLabel, !CI),
-        code_info__generate_failure(FailCode, !CI),
+        code_info.get_next_label(SkipLabel, !CI),
+        code_info.generate_failure(FailCode, !CI),
         GotoSkipLabelCode = node([
             goto(label(SkipLabel)) - "Skip past failure code"
         ]),
@@ -602,7 +600,7 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
         FailureCode = tree_list([GotoSkipLabelCode, FailLabelCode,
             FailCode, SkipLabelCode])
     ; Detism = failure ->
-        code_info__generate_failure(FailureCode, !CI)
+        code_info.generate_failure(FailureCode, !CI)
     ;
         FailureCode = empty
     ),
@@ -615,17 +613,17 @@ pragma_c_gen__ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 
 make_proc_label_hash_define(ModuleInfo, PredId, ProcId,
         ProcLabelHashDef, ProcLabelHashUndef) :-
-    ProcLabelHashDef = pragma_c_raw_code(string__append_list([
+    ProcLabelHashDef = pragma_c_raw_code(string.append_list([
         "#define\tMR_PROC_LABEL\t",
         make_proc_label_string(ModuleInfo, PredId, ProcId), "\n"]),
-        cannot_branch_away, live_lvals_info(set__init)),
+        cannot_branch_away, live_lvals_info(set.init)),
     ProcLabelHashUndef = pragma_c_raw_code("#undef\tMR_PROC_LABEL\n",
-        cannot_branch_away, live_lvals_info(set__init)).
+        cannot_branch_away, live_lvals_info(set.init)).
 
 :- func make_proc_label_string(module_info, pred_id, proc_id) = string.
 
 make_proc_label_string(ModuleInfo, PredId, ProcId) = ProcLabelString :-
-    code_util__make_entry_label(ModuleInfo, PredId, ProcId, no, CodeAddr),
+    code_util.make_entry_label(ModuleInfo, PredId, ProcId, no, CodeAddr),
     ( CodeAddr = imported(ProcLabel) ->
         ProcLabelString = proc_label_to_c_string(ProcLabel, yes)
     ; CodeAddr = label(Label) ->
@@ -636,7 +634,7 @@ make_proc_label_string(ModuleInfo, PredId, ProcId) = ProcLabelString :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred pragma_c_gen__nondet_pragma_c_code(code_model::in,
+:- pred nondet_pragma_c_code(code_model::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     list(foreign_arg)::in,
     string::in, maybe(prog_context)::in,
@@ -645,7 +643,7 @@ make_proc_label_string(ModuleInfo, PredId, ProcId) = ProcLabelString :-
     string::in, maybe(prog_context)::in, bool::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
-pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
+nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
         Args, _Fields, _FieldsContext,
         First, FirstContext, Later, LaterContext, Treat, Shared, SharedContext,
         CanOptAwayUnnamedArgs, Code, !CI) :-
@@ -656,9 +654,9 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 
     % Generate #define MR_PROC_LABEL <procedure label> /* see note (5) */
     % and #undef MR_PROC_LABEL.
-    code_info__get_module_info(!.CI, ModuleInfo),
-    code_info__get_pred_id(!.CI, CallerPredId),
-    code_info__get_proc_id(!.CI, CallerProcId),
+    code_info.get_module_info(!.CI, ModuleInfo),
+    code_info.get_pred_id(!.CI, CallerPredId),
+    code_info.get_proc_id(!.CI, CallerProcId),
     make_proc_label_hash_define(ModuleInfo, CallerPredId, CallerProcId,
         ProcLabelDefine, ProcLabelUndef),
 
@@ -667,7 +665,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
         PredId, ProcId),
 
     % Get a list of input and output arguments.
-    ArgInfos = code_info__get_pred_proc_arginfo(!.CI, PredId, ProcId),
+    ArgInfos = code_info.get_pred_proc_arginfo(!.CI, PredId, ProcId),
     make_c_arg_list(Args, ArgInfos, CArgs),
     pragma_select_in_args(CArgs, InCArgs),
     pragma_select_out_args(CArgs, OutCArgs),
@@ -683,16 +681,15 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
-    pragma_c_gen__struct_name(ModuleName, PredName, Arity, ProcId,
-        StructName),
+    StructName = struct_name(ModuleName, PredName, Arity, ProcId),
     SaveStructDecl = pragma_c_struct_ptr_decl(StructName, "LOCALS"),
-    string__format("\tLOCALS = (struct %s *) ((char *)
+    string.format("\tLOCALS = (struct %s *) ((char *)
         (MR_curfr + 1 - MR_ORDINARY_SLOTS - MR_NONDET_FIXED_SIZE)
         - sizeof(struct %s));\n",
         [s(StructName), s(StructName)],
         InitSaveStruct),
 
-    code_info__get_next_label(RetryLabel, !CI),
+    code_info.get_next_label(RetryLabel, !CI),
     ModFrameCode = node([
         assign(redoip(lval(curfr)), const(code_addr_const(label(RetryLabel))))
             - "Set up backtracking to retry label"
@@ -701,32 +698,32 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
         label(RetryLabel) - "Start of the retry block"
     ]),
 
-    code_info__get_globals(!.CI, Globals),
+    code_info.get_globals(!.CI, Globals),
 
-    globals__lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
+    globals.lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
         ReclaimHeap),
-    code_info__maybe_save_hp(ReclaimHeap, SaveHeapCode, MaybeHpSlot, !CI),
-    code_info__maybe_restore_hp(MaybeHpSlot, RestoreHeapCode),
+    code_info.maybe_save_hp(ReclaimHeap, SaveHeapCode, MaybeHpSlot, !CI),
+    code_info.maybe_restore_hp(MaybeHpSlot, RestoreHeapCode),
 
-    globals__lookup_bool_option(Globals, use_trail, UseTrail),
-    code_info__maybe_save_ticket(UseTrail, SaveTicketCode, MaybeTicketSlot,
+    globals.lookup_bool_option(Globals, use_trail, UseTrail),
+    code_info.maybe_save_ticket(UseTrail, SaveTicketCode, MaybeTicketSlot,
         !CI),
-    code_info__maybe_reset_ticket(MaybeTicketSlot, undo, RestoreTicketCode),
+    code_info.maybe_reset_ticket(MaybeTicketSlot, undo, RestoreTicketCode),
     (
         FirstContext = yes(ActualFirstContext)
     ;
         FirstContext = no,
-        term__context_init(ActualFirstContext)
+        term.context_init(ActualFirstContext)
     ),
-    trace__maybe_generate_pragma_event_code(nondet_pragma_first,
+    trace.maybe_generate_pragma_event_code(nondet_pragma_first,
         ActualFirstContext, FirstTraceCode, !CI),
     (
         LaterContext = yes(ActualLaterContext)
     ;
         LaterContext = no,
-        term__context_init(ActualLaterContext)
+        term.context_init(ActualLaterContext)
     ),
-    trace__maybe_generate_pragma_event_code(nondet_pragma_later,
+    trace.maybe_generate_pragma_event_code(nondet_pragma_later,
         ActualLaterContext, LaterTraceCode, !CI),
 
     FirstDisjunctCode = tree_list([SaveHeapCode, SaveTicketCode,
@@ -803,7 +800,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
                     Count = Count0
                 )
             ),
-            string__foldl(CountSemis, Shared, 0, Semis),
+            string.foldl(CountSemis, Shared, 0, Semis),
             Semis < 32
         )
     ->
@@ -889,7 +886,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
         Code = tree_list([ModFrameCode, FirstDisjunctCode, CallBlockCode,
             RetryLabelCode, LaterDisjunctCode, RetryBlockCode])
     ;
-        code_info__get_next_label(SharedLabel, !CI),
+        code_info.get_next_label(SharedLabel, !CI),
         SharedLabelCode = node([
             label(SharedLabel) - "Start of the shared block"
         ]),
@@ -908,7 +905,7 @@ pragma_c_gen__nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
             ++ ProcLabelString ++ ":\n",
 
         LabelStr = label_to_c_string(SharedLabel, yes),
-        string__format("\tMR_GOTO_LABEL(%s);\n", [s(LabelStr)],
+        string.format("\tMR_GOTO_LABEL(%s);\n", [s(LabelStr)],
             GotoSharedLabel),
 
         CallDecls = [SaveStructDecl | Decls],
@@ -1065,9 +1062,9 @@ make_c_arg_list([Arg | ArgTail], [ArgInfo | ArgInfoTail], [CArg | CArgTail]) :-
     CArg = c_arg(Var, MaybeName, Type, BoxPolicy, ArgInfo),
     make_c_arg_list(ArgTail, ArgInfoTail, CArgTail).
 make_c_arg_list([], [_ | _], _) :-
-    unexpected(this_file, "pragma_c_gen__make_c_arg_list length mismatch").
+    unexpected(this_file, "pragma_c_gen.make_c_arg_list length mismatch").
 make_c_arg_list([_ | _], [], _) :-
-    unexpected(this_file, "pragma_c_gen__make_c_arg_list length mismatch").
+    unexpected(this_file, "pragma_c_gen.make_c_arg_list length mismatch").
 
 %---------------------------------------------------------------------------%
 
@@ -1082,7 +1079,7 @@ make_extra_c_arg_list(ExtraArgs, ModuleInfo, ArgInfos, ExtraCArgs) :-
 
 get_highest_arg_num([], !Max).
 get_highest_arg_num([arg_info(Loc, _) | ArgInfos], !Max) :-
-    int__max(Loc, !Max),
+    int.max(Loc, !Max),
     get_highest_arg_num(ArgInfos, !Max).
 
 :- pred make_extra_c_arg_list_seq(list(foreign_arg)::in, module_info::in,
@@ -1169,7 +1166,7 @@ var_should_be_passed(CanOptAwayUnnamedArgs, Var, MaybeName)
         = MaybeUseName :-
     (
         MaybeName = yes(Name),
-        not string__first_char(Name, '_', _)
+        not string.first_char(Name, '_', _)
     ->
         MaybeUseName = yes(Name)
     ;
@@ -1178,7 +1175,7 @@ var_should_be_passed(CanOptAwayUnnamedArgs, Var, MaybeName)
             MaybeUseName = no
         ;
             CanOptAwayUnnamedArgs = no,
-            UseName = "UnnamedArg" ++ int_to_string(term__var_to_int(Var)),
+            UseName = "UnnamedArg" ++ int_to_string(term.var_to_int(Var)),
             MaybeUseName = yes(UseName)
         )
     ).
@@ -1201,7 +1198,7 @@ make_pragma_decls([Arg | Args], Module, CanOptAwayUnnamedArgs, Decls) :-
         MaybeName = yes(Name),
         (
             BoxPolicy = native_if_possible,
-            OrigTypeString = foreign__to_type_string(c, Module, OrigType)
+            OrigTypeString = foreign.to_type_string(c, Module, OrigType)
         ;
             BoxPolicy = always_boxed,
             OrigTypeString = "MR_Word"
@@ -1221,8 +1218,8 @@ make_pragma_decls([Arg | Args], Module, CanOptAwayUnnamedArgs, Decls) :-
 find_dead_input_vars([], _, !DeadVars).
 find_dead_input_vars([Arg | Args], PostDeaths, !DeadVars) :-
     Arg = c_arg(Var, _MaybeName, _Type, _BoxPolicy, _ArgInfo),
-    ( set__member(Var, PostDeaths) ->
-        set__insert(!.DeadVars, Var, !:DeadVars)
+    ( set.member(Var, PostDeaths) ->
+        set.insert(!.DeadVars, Var, !:DeadVars)
     ;
         true
     ),
@@ -1245,9 +1242,9 @@ get_pragma_input_vars([Arg | Args], Inputs, CanOptAwayUnnamedArgs, Code,
     (
         MaybeName = yes(Name),
         VarType = variable_type(!.CI, Var),
-        code_info__produce_variable(Var, FirstCode, Rval, !CI),
+        code_info.produce_variable(Var, FirstCode, Rval, !CI),
         MaybeForeign = get_maybe_foreign_type_info(!.CI, OrigType),
-        code_info__get_module_info(!.CI, ModuleInfo),
+        code_info.get_module_info(!.CI, ModuleInfo),
         ( is_dummy_argument_type(ModuleInfo, VarType) ->
             IsDummy = yes
         ;
@@ -1269,12 +1266,12 @@ get_pragma_input_vars([Arg | Args], Inputs, CanOptAwayUnnamedArgs, Code,
     maybe(pragma_c_foreign_type).
 
 get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-
-    code_info__get_module_info(CI, Module),
+    code_info.get_module_info(CI, Module),
     module_info_get_type_table(Module, Types),
     (
         type_to_ctor_and_args(Type, TypeId, _SubTypes),
-        map__search(Types, TypeId, Defn),
-        hlds_data__get_type_defn_body(Defn, Body),
+        map.search(Types, TypeId, Defn),
+        hlds_data.get_type_defn_body(Defn, Body),
         Body = foreign_type(foreign_type_body(_MaybeIL, MaybeC, _MaybeJava))
     ->
         (
@@ -1302,7 +1299,7 @@ get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-
 pragma_acquire_regs([], [], !CI).
 pragma_acquire_regs([Arg | Args], [Reg | Regs], !CI) :-
     Arg = c_arg(Var, _, _, _, _),
-    code_info__acquire_reg_for_var(Var, Reg, !CI),
+    code_info.acquire_reg_for_var(Var, Reg, !CI),
     pragma_acquire_regs(Args, Regs, !CI).
 
 %---------------------------------------------------------------------------%
@@ -1321,15 +1318,15 @@ place_pragma_output_args_in_regs([Arg | Args], [Reg | Regs],
     place_pragma_output_args_in_regs(Args, Regs, CanOptAwayUnnamedArgs,
         OutputsTail, !CI),
     Arg = c_arg(Var, MaybeArgName, OrigType, BoxPolicy, _ArgInfo),
-    code_info__release_reg(Reg, !CI),
-    ( code_info__variable_is_forward_live(!.CI, Var) ->
-        code_info__set_var_location(Var, Reg, !CI),
+    code_info.release_reg(Reg, !CI),
+    ( code_info.variable_is_forward_live(!.CI, Var) ->
+        code_info.set_var_location(Var, Reg, !CI),
         MaybeForeign = get_maybe_foreign_type_info(!.CI, OrigType),
         MaybeName = var_should_be_passed(CanOptAwayUnnamedArgs, Var,
             MaybeArgName),
         (
             MaybeName = yes(Name),
-            code_info__get_module_info(!.CI, ModuleInfo),
+            code_info.get_module_info(!.CI, ModuleInfo),
             VarType = variable_type(!.CI, Var),
             ( is_dummy_argument_type(ModuleInfo, VarType) ->
                 IsDummy = yes
@@ -1370,7 +1367,7 @@ input_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Inputs) :-
         ArgInfo = arg_info(N, _),
         Reg = reg(r, N),
         MaybeForeign = get_maybe_foreign_type_info(CI, OrigType),
-        code_info__get_module_info(CI, ModuleInfo),
+        code_info.get_module_info(CI, ModuleInfo),
         ( is_dummy_argument_type(ModuleInfo, VarType) ->
             IsDummy = yes
         ;
@@ -1404,7 +1401,7 @@ output_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Outputs) :-
         ArgInfo = arg_info(N, _),
         Reg = reg(r, N),
         MaybeForeign = get_maybe_foreign_type_info(CI, OrigType),
-        code_info__get_module_info(CI, ModuleInfo),
+        code_info.get_module_info(CI, ModuleInfo),
         ( is_dummy_argument_type(ModuleInfo, VarType) ->
             IsDummy = yes
         ;
@@ -1420,8 +1417,8 @@ output_descs_from_arg_info(CI, [Arg | Args], CanOptAwayUnnamedArgs, Outputs) :-
 
 %---------------------------------------------------------------------------%
 
-pragma_c_gen__struct_name(ModuleName, PredName, Arity, ProcId, StructName) :-
-    StructName = "mercury_save__" ++ sym_name_mangle(ModuleName) ++ "__" ++
+pragma_c_gen.struct_name(ModuleName, PredName, Arity, ProcId) =
+    "mercury_save__" ++ sym_name_mangle(ModuleName) ++ "__" ++
         name_mangle(PredName) ++ "__" ++ int_to_string(Arity) ++ "_" ++
         int_to_string(proc_id_to_int(ProcId)).
 

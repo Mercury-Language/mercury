@@ -24,7 +24,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module transform_hlds__delay_construct.
+:- module transform_hlds.delay_construct.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -61,7 +61,7 @@
 delay_construct_proc(PredId, ProcId, ModuleInfo, !ProcInfo, !IO) :-
     write_proc_progress_message("% Delaying construction unifications in ",
         PredId, ProcId, ModuleInfo, !IO),
-    globals__io_get_globals(Globals, !IO),
+    globals.io_get_globals(Globals, !IO),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     delay_construct_proc_no_io(PredInfo, ModuleInfo, Globals, !ProcInfo).
 
@@ -117,7 +117,7 @@ delay_construct_in_goal(GoalExpr0 - GoalInfo0, InstMap0, DelayInfo, Goal) :-
                 CanFail = can_fail,
                 MaxSoln \= at_most_zero
             ->
-                delay_construct_in_conj(Goals0, InstMap0, DelayInfo, set__init,
+                delay_construct_in_conj(Goals0, InstMap0, DelayInfo, set.init,
                     [], Goals1)
             ;
                 Goals1 = Goals0
@@ -144,7 +144,7 @@ delay_construct_in_goal(GoalExpr0 - GoalInfo0, InstMap0, DelayInfo, Goal) :-
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         Cond0 = _ - CondInfo0,
         goal_info_get_instmap_delta(CondInfo0, CondInstMapDelta),
-        instmap__apply_instmap_delta(InstMap0, CondInstMapDelta, InstMapThen),
+        instmap.apply_instmap_delta(InstMap0, CondInstMapDelta, InstMapThen),
         delay_construct_in_goal(Cond0, InstMap0, DelayInfo, Cond),
         delay_construct_in_goal(Then0, InstMapThen, DelayInfo, Then),
         delay_construct_in_goal(Else0, InstMap0, DelayInfo, Else),
@@ -203,22 +203,22 @@ delay_construct_in_goal(GoalExpr0 - GoalInfo0, InstMap0, DelayInfo, Goal) :-
     list(hlds_goal)::out) is det.
 
 delay_construct_in_conj([], _, _, _, RevDelayedGoals, DelayedGoals) :-
-    list__reverse(RevDelayedGoals, DelayedGoals).
+    list.reverse(RevDelayedGoals, DelayedGoals).
 delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
         ConstructedVars0, RevDelayedGoals0, Goals) :-
     Goal0 = GoalExpr0 - GoalInfo0,
     goal_info_get_instmap_delta(GoalInfo0, InstMapDelta0),
-    instmap__apply_instmap_delta(InstMap0, InstMapDelta0, InstMap1),
+    instmap.apply_instmap_delta(InstMap0, InstMapDelta0, InstMap1),
     (
         GoalExpr0 = unify(_, _, _, Unif, _),
         Unif = construct(Var, _, Args, _, _, _, _),
         Args = [_ | _], % We are constructing a cell, not a constant
-        instmap__lookup_var(InstMap0, Var, Inst0),
+        instmap.lookup_var(InstMap0, Var, Inst0),
         inst_is_free(DelayInfo ^ module_info, Inst0),
-        instmap__lookup_var(InstMap1, Var, Inst1),
+        instmap.lookup_var(InstMap1, Var, Inst1),
         inst_is_ground(DelayInfo ^ module_info, Inst1)
     ->
-        set__insert(ConstructedVars0, Var, ConstructedVars1),
+        set.insert(ConstructedVars0, Var, ConstructedVars1),
         RevDelayedGoals1 = [Goal0 | RevDelayedGoals0],
         delay_construct_in_conj(Goals0, InstMap1, DelayInfo,
             ConstructedVars1, RevDelayedGoals1, Goals)
@@ -230,9 +230,9 @@ delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
             DelayInfo ^ body_typeinfo_liveness,
             DelayInfo ^ vartypes,
             DelayInfo ^ rtti_varmaps, CompletedNonLocals),
-        set__intersect(CompletedNonLocals, ConstructedVars0,
+        set.intersect(CompletedNonLocals, ConstructedVars0,
             Intersection),
-        set__empty(Intersection),
+        set.empty(Intersection),
         \+ goal_info_has_feature(GoalInfo0, impure_goal),
         \+ goal_info_has_feature(GoalInfo0, semipure_goal)
     ->
@@ -240,10 +240,10 @@ delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
             ConstructedVars0, RevDelayedGoals0, Goals1),
         Goals = [Goal0 | Goals1]
     ;
-        list__reverse(RevDelayedGoals0, DelayedGoals),
+        list.reverse(RevDelayedGoals0, DelayedGoals),
         delay_construct_in_conj(Goals0, InstMap1, DelayInfo,
-            set__init, [], Goals1),
-        list__append(DelayedGoals, [Goal0 | Goals1], Goals)
+            set.init, [], Goals1),
+        list.append(DelayedGoals, [Goal0 | Goals1], Goals)
     ).
 
 :- pred delay_construct_skippable(hlds_goal_expr::in, hlds_goal_info::in)

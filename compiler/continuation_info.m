@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000,2002-2005 The University of Melbourne.
+% Copyright (C) 1997-2000,2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -49,7 +49,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__continuation_info.
+:- module ll_backend.continuation_info.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -392,7 +392,7 @@ maybe_process_proc_llds(Instructions, PredProcId, ModuleInfo, !ContInfo) :-
     basic_stack_layout_for_proc(PredInfo, Globals, Layout, _),
     (
         Layout = yes,
-        globals__want_return_var_layouts(Globals, WantReturnLayout),
+        globals.want_return_var_layouts(Globals, WantReturnLayout),
         process_proc_llds(PredProcId, Instructions, WantReturnLayout,
             !ContInfo)
     ;
@@ -404,7 +404,7 @@ maybe_process_proc_llds(Instructions, PredProcId, ModuleInfo, !ContInfo) :-
                 label,          % The return label.
                 code_addr,      % The target of the call.
                 list(liveinfo), % What is live on return.
-                term__context,  % The position of the call in source.
+                term.context,  % The position of the call in source.
                 goal_path       % The position of the call in the body;
                                 % meaningful only if tracing is enabled.
             ).
@@ -424,10 +424,10 @@ process_proc_llds(PredProcId, Instructions, WantReturnInfo, !GlobalData) :-
             GoalPath, _) - _Comment,
         Call = call_info(ReturnLabel, Target, LiveInfo, Context, GoalPath)
     ),
-    list__filter_map(GetCallInfo, Instructions, Calls),
+    list.filter_map(GetCallInfo, Instructions, Calls),
 
     % Process the continuation label info.
-    list__foldl(process_continuation(WantReturnInfo), Calls,
+    list.foldl(process_continuation(WantReturnInfo), Calls,
         Internals0, Internals),
 
     ProcLayoutInfo = ProcLayoutInfo0^internal_map := Internals,
@@ -453,7 +453,7 @@ process_continuation(WantReturnInfo, CallInfo, !Internals) :-
         ReturnLabel = entry(_, _),
         unexpected(this_file, "process_continuation: bad return")
     ),
-    ( map__search(!.Internals, ReturnLabelNum, Internal0) ->
+    ( map.search(!.Internals, ReturnLabelNum, Internal0) ->
         Internal0 = internal_layout_info(Port0, Resume0, Return0)
     ;
         Port0 = no,
@@ -476,8 +476,8 @@ process_continuation(WantReturnInfo, CallInfo, !Internals) :-
             Return0 = yes(ReturnInfo0),
             ReturnInfo0 = return_layout_info(TargetsContexts0, Layout0),
             Layout0 = layout_label_info(LV0, TV0),
-            set__intersect(LV0, VarInfoSet, LV),
-            map__intersect(set__intersect, TV0, TypeInfoMap, TV),
+            set.intersect(LV0, VarInfoSet, LV),
+            map.intersect(set.intersect, TV0, TypeInfoMap, TV),
             Layout = layout_label_info(LV, TV),
             TargetContexts = [Target - (Context - MaybeGoalPath)
                 | TargetsContexts0],
@@ -489,7 +489,7 @@ process_continuation(WantReturnInfo, CallInfo, !Internals) :-
         Return = Return0
     ),
     Internal = internal_layout_info(Port0, Resume0, Return),
-    map__set(!.Internals, ReturnLabelNum, Internal, !:Internals).
+    map.set(!.Internals, ReturnLabelNum, Internal, !:Internals).
 
 :- pred convert_return_data(list(liveinfo)::in,
     set(layout_var_info)::out, map(tvar, set(layout_locn))::out) is det.
@@ -499,16 +499,16 @@ convert_return_data(LiveInfos, VarInfoSet, TypeInfoMap) :-
         LiveLval = live_lvalue(Lval, LiveValueType, _),
         VarInfo = layout_var_info(Lval, LiveValueType, "convert_return_data")
     ),
-    list__map(GetVarInfo, LiveInfos, VarInfoList),
+    list.map(GetVarInfo, LiveInfos, VarInfoList),
     GetTypeInfo = (pred(LiveLval::in, LiveTypeInfoMap::out) is det :-
         LiveLval = live_lvalue(_, _, LiveTypeInfoMap)
     ),
-    list__map(GetTypeInfo, LiveInfos, TypeInfoMapList),
-    map__init(Empty),
-    list__foldl((pred(TIM1::in, TIM2::in, TIM::out) is det :-
-            map__union(set__intersect, TIM1, TIM2, TIM)
+    list.map(GetTypeInfo, LiveInfos, TypeInfoMapList),
+    map.init(Empty),
+    list.foldl((pred(TIM1::in, TIM2::in, TIM::out) is det :-
+            map.union(set.intersect, TIM1, TIM2, TIM)
         ), TypeInfoMapList, Empty, TypeInfoMap),
-    set__list_to_set(VarInfoList, VarInfoSet).
+    set.list_to_set(VarInfoList, VarInfoSet).
 
 :- pred filter_named_vars(list(liveinfo)::in, list(liveinfo)::out) is det.
 
@@ -530,13 +530,13 @@ filter_named_vars([LiveInfo | LiveInfos], Filtered) :-
 basic_stack_layout_for_proc(PredInfo, Globals, BasicLayout,
         ForceProcIdLayout) :-
     (
-        globals__lookup_bool_option(Globals, stack_trace_higher_order, yes),
+        globals.lookup_bool_option(Globals, stack_trace_higher_order, yes),
         some_arg_is_higher_order(PredInfo)
     ->
         BasicLayout = yes,
         ForceProcIdLayout = yes
     ;
-        globals__lookup_bool_option(Globals, basic_stack_layout, yes)
+        globals.lookup_bool_option(Globals, basic_stack_layout, yes)
     ->
         BasicLayout = yes,
         ForceProcIdLayout = no
@@ -550,7 +550,7 @@ basic_stack_layout_for_proc(PredInfo, Globals, BasicLayout,
 some_arg_is_higher_order(PredInfo) :-
     pred_info_arg_types(PredInfo, ArgTypes),
     some [Type] (
-        list__member(Type, ArgTypes),
+        list.member(Type, ArgTypes),
         type_is_higher_order(Type, _, _, _, _)
     ).
 
@@ -558,14 +558,14 @@ some_arg_is_higher_order(PredInfo) :-
 
 generate_return_live_lvalues(OutputArgLocs, ReturnInstMap, Vars, VarLocs,
         Temps, ProcInfo, ModuleInfo, Globals, OkToDeleteAny, LiveLvalues) :-
-    globals__want_return_var_layouts(Globals, WantReturnVarLayout),
+    globals.want_return_var_layouts(Globals, WantReturnVarLayout),
     proc_info_stack_slots(ProcInfo, StackSlots),
     find_return_var_lvals(Vars, StackSlots, OkToDeleteAny, OutputArgLocs,
         VarLvals),
     generate_var_live_lvalues(VarLvals, ReturnInstMap, VarLocs, ProcInfo,
         ModuleInfo, WantReturnVarLayout, VarLiveLvalues),
     generate_temp_live_lvalues(Temps, TempLiveLvalues),
-    list__append(VarLiveLvalues, TempLiveLvalues, LiveLvalues).
+    list.append(VarLiveLvalues, TempLiveLvalues, LiveLvalues).
 
 :- pred find_return_var_lvals(list(prog_var)::in,
     stack_slots::in, bool::in, assoc_list(prog_var, arg_loc)::in,
@@ -576,11 +576,11 @@ find_return_var_lvals([Var | Vars], StackSlots, OkToDeleteAny, OutputArgLocs,
         VarLvals) :-
     find_return_var_lvals(Vars, StackSlots,
         OkToDeleteAny, OutputArgLocs, TailVarLvals),
-    ( assoc_list__search(OutputArgLocs, Var, ArgLoc) ->
+    ( assoc_list.search(OutputArgLocs, Var, ArgLoc) ->
         % On return, output arguments are in their registers.
-        code_util__arg_loc_to_register(ArgLoc, Lval),
+        code_util.arg_loc_to_register(ArgLoc, Lval),
         VarLvals = [Var - Lval | TailVarLvals]
-    ; map__search(StackSlots, Var, Slot) ->
+    ; map.search(StackSlots, Var, Slot) ->
         % On return, other live variables are in their stack slots.
         VarLvals = [Var - stack_slot_to_lval(Slot) | TailVarLvals]
     ; OkToDeleteAny = yes ->
@@ -596,7 +596,7 @@ generate_temp_live_lvalues([], []).
 generate_temp_live_lvalues([Temp | Temps], [Live | Lives]) :-
     Temp = Slot - Contents,
     live_value_type(Contents, LiveLvalueType),
-    map__init(Empty),
+    map.init(Empty),
     Live = live_lvalue(direct(Slot), LiveLvalueType, Empty),
     generate_temp_live_lvalues(Temps, Lives).
 
@@ -615,7 +615,7 @@ generate_var_live_lvalues([Var - Lval | VarLvals], InstMap, VarLocs, ProcInfo,
         Live = live_lvalue(direct(Lval), LiveValueType, TypeParams)
     ;
         WantReturnVarLayout = no,
-        map__init(Empty),
+        map.init(Empty),
         Live = live_lvalue(direct(Lval), unwanted, Empty)
     ),
     generate_var_live_lvalues(VarLvals, InstMap, VarLocs, ProcInfo,
@@ -625,17 +625,17 @@ generate_var_live_lvalues([Var - Lval | VarLvals], InstMap, VarLocs, ProcInfo,
 
 generate_resume_layout(ResumeMap, Temps, InstMap, ProcInfo, ModuleInfo,
         Layout) :-
-    map__to_assoc_list(ResumeMap, ResumeList),
-    set__init(TVars0),
+    map.to_assoc_list(ResumeMap, ResumeList),
+    set.init(TVars0),
     proc_info_vartypes(ProcInfo, VarTypes),
     generate_resume_layout_for_vars(ResumeList, InstMap, VarTypes, ProcInfo,
         ModuleInfo, [], VarInfos, TVars0, TVars),
-    set__list_to_set(VarInfos, VarInfoSet),
-    set__to_sorted_list(TVars, TVarList),
+    set.list_to_set(VarInfos, VarInfoSet),
+    set.to_sorted_list(TVars, TVarList),
     find_typeinfos_for_tvars(TVarList, ResumeMap, ProcInfo, TVarInfoMap),
     generate_temp_var_infos(Temps, TempInfos),
-    set__list_to_set(TempInfos, TempInfoSet),
-    set__union(VarInfoSet, TempInfoSet, AllInfoSet),
+    set.list_to_set(TempInfos, TempInfoSet),
+    set.union(VarInfoSet, TempInfoSet, AllInfoSet),
     Layout = layout_label_info(AllInfoSet, TVarInfoMap).
 
 :- pred generate_resume_layout_for_vars(assoc_list(prog_var, set(lval))::in,
@@ -647,14 +647,14 @@ generate_resume_layout_for_vars([], _, _, _, _, !VarInfos, !TVars).
 generate_resume_layout_for_vars([Var - LvalSet | VarLvals], InstMap,
         VarTypes, ProcInfo, ModuleInfo, !VarInfos, !TVars) :-
     (
-        map__lookup(VarTypes, Var, Type),
+        map.lookup(VarTypes, Var, Type),
         is_dummy_argument_type(ModuleInfo, Type)
     ->
         true
     ;
         generate_resume_layout_for_var(Var, LvalSet, InstMap, ProcInfo,
             ModuleInfo, VarInfo, TypeVars),
-        set__insert_list(!.TVars, TypeVars, !:TVars),
+        set.insert_list(!.TVars, TypeVars, !:TVars),
         !:VarInfos = [VarInfo | !.VarInfos]
     ),
     generate_resume_layout_for_vars(VarLvals, InstMap, VarTypes, ProcInfo,
@@ -666,7 +666,7 @@ generate_resume_layout_for_vars([Var - LvalSet | VarLvals], InstMap,
 
 generate_resume_layout_for_var(Var, LvalSet, InstMap, ProcInfo, ModuleInfo,
         VarInfo, TypeVars) :-
-    set__to_sorted_list(LvalSet, LvalList),
+    set.to_sorted_list(LvalSet, LvalList),
     ( LvalList = [LvalPrime] ->
         Lval = LvalPrime
     ;
@@ -706,20 +706,20 @@ generate_layout_for_var(Var, InstMap, ProcInfo, ModuleInfo, LiveValueType,
         TypeVars) :-
     proc_info_varset(ProcInfo, VarSet),
     proc_info_vartypes(ProcInfo, VarTypes),
-    ( varset__search_name(VarSet, Var, GivenName) ->
+    ( varset.search_name(VarSet, Var, GivenName) ->
         Name = GivenName
     ;
         Name = ""
     ),
-    instmap__lookup_var(InstMap, Var, Inst),
-    map__lookup(VarTypes, Var, Type),
-    ( inst_match__inst_is_ground(ModuleInfo, Inst) ->
+    instmap.lookup_var(InstMap, Var, Inst),
+    map.lookup(VarTypes, Var, Type),
+    ( inst_match.inst_is_ground(ModuleInfo, Inst) ->
         LldsInst = ground
     ;
         LldsInst = partial(Inst)
     ),
     LiveValueType = var(Var, Name, Type, LldsInst),
-    prog_type__vars(Type, TypeVars).
+    prog_type.vars(Type, TypeVars).
 
 %---------------------------------------------------------------------------%
 
@@ -729,13 +729,13 @@ generate_closure_layout(ModuleInfo, PredId, ProcId, ClosureLayout) :-
     proc_info_arg_info(ProcInfo, ArgInfos),
     pred_info_arg_types(PredInfo, ArgTypes),
     proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
-    map__init(VarLocs0),
-    set__init(TypeVars0),
+    map.init(VarLocs0),
+    set.init(TypeVars0),
     (
         build_closure_info(HeadVars, ArgTypes, ArgInfos, ArgLayouts, InstMap,
             VarLocs0, VarLocs, TypeVars0, TypeVars)
     ->
-        set__to_sorted_list(TypeVars, TypeVarsList),
+        set.to_sorted_list(TypeVars, TypeVarsList),
         find_typeinfos_for_tvars(TypeVarsList, VarLocs, ProcInfo,
             TypeInfoDataMap),
         ClosureLayout = closure_layout_info(ArgLayouts, TypeInfoDataMap)
@@ -754,12 +754,12 @@ build_closure_info([Var | Vars], [Type | Types],
         [ArgInfo | ArgInfos], [Layout | Layouts], InstMap,
         !VarLocs, !TypeVars) :-
     ArgInfo = arg_info(ArgLoc, _ArgMode),
-    instmap__lookup_var(InstMap, Var, Inst),
+    instmap.lookup_var(InstMap, Var, Inst),
     Layout = closure_arg_info(Type, Inst),
-    set__singleton_set(Locations, reg(r, ArgLoc)),
-    svmap__det_insert(Var, Locations, !VarLocs),
-    prog_type__vars(Type, VarTypeVars),
-    svset__insert_list(VarTypeVars, !TypeVars),
+    set.singleton_set(Locations, reg(r, ArgLoc)),
+    svmap.det_insert(Var, Locations, !VarLocs),
+    prog_type.vars(Type, VarTypeVars),
+    svset.insert_list(VarTypeVars, !TypeVars),
     build_closure_info(Vars, Types, ArgInfos, Layouts, InstMap,
         !VarLocs, !TypeVars).
 
@@ -768,13 +768,13 @@ build_closure_info([Var | Vars], [Type | Types],
 find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo, TypeInfoDataMap) :-
     proc_info_varset(ProcInfo, VarSet),
     proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
-    list__map(rtti_lookup_type_info_locn(RttiVarMaps), TypeVars,
+    list.map(rtti_lookup_type_info_locn(RttiVarMaps), TypeVars,
         TypeInfoLocns),
     FindLocn = (pred(TypeInfoLocn::in, Locns::out) is det :-
         type_info_locn_var(TypeInfoLocn, TypeInfoVar),
-        ( map__search(VarLocs, TypeInfoVar, TypeInfoLvalSet) ->
+        ( map.search(VarLocs, TypeInfoVar, TypeInfoLvalSet) ->
             ConvertLval = (pred(Locn::out) is nondet :-
-                set__member(Lval, TypeInfoLvalSet),
+                set.member(Lval, TypeInfoLvalSet),
                 (
                     TypeInfoLocn = typeclass_info(_, FieldNum),
                     Locn = indirect(Lval, FieldNum)
@@ -785,25 +785,25 @@ find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo, TypeInfoDataMap) :-
             ),
             solutions_set(ConvertLval, Locns)
         ;
-            varset__lookup_name(VarSet, TypeInfoVar, VarString),
-            string__format("%s: %s %s",
+            varset.lookup_name(VarSet, TypeInfoVar, VarString),
+            string.format("%s: %s %s",
                 [s("find_typeinfos_for_tvars"),
                 s("can't find rval for type_info var"),
                 s(VarString)], ErrStr),
             unexpected(this_file, ErrStr)
         )
     ),
-    list__map(FindLocn, TypeInfoLocns, TypeInfoVarLocns),
-    map__from_corresponding_lists(TypeVars, TypeInfoVarLocns, TypeInfoDataMap).
+    list.map(FindLocn, TypeInfoLocns, TypeInfoVarLocns),
+    map.from_corresponding_lists(TypeVars, TypeInfoVarLocns, TypeInfoDataMap).
 
 %---------------------------------------------------------------------------%
 
 generate_table_arg_type_info(ProcInfo, NumberedVars, TableArgInfos) :-
     proc_info_vartypes(ProcInfo, VarTypes),
-    set__init(TypeVars0),
+    set.init(TypeVars0),
     build_table_arg_info(VarTypes, NumberedVars, ArgLayouts,
         TypeVars0, TypeVars),
-    set__to_sorted_list(TypeVars, TypeVarsList),
+    set.to_sorted_list(TypeVars, TypeVarsList),
     find_typeinfos_for_tvars_table(TypeVarsList, NumberedVars, ProcInfo,
         TypeInfoDataMap),
     TableArgInfos = table_arg_infos(ArgLayouts, TypeInfoDataMap).
@@ -815,10 +815,10 @@ generate_table_arg_type_info(ProcInfo, NumberedVars, TableArgInfos) :-
 build_table_arg_info(_, [], [], !TypeVars).
 build_table_arg_info(VarTypes, [Var - SlotNum | NumberedVars],
         [ArgLayout | ArgLayouts], !TypeVars) :-
-    map__lookup(VarTypes, Var, Type),
+    map.lookup(VarTypes, Var, Type),
     ArgLayout = table_arg_info(Var, SlotNum, Type),
-    prog_type__vars(Type, VarTypeVars),
-    svset__insert_list(VarTypeVars, !TypeVars),
+    prog_type.vars(Type, VarTypeVars),
+    svset.insert_list(VarTypeVars, !TypeVars),
     build_table_arg_info(VarTypes, NumberedVars, ArgLayouts, !TypeVars).
 
 %---------------------------------------------------------------------------%
@@ -831,32 +831,32 @@ find_typeinfos_for_tvars_table(TypeVars, NumberedVars, ProcInfo,
         TypeInfoDataMap) :-
     proc_info_varset(ProcInfo, VarSet),
     proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
-    list__map(rtti_lookup_type_info_locn(RttiVarMaps), TypeVars,
+    list.map(rtti_lookup_type_info_locn(RttiVarMaps), TypeVars,
         TypeInfoLocns),
     FindLocn = (pred(TypeInfoLocn::in, Locn::out) is det :-
         (
             (
                 TypeInfoLocn = typeclass_info(TypeInfoVar, FieldNum),
-                assoc_list__search(NumberedVars, TypeInfoVar, Slot),
+                assoc_list.search(NumberedVars, TypeInfoVar, Slot),
                 LocnPrime = indirect(Slot, FieldNum)
             ;
                 TypeInfoLocn = type_info(TypeInfoVar),
-                assoc_list__search(NumberedVars, TypeInfoVar, Slot),
+                assoc_list.search(NumberedVars, TypeInfoVar, Slot),
                 LocnPrime = direct(Slot)
             )
         ->
             Locn = LocnPrime
         ;
             type_info_locn_var(TypeInfoLocn, TypeInfoVar),
-            varset__lookup_name(VarSet, TypeInfoVar, VarString),
-            string__format("%s: %s %s",
+            varset.lookup_name(VarSet, TypeInfoVar, VarString),
+            string.format("%s: %s %s",
                 [s("find_typeinfos_for_tvars_table"),
                 s("can't find slot for type_info var"), s(VarString)], ErrStr),
             unexpected(this_file, ErrStr)
         )
     ),
-    list__map(FindLocn, TypeInfoLocns, TypeInfoVarLocns),
-    map__from_corresponding_lists(TypeVars, TypeInfoVarLocns, TypeInfoDataMap).
+    list.map(FindLocn, TypeInfoLocns, TypeInfoVarLocns),
+    map.from_corresponding_lists(TypeVars, TypeInfoVarLocns, TypeInfoDataMap).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2003-2005 The University of Melbourne.
+% Copyright (C) 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,7 +16,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module backend_libs__proc_label.
+:- module backend_libs.proc_label.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -88,7 +88,7 @@ make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
             (
                 ThisModule \= TypeModule,
                 SpecialPred = spec_pred_unify,
-                \+ hlds_pred__in_in_unification_proc_id(ProcId)
+                \+ hlds_pred.in_in_unification_proc_id(ProcId)
             ->
                 DefiningModule = ThisModule
             ;
@@ -98,7 +98,7 @@ make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
             ProcLabel = special_proc(DefiningModule, SpecialPred,
                 TypeModule, TypeName, TypeArity, ProcIdInt)
         ;
-            string__append_list(["make_proc_label:\n",
+            string.append_list(["make_proc_label:\n",
                 "cannot make label for special pred `", PredName, "'"],
                 ErrorMessage),
             unexpected(this_file, ErrorMessage)
@@ -109,7 +109,7 @@ make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
     ).
 
 make_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
-    RttiProcLabel = rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId),
+    RttiProcLabel = rtti.make_rtti_proc_label(ModuleInfo, PredId, ProcId),
     make_proc_label_from_rtti(RttiProcLabel) = ProcLabel.
 
 make_user_proc_label(ThisModule, PredIsImported, PredOrFunc, PredModule,
@@ -131,7 +131,7 @@ make_user_proc_label(ThisModule, PredIsImported, PredOrFunc, PredModule,
 make_uni_label(ModuleInfo, TypeCtor, UniModeNum) = ProcLabel :-
     module_info_get_name(ModuleInfo, ModuleName),
     ( TypeCtor = qualified(TypeModule, TypeName) - Arity ->
-        ( hlds_pred__in_in_unification_proc_id(UniModeNum) ->
+        ( hlds_pred.in_in_unification_proc_id(UniModeNum) ->
             Module = TypeModule
         ;
             Module = ModuleName

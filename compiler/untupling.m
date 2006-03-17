@@ -87,7 +87,7 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module transform_hlds__untupling.
+:- module transform_hlds.untupling.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -164,8 +164,8 @@ untuple_arguments(!ModuleInfo, !IO) :-
 
 expand_args_in_module(!ModuleInfo, TransformMap) :-
     module_info_predids(!.ModuleInfo, PredIds),
-    list__foldl3(expand_args_in_pred, PredIds,
-        !ModuleInfo, map__init, TransformMap, counter__init(0), _).
+    list.foldl3(expand_args_in_pred, PredIds,
+        !ModuleInfo, map.init, TransformMap, counter.init(0), _).
 
 :- pred expand_args_in_pred(pred_id::in, module_info::in, module_info::out,
     transform_map::in, transform_map::out, counter::in, counter::out) is det.
@@ -186,12 +186,12 @@ expand_args_in_pred(PredId, !ModuleInfo, !TransformMap, !Counter) :-
         pred_info_get_class_context(PredInfo, constraints([], [])),
         pred_info_get_origin(PredInfo, user(_)),
         pred_info_arg_types(PredInfo, TypeVarSet, ExistQVars, ArgTypes),
-        varset__is_empty(TypeVarSet),
+        varset.is_empty(TypeVarSet),
         ExistQVars = [],
         at_least_one_expandable_type(ArgTypes, TypeTable)
     ->
         ProcIds = pred_info_non_imported_procids(PredInfo),
-        list__foldl3(expand_args_in_proc(PredId), ProcIds,
+        list.foldl3(expand_args_in_proc(PredId), ProcIds,
             !ModuleInfo, !TransformMap, !Counter)
     ;
         true
@@ -243,7 +243,7 @@ expand_args_in_proc(PredId, ProcId, !ModuleInfo, !TransformMap, !Counter) :-
         requantify_proc(!ProcInfo),
         recompute_instmap_delta_proc(yes, !ProcInfo, !ModuleInfo),
 
-        counter__allocate(Num, !Counter),
+        counter.allocate(Num, !Counter),
         create_aux_pred(PredId, ProcId, PredInfo0, !.ProcInfo, Num,
             AuxPredId, AuxProcId, CallAux,
             AuxPredInfo, AuxProcInfo0, !ModuleInfo),
@@ -252,7 +252,7 @@ expand_args_in_proc(PredId, ProcId, !ModuleInfo, !TransformMap, !Counter) :-
             AuxProcInfo0, AuxProcInfo),
         module_info_set_pred_proc_info(AuxPredId, AuxProcId,
             AuxPredInfo, AuxProcInfo, !ModuleInfo),
-        svmap__det_insert(proc(PredId, ProcId),
+        svmap.det_insert(proc(PredId, ProcId),
             transformed_proc(proc(AuxPredId, AuxProcId), CallAux),
             !TransformMap)
     ).
@@ -269,9 +269,9 @@ expand_args_in_proc_2(HeadVars0, ArgModes0, HeadVars, ArgModes,
         !VarTypes, [], TypeTable),
     goal_info_get_context(snd(Goal0), Context),
     goal_info_set_context(Context, GoalInfo1, GoalInfo),
-    list__condense(ListOfHeadVars, HeadVars),
-    list__condense(ListOfArgModes, ArgModes),
-    build_untuple_map(HeadVars0, ListOfHeadVars, map__init, UntupleMap).
+    list.condense(ListOfHeadVars, HeadVars),
+    list.condense(ListOfArgModes, ArgModes),
+    build_untuple_map(HeadVars0, ListOfHeadVars, map.init, UntupleMap).
 
 :- pred expand_args_in_proc_3(list(prog_var)::in, list(mer_mode)::in,
     list(list(prog_var))::out, list(list(mer_mode))::out,
@@ -305,8 +305,8 @@ expand_one_arg_in_proc(HeadVar0, ArgMode0, HeadVars, ArgModes,
         expand_args_in_proc_3(HeadVars1, ArgModes1,
             ListOfHeadVars, ListOfArgModes, !Goal, !VarSet, !VarTypes,
             ContainerTypes, TypeTable),
-        HeadVars = list__condense(ListOfHeadVars),
-        ArgModes = list__condense(ListOfArgModes)
+        HeadVars = list.condense(ListOfHeadVars),
+        ArgModes = list.condense(ListOfArgModes)
     ;
         MaybeHeadVarsAndArgModes = no,
         HeadVars = [HeadVar0],
@@ -322,15 +322,14 @@ expand_one_arg_in_proc(HeadVar0, ArgMode0, HeadVars, ArgModes,
 expand_one_arg_in_proc_2(HeadVar0, ArgMode0, MaybeHeadVarsAndArgModes,
         !Goal, !VarSet, !VarTypes, ContainerTypes0, ContainerTypes,
         TypeTable) :-
-    map__lookup(!.VarTypes, HeadVar0, Type),
-    expand_argument(ArgMode0, Type, ContainerTypes0, TypeTable,
-        Expansion),
+    map.lookup(!.VarTypes, HeadVar0, Type),
+    expand_argument(ArgMode0, Type, ContainerTypes0, TypeTable, Expansion),
     (
         Expansion = expansion(ConsId, NewTypes),
-        varset__lookup_name(!.VarSet, HeadVar0, ParentName),
+        varset.lookup_name(!.VarSet, HeadVar0, ParentName),
         create_untuple_vars(ParentName, 0, NewTypes, NewHeadVars,
             !VarSet, !VarTypes),
-        list__duplicate(list__length(NewHeadVars), ArgMode0, NewArgModes),
+        list.duplicate(list.length(NewHeadVars), ArgMode0, NewArgModes),
         MaybeHeadVarsAndArgModes = yes(NewHeadVars - NewArgModes),
         ( ArgMode0 = in_mode ->
             construct_functor(HeadVar0, ConsId, NewHeadVars, UnifGoal),
@@ -356,9 +355,9 @@ expand_one_arg_in_proc_2(HeadVar0, ArgMode0, MaybeHeadVarsAndArgModes,
 create_untuple_vars(_, _, [], [], !VarSet, !VarTypes).
 create_untuple_vars(ParentName, Num, [Type | Types], [NewVar | NewVars],
         !VarSet, !VarTypes) :-
-    string__format("Untupled_%s_%d", [s(ParentName), i(Num)], Name),
-    svvarset__new_named_var(Name, NewVar, !VarSet),
-    svmap__det_insert(NewVar, Type, !VarTypes),
+    string.format("Untupled_%s_%d", [s(ParentName), i(Num)], Name),
+    svvarset.new_named_var(Name, NewVar, !VarSet),
+    svmap.det_insert(NewVar, Type, !VarTypes),
     create_untuple_vars(ParentName, Num+1, Types, NewVars, !VarSet, !VarTypes).
 
 :- pred conjoin_goals_keep_detism(hlds_goal::in, hlds_goal::in,
@@ -367,7 +366,7 @@ create_untuple_vars(ParentName, Num, [Type | Types], [NewVar | NewVars],
 conjoin_goals_keep_detism(GoalA, GoalB, Goal) :-
     goal_to_conj_list(GoalA, GoalListA),
     goal_to_conj_list(GoalB, GoalListB),
-    list__append(GoalListA, GoalListB, GoalList),
+    list.append(GoalListA, GoalListB, GoalList),
     goal_list_determinism(GoalList, Determinism),
     goal_info_init(GoalInfo0),
     goal_info_set_determinism(Determinism, GoalInfo0, GoalInfo),
@@ -381,7 +380,7 @@ build_untuple_map([OldVar | OldVars], [NewVars | NewVarss], !UntupleMap) :-
     ( NewVars = [OldVar] ->
         build_untuple_map(OldVars, NewVarss, !UntupleMap)
     ;
-        svmap__det_insert(OldVar, NewVars, !UntupleMap),
+        svmap.det_insert(OldVar, NewVars, !UntupleMap),
         build_untuple_map(OldVars, NewVarss, !UntupleMap)
     ).
 build_untuple_map([], [_| _], !_) :-
@@ -426,9 +425,9 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
     PredName = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     goal_info_get_context(GoalInfo, Context),
-    term__context_line(Context, Line),
+    term.context_line(Context, Line),
     proc_id_to_int(ProcId, ProcNo),
-    AuxNamePrefix = string__format("untupling_%d", [i(ProcNo)]),
+    AuxNamePrefix = string.format("untupling_%d", [i(ProcNo)]),
     make_pred_name_with_context(ModuleName, AuxNamePrefix,
         PredOrFunc, PredName, Line, Counter, AuxPredSymName),
     (
@@ -438,7 +437,7 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
     ),
 
     Origin = transformed(untuple(ProcNo), OrigOrigin, PredId),
-    hlds_pred__define_new_pred(Origin, Goal, CallAux, AuxHeadVars, _ExtraArgs,
+    hlds_pred.define_new_pred(Origin, Goal, CallAux, AuxHeadVars, _ExtraArgs,
         InitialAuxInstMap, AuxPredName, TVarSet, VarTypes, ClassContext,
         RttiVarMaps, VarSet, InstVarSet, Markers, address_is_not_taken,
         !ModuleInfo, proc(AuxPredId, AuxProcId)),
@@ -461,7 +460,7 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
 
 fix_calls_to_expanded_procs(TransformMap, !ModuleInfo) :-
     module_info_predids(!.ModuleInfo, PredIds),
-    list__foldl(fix_calls_in_pred(TransformMap), PredIds, !ModuleInfo).
+    list.foldl(fix_calls_in_pred(TransformMap), PredIds, !ModuleInfo).
 
 :- pred fix_calls_in_pred(transform_map::in, pred_id::in, module_info::in,
     module_info::out) is det.
@@ -469,7 +468,7 @@ fix_calls_to_expanded_procs(TransformMap, !ModuleInfo) :-
 fix_calls_in_pred(TransformMap, PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
-    list__foldl(fix_calls_in_proc(TransformMap, PredId), ProcIds, !ModuleInfo).
+    list.foldl(fix_calls_in_proc(TransformMap, PredId), ProcIds, !ModuleInfo).
 
 :- pred fix_calls_in_proc(transform_map::in, pred_id::in, proc_id::in,
     module_info::in, module_info::out) is det.
@@ -512,7 +511,7 @@ fix_calls_in_goal(Goal0 - GoalInfo0, Goal, !VarSet, !VarTypes,
         TransformMap, ModuleInfo) :-
     Goal0 = call(CalleePredId, CalleeProcId, OrigArgs, _, _, _),
     (
-        map__search(TransformMap, proc(CalleePredId, CalleeProcId),
+        map.search(TransformMap, proc(CalleePredId, CalleeProcId),
             transformed_proc(_, CallAux0 - CallAuxInfo))
     ->
         module_info_get_type_table(ModuleInfo, TypeTable),
@@ -650,15 +649,15 @@ expand_call_args_2([], [], [], [], [], !VarSet, !VarTypes, _, _).
 expand_call_args_2([Arg0 | Args0], [ArgMode | ArgModes], Args,
         EnterUnifs, ExitUnifs, !VarSet, !VarTypes,
         ContainerTypes0, TypeTable) :-
-    map__lookup(!.VarTypes, Arg0, Arg0Type),
+    map.lookup(!.VarTypes, Arg0, Arg0Type),
     expand_argument(ArgMode, Arg0Type, ContainerTypes0, TypeTable, Expansion),
     (
         Expansion = expansion(ConsId, Types),
-        NumVars = list__length(Types),
-        svvarset__new_vars(NumVars, ReplacementArgs, !VarSet),
-        svmap__det_insert_from_corresponding_lists(
+        NumVars = list.length(Types),
+        svvarset.new_vars(NumVars, ReplacementArgs, !VarSet),
+        svmap.det_insert_from_corresponding_lists(
             ReplacementArgs, Types, !VarTypes),
-        list__duplicate(NumVars, ArgMode, ReplacementModes),
+        list.duplicate(NumVars, ArgMode, ReplacementModes),
         ContainerTypes = [Arg0Type | ContainerTypes0],
         ( ArgMode = in_mode ->
             deconstruct_functor(Arg0, ConsId, ReplacementArgs, Unif),
@@ -734,14 +733,14 @@ expand_type(Type, ContainerTypes, TypeTable, Expansion) :-
         type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
         type_ctor_is_tuple(TypeCtor)
     ->
-        Arity = list__length(TypeArgs),
+        Arity = list.length(TypeArgs),
         ConsId = cons(unqualified("{}"), Arity),
         Expansion = expansion(ConsId, TypeArgs)
     ;
         % Expand a discriminated union type if it has only a
         % single functor and the type has no parameters.
         type_to_ctor_and_args(Type, TypeCtor, []),
-        map__search(TypeTable, TypeCtor, TypeDefn),
+        map.search(TypeTable, TypeCtor, TypeDefn),
         get_type_defn_tparams(TypeDefn, []),
         get_type_defn_body(TypeDefn, TypeBody),
         TypeBody ^ du_type_ctors = [SingleCtor],
@@ -750,11 +749,11 @@ expand_type(Type, ContainerTypes, TypeTable, Expansion) :-
         SingleCtorArgs = SingleCtor ^ cons_args,
         SingleCtorArgs \= [],
         % Prevent infinite loop with recursive types.
-        \+ list__member(Type, ContainerTypes)
+        \+ list.member(Type, ContainerTypes)
     ->
-        Arity = list__length(SingleCtorArgs),
+        Arity = list.length(SingleCtorArgs),
         ConsId = cons(SingleCtorName, Arity),
-        ExpandedTypes = list__map(snd, SingleCtorArgs),
+        ExpandedTypes = list.map(snd, SingleCtorArgs),
         Expansion = expansion(ConsId, ExpandedTypes)
     ;
         Expansion = no_expansion

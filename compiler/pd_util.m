@@ -13,7 +13,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module transform_hlds__pd_util.
+:- module transform_hlds.pd_util.
 :- interface.
 
 :- import_module check_hlds.mode_errors.
@@ -79,7 +79,7 @@
 :- pred requantify_goal(set(prog_var)::in,
     hlds_goal::in, hlds_goal::out, pd_info::in, pd_info::out) is det.
 
-    % Apply mode_util__recompute_instmap_delta to the goal.
+    % Apply mode_util.recompute_instmap_delta to the goal.
     %
 :- pred recompute_instmap_delta(hlds_goal::in, hlds_goal::out,
     pd_info::in, pd_info::out) is det.
@@ -192,18 +192,18 @@ goal_get_calls(Goal0, CalledPreds) :-
         Goal = call(PredId, ProcId, _, _, _, _) - _,
         CalledPred = proc(PredId, ProcId)
     ),
-    list__filter_map(GetCalls, GoalList, CalledPreds).
+    list.filter_map(GetCalls, GoalList, CalledPreds).
 
 %-----------------------------------------------------------------------------%
 
 propagate_constraints(!Goal, !PDInfo, !IO) :-
-    globals__io_lookup_bool_option(local_constraint_propagation,
+    globals.io_lookup_bool_option(local_constraint_propagation,
         ConstraintProp, !IO),
     (
         ConstraintProp = yes,
         Goal0 = !.Goal,
-        pd_debug__message("%% Propagating constraints\n", [], !IO),
-        pd_debug__output_goal(!.PDInfo, "before constraints\n", Goal0, !IO),
+        pd_debug_message("%% Propagating constraints\n", [], !IO),
+        pd_debug_output_goal(!.PDInfo, "before constraints\n", Goal0, !IO),
         pd_info_get_module_info(!.PDInfo, ModuleInfo0),
         pd_info_get_proc_info(!.PDInfo, ProcInfo0),
         pd_info_get_instmap(!.PDInfo, InstMap),
@@ -212,7 +212,7 @@ propagate_constraints(!Goal, !PDInfo, !IO) :-
         constraint_info_init(ModuleInfo0, VarTypes0, VarSet0, InstMap, CInfo0),
         Goal0 = _ - GoalInfo0,
         goal_info_get_nonlocals(GoalInfo0, NonLocals),
-        constraint__propagate_constraints_in_goal(!Goal, CInfo0, CInfo, !IO),
+        constraint.propagate_constraints_in_goal(!Goal, CInfo0, CInfo, !IO),
         constraint_info_deconstruct(CInfo, ModuleInfo, VarTypes, VarSet,
             Changed),
         pd_info_set_module_info(ModuleInfo, !PDInfo),
@@ -221,13 +221,13 @@ propagate_constraints(!Goal, !PDInfo, !IO) :-
         pd_info_set_proc_info(ProcInfo, !PDInfo),
         (
             Changed = yes,
-            pd_debug__output_goal(!.PDInfo,
+            pd_debug_output_goal(!.PDInfo,
                 "after constraints, before recompute\n", !.Goal, !IO),
             requantify_goal(NonLocals, !Goal, !PDInfo),
             recompute_instmap_delta(!Goal, !PDInfo),
             rerun_det_analysis(!Goal, !PDInfo, !IO),
             module_info_get_globals(ModuleInfo, Globals),
-            simplify__find_simplifications(no, Globals, Simplifications),
+            simplify.find_simplifications(no, Globals, Simplifications),
             simplify_goal(Simplifications, !Goal, !PDInfo, !IO)
         ;
             % Use Goal0 rather than the output of propagate_constraints_in_goal
@@ -255,7 +255,7 @@ simplify_goal(Simplifications, Goal0, Goal, !PDInfo, !IO) :-
     simplify_info_init(DetInfo0, Simplifications, InstMap0, ProcInfo0,
         SimplifyInfo0),
 
-    simplify__process_goal(Goal0, Goal, SimplifyInfo0, SimplifyInfo, !IO),
+    simplify.process_goal(Goal0, Goal, SimplifyInfo0, SimplifyInfo, !IO),
 
     % Deconstruct the simplify_info.
     simplify_info_get_module_info(SimplifyInfo, ModuleInfo),
@@ -284,7 +284,7 @@ unique_modecheck_goal(LiveVars, Goal0, Goal, Errors, !PDInfo, !IO) :-
     PredProcId = proc(PredId, ProcId),
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     pd_info_get_instmap(!.PDInfo, InstMap0),
-    term__context_init(Context),
+    term.context_init(Context),
     pd_info_get_pred_info(!.PDInfo, PredInfo0),
     pd_info_get_proc_info(!.PDInfo, ProcInfo0),
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo0,
@@ -296,8 +296,8 @@ unique_modecheck_goal(LiveVars, Goal0, Goal, Errors, !PDInfo, !IO) :-
     mode_info_init(ModuleInfo1, PredId, ProcId, Context, LiveVars, InstMap0,
         check_unique_modes, MayChangeCalledProc, ModeInfo0),
 
-    unique_modes__check_goal(Goal0, Goal, ModeInfo0, ModeInfo1, !IO),
-    globals__io_lookup_bool_option(debug_pd, Debug, !IO),
+    unique_modes.check_goal(Goal0, Goal, ModeInfo0, ModeInfo1, !IO),
+    globals.io_lookup_bool_option(debug_pd, Debug, !IO),
     (
         Debug = yes,
         report_mode_errors(ModeInfo1, ModeInfo, !IO)
@@ -330,8 +330,8 @@ get_goal_live_vars(PDInfo, _ - GoalInfo, !:Vars) :-
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
     pd_info_get_instmap(PDInfo, InstMap),
     goal_info_get_nonlocals(GoalInfo, NonLocals),
-    set__to_sorted_list(NonLocals, NonLocalsList),
-    set__init(!:Vars),
+    set.to_sorted_list(NonLocals, NonLocalsList),
+    set.init(!:Vars),
     get_goal_live_vars_2(ModuleInfo, NonLocalsList, InstMap, InstMapDelta,
         !Vars).
 
@@ -345,15 +345,14 @@ get_goal_live_vars_2(ModuleInfo, [NonLocal | NonLocals],
     ( instmap_delta_search_var(InstMapDelta, NonLocal, FinalInst0) ->
         FinalInst = FinalInst0
     ;
-        instmap__lookup_var(InstMap, NonLocal, FinalInst)
+        instmap.lookup_var(InstMap, NonLocal, FinalInst)
     ),
     ( inst_is_clobbered(ModuleInfo, FinalInst) ->
         true
     ;
-        svset__insert(NonLocal, !Vars)
+        svset.insert(NonLocal, !Vars)
     ),
-    get_goal_live_vars_2(ModuleInfo, NonLocals, InstMap, InstMapDelta,
-        !Vars).
+    get_goal_live_vars_2(ModuleInfo, NonLocals, InstMap, InstMapDelta, !Vars).
 
 %-----------------------------------------------------------------------------%
 
@@ -393,17 +392,17 @@ rerun_det_analysis(Goal0, Goal, !PDInfo, !IO) :-
 
 convert_branch_info(ArgInfo, Args, VarInfo) :-
     ArgInfo = pd_branch_info(ArgMap, LeftArgs, OpaqueArgs),
-    map__to_assoc_list(ArgMap, ArgList),
-    map__init(BranchVarMap0),
+    map.to_assoc_list(ArgMap, ArgList),
+    map.init(BranchVarMap0),
     convert_branch_info_2(ArgList, Args, BranchVarMap0, BranchVarMap),
 
-    set__to_sorted_list(LeftArgs, LeftArgNos),
-    list__map(list__index1_det(Args), LeftArgNos, LeftVars0),
-    set__list_to_set(LeftVars0, LeftVars),
+    set.to_sorted_list(LeftArgs, LeftArgNos),
+    list.map(list.index1_det(Args), LeftArgNos, LeftVars0),
+    set.list_to_set(LeftVars0, LeftVars),
 
-    set__to_sorted_list(OpaqueArgs, OpaqueArgNos),
-    list__map(list__index1_det(Args), OpaqueArgNos, OpaqueVars0),
-    set__list_to_set(OpaqueVars0, OpaqueVars),
+    set.to_sorted_list(OpaqueArgs, OpaqueArgNos),
+    list.map(list.index1_det(Args), OpaqueArgNos, OpaqueVars0),
+    set.list_to_set(OpaqueVars0, OpaqueVars),
 
     VarInfo = pd_branch_info(BranchVarMap, LeftVars, OpaqueVars).
 
@@ -411,10 +410,9 @@ convert_branch_info(ArgInfo, Args, VarInfo) :-
     prog_vars::in, pd_var_info::in, pd_var_info::out) is det.
 
 convert_branch_info_2([], _, !VarInfo).
-convert_branch_info_2([ArgNo - Branches | ArgInfos], Args,
-        !VarInfo) :-
-    list__index1_det(Args, ArgNo, Arg),
-    svmap__set(Arg, Branches, !VarInfo),
+convert_branch_info_2([ArgNo - Branches | ArgInfos], Args, !VarInfo) :-
+    list.index1_det(Args, ArgNo, Arg),
+    svmap.set(Arg, Branches, !VarInfo),
     convert_branch_info_2(ArgInfos, Args, !VarInfo).
 
 %-----------------------------------------------------------------------------%
@@ -424,24 +422,24 @@ convert_branch_info_2([ArgNo - Branches | ArgInfos], Args,
 get_branch_vars_proc(PredProcId, ProcInfo, !ArgInfo, !ModuleInfo) :-
     proc_info_goal(ProcInfo, Goal),
     proc_info_vartypes(ProcInfo, VarTypes),
-    instmap__init_reachable(InstMap0),
-    map__init(Vars0),
-    set__init(LeftVars0),
+    instmap.init_reachable(InstMap0),
+    map.init(Vars0),
+    set.init(LeftVars0),
     goal_to_conj_list(Goal, GoalList),
     (
         get_branch_vars_goal_2(!.ModuleInfo, GoalList, no,
             VarTypes, InstMap0, LeftVars0, LeftVars, Vars0, Vars)
     ->
         proc_info_headvars(ProcInfo, HeadVars),
-        map__init(ThisProcArgMap0),
-        set__init(ThisProcLeftArgs0),
+        map.init(ThisProcArgMap0),
+        set.init(ThisProcLeftArgs0),
         get_extra_info_headvars(HeadVars, 1, LeftVars, Vars,
             ThisProcArgMap0, ThisProcArgMap1,
             ThisProcLeftArgs0, ThisProcLeftArgs),
-        set__init(OpaqueArgs0),
+        set.init(OpaqueArgs0),
         BranchInfo0 = pd_branch_info(ThisProcArgMap1, ThisProcLeftArgs,
             OpaqueArgs0),
-        svmap__set(PredProcId, BranchInfo0, !ArgInfo),
+        svmap.set(PredProcId, BranchInfo0, !ArgInfo),
 
             % Look for opportunities for deforestation in
             % the sub-branches of the top-level goal.
@@ -456,13 +454,13 @@ get_branch_vars_proc(PredProcId, ProcInfo, !ArgInfo, !ModuleInfo) :-
 
         BranchInfo = pd_branch_info(ThisProcArgMap, ThisProcLeftArgs,
             OpaqueArgs),
-        svmap__set(PredProcId, BranchInfo, !ArgInfo)
+        svmap.set(PredProcId, BranchInfo, !ArgInfo)
     ;
         true
     ).
 
     % Find output arguments about which we have no extra information,
-    % such as io__states. If a later goal in a conjunction depends
+    % such as io.states. If a later goal in a conjunction depends
     % on one of these, it is unlikely that the deforestation will
     % be able to successfully fold to give a recursive definition.
     %
@@ -474,9 +472,9 @@ get_opaque_args(ModuleInfo, ArgNo, [ArgMode | ArgModes],
         ExtraInfoArgs, !OpaqueArgs) :-
     (
         mode_is_output(ModuleInfo, ArgMode),
-        \+ map__contains(ExtraInfoArgs, ArgNo)
+        \+ map.contains(ExtraInfoArgs, ArgNo)
     ->
-        set__insert(!.OpaqueArgs, ArgNo, !:OpaqueArgs)
+        set.insert(!.OpaqueArgs, ArgNo, !:OpaqueArgs)
     ;
         true
     ),
@@ -496,13 +494,13 @@ get_opaque_args(ModuleInfo, ArgNo, [ArgMode | ArgModes],
 get_extra_info_headvars([], _, _, _, !Args, !LeftArgs).
 get_extra_info_headvars([HeadVar | HeadVars], ArgNo,
         LeftVars, VarInfo, !ThisProcArgs, !ThisProcLeftVars) :-
-    ( map__search(VarInfo, HeadVar, ThisVarInfo) ->
-        svmap__det_insert(ArgNo, ThisVarInfo, !ThisProcArgs)
+    ( map.search(VarInfo, HeadVar, ThisVarInfo) ->
+        svmap.det_insert(ArgNo, ThisVarInfo, !ThisProcArgs)
     ;
         true
     ),
-    ( set__member(HeadVar, LeftVars) ->
-        svset__insert(ArgNo, !ThisProcLeftVars)
+    ( set.member(HeadVar, LeftVars) ->
+        svset.insert(ArgNo, !ThisProcLeftVars)
     ;
         true
     ),
@@ -518,8 +516,8 @@ get_branch_vars_goal(Goal, MaybeBranchInfo, !PDInfo) :-
     pd_info_get_proc_arg_info(!.PDInfo, ProcArgInfo),
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
     proc_info_vartypes(ProcInfo, VarTypes),
-    set__init(LeftVars0),
-    map__init(Vars0),
+    set.init(LeftVars0),
+    map.init(Vars0),
     (
         get_branch_vars_goal_2(ModuleInfo0, [Goal], no,
             VarTypes, InstMap0, LeftVars0, LeftVars, Vars0, Vars1)
@@ -530,9 +528,8 @@ get_branch_vars_goal(Goal, MaybeBranchInfo, !PDInfo) :-
         pd_info_set_module_info(ModuleInfo, !PDInfo),
 
         % OpaqueVars is only filled in for calls.
-        set__init(OpaqueVars),
-        MaybeBranchInfo = yes(pd_branch_info(Vars, LeftVars, OpaqueVars)
-        )
+        set.init(OpaqueVars),
+        MaybeBranchInfo = yes(pd_branch_info(Vars, LeftVars, OpaqueVars))
     ;
         MaybeBranchInfo = no
     ).
@@ -547,7 +544,7 @@ get_branch_vars_goal_2(ModuleInfo, [Goal | Goals], !.FoundBranch,
         VarTypes, InstMap0, !LeftVars, !Vars) :-
     Goal = _ - GoalInfo,
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
-    instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+    instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
     ( get_branch_instmap_deltas(Goal, InstMapDeltas) ->
         % Only look for goals with one top-level branched goal,
         % since deforestation of goals with more than one is
@@ -578,14 +575,14 @@ get_branch_instmap_deltas(switch(_, _, Cases) - _, InstMapDeltas) :-
             Case = case(_, _ - CaseInfo),
             goal_info_get_instmap_delta(CaseInfo, InstMapDelta)
         ),
-    list__map(GetCaseInstMapDelta, Cases, InstMapDeltas).
+    list.map(GetCaseInstMapDelta, Cases, InstMapDeltas).
 get_branch_instmap_deltas(disj(Disjuncts) - _, InstMapDeltas) :-
     GetDisjunctInstMapDelta =
         (pred(Disjunct::in, InstMapDelta::out) is det :-
             Disjunct = _ - DisjInfo,
             goal_info_get_instmap_delta(DisjInfo, InstMapDelta)
         ),
-    list__map(GetDisjunctInstMapDelta, Disjuncts, InstMapDeltas).
+    list.map(GetDisjunctInstMapDelta, Disjuncts, InstMapDeltas).
 
     % Get the variables for which we can do unfolding if the goals to
     % the left supply the top-level functor. Eventually this should
@@ -596,7 +593,7 @@ get_branch_instmap_deltas(disj(Disjuncts) - _, InstMapDeltas) :-
 
 get_left_vars(Goal, Vars0, Vars) :-
     ( Goal = switch(Var, _, _) - _ ->
-        set__insert(Vars0, Var, Vars)
+        set.insert(Vars0, Var, Vars)
     ;
         Vars = Vars0
     ).
@@ -611,35 +608,35 @@ get_branch_vars(ModuleInfo, Goal, [InstMapDelta | InstMapDeltas],
     AddExtraInfoVars =
         (pred(ChangedVar::in, Vars0::in, Vars::out) is det :-
             (
-                instmap__lookup_var(InstMap, ChangedVar, VarInst),
+                instmap.lookup_var(InstMap, ChangedVar, VarInst),
                 instmap_delta_search_var(InstMapDelta, ChangedVar,
                     DeltaVarInst),
                 inst_is_bound_to_functors(ModuleInfo, DeltaVarInst, [_]),
                 \+ inst_is_bound_to_functors(ModuleInfo, VarInst, [_])
             ->
-                ( map__search(Vars0, ChangedVar, Set0) ->
-                    set__insert(Set0, BranchNo, Set)
+                ( map.search(Vars0, ChangedVar, Set0) ->
+                    set.insert(Set0, BranchNo, Set)
                 ;
-                    set__singleton_set(Set, BranchNo)
+                    set.singleton_set(Set, BranchNo)
                 ),
-                map__set(Vars0, ChangedVar, Set, Vars)
+                map.set(Vars0, ChangedVar, Set, Vars)
             ;
                 Vars = Vars0
             )
         ),
     instmap_delta_changed_vars(InstMapDelta, ChangedVars),
-    set__to_sorted_list(ChangedVars, ChangedVarsList),
-    list__foldl(AddExtraInfoVars, ChangedVarsList, !ExtraVars),
+    set.to_sorted_list(ChangedVars, ChangedVarsList),
+    list.foldl(AddExtraInfoVars, ChangedVarsList, !ExtraVars),
 
     % We have extra information about a switched-on variable
     % at the end of each branch.
     ( Goal = switch(SwitchVar, _, _) - _ ->
-        ( map__search(!.ExtraVars, SwitchVar, SwitchVarSet0) ->
-            set__insert(SwitchVarSet0, BranchNo, SwitchVarSet)
+        ( map.search(!.ExtraVars, SwitchVar, SwitchVarSet0) ->
+            set.insert(SwitchVarSet0, BranchNo, SwitchVarSet)
         ;
-            set__singleton_set(SwitchVarSet, BranchNo)
+            set.singleton_set(SwitchVarSet, BranchNo)
         ),
-        svmap__set(SwitchVar, SwitchVarSet, !ExtraVars)
+        svmap.set(SwitchVar, SwitchVarSet, !ExtraVars)
     ;
         true
     ),
@@ -661,7 +658,7 @@ get_sub_branch_vars_goal(ProcArgInfo, [Goal | GoalList],
     ( GoalExpr = if_then_else(_, Cond, Then, Else) ->
         Cond = _ - CondInfo,
         goal_info_get_instmap_delta(CondInfo, CondDelta),
-        instmap__apply_instmap_delta(InstMap0, CondDelta, InstMap1),
+        instmap.apply_instmap_delta(InstMap0, CondDelta, InstMap1),
         goal_to_conj_list(Then, ThenList),
         examine_branch(!.ModuleInfo, ProcArgInfo, 1, ThenList,
             VarTypes, InstMap1, Vars0, Vars1),
@@ -678,7 +675,7 @@ get_sub_branch_vars_goal(ProcArgInfo, [Goal | GoalList],
         Vars2 = Vars0
     ),
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
-    instmap__apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
+    instmap.apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
     get_sub_branch_vars_goal(ProcArgInfo, GoalList,
         VarTypes, InstMap, Vars2, SubVars, !ModuleInfo).
 
@@ -704,8 +701,8 @@ examine_branch_list(ModuleInfo, ProcArgInfo, BranchNo, [Goal | Goals],
 examine_case_list(_, _, _, [], _, _, !Vars, !ModuleInfo).
 examine_case_list(ProcArgInfo, BranchNo, Var,
         [case(ConsId, Goal) | Goals], VarTypes, InstMap, !Vars, !ModuleInfo) :-
-    map__lookup(VarTypes, Var, Type),
-    instmap__bind_var_to_functor(Var, Type, ConsId, InstMap, InstMap1,
+    map.lookup(VarTypes, Var, Type),
+    instmap.bind_var_to_functor(Var, Type, ConsId, InstMap, InstMap1,
         !ModuleInfo),
     goal_to_conj_list(Goal, GoalList),
     examine_branch(!.ModuleInfo, ProcArgInfo, BranchNo, GoalList,
@@ -722,28 +719,28 @@ examine_branch(_, _, _, [], _, _, !Vars).
 examine_branch(ModuleInfo, ProcArgInfo, BranchNo, [Goal | Goals],
         VarTypes, InstMap, !Vars) :-
     ( Goal = call(PredId, ProcId, Args, _, _, _) - _ ->
-        ( map__search(ProcArgInfo, proc(PredId, ProcId), ThisProcArgInfo) ->
+        ( map.search(ProcArgInfo, proc(PredId, ProcId), ThisProcArgInfo) ->
             convert_branch_info(ThisProcArgInfo, Args, BranchInfo),
             BranchInfo = pd_branch_info(!:Vars, _, _),
-            map__keys(!.Vars, ExtraVars1),
+            map.keys(!.Vars, ExtraVars1),
             combine_vars(BranchNo, ExtraVars1, !Vars)
         ;
             true
         )
     ;
-        set__init(LeftVars0),
-        map__init(!:Vars),
+        set.init(LeftVars0),
+        map.init(!:Vars),
         get_branch_vars_goal_2(ModuleInfo, [Goal], no,
             VarTypes, InstMap, LeftVars0, _, !Vars)
     ->
-        map__keys(!.Vars, ExtraVars2),
+        map.keys(!.Vars, ExtraVars2),
         combine_vars(BranchNo, ExtraVars2, !Vars)
     ;
         true
     ),
     Goal = _ - GoalInfo,
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
-    instmap__apply_instmap_delta(InstMap, InstMapDelta, InstMap1),
+    instmap.apply_instmap_delta(InstMap, InstMapDelta, InstMap1),
     examine_branch(ModuleInfo, ProcArgInfo, BranchNo,
         Goals, VarTypes, InstMap1, !Vars).
 
@@ -752,12 +749,12 @@ examine_branch(ModuleInfo, ProcArgInfo, BranchNo, [Goal | Goals],
 
 combine_vars(_, [], !Vars).
 combine_vars(BranchNo, [ExtraVar | ExtraVars], !Vars) :-
-    ( map__search(!.Vars, ExtraVar, Branches0) ->
-        set__insert(Branches0, BranchNo, Branches),
-        svmap__det_update(ExtraVar, Branches, !Vars)
+    ( map.search(!.Vars, ExtraVar, Branches0) ->
+        set.insert(Branches0, BranchNo, Branches),
+        svmap.det_update(ExtraVar, Branches, !Vars)
     ;
-        set__singleton_set(Branches, BranchNo),
-        svmap__det_insert(ExtraVar, Branches, !Vars)
+        set.singleton_set(Branches, BranchNo),
+        svmap.det_insert(ExtraVar, Branches, !Vars)
     ),
     combine_vars(BranchNo, ExtraVars, !Vars).
 
@@ -786,7 +783,7 @@ recompute_instmap_delta(Goal0, Goal, !PDInfo) :-
 %-----------------------------------------------------------------------------%
 
 inst_MSG(InstA, InstB, ModuleInfo, Inst) :-
-    set__init(Expansions),
+    set.init(Expansions),
     inst_MSG_1(InstA, InstB, Expansions, ModuleInfo, Inst).
 
 :- type expansions == set(pair(mer_inst)).
@@ -800,10 +797,10 @@ inst_MSG_1(InstA, InstB, Expansions, ModuleInfo, Inst) :-
     ;
         % We don't do recursive MSGs
         % (we could, but it's probably not worth it).
-        \+ set__member(InstA - InstB, Expansions),
+        \+ set.member(InstA - InstB, Expansions),
         inst_expand(ModuleInfo, InstA, InstA2),
         inst_expand(ModuleInfo, InstB, InstB2),
-        set__insert(Expansions, InstA - InstB, Expansions1),
+        set.insert(Expansions, InstA - InstB, Expansions1),
         ( InstB2 = not_reached ->
             Inst = InstA2
         ;
@@ -894,7 +891,7 @@ bound_inst_list_MSG(Xs, Ys, Expansions, ModuleInfo, Uniq, List, Inst) :-
 %-----------------------------------------------------------------------------%
 
 inst_size(ModuleInfo, Inst, Size) :-
-    set__init(Expansions),
+    set.init(Expansions),
     inst_size_2(ModuleInfo, Inst, Expansions, Size).
 
 :- pred inst_size_2(module_info::in, mer_inst::in,
@@ -911,10 +908,10 @@ inst_size_2(ModuleInfo, constrained_inst_vars(_, Inst), Expansions,
     inst_size_2(ModuleInfo, Inst, Expansions, Size).
 inst_size_2(_, abstract_inst(_, _), _, 0).
 inst_size_2(ModuleInfo, defined_inst(InstName), Expansions0, Size) :-
-    ( set__member(InstName, Expansions0) ->
+    ( set.member(InstName, Expansions0) ->
         Size = 1
     ;
-        set__insert(Expansions0, InstName, Expansions),
+        set.insert(Expansions0, InstName, Expansions),
         inst_lookup(ModuleInfo, InstName, Inst),
         inst_size_2(ModuleInfo, Inst, Expansions, Size)
     ).
@@ -932,7 +929,7 @@ bound_inst_size(ModuleInfo, [functor(_, ArgInsts) | Insts],
     bound_inst_size(ModuleInfo, Insts, Expansions, Size2, Size).
 
 inst_list_size(ModuleInfo, Insts, Size) :-
-    set__init(Expansions),
+    set.init(Expansions),
     inst_list_size(ModuleInfo, Insts, Expansions, 0, Size).
 
 :- pred inst_list_size(module_info::in, list(mer_inst)::in,
@@ -952,25 +949,25 @@ goals_match(_ModuleInfo, OldGoal, OldArgs, OldArgTypes,
 
     goal_to_conj_list(OldGoal, OldGoalList),
     goal_to_conj_list(NewGoal, NewGoalList),
-    map__init(OldNewRenaming0),
+    map.init(OldNewRenaming0),
     goals_match_2(OldGoalList, NewGoalList,
         OldNewRenaming0, OldNewRenaming),
 
     % Check that the goal produces a superset of the outputs of the
     % version we are searching for.
     Search = (pred(K1::in, V1::out) is semidet :-
-        map__search(OldNewRenaming, K1, V1)
+        map.search(OldNewRenaming, K1, V1)
     ),
-    list__map(Search, OldArgs, NewArgs),
+    list.map(Search, OldArgs, NewArgs),
     NewGoal = _ - NewGoalInfo,
     goal_info_get_nonlocals(NewGoalInfo, NewNonLocals),
-    set__delete_list(NewNonLocals, NewArgs, UnmatchedNonLocals),
-    set__empty(UnmatchedNonLocals),
+    set.delete_list(NewNonLocals, NewArgs, UnmatchedNonLocals),
+    set.empty(UnmatchedNonLocals),
 
     % Check that argument types of NewGoal are subsumed by those of OldGoal.
     collect_matching_arg_types(OldArgs, OldArgTypes,
         OldNewRenaming, [], MatchingArgTypes),
-    map__apply_to_list(NewArgs, NewVarTypes, NewArgTypes),
+    map.apply_to_list(NewArgs, NewVarTypes, NewArgTypes),
     type_list_subsumes(MatchingArgTypes, NewArgTypes, TypeSubn).
 
 :- pred collect_matching_arg_types(prog_vars::in, list(mer_type)::in,
@@ -978,14 +975,14 @@ goals_match(_ModuleInfo, OldGoal, OldArgs, OldArgTypes,
     is det.
 
 collect_matching_arg_types([], [], _, !MatchingTypes) :-
-    list__reverse(!MatchingTypes).
+    list.reverse(!MatchingTypes).
 collect_matching_arg_types([_ | _], [], _, !MatchingTypes) :-
     unexpected(this_file, "collect_matching_arg_types").
 collect_matching_arg_types([], [_ | _], _, !MatchingTypes) :-
     unexpected(this_file, "collect_matching_arg_types").
 collect_matching_arg_types([Arg | Args], [Type | Types],
         Renaming, !MatchingTypes) :-
-    ( map__contains(Renaming, Arg) ->
+    ( map.contains(Renaming, Arg) ->
         !:MatchingTypes = [Type | !.MatchingTypes]
     ;
         true
@@ -1041,24 +1038,24 @@ goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals],
             OldGoal = generic_call(OldGenericCall, OldArgs1, _, Det) - _,
             NewGoal = generic_call(NewGenericCall, NewArgs1, _, Det) - _,
             match_generic_call(OldGenericCall, NewGenericCall),
-            goal_util__generic_call_vars(OldGenericCall, OldArgs0),
-            goal_util__generic_call_vars(NewGenericCall, NewArgs0),
-            list__append(OldArgs0, OldArgs1, OldArgs),
-            list__append(NewArgs0, NewArgs1, NewArgs)
+            goal_util.generic_call_vars(OldGenericCall, OldArgs0),
+            goal_util.generic_call_vars(NewGenericCall, NewArgs0),
+            list.append(OldArgs0, OldArgs1, OldArgs),
+            list.append(NewArgs0, NewArgs1, NewArgs)
         )
     ->
-        assoc_list__from_corresponding_lists(OldArgs, NewArgs, ONArgsList),
+        assoc_list.from_corresponding_lists(OldArgs, NewArgs, ONArgsList),
         MapInsert =
             (pred(KeyValue::in, Map0::in, Map::out) is semidet :-
                 KeyValue = Key - Value,
-                ( map__search(Map0, Key, Value0) ->
+                ( map.search(Map0, Key, Value0) ->
                     Value = Value0,
                     Map = Map0
                 ;
-                    map__det_insert(Map0, Key, Value, Map)
+                    map.det_insert(Map0, Key, Value, Map)
                 )
             ),
-        list__foldl(MapInsert, ONArgsList, !ONRenaming)
+        list.foldl(MapInsert, ONArgsList, !ONRenaming)
     ;
         (
             OldGoal = not(OldSubGoal) - _,
@@ -1107,7 +1104,7 @@ can_reorder_goals(ModuleInfo, FullyStrict, EarlierGoal, LaterGoal) :-
     \+ goal_info_is_impure(EarlierGoalInfo),
     \+ goal_info_is_impure(LaterGoalInfo),
 
-    goal_util__reordering_maintains_termination(ModuleInfo, FullyStrict,
+    goal_util.reordering_maintains_termination(ModuleInfo, FullyStrict,
         EarlierGoal, LaterGoal),
 
     % Don't reorder the goals if the later goal depends on the outputs
@@ -1126,8 +1123,8 @@ goal_depends_on_goal(_ - GoalInfo1, _ - GoalInfo2) :-
     goal_info_get_instmap_delta(GoalInfo1, InstmapDelta1),
     instmap_delta_changed_vars(InstmapDelta1, ChangedVars1),
     goal_info_get_nonlocals(GoalInfo2, NonLocals2),
-    set__intersect(ChangedVars1, NonLocals2, Intersection),
-    \+ set__empty(Intersection).
+    set.intersect(ChangedVars1, NonLocals2, Intersection),
+    \+ set.empty(Intersection).
 
 %-----------------------------------------------------------------------------%
 

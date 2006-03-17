@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001, 2003-2005 The University of Melbourne.
+% Copyright (C) 2000-2001, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -33,7 +33,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ml_backend__il_peephole.
+:- module ml_backend.il_peephole.
 :- interface.
 
 :- import_module ml_backend.ilasm.
@@ -43,12 +43,12 @@
 
 %-----------------------------------------------------------------------------%
 
-    % il_peephole__optimize(VerifyOnly, !IL):
+    % il_peephole_optimize(VerifyOnly, !IL):
     %
     % Peephole optimize a list of instructions, possibly only doing
     % those optimizations which are necessary for verifiable code.
     %
-:- pred il_peephole__optimize(bool::in,
+:- pred il_peephole_optimize(bool::in,
     list(ilasm__decl)::in, list(ilasm__decl)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -69,13 +69,13 @@
 
 :- type instrs == list(instr).
 
-optimize(VerifyOnly, Decls0, Decls) :-
+il_peephole_optimize(VerifyOnly, Decls0, Decls) :-
     % We zip down to the end of the instruction list, and start attempting
     % to optimize instruction sequences. As long as we can continue
     % optimizing the instruction sequence, we keep doing so;
     % when we find a sequence we can't optimize, we back up and try
     % to optimize the sequence starting with the previous instruction.
-    list__map_foldl(optimize_decl(VerifyOnly), Decls0, Decls, no, _Mod).
+    list.map_foldl(optimize_decl(VerifyOnly), Decls0, Decls, no, _Mod).
 
     % Mod is a bool that says whether the code was modified as a
     % result of the optimization (that is, whether Decl \= Decl0).
@@ -86,15 +86,15 @@ optimize(VerifyOnly, Decls0, Decls) :-
 
 optimize_decl(VerifyOnly, Decl0, Decl, !Mod) :-
     ( Decl0 = class(A, B, C, D, ClassMembers0) ->
-        list__map_foldl(optimize_class_member(VerifyOnly),
+        list.map_foldl(optimize_class_member(VerifyOnly),
             ClassMembers0, ClassMembers, !Mod),
         Decl = class(A, B, C, D, ClassMembers)
     ; Decl0 = method(A, MethodDecls0) ->
-        list__map_foldl(optimize_method_decl(VerifyOnly), MethodDecls0,
+        list.map_foldl(optimize_method_decl(VerifyOnly), MethodDecls0,
             MethodDecls, !Mod),
         Decl = method(A, MethodDecls)
     ; Decl0 = namespace(A, NamespaceDecls0) ->
-        list__map_foldl(optimize_decl(VerifyOnly), NamespaceDecls0,
+        list.map_foldl(optimize_decl(VerifyOnly), NamespaceDecls0,
             NamespaceDecls, !Mod),
         Decl = namespace(A, NamespaceDecls)
     ;
@@ -106,21 +106,21 @@ optimize_decl(VerifyOnly, Decl0, Decl, !Mod) :-
 
 optimize_class_member(VerifyOnly, Decl0, Decl, !Mod) :-
     ( Decl0 = method(A, MethodDecls0) ->
-        list__map_foldl(optimize_method_decl(VerifyOnly), MethodDecls0,
+        list.map_foldl(optimize_method_decl(VerifyOnly), MethodDecls0,
             MethodDecls1, !Mod),
         (
             !.Mod = yes,
             % Find the new maxstack.
-            MaxStacks = list__map((func(X) =
+            MaxStacks = list.map((func(X) =
                 ( if X = instrs(I)
                   then calculate_max_stack(I)
                   else 0
                 )), MethodDecls1),
-            NewMaxStack = list__foldl((func(X, Y0) = X + Y0),
+            NewMaxStack = list.foldl((func(X, Y0) = X + Y0),
                 MaxStacks, 0
             ),
                 % set the maxstack
-            MethodDecls = list__map((func(X) =
+            MethodDecls = list.map((func(X) =
                 ( if X = maxstack(_)
                   then maxstack(int32(NewMaxStack))
                   else X
@@ -142,7 +142,7 @@ optimize_class_member(VerifyOnly, Decl0, Decl, !Mod) :-
 optimize_method_decl(VerifyOnly, Decl0, Decl, !Mod) :-
     ( Decl0 = instrs(Instrs0) ->
         optimize_instrs(VerifyOnly, Instrs0, Instrs, InstrsMod),
-        bool__or(InstrsMod, !Mod),
+        bool.or(InstrsMod, !Mod),
         Decl = instrs(Instrs)
     ;
         Decl0 = Decl
@@ -159,7 +159,7 @@ optimize_2(_, [], [], no).
 optimize_2(VerifyOnly, [Instr0 | Instrs0], Instrs, Mod) :-
     optimize_2(VerifyOnly, Instrs0, Instrs1, Mod0),
     opt_instr(VerifyOnly, Instr0, Instrs1, Instrs, Mod1),
-    bool__or(Mod0, Mod1, Mod).
+    bool.or(Mod0, Mod1, Mod).
 
     % Try to optimize the beginning of the given instruction sequence.
     % If successful, try it again.
@@ -200,12 +200,12 @@ opt_instr(VerifyOnly, Instr0, Instrs0, Instrs, Mod) :-
     % (but don't eliminate them because they may be useful).
 
 match(ret, _, Instrs0, Replacement) :-
-    list__takewhile((pred(X::in) is semidet :-
+    list.takewhile((pred(X::in) is semidet :-
         X \= label(_)
     ), Instrs0, PreLabel, NextInstrs0),
     PreLabel = [_ | _],
 
-    list__filter((pred(X::in) is semidet :- equivalent_to_nop(X) = yes),
+    list.filter((pred(X::in) is semidet :- equivalent_to_nop(X) = yes),
         PreLabel, KeepInstrs),
     Replacement = KeepInstrs ++
         [comment("peephole -- eliminated instrs after ret"), ret] ++
@@ -217,7 +217,7 @@ match(ret, _, Instrs0, Replacement) :-
 
 match(br(label_target(Label)), VerifyOnly, Instrs0, Instrs) :-
     VerifyOnly = no,
-    list__takewhile((pred(X::in) is semidet :-
+    list.takewhile((pred(X::in) is semidet :-
         X \= label(Label)
     ), Instrs0, _, [label(Label) | NextInstrs0]),
     skip_nops(NextInstrs0, NextInstrs, _),
@@ -242,8 +242,8 @@ match(stloc(Var), VerifyOnly, Instrs0, Instrs) :-
     Instrs1 = [ldloc(Var) | Rest],
     % Comment and replacement.
     Comment = "peephole: stloc(X), ldloc(X) --> dup, stloc(X)",
-    Replacement = list__append([dup | Nops],  [stloc(Var)]),
-    Instrs = [comment(Comment) | list__append(Replacement, Rest)].
+    Replacement = list.append([dup | Nops],  [stloc(Var)]),
+    Instrs = [comment(Comment) | list.append(Replacement, Rest)].
 
     % ldc(C)
     % stloc(X)
@@ -260,7 +260,7 @@ match(stloc(Var), VerifyOnly, Instrs0, Instrs) :-
 match(ldc(Type, Const), VerifyOnly, [stloc(Var)| Instrs0], Instrs) :-
     VerifyOnly = no,
     % The pattern.
-    list__takewhile((pred(X::in) is semidet :-
+    list.takewhile((pred(X::in) is semidet :-
         X \= ldloc(Var),
         X \= label(_),
         X \= stloc(Var),
@@ -273,7 +273,7 @@ match(ldc(Type, Const), VerifyOnly, [stloc(Var)| Instrs0], Instrs) :-
     Comment = comment(
         "peephole: ldc(X), stloc(X), ldloc(X) --> ldc(X), dup, stloc(X)"),
     Replacement = PreLdInstrs ++ [Comment, ldc(Type, Const), dup, stloc(Var)],
-    Instrs = list__append(Replacement, Rest).
+    Instrs = list.append(Replacement, Rest).
 
     % Two patterns begin with start_scope.
 
@@ -302,11 +302,11 @@ match_start_scope_1(start_block(scope(Locals), Id), Instrs0, Instrs) :-
     IsUnusedLocal = (pred(V::in) is semidet :-
         % Var is in the locals
         V = name(VN),
-        assoc_list__search(Locals, VN, _),
+        assoc_list.search(Locals, VN, _),
 
         % No ldloc(Var) or ldloca(Var) anywhere in the scope
         % (should only really look until the end of this scope)
-        list__takewhile((pred(X::in) is semidet :-
+        list.takewhile((pred(X::in) is semidet :-
             X \= ldloc(V),
             X \= ldloca(V)
         ), Instrs0, _, [])
@@ -319,7 +319,7 @@ match_start_scope_1(start_block(scope(Locals), Id), Instrs0, Instrs) :-
     % instructions (we reverse and flatten it later).
     FindDup = (pred(InstrIn::in, NextInput::out, R0::in, R::out) is semidet :-
         R0 = Pre0 - _NextInput0,
-        list__takewhile((pred(X::in) is semidet :- X \= dup),
+        list.takewhile((pred(X::in) is semidet :- X \= dup),
             InstrIn, Pre, Post0),
         Post0 = [dup | NextInput],
         (
@@ -339,7 +339,7 @@ match_start_scope_1(start_block(scope(Locals), Id), Instrs0, Instrs) :-
     FindStloc = (pred(R0::in, R::out) is semidet :-
         R0 = Pre0 - Post0,
         Post0 = InstrIn0,
-        list__takewhile((pred(X::in) is semidet :- equivalent_to_nop(X) = yes),
+        list.takewhile((pred(X::in) is semidet :- equivalent_to_nop(X) = yes),
             InstrIn0, Pre, MaybePost),
         MaybePost = [stloc(V) | Post],
         IsUnusedLocal(V),
@@ -355,10 +355,10 @@ match_start_scope_1(start_block(scope(Locals), Id), Instrs0, Instrs) :-
 
     PreStlocInstrs = condense(reverse(PreStlocInstrsList)),
     % Comment and replacement.
-    Comment = string__format(
+    Comment = string.format(
         "peephole: dup, stloc(%s) --> nothing (%s unused in scope)",
         [s(VarName), s(VarName)]),
-    Instrs = list__condense([[start_block(scope(Locals), Id)],
+    Instrs = list.condense([[start_block(scope(Locals), Id)],
         PreStlocInstrs,
         Nops,
         [comment(Comment)],
@@ -374,11 +374,11 @@ match_start_scope_2(start_block(scope(Locals), Id), Instrs0, Instrs) :-
     no_handwritten_code(Instrs0, Id),
 
     % The pattern.
-    list__filter((pred(VarName - _Type::in) is semidet :-
+    list.filter((pred(VarName - _Type::in) is semidet :-
         Var = name(VarName),
         % No stloc(Var) or ldloc(Var) or ldloca(Var) anywhere in the scope
         % (should only really look until the end of this scope)
-        list__takewhile((pred(X::in) is semidet :-
+        list.takewhile((pred(X::in) is semidet :-
             X \= ldloc(Var),
             X \= ldloca(Var),
             X \= stloc(Var)
@@ -387,14 +387,14 @@ match_start_scope_2(start_block(scope(Locals), Id), Instrs0, Instrs) :-
     UnusedLocals = [_ | _],
 
     % Comment and replacement.
-    list__map((pred(VarName - _Type::in, Comment::out) is det :-
-        string__format("peephole: unused local var %s eliminated",
+    list.map((pred(VarName - _Type::in, Comment::out) is det :-
+        string.format("peephole: unused local var %s eliminated",
             [s(VarName)], CommentStr),
         Comment = comment(CommentStr)
     ), UnusedLocals, Comments),
     Replacement = [start_block(scope(UsedLocals), Id)],
 
-    Instrs = list__condense([Comments, Replacement, Instrs0]).
+    Instrs = list.condense([Comments, Replacement, Instrs0]).
 
     % Any scope without local variables may be eliminated.
     % XXX We don't do this yet because it would requirer finding the matching
@@ -406,7 +406,7 @@ match_start_scope_2(start_block(scope(Locals), Id), Instrs0, Instrs) :-
 match4(start_block(scope([]), _), Instrs0, Instrs) :-
     Replacement = [],
     Rest = Instrs0,
-    Instrs = list__append(Replacement, Rest).
+    Instrs = list.append(Replacement, Rest).
 
 %-----------------------------------------------------------------------------%
 
@@ -446,7 +446,7 @@ skip_over_block([Instr | Instrs], Id) =
 :- pred skip_comments(instrs::in, instrs::out, instrs::out) is det.
 
 skip_comments(Instrs0, Instrs, Comments) :-
-    list__takewhile(pred(ilds__comment(_)::in) is semidet,
+    list.takewhile(pred(ilds__comment(_)::in) is semidet,
         Instrs0, Comments, Instrs).
 
     % Skip over all the nop equivalents.
@@ -454,7 +454,7 @@ skip_comments(Instrs0, Instrs, Comments) :-
 :- pred skip_nops(instrs::in, instrs::out, instrs::out) is det.
 
 skip_nops(Instrs0, Instrs, Nops) :-
-        list__takewhile((pred(X::in) is semidet :- equivalent_to_nop(X) = yes),
+        list.takewhile((pred(X::in) is semidet :- equivalent_to_nop(X) = yes),
         Instrs0, Nops, Instrs).
 
     % keep_looking(Producer, Condition, Input, IntermediateResult0,

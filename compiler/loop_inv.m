@@ -95,7 +95,7 @@
 % model-det recursive paths.
 %-----------------------------------------------------------------------------%
 
-:- module transform_hlds__loop_inv.
+:- module transform_hlds.loop_inv.
 :- interface.
 
 :- import_module hlds.
@@ -150,7 +150,7 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
             % We only want to apply this optimization to pure preds (e.g.
             % not benchmark_det_loop).
             %
-        hlds_pred__pred_info_get_purity(PredInfo, purity_pure),
+        hlds_pred.pred_info_get_purity(PredInfo, purity_pure),
 
             % Next, work out whether this predicate is optimizable and
             % compute some auxiliary results along the way.
@@ -158,10 +158,10 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
             % Obtain the requisite info for this procedure.
             %
         PredProcId = proc(PredId, ProcId),
-        hlds_pred__proc_info_goal(!.ProcInfo, Body),
-        hlds_pred__proc_info_headvars(!.ProcInfo, HeadVars),
-        hlds_pred__proc_info_argmodes(!.ProcInfo, HeadVarModes),
-        hlds_pred__proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo,
+        hlds_pred.proc_info_goal(!.ProcInfo, Body),
+        hlds_pred.proc_info_headvars(!.ProcInfo, HeadVars),
+        hlds_pred.proc_info_argmodes(!.ProcInfo, HeadVarModes),
+        hlds_pred.proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo,
             InitialInstMap),
 
             % Find the set of variables that are used as (partly) unique
@@ -314,7 +314,7 @@ invariant_goal_candidates(PredProcId, Body,
     invariant_goal_candidates_acc(_, RecCalls) =
         invariant_goal_candidates_2(PredProcId, Body,
             invariant_goal_candidates_acc([], [])),
-    assoc_list__keys_and_values(RecCalls, RecCallGoals, CandidateInvGoalsList),
+    assoc_list.keys_and_values(RecCalls, RecCallGoals, CandidateInvGoalsList),
     CandidateInvGoals = intersect_candidate_inv_goals(CandidateInvGoalsList).
 
 %-----------------------------------------------------------------------------%
@@ -351,23 +351,23 @@ invariant_goal_candidates_2(PPId,
         = IGCs :-
     (
         ConjType = plain_conj,
-        IGCs = list__foldl(invariant_goal_candidates_2(PPId), Conjuncts, IGCs0)
+        IGCs = list.foldl(invariant_goal_candidates_2(PPId), Conjuncts, IGCs0)
     ;
         ConjType = parallel_conj,
-        IGCs = list__foldl(
+        IGCs = list.foldl(
             invariant_goal_candidates_keeping_path_candidates(PPId),
             Conjuncts, IGCs0)
     ).
 
 invariant_goal_candidates_2(PPId,
         disj(Disjuncts)                              - _GoalInfo, IGCs) =
-    list__foldl(invariant_goal_candidates_keeping_path_candidates(PPId),
+    list.foldl(invariant_goal_candidates_keeping_path_candidates(PPId),
                 Disjuncts,
                 IGCs).
 
 invariant_goal_candidates_2(PPId,
         switch(_, _, Cases)                          - _GoalInfo, IGCs) =
-    list__foldl(invariant_goal_candidates_keeping_path_candidates(PPId),
+    list.foldl(invariant_goal_candidates_keeping_path_candidates(PPId),
                 case_goals(Cases),
                 IGCs).
 
@@ -409,7 +409,7 @@ invariant_goal_candidates_keeping_path_candidates(PPId, Goal, IGCs) =
 :- func case_goals(list(case)) = hlds_goals.
 
 case_goals(Cases) =
-    list__map(func(case(_ConsId, Goal)) = Goal, Cases).
+    list.map(func(case(_ConsId, Goal)) = Goal, Cases).
 
 %-----------------------------------------------------------------------------%
 
@@ -422,7 +422,7 @@ case_goals(Cases) =
     %
 add_recursive_call(Goal, IGCs) =
     IGCs ^ rec_calls :=
-        [Goal - list__reverse(IGCs ^ path_candidates) | IGCs ^ rec_calls].
+        [Goal - list.reverse(IGCs ^ path_candidates) | IGCs ^ rec_calls].
 
 %-----------------------------------------------------------------------------%
 
@@ -447,8 +447,8 @@ invariant_goal_candidates_handle_non_recursive_call(
 :- pred model_non(hlds_goal_info::in) is semidet.
 
 model_non(GoalInfo) :-
-    hlds_goal__goal_info_get_determinism(GoalInfo, Detism),
-    code_model__determinism_to_code_model(Detism, model_non).
+    hlds_goal.goal_info_get_determinism(GoalInfo, Detism),
+    code_model.determinism_to_code_model(Detism, model_non).
 
 %-----------------------------------------------------------------------------%
 
@@ -457,7 +457,7 @@ model_non(GoalInfo) :-
 intersect_candidate_inv_goals([]) = [].
 
 intersect_candidate_inv_goals([Goals | Goalss]) =
-    list__filter(common_goal(Goalss), Goals).
+    list.filter(common_goal(Goalss), Goals).
 
 %-----------------------------------------------------------------------------%
 
@@ -465,10 +465,10 @@ intersect_candidate_inv_goals([Goals | Goalss]) =
 
 common_goal(Goalss, Goal) :-
     all [Gs] (
-        list__member(Gs, Goalss)
+        list.member(Gs, Goalss)
     =>
         (
-            list__member(G,  Gs),
+            list.member(G,  Gs),
             equivalent_goals(G, Goal)
         )
     ).
@@ -494,12 +494,12 @@ equivalent_goals(GoalExprX - _GoalInfoX, GoalExprY - _GoalInfoY) :-
 
 inv_args(ModuleInfo, HeadVars, HeadVarModes, RecCalls) = InvArgs :-
     MaybeInvArgs0 =
-        list__map_corresponding(
+        list.map_corresponding(
                 arg_to_maybe_inv_arg(ModuleInfo), HeadVars, HeadVarModes),
     MaybeInvArgs  =
-        list__foldl(refine_candidate_inv_args, RecCalls, MaybeInvArgs0),
+        list.foldl(refine_candidate_inv_args, RecCalls, MaybeInvArgs0),
     InvArgs       =
-        list__filter_map(func(yes(Arg)) = Arg is semidet, MaybeInvArgs).
+        list.filter_map(func(yes(Arg)) = Arg is semidet, MaybeInvArgs).
 
 %-----------------------------------------------------------------------------%
 
@@ -519,7 +519,7 @@ arg_to_maybe_inv_arg(ModuleInfo, Arg, Mode) =
 
 refine_candidate_inv_args(RecCall - _RecCallInfo, MaybeInvArgs) =
     ( if   RecCall = call(_, _, CallArgs, _, _, _)
-      then list__map_corresponding(refine_candidate_inv_args_2,
+      then list.map_corresponding(refine_candidate_inv_args_2,
                                    MaybeInvArgs,
                                    CallArgs)
       else unexpected(this_file, "refine_candidate_inv_args/2: " ++
@@ -554,7 +554,7 @@ refine_candidate_inv_args_2(yes(X), Y) = ( if X = Y then yes(X) else no ).
 
 inv_goals_vars(ModuleInfo, UniquelyUsedVars,
         InvGoals0, InvGoals, InvVars0, InvVars) :-
-    list__foldl2(
+    list.foldl2(
         inv_goals_vars_2(ModuleInfo, UniquelyUsedVars),
         InvGoals0,
         [],         InvGoals,
@@ -584,16 +584,16 @@ inv_goals_vars_2(MI, UUVs, Goal, IGs0, IGs, IVs0, IVs) :-
 :- pred has_uniquely_used_arg(prog_vars::in, hlds_goal::in) is semidet.
 
 has_uniquely_used_arg(UUVs, _GoalExpr - GoalInfo) :-
-    hlds_goal__goal_info_get_nonlocals(GoalInfo, NonLocals),
-    list__member(UUV, UUVs),
-    set__member(UUV, NonLocals).
+    hlds_goal.goal_info_get_nonlocals(GoalInfo, NonLocals),
+    list.member(UUV, UUVs),
+    set.member(UUV, NonLocals).
 
 %-----------------------------------------------------------------------------%
 
 :- pred invariant_goal(hlds_goals::in, hlds_goal::in) is semidet.
 
 invariant_goal(InvariantGoals, Goal) :-
-    list__member(InvariantGoal, InvariantGoals),
+    list.member(InvariantGoal, InvariantGoals),
     equivalent_goals(InvariantGoal, Goal).
 
 %-----------------------------------------------------------------------------%
@@ -604,9 +604,9 @@ invariant_goal(InvariantGoals, Goal) :-
 input_args_are_invariant(ModuleInfo, Goal, InvVars) :-
     Inputs = goal_inputs(ModuleInfo, Goal),
     all [V] (
-        list__member(V, Inputs)
+        list.member(V, Inputs)
     =>
-        list__member(V, InvVars)
+        list.member(V, InvVars)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -615,7 +615,7 @@ input_args_are_invariant(ModuleInfo, Goal, InvVars) :-
     hlds_goals::out, prog_vars::out) is det.
 
 dont_hoist(MI, InvGoals, DontHoistGoals, DontHoistVars) :-
-    list__foldl2(dont_hoist_2(MI), InvGoals,
+    list.foldl2(dont_hoist_2(MI), InvGoals,
         [], DontHoistGoals, [], DontHoistVars).
 
 :- pred dont_hoist_2(module_info::in, hlds_goal::in,
@@ -681,7 +681,7 @@ cannot_succeed(_GoalExpr - GoalInfo) :-
 
 arg_is_input(InstInfo, Arg) :-
     InstInfo = {_ModuleInfo, InstMap},
-    instmap__lookup_var(InstMap, Arg, Inst),
+    instmap.lookup_var(InstMap, Arg, Inst),
     inst_is_input(InstInfo, Inst).
 
 %-----------------------------------------------------------------------------%
@@ -692,8 +692,8 @@ arg_is_input(InstInfo, Arg) :-
 :- pred inst_is_input(inst_info::in, mer_inst::in) is semidet.
 
 inst_is_input({ModuleInfo, _InstMap}, Inst) :-
-    inst_match__inst_is_ground(ModuleInfo, Inst),
-    inst_match__inst_is_not_partly_unique(ModuleInfo, Inst).
+    inst_match.inst_is_ground(ModuleInfo, Inst),
+    inst_match.inst_is_not_partly_unique(ModuleInfo, Inst).
 
 %-----------------------------------------------------------------------------%
 
@@ -701,13 +701,13 @@ inst_is_input({ModuleInfo, _InstMap}, Inst) :-
     prog_vars.
 
 add_outputs(ModuleInfo, UUVs, Goal, InvVars) =
-    list__foldl(add_output(UUVs), goal_outputs(ModuleInfo, Goal), InvVars).
+    list.foldl(add_output(UUVs), goal_outputs(ModuleInfo, Goal), InvVars).
 
 :- func add_output(prog_vars, prog_var, prog_vars) = prog_vars.
 
 add_output(UniquelyUsedVars, X, InvVars) =
-    ( if   not list__member(X, InvVars),
-           not list__member(X, UniquelyUsedVars)
+    ( if   not list.member(X, InvVars),
+           not list.member(X, UniquelyUsedVars)
       then [X | InvVars]
       else InvVars
     ).
@@ -716,11 +716,11 @@ add_output(UniquelyUsedVars, X, InvVars) =
 
 :- func compute_initial_aux_instmap(hlds_goals, instmap) = instmap.
 
-compute_initial_aux_instmap(Gs, IM) = list__foldl(ApplyGoalInstMap, Gs, IM) :-
+compute_initial_aux_instmap(Gs, IM) = list.foldl(ApplyGoalInstMap, Gs, IM) :-
     ApplyGoalInstMap =
         ( func(_GoalExpr - GoalInfo, IM0) = IM1 :-
-            hlds_goal__goal_info_get_instmap_delta(GoalInfo, IMD),
-            instmap__apply_instmap_delta(IM0, IMD, IM1)
+            hlds_goal.goal_info_get_instmap_delta(GoalInfo, IMD),
+            instmap.apply_instmap_delta(IM0, IMD, IM1)
         ).
 
 %-----------------------------------------------------------------------------%
@@ -731,35 +731,34 @@ compute_initial_aux_instmap(Gs, IM) = list__foldl(ApplyGoalInstMap, Gs, IM) :-
 
 create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
         InitialAuxInstMap, AuxPredProcId, CallAux,
-        AuxPredInfo, AuxProcInfo,
-        ModuleInfo0, ModuleInfo) :-
+        AuxPredInfo, AuxProcInfo, ModuleInfo0, ModuleInfo) :-
 
     PredProcId = proc(PredId, ProcId),
 
     AuxHeadVars = HeadVars ++ ComputedInvArgs,
 
-    hlds_module__module_info_get_name(ModuleInfo0, ModuleName),
-    hlds_module__module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
-            PredInfo, ProcInfo),
+    hlds_module.module_info_get_name(ModuleInfo0, ModuleName),
+    hlds_module.module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
+        PredInfo, ProcInfo),
 
-    hlds_pred__proc_info_goal(ProcInfo, Goal @ (_GoalExpr - GoalInfo)),
-    hlds_pred__pred_info_typevarset(PredInfo, TVarSet),
-    hlds_pred__proc_info_vartypes(ProcInfo, VarTypes),
-    hlds_pred__pred_info_get_class_context(PredInfo, ClassContext),
-    hlds_pred__proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
-    hlds_pred__proc_info_varset(ProcInfo, VarSet),
-    hlds_pred__proc_info_inst_varset(ProcInfo, InstVarSet),
-    hlds_pred__pred_info_get_markers(PredInfo, Markers),
-    hlds_pred__pred_info_get_origin(PredInfo, OrigOrigin),
+    hlds_pred.proc_info_goal(ProcInfo, Goal @ (_GoalExpr - GoalInfo)),
+    hlds_pred.pred_info_typevarset(PredInfo, TVarSet),
+    hlds_pred.proc_info_vartypes(ProcInfo, VarTypes),
+    hlds_pred.pred_info_get_class_context(PredInfo, ClassContext),
+    hlds_pred.proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
+    hlds_pred.proc_info_varset(ProcInfo, VarSet),
+    hlds_pred.proc_info_inst_varset(ProcInfo, InstVarSet),
+    hlds_pred.pred_info_get_markers(PredInfo, Markers),
+    hlds_pred.pred_info_get_origin(PredInfo, OrigOrigin),
 
-    PredName = hlds_pred__pred_info_name(PredInfo),
-    PredOrFunc = hlds_pred__pred_info_is_pred_or_func(PredInfo),
-    hlds_goal__goal_info_get_context(GoalInfo, Context),
-    term__context_line(Context, Line),
-    hlds_pred__proc_id_to_int(ProcId, ProcNo),
-    AuxNamePrefix = string__format("loop_inv_%d", [i(ProcNo)]),
-    prog_util__make_pred_name_with_context(ModuleName, AuxNamePrefix,
-            PredOrFunc, PredName, Line, 1, AuxPredSymName),
+    PredName = hlds_pred.pred_info_name(PredInfo),
+    PredOrFunc = hlds_pred.pred_info_is_pred_or_func(PredInfo),
+    hlds_goal.goal_info_get_context(GoalInfo, Context),
+    term.context_line(Context, Line),
+    hlds_pred.proc_id_to_int(ProcId, ProcNo),
+    AuxNamePrefix = string.format("loop_inv_%d", [i(ProcNo)]),
+    prog_util.make_pred_name_with_context(ModuleName, AuxNamePrefix,
+        PredOrFunc, PredName, Line, 1, AuxPredSymName),
     (
         AuxPredSymName = unqualified(AuxPredName)
     ;
@@ -769,7 +768,7 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
         % Put in oven at gas mark 11 and bake.
         %
     Origin = transformed(loop_invariant(ProcNo), OrigOrigin, PredId),
-    hlds_pred__define_new_pred(
+    hlds_pred.define_new_pred(
         Origin,         % in    - The origin of this new predicate
         Goal,           % in    - The goal for the new aux proc.
         CallAux,        % out   - How we can call the new aux proc.
@@ -799,7 +798,7 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
         %   over the entire goal after we've transformed it.
 
     AuxPredProcId = proc(AuxPredId, AuxProcId),
-    hlds_module__module_info_pred_proc_info(ModuleInfo, AuxPredId, AuxProcId,
+    hlds_module.module_info_pred_proc_info(ModuleInfo, AuxPredId, AuxProcId,
             AuxPredInfo, AuxProcInfo).
 
 %-----------------------------------------------------------------------------%
@@ -830,12 +829,12 @@ gen_aux_proc(InvGoals, PredProcId, AuxPredProcId, CallAux, Body,
         % Put the new proc body and instmap into the module_info.
         %
     AuxPredProcId = proc(AuxPredId, AuxProcId),
-    hlds_pred__proc_info_set_goal(AuxBody, !AuxProcInfo),
+    hlds_pred.proc_info_set_goal(AuxBody, !AuxProcInfo),
 
-    quantification__requantify_proc(!AuxProcInfo),
-    mode_util__recompute_instmap_delta_proc(no, !AuxProcInfo, !ModuleInfo),
+    quantification.requantify_proc(!AuxProcInfo),
+    mode_util.recompute_instmap_delta_proc(no, !AuxProcInfo, !ModuleInfo),
 
-    hlds_module__module_info_set_pred_proc_info(AuxPredId, AuxProcId,
+    hlds_module.module_info_set_pred_proc_info(AuxPredId, AuxProcId,
         AuxPredInfo, !.AuxProcInfo, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -887,14 +886,14 @@ gen_aux_proc_2(_Info, shorthand(_) - _GoalInfo) = _ :-
 
 :- func gen_aux_proc_list(gen_aux_proc_info, hlds_goals) = hlds_goals.
 
-gen_aux_proc_list(Info, Goals) = list__map(gen_aux_proc_2(Info), Goals).
+gen_aux_proc_list(Info, Goals) = list.map(gen_aux_proc_2(Info), Goals).
 
 %-----------------------------------------------------------------------------%
 
 :- func gen_aux_proc_switch(gen_aux_proc_info, list(case)) = list(case).
 
 gen_aux_proc_switch(Info, Cases) =
-    list__map(
+    list.map(
         func(case(CaseId, Goal)) = case(CaseId, gen_aux_proc_2(Info, Goal)),
         Cases
     ).
@@ -930,19 +929,19 @@ gen_out_proc(PredProcId, PredInfo0, ProcInfo0, ProcInfo, CallAux, Body0,
         %
     PredProcId = proc(PredId, ProcId),
 
-    hlds_pred__proc_info_varset(ProcInfo0, VarSet),
-    hlds_pred__proc_info_vartypes(ProcInfo0, VarTypes),
-    hlds_pred__proc_info_headvars(ProcInfo0, HeadVars),
-    hlds_pred__proc_info_rtti_varmaps(ProcInfo0, RttiVarMaps),
+    hlds_pred.proc_info_varset(ProcInfo0, VarSet),
+    hlds_pred.proc_info_vartypes(ProcInfo0, VarTypes),
+    hlds_pred.proc_info_headvars(ProcInfo0, HeadVars),
+    hlds_pred.proc_info_rtti_varmaps(ProcInfo0, RttiVarMaps),
 
-    hlds_pred__proc_info_set_body(VarSet, VarTypes, HeadVars, Body,
+    hlds_pred.proc_info_set_body(VarSet, VarTypes, HeadVars, Body,
         RttiVarMaps, ProcInfo0, ProcInfo1),
 
-    quantification__requantify_proc(ProcInfo1, ProcInfo2),
-    mode_util__recompute_instmap_delta_proc(no, ProcInfo2, ProcInfo,
-            ModuleInfo0, ModuleInfo1),
+    quantification.requantify_proc(ProcInfo1, ProcInfo2),
+    mode_util.recompute_instmap_delta_proc(no, ProcInfo2, ProcInfo,
+        ModuleInfo0, ModuleInfo1),
 
-    hlds_module__module_info_set_pred_proc_info(PredId, ProcId,
+    hlds_module.module_info_set_pred_proc_info(PredId, ProcId,
         PredInfo0, ProcInfo, ModuleInfo1, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -973,16 +972,16 @@ gen_out_proc_2(_PPId, _CallAux,
 
 gen_out_proc_2(PPId, CallAux,
         conj(ConjType, Conjuncts)                     - GoalInfo) =
-    conj(ConjType, list__map(gen_out_proc_2(PPId, CallAux), Conjuncts))
+    conj(ConjType, list.map(gen_out_proc_2(PPId, CallAux), Conjuncts))
         - GoalInfo.
 
 gen_out_proc_2(PPId, CallAux,
         disj(Disjuncts)                                - GoalInfo) =
-    disj(list__map(gen_out_proc_2(PPId, CallAux), Disjuncts)) - GoalInfo.
+    disj(list.map(gen_out_proc_2(PPId, CallAux), Disjuncts)) - GoalInfo.
 
 gen_out_proc_2(PPId, CallAux,
         switch(Var, CanFail, Cases)                    - GoalInfo) =
-    switch(Var, CanFail, list__map(GOPCase, Cases)) - GoalInfo
+    switch(Var, CanFail, list.map(GOPCase, Cases)) - GoalInfo
  :-
     GOPCase =
         ( func(case(ConsId, Goal)) =
@@ -1056,18 +1055,18 @@ replace_initial_args([_ | _],  []      ) = _ :-
 :- func uniquely_used_vars(module_info, hlds_goal) = prog_vars.
 
 uniquely_used_vars(ModuleInfo, Goal) =
-    list__sort_and_remove_dups(uniquely_used_vars_2(ModuleInfo, Goal)).
+    list.sort_and_remove_dups(uniquely_used_vars_2(ModuleInfo, Goal)).
 
 %-----------------------------------------------------------------------------%
 
 :- func uniquely_used_vars_2(module_info, hlds_goal) = prog_vars.
 
 uniquely_used_vars_2(MI, call(PredId, ProcId, Args, _, _, _) - _) =
-    list__filter_map_corresponding(uniquely_used_args(MI), Args,
+    list.filter_map_corresponding(uniquely_used_args(MI), Args,
         argmodes(MI,PredId,ProcId)).
 
 uniquely_used_vars_2(MI, generic_call(_, Args, Modes, _) - _) =
-    list__filter_map_corresponding(uniquely_used_args(MI), Args, Modes).
+    list.filter_map_corresponding(uniquely_used_args(MI), Args, Modes).
 
 uniquely_used_vars_2(MI, foreign_proc(_, PredId, ProcId, Args, Extras, _) - _) 
         =
@@ -1079,8 +1078,8 @@ uniquely_used_vars_2(MI, foreign_proc(_, PredId, ProcId, Args, Extras, _) - _)
     % `Extras' may not be empty.  As a work-around we just add any variables
     % in `Extras' to the set of variables that cannot be hoisted.
     %
-    list__filter_map_corresponding(uniquely_used_args(MI),
-        list__map(foreign_arg_var, Args),
+    list.filter_map_corresponding(uniquely_used_args(MI),
+        list.map(foreign_arg_var, Args),
         argmodes(MI,PredId,ProcId)) ++ list.map(foreign_arg_var, Extras).
 
     % XXX This is very conservative!
@@ -1088,13 +1087,13 @@ uniquely_used_vars_2(MI, foreign_proc(_, PredId, ProcId, Args, Extras, _) - _)
 uniquely_used_vars_2(_MI, unify(_LHS, _RHS, _UMode, _UKind, _) - _) = [].
 
 uniquely_used_vars_2(MI, conj(_, Conjuncts) - _) =
-    list__condense(list__map(uniquely_used_vars_2(MI), Conjuncts)).
+    list.condense(list.map(uniquely_used_vars_2(MI), Conjuncts)).
 
 uniquely_used_vars_2(MI, disj(Disjuncts) - _) =
-    list__condense(list__map(uniquely_used_vars_2(MI), Disjuncts)).
+    list.condense(list.map(uniquely_used_vars_2(MI), Disjuncts)).
 
 uniquely_used_vars_2(MI, switch(_, _, Cases) - _) =
-    list__condense(list__map(uniquely_used_vars_2(MI), case_goals(Cases))).
+    list.condense(list.map(uniquely_used_vars_2(MI), case_goals(Cases))).
 
 uniquely_used_vars_2(MI, not(NegatedGoal) - _) =
     uniquely_used_vars_2(MI, NegatedGoal).
@@ -1116,17 +1115,17 @@ uniquely_used_vars_2(_MI, shorthand(_) - _) = _ :-
     is semidet.
 
 uniquely_used_args(MI, X, M) = X :-
-    mode_util__mode_get_insts(MI, M, InInst, _OutInst),
-    not inst_match__inst_is_not_partly_unique(MI, InInst).
+    mode_util.mode_get_insts(MI, M, InInst, _OutInst),
+    not inst_match.inst_is_not_partly_unique(MI, InInst).
 
 %-----------------------------------------------------------------------------%
 
 :- func argmodes(module_info, pred_id, proc_id) = list(mer_mode).
 
 argmodes(ModuleInfo, PredId, ProcId) = ArgModes :-
-    hlds_module__module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _,
-            ProcInfo),
-    hlds_pred__proc_info_argmodes(ProcInfo, ArgModes).
+    hlds_module.module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _,
+        ProcInfo),
+    hlds_pred.proc_info_argmodes(ProcInfo, ArgModes).
 
 %-----------------------------------------------------------------------------%
 
@@ -1136,30 +1135,29 @@ argmodes(ModuleInfo, PredId, ProcId) = ArgModes :-
 :- func goal_inputs(module_info, hlds_goal) = prog_vars.
 
 goal_inputs(MI, call(PredId, ProcId, Args, _, _, _) - _) =
-    list__filter_map_corresponding(
-            input_arg(MI), Args, argmodes(MI, PredId, ProcId)).
+    list.filter_map_corresponding(input_arg(MI), Args,
+        argmodes(MI, PredId, ProcId)).
 
 goal_inputs(MI, generic_call(_, Args, ArgModes, _) - _) =
-    list__filter_map_corresponding(
-            input_arg(MI), Args, ArgModes).
+    list.filter_map_corresponding(input_arg(MI), Args, ArgModes).
 
 goal_inputs(MI, foreign_proc(_, PredId, ProcId, Args, _, _) - _) =
-    list__filter_map_corresponding(input_arg(MI),
-        list__map(foreign_arg_var, Args), argmodes(MI, PredId, ProcId)).
+    list.filter_map_corresponding(input_arg(MI),
+        list.map(foreign_arg_var, Args), argmodes(MI, PredId, ProcId)).
 
 goal_inputs(MI, unify(LHS, UnifyRHS, _, Kind, _) - _) = Inputs :-
     (
             % The LHS is always an output var in constructions.
             %
         Kind   = construct(_, _, RHSArgs, ArgUniModes, _, _, _),
-        Inputs = list__filter_map_corresponding(
+        Inputs = list.filter_map_corresponding(
                         input_arg(MI), RHSArgs, rhs_modes(ArgUniModes))
     ;
             % The LHS is always in input var in deconstructions.
             %
         Kind   = deconstruct(_, _, RHSArgs, ArgUniModes, _, _),
         Inputs = [ LHS
-                 | list__filter_map_corresponding(
+                 | list.filter_map_corresponding(
                         input_arg(MI), RHSArgs, rhs_modes(ArgUniModes)) ]
     ;
             % The RHS is the only input in an assignment.
@@ -1206,8 +1204,8 @@ goal_inputs(_MI, shorthand(_) - _) = _ :-
 :- func input_arg(module_info, prog_var, mer_mode) = prog_var is semidet.
 
 input_arg(MI, X, M) = X :-
-    mode_util__mode_get_insts(MI, M, InInst, _OutInst),
-    not inst_match__inst_is_free(MI, InInst).
+    mode_util.mode_get_insts(MI, M, InInst, _OutInst),
+    not inst_match.inst_is_free(MI, InInst).
 
 %-----------------------------------------------------------------------------%
 
@@ -1217,17 +1215,15 @@ input_arg(MI, X, M) = X :-
 :- func goal_outputs(module_info, hlds_goal) = prog_vars.
 
 goal_outputs(MI, call(PredId, ProcId, Args, _, _, _) - _) =
-    list__filter_map_corresponding(
-            output_arg(MI), Args, argmodes(MI, PredId, ProcId)).
+    list.filter_map_corresponding(output_arg(MI), Args,
+        argmodes(MI, PredId, ProcId)).
 
 goal_outputs(MI, generic_call(_, Args, ArgModes, _) - _) =
-    list__filter_map_corresponding(
-            output_arg(MI), Args, ArgModes).
+    list.filter_map_corresponding(output_arg(MI), Args, ArgModes).
 
 goal_outputs(MI, foreign_proc(_, PredId, ProcId, Args, _, _) - _) =
-    list__filter_map_corresponding(
-            output_arg(MI), list__map(foreign_arg_var, Args),
-            argmodes(MI, PredId, ProcId)).
+    list.filter_map_corresponding(output_arg(MI),
+        list.map(foreign_arg_var, Args), argmodes(MI, PredId, ProcId)).
 
 goal_outputs(MI, unify(LHS, _RHS, _, Kind, _) - _) = Outputs :-
     (
@@ -1239,7 +1235,7 @@ goal_outputs(MI, unify(LHS, _RHS, _, Kind, _) - _) = Outputs :-
             % The LHS is always in input in deconstructions.
             %
         Kind    = deconstruct(_, _, RHSArgs, ArgUniModes, _, _),
-        Outputs = list__filter_map_corresponding(
+        Outputs = list.filter_map_corresponding(
                             output_arg(MI), RHSArgs, rhs_modes(ArgUniModes))
     ;
             % The LHS is the only output in an assignment.
@@ -1286,22 +1282,22 @@ goal_outputs(_MI, shorthand(_) - _) = _ :-
 :- func output_arg(module_info, prog_var, mer_mode) = prog_var is semidet.
 
 output_arg(MI, X, M) = X :-
-    mode_util__mode_get_insts(MI, M, InInst, _OutInst),
-    inst_match__inst_is_free(MI, InInst).
+    mode_util.mode_get_insts(MI, M, InInst, _OutInst),
+    inst_match.inst_is_free(MI, InInst).
 
 %-----------------------------------------------------------------------------%
 
 :- func rhs_modes(list(uni_mode)) = list(mer_mode).
 
 rhs_modes(UniModes) =
-    list__map(func((_ - Pre) -> (_ - Post)) = (Pre -> Post), UniModes).
+    list.map(func((_ - Pre) -> (_ - Post)) = (Pre -> Post), UniModes).
 
 %-----------------------------------------------------------------------------%
 
 :- func lhs_modes(list(uni_mode)) = list(mer_mode).
 
 lhs_modes(UniModes) =
-    list__map(func((Pre - _) -> (Post - _)) = (Pre -> Post), UniModes).
+    list.map(func((Pre - _) -> (Post - _)) = (Pre -> Post), UniModes).
 
 %-----------------------------------------------------------------------------%
 

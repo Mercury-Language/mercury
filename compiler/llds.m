@@ -15,7 +15,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__llds.
+:- module ll_backend.llds.
 :- interface.
 
 :- import_module backend_libs.builtin_ops.
@@ -227,7 +227,7 @@
             % Assign the value specified by rval to the location
             % specified by lval.
 
-    ;       call(code_addr, code_addr, list(liveinfo), term__context,
+    ;       call(code_addr, code_addr, list(liveinfo), term.context,
                 goal_path, call_model)
             % call(Target, Continuation, _, _, _) is the same as
             % succip = Continuation; goto(Target).
@@ -653,7 +653,7 @@
             ).
 
     % For an explanation of this type, see the comment on
-    % stack_layout__represent_locn.
+    % stack_layout.represent_locn.
     %
 :- type layout_locn
     --->    direct(lval)
@@ -1008,35 +1008,35 @@
 
 :- pred break_up_local_label(label::in, proc_label::out, int::out) is det.
 
-:- pred llds__wrap_rtti_data(rtti_data::in, comp_gen_c_data::out) is det.
+:- pred wrap_rtti_data(rtti_data::in, comp_gen_c_data::out) is det.
 
     % Given a non-var rval, figure out its type.
     %
-:- pred llds__rval_type(rval::in, llds_type::out) is det.
+:- pred rval_type(rval::in, llds_type::out) is det.
 
     % Given a non-var lval, figure out its type.
     %
-:- pred llds__lval_type(lval::in, llds_type::out) is det.
+:- pred lval_type(lval::in, llds_type::out) is det.
 
     % Given a constant, figure out its type.
     %
-:- pred llds__const_type(rval_const::in, llds_type::out) is det.
+:- pred const_type(rval_const::in, llds_type::out) is det.
 
     % Given a unary operator, figure out its return type.
     %
-:- pred llds__unop_return_type(unary_op::in, llds_type::out) is det.
+:- pred unop_return_type(unary_op::in, llds_type::out) is det.
 
     % Given a unary operator, figure out the type of its argument.
     %
-:- pred llds__unop_arg_type(unary_op::in, llds_type::out) is det.
+:- pred unop_arg_type(unary_op::in, llds_type::out) is det.
 
     % Given a binary operator, figure out its return type.
     %
-:- pred llds__binop_return_type(binary_op::in, llds_type::out) is det.
+:- pred binop_return_type(binary_op::in, llds_type::out) is det.
 
     % Given a register, figure out its type.
     %
-:- pred llds__register_type(reg_type::in, llds_type::out) is det.
+:- pred register_type(reg_type::in, llds_type::out) is det.
 
 :- func get_proc_label(label) = proc_label.
 
@@ -1086,33 +1086,33 @@ break_up_local_label(Label, ProcLabel, LabelNum) :-
         unexpected(this_file, "break_up_local_label: entry label")
     ).
 
-llds__wrap_rtti_data(RttiData, rtti_data(RttiData)).
+wrap_rtti_data(RttiData, rtti_data(RttiData)).
 
-llds__lval_type(reg(RegType, _), Type) :-
-    llds__register_type(RegType, Type).
-llds__lval_type(succip, code_ptr).
-llds__lval_type(maxfr, data_ptr).
-llds__lval_type(curfr, data_ptr).
-llds__lval_type(hp, data_ptr).
-llds__lval_type(sp, data_ptr).
-llds__lval_type(temp(RegType, _), Type) :-
-    llds__register_type(RegType, Type).
-llds__lval_type(stackvar(_), word).
-llds__lval_type(framevar(_), word).
-llds__lval_type(succip(_), code_ptr).
-llds__lval_type(redoip(_), code_ptr).
-llds__lval_type(redofr(_), data_ptr).
-llds__lval_type(succfr(_), data_ptr).
-llds__lval_type(prevfr(_), data_ptr).
-llds__lval_type(field(_, _, _), word).
-llds__lval_type(lvar(_), _) :-
-    unexpected(this_file, "lvar unexpected in llds__lval_type").
-llds__lval_type(mem_ref(_), word).
+lval_type(reg(RegType, _), Type) :-
+    register_type(RegType, Type).
+lval_type(succip, code_ptr).
+lval_type(maxfr, data_ptr).
+lval_type(curfr, data_ptr).
+lval_type(hp, data_ptr).
+lval_type(sp, data_ptr).
+lval_type(temp(RegType, _), Type) :-
+    register_type(RegType, Type).
+lval_type(stackvar(_), word).
+lval_type(framevar(_), word).
+lval_type(succip(_), code_ptr).
+lval_type(redoip(_), code_ptr).
+lval_type(redofr(_), data_ptr).
+lval_type(succfr(_), data_ptr).
+lval_type(prevfr(_), data_ptr).
+lval_type(field(_, _, _), word).
+lval_type(lvar(_), _) :-
+    unexpected(this_file, "lvar unexpected in llds.lval_type").
+lval_type(mem_ref(_), word).
 
-llds__rval_type(lval(Lval), Type) :-
-    llds__lval_type(Lval, Type).
-llds__rval_type(var(_), _) :-
-    unexpected(this_file, "var unexpected in llds__rval_type").
+rval_type(lval(Lval), Type) :-
+    lval_type(Lval, Type).
+rval_type(var(_), _) :-
+    unexpected(this_file, "var unexpected in llds.rval_type").
     %
     % Note that mkword and data_addr consts must be of type data_ptr,
     % not of type word, to ensure that static consts containing
@@ -1125,84 +1125,84 @@ llds__rval_type(var(_), _) :-
     % to a pointer, but casts from integer to pointer are OK, it's
     % only the reverse direction we need to avoid.
     %
-llds__rval_type(mkword(_, _), data_ptr).
-llds__rval_type(const(Const), Type) :-
-    llds__const_type(Const, Type).
-llds__rval_type(unop(UnOp, _), Type) :-
-    llds__unop_return_type(UnOp, Type).
-llds__rval_type(binop(BinOp, _, _), Type) :-
-    llds__binop_return_type(BinOp, Type).
-llds__rval_type(mem_addr(_), data_ptr).
+rval_type(mkword(_, _), data_ptr).
+rval_type(const(Const), Type) :-
+    const_type(Const, Type).
+rval_type(unop(UnOp, _), Type) :-
+    unop_return_type(UnOp, Type).
+rval_type(binop(BinOp, _, _), Type) :-
+    binop_return_type(BinOp, Type).
+rval_type(mem_addr(_), data_ptr).
 
-llds__const_type(true, bool).
-llds__const_type(false, bool).
-llds__const_type(int_const(_), integer).
-llds__const_type(float_const(_), float).
-llds__const_type(string_const(_), string).
-llds__const_type(multi_string_const(_, _), string).
-llds__const_type(code_addr_const(_), code_ptr).
-llds__const_type(data_addr_const(_, _), data_ptr).
+const_type(true, bool).
+const_type(false, bool).
+const_type(int_const(_), integer).
+const_type(float_const(_), float).
+const_type(string_const(_), string).
+const_type(multi_string_const(_, _), string).
+const_type(code_addr_const(_), code_ptr).
+const_type(data_addr_const(_, _), data_ptr).
 
-llds__unop_return_type(mktag, word).
-llds__unop_return_type(tag, word).
-llds__unop_return_type(unmktag, word).
-llds__unop_return_type(strip_tag, word).
-llds__unop_return_type(mkbody, word).
-llds__unop_return_type(unmkbody, word).
-llds__unop_return_type(hash_string, integer).
-llds__unop_return_type(bitwise_complement, integer).
-llds__unop_return_type(logical_not, bool).
+unop_return_type(mktag, word).
+unop_return_type(tag, word).
+unop_return_type(unmktag, word).
+unop_return_type(strip_tag, word).
+unop_return_type(mkbody, word).
+unop_return_type(unmkbody, word).
+unop_return_type(hash_string, integer).
+unop_return_type(bitwise_complement, integer).
+unop_return_type(logical_not, bool).
 
-llds__unop_arg_type(mktag, word).
-llds__unop_arg_type(tag, word).
-llds__unop_arg_type(unmktag, word).
-llds__unop_arg_type(strip_tag, word).
-llds__unop_arg_type(mkbody, word).
-llds__unop_arg_type(unmkbody, word).
-llds__unop_arg_type(hash_string, string).
-llds__unop_arg_type(bitwise_complement, integer).
-llds__unop_arg_type(logical_not, bool).
+unop_arg_type(mktag, word).
+unop_arg_type(tag, word).
+unop_arg_type(unmktag, word).
+unop_arg_type(strip_tag, word).
+unop_arg_type(mkbody, word).
+unop_arg_type(unmkbody, word).
+unop_arg_type(hash_string, string).
+unop_arg_type(bitwise_complement, integer).
+unop_arg_type(logical_not, bool).
 
-llds__binop_return_type(int_add, integer).
-llds__binop_return_type(int_sub, integer).
-llds__binop_return_type(int_mul, integer).
-llds__binop_return_type(int_div, integer).
-llds__binop_return_type(int_mod, integer).
-llds__binop_return_type(unchecked_left_shift, integer).
-llds__binop_return_type(unchecked_right_shift, integer).
-llds__binop_return_type(bitwise_and, integer).
-llds__binop_return_type(bitwise_or, integer).
-llds__binop_return_type(bitwise_xor, integer).
-llds__binop_return_type(logical_and, bool).
-llds__binop_return_type(logical_or, bool).
-llds__binop_return_type(eq, bool).
-llds__binop_return_type(ne, bool).
-llds__binop_return_type(array_index(_Type), word).
-llds__binop_return_type(str_eq, bool).
-llds__binop_return_type(str_ne, bool).
-llds__binop_return_type(str_lt, bool).
-llds__binop_return_type(str_gt, bool).
-llds__binop_return_type(str_le, bool).
-llds__binop_return_type(str_ge, bool).
-llds__binop_return_type(int_lt, bool).
-llds__binop_return_type(int_gt, bool).
-llds__binop_return_type(int_le, bool).
-llds__binop_return_type(int_ge, bool).
-llds__binop_return_type(unsigned_le, bool).
-llds__binop_return_type(float_plus, float).
-llds__binop_return_type(float_minus, float).
-llds__binop_return_type(float_times, float).
-llds__binop_return_type(float_divide, float).
-llds__binop_return_type(float_eq, bool).
-llds__binop_return_type(float_ne, bool).
-llds__binop_return_type(float_lt, bool).
-llds__binop_return_type(float_gt, bool).
-llds__binop_return_type(float_le, bool).
-llds__binop_return_type(float_ge, bool).
-llds__binop_return_type(body, word).
+binop_return_type(int_add, integer).
+binop_return_type(int_sub, integer).
+binop_return_type(int_mul, integer).
+binop_return_type(int_div, integer).
+binop_return_type(int_mod, integer).
+binop_return_type(unchecked_left_shift, integer).
+binop_return_type(unchecked_right_shift, integer).
+binop_return_type(bitwise_and, integer).
+binop_return_type(bitwise_or, integer).
+binop_return_type(bitwise_xor, integer).
+binop_return_type(logical_and, bool).
+binop_return_type(logical_or, bool).
+binop_return_type(eq, bool).
+binop_return_type(ne, bool).
+binop_return_type(array_index(_Type), word).
+binop_return_type(str_eq, bool).
+binop_return_type(str_ne, bool).
+binop_return_type(str_lt, bool).
+binop_return_type(str_gt, bool).
+binop_return_type(str_le, bool).
+binop_return_type(str_ge, bool).
+binop_return_type(int_lt, bool).
+binop_return_type(int_gt, bool).
+binop_return_type(int_le, bool).
+binop_return_type(int_ge, bool).
+binop_return_type(unsigned_le, bool).
+binop_return_type(float_plus, float).
+binop_return_type(float_minus, float).
+binop_return_type(float_times, float).
+binop_return_type(float_divide, float).
+binop_return_type(float_eq, bool).
+binop_return_type(float_ne, bool).
+binop_return_type(float_lt, bool).
+binop_return_type(float_gt, bool).
+binop_return_type(float_le, bool).
+binop_return_type(float_ge, bool).
+binop_return_type(body, word).
 
-llds__register_type(r, word).
-llds__register_type(f, float).
+register_type(r, word).
+register_type(f, float).
 
 get_proc_label(entry(_, ProcLabel)) = ProcLabel.
 get_proc_label(internal(_, ProcLabel)) = ProcLabel.

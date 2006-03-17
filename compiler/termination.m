@@ -440,16 +440,16 @@ set_finite_arg_size_infos([Soln | Solns], OutputSupplierMap, !ModuleInfo) :-
 	Soln = PPId - Gamma,
 	PPId = proc(PredId, ProcId),
 	module_info_preds(!.ModuleInfo, PredTable0),
-	map__lookup(PredTable0, PredId, PredInfo),
+	map.lookup(PredTable0, PredId, PredInfo),
 	pred_info_procedures(PredInfo, ProcTable),
-	map__lookup(ProcTable, ProcId, ProcInfo),
-	map__lookup(OutputSupplierMap, PPId, OutputSuppliers),
+	map.lookup(ProcTable, ProcId, ProcInfo),
+	map.lookup(OutputSupplierMap, PPId, OutputSuppliers),
 	ArgSizeInfo = finite(Gamma, OutputSuppliers),
     % XXX intermod
 	proc_info_set_maybe_arg_size_info(yes(ArgSizeInfo), ProcInfo, ProcInfo1),
-	map__set(ProcTable, ProcId, ProcInfo1, ProcTable1),
+	map.set(ProcTable, ProcId, ProcInfo1, ProcTable1),
 	pred_info_set_procedures(ProcTable1, PredInfo, PredInfo1),
-	map__set(PredTable0, PredId, PredInfo1, PredTable),
+	map.set(PredTable0, PredId, PredInfo1, PredTable),
 	module_info_set_preds(PredTable, !ModuleInfo),
 	set_finite_arg_size_infos(Solns, OutputSupplierMap, !ModuleInfo).
 

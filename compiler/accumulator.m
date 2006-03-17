@@ -143,7 +143,7 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module transform_hlds__accumulator.
+:- module transform_hlds.accumulator.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -151,7 +151,7 @@
 
 :- import_module io.
 
-:- pred accumulator__process_proc(pred_id::in, proc_id::in,
+:- pred accumulator.process_proc(pred_id::in, proc_id::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
@@ -227,25 +227,25 @@
     % Attempt to transform a procedure into accumulator recursive form.
     %
 process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
-    globals__io_lookup_bool_option(optimize_constructor_last_call_accumulator,
+    globals.io_lookup_bool_option(optimize_constructor_last_call_accumulator,
         DoLCO, !IO),
-    globals__io_lookup_bool_option(fully_strict, FullyStrict, !IO),
+    globals.io_lookup_bool_option(fully_strict, FullyStrict, !IO),
     (
         module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
         attempt_transform(ProcId, PredId, PredInfo, DoLCO, FullyStrict,
             !ProcInfo, !ModuleInfo, Warnings)
     ->
-        globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+        globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
         (
             VeryVerbose = yes,
-            io__write_string("% Accumulators introduced into ", !IO),
-            hlds_out__write_pred_id(!.ModuleInfo, PredId, !IO),
-            io__write_string("\n", !IO)
+            io.write_string("% Accumulators introduced into ", !IO),
+            hlds_out.write_pred_id(!.ModuleInfo, PredId, !IO),
+            io.write_string("\n", !IO)
         ;
             VeryVerbose = no
         ),
 
-        globals__io_lookup_bool_option(inhibit_accumulator_warnings,
+        globals.io_lookup_bool_option(inhibit_accumulator_warnings,
             InhibitWarnings, !IO),
         (
             ( InhibitWarnings = yes
@@ -269,7 +269,7 @@ process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
                 words("`--inhibit-accumulator-warnings'.")],
             write_error_pieces(Context, 2, Pieces1, !IO),
 
-            globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+            globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
             (
                 VerboseErrors = yes,
                 Pieces2 = [words("If a predicate has been declared"),
@@ -288,12 +288,12 @@ process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
                 write_error_pieces(Context, 2, Pieces2, !IO)
             ;
                 VerboseErrors = no,
-                globals__io_set_extra_error_info(yes, !IO)
+                globals.io_set_extra_error_info(yes, !IO)
             ),
-            globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn, !IO),
+            globals.io_lookup_bool_option(halt_at_warn, HaltAtWarn, !IO),
             (
                 HaltAtWarn = yes,
-                io__set_exit_status(1, !IO),
+                io.set_exit_status(1, !IO),
                 module_info_incr_errors(!ModuleInfo)
             ;
                 HaltAtWarn = no
@@ -323,10 +323,10 @@ output_warning(warn(Context, PredId, VarA, VarB), VarSet, ModuleInfo,
     PredPieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
         PredId),
 
-    varset__lookup_name(VarSet, VarA, VarAStr0),
-    varset__lookup_name(VarSet, VarB, VarBStr0),
-    VarAStr = string__append_list(["`", VarAStr0, "'"]),
-    VarBStr = string__append_list(["`", VarBStr0, "'"]),
+    varset.lookup_name(VarSet, VarA, VarAStr0),
+    varset.lookup_name(VarSet, VarB, VarBStr0),
+    VarAStr = string.append_list(["`", VarAStr0, "'"]),
+    VarBStr = string.append_list(["`", VarBStr0, "'"]),
 
     Formats = [words("warning: the call to")] ++ PredPieces ++
         [words("has had the location of the variables"),
@@ -356,7 +356,7 @@ attempt_transform(ProcId, PredId, PredInfo, DoLCO, FullyStrict,
 
     C = initialize_goal_store(Rec, RecInstMap, Base, BaseInstMap),
     identify_recursive_calls(PredId, ProcId, C, RecCallIds),
-    M = list__length(Rec),
+    M = list.length(Rec),
     attempt_transform_2(RecCallIds, C, M, Rec, HeadVars, InitialInstMap,
         TopLevel, DoLCO, FullyStrict, PredId, PredInfo,
         !ProcInfo, !ModuleInfo, Warnings).
@@ -366,11 +366,11 @@ attempt_transform(ProcId, PredId, PredInfo, DoLCO, FullyStrict,
     % recursive calls, stopping at the first one that succeeds.
     % This catches the following case, as selecting the first
     % recursive call allows the second recursive call to be moved
-    % before it, and OutA is in the correct spot in list__append.
+    % before it, and OutA is in the correct spot in list.append.
     %
     %   p(InA, OutA),
     %   p(InB, OutB),
-    %   list__append(OutB, OutA, Out)
+    %   list.append(OutB, OutA, Out)
     %
 :- pred attempt_transform_2(list(goal_id)::in, goal_store::in, int::in,
     hlds_goals::in, prog_vars::in, instmap::in, top_level::in,
@@ -496,7 +496,7 @@ identify_goal_type(PredId, ProcId, Goal, InitialInstMap,
             Rec = GoalAList,
 
             BaseInstMap = InitialInstMap,
-            instmap__apply_instmap_delta(InitialInstMap, IfInstMapDelta,
+            instmap.apply_instmap_delta(InitialInstMap, IfInstMapDelta,
                 RecInstMap)
         ; is_recursive_case(GoalBList, proc(PredId, ProcId)) ->
             Type = ite_base_rec,
@@ -504,7 +504,7 @@ identify_goal_type(PredId, ProcId, Goal, InitialInstMap,
             Rec = GoalBList,
 
             RecInstMap = InitialInstMap,
-            instmap__apply_instmap_delta(InitialInstMap, IfInstMapDelta,
+            instmap.apply_instmap_delta(InitialInstMap, IfInstMapDelta,
                 BaseInstMap)
         ;
             fail
@@ -521,7 +521,7 @@ identify_goal_type(PredId, ProcId, Goal, InitialInstMap,
 :- pred is_recursive_case(list(hlds_goal)::in, pred_proc_id::in) is semidet.
 
 is_recursive_case(Goals, proc(PredId, ProcId)) :-
-    list__append(_Initial, [RecursiveCall | _Final], Goals),
+    list.append(_Initial, [RecursiveCall | _Final], Goals),
     RecursiveCall = call(PredId, ProcId, _, _, _, _) - _.
 
 %-----------------------------------------------------------------------------%
@@ -543,10 +543,10 @@ is_recursive_case(Goals, proc(PredId, ProcId)) :-
     = goal_store.
 
 initialize_goal_store(Rec, RecInstMap, Base, BaseInstMap) = C :-
-    goal_store__init(C0),
-    list__foldl(store(rec), Rec, store_info(1, RecInstMap, C0),
+    goal_store_init(C0),
+    list.foldl(store(rec), Rec, store_info(1, RecInstMap, C0),
         store_info(_, _, C1)),
-    list__foldl(store(base), Base, store_info(1, BaseInstMap, C1),
+    list.foldl(store(base), Base, store_info(1, BaseInstMap, C1),
         store_info(_, _, C)).
 
     % store(Id, G, SI0, SI) is true iff the goal G is stored inside
@@ -558,9 +558,9 @@ initialize_goal_store(Rec, RecInstMap, Base, BaseInstMap) = C :-
 store(Identifier, Goal, store_info(N, IM0, GS0), store_info(N+1, IM, GS)) :-
     Goal = _ - GoalInfo,
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
-    instmap__apply_instmap_delta(IM0, InstMapDelta, IM),
+    instmap.apply_instmap_delta(IM0, InstMapDelta, IM),
 
-    goal_store__det_insert(Identifier - N, Goal - IM0, GS0, GS).
+    goal_store_det_insert(Identifier - N, Goal - IM0, GS0, GS).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -574,7 +574,7 @@ store(Identifier, Goal, store_info(N, IM0, GS0), store_info(N+1, IM, GS)) :-
 
 identify_recursive_calls(PredId, ProcId, GoalStore, Ids) :-
     P = (pred(Key::out) is nondet :-
-        goal_store__member(GoalStore, Key, Goal - _InstMap),
+        goal_store_member(GoalStore, Key, Goal - _InstMap),
         Key = rec - _,
         Goal = call(PredId, ProcId, _, _, _, _) - _
     ),
@@ -601,35 +601,35 @@ identify_recursive_calls(PredId, ProcId, GoalStore, Ids) :-
 identify_out_and_out_prime(_N - K, Rec, HeadVars, InitialInstMap, VarTypes,
         ModuleInfo, Out, OutPrime, HeadToCallSubst, CallToHeadSubst) :-
     (
-        list__take(K, Rec, InitialGoals),
-        list__drop(K-1, Rec, FinalGoals),
+        list.take(K, Rec, InitialGoals),
+        list.drop(K-1, Rec, FinalGoals),
         FinalGoals = [call(_, _, Args, _, _, _) - _ | Rest]
     ->
         goal_list_instmap_delta(InitialGoals, InitInstMapDelta),
-        instmap__apply_instmap_delta(InitialInstMap,
+        instmap.apply_instmap_delta(InitialInstMap,
             InitInstMapDelta, InstMapBeforeRest),
 
         goal_list_instmap_delta(Rest, InstMapDelta),
-        instmap__apply_instmap_delta(InstMapBeforeRest,
+        instmap.apply_instmap_delta(InstMapBeforeRest,
             InstMapDelta, InstMapAfterRest),
 
         instmap_changed_vars(InstMapBeforeRest, InstMapAfterRest,
             VarTypes, ModuleInfo, ChangedVars),
 
-        assoc_list__from_corresponding_lists(HeadVars, Args, HeadArg0),
+        assoc_list.from_corresponding_lists(HeadVars, Args, HeadArg0),
 
         Member = (pred(M::in) is semidet :-
             M = HeadVar - _,
-            set__member(HeadVar, ChangedVars)
+            set.member(HeadVar, ChangedVars)
         ),
-        list__filter(Member, HeadArg0, HeadArg),
-        list__map(fst, HeadArg, Out),
-        list__map(snd, HeadArg, OutPrime),
+        list.filter(Member, HeadArg0, HeadArg),
+        list.map(fst, HeadArg, Out),
+        list.map(snd, HeadArg, OutPrime),
 
-        map__from_assoc_list(HeadArg, HeadToCallSubst),
+        map.from_assoc_list(HeadArg, HeadToCallSubst),
 
-        list__map((pred(X-Y::in, Y-X::out) is det), HeadArg, ArgHead),
-        map__from_assoc_list(ArgHead, CallToHeadSubst)
+        list.map((pred(X-Y::in, Y-X::out) is det), HeadArg, ArgHead),
+        map.from_assoc_list(ArgHead, CallToHeadSubst)
     ;
         unexpected(this_file, "identify_out_and_out_prime")
     ).
@@ -664,25 +664,25 @@ stage1(N - K, M, GoalStore, DoLCO, FullyStrict, VarTypes, ModuleInfo, Sets) :-
     stage1_2(N - (K+1), K, M, GoalStore, FullyStrict, VarTypes, ModuleInfo,
         Sets0, Sets1),
     Sets1 = sets(Before, Assoc, ConstructAssoc, Construct, Update, Reject),
-    Sets = sets(Before `set__union` set_upto(N, (K-1)), Assoc,
+    Sets = sets(Before `set.union` set_upto(N, (K-1)), Assoc,
         ConstructAssoc, Construct, Update, Reject),
 
         % Continue the transformation only if the set reject is
         % empty and the set assoc or update contains something
         % that needs to be moved before the recursive call.
-    set__empty(Reject),
+    set.empty(Reject),
     (
-        not set__empty(Assoc)
+        not set.empty(Assoc)
     ;
-        not set__empty(Update)
+        not set.empty(Update)
     ),
     (
         DoLCO = no,
             % If LCMC is not turned on then there must be no
             % construction unifications after the recursive
             % call.
-        set__empty(Construct),
-        set__empty(ConstructAssoc)
+        set.empty(Construct),
+        set.empty(ConstructAssoc)
     ;
         DoLCO = yes
     ).
@@ -701,14 +701,14 @@ stage1_2(N - I, K, M, GoalStore, FullyStrict, VarTypes, ModuleInfo, !Sets) :-
             before(N - I, K, GoalStore, !.Sets, FullyStrict, VarTypes,
                 ModuleInfo)
         ->
-            !:Sets = !.Sets ^ before := set__insert(!.Sets ^ before, N - I),
+            !:Sets = !.Sets ^ before := set.insert(!.Sets ^ before, N - I),
             stage1_2(N - (I+1), K, M, GoalStore, FullyStrict, VarTypes,
                 ModuleInfo, !Sets)
         ;
             assoc(N - I, K, GoalStore, !.Sets, FullyStrict, VarTypes,
                 ModuleInfo)
         ->
-            !:Sets = !.Sets ^ assoc := set__insert(!.Sets ^ assoc, N - I),
+            !:Sets = !.Sets ^ assoc := set.insert(!.Sets ^ assoc, N - I),
             stage1_2(N - (I+1), K, M, GoalStore, FullyStrict, VarTypes,
                 ModuleInfo, !Sets)
         ;
@@ -716,7 +716,7 @@ stage1_2(N - I, K, M, GoalStore, FullyStrict, VarTypes, ModuleInfo, !Sets) :-
                 ModuleInfo)
         ->
             !:Sets = !.Sets ^ construct :=
-                set__insert(!.Sets ^ construct, N - I),
+                set.insert(!.Sets ^ construct, N - I),
             stage1_2(N - (I+1), K, M, GoalStore, FullyStrict, VarTypes,
                 ModuleInfo, !Sets)
         ;
@@ -724,18 +724,18 @@ stage1_2(N - I, K, M, GoalStore, FullyStrict, VarTypes, ModuleInfo, !Sets) :-
                 ModuleInfo)
         ->
             !:Sets = !.Sets ^ construct_assoc :=
-                set__insert(!.Sets ^ construct_assoc, N-I),
+                set.insert(!.Sets ^ construct_assoc, N-I),
             stage1_2(N - (I+1), K, M, GoalStore, FullyStrict, VarTypes,
                 ModuleInfo, !Sets)
         ;
             update(N - I, K, GoalStore, !.Sets, FullyStrict, VarTypes,
                 ModuleInfo)
         ->
-            !:Sets = !.Sets ^ update := set__insert(!.Sets ^ update, N - I),
+            !:Sets = !.Sets ^ update := set.insert(!.Sets ^ update, N - I),
             stage1_2(N - (I+1), K, M, GoalStore, FullyStrict, VarTypes,
                 ModuleInfo, !Sets)
         ;
-            !:Sets = !.Sets ^ reject := set__insert(!.Sets ^ reject, N - I)
+            !:Sets = !.Sets ^ reject := set.insert(!.Sets ^ reject, N - I)
         )
     ).
 
@@ -744,7 +744,7 @@ stage1_2(N - I, K, M, GoalStore, FullyStrict, VarTypes, ModuleInfo, !Sets) :-
 :- pred sets_init(sets::out) is det.
 
 sets_init(Sets) :-
-    set__init(EmptySet),
+    set.init(EmptySet),
     Before = EmptySet,
     Assoc = EmptySet,
     ConstructAssoc = EmptySet,
@@ -759,15 +759,14 @@ sets_init(Sets) :-
 
 set_upto(N, K) = Set :-
     ( K =< 0 ->
-        set__init(Set)
+        set.init(Set)
     ;
         Set0 = set_upto(N, K-1),
-        set__insert(Set0, pair(N, K), Set)
+        set.insert(Set0, pair(N, K), Set)
     ).
 
 %-----------------------------------------------------------------------------%
 
-    %
     % A goal is a member of the before set iff the goal only depends on
     % goals which are before the recursive call or can be moved
     % before the recursive call (member of the before set).
@@ -777,17 +776,17 @@ set_upto(N, K) = Set :-
 
 before(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
         FullyStrict, VarTypes, ModuleInfo) :-
-    goal_store__lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
+    goal_store_lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
     (
         member_lessthan_goalid(GoalStore, N - I, N - J,
             EarlierGoal - EarlierInstMap),
-        not goal_util__can_reorder_goals(ModuleInfo, VarTypes,
+        not goal_util.can_reorder_goals(ModuleInfo, VarTypes,
             FullyStrict, EarlierInstMap, EarlierGoal,
             LaterInstMap, LaterGoal)
     )
     =>
     (
-        set__member(N - J, set_upto(N, K-1) `union` Before)
+        set.member(N - J, set_upto(N, K-1) `union` Before)
     ).
 
     % A goal is a member of the assoc set iff the goal only depends
@@ -800,18 +799,18 @@ before(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
 
 assoc(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
         FullyStrict, VarTypes, ModuleInfo) :-
-    goal_store__lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
+    goal_store_lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
     LaterGoal = call(PredId, _, Args, _, _, _) - _,
     is_associative(PredId, ModuleInfo, Args, _),
     (
         member_lessthan_goalid(GoalStore, N - I, _N - J,
             EarlierGoal - EarlierInstMap),
-        not goal_util__can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
+        not goal_util.can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
             EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal)
     )
     =>
     (
-        set__member(N - J, set_upto(N, K) `union` Before)
+        set.member(N - J, set_upto(N, K) `union` Before)
     ).
 
     % A goal is a member of the construct set iff the goal only depends
@@ -824,19 +823,18 @@ assoc(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
 
 construct(N - I, K, GoalStore, sets(Before, _, _, Construct, _, _),
         FullyStrict, VarTypes, ModuleInfo) :-
-    goal_store__lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
+    goal_store_lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
     LaterGoal = unify(_, _, _, Unify, _) - _GoalInfo,
     Unify = construct(_, _, _, _, _, _, _),
     (
         member_lessthan_goalid(GoalStore, N - I, _N - J,
             EarlierGoal - EarlierInstMap),
-        not goal_util__can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
+        not goal_util.can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
             EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal)
     )
     =>
     (
-        set__member(N - J, set_upto(N, K) `union` Before `union`
-            Construct)
+        set.member(N - J, set_upto(N, K) `union` Before `union` Construct)
     ).
 
     % A goal is a member of the construct_assoc set iff the goal
@@ -854,27 +852,27 @@ construct(N - I, K, GoalStore, sets(Before, _, _, Construct, _, _),
 
 construct_assoc(N - I, K, GoalStore, sets(Before, Assoc, ConstructAssoc,
         _, _, _), FullyStrict, VarTypes, ModuleInfo) :-
-    goal_store__lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
+    goal_store_lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
     LaterGoal = unify(_, _, _, Unify, _) - _GoalInfo,
     Unify = construct(_, ConsId, _, _, _, _, _),
 
-    goal_store__all_ancestors(GoalStore, N - I, VarTypes, ModuleInfo,
+    goal_store_all_ancestors(GoalStore, N - I, VarTypes, ModuleInfo,
         FullyStrict, Ancestors),
 
-    set__singleton_set(Assoc `intersect` Ancestors, AssocId),
-    goal_store__lookup(GoalStore, AssocId, AssocGoal - _AssocInstMap),
+    set.singleton_set(Assoc `intersect` Ancestors, AssocId),
+    goal_store_lookup(GoalStore, AssocId, AssocGoal - _AssocInstMap),
     AssocGoal = call(PredId, _, _, _, _, _) - _,
 
     is_associative_construction(ConsId, PredId, ModuleInfo),
     (
         member_lessthan_goalid(GoalStore, N - I, _N - J,
             EarlierGoal - EarlierInstMap),
-        not goal_util__can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
+        not goal_util.can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
             EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal)
     )
     =>
     (
-        set__member(N - J, set_upto(N, K) `union` Before `union`
+        set.member(N - J, set_upto(N, K) `union` Before `union`
             Assoc `union` ConstructAssoc)
     ).
 
@@ -888,18 +886,18 @@ construct_assoc(N - I, K, GoalStore, sets(Before, Assoc, ConstructAssoc,
 
 update(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
         FullyStrict, VarTypes, ModuleInfo) :-
-    goal_store__lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
+    goal_store_lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
     LaterGoal = call(PredId, _, Args, _, _, _) - _,
     is_update(PredId, ModuleInfo, Args, _),
     (
         member_lessthan_goalid(GoalStore, N - I, _N - J,
             EarlierGoal - EarlierInstMap),
-        not goal_util__can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
+        not goal_util.can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
             EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal)
     )
     =>
     (
-        set__member(N - J, set_upto(N, K) `union` Before)
+        set.member(N - J, set_upto(N, K) `union` Before)
     ).
 
     % member_lessthan_goalid(GS, IdA, IdB, GB) is true iff the
@@ -910,7 +908,7 @@ update(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
     goal_id::out, stored_goal::out) is nondet.
 
 member_lessthan_goalid(GoalStore, N - I, N - J, Goal) :-
-    goal_store__member(GoalStore, N - J, Goal),
+    goal_store_member(GoalStore, N - J, Goal),
     J < I.
 
 %-----------------------------------------------------------------------------%
@@ -933,10 +931,10 @@ member_lessthan_goalid(GoalStore, N - I, N - J, Goal) :-
 is_associative(PredId, ModuleInfo, Args, Result) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_assertions(PredInfo, Assertions),
-    associativity_assertion(set__to_sorted_list(Assertions), ModuleInfo,
+    associativity_assertion(set.to_sorted_list(Assertions), ModuleInfo,
         Args, AssociativeVars, OutputVar),
     (
-        commutativity_assertion(set__to_sorted_list(Assertions),
+        commutativity_assertion(set.to_sorted_list(Assertions),
             ModuleInfo, Args, _CommutativeVars)
     ->
         IsCommutative = yes
@@ -958,11 +956,11 @@ is_associative(PredId, ModuleInfo, Args, Result) :-
 associativity_assertion([AssertId | AssertIds], ModuleInfo, Args0, VarAB,
         OutputVar) :-
     (
-        assertion__is_associativity_assertion(AssertId, ModuleInfo,
+        assertion.is_associativity_assertion(AssertId, ModuleInfo,
             Args0, VarA - VarB, OutputVar0)
     ->
         \+ associativity_assertion(AssertIds, ModuleInfo, Args0, _, _),
-        VarAB = set__list_to_set([VarA, VarB]),
+        VarAB = set.list_to_set([VarA, VarB]),
         OutputVar = OutputVar0
     ;
         associativity_assertion(AssertIds, ModuleInfo, Args0, VarAB, OutputVar)
@@ -981,11 +979,11 @@ associativity_assertion([AssertId | AssertIds], ModuleInfo, Args0, VarAB,
 commutativity_assertion([AssertId | AssertIds], ModuleInfo, Args0,
         PossibleStaticVars) :-
     (
-        assertion__is_commutativity_assertion(AssertId, ModuleInfo,
+        assertion.is_commutativity_assertion(AssertId, ModuleInfo,
             Args0, StaticVarA - StaticVarB)
     ->
         \+ commutativity_assertion(AssertIds, ModuleInfo, Args0, _),
-        PossibleStaticVars = set__list_to_set([StaticVarA, StaticVarB])
+        PossibleStaticVars = set.list_to_set([StaticVarA, StaticVarB])
     ;
         commutativity_assertion(AssertIds, ModuleInfo, Args0,
             PossibleStaticVars)
@@ -1003,12 +1001,12 @@ is_update(PredId, ModuleInfo, Args, ResultStateVars) :-
 
     pred_info_get_assertions(PredInfo, Assertions),
 
-    list__filter_map(
+    list.filter_map(
         (pred(AssertId::in, StateVars::out) is semidet :-
-            assertion__is_update_assertion(AssertId, ModuleInfo,
+            assertion.is_update_assertion(AssertId, ModuleInfo,
                 PredId, Args, StateVars)
         ),
-        set__to_sorted_list(Assertions), Result),
+        set.to_sorted_list(Assertions), Result),
 
         % XXX maybe we should just match on the first result,
         % just in case there is duplicate promises.
@@ -1025,34 +1023,34 @@ is_update(PredId, ModuleInfo, Args, ResultStateVars) :-
 is_associative_construction(ConsId, PredId, ModuleInfo) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_assertions(PredInfo, Assertions),
-    list__filter(
+    list.filter(
         (pred(AssertId::in) is semidet :-
-            assertion__is_construction_equivalence_assertion(
-                AssertId, ModuleInfo, ConsId, PredId)
+            assertion.is_construction_equivalence_assertion(AssertId,
+                ModuleInfo, ConsId, PredId)
         ),
-        set__to_sorted_list(Assertions), Result),
-    Result \= [].
+        set.to_sorted_list(Assertions), Result),
+    Result = [_ | _].
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- type substs --->
-    substs(
-        acc_var_subst       :: subst,
-        rec_call_subst      :: subst,
-        assoc_call_subst    :: subst,
-        update_subst        :: subst
-    ).
+:- type substs
+    --->    substs(
+                acc_var_subst       :: subst,
+                rec_call_subst      :: subst,
+                assoc_call_subst    :: subst,
+                update_subst        :: subst
+            ).
 
-:- type base --->
-    base(
-        init_update         :: set(goal_id),
-                            % goals which initialize update
-        init_assoc          :: set(goal_id),
-                            % goals which initialize assoc
-        other               :: set(goal_id)
-                            % other goals
-    ).
+:- type base
+    --->    base(
+                init_update         :: set(goal_id),
+                                    % goals which initialize update
+                init_assoc          :: set(goal_id),
+                                    % goals which initialize assoc
+                other               :: set(goal_id)
+                                    % other goals
+            ).
 
     % Stage 2 is responsible for identifying the substitutions which
     % are needed to mimic the unfold/fold process that was used as
@@ -1082,29 +1080,29 @@ stage2(N - K, GoalStore, Sets, OutPrime, Out, ModuleInfo, ProcInfo0,
     After = Assoc `union` ConstructAssoc `union` Construct,
 
     P = (pred(Id::in, Set0::in, Set::out) is det :-
-        goal_store__lookup(GoalStore, Id, Goal - _InstMap),
+        goal_store_lookup(GoalStore, Id, Goal - _InstMap),
         Goal = _GoalExpr - GoalInfo,
         goal_info_get_nonlocals(GoalInfo, NonLocals),
         Set = NonLocals `union` Set0
     ),
-    list__foldl(P, set__to_sorted_list(Before), set__init, BeforeNonLocals),
-    list__foldl(P, set__to_sorted_list(After), set__init, AfterNonLocals),
+    list.foldl(P, set.to_sorted_list(Before), set.init, BeforeNonLocals),
+    list.foldl(P, set.to_sorted_list(After), set.init, AfterNonLocals),
     InitAccs = BeforeNonLocals `intersect` AfterNonLocals,
 
     proc_info_varset(ProcInfo0, !:VarSet),
     proc_info_vartypes(ProcInfo0, !:VarTypes),
 
-    substs_init(set__to_sorted_list(InitAccs), !VarSet, !VarTypes, !:Substs),
+    substs_init(set.to_sorted_list(InitAccs), !VarSet, !VarTypes, !:Substs),
 
-    set__list_to_set(OutPrime, OutPrimeSet),
-    process_assoc_set(set__to_sorted_list(Assoc), GoalStore, OutPrimeSet,
+    set.list_to_set(OutPrime, OutPrimeSet),
+    process_assoc_set(set.to_sorted_list(Assoc), GoalStore, OutPrimeSet,
         ModuleInfo, !Substs, !VarSet, !VarTypes, CS, Warnings),
 
-    process_update_set(set__to_sorted_list(Update), GoalStore, OutPrimeSet,
+    process_update_set(set.to_sorted_list(Update), GoalStore, OutPrimeSet,
         ModuleInfo, !Substs, !VarSet, !VarTypes, UpdateOut, UpdateAccOut,
         BasePairs),
 
-    Accs = set__to_sorted_list(InitAccs) ++ UpdateAccOut,
+    Accs = set.to_sorted_list(InitAccs) ++ UpdateAccOut,
 
     divide_base_case(UpdateOut, Out, GoalStore, !.VarTypes, ModuleInfo,
         UpdateBase, AssocBase, OtherBase),
@@ -1117,7 +1115,7 @@ stage2(N - K, GoalStore, Sets, OutPrime, Out, ModuleInfo, ProcInfo0,
     vartypes::in, vartypes::out, substs::out) is det.
 
 substs_init(InitAccs, !VarSet, !VarTypes, Substs) :-
-    map__init(Subst),
+    map.init(Subst),
     acc_var_subst_init(InitAccs, !VarSet, !VarTypes, AccVarSubst),
     RecCallSubst = Subst,
     AssocCallSubst = Subst,
@@ -1132,11 +1130,11 @@ substs_init(InitAccs, !VarSet, !VarTypes, Substs) :-
 :- pred acc_var_subst_init(prog_vars::in, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out, subst::out) is det.
 
-acc_var_subst_init([], !VarSet, !VarTypes, map__init).
+acc_var_subst_init([], !VarSet, !VarTypes, map.init).
 acc_var_subst_init([Var | Vars], !VarSet, !VarTypes, Subst) :-
     create_new_var(Var, "A_", AccVar, !VarSet, !VarTypes),
     acc_var_subst_init(Vars, !VarSet, !VarTypes, Subst0),
-    map__det_insert(Subst0, Var, AccVar, Subst).
+    map.det_insert(Subst0, Var, AccVar, Subst).
 
     % Create a fresh variable which is the same type as the old
     % variable and has the same name except that it begins with the
@@ -1146,11 +1144,11 @@ acc_var_subst_init([Var | Vars], !VarSet, !VarTypes, Subst) :-
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
 create_new_var(OldVar, Prefix, NewVar, !VarSet, !VarTypes) :-
-    varset__lookup_name(!.VarSet, OldVar, OldName),
-    string__append(Prefix, OldName, NewName),
-    varset__new_named_var(!.VarSet, NewName, NewVar, !:VarSet),
-    map__lookup(!.VarTypes, OldVar, Type),
-    map__det_insert(!.VarTypes, NewVar, Type, !:VarTypes).
+    varset.lookup_name(!.VarSet, OldVar, OldName),
+    string.append(Prefix, OldName, NewName),
+    varset.new_named_var(!.VarSet, NewName, NewVar, !:VarSet),
+    map.lookup(!.VarTypes, OldVar, Type),
+    map.det_insert(!.VarTypes, NewVar, Type, !:VarTypes).
 
 %-----------------------------------------------------------------------------%
 
@@ -1165,7 +1163,7 @@ create_new_var(OldVar, Prefix, NewVar, !VarSet, !VarTypes) :-
 
 process_assoc_set([], _GS, _OutPrime, _ModuleInfo, !Substs,
         !VarSet, !VarTypes, CS, []) :-
-    goal_store__init(CS).
+    goal_store_init(CS).
 process_assoc_set([Id | Ids], GS, OutPrime, ModuleInfo, !Substs,
         !VarSet, !VarTypes, CS, Warnings) :-
     !.Substs = substs(AccVarSubst, RecCallSubst0, AssocCallSubst0,
@@ -1176,17 +1174,17 @@ process_assoc_set([Id | Ids], GS, OutPrime, ModuleInfo, !Substs,
     Goal = call(PredId, _, Args, _, _, _) - GoalInfo,
     is_associative(PredId, ModuleInfo, Args, AssocInfo),
     AssocInfo = assoc(Vars, AssocOutput, IsCommutative),
-    set__singleton_set(Vars `intersect` OutPrime, DuringAssocVar),
-    set__singleton_set(Vars `difference` (Vars `intersect` OutPrime),
+    set.singleton_set(Vars `intersect` OutPrime, DuringAssocVar),
+    set.singleton_set(Vars `difference` (Vars `intersect` OutPrime),
         BeforeAssocVar),
 
-    map__lookup(AccVarSubst, BeforeAssocVar, AccVar),
+    map.lookup(AccVarSubst, BeforeAssocVar, AccVar),
     create_new_var(BeforeAssocVar, "NewAcc_", NewAcc, !VarSet, !VarTypes),
 
-    map__det_insert(AssocCallSubst0, DuringAssocVar, AccVar, AssocCallSubst1),
-    map__det_insert(AssocCallSubst1, AssocOutput, NewAcc, AssocCallSubst),
-    map__det_insert(RecCallSubst0, DuringAssocVar, AssocOutput, RecCallSubst1),
-    map__det_insert(RecCallSubst1, BeforeAssocVar, NewAcc, RecCallSubst),
+    map.det_insert(AssocCallSubst0, DuringAssocVar, AccVar, AssocCallSubst1),
+    map.det_insert(AssocCallSubst1, AssocOutput, NewAcc, AssocCallSubst),
+    map.det_insert(RecCallSubst0, DuringAssocVar, AssocOutput, RecCallSubst1),
+    map.det_insert(RecCallSubst1, BeforeAssocVar, NewAcc, RecCallSubst),
 
     !:Substs = substs(AccVarSubst, RecCallSubst, AssocCallSubst, UpdateSubst),
 
@@ -1212,7 +1210,7 @@ process_assoc_set([Id | Ids], GS, OutPrime, ModuleInfo, !Substs,
             % of the predicate.
             heuristic(ModuleName, PredName, Arity, Args,
                 PossibleDuringAssocVars),
-            set__member(DuringAssocVar, PossibleDuringAssocVars),
+            set.member(DuringAssocVar, PossibleDuringAssocVars),
             Warning = []
         ;
             goal_info_get_context(GoalInfo, ProgContext),
@@ -1220,16 +1218,16 @@ process_assoc_set([Id | Ids], GS, OutPrime, ModuleInfo, !Substs,
                 DuringAssocVar)]
         ),
         % Swap the arguments.
-        [A, B] = set__to_sorted_list(Vars),
-        map__from_assoc_list([A-B, B-A], Subst),
-        goal_util__rename_vars_in_goal(Subst, Goal, SwappedGoal),
+        [A, B] = set.to_sorted_list(Vars),
+        map.from_assoc_list([A-B, B-A], Subst),
+        goal_util.rename_vars_in_goal(Subst, Goal, SwappedGoal),
         CSGoal = SwappedGoal - InstMap
     ),
 
     process_assoc_set(Ids, GS, OutPrime, ModuleInfo, !Substs,
         !VarSet, !VarTypes, CS0, Warnings0),
-    goal_store__det_insert(Id, CSGoal, CS0, CS),
-    list__append(Warnings0, Warning, Warnings).
+    goal_store_det_insert(Id, CSGoal, CS0, CS),
+    list.append(Warnings0, Warning, Warnings).
 
 :- pred has_heuristic(module_name::in, string::in, arity::in) is semidet.
 
@@ -1242,7 +1240,7 @@ has_heuristic(unqualified("list"), "append", 3).
     set(prog_var)::out) is semidet.
 
 heuristic(unqualified("list"), "append", 3, [_Typeinfo, A, _B, _C], Set) :-
-    set__list_to_set([A], Set).
+    set.list_to_set([A], Set).
 
 %-----------------------------------------------------------------------------%
 
@@ -1267,7 +1265,7 @@ process_update_set([Id | Ids], GS, OutPrime, ModuleInfo, !Substs,
     Goal = call(PredId, _, Args, _, _, _) - _GoalInfo,
     is_update(PredId, ModuleInfo, Args, StateVarA - StateVarB),
 
-    ( set__member(StateVarA, OutPrime) ->
+    ( set.member(StateVarA, OutPrime) ->
         StateInputVar = StateVarA,
         StateOutputVar = StateVarB
     ;
@@ -1278,11 +1276,11 @@ process_update_set([Id | Ids], GS, OutPrime, ModuleInfo, !Substs,
     create_new_var(StateInputVar, "Acc_", Acc0, !VarSet, !VarTypes),
     create_new_var(StateOutputVar, "Acc_", Acc, !VarSet, !VarTypes),
 
-    map__det_insert(UpdateSubst0, StateInputVar, Acc0, UpdateSubst1),
-    map__det_insert(UpdateSubst1, StateOutputVar, Acc, UpdateSubst),
-    map__det_insert(RecCallSubst0, StateInputVar, StateOutputVar,
+    map.det_insert(UpdateSubst0, StateInputVar, Acc0, UpdateSubst1),
+    map.det_insert(UpdateSubst1, StateOutputVar, Acc, UpdateSubst),
+    map.det_insert(RecCallSubst0, StateInputVar, StateOutputVar,
         RecCallSubst),
-    map__det_insert(AccVarSubst0, Acc, Acc0, AccVarSubst),
+    map.det_insert(AccVarSubst0, Acc, Acc0, AccVarSubst),
     !:Substs = substs(AccVarSubst, RecCallSubst, AssocCallSubst, UpdateSubst),
 
     process_update_set(Ids, GS, OutPrime, ModuleInfo, !Substs,
@@ -1318,25 +1316,25 @@ process_update_set([Id | Ids], GS, OutPrime, ModuleInfo, !Substs,
 
 divide_base_case(UpdateOut, Out, C, VarTypes, ModuleInfo,
         UpdateBase, AssocBase, OtherBase) :-
-    list__delete_elems(Out, UpdateOut, AssocOut),
+    list.delete_elems(Out, UpdateOut, AssocOut),
 
-    list__map(related(C, VarTypes, ModuleInfo), UpdateOut, UpdateBaseList),
-    list__map(related(C, VarTypes, ModuleInfo), AssocOut, AssocBaseList),
-    UpdateBase = set__power_union(set__list_to_set(UpdateBaseList)),
-    AssocBase = set__power_union(set__list_to_set(AssocBaseList)),
+    list.map(related(C, VarTypes, ModuleInfo), UpdateOut, UpdateBaseList),
+    list.map(related(C, VarTypes, ModuleInfo), AssocOut, AssocBaseList),
+    UpdateBase = set.power_union(set.list_to_set(UpdateBaseList)),
+    AssocBase = set.power_union(set.list_to_set(AssocBaseList)),
 
     Set = base_case_ids_set(C) `difference` (UpdateBase `union` AssocBase),
-    set__to_sorted_list(Set, List),
+    set.to_sorted_list(Set, List),
 
-    list__map(
+    list.map(
         (pred(GoalId::in, Ancestors::out) is det :-
-            goal_store__all_ancestors(C, GoalId, VarTypes,
+            goal_store_all_ancestors(C, GoalId, VarTypes,
                 ModuleInfo, no, Ancestors)
         ), List, OtherBaseList),
 
-    OtherBase = set__list_to_set(List) `union`
+    OtherBase = set.list_to_set(List) `union`
         (base_case_ids_set(C) `intersect`
-        set__power_union(set__list_to_set(OtherBaseList))).
+        set.power_union(set.list_to_set(OtherBaseList))).
 
     % related(GS, MI, V, Ids):
     %
@@ -1349,20 +1347,20 @@ divide_base_case(UpdateOut, Out, C, VarTypes, ModuleInfo,
 related(GS, VarTypes, ModuleInfo, Var, Related) :-
     solutions(
         (pred(Key::out) is nondet :-
-            goal_store__member(GS, Key, Goal - InstMap0),
+            goal_store_member(GS, Key, Goal - InstMap0),
             Key = base - _,
             Goal = _GoalExpr - GoalInfo,
             goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
             apply_instmap_delta(InstMap0, InstMapDelta, InstMap),
             instmap_changed_vars(InstMap0, InstMap, VarTypes,
                 ModuleInfo, ChangedVars),
-            set__singleton_set(ChangedVars, Var)
+            set.singleton_set(ChangedVars, Var)
         ), Ids),
     ( Ids = [Id] ->
-        goal_store__all_ancestors(GS, Id, VarTypes, ModuleInfo, no, Ancestors),
-        list__filter((pred((base - _)::in) is semidet),
-            set__to_sorted_list(set__insert(Ancestors, Id)), RelatedList),
-        Related = set__list_to_set(RelatedList)
+        goal_store_all_ancestors(GS, Id, VarTypes, ModuleInfo, no, Ancestors),
+        list.filter((pred((base - _)::in) is semidet),
+            set.to_sorted_list(set.insert(Ancestors, Id)), RelatedList),
+        Related = set.list_to_set(RelatedList)
     ;
         unexpected(this_file, "related")
     ).
@@ -1373,13 +1371,13 @@ related(GS, VarTypes, ModuleInfo, Var, Related) :-
 :- inst hlds_call ---> call - ground.
 :- inst call_goal ---> hlds_call - ground.
 
-    % Do a goal_store__lookup where the result is known to be a call.
+    % Do a goal_store_lookup where the result is known to be a call.
     %
-:- pred lookup_call(goal_store::in, goal_id::in,
-    stored_goal::out(call_goal)) is det.
+:- pred lookup_call(goal_store::in, goal_id::in, stored_goal::out(call_goal))
+    is det.
 
 lookup_call(GoalStore, Id, Call - InstMap) :-
-    goal_store__lookup(GoalStore, Id, Goal - InstMap),
+    goal_store_lookup(GoalStore, Id, Goal - InstMap),
     ( Goal = call(_, _, _, _, _, _) - _ ->
         Call = Goal
     ;
@@ -1398,13 +1396,11 @@ lookup_call(GoalStore, Id, Call - InstMap) :-
     goal_store::in, goal_store::in, substs::in, subst::in,
     subst::in, base::in, list(pair(prog_var))::in, sets::in,
     prog_vars::in, top_level::in, pred_id::in, pred_info::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out)
-    is det.
+    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
 stage3(RecCallId, Accs, VarSet, VarTypes, C, CS, Substs,
-        HeadToCallSubst, CallToHeadSubst, BaseCase, BasePairs,
-        Sets, Out, TopLevel, OrigPredId, OrigPredInfo, !OrigProcInfo,
-        !ModuleInfo) :-
+        HeadToCallSubst, CallToHeadSubst, BaseCase, BasePairs, Sets, Out,
+        TopLevel, OrigPredId, OrigPredInfo, !OrigProcInfo, !ModuleInfo) :-
     acc_proc_info(Accs, VarSet, VarTypes, Substs, !.OrigProcInfo,
         AccTypes, AccProcInfo),
     acc_pred_info(AccTypes, Out, AccProcInfo, OrigPredId, OrigPredInfo,
@@ -1436,8 +1432,8 @@ stage3(RecCallId, Accs, VarSet, VarTypes, C, CS, Substs,
 :- pred acc_proc_info(prog_vars::in, prog_varset::in, vartypes::in,
     substs::in, proc_info::in, list(mer_type)::out, proc_info::out) is det.
 
-acc_proc_info(Accs0, VarSet, VarTypes, Substs,
-        OrigProcInfo, AccTypes, AccProcInfo) :-
+acc_proc_info(Accs0, VarSet, VarTypes, Substs, OrigProcInfo,
+        AccTypes, AccProcInfo) :-
     % ProcInfo Stuff that must change.
     proc_info_headvars(OrigProcInfo, HeadVars0),
     proc_info_argmodes(OrigProcInfo, HeadModes0),
@@ -1451,7 +1447,7 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs,
 
     Substs = substs(AccVarSubst, _RecCallSubst, _AssocCallSubst,
         _UpdateSubst),
-    list__map(map__lookup(AccVarSubst), Accs0, Accs),
+    list.map(map.lookup(AccVarSubst), Accs0, Accs),
 
     % We place the extra accumulator variables at the start, because placing
     % them at the end breaks the convention that the last variable of a
@@ -1464,10 +1460,10 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs,
     % structures.
     Inst = ground(shared, none),
     inst_lists_to_mode_list([Inst], [Inst], Mode),
-    list__duplicate(list__length(Accs), list__det_head(Mode), AccModes),
+    list.duplicate(list.length(Accs), list.det_head(Mode), AccModes),
     HeadModes = AccModes ++ HeadModes0,
 
-    list__map(map__lookup(VarTypes), Accs, AccTypes),
+    list.map(map.lookup(VarTypes), Accs, AccTypes),
 
     proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet,
         HeadModes, Detism, Goal, RttiVarMaps, IsAddressTaken, AccProcInfo).
@@ -1492,10 +1488,10 @@ acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
     pred_info_get_class_context(OrigPredInfo, ClassContext),
     pred_info_get_origin(OrigPredInfo, OldOrigin),
 
-    set__init(Assertions),
+    set.init(Assertions),
 
     proc_info_context(NewProcInfo, Context),
-    term__context_line(Context, Line),
+    term.context_line(Context, Line),
     Counter = 0,
 
     Types = NewTypes ++ Types0,
@@ -1503,7 +1499,7 @@ acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
     make_pred_name_with_context(ModuleName, "AccFrom", PredOrFunc, Name,
         Line, Counter, SymName),
 
-    OutVarNums = list__map(term__var_to_int, OutVars),
+    OutVarNums = list.map(term.var_to_int, OutVars),
     Origin = transformed(accumulator(OutVarNums), OldOrigin, OrigPredId),
     pred_info_create(ModuleName, SymName, PredOrFunc, PredContext, Origin,
         local, Markers, Types, TypeVarSet, ExistQVars, ClassContext,
@@ -1524,7 +1520,6 @@ acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
 create_goal(RecCallId, Accs, AccPredId, AccProcId, AccName, Substs,
         HeadToCallSubst, CallToHeadSubst, BaseIds, BasePairs,
         Sets, C, CS, OrigBaseGoal, OrigRecGoal, AccBaseGoal, AccRecGoal) :-
-
     lookup_call(C, RecCallId, OrigCall - _InstMap),
     Call = create_acc_call(OrigCall, Accs, AccPredId, AccProcId, AccName),
     create_orig_goal(Call, Substs, HeadToCallSubst, CallToHeadSubst,
@@ -1560,10 +1555,10 @@ create_orig_goal(Call, Substs, HeadToCallSubst, CallToHeadSubst,
     U = create_new_orig_recursive_goals(UpdateBase, Update,
         HeadToCallSubst, UpdateSubst, C),
 
-    goal_util__rename_vars_in_goal(CallToHeadSubst, Call, BaseCall),
-    Cbefore = goal_list(set__to_sorted_list(Before), C),
-    Uupdate = goal_list(set__to_sorted_list(UpdateBase) ++
-        set__to_sorted_list(Update), U),
+    goal_util.rename_vars_in_goal(CallToHeadSubst, Call, BaseCall),
+    Cbefore = goal_list(set.to_sorted_list(Before), C),
+    Uupdate = goal_list(set.to_sorted_list(UpdateBase) ++
+        set.to_sorted_list(Update), U),
     Cbase = goal_list(base_case_ids(C), C),
     calculate_goal_info(conj(plain_conj, Cbefore ++ Uupdate ++ [BaseCall]),
         OrigRecGoal),
@@ -1583,29 +1578,29 @@ create_acc_goal(Call, Substs, HeadToCallSubst, BaseIds, BasePairs, Sets,
     BaseIds = base(_UpdateBase, AssocBase, OtherBase),
     Sets = sets(Before, Assoc, ConstructAssoc, Construct, Update, _Reject),
 
-    goal_util__rename_vars_in_goal(RecCallSubst, Call, RecCall),
+    goal_util.rename_vars_in_goal(RecCallSubst, Call, RecCall),
 
-    Cbefore = goal_list(set__to_sorted_list(Before), C),
+    Cbefore = goal_list(set.to_sorted_list(Before), C),
 
     % Create the goals which will be used in the new recursive case.
     R = create_new_recursive_goals(Assoc, Construct `union` ConstructAssoc,
         Update, AssocCallSubst, AccVarSubst, UpdateSubst, C, CS),
 
-    Rassoc = goal_list(set__to_sorted_list(Assoc), R),
-    Rupdate = goal_list(set__to_sorted_list(Update), R),
-    Rconstruct = goal_list(set__to_sorted_list(Construct `union`
+    Rassoc = goal_list(set.to_sorted_list(Assoc), R),
+    Rupdate = goal_list(set.to_sorted_list(Update), R),
+    Rconstruct = goal_list(set.to_sorted_list(Construct `union`
         ConstructAssoc), R),
 
     % Create the goals which will be used in the new base case.
     B = create_new_base_goals(Assoc `union` Construct `union`
         ConstructAssoc, C, AccVarSubst, HeadToCallSubst),
-    Bafter = set__to_sorted_list(Assoc `union`
+    Bafter = set.to_sorted_list(Assoc `union`
         Construct `union` ConstructAssoc),
 
-    BaseCase = goal_list(set__to_sorted_list(AssocBase `union` OtherBase)
+    BaseCase = goal_list(set.to_sorted_list(AssocBase `union` OtherBase)
         ++ Bafter, B),
 
-    list__map(acc_unification, BasePairs, UpdateBase),
+    list.map(acc_unification, BasePairs, UpdateBase),
 
     calculate_goal_info(conj(plain_conj, Cbefore ++ Rassoc ++ Rupdate
         ++ [RecCall] ++ Rconstruct), AccRecGoal),
@@ -1622,9 +1617,9 @@ create_acc_goal(Call, Substs, HeadToCallSubst, BaseIds, BasePairs, Sets,
 
 create_new_orig_recursive_goals(UpdateBase, Update, HeadToCallSubst,
         UpdateSubst, C)
-        = rename(set__to_sorted_list(Update), UpdateSubst, C, Ubase) :-
-    Ubase = rename(set__to_sorted_list(UpdateBase),
-        chain_subst(HeadToCallSubst, UpdateSubst), C, goal_store__init).
+        = rename(set.to_sorted_list(Update), UpdateSubst, C, Ubase) :-
+    Ubase = rename(set.to_sorted_list(UpdateBase),
+        chain_subst(HeadToCallSubst, UpdateSubst), C, goal_store_init).
 
     % Create the R set of goals (those that will be used in the new
     % recursive case) by renaming all the members of assoc in CS
@@ -1636,10 +1631,10 @@ create_new_orig_recursive_goals(UpdateBase, Update, HeadToCallSubst,
 
 create_new_recursive_goals(Assoc, Constructs, Update,
         AssocCallSubst, AccVarSubst, UpdateSubst, C, CS)
-        = rename(set__to_sorted_list(Constructs), AccVarSubst, C, RBase) :-
-    RBase0 = rename(set__to_sorted_list(Assoc), AssocCallSubst, CS,
-        goal_store__init),
-    RBase = rename(set__to_sorted_list(Update), UpdateSubst, C, RBase0).
+        = rename(set.to_sorted_list(Constructs), AccVarSubst, C, RBase) :-
+    RBase0 = rename(set.to_sorted_list(Assoc), AssocCallSubst, CS,
+        goal_store_init),
+    RBase = rename(set.to_sorted_list(Update), UpdateSubst, C, RBase0).
 
     % Create the B set of goals (those that will be used in the new
     % base case) by renaming all the base case goals of C with
@@ -1650,8 +1645,8 @@ create_new_recursive_goals(Assoc, Constructs, Update,
     = goal_store.
 
 create_new_base_goals(Ids, C, AccVarSubst, HeadToCallSubst)
-        = rename(set__to_sorted_list(Ids), AccVarSubst, C, Bbase) :-
-    Bbase = rename(base_case_ids(C), HeadToCallSubst, C, goal_store__init).
+        = rename(set.to_sorted_list(Ids), AccVarSubst, C, Bbase) :-
+    Bbase = rename(base_case_ids(C), HeadToCallSubst, C, goal_store_init).
 
     % acc_unification(O-A, G):
     %
@@ -1665,7 +1660,7 @@ acc_unification(Out - Acc, Goal) :-
     UniMode = LHSMode - RHSMode,
     Context = unify_context(explicit, []),
     Expr = unify(Out, var(Acc), UniMode, assign(Out,Acc), Context),
-    set__list_to_set([Out,Acc], NonLocalVars),
+    set.list_to_set([Out,Acc], NonLocalVars),
     instmap_delta_from_assoc_list([Out - ground(shared, none)], InstMapDelta),
     goal_info_init(NonLocalVars, InstMapDelta, det, purity_pure, Info),
     Goal = Expr - Info.
@@ -1737,12 +1732,9 @@ top_level(disj_rec_base, Goal, OrigBaseGoal,
     ).
 top_level(ite_base_rec, Goal, OrigBaseGoal,
         OrigRecGoal, NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
-    (
-        Goal = if_then_else(Vars, If, _, _) - GoalInfo
-    ->
+    ( Goal = if_then_else(Vars, If, _, _) - GoalInfo ->
         OrigGoal = if_then_else(Vars, If, OrigBaseGoal, OrigRecGoal)
             - GoalInfo,
-
         NewGoal = if_then_else(Vars, If, NewBaseGoal, NewRecGoal)
             - GoalInfo
     ;
@@ -1750,12 +1742,9 @@ top_level(ite_base_rec, Goal, OrigBaseGoal,
     ).
 top_level(ite_rec_base, Goal, OrigBaseGoal,
         OrigRecGoal, NewBaseGoal, NewRecGoal, OrigGoal, NewGoal) :-
-    (
-        Goal = if_then_else(Vars, If, _, _) - GoalInfo
-    ->
+    ( Goal = if_then_else(Vars, If, _, _) - GoalInfo ->
         OrigGoal = if_then_else(Vars, If, OrigRecGoal, OrigBaseGoal)
             - GoalInfo,
-
         NewGoal = if_then_else(Vars, If, NewRecGoal, NewBaseGoal)
             - GoalInfo
     ;
@@ -1790,11 +1779,11 @@ update_accumulator_pred(NewPredId, NewProcId, AccGoal, !ModuleInfo) :-
 :- func rename(list(goal_id), subst, goal_store, goal_store) = goal_store.
 
 rename(Ids, Subst, From, Initial) = Final :-
-    list__foldl(
+    list.foldl(
         (pred(Id::in, GS0::in, GS::out) is det :-
-            goal_store__lookup(From, Id, Goal0 - InstMap),
-            goal_util__rename_vars_in_goal(Subst, Goal0, Goal),
-            goal_store__det_insert(Id, Goal - InstMap, GS0, GS)
+            goal_store_lookup(From, Id, Goal0 - InstMap),
+            goal_util.rename_vars_in_goal(Subst, Goal0, Goal),
+            goal_store_det_insert(Id, Goal - InstMap, GS0, GS)
         ), Ids, Initial, Final).
 
     % Return all the goal_ids which belong in the base case.
@@ -1804,13 +1793,13 @@ rename(Ids, Subst, From, Initial) = Final :-
 base_case_ids(GS) = Base :-
     solutions(
         (pred(Key::out) is nondet :-
-            goal_store__member(GS, Key, _Goal),
+            goal_store_member(GS, Key, _Goal),
             Key = base - _
         ), Base).
 
 :- func base_case_ids_set(goal_store) = set(goal_id).
 
-base_case_ids_set(GS) = set__list_to_set(base_case_ids(GS)).
+base_case_ids_set(GS) = set.list_to_set(base_case_ids(GS)).
 
     % Given a list of goal_ids, return the list of hlds_goals from
     % the goal_store.
@@ -1818,9 +1807,9 @@ base_case_ids_set(GS) = set__list_to_set(base_case_ids(GS)).
 :- func goal_list(list(goal_id), goal_store) = hlds_goals.
 
 goal_list(Ids, GS) = Goals :-
-    list__map(
+    list.map(
         (pred(Key::in, G::out) is det :-
-            goal_store__lookup(GS, Key, G - _)
+            goal_store_lookup(GS, Key, G - _)
         ), Ids, Goals).
 
 %-----------------------------------------------------------------------------%
@@ -1832,10 +1821,9 @@ calculate_goal_info(GoalExpr, GoalExpr - GoalInfo) :-
     ( GoalExpr = conj(plain_conj, GoalList) ->
         goal_list_nonlocals(GoalList, NonLocals),
         goal_list_instmap_delta(GoalList, InstMapDelta),
-        goal_list_determinism(GoalList, Determinism),
+        goal_list_determinism(GoalList, Detism),
 
-        goal_info_init(NonLocals, InstMapDelta, Determinism, purity_pure,
-            GoalInfo)
+        goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure, GoalInfo)
     ;
         unexpected(this_file, "calculate_goal_info: not a conj.")
     ).
@@ -1861,26 +1849,26 @@ rec = 1.
 :- func reverse_subst(subst) = subst.
 
 reverse_subst(Subst0) = Subst :-
-    map__to_assoc_list(Subst0, List0),
-    assoc_list__reverse_members(List0, List),
-    map__from_assoc_list(List, Subst).
+    map.to_assoc_list(Subst0, List0),
+    assoc_list.reverse_members(List0, List),
+    map.from_assoc_list(List, Subst).
 
 :- func chain_subst(subst, subst) = subst.
 
 chain_subst(AtoB, BtoC) = AtoC :-
-    map__keys(AtoB, Keys),
+    map.keys(AtoB, Keys),
     chain_subst_2(Keys, AtoB, BtoC, AtoC).
 
 :- pred chain_subst_2(list(A)::in, map(A, B)::in, map(B, C)::in,
     map(A, C)::out) is det.
 
 chain_subst_2([], _, _, AtoC) :-
-    map__init(AtoC).
+    map.init(AtoC).
 chain_subst_2([A|As], AtoB, BtoC, AtoC) :-
     chain_subst_2(As, AtoB, BtoC, AtoC0),
-    map__lookup(AtoB, A, B),
-    ( map__search(BtoC, B, C) ->
-        map__det_insert(AtoC0, A, C, AtoC)
+    map.lookup(AtoB, A, B),
+    ( map.search(BtoC, B, C) ->
+        map.det_insert(AtoC0, A, C, AtoC)
     ;
         AtoC = AtoC0
     ).

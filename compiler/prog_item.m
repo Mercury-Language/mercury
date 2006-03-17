@@ -728,7 +728,7 @@
 
     ;       include_module(list(module_name))
 
-    ;       version_numbers(module_name, recompilation__version_numbers).
+    ;       version_numbers(module_name, recompilation.version_numbers).
             % This is used to represent the version numbers of items in an
             % interface file for use in smart recompilation.
 

@@ -30,7 +30,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ml_backend__add_heap_ops.
+:- module ml_backend.add_heap_ops.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -158,7 +158,7 @@ goal_expr_add_heap_ops(not(InnerGoal), OuterGoalInfo, Goal, !Info) :-
         % The "then" part of the if-then-else will be unreachable, but to
         % preserve the invariants that the MLDS back-end relies on, we need to
         % make sure that it can't fail. So we use a call to
-        % `private_builtin__unused' (which will call error/1) rather than
+        % `private_builtin.unused' (which will call error/1) rather than
         % `fail' for the "then" part.
         generate_call("unused", det, [], [], [], ModuleInfo, Context, ThenGoal)
     ;
@@ -227,7 +227,7 @@ goal_expr_add_heap_ops(shorthand(_), _, _, !Info) :-
     heap_ops_info::in, heap_ops_info::out) is det.
 
 conj_add_heap_ops(Goals0, Goals, !Info) :-
-    list__map_foldl(goal_add_heap_ops, Goals0, Goals, !Info).
+    list.map_foldl(goal_add_heap_ops, Goals0, Goals, !Info).
 
 :- pred disj_add_heap_ops(hlds_goals::in, bool::in, maybe(prog_var)::in,
     hlds_goal_info::in, hlds_goals::out,
@@ -324,8 +324,8 @@ new_saved_hp_var(Var, !Info) :-
 new_var(Name, Type, Var, !Info) :-
     VarSet0 = !.Info ^ varset,
     VarTypes0 = !.Info ^ var_types,
-    varset__new_named_var(VarSet0, Name, Var, VarSet),
-    map__det_insert(VarTypes0, Var, Type, VarTypes),
+    varset.new_named_var(VarSet0, Name, Var, VarSet),
+    map.det_insert(VarTypes0, Var, Type, VarTypes),
     !:Info = !.Info ^ varset := VarSet,
     !:Info = !.Info ^ var_types := VarTypes.
 
@@ -333,12 +333,12 @@ new_var(Name, Type, Var, !Info) :-
 
 :- pred generate_call(string::in, determinism::in, list(prog_var)::in,
     list(goal_feature)::in, assoc_list(prog_var, mer_inst)::in,
-    module_info::in, term__context::in, hlds_goal::out) is det.
+    module_info::in, term.context::in, hlds_goal::out) is det.
 
 generate_call(PredName, Detism, Args, Features, InstMap, ModuleInfo,
         Context, CallGoal) :-
     mercury_private_builtin_module(BuiltinModule),
-    goal_util__generate_simple_call(BuiltinModule, PredName, predicate,
+    goal_util.generate_simple_call(BuiltinModule, PredName, predicate,
         only_mode, Detism, Args, Features, InstMap, ModuleInfo,
         Context, CallGoal).
 

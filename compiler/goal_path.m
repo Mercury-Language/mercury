@@ -14,7 +14,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds__goal_path.
+:- module check_hlds.goal_path.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -32,7 +32,7 @@
     % be recalculated anywhere between these two passes. See the XXX
     % comment near the declaration of constraint_id.
     %
-:- pred goal_path__fill_slots(module_info::in, proc_info::in, proc_info::out)
+:- pred fill_goal_path_slots(module_info::in, proc_info::in, proc_info::out)
     is det.
 
     % Fill in the goal_paths for goals in the clauses_info of the predicate.
@@ -44,10 +44,10 @@
     % path is always equivalent to its instantiatedness at the parent goal
     % path.
     %
-:- pred goal_path__fill_slots_in_clauses(module_info::in, bool::in,
+:- pred fill_goal_path_slots_in_clauses(module_info::in, bool::in,
     pred_info::in, pred_info::out) is det.
 
-:- pred goal_path__fill_slots_in_goal(hlds_goal::in, vartypes::in,
+:- pred fill_goal_path_slots_in_goal(hlds_goal::in, vartypes::in,
     module_info::in, hlds_goal::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -76,18 +76,18 @@
                 omit_mode_equiv_prefix      :: bool
             ).
 
-goal_path__fill_slots(ModuleInfo, !Proc) :-
+fill_goal_path_slots(ModuleInfo, !Proc) :-
     proc_info_goal(!.Proc, Goal0),
     proc_info_vartypes(!.Proc, VarTypes),
-    goal_path__fill_slots_in_goal(Goal0, VarTypes, ModuleInfo, Goal),
+    fill_goal_path_slots_in_goal(Goal0, VarTypes, ModuleInfo, Goal),
     proc_info_set_goal(Goal, !Proc).
 
-goal_path__fill_slots_in_clauses(ModuleInfo, OmitModeEquivPrefix, !PredInfo) :-
+fill_goal_path_slots_in_clauses(ModuleInfo, OmitModeEquivPrefix, !PredInfo) :-
     pred_info_clauses_info(!.PredInfo, ClausesInfo0),
     clauses_info_clauses_only(ClausesInfo0, Clauses0),
     clauses_info_vartypes(ClausesInfo0, VarTypes),
     SlotInfo = slot_info(VarTypes, ModuleInfo, OmitModeEquivPrefix),
-    list__map_foldl(fill_slots_in_clause(SlotInfo), Clauses0, Clauses, 1, _),
+    list.map_foldl(fill_slots_in_clause(SlotInfo), Clauses0, Clauses, 1, _),
     clauses_info_set_clauses(Clauses, ClausesInfo0, ClausesInfo),
     pred_info_set_clauses_info(ClausesInfo, !PredInfo).
 
@@ -99,7 +99,7 @@ fill_slots_in_clause(SlotInfo, Clause0, Clause, ClauseNum, ClauseNum + 1) :-
     fill_goal_slots([disj(ClauseNum)], SlotInfo, Goal0, Goal),
     Clause = clause(ProcIds, Goal, Lang, Context).
 
-goal_path__fill_slots_in_goal(Goal0, VarTypes, ModuleInfo, Goal) :-
+fill_goal_path_slots_in_goal(Goal0, VarTypes, ModuleInfo, Goal) :-
     SlotInfo = slot_info(VarTypes, ModuleInfo, no),
     fill_goal_slots([], SlotInfo, Goal0, Goal).
 
@@ -110,7 +110,7 @@ fill_goal_slots(Path0, SlotInfo, Expr0 - Info0, Expr - Info) :-
     OmitModeEquivPrefix = SlotInfo ^ omit_mode_equiv_prefix,
     (
         OmitModeEquivPrefix = yes,
-        list__takewhile(mode_equiv_step, Path0, _, Path)
+        list.takewhile(mode_equiv_step, Path0, _, Path)
     ;
         OmitModeEquivPrefix = no,
         Path = Path0
@@ -143,7 +143,7 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, Goal0, Goal) :-
         Goal0 = switch(Var, CanFail, Cases0),
         VarTypes = SlotInfo ^ vartypes,
         ModuleInfo = SlotInfo ^ module_info,
-        map__lookup(VarTypes, Var, Type),
+        map.lookup(VarTypes, Var, Type),
         ( switch_type_num_functors(ModuleInfo, Type, NumFunctors) ->
             NumCases = NumFunctors
         ;

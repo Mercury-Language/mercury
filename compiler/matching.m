@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2005 The University of Melbourne.
+% Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,7 +16,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module backend_libs__matching.
+:- module backend_libs.matching.
 :- interface.
 
 :- import_module parse_tree.prog_data.
@@ -159,29 +159,29 @@ find_via_cell_vars(CellVar, CandidateFieldVars, CellVarFlushedLater,
     InclAllCand = MatchingParams ^ include_all_candidates,
     (
         InclAllCand = no,
-        AllSegmentVars = set__union_list([BeforeFlush | AfterFlush]),
-        set__intersect(CandidateFieldVars, AllSegmentVars,
+        AllSegmentVars = set.union_list([BeforeFlush | AfterFlush]),
+        set.intersect(CandidateFieldVars, AllSegmentVars,
             OccurringCandidateFieldVars),
-        set__difference(CandidateFieldVars, OccurringCandidateFieldVars,
+        set.difference(CandidateFieldVars, OccurringCandidateFieldVars,
             NonOccurringCandidateFieldVars)
     ;
         InclAllCand = yes,
         OccurringCandidateFieldVars = CandidateFieldVars,
-        NonOccurringCandidateFieldVars = set__init
+        NonOccurringCandidateFieldVars = set.init
     ),
-    set__to_sorted_list(OccurringCandidateFieldVars,
+    set.to_sorted_list(OccurringCandidateFieldVars,
         OccurringCandidateFieldVarList),
-    list__filter_map(simplify_segment(CellVar, OccurringCandidateFieldVars),
+    list.filter_map(simplify_segment(CellVar, OccurringCandidateFieldVars),
         AfterFlush, FilteredAfterFlush),
     NumberedAfterFlush = number_segments(2, FilteredAfterFlush),
-    CostsBenefits = list__map(
+    CostsBenefits = list.map(
         find_costs_benefits(CellVar, BeforeFlush, NumberedAfterFlush,
             CellVarFlushedLater, MatchingParams),
         OccurringCandidateFieldVarList),
-    list__foldl(gather_benefits, CostsBenefits, set__init, BenefitNodes),
-    list__foldl(gather_costs, CostsBenefits, set__init, CostNodes),
-    set__to_sorted_list(BenefitNodes, BenefitNodeList),
-    set__to_sorted_list(CostNodes, CostNodeList),
+    list.foldl(gather_benefits, CostsBenefits, set.init, BenefitNodes),
+    list.foldl(gather_costs, CostsBenefits, set.init, CostNodes),
+    set.to_sorted_list(BenefitNodes, BenefitNodeList),
+    set.to_sorted_list(CostNodes, CostNodeList),
     Graph = create_graph(CostsBenefits),
     MaximalMatching = maximal_matching(BenefitNodeList, Graph),
     MaximalMatching = matching(MaximalMatchingCostToBenefit, _),
@@ -191,22 +191,22 @@ find_via_cell_vars(CellVar, CandidateFieldVars, CellVarFlushedLater,
         Graph, MaximalMatching),
     ViaCellOccurringVars0 =
         compute_via_cell_vars(CostsBenefits, MarkedBenefitNodes),
-    list__filter(realized_costs_benefits(ViaCellOccurringVars0),
+    list.filter(realized_costs_benefits(ViaCellOccurringVars0),
         CostsBenefits, RealizedCostsBenefits),
-    list__foldl(gather_benefits, RealizedCostsBenefits,
-        set__init, RealizedBenefitNodes),
-    list__foldl(gather_costs, RealizedCostsBenefits,
-        set__init, RealizedCostNodes),
-    RealizedBenefitOps = set__map(project_benefit_op, RealizedBenefitNodes),
-    RealizedCostOps = set__map(project_cost_op, RealizedCostNodes),
-    set__to_sorted_list(RealizedBenefitNodes, RealizedBenefitNodeList),
-    set__to_sorted_list(RealizedCostNodes, RealizedCostNodeList),
-    set__to_sorted_list(RealizedBenefitOps, RealizedBenefitOpList),
-    set__to_sorted_list(RealizedCostOps, RealizedCostOpList),
-    list__length(RealizedBenefitNodeList, RealizedBenefitNodeCount),
-    list__length(RealizedBenefitOpList, RealizedBenefitOpCount),
-    list__length(RealizedCostNodeList, RealizedCostNodeCount),
-    list__length(RealizedCostOpList, RealizedCostOpCount),
+    list.foldl(gather_benefits, RealizedCostsBenefits,
+        set.init, RealizedBenefitNodes),
+    list.foldl(gather_costs, RealizedCostsBenefits,
+        set.init, RealizedCostNodes),
+    RealizedBenefitOps = set.map(project_benefit_op, RealizedBenefitNodes),
+    RealizedCostOps = set.map(project_cost_op, RealizedCostNodes),
+    set.to_sorted_list(RealizedBenefitNodes, RealizedBenefitNodeList),
+    set.to_sorted_list(RealizedCostNodes, RealizedCostNodeList),
+    set.to_sorted_list(RealizedBenefitOps, RealizedBenefitOpList),
+    set.to_sorted_list(RealizedCostOps, RealizedCostOpList),
+    list.length(RealizedBenefitNodeList, RealizedBenefitNodeCount),
+    list.length(RealizedBenefitOpList, RealizedBenefitOpCount),
+    list.length(RealizedCostNodeList, RealizedCostNodeCount),
+    list.length(RealizedCostOpList, RealizedCostOpCount),
     OpRatio = MatchingParams ^ one_path_op_ratio,
     NodeRatio = MatchingParams ^ one_path_node_ratio,
     (
@@ -218,12 +218,12 @@ find_via_cell_vars(CellVar, CandidateFieldVars, CellVarFlushedLater,
         % the .err file.
         % Nullified = no
     ;
-        ViaCellOccurringVars = set__init
+        ViaCellOccurringVars = set.init
         % Uncomment if you want to dump performance information into
         % the .err file.
         % Nullified = yes
     ),
-    ViaCellVars = set__union(ViaCellOccurringVars,
+    ViaCellVars = set.union(ViaCellOccurringVars,
         NonOccurringCandidateFieldVars).
     % Uncomment if you want to dump performance information into
     % the .err file.
@@ -245,8 +245,8 @@ find_via_cell_vars(CellVar, CandidateFieldVars, CellVarFlushedLater,
     set(prog_var)::out) is semidet.
 
 simplify_segment(CellVar, CandidateArgVars, SegmentVars0, SegmentVars) :-
-    \+ set__member(CellVar, SegmentVars0),
-    SegmentVars = set__intersect(SegmentVars0, CandidateArgVars).
+    \+ set.member(CellVar, SegmentVars0),
+    SegmentVars = set.intersect(SegmentVars0, CandidateArgVars).
 
 :- func number_segments(int, list(set(prog_var))) =
     assoc_list(int, set(prog_var)).
@@ -275,7 +275,7 @@ find_costs_benefits(CellVar, BeforeFlush, AfterFlush, CellVarFlushedLater,
         CostOps = [cell_var_store | CostOps0]
     ),
     BenefitOps0 = [field_var_store(FieldVar)],
-    ( set__member(CellVar, BeforeFlush) ->
+    ( set.member(CellVar, BeforeFlush) ->
         BenefitOps = BenefitOps0
     ;
         BenefitOps = [field_var_load(FieldVar) | BenefitOps0]
@@ -283,18 +283,18 @@ find_costs_benefits(CellVar, BeforeFlush, AfterFlush, CellVarFlushedLater,
 
     CellVarStoreCost = MatchingParams ^ cell_var_store_cost,
     CellVarLoadCost = MatchingParams ^ cell_var_load_cost,
-    CostNodeLists = list__map(
+    CostNodeLists = list.map(
         replicate_cost_op(CellVarStoreCost, CellVarLoadCost),
         CostOps),
-    list__condense(CostNodeLists, CostNodes),
-    set__list_to_set(CostNodes, CostNodeSet),
+    list.condense(CostNodeLists, CostNodes),
+    set.list_to_set(CostNodes, CostNodeSet),
     FieldVarStoreCost = MatchingParams ^ field_var_store_cost,
     FieldVarLoadCost = MatchingParams ^ field_var_load_cost,
-    BenefitNodeLists = list__map(
+    BenefitNodeLists = list.map(
         replicate_benefit_op(FieldVarStoreCost, FieldVarLoadCost),
         BenefitOps),
-    list__condense(BenefitNodeLists, BenefitNodes),
-    set__list_to_set(BenefitNodes, BenefitNodeSet),
+    list.condense(BenefitNodeLists, BenefitNodes),
+    set.list_to_set(BenefitNodes, BenefitNodeSet),
     FieldCostsBenefits = field_costs_benefits(FieldVar,
         CostNodeSet, BenefitNodeSet).
 
@@ -304,7 +304,7 @@ find_costs_benefits(CellVar, BeforeFlush, AfterFlush, CellVarFlushedLater,
 find_cell_var_loads_for_field([], _, !CostOps).
 find_cell_var_loads_for_field([SegmentNum - SegmentVars | AfterFlush],
         FieldVar, !CostOps) :-
-    ( set__member(FieldVar, SegmentVars) ->
+    ( set.member(FieldVar, SegmentVars) ->
         !:CostOps = [cell_var_load(SegmentNum) | !.CostOps]
     ;
         true
@@ -353,7 +353,7 @@ make_benefit_op_copies(Cur, Op) =
     set(benefit_node)::out) is det.
 
 gather_benefits(field_costs_benefits(_, _, FieldBenefits), !Benefits) :-
-    set__union(FieldBenefits, !Benefits).
+    set.union(FieldBenefits, !Benefits).
 
     % Accumulate all the cost nodes.
     %
@@ -361,7 +361,7 @@ gather_benefits(field_costs_benefits(_, _, FieldBenefits), !Benefits) :-
     set(cost_node)::out) is det.
 
 gather_costs(field_costs_benefits(_, FieldCosts, _), !Costs) :-
-    set__union(FieldCosts, !Costs).
+    set.union(FieldCosts, !Costs).
 
 %-----------------------------------------------------------------------------%
 
@@ -370,8 +370,8 @@ gather_costs(field_costs_benefits(_, FieldCosts, _), !Costs) :-
 :- func create_graph(list(field_costs_benefits)) = stack_slot_graph.
 
 create_graph(CostsBenefits) = Graph :-
-    list__foldl2(create_graph_links, CostsBenefits,
-        map__init, CostToBenefitsMap, map__init, BenefitToCostsMap),
+    list.foldl2(create_graph_links, CostsBenefits,
+        map.init, CostToBenefitsMap, map.init, BenefitToCostsMap),
     Graph = stack_slot_graph(CostToBenefitsMap, BenefitToCostsMap).
 
 :- pred create_graph_links(field_costs_benefits::in,
@@ -382,21 +382,21 @@ create_graph(CostsBenefits) = Graph :-
 
 create_graph_links(field_costs_benefits(_FieldVar, Costs, Benefits),
         !CostToBenefitsMap, !BenefitToCostsMap) :-
-    list__foldl(add_cost_benefit_links(Benefits),
-        set__to_sorted_list(Costs), !CostToBenefitsMap),
-    list__foldl(add_benefit_cost_links(Costs),
-        set__to_sorted_list(Benefits), !BenefitToCostsMap).
+    list.foldl(add_cost_benefit_links(Benefits),
+        set.to_sorted_list(Costs), !CostToBenefitsMap),
+    list.foldl(add_benefit_cost_links(Costs),
+        set.to_sorted_list(Benefits), !BenefitToCostsMap).
 
 :- pred add_cost_benefit_links(set(benefit_node)::in, cost_node::in,
     map(cost_node, set(benefit_node))::in,
     map(cost_node, set(benefit_node))::out) is det.
 
 add_cost_benefit_links(Benefits, Cost, !CostToBenefitsMap) :-
-    ( map__search(!.CostToBenefitsMap, Cost, CostBenefits0) ->
-        set__union(CostBenefits0, Benefits, CostBenefits),
-        svmap__det_update(Cost, CostBenefits, !CostToBenefitsMap)
+    ( map.search(!.CostToBenefitsMap, Cost, CostBenefits0) ->
+        set.union(CostBenefits0, Benefits, CostBenefits),
+        svmap.det_update(Cost, CostBenefits, !CostToBenefitsMap)
     ;
-        svmap__det_insert(Cost, Benefits, !CostToBenefitsMap)
+        svmap.det_insert(Cost, Benefits, !CostToBenefitsMap)
     ).
 
 :- pred add_benefit_cost_links(set(cost_node)::in, benefit_node::in,
@@ -404,11 +404,11 @@ add_cost_benefit_links(Benefits, Cost, !CostToBenefitsMap) :-
     map(benefit_node, set(cost_node))::out) is det.
 
 add_benefit_cost_links(Costs, Benefit, !BenefitToCostsMap) :-
-    ( map__search(!.BenefitToCostsMap, Benefit, BenefitCosts0) ->
-        set__union(BenefitCosts0, Costs, BenefitCosts),
-        svmap__det_update(Benefit, BenefitCosts, !BenefitToCostsMap)
+    ( map.search(!.BenefitToCostsMap, Benefit, BenefitCosts0) ->
+        set.union(BenefitCosts0, Costs, BenefitCosts),
+        svmap.det_update(Benefit, BenefitCosts, !BenefitToCostsMap)
     ;
-        svmap__det_insert(Benefit, Costs, !BenefitToCostsMap)
+        svmap.det_insert(Benefit, Costs, !BenefitToCostsMap)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -418,7 +418,7 @@ add_benefit_cost_links(Costs, Benefit, !BenefitToCostsMap) :-
 :- func maximal_matching(list(benefit_node), stack_slot_graph) = matching.
 
 maximal_matching(BenefitNodes, Graph) = Matching :-
-    Matching0 = matching(map__init, map__init),
+    Matching0 = matching(map.init, map.init),
     maximize_matching(BenefitNodes, Graph, Matching0, Matching).
 
 :- pred maximize_matching(list(benefit_node)::in, stack_slot_graph::in,
@@ -437,8 +437,8 @@ maximize_matching(BenefitNodes, Graph, !Matching) :-
 update_matches([], Matching0) = Matching0.
 update_matches([BenefitNode - CostNode | Path], Matching0) = Matching :-
     Matching0 = matching(CostToBenefitMap0, BenefitToCostMap0),
-    map__set(CostToBenefitMap0, CostNode, BenefitNode, CostToBenefitMap1),
-    map__set(BenefitToCostMap0, BenefitNode, CostNode, BenefitToCostMap1),
+    map.set(CostToBenefitMap0, CostNode, BenefitNode, CostToBenefitMap1),
+    map.set(BenefitToCostMap0, BenefitNode, CostNode, BenefitToCostMap1),
     Matching1 = matching(CostToBenefitMap1, BenefitToCostMap1),
     Matching = update_matches(Path, Matching1).
 
@@ -468,7 +468,7 @@ find_augmenting_path(BenefitNodes, Graph, Matching) = Path :-
     = edge_list is semidet.
 
 find_first_path_bf(BenefitNodes, Graph, Matching) = Path :-
-    Queue = initial_queue(BenefitNodes, queue__init),
+    Queue = initial_queue(BenefitNodes, queue.init),
     Path = augpath_bf(Queue, BenefitNodes, Graph, Matching).
 
 :- func initial_queue(list(benefit_node), queue(benefit_node_and_edge_list))
@@ -476,20 +476,20 @@ find_first_path_bf(BenefitNodes, Graph, Matching) = Path :-
 
 initial_queue([], Q) = Q.
 initial_queue([N | Ns], Q0) = Q :-
-    Q1 = queue__put(Q0, N - []),
+    Q1 = queue.put(Q0, N - []),
     Q = initial_queue(Ns, Q1).
 
 :- func augpath_bf(queue(benefit_node_and_edge_list), list(benefit_node),
     stack_slot_graph, matching) = edge_list is semidet.
 
 augpath_bf(Queue0, Seen0, Graph, Matching) = Path :-
-    queue__get(Queue0, NodePath, Queue1),
+    queue.get(Queue0, NodePath, Queue1),
     NodePath = BenefitNode - Path0,
     Graph = stack_slot_graph(_, BenefitToCostsMap),
-    map__lookup(BenefitToCostsMap, BenefitNode, AdjCostNodes),
+    map.lookup(BenefitToCostsMap, BenefitNode, AdjCostNodes),
     Matching = matching(CostToBenefitMap, _),
     CostMatches = map_adjs_to_matched_cost(
-        set__to_sorted_list(AdjCostNodes), CostToBenefitMap),
+        set.to_sorted_list(AdjCostNodes), CostToBenefitMap),
     ( find_unmatched_cost(CostMatches) = UnmatchedCostNode ->
         Path = [BenefitNode - UnmatchedCostNode | Path0]
     ;
@@ -524,10 +524,10 @@ add_alternates([CostNode - MaybeAdjBenefitNode | CostMatches], !Seen,
         BenefitNode, Path, !Queue) :-
     (
         MaybeAdjBenefitNode = yes(AdjBenefitNode),
-        not list__member(AdjBenefitNode, !.Seen)
+        not list.member(AdjBenefitNode, !.Seen)
     ->
         !:Seen = [AdjBenefitNode | !.Seen],
-        svqueue__put(AdjBenefitNode - [BenefitNode - CostNode | Path], !Queue)
+        svqueue.put(AdjBenefitNode - [BenefitNode - CostNode | Path], !Queue)
     ;
         true
     ),
@@ -551,7 +551,7 @@ add_alternates([CostNode - MaybeAdjBenefitNode | CostMatches], !Seen,
 reachable_by_alternating_path(SelectedCostNodes, Graph, Matching)
         = ReachableBenefitNodes :-
     reachable_by_alternating_path(SelectedCostNodes, Graph, Matching,
-        set__init, ReachableBenefitNodes).
+        set.init, ReachableBenefitNodes).
 
 :- pred reachable_by_alternating_path(list(cost_node)::in,
     stack_slot_graph::in, matching::in, set(benefit_node)::in,
@@ -564,13 +564,13 @@ reachable_by_alternating_path(SelectedCostNodes, Graph, Matching,
     ;
         SelectedCostNodes = [_ | _],
         Graph = stack_slot_graph(CostToBenefitsMap, _),
-        list__foldl(adjacents(CostToBenefitsMap), SelectedCostNodes,
-            set__init, AdjBenefitNodes),
-        set__difference(!.BenefitNodes, AdjBenefitNodes, NewBenefitNodes),
-        set__union(AdjBenefitNodes, !BenefitNodes),
-        set__to_sorted_list(NewBenefitNodes, NewBenefitNodeList),
+        list.foldl(adjacents(CostToBenefitsMap), SelectedCostNodes,
+            set.init, AdjBenefitNodes),
+        set.difference(!.BenefitNodes, AdjBenefitNodes, NewBenefitNodes),
+        set.union(AdjBenefitNodes, !BenefitNodes),
+        set.to_sorted_list(NewBenefitNodes, NewBenefitNodeList),
         Matching = matching(_, BenefitToCostMap),
-        LinkedCostNodes = list__map(map__lookup(BenefitToCostMap),
+        LinkedCostNodes = list.map(map.lookup(BenefitToCostMap),
             NewBenefitNodeList),
         reachable_by_alternating_path(LinkedCostNodes, Graph, Matching,
             !BenefitNodes)
@@ -580,8 +580,8 @@ reachable_by_alternating_path(SelectedCostNodes, Graph, Matching,
     set(benefit_node)::in, set(benefit_node)::out) is det.
 
 adjacents(CostToBenefitsMap, CostNode, !BenefitNodes) :-
-    map__lookup(CostToBenefitsMap, CostNode, AdjBenefitNodes),
-    set__union(AdjBenefitNodes, !BenefitNodes).
+    map.lookup(CostToBenefitsMap, CostNode, AdjBenefitNodes),
+    set.union(AdjBenefitNodes, !BenefitNodes).
 
 %-----------------------------------------------------------------------------%
 
@@ -593,14 +593,14 @@ adjacents(CostToBenefitsMap, CostNode, !BenefitNodes) :-
     = assoc_list(cost_node, maybe(benefit_node)).
 
 map_adjs_to_matched_cost(AdjCostNodes, CostToBenefitMap) = CostMatches :-
-    CostMatches = list__map(adj_to_matched_cost(CostToBenefitMap),
+    CostMatches = list.map(adj_to_matched_cost(CostToBenefitMap),
         AdjCostNodes).
 
 :- func adj_to_matched_cost(map(cost_node, benefit_node), cost_node) =
     pair(cost_node, maybe(benefit_node)).
 
 adj_to_matched_cost(CostToBenefitMap, CostNode) = Match :-
-    ( map__search(CostToBenefitMap, CostNode, BenefitNode) ->
+    ( map.search(CostToBenefitMap, CostNode, BenefitNode) ->
         Match = CostNode - yes(BenefitNode)
     ;
         Match = CostNode - no
@@ -611,15 +611,15 @@ adj_to_matched_cost(CostToBenefitMap, CostNode) = Match :-
 :- func compute_via_cell_vars(list(field_costs_benefits), set(benefit_node))
     = set(prog_var).
 
-compute_via_cell_vars([], _MarkedBenefits) = set__init.
+compute_via_cell_vars([], _MarkedBenefits) = set.init.
 compute_via_cell_vars([FieldCostsBenefits | FieldsCostsBenefits],
         MarkedBenefits) = ViaCellVars :-
     ViaCellVars1 = compute_via_cell_vars(FieldsCostsBenefits, MarkedBenefits),
     FieldCostsBenefits = field_costs_benefits(FieldVar, _, FieldBenefits),
-    set__intersect(FieldBenefits, MarkedBenefits, MarkedFieldBenefits),
-    ( set__empty(MarkedFieldBenefits) ->
-        set__insert(ViaCellVars1, FieldVar, ViaCellVars)
-    ; set__equal(MarkedFieldBenefits, FieldBenefits) ->
+    set.intersect(FieldBenefits, MarkedBenefits, MarkedFieldBenefits),
+    ( set.empty(MarkedFieldBenefits) ->
+        set.insert(ViaCellVars1, FieldVar, ViaCellVars)
+    ; set.equal(MarkedFieldBenefits, FieldBenefits) ->
         ViaCellVars = ViaCellVars1
     ;
         unexpected(this_file, "compute_via_cell_vars: theorem violation: " ++
@@ -637,7 +637,7 @@ compute_via_cell_vars([FieldCostsBenefits | FieldsCostsBenefits],
 get_unmatched_benefit_nodes([], _) = [].
 get_unmatched_benefit_nodes([Node | Nodes], MatchingBC) = UnmatchedNodes :-
     UnmatchedNodes1 = get_unmatched_benefit_nodes(Nodes, MatchingBC),
-    ( map__search(MatchingBC, Node, _Match) ->
+    ( map.search(MatchingBC, Node, _Match) ->
         UnmatchedNodes = UnmatchedNodes1
     ;
         UnmatchedNodes = [Node | UnmatchedNodes1]
@@ -652,7 +652,7 @@ get_unmatched_benefit_nodes([Node | Nodes], MatchingBC) = UnmatchedNodes :-
 get_unmatched_cost_nodes([], _) = [].
 get_unmatched_cost_nodes([Node | Nodes], MatchingCB) = UnmatchedNodes :-
     UnmatchedNodes1 = get_unmatched_cost_nodes(Nodes, MatchingCB),
-    ( map__search(MatchingCB, Node, _Match) ->
+    ( map.search(MatchingCB, Node, _Match) ->
         UnmatchedNodes = UnmatchedNodes1
     ;
         UnmatchedNodes = [Node | UnmatchedNodes1]
@@ -674,67 +674,67 @@ get_unmatched_cost_nodes([Node | Nodes], MatchingCB) = UnmatchedNodes :-
 
 dump_results(CellVar, CandidateFieldVars, OccurringCandidateFieldVarList,
         ViaCellOccurringVars, Nullified, BeforeFlush, AfterFlush,
-        BenefitNodes, BenefitOps, CostNodes, CostOps) -->
-    { term__var_to_int(CellVar, CellVarInt) },
-    { set__to_sorted_list(CandidateFieldVars, CandidateFieldVarList) },
-    { set__to_sorted_list(ViaCellOccurringVars, ViaCellVarList) },
-    { set__to_sorted_list(BeforeFlush, BeforeFlushList) },
-    { list__map(term__var_to_int, CandidateFieldVarList,
-        CandidateFieldVarInts) },
-    { list__map(term__var_to_int, OccurringCandidateFieldVarList,
-        OccurringCandidateFieldVarInts) },
-    { list__map(term__var_to_int, ViaCellVarList, ViaCellVarInts) },
-    { list__map(term__var_to_int, BeforeFlushList, BeforeFlushInts) },
-    io__write_string("%\n% FIND_VIA_CELL_VARS "),
-    io__write_int(CellVarInt),
-    io__write_string(" => f("),
-    io__write_list(CandidateFieldVarInts, ", ", io__write_int),
-    io__write_string(")\n"),
-    io__write_string("% occurring ["),
-    io__write_list(OccurringCandidateFieldVarInts, ", ", io__write_int),
-    io__write_string("]\n"),
-    io__write_string("% via cell ["),
-    io__write_list(ViaCellVarInts, ", ", io__write_int),
-    io__write_string("]"),
+        BenefitNodes, BenefitOps, CostNodes, CostOps, !IO) :-
+    term.var_to_int(CellVar, CellVarInt),
+    set.to_sorted_list(CandidateFieldVars, CandidateFieldVarList),
+    set.to_sorted_list(ViaCellOccurringVars, ViaCellVarList),
+    set.to_sorted_list(BeforeFlush, BeforeFlushList),
+    list.map(term.var_to_int, CandidateFieldVarList,
+        CandidateFieldVarInts),
+    list.map(term.var_to_int, OccurringCandidateFieldVarList,
+        OccurringCandidateFieldVarInts),
+    list.map(term.var_to_int, ViaCellVarList, ViaCellVarInts),
+    list.map(term.var_to_int, BeforeFlushList, BeforeFlushInts),
+    io.write_string("%\n% FIND_VIA_CELL_VARS ", !IO),
+    io.write_int(CellVarInt, !IO),
+    io.write_string(" => f(", !IO),
+    io.write_list(CandidateFieldVarInts, ", ", io.write_int, !IO),
+    io.write_string(")\n", !IO),
+    io.write_string("% occurring [", !IO),
+    io.write_list(OccurringCandidateFieldVarInts, ", ", io.write_int, !IO),
+    io.write_string("]\n", !IO),
+    io.write_string("% via cell [", !IO),
+    io.write_list(ViaCellVarInts, ", ", io.write_int, !IO),
+    io.write_string("]", !IO),
     (
-        { Nullified = no },
-        io__write_string("\n")
+        Nullified = no,
+        io.write_string("\n", !IO)
     ;
-        { Nullified = yes },
-        io__write_string(" nullified\n")
+        Nullified = yes,
+        io.write_string(" nullified\n", !IO)
     ),
-    io__write_string("% before flush, segment 1: ["),
-    io__write_list(BeforeFlushInts, ", ", io__write_int),
-    io__write_string("]\n"),
-    list__foldl(dump_after_flush, AfterFlush),
-    io__write_string("% realized benefits: "),
-    io__write_int(list__length(BenefitOps)),
-    io__write_string(" ops, "),
-    io__write_int(list__length(BenefitNodes)),
-    io__write_string(" nodes:\n"),
-    io__write_string("% "),
-    io__write(BenefitOps),
-    io__write_string("\n"),
-    io__write_string("% realized costs: "),
-    io__write_int(list__length(CostOps)),
-    io__write_string(" ops, "),
-    io__write_int(list__length(CostNodes)),
-    io__write_string(" nodes:\n"),
-    io__write_string("% "),
-    io__write(CostOps),
-    io__write_string("\n%\n").
+    io.write_string("% before flush, segment 1: [", !IO),
+    io.write_list(BeforeFlushInts, ", ", io.write_int, !IO),
+    io.write_string("]\n", !IO),
+    list.foldl(dump_after_flush, AfterFlush, !IO),
+    io.write_string("% realized benefits: ", !IO),
+    io.write_int(list.length(BenefitOps), !IO),
+    io.write_string(" ops, ", !IO),
+    io.write_int(list.length(BenefitNodes), !IO),
+    io.write_string(" nodes:\n", !IO),
+    io.write_string("% ", !IO),
+    io.write(BenefitOps, !IO),
+    io.write_string("\n", !IO),
+    io.write_string("% realized costs: ", !IO),
+    io.write_int(list.length(CostOps), !IO),
+    io.write_string(" ops, ", !IO),
+    io.write_int(list.length(CostNodes), !IO),
+    io.write_string(" nodes:\n", !IO),
+    io.write_string("% ", !IO),
+    io.write(CostOps, !IO),
+    io.write_string("\n%\n", !IO).
 
 :- pred dump_after_flush(pair(int, set(prog_var))::in,
     io::di, io::uo) is det.
 
-dump_after_flush(SegmentNum - SegmentVars) -->
-    { set__to_sorted_list(SegmentVars, SegmentVarList) },
-    { list__map(term__var_to_int, SegmentVarList, SegmentVarInts) },
-    io__write_string("% after flush, segment "),
-    io__write_int(SegmentNum),
-    io__write_string(": ["),
-    io__write_list(SegmentVarInts, ", ", io__write_int),
-    io__write_string("]\n").
+dump_after_flush(SegmentNum - SegmentVars, !IO) :-
+    set.to_sorted_list(SegmentVars, SegmentVarList),
+    list.map(term.var_to_int, SegmentVarList, SegmentVarInts),
+    io.write_string("% after flush, segment ", !IO),
+    io.write_int(SegmentNum, !IO),
+    io.write_string(": [", !IO),
+    io.write_list(SegmentVarInts, ", ", io.write_int, !IO),
+    io.write_string("]\n", !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -743,7 +743,7 @@ dump_after_flush(SegmentNum - SegmentVars) -->
 
 realized_costs_benefits(ViaCellOccurringVars, FieldCostsBenefits) :-
     FieldCostsBenefits = field_costs_benefits(FieldVar, _, _),
-    set__member(FieldVar, ViaCellOccurringVars).
+    set.member(FieldVar, ViaCellOccurringVars).
 
 :- func project_benefit_op(benefit_node) = benefit_operation.
 

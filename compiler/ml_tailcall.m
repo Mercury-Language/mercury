@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2005 The University of Melbourne.
+% Copyright (C) 1999-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -53,7 +53,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ml_backend__ml_tailcall.
+:- module ml_backend.ml_tailcall.
 
 :- interface.
 
@@ -104,8 +104,8 @@ ml_mark_tailcalls(MLDS0, MLDS, !IO) :-
     % which are in scope.
 :- type locals == list(local_defns).
 :- type local_defns
-    --->    params(mlds__arguments)
-    ;       defns(mlds__defns).
+    --->    params(mlds_arguments)
+    ;       defns(mlds_defns).
 
 %-----------------------------------------------------------------------------%
 
@@ -127,18 +127,18 @@ ml_mark_tailcalls(MLDS0, MLDS, !IO) :-
 %   The `Locals' argument contains a list of the
 %   local definitions which are in scope at this point.
 
-:- func mark_tailcalls_in_defns(mlds__defns) = mlds__defns.
+:- func mark_tailcalls_in_defns(mlds_defns) = mlds_defns.
 
-mark_tailcalls_in_defns(Defns) = list__map(mark_tailcalls_in_defn, Defns).
+mark_tailcalls_in_defns(Defns) = list.map(mark_tailcalls_in_defn, Defns).
 
-:- func mark_tailcalls_in_defn(mlds__defn) = mlds__defn.
+:- func mark_tailcalls_in_defn(mlds_defn) = mlds_defn.
 
 mark_tailcalls_in_defn(Defn0) = Defn :-
-    Defn0 = mlds__defn(Name, Context, Flags, DefnBody0),
+    Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     (
-        DefnBody0 = mlds__function(PredProcId, Params, FuncBody0, Attributes),
+        DefnBody0 = mlds_function(PredProcId, Params, FuncBody0, Attributes),
         % Compute the initial value of the `Locals' and `AtTail' arguments.
-        Params = mlds__func_params(Args, RetTypes),
+        Params = mlds_func_params(Args, RetTypes),
         Locals = [params(Args)],
         (
             RetTypes = [],
@@ -148,25 +148,25 @@ mark_tailcalls_in_defn(Defn0) = Defn :-
             AtTail = no
         ),
         FuncBody = mark_tailcalls_in_function_body(FuncBody0, AtTail, Locals),
-        DefnBody = mlds__function(PredProcId, Params, FuncBody, Attributes),
-        Defn = mlds__defn(Name, Context, Flags, DefnBody)
+        DefnBody = mlds_function(PredProcId, Params, FuncBody, Attributes),
+        Defn = mlds_defn(Name, Context, Flags, DefnBody)
     ;
-        DefnBody0 = mlds__data(_, _, _),
+        DefnBody0 = mlds_data(_, _, _),
         Defn = Defn0
     ;
-        DefnBody0 = mlds__class(ClassDefn0),
-        ClassDefn0 = class_defn(Kind, Imports, BaseClasses, Implements,
+        DefnBody0 = mlds_class(ClassDefn0),
+        ClassDefn0 = mlds_class_defn(Kind, Imports, BaseClasses, Implements,
             CtorDefns0, MemberDefns0),
         CtorDefns = mark_tailcalls_in_defns(CtorDefns0),
         MemberDefns = mark_tailcalls_in_defns(MemberDefns0),
-        ClassDefn = class_defn(Kind, Imports, BaseClasses, Implements,
+        ClassDefn = mlds_class_defn(Kind, Imports, BaseClasses, Implements,
             CtorDefns, MemberDefns),
-        DefnBody = mlds__class(ClassDefn),
-        Defn = mlds__defn(Name, Context, Flags, DefnBody)
+        DefnBody = mlds_class(ClassDefn),
+        Defn = mlds_defn(Name, Context, Flags, DefnBody)
     ).
 
-:- func mark_tailcalls_in_function_body(function_body, at_tail, locals)
-    = function_body.
+:- func mark_tailcalls_in_function_body(mlds_function_body, at_tail, locals)
+    = mlds_function_body.
 
 mark_tailcalls_in_function_body(external, _, _) = external.
 mark_tailcalls_in_function_body(defined_here(Statement0), AtTail, Locals) =
@@ -212,7 +212,7 @@ mark_tailcalls_in_statement(Statement0, AtTail, Locals) = Statement :-
     Stmt = mark_tailcalls_in_stmt(Stmt0, AtTail, Locals),
     Statement = statement(Stmt, Context).
 
-:- func mark_tailcalls_in_stmt(mlds__stmt, at_tail, locals) = mlds__stmt.
+:- func mark_tailcalls_in_stmt(mlds_stmt, at_tail, locals) = mlds_stmt.
 
 mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
     (
@@ -307,8 +307,8 @@ mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
         Stmt = Stmt0
     ).
 
-:- func mark_tailcalls_in_cases(list(mlds__switch_case), at_tail, locals) =
-    list(mlds__switch_case).
+:- func mark_tailcalls_in_cases(list(mlds_switch_case), at_tail, locals) =
+    list(mlds_switch_case).
 
 mark_tailcalls_in_cases([], _, _) = [].
 mark_tailcalls_in_cases([Case0 | Cases0], AtTail, Locals) =
@@ -316,15 +316,15 @@ mark_tailcalls_in_cases([Case0 | Cases0], AtTail, Locals) =
     Case = mark_tailcalls_in_case(Case0, AtTail, Locals),
     Cases = mark_tailcalls_in_cases(Cases0, AtTail, Locals).
 
-:- func mark_tailcalls_in_case(mlds__switch_case, at_tail, locals) =
-    mlds__switch_case.
+:- func mark_tailcalls_in_case(mlds_switch_case, at_tail, locals) =
+    mlds_switch_case.
 
 mark_tailcalls_in_case(Cond - Statement0, AtTail, Locals) =
         Cond - Statement :-
     Statement = mark_tailcalls_in_statement(Statement0, AtTail, Locals).
 
-:- func mark_tailcalls_in_default(mlds__switch_default, at_tail, locals) =
-    mlds__switch_default.
+:- func mark_tailcalls_in_default(mlds_switch_default, at_tail, locals) =
+    mlds_switch_default.
 
 mark_tailcalls_in_default(default_do_nothing, _, _) = default_do_nothing.
 mark_tailcalls_in_default(default_is_unreachable, _, _) =
@@ -457,7 +457,7 @@ check_const(Const, Locals) :-
     % It would be safe to fail for variables declared static (i.e. `one_copy'),
     % but currently we just take a conservative approach.
     %
-:- pred var_is_local(mlds__var::in, locals::in) is semidet.
+:- pred var_is_local(mlds_var::in, locals::in) is semidet.
 
 var_is_local(Var, Locals) :-
     % XXX we ignore the ModuleName -- that is safe, but overly conservative.
@@ -470,7 +470,7 @@ var_is_local(Var, Locals) :-
     % Check whether the specified function is defined locally (i.e. as a
     % nested function).
     %
-:- pred function_is_local(mlds__code_addr::in, locals::in) is semidet.
+:- pred function_is_local(mlds_code_addr::in, locals::in) is semidet.
 
 function_is_local(CodeAddr, Locals) :-
     (
@@ -493,31 +493,31 @@ function_is_local(CodeAddr, Locals) :-
     %
     % Nondeterministically enumerates the names of all the entities in Locals.
     %
-:- pred locals_member(mlds__entity_name::out, locals::in) is nondet.
+:- pred locals_member(mlds_entity_name::out, locals::in) is nondet.
 
 locals_member(Name, LocalsList) :-
-    list__member(Locals, LocalsList),
+    list.member(Locals, LocalsList),
     (
         Locals = defns(Defns),
-        list__member(Defn, Defns),
-        Defn = mlds__defn(Name, _, _, _)
+        list.member(Defn, Defns),
+        Defn = mlds_defn(Name, _, _, _)
     ;
         Locals = params(Params),
-        list__member(Param, Params),
-        Param = mlds__argument(Name, _, _)
+        list.member(Param, Params),
+        Param = mlds_argument(Name, _, _)
     ).
 
 %-----------------------------------------------------------------------------%
 
 ml_warn_tailcalls(MLDS, !IO) :-
     solutions(nontailcall_in_mlds(MLDS), Warnings),
-    list__foldl(report_nontailcall_warning, Warnings, !IO).
+    list.foldl(report_nontailcall_warning, Warnings, !IO).
 
 :- type tailcall_warning
     --->    tailcall_warning(
-                mlds__pred_label,
+                mlds_pred_label,
                 proc_id,
-                mlds__context
+                mlds_context
             ).
 
 :- pred nontailcall_in_mlds(mlds::in, tailcall_warning::out) is nondet.
@@ -527,33 +527,33 @@ nontailcall_in_mlds(MLDS, Warning) :-
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     nontailcall_in_defns(MLDS_ModuleName, Defns, Warning).
 
-:- pred nontailcall_in_defns(mlds_module_name::in, mlds__defns::in,
+:- pred nontailcall_in_defns(mlds_module_name::in, mlds_defns::in,
     tailcall_warning::out) is nondet.
 
 nontailcall_in_defns(ModuleName, Defns, Warning) :-
-    list__member(Defn, Defns),
+    list.member(Defn, Defns),
     nontailcall_in_defn(ModuleName, Defn, Warning).
 
-:- pred nontailcall_in_defn(mlds_module_name::in, mlds__defn::in,
+:- pred nontailcall_in_defn(mlds_module_name::in, mlds_defn::in,
     tailcall_warning::out) is nondet.
 
 nontailcall_in_defn(ModuleName, Defn, Warning) :-
-    Defn = mlds__defn(Name, _Context, _Flags, DefnBody),
+    Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
     (
-        DefnBody = mlds__function(_PredProcId, _Params, FuncBody,
+        DefnBody = mlds_function(_PredProcId, _Params, FuncBody,
             _Attributes),
         FuncBody = defined_here(Body),
         nontailcall_in_statement(ModuleName, Name, Body, Warning)
     ;
-        DefnBody = mlds__class(ClassDefn),
-        ClassDefn = class_defn(_Kind, _Imports, _BaseClasses,
+        DefnBody = mlds_class(ClassDefn),
+        ClassDefn = mlds_class_defn(_Kind, _Imports, _BaseClasses,
             _Implements, CtorDefns, MemberDefns),
         ( nontailcall_in_defns(ModuleName, CtorDefns, Warning)
         ; nontailcall_in_defns(ModuleName, MemberDefns, Warning)
         )
     ).
 
-:- pred nontailcall_in_statement(mlds_module_name::in, mlds__entity_name::in,
+:- pred nontailcall_in_statement(mlds_module_name::in, mlds_entity_name::in,
     statement::in, tailcall_warning::out) is nondet.
 
 nontailcall_in_statement(CallerModule, CallerFuncName, Statement, Warning) :-
@@ -588,8 +588,8 @@ report_nontailcall_warning(tailcall_warning(PredLabel, ProcId, Context),
             unqualified(Name) / Arity),
         proc_id_to_int(ProcId, ProcNumber0),
         ProcNumber = ProcNumber0 + 1,
-        ProcNumberStr = string__int_to_string(ProcNumber),
-        report_warning(mlds__get_prog_context(Context), 0, [
+        ProcNumberStr = string.int_to_string(ProcNumber),
+        report_warning(mlds_get_prog_context(Context), 0, [
             words("In mode number"), words(ProcNumberStr),
             words("of"), fixed(CallId ++ ":"), nl,
             words("warning: recursive call is not tail recursive.")

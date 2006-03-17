@@ -8,7 +8,7 @@
 %
 % Generate whatever warnings the module being transformed to HLDS deserves.
 
-:- module hlds__make_hlds__make_hlds_warn.
+:- module hlds.make_hlds.make_hlds_warn.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -71,7 +71,7 @@
 %----------------------------------------------------------------------------%
 
 maybe_warn_overlap(Warnings, VarSet, PredCallId, !IO) :-
-    globals__io_lookup_bool_option(warn_overlapping_scopes,
+    globals.io_lookup_bool_option(warn_overlapping_scopes,
         WarnOverlappingScopes, !IO),
     (
         WarnOverlappingScopes = yes,
@@ -104,11 +104,11 @@ warn_overlap([Warn | Warns], VarSet, PredCallId, !IO) :-
 %-----------------------------------------------------------------------------%
 
 maybe_warn_singletons(VarSet, PredCallId, ModuleInfo, Body, !IO) :-
-    globals__io_lookup_bool_option(warn_singleton_vars, WarnSingletonVars,
+    globals.io_lookup_bool_option(warn_singleton_vars, WarnSingletonVars,
         !IO),
     (
         WarnSingletonVars = yes,
-        set__init(QuantVars),
+        set.init(QuantVars),
         warn_singletons_in_goal(Body, QuantVars, VarSet, PredCallId,
             ModuleInfo, !IO)
     ;
@@ -149,21 +149,19 @@ warn_singletons_in_goal_2(Goal, _GoalInfo, QuantVars, VarSet, PredCallId,
 warn_singletons_in_goal_2(Goal, GoalInfo, QuantVars, VarSet, PredCallId,
         MI, !IO) :-
     Goal = scope(Reason, SubGoal),
-    %
-    % warn if any quantified variables occur only in the quantifier
-    %
+    % Warn if any quantified variables occur only in the quantifier.
     (
         ( Reason = exist_quant(Vars)
         ; Reason = promise_solutions(Vars, _)
         ),
         Vars = [_ | _]
     ->
-        quantification__goal_vars(SubGoal, SubGoalVars),
+        quantification.goal_vars(SubGoal, SubGoalVars),
         goal_info_get_context(GoalInfo, Context),
-        set__init(EmptySet),
+        set.init(EmptySet),
         warn_singletons(Vars, GoalInfo, EmptySet, SubGoalVars, VarSet,
             Context, PredCallId, !IO),
-        set__insert_list(QuantVars, Vars, SubQuantVars)
+        set.insert_list(QuantVars, Vars, SubQuantVars)
     ;
         SubQuantVars = QuantVars
     ),
@@ -178,17 +176,17 @@ warn_singletons_in_goal_2(Goal, GoalInfo, QuantVars, VarSet, PredCallId,
     %
     (
         Vars = [_ | _],
-        quantification__goal_vars(Cond, CondVars),
-        quantification__goal_vars(Then, ThenVars),
-        set__union(CondVars, ThenVars, CondThenVars),
+        quantification.goal_vars(Cond, CondVars),
+        quantification.goal_vars(Then, ThenVars),
+        set.union(CondVars, ThenVars, CondThenVars),
         goal_info_get_context(GoalInfo, Context),
-        set__init(EmptySet),
+        set.init(EmptySet),
         warn_singletons(Vars, GoalInfo, EmptySet, CondThenVars, VarSet,
             Context, PredCallId, !IO)
     ;
         Vars = []
     ),
-    set__insert_list(QuantVars, Vars, QuantVars1),
+    set.insert_list(QuantVars, Vars, QuantVars1),
     warn_singletons_in_goal(Cond, QuantVars1, VarSet, PredCallId, MI, !IO),
     warn_singletons_in_goal(Then, QuantVars1, VarSet, PredCallId, MI, !IO),
     warn_singletons_in_goal(Else, QuantVars, VarSet, PredCallId, MI, !IO).
@@ -202,8 +200,8 @@ warn_singletons_in_goal_2(Goal, GoalInfo, QuantVars, VarSet, PredCallId,
 warn_singletons_in_goal_2(Goal, GoalInfo, QuantVars, VarSet, PredCallId,
         _, !IO) :-
     Goal = generic_call(GenericCall, Args0, _, _),
-    goal_util__generic_call_vars(GenericCall, Args1),
-    list__append(Args0, Args1, Args),
+    goal_util.generic_call_vars(GenericCall, Args1),
+    list.append(Args0, Args1, Args),
     goal_info_get_nonlocals(GoalInfo, NonLocals),
     goal_info_get_context(GoalInfo, Context),
     warn_singletons(Args, GoalInfo, NonLocals, QuantVars, VarSet, Context,
@@ -218,7 +216,7 @@ warn_singletons_in_goal_2(Goal, GoalInfo, _QuantVars, _VarSet, PredCallId,
     Goal = foreign_proc(Attrs, _, _, Args, _, PragmaImpl),
     goal_info_get_context(GoalInfo, Context),
     Lang = foreign_language(Attrs),
-    NamesModes = list__map(foreign_arg_maybe_name_mode, Args),
+    NamesModes = list.map(foreign_arg_maybe_name_mode, Args),
     warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang,
         NamesModes, Context, PredCallId, MI, !IO).
 warn_singletons_in_goal_2(Goal, GoalInfo, QuantVars, VarSet, PredCallId,
@@ -301,8 +299,7 @@ warn_singletons_in_unify(X, lambda_goal(_Purity, _PredOrFunc, _Eval,
 
 maybe_warn_pragma_singletons(PragmaImpl, Lang, ArgInfo, Context, CallId, MI,
         !IO) :-
-    globals__io_lookup_bool_option(warn_singleton_vars, WarnSingletonVars,
-        !IO),
+    globals.io_lookup_bool_option(warn_singleton_vars, WarnSingletonVars, !IO),
     ( WarnSingletonVars = yes ->
         warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang,
             ArgInfo, Context, CallId, MI, !IO)
@@ -330,9 +327,9 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
         PragmaImpl = ordinary(C_Code, _),
         c_code_to_name_list(C_Code, C_CodeList),
         Filter = (pred(Name::out) is nondet :-
-            list__member(yes(Name - _), Args),
-            \+ string__prefix(Name, "_"),
-            \+ list__member(Name, C_CodeList)
+            list.member(yes(Name - _), Args),
+            \+ string.prefix(Name, "_"),
+            \+ list.member(Name, C_CodeList)
         ),
         solutions(Filter, UnmentionedVars),
         (
@@ -352,10 +349,10 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
         c_code_to_name_list(LaterCode, LaterCodeList),
         c_code_to_name_list(SharedCode, SharedCodeList),
         InputFilter = (pred(Name::out) is nondet :-
-            list__member(yes(Name - Mode), Args),
+            list.member(yes(Name - Mode), Args),
             mode_is_input(ModuleInfo, Mode),
-            \+ string__prefix(Name, "_"),
-            \+ list__member(Name, FirstCodeList)
+            \+ string.prefix(Name, "_"),
+            \+ list.member(Name, FirstCodeList)
         ),
         solutions(InputFilter, UnmentionedInputVars),
         (
@@ -369,11 +366,11 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
             write_error_pieces(Context, 0, Pieces1, !IO)
         ),
         FirstOutputFilter = (pred(Name::out) is nondet :-
-            list__member(yes(Name - Mode), Args),
+            list.member(yes(Name - Mode), Args),
                 mode_is_output(ModuleInfo, Mode),
-                \+ string__prefix(Name, "_"),
-                \+ list__member(Name, FirstCodeList),
-                \+ list__member(Name, SharedCodeList)
+                \+ string.prefix(Name, "_"),
+                \+ list.member(Name, FirstCodeList),
+                \+ list.member(Name, SharedCodeList)
         ),
         solutions(FirstOutputFilter, UnmentionedFirstOutputVars),
         (
@@ -388,11 +385,11 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
             write_error_pieces(Context, 0, Pieces2, !IO)
         ),
         LaterOutputFilter = (pred(Name::out) is nondet :-
-            list__member(yes(Name - Mode), Args),
+            list.member(yes(Name - Mode), Args),
             mode_is_output(ModuleInfo, Mode),
-            \+ string__prefix(Name, "_"),
-            \+ list__member(Name, LaterCodeList),
-            \+ list__member(Name, SharedCodeList)
+            \+ string.prefix(Name, "_"),
+            \+ list.member(Name, LaterCodeList),
+            \+ list.member(Name, SharedCodeList)
         ),
         solutions(LaterOutputFilter, UnmentionedLaterOutputVars),
         (
@@ -417,7 +414,7 @@ variable_warning_start(UnmentionedVars) = Str :-
         Str = "warning: variable `" ++ Var ++ "' does"
     ;
         Str = "warning: variables `" ++
-            string__join_list(", ", UnmentionedVars) ++ "' do"
+            string.join_list(", ", UnmentionedVars) ++ "' do"
     ).
 
     % c_code_to_name_list(Code, List) is true iff List is a list of the
@@ -426,7 +423,7 @@ variable_warning_start(UnmentionedVars) = Str :-
 :- pred c_code_to_name_list(string::in, list(string)::out) is det.
 
 c_code_to_name_list(Code, List) :-
-    string__to_char_list(Code, CharList),
+    string.to_char_list(Code, CharList),
     c_code_to_name_list_2(CharList, List).
 
 :- pred c_code_to_name_list_2(list(char)::in, list(string)::out) is det.
@@ -440,7 +437,7 @@ c_code_to_name_list_2(C_Code, List) :-
     ;
         NameCharList = [_ | _],
         c_code_to_name_list_2(TheRest, Names),
-        string__from_char_list(NameCharList, Name),
+        string.from_char_list(NameCharList, Name),
         List = [Name | Names]
     ).
 
@@ -449,7 +446,7 @@ c_code_to_name_list_2(C_Code, List) :-
 
 get_first_c_name([], [], []).
 get_first_c_name([C | CodeChars], NameCharList, TheRest) :-
-    ( char__is_alnum_or_underscore(C) ->
+    ( char.is_alnum_or_underscore(C) ->
         get_first_c_name_in_word(CodeChars, NameCharList0, TheRest),
         NameCharList = [C | NameCharList0]
     ;
@@ -463,7 +460,7 @@ get_first_c_name([C | CodeChars], NameCharList, TheRest) :-
 
 get_first_c_name_in_word([], [], []).
 get_first_c_name_in_word([C | CodeChars], NameCharList, TheRest) :-
-    ( char__is_alnum_or_underscore(C) ->
+    ( char.is_alnum_or_underscore(C) ->
             % There are more characters in the word
         get_first_c_name_in_word(CodeChars, NameCharList0, TheRest),
         NameCharList = [C|NameCharList0]
@@ -477,24 +474,24 @@ get_first_c_name_in_word([C | CodeChars], NameCharList, TheRest) :-
     set(prog_var)::in, prog_varset::in, prog_var::out) is nondet.
 
 generate_singleton_vars(GoalVars, NonLocals, QuantVars, VarSet, Var) :-
-    list__member(Var, GoalVars),
-    \+ set__member(Var, NonLocals),
-    varset__search_name(VarSet, Var, Name),
-    \+ string__prefix(Name, "_"),
-    \+ string__prefix(Name, "DCG_"),
+    list.member(Var, GoalVars),
+    \+ set.member(Var, NonLocals),
+    varset.search_name(VarSet, Var, Name),
+    \+ string.prefix(Name, "_"),
+    \+ string.prefix(Name, "DCG_"),
     \+ (
-        set__member(QuantVar, QuantVars),
-        varset__search_name(VarSet, QuantVar, Name)
+        set.member(QuantVar, QuantVars),
+        varset.search_name(VarSet, QuantVar, Name)
     ).
 
 :- pred generate_multi_vars(list(prog_var)::in, set(prog_var)::in,
     prog_varset::in, prog_var::out) is nondet.
 
 generate_multi_vars(GoalVars, NonLocals, VarSet, Var) :-
-    list__member(Var, GoalVars),
-    set__member(Var, NonLocals),
-    varset__search_name(VarSet, Var, Name),
-    string__prefix(Name, "_").
+    list.member(Var, GoalVars),
+    set.member(Var, NonLocals),
+    varset.search_name(VarSet, Var, Name),
+    string.prefix(Name, "_").
 
     % warn_singletons(Vars, GoalInfo, NonLocals, QuantVars, ...):
     %
@@ -600,7 +597,7 @@ check_promise_ex_goal(PromiseType, GoalExpr - Context, !IO) :-
     ( GoalExpr = some(_, Goal) -> check_promise_ex_goal(PromiseType, Goal, !IO)
     ; GoalExpr =  ( _ ; _ ) ->
         flatten_to_disj_list(GoalExpr - Context, DisjList),
-        list__map(flatten_to_conj_list, DisjList, DisjConjList),
+        list.map(flatten_to_conj_list, DisjList, DisjConjList),
         check_disjunction(PromiseType, DisjConjList, !IO)
     ; GoalExpr = all(_UnivVars, Goal) ->
         promise_ex_error(PromiseType, Context,
@@ -693,13 +690,13 @@ check_disj_arm(PromiseType, Goals, CallUsed, !IO) :-
 promise_ex_error(PromiseType, Context, Message, !IO) :-
     ErrorPieces = [
         words("In"),
-        fixed("`" ++ prog_out__promise_to_string(PromiseType) ++ "'"),
+        quote(prog_out.promise_to_string(PromiseType)),
         words("declaration:"),
         nl,
         words("error:"),
         words(Message)
     ],
-    error_util__write_error_pieces(Context, 0, ErrorPieces, !IO).
+    write_error_pieces(Context, 0, ErrorPieces, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module make_hlds_warn.

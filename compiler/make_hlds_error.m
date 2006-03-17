@@ -14,7 +14,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module hlds__make_hlds__make_hlds_error.
+:- module hlds.make_hlds.make_hlds_error.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -52,7 +52,7 @@
 :- pred maybe_undefined_pred_error(sym_name::in, int::in, pred_or_func::in,
     import_status::in, bool::in, prog_context::in, string::in,
     io::di, io::uo) is det.
-    
+
     % Emit an error if something is exported.  (Used to check for
     % when things shouldn't be exported.)
     %
@@ -96,7 +96,7 @@ multiple_def_error(Status, Name, Arity, DefType, Context, OrigContext,
             fixed(DefType), sym_name_and_arity(Name / Arity),
             suffix(".")],
         write_error_pieces(OrigContext, 0, OrigPieces, !IO),
-        io__set_exit_status(1, !IO),
+        io.set_exit_status(1, !IO),
         FoundError = yes
     ;
         % We don't take care not to read the same declaration
@@ -113,53 +113,53 @@ undefined_pred_or_func_error(Name, Arity, Context, Description, !IO) :-
         sym_name_and_arity(Name / Arity),
         words("without corresponding `pred' or `func' declaration.")],
     write_error_pieces(Context, 0, Pieces, !IO),
-    io__set_exit_status(1, !IO).
+    io.set_exit_status(1, !IO).
 
 undefined_mode_error(Name, Arity, Context, Description, !IO) :-
     Pieces = [words("Error:"), words(Description), words("for"),
         sym_name_and_arity(Name / Arity),
         words("specifies non-existent mode.")],
     write_error_pieces(Context, 0, Pieces, !IO),
-    io__set_exit_status(1, !IO).
+    io.set_exit_status(1, !IO).
 
 undeclared_mode_error(ModeList, VarSet, PredId, PredInfo, ModuleInfo,
         Context, !IO) :-
-    prog_out__write_context(Context, !IO),
-    io__write_string("In clause for ", !IO),
-    hlds_out__write_pred_id(ModuleInfo, PredId, !IO),
-    io__write_string(":\n", !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string(
+    prog_out.write_context(Context, !IO),
+    io.write_string("In clause for ", !IO),
+    hlds_out.write_pred_id(ModuleInfo, PredId, !IO),
+    io.write_string(":\n", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string(
         "  error: mode annotation specifies undeclared mode\n", !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  `", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  `", !IO),
     strip_builtin_qualifiers_from_mode_list(ModeList, StrippedModeList),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     Name = pred_info_name(PredInfo),
     MaybeDet = no,
-    mercury_output_mode_subdecl(PredOrFunc, varset__coerce(VarSet),
+    mercury_output_mode_subdecl(PredOrFunc, varset.coerce(VarSet),
         unqualified(Name), StrippedModeList, MaybeDet, Context, !IO),
-    io__write_string("'\n", !IO),
-    prog_out__write_context(Context, !IO),
-    io__write_string("  of ", !IO),
-    hlds_out__write_pred_id(ModuleInfo, PredId, !IO),
-    io__write_string(".\n", !IO),
-    globals__io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
+    io.write_string("'\n", !IO),
+    prog_out.write_context(Context, !IO),
+    io.write_string("  of ", !IO),
+    hlds_out.write_pred_id(ModuleInfo, PredId, !IO),
+    io.write_string(".\n", !IO),
+    globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     ProcIds = pred_info_all_procids(PredInfo),
     (
         ProcIds = [],
-        prog_out__write_context(Context, !IO),
-        io__write_string("  (There are no declared modes for this ", !IO),
+        prog_out.write_context(Context, !IO),
+        io.write_string("  (There are no declared modes for this ", !IO),
         write_pred_or_func(PredOrFunc, !IO),
-        io__write_string(".)\n", !IO)
+        io.write_string(".)\n", !IO)
     ;
         ProcIds = [_ | _],
         (
             VerboseErrors = yes,
-            io__write_string("\tThe declared modes for this ", !IO),
+            io.write_string("\tThe declared modes for this ", !IO),
             write_pred_or_func(PredOrFunc, !IO),
-            io__write_string(" are the following:\n", !IO),
-            list__foldl(output_mode_decl_for_pred_info(PredInfo), ProcIds, !IO)
+            io.write_string(" are the following:\n", !IO),
+            list.foldl(output_mode_decl_for_pred_info(PredInfo), ProcIds, !IO)
         ;
             VerboseErrors = no,
             globals.io_set_extra_error_info(yes, !IO)
@@ -170,9 +170,9 @@ undeclared_mode_error(ModeList, VarSet, PredId, PredInfo, ModuleInfo,
     io::di, io::uo) is det.
 
 output_mode_decl_for_pred_info(PredInfo, ProcId, !IO) :-
-    io__write_string("\t\t:- mode ", !IO),
+    io.write_string("\t\t:- mode ", !IO),
     output_mode_decl(ProcId, PredInfo, !IO),
-    io__write_string(".\n", !IO).
+    io.write_string(".\n", !IO).
 
     % This is not considered an unconditional error anymore:
     % if there is no `:- pred' or `:- func' declaration,
@@ -185,7 +185,7 @@ maybe_undefined_pred_error(Name, Arity, PredOrFunc, Status, IsClassMethod,
         Context, Description, !IO) :-
     status_defined_in_this_module(Status, DefinedInThisModule),
     status_is_exported(Status, IsExported),
-    globals__io_lookup_bool_option(infer_types, InferTypes, !IO),
+    globals.io_lookup_bool_option(infer_types, InferTypes, !IO),
     (
         DefinedInThisModule = yes,
         IsExported = no,
@@ -200,26 +200,24 @@ maybe_undefined_pred_error(Name, Arity, PredOrFunc, Status, IsClassMethod,
             fixed("`" ++ pred_or_func_to_str(PredOrFunc) ++ "'"),
             words("declaration.")],
         write_error_pieces(Context, 0, Pieces, !IO),
-        io__set_exit_status(1, !IO)
+        io.set_exit_status(1, !IO)
     ).
 
 %     % This predicate is currently unused.
-% 
+%
 % :- pred clause_for_imported_pred_error(sym_name::in, arity::in,
 %     pred_or_func::in, prog_context::in, io::di, io::uo) is det.
-% 
+%
 % clause_for_imported_pred_error(Name, Arity, PredOrFunc, Context, !IO) :-
 %     Pieces = [words("Error: clause for imported"),
 %         pred_or_func(PredOrFunc),
 %         sym_name_and_arity(Name / Arity),
 %         suffix(".")],
 %     write_error_pieces(Context, 0, Pieces, !IO),
-%     io__set_exit_status(1, !IO).
+%     io.set_exit_status(1, !IO).
 
 error_is_exported(Context, Message, !IO) :-
-    Error = [   words("Error:"),
-                fixed(Message), 
-                words("in module interface.")],
+    Error = [words("Error:"), fixed(Message), words("in module interface.")],
     write_error_pieces(Context, 0, Error, !IO),
     io.set_exit_status(1, !IO).
 

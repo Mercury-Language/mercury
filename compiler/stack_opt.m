@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -68,7 +68,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__stack_opt.
+:- module ll_backend.stack_opt.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -180,21 +180,21 @@ stack_opt_cell(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
-    globals__lookup_bool_option(Globals, opt_no_return_calls,
+    globals.lookup_bool_option(Globals, opt_no_return_calls,
         OptNoReturnCalls),
     AllocData = alloc_data(!.ModuleInfo, !.ProcInfo, TypeInfoLiveness,
         OptNoReturnCalls),
-    goal_path__fill_slots(!.ModuleInfo, !ProcInfo),
+    fill_goal_path_slots(!.ModuleInfo, !ProcInfo),
     proc_info_goal(!.ProcInfo, Goal2),
     OptStackAlloc0 = init_opt_stack_alloc,
-    set__init(FailVars),
-    set__init(NondetLiveness0),
+    set.init(FailVars),
+    set.init(NondetLiveness0),
     build_live_sets_in_goal(Goal2, Goal, FailVars, AllocData,
         OptStackAlloc0, OptStackAlloc, Liveness0, _Liveness,
         NondetLiveness0, _NondetLiveness),
     proc_info_set_goal(Goal, !ProcInfo),
     allocate_store_maps(for_stack_opt, PredId, !.ModuleInfo, !ProcInfo),
-    globals__lookup_int_option(Globals, debug_stack_opt, DebugStackOpt),
+    globals.lookup_int_option(Globals, debug_stack_opt, DebugStackOpt),
     pred_id_to_int(PredId, PredIdInt),
     maybe_write_progress_message("\nbefore stack opt cell",
         DebugStackOpt, PredIdInt, !.ProcInfo, !.ModuleInfo, !IO),
@@ -216,7 +216,7 @@ stack_opt_cell(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
 
 :- func init_opt_stack_alloc = opt_stack_alloc.
 
-init_opt_stack_alloc = opt_stack_alloc(set__init).
+init_opt_stack_alloc = opt_stack_alloc(set.init).
 
 :- pred optimize_live_sets(module_info::in, opt_stack_alloc::in,
     proc_info::in, proc_info::out, bool::out, int::in, int::in,
@@ -228,61 +228,61 @@ optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
     proc_info_vartypes(!.ProcInfo, VarTypes0),
     proc_info_varset(!.ProcInfo, VarSet0),
     OptAlloc = opt_stack_alloc(ParConjOwnSlot),
-    arg_info__partition_proc_args(!.ProcInfo, ModuleInfo,
+    arg_info.partition_proc_args(!.ProcInfo, ModuleInfo,
         InputArgs, OutputArgs, UnusedArgs),
-    HeadVars = set__union_list([InputArgs, OutputArgs, UnusedArgs]),
+    HeadVars = set.union_list([InputArgs, OutputArgs, UnusedArgs]),
     module_info_get_globals(ModuleInfo, Globals),
-    globals__lookup_bool_option(Globals,
+    globals.lookup_bool_option(Globals,
         optimize_saved_vars_cell_candidate_headvars, CandHeadvars),
     (
         CandHeadvars = no,
-        set__union(HeadVars, ParConjOwnSlot, NonCandidateVars)
+        set.union(HeadVars, ParConjOwnSlot, NonCandidateVars)
     ;
         CandHeadvars = yes,
         NonCandidateVars = ParConjOwnSlot
     ),
-    Counter0 = counter__init(1),
-    counter__allocate(CurInterval, Counter0, Counter1),
+    Counter0 = counter.init(1),
+    counter.allocate(CurInterval, Counter0, Counter1),
     CurIntervalId = interval_id(CurInterval),
-    EndMap0 = map__det_insert(map__init, CurIntervalId, proc_end),
-    InsertMap0 = map__init,
-    StartMap0 = map__init,
-    SuccMap0 = map__det_insert(map__init, CurIntervalId, []),
-    VarsMap0 = map__det_insert(map__init, CurIntervalId, OutputArgs),
-    globals__lookup_int_option(Globals,
+    EndMap0 = map.det_insert(map.init, CurIntervalId, proc_end),
+    InsertMap0 = map.init,
+    StartMap0 = map.init,
+    SuccMap0 = map.det_insert(map.init, CurIntervalId, []),
+    VarsMap0 = map.det_insert(map.init, CurIntervalId, OutputArgs),
+    globals.lookup_int_option(Globals,
         optimize_saved_vars_cell_cv_store_cost, CellVarStoreCost),
-    globals__lookup_int_option(Globals,
+    globals.lookup_int_option(Globals,
         optimize_saved_vars_cell_cv_load_cost, CellVarLoadCost),
-    globals__lookup_int_option(Globals,
+    globals.lookup_int_option(Globals,
         optimize_saved_vars_cell_fv_store_cost, FieldVarStoreCost),
-    globals__lookup_int_option(Globals,
+    globals.lookup_int_option(Globals,
         optimize_saved_vars_cell_fv_load_cost, FieldVarLoadCost),
-    globals__lookup_int_option(Globals,
+    globals.lookup_int_option(Globals,
         optimize_saved_vars_cell_op_ratio, OpRatio),
-    globals__lookup_int_option(Globals,
+    globals.lookup_int_option(Globals,
         optimize_saved_vars_cell_node_ratio, NodeRatio),
-    globals__lookup_bool_option(Globals,
+    globals.lookup_bool_option(Globals,
         optimize_saved_vars_cell_include_all_candidates, InclAllCand),
     MatchingParams = matching_params(CellVarStoreCost, CellVarLoadCost,
         FieldVarStoreCost, FieldVarLoadCost, OpRatio, NodeRatio,
         InclAllCand),
-    globals__lookup_int_option(Globals,
+    globals.lookup_int_option(Globals,
         optimize_saved_vars_cell_all_path_node_ratio,
         AllPathNodeRatio),
-    globals__lookup_bool_option(Globals,
+    globals.lookup_bool_option(Globals,
         optimize_saved_vars_cell_loop, FixpointLoop),
-    globals__lookup_bool_option(Globals,
+    globals.lookup_bool_option(Globals,
         optimize_saved_vars_cell_full_path, FullPath),
-    globals__lookup_bool_option(Globals,
+    globals.lookup_bool_option(Globals,
         optimize_saved_vars_cell_on_stack, OnStack),
-    globals__lookup_bool_option(Globals,
+    globals.lookup_bool_option(Globals,
         opt_no_return_calls, OptNoReturnCalls),
     IntParams = interval_params(ModuleInfo, VarTypes0, OptNoReturnCalls),
-    IntervalInfo0 = interval_info(IntParams, set__init, OutputArgs,
-        map__init, map__init, map__init, CurIntervalId, Counter1,
-        set__make_singleton_set(CurIntervalId),
-        map__init, set__init, StartMap0, EndMap0,
-        SuccMap0, VarsMap0, map__init),
+    IntervalInfo0 = interval_info(IntParams, set.init, OutputArgs,
+        map.init, map.init, map.init, CurIntervalId, Counter1,
+        set.make_singleton_set(CurIntervalId),
+        map.init, set.init, StartMap0, EndMap0,
+        SuccMap0, VarsMap0, map.init),
     StackOptParams = stack_opt_params(MatchingParams, AllPathNodeRatio,
         FixpointLoop, FullPath, OnStack, NonCandidateVars),
     StackOptInfo0 = stack_opt_info(StackOptParams, InsertMap0, []),
@@ -295,11 +295,11 @@ optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
         true
     ),
     InsertMap = StackOptInfo ^ left_anchor_inserts,
-    ( map__is_empty(InsertMap) ->
+    ( map.is_empty(InsertMap) ->
         Changed = no
     ;
         record_decisions_in_goal(Goal0, Goal1, VarSet0, VarSet,
-            VarTypes0, VarTypes, map__init, RenameMap,
+            VarTypes0, VarTypes, map.init, RenameMap,
             InsertMap, yes(stack_opt)),
         apply_headvar_correction(HeadVars, RenameMap, Goal1, Goal),
         proc_info_set_goal(Goal, !ProcInfo),
@@ -333,14 +333,14 @@ opt_at_resume_site(_NeedAtResume, _GoalInfo, StackAlloc, StackAlloc).
 opt_at_par_conj(NeedParConj, _GoalInfo, StackAlloc0, StackAlloc) :-
     NeedParConj = need_in_par_conj(StackVars),
     ParConjOwnSlots0 = StackAlloc0 ^ par_conj_own_slots,
-    ParConjOwnSlots = set__union(StackVars, ParConjOwnSlots0),
+    ParConjOwnSlots = set.union(StackVars, ParConjOwnSlots0),
     StackAlloc = StackAlloc0 ^ par_conj_own_slots := ParConjOwnSlots.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- instance build_interval_info_acc(stack_opt_info) where [
-    pred(use_cell/8) is stack_opt__use_cell
+    pred(use_cell/8) is stack_opt.use_cell
 ].
 
 :- type match_path_info
@@ -377,19 +377,19 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
     FlushedLater = !.IntervalInfo ^ flushed_later,
     StackOptParams = !.StackOptInfo ^ stack_opt_params,
     NonCandidateVars = StackOptParams ^ non_candidate_vars,
-    set__list_to_set(FieldVarList, FieldVars),
-    set__intersect(FieldVars, FlushedLater, FlushedLaterFieldVars),
-    set__difference(FlushedLaterFieldVars, NonCandidateVars,
+    set.list_to_set(FieldVarList, FieldVars),
+    set.intersect(FieldVars, FlushedLater, FlushedLaterFieldVars),
+    set.difference(FlushedLaterFieldVars, NonCandidateVars,
         CandidateArgVars0),
     (
-        set__empty(CandidateArgVars0)
+        set.empty(CandidateArgVars0)
     ->
         true
     ;
         ConsId = cons(_Name, _Arity),
         IntParams = !.IntervalInfo ^ interval_params,
         VarTypes = IntParams ^ var_types,
-        map__lookup(VarTypes, CellVar, Type),
+        map.lookup(VarTypes, CellVar, Type),
         (
             type_is_tuple(Type, _)
         ->
@@ -398,11 +398,11 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
             type_to_ctor_and_args(Type, TypeCtor, _),
             ModuleInfo = IntParams ^ module_info,
             module_info_get_type_table(ModuleInfo, TypeTable),
-            map__lookup(TypeTable, TypeCtor, TypeDefn),
-            hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+            map.lookup(TypeTable, TypeCtor, TypeDefn),
+            hlds_data.get_type_defn_body(TypeDefn, TypeBody),
             ConsTable = TypeBody ^ du_type_cons_tag_values
         ->
-            map__lookup(ConsTable, ConsId, ConsTag),
+            map.lookup(ConsTable, ConsId, ConsTag),
             ( ConsTag = no_tag ->
                 FreeOfCost = yes
             ;
@@ -412,14 +412,14 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
             fail
         )
     ->
-        RelevantVars = set__insert(FieldVars, CellVar),
+        RelevantVars = set.insert(FieldVars, CellVar),
         find_all_branches_from_cur_interval(RelevantVars, MatchInfo,
             !.IntervalInfo, !.StackOptInfo),
         MatchInfo = match_info(PathsInfo, RelevantAfterVars,
             AfterModelNon, InsertAnchors, InsertIntervals),
         (
             FreeOfCost = yes,
-            set__difference(CandidateArgVars0, RelevantAfterVars, ViaCellVars),
+            set.difference(CandidateArgVars0, RelevantAfterVars, ViaCellVars),
             record_matching_result(CellVar, ConsId, FieldVarList, ViaCellVars,
                 Goal, InsertAnchors, InsertIntervals, !IntervalInfo,
                 !StackOptInfo)
@@ -428,11 +428,11 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
             (
                 AfterModelNon = no,
                 OnStack = StackOptParams ^ on_stack,
-                set__difference(CandidateArgVars0, RelevantAfterVars,
+                set.difference(CandidateArgVars0, RelevantAfterVars,
                     CandidateArgVars),
                 (
                     OnStack = yes,
-                    ( set__member(CellVar, FlushedLater) ->
+                    ( set.member(CellVar, FlushedLater) ->
                         CellVarFlushedLater = yes
                     ;
                         CellVarFlushedLater = no
@@ -440,10 +440,10 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
                 ;
                     OnStack = no,
                     (
-                        list__member(PathInfo, PathsInfo),
+                        list.member(PathInfo, PathsInfo),
                         PathInfo = match_path_info(_, Segments),
-                        list__member(Segment, Segments),
-                        set__member(CellVar, Segment)
+                        list.member(Segment, Segments),
+                        set.member(CellVar, Segment)
                     ->
                         CellVarFlushedLater = yes
                     ;
@@ -472,15 +472,15 @@ apply_matching(CellVar, CellVarFlushedLater, IntParams, StackOptParams,
     apply_matching_loop(CellVar, CellVarFlushedLater, IntParams,
         StackOptParams, PathInfos, CandidateArgVars0,
         BenefitNodeSets, CostNodeSets, ViaCellVars0),
-    BenefitNodes = set__union_list(BenefitNodeSets),
-    CostNodes = set__union_list(CostNodeSets),
-    set__count(BenefitNodes, NumBenefitNodes),
-    set__count(CostNodes, NumCostNodes),
+    BenefitNodes = set.union_list(BenefitNodeSets),
+    CostNodes = set.union_list(CostNodeSets),
+    set.count(BenefitNodes, NumBenefitNodes),
+    set.count(CostNodes, NumCostNodes),
     AllPathNodeRatio = StackOptParams ^ all_path_node_ratio,
     ( NumBenefitNodes * 100 >= NumCostNodes * AllPathNodeRatio ->
         ViaCellVars = ViaCellVars0
     ;
-        ViaCellVars = set__init
+        ViaCellVars = set.init
     ).
 
 :- pred apply_matching_loop(prog_var::in, bool::in, interval_params::in,
@@ -491,19 +491,19 @@ apply_matching(CellVar, CellVarFlushedLater, IntParams, StackOptParams,
 apply_matching_loop(CellVar, CellVarFlushedLater, IntParams, StackOptParams,
         PathInfos, CandidateArgVars0, BenefitNodeSets, CostNodeSets,
         ViaCellVars) :-
-    list__map3(apply_matching_for_path(CellVar, CellVarFlushedLater,
+    list.map3(apply_matching_for_path(CellVar, CellVarFlushedLater,
         StackOptParams, CandidateArgVars0), PathInfos,
         BenefitNodeSets0, CostNodeSets0, PathViaCellVars),
-    ( list__all_same(PathViaCellVars) ->
+    ( list.all_same(PathViaCellVars) ->
         BenefitNodeSets = BenefitNodeSets0,
         CostNodeSets = CostNodeSets0,
         ( PathViaCellVars = [ViaCellVarsPrime | _] ->
             ViaCellVars = ViaCellVarsPrime
         ;
-            ViaCellVars = set__init
+            ViaCellVars = set.init
         )
     ;
-        CandidateArgVars1 = set__intersect_list(PathViaCellVars),
+        CandidateArgVars1 = set.intersect_list(PathViaCellVars),
         FixpointLoop = StackOptParams ^ fixpoint_loop,
         (
             FixpointLoop = no,
@@ -524,10 +524,10 @@ apply_matching_loop(CellVar, CellVarFlushedLater, IntParams, StackOptParams,
 
 apply_matching_for_path(CellVar, CellVarFlushedLater, StackOptParams,
         CandidateArgVars, PathInfo, BenefitNodes, CostNodes, ViaCellVars) :-
-    ( set__empty(CandidateArgVars) ->
-        BenefitNodes = set__init,
-        CostNodes = set__init,
-        ViaCellVars = set__init
+    ( set.empty(CandidateArgVars) ->
+        BenefitNodes = set.init,
+        CostNodes = set.init,
+        ViaCellVars = set.init
     ;
         PathInfo = match_path_info(FirstSegment, LaterSegments),
         MatchingParams = StackOptParams ^ matching_params,
@@ -543,17 +543,17 @@ apply_matching_for_path(CellVar, CellVarFlushedLater, StackOptParams,
 
 record_matching_result(CellVar, ConsId, ArgVars, ViaCellVars, Goal,
         PotentialAnchors, PotentialIntervals, !IntervalInfo, !StackOptInfo) :-
-    ( set__empty(ViaCellVars) ->
+    ( set.empty(ViaCellVars) ->
         true
     ;
-        set__to_sorted_list(PotentialIntervals, PotentialIntervalList),
-        set__to_sorted_list(PotentialAnchors, PotentialAnchorList),
-        list__foldl3(record_cell_var_for_interval(CellVar, ViaCellVars),
+        set.to_sorted_list(PotentialIntervals, PotentialIntervalList),
+        set.to_sorted_list(PotentialAnchors, PotentialAnchorList),
+        list.foldl3(record_cell_var_for_interval(CellVar, ViaCellVars),
             PotentialIntervalList, !IntervalInfo, !StackOptInfo,
-            set__init, InsertIntervals),
-        list__foldl3(add_anchor_inserts(Goal, ViaCellVars, InsertIntervals),
+            set.init, InsertIntervals),
+        list.foldl3(add_anchor_inserts(Goal, ViaCellVars, InsertIntervals),
             PotentialAnchorList, !IntervalInfo, !StackOptInfo,
-            set__init, InsertAnchors),
+            set.init, InsertAnchors),
         Goal = _ - GoalInfo,
         goal_info_get_goal_path(GoalInfo, GoalPath),
         MatchingResult = matching_result(CellVar, ConsId,
@@ -574,8 +574,8 @@ record_cell_var_for_interval(CellVar, ViaCellVars, IntervalId,
         !IntervalInfo, !StackOptInfo, !InsertIntervals) :-
     record_interval_vars(IntervalId, [CellVar], !IntervalInfo),
     delete_interval_vars(IntervalId, ViaCellVars, DeletedVars, !IntervalInfo),
-    ( set__non_empty(DeletedVars) ->
-        svset__insert(IntervalId, !InsertIntervals)
+    ( set.non_empty(DeletedVars) ->
+        svset.insert(IntervalId, !InsertIntervals)
     ;
         true
     ).
@@ -587,22 +587,22 @@ record_cell_var_for_interval(CellVar, ViaCellVars, IntervalId,
 
 add_anchor_inserts(Goal, ArgVarsViaCellVar, InsertIntervals, Anchor,
         !IntervalInfo, !StackOptInfo, !InsertAnchors) :-
-    map__lookup(!.IntervalInfo ^ anchor_follow_map, Anchor, AnchorFollow),
+    map.lookup(!.IntervalInfo ^ anchor_follow_map, Anchor, AnchorFollow),
     AnchorFollow = _ - AnchorIntervals,
-    set__intersect(AnchorIntervals, InsertIntervals,
+    set.intersect(AnchorIntervals, InsertIntervals,
         AnchorInsertIntervals),
-    ( set__non_empty(AnchorInsertIntervals) ->
+    ( set.non_empty(AnchorInsertIntervals) ->
         Insert = insert_spec(Goal, ArgVarsViaCellVar),
         InsertMap0 = !.StackOptInfo ^ left_anchor_inserts,
-        ( map__search(InsertMap0, Anchor, Inserts0) ->
+        ( map.search(InsertMap0, Anchor, Inserts0) ->
             Inserts = [Insert | Inserts0],
-            svmap__det_update(Anchor, Inserts, InsertMap0, InsertMap)
+            svmap.det_update(Anchor, Inserts, InsertMap0, InsertMap)
         ;
             Inserts = [Insert],
-            svmap__det_insert(Anchor, Inserts, InsertMap0, InsertMap)
+            svmap.det_insert(Anchor, Inserts, InsertMap0, InsertMap)
         ),
         !:StackOptInfo = !.StackOptInfo ^ left_anchor_inserts := InsertMap,
-        svset__insert(Anchor, !InsertAnchors)
+        svset.insert(Anchor, !InsertAnchors)
     ;
         true
     ).
@@ -654,30 +654,30 @@ close_path(Path0) = Path :-
     Path0 = path(FlushState, CurSegment, FirstSegment0, OtherSegments0,
         FlushAnchors, IntervalIds),
     ( FlushState = current_is_before_first_flush ->
-        expect(set__empty(FirstSegment0), this_file,
+        expect(set.empty(FirstSegment0), this_file,
             "close_path: FirstSegment0 not empty"),
         FirstSegment = CurSegment,
         OtherSegments = OtherSegments0
-    ; set__empty(CurSegment) ->
+    ; set.empty(CurSegment) ->
         FirstSegment = FirstSegment0,
         OtherSegments = OtherSegments0
     ;
         FirstSegment = FirstSegment0,
         OtherSegments = [CurSegment | OtherSegments0]
     ),
-    Path = path(current_is_after_first_flush, set__init,
+    Path = path(current_is_after_first_flush, set.init,
         FirstSegment, OtherSegments, FlushAnchors, IntervalIds).
 
 :- func add_interval_to_path(interval_id, set(prog_var), path) = path.
 
 add_interval_to_path(IntervalId, Vars, !.Path) = !:Path :-
-    ( set__empty(Vars) ->
+    ( set.empty(Vars) ->
         true
     ;
         CurSegment0 = !.Path ^ current_segment,
-        CurSegment = set__union(Vars, CurSegment0),
+        CurSegment = set.union(Vars, CurSegment0),
         OccurringIntervals0 = !.Path ^ occurring_intervals,
-        svset__insert(IntervalId, OccurringIntervals0, OccurringIntervals),
+        svset.insert(IntervalId, OccurringIntervals0, OccurringIntervals),
         !:Path = !.Path ^ current_segment := CurSegment,
         !:Path = !.Path ^ occurring_intervals := OccurringIntervals
     ).
@@ -686,7 +686,7 @@ add_interval_to_path(IntervalId, Vars, !.Path) = !:Path :-
 
 add_anchor_to_path(Anchor, !.Path) = !:Path :-
     Anchors0 = !.Path ^ flush_anchors,
-    svset__insert(Anchor, Anchors0, Anchors),
+    svset.insert(Anchor, Anchors0, Anchors),
     !:Path = !.Path ^ flush_anchors := Anchors.
 
 :- func anchor_requires_close(interval_info, anchor) = bool.
@@ -695,7 +695,7 @@ anchor_requires_close(_, proc_start) = no.
 anchor_requires_close(_, proc_end) = yes.
 anchor_requires_close(IntervalInfo, branch_start(_, GoalPath)) =
         resume_save_status_requires_close(ResumeSaveStatus) :-
-    map__lookup(IntervalInfo ^ branch_resume_map, GoalPath, ResumeSaveStatus).
+    map.lookup(IntervalInfo ^ branch_resume_map, GoalPath, ResumeSaveStatus).
 anchor_requires_close(_, cond_then(_)) = no.
 anchor_requires_close(_, branch_end(BranchConstruct, _)) =
     ( BranchConstruct = neg ->
@@ -765,19 +765,19 @@ may_have_more_successors(call_site(_), no).
 find_all_branches_from_cur_interval(RelevantVars, MatchInfo, IntervalInfo,
         StackOptInfo) :-
     IntervalId = IntervalInfo ^ cur_interval,
-    map__lookup(IntervalInfo ^ interval_vars, IntervalId, IntervalVars),
-    IntervalRelevantVars = set__intersect(RelevantVars, IntervalVars),
+    map.lookup(IntervalInfo ^ interval_vars, IntervalId, IntervalVars),
+    IntervalRelevantVars = set.intersect(RelevantVars, IntervalVars),
     Path0 = path(current_is_before_first_flush, IntervalRelevantVars,
-        set__init, [], set__init, set__init),
-    AllPaths0 = all_paths(set__make_singleton_set(Path0), no, set__init),
+        set.init, [], set.init, set.init),
+    AllPaths0 = all_paths(set.make_singleton_set(Path0), no, set.init),
     find_all_branches(RelevantVars, IntervalId, no, IntervalInfo,
         StackOptInfo, AllPaths0, AllPaths),
     AllPaths = all_paths(Paths, AfterModelNon, RelevantAfter),
-    set__to_sorted_list(Paths, PathList),
-    list__map3(extract_match_and_save_info, PathList,
+    set.to_sorted_list(Paths, PathList),
+    list.map3(extract_match_and_save_info, PathList,
         MatchInputs, FlushAnchorSets, OccurringIntervalSets),
-    FlushAnchors = set__union_list(FlushAnchorSets),
-    OccurringIntervals = set__union_list(OccurringIntervalSets),
+    FlushAnchors = set.union_list(FlushAnchorSets),
+    OccurringIntervals = set.union_list(OccurringIntervalSets),
     MatchInfo = match_info(MatchInputs, RelevantAfter, AfterModelNon,
         FlushAnchors, OccurringIntervals).
 
@@ -787,8 +787,8 @@ find_all_branches_from_cur_interval(RelevantVars, MatchInfo, IntervalInfo,
 
 find_all_branches(RelevantVars, IntervalId, MaybeSearchAnchor0,
         IntervalInfo, StackOptInfo, !AllPaths) :-
-    map__lookup(IntervalInfo ^ interval_end, IntervalId, End),
-    map__lookup(IntervalInfo ^ interval_succ, IntervalId, SuccessorIds),
+    map.lookup(IntervalInfo ^ interval_end, IntervalId, End),
+    map.lookup(IntervalInfo ^ interval_succ, IntervalId, SuccessorIds),
     (
         SuccessorIds = [],
         expect(may_have_no_successor(End), this_file,
@@ -811,17 +811,17 @@ find_all_branches(RelevantVars, IntervalId, MaybeSearchAnchor0,
             MaybeSearchAnchor0 = yes(SearchAnchor0),
             End = SearchAnchor0
         ->
-            !:AllPaths = !.AllPaths ^ used_after_scope := set__init
+            !:AllPaths = !.AllPaths ^ used_after_scope := set.init
         ;
             End = branch_end(_, EndGoalPath),
-            map__lookup(IntervalInfo ^ branch_end_map, EndGoalPath,
+            map.lookup(IntervalInfo ^ branch_end_map, EndGoalPath,
                 BranchEndInfo),
             OnStackAfterBranch = BranchEndInfo ^ flushed_after_branch,
             AccessedAfterBranch = BranchEndInfo ^ accessed_after_branch,
-            NeededAfterBranch = set__union(OnStackAfterBranch,
+            NeededAfterBranch = set.union(OnStackAfterBranch,
                 AccessedAfterBranch),
-            RelevantAfter = set__intersect(RelevantVars, NeededAfterBranch),
-            set__non_empty(RelevantAfter)
+            RelevantAfter = set.intersect(RelevantVars, NeededAfterBranch),
+            set.non_empty(RelevantAfter)
         ->
             !:AllPaths = !.AllPaths ^ used_after_scope := RelevantAfter
         ;
@@ -839,7 +839,7 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
         StackOptInfo, SuccessorIds, !AllPaths) :-
     ( anchor_requires_close(IntervalInfo, End) = yes ->
         Paths0 = !.AllPaths ^ paths_so_far,
-        Paths1 = set__map(close_path, Paths0),
+        Paths1 = set.map(close_path, Paths0),
         !:AllPaths = !.AllPaths ^ paths_so_far := Paths1
     ;
         true
@@ -853,7 +853,7 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
         MaybeSearchAnchor1 = yes(branch_end(disj, EndGoalPath)),
         one_after_another(RelevantVars, MaybeSearchAnchor1,
             IntervalInfo, StackOptInfo, SuccessorIds, !AllPaths),
-        map__lookup(IntervalInfo ^ branch_end_map, EndGoalPath,
+        map.lookup(IntervalInfo ^ branch_end_map, EndGoalPath,
             BranchEndInfo),
         ContinueId = BranchEndInfo ^ interval_after_branch,
         apply_interval_find_all_branches(RelevantVars,
@@ -876,11 +876,11 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
             CondStartId, !AllPaths),
         MaybeSearchAnchorEnd = yes(branch_end(ite, EndGoalPath)),
         CondEndMap = IntervalInfo ^ cond_end_map,
-        map__lookup(CondEndMap, EndGoalPath, ThenStartId),
+        map.lookup(CondEndMap, EndGoalPath, ThenStartId),
         one_after_another(RelevantVars, MaybeSearchAnchorEnd,
             IntervalInfo, StackOptInfo, [ThenStartId, ElseStartId],
             !AllPaths),
-        map__lookup(IntervalInfo ^ branch_end_map, EndGoalPath,
+        map.lookup(IntervalInfo ^ branch_end_map, EndGoalPath,
             BranchEndInfo),
         ContinueId = BranchEndInfo ^ interval_after_branch,
         apply_interval_find_all_branches(RelevantVars,
@@ -890,11 +890,11 @@ find_all_branches_from(End, RelevantVars, MaybeSearchAnchor0, IntervalInfo,
         End = branch_start(BranchType, EndGoalPath)
     ->
         MaybeSearchAnchor1 = yes(branch_end(BranchType, EndGoalPath)),
-        list__map(apply_interval_find_all_branches_map(RelevantVars,
+        list.map(apply_interval_find_all_branches_map(RelevantVars,
             MaybeSearchAnchor1, IntervalInfo, StackOptInfo, !.AllPaths),
             SuccessorIds, AllPathsList),
         consolidate_after_join(AllPathsList, !:AllPaths),
-        map__lookup(IntervalInfo ^ branch_end_map, EndGoalPath, BranchEndInfo),
+        map.lookup(IntervalInfo ^ branch_end_map, EndGoalPath, BranchEndInfo),
         ContinueId = BranchEndInfo ^ interval_after_branch,
         apply_interval_find_all_branches(RelevantVars,
             MaybeSearchAnchor0, IntervalInfo, StackOptInfo,
@@ -941,28 +941,28 @@ apply_interval_find_all_branches_map(RelevantVars, MaybeSearchAnchor0,
 
 apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
         IntervalInfo, StackOptInfo, IntervalId, !AllPaths) :-
-    map__lookup(IntervalInfo ^ interval_vars, IntervalId, IntervalVars),
-    RelevantIntervalVars = set__intersect(RelevantVars, IntervalVars),
+    map.lookup(IntervalInfo ^ interval_vars, IntervalId, IntervalVars),
+    RelevantIntervalVars = set.intersect(RelevantVars, IntervalVars),
     !.AllPaths = all_paths(Paths0, AfterModelNon0, RelevantAfter),
-    Paths1 = set__map(add_interval_to_path(IntervalId, RelevantIntervalVars),
+    Paths1 = set.map(add_interval_to_path(IntervalId, RelevantIntervalVars),
         Paths0),
-    map__lookup(IntervalInfo ^ interval_start, IntervalId, Start),
+    map.lookup(IntervalInfo ^ interval_start, IntervalId, Start),
     (
         % Check if intervals starting at Start use any RelevantVars.
         ( Start = call_site(_)
         ; Start = branch_end(_, _)
         ; Start = branch_start(_, _)
         ),
-        map__search(IntervalInfo ^ anchor_follow_map, Start, StartInfo),
+        map.search(IntervalInfo ^ anchor_follow_map, Start, StartInfo),
         StartInfo = AnchorFollowVars - _,
-        set__intersect(RelevantVars, AnchorFollowVars, NeededVars),
-        set__non_empty(NeededVars)
+        set.intersect(RelevantVars, AnchorFollowVars, NeededVars),
+        set.non_empty(NeededVars)
     ->
-        Paths2 = set__map(add_anchor_to_path(Start), Paths1)
+        Paths2 = set.map(add_anchor_to_path(Start), Paths1)
     ;
         Paths2 = Paths1
     ),
-    ( set__member(Start, IntervalInfo ^ model_non_anchors) ->
+    ( set.member(Start, IntervalInfo ^ model_non_anchors) ->
         AfterModelNon = yes
     ;
         AfterModelNon = AfterModelNon0
@@ -976,13 +976,13 @@ apply_interval_find_all_branches(RelevantVars, MaybeSearchAnchor0,
 consolidate_after_join([], _) :-
     unexpected(this_file, "consolidate_after_join: no paths to join").
 consolidate_after_join([First | Rest], AllPaths) :-
-    PathsList = list__map(project_paths_from_all_paths, [First | Rest]),
-    Paths0 = set__union_list(PathsList),
+    PathsList = list.map(project_paths_from_all_paths, [First | Rest]),
+    Paths0 = set.union_list(PathsList),
     Paths = compress_paths(Paths0),
-    AfterModelNonList = list__map(project_after_model_non_from_all_paths,
+    AfterModelNonList = list.map(project_after_model_non_from_all_paths,
         [First | Rest]),
-    bool__or_list(AfterModelNonList, AfterModelNon),
-    AllPaths = all_paths(Paths, AfterModelNon, set__init).
+    bool.or_list(AfterModelNonList, AfterModelNon),
+    AllPaths = all_paths(Paths, AfterModelNon, set.init).
 
 :- func project_paths_from_all_paths(all_paths) = set(path).
 
@@ -1009,12 +1009,12 @@ compress_paths(Paths) = Paths.
 maybe_write_progress_message(Message, DebugStackOpt, PredIdInt, ProcInfo,
         ModuleInfo, !IO) :-
     ( DebugStackOpt = PredIdInt ->
-        io__write_string(Message, !IO),
-        io__write_string(":\n", !IO),
+        io.write_string(Message, !IO),
+        io.write_string(":\n", !IO),
         proc_info_goal(ProcInfo, Goal),
         proc_info_varset(ProcInfo, VarSet),
-        hlds_out__write_goal(Goal, ModuleInfo, VarSet, yes, 0, "\n", !IO),
-        io__write_string("\n", !IO)
+        hlds_out.write_goal(Goal, ModuleInfo, VarSet, yes, 0, "\n", !IO),
+        io.write_string("\n", !IO)
     ;
         true
     ).
@@ -1027,44 +1027,44 @@ maybe_write_progress_message(Message, DebugStackOpt, PredIdInt, ProcInfo,
 :- pred dump_stack_opt_info(stack_opt_info::in, io::di, io::uo) is det.
 
 dump_stack_opt_info(StackOptInfo, !IO) :-
-    map__to_assoc_list(StackOptInfo ^ left_anchor_inserts, Inserts),
-    io__write_string("\nANCHOR INSERT:\n", !IO),
-    list__foldl(dump_anchor_inserts, Inserts, !IO),
+    map.to_assoc_list(StackOptInfo ^ left_anchor_inserts, Inserts),
+    io.write_string("\nANCHOR INSERT:\n", !IO),
+    list.foldl(dump_anchor_inserts, Inserts, !IO),
 
-    io__write_string("\nMATCHING RESULTS:\n", !IO),
-    list__foldl(dump_matching_result, StackOptInfo ^ matching_results, !IO),
-    io__write_string("\n", !IO).
+    io.write_string("\nMATCHING RESULTS:\n", !IO),
+    list.foldl(dump_matching_result, StackOptInfo ^ matching_results, !IO),
+    io.write_string("\n", !IO).
 
 :- pred dump_anchor_inserts(pair(anchor, list(insert_spec))::in,
     io::di, io::uo) is det.
 
 dump_anchor_inserts(Anchor - InsertSpecs, !IO) :-
-    io__write_string("\ninsertions after ", !IO),
-    io__write(Anchor, !IO),
-    io__write_string(":\n", !IO),
-    list__foldl(dump_insert, InsertSpecs, !IO).
+    io.write_string("\ninsertions after ", !IO),
+    io.write(Anchor, !IO),
+    io.write_string(":\n", !IO),
+    list.foldl(dump_insert, InsertSpecs, !IO).
 
 :- pred dump_insert(insert_spec::in, io::di, io::uo) is det.
 
 dump_insert(insert_spec(Goal, Vars), !IO) :-
-    list__map(term__var_to_int, set__to_sorted_list(Vars), VarNums),
-    io__write_string("vars [", !IO),
+    list.map(term.var_to_int, set.to_sorted_list(Vars), VarNums),
+    io.write_string("vars [", !IO),
     write_int_list(VarNums, !IO),
-    io__write_string("]: ", !IO),
+    io.write_string("]: ", !IO),
     (
         Goal = unify(_, _, _, Unification, _) - _,
         Unification = deconstruct(CellVar, ConsId, ArgVars, _,_,_)
     ->
-        term__var_to_int(CellVar, CellVarNum),
-        io__write_int(CellVarNum, !IO),
-        io__write_string(" => ", !IO),
+        term.var_to_int(CellVar, CellVarNum),
+        io.write_int(CellVarNum, !IO),
+        io.write_string(" => ", !IO),
         mercury_output_cons_id(ConsId, does_not_need_brackets, !IO),
-        io__write_string("(", !IO),
-        list__map(term__var_to_int, ArgVars, ArgVarNums),
+        io.write_string("(", !IO),
+        list.map(term.var_to_int, ArgVars, ArgVarNums),
         write_int_list(ArgVarNums, !IO),
-        io__write_string(")\n", !IO)
+        io.write_string(")\n", !IO)
     ;
-        io__write_string("BAD INSERT GOAL\n", !IO)
+        io.write_string("BAD INSERT GOAL\n", !IO)
     ).
 
 :- pred dump_matching_result(matching_result::in,
@@ -1074,39 +1074,39 @@ dump_matching_result(MatchingResult, !IO) :-
     MatchingResult = matching_result(CellVar, ConsId, ArgVars, ViaCellVars,
         GoalPath, PotentialIntervals, InsertIntervals,
         PotentialAnchors, InsertAnchors),
-    io__write_string("\nmatching result at ", !IO),
-    io__write(GoalPath, !IO),
-    io__write_string("\n", !IO),
-    term__var_to_int(CellVar, CellVarNum),
-    list__map(term__var_to_int, ArgVars, ArgVarNums),
-    list__map(term__var_to_int, set__to_sorted_list(ViaCellVars),
+    io.write_string("\nmatching result at ", !IO),
+    io.write(GoalPath, !IO),
+    io.write_string("\n", !IO),
+    term.var_to_int(CellVar, CellVarNum),
+    list.map(term.var_to_int, ArgVars, ArgVarNums),
+    list.map(term.var_to_int, set.to_sorted_list(ViaCellVars),
         ViaCellVarNums),
-    io__write_int(CellVarNum, !IO),
-    io__write_string(" => ", !IO),
+    io.write_int(CellVarNum, !IO),
+    io.write_string(" => ", !IO),
     mercury_output_cons_id(ConsId, does_not_need_brackets, !IO),
-    io__write_string("(", !IO),
+    io.write_string("(", !IO),
     write_int_list(ArgVarNums, !IO),
-    io__write_string("): via cell ", !IO),
+    io.write_string("): via cell ", !IO),
     write_int_list(ViaCellVarNums, !IO),
-    io__write_string("\n", !IO),
+    io.write_string("\n", !IO),
 
-    io__write_string("potential intervals: ", !IO),
-    PotentialIntervalNums = list__map(interval_id_to_int,
-        set__to_sorted_list(PotentialIntervals)),
+    io.write_string("potential intervals: ", !IO),
+    PotentialIntervalNums = list.map(interval_id_to_int,
+        set.to_sorted_list(PotentialIntervals)),
     write_int_list(PotentialIntervalNums, !IO),
-    io__write_string("\n", !IO),
-    io__write_string("insert intervals: ", !IO),
-    InsertIntervalNums = list__map(interval_id_to_int,
-        set__to_sorted_list(InsertIntervals)),
+    io.write_string("\n", !IO),
+    io.write_string("insert intervals: ", !IO),
+    InsertIntervalNums = list.map(interval_id_to_int,
+        set.to_sorted_list(InsertIntervals)),
     write_int_list(InsertIntervalNums, !IO),
-    io__write_string("\n", !IO),
+    io.write_string("\n", !IO),
 
-    io__write_string("potential anchors: ", !IO),
-    io__write_list(set__to_sorted_list(PotentialAnchors), " ", io__write, !IO),
-    io__write_string("\n", !IO),
-    io__write_string("insert anchors: ", !IO),
-    io__write_list(set__to_sorted_list(InsertAnchors), " ", io__write, !IO),
-    io__write_string("\n", !IO).
+    io.write_string("potential anchors: ", !IO),
+    io.write_list(set.to_sorted_list(PotentialAnchors), " ", io.write, !IO),
+    io.write_string("\n", !IO),
+    io.write_string("insert anchors: ", !IO),
+    io.write_list(set.to_sorted_list(InsertAnchors), " ", io.write, !IO),
+    io.write_string("\n", !IO).
 
 %-----------------------------------------------------------------------------%
 

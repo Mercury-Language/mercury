@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,7 +22,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__stack_alloc.
+:- module ll_backend.stack_alloc.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -72,22 +72,22 @@ allocate_stack_slots_in_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
     initial_liveness(!.ProcInfo, PredId, ModuleInfo, Liveness0),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     module_info_get_globals(ModuleInfo, Globals),
-    globals__get_trace_level(Globals, TraceLevel),
+    globals.get_trace_level(Globals, TraceLevel),
     (
         eff_trace_level_needs_input_vars(PredInfo, !.ProcInfo, TraceLevel)
             = yes
     ->
-        trace__fail_vars(ModuleInfo, !.ProcInfo, FailVars)
+        trace.fail_vars(ModuleInfo, !.ProcInfo, FailVars)
     ;
-        set__init(FailVars)
+        set.init(FailVars)
     ),
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
-    globals__lookup_bool_option(Globals, opt_no_return_calls,
+    globals.lookup_bool_option(Globals, opt_no_return_calls,
         OptNoReturnCalls),
     AllocData = alloc_data(ModuleInfo, !.ProcInfo, TypeInfoLiveness,
         OptNoReturnCalls),
-    set__init(NondetLiveness0),
-    SimpleStackAlloc0 = stack_alloc(set__make_singleton_set(FailVars)),
+    set.init(NondetLiveness0),
+    SimpleStackAlloc0 = stack_alloc(set.make_singleton_set(FailVars)),
     proc_info_goal(!.ProcInfo, Goal0),
     build_live_sets_in_goal(Goal0, Goal, FailVars, AllocData,
         SimpleStackAlloc0, SimpleStackAlloc, Liveness0, _Liveness,
@@ -95,13 +95,13 @@ allocate_stack_slots_in_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
     proc_info_set_goal(Goal, !ProcInfo),
     SimpleStackAlloc = stack_alloc(LiveSets0),
 
-    trace__do_we_need_maxfr_slot(Globals, PredInfo, !ProcInfo),
-    trace__reserved_slots(ModuleInfo, PredInfo, !.ProcInfo, Globals,
+    trace.do_we_need_maxfr_slot(Globals, PredInfo, !ProcInfo),
+    trace.reserved_slots(ModuleInfo, PredInfo, !.ProcInfo, Globals,
         NumReservedSlots, MaybeReservedVarInfo),
     (
         MaybeReservedVarInfo = yes(ResVar - _),
-        set__singleton_set(ResVarSet, ResVar),
-        set__insert(LiveSets0, ResVarSet, LiveSets1)
+        set.singleton_set(ResVarSet, ResVar),
+        set.insert(LiveSets0, ResVarSet, LiveSets1)
     ;
         MaybeReservedVarInfo = no,
         LiveSets1 = LiveSets0
@@ -109,8 +109,8 @@ allocate_stack_slots_in_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
     proc_info_vartypes(!.ProcInfo, VarTypes),
     filter_out_dummy_values(ModuleInfo, VarTypes, LiveSets1, LiveSets,
         DummyVars),
-    graph_colour__group_elements(LiveSets, ColourSets),
-    set__to_sorted_list(ColourSets, ColourList),
+    graph_colour.group_elements(LiveSets, ColourSets),
+    set.to_sorted_list(ColourSets, ColourList),
     proc_info_interface_code_model(!.ProcInfo, CodeModel),
     allocate_stack_slots(ColourList, CodeModel, NumReservedSlots,
         MaybeReservedVarInfo, StackSlots1),
@@ -123,11 +123,11 @@ allocate_stack_slots_in_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
     list(prog_var)::out) is det.
 
 filter_out_dummy_values(ModuleInfo, VarTypes, LiveSet0, LiveSet, DummyVars) :-
-    set__to_sorted_list(LiveSet0, LiveList0),
+    set.to_sorted_list(LiveSet0, LiveList0),
     filter_out_dummy_values_2(ModuleInfo, VarTypes, LiveList0, LiveList,
-        set__init, Dummies),
-    set__list_to_set(LiveList, LiveSet),
-    set__to_sorted_list(Dummies, DummyVars).
+        set.init, Dummies),
+    set.list_to_set(LiveList, LiveSet),
+    set.to_sorted_list(Dummies, DummyVars).
 
 :- pred filter_out_dummy_values_2(module_info::in, vartypes::in,
     list(set(prog_var))::in, list(set(prog_var))::out,
@@ -138,10 +138,10 @@ filter_out_dummy_values_2(ModuleInfo, VarTypes,
         [LiveSet0 | LiveSets0], LiveSets, !Dummies) :-
     filter_out_dummy_values_2(ModuleInfo, VarTypes, LiveSets0, LiveSets1,
         !Dummies),
-    set__to_sorted_list(LiveSet0, LiveList0),
-    list__filter(var_is_of_dummy_type(ModuleInfo, VarTypes), LiveList0,
+    set.to_sorted_list(LiveSet0, LiveList0),
+    list.filter(var_is_of_dummy_type(ModuleInfo, VarTypes), LiveList0,
         DummyVars, NonDummyVars),
-    set__insert_list(!.Dummies, DummyVars, !:Dummies),
+    set.insert_list(!.Dummies, DummyVars, !:Dummies),
     (
         NonDummyVars = [],
         LiveSets = LiveSets1
@@ -170,9 +170,9 @@ filter_out_dummy_values_2(ModuleInfo, VarTypes,
 
 alloc_at_call_site(NeedAtCall, _GoalInfo, StackAlloc0, StackAlloc) :-
     NeedAtCall = need_across_call(ForwardVars, ResumeVars, NondetLiveVars),
-    LiveSet = set__union_list([ForwardVars, ResumeVars, NondetLiveVars]),
+    LiveSet = set.union_list([ForwardVars, ResumeVars, NondetLiveVars]),
     StackAlloc0 = stack_alloc(LiveSets0),
-    LiveSets = set__insert(LiveSets0, LiveSet),
+    LiveSets = set.insert(LiveSets0, LiveSet),
     StackAlloc = stack_alloc(LiveSets).
 
 :- pred alloc_at_resume_site(need_in_resume::in, hlds_goal_info::in,
@@ -185,9 +185,9 @@ alloc_at_resume_site(NeedAtResume, _GoalInfo, StackAlloc0, StackAlloc) :-
         StackAlloc = StackAlloc0
     ;
         ResumeOnStack = yes,
-        LiveSet = set__union(ResumeVars, NondetLiveVars),
+        LiveSet = set.union(ResumeVars, NondetLiveVars),
         StackAlloc0 = stack_alloc(LiveSets0),
-        LiveSets = set__insert(LiveSets0, LiveSet),
+        LiveSets = set.insert(LiveSets0, LiveSet),
         StackAlloc = stack_alloc(LiveSets)
     ).
 
@@ -197,7 +197,7 @@ alloc_at_resume_site(NeedAtResume, _GoalInfo, StackAlloc0, StackAlloc) :-
 alloc_at_par_conj(NeedParConj, _GoalInfo, StackAlloc0, StackAlloc) :-
     NeedParConj = need_in_par_conj(StackVars),
     StackAlloc0 = stack_alloc(LiveSets0),
-    LiveSets = set__insert(LiveSets0, StackVars),
+    LiveSets = set.insert(LiveSets0, StackVars),
     StackAlloc = stack_alloc(LiveSets).
 
 %-----------------------------------------------------------------------------%
@@ -209,10 +209,10 @@ alloc_at_par_conj(NeedParConj, _GoalInfo, StackAlloc0, StackAlloc) :-
 allocate_stack_slots(ColourList, CodeModel, NumReservedSlots,
         MaybeReservedVarInfo, StackSlots) :-
     % The reserved slots are referred to by fixed number
-    % (e.g. framevar(1)) in trace__setup.
+    % (e.g. framevar(1)) in trace.setup.
     FirstVarSlot = NumReservedSlots + 1,
     allocate_stack_slots_2(ColourList, CodeModel, FirstVarSlot,
-        MaybeReservedVarInfo, map__init, StackSlots).
+        MaybeReservedVarInfo, map.init, StackSlots).
 
 :- pred allocate_stack_slots_2(list(set(prog_var))::in, code_model::in,
     int::in, maybe(pair(prog_var, int))::in,
@@ -223,7 +223,7 @@ allocate_stack_slots_2([Vars | VarSets], CodeModel, N0, MaybeReservedVarInfo,
         !StackSlots) :-
     (
         MaybeReservedVarInfo = yes(ResVar - ResSlotNum),
-        set__member(ResVar, Vars)
+        set.member(ResVar, Vars)
     ->
         SlotNum = ResSlotNum,
         N1 = N0
@@ -231,7 +231,7 @@ allocate_stack_slots_2([Vars | VarSets], CodeModel, N0, MaybeReservedVarInfo,
         SlotNum = N0,
         N1 = N0 + 1
     ),
-    set__to_sorted_list(Vars, VarList),
+    set.to_sorted_list(Vars, VarList),
     allocate_same_stack_slot(VarList, CodeModel, SlotNum, !StackSlots),
     allocate_stack_slots_2(VarSets, CodeModel, N1, MaybeReservedVarInfo,
         !StackSlots).
@@ -246,7 +246,7 @@ allocate_same_stack_slot([Var | Vars], CodeModel, Slot, !StackSlots) :-
     ;
         Locn = det_slot(Slot)
     ),
-    svmap__det_insert(Var, Locn, !StackSlots),
+    svmap.det_insert(Var, Locn, !StackSlots),
     allocate_same_stack_slot(Vars, CodeModel, Slot, !StackSlots).
 
     % We must not allocate the same stack slot to dummy variables. If we do,

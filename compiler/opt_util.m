@@ -13,7 +13,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__opt_util.
+:- module ll_backend.opt_util.
 :- interface.
 
 :- import_module ll_backend.llds.
@@ -322,7 +322,7 @@ get_prologue(Instrs0, LabelInstr, Comments, Instrs) :-
     ->
         LabelInstr = Instr1,
         gather_comments(Instrs2, Comments2, Instrs),
-        list__append(Comments1, Comments2, Comments)
+        list.append(Comments1, Comments2, Comments)
     ;
         unexpected(this_file, "procedure does not begin with label")
     ).
@@ -392,10 +392,10 @@ next_assign_to_redoip([Instr | Instrs], AllowedBases, RevSkip,
     Instr = Uinstr - _Comment,
     (
         Uinstr = assign(redoip(lval(Fr)), const(code_addr_const(Redoip0))),
-        list__member(Fr, AllowedBases)
+        list.member(Fr, AllowedBases)
     ->
         Redoip = Redoip0,
-        list__reverse(RevSkip, Skip),
+        list.reverse(RevSkip, Skip),
         Rest = Instrs
     ;
         Uinstr = mkframe(_, _)
@@ -538,14 +538,14 @@ is_forkproceed_next(Instrs0, Sdprocmap, Between) :-
     Instrs1 = [Instr1 | Instrs2],
     Instr1 = Uinstr1 - _,
     ( Uinstr1 = if_val(lval(reg(r, 1)), label(JumpLabel)) ->
-        map__search(Sdprocmap, JumpLabel, BetweenJump),
+        map.search(Sdprocmap, JumpLabel, BetweenJump),
         is_sdproceed_next(Instrs2, BetweenFall),
         filter_out_r1(BetweenJump, yes(true), BetweenTrue0),
         filter_out_livevals(BetweenTrue0, Between),
         filter_out_r1(BetweenFall, yes(false), BetweenFalse0),
         filter_out_livevals(BetweenFalse0, Between)
     ; Uinstr1 = if_val(unop(logical_not, lval(reg(r, 1))), label(JumpLabel)) ->
-        map__search(Sdprocmap, JumpLabel, BetweenJump),
+        map.search(Sdprocmap, JumpLabel, BetweenJump),
         is_sdproceed_next(Instrs2, BetweenFall),
         filter_out_r1(BetweenJump, yes(false), BetweenFalse0),
         filter_out_livevals(BetweenFalse0, Between),
@@ -568,7 +568,7 @@ filter_out_r1([Instr0 | Instrs0], Success, Instrs) :-
 
 straight_alternative(Instrs0, Between, After) :-
     straight_alternative_2(Instrs0, [], BetweenRev, After),
-    list__reverse(BetweenRev, Between).
+    list.reverse(BetweenRev, Between).
 
 :- pred straight_alternative_2(list(instruction)::in, list(instruction)::in,
     list(instruction)::out, list(instruction)::out) is semidet.
@@ -600,7 +600,7 @@ straight_alternative_2([Instr0 | Instrs0], !Between, After) :-
 
 no_stack_straight_line(Instrs0, StraightLine, Instrs) :-
     no_stack_straight_line_2(Instrs0, [], RevStraightLine, Instrs),
-    list__reverse(RevStraightLine, StraightLine).
+    list.reverse(RevStraightLine, StraightLine).
 
 :- pred no_stack_straight_line_2(list(instruction)::in, list(instruction)::in,
     list(instruction)::out, list(instruction)::out) is det.
@@ -646,7 +646,7 @@ lval_refers_stackvars(sp, no).
 lval_refers_stackvars(field(_, Rval, FieldNum), Refers) :-
     rval_refers_stackvars(Rval, Refers1),
     rval_refers_stackvars(FieldNum, Refers2),
-    bool__or(Refers1, Refers2, Refers).
+    bool.or(Refers1, Refers2, Refers).
 lval_refers_stackvars(lvar(_), _) :-
     unexpected(this_file, "found lvar in lval_refers_stackvars").
 lval_refers_stackvars(temp(_, _), no).
@@ -672,7 +672,7 @@ rval_refers_stackvars(unop(_, Rval), Refers) :-
 rval_refers_stackvars(binop(_, Rval1, Rval2), Refers) :-
     rval_refers_stackvars(Rval1, Refers1),
     rval_refers_stackvars(Rval2, Refers2),
-    bool__or(Refers1, Refers2, Refers).
+    bool.or(Refers1, Refers2, Refers).
 rval_refers_stackvars(mem_addr(MemRef), Refers) :-
     mem_ref_refers_stackvars(MemRef, Refers).
 
@@ -751,7 +751,7 @@ block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
         Uinstr0 = assign(Lval, Rval),
         lval_refers_stackvars(Lval, Use1),
         rval_refers_stackvars(Rval, Use2),
-        bool__or(Use1, Use2, Use),
+        bool.or(Use1, Use2, Use),
         need_if_use_or_refers_stackvars(Use, Instrs0, Need)
     ;
         Uinstr0 = call(_, _, _, _, _, _),
@@ -788,7 +788,7 @@ block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
         Uinstr0 = incr_hp(Lval, _, _, Rval, _),
         lval_refers_stackvars(Lval, Use1),
         rval_refers_stackvars(Rval, Use2),
-        bool__or(Use1, Use2, Use),
+        bool.or(Use1, Use2, Use),
         need_if_use_or_refers_stackvars(Use, Instrs0, Need)
     ;
         Uinstr0 = mark_hp(Lval),
@@ -925,7 +925,7 @@ is_const_condition(const(Const), Taken) :-
 is_const_condition(unop(Op, Rval1), Taken) :-
     Op = logical_not,
     is_const_condition(Rval1, Taken1),
-    bool__not(Taken1, Taken).
+    bool.not(Taken1, Taken).
 is_const_condition(binop(Op, Rval1, Rval2), Taken) :-
     Op = eq,
     Rval1 = Rval2,
@@ -1090,10 +1090,10 @@ can_use_livevals(pragma_c(_, _, _, _, _, _, _, _, _), no).
 instr_labels(Instr, Labels, CodeAddrs) :-
     instr_labels_2(Instr, Labels0, CodeAddrs1),
     instr_rvals_and_lvals(Instr, Rvals, Lvals),
-    exprn_aux__rval_list_addrs(Rvals, CodeAddrs2, _),
-    exprn_aux__lval_list_addrs(Lvals, CodeAddrs3, _),
-    list__append(CodeAddrs1, CodeAddrs2, CodeAddrs12),
-    list__append(CodeAddrs12, CodeAddrs3, CodeAddrs),
+    exprn_aux.rval_list_addrs(Rvals, CodeAddrs2, _),
+    exprn_aux.lval_list_addrs(Lvals, CodeAddrs3, _),
+    list.append(CodeAddrs1, CodeAddrs2, CodeAddrs12),
+    list.append(CodeAddrs12, CodeAddrs3, CodeAddrs),
     find_label_code_addrs(CodeAddrs, Labels0, Labels).
 
     % Find out which code addresses are also labels.
@@ -1308,11 +1308,11 @@ pragma_c_components_get_rvals_and_lvals([Comp | Comps], !:Rvals, !:Lvals) :-
 pragma_c_component_get_rvals_and_lvals(pragma_c_inputs(Inputs),
         !Rvals, !Lvals) :-
     pragma_c_inputs_get_rvals(Inputs, NewRvals),
-    list__append(NewRvals, !Rvals).
+    list.append(NewRvals, !Rvals).
 pragma_c_component_get_rvals_and_lvals(pragma_c_outputs(Outputs),
         !Rvals, !Lvals) :-
     pragma_c_outputs_get_lvals(Outputs, NewLvals),
-    list__append(NewLvals, !Lvals).
+    list.append(NewLvals, !Lvals).
 pragma_c_component_get_rvals_and_lvals(pragma_c_user_code(_, _),
         !Rvals, !Lvals).
 pragma_c_component_get_rvals_and_lvals(pragma_c_raw_code(_, _, _),
@@ -1351,15 +1351,15 @@ instr_list_rvals_and_lvals([], [], []).
 instr_list_rvals_and_lvals([Instr - _ | Instrs], Rvals, Lvals) :-
     instr_rvals_and_lvals(Instr, Rvals0, Lvals0),
     instr_list_rvals_and_lvals(Instrs, Rvals1, Lvals1),
-    list__append(Rvals0, Rvals1, Rvals),
-    list__append(Lvals0, Lvals1, Lvals).
+    list.append(Rvals0, Rvals1, Rvals),
+    list.append(Lvals0, Lvals1, Lvals).
 
 instr_list_labels([], [], []).
 instr_list_labels([Uinstr - _ | Instrs], Labels, CodeAddrs) :-
     instr_labels(Uinstr, Labels0, CodeAddrs0),
     instr_list_labels(Instrs, Labels1, CodeAddrs1),
-    list__append(Labels0, Labels1, Labels),
-    list__append(CodeAddrs0, CodeAddrs1, CodeAddrs).
+    list.append(Labels0, Labels1, Labels),
+    list.append(CodeAddrs0, CodeAddrs1, CodeAddrs).
 
 livevals_addr(label(Label), Result) :-
     (
@@ -1442,10 +1442,10 @@ count_temps_lval(Lval, !R, !F) :-
     ( Lval = temp(Type, N) ->
         (
             Type = r,
-            int__max(N, !R)
+            int.max(N, !R)
         ;
             Type = f,
-            int__max(N, !F)
+            int.max(N, !F)
         )
     ; Lval = field(_, Rval, FieldNum) ->
         count_temps_rval(Rval, !R, !F),
@@ -1545,12 +1545,12 @@ touches_nondet_ctrl_instr(Uinstr, Touch) :-
         Uinstr = assign(Lval, Rval),
         touches_nondet_ctrl_lval(Lval, TouchLval),
         touches_nondet_ctrl_rval(Rval, TouchRval),
-        bool__or(TouchLval, TouchRval, Touch)
+        bool.or(TouchLval, TouchRval, Touch)
     ;
         Uinstr = incr_hp(Lval, _, _, Rval, _),
         touches_nondet_ctrl_lval(Lval, TouchLval),
         touches_nondet_ctrl_rval(Rval, TouchRval),
-        bool__or(TouchLval, TouchRval, Touch)
+        bool.or(TouchLval, TouchRval, Touch)
     ;
         Uinstr = mark_hp(Lval),
         touches_nondet_ctrl_lval(Lval, Touch)
@@ -1580,7 +1580,7 @@ touches_nondet_ctrl_lval(sp, no).
 touches_nondet_ctrl_lval(field(_, Rval1, Rval2), Touch) :-
     touches_nondet_ctrl_rval(Rval1, Touch1),
     touches_nondet_ctrl_rval(Rval2, Touch2),
-    bool__or(Touch1, Touch2, Touch).
+    bool.or(Touch1, Touch2, Touch).
 touches_nondet_ctrl_lval(lvar(_), no).
 touches_nondet_ctrl_lval(temp(_, _), no).
 touches_nondet_ctrl_lval(mem_ref(Rval), Touch) :-
@@ -1599,7 +1599,7 @@ touches_nondet_ctrl_rval(unop(_, Rval), Touch) :-
 touches_nondet_ctrl_rval(binop(_, Rval1, Rval2), Touch) :-
     touches_nondet_ctrl_rval(Rval1, Touch1),
     touches_nondet_ctrl_rval(Rval2, Touch2),
-    bool__or(Touch1, Touch2, Touch).
+    bool.or(Touch1, Touch2, Touch).
 touches_nondet_ctrl_rval(mem_addr(MemRef), Touch) :-
     touches_nondet_ctrl_mem_ref(MemRef, Touch).
 
@@ -1617,7 +1617,7 @@ touches_nondet_ctrl_components([], no).
 touches_nondet_ctrl_components([C | Cs], Touch) :-
     touches_nondet_ctrl_component(C, Touch1),
     touches_nondet_ctrl_components(Cs, Touch2),
-    bool__or(Touch1, Touch2, Touch).
+    bool.or(Touch1, Touch2, Touch).
 
     % The inputs and outputs components get emitted as simple straight-line
     % code that do not refer to control slots. The compiler does not generate
@@ -1697,10 +1697,10 @@ count_incr_hp_2([Uinstr0 - _ | Instrs], !N) :-
 %-----------------------------------------------------------------------------%
 
 propagate_livevals(Instrs0, Instrs) :-
-    list__reverse(Instrs0, RevInstrs0),
-    set__init(Livevals),
+    list.reverse(Instrs0, RevInstrs0),
+    set.init(Livevals),
     propagate_livevals_2(RevInstrs0, Livevals, RevInstrs),
-    list__reverse(RevInstrs, Instrs).
+    list.reverse(RevInstrs, Instrs).
 
 :- pred propagate_livevals_2(list(instruction)::in, set(lval)::in,
     list(instruction)::out) is det.
@@ -1710,14 +1710,14 @@ propagate_livevals_2([Instr0 | Instrs0], Livevals0,
         [Instr | Instrs]) :-
     Instr0 = Uinstr0 - Comment,
     ( Uinstr0 = livevals(ThisLivevals) ->
-        set__union(Livevals0, ThisLivevals, Livevals),
+        set.union(Livevals0, ThisLivevals, Livevals),
         Instr = livevals(Livevals) - Comment
     ;
         Instr = Instr0,
         ( Uinstr0 = assign(Lval, _) ->
-            set__delete(Livevals0, Lval, Livevals)
+            set.delete(Livevals0, Lval, Livevals)
         ; can_instr_fall_through(Uinstr0, no) ->
-            set__init(Livevals)
+            set.init(Livevals)
         ;
             Livevals = Livevals0
         )
@@ -1775,7 +1775,7 @@ replace_labels_instr(mkframe(NondetFrameInfo, MaybeRedoip0), ReplMap,
         MaybeRedoip = MaybeRedoip0
     ).
 replace_labels_instr(label(Label), ReplMap, _, label(Label)) :-
-    ( map__search(ReplMap, Label, _) ->
+    ( map.search(ReplMap, Label, _) ->
         % The reason why we are replacing references to this label is that
         % it is being eliminated, and in fact should have been already
         % eliminated by the time replace_labels_instr is called.
@@ -2085,7 +2085,7 @@ replace_labels_label_list([Label0 | Labels0], ReplMap, [Label | Labels]) :-
     label::out) is det.
 
 replace_labels_label(Label0, ReplMap, Label) :-
-    ( map__search(ReplMap, Label0, NewLabel) ->
+    ( map.search(ReplMap, Label0, NewLabel) ->
         Label = NewLabel
     ;
         Label = Label0

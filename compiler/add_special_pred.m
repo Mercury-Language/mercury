@@ -10,7 +10,7 @@
 % (if needed) index and init predicates for the types defined or imported
 % by the module being compiled.
 
-:- module hlds__make_hlds__add_special_pred.
+:- module hlds.make_hlds.add_special_pred.
 :- interface.
 
 :- import_module hlds.hlds_data.
@@ -107,7 +107,7 @@
     %
     % Note: this predicate should include index in the list of special
     % predicates to be defined only for the kinds of types which do not
-    % lead unify_proc__generate_index_clauses to abort.
+    % lead unify_proc.generate_index_clauses to abort.
     %
 add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
         !ModuleInfo) :-
@@ -129,9 +129,9 @@ add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
                 Body ^ du_type_is_enum = not_enum_or_dummy,
                 Body ^ du_type_usereq = no,
                 module_info_get_globals(!.ModuleInfo, Globals),
-                globals__lookup_int_option(Globals, compare_specialization,
+                globals.lookup_int_option(Globals, compare_specialization,
                     CompareSpec),
-                list__length(Ctors, CtorCount),
+                list.length(Ctors, CtorCount),
                 CtorCount > CompareSpec
             ->
                 SpecialPredIds = [spec_pred_index, spec_pred_compare]
@@ -145,7 +145,7 @@ add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
             % Never add clauses for comparison predicates
             % for imported types -- they will never be used.
             module_info_get_special_pred_map(!.ModuleInfo, SpecialPreds),
-            ( map__contains(SpecialPreds, spec_pred_compare - TypeCtor) ->
+            ( map.contains(SpecialPreds, spec_pred_compare - TypeCtor) ->
                 true
             ;
                 add_special_pred_decl(spec_pred_compare, TVarSet, Type,
@@ -153,7 +153,7 @@ add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
             )
         ),
         (
-            type_util__type_body_is_solver_type(!.ModuleInfo, Body)
+            type_util.type_body_is_solver_type(!.ModuleInfo, Body)
         ->
             add_special_pred(spec_pred_init, TVarSet, Type, TypeCtor, Body,
                 Context, Status, !ModuleInfo)
@@ -161,7 +161,7 @@ add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
             true
         )
     ;
-        ( type_util__type_body_is_solver_type(!.ModuleInfo, Body) ->
+        ( type_util.type_body_is_solver_type(!.ModuleInfo, Body) ->
             SpecialPredIds = [spec_pred_unify, spec_pred_compare,
                 spec_pred_init]
         ;
@@ -190,7 +190,7 @@ add_special_pred_list([SpecialPredId | SpecialPredIds], TVarSet, Type,
 add_special_pred(SpecialPredId, TVarSet, Type, TypeCtor, TypeBody, Context,
         Status0, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
-    globals__lookup_bool_option(Globals, special_preds, GenSpecialPreds),
+    globals.lookup_bool_option(Globals, special_preds, GenSpecialPreds),
     (
         GenSpecialPreds = yes,
         do_add_special_pred_for_real(SpecialPredId, TVarSet,
@@ -239,16 +239,16 @@ do_add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
     Type = adjust_types_with_special_preds_in_private_builtin(Type0),
     adjust_special_pred_status(SpecialPredId, Status0, Status),
     module_info_get_special_pred_map(!.ModuleInfo, SpecialPredMap0),
-    ( map__contains(SpecialPredMap0, SpecialPredId - TypeCtor) ->
+    ( map.contains(SpecialPredMap0, SpecialPredId - TypeCtor) ->
         true
     ;
         do_add_special_pred_decl_for_real(SpecialPredId, TVarSet,
             Type, TypeCtor, Context, Status, !ModuleInfo)
     ),
     module_info_get_special_pred_map(!.ModuleInfo, SpecialPredMap1),
-    map__lookup(SpecialPredMap1, SpecialPredId - TypeCtor, PredId),
+    map.lookup(SpecialPredMap1, SpecialPredId - TypeCtor, PredId),
     module_info_preds(!.ModuleInfo, Preds0),
-    map__lookup(Preds0, PredId, PredInfo0),
+    map.lookup(Preds0, PredId, PredInfo0),
     % if the type was imported, then the special preds for that
     % type should be imported too
     (
@@ -276,7 +276,7 @@ do_add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
     ;
         PredInfo1 = PredInfo0
     ),
-    unify_proc__generate_clause_info(SpecialPredId, Type, TypeBody,
+    unify_proc.generate_clause_info(SpecialPredId, Type, TypeBody,
         Context, !.ModuleInfo, ClausesInfo),
     pred_info_set_clauses_info(ClausesInfo, PredInfo1, PredInfo2),
     pred_info_get_markers(PredInfo2, Markers2),
@@ -284,7 +284,7 @@ do_add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
     pred_info_set_markers(Markers, PredInfo2, PredInfo3),
     pred_info_set_origin(special_pred(SpecialPredId - TypeCtor),
         PredInfo3, PredInfo),
-    map__det_update(Preds0, PredId, PredInfo, Preds),
+    map.det_update(Preds0, PredId, PredInfo, Preds),
     module_info_set_preds(Preds, !ModuleInfo).
 
     % These types need to have the builtin qualifier removed
@@ -323,7 +323,7 @@ add_special_pred_decl_list([SpecialPredId | SpecialPredIds], TVarSet, Type,
 add_special_pred_decl(SpecialPredId, TVarSet, Type, TypeCtor, TypeBody,
         Context, Status0, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
-    globals__lookup_bool_option(Globals, special_preds, GenSpecialPreds),
+    globals.lookup_bool_option(Globals, special_preds, GenSpecialPreds),
     ( GenSpecialPreds = yes ->
         do_add_special_pred_decl_for_real(SpecialPredId,
             TVarSet, Type, TypeCtor, Context, Status0, !ModuleInfo)
@@ -351,8 +351,8 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
     clauses_info_init(Arity, ClausesInfo0),
     Origin = special_pred(SpecialPredId - TypeCtor),
     adjust_special_pred_status(SpecialPredId, Status0, Status),
-    map__init(Proofs),
-    map__init(ConstraintMap),
+    map.init(Proofs),
+    map.init(ConstraintMap),
     init_markers(Markers),
         % XXX If/when we have "comparable" or "unifiable" typeclasses,
         % XXX this context might not be empty
@@ -362,7 +362,7 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
         Origin, Status, none, Markers, ArgTypes, TVarSet, ExistQVars,
         ClassContext, Proofs, ConstraintMap, ClausesInfo0, PredInfo0),
     ArgLives = no,
-    varset__init(InstVarSet),
+    varset.init(InstVarSet),
         % Should not be any inst vars here so it's ok to use a
         % fresh inst_varset.
     do_add_new_proc(InstVarSet, Arity, ArgModes, yes(ArgModes), ArgLives,
@@ -372,7 +372,7 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
     predicate_table_insert(PredInfo, PredId, PredicateTable0, PredicateTable),
     module_info_set_predicate_table(PredicateTable, !ModuleInfo),
     module_info_get_special_pred_map(!.ModuleInfo, SpecialPredMap0),
-    map__set(SpecialPredMap0, SpecialPredId - TypeCtor, PredId,
+    map.set(SpecialPredMap0, SpecialPredId - TypeCtor, PredId,
         SpecialPredMap),
     module_info_set_special_pred_map(SpecialPredMap, !ModuleInfo).
 
@@ -381,15 +381,13 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
 
 add_special_pred_unify_status(TypeBody, Status0, Status) :-
     ( TypeBody ^ du_type_usereq = yes(_) ->
-            % If the type has user-defined equality,
-            % then we create a real unify predicate
-            % for it, whose body calls the user-specified
-            % predicate. The compiler's usual type checking
-            % algorithm will handle any necessary
-            % disambiguation from predicates with the same
-            % name but different argument types, and the
-            % usual mode checking algorithm will select
-            % the right mode of the chosen predicate.
+        % If the type has user-defined equality, then we create a real
+        % unify predicate for it, whose body calls the user-specified
+        % predicate. The compiler's usual type checking algorithm
+        % will handle any necessary disambiguation from predicates
+        % with the same name but different argument types, and the usual
+        % mode checking algorithm will select the right mode of the chosen
+        % predicate.
         Status = Status0
     ;
         Status = pseudo_imported

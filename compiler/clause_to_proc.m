@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds__clause_to_proc.
+:- module check_hlds.clause_to_proc.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -90,9 +90,9 @@
 
 maybe_add_default_func_modes([], Preds, Preds).
 maybe_add_default_func_modes([PredId | PredIds], Preds0, Preds) :-
-    map__lookup(Preds0, PredId, PredInfo0),
+    map.lookup(Preds0, PredId, PredInfo0),
     maybe_add_default_func_mode(PredInfo0, PredInfo, _),
-    map__det_update(Preds0, PredId, PredInfo, Preds1),
+    map.det_update(Preds0, PredId, PredInfo, Preds1),
     maybe_add_default_func_modes(PredIds, Preds1, Preds).
 
 maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
@@ -103,7 +103,7 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
         % Is this a function with no modes?
         %
         PredOrFunc = function,
-        map__is_empty(Procs0)
+        map.is_empty(Procs0)
     ->
         %
         % If so, add a default mode of
@@ -117,13 +117,13 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
         FuncArity = PredArity - 1,
         in_mode(InMode),
         out_mode(OutMode),
-        list__duplicate(FuncArity, InMode, FuncArgModes),
+        list.duplicate(FuncArity, InMode, FuncArgModes),
         FuncRetMode = OutMode,
-        list__append(FuncArgModes, [FuncRetMode], PredArgModes),
+        list.append(FuncArgModes, [FuncRetMode], PredArgModes),
         Determinism = det,
         pred_info_context(PredInfo0, Context),
         MaybePredArgLives = no,
-        varset__init(InstVarSet),
+        varset.init(InstVarSet),
             % No inst_vars in default func mode.
         add_new_proc(InstVarSet, PredArity, PredArgModes,
             yes(PredArgModes), MaybePredArgLives, yes(Determinism),
@@ -136,25 +136,25 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
 
 copy_module_clauses_to_procs(PredIds, !ModuleInfo) :-
     module_info_preds(!.ModuleInfo, PredTable0),
-    list__foldl(copy_pred_clauses_to_procs, PredIds, PredTable0, PredTable),
+    list.foldl(copy_pred_clauses_to_procs, PredIds, PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
     % For each mode of the given predicate, copy the clauses relevant
     % to the mode and the current backend to the proc_info.
     %
     % This is not the only predicate in the compiler that does this task;
-    % the other is polymorphism__process_proc.
+    % the other is polymorphism.process_proc.
     %
 :- pred copy_pred_clauses_to_procs(pred_id::in,
     pred_table::in, pred_table::out) is det.
 
 copy_pred_clauses_to_procs(PredId, !PredTable) :-
-    map__lookup(!.PredTable, PredId, PredInfo0),
+    map.lookup(!.PredTable, PredId, PredInfo0),
     (
         do_copy_clauses_to_procs(PredInfo0)
     ->
         copy_clauses_to_procs(PredInfo0, PredInfo),
-        map__det_update(!.PredTable, PredId, PredInfo, !:PredTable)
+        map.det_update(!.PredTable, PredId, PredInfo, !:PredTable)
     ;
         true
     ).
@@ -181,9 +181,9 @@ copy_clauses_to_procs(!PredInfo) :-
 
 copy_clauses_to_procs_2([], _, !Procs).
 copy_clauses_to_procs_2([ProcId | ProcIds], ClausesInfo, !Procs) :-
-    map__lookup(!.Procs, ProcId, Proc0),
+    map.lookup(!.Procs, ProcId, Proc0),
     copy_clauses_to_proc(ProcId, ClausesInfo, Proc0, Proc),
-    map__det_update(!.Procs, ProcId, Proc, !:Procs),
+    map.det_update(!.Procs, ProcId, Proc, !:Procs),
     copy_clauses_to_procs_2(ProcIds, ClausesInfo, !Procs).
 
 copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
@@ -198,9 +198,9 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
             %
             % Use the original variable names for the headvars
             % of foreign_proc clauses, not the introduced
-            % `HeadVar__n' names.
+            % `HeadVar.n' names.
             %
-            VarSet = list__foldl(set_arg_names, Args, VarSet0),
+            VarSet = list.foldl(set_arg_names, Args, VarSet0),
             expect(unify(ExtraArgs, []), this_file,
                 "copy_clauses_to_proc: extra_args")
         ;
@@ -232,7 +232,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
         %
         % The non-local vars are just the head variables.
         %
-        set__list_to_set(HeadVars, NonLocalVars),
+        set.list_to_set(HeadVars, NonLocalVars),
         goal_info_set_nonlocals(NonLocalVars, GoalInfo1, GoalInfo2),
 
         %
@@ -240,8 +240,8 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
         % is impure/semipure.
         %
         ( contains_nonpure_goal(GoalList) ->
-            list__map(get_purity, GoalList, PurityList),
-            Purity = list__foldl(worst_purity, PurityList, purity_pure),
+            list.map(get_purity, GoalList, PurityList),
+            Purity = list.foldl(worst_purity, PurityList, purity_pure),
             add_goal_info_purity_feature(Purity, GoalInfo2, GoalInfo)
         ;
             GoalInfo2 = GoalInfo
@@ -268,7 +268,7 @@ set_arg_names(Arg, Vars0) = Vars :-
     MaybeNameMode = foreign_arg_maybe_name_mode(Arg),
     (
         MaybeNameMode = yes(Name - _),
-        varset__name_var(Vars0, Var, Name, Vars)
+        varset.name_var(Vars0, Var, Name, Vars)
     ;
         MaybeNameMode = no,
         Vars = Vars0
@@ -288,7 +288,7 @@ select_matching_clauses([Clause | Clauses], ProcId, MatchingClauses) :-
     % An empty list here means that the clause applies to all procs.
     ( ProcIds = [] ->
         MatchingClauses = [Clause | MatchingClauses1]
-    ; list__member(ProcId, ProcIds) ->
+    ; list.member(ProcId, ProcIds) ->
         MatchingClauses = [Clause | MatchingClauses1]
     ;
         MatchingClauses = MatchingClauses1
@@ -302,13 +302,13 @@ get_clause_goals([Clause | Clauses], Goals) :-
     get_clause_goals(Clauses, Goals1),
     Clause = clause(_, Goal, _, _),
     goal_to_disj_list(Goal, GoalList),
-    list__append(GoalList, Goals1, Goals).
+    list.append(GoalList, Goals1, Goals).
 
 %-----------------------------------------------------------------------------%
 
 introduce_exists_casts(PredIds, !ModuleInfo) :-
     module_info_preds(!.ModuleInfo, PredTable0),
-    list__foldl(introduce_exists_casts_pred(!.ModuleInfo), PredIds,
+    list.foldl(introduce_exists_casts_pred(!.ModuleInfo), PredIds,
         PredTable0, PredTable),
     module_info_set_preds(PredTable, !ModuleInfo).
 
@@ -316,11 +316,11 @@ introduce_exists_casts(PredIds, !ModuleInfo) :-
     pred_table::in, pred_table::out) is det.
 
 introduce_exists_casts_pred(ModuleInfo, PredId, !PredTable) :-
-    map__lookup(!.PredTable, PredId, PredInfo0),
+    map.lookup(!.PredTable, PredId, PredInfo0),
     (
         % Optimise the common case.
         pred_info_get_existq_tvar_binding(PredInfo0, Subn),
-        \+ map__is_empty(Subn),
+        \+ map.is_empty(Subn),
 
         % Only process preds for which we copied clauses to procs.
         do_copy_clauses_to_procs(PredInfo0)
@@ -330,7 +330,7 @@ introduce_exists_casts_pred(ModuleInfo, PredId, !PredTable) :-
         introduce_exists_casts_procs(ModuleInfo, PredInfo0, ProcIds,
             Procs0, Procs),
         pred_info_set_procedures(Procs, PredInfo0, PredInfo),
-        svmap__det_update(PredId, PredInfo, !PredTable)
+        svmap.det_update(PredId, PredInfo, !PredTable)
     ;
         true
     ).
@@ -341,9 +341,9 @@ introduce_exists_casts_pred(ModuleInfo, PredId, !PredTable) :-
 introduce_exists_casts_procs(_, _, [], !Procs).
 introduce_exists_casts_procs(ModuleInfo, PredInfo, [ProcId | ProcIds],
         !Procs) :-
-    map__lookup(!.Procs, ProcId, ProcInfo0),
+    map.lookup(!.Procs, ProcId, ProcInfo0),
     introduce_exists_casts_proc(ModuleInfo, PredInfo, ProcInfo0, ProcInfo),
-    svmap__det_update(ProcId, ProcInfo, !Procs),
+    svmap.det_update(ProcId, ProcInfo, !Procs),
     introduce_exists_casts_procs(ModuleInfo, PredInfo, ProcIds, !Procs).
 
 introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
@@ -351,7 +351,7 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
     pred_info_get_existq_tvar_binding(PredInfo, Subn),
     pred_info_get_class_context(PredInfo, PredConstraints),
     OrigArity = pred_info_orig_arity(PredInfo),
-    NumExtraHeadVars = list__length(ArgTypes) - OrigArity,
+    NumExtraHeadVars = list.length(ArgTypes) - OrigArity,
 
     proc_info_varset(!.ProcInfo, VarSet0),
     proc_info_vartypes(!.ProcInfo, VarTypes0),
@@ -361,11 +361,11 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
     proc_info_argmodes(!.ProcInfo, ArgModes),
 
     (
-        list__split_list(NumExtraHeadVars, ArgTypes, ExtraArgTypes0,
+        list.split_list(NumExtraHeadVars, ArgTypes, ExtraArgTypes0,
             OrigArgTypes0),
-        list__split_list(NumExtraHeadVars, HeadVars0, ExtraHeadVars0,
+        list.split_list(NumExtraHeadVars, HeadVars0, ExtraHeadVars0,
             OrigHeadVars0),
-        list__split_list(NumExtraHeadVars, ArgModes, ExtraArgModes0,
+        list.split_list(NumExtraHeadVars, ArgModes, ExtraArgModes0,
             OrigArgModes0)
     ->
         ExtraArgTypes = ExtraArgTypes0,
@@ -392,10 +392,10 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
     % type_infos and typeclass_infos can be looked up.  When the arguments
     % of these two types are removed, we will no longer need to do this.
     %
-    map__from_corresponding_lists(ExtraHeadVars1, ExtraArgTypes,
+    map.from_corresponding_lists(ExtraHeadVars1, ExtraArgTypes,
         ExternalTypes),
     ExistConstraints = PredConstraints ^ exist_constraints,
-    assoc_list__from_corresponding_lists(ExtraArgModes, ExtraHeadVars1,
+    assoc_list.from_corresponding_lists(ExtraArgModes, ExtraHeadVars1,
         ExtraModesAndVars),
     introduce_exists_casts_extra(ModuleInfo, ExternalTypes, Subn,
         ExistConstraints, ExtraModesAndVars, ExtraHeadVars, VarSet1, VarSet,
@@ -406,7 +406,7 @@ introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
     goal_to_conj_list(Body0, Goals0),
     Goals = Goals0 ++ ExistsCastHeadGoals ++ ExistsCastExtraGoals,
     HeadVars = ExtraHeadVars ++ OrigHeadVars,
-    set__list_to_set(HeadVars, NonLocals),
+    set.list_to_set(HeadVars, NonLocals),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
     Body = conj(plain_conj, Goals) - GoalInfo,
     proc_info_set_body(VarSet, VarTypes, HeadVars, Body, RttiVarMaps,
@@ -456,10 +456,10 @@ introduce_exists_casts_for_arg(ModuleInfo, Subn, ExternalType, ArgMode,
         % interface.
         InternalType \= ExternalType
     ->
-        term__context_init(Context),
-        svmap__det_update(HeadVar0, InternalType, !VarTypes),
+        term.context_init(Context),
+        svmap.det_update(HeadVar0, InternalType, !VarTypes),
         make_new_exist_cast_var(HeadVar0, HeadVar, !VarSet),
-        svmap__det_insert(HeadVar, ExternalType, !VarTypes),
+        svmap.det_insert(HeadVar, ExternalType, !VarTypes),
         mode_get_insts(ModuleInfo, ArgMode, _, Inst),
         generate_cast(exists_cast, HeadVar0, HeadVar, Inst, Inst, Context,
             ExtraGoal),
@@ -494,15 +494,15 @@ introduce_exists_casts_extra(ModuleInfo, ExternalTypes, Subn,
             % because type_info/1 and typeclass_info/1 have types in their
             % respective arguments.
             %
-        map__lookup(ExternalTypes, Var0, ExternalType),
+        map.lookup(ExternalTypes, Var0, ExternalType),
         apply_rec_subst_to_type(Subn, ExternalType, InternalType),
-        svmap__det_update(Var0, InternalType, !VarTypes),
+        svmap.det_update(Var0, InternalType, !VarTypes),
 
             % Create the exists_cast goal.
             %
-        term__context_init(Context),
+        term.context_init(Context),
         make_new_exist_cast_var(Var0, Var, !VarSet),
-        svmap__det_insert(Var, ExternalType, !VarTypes),
+        svmap.det_insert(Var, ExternalType, !VarTypes),
         generate_cast(exists_cast, Var0, Var, Context, ExtraGoal),
         !:ExtraGoals = [ExtraGoal | !.ExtraGoals],
 
@@ -574,10 +574,10 @@ maybe_add_type_info_locns([Arg | Args], Var, Num, !RttiVarMaps) :-
     prog_varset::in, prog_varset::out) is det.
 
 make_new_exist_cast_var(InternalVar, ExternalVar, !VarSet) :-
-    svvarset__new_var(ExternalVar, !VarSet),
-    varset__lookup_name(!.VarSet, InternalVar, InternalName),
-    string__append("ExistQ", InternalName, ExternalName),
-    svvarset__name_var(ExternalVar, ExternalName, !VarSet).
+    svvarset.new_var(ExternalVar, !VarSet),
+    varset.lookup_name(!.VarSet, InternalVar, InternalName),
+    string.append("ExistQ", InternalName, ExternalName),
+    svvarset.name_var(ExternalVar, ExternalName, !VarSet).
 
 %-----------------------------------------------------------------------------%
 

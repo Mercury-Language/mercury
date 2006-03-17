@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module hlds__make_hlds__add_class.
+:- module hlds.make_hlds.add_class.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -38,7 +38,7 @@
     %
 :- pred do_produce_instance_method_clauses(instance_proc_def::in,
     pred_or_func::in, arity::in, list(mer_type)::in, pred_markers::in,
-    term__context::in, import_status::in, clauses_info::out,
+    term.context::in, import_status::in, clauses_info::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     io::di, io::uo) is det.
 
@@ -76,7 +76,7 @@ module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
         Context, Status, !ModuleInfo, !IO) :-
     module_info_get_class_table(!.ModuleInfo, Classes0),
     module_info_get_superclass_table(!.ModuleInfo, SuperClasses0),
-    list__length(Vars, ClassArity),
+    list.length(Vars, ClassArity),
     ClassId = class_id(Name, ClassArity),
     Status = item_status(ImportStatus0, _),
     ( Interface = abstract ->
@@ -84,11 +84,11 @@ module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
     ;
         ImportStatus1 = ImportStatus0
     ),
-    HLDSFunDeps = list__map(make_hlds_fundep(Vars), FunDeps),
+    HLDSFunDeps = list.map(make_hlds_fundep(Vars), FunDeps),
     (
         % The typeclass is exported if *any* occurrence is exported,
         % even a previous abstract occurrence.
-        map__search(Classes0, ClassId, OldDefn)
+        map.search(Classes0, ClassId, OldDefn)
     ->
         OldDefn = hlds_class_defn(OldStatus, OldConstraints, OldFunDeps,
             _OldAncestors, OldVars, _OldKinds, OldInterface, OldMethods,
@@ -111,10 +111,10 @@ module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
             DummyStatus = local,
             multiple_def_error(DummyStatus, Name, ClassArity, "typeclass",
                 Context, OldContext, _, !IO),
-            prog_out__write_context(Context, !IO),
-            io__write_string("  The superclass constraints do not match.\n",
+            prog_out.write_context(Context, !IO),
+            io.write_string("  The superclass constraints do not match.\n",
                 !IO),
-            io__set_exit_status(1, !IO),
+            io.set_exit_status(1, !IO),
             ErrorOrPrevDef = yes
         ;
             \+ class_fundeps_are_identical(OldFunDeps, HLDSFunDeps)
@@ -123,10 +123,10 @@ module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
             DummyStatus = local,
             multiple_def_error(DummyStatus, Name, ClassArity, "typeclass",
                 Context, OldContext, _, !IO),
-            prog_out__write_context(Context, !IO),
-            io__write_string("  The functional dependencies do not match.\n",
+            prog_out.write_context(Context, !IO),
+            io.write_string("  The functional dependencies do not match.\n",
                 !IO),
-            io__set_exit_status(1, !IO),
+            io.set_exit_status(1, !IO),
             ErrorOrPrevDef = yes
         ;
             Interface = concrete(_),
@@ -158,7 +158,7 @@ module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
                 Maybe = yes(Pred - Proc),
                 PredProcId = hlds_class_proc(Pred, Proc)
             ),
-            list__filter_map(IsYes, PredProcIds0, PredProcIds1),
+            list.filter_map(IsYes, PredProcIds0, PredProcIds1),
 
                 %
                 % The list must be sorted on pred_id and then
@@ -166,7 +166,7 @@ module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
                 % when it is generating the corresponding list
                 % of pred_proc_ids for instance definitions.
                 %
-            list__sort(PredProcIds1, ClassMethods)
+            list.sort(PredProcIds1, ClassMethods)
         ;
             Interface = abstract,
             ClassMethods = ClassMethods0
@@ -181,7 +181,7 @@ module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
         Defn = hlds_class_defn(ImportStatus, Constraints, HLDSFunDeps,
             Ancestors, Vars, Kinds, ClassInterface, ClassMethods, VarSet,
             Context),
-        map__set(Classes0, ClassId, Defn, Classes),
+        map.set(Classes0, ClassId, Defn, Classes),
         module_info_set_class_table(Classes, !ModuleInfo),
 
         (
@@ -194,7 +194,7 @@ module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
                 % When we find the class declaration, make an
                 % entry for the instances.
             module_info_get_instance_table(!.ModuleInfo, Instances0),
-            map__det_insert(Instances0, ClassId, [], Instances),
+            map.det_insert(Instances0, ClassId, [], Instances),
             module_info_set_instance_table(Instances, !ModuleInfo)
         ;
             IsNewDefn = no
@@ -238,7 +238,7 @@ superclass_constraints_are_identical(OldVars0, OldVarSet, OldConstraints0,
         OldConstraints1),
     apply_variable_renaming_to_tvar_list(Renaming, OldVars0,  OldVars),
 
-    map__from_corresponding_lists(OldVars, Vars, VarRenaming),
+    map.from_corresponding_lists(OldVars, Vars, VarRenaming),
     apply_variable_renaming_to_prog_constraint_list(VarRenaming,
         OldConstraints1, OldConstraints),
     OldConstraints = Constraints.
@@ -414,10 +414,10 @@ update_superclass_table(ClassId, Vars, VarSet, Constraints, !Supers) :-
 
 update_superclass_table_2(ClassId, Vars, VarSet, Constraint, !Supers) :-
     Constraint = constraint(SuperName, SuperTypes),
-    list__length(SuperTypes, SuperClassArity),
+    list.length(SuperTypes, SuperClassArity),
     SuperClassId = class_id(SuperName, SuperClassArity),
     SubClassDetails = subclass_details(SuperTypes, ClassId, Vars, VarSet),
-    multi_map__set(!.Supers, SuperClassId, SubClassDetails, !:Supers).
+    multi_map.set(!.Supers, SuperClassId, SubClassDetails, !:Supers).
 
     % Go through the list of class methods, looking for
     % - functions without mode declarations: add a default mode
@@ -446,7 +446,7 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !IO) :-
             unexpected(this_file,
                 "add_default_class_method_func_modes: unqualified func")
         ),
-        list__length(TypesAndModes, PredArity),
+        list.length(TypesAndModes, PredArity),
         module_info_get_predicate_table(!.ModuleInfo, PredTable),
         (
             predicate_table_search_pf_m_n_a(PredTable, is_fully_qualified,
@@ -467,7 +467,7 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !IO) :-
             ;
                 PorF = predicate,
                 pred_info_procedures(PredInfo0, Procs),
-                ( map__is_empty(Procs) ->
+                ( map.is_empty(Procs) ->
                     pred_method_with_no_modes_error(PredInfo0, !IO)
                 ;
                     true
@@ -485,19 +485,17 @@ module_add_instance_defn(InstanceModuleName, Constraints, ClassName,
         Types, Body0, VarSet, Status, Context, !ModuleInfo, !IO) :-
     module_info_get_class_table(!.ModuleInfo, Classes),
     module_info_get_instance_table(!.ModuleInfo, Instances0),
-    list__length(Types, ClassArity),
+    list.length(Types, ClassArity),
     ClassId = class_id(ClassName, ClassArity),
     Body = expand_bang_state_var_args_in_instance_method_heads(Body0),
-    (
-        map__search(Classes, ClassId, _)
-    ->
-        map__init(Empty),
+    ( map.search(Classes, ClassId, _) ->
+        map.init(Empty),
         NewInstanceDefn = hlds_instance_defn(InstanceModuleName, Status,
             Context, Constraints, Types, Body, no, VarSet, Empty),
-        map__lookup(Instances0, ClassId, InstanceDefns),
+        map.lookup(Instances0, ClassId, InstanceDefns),
         check_for_overlapping_instances(NewInstanceDefn, InstanceDefns,
             ClassId, !IO),
-        map__det_update(Instances0, ClassId,
+        map.det_update(Instances0, ClassId,
             [NewInstanceDefn | InstanceDefns], Instances),
         module_info_set_instance_table(Instances, !ModuleInfo)
     ;
@@ -514,7 +512,7 @@ check_for_overlapping_instances(NewInstanceDefn, InstanceDefns, ClassId,
         NewInstanceDefn = hlds_instance_defn(_, _Status, Context,
             _, Types, Body, _, VarSet, _),
         Body \= abstract, % XXX
-        list__member(OtherInstanceDefn, InstanceDefns),
+        list.member(OtherInstanceDefn, InstanceDefns),
         OtherInstanceDefn = hlds_instance_defn(_, _OtherStatus,
             OtherContext, _, OtherTypes, OtherBody, _, OtherVarSet, _),
         OtherBody \= abstract, % XXX
@@ -531,7 +529,7 @@ check_for_overlapping_instances(NewInstanceDefn, InstanceDefns, ClassId,
 
 report_overlapping_instance_declaration(class_id(ClassName, ClassArity),
         Context - OtherContext, !IO) :-
-    io__set_exit_status(1, !IO),
+    io.set_exit_status(1, !IO),
     Pieces1 = [words("Error: multiply defined (or overlapping)"),
         words("instance declarations for class"),
         sym_name_and_arity(ClassName / ClassArity),
@@ -550,7 +548,7 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         % First the goal info, ...
         goal_info_init(GoalInfo0),
         goal_info_set_context(Context, GoalInfo0, GoalInfo1),
-        set__list_to_set(HeadVars, NonLocals),
+        set.list_to_set(HeadVars, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo1, GoalInfo2),
         ( check_marker(Markers, is_impure) ->
             goal_info_add_feature(impure_goal, GoalInfo2, GoalInfo)
@@ -560,14 +558,14 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
             GoalInfo = GoalInfo2
         ),
         % ... and then the goal itself.
-        varset__init(VarSet0),
+        varset.init(VarSet0),
         make_n_fresh_vars("HeadVar__", PredArity, HeadVars, VarSet0, VarSet),
         construct_pred_or_func_call(invalid_pred_id, PredOrFunc,
             InstancePredName, HeadVars, GoalInfo, IntroducedGoal, !QualInfo),
         IntroducedClause = clause([], IntroducedGoal, mercury, Context),
 
-        map__from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
-        map__init(TVarNameMap),
+        map.from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
+        map.init(TVarNameMap),
         rtti_varmaps_init(RttiVarMaps),
         HasForeignClauses = no,
         set_clause_list([IntroducedClause], ClausesRep),
@@ -577,7 +575,7 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         % Handle the arbitrary clauses syntax.
         InstanceProcDefn = clauses(InstanceClauses),
         clauses_info_init(PredArity, ClausesInfo0),
-        list__foldl4(
+        list.foldl4(
             produce_instance_method_clause(PredOrFunc, Context, Status),
             InstanceClauses, !ModuleInfo, !QualInfo,
             ClausesInfo0, ClausesInfo, !IO)
@@ -598,12 +596,12 @@ produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
             report_illegal_func_svar_result(Context, CVarSet, StateVar, !IO)
         ;
             HeadTerms = expand_bang_state_var_args(HeadTerms0),
-            PredArity = list__length(HeadTerms),
+            PredArity = list.length(HeadTerms),
             adjust_func_arity(PredOrFunc, Arity, PredArity),
             % The tvarset argument is only used for explicit type
             % qualifications, of which there are none in this
             % clause, so it is set to a dummy value.
-            varset__init(TVarSet0),
+            varset.init(TVarSet0),
 
             ProcIds = [],
             % means this clause applies to _every_ mode of the procedure
@@ -637,7 +635,7 @@ pred_method_with_no_modes_error(PredInfo, !IO) :-
         words("predicate"),
         sym_name_and_arity(qualified(Module, Name) / Arity), suffix(".")],
     write_error_pieces(Context, 0, Pieces, !IO),
-    io__set_exit_status(1, !IO).
+    io.set_exit_status(1, !IO).
 
 :- pred undefined_type_class_error(sym_name::in, arity::in, prog_context::in,
     string::in, io::di, io::uo) is det.
@@ -647,7 +645,7 @@ undefined_type_class_error(ClassName, Arity, Context, Description, !IO) :-
         sym_name_and_arity(ClassName / Arity),
         words("without preceding typeclass declaration.")],
     write_error_pieces(Context, 0, Pieces, !IO),
-    io__set_exit_status(1, !IO).
+    io.set_exit_status(1, !IO).
 
 :- pred missing_pred_or_func_method_error(sym_name::in, arity::in,
     pred_or_func::in, prog_context::in, module_info::in, module_info::out,

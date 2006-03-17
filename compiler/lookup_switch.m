@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -39,7 +39,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__lookup_switch.
+:- module ll_backend.lookup_switch.
 :- interface.
 
 :- import_module backend_libs.switch_util.
@@ -116,20 +116,20 @@ is_lookup_switch(CaseVar, TaggedCases, GoalInfo, SwitchCanFail,
     % some circumstances, but it would take a pretty complex heuristic to get
     % it right, so, lets just use a simple one - no static ground terms,
     % no lookup switch.
-    code_info__get_globals(!.CI, Globals),
-    globals__lookup_bool_option(Globals, static_ground_terms, yes),
+    code_info.get_globals(!.CI, Globals),
+    globals.lookup_bool_option(Globals, static_ground_terms, yes),
 
     % We want to generate a lookup switch for any switch that is dense enough
     % - we don't care how many cases it has. A memory lookup tends to be
     % cheaper than a branch.
-    list__length(TaggedCases, NumCases),
+    list.length(TaggedCases, NumCases),
     TaggedCases = [FirstCase | _],
     FirstCase = case(_, int_constant(FirstCaseVal), _, _),
-    list__index1_det(TaggedCases, NumCases, LastCase),
+    list.index1_det(TaggedCases, NumCases, LastCase),
     LastCase = case(_, int_constant(LastCaseVal), _, _),
     Span = LastCaseVal - FirstCaseVal,
     Range = Span + 1,
-    dense_switch__calc_density(NumCases, Range, Density),
+    dense_switch.calc_density(NumCases, Range, Density),
     Density > ReqDensity,
 
     % If there are going to be no gaps in the lookup table then we won't need
@@ -146,12 +146,12 @@ is_lookup_switch(CaseVar, TaggedCases, GoalInfo, SwitchCanFail,
         % range of the type is sufficiently small, we can make the jump table
         % large enough to hold all of the values for the type, but then we
         % will need to do the bitvector test.
-        Type = code_info__variable_type(!.CI, CaseVar),
-        code_info__get_module_info(!.CI, ModuleInfo),
+        Type = code_info.variable_type(!.CI, CaseVar),
+        code_info.get_module_info(!.CI, ModuleInfo),
         classify_type(ModuleInfo, Type) = TypeCategory,
         (
-            dense_switch__type_range(!.CI, TypeCategory, Type, TypeRange),
-            dense_switch__calc_density(NumCases, TypeRange, DetDensity),
+            dense_switch.type_range(!.CI, TypeCategory, Type, TypeRange),
+            dense_switch.calc_density(NumCases, TypeRange, DetDensity),
             DetDensity > ReqDensity
         ->
             NeedRangeCheck = cannot_fail,
@@ -189,17 +189,17 @@ figure_out_output_vars(CI, GoalInfo, OutVars) :-
     ( instmap_delta_is_unreachable(InstMapDelta) ->
         OutVars = []
     ;
-        code_info__get_instmap(CI, CurrentInstMap),
-        code_info__get_module_info(CI, ModuleInfo),
+        code_info.get_instmap(CI, CurrentInstMap),
+        code_info.get_module_info(CI, ModuleInfo),
         instmap_delta_changed_vars(InstMapDelta, ChangedVars),
-        instmap__apply_instmap_delta(CurrentInstMap, InstMapDelta,
+        instmap.apply_instmap_delta(CurrentInstMap, InstMapDelta,
             InstMapAfter),
         Lambda = (pred(Var::out) is nondet :-
             % If a variable has a final inst, then it changed
             % instantiatedness during the switch.
-            set__member(Var, ChangedVars),
-            instmap__lookup_var(CurrentInstMap, Var, Initial),
-            instmap__lookup_var(InstMapAfter, Var, Final),
+            set.member(Var, ChangedVars),
+            instmap.lookup_var(CurrentInstMap, Var, Initial),
+            instmap.lookup_var(InstMapAfter, Var, Final),
             mode_is_output(ModuleInfo, (Initial -> Final))
         ),
         solutions(Lambda, OutVars)
@@ -220,17 +220,17 @@ generate_constants([], _Vars, _StoreMap, !MaybeEnd, _CodeModel, [], no, !CI).
 generate_constants([Case | Cases], Vars, StoreMap, !MaybeEnd, CodeModel,
         [CaseVal | Rest], yes(Liveness), !CI) :-
     Case = case(_, int_constant(CaseTag), _, Goal),
-    code_info__remember_position(!.CI, BranchStart),
-    code_gen__generate_goal(CodeModel, Goal, Code, !CI),
-    tree__tree_of_lists_is_empty(Code),
-    code_info__get_forward_live_vars(!.CI, Liveness),
+    code_info.remember_position(!.CI, BranchStart),
+    code_gen.generate_goal(CodeModel, Goal, Code, !CI),
+    tree.tree_of_lists_is_empty(Code),
+    code_info.get_forward_live_vars(!.CI, Liveness),
     get_case_rvals(Vars, CaseRvals, !CI),
     CaseVal = CaseTag - CaseRvals,
     % EndCode code may contain instructions that place Vars in the locations
     % dictated by StoreMap, and thus does not have to be empty. (The array
     % lookup code will put those variables in those locations directly.)
-    code_info__generate_branch_end(StoreMap, !MaybeEnd, _EndCode, !CI),
-    code_info__reset_to_position(BranchStart, !CI),
+    code_info.generate_branch_end(StoreMap, !MaybeEnd, _EndCode, !CI),
+    code_info.reset_to_position(BranchStart, !CI),
     generate_constants(Cases, Vars, StoreMap, !MaybeEnd,
         CodeModel, Rest, _, !CI).
 
@@ -241,11 +241,11 @@ generate_constants([Case | Cases], Vars, StoreMap, !MaybeEnd, CodeModel,
 
 get_case_rvals([], [], !CI).
 get_case_rvals([Var | Vars], [Rval | Rvals], !CI) :-
-    code_info__produce_variable(Var, Code, Rval, !CI),
-    tree__tree_of_lists_is_empty(Code),
-    code_info__get_globals(!.CI, Globals),
-    globals__get_options(Globals, Options),
-    exprn_aux__init_exprn_opts(Options, ExprnOpts),
+    code_info.produce_variable(Var, Code, Rval, !CI),
+    tree.tree_of_lists_is_empty(Code),
+    code_info.get_globals(!.CI, Globals),
+    globals.get_options(Globals, Options),
+    exprn_aux.init_exprn_opts(Options, ExprnOpts),
     rval_is_constant(Rval, ExprnOpts),
     get_case_rvals(Vars, Rvals, !CI).
 
@@ -258,7 +258,7 @@ get_case_rvals([Var | Vars], [Rval | Rvals], !CI) :-
 :- pred rval_is_constant(rval::in, exprn_opts::in) is semidet.
 
 rval_is_constant(const(Const), ExprnOpts) :-
-    exprn_aux__const_is_constant(Const, ExprnOpts, yes).
+    exprn_aux.const_is_constant(Const, ExprnOpts, yes).
 rval_is_constant(unop(_, Exprn), ExprnOpts) :-
     rval_is_constant(Exprn, ExprnOpts).
 rval_is_constant(binop(_, Exprn0, Exprn1), ExprnOpts) :-
@@ -283,7 +283,7 @@ generate_lookup_switch(Var, OutVars, CaseValues, StartVal, EndVal,
         Code, !CI) :-
 
     % Evaluate the variable which we are going to be switching on.
-    code_info__produce_variable(Var, VarCode, Rval, !CI),
+    code_info.produce_variable(Var, VarCode, Rval, !CI),
 
     % If the case values start at some number other than 0,
     % then subtract that number to give us a zero-based index.
@@ -298,7 +298,7 @@ generate_lookup_switch(Var, OutVars, CaseValues, StartVal, EndVal,
     (
         NeedRangeCheck = can_fail,
         Difference = EndVal - StartVal,
-        code_info__fail_if_rval_is_false(
+        code_info.fail_if_rval_is_false(
             binop(unsigned_le, Index,
                 const(int_const(Difference))), RangeCheck, !CI)
     ;
@@ -322,12 +322,12 @@ generate_lookup_switch(Var, OutVars, CaseValues, StartVal, EndVal,
     % last would yield the wrong liveness.
     (
         MLiveness = yes(Liveness),
-        code_info__set_forward_live_vars(Liveness, !CI)
+        code_info.set_forward_live_vars(Liveness, !CI)
     ;
         MLiveness = no,
         unexpected(this_file, "generate_lookup_switch: no liveness!")
     ),
-    code_info__generate_branch_end(StoreMap, MaybeEnd0, _MaybeEnd, LookupCode,
+    code_info.generate_branch_end(StoreMap, MaybeEnd0, _MaybeEnd, LookupCode,
         !CI),
     Comment = node([comment("lookup switch") - ""]),
     Code = tree_list([Comment, VarCode, RangeCheck, CheckBitVec, LookupCode]).
@@ -369,7 +369,7 @@ generate_bitvec_test(Index, CaseVals, Start, _End, CheckCode, !CI) :-
     ),
     HasBit = binop(bitwise_and,
         binop(unchecked_left_shift, const(int_const(1)), BitNum), Word),
-    code_info__fail_if_rval_is_false(HasBit, CheckCode, !CI).
+    code_info.fail_if_rval_is_false(HasBit, CheckCode, !CI).
 
     % Prevent cross-compilation errors by making sure that the bitvector
     % uses a number of bits that will fit both on this machine (so that
@@ -381,18 +381,18 @@ generate_bitvec_test(Index, CaseVals, Start, _End, CheckCode, !CI) :-
 :- pred get_word_bits(code_info::in, int::out, int::out) is det.
 
 get_word_bits(CI, WordBits, Log2WordBits) :-
-    int__bits_per_int(HostWordBits),
-    code_info__get_globals(CI, Globals),
-    globals__lookup_int_option(Globals, bits_per_word, TargetWordBits),
-    int__min(HostWordBits, TargetWordBits, WordBits0),
+    int.bits_per_int(HostWordBits),
+    code_info.get_globals(CI, Globals),
+    globals.lookup_int_option(Globals, bits_per_word, TargetWordBits),
+    int.min(HostWordBits, TargetWordBits, WordBits0),
     % round down to the nearest power of 2
     Log2WordBits = log2_rounded_down(WordBits0),
-    int__pow(2, Log2WordBits, WordBits).
+    int.pow(2, Log2WordBits, WordBits).
 
 :- func log2_rounded_down(int) = int.
 
 log2_rounded_down(X) = Log :-
-    int__log2(X + 1, Log + 1).  % int__log2 rounds up
+    int.log2(X + 1, Log + 1).  % int.log2 rounds up
 
     % We generate the bitvector by iterating through the cases marking the bit
     % for each case. (We represent the bitvector here as a map from the word
@@ -402,9 +402,9 @@ log2_rounded_down(X) = Log :-
     list(rval)::out, rval::out, code_info::in, code_info::out) is det.
 
 generate_bit_vec(CaseVals, Start, WordBits, Args, BitVec, !CI) :-
-    map__init(Empty),
+    map.init(Empty),
     generate_bit_vec_2(CaseVals, Start, WordBits, Empty, BitMap),
-    map__to_assoc_list(BitMap, WordVals),
+    map.to_assoc_list(BitMap, WordVals),
     generate_bit_vec_args(WordVals, 0, Args),
     add_static_cell_natural_types(Args, DataAddr, !CI),
     BitVec = const(data_addr_const(DataAddr, no)).
@@ -417,12 +417,12 @@ generate_bit_vec_2([Tag - _ | Rest], Start, WordBits, Bits0, Bits) :-
     Val = Tag - Start,
     Word = Val // WordBits,
     Offset = Val mod WordBits,
-    ( map__search(Bits0, Word, X0) ->
+    ( map.search(Bits0, Word, X0) ->
         X1 = X0 \/ (1 << Offset)
     ;
         X1 = (1 << Offset)
     ),
-    map__set(Bits0, Word, X1, Bits1),
+    map.set(Bits0, Word, X1, Bits1),
     generate_bit_vec_2(Rest, Start, WordBits, Bits1, Bits).
 
 :- pred generate_bit_vec_args(list(pair(int))::in, int::in,
@@ -452,7 +452,7 @@ generate_bit_vec_args([Word - Bits | Rest], Count, [Rval | Rvals]) :-
     code_info::in, code_info::out) is det.
 
 generate_terms(Index, OutVars, CaseVals, Start, !CI) :-
-    map__init(Empty),
+    map.init(Empty),
     rearrange_vals(OutVars, CaseVals, Start, Empty, ValMap),
     generate_terms_2(Index, OutVars, ValMap, !CI).
 
@@ -461,14 +461,14 @@ generate_terms(Index, OutVars, CaseVals, Start, !CI) :-
 
 generate_terms_2(_Index, [], _Map, !CI).
 generate_terms_2(Index, [Var | Vars], Map, !CI) :-
-    map__lookup(Map, Var, Vals0),
-    list__sort(Vals0, Vals),
+    map.lookup(Map, Var, Vals0),
+    list.sort(Vals0, Vals),
     construct_args(Vals, 0, Args),
-    code_info__add_static_cell_natural_types(Args, DataAddr, !CI),
+    code_info.add_static_cell_natural_types(Args, DataAddr, !CI),
     ArrayTerm = const(data_addr_const(DataAddr, no)),
     LookupLval = field(yes(0), ArrayTerm, Index),
-    code_info__assign_lval_to_var(Var, LookupLval, Code, !CI),
-    expect(tree__is_empty(Code), this_file, "generate_terms_2: nonempty code"),
+    code_info.assign_lval_to_var(Var, LookupLval, Code, !CI),
+    expect(tree.is_empty(Code), this_file, "generate_terms_2: nonempty code"),
     generate_terms_2(Index, Vars, Map, !CI).
 
 :- pred construct_args(list(pair(int, rval))::in, int::in, list(rval)::out)
@@ -499,7 +499,7 @@ construct_args([Index - Rval | Rest], Count0, [Arg | Args]) :-
 
 rearrange_vals(_Vars, [], _Start, Map, Map).
 rearrange_vals(Vars, [Tag - Rvals | Rest], Start, Map0, Map) :-
-    assoc_list__from_corresponding_lists(Vars, Rvals, Pairs),
+    assoc_list.from_corresponding_lists(Vars, Rvals, Pairs),
     Index = Tag - Start,
     rearrange_vals_2(Pairs, Index, Map0, Map1),
     rearrange_vals(Vars, Rest, Start, Map1, Map).
@@ -509,12 +509,12 @@ rearrange_vals(Vars, [Tag - Rvals | Rest], Start, Map0, Map) :-
 
 rearrange_vals_2([], _, Map, Map).
 rearrange_vals_2([Var - Rval | Rest], Tag, Map0, Map) :-
-    ( map__search(Map0, Var, Vals0) ->
+    ( map.search(Map0, Var, Vals0) ->
         Vals = [Tag - Rval | Vals0]
     ;
         Vals = [Tag - Rval]
     ),
-    map__set(Map0, Var, Vals, Map1),
+    map.set(Map0, Var, Vals, Map1),
     rearrange_vals_2(Rest, Tag, Map1, Map).
 
 %-----------------------------------------------------------------------------%

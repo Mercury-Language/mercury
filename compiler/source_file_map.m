@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -11,7 +11,7 @@
 % Maintain a mapping from module name to source file name.
 %-----------------------------------------------------------------------------%
 
-:- module parse_tree__source_file_map.
+:- module parse_tree.source_file_map.
 
 :- interface.
 
@@ -57,20 +57,23 @@
 
 lookup_module_source_file(ModuleName, FileName, !IO) :-
     get_source_file_map(SourceFileMap, !IO),
-    ( map__search(SourceFileMap, ModuleName, FileName0) ->
+    ( map.search(SourceFileMap, ModuleName, FileName0) ->
         FileName = FileName0
     ;
         FileName = default_source_file(ModuleName)
     ).
 
 default_source_file(ModuleName) = BaseFileName ++ ".m" :-
-    mdbcomp__prim_data__sym_name_to_string(ModuleName, ".", BaseFileName).
+    sym_name_to_string(ModuleName, ".", BaseFileName).
 
 have_source_file_map(HaveMap, !IO) :-
     get_source_file_map(_, !IO),
-    globals__io_get_globals(Globals, !IO),
-    globals__get_source_file_map(Globals, MaybeSourceFileMap),
-    ( MaybeSourceFileMap = yes(Map), \+ map__is_empty(Map) ->
+    globals.io_get_globals(Globals, !IO),
+    globals.get_source_file_map(Globals, MaybeSourceFileMap),
+    (
+        MaybeSourceFileMap = yes(Map),
+        \+ map.is_empty(Map)
+    ->
         HaveMap = yes
     ;
         HaveMap = no
@@ -82,29 +85,29 @@ have_source_file_map(HaveMap, !IO) :-
 :- pred get_source_file_map(source_file_map::out, io::di, io::uo) is det.
 
 get_source_file_map(SourceFileMap, !IO) :-
-    globals__io_get_globals(Globals0, !IO),
-    globals__get_source_file_map(Globals0, MaybeSourceFileMap0),
+    globals.io_get_globals(Globals0, !IO),
+    globals.get_source_file_map(Globals0, MaybeSourceFileMap0),
     (
         MaybeSourceFileMap0 = yes(SourceFileMap0),
         SourceFileMap = SourceFileMap0
     ;
         MaybeSourceFileMap0 = no,
-        io__open_input(modules_file_name, OpenRes, !IO),
+        io.open_input(modules_file_name, OpenRes, !IO),
         (
             OpenRes = ok(Stream),
-            io__set_input_stream(Stream, OldStream, !IO),
-            read_source_file_map([], map__init, SourceFileMap, !IO),
-            io__set_input_stream(OldStream, _, !IO),
-            io__close_input(Stream, !IO)
+            io.set_input_stream(Stream, OldStream, !IO),
+            read_source_file_map([], map.init, SourceFileMap, !IO),
+            io.set_input_stream(OldStream, _, !IO),
+            io.close_input(Stream, !IO)
         ;
             OpenRes = error(_),
             % If the file doesn't exist, then the mapping is empty.
-            SourceFileMap = map__init
+            SourceFileMap = map.init
         ),
-        globals__io_get_globals(Globals1, !IO),
-        globals__set_source_file_map(yes(SourceFileMap), Globals1, Globals2),
+        globals.io_get_globals(Globals1, !IO),
+        globals.set_source_file_map(yes(SourceFileMap), Globals1, Globals2),
         unsafe_promise_unique(Globals2, Globals),
-        globals__io_set_globals(Globals, !IO)
+        globals.io_set_globals(Globals, !IO)
     ).
 
 :- pred read_source_file_map(list(char)::in,
@@ -114,43 +117,43 @@ read_source_file_map(ModuleChars, !Map, !IO) :-
     read_until_char('\t', [], ModuleCharsResult, !IO),
     (
         ModuleCharsResult = ok(RevModuleChars),
-        string__from_rev_char_list(RevModuleChars, ModuleStr),
+        string.from_rev_char_list(RevModuleChars, ModuleStr),
         string_to_sym_name(ModuleStr, ".", ModuleName),
         read_until_char('\n', [], FileNameCharsResult, !IO),
         (
             FileNameCharsResult = ok(FileNameChars),
-            string__from_rev_char_list(FileNameChars, FileName),
-            map__set(!.Map, ModuleName, FileName, !:Map),
+            string.from_rev_char_list(FileNameChars, FileName),
+            map.set(!.Map, ModuleName, FileName, !:Map),
             read_source_file_map(ModuleChars, !Map, !IO)
         ;
             FileNameCharsResult = eof,
-            io__set_exit_status(1, !IO),
-            io__write_string("mercury_compile: unexpected end " ++
+            io.set_exit_status(1, !IO),
+            io.write_string("mercury_compile: unexpected end " ++
                 "of file in Mercury.modules file.\n", !IO)
         ;
             FileNameCharsResult = error(Error),
-            io__set_exit_status(1, !IO),
-            io__write_string("mercury_compile: error in " ++
+            io.set_exit_status(1, !IO),
+            io.write_string("mercury_compile: error in " ++
                 "Mercury.modules file: ", !IO),
-            io__write_string(io__error_message(Error), !IO),
-            io__nl(!IO)
+            io.write_string(io.error_message(Error), !IO),
+            io.nl(!IO)
         )
     ;
         ModuleCharsResult = eof
     ;
         ModuleCharsResult = error(Error),
-        io__set_exit_status(1, !IO),
-        io__write_string("mercury_compile: error in " ++
+        io.set_exit_status(1, !IO),
+        io.write_string("mercury_compile: error in " ++
             "Mercury.modules file: ", !IO),
-        io__write_string(io__error_message(Error), !IO),
-        io__nl(!IO)
+        io.write_string(io.error_message(Error), !IO),
+        io.nl(!IO)
     ).
 
-:- pred read_until_char(char::in, list(char)::in, io__result(list(char))::out,
+:- pred read_until_char(char::in, list(char)::in, io.result(list(char))::out,
     io::di, io::uo) is det.
 
 read_until_char(EndChar, Chars0, Result, !IO) :-
-    io__read_char(CharRes, !IO),
+    io.read_char(CharRes, !IO),
     (
         CharRes = ok(Char),
         ( Char = EndChar ->
@@ -168,48 +171,48 @@ read_until_char(EndChar, Chars0, Result, !IO) :-
 
 write_source_file_map(FileNames, !IO) :-
     ModulesFileName = modules_file_name,
-    io__open_output(ModulesFileName, OpenRes, !IO),
+    io.open_output(ModulesFileName, OpenRes, !IO),
     (
         OpenRes = ok(Stream),
-        list__foldl(write_source_file_map_2(Stream), FileNames, !IO),
-        io__close_output(Stream, !IO)
+        list.foldl(write_source_file_map_2(Stream), FileNames, !IO),
+        io.close_output(Stream, !IO)
     ;
         OpenRes = error(Error),
-        io__set_exit_status(1, !IO),
-        io__write_string("mercury_compile: error opening `", !IO),
-        io__write_string(ModulesFileName, !IO),
-        io__write_string("' for output: ", !IO),
-        io__write_string(io__error_message(Error), !IO)
+        io.set_exit_status(1, !IO),
+        io.write_string("mercury_compile: error opening `", !IO),
+        io.write_string(ModulesFileName, !IO),
+        io.write_string("' for output: ", !IO),
+        io.write_string(io.error_message(Error), !IO)
     ).
 
-:- pred write_source_file_map_2(io__output_stream::in, file_name::in,
+:- pred write_source_file_map_2(io.output_stream::in, file_name::in,
     io::di, io::uo) is det.
 
 write_source_file_map_2(MapStream, FileName, !IO) :-
     find_module_name(FileName, MaybeModuleName, !IO),
     (
         MaybeModuleName = yes(ModuleName),
-        ( string__remove_suffix(FileName, ".m", PartialFileName0) ->
+        ( string.remove_suffix(FileName, ".m", PartialFileName0) ->
             PartialFileName = PartialFileName0
         ;
             PartialFileName = FileName
         ),
-        file_name_to_module_name(dir__basename_det(PartialFileName),
+        file_name_to_module_name(dir.basename_det(PartialFileName),
             DefaultModuleName),
         (
             % Only include a module in the mapping if the name doesn't match
             % the default.
-            dir__dirname(PartialFileName) = dir__this_directory : string,
+            dir.dirname(PartialFileName) = dir.this_directory : string,
             ModuleName = DefaultModuleName
         ->
             true
         ;
-            io__set_output_stream(MapStream, OldStream, !IO),
-            prog_out__write_sym_name(ModuleName, !IO),
-            io__write_string("\t", !IO),
-            io__write_string(FileName, !IO),
-            io__nl(!IO),
-            io__set_output_stream(OldStream, _, !IO)
+            io.set_output_stream(MapStream, OldStream, !IO),
+            prog_out.write_sym_name(ModuleName, !IO),
+            io.write_string("\t", !IO),
+            io.write_string(FileName, !IO),
+            io.nl(!IO),
+            io.set_output_stream(OldStream, _, !IO)
         )
     ;
         MaybeModuleName = no

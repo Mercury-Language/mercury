@@ -117,14 +117,14 @@
 :- implementation.
 
 :- import_module transform_hlds.
-:- import_module transform_hlds__mmc_analysis.
+:- import_module transform_hlds.mmc_analysis.
 
 %-----------------------------------------------------------------------------%
 
 :- type deps_result(T) == pair(bool, set(T)).
 :- type module_deps_result == deps_result(module_name).
 
-union_deps(FindDeps, ModuleName, Success, Deps0, set__union(Deps0, Deps),
+union_deps(FindDeps, ModuleName, Success, Deps0, set.union(Deps0, Deps),
         !Info, !IO) :-
     FindDeps(ModuleName, Success, Deps, !Info, !IO).
 
@@ -158,7 +158,7 @@ combine_deps_2(FindDeps1, FindDeps2, ModuleName, Success, Deps, !Info, !IO) :-
     ;
         FindDeps2(ModuleName, Success2, Deps2, !Info, !IO),
         Success = Success1 `and` Success2,
-        Deps = set__union(Deps1, Deps2)
+        Deps = set.union(Deps1, Deps2)
     ).
 
 :- func combine_deps_list(list(
@@ -191,9 +191,9 @@ target_dependencies(Globals, java_code) = compiled_code_dependencies(Globals).
 target_dependencies(Globals, asm_code(_)) =
         compiled_code_dependencies(Globals).
 target_dependencies(Globals, object_code(PIC)) = Deps :-
-    globals__get_target(Globals, CompilationTarget),
+    globals.get_target(Globals, CompilationTarget),
     TargetCode = ( CompilationTarget = asm -> asm_code(PIC) ; c_code ),
-    globals__lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
 
     %
     % For --highlevel-code, the `.c' file will #include the header
@@ -252,7 +252,7 @@ target_dependencies(Globals, fact_table_object(PIC, _)) =
     (find_module_deps(dependency_file)::out(find_module_deps)) is det.
 
 get_foreign_deps(Globals, PIC) = Deps :-
-    globals__get_target(Globals, CompilationTarget),
+    globals.get_target(Globals, CompilationTarget),
     TargetCode = ( CompilationTarget = asm -> asm_code(PIC) ; c_code ),
     Deps = combine_deps_list([
         TargetCode `of` self
@@ -273,8 +273,8 @@ interface_file_dependencies =
     (find_module_deps(dependency_file)::out(find_module_deps)) is det.
 
 compiled_code_dependencies(Globals) = Deps :-
-    globals__lookup_bool_option(Globals, intermodule_optimization, Intermod),
-    globals__lookup_bool_option(Globals, intermodule_analysis,
+    globals.lookup_bool_option(Globals, intermodule_optimization, Intermod),
+    globals.lookup_bool_option(Globals, intermodule_analysis,
         IntermodAnalysis),
     (
         Intermod = yes,
@@ -334,8 +334,8 @@ FileType `of` FindDeps =
 
 of_2(FileType, FindDeps, ModuleName, Success, TargetFiles, !Info, !IO) :-
     FindDeps(ModuleName, Success, ModuleNames, !Info, !IO),
-    TargetFiles = set__sorted_list_to_set(
-        make_dependency_list(set__to_sorted_list(ModuleNames), FileType)).
+    TargetFiles = set.sorted_list_to_set(
+        make_dependency_list(set.to_sorted_list(ModuleNames), FileType)).
 
 :- func find_module_deps(pair(file_name, maybe(option))) `files_of`
     find_module_deps(module_name) = find_module_deps(dependency_file).
@@ -359,16 +359,16 @@ files_of_2(FindFiles, FindDeps, ModuleName, Success, DepFiles, !Info, !IO) :-
         KeepGoing = no
     ->
         Success = no,
-        DepFiles = set__init
+        DepFiles = set.init
     ;
         foldl3_maybe_stop_at_error(KeepGoing, union_deps(FindFiles),
-            set__to_sorted_list(ModuleNames), Success1, set__init, FileNames,
+            set.to_sorted_list(ModuleNames), Success1, set.init, FileNames,
             !Info, !IO),
         Success = Success0 `and` Success1,
-        DepFiles = set__sorted_list_to_set(
-            list__map(
+        DepFiles = set.sorted_list_to_set(
+            list.map(
                 (func(FileName - Option) = file(FileName, Option)),
-                set__to_sorted_list(FileNames)))
+                set.to_sorted_list(FileNames)))
     ).
 
 :- pred map_find_module_deps(find_module_deps(T)::in(find_module_deps),
@@ -385,10 +385,10 @@ map_find_module_deps(FindDeps2, FindDeps1, ModuleName,
         KeepGoing = no
     ->
         Success = no,
-        Result = set__init
+        Result = set.init
     ;
         foldl3_maybe_stop_at_error(KeepGoing, union_deps(FindDeps2),
-            set__to_sorted_list(Modules0), Success1, set__init, Result,
+            set.to_sorted_list(Modules0), Success1, set.init, Result,
             !Info, !IO),
         Success = Success0 `and` Success1
     ).
@@ -398,7 +398,7 @@ map_find_module_deps(FindDeps2, FindDeps1, ModuleName,
 :- pred no_deps(module_name::in, bool::out, set(T)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-no_deps(_, yes, set__init, !Info, !IO).
+no_deps(_, yes, set.init, !Info, !IO).
 
 :- pred self(module_name::in, bool::out, set(module_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
@@ -414,7 +414,7 @@ parents(ModuleName, yes, list_to_set(get_ancestors(ModuleName)), !Info, !IO).
 
 :- type cached_direct_imports == map(module_name, module_deps_result).
 
-init_cached_direct_imports = map__init.
+init_cached_direct_imports = map.init.
 
 :- pred direct_imports(module_name::in, bool::out, set(module_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
@@ -432,7 +432,7 @@ direct_imports(ModuleName, Success, Modules, !Info, !IO) :-
             KeepGoing = no
         ->
             Success = no,
-            Modules = set__init
+            Modules = set.init
         ;
             %
             % We also read `.int' files for the modules for
@@ -446,15 +446,15 @@ direct_imports(ModuleName, Success, Modules, !Info, !IO) :-
                 KeepGoing = no
             ->
                 Success = no,
-                Modules = set__init
+                Modules = set.init
             ;
                 foldl3_maybe_stop_at_error(!.Info ^ keep_going,
                     union_deps(non_intermod_direct_imports),
-                    set__to_sorted_list(IntermodModules), Success2,
-                    set__union(Modules0, IntermodModules), Modules1,
+                    set.to_sorted_list(IntermodModules), Success2,
+                    set.union(Modules0, IntermodModules), Modules1,
                     !Info, !IO),
                 Success = Success0 `and` Success1 `and` Success2,
-                Modules = set__delete(Modules1, ModuleName)
+                Modules = set.delete(Modules1, ModuleName)
             )
         ),
         !:Info = !.Info ^ cached_direct_imports ^ elem(ModuleName)
@@ -493,13 +493,13 @@ non_intermod_direct_imports(ModuleName, Success, Modules, !Info, !IO) :-
         % However, that should not be a major problem.
         % (This duplicates how this is handled by modules.m).
         %
-        Modules0 = set__union(set__list_to_set(Imports ^ impl_deps),
-            set__list_to_set(Imports ^ int_deps)),
+        Modules0 = set.union(set.list_to_set(Imports ^ impl_deps),
+            set.list_to_set(Imports ^ int_deps)),
         (
             ModuleName = qualified(ParentModule, _),
             non_intermod_direct_imports(ParentModule, Success,
                 ParentImports, !Info, !IO),
-            Modules = set__union(ParentImports, Modules0)
+            Modules = set.union(ParentImports, Modules0)
         ;
             ModuleName = unqualified(_),
             Success = yes,
@@ -508,7 +508,7 @@ non_intermod_direct_imports(ModuleName, Success, Modules, !Info, !IO) :-
     ;
         MaybeImports = no,
         Success = no,
-        Modules = set__init
+        Modules = set.init
     ).
 
 %-----------------------------------------------------------------------------%
@@ -550,14 +550,14 @@ indirect_imports_2(FindDirectImports, ModuleName, Success, IndirectImports,
         KeepGoing = no
     ->
         Success = no,
-        IndirectImports = set__init
+        IndirectImports = set.init
     ;
         foldl3_maybe_stop_at_error(!.Info ^ keep_going,
             union_deps(find_transitive_implementation_imports),
-            set__to_sorted_list(DirectImports), IndirectSuccess,
-            set__init, IndirectImports0, !Info, !IO),
-        IndirectImports = set__difference(
-            set__delete(IndirectImports0, ModuleName),
+            set.to_sorted_list(DirectImports), IndirectSuccess,
+            set.init, IndirectImports0, !Info, !IO),
+        IndirectImports = set.difference(
+            set.delete(IndirectImports0, ModuleName),
             DirectImports),
         Success = DirectSuccess `and` IndirectSuccess
     ).
@@ -570,10 +570,10 @@ indirect_imports_2(FindDirectImports, ModuleName, Success, IndirectImports,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 intermod_imports(ModuleName, Success, Modules, !Info, !IO) :-
-    globals__io_lookup_bool_option(intermodule_optimization, Intermod, !IO),
+    globals.io_lookup_bool_option(intermodule_optimization, Intermod, !IO),
     (
         Intermod = yes,
-        globals__io_lookup_bool_option(read_opt_files_transitively,
+        globals.io_lookup_bool_option(read_opt_files_transitively,
             Transitive, !IO),
         (
             Transitive = yes,
@@ -587,7 +587,7 @@ intermod_imports(ModuleName, Success, Modules, !Info, !IO) :-
     ;
         Intermod = no,
         Success = yes,
-        Modules = set__init
+        Modules = set.init
     ).
 
 %-----------------------------------------------------------------------------%
@@ -601,13 +601,13 @@ foreign_imports(ModuleName, Success, Modules, !Info, !IO) :-
     % mentioned in `:- pragma foreign_import_module' declarations
     % in the current module and the `.opt' files it imports.
     %
-    globals__io_get_globals(Globals, !IO),
-    globals__get_backend_foreign_languages(Globals, Languages),
+    globals.io_get_globals(Globals, !IO),
+    globals.get_backend_foreign_languages(Globals, Languages),
     intermod_imports(ModuleName, IntermodSuccess, IntermodModules, !Info, !IO),
     foldl3_maybe_stop_at_error(!.Info ^ keep_going,
-        union_deps(find_module_foreign_imports(set__list_to_set(Languages))),
-        [ModuleName | set__to_sorted_list(IntermodModules)],
-        ForeignSuccess, set__init, Modules, !Info, !IO),
+        union_deps(find_module_foreign_imports(set.list_to_set(Languages))),
+        [ModuleName | set.to_sorted_list(IntermodModules)],
+        ForeignSuccess, set.init, Modules, !Info, !IO),
     Success = IntermodSuccess `and` ForeignSuccess.
 
 :- pred find_module_foreign_imports(set(foreign_language)::in, module_name::in,
@@ -623,11 +623,11 @@ find_module_foreign_imports(Languages, ModuleName, Success, ForeignModules,
         foldl3_maybe_stop_at_error(!.Info ^ keep_going,
             union_deps(find_module_foreign_imports_2(Languages)),
             [ModuleName | to_sorted_list(ImportedModules)],
-            Success, set__init, ForeignModules, !Info, !IO)
+            Success, set.init, ForeignModules, !Info, !IO)
     ;
         Success0 = no,
         Success = no,
-        ForeignModules = set__init
+        ForeignModules = set.init
     ).
 
 :- pred find_module_foreign_imports_2(set(foreign_language)::in,
@@ -639,13 +639,13 @@ find_module_foreign_imports_2(Languages, ModuleName,
     get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
     (
         MaybeImports = yes(Imports),
-        ForeignModules = set__list_to_set(
+        ForeignModules = set.list_to_set(
             get_foreign_imported_modules(Languages,
             Imports ^ foreign_import_module_info)),
         Success = yes
     ;
         MaybeImports = no,
-        ForeignModules = set__init,
+        ForeignModules = set.init,
         Success = no
     ).
 
@@ -665,7 +665,7 @@ get_foreign_imported_modules(Languages, ForeignImportModules) =
     foreign_import_module_info) = list(module_name).
 
 get_foreign_imported_modules_2(MaybeLanguages, ForeignImportModules) =
-    list__filter_map(get_foreign_imported_modules_3(MaybeLanguages),
+    list.filter_map(get_foreign_imported_modules_3(MaybeLanguages),
         ForeignImportModules).
 
 :- func get_foreign_imported_modules_3(maybe(set(foreign_language)),
@@ -676,7 +676,7 @@ get_foreign_imported_modules_3(MaybeLanguages, ForeignImportModule)
     ForeignImportModule = foreign_import_module(Language, ForeignModule, _),
     (
         MaybeLanguages = yes(Languages),
-        set__member(Language, Languages)
+        set.member(Language, Languages)
     ;
         MaybeLanguages = no
     ).
@@ -698,15 +698,15 @@ foreign_imports(Lang, ModuleName, Success, Modules, !Info, !IO) :-
     get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
     (
         MaybeImports = yes(Imports),
-        list__filter_map(
+        list.filter_map(
             (pred(FI::in, M::out) is semidet :-
                 FI = foreign_import_module(Lang, M, _)
             ), Imports ^ foreign_import_module_info, ModulesList),
-        set__list_to_set(ModulesList, Modules),
+        set.list_to_set(ModulesList, Modules),
         Success = yes
     ;
         MaybeImports = no,
-        Modules = set__init,
+        Modules = set.init,
         Success = no
     ).
 
@@ -726,7 +726,7 @@ foreign_imports(Lang, ModuleName, Success, Modules, !Info, !IO) :-
 
 filter(Filter, F, ModuleName, Success, Modules, !Info, !IO) :-
     F(ModuleName, Success, Modules0, !Info, !IO),
-    Modules = set__filter((pred(M::in) is semidet :- Filter(ModuleName, M)),
+    Modules = set.filter((pred(M::in) is semidet :- Filter(ModuleName, M)),
         Modules0).
 
 
@@ -755,12 +755,12 @@ fact_table(ModuleName, Success, Files, !Info, !IO) :-
     (
         MaybeImports = yes(Imports),
         Success = yes,
-        Files = set__list_to_set(
+        Files = set.list_to_set(
             make_target_list(Imports ^ fact_table_deps, no))
     ;
         MaybeImports = no,
         Success = no,
-        Files = set__init
+        Files = set.init
     ).
 
 %-----------------------------------------------------------------------------%
@@ -786,7 +786,7 @@ fact_table(ModuleName, Success, Files, !Info, !IO) :-
 :- type cached_transitive_dependencies ==
     map(transitive_dependencies_root, transitive_deps_result).
 
-init_cached_transitive_dependencies = map__init.
+init_cached_transitive_dependencies = map.init.
 
 find_reachable_local_modules(ModuleName, Success, Modules, !Info, !IO) :-
     find_transitive_module_dependencies(all_dependencies, local_module,
@@ -800,7 +800,7 @@ find_transitive_implementation_imports(ModuleName, Success, Modules,
         !Info, !IO) :-
     find_transitive_module_dependencies(all_dependencies, any_module,
         ModuleName, Success, Modules0, !Info, !IO),
-    Modules = set__insert(Modules0, ModuleName).
+    Modules = set.insert(Modules0, ModuleName).
 
 :- pred find_transitive_interface_imports(module_name::in, bool::out,
     set(module_name)::out, make_info::in, make_info::out,
@@ -809,7 +809,7 @@ find_transitive_implementation_imports(ModuleName, Success, Modules,
 find_transitive_interface_imports(ModuleName, Success, Modules, !Info, !IO) :-
     find_transitive_module_dependencies(interface_imports, any_module,
         ModuleName, Success, Modules0, !Info, !IO),
-    set__delete(Modules0, ModuleName, Modules).
+    set.delete(Modules0, ModuleName, Modules).
 
 :- pred find_transitive_module_dependencies(transitive_dependencies_type::in,
     module_locn::in, module_name::in, bool::out, set(module_name)::out,
@@ -817,10 +817,10 @@ find_transitive_interface_imports(ModuleName, Success, Modules, !Info, !IO) :-
 
 find_transitive_module_dependencies(DependenciesType, ModuleLocn,
         ModuleName, Success, Modules, !Info, !IO) :-
-    globals__io_lookup_bool_option(keep_going, KeepGoing, !IO),
+    globals.io_lookup_bool_option(keep_going, KeepGoing, !IO),
     find_transitive_module_dependencies_2(KeepGoing,
         DependenciesType, ModuleLocn, ModuleName,
-        Success, set__init, Modules, !Info, !IO),
+        Success, set.init, Modules, !Info, !IO),
     DepsRoot = transitive_dependencies_root(ModuleName, DependenciesType,
         ModuleLocn),
     !:Info = !.Info ^ cached_transitive_dependencies ^ elem(DepsRoot)
@@ -835,7 +835,7 @@ find_transitive_module_dependencies(DependenciesType, ModuleLocn,
 find_transitive_module_dependencies_2(KeepGoing, DependenciesType,
         ModuleLocn, ModuleName, Success, Modules0, Modules, !Info, !IO) :-
     (
-        set__member(ModuleName, Modules0)
+        set.member(ModuleName, Modules0)
     ->
         Success = yes,
         Modules = Modules0
@@ -845,7 +845,7 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType,
         Result0 = !.Info ^ cached_transitive_dependencies ^ elem(DepsRoot)
     ->
         Result0 = Success - Modules1,
-        Modules = set__union(Modules0, Modules1)
+        Modules = set.union(Modules0, Modules1)
     ;
         get_module_dependencies(ModuleName, MaybeImports, !Info, !IO),
         (
@@ -855,7 +855,7 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType,
                     ModuleLocn = any_module
                 ;
                     ModuleLocn = local_module,
-                    Imports ^ module_dir = dir__this_directory
+                    Imports ^ module_dir = dir.this_directory
                 )
             ->
                 (
@@ -868,7 +868,7 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType,
                 ;
                     DependenciesType = all_dependencies,
                     ImportsToCheck =
-                        list__condense([
+                        list.condense([
                         Imports ^ int_deps,
                         Imports ^ impl_deps,
                         Imports ^ parent_deps,
@@ -883,7 +883,7 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType,
                     find_transitive_module_dependencies_2(KeepGoing,
                         DependenciesType, ModuleLocn),
                         ImportsToCheck, Success,
-                        set__insert(Modules0, ModuleName), Modules,
+                        set.insert(Modules0, ModuleName), Modules,
                         !Info, !IO),
                 !:Info = !.Info ^ importing_module := ImportingModule
             ;
@@ -917,21 +917,21 @@ make_local_module_id_option(ModuleName, Opts,
     io::di, io::uo) is det.
 
 check_dependencies_debug_unbuilt(TargetFileName, UnbuiltDependencies, !IO) :-
-    io__write_string(TargetFileName, !IO),
-    io__write_string(": dependencies could not be built.\n\t", !IO),
-    io__write_list(UnbuiltDependencies, ",\n\t",
+    io.write_string(TargetFileName, !IO),
+    io.write_string(": dependencies could not be built.\n\t", !IO),
+    io.write_list(UnbuiltDependencies, ",\n\t",
         (pred((DepTarget - DepStatus)::in, !.IO::di, !:IO::uo) is det :-
             write_dependency_file(DepTarget, !IO),
-            io__write_string(" - ", !IO),
-            io__write(DepStatus, !IO)
+            io.write_string(" - ", !IO),
+            io.write(DepStatus, !IO)
         ), !IO),
-    io__nl(!IO).
+    io.nl(!IO).
 
 check_dependencies(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
         DepFiles, DepsResult, !Info, !IO) :-
-    list__map_foldl2(dependency_status, DepFiles, DepStatusList, !Info, !IO),
-    assoc_list__from_corresponding_lists(DepFiles, DepStatusList, DepStatusAL),
-    list__filter(
+    list.map_foldl2(dependency_status, DepFiles, DepStatusList, !Info, !IO),
+    assoc_list.from_corresponding_lists(DepFiles, DepStatusList, DepStatusAL),
+    list.filter(
         (pred((_ - DepStatus)::in) is semidet :-
             DepStatus \= up_to_date
         ), DepStatusAL, UnbuiltDependencies),
@@ -944,10 +944,10 @@ check_dependencies(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
         UnbuiltDependencies = [],
         debug_msg(
             (pred(!.IO::di, !:IO::uo) is det :-
-                io__write_string(TargetFileName, !IO),
-                io__write_string(": finished dependencies\n", !IO)
+                io.write_string(TargetFileName, !IO),
+                io.write_string(": finished dependencies\n", !IO)
             ), !IO),
-        list__map_foldl2(get_dependency_timestamp, DepFiles,
+        list.map_foldl2(get_dependency_timestamp, DepFiles,
             DepTimestamps, !Info, !IO),
 
         check_dependency_timestamps(TargetFileName, MaybeTimestamp,
@@ -961,20 +961,20 @@ check_dependencies(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
 
 check_dependencies_timestamps_write_missing_deps(TargetFileName,
         BuildDepsSucceeded, DepFiles, WriteDepFile, DepTimestamps, !IO) :-
-    assoc_list__from_corresponding_lists(DepFiles, DepTimestamps,
+    assoc_list.from_corresponding_lists(DepFiles, DepTimestamps,
         DepTimestampAL),
     solutions(
         (pred(DepFile::out) is nondet :-
-            list__member(DepFile - error(_), DepTimestampAL)
+            list.member(DepFile - error(_), DepTimestampAL)
         ), ErrorDeps),
-    io__write_string("** dependencies for `", !IO),
-    io__write_string(TargetFileName, !IO),
-    io__write_string("' do not exist: ", !IO),
-    io__write_list(ErrorDeps, ", ", WriteDepFile, !IO),
-    io__nl(!IO),
+    io.write_string("** dependencies for `", !IO),
+    io.write_string(TargetFileName, !IO),
+    io.write_string("' do not exist: ", !IO),
+    io.write_list(ErrorDeps, ", ", WriteDepFile, !IO),
+    io.nl(!IO),
     (
         BuildDepsSucceeded = yes,
-        io__write_string("** This indicates a bug in `mmc --make'.\n", !IO)
+        io.write_string("** This indicates a bug in `mmc --make'.\n", !IO)
     ;
         BuildDepsSucceeded = no
     ).
@@ -986,14 +986,14 @@ check_dependency_timestamps(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
         DepsResult = out_of_date,
         debug_msg(
             (pred(!.IO::di, !:IO::uo) is det :-
-                io__write_string(TargetFileName, !IO),
-                io__write_string(" does not exist.\n", !IO)
+                io.write_string(TargetFileName, !IO),
+                io.write_string(" does not exist.\n", !IO)
             ), !IO)
     ;
         MaybeTimestamp = ok(Timestamp),
-        globals__io_lookup_bool_option(rebuild, Rebuild, !IO),
+        globals.io_lookup_bool_option(rebuild, Rebuild, !IO),
         (
-            list__member(MaybeDepTimestamp1, DepTimestamps),
+            list.member(MaybeDepTimestamp1, DepTimestamps),
             MaybeDepTimestamp1 = error(_)
         ->
             DepsResult = error,
@@ -1023,7 +1023,7 @@ check_dependency_timestamps(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
             %
             DepsResult = out_of_date
         ;
-            list__member(MaybeDepTimestamp2, DepTimestamps),
+            list.member(MaybeDepTimestamp2, DepTimestamps),
             MaybeDepTimestamp2 = ok(DepTimestamp),
             compare((>), DepTimestamp, Timestamp)
         ->
@@ -1050,13 +1050,13 @@ debug_newer_dependencies(TargetFileName, MaybeTimestamp,
 
 debug_newer_dependencies_2(TargetFileName, MaybeTimestamp,
         DepFiles, WriteDepFile, DepTimestamps, !IO) :-
-    io__write_string(TargetFileName, !IO),
-    io__write_string(": newer dependencies: ", !IO),
-    assoc_list__from_corresponding_lists(DepFiles, DepTimestamps,
+    io.write_string(TargetFileName, !IO),
+    io.write_string(": newer dependencies: ", !IO),
+    assoc_list.from_corresponding_lists(DepFiles, DepTimestamps,
         DepTimestampAL),
     solutions(
         (pred(DepFile::out) is nondet :-
-            list__member(DepFile - MaybeDepTimestamp, DepTimestampAL),
+            list.member(DepFile - MaybeDepTimestamp, DepTimestampAL),
             (
                 MaybeDepTimestamp = error(_)
             ;
@@ -1065,8 +1065,8 @@ debug_newer_dependencies_2(TargetFileName, MaybeTimestamp,
                 compare((>), DepTimestamp, Timestamp)
             )
         ), NewerDeps),
-    io__write_list(NewerDeps, ",\n\t", WriteDepFile, !IO),
-    io__nl(!IO).
+    io.write_list(NewerDeps, ",\n\t", WriteDepFile, !IO),
+    io.nl(!IO).
 
 dependency_status(file(FileName, _) @ Dep, Status, !Info, !IO) :-
     (
@@ -1081,11 +1081,11 @@ dependency_status(file(FileName, _) @ Dep, Status, !Info, !IO) :-
         ;
             MaybeTimestamp = error(Error),
             Status = error,
-            io__write_string("** Error: file `", !IO),
-            io__write_string(FileName, !IO),
-            io__write_string("' not found: ", !IO),
-            io__write_string(Error, !IO),
-            io__nl(!IO)
+            io.write_string("** Error: file `", !IO),
+            io.write_string(FileName, !IO),
+            io.write_string("' not found: ", !IO),
+            io.write_string(Error, !IO),
+            io.nl(!IO)
         ),
         !:Info = !.Info ^ dependency_status ^ elem(Dep) := Status
     ).
@@ -1105,7 +1105,7 @@ dependency_status(target(Target) @ Dep, Status, !Info, !IO) :-
             Status = error
         ;
             MaybeImports = yes(Imports),
-            ( Imports ^ module_dir \= dir__this_directory ->
+            ( Imports ^ module_dir \= dir.this_directory ->
                 %
                 % Targets from libraries are always considered to be
                 % up-to-date if they exist.
@@ -1117,11 +1117,11 @@ dependency_status(target(Target) @ Dep, Status, !Info, !IO) :-
                 ;
                     MaybeTimestamp = error(Error),
                     Status = error,
-                    io__write_string("** Error: file `", !IO),
+                    io.write_string("** Error: file `", !IO),
                     write_target_file(Target, !IO),
-                    io__write_string("' not found: ", !IO),
-                    io__write_string(Error, !IO),
-                    io__nl(!IO)
+                    io.write_string("' not found: ", !IO),
+                    io.write_string(Error, !IO),
+                    io.nl(!IO)
                 )
             ;
                 Status = not_considered

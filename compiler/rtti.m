@@ -23,7 +23,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module backend_libs__rtti.
+:- module backend_libs.rtti.
 :- interface.
 
 :- import_module hlds.hlds_data.
@@ -852,8 +852,8 @@
 %----------------------------------------------------------------------------%
 
 encode_type_ctor_flags(FlagSet) = Encoding :-
-    set__to_sorted_list(FlagSet, FlagList),
-    Encoding = list__foldl(encode_type_ctor_flag, FlagList, 0).
+    set.to_sorted_list(FlagSet, FlagList),
+    Encoding = list.foldl(encode_type_ctor_flag, FlagList, 0).
 
 :- func encode_type_ctor_flag(type_ctor_flag, int) = int.
 
@@ -1023,15 +1023,15 @@ make_rtti_proc_label(ModuleInfo, PredId, ProcId) = ProcLabel :-
     ProcIsExported = (procedure_is_exported(ModuleInfo, PredInfo, ProcId)
         -> yes ; no),
     pred_info_get_origin(PredInfo, Origin),
-    ProcHeadVarsWithNames = list__map((func(Var) = Var - Name :-
-            Name = varset__lookup_name(ProcVarSet, Var)
+    ProcHeadVarsWithNames = list.map((func(Var) = Var - Name :-
+            Name = varset.lookup_name(ProcVarSet, Var)
         ), ProcHeadVars),
     (
         (
             PredIsImported = yes
         ;
             PredIsPseudoImp = yes,
-            hlds_pred__in_in_unification_proc_id(ProcId)
+            hlds_pred.in_in_unification_proc_id(ProcId)
         )
     ->
         ProcIsImported = yes
@@ -1059,115 +1059,115 @@ name_to_string(RttiTypeCtor, RttiName) = Str :-
     mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, A_str),
     (
         RttiName = exist_locns(Ordinal),
-        string__int_to_string(Ordinal, O_str),
-        string__append_list([ModuleName, "__exist_locns_",
+        string.int_to_string(Ordinal, O_str),
+        string.append_list([ModuleName, "__exist_locns_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
         RttiName = exist_locn,
-        string__append_list([ModuleName, "__exist_locn_",
+        string.append_list([ModuleName, "__exist_locn_",
             TypeName, "_", A_str], Str)
     ;
         RttiName = exist_tc_constr(Ordinal, TCCNum, _),
-        string__int_to_string(Ordinal, O_str),
-        string__int_to_string(TCCNum, N_str),
-        string__append_list([ModuleName, "__exist_tc_constr_",
+        string.int_to_string(Ordinal, O_str),
+        string.int_to_string(TCCNum, N_str),
+        string.append_list([ModuleName, "__exist_tc_constr_",
             TypeName, "_", A_str, "_", O_str, "_", N_str], Str)
     ;
         RttiName = exist_tc_constrs(Ordinal),
-        string__int_to_string(Ordinal, O_str),
-        string__append_list([ModuleName, "__exist_tc_constrs_",
+        string.int_to_string(Ordinal, O_str),
+        string.append_list([ModuleName, "__exist_tc_constrs_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
         RttiName = exist_info(Ordinal),
-        string__int_to_string(Ordinal, O_str),
-        string__append_list([ModuleName, "__exist_info_",
+        string.int_to_string(Ordinal, O_str),
+        string.append_list([ModuleName, "__exist_info_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
         RttiName = field_names(Ordinal),
-        string__int_to_string(Ordinal, O_str),
-        string__append_list([ModuleName, "__field_names_",
+        string.int_to_string(Ordinal, O_str),
+        string.append_list([ModuleName, "__field_names_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
         RttiName = field_types(Ordinal),
-        string__int_to_string(Ordinal, O_str),
-        string__append_list([ModuleName, "__field_types_",
+        string.int_to_string(Ordinal, O_str),
+        string.append_list([ModuleName, "__field_types_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
         RttiName = res_addrs,
-        string__append_list([ModuleName, "__reserved_addrs_",
+        string.append_list([ModuleName, "__reserved_addrs_",
             TypeName, "_", A_str], Str)
     ;
         RttiName = res_addr_functors,
-        string__append_list([ModuleName, "__reserved_addr_functors_",
+        string.append_list([ModuleName, "__reserved_addr_functors_",
             TypeName, "_", A_str], Str)
     ;
         RttiName = enum_functor_desc(Ordinal),
-        string__int_to_string(Ordinal, O_str),
-        string__append_list([ModuleName, "__enum_functor_desc_",
+        string.int_to_string(Ordinal, O_str),
+        string.append_list([ModuleName, "__enum_functor_desc_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
         RttiName = notag_functor_desc,
-        string__append_list([ModuleName, "__notag_functor_desc_",
+        string.append_list([ModuleName, "__notag_functor_desc_",
             TypeName, "_", A_str], Str)
     ;
         RttiName = du_functor_desc(Ordinal),
-        string__int_to_string(Ordinal, O_str),
-        string__append_list([ModuleName, "__du_functor_desc_",
+        string.int_to_string(Ordinal, O_str),
+        string.append_list([ModuleName, "__du_functor_desc_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
         RttiName = res_functor_desc(Ordinal),
-        string__int_to_string(Ordinal, O_str),
-        string__append_list([ModuleName, "__reserved_addr_functor_desc_",
+        string.int_to_string(Ordinal, O_str),
+        string.append_list([ModuleName, "__reserved_addr_functor_desc_",
             TypeName, "_", A_str, "_", O_str], Str)
     ;
         RttiName = enum_name_ordered_table,
-        string__append_list([ModuleName, "__enum_name_ordered_",
+        string.append_list([ModuleName, "__enum_name_ordered_",
             TypeName, "_", A_str], Str)
     ;
         RttiName = enum_value_ordered_table,
-        string__append_list([ModuleName, "__enum_value_ordered_",
+        string.append_list([ModuleName, "__enum_value_ordered_",
             TypeName, "_", A_str], Str)
     ;
         RttiName = du_name_ordered_table,
-        string__append_list([ModuleName, "__du_name_ordered_",
+        string.append_list([ModuleName, "__du_name_ordered_",
             TypeName, "_", A_str], Str)
     ;
         RttiName = du_stag_ordered_table(Ptag),
-        string__int_to_string(Ptag, P_str),
-        string__append_list([ModuleName, "__du_stag_ordered_",
+        string.int_to_string(Ptag, P_str),
+        string.append_list([ModuleName, "__du_stag_ordered_",
             TypeName, "_", A_str, "_", P_str], Str)
     ;
         RttiName = du_ptag_ordered_table,
-        string__append_list([ModuleName, "__du_ptag_ordered_",
+        string.append_list([ModuleName, "__du_ptag_ordered_",
             TypeName, "_", A_str], Str)
     ;
         RttiName = du_ptag_layout(Ptag),
-        string__int_to_string(Ptag, P_str),
-        string__append_list([ModuleName, "__du_ptag_layout_",
+        string.int_to_string(Ptag, P_str),
+        string.append_list([ModuleName, "__du_ptag_layout_",
             TypeName, "_", A_str, "_", P_str], Str)
     ;
         RttiName = res_value_ordered_table,
-        string__append_list([ModuleName, "__res_layout_ordered_table_",
+        string.append_list([ModuleName, "__res_layout_ordered_table_",
             TypeName, "_", A_str], Str)
     ;
         RttiName = res_name_ordered_table,
-        string__append_list([ModuleName, "__res_name_ordered_table_",
+        string.append_list([ModuleName, "__res_name_ordered_table_",
             TypeName, "_", A_str], Str)
     ;
         RttiName = maybe_res_addr_functor_desc,
-        string__append_list([ModuleName, "__maybe_res_addr_functor_desc_",
+        string.append_list([ModuleName, "__maybe_res_addr_functor_desc_",
             TypeName, "_", A_str], Str)
     ;
         RttiName = type_functors,
-        string__append_list([ModuleName, "__type_functors",
+        string.append_list([ModuleName, "__type_functors",
             TypeName, "_", A_str], Str)
     ;
         RttiName = type_layout,
-        string__append_list([ModuleName, "__type_layout",
+        string.append_list([ModuleName, "__type_layout",
             TypeName, "_", A_str], Str)
     ;
         RttiName = type_ctor_info,
-        string__append_list([ModuleName, "__type_ctor_info_",
+        string.append_list([ModuleName, "__type_ctor_info_",
             TypeName, "_", A_str], Str)
     ;
         RttiName = type_info(TypeInfo),
@@ -1177,7 +1177,7 @@ name_to_string(RttiTypeCtor, RttiName) = Str :-
         Str = pseudo_type_info_to_string(PseudoTypeInfo)
     ;
         RttiName = type_hashcons_pointer,
-        string__append_list([ModuleName, "__hashcons_ptr_",
+        string.append_list([ModuleName, "__hashcons_ptr_",
             TypeName, "_", A_str], Str)
     ).
 
@@ -1213,43 +1213,43 @@ tc_name_to_string(TCName, TCRttiName, Str) :-
 tc_name_to_string(TCName, TCRttiName, Str) :-
     TCRttiName = type_class_decl_super(Ordinal, _),
     mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
-    string__int_to_string(Ordinal, OrdinalStr),
+    string.int_to_string(Ordinal, OrdinalStr),
     Str = ModuleName ++ "__type_class_decl_super_" ++ ClassName ++
         "_" ++ ArityStr ++ "_" ++ OrdinalStr.
 tc_name_to_string(TCName, TCRttiName, Str) :-
     TCRttiName = type_class_instance(TCTypes),
     mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
-    TypeStrs = list__map(encode_tc_instance_type, TCTypes),
-    TypeVectorStr = string__append_list(TypeStrs),
+    TypeStrs = list.map(encode_tc_instance_type, TCTypes),
+    TypeVectorStr = string.append_list(TypeStrs),
     Str = ModuleName ++ "__type_class_instance_" ++ ClassName
         ++ "_" ++ ArityStr ++ "_" ++ TypeVectorStr.
 tc_name_to_string(TCName, TCRttiName, Str) :-
     TCRttiName = type_class_instance_tc_type_vector(TCTypes),
     mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
-    TypeStrs = list__map(encode_tc_instance_type, TCTypes),
-    TypeVectorStr = string__append_list(TypeStrs),
+    TypeStrs = list.map(encode_tc_instance_type, TCTypes),
+    TypeVectorStr = string.append_list(TypeStrs),
     Str = ModuleName ++ "__type_class_instance_tc_type_vector_" ++ ClassName
         ++ "_" ++ ArityStr ++ "_" ++ TypeVectorStr.
 tc_name_to_string(TCName, TCRttiName, Str) :-
     TCRttiName = type_class_instance_constraint(TCTypes, Ordinal, _),
     mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
-    TypeStrs = list__map(encode_tc_instance_type, TCTypes),
-    TypeVectorStr = string__append_list(TypeStrs),
-    string__int_to_string(Ordinal, OrdinalStr),
+    TypeStrs = list.map(encode_tc_instance_type, TCTypes),
+    TypeVectorStr = string.append_list(TypeStrs),
+    string.int_to_string(Ordinal, OrdinalStr),
     Str = ModuleName ++ "__type_class_instance_constraint_" ++ ClassName
         ++ "_" ++ ArityStr ++ "_" ++ OrdinalStr ++ "_" ++ TypeVectorStr.
 tc_name_to_string(TCName, TCRttiName, Str) :-
     TCRttiName = type_class_instance_constraints(TCTypes),
     mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
-    TypeStrs = list__map(encode_tc_instance_type, TCTypes),
-    TypeVectorStr = string__append_list(TypeStrs),
+    TypeStrs = list.map(encode_tc_instance_type, TCTypes),
+    TypeVectorStr = string.append_list(TypeStrs),
     Str = ModuleName ++ "__type_class_instance_constraints_"
         ++ ClassName ++ "_" ++ ArityStr ++ "_" ++ TypeVectorStr.
 tc_name_to_string(TCName, TCRttiName, Str) :-
     TCRttiName = type_class_instance_methods(TCTypes),
     mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr),
-    TypeStrs = list__map(encode_tc_instance_type, TCTypes),
-    TypeVectorStr = string__append_list(TypeStrs),
+    TypeStrs = list.map(encode_tc_instance_type, TCTypes),
+    TypeVectorStr = string.append_list(TypeStrs),
     Str = ModuleName ++ "__type_class_instance_methods_"
         ++ ClassName ++ "_" ++ ArityStr ++ "_" ++ TypeVectorStr.
 
@@ -1259,7 +1259,7 @@ encode_tc_instance_type(TCType) = Str :-
     % we lift that restriction, we will have to change this scheme.
     %
     % The code here is based on the code of
-    % base_typeclass_info__type_to_string, but its input is of type
+    % base_typeclass_info.type_to_string, but its input is of type
     % `maybe_pseudo_type_info', not of type `type'.
     (
         TCType = plain(TI),
@@ -1272,7 +1272,7 @@ encode_tc_instance_type(TCType) = Str :-
             TI = var_arity_type_info(VarArityId, ArgTIs),
             RttiTypeCtor = var_arity_id_to_rtti_type_ctor(VarArityId)
         ),
-        Arity = list__length(ArgTIs)
+        Arity = list.length(ArgTIs)
         % XXX We may wish to check that all arguments are variables.
         % (possible only if Arity = 0)
     ;
@@ -1289,7 +1289,7 @@ encode_tc_instance_type(TCType) = Str :-
             PTI = type_var(_),
             unexpected(this_file, "encode_tc_instance_type: type_var")
         ),
-        Arity = list__length(ArgPTIs)
+        Arity = list.length(ArgPTIs)
         % XXX We may wish to check that all arguments are variables.
     ),
     RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, _CtorArity),
@@ -1317,7 +1317,7 @@ mangle_rtti_type_ctor(RttiTypeCtor, ModuleName, TypeName, ArityStr) :-
     ),
     ModuleName = sym_name_mangle(ModuleNameSym),
     TypeName = name_mangle(TypeName0),
-    string__int_to_string(TypeArity, ArityStr).
+    string.int_to_string(TypeArity, ArityStr).
 
 :- pred mangle_rtti_type_class_name(tc_name::in,
     string::out, string::out, string::out) is det.
@@ -1326,7 +1326,7 @@ mangle_rtti_type_class_name(TCName, ModuleName, ClassName, ArityStr) :-
     TCName = tc_name(ModuleNameSym, ClassName0, Arity),
     ModuleName = sym_name_mangle(ModuleNameSym),
     ClassName = name_mangle(ClassName0),
-    string__int_to_string(Arity, ArityStr).
+    string.int_to_string(Arity, ArityStr).
 
 %-----------------------------------------------------------------------------%
 
@@ -1343,7 +1343,7 @@ type_info_to_string(TypeInfo) = Str :-
         Str = ModuleName ++ "__ti_" ++ TypeName ++ "_" ++ ArityStr ++ ArgsStr
     ;
         TypeInfo = var_arity_type_info(VarArityId, Args),
-        RealArity = list__length(Args),
+        RealArity = list.length(Args),
         ArgsStr = type_info_list_to_string(Args),
         IdStr = var_arity_ctor_id_to_string(VarArityId),
         Str = "__vti_" ++ IdStr ++ "_" ++ int_to_string(RealArity) ++ ArgsStr
@@ -1362,13 +1362,13 @@ pseudo_type_info_to_string(PseudoTypeInfo) = Str :-
         Str = ModuleName ++ "__pti_" ++ TypeName ++ "_" ++ ArityStr ++ ArgsStr
     ;
         PseudoTypeInfo = var_arity_pseudo_type_info(VarArityId, Args),
-        RealArity = list__length(Args),
+        RealArity = list.length(Args),
         ArgsStr = maybe_pseudo_type_info_list_to_string(Args),
         IdStr = var_arity_ctor_id_to_string(VarArityId),
         Str = "__vpti_" ++ IdStr ++ "_" ++ int_to_string(RealArity) ++ ArgsStr
     ;
         PseudoTypeInfo = type_var(VarNum),
-        string__int_to_string(VarNum, Str)
+        string.int_to_string(VarNum, Str)
     ).
 
 :- func maybe_pseudo_type_info_to_string(rtti_maybe_pseudo_type_info) = string.
@@ -1390,19 +1390,19 @@ var_arity_ctor_id_to_string(tuple_type_info) = "tuple".
     list(rtti_maybe_pseudo_type_info)) = string.
 
 maybe_pseudo_type_info_list_to_string(MaybePseudoTypeInfoList) =
-    string__append_list(
-        list__map(maybe_pseudo_type_info_to_string, MaybePseudoTypeInfoList)).
+    string.append_list(
+        list.map(maybe_pseudo_type_info_to_string, MaybePseudoTypeInfoList)).
 
 :- func pseudo_type_info_list_to_string(list(rtti_pseudo_type_info)) = string.
 
 pseudo_type_info_list_to_string(PseudoTypeInfoList) =
-    string__append_list(
-        list__map(pseudo_type_info_to_string, PseudoTypeInfoList)).
+    string.append_list(
+        list.map(pseudo_type_info_to_string, PseudoTypeInfoList)).
 
 :- func type_info_list_to_string(list(rtti_type_info)) = string.
 
 type_info_list_to_string(TypeInfoList) =
-    string__append_list(list__map(type_info_to_string, TypeInfoList)).
+    string.append_list(list.map(type_info_to_string, TypeInfoList)).
 
 %-----------------------------------------------------------------------------%
 
@@ -1566,16 +1566,16 @@ maybe_pseudo_type_info_or_self_to_rtti_data(self) =
 
 type_ctor_details_num_ptags(enum(_, _, _, _, _)) = -1.
 type_ctor_details_num_ptags(du(_, _, PtagMap, _)) = LastPtag + 1 :-
-    map__keys(PtagMap, Ptags),
-    list__last_det(Ptags, LastPtag).
+    map.keys(PtagMap, Ptags),
+    list.last_det(Ptags, LastPtag).
 type_ctor_details_num_ptags(reserved(_, _, _, PtagMap, _)) = NumPtags :-
-    map__keys(PtagMap, Ptags),
+    map.keys(PtagMap, Ptags),
     (
         Ptags = [],
         NumPtags = -1
     ;
         Ptags = [_ | _],
-        list__last_det(Ptags, LastPtag),
+        list.last_det(Ptags, LastPtag),
         NumPtags = LastPtag + 1
     ).
 type_ctor_details_num_ptags(notag(_, _)) = -1.
@@ -1585,11 +1585,11 @@ type_ctor_details_num_ptags(impl_artifact(_)) = -1.
 type_ctor_details_num_ptags(foreign(_)) = -1.
 
 type_ctor_details_num_functors(enum(_, Functors, _, _, _)) =
-    list__length(Functors).
+    list.length(Functors).
 type_ctor_details_num_functors(du(_, Functors, _, _)) =
-    list__length(Functors).
+    list.length(Functors).
 type_ctor_details_num_functors(reserved(_, Functors, _, _, _)) =
-    list__length(Functors).
+    list.length(Functors).
 type_ctor_details_num_functors(notag(_, _)) = 1.
 type_ctor_details_num_functors(eqv(_)) = -1.
 type_ctor_details_num_functors(builtin(_)) = -1.
@@ -1701,11 +1701,11 @@ rtti_id_c_type(tc_rtti_id(_, TCRttiName), CTypeName, IsArray) :-
 
 ctor_rtti_name_c_type(RttiName, CTypeName, IsArray) :-
     ctor_rtti_name_type(RttiName, GenTypeName, IsArray),
-    CTypeName = string__append("MR_", GenTypeName).
+    CTypeName = string.append("MR_", GenTypeName).
 
 tc_rtti_name_c_type(TCRttiName, CTypeName, IsArray) :-
     tc_rtti_name_type(TCRttiName, GenTypeName, IsArray),
-    CTypeName = string__append("MR_", GenTypeName).
+    CTypeName = string.append("MR_", GenTypeName).
 
 rtti_id_maybe_element_java_type(item_type(RttiId), CTypeName, IsArray) :-
     rtti_id_java_type(RttiId, CTypeName, IsArray).
@@ -1736,7 +1736,7 @@ ctor_rtti_name_java_type(RttiName, JavaTypeName, IsArray) :-
     ;
         % In Java, every non-builtin type is a pointer,
         % so there's no need for the "Ptr" suffixes.
-        string__remove_suffix(GenTypeName0, "Ptr", GenTypeName1)
+        string.remove_suffix(GenTypeName0, "Ptr", GenTypeName1)
     ->
         JavaTypeName = "mercury.runtime." ++ GenTypeName1
     ;
@@ -1745,7 +1745,7 @@ ctor_rtti_name_java_type(RttiName, JavaTypeName, IsArray) :-
         % ending with arrays of the appropriate length, but in
         % Java we just use a single type for all of them
         % (with an extra level of indirection for the array).
-        string__prefix(GenTypeName0, "TypeClassConstraint_")
+        string.prefix(GenTypeName0, "TypeClassConstraint_")
     ->
         JavaTypeName = "mercury.runtime.TypeClassConstraint"
     ;
@@ -1754,10 +1754,10 @@ ctor_rtti_name_java_type(RttiName, JavaTypeName, IsArray) :-
         % ending with arrays of the appropriate length, but in
         % Java we just use a single type for all of them
         % (with an extra level of indirection for the array).
-        ( string__prefix(GenTypeName0, "FA_PseudoTypeInfo_Struct")
-        ; string__prefix(GenTypeName0, "FA_TypeInfo_Struct")
-        ; string__prefix(GenTypeName0, "VA_PseudoTypeInfo_Struct")
-        ; string__prefix(GenTypeName0, "VA_TypeInfo_Struct")
+        ( string.prefix(GenTypeName0, "FA_PseudoTypeInfo_Struct")
+        ; string.prefix(GenTypeName0, "FA_TypeInfo_Struct")
+        ; string.prefix(GenTypeName0, "VA_PseudoTypeInfo_Struct")
+        ; string.prefix(GenTypeName0, "VA_TypeInfo_Struct")
         )
     ->
         JavaTypeName = "mercury.runtime.TypeInfo_Struct"
@@ -1786,7 +1786,7 @@ tc_rtti_name_java_type(TCRttiName, JavaTypeName, IsArray) :-
         % ending with arrays of the appropriate length, but in
         % Java we just use a single type for all of them
         % (with an extra level of indirection for the array).
-        string__prefix(GenTypeName, "TypeClassConstraint_")
+        string.prefix(GenTypeName, "TypeClassConstraint_")
     ->
         JavaTypeName = "mercury.runtime.TypeClassConstraint"
     ;
@@ -1862,20 +1862,20 @@ tc_constraint_type_name(N) =
 type_info_name_type(plain_arity_zero_type_info(_)) =
     "TypeCtorInfo_Struct".
 type_info_name_type(plain_type_info(_, ArgTypes)) =
-    string__format("FA_TypeInfo_Struct%d", [i(list__length(ArgTypes))]).
+    string.format("FA_TypeInfo_Struct%d", [i(list.length(ArgTypes))]).
 type_info_name_type(var_arity_type_info(_, ArgTypes)) =
-    string__format("VA_TypeInfo_Struct%d", [i(list__length(ArgTypes))]).
+    string.format("VA_TypeInfo_Struct%d", [i(list.length(ArgTypes))]).
 
 :- func pseudo_type_info_name_type(rtti_pseudo_type_info) = string.
 
 pseudo_type_info_name_type(plain_arity_zero_pseudo_type_info(_)) =
     "TypeCtorInfo_Struct".
 pseudo_type_info_name_type(plain_pseudo_type_info(_TypeCtor, ArgTypes)) =
-    string__format("FA_PseudoTypeInfo_Struct%d",
-        [i(list__length(ArgTypes))]).
+    string.format("FA_PseudoTypeInfo_Struct%d",
+        [i(list.length(ArgTypes))]).
 pseudo_type_info_name_type(var_arity_pseudo_type_info(_TypeCtor, ArgTypes)) =
-    string__format("VA_PseudoTypeInfo_Struct%d",
-        [i(list__length(ArgTypes))]).
+    string.format("VA_PseudoTypeInfo_Struct%d",
+        [i(list.length(ArgTypes))]).
 pseudo_type_info_name_type(type_var(_)) = _ :-
     % we use small integers to represent type_vars,
     % rather than pointers, so there is no pointed-to type

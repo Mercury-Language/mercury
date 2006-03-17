@@ -25,7 +25,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__store_alloc.
+:- module ll_backend.store_alloc.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -86,12 +86,12 @@ allocate_store_maps(RunType, PredId, ModuleInfo, !ProcInfo) :-
         proc_info_goal(!.ProcInfo, Goal2)
     ),
     initial_liveness(!.ProcInfo, PredId, ModuleInfo, Liveness0),
-    globals__get_trace_level(Globals, TraceLevel),
+    globals.get_trace_level(Globals, TraceLevel),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ( eff_trace_level_is_none(PredInfo, !.ProcInfo, TraceLevel) = no ->
-        trace__fail_vars(ModuleInfo, !.ProcInfo, ResumeVars0)
+        trace.fail_vars(ModuleInfo, !.ProcInfo, ResumeVars0)
     ;
-        set__init(ResumeVars0)
+        set.init(ResumeVars0)
     ),
     build_input_arg_list(!.ProcInfo, InputArgLvals),
     LastLocns0 = initial_last_locns(InputArgLvals),
@@ -103,10 +103,10 @@ allocate_store_maps(RunType, PredId, ModuleInfo, !ProcInfo) :-
 
 :- func initial_last_locns(assoc_list(prog_var, lval)) = last_locns.
 
-initial_last_locns([]) = map__init.
+initial_last_locns([]) = map.init.
 initial_last_locns([Var - Lval | VarLvals]) =
-    map__det_insert(initial_last_locns(VarLvals), Var,
-        set__make_singleton_set(Lval)).
+    map.det_insert(initial_last_locns(VarLvals), Var,
+        set.make_singleton_set(Lval)).
 
 %-----------------------------------------------------------------------------%
 
@@ -134,25 +134,25 @@ store_alloc_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, Liveness0, Liveness,
     goal_info_get_post_deaths(GoalInfo0, PostDeaths),
     goal_info_get_post_births(GoalInfo0, PostBirths),
 
-    set__difference(Liveness0,  PreDeaths, Liveness1),
-    set__union(Liveness1, PreBirths, Liveness2),
+    set.difference(Liveness0,  PreDeaths, Liveness1),
+    set.union(Liveness1, PreBirths, Liveness2),
     store_alloc_in_goal_2(Goal0, Goal, Liveness2, Liveness3,
         !LastLocns, ResumeVars0, PostDeaths, StoreAllocInfo),
-    set__difference(Liveness3, PostDeaths, Liveness4),
+    set.difference(Liveness3, PostDeaths, Liveness4),
     % If any variables magically become live in the PostBirths,
     % then they have to mundanely become live in a parallel goal,
     % so we don't need to allocate anything for them here.
-    set__union(Liveness4, PostBirths, Liveness),
-    ( goal_util__goal_is_branched(Goal) ->
+    set.union(Liveness4, PostBirths, Liveness),
+    ( goal_util.goal_is_branched(Goal) ->
         % Any variables that become magically live at the
         % end of the goal should not be included in the store map.
         % That is why we use Liveness4 instead of Liveness here.
-        set__union(Liveness4, ResumeVars0, MappedSet),
-        set__to_sorted_list(MappedSet, MappedVars),
+        set.union(Liveness4, ResumeVars0, MappedSet),
+        set.to_sorted_list(MappedSet, MappedVars),
         ( goal_info_maybe_get_store_map(GoalInfo0, StoreMapPrime) ->
             AdvisoryStoreMap = StoreMapPrime
         ;
-            AdvisoryStoreMap = map__init
+            AdvisoryStoreMap = map.init
         ),
         store_alloc_allocate_storage(MappedVars, StoreAllocInfo,
             AdvisoryStoreMap, StoreMap),
@@ -328,7 +328,7 @@ merge_last_locations(LastLocnsList, LastLocns) :-
     ( LastLocnsList = [LastLocnsPrime | _] ->
         LastLocns = LastLocnsPrime
     ;
-        LastLocns = map__init
+        LastLocns = map.init
     ).
 
 %-----------------------------------------------------------------------------%
@@ -354,12 +354,12 @@ store_alloc_allocate_storage(LiveVars, StoreAllocInfo, FollowVars,
         !:StoreMap) :-
 
     % This addresses point 1
-    map__keys(FollowVars, FollowKeys),
+    map.keys(FollowVars, FollowKeys),
     store_alloc_remove_nonlive(FollowKeys, LiveVars, FollowVars, !:StoreMap),
 
     % This addresses points 3 and 4
-    map__keys(!.StoreMap, StoreVars),
-    set__init(SeenLvals0),
+    map.keys(!.StoreMap, StoreVars),
+    set.init(SeenLvals0),
     store_alloc_handle_conflicts_and_nonreal(StoreVars, 1, N,
         SeenLvals0, SeenLvals, !StoreMap),
 
@@ -372,10 +372,10 @@ store_alloc_allocate_storage(LiveVars, StoreAllocInfo, FollowVars,
 
 store_alloc_remove_nonlive([], _LiveVars, !StoreMap).
 store_alloc_remove_nonlive([Var | Vars], LiveVars, !StoreMap) :-
-    ( list__member(Var, LiveVars) ->
+    ( list.member(Var, LiveVars) ->
         true
     ;
-        map__delete(!.StoreMap, Var, !:StoreMap)
+        map.delete(!.StoreMap, Var, !:StoreMap)
     ),
     store_alloc_remove_nonlive(Vars, LiveVars, !StoreMap).
 
@@ -386,19 +386,19 @@ store_alloc_remove_nonlive([Var | Vars], LiveVars, !StoreMap) :-
 store_alloc_handle_conflicts_and_nonreal([], !N, !SeenLocns, !StoreMap).
 store_alloc_handle_conflicts_and_nonreal([Var | Vars], !N, !SeenLocns,
         !StoreMap) :-
-    map__lookup(!.StoreMap, Var, Locn),
+    map.lookup(!.StoreMap, Var, Locn),
     (
         ( Locn = any_reg
-        ; set__member(Locn, !.SeenLocns)
+        ; set.member(Locn, !.SeenLocns)
         )
     ->
         next_free_reg(!.SeenLocns, !N),
         FinalLocn = abs_reg(!.N),
-        map__det_update(!.StoreMap, Var, FinalLocn, !:StoreMap)
+        map.det_update(!.StoreMap, Var, FinalLocn, !:StoreMap)
     ;
         FinalLocn = Locn
     ),
-    set__insert(!.SeenLocns, FinalLocn, !:SeenLocns),
+    set.insert(!.SeenLocns, FinalLocn, !:SeenLocns),
     store_alloc_handle_conflicts_and_nonreal(Vars, !N, !SeenLocns,
         !StoreMap).
 
@@ -409,7 +409,7 @@ store_alloc_handle_conflicts_and_nonreal([Var | Vars], !N, !SeenLocns,
 store_alloc_allocate_extras([], _, _, _, !StoreMap).
 store_alloc_allocate_extras([Var | Vars], !.N, !.SeenLocns, StoreAllocInfo,
         !StoreMap) :-
-    ( map__contains(!.StoreMap, Var) ->
+    ( map.contains(!.StoreMap, Var) ->
         % We have already allocated a slot for this variable.
         true
     ;
@@ -417,9 +417,9 @@ store_alloc_allocate_extras([Var | Vars], !.N, !.SeenLocns, StoreAllocInfo,
         % which means it is not in the follow vars (if any).
         StoreAllocInfo = store_alloc_info(_, StackSlots),
         (
-            map__search(StackSlots, Var, StackSlot),
+            map.search(StackSlots, Var, StackSlot),
             StackSlotLocn = stack_slot_to_abs_locn(StackSlot),
-            \+ set__member(StackSlotLocn, !.SeenLocns)
+            \+ set.member(StackSlotLocn, !.SeenLocns)
             % Follow_vars was run, so the only reason why a var would not be
             % in the follow_vars set is if it was supposed to be in its stack
             % slot.
@@ -429,8 +429,8 @@ store_alloc_allocate_extras([Var | Vars], !.N, !.SeenLocns, StoreAllocInfo,
             next_free_reg(!.SeenLocns, !N),
             Locn = abs_reg(!.N)
         ),
-        map__det_insert(!.StoreMap, Var, Locn, !:StoreMap),
-        set__insert(!.SeenLocns, Locn, !:SeenLocns)
+        map.det_insert(!.StoreMap, Var, Locn, !:StoreMap),
+        set.insert(!.SeenLocns, Locn, !:SeenLocns)
     ),
     store_alloc_allocate_extras(Vars, !.N, !.SeenLocns, StoreAllocInfo,
         !StoreMap).
@@ -440,7 +440,7 @@ store_alloc_allocate_extras([Var | Vars], !.N, !.SeenLocns, StoreAllocInfo,
 :- pred next_free_reg(set(abs_locn)::in, int::in, int::out) is det.
 
 next_free_reg(Values, N0, N) :-
-    ( set__member(abs_reg(N0), Values) ->
+    ( set.member(abs_reg(N0), Values) ->
         N1 = N0 + 1,
         next_free_reg(Values, N1, N)
     ;

@@ -31,7 +31,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds__unique_modes.
+:- module check_hlds.unique_modes.
 :- interface.
 
 :- import_module check_hlds.mode_info.
@@ -115,7 +115,7 @@ check_proc(ProcId, PredId, !ModuleInfo, Changed, !IO) :-
     modecheck_proc_general(ProcId, PredId, check_unique_modes,
         may_change_called_proc, !ModuleInfo, NumErrors, Changed, !IO),
     ( NumErrors \= 0 ->
-        io__set_exit_status(1, !IO)
+        io.set_exit_status(1, !IO)
     ;
         true
     ).
@@ -123,7 +123,7 @@ check_proc(ProcId, PredId, !ModuleInfo, Changed, !IO) :-
 check_goal(Goal0, Goal, !ModeInfo, !IO) :-
     Goal0 = GoalExpr0 - GoalInfo0,
     goal_info_get_context(GoalInfo0, Context),
-    term__context_init(EmptyContext),
+    term.context_init(EmptyContext),
     ( Context = EmptyContext ->
         true
     ;
@@ -140,7 +140,7 @@ check_goal(Goal0, Goal, !ModeInfo, !IO) :-
     ( determinism_components(Detism, _, at_most_many) ->
         true
     ;
-        mode_info_set_nondet_live_vars(bag__init, !ModeInfo)
+        mode_info_set_nondet_live_vars(bag.init, !ModeInfo)
     ),
 
     check_goal_2(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo, !IO),
@@ -155,8 +155,8 @@ check_goal(Goal0, Goal, !ModeInfo, !IO) :-
 
 make_all_nondet_live_vars_mostly_uniq(ModeInfo0, ModeInfo) :-
     mode_info_get_instmap(ModeInfo0, FullInstMap0),
-    ( instmap__is_reachable(FullInstMap0) ->
-        instmap__vars_list(FullInstMap0, AllVars),
+    ( instmap.is_reachable(FullInstMap0) ->
+        instmap.vars_list(FullInstMap0, AllVars),
         select_nondet_live_vars(AllVars, ModeInfo0, NondetLiveVars),
         make_var_list_mostly_uniq(NondetLiveVars, ModeInfo0, ModeInfo)
     ;
@@ -198,9 +198,9 @@ select_changed_inst_vars([], _DeltaInstMap, _ModeInfo, []).
 select_changed_inst_vars([Var | Vars], DeltaInstMap, ModeInfo, ChangedVars) :-
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     mode_info_get_instmap(ModeInfo, InstMap0),
-    instmap__lookup_var(InstMap0, Var, Inst0),
+    instmap.lookup_var(InstMap0, Var, Inst0),
     mode_info_get_var_types(ModeInfo, VarTypes),
-    map__lookup(VarTypes, Var, Type),
+    map.lookup(VarTypes, Var, Type),
     (
         instmap_delta_is_reachable(DeltaInstMap),
         instmap_delta_search_var(DeltaInstMap, Var, Inst),
@@ -228,10 +228,10 @@ make_var_mostly_uniq(Var, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     (
         % Only variables which are `unique' need to be changed.
-        instmap__is_reachable(InstMap0),
-        instmap__vars_list(InstMap0, Vars),
-        list__member(Var, Vars),
-        instmap__lookup_var(InstMap0, Var, Inst0),
+        instmap.is_reachable(InstMap0),
+        instmap.vars_list(InstMap0, Vars),
+        list.member(Var, Vars),
+        instmap.lookup_var(InstMap0, Var, Inst0),
         inst_expand(ModuleInfo0, Inst0, Inst1),
         ( Inst1 = ground(unique, _)
         ; Inst1 = bound(unique, _)
@@ -240,7 +240,7 @@ make_var_mostly_uniq(Var, !ModeInfo) :-
     ->
         make_mostly_uniq_inst(Inst0, Inst, ModuleInfo0, ModuleInfo),
         mode_info_set_module_info(ModuleInfo, !ModeInfo),
-        instmap__set(Var, Inst, InstMap0, InstMap),
+        instmap.set(Var, Inst, InstMap0, InstMap),
         mode_info_set_instmap(InstMap, !ModeInfo)
     ;
         true
@@ -275,7 +275,7 @@ check_goal_2(conj(ConjType, List0), GoalInfo0, conj(ConjType, List),
         % parallel conjunction.
         make_par_conj_nonlocal_multiset(List0, NonLocalsBag),
         check_par_conj(List0, NonLocalsBag, List, InstMapList, !ModeInfo, !IO),
-        instmap__unify(NonLocals, InstMapList, !ModeInfo),
+        instmap.unify(NonLocals, InstMapList, !ModeInfo),
         mode_info_remove_live_vars(NonLocals, !ModeInfo),
         mode_checkpoint(exit, "par_conj", !ModeInfo, !IO)
     ).
@@ -285,7 +285,7 @@ check_goal_2(disj(List0), GoalInfo0, disj(List), !ModeInfo, !IO) :-
     (
         List0 = [],
         List = [],
-        instmap__init_unreachable(InstMap),
+        instmap.init_unreachable(InstMap),
         mode_info_set_instmap(InstMap, !ModeInfo)
     ;
         List0 = [_ | _],
@@ -314,7 +314,7 @@ check_goal_2(disj(List0), GoalInfo0, disj(List), !ModeInfo, !IO) :-
         % merge the resulting instmaps.
         check_disj(List0, Determinism, NonLocals, List, InstMapList,
             !ModeInfo, !IO),
-        instmap__merge(NonLocals, InstMapList, disj, !ModeInfo)
+        instmap.merge(NonLocals, InstMapList, disj, !ModeInfo)
     ),
     mode_checkpoint(exit, "disj", !ModeInfo, !IO).
 
@@ -353,7 +353,7 @@ check_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, Goal,
     %   ).
 
     mode_info_add_live_vars(Else_Vars, !ModeInfo),
-    set__to_sorted_list(Cond_Vars, Cond_Vars_List),
+    set.to_sorted_list(Cond_Vars, Cond_Vars_List),
     select_live_vars(Cond_Vars_List, !.ModeInfo, Cond_Live_Vars),
     Cond0 = _ - Cond0_GoalInfo,
     goal_info_get_instmap_delta(Cond0_GoalInfo, Cond0_DeltaInstMap),
@@ -367,7 +367,7 @@ check_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, Goal,
     mode_info_remove_live_vars(Then_Vars, !ModeInfo),
     mode_info_unlock_vars(if_then_else, NonLocals, !ModeInfo),
     mode_info_get_instmap(!.ModeInfo, InstMapCond),
-    ( instmap__is_reachable(InstMapCond) ->
+    ( instmap.is_reachable(InstMapCond) ->
         check_goal(Then0, Then, !ModeInfo, !IO),
         mode_info_get_instmap(!.ModeInfo, InstMapThen)
     ;
@@ -381,7 +381,7 @@ check_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, Goal,
     check_goal(Else0, Else, !ModeInfo, !IO),
     mode_info_get_instmap(!.ModeInfo, InstMapElse),
     mode_info_set_instmap(InstMap0, !ModeInfo),
-    instmap__merge(NonLocals, [InstMapThen, InstMapElse], if_then_else,
+    instmap.merge(NonLocals, [InstMapThen, InstMapElse], if_then_else,
         !ModeInfo),
     Goal = if_then_else(Vars, Cond, Then, Else),
     mode_checkpoint(exit, "if-then-else", !ModeInfo, !IO).
@@ -395,7 +395,7 @@ check_goal_2(not(SubGoal0), GoalInfo0, not(SubGoal), !ModeInfo, !IO) :-
     % then the negation will succeed, and so these variables can be accessed
     % again after backtracking.
     goal_info_get_nonlocals(GoalInfo0, NonLocals),
-    set__to_sorted_list(NonLocals, NonLocalsList),
+    set.to_sorted_list(NonLocals, NonLocalsList),
     select_live_vars(NonLocalsList, !.ModeInfo, LiveNonLocals),
     make_var_list_mostly_uniq(LiveNonLocals, !ModeInfo),
 
@@ -403,7 +403,7 @@ check_goal_2(not(SubGoal0), GoalInfo0, not(SubGoal), !ModeInfo, !IO) :-
     % succeeds then execution will immediately backtrack. So we need to set
     % the live variables set to empty here.
     mode_info_get_live_vars(!.ModeInfo, LiveVars0),
-    mode_info_set_live_vars(bag__init, !ModeInfo),
+    mode_info_set_live_vars(bag.init, !ModeInfo),
 
     % We need to lock the non-local variables, to ensure that the negation
     % does not bind them.
@@ -423,7 +423,7 @@ check_goal_2(scope(Reason, SubGoal0), _, scope(Reason, SubGoal),
 check_goal_2(generic_call(GenericCall, Args, Modes, Det), _GoalInfo0, Goal,
         !ModeInfo, !IO) :-
     mode_checkpoint(enter, "generic_call", !ModeInfo, !IO),
-    hlds_goal__generic_call_id(GenericCall, CallId),
+    hlds_goal.generic_call_id(GenericCall, CallId),
     mode_info_set_call_context(call(CallId), !ModeInfo),
     ( determinism_components(Det, _, at_most_zero) ->
         NeverSucceeds = yes
@@ -451,7 +451,7 @@ check_goal_2(generic_call(GenericCall, Args, Modes, Det), _GoalInfo0, Goal,
 check_goal_2(call(PredId, ProcId0, Args, Builtin, CallContext,
         PredName), GoalInfo0, Goal, !ModeInfo, !IO) :-
     sym_name_to_string(PredName, PredNameString),
-    string__append("call ", PredNameString, CallString),
+    string.append("call ", PredNameString, CallString),
     mode_checkpoint(enter, CallString, !ModeInfo, !IO),
     mode_info_get_call_id(!.ModeInfo, PredId, CallId),
     mode_info_set_call_context(call(call(CallId)), !ModeInfo),
@@ -475,13 +475,13 @@ check_goal_2(switch(Var, CanFail, Cases0), GoalInfo0,
     (
         Cases0 = [],
         Cases = [],
-        instmap__init_unreachable(InstMap),
+        instmap.init_unreachable(InstMap),
         mode_info_set_instmap(InstMap, !ModeInfo)
     ;
         Cases0 = [_ | _],
         goal_info_get_nonlocals(GoalInfo0, NonLocals),
         check_case_list(Cases0, Var, Cases, InstMapList, !ModeInfo, !IO),
-        instmap__merge(NonLocals, InstMapList, disj, !ModeInfo)
+        instmap.merge(NonLocals, InstMapList, disj, !ModeInfo)
     ),
     mode_checkpoint(exit, "switch", !ModeInfo, !IO).
 
@@ -492,7 +492,7 @@ check_goal_2(foreign_proc(Attributes, PredId, ProcId0, Args, ExtraArgs,
     mode_checkpoint(enter, "foreign_proc", !ModeInfo, !IO),
     mode_info_get_call_id(!.ModeInfo, PredId, CallId),
     mode_info_set_call_context(call(call(CallId)), !ModeInfo),
-    ArgVars = list__map(foreign_arg_var, Args),
+    ArgVars = list.map(foreign_arg_var, Args),
     check_call(PredId, ProcId0, ArgVars, GoalInfo0, ProcId, !ModeInfo),
     Goal = foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
         PragmaCode),
@@ -527,9 +527,9 @@ check_call(PredId, ProcId0, ArgVars, GoalInfo, ProcId, !ModeInfo) :-
     (
         ModeErrors = [_ | _],
         % mode error in callee for this mode
-        WaitingVars = set__list_to_set(ArgVars),
+        WaitingVars = set.list_to_set(ArgVars),
         mode_info_get_instmap(!.ModeInfo, InstMap),
-        instmap__lookup_vars(ArgVars, InstMap, ArgInsts),
+        instmap.lookup_vars(ArgVars, InstMap, ArgInsts),
         mode_info_error(WaitingVars,
             mode_error_in_callee(ArgVars, ArgInsts, PredId, ProcId0,
                 ProcInfo ^ mode_errors),
@@ -548,7 +548,7 @@ check_call(PredId, ProcId0, ArgVars, GoalInfo, ProcId, !ModeInfo) :-
         % We're not allowed to try a different procedure here, so just return
         % all the errors.
         ProcId = ProcId0,
-        list__append(OldErrors, Errors, AllErrors),
+        list.append(OldErrors, Errors, AllErrors),
         mode_info_set_errors(AllErrors, !ModeInfo)
     ;
         % If it didn't work, restore the original instmap, and then call
@@ -611,7 +611,7 @@ check_call_modes(ArgVars, ProcArgModes, ArgOffset, Determinism, NeverSucceeds,
     ),
     (
         NeverSucceeds = yes,
-        instmap__init_unreachable(InstMap),
+        instmap.init_unreachable(InstMap),
         mode_info_set_instmap(InstMap, !ModeInfo)
     ;
         NeverSucceeds = no,
@@ -638,7 +638,7 @@ check_conj([Goal0 | Goals0], Goals, !ModeInfo, !IO) :-
     (
         Goal0 = conj(plain_conj, ConjGoals) - _
     ->
-        list__append(ConjGoals, Goals0, Goals1),
+        list.append(ConjGoals, Goals0, Goals1),
         check_conj(Goals1, Goals, !ModeInfo, !IO)
     ;
         check_conj_2(Goal0, Goals0, Goals, !ModeInfo, !IO)
@@ -652,7 +652,7 @@ check_conj_2(Goal0, Goals0, [Goal | Goals], !ModeInfo, !IO) :-
     mode_info_remove_live_vars(NonLocals, !ModeInfo),
     check_goal(Goal0, Goal, !ModeInfo, !IO),
     mode_info_get_instmap(!.ModeInfo, InstMap),
-    ( instmap__is_unreachable(InstMap) ->
+    ( instmap.is_unreachable(InstMap) ->
         % We should not mode-analyse the remaining goals, since they are
         % unreachable. Instead we optimize them away, so that later passes
         % won't complain about them not having unique mode information.
@@ -671,13 +671,13 @@ check_conj_2(Goal0, Goals0, [Goal | Goals], !ModeInfo, !IO) :-
     bag(prog_var)::out) is det.
 
 make_par_conj_nonlocal_multiset([], Empty) :-
-    bag__init(Empty).
+    bag.init(Empty).
 make_par_conj_nonlocal_multiset([Goal | Goals], NonLocalsMultiSet) :-
     make_par_conj_nonlocal_multiset(Goals, NonLocalsMultiSet0),
     goal_get_nonlocals(Goal, NonLocals),
-    set__to_sorted_list(NonLocals, NonLocalsList),
-    bag__from_list(NonLocalsList, NonLocalsMultiSet1),
-    bag__union(NonLocalsMultiSet0, NonLocalsMultiSet1, NonLocalsMultiSet).
+    set.to_sorted_list(NonLocals, NonLocalsList),
+    bag.from_list(NonLocalsList, NonLocalsMultiSet1),
+    bag.union(NonLocalsMultiSet0, NonLocalsMultiSet1, NonLocalsMultiSet).
 
     % To unique-modecheck a parallel conjunction, we find the variables
     % that are nonlocal to more than one conjunct and make them shared,
@@ -703,18 +703,18 @@ check_par_conj(Goals0, NonLocalVarsBag, Goals, Instmaps, !ModeInfo, !IO) :-
     is det.
 
 check_par_conj_0(NonLocalVarsBag, !ModeInfo) :-
-    bag__to_assoc_list(NonLocalVarsBag, NonLocalVarsList),
-    list__filter_map((pred(Pair::in, Var::out) is semidet :-
+    bag.to_assoc_list(NonLocalVarsBag, NonLocalVarsList),
+    list.filter_map((pred(Pair::in, Var::out) is semidet :-
         Pair = Var - Multiplicity,
         Multiplicity > 1
     ), NonLocalVarsList, SharedList),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
-    instmap__lookup_vars(SharedList, InstMap0, VarInsts),
+    instmap.lookup_vars(SharedList, InstMap0, VarInsts),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     make_shared_inst_list(VarInsts, SharedVarInsts,
         ModuleInfo0, ModuleInfo1),
     mode_info_set_module_info(ModuleInfo1, !ModeInfo),
-    instmap__set_vars(SharedList, SharedVarInsts, InstMap0, InstMap1),
+    instmap.set_vars(SharedList, SharedVarInsts, InstMap0, InstMap1),
     mode_info_set_instmap(InstMap1, !ModeInfo).
 
     % Just process each conjunct in turn. Because we have already done
@@ -802,7 +802,7 @@ check_case_list([Case0 | Cases0], Var, [Case | Cases], [InstMap | InstMaps],
     modecheck_functor_test(Var, ConsId, !ModeInfo),
 
     mode_info_get_instmap(!.ModeInfo, InstMap1),
-    ( instmap__is_reachable(InstMap1) ->
+    ( instmap.is_reachable(InstMap1) ->
         check_goal(Goal0, Goal1, !ModeInfo, !IO)
     ;
         % We should not mode-analyse the goal, since it is unreachable.

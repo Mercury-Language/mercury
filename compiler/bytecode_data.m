@@ -14,7 +14,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module backend_libs__bytecode_data.
+:- module backend_libs.bytecode_data.
 :- interface.
 
 :- import_module int.
@@ -77,24 +77,24 @@ output_string(Val, !IO) :-
     %     so it may be different for different Mercury implementations.
     %     In particular, it will do the wrong thing for Mercury
     %     implementations which represent characters in Unicode.
-    io__write_bytes(Val, !IO),
-    io__write_byte(0, !IO).
+    io.write_bytes(Val, !IO),
+    io.write_byte(0, !IO).
 
 string_to_byte_list(Val, List) :-
     % XXX this assumes strings contain 8-bit characters
-    %     Using char__to_int here is wrong; the output will depend
+    %     Using char.to_int here is wrong; the output will depend
     %     on the Mercury implementation's representation of chars,
     %     so it may be different for different Mercury implementations.
     %     In particular, it will do the wrong thing for Mercury
     %     implementations which represent characters in Unicode.
-    string__to_char_list(Val, Chars),
-    ToInt = (pred(C::in, I::out) is det :- char__to_int(C, I)),
-    list__map(ToInt, Chars, List0),
-    list__append(List0, [0], List).
+    string.to_char_list(Val, Chars),
+    ToInt = (pred(C::in, I::out) is det :- char.to_int(C, I)),
+    list.map(ToInt, Chars, List0),
+    list.append(List0, [0], List).
 
 output_byte(Val, !IO) :-
     ( Val < 256 ->
-        io__write_byte(Val, !IO)
+        io.write_byte(Val, !IO)
     ;
         unexpected(this_file, "output_byte: byte does not fit in eight bits")
     ).
@@ -112,7 +112,7 @@ int32_to_byte_list(IntVal, List) :-
     int_to_byte_list(32, IntVal, List).
 
 output_int(IntVal, !IO) :-
-    int__bits_per_int(IntBits),
+    int.bits_per_int(IntBits),
     ( IntBits > bytecode_int_bits ->
         unexpected(this_file, "output_int: " ++
             "size of int is larger than size of bytecode integer.")
@@ -121,7 +121,7 @@ output_int(IntVal, !IO) :-
     ).
 
 int_to_byte_list(IntVal, Bytes) :-
-    int__bits_per_int(IntBits),
+    int.bits_per_int(IntBits),
     ( IntBits > bytecode_int_bits ->
         unexpected(this_file, "int_to_byte_list: " ++
             "size of int is larger than size of bytecode integer.")
@@ -132,28 +132,28 @@ int_to_byte_list(IntVal, Bytes) :-
 :- pred output_int(int::in, int::in, io::di, io::uo) is det.
 
 output_int(Bits, IntVal, !IO) :-
-    output_int(io__write_byte, Bits, IntVal, !IO).
+    output_int(io.write_byte, Bits, IntVal, !IO).
 
 :- pred int_to_byte_list(int::in, int::in, list(int)::out) is det.
 
 int_to_byte_list(Bits, IntVal, Bytes) :-
-    output_int(list__cons, Bits, IntVal, [], RevBytes),
-    list__reverse(RevBytes, Bytes).
+    output_int(list.cons, Bits, IntVal, [], RevBytes),
+    list.reverse(RevBytes, Bytes).
 
 :- pred output_int(pred(int, T, T), int, int, T, T).
 :- mode output_int(pred(in, in, out) is det, in, in, in, out) is det.
 :- mode output_int(pred(in, di, uo) is det, in, in, di, uo) is det.
 
 output_int(Writer, Bits, IntVal, !IO) :-
-    int__bits_per_int(IntBits),
+    int.bits_per_int(IntBits),
     (
         Bits < IntBits,
-        int__pow(2, Bits - 1, MaxVal),
+        int.pow(2, Bits - 1, MaxVal),
         ( IntVal >= MaxVal
         ; IntVal < -MaxVal
         )
     ->
-        string__format(
+        string.format(
             "error: bytecode_data.output_int: " ++
             "%d does not fit in %d bits",
             [i(IntVal), i(Bits)], Msg),

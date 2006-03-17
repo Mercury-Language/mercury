@@ -14,7 +14,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module hlds__passes_aux.
+:- module hlds.passes_aux.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -173,7 +173,7 @@
     % Invoke an executable. Both standard and error output will go to the
     % specified output stream.
     %
-:- pred invoke_system_command(io__output_stream::in,
+:- pred invoke_system_command(io.output_stream::in,
     command_verbosity::in, string::in, bool::out, io::di, io::uo) is det.
 
     % invoke_system_command(ErrorStream, Verbosity, Command,
@@ -182,7 +182,7 @@
     % Invoke an executable. Both standard and error output will go to the
     % specified output stream after being piped through `ProcessOutput'.
     %
-:- pred invoke_system_command(io__output_stream::in,
+:- pred invoke_system_command(io.output_stream::in,
     command_verbosity::in, string::in, maybe(string)::in, bool::out,
     io::di, io::uo) is det.
 
@@ -228,7 +228,7 @@ process_all_nonimported_procs(!Task, !ModuleInfo, !IO) :-
 process_matching_nonimported_procs(Task, Filter, !ModuleInfo, !IO) :-
     module_info_predids(!.ModuleInfo, PredIds),
     ( Task = update_pred_error(Pred) ->
-        list__foldl2(process_nonimported_pred(Pred, Filter), PredIds,
+        list.foldl2(process_nonimported_pred(Pred, Filter), PredIds,
             !ModuleInfo, !IO)
     ;
         process_nonimported_procs_in_preds(PredIds, Task, _, Filter,
@@ -255,7 +255,7 @@ process_nonimported_pred(Task, Filter, PredId, !ModuleInfo, !IO) :-
     ;
         Task(PredId, !ModuleInfo, PredInfo0, PredInfo, WarnCnt, ErrCnt, !IO),
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo),
-        passes_aux__handle_errors(WarnCnt, ErrCnt, !ModuleInfo, !IO)
+        passes_aux.handle_errors(WarnCnt, ErrCnt, !ModuleInfo, !IO)
     ).
 
 :- pred process_nonimported_procs_in_preds(list(pred_id)::in,
@@ -266,7 +266,7 @@ process_nonimported_procs_in_preds([], !Task, _, !ModuleInfo, !IO).
 process_nonimported_procs_in_preds([PredId | PredIds], !Task, Filter,
         !ModuleInfo, !IO) :-
     module_info_preds(!.ModuleInfo, PredTable),
-    map__lookup(PredTable, PredId, PredInfo),
+    map.lookup(PredTable, PredId, PredInfo),
     ( call(Filter, PredInfo) ->
         ProcIds = pred_info_non_imported_procids(PredInfo),
         process_nonimported_procs(ProcIds, PredId, !Task, !ModuleInfo, !IO)
@@ -284,9 +284,9 @@ process_nonimported_procs([], _PredId, !Task, !ModuleInfo, !IO).
 process_nonimported_procs([ProcId | ProcIds], PredId, !Task, !ModuleInfo,
         !IO) :-
     module_info_preds(!.ModuleInfo, Preds0),
-    map__lookup(Preds0, PredId, Pred0),
+    map.lookup(Preds0, PredId, Pred0),
     pred_info_procedures(Pred0, Procs0),
-    map__lookup(Procs0, ProcId, Proc0),
+    map.lookup(Procs0, ProcId, Proc0),
 
     (
         !.Task = update_module(Closure),
@@ -310,7 +310,7 @@ process_nonimported_procs([ProcId | ProcIds], PredId, !Task, !ModuleInfo,
         !.Task = update_proc_error(Closure),
         Closure(PredId, ProcId, !ModuleInfo, Proc0, Proc, WarnCnt, ErrCnt,
             !IO),
-        passes_aux__handle_errors(WarnCnt, ErrCnt, !ModuleInfo, !IO)
+        passes_aux.handle_errors(WarnCnt, ErrCnt, !ModuleInfo, !IO)
     ;
         !.Task = update_pred_error(_),
         unexpected(this_file, "process_non_imported_procs")
@@ -324,23 +324,23 @@ process_nonimported_procs([ProcId | ProcIds], PredId, !Task, !ModuleInfo,
     % or the proc table for this pred_id.  Don't take any chances.
 
     module_info_preds(!.ModuleInfo, Preds8),
-    map__lookup(Preds8, PredId, Pred8),
+    map.lookup(Preds8, PredId, Pred8),
     pred_info_procedures(Pred8, Procs8),
 
-    map__det_update(Procs8, ProcId, Proc, Procs),
+    map.det_update(Procs8, ProcId, Proc, Procs),
     pred_info_set_procedures(Procs, Pred8, Pred),
-    map__det_update(Preds8, PredId, Pred, Preds),
+    map.det_update(Preds8, PredId, Pred, Preds),
     module_info_set_preds(Preds, !ModuleInfo),
 
     process_nonimported_procs(ProcIds, PredId, !Task, !ModuleInfo, !IO).
 
 write_pred_progress_message(Message, PredId, ModuleInfo, !IO) :-
-    globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     (
         VeryVerbose = yes,
-        io__write_string(Message, !IO),
-        hlds_out__write_pred_id(ModuleInfo, PredId, !IO),
-        io__write_string("\n", !IO)
+        io.write_string(Message, !IO),
+        hlds_out.write_pred_id(ModuleInfo, PredId, !IO),
+        io.write_string("\n", !IO)
     ;
         VeryVerbose = no
     ).
@@ -349,21 +349,21 @@ write_proc_progress_message(Message, proc(PredId, ProcId), ModuleInfo, !IO) :-
     write_proc_progress_message(Message, PredId, ProcId, ModuleInfo, !IO).
 
 write_proc_progress_message(Message, PredId, ProcId, ModuleInfo, !IO) :-
-    globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     (
         VeryVerbose = yes,
-        io__write_string(Message, !IO),
-        hlds_out__write_pred_proc_id(ModuleInfo, PredId, ProcId, !IO),
-        io__write_string("\n", !IO)
+        io.write_string(Message, !IO),
+        hlds_out.write_pred_proc_id(ModuleInfo, PredId, ProcId, !IO),
+        io.write_string("\n", !IO)
     ;
         VeryVerbose = no
     ).
 
-:- pred passes_aux__handle_errors(int::in, int::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred handle_errors(int::in, int::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
-passes_aux__handle_errors(WarnCnt, ErrCnt, !ModuleInfo, !IO) :-
-    globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn, !IO),
+handle_errors(WarnCnt, ErrCnt, !ModuleInfo, !IO) :-
+    globals.io_lookup_bool_option(halt_at_warn, HaltAtWarn, !IO),
     (
         (
             ErrCnt > 0
@@ -372,14 +372,14 @@ passes_aux__handle_errors(WarnCnt, ErrCnt, !ModuleInfo, !IO) :-
             HaltAtWarn = yes
         )
     ->
-        io__set_exit_status(1, !IO),
+        io.set_exit_status(1, !IO),
         module_info_incr_errors(!ModuleInfo)
     ;
         true
     ).
 
 maybe_set_exit_status(yes, !IO).
-maybe_set_exit_status(no, !IO) :- io__set_exit_status(1, !IO).
+maybe_set_exit_status(no, !IO) :- io.set_exit_status(1, !IO).
 
 invoke_system_command(ErrorStream, Verbosity, Command, Succeeded, !IO) :-
     invoke_system_command(ErrorStream, Verbosity, Command, no, Succeeded, !IO).
@@ -387,21 +387,21 @@ invoke_system_command(ErrorStream, Verbosity, Command, Succeeded, !IO) :-
 invoke_system_command(ErrorStream, Verbosity, Command,
         MaybeProcessOutput, Succeeded, !IO) :-
     % This predicate shouldn't alter the exit status of mercury_compile.
-    io__get_exit_status(OldStatus, !IO),
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
+    io.get_exit_status(OldStatus, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
     (
         Verbosity = verbose,
         PrintCommand = Verbose
     ;
         Verbosity = verbose_commands,
-        globals__io_lookup_bool_option(verbose_commands, PrintCommand, !IO)
+        globals.io_lookup_bool_option(verbose_commands, PrintCommand, !IO)
     ),
     (
         PrintCommand = yes,
-        io__write_string("% Invoking system command `", !IO),
-        io__write_string(Command, !IO),
-        io__write_string("'...\n", !IO),
-        io__flush_output(!IO)
+        io.write_string("% Invoking system command `", !IO),
+        io.write_string(Command, !IO),
+        io.write_string("'...\n", !IO),
+        io.flush_output(!IO)
     ;
         PrintCommand = no
     ),
@@ -412,7 +412,7 @@ invoke_system_command(ErrorStream, Verbosity, Command,
     % the output from the command would go to the current C output
     % and error streams.
     %
-    io__make_temp(TmpFile, !IO),
+    io.make_temp(TmpFile, !IO),
     ( use_dotnet ->
         % XXX can't use Bourne shell syntax to redirect on .NET
         % XXX the output will go to the wrong place!
@@ -423,9 +423,9 @@ invoke_system_command(ErrorStream, Verbosity, Command,
         CommandRedirected = Command ++ " > " ++ TmpFile
     ;
         CommandRedirected =
-            string__append_list([Command, " > ", TmpFile, " 2>&1"])
+            string.append_list([Command, " > ", TmpFile, " 2>&1"])
     ),
-    io__call_system_return_signal(CommandRedirected, Result, !IO),
+    io.call_system_return_signal(CommandRedirected, Result, !IO),
     (
         Result = ok(exited(Status)),
         maybe_write_string(PrintCommand, "% done.\n", !IO),
@@ -445,7 +445,7 @@ invoke_system_command(ErrorStream, Verbosity, Command,
         CommandSucceeded = no
     ;
         Result = error(Error),
-        report_error(ErrorStream, io__error_message(Error), !IO),
+        report_error(ErrorStream, io.error_message(Error), !IO),
         CommandSucceeded = no
     ),
 
@@ -454,22 +454,22 @@ invoke_system_command(ErrorStream, Verbosity, Command,
         not use_dotnet,
         MaybeProcessOutput = yes(ProcessOutput)
     ->
-        io__make_temp(ProcessedTmpFile, !IO),
+        io.make_temp(ProcessedTmpFile, !IO),
         
         ( use_win32 ->
             % On windows we can't in general redirect standard
             % error in the shell.
-            ProcessOutputRedirected = string__append_list(
+            ProcessOutputRedirected = string.append_list(
                 [ProcessOutput, " < ", TmpFile, " > ",
                     ProcessedTmpFile])
         ;
-            ProcessOutputRedirected = string__append_list(
+            ProcessOutputRedirected = string.append_list(
                 [ProcessOutput, " < ", TmpFile, " > ",
                     ProcessedTmpFile, " 2>&1"])
         ),
-        io__call_system_return_signal(ProcessOutputRedirected,
+        io.call_system_return_signal(ProcessOutputRedirected,
                 ProcessOutputResult, !IO),
-        io__remove_file(TmpFile, _, !IO),
+        io.remove_file(TmpFile, _, !IO),
         (
             ProcessOutputResult = ok(exited(ProcessOutputStatus)),
             maybe_write_string(PrintCommand, "% done.\n", !IO),
@@ -491,7 +491,7 @@ invoke_system_command(ErrorStream, Verbosity, Command,
             ProcessOutputSucceeded = no
         ;
             ProcessOutputResult = error(ProcessOutputError),
-            report_error(ErrorStream, io__error_message(ProcessOutputError),
+            report_error(ErrorStream, io.error_message(ProcessOutputError),
                 !IO),
             ProcessOutputSucceeded = no
         )
@@ -504,26 +504,26 @@ invoke_system_command(ErrorStream, Verbosity, Command,
     %
     % Write the output to the error stream.
     %
-    io__open_input(ProcessedTmpFile, TmpFileRes, !IO),
+    io.open_input(ProcessedTmpFile, TmpFileRes, !IO),
     (
         TmpFileRes = ok(TmpFileStream),
-        io__input_stream_foldl_io(TmpFileStream, io__write_char(ErrorStream),
+        io.input_stream_foldl_io(TmpFileStream, io.write_char(ErrorStream),
             Res, !IO),
         (
             Res = ok
         ;
             Res = error(TmpFileReadError),
             report_error(ErrorStream, "error reading command output: "
-                ++ io__error_message(TmpFileReadError), !IO)
+                ++ io.error_message(TmpFileReadError), !IO)
         ),
-        io__close_input(TmpFileStream, !IO)
+        io.close_input(TmpFileStream, !IO)
     ;
         TmpFileRes = error(TmpFileError),
         report_error(ErrorStream, "error opening command output: "
-                ++ io__error_message(TmpFileError), !IO)
+                ++ io.error_message(TmpFileError), !IO)
     ),
-    io__remove_file(ProcessedTmpFile, _, !IO),
-    io__set_exit_status(OldStatus, !IO).
+    io.remove_file(ProcessedTmpFile, _, !IO),
+    io.set_exit_status(OldStatus, !IO).
 
 make_command_string(String0, QuoteType, String) :-
     ( use_win32 ->
@@ -534,7 +534,7 @@ make_command_string(String0, QuoteType, String) :-
             QuoteType = double,
             Quote = " """
         ),
-        string__append_list(["sh -c ", Quote, String0, Quote], String)
+        string.append_list(["sh -c ", Quote, String0, Quote], String)
     ;
         String = String0
     ).
@@ -575,7 +575,7 @@ use_dotnet :- semidet_fail.
 use_win32 :- semidet_succeed.
 
 maybe_report_sizes(HLDS, !IO) :-
-    globals__io_lookup_bool_option(statistics, Statistics, !IO),
+    globals.io_lookup_bool_option(statistics, Statistics, !IO),
     (
         Statistics = yes,
         report_sizes(HLDS, !IO)
@@ -596,11 +596,11 @@ report_sizes(ModuleInfo, !IO) :-
 :- pred tree_stats(string::in, map(_K, _V)::in, io::di, io::uo) is det.
 
 tree_stats(Description, Tree, !IO) :-
-    map__count(Tree, Count),
-    io__write_string(Description, !IO),
-    io__write_string(": count = ", !IO),
-    io__write_int(Count, !IO),
-    io__write_string("\n", !IO).
+    map.count(Tree, Count),
+    io.write_string(Description, !IO),
+    io.write_string(": count = ", !IO),
+    io.write_int(Count, !IO),
+    io.write_string("\n", !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -615,12 +615,12 @@ report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context, !IO) :-
 
     % We need to strip off the extra type_info arguments inserted at the
     % front by polymorphism.m - we only want the last `PredArity' of them.
-    list__length(ArgModes0, NumArgModes),
+    list.length(ArgModes0, NumArgModes),
     NumToDrop = NumArgModes - Arity,
-    ( list__drop(NumToDrop, ArgModes0, ArgModes1) ->
+    ( list.drop(NumToDrop, ArgModes0, ArgModes1) ->
         ArgModes = ArgModes1
     ;
-        unexpected(this_file, "report_pred_proc_id: list__drop failed")
+        unexpected(this_file, "report_pred_proc_id: list.drop failed")
     ),
     (
         MaybeContext = yes(OutContext)
@@ -628,38 +628,38 @@ report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context, !IO) :-
         MaybeContext = no,
         OutContext = Context
     ),
-    prog_out__write_context(OutContext, !IO),
-    io__write_string("In `", !IO),
+    prog_out.write_context(OutContext, !IO),
+    io.write_string("In `", !IO),
     report_pred_name_mode(PredOrFunc, PredName, ArgModes, !IO),
-    io__write_string("':\n", !IO).
+    io.write_string("':\n", !IO).
 
 report_pred_name_mode(predicate, PredName, ArgModes, !IO) :-
-    io__write_string(PredName, !IO),
+    io.write_string(PredName, !IO),
     (
         ArgModes = [_ | _],
-        varset__init(InstVarSet),   % XXX inst var names
-        io__write_string("(", !IO),
+        varset.init(InstVarSet),   % XXX inst var names
+        io.write_string("(", !IO),
         strip_builtin_qualifiers_from_mode_list(ArgModes, StrippedArgModes),
         mercury_output_mode_list(StrippedArgModes, InstVarSet, !IO),
-        io__write_string(")", !IO)
+        io.write_string(")", !IO)
     ;
         ArgModes = []
     ).
 
 report_pred_name_mode(function, FuncName, ArgModes, !IO) :-
-    varset__init(InstVarSet),   % XXX inst var names
+    varset.init(InstVarSet),   % XXX inst var names
     strip_builtin_qualifiers_from_mode_list(ArgModes, StrippedArgModes),
     pred_args_to_func_args(StrippedArgModes, FuncArgModes, FuncRetMode),
-    io__write_string(FuncName, !IO),
+    io.write_string(FuncName, !IO),
     (
         FuncArgModes = [_ | _],
-        io__write_string("(", !IO),
+        io.write_string("(", !IO),
         mercury_output_mode_list(FuncArgModes, InstVarSet, !IO),
-        io__write_string(")", !IO)
+        io.write_string(")", !IO)
     ;
         FuncArgModes = []
     ),
-    io__write_string(" = ", !IO),
+    io.write_string(" = ", !IO),
     mercury_output_mode(FuncRetMode, InstVarSet, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -669,26 +669,26 @@ output_to_file(FileName, Action, !IO) :-
     output_to_file(FileName, NewAction, _Result, !IO).
 
 output_to_file(FileName, Action, Result, !IO) :-
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
-    globals__io_lookup_bool_option(statistics, Stats, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(statistics, Stats, !IO),
     maybe_write_string(Verbose, "% Writing to file `", !IO),
     maybe_write_string(Verbose, FileName, !IO),
     maybe_write_string(Verbose, "'...\n", !IO),
     maybe_flush_output(Verbose, !IO),
-    io__open_output(FileName, Res, !IO),
+    io.open_output(FileName, Res, !IO),
     (
         Res = ok(FileStream),
-        io__set_output_stream(FileStream, OutputStream, !IO),
+        io.set_output_stream(FileStream, OutputStream, !IO),
         Action(ActionResult, !IO),
-        io__set_output_stream(OutputStream, _, !IO),
-        io__close_output(FileStream, !IO),
+        io.set_output_stream(OutputStream, _, !IO),
+        io.close_output(FileStream, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO),
         Result = yes(ActionResult)
     ;
         Res = error(_),
         maybe_write_string(Verbose, "\n", !IO),
-        string__append_list(["can't open file `", FileName, "' for output."],
+        string.append_list(["can't open file `", FileName, "' for output."],
             ErrorMessage),
         report_error(ErrorMessage, !IO),
         Result = no

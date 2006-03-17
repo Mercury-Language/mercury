@@ -19,7 +19,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__live_vars.
+:- module ll_backend.live_vars.
 :- interface.
 
 % Parse tree modules
@@ -93,14 +93,14 @@ build_live_sets_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ResumeVars0,
 	goal_info_get_post_births(GoalInfo0, PostBirths),
 
 	% note: we must be careful to apply deaths before births
-	set__difference(!.Liveness, PreDeaths, !:Liveness),
-	set__union(!.Liveness, PreBirths, !:Liveness),
+	set.difference(!.Liveness, PreDeaths, !:Liveness),
+	set.union(!.Liveness, PreBirths, !:Liveness),
 
 	% If the goal is atomic, we want to apply the postdeaths before processing
     % the goal, but if the goal is a compound goal, then we want to apply them
     % after processing it.
 	( goal_is_atomic(Goal0) ->
-		set__difference(!.Liveness, PostDeaths, !:Liveness)
+		set.difference(!.Liveness, PostDeaths, !:Liveness)
 	;
 		true
 	),
@@ -113,7 +113,7 @@ build_live_sets_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ResumeVars0,
 	;
 		ResumePoint = resume_point(ResumePointVars, Locs),
 		( resume_locs_include_stack(Locs, yes) ->
-			set__union(ResumeVars0, ResumePointVars, ResumeVars1),
+			set.union(ResumeVars0, ResumePointVars, ResumeVars1),
 			ResumeOnStack = yes
 		;
 			ResumeVars1 = ResumeVars0,
@@ -130,10 +130,10 @@ build_live_sets_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, ResumeVars0,
 	( goal_is_atomic(Goal0) ->
 		true
 	;
-		set__difference(!.Liveness, PostDeaths, !:Liveness)
+		set.difference(!.Liveness, PostDeaths, !:Liveness)
 	),
 
-	set__union(!.Liveness, PostBirths, !:Liveness).
+	set.union(!.Liveness, PostBirths, !:Liveness).
 
 :- pred resume_locs_include_stack(resume_locs::in, bool::out) is det.
 
@@ -169,7 +169,7 @@ build_live_sets_in_goal_2(conj(ConjType, Goals0), conj(ConjType, Goals),
     ;
         ConjType = parallel_conj,
         goal_info_get_code_gen_nonlocals(GoalInfo0, NonLocals),
-        set__union(NonLocals, !.Liveness, LiveSet),
+        set.union(NonLocals, !.Liveness, LiveSet),
         % Since each parallel conjunct may be run on a different Mercury engine
         % to the current engine, we must save all the variables that are live
         % or nonlocal to the parallel conjunction. Nonlocal variables that are
@@ -204,7 +204,7 @@ build_live_sets_in_goal_2(disj(Goals0), disj(Goals), GoalInfo, GoalInfo,
 			(
 				goal_info_get_code_model(GoalInfo, model_non),
 				some [Disjunct] (
-					list__member(Disjunct, Goals),
+					list.member(Disjunct, Goals),
 					Disjunct = _ - DisjunctGoalInfo,
 					goal_info_get_resume_point(DisjunctGoalInfo,
 						DisjunctResumePoint),
@@ -212,7 +212,7 @@ build_live_sets_in_goal_2(disj(Goals0), disj(Goals), GoalInfo, GoalInfo,
 					resume_locs_include_stack(Locs, yes)
 				)
 			->
-				set__union(!.NondetLiveness, ResumeVars, !:NondetLiveness)
+				set.union(!.NondetLiveness, ResumeVars, !:NondetLiveness)
 			;
 				true
 			)
@@ -244,7 +244,7 @@ build_live_sets_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
         LivenessCond, _LivenessThen, NondetLivenessCond, NondetLivenessThen),
 	build_live_sets_in_goal(Else0, Else, ResumeVars0, AllocData, !StackAlloc,
         Liveness0, Liveness, NondetLiveness0, NondetLivenessElse),
-	set__union(NondetLivenessThen, NondetLivenessElse, NondetLiveness).
+	set.union(NondetLivenessThen, NondetLivenessElse, NondetLiveness).
 
 build_live_sets_in_goal_2(not(Goal0), not(Goal), GoalInfo, GoalInfo,
 		ResumeVars0, AllocData, !StackAlloc, !Liveness, !NondetLiveness) :-
@@ -278,9 +278,9 @@ build_live_sets_in_goal_2(Goal, Goal, GoalInfo0, GoalInfo, ResumeVars0,
 	;
 		ProcInfo = AllocData ^ proc_info,
 		proc_info_vartypes(ProcInfo, VarTypes),
-		map__apply_to_list(ArgVars, VarTypes, Types),
+		map.apply_to_list(ArgVars, VarTypes, Types),
 		ModuleInfo = AllocData ^ module_info,
-		arg_info__partition_generic_call_args(ModuleInfo, ArgVars,
+		arg_info.partition_generic_call_args(ModuleInfo, ArgVars,
 			Types, Modes, _InVars, OutVars, _UnusedVars),
 		build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0,
             AllocData, !StackAlloc, !.Liveness, !NondetLiveness)
@@ -293,7 +293,7 @@ build_live_sets_in_goal_2(Goal, Goal, GoalInfo0, GoalInfo, ResumeVars0,
 	CallerProcInfo = AllocData ^ proc_info,
 	proc_info_vartypes(CallerProcInfo, VarTypes),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-	arg_info__partition_proc_call_args(ProcInfo, VarTypes, ModuleInfo,
+	arg_info.partition_proc_call_args(ProcInfo, VarTypes, ModuleInfo,
 		ArgVars, _InVars, OutVars, _UnusedVars),
 	( Builtin = inline_builtin ->
 		GoalInfo = GoalInfo0
@@ -318,8 +318,8 @@ build_live_sets_in_goal_2(Goal, Goal, GoalInfo0, GoalInfo, ResumeVars0,
 	CallerProcInfo = AllocData ^ proc_info,
 	proc_info_vartypes(CallerProcInfo, VarTypes),
 	module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-	ArgVars = list__map(foreign_arg_var, Args),
-	arg_info__partition_proc_call_args(ProcInfo, VarTypes, ModuleInfo,
+	ArgVars = list.map(foreign_arg_var, Args),
+	arg_info.partition_proc_call_args(ProcInfo, VarTypes, ModuleInfo,
 		ArgVars, _InVars, OutVars, _UnusedVars),
 	goal_info_get_code_model(GoalInfo0, CodeModel),
 	(
@@ -362,7 +362,7 @@ build_live_sets_in_goal_2(shorthand(_), _,_,_,_,_,_,_,_,_,_,_) :-
 build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0, AllocData,
 		!StackAlloc, Liveness, !NondetLiveness) :-
 
-	set__difference(Liveness, OutVars, ForwardVars0),
+	set.difference(Liveness, OutVars, ForwardVars0),
 
 	% Might need to add more live variables with typeinfo liveness
 	% calculation.
@@ -375,7 +375,7 @@ build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0, AllocData,
 		Detism = erroneous,
 		AllocData ^ opt_no_return_calls = yes
 	->
-		NeedAcrossCall = need_across_call(set__init, set__init, set__init)
+		NeedAcrossCall = need_across_call(set.init, set.init, set.init)
 	;
 		NeedAcrossCall = need_across_call(ForwardVars, ResumeVars0,
 			!.NondetLiveness)
@@ -388,7 +388,7 @@ build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0, AllocData,
 
 	goal_info_get_code_model(GoalInfo, CodeModel),
 	( CodeModel = model_non ->
-		set__union(!.NondetLiveness, ForwardVars, !:NondetLiveness)
+		set.union(!.NondetLiveness, ForwardVars, !:NondetLiveness)
 	;
 		true
 	).
@@ -458,13 +458,13 @@ build_live_sets_in_disj([Goal0 | Goals0], [Goal | Goals],
         % NondetLiveness should be a set of prog_var sets. Instead of taking
         % the union of the NondetLive sets at the ends of disjuncts, we should
         % just keep them in this set of sets.
-		set__union(NondetLiveness1, NondetLiveness2, NondetLiveness3),
+		set.union(NondetLiveness1, NondetLiveness2, NondetLiveness3),
 		goal_info_get_resume_point(GoalInfo, Resume),
 		(
 			Resume = resume_point(ResumePointVars, Locs),
 			resume_locs_include_stack(Locs, yes)
 		->
-			set__union(NondetLiveness3, ResumePointVars, NondetLiveness)
+			set.union(NondetLiveness3, ResumePointVars, NondetLiveness)
 		;
 			NondetLiveness = NondetLiveness3
 		)
@@ -488,7 +488,7 @@ build_live_sets_in_cases([case(Cons, Goal0) | Cases0],
 		!StackAlloc, Liveness0, Liveness, NondetLiveness0, NondetLiveness1),
 	build_live_sets_in_cases(Cases0, Cases, ResumeVars0, AllocData,
 		!StackAlloc, Liveness0, _Liveness2, NondetLiveness0, NondetLiveness2),
-	set__union(NondetLiveness1, NondetLiveness2, NondetLiveness).
+	set.union(NondetLiveness1, NondetLiveness2, NondetLiveness).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -524,8 +524,8 @@ maybe_add_typeinfo_liveness(ProcInfo, TypeInfoLiveness, OutVars,
 			TypeInfoVarsLive),
 		proc_info_get_typeinfo_vars(OutVars, VarTypes, RttiVarMaps,
 			TypeInfoVarsOut),
-		set__union(!.LiveVars, TypeInfoVarsOut, !:LiveVars),
-		set__union(!.LiveVars, TypeInfoVarsLive, !:LiveVars)
+		set.union(!.LiveVars, TypeInfoVarsOut, !:LiveVars),
+		set.union(!.LiveVars, TypeInfoVarsLive, !:LiveVars)
 	;
         TypeInfoLiveness = no
 	).

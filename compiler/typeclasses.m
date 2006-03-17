@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -114,7 +114,7 @@ perform_context_reduction(OrigTypeAssignSet, !Info, !IO) :-
     module_info_get_superclass_table(ModuleInfo, SuperClassTable),
     module_info_get_instance_table(ModuleInfo, InstanceTable),
     typecheck_info_get_type_assign_set(!.Info, TypeAssignSet0),
-    list__filter_map(
+    list.filter_map(
         reduce_type_assign_context(ClassTable, SuperClassTable, InstanceTable),
         TypeAssignSet0, TypeAssignSet),
     (
@@ -131,7 +131,7 @@ perform_context_reduction(OrigTypeAssignSet, !Info, !IO) :-
                     ^ redundant := multi_map.init,
             type_assign_set_typeclass_constraints(Constraints, TA0, TA)
         ),
-        list__map(DeleteConstraints, OrigTypeAssignSet, NewTypeAssignSet),
+        list.map(DeleteConstraints, OrigTypeAssignSet, NewTypeAssignSet),
         typecheck_info_set_type_assign_set(NewTypeAssignSet, !Info)
     ;
         typecheck_info_set_type_assign_set(TypeAssignSet, !Info)
@@ -149,7 +149,7 @@ reduce_type_assign_context(ClassTable, SuperClassTable, InstanceTable,
     type_assign_get_constraint_proofs(!.TypeAssign, Proofs0),
     type_assign_get_constraint_map(!.TypeAssign, ConstraintMap0),
 
-    typeclasses__reduce_context_by_rule_application(ClassTable,
+    typeclasses.reduce_context_by_rule_application(ClassTable,
         InstanceTable, SuperClassTable, HeadTypeParams,
         Bindings0, Bindings, TVarSet0, TVarSet, Proofs0, Proofs,
         ConstraintMap0, ConstraintMap, Constraints0, Constraints),
@@ -161,15 +161,15 @@ reduce_type_assign_context(ClassTable, SuperClassTable, InstanceTable,
     type_assign_set_constraint_proofs(Proofs, !TypeAssign),
     type_assign_set_constraint_map(ConstraintMap, !TypeAssign).
 
-typeclasses__reduce_context_by_rule_application(ClassTable, InstanceTable,
+reduce_context_by_rule_application(ClassTable, InstanceTable,
         SuperClassTable, HeadTypeParams, !Bindings, !TVarSet, !Proofs,
         !ConstraintMap, !Constraints) :-
-    typeclasses__reduce_context_by_rule_application_2(ClassTable,
+    reduce_context_by_rule_application_2(ClassTable,
         InstanceTable, SuperClassTable, HeadTypeParams, !Bindings,
         !TVarSet, !Proofs, !ConstraintMap, !Constraints,
         !.Constraints ^ unproven, _).
 
-:- pred typeclasses__reduce_context_by_rule_application_2(class_table::in,
+:- pred reduce_context_by_rule_application_2(class_table::in,
     instance_table::in, superclass_table::in, head_type_params::in,
     tsubst::in, tsubst::out, tvarset::in, tvarset::out,
     constraint_proof_map::in, constraint_proof_map::out,
@@ -177,7 +177,7 @@ typeclasses__reduce_context_by_rule_application(ClassTable, InstanceTable,
     hlds_constraints::in, hlds_constraints::out,
     list(hlds_constraint)::in, list(hlds_constraint)::out) is det.
 
-typeclasses__reduce_context_by_rule_application_2(ClassTable, InstanceTable,
+reduce_context_by_rule_application_2(ClassTable, InstanceTable,
         SuperClassTable, HeadTypeParams, !Bindings, !TVarSet, !Proofs,
         !ConstraintMap, !Constraints, !Seen) :-
     apply_rec_subst_to_constraints(!.Bindings, !Constraints),
@@ -201,7 +201,7 @@ typeclasses__reduce_context_by_rule_application_2(ClassTable, InstanceTable,
     apply_instance_rules(ClassTable, InstanceTable, !TVarSet, !Proofs,
         !ConstraintMap, !Seen, !Constraints, AppliedInstanceRule),
     % XXX Kind inference: we assume that all tvars have kind `star'.
-    map__init(KindMap),
+    map.init(KindMap),
     apply_class_rules(SuperClassTable, !.TVarSet, KindMap, !Proofs,
         !ConstraintMap, !Constraints, AppliedClassRule),
     (
@@ -213,7 +213,7 @@ typeclasses__reduce_context_by_rule_application_2(ClassTable, InstanceTable,
         % We have reached fixpoint.
         sort_and_merge_dups(!Constraints)
     ;
-        typeclasses__reduce_context_by_rule_application_2(ClassTable,
+        reduce_context_by_rule_application_2(ClassTable,
             InstanceTable, SuperClassTable, HeadTypeParams, !Bindings,
             !TVarSet, !Proofs, !ConstraintMap, !Constraints, !Seen)
     ).
@@ -224,7 +224,7 @@ typeclasses__reduce_context_by_rule_application_2(ClassTable, InstanceTable,
 sort_and_merge_dups(!Constraints) :-
     % Should we also sort and merge the other fields?
     Unproven0 = !.Constraints ^ unproven,
-    list__sort(compare_hlds_constraints, Unproven0, Unproven1),
+    list.sort(compare_hlds_constraints, Unproven0, Unproven1),
     merge_adjacent_constraints(Unproven1, Unproven),
     !:Constraints = !.Constraints ^ unproven := Unproven.
 
@@ -256,8 +256,8 @@ merge_adjacent_constraints_2(C0, [C1 | Cs], Constraints) :-
 
 merge_constraints(constraint(IdsA, Name, Types), constraint(IdsB, Name, Types),
         constraint(Ids, Name, Types)) :-
-    list__append(IdsA, IdsB, Ids0),
-    list__sort_and_remove_dups(Ids0, Ids).
+    list.append(IdsA, IdsB, Ids0),
+    list.sort_and_remove_dups(Ids0, Ids).
 
 :- pred apply_improvement_rules(class_table::in, instance_table::in,
     head_type_params::in, hlds_constraints::in, tvarset::in, tvarset::out,
@@ -272,7 +272,7 @@ apply_improvement_rules(ClassTable, InstanceTable, HeadTypeParams, Constraints,
     % find_matching_instance_rule.
     do_instance_improvement(ClassTable, InstanceTable, HeadTypeParams,
         Constraints, !TVarSet, !Bindings, Changed2),
-    Changed = bool__or(Changed1, Changed2).
+    Changed = bool.or(Changed1, Changed2).
 
 :- pred do_class_improvement(class_table::in, head_type_params::in,
     hlds_constraints::in, tsubst::in, tsubst::out, bool::out) is det.
@@ -281,8 +281,8 @@ do_class_improvement(ClassTable, HeadTypeParams, Constraints, !Bindings,
         Changed) :-
     Redundant = Constraints ^ redundant,
     Assumed = Constraints ^ assumed,
-    multi_map__keys(Redundant, ClassIds),
-    list__foldl2(
+    multi_map.keys(Redundant, ClassIds),
+    list.foldl2(
         do_class_improvement_2(ClassTable, HeadTypeParams, Redundant, Assumed),
         ClassIds, !Bindings, no, Changed).
 
@@ -292,19 +292,19 @@ do_class_improvement(ClassTable, HeadTypeParams, Constraints, !Bindings,
 
 do_class_improvement_2(ClassTable, HeadTypeParams, RedundantConstraints,
         Assumed, ClassId, !Bindings, !Changed) :-
-    map__lookup(ClassTable, ClassId, ClassDefn),
+    map.lookup(ClassTable, ClassId, ClassDefn),
     FunDeps = ClassDefn ^ class_fundeps,
-    map__lookup(RedundantConstraints, ClassId, Constraints),
+    map.lookup(RedundantConstraints, ClassId, Constraints),
     do_class_improvement_by_pairs(Constraints, FunDeps, HeadTypeParams,
         !Bindings, !Changed),
-    list__filter(has_class_id(ClassId), Assumed, ThisClassAssumed),
+    list.filter(has_class_id(ClassId), Assumed, ThisClassAssumed),
     do_class_improvement_by_assumed(ThisClassAssumed, Constraints, FunDeps,
         HeadTypeParams, !Bindings, !Changed).
 
 :- pred has_class_id(class_id::in, hlds_constraint::in) is semidet.
 
 has_class_id(class_id(Name, Arity), constraint(_, Name, Args)) :-
-    list__length(Args, Arity).
+    list.length(Args, Arity).
 
     % Try to find an opportunity for improvement for each (unordered)
     % pair of constraints from the list.
@@ -343,7 +343,7 @@ do_class_improvement_by_pairs_2(Constraint, [HeadConstraint | TailConstraints],
 
 do_class_improvement_by_assumed(Assumed, Constraints, FunDeps, HeadTypeParams,
         !Bindings, !Changed) :-
-    list__foldl2(
+    list.foldl2(
         do_class_improvement_by_assumed_2(Constraints, FunDeps,
             HeadTypeParams),
         Assumed, !Bindings, !Changed).
@@ -408,8 +408,8 @@ do_class_improvement_fundep(ConstraintA, ConstraintB, FunDep, HeadTypeParams,
 do_instance_improvement(ClassTable, InstanceTable, HeadTypeParams, Constraints,
         !TVarSet, !Bindings, Changed) :-
     RedundantConstraints = Constraints ^ redundant,
-    map__keys(RedundantConstraints, ClassIds),
-    list__foldl3(
+    map.keys(RedundantConstraints, ClassIds),
+    list.foldl3(
         do_instance_improvement_2(ClassTable, InstanceTable,
             HeadTypeParams, RedundantConstraints),
         ClassIds, !TVarSet, !Bindings, no, Changed).
@@ -421,11 +421,11 @@ do_instance_improvement(ClassTable, InstanceTable, HeadTypeParams, Constraints,
 
 do_instance_improvement_2(ClassTable, InstanceTable, HeadTypeParams,
         RedundantConstraints, ClassId, !TVarSet, !Bindings, !Changed) :-
-    map__lookup(ClassTable, ClassId, ClassDefn),
+    map.lookup(ClassTable, ClassId, ClassDefn),
     FunDeps = ClassDefn ^ class_fundeps,
-    map__lookup(InstanceTable, ClassId, InstanceDefns),
-    map__lookup(RedundantConstraints, ClassId, Constraints),
-    list__foldl3(
+    map.lookup(InstanceTable, ClassId, InstanceDefns),
+    map.lookup(RedundantConstraints, ClassId, Constraints),
+    list.foldl3(
         do_instance_improvement_3(Constraints, FunDeps, HeadTypeParams),
         InstanceDefns, !TVarSet, !Bindings, !Changed).
 
@@ -441,7 +441,7 @@ do_instance_improvement_3(Constraints, FunDeps, HeadTypeParams, InstanceDefn,
     tvarset_merge_renaming(!.TVarSet, InstanceTVarSet, NewTVarSet, Renaming),
     apply_variable_renaming_to_type_list(Renaming, InstanceTypes0,
         InstanceTypes),
-    list__foldl2(
+    list.foldl2(
         do_instance_improvement_4(FunDeps, InstanceTypes, HeadTypeParams),
         Constraints, !Bindings, no, Changed0),
     (
@@ -458,7 +458,7 @@ do_instance_improvement_3(Constraints, FunDeps, HeadTypeParams, InstanceDefn,
 
 do_instance_improvement_4(FunDeps, InstanceTypes, HeadTypeParams, Constraint,
         !Bindings, !Changed) :-
-    list__foldl2(
+    list.foldl2(
         do_instance_improvement_fundep(Constraint, InstanceTypes,
             HeadTypeParams),
         FunDeps, !Bindings, !Changed).
@@ -522,8 +522,8 @@ unify_on_elements(Elements, TypesA, TypesB, HeadTypeParams, !Bindings) :-
 subsumes_on_elements(Elements, TypesA, TypesB, Subst) :-
     RTypesA = restrict_list_elements(Elements, TypesA),
     RTypesB = restrict_list_elements(Elements, TypesB),
-    prog_type__vars_list(RTypesB, RTypesBVars),
-    map__init(Subst0),
+    prog_type.vars_list(RTypesB, RTypesBVars),
+    map.init(Subst0),
     type_unify_list(RTypesA, RTypesB, RTypesBVars, Subst0, Subst).
 
 :- pred eliminate_assumed_constraints(constraint_map::in, constraint_map::out,
@@ -547,7 +547,7 @@ eliminate_assumed_constraints_2(AssumedCs, !ConstraintMap, [C | Cs], NewCs,
         Changed0),
     (
         some [A] (
-            list__member(A, AssumedCs),
+            list.member(A, AssumedCs),
             matching_constraints(A, C)
         )
     ->
@@ -587,8 +587,8 @@ apply_instance_rules_2(_, _, !TVarSet, !Proofs, !ConstraintMap, !Redundant,
 apply_instance_rules_2(ClassTable, InstanceTable, !TVarSet, !Proofs,
         !ConstraintMap, !Redundant, !Seen, [C | Cs], Constraints, Changed) :-
     C = constraint(_, ClassName, Types),
-    list__length(Types, Arity),
-    map__lookup(InstanceTable, class_id(ClassName, Arity), Instances),
+    list.length(Types, Arity),
+    map.lookup(InstanceTable, class_id(ClassName, Arity), Instances),
     InitialTVarSet = !.TVarSet,
     (
         find_matching_instance_rule(Instances, C, !TVarSet, !Proofs,
@@ -597,7 +597,7 @@ apply_instance_rules_2(ClassTable, InstanceTable, !TVarSet, !Proofs,
         update_constraint_map(C, !ConstraintMap),
         % Remove any constraints we've already seen.
         % This ensures we don't get into an infinite loop.
-        list__filter(matches_no_constraint(!.Seen), NewConstraints0,
+        list.filter(matches_no_constraint(!.Seen), NewConstraints0,
             NewConstraints),
         update_redundant_constraints(ClassTable, !.TVarSet,
             NewConstraints, !Redundant),
@@ -612,15 +612,15 @@ apply_instance_rules_2(ClassTable, InstanceTable, !TVarSet, !Proofs,
     ),
     apply_instance_rules_2(ClassTable, InstanceTable, !TVarSet, !Proofs,
         !ConstraintMap, !Redundant, !Seen, Cs, TailConstraints, Changed2),
-    bool__or(Changed1, Changed2, Changed),
-    list__append(NewConstraints, TailConstraints, Constraints).
+    bool.or(Changed1, Changed2, Changed),
+    list.append(NewConstraints, TailConstraints, Constraints).
 
 :- pred matches_no_constraint(list(hlds_constraint)::in, hlds_constraint::in)
     is semidet.
 
 matches_no_constraint(Seen, Constraint) :-
     \+ ( some [S] (
-        list__member(S, Seen),
+        list.member(S, Seen),
         matching_constraints(S, Constraint)
     )).
 
@@ -671,7 +671,7 @@ find_matching_instance_rule_2([Instance | Instances], InstanceNum0, Constraint,
 
         NewProof = apply_instance(InstanceNum0),
         retrieve_prog_constraint(Constraint, ProgConstraint),
-        map__set(!.Proofs, ProgConstraint, NewProof, !:Proofs)
+        map.set(!.Proofs, ProgConstraint, NewProof, !:Proofs)
     ;
         InstanceNum = InstanceNum0 + 1,
         find_matching_instance_rule_2(Instances, InstanceNum,
@@ -746,32 +746,32 @@ eliminate_constraint_by_class_rules(C, SubstC, SubClassSubst,
         KindMap, ParentConstraints, Proofs0, Proofs) :-
 
     % Make sure we aren't in a cycle in the superclass relation.
-    \+ list__member(C, ParentConstraints),
+    \+ list.member(C, ParentConstraints),
 
     C = constraint(SuperClassName, SuperClassTypes),
-    list__length(SuperClassTypes, SuperClassArity),
+    list.length(SuperClassTypes, SuperClassArity),
     SuperClassId = class_id(SuperClassName, SuperClassArity),
-    multi_map__search(SuperClassTable, SuperClassId, SubClasses),
+    multi_map.search(SuperClassTable, SuperClassId, SubClasses),
 
     % Convert all the subclass_details into prog_constraints by doing the
     % appropriate variable renaming and applying the type variable bindings.
     % If the unification of the type variables for a particular constraint
     % fails then that constraint is eliminated because it cannot contribute
     % to proving the constraint we are trying to prove.
-    list__filter_map(
+    list.filter_map(
         subclass_details_to_constraint(TVarSet, KindMap, SuperClassTypes),
         SubClasses, SubClassConstraints),
     (
         % Do the first level of search. We search for an assumed constraint
         % which unifies with any of the subclass constraints.
-        varset__vars(TVarSet, XXXHeadTypeParams),
+        varset.vars(TVarSet, XXXHeadTypeParams),
         list.find_first_map(
             match_assumed_constraint(XXXHeadTypeParams, SubClassConstraints),
             AssumedConstraints, SubClass - SubClassSubst0)
     ->
         SubClassSubst = SubClassSubst0,
         apply_rec_subst_to_prog_constraint(SubClassSubst, C, SubstC),
-        map__set(Proofs0, SubstC, superclass(SubClass), Proofs)
+        map.set(Proofs0, SubstC, superclass(SubClass), Proofs)
     ;
         NewParentConstraints = [C | ParentConstraints],
 
@@ -790,7 +790,7 @@ eliminate_constraint_by_class_rules(C, SubstC, SubClassSubst,
         find_first_map(SubClassSearch, SubClassConstraints,
             {NewSubClass, SubClassSubst, NewProofs}),
         apply_rec_subst_to_prog_constraint(SubClassSubst, C, SubstC),
-        map__set(NewProofs, SubstC, superclass(NewSubClass), Proofs)
+        map.set(NewProofs, SubstC, superclass(NewSubClass), Proofs)
     ).
 
 :- pred match_assumed_constraint(head_type_params::in,
@@ -812,7 +812,7 @@ match_assumed_constraint_2(HeadTypeParams, AssumedConstraint,
         AssumedConstraintTypes),
     SubClassConstraint = constraint(AssumedConstraintClass,
         SubClassConstraintTypes),
-    map__init(EmptySub),
+    map.init(EmptySub),
     type_unify_list(SubClassConstraintTypes, AssumedConstraintTypes,
         HeadTypeParams, EmptySub, AssumedConstraintSub),
     retrieve_prog_constraint(AssumedConstraint, MatchingProgConstraint),
@@ -838,7 +838,7 @@ subclass_details_to_constraint(TVarSet, KindMap0, SuperClassTypes,
 
     % Work out what the (renamed) vars from the typeclass declaration
     % are bound to here.
-    type_unify_list(SuperVars, SuperClassTypes, [], map__init, Bindings),
+    type_unify_list(SuperVars, SuperClassTypes, [], map.init, Bindings),
     SubID = class_id(SubName, _SubArity),
     apply_rec_subst_to_tvar_list(KindMap, Bindings, SubVars,
         SubClassTypes),
@@ -877,12 +877,12 @@ subclass_details_to_constraint(TVarSet, KindMap0, SuperClassTypes,
 
 check_satisfiability(Constraints, HeadTypeParams) :-
     all [Constraint] (
-        list__member(Constraint, Constraints)
+        list.member(Constraint, Constraints)
     =>
         (
             Constraint = constraint(_Ids, _ClassName, Types),
             type_list_contains_var(Types, TVar),
-            not list__member(TVar, HeadTypeParams)
+            not list.member(TVar, HeadTypeParams)
         )
     ).
 

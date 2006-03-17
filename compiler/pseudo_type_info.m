@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2000,2002-2003, 2005 The University of Melbourne.
+% Copyright (C) 1996-2000,2002-2003, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -17,7 +17,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- module backend_libs__pseudo_type_info.
+:- module backend_libs.pseudo_type_info.
 :- interface.
 
 :- import_module backend_libs.rtti.
@@ -122,13 +122,13 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
         % this constructor (and not those of other functors in
         % the same type) into account.
 
-        % XXX term__var_to_int doesn't guarantee anything about the
+        % XXX term.var_to_int doesn't guarantee anything about the
         % ints returned (other than that they be distinct for
         % different variables), but here we are relying more,
         % specifically, on the integers being allocated densely
         % (i.e. the first N vars get integers 1 to N).
 
-        term__var_to_int(Var, VarInt0),
+        term.var_to_int(Var, VarInt0),
         (
             ( VarInt0 =< NumUnivQTvars
             ; NumUnivQTvars < 0
@@ -138,7 +138,7 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
             VarInt = VarInt0
         ;
             % This is an existentially quantified variable.
-            ( list__nth_member_search(ExistQTvars, Var, ExistNum0) ->
+            ( list.nth_member_search(ExistQTvars, Var, ExistNum0) ->
                 VarInt = ExistNum0 + pseudo_typeinfo_exist_var_base
             ;
                 unexpected(this_file,
@@ -186,7 +186,7 @@ construct_type_info(Type, TypeInfo) :-
     is semidet.
 
 check_var_arity(VarArityId, Args, RealArity) :-
-    list__length(Args, NumPseudoArgs),
+    list.length(Args, NumPseudoArgs),
     ( VarArityId = func_type_info ->
         NumPseudoArgs = RealArity + 1
     ;
@@ -196,14 +196,14 @@ check_var_arity(VarArityId, Args, RealArity) :-
 :- pred check_arity(list(T)::in, int::in) is semidet.
 
 check_arity(Args, RealArity) :-
-    list__length(Args, NumPseudoArgs),
+    list.length(Args, NumPseudoArgs),
     NumPseudoArgs = RealArity.
 
 :- pred generate_pseudo_args(list(mer_type)::in, int::in, existq_tvars::in,
     list(rtti_maybe_pseudo_type_info)::out) is det.
 
 generate_pseudo_args(TypeArgs, NumUnivQTvars, ExistQTvars, PseudoArgs) :-
-    list__map(generate_pseudo_arg(NumUnivQTvars, ExistQTvars),
+    list.map(generate_pseudo_arg(NumUnivQTvars, ExistQTvars),
         TypeArgs, PseudoArgs).
 
 :- pred generate_pseudo_arg(int::in, existq_tvars::in, mer_type::in,
@@ -223,7 +223,7 @@ generate_pseudo_arg(NumUnivQTvars, ExistQTvars, TypeArg, MaybePseudoArg) :-
     is det.
 
 generate_plain_args(TypeArgs, PseudoArgs) :-
-    list__map(construct_type_info, TypeArgs, PseudoArgs).
+    list.map(construct_type_info, TypeArgs, PseudoArgs).
 
 %---------------------------------------------------------------------------%
 

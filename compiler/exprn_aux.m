@@ -10,7 +10,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__exprn_aux.
+:- module ll_backend.exprn_aux.
 :- interface.
 
 :- import_module libs.options.
@@ -117,10 +117,10 @@
 %-----------------------------------------------------------------------------%
 
 init_exprn_opts(Options, ExprnOpts) :-
-    getopt_io__lookup_bool_option(Options, gcc_non_local_gotos, NLG),
-    getopt_io__lookup_bool_option(Options, asm_labels, ASM),
-    getopt_io__lookup_bool_option(Options, static_ground_terms, SGT),
-    getopt_io__lookup_bool_option(Options, unboxed_float, UBF),
+    getopt_io.lookup_bool_option(Options, gcc_non_local_gotos, NLG),
+    getopt_io.lookup_bool_option(Options, asm_labels, ASM),
+    getopt_io.lookup_bool_option(Options, static_ground_terms, SGT),
+    getopt_io.lookup_bool_option(Options, unboxed_float, UBF),
     ExprnOpts = nlg_asm_sgt_ubf(NLG, ASM, SGT, UBF).
 
 % Determine whether a const (well, what _we_ consider to be a const)
@@ -159,7 +159,7 @@ addr_is_constant(label(Label), ExprnOpts, IsConst) :-
     label_is_constant(Label, NonLocalGotos, AsmLabels, IsConst).
 addr_is_constant(imported(_), ExprnOpts, IsConst) :-
     ExprnOpts = nlg_asm_sgt_ubf(NonLocalGotos, AsmLabels, _SGT, _UBF),
-    globals__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
+    globals.imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
 addr_is_constant(succip, _, no).
 addr_is_constant(do_succeed(_), _, no).
 addr_is_constant(do_redo, _, no).
@@ -173,9 +173,9 @@ addr_is_constant(do_not_reached, _, no).
 :- pred label_is_constant(label::in, bool::in, bool::in, bool::out) is det.
 
 label_is_constant(entry(exported, _), NonLocalGotos, AsmLabels, IsConst) :-
-    globals__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
+    globals.imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
 label_is_constant(entry(local, _), NonLocalGotos, AsmLabels, IsConst) :-
-    globals__imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
+    globals.imported_is_constant(NonLocalGotos, AsmLabels, IsConst).
 label_is_constant(entry(c_local, _), _NonLocalGotos, _AsmLabels, yes).
 label_is_constant(internal(_, _), _NonLocalGotos, _AsmLabels, yes).
 
@@ -268,7 +268,7 @@ vars_in_rval(unop(_Unop, Rval), Vars) :-
 vars_in_rval(binop(_Binop, Rval0, Rval1), Vars) :-
     vars_in_rval(Rval0, Vars0),
     vars_in_rval(Rval1, Vars1),
-    list__append(Vars0, Vars1, Vars).
+    list.append(Vars0, Vars1, Vars).
 vars_in_rval(mem_addr(MemRef), Vars) :-
     vars_in_mem_ref(MemRef, Vars).
 
@@ -294,7 +294,7 @@ vars_in_lval(prevfr(Rval), Vars) :-
 vars_in_lval(field(_MaybeTag, Rval0, Rval1), Vars) :-
     vars_in_rval(Rval0, Vars0),
     vars_in_rval(Rval1, Vars1),
-    list__append(Vars0, Vars1, Vars).
+    list.append(Vars0, Vars1, Vars).
 vars_in_lval(mem_ref(Rval), Vars) :-
     vars_in_rval(Rval, Vars).
 vars_in_lval(lvar(Var), [Var]).
@@ -330,14 +330,14 @@ substitute_lval_in_uinstr(OldLval, NewLval, Uinstr0, Uinstr, !N) :-
         Uinstr = Uinstr0
     ;
         Uinstr0 = livevals(LvalSet0),
-        set__to_sorted_list(LvalSet0, Lvals0),
-        list__map_foldl(substitute_lval_in_lval_count(OldLval, NewLval),
+        set.to_sorted_list(LvalSet0, Lvals0),
+        list.map_foldl(substitute_lval_in_lval_count(OldLval, NewLval),
             Lvals0, Lvals, !N),
-        set__list_to_set(Lvals, LvalSet),
+        set.list_to_set(Lvals, LvalSet),
         Uinstr = livevals(LvalSet)
     ;
         Uinstr0 = block(TempR, TempF, Instrs0),
-        list__map_foldl(substitute_lval_in_instr(OldLval, NewLval),
+        list.map_foldl(substitute_lval_in_instr(OldLval, NewLval),
             Instrs0, Instrs, !N),
         Uinstr = block(TempR, TempF, Instrs)
     ;
@@ -435,7 +435,7 @@ substitute_lval_in_uinstr(OldLval, NewLval, Uinstr0, Uinstr, !N) :-
         Uinstr0 = pragma_c(Decls, Components0, MayCallMercury,
             MaybeLabel1, MaybeLabel2, MaybeLabel3, MaybeLabel4,
             ReferStackSlot, MayDupl),
-        list__map_foldl(substitute_lval_in_component(OldLval, NewLval),
+        list.map_foldl(substitute_lval_in_component(OldLval, NewLval),
             Components0, Components, !N),
         Uinstr = pragma_c(Decls, Components, MayCallMercury,
             MaybeLabel1, MaybeLabel2, MaybeLabel3, MaybeLabel4,
@@ -464,12 +464,12 @@ substitute_lval_in_component(OldLval, NewLval,
         Component0, Component, !N) :-
     (
         Component0 = pragma_c_inputs(Inputs0),
-        list__map_foldl(substitute_lval_in_pragma_c_input(OldLval, NewLval),
+        list.map_foldl(substitute_lval_in_pragma_c_input(OldLval, NewLval),
             Inputs0, Inputs, !N),
         Component = pragma_c_inputs(Inputs)
     ;
         Component0 = pragma_c_outputs(Outputs0),
-        list__map_foldl(substitute_lval_in_pragma_c_output(OldLval, NewLval),
+        list.map_foldl(substitute_lval_in_pragma_c_output(OldLval, NewLval),
             Outputs0, Outputs, !N),
         Component = pragma_c_outputs(Outputs)
     ;
@@ -495,10 +495,10 @@ substitute_lval_in_live_lval_info(_OldLval, _NewLval,
         no_live_lvals_info, no_live_lvals_info, !N).
 substitute_lval_in_live_lval_info(OldLval, NewLval,
         live_lvals_info(LvalSet0), live_lvals_info(LvalSet), !N) :-
-    Lvals0 = set__to_sorted_list(LvalSet0),
-    list__map_foldl(substitute_lval_in_lval_count(OldLval, NewLval),
+    Lvals0 = set.to_sorted_list(LvalSet0),
+    list.map_foldl(substitute_lval_in_lval_count(OldLval, NewLval),
         Lvals0, Lvals, !N),
-    set__list_to_set(Lvals, LvalSet).
+    set.list_to_set(Lvals, LvalSet).
 
 :- pred substitute_lval_in_pragma_c_input(lval::in, lval::in,
     pragma_c_input::in, pragma_c_input::out, int::in, int::out) is det.
@@ -917,8 +917,8 @@ rval_addrs(unop(_Unop, Rval), CodeAddrs, DataAddrs) :-
 rval_addrs(binop(_Binop, Rval1, Rval2), CodeAddrs, DataAddrs) :-
     rval_addrs(Rval1, CodeAddrs1, DataAddrs1),
     rval_addrs(Rval2, CodeAddrs2, DataAddrs2),
-    list__append(CodeAddrs1, CodeAddrs2, CodeAddrs),
-    list__append(DataAddrs1, DataAddrs2, DataAddrs).
+    list.append(CodeAddrs1, CodeAddrs2, CodeAddrs),
+    list.append(DataAddrs1, DataAddrs2, DataAddrs).
 rval_addrs(mem_addr(Rval), CodeAddrs, DataAddrs) :-
     mem_ref_addrs(Rval, CodeAddrs, DataAddrs).
 
@@ -943,8 +943,8 @@ lval_addrs(sp, [], []).
 lval_addrs(field(_Tag, Rval1, Rval2), CodeAddrs, DataAddrs) :-
     rval_addrs(Rval1, CodeAddrs1, DataAddrs1),
     rval_addrs(Rval2, CodeAddrs2, DataAddrs2),
-    list__append(CodeAddrs1, CodeAddrs2, CodeAddrs),
-    list__append(DataAddrs1, DataAddrs2, DataAddrs).
+    list.append(CodeAddrs1, CodeAddrs2, CodeAddrs),
+    list.append(DataAddrs1, DataAddrs2, DataAddrs).
 lval_addrs(lvar(_Var), [], []).
 lval_addrs(temp(_Type, _TmpNum), [], []).
 lval_addrs(mem_ref(Rval), CodeAddrs, DataAddrs) :-
@@ -954,15 +954,15 @@ rval_list_addrs([], [], []).
 rval_list_addrs([Rval | Rvals], CodeAddrs, DataAddrs) :-
     rval_addrs(Rval, CodeAddrs0, DataAddrs0),
     rval_list_addrs(Rvals, CodeAddrs1, DataAddrs1),
-    list__append(CodeAddrs0, CodeAddrs1, CodeAddrs),
-    list__append(DataAddrs0, DataAddrs1, DataAddrs).
+    list.append(CodeAddrs0, CodeAddrs1, CodeAddrs),
+    list.append(DataAddrs0, DataAddrs1, DataAddrs).
 
 lval_list_addrs([], [], []).
 lval_list_addrs([Lval | Lvals], CodeAddrs, DataAddrs) :-
     lval_addrs(Lval, CodeAddrs0, DataAddrs0),
     lval_list_addrs(Lvals, CodeAddrs1, DataAddrs1),
-    list__append(CodeAddrs0, CodeAddrs1, CodeAddrs),
-    list__append(DataAddrs0, DataAddrs1, DataAddrs).
+    list.append(CodeAddrs0, CodeAddrs1, CodeAddrs),
+    list.append(DataAddrs0, DataAddrs1, DataAddrs).
 
 :- pred mem_ref_addrs(mem_ref::in,
     list(code_addr)::out, list(data_addr)::out) is det.
@@ -984,8 +984,8 @@ maybe_rval_list_addrs([MaybeRval | MaybeRvals], CodeAddrs, DataAddrs) :-
         MaybeRval = yes(Rval),
         rval_addrs(Rval, CodeAddrs0, DataAddrs0),
         maybe_rval_list_addrs(MaybeRvals, CodeAddrs1, DataAddrs1),
-        list__append(CodeAddrs0, CodeAddrs1, CodeAddrs),
-        list__append(DataAddrs0, DataAddrs1, DataAddrs)
+        list.append(CodeAddrs0, CodeAddrs1, CodeAddrs),
+        list.append(DataAddrs0, DataAddrs1, DataAddrs)
     ;
         MaybeRval = no,
         maybe_rval_list_addrs(MaybeRvals, CodeAddrs, DataAddrs)

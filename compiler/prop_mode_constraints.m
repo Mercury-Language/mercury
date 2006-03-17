@@ -155,7 +155,7 @@ process_pred(PredId, !ModuleInfo, !VarInfo, !Constraints) :-
     is det.
 
 process_pred(ModuleInfo, PredId, !PredInfo, !VarInfo, !Constraints) :-
-    goal_path.fill_slots_in_clauses(ModuleInfo, GoalPathOptimisation,
+    fill_goal_path_slots_in_clauses(ModuleInfo, GoalPathOptimisation,
         !PredInfo),
 
     %

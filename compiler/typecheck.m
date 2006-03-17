@@ -324,7 +324,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
     globals__io_get_globals(Globals, !IO),
     ( Iteration = 1 ->
         % Goal paths are used to identify typeclass constraints.
-        goal_path__fill_slots_in_clauses(!.ModuleInfo, no, !PredInfo),
+        fill_goal_path_slots_in_clauses(!.ModuleInfo, no, !PredInfo),
         maybe_add_field_access_function_clause(!.ModuleInfo, !PredInfo),
         maybe_improve_headvar_names(Globals, !PredInfo),
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2005 The University of Melbourne.
+% Copyright (C) 2000-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,7 +14,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module backend_libs__switch_util.
+:- module backend_libs.switch_util.
 :- interface.
 
 :- import_module hlds.hlds_data.
@@ -158,7 +158,7 @@
 %-----------------------------------------------------------------------------%
 
 string_hash_cases([], _, Map) :-
-    map__init(Map).
+    map.init(Map).
 string_hash_cases([Case | Cases], HashMask, Map) :-
     string_hash_cases(Cases, HashMask, Map0),
     ( Case = case(_, string_constant(String0), _, _) ->
@@ -166,16 +166,16 @@ string_hash_cases([Case | Cases], HashMask, Map) :-
     ;
         unexpected(this_file, "string_hash_cases: non-string case?")
     ),
-    string__hash(String, HashVal0),
+    string.hash(String, HashVal0),
     HashVal = HashVal0 /\ HashMask,
-    ( map__search(Map0, HashVal, CaseList0) ->
-        map__det_update(Map0, HashVal, [Case | CaseList0], Map)
+    ( map.search(Map0, HashVal, CaseList0) ->
+        map.det_update(Map0, HashVal, [Case | CaseList0], Map)
     ;
-        map__det_insert(Map0, HashVal, [Case], Map)
+        map.det_insert(Map0, HashVal, [Case], Map)
     ).
 
 calc_hash_slots(HashValList, HashMap, Map) :-
-    calc_hash_slots_1(HashValList, HashMap, map__init, Map, 0, _).
+    calc_hash_slots_1(HashValList, HashMap, map.init, Map, 0, _).
 
 :- pred calc_hash_slots_1(assoc_list(int, cases_list)::in,
     map(int, cases_list)::in,
@@ -196,23 +196,23 @@ calc_hash_slots_1([HashVal - Cases | Rest], HashMap,
 calc_hash_slots_2([], _HashVal, _HashMap, !Map, !LastUsed).
 calc_hash_slots_2([Case | Cases], HashVal, HashMap, !Map, !LastUsed) :-
     calc_hash_slots_2(Cases, HashVal, HashMap, !Map, !LastUsed),
-    ( map__contains(!.Map, HashVal) ->
+    ( map.contains(!.Map, HashVal) ->
         follow_hash_chain(!.Map, HashVal, ChainEnd),
         next_free_hash_slot(!.Map, HashMap, !LastUsed),
-        map__lookup(!.Map, ChainEnd, hash_slot(PrevCase, _)),
-        svmap__det_update(ChainEnd, hash_slot(PrevCase, !.LastUsed), !Map),
-        svmap__det_insert(!.LastUsed, hash_slot(Case, -1), !Map)
+        map.lookup(!.Map, ChainEnd, hash_slot(PrevCase, _)),
+        svmap.det_update(ChainEnd, hash_slot(PrevCase, !.LastUsed), !Map),
+        svmap.det_insert(!.LastUsed, hash_slot(Case, -1), !Map)
     ;
-        svmap__det_insert(HashVal, hash_slot(Case, -1), !Map)
+        svmap.det_insert(HashVal, hash_slot(Case, -1), !Map)
     ).
 
 :- pred follow_hash_chain(map(int, hash_slot)::in, int::in, int::out) is det.
 
 follow_hash_chain(Map, Slot, LastSlot) :-
-    map__lookup(Map, Slot, hash_slot(_, NextSlot)),
+    map.lookup(Map, Slot, hash_slot(_, NextSlot)),
     (
         NextSlot >= 0,
-        map__contains(Map, NextSlot)
+        map.contains(Map, NextSlot)
     ->
         follow_hash_chain(Map, NextSlot, LastSlot)
     ;
@@ -231,8 +231,8 @@ follow_hash_chain(Map, Slot, LastSlot) :-
 next_free_hash_slot(Map, H_Map, LastUsed, FreeSlot) :-
     NextSlot = LastUsed + 1,
     (
-        \+ map__contains(Map, NextSlot),
-        \+ map__contains(H_Map, NextSlot)
+        \+ map.contains(Map, NextSlot),
+        \+ map.contains(H_Map, NextSlot)
     ->
         FreeSlot = NextSlot
     ;
@@ -277,7 +277,7 @@ switch_priority(float_constant(_)) = 3.
 switch_priority(shared_remote_tag(_, _)) = 4.
 switch_priority(string_constant(_)) = 5.
 switch_priority(shared_with_reserved_addresses(RAs, Tag)) =
-    switch_priority(Tag) + list__length(RAs).
+    switch_priority(Tag) + list.length(RAs).
     % The following tags should all never occur in switches.
 switch_priority(pred_closure_tag(_, _, _)) = 6.
 switch_priority(type_ctor_info_constant(_, _, _)) = 6.
@@ -291,20 +291,20 @@ type_range(type_cat_char, _, _, MinChar, MaxChar) :-
     % not the target's, so it won't work if cross-compiling
     % to a machine with a different character size.
     % Note also that the code in dense_switch.m and the code
-    % in lookup_switch.m assume that char__min_char_value is 0.
-    char__min_char_value(MinChar),
-    char__max_char_value(MaxChar).
+    % in lookup_switch.m assume that char.min_char_value is 0.
+    char.min_char_value(MinChar),
+    char.max_char_value(MaxChar).
 type_range(type_cat_enum, Type, ModuleInfo, 0, MaxEnum) :-
     ( type_to_ctor_and_args(Type, TypeCtorPrime, _) ->
         TypeCtor = TypeCtorPrime
     ;
-        unexpected(this_file, "dense_switch__type_range: invalid enum type?")
+        unexpected(this_file, "dense_switch.type_range: invalid enum type?")
     ),
     module_info_get_type_table(ModuleInfo, TypeTable),
-    map__lookup(TypeTable, TypeCtor, TypeDefn),
-    hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+    map.lookup(TypeTable, TypeCtor, TypeDefn),
+    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     ( ConsTable = TypeBody ^ du_type_cons_tag_values ->
-        map__count(ConsTable, TypeRange),
+        map.count(ConsTable, TypeRange),
         MaxEnum = TypeRange - 1
     ;
         unexpected(this_file, "type_range: enum type is not d.u. type?")
@@ -319,15 +319,15 @@ get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
         unexpected(this_file, "unknown type in get_ptag_counts")
     ),
     module_info_get_type_table(ModuleInfo, TypeTable),
-    map__lookup(TypeTable, TypeCtor, TypeDefn),
-    hlds_data__get_type_defn_body(TypeDefn, Body),
+    map.lookup(TypeTable, TypeCtor, TypeDefn),
+    hlds_data.get_type_defn_body(TypeDefn, Body),
     ( ConsTable = Body ^ du_type_cons_tag_values ->
-        map__to_assoc_list(ConsTable, ConsList),
-        assoc_list__values(ConsList, TagList)
+        map.to_assoc_list(ConsTable, ConsList),
+        assoc_list.values(ConsList, TagList)
     ;
         unexpected(this_file, "non-du type in get_ptag_counts")
     ),
-    map__init(PtagCountMap0),
+    map.init(PtagCountMap0),
     get_ptag_counts_2(TagList, -1, MaxPrimary, PtagCountMap0, PtagCountMap).
 
 :- pred get_ptag_counts_2(list(cons_tag)::in, int::in, int::out,
@@ -340,43 +340,43 @@ get_ptag_counts_2([ConsTag | TagList], !MaxPrimary, !PtagCountMap) :-
         ; ConsTag = unshared_tag(Primary)
         )
     ->
-        int__max(Primary, !MaxPrimary),
-        ( map__search(!.PtagCountMap, Primary, _) ->
+        int.max(Primary, !MaxPrimary),
+        ( map.search(!.PtagCountMap, Primary, _) ->
             unexpected(this_file, "unshared tag is shared")
         ;
-            map__det_insert(!.PtagCountMap, Primary, none - (-1),
+            map.det_insert(!.PtagCountMap, Primary, none - (-1),
                 !:PtagCountMap)
         )
     ; ConsTag = shared_remote_tag(Primary, Secondary) ->
-        int__max(Primary, !MaxPrimary),
-        ( map__search(!.PtagCountMap, Primary, Target) ->
+        int.max(Primary, !MaxPrimary),
+        ( map.search(!.PtagCountMap, Primary, Target) ->
             Target = TagType - MaxSoFar,
             ( TagType = remote ->
                 true
             ;
                 unexpected(this_file, "remote tag is shared with non-remote")
             ),
-            int__max(Secondary, MaxSoFar, Max),
-            map__det_update(!.PtagCountMap, Primary, remote - Max,
+            int.max(Secondary, MaxSoFar, Max),
+            map.det_update(!.PtagCountMap, Primary, remote - Max,
                 !:PtagCountMap)
         ;
-            map__det_insert(!.PtagCountMap, Primary,
+            map.det_insert(!.PtagCountMap, Primary,
                 remote - Secondary, !:PtagCountMap)
         )
     ; ConsTag = shared_local_tag(Primary, Secondary) ->
-        int__max(Primary, !MaxPrimary),
-        ( map__search(!.PtagCountMap, Primary, Target) ->
+        int.max(Primary, !MaxPrimary),
+        ( map.search(!.PtagCountMap, Primary, Target) ->
             Target = TagType - MaxSoFar,
             ( TagType = local ->
                 true
             ;
                 unexpected(this_file, "local tag is shared with non-local")
             ),
-            int__max(Secondary, MaxSoFar, Max),
-            map__det_update(!.PtagCountMap, Primary, local - Max,
+            int.max(Secondary, MaxSoFar, Max),
+            map.det_update(!.PtagCountMap, Primary, local - Max,
                 !:PtagCountMap)
         ;
-            map__det_insert(!.PtagCountMap, Primary,
+            map.det_insert(!.PtagCountMap, Primary,
                 local - Secondary, !:PtagCountMap)
         )
     ;
@@ -398,40 +398,40 @@ group_cases_by_ptag([Case0 | Cases0], !PtagCaseMap) :-
         ; Tag = unshared_tag(Primary)
         )
     ->
-        ( map__search(!.PtagCaseMap, Primary, _Group) ->
+        ( map.search(!.PtagCaseMap, Primary, _Group) ->
             unexpected(this_file, "unshared tag is shared")
         ;
-            map__init(StagGoalMap0),
-            map__det_insert(StagGoalMap0, -1, ConsIdGoal, StagGoalMap),
-            svmap__det_insert(Primary, ptag_case(none, StagGoalMap),
+            map.init(StagGoalMap0),
+            map.det_insert(StagGoalMap0, -1, ConsIdGoal, StagGoalMap),
+            svmap.det_insert(Primary, ptag_case(none, StagGoalMap),
                 !PtagCaseMap)
         )
     ; Tag = shared_remote_tag(Primary, Secondary) ->
-        ( map__search(!.PtagCaseMap, Primary, Group) ->
+        ( map.search(!.PtagCaseMap, Primary, Group) ->
             Group = ptag_case(StagLoc, StagGoalMap0),
             expect(unify(StagLoc, remote), this_file,
                 "remote tag is shared with non-remote"),
-            map__det_insert(StagGoalMap0, Secondary, ConsIdGoal, StagGoalMap),
-            svmap__det_update(Primary, ptag_case(remote, StagGoalMap),
+            map.det_insert(StagGoalMap0, Secondary, ConsIdGoal, StagGoalMap),
+            svmap.det_update(Primary, ptag_case(remote, StagGoalMap),
                 !PtagCaseMap)
         ;
-            map__init(StagGoalMap0),
-            map__det_insert(StagGoalMap0, Secondary, ConsIdGoal, StagGoalMap),
-            svmap__det_insert(Primary, ptag_case(remote, StagGoalMap),
+            map.init(StagGoalMap0),
+            map.det_insert(StagGoalMap0, Secondary, ConsIdGoal, StagGoalMap),
+            svmap.det_insert(Primary, ptag_case(remote, StagGoalMap),
                 !PtagCaseMap)
         )
     ; Tag = shared_local_tag(Primary, Secondary) ->
-        ( map__search(!.PtagCaseMap, Primary, Group) ->
+        ( map.search(!.PtagCaseMap, Primary, Group) ->
             Group = ptag_case(StagLoc, StagGoalMap0),
             expect(unify(StagLoc, local), this_file,
                 "local tag is shared with non-local"),
-            map__det_insert(StagGoalMap0, Secondary, ConsIdGoal, StagGoalMap),
-            svmap__det_update(Primary, ptag_case(local, StagGoalMap),
+            map.det_insert(StagGoalMap0, Secondary, ConsIdGoal, StagGoalMap),
+            svmap.det_update(Primary, ptag_case(local, StagGoalMap),
                 !PtagCaseMap)
         ;
-            map__init(StagGoalMap0),
-            map__det_insert(StagGoalMap0, Secondary, ConsIdGoal, StagGoalMap),
-            svmap__det_insert(Primary, ptag_case(local, StagGoalMap),
+            map.init(StagGoalMap0),
+            map.det_insert(StagGoalMap0, Secondary, ConsIdGoal, StagGoalMap),
+            svmap.det_insert(Primary, ptag_case(local, StagGoalMap),
                 !PtagCaseMap)
         )
     ;
@@ -453,15 +453,15 @@ group_cases_by_ptag([Case0 | Cases0], !PtagCaseMap) :-
 
 order_ptags_by_count(PtagCountList0, PtagCaseMap0, PtagCaseList) :-
     ( select_frequent_ptag(PtagCountList0, Primary, _, PtagCountList1) ->
-        ( map__search(PtagCaseMap0, Primary, PtagCase) ->
-            map__delete(PtagCaseMap0, Primary, PtagCaseMap1),
+        ( map.search(PtagCaseMap0, Primary, PtagCase) ->
+            map.delete(PtagCaseMap0, Primary, PtagCaseMap1),
             order_ptags_by_count(PtagCountList1, PtagCaseMap1, PtagCaseList1),
             PtagCaseList = [Primary - PtagCase | PtagCaseList1]
         ;
             order_ptags_by_count(PtagCountList1, PtagCaseMap0, PtagCaseList)
         )
     ;
-        ( map__is_empty(PtagCaseMap0) ->
+        ( map.is_empty(PtagCaseMap0) ->
             PtagCaseList = []
         ;
             unexpected(this_file,
@@ -501,8 +501,8 @@ select_frequent_ptag([PtagCount0 | PtagCountList1], Primary,
 order_ptags_by_value(Ptag, MaxPtag, PtagCaseMap0, PtagCaseList) :-
     ( MaxPtag >= Ptag ->
         NextPtag = Ptag + 1,
-        ( map__search(PtagCaseMap0, Ptag, PtagCase) ->
-            map__delete(PtagCaseMap0, Ptag, PtagCaseMap1),
+        ( map.search(PtagCaseMap0, Ptag, PtagCase) ->
+            map.delete(PtagCaseMap0, Ptag, PtagCaseMap1),
             order_ptags_by_value(NextPtag, MaxPtag,
                 PtagCaseMap1, PtagCaseList1),
             PtagCaseList = [Ptag - PtagCase | PtagCaseList1]
@@ -510,7 +510,7 @@ order_ptags_by_value(Ptag, MaxPtag, PtagCaseMap0, PtagCaseList) :-
             order_ptags_by_value(NextPtag, MaxPtag, PtagCaseMap0, PtagCaseList)
         )
     ;
-        ( map__is_empty(PtagCaseMap0) ->
+        ( map.is_empty(PtagCaseMap0) ->
             PtagCaseList = []
         ;
             unexpected(this_file,

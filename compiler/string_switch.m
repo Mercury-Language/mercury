@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,7 +14,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__string_switch.
+:- module ll_backend.string_switch.
 :- interface.
 
 :- import_module backend_libs.switch_util.
@@ -53,27 +53,27 @@
 
 generate_string_switch(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
         EndLabel, !MaybeEnd, Code, !CI) :-
-    code_info__produce_variable(Var, VarCode, VarRval, !CI),
-    code_info__acquire_reg(r, SlotReg, !CI),
-    code_info__acquire_reg(r, StringReg, !CI),
-    code_info__get_next_label(LoopLabel, !CI),
-    code_info__get_next_label(FailLabel, !CI),
-    code_info__get_next_label(JumpLabel, !CI),
+    code_info.produce_variable(Var, VarCode, VarRval, !CI),
+    code_info.acquire_reg(r, SlotReg, !CI),
+    code_info.acquire_reg(r, StringReg, !CI),
+    code_info.get_next_label(LoopLabel, !CI),
+    code_info.get_next_label(FailLabel, !CI),
+    code_info.get_next_label(JumpLabel, !CI),
 
     % Determine how big to make the hash table. Currently we round the number
     % of cases up to the nearest power of two, and then double it.
     % This should hopefully ensure that we don't get too many hash collisions.
 
-    list__length(Cases, NumCases),
-    int__log2(NumCases, LogNumCases),
-    int__pow(2, LogNumCases, RoundedNumCases),
+    list.length(Cases, NumCases),
+    int.log2(NumCases, LogNumCases),
+    int.pow(2, LogNumCases, RoundedNumCases),
     TableSize = 2 * RoundedNumCases,
     HashMask = TableSize - 1,
 
     % Compute the hash table.
-    switch_util__string_hash_cases(Cases, HashMask, HashValsMap),
-    map__to_assoc_list(HashValsMap, HashValsList),
-    switch_util__calc_hash_slots(HashValsList, HashValsMap, HashSlotsMap),
+    switch_util.string_hash_cases(Cases, HashMask, HashValsMap),
+    map.to_assoc_list(HashValsMap, HashValsList),
+    switch_util.calc_hash_slots(HashValsList, HashValsMap, HashSlotsMap),
 
     % Note that it is safe to release the registers now, even though we haven't
     % yet generated all the code which uses them, because that code will be
@@ -81,13 +81,13 @@ generate_string_switch(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
     % registers), and because that code is generated manually (below)
     % so we don't need the reg info to be valid when we generate it.
 
-    code_info__release_reg(SlotReg, !CI),
-    code_info__release_reg(StringReg, !CI),
+    code_info.release_reg(SlotReg, !CI),
+    code_info.release_reg(StringReg, !CI),
 
     % Generate the code for when the hash lookup fails. This must be done
     % before gen_hash_slots, since we want to use the exprn_info corresponding
     % to the start of the switch, not to the end of the last case.
-    code_info__generate_failure(FailCode, !CI),
+    code_info.generate_failure(FailCode, !CI),
 
     % Generate the code etc. for the hash table.
     gen_hash_slots(0, TableSize, HashSlotsMap, CodeModel, SwitchGoalInfo,
@@ -165,7 +165,7 @@ gen_hash_slots(Slot, TableSize, HashSlotMap, CodeModel, SwitchGoalInfo,
 
 gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, SwitchGoalInfo, FailLabel,
         EndLabel, !MaybeEnd, StringRval, Label, NextSlotRval, Code, !CI) :-
-    ( map__search(HashSlotMap, Slot, hash_slot(Case, Next)) ->
+    ( map.search(HashSlotMap, Slot, hash_slot(Case, Next)) ->
         NextSlotRval = const(int_const(Next)),
         Case = case(_, ConsTag, _, Goal),
         ( ConsTag = string_constant(String0) ->
@@ -174,19 +174,19 @@ gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, SwitchGoalInfo, FailLabel,
             unexpected(this_file, "gen_hash_slots: string expected")
         ),
         StringRval = const(string_const(String)),
-        code_info__get_next_label(Label, !CI),
-        string__append_list(["case """, String, """"], Comment),
+        code_info.get_next_label(Label, !CI),
+        string.append_list(["case """, String, """"], Comment),
         LabelCode = node([label(Label) - Comment]),
-        code_info__remember_position(!.CI, BranchStart),
-        trace__maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
+        code_info.remember_position(!.CI, BranchStart),
+        trace.maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
             TraceCode, !CI),
-        code_gen__generate_goal(CodeModel, Goal, GoalCode, !CI),
+        code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
         goal_info_get_store_map(SwitchGoalInfo, StoreMap),
-        code_info__generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
+        code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
         ( this_is_last_case(Slot, TblSize, HashSlotMap) ->
             true
         ;
-            code_info__reset_to_position(BranchStart, !CI)
+            code_info.reset_to_position(BranchStart, !CI)
         ),
         FinishCode = node([goto(label(EndLabel)) - "jump to end of switch"]),
         Code = tree_list([LabelCode, TraceCode, GoalCode, SaveCode,
@@ -206,7 +206,7 @@ this_is_last_case(Slot, TableSize, Table) :-
     ( Slot1 >= TableSize ->
         true
     ;
-        \+ map__contains(Table, Slot1),
+        \+ map.contains(Table, Slot1),
         this_is_last_case(Slot1, TableSize, Table)
     ).
 

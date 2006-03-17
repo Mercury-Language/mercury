@@ -95,7 +95,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module ll_backend__par_conj_gen.
+:- module ll_backend.par_conj_gen.
 
 :- interface.
 
@@ -150,21 +150,21 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
         CodeModel = model_non,
         sorry(this_file, "nondet parallel conjunction not implemented")
     ),
-    code_info__get_globals(!.CI, Globals),
-    globals__lookup_int_option(Globals, sync_term_size, STSize),
-    code_info__get_known_variables(!.CI, Vars),
-    code_info__save_variables_on_stack(Vars, SaveCode, !CI),
+    code_info.get_globals(!.CI, Globals),
+    globals.lookup_int_option(Globals, sync_term_size, STSize),
+    code_info.get_known_variables(!.CI, Vars),
+    code_info.save_variables_on_stack(Vars, SaveCode, !CI),
     goal_info_get_code_gen_nonlocals(GoalInfo, Nonlocals),
-    set__to_sorted_list(Nonlocals, Variables),
-    code_info__get_instmap(!.CI, Initial),
+    set.to_sorted_list(Nonlocals, Variables),
+    code_info.get_instmap(!.CI, Initial),
     goal_info_get_instmap_delta(GoalInfo, Delta),
-    instmap__apply_instmap_delta(Initial, Delta, Final),
-    code_info__get_module_info(!.CI, ModuleInfo),
+    instmap.apply_instmap_delta(Initial, Delta, Final),
+    code_info.get_module_info(!.CI, ModuleInfo),
     find_outputs(Variables, Initial, Final, ModuleInfo, [], Outputs),
-    list__length(Goals, NumGoals),
-    code_info__acquire_reg(r, RegLval, !CI),
-    code_info__acquire_temp_slot(sync_term, SyncSlot, !CI),
-    code_info__acquire_temp_slot(lval(sp), SpSlot, !CI),
+    list.length(Goals, NumGoals),
+    code_info.acquire_reg(r, RegLval, !CI),
+    code_info.acquire_temp_slot(sync_term, SyncSlot, !CI),
+    code_info.acquire_temp_slot(lval(sp), SpSlot, !CI),
     MakeTerm = node([
         assign(SpSlot, lval(sp))
             - "save the parent stack pointer",
@@ -176,13 +176,13 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
         assign(SyncSlot, lval(RegLval))
             - "store the sync-term on the stack"
     ]),
-    code_info__release_reg(RegLval, !CI),
-    code_info__clear_all_registers(no, !CI),
+    code_info.release_reg(RegLval, !CI),
+    code_info.clear_all_registers(no, !CI),
     generate_det_par_conj_2(Goals, 0, SyncSlot, SpSlot, Initial, no,
         GoalCode, !CI),
-    code_info__release_temp_slot(SyncSlot, !CI),
+    code_info.release_temp_slot(SyncSlot, !CI),
     Code = tree(tree(SaveCode, MakeTerm), GoalCode),
-    code_info__clear_all_registers(no, !CI),
+    code_info.clear_all_registers(no, !CI),
     place_all_outputs(Outputs, !CI).
 
 :- pred generate_det_par_conj_2(list(hlds_goal)::in, int::in,
@@ -192,27 +192,27 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
 generate_det_par_conj_2([], _N, _SyncTerm, _SpSlot, _Initial, _, empty, !CI).
 generate_det_par_conj_2([Goal | Goals], N, SyncTerm, SpSlot,
         Initial, MaybeEnd0, Code, !CI) :-
-    code_info__remember_position(!.CI, StartPos),
-    code_info__get_next_label(ThisConjunct, !CI),
-    code_info__get_next_label(NextConjunct, !CI),
-    code_gen__generate_goal(model_det, Goal, ThisGoalCode, !CI),
-    code_info__get_stack_slots(!.CI, AllSlots),
-    code_info__get_known_variables(!.CI, Variables),
-    set__list_to_set(Variables, LiveVars),
-    map__select(AllSlots, LiveVars, StoreMap0),
-    StoreMap = map__map_values(key_stack_slot_to_abs_locn, StoreMap0),
-    code_info__generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
+    code_info.remember_position(!.CI, StartPos),
+    code_info.get_next_label(ThisConjunct, !CI),
+    code_info.get_next_label(NextConjunct, !CI),
+    code_gen.generate_goal(model_det, Goal, ThisGoalCode, !CI),
+    code_info.get_stack_slots(!.CI, AllSlots),
+    code_info.get_known_variables(!.CI, Variables),
+    set.list_to_set(Variables, LiveVars),
+    map.select(AllSlots, LiveVars, StoreMap0),
+    StoreMap = map.map_values(key_stack_slot_to_abs_locn, StoreMap0),
+    code_info.generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
         SaveCode, !CI),
     Goal = _GoalExpr - GoalInfo,
     goal_info_get_instmap_delta(GoalInfo, Delta),
-    instmap__apply_instmap_delta(Initial, Delta, Final),
-    code_info__get_module_info(!.CI, ModuleInfo),
+    instmap.apply_instmap_delta(Initial, Delta, Final),
+    code_info.get_module_info(!.CI, ModuleInfo),
     find_outputs(Variables, Initial, Final, ModuleInfo, [], TheseOutputs),
     copy_outputs(!.CI, TheseOutputs, SpSlot, CopyCode),
     (
         Goals = [_ | _],
-        code_info__reset_to_position(StartPos, !CI),
-        code_info__get_total_stackslot_count(!.CI, NumSlots),
+        code_info.reset_to_position(StartPos, !CI),
+        code_info.get_total_stackslot_count(!.CI, NumSlots),
         ForkCode = node([
             fork(ThisConjunct, NextConjunct, NumSlots)
                 - "fork off a child",
@@ -227,7 +227,7 @@ generate_det_par_conj_2([Goal | Goals], N, SyncTerm, SpSlot,
         ])
     ;
         Goals = [],
-        code_info__get_next_label(ContLab, !CI),
+        code_info.get_next_label(ContLab, !CI),
         ForkCode = empty,
         JoinCode = node([
             join_and_continue(SyncTerm, ContLab)
@@ -248,8 +248,8 @@ generate_det_par_conj_2([Goal | Goals], N, SyncTerm, SpSlot,
 
 find_outputs([], _Initial, _Final, _ModuleInfo, !Outputs).
 find_outputs([Var | Vars],  Initial, Final, ModuleInfo, !Outputs) :-
-    instmap__lookup_var(Initial, Var, InitialInst),
-    instmap__lookup_var(Final, Var, FinalInst),
+    instmap.lookup_var(Initial, Var, InitialInst),
+    instmap.lookup_var(Final, Var, FinalInst),
     ( mode_is_output(ModuleInfo, (InitialInst -> FinalInst)) ->
         !:Outputs = [Var | !.Outputs]
     ;
@@ -262,7 +262,7 @@ find_outputs([Var | Vars],  Initial, Final, ModuleInfo, !Outputs) :-
 
 copy_outputs(_, [], _, empty).
 copy_outputs(CI, [Var | Vars], SpSlot, Code) :-
-    code_info__get_variable_slot(CI, Var, SrcSlot),
+    code_info.get_variable_slot(CI, Var, SrcSlot),
     ( SrcSlot = stackvar(SlotNum) ->
         % The stack pointer points to the last used word on the stack.
         % We want MR_sp[-0] = MR_sv(1), MR_sp[-1] = MR_sv(2), etc.
@@ -283,15 +283,15 @@ copy_outputs(CI, [Var | Vars], SpSlot, Code) :-
 
 place_all_outputs([], !CI).
 place_all_outputs([Var | Vars], !CI) :-
-    code_info__variable_locations(!.CI, VarLocations),
-    code_info__get_variable_slot(!.CI, Var, Slot),
+    code_info.variable_locations(!.CI, VarLocations),
+    code_info.get_variable_slot(!.CI, Var, Slot),
     (
-        map__search(VarLocations, Var, Locations),
-        set__member(Slot, Locations)
+        map.search(VarLocations, Var, Locations),
+        set.member(Slot, Locations)
     ->
         true
     ;
-        code_info__set_var_location(Var, Slot, !CI)
+        code_info.set_var_location(Var, Slot, !CI)
     ),
     place_all_outputs(Vars, !CI).
 

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-2005 The University of Melbourne.
+% Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -16,7 +16,7 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds__type_util.
+:- module check_hlds.type_util.
 :- interface.
 
 :- import_module hlds.hlds_data.
@@ -399,7 +399,7 @@ type_has_user_defined_equality_pred(ModuleInfo, Type, UserEqComp) :-
 
 type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, UserEqComp) :-
     module_info_get_globals(ModuleInfo, Globals),
-    globals__get_target(Globals, Target),
+    globals.get_target(Globals, Target),
     (
         TypeBody = du_type(_, _, _, _, _, _),
         (
@@ -444,11 +444,11 @@ type_body_has_solver_type_details( ModuleInfo,
 type_to_type_defn(ModuleInfo, Type, TypeDefn) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
     type_to_ctor_and_args(Type, TypeCtor, _TypeArgs),
-    map__search(TypeTable, TypeCtor, TypeDefn).
+    map.search(TypeTable, TypeCtor, TypeDefn).
 
 type_to_type_defn_body(ModuleInfo, Type, TypeBody) :-
     type_to_type_defn(ModuleInfo, Type, TypeDefn),
-    hlds_data__get_type_defn_body(TypeDefn, TypeBody).
+    hlds_data.get_type_defn_body(TypeDefn, TypeBody).
 
     % XXX We can't assume that type variables refer to solver types
     % because otherwise the compiler will try to construct initialisation
@@ -495,7 +495,7 @@ is_dummy_argument_type(ModuleInfo, Type) :-
             module_info_get_type_table(ModuleInfo, TypeTable),
             % This can fail for some builtin type constructors such as func,
             % pred, and tuple, none of which are dummy types.
-            map__search(TypeTable, TypeCtor, TypeDefn),
+            map.search(TypeTable, TypeCtor, TypeDefn),
             get_type_defn_body(TypeDefn, TypeBody),
             Ctors = TypeBody ^ du_type_ctors,
             UserEqCmp = TypeBody ^ du_type_usereq,
@@ -509,8 +509,8 @@ is_dummy_argument_type(ModuleInfo, Type) :-
 
 type_ctor_is_enumeration(TypeCtor, ModuleInfo) :-
     module_info_get_type_table(ModuleInfo, TypeDefnTable),
-    map__search(TypeDefnTable, TypeCtor, TypeDefn),
-    hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+    map.search(TypeDefnTable, TypeCtor, TypeDefn),
+    hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     TypeBody ^ du_type_is_enum = is_enum.
 
 %-----------------------------------------------------------------------------%
@@ -523,14 +523,14 @@ type_constructors(Type, ModuleInfo, Constructors) :-
         % Tuples are never existentially typed.
         ExistQVars = [],
         ClassConstraints = [],
-        CtorArgs = list__map((func(ArgType) = no - ArgType), TypeArgs),
+        CtorArgs = list.map((func(ArgType) = no - ArgType), TypeArgs),
         Constructors = [ctor(ExistQVars, ClassConstraints, unqualified("{}"),
             CtorArgs)]
     ;
         module_info_get_type_table(ModuleInfo, TypeTable),
-        map__search(TypeTable, TypeCtor, TypeDefn),
-        hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
-        hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+        map.search(TypeTable, TypeCtor, TypeDefn),
+        hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
+        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         substitute_type_args(TypeParams, TypeArgs, TypeBody ^ du_type_ctors,
             Constructors)
     ).
@@ -543,16 +543,16 @@ switch_type_num_functors(ModuleInfo, Type, NumFunctors) :-
         % XXX The following code uses the source machine's character size,
         % not the target's, so it won't work if cross-compiling to a machine
         % with a different size character.
-        char__max_char_value(MaxChar),
-        char__min_char_value(MinChar),
+        char.max_char_value(MaxChar),
+        char.min_char_value(MinChar),
         NumFunctors = MaxChar - MinChar + 1
     ; type_ctor_is_tuple(TypeCtor) ->
         NumFunctors = 1
     ;
         module_info_get_type_table(ModuleInfo, TypeTable),
-        map__search(TypeTable, TypeCtor, TypeDefn),
-        hlds_data__get_type_defn_body(TypeDefn, TypeBody),
-        map__count(TypeBody ^ du_type_cons_tag_values, NumFunctors)
+        map.search(TypeTable, TypeCtor, TypeDefn),
+        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
+        map.count(TypeBody ^ du_type_cons_tag_values, NumFunctors)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -590,7 +590,7 @@ get_cons_id_arg_types_2(EQVarAction, ModuleInfo, VarType, ConsId, ArgTypes) :-
             ConsDefn = hlds_cons_defn(ExistQVars0, _Constraints0, Args, _, _),
             Args = [_ | _]
         ->
-            hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
+            hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
 
             % XXX handle ExistQVars
             (
@@ -607,8 +607,8 @@ get_cons_id_arg_types_2(EQVarAction, ModuleInfo, VarType, ConsId, ArgTypes) :-
                 )
             ),
 
-            map__from_corresponding_lists(TypeParams, TypeArgs, TSubst),
-            assoc_list__values(Args, ArgTypes0),
+            map.from_corresponding_lists(TypeParams, TypeArgs, TSubst),
+            assoc_list.values(Args, ArgTypes0),
             apply_subst_to_type_list(TSubst, ArgTypes0, ArgTypes)
         ;
             ArgTypes = []
@@ -620,23 +620,23 @@ get_cons_id_arg_types_2(EQVarAction, ModuleInfo, VarType, ConsId, ArgTypes) :-
 cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
     type_to_ctor_and_args(VarType, TypeCtor, TypeArgs),
     module_info_get_type_table(ModuleInfo, Types),
-    map__search(Types, TypeCtor, TypeDefn),
-    hlds_data__get_type_defn_body(TypeDefn, TypeDefnBody),
-    map__member(TypeDefnBody ^ du_type_cons_tag_values, ConsId, _),
+    map.search(Types, TypeCtor, TypeDefn),
+    hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
+    map.member(TypeDefnBody ^ du_type_cons_tag_values, ConsId, _),
 
     module_info_get_cons_table(ModuleInfo, Ctors),
-    map__lookup(Ctors, ConsId, ConsDefns),
-    list__member(ConsDefn, ConsDefns),
+    map.lookup(Ctors, ConsId, ConsDefns),
+    list.member(ConsDefn, ConsDefns),
 
     ConsDefn = hlds_cons_defn(ExistQVars0, _, Args, TypeCtor, _),
 
     % XXX handle ExistQVars
     ExistQVars0 = [],
 
-    hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
+    hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
 
-    map__from_corresponding_lists(TypeParams, TypeArgs, TSubst),
-    assoc_list__values(Args, ArgTypes0),
+    map.from_corresponding_lists(TypeParams, TypeArgs, TSubst),
+    assoc_list.values(Args, ArgTypes0),
     apply_subst_to_type_list(TSubst, ArgTypes0, ArgTypes).
 
 is_existq_cons(ModuleInfo, VarType, ConsId) :-
@@ -656,13 +656,13 @@ is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn) :-
 get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
     is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn),
     ConsDefn = hlds_cons_defn(ExistQVars, Constraints, Args, _, _),
-    assoc_list__values(Args, ArgTypes),
+    assoc_list.values(Args, ArgTypes),
     module_info_get_type_table(ModuleInfo, Types),
     type_to_ctor_and_args(VarType, TypeCtor, _),
-    map__lookup(Types, TypeCtor, TypeDefn),
-    hlds_data__get_type_defn_tvarset(TypeDefn, TypeVarSet),
-    hlds_data__get_type_defn_tparams(TypeDefn, TypeParams),
-    hlds_data__get_type_defn_kind_map(TypeDefn, KindMap),
+    map.lookup(Types, TypeCtor, TypeDefn),
+    hlds_data.get_type_defn_tvarset(TypeDefn, TypeVarSet),
+    hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
+    hlds_data.get_type_defn_kind_map(TypeDefn, KindMap),
     prog_type.var_list_to_type_list(KindMap, TypeParams, TypeCtorArgs),
     type_to_ctor_and_args(VarType, TypeCtor, _),
     construct_type(TypeCtor, TypeCtorArgs, RetType),
@@ -687,30 +687,31 @@ get_type_and_cons_defn(ModuleInfo, Type, ConsId, TypeDefn, ConsDefn) :-
 do_get_type_and_cons_defn(ModuleInfo, TypeCtor, ConsId, TypeDefn, ConsDefn) :-
     get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
     module_info_get_type_table(ModuleInfo, Types),
-    map__lookup(Types, TypeCtor, TypeDefn).
+    map.lookup(Types, TypeCtor, TypeDefn).
 
 get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn) :-
     module_info_get_cons_table(ModuleInfo, Ctors),
     % will fail for builtin cons_ids.
-    map__search(Ctors, ConsId, ConsDefns),
-    MatchingCons = (pred(ThisConsDefn::in) is semidet :-
+    map.search(Ctors, ConsId, ConsDefns),
+    MatchingCons =
+        (pred(ThisConsDefn::in) is semidet :-
             ThisConsDefn = hlds_cons_defn(_, _, _, TypeCtor, _)
         ),
-    list__filter(MatchingCons, ConsDefns, [ConsDefn]).
+    list.filter(MatchingCons, ConsDefns, [ConsDefn]).
 
 %-----------------------------------------------------------------------------%
 
 type_is_no_tag_type(ModuleInfo, Type, Ctor, ArgType) :-
     type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
     module_info_get_no_tag_types(ModuleInfo, NoTagTypes),
-    map__search(NoTagTypes, TypeCtor, NoTagType),
+    map.search(NoTagTypes, TypeCtor, NoTagType),
     NoTagType = no_tag_type(TypeParams, Ctor, ArgType0),
     (
         TypeParams = [],
         ArgType = ArgType0
     ;
         TypeParams = [_ | _],
-        map__from_corresponding_lists(TypeParams, TypeArgs, Subn),
+        map.from_corresponding_lists(TypeParams, TypeArgs, Subn),
         apply_subst_to_type(Subn, ArgType0, ArgType)
     ).
 
@@ -728,7 +729,7 @@ substitute_type_args(TypeParams, TypeArgs, Constructors0, Constructors) :-
         Constructors = Constructors0
     ;
         TypeParams = [_ | _],
-        map__from_corresponding_lists(TypeParams, TypeArgs, Subst),
+        map.from_corresponding_lists(TypeParams, TypeArgs, Subst),
         substitute_type_args_2(Subst, Constructors0, Constructors)
     ).
 
@@ -764,11 +765,11 @@ cons_id_adjusted_arity(ModuleInfo, Type, ConsId) = AdjustedArity :-
     ( get_existq_cons_defn(ModuleInfo, Type, ConsId, ConsDefn) ->
         ConsDefn = ctor_defn(_TVarSet, ExistQTVars, _KindMap,
             Constraints, _ArgTypes, _ResultType),
-        list__length(Constraints, NumTypeClassInfos),
+        list.length(Constraints, NumTypeClassInfos),
         constraint_list_get_tvars(Constraints, ConstrainedTVars),
-        list__delete_elems(ExistQTVars, ConstrainedTVars,
+        list.delete_elems(ExistQTVars, ConstrainedTVars,
             UnconstrainedExistQTVars),
-        list__length(UnconstrainedExistQTVars, NumTypeInfos),
+        list.length(UnconstrainedExistQTVars, NumTypeInfos),
         AdjustedArity = ConsArity + NumTypeClassInfos + NumTypeInfos
     ;
         AdjustedArity = ConsArity
@@ -787,11 +788,11 @@ maybe_get_cons_id_arg_types(ModuleInfo, MaybeType, ConsId0, Arity,
             % for ConsIds with existentially typed arguments.
             get_cons_id_non_existential_arg_types(ModuleInfo, Type,
                 ConsId, Types),
-            list__length(Types, Arity)
+            list.length(Types, Arity)
         ->
-            MaybeTypes = list__map(func(T) = yes(T), Types)
+            MaybeTypes = list.map(func(T) = yes(T), Types)
         ;
-            list__duplicate(Arity, no, MaybeTypes)
+            list.duplicate(Arity, no, MaybeTypes)
         )
     ;
         MaybeTypes = []
@@ -802,9 +803,9 @@ maybe_get_higher_order_arg_types(MaybeType, Arity, MaybeTypes) :-
         MaybeType = yes(Type),
         type_is_higher_order(Type, _, _, _, Types)
     ->
-        MaybeTypes = list__map(func(T) = yes(T), Types)
+        MaybeTypes = list.map(func(T) = yes(T), Types)
     ;
-        list__duplicate(Arity, no, MaybeTypes)
+        list.duplicate(Arity, no, MaybeTypes)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -828,13 +829,13 @@ apply_rec_subst_to_constraint(Subst, !Constraint) :-
 %-----------------------------------------------------------------------------%
 
 apply_variable_renaming_to_constraint_list(Renaming, !Constraints) :-
-    list__map(apply_variable_renaming_to_constraint(Renaming), !Constraints).
+    list.map(apply_variable_renaming_to_constraint(Renaming), !Constraints).
 
 apply_subst_to_constraint_list(Subst, !Constraints) :-
-    list__map(apply_subst_to_constraint(Subst), !Constraints).
+    list.map(apply_subst_to_constraint(Subst), !Constraints).
 
 apply_rec_subst_to_constraint_list(Subst, !Constraints) :-
-    list__map(apply_rec_subst_to_constraint(Subst), !Constraints).
+    list.map(apply_rec_subst_to_constraint(Subst), !Constraints).
 
 %-----------------------------------------------------------------------------%
 
@@ -871,15 +872,15 @@ apply_rec_subst_to_constraints(Subst, !Constraints) :-
 %-----------------------------------------------------------------------------%
 
 apply_variable_renaming_to_constraint_proofs(Renaming, Proofs0, Proofs) :-
-    ( map__is_empty(Proofs0) ->
+    ( map.is_empty(Proofs0) ->
         % Optimize the simple case.
         Proofs = Proofs0
     ;
-        map__keys(Proofs0, Keys0),
-        map__values(Proofs0, Values0),
+        map.keys(Proofs0, Keys0),
+        map.values(Proofs0, Values0),
         apply_variable_renaming_to_prog_constraint_list(Renaming, Keys0, Keys),
-        list__map(rename_constraint_proof(Renaming), Values0, Values),
-        map__from_corresponding_lists(Keys, Values, Proofs)
+        list.map(rename_constraint_proof(Renaming), Values0, Values),
+        map.from_corresponding_lists(Keys, Values, Proofs)
     ).
 
     % Apply a type variable renaming to a class constraint proof.
@@ -894,8 +895,8 @@ rename_constraint_proof(TSubst, superclass(ClassConstraint0),
         ClassConstraint).
 
 apply_subst_to_constraint_proofs(Subst, Proofs0, Proofs) :-
-    map__foldl(apply_subst_to_constraint_proofs_2(Subst), Proofs0,
-        map__init, Proofs).
+    map.foldl(apply_subst_to_constraint_proofs_2(Subst), Proofs0,
+        map.init, Proofs).
 
 :- pred apply_subst_to_constraint_proofs_2(tsubst::in,
     prog_constraint::in, constraint_proof::in,
@@ -911,11 +912,11 @@ apply_subst_to_constraint_proofs_2(Subst, Constraint0, Proof0, Map0, Map) :-
         apply_subst_to_prog_constraint(Subst, Super0, Super),
         Proof = superclass(Super)
     ),
-    map__set(Map0, Constraint, Proof, Map).
+    map.set(Map0, Constraint, Proof, Map).
 
 apply_rec_subst_to_constraint_proofs(Subst, Proofs0, Proofs) :-
-    map__foldl(apply_rec_subst_to_constraint_proofs_2(Subst), Proofs0,
-        map__init, Proofs).
+    map.foldl(apply_rec_subst_to_constraint_proofs_2(Subst), Proofs0,
+        map.init, Proofs).
 
 :- pred apply_rec_subst_to_constraint_proofs_2(tsubst::in,
     prog_constraint::in, constraint_proof::in,
@@ -931,12 +932,12 @@ apply_rec_subst_to_constraint_proofs_2(Subst, Constraint0, Proof0, !Map) :-
         apply_rec_subst_to_prog_constraint(Subst, Super0, Super),
         Proof = superclass(Super)
     ),
-    map__set(!.Map, Constraint, Proof, !:Map).
+    map.set(!.Map, Constraint, Proof, !:Map).
 
 %-----------------------------------------------------------------------------%
 
 apply_variable_renaming_to_constraint_map(Renaming, !ConstraintMap) :-
-    map__map_values(apply_variable_renaming_to_constraint_map_2(Renaming),
+    map.map_values(apply_variable_renaming_to_constraint_map_2(Renaming),
         !ConstraintMap).
 
 :- pred apply_variable_renaming_to_constraint_map_2(tvar_renaming::in,
@@ -946,7 +947,7 @@ apply_variable_renaming_to_constraint_map_2(Renaming, _Key, !Value) :-
     apply_variable_renaming_to_prog_constraint(Renaming, !Value).
 
 apply_subst_to_constraint_map(Subst, !ConstraintMap) :-
-    map__map_values(apply_subst_to_constraint_map_2(Subst), !ConstraintMap).
+    map.map_values(apply_subst_to_constraint_map_2(Subst), !ConstraintMap).
 
 :- pred apply_subst_to_constraint_map_2(tsubst::in, constraint_id::in,
     prog_constraint::in, prog_constraint::out) is det.
@@ -955,7 +956,7 @@ apply_subst_to_constraint_map_2(Subst, _Key, !Value) :-
     apply_subst_to_prog_constraint(Subst, !Value).
 
 apply_rec_subst_to_constraint_map(Subst, !ConstraintMap) :-
-    map__map_values(apply_rec_subst_to_constraint_map_2(Subst),
+    map.map_values(apply_rec_subst_to_constraint_map_2(Subst),
         !ConstraintMap).
 
 :- pred apply_rec_subst_to_constraint_map_2(tsubst::in, constraint_id::in,

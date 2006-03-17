@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -13,7 +13,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- module bytecode_backend__bytecode.
+:- module bytecode_backend.bytecode.
 :- interface.
 
 :- import_module backend_libs.builtin_ops.
@@ -158,52 +158,52 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred bytecode__version(int::out) is det.
+:- pred bytecode.version(int::out) is det.
 
-bytecode__version(9).
+bytecode.version(9).
 
 output_bytecode_file(FileName, ByteCodes, !IO) :-
-    io__open_binary_output(FileName, Result, !IO),
+    io.open_binary_output(FileName, Result, !IO),
     (
         Result = ok(FileStream)
     ->
-        io__set_binary_output_stream(FileStream, OutputStream, !IO),
-        bytecode__version(Version),
+        io.set_binary_output_stream(FileStream, OutputStream, !IO),
+        bytecode.version(Version),
         output_short(Version, !IO),
         output_bytecode_list(ByteCodes, !IO),
-        io__set_binary_output_stream(OutputStream, _, !IO),
-        io__close_binary_output(FileStream, !IO)
+        io.set_binary_output_stream(OutputStream, _, !IO),
+        io.close_binary_output(FileStream, !IO)
     ;
-        io__progname_base("byte.m", ProgName, !IO),
-        io__write_string("\n", !IO),
-        io__write_string(ProgName, !IO),
-        io__write_string(": can't open `", !IO),
-        io__write_string(FileName, !IO),
-        io__write_string("' for output\n", !IO),
-        io__set_exit_status(1, !IO)
+        io.progname_base("byte.m", ProgName, !IO),
+        io.write_string("\n", !IO),
+        io.write_string(ProgName, !IO),
+        io.write_string(": can't open `", !IO),
+        io.write_string(FileName, !IO),
+        io.write_string("' for output\n", !IO),
+        io.set_exit_status(1, !IO)
     ).
 
 debug_bytecode_file(FileName, ByteCodes, !IO) :-
-    io__open_output(FileName, Result, !IO),
+    io.open_output(FileName, Result, !IO),
     (
         Result = ok(FileStream)
     ->
-        io__set_output_stream(FileStream, OutputStream, !IO),
-        bytecode__version(Version),
-        io__write_string("bytecode_version ", !IO),
-        io__write_int(Version, !IO),
-        io__write_string("\n", !IO),
+        io.set_output_stream(FileStream, OutputStream, !IO),
+        bytecode.version(Version),
+        io.write_string("bytecode_version ", !IO),
+        io.write_int(Version, !IO),
+        io.write_string("\n", !IO),
         debug_bytecode_list(ByteCodes, !IO),
-        io__set_output_stream(OutputStream, _, !IO),
-        io__close_output(FileStream, !IO)
+        io.set_output_stream(OutputStream, _, !IO),
+        io.close_output(FileStream, !IO)
     ;
-        io__progname_base("byte.m", ProgName, !IO),
-        io__write_string("\n", !IO),
-        io__write_string(ProgName, !IO),
-        io__write_string(": can't open `", !IO),
-        io__write_string(FileName, !IO),
-        io__write_string("' for output\n", !IO),
-        io__set_exit_status(1, !IO)
+        io.progname_base("byte.m", ProgName, !IO),
+        io.write_string("\n", !IO),
+        io.write_string(ProgName, !IO),
+        io.write_string(": can't open `", !IO),
+        io.write_string(FileName, !IO),
+        io.write_string("' for output\n", !IO),
+        io.set_exit_status(1, !IO)
     ).
 
 :- pred output_bytecode_list(list(byte_code)::in, io::di, io::uo) is det.
@@ -211,7 +211,7 @@ debug_bytecode_file(FileName, ByteCodes, !IO) :-
 output_bytecode_list([], !IO).
 output_bytecode_list([ByteCode | ByteCodes], !IO) :-
     byte_code(ByteCode, Byte),
-    io__write_byte(Byte, !IO),
+    io.write_byte(Byte, !IO),
     output_args(ByteCode, !IO),
     output_bytecode_list(ByteCodes, !IO).
 
@@ -222,7 +222,7 @@ debug_bytecode_list([ByteCode | ByteCodes], !IO) :-
     byte_debug(ByteCode, Debug),
     debug_string(Debug, !IO),
     debug_args(ByteCode, !IO),
-    io__write_char('\n', !IO),
+    io.write_char('\n', !IO),
     debug_bytecode_list(ByteCodes, !IO).
 
 :- pred output_args(byte_code::in, io::di, io::uo) is det.
@@ -240,7 +240,7 @@ output_args(enter_proc(ProcId, Detism, LabelCount, LabelId, TempCount, Vars),
     output_length(LabelCount, !IO),
     output_label_id(LabelId, !IO),
     output_length(TempCount, !IO),
-    list__length(Vars, VarCount),
+    list.length(Vars, VarCount),
     output_length(VarCount, !IO),
     output_var_infos(Vars, !IO).
 output_args(endof_proc, !IO).
@@ -293,25 +293,25 @@ output_args(test(Var1, Var2, TestId), !IO) :-
 output_args(construct(Var, ConsId, Vars), !IO) :-
     output_var(Var, !IO),
     output_cons_id(ConsId, !IO),
-    list__length(Vars, Length),
+    list.length(Vars, Length),
     output_length(Length, !IO),
     output_vars(Vars, !IO).
 output_args(deconstruct(Var, ConsId, Vars), !IO) :-
     output_var(Var, !IO),
     output_cons_id(ConsId, !IO),
-    list__length(Vars, Length),
+    list.length(Vars, Length),
     output_length(Length, !IO),
     output_vars(Vars, !IO).
 output_args(complex_construct(Var, ConsId, VarDirs), !IO) :-
     output_var(Var, !IO),
     output_cons_id(ConsId, !IO),
-    list__length(VarDirs, Length),
+    list.length(VarDirs, Length),
     output_length(Length, !IO),
     output_var_dirs(VarDirs, !IO).
 output_args(complex_deconstruct(Var, ConsId, VarDirs), !IO) :-
     output_var(Var, !IO),
     output_cons_id(ConsId, !IO),
-    list__length(VarDirs, Length),
+    list.length(VarDirs, Length),
     output_length(Length, !IO),
     output_var_dirs(VarDirs, !IO).
 output_args(place_arg(RegType, RegNum, Var), !IO) :-
@@ -370,7 +370,7 @@ debug_args(enter_proc(ProcId, Detism, LabelCount, LabelId, TempCount, Vars),
     debug_length(LabelCount, !IO),
     debug_label_id(LabelId, !IO),
     debug_length(TempCount, !IO),
-    list__length(Vars, VarCount),
+    list.length(Vars, VarCount),
     debug_length(VarCount, !IO),
     debug_var_infos(Vars, !IO).
 debug_args(endof_proc, !IO).
@@ -423,25 +423,25 @@ debug_args(test(Var1, Var2, TestId), !IO) :-
 debug_args(construct(Var, ConsId, Vars), !IO) :-
     debug_var(Var, !IO),
     debug_cons_id(ConsId, !IO),
-    list__length(Vars, Length),
+    list.length(Vars, Length),
     debug_length(Length, !IO),
     debug_vars(Vars, !IO).
 debug_args(deconstruct(Var, ConsId, Vars), !IO) :-
     debug_var(Var, !IO),
     debug_cons_id(ConsId, !IO),
-    list__length(Vars, Length),
+    list.length(Vars, Length),
     debug_length(Length, !IO),
     debug_vars(Vars, !IO).
 debug_args(complex_construct(Var, ConsId, VarDirs), !IO) :-
     debug_var(Var, !IO),
     debug_cons_id(ConsId, !IO),
-    list__length(VarDirs, Length),
+    list.length(VarDirs, Length),
     debug_length(Length, !IO),
     debug_var_dirs(VarDirs, !IO).
 debug_args(complex_deconstruct(Var, ConsId, VarDirs), !IO) :-
     debug_var(Var, !IO),
     debug_cons_id(ConsId, !IO),
-    list__length(VarDirs, Length),
+    list.length(VarDirs, Length),
     debug_length(Length, !IO),
     debug_var_dirs(VarDirs, !IO).
 debug_args(place_arg(RegType, RegNum, Var), !IO) :-
@@ -776,7 +776,7 @@ output_cons_id(type_ctor_info_const(ModuleId, TypeName, TypeArity), !IO) :-
     output_byte(TypeArity, !IO).
 output_cons_id(char_const(Char), !IO) :-
     output_byte(7, !IO),
-    char__to_int(Char, Byte),
+    char.to_int(Char, Byte),
     output_byte(Byte, !IO).
     % XXX
 output_cons_id(base_typeclass_info_const(_, _, _), !IO) :-
@@ -831,7 +831,7 @@ debug_cons_id(base_typeclass_info_const(ModuleId,
     debug_string(Instance, !IO).
 debug_cons_id(char_const(Char), !IO) :-
     debug_string("char_const", !IO),
-    string__from_char_list([Char], String),
+    string.from_char_list([Char], String),
     debug_string(String, !IO).
 debug_cons_id(type_info_cell_constructor, !IO) :-
     debug_string("type_info_cell_constructor", !IO).
@@ -1131,41 +1131,41 @@ unop_debug(logical_not,         "not").
 :- pred debug_cstring(string::in, io::di, io::uo) is det.
 
 debug_cstring(Str, !IO) :-
-    io__write_char('"', !IO),
-    c_util__output_quoted_string(Str, !IO),
-    io__write_char('"', !IO),
+    io.write_char('"', !IO),
+    c_util.output_quoted_string(Str, !IO),
+    io.write_char('"', !IO),
     % XXX: We need the trailing space in case something follows
     % the string as a bytecode argument. This is not very elegant.
-    io__write_char(' ', !IO).
+    io.write_char(' ', !IO).
 
 :- pred debug_string(string::in, io::di, io::uo) is det.
 
 debug_string(Val, !IO) :-
-    io__write_string(Val, !IO),
-    io__write_char(' ', !IO).
+    io.write_string(Val, !IO),
+    io.write_char(' ', !IO).
 
 :- pred debug_int(int::in, io::di, io::uo) is det.
 
 debug_int(Val, !IO) :-
-    io__write_int(Val, !IO),
-    io__write_char(' ', !IO).
+    io.write_int(Val, !IO),
+    io.write_char(' ', !IO).
 
 :- pred debug_float(float::in, io::di, io::uo) is det.
 
 debug_float(Val, !IO) :-
-    io__write_float(Val, !IO),
-    io__write_char(' ', !IO).
+    io.write_float(Val, !IO),
+    io.write_char(' ', !IO).
 
 :- pred debug_sym_name(sym_name::in, io::di, io::uo) is det.
 
 debug_sym_name(unqualified(Val), !IO) :-
-    io__write_string(Val, !IO),
-    io__write_char(' ', !IO).
+    io.write_string(Val, !IO),
+    io.write_char(' ', !IO).
 debug_sym_name(qualified(Module, Val), !IO) :-
     debug_sym_name(Module, !IO),
-    io__write_char(':', !IO),
-    io__write_string(Val, !IO),
-    io__write_char(' ', !IO).
+    io.write_char(':', !IO),
+    io.write_string(Val, !IO),
+    io.write_char(' ', !IO).
 
 %---------------------------------------------------------------------------%
 

@@ -1,16 +1,16 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2005 The University of Melbourne.
+% Copyright (C) 1995-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: dupelim.m.
 % Author: zs.
-
+%
 % This module eliminate some duplicate code sequences.
-
+%
 % Our algorithm has the following stages.
 %
 % 1.    Divide the code of the procedure into basic blocks.
@@ -42,7 +42,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend__dupelim.
+:- module ll_backend.dupelim.
 :- interface.
 
 :- import_module ll_backend.llds.
@@ -84,15 +84,16 @@
     % generalization of the blocks started by Exemplar and OtherLabels.
     % OtherLabels must be nonempty.
     %
-:- type cluster ---> cluster(label, list(label)).
+:- type cluster
+    --->    cluster(label, list(label)).
 
 dupelim_main(ProcLabel, !C, Instrs0, Instrs) :-
     create_basic_blocks(Instrs0, Comments, ProcLabel, !C, _NewLabels,
         LabelSeq0, BlockMap0),
-    map__init(StdMap0),
-    set__init(Fixed0),
-    dupelim__build_maps(LabelSeq0, BlockMap0, StdMap0, StdMap, Fixed0, Fixed),
-    map__values(StdMap, StdList),
+    map.init(StdMap0),
+    set.init(Fixed0),
+    dupelim_build_maps(LabelSeq0, BlockMap0, StdMap0, StdMap, Fixed0, Fixed),
+    map.values(StdMap, StdList),
     find_clusters(StdList, Fixed, [], Clusters),
     (
         Clusters = [],
@@ -101,43 +102,42 @@ dupelim_main(ProcLabel, !C, Instrs0, Instrs) :-
         Instrs = Instrs0
     ;
         Clusters = [_ | _],
-        map__init(ReplMap0),
+        map.init(ReplMap0),
         process_clusters(Clusters, LabelSeq0, LabelSeq, BlockMap0, BlockMap,
             ReplMap0, ReplMap),
         flatten_basic_blocks(LabelSeq, BlockMap, Instrs1),
-        opt_util__replace_labels_instruction_list(Instrs1,
+        opt_util.replace_labels_instruction_list(Instrs1,
             ReplMap, yes, Instrs2),
-        list__append(Comments, Instrs2, Instrs)
+        list.append(Comments, Instrs2, Instrs)
     ).
 
 %-----------------------------------------------------------------------------%
 
-    % dupelim__build_maps builds up a map mapping standardized instruction
+    % dupelim_build_maps builds up a map mapping standardized instruction
     % sequences to the label(s) that start basic blocks with that standardized
     % form, and a set showing which labels are fallen into.
     %
-:- pred dupelim__build_maps(list(label)::in, block_map::in,
+:- pred dupelim_build_maps(list(label)::in, block_map::in,
     std_map::in, std_map::out, set(label)::in, set(label)::out) is det.
 
-dupelim__build_maps([], _, !StdMap, !Fixed).
-dupelim__build_maps([Label | Labels], BlockMap, !StdMap, !Fixed) :-
-    map__lookup(BlockMap, Label, BlockInfo),
+dupelim_build_maps([], _, !StdMap, !Fixed).
+dupelim_build_maps([Label | Labels], BlockMap, !StdMap, !Fixed) :-
+    map.lookup(BlockMap, Label, BlockInfo),
     BlockInfo = block_info(_, _, Instrs, _, _, MaybeFallThrough),
     standardize_instr_block(Instrs, MaybeFallThrough, StdInstrs),
-    ( map__search(!.StdMap, StdInstrs, Cluster) ->
-        svmap__det_update(StdInstrs, [Label | Cluster], !StdMap)
+    ( map.search(!.StdMap, StdInstrs, Cluster) ->
+        svmap.det_update(StdInstrs, [Label | Cluster], !StdMap)
     ;
-        svmap__det_insert(StdInstrs, [Label], !StdMap)
+        svmap.det_insert(StdInstrs, [Label], !StdMap)
     ),
     (
         MaybeFallThrough = yes(FallIntoLabel),
-        svset__insert(FallIntoLabel, !Fixed)
+        svset.insert(FallIntoLabel, !Fixed)
     ;
         MaybeFallThrough = no
     ),
-    list__foldl(add_pragma_pref_labels, Instrs, !Fixed),
-    dupelim__build_maps(Labels, BlockMap, !StdMap, !Fixed).
-
+    list.foldl(add_pragma_pref_labels, Instrs, !Fixed),
+    dupelim_build_maps(Labels, BlockMap, !StdMap, !Fixed).
 
 :- pred add_pragma_pref_labels(instruction::in,
     set(label)::in, set(label)::out) is det.
@@ -149,19 +149,19 @@ add_pragma_pref_labels(Instr, !FoldFixed) :-
     ->
         (
             MaybeFixedLabel = yes(FixedLabel),
-            svset__insert(FixedLabel, !FoldFixed)
+            svset.insert(FixedLabel, !FoldFixed)
         ;
             MaybeFixedLabel = no
         ),
         (
             MaybeLayoutLabel = yes(LayoutLabel),
-            svset__insert(LayoutLabel, !FoldFixed)
+            svset.insert(LayoutLabel, !FoldFixed)
         ;
             MaybeLayoutLabel = no
         ),
         (
             MaybeOnlyLayoutLabel = yes(OnlyLayoutLabel),
-            svset__insert(OnlyLayoutLabel, !FoldFixed)
+            svset.insert(OnlyLayoutLabel, !FoldFixed)
         ;
             MaybeOnlyLayoutLabel = no
         )
@@ -193,9 +193,9 @@ find_clusters([Labels | LabelsList], Fixed, !Clusters) :-
         % if there aren't at least two labels whose blocks have the same
         % standardized form.
         IsFallenInto = (pred(Label::in) is semidet :-
-            set__member(Label, Fixed)
+            set.member(Label, Fixed)
         ),
-        list__filter(IsFallenInto, Labels, FixedLabels, NonFixedLabels),
+        list.filter(IsFallenInto, Labels, FixedLabels, NonFixedLabels),
         NonFixedLabels = [FirstNonFixed | OtherNonFixed]
     ->
         (
@@ -226,7 +226,7 @@ find_clusters([Labels | LabelsList], Fixed, !Clusters) :-
 process_clusters([], !LabelSeq, !BlockMap, !ReplMap).
 process_clusters([Cluster | Clusters], !LabelSeq, !BlockMap, !ReplMap) :-
     Cluster = cluster(Exemplar, ElimLabels),
-    map__lookup(!.BlockMap, Exemplar, ExemplarInfo0),
+    map.lookup(!.BlockMap, Exemplar, ExemplarInfo0),
     ExemplarInfo0 = block_info(ExLabel, ExLabelInstr, ExInstrs0,
         ExFallInto, ExSideLabels, ExMaybeFallThrough),
     expect(unify(Exemplar, ExLabel), this_file, "exemplar label mismatch"),
@@ -235,7 +235,7 @@ process_clusters([Cluster | Clusters], !LabelSeq, !BlockMap, !ReplMap) :-
         ExMaybeFallThrough, UnifiedMaybeFallThrough),
     ExemplarInfo = block_info(ExLabel, ExLabelInstr, UnifiedInstrs,
         ExFallInto, ExSideLabels, UnifiedMaybeFallThrough),
-    svmap__det_update(Exemplar, ExemplarInfo, !BlockMap),
+    svmap.det_update(Exemplar, ExemplarInfo, !BlockMap),
     process_clusters(Clusters, !LabelSeq, !BlockMap, !ReplMap).
 
     % Given the current form of a basic block (instructions and fallthrough),
@@ -257,7 +257,7 @@ process_elim_labels([], Instrs, !LabelSeq, _, _, !ReplMap, Instrs,
         !MaybeFallThrough).
 process_elim_labels([ElimLabel | ElimLabels], Instrs0, !LabelSeq, BlockMap,
         Exemplar, !ReplMap, Instrs, !MaybeFallThrough) :-
-    map__lookup(BlockMap, ElimLabel, ElimLabelInfo),
+    map.lookup(BlockMap, ElimLabel, ElimLabelInfo),
     ElimLabelInfo = block_info(ElimLabel2, _, ElimInstrs,
         _, _, ElimMaybeFallThrough),
     expect(unify(ElimLabel, ElimLabel2), this_file, "elim label mismatch"),
@@ -265,8 +265,8 @@ process_elim_labels([ElimLabel | ElimLabels], Instrs0, !LabelSeq, BlockMap,
         most_specific_block(Instrs0, !.MaybeFallThrough, ElimInstrs,
             ElimMaybeFallThrough, Instrs1, !:MaybeFallThrough)
     ->
-        list__delete_all(!.LabelSeq, ElimLabel, !:LabelSeq),
-        map__det_insert(!.ReplMap, ElimLabel, Exemplar, !:ReplMap),
+        list.delete_all(!.LabelSeq, ElimLabel, !:LabelSeq),
+        map.det_insert(!.ReplMap, ElimLabel, Exemplar, !:ReplMap),
         process_elim_labels(ElimLabels, Instrs1, !LabelSeq, BlockMap,
             Exemplar, !ReplMap, Instrs, !MaybeFallThrough)
     ;
@@ -293,7 +293,7 @@ standardize_instr_block(Instrs0, MaybeFallThrough, Uinstrs) :-
     (
         MaybeFallThrough = yes(Label),
         Goto = goto(label(Label)),
-        list__append(Uinstrs1, [Goto], Uinstrs)
+        list.append(Uinstrs1, [Goto], Uinstrs)
     ;
         MaybeFallThrough = no,
         Uinstrs = Uinstrs1
@@ -538,13 +538,13 @@ standardize_block(Instrs, MaybeFallThrough, StdInstrs) :-
     (
         MaybeFallThrough = yes(Label),
         (
-            list__last(Instrs, LastInstr),
+            list.last(Instrs, LastInstr),
             LastInstr = goto(label(Label)) - _
         ->
             StdInstrs = Instrs
         ;
             Goto = goto(label(Label)) - "",
-            list__append(Instrs, [Goto], StdInstrs)
+            list.append(Instrs, [Goto], StdInstrs)
         )
     ;
         MaybeFallThrough = no,
@@ -565,7 +565,7 @@ most_specific_block(Instrs1, MaybeFallThrough1,
     % had no executable instructions. While most_specific_instrs
     % can delete comments from its input instruction sequences,
     % it cannot delete executable instructions.
-    list__last_det(Instrs, LastInstr),
+    list.last_det(Instrs, LastInstr),
     ( LastInstr = goto(label(Label)) - _ ->
         MaybeFallThrough = yes(Label)
     ;

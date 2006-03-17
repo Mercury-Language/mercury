@@ -11,7 +11,7 @@
 %
 % This module defines the predicates that parse goals.
 
-:- module parse_tree__prog_io_goal.
+:- module parse_tree.prog_io_goal.
 
 :- interface.
 
@@ -98,23 +98,23 @@ parse_goal(Term, Goal, !VarSet) :-
 
     % First, get the goal context.
     (
-        Term = term__functor(_, _, Context)
+        Term = term.functor(_, _, Context)
     ;
-        Term = term__variable(_),
-        term__context_init(Context)
+        Term = term.variable(_),
+        term.context_init(Context)
     ),
     % We just check if it matches the appropriate pattern for one of the
     % builtins. If it doesn't match any of the builtins, then it's just
     % a predicate call.
     (
         % Check for builtins...
-        Term = term__functor(term__atom(Name), Args, Context),
+        Term = term.functor(term.atom(Name), Args, Context),
         parse_goal_2(Name, Args, GoalExpr, !VarSet)
     ->
         Goal = GoalExpr - Context
     ;
         % It's not a builtin.
-        term__coerce(Term, ArgsTerm),
+        term.coerce(Term, ArgsTerm),
         (
             % Check for predicate calls.
             sym_name_and_args(ArgsTerm, SymName, Args)
@@ -141,8 +141,8 @@ parse_goal(Term, Goal, !VarSet) :-
 parse_goal_2("true", [], true, !V).
 parse_goal_2("fail", [], fail, !V).
 parse_goal_2("=", [A0, B0], unify(A, B, purity_pure), !V) :-
-    term__coerce(A0, A),
-    term__coerce(B0, B).
+    term.coerce(A0, A),
+    term.coerce(B0, B).
 parse_goal_2(",", [A0, B0], (A, B), !V) :-
     parse_goal(A0, A, !V),
     parse_goal(B0, B, !V).
@@ -150,7 +150,7 @@ parse_goal_2("&", [A0, B0], (A & B), !V) :-
     parse_goal(A0, A, !V),
     parse_goal(B0, B, !V).
 parse_goal_2(";", [A0, B0], R, !V) :-
-    ( A0 = term__functor(term__atom("->"), [X0, Y0], _Context) ->
+    ( A0 = term.functor(term.atom("->"), [X0, Y0], _Context) ->
         parse_some_vars_goal(X0, Vars, StateVars, X, !V),
         parse_goal(Y0, Y, !V),
         parse_goal(B0, B, !V),
@@ -161,8 +161,8 @@ parse_goal_2(";", [A0, B0], R, !V) :-
         R = (A;B)
     ).
 parse_goal_2("else", [IF, C0], if_then_else(Vars, StateVars, A, B, C), !V) :-
-    IF = term__functor(term__atom("if"),
-        [term__functor(term__atom("then"), [A0, B0], _)], _),
+    IF = term.functor(term.atom("if"),
+        [term.functor(term.atom("then"), [A0, B0], _)], _),
     parse_some_vars_goal(A0, Vars, StateVars, A, !V),
     parse_goal(B0, B, !V),
     parse_goal(C0, C, !V).
@@ -176,8 +176,8 @@ parse_goal_2("\\+", [A0], not(A), !V) :-
 parse_goal_2("all", [QVars, A0], GoalExpr, !V):-
     % Extract any state variables in the quantifier.
     parse_quantifier_vars(QVars, StateVars0, Vars0),
-    list__map(term__coerce_var, StateVars0, StateVars),
-    list__map(term__coerce_var, Vars0, Vars),
+    list.map(term.coerce_var, StateVars0, StateVars),
+    list.map(term.coerce_var, Vars0, Vars),
 
     parse_goal(A0, A @ (GoalExprA - ContextA), !V),
 
@@ -212,8 +212,8 @@ parse_goal_2("<=>", [A0, B0], equivalent(A, B), !V):-
 parse_goal_2("some", [QVars, A0], GoalExpr, !V):-
     % Extract any state variables in the quantifier.
     parse_quantifier_vars(QVars, StateVars0, Vars0),
-    list__map(term__coerce_var, StateVars0, StateVars),
-    list__map(term__coerce_var, Vars0, Vars),
+    list.map(term.coerce_var, StateVars0, StateVars),
+    list.map(term.coerce_var, Vars0, Vars),
 
     parse_goal(A0, A @ (GoalExprA - ContextA), !V),
     (
@@ -233,9 +233,9 @@ parse_goal_2("some", [QVars, A0], GoalExpr, !V):-
 parse_goal_2("promise_equivalent_solutions", [OVars, A0], GoalExpr, !V):-
     parse_goal(A0, A, !V),
     parse_vars_and_state_vars(OVars, Vars0, DotSVars0, ColonSVars0),
-    list__map(term__coerce_var, Vars0, Vars),
-    list__map(term__coerce_var, DotSVars0, DotSVars),
-    list__map(term__coerce_var, ColonSVars0, ColonSVars),
+    list.map(term.coerce_var, Vars0, Vars),
+    list.map(term.coerce_var, DotSVars0, DotSVars),
+    list.map(term.coerce_var, ColonSVars0, ColonSVars),
     GoalExpr = promise_equivalent_solutions(Vars, DotSVars, ColonSVars, A).
 
 parse_goal_2("promise_pure", [A0], GoalExpr, !V):-
@@ -266,8 +266,8 @@ parse_goal_2("promise_impure_implicit", [A0], GoalExpr, !V):-
     % we ought to handle it in the code generation - but then `is/2' itself
     % is a bit of a hack.
 parse_goal_2("is", [A0, B0], unify(A, B, purity_pure), !V) :-
-    term__coerce(A0, A),
-    term__coerce(B0, B).
+    term.coerce(A0, A),
+    term.coerce(B0, B).
 parse_goal_2("impure", [A0], A, !V) :-
     parse_goal_with_purity(A0, purity_impure, A, !V).
 parse_goal_2("semipure", [A0], A, !V) :-
@@ -287,7 +287,7 @@ parse_goal_with_purity(A0, Purity, A, !V) :-
         % it like a predicate call. typecheck.m prints out something
         % descriptive for these errors.
         purity_name(Purity, PurityString),
-        term__coerce(A0, A2),
+        term.coerce(A0, A2),
         A = call(unqualified(PurityString), [A2], purity_pure)
     ).
 
@@ -295,11 +295,11 @@ parse_goal_with_purity(A0, Purity, A, !V) :-
 
 parse_some_vars_goal(A0, Vars, StateVars, A, !VarSet) :-
     (
-        A0 = term__functor(term__atom("some"), [QVars, A1], _Context),
+        A0 = term.functor(term.atom("some"), [QVars, A1], _Context),
         parse_quantifier_vars(QVars, StateVars0, Vars0)
     ->
-        list__map(term__coerce_var, StateVars0, StateVars),
-        list__map(term__coerce_var, Vars0,      Vars),
+        list.map(term.coerce_var, StateVars0, StateVars),
+        list.map(term.coerce_var, Vars0,      Vars),
         parse_goal(A1, A, !VarSet)
     ;
         Vars      = [],
@@ -312,8 +312,8 @@ parse_some_vars_goal(A0, Vars, StateVars, A, !VarSet) :-
 :- pred parse_lambda_arg(term::in, prog_term::out, mer_mode::out) is semidet.
 
 parse_lambda_arg(Term, ArgTerm, Mode) :-
-    Term = term__functor(term__atom("::"), [ArgTerm0, ModeTerm], _),
-    term__coerce(ArgTerm0, ArgTerm),
+    Term = term.functor(term.atom("::"), [ArgTerm0, ModeTerm], _),
+    term.coerce(ArgTerm0, ArgTerm),
     convert_mode(allow_constrained_inst_var, ModeTerm, Mode0),
     constrain_inst_vars_in_mode(Mode0, Mode).
 
@@ -323,64 +323,64 @@ parse_lambda_arg(Term, ArgTerm, Mode) :-
 %
 
 parse_pred_expression(PredTerm, lambda_normal, Args, Modes, Det) :-
-    PredTerm = term__functor(term__atom("is"), [PredArgsTerm, DetTerm], _),
-    DetTerm = term__functor(term__atom(DetString), [], _),
+    PredTerm = term.functor(term.atom("is"), [PredArgsTerm, DetTerm], _),
+    DetTerm = term.functor(term.atom(DetString), [], _),
     standard_det(DetString, Det),
-    PredArgsTerm = term__functor(term__atom("pred"), PredArgsList, _),
+    PredArgsTerm = term.functor(term.atom("pred"), PredArgsList, _),
     parse_pred_expr_args(PredArgsList, Args, Modes),
     inst_var_constraints_are_consistent_in_modes(Modes).
 
 parse_dcg_pred_expression(PredTerm, lambda_normal, Args, Modes, Det) :-
-    PredTerm = term__functor(term__atom("is"), [PredArgsTerm, DetTerm], _),
-    DetTerm = term__functor(term__atom(DetString), [], _),
+    PredTerm = term.functor(term.atom("is"), [PredArgsTerm, DetTerm], _),
+    DetTerm = term.functor(term.atom(DetString), [], _),
     standard_det(DetString, Det),
-    PredArgsTerm = term__functor(term__atom("pred"), PredArgsList, _),
+    PredArgsTerm = term.functor(term.atom("pred"), PredArgsList, _),
     parse_dcg_pred_expr_args(PredArgsList, Args, Modes),
     inst_var_constraints_are_consistent_in_modes(Modes).
 
 parse_func_expression(FuncTerm, lambda_normal, Args, Modes, Det) :-
     % Parse a func expression with specified modes and determinism.
-    FuncTerm = term__functor(term__atom("is"), [EqTerm, DetTerm], _),
-    EqTerm = term__functor(term__atom("="), [FuncArgsTerm, RetTerm], _),
-    DetTerm = term__functor(term__atom(DetString), [], _),
+    FuncTerm = term.functor(term.atom("is"), [EqTerm, DetTerm], _),
+    EqTerm = term.functor(term.atom("="), [FuncArgsTerm, RetTerm], _),
+    DetTerm = term.functor(term.atom(DetString), [], _),
     standard_det(DetString, Det),
-    FuncArgsTerm = term__functor(term__atom("func"), FuncArgsList, _),
+    FuncArgsTerm = term.functor(term.atom("func"), FuncArgsList, _),
 
     ( parse_pred_expr_args(FuncArgsList, Args0, Modes0) ->
         parse_lambda_arg(RetTerm, RetArg, RetMode),
-        list__append(Args0, [RetArg], Args),
-        list__append(Modes0, [RetMode], Modes),
+        list.append(Args0, [RetArg], Args),
+        list.append(Modes0, [RetMode], Modes),
         inst_var_constraints_are_consistent_in_modes(Modes)
     ;
         % The argument modes default to `in',
         % the return mode defaults to `out'.
         in_mode(InMode),
         out_mode(OutMode),
-        list__length(FuncArgsList, NumArgs),
-        list__duplicate(NumArgs, InMode, Modes0),
+        list.length(FuncArgsList, NumArgs),
+        list.duplicate(NumArgs, InMode, Modes0),
         RetMode = OutMode,
-        list__append(Modes0, [RetMode], Modes),
-        list__append(FuncArgsList, [RetTerm], Args1),
-        list__map(term__coerce, Args1, Args)
+        list.append(Modes0, [RetMode], Modes),
+        list.append(FuncArgsList, [RetTerm], Args1),
+        list.map(term.coerce, Args1, Args)
     ).
 
 parse_func_expression(FuncTerm, lambda_normal, Args, Modes, Det) :-
     % Parse a func expression with unspecified modes and determinism.
-    FuncTerm = term__functor(term__atom("="), [FuncArgsTerm, RetTerm], _),
-    FuncArgsTerm = term__functor(term__atom("func"), Args0, _),
+    FuncTerm = term.functor(term.atom("="), [FuncArgsTerm, RetTerm], _),
+    FuncArgsTerm = term.functor(term.atom("func"), Args0, _),
 
     % The argument modes default to `in', the return mode defaults to `out',
     % and the determinism defaults to `det'.
     in_mode(InMode),
     out_mode(OutMode),
-    list__length(Args0, NumArgs),
-    list__duplicate(NumArgs, InMode, Modes0),
+    list.length(Args0, NumArgs),
+    list.duplicate(NumArgs, InMode, Modes0),
     RetMode = OutMode,
     Det = det,
-    list__append(Modes0, [RetMode], Modes),
+    list.append(Modes0, [RetMode], Modes),
     inst_var_constraints_are_consistent_in_modes(Modes),
-    list__append(Args0, [RetTerm], Args1),
-    list__map(term__coerce, Args1, Args).
+    list.append(Args0, [RetTerm], Args1),
+    list.map(term.coerce, Args1, Args).
 
 :- pred parse_pred_expr_args(list(term)::in, list(prog_term)::out,
     list(mer_mode)::out) is semidet.

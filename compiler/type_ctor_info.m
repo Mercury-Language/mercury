@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1996-2005 The University of Melbourne.
+% Copyright (C) 1996-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -33,7 +33,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module backend_libs__type_ctor_info.
+:- module backend_libs.type_ctor_info.
 :- interface.
 
 :- import_module backend_libs.rtti.
@@ -102,7 +102,7 @@
 generate_hlds(!ModuleInfo) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     module_info_get_type_table(!.ModuleInfo, TypeTable),
-    map__keys(TypeTable, TypeCtors0),
+    map.keys(TypeTable, TypeCtors0),
     (
         ModuleName = mercury_public_builtin_module,
         compiler_generated_rtti_for_builtins(!.ModuleInfo)
@@ -167,15 +167,15 @@ gen_type_ctor_gen_infos([TypeCtor | TypeCtors], TypeTable, ModuleName,
 
 create_type_ctor_gen(ModuleInfo, TypeTable, TypeCtor, TypeModuleName,
         TypeName, TypeArity, TypeDefn) :-
-    ( list__member(TypeCtor, builtin_type_ctors_with_no_hlds_type_defn) ->
+    ( list.member(TypeCtor, builtin_type_ctors_with_no_hlds_type_defn) ->
         % The builtin types with no type definition.
         compiler_generated_rtti_for_builtins(ModuleInfo),
         TypeModuleName = unqualified(ModuleNameString),
         builtin_type_ctor(ModuleNameString, TypeName, TypeArity, _),
         TypeDefn = builtin_type_defn
     ;
-        map__lookup(TypeTable, TypeCtor, TypeDefn),
-        hlds_data__get_type_defn_body(TypeDefn, TypeBody),
+        map.lookup(TypeTable, TypeCtor, TypeDefn),
+        hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         (
             ( TypeBody = abstract_type(_)
             ; type_ctor_has_hand_defined_rtti(TypeCtor, TypeBody)
@@ -206,14 +206,14 @@ create_type_ctor_gen(ModuleInfo, TypeTable, TypeCtor, TypeModuleName,
 :- func builtin_type_defn = hlds_type_defn.
 
 builtin_type_defn = TypeDefn :-
-    varset__init(TVarSet),
+    varset.init(TVarSet),
     Params = [],
-    map__init(Kinds),
+    map.init(Kinds),
     Body = abstract_type(non_solver_type),
     ImportStatus = local,
     NeedQualifier = may_be_unqualified,
-    term__context_init(Context),
-    hlds_data__set_type_defn(TVarSet, Params, Kinds, Body, ImportStatus, no,
+    term.context_init(Context),
+    hlds_data.set_type_defn(TVarSet, Params, Kinds, Body, ImportStatus, no,
         NeedQualifier, Context, TypeDefn).
 
 :- pred gen_type_ctor_gen_info(type_ctor::in, string::in, int::in,
@@ -222,25 +222,25 @@ builtin_type_defn = TypeDefn :-
 
 gen_type_ctor_gen_info(TypeCtor, TypeName, TypeArity, TypeDefn, ModuleName,
         ModuleInfo, TypeCtorGenInfo) :-
-    hlds_data__get_type_defn_status(TypeDefn, Status),
+    hlds_data.get_type_defn_status(TypeDefn, Status),
     module_info_get_globals(ModuleInfo, Globals),
     module_info_get_special_pred_map(ModuleInfo, SpecMap),
-    globals__lookup_bool_option(Globals, special_preds, SpecialPreds),
+    globals.lookup_bool_option(Globals, special_preds, SpecialPreds),
     (
         (
             SpecialPreds = yes
         ;
             SpecialPreds = no,
-            hlds_data__get_type_defn_body(TypeDefn, Body),
+            hlds_data.get_type_defn_body(TypeDefn, Body),
             Body ^ du_type_usereq = yes(_UserDefinedEquality)
         )
     ->
-        map__lookup(SpecMap, spec_pred_unify - TypeCtor, UnifyPredId),
+        map.lookup(SpecMap, spec_pred_unify - TypeCtor, UnifyPredId),
         special_pred_mode_num(spec_pred_unify, UnifyProcInt),
         proc_id_to_int(UnifyProcId, UnifyProcInt),
         Unify = proc(UnifyPredId, UnifyProcId),
 
-        map__lookup(SpecMap, spec_pred_compare - TypeCtor, ComparePredId),
+        map.lookup(SpecMap, spec_pred_compare - TypeCtor, ComparePredId),
         special_pred_mode_num(spec_pred_compare, CompareProcInt),
         proc_id_to_int(CompareProcId, CompareProcInt),
         Compare = proc(ComparePredId, CompareProcId)
@@ -263,8 +263,8 @@ generate_rtti(ModuleInfo, Tables) :-
     % The same pseudo_type_info may be generated in several places; we need
     % to eliminate duplicates here, to avoid duplicate definition errors
     % in the generated C code.
-    Static = list__remove_dups(Static0),
-    list__append(Dynamic, Static, Tables).
+    Static = list.remove_dups(Static0),
+    list.append(Dynamic, Static, Tables).
 
 :- pred construct_type_ctor_infos(list(type_ctor_gen_info)::in,
     module_info::in,
@@ -291,7 +291,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
     type_to_univ(UnifyProcLabel, UnifyUniv),
     type_to_univ(CompareProcLabel, CompareUniv),
     module_info_get_globals(ModuleInfo, Globals),
-    hlds_data__get_type_defn_body(HldsDefn, TypeBody),
+    hlds_data.get_type_defn_body(HldsDefn, TypeBody),
     Version = type_ctor_info_rtti_version,
 
     % It is an error for a type body to be an abstract type unless
@@ -331,7 +331,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             % There can be no existentially typed args to an equivalence.
             UnivTvars = TypeArity,
             ExistTvars = [],
-            pseudo_type_info__construct_maybe_pseudo_type_info(RepnType,
+            pseudo_type_info.construct_maybe_pseudo_type_info(RepnType,
                 UnivTvars, ExistTvars, MaybePseudoTypeInfo),
             Details = eqv(MaybePseudoTypeInfo)
         ;
@@ -339,8 +339,8 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             foreign_type_body_to_exported_type(ModuleInfo, ForeignBody, _, _,
                 Assertions),
             (
-                list__member(can_pass_as_mercury_type, Assertions),
-                list__member(stable, Assertions)
+                list.member(can_pass_as_mercury_type, Assertions),
+                list.member(stable, Assertions)
             ->
                 IsStable = is_stable
             ;
@@ -352,7 +352,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             % There can be no existentially typed args to an equivalence.
             UnivTvars = TypeArity,
             ExistTvars = [],
-            pseudo_type_info__construct_maybe_pseudo_type_info(Type,
+            pseudo_type_info.construct_maybe_pseudo_type_info(Type,
                 UnivTvars, ExistTvars, MaybePseudoTypeInfo),
             Details = eqv(MaybePseudoTypeInfo)
         ;
@@ -390,11 +390,11 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
         )
     ),
     some [!Flags] (
-        !:Flags = set__init,
+        !:Flags = set.init,
         ( TypeBody = du_type(_, _, _, _, _, _) ->
-            svset__insert(kind_of_du_flag, !Flags),
+            svset.insert(kind_of_du_flag, !Flags),
             ( TypeBody ^ du_type_reserved_tag = yes -> 
-                svset__insert(reserve_tag_flag, !Flags)
+                svset.insert(reserve_tag_flag, !Flags)
             ;
                 true
             )
@@ -446,7 +446,7 @@ impl_type_ctor("table_builtin", "ml_subgoal", 0, subgoal).
 
 make_rtti_proc_label(PredProcId, ModuleInfo, ProcLabel) :-
     PredProcId = proc(PredId, ProcId),
-    ProcLabel = rtti__make_rtti_proc_label(ModuleInfo, PredId, ProcId).
+    ProcLabel = rtti.make_rtti_proc_label(ModuleInfo, PredId, ProcId).
 
 %---------------------------------------------------------------------------%
 
@@ -476,7 +476,7 @@ type_ctor_info_rtti_version = 9.
 
 make_pseudo_type_info_and_tables(Type, UnivTvars, ExistTvars, RttiData,
         !Tables) :-
-    pseudo_type_info__construct_pseudo_type_info(Type, UnivTvars, ExistTvars,
+    pseudo_type_info.construct_pseudo_type_info(Type, UnivTvars, ExistTvars,
         PseudoTypeInfo),
     RttiData = pseudo_type_info(PseudoTypeInfo),
     make_pseudo_type_info_tables(PseudoTypeInfo, !Tables).
@@ -492,11 +492,11 @@ make_type_info_tables(plain_arity_zero_type_info(_), !Tables).
 make_type_info_tables(PseudoTypeInfo, !Tables) :-
     PseudoTypeInfo = plain_type_info(_, Args),
     !:Tables = [type_info(PseudoTypeInfo) | !.Tables],
-    list__foldl(make_type_info_tables, Args, !Tables).
+    list.foldl(make_type_info_tables, Args, !Tables).
 make_type_info_tables(PseudoTypeInfo, !Tables) :-
     PseudoTypeInfo = var_arity_type_info(_, Args),
     !:Tables = [type_info(PseudoTypeInfo) | !.Tables],
-    list__foldl(make_type_info_tables, Args, !Tables).
+    list.foldl(make_type_info_tables, Args, !Tables).
 
 :- pred make_pseudo_type_info_tables(rtti_pseudo_type_info::in,
     list(rtti_data)::in, list(rtti_data)::out) is det.
@@ -505,12 +505,12 @@ make_pseudo_type_info_tables(plain_arity_zero_pseudo_type_info(_), !Tables).
 make_pseudo_type_info_tables(PseudoTypeInfo, !Tables) :-
     PseudoTypeInfo = plain_pseudo_type_info(_, Args),
     !:Tables = [pseudo_type_info(PseudoTypeInfo) | !.Tables],
-    list__foldl(make_maybe_pseudo_type_info_tables, Args,
+    list.foldl(make_maybe_pseudo_type_info_tables, Args,
         !Tables).
 make_pseudo_type_info_tables(PseudoTypeInfo, !Tables) :-
     PseudoTypeInfo = var_arity_pseudo_type_info(_, Args),
     !:Tables = [pseudo_type_info(PseudoTypeInfo) | !.Tables],
-    list__foldl(make_maybe_pseudo_type_info_tables, Args, !Tables).
+    list.foldl(make_maybe_pseudo_type_info_tables, Args, !Tables).
 make_pseudo_type_info_tables(type_var(_), !Tables).
 
 :- pred make_maybe_pseudo_type_info_tables(rtti_maybe_pseudo_type_info::in,
@@ -544,7 +544,7 @@ make_notag_details(TypeArity, SymName, ArgType, MaybeArgName, EqualityAxioms,
     NumUnivTvars = TypeArity,
     % There can be no existentially typed args to the functor in a notag type.
     ExistTvars = [],
-    pseudo_type_info__construct_maybe_pseudo_type_info(ArgType,
+    pseudo_type_info.construct_maybe_pseudo_type_info(ArgType,
         NumUnivTvars, ExistTvars, MaybePseudoTypeInfo),
     Functor = notag_functor(FunctorName, MaybePseudoTypeInfo, MaybeArgName),
     Details = notag(EqualityAxioms, Functor).
@@ -566,9 +566,9 @@ make_enum_details(Ctors, ConsTagMap, ReserveTag, EqualityAxioms, Details) :-
         ReserveTag = no
     ),
     make_enum_functors(Ctors, 0, ConsTagMap, EnumFunctors),
-    ValueMap0 = map__init,
-    NameMap0 = map__init,
-    list__foldl2(make_enum_maps, EnumFunctors,
+    ValueMap0 = map.init,
+    NameMap0 = map.init,
+    list.foldl2(make_enum_maps, EnumFunctors,
         ValueMap0, ValueMap, NameMap0, NameMap),
     ( Ctors = [_] ->
         IsDummy = yes
@@ -596,11 +596,11 @@ make_enum_functors([Functor | Functors], NextOrdinal0, ConsTagMap,
         "existential arguments in functor in enum"),
     expect(unify(Constraints, []), this_file,
         "class constraints on functor in enum"),
-    list__length(FunctorArgs, Arity),
+    list.length(FunctorArgs, Arity),
     expect(unify(Arity, 0), this_file,
         "functor in enum has nonzero arity"),
     ConsId = make_cons_id_from_qualified_sym_name(SymName, FunctorArgs),
-    map__lookup(ConsTagMap, ConsId, ConsTag),
+    map.lookup(ConsTagMap, ConsId, ConsTag),
     expect(unify(ConsTag, int_constant(NextOrdinal0)), this_file,
         "mismatch on constant assigned to functor in enum"),
     unqualify_name(SymName, FunctorName),
@@ -613,8 +613,8 @@ make_enum_functors([Functor | Functors], NextOrdinal0, ConsTagMap,
 
 make_enum_maps(EnumFunctor, !ValueMap, !NameMap) :-
     EnumFunctor = enum_functor(FunctorName, Ordinal),
-    svmap__det_insert(Ordinal, EnumFunctor, !ValueMap),
-    svmap__det_insert(FunctorName, EnumFunctor, !NameMap).
+    svmap.det_insert(Ordinal, EnumFunctor, !ValueMap),
+    svmap.det_insert(FunctorName, EnumFunctor, !NameMap).
 
 %---------------------------------------------------------------------------%
 
@@ -645,19 +645,19 @@ make_du_details(Ctors, ConsTagMap, TypeArity, EqualityAxioms, ModuleInfo,
         Details) :-
     make_maybe_res_functors(Ctors, 0, ConsTagMap, TypeArity, ModuleInfo,
         MaybeResFunctors),
-    DuFunctors = list__filter_map(is_du_functor, MaybeResFunctors),
-    ResFunctors = list__filter_map(is_reserved_functor, MaybeResFunctors),
-    list__foldl(make_du_ptag_ordered_table, DuFunctors,
-        map__init, DuPtagTable),
+    DuFunctors = list.filter_map(is_du_functor, MaybeResFunctors),
+    ResFunctors = list.filter_map(is_reserved_functor, MaybeResFunctors),
+    list.foldl(make_du_ptag_ordered_table, DuFunctors,
+        map.init, DuPtagTable),
     (
         ResFunctors = [],
-        list__foldl(make_du_name_ordered_table, DuFunctors,
-            map__init, DuNameOrderedMap),
+        list.foldl(make_du_name_ordered_table, DuFunctors,
+            map.init, DuNameOrderedMap),
         Details = du(EqualityAxioms, DuFunctors, DuPtagTable, DuNameOrderedMap)
     ;
         ResFunctors = [_ | _],
-        list__foldl(make_res_name_ordered_table, MaybeResFunctors,
-            map__init, ResNameOrderedMap),
+        list.foldl(make_res_name_ordered_table, MaybeResFunctors,
+            map.init, ResNameOrderedMap),
         Details = reserved(EqualityAxioms, MaybeResFunctors,
             ResFunctors, DuPtagTable, ResNameOrderedMap)
     ).
@@ -686,12 +686,12 @@ make_maybe_res_functors([], _, _, _, _, []).
 make_maybe_res_functors([Functor | Functors], NextOrdinal, ConsTagMap,
         TypeArity, ModuleInfo, [MaybeResFunctor | MaybeResFunctors]) :-
     Functor = ctor(ExistTvars, Constraints, SymName, ConstructorArgs),
-    list__length(ConstructorArgs, Arity),
+    list.length(ConstructorArgs, Arity),
     unqualify_name(SymName, FunctorName),
     ConsId = make_cons_id_from_qualified_sym_name(SymName, ConstructorArgs),
-    map__lookup(ConsTagMap, ConsId, ConsTag),
+    map.lookup(ConsTagMap, ConsId, ConsTag),
     process_cons_tag(ConsTag, ConsRep),
-    list__map(generate_du_arg_info(TypeArity, ExistTvars),
+    list.map(generate_du_arg_info(TypeArity, ExistTvars),
         ConstructorArgs, ArgInfos),
     (
         ExistTvars = [],
@@ -775,7 +775,7 @@ generate_du_arg_info(NumUnivTvars, ExistTvars, ConstructorArg, ArgInfo) :-
     ),
     % The C runtime cannot yet handle the "self" type representation,
     % so we do not generate it here.
-    pseudo_type_info__construct_maybe_pseudo_type_info(ArgType,
+    pseudo_type_info.construct_maybe_pseudo_type_info(ArgType,
         NumUnivTvars, ExistTvars, MaybePseudoTypeInfo),
     (
         MaybePseudoTypeInfo = plain(TypeInfo),
@@ -801,26 +801,26 @@ contains_var_bit_vector_size = 16.
     class_table::in, exist_info::out) is det.
 
 generate_exist_into(ExistTvars, Constraints, ClassTable, ExistInfo) :-
-    list__map((pred(C::in, Ts::out) is det :- C = constraint(_, Ts)),
+    list.map((pred(C::in, Ts::out) is det :- C = constraint(_, Ts)),
         Constraints, ConstrainedTvars0),
-    list__condense(ConstrainedTvars0, ConstrainedTvars1),
-    prog_type__vars_list(ConstrainedTvars1, ConstrainedTvars2),
-    list__delete_elems(ExistTvars, ConstrainedTvars2, UnconstrainedTvars),
+    list.condense(ConstrainedTvars0, ConstrainedTvars1),
+    prog_type.vars_list(ConstrainedTvars1, ConstrainedTvars2),
+    list.delete_elems(ExistTvars, ConstrainedTvars2, UnconstrainedTvars),
         % We do this to maintain the ordering of the type variables.
-    list__delete_elems(ExistTvars, UnconstrainedTvars, ConstrainedTvars),
-    map__init(LocnMap0),
-    list__foldl2((pred(T::in, N0::in, N::out, Lm0::in, Lm::out) is det :-
+    list.delete_elems(ExistTvars, UnconstrainedTvars, ConstrainedTvars),
+    map.init(LocnMap0),
+    list.foldl2((pred(T::in, N0::in, N::out, Lm0::in, Lm::out) is det :-
             Locn = plain_typeinfo(N0),
-            map__det_insert(Lm0, T, Locn, Lm),
+            map.det_insert(Lm0, T, Locn, Lm),
             N = N0 + 1
         ), UnconstrainedTvars, 0, TIsPlain, LocnMap0, LocnMap1),
-    list__length(ExistTvars, AllTIs),
+    list.length(ExistTvars, AllTIs),
     TIsInTCIs = AllTIs - TIsPlain,
-    list__foldl(find_type_info_index(Constraints, ClassTable, TIsPlain),
+    list.foldl(find_type_info_index(Constraints, ClassTable, TIsPlain),
         ConstrainedTvars, LocnMap1, LocnMap),
-    TCConstraints = list__map(generate_class_constraint, Constraints),
-    list__map((pred(Tvar::in, Locn::out) is det :-
-        map__lookup(LocnMap, Tvar, Locn)),
+    TCConstraints = list.map(generate_class_constraint, Constraints),
+    list.map((pred(Tvar::in, Locn::out) is det :-
+        map.lookup(LocnMap, Tvar, Locn)),
         ExistTvars, ExistLocns),
     ExistInfo = exist_info(TIsPlain, TIsInTCIs, TCConstraints, ExistLocns).
 
@@ -832,12 +832,12 @@ find_type_info_index(Constraints, ClassTable, StartSlot, Tvar, !LocnMap) :-
     first_matching_type_class_info(Constraints, Tvar,
         FirstConstraint, StartSlot, Slot, TypeInfoIndex),
     FirstConstraint = constraint(ClassName, Args),
-    list__length(Args, ClassArity),
-    map__lookup(ClassTable, class_id(ClassName, ClassArity), ClassDefn),
-    list__length(ClassDefn ^ class_supers, NumSuperClasses),
+    list.length(Args, ClassArity),
+    map.lookup(ClassTable, class_id(ClassName, ClassArity), ClassDefn),
+    list.length(ClassDefn ^ class_supers, NumSuperClasses),
     RealTypeInfoIndex = TypeInfoIndex + NumSuperClasses,
     Locn = typeinfo_in_tci(Slot, RealTypeInfoIndex),
-    svmap__det_insert(Tvar, Locn, !LocnMap).
+    svmap.det_insert(Tvar, Locn, !LocnMap).
 
 :- pred first_matching_type_class_info(list(prog_constraint)::in, tvar::in,
     prog_constraint::out, int::in, int::out, int::out) is det.
@@ -847,8 +847,8 @@ first_matching_type_class_info([], _, _, !N, _) :-
 first_matching_type_class_info([C | Cs], Tvar, MatchingConstraint, !N,
         TypeInfoIndex) :-
     C = constraint(_, Ts),
-    prog_type__vars_list(Ts, TVs),
-    ( list__nth_member_search(TVs, Tvar, Index) ->
+    prog_type.vars_list(Ts, TVs),
+    ( list.nth_member_search(TVs, Tvar, Index) ->
         MatchingConstraint = C,
         TypeInfoIndex = Index
     ;
@@ -877,19 +877,19 @@ make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
             SectagAndLocn = sectag_remote(Sectag),
             SectagLocn = sectag_remote
         ),
-        ( map__search(!.PtagTable, Ptag, SectagTable0) ->
+        ( map.search(!.PtagTable, Ptag, SectagTable0) ->
             SectagTable0 = sectag_table(Locn0, NumSharers0, SectagMap0),
             expect(unify(SectagLocn, Locn0), this_file,
                 "make_du_ptag_ordered_table: " ++
                 "sectag locn disagreement"),
-            map__det_insert(SectagMap0, Sectag, DuFunctor, SectagMap),
+            map.det_insert(SectagMap0, Sectag, DuFunctor, SectagMap),
             SectagTable = sectag_table(Locn0, NumSharers0 + 1, SectagMap),
-            svmap__det_update(Ptag, SectagTable, !PtagTable)
+            svmap.det_update(Ptag, SectagTable, !PtagTable)
         ;
-            SectagMap0 = map__init,
-            map__det_insert(SectagMap0, Sectag, DuFunctor, SectagMap),
+            SectagMap0 = map.init,
+            map.det_insert(SectagMap0, Sectag, DuFunctor, SectagMap),
             SectagTable = sectag_table(SectagLocn, 1, SectagMap),
-            svmap__det_insert(Ptag, SectagTable, !PtagTable)
+            svmap.det_insert(Ptag, SectagTable, !PtagTable)
         )
     ;
         DuRep = du_hl_rep(_),
@@ -903,12 +903,12 @@ make_du_ptag_ordered_table(DuFunctor, !PtagTable) :-
 make_du_name_ordered_table(DuFunctor, !NameTable) :-
     Name = DuFunctor ^ du_name,
     Arity = DuFunctor ^ du_orig_arity,
-    ( map__search(!.NameTable, Name, NameMap0) ->
-        map__det_insert(NameMap0, Arity, DuFunctor, NameMap),
-        svmap__det_update(Name, NameMap, !NameTable)
+    ( map.search(!.NameTable, Name, NameMap0) ->
+        map.det_insert(NameMap0, Arity, DuFunctor, NameMap),
+        svmap.det_update(Name, NameMap, !NameTable)
     ;
-        map__det_insert(map__init, Arity, DuFunctor, NameMap),
-        svmap__det_insert(Name, NameMap, !NameTable)
+        map.det_insert(map.init, Arity, DuFunctor, NameMap),
+        svmap.det_insert(Name, NameMap, !NameTable)
     ).
 
 :- pred make_res_name_ordered_table(maybe_reserved_functor::in,
@@ -925,12 +925,12 @@ make_res_name_ordered_table(MaybeResFunctor, !NameTable) :-
         Name = ResFunctor ^ res_name,
         Arity = 0
     ),
-    ( map__search(!.NameTable, Name, NameMap0) ->
-        map__det_insert(NameMap0, Arity, MaybeResFunctor, NameMap),
-        svmap__det_update(Name, NameMap, !NameTable)
+    ( map.search(!.NameTable, Name, NameMap0) ->
+        map.det_insert(NameMap0, Arity, MaybeResFunctor, NameMap),
+        svmap.det_update(Name, NameMap, !NameTable)
     ;
-        NameMap = map__det_insert(map__init, Arity, MaybeResFunctor),
-        svmap__det_insert(Name, NameMap, !NameTable)
+        NameMap = map.det_insert(map.init, Arity, MaybeResFunctor),
+        svmap.det_insert(Name, NameMap, !NameTable)
     ).
 
 %---------------------------------------------------------------------------%

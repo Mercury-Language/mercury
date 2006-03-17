@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module hlds__make_hlds__add_solver.
+:- module hlds.make_hlds.add_solver.
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -76,7 +76,7 @@ add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
     % XXX kind inference:
     % We set the kinds to `star'.  This will be different when we have a
     % kind system.
-    prog_type.var_list_to_type_list(map__init, TypeParams, Args),
+    prog_type.var_list_to_type_list(map.init, TypeParams, Args),
     SolverType        = defined(TypeSymName, Args, star),
     Arity             = length(TypeParams),
 
@@ -90,7 +90,7 @@ add_solver_type_decl_items(TVarSet, TypeSymName, TypeParams,
     OutAnyMode        = out_mode(AnyInst),
     OutGroundMode     = out_mode(GroundInst),
 
-    InstVarSet        = varset__init,
+    InstVarSet        = varset.init,
     ExistQTVars       = [],
 
     init_markers(NoMarkers),
@@ -189,11 +189,11 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
     OutAnyMode        = out_mode(AnyInst),
     OutGroundMode     = out_mode(GroundInst),
 
-    ProgVarSet0           = varset__init,
-    varset__new_var(ProgVarSet0, X, ProgVarSet1),
-    varset__new_var(ProgVarSet1, Y, ProgVarSet),
+    ProgVarSet0           = varset.init,
+    varset.new_var(ProgVarSet0, X, ProgVarSet1),
+    varset.new_var(ProgVarSet1, Y, ProgVarSet),
     
-    InstVarSet = varset__init,
+    InstVarSet = varset.init,
     
     Attrs0            = default_attributes(c),
     some [!Attrs] (

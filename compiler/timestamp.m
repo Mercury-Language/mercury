@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2002, 2004-2005 The University of Melbourne.
+% Copyright (C) 2001-2002, 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -11,7 +11,7 @@
 % Timestamp representation for smart recompilation.
 %-----------------------------------------------------------------------------%
 
-:- module libs__timestamp.
+:- module libs.timestamp.
 
 :- interface.
 
@@ -67,7 +67,7 @@
 oldest_timestamp = timestamp("0000-00-00 00:00:00").
 newest_timestamp = timestamp("9999-99-99 99:99:99").
 
-time_t_to_timestamp(Time) = gmtime_to_timestamp(time__gmtime(Time)).
+time_t_to_timestamp(Time) = gmtime_to_timestamp(time.gmtime(Time)).
 
 :- func gmtime_to_timestamp(tm) = timestamp.
 
@@ -136,37 +136,37 @@ string_to_timestamp(Timestamp) = timestamp(Timestamp) :-
     % we need to ensure that the length check occurs before the
     % calls to unsafe_undex to avoid dereferencing invalid pointers.
     (
-        string__length(Timestamp) : int = string__length("yyyy-mm-dd hh:mm:ss")
+        string.length(Timestamp) : int = string.length("yyyy-mm-dd hh:mm:ss")
     ->
-        string__to_int(string__unsafe_substring(Timestamp, 0, 4), _),
+        string.to_int(string.unsafe_substring(Timestamp, 0, 4), _),
 
-        string__unsafe_index(Timestamp, 4, '-'),
+        string.unsafe_index(Timestamp, 4, '-'),
 
-        string__to_int(string__unsafe_substring(Timestamp, 5, 2), Month),
+        string.to_int(string.unsafe_substring(Timestamp, 5, 2), Month),
         Month >= 1,
         Month =< 12,
 
-        string__unsafe_index(Timestamp, 7, '-'),
+        string.unsafe_index(Timestamp, 7, '-'),
 
-        string__to_int(string__unsafe_substring(Timestamp, 8, 2), Day),
+        string.to_int(string.unsafe_substring(Timestamp, 8, 2), Day),
         Day >= 1,
         Day =< 31,
 
-        string__unsafe_index(Timestamp, 10, ' '),
+        string.unsafe_index(Timestamp, 10, ' '),
 
-        string__to_int(string__unsafe_substring(Timestamp, 11, 2), Hour),
+        string.to_int(string.unsafe_substring(Timestamp, 11, 2), Hour),
         Hour >= 0,
         Hour =< 23,
 
-        string__unsafe_index(Timestamp, 13, ':'),
+        string.unsafe_index(Timestamp, 13, ':'),
 
-        string__to_int(string__unsafe_substring(Timestamp, 14, 2), Minute),
+        string.to_int(string.unsafe_substring(Timestamp, 14, 2), Minute),
         Minute >= 0,
         Minute =< 59,
 
-        string__unsafe_index(Timestamp, 16, ':'),
+        string.unsafe_index(Timestamp, 16, ':'),
 
-        string__to_int(string__unsafe_substring(Timestamp, 17, 2), Second),
+        string.to_int(string.unsafe_substring(Timestamp, 17, 2), Second),
         Second >= 0,
         Second =< 61    % Seconds 60 and 61 are for leap seconds.
     ;

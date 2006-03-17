@@ -13,7 +13,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module parse_tree__prog_io_pragma.
+:- module parse_tree.prog_io_pragma.
 :- interface.
 
 :- import_module libs.globals.
@@ -63,7 +63,7 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
         PragmaTerms = [SinglePragmaTerm0],
         parse_type_decl_where_part_if_present(non_solver_type, ModuleName,
             SinglePragmaTerm0, SinglePragmaTerm, WherePartResult),
-        SinglePragmaTerm = term__functor(term__atom(PragmaType),
+        SinglePragmaTerm = term.functor(term.atom(PragmaType),
             PragmaArgs, _),
         parse_pragma_type(ModuleName, PragmaType, PragmaArgs, SinglePragmaTerm,
             VarSet, Result0)
@@ -106,7 +106,7 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
 parse_pragma_type(_, "source_file", PragmaTerms, ErrorTerm, _VarSet, Result) :-
     ( PragmaTerms = [SourceFileTerm] ->
         (
-            SourceFileTerm = term__functor(term__string(SourceFile), [], _)
+            SourceFileTerm = term.functor(term.string(SourceFile), [], _)
         ->
             Result = ok(pragma(user, source_file(SourceFile)))
         ;
@@ -141,7 +141,7 @@ parse_pragma_type(ModuleName, "foreign_type", PragmaTerms, ErrorTerm, VarSet,
                     MaybeTypeDefnHead),
                 (
                     MaybeTypeDefnHead = ok(MercuryTypeSymName, MercuryParams),
-                    varset__coerce(VarSet, TVarSet),
+                    varset.coerce(VarSet, TVarSet),
                     (
                         parse_maybe_foreign_type_assertions(MaybeAssertionTerm,
                             Assertions)
@@ -188,9 +188,9 @@ parse_pragma_type(ModuleName, "foreign_decl", PragmaTerms, ErrorTerm,
 parse_pragma_type(ModuleName, "c_header_code", PragmaTerms, ErrorTerm,
         VarSet, Result) :-
     (
-        PragmaTerms = [term__functor(_, _, Context) | _]
+        PragmaTerms = [term.functor(_, _, Context) | _]
     ->
-        LangC = term__functor(term__string("C"), [], Context),
+        LangC = term.functor(term.string("C"), [], Context),
         parse_pragma_foreign_decl_pragma(ModuleName, "c_header_code",
             [LangC | PragmaTerms], ErrorTerm, VarSet, Result)
     ;
@@ -218,16 +218,16 @@ parse_pragma_type(ModuleName, "c_code", PragmaTerms, ErrorTerm,
         VarSet, Result) :-
     (
             % arity = 1 (same as foreign_code)
-        PragmaTerms = [term__functor(_, _, Context)]
+        PragmaTerms = [term.functor(_, _, Context)]
     ->
-        LangC = term__functor(term__string("C"), [], Context),
+        LangC = term.functor(term.string("C"), [], Context),
         parse_pragma_foreign_code_pragma(ModuleName, "c_code",
             [LangC | PragmaTerms], ErrorTerm, VarSet, Result)
     ;
             % arity > 1 (same as foreign_proc)
-        PragmaTerms = [term__functor(_, _, Context) | _]
+        PragmaTerms = [term.functor(_, _, Context) | _]
     ->
-        LangC = term__functor(term__string("C"), [], Context),
+        LangC = term.functor(term.string("C"), [], Context),
         parse_pragma_foreign_proc_pragma(ModuleName, "c_code",
             [LangC | PragmaTerms], ErrorTerm, VarSet, Result)
     ;
@@ -269,11 +269,11 @@ parse_pragma_type(_ModuleName, "foreign_import_module", PragmaTerms, ErrorTerm,
 :- pred parse_foreign_decl_is_local(term::in, foreign_decl_is_local::out)
     is semidet.
 
-parse_foreign_decl_is_local(term__functor(Functor, [], _), IsLocal) :-
+parse_foreign_decl_is_local(term.functor(Functor, [], _), IsLocal) :-
     (
-        Functor = term__string(String)
+        Functor = term.string(String)
     ;
-        Functor = term__atom(String)
+        Functor = term.atom(String)
     ),
     (
         String = "local",
@@ -283,29 +283,29 @@ parse_foreign_decl_is_local(term__functor(Functor, [], _), IsLocal) :-
         IsLocal = foreign_decl_is_exported
     ).
 
-parse_foreign_language(term__functor(term__string(String), _, _), Lang) :-
-    globals__convert_foreign_language(String, Lang).
-parse_foreign_language(term__functor(term__atom(String), _, _), Lang) :-
-    globals__convert_foreign_language(String, Lang).
+parse_foreign_language(term.functor(term.string(String), _, _), Lang) :-
+    globals.convert_foreign_language(String, Lang).
+parse_foreign_language(term.functor(term.atom(String), _, _), Lang) :-
+    globals.convert_foreign_language(String, Lang).
 
 :- pred parse_foreign_language_type(term::in, foreign_language::in,
     maybe1(foreign_language_type)::out) is det.
 
 parse_foreign_language_type(InputTerm, Language, Result) :-
     ( Language = il ->
-        ( InputTerm = term__functor(term__string(ILTypeName), [], _) ->
+        ( InputTerm = term.functor(term.string(ILTypeName), [], _) ->
             parse_il_type_name(ILTypeName, InputTerm, Result)
         ;
             Result = error("invalid backend specification term", InputTerm)
         )
     ; Language = c ->
-        ( InputTerm = term__functor(term__string(CTypeName), [], _) ->
+        ( InputTerm = term.functor(term.string(CTypeName), [], _) ->
             Result = ok(c(c(CTypeName)))
         ;
             Result = error("invalid backend specification term", InputTerm)
         )
     ; Language = java ->
-        ( InputTerm = term__functor(term__string(JavaTypeName), [], _) ->
+        ( InputTerm = term.functor(term.string(JavaTypeName), [], _) ->
             Result = ok(java(java(JavaTypeName)))
         ;
             Result = error("invalid backend specification term", InputTerm)
@@ -324,19 +324,19 @@ parse_il_type_name(String0, ErrorTerm, ForeignType) :-
     ->
         ForeignType = ok(il(ForeignTypeResult))
     ;
-        string__append("class [", String1, String0),
-        string__sub_string_search(String1, "]", Index)
+        string.append("class [", String1, String0),
+        string.sub_string_search(String1, "]", Index)
     ->
-        string__left(String1, Index, AssemblyName),
-        string__split(String1, Index + 1, _, TypeNameStr),
+        string.left(String1, Index, AssemblyName),
+        string.split(String1, Index + 1, _, TypeNameStr),
         string_to_sym_name(TypeNameStr, ".", TypeSymName),
         ForeignType = ok(il(il(reference, AssemblyName, TypeSymName)))
     ;
-        string__append("valuetype [", String1, String0),
-        string__sub_string_search(String1, "]", Index)
+        string.append("valuetype [", String1, String0),
+        string.sub_string_search(String1, "]", Index)
     ->
-        string__left(String1, Index, AssemblyName),
-        string__split(String1, Index + 1, _, TypeNameStr),
+        string.left(String1, Index, AssemblyName),
+        string.split(String1, Index + 1, _, TypeNameStr),
         string_to_sym_name(TypeNameStr, ".", TypeSymName),
         ForeignType = ok(il(il(value, AssemblyName, TypeSymName)))
     ;
@@ -403,10 +403,10 @@ parse_maybe_foreign_type_assertions(yes(Term), Assertions) :-
     list(foreign_type_assertion)::out) is semidet.
 
 parse_foreign_type_assertions(Term, Assertions) :-
-    ( Term = term__functor(term__atom("[]"), [], _) ->
+    ( Term = term.functor(term.atom("[]"), [], _) ->
         Assertions = []
     ;
-        Term = term__functor(term__atom("[|]"), [Head, Tail], _),
+        Term = term.functor(term.atom("[|]"), [Head, Tail], _),
         parse_foreign_type_assertion(Head, HeadAssertion),
         parse_foreign_type_assertions(Tail, TailAssertions),
         Assertions = [HeadAssertion | TailAssertions]
@@ -416,11 +416,11 @@ parse_foreign_type_assertions(Term, Assertions) :-
     foreign_type_assertion::out) is semidet.
 
 parse_foreign_type_assertion(Term, Assertion) :-
-    Term = term__functor(term__atom(Constant), [], _),
+    Term = term.functor(term.atom(Constant), [], _),
     Constant = "can_pass_as_mercury_type",
     Assertion = can_pass_as_mercury_type.
 parse_foreign_type_assertion(Term, Assertion) :-
-    Term = term__functor(term__atom(Constant), [], _),
+    Term = term.functor(term.atom(Constant), [], _),
     Constant = "stable",
     Assertion = stable.
 
@@ -431,7 +431,7 @@ parse_foreign_type_assertion(Term, Assertion) :-
 
 parse_pragma_foreign_decl_pragma(_ModuleName, Pragma, PragmaTerms,
         ErrorTerm, _VarSet, Result) :-
-    string__format("invalid `:- pragma %s' declaration ", [s(Pragma)],
+    string.format("invalid `:- pragma %s' declaration ", [s(Pragma)],
         InvalidDeclStr),
     (
         (
@@ -443,12 +443,12 @@ parse_pragma_foreign_decl_pragma(_ModuleName, Pragma, PragmaTerms,
         )
     ->
         ( parse_foreign_language(LangTerm, ForeignLanguage) ->
-            ( HeaderTerm = term__functor(term__string( HeaderCode), [], _) ->
+            ( HeaderTerm = term.functor(term.string( HeaderCode), [], _) ->
                 DeclCode = foreign_decl(ForeignLanguage, IsLocal, HeaderCode),
                 Result = ok(pragma(user, DeclCode))
             ;
                 ErrMsg = "-- expected string for foreign declaration code",
-                Result = error(string__append(InvalidDeclStr, ErrMsg),
+                Result = error(string.append(InvalidDeclStr, ErrMsg),
                     HeaderTerm)
             )
         ;
@@ -456,7 +456,7 @@ parse_pragma_foreign_decl_pragma(_ModuleName, Pragma, PragmaTerms,
             Result = error(InvalidDeclStr ++ ErrMsg, LangTerm)
         )
     ;
-        string__format("invalid `:- pragma %s' declaration ",
+        string.format("invalid `:- pragma %s' declaration ",
             [s(Pragma)], ErrorStr),
         Result = error(ErrorStr, ErrorTerm)
     ).
@@ -470,15 +470,15 @@ parse_pragma_foreign_decl_pragma(_ModuleName, Pragma, PragmaTerms,
 
 parse_pragma_foreign_code_pragma(_ModuleName, Pragma, PragmaTerms,
         ErrorTerm, _VarSet, Result) :-
-    string__format("invalid `:- pragma %s' declaration ", [s(Pragma)],
+    string.format("invalid `:- pragma %s' declaration ", [s(Pragma)],
         InvalidDeclStr),
     Check1 = (func(PTerms1, ForeignLanguage) = Res is semidet :-
         PTerms1 = [Just_Code_Term],
-        ( Just_Code_Term = term__functor(term__string(Just_Code), [], _) ->
+        ( Just_Code_Term = term.functor(term.string(Just_Code), [], _) ->
             Res = ok(pragma(user, foreign_code(ForeignLanguage, Just_Code)))
         ;
             ErrMsg = "-- expected string for foreign code",
-            Res = error(string__append(InvalidDeclStr, ErrMsg), ErrorTerm)
+            Res = error(string.append(InvalidDeclStr, ErrMsg), ErrorTerm)
         )
     ),
     CheckLength = (func(PTermsLen, ForeignLanguage) = Res :-
@@ -486,7 +486,7 @@ parse_pragma_foreign_code_pragma(_ModuleName, Pragma, PragmaTerms,
             Res = Res0
         ;
             ErrMsg = "-- wrong number of arguments",
-            Res = error(string__append(InvalidDeclStr, ErrMsg), ErrorTerm)
+            Res = error(string.append(InvalidDeclStr, ErrMsg), ErrorTerm)
         )
     ),
     CheckLanguage = (func(PTermsLang) = Res is semidet :-
@@ -495,14 +495,14 @@ parse_pragma_foreign_code_pragma(_ModuleName, Pragma, PragmaTerms,
             Res = CheckLength(Rest, ForeignLanguage)
         ;
             ErrMsg = "-- invalid language parameter",
-            Res = error(string__append(InvalidDeclStr, ErrMsg), Lang)
+            Res = error(string.append(InvalidDeclStr, ErrMsg), Lang)
         )
     ),
     ( Result0 = CheckLanguage(PragmaTerms) ->
         Result = Result0
     ;
         ErrMsg0 = "-- wrong number of arguments",
-        Result = error(string__append(InvalidDeclStr, ErrMsg0), ErrorTerm)
+        Result = error(string.append(InvalidDeclStr, ErrMsg0), ErrorTerm)
     ).
 
     % This predicate parses both c_code and foreign_proc pragmas.
@@ -512,7 +512,7 @@ parse_pragma_foreign_code_pragma(_ModuleName, Pragma, PragmaTerms,
 
 parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
         ErrorTerm, VarSet, Result) :-
-    string__format("invalid `:- pragma %s' declaration ", [s(Pragma)],
+    string.format("invalid `:- pragma %s' declaration ", [s(Pragma)],
         InvalidDeclStr),
     Check6 = (func(PTerms6, ForeignLanguage) = Res is semidet :-
         PTerms6 = [PredAndVarsTerm, FlagsTerm, FieldsTerm,
@@ -568,46 +568,46 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
                         ;
                             ErrMsg = "-- invalid seventh argument, "
                                 ++ "expecting `common_code(<code>)'",
-                            Res = error(string__append(InvalidDeclStr,
+                            Res = error(string.append(InvalidDeclStr,
                                 ErrMsg), SharedTerm)
                         )
                     ;
                         ErrMsg = "-- invalid sixth argument, "
                             ++ "expecting `retry_code(<code>)'",
-                        Res = error(string__append(InvalidDeclStr, ErrMsg),
+                        Res = error(string.append(InvalidDeclStr, ErrMsg),
                             LaterTerm)
                     )
                 ;
                     ErrMsg = "-- invalid fifth argument, "
                         ++ "expecting `first_code(<code>)'",
-                    Res = error(string__append(InvalidDeclStr, ErrMsg),
+                    Res = error(string.append(InvalidDeclStr, ErrMsg),
                         FirstTerm)
                 )
             ;
                 ErrMsg = "-- invalid fourth argument, "
                     ++ "expecting `local_vars(<fields>)'",
-                Res = error(string__append(InvalidDeclStr, ErrMsg),
+                Res = error(string.append(InvalidDeclStr, ErrMsg),
                     FieldsTerm)
             )
         ;
             MaybeFlags = error(FlagsErrorStr, ErrorTerm),
             ErrMsg = "-- invalid third argument: " ++ FlagsErrorStr,
-            Res = error(string__append(InvalidDeclStr, ErrMsg), ErrorTerm)
+            Res = error(string.append(InvalidDeclStr, ErrMsg), ErrorTerm)
         )
     ),
     Check5 = (func(PTerms5, ForeignLanguage) = Res is semidet :-
         PTerms5 = [PredAndVarsTerm, FlagsTerm, FieldsTerm,
             FirstTerm, LaterTerm],
-        term__context_init(DummyContext),
-        SharedTerm = term__functor(term__atom("common_code"),
-            [term__functor(term__string(""), [], DummyContext)],
+        term.context_init(DummyContext),
+        SharedTerm = term.functor(term.atom("common_code"),
+            [term.functor(term.string(""), [], DummyContext)],
             DummyContext),
         Res = Check6([PredAndVarsTerm, FlagsTerm, FieldsTerm, FirstTerm,
             LaterTerm, SharedTerm], ForeignLanguage)
     ),
     Check3 = (func(PTerms3, ForeignLanguage) = Res is semidet :-
         PTerms3 = [PredAndVarsTerm, FlagsTerm, CodeTerm],
-        ( CodeTerm = term__functor(term__string(Code), [], Context) ->
+        ( CodeTerm = term.functor(term.string(Code), [], Context) ->
             parse_pragma_foreign_proc_attributes_term(ForeignLanguage,
                 Pragma, FlagsTerm, MaybeFlags),
             (
@@ -633,7 +633,7 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
                         ErrMsg = "-- invalid second argument, "
                             ++ "expecting predicate "
                             ++ "or function mode",
-                        Res = error(string__append(InvalidDeclStr, ErrMsg),
+                        Res = error(string.append(InvalidDeclStr, ErrMsg),
                             PredAndVarsTerm)
                     )
                 ;
@@ -646,7 +646,7 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
         ;
             ErrMsg = "-- invalid fourth argument, "
                 ++ "expecting string containing foreign code",
-            Res = error(string__append(InvalidDeclStr, ErrMsg), CodeTerm)
+            Res = error(string.append(InvalidDeclStr, ErrMsg), CodeTerm)
         )
     ),
     Check2 = (func(PTerms2, ForeignLanguage) = Res is semidet :-
@@ -658,7 +658,7 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
             % may_call_mercury is a conservative default.
             Attributes0 = default_attributes(ForeignLanguage),
             set_legacy_purity_behaviour(yes, Attributes0, Attributes),
-            ( CodeTerm = term__functor(term__string(Code), [], Context) ->
+            ( CodeTerm = term.functor(term.string(Code), [], Context) ->
                 parse_pragma_foreign_code(ModuleName, Attributes,
                     PredAndVarsTerm, ordinary(Code, yes(Context)), VarSet, Res)
             ;
@@ -666,11 +666,11 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
                     ++ "`may_call_mercury' or "
                     ++ "`will_not_call_mercury', "
                     ++ "and a string for foreign code",
-                Res = error(string__append(InvalidDeclStr, ErrMsg), CodeTerm)
+                Res = error(string.append(InvalidDeclStr, ErrMsg), CodeTerm)
             )
         ;
             ErrMsg = "-- doesn't say whether it can call mercury",
-            Res = error(string__append(InvalidDeclStr, ErrMsg), ErrorTerm)
+            Res = error(string.append(InvalidDeclStr, ErrMsg), ErrorTerm)
         )
     ),
     CheckLength = (func(PTermsLen, ForeignLanguage) = Res :-
@@ -684,7 +684,7 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
             Res = Res0
         ;
             ErrMsg = "-- wrong number of arguments",
-            Res = error(string__append(InvalidDeclStr, ErrMsg), ErrorTerm)
+            Res = error(string.append(InvalidDeclStr, ErrMsg), ErrorTerm)
         )
     ),
     CheckLanguage = (func(PTermsLang) = Res is semidet :-
@@ -693,14 +693,14 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
             Res = CheckLength(Rest, ForeignLanguage)
         ;
             ErrMsg = "-- invalid language parameter",
-            Res = error(string__append(InvalidDeclStr, ErrMsg), Lang)
+            Res = error(string.append(InvalidDeclStr, ErrMsg), Lang)
         )
     ),
     ( Result0 = CheckLanguage(PragmaTerms) ->
         Result = Result0
     ;
         ErrMsg0 = "-- wrong number of arguments",
-        Result = error(string__append(InvalidDeclStr, ErrMsg0), ErrorTerm)
+        Result = error(string.append(InvalidDeclStr, ErrMsg0), ErrorTerm)
     ).
 
 parse_pragma_type(ModuleName, "import", PragmaTerms, ErrorTerm, _VarSet,
@@ -729,7 +729,7 @@ parse_pragma_type(ModuleName, "import", PragmaTerms, ErrorTerm, _VarSet,
             FlagsResult = ok(Flags)
         )
     ->
-        ( FunctionTerm = term__functor(term__string(Function), [], _) ->
+        ( FunctionTerm = term.functor(term.string(Function), [], _) ->
             parse_pred_or_func_and_arg_modes(yes(ModuleName),
                 PredAndModesTerm, ErrorTerm, "`:- pragma import' declaration",
                 PredAndArgModesResult),
@@ -760,7 +760,7 @@ parse_pragma_type(_ModuleName, "export", PragmaTerms, ErrorTerm, _VarSet,
         Result) :-
     % XXX we implicitly assume exports are only for C
     ( PragmaTerms = [PredAndModesTerm, FunctionTerm] ->
-        ( FunctionTerm = term__functor(term__string(Function), [], _) ->
+        ( FunctionTerm = term.functor(term.string(Function), [], _) ->
             parse_pred_or_func_and_arg_modes(no, PredAndModesTerm,
                 ErrorTerm, "`:- pragma export' declaration",
                 PredAndModesResult),
@@ -834,15 +834,15 @@ parse_pragma_type(ModuleName, "unused_args", PragmaTerms, ErrorTerm, _VarSet,
         PragmaTerms = [
             PredOrFuncTerm,
             PredNameTerm,
-            term__functor(term__integer(Arity), [], _),
-            term__functor(term__integer(ModeNum), [], _),
+            term.functor(term.integer(Arity), [], _),
+            term.functor(term.integer(ModeNum), [], _),
             UnusedArgsTerm
         ],
         (
-            PredOrFuncTerm = term__functor(term__atom("predicate"), [], _),
+            PredOrFuncTerm = term.functor(term.atom("predicate"), [], _),
             PredOrFunc = predicate
         ;
-            PredOrFuncTerm = term__functor(term__atom("function"), [], _),
+            PredOrFuncTerm = term.functor(term.atom("function"), [], _),
             PredOrFunc = function
         ),
         parse_implicitly_qualified_term(ModuleName, PredNameTerm, ErrorTerm,
@@ -865,11 +865,11 @@ parse_pragma_type(ModuleName, "type_spec", PragmaTerms, ErrorTerm, VarSet0,
             MaybeName = no
         ;
             PragmaTerms = [PredAndModesTerm, TypeSubnTerm, SpecNameTerm],
-            SpecNameTerm = term__functor(_, _, SpecContext),
+            SpecNameTerm = term.functor(_, _, SpecContext),
 
             % This form of the pragma should not appear in source files.
-            term__context_file(SpecContext, FileName),
-            \+ string__remove_suffix(FileName, ".m", _),
+            term.context_file(SpecContext, FileName),
+            \+ string.remove_suffix(FileName, ".m", _),
 
             parse_implicitly_qualified_term(ModuleName,
                 SpecNameTerm, ErrorTerm, "", NameResult),
@@ -886,8 +886,8 @@ parse_pragma_type(ModuleName, "type_spec", PragmaTerms, ErrorTerm, VarSet0,
             conjunction_to_list(TypeSubnTerm, TypeSubnList),
 
             % The varset is actually a tvarset.
-            varset__coerce(VarSet0, TVarSet),
-            ( list__map(convert_type_spec_pair, TypeSubnList, TypeSubn) ->
+            varset.coerce(VarSet0, TVarSet),
+            ( list.map(convert_type_spec_pair, TypeSubnList, TypeSubn) ->
                 (
                     MaybeName = yes(SpecializedName0),
                     SpecializedName = SpecializedName0
@@ -899,8 +899,7 @@ parse_pragma_type(ModuleName, "type_spec", PragmaTerms, ErrorTerm, VarSet0,
                         SpecializedName)
                 ),
                 TypeSpecPragma = type_spec(PredName, SpecializedName, Arity,
-                    MaybePredOrFunc, MaybeModes, TypeSubn, TVarSet,
-                    set__init),
+                    MaybePredOrFunc, MaybeModes, TypeSubn, TVarSet, set.init),
                 Result = ok(pragma(user, TypeSpecPragma))
             ;
                 Result = error("expected type substitution in " ++
@@ -929,7 +928,7 @@ parse_pragma_type(ModuleName, "fact_table", PragmaTerms, ErrorTerm, _VarSet,
         PredAndArityTerm, ErrorTerm, NameArityResult),
         (
             NameArityResult = ok(PredName, Arity),
-            ( FileNameTerm = term__functor(term__string(FileName), [], _) ->
+            ( FileNameTerm = term.functor(term.string(FileName), [], _) ->
                 Result = ok(pragma(user,
                     fact_table(PredName, Arity, FileName)))
             ;
@@ -979,26 +978,26 @@ parse_pragma_type(ModuleName, "termination_info", PragmaTerms, ErrorTerm,
             NameAndModesResult),
         NameAndModesResult = ok(PredName - PredOrFunc, ModeList),
         (
-            ArgSizeTerm = term__functor(term__atom("not_set"), [], _),
+            ArgSizeTerm = term.functor(term.atom("not_set"), [], _),
             MaybeArgSizeInfo = no
         ;
-            ArgSizeTerm = term__functor(term__atom("infinite"), [], _),
+            ArgSizeTerm = term.functor(term.atom("infinite"), [], _),
             MaybeArgSizeInfo = yes(infinite(unit))
         ;
-            ArgSizeTerm = term__functor(term__atom("finite"),
+            ArgSizeTerm = term.functor(term.atom("finite"),
                 [IntTerm, UsedArgsTerm], _),
-            IntTerm = term__functor(term__integer(Int), [], _),
+            IntTerm = term.functor(term.integer(Int), [], _),
             convert_bool_list(UsedArgsTerm, UsedArgs),
             MaybeArgSizeInfo = yes(finite(Int, UsedArgs))
         ),
         (
-            TerminationTerm = term__functor(term__atom("not_set"), [], _),
+            TerminationTerm = term.functor(term.atom("not_set"), [], _),
             MaybeTerminationInfo = no
         ;
-            TerminationTerm = term__functor(term__atom("can_loop"), [], _),
+            TerminationTerm = term.functor(term.atom("can_loop"), [], _),
             MaybeTerminationInfo = yes(can_loop(unit))
         ;
-            TerminationTerm = term__functor(term__atom("cannot_loop"), [], _),
+            TerminationTerm = term.functor(term.atom("cannot_loop"), [], _),
             MaybeTerminationInfo = yes(cannot_loop(unit))
         ),
         Result0 = ok(pragma(user, termination_info(PredOrFunc, PredName,
@@ -1028,13 +1027,13 @@ parse_pragma_type(ModuleName, "termination2_info", PragmaTerms, ErrorTerm,
         parse_arg_size_constraints(FailureArgSizeTerm, FailureArgSizeResult),
         FailureArgSizeResult = ok(FailureArgSizeInfo),
         (
-            TerminationTerm = term__functor(term__atom("not_set"), [], _),
+            TerminationTerm = term.functor(term.atom("not_set"), [], _),
             MaybeTerminationInfo = no
         ;
-            TerminationTerm = term__functor(term__atom("can_loop"), [], _),
+            TerminationTerm = term.functor(term.atom("can_loop"), [], _),
             MaybeTerminationInfo = yes(can_loop(unit))
         ;
-            TerminationTerm = term__functor(term__atom("cannot_loop"), [], _),
+            TerminationTerm = term.functor(term.atom("cannot_loop"), [], _),
             MaybeTerminationInfo = yes(cannot_loop(unit))
         ),
         Result0 = ok(pragma(user, termination2_info(PredOrFunc, PredName,
@@ -1084,23 +1083,22 @@ parse_pragma_type(ModuleName, "structure_sharing", PragmaTerms, ErrorTerm,
         NameAndModesResult = ok(PredName - PredOrFunc, ModeList),
 
         % Parse the headvariables:
-        HeadVarsTerm = term__functor(term__atom("vars"), ListHVTerm, _),
-        term__vars_list(ListHVTerm, HeadVarsGeneric),
-        list__map(term__coerce_var, HeadVarsGeneric, HeadVars),
+        HeadVarsTerm = term.functor(term.atom("vars"), ListHVTerm, _),
+        term.vars_list(ListHVTerm, HeadVarsGeneric),
+        list.map(term.coerce_var, HeadVarsGeneric, HeadVars),
 
         % Parse the types:
-        HeadVarTypesTerm = term__functor(term__atom("types"), ListTypeTerms,
-            _),
+        HeadVarTypesTerm = term.functor(term.atom("types"), ListTypeTerms, _),
         parse_types(ListTypeTerms, ok(Types)),
 
         % Parse the actual structure sharing information.
 
         (
-            SharingInformationTerm = term__functor(term__atom("not_available"),
+            SharingInformationTerm = term.functor(term.atom("not_available"),
                 _, _),
             MaybeSharingAs = no
         ;
-            SharingInformationTerm = term__functor(term__atom("yes"),
+            SharingInformationTerm = term.functor(term.atom("yes"),
                 SharingTerm, _),
             SharingTerm = [ SharingAsTerm ],
             MaybeSharingAs = yes(parse_structure_sharing_domain(SharingAsTerm))
@@ -1253,7 +1251,7 @@ parse_simple_pragma_base(ModuleName, PragmaType, NameKind, MakePragma,
             Result = error(ErrorMsg, PredAndArityTerm)
         )
     ;
-        string__append_list(["wrong number of arguments in `:- pragma ",
+        string.append_list(["wrong number of arguments in `:- pragma ",
             PragmaType, "' declaration"], ErrorMsg),
         Result = error(ErrorMsg, ErrorTerm)
    ).
@@ -1274,7 +1272,7 @@ parse_simple_name_and_arity(ModuleName, PragmaType, NameKind,
     ( parse_name_and_arity(ModuleName, NameAndArityTerm, Name, Arity) ->
         Result = ok(Name, Arity)
     ;
-        string__append_list(["expected ", NameKind, " name/arity for `pragma ",
+        string.append_list(["expected ", NameKind, " name/arity for `pragma ",
             PragmaType, "' declaration"], ErrorMsg),
         Result = error(ErrorMsg, ErrorTerm)
     ).
@@ -1282,11 +1280,11 @@ parse_simple_name_and_arity(ModuleName, PragmaType, NameKind,
 %-----------------------------------------------------------------------------%
 
 :- pred parse_pragma_keyword(string::in, term::in, string::out,
-    term__context::out) is semidet.
+    term.context::out) is semidet.
 
 parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
-    Term = term__functor(term__atom(ExpectedKeyword), [Arg], _),
-    Arg = term__functor(term__string(StringArg), [], StartContext).
+    Term = term.functor(term.atom(ExpectedKeyword), [Arg], _),
+    Arg = term.functor(term.string(StringArg), [], StartContext).
 
 %-----------------------------------------------------------------------------%
 
@@ -1347,14 +1345,14 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Term,
         parse_pragma_foreign_proc_attributes_term0(Term, AttrList)
     ->
         (
-            list__member(Conflict1 - Conflict2, ConflictingAttributes),
-            list__member(Conflict1, AttrList),
-            list__member(Conflict2, AttrList)
+            list.member(Conflict1 - Conflict2, ConflictingAttributes),
+            list.member(Conflict1, AttrList),
+            list.member(Conflict2, AttrList)
         ->
             MaybeAttributes = error("conflicting attributes " ++
                 "in attribute list", Term)
         ;
-            list__foldl(process_attribute, AttrList, Attributes2, Attributes),
+            list.foldl(process_attribute, AttrList, Attributes2, Attributes),
             MaybeAttributes = check_required_attributes(ForeignLanguage,
                 Attributes, Term)
         )
@@ -1408,7 +1406,7 @@ check_required_attributes(c, Attrs, _Term) = ok(Attrs).
 check_required_attributes(managed_cplusplus, Attrs, _Term) = ok(Attrs).
 check_required_attributes(csharp, Attrs, _Term) = ok(Attrs).
 check_required_attributes(il, Attrs, Term) = Res :-
-    MaxStackAttrs = list__filter_map(
+    MaxStackAttrs = list.filter_map(
         (func(X) = X is semidet :- X = max_stack_size(_)),
         Attrs ^ extra_attributes),
     (
@@ -1428,10 +1426,10 @@ parse_pragma_foreign_proc_attributes_term0(Term, Flags) :-
         Flags = [Flag]
     ;
         (
-            Term = term__functor(term__atom("[]"), [], _),
+            Term = term.functor(term.atom("[]"), [], _),
             Flags = []
         ;
-            Term = term__functor(term__atom("[|]"), [Head, Tail], _),
+            Term = term.functor(term.atom("[|]"), [Head, Tail], _),
             parse_single_pragma_foreign_proc_attribute(Head, HeadFlag),
             parse_pragma_foreign_proc_attributes_term0(Tail, TailFlags),
             Flags = [HeadFlag | TailFlags]
@@ -1472,22 +1470,22 @@ parse_single_pragma_foreign_proc_attribute(Term, Flag) :-
 
 :- pred parse_may_call_mercury(term::in, may_call_mercury::out) is semidet.
 
-parse_may_call_mercury(term__functor(term__atom("recursive"), [], _),
+parse_may_call_mercury(term.functor(term.atom("recursive"), [], _),
     may_call_mercury).
-parse_may_call_mercury(term__functor(term__atom("non_recursive"), [], _),
+parse_may_call_mercury(term.functor(term.atom("non_recursive"), [], _),
     will_not_call_mercury).
-parse_may_call_mercury(term__functor(term__atom("may_call_mercury"), [], _),
+parse_may_call_mercury(term.functor(term.atom("may_call_mercury"), [], _),
     may_call_mercury).
-parse_may_call_mercury(term__functor(term__atom("will_not_call_mercury"), [],
+parse_may_call_mercury(term.functor(term.atom("will_not_call_mercury"), [],
     _), will_not_call_mercury).
 
 :- pred parse_threadsafe(term::in, thread_safe::out) is semidet.
 
-parse_threadsafe(term__functor(term__atom("thread_safe"), [], _),
+parse_threadsafe(term.functor(term.atom("thread_safe"), [], _),
     thread_safe).
-parse_threadsafe(term__functor(term__atom("not_thread_safe"), [], _),
+parse_threadsafe(term.functor(term.atom("not_thread_safe"), [], _),
     not_thread_safe).
-parse_threadsafe(term__functor(term__atom("maybe_thread_safe"), [], _),
+parse_threadsafe(term.functor(term.atom("maybe_thread_safe"), [], _),
     maybe_thread_safe).
 
 :- pred parse_may_modify_trail(term::in, may_modify_trail::out) is semidet.
@@ -1506,7 +1504,7 @@ parse_box_policy(term.functor(term.atom("always_boxed"), [], _),
 
 :- pred parse_tabled_for_io(term::in, tabled_for_io::out) is semidet.
 
-parse_tabled_for_io(term__functor(term__atom(Str), [], _), TabledForIo) :-
+parse_tabled_for_io(term.functor(term.atom(Str), [], _), TabledForIo) :-
     (
         Str = "tabled_for_io",
         TabledForIo = tabled_for_io
@@ -1528,19 +1526,19 @@ parse_tabled_for_io(term__functor(term__atom(Str), [], _), TabledForIo) :-
     %
 :- pred parse_aliasing(term::in) is semidet.
 
-parse_aliasing(term__functor(term__atom("no_aliasing"), [], _)).
-parse_aliasing(term__functor(term__atom("unknown_aliasing"), [], _)).
-parse_aliasing(term__functor(term__atom("alias"), [_Types, _Alias], _)).
+parse_aliasing(term.functor(term.atom("no_aliasing"), [], _)).
+parse_aliasing(term.functor(term.atom("unknown_aliasing"), [], _)).
+parse_aliasing(term.functor(term.atom("alias"), [_Types, _Alias], _)).
 
 :- pred parse_max_stack_size(term::in, int::out) is semidet.
 
-parse_max_stack_size(term__functor(
-        term__atom("max_stack_size"), [SizeTerm], _), Size) :-
-    SizeTerm = term__functor(term__integer(Size), [], _).
+parse_max_stack_size(term.functor(
+        term.atom("max_stack_size"), [SizeTerm], _), Size) :-
+    SizeTerm = term.functor(term.integer(Size), [], _).
 
 :- pred parse_backend(term::in, backend::out) is semidet.
 
-parse_backend(term__functor(term__atom(Functor), [], _), Backend) :-
+parse_backend(term.functor(term.atom(Functor), [], _), Backend) :-
     (
         Functor = "high_level_backend",
         Backend = high_level_backend
@@ -1551,16 +1549,16 @@ parse_backend(term__functor(term__atom(Functor), [], _), Backend) :-
 
 :- pred parse_purity_promise(term::in, purity::out) is semidet.
 
-parse_purity_promise(term__functor(term__atom("promise_pure"), [], _),
+parse_purity_promise(term.functor(term.atom("promise_pure"), [], _),
         purity_pure).
-parse_purity_promise(term__functor(term__atom("promise_semipure"), [], _),
+parse_purity_promise(term.functor(term.atom("promise_semipure"), [], _),
         purity_semipure).
 
 :- pred parse_terminates(term::in, terminates::out) is semidet.
 
-parse_terminates(term__functor(term__atom("terminates"), [], _),
+parse_terminates(term.functor(term.atom("terminates"), [], _),
         terminates).
-parse_terminates(term__functor(term__atom("does_not_terminate"), [], _),
+parse_terminates(term.functor(term.atom("does_not_terminate"), [], _),
         does_not_terminate).
 
 :- pred parse_no_exception_promise(term::in) is semidet.
@@ -1571,7 +1569,7 @@ parse_no_exception_promise(term.functor(
 :- pred parse_ordinary_despite_detism(term::in) is semidet.
 
 parse_ordinary_despite_detism(
-        term__functor(term__atom("ordinary_despite_detism"), [], _)).
+        term.functor(term.atom("ordinary_despite_detism"), [], _)).
 
     % Parse a pragma foreign_code declaration.
     %
@@ -1590,7 +1588,7 @@ parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm0,
             MaybeRetTerm = yes(FuncResultTerm0)
         ->
             PredOrFunc = function,
-            list__append(VarList0, [FuncResultTerm0], VarList)
+            list.append(VarList0, [FuncResultTerm0], VarList)
         ;
             PredOrFunc = predicate,
             VarList = VarList0
@@ -1598,8 +1596,8 @@ parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm0,
         parse_pragma_c_code_varlist(VarSet0, VarList, PragmaVars, Error),
         (
             Error = no,
-            varset__coerce(VarSet0, ProgVarSet),
-            varset__coerce(VarSet0, InstVarSet),
+            varset.coerce(VarSet0, ProgVarSet),
+            varset.coerce(VarSet0, InstVarSet),
             Result = ok(pragma(user, foreign_proc(Flags, PredName, PredOrFunc,
                 PragmaVars, ProgVarSet, InstVarSet, PragmaImpl)))
         ;
@@ -1620,13 +1618,13 @@ parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm0,
 parse_pragma_c_code_varlist(_, [], [], no).
 parse_pragma_c_code_varlist(VarSet, [V|Vars], PragmaVars, Error):-
     (
-        V = term__functor(term__atom("::"), [VarTerm, ModeTerm], _),
-        VarTerm = term__variable(Var)
+        V = term.functor(term.atom("::"), [VarTerm, ModeTerm], _),
+        VarTerm = term.variable(Var)
     ->
-        ( varset__search_name(VarSet, Var, VarName) ->
+        ( varset.search_name(VarSet, Var, VarName) ->
             ( convert_mode(allow_constrained_inst_var, ModeTerm, Mode0) ->
                 constrain_inst_vars_in_mode(Mode0, Mode),
-                term__coerce_var(Var, ProgVar),
+                term.coerce_var(Var, ProgVar),
                 PragmaVar = pragma_var(ProgVar, VarName, Mode,
                     native_if_possible),
                 parse_pragma_c_code_varlist(VarSet, Vars, PragmaVars0, Error),
@@ -1662,7 +1660,7 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
             MaybeSpec = yes(SpecListTerm0)
         )
     ->
-        string__append_list(["`:- pragma ", PragmaName, "' declaration"],
+        string.append_list(["`:- pragma ", PragmaName, "' declaration"],
             ParseMsg),
         parse_arity_or_modes(ModuleName, PredAndModesTerm0, ErrorTerm,
             ParseMsg, ArityModesResult),
@@ -1693,7 +1691,7 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
             Result = error(Msg, Term)
         )
     ;
-        string__append_list(["wrong number of arguments in `:- pragma ",
+        string.append_list(["wrong number of arguments in `:- pragma ",
             PragmaName, "' declaration"], ErrorMessage),
         Result = error(ErrorMessage, ErrorTerm)
     ).
@@ -1701,13 +1699,13 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
 :- pred parse_arg_tabling_method(term::in, maybe(arg_tabling_method)::out)
     is semidet.
 
-parse_arg_tabling_method(term__functor(term__atom("value"), [], _),
+parse_arg_tabling_method(term.functor(term.atom("value"), [], _),
     yes(arg_value)).
-parse_arg_tabling_method(term__functor(term__atom("addr"), [], _),
+parse_arg_tabling_method(term.functor(term.atom("addr"), [], _),
     yes(arg_addr)).
-parse_arg_tabling_method(term__functor(term__atom("promise_implied"), [], _),
+parse_arg_tabling_method(term.functor(term.atom("promise_implied"), [], _),
     yes(arg_promise_implied)).
-parse_arg_tabling_method(term__functor(term__atom("output"), [], _), no).
+parse_arg_tabling_method(term.functor(term.atom("output"), [], _), no).
 
 :- type arity_or_modes
     --->    arity_or_modes(
@@ -1724,17 +1722,17 @@ parse_arity_or_modes(ModuleName, PredAndModesTerm0,
         ErrorTerm, ErrorMsg, Result) :-
     (
                 % Is this a simple pred/arity pragma.
-        PredAndModesTerm0 = term__functor(term__atom("/"),
+        PredAndModesTerm0 = term.functor(term.atom("/"),
             [PredNameTerm, ArityTerm], _)
     ->
         (
             parse_implicitly_qualified_term(ModuleName, PredNameTerm,
                 PredAndModesTerm0, "", ok(PredName, [])),
-            ArityTerm = term__functor(term__integer(Arity), [], _)
+            ArityTerm = term.functor(term.integer(Arity), [], _)
         ->
             Result = ok(arity_or_modes(PredName, Arity, no, no))
         ;
-            string__append("expected predname/arity for", ErrorMsg, Msg),
+            string.append("expected predname/arity for", ErrorMsg, Msg),
             Result = error(Msg, ErrorTerm)
         )
     ;
@@ -1742,7 +1740,7 @@ parse_arity_or_modes(ModuleName, PredAndModesTerm0,
             PredAndModesTerm0, ErrorMsg, PredAndModesResult),
         (
             PredAndModesResult = ok(PredName - PredOrFunc, Modes),
-            list__length(Modes, Arity0),
+            list.length(Modes, Arity0),
             ( PredOrFunc = function ->
                 Arity = Arity0 - 1
             ;
@@ -1767,8 +1765,7 @@ parse_pred_or_func_and_arg_modes(MaybeModuleName, PredAndModesTerm,
     parse_pred_or_func_and_args(MaybeModuleName, PredAndModesTerm,
         ErrorTerm, Msg, PredAndArgsResult),
     (
-        PredAndArgsResult =
-        ok(PredName, ArgModeTerms - MaybeRetModeTerm),
+        PredAndArgsResult = ok(PredName, ArgModeTerms - MaybeRetModeTerm),
         (
             convert_mode_list(allow_constrained_inst_var, ArgModeTerms,
                 ArgModes0)
@@ -1779,12 +1776,11 @@ parse_pred_or_func_and_arg_modes(MaybeModuleName, PredAndModesTerm,
                     convert_mode(allow_constrained_inst_var, RetModeTerm,
                         RetMode)
                 ->
-                    list__append(ArgModes0, [RetMode], ArgModes1),
-                    list__map(constrain_inst_vars_in_mode, ArgModes1,
-                        ArgModes),
+                    list.append(ArgModes0, [RetMode], ArgModes1),
+                    list.map(constrain_inst_vars_in_mode, ArgModes1, ArgModes),
                     Result = ok(PredName - function, ArgModes)
                 ;
-                    string__append("error in return mode in ", Msg, ErrorMsg),
+                    string.append("error in return mode in ", Msg, ErrorMsg),
                     Result = error(ErrorMsg, ErrorTerm)
                 )
             ;
@@ -1792,8 +1788,7 @@ parse_pred_or_func_and_arg_modes(MaybeModuleName, PredAndModesTerm,
                 Result = ok(PredName - predicate, ArgModes0)
             )
         ;
-            string__append("error in argument modes in ", Msg,
-                ErrorMsg),
+            string.append("error in argument modes in ", Msg, ErrorMsg),
             Result = error(ErrorMsg, ErrorTerm)
         )
     ;
@@ -1804,7 +1799,7 @@ parse_pred_or_func_and_arg_modes(MaybeModuleName, PredAndModesTerm,
 :- pred convert_bool(term::in, bool::out) is semidet.
 
 convert_bool(Term, Bool) :-
-    Term = term__functor(term__atom(Name), [], _),
+    Term = term.functor(term.atom(Name), [], _),
     ( Name = "yes", Bool = yes
     ; Name = "no", Bool = no
     ).
@@ -1817,7 +1812,7 @@ convert_bool_list(ListTerm, Bools) :-
 :- pred convert_int(term::in, int::out) is semidet.
 
 convert_int(Term, Int) :-
-    Term = term__functor(term__integer(Int), [], _).
+    Term = term.functor(term.integer(Int), [], _).
 
 :- pred convert_int_list(term::in, maybe1(list(int))::out) is det.
 
@@ -1833,12 +1828,12 @@ convert_int_list(ListTerm, Result) :-
 :- pred convert_list(term::in, pred(term, T)::(pred(in, out) is semidet),
     string::in, maybe1(list(T))::out) is det.
 
-convert_list(term__variable(V), _, UnrecognizedMsg,
-        error(UnrecognizedMsg, term__variable(V))).
-convert_list(term__functor(Functor, Args, Context), Pred, UnrecognizedMsg,
+convert_list(term.variable(V), _, UnrecognizedMsg,
+        error(UnrecognizedMsg, term.variable(V))).
+convert_list(term.functor(Functor, Args, Context), Pred, UnrecognizedMsg,
         Result) :-
     (
-        Functor = term__atom("[|]"),
+        Functor = term.atom("[|]"),
         Args = [Term, RestTerm]
     ->
         ( call(Pred, Term, Element) ->
@@ -1854,20 +1849,20 @@ convert_list(term__functor(Functor, Args, Context), Pred, UnrecognizedMsg,
             Result = error(UnrecognizedMsg, Term)
         )
     ;
-        Functor = term__atom("[]"),
+        Functor = term.atom("[]"),
         Args = []
     ->
         Result = ok([])
     ;
-        Result = error("error in list", term__functor(Functor, Args, Context))
+        Result = error("error in list", term.functor(Functor, Args, Context))
     ).
 
 :- pred convert_type_spec_pair(term::in, pair(tvar, mer_type)::out) is semidet.
 
 convert_type_spec_pair(Term, TypeSpec) :-
-    Term = term__functor(term__atom("="), [TypeVarTerm, SpecTypeTerm0], _),
-    TypeVarTerm = term__variable(TypeVar0),
-    term__coerce_var(TypeVar0, TypeVar),
+    Term = term.functor(term.atom("="), [TypeVarTerm, SpecTypeTerm0], _),
+    TypeVarTerm = term.variable(TypeVar0),
+    term.coerce_var(TypeVar0, TypeVar),
     parse_type(SpecTypeTerm0, ok(SpecType)),
     TypeSpec = TypeVar - SpecType.
 
@@ -1881,10 +1876,10 @@ convert_type_spec_pair(Term, TypeSpec) :-
 
 parse_arg_size_constraints(ArgSizeTerm, Result) :-
     (
-        ArgSizeTerm = term__functor(term__atom("not_set"), [], _),
+        ArgSizeTerm = term.functor(term.atom("not_set"), [], _),
         Result = ok(no)
     ;
-        ArgSizeTerm = term__functor(term__atom("constraints"),
+        ArgSizeTerm = term.functor(term.atom("constraints"),
             [Constraints0], _),
         convert_list(Constraints0, parse_arg_size_constraint,
             "expected constraint", ConstraintsResult),
@@ -1896,7 +1891,7 @@ parse_arg_size_constraints(ArgSizeTerm, Result) :-
 
 parse_arg_size_constraint(Term, Constr) :-
     (
-        Term = term__functor(term__atom("le"), [Terms, ConstantTerm], _),
+        Term = term.functor(term.atom("le"), [Terms, ConstantTerm], _),
         convert_list(Terms, parse_lp_term, "expected linear term",
             TermsResult),
         TermsResult = ok(LPTerms),
@@ -1904,7 +1899,7 @@ parse_arg_size_constraint(Term, Constr) :-
         Constr = le(LPTerms, Constant)
 
     ;
-        Term = term__functor(term__atom("eq"), [Terms, ConstantTerm], _),
+        Term = term.functor(term.atom("eq"), [Terms, ConstantTerm], _),
         convert_list(Terms, parse_lp_term, "expected linear term",
             TermsResult),
         TermsResult = ok(LPTerms),
@@ -1915,18 +1910,18 @@ parse_arg_size_constraint(Term, Constr) :-
 :- pred parse_lp_term(term::in, pair(int, rat)::out) is semidet.
 
 parse_lp_term(Term, LpTerm) :-
-    Term = term__functor(term__atom("term"), [VarIdTerm, CoeffTerm], _),
-    VarIdTerm = term__functor(term__integer(VarId), [], _),
+    Term = term.functor(term.atom("term"), [VarIdTerm, CoeffTerm], _),
+    VarIdTerm = term.functor(term.integer(VarId), [], _),
     parse_rational(CoeffTerm, Coeff),
     LpTerm = VarId - Coeff.
 
 :- pred parse_rational(term::in, rat::out) is semidet.
 
 parse_rational(Term, Rational) :-
-    Term = term__functor(term__atom("r"), [NumerTerm, DenomTerm], _),
-    NumerTerm = term__functor(term__integer(Numer), [], _),
-    DenomTerm = term__functor(term__integer(Denom), [], _),
-    Rational = rat__rat(Numer, Denom).
+    Term = term.functor(term.atom("r"), [NumerTerm, DenomTerm], _),
+    NumerTerm = term.functor(term.integer(Numer), [], _),
+    DenomTerm = term.functor(term.integer(Denom), [], _),
+    Rational = rat.rat(Numer, Denom).
 
 %-----------------------------------------------------------------------------%
 

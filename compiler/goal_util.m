@@ -308,7 +308,7 @@
 :- pred generate_simple_call(module_name::in, string::in,
     pred_or_func::in, mode_no::in, determinism::in, prog_vars::in,
     list(goal_feature)::in, assoc_list(prog_var, mer_inst)::in,
-    module_info::in, term__context::in, hlds_goal::out) is det.
+    module_info::in, term.context::in, hlds_goal::out) is det.
 
     % generate_foreign_proc(ModuleName, ProcName, PredOrFunc,
     %   ModeNo, Detism, Attributes, Args, ExtraArgs, PrefixCode, Code,
@@ -329,7 +329,7 @@
     pragma_foreign_proc_attributes::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in, string::in,
     string::in, list(goal_feature)::in, assoc_list(prog_var, mer_inst)::in,
-    module_info::in, term__context::in, hlds_goal::out) is det.
+    module_info::in, term.context::in, hlds_goal::out) is det.
 
     % Generate a cast goal.  The input and output insts are just ground.
     %
@@ -377,16 +377,16 @@
 
 update_instmap(_Goal0 - GoalInfo0, !InstMap) :-
     goal_info_get_instmap_delta(GoalInfo0, DeltaInstMap),
-    instmap__apply_instmap_delta(!.InstMap, DeltaInstMap, !:InstMap).
+    instmap.apply_instmap_delta(!.InstMap, DeltaInstMap, !:InstMap).
 
 %-----------------------------------------------------------------------------%
 
 create_renaming(OrigVars, InstMapDelta, !VarTypes, !VarSet, Unifies, NewVars,
         Renaming) :-
     create_renaming_2(OrigVars, InstMapDelta, !VarTypes, !VarSet,
-        [], RevUnifies, [], RevNewVars, map__init, Renaming),
-    list__reverse(RevNewVars, NewVars),
-    list__reverse(RevUnifies, Unifies).
+        [], RevUnifies, [], RevNewVars, map.init, Renaming),
+    list.reverse(RevNewVars, NewVars),
+    list.reverse(RevUnifies, Unifies).
 
 :- pred create_renaming_2(prog_vars::in, instmap_delta::in,
     vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
@@ -397,9 +397,9 @@ create_renaming_2([], _, !VarTypes, !VarSet, !RevUnifies, !RevNewVars,
         !Renaming).
 create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarTypes, !VarSet,
         !RevUnifies, !RevNewVars, !Renaming) :-
-    svvarset__new_var(NewVar, !VarSet),
-    map__lookup(!.VarTypes, OrigVar, Type),
-    svmap__det_insert(NewVar, Type, !VarTypes),
+    svvarset.new_var(NewVar, !VarSet),
+    map.lookup(!.VarTypes, OrigVar, Type),
+    svmap.det_insert(NewVar, Type, !VarTypes),
     ( instmap_delta_search_var(InstMapDelta, OrigVar, DeltaInst) ->
         NewInst = DeltaInst
     ;
@@ -409,13 +409,13 @@ create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarTypes, !VarSet,
     UnifyInfo = assign(OrigVar, NewVar),
     UnifyContext = unify_context(explicit, []),
     GoalExpr = unify(OrigVar, var(NewVar), Mode, UnifyInfo, UnifyContext),
-    set__list_to_set([OrigVar, NewVar], NonLocals),
+    set.list_to_set([OrigVar, NewVar], NonLocals),
     instmap_delta_from_assoc_list([OrigVar - NewInst], UnifyInstMapDelta),
     goal_info_init(NonLocals, UnifyInstMapDelta, det, purity_pure,
-        term__context_init, GoalInfo),
+        term.context_init, GoalInfo),
     Goal = GoalExpr - GoalInfo,
     !:RevUnifies = [Goal | !.RevUnifies],
-    svmap__det_insert(OrigVar, NewVar, !Renaming),
+    svmap.det_insert(OrigVar, NewVar, !Renaming),
     !:RevNewVars = [NewVar | !.RevNewVars],
     create_renaming_2(OrigVars, InstMapDelta, !VarTypes, !VarSet,
         !RevUnifies, !RevNewVars, !Renaming).
@@ -425,18 +425,18 @@ create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarTypes, !VarSet,
 create_variables([], _OldVarNames, _OldVarTypes, !Varset, !VarTypes, !Subn).
 create_variables([V | Vs], OldVarNames, OldVarTypes, !Varset, !VarTypes,
         !Subn) :-
-    ( map__contains(!.Subn, V) ->
+    ( map.contains(!.Subn, V) ->
         true
     ;
-        svvarset__new_var(NV, !Varset),
-        ( varset__search_name(OldVarNames, V, Name) ->
-            svvarset__name_var(NV, Name, !Varset)
+        svvarset.new_var(NV, !Varset),
+        ( varset.search_name(OldVarNames, V, Name) ->
+            svvarset.name_var(NV, Name, !Varset)
         ;
             true
         ),
-        svmap__det_insert(V, NV, !Subn),
-        ( map__search(OldVarTypes, V, VT) ->
-            svmap__set(NV, VT, !VarTypes)
+        svmap.det_insert(V, NV, !Subn),
+        ( map.search(OldVarTypes, V, VT) ->
+            svmap.set(NV, VT, !VarTypes)
         ;
             true
         )
@@ -450,7 +450,7 @@ create_variables([V | Vs], OldVarNames, OldVarTypes, !Varset, !VarTypes,
 
 init_subn([], !Subn).
 init_subn([A - H | Vs], !Subn) :-
-    svmap__set(H, A, !Subn),
+    svmap.set(H, A, !Subn),
     init_subn(Vs, !Subn).
 
 %-----------------------------------------------------------------------------%
@@ -469,7 +469,7 @@ rename_var_list(Must, Subn, [V | Vs], [N | Ns]) :-
     rename_var_list(Must, Subn, Vs, Ns).
 
 rename_var(Must, Subn, V, N) :-
-    ( map__search(Subn, V, N0) ->
+    ( map.search(Subn, V, N0) ->
         N = N0
     ;
         (
@@ -477,8 +477,8 @@ rename_var(Must, Subn, V, N) :-
             N = V
         ;
             Must = yes,
-            term__var_to_int(V, VInt),
-            string__format("rename_var: no substitute for var %i", [i(VInt)],
+            term.var_to_int(V, VInt),
+            string.format("rename_var: no substitute for var %i", [i(VInt)],
                 Msg),
             unexpected(this_file, Msg)
         )
@@ -720,9 +720,9 @@ rename_generic_call(_, _, cast(CastType), cast(CastType)).
     map(prog_var, T)::in, map(prog_var, T)::out) is det.
 
 rename_var_maps(Must, Subn, Map0, Map) :-
-    map__to_assoc_list(Map0, AssocList0),
+    map.to_assoc_list(Map0, AssocList0),
     rename_var_maps_2(Must, Subn, AssocList0, AssocList),
-    map__from_assoc_list(AssocList, Map).
+    map.from_assoc_list(AssocList, Map).
 
 :- pred rename_var_maps_2(bool::in, map(var(V), var(V))::in,
     assoc_list(var(V), T)::in, assoc_list(var(V), T)::out) is det.
@@ -750,9 +750,9 @@ rename_vars_in_goal_info(Must, Subn, !GoalInfo) :-
 %-----------------------------------------------------------------------------%
 
 rename_vars_in_var_set(Must, Subn, Vars0, Vars) :-
-    set__to_sorted_list(Vars0, VarsList0),
+    set.to_sorted_list(Vars0, VarsList0),
     rename_var_list(Must, Subn, VarsList0, VarsList),
-    set__list_to_set(VarsList, Vars).
+    set.list_to_set(VarsList, Vars).
 
 :- pred rename_vars_in_code_gen_info(bool::in,
     prog_var_renaming::in,
@@ -772,16 +772,16 @@ rename_vars_in_code_gen_info(Must, Subn,
 %-----------------------------------------------------------------------------%
 
 goal_vars(Goal - _GoalInfo, Set) :-
-    goal_vars_2(Goal, set__init, Set).
+    goal_vars_2(Goal, set.init, Set).
 
 :- pred goal_vars_2(hlds_goal_expr::in,
     set(prog_var)::in, set(prog_var)::out) is det.
 
 goal_vars_2(unify(Var, RHS, _, Unif, _), !Set) :-
-    svset__insert(Var, !Set),
+    svset.insert(Var, !Set),
     ( Unif = construct(_, _, _, _, CellToReuse, _, _) ->
         ( CellToReuse = reuse_cell(cell_to_reuse(Var, _, _)) ->
-            svset__insert(Var, !Set)
+            svset.insert(Var, !Set)
         ;
             true
         )
@@ -792,11 +792,11 @@ goal_vars_2(unify(Var, RHS, _, Unif, _), !Set) :-
 
 goal_vars_2(generic_call(GenericCall, ArgVars, _, _), !Set) :-
     generic_call_vars(GenericCall, Vars0),
-    svset__insert_list(Vars0, !Set),
-    svset__insert_list(ArgVars, !Set).
+    svset.insert_list(Vars0, !Set),
+    svset.insert_list(ArgVars, !Set).
 
 goal_vars_2(call(_, _, ArgVars, _, _, _), !Set) :-
-    svset__insert_list(ArgVars, !Set).
+    svset.insert_list(ArgVars, !Set).
 
 goal_vars_2(conj(_, Goals), !Set) :-
     goals_goal_vars(Goals, !Set).
@@ -805,25 +805,25 @@ goal_vars_2(disj(Goals), !Set) :-
     goals_goal_vars(Goals, !Set).
 
 goal_vars_2(switch(Var, _Det, Cases), !Set) :-
-    svset__insert(Var, !Set),
+    svset.insert(Var, !Set),
     cases_goal_vars(Cases, !Set).
 
 goal_vars_2(scope(Reason, Goal - _), !Set) :-
     (
         Reason = exist_quant(Vars),
-        svset__insert_list(Vars, !Set)
+        svset.insert_list(Vars, !Set)
     ;
         Reason = promise_purity(_, _)
     ;
         Reason = promise_solutions(Vars, _),
-        svset__insert_list(Vars, !Set)
+        svset.insert_list(Vars, !Set)
     ;
         Reason = barrier(_)
     ;
         Reason = commit(_)
     ;
         Reason = from_ground_term(Var),
-        set__insert(!.Set, Var, !:Set)
+        set.insert(!.Set, Var, !:Set)
     ),
     goal_vars_2(Goal, !Set).
 
@@ -831,15 +831,15 @@ goal_vars_2(not(Goal - _GoalInfo), !Set) :-
     goal_vars_2(Goal, !Set).
 
 goal_vars_2(if_then_else(Vars, A - _, B - _, C - _), !Set) :-
-    set__insert_list(!.Set, Vars, !:Set),
+    set.insert_list(!.Set, Vars, !:Set),
     goal_vars_2(A, !Set),
     goal_vars_2(B, !Set),
     goal_vars_2(C, !Set).
 
 goal_vars_2(foreign_proc(_, _, _, Args, ExtraArgs, _), !Set) :-
-    ArgVars = list__map(foreign_arg_var, Args),
-    ExtraVars = list__map(foreign_arg_var, ExtraArgs),
-    svset__insert_list(list__append(ArgVars, ExtraVars), !Set).
+    ArgVars = list.map(foreign_arg_var, Args),
+    ExtraVars = list.map(foreign_arg_var, ExtraArgs),
+    svset.insert_list(list.append(ArgVars, ExtraVars), !Set).
 
 goal_vars_2(shorthand(ShorthandGoal), !Set) :-
     goal_vars_2_shorthand(ShorthandGoal, !Set).
@@ -869,14 +869,14 @@ cases_goal_vars([case(_, Goal - _) | Cases], !Set) :-
 
 rhs_goal_vars(RHS, !Set) :-
     RHS = var(X),
-    svset__insert(X, !Set).
+    svset.insert(X, !Set).
 rhs_goal_vars(RHS, !Set) :-
     RHS = functor(_Functor, _, ArgVars),
-    svset__insert_list(ArgVars, !Set).
+    svset.insert_list(ArgVars, !Set).
 rhs_goal_vars(RHS, !Set) :-
     RHS = lambda_goal(_, _, _, NonLocals, LambdaVars, _, _, Goal - _),
-    svset__insert_list(NonLocals, !Set),
-    svset__insert_list(LambdaVars, !Set),
+    svset.insert_list(NonLocals, !Set),
+    svset.insert_list(LambdaVars, !Set),
     goal_vars_2(Goal, !Set).
 
 generic_call_vars(higher_order(Var, _, _, _), [Var]).
@@ -888,7 +888,7 @@ generic_call_vars(cast(_), []).
 attach_features_to_all_goals(Features, Goal0, Goal) :-
     Goal0 = GoalExpr0 - GoalInfo0,
     attach_features_goal_expr(Features, GoalExpr0, GoalExpr),
-    list__foldl(goal_info_add_feature, Features, GoalInfo0, GoalInfo),
+    list.foldl(goal_info_add_feature, Features, GoalInfo0, GoalInfo),
     Goal = GoalExpr - GoalInfo.
 
 :- pred attach_features_to_case(list(goal_feature)::in,
@@ -903,15 +903,15 @@ attach_features_to_case(Features, case(ConsId, Goal0), case(ConsId, Goal)) :-
 attach_features_goal_expr(Features, GoalExpr0, GoalExpr) :-
     (
         GoalExpr0 = conj(ConjType, Goals0),
-        list__map(attach_features_to_all_goals(Features), Goals0, Goals),
+        list.map(attach_features_to_all_goals(Features), Goals0, Goals),
         GoalExpr = conj(ConjType, Goals)
     ;
         GoalExpr0 = disj(Goals0),
-        list__map(attach_features_to_all_goals(Features), Goals0, Goals),
+        list.map(attach_features_to_all_goals(Features), Goals0, Goals),
         GoalExpr = disj(Goals)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        list__map(attach_features_to_case(Features), Cases0, Cases),
+        list.map(attach_features_to_case(Features), Cases0, Cases),
         GoalExpr = switch(Var, CanFail, Cases)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
@@ -953,11 +953,11 @@ extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
         % existentially quantified or type vars that appear in the
         % type of a non-local prog_var.
         %
-    set__to_sorted_list(NonLocals, NonLocalsList),
-    map__apply_to_list(NonLocalsList, VarTypes, NonLocalsTypes),
-    prog_type__vars_list(NonLocalsTypes, NonLocalTypeVarsList0),
-    list__append(ExistQVars, NonLocalTypeVarsList0, NonLocalTypeVarsList),
-    set__list_to_set(NonLocalTypeVarsList, NonLocalTypeVars),
+    set.to_sorted_list(NonLocals, NonLocalsList),
+    map.apply_to_list(NonLocalsList, VarTypes, NonLocalsTypes),
+    prog_type.vars_list(NonLocalsTypes, NonLocalTypeVarsList0),
+    list.append(ExistQVars, NonLocalTypeVarsList0, NonLocalTypeVarsList),
+    set.list_to_set(NonLocalTypeVarsList, NonLocalTypeVars),
 
         % Find all the type_infos that are non-local, that is,
         % type_infos for type vars that are non-local in the above
@@ -967,7 +967,7 @@ extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
         rtti_lookup_type_info_locn(RttiVarMaps, TypeVar, Locn),
         type_info_locn_var(Locn, ProgVar)
     ),
-    NonLocalTypeInfoVars = set__map(TypeVarToProgVar, NonLocalTypeVars),
+    NonLocalTypeInfoVars = set.map(TypeVarToProgVar, NonLocalTypeVars),
 
         % Find all the typeclass_infos that are non-local.  These
         % include all typeclass_infos that constrain a type variable
@@ -978,16 +978,16 @@ extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
             % Search through all arguments of all constraints
             % that the goal could have used.
             rtti_varmaps_reusable_constraints(RttiVarMaps, Constraints),
-            list__member(Constraint, Constraints),
+            list.member(Constraint, Constraints),
             Constraint = constraint(_Name, ArgTypes),
             type_list_contains_var(ArgTypes, TypeVar),
-            set__member(TypeVar, NonLocalTypeVars),
+            set.member(TypeVar, NonLocalTypeVars),
 
             % We found a constraint that is non-local. Include the variable
             % holding its typeclass_info.
             rtti_lookup_typeclass_info_var(RttiVarMaps, Constraint, Var)
         ), NonLocalTypeClassInfoVars),
-    NonLocalTypeInfos = set__union(NonLocalTypeInfoVars,
+    NonLocalTypeInfos = set.union(NonLocalTypeInfoVars,
         NonLocalTypeClassInfoVars).
 
 %-----------------------------------------------------------------------------%
@@ -1008,7 +1008,7 @@ goals_size([Goal | Goals], Size) :-
     Size = Size1 + Size2.
 
 clause_list_size(Clauses, GoalSize) :-
-    list__foldl(clause_size_increment, Clauses, 0, GoalSize0),
+    list.foldl(clause_size_increment, Clauses, 0, GoalSize0),
     ( Clauses = [_] ->
         GoalSize = GoalSize0
     ;
@@ -1203,7 +1203,7 @@ goal_expr_contains_reconstruction(conj(_ConjType, Goals)) :-
 goal_expr_contains_reconstruction(disj(Goals)) :-
     goals_contain_reconstruction(Goals).
 goal_expr_contains_reconstruction(switch(_, _, Cases)) :-
-    list__member(Case, Cases),
+    list.member(Case, Cases),
     Case = case(_, Goal),
     goal_contains_reconstruction(Goal).
 goal_expr_contains_reconstruction(if_then_else(_, Cond, Then, Else)) :-
@@ -1219,7 +1219,7 @@ goal_expr_contains_reconstruction(unify(_, _, _, Unify, _)) :-
 :- pred goals_contain_reconstruction(hlds_goals::in) is semidet.
 
 goals_contain_reconstruction(Goals) :-
-    list__member(Goal, Goals),
+    list.member(Goal, Goals),
     goal_contains_reconstruction(Goal).
 
 %-----------------------------------------------------------------------------%
@@ -1237,11 +1237,11 @@ direct_subgoal(if_then_else(_, If, Then, Else), Goal) :-
     ; Goal = Else
     ).
 direct_subgoal(conj(_ConjType, ConjList), Goal) :-
-    list__member(Goal, ConjList).
+    list.member(Goal, ConjList).
 direct_subgoal(disj(DisjList), Goal) :-
-    list__member(Goal, DisjList).
+    list.member(Goal, DisjList).
 direct_subgoal(switch(_, _, CaseList), Goal) :-
-    list__member(Case, CaseList),
+    list.member(Case, CaseList),
     Case = case(_, Goal).
 
 %-----------------------------------------------------------------------------%
@@ -1257,11 +1257,11 @@ switch_to_disjunction(Var, [case(ConsId, Goal0) | Cases], InstMap,
 case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct, !VarSet, !VarTypes,
         !ModuleInfo) :-
     ConsArity = cons_id_arity(ConsId),
-    svvarset__new_vars(ConsArity, ArgVars, !VarSet),
-    map__lookup(!.VarTypes, Var, VarType),
-    type_util__get_cons_id_arg_types(!.ModuleInfo, VarType, ConsId, ArgTypes),
-    svmap__det_insert_from_corresponding_lists(ArgVars, ArgTypes, !VarTypes),
-    instmap__lookup_var(InstMap, Var, Inst0),
+    svvarset.new_vars(ConsArity, ArgVars, !VarSet),
+    map.lookup(!.VarTypes, Var, VarType),
+    type_util.get_cons_id_arg_types(!.ModuleInfo, VarType, ConsId, ArgTypes),
+    svmap.det_insert_from_corresponding_lists(ArgVars, ArgTypes, !VarTypes),
+    instmap.lookup_var(InstMap, Var, Inst0),
     (
         inst_expand(!.ModuleInfo, Inst0, Inst1),
         get_arg_insts(Inst1, ConsId, ConsArity, ArgInsts1)
@@ -1273,14 +1273,14 @@ case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct, !VarSet, !VarTypes,
     InstToUniMode = (pred(ArgInst::in, ArgUniMode::out) is det :-
         ArgUniMode = ((ArgInst - free) -> (ArgInst - ArgInst))
     ),
-    list__map(InstToUniMode, ArgInsts, UniModes),
+    list.map(InstToUniMode, ArgInsts, UniModes),
     UniMode = (Inst0 -> Inst0) - (Inst0 -> Inst0),
     UnifyContext = unify_context(explicit, []),
     Unification = deconstruct(Var, ConsId, ArgVars, UniModes, can_fail,
         cannot_cgc),
     ExtraGoal = unify(Var, functor(ConsId, no, ArgVars), UniMode,
         Unification, UnifyContext),
-    set__singleton_set(NonLocals, Var),
+    set.singleton_set(NonLocals, Var),
     instmap_delta_init_reachable(ExtraInstMapDelta0),
     instmap_delta_bind_var_to_functor(Var, VarType, ConsId, InstMap,
         ExtraInstMapDelta0, ExtraInstMapDelta, !ModuleInfo),
@@ -1295,7 +1295,7 @@ case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct, !VarSet, !VarTypes,
     % of the entire conjunction.
     CaseGoal = _ - CaseGoalInfo,
     goal_info_get_nonlocals(CaseGoalInfo, CaseNonLocals0),
-    set__insert(CaseNonLocals0, Var, CaseNonLocals),
+    set.insert(CaseNonLocals0, Var, CaseNonLocals),
     goal_info_get_instmap_delta(CaseGoalInfo, CaseInstMapDelta),
     instmap_delta_apply_instmap_delta(ExtraInstMapDelta, CaseInstMapDelta,
         test_size, InstMapDelta),
@@ -1368,8 +1368,8 @@ compute_disjunct_goal_info(Goal1, Goal2, GoalInfo, CombinedInfo) :-
     goal_info_get_nonlocals(GoalInfo1, NonLocals1),
     goal_info_get_nonlocals(GoalInfo2, NonLocals2),
     goal_info_get_nonlocals(GoalInfo, OuterNonLocals),
-    set__union(NonLocals1, NonLocals2, CombinedNonLocals0),
-    set__intersect(CombinedNonLocals0, OuterNonLocals, CombinedNonLocals),
+    set.union(NonLocals1, NonLocals2, CombinedNonLocals0),
+    set.intersect(CombinedNonLocals0, OuterNonLocals, CombinedNonLocals),
 
     goal_info_get_instmap_delta(GoalInfo1, Delta1),
     goal_info_get_instmap_delta(GoalInfo2, Delta2),
@@ -1542,21 +1542,21 @@ reordering_maintains_termination(FullyStrict, EarlierGoal, LaterGoal,
 goal_depends_on_earlier_goal(_ - LaterGoalInfo, _ - EarlierGoalInfo,
         InstMapBeforeEarlierGoal, VarTypes, ModuleInfo) :-
     goal_info_get_instmap_delta(EarlierGoalInfo, EarlierInstMapDelta),
-    instmap__apply_instmap_delta(InstMapBeforeEarlierGoal,
+    instmap.apply_instmap_delta(InstMapBeforeEarlierGoal,
         EarlierInstMapDelta, InstMapAfterEarlierGoal),
 
     instmap_changed_vars(InstMapBeforeEarlierGoal, InstMapAfterEarlierGoal,
         VarTypes, ModuleInfo, EarlierChangedVars),
 
     goal_info_get_nonlocals(LaterGoalInfo, LaterGoalNonLocals),
-    set__intersect(EarlierChangedVars, LaterGoalNonLocals, Intersection),
-    not set__empty(Intersection).
+    set.intersect(EarlierChangedVars, LaterGoalNonLocals, Intersection),
+    not set.empty(Intersection).
 
 %-----------------------------------------------------------------------------%
 
 generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism, Args,
         Features, InstMap, ModuleInfo, Context, Goal) :-
-    list__length(Args, Arity),
+    list.length(Args, Arity),
     lookup_builtin_pred_proc_id(ModuleInfo, ModuleName, ProcName,
         PredOrFunc, Arity, ModeNo, PredId, ProcId),
 
@@ -1568,8 +1568,8 @@ generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism, Args,
 
     GoalExpr = call(PredId, ProcId, Args, BuiltinState, no,
         qualified(ModuleName, ProcName)),
-    set__init(NonLocals0),
-    set__insert_list(NonLocals0, Args, NonLocals),
+    set.init(NonLocals0),
+    set.insert_list(NonLocals0, Args, NonLocals),
     determinism_components(Detism, _CanFail, NumSolns),
     ( NumSolns = at_most_zero ->
         instmap_delta_init_unreachable(InstMapDelta)
@@ -1580,23 +1580,23 @@ generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism, Args,
     pred_info_get_purity(PredInfo, Purity),
     goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
         GoalInfo0),
-    list__foldl(goal_info_add_feature, Features, GoalInfo0, GoalInfo),
+    list.foldl(goal_info_add_feature, Features, GoalInfo0, GoalInfo),
     Goal = GoalExpr - GoalInfo.
 
 generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
         Attributes, Args, ExtraArgs, PrefixCode, Code, SuffixCode, Features,
         InstMap, ModuleInfo, Context, Goal) :-
-    list__length(Args, Arity),
+    list.length(Args, Arity),
     lookup_builtin_pred_proc_id(ModuleInfo, ModuleName, ProcName,
         PredOrFunc, Arity, ModeNo, PredId, ProcId),
 
     AllCode = PrefixCode ++ Code ++ SuffixCode,
     GoalExpr = foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
         ordinary(AllCode, no)),
-    ArgVars = list__map(foreign_arg_var, Args),
-    ExtraArgVars = list__map(foreign_arg_var, ExtraArgs),
+    ArgVars = list.map(foreign_arg_var, Args),
+    ExtraArgVars = list.map(foreign_arg_var, ExtraArgs),
     Vars = ArgVars ++ ExtraArgVars,
-    set__list_to_set(Vars, NonLocals),
+    set.list_to_set(Vars, NonLocals),
     determinism_components(Detism, _CanFail, NumSolns),
     ( NumSolns = at_most_zero ->
         instmap_delta_init_unreachable(InstMapDelta)
@@ -1607,7 +1607,7 @@ generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
     pred_info_get_purity(PredInfo, Purity),
     goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
         GoalInfo0),
-    list__foldl(goal_info_add_feature, Features, GoalInfo0, GoalInfo),
+    list.foldl(goal_info_add_feature, Features, GoalInfo0, GoalInfo),
     Goal = GoalExpr - GoalInfo.
 
 generate_cast(CastType, InArg, OutArg, Context, Goal) :-
@@ -1615,7 +1615,7 @@ generate_cast(CastType, InArg, OutArg, Context, Goal) :-
     generate_cast(CastType, InArg, OutArg, Ground, Ground, Context, Goal).
 
 generate_cast(CastType, InArg, OutArg, InInst, OutInst, Context, Goal) :-
-    set__list_to_set([InArg, OutArg], NonLocals),
+    set.list_to_set([InArg, OutArg], NonLocals),
     instmap_delta_from_assoc_list([OutArg - OutInst], InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, det, purity_pure, Context,
         GoalInfo),
@@ -1650,13 +1650,13 @@ pred_proc_ids_from_goal(Goal, PredProcIds) :-
 foreign_code_uses_variable(Impl, VarName) :-
     (
         Impl = ordinary(ForeignBody, _),
-        string__sub_string_search(ForeignBody, VarName, _)
+        string.sub_string_search(ForeignBody, VarName, _)
     ;
         Impl = nondet(FB1, _, FB2, _, FB3, _, _, FB4, _),
-        ( string__sub_string_search(FB1, VarName, _)
-        ; string__sub_string_search(FB2, VarName, _)
-        ; string__sub_string_search(FB3, VarName, _)
-        ; string__sub_string_search(FB4, VarName, _)
+        ( string.sub_string_search(FB1, VarName, _)
+        ; string.sub_string_search(FB2, VarName, _)
+        ; string.sub_string_search(FB3, VarName, _)
+        ; string.sub_string_search(FB4, VarName, _)
         )
     ).
 

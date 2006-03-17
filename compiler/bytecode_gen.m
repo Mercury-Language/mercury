@@ -14,7 +14,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- module bytecode_backend__bytecode_gen.
+:- module bytecode_backend.bytecode_gen.
 :- interface.
 
 :- import_module bytecode_backend.bytecode.
@@ -80,8 +80,8 @@
 gen_module(ModuleInfo, Code, !IO) :-
     module_info_predids(ModuleInfo, PredIds),
     gen_preds(PredIds, ModuleInfo, CodeTree, !IO),
-    tree__flatten(CodeTree, CodeList),
-    list__condense(CodeList, Code).
+    tree.flatten(CodeTree, CodeList),
+    list.condense(CodeList, Code).
 
 :- pred gen_preds(list(pred_id)::in, module_info::in,
     byte_tree::out, io::di, io::uo) is det.
@@ -89,7 +89,7 @@ gen_module(ModuleInfo, Code, !IO) :-
 gen_preds([], _ModuleInfo, empty, !IO).
 gen_preds([PredId | PredIds], ModuleInfo, Code, !IO) :-
     module_info_preds(ModuleInfo, PredTable),
-    map__lookup(PredTable, PredId, PredInfo),
+    map.lookup(PredTable, PredId, PredInfo),
     ProcIds = pred_info_non_imported_procids(PredInfo),
     (
         ProcIds = [],
@@ -98,7 +98,7 @@ gen_preds([PredId | PredIds], ModuleInfo, Code, !IO) :-
         ProcIds = [_ | _],
         gen_pred(PredId, ProcIds, PredInfo, ModuleInfo, ProcsCode, !IO),
         predicate_name(ModuleInfo, PredId, PredName),
-        list__length(ProcIds, ProcsCount),
+        list.length(ProcIds, ProcsCount),
         Arity = pred_info_orig_arity(PredInfo),
         get_is_func(PredInfo, IsFunc),
         EnterCode = node([enter_pred(PredName, Arity, IsFunc,
@@ -125,7 +125,7 @@ gen_pred(PredId, [ProcId | ProcIds], PredInfo, ModuleInfo, Code, !IO) :-
 
 gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
     pred_info_procedures(PredInfo, ProcTable),
-    map__lookup(ProcTable, ProcId, ProcInfo),
+    map.lookup(ProcTable, ProcId, ProcInfo),
 
     proc_info_goal(ProcInfo, Goal),
     proc_info_vartypes(ProcInfo, VarTypes),
@@ -133,23 +133,23 @@ gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
     proc_info_interface_determinism(ProcInfo, Detism),
     determinism_to_code_model(Detism, CodeModel),
 
-    goal_util__goal_vars(Goal, GoalVars),
+    goal_util.goal_vars(Goal, GoalVars),
     proc_info_headvars(ProcInfo, ArgVars),
-    set__insert_list(GoalVars, ArgVars, Vars),
-    set__to_sorted_list(Vars, VarList),
-    map__init(VarMap0),
+    set.insert_list(GoalVars, ArgVars, Vars),
+    set.to_sorted_list(Vars, VarList),
+    map.init(VarMap0),
     create_varmap(VarList, VarSet, VarTypes, 0, VarMap0, VarMap, VarInfos),
 
     init_byte_info(ModuleInfo, VarMap, VarTypes, ByteInfo0),
     get_next_label(ZeroLabel, ByteInfo0, ByteInfo1),
 
     proc_info_arg_info(ProcInfo, ArgInfo),
-    assoc_list__from_corresponding_lists(ArgVars, ArgInfo, Args),
+    assoc_list.from_corresponding_lists(ArgVars, ArgInfo, Args),
 
-    call_gen__input_arg_locs(Args, InputArgs),
+    call_gen.input_arg_locs(Args, InputArgs),
     gen_pickups(InputArgs, ByteInfo, PickupCode),
 
-    call_gen__output_arg_locs(Args, OutputArgs),
+    call_gen.output_arg_locs(Args, OutputArgs),
     gen_places(OutputArgs, ByteInfo, PlaceCode),
 
     % If semideterministic, reserve temp slot 0 for the return value
@@ -165,9 +165,9 @@ gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
 
     ZeroLabelCode = node([label(ZeroLabel)]),
     BodyTree = tree_list([PickupCode, ZeroLabelCode, GoalCode, PlaceCode]),
-    tree__flatten(BodyTree, BodyList),
-    list__condense(BodyList, BodyCode0),
-    ( list__member(not_supported, BodyCode0) ->
+    tree.flatten(BodyTree, BodyList),
+    list.condense(BodyList, BodyCode0),
+    ( list.member(not_supported, BodyCode0) ->
         BodyCode = node([not_supported])
     ;
         BodyCode = node(BodyCode0)
@@ -190,7 +190,7 @@ gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
 gen_goal(GoalExpr - GoalInfo, !ByteInfo, Code) :-
     gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, GoalCode),
     goal_info_get_context(GoalInfo, Context),
-    term__context_line(Context, Line),
+    term.context_line(Context, Line),
     Code = tree(node([context(Line)]), GoalCode).
 
 :- pred gen_goal_expr(hlds_goal_expr::in, hlds_goal_info::in,
@@ -205,7 +205,7 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
                 !.ByteInfo, Code)
         ;
             % XXX
-            % string__append_list([
+            % string.append_list([
             % "bytecode for ", GenericCallFunctor, " calls"], Msg),
             % sorry(this_file, Msg)
             functor(GenericCallType, _GenericCallFunctor, _),
@@ -328,18 +328,18 @@ gen_pickups([Var - Loc | OutputArgs], ByteInfo, Code) :-
 gen_higher_order_call(PredVar, ArgVars, ArgModes, Detism, ByteInfo, Code) :-
     determinism_to_code_model(Detism, CodeModel),
     get_module_info(ByteInfo, ModuleInfo),
-    list__map(get_var_type(ByteInfo), ArgVars, ArgTypes),
+    list.map(get_var_type(ByteInfo), ArgVars, ArgTypes),
     make_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo),
-    assoc_list__from_corresponding_lists(ArgVars, ArgInfo, ArgVarsInfos),
+    assoc_list.from_corresponding_lists(ArgVars, ArgInfo, ArgVarsInfos),
 
-    arg_info__partition_args(ArgVarsInfos, InVars, OutVars),
-    list__length(InVars, NInVars),
-    list__length(OutVars, NOutVars),
+    arg_info.partition_args(ArgVarsInfos, InVars, OutVars),
+    list.length(InVars, NInVars),
+    list.length(OutVars, NOutVars),
 
-    call_gen__input_arg_locs(ArgVarsInfos, InputArgs),
+    call_gen.input_arg_locs(ArgVarsInfos, InputArgs),
     gen_places(InputArgs, ByteInfo, PlaceArgs),
 
-    call_gen__output_arg_locs(ArgVarsInfos, OutputArgs),
+    call_gen.output_arg_locs(ArgVarsInfos, OutputArgs),
     gen_pickups(OutputArgs, ByteInfo, PickupArgs),
 
     map_var(ByteInfo, PredVar, BytePredVar),
@@ -360,15 +360,15 @@ gen_call(PredId, ProcId, ArgVars, Detism, ByteInfo, Code) :-
     get_module_info(ByteInfo, ModuleInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     proc_info_arg_info(ProcInfo, ArgInfo),
-    assoc_list__from_corresponding_lists(ArgVars, ArgInfo, ArgVarsInfos),
+    assoc_list.from_corresponding_lists(ArgVars, ArgInfo, ArgVarsInfos),
 
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     get_is_func(PredInfo, IsFunc),
 
-    call_gen__input_arg_locs(ArgVarsInfos, InputArgs),
+    call_gen.input_arg_locs(ArgVarsInfos, InputArgs),
     gen_places(InputArgs, ByteInfo, PlaceArgs),
 
-    call_gen__output_arg_locs(ArgVarsInfos, OutputArgs),
+    call_gen.output_arg_locs(ArgVarsInfos, OutputArgs),
     gen_pickups(OutputArgs, ByteInfo, PickupArgs),
 
     predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity),
@@ -392,7 +392,7 @@ gen_builtin(PredId, ProcId, Args, ByteInfo, Code) :-
     predicate_module(ModuleInfo, PredId, ModuleName),
     predicate_name(ModuleInfo, PredId, PredName),
     (
-        builtin_ops__translate_builtin(ModuleName, PredName, ProcId,
+        builtin_ops.translate_builtin(ModuleName, PredName, ProcId,
             Args, SimpleCode)
     ->
         (
@@ -406,7 +406,7 @@ gen_builtin(PredId, ProcId, Args, ByteInfo, Code) :-
             unexpected(this_file, "ref_assign")
         )
     ;
-        string__append("unknown builtin predicate ", PredName, Msg),
+        string.append("unknown builtin predicate ", PredName, Msg),
         unexpected(this_file, Msg)
     ).
 
@@ -485,7 +485,7 @@ gen_unify(construct(Var, ConsId, Args, UniModes, _, _, _), _, _,
         ( all_dirs_same(Dirs, to_var) ->
             Code = node([construct(ByteVar, ByteConsId, ByteArgs)])
         ;
-            assoc_list__from_corresponding_lists(ByteArgs, Dirs, Pairs),
+            assoc_list.from_corresponding_lists(ByteArgs, Dirs, Pairs),
             Code = node([complex_construct(ByteVar, ByteConsId, Pairs)])
         )
     ).
@@ -498,7 +498,7 @@ gen_unify(deconstruct(Var, ConsId, Args, UniModes, _, _), _, _,
     ( all_dirs_same(Dirs, to_arg) ->
         Code = node([deconstruct(ByteVar, ByteConsId, ByteArgs)])
     ;
-        assoc_list__from_corresponding_lists(ByteArgs, Dirs, Pairs),
+        assoc_list.from_corresponding_lists(ByteArgs, Dirs, Pairs),
         Code = node([complex_deconstruct(ByteVar, ByteConsId, Pairs)])
     ).
 gen_unify(assign(Target, Source), _, _, ByteInfo, Code) :-
@@ -689,7 +689,7 @@ map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
             Functor = unqualified(FunctorName),
             \+ type_is_tuple(Type, _)
         ->
-            string__to_char_list(FunctorName, FunctorList),
+            string.to_char_list(FunctorName, FunctorList),
             ( FunctorList = [Char] ->
                 ByteConsId = char_const(Char)
             ;
@@ -804,10 +804,10 @@ map_cons_tag(shared_with_reserved_addresses(_, _), _) :-
 
 create_varmap([], _, _, _, !VarMap, []).
 create_varmap([Var | VarList], VarSet, VarTypes, N0, !VarMap, VarInfos) :-
-    map__det_insert(!.VarMap, Var, N0, !:VarMap),
+    map.det_insert(!.VarMap, Var, N0, !:VarMap),
     N1 = N0 + 1,
-    varset__lookup_name(VarSet, Var, VarName),
-    map__lookup(VarTypes, Var, VarType),
+    varset.lookup_name(VarSet, Var, VarName),
+    map.lookup(VarTypes, Var, VarType),
     create_varmap(VarList, VarSet, VarTypes, N1, !VarMap, VarInfosTail),
     VarInfos = [var_info(VarName, VarType) | VarInfosTail].
 
@@ -827,7 +827,7 @@ create_varmap([Var | VarList], VarSet, VarTypes, N0, !VarMap, VarInfos) :-
 
 init_byte_info(ModuleInfo, VarMap, VarTypes, ByteInfo) :-
     ByteInfo = byte_info(VarMap, VarTypes, ModuleInfo,
-        counter__init(0), counter__init(0)).
+        counter.init(0), counter.init(0)).
 
 :- pred get_module_info(byte_info::in, module_info::out) is det.
 
@@ -844,27 +844,27 @@ map_vars(ByteInfo, Vars, ByteVars) :-
 
 map_vars_2(_VarMap, [], []).
 map_vars_2(VarMap, [Var | Vars], [ByteVar | ByteVars]) :-
-    map__lookup(VarMap, Var, ByteVar),
+    map.lookup(VarMap, Var, ByteVar),
     map_vars_2(VarMap, Vars, ByteVars).
 
 :- pred map_var(byte_info::in, prog_var::in,
     byte_var::out) is det.
 
 map_var(ByteInfo, Var, ByteVar) :-
-    map__lookup(ByteInfo ^ byteinfo_varmap, Var, ByteVar).
+    map.lookup(ByteInfo ^ byteinfo_varmap, Var, ByteVar).
 
 :- pred get_var_type(byte_info::in, prog_var::in,
     mer_type::out) is det.
 
 get_var_type(ByteInfo, Var, Type) :-
-    map__lookup(ByteInfo ^ byteinfo_vartypes, Var, Type).
+    map.lookup(ByteInfo ^ byteinfo_vartypes, Var, Type).
 
 :- pred get_next_label(int::out, byte_info::in, byte_info::out)
     is det.
 
 get_next_label(Label, !ByteInfo) :-
     LabelCounter0 = !.ByteInfo ^ byteinfo_label_counter,
-    counter__allocate(Label, LabelCounter0, LabelCounter),
+    counter.allocate(Label, LabelCounter0, LabelCounter),
     !:ByteInfo = !.ByteInfo ^ byteinfo_label_counter := LabelCounter.
 
 :- pred get_next_temp(int::out, byte_info::in, byte_info::out)
@@ -872,16 +872,16 @@ get_next_label(Label, !ByteInfo) :-
 
 get_next_temp(Temp, !ByteInfo) :-
     TempCounter0 = !.ByteInfo ^ byteinfo_temp_counter,
-    counter__allocate(Temp, TempCounter0, TempCounter),
+    counter.allocate(Temp, TempCounter0, TempCounter),
     !:ByteInfo = !.ByteInfo ^ byteinfo_temp_counter := TempCounter.
 
 :- pred get_counts(byte_info::in, int::out, int::out) is det.
 
 get_counts(ByteInfo0, Label, Temp) :-
     LabelCounter0 = ByteInfo0 ^ byteinfo_label_counter,
-    counter__allocate(Label, LabelCounter0, _LabelCounter),
+    counter.allocate(Label, LabelCounter0, _LabelCounter),
     TempCounter0 = ByteInfo0 ^ byteinfo_temp_counter,
-    counter__allocate(Temp, TempCounter0, _TempCounter).
+    counter.allocate(Temp, TempCounter0, _TempCounter).
 
 %---------------------------------------------------------------------------%
 

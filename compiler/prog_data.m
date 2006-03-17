@@ -20,7 +20,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module parse_tree__prog_data.
+:- module parse_tree.prog_data.
 :- interface.
 
 :- import_module libs.globals.
@@ -510,7 +510,7 @@
     % is a member of the specified type class. It is an invariant of this data
     % structure that the types in a class constraint do not contain any
     % information in their prog_context fields. This invariant is needed
-    % to ensure that we can do unifications, map__lookups, etc., and get the
+    % to ensure that we can do unifications, map.lookups, etc., and get the
     % expected semantics. (This invariant now applies to all types, but is
     % especially important here.)
     %
@@ -751,9 +751,9 @@
 :- type prog_term   ==  term(prog_var_type).
 :- type prog_vars   ==  list(prog_var).
 
-    % A prog_context is just a term__context.
+    % A prog_context is just a term.context.
     %
-:- type prog_context    ==  term__context.
+:- type prog_context    ==  term.context.
 
 %-----------------------------------------------------------------------------%
 %
@@ -1033,13 +1033,13 @@
     --->    true
     ;       where(term).
 
-    % Similar to varset__merge_subst but produces a tvar_renaming
+    % Similar to varset.merge_subst but produces a tvar_renaming
     % instead of a substitution, which is more suitable for types.
     %
 :- pred tvarset_merge_renaming(tvarset::in, tvarset::in, tvarset::out,
     tvar_renaming::out) is det.
 
-    % As above, but behaves like varset__merge_subst_without_names.
+    % As above, but behaves like varset.merge_subst_without_names.
     %
 :- pred tvarset_merge_renaming_without_names(tvarset::in, tvarset::in,
     tvarset::out, tvar_renaming::out) is det.
@@ -1494,7 +1494,7 @@ attributes_to_strings(Attrs) = StringList :-
     StringList = [MayCallMercuryStr, ThreadSafeStr, TabledForIOStr |
         PurityStrList] ++ TerminatesStrList ++ ExceptionsStrList ++
         OrdinaryDespiteDetismStrList ++ MayModifyTrailStrList ++
-        BoxPolicyStr ++ list__map(extra_attribute_to_string, ExtraAttributes).
+        BoxPolicyStr ++ list.map(extra_attribute_to_string, ExtraAttributes).
 
 add_extra_attribute(NewAttribute, Attributes0,
     Attributes0 ^ extra_attributes :=
@@ -1506,7 +1506,7 @@ add_extra_attribute(NewAttribute, Attributes0,
 extra_attribute_to_string(backend(low_level_backend)) = "low_level_backend".
 extra_attribute_to_string(backend(high_level_backend)) = "high_level_backend".
 extra_attribute_to_string(max_stack_size(Size)) =
-    "max_stack_size(" ++ string__int_to_string(Size) ++ ")".
+    "max_stack_size(" ++ string.int_to_string(Size) ++ ")".
 
 %-----------------------------------------------------------------------------%
 % 
@@ -1695,12 +1695,12 @@ det_negation_det(failure,       yes(det)).
 %-----------------------------------------------------------------------------%
 
 tvarset_merge_renaming(TVarSetA, TVarSetB, TVarSet, Renaming) :-
-    varset__merge_subst(TVarSetA, TVarSetB, TVarSet, Subst),
-    map__map_values(convert_subst_term_to_tvar, Subst, Renaming).
+    varset.merge_subst(TVarSetA, TVarSetB, TVarSet, Subst),
+    map.map_values(convert_subst_term_to_tvar, Subst, Renaming).
 
 tvarset_merge_renaming_without_names(TVarSetA, TVarSetB, TVarSet, Renaming) :-
-    varset__merge_subst_without_names(TVarSetA, TVarSetB, TVarSet, Subst),
-    map__map_values(convert_subst_term_to_tvar, Subst, Renaming).
+    varset.merge_subst_without_names(TVarSetA, TVarSetB, TVarSet, Subst),
+    map.map_values(convert_subst_term_to_tvar, Subst, Renaming).
 
 :- pred convert_subst_term_to_tvar(tvar::in, term(tvar_type)::in, tvar::out)
     is det.
@@ -1712,7 +1712,7 @@ convert_subst_term_to_tvar(_, functor(_, _, _), _) :-
 %-----------------------------------------------------------------------------%
 
 get_tvar_kind(Map, TVar, Kind) :-
-    ( map__search(Map, TVar, Kind0) ->
+    ( map.search(Map, TVar, Kind0) ->
         Kind = Kind0
     ;
         Kind = star

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2000,2002-2005 The University of Melbourne.
+% Copyright (C) 1995-2000,2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -15,7 +15,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module hlds__special_pred.
+:- module hlds.special_pred.
 :- interface.
 
 :- import_module hlds.hlds_data.
@@ -53,7 +53,7 @@
     % argument specifies the type that this special predicate is for. Note that
     % this gets called after the polymorphism.m pass, so type_info arguments
     % may have been inserted at the start; hence we find the type at a known
-    % position from the end of the list (by using list__reverse).
+    % position from the end of the list (by using list.reverse).
     %
     % Currently for most of the special predicates the type variable can be
     % found in the last type argument, except for index, for which it is the
@@ -164,13 +164,13 @@ special_pred_interface(spec_pred_init, Type, [Type], [InAny], det) :-
     InAny = out_any_mode.
 
 special_pred_get_type(spec_pred_unify, Types, T) :-
-    list__reverse(Types, [T | _]).
+    list.reverse(Types, [T | _]).
 special_pred_get_type(spec_pred_index, Types, T) :-
-    list__reverse(Types, [_, T | _]).
+    list.reverse(Types, [_, T | _]).
 special_pred_get_type(spec_pred_compare, Types, T) :-
-    list__reverse(Types, [T | _]).
+    list.reverse(Types, [T | _]).
 special_pred_get_type(spec_pred_init, Types, T) :-
-    list__reverse(Types, [T | _]).
+    list.reverse(Types, [T | _]).
 
 special_pred_get_type_det(SpecialId, ArgTypes, Type) :-
     ( special_pred_get_type(SpecialId, ArgTypes, TypePrime) ->
@@ -195,9 +195,9 @@ special_pred_is_generated_lazily(ModuleInfo, TypeCtor) :-
         ; is_introduced_type_info_type_category(TypeCategory) = yes
         ),
         module_info_get_type_table(ModuleInfo, Types),
-        map__search(Types, TypeCtor, TypeDefn),
-        hlds_data__get_type_defn_body(TypeDefn, Body),
-        hlds_data__get_type_defn_status(TypeDefn, Status),
+        map.search(Types, TypeCtor, TypeDefn),
+        hlds_data.get_type_defn_body(TypeDefn, Body),
+        hlds_data.get_type_defn_status(TypeDefn, Status),
         special_pred_is_generated_lazily_2(ModuleInfo, TypeCtor, Body, Status)
     ).
 
@@ -229,13 +229,13 @@ special_pred_is_generated_lazily_2(ModuleInfo, _TypeCtor, Body, Status) :-
         status_defined_in_this_module(Status, no)
     ;
         module_info_get_globals(ModuleInfo, Globals),
-        globals__lookup_bool_option(Globals, special_preds, no)
+        globals.lookup_bool_option(Globals, special_preds, no)
     ),
 
     % We can't generate clauses for unification predicates for foreign types
     % lazily because they call the polymorphic procedure
-    % private_builtin__nyi_foreign_type_unify.
-    % polymorphism__process_generated_pred can't handle calls to polymorphic
+    % private_builtin.nyi_foreign_type_unify.
+    % polymorphism.process_generated_pred can't handle calls to polymorphic
     % procedures after the initial polymorphism pass.
     %
     Body \= foreign_type(_),
@@ -258,7 +258,7 @@ special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, Body) :-
     ;
         SpecialPredId \= spec_pred_init,
         Ctors = Body ^ du_type_ctors,
-        list__member(Ctor, Ctors),
+        list.member(Ctor, Ctors),
         Ctor = ctor(ExistQTVars, _, _, _),
         ExistQTVars \= []
     ;
@@ -298,7 +298,7 @@ is_builtin_types_special_preds_defined_in_mercury(TypeCtor, TypeName) :-
     %
 compiler_generated_rtti_for_builtins(ModuleInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
-    globals__get_target(Globals, Target),
+    globals.get_target(Globals, Target),
     ( Target = il ; Target = java ).
 
 %-----------------------------------------------------------------------------%
