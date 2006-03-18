@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998, 2000, 2002, 2005 The University of Melbourne.
+** Copyright (C) 1998, 2000, 2002, 2005-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -407,9 +407,8 @@ complex_bushandler(int sig, siginfo_t *info, void *context)
     fflush(stdout);
 
     if (sig != SIGBUS || !info || info->si_signo != SIGBUS) {
-        fprintf(stderr, "\n*** Mercury runtime: ");
-        fprintf(stderr, "caught strange bus error ***\n");
-        exit(1);
+        MR_fatal_abort(context, "\n*** Mercury runtime: "
+            "caught strange bus error ***\n", 1);
     }
 
     fprintf(stderr, "\n*** Mercury runtime: ");
@@ -523,9 +522,8 @@ static void
 complex_segvhandler(int sig, siginfo_t *info, void *context)
 {
     if (sig != SIGSEGV || !info || info->si_signo != SIGSEGV) {
-        fprintf(stderr, "\n*** Mercury runtime: ");
-        fprintf(stderr, "caught strange segmentation violation ***\n");
-        exit(1);
+        MR_fatal_abort(context, "\n*** Mercury runtime: "
+            "caught strange segmentation violation ***\n", 1);
     }
 
     /*
