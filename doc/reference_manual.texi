@@ -2260,7 +2260,7 @@ The @code{any_inst} is the inst associated with
 @code{representation_type} values denoting @code{any} @code{solver_type}
 values.
 
-The compiler constructs three impure functions for converting between
+The compiler constructs four impure functions for converting between
 @code{solver_type} values and @code{representation_type} values
 (@samp{name} is the function symbol used to name @code{solver_type} and
 @samp{arity} is the number of type parameters it takes):
