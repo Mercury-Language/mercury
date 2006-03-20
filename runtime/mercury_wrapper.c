@@ -1838,10 +1838,10 @@ mercury_runtime_main(void)
     MR_ENGINE(MR_eng_heap_zone)->max =
         MR_ENGINE(MR_eng_heap_zone)->min;
   #endif
-    MR_CONTEXT(MR_ctxt_detstack_zone)->max =
-        MR_CONTEXT(MR_ctxt_detstack_zone)->min;
-    MR_CONTEXT(MR_ctxt_nondetstack_zone)->max =
-        MR_CONTEXT(MR_ctxt_nondetstack_zone)->min;
+    MR_CONTEXT(MR_ctxt_detstack_zone)->MR_zone_max =
+        MR_CONTEXT(MR_ctxt_detstack_zone)->MR_zone_min;
+    MR_CONTEXT(MR_ctxt_nondetstack_zone)->MR_zone_max =
+        MR_CONTEXT(MR_ctxt_nondetstack_zone)->MR_zone_min;
 #endif
 
     MR_time_at_start = MR_get_user_cpu_miliseconds();
@@ -1895,11 +1895,11 @@ mercury_runtime_main(void)
                 - MR_ENGINE(MR_eng_heap_zone)->min));
   #endif
         printf("max detstack used:  %6ld words\n",
-            (long)(MR_CONTEXT(MR_ctxt_detstack_zone)->max
-                   - MR_CONTEXT(MR_ctxt_detstack_zone)->min));
+            (long)(MR_CONTEXT(MR_ctxt_detstack_zone)->MR_zone_max
+                   - MR_CONTEXT(MR_ctxt_detstack_zone)->MR_zone_min));
         printf("max nondstack used: %6ld words\n",
-            (long) (MR_CONTEXT(MR_ctxt_nondetstack_zone)->max
-                - MR_CONTEXT(MR_ctxt_nondetstack_zone)->min));
+            (long) (MR_CONTEXT(MR_ctxt_nondetstack_zone)->MR_zone_max
+                - MR_CONTEXT(MR_ctxt_nondetstack_zone)->MR_zone_min));
     }
 #endif
 

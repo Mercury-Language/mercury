@@ -273,11 +273,11 @@
 ** 	Enables low-level debugging messages from routines concerned with
 ** 	the representation of lvals in the RTTI system.
 **
-** MP_DEBUG_MDPROF_SIGNAL
+** MR_DEBUG_MDPROF_SIGNAL
 **	Enables low-level debugging messages from the signal handling
 **	functions in the deep profiler.
 **
-** MP_STACK_EXTEND_DEBUG
+** MR_STACK_EXTEND_DEBUG
 **	Enables low-level debugging messages when extending the stacks.
 **
 ** MR_TRACE_CHECK_INTEGRITY
