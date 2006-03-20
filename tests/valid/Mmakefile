@@ -176,6 +176,7 @@ OTHER_PROGS= \
 	soln_context \
 	solv \
 	solver_type_bug \
+	solver_type_mutable_bug \
 	some_switch \
 	spurious_purity_warning \
 	stack_alloc \

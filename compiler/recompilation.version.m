@@ -547,7 +547,7 @@ item_to_item_id_2(Item,
 item_to_item_id_2(instance(_, _, _, _, _, _), no).
 item_to_item_id_2(initialise(_, _, _), no).
 item_to_item_id_2(finalise(_, _, _), no).
-item_to_item_id_2(mutable(_, _, _, _, _), no).
+item_to_item_id_2(mutable(_, _, _, _, _, _), no).
 item_to_item_id_2(nothing(_), no).
 
 :- type maybe_pred_or_func_id == pair(maybe(pred_or_func), sym_name_and_arity).
@@ -709,8 +709,8 @@ item_is_unchanged(initialise(O, A, B), Item2) =
     ( Item2 = initialise(O, A, B) -> yes ; no ).
 item_is_unchanged(finalise(O, A, B), Item2) = 
     ( Item2 = finalise(O, A, B) -> yes ; no ).
-item_is_unchanged(mutable(A, B, C, D, E), Item2) =
-    ( Item2 = mutable(A, B, C, D, E) -> yes ; no ).
+item_is_unchanged(mutable(A, B, C, D, E, F), Item2) =
+    ( Item2 = mutable(A, B, C, D, E, F) -> yes ; no ).
 
 item_is_unchanged(Item1, Item2) = Result :-
     Item1 = pred_or_func(TVarSet1, _, ExistQVars1, PredOrFunc,

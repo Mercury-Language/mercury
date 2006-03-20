@@ -449,7 +449,7 @@ add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !IO) :-
 add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
     % We add the initialise decl and the foreign_decl on the second pass and
     % the foreign_proc clauses on the third pass.
-    Item = mutable(Name, Type, _InitValue, Inst, MutAttrs),
+    Item = mutable(Name, Type, _InitValue, Inst, MutAttrs, _MutVarset),
     !.Status = item_status(ImportStatus, _),
     ( status_defined_in_this_module(ImportStatus, yes) ->
         module_info_get_name(!.ModuleInfo, ModuleName),
@@ -631,7 +631,7 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
         true
     ).
 add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
-    Item = mutable(Name, _Type, _InitTerm, _Inst, MutAttrs),
+    Item = mutable(Name, _Type, _InitTerm, _Inst, MutAttrs, _MutVarset),
     !.Status = item_status(ImportStatus, _),
     ( ImportStatus = exported ->
         error_is_exported(Context, "`mutable' declaration", !IO),
@@ -1140,7 +1140,7 @@ add_item_clause(finalise(Origin, SymName, Arity),
         module_info_incr_errors(!ModuleInfo)
     ).
 add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
-    Item = mutable(Name, Type, InitTerm, Inst, MutAttrs),
+    Item = mutable(Name, Type, InitTerm, Inst, MutAttrs, MutVarset),
     ( status_defined_in_this_module(!.Status, yes) ->
         module_info_get_name(!.ModuleInfo, ModuleName),
         varset.new_named_var(varset.init, "X", X, ProgVarSet0),
@@ -1203,8 +1203,12 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         add_item_clause(initialise(compiler(mutable_decl),
                 mutable_init_pred_sym_name(ModuleName, Name), 0 /* Arity */),
             !Status, Context, !ModuleInfo, !QualInfo, !IO),
-        InitClause = clause(compiler(mutable_decl), varset.init, predicate,
-            mutable_init_pred_sym_name(ModuleName, Name), [],
+        %
+        % See the comments for prog_io.parse_mutable_decl for the reason
+        % why we _must_ use MutVarset here.
+        % 
+        InitClause = clause(compiler(mutable_decl), MutVarset,
+            predicate, mutable_init_pred_sym_name(ModuleName, Name), [],
             call(mutable_set_pred_sym_name(ModuleName, Name),
                 [InitTerm], purity_impure) - Context),
         add_item_clause(InitClause, !Status, Context, !ModuleInfo, !QualInfo,

@@ -1328,7 +1328,7 @@ make_private_interface(SourceFileName, SourceFileModuleName, ModuleName,
     item_and_context::in, item_list::in, item_list::out) is det.
 
 handle_mutable_in_private_interface(ModuleName, Item - Context, !Items) :-
-    ( Item = mutable(MutableName, Type, _Value, Inst, Attrs) ->
+    ( Item = mutable(MutableName, Type, _Value, Inst, Attrs, _Varset) ->
         NonPureGetPredDecl =
             prog_mutable.nonpure_get_pred_decl(ModuleName, MutableName,
                 Type, Inst),
@@ -5728,7 +5728,7 @@ get_item_list_foreign_code(Globals, Items, LangSet, ForeignImports,
 get_item_foreign_code(Globals, Item - Context, !Info) :-
     ( Item = pragma(_, Pragma) ->
         do_get_item_foreign_code(Globals, Pragma, Context, !Info)
-    ; Item = mutable(_, _, _, _, _) ->
+    ; Item = mutable(_, _, _, _, _, _) ->
         % Mutables introduce foreign_procs, but mutable declarations
         % won't have been expanded by the time we get here so we need
         % to handle them separately.
@@ -7318,7 +7318,7 @@ item_needs_imports(instance(_, _, _, _, _, _)) = yes.
 item_needs_imports(promise(_, _, _, _)) = yes.
 item_needs_imports(initialise(_, _, _)) = yes.
 item_needs_imports(finalise(_, _, _)) = yes.
-item_needs_imports(mutable(_, _, _, _, _)) = yes.
+item_needs_imports(mutable(_, _, _, _, _, _)) = yes.
 item_needs_imports(nothing(_)) = no.
 
 :- pred item_needs_foreign_imports(item::in, foreign_language::out) is nondet.
@@ -7335,7 +7335,7 @@ item_needs_foreign_imports(pragma(_, foreign_decl(Lang, _, _)), Lang).
 item_needs_foreign_imports(pragma(_, foreign_code(Lang, _)), Lang).
 item_needs_foreign_imports(pragma(_, foreign_proc(Attrs, _, _, _, _, _, _)),
         foreign_language(Attrs)).
-item_needs_foreign_imports(mutable(_, _, _, _, _), Lang) :-
+item_needs_foreign_imports(mutable(_, _, _, _, _, _), Lang) :-
     foreign_language(Lang).
 
 :- pred include_in_int_file_implementation(item::in) is semidet.
@@ -7659,7 +7659,7 @@ reorderable_item(pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _)) = no.
 reorderable_item(pred_or_func_mode(_, _, _, _, _, _, _)) = no.
 reorderable_item(initialise(_, _, _)) = no.
 reorderable_item(finalise(_, _, _)) = no.
-reorderable_item(mutable(_, _, _, _, _)) = no.
+reorderable_item(mutable(_, _, _, _, _, _)) = no.
 
 :- pred is_chunkable(item_and_context::in) is semidet.
 
@@ -7739,7 +7739,7 @@ chunkable_item(instance(_, _, _, _, _, _)) = yes.
 chunkable_item(clause(_, _, _, _, _, _)) = yes.
 chunkable_item(initialise(_, _, _)) = yes.
 chunkable_item(finalise(_, _, _)) = yes.
-chunkable_item(mutable(_, _, _, _, _)) = no.
+chunkable_item(mutable(_, _, _, _, _, _)) = no.
 chunkable_item(nothing(_)) = yes.
 
     % Given a list of items for which symname_ordered succeeds, we need to keep

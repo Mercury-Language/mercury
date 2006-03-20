@@ -418,9 +418,9 @@ replace_in_item(ModuleName,
     ).
 
 replace_in_item(ModuleName,
-        mutable(MutName, Type0, InitValue, Inst0, Attrs),
+        mutable(MutName, Type0, InitValue, Inst0, Attrs, Varset),
         _Context, EqvMap, EqvInstMap,
-        mutable(MutName, Type, InitValue, Inst, Attrs),
+        mutable(MutName, Type, InitValue, Inst, Attrs, Varset),
         [], !Info) :-
     QualName = qualified(ModuleName, MutName),
     maybe_record_expanded_items(ModuleName, QualName, !.Info, ExpandedItems0),

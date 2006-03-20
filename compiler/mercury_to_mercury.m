@@ -761,13 +761,18 @@ mercury_output_item(_, finalise(_, PredSymName, Arity), _, !IO) :-
     io.write_string("/", !IO),
     io.write_int(Arity, !IO),
     io.write_string(".\n", !IO).
-mercury_output_item(_, mutable(Name, Type, InitTerm, Inst, Attrs), _, !IO) :-
+mercury_output_item(_, Mutable, _, !IO) :-
+    Mutable = mutable(Name, Type, InitTerm, Inst, Attrs, MutVarset),
     io.write_string(":- mutable(", !IO),
     io.write_string(Name, !IO),
     io.write_string(", ", !IO),
     mercury_output_type(varset.init, no, Type, !IO),
     io.write_string(", ", !IO),
-    mercury_output_term(InitTerm, varset.init, no, !IO),
+    %
+    % See the comments for prog_io.read_mutable_decl for the reason we
+    % _must_ use MutVarset here.
+    %
+    mercury_output_term(InitTerm, MutVarset, no, !IO),
     io.write_string(", ", !IO),
     mercury_output_inst(Inst, varset.init, !IO),
     io.write_string(", ", !IO),

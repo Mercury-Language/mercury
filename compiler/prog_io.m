@@ -1801,16 +1801,24 @@ parse_finalise_decl(_ModuleName, _VarSet, [Term], Result) :-
 % then foreign_procs are created that have the thread_safe attribute
 % set.  If the `untrailed' attribute is specified in <attribute_list>
 % then the code for trailing the mutable variable in the set predicate
-% is omitted.
+% is omitted
+
+% NOTE: we must attach the varset to the mutable item because if the
+%       initial value is non-ground, then the initial value will be a 
+%       variable and the mutable initialisation predicate will contain
+%       references to it.  Ignoring the varset may lead to later
+%       compiler passes attempting to reuse this variable when fresh
+%       variables are allocated.
 
 :- pred parse_mutable_decl(module_name::in, varset::in, list(term)::in,
     maybe1(item)::out) is semidet.
 
-parse_mutable_decl(_ModuleName, _VarSet, Terms, Result) :-
+parse_mutable_decl(_ModuleName, Varset, Terms, Result) :-
     Terms = [NameTerm, TypeTerm, ValueTerm, InstTerm | OptMutAttrsTerm],
     parse_mutable_name(NameTerm, NameResult),
     parse_mutable_type(TypeTerm, TypeResult),
     term.coerce(ValueTerm, Value),
+    varset.coerce(Varset, ProgVarset),
     parse_mutable_inst(InstTerm, InstResult),
     (
         OptMutAttrsTerm = [],
@@ -1825,7 +1833,7 @@ parse_mutable_decl(_ModuleName, _VarSet, Terms, Result) :-
         InstResult = ok(Inst),
         MutAttrsResult = ok(MutAttrs)
     ->
-        Result = ok(mutable(Name, Type, Value, Inst, MutAttrs))
+        Result = ok(mutable(Name, Type, Value, Inst, MutAttrs, ProgVarset))
     ;
         NameResult = error(Msg, Term)
     ->

@@ -219,7 +219,8 @@
                 mut_type                        :: mer_type,
                 mut_init_value                  :: prog_term,
                 mut_inst                        :: mer_inst,
-                mut_attrs                       :: mutable_var_attributes 
+                mut_attrs                       :: mutable_var_attributes,
+                mut_varset                      :: prog_varset
             )
 
             % Used for items that should be ignored (for the

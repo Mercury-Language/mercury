@@ -339,7 +339,7 @@ collect_mq_info_2(typeclass(_, _, SymName, Params, _, _), !Info) :-
 collect_mq_info_2(instance(_, _, _, _, _, _), !Info).
 collect_mq_info_2(initialise(_, _, _), !Info).
 collect_mq_info_2(finalise(_, _, _), !Info).
-collect_mq_info_2(mutable(_, _, _, _, _), !Info).
+collect_mq_info_2(mutable(_, _, _, _, _, _), !Info).
 
 :- pred collect_mq_info_qualified_symname(sym_name::in,
     mq_info::in, mq_info::out) is det.
@@ -733,8 +733,8 @@ module_qualify_item(
         !Info, yes, !IO).
 
 module_qualify_item(
-        mutable(Name, Type0, InitTerm, Inst0, Attrs) - Context,
-        mutable(Name, Type, InitTerm, Inst, Attrs) - Context,
+        mutable(Name, Type0, InitTerm, Inst0, Attrs, Varset) - Context,
+        mutable(Name, Type, InitTerm, Inst, Attrs, Varset) - Context,
         !Info, yes, !IO) :-
     mq_info_set_error_context(mqec_mutable(Name) - Context, !Info),
     qualify_type(Type0, Type, !Info, !IO),
