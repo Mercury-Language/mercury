@@ -2439,6 +2439,12 @@ Changes to the compiler back-ends:
 Mercury 0.12, September 9, 2005
 -------------------------------
 
+Mercury 0.12.1, November 21, 2005
+---------------------------------
+
+Mercury 0.12.2, January 25, 2006
+---------------------------------
+
 See the NEWS file.
 
 .NET CLR back-end history

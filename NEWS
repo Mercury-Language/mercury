@@ -247,6 +247,12 @@ Changes to the extras distribution:
   multiple hosts (by default, 1).
 
 
+NEWS for Mercury 0.12.2
+----------------------
+
+This release fixes some bugs with `mmc --make' and `--smart-recompilation'.
+
+
 NEWS for Mercury 0.12.1
 ------------------------
 
