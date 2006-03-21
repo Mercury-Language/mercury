@@ -1,0 +1,45 @@
+      E1:     C1 CALL pred condition_bug.main/2-0 (det) condition_bug.m:14
+mdb> mdb> echo on
+Command echo enabled.
+mdb> untrust 0
+mdb> table_io start
+I/O tabling started.
+mdb> break io.write_string/3
+ 0: + stop  interface pred io.write_string/3-0 (det)
+mdb> condition Message = "english"
+ 0: + stop  interface pred io.write_string/3-0 (det)
+            Message = "english"
+mdb> continue
+<?xml version="1.0"?>
+<translations>
+	<word>
+		<      E2:     C2 CALL pred io.write_string/3-0 (det) io.m:6325 (term_to_xml.m:1299)
+mdb> finish
+english      E3:     C2 EXIT pred io.write_string/3-0 (det) io.m:6325 (term_to_xml.m:1299)
+mdb> dd
+write_string("english", _, _)
+1 tabled IO action:
+write_string("english")
+Valid? browse 1
+browser> track
+>critical</english>
+		<dutch>kritiek</dutch>
+	</word>
+	<word>
+		<english>mission</english>
+		<dutch>missie</dutch>
+	</word>
+</translations>
+
+translation_pairs_to_xml([-("critical", "kritiek"), -("mission", "missie")]) = [elem("word", [], [|]/2), elem("word", [], [|]/2)]
+Valid? info
+Context of current question : condition_bug.m:38 (condition_bug.m:33)
+Search mode                 : top down                               
+The current question was chosen because the marked subterm was bound by
+the unification inside the function
+condition_bug.translation_pairs_to_xml/2 (condition_bug.m:41). The path
+to the subterm in the atom is 2/1/3/1/1.
+dd> quit
+Diagnosis aborted.
+      E3:     C2 EXIT pred io.write_string/3-0 (det) io.m:6325 (term_to_xml.m:1299)
+mdb> quit -y
