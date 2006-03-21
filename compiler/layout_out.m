@@ -129,10 +129,10 @@ output_layout_data_defn(proc_layout_data(ProcLabel, Traversal, MaybeRest),
     output_proc_layout_data_defn(ProcLabel, Traversal, MaybeRest,
         !DeclSet, !IO).
 output_layout_data_defn(closure_proc_id_data(CallerProcLabel, SeqNo,
-        ProcLabel, ModuleName, FileName, LineNumber, PredOrigin, 
+        ProcLabel, ModuleName, FileName, LineNumber, PredOrigin,
         GoalPath), !DeclSet, !IO) :-
     output_closure_proc_id_data_defn(CallerProcLabel, SeqNo, ProcLabel,
-        ModuleName, FileName, LineNumber, PredOrigin, GoalPath, 
+        ModuleName, FileName, LineNumber, PredOrigin, GoalPath,
         !DeclSet, !IO).
 output_layout_data_defn(module_layout_data(ModuleName, StringTableSize,
         StringTable, ProcLayoutNames, FileLayouts, TraceLevel,
@@ -503,21 +503,23 @@ proc_layout_kind_to_type(proc_layout_proc_id(uci)) =
 
 %-----------------------------------------------------------------------------%
 
-:- type rval_or_num_or_none
+:- type rval_or_numpair_or_none
     --->    rval(rval)
-    ;       num(int)
+    ;       num_pair(int, int)
     ;       none.
 
-:- pred output_rval_or_num_or_none(rval_or_num_or_none::in,
+:- pred output_rval_or_numpair_or_none(rval_or_numpair_or_none::in,
     io::di, io::uo) is det.
 
-output_rval_or_num_or_none(rval(Rval), !IO) :-
+output_rval_or_numpair_or_none(rval(Rval), !IO) :-
     io.write_string(", ", !IO),
     output_rval_as_addr(Rval, !IO).
-output_rval_or_num_or_none(num(Num), !IO) :-
+output_rval_or_numpair_or_none(num_pair(Num1, Num2), !IO) :-
     io.write_string(", ", !IO),
-    io.write_int(Num, !IO).
-output_rval_or_num_or_none(none, !IO).
+    io.write_int(Num1, !IO),
+    io.write_string(", ", !IO),
+    io.write_int(Num2, !IO).
+output_rval_or_numpair_or_none(none, !IO).
 
 :- pred output_label_layout_data_defn(proc_label::in, int::in, layout_name::in,
     maybe(trace_port)::in, maybe(bool)::in, int::in, maybe(int)::in,
@@ -549,24 +551,24 @@ output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
         LabelVars = label_has_var_info,
         (
             LocnsTypes0 = const(data_addr_const(LTDataAddr, no)),
-            LTDataAddr = data_addr(_, common(LTCellNum, _)),
+            LTDataAddr = data_addr(_, common_ref(LTTypeNum, LTCellNum)),
             VarNums0 = const(data_addr_const(VNDataAddr, no)),
-            VNDataAddr = data_addr(_, common(VNCellNum, _))
+            VNDataAddr = data_addr(_, common_ref(VNTypeNum, VNCellNum))
         ->
             (
                 TypeParams0 = const(data_addr_const(TPDataAddr, no)),
-                TPDataAddr = data_addr(_, common(TPCellNum, _))
+                TPDataAddr = data_addr(_, common_ref(TPTypeNum, TPCellNum))
             ->
-                CommonChars = "CCC",
-                LocnsTypes1 = num(LTCellNum),
-                VarNums1 = num(VNCellNum),
-                TypeParams1 = num(TPCellNum)
+                CommonChars = "XCCC",
+                LocnsTypes1 = num_pair(LTTypeNum, LTCellNum),
+                VarNums1 = num_pair(VNTypeNum, VNCellNum),
+                TypeParams1 = num_pair(TPTypeNum, TPCellNum)
             ;
                 TypeParams0 = const(int_const(0))
             ->
-                CommonChars = "CC0",
-                LocnsTypes1 = num(LTCellNum),
-                VarNums1 = num(VNCellNum),
+                CommonChars = "XCC0",
+                LocnsTypes1 = num_pair(LTTypeNum, LTCellNum),
+                VarNums1 = num_pair(VNTypeNum, VNCellNum),
                 TypeParams1 = none
             ;
                 CommonChars = "",
@@ -619,9 +621,9 @@ output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
             LocnsTypes, VarNums, TypeParams}),
         io.write_string(", ", !IO),
         io.write_int(EncodedVarCount, !IO),
-        output_rval_or_num_or_none(LocnsTypes, !IO),
-        output_rval_or_num_or_none(VarNums, !IO),
-        output_rval_or_num_or_none(TypeParams, !IO)
+        output_rval_or_numpair_or_none(LocnsTypes, !IO),
+        output_rval_or_numpair_or_none(VarNums, !IO),
+        output_rval_or_numpair_or_none(TypeParams, !IO)
     ;
         MaybeVarInfoTuple = no
     ),
@@ -637,8 +639,12 @@ output_rval_as_addr(Rval, !IO) :-
     ( Rval = const(int_const(0)) ->
         io.write_string(" 0", !IO)
     ; Rval = const(data_addr_const(DataAddr, no)) ->
-        io.write_string(" &", !IO),
-        output_data_addr(DataAddr, !IO)
+        ( DataAddr = data_addr(_Module, common_ref(_TypeNum, _CellNum)) ->
+            output_data_addr(DataAddr, !IO)
+        ;
+            io.write_string(" &", !IO),
+            output_data_addr(DataAddr, !IO)
+        )
     ;
         io.write_string("\n", !IO),
         output_rval(Rval, !IO)
@@ -1073,7 +1079,7 @@ output_proc_layout_var_names(ProcLabel, VarNames, MaxVarNum, !DeclSet, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pred output_closure_proc_id_data_defn(proc_label::in, int::in,
-    proc_label::in, module_name::in, string::in, int::in, pred_origin::in, 
+    proc_label::in, module_name::in, string::in, int::in, pred_origin::in,
     string::in, decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_closure_proc_id_data_defn(CallerProcLabel, SeqNo, ClosureProcLabel,

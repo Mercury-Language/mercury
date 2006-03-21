@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2005 The University of Melbourne.
+** Copyright (C) 1998-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -460,10 +460,21 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 		&MR_PASTE2(mercury_common_, vn),			\
 		&MR_PASTE2(mercury_common_, tv))
 
+#define	MR_DEF_LLXCCC(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc, tvt, tvc)\
+	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, vc,		\
+		MR_XCOMMON(ltt, ltc),					\
+		MR_XCOMMON(vnt, vnc),					\
+		MR_XCOMMON(tvt, tvc))
+
 #define	MR_DEF_LLCC0(e, ln, port, num, path, vc, lt, vn)		\
 	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, vc,		\
 		&MR_PASTE2(mercury_common_, lt),			\
 		&MR_PASTE2(mercury_common_, vn), 0)			\
+
+#define	MR_DEF_LLXCC0(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc)	\
+	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, vc,		\
+		MR_XCOMMON(ltt, ltc),					\
+		MR_XCOMMON(vnt, vnc), 0)
 
 #define	MR_DEF_LLTCCC(e, ln, port, num, path, vc, lt, vn, tv)		\
 	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, vc,		\
@@ -471,10 +482,21 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 		&MR_PASTE2(mercury_common_, vn),			\
 		&MR_PASTE2(mercury_common_, tv))
 
+#define	MR_DEF_LLTXCCC(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc, tvt,tvc)\
+	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, vc,		\
+		MR_XCOMMON(ltt, ltc),					\
+		MR_XCOMMON(vnt, vnc),					\
+		MR_XCOMMON(tvt, tvc))
+
 #define	MR_DEF_LLTCC0(e, ln, port, num, path, vc, lt, vn)		\
 	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, vc,		\
 		&MR_PASTE2(mercury_common_, lt),			\
 		&MR_PASTE2(mercury_common_, vn), 0)
+
+#define	MR_DEF_LLTXCC0(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc)	\
+	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, vc,		\
+		MR_XCOMMON(ltt, ltc),					\
+		MR_XCOMMON(vnt, vnc), 0)
 
 #define	MR_DEF_LLNVI(e, ln, port, num, path)				\
 	MR_DEF_LLNVI_GEN(e, ln, port, MR_FALSE, path)

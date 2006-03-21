@@ -40,7 +40,7 @@
 :- pred output_llds(c_file::in, list(complexity_proc_info)::in,
     map(label, data_addr)::in, io::di, io::uo) is det.
 
-    % output_rval_decls(Rval, DeclSet0, DeclSet) outputs the declarations
+    % output_rval_decls(Rval, !DeclSet) outputs the declarations
     % of any static constants, etc. that need to be declared before
     % output_rval(Rval) is called.
     %
@@ -65,11 +65,10 @@
     % any static constants, etc. that need to be declared before
     % output_data_addr(DataAddr) is called.
     %
-:- pred output_data_addr_decls(data_addr::in, string::in, string::in,
-    int::in, int::out, decl_set::in, decl_set::out, io::di, io::uo) is det.
-
 :- pred output_data_addr_decls(data_addr::in, decl_set::in, decl_set::out,
     io::di, io::uo) is det.
+:- pred output_data_addr_decls_format(data_addr::in, string::in, string::in,
+    int::in, int::out, decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 :- pred output_data_addrs_decls(list(data_addr)::in, string::in, string::in,
     int::in, int::out, decl_set::in, decl_set::out, io::di, io::uo) is det.
@@ -134,6 +133,7 @@
 
 :- type decl_id
     --->    common_type(int)
+    ;       common_array(int)
     ;       float_label(string)
     ;       code_addr(code_addr)
     ;       data_addr(data_addr)
@@ -301,18 +301,18 @@ output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
     io.write_string("\n", !IO),
 
     gather_c_file_labels(Modules, Labels),
-    classify_comp_gen_c_data(Datas, multi_map.init, CommonMap,
-        [], CommonDatas0, [], RttiDatas, [], LayoutDatas),
-    multi_map.to_assoc_list(CommonMap, CommonAssocList),
-    list.foldl2(output_common_decl_group, CommonAssocList, !DeclSet, !IO),
+    classify_comp_gen_c_data(Datas,
+        [], CommonDatas0, [], RttiDatas, [], LayoutDatas0),
+    list.reverse(CommonDatas0, CommonDatas),
+    order_layout_datas(LayoutDatas0, LayoutDatas),
+
+    list.foldl2(output_common_data_decl, CommonDatas, !DeclSet, !IO),
     output_rtti_data_decl_list(RttiDatas, !DeclSet, !IO),
     output_c_label_decls(StackLayoutLabels, Labels, !DeclSet, !IO),
     list.foldl2(output_comp_gen_c_var, Vars, !DeclSet, !IO),
-    list.reverse(CommonDatas0, CommonDatas),
     list.foldl2(output_common_data_defn, CommonDatas, !DeclSet, !IO),
     list.foldl2(output_rtti_data_defn, RttiDatas, !DeclSet, !IO),
-    order_layout_datas(LayoutDatas, OrderedLayoutDatas),
-    list.foldl2(output_layout_data_defn, OrderedLayoutDatas, !DeclSet, !IO),
+    list.foldl2(output_layout_data_defn, LayoutDatas, !DeclSet, !IO),
 
     list.foldl2(output_comp_gen_c_module(StackLayoutLabels), Modules,
         !DeclSet, !IO),
@@ -795,20 +795,15 @@ output_bunch_name(ModuleName, InitStatus, Number, !IO) :-
     io.write_int(Number, !IO).
 
 :- pred classify_comp_gen_c_data(list(comp_gen_c_data)::in,
-    multi_map(int, common_data)::in,
-    multi_map(int, common_data)::out,
-    list(common_data)::in, list(common_data)::out,
+    list(common_data_array)::in, list(common_data_array)::out,
     list(rtti_data)::in, list(rtti_data)::out,
     list(layout_data)::in, list(layout_data)::out) is det.
 
-classify_comp_gen_c_data([], !CommonMap, !CommonList, !RttiList, !LayoutList).
-classify_comp_gen_c_data([Data | Datas], !CommonMap, !CommonList,
-        !RttiList, !LayoutList) :-
+classify_comp_gen_c_data([], !CommonList, !RttiList, !LayoutList).
+classify_comp_gen_c_data([Data | Datas], !CommonList, !RttiList,
+        !LayoutList) :-
     (
         Data = common_data(CommonData),
-        CommonData = common_data(_ModuleName, _CellNum, TypeAndValue),
-        TypeNum = common_cell_get_type_num(TypeAndValue),
-        multi_map.set(!.CommonMap, TypeNum, CommonData, !:CommonMap),
         !:CommonList = [CommonData | !.CommonList]
     ;
         Data = rtti_data(Rtti),
@@ -817,99 +812,7 @@ classify_comp_gen_c_data([Data | Datas], !CommonMap, !CommonList,
         Data = layout_data(Layout),
         !:LayoutList = [Layout | !.LayoutList]
     ),
-    classify_comp_gen_c_data(Datas, !CommonMap, !CommonList,
-        !RttiList, !LayoutList).
-
-:- pred output_common_decl_group(pair(int, list(common_data))::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_common_decl_group(TypeNum - CommonDatas, !DeclSet, !IO) :-
-    io.write_string("\n", !IO),
-    (
-        CommonDatas = [CommonData | _],
-        CommonData = common_data(_, _, TypeAndValue)
-    ;
-        CommonDatas = [],
-        unexpected(this_file, "output_common_decl_chunk: empty list")
-    ),
-    TypeDeclId = common_type(TypeNum),
-    ( decl_set_is_member(TypeDeclId, !.DeclSet) ->
-        true
-    ;
-        output_const_term_type(TypeAndValue, "", "", 0, _, !IO),
-        io.write_string("\n", !IO),
-        decl_set_insert(TypeDeclId, !DeclSet)
-    ),
-    % There should be a macro MR_DEF_COMMON<n> for every n up to
-    % ChunkSize.
-    ChunkSize = 10,
-    list.chunk(list.reverse(CommonDatas), ChunkSize, CommonDataChunks),
-    list.foldl2(output_common_decl_shorthand_chunk(TypeNum),
-        CommonDataChunks, !DeclSet, !IO).
-
-:- pred output_common_decl_shorthand_chunk(int::in, list(common_data)::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_common_decl_shorthand_chunk(TypeNum, CommonDatas, !DeclSet, !IO) :-
-    io.write_string("MR_DEF_COMMON", !IO),
-    io.write_int(list.length(CommonDatas), !IO),
-    io.write_string("(", !IO),
-    io.write_int(TypeNum, !IO),
-    io.write_string(",", !IO),
-    output_common_decl_shorthand_chunk_entries(CommonDatas, !DeclSet, !IO),
-    io.write_string(")\n", !IO).
-
-:- pred output_common_decl_shorthand_chunk_entries(list(common_data)::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_common_decl_shorthand_chunk_entries([], !DeclSet, !IO) :-
-    unexpected(this_file,
-        "output_common_decl_shorthand_chunk_entries: empty list").
-output_common_decl_shorthand_chunk_entries([CommonData | CommonDatas],
-        !DeclSet, !IO) :-
-    CommonData = common_data(ModuleName, CellNum, TypeAndValue),
-    TypeNum = common_cell_get_type_num(TypeAndValue),
-    VarName = common(CellNum, TypeNum),
-    VarDeclId = data_addr(data_addr(ModuleName, VarName)),
-    decl_set_insert(VarDeclId, !DeclSet),
-    io.write_int(CellNum, !IO),
-    (
-        CommonDatas = [_ | _],
-        io.write_string(",", !IO),
-        output_common_decl_shorthand_chunk_entries(CommonDatas, !DeclSet, !IO)
-    ;
-        CommonDatas = []
-    ).
-
-:- pred output_common_decl_chunk(int::in, list(common_data)::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_common_decl_chunk(TypeNum, CommonDatas, !DeclSet, !IO) :-
-    io.write_string("const struct ", !IO),
-    output_common_cell_type_name(TypeNum, !IO),
-    io.nl(!IO),
-    output_common_decl_chunk_entries(CommonDatas, !DeclSet, !IO).
-
-:- pred output_common_decl_chunk_entries(list(common_data)::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_common_decl_chunk_entries([], !DeclSet, !IO) :-
-    unexpected(this_file, "output_common_decl_chunk_entries: empty list").
-output_common_decl_chunk_entries([CommonData | CommonDatas], !DeclSet, !IO) :-
-    CommonData = common_data(ModuleName, CellNum, TypeAndValue),
-    TypeNum = common_cell_get_type_num(TypeAndValue),
-    VarName = common(CellNum, TypeNum),
-    VarDeclId = data_addr(data_addr(ModuleName, VarName)),
-    output_decl_id(VarDeclId, !IO),
-    decl_set_insert(VarDeclId, !DeclSet),
-    (
-        CommonDatas = [_ | _],
-        io.write_string(",\n", !IO),
-        output_common_decl_chunk_entries(CommonDatas, !DeclSet, !IO)
-    ;
-        CommonDatas = [],
-        io.write_string(";\n", !IO)
-    ).
+    classify_comp_gen_c_data(Datas, !CommonList, !RttiList, !LayoutList).
 
     % output_c_data_type_def outputs the given the type definition.
     % This is needed because some compilers need the type definition
@@ -926,30 +829,37 @@ output_c_data_type_def(rtti_data(RttiData), !DeclSet, !IO) :-
 output_c_data_type_def(layout_data(LayoutData), !DeclSet, !IO) :-
     output_maybe_layout_data_decl(LayoutData, !DeclSet, !IO).
 
-:- pred output_common_data_decl(common_data::in,
+:- pred output_common_data_decl(common_data_array::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_common_data_decl(common_data(ModuleName, CellNum, TypeAndValue),
-        !DeclSet, !IO) :-
+output_common_data_decl(CommonDataArray, !DeclSet, !IO) :-
+    CommonDataArray = common_data_array(_ModuleName, CellType, TypeNum,
+        _Values),
     io.write_string("\n", !IO),
 
-    % The code for data local to a Mercury module should normally be visible
-    % only within the C file generated for that module. However, if we generate
-    % multiple C files, the code in each C file must be visible to the other
-    % C files for that Mercury module.
-    TypeNum = common_cell_get_type_num(TypeAndValue),
     TypeDeclId = common_type(TypeNum),
     ( decl_set_is_member(TypeDeclId, !.DeclSet) ->
         true
     ;
-        output_const_term_type(TypeAndValue, "", "", 0, _, !IO),
-        io.write_string("\n", !IO),
+        io.write_string("struct ", !IO),
+        output_common_cell_type_name(TypeNum, !IO),
+        io.write_string(" {\n", !IO),
+        (
+            CellType = plain_type(Types),
+            output_cons_arg_types(Types, "\t", 1, !IO)
+        ;
+            CellType = grouped_args_type(ArgGroups),
+            output_cons_arg_group_types(ArgGroups, "\t", 1, !IO)
+        ),
+        io.write_string("};\n", !IO),
         decl_set_insert(TypeDeclId, !DeclSet)
     ),
-    VarName = common(CellNum, TypeNum),
-    VarDeclId = data_addr(data_addr(ModuleName, VarName)),
-    output_const_term_decl_or_defn(TypeAndValue, ModuleName, CellNum,
-        no, no, "", "", 0, _, !IO),
+    VarDeclId = common_array(TypeNum),
+    io.write_string("static const struct ", !IO),
+    output_common_cell_type_name(TypeNum, !IO),
+    io.write_string(" ", !IO),
+    output_common_cell_array_name(TypeNum, !IO),
+    io.write_string("[];\n", !IO),
     decl_set_insert(VarDeclId, !DeclSet).
 
 :- pred output_comp_gen_c_module(map(label, data_addr)::in,
@@ -995,21 +905,47 @@ output_comp_gen_c_data(rtti_data(RttiData), !DeclSet, !IO) :-
 output_comp_gen_c_data(layout_data(LayoutData), !DeclSet, !IO) :-
     output_layout_data_defn(LayoutData, !DeclSet, !IO).
 
-:- pred output_common_data_defn(common_data::in,
+:- pred output_common_data_defn(common_data_array::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_common_data_defn(common_data(ModuleName, CellNum, TypeAndValue),
-        !DeclSet, !IO) :-
+output_common_data_defn(CommonData, !DeclSet, !IO) :-
+    CommonData = common_data_array(_ModuleName, _CellType, TypeNum, Values),
     io.write_string("\n", !IO),
-    Args = common_cell_get_rvals(TypeAndValue),
+    ArgLists = list.map(common_cell_get_rvals, Values),
+    list.condense(ArgLists, Args),
     output_rvals_decls(Args, !DeclSet, !IO),
 
-    TypeNum = common_cell_get_type_num(TypeAndValue),
-    VarName = common(CellNum, TypeNum),
-    VarDeclId = data_addr(data_addr(ModuleName, VarName)),
-    output_const_term_decl_or_defn(TypeAndValue, ModuleName, CellNum,
-        no, yes, "", "", 0, _, !IO),
-    decl_set_insert(VarDeclId, !DeclSet).
+    % Although the array should have ben declared by now, it is OK if it
+    % hasn't.
+    VarDeclId = common_array(TypeNum),
+    decl_set_insert(VarDeclId, !DeclSet),
+
+    io.write_string("static const struct ", !IO),
+    output_common_cell_type_name(TypeNum, !IO),
+    io.write_string(" ", !IO),
+    output_common_cell_array_name(TypeNum, !IO),
+    io.write_string("[", !IO),
+    io.write_int(list.length(Values), !IO),
+    io.write_string("] =\n{\n", !IO),
+    list.foldl(output_common_cell_value, Values, !IO),
+    io.write_string("};\n", !IO).
+
+:- func common_cell_get_rvals(common_cell_value) = list(rval).
+
+common_cell_get_rvals(Value) = Rvals :-
+    (
+        Value = plain_value(RvalsTypes),
+        assoc_list.keys(RvalsTypes, Rvals)
+    ;
+        Value = grouped_args_value(Groups),
+        RvalLists = list.map(common_group_get_rvals, Groups),
+        list.condense(RvalLists, Rvals)
+    ).
+
+:- func common_group_get_rvals(common_cell_arg_group) = list(rval).
+
+common_group_get_rvals(common_cell_grouped_args(_, _, Rvals)) = Rvals.
+common_group_get_rvals(common_cell_ungrouped_arg(_, Rval)) = [Rval].
 
 :- pred output_user_foreign_code(user_foreign_code::in, io::di, io::uo) is det.
 
@@ -2254,7 +2190,7 @@ output_pragma_input_rval_decls([], !DeclSet, !IO).
 output_pragma_input_rval_decls([Input | Inputs], !DeclSet, !IO) :-
     Input = pragma_c_input(_VarName, _VarType, _IsDummy, _OrigType, Rval,
         _, _),
-    output_rval_decls(Rval, "\t", "\t", 0, _N, !DeclSet, !IO),
+    output_rval_decls_format(Rval, "\t", "\t", 0, _N, !DeclSet, !IO),
     output_pragma_input_rval_decls(Inputs, !DeclSet, !IO).
 
     % Output the input variable assignments at the top of the
@@ -2342,7 +2278,7 @@ output_pragma_input(Input, !IO) :-
 output_pragma_output_lval_decls([], !DeclSet, !IO).
 output_pragma_output_lval_decls([O | Outputs], !DeclSet, !IO) :-
     O = pragma_c_output(Lval, _VarType, _IsDummy, _OrigType, _VarName, _, _),
-    output_lval_decls(Lval, "\t", "\t", 0, _N, !DeclSet, !IO),
+    output_lval_decls_format(Lval, "\t", "\t", 0, _N, !DeclSet, !IO),
     output_pragma_output_lval_decls(Outputs, !DeclSet, !IO).
 
     % Output the output variable assignments at the bottom of the
@@ -2578,9 +2514,9 @@ output_temp_decls_2(Next, Max, Type, !IO) :-
     ).
 
 output_rval_decls(Lval, !DeclSet, !IO) :-
-    output_rval_decls(Lval, "", "", 0, _, !DeclSet, !IO).
+    output_rval_decls_format(Lval, "", "", 0, _, !DeclSet, !IO).
 
-    % output_rval_decls(Rval, FirstIndent, LaterIndent, N0, N,
+    % output_rval_decls_format(Rval, FirstIndent, LaterIndent, N0, N,
     % !DeclSet) outputs the declarations of any static constants,
     % etc. that need to be declared before output_rval(Rval) is called.
     % FirstIndent is output before the first declaration, while
@@ -2591,22 +2527,25 @@ output_rval_decls(Lval, !DeclSet, !IO) :-
     % set of symbols we've already declared. That way, we avoid generating
     % the same symbol twice, which would cause an error in the C code.
     %
-:- pred output_rval_decls(rval::in, string::in, string::in, int::in, int::out,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
+:- pred output_rval_decls_format(rval::in, string::in, string::in,
+    int::in, int::out, decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_rval_decls(lval(Lval), FirstIndent, LaterIndent, !N, !DeclSet, !IO) :-
-    output_lval_decls(Lval, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
-output_rval_decls(var(_), _, _, _, _, _, _, !IO) :-
-    unexpected(this_file, "output_rval_decls: unexpected var").
-output_rval_decls(mkword(_, Rval), FirstIndent, LaterIndent,
+output_rval_decls_format(lval(Lval), FirstIndent, LaterIndent, !N, !DeclSet,
+        !IO) :-
+    output_lval_decls_format(Lval, FirstIndent, LaterIndent, !N, !DeclSet,
+        !IO).
+output_rval_decls_format(var(_), _, _, _, _, _, _, !IO) :-
+    unexpected(this_file, "output_rval_decls_format: unexpected var").
+output_rval_decls_format(mkword(_, Rval), FirstIndent, LaterIndent,
         !N, !DeclSet, !IO) :-
-    output_rval_decls(Rval, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
-output_rval_decls(const(Const), FirstIndent, LaterIndent, !N, !DeclSet, !IO) :-
+    output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
+output_rval_decls_format(const(Const), FirstIndent, LaterIndent, !N, !DeclSet,
+        !IO) :-
     ( Const = code_addr_const(CodeAddress) ->
-        output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent,
+        output_code_addr_decls_format(CodeAddress, FirstIndent, LaterIndent,
             !N, !DeclSet, !IO)
     ; Const = data_addr_const(DataAddr, _) ->
-        output_data_addr_decls(DataAddr, FirstIndent, LaterIndent,
+        output_data_addr_decls_format(DataAddr, FirstIndent, LaterIndent,
             !N, !DeclSet, !IO)
     ; Const = float_const(FloatVal) ->
         %
@@ -2641,13 +2580,15 @@ output_rval_decls(const(Const), FirstIndent, LaterIndent, !N, !DeclSet, !IO) :-
     ;
         true
     ).
-output_rval_decls(unop(_, Rval), FirstIndent, LaterIndent,
+output_rval_decls_format(unop(_, Rval), FirstIndent, LaterIndent,
         !N, !DeclSet, !IO) :-
-    output_rval_decls(Rval, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
-output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent,
+    output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
+output_rval_decls_format(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent,
         !N, !DeclSet, !IO) :-
-    output_rval_decls(Rval1, FirstIndent, LaterIndent, !N, !DeclSet, !IO),
-    output_rval_decls(Rval2, FirstIndent, LaterIndent, !N, !DeclSet, !IO),
+    output_rval_decls_format(Rval1, FirstIndent, LaterIndent, !N, !DeclSet,
+        !IO),
+    output_rval_decls_format(Rval2, FirstIndent, LaterIndent, !N, !DeclSet,
+        !IO),
         %
         % If floats are boxed, and the static ground terms option is enabled,
         % then for each float constant which we might want to box we declare
@@ -2691,33 +2632,36 @@ output_rval_decls(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent,
     ;
         true
     ).
-output_rval_decls(mem_addr(MemRef), FirstIndent, LaterIndent,
+output_rval_decls_format(mem_addr(MemRef), FirstIndent, LaterIndent,
         !N, !DeclSet, !IO) :-
-    output_mem_ref_decls(MemRef, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
+    output_mem_ref_decls_format(MemRef, FirstIndent, LaterIndent, !N, !DeclSet,
+        !IO).
 
 :- pred output_rvals_decls(list(rval)::in, decl_set::in, decl_set::out,
     io::di, io::uo) is det.
 
 output_rvals_decls(Rvals, !DeclSet, !IO) :-
-    output_rvals_decls(Rvals, "", "", 0, _, !DeclSet, !IO).
+    output_rvals_decls_format(Rvals, "", "", 0, _, !DeclSet, !IO).
 
-:- pred output_rvals_decls(list(rval)::in, string::in, string::in,
+:- pred output_rvals_decls_format(list(rval)::in, string::in, string::in,
     int::in, int::out, decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_rvals_decls([], _FirstIndent, _LaterIndent, !N, !DeclSet, !IO).
-output_rvals_decls([Rval | Rvals], FirstIndent, LaterIndent,
+output_rvals_decls_format([], _FirstIndent, _LaterIndent, !N, !DeclSet, !IO).
+output_rvals_decls_format([Rval | Rvals], FirstIndent, LaterIndent,
         !N, !DeclSet, !IO) :-
-    output_rval_decls(Rval, FirstIndent, LaterIndent, !N, !DeclSet, !IO),
-    output_rvals_decls(Rvals, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
+    output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N, !DeclSet,
+        !IO),
+    output_rvals_decls_format(Rvals, FirstIndent, LaterIndent, !N, !DeclSet,
+        !IO). 
 
-:- pred output_mem_ref_decls(mem_ref::in, string::in, string::in,
+:- pred output_mem_ref_decls_format(mem_ref::in, string::in, string::in,
     int::in, int::out, decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_mem_ref_decls(stackvar_ref(_), _, _, !N, !DeclSet, !IO).
-output_mem_ref_decls(framevar_ref(_), _, _, !N, !DeclSet, !IO).
-output_mem_ref_decls(heap_ref(Rval, _, _), FirstIndent, LaterIndent,
+output_mem_ref_decls_format(stackvar_ref(_), _, _, !N, !DeclSet, !IO).
+output_mem_ref_decls_format(framevar_ref(_), _, _, !N, !DeclSet, !IO).
+output_mem_ref_decls_format(heap_ref(Rval, _, _), FirstIndent, LaterIndent,
         !N, !DeclSet, !IO) :-
-    output_rval_decls(Rval, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
+    output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2781,112 +2725,6 @@ float_op_name(float_divide, "divide").
 
 %-----------------------------------------------------------------------------%
 
-:- func common_cell_get_type_num(common_cell_type_and_value) = int.
-
-common_cell_get_type_num(TypeAndValue) = TypeNum :-
-    (
-        TypeAndValue = plain_type_and_value(TypeNum, _)
-    ;
-        TypeAndValue = grouped_type_and_value(TypeNum, _)
-    ).
-
-:- func common_cell_get_rvals(common_cell_type_and_value) = list(rval).
-
-common_cell_get_rvals(TypeAndValue) = Rvals :-
-    (
-        TypeAndValue = plain_type_and_value(_, RvalsTypes),
-        assoc_list.keys(RvalsTypes, Rvals)
-    ;
-        TypeAndValue = grouped_type_and_value(_, Groups),
-        RvalLists = list.map(common_group_get_rvals, Groups),
-        list.condense(RvalLists, Rvals)
-    ).
-
-:- func common_group_get_rvals(common_cell_arg_group) = list(rval).
-
-common_group_get_rvals(common_cell_grouped_args(_, _, Rvals)) = Rvals.
-common_group_get_rvals(common_cell_ungrouped_arg(_, Rval)) = [Rval].
-
-%-----------------------------------------------------------------------------%
-
-    % We output constant terms as follows:
-    %
-    %   struct <prefix>_common_type_<TypeNum> {     // Type
-    %       ...
-    %   };
-    %
-    %   static const <prefix>_common_type_<TypeNum>
-    %       <prefix>_common_<CellNum>;      // Decl
-    %
-    %   static const <prefix>_common_type_<TypeNum>
-    %       <prefix>_common_<CellNum> = {       // Init
-    %       ...
-    %   };
-    %
-    % Unless the term contains code addresses, and we don't have
-    % static code addresses available, in which case we'll have
-    % to initialize them dynamically, so we must omit both `const's above.
-    %
-    % output_const_term_type outputs the first part above. The second
-    % and third parts are output by output_const_term_decl_or_defn.
-    %
-:- pred output_const_term_type(common_cell_type_and_value::in,
-    string::in, string::in, int::in, int::out, io::di, io::uo) is det.
-
-output_const_term_type(TypeAndValue, FirstIndent, LaterIndent, !N, !IO) :-
-    output_indent(FirstIndent, LaterIndent, !.N, !IO),
-    !:N = !.N + 1,
-    io.write_string("struct ", !IO),
-    TypeNum = common_cell_get_type_num(TypeAndValue),
-    output_common_cell_type_name(TypeNum, !IO),
-    io.write_string(" {\n", !IO),
-    (
-        TypeAndValue = plain_type_and_value(_, ArgsTypes),
-        assoc_list.values(ArgsTypes, Types),
-        output_cons_arg_types(Types, "\t", 1, !IO)
-    ;
-        TypeAndValue = grouped_type_and_value(_, ArgGroups),
-        output_cons_arg_group_types(ArgGroups, "\t", 1, !IO)
-    ),
-    io.write_string("};\n", !IO).
-
-:- pred output_const_term_decl_or_defn(common_cell_type_and_value::in,
-    module_name::in, int::in, bool::in, bool::in,
-    string::in, string::in, int::in, int::out, io::di, io::uo) is det.
-
-output_const_term_decl_or_defn(TypeAndValue, ModuleName, CellNum, Exported,
-        IsDefn, FirstIndent, LaterIndent, !N, !IO) :-
-    output_indent(FirstIndent, LaterIndent, !.N, !IO),
-    !:N = !.N + 1,
-    (
-        Exported = yes,
-        io.write_string("const struct ", !IO)
-    ;
-        Exported = no,
-        io.write_string("static const struct ", !IO)
-    ),
-    TypeNum = common_cell_get_type_num(TypeAndValue),
-    output_common_cell_type_name(TypeNum, !IO),
-    io.write_string(" ", !IO),
-    VarDeclId = data_addr(ModuleName, common(CellNum, TypeNum)),
-    output_decl_id(data_addr(VarDeclId), !IO),
-    (
-        IsDefn = no,
-        io.write_string(";\n", !IO)
-    ;
-        IsDefn = yes,
-        io.write_string(" =\n{\n", !IO),
-        (
-            TypeAndValue = plain_type_and_value(_, ArgsTypes),
-            output_cons_args(ArgsTypes, !IO)
-        ;
-            TypeAndValue = grouped_type_and_value(_, ArgGroups),
-            output_cons_arg_groups(ArgGroups, !IO)
-        ),
-        io.write_string(LaterIndent, !IO),
-        io.write_string("};\n", !IO)
-    ).
-
     % Return true if a data structure of the given type will eventually
     % have code addresses filled in inside it. Note that we can't just
     % test the data structure itself, since in the absence of static
@@ -2907,13 +2745,15 @@ data_addr_may_include_non_static_code_address(layout_addr(LayoutName)) =
 
 % Common structures can include code addresses, but only in grades with
 % static code addresses.
-data_name_may_include_non_static_code_address(common(_, _)) =  no.
+data_name_may_include_non_static_code_address(common_ref(_, _)) = no.
 data_name_may_include_non_static_code_address(tabling_pointer(_)) = no.
 
 :- pred output_decl_id(decl_id::in, io::di, io::uo) is det.
 
 output_decl_id(common_type(TypeNum), !IO) :-
     output_common_cell_type_name(TypeNum, !IO).
+output_decl_id(common_array(TypeNum), !IO) :-
+    output_common_cell_array_name(TypeNum, !IO).
 output_decl_id(data_addr(DataAddr), !IO) :-
     output_data_addr(DataAddr, !IO).
 output_decl_id(code_addr(_CodeAddress), !IO) :-
@@ -2940,26 +2780,25 @@ output_cons_arg_types([Type | Types], Indent, ArgNum, !IO) :-
     io.write_string(";\n", !IO),
     output_cons_arg_types(Types, Indent, ArgNum + 1, !IO).
 
-:- pred output_cons_arg_group_types(list(common_cell_arg_group)::in,
+:- pred output_cons_arg_group_types(assoc_list(llds_type, int)::in,
     string::in, int::in, io::di, io::uo) is det.
 
 output_cons_arg_group_types([], _, _, !IO).
 output_cons_arg_group_types([Group | Groups], Indent, ArgNum, !IO) :-
     io.write_string(Indent, !IO),
-    (
-        Group = common_cell_grouped_args(Type, ArraySize, _),
+    Group = Type - ArraySize,
+    ( ArraySize = 1 ->
+        output_llds_type(Type, !IO),
+        io.write_string(" f", !IO),
+        io.write_int(ArgNum, !IO),
+        io.write_string(";\n", !IO)
+    ;
         output_llds_type(Type, !IO),
         io.write_string(" f", !IO),
         io.write_int(ArgNum, !IO),
         io.write_string("[", !IO),
         io.write_int(ArraySize, !IO),
         io.write_string("];\n", !IO)
-    ;
-        Group = common_cell_ungrouped_arg(Type, _),
-        output_llds_type(Type, !IO),
-        io.write_string(" f", !IO),
-        io.write_int(ArgNum, !IO),
-        io.write_string(";\n", !IO)
     ),
     output_cons_arg_group_types(Groups, Indent, ArgNum + 1, !IO).
 
@@ -3022,8 +2861,21 @@ output_llds_type(data_ptr, !IO) :-
 output_llds_type(code_ptr, !IO) :-
     io.write_string("MR_Code *", !IO).
 
-    % Output the arguments, each on its own line prefixing with Indent,
-    % and with a cast appropriate to its type if necessary.
+:- pred output_common_cell_value(common_cell_value::in, io::di, io::uo) is det.
+
+output_common_cell_value(CellValue, !IO) :-
+    io.write_string("{\n", !IO),
+    (
+        CellValue = plain_value(ArgsTypes),
+        output_cons_args(ArgsTypes, !IO)
+    ;
+        CellValue = grouped_args_value(ArgGroups),
+        output_cons_arg_groups(ArgGroups, !IO)
+    ),
+    io.write_string("},\n", !IO).
+
+    % Output the arguments, each on its own line, and with a cast appropriate
+    % to its type if that is necessary.
     %
 :- pred output_cons_args(assoc_list(rval, llds_type)::in, io::di, io::uo)
     is det.
@@ -3203,47 +3055,58 @@ ok_int_const(_, code_ptr) :-
     io::di, io::uo) is det.
 
 output_lval_decls(Lval, !DeclSet, !IO) :-
-    output_lval_decls(Lval, "", "", 0, _, !DeclSet, !IO).
+    output_lval_decls_format(Lval, "", "", 0, _, !DeclSet, !IO).
 
-:- pred output_lval_decls(lval::in, string::in, string::in, int::in, int::out,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_lval_decls(field(_, Rval, FieldNum), FirstIndent, LaterIndent,
-        !N, !DeclSet, !IO) :-
-    output_rval_decls(Rval, FirstIndent, LaterIndent, !N, !DeclSet, !IO),
-    output_rval_decls(FieldNum, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
-output_lval_decls(reg(_, _), _, _, !N, !DeclSet, !IO).
-output_lval_decls(stackvar(_), _, _, !N, !DeclSet, !IO).
-output_lval_decls(framevar(_), _, _, !N, !DeclSet, !IO).
-output_lval_decls(succip, _, _, !N, !DeclSet, !IO).
-output_lval_decls(maxfr, _, _, !N, !DeclSet, !IO).
-output_lval_decls(curfr, _, _, !N, !DeclSet, !IO).
-output_lval_decls(succfr(Rval), FirstIndent, LaterIndent, !N, !DeclSet, !IO) :-
-    output_rval_decls(Rval, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
-output_lval_decls(prevfr(Rval), FirstIndent, LaterIndent, !N, !DeclSet, !IO) :-
-    output_rval_decls(Rval, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
-output_lval_decls(redofr(Rval), FirstIndent, LaterIndent, !N, !DeclSet, !IO) :-
-    output_rval_decls(Rval, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
-output_lval_decls(redoip(Rval), FirstIndent, LaterIndent, !N, !DeclSet, !IO) :-
-    output_rval_decls(Rval, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
-output_lval_decls(succip(Rval), FirstIndent, LaterIndent, !N, !DeclSet, !IO) :-
-    output_rval_decls(Rval, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
-output_lval_decls(hp, _, _, !N, !DeclSet, !IO).
-output_lval_decls(sp, _, _, !N, !DeclSet, !IO).
-output_lval_decls(lvar(_), _, _, !N, !DeclSet, !IO).
-output_lval_decls(temp(_, _), _, _, !N, !DeclSet, !IO).
-output_lval_decls(mem_ref(Rval), FirstIndent, LaterIndent,
-        !N, !DeclSet, !IO) :-
-    output_rval_decls(Rval, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
-
-output_code_addr_decls(CodeAddress, !DeclSet, !IO) :-
-    output_code_addr_decls(CodeAddress, "", "", 0, _, !DeclSet, !IO).
-
-:- pred output_code_addr_decls(code_addr::in, string::in, string::in,
+:- pred output_lval_decls_format(lval::in, string::in, string::in,
     int::in, int::out, decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_code_addr_decls(CodeAddress, FirstIndent, LaterIndent, !N, !DeclSet,
+output_lval_decls_format(field(_, Rval, FieldNum), FirstIndent, LaterIndent,
+        !N, !DeclSet, !IO) :-
+    output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N, !DeclSet, !IO),
+    output_rval_decls_format(FieldNum, FirstIndent, LaterIndent, !N, !DeclSet,
+        !IO).
+output_lval_decls_format(reg(_, _), _, _, !N, !DeclSet, !IO).
+output_lval_decls_format(stackvar(_), _, _, !N, !DeclSet, !IO).
+output_lval_decls_format(framevar(_), _, _, !N, !DeclSet, !IO).
+output_lval_decls_format(succip, _, _, !N, !DeclSet, !IO).
+output_lval_decls_format(maxfr, _, _, !N, !DeclSet, !IO).
+output_lval_decls_format(curfr, _, _, !N, !DeclSet, !IO).
+output_lval_decls_format(succfr(Rval), FirstIndent, LaterIndent, !N, !DeclSet,
         !IO) :-
+    output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N, !DeclSet,
+        !IO).
+output_lval_decls_format(prevfr(Rval), FirstIndent, LaterIndent, !N, !DeclSet,
+        !IO) :-
+    output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N, !DeclSet,
+        !IO).
+output_lval_decls_format(redofr(Rval), FirstIndent, LaterIndent, !N, !DeclSet,
+        !IO) :-
+    output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N, !DeclSet,
+        !IO).
+output_lval_decls_format(redoip(Rval), FirstIndent, LaterIndent, !N, !DeclSet,
+        !IO) :-
+    output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N, !DeclSet,
+        !IO).
+output_lval_decls_format(succip(Rval), FirstIndent, LaterIndent, !N, !DeclSet,
+        !IO) :-
+    output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N, !DeclSet,
+        !IO).
+output_lval_decls_format(hp, _, _, !N, !DeclSet, !IO).
+output_lval_decls_format(sp, _, _, !N, !DeclSet, !IO).
+output_lval_decls_format(lvar(_), _, _, !N, !DeclSet, !IO).
+output_lval_decls_format(temp(_, _), _, _, !N, !DeclSet, !IO).
+output_lval_decls_format(mem_ref(Rval), FirstIndent, LaterIndent,
+        !N, !DeclSet, !IO) :-
+    output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
+
+output_code_addr_decls(CodeAddress, !DeclSet, !IO) :-
+    output_code_addr_decls_format(CodeAddress, "", "", 0, _, !DeclSet, !IO).
+
+:- pred output_code_addr_decls_format(code_addr::in, string::in, string::in,
+    int::in, int::out, decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_code_addr_decls_format(CodeAddress, FirstIndent, LaterIndent, !N,
+        !DeclSet, !IO) :-
     ( decl_set_is_member(code_addr(CodeAddress), !.DeclSet) ->
         true
     ;
@@ -3359,15 +3222,33 @@ output_label_as_code_addr_decls(entry(c_local, _), !IO).
 output_label_as_code_addr_decls(internal(_, _), !IO).
 
 output_data_addr_decls(DataAddr, !DeclSet, !IO) :-
-    output_data_addr_decls(DataAddr, "", "", 0, _, !DeclSet, !IO).
+    output_data_addr_decls_format(DataAddr, "", "", 0, _, !DeclSet, !IO).
 
-output_data_addr_decls(DataAddr, FirstIndent, LaterIndent, !N, !DeclSet,
+output_data_addr_decls_format(DataAddr, FirstIndent, LaterIndent, !N, !DeclSet,
         !IO) :-
-    ( decl_set_is_member(data_addr(DataAddr), !.DeclSet) ->
-        true
+    ( DataAddr = data_addr(_, common_ref(TypeNum, _CellNum)) ->
+        DeclId = common_array(TypeNum),
+        ( decl_set_is_member(DeclId, !.DeclSet) ->
+            true
+        ;
+            decl_set_insert(DeclId, !DeclSet),
+            output_indent(FirstIndent, LaterIndent, !.N, !IO),
+            !:N = !.N + 1,
+            io.write_string("static ", !IO),
+            output_common_cell_type_name(TypeNum, !IO),
+            io.write_string(" ", !IO),
+            output_common_cell_array_name(TypeNum, !IO),
+            io.write_string("[];\n", !IO)
+        )
     ;
-        decl_set_insert(data_addr(DataAddr), !DeclSet),
-        output_data_addr_decls_2(DataAddr, FirstIndent, LaterIndent, !N, !IO)
+        DeclId = data_addr(DataAddr),
+        ( decl_set_is_member(DeclId, !.DeclSet) ->
+            true
+        ;
+            decl_set_insert(DeclId, !DeclSet),
+            output_data_addr_decls_2(DataAddr, FirstIndent, LaterIndent,
+                !N, !IO)
+        )
     ).
 
 :- pred output_data_addr_decls_2(data_addr::in, string::in, string::in,
@@ -3394,7 +3275,7 @@ output_data_addr_decls_2(DataAddr, FirstIndent, LaterIndent, !N, !IO) :-
 output_data_addrs_decls([], _, _, !N, !DeclSet, !IO).
 output_data_addrs_decls([DataAddr | DataAddrs], FirstIndent, LaterIndent, !N,
         !DeclSet, !IO) :-
-    output_data_addr_decls(DataAddr, FirstIndent, LaterIndent, !N,
+    output_data_addr_decls_format(DataAddr, FirstIndent, LaterIndent, !N,
         !DeclSet, !IO),
     output_data_addrs_decls(DataAddrs, FirstIndent, LaterIndent, !N,
         !DeclSet, !IO).
@@ -3446,15 +3327,15 @@ output_data_addr_storage_type_name(ModuleName, DataVarName, BeingDefined,
     io.write_string(c_data_const_string(Globals, InclCodeAddr), !IO),
 
     io.write_string("struct ", !IO),
-    output_data_addr(ModuleName, DataVarName, !IO),
+    output_data_addr_2(ModuleName, DataVarName, !IO),
     io.write_string("_struct\n", !IO),
     io.write_string(LaterIndent, !IO),
     io.write_string("\t", !IO),
-    output_data_addr(ModuleName, DataVarName, !IO).
+    output_data_addr_2(ModuleName, DataVarName, !IO).
 
 :- pred data_name_linkage(data_name::in, linkage::out) is det.
 
-data_name_linkage(common(_, _),       static).
+data_name_linkage(common_ref(_, _),   static).
 data_name_linkage(tabling_pointer(_), static).
 
 %-----------------------------------------------------------------------------%
@@ -3902,20 +3783,23 @@ output_data_addrs([DataAddr | DataAddrs], !IO) :-
     % Output a data address.
     %
 output_data_addr(data_addr(ModuleName, DataName), !IO) :-
-    output_data_addr(ModuleName, DataName, !IO).
+    output_data_addr_2(ModuleName, DataName, !IO).
 output_data_addr(rtti_addr(RttiId), !IO) :-
     output_rtti_id(RttiId, !IO).
 output_data_addr(layout_addr(LayoutName), !IO) :-
     output_layout_name(LayoutName, !IO).
 
-:- pred output_data_addr(module_name::in, data_name::in, io::di, io::uo)
+:- pred output_data_addr_2(module_name::in, data_name::in, io::di, io::uo)
     is det.
 
-output_data_addr(_ModuleName, VarName, !IO) :-
+output_data_addr_2(_ModuleName, VarName, !IO) :-
     (
-        VarName = common(CellNum, _TypeNum),
-        output_common_prefix(common_prefix_var, !IO),
-        io.write_int(CellNum, !IO)
+        VarName = common_ref(TypeNum, CellNum),
+        io.write_string("&", !IO),
+        output_common_cell_array_name(TypeNum, !IO),
+        io.write_string("[", !IO),
+        io.write_int(CellNum, !IO),
+        io.write_string("]", !IO)
     ;
         VarName = tabling_pointer(ProcLabel),
         output_tabling_pointer_var_name(ProcLabel, !IO)
@@ -3925,6 +3809,12 @@ output_data_addr(_ModuleName, VarName, !IO) :-
 
 output_common_cell_type_name(TypeNum, !IO) :-
     output_common_prefix(common_prefix_type, !IO),
+    io.write_int(TypeNum, !IO).
+
+:- pred output_common_cell_array_name(int::in, io::di, io::uo) is det.
+
+output_common_cell_array_name(TypeNum, !IO) :-
+    output_common_prefix(common_prefix_var, !IO),
     io.write_int(TypeNum, !IO).
 
 :- type common_prefix
@@ -4468,10 +4358,12 @@ output_rval(mkword(Tag, Exprn), !IO) :-
     (
         Exprn = const(data_addr_const(DataAddr, no)),
         DataAddr = data_addr(_, DataName),
-        DataName = common(CellNum, _TypeNum)
+        DataName = common_ref(TypeNum, CellNum)
     ->
-        io.write_string("MR_TAG_COMMON(", !IO),
+        io.write_string("MR_TAG_XCOMMON(", !IO),
         io.write_int(Tag, !IO),
+        io.write_string(",", !IO),
+        io.write_int(TypeNum, !IO),
         io.write_string(",", !IO),
         io.write_int(CellNum, !IO),
         io.write_string(")", !IO)
@@ -4592,9 +4484,11 @@ output_rval_const(data_addr_const(DataAddr, MaybeOffset), !IO) :-
         % file size difference can be very substantial.
         (
             DataAddr = data_addr(_, DataName),
-            DataName = common(CellNum, _TypeNum)
+            DataName = common_ref(TypeNum, CellNum)
         ->
-            io.write_string("MR_COMMON(", !IO),
+            io.write_string("MR_XCOMMON(", !IO),
+            io.write_int(TypeNum, !IO),
+            io.write_string(",", !IO),
             io.write_int(CellNum, !IO),
             io.write_string(")", !IO)
         ;

@@ -98,6 +98,7 @@
 :- import_module ll_backend.layout.
 :- import_module ll_backend.llds_out.
 
+:- import_module bimap.
 :- import_module counter.
 :- import_module int.
 :- import_module map.
@@ -193,14 +194,6 @@ global_data_set_static_cell_info(StaticCellInfo, !GlobalData) :-
 
 %-----------------------------------------------------------------------------%
 
-:- type cell_type
-    --->    plain_type(list(llds_type))
-    ;       grouped_type(assoc_list(llds_type, int)).
-
-:- type cell_args
-    --->    plain_args(assoc_list(rval, llds_type))
-    ;       grouped_args(list(common_cell_arg_group)).
-
     % There is one cell_type_group for every group of cells that share
     % the same sequence of argument types. We don't actually need the
     % cell type here, since we can't get to a cell_type_group from
@@ -208,31 +201,40 @@ global_data_set_static_cell_info(StaticCellInfo, !GlobalData) :-
     %
 :- type cell_type_group
     --->    cell_type_group(
-                cell_type_number    :: int,
-                cell_group_members  :: map(list(rval), data_name)
+                cell_counter        :: counter, % next cell number
+                cell_group_members  :: bimap(list(rval), data_name),
+                cell_rev_array      :: list(common_cell_value)
+            ).
+
+:- type static_cell_sub_info
+    --->    static_cell_sub_info(
+                module_name         :: module_name, % base file name
+                unbox_float         :: bool,
+                common_data         :: bool
             ).
 
 :- type static_cell_info
     --->    static_cell_info(
-                module_name         :: module_name, % base file name
-                unbox_float         :: bool,
-                common_data         :: bool,
-                cell_counter        :: counter, % next cell number
+                sub_info            :: static_cell_sub_info,
                 type_counter        :: counter, % next type number
-                cells               :: map(int, common_data),
-                cell_group_map      :: map(cell_type, cell_type_group)
-                                    % map cell argument types and then cell
-                                    % contents to the id of the common cell
+
+                cell_type_num_map   :: bimap(common_cell_type, int),
+                                    % Maps types to type numbers and vice
+                                    % versa.
+
+                cell_group_map      :: map(int, cell_type_group)
+                                    % Maps the cell type number to the
+                                    % information we have for all cells of that
+                                    % type.
             ).
 
 init_static_cell_info(BaseName, UnboxFloat, CommonData) = Info0 :-
-    map.init(Cells0),
-    map.init(CellMap0),
-    Info0 = static_cell_info(BaseName, UnboxFloat, CommonData,
-        counter.init(0), counter.init(0), Cells0, CellMap0).
+    SubInfo0 = static_cell_sub_info(BaseName, UnboxFloat, CommonData),
+    Info0 = static_cell_info(SubInfo0, counter.init(0), bimap.init, map.init).
 
 add_static_cell_natural_types(Args, DataAddr, !Info) :-
-    list.map(associate_natural_type(!.Info ^ unbox_float), Args, ArgsTypes),
+    list.map(associate_natural_type(!.Info ^ sub_info ^ unbox_float),
+        Args, ArgsTypes),
     add_static_cell(ArgsTypes, DataAddr, !Info).
 
 add_static_cell(ArgsTypes0, DataAddr, !Info) :-
@@ -248,61 +250,61 @@ add_static_cell(ArgsTypes0, DataAddr, !Info) :-
     compute_cell_type(ArgsTypes, CellType, CellTypeAndValue),
     do_add_static_cell(ArgsTypes, CellType, CellTypeAndValue, DataAddr, !Info).
 
-:- pred do_add_static_cell(assoc_list(rval, llds_type)::in, cell_type::in,
-    cell_args::in, data_addr::out,
+:- pred do_add_static_cell(assoc_list(rval, llds_type)::in,
+    common_cell_type::in, common_cell_value::in, data_addr::out,
     static_cell_info::in, static_cell_info::out) is det.
 
-do_add_static_cell(ArgsTypes, CellType, CellArgs, DataAddr, !Info) :-
+do_add_static_cell(ArgsTypes, CellType, CellValue, DataAddr, !Info) :-
     assoc_list.keys(ArgsTypes, Args),
-    CellGroupMap0 = !.Info ^ cell_group_map,
-    ( map.search(CellGroupMap0, CellType, CellGroup0) ->
-        TypeNum = CellGroup0 ^ cell_type_number,
-        CellGroup1 = CellGroup0
-    ;
-        TypeNumCounter0 = !.Info ^ type_counter,
-        counter.allocate(TypeNum, TypeNumCounter0, TypeNumCounter),
-        !:Info = !.Info ^ type_counter := TypeNumCounter,
-        CellGroup1 = cell_type_group(TypeNum, map.init)
-    ),
-    MembersMap0 = CellGroup1 ^ cell_group_members,
-    ModuleName = !.Info ^ module_name,
-    ( map.search(MembersMap0, Args, DataNamePrime) ->
-        DataName = DataNamePrime
-    ;
-        CellNumCounter0 = !.Info ^ cell_counter,
-        counter.allocate(CellNum, CellNumCounter0, CellNumCounter),
-        !:Info = !.Info ^ cell_counter := CellNumCounter,
-        DataName = common(CellNum, TypeNum),
-        (
-            !.Info ^ common_data = yes,
-            map.set(MembersMap0, Args, DataName, MembersMap),
-            CellGroup = CellGroup1 ^ cell_group_members := MembersMap,
-            map.set(CellGroupMap0, CellType, CellGroup, CellGroupMap),
+    some [!CellGroup] (
+        TypeNumMap0 = !.Info ^ cell_type_num_map,
+        CellGroupMap0 = !.Info ^ cell_group_map,
+        ( bimap.search(TypeNumMap0, CellType, TypeNumPrime) ->
+            TypeNum = TypeNumPrime,
+            map.lookup(CellGroupMap0, TypeNum, !:CellGroup)
+        ;
+            TypeNumCounter0 = !.Info ^ type_counter,
+            counter.allocate(TypeNum, TypeNumCounter0, TypeNumCounter),
+            !:Info = !.Info ^ type_counter := TypeNumCounter,
+
+            bimap.det_insert(TypeNumMap0, CellType, TypeNum, TypeNumMap),
+            !:Info = !.Info ^ cell_type_num_map := TypeNumMap,
+
+            !:CellGroup = cell_type_group(counter.init(0), bimap.init, [])
+        ),
+        MembersMap0 = !.CellGroup ^ cell_group_members,
+        ( bimap.search(MembersMap0, Args, DataNamePrime) ->
+            DataName = DataNamePrime
+        ;
+            CellNumCounter0 = !.CellGroup ^ cell_counter,
+            counter.allocate(CellNum, CellNumCounter0, CellNumCounter),
+            !:CellGroup = !.CellGroup ^ cell_counter := CellNumCounter,
+            DataName = common_ref(TypeNum, CellNum),
+            RevArray0 = !.CellGroup ^ cell_rev_array,
+            RevArray = [CellValue | RevArray0],
+            !:CellGroup = !.CellGroup ^ cell_rev_array := RevArray,
+            InsertCommonData = !.Info ^ sub_info ^ common_data,
+            (
+                InsertCommonData = yes,
+                bimap.det_insert(MembersMap0, Args, DataName, MembersMap),
+                !:CellGroup = !.CellGroup ^ cell_group_members := MembersMap
+            ;
+                InsertCommonData = no
+                % With --no-common-data, we never insert any cell into
+                % CellGroupMap, ensuring that it stays empty. This can
+                % be useful when comparing the LLDS and MLDS backends.
+            ),
+            map.set(CellGroupMap0, TypeNum, !.CellGroup, CellGroupMap),
             !:Info = !.Info ^ cell_group_map := CellGroupMap
-        ;
-            !.Info ^ common_data = no
-            % With --no-common-data, we never insert any cell into
-            % CellGroupMap, ensuring that it stays empty. This can
-            % be useful when comparing the LLDS and MLDS backends.
-        ),
-        Cells0 = !.Info ^ cells,
-        (
-            CellArgs = plain_args(PlainArgs),
-            CellTypeAndValue = plain_type_and_value(TypeNum, PlainArgs)
-        ;
-            CellArgs = grouped_args(GroupedArgs),
-            CellTypeAndValue = grouped_type_and_value(TypeNum, GroupedArgs)
-        ),
-        Cell = common_data(ModuleName, CellNum, CellTypeAndValue),
-        map.det_insert(Cells0, CellNum, Cell, Cells),
-        !:Info = !.Info ^ cells := Cells
+        )
     ),
+    ModuleName = !.Info ^ sub_info ^ module_name,
     DataAddr = data_addr(ModuleName, DataName).
 
-:- pred compute_cell_type(assoc_list(rval, llds_type)::in, cell_type::out,
-    cell_args::out) is det.
+:- pred compute_cell_type(assoc_list(rval, llds_type)::in,
+    common_cell_type::out, common_cell_value::out) is det.
 
-compute_cell_type(ArgsTypes, CellType, CellTypeAndValue) :-
+compute_cell_type(ArgsTypes, CellType, CellValue) :-
     (
         ArgsTypes = [FirstArg - FirstArgType | LaterArgsTypes],
         threshold_group_types(FirstArgType, [FirstArg], LaterArgsTypes,
@@ -311,11 +313,11 @@ compute_cell_type(ArgsTypes, CellType, CellTypeAndValue) :-
         NewLength = list.length(TypeAndArgGroups),
         OldLength >= NewLength * 2
     ->
-        CellType = grouped_type(TypeGroups),
-        CellTypeAndValue = grouped_args(TypeAndArgGroups)
+        CellType = grouped_args_type(TypeGroups),
+        CellValue = grouped_args_value(TypeAndArgGroups)
     ;
         CellType = plain_type(assoc_list.values(ArgsTypes)),
-        CellTypeAndValue = plain_args(ArgsTypes)
+        CellValue = plain_value(ArgsTypes)
     ).
 
 :- pred threshold_group_types(llds_type::in, list(rval)::in,
@@ -358,46 +360,35 @@ make_arg_groups(Type, RevArgs, TypeGroup, TypeAndArgGroup) :-
     ).
 
 search_static_cell_offset(Info, DataAddr, Offset, Rval) :-
-    DataAddr = data_addr(Info ^ module_name, DataName),
-    DataName = common(CellNum, _),
-    map.search(Info ^ cells, CellNum, CommonData),
-    CommonData = common_data(_, _, TypeAndValue),
-    (
-        TypeAndValue = plain_type_and_value(_, ArgsTypes),
-        list.index0_det(ArgsTypes, Offset, Rval - _)
-    ;
-        TypeAndValue = grouped_type_and_value(_, ArgGroups),
-        offset_into_group(ArgGroups, Offset, Rval)
-    ).
+    DataAddr = data_addr(Info ^ sub_info ^ module_name, DataName),
+    DataName = common_ref(TypeNum, _CellNum),
+    CellGroupMap = Info ^ cell_group_map,
+    map.lookup(CellGroupMap, TypeNum, CellGroup),
+    CellGroupMembers = CellGroup ^ cell_group_members,
+    bimap.reverse_lookup(CellGroupMembers, Rvals, DataName),
+    list.index0_det(Rvals, Offset, Rval).
 
-:- pred offset_into_group(list(common_cell_arg_group)::in, int::in, rval::out)
-    is det.
+%-----------------------------------------------------------------------------%
 
-offset_into_group([], _, _) :-
-    unexpected(this_file, "offset_into_group: offset out of bounds").
-offset_into_group([Group | Groups], Offset, Rval) :-
-    (
-        Group = common_cell_grouped_args(_, NumRvalsInGroup, Rvals),
-        ( Offset < NumRvalsInGroup ->
-            list.index0_det(Rvals, Offset, Rval)
-        ;
-            offset_into_group(Groups, Offset - NumRvalsInGroup, Rval)
-        )
-    ;
-        Group = common_cell_ungrouped_arg(_, GroupRval),
-        ( Offset = 0 ->
-            Rval = GroupRval
-        ;
-            offset_into_group(Groups, Offset - 1, Rval)
-        )
-    ).
+get_static_cells(Info) = Datas :-
+    ModuleName = Info ^ sub_info ^ module_name,
+    TypeNumMap = Info ^ cell_type_num_map,
+    map.foldl(add_static_cell_for_type(ModuleName, TypeNumMap),
+        Info ^ cell_group_map, [], RevDatas),
+    list.reverse(RevDatas, Datas).
 
-get_static_cells(Info) =
-    list.map(wrap_common_data, map.values(Info ^ cells)).
+:- pred add_static_cell_for_type(module_name::in,
+    bimap(common_cell_type, int)::in, int::in, cell_type_group::in,
+    list(comp_gen_c_data)::in, list(comp_gen_c_data)::out) is det.
 
-:- func wrap_common_data(common_data) = comp_gen_c_data.
+add_static_cell_for_type(ModuleName, TypeNumMap, TypeNum, CellGroup, !Datas) :-
+    bimap.reverse_lookup(TypeNumMap, CellType, TypeNum),
+    list.reverse(CellGroup ^ cell_rev_array, ArrayContents),
+    Array = common_data_array(ModuleName, CellType, TypeNum, ArrayContents),
+    Data = common_data(Array),
+    !:Datas = [Data | !.Datas].
 
-wrap_common_data(CommonData) = common_data(CommonData).
+%-----------------------------------------------------------------------------%
 
 rval_type_as_arg(Rval, ExprnOpts, Type) :-
     natural_type(ExprnOpts ^ unboxed_float, Rval, Type).

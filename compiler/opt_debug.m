@@ -342,9 +342,9 @@ dump_data_addr(rtti_addr(tc_rtti_id(TCName, TCDataName))) =
 dump_data_addr(layout_addr(LayoutName)) =
     "layout_addr(" ++ dump_layout_name(LayoutName) ++ ")".
 
-dump_data_name(common(CellNum, TypeNum)) =
-    "common(" ++ int_to_string(CellNum) ++ ", "
-        ++ int_to_string(TypeNum) ++ ")".
+dump_data_name(common_ref(TypeNum, Offset)) =
+    "common_ref(" ++ int_to_string(TypeNum) ++ ", "
+        ++ int_to_string(Offset) ++ ")".
 dump_data_name(tabling_pointer(ProcLabel)) =
     "tabling_pointer(" ++ dump_proclabel(ProcLabel) ++ ")".
 

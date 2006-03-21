@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2000,2002, 2004 The University of Melbourne.
+** Copyright (C) 1995-2000,2002, 2004, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -57,8 +57,14 @@ extern	void	MR_perform_registered_exception_cleanups(void);
 #define	MR_COMMON(cellnum)					\
 	((MR_Word *) &MR_COMMON_NAME(cellnum))
 
+#define	MR_XCOMMON(typenum, cellnum)				\
+	((MR_Word *) &MR_COMMON_NAME(typenum)[cellnum])
+
 #define	MR_TAG_COMMON(tag, cellnum)				\
 	(MR_mkword(MR_mktag(tag), MR_COMMON(cellnum)))
+
+#define	MR_TAG_XCOMMON(tag, typenum, cellnum)			\
+	(MR_mkword(MR_mktag(tag), MR_XCOMMON(typenum, cellnum)))
 
 #define	MR_DEF_COMMON1(typenum,c1)				\
 	static const struct MR_COMMON_TYPE(typenum)		\

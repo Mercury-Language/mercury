@@ -1581,7 +1581,7 @@ output_rtti_data_decls(RttiData, FirstIndent, LaterIndent,
     io::di, io::uo) is det.
 
 output_rtti_id_decls(RttiId, FirstIndent, LaterIndent, !N, !DeclSet, !IO) :-
-    output_data_addr_decls(rtti_addr(RttiId), FirstIndent, LaterIndent,
+    output_data_addr_decls_format(rtti_addr(RttiId), FirstIndent, LaterIndent,
         !N, !DeclSet, !IO).
 
 :- pred output_cast_addr_of_rtti_ids(string::in, list(rtti_id)::in,
