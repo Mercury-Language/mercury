@@ -8,7 +8,7 @@ Changes to the Mercury language:
 * The Mercury typeclass system now supports functional dependencies.
 * A new language construct allows programmers to promise that any given
   goal is pure or semipure.
-* A new language construct allows programmers to promise that all solutions
+* Two new language constructs allow programmers to promise that all solutions
   of a given goal are equivalent with respect to the relevant equality
   theories.
 * We now have support for optional module initialisation and finalisation.
@@ -36,7 +36,7 @@ Changes to the Mercury compiler:
   involving single-solution contexts.
 * We have significantly improved the compiler's performance on predicates
   with many clauses.
-  * We have deleted the old --split-c-files option, as it conflicted with the
+* We have deleted the old --split-c-files option, as it conflicted with the
   implementation of module initialisation and finalisation.
 
 Portability Improvements:
@@ -114,6 +114,63 @@ Changes to the Mercury language:
   promise_equivalent_solutions goal will be det if Goal is cc_multi,
   and that the promise_equivalent_solutions goal will be semidet if Goal
   is cc_nondet.
+
+  A related language construct allows programmers to promise that although
+  the solutions of a given goal are not necessarily equivalent with respect
+  to the relevant equality theories, it is nevertheless immaterial which one
+  is chosen in a particular context. The language construct is the `arbitrary'
+  goal, and the context is established by a `promise_equivalent_solution_sets'
+  goal. Consider a type representing maps from keys to values which is
+  implemented using 2-3 trees. In such a type, the precise shape of the tree
+  doesn't matter; two trees should be considered equal if they contain the same
+  set of keys and map them to the same values:
+
+  :- type tree23(K, V)
+  	--->	two(tree23(K, V), K, V, tree23(K, V)
+  	;	three(tree23(K, K, V, tree23(K, V), K, V, tree23(K, V))
+	where equality is tree23_equal
+	and comparison is tree23_compare.
+
+  Two values of e.g. type tree23(int, string) may differ in their top level
+  function symbol even through they denote the same map. Deconstructing a
+  value of such a type may therefore theoretically yield either "two" or
+  "three" as the top level function symbol, although in practice which one
+  you get is determined by the concrete structure of the term. Unifications
+  of such values with specific function symbols are therefore permitted only
+  in committed choice contexts. Unfortunately, one cannot simply put the
+  deconstruction into the scope of a promise_equivalent_solutions goal,
+  since the solutions are not equivalent in all contexts. However, the
+  solutions will be equivalent in *some* contexts. Consider this function
+  to count the number of key-value pairs in the map:
+
+  count(Tree) = Count :-
+  	promise_equivalent_solution_sets [Count] (
+		(
+			arbitrary [Tree1, Tree2] (
+				Tree = two(Tree1, _Key, _Value, Tree2)
+			),
+			Count = 1 + count(Tree1) + count(Tree2)
+		;
+			arbitrary [Tree1, Tree2, Tree3] (
+				Tree = three(Tree1, _Key1, _Value1, Tree2,
+					_Key2, _Value2, Tree3)
+			),
+			Count = 2 + count(Tree1) + count(Tree2) + count(Tree3)
+		)
+	).
+
+  The construct `arbitrary [Tree1, Tree2] Goal', where Goal computes Tree1
+  and Tree2, tells the compiler that it is OK to commit to the first solution
+  of Goal, because regardless of whether the goal succeeds and if so with
+  which values of Tree1 and Tree2, the set of solutions of the surrounding
+  `promise_equivalent_solution_sets [Count] Goal' will not be affected.
+  Regardless of whether Tree is bound to "two" or "three", the body of count
+  will compute the right value for Count.
+
+  A goal of the form `arbitrary [Vars] Goal' will be det if Goal is cc_multi,
+  and it will be semidet if Goal is cc_nondet. Goals of that form may occur
+  only inside `promise_equivalent_solution_sets' goals. There is no restriction
+  on the determinism of `promise_equivalent_solution_sets' goals.
 
 * We have added support for optional module initialisation.  See the 
   "Module initialisation" section of the Mercury Language Reference

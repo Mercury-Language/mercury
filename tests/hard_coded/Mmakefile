@@ -134,6 +134,7 @@ ORDINARY_PROGS=	\
 	no_warn_singleton \
 	nullary_ho_func \
 	null_char \
+	one_member \
 	ppc_bug \
 	pprint_test \
 	pprint_test2 \

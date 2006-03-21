@@ -475,7 +475,9 @@ when                            xfx               900
 <=>                             xfy               920
 =>                              xfy               920
 all                             fxy               950
+arbitrary                       fxy               950
 promise_equivalent_solutions    fxy               950
+promise_equivalent_solution_sets fxy              950
 promise_exclusive               fy                950
 promise_exclusive_exhaustive    fy                950
 promise_exhaustive              fy                950
@@ -776,6 +778,50 @@ has determinism @samp{det}.
 If @var{Goal} has determinism @samp{nondet} or @samp{cc_nondet} then
 @code{promise_equivalent_solutions @var{Vars} @var{Goal}}
 has determinism @samp{semidet}.
+
+@item @code{promise_equivalent_solution_sets @var{Vars} @var{Goal}}
+A determinism cast,
+of the kind performed by @code{promise_equivalent_solutions},
+on any goals of the form
+@code{arbitrary @var{ArbVars} @var{ArbGoal}} inside @var{Goal},
+of which there should be at least one.
+@var{Vars} and @var{ArbVars} must be lists of variables,
+and @var{Goal} and @var{ArbGoal} must be valid goals.
+@var{Vars} must be the set of variables bound by @var{Goal},
+and @var{ArbVars} must be the set of variables bound by @var{ArbGoal},
+It is an error for @var{Vars} to include a variable not bound by @var{Goal}
+or for @var{Goal} to bind a non-local variable
+that is not listed in @var{Vars},
+and similarly for @var{ArbVars} and @var{ArbGoal}.
+The intersection of @var{Vars} and the @var{ArbVars} list
+of any @code{arbitrary @var{ArbVars} @var{ArbGoal}} goal
+included inside @var{Goal} must be empty.
+
+The overall @var{promise_equivalent_solution_sets} goal promises that
+the set of solutions computed for @var{Vars} by @var{Goal}
+is not influenced by which of the possible solutions
+for @var{ArbVars} is computed by each @var{ArbGoal};
+while different choices of solutions for some of the @var{ArbGoal}s
+may lead to syntactically different solutions for @var{Vars} for @var{Goal},
+all of these solutions are equivalent
+with respect to the equality theories of the variables in @var{Vars}.
+If an @var{ArbGoal} has determinism @samp{multi} or @samp{cc_multi} then
+@code{arbitrary @var{ArbVars} @var{ArbGoal}} has determinism @samp{det}.
+If @var{ArbGoal} has determinism @samp{nondet} or @samp{cc_nondet} then
+@code{arbitrary @var{ArbVars} @var{ArbGoal}} has determinism @samp{semidet}.
+@var{Goal} itself may have any determinism.
+
+There is no requirement that given one of the @var{ArbGoal}s,
+all its solutions must be equivalent with respect to the equality theories
+of the corresponding @var{ArbVars};
+in fact, in typical usage, this won't be the case.
+The different solutions of the nested @var{arbitrary} goals
+are not required to be equivalent in any context
+except the @var{promise_equivalent_solution_sets} goal they are nested inside.
+
+Goals of the form @code{arbitrary @var{ArbVars} @var{ArbGoal}}
+are not allowed to occur outside
+@code{promise_equivalent_solution_sets @var{Vars} @var{Goal}} goals.
 
 @item @code{@var{Call}}
 Any goal which does not match any of the above forms

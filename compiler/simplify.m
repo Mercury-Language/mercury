@@ -347,7 +347,7 @@ do_process_goal(Goal0, Goal, !Info, !IO) :-
         simplify_info_set_module_info(ModuleInfo3, !Info),
 
         simplify_info_get_det_info(!.Info, DetInfo),
-        det_infer_goal(Goal3, Goal, InstMap0, SolnContext, [], DetInfo,
+        det_infer_goal(Goal3, Goal, InstMap0, SolnContext, [], no, DetInfo,
             _, _, _)
     ;
         Goal = Goal3

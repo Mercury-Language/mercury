@@ -1413,7 +1413,7 @@ parse_promise(ModuleName, PromiseType, VarSet, [Term], Attributes, Result) :-
 
     % Get universally quantified variables.
     ( PromiseType = true ->
-        ( Goal0 = all(UnivVars0, AllGoal) - _Context ->
+        ( Goal0 = all_expr(UnivVars0, AllGoal) - _Context ->
             UnivVars0 = UnivVars,
             Goal = AllGoal
         ;

@@ -130,6 +130,7 @@ SINGLEMODULE= \
 	not_in_interface \
 	nullary_ho_func_error \
 	occurs \
+	one_member \
 	overloading \
 	polymorphic_unification \
 	pragma_c_code_dup_var \

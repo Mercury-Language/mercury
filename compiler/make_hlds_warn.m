@@ -594,12 +594,13 @@ check_promise_ex_decl(UnivVars, PromiseType, Goal, Context, !IO) :-
     is det.
 
 check_promise_ex_goal(PromiseType, GoalExpr - Context, !IO) :-
-    ( GoalExpr = some(_, Goal) -> check_promise_ex_goal(PromiseType, Goal, !IO)
-    ; GoalExpr =  ( _ ; _ ) ->
+    ( GoalExpr = some_expr(_, Goal) ->
+        check_promise_ex_goal(PromiseType, Goal, !IO)
+    ; GoalExpr = disj_expr(_, _) ->
         flatten_to_disj_list(GoalExpr - Context, DisjList),
         list.map(flatten_to_conj_list, DisjList, DisjConjList),
         check_disjunction(PromiseType, DisjConjList, !IO)
-    ; GoalExpr = all(_UnivVars, Goal) ->
+    ; GoalExpr = all_expr(_UnivVars, Goal) ->
         promise_ex_error(PromiseType, Context,
             "universal quantification should come before " ++
             "the declaration name", !IO),
@@ -615,7 +616,7 @@ check_promise_ex_goal(PromiseType, GoalExpr - Context, !IO) :-
 :- pred flatten_to_disj_list(goal::in, goals::out) is det.
 
 flatten_to_disj_list(GoalExpr - Context, GoalList) :-
-    ( GoalExpr = ( GoalA ; GoalB ) ->
+    ( GoalExpr = disj_expr(GoalA, GoalB) ->
         flatten_to_disj_list(GoalA, GoalListA),
         flatten_to_disj_list(GoalB, GoalListB),
         GoalList = GoalListA ++ GoalListB
@@ -629,7 +630,7 @@ flatten_to_disj_list(GoalExpr - Context, GoalList) :-
 :- pred flatten_to_conj_list(goal::in, goals::out) is det.
 
 flatten_to_conj_list(GoalExpr - Context, GoalList) :-
-    ( GoalExpr = ( GoalA , GoalB ) ->
+    ( GoalExpr = conj_expr(GoalA, GoalB) ->
         flatten_to_conj_list(GoalA, GoalListA),
         flatten_to_conj_list(GoalB, GoalListB),
         GoalList = GoalListA ++ GoalListB
@@ -662,11 +663,11 @@ check_disj_arm(PromiseType, Goals, CallUsed, !IO) :-
         Goals = []
     ;
         Goals = [GoalExpr - Context | Rest],
-        ( GoalExpr = unify(_, _, _) ->
+        ( GoalExpr = unify_expr(_, _, _) ->
             check_disj_arm(PromiseType, Rest, CallUsed, !IO)
-        ; GoalExpr = some(_, Goal) ->
+        ; GoalExpr = some_expr(_, Goal) ->
             check_disj_arm(PromiseType, [Goal | Rest], CallUsed, !IO)
-        ; GoalExpr = call(_, _, _) ->
+        ; GoalExpr = call_expr(_, _, _) ->
             (
                 CallUsed = no
             ;

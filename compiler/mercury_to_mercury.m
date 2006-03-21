@@ -676,7 +676,7 @@ mercury_output_item(_, promise(PromiseType, Goal0, VarSet, UnivVars), _,
         (
             UnivVars = [_ | _],
             Goal0 = _GoalExpr - Context,
-            Goal = all(UnivVars, Goal0) - Context
+            Goal = all_expr(UnivVars, Goal0) - Context
         ;
             UnivVars = [],
             Goal = Goal0
@@ -2475,7 +2475,7 @@ mercury_output_pred_clause(VarSet, PredName, Args, Body, _Context, !IO) :-
     ;
         Args = []
     ),
-    ( Body = true - _Context0 ->
+    ( Body = true_expr - _Context0 ->
         true
     ;
         io.write_string(" :-\n\t", !IO),
@@ -2501,7 +2501,7 @@ mercury_output_func_clause(VarSet, PredName, Args, Result, Body, _Context,
         Args = []
     ),
     io.write_string(" = ", !IO),
-    ( Body = true - _Context0 ->
+    ( Body = true_expr - _Context0 ->
         mercury_format_term(Result, VarSet, no, next_to_graphic_token, !IO)
     ;
         mercury_format_term(Result, VarSet, no, !IO),
@@ -2518,13 +2518,13 @@ mercury_output_goal(Goal - _Context, VarSet, Indent, !IO) :-
 :- pred mercury_output_goal_2(goal_expr::in, prog_varset::in, int::in,
     io::di, io::uo) is det.
 
-mercury_output_goal_2(fail, _, _, !IO) :-
+mercury_output_goal_2(fail_expr, _, _, !IO) :-
     io.write_string("fail", !IO).
 
-mercury_output_goal_2(true, _, _, !IO) :-
+mercury_output_goal_2(true_expr, _, _, !IO) :-
     io.write_string("true", !IO).
 
-mercury_output_goal_2(implies(G1,G2), VarSet, Indent, !IO) :-
+mercury_output_goal_2(implies_expr(G1,G2), VarSet, Indent, !IO) :-
     Indent1 = Indent + 1,
     io.write_string("(", !IO),
     mercury_output_newline(Indent1, !IO),
@@ -2536,7 +2536,7 @@ mercury_output_goal_2(implies(G1,G2), VarSet, Indent, !IO) :-
     mercury_output_newline(Indent, !IO),
     io.write_string(")", !IO).
 
-mercury_output_goal_2(equivalent(G1,G2), VarSet, Indent, !IO) :-
+mercury_output_goal_2(equivalent_expr(G1,G2), VarSet, Indent, !IO) :-
     Indent1 = Indent + 1,
     io.write_string("(", !IO),
     mercury_output_newline(Indent1, !IO),
@@ -2548,7 +2548,7 @@ mercury_output_goal_2(equivalent(G1,G2), VarSet, Indent, !IO) :-
     mercury_output_newline(Indent, !IO),
     io.write_string(")", !IO).
 
-mercury_output_goal_2(some(Vars, Goal), VarSet, Indent, !IO) :-
+mercury_output_goal_2(some_expr(Vars, Goal), VarSet, Indent, !IO) :-
     (
         Vars = [],
         mercury_output_goal(Goal, VarSet, Indent, !IO)
@@ -2564,7 +2564,7 @@ mercury_output_goal_2(some(Vars, Goal), VarSet, Indent, !IO) :-
         io.write_string(")", !IO)
     ).
 
-mercury_output_goal_2(some_state_vars(Vars, Goal), VarSet, Indent, !IO) :-
+mercury_output_goal_2(some_state_vars_expr(Vars, Goal), VarSet, Indent, !IO) :-
     (
         Vars = [],
         mercury_output_goal(Goal, VarSet, Indent, !IO)
@@ -2580,7 +2580,7 @@ mercury_output_goal_2(some_state_vars(Vars, Goal), VarSet, Indent, !IO) :-
         io.write_string(")", !IO)
     ).
 
-mercury_output_goal_2(all(Vars, Goal), VarSet, Indent, !IO) :-
+mercury_output_goal_2(all_expr(Vars, Goal), VarSet, Indent, !IO) :-
     (
         Vars = [],
         mercury_output_goal(Goal, VarSet, Indent, !IO)
@@ -2596,7 +2596,7 @@ mercury_output_goal_2(all(Vars, Goal), VarSet, Indent, !IO) :-
         io.write_string(")", !IO)
     ).
 
-mercury_output_goal_2(all_state_vars(Vars, Goal), VarSet, Indent, !IO) :-
+mercury_output_goal_2(all_state_vars_expr(Vars, Goal), VarSet, Indent, !IO) :-
     (
         Vars = [],
         mercury_output_goal(Goal, VarSet, Indent, !IO)
@@ -2613,48 +2613,26 @@ mercury_output_goal_2(all_state_vars(Vars, Goal), VarSet, Indent, !IO) :-
     ).
 
 mercury_output_goal_2(
-        promise_equivalent_solutions(Vars, DotSVars, ColonSVars, Goal), VarSet,
-        Indent, !IO) :-
-    (
-        Vars = [],
-        DotSVars = [],
-        ColonSVars = []
-    ->
-        % This should have been caught be prog_io_goal when reading in
-        % the term, but there is no point in aborting here.
-        mercury_output_goal(Goal, VarSet, Indent, !IO)
-    ;
-        io.write_string("promise_equivalent_solutions [", !IO),
-        mercury_output_vars(Vars, VarSet, no, !IO),
-        (
-            Vars \= [],
-            DotSVars \= []
-        ->
-            io.write_string(", ", !IO)
-        ;
-            true
-        ),
-        mercury_output_state_vars_using_prefix(DotSVars, "!.", VarSet, no,
-            !IO),
-        (
-            ( Vars \= [] ; DotSVars \= [] ),
-            ColonSVars \= []
-        ->
-            io.write_string(", ", !IO)
-        ;
-            true
-        ),
-        mercury_output_state_vars_using_prefix(ColonSVars, "!:", VarSet, no,
-            !IO),
-        io.write_string("] (", !IO),
-        Indent1 = Indent + 1,
-        mercury_output_newline(Indent1, !IO),
-        mercury_output_goal(Goal, VarSet, Indent1, !IO),
-        mercury_output_newline(Indent, !IO),
-        io.write_string(")", !IO)
-    ).
+        promise_equivalent_solutions_expr(Vars, DotSVars, ColonSVars, Goal),
+        VarSet, Indent, !IO) :-
+    mercury_output_promise_eqv_solutions_goal(Vars, DotSVars, ColonSVars,
+        Goal, VarSet, Indent, "promise_equivalent_solutions", !IO).
 
-mercury_output_goal_2(promise_purity(_Implicit, Purity, Goal), VarSet,
+mercury_output_goal_2(
+        promise_equivalent_solution_sets_expr(Vars, DotSVars, ColonSVars,
+            Goal),
+        VarSet, Indent, !IO) :-
+    mercury_output_promise_eqv_solutions_goal(Vars, DotSVars, ColonSVars,
+        Goal, VarSet, Indent, "promise_equivalent_solution_sets", !IO).
+
+mercury_output_goal_2(
+        promise_equivalent_solution_arbitrary_expr(Vars, DotSVars, ColonSVars,
+            Goal),
+        VarSet, Indent, !IO) :-
+    mercury_output_promise_eqv_solutions_goal(Vars, DotSVars, ColonSVars,
+        Goal, VarSet, Indent, "arbitrary", !IO).
+
+mercury_output_goal_2(promise_purity_expr(_Implicit, Purity, Goal), VarSet,
         Indent, !IO) :-
     (
         Purity = purity_pure,
@@ -2672,7 +2650,7 @@ mercury_output_goal_2(promise_purity(_Implicit, Purity, Goal), VarSet,
     mercury_output_newline(Indent, !IO),
     io.write_string(")", !IO).
 
-mercury_output_goal_2(if_then_else(Vars, StateVars, A, B, C), VarSet,
+mercury_output_goal_2(if_then_else_expr(Vars, StateVars, A, B, C), VarSet,
         Indent, !IO) :-
     io.write_string("(if", !IO),
     mercury_output_some(Vars, StateVars, VarSet, !IO),
@@ -2690,20 +2668,7 @@ mercury_output_goal_2(if_then_else(Vars, StateVars, A, B, C), VarSet,
     mercury_output_newline(Indent, !IO),
     io.write_string(")", !IO).
 
-mercury_output_goal_2(if_then(Vars, StateVars, A, B), VarSet, Indent, !IO) :-
-    io.write_string("(if", !IO),
-    mercury_output_some(Vars, StateVars, VarSet, !IO),
-    Indent1 = Indent + 1,
-    mercury_output_newline(Indent1, !IO),
-    mercury_output_goal(A, VarSet, Indent1, !IO),
-    mercury_output_newline(Indent, !IO),
-    io.write_string("then", !IO),
-    mercury_output_newline(Indent1, !IO),
-    mercury_output_goal(B, VarSet, Indent1, !IO),
-    mercury_output_newline(Indent, !IO),
-    io.write_string(")", !IO).
-
-mercury_output_goal_2(not(Goal), VarSet, Indent, !IO) :-
+mercury_output_goal_2(not_expr(Goal), VarSet, Indent, !IO) :-
     io.write_string("\\+ (", !IO),
     Indent1 = Indent + 1,
     mercury_output_newline(Indent1, !IO),
@@ -2711,13 +2676,13 @@ mercury_output_goal_2(not(Goal), VarSet, Indent, !IO) :-
     mercury_output_newline(Indent, !IO),
     io.write_string(")", !IO).
 
-mercury_output_goal_2((A,B), VarSet, Indent, !IO) :-
+mercury_output_goal_2(conj_expr(A, B), VarSet, Indent, !IO) :-
     mercury_output_goal(A, VarSet, Indent, !IO),
     io.write_string(",", !IO),
     mercury_output_newline(Indent, !IO),
     mercury_output_goal(B, VarSet, Indent, !IO).
 
-mercury_output_goal_2((A & B), VarSet, Indent, !IO) :-
+mercury_output_goal_2(par_conj_expr(A, B), VarSet, Indent, !IO) :-
     io.write_string("(", !IO),
     Indent1 = Indent + 1,
     mercury_output_newline(Indent1, !IO),
@@ -2726,7 +2691,7 @@ mercury_output_goal_2((A & B), VarSet, Indent, !IO) :-
     mercury_output_newline(Indent, !IO),
     io.write_string(")", !IO).
 
-mercury_output_goal_2((A;B), VarSet, Indent, !IO) :-
+mercury_output_goal_2(disj_expr(A, B), VarSet, Indent, !IO) :-
     io.write_string("(", !IO),
     Indent1 = Indent + 1,
     mercury_output_newline(Indent1, !IO),
@@ -2735,16 +2700,63 @@ mercury_output_goal_2((A;B), VarSet, Indent, !IO) :-
     mercury_output_newline(Indent, !IO),
     io.write_string(")", !IO).
 
-mercury_output_goal_2(call(Name, Term, Purity), VarSet, Indent, !IO) :-
+mercury_output_goal_2(call_expr(Name, Term, Purity), VarSet, Indent, !IO) :-
     write_purity_prefix(Purity, !IO),
     mercury_output_call(Name, Term, VarSet, Indent, !IO).
 
-mercury_output_goal_2(unify(A, B, Purity), VarSet, _Indent, !IO) :-
+mercury_output_goal_2(unify_expr(A, B, Purity), VarSet, _Indent, !IO) :-
     write_purity_prefix(Purity, !IO),
     mercury_output_term(A, VarSet, no, !IO),
     io.write_string(" = ", !IO),
     mercury_output_term(B, VarSet, no, next_to_graphic_token, !IO).
 
+:- pred mercury_output_promise_eqv_solutions_goal(prog_vars::in,
+    prog_vars::in, prog_vars::in, goal::in, prog_varset::in, int::in,
+    string::in, io::di, io::uo) is det.
+
+mercury_output_promise_eqv_solutions_goal(Vars, DotSVars, ColonSVars,
+        Goal, VarSet, Indent, Keyword, !IO) :-
+    (
+        Vars = [],
+        DotSVars = [],
+        ColonSVars = []
+    ->
+        % This should have been caught be prog_io_goal when reading in
+        % the term, but there is no point in aborting here.
+        mercury_output_goal(Goal, VarSet, Indent, !IO)
+    ;
+        io.write_string(Keyword, !IO),
+        io.write_string(" [", !IO),
+        mercury_output_vars(Vars, VarSet, no, !IO),
+        (
+            Vars = [_ | _],
+            DotSVars = [_ | _]
+        ->
+            io.write_string(", ", !IO)
+        ;
+            true
+        ),
+        mercury_output_state_vars_using_prefix(DotSVars, "!.", VarSet, no,
+            !IO),
+        (
+            ( Vars = [_ | _]
+            ; DotSVars = [_ | _]
+            ),
+            ColonSVars \= []
+        ->
+            io.write_string(", ", !IO)
+        ;
+            true
+        ),
+        mercury_output_state_vars_using_prefix(ColonSVars, "!:", VarSet, no,
+            !IO),
+        io.write_string("] (", !IO),
+        Indent1 = Indent + 1,
+        mercury_output_newline(Indent1, !IO),
+        mercury_output_goal(Goal, VarSet, Indent1, !IO),
+        mercury_output_newline(Indent, !IO),
+        io.write_string(")", !IO)
+    ).
 
 :- pred mercury_output_state_vars_using_prefix(prog_vars::in, string::in,
         prog_varset::in, bool::in, io::di, io::uo) is det.
@@ -2764,7 +2776,6 @@ mercury_output_state_vars_using_prefix([SVar | SVars], BangPrefix, VarSet,
     ),
     mercury_output_state_vars_using_prefix(SVars, BangPrefix, VarSet,
         AppendVarnums, !IO).
-
 
 :- pred mercury_output_call(sym_name::in, list(prog_term)::in, prog_varset::in,
     int::in, io::di, io::uo) is det.
@@ -2793,7 +2804,7 @@ mercury_output_disj(Goal, VarSet, Indent, !IO) :-
     io.write_string(";", !IO),
     Indent1 = Indent + 1,
     mercury_output_newline(Indent1, !IO),
-    ( Goal = (A;B) - _Context ->
+    ( Goal = disj_expr(A, B) - _Context ->
         mercury_output_goal(A, VarSet, Indent1, !IO),
         mercury_output_disj(B, VarSet, Indent, !IO)
     ;
@@ -2808,7 +2819,7 @@ mercury_output_par_conj(Goal, VarSet, Indent, !IO) :-
     io.write_string("&", !IO),
     Indent1 = Indent + 1,
     mercury_output_newline(Indent1, !IO),
-    ( Goal = (A & B) - _Context ->
+    ( Goal = par_conj_expr(A, B) - _Context ->
         mercury_output_goal(A, VarSet, Indent1, !IO),
         mercury_output_par_conj(B, VarSet, Indent, !IO)
     ;

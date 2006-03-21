@@ -1481,8 +1481,11 @@ write_goal_2(scope(Reason, Goal), ModuleInfo, VarSet, AppendVarNums, Indent,
             Kind = equivalent_solutions,
             io.write_string("promise_equivalent_solutions", !IO)
         ;
-            Kind = same_solutions,
-            io.write_string("promise_same_solutions", !IO)
+            Kind = equivalent_solution_sets,
+            io.write_string("promise_equivalent_solution_sets", !IO)
+        ;
+            Kind = equivalent_solution_sets_arbitrary,
+            io.write_string("arbitrary", !IO)
         ),
         io.write_string(" [", !IO),
         mercury_output_vars(Vars, VarSet, AppendVarNums, !IO),

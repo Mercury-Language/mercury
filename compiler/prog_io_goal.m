@@ -119,12 +119,13 @@ parse_goal(Term, Goal, !VarSet) :-
             % Check for predicate calls.
             sym_name_and_args(ArgsTerm, SymName, Args)
         ->
-            Goal = call(SymName, Args, purity_pure) - Context
+            Goal = call_expr(SymName, Args, purity_pure) - Context
         ;
             % A call to a free variable, or to a number or string.
             % Just translate it into a call to call/1 - the
             % typechecker will catch calls to numbers and strings.
-            Goal = call(unqualified("call"), [ArgsTerm], purity_pure) - Context
+            Goal = call_expr(unqualified("call"), [ArgsTerm], purity_pure)
+                - Context
         )
     ).
 
@@ -138,15 +139,15 @@ parse_goal(Term, Goal, !VarSet) :-
     % for the moment we'll just disallow it.
     % For consistency we also disallow if-then without the else.
 
-parse_goal_2("true", [], true, !V).
-parse_goal_2("fail", [], fail, !V).
-parse_goal_2("=", [A0, B0], unify(A, B, purity_pure), !V) :-
+parse_goal_2("true", [], true_expr, !V).
+parse_goal_2("fail", [], fail_expr, !V).
+parse_goal_2("=", [A0, B0], unify_expr(A, B, purity_pure), !V) :-
     term.coerce(A0, A),
     term.coerce(B0, B).
-parse_goal_2(",", [A0, B0], (A, B), !V) :-
+parse_goal_2(",", [A0, B0], conj_expr(A, B), !V) :-
     parse_goal(A0, A, !V),
     parse_goal(B0, B, !V).
-parse_goal_2("&", [A0, B0], (A & B), !V) :-
+parse_goal_2("&", [A0, B0], par_conj_expr(A, B), !V) :-
     parse_goal(A0, A, !V),
     parse_goal(B0, B, !V).
 parse_goal_2(";", [A0, B0], R, !V) :-
@@ -154,23 +155,24 @@ parse_goal_2(";", [A0, B0], R, !V) :-
         parse_some_vars_goal(X0, Vars, StateVars, X, !V),
         parse_goal(Y0, Y, !V),
         parse_goal(B0, B, !V),
-        R = if_then_else(Vars, StateVars, X, Y, B)
+        R = if_then_else_expr(Vars, StateVars, X, Y, B)
     ;
         parse_goal(A0, A, !V),
         parse_goal(B0, B, !V),
-        R = (A;B)
+        R = disj_expr(A, B)
     ).
-parse_goal_2("else", [IF, C0], if_then_else(Vars, StateVars, A, B, C), !V) :-
+parse_goal_2("else", [IF, C0], if_then_else_expr(Vars, StateVars, A, B, C),
+        !V) :-
     IF = term.functor(term.atom("if"),
         [term.functor(term.atom("then"), [A0, B0], _)], _),
     parse_some_vars_goal(A0, Vars, StateVars, A, !V),
     parse_goal(B0, B, !V),
     parse_goal(C0, C, !V).
 
-parse_goal_2("not", [A0], not(A), !V) :-
+parse_goal_2("not", [A0], not_expr(A), !V) :-
     parse_goal(A0, A, !V).
 
-parse_goal_2("\\+", [A0], not(A), !V) :-
+parse_goal_2("\\+", [A0], not_expr(A), !V) :-
     parse_goal(A0, A, !V).
 
 parse_goal_2("all", [QVars, A0], GoalExpr, !V):-
@@ -185,27 +187,27 @@ parse_goal_2("all", [QVars, A0], GoalExpr, !V):-
         Vars = [],    StateVars = [],
         GoalExpr = GoalExprA
     ;
-        Vars = [],    StateVars = [_|_],
-        GoalExpr = all_state_vars(StateVars, A)
+        Vars = [],    StateVars = [_ | _],
+        GoalExpr = all_state_vars_expr(StateVars, A)
     ;
-        Vars = [_|_], StateVars = [],
-        GoalExpr = all(Vars, A)
+        Vars = [_ | _], StateVars = [],
+        GoalExpr = all_expr(Vars, A)
     ;
-        Vars = [_|_], StateVars = [_|_],
-        GoalExpr = all(Vars, all_state_vars(StateVars, A) - ContextA)
+        Vars = [_ | _], StateVars = [_ | _],
+        GoalExpr = all_expr(Vars, all_state_vars_expr(StateVars, A) - ContextA)
     ).
 
     % Handle implication.
-parse_goal_2("<=", [A0, B0], implies(B, A), !V):-
+parse_goal_2("<=", [A0, B0], implies_expr(B, A), !V):-
     parse_goal(A0, A, !V),
     parse_goal(B0, B, !V).
 
-parse_goal_2("=>", [A0, B0], implies(A, B), !V):-
+parse_goal_2("=>", [A0, B0], implies_expr(A, B), !V):-
     parse_goal(A0, A, !V),
     parse_goal(B0, B, !V).
 
     % handle equivalence
-parse_goal_2("<=>", [A0, B0], equivalent(A, B), !V):-
+parse_goal_2("<=>", [A0, B0], equivalent_expr(A, B), !V):-
     parse_goal(A0, A, !V),
     parse_goal(B0, B, !V).
 
@@ -217,17 +219,22 @@ parse_goal_2("some", [QVars, A0], GoalExpr, !V):-
 
     parse_goal(A0, A @ (GoalExprA - ContextA), !V),
     (
-        Vars = [],    StateVars = [],
+        Vars = [],
+        StateVars = [],
         GoalExpr = GoalExprA
     ;
-        Vars = [],    StateVars = [_|_],
-        GoalExpr = some_state_vars(StateVars, A)
+        Vars = [],
+        StateVars = [_ | _],
+        GoalExpr = some_state_vars_expr(StateVars, A)
     ;
-        Vars = [_|_], StateVars = [],
-        GoalExpr = some(Vars, A)
+        Vars = [_ | _],
+        StateVars = [],
+        GoalExpr = some_expr(Vars, A)
     ;
-        Vars = [_|_], StateVars = [_|_],
-        GoalExpr = some(Vars, some_state_vars(StateVars, A) - ContextA)
+        Vars = [_ | _],
+        StateVars = [_ | _],
+        GoalExpr = some_expr(Vars, some_state_vars_expr(StateVars, A)
+            - ContextA)
     ).
 
 parse_goal_2("promise_equivalent_solutions", [OVars, A0], GoalExpr, !V):-
@@ -236,36 +243,58 @@ parse_goal_2("promise_equivalent_solutions", [OVars, A0], GoalExpr, !V):-
     list.map(term.coerce_var, Vars0, Vars),
     list.map(term.coerce_var, DotSVars0, DotSVars),
     list.map(term.coerce_var, ColonSVars0, ColonSVars),
-    GoalExpr = promise_equivalent_solutions(Vars, DotSVars, ColonSVars, A).
+    GoalExpr = promise_equivalent_solutions_expr(Vars,
+        DotSVars, ColonSVars, A).
+
+parse_goal_2("promise_equivalent_solution_sets", [OVars, A0], GoalExpr, !V):-
+    parse_goal(A0, A, !V),
+    parse_vars_and_state_vars(OVars, Vars0, DotSVars0, ColonSVars0),
+    list.map(term.coerce_var, Vars0, Vars),
+    list.map(term.coerce_var, DotSVars0, DotSVars),
+    list.map(term.coerce_var, ColonSVars0, ColonSVars),
+    GoalExpr = promise_equivalent_solution_sets_expr(Vars,
+        DotSVars, ColonSVars, A).
+
+parse_goal_2("arbitrary", [OVars, A0], GoalExpr, !V):-
+    parse_goal(A0, A, !V),
+    parse_vars_and_state_vars(OVars, Vars0, DotSVars0, ColonSVars0),
+    list.map(term.coerce_var, Vars0, Vars),
+    list.map(term.coerce_var, DotSVars0, DotSVars),
+    list.map(term.coerce_var, ColonSVars0, ColonSVars),
+    GoalExpr = promise_equivalent_solution_arbitrary_expr(Vars,
+        DotSVars, ColonSVars, A).
 
 parse_goal_2("promise_pure", [A0], GoalExpr, !V):-
     parse_goal(A0, A, !V),
-    GoalExpr = promise_purity(dont_make_implicit_promises, purity_pure, A).
+    GoalExpr = promise_purity_expr(dont_make_implicit_promises,
+        purity_pure, A).
 
 parse_goal_2("promise_semipure", [A0], GoalExpr, !V):-
     parse_goal(A0, A, !V),
-    GoalExpr = promise_purity(dont_make_implicit_promises, purity_semipure, A).
+    GoalExpr = promise_purity_expr(dont_make_implicit_promises,
+        purity_semipure, A).
 
 parse_goal_2("promise_impure", [A0], GoalExpr, !V):-
     parse_goal(A0, A, !V),
-    GoalExpr = promise_purity(dont_make_implicit_promises, purity_impure, A).
+    GoalExpr = promise_purity_expr(dont_make_implicit_promises,
+        purity_impure, A).
 
 parse_goal_2("promise_pure_implicit", [A0], GoalExpr, !V):-
     parse_goal(A0, A, !V),
-    GoalExpr = promise_purity(make_implicit_promises, purity_pure, A).
+    GoalExpr = promise_purity_expr(make_implicit_promises, purity_pure, A).
 
 parse_goal_2("promise_semipure_implicit", [A0], GoalExpr, !V):-
     parse_goal(A0, A, !V),
-    GoalExpr = promise_purity(make_implicit_promises, purity_semipure, A).
+    GoalExpr = promise_purity_expr(make_implicit_promises, purity_semipure, A).
 
 parse_goal_2("promise_impure_implicit", [A0], GoalExpr, !V):-
     parse_goal(A0, A, !V),
-    GoalExpr = promise_purity(make_implicit_promises, purity_impure, A).
+    GoalExpr = promise_purity_expr(make_implicit_promises, purity_impure, A).
 
     % The following is a temporary hack to handle `is' in the parser -
     % we ought to handle it in the code generation - but then `is/2' itself
     % is a bit of a hack.
-parse_goal_2("is", [A0, B0], unify(A, B, purity_pure), !V) :-
+parse_goal_2("is", [A0, B0], unify_expr(A, B, purity_pure), !V) :-
     term.coerce(A0, A),
     term.coerce(B0, B).
 parse_goal_2("impure", [A0], A, !V) :-
@@ -278,17 +307,17 @@ parse_goal_2("semipure", [A0], A, !V) :-
 
 parse_goal_with_purity(A0, Purity, A, !V) :-
     parse_goal(A0, A1, !V),
-    ( A1 = call(Pred, Args, purity_pure) - _ ->
-        A = call(Pred, Args, Purity)
-    ; A1 = unify(ProgTerm1, ProgTerm2, purity_pure) - _ ->
-        A = unify(ProgTerm1, ProgTerm2, Purity)
+    ( A1 = call_expr(Pred, Args, purity_pure) - _ ->
+        A = call_expr(Pred, Args, Purity)
+    ; A1 = unify_expr(ProgTerm1, ProgTerm2, purity_pure) - _ ->
+        A = unify_expr(ProgTerm1, ProgTerm2, Purity)
     ;
         % Inappropriate placement of an impurity marker, so we treat
         % it like a predicate call. typecheck.m prints out something
         % descriptive for these errors.
         purity_name(Purity, PurityString),
         term.coerce(A0, A2),
-        A = call(unqualified(PurityString), [A2], purity_pure)
+        A = call_expr(unqualified(PurityString), [A2], purity_pure)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -386,7 +415,7 @@ parse_func_expression(FuncTerm, lambda_normal, Args, Modes, Det) :-
     list(mer_mode)::out) is semidet.
 
 parse_pred_expr_args([], [], []).
-parse_pred_expr_args([Term|Terms], [Arg|Args], [Mode|Modes]) :-
+parse_pred_expr_args([Term | Terms], [Arg | Args], [Mode | Modes]) :-
     parse_lambda_arg(Term, Arg, Mode),
     parse_pred_expr_args(Terms, Args, Modes).
 
@@ -403,7 +432,7 @@ parse_dcg_pred_expr_args([DCGModeTermA, DCGModeTermB], [],
     convert_mode(allow_constrained_inst_var, DCGModeTermB, DCGModeB0),
     constrain_inst_vars_in_mode(DCGModeA0, DCGModeA),
     constrain_inst_vars_in_mode(DCGModeB0, DCGModeB).
-parse_dcg_pred_expr_args([Term|Terms], [Arg|Args], [Mode|Modes]) :-
+parse_dcg_pred_expr_args([Term | Terms], [Arg | Args], [Mode | Modes]) :-
     Terms = [_, _ | _],
     parse_lambda_arg(Term, Arg, Mode),
     parse_dcg_pred_expr_args(Terms, Args, Modes).

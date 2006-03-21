@@ -622,49 +622,59 @@
 
 :- type goal_expr
     % conjunctions
-    --->    (goal , goal)   % (non-empty) conjunction
-    ;       true            % empty conjunction
-    ;       {goal & goal}   % parallel conjunction
-                            % (The curly braces just quote the '&'/2.)
+    --->    conj_expr(goal, goal)
+                            % (non-empty) conjunction
+    ;       true_expr       % empty conjunction
+    ;       par_conj_expr(goal, goal)
+                            % parallel conjunction
 
     % disjunctions
-    ;       {goal ; goal}   % (non-empty) disjunction
-                            % (The curly braces just quote the ';'/2.)
-    ;       fail            % empty disjunction
+    ;       disj_expr(goal, goal)
+                            % (non-empty) disjunction
+    ;       fail_expr       % empty disjunction
 
     % quantifiers
-    ;       { some(prog_vars, goal) }
+    ;       some_expr(prog_vars, goal)
                             % existential quantification
-                            % (The curly braces just quote the 'some'/2.)
-    ;       all(prog_vars, goal)
-                            % % universal quantification
-    ;       some_state_vars(prog_vars, goal)
-    ;       all_state_vars(prog_vars, goal)
+    ;       all_expr(prog_vars, goal)
+                            % universal quantification
+    ;       some_state_vars_expr(prog_vars, goal)
+    ;       all_state_vars_expr(prog_vars, goal)
                             % state variables extracted from
                             % some/2 and all/2 quantifiers.
 
     % other scopes
-    ;       promise_purity(implicit_purity_promise, purity, goal)
-    ;       promise_equivalent_solutions(prog_vars, prog_vars, prog_vars, goal)
-                            % (OrdinaryVars, DotStateVars, ColonStateVars,
-                            % % Goal)
+    ;       promise_purity_expr(implicit_purity_promise, purity, goal)
+    ;       promise_equivalent_solutions_expr(
+                prog_vars,  % OrdinaryVars
+                prog_vars,  % DotStateVars
+                prog_vars,  % ColonStateVars
+                goal)
+    ;       promise_equivalent_solution_sets_expr(
+                prog_vars,  % OrdinaryVars
+                prog_vars,  % DotStateVars
+                prog_vars,  % ColonStateVars
+                goal)
+    ;       promise_equivalent_solution_arbitrary_expr(
+                prog_vars,  % OrdinaryVars
+                prog_vars,  % DotStateVars
+                prog_vars,  % ColonStateVars
+                goal)
 
     % implications
-    ;       implies(goal, goal)
+    ;       implies_expr(goal, goal)
                             % A => B
-    ;       equivalent(goal, goal)
+    ;       equivalent_expr(goal, goal)
                             % A <=> B
 
     % negation and if-then-else
-    ;       not(goal)
-    ;       if_then(prog_vars, prog_vars, goal, goal)
-                            % if_then(SomeVars, StateVars, If, Then)
-    ;       if_then_else(prog_vars, prog_vars, goal, goal, goal)
+    ;       not_expr(goal)
+    ;       if_then_else_expr(prog_vars, prog_vars, goal, goal, goal)
                             % if_then_else(SomeVars, StateVars, If, Then, Else)
 
     % atomic goals
-    ;       call(sym_name, list(prog_term), purity)
-    ;       unify(prog_term, prog_term, purity).
+    ;       call_expr(sym_name, list(prog_term), purity)
+    ;       unify_expr(prog_term, prog_term, purity).
 
 %-----------------------------------------------------------------------------%
 %

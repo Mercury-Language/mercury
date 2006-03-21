@@ -61,6 +61,7 @@
     ;       unknown_format_string(sym_name, arity)
     ;       unknown_format_values(sym_name, arity)
     ;       bad_format(sym_name, arity, string)
+    ;       nested_promise_eqv_solution_sets(prog_context)
 
             % The following are errors.
 
@@ -82,6 +83,8 @@
     ;       export_model_non_proc(pred_id, proc_id, determinism)
             % Procedure with multi or nondet detism exported
             % via :- pragma export ...
+    ;       arbitrary_without_promise
+    ;       arbitrary_promise_overlap(prog_context, prog_varset, set(prog_var))
     ;       promise_solutions_missing_vars(promise_solutions_kind, prog_varset,
                 set(prog_var))
     ;       promise_solutions_extra_vars(promise_solutions_kind, prog_varset,
@@ -1138,6 +1141,9 @@ det_msg_get_type(pragma_c_code_without_det_decl(_, _), det_error).
 det_msg_get_type(has_io_state_but_not_det(_, _), det_error).
 det_msg_get_type(will_not_throw_with_erroneous(_, _), det_error).
 det_msg_get_type(export_model_non_proc(_, _, _), det_error).
+det_msg_get_type(nested_promise_eqv_solution_sets(_), simple_code_warning).
+det_msg_get_type(arbitrary_without_promise, det_error).
+det_msg_get_type(arbitrary_promise_overlap(_, _, _), det_error).
 det_msg_get_type(promise_solutions_missing_vars(_, _, _), det_error).
 det_msg_get_type(promise_solutions_extra_vars(_, _, _), det_error).
 
@@ -1169,6 +1175,9 @@ det_msg_is_any_mode_msg(pragma_c_code_without_det_decl(_, _), any_mode).
 det_msg_is_any_mode_msg(has_io_state_but_not_det(_, _), any_mode).
 det_msg_is_any_mode_msg(will_not_throw_with_erroneous(_, _), any_mode).
 det_msg_is_any_mode_msg(export_model_non_proc(_, _, _), any_mode).
+det_msg_is_any_mode_msg(nested_promise_eqv_solution_sets(_), any_mode).
+det_msg_is_any_mode_msg(arbitrary_without_promise, any_mode).
+det_msg_is_any_mode_msg(arbitrary_promise_overlap(_, _, _), any_mode).
 det_msg_is_any_mode_msg(promise_solutions_missing_vars(_, _, _), any_mode).
 det_msg_is_any_mode_msg(promise_solutions_extra_vars(_, _, _), any_mode).
 
@@ -1490,11 +1499,48 @@ det_report_msg(will_not_throw_with_erroneous(PredId, ProcId), Context,
 det_report_msg(export_model_non_proc(_PredId, _ProcId, Detism), Context,
         _ModuleInfo, !IO) :-
     Pieces = [words("Error: "),
-        fixed(":- pragma export' declaration"),
+        fixed("`:- pragma export' declaration"),
         words("for a procedure that has a determinism of"),
-        fixed(hlds_out.determinism_to_string(Detism) ++ ",")
-        ],
+        fixed(hlds_out.determinism_to_string(Detism) ++ ".")],
     write_error_pieces(Context, 0, Pieces, !IO).
+det_report_msg(nested_promise_eqv_solution_sets(OuterContext), Context,
+        _ModuleInfo, !IO) :-
+    Pieces = [words("Error: "),
+        words("`promise_equivalent_solution_sets' scope"),
+        words("is nested inside another.")],
+    write_error_pieces(Context, 0, Pieces, !IO),
+    Pieces2 = [words("This is the outer "),
+        words("`promise_equivalent_solution_sets' scope.")],
+    write_error_pieces_not_first_line(OuterContext, 0, Pieces2, !IO).
+det_report_msg(arbitrary_without_promise, Context, _ModuleInfo, !IO) :-
+    Pieces = [words("Error: "),
+        words("this `arbitrary' scope is not nested inside"),
+        words("a `promise_equivalent_solution_sets' scope.")],
+    write_error_pieces(Context, 0, Pieces, !IO).
+det_report_msg(arbitrary_promise_overlap(PromiseContext, VarSet, OverlapVars),
+        Context, _ModuleInfo, !IO) :-
+    VarNames = list.map(lookup_var_name_in_varset(VarSet),
+        set.to_sorted_list(OverlapVars)),
+    (
+        VarNames = [],
+        unexpected(this_file, "det_report_msg: " ++
+            "arbitrary_promise_overlap empty")
+    ;
+        VarNames = [_],
+        VarStr = "the variable"
+    ;
+        VarNames = [_, _ | _],
+        VarStr = "the following variables:"
+    ),
+    Pieces = [words("Error: "),
+        words("this `arbitrary' scope and the"),
+        words("`promise_equivalent_solution_sets' scope it is nested inside"),
+        words("overlap on"), words(VarStr)]
+        ++ list_to_pieces(VarNames) ++ [suffix(".")],
+    write_error_pieces(Context, 0, Pieces, !IO),
+    Pieces2 = [words("This is the outer "),
+        words("`promise_equivalent_solution_sets' scope.")],
+    write_error_pieces_not_first_line(PromiseContext, 0, Pieces2, !IO).
 det_report_msg(promise_solutions_missing_vars(Kind, VarSet, Vars), Context, _,
         !IO) :-
     VarNames = list.map(lookup_var_name_in_varset(VarSet),
@@ -1511,8 +1557,9 @@ det_report_msg(promise_solutions_missing_vars(Kind, VarSet, Vars), Context, _,
         VarNames = [_, _ | _],
         ListStr = "some variables that are not listed:"
     ),
-    Pieces = [words("Error: the"), words(KindStr), words("goal binds"),
-          words(ListStr)] ++ list_to_pieces(VarNames) ++ [suffix(".")],
+    Pieces = [words("Error: the"), words(add_quotes(KindStr)),
+        words("goal binds"), words(ListStr)]
+        ++ list_to_pieces(VarNames) ++ [suffix(".")],
     error_util.write_error_pieces(Context, 0, Pieces, !IO).
 det_report_msg(promise_solutions_extra_vars(Kind, VarSet, Vars), Context, _,
         !IO) :-
@@ -1530,16 +1577,19 @@ det_report_msg(promise_solutions_extra_vars(Kind, VarSet, Vars), Context, _,
         VarNames = [_, _ | _],
         ListStr = "some extra variables:"
     ),
-    Pieces = [words("Error: the"), words(KindStr), words("goal lists"),
-          words(ListStr)] ++ list_to_pieces(VarNames) ++ [suffix(".")],
+    Pieces = [words("Error: the"), words(add_quotes(KindStr)),
+        words("goal lists"), words(ListStr)]
+        ++ list_to_pieces(VarNames) ++ [suffix(".")],
     error_util.write_error_pieces(Context, 0, Pieces, !IO).
 
 :- func promise_solutions_kind_str(promise_solutions_kind) = string.
 
 promise_solutions_kind_str(equivalent_solutions)
     = "promise_equivalent_solutions".
-promise_solutions_kind_str(same_solutions)
-    = "promise_same_solutions".
+promise_solutions_kind_str(equivalent_solution_sets)
+    = "promise_equivalent_solution_sets".
+promise_solutions_kind_str(equivalent_solution_sets_arbitrary)
+    = "arbitrary".
 
 :- func lookup_var_name_in_varset(prog_varset, prog_var) = string.
 

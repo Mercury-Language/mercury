@@ -533,33 +533,35 @@ transform_goal(Goal0 - Context, Subst, Goal - GoalInfo, !VarSet,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     svar_info::in, svar_info::out, io::di, io::uo) is det.
 
-transform_goal_2(fail, _, _, disj([]) - GoalInfo, !VarSet, !ModuleInfo,
+transform_goal_2(fail_expr, _, _, disj([]) - GoalInfo, !VarSet, !ModuleInfo,
         !QualInfo, !SInfo, !IO) :-
     goal_info_init(GoalInfo),
     prepare_for_next_conjunct(set.init, !VarSet, !SInfo).
-transform_goal_2(true, _, _, conj(plain_conj, []) - GoalInfo, !VarSet,
+transform_goal_2(true_expr, _, _, conj(plain_conj, []) - GoalInfo, !VarSet,
         !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     goal_info_init(GoalInfo),
     prepare_for_next_conjunct(set.init, !VarSet, !SInfo).
-transform_goal_2(all(Vars0, Goal0), Context, Subst, Goal, !VarSet, !ModuleInfo,
-        !QualInfo, !SInfo, !IO) :-
+transform_goal_2(all_expr(Vars0, Goal0), Context, Subst, Goal, !VarSet,
+        !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     % Convert `all [Vars] Goal' into `not some [Vars] not Goal'.
-    TransformedGoal = not(some(Vars0, not(Goal0) - Context) - Context),
+    TransformedGoal = not_expr(some_expr(Vars0, not_expr(Goal0) - Context)
+        - Context),
     transform_goal_2(TransformedGoal, Context, Subst, Goal, !VarSet,
         !ModuleInfo, !QualInfo, !SInfo, !IO).
-transform_goal_2(all_state_vars(StateVars, Goal0), Context, Subst,
+transform_goal_2(all_state_vars_expr(StateVars, Goal0), Context, Subst,
         Goal, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     transform_goal_2(
-        not(some_state_vars(StateVars, not(Goal0) - Context) - Context),
+        not_expr(some_state_vars_expr(StateVars,
+            not_expr(Goal0) - Context) - Context),
         Context, Subst, Goal, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO).
-transform_goal_2(some(Vars0, Goal0), _, Subst,
+transform_goal_2(some_expr(Vars0, Goal0), _, Subst,
         scope(exist_quant(Vars), Goal) - GoalInfo,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     substitute_vars(Vars0, Subst, Vars),
     transform_goal(Goal0, Subst, Goal, !VarSet, !ModuleInfo, !QualInfo,
         !SInfo, !IO),
     goal_info_init(GoalInfo).
-transform_goal_2(some_state_vars(StateVars0, Goal0), _, Subst,
+transform_goal_2(some_state_vars_expr(StateVars0, Goal0), _, Subst,
         scope(exist_quant(Vars), Goal) - GoalInfo,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     BeforeSInfo = !.SInfo,
@@ -569,29 +571,43 @@ transform_goal_2(some_state_vars(StateVars0, Goal0), _, Subst,
         !SInfo, !IO),
     finish_local_state_vars(StateVars, Vars, BeforeSInfo, !SInfo),
     goal_info_init(GoalInfo).
-transform_goal_2(promise_purity(Implicit, Purity, Goal0), _, Subst,
+transform_goal_2(promise_purity_expr(Implicit, Purity, Goal0), _, Subst,
         scope(promise_purity(Implicit, Purity), Goal) - GoalInfo,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     transform_goal(Goal0, Subst, Goal, !VarSet, !ModuleInfo, !QualInfo,
         !SInfo, !IO),
     goal_info_init(GoalInfo).
 transform_goal_2(
-        promise_equivalent_solutions(Vars0, DotSVars0, ColonSVars0, Goal0),
+        promise_equivalent_solutions_expr(Vars0, DotSVars0, ColonSVars0,
+            Goal0),
         Context, Subst,
         scope(promise_solutions(Vars, equivalent_solutions), Goal) - GoalInfo,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
-    substitute_vars(Vars0, Subst, Vars1),
-    substitute_vars(DotSVars0, Subst, DotSVars1),
-    convert_dot_state_vars(Context, DotSVars1, DotSVars, !VarSet, !SInfo, !IO),
-    transform_goal(Goal0, Subst, Goal, !VarSet, !ModuleInfo, !QualInfo,
-        !SInfo, !IO),
-    goal_info_init(GoalInfo),
-    substitute_vars(ColonSVars0, Subst, ColonSVars1),
-    convert_dot_state_vars(Context, ColonSVars1, ColonSVars, !VarSet,
-        !SInfo, !IO),
-    Vars = Vars1 ++ DotSVars ++ ColonSVars.
-transform_goal_2(if_then_else(Vars0, StateVars0, Cond0, Then0, Else0), Context,
-        Subst, if_then_else(Vars, Cond, Then, Else) - GoalInfo,
+    transform_promise_eqv_goal(Vars0, DotSVars0, ColonSVars0, Subst, Context,
+        Vars, Goal0, Goal, GoalInfo, !VarSet, !ModuleInfo, !QualInfo, !SInfo,
+        !IO).
+transform_goal_2(
+        promise_equivalent_solution_sets_expr(Vars0, DotSVars0, ColonSVars0,
+            Goal0),
+        Context, Subst,
+        scope(promise_solutions(Vars, equivalent_solution_sets), Goal)
+            - GoalInfo,
+        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
+    transform_promise_eqv_goal(Vars0, DotSVars0, ColonSVars0, Subst, Context,
+        Vars, Goal0, Goal, GoalInfo, !VarSet, !ModuleInfo, !QualInfo, !SInfo,
+        !IO).
+transform_goal_2(
+        promise_equivalent_solution_arbitrary_expr(Vars0,
+            DotSVars0, ColonSVars0, Goal0),
+        Context, Subst,
+        scope(promise_solutions(Vars, equivalent_solution_sets_arbitrary),
+            Goal) - GoalInfo,
+        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
+    transform_promise_eqv_goal(Vars0, DotSVars0, ColonSVars0, Subst, Context,
+        Vars, Goal0, Goal, GoalInfo, !VarSet, !ModuleInfo, !QualInfo, !SInfo,
+        !IO).
+transform_goal_2(if_then_else_expr(Vars0, StateVars0, Cond0, Then0, Else0),
+        Context, Subst, if_then_else(Vars, Cond, Then, Else) - GoalInfo,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     BeforeSInfo = !.SInfo,
     substitute_vars(Vars0, Subst, Vars),
@@ -610,20 +626,15 @@ transform_goal_2(if_then_else(Vars0, StateVars0, Cond0, Then0, Else0), Context,
     goal_info_init(Context, GoalInfo),
     finish_if_then_else(Context, Then1, Then, Else1, Else,
         BeforeSInfo, AfterCondSInfo, AfterThenSInfo, !SInfo, !VarSet).
-transform_goal_2(if_then(Vars0, StateVars, A0, B0), Context, Subst,
-        Goal, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
-    transform_goal_2(
-        if_then_else(Vars0, StateVars, A0, B0, true - Context),
-        Context, Subst, Goal, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO).
-transform_goal_2(not(A0), _, Subst, Goal, !VarSet, !ModuleInfo, !QualInfo,
+transform_goal_2(not_expr(A0), _, Subst, Goal, !VarSet, !ModuleInfo, !QualInfo,
         !SInfo, !IO) :-
     BeforeSInfo = !.SInfo,
     transform_goal(A0, Subst, A, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
     goal_info_init(GoalInfo),
     Goal = not(A) - GoalInfo,
     finish_negation(BeforeSInfo, !SInfo).
-transform_goal_2((A0, B0), _, Subst, Goal, !VarSet, !ModuleInfo, !QualInfo,
-        !SInfo, !IO) :-
+transform_goal_2(conj_expr(A0, B0), _, Subst, Goal, !VarSet, !ModuleInfo,
+        !QualInfo, !SInfo, !IO) :-
     get_rev_conj(A0, Subst, [], R0, !VarSet, !ModuleInfo, !QualInfo,
         !SInfo, !IO),
     get_rev_conj(B0, Subst, R0, R,  !VarSet, !ModuleInfo, !QualInfo,
@@ -631,8 +642,8 @@ transform_goal_2((A0, B0), _, Subst, Goal, !VarSet, !ModuleInfo, !QualInfo,
     L = list.reverse(R),
     goal_info_init(GoalInfo),
     conj_list_to_goal(L, GoalInfo, Goal).
-transform_goal_2((A0 & B0), _, Subst, Goal, !VarSet, !ModuleInfo, !QualInfo,
-        !SInfo, !IO) :-
+transform_goal_2(par_conj_expr(A0, B0), _, Subst, Goal, !VarSet, !ModuleInfo,
+        !QualInfo, !SInfo, !IO) :-
     get_rev_par_conj(B0, Subst, [], R0, !VarSet, !ModuleInfo, !QualInfo,
         !SInfo, !IO),
     get_rev_par_conj(A0, Subst, R0, R,  !VarSet, !ModuleInfo, !QualInfo,
@@ -640,20 +651,20 @@ transform_goal_2((A0 & B0), _, Subst, Goal, !VarSet, !ModuleInfo, !QualInfo,
     L = list.reverse(R),
     goal_info_init(GoalInfo),
     par_conj_list_to_goal(L, GoalInfo, Goal).
-transform_goal_2((A0 ; B0), Context, Subst, Goal, !VarSet, !ModuleInfo,
+transform_goal_2(disj_expr(A0, B0), Context, Subst, Goal, !VarSet, !ModuleInfo,
         !QualInfo, !SInfo, !IO) :-
     get_disj(B0, Subst, [], L0, !VarSet, !ModuleInfo, !QualInfo, !.SInfo, !IO),
     get_disj(A0, Subst, L0, L1, !VarSet, !ModuleInfo, !QualInfo, !.SInfo, !IO),
     finish_disjunction(Context, !.VarSet, L1, L, !:SInfo),
     goal_info_init(Context, GoalInfo),
     disj_list_to_goal(L, GoalInfo, Goal).
-transform_goal_2(implies(P, Q), Context, Subst, Goal, !VarSet, !ModuleInfo,
-        !QualInfo, !SInfo, !IO) :-
+transform_goal_2(implies_expr(P, Q), Context, Subst, Goal, !VarSet,
+        !ModuleInfo, !QualInfo, !SInfo, !IO) :-
         % `P => Q' is defined as `not (P, not Q)'
-    TransformedGoal = not( (P, not(Q) - Context) - Context ),
+    TransformedGoal = not_expr(conj_expr(P, not_expr(Q) - Context) - Context),
     transform_goal_2(TransformedGoal, Context, Subst, Goal, !VarSet,
         !ModuleInfo, !QualInfo, !SInfo, !IO).
-transform_goal_2(equivalent(P0, Q0), _, Subst, Goal, !VarSet, !ModuleInfo,
+transform_goal_2(equivalent_expr(P0, Q0), _, Subst, Goal, !VarSet, !ModuleInfo,
         !QualInfo, !SInfo, !IO) :-
     %
     % `P <=> Q' is defined as `(P => Q), (Q => P)',
@@ -668,7 +679,7 @@ transform_goal_2(equivalent(P0, Q0), _, Subst, Goal, !VarSet, !ModuleInfo,
     transform_goal(Q0, Subst, Q, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
     Goal = shorthand(bi_implication(P, Q)) - GoalInfo,
     finish_equivalence(BeforeSInfo, !SInfo).
-transform_goal_2(call(Name, Args0, Purity), Context, Subst, Goal, !VarSet,
+transform_goal_2(call_expr(Name, Args0, Purity), Context, Subst, Goal, !VarSet,
         !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     Args1 = expand_bang_state_var_args(Args0),
     (
@@ -677,8 +688,9 @@ transform_goal_2(call(Name, Args0, Purity), Context, Subst, Goal, !VarSet,
     ->
         prepare_for_call(!SInfo),
         % `LHS \= RHS' is defined as `not (LHS = RHS)'
-        transform_goal_2(not(unify(LHS, RHS, Purity) - Context), Context,
-            Subst, Goal, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
+        transform_goal_2(not_expr(unify_expr(LHS, RHS, Purity) - Context),
+            Context, Subst, Goal, !VarSet, !ModuleInfo, !QualInfo, !SInfo,
+            !IO),
         finish_call(!VarSet, !SInfo)
     ;
         % check for a DCG field access goal:
@@ -734,7 +746,7 @@ transform_goal_2(call(Name, Args0, Purity), Context, Subst, Goal, !VarSet,
             Goal0, Goal, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
         finish_call(!VarSet, !SInfo)
     ).
-transform_goal_2(unify(A0, B0, Purity), Context, Subst, Goal, !VarSet,
+transform_goal_2(unify_expr(A0, B0, Purity), Context, Subst, Goal, !VarSet,
         !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     % It is an error for the left or right hand side of a
     % unification to be !X (it may be !.X or !:X, however).
@@ -752,6 +764,26 @@ transform_goal_2(unify(A0, B0, Purity), Context, Subst, Goal, !VarSet,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
         finish_call(!VarSet, !SInfo)
     ).
+
+:- pred transform_promise_eqv_goal(prog_vars::in, prog_vars::in, prog_vars::in,
+    prog_substitution::in, prog_context::in, prog_vars::out,
+    goal::in, hlds_goal::out, hlds_goal_info::out,
+    prog_varset::in, prog_varset::out, module_info::in, module_info::out,
+    qual_info::in, qual_info::out, svar_info::in, svar_info::out,
+    io::di, io::uo) is det.
+
+transform_promise_eqv_goal(Vars0, DotSVars0, ColonSVars0, Subst, Context, Vars,
+        Goal0, Goal, GoalInfo, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
+    substitute_vars(Vars0, Subst, Vars1),
+    substitute_vars(DotSVars0, Subst, DotSVars1),
+    convert_dot_state_vars(Context, DotSVars1, DotSVars, !VarSet, !SInfo, !IO),
+    transform_goal(Goal0, Subst, Goal, !VarSet, !ModuleInfo, !QualInfo,
+        !SInfo, !IO),
+    goal_info_init(GoalInfo),
+    substitute_vars(ColonSVars0, Subst, ColonSVars1),
+    convert_dot_state_vars(Context, ColonSVars1, ColonSVars, !VarSet,
+        !SInfo, !IO),
+    Vars = Vars1 ++ DotSVars ++ ColonSVars.
 
 :- pred convert_dot_state_vars(prog_context::in, prog_vars::in, prog_vars::out,
     prog_varset::in, prog_varset::out, svar_info::in, svar_info::out,
@@ -963,7 +995,7 @@ qualify_lambda_mode_list(Modes0, Modes, Context, !QualInfo, !IO) :-
 
 get_rev_conj(Goal, Subst, RevConj0, RevConj, !VarSet, !ModuleInfo, !QualInfo,
         !SInfo, !IO) :-
-    ( Goal = (A,B) - _Context ->
+    ( Goal = conj_expr(A, B) - _Context ->
         get_rev_conj(A, Subst, RevConj0, RevConj1,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
         get_rev_conj(B, Subst, RevConj1, RevConj,
@@ -987,7 +1019,7 @@ get_rev_conj(Goal, Subst, RevConj0, RevConj, !VarSet, !ModuleInfo, !QualInfo,
 
 get_rev_par_conj(Goal, Subst, RevParConj0, RevParConj, !VarSet, !ModuleInfo,
         !QualInfo, !SInfo, !IO) :-
-    ( Goal = (A & B) - _Context ->
+    ( Goal = par_conj_expr(A, B) - _Context ->
         get_rev_par_conj(A, Subst, RevParConj0, RevParConj1,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
         get_rev_par_conj(B, Subst, RevParConj1, RevParConj,
@@ -1011,7 +1043,7 @@ get_rev_par_conj(Goal, Subst, RevParConj0, RevParConj, !VarSet, !ModuleInfo,
 
 get_disj(Goal, Subst, Disj0, Disj, !VarSet, !ModuleInfo, !QualInfo, SInfo,
         !IO) :-
-    ( Goal = (A;B) - _Context ->
+    ( Goal = disj_expr(A, B) - _Context ->
         get_disj(B, Subst, Disj0, Disj1, !VarSet, !ModuleInfo, !QualInfo,
             SInfo, !IO),
         get_disj(A, Subst, Disj1, Disj, !VarSet, !ModuleInfo, !QualInfo,

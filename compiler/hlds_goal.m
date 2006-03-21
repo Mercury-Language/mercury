@@ -300,7 +300,8 @@
 
 :- type promise_solutions_kind
     --->    equivalent_solutions
-    ;       same_solutions.
+    ;       equivalent_solution_sets
+    ;       equivalent_solution_sets_arbitrary.
 
 :- type removable
     --->    removable
@@ -1012,22 +1013,10 @@
                             % thousand). This feature may be attached to
                             % switches as well as disjunctions.
 
-    ;       will_not_modify_trail
+    ;       will_not_modify_trail.
                             % This goal will not modify the trail, so it
                             % is safe for the compiler to omit trailing
                             % primitives when generating code for this goal.
-
-    ;       promise_same_deconstruct.
-                            % This goal is a deconstruction unification
-                            % occurring in a promise_same_conj conjunction,
-                            % which would naturally have detism cc_multi
-                            % due to the deconstructed variable's type having
-                            % user-defined equality. However, this annotation
-                            % means that the programmer has promised that
-                            % the results of the conjunction don't depend
-                            % on which of the possible concrete representations
-                            % of the abstract value the deconstructed variable
-                            % actually has.
 
     % We can think of the goal that defines a procedure to be a tree,
     % whose leaves are primitive goals and whose interior nodes are

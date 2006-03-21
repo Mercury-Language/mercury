@@ -486,54 +486,55 @@ add_imports_2(Imports, !Info) :-
     % the maybe_and predicate to be associative.
     % NB. accumulator introduction doesn't work on this case yet.
     %
-process_assert((GA , GB) - _, Symbols, Success) :-
+process_assert(conj_expr(GA, GB) - _, Symbols, Success) :-
     process_assert(GA, SymbolsA, SuccessA),
     process_assert(GB, SymbolsB, SuccessB),
     list.append(SymbolsA, SymbolsB, Symbols),
     bool.and(SuccessA, SuccessB, Success).
-process_assert(true - _, [], yes).
-process_assert((GA & GB) - _, Symbols, Success) :-
+process_assert(true_expr - _, [], yes).
+process_assert(par_conj_expr(GA, GB) - _, Symbols, Success) :-
     process_assert(GA, SymbolsA, SuccessA),
     process_assert(GB, SymbolsB, SuccessB),
     list.append(SymbolsA, SymbolsB, Symbols),
     bool.and(SuccessA, SuccessB, Success).
-process_assert((GA ; GB) - _, Symbols, Success) :-
+process_assert(disj_expr(GA, GB) - _, Symbols, Success) :-
     process_assert(GA, SymbolsA, SuccessA),
     process_assert(GB, SymbolsB, SuccessB),
     list.append(SymbolsA, SymbolsB, Symbols),
     bool.and(SuccessA, SuccessB, Success).
-process_assert(fail - _, [], yes).
-process_assert(some(_, G) - _, Symbols, Success) :-
+process_assert(fail_expr - _, [], yes).
+process_assert(some_expr(_, G) - _, Symbols, Success) :-
     process_assert(G, Symbols, Success).
-process_assert(some_state_vars(_, G) - _, Symbols, Success) :-
+process_assert(some_state_vars_expr(_, G) - _, Symbols, Success) :-
     process_assert(G, Symbols, Success).
-process_assert(all(_, G) - _, Symbols, Success) :-
+process_assert(all_expr(_, G) - _, Symbols, Success) :-
     process_assert(G, Symbols, Success).
-process_assert(all_state_vars(_, G) - _, Symbols, Success) :-
+process_assert(all_state_vars_expr(_, G) - _, Symbols, Success) :-
     process_assert(G, Symbols, Success).
-process_assert(promise_purity(_I, _P, G) - _, Symbols, Success) :-
+process_assert(promise_purity_expr(_I, _P, G) - _, Symbols, Success) :-
     process_assert(G, Symbols, Success).
-process_assert(promise_equivalent_solutions(_V, _D, _C, G) - _,
+process_assert(promise_equivalent_solutions_expr(_V, _D, _C, G) - _,
         Symbols, Success) :-
     process_assert(G, Symbols, Success).
-process_assert(implies(GA, GB) - _, Symbols, Success) :-
-    process_assert(GA, SymbolsA, SuccessA),
-    process_assert(GB, SymbolsB, SuccessB),
-    list.append(SymbolsA, SymbolsB, Symbols),
-    bool.and(SuccessA, SuccessB, Success).
-process_assert(equivalent(GA, GB) - _, Symbols, Success) :-
-    process_assert(GA, SymbolsA, SuccessA),
-    process_assert(GB, SymbolsB, SuccessB),
-    list.append(SymbolsA, SymbolsB, Symbols),
-    bool.and(SuccessA, SuccessB, Success).
-process_assert(not(G) - _, Symbols, Success) :-
+process_assert(promise_equivalent_solution_sets_expr(_V, _D, _C, G) - _,
+        Symbols, Success) :-
     process_assert(G, Symbols, Success).
-process_assert(if_then(_, _, GA, GB) - _, Symbols, Success) :-
+process_assert(promise_equivalent_solution_arbitrary_expr(_V, _D, _C, G) - _,
+        Symbols, Success) :-
+    process_assert(G, Symbols, Success).
+process_assert(implies_expr(GA, GB) - _, Symbols, Success) :-
     process_assert(GA, SymbolsA, SuccessA),
     process_assert(GB, SymbolsB, SuccessB),
     list.append(SymbolsA, SymbolsB, Symbols),
     bool.and(SuccessA, SuccessB, Success).
-process_assert(if_then_else(_, _, GA, GB, GC) - _, Symbols, Success) :-
+process_assert(equivalent_expr(GA, GB) - _, Symbols, Success) :-
+    process_assert(GA, SymbolsA, SuccessA),
+    process_assert(GB, SymbolsB, SuccessB),
+    list.append(SymbolsA, SymbolsB, Symbols),
+    bool.and(SuccessA, SuccessB, Success).
+process_assert(not_expr(G) - _, Symbols, Success) :-
+    process_assert(G, Symbols, Success).
+process_assert(if_then_else_expr(_, _, GA, GB, GC) - _, Symbols, Success) :-
     process_assert(GA, SymbolsA, SuccessA),
     process_assert(GB, SymbolsB, SuccessB),
     process_assert(GC, SymbolsC, SuccessC),
@@ -541,14 +542,10 @@ process_assert(if_then_else(_, _, GA, GB, GC) - _, Symbols, Success) :-
     list.append(Symbols0, SymbolsC, Symbols),
     bool.and(SuccessA, SuccessB, Success0),
     bool.and(Success0, SuccessC, Success).
-process_assert(call(SymName, Args0, _Purity) - _, Symbols, Success) :-
-    (
-        SymName = qualified(_, _)
-    ->
+process_assert(call_expr(SymName, Args0, _Purity) - _, Symbols, Success) :-
+    ( SymName = qualified(_, _) ->
         list.map(term.coerce, Args0, Args),
-        (
-            term_qualified_symbols_list(Args, Symbols0)
-        ->
+        ( term_qualified_symbols_list(Args, Symbols0) ->
             Symbols = [SymName | Symbols0],
             Success = yes
         ;
@@ -559,7 +556,7 @@ process_assert(call(SymName, Args0, _Purity) - _, Symbols, Success) :-
         Symbols = [],
         Success = no
     ).
-process_assert(unify(LHS0, RHS0, _Purity) - _, Symbols, Success) :-
+process_assert(unify_expr(LHS0, RHS0, _Purity) - _, Symbols, Success) :-
     term.coerce(LHS0, LHS),
     term.coerce(RHS0, RHS),
     (

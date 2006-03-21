@@ -348,7 +348,11 @@ ops.op_table("promise_pure_implicit", before, fx, 950).    % Mercury extension
 ops.op_table("promise_impure_implicit", before, fx, 950).  % Mercury extension
 ops.op_table("promise_semipure_implicit", before, fx, 950).% Mercury extension
 ops.op_table("promise_equivalent_solutions", before, fxy, 950).
-                                            % Mercury extension
+                                           % Mercury extension
+ops.op_table("promise_equivalent_solution_sets", before, fxy, 950).
+                                           % Mercury extension
+ops.op_table("arbitrary", before, fxy, 950).
+                                           % Mercury extension
 ops.op_table("some", before, fxy, 950).    % Mercury/NU-Prolog extension
 ops.op_table("then", after, xfx, 1150).    % Mercury/NU-Prolog extension
 ops.op_table("type", before, fx, 1180).    % Mercury extension

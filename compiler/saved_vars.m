@@ -227,7 +227,6 @@ ok_to_duplicate(save_deep_excp_vars) = no.
 ok_to_duplicate(dont_warn_singleton) = yes.
 ok_to_duplicate(mode_check_clauses_goal) = yes.
 ok_to_duplicate(will_not_modify_trail) = yes.
-ok_to_duplicate(promise_same_deconstruct) = yes.
 
     % Divide a list of goals into an initial subsequence of goals
     % that construct constants, and all other goals.

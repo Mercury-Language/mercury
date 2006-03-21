@@ -1207,9 +1207,9 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         % See the comments for prog_io.parse_mutable_decl for the reason
         % why we _must_ use MutVarset here.
         % 
-        InitClause = clause(compiler(mutable_decl), MutVarset,
-            predicate, mutable_init_pred_sym_name(ModuleName, Name), [],
-            call(mutable_set_pred_sym_name(ModuleName, Name),
+        InitClause = clause(compiler(mutable_decl), MutVarset, predicate,
+            mutable_init_pred_sym_name(ModuleName, Name), [],
+            call_expr(mutable_set_pred_sym_name(ModuleName, Name),
                 [InitTerm], purity_impure) - Context),
         add_item_clause(InitClause, !Status, Context, !ModuleInfo, !QualInfo,
             !IO),
