@@ -17,14 +17,17 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
-:- import_module std_util, char, bool, list.
+:- import_module bool.
+:- import_module char.
+:- import_module list.
+:- import_module std_util.
 
-main -->
-	do_while(hello, get_next),
-	io__write_string("No (more) solutions\n").
+main(!IO) :-
+	do_while(hello, get_next, !IO),
+	io.write_string("No (more) solutions\n", !IO).
 
 :- pred hello(string::out) is multi.
 
@@ -32,18 +35,18 @@ hello("Hello, world\n").
 hello("Good day, world\n").
 hello("Greetings, world\n").
 
-:- pred get_next(string::in, bool::out, io__state::di, io__state::uo) is det.
+:- pred get_next(string::in, bool::out, io::di, io::uo) is det.
 
-get_next(String, More) -->
+get_next(String, More, !IO) :-
 	% print the first answer
-	io__write_string(String),
+	io.write_string(String, !IO),
 
 	% see if the user wants more answers
-	io__write_string("More? "),
-	io__read_line(Line),
-	{ if	Line = ok([FirstChar|_]),
-		char__to_upper(FirstChar, 'Y')
+	io.write_string("More? ", !IO),
+	io.read_line(Line, !IO),
+	( if	Line = ok([FirstChar|_]),
+		char.to_upper(FirstChar, 'Y')
 	then	More = yes
-	else	More = no
-	}.
+ 	else	More = no
+	).
 

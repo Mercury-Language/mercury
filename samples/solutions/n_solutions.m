@@ -14,10 +14,12 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
-:- import_module std_util, bool, int.
+:- import_module bool.
+:- import_module int.
+:- import_module std_util.
 
 main(!IO) :-
 	N = 2,

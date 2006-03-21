@@ -95,8 +95,8 @@ factor2(Term, Factor) -->
 
 term(Term) -->
 	( const(Const) ->
-		{ string__from_char_list(Const, ConstString) },
-		{ string__to_int(ConstString, Num) },
+		{ string.from_char_list(Const, ConstString) },
+		{ string.to_int(ConstString, Num) },
 		{ Term = number(Num) }
 	;
 		['('], expr(Term), [')']
@@ -116,4 +116,4 @@ const([Digit|Rest]) -->
 
 digit(Char) -->
 	[Char],
-	{ char__is_digit(Char) }.
+	{ char.is_digit(Char) }.

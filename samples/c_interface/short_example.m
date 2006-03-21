@@ -19,7 +19,9 @@
 	puts(S::in, Old_IO::di, New_IO::uo),
 	[promise_pure, will_not_call_mercury],
 "
-	puts(S); New_IO = Old_IO;
+	puts(S);
+	New_IO = Old_IO;
 ").
 
-main(!IO) :- puts("Hello, world\n", !IO).
+main(!IO) :-
+	puts("Hello, world\n", !IO).

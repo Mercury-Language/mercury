@@ -13,7 +13,7 @@
 % corresponding Mercury predicate as one that takes an io__state pair. 
 % If we didn't do this, the Mercury compiler might optimize away calls to it!
 
-:- pred fortran_main(io__state::di, io__state::uo) is det.
+:- pred fortran_main(io::di, io::uo) is det.
 
 :- implementation.
 

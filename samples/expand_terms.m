@@ -1,7 +1,5 @@
 %-----------------------------------------------------------------------------%
 
-:- module expand_terms.
-
 % Emulation of Prolog's expand_term/term_expansion mechanism.
 % This program provides pre-processing of Mercury programs,
 % using an arbitrary term-to-term translation given by the
@@ -21,6 +19,7 @@
 
 %-----------------------------------------------------------------------------%
 
+:- module expand_terms.
 :- interface.
 :- import_module io.
 
@@ -33,14 +32,15 @@
 
 main(!IO) :-
 	io.command_line_arguments(Args, !IO),
-	( Args = [] ->
+	( 	
+		Args = [],
 		expand_terms(!IO)
 	;
+		Args = [_ | _],
 		expand_terms_file_list(Args, !IO)
 	).
 		
-:- pred expand_terms_file_list(list(string)::in, io::di, io::uo)
-	is det.
+:- pred expand_terms_file_list(list(string)::in, io::di, io::uo) is det.
 
 expand_terms_file_list([], !IO).
 expand_terms_file_list([File | Files], !IO) :-
@@ -64,8 +64,7 @@ expand_terms_file(File, !IO) :-
 		io.set_exit_status(1, !IO)
 	).
 
-:- pred expand_terms_stream(io.input_stream::in, io::di, io::uo)
-	is det.
+:- pred expand_terms_stream(io.input_stream::in, io::di, io::uo) is det.
 
 expand_terms_stream(Stream, !IO) :-
 	io.set_input_stream(Stream, _OldStream, !IO),
@@ -77,8 +76,7 @@ expand_terms(!IO) :-
 	term_io.read_term(Result, !IO),
 	expand_terms_2(Result, !IO).
 
-:- pred expand_terms_2(read_term::in, io::di, io::uo)
-	is det.
+:- pred expand_terms_2(read_term::in, io::di, io::uo) is det.
 
 expand_terms_2(Result, !IO) :-
 	(

@@ -22,25 +22,34 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, list, require, char, string.
+
+:- import_module char.
+:- import_module int.
+:- import_module list.
+:- import_module require.
+:- import_module string.
 
 	% Default number of digits displayed (if this is not specified
 	% on the command line).
+	%
 :- func default_digits = int.
 default_digits = 1000.
 
 	% Change this for a base other than 10.  Any integer between
 	% 2 and 36 makes sense.
+	%
 :- func base = int.
 base = 10.
 
 	% Number of columns on the terminal.
+	%
 :- func columns = int.
 columns = 78.
 
 %-----------------------------------------------------------------------------%
 
 	% This is a simple implementation of an infinite lazy stream.
+	%
 :- type int_stream
 	--->	[int | int_stream]
 	;	closure((func) = int_stream).
@@ -54,11 +63,13 @@ columns = 78.
 %-----------------------------------------------------------------------------%
 
 	% An infinite stream of ones.
+	% 
 :- func ones = (int_stream :: is_out) is det.
 
 ones = [1 | closure((func) = ones)].
 
 	% All the digits of e in one stream.
+	% 
 :- func digits_of_e = (int_stream :: is_out) is det.
 
 digits_of_e = next_digit(ones).
@@ -112,6 +123,7 @@ main(!IO) :-
 	io.nl(!IO).
 
 	% Print out digits until we don't have any more.
+	%	
 :- pred main_2(int::in, int::in, int_stream::is_in, io::di, io::uo) is det.
 
 main_2(Digits, Columns, closure(Func), !IO) :-	
@@ -123,7 +135,7 @@ main_2(Digits, Columns, [I | Is], !IO) :-
 		io.nl(!IO),
 		main_2(Digits, columns, [I | Is], !IO)
 	;
-		char__det_int_to_digit(I, Digit),
+		char.det_int_to_digit(I, Digit),
 		io.write_char(Digit, !IO),
 		main_2(Digits - 1, Columns - 1, Is, !IO)
 	).

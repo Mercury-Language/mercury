@@ -19,9 +19,9 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
-main --> io__write_string("Hello, world\n").
-main --> io__write_string("Goodbye, world\n").
+main(!IO) :- io.write_string("Hello, world\n", !IO).
+main(!IO) :- io.write_string("Goodbye, world\n", !IO).

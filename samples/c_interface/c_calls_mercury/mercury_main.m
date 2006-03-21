@@ -4,7 +4,7 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -18,7 +18,7 @@
 :- import_module c_main_int.
 
 % main just invokes c_main
-main -->
-	io__write_string("In Mercury main, about to call c_main...\n"),
-	c_main,
-	io__write_string("Back in Mercury main.\n").
+main(!IO) :-
+	io.write_string("In Mercury main, about to call c_main...\n", !IO),
+	c_main(!IO),
+	io.write_string("Back in Mercury main.\n", !IO).

@@ -19,9 +19,17 @@
 :- pred main(io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module string, list, char, require, std_util.
+
+:- import_module char.
+:- import_module list.
+:- import_module require.
+:- import_module string.
+:- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 main(!IO) :-
 	io.command_line_arguments(Args, !IO),

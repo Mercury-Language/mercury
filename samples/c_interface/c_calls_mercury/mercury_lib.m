@@ -4,24 +4,31 @@
 :- module mercury_lib.
 :- interface.
 
-% a Mercury predicate with multiple modes
+	% A Mercury predicate with multiple modes.
+	% 
 :- pred foo(int).
 :- mode foo(in) is semidet.
 :- mode foo(out) is multi.
 
-% a Mercury function with multiple modes
+	% A Mercury function with multiple modes.
+	%
 :- func bar(int) = int.
 :- mode bar(in) = out is det.
 :- mode bar(out) = in is det.
 :- mode bar(in) = in is semidet.
 
-% a semidet (i.e. partial) Mercury function
+	% A semidet (i.e. partial) Mercury function.
 :- func baz(int) = int.
 :- mode baz(in) = out is semidet.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
-:- import_module list, std_util, int.
+
+:- import_module int.
+:- import_module list.
+:- import_module std_util.
 
 % well, this is just a silly example...
 foo(42).

@@ -12,7 +12,7 @@
 % Mercury predicate as one that takes an io__state pair.  If we didn't do
 % this, the Mercury compiler might optimize away calls to it!
 
-:- pred c_main(io__state::di, io__state::uo) is det.
+:- pred c_main(io::di, io::uo) is det.
 
 :- implementation.
 
@@ -21,9 +21,14 @@
 	% Note that any double quotes or backslashes in the C code for
 	% the `#include' line must be escaped, since the C code is
 	% given as a Mercury string.
-:- pragma c_header_code("#include \"c_main.h\"").
+:- pragma foreign_decl("C", "#include \"c_main.h\"").
 
 	% Define the Mercury predicate c_main to call the C function
 	% c_main.
-:- pragma c_code(c_main(IO0::di, IO::uo), [may_call_mercury],
-		"c_main(); IO = IO0;").
+:- pragma foreign_proc("C",
+	c_main(IO0::di, IO::uo),
+	[may_call_mercury, promise_pure],
+"
+	c_main();
+	IO = IO0;
+").

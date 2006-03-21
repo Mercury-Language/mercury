@@ -4,16 +4,17 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-% import the module which defines the Mercury interface to the
+% Import the module which defines the Mercury interface to the
 % Fortran procedure `FORTRAN_MAIN'.
 :- import_module fortran_main_int.
 
 % main just invokes fortran_main
-main -->
-	io__write_string("In Mercury main, about to call fortran_main...\n"),
-	fortran_main,
-	io__write_string("Back in Mercury main.\n").
+main(!IO) :-
+	io.write_string("In Mercury main, about to call fortran_main...\n",
+		!IO),
+	fortran_main(!IO),
+	io.write_string("Back in Mercury main.\n", !IO).
