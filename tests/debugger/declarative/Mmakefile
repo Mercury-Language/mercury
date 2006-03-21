@@ -72,7 +72,7 @@ DECLARATIVE_PROGS=		\
 	throw			\
 	trust			\
 	undo			\
-	unsafe_cast		
+	unsafe_cast
 
 # The following should not be run in `debug' or `mm' grades.
 #
@@ -90,13 +90,12 @@ DECLDEBUG_DECLARATIVE_PROGS=	\
 	sort			\
 	track_through_catch	\
 	typed_unify
-	
+
 # The following should not be run in decldebug grades.
 #
 NONDECLDEBUG_DECLARATIVE_PROGS=	\
-	shallow			
+	shallow
 
-	
 NONWORKING_DECLARATIVE_PROGS=	\
 
 # Some of the test cases require a different input in debug or decldebug
