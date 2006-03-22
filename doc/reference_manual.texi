@@ -557,6 +557,7 @@ The allowed declarations are:
 :- pragma
 :- promise
 :- initialise
+:- finalise
 :- mutable
 :- module
 :- interface
