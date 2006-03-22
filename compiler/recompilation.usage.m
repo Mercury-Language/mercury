@@ -514,7 +514,7 @@ visible_modules(ModuleInfo, VisibleModule) :-
 
 insert_into_imported_items_map(VisibleModule, !ImportedItemsMap) :-
     ModuleItems = init_item_id_set(set.init),
-    svmap.det_insert(VisibleModule, ModuleItems, !ImportedItemsMap).
+    svmap.set(VisibleModule, ModuleItems, !ImportedItemsMap).
 
     % Go over the set of imported items found to be used and
     % find the transitive closure of the imported items they use.
