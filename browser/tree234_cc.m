@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-sized_pretty.m:% vim: ft=mercury ts=4 sw=4 et
+% vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1997,1999-2000,2002, 2004, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
