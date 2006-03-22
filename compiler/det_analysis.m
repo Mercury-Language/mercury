@@ -46,7 +46,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds__det_analysis.
+:- module check_hlds.det_analysis.
 :- interface.
 
 :- import_module check_hlds.det_report.
@@ -134,9 +134,9 @@
 determinism_pass(!ModuleInfo, !IO) :-
     determinism_declarations(!.ModuleInfo, DeclaredProcs,
         UndeclaredProcs, NoInferProcs),
-    list__foldl(set_non_inferred_proc_determinism, NoInferProcs, !ModuleInfo),
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
-    globals__io_lookup_bool_option(debug_det, Debug, !IO),
+    list.foldl(set_non_inferred_proc_determinism, NoInferProcs, !ModuleInfo),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(debug_det, Debug, !IO),
     (
         UndeclaredProcs = []
     ;
@@ -150,7 +150,7 @@ determinism_pass(!ModuleInfo, !IO) :-
     maybe_write_string(Verbose, "% done.\n", !IO).
 
 determinism_check_proc(ProcId, PredId, !ModuleInfo, !IO) :-
-    globals__io_lookup_bool_option(debug_det, Debug, !IO),
+    globals.io_lookup_bool_option(debug_det, Debug, !IO),
     global_final_pass(!ModuleInfo, [proc(PredId, ProcId)], Debug, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -186,7 +186,7 @@ global_inference_pass(!ModuleInfo, ProcList, Debug, !IO) :-
 global_inference_single_pass([], _, !ModuleInfo, !Msgs, !Changed, !IO).
 global_inference_single_pass([proc(PredId, ProcId) | PredProcs], Debug,
         !ModuleInfo, !Msgs, !Changed, !IO) :-
-    globals__io_get_globals(Globals, !IO),
+    globals.io_get_globals(Globals, !IO),
     det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, OldDetism, NewDetism,
         ProcMsgs),
     ( NewDetism = OldDetism ->
@@ -197,15 +197,15 @@ global_inference_single_pass([proc(PredId, ProcId) | PredProcs], Debug,
     ),
     (
         Debug = yes,
-        io__write_string("% Inferred " ++ ChangeStr ++ " detism ", !IO),
+        io.write_string("% Inferred " ++ ChangeStr ++ " detism ", !IO),
         mercury_output_det(NewDetism, !IO),
-        io__write_string(" for ", !IO),
-        hlds_out__write_pred_proc_id(!.ModuleInfo, PredId, ProcId, !IO),
-        io__write_string("\n", !IO)
+        io.write_string(" for ", !IO),
+        hlds_out.write_pred_proc_id(!.ModuleInfo, PredId, ProcId, !IO),
+        io.write_string("\n", !IO)
     ;
         Debug = no
     ),
-    list__append(ProcMsgs, !Msgs),
+    list.append(ProcMsgs, !Msgs),
     global_inference_single_pass(PredProcs, Debug, !ModuleInfo, !Msgs,
         !Changed, !IO).
 
@@ -225,9 +225,9 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, OldDetism, NewDetism,
 
     % Get the proc_info structure for this procedure.
     module_info_preds(!.ModuleInfo, Preds0),
-    map__lookup(Preds0, PredId, Pred0),
+    map.lookup(Preds0, PredId, Pred0),
     pred_info_procedures(Pred0, Procs0),
-    map__lookup(Procs0, ProcId, Proc0),
+    map.lookup(Procs0, ProcId, Proc0),
 
     % Remember the old inferred determinism of this procedure.
     proc_info_inferred_determinism(Proc0, OldDetism),
@@ -327,9 +327,9 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, OldDetism, NewDetism,
     proc_info_set_inferred_determinism(NewDetism, Proc1, Proc),
 
     % Put back the new proc_info structure.
-    map__det_update(Procs0, ProcId, Proc, Procs),
+    map.det_update(Procs0, ProcId, Proc, Procs),
     pred_info_set_procedures(Procs, Pred0, Pred),
-    map__det_update(Preds0, PredId, Pred, Preds),
+    map.det_update(Preds0, PredId, Pred, Preds),
     module_info_set_preds(Preds, !ModuleInfo).
 
 :- pred get_exported_proc_context(list(pragma_exported_proc)::in,
@@ -453,7 +453,7 @@ det_infer_goal(Goal0 - GoalInfo0, Goal - GoalInfo, InstMap0, !.SolnContext,
         Goal1 = conj(plain_conj, ConjGoals),
         Solns = at_most_zero,
         some [ConjGoalInfo] (
-            list__member(_ - ConjGoalInfo, ConjGoals),
+            list.member(_ - ConjGoalInfo, ConjGoals),
             goal_info_get_determinism(ConjGoalInfo, ConjGoalDetism),
             determinism_components(ConjGoalDetism, _, at_most_many)
         )
@@ -1031,13 +1031,13 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
             LambdaSolnContext = all_solns
         ),
         det_info_get_module_info(DetInfo, ModuleInfo),
-        instmap__pre_lambda_update(ModuleInfo, Vars, Modes,
+        instmap.pre_lambda_update(ModuleInfo, Vars, Modes,
             InstMap0, InstMap1),
         det_infer_goal(Goal0, Goal, InstMap1, LambdaSolnContext, [],
             no, DetInfo, LambdaInferredDet, _LambdaFailingContexts, GoalMsgs),
         det_check_lambda(LambdaDeclaredDet, LambdaInferredDet,
             Goal, GoalInfo, DetInfo, CheckLambdaMsgs),
-        list__append(GoalMsgs, CheckLambdaMsgs, !:Msgs),
+        list.append(GoalMsgs, CheckLambdaMsgs, !:Msgs),
         RHS = lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
             Vars, Modes, LambdaDeclaredDet, Goal)
     ;
@@ -1253,13 +1253,13 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         goal_info_get_instmap_delta(GoalInfo, InstmapDelta),
         instmap_delta_changed_vars(InstmapDelta, ChangedVars),
         det_info_get_module_info(DetInfo, ModuleInfo),
-        set__divide(var_is_ground_in_instmap(ModuleInfo, InstMap0),
+        set.divide(var_is_ground_in_instmap(ModuleInfo, InstMap0),
             ChangedVars, _GroundAtStartVars, BoundVars),
 
         % Which vars were bound inside the scope but not listed
         % in the promise_equivalent_solution{s,_sets} or arbitrary scope?
-        set__difference(BoundVars, set__list_to_set(Vars), BugVars),
-        ( set__empty(BugVars) ->
+        set.difference(BoundVars, set.list_to_set(Vars), BugVars),
+        ( set.empty(BugVars) ->
             ScopeMsgs1 = []
         ;
             ScopeMsg1 = promise_solutions_missing_vars(Kind, VarSet, BugVars),
@@ -1268,8 +1268,8 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         ),
         % Which vars were listed in the promise_equivalent_solutions
         % but not bound inside the scope?
-        set__difference(set__list_to_set(Vars), BoundVars, ExtraVars),
-        ( set__empty(ExtraVars) ->
+        set.difference(set.list_to_set(Vars), BoundVars, ExtraVars),
+        ( set.empty(ExtraVars) ->
             ScopeMsgs2 = []
         ;
             ScopeMsg2 = promise_solutions_extra_vars(Kind, VarSet, ExtraVars),
@@ -1302,9 +1302,9 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
 det_find_matching_non_cc_mode(DetInfo, PredId, !ProcId) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
     module_info_preds(ModuleInfo, PredTable),
-    map__lookup(PredTable, PredId, PredInfo),
+    map.lookup(PredTable, PredId, PredInfo),
     pred_info_procedures(PredInfo, ProcTable),
-    map__to_assoc_list(ProcTable, ProcList),
+    map.to_assoc_list(ProcTable, ProcList),
     det_find_matching_non_cc_mode_2(ProcList, ModuleInfo, PredInfo, !ProcId).
 
 :- pred det_find_matching_non_cc_mode_2(assoc_list(proc_id, proc_info)::in,
@@ -1342,7 +1342,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
         ExaminesRepresentation = yes,
         det_get_proc_info(DetInfo, ProcInfo),
         proc_info_vartypes(ProcInfo, VarTypes),
-        map__lookup(VarTypes, Var, Type),
+        map.lookup(VarTypes, Var, Type),
         det_type_has_user_defined_equality_pred(DetInfo, Type)
     ->
         ( CanFail = can_fail ->
@@ -1454,7 +1454,7 @@ get_all_pred_procs(ModuleInfo, PredProcs) :-
 
 get_all_pred_procs_2(_Preds, [], !PredProcs).
 get_all_pred_procs_2(Preds, [PredId | PredIds], !PredProcs) :-
-    map__lookup(Preds, PredId, Pred),
+    map.lookup(Preds, PredId, Pred),
     ProcIds = pred_info_procids(Pred),
     fold_pred_modes(PredId, ProcIds, !PredProcs),
     get_all_pred_procs_2(Preds, PredIds, !PredProcs).
@@ -1501,13 +1501,13 @@ segregate_procs_2(ModuleInfo, [PredProcId | PredProcIds],
         !DeclaredProcs, !UndeclaredProcs, !NoInferProcs) :-
     PredProcId = proc(PredId, ProcId),
     module_info_preds(ModuleInfo, Preds),
-    map__lookup(Preds, PredId, Pred),
+    map.lookup(Preds, PredId, Pred),
     (
         (
             pred_info_is_imported(Pred)
         ;
             pred_info_is_pseudo_imported(Pred),
-            hlds_pred__in_in_unification_proc_id(ProcId)
+            hlds_pred.in_in_unification_proc_id(ProcId)
         ;
             pred_info_get_markers(Pred, Markers),
             check_marker(Markers, class_method)
@@ -1516,7 +1516,7 @@ segregate_procs_2(ModuleInfo, [PredProcId | PredProcIds],
         !:NoInferProcs = [PredProcId | !.NoInferProcs]
     ;
         pred_info_procedures(Pred, Procs),
-        map__lookup(Procs, ProcId, Proc),
+        map.lookup(Procs, ProcId, Proc),
         proc_info_declared_determinism(Proc, MaybeDetism),
         (
             MaybeDetism = no,
@@ -1541,12 +1541,12 @@ segregate_procs_2(ModuleInfo, [PredProcId | PredProcIds],
 set_non_inferred_proc_determinism(proc(PredId, ProcId), !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     pred_info_procedures(PredInfo0, Procs0),
-    map__lookup(Procs0, ProcId, ProcInfo0),
+    map.lookup(Procs0, ProcId, ProcInfo0),
     proc_info_declared_determinism(ProcInfo0, MaybeDet),
     (
         MaybeDet = yes(Det),
         proc_info_set_inferred_determinism(Det, ProcInfo0, ProcInfo),
-        map__det_update(Procs0, ProcId, ProcInfo, Procs),
+        map.det_update(Procs0, ProcId, ProcInfo, Procs),
         pred_info_set_procedures(Procs, PredInfo0, PredInfo),
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ;
