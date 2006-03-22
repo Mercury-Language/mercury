@@ -514,6 +514,13 @@ visible_modules(ModuleInfo, VisibleModule) :-
 
 insert_into_imported_items_map(VisibleModule, !ImportedItemsMap) :-
     ModuleItems = init_item_id_set(set.init),
+
+        %
+        % Use set rather than det_insert as this routine may be
+        % called multiple times with the same VisibleModule
+        % depending on why the module is visible.
+        % eg it's both imported and an ancestor module
+        %
     svmap.set(VisibleModule, ModuleItems, !ImportedItemsMap).
 
     % Go over the set of imported items found to be used and
