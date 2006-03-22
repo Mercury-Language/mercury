@@ -60,6 +60,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module deconstruct.
 :- import_module exception.
 :- import_module int.
 :- import_module io.
@@ -810,8 +811,8 @@ trace_subterm_mode(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode) :-
 trace_dependency(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode, Origin) :-
     find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart),
     (
-        ChainStart = chain_start(StartLoc, ArgNum, TotalArgs,
-            NodeId, StartPath, MaybeProcRep),
+        ChainStart = chain_start(StartLoc, ArgNum, TotalArgs, NodeId,
+            StartPath, MaybeProcRep),
         Mode = start_loc_to_subterm_mode(StartLoc),
         (
             MaybeProcRep = no,
@@ -819,8 +820,8 @@ trace_dependency(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode, Origin) :-
         ;
             MaybeProcRep = yes(ProcRep),
             (
-                trace_dependency_special_case(Store, ProcRep,
-                    Ref, StartLoc, ArgNum, TermPath, NodeId, Origin0)
+                trace_dependency_special_case(Store, ProcRep, Ref,
+                    StartLoc, ArgNum, TermPath, NodeId, Origin0)
             ->
                 Origin = Origin0
             ;
@@ -831,51 +832,41 @@ trace_dependency(wrap(Store), dynamic(Ref), ArgPos, TermPath, Mode, Origin) :-
     ;
         ChainStart = require_explicit_subtree,
         Origin = require_explicit_subtree,
-        % The only time a subtree will be required is if the
-        % mode of the subterm is output.
+        % The only time a subtree will be required is if the subterm is output.
         Mode = subterm_out
     ).
 
-    % trace_dependency_special_case handles special cases not
-    % handled by the usual subterm dependency tracking algorithm,
-    % At the moment it handles tracking of subterms through catch_impl.
+    % trace_dependency_special_case handles special cases not handled
+    % by the usual subterm dependency tracking algorithm. At the moment
+    % it handles tracking of subterms through catch_impl.
     %
 :- pred trace_dependency_special_case(S::in, proc_rep::in, R::in,
     start_loc(R)::in, int::in, term_path::in, R::in,
-    subterm_origin(edt_node(R))::out) is semidet
-    <= annotated_trace(S, R).
+    subterm_origin(edt_node(R))::out) is semidet <= annotated_trace(S, R).
 
 trace_dependency_special_case(Store, ProcRep, Ref, StartLoc, ArgNum, TermPath,
         NodeId, Origin) :-
-    %
-    % catch_impl's body is a single call to
-    % builtin_catch.  builtin_catch doesn't
-    % generate any events, so we need to
-    % handle catch_impl specially.
-    %
+    % Catch_impl's body is a single call to builtin_catch. Builtin_catch
+    % doesn't generate any events, so we need to handle catch_impl specially.
+
     proc_rep_is_catch_impl(ProcRep),
     (
         StartLoc = parent_goal(_, _),
-        %
-        % The subterm being tracked is an
-        % input to builtin_catch so we know the
-        % origin will be in the first argument of
-        % catch_impl, because builtin_catch is
-        % only called from catch_impl.
-        %
+        % The subterm being tracked is an input to builtin_catch so we know
+        % the origin will be in the first argument of catch_impl, because
+        % builtin_catch is only called from catch_impl.
+
         Origin = input(user_head_var(1), [ArgNum | TermPath])
     ;
         StartLoc = cur_goal,
-        %
-        % The subterm being tracked is an output of
-        % catch_impl so we know its origin will be the output
-        % of the closure passed to try.
-        % If the closure succeeded, then we continue to track the
-        % subterm in the child call to
-        % exception.wrap_success_or_failure, otherwise we stop tracking
-        % at the catch_impl.  XXX In future we should track exception
-        % values to the throw that created them.
-        %
+        % The subterm being tracked is an output of catch_impl so we know
+        % its origin will be the output of the closure passed to try.
+        % If the closure succeeded, then we continue to track the subterm
+        % in the child call to exception.wrap_success_or_failure, otherwise
+        % we stop tracking at the catch_impl.
+        % XXX In future we should track exception values to the throw
+        % that created them.
+
         exit_node_from_id(Store, Ref, ExitNode),
         ExitAtom = get_trace_exit_atom(ExitNode),
         ExitAtom = atom(_, Args),
@@ -883,7 +874,7 @@ trace_dependency_special_case(Store, ProcRep, Ref, StartLoc, ArgNum, TermPath,
         TryResultArgInfo = arg_info(_, _, yes(TryResultRep)),
         rep_to_univ(TryResultRep, TryResultUniv),
         univ_value(TryResultUniv) = TryResult,
-        std_util.deconstruct(TryResult, Functor, _, _),
+        deconstruct(TryResult, canonicalize, Functor, _, _),
         ( Functor = "succeeded" ->
             Origin = output(dynamic(NodeId), any_head_var_from_back(1),
                 TermPath)
@@ -892,13 +883,12 @@ trace_dependency_special_case(Store, ProcRep, Ref, StartLoc, ArgNum, TermPath,
         )
     ).
 
-:- pred trace_dependency_in_proc_rep(S::in, term_path::in,
-    start_loc(R)::in, int::in, int::in, R::in, maybe(goal_path)::in,
-    proc_rep::in, subterm_origin(edt_node(R))::out)
-    is det <= annotated_trace(S, R).
+:- pred trace_dependency_in_proc_rep(S::in, term_path::in, start_loc(R)::in,
+    int::in, int::in, R::in, maybe(goal_path)::in, proc_rep::in,
+    subterm_origin(edt_node(R))::out) is det <= annotated_trace(S, R).
 
 trace_dependency_in_proc_rep(Store, TermPath, StartLoc, ArgNum,
-    TotalArgs, NodeId, StartPath, ProcRep, Origin) :-
+        TotalArgs, NodeId, StartPath, ProcRep, Origin) :-
     det_trace_node_from_id(Store, NodeId, Node),
     materialize_contour(Store, NodeId, Node, [], Contour0),
     (
@@ -915,14 +905,14 @@ trace_dependency_in_proc_rep(Store, TermPath, StartLoc, ArgNum,
     (
         MaybePrims = yes(primitive_list_and_var(Primitives, Var,
             MaybeClosure)),
-        %
-        % If the subterm is in a closure argument then the argument
-        % number of the closure argument is prefixed to the term path,
-        % since the closure is itself a term.  This is done here
-        % because at the time of the closure call it is not easy to
-        % decide if the call is higher order or not, without repeating
-        % all the work done in make_primitive_list.
-        %
+
+        % If the subterm is in a closure argument then the argument number
+        % of the closure argument is prefixed to the term path, since the
+        % closure is itself a term. This is done here because at the time
+        % of the closure call it is not easy to decide if the call is higher
+        % order or not, without repeating all the work done in
+        % make_primitive_list.
+
         (
             MaybeClosure = yes,
             AdjustedTermPath = [ArgNum | TermPath]
@@ -937,10 +927,9 @@ trace_dependency_in_proc_rep(Store, TermPath, StartLoc, ArgNum,
         Origin = not_found
     ).
 
-    % proc_rep_is_catch_impl(ProcRep) is true if ProcRep is a
-    % representation of exception.catch_impl (the converse
-    % is true assuming exception.builtin_catch is only called from
-    % exception.catch_impl).
+    % proc_rep_is_catch_impl(ProcRep) is true if ProcRep is a representation
+    % of exception.catch_impl (the converse is true assuming
+    % exception.builtin_catch is only called from exception.catch_impl).
     %
 :- pred proc_rep_is_catch_impl(proc_rep::in) is semidet.
 
@@ -987,7 +976,7 @@ find_chain_start(Store, Ref, ArgPos, TermPath, ChainStart) :-
         call_node_from_id(Store, CallId, CallNode),
         CallAtom = get_trace_call_atom(CallNode),
         %
-        % XXX we don't yet handle tracking of the exception value.
+        % XXX We don't yet handle tracking of the exception value.
         %
         ( trace_atom_subterm_is_ground(CallAtom, ArgPos, TermPath) ->
             find_chain_start_inside(Store, CallId, CallNode,
@@ -1043,7 +1032,6 @@ parent_proc_rep(Store, CallId, ProcRep) :-
         ProcRep = no
     ).
 
-    %
     % Finds the call node of the parent of the given node.  Fails if
     % the call node cannot be found because it was not included in the
     % annotated trace.
@@ -1569,8 +1557,7 @@ traverse_primitives([], Var0, TermPath0, _, ProcRep, Origin) :-
     ProcRep = proc_rep(HeadVars, _),
     ArgPos = find_arg_pos(HeadVars, Var0),
     Origin = input(ArgPos, TermPath0).
-traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep,
-        Origin) :-
+traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep, Origin) :-
     Prim = primitive(File, Line, BoundVars, AtomicGoal, _GoalPath,
         MaybeNodeId),
     (
@@ -1738,10 +1725,10 @@ plain_call_is_special_case(Module, Name, Args, NewVar) :-
 
 :- type plain_call_info
     --->    plain_call_info(
-                file_name   :: string,
-                line_number :: int,
-                flat_module_name:: string,
-                pred_name   :: string
+                file_name           :: string,
+                line_number         :: int,
+                flat_module_name    :: string,
+                pred_name           :: string
             ).
 
 :- pred traverse_call(list(var_rep)::in, string::in, int::in,
@@ -1772,7 +1759,7 @@ traverse_call(BoundVars, File, Line, Args, MaybeNodeId,
 add_paths_to_conjuncts([], _, _, []).
 add_paths_to_conjuncts([Goal | Goals], ParentPath, N,
         [goal_and_path(Goal, Path) | GoalAndPaths]) :-
-    list.append(ParentPath, [conj(N)], Path),
+    Path = ParentPath ++ [conj(N)],
     add_paths_to_conjuncts(Goals, ParentPath, N + 1, GoalAndPaths).
 
 %-----------------------------------------------------------------------------%
@@ -1857,8 +1844,8 @@ det_edt_return_node_from_id(Store, Ref, Node) :-
             "not a return node"))
     ).
 
-:- pred get_edt_call_node(S::in, R::in, R::out)
-    is det <= annotated_trace(S, R).
+:- pred get_edt_call_node(S::in, R::in, R::out) is det
+    <= annotated_trace(S, R).
 
 get_edt_call_node(Store, Ref, CallId) :-
     (

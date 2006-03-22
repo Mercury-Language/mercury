@@ -42,6 +42,7 @@
 
 :- implementation.
 
+:- import_module deconstruct.
 :- import_module std_util.
 
 :- instance c(int) where [].
@@ -142,7 +143,7 @@ main -->
 :- pred deconstruct_test(T::in, io__state::di, io__state::uo) is det.
 
 deconstruct_test(Term) -->
-	{ deconstruct(Term, Functor, Arity, Args) },
+	{ deconstruct(Term, canonicalize, Functor, Arity, Args) },
 	io__write_string(Functor),
 	io__write_string("/"),
 	io__write_int(Arity),

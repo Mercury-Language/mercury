@@ -22,7 +22,11 @@
 
 :- implementation.
 
-:- import_module std_util, int, map, list.
+:- import_module construct.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module type_desc.
 
 foo(X) :-
 	TypeInfo = type_of([]), 

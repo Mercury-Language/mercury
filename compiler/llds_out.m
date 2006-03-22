@@ -205,6 +205,7 @@
 :- import_module assoc_list.
 :- import_module bintree_set.
 :- import_module char.
+:- import_module deconstruct.
 :- import_module dir.
 :- import_module int.
 :- import_module library.   % for the version number.
@@ -4801,7 +4802,7 @@ binary_op_to_string(Op) = Name :-
     ;
         % The following is just for debugging purposes -
         % string operators are not output as `str_eq', etc.
-        functor(Op, Name, _)
+        functor(Op, canonicalize, Name, _)
     ).
 
 %-----------------------------------------------------------------------------%

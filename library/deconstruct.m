@@ -129,10 +129,14 @@
 :- mode arg(in, in(canonicalize), in, out) is semidet.
 :- mode arg(in, in(canonicalize_or_do_not_allow), in, out) is semidet.
 
+:- type maybe_arg
+    --->    some [T] arg(T)
+    ;       no_arg.
+
     % arg_cc/3 is similar to arg/4, except that it handles arguments with
     % non-canonical types. See the documentation of std_util.arg_cc.
     %
-:- pred arg_cc(T::in, int::in, std_util.maybe_arg::out) is cc_multi.
+:- pred arg_cc(T::in, int::in, maybe_arg::out) is cc_multi.
 
     % named_arg(Data, NonCanon, Name, Argument)
     %
@@ -148,7 +152,7 @@
     % named_arg_cc/3 is similar to named_arg/4, except that it handles
     % arguments with non-canonical types.
     %
-:- pred named_arg_cc(T::in, string::in, std_util.maybe_arg::out) is cc_multi.
+:- pred named_arg_cc(T::in, string::in, maybe_arg::out) is cc_multi.
 
     % det_arg(Data, NonCanon, Index, Argument)
     %
@@ -273,7 +277,7 @@ arg_cc(Term, Index, MaybeArg) :-
     ( Success \= 0 ->
         MaybeArg = 'new arg'(univ_value(Univ))
     ;
-        MaybeArg = std_util.no_arg
+        MaybeArg = no_arg
     ).
 
 named_arg(Term, NonCanon, Name, Argument) :-
@@ -294,7 +298,7 @@ named_arg_cc(Term, Name, MaybeArg) :-
     ( Success \= 0 ->
         MaybeArg = 'new arg'(univ_value(Univ))
     ;
-        MaybeArg = std_util.no_arg
+        MaybeArg = no_arg
     ).
 
     % This is a dummy value of type `univ'. It is used only to ensure that

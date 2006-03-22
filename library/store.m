@@ -236,8 +236,8 @@
 
 :- implementation.
 
+:- import_module deconstruct.
 :- import_module require.
-:- import_module std_util.
 
 :- typeclass store(T) where [].
 :- instance store(store(S)) where [].
@@ -513,7 +513,7 @@ copy_ref_value(Ref, Val) -->
 
 ref_functor(Ref, Functor, Arity, !Store) :-
     unsafe_ref_value(Ref, Val, !Store),
-    functor(Val, Functor, Arity).
+    functor(Val, canonicalize, Functor, Arity).
 
 :- pragma foreign_decl("C",
 "

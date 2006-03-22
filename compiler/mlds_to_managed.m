@@ -69,6 +69,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module counter.
+:- import_module deconstruct.
 :- import_module int.
 :- import_module library.
 :- import_module list.
@@ -437,7 +438,7 @@ write_statement(Lang, Args, statement(Statement, Context), !IO) :-
         write_rval(Lang, RVal, !IO),
         io.write_string(";\n", !IO)
     ;
-        functor(Statement, SFunctor, _Arity),
+        functor(Statement, canonicalize, SFunctor, _Arity),
         sorry(this_file, "foreign code output for " ++ SFunctor)
     ).
 

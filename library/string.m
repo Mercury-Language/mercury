@@ -753,10 +753,10 @@
 :- import_module integer.
 :- import_module require.
 :- import_module std_util.
+:- import_module type_desc.
 
 :- use_module rtti_implementation.
 :- use_module term_io.
-:- use_module type_desc.
 
 string.replace(Str, Pat, Subst, Result) :-
     sub_string_search(Str, Pat, Index),

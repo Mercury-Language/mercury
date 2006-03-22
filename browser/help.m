@@ -27,7 +27,7 @@
 
 :- import_module io.
 :- import_module list.
-:- import_module std_util.
+:- import_module type_desc.
 
 :- type system.
 
@@ -54,8 +54,7 @@
     % Print the top-level help nodes. This should give an overview
     % of the main topics for which help is available.
     %
-:- pred help(system::in, io.output_stream::in,
-    io::di, io::uo) is det.
+:- pred help(system::in, io.output_stream::in, io::di, io::uo) is det.
 
     % Print the help node at the given path. If there is none,
     % print the top-level nodes.
@@ -164,8 +163,8 @@ add_node(Nodes0, [], Index, Name, Node, Res, Nodes) :-
         insert_into_entry_list(Nodes0, Index, Name, Node, Nodes)
     ).
 
-:- pred insert_into_entry_list(list(entry)::in,
-    int::in, string::in, node::in, list(entry)::out) is det.
+:- pred insert_into_entry_list(list(entry)::in, int::in, string::in, node::in,
+    list(entry)::out) is det.
 
 insert_into_entry_list([], Index, Name, Node, [Entry]) :-
     Entry = entry(Index, Name, Node).
@@ -193,8 +192,8 @@ name(Sys, Name, Stream, !IO) :-
         true
     ).
 
-:- pred search_entry_list(list(entry)::in, string::in,
-    int::in, int::out, io.output_stream::in, io::di, io::uo) is det.
+:- pred search_entry_list(list(entry)::in, string::in, int::in, int::out,
+    io.output_stream::in, io::di, io::uo) is det.
 
 search_entry_list([], _, !C, _, !IO).
 search_entry_list([Entry | Tail], Name, !C, Stream, !IO) :-
@@ -248,8 +247,7 @@ print_entry_list([entry(_, _, Node) | Nodes], Stream, !IO) :-
     print_node(Node, Stream, !IO),
     print_entry_list(Nodes, Stream, !IO).
 
-:- pred print_node(node::in, io.output_stream::in,
-    io::di, io::uo) is det.
+:- pred print_node(node::in, io.output_stream::in, io::di, io::uo) is det.
 
 print_node(node(Text, _Nodes), Stream, !IO) :-
     io.write_string(Stream, Text, !IO).
@@ -257,8 +255,7 @@ print_node(node(Text, _Nodes), Stream, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred one_path_step(list(entry)::in, string::in,
-    entry::out) is semidet.
+:- pred one_path_step(list(entry)::in, string::in, entry::out) is semidet.
 
 one_path_step([Head | Tail], Name, Entry) :-
     Head = entry(_, HeadName, _),

@@ -2,13 +2,14 @@
 
 :- interface.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- import_module io.
 
 :- implementation.
 
-:- import_module list, std_util.
+:- import_module list.
+:- import_module type_desc.
 
 main -->
 	{ blah(101, X) },
@@ -32,7 +33,7 @@ main -->
 :- mode blah(in, out) is det.
 
 blah(X, X).
-  
+
 :- some [T1] pred blah2(T, T1).
 :- mode blah2(in, out) is det.
 
@@ -42,4 +43,3 @@ blah2(X, [X]).
 :- mode blah3(in, out) is semidet.
 
 blah3([X], X).
-

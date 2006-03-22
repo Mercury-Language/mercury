@@ -168,6 +168,7 @@
 
 :- import_module bool.
 :- import_module char.
+:- import_module construct.
 :- import_module deconstruct.
 :- import_module getopt.
 :- import_module int.
@@ -178,6 +179,7 @@
 :- import_module std_util.
 :- import_module string.
 :- import_module term_to_xml.
+:- import_module type_desc.
 
 %---------------------------------------------------------------------------%
 %
@@ -411,7 +413,7 @@ save_term(Indent, Term, !IO) :-
             io.write_string("]", !IO)
         )
     ;
-        deconstruct_cc(Term, Functor, _Arity, Args),
+        deconstruct(Term, include_details_cc, Functor, _Arity, Args),
         write_indent(Indent, !IO),
         io.write_string(Functor, !IO),
         (
@@ -1383,7 +1385,7 @@ write_path_2(Debugger, [Dir, Dir2 | Dirs], !IO) :-
     % We assume a root-relative path. We assume Term is the entire term
     % passed into browse/3, not a subterm.
 :- pred deref_subterm(browser_term::in, list(dir)::in, list(dir)::in,
-    deref_result(browser_term)::out) is det.
+    deref_result(browser_term)::out) is cc_multi.
 
 deref_subterm(BrowserTerm, Path, RevPath0, Result) :-
     simplify_dirs(Path, SimplifiedPath),
@@ -1448,7 +1450,7 @@ deref_result_univ_to_browser_term(SubResult, Result) :-
     ).
 
 :- pred deref_subterm_2(univ::in, list(dir)::in, list(dir)::in,
-    deref_result(univ)::out) is det.
+    deref_result(univ)::out) is cc_multi.
 
 deref_subterm_2(Univ, Path, RevPath0, Result) :-
     (
@@ -1457,30 +1459,32 @@ deref_subterm_2(Univ, Path, RevPath0, Result) :-
     ;
         Path = [Dir | Dirs],
         (
+            Dir = child_num(N),
             (
-                Dir = child_num(N),
-                (
-                    TypeCtor = type_ctor(univ_type(Univ)),
-                    type_ctor_name(TypeCtor) = "array",
-                    type_ctor_module_name(TypeCtor) = "array"
-                ->
-                    % The first element of an array is at index zero.
-                    ArgN = argument(univ_value(Univ), N)
-                ;
-                    % The first argument of a non-array is numbered argument 1
-                    % by the user but argument 0 by deconstruct.argument.
-                    ArgN = argument(univ_value(Univ), N - 1)
-                )
+                TypeCtor = type_ctor(univ_type(Univ)),
+                type_ctor_name(TypeCtor) = "array",
+                type_ctor_module_name(TypeCtor) = "array"
+            ->
+                % The first element of an array is at index zero.
+                arg_cc(univ_value(Univ), N, MaybeValue)
             ;
-                Dir = child_name(Name),
-                ArgN = named_argument(univ_value(Univ), Name)
-            ;
-                Dir = parent,
-                error("deref_subterm_2: found parent")
+                % The first argument of a non-array is numbered argument 1
+                % by the user but argument 0 by deconstruct.argument.
+                arg_cc(univ_value(Univ), N - 1, MaybeValue)
             )
-        ->
+        ;
+            Dir = child_name(Name),
+            named_arg_cc(univ_value(Univ), Name, MaybeValue)
+        ;
+            Dir = parent,
+            error("deref_subterm_2: found parent")
+        ),
+        (
+            MaybeValue = arg(Value),
+            ArgN = univ(Value),
             deref_subterm_2(ArgN, Dirs, [Dir | RevPath0], Result)
         ;
+            MaybeValue = no_arg,
             Result = deref_error(list.reverse(RevPath0), Dir)
         )
     ).

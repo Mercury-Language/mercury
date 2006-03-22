@@ -25,6 +25,7 @@
 :- module nested2.child.
 :- implementation.
 :- import_module std_util.
+:- import_module type_desc.
 
 :- type t3 == foo.
 :- type t4 == nested2.foo.

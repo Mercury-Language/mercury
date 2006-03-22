@@ -101,6 +101,7 @@
 :- import_module int.
 :- import_module require.
 :- import_module string.
+:- import_module type_desc.
 
     % Std_util has a lot of types and functions with the same names,
     % so we prefer to keep the namespace separate.
@@ -1275,9 +1276,9 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         TypeCtorRep = array,
 
         % Constrain the T in array(T) to the correct element type.
-        std_util.type_ctor_and_args(std_util.type_of(Term), _, Args),
+        type_ctor_and_args(type_of(Term), _, Args),
         ( Args = [ElemType] ->
-            std_util.has_type(Elem, ElemType),
+            has_type(Elem, ElemType),
             same_array_elem_type(Array, Elem)
         ;
             error("An array which doesn't have a type_ctor arg")

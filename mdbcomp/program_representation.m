@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2005 The University of Melbourne.
+% Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -41,6 +41,7 @@
 :- import_module char.
 :- import_module list.
 :- import_module std_util.
+:- import_module type_desc.
 
     % A representation of the goal we execute. These need to be generated
     % statically and stored inside the executable.

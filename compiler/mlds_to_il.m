@@ -170,6 +170,7 @@
 
 :- import_module assoc_list.
 :- import_module counter.
+:- import_module deconstruct.
 :- import_module int.
 :- import_module library.
 :- import_module map.
@@ -3564,7 +3565,7 @@ rval_to_type(unop(Unop, _), Type) :-
         Type = CastType
     ;
         Unop = std_unop(StdUnop),
-        functor(StdUnop, StdUnopStr, _Arity),
+        functor(StdUnop, canonicalize, StdUnopStr, _Arity),
         sorry(this_file, "rval_to_type: unop: " ++ StdUnopStr)
     ).
 rval_to_type(binop(_, _, _), _) :-

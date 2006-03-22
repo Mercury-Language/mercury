@@ -26,6 +26,12 @@ Changes to the Mercury language:
   with dynamic modes (inst "any") must now be marked as impure.
 
 Changes to the Mercury standard library:
+* We have removed the predicates dealing with runtime type information (RTTI)
+  from std_util.m. Any users impacted by this change should look for required
+  functionality in the construct, deconstruct and type_desc modules of the
+  standard library, in forms that have been mostly unchanged since the
+  0.11 release. In most cases, the differences are quite minor, but provide
+  more expressive power.
 * We have added an `injection' module, for reversible maps that are injective.
 
 Changes to the Mercury compiler:

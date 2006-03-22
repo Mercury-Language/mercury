@@ -9,11 +9,12 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-:- import_module std_util, list.
+:- import_module type_desc.
+:- import_module list.
 
 :- func tryme = int.
 

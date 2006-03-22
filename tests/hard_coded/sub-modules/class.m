@@ -48,7 +48,9 @@ hello --> io__write_string("class.int.hello\n").
 
 :- import_module class.char.
 :- use_module class.int.
-:- import_module std_util, require.
+:- import_module type_desc.
+:- import_module std_util.
+:- import_module require.
 
 :- type t1 == class.char.foo.
 :- type t2 == char.foo.

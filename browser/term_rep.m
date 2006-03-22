@@ -50,10 +50,13 @@
 
 :- implementation.
 
+:- import_module construct.
+:- import_module deconstruct.
 :- import_module exception.
 :- import_module int.
 :- import_module list.
 :- import_module string.
+:- import_module type_desc.
 
 :- import_module mdb.declarative_debugger.
 
@@ -107,13 +110,13 @@ argument(Term, N, Arg) :-
         % Argument indexes in the term path start from one, but
         % the argument function wants argument indexes to
         % start from zero.
-        argument_cc(univ_value(Univ), N - 1, MaybeSubUniv),
+        arg_cc(univ_value(Univ), N - 1, MaybeSubUniv),
         (
-            MaybeSubUniv = yes(SubUniv),
-            univ_to_rep(SubUniv, Arg0),
+            MaybeSubUniv = arg(SubValue),
+            univ_to_rep(univ(SubValue), Arg0),
             MaybeArg = yes(Arg0)
         ;
-            MaybeSubUniv = no,
+            MaybeSubUniv = no_arg,
             MaybeArg = no
         )
     ),
@@ -127,7 +130,7 @@ field_pos(FieldName, Term, Pos) :-
     promise_equivalent_solutions [MaybePos] (
         rep_to_univ(Term, Univ),
         Value = univ_value(Univ),
-        deconstruct_cc(Value, Functor, Arity, _Args),
+        deconstruct(Value, include_details_cc, Functor, Arity, _Args),
         Type = type_of(Value),
         find_functor(1, num_functors(Type), Type, Functor, Arity,
             MaybeFunctorNum),

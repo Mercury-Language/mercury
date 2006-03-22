@@ -66,6 +66,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module counter.
+:- import_module deconstruct.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -208,7 +209,7 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
             % string.append_list([
             % "bytecode for ", GenericCallFunctor, " calls"], Msg),
             % sorry(this_file, Msg)
-            functor(GenericCallType, _GenericCallFunctor, _),
+            functor(GenericCallType, canonicalize, _GenericCallFunctor, _),
             Code = node([not_supported])
         )
     ;

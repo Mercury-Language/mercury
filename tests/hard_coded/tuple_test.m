@@ -4,12 +4,20 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
-:- import_module bool, list, char, string, int.
-:- import_module term, std_util, term_io, varset.
+:- import_module bool.
+:- import_module list.
+:- import_module char.
+:- import_module string.
+:- import_module int.
+:- import_module term.
+:- import_module std_util.
+:- import_module type_desc.
+:- import_module term_io.
+:- import_module varset.
 
 main -->
 	io__write_string("testing io__write:\n"),

@@ -29,23 +29,23 @@
 %-----------------------------------------------------------------------------%
 
 :- type term(T)
-    --->    term.functor(
+    --->    functor(
                 const,
                 list(term(T)),
                 term.context
             )
-    ;       term.variable(
+    ;       variable(
                 var(T)
             ).
 
 :- type const
-    --->    term.atom(string)
-    ;       term.integer(int)
-    ;       term.string(string)
-    ;       term.float(float).
+    --->    atom(string)
+    ;       integer(int)
+    ;       string(string)
+    ;       float(float).
 
 :- type term.context
-    --->    term.context(string, int).
+    --->    context(string, int).
             % file name, line number.
 
 :- type var(T).
@@ -82,15 +82,14 @@
     % ArgContexts specifies the path from the root of the term
     % to the offending subterm.
     %
-:- func term.try_term_to_type(term(U)) = term_to_type_result(T, U).
-:- pred term.try_term_to_type(term(U)::in, term_to_type_result(T, U)::out)
-    is det.
+:- func try_term_to_type(term(U)) = term_to_type_result(T, U).
+:- pred try_term_to_type(term(U)::in, term_to_type_result(T, U)::out) is det.
 
 :- type term_to_type_error(T)
     --->    type_error(
                 term(T),
                 type_desc.type_desc,
-                term.context,
+                context,
                 term_to_type_context
             )
     ;       mode_error(
@@ -104,263 +103,263 @@
     --->    arg_context(
             const,      % functor
             int,        % argument number (starting from 1)
-            term.context   % filename & line number
+            context     % filename & line number
         ).
 
     % term_to_type(Term, Type) :- try_term_to_type(Term, ok(Type)).
     %
-:- pred term.term_to_type(term(U)::in, T::out) is semidet.
+:- pred term_to_type(term(U)::in, T::out) is semidet.
 
     % Like term_to_type, but calls error/1 rather than failing.
     %
-:- func term.det_term_to_type(term(_)) = T.
-:- pred term.det_term_to_type(term(_)::in, T::out) is det.
+:- func det_term_to_type(term(_)) = T.
+:- pred det_term_to_type(term(_)::in, T::out) is det.
 
     % Converts a value to a term representation of that value.
     %
-:- func term.type_to_term(T) = term(_).
-:- pred term.type_to_term(T::in, term(_)::out) is det.
+:- func type_to_term(T) = term(_).
+:- pred type_to_term(T::in, term(_)::out) is det.
 
     % Convert the value stored in the univ (as distinct from the univ itself)
     % to a term.
     %
-:- func term.univ_to_term(univ) = term(_).
-:- pred term.univ_to_term(univ::in, term(_)::out) is det.
+:- func univ_to_term(univ) = term(_).
+:- pred univ_to_term(univ::in, term(_)::out) is det.
 
 %-----------------------------------------------------------------------------%
 
-    % term.vars(Term, Vars):
+    % vars(Term, Vars):
     %
     % Vars is the list of variables contained in Term, in the order
     % obtained by traversing the term depth first, left-to-right.
     %
-:- func term.vars(term(T)) = list(var(T)).
-:- pred term.vars(term(T)::in, list(var(T))::out) is det.
+:- func vars(term(T)) = list(var(T)).
+:- pred vars(term(T)::in, list(var(T))::out) is det.
 
     % As above, but with an accumulator.
     %
-:- func term.vars_2(term(T), list(var(T))) = list(var(T)).
-:- pred term.vars_2(term(T)::in, list(var(T))::in, list(var(T))::out) is det.
+:- func vars_2(term(T), list(var(T))) = list(var(T)).
+:- pred vars_2(term(T)::in, list(var(T))::in, list(var(T))::out) is det.
 
-    % term.vars_list(TermList, Vars):
+    % vars_list(TermList, Vars):
     %
     % Vars is the list of variables contained in TermList, in the order
     % obtained by traversing the list of terms depth-first, left-to-right.
     %
-:- func term.vars_list(list(term(T))) = list(var(T)).
-:- pred term.vars_list(list(term(T))::in, list(var(T))::out) is det.
+:- func vars_list(list(term(T))) = list(var(T)).
+:- pred vars_list(list(term(T))::in, list(var(T))::out) is det.
 
-    % term.contains_var(Term, Var):
+    % contains_var(Term, Var):
     %
     % True if Term contains Var. On backtracking returns all the variables
     % contained in Term.
     %
-:- pred term.contains_var(term(T), var(T)).
-:- mode term.contains_var(in, in) is semidet.
-:- mode term.contains_var(in, out) is nondet.
+:- pred contains_var(term(T), var(T)).
+:- mode contains_var(in, in) is semidet.
+:- mode contains_var(in, out) is nondet.
 
-    % term.contains_var_list(TermList, Var):
+    % contains_var_list(TermList, Var):
     %
     % True if TermList contains Var. On backtracking returns all the variables
     % contained in Term.
     %
-:- pred term.contains_var_list(list(term(T)), var(T)).
-:- mode term.contains_var_list(in, in) is semidet.
-:- mode term.contains_var_list(in, out) is nondet.
+:- pred contains_var_list(list(term(T)), var(T)).
+:- mode contains_var_list(in, in) is semidet.
+:- mode contains_var_list(in, out) is nondet.
 
 :- type substitution(T) == map(var(T), term(T)).
 :- type substitution    == substitution(generic).
 
-    % term.unify(Term1, Term2, Bindings0, Bindings):
+    % unify(Term1, Term2, Bindings0, Bindings):
     %
     % Unify (with occur check) two terms with respect to a set of bindings
     % and possibly update the set of bindings.
     %
-:- pred term.unify(term(T)::in, term(T)::in, substitution(T)::in,
+:- pred unify(term(T)::in, term(T)::in, substitution(T)::in,
     substitution(T)::out) is semidet.
 
     % As above, but unify the corresponding elements of two lists of terms.
     % Fails if the lists are not of equal length.
     %
-:- pred term.unify_list(list(term(T))::in, list(term(T))::in,
+:- pred unify_list(list(term(T))::in, list(term(T))::in,
     substitution(T)::in, substitution(T)::out) is semidet.
 
-    % term.unify(Term1, Term2, BoundVars, !Bindings):
+    % unify(Term1, Term2, BoundVars, !Bindings):
     %
     % Unify (with occur check) two terms with respect to a set of bindings
     % and possibly update the set of bindings. Fails if any of the variables
     % in BoundVars would become bound by the unification.
     %
-:- pred term.unify(term(T)::in, term(T)::in, list(var(T))::in,
+:- pred unify(term(T)::in, term(T)::in, list(var(T))::in,
     substitution(T)::in, substitution(T)::out) is semidet.
 
     % As above, but unify the corresponding elements of two lists of terms.
     % Fails if the lists are not of equal length.
     %
-:- pred term.unify_list(list(term(T))::in, list(term(T))::in,
+:- pred unify_list(list(term(T))::in, list(term(T))::in,
     list(var(T))::in, substitution(T)::in, substitution(T)::out) is semidet.
 
-    % term.list_subsumes(Terms1, Terms2, Subst) succeeds iff the list
+    % list_subsumes(Terms1, Terms2, Subst) succeeds iff the list
     % Terms1 subsumes (is more general than) Terms2, producing a substitution
     % which when applied to Terms1 will give Terms2.
     %
-:- pred term.list_subsumes(list(term(T))::in, list(term(T))::in,
+:- pred list_subsumes(list(term(T))::in, list(term(T))::in,
     substitution(T)::out) is semidet.
 
-    % term.substitute(Term0, Var, Replacement, Term):
+    % substitute(Term0, Var, Replacement, Term):
     %
     % Replace all occurrences of Var in Term0 with Replacement,
     % and return the result in Term.
     %
-:- func term.substitute(term(T), var(T), term(T)) = term(T).
-:- pred term.substitute(term(T)::in, var(T)::in, term(T)::in, term(T)::out)
+:- func substitute(term(T), var(T), term(T)) = term(T).
+:- pred substitute(term(T)::in, var(T)::in, term(T)::in, term(T)::out)
     is det.
 
-    % As above, except for a list of terms rather than a single term.
+    % As above, except for a list of terms rather than a single 
     %
-:- func term.substitute_list(list(term(T)), var(T), term(T)) = list(term(T)).
-:- pred term.substitute_list(list(term(T))::in, var(T)::in, term(T)::in,
+:- func substitute_list(list(term(T)), var(T), term(T)) = list(term(T)).
+:- pred substitute_list(list(term(T))::in, var(T)::in, term(T)::in,
     list(term(T))::out) is det.
 
-    % term.substitute_corresponding(Vars, Repls, Term0, Term):
+    % substitute_corresponding(Vars, Repls, Term0, Term):
     %
     % Replace all occurrences of variables in Vars with the corresponding
     % term in Repls, and return the result in Term. If Vars contains
     % duplicates, or if Vars is not the same length as Repls, the behaviour
     % is undefined and probably harmful.
     %
-:- func term.substitute_corresponding(list(var(T)), list(term(T)),
+:- func substitute_corresponding(list(var(T)), list(term(T)),
     term(T)) = term(T).
-:- pred term.substitute_corresponding(list(var(T))::in, list(term(T))::in,
+:- pred substitute_corresponding(list(var(T))::in, list(term(T))::in,
     term(T)::in, term(T)::out) is det.
 
     % As above, except applies to a list of terms rather than a single term.
     %
-:- func term.substitute_corresponding_list(list(var(T)),
+:- func substitute_corresponding_list(list(var(T)),
     list(term(T)), list(term(T))) = list(term(T)).
-:- pred term.substitute_corresponding_list(list(var(T))::in,
+:- pred substitute_corresponding_list(list(var(T))::in,
     list(term(T))::in, list(term(T))::in, list(term(T))::out) is det.
 
-    % term.apply_rec_substitution(Term0, Substitution, Term):
+    % apply_rec_substitution(Term0, Substitution, Term):
     %
     % Recursively apply substitution to Term0 until no more substitutions
     % can be applied, and then return the result in Term.
     %
-:- func term.apply_rec_substitution(term(T), substitution(T)) = term(T).
-:- pred term.apply_rec_substitution(term(T)::in, substitution(T)::in,
+:- func apply_rec_substitution(term(T), substitution(T)) = term(T).
+:- pred apply_rec_substitution(term(T)::in, substitution(T)::in,
     term(T)::out) is det.
 
     % As above, except applies to a list of terms rather than a single term.
     %
-:- func term.apply_rec_substitution_to_list(list(term(T)),
+:- func apply_rec_substitution_to_list(list(term(T)),
     substitution(T)) = list(term(T)).
-:- pred term.apply_rec_substitution_to_list(list(term(T))::in,
+:- pred apply_rec_substitution_to_list(list(term(T))::in,
     substitution(T)::in, list(term(T))::out) is det.
 
-    % term.apply_substitution(Term0, Substitution, Term):
+    % apply_substitution(Term0, Substitution, Term):
     %
     % Apply substitution to Term0 and return the result in Term.
     %
-:- func term.apply_substitution(term(T), substitution(T)) = term(T).
-:- pred term.apply_substitution(term(T)::in, substitution(T)::in,
+:- func apply_substitution(term(T), substitution(T)) = term(T).
+:- pred apply_substitution(term(T)::in, substitution(T)::in,
     term(T)::out) is det.
 
     % As above, except applies to a list of terms rather than a single term.
     %
-:- func term.apply_substitution_to_list(list(term(T)),
+:- func apply_substitution_to_list(list(term(T)),
     substitution(T)) = list(term(T)).
-:- pred term.apply_substitution_to_list(list(term(T))::in,
+:- pred apply_substitution_to_list(list(term(T))::in,
     substitution(T)::in, list(term(T))::out) is det.
 
-    % term.occurs(Term0, Var, Substitution):
+    % occurs(Term0, Var, Substitution):
     % True iff Var occurs in the term resulting after applying Substitution
     % to Term0. Var variable must not be mapped by Substitution.
     %
-:- pred term.occurs(term(T)::in, var(T)::in, substitution(T)::in) is semidet.
+:- pred occurs(term(T)::in, var(T)::in, substitution(T)::in) is semidet.
 
     % As above, except for a list of terms rather than a single term.
     %
-:- pred term.occurs_list(list(term(T))::in, var(T)::in, substitution(T)::in)
+:- pred occurs_list(list(term(T))::in, var(T)::in, substitution(T)::in)
     is semidet.
 
-    % term.relabel_variable(Term0, OldVar, NewVar, Term):
+    % relabel_variable(Term0, OldVar, NewVar, Term):
     %
     % Replace all occurrences of OldVar in Term0 with NewVar and put the result
     % in Term.
     %
-:- func term.relabel_variable(term(T), var(T), var(T)) = term(T).
-:- pred term.relabel_variable(term(T)::in, var(T)::in, var(T)::in,
-    term(T)::out) is det.
+:- func relabel_variable(term(T), var(T), var(T)) = term(T).
+:- pred relabel_variable(term(T)::in, var(T)::in, var(T)::in, term(T)::out)
+    is det.
 
     % As above, except applies to a list of terms rather than a single term.
     % XXX the name of the predicate is misleading.
     %
-:- func term.relabel_variables(list(term(T)), var(T), var(T)) = list(term(T)).
-:- pred term.relabel_variables(list(term(T))::in, var(T)::in, var(T)::in,
+:- func relabel_variables(list(term(T)), var(T), var(T)) = list(term(T)).
+:- pred relabel_variables(list(term(T))::in, var(T)::in, var(T)::in,
     list(term(T))::out) is det.
 
-    % Same as term.relabel_variable, except relabels multiple variables.
+    % Same as relabel_variable, except relabels multiple variables.
     % If a variable is not in the map, it is not replaced.
     %
-:- func term.apply_variable_renaming(term(T), map(var(T), var(T))) = term(T).
-:- pred term.apply_variable_renaming(term(T)::in, map(var(T), var(T))::in,
+:- func apply_variable_renaming(term(T), map(var(T), var(T))) = term(T).
+:- pred apply_variable_renaming(term(T)::in, map(var(T), var(T))::in,
     term(T)::out) is det.
 
-    % Applies term.apply_variable_renaming to a list of terms.
+    % Applies apply_variable_renaming to a list of terms.
     %
-:- func term.apply_variable_renaming_to_list(list(term(T)),
+:- func apply_variable_renaming_to_list(list(term(T)),
     map(var(T), var(T))) = list(term(T)).
-:- pred term.apply_variable_renaming_to_list(list(term(T))::in,
+:- pred apply_variable_renaming_to_list(list(term(T))::in,
     map(var(T), var(T))::in, list(term(T))::out) is det.
 
-    % Applies term.apply_variable_renaming to a var.
+    % Applies apply_variable_renaming to a var.
     %
-:- func term.apply_variable_renaming_to_var(map(var(T), var(T)),
+:- func apply_variable_renaming_to_var(map(var(T), var(T)),
     var(T)) = var(T).
-:- pred term.apply_variable_renaming_to_var(map(var(T), var(T))::in,
+:- pred apply_variable_renaming_to_var(map(var(T), var(T))::in,
     var(T)::in, var(T)::out) is det.
 
-    % Applies term.apply_variable_renaming to a list of vars.
+    % Applies apply_variable_renaming to a list of vars.
     %
-:- func term.apply_variable_renaming_to_vars(map(var(T), var(T)),
+:- func apply_variable_renaming_to_vars(map(var(T), var(T)),
     list(var(T))) = list(var(T)).
-:- pred term.apply_variable_renaming_to_vars(map(var(T), var(T))::in,
+:- pred apply_variable_renaming_to_vars(map(var(T), var(T))::in,
     list(var(T))::in, list(var(T))::out) is det.
 
-    % term.is_ground(Term, Bindings) is true iff no variables contained
+    % is_ground(Term, Bindings) is true iff no variables contained
     % in Term are non-ground in Bindings.
     %
-:- pred term.is_ground(term(T)::in, substitution(T)::in) is semidet.
+:- pred is_ground(term(T)::in, substitution(T)::in) is semidet.
 
-    % term.is_ground(Term) is true iff Term contains no variables.
+    % is_ground(Term) is true iff Term contains no variables.
     %
-:- pred term.is_ground(term(T)::in) is semidet.
+:- pred is_ground(term(T)::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
     % To manage a supply of variables, use the following 2 predicates.
     % (We might want to give these a unique mode later.)
 
-    % term.init_var_supply(VarSupply):
+    % init_var_supply(VarSupply):
     %
     % Returns a fresh var_supply for producing fresh variables.
     %
-:- func term.init_var_supply = var_supply(T).
-:- pred term.init_var_supply(var_supply(T)).
-:- mode term.init_var_supply(out) is det.
-:- mode term.init_var_supply(in) is semidet. % implied
+:- func init_var_supply = var_supply(T).
+:- pred init_var_supply(var_supply(T)).
+:- mode init_var_supply(out) is det.
+:- mode init_var_supply(in) is semidet. % implied
 
-    % term.create_var(VarSupply0, Variable, VarSupply):
+    % create_var(VarSupply0, Variable, VarSupply):
     % Create a fresh variable (var) and return the updated var_supply.
     %
-:- pred term.create_var(var_supply(T), var(T), var_supply(T)).
-:- mode term.create_var(in, out, out) is det.
+:- pred create_var(var_supply(T), var(T), var_supply(T)).
+:- mode create_var(in, out, out) is det.
 
-    % term.var_id(Variable):
+    % var_id(Variable):
     % Returns a unique number associated with this variable w.r.t.
     % its originating var_supply.
     %
-:- func term.var_id(var(T)) = int.
+:- func var_id(var(T)) = int.
 
 %-----------------------------------------------------------------------------%
 
@@ -372,67 +371,66 @@
     % Convert a variable to an int. Different variables map to different ints.
     % Other than that, the mapping is unspecified.
     %
-:- func term.var_to_int(var(T)) = int.
-:- pred term.var_to_int(var(T)::in, int::out) is det.
+:- func var_to_int(var(T)) = int.
+:- pred var_to_int(var(T)::in, int::out) is det.
 
 %-----------------------------------------------------------------------------%
 
     % Given a term context, return the source line number.
     %
-:- func term.context_line(term.context) = int.
-:- pred term.context_line(term.context::in, int::out) is det.
+:- func context_line(context) = int.
+:- pred context_line(context::in, int::out) is det.
 
     % Given a term context, return the source file.
     %
-:- func term.context_file(term.context) = string.
-:- pred term.context_file(term.context::in, string::out) is det.
+:- func context_file(context) = string.
+:- pred context_file(context::in, string::out) is det.
 
     % Used to initialize the term context when reading in
-    % (or otherwise constructing) a term.
+    % (or otherwise constructing) a 
     %
-:- func term.context_init = term.context.
-:- pred term.context_init(term.context::out) is det.
-:- func term.context_init(string, int) = term.context.
-:- pred term.context_init(string::in, int::in, term.context::out) is det.
+:- func context_init = context.
+:- pred context_init(context::out) is det.
+:- func context_init(string, int) = context.
+:- pred context_init(string::in, int::in, context::out) is det.
 
     % Convert a list of terms which are all vars into a list of vars.
     % Abort (call error/1) if the list contains any non-variables.
     %
-:- func term.term_list_to_var_list(list(term(T))) = list(var(T)).
-:- pred term.term_list_to_var_list(list(term(T))::in, list(var(T))::out)
-    is det.
+:- func term_list_to_var_list(list(term(T))) = list(var(T)).
+:- pred term_list_to_var_list(list(term(T))::in, list(var(T))::out) is det.
 
     % Convert a list of terms which are all vars into a list of vars
     % (or vice versa).
     %
-:- func term.var_list_to_term_list(list(var(T))) = list(term(T)).
-:- pred term.var_list_to_term_list(list(var(T)), list(term(T))).
-:- mode term.var_list_to_term_list(in, out) is det.
-:- mode term.var_list_to_term_list(out, in) is semidet.
+:- func var_list_to_term_list(list(var(T))) = list(term(T)).
+:- pred var_list_to_term_list(list(var(T)), list(term(T))).
+:- mode var_list_to_term_list(in, out) is det.
+:- mode var_list_to_term_list(out, in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
-    % term.generic_term(Term) is true iff `Term' is a term of type
+    % generic_term(Term) is true iff `Term' is a term of type
     % `term' ie `term(generic)'. It is useful because in some instances
     % it doesn't matter what the type of a term is, and passing it to this
     % predicate will ground the type avoiding unbound type variable warnings.
     %
-:- pred term.generic_term(term::in) is det.
+:- pred generic_term(term::in) is det.
 
     % Coerce a term of type `T' into a term of type `U'.
     %
-:- func term.coerce(term(T)) = term(U).
-:- pred term.coerce(term(T)::in, term(U)::out) is det.
+:- func coerce(term(T)) = term(U).
+:- pred coerce(term(T)::in, term(U)::out) is det.
 
     % Coerce a var of type `T' into a var of type `U'.
     %
-:- func term.coerce_var(var(T)) = var(U).
-:- pred term.coerce_var(var(T)::in, var(U)::out) is det.
+:- func coerce_var(var(T)) = var(U).
+:- pred coerce_var(var(T)::in, var(U)::out) is det.
 
     % Coerce a var_supply of type `T' into a var_supply of type `U'.
     %
-:- func term.coerce_var_supply(var_supply(T)) = var_supply(U).
-:- pred term.coerce_var_supply(var_supply(T)::in, var_supply(U)::out) is det.
+:- func coerce_var_supply(var_supply(T)) = var_supply(U).
+:- pred coerce_var_supply(var_supply(T)::in, var_supply(U)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -451,12 +449,12 @@
 % because Aditi does not have a builtin character type. This also allows
 % an integer where a float is expected.
 
-:- pred term.term_to_type_with_int_instead_of_char(term(U)::in, T::out)
+:- pred term_to_type_with_int_instead_of_char(term(U)::in, T::out)
     is semidet.
 
     % Returns the highest numbered variable returned from this var_supply.
     %
-:- func term.var_supply_max_var(var_supply(T)) = var(T).
+:- func var_supply_max_var(var_supply(T)) = var(T).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -467,6 +465,7 @@
 :- import_module bool.
 :- import_module char.
 :- import_module construct.
+:- import_module deconstruct.
 :- import_module float.
 :- import_module int.
 :- import_module require.
@@ -484,22 +483,22 @@
 
 %-----------------------------------------------------------------------------%
 
-term.term_to_type(Term, Val) :-
-    term.try_term_to_type(Term, ok(Val)).
+term_to_type(Term, Val) :-
+    try_term_to_type(Term, ok(Val)).
 
-term.term_to_type_with_int_instead_of_char(Term, Val) :-
+term_to_type_with_int_instead_of_char(Term, Val) :-
     IsAditiTuple = yes,
-    term.try_term_to_type(IsAditiTuple, Term, ok(Val)).
+    try_term_to_type(IsAditiTuple, Term, ok(Val)).
 
-term.try_term_to_type(Term, Result) :-
+try_term_to_type(Term, Result) :-
     IsAditiTuple = no,
-    term.try_term_to_type(IsAditiTuple, Term, Result).
+    try_term_to_type(IsAditiTuple, Term, Result).
 
-:- pred term.try_term_to_type(bool::in, term(U)::in,
+:- pred try_term_to_type(bool::in, term(U)::in,
     term_to_type_result(T, U)::out) is det.
 
-term.try_term_to_type(IsAditiTuple, Term, Result) :-
-    term.try_term_to_univ(IsAditiTuple, Term, type_desc.type_of(ValTypedVar),
+try_term_to_type(IsAditiTuple, Term, Result) :-
+    try_term_to_univ(IsAditiTuple, Term, type_desc.type_of(ValTypedVar),
         UnivResult),
     (
         UnivResult = ok(Univ),
@@ -511,33 +510,33 @@ term.try_term_to_type(IsAditiTuple, Term, Result) :-
         Result = error(Error)
     ).
 
-:- pred term.try_term_to_univ(bool::in, term(T)::in, type_desc.type_desc::in,
+:- pred try_term_to_univ(bool::in, term(T)::in, type_desc.type_desc::in,
     term_to_type_result(univ, T)::out) is det.
 
-term.try_term_to_univ(IsAditiTuple, Term, Type, Result) :-
-    term.try_term_to_univ_2(IsAditiTuple, Term, Type, [], Result).
+try_term_to_univ(IsAditiTuple, Term, Type, Result) :-
+    try_term_to_univ_2(IsAditiTuple, Term, Type, [], Result).
 
-:- pred term.try_term_to_univ_2(bool::in, term(T)::in,
+:- pred try_term_to_univ_2(bool::in, term(T)::in,
     type_desc.type_desc::in, term_to_type_context::in,
     term_to_type_result(univ, T)::out) is det.
 
-term.try_term_to_univ_2(_, term.variable(Var), _Type, Context,
+try_term_to_univ_2(_, variable(Var), _Type, Context,
         error(mode_error(Var, Context))).
-term.try_term_to_univ_2(IsAditiTuple, Term, Type, Context, Result) :-
-    Term = term.functor(Functor, ArgTerms, TermContext),
+try_term_to_univ_2(IsAditiTuple, Term, Type, Context, Result) :-
+    Term = functor(Functor, ArgTerms, TermContext),
     (
         type_desc.type_ctor_and_args(Type, TypeCtor, TypeArgs),
-        term.term_to_univ_special_case(IsAditiTuple,
+        term_to_univ_special_case(IsAditiTuple,
             type_desc.type_ctor_module_name(TypeCtor),
             type_desc.type_ctor_name(TypeCtor),
             TypeArgs, Term, Type, Context, SpecialCaseResult)
     ->
         Result = SpecialCaseResult
     ;
-        Functor = term.atom(FunctorName),
+        Functor = atom(FunctorName),
         list.length(ArgTerms, Arity),
         find_functor(Type, FunctorName, Arity, FunctorNumber, ArgTypes),
-        term.term_list_to_univ_list(IsAditiTuple, ArgTerms,
+        term_list_to_univ_list(IsAditiTuple, ArgTerms,
             ArgTypes, Functor, 1, Context, TermContext, ArgsResult)
     ->
         (
@@ -558,49 +557,49 @@ term.try_term_to_univ_2(IsAditiTuple, Term, Type, Context, Result) :-
         Result = error(type_error(Term, Type, TermContext, RevContext))
     ).
 
-:- pred term.term_to_univ_special_case(bool::in, string::in, string::in,
+:- pred term_to_univ_special_case(bool::in, string::in, string::in,
     list(type_desc.type_desc)::in,
-    term(T)::in(bound(term.functor(ground, ground, ground))),
+    term(T)::in(bound(functor(ground, ground, ground))),
     type_desc.type_desc::in, term_to_type_context::in,
     term_to_type_result(univ, T)::out) is semidet.
 
-term.term_to_univ_special_case(IsAditiTuple, "builtin", "character", [],
+term_to_univ_special_case(IsAditiTuple, "builtin", "character", [],
         Term, _, _, ok(Univ)) :-
     (
         IsAditiTuple = no,
-        Term = term.functor(term.atom(FunctorName), [], _),
+        Term = functor(atom(FunctorName), [], _),
         string.first_char(FunctorName, Char, "")
     ;
         IsAditiTuple = yes,
-        Term = term.functor(term.integer(Int), [], _),
+        Term = functor(integer(Int), [], _),
         char.to_int(Char, Int)
     ),
     type_to_univ(Char, Univ).
-term.term_to_univ_special_case(_, "builtin", "int", [],
+term_to_univ_special_case(_, "builtin", "int", [],
         Term, _, _, ok(Univ)) :-
-    Term = term.functor(term.integer(Int), [], _),
+    Term = functor(integer(Int), [], _),
     type_to_univ(Int, Univ).
-term.term_to_univ_special_case(_, "builtin", "string", [],
+term_to_univ_special_case(_, "builtin", "string", [],
         Term, _, _, ok(Univ)) :-
-    Term = term.functor(term.string(String), [], _),
+    Term = functor(string(String), [], _),
     type_to_univ(String, Univ).
-term.term_to_univ_special_case(IsAditiTuple, "builtin", "float", [],
+term_to_univ_special_case(IsAditiTuple, "builtin", "float", [],
         Term, _, _, ok(Univ)) :-
-    ( Term = term.functor(term.float(Float), [], _) ->
+    ( Term = functor(float(Float), [], _) ->
         type_to_univ(Float, Univ)
     ;
         IsAditiTuple = yes,
-        Term = term.functor(term.integer(Int), [], _),
+        Term = functor(integer(Int), [], _),
         Float = float.float(Int),
         type_to_univ(Float, Univ)
     ).
-term.term_to_univ_special_case(IsAditiTuple, "array", "array", [ElemType],
+term_to_univ_special_case(IsAditiTuple, "array", "array", [ElemType],
         Term, _Type, PrevContext, Result) :-
     %
     % arrays are represented as terms of the form
     %   array([elem1, elem2, ...])
     %
-    Term = term.functor(term.atom("array"), [ArgList], TermContext),
+    Term = functor(atom("array"), [ArgList], TermContext),
 
     % To convert such terms back to arrays, we first
     % convert the term representing the list of elements back to a list,
@@ -608,10 +607,9 @@ term.term_to_univ_special_case(IsAditiTuple, "array", "array", [ElemType],
     %
     type_desc.has_type(Elem, ElemType),
     ListType = type_desc.type_of([Elem]),
-    ArgContext = arg_context(term.atom("array"), 1, TermContext),
+    ArgContext = arg_context(atom("array"), 1, TermContext),
     NewContext = [ArgContext | PrevContext],
-    term.try_term_to_univ_2(IsAditiTuple, ArgList, ListType, NewContext,
-        ArgResult),
+    try_term_to_univ_2(IsAditiTuple, ArgList, ListType, NewContext, ArgResult),
     (
         ArgResult = ok(ListUniv),
         type_desc.has_type(Elem2, ElemType),
@@ -623,51 +621,51 @@ term.term_to_univ_special_case(IsAditiTuple, "array", "array", [ElemType],
         ArgResult = error(Error),
         Result = error(Error)
     ).
-term.term_to_univ_special_case(_, "builtin", "c_pointer", _, _, _, _, _) :-
+term_to_univ_special_case(_, "builtin", "c_pointer", _, _, _, _, _) :-
     fail.
-term.term_to_univ_special_case(_, "std_util", "univ", [],
+term_to_univ_special_case(_, "std_util", "univ", [],
         Term, _, _, Result) :-
     % Implementing this properly would require keeping a global table mapping
     % from type names to type_infos for all of the types in the program...
     % so for the moment, we only allow it for basic types.
-    Term = term.functor(term.atom("univ"), [Arg], _),
-    Arg = term.functor(term.atom(":"), [Value, Type], _),
+    Term = functor(atom("univ"), [Arg], _),
+    Arg = functor(atom(":"), [Value, Type], _),
     (
-        Type = term.functor(term.atom("int"), [], _),
-        Value = term.functor(term.integer(Int), [], _),
+        Type = functor(atom("int"), [], _),
+        Value = functor(integer(Int), [], _),
         Univ = univ(Int)
     ;
-        Type = term.functor(term.atom("string"), [], _),
-        Value = term.functor(term.string(String), [], _),
+        Type = functor(atom("string"), [], _),
+        Value = functor(string(String), [], _),
         Univ = univ(String)
     ;
-        Type = term.functor(term.atom("float"), [], _),
-        Value = term.functor(term.float(Float), [], _),
+        Type = functor(atom("float"), [], _),
+        Value = functor(float(Float), [], _),
         Univ = univ(Float)
     ),
     % The result is a `univ', but it is also wrapped in a `univ'
     % like all the other results returned from this procedure.
     Result = ok(univ(Univ)).
 
-term.term_to_univ_special_case(_, "std_util", "type_info", _, _, _, _, _) :-
+term_to_univ_special_case(_, "std_util", "type_info", _, _, _, _, _) :-
     % Ditto.
     fail.
 
-:- pred term.term_list_to_univ_list(bool::in, list(term(T))::in,
-    list(type_desc.type_desc)::in, term.const::in, int::in,
-    term_to_type_context::in, term.context::in,
+:- pred term_list_to_univ_list(bool::in, list(term(T))::in,
+    list(type_desc.type_desc)::in, const::in, int::in,
+    term_to_type_context::in, context::in,
     term_to_type_result(list(univ), T)::out) is semidet.
 
-term.term_list_to_univ_list(_, [], [], _, _, _, _, ok([])).
-term.term_list_to_univ_list(IsAditiTuple, [ArgTerm | ArgTerms],
+term_list_to_univ_list(_, [], [], _, _, _, _, ok([])).
+term_list_to_univ_list(IsAditiTuple, [ArgTerm | ArgTerms],
         [Type | Types], Functor, ArgNum, PrevContext, TermContext, Result) :-
     ArgContext = arg_context(Functor, ArgNum, TermContext),
     NewContext = [ArgContext | PrevContext],
-    term.try_term_to_univ_2(IsAditiTuple, ArgTerm, Type, NewContext,
+    try_term_to_univ_2(IsAditiTuple, ArgTerm, Type, NewContext,
         ArgResult),
     (
         ArgResult = ok(Arg),
-        term.term_list_to_univ_list(IsAditiTuple, ArgTerms, Types, Functor,
+        term_list_to_univ_list(IsAditiTuple, ArgTerms, Types, Functor,
             ArgNum + 1, PrevContext, TermContext, RestResult),
         (
             RestResult = ok(Rest),
@@ -681,31 +679,31 @@ term.term_list_to_univ_list(IsAditiTuple, [ArgTerm | ArgTerms],
         Result = error(Error)
     ).
 
-:- pred term.find_functor(type_desc.type_desc::in, string::in, int::in,
+:- pred find_functor(type_desc.type_desc::in, string::in, int::in,
     int::out, list(type_desc.type_desc)::out) is semidet.
 
-term.find_functor(Type, Functor, Arity, FunctorNumber, ArgTypes) :-
+find_functor(Type, Functor, Arity, FunctorNumber, ArgTypes) :-
     N = construct.num_functors(Type),
-    term.find_functor_2(Type, Functor, Arity, N, FunctorNumber, ArgTypes).
+    find_functor_2(Type, Functor, Arity, N, FunctorNumber, ArgTypes).
 
-:- pred term.find_functor_2(type_desc.type_desc::in, string::in, int::in,
-    int::in, int::out, list(type_desc.type_desc)::out) is semidet.
+:- pred find_functor_2(type_desc.type_desc::in, string::in, int::in,
+    int::in, int::out, list(type_desc)::out) is semidet.
 
-term.find_functor_2(TypeInfo, Functor, Arity, Num, FunctorNumber, ArgTypes) :-
+find_functor_2(TypeInfo, Functor, Arity, Num, FunctorNumber, ArgTypes) :-
     Num >= 0,
     Num1 = Num - 1,
-    ( std_util.get_functor(TypeInfo, Num1, Functor, Arity, ArgTypes1) ->
-        ArgTypes = ArgTypes1,
+    ( get_functor(TypeInfo, Num1, Functor, Arity, ArgPseudoTypes) ->
+        ArgTypes = list.map(ground_pseudo_type_desc_to_type_desc_det,
+            ArgPseudoTypes),
         FunctorNumber = Num1
     ;
-        term.find_functor_2(TypeInfo, Functor, Arity, Num1,
-            FunctorNumber, ArgTypes)
+        find_functor_2(TypeInfo, Functor, Arity, Num1, FunctorNumber, ArgTypes)
     ).
 
-term.det_term_to_type(Term, X) :-
-    ( term.term_to_type(Term, X1) ->
+det_term_to_type(Term, X) :-
+    ( term_to_type(Term, X1) ->
         X = X1
-    ; \+ term.is_ground(Term) ->
+    ; \+ is_ground(Term) ->
         error("term.det_term_to_type failed, because the term wasn't ground")
     ;
         Message = "term.det_term_to_type failed, due to a type error:\n"
@@ -716,11 +714,11 @@ term.det_term_to_type(Term, X) :-
 
 %-----------------------------------------------------------------------------%
 
-term.type_to_term(Val, Term) :- type_to_univ(Val, Univ),
-    term.univ_to_term(Univ, Term).
+type_to_term(Val, Term) :- type_to_univ(Val, Univ),
+    univ_to_term(Univ, Term).
 
-term.univ_to_term(Univ, Term) :-
-    term.context_init(Context),
+univ_to_term(Univ, Term) :-
+    context_init(Context),
     Type = univ_type(Univ),
     % NU-Prolog barfs on `num_functors(Type) < 0'
     ( construct.num_functors(Type) = N, N < 0 ->
@@ -728,7 +726,7 @@ term.univ_to_term(Univ, Term) :-
             type_desc.type_ctor_and_args(Type, TypeCtor, TypeArgs),
             TypeName = type_desc.type_ctor_name(TypeCtor),
             ModuleName = type_desc.type_ctor_module_name(TypeCtor),
-            term.univ_to_term_special_case(ModuleName, TypeName, TypeArgs,
+            univ_to_term_special_case(ModuleName, TypeName, TypeArgs,
                 Univ, Context, SpecialCaseTerm)
         ->
             Term = SpecialCaseTerm
@@ -738,67 +736,65 @@ term.univ_to_term(Univ, Term) :-
             error(Message)
         )
     ;
-        deconstruct(univ_value(Univ), FunctorString, _FunctorArity,
-            FunctorArgs),
-        term.univ_list_to_term_list(FunctorArgs, TermArgs),
-        Term = term.functor(term.atom(FunctorString), TermArgs, Context)
+        deconstruct(univ_value(Univ), canonicalize, FunctorString,
+            _FunctorArity, FunctorArgs),
+        univ_list_to_term_list(FunctorArgs, TermArgs),
+        Term = functor(atom(FunctorString), TermArgs, Context)
     ).
 
-:- pred term.univ_to_term_special_case(string::in, string::in,
-    list(type_desc.type_desc)::in, univ::in, term.context::in, term(T)::out)
+:- pred univ_to_term_special_case(string::in, string::in,
+    list(type_desc.type_desc)::in, univ::in, context::in, term(T)::out)
     is semidet.
 
-term.univ_to_term_special_case("builtin", "int", [], Univ, Context,
-        term.functor(term.integer(Int), [], Context)) :-
+univ_to_term_special_case("builtin", "int", [], Univ, Context,
+        functor(integer(Int), [], Context)) :-
     det_univ_to_type(Univ, Int).
-term.univ_to_term_special_case("builtin", "float", [], Univ, Context,
-        term.functor(term.float(Float), [], Context)) :-
+univ_to_term_special_case("builtin", "float", [], Univ, Context,
+        functor(float(Float), [], Context)) :-
     det_univ_to_type(Univ, Float).
-term.univ_to_term_special_case("builtin", "character", [], Univ,
-        Context, term.functor(term.atom(CharName), [], Context)) :-
+univ_to_term_special_case("builtin", "character", [], Univ,
+        Context, functor(atom(CharName), [], Context)) :-
     det_univ_to_type(Univ, Character),
     string.char_to_string(Character, CharName).
-term.univ_to_term_special_case("builtin", "string", [], Univ, Context,
-        term.functor(term.string(String), [], Context)) :-
+univ_to_term_special_case("builtin", "string", [], Univ, Context,
+        functor(string(String), [], Context)) :-
     det_univ_to_type(Univ, String).
-term.univ_to_term_special_case("std_util", "type_info", [], Univ, Context,
-        term.functor(term.atom("type_info"), [Term], Context)) :-
+univ_to_term_special_case("std_util", "type_info", [], Univ, Context,
+        functor(atom("type_info"), [Term], Context)) :-
     det_univ_to_type(Univ, TypeInfo),
     type_info_to_term(Context, TypeInfo, Term).
-term.univ_to_term_special_case("std_util", "univ", [], Univ, Context, Term) :-
+univ_to_term_special_case("std_util", "univ", [], Univ, Context, Term) :-
     det_univ_to_type(Univ, NestedUniv),
-    Term = term.functor(term.atom("univ"),
+    Term = functor(atom("univ"),
         % XXX what operator should we use for type qualification?
-        [term.functor(term.atom(":"),  % TYPE_QUAL_OP
+        [functor(atom(":"),  % TYPE_QUAL_OP
             [ValueTerm, TypeTerm], Context)], Context),
     type_info_to_term(Context, univ_type(NestedUniv), TypeTerm),
     NestedUnivValue = univ_value(NestedUniv),
-    term.type_to_term(NestedUnivValue, ValueTerm).
+    type_to_term(NestedUnivValue, ValueTerm).
 
-term.univ_to_term_special_case("array", "array", [ElemType], Univ, Context,
-        Term) :-
-    Term = term.functor(term.atom("array"), [ArgsTerm], Context),
+univ_to_term_special_case("array", "array", [ElemType], Univ, Context, Term) :-
+    Term = functor(atom("array"), [ArgsTerm], Context),
     type_desc.has_type(Elem, ElemType),
     same_type(List, [Elem]),
     det_univ_to_type(Univ, Array),
     array.to_list(Array, List),
-    term.type_to_term(List, ArgsTerm).
+    type_to_term(List, ArgsTerm).
 
 :- pred same_type(T::unused, T::unused) is det.
 
 same_type(_, _).
 
-:- pred term.univ_list_to_term_list(list(univ)::in, list(term(T))::out)
-    is det.
+:- pred univ_list_to_term_list(list(univ)::in, list(term(T))::out) is det.
 
-term.univ_list_to_term_list([], []).
-term.univ_list_to_term_list([Value|Values], [Term|Terms]) :-
-    term.univ_to_term(Value, Term),
-    term.univ_list_to_term_list(Values, Terms).
+univ_list_to_term_list([], []).
+univ_list_to_term_list([Value|Values], [Term|Terms]) :-
+    univ_to_term(Value, Term),
+    univ_list_to_term_list(Values, Terms).
 
     % Given a type_info, return a term that represents the name of that type.
     %
-:- pred type_info_to_term(term.context::in, type_desc.type_desc::in,
+:- pred type_info_to_term(context::in, type_desc.type_desc::in,
     term(T)::out) is det.
 
 type_info_to_term(Context, TypeInfo, Term) :-
@@ -808,59 +804,59 @@ type_info_to_term(Context, TypeInfo, Term) :-
     list.map(type_info_to_term(Context), ArgTypes, ArgTerms),
 
     ( ModuleName = "builtin" ->
-        Term = term.functor(term.atom(TypeName), ArgTerms, Context)
+        Term = functor(atom(TypeName), ArgTerms, Context)
     ;
-        Arg1 = term.functor(term.atom(ModuleName), [], Context),
-        Arg2 = term.functor(term.atom(TypeName), ArgTerms, Context),
-        Term = term.functor(term.atom(":"), [Arg1, Arg2], Context)
+        Arg1 = functor(atom(ModuleName), [], Context),
+        Arg2 = functor(atom(TypeName), ArgTerms, Context),
+        Term = functor(atom(":"), [Arg1, Arg2], Context)
     ).
 
 %-----------------------------------------------------------------------------%
 
-    % term.vars(Term, Vars) is true if Vars is the list of variables
+    % vars(Term, Vars) is true if Vars is the list of variables
     % contained in Term obtained by depth-first left-to-right traversal
     % in that order.
 
-term.vars(Term, Vars) :-
-    term.vars_2(Term, [], Vars).
+vars(Term, Vars) :-
+    vars_2(Term, [], Vars).
 
-term.vars_list(Terms, Vars) :-
-    term.vars_2_list(Terms, [], Vars).
+vars_list(Terms, Vars) :-
+    vars_2_list(Terms, [], Vars).
 
-term.vars_2(term.variable(Var), !Vars) :-
+vars_2(variable(Var), !Vars) :-
     !:Vars = [Var | !.Vars].
-term.vars_2(term.functor(_, Args, _), !Vars) :-
-    term.vars_2_list(Args, !Vars).
+vars_2(functor(_, Args, _), !Vars) :-
+    vars_2_list(Args, !Vars).
 
-:- pred term.vars_2_list(list(term(T))::in, list(var(T))::in,
+:- pred vars_2_list(list(term(T))::in, list(var(T))::in,
     list(var(T))::out) is det.
 
-term.vars_2_list([], !Vars).
-term.vars_2_list([Term | Terms], !Vars) :-
-    term.vars_2_list(Terms, !Vars),
-    term.vars_2(Term, !Vars).
+vars_2_list([], !Vars).
+vars_2_list([Term | Terms], !Vars) :-
+    vars_2_list(Terms, !Vars),
+    vars_2(Term, !Vars).
 
 %-----------------------------------------------------------------------------%
 
-term.contains_var(term.variable(Var), Var).
-term.contains_var(term.functor(_, Args, _), Var) :-
-    term.contains_var_list(Args, Var).
+contains_var(variable(Var), Var).
+contains_var(functor(_, Args, _), Var) :-
+    contains_var_list(Args, Var).
 
-term.contains_var_list([Term | _], Var) :-
-    term.contains_var(Term, Var).
-term.contains_var_list([_ | Terms], Var) :-
-    term.contains_var_list(Terms, Var).
-
-%-----------------------------------------------------------------------------%
-
-term.context_line(term.context(_, LineNumber), LineNumber).
-term.context_file(term.context(FileName, _), FileName).
-term.context_init(term.context("", 0)).
-term.context_init(File, LineNumber, term.context(File, LineNumber)).
+contains_var_list([Term | _], Var) :-
+    contains_var(Term, Var).
+contains_var_list([_ | Terms], Var) :-
+    contains_var_list(Terms, Var).
 
 %-----------------------------------------------------------------------------%
 
-term.unify(term.variable(X), term.variable(Y), !Bindings) :-
+context_line(context(_, LineNumber), LineNumber).
+context_file(context(FileName, _), FileName).
+context_init(context("", 0)).
+context_init(File, LineNumber, context(File, LineNumber)).
+
+%-----------------------------------------------------------------------------%
+
+term.unify(variable(X), variable(Y), !Bindings) :-
     ( map.search(!.Bindings, X, BindingOfX) ->
         ( map.search(!.Bindings, Y, BindingOfY) ->
             % Both X and Y already have bindings - just unify the terms
@@ -868,24 +864,22 @@ term.unify(term.variable(X), term.variable(Y), !Bindings) :-
             term.unify(BindingOfX, BindingOfY, !Bindings)
         ;
             % Y is a variable which hasn't been bound yet.
-            term.apply_rec_substitution(BindingOfX, !.Bindings,
-                SubstBindingOfX),
-            ( SubstBindingOfX = term.variable(Y) ->
+            apply_rec_substitution(BindingOfX, !.Bindings, SubstBindingOfX),
+            ( SubstBindingOfX = variable(Y) ->
                 true
             ;
-                \+ term.occurs(SubstBindingOfX, Y, !.Bindings),
+                \+ occurs(SubstBindingOfX, Y, !.Bindings),
                 map.set(!.Bindings, Y, SubstBindingOfX, !:Bindings)
             )
         )
     ;
         ( map.search(!.Bindings, Y, BindingOfY) ->
             % X is a variable which hasn't been bound yet
-            term.apply_rec_substitution(BindingOfY, !.Bindings,
-                SubstBindingOfY),
-            ( SubstBindingOfY = term.variable(X) ->
+            apply_rec_substitution(BindingOfY, !.Bindings, SubstBindingOfY),
+            ( SubstBindingOfY = variable(X) ->
                 true
             ;
-                \+ term.occurs(SubstBindingOfY, X, !.Bindings),
+                \+ occurs(SubstBindingOfY, X, !.Bindings),
                 map.set(!.Bindings, X, SubstBindingOfY, !:Bindings)
             )
         ;
@@ -894,28 +888,28 @@ term.unify(term.variable(X), term.variable(Y), !Bindings) :-
             ( X = Y ->
                 true
             ;
-                map.set(!.Bindings, X, term.variable(Y), !:Bindings)
+                map.set(!.Bindings, X, variable(Y), !:Bindings)
             )
         )
     ).
 
 term.unify(term.variable(X), term.functor(F, As, C), !Bindings) :-
     ( map.search(!.Bindings, X, BindingOfX) ->
-        term.unify(BindingOfX, term.functor(F, As, C), !Bindings)
+        term.unify(BindingOfX, functor(F, As, C), !Bindings)
     ;
-        \+ term.occurs_list(As, X, !.Bindings),
-        map.set(!.Bindings, X, term.functor(F, As, C), !:Bindings)
+        \+ occurs_list(As, X, !.Bindings),
+        map.set(!.Bindings, X, functor(F, As, C), !:Bindings)
     ).
 
-term.unify(term.functor(F, As, C), term.variable(X), !Bindings) :-
+term.unify(functor(F, As, C), variable(X), !Bindings) :-
     ( map.search(!.Bindings, X, BindingOfX) ->
-        term.unify(term.functor(F, As, C), BindingOfX, !Bindings)
+        term.unify(functor(F, As, C), BindingOfX, !Bindings)
     ;
-        \+ term.occurs_list(As, X, !.Bindings),
-        map.set(!.Bindings, X, term.functor(F, As, C), !:Bindings)
+        \+ occurs_list(As, X, !.Bindings),
+        map.set(!.Bindings, X, functor(F, As, C), !:Bindings)
     ).
 
-term.unify(term.functor(F, AsX, _), term.functor(F, AsY, _), !Bindings) :-
+term.unify(functor(F, AsX, _), functor(F, AsY, _), !Bindings) :-
     term.unify_list(AsX, AsY, !Bindings).
 
 term.unify_list([], [], !Bindings).
@@ -923,7 +917,7 @@ term.unify_list([X | Xs], [Y | Ys], !Bindings) :-
     term.unify(X, Y, !Bindings),
     term.unify_list(Xs, Ys, !Bindings).
 
-term.unify(term.variable(X), term.variable(Y), BoundVars, !Bindings) :-
+term.unify(variable(X), variable(Y), BoundVars, !Bindings) :-
     ( list.member(Y, BoundVars) ->
         unify_bound_var(X, Y, BoundVars, !Bindings)
     ; list.member(X, BoundVars) ->
@@ -932,27 +926,25 @@ term.unify(term.variable(X), term.variable(Y), BoundVars, !Bindings) :-
         ( map.search(!.Bindings, Y, BindingOfY) ->
             % Both X and Y already have bindings - just unify the
             % terms they are bound to.
-            term.unify(BindingOfX, BindingOfY, BoundVars, !Bindings)
+            unify(BindingOfX, BindingOfY, BoundVars, !Bindings)
         ;
-            term.apply_rec_substitution(BindingOfX, !.Bindings,
-                SubstBindingOfX),
+            apply_rec_substitution(BindingOfX, !.Bindings, SubstBindingOfX),
             % Y is a variable which hasn't been bound yet.
-            ( SubstBindingOfX = term.variable(Y) ->
+            ( SubstBindingOfX = variable(Y) ->
                 true
             ;
-                \+ term.occurs(SubstBindingOfX, Y, !.Bindings),
+                \+ occurs(SubstBindingOfX, Y, !.Bindings),
                 svmap.det_insert(Y, SubstBindingOfX, !Bindings)
             )
         )
     ;
         ( map.search(!.Bindings, Y, BindingOfY) ->
-            term.apply_rec_substitution(BindingOfY, !.Bindings,
-                SubstBindingOfY),
+            apply_rec_substitution(BindingOfY, !.Bindings, SubstBindingOfY),
             % X is a variable which hasn't been bound yet.
-            ( SubstBindingOfY = term.variable(X) ->
+            ( SubstBindingOfY = variable(X) ->
                 true
             ;
-                \+ term.occurs(SubstBindingOfY, X, !.Bindings),
+                \+ occurs(SubstBindingOfY, X, !.Bindings),
                 svmap.det_insert(X, SubstBindingOfY, !Bindings)
             )
         ;
@@ -960,35 +952,33 @@ term.unify(term.variable(X), term.variable(Y), BoundVars, !Bindings) :-
             ( X = Y ->
                 true
             ;
-                svmap.det_insert(X, term.variable(Y), !Bindings)
+                svmap.det_insert(X, variable(Y), !Bindings)
             )
         )
     ).
 
-term.unify(term.variable(X), term.functor(F, As, C), BoundVars,
-        !Bindings) :-
+term.unify(variable(X), functor(F, As, C), BoundVars, !Bindings) :-
     ( map.search(!.Bindings, X, BindingOfX) ->
-        term.unify(BindingOfX, term.functor(F, As, C), BoundVars, !Bindings)
+        term.unify(BindingOfX, functor(F, As, C), BoundVars, !Bindings)
     ;
-        \+ term.occurs_list(As, X, !.Bindings),
+        \+ occurs_list(As, X, !.Bindings),
         \+ list.member(X, BoundVars),
-        svmap.det_insert(X, term.functor(F, As, C), !Bindings)
+        svmap.det_insert(X, functor(F, As, C), !Bindings)
     ).
 
-term.unify(term.functor(F, As, C), term.variable(X), BoundVars,
-        !Bindings) :-
+term.unify(functor(F, As, C), variable(X), BoundVars, !Bindings) :-
     (
         map.search(!.Bindings, X, BindingOfX)
     ->
-        term.unify(term.functor(F, As, C), BindingOfX, BoundVars, !Bindings)
+        term.unify(functor(F, As, C), BindingOfX, BoundVars, !Bindings)
     ;
-        \+ term.occurs_list(As, X, !.Bindings),
+        \+ occurs_list(As, X, !.Bindings),
         \+ list.member(X, BoundVars),
-        svmap.det_insert(X, term.functor(F, As, C), !Bindings)
+        svmap.det_insert(X, functor(F, As, C), !Bindings)
     ).
 
-term.unify(term.functor(FX, AsX, _CX), term.functor(FY, AsY, _CY),
-        BoundVars, !Bindings) :-
+term.unify(functor(FX, AsX, _CX), functor(FY, AsY, _CY), BoundVars,
+        !Bindings) :-
     list.length(AsX, ArityX),
     list.length(AsY, ArityY),
     (
@@ -1010,132 +1000,132 @@ term.unify_list([X | Xs], [Y | Ys], BoundVars, !Bindings) :-
 
 unify_bound_var(Var, BoundVar, BoundVars, !Bindings) :-
     ( map.search(!.Bindings, Var, BindingOfVar) ->
-        BindingOfVar = term.variable(Var2),
+        BindingOfVar = variable(Var2),
         unify_bound_var(Var2, BoundVar, BoundVars, !Bindings)
     ;
         ( Var = BoundVar ->
             true
         ;
             \+ list.member(Var, BoundVars),
-            svmap.det_insert(Var, term.variable(BoundVar), !Bindings)
+            svmap.det_insert(Var, variable(BoundVar), !Bindings)
         )
     ).
 
-term.list_subsumes(Terms1, Terms2, Subst) :-
+list_subsumes(Terms1, Terms2, Subst) :-
     % Terms1 subsumes Terms2 iff Terms1 can be unified with Terms2
     % without binding any of the variables in Terms2.
-    term.vars_list(Terms2, Terms2Vars),
+    vars_list(Terms2, Terms2Vars),
     map.init(Subst0),
     term.unify_list(Terms1, Terms2, Terms2Vars, Subst0, Subst).
 
 %-----------------------------------------------------------------------------%
 
-term.occurs(term.variable(X), Y, Bindings) :-
+occurs(variable(X), Y, Bindings) :-
     ( X = Y ->
         true
     ;
         map.search(Bindings, X, BindingOfX),
-        term.occurs(BindingOfX, Y, Bindings)
+        occurs(BindingOfX, Y, Bindings)
     ).
-term.occurs(term.functor(_F, As, _), Y, Bindings) :-
-    term.occurs_list(As, Y, Bindings).
+occurs(functor(_F, As, _), Y, Bindings) :-
+    occurs_list(As, Y, Bindings).
 
-term.occurs_list([Term | Terms], Y, Bindings) :-
-    ( term.occurs(Term, Y, Bindings) ->
+occurs_list([Term | Terms], Y, Bindings) :-
+    ( occurs(Term, Y, Bindings) ->
         true
     ;
-        term.occurs_list(Terms, Y, Bindings)
+        occurs_list(Terms, Y, Bindings)
     ).
 
 %-----------------------------------------------------------------------------%
 
-term.substitute(term.variable(Var), SearchVar, Replacement, Term) :-
+substitute(variable(Var), SearchVar, Replacement, Term) :-
     ( Var = SearchVar ->
         Term = Replacement
     ;
-        Term = term.variable(Var)
+        Term = variable(Var)
     ).
-term.substitute(term.functor(Name, Args0, Context), Var, Replacement,
-         term.functor(Name, Args, Context)) :-
-    term.substitute_list(Args0, Var, Replacement, Args).
+substitute(functor(Name, Args0, Context), Var, Replacement,
+         functor(Name, Args, Context)) :-
+    substitute_list(Args0, Var, Replacement, Args).
 
-term.substitute_list([], _Var, _Replacement, []).
-term.substitute_list([Term0 | Terms0], Var, Replacement, [Term | Terms]) :-
-    term.substitute(Term0, Var, Replacement, Term),
-    term.substitute_list(Terms0, Var, Replacement, Terms).
+substitute_list([], _Var, _Replacement, []).
+substitute_list([Term0 | Terms0], Var, Replacement, [Term | Terms]) :-
+    substitute(Term0, Var, Replacement, Term),
+    substitute_list(Terms0, Var, Replacement, Terms).
 
-term.substitute_corresponding(Ss, Rs, Term0, Term) :-
+substitute_corresponding(Ss, Rs, Term0, Term) :-
     map.init(Subst0),
-    ( term.substitute_corresponding_2(Ss, Rs, Subst0, Subst) ->
-        term.apply_substitution(Term0, Subst, Term)
+    ( substitute_corresponding_2(Ss, Rs, Subst0, Subst) ->
+        apply_substitution(Term0, Subst, Term)
     ;
         error("term.substitute_corresponding: different length lists")
     ).
 
-term.substitute_corresponding_list(Ss, Rs, TermList0, TermList) :-
+substitute_corresponding_list(Ss, Rs, TermList0, TermList) :-
     map.init(Subst0),
-    ( term.substitute_corresponding_2(Ss, Rs, Subst0, Subst) ->
-        term.apply_substitution_to_list(TermList0, Subst, TermList)
+    ( substitute_corresponding_2(Ss, Rs, Subst0, Subst) ->
+        apply_substitution_to_list(TermList0, Subst, TermList)
     ;
         error("term.substitute_corresponding_list: different length lists")
     ).
 
-:- pred term.substitute_corresponding_2(list(var(T))::in, list(term(T))::in,
+:- pred substitute_corresponding_2(list(var(T))::in, list(term(T))::in,
     substitution(T)::in, substitution(T)::out) is semidet.
 
-term.substitute_corresponding_2([], [], !Subst).
-term.substitute_corresponding_2([S | Ss], [R | Rs], !Subst) :-
+substitute_corresponding_2([], [], !Subst).
+substitute_corresponding_2([S | Ss], [R | Rs], !Subst) :-
     map.set(!.Subst, S, R, !:Subst),
-    term.substitute_corresponding_2(Ss, Rs, !Subst).
+    substitute_corresponding_2(Ss, Rs, !Subst).
 
 %-----------------------------------------------------------------------------%
 
-term.apply_rec_substitution(term.variable(Var), Substitution, Term) :-
+apply_rec_substitution(variable(Var), Substitution, Term) :-
     ( map.search(Substitution, Var, Replacement) ->
         % Recursively apply the substition to the replacement.
-        term.apply_rec_substitution(Replacement, Substitution, Term)
+        apply_rec_substitution(Replacement, Substitution, Term)
     ;
-        Term = term.variable(Var)
+        Term = variable(Var)
     ).
-term.apply_rec_substitution(term.functor(Name, Args0, Context), Substitution,
-         term.functor(Name, Args, Context)) :-
-    term.apply_rec_substitution_to_list(Args0, Substitution, Args).
+apply_rec_substitution(functor(Name, Args0, Context), Substitution,
+         functor(Name, Args, Context)) :-
+    apply_rec_substitution_to_list(Args0, Substitution, Args).
 
-term.apply_rec_substitution_to_list([], _Substitution, []).
-term.apply_rec_substitution_to_list([Term0 | Terms0], Substitution,
+apply_rec_substitution_to_list([], _Substitution, []).
+apply_rec_substitution_to_list([Term0 | Terms0], Substitution,
         [Term | Terms]) :-
-    term.apply_rec_substitution(Term0, Substitution, Term),
-    term.apply_rec_substitution_to_list(Terms0, Substitution, Terms).
+    apply_rec_substitution(Term0, Substitution, Term),
+    apply_rec_substitution_to_list(Terms0, Substitution, Terms).
 
 %-----------------------------------------------------------------------------%
 
-term.apply_substitution(term.variable(Var), Substitution, Term) :-
+apply_substitution(variable(Var), Substitution, Term) :-
     ( map.search(Substitution, Var, Replacement) ->
         Term = Replacement
     ;
-        Term = term.variable(Var)
+        Term = variable(Var)
     ).
-term.apply_substitution(term.functor(Name, Args0, Context), Substitution,
-         term.functor(Name, Args, Context)) :-
-    term.apply_substitution_to_list(Args0, Substitution, Args).
+apply_substitution(functor(Name, Args0, Context), Substitution,
+         functor(Name, Args, Context)) :-
+    apply_substitution_to_list(Args0, Substitution, Args).
 
-term.apply_substitution_to_list([], _Substitution, []).
-term.apply_substitution_to_list([Term0 | Terms0], Substitution,
+apply_substitution_to_list([], _Substitution, []).
+apply_substitution_to_list([Term0 | Terms0], Substitution,
         [Term | Terms]) :-
-    term.apply_substitution(Term0, Substitution, Term),
-    term.apply_substitution_to_list(Terms0, Substitution, Terms).
+    apply_substitution(Term0, Substitution, Term),
+    apply_substitution_to_list(Terms0, Substitution, Terms).
 
 %-----------------------------------------------------------------------------%
 
-term.init_var_supply(var_supply(0)).
+init_var_supply(var_supply(0)).
 
-term.create_var(var_supply(V0), var(V), var_supply(V)) :-
+create_var(var_supply(V0), var(V), var_supply(V)) :-
     % We number variables using sequential numbers,
     V = V0 + 1.
 
 %------------------------------------------------------------------------------%
 
-term.var_id(var(V)) = V.
+var_id(var(V)) = V.
 
 %-----------------------------------------------------------------------------%
 
@@ -1144,212 +1134,210 @@ term.var_id(var(V)) = V.
     from_int(X) = term.unsafe_int_to_var(X)
 ].
 
-term.var_to_int(var(Var), Var).
+var_to_int(var(Var), Var).
 
     % Cast an integer to a var(T), subverting the type-checking.
     %
 :- func unsafe_int_to_var(int) = var(T).
 
-term.unsafe_int_to_var(Var) = var(Var).
+unsafe_int_to_var(Var) = var(Var).
 
-term.var_supply_max_var(var_supply(V)) = var(V).
+var_supply_max_var(var_supply(V)) = var(V).
 
 %-----------------------------------------------------------------------------%
 
-term.relabel_variable(term.functor(Const, Terms0, Cont), OldVar, NewVar,
-        term.functor(Const, Terms, Cont)) :-
-    term.relabel_variables(Terms0, OldVar, NewVar, Terms).
-term.relabel_variable(term.variable(Var0), OldVar, NewVar,
-        term.variable(Var)) :-
+relabel_variable(functor(Const, Terms0, Cont), OldVar, NewVar,
+        functor(Const, Terms, Cont)) :-
+    relabel_variables(Terms0, OldVar, NewVar, Terms).
+relabel_variable(variable(Var0), OldVar, NewVar, variable(Var)) :-
     ( Var0 = OldVar ->
         Var = NewVar
     ;
         Var = Var0
     ).
 
-term.relabel_variables([], _, _, []).
-term.relabel_variables([Term0|Terms0], OldVar, NewVar, [Term|Terms]):-
-    term.relabel_variable(Term0, OldVar, NewVar, Term),
-    term.relabel_variables(Terms0, OldVar, NewVar, Terms).
+relabel_variables([], _, _, []).
+relabel_variables([Term0|Terms0], OldVar, NewVar, [Term|Terms]):-
+    relabel_variable(Term0, OldVar, NewVar, Term),
+    relabel_variables(Terms0, OldVar, NewVar, Terms).
 
-term.apply_variable_renaming(term.functor(Const, Args0, Cont), Renaming,
-        term.functor(Const, Args, Cont)) :-
-    term.apply_variable_renaming_to_list(Args0, Renaming, Args).
-term.apply_variable_renaming(term.variable(Var0), Renaming,
-        term.variable(Var)) :-
-    term.apply_variable_renaming_to_var(Renaming, Var0, Var).
+apply_variable_renaming(functor(Const, Args0, Cont), Renaming,
+        functor(Const, Args, Cont)) :-
+    apply_variable_renaming_to_list(Args0, Renaming, Args).
+apply_variable_renaming(variable(Var0), Renaming,
+        variable(Var)) :-
+    apply_variable_renaming_to_var(Renaming, Var0, Var).
 
-term.apply_variable_renaming_to_list([], _, []).
-term.apply_variable_renaming_to_list([Term0|Terms0], Renaming, [Term|Terms]) :-
-    term.apply_variable_renaming(Term0, Renaming, Term),
-    term.apply_variable_renaming_to_list(Terms0, Renaming, Terms).
+apply_variable_renaming_to_list([], _, []).
+apply_variable_renaming_to_list([Term0|Terms0], Renaming, [Term|Terms]) :-
+    apply_variable_renaming(Term0, Renaming, Term),
+    apply_variable_renaming_to_list(Terms0, Renaming, Terms).
 
-term.apply_variable_renaming_to_var(Renaming, Var0, Var) :-
+apply_variable_renaming_to_var(Renaming, Var0, Var) :-
     ( map.search(Renaming, Var0, NewVar) ->
         Var = NewVar
     ;
         Var = Var0
     ).
 
-term.apply_variable_renaming_to_vars(_Renaming, [], []).
-term.apply_variable_renaming_to_vars(Renaming, [Var0 | Vars0],
-        [Var | Vars]) :-
-    term.apply_variable_renaming_to_var(Renaming, Var0, Var),
-    term.apply_variable_renaming_to_vars(Renaming, Vars0, Vars).
+apply_variable_renaming_to_vars(_Renaming, [], []).
+apply_variable_renaming_to_vars(Renaming, [Var0 | Vars0], [Var | Vars]) :-
+    apply_variable_renaming_to_var(Renaming, Var0, Var),
+    apply_variable_renaming_to_vars(Renaming, Vars0, Vars).
 
 %-----------------------------------------------------------------------------%
 
-term.term_list_to_var_list(Terms, Vars) :-
-    ( term.var_list_to_term_list(Vars0, Terms) ->
+term_list_to_var_list(Terms, Vars) :-
+    ( var_list_to_term_list(Vars0, Terms) ->
         Vars = Vars0
     ;
         error("term.term_list_to_var_list")
     ).
 
-term.var_list_to_term_list([], []).
-term.var_list_to_term_list([Var | Vars], [term.variable(Var) | Terms]) :-
-    term.var_list_to_term_list(Vars, Terms).
+var_list_to_term_list([], []).
+var_list_to_term_list([Var | Vars], [variable(Var) | Terms]) :-
+    var_list_to_term_list(Vars, Terms).
 
 %-----------------------------------------------------------------------------%
 
-term.is_ground(term.variable(V), Bindings) :-
+is_ground(variable(V), Bindings) :-
     map.search(Bindings, V, Binding),
-    term.is_ground(Binding, Bindings).
-term.is_ground(term.functor(_, Args, _), Bindings) :-
-    term.is_ground_2(Args, Bindings).
+    is_ground(Binding, Bindings).
+is_ground(functor(_, Args, _), Bindings) :-
+    is_ground_2(Args, Bindings).
 
-:- pred term.is_ground_2(list(term(T))::in, substitution(T)::in) is semidet.
+:- pred is_ground_2(list(term(T))::in, substitution(T)::in) is semidet.
 
-term.is_ground_2([], _Bindings).
-term.is_ground_2([Term | Terms], Bindings) :-
-    term.is_ground(Term, Bindings),
-    term.is_ground_2(Terms, Bindings).
-
-%-----------------------------------------------------------------------------%
-
-term.is_ground(term.functor(_, Args, _)) :-
-    term.is_ground_2(Args).
-
-:- pred term.is_ground_2(list(term(T))::in) is semidet.
-
-term.is_ground_2([]).
-term.is_ground_2([Term | Terms]) :-
-    term.is_ground(Term),
-    term.is_ground_2(Terms).
+is_ground_2([], _Bindings).
+is_ground_2([Term | Terms], Bindings) :-
+    is_ground(Term, Bindings),
+    is_ground_2(Terms, Bindings).
 
 %-----------------------------------------------------------------------------%
 
-term.generic_term(_).
+is_ground(functor(_, Args, _)) :-
+    is_ground_2(Args).
+
+:- pred is_ground_2(list(term(T))::in) is semidet.
+
+is_ground_2([]).
+is_ground_2([Term | Terms]) :-
+    is_ground(Term),
+    is_ground_2(Terms).
 
 %-----------------------------------------------------------------------------%
 
-term.coerce(A, B) :-
+generic_term(_).
+
+%-----------------------------------------------------------------------------%
+
+coerce(A, B) :-
     % Normally calls to this predicate should only be generated by the
     % compiler, but type coercion by copying was taking about 3% of the
     % compiler's runtime.
     private_builtin.unsafe_type_cast(A, B).
 
-term.coerce_var(var(V), var(V)).
+coerce_var(var(V), var(V)).
 
-term.coerce_var_supply(var_supply(Supply), var_supply(Supply)).
+coerce_var_supply(var_supply(Supply), var_supply(Supply)).
 
 % ---------------------------------------------------------------------------- %
 % ---------------------------------------------------------------------------- %
 % Ralph Becket <rwab1@cl.cam.ac.uk> 30/04/99
 %   Function forms added.
 
-term.context_init = C :-
-    term.context_init(C).
+context_init = C :-
+    context_init(C).
 
-term.init_var_supply = VS :-
-    term.init_var_supply(VS).
+init_var_supply = VS :-
+    init_var_supply(VS).
 
-term.try_term_to_type(T) = TTTR :-
-    term.try_term_to_type(T, TTTR).
+try_term_to_type(T) = TTTR :-
+    try_term_to_type(T, TTTR).
 
-term.det_term_to_type(T1) = T2 :-
-    term.det_term_to_type(T1, T2).
+det_term_to_type(T1) = T2 :-
+    det_term_to_type(T1, T2).
 
-term.type_to_term(T1) = T2 :-
-    term.type_to_term(T1, T2).
+type_to_term(T1) = T2 :-
+    type_to_term(T1, T2).
 
-term.univ_to_term(U) = T :-
-    term.univ_to_term(U, T).
+univ_to_term(U) = T :-
+    univ_to_term(U, T).
 
-term.vars(T) = Vs :-
-    term.vars(T, Vs).
+vars(T) = Vs :-
+    vars(T, Vs).
 
-term.vars_2(T, Vs1) = Vs2 :-
-    term.vars_2(T, Vs1, Vs2).
+vars_2(T, Vs1) = Vs2 :-
+    vars_2(T, Vs1, Vs2).
 
-term.vars_list(Ts) = Vs :-
-    term.vars_list(Ts, Vs).
+vars_list(Ts) = Vs :-
+    vars_list(Ts, Vs).
 
-term.substitute(T1, V, T2) = T3 :-
-    term.substitute(T1, V, T2, T3).
+substitute(T1, V, T2) = T3 :-
+    substitute(T1, V, T2, T3).
 
-term.substitute_list(Ts1, V, T) = Ts2 :-
-    term.substitute_list(Ts1, V, T, Ts2).
+substitute_list(Ts1, V, T) = Ts2 :-
+    substitute_list(Ts1, V, T, Ts2).
 
-term.substitute_corresponding(Vs, T1s, T) = T2 :-
-    term.substitute_corresponding(Vs, T1s, T, T2).
+substitute_corresponding(Vs, T1s, T) = T2 :-
+    substitute_corresponding(Vs, T1s, T, T2).
 
-term.substitute_corresponding_list(Vs, Ts1, Ts2) = Ts3 :-
-    term.substitute_corresponding_list(Vs, Ts1, Ts2, Ts3).
+substitute_corresponding_list(Vs, Ts1, Ts2) = Ts3 :-
+    substitute_corresponding_list(Vs, Ts1, Ts2, Ts3).
 
-term.apply_rec_substitution(T1, S) = T2 :-
-    term.apply_rec_substitution(T1, S, T2).
+apply_rec_substitution(T1, S) = T2 :-
+    apply_rec_substitution(T1, S, T2).
 
-term.apply_rec_substitution_to_list(Ts1, S) = Ts2 :-
-    term.apply_rec_substitution_to_list(Ts1, S, Ts2).
+apply_rec_substitution_to_list(Ts1, S) = Ts2 :-
+    apply_rec_substitution_to_list(Ts1, S, Ts2).
 
-term.apply_substitution(T1, S) = T2 :-
-    term.apply_substitution(T1, S, T2).
+apply_substitution(T1, S) = T2 :-
+    apply_substitution(T1, S, T2).
 
-term.apply_substitution_to_list(Ts1, S) = Ts2 :-
-    term.apply_substitution_to_list(Ts1, S, Ts2).
+apply_substitution_to_list(Ts1, S) = Ts2 :-
+    apply_substitution_to_list(Ts1, S, Ts2).
 
-term.relabel_variable(T1, V1, V2) = T2 :-
-    term.relabel_variable(T1, V1, V2, T2).
+relabel_variable(T1, V1, V2) = T2 :-
+    relabel_variable(T1, V1, V2, T2).
 
-term.relabel_variables(Ts1, V1, V2) = Ts2 :-
-    term.relabel_variables(Ts1, V1, V2, Ts2).
+relabel_variables(Ts1, V1, V2) = Ts2 :-
+    relabel_variables(Ts1, V1, V2, Ts2).
 
-term.apply_variable_renaming(T1, M) = T2 :-
-    term.apply_variable_renaming(T1, M, T2).
+apply_variable_renaming(T1, M) = T2 :-
+    apply_variable_renaming(T1, M, T2).
 
-term.apply_variable_renaming_to_list(Ts1, M) = Ts2 :-
-    term.apply_variable_renaming_to_list(Ts1, M, Ts2).
+apply_variable_renaming_to_list(Ts1, M) = Ts2 :-
+    apply_variable_renaming_to_list(Ts1, M, Ts2).
 
-term.apply_variable_renaming_to_vars(M, Vs0) = Vs :-
-    term.apply_variable_renaming_to_vars(M, Vs0, Vs).
+apply_variable_renaming_to_vars(M, Vs0) = Vs :-
+    apply_variable_renaming_to_vars(M, Vs0, Vs).
 
-term.apply_variable_renaming_to_var(M, V0) = V :-
-    term.apply_variable_renaming_to_var(M, V0, V).
+apply_variable_renaming_to_var(M, V0) = V :-
+    apply_variable_renaming_to_var(M, V0, V).
 
-term.var_to_int(V) = N :-
-    term.var_to_int(V, N).
+var_to_int(V) = N :-
+    var_to_int(V, N).
 
-term.context_line(C) = N :-
-    term.context_line(C, N).
+context_line(C) = N :-
+    context_line(C, N).
 
-term.context_file(C) = S :-
-    term.context_file(C, S).
+context_file(C) = S :-
+    context_file(C, S).
 
-term.context_init(S, N) = C :-
-    term.context_init(S, N, C).
+context_init(S, N) = C :-
+    context_init(S, N, C).
 
-term.term_list_to_var_list(Ts) = Vs :-
-    term.term_list_to_var_list(Ts, Vs).
+term_list_to_var_list(Ts) = Vs :-
+    term_list_to_var_list(Ts, Vs).
 
-term.var_list_to_term_list(Vs) = Ts :-
-    term.var_list_to_term_list(Vs, Ts).
+var_list_to_term_list(Vs) = Ts :-
+    var_list_to_term_list(Vs, Ts).
 
-term.coerce(T1) = T2 :-
-    term.coerce(T1, T2).
+coerce(T1) = T2 :-
+    coerce(T1, T2).
 
-term.coerce_var(V1) = V2 :-
-    term.coerce_var(V1, V2).
+coerce_var(V1) = V2 :-
+    coerce_var(V1, V2).
 
-term.coerce_var_supply(VS1) = VS2 :-
-    term.coerce_var_supply(VS1, VS2).
+coerce_var_supply(VS1) = VS2 :-
+    coerce_var_supply(VS1, VS2).

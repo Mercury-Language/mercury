@@ -12,6 +12,7 @@
 
 :- implementation.
 :- import_module std_util.
+:- import_module type_desc.
 
 :- type t3 == foo.
 :- type t4 == parent2.foo.

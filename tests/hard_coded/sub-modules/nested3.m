@@ -51,7 +51,9 @@
 
 :- import_module nested3.child.
 :- use_module nested3.child2.
-:- import_module std_util, require.
+:- import_module require.
+:- import_module std_util.
+:- import_module type_desc.
 
 :- type t1 == nested3.child.foo.
 :- type t2 == child.foo.

@@ -72,6 +72,7 @@ is/2 is currently defined in int.m, for historical reasons.
 
 :- implementation.
 
+:- import_module deconstruct.
 :- import_module int.
 :- import_module require.
 
@@ -85,11 +86,13 @@ is/2 is currently defined in int.m, for historical reasons.
 '=\\='(X, Y) :- X \= Y.
 
 '=..'(Term, Functor - Args) :-
-	deconstruct(Term, Functor, _Arity, Args).
+	deconstruct(Term, canonicalize, Functor, _Arity, Args).
 
 % we use a module qualifier here to avoid
 % overriding the builtin Prolog version
-prolog.arg(ArgumentIndex, Type, argument(Type, ArgumentIndex - 1)).
+prolog.arg(ArgumentIndex, Type, Univ) :-
+	deconstruct.arg(Type, canonicalize, ArgumentIndex - 1, Arg),
+	type_to_univ(Arg, Univ).
 
 det_arg(ArgumentIndex, Type, Argument) :-
 	( arg(ArgumentIndex, Type, Arg) ->

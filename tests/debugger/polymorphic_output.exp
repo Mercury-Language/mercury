@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred polymorphic_output.main/2-0 (det) polymorphic_output.m:20
+      E1:     C1 CALL pred polymorphic_output.main/2-0 (det) polymorphic_output.m:27
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
@@ -53,7 +53,4 @@ browser> quit
 mdb> b std_util__det_arg
 mdb: there is no such procedure.
 mdb> c
-Uncaught Mercury exception:
-Software Error: det_arg: argument has wrong type
-Last trace event was event #E3.
-Last trace event before the unhandled exception was event #E4.
+two

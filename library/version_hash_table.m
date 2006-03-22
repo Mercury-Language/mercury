@@ -148,11 +148,13 @@
 
 :- import_module array.
 :- import_module bool.
+:- import_module deconstruct.
 :- import_module exception.
 :- import_module list.
 :- import_module math.
 :- import_module require.
 :- import_module std_util.
+:- import_module type_desc.
 :- import_module version_array.
 
 :- type version_hash_table(K, V)
@@ -454,7 +456,7 @@ generic_double_hash(T, Ha, Hb) :-
 
       else
 
-        deconstruct(T, FunctorName, Arity, Args),
+        deconstruct(T, canonicalize, FunctorName, Arity, Args),
         string_double_hash(FunctorName, Ha0, Hb0),
         double_munge(Arity, Ha0, Ha1, Arity, Hb0, Hb1),
         list.foldl2(

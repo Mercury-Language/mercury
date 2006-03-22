@@ -188,6 +188,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module deconstruct.
 :- import_module list.
 :- import_module pprint.
 :- import_module require.
@@ -299,13 +300,15 @@ browser_term_to_string_line(BrowserDb, BrowserTerm, LineWidth, Lines,
     ->
         annotate_with_size(BrowserDb, plain_term(ReturnValue), Params, Limit,
             AnnotReturn),
+        to_doc_sized(AnnotTerm, AnnotTermStr),
+        to_doc_sized(AnnotReturn, AnnotReturnStr),
         Doc = group(
-            to_doc_sized(AnnotTerm)
+            AnnotTermStr
             `<>` line
-            `<>` nest(2, text(" = ") `<>` to_doc_sized(AnnotReturn))
+            `<>` nest(2, text(" = ") `<>` AnnotReturnStr)
         )
     ;
-        Doc = to_doc_sized(AnnotTerm)
+        to_doc_sized(AnnotTerm, Doc)
     ),
     String = pprint.to_string(LineWidth, Doc).
 
@@ -585,12 +588,12 @@ check_if_exact(yes(_ - Term)) = Result:-
     % A function to convert a size annotated term to a 'doc' type,
     % a type defined in pprint.m.
     %
-:- func to_doc_sized(size_annotated_term(T)) = doc.
+:- pred to_doc_sized(size_annotated_term(T)::in, doc::out) is cc_multi.
 
-to_doc_sized(at_least(BrowserTerm, _, not_deconstructed)) = Doc :-
+to_doc_sized(at_least(BrowserTerm, _, not_deconstructed), Doc) :-
     (
         BrowserTerm = plain_term(Univ),
-        functor(univ_value(Univ), Functor, Arity),
+        functor(univ_value(Univ), include_details_cc, Functor, Arity),
         Doc = text(Functor) `<>` text("/") `<>` poly(i(Arity))
     ;
         BrowserTerm = synthetic_term(Functor, Args, MaybeReturn),
@@ -604,39 +607,39 @@ to_doc_sized(at_least(BrowserTerm, _, not_deconstructed)) = Doc :-
             Doc = text(Functor) `<>` text("/") `<>` poly(i(Arity))
         )
     ).
-
-to_doc_sized(at_least(_, _, deconstructed(Functor, Arity, MaybeArgs))) = Doc :-
-    Doc = to_doc_sized_2(Functor, Arity, MaybeArgs).
-
-to_doc_sized(exact(_, _, Functor, Arity, MaybeArgs)) = Doc :-
-    Doc = to_doc_sized_2(Functor, Arity, MaybeArgs).
+to_doc_sized(at_least(_, _, deconstructed(Functor, Arity, MaybeArgs)), Doc) :-
+    to_doc_sized_2(Functor, Arity, MaybeArgs, Doc).
+to_doc_sized(exact(_, _, Functor, Arity, MaybeArgs), Doc) :-
+    to_doc_sized_2(Functor, Arity, MaybeArgs, Doc).
 
 %---------------------------------------------------------------------------%
 
     % Assumes that every argument must be on a different line
     % or all of them should be on the same line.
     %
-:- func to_doc_sized_2(string, int, size_annotated_args(T)) = doc.
+:- pred to_doc_sized_2(string::in, int::in, size_annotated_args(T)::in,
+    doc::out) is cc_multi.
 
-to_doc_sized_2(Functor, _Arity, []) = text(Functor).
-
-to_doc_sized_2(Functor, Arity, [HeadArg|Tail]) = Doc :-
-    Args = list.map(handle_arg, [HeadArg|Tail]),
+to_doc_sized_2(Functor, _Arity, [], text(Functor)).
+to_doc_sized_2(Functor, Arity, [HeadArg | Tail], Doc) :-
+    list.map(handle_arg, [HeadArg | Tail], Args),
     list.remove_adjacent_dups(Args, NewArgs),
-    ( NewArgs \= [nil] ->
+    ( NewArgs = [nil] ->
+        Doc = text(Functor) `<>` text("/") `<>` poly(i(Arity))
+    ;
         Doc = text(Functor) `<>`
             parentheses(group(nest(2,
                 line `<>` separated(id, comma_space_line, Args))))
-    ;
-        Doc = text(Functor) `<>` text("/") `<>` poly(i(Arity))
     ).
 
 %---------------------------------------------------------------------------%
 
-:- func handle_arg(maybe(pair(T,size_annotated_term(T)))) = doc.
+:- pred handle_arg(maybe(pair(T,size_annotated_term(T)))::in, doc::out)
+    is cc_multi.
 
-handle_arg(yes(_ - Arg_Term)) = to_doc_sized(Arg_Term).
-handle_arg(no) = nil.
+handle_arg(yes(_ - Arg_Term), Doc) :-
+    to_doc_sized(Arg_Term, Doc).
+handle_arg(no, nil).
 
 %---------------------------------------------------------------------------%
 
@@ -1030,11 +1033,11 @@ size_count_split(BrowserDb, BrowserTerm, Params, Limit, Arity, Check,
     % to print the functors of the arguments. Also determines the
     % length of biggest functor.
     %
-:- pred get_arg_length(list(univ)::in, int::out, int::out) is det.
+:- pred get_arg_length(list(univ)::in, int::out, int::out) is cc_multi.
 
 get_arg_length([], 0, 0).
 get_arg_length([HeadUniv | Rest], TotalLength, MaxLength) :-
-    functor(univ_value(HeadUniv), Functor, Arity),
+    functor(univ_value(HeadUniv), include_details_cc, Functor, Arity),
     (
         Rest = [],
         Correction = 2

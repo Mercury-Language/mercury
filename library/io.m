@@ -1516,6 +1516,7 @@
 :- import_module require.
 :- import_module term.
 :- import_module term_io.
+:- import_module type_desc.
 :- import_module varset.
 
 :- use_module rtti_implementation.

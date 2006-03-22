@@ -103,6 +103,7 @@
 :- import_module require.
 :- import_module std_util.
 :- import_module string.
+:- import_module type_desc.
 
 :- pragma foreign_decl("C", "
     #include <stdio.h>

@@ -87,6 +87,7 @@
 
 :- implementation.
 
+:- import_module type_desc.
 :- import_module require.
 :- import_module set.
 :- import_module string.

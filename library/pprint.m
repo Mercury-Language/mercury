@@ -376,6 +376,7 @@
 :- implementation.
 
 :- import_module array.
+:- import_module deconstruct.
 :- import_module enum.
 :- import_module exception.
 :- import_module map.
@@ -383,6 +384,7 @@
 :- import_module robdd.
 :- import_module sparse_bitset.
 :- import_module term.
+:- import_module type_desc.
 
 :- type doc
     --->    'NIL'
@@ -716,12 +718,12 @@ generic_term_to_doc(Depth, Priority, X) = Doc :-
 
       then
 
-        functor(X, Name, Arity),
+        functor(X, canonicalize, Name, Arity),
         Doc = ( if Arity = 0 then text(Name) else Name ++ "/" ++ Arity )
 
       else
 
-        deconstruct(X, Name, _Arity, UnivArgs),
+        deconstruct(X, canonicalize, Name, _Arity, UnivArgs),
         Table = init_mercury_op_table,
         Doc =
             ( if
@@ -959,7 +961,7 @@ dynamic_cast_to_map_pair(X, MP) :-
 dynamic_cast_to_tuple(X, X) :-
         % If X is a tuple then it's functor name is {}.
         %
-    functor(X, "{}", _Arity).
+    functor(X, canonicalize, "{}", _Arity).
 
 %-----------------------------------------------------------------------------%
 
@@ -1024,7 +1026,7 @@ array_to_doc(Depth, A) =
 :- func tuple_to_doc(int, T) = doc.
 
 tuple_to_doc(Depth, Tuple) = Doc :-
-    deconstruct(Tuple, _Name, _Arity, UnivArgs),
+    deconstruct(Tuple, canonicalize, _Name, _Arity, UnivArgs),
     Doc = group(braces(nest(1, packed_cs_univ_args(Depth - 1, UnivArgs)))).
 
 %-----------------------------------------------------------------------------%

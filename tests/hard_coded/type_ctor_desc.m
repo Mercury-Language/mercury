@@ -6,15 +6,16 @@
 :- interface.
 :- use_module io.
 
-:- pred main(io__state, io__state).
-:- mode main(di, uo) is det.
+:- pred main(io.state::di, io.state::uo) is det.
 
 :- implementation.
-:- import_module int, integer, std_util.
+:- import_module int.
+:- import_module integer.
+:- import_module type_desc.
 
 main -->
-	{ Type = std_util__type_of(test) },
-	{ std_util__type_ctor_and_args(Type, TypeCtor, TypeArgs) },
+	{ Type = type_of(test) },
+	{ type_ctor_and_args(Type, TypeCtor, TypeArgs) },
 	io__write(TypeCtor),
 	io__print(" "),
 	io__write(TypeArgs),

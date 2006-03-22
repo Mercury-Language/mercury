@@ -46,7 +46,9 @@ hello --> io__write_string("nested.child2.hello\n").
 
 :- import_module nested.child.
 :- use_module nested.child2.
-:- import_module std_util, require.
+:- import_module require.
+:- import_module std_util.
+:- import_module type_desc.
 
 :- type t1 == nested.child.foo.
 :- type t2 == child.foo.

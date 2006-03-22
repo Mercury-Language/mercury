@@ -1,15 +1,16 @@
 % Test case for use of zero-arity higher-order function terms.
-% 
+%
 % Author: fjh
 
 :- module nullary_ho_func.
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 :- import_module std_util.
+:- import_module type_desc.
 
 :- type nullary_func(T) == ((func) = T).
 :- inst nullary_func == ((func) = out is det).
@@ -46,4 +47,3 @@ main -->
 	),
 	print("type_of(F) = "), print(type_of(F)), nl,
 	print("type_name(type_of(F)) = "), print(type_name(type_of(F))), nl.
-

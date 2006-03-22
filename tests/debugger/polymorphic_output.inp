@@ -19,9 +19,10 @@ p
 ^..^r
 p
 quit
-b std_util__det_arg
+b -A deconstruct.det_arg/4
 c
 P
 f
 P
+disable *
 c

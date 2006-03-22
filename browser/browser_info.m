@@ -259,6 +259,7 @@
 :- import_module io.
 :- import_module require.
 :- import_module string.
+:- import_module type_desc.
 
 :- import_module mdb.term_rep.
 
@@ -636,7 +637,7 @@ get_num_printed_io_actions(State) =
 
 %---------------------------------------------------------------------------%
 
-:- pred browser_persistent_state_type(type_info::out) is det.
+:- pred browser_persistent_state_type(type_desc::out) is det.
 :- pragma export(browser_persistent_state_type(out),
     "ML_BROWSE_browser_persistent_state_type").
 

@@ -8,8 +8,17 @@
 
 :- implementation.
 
-:- import_module term_to_xml, bool, list, float, string, int, char, array, map.
+:- import_module array.
+:- import_module bool.
+:- import_module char.
+:- import_module float.
+:- import_module int.
+:- import_module list.
+:- import_module map.
 :- import_module std_util.
+:- import_module string.
+:- import_module term_to_xml.
+:- import_module type_desc.
 
 :- type mytype 
 	--->	hello(field1::string, 'Field<2>'::int, char, 

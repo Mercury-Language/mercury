@@ -27,7 +27,7 @@
 %----------------------------------------------------------------------------%
 :- implementation.
 
-:- import_module std_util.
+:- import_module type_desc.
 
 test_1(T, N) :-
 	Info = type_of(T),

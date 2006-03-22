@@ -12,7 +12,9 @@
 
 :- import_module parent.child.
 :- use_module parent.child2.
-:- import_module std_util, require.
+:- import_module require.
+:- import_module std_util.
+:- import_module type_desc.
 
 :- type t1 == parent.child.foo.
 :- type t2 == child.foo.

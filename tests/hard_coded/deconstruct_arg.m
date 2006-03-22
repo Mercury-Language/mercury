@@ -7,30 +7,51 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
 
 %-----------------------------------------------------------------------------%
 
-:- import_module array, list, string, std_util, deconstruct.
+:- import_module array.
+:- import_module list.
+:- import_module string.
+:- import_module std_util.
+:- import_module deconstruct.
 
-:- type enum	--->	one	;	two	;	three.
+:- type enum
+	--->	one
+	;	two
+	;	three.
 
-:- type fruit	--->	apple(list(int))
-		;	banana(list(enum)).
+:- type fruit
+	--->	apple(list(int))
+	;	banana(list(enum)).
 
-:- type thingie	--->	foo ; bar(int) ; bar(int, int) ; qux(int) ;
-			quux(int) ; quuux(int, int) ; wombat ; 
-			zoom(int) ; zap(int, float, int) ;
-			zip(int, int, int, int) ; zop(float, float).
+:- type thingie
+	--->	foo 
+	;	bar(int) 
+	;	bar(int, int) 
+	;	qux(int) 
+	;	quux(int) 
+	;	quuux(int, int) 
+	;	wombat 
+	;	zoom(int) 
+	;	zap(int, float, int) 
+	;	zip(int, int, int, int) 
+	;	zop(float, float).
 
-:- type poly(A, B)	--->	poly_one(A) ; poly_two(B) ; 
-				poly_three(B, A, poly(B, A)).
+:- type poly(A, B)
+	--->	poly_one(A)
+	;	poly_two(B)
+	;	poly_three(B, A, poly(B, A)).
 
-:- type no_tag		---> 	qwerty(int).
+:- type no_tag
+	---> 	qwerty(int).
 
-:- type set(T) --->	set_rep(list(T)) where equality is set_equal.
+:- type set(T)
+	--->	set_rep(list(T))
+	where equality is set_equal.
 
 %-----------------------------------------------------------------------------%
 
@@ -45,7 +66,7 @@ set(List) = set_rep(List).
 set_to_sorted_list(Set) =
 	promise_only_solution((pred(Sorted::out) is cc_multi :-
 		Set = set_rep(Unsorted),
-		list__sort_and_remove_dups(Unsorted, Sorted)
+		list.sort_and_remove_dups(Unsorted, Sorted)
 	)).
 
 :- pred set_equal(set(T)::in, set(T)::in) is semidet.
@@ -94,146 +115,86 @@ main -->
 
 %-----------------------------------------------------------------------------%
 
-:- pred test_all(T::in, io__state::di, io__state::uo) is cc_multi.
+:- pred test_all(T::in, io.state::di, io.state::uo) is cc_multi.
 
 test_all(T) -->
-	test_std_util_functor(T),
 	test_deconstruct_functor(T),
-	test_std_util_arg(T, 0),
 	test_deconstruct_arg(T, 0),
-	test_std_util_arg(T, 1),
 	test_deconstruct_arg(T, 1),
-	test_std_util_arg(T, 2),
 	test_deconstruct_arg(T, 2),
-	test_std_util_deconstruct(T),
 	test_deconstruct_deconstruct(T),
-	test_std_util_limited_deconstruct(T, 3),
 	test_deconstruct_limited_deconstruct(T, 3).
 
 %-----------------------------------------------------------------------------%
 
-:- pred test_std_util_functor(T::in, io__state::di, io__state::uo) is det.
-
-test_std_util_functor(T) -->
-	io__write_string("std_util    functor: "),
-	{ std_util__functor(T, Functor, Arity) },
-	io__write_string(Functor),
-	io__write_string("/"),
-	io__write_int(Arity),
-	io__write_string("\n").
-
-:- pred test_deconstruct_functor(T::in, io__state::di, io__state::uo)
+:- pred test_deconstruct_functor(T::in, io.state::di, io.state::uo)
 	is cc_multi.
 
 test_deconstruct_functor(T) -->
-	io__write_string("deconstruct functor: "),
-	{ deconstruct__functor(T, include_details_cc, Functor, Arity) },
-	io__write_string(Functor),
-	io__write_string("/"),
-	io__write_int(Arity),
-	io__write_string("\n").
+	io.write_string("deconstruct functor: "),
+	{ deconstruct.functor(T, include_details_cc, Functor, Arity) },
+	io.write_string(Functor),
+	io.write_string("/"),
+	io.write_int(Arity),
+	io.write_string("\n").
 
-:- pred test_std_util_arg(T::in, int::in, io__state::di, io__state::uo) is det.
-
-test_std_util_arg(T, ArgNum) -->
-	{ string__format("std_util    argument %d of ", [i(ArgNum)], Str) },
-	io__write_string(Str),
-	io__print(T),
-	( { Argument = std_util__argument(T, ArgNum) } ->
-		io__write_string(" is "),
-		io__write_univ(Argument),
-		io__write_string("\n")
-	;
-		io__write_string(" doesn't exist\n")
-	).
-
-:- pred test_deconstruct_arg(T::in, int::in, io__state::di, io__state::uo)
+:- pred test_deconstruct_arg(T::in, int::in, io.state::di, io.state::uo)
 	is cc_multi.
 
 test_deconstruct_arg(T, ArgNum) -->
-	{ string__format("deconstruct argument %d of ", [i(ArgNum)], Str) },
-	io__write_string(Str),
-	io__print(T),
-	{ deconstruct__arg_cc(T, ArgNum, MaybeArg) },
-	( { MaybeArg = arg(Arg) } ->
-		io__write_string(" is "),
-		io__write(Arg),
-		io__write_string("\n")
+	{ string.format("deconstruct argument %d of ", [i(ArgNum)], Str) },
+	io.write_string(Str),
+	io.print(T),
+	{ deconstruct.arg_cc(T, ArgNum, MaybeArg) },
+	(
+		{ MaybeArg = arg(Arg) },
+		io.write_string(" is "),
+		io.write(Arg),
+		io.write_string("\n")
 	;
-		io__write_string(" doesn't exist\n")
+		{ MaybeArg = no_arg },
+		io.write_string(" doesn't exist\n")
 	).
 
-:- pred test_std_util_deconstruct(T::in, io__state::di, io__state::uo) is det.
-
-test_std_util_deconstruct(T) -->
-	{ std_util__deconstruct(T, Functor, Arity, Arguments) },
-	{ string__format("std_util    deconstruct: functor %s arity %d\n",
-		[s(Functor), i(Arity)], Str) },
-	io__write_string(Str),
-	io__write_string("["),
-	io__write_list(Arguments, ", ", io__print),
-	io__write_string("]\n").
-
-:- pred test_deconstruct_deconstruct(T::in, io__state::di, io__state::uo)
+:- pred test_deconstruct_deconstruct(T::in, io.state::di, io.state::uo)
 	is cc_multi.
 
 test_deconstruct_deconstruct(T) -->
-	{ deconstruct__deconstruct(T, include_details_cc,
+	{ deconstruct.deconstruct(T, include_details_cc,
 		Functor, Arity, Arguments) },
-	{ string__format("deconstruct deconstruct: functor %s arity %d\n",
+	{ string.format("deconstruct deconstruct: functor %s arity %d\n",
 		[s(Functor), i(Arity)], Str) },
-	io__write_string(Str),
-	io__write_string("["),
-	io__write_list(Arguments, ", ", io__print),
-	io__write_string("]\n").
-
-:- pred test_std_util_limited_deconstruct(T::in, int::in,
-	io__state::di, io__state::uo) is det.
-
-test_std_util_limited_deconstruct(T, Limit) -->
-	{ string__format("std_util    limited deconstruct %d of ",
-		[i(Limit)], Str) },
-	io__write_string(Str),
-	io__print(T),
-	io__write_string("\n"),
-	(
-		{ std_util__limited_deconstruct(T,
-			Limit, Functor, Arity, Arguments) }
-	->
-		{ string__format("functor %s arity %d ",
-			[s(Functor), i(Arity)], Str2) },
-		io__write_string(Str2),
-		io__write_string("["),
-		io__write_list(Arguments, ", ", io__print),
-		io__write_string("]\n")
-	;
-		io__write_string("failed\n")
-	).
+	io.write_string(Str),
+	io.write_string("["),
+	io.write_list(Arguments, ", ", io.print),
+	io.write_string("]\n").
 
 :- pred test_deconstruct_limited_deconstruct(T::in, int::in,
-	io__state::di, io__state::uo) is cc_multi.
+	io.state::di, io.state::uo) is cc_multi.
 
 test_deconstruct_limited_deconstruct(T, Limit) -->
-	{ string__format("deconstruct limited deconstruct %d of ",
+	{ string.format("deconstruct limited deconstruct %d of ",
 		[i(Limit)], Str) },
-	io__write_string(Str),
-	io__print(T),
-	io__write_string("\n"),
-	{ deconstruct__limited_deconstruct_cc(T, Limit, Result) },
-	( { Result = yes({Functor, Arity, Arguments}) } ->
-		{ string__format("functor %s arity %d ",
+	io.write_string(Str),
+	io.print(T),
+	io.write_string("\n"),
+	{ deconstruct.limited_deconstruct_cc(T, Limit, Result) },
+	(
+		{ Result = yes({Functor, Arity, Arguments}) },
+		{ string.format("functor %s arity %d ",
 			[s(Functor), i(Arity)], Str2) },
-		io__write_string(Str2),
-		io__write_string("["),
-		io__write_list(Arguments, ", ", io__print),
-		io__write_string("]\n")
+		io.write_string(Str2),
+		io.write_string("["),
+		io.write_list(Arguments, ", ", io.print),
+		io.write_string("]\n")
 	;
-		io__write_string("failed\n")
+		{ Result = no },
+		io.write_string("failed\n")
 	).
 
 %-----------------------------------------------------------------------------%
 
-:- pred newline(io__state::di, io__state::uo) is det.
+:- pred newline(io.state::di, io.state::uo) is det.
 
 newline -->
-	io__write_char('\n').
+	io.write_char('\n').

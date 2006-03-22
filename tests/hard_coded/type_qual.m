@@ -4,11 +4,13 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
-
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
-:- import_module bool, list, map, std_util.
+:- import_module bool.
+:- import_module list.
+:- import_module map.
+:- import_module type_desc.
 
 main -->
 	test1,
@@ -61,7 +63,7 @@ test5(yes) -->
 	{ Y = [] : T },
 	io__write(type_of(Y)), nl,
 	io__write(Y), nl.
-test5(no) -->	
+test5(no) -->
 	{ _ = ["1", "2", "3"] : T },
 	{ Y = [] : T },
 	io__write(type_of(Y)), nl,
@@ -82,8 +84,10 @@ test6 -->
 		io__write_string("bi-implication failed\n")
 	).
 
+% inferred
 empty_list = [] : list(int).
 
+% inferred
 empty([] : list(int)).
 
 :- some [T] func build_list = list(T).
@@ -94,6 +98,5 @@ build_list = ["a", "b", "c"].
 
 :- pred map_search(my_map(K, V)::in, int::in, V::out) is semidet.
 
-map_search(Map : map(int, V), Key : int,
-		Value : V) :- 
+map_search(Map : map(int, V), Key : int, Value : V) :-
 	map__search(Map, Key, Value).

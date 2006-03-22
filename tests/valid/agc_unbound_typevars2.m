@@ -5,7 +5,7 @@
 % Description of bug:
 % 	This module uses code that contains unbound type variables. The
 % 	compiler was not correctly handling the unbound type variables
-% 	when doing inlining. All type variables need to be mapped to a 
+% 	when doing inlining. All type variables need to be mapped to a
 % 	corresponding type_info variable for accurate GC compilation.
 %
 % Symptom(s) of bug:
@@ -23,14 +23,17 @@
 
 :- implementation.
 
-:- import_module list, std_util.
-
+:- import_module construct.
+:- import_module list.
+:- import_module type_desc.
 
 :- pred test_all(T::in, io__state::di, io__state::uo) is det.
 
-:- type poly(A, B)	--->	poly_one(A) ; poly_two(B) ; 
-				poly_three(B, A, poly(B, A));
-				poly_four(A, B).
+:- type poly(A, B)
+	--->	poly_one(A)
+	;	poly_two(B)
+	;	poly_three(B, A, poly(B, A))
+	;	poly_four(A, B).
 
 %----------------------------------------------------------------------------%
 
@@ -43,4 +46,3 @@ test_all(_T) -->
 	{ TypeInfo = type_of(poly_one([2399.3])) },
 	{ N = num_functors(TypeInfo) },
 	io__write_int(N).
-
