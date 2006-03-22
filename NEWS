@@ -75,7 +75,7 @@ Changes to the compiler backends:
   arguments that are usually passed to predicates together with a single
   tuple. This can reduce parameter passing overheads.
 * The compiler can now optimize away the trail manipulation code from parts
-  of the program that cannot affect trail.
+  of the program that cannot affect the trail.
 * The compiler now optimizes away any instructions referring to values of dummy
   types. A type is a dummy type if it has one function symbol of arity zero.
 * Higher order calls are now cheaper on the low level C backend.
