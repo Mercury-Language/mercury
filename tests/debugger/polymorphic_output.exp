@@ -50,7 +50,7 @@ browser> ^..^r
 browser> p
 '_'
 browser> quit
-mdb> b std_util__det_arg
+mdb> b -A deconstruct.det_arg/4
 mdb: there is no such procedure.
 mdb> c
 two
