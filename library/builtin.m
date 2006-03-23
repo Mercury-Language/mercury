@@ -612,42 +612,41 @@ public static bool unify_2_p(object[] ti, object X, object Y)
 :- pragma foreign_code("C#", "
 
 public static bool
-special.Unify..void_0_0(object[] x, object[] y)
+special__Unify____void_0_0(object[] x, object[] y)
 {
     mercury.runtime.Errors.fatal_error(""called unify for type `void'"");
     return false;
 }
 
 public static bool
-special._Unify._c_pointer_0_0(object[] x, object[] y)
+special__Unify____c_pointer_0_0(object[] x, object[] y)
 {
     mercury.runtime.Errors.fatal_error(""called unify for type `c_pointer'"");
     return false;
 }
 
 public static bool
-special.Unify..func_0_0(object[] x, object[] y)
+special__Unify____func_0_0(object[] x, object[] y)
 {
     mercury.runtime.Errors.fatal_error(""called unify for `func' type"");
     return false;
 }
 
 public static bool
-special.Unify..tuple_0_0(object[] x, object[] y)
+special__Unify____tuple_0_0(object[] x, object[] y)
 {
     mercury.runtime.Errors.fatal_error(""called unify for `tuple' type"");
     return false;
 }
 
 public static void
-special.Compare..void_0_0(ref object[] result,
-    object[] x, object[] y)
+special__Compare____void_0_0(ref object[] result, object[] x, object[] y)
 {
     mercury.runtime.Errors.fatal_error(""called compare/3 for type `void'"");
 }
 
 public static void
-special.Compare..c_pointer_0_0(
+special__Compare____c_pointer_0_0(
     ref object[] result, object[] x, object[] y)
 {
     mercury.runtime.Errors.fatal_error(
@@ -655,14 +654,13 @@ special.Compare..c_pointer_0_0(
 }
 
 public static void
-special.Compare..func_0_0(ref object[] result,
-    object[] x, object[] y)
+special__Compare____func_0_0(ref object[] result, object[] x, object[] y)
 {
     mercury.runtime.Errors.fatal_error(""called compare/3 for `func' type"");
 }
 
 public static void
-special.Compare..tuple_0_0(ref object[] result,
+special__Compare____tuple_0_0(ref object[] result,
     object[] x, object[] y)
 {
     mercury.runtime.Errors.fatal_error(""called compare/3 for `tuple' type"");
@@ -881,14 +879,14 @@ namespace mercury.builtin {
     //
 
     public static boolean
-    .Unify..tuple_0_0(mercury.builtin.Tuple_0 x, mercury.builtin.Tuple_0 y)
+    __Unify____tuple_0_0(mercury.builtin.Tuple_0 x, mercury.builtin.Tuple_0 y)
     {
         // stub only
         throw new java.lang.Error (""unify/2 for tuple types not implemented"");
     }
 
     public static boolean
-    .Unify..func_0_0(mercury.builtin.Func_0 x, mercury.builtin.Func_0 y)
+    __Unify____func_0_0(mercury.builtin.Func_0 x, mercury.builtin.Func_0 y)
     {
         // stub only
         throw new java.lang.Error (""unify/2 for tuple types not implemented"");
@@ -896,14 +894,14 @@ namespace mercury.builtin {
 
 
     public static boolean
-    .Unify..c_pointer_0_0(java.lang.Object x, java.lang.Object y)
+    __Unify____c_pointer_0_0(java.lang.Object x, java.lang.Object y)
     {
         // XXX should we try calling a Java comparison routine?
         throw new java.lang.Error (""unify/2 called for c_pointer type"");
     }
 
     public static boolean
-    .Unify..void_0_0(mercury.builtin.Void_0 x, mercury.builtin.Void_0 y)
+    __Unify____void_0_0(mercury.builtin.Void_0 x, mercury.builtin.Void_0 y)
     {
         // there should never be any values of type void/0
         throw new java.lang.Error (""unify/2 called for void type"");
@@ -914,7 +912,7 @@ namespace mercury.builtin {
     //
 
     public static Comparison_result_0
-    .Compare..tuple_0_0
+    __Compare____tuple_0_0
         (mercury.builtin.Tuple_0 x, mercury.builtin.Tuple_0 y)
     {
         // stub only
@@ -923,14 +921,14 @@ namespace mercury.builtin {
     }
 
     public static Comparison_result_0
-    .Compare..func_0_0(mercury.builtin.Func_0 x, mercury.builtin.Func_0 y)
+    __Compare____func_0_0(mercury.builtin.Func_0 x, mercury.builtin.Func_0 y)
     {
         // comparing values of higher-order types is a run-time error
         throw new java.lang.Error (""compare/3 called for func type"");
     }
 
     public static Comparison_result_0
-    .Compare..c_pointer_0_0(java.lang.Object x, java.lang.Object y)
+    __Compare____c_pointer_0_0(java.lang.Object x, java.lang.Object y)
     {
         // XXX should we try calling a Java comparison routine?
         throw new java.lang.Error
@@ -938,7 +936,7 @@ namespace mercury.builtin {
     }
 
     public static Comparison_result_0
-    .Compare..void_0_0(mercury.builtin.Void_0 x, mercury.builtin.Void_0 y)
+    __Compare____void_0_0(mercury.builtin.Void_0 x, mercury.builtin.Void_0 y)
     {
         // there should never be any values of type void/0
         throw new java.lang.Error (""compare/3 called for void type"");
