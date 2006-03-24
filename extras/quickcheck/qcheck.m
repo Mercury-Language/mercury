@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001, 2003, 2005 The University of Melbourne.
+% Copyright (C) 2001, 2003, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -14,10 +14,18 @@
 %---------------------------------------------------------------------------%
 
 :- module qcheck.
-
 :- interface.
-:- import_module io, std_util, list, bool, char, float, string.
+
 :- import_module rnd.
+
+:- import_module bool.
+:- import_module char.
+:- import_module float.
+:- import_module io.
+:- import_module list.
+:- import_module std_util.
+:- import_module string.
+:- import_module type_desc.
 
 %---------------------------------------------------------------------------%
 
@@ -283,8 +291,16 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module io, int, integer.
-:- import_module builtin, pprint, require, time.
+
+:- import_module construct.
+:- import_module deconstruct.
+:- import_module int.
+:- import_module integer.
+:- import_module pprint.
+:- import_module require.
+:- import_module time.
+
+%---------------------------------------------------------------------------%
 
 qcheck(TestFunction, Name) -->
 	qcheck(TestFunction, Name, 100, [], [], []).
@@ -777,7 +793,7 @@ gen_arg(Datatype, Frequencys, GF, UserGenerators, Univ, RS0, RS) :-
 		   ;	Datatype = type_of(0.0) ->
 				Temp = rand_float(RS0, RS),
 				Univ = univ(Temp)
-		   ;	Datatype = std_util__type_of("String") ->
+		   ;	Datatype = type_of("String") ->
 				Temp = rand_string(RS0, RS),
 				Univ = univ(Temp)
 		   ;	num_functors(Datatype) = -1 ->
@@ -874,11 +890,16 @@ rand_string(RS0, RS) = X :-
 
 	% generate disciminated union
 rand_union(Datatype, Frequencys, GF, UserGenerators, RS0, RS) = Univ :-
-		NumFunctors = std_util__num_functors(Datatype),
+		NumFunctors = num_functors(Datatype),
 		TempFreq = get_freq(Datatype, NumFunctors, 0, Frequencys, GF),
         	rnd__irange(0, freq_base(TempFreq) - 1, Selector, RS0, RS1),
 		{ Branch, SubBranch } = select_branch(Selector, 0, 0, TempFreq),  
-		(if 	get_functor(Datatype, Branch, _, _, ArgTypesTemp)
+		(if
+			get_functor(Datatype, Branch, _, _,
+				PseudoArgTypesTemp),
+			ArgTypesTemp = list.map(
+				ground_pseudo_type_desc_to_type_desc_det,
+				PseudoArgTypesTemp)
 	 	 then
 			ArgTypes = ArgTypesTemp,
 			gen_arg_list(ArgTypes, SubBranch, GF,
@@ -1148,7 +1169,7 @@ value_to_int(X) = Temp :-
 :- mode univ_to_int(in) = out is det.
 univ_to_int(X) = Y :-
 	univ_value(X) = Value,
-	std_util__deconstruct(Value, Functor, _Arity, ArgList),
+	deconstruct(Value, canonicalize, Functor, _Arity, ArgList),
 	string__to_char_list(Functor, Charlist),
 	Temp = charlist_to_int(Charlist),
 	Y = Temp + univlist_to_int(ArgList).	
@@ -1226,7 +1247,7 @@ init_setup(Seed, RS0) :-
 :- mode display_univ(in, di, uo) is det.
 display_univ(Univ) -->
 	{ Args = univ_value(Univ) },
-	{ deconstruct(Args, _, _, Univs) },
+	{ deconstruct(Args, canonicalize, _, _, Univs) },
 	display_univs(Univs).	
 
 	% display_univs prints the values which are stored in a list of univ.
