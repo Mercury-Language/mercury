@@ -176,6 +176,8 @@
 :- import_module require.
 :- import_module std_util.
 
+:- use_module solutions.
+
 :- type graph(N, A)
     --->    graph(
                 node_supply     :: counter,
@@ -255,7 +257,7 @@ graph.find_matching_nodes(Graph, NodeInfo, NodeSet) :-
 %   SolnGoal = lambda([Node::out] is nondet,
 %           map.member(NodeTable, Node, NodeInfo)),
 %   solutions(SolnGoal, NodeList),
-    solutions(graph.select_node(NodeTable, NodeInfo), NodeList),
+    solutions.solutions(graph.select_node(NodeTable, NodeInfo), NodeList),
     set.sorted_list_to_set(NodeList, NodeSet).
 
 :- pred graph.select_node(map(node(N), N)::in, N::in, node(N)::out) is nondet.

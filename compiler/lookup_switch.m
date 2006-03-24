@@ -97,6 +97,7 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
+:- import_module solutions.
 
 %-----------------------------------------------------------------------------%
 
@@ -202,7 +203,7 @@ figure_out_output_vars(CI, GoalInfo, OutVars) :-
             instmap.lookup_var(InstMapAfter, Var, Final),
             mode_is_output(ModuleInfo, (Initial -> Final))
         ),
-        solutions(Lambda, OutVars)
+        solutions.solutions(Lambda, OutVars)
     ).
 
 %---------------------------------------------------------------------------%

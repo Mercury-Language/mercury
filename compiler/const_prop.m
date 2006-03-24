@@ -470,7 +470,7 @@ evaluate_test("private_builtin", "typed_unify", Mode, Args, Result) :-
     list(arg_hlds_info)::in, maybe(pair(arg_hlds_info, arg_val))::out)
     is semidet.
 
-evaluate_semidet_call("std_util", "dynamic_cast", 0, Args, Result) :-
+evaluate_semidet_call("builtin", "dynamic_cast", 0, Args, Result) :-
     evaluate_semidet_call("private_builtin", "typed_unify", 1, Args, Result).
 
 evaluate_semidet_call("private_builtin", "typed_unify", Mode, Args, Result) :-

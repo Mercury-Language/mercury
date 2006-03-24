@@ -106,6 +106,7 @@
 :- import_module bool.
 :- import_module int.
 :- import_module queue.
+:- import_module solutions.
 :- import_module std_util.
 :- import_module string.
 :- import_module svmap.
@@ -541,7 +542,7 @@ find_all_used_imported_items(ModuleInfo,
     % when the interface of the module changes.
     map.init(ImportedItems0),
     promise_equivalent_solutions [ImportedItems1] (
-        std_util.unsorted_aggregate(visible_modules(ModuleInfo),
+        solutions.unsorted_aggregate(visible_modules(ModuleInfo),
             insert_into_imported_items_map, ImportedItems0, ImportedItems1)
     ),
 

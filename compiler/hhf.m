@@ -54,6 +54,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module set.
+:- import_module solutions.
 :- import_module std_util.
 :- import_module term.
 :- import_module varset.
@@ -93,7 +94,7 @@ process_pred(Simple, PredId, !ModuleInfo, !IO) :-
             clauses_info_headvars(ClausesInfo, HeadVars),
             clauses_info_varset(ClausesInfo, VarSet),
             !:IG = !.IG ^ interface_inst_graph := ImplementationInstGraph,
-            solutions(
+            solutions.solutions(
                 (pred(V::out) is nondet :-
                     list.member(V0, HeadVars),
                     inst_graph.reachable(ImplementationInstGraph,

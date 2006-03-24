@@ -128,6 +128,7 @@
 :- import_module map.
 :- import_module multi_map.
 :- import_module set.
+:- import_module solutions.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -1394,7 +1395,7 @@ unmake_hlds_class_fundep(TVars, fundep(Domain0, Range0))
 :- func unmake_hlds_class_fundep_2(list(tvar), set(hlds_class_argpos)) =
     list(tvar).
 
-unmake_hlds_class_fundep_2(TVars, Set) = solutions(P) :-
+unmake_hlds_class_fundep_2(TVars, Set) = solutions.solutions(P) :-
     P = (pred(TVar::out) is nondet :-
         set.member(N, Set),
         TVar = list.index1_det(TVars, N)

@@ -86,6 +86,7 @@
 
 :- import_module int.
 :- import_module list.
+:- import_module solutions.
 :- import_module std_util.
 :- import_module string.
 
@@ -510,7 +511,7 @@ locals_member(Name, LocalsList) :-
 %-----------------------------------------------------------------------------%
 
 ml_warn_tailcalls(MLDS, !IO) :-
-    solutions(nontailcall_in_mlds(MLDS), Warnings),
+    solutions.solutions(nontailcall_in_mlds(MLDS), Warnings),
     list.foldl(report_nontailcall_warning, Warnings, !IO).
 
 :- type tailcall_warning

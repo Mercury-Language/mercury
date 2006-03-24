@@ -64,9 +64,9 @@ DECLARATIVE_PROGS=		\
 	revise			\
 	revise_2		\
 	small			\
-	solutions		\
 	special_term_dep	\
 	skip			\
+	solns			\
 	tabled_read_decl	\
 	tabled_read_decl_goto	\
 	throw			\
@@ -490,10 +490,10 @@ small.out: small small.inp
 
 # We need to pipe the output through sed to avoid hard-coding dependencies on
 # particular line numbers in the standard library source code.
-solutions.out: solutions solutions.$(DECLDEBUG_INP)
-	$(MDB) ./solutions < solutions.$(DECLDEBUG_INP) 2>&1 | \
-		sed -e 's/std_util.m:[0-9]*/std_util.m:NNNN/g' \
-		> solutions.out 2>&1 \
+solns.out: solns solns.$(DECLDEBUG_INP)
+	$(MDB) ./solns < solns.$(DECLDEBUG_INP) 2>&1 | \
+		sed -e 's/solutions.m:[0-9]*/solutions.m:NNNN/g' \
+		> solns.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 sort.out: sort sort.inp

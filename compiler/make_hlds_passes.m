@@ -121,6 +121,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module set.
+:- import_module solutions.
 :- import_module std_util.
 :- import_module string.
 :- import_module varset.
@@ -701,7 +702,8 @@ add_solver_type_mutable_items_pass_2([Item | Items], Context, !Status,
 
 get_global_name_from_foreign_names(ReportErrors, Context, ModuleName,
         MercuryMutableName, ForeignNames, TargetMutableName, !IO) :-
-    solutions(get_matching_foreign_name(ForeignNames, c), TargetMutableNames),
+    solutions.solutions(get_matching_foreign_name(ForeignNames, c),
+        TargetMutableNames),
     (
         TargetMutableNames = [],
         TargetMutableName = mutable_c_var_name(ModuleName,

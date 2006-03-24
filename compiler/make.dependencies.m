@@ -119,6 +119,8 @@
 :- import_module transform_hlds.
 :- import_module transform_hlds.mmc_analysis.
 
+:- import_module solutions.
+
 %-----------------------------------------------------------------------------%
 
 :- type deps_result(T) == pair(bool, set(T)).
@@ -963,7 +965,7 @@ check_dependencies_timestamps_write_missing_deps(TargetFileName,
         BuildDepsSucceeded, DepFiles, WriteDepFile, DepTimestamps, !IO) :-
     assoc_list.from_corresponding_lists(DepFiles, DepTimestamps,
         DepTimestampAL),
-    solutions(
+    solutions.solutions(
         (pred(DepFile::out) is nondet :-
             list.member(DepFile - error(_), DepTimestampAL)
         ), ErrorDeps),
@@ -1054,7 +1056,7 @@ debug_newer_dependencies_2(TargetFileName, MaybeTimestamp,
     io.write_string(": newer dependencies: ", !IO),
     assoc_list.from_corresponding_lists(DepFiles, DepTimestamps,
         DepTimestampAL),
-    solutions(
+    solutions.solutions(
         (pred(DepFile::out) is nondet :-
             list.member(DepFile - MaybeDepTimestamp, DepTimestampAL),
             (

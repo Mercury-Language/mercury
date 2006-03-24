@@ -89,6 +89,7 @@
 :- import_module map.
 :- import_module parser.
 :- import_module set.
+:- import_module solutions.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -337,7 +338,7 @@ classify_target(Globals, FileName, ModuleName - TargetType) :-
         string.length(FileName, NameLength),
         search_backwards_for_dot(FileName, NameLength - 1, DotLocn),
         string.split(FileName, DotLocn, ModuleNameStr0, Suffix),
-        solutions(classify_target_2(Globals, ModuleNameStr0, Suffix),
+        solutions.solutions(classify_target_2(Globals, ModuleNameStr0, Suffix),
             TargetFiles),
         TargetFiles = [TargetFile]
     ->

@@ -65,6 +65,7 @@
 :- import_module bool.
 :- import_module char.
 :- import_module set.
+:- import_module solutions.
 :- import_module string.
 :- import_module varset.
 
@@ -331,7 +332,7 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
             \+ string.prefix(Name, "_"),
             \+ list.member(Name, C_CodeList)
         ),
-        solutions(Filter, UnmentionedVars),
+        solutions.solutions(Filter, UnmentionedVars),
         (
             UnmentionedVars = []
         ;
@@ -354,7 +355,7 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
             \+ string.prefix(Name, "_"),
             \+ list.member(Name, FirstCodeList)
         ),
-        solutions(InputFilter, UnmentionedInputVars),
+        solutions.solutions(InputFilter, UnmentionedInputVars),
         (
             UnmentionedInputVars = []
         ;
@@ -372,7 +373,7 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
                 \+ list.member(Name, FirstCodeList),
                 \+ list.member(Name, SharedCodeList)
         ),
-        solutions(FirstOutputFilter, UnmentionedFirstOutputVars),
+        solutions.solutions(FirstOutputFilter, UnmentionedFirstOutputVars),
         (
             UnmentionedFirstOutputVars = []
         ;
@@ -391,7 +392,7 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
             \+ list.member(Name, LaterCodeList),
             \+ list.member(Name, SharedCodeList)
         ),
-        solutions(LaterOutputFilter, UnmentionedLaterOutputVars),
+        solutions.solutions(LaterOutputFilter, UnmentionedLaterOutputVars),
         (
             UnmentionedLaterOutputVars = []
         ;
@@ -511,7 +512,8 @@ warn_singletons(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet, Context,
     % or "DCG_", and don't have the same name as any variable in QuantVars
     % (i.e. weren't explicitly quantified).
 
-    solutions(generate_singleton_vars(GoalVars, NonLocals, QuantVars, VarSet),
+    solutions.solutions(
+        generate_singleton_vars(GoalVars, NonLocals, QuantVars, VarSet),
         SingletonVars),
 
     % if there were any such variables, issue a warning
@@ -543,7 +545,8 @@ warn_singletons(GoalVars, GoalInfo, NonLocals, QuantVars, VarSet, Context,
     % (i.e. are not singleton) and have a variable name that starts
     % with "_". If there were any such variables, issue a warning.
 
-    solutions(generate_multi_vars(GoalVars, NonLocals, VarSet), MultiVars),
+    solutions.solutions(generate_multi_vars(GoalVars, NonLocals, VarSet),
+        MultiVars),
     (
         MultiVars = []
     ;

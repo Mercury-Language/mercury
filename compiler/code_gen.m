@@ -115,6 +115,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module set.
+:- import_module solutions.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -998,7 +999,7 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, BodyContext,
                     Locn = indirect(Lval, _)
                 )
             ),
-            solutions(FindBaseLvals, TypeInfoLvals),
+            solutions.solutions(FindBaseLvals, TypeInfoLvals),
             set.insert_list(OutLvals, TypeInfoLvals, LiveLvals)
         ;
             MaybeTraceInfo = no,

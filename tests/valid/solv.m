@@ -49,7 +49,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module std_util.
+:- import_module solutions.
 
 :- solver type fd_var
 	where	representation is c_pointer,

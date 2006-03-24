@@ -320,6 +320,7 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module int.
+:- import_module solutions.
 :- import_module std_util.
 :- import_module string.
 :- import_module svmap.
@@ -476,7 +477,7 @@ rtti_varmaps_tvars(VarMaps, TVars) :-
     map.keys(VarMaps ^ ti_varmap, TVars).
 
 rtti_varmaps_types(VarMaps, Types) :-
-    solutions(rtti_varmaps_is_known_type(VarMaps), Types).
+    solutions.solutions(rtti_varmaps_is_known_type(VarMaps), Types).
 
 :- pred rtti_varmaps_is_known_type(rtti_varmaps::in, mer_type::out) is nondet.
 

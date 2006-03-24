@@ -60,6 +60,7 @@
 :- import_module assoc_list.
 :- import_module relation.
 :- import_module set.
+:- import_module solutions.
 :- import_module stack.
 :- import_module std_util.
 
@@ -238,7 +239,7 @@ mode_order_goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
             MakeVisibleVars = set.init,
             NeedVisibleVars = list_to_set([VarA, VarB])
         ),
-        ConsumingVars = solutions_set((pred(Var::out) is nondet :-
+        ConsumingVars = solutions.solutions_set((pred(Var::out) is nondet :-
             inst_graph.corresponding_nodes(InstGraph, VarA, VarB, VarC, VarD),
             ( ProdVars `contains` VarC ->
                 Var = VarD
@@ -280,7 +281,7 @@ mode_order_goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
         mode_order_goal(SubGoal0, SubGoal, !MOI),
         leave_lambda_goal(!MOI),
 
-        ConsumingVars = solutions_set(
+        ConsumingVars = solutions.solutions_set(
             inst_graph.reachable_from_list(InstGraph, NonLocals)),
         MakeVisibleVars = make_singleton_set(VarA),
         NeedVisibleVars = list_to_set(NonLocals)
@@ -545,7 +546,7 @@ find_matching_proc_2([ProcId0 - ProcInfo | ProcList], ProdVars, Args,
         )
     ->
         ProcId = ProcId0,
-        ConsumingVars = solutions_set(pred(X::out) is nondet :-
+        ConsumingVars = solutions.solutions_set(pred(X::out) is nondet :-
             some [Y] (
                 inst_graph.corresponding_nodes_from_lists(CallerInstGraph,
                 CalleeInstGraph, Args, HeadVars, X, Y),

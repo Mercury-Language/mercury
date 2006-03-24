@@ -173,6 +173,7 @@
 
 :- import_module bool.
 :- import_module list.
+:- import_module solutions.
 :- import_module std_util.
 
 %-----------------------------------------------------------------------------%
@@ -458,7 +459,7 @@ has_foreign_languages(Statement, Langs) :-
         SubStatement = statement(atomic(
             outline_foreign_proc(Lang, _, _, _)), _)
         ),
-    solutions(GetTargetCode, Langs).
+    solutions.solutions(GetTargetCode, Langs).
 
 %-----------------------------------------------------------------------------%
 %

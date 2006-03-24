@@ -32,6 +32,11 @@ Changes to the Mercury standard library:
   standard library, in forms that have been mostly unchanged since the
   0.11 release. In most cases, the differences are quite minor, but provide
   more expressive power.
+* We have moved the all-solutions predicates from std_util.m into a new
+  library module, solutions.m.  These predicates are still available in
+  std_util.m but these versions are now deprecated.
+* We have made the predicates semidet_succeed/0, semidet_fail/0 and
+  cc_multi_equal/2 into builtins.  Formerly these were exported by std_util.m.
 * We have added an `injection' module, for reversible maps that are injective.
 
 Changes to the Mercury compiler:
@@ -275,6 +280,11 @@ Changes to the Mercury standard library:
 * We have added string.word_wrap/2.
 
 * We have added set.fold4/10.
+
+* We have added semidet_true/0 and semidet_false/0 as synonyms for
+  semidet_succeed/0 and semidet_fail/0.
+
+* We have added impure_true/0 and semipure_true/0.
 
 Changes to the Mercury compiler:
 

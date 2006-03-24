@@ -99,6 +99,7 @@
 :- import_module set_ordlist.
 :- import_module set_tree234.
 :- import_module set_unordlist.
+:- import_module solutions.
 :- import_module sparse_bitset.
 :- import_module stack.
 :- import_module std_util.
@@ -237,6 +238,7 @@ mercury_std_library_module("set_ordlist").
 mercury_std_library_module("set_unordlist").
 mercury_std_library_module("set_ctree234").
 mercury_std_library_module("set_tree234").
+mercury_std_library_module("solutions").
 mercury_std_library_module("sparse_bitset").
 mercury_std_library_module("stack").
 mercury_std_library_module("std_util").

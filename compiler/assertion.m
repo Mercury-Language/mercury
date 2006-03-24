@@ -145,6 +145,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module set.
+:- import_module solutions.
 :- import_module std_util.
 :- import_module string.
 
@@ -340,8 +341,8 @@ is_update_assertion(AssertId, Module, _PredId, CallVars,
         Q = conj(plain_conj, QCalls) - _QGoalInfo
     ),
 
-    solutions(update(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars),
-        [StateA - StateB | _]).
+    solutions.solutions(update(PCalls, QCalls,
+        UniversiallyQuantifiedVars, CallVars), [StateA - StateB | _]).
 
     %   compose(S0, A, SA),     compose(SB, A, S),
     %   compose(SA, B, S)   <=> compose(S0, B, SB)
@@ -625,7 +626,7 @@ record_preds_used_in(Goal, AssertId, !Module) :-
         % Explicit lambda expression needed since
         % goal_calls_pred_id has multiple modes.
     P = (pred(PredId::out) is nondet :- goal_calls_pred_id(Goal, PredId)),
-    solutions(P, PredIds),
+    solutions.solutions(P, PredIds),
     list.foldl(update_pred_info(AssertId), PredIds, !Module).
 
 %-----------------------------------------------------------------------------%

@@ -1513,10 +1513,10 @@ get_arg(Term, Index, SecTagLocn, FunctorDesc, TypeInfo) = (Arg) :-
 #endif
 ").
 high_level_data :-
-    ( std_util.semidet_succeed ->
+    ( semidet_succeed ->
         private_builtin.sorry("high_level_data")
     ;
-        std_util.semidet_succeed
+        semidet_succeed
     ).
 
 :- pred get_arg_type_info(type_info::in, P::in, T::in,
@@ -2169,16 +2169,16 @@ update_type_info_index(_::in, _::in, X::di, X::uo) :-
 :- pred semidet_unimplemented(string::in) is semidet.
 
 semidet_unimplemented(S) :-
-    ( std_util.semidet_succeed ->
+    ( semidet_succeed ->
         error("rtti_implementation: unimplemented: " ++ S)
     ;
-        std_util.semidet_succeed
+        semidet_succeed
     ).
 
 :- pred det_unimplemented(string::in) is det.
 
 det_unimplemented(S) :-
-    ( std_util.semidet_succeed ->
+    ( semidet_succeed ->
         error("rtti_implementation: unimplemented: " ++ S)
     ;
         true

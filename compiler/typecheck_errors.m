@@ -123,6 +123,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module set.
+:- import_module solutions.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -963,7 +964,7 @@ report_error_undef_cons(Info, ConsErrors, Functor, Arity, !IO) :-
         (
             Functor = cons(Constructor, Arity),
             typecheck_info_get_ctors(Info, ConsTable),
-            solutions(
+            solutions.solutions(
                 (pred(N::out) is nondet :-
                     map.member(ConsTable, cons(Constructor, N), _),
                     N \= Arity
@@ -1507,7 +1508,7 @@ maybe_report_missing_import(Info, ModuleQualifier, !IO) :-
         % The module qualifier matches one or more of the
         % visible modules.  But maybe the user forgot to
         % import the parent module(s) of that module...
-        solutions(get_unimported_parent(ModuleQualifier,
+        solutions.solutions(get_unimported_parent(ModuleQualifier,
             ModuleInfo), UnimportedParents),
         UnimportedParents \= []
     ->

@@ -93,6 +93,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module set.
+:- import_module solutions.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -276,7 +277,8 @@ should_io_procedure_be_transformed(TransformAll, Require, BodyGoal,
     is det.
 
 may_call_mercury_attributes(Goal, MayCallMercuryAttrs) :-
-    solutions(subgoal_may_call_mercury_attribute(Goal), MayCallMercuryAttrs).
+    solutions.solutions(subgoal_may_call_mercury_attribute(Goal),
+        MayCallMercuryAttrs).
 
 :- pred subgoal_may_call_mercury_attribute(hlds_goal::in,
     may_call_mercury::out) is nondet.
@@ -292,7 +294,8 @@ subgoal_may_call_mercury_attribute(Goal, MayCallMercuryAttr) :-
     is det.
 
 tabled_for_io_attributes(Goal, TabledForIoAttrs) :-
-    solutions(subgoal_tabled_for_io_attribute(Goal), TabledForIoAttrs).
+    solutions.solutions(subgoal_tabled_for_io_attribute(Goal),
+        TabledForIoAttrs).
 
 :- pred subgoal_tabled_for_io_attribute(hlds_goal::in, tabled_for_io::out)
     is nondet.

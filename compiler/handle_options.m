@@ -91,6 +91,7 @@
 :- import_module library.
 :- import_module map.
 :- import_module set.
+:- import_module solutions.
 :- import_module std_util.
 :- import_module string.
 
@@ -1998,7 +1999,7 @@ construct_string([_ - Bit|Bits], Grade) :-
     list(pair(grade_component, string))::out) is det.
 
 compute_grade_components(Options, GradeComponents) :-
-    solutions((pred(CompData::out) is nondet :-
+    solutions.solutions((pred(CompData::out) is nondet :-
         grade_component_table(Name, Comp, CompOpts, MaybeTargets,
             IncludeInGradeString),
             % For possible component of the grade string
@@ -2245,7 +2246,7 @@ grade_component_table("exts", stack_extend,
 :- pred reset_grade_options(option_table::in, option_table::out) is det.
 
 reset_grade_options(Options0, Options) :-
-    aggregate(grade_start_values,
+    solutions.aggregate(grade_start_values,
         (pred(Pair::in, Opts0::in, Opts::out) is det :-
             Pair = Option - Value,
             map.set(Opts0, Option, Value, Opts)

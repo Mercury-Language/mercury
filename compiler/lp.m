@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997,2002-2005 The University of Melbourne.
+% Copyright (C) 1997,2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -87,6 +87,7 @@
 :- import_module bool.
 :- import_module int.
 :- import_module set.
+:- import_module solutions.
 :- import_module string.
 :- import_module svmap.
 :- import_module svset.
@@ -394,7 +395,7 @@ collect_vars(Eqns, Obj, Vars) :-
             Pair = Var - _
         )
     ),
-    solutions(GetVar, VarList),
+    solutions.solutions(GetVar, VarList),
     set.list_to_set(VarList, Vars).
 
 :- pred number_vars(list(var)::in, int::in,
@@ -473,7 +474,7 @@ extract_obj_var2(Tab, Var, Val) :-
         rhs_col(Tab, RHS),
         index(Tab, Row, RHS, Val0)
     ),
-    solutions(GetCell, Solns),
+    solutions.solutions(GetCell, Solns),
     ( Solns = [Val1] ->
         Val = Val1
     ;
@@ -503,7 +504,7 @@ simplex(A0, A, Result) :-
             )
         )
     ),
-    aggregate(AllColumns, MinAgg, no, MinResult),
+    solutions.aggregate(AllColumns, MinAgg, no, MinResult),
     (
         MinResult = no,
         A = A0,
@@ -539,7 +540,7 @@ simplex(A0, A, Result) :-
                 )
             )
         ),
-        aggregate(AllRows, MaxAgg, no, MaxResult),
+        solutions.aggregate(AllRows, MaxAgg, no, MaxResult),
         (
             MaxResult = no,
             A = A0,
@@ -569,7 +570,7 @@ ensure_zero_obj_coeffs([V | Vs], !Tableau) :-
             ValF0 \= 0.0,
             P = R - ValF0
         ),
-        solutions(FindOne, Ones),
+        solutions.solutions(FindOne, Ones),
         (
             Ones = [Row - Fac0|_],
             Fac = -Val/Fac0,
@@ -595,7 +596,7 @@ fix_basis_and_rem_cols([V | Vs], !Tableau) :-
             Ones = [Val - R|Ones0]
         )
     ),
-    aggregate(all_rows(!.Tableau), BasisAgg, [], Res),
+    solutions.aggregate(all_rows(!.Tableau), BasisAgg, [], Res),
     (
         Res = [1.0 - Row]
     ->
@@ -605,7 +606,7 @@ fix_basis_and_rem_cols([V | Vs], !Tableau) :-
             index(!.Tableau, Row, Col1, Zz),
             Zz \= 0.0
         ),
-        solutions(PivGoal, PivSolns),
+        solutions.solutions(PivGoal, PivSolns),
         (
             PivSolns = [],
             remove_col(Col, !Tableau),
@@ -644,7 +645,7 @@ pivot(P, Q, !Tableau) :-
         NewAjk = Ajk - Apk * Ajq / Apq,
         set_index(J, K, NewAjk, !T)
     ),
-    aggregate(MostCells, ScaleCell, !Tableau),
+    solutions.aggregate(MostCells, ScaleCell, !Tableau),
     QColumn = (pred(Cell::out) is nondet :-
         all_rows0(!.Tableau, J),
         Cell = cell(J, Q)
@@ -653,14 +654,14 @@ pivot(P, Q, !Tableau) :-
         Cell = cell(J, K),
         set_index(J, K, 0.0, T0, T)
     ),
-    aggregate(QColumn, Zero, !Tableau),
+    solutions.aggregate(QColumn, Zero, !Tableau),
     PRow = all_cols0(!.Tableau),
     ScaleRow = (pred(K::in, T0::in, T::out) is det :-
         index(T0, P, K, Apk),
         NewApk = Apk / Apq,
         set_index(P, K, NewApk, T0, T)
     ),
-    aggregate(PRow, ScaleRow, !Tableau),
+    solutions.aggregate(PRow, ScaleRow, !Tableau),
     set_index(P, Q, 1.0, !Tableau).
 
 :- pred row_op(float::in, int::in, int::in,
@@ -674,7 +675,7 @@ row_op(Scale, From, To, !Tableau) :-
         Z = Y + (Scale * X),
         set_index(To, Col, Z, !Tableau)
     ),
-    aggregate(AllCols, AddRow, !Tableau).
+    solutions.aggregate(AllCols, AddRow, !Tableau).
 
 %-----------------------------------------------------------------------------%
 
@@ -800,16 +801,16 @@ get_basis_vars(Tab, Vars) :-
             Z \= 0.0,
             P = R - Z
         ),
-        solutions(NonZeroGoal, Solns),
+        solutions.solutions(NonZeroGoal, Solns),
         Solns = [_ - 1.0]
     ),
-    solutions(BasisCol, Cols),
+    solutions.solutions(BasisCol, Cols),
     BasisVars = (pred(V::out) is nondet :-
         list.member(Col, Cols),
         Tab = tableau(_, _, VarCols, _, _, _, _),
         map.member(VarCols, V, Col)
     ),
-    solutions(BasisVars, Vars).
+    solutions.solutions(BasisVars, Vars).
 
 %-----------------------------------------------------------------------------%
 
@@ -918,12 +919,12 @@ between(Min, Max, I) :-
 show_tableau(Tableau, !IO) :-
     Tableau = tableau(N, M, _, _, _, _, _),
     io.format("Tableau (%d, %d):\n", [i(N), i(M)], !IO),
-    aggregate(all_rows0(Tableau), show_row(Tableau), !IO).
+    solutions.aggregate(all_rows0(Tableau), show_row(Tableau), !IO).
 
 :- pred show_row(tableau::in, int::in, io::di, io::uo) is det.
 
 show_row(Tableau, Row, !IO) :-
-    aggregate(all_cols0(Tableau), show_cell(Tableau, Row), !IO),
+    solutions.aggregate(all_cols0(Tableau), show_cell(Tableau, Row), !IO),
     io.nl(!IO).
 
 :- pred show_cell(tableau::in, int::in, int::in, io::di, io::uo) is det.

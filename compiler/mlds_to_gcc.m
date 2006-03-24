@@ -182,6 +182,7 @@
 :- import_module library.
 :- import_module list.
 :- import_module map.
+:- import_module solutions.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -1514,7 +1515,7 @@ gen_func(Name, Context, Flags, Signature, MaybeBody,
 :- pred build_label_table(statement::in, label_table::out,
 		io__state::di, io__state::uo) is det.
 build_label_table(Statement, LabelTable) -->
-	{ solutions(statement_contains_label(Statement), Labels) },
+	{ solutions.solutions(statement_contains_label(Statement), Labels) },
 	list__map_foldl(gcc__build_label, Labels, GCC_LabelDecls),
 	{ map__from_corresponding_lists(Labels, GCC_LabelDecls,
 		LabelTable) }.

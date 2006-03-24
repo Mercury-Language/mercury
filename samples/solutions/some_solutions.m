@@ -23,7 +23,7 @@
 :- import_module bool.
 :- import_module char.
 :- import_module list.
-:- import_module std_util.
+:- import_module solutions.
 
 main(!IO) :-
 	do_while(hello, get_next, !IO),

@@ -139,6 +139,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module set.
+:- import_module solutions.
 :- import_module string.
 :- import_module svmap.
 :- import_module term.
@@ -1829,7 +1830,7 @@ id_set_search_sym_arity(IdSet, Sym, Arity, Modules, MatchingModules) :-
                 list.member(MatchModule, AllMatchingModules),
                 set.member(MatchModule, DefiningModules)
             ),
-            solutions(FindMatch, MatchingModules)
+            solutions.solutions(FindMatch, MatchingModules)
         )
     ;
         MatchingModules = []

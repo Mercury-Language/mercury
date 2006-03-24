@@ -458,6 +458,7 @@
 :- import_module counter.
 :- import_module int.
 :- import_module list.
+:- import_module solutions.
 :- import_module std_util.
 :- import_module string.
 
@@ -1884,7 +1885,7 @@ fixup_var(ThisVar, ThisVarType, Lval, !Info) :-
                 mlds_data(VarType, _, _)),
             \+ ml_decl_is_static_const(Var)
         ),
-        solutions(IsLocalVar, [FieldType])
+        solutions.solutions(IsLocalVar, [FieldType])
     ->
         EnvPtr = lval(var(qual(ModuleName, QualKind,
             mlds_var_name(env_name_base(Action) ++ "_ptr", no)),

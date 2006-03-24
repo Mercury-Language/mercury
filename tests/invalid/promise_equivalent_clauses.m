@@ -9,7 +9,7 @@
 :- implementation.
 
 :- import_module list.
-:- import_module std_util.
+:- import_module solutions.
 
 main(!IO) :-
 	SortedList = [1, 2, 3],

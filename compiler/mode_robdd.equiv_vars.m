@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2005 The University of Melbourne.
+% Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -70,6 +70,7 @@
 :- import_module map.
 :- import_module require.
 :- import_module set.
+:- import_module solutions.
 :- import_module sparse_bitset.
 :- import_module std_util.
 
@@ -275,7 +276,7 @@ delete(E0, V) = E :-
 	( L = E0 ^ leader(V) ->
 		( L = V ->
 			M0 = map__delete(E0 ^ leader_map, V),
-			Vars = solutions(map__inverse_search(M0, V)),
+			Vars = solutions.solutions(map.inverse_search(M0, V)),
 			( Vars = [NewLeader | _] ->
 				M = list__foldl(
 					func(V1, M1) =

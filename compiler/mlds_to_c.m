@@ -98,6 +98,7 @@
 :- import_module library.
 :- import_module list.
 :- import_module map.
+:- import_module solutions.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -1117,7 +1118,7 @@ mlds_output_type_forward_decls(Indent, ParamTypes, !IO) :-
     % Output forward declarations for all struct types
     % that are contained in the parameter types.
 
-    aggregate(mlds_type_list_contains_type(ParamTypes),
+    solutions.aggregate(mlds_type_list_contains_type(ParamTypes),
         mlds_output_type_forward_decl(Indent), !IO).
 
     % mlds_type_list_contains_type(Types, SubType):

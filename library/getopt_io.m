@@ -290,6 +290,8 @@
 :- import_module string.
 :- import_module svset.
 
+:- use_module solutions.
+
 % Please keep the differences between this module and getopt.m to the
 % minimum. Most changes should done in both modules.
 
@@ -330,14 +332,14 @@
     )).
 
 init_option_table(OptionDefaultsPred, OptionTable) :-
-    solutions((pred(OptionDataPair::out) is nondet :-
+    solutions.solutions((pred(OptionDataPair::out) is nondet :-
             OptionDataPair = Option - OptionData,
             call(OptionDefaultsPred, Option, OptionData)
         ), OptionDefaultsList),
     map.from_assoc_list(OptionDefaultsList, OptionTable).
 
 init_option_table_multi(OptionDefaultsPred, OptionTable) :-
-    solutions((pred(OptionDataPair::out) is multi :-
+    solutions.solutions((pred(OptionDataPair::out) is multi :-
             OptionDataPair = Option - OptionData,
             call(OptionDefaultsPred, Option, OptionData)
         ), OptionDefaultsList),

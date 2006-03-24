@@ -244,6 +244,7 @@
 
 :- import_module int.
 :- import_module require.
+:- import_module solutions.
 :- import_module std_util.
 :- import_module svmap.
 :- import_module svset.
@@ -1668,7 +1669,7 @@ data_set_directed_closure(FromData, ToData) = SharingPairs :-
     set(pair(T1, T2))::out) is det.
 
 set_cross_product(SetA, SetB, CrossProduct):-
-    solutions_set(cross_product(SetA, SetB), CrossProduct).
+    solutions.solutions_set(cross_product(SetA, SetB), CrossProduct).
 
 :- pred cross_product(set(T1)::in, set(T2)::in, pair(T1, T2)::out) is nondet.
 

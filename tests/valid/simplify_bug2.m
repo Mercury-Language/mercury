@@ -11,7 +11,6 @@
 :- implementation.
 
 :- import_module require.
-:- use_module std_util.
 
 get_type_and_extra_args(TypeInfoParams, PseudoTypeInfo, ArgTypeInfo) :-
 	( 
@@ -37,5 +36,5 @@ get_type_info_for_var(X, _, X).
 :- pragma no_inline(typeinfo_is_variable/2).
 
 typeinfo_is_variable(_, 42) :-
-	std_util__semidet_succeed.
+	semidet_succeed.
 

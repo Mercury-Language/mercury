@@ -81,6 +81,7 @@
 :- import_module multi_map.
 :- import_module robdd.
 :- import_module set.
+:- import_module solutions.
 :- import_module sparse_bitset.
 :- import_module std_util.
 :- import_module string.
@@ -452,7 +453,8 @@ number_robdd_variables_in_rhs(InstGraph, GoalPath, Vars, !RHS, !NRInfo) :-
 
 number_robdd_variables_at_goal_path(InstGraph, GoalPath, ParentNonLocals,
         Vars0, Occurring, !NRInfo) :-
-    solutions_set(inst_graph.reachable_from_list(InstGraph, Vars0), Occurring),
+    solutions.solutions_set(inst_graph.reachable_from_list(InstGraph, Vars0),
+        Occurring),
     Vars = set.to_sorted_list(ParentNonLocals `set.union`
         set.list_to_set(Vars0)),
     % XXX We may be able to make this more efficient.
@@ -587,7 +589,7 @@ process_pred_2(PredId, ModeConstraint, ModeConstraintInfo0,
     % DMO document this better
     % XXX Needed for analysing calls. May want to store the constraint
     % as an ROBDD instead.
-    solutions(arg_modes_map(HeadVars, InstGraph, ModeConstraint,
+    solutions.solutions(arg_modes_map(HeadVars, InstGraph, ModeConstraint,
         ModeConstraintInfo0), Modes),
     PredInfo = PredInfo0 ^ modes := Modes,
     % PredInfo = PredInfo0,
@@ -1057,7 +1059,7 @@ goal_constraints(ParentNonLocals, CanSucceed, GoalExpr0 - GoalInfo0,
     goal_info_get_nonlocals(GoalInfo0, NonLocals),
 
     InstGraph = !.GCInfo ^ inst_graph,
-    NonLocalReachable = solutions_set(inst_graph.reachable_from_list(
+    NonLocalReachable = solutions.solutions_set(inst_graph.reachable_from_list(
         InstGraph, to_sorted_list(NonLocals))),
     LocalVars = Vars `difference` NonLocalReachable,
 
@@ -1216,7 +1218,7 @@ goal_constraints_2(GoalPath, _NonLocals, _, CanSucceed, GoalExpr, GoalExpr,
             PredInstGraph = PredInfo ^ inst_graph_info ^ interface_inst_graph,
             pred_info_clauses_info(PredInfo, PredClausesInfo),
             clauses_info_headvars(PredClausesInfo, PredHeadVars),
-            solutions((pred((V - W)::out) is nondet :-
+            solutions.solutions((pred((V - W)::out) is nondet :-
                 inst_graph.corresponding_nodes_from_lists(
                     PredInstGraph, InstGraph, PredHeadVars, Args, V, W)
                 ), CorrespondingNodes),
@@ -1316,7 +1318,7 @@ goal_constraints_2(GoalPath, NonLocals, Vars, CanSucceed,
     CanSucceed = (CanSucceedC `and` CanSucceedT) `or` CanSucceedE,
 
     InstGraph = !.GCInfo ^ inst_graph,
-    NonLocalReachable = solutions(inst_graph.reachable_from_list(
+    NonLocalReachable = solutions.solutions(inst_graph.reachable_from_list(
         InstGraph, to_sorted_list(NonLocals))),
 
     % Make sure variables have the same bindings in both the then and else
@@ -1487,7 +1489,7 @@ unify_constraints(A, GoalPath, RHS, RHS, !Constraint, !GCInfo) :-
             get_var(W `at` GoalPath, Wgp, S3, S),
             C = C0 ^ eq_vars(Vout, Wout) ^ not_both(Vgp, Wgp)
         ),
-    aggregate2(Generator, Accumulator, !Constraint, !GCInfo),
+    solutions.aggregate2(Generator, Accumulator, !Constraint, !GCInfo),
     get_var(out(A), Aout, !GCInfo),
     !:Constraint = !.Constraint ^ var(Aout),
 
@@ -1625,7 +1627,7 @@ call_constraints(GoalPath, PredId, HeadVars, Args, !Constraint, !GCInfo) :-
             get_var(out(W), Wout, S3, S),
             C = C0 ^ eq_vars(V_, Wgp) ^ imp_vars(Vin, Wout)
         ),
-    aggregate2(Generator, Accumulator, !Constraint, !GCInfo).
+    solutions.aggregate2(Generator, Accumulator, !Constraint, !GCInfo).
 
 :- pred higher_order_call_constraints(mode_constraint::in,
     mode_constraint::out, goal_constraints_info::in,
@@ -1854,8 +1856,8 @@ constrain_non_occurring_vars(yes, ParentNonLocals, OccurringVars, GoalPath,
             get_var(V `at` GoalPath, VGP),
             { Vs = Vs0 `insert` VGP }
         ),
-    aggregate2(Generator, Accumulator, empty_vars_set, NonOccurringVars,
-        !GCInfo),
+    solutions.aggregate2(Generator, Accumulator, empty_vars_set,
+        NonOccurringVars, !GCInfo),
     !:Constraint = !.Constraint ^ conj_not_vars(NonOccurringVars).
 
 %   aggregate2((pred(V::out) is nondet :-
@@ -1896,7 +1898,8 @@ share_ho_modes(VarA, VarB, HoModes0, HoModes, !MCI) :-
     mode_constraint_info::in, arg_modes_map::out) is nondet.
 
 arg_modes_map(HeadVars, InstGraph, Constraint0, Info0, ArgModes) :-
-    solutions(inst_graph.reachable_from_list(InstGraph, HeadVars), Vars),
+    solutions.solutions(inst_graph.reachable_from_list(InstGraph, HeadVars),
+        Vars),
     list.map_foldl((pred(PV::in, (MV - in(PV))::out, in, out) is det -->
         mode_constraint_var(in(PV), MV)), Vars, InVars, Info0, Info1),
     list.map_foldl((pred(PV::in, (MV - out(PV))::out, in, out) is det -->

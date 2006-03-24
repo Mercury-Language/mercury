@@ -70,6 +70,7 @@
 :- import_module map.
 :- import_module multi_map.
 :- import_module set.
+:- import_module solutions.
 :- import_module std_util.
 :- import_module string.
 :- import_module varset.
@@ -523,8 +524,8 @@ check_for_overlapping_instances(NewInstanceDefn, InstanceDefns, ClassId,
             NewOtherTypes),
         type_list_subsumes(Types, NewOtherTypes, _)
     ),
-    aggregate(IsOverlapping, report_overlapping_instance_declaration(ClassId),
-        !IO).
+    solutions.aggregate(IsOverlapping,
+        report_overlapping_instance_declaration(ClassId), !IO).
 
 :- pred report_overlapping_instance_declaration(class_id::in,
     pair(prog_context)::in, io::di, io::uo) is det.

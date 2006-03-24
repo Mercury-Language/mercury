@@ -372,6 +372,7 @@
 :- import_module parse_tree.prog_type.
 
 :- import_module int.
+:- import_module solutions.
 :- import_module string.
 :- import_module svmap.
 :- import_module svset.
@@ -784,7 +785,7 @@ find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo, TypeInfoDataMap) :-
                     Locn = direct(Lval)
                 )
             ),
-            solutions_set(ConvertLval, Locns)
+            solutions.solutions_set(ConvertLval, Locns)
         ;
             varset.lookup_name(VarSet, TypeInfoVar, VarString),
             string.format("%s: %s %s",

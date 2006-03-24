@@ -43,12 +43,12 @@ main -->
 	;
 		io.write_string("no"), io.nl
 	),
-	( { std_util.dynamic_cast(45, X2) } ->
+	( { dynamic_cast(45, X2) } ->
 		io.write_int(X2), io.nl
 	;
 		link_error
 	),
-	( { std_util.dynamic_cast(46, _ `with_type` string) } ->
+	( { dynamic_cast(46, _ `with_type` string) } ->
 		link_error
 	;
 		io.write_string("no"), io.nl

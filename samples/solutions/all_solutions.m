@@ -11,7 +11,7 @@
 :- pred main(io::di, io::uo) is det.
 
 :- implementation.
-:- import_module std_util.
+:- import_module solutions.
 
 main(!IO) :-
 	solutions(hello, List),

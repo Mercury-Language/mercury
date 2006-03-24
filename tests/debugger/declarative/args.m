@@ -22,7 +22,7 @@ main -->
 :- mode p(in, out, in, out, in) is nondet.
 
 p(A, A + (B * C), B, (A + B) * C, C) :-
-	semidet_succeed.
+	library_forwarding.semidet_succeed.
 p(A, A - B, B, C - B, C) :-
-	semidet_succeed.
+	library_forwarding.semidet_succeed.
 

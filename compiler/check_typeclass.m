@@ -112,6 +112,7 @@
 :- import_module map.
 :- import_module multi_map.
 :- import_module set.
+:- import_module solutions.
 :- import_module std_util.
 :- import_module string.
 :- import_module svmap.
@@ -213,7 +214,7 @@ check_one_class(ClassTable, ClassId - InstanceDefns0,
             [TermContext - ErrorPieces | Messages0],
         InstanceDefns = InstanceDefns0
     ;
-        solutions(
+        solutions.solutions(
             ( pred(PredId::out) is nondet :-
                 list.member(ClassProc, ClassInterface),
                 ClassProc = hlds_class_proc(PredId, _)
@@ -431,7 +432,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
         !InstanceCheckInfo, !IO) :-
     !.InstanceCheckInfo = instance_check_info(InstanceDefn0,
         OrderedMethods0, Errors0, ModuleInfo0, QualInfo0),
-    solutions((pred(ProcId::out) is nondet :-
+    solutions.solutions((pred(ProcId::out) is nondet :-
             list.member(ClassProc, ClassInterface),
             ClassProc = hlds_class_proc(PredId, ProcId)
         ), ProcIds),
@@ -1244,7 +1245,7 @@ check_range_restrictedness_2(ClassId, InstanceDefn, FunDep, !ModuleInfo,
     prog_type.vars_list(DomainTypes, DomainVars),
     RangeTypes = restrict_list_elements(Range, Types),
     prog_type.vars_list(RangeTypes, RangeVars),
-    solutions((pred(V::out) is nondet :-
+    solutions.solutions((pred(V::out) is nondet :-
             list.member(V, RangeVars),
             \+ list.member(V, DomainVars)
         ), UnboundVars),
@@ -1491,8 +1492,9 @@ get_unbound_tvars(TVars, Constraints, ModuleInfo, UnboundTVars) :-
     module_info_get_class_table(ModuleInfo, ClassTable),
     InducedFunDeps = induced_fundeps(ClassTable, Constraints),
     FunDepsClosure = fundeps_closure(InducedFunDeps, list_to_set(TVars)),
-    solutions(constrained_var_not_in_closure(Constraints, FunDepsClosure),
-        UnboundTVars).
+    solutions.solutions(
+        constrained_var_not_in_closure(Constraints, FunDepsClosure),
+            UnboundTVars).
 
 :- pred constrained_var_not_in_closure(prog_constraints::in, set(tvar)::in,
     tvar::out) is nondet.
@@ -1711,7 +1713,7 @@ check_constraint_quant(PredInfo, !ModuleInfo, !FoundError, !IO) :-
     pred_info_get_class_context(PredInfo, Constraints),
     Constraints = constraints(UnivCs, ExistCs),
     prog_type.constraint_list_get_tvars(UnivCs, UnivTVars),
-    solutions((pred(V::out) is nondet :-
+    solutions.solutions((pred(V::out) is nondet :-
             list.member(V, UnivTVars),
             list.member(V, ExistQVars)
         ), BadUnivTVars),

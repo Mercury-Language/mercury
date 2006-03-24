@@ -151,6 +151,7 @@
 :- import_module map.
 :- import_module require.
 :- import_module robdd.
+:- import_module solutions.
 :- import_module sparse_bitset.
 :- import_module stack.
 :- import_module std_util.
@@ -290,7 +291,7 @@ set_input_nodes(Constraint0, Constraint, Info0, Info) :-
     PredId = Info0 ^ pred_id,
     bimap.ordinates(VarMap, Keys),
     Constraint1 = ensure_normalised(Constraint0),
-    solutions((pred(ProgVar::out) is nondet :-
+    solutions.solutions((pred(ProgVar::out) is nondet :-
             list.member(Key, Keys),
             Key = key(in(ProgVar), PredId, LambdaPath),
             bimap.lookup(VarMap, Key, RobddVar),

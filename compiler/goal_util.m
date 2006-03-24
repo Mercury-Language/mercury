@@ -369,6 +369,7 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module int.
+:- import_module solutions.
 :- import_module std_util.
 :- import_module string.
 :- import_module svmap.
@@ -976,7 +977,7 @@ extra_nonlocal_typeinfos(RttiVarMaps, VarTypes, ExistQVars,
         % include all typeclass_infos that constrain a type variable
         % that is non-local in the above sense.
         %
-    solutions_set(
+    solutions.solutions_set(
         (pred(Var::out) is nondet :-
             % Search through all arguments of all constraints
             % that the goal could have used.
@@ -1642,11 +1643,11 @@ predids_from_goal(Goal, PredIds) :-
         % Explicit lambda expression needed since
         % goal_calls_pred_id has multiple modes.
     P = (pred(PredId::out) is nondet :- goal_calls_pred_id(Goal, PredId)),
-    solutions(P, PredIds).
+    solutions.solutions(P, PredIds).
 
 pred_proc_ids_from_goal(Goal, PredProcIds) :-
     P = (pred(PredProcId::out) is nondet :- goal_calls(Goal, PredProcId)),
-    solutions(P, PredProcIds).
+    solutions.solutions(P, PredProcIds).
 
 %-----------------------------------------------------------------------------%
 

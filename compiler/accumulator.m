@@ -187,6 +187,7 @@
 :- import_module map.
 :- import_module multi_map.
 :- import_module set.
+:- import_module solutions.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -579,7 +580,7 @@ identify_recursive_calls(PredId, ProcId, GoalStore, Ids) :-
         Key = rec - _,
         Goal = call(PredId, ProcId, _, _, _, _) - _
     ),
-    solutions(P, Ids).
+    solutions.solutions(P, Ids).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1346,7 +1347,7 @@ divide_base_case(UpdateOut, Out, C, VarTypes, ModuleInfo,
     set(goal_id)::out) is det.
 
 related(GS, VarTypes, ModuleInfo, Var, Related) :-
-    solutions(
+    solutions.solutions(
         (pred(Key::out) is nondet :-
             goal_store_member(GS, Key, Goal - InstMap0),
             Key = base - _,
@@ -1792,7 +1793,7 @@ rename(Ids, Subst, From, Initial) = Final :-
 :- func base_case_ids(goal_store) = list(goal_id).
 
 base_case_ids(GS) = Base :-
-    solutions(
+    solutions.solutions(
         (pred(Key::out) is nondet :-
             goal_store_member(GS, Key, _Goal),
             Key = base - _

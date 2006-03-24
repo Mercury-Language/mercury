@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2002, 2005 The University of Melbourne.
+% Copyright (C) 1997-2002, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -328,6 +328,7 @@
 :- import_module bool.
 :- import_module exception.
 :- import_module int.
+:- import_module solutions.
 :- import_module string.
 :- import_module svmap.
 :- import_module svset.
@@ -930,7 +931,7 @@ collect_vars(Eqns, Obj) = Vars :-
         ),
         Var = fst(Pair)
     ),
-    std_util.solutions(GetVar, VarList),
+    solutions.solutions(GetVar, VarList),
     Vars = set.list_to_set(VarList).
 
 :- type var_num_map == map(lp_var, int).
@@ -1004,7 +1005,7 @@ extract_obj_var2(Tableau, Var, Val) :-
         one = Tableau ^ elem(Row, Col),
         Val0 = Tableau ^ elem(Row, Tableau ^ cols)
     ),
-    std_util.solutions(GetCell, Solns),
+    solutions.solutions(GetCell, Solns),
     ( if Solns = [Val1] then Val = Val1 else Val = zero ).
 
 :- pred simplex(bool::out, tableau::in, tableau::out) is det.
@@ -1022,7 +1023,7 @@ simplex(Result, !Tableau) :-
             ( if CellVal < MinVal0 then !:Min = yes(Col - CellVal) else true )
         )
     ),
-    std_util.aggregate(AllColumns, MinAgg, no, MinResult),
+    solutions.aggregate(AllColumns, MinAgg, no, MinResult),
     (
         MinResult = no,
         Result = yes
@@ -1068,7 +1069,7 @@ simplex(Result, !Tableau) :-
                 )
             )
         ),
-        aggregate(AllRows, MaxAgg, no, MaxResult),
+        solutions.aggregate(AllRows, MaxAgg, no, MaxResult),
         (
             MaxResult = no,
             Result = no
@@ -1096,7 +1097,7 @@ ensure_zero_obj_coeffs([Var | Vars], !Tableau) :-
             ValF0 \= zero,
             P = R - ValF0
         ),
-        std_util.solutions(FindOne, Ones),
+        solutions.solutions(FindOne, Ones),
         (
             Ones = [Row - Fac0 | _],
             ( if    Fac0 = zero
@@ -1123,7 +1124,7 @@ fix_basis_and_rem_cols([Var | Vars], !Tableau) :-
         Val = !.Tableau ^ elem(R, Col),
         Ones = ( Val = zero -> Ones0 ; [Val - R | Ones0] )  
     ),
-    aggregate(all_rows(!.Tableau), BasisAgg, [], Res),
+    solutions.aggregate(all_rows(!.Tableau), BasisAgg, [], Res),
     (
         Res = [one - Row]
     ->
@@ -1133,7 +1134,7 @@ fix_basis_and_rem_cols([Var | Vars], !Tableau) :-
             Zz = !.Tableau ^ elem(Row, Col1),
             Zz \= zero
         ),
-        solutions(PivGoal, PivSolns),
+        solutions.solutions(PivGoal, PivSolns),
         (
             PivSolns = [],
             remove_col(Col, !Tableau),
@@ -1175,7 +1176,7 @@ pivot(P, Q, !Tableau) :-
         ),
         T = T0 ^ elem(J, K) := Ajk - Apk * Ajq / Apq 
     ),
-    std_util.aggregate(MostCells, ScaleCell, !Tableau),
+    solutions.aggregate(MostCells, ScaleCell, !Tableau),
     QColumn = (pred(Cell::out) is nondet :-
         all_rows0(!.Tableau, J),
         Cell = cell(J, Q)
@@ -1184,7 +1185,7 @@ pivot(P, Q, !Tableau) :-
         Cell = cell(J, K),
         T = T0 ^ elem(J, K) := zero
     ),
-    std_util.aggregate(QColumn, Zero, !Tableau),
+    solutions.aggregate(QColumn, Zero, !Tableau),
     PRow = all_cols0(!.Tableau),
     ScaleRow = (pred(K::in, T0::in, T::out) is det :-
         Apk = T0 ^ elem(P, K),
@@ -1194,7 +1195,7 @@ pivot(P, Q, !Tableau) :-
         ),
         T = T0 ^ elem(P, K) := Apk / Apq 
     ),
-    std_util.aggregate(PRow, ScaleRow, !Tableau),
+    solutions.aggregate(PRow, ScaleRow, !Tableau),
     set_cell(P, Q, one, !Tableau).
 
 :- pred row_op(rat::in, int::in, int::in, tableau::in, 
@@ -1208,7 +1209,7 @@ row_op(Scale, From, To, !Tableau) :-
         Z = Y + (Scale * X),
         T = T0 ^ elem(To, Col) := Z
     ),
-    aggregate(AllCols, AddRow, !Tableau).
+    solutions.aggregate(AllCols, AddRow, !Tableau).
 
 %-----------------------------------------------------------------------------%
 
@@ -1328,15 +1329,15 @@ get_basis_vars(Tableau) = Vars :-
             Z \= zero,
             P = R - Z
         ),
-        std_util.solutions(NonZeroGoal, Solns),
+        solutions.solutions(NonZeroGoal, Solns),
         Solns = [_ - one]
     ),
-    std_util.solutions(BasisCol, Cols),
+    solutions.solutions(BasisCol, Cols),
     BasisVars = (pred(V::out) is nondet :-
         list.member(Col, Cols),
         map.member(Tableau ^ var_nums, V, Col)
     ),
-    std_util.solutions(BasisVars, Vars).
+    solutions.solutions(BasisVars, Vars).
 
 %-----------------------------------------------------------------------------%
 
@@ -2091,7 +2092,7 @@ add_vectors(TermsA, ConstA, TermsB, ConstB, Terms, ConstA + ConstB) :-
           else  Coeffs = map.det_insert(Coeffs0, Var, NumA)
         )
     ),
-    aggregate(IsMapKey, AddVal, TermsB, Terms).
+    solutions.aggregate(IsMapKey, AddVal, TermsB, Terms).
 
 %-----------------------------------------------------------------------------%
 % 

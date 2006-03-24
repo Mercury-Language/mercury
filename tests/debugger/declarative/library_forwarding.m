@@ -24,7 +24,7 @@
 
 :- implementation.
 
-:- import_module int, std_util.
+:- import_module int.
 
 X + Y = 'int__+'(X, Y).
 X * Y = 'int__*'(X, Y).
@@ -38,8 +38,8 @@ X =< Y :- 'int__=<'(X, Y).
 X > Y :- 'int__>'(X, Y).
 
 semidet_succeed :-
-	std_util__semidet_succeed.
+	builtin.semidet_succeed.
 
 semidet_fail :-
-	std_util__semidet_fail.
+	builtin.semidet_fail.
 

@@ -56,6 +56,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module solutions.
 
 %-----------------------------------------------------------------------------%
 
@@ -106,8 +107,9 @@ ancestors_2(GoalStore, [Id|Ids], VisitedIds, VarTypes, ModuleInfo, FullyStrict)
 
 direct_ancestors(GoalStore, StartId, VarTypes, ModuleInfo, FullyStrict)
         = Ancestors :-
-    solutions(direct_ancestor(GoalStore, StartId, VarTypes, ModuleInfo,
-        FullyStrict), Ancestors).
+    solutions.solutions(
+        direct_ancestor(GoalStore, StartId, VarTypes, ModuleInfo, FullyStrict),
+        Ancestors).
 
 :- pred direct_ancestor(goal_store(T)::in, T::in, vartypes::in,
     module_info::in, bool::in, T::out) is nondet.

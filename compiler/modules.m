@@ -818,6 +818,7 @@
 :- import_module getopt_io.
 :- import_module library.
 :- import_module multi_map.
+:- import_module solutions.
 :- import_module sparse_bitset.
 :- import_module string.
 :- import_module svmap.
@@ -1499,7 +1500,7 @@ strip_unnecessary_impl_defns_2(Items0, Items) :-
         % If there is an exported type declaration for a type with an abstract
         % declaration in the implementation (usually it will originally
         % have been a d.u. type), remove the declaration in the implementation.
-        unsorted_aggregate(
+        solutions.unsorted_aggregate(
             (pred(TypeCtor::out) is nondet :-
                 map.member(!.ImplTypesMap, TypeCtor, Defns),
                 \+ (
@@ -2824,7 +2825,7 @@ warn_if_import_self_or_ancestor(ModuleName, AncestorModules,
             ; list.member(Import, UsedModules)
             )
         ),
-        aggregate(IsImportedAncestor,
+        solutions.aggregate(IsImportedAncestor,
             warn_imported_ancestor(ModuleName), !IO)
     ;
         Warn = no
@@ -7071,7 +7072,7 @@ report_duplicate_modules(Duplicates, Items, !IO) :-
             ),
             set.member(SubModuleName, Duplicates)
         ),
-    solutions(IsDuplicateError, DuplicateErrors),
+    solutions.solutions(IsDuplicateError, DuplicateErrors),
     list.foldl(report_error_duplicate_module_decl, DuplicateErrors, !IO).
 
 :- pred report_error_duplicate_module_decl(pair(module_name, prog_context)::in,
@@ -7161,8 +7162,8 @@ get_foreign_self_imports(Items, Langs) :-
     set(foreign_language)::in, set(foreign_language)::out) is det.
 
 accumulate_item_foreign_import_langs(Item - _, !LangSet) :-
-    solutions(item_needs_foreign_imports(Item), Langs),
-    set.insert_list(!.LangSet, Langs, !:LangSet).
+    solutions.solutions(item_needs_foreign_imports(Item), Langs),
+    svset.insert_list(Langs, !LangSet).
 
 :- pred get_interface_and_implementation_2(bool::in, item_list::in, bool::in,
     item_list::in, item_list::out,

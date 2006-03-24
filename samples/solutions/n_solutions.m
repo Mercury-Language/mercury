@@ -19,7 +19,7 @@
 :- implementation.
 :- import_module bool.
 :- import_module int.
-:- import_module std_util.
+:- import_module solutions.
 
 main(!IO) :-
 	N = 2,

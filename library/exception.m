@@ -244,6 +244,8 @@
 :- import_module require.
 :- import_module string.
 
+:- use_module solutions.
+
 :- pred try(determinism,          pred(T),        exception_result(T)).
 :- mode try(in(bound(det)),   pred(out) is det,       out(cannot_fail))
                                    is cc_multi.
@@ -568,7 +570,7 @@ try_all(Goal, Results) :-
     ).
 
 incremental_try_all(Goal, AccPred, Acc0, Acc) :-
-    unsorted_aggregate((pred(Result::out) is nondet :-
+    solutions.unsorted_aggregate((pred(Result::out) is nondet :-
         catch_impl((pred(R::out) is nondet :-
                 wrap_success(Goal, R)),
             wrap_exception, Result)),

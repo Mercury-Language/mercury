@@ -1,9 +1,9 @@
-:- module solutions.
+:- module solns.
 :- interface.
 :- import_module io.
 :- pred main(io__state::di, io__state::uo) is det.
 :- implementation.
-:- import_module std_util, list.
+:- import_module solutions, list.
 
 main -->
 	{ p(1, Ss) },

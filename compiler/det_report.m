@@ -198,6 +198,7 @@
 :- import_module getopt_io.
 :- import_module int.
 :- import_module map.
+:- import_module solutions.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -309,7 +310,7 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !IO) :-
         globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
         (
             VerboseErrors = yes,
-            solutions(get_valid_dets(EvalMethod), Detisms),
+            solutions.solutions(get_valid_dets(EvalMethod), Detisms),
             DetismStrs = list.map(determinism_to_string, Detisms),
             DetismPieces = list_to_pieces(DetismStrs),
             write_error_pieces_not_first_line(Context, 0,

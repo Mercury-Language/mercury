@@ -793,6 +793,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module set.
+:- import_module solutions.
 :- import_module std_util.
 :- import_module string.
 :- import_module term.
@@ -1503,7 +1504,7 @@ goal_local_vars(Goal) = LocalVars :-
 union_of_direct_subgoal_locals(Goal - _GoalInfo) = UnionOfSubGoalLocals :-
     promise_equivalent_solutions [UnionOfSubGoalLocals] (
         set.init(EmptySet),
-        unsorted_aggregate(direct_subgoal(Goal),
+        solutions.unsorted_aggregate(direct_subgoal(Goal),
             union_subgoal_locals, EmptySet, UnionOfSubGoalLocals)
     ).
 

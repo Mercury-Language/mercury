@@ -324,14 +324,62 @@
 %   call/N
 
 %-----------------------------------------------------------------------------%
+    
+    % `semidet_succeed' is exactly the same as `true', exception that
+    % the compiler thinks that it is semi-deterministic.  You can use
+    % calls to `semidet_succeed' to suppress warnings about determinism
+    % declarations that could be stricter.
+    %
+:- pred semidet_succeed is semidet.
+
+    % `semidet_fail' is like `fail' except that its determinism is semidet
+    % rather than failure.
+    %
+:- pred semidet_fail is semidet.
+
+    % A synonym for semidet_succeed/0.
+    %
+:- pred semidet_true is semidet.
+
+    % A synonym for semidet_fail/0
+    %
+:- pred semidet_false is semidet.
+    
+    % `cc_multi_equal(X, Y)' is the same as `X = Y' except that it
+    % is cc_multi rather than det.
+    %
+:- pred cc_multi_equal(T, T).
+:- mode cc_multi_equal(di, uo) is cc_multi.
+:- mode cc_multi_equal(in, out) is cc_multi.
+
+    % `impure_true' is exactly the same as `true' except that it is
+    % impure.  You can use calls to `impure_true' to 
+    %
+    %
+:- impure pred impure_true is det.
+
+    % `semipure_true' is like `true' except that that it is semipure.
+    %
+:- semipure pred semipure_true is det.
+
+%-----------------------------------------------------------------------------%
 :- implementation.
 
 % Everything below here is not intended to be part of the public interface,
 % and will not be included in the Mercury library reference manual.
 
 %-----------------------------------------------------------------------------%
-:- interface.
 
+:- interface.
+    
+    % dynamic_cast(X, Y) succeeds with Y = X iff X has the same
+    % ground type as Y (so this may succeed if Y is of type
+    % list(int), say, but not if Y is of type list(T)).
+    %
+:- pred dynamic_cast(T1::in, T2::out) is semidet.
+
+%-----------------------------------------------------------------------------%
+    
     % `get_one_solution' and `get_one_solution_io' are impure alternatives
     % to `promise_one_solution' and `promise_one_solution_io', respectively.
     % They get a solution to the procedure, without requiring any promise
@@ -380,6 +428,11 @@
 
 false :-
     fail.
+
+%-----------------------------------------------------------------------------%
+
+dynamic_cast(X, Y) :-
+    private_builtin.typed_unify(X, Y).
 
 %-----------------------------------------------------------------------------%
 
@@ -943,6 +996,114 @@ namespace mercury.builtin {
     }
 ").
 
-:- end_module builtin.
+%-----------------------------------------------------------------------------%
+%
+% semidet_succeed and semidet_fail
+%
 
+% semidet_succeed and semidet_fail are implemented using the foreign language
+% interface to make sure that the compiler doesn't issue any determinism
+% warnings for them.
+
+:- pragma foreign_proc("C",
+    semidet_succeed,
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    SUCCESS_INDICATOR = MR_TRUE;
+").
+:- pragma foreign_proc("C",
+    semidet_fail,
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    SUCCESS_INDICATOR = MR_FALSE;
+").
+
+:- pragma foreign_proc("C#",
+    semidet_succeed,
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    SUCCESS_INDICATOR = true;
+").
+:- pragma foreign_proc("C#",
+    semidet_fail,
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    SUCCESS_INDICATOR = false;
+").
+
+% We can't just use "true" and "fail" here, because that provokes warnings
+% from determinism analysis, and the library is compiled with --halt-at-warn.
+% So instead we use 0+0 = (or \=) 0.
+% This is guaranteed to succeed or fail (respectively),
+% and with a bit of luck will even get optimized by constant propagation.
+% But this optimization won't happen until after determinism analysis,
+% which doesn't know anything about integer arithmetic,
+% so this code won't provide a warning from determinism analysis.
+
+semidet_succeed :-
+    0 + 0 = 0.
+semidet_fail :-
+    0 + 0 \= 0.
+
+semidet_true :- semidet_succeed.
+semidet_false :- semidet_fail.
+
+%-----------------------------------------------------------------------------%
+%
+% cc_multi_equal
+%
+
+:- pragma foreign_proc("C",
+    cc_multi_equal(X::in, Y::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    Y = X;
+").
+:- pragma foreign_proc("C",
+    cc_multi_equal(X::di, Y::uo),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    Y = X;
+").
+
+:- pragma foreign_proc("C#",
+    cc_multi_equal(X::in, Y::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    Y = X;
+").
+:- pragma foreign_proc("C#",
+    cc_multi_equal(X::di, Y::uo),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    Y = X;
+").
+
+:- pragma foreign_proc("Java",
+    cc_multi_equal(X::in, Y::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    Y = X;
+").
+:- pragma foreign_proc("Java",
+    cc_multi_equal(X::di, Y::uo),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    Y = X;
+").
+
+:- pragma promise_pure(cc_multi_equal/2).
+
+cc_multi_equal(X, X).
+
+%-----------------------------------------------------------------------------%
+
+impure_true :-
+    impure private_builtin.imp.
+
+semipure_true :-
+    semipure private_builtin.semip.
+
+%-----------------------------------------------------------------------------%
+:- end_module builtin.
 %-----------------------------------------------------------------------------%
