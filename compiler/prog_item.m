@@ -327,7 +327,7 @@
 :- func mutable_var_thread_safe(mutable_var_attributes) = thread_safe.
 :- func mutable_var_trailed(mutable_var_attributes) = trailed.
 :- func mutable_var_maybe_foreign_names(mutable_var_attributes)
-	= maybe(list(foreign_name)).
+    = maybe(list(foreign_name)).
 :- func mutable_var_attach_to_io_state(mutable_var_attributes) = bool.
 
 :- pred set_mutable_var_thread_safe(thread_safe::in,
@@ -340,7 +340,7 @@
     mutable_var_attributes::in, mutable_var_attributes::out) is det.
 
 :- pred set_mutable_var_attach_to_io_state(bool::in,
-	mutable_var_attributes::in, mutable_var_attributes::out) is det.
+    mutable_var_attributes::in, mutable_var_attributes::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -764,7 +764,7 @@
             ).
 
 default_mutable_attributes =
-	mutable_var_attributes(trailed, not_thread_safe, no, no).
+    mutable_var_attributes(trailed, not_thread_safe, no, no).
 
 mutable_var_thread_safe(MVarAttrs) = MVarAttrs ^ mutable_thread_safe.
 mutable_var_trailed(MVarAttrs) = MVarAttrs ^ mutable_trailed.
@@ -777,18 +777,18 @@ set_mutable_var_thread_safe(ThreadSafe, !Attributes) :-
 set_mutable_var_trailed(Trailed, !Attributes) :-
     !:Attributes = !.Attributes ^ mutable_trailed := Trailed.
 set_mutable_add_foreign_name(ForeignName, !Attributes) :-
-	MaybeForeignNames0 = !.Attributes ^ mutable_foreign_names,
-	(
-		MaybeForeignNames0 = no,
-		MaybeForeignNames  = yes([ForeignName])
-	;
-		MaybeForeignNames0 = yes(ForeignNames0),
-		ForeignNames = [ ForeignName | ForeignNames0],
-		MaybeForeignNames   = yes(ForeignNames)
-	),
-	!:Attributes = !.Attributes ^ mutable_foreign_names := MaybeForeignNames.
+    MaybeForeignNames0 = !.Attributes ^ mutable_foreign_names,
+    (
+        MaybeForeignNames0 = no,
+        MaybeForeignNames  = yes([ForeignName])
+    ;
+        MaybeForeignNames0 = yes(ForeignNames0),
+        ForeignNames = [ ForeignName | ForeignNames0],
+        MaybeForeignNames   = yes(ForeignNames)
+    ),
+    !:Attributes = !.Attributes ^ mutable_foreign_names := MaybeForeignNames.
 set_mutable_var_attach_to_io_state(AttachToIOState, !Attributes) :-
-	!:Attributes =
+    !:Attributes =
         !.Attributes ^ mutable_attach_to_io_state := AttachToIOState.
 
 %-----------------------------------------------------------------------------%

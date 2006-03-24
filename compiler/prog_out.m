@@ -85,15 +85,15 @@
 :- func simple_call_id_to_string(simple_call_id) = string.
 
 :- pred write_simple_call_id(pred_or_func::in, sym_name_and_arity::in,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 :- func simple_call_id_to_string(pred_or_func, sym_name_and_arity) = string.
 
 :- pred write_simple_call_id(pred_or_func::in, sym_name::in, arity::in,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 :- func simple_call_id_to_string(pred_or_func, sym_name, arity) = string.
 
 :- pred simple_call_id_to_sym_name_and_arity(simple_call_id::in,
-	sym_name_and_arity::out) is det.
+    sym_name_and_arity::out) is det.
 
     % Write out a module specifier.
     %
@@ -280,61 +280,61 @@ sym_name_and_arity_to_string(SymName/Arity) = String :-
     sym_name_and_arity_to_string(SymName/Arity, String).
 
 write_simple_call_id(PredOrFunc - Name/Arity, !IO) :-
-	Str = simple_call_id_to_string(PredOrFunc, Name, Arity),
-	io.write_string(Str, !IO).
+    Str = simple_call_id_to_string(PredOrFunc, Name, Arity),
+    io.write_string(Str, !IO).
 
 write_simple_call_id(PredOrFunc, Name/Arity, !IO) :-
-	Str = simple_call_id_to_string(PredOrFunc, Name, Arity),
-	io.write_string(Str, !IO).
+    Str = simple_call_id_to_string(PredOrFunc, Name, Arity),
+    io.write_string(Str, !IO).
 
 write_simple_call_id(PredOrFunc, Name, Arity, !IO) :-
-	Str = simple_call_id_to_string(PredOrFunc, Name, Arity),
-	io.write_string(Str, !IO).
+    Str = simple_call_id_to_string(PredOrFunc, Name, Arity),
+    io.write_string(Str, !IO).
 
 simple_call_id_to_string(PredOrFunc - Name/Arity) =
-	simple_call_id_to_string(PredOrFunc, Name, Arity).
+    simple_call_id_to_string(PredOrFunc, Name, Arity).
 
 simple_call_id_to_string(PredOrFunc, Name/Arity) =
-	simple_call_id_to_string(PredOrFunc, Name, Arity).
+    simple_call_id_to_string(PredOrFunc, Name, Arity).
 
 simple_call_id_to_string(PredOrFunc, Name, Arity) = Str :-
     % XXX When printed, promises are differentiated from predicates or
     % functions by module name, so the module names `promise',
     % `promise_exclusive', etc. should be reserved, and their dummy
     % predicates should have more unusual module names.
-	(
-		Name = unqualified(StrName)
-	;
-		Name = qualified(_, StrName)
-	),
+    (
+        Name = unqualified(StrName)
+    ;
+        Name = qualified(_, StrName)
+    ),
     % Is it really a promise?
-	( string.prefix(StrName, "promise__") ->
-		MaybePromise = yes(true)
-	; string.prefix(StrName, "promise_exclusive__") ->
-		MaybePromise = yes(exclusive)
-	; string.prefix(StrName, "promise_exhaustive__") ->
-		MaybePromise = yes(exhaustive)
-	; string.prefix(StrName, "promise_exclusive_exhaustive__") ->
-		MaybePromise = yes(exclusive_exhaustive)
-	;
-		MaybePromise = no	% No, it is really a pred or func.
-	),
-	(
-		MaybePromise = yes(PromiseType),
-		PromiseStr = promise_to_string(PromiseType),
-		Str = "`" ++ PromiseStr ++ "' declaration"
-	;
-		MaybePromise = no,
-		PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
-		simple_call_id_to_sym_name_and_arity(PredOrFunc - Name/Arity,
+    ( string.prefix(StrName, "promise__") ->
+        MaybePromise = yes(true)
+    ; string.prefix(StrName, "promise_exclusive__") ->
+        MaybePromise = yes(exclusive)
+    ; string.prefix(StrName, "promise_exhaustive__") ->
+        MaybePromise = yes(exhaustive)
+    ; string.prefix(StrName, "promise_exclusive_exhaustive__") ->
+        MaybePromise = yes(exclusive_exhaustive)
+    ;
+        MaybePromise = no   % No, it is really a pred or func.
+    ),
+    (
+        MaybePromise = yes(PromiseType),
+        PromiseStr = promise_to_string(PromiseType),
+        Str = "`" ++ PromiseStr ++ "' declaration"
+    ;
+        MaybePromise = no,
+        PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
+        simple_call_id_to_sym_name_and_arity(PredOrFunc - Name/Arity,
             SymArity),
-		SymArityStr = sym_name_and_arity_to_string(SymArity),
-		Str = PredOrFuncStr ++ " `" ++ SymArityStr ++ "'"
-	).
+        SymArityStr = sym_name_and_arity_to_string(SymArity),
+        Str = PredOrFuncStr ++ " `" ++ SymArityStr ++ "'"
+    ).
 
 simple_call_id_to_sym_name_and_arity(PredOrFunc - SymName/Arity,
-		SymName/OrigArity) :-
-	adjust_func_arity(PredOrFunc, OrigArity, Arity).
+        SymName/OrigArity) :-
+    adjust_func_arity(PredOrFunc, OrigArity, Arity).
 
 write_module_spec(ModuleSpec, !IO) :-
     write_sym_name(ModuleSpec, !IO).

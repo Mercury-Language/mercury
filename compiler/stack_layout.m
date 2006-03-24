@@ -80,6 +80,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
@@ -88,8 +89,8 @@
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.layout.
 :- import_module ll_backend.layout_out.
-:- import_module ll_backend.ll_pseudo_type_info.
 :- import_module ll_backend.llds_out.
+:- import_module ll_backend.ll_pseudo_type_info.
 :- import_module ll_backend.prog_rep.
 :- import_module ll_backend.trace.
 :- import_module mdbcomp.program_representation.

@@ -89,8 +89,8 @@
 
 evaluate_call(PredId, ProcId, Args, VarTypes, InstMap, ModuleInfo, Goal,
         GoalInfo0, GoalInfo) :-
-    predicate_module(ModuleInfo, PredId, ModuleName),
-    predicate_name(ModuleInfo, PredId, PredName),
+    ModuleName =predicate_module(ModuleInfo, PredId),
+    PredName = predicate_name(ModuleInfo, PredId),
     proc_id_to_int(ProcId, ProcInt),
     LookupArgs = (func(Var) = arg_hlds_info(Var, Type, Inst) :-
         instmap.lookup_var(InstMap, Var, Inst),

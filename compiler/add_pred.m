@@ -14,6 +14,7 @@
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.pred_table.
 :- import_module mdbcomp.prim_data.
 :- import_module hlds.make_hlds.make_hlds_passes.
 :- import_module parse_tree.prog_data.
@@ -64,6 +65,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.make_hlds_error.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.

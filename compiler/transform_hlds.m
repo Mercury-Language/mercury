@@ -1,12 +1,14 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
 % transform_hlds: High-level transformations
-%	that are independent of the choice of back-end
-%	(the "middle" HLDS pass).
+%   that are independent of the choice of back-end
+%   (the "middle" HLDS pass).
 %
 
 :- module transform_hlds.
@@ -45,12 +47,12 @@
 
 :- include_module term_constr_main.
     :- include_module term_constr_initial.
-		% Pass 1.
+        % Pass 1.
     :- include_module term_constr_build.
     :- include_module term_constr_fixpoint.
-		% Pass 2.
-    :- include_module term_constr_pass2.	
-		% Other bits.
+        % Pass 2.
+    :- include_module term_constr_pass2.    
+        % Other bits.
     :- include_module term_constr_util. 
     :- include_module term_constr_data.
     :- include_module term_constr_errors.

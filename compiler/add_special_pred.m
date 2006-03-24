@@ -56,6 +56,7 @@
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.unify_proc.
 :- import_module hlds.make_hlds.add_pred.
+:- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.

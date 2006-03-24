@@ -63,6 +63,7 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_rtti.
 :- import_module libs.compiler_util.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_closure_gen.
@@ -1314,8 +1315,7 @@ gen_pseudo_type_info_list(ModuleInfo, PTIRttiDatas, Inits, Defns) :-
 %-----------------------------------------------------------------------------%
 
 :- pred gen_init_method(module_info::in, int::in, rtti_proc_label::in,
-    mlds_initializer::out, list(mlds_defn)::in, list(mlds_defn)::out)
-    is det.
+    mlds_initializer::out, list(mlds_defn)::in, list(mlds_defn)::out) is det.
 
 gen_init_method(ModuleInfo, NumExtra, RttiProcLabel, Init, !ExtraDefns) :-
     % We can't store the address of the typeclass method directly in the

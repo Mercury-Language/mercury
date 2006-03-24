@@ -86,9 +86,11 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.make_hlds.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
@@ -1316,8 +1318,8 @@ fixup_unused_args_proc(VeryVerbose, VarUsage, ProcCallInfo, PredProc,
         VeryVerbose = yes,
         PredProc = proc(PredId, ProcId),
         io.write_string("% Fixing up `", !IO),
-        predicate_name(!.ModuleInfo, PredId, Name),
-        predicate_arity(!.ModuleInfo, PredId, Arity),
+        Name = predicate_name(!.ModuleInfo, PredId),
+        Arity = predicate_arity(!.ModuleInfo, PredId),
         proc_id_to_int(ProcId, ProcInt),
         io.write_string(Name, !IO),
         io.write_string("/", !IO),

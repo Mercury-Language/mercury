@@ -35,6 +35,7 @@
 :- interface.
 
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_rtti.
 :- import_module libs.trace_params.
 :- import_module ll_backend.llds.
 :- import_module mdbcomp.prim_data.

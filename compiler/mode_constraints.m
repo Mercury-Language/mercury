@@ -22,6 +22,7 @@
 :- import_module check_hlds.abstract_mode_constraints.
 :- import_module check_hlds.prop_mode_constraints.
 :- import_module hlds.hlds_module.
+
 :- import_module io.
 
 %-----------------------------------------------------------------------------%
@@ -50,6 +51,7 @@
 :- import_module check_hlds.mode_ordering.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.hhf.
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.

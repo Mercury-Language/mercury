@@ -129,6 +129,7 @@
 
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_out.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.

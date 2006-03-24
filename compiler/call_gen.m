@@ -506,8 +506,8 @@ call_gen.rebuild_registers([Var - arg_info(ArgLoc, Mode) | Args], Liveness,
 
 call_gen.generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI) :-
     code_info.get_module_info(!.CI, ModuleInfo),
-    predicate_module(ModuleInfo, PredId, ModuleName),
-    predicate_name(ModuleInfo, PredId, PredName),
+    ModuleName = predicate_module(ModuleInfo, PredId),
+    PredName = predicate_name(ModuleInfo, PredId),
     (
         builtin_ops.translate_builtin(ModuleName, PredName,
             ProcId, Args, SimpleCode0)

@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: lambda.m.
 % Main author: fjh.
-
+%
 % This module is a pass over the HLDS to deal with lambda expressions.
 %
 % Lambda expressions are converted into separate predicates, so for
@@ -90,6 +90,8 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_rtti.
+:- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.

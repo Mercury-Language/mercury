@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2005 The University of Melbourne.
+% Copyright (C) 1997-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,7 +13,7 @@
 %
 %-----------------------------------------------------------------------------%
 
-:- module libs__compiler_util.
+:- module libs.compiler_util.
 
 :- interface.
 
@@ -56,7 +56,7 @@
     % Report a warning to the specified stream, and set the exit status
     % to error if the --halt-at-warn option is set.
     %
-:- pred report_warning(io__output_stream::in, string::in, io::di, io::uo)
+:- pred report_warning(io.output_stream::in, string::in, io::di, io::uo)
     is det.
 
 %-----------------------------------------------------------------------------%
@@ -78,13 +78,13 @@
     %
 sorry(Module, What) = _ :- sorry(Module, What).
 sorry(Module, What) :-
-    string__format("%s: Sorry, not implemented: %s",
+    string.format("%s: Sorry, not implemented: %s",
         [s(Module), s(What)], ErrorMessage),
     error(ErrorMessage).
 
 unexpected(Module, What) = _ :- unexpected(Module, What).
 unexpected(Module, What) :-
-    string__format("%s: Unexpected: %s", [s(Module), s(What)], ErrorMessage),
+    string.format("%s: Unexpected: %s", [s(Module), s(What)], ErrorMessage),
     error(ErrorMessage).
 
 expect(Goal, Module, Message) :-
@@ -95,21 +95,21 @@ expect(Goal, Module, Message) :-
     ).
 
 record_warning(!IO) :-
-    globals__io_lookup_bool_option(halt_at_warn, HaltAtWarn, !IO),
+    globals.io_lookup_bool_option(halt_at_warn, HaltAtWarn, !IO),
     (
         HaltAtWarn = yes,
-        io__set_exit_status(1, !IO)
+        io.set_exit_status(1, !IO)
     ;
         HaltAtWarn = no
     ).
 
 report_warning(Message, !IO) :-
     record_warning(!IO),
-    io__write_string(Message, !IO).
+    io.write_string(Message, !IO).
 
 report_warning(Stream, Message, !IO) :-
     record_warning(!IO),
-    io__write_string(Stream, Message, !IO).
+    io.write_string(Stream, Message, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module compiler_util.

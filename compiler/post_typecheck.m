@@ -85,7 +85,7 @@
 
     % Handle any unresolved overloading for a predicate call.
     %
-:- pred resolve_pred_overloading(list(prog_var)::in,
+:- pred finally_resolve_pred_overloading(list(prog_var)::in,
     pred_info::in, module_info::in, sym_name::in, sym_name::out,
     pred_id::in, pred_id::out) is det.
 
@@ -111,9 +111,11 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.assertion.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.
+:- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
@@ -399,7 +401,7 @@ write_type_var_list([Var - Type | Rest], Context, VarSet, TVarSet, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-resolve_pred_overloading(Args0, CallerPredInfo, ModuleInfo, !PredName,
+finally_resolve_pred_overloading(Args0, CallerPredInfo, ModuleInfo, !PredName,
         !PredId) :-
     % In the case of a call to an overloaded predicate, typecheck.m
     % does not figure out the correct pred_id. We must do that here.

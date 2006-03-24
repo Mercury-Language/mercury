@@ -5,15 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: handle_options.m.
 % Main authors: fjh, zs.
-
+%
 % This module does post-processing on the command-line options, after
 % getopt has done its stuff.
-
+%
 % It also contains code for handling the --grade option.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module libs.handle_options.
@@ -1919,7 +1919,7 @@ long_usage(!IO) :-
     ;       pic             % Do we need to reserve a register for
                             % PIC (position independent code)?
     ;       trace           % tracing/debugging options
-	;	    stack_extend.	% automatic stack extension
+    ;       stack_extend.   % automatic stack extension
 
 convert_grade_option(GradeString, Options0, Options) :-
     reset_grade_options(Options0, Options1),
@@ -1998,52 +1998,52 @@ construct_string([_ - Bit|Bits], Grade) :-
     list(pair(grade_component, string))::out) is det.
 
 compute_grade_components(Options, GradeComponents) :-
-	solutions((pred(CompData::out) is nondet :-
-		grade_component_table(Name, Comp, CompOpts, MaybeTargets,
-			IncludeInGradeString),
-			% For possible component of the grade string
-			% include it in the actual grade string if all
-			% the option setting that it implies are true.
-			% ie
-			%	all [Opt, Value] (
-			%	    member(Opt - Value, CompOpts) =>
-			%		map.search(Options, Opt, Value)
-			%	)
-		\+ (
-			list.member(Opt - Value, CompOpts),
-			\+ map.search(Options, Opt, Value)
-		),
-			% Don't include `.mm' or `.dmm' in grade strings
-			% because they are just synonyms for `.mmsc' and
-			% `.dmmsc' respectively.
-			%
-		IncludeInGradeString = yes,
+    solutions((pred(CompData::out) is nondet :-
+        grade_component_table(Name, Comp, CompOpts, MaybeTargets,
+            IncludeInGradeString),
+            % For possible component of the grade string
+            % include it in the actual grade string if all
+            % the option setting that it implies are true.
+            % ie
+            %   all [Opt, Value] (
+            %       member(Opt - Value, CompOpts) =>
+            %       map.search(Options, Opt, Value)
+            %   )
+        \+ (
+            list.member(Opt - Value, CompOpts),
+            \+ map.search(Options, Opt, Value)
+        ),
+            % Don't include `.mm' or `.dmm' in grade strings
+            % because they are just synonyms for `.mmsc' and
+            % `.dmmsc' respectively.
+            %
+        IncludeInGradeString = yes,
 
-			% When checking gcc_ext there exist grades which
-			% can have more then one possible target, ensure that
-			% the target in the options table matches one of the
-			% possible targets.
-		(
+            % When checking gcc_ext there exist grades which
+            % can have more then one possible target, ensure that
+            % the target in the options table matches one of the
+            % possible targets.
+        (
             MaybeTargets = yes(Targets),
-			list.member(Target, Targets),
-			map.search(Options, target, Target)
-		;
+            list.member(Target, Targets),
+            map.search(Options, target, Target)
+        ;
             MaybeTargets = no
-		),
-		CompData = Comp - Name
-	), GradeComponents).
+        ),
+        CompData = Comp - Name
+    ), GradeComponents).
 
-	% grade_component_table(ComponetStr, Component,
-	% 	Options, MaybeTargets, IncludeGradeStr).
-	%
-	% `IncludeGradeStr' is `yes' if the component should
-	% be included in the grade string.  It is `no' for
-	% those components that are just synonyms for other
-	% comments, as .mm is for .mmsc.
-	%
-	% NOTE: .picreg components are handled separately.
-	% (see compute_grade_components/3).
-	%
+    % grade_component_table(ComponetStr, Component,
+    %   Options, MaybeTargets, IncludeGradeStr).
+    %
+    % `IncludeGradeStr' is `yes' if the component should
+    % be included in the grade string.  It is `no' for
+    % those components that are just synonyms for other
+    % comments, as .mm is for .mmsc.
+    %
+    % NOTE: .picreg components are handled separately.
+    % (see compute_grade_components/3).
+    %
 :- pred grade_component_table(string, grade_component,
     list(pair(option, option_data)), maybe(list(option_data)), bool).
 :- mode grade_component_table(in, out, out, out, out) is semidet.
@@ -2238,9 +2238,9 @@ grade_component_table("decldebug", trace,
 grade_component_table("debug", trace,
     [exec_trace - bool(yes), decl_debug - bool(no)], no, yes).
 
-	% Stack extension components
+    % Stack extension components
 grade_component_table("exts", stack_extend,
-	[extend_stacks_when_needed - bool(yes)], no, yes).
+    [extend_stacks_when_needed - bool(yes)], no, yes).
 
 :- pred reset_grade_options(option_table::in, option_table::out) is det.
 

@@ -466,17 +466,27 @@ which chooses the data representation for each discriminated union type
 by assigning tags to each functor.
 
 <p>
-The HLDS data structure itself is spread over four modules:
+The HLDS data structure itself is spread over the following modules:
 
 <ol>
-<li> hlds_data.m defines the parts of the HLDS concerned with
-	  function symbols, types, insts, modes and determinisms;
-<li> hlds_goal.m defines the part of the HLDS concerned with the
-	  structure of goals, including the annotations on goals;
-<li> hlds_pred.m defines the part of the HLDS concerning
-	  predicates and procedures;
-<li> hlds_module.m defines the top-level parts of the HLDS,
-	  including the type module_info.
+<li>
+hlds_data.m defines the parts of the HLDS concerned with
+function symbols, types, insts, modes and determinisms;
+<li>
+hlds_goal.m defines the part of the HLDS concerned with the
+structure of goals, including the annotations on goals;
+<li>
+hlds_clauses.m defines the part of the HLDS concerning clauses.
+<li>
+hlds_rtti.m defines the part of the HLDS concerning RTTI.
+<li>
+hlds_pred.m defines the part of the HLDS concerning predicates and procedures;
+<li>
+pred_table.m defines the tables that index predicates and functions
+on various combinations of (qualified and unqualified) names and arity.
+<li>
+hlds_module.m defines the top-level parts of the HLDS,
+including the type module_info.
 </ol>
 
 <p>
@@ -1633,6 +1643,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2006-02-24 01:42:09 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2006-03-24 03:04:20 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

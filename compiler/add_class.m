@@ -50,12 +50,14 @@
 :- import_module check_hlds.clause_to_proc.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.add_clause.
 :- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.make_hlds.add_type.
 :- import_module hlds.make_hlds.make_hlds_error.
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.make_hlds.state_var.
+:- import_module hlds.pred_table.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_out.
@@ -206,26 +208,26 @@ module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
 :- func make_hlds_fundep(list(tvar), prog_fundep) = hlds_class_fundep.
 
 make_hlds_fundep(TVars, fundep(Domain0, Range0)) = fundep(Domain, Range) :-
-	Domain = make_hlds_fundep_2(TVars, Domain0),
-	Range = make_hlds_fundep_2(TVars, Range0).
+    Domain = make_hlds_fundep_2(TVars, Domain0),
+    Range = make_hlds_fundep_2(TVars, Range0).
 
 :- func make_hlds_fundep_2(list(tvar), list(tvar)) = set(hlds_class_argpos).
 
 make_hlds_fundep_2(TVars, List) = list.foldl(Func, List, set.init) :-
-	Func = (func(TVar, Set0) = set.insert(Set0, N) :-
-		N = get_list_index(TVars, 1, TVar)
-	).
+    Func = (func(TVar, Set0) = set.insert(Set0, N) :-
+        N = get_list_index(TVars, 1, TVar)
+    ).
 
 :- func get_list_index(list(T), hlds_class_argpos, T) = hlds_class_argpos.
 
 get_list_index([], _, _) = _ :-
-	unexpected(this_file, "get_list_index: element not found").
+    unexpected(this_file, "get_list_index: element not found").
 get_list_index([E | Es], N, X) =
-	( X = E ->
-		N
-	;
-		get_list_index(Es, N + 1, X)
-	).
+    ( X = E ->
+        N
+    ;
+        get_list_index(Es, N + 1, X)
+    ).
 
 :- pred superclass_constraints_are_identical(list(tvar)::in, tvarset::in,
     list(prog_constraint)::in, list(tvar)::in, tvarset::in,
@@ -244,15 +246,15 @@ superclass_constraints_are_identical(OldVars0, OldVarSet, OldConstraints0,
     OldConstraints = Constraints.
 
 :- pred class_fundeps_are_identical(hlds_class_fundeps::in,
-	hlds_class_fundeps::in) is semidet.
+    hlds_class_fundeps::in) is semidet.
 
 class_fundeps_are_identical(OldFunDeps0, FunDeps0) :-
-	% Allow for the functional dependencies to be in a different order.
-	% we rely on the fact that sets (ordered lists) have a canonical
-	% representation.
-	sort_and_remove_dups(OldFunDeps0, OldFunDeps),
-	sort_and_remove_dups(FunDeps0, FunDeps),
-	OldFunDeps = FunDeps.
+    % Allow for the functional dependencies to be in a different order.
+    % we rely on the fact that sets (ordered lists) have a canonical
+    % representation.
+    sort_and_remove_dups(OldFunDeps0, OldFunDeps),
+    sort_and_remove_dups(FunDeps0, FunDeps),
+    OldFunDeps = FunDeps.
 
 :- pred module_add_class_interface(sym_name::in, list(tvar)::in,
     class_methods::in, item_status::in,

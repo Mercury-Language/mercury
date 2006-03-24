@@ -117,12 +117,14 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.make_hlds.make_hlds_error.
 :- import_module hlds.make_hlds.make_hlds_passes.
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.make_hlds.qual_info.
 :- import_module hlds.make_tags.
+:- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
@@ -131,9 +133,9 @@
 :- import_module ll_backend.fact_table.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.modules.
+:- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_io.
-:- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.

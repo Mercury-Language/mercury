@@ -575,9 +575,9 @@ is_pred_pragma(source_file(_), no).
 is_pred_pragma(unused_args(PredOrFunc, Name, Arity, _, _),
         yes(yes(PredOrFunc) - Name / Arity)).
 is_pred_pragma(exceptions(PredOrFunc, Name, Arity, _, _),
-		yes(yes(PredOrFunc) - Name / Arity)).
+        yes(yes(PredOrFunc) - Name / Arity)).
 is_pred_pragma(trailing_info(PredOrFunc, Name, Arity, _, _),
-		yes(yes(PredOrFunc) - Name / Arity)).
+        yes(yes(PredOrFunc) - Name / Arity)).
 is_pred_pragma(fact_table(Name, Arity, _), yes(no - Name / Arity)).
 is_pred_pragma(reserve_tag(_TypeName, _TypeArity), no).
 is_pred_pragma(tabled(_, Name, Arity, MaybePredOrFunc, _),

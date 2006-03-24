@@ -103,6 +103,7 @@
 :- import_module check_hlds.abstract_mode_constraints.
 :- import_module check_hlds.clause_to_proc.
 :- import_module check_hlds.mcsolver.
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module libs.compiler_util.

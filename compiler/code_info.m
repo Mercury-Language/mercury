@@ -63,6 +63,7 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
 :- import_module hlds.hlds_code_util.
+:- import_module hlds.hlds_rtti.
 :- import_module libs.compiler_util.
 :- import_module libs.options.
 :- import_module libs.trace_params.
@@ -3503,8 +3504,8 @@ compute_forward_live_var_saves(CI, OutArgs, VarLocs) :-
     get_proc_info(CI, ProcInfo),
     proc_info_vartypes(ProcInfo, VarTypes),
     proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
-    proc_info_maybe_complete_with_typeinfo_vars(Vars0, TypeInfoLiveness,
-        VarTypes, RttiVarMaps, Vars1),
+    maybe_complete_with_typeinfo_vars(Vars0, TypeInfoLiveness, VarTypes,
+        RttiVarMaps, Vars1),
     set.difference(Vars1, OutArgs, Vars),
     set.to_sorted_list(Vars, Variables),
     list.map(associate_stack_slot(CI), Variables, VarLocs).

@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: mode_util.m.
 % Main author: fjh.
-
+%
 % This module contains utility predicates for dealing with modes and insts.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.mode_util.
@@ -66,19 +66,19 @@
     %
 :- pred mode_is_unused(module_info::in, mer_mode::in) is semidet.
 
-	% Succeeds iff the given mode is undefined.
-	%
+    % Succeeds iff the given mode is undefined.
+    %
 :- pred mode_is_undefined(module_info::in, mer_mode::in) is semidet.
 
-	% mode_to_arg_mode converts a mode (and corresponding type) to
-	% an arg_mode.  A mode is a high-level notion, the normal
-	% Mercury language mode.  An `arg_mode' is a low-level notion
-	% used for code generation, which indicates the argument
-	% passing convention (top_in, top_out, or top_unused) that
-	% corresponds to that mode.  We need to know the type, not just
-	% the mode, because the argument passing convention can depend
-	% on the type's representation.
-	%
+    % mode_to_arg_mode converts a mode (and corresponding type) to
+    % an arg_mode.  A mode is a high-level notion, the normal
+    % Mercury language mode.  An `arg_mode' is a low-level notion
+    % used for code generation, which indicates the argument
+    % passing convention (top_in, top_out, or top_unused) that
+    % corresponds to that mode.  We need to know the type, not just
+    % the mode, because the argument passing convention can depend
+    % on the type's representation.
+    %
 :- pred mode_to_arg_mode(module_info::in, mer_mode::in, mer_type::in,
     arg_mode::out) is det.
 
@@ -263,7 +263,7 @@ mode_is_unused(ModuleInfo, Mode) :-
     inst_is_free(ModuleInfo, FinalInst).
 
 mode_is_undefined(ModuleInfo, Mode) :-
-	not mode_get_insts_semidet(ModuleInfo, Mode, _, _).
+    not mode_get_insts_semidet(ModuleInfo, Mode, _, _).
 
 %-----------------------------------------------------------------------------%
 

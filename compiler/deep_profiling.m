@@ -38,6 +38,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
+:- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
@@ -438,7 +439,7 @@ transform_predicate(ModuleInfo, PredId, PredMap0, PredMap) :-
 maybe_transform_procedure(ModuleInfo, PredId, ProcId, !ProcTable) :-
     map.lookup(!.ProcTable, ProcId, ProcInfo0),
     proc_info_goal(ProcInfo0, Goal0),
-    predicate_module(ModuleInfo, PredId, PredModuleName),
+    PredModuleName = predicate_module(ModuleInfo, PredId),
     (
         % XXX We need to eliminate nondet C code...
         Goal0 = foreign_proc(_, _, _, _, _, Impl) - _,

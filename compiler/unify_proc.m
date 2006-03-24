@@ -48,10 +48,12 @@
 :- interface.
 
 :- import_module check_hlds.mode_info.
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.pred_table.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 
@@ -148,6 +150,7 @@
 :- import_module hlds.instmap.
 :- import_module hlds.make_hlds.
 :- import_module hlds.quantification.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.

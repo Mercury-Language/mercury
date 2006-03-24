@@ -104,6 +104,7 @@
 :- import_module hlds.make_hlds.make_hlds_error.
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.make_hlds.qual_info.
+:- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
@@ -434,8 +435,8 @@ add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !IO) :-
     Item = nothing(_).
 add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo, no, !IO) :-
     Item = typeclass(Constraints, FunDeps, Name, Vars, Interface, VarSet),
-	module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface,
-		VarSet, Context, !.Status, !ModuleInfo, !IO).
+    module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface,
+        VarSet, Context, !.Status, !ModuleInfo, !IO).
 add_item_decl_pass_1(Item, _, !Status, !ModuleInfo, no, !IO) :-
     % We add instance declarations on the second pass so that we don't add
     % an instance declaration before its class declaration.

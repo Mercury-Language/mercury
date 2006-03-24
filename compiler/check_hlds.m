@@ -87,7 +87,7 @@
 :- implementation.
 
 :- import_module libs.
-:- import_module transform_hlds.	% for pd_cost, etc.
+:- import_module transform_hlds.    % for pd_cost, etc.
 
 :- end_module check_hlds.
 

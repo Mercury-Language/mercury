@@ -24,6 +24,7 @@
 :- module hlds__make_hlds.
 :- interface.
 
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.

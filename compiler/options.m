@@ -3872,18 +3872,18 @@ options_help_hlds_hlds_optimization -->
         "\tslow compilation.",
         "--no-common-struct",
         "\tDisable optimization of common term structures.",
-/*
-	Common goal optimization should not be turned off, since it can
-	break programs that would otherwise compile properly (e.g.,
-	benchmarks/icfp2000).  This is kept as a developer-only option.
 
-        "--no-common-goal",
-        "\tDisable optimization of common goals.",
-        "\tAt the moment this optimization",
-        "\tdetects only common deconstruction unifications.",
-        "\tDisabling this optimization reduces the class of predicates",
-        "\tthat the compiler considers to be deterministic.",
-*/
+%       Common goal optimization should not be turned off, since it can
+%       break programs that would otherwise compile properly (e.g.,
+%       benchmarks/icfp2000). This is kept as a developer-only option.
+%
+%       "--no-common-goal",
+%       "\tDisable optimization of common goals.",
+%       "\tAt the moment this optimization",
+%       "\tdetects only common deconstruction unifications.",
+%       "\tDisabling this optimization reduces the class of predicates",
+%       "\tthat the compiler considers to be deterministic.",
+
         "--constraint-propagation",
         "\tEnable the constraint propagation transformation,",
         "\twhich attempts to transform the code so that goals",

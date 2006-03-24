@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: table_gen.m.
 % Main authors: zs, ohutch.
-
+%
 % This module transforms HLDS code to implement loop detection, memoing,
 % minimal model evaluation, or I/O idempotence. The transformation involves
 % adding calls to predicates defined in library/table_builtin.m and in
@@ -33,7 +33,7 @@
 % undesirable interactions with if-then-else, solutions, and (possibly)
 % negated contexts in general. However, the detection is done at runtime,
 % since there is no known way of doing this compile time.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.table_gen.
@@ -71,6 +71,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
@@ -176,7 +177,7 @@ table_gen.process_proc(PredId, ProcId, ProcInfo0, PredInfo0, !ModuleInfo,
         globals.lookup_bool_option(Globals, trace_table_io_all, TransformAll),
         globals.lookup_bool_option(Globals, trace_table_io_require, Require),
         proc_info_goal(ProcInfo0, BodyGoal),
-        predicate_module(!.ModuleInfo, PredId, PredModuleName),
+        PredModuleName = predicate_module(!.ModuleInfo, PredId),
         should_io_procedure_be_transformed(TransformAll, Require, BodyGoal,
             PredModuleName, AnnotationIsMissing, TransformPrimitive),
         (
@@ -1857,9 +1858,9 @@ clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo) :-
                 PredTypeVarSet, PredExistQVars, PredClassContext,
                 PredAssertions, NewProcInfo, NewProcId, NewPredInfo),
         module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
-		predicate_table_insert(NewPredInfo, NewPredId,
-			PredicateTable0, PredicateTable),
-		module_info_set_predicate_table(PredicateTable, !ModuleInfo),
+        predicate_table_insert(NewPredInfo, NewPredId,
+            PredicateTable0, PredicateTable),
+        module_info_set_predicate_table(PredicateTable, !ModuleInfo),
         CallExpr = call(NewPredId, NewProcId, ProcHeadVars, not_builtin, no,
             NewPredName).
 

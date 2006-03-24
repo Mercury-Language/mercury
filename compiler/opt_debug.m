@@ -120,6 +120,7 @@
 :- import_module backend_libs.name_mangle.
 :- import_module backend_libs.proc_label.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.special_pred.
 :- import_module libs.globals.
 :- import_module libs.options.

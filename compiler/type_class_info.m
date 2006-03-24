@@ -43,18 +43,19 @@
 
 :- implementation.
 
+:- import_module backend_libs.base_typeclass_info.
+:- import_module backend_libs.pseudo_type_info.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_rtti.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
-:- import_module backend_libs.pseudo_type_info.
-:- import_module backend_libs.base_typeclass_info.
 
 :- import_module assoc_list.
 :- import_module int.

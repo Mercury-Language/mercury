@@ -46,11 +46,14 @@
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.unify_proc.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
@@ -2501,7 +2504,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         % structures are derived from the names of predicates, duplicate
         % predicate names lead to duplicate global variable names and hence to
         % link errors.
-        predicate_name(ModuleInfo0, CallerPredId, PredName0),
+        PredName0 = predicate_name(ModuleInfo0, CallerPredId),
         proc_id_to_int(CallerProcId, CallerProcInt),
 
         % The higher_order_arg_order_version part is to avoid segmentation

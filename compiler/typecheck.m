@@ -111,12 +111,15 @@
 :- import_module check_hlds.typeclasses.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.

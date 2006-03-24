@@ -176,7 +176,7 @@
 frameopt_main(ProcLabel, !C, Instrs0, Instrs, Globals, Mod) :-
     opt_util.get_prologue(Instrs0, LabelInstr, Comments0, Instrs1),
     ( frameopt.detstack_setup(Instrs1, FrameSize, Msg, _, _, _) ->
-    	some [!BlockMap] (
+        some [!BlockMap] (
             map.init(!:BlockMap),
             divide_into_basic_blocks([LabelInstr | Instrs1], ProcLabel,
                 BasicInstrs, !C),

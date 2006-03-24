@@ -9,8 +9,10 @@
 :- module check_hlds.clause_to_proc.
 :- interface.
 
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.pred_table.
 
 :- import_module list.
 :- import_module std_util.
@@ -54,7 +56,7 @@
     % This version is used by polymorphism.m.
     %
 :- pred introduce_exists_casts_proc(module_info::in, pred_info::in,
-	proc_info::in, proc_info::out) is det.
+    proc_info::in, proc_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -66,6 +68,7 @@
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.

@@ -45,6 +45,7 @@
 :- import_module check_hlds.inst_match.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
@@ -226,7 +227,7 @@ delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
         Goal0 = GoalExpr0 - GoalInfo0,
         delay_construct_skippable(GoalExpr0, GoalInfo0),
         goal_info_get_nonlocals(GoalInfo0, NonLocals),
-        proc_info_maybe_complete_with_typeinfo_vars(NonLocals,
+        maybe_complete_with_typeinfo_vars(NonLocals,
             DelayInfo ^ body_typeinfo_liveness,
             DelayInfo ^ vartypes,
             DelayInfo ^ rtti_varmaps, CompletedNonLocals),

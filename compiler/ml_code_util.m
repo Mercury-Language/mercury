@@ -21,6 +21,7 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_rtti.
 :- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
 :- import_module ml_backend.mlds.

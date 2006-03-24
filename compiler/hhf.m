@@ -20,6 +20,7 @@
 :- module hlds.hhf.
 :- interface.
 
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_module.
 :- import_module hlds.inst_graph.

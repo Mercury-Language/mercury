@@ -73,8 +73,9 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.make_tags.
-:- import_module hlds.special_pred.
+:- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.

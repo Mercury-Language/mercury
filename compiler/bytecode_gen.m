@@ -98,7 +98,7 @@ gen_preds([PredId | PredIds], ModuleInfo, Code, !IO) :-
     ;
         ProcIds = [_ | _],
         gen_pred(PredId, ProcIds, PredInfo, ModuleInfo, ProcsCode, !IO),
-        predicate_name(ModuleInfo, PredId, PredName),
+        PredName = predicate_name(ModuleInfo, PredId),
         list.length(ProcIds, ProcsCount),
         Arity = pred_info_orig_arity(PredInfo),
         get_is_func(PredInfo, IsFunc),
@@ -390,8 +390,8 @@ gen_call(PredId, ProcId, ArgVars, Detism, ByteInfo, Code) :-
 
 gen_builtin(PredId, ProcId, Args, ByteInfo, Code) :-
     get_module_info(ByteInfo, ModuleInfo),
-    predicate_module(ModuleInfo, PredId, ModuleName),
-    predicate_name(ModuleInfo, PredId, PredName),
+    ModuleName = predicate_module(ModuleInfo, PredId),
+    PredName = predicate_name(ModuleInfo, PredId),
     (
         builtin_ops.translate_builtin(ModuleName, PredName, ProcId,
             Args, SimpleCode)

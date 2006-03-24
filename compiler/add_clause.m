@@ -61,6 +61,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.pred_table.
 :- import_module hlds.make_hlds.add_pragma.
 :- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.make_hlds.field_access.

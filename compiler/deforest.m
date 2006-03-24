@@ -646,8 +646,8 @@ handle_deforestation(NonLocals, DeforestInfo0, !RevBeforeGoals, !AfterGoals,
         % If both goals are calls create a new predicate for the conjunction
         % to be deforested and process it.
         pd_info_get_module_info(!.PDInfo, ModuleInfo0),
-        predicate_name(ModuleInfo0, PredId1, PredName1),
-        predicate_name(ModuleInfo0, PredId2, PredName2),
+        PredName1 = predicate_name(ModuleInfo0, PredId1),
+        PredName2 = predicate_name(ModuleInfo0, PredId2),
         pd_debug_message("deforesting calls to %s and %s\n",
             [s(PredName1), s(PredName2)], !IO),
         call_call(ConjNonLocals, EarlierGoal, BetweenGoals,
@@ -673,7 +673,7 @@ handle_deforestation(NonLocals, DeforestInfo0, !RevBeforeGoals, !AfterGoals,
         PredProcId \= CurrPredProcId,
         \+ set.member(PredProcId, Parents0)
     ->
-        predicate_name(ModuleInfo, PredId, CurrPredName),
+        CurrPredName = predicate_name(ModuleInfo, PredId),
         pd_debug_message("Pushing call to %s into goal\n",
             [s(CurrPredName)], !IO),
         set.insert(Parents0, proc(PredId, ProcId), Parents),
@@ -953,7 +953,7 @@ call_call_2(ConjNonLocals, EarlierGoal, BetweenGoals,
         % If we see an opportunity to fold, take it.
         VersionPredProcId = proc(VersionPredId, _),
         pd_info_get_module_info(!.PDInfo, ModuleInfo0),
-        predicate_name(ModuleInfo0, VersionPredId, FoldPredName),
+        FoldPredName = predicate_name(ModuleInfo0, VersionPredId),
         pd_debug_message("Folded with %s\n", [s(FoldPredName)], !IO),
         ( set.member(VersionPredProcId, Parents) ->
             FoldCostDelta = cost_of_recursive_fold
@@ -1105,7 +1105,7 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
 
             pd_info_get_module_info(!.PDInfo, ModuleInfo),
 
-            predicate_name(ModuleInfo, PredId, PredName),
+            PredName = predicate_name(ModuleInfo, PredId),
             pd_debug_message("\nCreated predicate %s\n", [s(PredName)], !IO),
             ( MaybeLaterGoal = yes(call(PredId2, ProcId2, _, _, _, _) - _) ->
                 CalledPreds = [proc(PredId1, ProcId1), proc(PredId2, ProcId2)]

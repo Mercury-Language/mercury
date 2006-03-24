@@ -32,6 +32,7 @@
 :- module hlds.hlds_out.
 :- interface.
 
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -261,6 +262,8 @@
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
+:- import_module hlds.hlds_rtti.
+:- import_module hlds.pred_table.
 :- import_module hlds.instmap.
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
@@ -1178,8 +1181,8 @@ write_annotated_clause_head(ModuleInfo, Context, PredId, ProcId, VarSet,
 
 write_clause_head(ModuleInfo, PredId, VarSet, AppendVarNums, HeadTerms,
         PredOrFunc, !IO) :-
-    predicate_name(ModuleInfo, PredId, PredName),
-    predicate_module(ModuleInfo, PredId, ModuleName),
+    PredName = predicate_name(ModuleInfo, PredId),
+    ModuleName = predicate_module(ModuleInfo, PredId),
     (
         PredOrFunc = function,
         pred_args_to_func_args(HeadTerms, FuncArgs, RetVal),
@@ -3635,7 +3638,7 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     ),
 
     write_indent(Indent, !IO),
-    predicate_name(ModuleInfo, PredId, PredName),
+    PredName = predicate_name(ModuleInfo, PredId),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     varset.init(ModeVarSet),
     (

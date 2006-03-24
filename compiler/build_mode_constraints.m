@@ -196,6 +196,7 @@
 :- import_module check_hlds.goal_path.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_util.
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.

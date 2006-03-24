@@ -884,8 +884,8 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Statements,
         !Info) :-
     ml_gen_var_list(!.Info, ArgVars, ArgLvals),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    predicate_module(ModuleInfo, PredId, ModuleName),
-    predicate_name(ModuleInfo, PredId, PredName),
+    ModuleName = predicate_module(ModuleInfo, PredId),
+    PredName = predicate_name(ModuleInfo, PredId),
     (
         builtin_ops.translate_builtin(ModuleName, PredName,
             ProcId, ArgLvals, SimpleCode0)

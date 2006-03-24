@@ -5,61 +5,61 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: lco.m.
 % Author: zs.
-
+%
 % Transform predicates with calls that are tail recursive modulo construction
 % where (1) all recursive calls have the same args participating in the "modulo
 % construction" part and (2) all the other output args are returned in the same
 % registers in all recursive calls as expected by the head.
 % 
-% 	p(In1, ... InN, Out1, ... OutM) :-
-% 		Out1 = ground
-% 	p(In1, ... InN, Out1, ... OutM) :-
-% 		...
-% 		p(In1, ... InN, Mid1, Out2... OutM)
-% 		Out1 = f1(...Mid1...)
+%   p(In1, ... InN, Out1, ... OutM) :-
+%       Out1 = ground
+%   p(In1, ... InN, Out1, ... OutM) :-
+%       ...
+%       p(In1, ... InN, Mid1, Out2... OutM)
+%       Out1 = f1(...Mid1...)
 % 
 % The definition of append fits this pattern:
 % 
 % app(list(T)::in, list(T)::in, list(T)::out)
 % app(A, B, C) :-
-% 	(
-% 		A == [],
-% 		C := B
-% 	;
-% 		A => [H | T],
-% 		app(T, B, NT),
-% 		C <= [H | NT]
-% 	)
+%   (
+%       A == [],
+%       C := B
+%   ;
+%       A => [H | T],
+%       app(T, B, NT),
+%       C <= [H | NT]
+%   )
 % 
 % Concrete example of what the original predicate and its return-via-memory
 % variant should look like for append:
 % 
 % app(list(T)::in, list(T)::in, list(T)::out)
 % app(A, B, C) :-
-% 	(
-% 		A == [],
-% 		C := B
-% 	;
-% 		A => [H | T],
-% 		C <= [H | _NT] capture &HT in AddrHT
-% 		app'(T, B, AddrHT)
-% 	)
+%   (
+%       A == [],
+%       C := B
+%   ;
+%       A => [H | T],
+%       C <= [H | _NT] capture &HT in AddrHT
+%       app'(T, B, AddrHT)
+%   )
 % 
 % app'(list(T)::in, list(T)::in, store_by_ref_type(T)::in)
 % app'(A, B, AddrC) :-
-% 	(
-% 		A == [],
-% 		C := B,
-% 		store_at_ref(AddrC, C)
-% 	;
-% 		A => [H | T],
-% 		C <= [H | _NT] capture &HT in AddrHT
-% 		store_at_ref(AddrC, C)
-% 		app'(T, B, AddrHT)
-% 	)
+%   (
+%       A == [],
+%       C := B,
+%       store_at_ref(AddrC, C)
+%   ;
+%       A => [H | T],
+%       C <= [H | _NT] capture &HT in AddrHT
+%       store_at_ref(AddrC, C)
+%       app'(T, B, AddrHT)
+%   )
 % 
 % The transformation done on the original predicate is to take recursive calls
 % followed by construction unifications that use outputs of the recursive calls
@@ -82,24 +82,24 @@
 % 4 follows each primitive goal that binds one of the output arguments
 %   with a store to the memory location indicated by the corresponding pointer.
 % 
-% 	p(In1, ... InN, Out1, ... OutM) :-
-% 		Out1 = ground
-% 	p(In1, ... InN, Out1, ... OutM) :-
-% 		...
-% 		Out1 = f1(...Mid1...)
-% 			capture addr of Mid1 in Addr1
-% 		p'(In1, ... InN, Addr1, Out2... OutM)
+%   p(In1, ... InN, Out1, ... OutM) :-
+%       Out1 = ground
+%   p(In1, ... InN, Out1, ... OutM) :-
+%       ...
+%       Out1 = f1(...Mid1...)
+%           capture addr of Mid1 in Addr1
+%       p'(In1, ... InN, Addr1, Out2... OutM)
 % 
-% 	p'(In1, ... InN, Ref1, ... OutM) :-
-% 		Out1 = ground,
-% 		store_at_ref(Ref1, Out1)
-% 	p'(In1, ... InN, Ref1, Out2... OutM) :-
-% 		...
-% 		Out1 = f1(...Mid1...)
-% 			capture addr of Mid1 in Addr1
-% 		store_at_ref(Ref1, Out1)
-% 		p'(In1, ... InN, Addr1, Out2... OutM)
-
+%   p'(In1, ... InN, Ref1, ... OutM) :-
+%       Out1 = ground,
+%       store_at_ref(Ref1, Out1)
+%   p'(In1, ... InN, Ref1, Out2... OutM) :-
+%       ...
+%       Out1 = f1(...Mid1...)
+%           capture addr of Mid1 in Addr1
+%       store_at_ref(Ref1, Out1)
+%       p'(In1, ... InN, Addr1, Out2... OutM)
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.lco.
@@ -124,13 +124,13 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
+:- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_mode.
 :- import_module transform_hlds.dependency_graph.
-
-:- import_module mdbcomp.prim_data.
 
 :- import_module assoc_list.
 :- import_module bag.

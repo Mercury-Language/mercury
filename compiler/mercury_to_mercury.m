@@ -306,9 +306,9 @@
     % such annotations can be part of .opt and .trans_opt files.
     %
 :- pred write_pragma_termination_info(pred_or_func::in, sym_name::in,
-	list(mer_mode)::in, prog_context::in,
-	maybe(generic_arg_size_info(T))::in,
-	maybe(generic_termination_info(S, T))::in, io::di, io::uo) is det.
+    list(mer_mode)::in, prog_context::in,
+    maybe(generic_arg_size_info(T))::in,
+    maybe(generic_termination_info(S, T))::in, io::di, io::uo) is det.
 
 :- pred write_pragma_structure_sharing_info(pred_or_func::in, sym_name::in,
     list(mer_mode)::in, prog_context::in, prog_vars::in, 
@@ -323,7 +323,7 @@
     % Write the given termination info. Verbose if the second arg is yes.
     %
 :- pred write_maybe_termination_info(maybe(generic_termination_info(S, T))::in,
-	bool::in, io::di, io::uo) is det.
+    bool::in, io::di, io::uo) is det.
 
 :- pred mercury_output_where_attributes(tvarset::in,
     maybe(solver_type_details)::in, maybe(unify_compare)::in, io::di, io::uo)
@@ -636,12 +636,12 @@ mercury_output_item(_UnqualifiedItemNames, pragma(_, Pragma), Context, !IO) :-
             MaybePragmaArgSizeInfo, MaybePragmaTerminationInfo),
         write_pragma_termination_info(PredOrFunc, PredName, ModeList,
             Context, MaybePragmaArgSizeInfo, MaybePragmaTerminationInfo, !IO)
-	;
-		Pragma = termination2_info(PredOrFunc, PredName,
-			ModeList, SuccessInfo, FailureInfo, MaybeTermination),
-		write_pragma_termination2_info(PredOrFunc, PredName,
-			ModeList, SuccessInfo, FailureInfo,
-			MaybeTermination, Context, !IO) 
+    ;
+        Pragma = termination2_info(PredOrFunc, PredName,
+            ModeList, SuccessInfo, FailureInfo, MaybeTermination),
+        write_pragma_termination2_info(PredOrFunc, PredName,
+            ModeList, SuccessInfo, FailureInfo,
+            MaybeTermination, Context, !IO) 
     ;
         Pragma = terminates(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, predicate, "terminates", no,
@@ -4173,108 +4173,108 @@ write_used_args_2([ UsedArg | UsedArgs ], !IO) :-
     write_used_args_2(UsedArgs, !IO).
 
 write_maybe_termination_info(MaybeTerminationInfo, Verbose, !IO) :-
-	(
-		MaybeTerminationInfo = no,
-		io.write_string("not_set", !IO)
-	;
-		MaybeTerminationInfo = yes(cannot_loop(_)),
-		io.write_string("cannot_loop", !IO)
-	;
-		MaybeTerminationInfo = yes(can_loop(Error)),
-		io.write_string("can_loop", !IO),
-		( Verbose = yes ->
-			io.write_string("(", !IO),
-			io.write(Error, !IO),
-			io.write_string(")", !IO)
-		;
-			true
-		)
-	).
+    (
+        MaybeTerminationInfo = no,
+        io.write_string("not_set", !IO)
+    ;
+        MaybeTerminationInfo = yes(cannot_loop(_)),
+        io.write_string("cannot_loop", !IO)
+    ;
+        MaybeTerminationInfo = yes(can_loop(Error)),
+        io.write_string("can_loop", !IO),
+        ( Verbose = yes ->
+            io.write_string("(", !IO),
+            io.write(Error, !IO),
+            io.write_string(")", !IO)
+        ;
+            true
+        )
+    ).
 
 %-----------------------------------------------------------------------------%
 %
 % Code to output termination2_info pragmas.
 %
-		
+        
 :- pred write_pragma_termination2_info(pred_or_func::in, sym_name::in,
-	list(mer_mode)::in, maybe(pragma_constr_arg_size_info)::in,
-	maybe(pragma_constr_arg_size_info)::in,
-	maybe(pragma_termination_info)::in, prog_context::in,
-	io::di, io::uo) is det.
+    list(mer_mode)::in, maybe(pragma_constr_arg_size_info)::in,
+    maybe(pragma_constr_arg_size_info)::in,
+    maybe(pragma_termination_info)::in, prog_context::in,
+    io::di, io::uo) is det.
 
 write_pragma_termination2_info(PredOrFunc, PredName, ModeList,
-		MaybeSuccess, MaybeFailure, MaybeTermination, Context,
-		!IO) :-
-	io.write_string(":- pragma termination2_info(", !IO),
-	( 
-		PredOrFunc = predicate,
-		mercury_output_pred_mode_subdecl(varset.init, PredName, 
-			ModeList, no, Context, !IO)
-	;
-		PredOrFunc = function,
-		pred_args_to_func_args(ModeList, FuncModeList, RetMode),
-		mercury_output_func_mode_subdecl(varset.init, PredName, 
-			FuncModeList, RetMode, no, Context, !IO)
-	),
-	io.write_string(", ", !IO),
-	write_maybe_pragma_constr_arg_size_info(MaybeSuccess, !IO),
-	io.write_string(", ", !IO),
-	write_maybe_pragma_constr_arg_size_info(MaybeFailure, !IO),
-	io.write_string(", ", !IO),	
-	write_maybe_pragma_termination_info(MaybeTermination, !IO),
-	io.write_string(").\n", !IO).
+        MaybeSuccess, MaybeFailure, MaybeTermination, Context,
+        !IO) :-
+    io.write_string(":- pragma termination2_info(", !IO),
+    ( 
+        PredOrFunc = predicate,
+        mercury_output_pred_mode_subdecl(varset.init, PredName, 
+            ModeList, no, Context, !IO)
+    ;
+        PredOrFunc = function,
+        pred_args_to_func_args(ModeList, FuncModeList, RetMode),
+        mercury_output_func_mode_subdecl(varset.init, PredName, 
+            FuncModeList, RetMode, no, Context, !IO)
+    ),
+    io.write_string(", ", !IO),
+    write_maybe_pragma_constr_arg_size_info(MaybeSuccess, !IO),
+    io.write_string(", ", !IO),
+    write_maybe_pragma_constr_arg_size_info(MaybeFailure, !IO),
+    io.write_string(", ", !IO), 
+    write_maybe_pragma_termination_info(MaybeTermination, !IO),
+    io.write_string(").\n", !IO).
 
 :- pred write_maybe_pragma_constr_arg_size_info(
-	maybe(pragma_constr_arg_size_info)::in, io::di, io::uo) is det.
+    maybe(pragma_constr_arg_size_info)::in, io::di, io::uo) is det.
 
 write_maybe_pragma_constr_arg_size_info(no, !IO) :-
-	io.write_string("not_set", !IO).
+    io.write_string("not_set", !IO).
 write_maybe_pragma_constr_arg_size_info(yes(ArgSizeInfo), !IO) :-
-	io.write_string("constaints(", !IO),
-	io.write_char('[', !IO),
-	io.write_list(ArgSizeInfo, ", ", write_arg_size_constr, !IO),
-	io.write_string("])", !IO).
+    io.write_string("constaints(", !IO),
+    io.write_char('[', !IO),
+    io.write_list(ArgSizeInfo, ", ", write_arg_size_constr, !IO),
+    io.write_string("])", !IO).
 
 :- pred write_arg_size_constr(arg_size_constr::in, io::di, io::uo) is det.
 
 write_arg_size_constr(Constraint, !IO) :-
-	(
-		Constraint = le(Terms, Constant),
-		OpStr = "le("
-	;
-		Constraint = eq(Terms, Constant),
-		OpStr = "eq("
-	),
-	io.write_string(OpStr, !IO),
-	io.write_char('[', !IO),
-	io.write_list(Terms, ", ", write_arg_size_term, !IO),
-	io.write_string("], ", !IO),
-	rat.write_rat(Constant, !IO),
-	io.write_char(')', !IO).
+    (
+        Constraint = le(Terms, Constant),
+        OpStr = "le("
+    ;
+        Constraint = eq(Terms, Constant),
+        OpStr = "eq("
+    ),
+    io.write_string(OpStr, !IO),
+    io.write_char('[', !IO),
+    io.write_list(Terms, ", ", write_arg_size_term, !IO),
+    io.write_string("], ", !IO),
+    rat.write_rat(Constant, !IO),
+    io.write_char(')', !IO).
 
 :- pred write_arg_size_term(arg_size_term::in, io::di, io::uo) is det.
 
 write_arg_size_term(VarId - Coefficient, !IO) :-
-	io.write_string("term(", !IO),
-	io.write_int(VarId, !IO),
-	io.write_string(", ", !IO),
-	rat.write_rat(Coefficient, !IO),
-	io.write_char(')', !IO).	
+    io.write_string("term(", !IO),
+    io.write_int(VarId, !IO),
+    io.write_string(", ", !IO),
+    rat.write_rat(Coefficient, !IO),
+    io.write_char(')', !IO).    
 
 :- pred write_maybe_pragma_termination_info(maybe(pragma_termination_info)::in,
-	io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 write_maybe_pragma_termination_info(no, !IO) :-
-	io.write_string("not_set", !IO).
+    io.write_string("not_set", !IO).
 write_maybe_pragma_termination_info(yes(Termination), !IO) :-
-	(
-		Termination = can_loop(_),
-		TerminationStr = "can_loop"
-	;	
-		Termination = cannot_loop(_),
-		TerminationStr = "cannot_loop"
-	),
-	io.write_string(TerminationStr, !IO).	
+    (
+        Termination = can_loop(_),
+        TerminationStr = "can_loop"
+    ;   
+        Termination = cannot_loop(_),
+        TerminationStr = "cannot_loop"
+    ),
+    io.write_string(TerminationStr, !IO).   
 
 %-----------------------------------------------------------------------------%
 

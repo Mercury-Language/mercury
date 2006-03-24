@@ -126,7 +126,7 @@ pd_debug_output_version(ModuleInfo, PredProcId, Version, WriteUnfoldedGoal,
         !IO) :-
     Version = version_info(Goal - GoalInfo, _, Args, _, InstMap,
         InitialCost, CostDelta, Parents, _),
-    predicate_name(ModuleInfo, PredId, PredName),
+    PredName = predicate_name(ModuleInfo, PredId),
     io.write_string(PredName, !IO),
     io.write_string(": (PredProcId :", !IO),
     PredProcId = proc(PredId, ProcId),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,13 +19,16 @@
 
 % The HLDS data structure itself
 :- include_module assertion.
+:- include_module hlds_clauses.
 :- include_module hlds_data.
 :- include_module hlds_goal.
 :- include_module hlds_llds.
 :- include_module hlds_module.
 :- include_module hlds_pred.
+:- include_module hlds_rtti.
 :- include_module inst_graph.
 :- include_module instmap.
+:- include_module pred_table.
 :- include_module special_pred.
 
 % Modules for creating the HLDS

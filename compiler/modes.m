@@ -355,10 +355,12 @@
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.unify_proc.
 :- import_module check_hlds.unique_modes.
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.
 :- import_module hlds.make_hlds.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_table.
 :- import_module hlds.quantification.
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.

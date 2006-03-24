@@ -163,11 +163,13 @@
 :- import_module check_hlds.typecheck.
 :- import_module check_hlds.type_util.
 :- import_module check_hlds.unify_proc.
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_out.
 :- import_module hlds.passes_aux.
+:- import_module hlds.pred_table.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -462,8 +464,8 @@ compute_expr_purity(Goal0, Goal, GoalInfo, ActualPurity, !Info) :-
     ModuleInfo = !.Info ^ module_info,
     (
         RunPostTypecheck = yes,
-        post_typecheck.resolve_pred_overloading(Vars, PredInfo,
-            ModuleInfo, Name0, Name, PredId0, PredId),
+        finally_resolve_pred_overloading(Vars, PredInfo, ModuleInfo,
+            Name0, Name, PredId0, PredId),
         (
             % Convert any calls to private_builtin.unsafe_type_cast
             % into unsafe_type_cast generic calls.

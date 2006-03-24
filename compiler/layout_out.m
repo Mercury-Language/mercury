@@ -100,6 +100,7 @@
 :- import_module backend_libs.rtti.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.

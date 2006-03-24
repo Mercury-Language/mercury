@@ -117,6 +117,7 @@
 :- import_module backend_libs.proc_label.
 :- import_module check_hlds.mode_util.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module libs.compiler_util.

@@ -437,21 +437,21 @@ analyse_termination_in_scc(PassInfo, SCC, !ModuleInfo, !IO) :-
 
 set_finite_arg_size_infos([], _, !ModuleInfo).
 set_finite_arg_size_infos([Soln | Solns], OutputSupplierMap, !ModuleInfo) :-
-	Soln = PPId - Gamma,
-	PPId = proc(PredId, ProcId),
-	module_info_preds(!.ModuleInfo, PredTable0),
-	map.lookup(PredTable0, PredId, PredInfo),
-	pred_info_procedures(PredInfo, ProcTable),
-	map.lookup(ProcTable, ProcId, ProcInfo),
-	map.lookup(OutputSupplierMap, PPId, OutputSuppliers),
-	ArgSizeInfo = finite(Gamma, OutputSuppliers),
+    Soln = PPId - Gamma,
+    PPId = proc(PredId, ProcId),
+    module_info_preds(!.ModuleInfo, PredTable0),
+    map.lookup(PredTable0, PredId, PredInfo),
+    pred_info_procedures(PredInfo, ProcTable),
+    map.lookup(ProcTable, ProcId, ProcInfo),
+    map.lookup(OutputSupplierMap, PPId, OutputSuppliers),
+    ArgSizeInfo = finite(Gamma, OutputSuppliers),
     % XXX intermod
-	proc_info_set_maybe_arg_size_info(yes(ArgSizeInfo), ProcInfo, ProcInfo1),
-	map.set(ProcTable, ProcId, ProcInfo1, ProcTable1),
-	pred_info_set_procedures(ProcTable1, PredInfo, PredInfo1),
-	map.set(PredTable0, PredId, PredInfo1, PredTable),
-	module_info_set_preds(PredTable, !ModuleInfo),
-	set_finite_arg_size_infos(Solns, OutputSupplierMap, !ModuleInfo).
+    proc_info_set_maybe_arg_size_info(yes(ArgSizeInfo), ProcInfo, ProcInfo1),
+    map.set(ProcTable, ProcId, ProcInfo1, ProcTable1),
+    pred_info_set_procedures(ProcTable1, PredInfo, PredInfo1),
+    map.set(PredTable0, PredId, PredInfo1, PredTable),
+    module_info_set_preds(PredTable, !ModuleInfo),
+    set_finite_arg_size_infos(Solns, OutputSupplierMap, !ModuleInfo).
 
 :- pred set_infinite_arg_size_infos(list(pred_proc_id)::in,
     arg_size_info::in, module_info::in, module_info::out) is det.

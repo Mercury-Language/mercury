@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: jumpopt.m.
 % Author: zs.
-
+%
 % This module contains code that optimizes jumps to jumps.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.jumpopt.
@@ -686,9 +686,9 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
             NewRemain = usual_case
         )
     ;
-		Uinstr0 = pragma_c(Decls, Components0, MayCallMercury,
-			MaybeFixNoLayout, MaybeFixLayout, MaybeFixOnlyLayout,
-			MaybeNoFix0, StackSlotRef, MaybeDup),
+        Uinstr0 = pragma_c(Decls, Components0, MayCallMercury,
+            MaybeFixNoLayout, MaybeFixLayout, MaybeFixOnlyLayout,
+            MaybeNoFix0, StackSlotRef, MaybeDup),
         some [!Redirect] (
             list.map_foldl(short_pragma_component(Instrmap),
                 Components0, Components, no, !:Redirect),

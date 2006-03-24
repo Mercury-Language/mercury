@@ -185,6 +185,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
@@ -490,7 +491,7 @@ detect_liveness_in_par_conj([Goal0 | Goals0], [Goal | Goals], Liveness0,
 %-----------------------------------------------------------------------------%
 
 :- pred detect_deadness_in_goal(hlds_goal::in, hlds_goal::out,
-    set(prog_var)::in, set(prog_var)::out, set(prog_var)::in, 
+    set(prog_var)::in, set(prog_var)::out, set(prog_var)::in,
     live_info::in) is det.
 
 detect_deadness_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Deadness,
@@ -1534,8 +1535,8 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, !:Liveness) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeinfoLiveness),
-    proc_info_maybe_complete_with_typeinfo_vars(NonLocals0,
-        TypeinfoLiveness, VarTypes, RttiVarMaps, NonLocals),
+    maybe_complete_with_typeinfo_vars(NonLocals0, TypeinfoLiveness, VarTypes,
+        RttiVarMaps, NonLocals),
     set.intersect(!.Liveness, NonLocals, !:Liveness).
 
 :- pred initial_liveness_2(list(prog_var)::in, list(mer_mode)::in,
@@ -1567,8 +1568,8 @@ initial_deadness(ProcInfo, LiveInfo, ModuleInfo, Deadness) :-
     % to these.
     proc_info_vartypes(ProcInfo, VarTypes),
     proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
-    proc_info_maybe_complete_with_typeinfo_vars(Deadness0,
-        LiveInfo ^ typeinfo_liveness, VarTypes, RttiVarMaps, Deadness).
+    maybe_complete_with_typeinfo_vars(Deadness0, LiveInfo ^ typeinfo_liveness,
+        VarTypes, RttiVarMaps, Deadness).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1646,20 +1647,19 @@ liveness.get_nonlocals_and_typeinfos(LiveInfo, GoalInfo,
     set(prog_var)::in, set(prog_var)::out) is det.
 
 liveness.maybe_complete_with_typeinfos(LiveInfo, Vars0, Vars) :-
-    proc_info_maybe_complete_with_typeinfo_vars(Vars0,
-        LiveInfo ^ typeinfo_liveness, LiveInfo ^ vartypes,
-        LiveInfo ^ rtti_varmaps, Vars).
+    maybe_complete_with_typeinfo_vars(Vars0, LiveInfo ^ typeinfo_liveness,
+        LiveInfo ^ vartypes, LiveInfo ^ rtti_varmaps, Vars).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- type live_info
     --->    live_info(
-                module_info     ::  module_info,
+                module_info         ::  module_info,
                 typeinfo_liveness   ::  bool,
-                vartypes        ::  vartypes,
+                vartypes            ::  vartypes,
                 rtti_varmaps        ::  rtti_varmaps,
-                varset          ::  prog_varset
+                varset              ::  prog_varset
             ).
 
 :- pred live_info_init(module_info::in, bool::in, vartypes::in,
