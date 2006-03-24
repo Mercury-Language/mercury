@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 University of Melbourne.
+% Copyright (C) 2002-2006 University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -292,7 +292,16 @@ can_fork :- semidet_fail.
     can_fork,
     [will_not_call_mercury, thread_safe, promise_pure],
 "
-#ifdef MC_CAN_FORK
+    /*
+    ** call_in_forked_process_2 is not `thread_safe' so will hold a mutex
+    ** that the child process will want.  At the same time the parent process
+    ** waits for the child to exit, so we have a deadlock.
+    **
+    ** Also, in pthreads, a forked process does not inherit the threads of
+    ** the original process so it is not at all clear whether we could use
+    ** fork() when running in a parallel grade.
+    */
+#if (defined MC_CAN_FORK) && (!defined MR_THREAD_SAFE)
     SUCCESS_INDICATOR = MR_TRUE;
 #else
     SUCCESS_INDICATOR = MR_FALSE;
