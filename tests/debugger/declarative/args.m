@@ -8,7 +8,7 @@
 main -->
 	(
 		{ p(1, X, 3, Y, 5) },
-		{ semidet_fail }
+		{ library_forwarding.semidet_fail }
 	->
 		io__write_int(X),
 		io__nl,
