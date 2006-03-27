@@ -57,6 +57,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.inst_graph.
 :- import_module hlds.passes_aux.
+:- import_module hlds.quantification.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -112,12 +113,11 @@ process_module(!ModuleInfo, !IO) :-
     module_info_predids(!.ModuleInfo, PredIds),
     globals.io_lookup_bool_option(simple_mode_constraints, Simple, !IO),
     globals.io_lookup_bool_option(prop_mode_constraints, New, !IO),
-    list.foldl2(hhf.process_pred(Simple), PredIds, !ModuleInfo, !IO),
-
-    get_predicate_sccs(!.ModuleInfo, SCCs),
 
     (
         New = no,
+        list__foldl2(hhf__process_pred(Simple), PredIds, !ModuleInfo, !IO),
+        get_predicate_sccs(!.ModuleInfo, SCCs),
 
         % Stage 1: Process SCCs bottom-up to determine variable producers.
         list.foldl3(process_scc(Simple), SCCs,
@@ -138,6 +138,20 @@ process_module(!ModuleInfo, !IO) :-
         clear_caches(!IO)
     ;
         New = yes,
+        get_predicate_sccs(!.ModuleInfo, SCCs),
+
+        % Preprocess to accommodate implied modes.
+        % XXX The following transformation adds more unifications
+        % than is neccessary - eg, for arguments that will eventually
+        % be `in' modes anyway. The resulting loosening of constraints
+        % makes analysis take up to twice as long. Therefore, a more
+        % subtle approach would likely become a significant optimization.
+        list.foldl(ensure_unique_arguments, PredIds, !ModuleInfo),
+
+        % Requantify to avoid the appearance of variables in nonlocal
+        % sets that don't appear in the goal. (This makes it appear
+        % that the goal consumes the variable.)
+        list.foldl(correct_nonlocals_in_pred, PredIds, !ModuleInfo),
 
         % Stage 1: Process SCCs bottom-up to determine constraints on
         % variable producers and consumers.
@@ -193,6 +207,53 @@ dump_abstract_constraints(ModuleInfo, ConstraintVarset, ModeConstraints,
             "failed to open " ++ FileName ++ " for output.")
     ).
 
+    % correct_nonlocals_in_pred(PredId, !ModuleInfo) requantifies
+    % the clause_body of PredId. This is to ensure that no variable
+    % appears in the nonlocal set of a goal that doesn't also appear
+    % in that goal.
+    %
+:- pred correct_nonlocals_in_pred(pred_id::in, module_info::in,
+    module_info::out) is det.
+
+correct_nonlocals_in_pred(PredId, !ModuleInfo) :-
+    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
+    some [!ClausesInfo, !Varset, !Vartypes, !Clauses, !Goals] (
+        pred_info_clauses_info(PredInfo0, !:ClausesInfo),
+        clauses_info_clauses_only(!.ClausesInfo, !:Clauses),
+        clauses_info_get_headvars(!.ClausesInfo, Headvars),
+        clauses_info_get_varset(!.ClausesInfo, !:Varset),
+        clauses_info_get_vartypes(!.ClausesInfo, !:Vartypes),
+        !:Goals = list.map(func(X) = clause_body(X), !.Clauses),
+        list.map_foldl2(correct_nonlocals_in_clause_body(Headvars), !Goals,
+            !Varset, !Vartypes),
+        !:Clauses = list.map_corresponding(
+            func(Clause, Goal) = 'clause_body :='(Clause, Goal),
+            !.Clauses, !.Goals),
+        clauses_info_set_clauses(!.Clauses, !ClausesInfo),
+        clauses_info_set_varset(!.Varset, !ClausesInfo),
+        clauses_info_set_vartypes(!.Vartypes, !ClausesInfo),
+        pred_info_set_clauses_info(!.ClausesInfo, PredInfo0, PredInfo)
+    ),
+    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
+
+    % correct_nonlocals_in_clause_body(Headvars, !Goals, !Varset, !Vartypes)
+    % requantifies the clause body Goal. This is to ensure that no variable
+    % appears in the nonlocal set of a goal that doesn't also appear
+    % in that goal.
+    %
+:- pred correct_nonlocals_in_clause_body(list(prog_var)::in,
+    hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
+    vartypes::in, vartypes::out) is det.
+
+correct_nonlocals_in_clause_body(Headvars, !Goals, !Varset, !Vartypes) :-
+        implicitly_quantify_clause_body(Headvars, Warnings, !Goals, !Varset,
+            !Vartypes),
+    (   Warnings = []
+    ;
+        Warnings = [_|_],
+        unexpected(this_file, "Quantification error during constraints" ++
+            " based mode analysis")
+    ).
 
 :- pred process_scc(bool::in, list(pred_id)::in,
     module_info::in, module_info::out,

@@ -2228,8 +2228,8 @@ frontend_pass_by_phases(!HLDS, FoundError, !DumpInfo, !IO) :-
     maybe_polymorphism(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 30, "polymorphism", !DumpInfo, !IO),
 
-    maybe_mode_constraints(Verbose, Stats, !.HLDS, HHF_HLDS, !IO),
-    maybe_dump_hlds(HHF_HLDS, 33, "mode_constraints", !DumpInfo, !IO),
+    maybe_mode_constraints(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 33, "mode_constraints", !DumpInfo, !IO),
 
     modecheck(Verbose, Stats, !HLDS, FoundModeError, UnsafeToContinue, !IO),
     maybe_dump_hlds(!.HLDS, 35, "modecheck", !DumpInfo, !IO),

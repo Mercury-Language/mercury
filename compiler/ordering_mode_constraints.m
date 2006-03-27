@@ -106,6 +106,7 @@
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.goal_util.
 :- import_module libs.compiler_util.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.error_util.
@@ -480,10 +481,10 @@ add_lt_constraint(A, B, !OCI) :-
 
     % make_conjuncts_nonlocal_repvars(PredId, Goals, RepvarMap)
     %
-    % The keys of RepvarMap are the program variables nonlocal
-    % to Goals. Each is mapped to the mc_rep_var representation
-    % of the proposition that it is produced at a Goal for every
-    % Goal it is nonlocal to in Goals.
+    % The keys of RepvarMap are the program variables nonlocal to Goals that
+    % appear in goals. Each is mapped to the mc_rep_var representation of the
+    % proposition that it is produced at a Goal in Goals, for every Goal in
+    % Goals it is nonlocal to.
     %
 :- pred make_conjuncts_nonlocal_repvars(pred_id::in, hlds_goals::in,
     prog_var_at_conjuncts_map::out) is det.
@@ -499,14 +500,14 @@ make_conjuncts_nonlocal_repvars(PredId, Goals, RepvarMap) :-
 
 make_conjunct_nonlocal_repvars(PredId, Goal, !RepvarMap) :-
     GoalInfo = snd(Goal),
-    goal_info_get_nonlocals(GoalInfo, NonLocals),
+    goal_info_get_nonlocals(GoalInfo, Nonlocals),
     goal_info_get_goal_path(GoalInfo, GoalPath),
 
     set.fold(
         (pred(NL::in, RMap0::in, RMap::out) is det :-
             multi_map.set(RMap0, NL, NL `in` PredId `at` GoalPath, RMap)
         ),
-        NonLocals, !RepvarMap).
+        Nonlocals, !RepvarMap).
 
 %-----------------------------------------------------------------------------%
 

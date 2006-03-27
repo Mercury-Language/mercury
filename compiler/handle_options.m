@@ -897,7 +897,11 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             true
         ),
 
+        option_implies(debug_mode_constraints, prop_mode_constraints,
+            bool(yes), !Globals),
         option_implies(prop_mode_constraints, mode_constraints, bool(yes),
+            !Globals),
+        option_implies(simple_mode_constraints, mode_constraints, bool(yes),
             !Globals),
 
         % Minimal model tabling is not compatible with high level code
