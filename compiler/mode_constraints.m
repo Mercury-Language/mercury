@@ -303,7 +303,7 @@ number_robdd_variables_in_pred(PredId, !ModuleInfo, !MCI) :-
         PredInfo0, PredInfo1),
 
     pred_info_clauses_info(PredInfo1, ClausesInfo0),
-    clauses_info_headvars(ClausesInfo0, HeadVars),
+    clauses_info_get_headvars(ClausesInfo0, HeadVars),
     InstGraph = PredInfo1 ^ inst_graph_info ^ implementation_inst_graph,
     inst_graph.foldl_reachable_from_list(
         ( pred(V::in, S0::in, S::out) is det :-
@@ -316,7 +316,7 @@ number_robdd_variables_in_pred(PredId, !ModuleInfo, !MCI) :-
         true
     ;
         clauses_info_clauses_only(ClausesInfo0, Clauses0),
-        clauses_info_vartypes(ClausesInfo0, VarTypes),
+        clauses_info_get_vartypes(ClausesInfo0, VarTypes),
         NRInfo0 = number_robdd_info(!.MCI, !.ModuleInfo, VarTypes),
 
         list.map_foldl(
@@ -532,9 +532,9 @@ process_pred(PredId, SCC, !ModuleInfo, !ModeConstraint,
     io.flush_output(!IO),
 
     InstGraph = PredInfo0 ^ inst_graph_info ^ implementation_inst_graph,
-    pred_info_procedures(PredInfo0, ProcTable0),
+    pred_info_get_procedures(PredInfo0, ProcTable0),
     pred_info_clauses_info(PredInfo0, ClausesInfo0),
-    clauses_info_headvars(ClausesInfo0, HeadVars),
+    clauses_info_get_headvars(ClausesInfo0, HeadVars),
 
     HOModes0 = map.init,
     ( ( map.is_empty(ProcTable0) ; pred_info_infer_modes(PredInfo0) ) ->
@@ -555,7 +555,7 @@ process_pred(PredId, SCC, !ModuleInfo, !ModeConstraint,
     !:ModeConstraint = !.ModeConstraint * DeclConstraint,
     set_input_nodes(!ModeConstraint, !ModeConstraintInfo),
 
-    % clauses_info_varset(ClausesInfo0, ProgVarSet),
+    % clauses_info_get_varset(ClausesInfo0, ProgVarSet),
     % pred_id_to_int(PredId, PredIdInt),
     % robdd_to_dot(DeclConstraint, ProgVarSet, ModeConstraintInfo1,
     %   format("mode_decl_%d.dot", [i(PredIdInt)]), !IO),
@@ -584,7 +584,7 @@ process_pred_2(PredId, ModeConstraint, ModeConstraintInfo0,
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     InstGraph = PredInfo0 ^ inst_graph_info ^ implementation_inst_graph,
     pred_info_clauses_info(PredInfo0, ClausesInfo),
-    clauses_info_headvars(ClausesInfo, HeadVars),
+    clauses_info_get_headvars(ClausesInfo, HeadVars),
 
     % DMO document this better
     % XXX Needed for analysing calls. May want to store the constraint
@@ -631,7 +631,7 @@ process_pred_2(PredId, ModeConstraint, ModeConstraintInfo0,
     %   ModeConstraintInfo),
 
     % DEBUGGING CODE
-    % clauses_info_varset(ClausesInfo, ProgVarSet),
+    % clauses_info_get_varset(ClausesInfo, ProgVarSet),
     % pred_info_name(PredInfo, Name),
     % robdd_to_dot(ModeConstraint, ProgVarSet, ModeConstraintInfo,
     %   Name `string.append` ".dot", !IO),
@@ -733,7 +733,7 @@ mode_decl_to_constraint(ModuleInfo, InstGraph, HeadVars,
     % proc_id_to_int(ProcId, ProcIdInt),
     % pred_info_name(PredInfo, Name),
     % pred_info_clauses_info(PredInfo, ClausesInfo),
-    % clauses_info_varset(ClausesInfo, ProgVarSet),
+    % clauses_info_get_varset(ClausesInfo, ProgVarSet),
     % unsafe_perform_io(robdd_to_dot(DeclConstraint, ProgVarSet,
     %   Info ^ mc_info, Name ++ int_to_string(ProcIdInt) ++ ".dot")),
 
@@ -753,7 +753,7 @@ process_mode_decl_for_proc(ModuleInfo, InstGraph, HeadVars,
         InitialFree, InitialBound, InitialHO, FinalFree, FinalBound, FinalHO,
         ProcInfo, !Constraint, !MDI) :-
     % proc_info_declared_argmodes(ProcInfo, ArgModes),
-    proc_info_argmodes(ProcInfo, ArgModes),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
     process_mode_decl(ModuleInfo, InstGraph, HeadVars,
         InitialFree, InitialBound, InitialHO, FinalFree, FinalBound, FinalHO,
         ArgModes, !Constraint, !MDI).
@@ -947,7 +947,7 @@ do_process_inst(ModuleInfo, InstGraph, Free, Bound, DoHO,
 
 process_clauses_info(ModuleInfo, SCC, !ClausesInfo,
         InstGraph, HOModes0, !Constraint, !ConstraintInfo, !IO) :-
-    clauses_info_varset(!.ClausesInfo, VarSet0),
+    clauses_info_get_varset(!.ClausesInfo, VarSet0),
     globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     (
         VeryVerbose = yes,
@@ -956,7 +956,7 @@ process_clauses_info(ModuleInfo, SCC, !ClausesInfo,
         VeryVerbose = no
     ),
 
-    clauses_info_headvars(!.ClausesInfo, HeadVars),
+    clauses_info_get_headvars(!.ClausesInfo, HeadVars),
     map.foldl2(input_output_constraints(HeadVars, InstGraph),
         InstGraph, !Constraint, !ConstraintInfo),
 
@@ -1190,7 +1190,7 @@ goal_constraints_2(GoalPath, _NonLocals, _, CanSucceed, GoalExpr, GoalExpr,
         % XXX we currently assume that all recursive calls are to the
         % same mode of the predicate.
         pred_info_clauses_info(PredInfo, ClausesInfo),
-        clauses_info_headvars(ClausesInfo, HeadVars),
+        clauses_info_get_headvars(ClausesInfo, HeadVars),
         call_constraints(GoalPath, PredId, HeadVars, Args,
             !Constraint, !GCInfo)
     ;
@@ -1199,7 +1199,7 @@ goal_constraints_2(GoalPath, _NonLocals, _, CanSucceed, GoalExpr, GoalExpr,
             % The predicate has mode declarations so use them
             % to obtain the constraints for the call.
 
-            pred_info_procedures(PredInfo, ProcTable),
+            pred_info_get_procedures(PredInfo, ProcTable),
             map.values(ProcTable, ProcInfos),
             update_md_info((pred(C::out, S0::in, S::out) is det :-
                 list.foldl2(
@@ -1217,7 +1217,7 @@ goal_constraints_2(GoalPath, _NonLocals, _, CanSucceed, GoalExpr, GoalExpr,
             ArgModes = PredInfo ^ modes,
             PredInstGraph = PredInfo ^ inst_graph_info ^ interface_inst_graph,
             pred_info_clauses_info(PredInfo, PredClausesInfo),
-            clauses_info_headvars(PredClausesInfo, PredHeadVars),
+            clauses_info_get_headvars(PredClausesInfo, PredHeadVars),
             solutions.solutions((pred((V - W)::out) is nondet :-
                 inst_graph.corresponding_nodes_from_lists(
                     PredInstGraph, InstGraph, PredHeadVars, Args, V, W)
@@ -2012,7 +2012,7 @@ vars(_ - GoalInfo) = OccurringVars :-
 :- pred pred_can_succeed(pred_info::in) is semidet.
 
 pred_can_succeed(PredInfo) :-
-    pred_info_procedures(PredInfo, ProcTable),
+    pred_info_get_procedures(PredInfo, ProcTable),
     some [ProcInfo] (
         map.member(ProcTable, _ProcId, ProcInfo),
         proc_can_succeed(ProcInfo)
@@ -2026,7 +2026,7 @@ pred_can_succeed(PredInfo) :-
 :- pred proc_can_succeed(proc_info::in) is semidet.
 
 proc_can_succeed(ProcInfo) :-
-    proc_info_declared_determinism(ProcInfo, MaybeDet),
+    proc_info_get_declared_determinism(ProcInfo, MaybeDet),
     (
         MaybeDet = no
     ;

@@ -199,7 +199,7 @@ generate_proc_list_code([], _PredId, _PredInfo, _ModuleInfo,
         !GlobalData, !Procs).
 generate_proc_list_code([ProcId | ProcIds], PredId, PredInfo, ModuleInfo0,
         !GlobalData, !Procs) :-
-    pred_info_procedures(PredInfo, ProcInfos),
+    pred_info_get_procedures(PredInfo, ProcInfos),
     map.lookup(ProcInfos, ProcId, ProcInfo),
     generate_proc_code(PredInfo, ProcInfo, ProcId, PredId, ModuleInfo0,
         !GlobalData, Proc),
@@ -235,7 +235,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
 
     proc_info_interface_determinism(ProcInfo, Detism),
     proc_info_interface_code_model(ProcInfo, CodeModel),
-    proc_info_goal(ProcInfo, Goal),
+    proc_info_get_goal(ProcInfo, Goal),
     Goal = _ - GoalInfo,
     goal_info_get_follow_vars(GoalInfo, MaybeFollowVars),
     (
@@ -319,12 +319,12 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
         code_info.get_layout_info(CodeInfo, InternalMap),
         code_util.make_local_entry_label(ModuleInfo, PredId, ProcId,
             no, EntryLabel),
-        proc_info_eval_method(ProcInfo, EvalMethod),
+        proc_info_get_eval_method(ProcInfo, EvalMethod),
         proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap0),
-        proc_info_headvars(ProcInfo, HeadVars),
-        proc_info_varset(ProcInfo, VarSet),
-        proc_info_argmodes(ProcInfo, ArgModes),
-        proc_info_vartypes(ProcInfo, VarTypes),
+        proc_info_get_headvars(ProcInfo, HeadVars),
+        proc_info_get_varset(ProcInfo, VarSet),
+        proc_info_get_argmodes(ProcInfo, ArgModes),
+        proc_info_get_vartypes(ProcInfo, VarTypes),
         globals.get_trace_suppress(Globals, TraceSuppress),
         (
             eff_trace_needs_proc_body_reps(PredInfo, ProcInfo,
@@ -447,7 +447,7 @@ generate_deep_prof_info(ProcInfo, HLDSDeepInfo) = DeepProfInfo :-
     HLDSDeepLayout = hlds_deep_layout(HLDSProcStatic, HLDSExcpVars),
     HLDSExcpVars = hlds_deep_excp_vars(TopCSDVar, MiddleCSDVar,
         MaybeOldOutermostVar),
-    proc_info_stack_slots(ProcInfo, StackSlots),
+    proc_info_get_stack_slots(ProcInfo, StackSlots),
     ( map.search(StackSlots, TopCSDVar, TopCSDSlot) ->
         TopCSDSlotNum = stack_slot_num(TopCSDSlot),
         map.lookup(StackSlots, MiddleCSDVar, MiddleCSDSlot),
@@ -475,7 +475,7 @@ generate_deep_prof_info(ProcInfo, HLDSDeepInfo) = DeepProfInfo :-
 
 maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo, ProcLabel,
         !GlobalData) :-
-    proc_info_eval_method(ProcInfo, EvalMethod),
+    proc_info_get_eval_method(ProcInfo, EvalMethod),
     HasTablingPointer = eval_method_has_per_proc_tabling_pointer(EvalMethod),
     (
         HasTablingPointer = yes,
@@ -1159,7 +1159,7 @@ compute_deep_save_excp_vars(ProcInfo) = DeepSaveVars :-
         ExcpVars = DeepLayout ^ deep_layout_excp,
         ExcpVars = hlds_deep_excp_vars(TopCSDVar, MiddleCSDVar,
             MaybeOldOutermostVar),
-        proc_info_stack_slots(ProcInfo, StackSlots),
+        proc_info_get_stack_slots(ProcInfo, StackSlots),
         ( map.search(StackSlots, TopCSDVar, _) ->
             % If one of these variables has a stack slot, the others must
             % have one too.

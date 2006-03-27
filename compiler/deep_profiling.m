@@ -110,16 +110,16 @@ apply_tail_recursion_to_proc(PredProcId, !ModuleInfo) :-
     PredProcId = proc(PredId, ProcId),
     module_info_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_arg_types(PredInfo0, Types),
-    pred_info_procedures(PredInfo0, ProcTable0),
+    pred_info_get_arg_types(PredInfo0, Types),
+    pred_info_get_procedures(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
-    proc_info_goal(ProcInfo0, Goal0),
+    proc_info_get_goal(ProcInfo0, Goal0),
     proc_info_interface_determinism(ProcInfo0, Detism),
     (
         determinism_components(Detism, _CanFail, SolnCount),
         SolnCount \= at_most_many,
-        proc_info_headvars(ProcInfo0, HeadVars),
-        proc_info_argmodes(ProcInfo0, Modes),
+        proc_info_get_headvars(ProcInfo0, HeadVars),
+        proc_info_get_argmodes(ProcInfo0, Modes),
         find_list_of_output_args(HeadVars, Modes, Types, !.ModuleInfo,
             Outputs),
         clone_proc_id(ProcTable0, ProcId, CloneProcId),
@@ -207,8 +207,8 @@ apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall,
                 PredId, ProcId, PredInfo, ProcInfo),
             proc_info_interface_determinism(ProcInfo, CallDetism),
             CallDetism = ApplyInfo ^ detism,
-            pred_info_arg_types(PredInfo, Types),
-            proc_info_argmodes(ProcInfo, Modes),
+            pred_info_get_arg_types(PredInfo, Types),
+            proc_info_get_argmodes(ProcInfo, Modes),
             find_list_of_output_args(Args, Modes, Types,
                 ApplyInfo ^ moduleinfo, CallOutputs),
             CallOutputs = ApplyInfo ^ outputs,
@@ -427,7 +427,7 @@ figure_out_rec_call_numbers_in_case_list([Case|Cases], !N, !TailCallSites) :-
 transform_predicate(ModuleInfo, PredId, PredMap0, PredMap) :-
     map.lookup(PredMap0, PredId, PredInfo0),
     ProcIds = pred_info_non_imported_procids(PredInfo0),
-    pred_info_procedures(PredInfo0, ProcTable0),
+    pred_info_get_procedures(PredInfo0, ProcTable0),
     list.foldl(maybe_transform_procedure(ModuleInfo, PredId),
         ProcIds, ProcTable0, ProcTable),
     pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
@@ -438,7 +438,7 @@ transform_predicate(ModuleInfo, PredId, PredMap0, PredMap) :-
 
 maybe_transform_procedure(ModuleInfo, PredId, ProcId, !ProcTable) :-
     map.lookup(!.ProcTable, ProcId, ProcInfo0),
-    proc_info_goal(ProcInfo0, Goal0),
+    proc_info_get_goal(ProcInfo0, Goal0),
     PredModuleName = predicate_module(ModuleInfo, PredId),
     (
         % XXX We need to eliminate nondet C code...
@@ -514,11 +514,11 @@ transform_procedure2(ModuleInfo, PredProcId, !ProcInfo) :-
     proc_info::in, proc_info::out) is det.
 
 transform_det_proc(ModuleInfo, PredProcId, !ProcInfo) :-
-    proc_info_goal(!.ProcInfo, Goal0),
+    proc_info_get_goal(!.ProcInfo, Goal0),
     Goal0 = _ - GoalInfo0,
     some [!VarSet, !VarTypes] (
-        proc_info_varset(!.ProcInfo, !:VarSet),
-        proc_info_vartypes(!.ProcInfo, !:VarTypes),
+        proc_info_get_varset(!.ProcInfo, !:VarSet),
+        proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
         CPointerType = c_pointer_type,
         svvarset.new_named_var("TopCSD", TopCSD, !VarSet),
         svvarset.new_named_var("MiddleCSD", MiddleCSD, !VarSet),
@@ -539,7 +539,7 @@ transform_det_proc(ModuleInfo, PredProcId, !ProcInfo) :-
             MaybeActivationPtr = no
         ),
         ExcpVars = hlds_deep_excp_vars(TopCSD, MiddleCSD, MaybeActivationPtr),
-        proc_info_context(!.ProcInfo, Context),
+        proc_info_get_context(!.ProcInfo, Context),
         FileName = term.context_file(Context),
         LineNumber = term.context_line(Context),
 
@@ -606,11 +606,11 @@ transform_det_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     proc_info::in, proc_info::out) is det.
 
 transform_semi_proc(ModuleInfo, PredProcId, !ProcInfo) :-
-    proc_info_goal(!.ProcInfo, Goal0),
+    proc_info_get_goal(!.ProcInfo, Goal0),
     Goal0 = _ - GoalInfo0,
     some [!VarSet, !VarTypes] (
-        proc_info_varset(!.ProcInfo, !:VarSet),
-        proc_info_vartypes(!.ProcInfo, !:VarTypes),
+        proc_info_get_varset(!.ProcInfo, !:VarSet),
+        proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
         CPointerType = c_pointer_type,
         svvarset.new_named_var("TopCSD", TopCSD, !VarSet),
         svvarset.new_named_var("MiddleCSD", MiddleCSD, !VarSet),
@@ -631,7 +631,7 @@ transform_semi_proc(ModuleInfo, PredProcId, !ProcInfo) :-
             MaybeActivationPtr = no
         ),
         ExcpVars = hlds_deep_excp_vars(TopCSD, MiddleCSD, MaybeActivationPtr),
-        proc_info_context(!.ProcInfo, Context),
+        proc_info_get_context(!.ProcInfo, Context),
         FileName = term.context_file(Context),
         LineNumber = term.context_line(Context),
 
@@ -715,11 +715,11 @@ transform_semi_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     proc_info::in, proc_info::out) is det.
 
 transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
-    proc_info_goal(!.ProcInfo, Goal0),
+    proc_info_get_goal(!.ProcInfo, Goal0),
     Goal0 = _ - GoalInfo0,
     some [!VarSet, !VarTypes] (
-        proc_info_varset(!.ProcInfo, !:VarSet),
-        proc_info_vartypes(!.ProcInfo, !:VarTypes),
+        proc_info_get_varset(!.ProcInfo, !:VarSet),
+        proc_info_get_vartypes(!.ProcInfo, !:VarTypes),
         CPointerType = c_pointer_type,
         svvarset.new_named_var("TopCSD", TopCSD, !VarSet),
         svvarset.new_named_var("MiddleCSD", MiddleCSD, !VarSet),
@@ -744,7 +744,7 @@ transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
             MaybeOldActivationPtr),
         svvarset.new_named_var("NewOutermost", NewOutermostProcDyn, !VarSet),
         svmap.set(NewOutermostProcDyn, CPointerType, !VarTypes),
-        proc_info_context(!.ProcInfo, Context),
+        proc_info_get_context(!.ProcInfo, Context),
         FileName = term.context_file(Context),
         LineNumber = term.context_line(Context),
 
@@ -851,10 +851,10 @@ transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     proc_info::in, proc_info::out) is det.
 
 transform_inner_proc(ModuleInfo, PredProcId, !ProcInfo) :-
-    proc_info_goal(!.ProcInfo, Goal0),
+    proc_info_get_goal(!.ProcInfo, Goal0),
     Goal0 = _ - GoalInfo0,
-    proc_info_varset(!.ProcInfo, VarSet0),
-    proc_info_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset(!.ProcInfo, VarSet0),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     CPointerType = c_pointer_type,
     % MiddleCSD should be unused
     varset.new_named_var(VarSet0, "MiddleCSD", MiddleCSD, VarSet1),

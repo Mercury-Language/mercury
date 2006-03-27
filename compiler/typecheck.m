@@ -303,7 +303,7 @@ typecheck_pred_if_needed(Iteration, PredId, !PredInfo, !ModuleInfo,
         )
     ->
         pred_info_clauses_info(!.PredInfo, ClausesInfo0),
-        clauses_info_clauses_rep(ClausesInfo0, ClausesRep0),
+        clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0),
         IsEmpty = clause_list_is_empty(ClausesRep0),
         (
             IsEmpty = yes,
@@ -337,13 +337,13 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
     ;
         true
     ),
-    pred_info_arg_types(!.PredInfo, _ArgTypeVarSet, ExistQVars0, ArgTypes0),
+    pred_info_get_arg_types(!.PredInfo, _ArgTypeVarSet, ExistQVars0, ArgTypes0),
     some [!ClausesInfo, !Info, !HeadTypeParams] (
         pred_info_clauses_info(!.PredInfo, !:ClausesInfo),
-        clauses_info_clauses_rep(!.ClausesInfo, ClausesRep0),
-        clauses_info_headvars(!.ClausesInfo, HeadVars),
-        clauses_info_varset(!.ClausesInfo, VarSet0),
-        clauses_info_explicit_vartypes(!.ClausesInfo, ExplicitVarTypes0),
+        clauses_info_get_clauses_rep(!.ClausesInfo, ClausesRep0),
+        clauses_info_get_headvars(!.ClausesInfo, HeadVars),
+        clauses_info_get_varset(!.ClausesInfo, VarSet0),
+        clauses_info_get_explicit_vartypes(!.ClausesInfo, ExplicitVarTypes0),
         pred_info_get_markers(!.PredInfo, Markers0),
         % Handle the --allow-stubs and --warn-stubs options.
         % If --allow-stubs is set, and there are no clauses,
@@ -401,8 +401,8 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
             )
         ;
             ClausesRep1IsEmpty = no,
-            pred_info_typevarset(!.PredInfo, TypeVarSet0),
-            pred_info_import_status(!.PredInfo, Status),
+            pred_info_get_typevarset(!.PredInfo, TypeVarSet0),
+            pred_info_get_import_status(!.PredInfo, Status),
             ( check_marker(Markers0, infer_type) ->
                 % For a predicate whose type is inferred, the predicate is
                 % allowed to bind the type variables in the head of the
@@ -512,7 +512,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
                 (
                     % If the argument types and the type constraints are
                     % identical up to renaming, then nothing has changed.
-                    pred_info_tvar_kinds(!.PredInfo, TVarKinds),
+                    pred_info_get_tvar_kinds(!.PredInfo, TVarKinds),
                     argtypes_identical_up_to_renaming(TVarKinds, ExistQVars0,
                         ArgTypes0, OldTypeConstraints, ExistQVars, ArgTypes,
                         InferredTypeConstraints)
@@ -834,15 +834,15 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
     pred_info::in, pred_info::out) is det.
 
 maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
-    pred_info_import_status(!.PredInfo, ImportStatus),
+    pred_info_get_import_status(!.PredInfo, ImportStatus),
     pred_info_clauses_info(!.PredInfo, ClausesInfo0),
-    clauses_info_clauses_rep(ClausesInfo0, ClausesRep0),
+    clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0),
     (
         pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
         clause_list_is_empty(ClausesRep0) = yes,
         status_defined_in_this_module(ImportStatus, yes)
     ->
-        clauses_info_headvars(ClausesInfo0, HeadVars),
+        clauses_info_get_headvars(ClausesInfo0, HeadVars),
         pred_args_to_func_args(HeadVars, FuncArgs, FuncRetVal),
         pred_info_context(!.PredInfo, Context),
         FuncModule = pred_info_module(!.PredInfo),
@@ -881,8 +881,8 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
 maybe_improve_headvar_names(Globals, !PredInfo) :-
     pred_info_clauses_info(!.PredInfo, ClausesInfo0),
     clauses_info_clauses_only(ClausesInfo0, Clauses0),
-    clauses_info_headvars(ClausesInfo0, HeadVars0),
-    clauses_info_varset(ClausesInfo0, VarSet0),
+    clauses_info_get_headvars(ClausesInfo0, HeadVars0),
+    clauses_info_get_varset(ClausesInfo0, VarSet0),
     (
         % Don't do this when making a `.opt' file.
         % intermod.m needs to perform a similar transformation
@@ -1532,7 +1532,7 @@ typecheck_call_pred_id_adjust_arg_types(PredId, Args, GoalPath, AdjustArgTypes,
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     predicate_table_get_preds(PredicateTable, Preds),
     map.lookup(Preds, PredId, PredInfo),
-    pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
+    pred_info_get_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
         PredArgTypes0),
     AdjustArgTypes(PredArgTypes0, PredArgTypes),
     pred_info_get_class_context(PredInfo, PredClassContext),
@@ -1584,11 +1584,11 @@ get_overloaded_pred_arg_types([], _Preds, _ClassTable, _GoalPath,
 get_overloaded_pred_arg_types([PredId | PredIds], Preds, ClassTable, GoalPath,
         AdjustArgTypes, TypeAssignSet0, !ArgsTypeAssignSet) :-
     map.lookup(Preds, PredId, PredInfo),
-    pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
+    pred_info_get_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
         PredArgTypes0),
     call(AdjustArgTypes, PredArgTypes0, PredArgTypes),
     pred_info_get_class_context(PredInfo, PredClassContext),
-    pred_info_typevarset(PredInfo, TVarSet),
+    pred_info_get_typevarset(PredInfo, TVarSet),
     make_body_hlds_constraints(ClassTable, TVarSet, GoalPath,
         PredClassContext, PredConstraints),
     rename_apart(TypeAssignSet0, PredTypeVarSet, PredExistQVars,
@@ -2406,7 +2406,7 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
     PredArity = pred_info_orig_arity(PredInfo),
     IsPredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_class_context(PredInfo, PredClassContext),
-    pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
+    pred_info_get_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
         CompleteArgTypes),
     pred_info_get_purity(PredInfo, Purity),
     (
@@ -2988,7 +2988,7 @@ convert_cons_defn(Info, GoalPath, Action, HLDS_ConsDefn, ConsTypeInfo) :-
         Body ^ du_type_is_foreign_type = yes(_),
         \+ pred_info_get_goal_type(PredInfo, clauses_and_pragmas),
         \+ is_unify_or_compare_pred(PredInfo),
-        \+ pred_info_import_status(PredInfo, opt_imported)
+        \+ pred_info_get_import_status(PredInfo, opt_imported)
     ->
         ConsTypeInfo = error(foreign_type_constructor(TypeCtor, TypeDefn))
     ;
@@ -2996,7 +2996,7 @@ convert_cons_defn(Info, GoalPath, Action, HLDS_ConsDefn, ConsTypeInfo) :-
         % the current predicate is opt_imported.
         hlds_data.get_type_defn_status(TypeDefn, abstract_imported),
         \+ is_unify_or_compare_pred(PredInfo),
-        \+ pred_info_import_status(PredInfo, opt_imported)
+        \+ pred_info_get_import_status(PredInfo, opt_imported)
     ->
         ConsTypeInfo = error(abstract_imported_type)
     ;

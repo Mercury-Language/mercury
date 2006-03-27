@@ -520,7 +520,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
     code_info.get_module_info(!.CI, ModuleInfo),
     module_info_preds(ModuleInfo, Preds),
     map.lookup(Preds, PredId, PredInfo),
-    pred_info_procedures(PredInfo, Procs),
+    pred_info_get_procedures(PredInfo, Procs),
     map.lookup(Procs, ProcId, ProcInfo),
 
     % We handle currying of a higher-order pred variable as a special case.
@@ -547,9 +547,9 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
     % it does not have code to typecheck them (you get a message about call/2
     % should be used as a goal, not an expression).
 
-    proc_info_goal(ProcInfo, ProcInfoGoal),
+    proc_info_get_goal(ProcInfo, ProcInfoGoal),
     proc_info_interface_code_model(ProcInfo, CodeModel),
-    proc_info_headvars(ProcInfo, ProcHeadVars),
+    proc_info_get_headvars(ProcInfo, ProcHeadVars),
     (
         EvalMethod = lambda_normal,
         Args = [CallPred | CallArgs],
@@ -824,7 +824,7 @@ generate_field_take_address_assigns([FieldNum - Var | FieldAddrs],
 
 var_types(CI, Vars, Types) :-
     code_info.get_proc_info(CI, ProcInfo),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     map.apply_to_list(Vars, VarTypes, Types).
 
 %---------------------------------------------------------------------------%

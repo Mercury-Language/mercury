@@ -342,8 +342,8 @@ make_pragma_import(PredInfo, ProcInfo, C_Function, Context, PragmaImpl, VarSet,
 
     % Lookup some information we need from the pred_info and proc_info.
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    pred_info_arg_types(PredInfo, ArgTypes),
-    proc_info_argmodes(ProcInfo, Modes),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
+    proc_info_get_argmodes(ProcInfo, Modes),
     proc_info_interface_code_model(ProcInfo, CodeModel),
 
     % Build a list of argument variables, together with their names, modes,
@@ -364,7 +364,7 @@ make_pragma_import(PredInfo, ProcInfo, C_Function, Context, PragmaImpl, VarSet,
     % know about the type-infos yet.  polymorphism.m is responsible for adding
     % the type-info arguments to the list of variables.
 
-    proc_info_declared_determinism(ProcInfo, MaybeDeclaredDetism),
+    proc_info_get_declared_determinism(ProcInfo, MaybeDeclaredDetism),
     handle_return_value(Context, MaybeDeclaredDetism, CodeModel, PredOrFunc,
         PragmaVarsAndTypes, ArgPragmaVarsAndTypes, Return, !ModuleInfo, !IO),
     assoc_list.keys(ArgPragmaVarsAndTypes, ArgPragmaVars),

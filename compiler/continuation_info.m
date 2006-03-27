@@ -550,7 +550,7 @@ basic_stack_layout_for_proc(PredInfo, Globals, BasicLayout,
 :- pred some_arg_is_higher_order(pred_info::in) is semidet.
 
 some_arg_is_higher_order(PredInfo) :-
-    pred_info_arg_types(PredInfo, ArgTypes),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
     some [Type] (
         list.member(Type, ArgTypes),
         type_is_higher_order(Type, _, _, _, _)
@@ -561,7 +561,7 @@ some_arg_is_higher_order(PredInfo) :-
 generate_return_live_lvalues(OutputArgLocs, ReturnInstMap, Vars, VarLocs,
         Temps, ProcInfo, ModuleInfo, Globals, OkToDeleteAny, LiveLvalues) :-
     globals.want_return_var_layouts(Globals, WantReturnVarLayout),
-    proc_info_stack_slots(ProcInfo, StackSlots),
+    proc_info_get_stack_slots(ProcInfo, StackSlots),
     find_return_var_lvals(Vars, StackSlots, OkToDeleteAny, OutputArgLocs,
         VarLvals),
     generate_var_live_lvalues(VarLvals, ReturnInstMap, VarLocs, ProcInfo,
@@ -629,7 +629,7 @@ generate_resume_layout(ResumeMap, Temps, InstMap, ProcInfo, ModuleInfo,
         Layout) :-
     map.to_assoc_list(ResumeMap, ResumeList),
     set.init(TVars0),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     generate_resume_layout_for_vars(ResumeList, InstMap, VarTypes, ProcInfo,
         ModuleInfo, [], VarInfos, TVars0, TVars),
     set.list_to_set(VarInfos, VarInfoSet),
@@ -706,8 +706,8 @@ generate_temp_var_infos([Temp | Temps], [Live | Lives]) :-
 
 generate_layout_for_var(Var, InstMap, ProcInfo, ModuleInfo, LiveValueType,
         TypeVars) :-
-    proc_info_varset(ProcInfo, VarSet),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     ( varset.search_name(VarSet, Var, GivenName) ->
         Name = GivenName
     ;
@@ -727,9 +727,9 @@ generate_layout_for_var(Var, InstMap, ProcInfo, ModuleInfo, LiveValueType,
 
 generate_closure_layout(ModuleInfo, PredId, ProcId, ClosureLayout) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
-    proc_info_headvars(ProcInfo, HeadVars),
+    proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_arg_info(ProcInfo, ArgInfos),
-    pred_info_arg_types(PredInfo, ArgTypes),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
     proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
     map.init(VarLocs0),
     set.init(TypeVars0),
@@ -768,8 +768,8 @@ build_closure_info([Var | Vars], [Type | Types],
 %---------------------------------------------------------------------------%
 
 find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo, TypeInfoDataMap) :-
-    proc_info_varset(ProcInfo, VarSet),
-    proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
+    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     list.map(rtti_lookup_type_info_locn(RttiVarMaps), TypeVars,
         TypeInfoLocns),
     FindLocn = (pred(TypeInfoLocn::in, Locns::out) is det :-
@@ -801,7 +801,7 @@ find_typeinfos_for_tvars(TypeVars, VarLocs, ProcInfo, TypeInfoDataMap) :-
 %---------------------------------------------------------------------------%
 
 generate_table_arg_type_info(ProcInfo, NumberedVars, TableArgInfos) :-
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     set.init(TypeVars0),
     build_table_arg_info(VarTypes, NumberedVars, ArgLayouts,
         TypeVars0, TypeVars),
@@ -831,8 +831,8 @@ build_table_arg_info(VarTypes, [Var - SlotNum | NumberedVars],
 
 find_typeinfos_for_tvars_table(TypeVars, NumberedVars, ProcInfo,
         TypeInfoDataMap) :-
-    proc_info_varset(ProcInfo, VarSet),
-    proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
+    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     list.map(rtti_lookup_type_info_locn(RttiVarMaps), TypeVars,
         TypeInfoLocns),
     FindLocn = (pred(TypeInfoLocn::in, Locn::out) is det :-

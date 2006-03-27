@@ -2594,7 +2594,7 @@ backend_pass_by_preds_3([], _, _, !HLDS, !GlobalData, [], !IO).
 backend_pass_by_preds_3([ProcId | ProcIds], PredId, PredInfo, !HLDS,
         !GlobalData, [ProcLabel - Proc | Procs], !IO) :-
     ProcLabel = make_proc_label(!.HLDS, PredId, ProcId),
-    pred_info_procedures(PredInfo, ProcTable),
+    pred_info_get_procedures(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo),
     backend_pass_by_preds_4(PredInfo, ProcInfo, _, ProcId, PredId, !HLDS,
         !GlobalData, Proc, !IO),

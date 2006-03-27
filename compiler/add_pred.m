@@ -224,8 +224,8 @@ add_builtin(PredId, Types, !PredInfo) :-
     Name = pred_info_name(!.PredInfo),
     pred_info_context(!.PredInfo, Context),
     pred_info_clauses_info(!.PredInfo, ClausesInfo0),
-    clauses_info_varset(ClausesInfo0, VarSet),
-    clauses_info_headvars(ClausesInfo0, HeadVars),
+    clauses_info_get_varset(ClausesInfo0, VarSet),
+    clauses_info_get_headvars(ClausesInfo0, HeadVars),
 
     % Construct the pseudo-recursive call to Module.Name(HeadVars).
     SymName = qualified(Module, Name),
@@ -274,8 +274,8 @@ add_builtin(PredId, Types, !PredInfo) :-
 do_add_new_proc(InstVarSet, Arity, ArgModes, MaybeDeclaredArgModes,
         MaybeArgLives, MaybeDet, Context, IsAddressTaken, PredInfo0, PredInfo,
         ModeId) :-
-    pred_info_procedures(PredInfo0, Procs0),
-    pred_info_arg_types(PredInfo0, ArgTypes),
+    pred_info_get_procedures(PredInfo0, Procs0),
+    pred_info_get_arg_types(PredInfo0, ArgTypes),
     next_mode_id(Procs0, ModeId),
     proc_info_init(Context, Arity, ArgTypes, MaybeDeclaredArgModes,
         ArgModes, MaybeArgLives, MaybeDet, IsAddressTaken, NewProc0),
@@ -330,7 +330,7 @@ module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod, MContext,
     % check that the determinism was specified
     (
         MaybeDet = no,
-        pred_info_import_status(!.PredInfo, ImportStatus),
+        pred_info_get_import_status(!.PredInfo, ImportStatus),
         PredOrFunc = pred_info_is_pred_or_func(!.PredInfo),
         PredModule = pred_info_module(!.PredInfo),
         PredName = pred_info_name(!.PredInfo),

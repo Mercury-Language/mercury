@@ -183,8 +183,8 @@ describe_one_proc_name(Module, ShouldModuleQualify, proc(PredId, ProcId))
 describe_one_proc_name_mode(Module, ShouldModuleQualify, proc(PredId, ProcId))
         = Pieces :-
     module_info_pred_proc_info(Module, PredId, ProcId, _, ProcInfo),
-    proc_info_argmodes(ProcInfo, ArgModes),
-    proc_info_inst_varset(ProcInfo, InstVarSet),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
+    proc_info_get_inst_varset(ProcInfo, InstVarSet),
     Pieces = describe_one_pred_name_mode(Module, ShouldModuleQualify,
         PredId, InstVarSet, ArgModes).
 

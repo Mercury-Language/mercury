@@ -155,7 +155,7 @@ deforestation(!ModuleInfo, !IO) :-
 reset_inferred_proc_determinism(PredProcId, !ModuleInfo) :-
     module_info_pred_proc_info(!.ModuleInfo, PredProcId,
         PredInfo, ProcInfo0),
-    proc_info_inferred_determinism(ProcInfo0, Detism0),
+    proc_info_get_inferred_determinism(ProcInfo0, Detism0),
     ( determinism_components(Detism0, _, at_most_many_cc) ->
         % `cc_multi' or `cc_nondet' determinisms are never inferred,
         % so resetting the determinism would cause determinism errors.
@@ -203,7 +203,7 @@ deforest_proc_2(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo, !IO) :-
             !:PredInfo, !:ProcInfo),
         pd_info_init_unfold_info(proc(PredId, ProcId), !.PredInfo, !.ProcInfo,
             !PDInfo),
-        proc_info_goal(!.ProcInfo, !:Goal),
+        proc_info_get_goal(!.ProcInfo, !:Goal),
 
         % Inlining may have created some opportunities for simplification.
         globals.io_get_globals(Globals, !IO),
@@ -223,10 +223,10 @@ deforest_proc_2(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo, !IO) :-
             Changed = yes,
             pd_info_get_module_info(!.PDInfo, !:ModuleInfo),
             requantify_proc(!ProcInfo),
-            proc_info_goal(!.ProcInfo, !:Goal),
+            proc_info_get_goal(!.ProcInfo, !:Goal),
             proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
-            proc_info_vartypes(!.ProcInfo, VarTypes),
-            proc_info_inst_varset(!.ProcInfo, InstVarSet),
+            proc_info_get_vartypes(!.ProcInfo, VarTypes),
+            proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
             recompute_instmap_delta(yes, !Goal, VarTypes,
                 InstVarSet, InstMap0, !ModuleInfo),
             pd_info_set_module_info(!.ModuleInfo, !PDInfo),
@@ -818,7 +818,7 @@ can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
         ),
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
             _, CalledProcInfo),
-        proc_info_goal(CalledProcInfo, CalledGoal),
+        proc_info_get_goal(CalledProcInfo, CalledGoal),
         goal_size(CalledGoal, CalledGoalSize),
         SizeLimit \= -1,
         CalledGoalSize > SizeLimit
@@ -1040,7 +1040,7 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
 
             module_info_pred_proc_info(ModuleInfo0, PredId1, ProcId1, _,
                 CalledProcInfo1),
-            proc_info_goal(CalledProcInfo1, CalledGoal1),
+            proc_info_get_goal(CalledProcInfo1, CalledGoal1),
             goal_util.goal_vars(CalledGoal1, GoalVars1),
             set.to_sorted_list(GoalVars1, GoalVarsList1),
             set.init(GoalVars2),
@@ -1115,7 +1115,7 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
             pd_info_get_parent_versions(!.PDInfo, Parents0),
 
             pd_info_get_proc_info(!.PDInfo, ProcInfo1),
-            proc_info_vartypes(ProcInfo1, VarTypes),
+            proc_info_get_vartypes(ProcInfo1, VarTypes),
             map.apply_to_list(NonLocalsList, VarTypes, ArgTypes),
             VersionInfo = version_info(FoldGoal, CalledPreds, NonLocalsList,
                 ArgTypes, InstMap0, 0, 0, Parents0, MaybeGeneralised),
@@ -1168,16 +1168,16 @@ create_call_goal(proc(PredId, ProcId), VersionInfo,
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
         CalledPredInfo, CalledProcInfo),
-    pred_info_arg_types(CalledPredInfo, CalledTVarSet, _CalledExistQVars,
+    pred_info_get_arg_types(CalledPredInfo, CalledTVarSet, _CalledExistQVars,
         ArgTypes0),
 
     % Rename the arguments in the version.
     pd_info_get_proc_info(!.PDInfo, ProcInfo0),
     pd_info_get_pred_info(!.PDInfo, PredInfo0),
 
-    proc_info_vartypes(ProcInfo0, VarTypes0),
-    proc_info_varset(ProcInfo0, VarSet0),
-    pred_info_typevarset(PredInfo0, TVarSet0),
+    proc_info_get_vartypes(ProcInfo0, VarTypes0),
+    proc_info_get_varset(ProcInfo0, VarSet0),
+    pred_info_get_typevarset(PredInfo0, TVarSet0),
 
     % Rename the argument types using the current pred's tvarset.
     tvarset_merge_renaming(TVarSet0, CalledTVarSet, TVarSet, TypeRenaming),
@@ -1192,7 +1192,7 @@ create_call_goal(proc(PredId, ProcId), VersionInfo,
     pd_info_set_proc_info(ProcInfo, !PDInfo),
 
     % Compute a goal_info.
-    proc_info_argmodes(CalledProcInfo, ArgModes),
+    proc_info_get_argmodes(CalledProcInfo, ArgModes),
     instmap_delta_from_mode_list(Args, ArgModes, ModuleInfo, InstMapDelta),
     proc_info_interface_determinism(ProcInfo, Detism),
     set.list_to_set(Args, NonLocals),
@@ -1278,7 +1278,7 @@ try_generalisation(EarlierGoal, BetweenGoals, MaybeLaterGoal,
         VersionArgTypes, VersionInstMap, _, _, _, _),
     pd_info_get_versions(!.PDInfo, Versions),
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     (
         pd_util.goals_match(ModuleInfo, VersionGoal, VersionArgs,
             VersionArgTypes, FoldGoal, VarTypes, Renaming, _)
@@ -1291,7 +1291,7 @@ try_generalisation(EarlierGoal, BetweenGoals, MaybeLaterGoal,
         % matching against that. This happens when attempting two
         % deforestations in a row and the first deforestation required
         % generalisation.
-        proc_info_varset(ProcInfo, VarSet),
+        proc_info_get_varset(ProcInfo, VarSet),
         match_generalised_version(ModuleInfo, VersionGoal,
             VersionArgs, VersionArgTypes, EarlierGoal, BetweenGoals,
             MaybeLaterGoal, ConjNonLocals, VarSet, VarTypes, Versions,
@@ -1399,8 +1399,8 @@ match_generalised_version(ModuleInfo, VersionGoal, VersionArgs,
 
     module_info_pred_proc_info(ModuleInfo, FirstPredId, FirstProcId,
         _, FirstProcInfo),
-    proc_info_varset(FirstProcInfo, FirstVersionVarSet),
-    proc_info_vartypes(FirstProcInfo, FirstVersionVarTypes),
+    proc_info_get_varset(FirstProcInfo, FirstVersionVarSet),
+    proc_info_get_vartypes(FirstProcInfo, FirstVersionVarTypes),
 
     goal_util.create_variables(FirstVersionVars,
         FirstVersionVarSet, FirstVersionVarTypes,
@@ -1428,7 +1428,7 @@ match_generalised_version(ModuleInfo, VersionGoal, VersionArgs,
 
     module_info_pred_info(ModuleInfo, NonGeneralisedPredId,
         NonGeneralisedPredInfo),
-    pred_info_arg_types(NonGeneralisedPredInfo, NonGeneralisedArgTypes),
+    pred_info_get_arg_types(NonGeneralisedPredInfo, NonGeneralisedArgTypes),
     create_deforest_call_args(NonGeneralisedArgs,
         NonGeneralisedArgTypes, GeneralRenaming, TypeRenaming, NewArgs,
         !.VarSet, _, !.VarTypes, _),
@@ -1745,7 +1745,7 @@ deforest_call(PredId, ProcId, Args, SymName, BuiltinState, Goal0, Goal,
         % Check the goal size.
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _,
             CalledProcInfo),
-        proc_info_goal(CalledProcInfo, CalledGoal),
+        proc_info_get_goal(CalledProcInfo, CalledGoal),
         goal_size(CalledGoal, CalledGoalSize),
         ( SizeThreshold = -1
         ; CalledGoalSize < SizeThreshold
@@ -1788,7 +1788,7 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         Goal0, Goal, Optimized, !PDInfo, !IO) :-
     globals.io_lookup_int_option(deforestation_vars_threshold, VarsOpt, !IO),
     pd_info_get_proc_info(!.PDInfo, ProcInfo0),
-    proc_info_varset(ProcInfo0, VarSet0),
+    proc_info_get_varset(ProcInfo0, VarSet0),
     varset.vars(VarSet0, Vars),
     list.length(Vars, NumVars),
     (
@@ -1806,10 +1806,10 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         pd_info_get_module_info(!.PDInfo, ModuleInfo0),
         module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
             CalledPredInfo, CalledProcInfo),
-        pred_info_typevarset(PredInfo0, TypeVarSet0),
+        pred_info_get_typevarset(PredInfo0, TypeVarSet0),
         pred_info_get_univ_quant_tvars(PredInfo0, UnivQVars),
-        proc_info_vartypes(ProcInfo0, VarTypes0),
-        proc_info_rtti_varmaps(ProcInfo0, RttiVarMaps0),
+        proc_info_get_vartypes(ProcInfo0, VarTypes0),
+        proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps0),
         inlining.do_inline_call(UnivQVars, Args, CalledPredInfo,
             CalledProcInfo, VarSet0, VarSet, VarTypes0, VarTypes,
             TypeVarSet0, TypeVarSet, RttiVarMaps0, RttiVarMaps, Goal1),

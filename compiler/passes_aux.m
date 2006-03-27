@@ -285,7 +285,7 @@ process_nonimported_procs([ProcId | ProcIds], PredId, !Task, !ModuleInfo,
         !IO) :-
     module_info_preds(!.ModuleInfo, Preds0),
     map.lookup(Preds0, PredId, Pred0),
-    pred_info_procedures(Pred0, Procs0),
+    pred_info_get_procedures(Pred0, Procs0),
     map.lookup(Procs0, ProcId, Proc0),
 
     (
@@ -325,7 +325,7 @@ process_nonimported_procs([ProcId | ProcIds], PredId, !Task, !ModuleInfo,
 
     module_info_preds(!.ModuleInfo, Preds8),
     map.lookup(Preds8, PredId, Pred8),
-    pred_info_procedures(Pred8, Procs8),
+    pred_info_get_procedures(Pred8, Procs8),
 
     map.det_update(Procs8, ProcId, Proc, Procs),
     pred_info_set_procedures(Procs, Pred8, Pred),
@@ -610,8 +610,8 @@ report_pred_proc_id(ModuleInfo, PredId, ProcId, MaybeContext, Context, !IO) :-
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    proc_info_context(ProcInfo, Context),
-    proc_info_argmodes(ProcInfo, ArgModes0),
+    proc_info_get_context(ProcInfo, Context),
+    proc_info_get_argmodes(ProcInfo, ArgModes0),
 
     % We need to strip off the extra type_info arguments inserted at the
     % front by polymorphism.m - we only want the last `PredArity' of them.

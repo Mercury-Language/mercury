@@ -211,7 +211,7 @@ pd_info_bind_var_to_functor(Var, ConsId, !PDInfo) :-
     pd_info_get_instmap(!.PDInfo, InstMap0),
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     map.lookup(VarTypes, Var, Type),
     instmap.bind_var_to_functor(Var, Type, ConsId, InstMap0, InstMap,
         ModuleInfo0, ModuleInfo),
@@ -469,7 +469,7 @@ pd_info.search_version(PDInfo, Goal, MaybeVersion, !IO) :-
     pd_info_get_module_info(PDInfo, ModuleInfo),
     pd_info_get_proc_info(PDInfo, ProcInfo),
     pd_info_get_instmap(PDInfo, InstMap),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     (
         map.search(GoalVersionIndex, CalledPreds, VersionIds),
         pd_info.get_matching_version(ModuleInfo, Goal, InstMap,
@@ -639,13 +639,13 @@ pd_info.define_new_pred(Origin, Goal, PredProcId, CallGoal, !PDInfo) :-
     unqualify_name(SymName, Name),
 
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
-    pred_info_typevarset(PredInfo, TVarSet),
+    pred_info_get_typevarset(PredInfo, TVarSet),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_class_context(PredInfo, ClassContext),
-    proc_info_varset(ProcInfo, VarSet),
-    proc_info_vartypes(ProcInfo, VarTypes),
-    proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
-    proc_info_inst_varset(ProcInfo, InstVarSet),
+    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
+    proc_info_get_inst_varset(ProcInfo, InstVarSet),
     % XXX handle the extra typeinfo arguments for
     % --typeinfo-liveness properly.
     hlds_pred.define_new_pred(Origin, Goal, CallGoal, Args, _ExtraArgs,

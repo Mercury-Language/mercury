@@ -252,7 +252,7 @@ pred_reordering(PredConstraintsMap, VarMap, PredId, !ModuleInfo) :-
 
 proc_reordering(PredConstraints, VarMap, PredId, ProcId, !Errors, !PredInfo) :-
     pred_info_proc_info(!.PredInfo, ProcId, ProcInfo0),
-    proc_info_goal(ProcInfo0, Goal0),
+    proc_info_get_goal(ProcInfo0, Goal0),
 
     ConstraintFormulae = pred_constraints_to_formulae(ProcId, PredConstraints),
 
@@ -706,7 +706,7 @@ dump_goal_paths(ModuleInfo, PredIds0, !IO) :-
 
 dump_pred_goal_paths(ModuleInfo, PredId, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_procedures(PredInfo, ProcTable),
+    pred_info_get_procedures(PredInfo, ProcTable),
     ProcIds = map.keys(ProcTable),
 
     % Start with a blank line.
@@ -743,7 +743,7 @@ dump_proc_goal_paths(ProcTable, ProcId, !IO) :-
     ProcHeaderFormat = [words("mode"), words(ProcIdString), suffix(":")],
     write_error_pieces_plain(ProcHeaderFormat, !IO),
     map.lookup(ProcTable, ProcId, ProcInfo),
-    proc_info_goal(ProcInfo, Goal),
+    proc_info_get_goal(ProcInfo, Goal),
     Indent = 0,
     dump_goal_goal_paths(Indent, Goal, !IO).
 

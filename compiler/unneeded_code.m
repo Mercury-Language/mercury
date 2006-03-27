@@ -239,10 +239,10 @@ process_proc_msg(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
 :- pred pre_process_proc(proc_info::in, proc_info::out) is det.
 
 pre_process_proc(!ProcInfo) :-
-    proc_info_headvars(!.ProcInfo, HeadVars),
-    proc_info_goal(!.ProcInfo, Goal0),
-    proc_info_varset(!.ProcInfo, Varset0),
-    proc_info_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_headvars(!.ProcInfo, HeadVars),
+    proc_info_get_goal(!.ProcInfo, Goal0),
+    proc_info_get_varset(!.ProcInfo, Varset0),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     implicitly_quantify_clause_body(HeadVars, _Warnings, Goal0, Goal,
         Varset0, Varset, VarTypes0, VarTypes),
     proc_info_set_goal(Goal, !ProcInfo),
@@ -287,9 +287,9 @@ pre_process_proc(!ProcInfo) :-
 
 process_proc(!ProcInfo, !ModuleInfo, Successful) :-
     fill_goal_path_slots(!.ModuleInfo, !ProcInfo),
-    proc_info_goal(!.ProcInfo, Goal0),
-    proc_info_varset(!.ProcInfo, Varset0),
-    proc_info_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_goal(!.ProcInfo, Goal0),
+    proc_info_get_varset(!.ProcInfo, Varset0),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InitInstMap),
     Goal0 = _ - GoalInfo0,
     goal_info_get_instmap_delta(GoalInfo0, InstMapDelta),
@@ -317,8 +317,8 @@ process_proc(!ProcInfo, !ModuleInfo, Successful) :-
         Changed = yes,
             % We need to fix up the goal_info by recalculating
             % the nonlocal vars and the non-atomic instmap deltas.
-        proc_info_headvars(!.ProcInfo, HeadVars),
-        proc_info_inst_varset(!.ProcInfo, InstVarSet),
+        proc_info_get_headvars(!.ProcInfo, HeadVars),
+        proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
         implicitly_quantify_clause_body(HeadVars, _Warnings,
             Goal2, Goal3, Varset0, Varset, VarTypes0, VarTypes),
         recompute_instmap_delta(no, Goal3, Goal, VarTypes, InstVarSet,

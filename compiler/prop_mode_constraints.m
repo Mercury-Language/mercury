@@ -230,8 +230,8 @@ process_mode_declared_pred(ModuleInfo, PredId, PredInfo, !VarInfo,
 process_mode_declared_proc(ModuleInfo, PredId, ProcId, ProcInfo, !VarInfo,
     !PredConstraints) :-
 
-    proc_info_argmodes(ProcInfo, ArgModes),
-    proc_info_headvars(ProcInfo, Args),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
+    proc_info_get_headvars(ProcInfo, Args),
 
     add_mode_decl_constraints(ModuleInfo, PredId, ProcId, ArgModes, Args,
         !VarInfo, !PredConstraints).
@@ -241,7 +241,7 @@ module_info_pred_status_is_imported(ModuleInfo, PredId) :-
 
     % The following used because pred_info_is_imported/2 is not
     % as comprehensive as status_is_imported/2.
-    pred_info_import_status(PredInfo, Status),
+    pred_info_get_import_status(PredInfo, Status),
     status_is_imported(Status, yes).
 
 %----------------------------------------------------------------------------%

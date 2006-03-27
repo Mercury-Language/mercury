@@ -333,8 +333,8 @@ maybe_analysis_status(ProcResult, ProcResult ^ maybe_analysis_status).
 
 check_proc_for_exceptions(SCC, PPId, !Results, !ModuleInfo, !IO) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, _, ProcInfo),
-    proc_info_goal(ProcInfo, Body),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_goal(ProcInfo, Body),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     globals.io_lookup_bool_option(intermodule_analysis, IntermodAnalysis,
         !IO),
     MaybeAnalysisStatus0 = maybe_optimal(IntermodAnalysis),
@@ -1085,7 +1085,7 @@ record_exception_analysis_result(ModuleInfo, Status, ResultStatus, PPId,
         pred_info::in, bool::out) is det.
 
 should_write_exception_info(ModuleInfo, PredId, PredInfo, ShouldWrite) :-
-    pred_info_import_status(PredInfo, ImportStatus),
+    pred_info_get_import_status(PredInfo, ImportStatus),
     (   
         ( ImportStatus = exported 
         ; ImportStatus = opt_exported 

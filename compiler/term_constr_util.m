@@ -231,7 +231,7 @@ set_pred_proc_ids_constr_arg_size_info([PPId | PPIds], ArgSize, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
     module_info_preds(!.ModuleInfo, PredTable0),
     PredInfo0 = PredTable0 ^ det_elem(PredId),
-    pred_info_procedures(PredInfo0, ProcTable0),
+    pred_info_get_procedures(PredInfo0, ProcTable0),
     ProcInfo0 = ProcTable0 ^ det_elem(ProcId),
     proc_info_get_termination2_info(ProcInfo0, TermInfo0),
     TermInfo = TermInfo0 ^ success_constrs := yes(ArgSize),
@@ -474,8 +474,8 @@ change_procs_constr_arg_size_info([ProcId | ProcIds], Override, ArgSize,
         !ProcTable).
 
 all_args_input_or_zero_size(ModuleInfo, PredInfo, ProcInfo) :-
-    pred_info_arg_types(PredInfo, TypeList),
-    proc_info_argmodes(ProcInfo, ModeList),
+    pred_info_get_arg_types(PredInfo, TypeList),
+    proc_info_get_argmodes(ProcInfo, ModeList),
     all_args_input_or_zero_size_2(TypeList, ModeList, ModuleInfo). 
 
 :- pred all_args_input_or_zero_size_2(list(mer_type)::in, list(mer_mode)::in,

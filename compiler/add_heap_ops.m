@@ -84,9 +84,9 @@
             ).
 
 add_heap_ops(ModuleInfo0, !Proc) :-
-    proc_info_goal(!.Proc, Goal0),
-    proc_info_varset(!.Proc, VarSet0),
-    proc_info_vartypes(!.Proc, VarTypes0),
+    proc_info_get_goal(!.Proc, Goal0),
+    proc_info_get_varset(!.Proc, VarSet0),
+    proc_info_get_vartypes(!.Proc, VarTypes0),
     TrailOpsInfo0 = heap_ops_info(VarSet0, VarTypes0, ModuleInfo0),
     goal_add_heap_ops(Goal0, Goal, TrailOpsInfo0, TrailOpsInfo),
     TrailOpsInfo = heap_ops_info(VarSet, VarTypes, _),

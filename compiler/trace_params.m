@@ -194,11 +194,11 @@ eff_trace_level(PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
             % executions of the same I/O action.
             EffTraceLevel = none
         ;
-            pred_info_import_status(PredInfo, Status),
+            pred_info_get_import_status(PredInfo, Status),
             (
                 TraceLevel = shallow,
                 status_is_exported(Status, no),
-                proc_info_is_address_taken(ProcInfo, address_is_not_taken)
+                proc_info_get_is_address_taken(ProcInfo, address_is_not_taken)
             ->
                 EffTraceLevel = none
             ;

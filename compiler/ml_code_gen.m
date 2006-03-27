@@ -960,7 +960,7 @@ ml_gen_preds_2(ModuleInfo, PredIds0, PredTable, !Defns, !IO) :-
     (
         PredIds0 = [PredId | PredIds],
         map.lookup(PredTable, PredId, PredInfo),
-        pred_info_import_status(PredInfo, ImportStatus),
+        pred_info_get_import_status(PredInfo, ImportStatus),
         (
             (
                 ImportStatus = imported(_)
@@ -999,7 +999,7 @@ ml_gen_pred(ModuleInfo, PredId, PredInfo, ImportStatus, !Defns, !IO) :-
     ;
         write_pred_progress_message("% Generating MLDS code for ",
             PredId, ModuleInfo, !IO),
-        pred_info_procedures(PredInfo, ProcTable),
+        pred_info_get_procedures(PredInfo, ProcTable),
         ml_gen_procs(ProcIds, ModuleInfo, PredId, PredInfo, ProcTable, !Defns)
     ).
 
@@ -1024,7 +1024,7 @@ ml_gen_procs([ProcId | ProcIds], ModuleInfo, PredId, PredInfo, ProcTable,
     proc_info::in, mlds_defns::in, mlds_defns::out) is det.
 
 ml_gen_proc(ModuleInfo, PredId, ProcId, _PredInfo, ProcInfo, !Defns) :-
-    proc_info_context(ProcInfo, Context),
+    proc_info_get_context(ProcInfo, Context),
     ml_gen_proc_label(ModuleInfo, PredId, ProcId, Name, _ModuleName),
     MLDS_Context = mlds_make_context(Context),
     DeclFlags = ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId),
@@ -1037,7 +1037,7 @@ ml_gen_proc(ModuleInfo, PredId, ProcId, _PredInfo, ProcInfo, !Defns) :-
     proc_info::in, mlds_defns::in, mlds_defns::out) is det.
 
 ml_gen_maybe_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo, !Defns) :-
-    proc_info_eval_method(ProcInfo, EvalMethod),
+    proc_info_get_eval_method(ProcInfo, EvalMethod),
     (
         eval_method_has_per_proc_tabling_pointer(EvalMethod) = yes
     ->
@@ -1045,7 +1045,7 @@ ml_gen_maybe_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo, !Defns) :-
         Var = tabling_pointer(PredLabel - ProcId),
         Type = mlds_generic_type,
         Initializer = init_obj(const(null(Type))),
-        proc_info_context(ProcInfo, Context),
+        proc_info_get_context(ProcInfo, Context),
         (
             module_info_get_globals(ModuleInfo, Globals),
             globals.get_gc_method(Globals, GC_Method),
@@ -1096,12 +1096,12 @@ ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId) = DeclFlags :-
 
 ml_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcDefnBody, ExtraDefns) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
-    pred_info_import_status(PredInfo, ImportStatus),
-    pred_info_arg_types(PredInfo, ArgTypes),
+    pred_info_get_import_status(PredInfo, ImportStatus),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
     proc_info_interface_code_model(ProcInfo, CodeModel),
-    proc_info_headvars(ProcInfo, HeadVars),
-    proc_info_argmodes(ProcInfo, Modes),
-    proc_info_goal(ProcInfo, Goal0),
+    proc_info_get_headvars(ProcInfo, HeadVars),
+    proc_info_get_argmodes(ProcInfo, Modes),
+    proc_info_get_goal(ProcInfo, Goal0),
 
     % The HLDS front-end sometimes over-estimates the set of non-locals.
     % We need to restrict the set of non-locals for the top-level goal
@@ -1159,8 +1159,8 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcDefnBody, ExtraDefns) :-
                 OutputVarLocals = []
             ;
                 CopiedOutputVars = [_ | _],
-                proc_info_varset(ProcInfo, VarSet),
-                proc_info_vartypes(ProcInfo, VarTypes),
+                proc_info_get_varset(ProcInfo, VarSet),
+                proc_info_get_vartypes(ProcInfo, VarTypes),
                 % note that for headvars we must use the types from
                 % the procedure interface, not from the procedure body
                 HeadVarTypes = map.from_corresponding_lists(HeadVars,
@@ -2434,8 +2434,8 @@ ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes, PredId, ProcId,
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
         _PredInfo, ProcInfo),
-    proc_info_varset(ProcInfo, VarSet),
-%   proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset(ProcInfo, VarSet),
+%   proc_info_get_vartypes(ProcInfo, VarTypes),
     % note that for headvars we must use the types from
     % the procedure interface, not from the procedure body
     ml_gen_info_get_byref_output_vars(!.Info, ByRefOutputVars),

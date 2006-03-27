@@ -247,7 +247,7 @@ fact_table_compile_facts(PredName, Arity, FileName, !PredInfo, Context,
 fact_table_compile_facts_2(PredName, Arity, FileName, !PredInfo, Context,
         ModuleInfo, C_HeaderCode, PrimaryProcID, OutputFileName, OutputStream,
         !IO) :-
-    pred_info_arg_types(!.PredInfo, Types),
+    pred_info_get_arg_types(!.PredInfo, Types),
     init_fact_arg_infos(Types, FactArgInfos0),
     infer_determinism_pass_1(!PredInfo, Context, ModuleInfo, CheckProcs,
         ExistsAllInMode, WriteHashTables, WriteDataTable,
@@ -295,7 +295,7 @@ fact_table_compile_facts_2(PredName, Arity, FileName, !PredInfo, Context,
         list.append(OpenErrors, CompileErrors, OpenCompileErrors),
         (
             OpenCompileErrors = [],
-            pred_info_procedures(!.PredInfo, ProcTable0),
+            pred_info_get_procedures(!.PredInfo, ProcTable0),
             infer_determinism_pass_2(ProcFiles, ExistsAllInMode,
                 ProcTable0, ProcTable, !IO),
             pred_info_set_procedures(ProcTable, !PredInfo),
@@ -442,10 +442,10 @@ check_fact_term_2(PredOrFunc, Arity, PredInfo, ModuleInfo, Terms, Context,
     % Check that arity of the fact is correct.
     list.length(Terms, Len),
     ( Len = Arity ->
-        pred_info_arg_types(PredInfo, Types),
+        pred_info_get_arg_types(PredInfo, Types),
         check_fact_type_and_mode(Types, Terms, 0, PredOrFunc, Context,
             Result, !Errors),
-        pred_info_procedures(PredInfo, ProcTable),
+        pred_info_get_procedures(PredInfo, ProcTable),
         string.int_to_string(FactNum, FactNumStr),
         write_sort_file_lines(ProcStreams, ProcTable, Terms,
             ModuleInfo, FactNumStr, FactArgInfos, yes, !IO),
@@ -777,7 +777,7 @@ fill_in_fact_arg_infos([Mode | Modes], ModuleInfo, [Info0 | Infos0],
 infer_determinism_pass_1(!PredInfo, Context, ModuleInfo, CheckProcs,
         ExistsAllInMode, WriteHashTables, WriteDataTable,
         !FactArgInfos, !Errors) :-
-    pred_info_procedures(!.PredInfo, ProcTable0),
+    pred_info_get_procedures(!.PredInfo, ProcTable0),
     ProcIDs = pred_info_procids(!.PredInfo),
     ( ProcIDs = [] ->
         % There are no declared modes so report an error.
@@ -827,7 +827,7 @@ infer_proc_determinism_pass_1([ProcID | ProcIDs], ModuleInfo, !ProcTable,
         !CheckProcs, !FactArgInfos, MaybeAllInProc, WriteHashTables,
         WriteDataTable, !Errors) :-
     map.lookup(!.ProcTable, ProcID, ProcInfo0),
-    proc_info_argmodes(ProcInfo0, ArgModes),
+    proc_info_get_argmodes(ProcInfo0, ArgModes),
     fill_in_fact_arg_infos(ArgModes, ModuleInfo, !FactArgInfos),
     fact_table_mode_type(ArgModes, ModuleInfo, ModeType),
     (
@@ -838,7 +838,7 @@ infer_proc_determinism_pass_1([ProcID | ProcIDs], ModuleInfo, !ProcTable,
         MaybeAllInProc0 = yes(ProcID)
     ;
         ModeType = all_out,
-        proc_info_declared_determinism(ProcInfo0, MaybeDet),
+        proc_info_get_declared_determinism(ProcInfo0, MaybeDet),
         (
             (
                 MaybeDet = yes(cc_multidet)
@@ -867,7 +867,7 @@ infer_proc_determinism_pass_1([ProcID | ProcIDs], ModuleInfo, !ProcTable,
     ;
         ModeType = other,           % mode error
         InferredDetism = error,
-        proc_info_context(ProcInfo0, Context),
+        proc_info_get_context(ProcInfo0, Context),
         Msg = "Error: only `in' and `out' modes are currently " ++
             "supported in fact tables.",
         add_error_report(Context, [words(Msg)], !Errors),
@@ -877,7 +877,7 @@ infer_proc_determinism_pass_1([ProcID | ProcIDs], ModuleInfo, !ProcTable,
     ;
         ModeType = unknown,         % mode error
         InferredDetism = error,
-        proc_info_context(ProcInfo0, Context),
+        proc_info_get_context(ProcInfo0, Context),
         Msg = "Error: mode list for procedure is empty.",
         add_error_report(Context, [words(Msg)], !Errors),
         WriteHashTables0 = no,
@@ -992,7 +992,7 @@ write_sort_file_lines([], _, _, _, _, _, _, !IO).
 write_sort_file_lines([proc_stream(ProcID, Stream) | ProcStreams], ProcTable,
         Terms, ModuleInfo, FactNumStr, FactArgInfos, IsPrimary, !IO) :-
     map.lookup(ProcTable, ProcID, ProcInfo),
-    proc_info_argmodes(ProcInfo, ArgModes),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
     assoc_list.from_corresponding_lists(ArgModes, Terms, ModeTerms),
     make_sort_file_key(ModeTerms, ModuleInfo, Key),
     (
@@ -1141,7 +1141,7 @@ infer_determinism_pass_2([ProcID - FileName | ProcFiles], ExistsAllInMode,
             ExitStatus >= 1
         ->
             % Duplicate keys => procedure is nondet.
-            proc_info_declared_determinism(ProcInfo0, MaybeDet),
+            proc_info_get_declared_determinism(ProcInfo0, MaybeDet),
             (
                 (
                     MaybeDet = yes(cc_multidet)
@@ -1387,7 +1387,7 @@ write_primary_hash_table(ProcID, FileName, DataFileName, StructName, ProcTable,
             % The type is declared just to stop the C compiler emitting
             % warnings.
             map.lookup(ProcTable, ProcID, ProcInfo),
-            proc_info_argmodes(ProcInfo, ArgModes),
+            proc_info_get_argmodes(ProcInfo, ArgModes),
             read_sort_file_line(FactArgInfos, ArgModes, ModuleInfo,
                 MaybeFirstFact, !IO),
             (
@@ -1453,7 +1453,7 @@ write_secondary_hash_tables([ProcID - FileName | ProcFiles], StructName,
             % warnings.
         string.append(New_C_HeaderCode, !C_HeaderCode),
         map.lookup(ProcTable, ProcID, ProcInfo),
-        proc_info_argmodes(ProcInfo, ArgModes),
+        proc_info_get_argmodes(ProcInfo, ArgModes),
         read_sort_file_line(FactArgInfos, ArgModes, ModuleInfo,
             MaybeFirstFact, !IO),
         (
@@ -2263,7 +2263,7 @@ make_fact_table_identifier(SymName, Identifier) :-
 fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
         ProcInfo, ArgTypes, ModuleInfo, ProcCode, ExtraCode, !IO) :-
     fact_table_size(FactTableSize, !IO),
-    proc_info_argmodes(ProcInfo, ArgModes),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
     proc_info_interface_determinism(ProcInfo, Determinism),
     fact_table_mode_type(ArgModes, ModuleInfo, ModeType),
     make_fact_table_identifier(PredName, Identifier),

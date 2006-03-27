@@ -547,13 +547,13 @@
 
 :- pred pred_info_context(pred_info::in, prog_context::out) is det.
 :- pred pred_info_get_origin(pred_info::in, pred_origin::out) is det.
-:- pred pred_info_import_status(pred_info::in, import_status::out) is det.
+:- pred pred_info_get_import_status(pred_info::in, import_status::out) is det.
 :- pred pred_info_get_goal_type(pred_info::in, goal_type::out) is det.
 :- pred pred_info_get_markers(pred_info::in, pred_markers::out) is det.
 :- pred pred_info_get_attributes(pred_info::in, pred_attributes::out) is det.
-:- pred pred_info_arg_types(pred_info::in, list(mer_type)::out) is det.
-:- pred pred_info_typevarset(pred_info::in, tvarset::out) is det.
-:- pred pred_info_tvar_kinds(pred_info::in, tvar_kind_map::out) is det.
+:- pred pred_info_get_arg_types(pred_info::in, list(mer_type)::out) is det.
+:- pred pred_info_get_typevarset(pred_info::in, tvarset::out) is det.
+:- pred pred_info_get_tvar_kinds(pred_info::in, tvar_kind_map::out) is det.
 :- pred pred_info_get_exist_quant_tvars(pred_info::in, existq_tvars::out)
     is det.
 :- pred pred_info_get_existq_tvar_binding(pred_info::in, tsubst::out) is det.
@@ -569,7 +569,7 @@
     list(prog_constraint)::out) is det.
 :- pred pred_info_get_assertions(pred_info::in, set(assert_id)::out) is det.
 :- pred pred_info_clauses_info(pred_info::in, clauses_info::out) is det.
-:- pred pred_info_procedures(pred_info::in, proc_table::out) is det.
+:- pred pred_info_get_procedures(pred_info::in, proc_table::out) is det.
 
     % Setting the name of a pred_info after its creation won't remove its name
     % from the indexes under its old name or insert into the indexes under its
@@ -651,7 +651,7 @@
 :- pred pred_info_remove_procid(proc_id::in, pred_info::in, pred_info::out)
     is det.
 
-:- pred pred_info_arg_types(pred_info::in, tvarset::out, existq_tvars::out,
+:- pred pred_info_get_arg_types(pred_info::in, tvarset::out, existq_tvars::out,
     list(mer_type)::out) is det.
 
 :- pred pred_info_set_arg_types(tvarset::in, existq_tvars::in,
@@ -1015,9 +1015,9 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
         Markers, ArgTypes, TypeVarSet, ExistQVars, ClassContext,
         Assertions, ProcInfo, ProcId, PredInfo) :-
     list.length(ArgTypes, Arity),
-    proc_info_varset(ProcInfo, VarSet),
-    proc_info_vartypes(ProcInfo, VarTypes),
-    proc_info_headvars(ProcInfo, HeadVars),
+    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_headvars(ProcInfo, HeadVars),
     unqualify_name(SymName, PredName),
     Attributes = [],
     map.init(ClassProofs),
@@ -1033,7 +1033,7 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
     % The empty list of clauses is a little white lie.
     Clauses = init_clauses_rep,
     map.init(TVarNameMap),
-    proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
+    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     HasForeignClauses = no,
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
         HeadVars, Clauses, RttiVarMaps, HasForeignClauses),
@@ -1148,13 +1148,13 @@ pred_info_orig_arity(PI) = PI ^ orig_arity.
 pred_info_is_pred_or_func(PI) = PI ^ is_pred_or_func.
 pred_info_context(PI, PI ^ context).
 pred_info_get_origin(PI, PI ^ pred_origin).
-pred_info_import_status(PI, PI ^ import_status).
+pred_info_get_import_status(PI, PI ^ import_status).
 pred_info_get_goal_type(PI, PI ^ goal_type).
 pred_info_get_markers(PI, PI ^ markers).
 pred_info_get_attributes(PI, PI ^ attributes).
-pred_info_arg_types(PI, PI ^ arg_types).
-pred_info_typevarset(PI, PI ^ typevarset).
-pred_info_tvar_kinds(PI, PI ^ tvar_kinds).
+pred_info_get_arg_types(PI, PI ^ arg_types).
+pred_info_get_typevarset(PI, PI ^ typevarset).
+pred_info_get_tvar_kinds(PI, PI ^ tvar_kinds).
 pred_info_get_exist_quant_tvars(PI, PI ^ exist_quant_tvars).
 pred_info_get_existq_tvar_binding(PI, PI ^ existq_tvar_binding).
 pred_info_get_head_type_params(PI, PI ^ head_type_params).
@@ -1164,7 +1164,7 @@ pred_info_get_constraint_map(PI, PI ^ constraint_map).
 pred_info_get_unproven_body_constraints(PI, PI ^ unproven_body_constraints).
 pred_info_get_assertions(PI, PI ^ assertions).
 pred_info_clauses_info(PI, PI ^ clauses_info).
-pred_info_procedures(PI, PI ^ procedures).
+pred_info_get_procedures(PI, PI ^ procedures).
 
 pred_info_set_name(X, PI, PI ^ name := X).
 pred_info_set_origin(X, PI, PI ^ pred_origin := X).
@@ -1202,7 +1202,7 @@ pred_info_procids(PredInfo) = ValidProcIds :-
     list.filter(IsValid, AllProcIds, ValidProcIds).
 
 pred_info_non_imported_procids(PredInfo) = ProcIds :-
-    pred_info_import_status(PredInfo, ImportStatus),
+    pred_info_get_import_status(PredInfo, ImportStatus),
     ( ImportStatus = imported(_) ->
         ProcIds = []
     ; ImportStatus = external(_) ->
@@ -1216,7 +1216,7 @@ pred_info_non_imported_procids(PredInfo) = ProcIds :-
     ).
 
 pred_info_all_non_imported_procids(PredInfo) = ProcIds :-
-    pred_info_import_status(PredInfo, ImportStatus),
+    pred_info_get_import_status(PredInfo, ImportStatus),
     ( ImportStatus = imported(_) ->
         ProcIds = []
     ; ImportStatus = external(_) ->
@@ -1230,7 +1230,7 @@ pred_info_all_non_imported_procids(PredInfo) = ProcIds :-
     ).
 
 pred_info_exported_procids(PredInfo) = ProcIds :-
-    pred_info_import_status(PredInfo, ImportStatus),
+    pred_info_get_import_status(PredInfo, ImportStatus),
     (
         ( ImportStatus = exported
         ; ImportStatus = opt_exported
@@ -1247,11 +1247,11 @@ pred_info_exported_procids(PredInfo) = ProcIds :-
     ).
 
 pred_info_remove_procid(ProcId, !PredInfo) :-
-    pred_info_procedures(!.PredInfo, Procs0),
+    pred_info_get_procedures(!.PredInfo, Procs0),
     map.delete(Procs0, ProcId, Procs),
     pred_info_set_procedures(Procs, !PredInfo).
 
-pred_info_arg_types(PredInfo, PredInfo ^ decl_typevarset,
+pred_info_get_arg_types(PredInfo, PredInfo ^ decl_typevarset,
         PredInfo ^ exist_quant_tvars, PredInfo ^ arg_types).
 
 pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes, !PredInfo) :-
@@ -1267,29 +1267,29 @@ pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo) :-
         map.set(PredInfo0 ^ procedures, ProcId, ProcInfo).
 
 pred_info_is_imported(PredInfo) :-
-    pred_info_import_status(PredInfo, Status),
+    pred_info_get_import_status(PredInfo, Status),
     ( Status = imported(_)
     ; Status = external(_)
     ).
 
 pred_info_is_pseudo_imported(PredInfo) :-
-    pred_info_import_status(PredInfo, ImportStatus),
+    pred_info_get_import_status(PredInfo, ImportStatus),
     ImportStatus = pseudo_imported.
 
 pred_info_is_exported(PredInfo) :-
-    pred_info_import_status(PredInfo, ImportStatus),
+    pred_info_get_import_status(PredInfo, ImportStatus),
     ImportStatus = exported.
 
 pred_info_is_opt_exported(PredInfo) :-
-    pred_info_import_status(PredInfo, ImportStatus),
+    pred_info_get_import_status(PredInfo, ImportStatus),
     ImportStatus = opt_exported.
 
 pred_info_is_exported_to_submodules(PredInfo) :-
-    pred_info_import_status(PredInfo, ImportStatus),
+    pred_info_get_import_status(PredInfo, ImportStatus),
     ImportStatus = exported_to_submodules.
 
 pred_info_is_pseudo_exported(PredInfo) :-
-    pred_info_import_status(PredInfo, ImportStatus),
+    pred_info_get_import_status(PredInfo, ImportStatus),
     ImportStatus = pseudo_exported.
 
 procedure_is_exported(ModuleInfo, PredInfo, ProcId) :-
@@ -1303,7 +1303,7 @@ procedure_is_exported(ModuleInfo, PredInfo, ProcId) :-
         pred_info_is_pseudo_exported(PredInfo),
         in_in_unification_proc_id(ProcId)
     ;
-        pred_info_import_status(PredInfo, ImportStatus),
+        pred_info_get_import_status(PredInfo, ImportStatus),
         ImportStatus = external(ExternalImportStatus),
         status_is_exported(ExternalImportStatus, yes)
     ;
@@ -1423,7 +1423,7 @@ terminates_to_markers(does_not_terminate, [does_not_terminate]).
 terminates_to_markers(depends_on_mercury_calls, []).
 
 pred_info_get_univ_quant_tvars(PredInfo, UnivQVars) :-
-    pred_info_arg_types(PredInfo, ArgTypes),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
     prog_type.vars_list(ArgTypes, ArgTypeVars0),
     list.sort_and_remove_dups(ArgTypeVars0, ArgTypeVars),
     pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
@@ -1678,33 +1678,33 @@ attribute_list_to_attributes(Attributes, Attributes).
 
     % Predicates to get fields of proc_infos.
 
-:- pred proc_info_context(proc_info::in, prog_context::out) is det.
-:- pred proc_info_varset(proc_info::in, prog_varset::out) is det.
-:- pred proc_info_vartypes(proc_info::in, vartypes::out) is det.
-:- pred proc_info_headvars(proc_info::in, list(prog_var)::out) is det.
-:- pred proc_info_inst_varset(proc_info::in, inst_varset::out) is det.
-:- pred proc_info_maybe_declared_argmodes(proc_info::in,
+:- pred proc_info_get_context(proc_info::in, prog_context::out) is det.
+:- pred proc_info_get_varset(proc_info::in, prog_varset::out) is det.
+:- pred proc_info_get_vartypes(proc_info::in, vartypes::out) is det.
+:- pred proc_info_get_headvars(proc_info::in, list(prog_var)::out) is det.
+:- pred proc_info_get_inst_varset(proc_info::in, inst_varset::out) is det.
+:- pred proc_info_get_maybe_declared_argmodes(proc_info::in,
     maybe(list(mer_mode))::out) is det.
-:- pred proc_info_argmodes(proc_info::in, list(mer_mode)::out) is det.
-:- pred proc_info_maybe_arglives(proc_info::in,
+:- pred proc_info_get_argmodes(proc_info::in, list(mer_mode)::out) is det.
+:- pred proc_info_get_maybe_arglives(proc_info::in,
     maybe(list(is_live))::out) is det.
-:- pred proc_info_declared_determinism(proc_info::in,
+:- pred proc_info_get_declared_determinism(proc_info::in,
     maybe(determinism)::out) is det.
-:- pred proc_info_inferred_determinism(proc_info::in, determinism::out) is det.
-:- pred proc_info_goal(proc_info::in, hlds_goal::out) is det.
-:- pred proc_info_can_process(proc_info::in, bool::out) is det.
-:- pred proc_info_rtti_varmaps(proc_info::in, rtti_varmaps::out) is det.
-:- pred proc_info_eval_method(proc_info::in, eval_method::out) is det.
+:- pred proc_info_get_inferred_determinism(proc_info::in, determinism::out) is det.
+:- pred proc_info_get_goal(proc_info::in, hlds_goal::out) is det.
+:- pred proc_info_get_can_process(proc_info::in, bool::out) is det.
+:- pred proc_info_get_rtti_varmaps(proc_info::in, rtti_varmaps::out) is det.
+:- pred proc_info_get_eval_method(proc_info::in, eval_method::out) is det.
 :- pred proc_info_get_maybe_arg_size_info(proc_info::in,
     maybe(arg_size_info)::out) is det.
 :- pred proc_info_get_maybe_termination_info(proc_info::in,
     maybe(termination_info)::out) is det.
-:- pred proc_info_is_address_taken(proc_info::in,
+:- pred proc_info_get_is_address_taken(proc_info::in,
     is_address_taken::out) is det.
-:- pred proc_info_stack_slots(proc_info::in, stack_slots::out) is det.
+:- pred proc_info_get_stack_slots(proc_info::in, stack_slots::out) is det.
 :- pred proc_info_maybe_arg_info(proc_info::in,
     maybe(list(arg_info))::out) is det.
-:- pred proc_info_liveness_info(proc_info::in, liveness_info::out) is det.
+:- pred proc_info_get_liveness_info(proc_info::in, liveness_info::out) is det.
 :- pred proc_info_get_need_maxfr_slot(proc_info::in, bool::out) is det.
 :- pred proc_info_get_call_table_tip(proc_info::in,
     maybe(prog_var)::out) is det.
@@ -1861,7 +1861,7 @@ attribute_list_to_attributes(Attributes, Attributes).
     % If the procedure has a input/output pair of io.state arguments,
     % return the positions of those arguments in the argument list.
     % The positions are given as argument numbers, with the first argument
-    % in proc_info_headvars being position 1, and so on. The first output
+    % in proc_info_get_headvars being position 1, and so on. The first output
     % argument gives the position of the input state, the second the
     % position of the output state.
     %
@@ -2162,27 +2162,27 @@ proc_info_set_body(VarSet, VarTypes, HeadVars, Goal, RttiVarMaps,
     !:ProcInfo = !.ProcInfo ^ body := Goal,
     !:ProcInfo = !.ProcInfo ^ proc_rtti_varmaps := RttiVarMaps.
 
-proc_info_context(PI, PI ^ proc_context).
-proc_info_varset(PI, PI ^ prog_varset).
-proc_info_vartypes(PI, PI ^ var_types).
-proc_info_headvars(PI, PI ^ head_vars).
-proc_info_inst_varset(PI, PI ^ inst_varset).
-proc_info_maybe_declared_argmodes(PI, PI ^ maybe_declared_head_modes).
-proc_info_argmodes(PI, PI ^ actual_head_modes).
-proc_info_maybe_arglives(PI, PI ^ head_var_caller_liveness).
-proc_info_declared_determinism(PI, PI ^ declared_detism).
-proc_info_inferred_determinism(PI, PI ^ inferred_detism).
-proc_info_goal(PI, PI ^ body).
-proc_info_can_process(PI, PI ^ can_process).
-proc_info_rtti_varmaps(PI, PI ^ proc_rtti_varmaps).
-proc_info_eval_method(PI, PI ^ eval_method).
+proc_info_get_context(PI, PI ^ proc_context).
+proc_info_get_varset(PI, PI ^ prog_varset).
+proc_info_get_vartypes(PI, PI ^ var_types).
+proc_info_get_headvars(PI, PI ^ head_vars).
+proc_info_get_inst_varset(PI, PI ^ inst_varset).
+proc_info_get_maybe_declared_argmodes(PI, PI ^ maybe_declared_head_modes).
+proc_info_get_argmodes(PI, PI ^ actual_head_modes).
+proc_info_get_maybe_arglives(PI, PI ^ head_var_caller_liveness).
+proc_info_get_declared_determinism(PI, PI ^ declared_detism).
+proc_info_get_inferred_determinism(PI, PI ^ inferred_detism).
+proc_info_get_goal(PI, PI ^ body).
+proc_info_get_can_process(PI, PI ^ can_process).
+proc_info_get_rtti_varmaps(PI, PI ^ proc_rtti_varmaps).
+proc_info_get_eval_method(PI, PI ^ eval_method).
 proc_info_get_maybe_arg_size_info(PI, PI ^ proc_sub_info ^ maybe_arg_sizes).
 proc_info_get_maybe_termination_info(PI,
     PI ^ proc_sub_info ^ maybe_termination).
-proc_info_is_address_taken(PI, PI ^ proc_sub_info ^ is_address_taken).
-proc_info_stack_slots(PI, PI ^ proc_sub_info ^ stack_slots).
+proc_info_get_is_address_taken(PI, PI ^ proc_sub_info ^ is_address_taken).
+proc_info_get_stack_slots(PI, PI ^ proc_sub_info ^ stack_slots).
 proc_info_maybe_arg_info(PI, PI ^ proc_sub_info ^ arg_pass_info).
-proc_info_liveness_info(PI, PI ^ proc_sub_info ^ initial_liveness).
+proc_info_get_liveness_info(PI, PI ^ proc_sub_info ^ initial_liveness).
 proc_info_get_need_maxfr_slot(PI, PI ^ proc_sub_info ^ need_maxfr_slot).
 proc_info_get_call_table_tip(PI, PI ^ proc_sub_info ^ call_table_tip).
 proc_info_get_maybe_proc_table_info(PI, PI ^ proc_sub_info ^ maybe_table_info).
@@ -2238,27 +2238,27 @@ proc_info_set_head_modes_constraint(HMC, ProcInfo,
     ProcInfo ^ maybe_head_modes_constraint := yes(HMC)).
 
 proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap) :-
-    proc_info_headvars(ProcInfo, HeadVars),
-    proc_info_argmodes(ProcInfo, ArgModes),
+    proc_info_get_headvars(ProcInfo, HeadVars),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
     mode_list_get_initial_insts(ModuleInfo, ArgModes, InitialInsts),
     assoc_list.from_corresponding_lists(HeadVars, InitialInsts, InstAL),
     instmap.from_assoc_list(InstAL, InstMap).
 
 proc_info_declared_argmodes(ProcInfo, ArgModes) :-
-    proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
+    proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
     (
         MaybeArgModes = yes(ArgModes1),
         ArgModes = ArgModes1
     ;
         MaybeArgModes = no,
-        proc_info_argmodes(ProcInfo, ArgModes)
+        proc_info_get_argmodes(ProcInfo, ArgModes)
     ).
 
 proc_info_interface_determinism(ProcInfo, Determinism) :-
-    proc_info_declared_determinism(ProcInfo, MaybeDeterminism),
+    proc_info_get_declared_determinism(ProcInfo, MaybeDeterminism),
     (
         MaybeDeterminism = no,
-        proc_info_inferred_determinism(ProcInfo, Determinism)
+        proc_info_get_inferred_determinism(ProcInfo, Determinism)
     ;
         MaybeDeterminism = yes(Determinism)
     ).
@@ -2266,7 +2266,7 @@ proc_info_interface_determinism(ProcInfo, Determinism) :-
     % Return Result = yes if the called predicate is known to never succeed.
     %
 proc_info_never_succeeds(ProcInfo, Result) :-
-    proc_info_declared_determinism(ProcInfo, DeclaredDeterminism),
+    proc_info_get_declared_determinism(ProcInfo, DeclaredDeterminism),
     (
         DeclaredDeterminism = no,
         Result = no
@@ -2281,13 +2281,13 @@ proc_info_never_succeeds(ProcInfo, Result) :-
     ).
 
 proc_info_arglives(ProcInfo, ModuleInfo, ArgLives) :-
-    proc_info_maybe_arglives(ProcInfo, MaybeArgLives),
+    proc_info_get_maybe_arglives(ProcInfo, MaybeArgLives),
     (
         MaybeArgLives = yes(ArgLives0),
         ArgLives = ArgLives0
     ;
         MaybeArgLives = no,
-        proc_info_argmodes(ProcInfo, Modes),
+        proc_info_get_argmodes(ProcInfo, Modes),
         get_arg_lives(ModuleInfo, Modes, ArgLives)
     ).
 
@@ -2318,15 +2318,15 @@ proc_info_set_structure_sharing(Sharing, !ProcInfo) :-
         yes(Sharing).
 
 proc_info_ensure_unique_names(!ProcInfo) :-
-    proc_info_vartypes(!.ProcInfo, VarTypes),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes),
     map.keys(VarTypes, AllVars),
-    proc_info_varset(!.ProcInfo, VarSet0),
+    proc_info_get_varset(!.ProcInfo, VarSet0),
     varset.ensure_unique_names(AllVars, "p", VarSet0, VarSet),
     proc_info_set_varset(VarSet, !ProcInfo).
 
 proc_info_create_var_from_type(Type, MaybeName, NewVar, !ProcInfo) :-
-    proc_info_varset(!.ProcInfo, VarSet0),
-    proc_info_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset(!.ProcInfo, VarSet0),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     varset.new_maybe_named_var(VarSet0, MaybeName, NewVar, VarSet),
     map.det_insert(VarTypes0, NewVar, Type, VarTypes),
     proc_info_set_varset(VarSet, !ProcInfo),
@@ -2334,8 +2334,8 @@ proc_info_create_var_from_type(Type, MaybeName, NewVar, !ProcInfo) :-
 
 proc_info_create_vars_from_types(Types, NewVars, !ProcInfo) :-
     list.length(Types, NumVars),
-    proc_info_varset(!.ProcInfo, VarSet0),
-    proc_info_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset(!.ProcInfo, VarSet0),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     varset.new_vars(VarSet0, NumVars, NewVars, VarSet),
     map.det_insert_from_corresponding_lists(VarTypes0, NewVars,
         Types, VarTypes),
@@ -2343,9 +2343,9 @@ proc_info_create_vars_from_types(Types, NewVars, !ProcInfo) :-
     proc_info_set_vartypes(VarTypes, !ProcInfo).
 
 proc_info_instantiated_head_vars(ModuleInfo, ProcInfo, ChangedInstHeadVars) :-
-    proc_info_headvars(ProcInfo, HeadVars),
-    proc_info_argmodes(ProcInfo, ArgModes),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_headvars(ProcInfo, HeadVars),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     assoc_list.from_corresponding_lists(HeadVars, ArgModes, HeadVarModes),
     IsInstChanged = (pred(VarMode::in, Var::out) is semidet :-
         VarMode = Var - Mode,
@@ -2357,9 +2357,9 @@ proc_info_instantiated_head_vars(ModuleInfo, ProcInfo, ChangedInstHeadVars) :-
 
 proc_info_uninstantiated_head_vars(ModuleInfo, ProcInfo,
         UnchangedInstHeadVars) :-
-    proc_info_headvars(ProcInfo, HeadVars),
-    proc_info_argmodes(ProcInfo, ArgModes),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_headvars(ProcInfo, HeadVars),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     assoc_list.from_corresponding_lists(HeadVars, ArgModes, HeadVarModes),
     IsInstUnchanged = (pred(VarMode::in, Var::out) is semidet :-
         VarMode = Var - Mode,
@@ -2377,10 +2377,10 @@ proc_interface_should_use_typeinfo_liveness(PredInfo, ProcId, Globals,
     ( no_type_info_builtin(PredModule, PredName, PredArity) ->
         InterfaceTypeInfoLiveness = no
     ;
-        pred_info_import_status(PredInfo, Status),
-        pred_info_procedures(PredInfo, ProcTable),
+        pred_info_get_import_status(PredInfo, Status),
+        pred_info_get_procedures(PredInfo, ProcTable),
         map.lookup(ProcTable, ProcId, ProcInfo),
-        proc_info_is_address_taken(ProcInfo, IsAddressTaken),
+        proc_info_get_is_address_taken(ProcInfo, IsAddressTaken),
         non_special_interface_should_use_typeinfo_liveness(Status,
             IsAddressTaken, Globals, InterfaceTypeInfoLiveness)
     ).
@@ -2431,9 +2431,9 @@ non_special_body_should_use_typeinfo_liveness(Globals, BodyTypeInfoLiveness) :-
         BodyTypeInfoLiveness).
 
 proc_info_has_io_state_pair(ModuleInfo, ProcInfo, InArgNum, OutArgNum) :-
-    proc_info_headvars(ProcInfo, HeadVars),
-    proc_info_argmodes(ProcInfo, ArgModes),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_headvars(ProcInfo, HeadVars),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     proc_info_has_io_state_pair_from_details(ModuleInfo, HeadVars,
         ArgModes, VarTypes, InArgNum, OutArgNum).
 
@@ -2515,8 +2515,8 @@ find_lowest_unused_proc_id_2(TrialProcId, ProcTable, CloneProcId) :-
     ).
 
 ensure_all_headvars_are_named(!ProcInfo) :-
-    proc_info_headvars(!.ProcInfo, HeadVars),
-    proc_info_varset(!.ProcInfo, VarSet0),
+    proc_info_get_headvars(!.ProcInfo, HeadVars),
+    proc_info_get_varset(!.ProcInfo, VarSet0),
     ensure_all_headvars_are_named_2(HeadVars, 1, VarSet0, VarSet),
     proc_info_set_varset(VarSet, !ProcInfo).
 

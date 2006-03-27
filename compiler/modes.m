@@ -539,9 +539,9 @@ copy_pred_body(OldPredTable, PredId, PredTable0, PredTable) :-
     ->
         PredTable = PredTable0
     ;
-        pred_info_procedures(PredInfo0, ProcTable0),
+        pred_info_get_procedures(PredInfo0, ProcTable0),
         map.lookup(OldPredTable, PredId, OldPredInfo),
-        pred_info_procedures(OldPredInfo, OldProcTable),
+        pred_info_get_procedures(OldPredInfo, OldProcTable),
         map.keys(OldProcTable, OldProcIds),
         list.foldl(copy_proc_body(OldProcTable), OldProcIds,
             ProcTable0, ProcTable),
@@ -559,7 +559,7 @@ copy_pred_body(OldPredTable, PredId, PredTable0, PredTable) :-
 
 copy_proc_body(OldProcTable, ProcId, ProcTable0, ProcTable) :-
     map.lookup(OldProcTable, ProcId, OldProcInfo),
-    proc_info_goal(OldProcInfo, OldProcBody),
+    proc_info_get_goal(OldProcInfo, OldProcBody),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
     proc_info_set_goal(OldProcBody, ProcInfo0, ProcInfo),
     map.set(ProcTable0, ProcId, ProcInfo, ProcTable).
@@ -664,11 +664,11 @@ modecheck_pred_mode_2(PredId, PredInfo0, WhatToCheck, MayChangeCalledProc,
         !ModuleInfo, !Changed, NumErrors, !IO) :-
     (
         WhatToCheck = check_modes,
-        pred_info_procedures(PredInfo0, ProcTable),
+        pred_info_get_procedures(PredInfo0, ProcTable),
         (
             some [ProcInfo] (
                 map.member(ProcTable, _ProcId, ProcInfo),
-                proc_info_maybe_declared_argmodes(ProcInfo, yes(_))
+                proc_info_get_maybe_declared_argmodes(ProcInfo, yes(_))
             )
         ->
             % there was at least one declared mode for this
@@ -727,7 +727,7 @@ maybe_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         % get the proc_info from the module_info
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         _PredInfo0, ProcInfo0),
-    ( proc_info_can_process(ProcInfo0, no) ->
+    ( proc_info_get_can_process(ProcInfo0, no) ->
         NumErrors = 0
     ;
             % modecheck it
@@ -738,7 +738,7 @@ maybe_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
             % save the proc_info back in the module_info
         module_info_preds(!.ModuleInfo, Preds1),
         map.lookup(Preds1, PredId, PredInfo1),
-        pred_info_procedures(PredInfo1, Procs1),
+        pred_info_get_procedures(PredInfo1, Procs1),
         map.set(Procs1, ProcId, ProcInfo, Procs),
         pred_info_set_procedures(Procs, PredInfo1, PredInfo),
         map.set(Preds1, PredId, PredInfo, Preds),
@@ -758,10 +758,10 @@ modecheck_proc_info(ProcId, PredId, !ModuleInfo, !ProcInfo, NumErrors, !IO) :-
 do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         !ModuleInfo, !ProcInfo, !Changed, NumErrors, !IO) :-
         % extract the useful fields in the proc_info
-    proc_info_headvars(!.ProcInfo, HeadVars),
-    proc_info_argmodes(!.ProcInfo, ArgModes0),
+    proc_info_get_headvars(!.ProcInfo, HeadVars),
+    proc_info_get_argmodes(!.ProcInfo, ArgModes0),
     proc_info_arglives(!.ProcInfo, !.ModuleInfo, ArgLives0),
-    proc_info_goal(!.ProcInfo, Body0),
+    proc_info_get_goal(!.ProcInfo, Body0),
 
     % We use the context of the first clause, unless there weren't any clauses
     % at all, in which case we use the context of the mode declaration.
@@ -773,7 +773,7 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         FirstClause = clause(_, _, _, Context)
     ;
         ClauseList = [],
-        proc_info_context(!.ProcInfo, Context)
+        proc_info_get_context(!.ProcInfo, Context)
     ),
 
     % Modecheck the body. First set the initial instantiation of the head
@@ -1102,7 +1102,7 @@ modecheck_final_insts(HeadVars, InferModes, FinalInsts0, FinalInsts,
         mode_info_get_preds(!.ModeInfo, Preds),
         mode_info_get_predid(!.ModeInfo, PredId),
         map.lookup(Preds, PredId, PredInfo),
-        pred_info_procedures(PredInfo, Procs),
+        pred_info_get_procedures(PredInfo, Procs),
         mode_info_get_procid(!.ModeInfo, ProcId),
         map.lookup(Procs, ProcId, ProcInfo),
         proc_info_arglives(ProcInfo, ModuleInfo, ArgLives),
@@ -2480,14 +2480,14 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
         %
     mode_info_get_preds(ModeInfo, Preds),
     map.lookup(Preds, PredId, PredInfo),
-    pred_info_procedures(PredInfo, ProcTable),
+    pred_info_get_procedures(PredInfo, ProcTable),
     map.values(ProcTable, ProcInfos),
     list.member(ProcInfo, ProcInfos),
-    proc_info_declared_determinism(ProcInfo, yes(DeclaredDetism)),
+    proc_info_get_declared_determinism(ProcInfo, yes(DeclaredDetism)),
     ( DeclaredDetism = (det) ; DeclaredDetism = (cc_multidet) ),
         % Find the argument modes.
         %
-    proc_info_argmodes(ProcInfo, ArgModes),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
         % Process the call args.
         %
     candidate_init_vars_call(ModeInfo, Args, ArgModes,
@@ -2626,7 +2626,7 @@ check_for_impurity_error(Goal, Goals, !ImpurityErrors, !ModeInfo, !IO) :-
     mode_info_get_predid(!.ModeInfo, PredId),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_clauses_info(PredInfo, ClausesInfo),
-    clauses_info_headvars(ClausesInfo, HeadVars),
+    clauses_info_get_headvars(ClausesInfo, HeadVars),
     filter_headvar_unification_goals(HeadVars, DelayedGoals0,
         HeadVarUnificationGoals, NonHeadVarUnificationGoals0),
     modecheck_delayed_solver_goals(Goals,
@@ -2815,7 +2815,7 @@ modecheck_par_conj_list([Goal0 | Goals0], [Goal | Goals], NonLocals,
     %
 compute_arg_offset(PredInfo, ArgOffset) :-
     OrigArity = pred_info_orig_arity(PredInfo),
-    pred_info_arg_types(PredInfo, ArgTypes),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
     list.length(ArgTypes, CurrentArity),
     ArgOffset = OrigArity - CurrentArity.
 
@@ -3257,8 +3257,8 @@ build_call(CalleeModuleName, CalleePredName, ArgVars, NonLocals, InstmapDelta,
 
         % Update the information in the mode_info.
         %
-    proc_info_varset(ProcInfo, VarSet),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     mode_info_set_varset(VarSet, !ModeInfo),
     mode_info_set_var_types(VarTypes, !ModeInfo),
     mode_info_set_module_info(ModuleInfo, !ModeInfo).
@@ -3303,8 +3303,8 @@ proc_check_eval_methods([], _, !ModuleInfo, !IO).
 proc_check_eval_methods([ProcId | Rest], PredId, !ModuleInfo, !IO) :-
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         PredInfo, ProcInfo),
-    proc_info_eval_method(ProcInfo, EvalMethod),
-    proc_info_argmodes(ProcInfo, Modes),
+    proc_info_get_eval_method(ProcInfo, EvalMethod),
+    proc_info_get_argmodes(ProcInfo, Modes),
     (
         eval_method_requires_ground_args(EvalMethod) = yes,
         \+ only_fully_in_out_modes(Modes, !.ModuleInfo)
@@ -3383,8 +3383,8 @@ check_mode_of_main([Di, Uo], ModuleInfo) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 report_eval_method_requires_ground_args(ProcInfo, !ModuleInfo, !IO) :-
-    proc_info_eval_method(ProcInfo, EvalMethod),
-    proc_info_context(ProcInfo, Context),
+    proc_info_get_eval_method(ProcInfo, EvalMethod),
+    proc_info_get_context(ProcInfo, Context),
     EvalMethodS = eval_method_to_one_string(EvalMethod),
     globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     Pieces1 = [words("Sorry, not implemented:"),
@@ -3408,8 +3408,8 @@ report_eval_method_requires_ground_args(ProcInfo, !ModuleInfo, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 report_eval_method_destroys_uniqueness(ProcInfo, !ModuleInfo, !IO) :-
-    proc_info_eval_method(ProcInfo, EvalMethod),
-    proc_info_context(ProcInfo, Context),
+    proc_info_get_eval_method(ProcInfo, EvalMethod),
+    proc_info_get_context(ProcInfo, Context),
     EvalMethodS = eval_method_to_one_string(EvalMethod),
     globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     Pieces1 = [words("Error:"),
@@ -3433,7 +3433,7 @@ report_eval_method_destroys_uniqueness(ProcInfo, !ModuleInfo, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 report_wrong_mode_for_main(ProcInfo, !ModuleInfo, !IO) :-
-    proc_info_context(ProcInfo, Context),
+    proc_info_get_context(ProcInfo, Context),
     Pieces = [words("Error: main/2 must have mode `(di, uo)'.")],
     write_error_pieces(Context, 0, Pieces, !IO),
     module_info_incr_errors(!ModuleInfo).

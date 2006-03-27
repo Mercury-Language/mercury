@@ -294,7 +294,7 @@ replace_in_pred(EqvMap, PredId, !ModuleInfo, !Cache) :-
     equiv_type.maybe_record_expanded_items(ModuleName,
         qualified(ModuleName, PredName), MaybeRecompInfo0, !:EquivTypeInfo),
 
-    pred_info_arg_types(!.PredInfo, ArgTVarSet0, ExistQVars, ArgTypes0),
+    pred_info_get_arg_types(!.PredInfo, ArgTVarSet0, ExistQVars, ArgTypes0),
     equiv_type.replace_in_type_list(EqvMap, ArgTypes0, ArgTypes,
         _, ArgTVarSet0, ArgTVarSet1, !EquivTypeInfo),
 
@@ -314,7 +314,7 @@ replace_in_pred(EqvMap, PredId, !ModuleInfo, !Cache) :-
         !.EquivTypeInfo, MaybeRecompInfo0, MaybeRecompInfo),
     module_info_set_maybe_recompilation_info(MaybeRecompInfo, !ModuleInfo),
 
-        pred_info_procedures(!.PredInfo, Procs0),
+        pred_info_get_procedures(!.PredInfo, Procs0),
     map.map_foldl(
         replace_in_proc(EqvMap), Procs0, Procs,
             {!.ModuleInfo, !.PredInfo, !.Cache},
@@ -331,13 +331,13 @@ replace_in_pred(EqvMap, PredId, !ModuleInfo, !Cache) :-
 replace_in_proc(EqvMap, _, !ProcInfo, {!.ModuleInfo, !.PredInfo, !.Cache},
         {!:ModuleInfo, !:PredInfo, !:Cache}) :-
     some [!TVarSet] (
-        pred_info_typevarset(!.PredInfo, !:TVarSet),
+        pred_info_get_typevarset(!.PredInfo, !:TVarSet),
 
-        proc_info_argmodes(!.ProcInfo, ArgModes0),
+        proc_info_get_argmodes(!.ProcInfo, ArgModes0),
         replace_in_modes(EqvMap, ArgModes0, ArgModes, _, !TVarSet, !Cache),
         proc_info_set_argmodes(ArgModes, !ProcInfo),
 
-        proc_info_maybe_declared_argmodes(!.ProcInfo, MaybeDeclModes0),
+        proc_info_get_maybe_declared_argmodes(!.ProcInfo, MaybeDeclModes0),
         (
             MaybeDeclModes0 = yes(DeclModes0),
             replace_in_modes(EqvMap, DeclModes0, DeclModes, _, !TVarSet,
@@ -347,7 +347,7 @@ replace_in_proc(EqvMap, _, !ProcInfo, {!.ModuleInfo, !.PredInfo, !.Cache},
             MaybeDeclModes0 = no
         ),
 
-        proc_info_vartypes(!.ProcInfo, VarTypes0),
+        proc_info_get_vartypes(!.ProcInfo, VarTypes0),
         map.map_foldl(
             (pred(_::in, VarType0::in, VarType::out,
                     !.TVarSet::in, !:TVarSet::out) is det :-
@@ -357,7 +357,7 @@ replace_in_proc(EqvMap, _, !ProcInfo, {!.ModuleInfo, !.PredInfo, !.Cache},
             VarTypes0, VarTypes, !TVarSet),
         proc_info_set_vartypes(VarTypes, !ProcInfo),
 
-        proc_info_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
+        proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
         rtti_varmaps_types(RttiVarMaps0, AllTypes),
         list.foldl2(
             (pred(OldType::in, !.TMap::in, !:TMap::out,
@@ -372,7 +372,7 @@ replace_in_proc(EqvMap, _, !ProcInfo, {!.ModuleInfo, !.PredInfo, !.Cache},
             ), RttiVarMaps0, RttiVarMaps),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
 
-        proc_info_goal(!.ProcInfo, Goal0),
+        proc_info_get_goal(!.ProcInfo, Goal0),
         replace_in_goal(EqvMap, Goal0, Goal, Changed,
             replace_info(!.ModuleInfo, !.PredInfo, !.ProcInfo, !.TVarSet,
                 !.Cache, no),
@@ -739,8 +739,8 @@ replace_in_goal_expr(EqvMap, Goal0 @ generic_call(A, B, Modes0, D), Goal,
 replace_in_goal_expr(EqvMap, Goal0 @ unify(Var, _, _, _, _), Goal,
         Changed, !Info) :-
     module_info_get_type_table(!.Info ^ module_info, Types),
-    proc_info_vartypes(!.Info ^ proc_info, VarTypes),
-    proc_info_rtti_varmaps(!.Info ^ proc_info, RttiVarMaps),
+    proc_info_get_vartypes(!.Info ^ proc_info, VarTypes),
+    proc_info_get_rtti_varmaps(!.Info ^ proc_info, RttiVarMaps),
     map.lookup(VarTypes, Var, VarType),
     classify_type(!.Info ^ module_info, VarType) = TypeCat,
     (
@@ -770,7 +770,7 @@ replace_in_goal_expr(EqvMap, Goal0 @ unify(Var, _, _, _, _), Goal,
             term.context_init, TypeInfoVar, Goals0, PolyInfo0, PolyInfo),
         poly_info_extract(PolyInfo, PredInfo0, PredInfo,
             !.Info ^ proc_info, ProcInfo, ModuleInfo),
-        pred_info_typevarset(PredInfo, TVarSet),
+        pred_info_get_typevarset(PredInfo, TVarSet),
         !:Info = !.Info ^ pred_info := PredInfo,
         !:Info = !.Info ^ proc_info := ProcInfo,
         !:Info = !.Info ^ module_info := ModuleInfo,

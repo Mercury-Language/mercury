@@ -366,8 +366,8 @@ ml_gen_call(PredId, ProcId, ArgNames, ArgLvals, ActualArgTypes, CodeModel,
     % Compute the callee's Mercury argument types and modes.
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    pred_info_arg_types(PredInfo, PredArgTypes),
-    proc_info_argmodes(ProcInfo, ArgModes),
+    pred_info_get_arg_types(PredInfo, PredArgTypes),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
 
     % Generate code to box/unbox the arguments and compute the list of properly
     % converted rvals/lvals to pass as the function call's arguments and

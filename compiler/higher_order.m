@@ -443,7 +443,7 @@ get_specialization_requests(PredId, !GlobalInfo) :-
             !GlobalInfo),
         module_info_proc_info(!.GlobalInfo ^ module_info, PredId, ProcId,
             ProcInfo),
-        proc_info_goal(ProcInfo, Goal),
+        proc_info_get_goal(ProcInfo, Goal),
         goal_size(Goal, GoalSize),
         map.set(!.GlobalInfo ^ goal_sizes, PredId, GoalSize, GoalSizes),
         !:GlobalInfo = !.GlobalInfo ^ goal_sizes := GoalSizes
@@ -491,7 +491,7 @@ traverse_goal(MustRecompute, !Info) :-
     ;
         true
     ),
-    proc_info_goal(!.Info ^ proc_info, Goal0),
+    proc_info_get_goal(!.Info ^ proc_info, Goal0),
     traverse_goal_2(Goal0, Goal, !Info),
     fixup_proc_info(MustRecompute, Goal, !Info).
 
@@ -507,11 +507,11 @@ fixup_proc_info(MustRecompute, Goal0, !Info) :-
             !:ProcInfo   = !.Info ^ proc_info,
             proc_info_set_goal(Goal0, !ProcInfo),
             requantify_proc(!ProcInfo),
-            proc_info_goal(!.ProcInfo, Goal2),
+            proc_info_get_goal(!.ProcInfo, Goal2),
             RecomputeAtomic = no,
             proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap),
-            proc_info_vartypes(!.ProcInfo, VarTypes),
-            proc_info_inst_varset(!.ProcInfo, InstVarSet),
+            proc_info_get_vartypes(!.ProcInfo, VarTypes),
+            proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
             recompute_instmap_delta(RecomputeAtomic, Goal2, Goal3,
                 VarTypes, InstVarSet, InstMap, !ModuleInfo),
             proc_info_set_goal(Goal3, !ProcInfo),
@@ -885,14 +885,14 @@ maybe_specialize_higher_order_call(PredVar, MaybeMethod, Args,
 
         CallerProcInfo0 = !.Info ^ proc_info,
         CallerPredInfo0 = !.Info ^ pred_info,
-        proc_info_rtti_varmaps(CallerProcInfo0, CallerRttiVarMaps),
+        proc_info_get_rtti_varmaps(CallerProcInfo0, CallerRttiVarMaps),
         rtti_varmaps_var_info(CallerRttiVarMaps, PredVar,
             typeclass_info_var(ClassConstraint)),
         ClassConstraint = constraint(ClassName, ClassArgs),
         list.length(ClassArgs, ClassArity),
         module_info_get_instance_table(ModuleInfo, InstanceTable),
         map.lookup(InstanceTable, class_id(ClassName, ClassArity), Instances),
-        pred_info_typevarset(CallerPredInfo0, TVarSet0),
+        pred_info_get_typevarset(CallerPredInfo0, TVarSet0),
         find_matching_instance_method(Instances, Method, ClassArgs,
             PredId, ProcId, InstanceConstraints, UnconstrainedTVarTypes,
             TVarSet0, TVarSet)
@@ -1163,7 +1163,7 @@ maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
         PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
         proc(PredId, ProcId) = PredProcId,
         map.contains(NewPreds, PredProcId),
-        proc_info_vartypes(ProcInfo0, VarTypes0),
+        proc_info_get_vartypes(ProcInfo0, VarTypes0),
         map.lookup(VarTypes0, LVar, LVarType),
         type_is_higher_order(LVarType, _, _, _, ArgTypes)
     ->
@@ -1203,7 +1203,7 @@ maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
 
             module_info_proc_info(ModuleInfo, NewPredId, NewProcId,
                 NewCalleeProcInfo),
-            proc_info_argmodes(NewCalleeProcInfo, NewCalleeArgModes),
+            proc_info_get_argmodes(NewCalleeProcInfo, NewCalleeArgModes),
             (
                 list.take(list.length(NewArgs), NewCalleeArgModes,
                     CurriedArgModes0)
@@ -1217,7 +1217,7 @@ maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
 
             % The dummy arguments can't be used anywhere.
             ProcInfo2 = !.Info ^ proc_info,
-            proc_info_vartypes(ProcInfo2, VarTypes2),
+            proc_info_get_vartypes(ProcInfo2, VarTypes2),
             map.delete_list(VarTypes2, UncurriedArgs, VarTypes),
             proc_info_set_vartypes(VarTypes, ProcInfo2, ProcInfo),
             !:Info = !.Info ^ proc_info := ProcInfo,
@@ -1269,14 +1269,14 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
         CalleePredInfo, CalleeProcInfo, Args0, IsBuiltin,
         MaybeContext, GoalInfo, Result, !Info) :-
     ModuleInfo0 = !.Info ^ global_info ^ module_info,
-    pred_info_import_status(CalleePredInfo, CalleeStatus),
-    proc_info_vartypes(CalleeProcInfo, CalleeVarTypes),
-    proc_info_headvars(CalleeProcInfo, CalleeHeadVars),
+    pred_info_get_import_status(CalleePredInfo, CalleeStatus),
+    proc_info_get_vartypes(CalleeProcInfo, CalleeVarTypes),
+    proc_info_get_headvars(CalleeProcInfo, CalleeHeadVars),
     map.apply_to_list(CalleeHeadVars, CalleeVarTypes, CalleeArgTypes),
 
     CallerProcInfo0 = !.Info ^ proc_info,
-    proc_info_vartypes(CallerProcInfo0, VarTypes),
-    proc_info_rtti_varmaps(CallerProcInfo0, RttiVarMaps),
+    proc_info_get_vartypes(CallerProcInfo0, VarTypes),
+    proc_info_get_rtti_varmaps(CallerProcInfo0, RttiVarMaps),
     find_higher_order_args(ModuleInfo0, CalleeStatus, Args0,
         CalleeArgTypes, VarTypes, RttiVarMaps, !.Info ^ pred_vars, 1,
         [], HigherOrderArgs0),
@@ -1299,10 +1299,10 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
             % Check whether any typeclass constraints now match an instance.
             pred_info_get_class_context(CalleePredInfo, CalleeClassContext),
             CalleeClassContext = constraints(CalleeUnivConstraints0, _),
-            pred_info_typevarset(CalleePredInfo, CalleeTVarSet),
+            pred_info_get_typevarset(CalleePredInfo, CalleeTVarSet),
             pred_info_get_exist_quant_tvars(CalleePredInfo, CalleeExistQTVars),
             CallerPredInfo0 = !.Info ^ pred_info,
-            pred_info_typevarset(CallerPredInfo0, TVarSet),
+            pred_info_get_typevarset(CallerPredInfo0, TVarSet),
             pred_info_get_univ_quant_tvars(CallerPredInfo0, CallerUnivQTVars),
             type_subst_makes_instance_known(ModuleInfo0,
                 CalleeUnivConstraints0, TVarSet,
@@ -1396,7 +1396,7 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
         ( ConsId = pred_const(ShroudedPredProcId, _) ->
             proc(PredId, _) = unshroud_pred_proc_id(ShroudedPredProcId),
             module_info_pred_info(ModuleInfo, PredId, PredInfo),
-            pred_info_arg_types(PredInfo, CurriedCalleeArgTypes)
+            pred_info_get_arg_types(PredInfo, CurriedCalleeArgTypes)
         ;
             CurriedCalleeArgTypes = CurriedArgTypes
         ),
@@ -1517,9 +1517,9 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
     get_extra_arguments(HigherOrderArgs, Args0, Args),
     compute_extra_typeinfos(Info, Args, ExtraTypeInfoTVars),
 
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     map.apply_to_list(Args0, VarTypes, CallArgTypes),
-    pred_info_typevarset(PredInfo, TVarSet),
+    pred_info_get_typevarset(PredInfo, TVarSet),
 
     Request = request(Caller, proc(CalledPred, CalledProc), Args0,
         ExtraTypeInfoTVars, HigherOrderArgs, CallArgTypes,
@@ -1589,7 +1589,7 @@ compute_extra_typeinfos(Info, Args, ExtraTypeInfoTVars) :-
     % because the type variables are returned sorted by variable number,
     % which will vary between calls).
     ProcInfo = Info ^ proc_info,
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     map.apply_to_list(Args, VarTypes, ArgTypes),
     prog_type.vars_list(ArgTypes, AllTVars),
     (
@@ -1597,7 +1597,7 @@ compute_extra_typeinfos(Info, Args, ExtraTypeInfoTVars) :-
         ExtraTypeInfoTVars = []
     ;
         AllTVars = [_ | _],
-        proc_info_rtti_varmaps(Info ^ proc_info, RttiVarMaps),
+        proc_info_get_rtti_varmaps(Info ^ proc_info, RttiVarMaps),
         list.foldl(arg_contains_type_info_for_tvar(RttiVarMaps),
             Args, [], TypeInfoTVars),
         list.delete_elems(AllTVars, TypeInfoTVars, ExtraTypeInfoTVars0),
@@ -1915,7 +1915,7 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
     ModuleInfo = !.Info ^ global_info ^ module_info,
     ProcInfo0 = !.Info ^ proc_info,
     PredVars = !.Info ^ pred_vars,
-    proc_info_vartypes(ProcInfo0, VarTypes),
+    proc_info_get_vartypes(ProcInfo0, VarTypes),
     module_info_pred_info(ModuleInfo, CalledPred, CalledPredInfo),
     mercury_public_builtin_module = pred_info_module(CalledPredInfo),
     pred_info_module(CalledPredInfo) = mercury_public_builtin_module,
@@ -2352,7 +2352,7 @@ filter_requests_2(Info, Request, !AcceptedRequests, !LoopRequests, !IO) :-
     PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
-    pred_info_arg_types(PredInfo, Types),
+    pred_info_get_arg_types(PredInfo, Types),
     list.length(Types, ActualArity),
     maybe_write_request(VeryVerbose, ModuleInfo, "Request for",
         qualified(PredModule, PredName), Arity, ActualArity,
@@ -2492,7 +2492,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
     PredModule = pred_info_module(PredInfo0),
     globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
-    pred_info_arg_types(PredInfo0, ArgTVarSet, ExistQVars, Types),
+    pred_info_get_arg_types(PredInfo0, ArgTVarSet, ExistQVars, Types),
 
     (
         IsUserTypeSpec = yes,
@@ -2521,7 +2521,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         % be exported.
         % For opt_imported predicates we only want to keep this
         % version if we do some other useful specialization on it.
-        pred_info_import_status(PredInfo0, Status)
+        pred_info_get_import_status(PredInfo0, Status)
     ;
         IsUserTypeSpec = no,
         NewProcId = hlds_pred.initial_proc_id,
@@ -2541,7 +2541,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         yes(PredName), HOArgs, Context, !IO),
 
     pred_info_get_origin(PredInfo0, OrigOrigin),
-    pred_info_typevarset(PredInfo0, TypeVarSet),
+    pred_info_get_typevarset(PredInfo0, TypeVarSet),
     pred_info_get_markers(PredInfo0, MarkerList),
     pred_info_get_goal_type(PredInfo0, GoalType),
     pred_info_get_class_context(PredInfo0, ClassContext),
@@ -2719,20 +2719,20 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
     NewPred = new_pred(NewPredProcId, OldPredProcId, CallerPredProcId, _Name,
         HOArgs0, CallArgs, ExtraTypeInfoTVars0, CallerArgTypes0, _, _, _),
 
-    proc_info_headvars(!.NewProcInfo, HeadVars0),
-    proc_info_argmodes(!.NewProcInfo, ArgModes0),
+    proc_info_get_headvars(!.NewProcInfo, HeadVars0),
+    proc_info_get_argmodes(!.NewProcInfo, ArgModes0),
     pred_info_get_exist_quant_tvars(!.NewPredInfo, ExistQVars0),
-    pred_info_typevarset(!.NewPredInfo, TypeVarSet0),
-    pred_info_tvar_kinds(!.NewPredInfo, KindMap0),
-    pred_info_arg_types(!.NewPredInfo, OriginalArgTypes0),
+    pred_info_get_typevarset(!.NewPredInfo, TypeVarSet0),
+    pred_info_get_tvar_kinds(!.NewPredInfo, KindMap0),
+    pred_info_get_arg_types(!.NewPredInfo, OriginalArgTypes0),
 
     CallerPredProcId = proc(CallerPredId, _),
     module_info_pred_info(ModuleInfo, CallerPredId, CallerPredInfo),
-    pred_info_typevarset(CallerPredInfo, CallerTypeVarSet),
+    pred_info_get_typevarset(CallerPredInfo, CallerTypeVarSet),
     pred_info_get_univ_quant_tvars(CallerPredInfo, CallerHeadParams),
 
     % Specialize the types of the called procedure as for inlining.
-    proc_info_vartypes(!.NewProcInfo, VarTypes0),
+    proc_info_get_vartypes(!.NewProcInfo, VarTypes0),
     tvarset_merge_renaming(CallerTypeVarSet, TypeVarSet0, TypeVarSet,
         TypeRenaming),
     apply_variable_renaming_to_tvar_kind_map(TypeRenaming, KindMap0, KindMap),
@@ -2798,7 +2798,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
 
     % Add any extra type-infos or typeclass-infos we've added
     % to the typeinfo_varmap and typeclass_info_varmap.
-    proc_info_rtti_varmaps(!.NewProcInfo, RttiVarMaps0),
+    proc_info_get_rtti_varmaps(!.NewProcInfo, RttiVarMaps0),
 
     % The variable renaming doesn't rename variables in the callee.
     map.init(EmptyVarRenaming),
@@ -2872,13 +2872,13 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
     proc_info_set_headvars(HeadVars, !NewProcInfo),
     proc_info_set_argmodes(ArgModes, !NewProcInfo),
 
-    proc_info_goal(!.NewProcInfo, Goal6),
+    proc_info_get_goal(!.NewProcInfo, Goal6),
     Goal6 = _ - GoalInfo6,
     goal_to_conj_list(Goal6, GoalList6),
     conj_list_to_goal(list.append(ConstGoals, GoalList6), GoalInfo6, Goal),
     proc_info_set_goal(Goal, !NewProcInfo),
 
-    proc_info_vartypes(!.NewProcInfo, VarTypes7),
+    proc_info_get_vartypes(!.NewProcInfo, VarTypes7),
     map.apply_to_list(ExtraHeadVars, VarTypes7, ExtraHeadVarTypes0),
     remove_const_higher_order_args(1, OriginalArgTypes,
         HOArgs, ModifiedOriginalArgTypes),
@@ -2891,7 +2891,7 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
     % more specific than the argument types returned by pred_info_argtypes
     % if the procedure body binds some existentially quantified type variables.
     % The types of the extra arguments added by construct_higher_order_terms
-    % use the substitution computed based on the result pred_info_arg_types.
+    % use the substitution computed based on the result pred_info_get_arg_types.
     % We may need to apply a substitution to the types of the new variables
     % in the vartypes in the proc_info.
     %
@@ -2922,8 +2922,8 @@ create_new_proc(NewPred, !.NewProcInfo, !NewPredInfo, !Info) :-
     ),
 
     % Find the new class context.
-    proc_info_headvars(!.NewProcInfo, ArgVars),
-    proc_info_rtti_varmaps(!.NewProcInfo, NewRttiVarMaps),
+    proc_info_get_headvars(!.NewProcInfo, ArgVars),
+    proc_info_get_rtti_varmaps(!.NewProcInfo, NewRttiVarMaps),
     list.map(rtti_varmaps_var_info(NewRttiVarMaps), ArgVars, ArgVarInfos),
     find_class_context(ModuleInfo, ArgVarInfos, ArgModes, [], [],
         ClassContext),
@@ -2980,7 +2980,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
             CalledPredInfo, CalledProcInfo),
         PredOrFunc = pred_info_is_pred_or_func(CalledPredInfo),
-        proc_info_argmodes(CalledProcInfo, CalledArgModes),
+        proc_info_get_argmodes(CalledProcInfo, CalledArgModes),
         (
             list.split_list(NumArgs, CalledArgModes,
                 CurriedArgModes0, NonCurriedArgModes0)
@@ -3003,7 +3003,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
     proc_info_create_vars_from_types(CurriedArgTypes, CurriedHeadVars1,
         !ProcInfo),
 
-    proc_info_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
+    proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     list.foldl_corresponding(add_rtti_info, CurriedHeadVars1,
         CurriedArgRttiInfo, RttiVarMaps0, RttiVarMaps),
     proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),

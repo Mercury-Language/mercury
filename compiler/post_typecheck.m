@@ -227,8 +227,8 @@ check_type_bindings(ModuleInfo, PredId, !PredInfo, ReportErrs, NumErrors,
 
     pred_info_clauses_info(!.PredInfo, ClausesInfo0),
     pred_info_get_head_type_params(!.PredInfo, HeadTypeParams),
-    clauses_info_varset(ClausesInfo0, VarSet),
-    clauses_info_vartypes(ClausesInfo0, VarTypesMap0),
+    clauses_info_get_varset(ClausesInfo0, VarSet),
+    clauses_info_get_vartypes(ClausesInfo0, VarTypesMap0),
     map.to_assoc_list(VarTypesMap0, VarTypesList),
     set.init(Set0),
     check_type_bindings_2(VarTypesList, HeadTypeParams, [], Errs, Set0, Set),
@@ -305,7 +305,7 @@ report_unsatisfied_constraints(Constraints, PredId, PredInfo, ModuleInfo,
         !IO) :-
     io.set_exit_status(1, !IO),
 
-    pred_info_typevarset(PredInfo, TVarSet),
+    pred_info_get_typevarset(PredInfo, TVarSet),
     pred_info_context(PredInfo, Context),
 
     Pieces0 = constraints_to_error_pieces(TVarSet, Constraints),
@@ -347,7 +347,7 @@ report_unresolved_type_warning(Errs, PredId, PredInfo, ModuleInfo, VarSet,
         !IO) :-
     record_warning(!IO),
 
-    pred_info_typevarset(PredInfo, TypeVarSet),
+    pred_info_get_typevarset(PredInfo, TypeVarSet),
     pred_info_context(PredInfo, Context),
 
     prog_out.write_context(Context, !IO),
@@ -409,10 +409,10 @@ finally_resolve_pred_overloading(Args0, CallerPredInfo, ModuleInfo, !PredName,
     ( !.PredId = invalid_pred_id ->
         % Find the set of candidate pred_ids for predicates which
         % have the specified name and arity.
-        pred_info_typevarset(CallerPredInfo, TVarSet),
+        pred_info_get_typevarset(CallerPredInfo, TVarSet),
         pred_info_get_markers(CallerPredInfo, Markers),
         pred_info_clauses_info(CallerPredInfo, ClausesInfo),
-        clauses_info_vartypes(ClausesInfo, VarTypes),
+        clauses_info_get_vartypes(ClausesInfo, VarTypes),
         map.apply_to_list(Args0, VarTypes, ArgTypes),
         resolve_pred_overloading(ModuleInfo, Markers, ArgTypes, TVarSet,
             !PredName, !:PredId)
@@ -463,8 +463,8 @@ finish_imported_pred_no_io(ModuleInfo, Errors, !PredInfo) :-
         true
     ;
         pred_info_clauses_info(!.PredInfo, ClausesInfo0),
-        clauses_info_headvars(ClausesInfo0, HeadVars),
-        pred_info_arg_types(!.PredInfo, ArgTypes),
+        clauses_info_get_headvars(ClausesInfo0, HeadVars),
+        pred_info_get_arg_types(!.PredInfo, ArgTypes),
         map.from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
         clauses_info_set_vartypes(VarTypes, ClausesInfo0, ClausesInfo),
         pred_info_set_clauses_info(ClausesInfo, !PredInfo)
@@ -559,7 +559,7 @@ check_type_of_main(PredInfo, !IO) :-
         pred_info_is_exported(PredInfo)
     ->
         % Check that the arguments of main/2 have type `io.state'.
-        pred_info_arg_types(PredInfo, ArgTypes),
+        pred_info_get_arg_types(PredInfo, ArgTypes),
         (
             ArgTypes = [Arg1, Arg2],
             type_is_io_state(Arg1),
@@ -586,8 +586,8 @@ check_type_of_main(PredInfo, !IO) :-
     list(proc_id)::out, pred_info::in, pred_info::out) is det.
 
 propagate_types_into_modes(ModuleInfo, ErrorProcs, !PredInfo) :-
-    pred_info_arg_types(!.PredInfo, ArgTypes),
-    pred_info_procedures(!.PredInfo, Procs0),
+    pred_info_get_arg_types(!.PredInfo, ArgTypes),
+    pred_info_get_procedures(!.PredInfo, Procs0),
     ProcIds = pred_info_procids(!.PredInfo),
     propagate_types_into_proc_modes(ModuleInfo, ProcIds, ArgTypes,
         [], ErrorProcs, Procs0, Procs),
@@ -604,7 +604,7 @@ propagate_types_into_proc_modes(_, [], _,
 propagate_types_into_proc_modes(ModuleInfo, [ProcId | ProcIds], ArgTypes,
         !ErrorProcs, !Procs) :-
     map.lookup(!.Procs, ProcId, ProcInfo0),
-    proc_info_argmodes(ProcInfo0, ArgModes0),
+    proc_info_get_argmodes(ProcInfo0, ArgModes0),
     propagate_types_into_mode_list(ModuleInfo, ArgTypes,
         ArgModes0, ArgModes),
 
@@ -630,7 +630,7 @@ report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs, !PredInfo, !IO) :-
         ErrorProcs = []
     ;
         ErrorProcs = [_ | _],
-        pred_info_procedures(!.PredInfo, ProcTable0),
+        pred_info_get_procedures(!.PredInfo, ProcTable0),
         list.foldl2(report_unbound_inst_var_error(ModuleInfo, PredId),
             ErrorProcs, ProcTable0, ProcTable, !IO),
         pred_info_set_procedures(ProcTable, !PredInfo)
@@ -651,7 +651,7 @@ report_unbound_inst_var_error(ModuleInfo, PredId, ProcId, Procs0, Procs,
     io::di, io::uo) is det.
 
 unbound_inst_var_error(PredId, ProcInfo, ModuleInfo, !IO) :-
-    proc_info_context(ProcInfo, Context),
+    proc_info_get_context(ProcInfo, Context),
     io.set_exit_status(1, !IO),
     Pieces = [words("In mode declaration for")] ++
         describe_one_pred_name(ModuleInfo, should_not_module_qualify, PredId)
@@ -710,7 +710,7 @@ check_for_indistinguishable_mode(_, _, _, [], no, !PredInfo, !IO).
 check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
         [ProcId | ProcIds], Removed, !PredInfo, !IO) :-
     ( modes_are_indistinguishable(ProcId, ProcId1, !.PredInfo, ModuleInfo) ->
-        pred_info_import_status(!.PredInfo, Status),
+        pred_info_get_import_status(!.PredInfo, Status),
         globals.io_lookup_bool_option(intermodule_optimization,
             Intermod, !IO),
         globals.io_lookup_bool_option(make_optimization_interface,
@@ -802,7 +802,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % Check if any of the candidate functions have argument/return types
         % which subsume the actual argument/return types of this function call,
         % and which have universal constraints consistent with what we expect.
-        pred_info_typevarset(!.PredInfo, TVarSet),
+        pred_info_get_typevarset(!.PredInfo, TVarSet),
         map.apply_to_list(ArgVars0, !.VarTypes, ArgTypes0),
         list.append(ArgTypes0, [TypeOfX], ArgTypes),
         pred_info_get_constraint_map(!.PredInfo, ConstraintMap),
@@ -837,7 +837,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % Find the pred_id of the constant.
         map.apply_to_list(ArgVars0, !.VarTypes, ArgTypes0),
         AllArgTypes = ArgTypes0 ++ HOArgTypes,
-        pred_info_typevarset(!.PredInfo, TVarSet),
+        pred_info_get_typevarset(!.PredInfo, TVarSet),
         pred_info_get_markers(!.PredInfo, Markers),
         get_pred_id(calls_are_fully_qualified(Markers), Name,
             PredOrFunc, TVarSet, AllArgTypes, ModuleInfo, PredId)
@@ -865,7 +865,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % this unification couldn't be a call to a field access function,
         % otherwise there would have been an error reported for unresolved
         % overloading.
-        pred_info_typevarset(!.PredInfo, TVarSet),
+        pred_info_get_typevarset(!.PredInfo, TVarSet),
         map.apply_to_list(ArgVars0, !.VarTypes, ArgTypes0),
         \+ find_matching_constructor(ModuleInfo, TVarSet, ConsId0,
             TypeOfX, ArgTypes0)
@@ -1087,7 +1087,7 @@ get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalPath, ConsId,
         ConsExistQVars = [_ | _],
         % Rename apart the existentially quantified type variables.
         list.length(ConsExistQVars, NumExistQVars),
-        pred_info_typevarset(!.PredInfo, TVarSet0),
+        pred_info_get_typevarset(!.PredInfo, TVarSet0),
         varset.new_vars(TVarSet0, NumExistQVars, ParentExistQVars, TVarSet),
         pred_info_set_typevarset(TVarSet, !PredInfo),
         map.from_corresponding_lists(ConsExistQVars, ParentExistQVars,

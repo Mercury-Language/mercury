@@ -145,7 +145,7 @@ pd_debug_output_version(ModuleInfo, PredProcId, Version, WriteUnfoldedGoal,
     io.nl(!IO),
     goal_info_get_nonlocals(GoalInfo, NonLocals),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-    proc_info_varset(ProcInfo, VarSet),
+    proc_info_get_varset(ProcInfo, VarSet),
     instmap.restrict(NonLocals, InstMap, InstMap1),
     io.write_string(" args: ", !IO),
     mercury_output_vars(Args, VarSet, yes, !IO),
@@ -162,7 +162,7 @@ pd_debug_output_version(ModuleInfo, PredProcId, Version, WriteUnfoldedGoal,
     io.nl(!IO),
     (
         WriteUnfoldedGoal = yes,
-        proc_info_goal(ProcInfo, ProcGoal),
+        proc_info_get_goal(ProcInfo, ProcGoal),
         io.write_string("Unfolded goal\n", !IO),
         hlds_out.write_goal(ProcGoal, ModuleInfo, VarSet, yes, 1, "\n", !IO),
         io.nl(!IO)
@@ -175,7 +175,7 @@ pd_debug_output_version(ModuleInfo, PredProcId, Version, WriteUnfoldedGoal,
 pd_debug_write_instmap(PDInfo, !IO) :-
     pd_info_get_instmap(PDInfo, InstMap),
     pd_info_get_proc_info(PDInfo, ProcInfo),
-    proc_info_varset(ProcInfo, VarSet),
+    proc_info_get_varset(ProcInfo, VarSet),
     pd_debug_do_io(hlds_out.write_instmap(InstMap, VarSet, yes, 1), !IO).
 
 %-----------------------------------------------------------------------------%
@@ -209,7 +209,7 @@ pd_debug_output_goal(PDInfo, Msg, Goal, !IO) :-
 
 pd_debug_output_goal_2(PDInfo, Msg, GoalExpr - GoalInfo, !IO) :-
     pd_info_get_proc_info(PDInfo, ProcInfo),
-    proc_info_varset(ProcInfo, VarSet),
+    proc_info_get_varset(ProcInfo, VarSet),
     pd_info_get_instmap(PDInfo, InstMap),
     pd_info_get_module_info(PDInfo, ModuleInfo),
     io.write_string(Msg, !IO),

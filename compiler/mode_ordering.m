@@ -138,7 +138,7 @@ mode_ordering.proc(InstGraph, ModeConstraint, ModeConstraintInfo, ModuleInfo,
     MOI = mode_ordering_info(InstGraph,
         atomic_prodvars_map(ModeConstraint, ModeConstraintInfo),
         stack.init, ModuleInfo, PredConstraintMap),
-    proc_info_goal(!.ProcInfo, Goal0),
+    proc_info_get_goal(!.ProcInfo, Goal0),
     mode_order_goal(Goal0, Goal, MOI, _MOI),
     proc_info_set_goal(Goal, !ProcInfo).
 
@@ -499,7 +499,7 @@ find_matching_proc(PredId, Args, ProdVars, ProcId, ConsumingVars, !MOI) :-
 
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     CalleeInstGraph = PredInfo^inst_graph_info^interface_inst_graph,
-    pred_info_procedures(PredInfo, ProcTable),
+    pred_info_get_procedures(PredInfo, ProcTable),
     map.to_assoc_list(ProcTable, ProcList),
     (
         find_matching_proc_2(ProcList, ProdVars, Args,
@@ -525,7 +525,7 @@ find_matching_proc(PredId, Args, ProdVars, ProcId, ConsumingVars, !MOI) :-
 
 find_matching_proc_2([ProcId0 - ProcInfo | ProcList], ProdVars, Args,
         CallerInstGraph, CalleeInstGraph, MCInfo, ProcId, ConsumingVars) :-
-    proc_info_headvars(ProcInfo, HeadVars),
+    proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_head_modes_constraint(ProcInfo, Constraint0),
     Constraint = ensure_normalised(Constraint0),
     (

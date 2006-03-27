@@ -67,8 +67,8 @@ process_pred(Simple, PredId, !ModuleInfo, !IO) :-
         % AAA
         % PredInfo2 = PredInfo0
         pred_info_clauses_info(PredInfo0, ClausesInfo),
-        clauses_info_headvars(ClausesInfo, HeadVars),
-        clauses_info_varset(ClausesInfo, VarSet),
+        clauses_info_get_headvars(ClausesInfo, HeadVars),
+        clauses_info_get_varset(ClausesInfo, VarSet),
         some [!IG] (
             !:IG = PredInfo0 ^ inst_graph_info,
             inst_graph.init(HeadVars, InstGraph),
@@ -91,8 +91,8 @@ process_pred(Simple, PredId, !ModuleInfo, !IO) :-
             !:IG = !.IG ^ implementation_inst_graph := ImplementationInstGraph,
 
             % AAA only for non-imported preds with no mode decls.
-            clauses_info_headvars(ClausesInfo, HeadVars),
-            clauses_info_varset(ClausesInfo, VarSet),
+            clauses_info_get_headvars(ClausesInfo, HeadVars),
+            clauses_info_get_varset(ClausesInfo, VarSet),
             !:IG = !.IG ^ interface_inst_graph := ImplementationInstGraph,
             solutions.solutions(
                 (pred(V::out) is nondet :-
@@ -114,8 +114,8 @@ process_pred(Simple, PredId, !ModuleInfo, !IO) :-
 %       % ...
 %   ;
 %       pred_info_clauses_info(PredInfo2, ClausesInfo2),
-%       clauses_info_headvars(ClausesInfo2, HeadVars),
-%       clauses_info_varset(ClausesInfo2, VarSet),
+%       clauses_info_get_headvars(ClausesInfo2, HeadVars),
+%       clauses_info_get_varset(ClausesInfo2, VarSet),
 %       inst_graph.init(HeadVars, InterfaceInstGraph),
 %       InstGraphInfo0 = ( (PredInfo2 ^ inst_graph_info)
 %           ^ interface_inst_graph := InterfaceInstGraph )
@@ -138,12 +138,12 @@ process_pred(Simple, PredId, !ModuleInfo, !IO) :-
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
 process_clauses_info(Simple, ModuleInfo, !ClausesInfo, InstGraph) :-
-    clauses_info_varset(!.ClausesInfo, VarSet0),
-    clauses_info_vartypes(!.ClausesInfo, VarTypes0),
+    clauses_info_get_varset(!.ClausesInfo, VarSet0),
+    clauses_info_get_vartypes(!.ClausesInfo, VarTypes0),
     inst_graph.init(VarTypes0 ^ keys, InstGraph0),
     Info0 = hhf_info(InstGraph0, VarSet0, VarTypes0),
 
-    clauses_info_headvars(!.ClausesInfo, HeadVars),
+    clauses_info_get_headvars(!.ClausesInfo, HeadVars),
     clauses_info_clauses(Clauses0, !ClausesInfo),
 
     (
@@ -499,7 +499,7 @@ same_type_list([A | As], [B | Bs]) :-
 %   proc_info::in, inst_graph::out, prog_varset::out) is det.
 % 
 % process_proc(ModuleInfo, HeadVars, _ProcId, ProcInfo, Info0, Info) :-
-%   proc_info_argmodes(ProcInfo, ArgModes),
+%   proc_info_get_argmodes(ProcInfo, ArgModes),
 % 
 %   mode_list_get_initial_insts(ArgModes, ModuleInfo, InstsI),
 %   assoc_list.from_corresponding_lists(HeadVars, InstsI, VarInstsI),

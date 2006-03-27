@@ -72,10 +72,10 @@
 allocate_store_maps(RunType, PredId, ModuleInfo, !ProcInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     ( RunType = final_allocation ->
-        proc_info_goal(!.ProcInfo, Goal0),
+        proc_info_get_goal(!.ProcInfo, Goal0),
 
         find_final_follow_vars(!.ProcInfo, FollowVarsMap0, NextNonReserved0),
-        proc_info_vartypes(!.ProcInfo, VarTypes),
+        proc_info_get_vartypes(!.ProcInfo, VarTypes),
         find_follow_vars_in_goal(Goal0, Goal1, VarTypes, ModuleInfo,
             FollowVarsMap0, FollowVarsMap, NextNonReserved0, NextNonReserved),
         Goal1 = GoalExpr1 - GoalInfo1,
@@ -83,7 +83,7 @@ allocate_store_maps(RunType, PredId, ModuleInfo, !ProcInfo) :-
         goal_info_set_follow_vars(yes(FollowVars), GoalInfo1, GoalInfo2),
         Goal2 = GoalExpr1 - GoalInfo2
     ;
-        proc_info_goal(!.ProcInfo, Goal2)
+        proc_info_get_goal(!.ProcInfo, Goal2)
     ),
     initial_liveness(!.ProcInfo, PredId, ModuleInfo, Liveness0),
     globals.get_trace_level(Globals, TraceLevel),
@@ -95,7 +95,7 @@ allocate_store_maps(RunType, PredId, ModuleInfo, !ProcInfo) :-
     ),
     build_input_arg_list(!.ProcInfo, InputArgLvals),
     LastLocns0 = initial_last_locns(InputArgLvals),
-    proc_info_stack_slots(!.ProcInfo, StackSlots),
+    proc_info_get_stack_slots(!.ProcInfo, StackSlots),
     StoreAllocInfo = store_alloc_info(ModuleInfo, StackSlots),
     store_alloc_in_goal(Goal2, Goal, Liveness0, _, LastLocns0, _,
         ResumeVars0, StoreAllocInfo),

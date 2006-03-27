@@ -151,12 +151,12 @@ process_pred(PredId, !ModuleInfo) :-
 process_proc(PredId, ProcId, !ModuleInfo) :-
     module_info_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_procedures(PredInfo0, ProcTable0),
+    pred_info_get_procedures(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
 
     process_proc_2(ProcInfo0, ProcInfo, PredInfo0, PredInfo1, !ModuleInfo),
 
-    pred_info_procedures(PredInfo1, ProcTable1),
+    pred_info_get_procedures(PredInfo1, ProcTable1),
     map.det_update(ProcTable1, ProcId, ProcInfo, ProcTable),
     pred_info_set_procedures(ProcTable, PredInfo1, PredInfo),
     module_info_preds(!.ModuleInfo, PredTable1),
@@ -170,15 +170,15 @@ process_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
     % grab the appropriate fields from the pred_info and proc_info
     PredName = pred_info_name(!.PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(!.PredInfo),
-    pred_info_typevarset(!.PredInfo, TypeVarSet0),
+    pred_info_get_typevarset(!.PredInfo, TypeVarSet0),
     pred_info_get_markers(!.PredInfo, Markers),
     pred_info_get_class_context(!.PredInfo, Constraints0),
-    proc_info_headvars(!.ProcInfo, HeadVars),
-    proc_info_varset(!.ProcInfo, VarSet0),
-    proc_info_vartypes(!.ProcInfo, VarTypes0),
-    proc_info_goal(!.ProcInfo, Goal0),
-    proc_info_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
-    proc_info_inst_varset(!.ProcInfo, InstVarSet0),
+    proc_info_get_headvars(!.ProcInfo, HeadVars),
+    proc_info_get_varset(!.ProcInfo, VarSet0),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_goal(!.ProcInfo, Goal0),
+    proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
+    proc_info_get_inst_varset(!.ProcInfo, InstVarSet0),
     MustRecomputeNonLocals0 = no,
 
     % Process the goal.
@@ -407,7 +407,7 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         ),
 
         % Check that the curried arguments are all input.
-        proc_info_argmodes(Call_ProcInfo, Call_ArgModes),
+        proc_info_get_argmodes(Call_ProcInfo, Call_ArgModes),
         list.length(InitialVars, NumInitialVars),
         list.take(NumInitialVars, Call_ArgModes, CurriedArgModes),
         (

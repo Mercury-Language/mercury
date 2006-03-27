@@ -1759,7 +1759,7 @@ write_inference_message(PredInfo, !IO) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     Name = unqualified(PredName),
     pred_info_context(PredInfo, Context),
-    pred_info_arg_types(PredInfo, VarSet, ExistQVars, Types0),
+    pred_info_get_arg_types(PredInfo, VarSet, ExistQVars, Types0),
     strip_builtin_qualifiers_from_type_list(Types0, Types),
     pred_info_get_class_context(PredInfo, ClassContext),
     pred_info_get_purity(PredInfo, Purity),

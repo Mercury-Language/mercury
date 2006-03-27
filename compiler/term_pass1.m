@@ -143,7 +143,7 @@ init_output_suppliers([], _, InitMap) :-
 init_output_suppliers([PPId | PPIds], ModuleInfo, OutputSupplierMap) :-
     init_output_suppliers(PPIds, ModuleInfo, OutputSupplierMap0),
     module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
-    proc_info_headvars(ProcInfo, HeadVars),
+    proc_info_get_headvars(ProcInfo, HeadVars),
     MapToNo = (pred(_HeadVar::in, Bool::out) is det :- Bool = no),
     list.map(MapToNo, HeadVars, BoolList),
     map.det_insert(OutputSupplierMap0, PPId, BoolList, OutputSupplierMap).
@@ -223,10 +223,10 @@ find_arg_sizes_pred(PPId, PassInfo, OutputSupplierMap0, Result,
         TermErrors, !ModuleInfo, !IO) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, ProcInfo),
     pred_info_context(PredInfo, Context),
-    proc_info_headvars(ProcInfo, Args),
-    proc_info_argmodes(ProcInfo, ArgModes),
-    proc_info_vartypes(ProcInfo, VarTypes),
-    proc_info_goal(ProcInfo, Goal),
+    proc_info_get_headvars(ProcInfo, Args),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_goal(ProcInfo, Goal),
     map.init(EmptyMap),
     PassInfo = pass_info(FunctorInfo, MaxErrors, MaxPaths),
     init_traversal_params(FunctorInfo, PPId, Context, VarTypes,
@@ -300,8 +300,8 @@ update_output_suppliers([Arg | Args], ActiveVars,
 
 check_proc_non_term_calls(PPId, !Errors, !ModuleInfo, !IO) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, _, ProcInfo),
-    proc_info_goal(ProcInfo, Goal),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_goal(ProcInfo, Goal),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     check_goal_non_term_calls(PPId, VarTypes, Goal, !Errors, !ModuleInfo,
         !IO).
 

@@ -125,17 +125,17 @@ gen_pred(PredId, [ProcId | ProcIds], PredInfo, ModuleInfo, Code, !IO) :-
     module_info::in, byte_tree::out) is det.
 
 gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
-    pred_info_procedures(PredInfo, ProcTable),
+    pred_info_get_procedures(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo),
 
-    proc_info_goal(ProcInfo, Goal),
-    proc_info_vartypes(ProcInfo, VarTypes),
-    proc_info_varset(ProcInfo, VarSet),
+    proc_info_get_goal(ProcInfo, Goal),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_varset(ProcInfo, VarSet),
     proc_info_interface_determinism(ProcInfo, Detism),
     determinism_to_code_model(Detism, CodeModel),
 
     goal_util.goal_vars(Goal, GoalVars),
-    proc_info_headvars(ProcInfo, ArgVars),
+    proc_info_get_headvars(ProcInfo, ArgVars),
     set.insert_list(GoalVars, ArgVars, Vars),
     set.to_sorted_list(Vars, VarList),
     map.init(VarMap0),

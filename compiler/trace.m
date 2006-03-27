@@ -274,10 +274,10 @@
     ;       nondet_pragma.
 
 fail_vars(ModuleInfo, ProcInfo, FailVars) :-
-    proc_info_headvars(ProcInfo, HeadVars),
-    proc_info_argmodes(ProcInfo, Modes),
+    proc_info_get_headvars(ProcInfo, HeadVars),
+    proc_info_get_argmodes(ProcInfo, Modes),
     proc_info_arg_info(ProcInfo, ArgInfos),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     mode_list_get_final_insts(ModuleInfo, Modes, Insts),
     (
         build_fail_vars(HeadVars, Insts, ArgInfos,
@@ -294,7 +294,7 @@ do_we_need_maxfr_slot(Globals, PredInfo0, !ProcInfo) :-
     (
         eff_trace_level_is_none(PredInfo0, !.ProcInfo, TraceLevel) = no,
         CodeModel \= model_non,
-        proc_info_goal(!.ProcInfo, Goal),
+        proc_info_get_goal(!.ProcInfo, Goal),
         code_util.goal_may_alloc_temp_frame(Goal)
     ->
         MaxfrFlag = yes

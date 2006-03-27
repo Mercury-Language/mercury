@@ -76,9 +76,9 @@ move_follow_code_in_proc(_PredId, _ProcId, _PredInfo, !ProcInfo,
     globals.lookup_bool_option(Globals, follow_code, FollowCode),
     globals.lookup_bool_option(Globals, prev_code, PrevCode),
     Flags = FollowCode - PrevCode,
-    proc_info_goal(!.ProcInfo, Goal0),
-    proc_info_varset(!.ProcInfo, Varset0),
-    proc_info_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_goal(!.ProcInfo, Goal0),
+    proc_info_get_varset(!.ProcInfo, Varset0),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     (
         move_follow_code_in_goal(Goal0, Goal1, Flags, no, Res),
         % Did the goal change?
@@ -86,11 +86,11 @@ move_follow_code_in_proc(_PredId, _ProcId, _PredInfo, !ProcInfo,
     ->
         % We need to fix up the goal_info by recalculating the nonlocal vars
         % and the non-atomic instmap deltas.
-        proc_info_headvars(!.ProcInfo, HeadVars),
+        proc_info_get_headvars(!.ProcInfo, HeadVars),
         implicitly_quantify_clause_body(HeadVars, _Warnings, Goal1, Goal2,
             Varset0, Varset, VarTypes0, VarTypes),
         proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
-        proc_info_inst_varset(!.ProcInfo, InstVarSet),
+        proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
         recompute_instmap_delta(no, Goal2, Goal, VarTypes, InstVarSet,
             InstMap0, !ModuleInfo)
     ;

@@ -133,8 +133,8 @@ init_rec_input_suppliers([], _, InitMap) :-
 init_rec_input_suppliers([PPId | PPIds], ModuleInfo, RecSupplierMap) :-
     init_rec_input_suppliers(PPIds, ModuleInfo, RecSupplierMap0),
     module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
-    proc_info_headvars(ProcInfo, HeadVars),
-    proc_info_argmodes(ProcInfo, ArgModes),
+    proc_info_get_headvars(ProcInfo, HeadVars),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
     partition_call_args(ModuleInfo, ArgModes, HeadVars, InArgs, _OutVars),
     MapIsInput = (pred(HeadVar::in, Bool::out) is det :-
         ( bag.contains(InArgs, HeadVar) ->
@@ -237,7 +237,7 @@ prove_termination_in_scc_single_arg_2(TrialPPId, RestSCC, ArgNum0,
 init_rec_input_suppliers_single_arg(TrialPPId, RestSCC, ArgNum, Module,
         RecSupplierMap) :-
     module_info_pred_proc_info(Module, TrialPPId, _, ProcInfo),
-    proc_info_argmodes(ProcInfo, ArgModes),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
     init_rec_input_suppliers_add_single_arg(ArgModes, ArgNum,
         Module, TrialPPIdRecSuppliers),
     map.init(RecSupplierMap0),
@@ -285,7 +285,7 @@ init_rec_input_suppliers_single_arg_others([], _, !RecSupplierMap).
 init_rec_input_suppliers_single_arg_others([PPId | PPIds], Module,
         !RecSupplierMap) :-
     module_info_pred_proc_info(Module, PPId, _, ProcInfo),
-    proc_info_headvars(ProcInfo, HeadVars),
+    proc_info_get_headvars(ProcInfo, HeadVars),
     list.map(map_to_no, HeadVars, BoolList),
     map.det_insert(!.RecSupplierMap, PPId, BoolList, !:RecSupplierMap),
     init_rec_input_suppliers_single_arg_others(PPIds, Module,
@@ -295,7 +295,7 @@ init_rec_input_suppliers_single_arg_others([PPId | PPIds], Module,
 
 lookup_proc_arity(PPId, ModuleInfo) = Arity :-
     module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
-    proc_info_headvars(ProcInfo, HeadVars),
+    proc_info_get_headvars(ProcInfo, HeadVars),
     list.length(HeadVars, Arity).
 
 %-----------------------------------------------------------------------------%
@@ -378,8 +378,8 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, PassInfo,
         !ModuleInfo, !IO) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, ProcInfo),
     pred_info_context(PredInfo, Context),
-    proc_info_goal(ProcInfo, Goal),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_goal(ProcInfo, Goal),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     map.init(EmptyMap),
     PassInfo = pass_info(FunctorInfo, MaxErrors, MaxPaths),
     init_traversal_params(FunctorInfo, PPId, Context, VarTypes,
@@ -394,7 +394,7 @@ prove_termination_in_scc_pass([PPId | PPIds], FixDir, PassInfo,
         set.to_sorted_list(Paths, PathList),
         upper_bound_active_vars(PathList, ActiveVars),
         map.lookup(RecSupplierMap, PPId, RecSuppliers0),
-        proc_info_headvars(ProcInfo, Args),
+        proc_info_get_headvars(ProcInfo, Args),
         bag.init(EmptyBag),
         update_rec_input_suppliers(Args, ActiveVars, FixDir,
             RecSuppliers0, RecSuppliers,

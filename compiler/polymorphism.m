@@ -463,10 +463,10 @@ fixup_pred(PredId, !ModuleInfo) :-
     module_info_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
     pred_info_clauses_info(PredInfo0, ClausesInfo0),
-    clauses_info_vartypes(ClausesInfo0, VarTypes0),
-    clauses_info_headvars(ClausesInfo0, HeadVars),
+    clauses_info_get_vartypes(ClausesInfo0, VarTypes0),
+    clauses_info_get_headvars(ClausesInfo0, HeadVars),
 
-    pred_info_arg_types(PredInfo0, TypeVarSet, ExistQVars, ArgTypes0),
+    pred_info_get_arg_types(PredInfo0, TypeVarSet, ExistQVars, ArgTypes0),
     list.length(ArgTypes0, NumOldArgs),
     list.length(HeadVars, NumNewArgs),
     NumExtraArgs = NumNewArgs - NumOldArgs,
@@ -521,7 +521,7 @@ introduce_exists_casts_pred(ModuleInfo, Subn, ExtraHeadVars, !PredInfo) :-
     % we make sure that they are introduced again if the clauses are copied.
     %
     pred_info_clauses_info(!.PredInfo, ClausesInfo0),
-    clauses_info_vartypes(ClausesInfo0, VarTypes0),
+    clauses_info_get_vartypes(ClausesInfo0, VarTypes0),
     list.foldl(
         (pred(HeadVar::in, Types0::in, Types::out) is det :-
             map.lookup(Types0, HeadVar, HeadVarType0),
@@ -531,7 +531,7 @@ introduce_exists_casts_pred(ModuleInfo, Subn, ExtraHeadVars, !PredInfo) :-
     clauses_info_set_vartypes(VarTypes, ClausesInfo0, ClausesInfo),
     pred_info_set_clauses_info(ClausesInfo, !PredInfo),
 
-    pred_info_procedures(!.PredInfo, Procs0),
+    pred_info_get_procedures(!.PredInfo, Procs0),
     map.map_values(
         (pred(_::in, !.ProcInfo::in, !:ProcInfo::out) is det :-
             % Add the extra goals to each procedure.
@@ -576,7 +576,7 @@ process_pred(PredId, !ModuleInfo) :-
     % with modes for the extra arguments.
 
     ProcIds = pred_info_procids(PredInfo2),
-    pred_info_procedures(PredInfo2, Procs0),
+    pred_info_get_procedures(PredInfo2, Procs0),
     list.foldl(process_proc_in_table(PredInfo2, ClausesInfo,
         ExtraArgModes), ProcIds, Procs0, Procs),
     pred_info_set_procedures(Procs, PredInfo2, PredInfo),
@@ -590,7 +590,7 @@ process_pred(PredId, !ModuleInfo) :-
 process_clause_info(PredInfo0, ModuleInfo0, !ClausesInfo, !:Info,
         ExtraArgModes) :-
     init_poly_info(ModuleInfo0, PredInfo0, !.ClausesInfo, !:Info),
-    clauses_info_headvars(!.ClausesInfo, HeadVars0),
+    clauses_info_get_headvars(!.ClausesInfo, HeadVars0),
 
     setup_headvars(PredInfo0, HeadVars0, HeadVars,
         ExtraArgModes, _HeadTypeVars, UnconstrainedTVars,
@@ -607,7 +607,7 @@ process_clause_info(PredInfo0, ModuleInfo0, !ClausesInfo, !:Info,
     poly_info_get_varset(!.Info, VarSet),
     poly_info_get_var_types(!.Info, VarTypes),
     poly_info_get_rtti_varmaps(!.Info, RttiVarMaps),
-    clauses_info_explicit_vartypes(!.ClausesInfo, ExplicitVarTypes),
+    clauses_info_get_explicit_vartypes(!.ClausesInfo, ExplicitVarTypes),
     set_clause_list(Clauses, ClausesRep),
     map.init(TVarNameMap), % This is only used while adding the clauses.
     !:ClausesInfo = clauses_info(VarSet, ExplicitVarTypes, TVarNameMap,
@@ -667,10 +667,10 @@ process_proc(PredInfo, ClausesInfo, ExtraArgModes, ProcId,
         % of the compiler (e.g. unused_args.m) depend on these fields being
         % valid even for imported procedures.
 
-        clauses_info_headvars(ClausesInfo, HeadVars),
-        clauses_info_rtti_varmaps(ClausesInfo, RttiVarMaps),
-        clauses_info_varset(ClausesInfo, VarSet),
-        clauses_info_vartypes(ClausesInfo, VarTypes),
+        clauses_info_get_headvars(ClausesInfo, HeadVars),
+        clauses_info_get_rtti_varmaps(ClausesInfo, RttiVarMaps),
+        clauses_info_get_varset(ClausesInfo, VarSet),
+        clauses_info_get_vartypes(ClausesInfo, VarTypes),
         proc_info_set_headvars(HeadVars, !ProcInfo),
         proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
         proc_info_set_varset(VarSet, !ProcInfo),
@@ -680,7 +680,7 @@ process_proc(PredInfo, ClausesInfo, ExtraArgModes, ProcId,
     ),
 
     % Add the ExtraArgModes to the proc_info argmodes.
-    proc_info_argmodes(!.ProcInfo, ArgModes1),
+    proc_info_get_argmodes(!.ProcInfo, ArgModes1),
     list.append(ExtraArgModes, ArgModes1, ArgModes),
     proc_info_set_argmodes(ArgModes, !ProcInfo).
 
@@ -740,7 +740,7 @@ setup_headvars_instance_method(PredInfo,
     prog_type.vars_list(InstanceTypes, InstanceTVars),
     get_unconstrained_tvars(InstanceTVars, InstanceConstraints,
         UnconstrainedInstanceTVars),
-    pred_info_arg_types(PredInfo, ArgTypeVarSet, _, _),
+    pred_info_get_arg_types(PredInfo, ArgTypeVarSet, _, _),
     make_head_vars(UnconstrainedInstanceTVars,
         ArgTypeVarSet, UnconstrainedInstanceTypeInfoVars, !Info),
     make_typeclass_info_head_vars(do_record_type_info_locns,
@@ -774,7 +774,7 @@ setup_headvars_2(PredInfo, ClassContext, ExtraHeadVars0,
         AllExtraHeadTypeInfoVars, ExistHeadTypeClassInfoVars, !Info) :-
 
     % Grab the appropriate fields from the pred_info.
-    pred_info_arg_types(PredInfo, ArgTypeVarSet, ExistQVars, ArgTypes),
+    pred_info_get_arg_types(PredInfo, ArgTypeVarSet, ExistQVars, ArgTypes),
 
     % Insert extra head variables to hold the address of the type_infos
     % and typeclass_infos.  We insert one variable for each unconstrained
@@ -922,8 +922,8 @@ produce_existq_tvars(PredInfo, HeadVars0, UnconstrainedTVars,
         TypeInfoHeadVars, ExistTypeClassInfoHeadVars, Goal0, Goal, !Info) :-
     poly_info_get_var_types(!.Info, VarTypes0),
     poly_info_get_constraint_map(!.Info, ConstraintMap),
-    pred_info_arg_types(PredInfo, ArgTypes),
-    pred_info_tvar_kinds(PredInfo, KindMap),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
+    pred_info_get_tvar_kinds(PredInfo, KindMap),
     pred_info_get_class_context(PredInfo, PredClassContext),
 
     % Generate code to produce values for any existentially quantified
@@ -1376,7 +1376,7 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
 
     % Work out the modes of the introduced lambda variables and the determinism
     % of the lambda goal.
-    proc_info_argmodes(ProcInfo, ArgModes),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
     list.length(ArgModes, NumArgModes),
     list.length(LambdaVars, NumLambdaVars),
     ( list.drop(NumArgModes - NumLambdaVars, ArgModes, LambdaModes0) ->
@@ -1384,7 +1384,7 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     ;
         unexpected(this_file, "convert_pred_to_lambda_goal: list.drop failed")
     ),
-    proc_info_declared_determinism(ProcInfo, MaybeDet),
+    proc_info_get_declared_determinism(ProcInfo, MaybeDet),
     (
         MaybeDet = yes(Det),
         LambdaDet = Det
@@ -1538,7 +1538,7 @@ process_foreign_proc(ModuleInfo, PredInfo, Goal0, GoalInfo0, Goal, !Info) :-
     is det.
 
 process_foreign_proc_args(PredInfo, CanOptAwayUnnamed, Impl, Vars, Args) :-
-    pred_info_arg_types(PredInfo, PredTypeVarSet, ExistQVars, PredArgTypes),
+    pred_info_get_arg_types(PredInfo, PredTypeVarSet, ExistQVars, PredArgTypes),
 
     % Find out which variables are constrained (so that we don't add
     % type_infos for them.
@@ -1692,9 +1692,9 @@ process_call(PredId, ArgVars0, GoalInfo0, GoalInfo, ExtraVars, ExtraGoals,
     % order specified at the top of this file.
 
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
+    pred_info_get_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
         PredArgTypes),
-    pred_info_tvar_kinds(PredInfo, PredKindMap),
+    pred_info_get_tvar_kinds(PredInfo, PredKindMap),
     pred_info_get_class_context(PredInfo, PredClassContext),
 
     % VarTypes, TypeVarSet* etc come from the caller.
@@ -1845,10 +1845,10 @@ process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId, CallArgs0,
     poly_info_get_typevarset(!.Info, TVarSet0),
     poly_info_get_var_types(!.Info, VarTypes0),
     ActualArgTypes0 = map.apply_to_list(CallArgs0, VarTypes0),
-    pred_info_arg_types(CalleePredInfo, PredTVarSet, _PredExistQVars,
+    pred_info_get_arg_types(CalleePredInfo, PredTVarSet, _PredExistQVars,
         PredArgTypes),
-    proc_info_headvars(CalleeProcInfo, CalleeHeadVars),
-    proc_info_rtti_varmaps(CalleeProcInfo, CalleeRttiVarMaps),
+    proc_info_get_headvars(CalleeProcInfo, CalleeHeadVars),
+    proc_info_get_rtti_varmaps(CalleeProcInfo, CalleeRttiVarMaps),
 
     % Work out how many type_info args we need to prepend.
     NCallArgs0 = list.length(ActualArgTypes0),
@@ -3110,7 +3110,7 @@ expand_bodies(HLDSClassDefn, !ModuleInfo) :-
 expand_one_body(hlds_class_proc(PredId, ProcId), !ProcNum, !ModuleInfo) :-
     module_info_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_procedures(PredInfo0, ProcTable0),
+    pred_info_get_procedures(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
 
     % Find which of the constraints on the pred is the one introduced
@@ -3123,13 +3123,13 @@ expand_one_body(hlds_class_proc(PredId, ProcId), !ProcNum, !ModuleInfo) :-
             "expand_one_body: class method is not constrained")
     ),
 
-    proc_info_rtti_varmaps(ProcInfo0, RttiVarMaps),
+    proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps),
     rtti_lookup_typeclass_info_var(RttiVarMaps, InstanceConstraint,
         TypeClassInfoVar),
 
-    proc_info_headvars(ProcInfo0, HeadVars0),
-    proc_info_argmodes(ProcInfo0, Modes0),
-    proc_info_declared_determinism(ProcInfo0, MaybeDetism0),
+    proc_info_get_headvars(ProcInfo0, HeadVars0),
+    proc_info_get_argmodes(ProcInfo0, Modes0),
+    proc_info_get_declared_determinism(ProcInfo0, MaybeDetism0),
     (
         MaybeDetism0 = yes(Detism)
     ;
@@ -3255,10 +3255,10 @@ get_constrained_vars(Constraint) = CVars :-
     poly_info::out) is det.
 
 init_poly_info(ModuleInfo, PredInfo, ClausesInfo, PolyInfo) :-
-    clauses_info_varset(ClausesInfo, VarSet),
-    clauses_info_vartypes(ClausesInfo, VarTypes),
-    pred_info_typevarset(PredInfo, TypeVarSet),
-    pred_info_tvar_kinds(PredInfo, TypeVarKinds),
+    clauses_info_get_varset(ClausesInfo, VarSet),
+    clauses_info_get_vartypes(ClausesInfo, VarTypes),
+    pred_info_get_typevarset(PredInfo, TypeVarSet),
+    pred_info_get_tvar_kinds(PredInfo, TypeVarKinds),
     pred_info_get_constraint_proofs(PredInfo, Proofs),
     pred_info_get_constraint_map(PredInfo, ConstraintMap),
     rtti_varmaps_init(RttiVarMaps),
@@ -3269,13 +3269,13 @@ init_poly_info(ModuleInfo, PredInfo, ClausesInfo, PolyInfo) :-
     % (See also init_poly_info.)
     %
 create_poly_info(ModuleInfo, PredInfo, ProcInfo, PolyInfo) :-
-    pred_info_typevarset(PredInfo, TypeVarSet),
-    pred_info_tvar_kinds(PredInfo, TypeVarKinds),
+    pred_info_get_typevarset(PredInfo, TypeVarSet),
+    pred_info_get_tvar_kinds(PredInfo, TypeVarKinds),
     pred_info_get_constraint_proofs(PredInfo, Proofs),
     pred_info_get_constraint_map(PredInfo, ConstraintMap),
-    proc_info_varset(ProcInfo, VarSet),
-    proc_info_vartypes(ProcInfo, VarTypes),
-    proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
+    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     PolyInfo = poly_info(VarSet, VarTypes, TypeVarSet, TypeVarKinds,
         RttiVarMaps, Proofs, ConstraintMap, PredInfo, ModuleInfo).
 

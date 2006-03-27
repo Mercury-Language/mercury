@@ -213,7 +213,7 @@ traverse_goal_2(Goal, GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
     Goal = foreign_proc(Attributes, CallPredId, CallProcId, Args, _, _),
     module_info_pred_proc_info(!.ModuleInfo, CallPredId, CallProcId, _,
         CallProcInfo),
-    proc_info_argmodes(CallProcInfo, CallArgModes),
+    proc_info_get_argmodes(CallProcInfo, CallArgModes),
     ArgVars = list.map(foreign_arg_var, Args),
     partition_call_args(!.ModuleInfo, CallArgModes, ArgVars, _InVars, OutVars),
     goal_info_get_context(GoalInfo, Context),
@@ -282,7 +282,7 @@ traverse_goal_2(Goal, GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
 
     module_info_pred_proc_info(!.ModuleInfo, CallPredId, CallProcId, _,
         CallProcInfo),
-    proc_info_argmodes(CallProcInfo, CallArgModes),
+    proc_info_get_argmodes(CallProcInfo, CallArgModes),
     % XXX intermod
     proc_info_get_maybe_arg_size_info(CallProcInfo, CallArgSizeInfo),
     proc_info_get_maybe_termination_info(CallProcInfo, CallTerminationInfo),

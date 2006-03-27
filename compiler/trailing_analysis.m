@@ -292,8 +292,8 @@ maybe_analysis_status(ProcResult, ProcResult ^ maybe_analysis_status).
 
 check_proc_for_trail_mods(SCC, PPId, !Results, !ModuleInfo, !IO) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, _, ProcInfo),
-    proc_info_goal(ProcInfo, Body),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_goal(ProcInfo, Body),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     check_goal_for_trail_mods(SCC, VarTypes, Body,
         Result, MaybeAnalysisStatus, !ModuleInfo, !IO),
     list.cons(proc_result(PPId, Result, MaybeAnalysisStatus), !Results).
@@ -796,8 +796,8 @@ check_user_type(ModuleInfo, Type) = Status :-
 annotate_proc(PPId, !ModuleInfo, !IO) :-
     some [!ProcInfo, !Body] (
       module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, !:ProcInfo),
-      proc_info_goal(!.ProcInfo, !:Body),
-      proc_info_vartypes(!.ProcInfo, VarTypes),
+      proc_info_get_goal(!.ProcInfo, !:Body),
+      proc_info_get_vartypes(!.ProcInfo, VarTypes),
       annotate_goal(VarTypes, !Body, _Status, !ModuleInfo, !IO), 
       proc_info_set_goal(!.Body, !ProcInfo),
       module_info_set_pred_proc_info(PPId, PredInfo, !.ProcInfo, !ModuleInfo)
@@ -1031,7 +1031,7 @@ write_pragma_trailing_info(ModuleInfo, TrailingInfo, PredId, !IO) :-
         pred_info::in, bool::out) is det.
 
 should_write_trailing_info(ModuleInfo, PredId, PredInfo, ShouldWrite) :-
-    pred_info_import_status(PredInfo, ImportStatus),
+    pred_info_get_import_status(PredInfo, ImportStatus),
     (   
         ( ImportStatus = exported 
         ; ImportStatus = opt_exported 

@@ -852,7 +852,7 @@ create_var_var_unification(Var0, Var, Type, ModeInfo, Goal - GoalInfo) :-
     mode_info_get_procid(ModeInfo, ProcId),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
         _PredInfo, ProcInfo),
-    proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
+    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
 
     %
     % Call polymorphism.unification_typeinfos to add the appropriate

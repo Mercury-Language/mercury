@@ -66,7 +66,7 @@ pred_id_in(PredIds, PPId):-
 
 not_defined_in_this_module(ModuleInfo, proc(PredId, _)):-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_import_status(PredInfo, Status),
+    pred_info_get_import_status(PredInfo, Status),
     status_defined_in_this_module(Status, no).
 
 %-----------------------------------------------------------------------------%

@@ -1149,7 +1149,7 @@ purity_error_lambda_should_be_impure_to_specs(ModeInfo, Vars) = Specs :-
 %-----------------------------------------------------------------------------%
 
 maybe_report_error_no_modes(PredId, PredInfo, ModuleInfo, !IO) :-
-    pred_info_import_status(PredInfo, ImportStatus),
+    pred_info_get_import_status(PredInfo, ImportStatus),
     ( ImportStatus = local ->
         globals.io_lookup_bool_option(infer_modes, InferModesOpt, !IO),
         (
@@ -1192,7 +1192,7 @@ write_mode_inference_messages([PredId | PredIds], OutputDetism, ModuleInfo,
     pred_info_get_markers(PredInfo, Markers),
     ( check_marker(Markers, infer_modes) ->
         ProcIds = pred_info_all_procids(PredInfo),
-        pred_info_procedures(PredInfo, Procs),
+        pred_info_get_procedures(PredInfo, Procs),
         write_mode_inference_messages_2(ProcIds, Procs, PredInfo,
             OutputDetism, ModuleInfo, !IO)
     ;
@@ -1241,7 +1241,7 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism, ModuleInfo,
     pred_info_context(PredInfo, Context),
     PredArity = pred_info_orig_arity(PredInfo),
     some [!ArgModes, !MaybeDet] (
-        proc_info_argmodes(ProcInfo, !:ArgModes),
+        proc_info_get_argmodes(ProcInfo, !:ArgModes),
 
         % We need to strip off the extra type_info arguments inserted at the
         % front by polymorphism.m - we only want the last `PredArity' of them.
@@ -1258,7 +1258,7 @@ write_mode_inference_message(PredInfo, ProcInfo, OutputDetism, ModuleInfo,
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         (
             OutputDetism = yes,
-            proc_info_inferred_determinism(ProcInfo, Detism),
+            proc_info_get_inferred_determinism(ProcInfo, Detism),
             !:MaybeDet = yes(Detism)
         ;
             OutputDetism = no,
@@ -1321,11 +1321,11 @@ report_indistinguishable_modes_error(OldProcId, NewProcId, PredId, PredInfo,
         ModuleInfo, !IO) :-
     io.set_exit_status(1, !IO),
 
-    pred_info_procedures(PredInfo, Procs),
+    pred_info_get_procedures(PredInfo, Procs),
     map.lookup(Procs, OldProcId, OldProcInfo),
     map.lookup(Procs, NewProcId, NewProcInfo),
-    proc_info_context(OldProcInfo, OldContext),
-    proc_info_context(NewProcInfo, NewContext),
+    proc_info_get_context(OldProcInfo, OldContext),
+    proc_info_get_context(NewProcInfo, NewContext),
 
     Pieces1 = [words("In mode declarations for ")] ++
         describe_one_pred_name(ModuleInfo, should_module_qualify, PredId)
@@ -1367,11 +1367,11 @@ mode_decl_to_string(ProcId, PredInfo) = String :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     Name0 = pred_info_name(PredInfo),
     Name = unqualified(Name0),
-    pred_info_procedures(PredInfo, Procs),
+    pred_info_get_procedures(PredInfo, Procs),
     map.lookup(Procs, ProcId, ProcInfo),
     proc_info_declared_argmodes(ProcInfo, Modes0),
-    proc_info_declared_determinism(ProcInfo, MaybeDet),
-    proc_info_context(ProcInfo, Context),
+    proc_info_get_declared_determinism(ProcInfo, MaybeDet),
+    proc_info_get_context(ProcInfo, Context),
     varset.init(InstVarSet),
     strip_builtin_qualifiers_from_mode_list(Modes0, Modes),
     String = mercury_mode_subdecl_to_string(PredOrFunc, InstVarSet, Name,

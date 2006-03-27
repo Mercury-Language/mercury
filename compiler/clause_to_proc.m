@@ -99,7 +99,7 @@ maybe_add_default_func_modes([PredId | PredIds], Preds0, Preds) :-
     maybe_add_default_func_modes(PredIds, Preds1, Preds).
 
 maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
-    pred_info_procedures(PredInfo0, Procs0),
+    pred_info_get_procedures(PredInfo0, Procs0),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
     (
         %
@@ -173,7 +173,7 @@ do_copy_clauses_to_procs(PredInfo) :-
 :- pred copy_clauses_to_procs(pred_info::in, pred_info::out) is det.
 
 copy_clauses_to_procs(!PredInfo) :-
-    pred_info_procedures(!.PredInfo, Procs0),
+    pred_info_get_procedures(!.PredInfo, Procs0),
     pred_info_clauses_info(!.PredInfo, ClausesInfo),
     ProcIds = pred_info_all_non_imported_procids(!.PredInfo),
     copy_clauses_to_procs_2(ProcIds, ClausesInfo, Procs0, Procs),
@@ -228,7 +228,7 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
             FirstGoal = _ - FirstGoalInfo,
             goal_info_get_context(FirstGoalInfo, Context)
         ;
-            proc_info_context(!.Proc, Context)
+            proc_info_get_context(!.Proc, Context)
         ),
         goal_info_set_context(Context, GoalInfo0, GoalInfo1),
 
@@ -328,7 +328,7 @@ introduce_exists_casts_pred(ModuleInfo, PredId, !PredTable) :-
         % Only process preds for which we copied clauses to procs.
         do_copy_clauses_to_procs(PredInfo0)
     ->
-        pred_info_procedures(PredInfo0, Procs0),
+        pred_info_get_procedures(PredInfo0, Procs0),
         ProcIds = pred_info_all_non_imported_procids(PredInfo0),
         introduce_exists_casts_procs(ModuleInfo, PredInfo0, ProcIds,
             Procs0, Procs),
@@ -350,18 +350,18 @@ introduce_exists_casts_procs(ModuleInfo, PredInfo, [ProcId | ProcIds],
     introduce_exists_casts_procs(ModuleInfo, PredInfo, ProcIds, !Procs).
 
 introduce_exists_casts_proc(ModuleInfo, PredInfo, !ProcInfo) :-
-    pred_info_arg_types(PredInfo, ArgTypes),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
     pred_info_get_existq_tvar_binding(PredInfo, Subn),
     pred_info_get_class_context(PredInfo, PredConstraints),
     OrigArity = pred_info_orig_arity(PredInfo),
     NumExtraHeadVars = list.length(ArgTypes) - OrigArity,
 
-    proc_info_varset(!.ProcInfo, VarSet0),
-    proc_info_vartypes(!.ProcInfo, VarTypes0),
-    proc_info_headvars(!.ProcInfo, HeadVars0),
-    proc_info_goal(!.ProcInfo, Body0),
-    proc_info_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
-    proc_info_argmodes(!.ProcInfo, ArgModes),
+    proc_info_get_varset(!.ProcInfo, VarSet0),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_headvars(!.ProcInfo, HeadVars0),
+    proc_info_get_goal(!.ProcInfo, Body0),
+    proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
+    proc_info_get_argmodes(!.ProcInfo, ArgModes),
 
     (
         list.split_list(NumExtraHeadVars, ArgTypes, ExtraArgTypes0,

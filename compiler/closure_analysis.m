@@ -149,19 +149,19 @@ insert_unknown(Var, !ClosureInfo) :-
 
 process_proc(Debug, PPId, !ModuleInfo, !IO) :-
     module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, ProcInfo0),
-    proc_info_headvars(ProcInfo0, HeadVars),
-    proc_info_vartypes(ProcInfo0, VarTypes), 
-    proc_info_argmodes(ProcInfo0, ArgModes),
+    proc_info_get_headvars(ProcInfo0, HeadVars),
+    proc_info_get_vartypes(ProcInfo0, VarTypes), 
+    proc_info_get_argmodes(ProcInfo0, ArgModes),
     ClosureInfo0 = closure_info_init(!.ModuleInfo, VarTypes, HeadVars,
         ArgModes),
     write_proc_progress_message("% Analysing closures in ", PPId, !.ModuleInfo,
         !IO), 
-    proc_info_goal(ProcInfo0, Body0),
+    proc_info_get_goal(ProcInfo0, Body0),
     process_goal(VarTypes, !.ModuleInfo, Body0, Body,
         ClosureInfo0, _ClosureInfo),
     (
         Debug = yes,
-        proc_info_varset(ProcInfo, Varset),
+        proc_info_get_varset(ProcInfo, Varset),
         dump_closure_info(Varset, Body, !IO),
         io.flush_output(!IO)
     ;
@@ -192,7 +192,7 @@ process_goal(VarTypes, ModuleInfo, Goal0, Goal, !ClosureInfo) :-
     %
     module_info_pred_proc_info(ModuleInfo, CallPredId, CallProcId,
         _CallPredInfo, CallProcInfo),
-    proc_info_argmodes(CallProcInfo, CallArgModes),
+    proc_info_get_argmodes(CallProcInfo, CallArgModes),
     %
     % NOTE: we construct sets of arguments, rather than lists,
     %       in case there are duplicate arguments.

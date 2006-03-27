@@ -207,8 +207,8 @@ propagate_constraints(!Goal, !PDInfo, !IO) :-
         pd_info_get_module_info(!.PDInfo, ModuleInfo0),
         pd_info_get_proc_info(!.PDInfo, ProcInfo0),
         pd_info_get_instmap(!.PDInfo, InstMap),
-        proc_info_vartypes(ProcInfo0, VarTypes0),
-        proc_info_varset(ProcInfo0, VarSet0),
+        proc_info_get_vartypes(ProcInfo0, VarTypes0),
+        proc_info_get_varset(ProcInfo0, VarSet0),
         constraint_info_init(ModuleInfo0, VarTypes0, VarSet0, InstMap, CInfo0),
         Goal0 = _ - GoalInfo0,
         goal_info_get_nonlocals(GoalInfo0, NonLocals),
@@ -248,7 +248,7 @@ simplify_goal(Simplifications, Goal0, Goal, !PDInfo, !IO) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     module_info_get_globals(ModuleInfo0, Globals),
     pd_info_get_pred_proc_id(!.PDInfo, proc(PredId, ProcId)),
-    proc_info_vartypes(ProcInfo0, VarTypes0),
+    proc_info_get_vartypes(ProcInfo0, VarTypes0),
     det_info_init(ModuleInfo0, VarTypes0, PredId, ProcId, Globals, DetInfo0),
     pd_info_get_instmap(!.PDInfo, InstMap0),
     pd_info_get_proc_info(!.PDInfo, ProcInfo0),
@@ -376,7 +376,7 @@ rerun_det_analysis(Goal0, Goal, !PDInfo, !IO) :-
     pd_info_set_module_info(ModuleInfo, !PDInfo),
 
     module_info_get_globals(ModuleInfo, Globals),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     det_info_init(ModuleInfo, VarTypes, PredId, ProcId, Globals, DetInfo),
     pd_info_get_instmap(!.PDInfo, InstMap),
     det_infer_goal(Goal0, Goal, InstMap, SolnContext, [], no, DetInfo, _, _,
@@ -421,8 +421,8 @@ convert_branch_info_2([ArgNo - Branches | ArgInfos], Args, !VarInfo) :-
 :- type pd_var_info     ==  branch_info_map(prog_var).
 
 get_branch_vars_proc(PredProcId, ProcInfo, !ArgInfo, !ModuleInfo) :-
-    proc_info_goal(ProcInfo, Goal),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_goal(ProcInfo, Goal),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     instmap.init_reachable(InstMap0),
     map.init(Vars0),
     set.init(LeftVars0),
@@ -431,7 +431,7 @@ get_branch_vars_proc(PredProcId, ProcInfo, !ArgInfo, !ModuleInfo) :-
         get_branch_vars_goal_2(!.ModuleInfo, GoalList, no,
             VarTypes, InstMap0, LeftVars0, LeftVars, Vars0, Vars)
     ->
-        proc_info_headvars(ProcInfo, HeadVars),
+        proc_info_get_headvars(ProcInfo, HeadVars),
         map.init(ThisProcArgMap0),
         set.init(ThisProcLeftArgs0),
         get_extra_info_headvars(HeadVars, 1, LeftVars, Vars,
@@ -449,7 +449,7 @@ get_branch_vars_proc(PredProcId, ProcInfo, !ArgInfo, !ModuleInfo) :-
         get_extra_info_headvars(HeadVars, 1, LeftVars0,
             AllVars, ThisProcArgMap0, ThisProcArgMap, ThisProcLeftArgs0, _),
 
-        proc_info_argmodes(ProcInfo, ArgModes),
+        proc_info_get_argmodes(ProcInfo, ArgModes),
         get_opaque_args(!.ModuleInfo, 1, ArgModes,
             ThisProcArgMap, OpaqueArgs0, OpaqueArgs),
 
@@ -516,7 +516,7 @@ get_branch_vars_goal(Goal, MaybeBranchInfo, !PDInfo) :-
     pd_info_get_instmap(!.PDInfo, InstMap0),
     pd_info_get_proc_arg_info(!.PDInfo, ProcArgInfo),
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     set.init(LeftVars0),
     map.init(Vars0),
     (
@@ -763,8 +763,8 @@ combine_vars(BranchNo, [ExtraVar | ExtraVars], !Vars) :-
 
 requantify_goal(NonLocals, Goal0, Goal, !PDInfo) :-
     pd_info_get_proc_info(!.PDInfo, ProcInfo0),
-    proc_info_varset(ProcInfo0, VarSet0),
-    proc_info_vartypes(ProcInfo0, VarTypes0),
+    proc_info_get_varset(ProcInfo0, VarSet0),
+    proc_info_get_vartypes(ProcInfo0, VarTypes0),
     implicitly_quantify_goal(NonLocals, _, Goal0, Goal,
         VarSet0, VarSet, VarTypes0, VarTypes),
     proc_info_set_varset(VarSet, ProcInfo0, ProcInfo1),
@@ -775,8 +775,8 @@ recompute_instmap_delta(Goal0, Goal, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     pd_info_get_instmap(!.PDInfo, InstMap),
     pd_info_get_proc_info(!.PDInfo, ProcInfo),
-    proc_info_vartypes(ProcInfo, VarTypes),
-    proc_info_inst_varset(ProcInfo, InstVarSet),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_inst_varset(ProcInfo, InstVarSet),
     recompute_instmap_delta(yes, Goal0, Goal, VarTypes, InstVarSet,
         InstMap, ModuleInfo0, ModuleInfo),
     pd_info_set_module_info(ModuleInfo, !PDInfo).

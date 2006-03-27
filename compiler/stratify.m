@@ -154,9 +154,9 @@ first_order_check_scc_2([PredProcId | Remaining], WholeScc, Error, !ModuleInfo,
         !IO) :-
     PredProcId = proc(PredId, ProcId),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    pred_info_procedures(PredInfo, ProcTable),
+    pred_info_get_procedures(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, Proc),
-    proc_info_goal(Proc, Goal - GoalInfo),
+    proc_info_get_goal(Proc, Goal - GoalInfo),
     first_order_check_goal(Goal, GoalInfo, no, WholeScc,
         PredProcId, Error, !ModuleInfo, !IO),
     first_order_check_scc_2(Remaining, WholeScc, Error, !ModuleInfo, !IO).
@@ -290,9 +290,9 @@ higher_order_check_scc([PredProcId | Remaining], WholeScc, HOInfo,
         ;
             HighOrderLoops = yes
         ),
-        pred_info_procedures(PredInfo, ProcTable),
+        pred_info_get_procedures(PredInfo, ProcTable),
         map.lookup(ProcTable, ProcId, Proc),
-        proc_info_goal(Proc, Goal - GoalInfo),
+        proc_info_get_goal(Proc, Goal - GoalInfo),
         higher_order_check_goal(Goal, GoalInfo, no, WholeScc,
             PredProcId, HighOrderLoops, Error, !ModuleInfo, !IO)
     ;
@@ -603,8 +603,8 @@ expand_predids([PredId | PredIds], ModuleInfo, !ProcCalls, !HOInfo,
         !CallsHO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     Procs = pred_info_non_imported_procids(PredInfo),
-    pred_info_procedures(PredInfo, ProcTable),
-    pred_info_arg_types(PredInfo, ArgTypes),
+    pred_info_get_procedures(PredInfo, ProcTable),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
     process_procs(Procs, ModuleInfo, PredId, ArgTypes, ProcTable,
         !ProcCalls, !HOInfo, !CallsHO),
     expand_predids(PredIds, ModuleInfo, !ProcCalls, !HOInfo, !CallsHO).
@@ -621,8 +621,8 @@ process_procs([], _, _, _, _, !ProcCalls, !HOInfo, !CallsHO).
 process_procs([ProcId | Procs], ModuleInfo, PredId, ArgTypes, ProcTable,
         !ProcCalls, !HOInfo, !CallsHO) :-
     map.lookup(ProcTable, ProcId, ProcInfo),
-    proc_info_argmodes(ProcInfo, ArgModes),
-    proc_info_goal(ProcInfo, Goal - _GoalInfo),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
+    proc_info_get_goal(ProcInfo, Goal - _GoalInfo),
     PredProcId = proc(PredId, ProcId),
     check_goal(Goal, Calls, HaveAT, CallsHigherOrder),
     map.det_insert(!.ProcCalls, PredProcId, Calls, !:ProcCalls),

@@ -261,7 +261,7 @@ process_proc(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
                 should_module_qualify, PredId),
             write_error_pieces(Context, 0, [words("In") | PredPieces], !IO),
 
-            proc_info_varset(!.ProcInfo, VarSet),
+            proc_info_get_varset(!.ProcInfo, VarSet),
             output_warnings(Warnings, VarSet, !.ModuleInfo, !IO),
 
             Pieces1 = [words("Please ensure that these"),
@@ -348,8 +348,8 @@ output_warning(warn(Context, PredId, VarA, VarB), VarSet, ModuleInfo,
 
 attempt_transform(ProcId, PredId, PredInfo, DoLCO, FullyStrict,
         !ProcInfo, !ModuleInfo, Warnings) :-
-    proc_info_goal(!.ProcInfo, Goal0),
-    proc_info_headvars(!.ProcInfo, HeadVars),
+    proc_info_get_goal(!.ProcInfo, Goal0),
+    proc_info_get_headvars(!.ProcInfo, HeadVars),
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo,
         InitialInstMap),
     standardize(Goal0, Goal),
@@ -384,7 +384,7 @@ attempt_transform_2([Id | Ids], C, M, Rec, HeadVars, InitialInstMap, TopLevel,
         DoLCO, FullyStrict, PredId, PredInfo, !ProcInfo, !ModuleInfo,
         Warnings) :-
     (
-        proc_info_vartypes(!.ProcInfo, VarTypes0),
+        proc_info_get_vartypes(!.ProcInfo, VarTypes0),
         identify_out_and_out_prime(Id, Rec, HeadVars, InitialInstMap,
             VarTypes0, !.ModuleInfo, Out, OutPrime,
             HeadToCallSubst, CallToHeadSubst),
@@ -1091,8 +1091,8 @@ stage2(N - K, GoalStore, Sets, OutPrime, Out, ModuleInfo, ProcInfo0,
     list.foldl(P, set.to_sorted_list(After), set.init, AfterNonLocals),
     InitAccs = BeforeNonLocals `intersect` AfterNonLocals,
 
-    proc_info_varset(ProcInfo0, !:VarSet),
-    proc_info_vartypes(ProcInfo0, !:VarTypes),
+    proc_info_get_varset(ProcInfo0, !:VarSet),
+    proc_info_get_vartypes(ProcInfo0, !:VarTypes),
 
     substs_init(set.to_sorted_list(InitAccs), !VarSet, !VarTypes, !:Substs),
 
@@ -1416,7 +1416,7 @@ stage3(RecCallId, Accs, VarSet, VarTypes, C, CS, Substs,
         HeadToCallSubst, CallToHeadSubst, BaseCase, BasePairs, Sets, C, CS,
         OrigBaseGoal, OrigRecGoal, AccBaseGoal, AccRecGoal),
 
-    proc_info_goal(!.OrigProcInfo, OrigGoal0),
+    proc_info_get_goal(!.OrigProcInfo, OrigGoal0),
     top_level(TopLevel, OrigGoal0, OrigBaseGoal, OrigRecGoal,
         AccBaseGoal, AccRecGoal, OrigGoal, AccGoal),
 
@@ -1437,15 +1437,15 @@ stage3(RecCallId, Accs, VarSet, VarTypes, C, CS, Substs,
 acc_proc_info(Accs0, VarSet, VarTypes, Substs, OrigProcInfo,
         AccTypes, AccProcInfo) :-
     % ProcInfo Stuff that must change.
-    proc_info_headvars(OrigProcInfo, HeadVars0),
-    proc_info_argmodes(OrigProcInfo, HeadModes0),
+    proc_info_get_headvars(OrigProcInfo, HeadVars0),
+    proc_info_get_argmodes(OrigProcInfo, HeadModes0),
 
-    proc_info_inst_varset(OrigProcInfo, InstVarSet),
-    proc_info_inferred_determinism(OrigProcInfo, Detism),
-    proc_info_goal(OrigProcInfo, Goal),
-    proc_info_context(OrigProcInfo, Context),
-    proc_info_rtti_varmaps(OrigProcInfo, RttiVarMaps),
-    proc_info_is_address_taken(OrigProcInfo, IsAddressTaken),
+    proc_info_get_inst_varset(OrigProcInfo, InstVarSet),
+    proc_info_get_inferred_determinism(OrigProcInfo, Detism),
+    proc_info_get_goal(OrigProcInfo, Goal),
+    proc_info_get_context(OrigProcInfo, Context),
+    proc_info_get_rtti_varmaps(OrigProcInfo, RttiVarMaps),
+    proc_info_get_is_address_taken(OrigProcInfo, IsAddressTaken),
 
     Substs = substs(AccVarSubst, _RecCallSubst, _AssocCallSubst,
         _UpdateSubst),
@@ -1480,7 +1480,7 @@ acc_proc_info(Accs0, VarSet, VarTypes, Substs, OrigProcInfo,
 acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
         NewProcId, NewPredInfo) :-
     % PredInfo stuff that must change.
-    pred_info_arg_types(OrigPredInfo, TypeVarSet, ExistQVars, Types0),
+    pred_info_get_arg_types(OrigPredInfo, TypeVarSet, ExistQVars, Types0),
 
     ModuleName = pred_info_module(OrigPredInfo),
     Name = pred_info_name(OrigPredInfo),
@@ -1492,7 +1492,7 @@ acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
 
     set.init(Assertions),
 
-    proc_info_context(NewProcInfo, Context),
+    proc_info_get_context(NewProcInfo, Context),
     term.context_line(Context, Line),
     Counter = 0,
 

@@ -57,7 +57,7 @@
 
 mark_static_terms(_ModuleInfo, !Proc) :-
     % The ModuleInfo argument is there just for passes_aux.
-    proc_info_goal(!.Proc, Goal0),
+    proc_info_get_goal(!.Proc, Goal0),
     map.init(StaticInfo0),
     goal_mark_static_terms(Goal0, Goal, StaticInfo0, _StaticInfo),
     proc_info_set_goal(Goal, !Proc).

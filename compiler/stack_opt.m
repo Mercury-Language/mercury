@@ -185,7 +185,7 @@ stack_opt_cell(PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
     AllocData = alloc_data(!.ModuleInfo, !.ProcInfo, TypeInfoLiveness,
         OptNoReturnCalls),
     fill_goal_path_slots(!.ModuleInfo, !ProcInfo),
-    proc_info_goal(!.ProcInfo, Goal2),
+    proc_info_get_goal(!.ProcInfo, Goal2),
     OptStackAlloc0 = init_opt_stack_alloc,
     set.init(FailVars),
     set.init(NondetLiveness0),
@@ -224,9 +224,9 @@ init_opt_stack_alloc = opt_stack_alloc(set.init).
 
 optimize_live_sets(ModuleInfo, OptAlloc, !ProcInfo, Changed, DebugStackOpt,
         PredIdInt, !IO) :-
-    proc_info_goal(!.ProcInfo, Goal0),
-    proc_info_vartypes(!.ProcInfo, VarTypes0),
-    proc_info_varset(!.ProcInfo, VarSet0),
+    proc_info_get_goal(!.ProcInfo, Goal0),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset(!.ProcInfo, VarSet0),
     OptAlloc = opt_stack_alloc(ParConjOwnSlot),
     arg_info.partition_proc_args(!.ProcInfo, ModuleInfo,
         InputArgs, OutputArgs, UnusedArgs),
@@ -1011,8 +1011,8 @@ maybe_write_progress_message(Message, DebugStackOpt, PredIdInt, ProcInfo,
     ( DebugStackOpt = PredIdInt ->
         io.write_string(Message, !IO),
         io.write_string(":\n", !IO),
-        proc_info_goal(ProcInfo, Goal),
-        proc_info_varset(ProcInfo, VarSet),
+        proc_info_get_goal(ProcInfo, Goal),
+        proc_info_get_varset(ProcInfo, VarSet),
         hlds_out.write_goal(Goal, ModuleInfo, VarSet, yes, 0, "\n", !IO),
         io.write_string("\n", !IO)
     ;

@@ -199,7 +199,7 @@ generate_tag_switch(Cases, Var, CodeModel, CanFail, SwitchGoalInfo, EndLabel,
 
     code_info.get_module_info(!.CI, ModuleInfo),
     code_info.get_proc_info(!.CI, ProcInfo),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     map.lookup(VarTypes, Var, Type),
     switch_util.get_ptag_counts(Type, ModuleInfo,
         MaxPrimary, PtagCountMap),

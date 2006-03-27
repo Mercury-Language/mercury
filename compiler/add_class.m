@@ -469,7 +469,7 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !IO) :-
                 )
             ;
                 PorF = predicate,
-                pred_info_procedures(PredInfo0, Procs),
+                pred_info_get_procedures(PredInfo0, Procs),
                 ( map.is_empty(Procs) ->
                     pred_method_with_no_modes_error(PredInfo0, !IO)
                 ;

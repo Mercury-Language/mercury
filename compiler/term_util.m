@@ -300,7 +300,7 @@ set_pred_proc_ids_arg_size_info([PPId | PPIds], ArgSize, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
     module_info_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_procedures(PredInfo0, ProcTable0),
+    pred_info_get_procedures(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
 
     proc_info_set_maybe_arg_size_info(yes(ArgSize), ProcInfo0, ProcInfo),
@@ -316,7 +316,7 @@ set_pred_proc_ids_termination_info([PPId | PPIds], Termination, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
     module_info_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_procedures(PredInfo0, ProcTable0),
+    pred_info_get_procedures(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
 
     proc_info_set_maybe_termination_info(yes(Termination),

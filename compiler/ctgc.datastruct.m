@@ -108,7 +108,7 @@ normalize_datastruct_with_type_information(ModuleInfo, Type, Data0) = Data :-
 
 normalize_datastruct(ModuleInfo, ProcInfo, Data0) = Data :-
     Var = Data0 ^ sc_var,
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     map.lookup(VarTypes, Var, Type),
     Data = normalize_datastruct_with_type_information(ModuleInfo, Type, Data0).
 
@@ -118,7 +118,7 @@ datastruct_subsumed_by_return_selector(ModuleInfo, ProcInfo, Data1, Data2,
     Var = Data2 ^ sc_var,
     Sel1 = Data1 ^ sc_selector,
     Sel2 = Data2 ^ sc_selector,
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     map.lookup(VarTypes, Var, Type),
     ctgc.selector.subsumed_by(ModuleInfo, Sel1, Sel2, Type, Extension).
 
@@ -136,7 +136,7 @@ datastruct_subsumed_by_list(ModuleInfo, ProcInfo, Data0, [Data | Rest]):-
 datastruct_apply_widening(ModuleInfo, ProcInfo, !Data) :-
     Var = !.Data ^ sc_var,
     Sel0 = !.Data ^ sc_selector,
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     map.lookup(VarTypes, Var, Type),
     selector_apply_widening(ModuleInfo, Type, Sel0, Sel),
     !:Data = datastruct_init_with_selector(Var, Sel).

@@ -365,10 +365,10 @@ examine_proc(proc(PredId, ProcId), ModuleInfo,
         map.lookup(PredTable, PredId, PredInfo),
         ProcIds = pred_info_non_imported_procids(PredInfo),
         list.member(ProcId, ProcIds),
-        pred_info_procedures(PredInfo, ProcTable),
+        pred_info_get_procedures(PredInfo, ProcTable),
         map.lookup(ProcTable, ProcId, ProcInfo)
     ->
-        proc_info_goal(ProcInfo, Goal),
+        proc_info_get_goal(ProcInfo, Goal),
         examine_goal(Goal, proc(PredId, ProcId), !Queue, !Needed)
     ;
         true
@@ -515,7 +515,7 @@ eliminate(Pass, !.Needed, !ModuleInfo, !IO) :-
 eliminate_pred(Pass, PredId, !ElimInfo, !IO) :-
     !.ElimInfo = elimination_info(Needed, ModuleInfo, PredTable0, Changed0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_import_status(PredInfo0, Status),
+    pred_info_get_import_status(PredInfo0, Status),
     (
         % Find out if the predicate is defined in this module.
         % If yes, find out also whether any of its procedures must be kept.
@@ -556,7 +556,7 @@ eliminate_pred(Pass, PredId, !ElimInfo, !IO) :-
         )
     ->
         ProcIds = pred_info_procids(PredInfo0),
-        pred_info_procedures(PredInfo0, ProcTable0),
+        pred_info_get_procedures(PredInfo0, ProcTable0),
         list.foldl3(eliminate_proc(Pass, PredId,
             Keep, WarnForThisProc, !.ElimInfo),
             ProcIds, ProcTable0, ProcTable, Changed0, Changed, !IO),
@@ -573,7 +573,7 @@ eliminate_pred(Pass, PredId, !ElimInfo, !IO) :-
     ->
         Changed = yes,
         ProcIds = pred_info_procids(PredInfo0),
-        pred_info_procedures(PredInfo0, ProcTable0),
+        pred_info_get_procedures(PredInfo0, ProcTable0),
             % Reduce memory usage by replacing the goals with conj([]).
             % XXX this looks fishy to me - zs
         DestroyGoal =
@@ -639,7 +639,7 @@ eliminate_proc(Pass, PredId, Keep, WarnForThisProc, ElimInfo,
             % since that is already checked by mercury_compile.m
             % when deciding whether to invoke this warning_pass
         ->
-            proc_info_context(!.ProcTable ^ det_elem(ProcId), Context),
+            proc_info_get_context(!.ProcTable ^ det_elem(ProcId), Context),
             warn_dead_proc(PredId, ProcId, Context, ModuleInfo, !IO)
         ;
             true
@@ -779,7 +779,7 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
                 % Don't attempt to eliminate local preds here, since we want
                 % to do semantic checking on those even if they aren't used.
                 \+ pred_info_is_imported(PredInfo),
-                \+ pred_info_import_status(PredInfo, opt_imported)
+                \+ pred_info_get_import_status(PredInfo, opt_imported)
             ;
                 % Don't eliminate predicates declared in this module with a
                 % `:- external' or `:- pragma base_relation' declaration.
@@ -823,7 +823,7 @@ dead_pred_elim_analyze(!DeadInfo) :-
                     !.Needed, NeededNames),
                 module_info_pred_info(ModuleInfo, PredId, PredInfo),
                 pred_info_clauses_info(PredInfo, ClausesInfo),
-                clauses_info_clauses_rep(ClausesInfo, ClausesRep),
+                clauses_info_get_clauses_rep(ClausesInfo, ClausesRep),
                 get_clause_list_any_order(ClausesRep, Clauses),
                 list.foldl(dead_pred_elim_process_clause, Clauses, !DeadInfo)
             ),

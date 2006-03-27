@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -151,7 +151,7 @@ process_special_pred_for_type(ModuleInfo, SpecialPredId, TypeCtor,
         % Compiler generated special preds are always mode 0.
         proc_id_to_int(ProcId, 0),
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-        proc_info_goal(ProcInfo, BodyGoal),
+        proc_info_get_goal(ProcInfo, BodyGoal),
         %
         % We cannot just look up the the termination_info because the
         % termination status of compiler generated wrapper predicates for

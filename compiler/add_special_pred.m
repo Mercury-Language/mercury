@@ -260,7 +260,7 @@ do_add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
         pred_info_set_import_status(Status, PredInfo0, PredInfo1)
     ;
         TypeBody ^ du_type_usereq = yes(_),
-        pred_info_import_status(PredInfo0, OldStatus),
+        pred_info_get_import_status(PredInfo0, OldStatus),
         OldStatus = pseudo_imported,
         status_is_imported(Status, no)
     ->

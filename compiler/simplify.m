@@ -172,7 +172,7 @@ simplify_pred(Simplifications0, PredId, !ModuleInfo, !PredInfo,
 simplify_procs(_, _, [], !ModuleInfo, !PredInfo, !Msgs, !IO).
 simplify_procs(Simplifications, PredId, [ProcId | ProcIds], !ModuleInfo,
         !PredInfo, !MaybeMsgs, !IO) :-
-    pred_info_procedures(!.PredInfo, Procs0),
+    pred_info_get_procedures(!.PredInfo, Procs0),
     map.lookup(Procs0, ProcId, Proc0),
     simplify_proc_return_msgs(Simplifications, PredId, ProcId,
         !ModuleInfo, Proc0, Proc, ProcMsgSet, !IO),
@@ -204,12 +204,12 @@ simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !Proc, !IO)  :-
 simplify_proc_return_msgs(Simplifications, PredId, ProcId, !ModuleInfo,
         !ProcInfo, DetMsgs, !IO) :-
     module_info_get_globals(!.ModuleInfo, Globals),
-    proc_info_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     det_info_init(!.ModuleInfo, VarTypes0, PredId, ProcId, Globals,
         DetInfo0),
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
     simplify_info_init(DetInfo0, Simplifications, InstMap0, !.ProcInfo, Info0),
-    proc_info_goal(!.ProcInfo, Goal0),
+    proc_info_get_goal(!.ProcInfo, Goal0),
 
     simplify_info_get_pred_info(Info0, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
@@ -256,7 +256,7 @@ simplify_proc_return_msgs(Simplifications, PredId, ProcId, !ModuleInfo,
         % messages anyway.
         DetMsgs1 = DetMsgs0
     ),
-    pred_info_import_status(PredInfo, Status),
+    pred_info_get_import_status(PredInfo, Status),
     status_defined_in_this_module(Status, IsDefinedHere),
     (
         IsDefinedHere = no,
@@ -1354,8 +1354,8 @@ call_goal(PredId, ProcId, Args, IsBuiltin, Goal0, Goal, GoalInfo0, GoalInfo,
         simplify_info_get_module_info(!.Info, ModuleInfo1),
         module_info_pred_proc_info(ModuleInfo1, PredId, ProcId,
             PredInfo1, ProcInfo1),
-        proc_info_headvars(ProcInfo1, HeadVars),
-        proc_info_argmodes(ProcInfo1, ArgModes),
+        proc_info_get_headvars(ProcInfo1, HeadVars),
+        proc_info_get_argmodes(ProcInfo1, ArgModes),
         simplify_info_get_common_info(!.Info, CommonInfo1),
         input_args_are_equiv(Args, HeadVars, ArgModes,
             CommonInfo1, ModuleInfo1),
@@ -1385,7 +1385,7 @@ call_goal(PredId, ProcId, Args, IsBuiltin, Goal0, Goal, GoalInfo0, GoalInfo,
 
         % Don't count procs using minimal evaluation as they should always
         % terminate if they have a finite number of answers.
-        \+ proc_info_eval_method(ProcInfo, eval_minimal(_)),
+        \+ proc_info_get_eval_method(ProcInfo, eval_minimal(_)),
 
         % Don't warn about impure procedures, since they may modify the state
         % in ways not visible to us (unlike pure and semipure procedures).
@@ -1602,9 +1602,9 @@ make_type_info_vars(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
             TypeInfoVars, TypeInfoGoals, !PolyInfo),
         poly_info_extract(!.PolyInfo, !PredInfo, !ProcInfo, ModuleInfo1),
 
-        proc_info_vartypes(!.ProcInfo, VarTypes),
-        proc_info_varset(!.ProcInfo, VarSet),
-        proc_info_rtti_varmaps(!.ProcInfo, RttiVarMaps),
+        proc_info_get_vartypes(!.ProcInfo, VarTypes),
+        proc_info_get_varset(!.ProcInfo, VarSet),
+        proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps),
         simplify_info_set_var_types(VarTypes, !Info),
         simplify_info_set_varset(VarSet, !Info),
         simplify_info_set_rtti_varmaps(RttiVarMaps, !Info),
@@ -2300,9 +2300,9 @@ contains_multisoln_goal(Goals) :-
             ).
 
 simplify_info_init(DetInfo, Simplifications, InstMap, ProcInfo, Info) :-
-    proc_info_varset(ProcInfo, VarSet),
-    proc_info_inst_varset(ProcInfo, InstVarSet),
-    proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
+    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_inst_varset(ProcInfo, InstVarSet),
+    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     set.init(Msgs),
     set.list_to_set(Simplifications, SimplificationsSet),
     Info = simplify_info(DetInfo, Msgs, SimplificationsSet,

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997,2002-2005 The University of Melbourne.
+% Copyright (C) 1997,2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -537,7 +537,7 @@ output_pred_termination2_info(ModuleInfo, PredId, !IO) :-
     globals.io_lookup_bool_option(termination2, RunningTerm2, !IO),
     ( RunningTerm2 = yes ->
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        pred_info_import_status(PredInfo, ImportStatus),
+        pred_info_get_import_status(PredInfo, ImportStatus),
         module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
         TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
         ( 
@@ -547,7 +547,7 @@ output_pred_termination2_info(ModuleInfo, PredId, !IO) :-
             not set.member(PredId, TypeSpecForcePreds)
         ->
             PredName   = pred_info_name(PredInfo),
-            pred_info_procedures(PredInfo, ProcTable),
+            pred_info_get_procedures(PredInfo, ProcTable),
             pred_info_context(PredInfo, Context),
             PredOrFunc = pred_info_is_pred_or_func(PredInfo),   
             ModuleName = pred_info_module(PredInfo),
@@ -572,7 +572,7 @@ make_opt_int_procs(PredId, [ ProcId | ProcIds ], ProcTable,
     ProcInfo = ProcTable ^ det_elem(ProcId),
     proc_info_get_termination2_info(ProcInfo, TermInfo),
     proc_info_declared_argmodes(ProcInfo, ModeList),
-    proc_info_headvars(ProcInfo, HeadVars), 
+    proc_info_get_headvars(ProcInfo, HeadVars), 
     SizeVarMap = TermInfo ^ size_var_map,
     HeadSizeVars = prog_vars_to_size_vars(SizeVarMap, HeadVars),
     output_pragma_termination2_info(PredOrFunc, SymName, 

@@ -227,17 +227,17 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, OldDetism, NewDetism,
     % Get the proc_info structure for this procedure.
     module_info_preds(!.ModuleInfo, Preds0),
     map.lookup(Preds0, PredId, Pred0),
-    pred_info_procedures(Pred0, Procs0),
+    pred_info_get_procedures(Pred0, Procs0),
     map.lookup(Procs0, ProcId, Proc0),
 
     % Remember the old inferred determinism of this procedure.
-    proc_info_inferred_determinism(Proc0, OldDetism),
+    proc_info_get_inferred_determinism(Proc0, OldDetism),
 
     % Work out whether or not the procedure occurs in a single-solution
     % context. Currently we only assume so if the predicate has an explicit
     % determinism declaration that says so.
     det_get_soln_context(OldDetism, OldInferredSolnContext),
-    proc_info_declared_determinism(Proc0, MaybeDeclaredDetism),
+    proc_info_get_declared_determinism(Proc0, MaybeDeclaredDetism),
     (
         MaybeDeclaredDetism = yes(DeclaredDetism),
         det_get_soln_context(DeclaredDetism, DeclaredSolnContext)
@@ -256,9 +256,9 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, OldDetism, NewDetism,
     ),
 
     % Infer the determinism of the goal.
-    proc_info_goal(Proc0, Goal0),
+    proc_info_get_goal(Proc0, Goal0),
     proc_info_get_initial_instmap(Proc0, !.ModuleInfo, InstMap0),
-    proc_info_vartypes(Proc0, VarTypes),
+    proc_info_get_vartypes(Proc0, VarTypes),
     det_info_init(!.ModuleInfo, VarTypes, PredId, ProcId, Globals, DetInfo),
     det_infer_goal(Goal0, Goal, InstMap0, SolnContext, [], no, DetInfo,
         InferDetism, _, !:Msgs),
@@ -275,7 +275,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, OldDetism, NewDetism,
     determinism_components(TentativeDetism, CanFail, MaxSoln),
 
     % Now see if the evaluation model can change the detism.
-    proc_info_eval_method(Proc0, EvalMethod),
+    proc_info_get_eval_method(Proc0, EvalMethod),
     NewDetism = eval_method_change_determinism(EvalMethod, TentativeDetism),
     (
         proc_info_has_io_state_pair(!.ModuleInfo, Proc0, _InArg, _OutArg),
@@ -288,7 +288,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, OldDetism, NewDetism,
         determinism_to_code_model(ToBeCheckedDetism, ToBeCheckedCodeModel),
         ToBeCheckedCodeModel \= model_det
     ->
-        proc_info_context(Proc0, ProcContext),
+        proc_info_get_context(Proc0, ProcContext),
         IOStateMsg = has_io_state_but_not_det(PredId, ProcId),
         IOStateContextMsg = context_det_msg(ProcContext, IOStateMsg),
         !:Msgs = [IOStateContextMsg | !.Msgs]
@@ -877,7 +877,7 @@ det_infer_call(PredId, ProcId0, ProcId, GoalInfo, SolnContext,
         ;
             goal_info_get_context(GoalInfo, GoalContext),
             det_get_proc_info(DetInfo, ProcInfo),
-            proc_info_varset(ProcInfo, VarSet),
+            proc_info_get_varset(ProcInfo, VarSet),
             Msg = cc_pred_in_wrong_context(GoalInfo, Detism0,
                 PredId, ProcId0, VarSet, RightFailingContexts),
             ContextMsg = context_det_msg(GoalContext, Msg),
@@ -919,7 +919,7 @@ det_infer_generic_call(GenericCall, CallDetism,
         % This error can only occur for higher-order calls.
         % Class method calls are only introduced by polymorphism.
         det_get_proc_info(DetInfo, ProcInfo),
-        proc_info_varset(ProcInfo, VarSet),
+        proc_info_get_varset(ProcInfo, VarSet),
         Msg = higher_order_cc_pred_in_wrong_context(GoalInfo, CallDetism,
             VarSet, RightFailingContexts),
         ContextMsg = context_det_msg(Context, Msg),
@@ -953,7 +953,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, PragmaCode,
 
     det_info_get_module_info(DetInfo, ModuleInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-    proc_info_declared_determinism(ProcInfo, MaybeDetism),
+    proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
     (
         MaybeDetism = yes(Detism0),
         determinism_components(Detism0, CanFail, NumSolns0),
@@ -961,7 +961,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, PragmaCode,
             may_throw_exception(Attributes) = will_not_throw_exception,
             Detism0 = erroneous
         ->
-            proc_info_context(ProcInfo, ProcContext),
+            proc_info_get_context(ProcInfo, ProcContext),
             WillNotThrowMsg = will_not_throw_with_erroneous(PredId, ProcId),
             WillNotThrowContextMsg =
                 context_det_msg(ProcContext, WillNotThrowMsg),
@@ -981,7 +981,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, PragmaCode,
             SolnContext = all_solns
         ->
             goal_info_get_context(GoalInfo, GoalContext),
-            proc_info_varset(ProcInfo, VarSet),
+            proc_info_get_varset(ProcInfo, VarSet),
             WrongContextMsg = cc_pred_in_wrong_context(GoalInfo, Detism0,
                 PredId, ProcId, VarSet, RightFailingContexts),
             WrongContextContextMsg = context_det_msg(GoalContext,
@@ -1002,7 +1002,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, PragmaCode,
         )
     ;
         MaybeDetism = no,
-        proc_info_context(ProcInfo, Context),
+        proc_info_get_context(ProcInfo, Context),
         Msg = pragma_c_code_without_det_decl(PredId, ProcId),
         ContextMsg = context_det_msg(Context, Msg),
         !:Msgs = [ContextMsg],
@@ -1202,7 +1202,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
     % Therefore cuts are handled in det_infer_goal.
     ( Reason = promise_solutions(Vars, Kind) ->
         det_get_proc_info(DetInfo, ProcInfo),
-        proc_info_varset(ProcInfo, VarSet),
+        proc_info_get_varset(ProcInfo, VarSet),
 
         goal_info_get_context(GoalInfo, Context),
         (
@@ -1304,7 +1304,7 @@ det_find_matching_non_cc_mode(DetInfo, PredId, !ProcId) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
     module_info_preds(ModuleInfo, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
-    pred_info_procedures(PredInfo, ProcTable),
+    pred_info_get_procedures(PredInfo, ProcTable),
     map.to_assoc_list(ProcTable, ProcList),
     det_find_matching_non_cc_mode_2(ProcList, ModuleInfo, PredInfo, !ProcId).
 
@@ -1342,19 +1342,19 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
 
         ExaminesRepresentation = yes,
         det_get_proc_info(DetInfo, ProcInfo),
-        proc_info_vartypes(ProcInfo, VarTypes),
+        proc_info_get_vartypes(ProcInfo, VarTypes),
         map.lookup(VarTypes, Var, Type),
         det_type_has_user_defined_equality_pred(DetInfo, Type)
     ->
         ( CanFail = can_fail ->
             goal_info_get_context(GoalInfo, Context),
-            proc_info_varset(ProcInfo, VarSet),
+            proc_info_get_varset(ProcInfo, VarSet),
             Msg = cc_unify_can_fail(GoalInfo, Var, Type, VarSet, GoalContext),
             ContextMsg = context_det_msg(Context, Msg),
             !:Msgs = [ContextMsg | !.Msgs]
         ; SolnContext = all_solns ->
             goal_info_get_context(GoalInfo, Context),
-            proc_info_varset(ProcInfo, VarSet),
+            proc_info_get_varset(ProcInfo, VarSet),
             Msg = cc_unify_in_wrong_context(GoalInfo, Var, Type, VarSet,
                 GoalContext, FailingContextsA ++ FailingContextsB),
             ContextMsg = context_det_msg(Context, Msg),
@@ -1516,9 +1516,9 @@ segregate_procs_2(ModuleInfo, [PredProcId | PredProcIds],
     ->
         !:NoInferProcs = [PredProcId | !.NoInferProcs]
     ;
-        pred_info_procedures(Pred, Procs),
+        pred_info_get_procedures(Pred, Procs),
         map.lookup(Procs, ProcId, Proc),
-        proc_info_declared_determinism(Proc, MaybeDetism),
+        proc_info_get_declared_determinism(Proc, MaybeDetism),
         (
             MaybeDetism = no,
             !:UndeclaredProcs = [PredProcId | !.UndeclaredProcs]
@@ -1541,9 +1541,9 @@ segregate_procs_2(ModuleInfo, [PredProcId | PredProcIds],
 
 set_non_inferred_proc_determinism(proc(PredId, ProcId), !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
-    pred_info_procedures(PredInfo0, Procs0),
+    pred_info_get_procedures(PredInfo0, Procs0),
     map.lookup(Procs0, ProcId, ProcInfo0),
-    proc_info_declared_determinism(ProcInfo0, MaybeDet),
+    proc_info_get_declared_determinism(ProcInfo0, MaybeDet),
     (
         MaybeDet = yes(Det),
         proc_info_set_inferred_determinism(Det, ProcInfo0, ProcInfo),

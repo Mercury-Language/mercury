@@ -317,23 +317,23 @@ dependency_graph.add_proc_arcs([ProcId | ProcIds], PredId, ModuleInfo,
         IncludeImported, !DepGraph) :-
     module_info_preds(ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_procedures(PredInfo0, ProcTable0),
+    pred_info_get_procedures(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
     (
         IncludeImported = do_not_include_imported,
-        proc_info_goal(ProcInfo0, Goal),
+        proc_info_get_goal(ProcInfo0, Goal),
 
         relation.lookup_element(!.DepGraph, proc(PredId, ProcId), Caller),
         dependency_graph.add_arcs_in_goal(Goal, Caller, !DepGraph)
     ;
         IncludeImported = include_imported,
-        pred_info_import_status(PredInfo0, ImportStatus),
+        pred_info_get_import_status(PredInfo0, ImportStatus),
         status_is_imported(ImportStatus, Imported),
         (
             Imported = yes
         ;
             Imported = no,
-            proc_info_goal(ProcInfo0, Goal),
+            proc_info_get_goal(ProcInfo0, Goal),
             relation.lookup_element(!.DepGraph, proc(PredId, ProcId), Caller),
             dependency_graph.add_arcs_in_goal(Goal, Caller, !DepGraph)
         )
@@ -359,7 +359,7 @@ dependency_graph.add_pred_arcs([PredId | PredIds], ModuleInfo,
         true
     ;
         pred_info_clauses_info(PredInfo, ClausesInfo),
-        clauses_info_clauses_rep(ClausesInfo, ClausesRep),
+        clauses_info_get_clauses_rep(ClausesInfo, ClausesRep),
         get_clause_list_any_order(ClausesRep, Clauses),
         Goals = list.map(func(clause(_, Goal, _, _)) = Goal, Clauses),
         relation.lookup_element(!.DepGraph, PredId, Caller),
@@ -553,9 +553,9 @@ dependency_graph.write_clique([proc(PredId, ProcId) | Rest], ModuleInfo,
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
         PredInfo, ProcInfo),
     Name = pred_info_name(PredInfo),
-    proc_info_declared_determinism(ProcInfo, Det),
-    proc_info_argmodes(ProcInfo, Modes),
-    proc_info_context(ProcInfo, Context),
+    proc_info_get_declared_determinism(ProcInfo, Det),
+    proc_info_get_argmodes(ProcInfo, Modes),
+    proc_info_get_context(ProcInfo, Context),
     varset.init(ModeVarSet),
 
     io.write_string("% ", !IO),
@@ -606,13 +606,13 @@ write_dep_graph_link(ModuleInfo, Parent, Child, !IO) :-
     module_info_pred_proc_info(ModuleInfo, CPredId, CProcId,
         CPredInfo, CProcInfo),
     PName = pred_info_name(PPredInfo),
-    proc_info_declared_determinism(PProcInfo, PDet),
-    proc_info_argmodes(PProcInfo, PModes),
-    proc_info_context(PProcInfo, PContext),
+    proc_info_get_declared_determinism(PProcInfo, PDet),
+    proc_info_get_argmodes(PProcInfo, PModes),
+    proc_info_get_context(PProcInfo, PContext),
     CName = pred_info_name(CPredInfo),
-    proc_info_declared_determinism(CProcInfo, CDet),
-    proc_info_argmodes(CProcInfo, CModes),
-    proc_info_context(CProcInfo, CContext),
+    proc_info_get_declared_determinism(CProcInfo, CDet),
+    proc_info_get_argmodes(CProcInfo, CModes),
+    proc_info_get_context(CProcInfo, CContext),
     varset.init(ModeVarSet),
     mercury_output_pred_mode_subdecl(ModeVarSet, unqualified(PName),
         PModes, PDet, PContext, !IO),

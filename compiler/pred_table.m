@@ -979,9 +979,9 @@ find_matching_pred_id(ModuleInfo, [PredId | PredIds], TVarSet, ArgTypes,
         % (or the argument types + return type of the candidate function).
         %
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        pred_info_arg_types(PredInfo, PredTVarSet, PredExistQVars0,
+        pred_info_get_arg_types(PredInfo, PredTVarSet, PredExistQVars0,
             PredArgTypes0),
-        pred_info_tvar_kinds(PredInfo, PredKindMap),
+        pred_info_get_tvar_kinds(PredInfo, PredKindMap),
 
         arg_type_list_subsumes(TVarSet, ArgTypes, PredTVarSet, PredKindMap,
             PredExistQVars0, PredArgTypes0),

@@ -437,7 +437,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
             ClassProc = hlds_class_proc(PredId, ProcId)
         ), ProcIds),
     module_info_pred_info(ModuleInfo0, PredId, PredInfo),
-    pred_info_arg_types(PredInfo, ArgTypeVars, ExistQVars, ArgTypes),
+    pred_info_get_arg_types(PredInfo, ArgTypeVars, ExistQVars, ArgTypes),
     pred_info_get_class_context(PredInfo, ClassContext0),
     pred_info_get_markers(PredInfo, Markers0),
     remove_marker(class_method, Markers0, Markers),
@@ -458,16 +458,16 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
     PredArity = pred_info_orig_arity(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     adjust_func_arity(PredOrFunc, Arity, PredArity),
-    pred_info_procedures(PredInfo, ProcTable),
+    pred_info_get_procedures(PredInfo, ProcTable),
     list.map(
         (pred(TheProcId::in, ModesAndDetism::out) is det :-
             map.lookup(ProcTable, TheProcId, ProcInfo),
-            proc_info_argmodes(ProcInfo, Modes),
+            proc_info_get_argmodes(ProcInfo, Modes),
             % If the determinism declaration on the method was omitted,
             % then make_hlds will have already issued an error message,
             % so don't complain here.
-            proc_info_declared_determinism(ProcInfo, MaybeDetism),
-            proc_info_inst_varset(ProcInfo, InstVarSet),
+            proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
+            proc_info_get_inst_varset(ProcInfo, InstVarSet),
             ModesAndDetism = modes_and_detism(Modes, InstVarSet, MaybeDetism)
         ), ProcIds, ArgModes),
 
@@ -1414,7 +1414,7 @@ check_typeclass.check_constraints(!ModuleInfo, FoundError, !IO) :-
 check_pred_constraints(PredId, !ModuleInfo, !FoundError, !IO) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     (
-        pred_info_import_status(PredInfo, ImportStatus),
+        pred_info_get_import_status(PredInfo, ImportStatus),
         needs_no_ambiguity_check(ImportStatus)
     ->
         true
@@ -1436,7 +1436,7 @@ needs_no_ambiguity_check(pseudo_imported).
     module_info::out, bool::in, bool::out, io::di, io::uo) is det.
 
 check_pred_type_ambiguities(PredInfo, !ModuleInfo, !FoundError, !IO) :-
-    pred_info_arg_types(PredInfo, ArgTypes),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
     pred_info_get_class_context(PredInfo, Constraints),
     prog_type.vars_list(ArgTypes, TVars),
     get_unbound_tvars(TVars, Constraints, !.ModuleInfo, UnboundTVars),
@@ -1602,7 +1602,7 @@ collect_determined_vars(FunDep @ fundep(Domain, Range), !FunDeps, !Vars) :-
 
 report_unbound_tvars_in_pred_context(Vars, PredInfo, !IO) :-
     pred_info_context(PredInfo, Context),
-    pred_info_arg_types(PredInfo, TVarSet, _, ArgTypes),
+    pred_info_get_arg_types(PredInfo, TVarSet, _, ArgTypes),
     PredName = pred_info_name(PredInfo),
     Module = pred_info_module(PredInfo),
     SymName = qualified(Module, PredName),
@@ -1748,7 +1748,7 @@ maybe_report_badly_quantified_vars(PredInfo, QuantErrorType, TVars,
     list(tvar)::in, io::di, io::uo) is det.
 
 report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !IO) :-
-    pred_info_typevarset(PredInfo, TVarSet),
+    pred_info_get_typevarset(PredInfo, TVarSet),
     pred_info_context(PredInfo, Context),
 
     InDeclaration = [words("In declaration of")] ++

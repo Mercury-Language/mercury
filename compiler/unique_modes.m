@@ -518,7 +518,7 @@ check_call(PredId, ProcId0, ArgVars, GoalInfo, ProcId, !ModeInfo) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId0,
             PredInfo, ProcInfo),
     compute_arg_offset(PredInfo, ArgOffset),
-    proc_info_argmodes(ProcInfo, ProcArgModes0),
+    proc_info_get_argmodes(ProcInfo, ProcArgModes0),
     proc_info_interface_determinism(ProcInfo, InterfaceDeterminism),
     proc_info_never_succeeds(ProcInfo, NeverSucceeds),
     check_call_modes(ArgVars, ProcArgModes0, ArgOffset, InterfaceDeterminism,
@@ -562,7 +562,7 @@ check_call(PredId, ProcId0, ArgVars, GoalInfo, ProcId, !ModeInfo) :-
         % of unique mode analysis.  That is OK, because uniqueness should not
         % affect determinism.
         mode_info_set_instmap(InstMap0, !ModeInfo),
-        proc_info_inferred_determinism(ProcInfo, Determinism),
+        proc_info_get_inferred_determinism(ProcInfo, Determinism),
         modecheck_call_pred(PredId, yes(Determinism), ProcId0, ProcId,
             ArgVars, NewArgVars, GoalInfo, ExtraGoals, !ModeInfo),
 

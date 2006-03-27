@@ -963,7 +963,7 @@ module_info_proc_info(MI, PredId, ProcId, ProcInfo) :-
 
 module_info_pred_proc_info(MI, PredId, ProcId, PredInfo, ProcInfo) :-
     module_info_pred_info(MI, PredId, PredInfo),
-    pred_info_procedures(PredInfo, Procs),
+    pred_info_get_procedures(PredInfo, Procs),
     map.lookup(Procs, ProcId, ProcInfo).
 
 module_info_pred_proc_info(MI, proc(PredId, ProcId), PredInfo, ProcInfo) :-
@@ -1004,7 +1004,7 @@ module_info_set_pred_proc_info(proc(PredId, ProcId), PredInfo, ProcInfo,
         PredInfo, ProcInfo, !MI).
 
 module_info_set_pred_proc_info(PredId, ProcId, PredInfo0, ProcInfo, !MI) :-
-    pred_info_procedures(PredInfo0, Procs0),
+    pred_info_get_procedures(PredInfo0, Procs0),
     map.set(Procs0, ProcId, ProcInfo, Procs),
     pred_info_set_procedures(Procs, PredInfo0, PredInfo),
     module_info_set_pred_info(PredId, PredInfo, !MI).

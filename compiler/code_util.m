@@ -433,7 +433,7 @@ lvals_in_mem_ref(heap_ref(Rval, _, _), Lvals) :-
 %-----------------------------------------------------------------------------%
 
 build_input_arg_list(ProcInfo, VarLvals) :-
-    proc_info_headvars(ProcInfo, HeadVars),
+    proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_arg_info(ProcInfo, ArgInfos),
     assoc_list.from_corresponding_lists(HeadVars, ArgInfos, VarArgInfos),
     build_input_arg_list_2(VarArgInfos, VarLvals).

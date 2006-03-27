@@ -237,7 +237,7 @@ gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
     TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
     pred_info_clauses_info(PredInfo0, ClausesInfo0),
     (
-        clauses_info_explicit_vartypes(ClausesInfo0, ExplicitVarTypes),
+        clauses_info_get_explicit_vartypes(ClausesInfo0, ExplicitVarTypes),
         map.is_empty(ExplicitVarTypes),
         should_be_processed(ProcessLocalPreds, PredId, PredInfo0,
             TypeSpecForcePreds, InlineThreshold, HigherOrderSizeLimit,
@@ -247,11 +247,11 @@ gather_pred_list([PredId | PredIds], ProcessLocalPreds, CollectTypes,
         % Write a declaration to the `.opt' file for
         % `exported_to_submodules' predicates.
         add_proc(PredId, DoWrite0, !Info),
-        clauses_info_clauses_rep(ClausesInfo0, ClausesRep0),
+        clauses_info_get_clauses_rep(ClausesInfo0, ClausesRep0),
         (
             DoWrite0 = yes,
-            clauses_info_vartypes(ClausesInfo0, VarTypes),
-            pred_info_typevarset(PredInfo0, TVarSet),
+            clauses_info_get_vartypes(ClausesInfo0, VarTypes),
+            pred_info_get_typevarset(PredInfo0, TVarSet),
             intermod_info_set_var_types(VarTypes, !Info),
             intermod_info_set_tvarset(TVarSet, !Info),
             get_clause_list(ClausesRep0, Clauses0),
@@ -304,14 +304,14 @@ should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
         )
     ;
         ProcessLocalPreds = yes,
-        pred_info_import_status(PredInfo, local)
+        pred_info_get_import_status(PredInfo, local)
     ),
     (
         pred_info_clauses_info(PredInfo, ClauseInfo),
         clauses_info_clauses_only(ClauseInfo, Clauses),
 
         [ProcId | _ProcIds] = pred_info_procids(PredInfo),
-        pred_info_procedures(PredInfo, Procs),
+        pred_info_get_procedures(PredInfo, Procs),
         map.lookup(Procs, ProcId, ProcInfo),
 
         % At this point, the goal size includes some dummy unifications
@@ -343,7 +343,7 @@ should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
         \+ clauses_contain_noninlinable_foreign_code(Target, Clauses),
 
         % Don't export tabled predicates since they are not inlinable.
-        proc_info_eval_method(ProcInfo, eval_normal),
+        proc_info_get_eval_method(ProcInfo, eval_normal),
 
         (
             inlining.is_simple_clause_list(Clauses, InlineThreshold + Arity),
@@ -407,9 +407,9 @@ traverse_clauses([clause(P, Goal0, L, C) | Clauses0],
 :- pred has_ho_input(module_info::in, proc_info::in) is semidet.
 
 has_ho_input(ModuleInfo, ProcInfo) :-
-    proc_info_headvars(ProcInfo, HeadVars),
-    proc_info_argmodes(ProcInfo, ArgModes),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_headvars(ProcInfo, HeadVars),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     check_for_ho_input_args(ModuleInfo, VarTypes, HeadVars, ArgModes).
 
 :- pred check_for_ho_input_args(module_info::in, vartypes::in,
@@ -573,7 +573,7 @@ add_proc(PredId, DoWrite, !Info) :-
 add_proc_2(PredId, DoWrite, !Info) :-
     intermod_info_get_module_info(!.Info, ModuleInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_import_status(PredInfo, Status),
+    pred_info_get_import_status(PredInfo, Status),
     ProcIds = pred_info_procids(PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     (
@@ -599,10 +599,10 @@ add_proc_2(PredId, DoWrite, !Info) :-
         (
             check_marker(Markers, infer_modes)
         ;
-            pred_info_procedures(PredInfo, Procs),
+            pred_info_get_procedures(PredInfo, Procs),
             list.member(ProcId, ProcIds),
             map.lookup(Procs, ProcId, ProcInfo),
-            proc_info_declared_determinism(ProcInfo, no)
+            proc_info_get_declared_determinism(ProcInfo, no)
         )
     ->
         DoWrite = no
@@ -829,7 +829,7 @@ gather_instances_3(ModuleInfo, ClassId, InstanceDefn, !Info) :-
 qualify_instance_method(ModuleInfo, MethodCallPredId - InstanceMethod0,
         InstanceMethod, PredIds0, PredIds) :-
     module_info_pred_info(ModuleInfo, MethodCallPredId, MethodCallPredInfo),
-    pred_info_arg_types(MethodCallPredInfo, MethodCallTVarSet, _,
+    pred_info_get_arg_types(MethodCallPredInfo, MethodCallTVarSet, _,
         MethodCallArgTypes),
     InstanceMethod0 = instance_method(PredOrFunc, MethodName,
         InstanceMethodDefn0, MethodArity, MethodContext),
@@ -1092,7 +1092,7 @@ resolve_user_special_pred_overloading(ModuleInfo, SpecialId,
     module_info_get_special_pred_map(ModuleInfo, SpecialPreds),
     map.lookup(SpecialPreds, SpecialId - TypeCtor, UnifyPredId),
     module_info_pred_info(ModuleInfo, UnifyPredId, UnifyPredInfo),
-    pred_info_arg_types(UnifyPredInfo, TVarSet, _, ArgTypes),
+    pred_info_get_arg_types(UnifyPredInfo, TVarSet, _, ArgTypes),
     init_markers(Markers0),
     add_marker(calls_are_fully_qualified, Markers0, Markers),
     resolve_pred_overloading(ModuleInfo, Markers, ArgTypes,
@@ -1429,7 +1429,7 @@ write_pred_decls(ModuleInfo, [PredId | PredIds], !IO) :-
     Module = pred_info_module(PredInfo),
     Name = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    pred_info_arg_types(PredInfo, TVarSet, ExistQVars, ArgTypes),
+    pred_info_get_arg_types(PredInfo, TVarSet, ExistQVars, ArgTypes),
     pred_info_context(PredInfo, Context),
     pred_info_get_purity(PredInfo, Purity),
     pred_info_get_class_context(PredInfo, ClassContext),
@@ -1467,7 +1467,7 @@ write_pred_decls(ModuleInfo, [PredId | PredIds], !IO) :-
             FuncArgTypes, FuncRetType, no, Purity, ClassContext, Context,
             AppendVarNums, !IO)
     ),
-    pred_info_procedures(PredInfo, Procs),
+    pred_info_get_procedures(PredInfo, Procs),
     ProcIds = pred_info_procids(PredInfo),
         % Make sure the mode declarations go out in the same order
         % they came in, so that the all the modes get the same proc_id
@@ -1491,8 +1491,8 @@ write_pred_decls(ModuleInfo, [PredId | PredIds], !IO) :-
 write_pred_modes(_, _, _, [], !IO).
 write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds], !IO) :-
     map.lookup(Procs, ProcId, ProcInfo),
-    proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
-    proc_info_declared_determinism(ProcInfo, MaybeDetism),
+    proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
+    proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
     (
         MaybeArgModes = yes(ArgModes0),
         MaybeDetism = yes(Detism0)
@@ -1503,7 +1503,7 @@ write_pred_modes(Procs, SymName, PredOrFunc, [ProcId | ProcIds], !IO) :-
         unexpected(this_file,
             "write_pred_modes: attempt to write undeclared mode")
     ),
-    proc_info_context(ProcInfo, Context),
+    proc_info_get_context(ProcInfo, Context),
     varset.init(Varset),
     (
         PredOrFunc = function,
@@ -1532,10 +1532,10 @@ write_preds(ModuleInfo, [PredId | PredIds], !IO) :-
     % already be in the interface file.
 
     pred_info_clauses_info(PredInfo, ClausesInfo),
-    clauses_info_varset(ClausesInfo, VarSet),
-    clauses_info_headvars(ClausesInfo, HeadVars),
+    clauses_info_get_varset(ClausesInfo, VarSet),
+    clauses_info_get_headvars(ClausesInfo, HeadVars),
     clauses_info_clauses_only(ClausesInfo, Clauses),
-    clauses_info_vartypes(ClausesInfo, VarTypes),
+    clauses_info_get_vartypes(ClausesInfo, VarTypes),
 
     ( pred_info_get_goal_type(PredInfo, promise(PromiseType)) ->
         ( Clauses = [Clause] ->
@@ -1546,7 +1546,7 @@ write_preds(ModuleInfo, [PredId | PredIds], !IO) :-
                 "write_preds: assertion not a single clause.")
         )
     ;
-        pred_info_typevarset(PredInfo, TypeVarset),
+        pred_info_get_typevarset(PredInfo, TypeVarset),
         MaybeVarTypes = yes(TypeVarset, VarTypes),
         list.foldl(write_clause(ModuleInfo, PredId, VarSet,
             HeadVars, PredOrFunc, SymName, MaybeVarTypes), Clauses, !IO)
@@ -1574,7 +1574,7 @@ write_clause(ModuleInfo, PredId, VarSet, _HeadVars, PredOrFunc, SymName,
         _, Clause, !IO) :-
     Clause = clause(ProcIds, Goal, foreign_language(_), _),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_procedures(PredInfo, Procs),
+    pred_info_get_procedures(PredInfo, Procs),
     (
         (
             % Pull the foreign code out of the goal.
@@ -1602,12 +1602,12 @@ write_clause(ModuleInfo, PredId, VarSet, _HeadVars, PredOrFunc, SymName,
 write_foreign_clause(Procs, PredOrFunc, PragmaImpl,
         Attributes, Args, ProgVarset0, SymName, ProcId, !IO) :-
     map.lookup(Procs, ProcId, ProcInfo),
-    proc_info_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
+    proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
     ( 
         MaybeArgModes = yes(ArgModes),
         get_pragma_foreign_code_vars(Args, ArgModes,
             ProgVarset0, ProgVarset, PragmaVars),
-        proc_info_inst_varset(ProcInfo, InstVarset),
+        proc_info_get_inst_varset(ProcInfo, InstVarset),
         mercury_output_pragma_foreign_code(Attributes, SymName,
             PredOrFunc, PragmaVars, ProgVarset, InstVarset, PragmaImpl, 
             !IO)
@@ -2090,7 +2090,7 @@ set_list_of_preds_exported_2([], !Preds).
 set_list_of_preds_exported_2([PredId | PredIds], !Preds) :-
     map.lookup(!.Preds, PredId, PredInfo0),
     (
-        pred_info_import_status(PredInfo0, Status),
+        pred_info_get_import_status(PredInfo0, Status),
         import_status_to_write(Status)
     ->
         (

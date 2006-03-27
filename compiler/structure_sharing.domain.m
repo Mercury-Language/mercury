@@ -328,11 +328,11 @@ sharing_as_rename_using_module_info(ModuleInfo, PPId, ActualVars, ActualTypes,
     module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, ProcInfo),
 
     % head variables.
-    proc_info_headvars(ProcInfo, FormalVars),
+    proc_info_get_headvars(ProcInfo, FormalVars),
     map.from_corresponding_lists(FormalVars, ActualVars, Dict),
 
     % types of the head variables.
-    pred_info_arg_types(PredInfo, FormalTVarset, _, FormalTypes),
+    pred_info_get_arg_types(PredInfo, FormalTVarset, _, FormalTypes),
 
     % (this is a bit that was inspired by the code for
     % arg_type_list_subsumes/6)
@@ -447,7 +447,7 @@ sharing_from_unification(ModuleInfo, ProcInfo, Unification, GoalInfo)
 :- pred is_introduced_typeinfo_arg(proc_info::in, prog_var::in) is semidet.
 
 is_introduced_typeinfo_arg(ProcInfo, Var) :-
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     map.lookup(VarTypes, Var, Type),
     is_introduced_type_info_type(Type).
 
@@ -477,7 +477,7 @@ add_var_arg_sharing(ModuleInfo, ProcInfo, Var, ConsId, N - Arg, !Sharing) :-
     prog_var::in) is semidet.
 
 arg_has_primitive_type(ModuleInfo, ProcInfo, Var):-
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     map.lookup(VarTypes, Var, Type),
     type_is_atomic(Type, ModuleInfo).
 
@@ -537,7 +537,7 @@ optimize_for_deconstruct(GoalInfo, !NumberedArgs) :-
     sharing_as) = sharing_as.
 
 optimization_remove_deaths(ProcInfo, GoalInfo, Sharing0) = Sharing :-
-    proc_info_headvars(ProcInfo, HeadVars),
+    proc_info_get_headvars(ProcInfo, HeadVars),
     set.list_to_set(HeadVars, HeadVarsSet),
     goal_info_get_post_deaths(GoalInfo, Deaths0),
     %
@@ -910,7 +910,7 @@ sharing_set_altclos_2(ModuleInfo, ProcInfo, NewSharingSet, OldSharingSet)
     map.select(NewMap, CommonVarsSet, NewMap1),
     map.select(OldMap, CommonVarsSet, OldMap1),
 
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     %
     % for each common var V, compute the sharing pairs A-B, such that
     % \exists X where var(X) = V, and X-A \in NewSharingSet, and X-B \in
@@ -1021,7 +1021,7 @@ sharing_set_extend_datastruct(ModuleInfo, ProcInfo, Datastruct, SharingSet)
         % The type of the variable is needed to be able to compare
         % datastructures.
         %
-        proc_info_vartypes(ProcInfo, VarTypes),
+        proc_info_get_vartypes(ProcInfo, VarTypes),
         map.lookup(VarTypes, Var, VarType),
         Datastructures = selector_sharing_set_extend_datastruct(ModuleInfo,
             VarType, Selector, SelectorSet)
@@ -1162,7 +1162,7 @@ sharing_set_subsumes_sharing_pair(ModuleInfo, ProcInfo, SharingSet,
     Var2 = Data2 ^ sc_var,
     Sel2 = Data2 ^ sc_selector,
 
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     map.lookup(VarTypes, Var1, Type1),
     map.lookup(VarTypes, Var2, Type2),
 
@@ -1211,7 +1211,7 @@ sharing_set_subsumed_subset(ModuleInfo, ProcInfo, SharingSet, SharingPair,
     Var2 = Data2 ^ sc_var,
     Sel2 = Data2 ^ sc_selector,
 
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     map.lookup(VarTypes, Var1, Type1),
     map.lookup(VarTypes, Var2, Type2),
 

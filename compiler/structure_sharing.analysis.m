@@ -220,7 +220,7 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !IO) :-
     % Collect relevant procedure information.
     %
     module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, ProcInfo),
-    proc_info_headvars(ProcInfo, HeadVars),
+    proc_info_get_headvars(ProcInfo, HeadVars),
 
     % Write progress message for the start of analysing current procedure.
     %
@@ -240,7 +240,7 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !IO) :-
             maybe_write_string(Verbose, "\t\t: bottom predicted", !IO)
         ;
             % Start analysis.
-            proc_info_goal(ProcInfo, Goal),
+            proc_info_get_goal(ProcInfo, Goal),
             analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
                 !FixpointTable, !Sharing, !IO),
             FullAsDescr = short_description(!.Sharing),
@@ -279,9 +279,9 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !IO) :-
     proc_info::in) is semidet.
 
 bottom_sharing_is_safe_approximation(ModuleInfo, ProcInfo) :-
-    proc_info_headvars(ProcInfo, HeadVars),
-    proc_info_argmodes(ProcInfo, Modes),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_headvars(ProcInfo, HeadVars),
+    proc_info_get_argmodes(ProcInfo, Modes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     list.map(map.lookup(VarTypes), HeadVars, Types),
 
     ModeTypePairs = assoc_list.from_corresponding_lists(Modes, Types),
@@ -337,9 +337,9 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
             !FixpointTable, CalleeSharing),
 
         % Rename
-        proc_info_vartypes(ProcInfo, AllTypes),
+        proc_info_get_vartypes(ProcInfo, AllTypes),
         list.map(map.lookup(AllTypes), CalleeArgs, ActualTypes),
-        pred_info_typevarset(PredInfo, ActualTVarset),
+        pred_info_get_typevarset(PredInfo, ActualTVarset),
         sharing_as_rename_using_module_info(ModuleInfo, CalleePPId, CalleeArgs,
             ActualTypes, ActualTVarset, CalleeSharing, RenamedSharing),
 
@@ -490,7 +490,7 @@ predict_called_pred_is_bottom(ModuleInfo, PPId) :-
     module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, ProcInfo),
     (
         % 1. inferred determinism is erroneous/failure.
-        proc_info_inferred_determinism(ProcInfo, Determinism),
+        proc_info_get_inferred_determinism(ProcInfo, Determinism),
         (
             Determinism = erroneous
         ;
@@ -683,7 +683,7 @@ make_opt_int(ModuleInfo, !IO) :-
 
 write_pred_sharing_info(ModuleInfo, PredId, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_import_status(PredInfo, ImportStatus),
+    pred_info_get_import_status(PredInfo, ImportStatus),
     module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
     TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
     (
@@ -703,10 +703,10 @@ write_pred_sharing_info(ModuleInfo, PredId, !IO) :-
         ProcIds = pred_info_procids(PredInfo),
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         ModuleName = pred_info_module(PredInfo),
-        pred_info_procedures(PredInfo, ProcTable),
+        pred_info_get_procedures(PredInfo, ProcTable),
         pred_info_context(PredInfo, Context),
         SymName = qualified(ModuleName, PredName),
-        pred_info_typevarset(PredInfo, TypeVarSet),
+        pred_info_get_typevarset(PredInfo, TypeVarSet),
         list.foldl(
             write_proc_sharing_info(PredId, ProcTable, PredOrFunc,
                 SymName, Context, TypeVarSet),
@@ -728,9 +728,9 @@ write_proc_sharing_info(_PredId, ProcTable, PredOrFunc, SymName, Context,
         map.lookup(ProcTable, ProcId, ProcInfo),
         proc_info_get_structure_sharing(ProcInfo, MaybeSharingAs),
         proc_info_declared_argmodes(ProcInfo, Modes),
-        proc_info_varset(ProcInfo, VarSet),
-        proc_info_headvars(ProcInfo, HeadVars),
-        proc_info_vartypes(ProcInfo, VarTypes),
+        proc_info_get_varset(ProcInfo, VarSet),
+        proc_info_get_headvars(ProcInfo, HeadVars),
+        proc_info_get_vartypes(ProcInfo, VarTypes),
         list.map(map.lookup(VarTypes), HeadVars, HeadVarTypes),
         write_pragma_structure_sharing_info(PredOrFunc, SymName, Modes,
             Context, HeadVars, yes(VarSet), HeadVarTypes, yes(TypeVarSet),

@@ -283,9 +283,9 @@ mark_predproc(PredProcId, NeededMap, Params, ModuleInfo, !InlinedProcs, !IO) :-
         SimpleThreshold = Params ^ simple_goal_threshold,
         PredProcId = proc(PredId, ProcId),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        pred_info_procedures(PredInfo, Procs),
+        pred_info_get_procedures(PredInfo, Procs),
         map.lookup(Procs, ProcId, ProcInfo),
-        proc_info_goal(ProcInfo, CalledGoal),
+        proc_info_get_goal(ProcInfo, CalledGoal),
         Entity = proc(PredId, ProcId),
 
         % The heuristic represented by the following code could be improved.
@@ -452,17 +452,17 @@ in_predproc(PredProcId, InlinedProcs, Params, !ModuleInfo, !IO) :-
     some [!PredInfo, !ProcInfo] (
         module_info_preds(!.ModuleInfo, PredTable0),
         map.lookup(PredTable0, PredId, !:PredInfo),
-        pred_info_procedures(!.PredInfo, ProcTable0),
+        pred_info_get_procedures(!.PredInfo, ProcTable0),
         map.lookup(ProcTable0, ProcId, !:ProcInfo),
 
         pred_info_get_univ_quant_tvars(!.PredInfo, UnivQTVars),
-        pred_info_typevarset(!.PredInfo, TypeVarSet0),
+        pred_info_get_typevarset(!.PredInfo, TypeVarSet0),
         pred_info_get_markers(!.PredInfo, Markers),
 
-        proc_info_goal(!.ProcInfo, Goal0),
-        proc_info_varset(!.ProcInfo, VarSet0),
-        proc_info_vartypes(!.ProcInfo, VarTypes0),
-        proc_info_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
+        proc_info_get_goal(!.ProcInfo, Goal0),
+        proc_info_get_varset(!.ProcInfo, VarSet0),
+        proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+        proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
 
         DidInlining0 = no,
         Requantify0 = no,
@@ -619,7 +619,7 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
             list.length(ListOfVars, ThisMany),
 
             % We need to find out how many variables the Callee has.
-            proc_info_varset(ProcInfo, CalleeVarSet),
+            proc_info_get_varset(ProcInfo, CalleeVarSet),
             varset.vars(CalleeVarSet, CalleeListOfVars),
             list.length(CalleeListOfVars, CalleeThisMany),
             TotalVars = ThisMany + CalleeThisMany,
@@ -674,15 +674,15 @@ do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
         VarSet0, VarSet, VarTypes0, VarTypes, TypeVarSet0, TypeVarSet,
         RttiVarMaps0, RttiVarMaps, Goal) :-
 
-    proc_info_goal(ProcInfo, CalledGoal),
+    proc_info_get_goal(ProcInfo, CalledGoal),
 
     % Look up the rest of the info for the called procedure.
 
-    pred_info_typevarset(PredInfo, CalleeTypeVarSet),
-    proc_info_headvars(ProcInfo, HeadVars),
-    proc_info_vartypes(ProcInfo, CalleeVarTypes0),
-    proc_info_varset(ProcInfo, CalleeVarSet),
-    proc_info_rtti_varmaps(ProcInfo, CalleeRttiVarMaps0),
+    pred_info_get_typevarset(PredInfo, CalleeTypeVarSet),
+    proc_info_get_headvars(ProcInfo, HeadVars),
+    proc_info_get_vartypes(ProcInfo, CalleeVarTypes0),
+    proc_info_get_varset(ProcInfo, CalleeVarSet),
+    proc_info_get_rtti_varmaps(ProcInfo, CalleeRttiVarMaps0),
 
     % Substitute the appropriate types into the type mapping of the called
     % procedure. For example, if we call `:- pred foo(T)' with an argument
@@ -898,7 +898,7 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
     % evaluation. Currently we can't inline procs evaluated using any of the
     % other methods because the code generator for the methods can only handle
     % whole procedures not code fragments.
-    proc_info_eval_method(ProcInfo, eval_normal),
+    proc_info_get_eval_method(ProcInfo, eval_normal),
 
     % Don't inline anything we have been specifically requested
     % not to inline.
@@ -920,7 +920,7 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
 
     % For the LLDS back-end, under no circumstances inline model_non
     % foreign_procs. The resulting code would not work properly.
-    proc_info_goal(ProcInfo, CalledGoal),
+    proc_info_get_goal(ProcInfo, CalledGoal),
     \+ (
         HighLevelCode = no,
         CalledGoal = foreign_proc(_, _, _, _, _, _) - _,

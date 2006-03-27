@@ -226,7 +226,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
                 [words("Warning: clause for builtin.")], !IO)
         ;
             pred_info_clauses_info(!.PredInfo, Clauses0),
-            pred_info_typevarset(!.PredInfo, TVarSet0),
+            pred_info_get_typevarset(!.PredInfo, TVarSet0),
             maybe_add_default_func_mode(!PredInfo, _),
             select_applicable_modes(Args, ClauseVarSet, Status, Context,
                 PredId, !.PredInfo, ArgTerms, ProcIdsForThisClause,
@@ -242,7 +242,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
                 pred_info_update_goal_type(clauses, !PredInfo)
             ),
             pred_info_set_typevarset(TVarSet, !PredInfo),
-            pred_info_arg_types(!.PredInfo, _ArgTVarSet, ExistQVars, ArgTypes),
+            pred_info_get_arg_types(!.PredInfo, _ArgTVarSet, ExistQVars, ArgTypes),
             pred_info_set_arg_types(TVarSet, ExistQVars, ArgTypes, !PredInfo),
 
             %
@@ -307,7 +307,7 @@ select_applicable_modes(Args0, VarSet, Status, Context, PredId, PredInfo,
         %
         % Now find the procedure which matches these mode annotations.
         %
-        pred_info_procedures(PredInfo, Procs),
+        pred_info_get_procedures(PredInfo, Procs),
         map.to_assoc_list(Procs, ExistingProcs),
         (
             get_procedure_matching_declmodes(ExistingProcs, ModeList,

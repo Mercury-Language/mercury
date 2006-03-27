@@ -805,12 +805,12 @@ write_pred(Indent, ModuleInfo, PredId, PredInfo, !IO) :-
     Module = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    pred_info_arg_types(PredInfo, ArgTypes),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
     pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
-    pred_info_typevarset(PredInfo, TVarSet),
+    pred_info_get_typevarset(PredInfo, TVarSet),
     pred_info_clauses_info(PredInfo, ClausesInfo),
     pred_info_context(PredInfo, Context),
-    pred_info_import_status(PredInfo, ImportStatus),
+    pred_info_get_import_status(PredInfo, ImportStatus),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_class_context(PredInfo, ClassContext),
     pred_info_get_constraint_proofs(PredInfo, Proofs),
@@ -1143,13 +1143,13 @@ write_annotated_clause_heads(ModuleInfo, Context, PredId, [ProcId | ProcIds],
 write_annotated_clause_head(ModuleInfo, Context, PredId, ProcId, VarSet,
         AppendVarNums, HeadTerms, PredOrFunc, UseDeclaredModes, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_procedures(PredInfo, Procedures),
+    pred_info_get_procedures(PredInfo, Procedures),
     ( map.search(Procedures, ProcId, ProcInfo) ->
         % When writing `.opt' files, use the declared argument modes so that
         % the modes are guaranteed to be syntactically identical to those
         % in the original program. The test in add_clause.m to check whether
         % a clause matches a procedure tests for syntactic identity (roughly).
-        % The modes returned by proc_info_argmodes may have been slightly
+        % The modes returned by proc_info_get_argmodes may have been slightly
         % expanded by propagate_types_into_modes.
         %
         % We can't use the declared argument modes when writing HLDS dumps
@@ -1161,7 +1161,7 @@ write_annotated_clause_head(ModuleInfo, Context, PredId, ProcId, VarSet,
             proc_info_declared_argmodes(ProcInfo, ArgModes)
         ;
             UseDeclaredModes = no,
-            proc_info_argmodes(ProcInfo, ArgModes)
+            proc_info_get_argmodes(ProcInfo, ArgModes)
         ),
         assoc_list.from_corresponding_lists(HeadTerms, ArgModes,
             AnnotatedPairs),
@@ -3465,7 +3465,7 @@ write_modes(Indent, _ModeTable, !IO) :-
 
 write_procs(Indent, AppendVarNums, ModuleInfo, PredId, ImportStatus, PredInfo,
         !IO) :-
-    pred_info_procedures(PredInfo, ProcTable),
+    pred_info_get_procedures(PredInfo, ProcTable),
     ProcIds = pred_info_procids(PredInfo),
     write_procs_2(ProcIds, AppendVarNums, ModuleInfo, Indent, PredId,
         ImportStatus, ProcTable, !IO).
@@ -3488,23 +3488,23 @@ write_procs_2([ProcId | ProcIds], AppendVarNums, ModuleInfo, Indent,
 write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
         ImportStatus, Proc, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_typevarset(PredInfo, TVarSet),
-    proc_info_vartypes(Proc, VarTypes),
-    proc_info_declared_determinism(Proc, DeclaredDeterminism),
-    proc_info_inferred_determinism(Proc, InferredDeterminism),
-    proc_info_varset(Proc, VarSet),
-    proc_info_headvars(Proc, HeadVars),
-    proc_info_argmodes(Proc, HeadModes),
-    proc_info_maybe_arglives(Proc, MaybeArgLives),
+    pred_info_get_typevarset(PredInfo, TVarSet),
+    proc_info_get_vartypes(Proc, VarTypes),
+    proc_info_get_declared_determinism(Proc, DeclaredDeterminism),
+    proc_info_get_inferred_determinism(Proc, InferredDeterminism),
+    proc_info_get_varset(Proc, VarSet),
+    proc_info_get_headvars(Proc, HeadVars),
+    proc_info_get_argmodes(Proc, HeadModes),
+    proc_info_get_maybe_arglives(Proc, MaybeArgLives),
     proc_info_maybe_arg_info(Proc, MaybeArgInfos),
-    proc_info_goal(Proc, Goal),
-    proc_info_context(Proc, ModeContext),
+    proc_info_get_goal(Proc, Goal),
+    proc_info_get_context(Proc, ModeContext),
     proc_info_get_maybe_arg_size_info(Proc, MaybeArgSize),
     proc_info_get_maybe_termination_info(Proc, MaybeTermination),
     proc_info_get_structure_sharing(Proc, MaybeStructureSharing), 
-    proc_info_rtti_varmaps(Proc, RttiVarMaps),
-    proc_info_eval_method(Proc, EvalMethod),
-    proc_info_is_address_taken(Proc, IsAddressTaken),
+    proc_info_get_rtti_varmaps(Proc, RttiVarMaps),
+    proc_info_get_eval_method(Proc, EvalMethod),
+    proc_info_get_is_address_taken(Proc, IsAddressTaken),
     proc_info_get_call_table_tip(Proc, MaybeCallTableTip),
     proc_info_get_maybe_deep_profile_info(Proc, MaybeDeepProfileInfo),
     proc_info_get_maybe_untuple_info(Proc, MaybeUntupleInfo),
@@ -3680,7 +3680,7 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     ->
         true
     ;
-        proc_info_stack_slots(Proc, StackSlots),
+        proc_info_get_stack_slots(Proc, StackSlots),
         write_indent(Indent, !IO),
         write_stack_slots(Indent, StackSlots, VarSet, AppendVarNums, !IO),
         write_indent(Indent, !IO),

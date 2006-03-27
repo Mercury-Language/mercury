@@ -94,23 +94,23 @@
     %
 :- pred set_clause_list(list(clause)::in, clauses_rep::out) is det.
 
-:- pred clauses_info_varset(clauses_info::in, prog_varset::out) is det.
+:- pred clauses_info_get_varset(clauses_info::in, prog_varset::out) is det.
 
     % This partial map holds the types specified by any explicit
     % type qualifiers in the clauses.
     %
-:- pred clauses_info_explicit_vartypes(clauses_info::in, vartypes::out) is det.
+:- pred clauses_info_get_explicit_vartypes(clauses_info::in, vartypes::out) is det.
 
     % This map contains the types of all the variables, as inferred
     % by typecheck.m.
     %
-:- pred clauses_info_vartypes(clauses_info::in, vartypes::out) is det.
+:- pred clauses_info_get_vartypes(clauses_info::in, vartypes::out) is det.
 
-:- pred clauses_info_rtti_varmaps(clauses_info::in, rtti_varmaps::out) is det.
+:- pred clauses_info_get_rtti_varmaps(clauses_info::in, rtti_varmaps::out) is det.
 
-:- pred clauses_info_headvars(clauses_info::in, list(prog_var)::out) is det.
+:- pred clauses_info_get_headvars(clauses_info::in, list(prog_var)::out) is det.
 
-:- pred clauses_info_clauses_rep(clauses_info::in, clauses_rep::out) is det.
+:- pred clauses_info_get_clauses_rep(clauses_info::in, clauses_rep::out) is det.
 
     % Return the list of clauses in program order.
     %
@@ -204,12 +204,12 @@ clauses_info_init_for_assertion(HeadVars, ClausesInfo) :-
     ClausesInfo = clauses_info(VarSet, VarTypes, TVarNameMap, VarTypes,
         HeadVars, ClausesRep, RttiVarMaps, HasForeignClauses).
 
-clauses_info_varset(CI, CI ^ varset).
-clauses_info_explicit_vartypes(CI, CI ^ explicit_vartypes).
-clauses_info_vartypes(CI, CI ^ vartypes).
-clauses_info_headvars(CI, CI ^ headvars).
-clauses_info_clauses_rep(CI, CI ^ clauses_rep).
-clauses_info_rtti_varmaps(CI, CI ^ clauses_rtti_varmaps).
+clauses_info_get_varset(CI, CI ^ varset).
+clauses_info_get_explicit_vartypes(CI, CI ^ explicit_vartypes).
+clauses_info_get_vartypes(CI, CI ^ vartypes).
+clauses_info_get_headvars(CI, CI ^ headvars).
+clauses_info_get_clauses_rep(CI, CI ^ clauses_rep).
+clauses_info_get_rtti_varmaps(CI, CI ^ clauses_rtti_varmaps).
 
 clauses_info_set_varset(X, CI, CI ^ varset := X).
 clauses_info_set_explicit_vartypes(X, CI, CI ^ explicit_vartypes := X).

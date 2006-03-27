@@ -212,10 +212,10 @@
 detect_liveness_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
     requantify_proc(!ProcInfo),
 
-    proc_info_goal(!.ProcInfo, Goal0),
-    proc_info_varset(!.ProcInfo, VarSet),
-    proc_info_vartypes(!.ProcInfo, VarTypes),
-    proc_info_rtti_varmaps(!.ProcInfo, RttiVarMaps),
+    proc_info_get_goal(!.ProcInfo, Goal0),
+    proc_info_get_varset(!.ProcInfo, VarSet),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes),
+    proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps),
     module_info_get_globals(ModuleInfo, Globals),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
@@ -1512,9 +1512,9 @@ require_equal(LivenessFirst, LivenessRest, GoalType, LiveInfo) :-
 %-----------------------------------------------------------------------------%
 
 initial_liveness(ProcInfo, PredId, ModuleInfo, !:Liveness) :-
-    proc_info_headvars(ProcInfo, Vars),
-    proc_info_argmodes(ProcInfo, Modes),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_headvars(ProcInfo, Vars),
+    proc_info_get_argmodes(ProcInfo, Modes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     map.apply_to_list(Vars, VarTypes, Types),
     set.init(!:Liveness),
     ( initial_liveness_2(Vars, Modes, Types, ModuleInfo, !Liveness) ->
@@ -1530,10 +1530,10 @@ initial_liveness(ProcInfo, PredId, ModuleInfo, !:Liveness) :-
     % their typeinfo vars.
     %
     module_info_get_globals(ModuleInfo, Globals),
-    proc_info_goal(ProcInfo, _Goal - GoalInfo),
+    proc_info_get_goal(ProcInfo, _Goal - GoalInfo),
     goal_info_get_code_gen_nonlocals(GoalInfo, NonLocals0),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
+    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeinfoLiveness),
     maybe_complete_with_typeinfo_vars(NonLocals0, TypeinfoLiveness, VarTypes,
         RttiVarMaps, NonLocals),
@@ -1566,8 +1566,8 @@ initial_deadness(ProcInfo, LiveInfo, ModuleInfo, Deadness) :-
 
     % If doing typeinfo liveness, the corresponding typeinfos need to be added
     % to these.
-    proc_info_vartypes(ProcInfo, VarTypes),
-    proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     maybe_complete_with_typeinfo_vars(Deadness0, LiveInfo ^ typeinfo_liveness,
         VarTypes, RttiVarMaps, Deadness).
 

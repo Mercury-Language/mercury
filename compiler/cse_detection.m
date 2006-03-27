@@ -163,18 +163,18 @@ detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO) :-
 detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
     module_info_preds(ModuleInfo0, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_procedures(PredInfo0, ProcTable0),
+    pred_info_get_procedures(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
 
     % To process each ProcInfo, we get the goal, initialize the instmap
     % based on the modes of the head vars, and pass these to
     % `detect_cse_in_goal'.
 
-    proc_info_goal(ProcInfo0, Goal0),
+    proc_info_get_goal(ProcInfo0, Goal0),
     proc_info_get_initial_instmap(ProcInfo0, ModuleInfo0, InstMap0),
-    proc_info_varset(ProcInfo0, Varset0),
-    proc_info_vartypes(ProcInfo0, VarTypes0),
-    proc_info_rtti_varmaps(ProcInfo0, RttiVarMaps0),
+    proc_info_get_varset(ProcInfo0, Varset0),
+    proc_info_get_vartypes(ProcInfo0, VarTypes0),
+    proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps0),
     CseInfo0 = cse_info(Varset0, VarTypes0, RttiVarMaps0, ModuleInfo0),
     detect_cse_in_goal(Goal0, InstMap0, CseInfo0, CseInfo, Redo, Goal1),
 
@@ -186,7 +186,7 @@ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
 
         % ModuleInfo should not be changed by detect_cse_in_goal.
         CseInfo = cse_info(VarSet1, VarTypes1, RttiVarMaps, _),
-        proc_info_headvars(ProcInfo0, HeadVars),
+        proc_info_get_headvars(ProcInfo0, HeadVars),
 
         implicitly_quantify_clause_body(HeadVars, _Warnings,
             Goal1, Goal, VarSet1, VarSet, VarTypes1, VarTypes),

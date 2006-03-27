@@ -153,7 +153,7 @@ build_abstract_scc(DepOrder, SCC, Options, Errors, !Module, !IO) :-
         %
         AR = AR0 ^ varset := Varset,
         PredInfo0 = !.PredTable ^ det_elem(PredId),
-        pred_info_procedures(PredInfo0, ProcTable0),
+        pred_info_get_procedures(PredInfo0, ProcTable0),
         ProcInfo0 = ProcTable0 ^ det_elem(ProcId),
         some [!TermInfo] (
             proc_info_get_termination2_info(ProcInfo0, !:TermInfo), 
@@ -199,10 +199,10 @@ build_abstract_proc(EntryProcs, Options, SCC, Module, PPId, !SizeVarset,
 %   io.flush_output(!IO),
     module_info_pred_proc_info(Module, PPId, PredInfo, ProcInfo),
     pred_info_context(PredInfo, Context),
-    proc_info_vartypes(ProcInfo, VarTypes),
-    proc_info_headvars(ProcInfo, HeadProgVars),
-    proc_info_goal(ProcInfo, Goal),
-    proc_info_argmodes(ProcInfo, ArgModes0),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_headvars(ProcInfo, HeadProgVars),
+    proc_info_get_goal(ProcInfo, Goal),
+    proc_info_get_argmodes(ProcInfo, ArgModes0),
     %
     % Allocate one size_var for each real var. in the procedure.
     % Work out which variables have zero size.

@@ -149,8 +149,8 @@ generate_proc_list_arg_info(_PredId, [], !ModuleInfo).
 generate_proc_list_arg_info(PredId, [ProcId | ProcIds], !ModuleInfo) :-
     module_info_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_procedures(PredInfo0, ProcTable0),
-    pred_info_arg_types(PredInfo0, ArgTypes),
+    pred_info_get_procedures(PredInfo0, ProcTable0),
+    pred_info_get_arg_types(PredInfo0, ArgTypes),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
 
     generate_proc_arg_info(ArgTypes, !.ModuleInfo, ProcInfo0, ProcInfo),
@@ -162,7 +162,7 @@ generate_proc_list_arg_info(PredId, [ProcId | ProcIds], !ModuleInfo) :-
     generate_proc_list_arg_info(PredId, ProcIds, !ModuleInfo).
 
 generate_proc_arg_info(ArgTypes, ModuleInfo, !ProcInfo) :-
-    proc_info_argmodes(!.ProcInfo, ArgModes),
+    proc_info_get_argmodes(!.ProcInfo, ArgModes),
     proc_info_interface_code_model(!.ProcInfo, CodeModel),
     make_arg_infos(ArgTypes, ArgModes, CodeModel, ModuleInfo, ArgInfo),
     proc_info_set_arg_info(ArgInfo, !ProcInfo).
@@ -294,16 +294,16 @@ input_args([arg_info(Loc, Mode) | Args], !:Locs) :-
 %---------------------------------------------------------------------------%
 
 partition_proc_args(ProcInfo, ModuleInfo, Inputs, Outputs, Unuseds) :-
-    proc_info_headvars(ProcInfo, Vars),
-    proc_info_argmodes(ProcInfo, Modes),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_headvars(ProcInfo, Vars),
+    proc_info_get_argmodes(ProcInfo, Modes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     map.apply_to_list(Vars, VarTypes, Types),
     do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
         Inputs, Outputs, Unuseds).
 
 partition_proc_call_args(ProcInfo, VarTypes, ModuleInfo, Vars,
         Inputs, Outputs, Unuseds) :-
-    proc_info_argmodes(ProcInfo, Modes),
+    proc_info_get_argmodes(ProcInfo, Modes),
     map.apply_to_list(Vars, VarTypes, Types),
     do_partition_proc_args(ModuleInfo, Vars, Types, Modes,
         Inputs, Outputs, Unuseds).

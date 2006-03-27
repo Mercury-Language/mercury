@@ -415,12 +415,12 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
         FollowVars, ModuleInfo, StaticCellInfo, ResumePoint, TraceSlotInfo,
         CodeInfo) :-
     proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap),
-    proc_info_liveness_info(ProcInfo, Liveness),
+    proc_info_get_liveness_info(ProcInfo, Liveness),
     proc_info_interface_code_model(ProcInfo, CodeModel),
     build_input_arg_list(ProcInfo, ArgList),
-    proc_info_varset(ProcInfo, VarSet),
-    proc_info_vartypes(ProcInfo, VarTypes),
-    proc_info_stack_slots(ProcInfo, StackSlots),
+    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_stack_slots(ProcInfo, StackSlots),
     globals.get_options(Globals, Options),
     globals.get_trace_level(Globals, TraceLevel),
     ( eff_trace_level_is_none(PredInfo, ProcInfo, TraceLevel) = no ->
@@ -813,7 +813,7 @@ body_typeinfo_liveness(CI) = TypeInfoLiveness :-
 
 get_var_types(CI) = VarTypes :-
     get_proc_info(CI, ProcInfo),
-    proc_info_vartypes(ProcInfo, VarTypes).
+    proc_info_get_vartypes(ProcInfo, VarTypes).
 
 variable_type(CI, Var) = Type :-
     map.lookup(get_var_types(CI), Var, Type).
@@ -843,7 +843,7 @@ get_headvars(CI) = HeadVars :-
     get_pred_id(CI, PredId),
     get_proc_id(CI, ProcId),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-    proc_info_headvars(ProcInfo, HeadVars).
+    proc_info_get_headvars(ProcInfo, HeadVars).
 
 get_arginfo(CI) = ArgInfo :-
     get_pred_id(CI, PredId),
@@ -3502,8 +3502,8 @@ compute_forward_live_var_saves(CI, OutArgs, VarLocs) :-
     set.list_to_set(Variables0, Vars0),
     TypeInfoLiveness = body_typeinfo_liveness(CI),
     get_proc_info(CI, ProcInfo),
-    proc_info_vartypes(ProcInfo, VarTypes),
-    proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     maybe_complete_with_typeinfo_vars(Vars0, TypeInfoLiveness, VarTypes,
         RttiVarMaps, Vars1),
     set.difference(Vars1, OutArgs, Vars),

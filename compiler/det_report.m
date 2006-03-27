@@ -220,8 +220,8 @@ global_checking_pass([proc(PredId, ProcId) | Rest], !ModuleInfo, !IO) :-
     proc_info::in, module_info::in, module_info::out, io::di, io::uo) is det.
 
 check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !IO) :-
-    proc_info_declared_determinism(ProcInfo0, MaybeDetism),
-    proc_info_inferred_determinism(ProcInfo0, InferredDetism),
+    proc_info_get_declared_determinism(ProcInfo0, MaybeDetism),
+    proc_info_get_inferred_determinism(ProcInfo0, InferredDetism),
     (
         MaybeDetism = no
     ;
@@ -281,8 +281,8 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !IO) :-
             record_warning(!IO),
             report_determinism_problem(PredId, ProcId, !.ModuleInfo, Message,
                 DeclaredDetism, InferredDetism, ReportSpec),
-            proc_info_goal(ProcInfo0, Goal),
-            proc_info_vartypes(ProcInfo0, VarTypes),
+            proc_info_get_goal(ProcInfo0, Goal),
+            proc_info_get_vartypes(ProcInfo0, VarTypes),
             globals.io_get_globals(Globals, !IO),
             det_info_init(!.ModuleInfo, VarTypes, PredId, ProcId, Globals,
                 DetInfo),
@@ -292,15 +292,15 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !IO) :-
     ),
 
     % Make sure the code model is valid given the eval method.
-    proc_info_eval_method(ProcInfo0, EvalMethod),
+    proc_info_get_eval_method(ProcInfo0, EvalMethod),
     ( valid_determinism_for_eval_method(EvalMethod, InferredDetism) = yes ->
         proc_info_set_eval_method(EvalMethod, ProcInfo0, ProcInfo),
-        pred_info_procedures(PredInfo0, ProcTable0),
+        pred_info_get_procedures(PredInfo0, ProcTable0),
         map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
         pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     ;
-        proc_info_context(ProcInfo0, Context),
+        proc_info_get_context(ProcInfo0, Context),
         write_error_pieces(Context, 0,
             [words("Error: `pragma "
                 ++ eval_method_to_one_string(EvalMethod) ++ "'"),
@@ -353,7 +353,7 @@ check_determinism_of_main(_PredId, _ProcId, PredInfo, ProcInfo,
         !ModuleInfo, !IO) :-
     % Check that `main/2' has determinism `det' or `cc_multi',
     % as required by the language reference manual.
-    proc_info_declared_determinism(ProcInfo, MaybeDetism),
+    proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
     (
         pred_info_name(PredInfo) = "main",
         pred_info_orig_arity(PredInfo) = 2,
@@ -362,7 +362,7 @@ check_determinism_of_main(_PredId, _ProcId, PredInfo, ProcInfo,
         DeclaredDetism \= det,
         DeclaredDetism \= cc_multidet
     ->
-        proc_info_context(ProcInfo, Context1),
+        proc_info_get_context(ProcInfo, Context1),
         write_error_pieces(Context1, 0,
             [words("Error: main/2 must be `det' or `cc_multi'.")], !IO),
         module_info_incr_errors(!ModuleInfo)
@@ -375,7 +375,7 @@ check_determinism_of_main(_PredId, _ProcId, PredInfo, ProcInfo,
 
 check_for_multisoln_func(PredId, _ProcId, PredInfo, ProcInfo,
         !ModuleInfo, !IO) :-
-    proc_info_inferred_determinism(ProcInfo, InferredDetism),
+    proc_info_get_inferred_determinism(ProcInfo, InferredDetism),
 
     % Functions can only have more than one solution if it is a
     % non-standard mode.  Otherwise, they would not be referentially
@@ -389,7 +389,7 @@ check_for_multisoln_func(PredId, _ProcId, PredInfo, ProcInfo,
         NumSolns \= at_most_zero,
         NumSolns \= at_most_one,
         % ... but for which all the arguments are input ...
-        proc_info_argmodes(ProcInfo, PredArgModes),
+        proc_info_get_argmodes(ProcInfo, PredArgModes),
         pred_args_to_func_args(PredArgModes, FuncArgModes, _FuncResultMode),
         \+ (
             list.member(FuncArgMode, FuncArgModes),
@@ -397,8 +397,8 @@ check_for_multisoln_func(PredId, _ProcId, PredInfo, ProcInfo,
         )
     ->
         % ... then it is an error.
-        proc_info_context(ProcInfo, FuncContext),
-        proc_info_inst_varset(ProcInfo, InstVarSet),
+        proc_info_get_context(ProcInfo, FuncContext),
+        proc_info_get_inst_varset(ProcInfo, InstVarSet),
         PredModePieces = describe_one_pred_name_mode(!.ModuleInfo,
             should_not_module_qualify, PredId, InstVarSet, PredArgModes),
         Pieces = [words("Error: invalid determinism for")]
@@ -455,7 +455,7 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, DetInfo,
 report_determinism_problem(PredId, ProcId, ModuleInfo, Message,
         DeclaredDetism, InferredDetism, Spec) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-    proc_info_context(ProcInfo, Context),
+    proc_info_get_context(ProcInfo, Context),
     ProcPieces = describe_one_proc_name_mode(ModuleInfo,
         should_not_module_qualify, proc(PredId, ProcId)),
     Pieces = [words("In")] ++ ProcPieces ++ [suffix(":"), nl,
@@ -582,7 +582,7 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases), GoalInfo,
         goal_info_get_context(GoalInfo, Context),
         det_diagnose_switch_context(Context, SwitchContext, DetInfo, !Specs),
         det_get_proc_info(DetInfo, ProcInfo),
-        proc_info_varset(ProcInfo, VarSet),
+        proc_info_get_varset(ProcInfo, VarSet),
         det_info_get_module_info(DetInfo, ModuleInfo),
         VarStr = mercury_var_to_string(Var, VarSet, no),
         (
@@ -888,7 +888,7 @@ det_diagnose_switch_context(_Context, [], _, !Specs).
 det_diagnose_switch_context(Context, [SwitchContext | SwitchContexts],
         DetInfo, !Specs) :-
     det_get_proc_info(DetInfo, ProcInfo),
-    proc_info_varset(ProcInfo, VarSet),
+    proc_info_get_varset(ProcInfo, VarSet),
     SwitchContext = switch_context(Var, ConsId),
     ConsIdStr = cons_id_to_string(ConsId),
     VarStr = mercury_var_to_string(Var, VarSet, no),
@@ -947,10 +947,10 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
             CallUnifyContext = no,
             InitSpecs = []
         ),
-        pred_info_procedures(PredInfo, ProcTable),
+        pred_info_get_procedures(PredInfo, ProcTable),
         map.lookup(ProcTable, ProcId, ProcInfo),
         proc_info_declared_argmodes(ProcInfo, ArgModes),
-        proc_info_inst_varset(ProcInfo, InstVarSet),
+        proc_info_get_inst_varset(ProcInfo, InstVarSet),
         PredPieces = describe_one_pred_name_mode(ModuleInfo,
             should_module_qualify, PredId, InstVarSet, ArgModes),
         CallPieces = [words("call to") | PredPieces],
@@ -975,7 +975,7 @@ det_report_unify_context(!.First, Last, Context, UnifyContext, DetInfo,
         LHS, RHS, Spec) :-
     unify_context_to_pieces(!First, UnifyContext, [], UnifyContextPieces),
     det_get_proc_info(DetInfo, ProcInfo),
-    proc_info_varset(ProcInfo, VarSet),
+    proc_info_get_varset(ProcInfo, VarSet),
     det_info_get_module_info(DetInfo, ModuleInfo),
     (
         !.First = yes,
@@ -1435,7 +1435,7 @@ det_report_msg(error_in_lambda(DeclaredDetism, InferredDetism,
     ReportSpec = error_msg_spec(no, Context, 0, Pieces),
     globals.io_get_globals(Globals, !IO),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     det_info_init(ModuleInfo, VarTypes, PredId, ProcId, Globals, DetInfo),
     det_diagnose_goal(Goal, DeclaredDetism, [], DetInfo, _,
         [ReportSpec], Specs),
@@ -1456,7 +1456,7 @@ det_report_msg(par_conj_not_det(InferredDetism, PredId, ProcId,
     ReportSpec = error_msg_spec(no, Context, 0, [words(First), words(Rest)]),
     globals.io_get_globals(Globals, !IO),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     det_info_init(ModuleInfo, VarTypes, PredId, ProcId, Globals, DetInfo),
     det_diagnose_conj(Goals, det, [], DetInfo, _, [ReportSpec], Specs),
     write_error_specs(Specs, !IO).

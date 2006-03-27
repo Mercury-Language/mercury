@@ -511,7 +511,7 @@ optimise_call(PredId, ProcId, Args, GoalInfo, Goal0, Goal, !Info) :-
         simplify_info_get_var_types(!.Info, VarTypes),
         simplify_info_get_module_info(!.Info, ModuleInfo),
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-        proc_info_argmodes(ProcInfo, ArgModes),
+        proc_info_get_argmodes(ProcInfo, ArgModes),
         partition_call_args(VarTypes, ModuleInfo, ArgModes, Args,
             InputArgs, OutputArgs, OutputModes)
     ->

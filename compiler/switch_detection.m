@@ -122,14 +122,14 @@ detect_switches_in_procs([ProcId | ProcIds], PredId, !ModuleInfo) :-
 detect_switches_in_proc(ProcId, PredId, !ModuleInfo) :-
     module_info_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_procedures(PredInfo0, ProcTable0),
+    pred_info_get_procedures(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
 
     % To process each ProcInfo, we get the goal, initialize the instmap
     % based on the modes of the head vars, and pass these to
     % `detect_switches_in_goal'.
-    proc_info_goal(ProcInfo0, Goal0),
-    proc_info_vartypes(ProcInfo0, VarTypes),
+    proc_info_get_goal(ProcInfo0, Goal0),
+    proc_info_get_vartypes(ProcInfo0, VarTypes),
     proc_info_get_initial_instmap(ProcInfo0, !.ModuleInfo, InstMap0),
     detect_switches_in_goal(!.ModuleInfo, VarTypes, InstMap0, Goal0, Goal,
         no, Requant),

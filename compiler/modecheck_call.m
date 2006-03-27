@@ -106,7 +106,7 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     map.lookup(Preds, PredId, PredInfo),
     pred_info_get_purity(PredInfo, Purity),
-    pred_info_procedures(PredInfo, Procs),
+    pred_info_get_procedures(PredInfo, Procs),
     ( MayChangeCalledProc = may_not_change_called_proc ->
         ( ProcId0 = invalid_proc_id ->
             unexpected(this_file, "modecheck_call_pred: invalid proc_id")
@@ -154,8 +154,8 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
         % initial insts, and set their new final insts (introducing
         % extra unifications for implied modes, if necessary).
         %
-        proc_info_argmodes(ProcInfo, ProcArgModes0),
-        proc_info_inst_varset(ProcInfo, ProcInstVarSet),
+        proc_info_get_argmodes(ProcInfo, ProcArgModes0),
+        proc_info_get_inst_varset(ProcInfo, ProcInstVarSet),
         mode_info_get_instvarset(!.ModeInfo, InstVarSet),
         rename_apart_inst_vars(InstVarSet, ProcInstVarSet,
             ProcArgModes0, ProcArgModes),
@@ -353,8 +353,8 @@ modecheck_find_matching_modes([ProcId | ProcIds], PredId, Procs, ArgVars0,
     % Find the initial insts and the final livenesses of the arguments
     % for this mode of the called pred.
     map.lookup(Procs, ProcId, ProcInfo),
-    proc_info_argmodes(ProcInfo, ProcArgModes0),
-    proc_info_inst_varset(ProcInfo, ProcInstVarSet),
+    proc_info_get_argmodes(ProcInfo, ProcArgModes0),
+    proc_info_get_inst_varset(ProcInfo, ProcInstVarSet),
     mode_info_get_instvarset(!.ModeInfo, InstVarSet),
     rename_apart_inst_vars(InstVarSet, ProcInstVarSet, ProcArgModes0,
         ProcArgModes),
@@ -524,19 +524,19 @@ get_var_insts_and_lives([Var | Vars], ModeInfo,
     % modes_are_identical/4 and compare_proc/5 below.
     %
 modes_are_indistinguishable(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
-    pred_info_procedures(PredInfo, Procs),
+    pred_info_get_procedures(PredInfo, Procs),
     map.lookup(Procs, ProcId, ProcInfo),
     map.lookup(Procs, OtherProcId, OtherProcInfo),
 
     %
     % Compare the initial insts of the arguments
     %
-    proc_info_argmodes(ProcInfo, ProcArgModes),
-    proc_info_argmodes(OtherProcInfo, OtherProcArgModes),
+    proc_info_get_argmodes(ProcInfo, ProcArgModes),
+    proc_info_get_argmodes(OtherProcInfo, OtherProcArgModes),
     mode_list_get_initial_insts(ModuleInfo, ProcArgModes, InitialInsts),
     mode_list_get_initial_insts(ModuleInfo, OtherProcArgModes,
         OtherInitialInsts),
-    pred_info_arg_types(PredInfo, ArgTypes),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
     compare_inst_list(ModuleInfo, InitialInsts, OtherInitialInsts, no,
         ArgTypes, CompareInsts),
     CompareInsts = same,
@@ -572,19 +572,19 @@ modes_are_indistinguishable(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
     % and modes_are_indistinguishable/4 above.
     %
 modes_are_identical_bar_cc(ProcId, OtherProcId, PredInfo, ModuleInfo) :-
-    pred_info_procedures(PredInfo, Procs),
+    pred_info_get_procedures(PredInfo, Procs),
     map.lookup(Procs, ProcId, ProcInfo),
     map.lookup(Procs, OtherProcId, OtherProcInfo),
 
     %
     % Compare the initial insts of the arguments
     %
-    proc_info_argmodes(ProcInfo, ProcArgModes),
-    proc_info_argmodes(OtherProcInfo, OtherProcArgModes),
+    proc_info_get_argmodes(ProcInfo, ProcArgModes),
+    proc_info_get_argmodes(OtherProcInfo, OtherProcArgModes),
     mode_list_get_initial_insts(ModuleInfo, ProcArgModes, InitialInsts),
     mode_list_get_initial_insts(ModuleInfo, OtherProcArgModes,
         OtherInitialInsts),
-    pred_info_arg_types(PredInfo, ArgTypes),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
     compare_inst_list(ModuleInfo, InitialInsts, OtherInitialInsts, no,
         ArgTypes, CompareInitialInsts),
     CompareInitialInsts = same,
@@ -700,8 +700,8 @@ compare_proc(ModeInfo, ProcId, OtherProcId, ArgVars, Procs, Compare) :-
     %
     % Compare the initial insts of the arguments
     %
-    proc_info_argmodes(ProcInfo, ProcArgModes),
-    proc_info_argmodes(OtherProcInfo, OtherProcArgModes),
+    proc_info_get_argmodes(ProcInfo, ProcArgModes),
+    proc_info_get_argmodes(OtherProcInfo, OtherProcArgModes),
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     mode_info_get_var_types(ModeInfo, VarTypes),
     list.map(map.lookup(VarTypes), ArgVars, ArgTypes),

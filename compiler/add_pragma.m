@@ -328,14 +328,14 @@ add_pragma_export(Origin, Name, PredOrFunc, Modes, C_Function, Context,
     ->
         predicate_table_get_preds(PredTable, Preds),
         map.lookup(Preds, PredId, PredInfo),
-        pred_info_procedures(PredInfo, Procs),
+        pred_info_get_procedures(PredInfo, Procs),
         map.to_assoc_list(Procs, ExistingProcs),
         (
             get_procedure_matching_declmodes(ExistingProcs, Modes,
                 !.ModuleInfo, ProcId)
         ->
             map.lookup(Procs, ProcId, ProcInfo),
-            proc_info_declared_determinism(ProcInfo, MaybeDet),
+            proc_info_get_declared_determinism(ProcInfo, MaybeDet),
             % We cannot catch those multi or nondet procedures that
             % don't have a determinism declaration until after
             % determinism analysis.
@@ -624,7 +624,7 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
         !ModuleInfo, !IO),
     (
         SubstOk = yes(RenamedSubst),
-        pred_info_procedures(PredInfo0, Procs0),
+        pred_info_get_procedures(PredInfo0, Procs0),
         handle_pragma_type_spec_modes(SymName, Arity, Context, MaybeModes,
             ProcIds, Procs0, Procs, ModesOk, !ModuleInfo, !IO),
         globals.io_lookup_bool_option(user_guided_type_specialization,
@@ -697,7 +697,7 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
             ( pred_info_is_imported(PredInfo0) ->
                 Status = opt_imported
             ;
-                pred_info_import_status(PredInfo0, Status)
+                pred_info_get_import_status(PredInfo0, Status)
             ),
 
             ModuleName = pred_info_module(PredInfo0),
@@ -806,7 +806,7 @@ handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
         varset.init(TVarSet),
         SubstOk = no
     ;
-        pred_info_typevarset(PredInfo0, CalledTVarSet),
+        pred_info_get_typevarset(PredInfo0, CalledTVarSet),
         varset.create_name_var_map(CalledTVarSet, NameVarIndex0),
         list.filter((pred(Var::in) is semidet :-
             varset.lookup_name(TVarSet0, Var, VarName),
@@ -850,7 +850,7 @@ handle_pragma_type_spec_subst(Context, Subst, PredInfo0, TVarSet0, TVarSet,
                         TypeSubst0, TypeSubst),
 
                     % Apply the substitution.
-                    pred_info_arg_types(PredInfo0, Types0),
+                    pred_info_get_arg_types(PredInfo0, Types0),
                     pred_info_get_class_context(PredInfo0, ClassContext0),
                     apply_rec_subst_to_type_list(TypeSubst, Types0, Types),
                     apply_rec_subst_to_prog_constraints(TypeSubst,
@@ -913,7 +913,7 @@ find_duplicate_list_elements([H | T], Vars) :-
     list(tvar)::in, io::di, io::uo) is det.
 
 report_subst_existq_tvars(PredInfo, Context, SubExistQVars, !IO) :-
-    pred_info_typevarset(PredInfo, TVarSet),
+    pred_info_get_typevarset(PredInfo, TVarSet),
     Pieces = report_pragma_type_spec(PredInfo) ++
         [words("error: the substitution includes"),
         words("the existentially quantified type"),
@@ -1041,7 +1041,7 @@ add_pragma_termination2_info(PredOrFunc, SymName, ModeList,
         ( PredIds = [PredId] ->
             module_info_preds(!.ModuleInfo, PredTable0),
             map.lookup(PredTable0, PredId, PredInfo0),
-            pred_info_procedures(PredInfo0, ProcTable0),
+            pred_info_get_procedures(PredInfo0, ProcTable0),
             map.to_assoc_list(ProcTable0, ProcList),
             (
                 get_procedure_matching_declmodes(ProcList,
@@ -1112,7 +1112,7 @@ add_pragma_structure_sharing(PredOrFunc, SymName, ModeList, HeadVars,
         ( PredIds = [PredId] ->
             module_info_preds(!.ModuleInfo, PredTable0),
             map.lookup(PredTable0, PredId, PredInfo0),
-            pred_info_procedures(PredInfo0, ProcTable0),
+            pred_info_get_procedures(PredInfo0, ProcTable0),
             map.to_assoc_list(ProcTable0, ProcList),
             (
                 get_procedure_matching_declmodes(ProcList, ModeList,
@@ -1121,7 +1121,7 @@ add_pragma_structure_sharing(PredOrFunc, SymName, ModeList, HeadVars,
                 map.lookup(ProcTable0, ProcId, ProcInfo0),
                
                 % Rename headvars/types to those used in the proc_info. 
-                proc_info_headvars(ProcInfo0, ProcHeadVars), 
+                proc_info_get_headvars(ProcInfo0, ProcHeadVars), 
 
                 % As the HeadVars recorded in the pragma may contain additional
                 % vars (e.g. typeinfos), and in the same time ProcHeadVars does
@@ -1139,7 +1139,7 @@ add_pragma_structure_sharing(PredOrFunc, SymName, ModeList, HeadVars,
                 ),
                 map.from_corresponding_lists(RemHeadVars, ProcHeadVars,
                     MapHeadVars), 
-                pred_info_arg_types(PredInfo0, ArgTypes),
+                pred_info_get_arg_types(PredInfo0, ArgTypes),
                 TypeSubst0 = map.init, 
                 (
                     type_unify_list(RemTypes, ArgTypes, [], TypeSubst0, 
@@ -1197,7 +1197,7 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList,
         ( PredIds = [PredId] ->
             module_info_preds(!.ModuleInfo, PredTable0),
             map.lookup(PredTable0, PredId, PredInfo0),
-            pred_info_procedures(PredInfo0, ProcTable0),
+            pred_info_get_procedures(PredInfo0, ProcTable0),
             map.to_assoc_list(ProcTable0, ProcList),
             (
                 get_procedure_matching_declmodes(ProcList, ModeList,
@@ -1294,7 +1294,7 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
     ;
         pred_info_update_goal_type(pragmas, PredInfo1, PredInfo2),
             % Add the pragma declaration to the proc_info for this procedure.
-        pred_info_procedures(PredInfo2, Procs),
+        pred_info_get_procedures(PredInfo2, Procs),
         map.to_assoc_list(Procs, ExistingProcs),
         (
             get_procedure_matching_argmodes(ExistingProcs, Modes,
@@ -1325,7 +1325,7 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
 
 pred_add_pragma_import(PredId, ProcId, Attributes, C_Function, Context,
         !PredInfo, !ModuleInfo, !QualInfo, !IO) :-
-    pred_info_procedures(!.PredInfo, Procs),
+    pred_info_get_procedures(!.PredInfo, Procs),
     map.lookup(Procs, ProcId, ProcInfo),
     foreign.make_pragma_import(!.PredInfo, ProcInfo, C_Function, Context,
         PragmaImpl, VarSet, PragmaVars, ArgTypes, Arity, PredOrFunc,
@@ -1465,7 +1465,7 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
             module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
         ;
             % add the pragma declaration to the proc_info for this procedure
-            pred_info_procedures(!.PredInfo, Procs),
+            pred_info_get_procedures(!.PredInfo, Procs),
             map.to_assoc_list(Procs, ExistingProcs),
             pragma_get_modes(PVars, Modes),
             (
@@ -1483,7 +1483,7 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
                     Modes, !.ModuleInfo, ProcId)
             ->
                 pred_info_clauses_info(!.PredInfo, Clauses0),
-                pred_info_arg_types(!.PredInfo, ArgTypes),
+                pred_info_get_arg_types(!.PredInfo, ArgTypes),
                 pred_info_get_purity(!.PredInfo, Purity),
                 clauses_info_add_pragma_foreign_proc(Purity, Attributes,
                     PredId, ProcId, ProgVarSet, PVars, ArgTypes, PragmaImpl,
@@ -1646,7 +1646,7 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
         ),
 
         % Add the eval model to the proc_info for this procedure.
-        pred_info_procedures(PredInfo0, ProcTable0),
+        pred_info_get_procedures(PredInfo0, ProcTable0),
         map.to_assoc_list(ProcTable0, ExistingProcs),
         SimpleCallId = PredOrFunc - PredName/Arity,
         (
@@ -1707,7 +1707,7 @@ set_eval_method_list([ProcId - ProcInfo0 | Rest], Context, SimpleCallId,
 
 set_eval_method(ProcId, ProcInfo0, Context, SimpleCallId, EvalMethod,
         !ProcTable, !ModuleInfo, !IO) :-
-    proc_info_eval_method(ProcInfo0, OldEvalMethod),
+    proc_info_get_eval_method(ProcInfo0, OldEvalMethod),
     % NOTE: We don't bother detecting multiple tabling pragmas
     % of the same type here.
     (
@@ -1726,7 +1726,7 @@ set_eval_method(ProcId, ProcInfo0, Context, SimpleCallId, EvalMethod,
         module_info_incr_errors(!ModuleInfo),
         write_error_pieces(Context, 0, Pieces, !IO)
     ;
-        proc_info_maybe_declared_argmodes(ProcInfo0, MaybeDeclaredArgModes),
+        proc_info_get_maybe_declared_argmodes(ProcInfo0, MaybeDeclaredArgModes),
         (
             MaybeDeclaredArgModes = no,
             EvalMethodStr = eval_method_to_one_string(EvalMethod),
@@ -1874,8 +1874,8 @@ module_add_pragma_fact_table(Pred, Arity, FileName, Status, Context,
                 C_HeaderCode, PrimaryProcID, !IO),
 
             module_info_set_pred_info(PredID, PredInfo, !ModuleInfo),
-            pred_info_procedures(PredInfo, ProcTable),
-            pred_info_arg_types(PredInfo, ArgTypes),
+            pred_info_get_procedures(PredInfo, ProcTable),
+            pred_info_get_arg_types(PredInfo, ArgTypes),
             ProcIDs = pred_info_procids(PredInfo),
             PredOrFunc = pred_info_is_pred_or_func(PredInfo),
             adjust_func_arity(PredOrFunc, Arity, NumArgs),
@@ -1943,8 +1943,8 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
     map.lookup(ProcTable, ProcID, ProcInfo),
     varset.init(ProgVarSet0),
     varset.new_vars(ProgVarSet0, Arity, Vars, ProgVarSet),
-    proc_info_argmodes(ProcInfo, Modes),
-    proc_info_inst_varset(ProcInfo, InstVarSet),
+    proc_info_get_argmodes(ProcInfo, Modes),
+    proc_info_get_inst_varset(ProcInfo, InstVarSet),
     fact_table_pragma_vars(Vars, Modes, ProgVarSet, PragmaVars),
     fact_table_generate_c_code(SymName, PragmaVars, ProcID, PrimaryProcID,
         ProcInfo, ArgTypes, !.ModuleInfo, C_ProcCode, C_ExtraCode, !IO),
@@ -2200,7 +2200,7 @@ get_procedure_matching_argmodes(Procs, Modes0, ModuleInfo, ProcId) :-
 
 get_procedure_matching_argmodes_2([P | Procs], Modes, ModuleInfo, OurProcId) :-
     P = ProcId - ProcInfo,
-    proc_info_argmodes(ProcInfo, ArgModes),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
     ( mode_list_matches(Modes, ArgModes, ModuleInfo) ->
         OurProcId = ProcId
     ;
@@ -2227,7 +2227,7 @@ get_procedure_matching_argmodes_with_renaming(Procs, Modes0,
 get_procedure_matching_argmodes_with_renaming_2([P | Procs], Modes,
         ModuleInfo, OurProcId) :-
     P = ProcId - ProcInfo,
-    proc_info_argmodes(ProcInfo, ArgModes),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
     ( mode_list_matches_with_renaming(Modes, ArgModes, ModuleInfo) ->
         OurProcId = ProcId
     ;

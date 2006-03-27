@@ -76,7 +76,7 @@
 
 find_final_follow_vars(ProcInfo, FollowVarsMap, NextNonReserved) :-
     proc_info_arg_info(ProcInfo, ArgInfo),
-    proc_info_headvars(ProcInfo, HeadVars),
+    proc_info_get_headvars(ProcInfo, HeadVars),
     assoc_list.from_corresponding_lists(ArgInfo, HeadVars, ArgInfoHeadVars),
     map.init(FollowVarsMap0),
     find_final_follow_vars_2(ArgInfoHeadVars,

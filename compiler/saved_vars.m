@@ -74,17 +74,17 @@ saved_vars_proc(PredId, ProcId, ProcInfo0, ProcInfo, !ModuleInfo, !IO) :-
     module_info::in, module_info::out) is det.
 
 saved_vars_proc_no_io(TypeInfoLiveness, !ProcInfo, !ModuleInfo) :-
-    proc_info_goal(!.ProcInfo, Goal0),
-    proc_info_varset(!.ProcInfo, Varset0),
-    proc_info_vartypes(!.ProcInfo, VarTypes0),
-    proc_info_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
+    proc_info_get_goal(!.ProcInfo, Goal0),
+    proc_info_get_varset(!.ProcInfo, Varset0),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     init_slot_info(Varset0, VarTypes0, RttiVarMaps0, TypeInfoLiveness,
         SlotInfo0),
 
     saved_vars_in_goal(Goal0, Goal1, SlotInfo0, SlotInfo),
 
     final_slot_info(Varset1, VarTypes1, RttiVarMaps, SlotInfo),
-    proc_info_headvars(!.ProcInfo, HeadVars),
+    proc_info_get_headvars(!.ProcInfo, HeadVars),
 
     % hlds_out.write_goal(Goal1, !.ModuleInfo, Varset1, 0, "\n"),
 
@@ -92,7 +92,7 @@ saved_vars_proc_no_io(TypeInfoLiveness, !ProcInfo, !ModuleInfo) :-
     implicitly_quantify_clause_body(HeadVars, _Warnings, Goal1, Goal2,
         Varset1, Varset, VarTypes1, VarTypes),
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
-    proc_info_inst_varset(!.ProcInfo, InstVarSet),
+    proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
     recompute_instmap_delta(no, Goal2, Goal, VarTypes,
         InstVarSet, InstMap0, !ModuleInfo),
 

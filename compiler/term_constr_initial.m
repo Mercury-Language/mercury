@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005 The University of Melbourne.
+% Copyright (C) 2003, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -173,7 +173,7 @@ process_imported_pred(PredId, !ModuleInfo) :-
 
 process_imported_procs(!PredInfo) :-
     some [!ProcTable] (
-        pred_info_procedures(!.PredInfo, !:ProcTable),
+        pred_info_get_procedures(!.PredInfo, !:ProcTable),
         ProcIds = pred_info_procids(!.PredInfo),
         list.foldl(process_imported_proc, ProcIds, !ProcTable),
         pred_info_set_procedures(!.ProcTable, !PredInfo)
@@ -202,7 +202,7 @@ process_imported_proc(ProcId, !ProcTable) :-
     termination2_info::in, termination2_info::out) is det.
 
 process_imported_term_info(ProcInfo, !TermInfo) :-
-    proc_info_headvars(ProcInfo, HeadVars),
+    proc_info_get_headvars(ProcInfo, HeadVars),
     make_size_var_map(HeadVars, _SizeVarset, SizeVarMap),
     list.length(HeadVars, NumHeadVars),
     HeadVarIds = 0 .. NumHeadVars - 1,
@@ -291,11 +291,11 @@ process_builtin_preds([PredId | PredIds], !ModuleInfo, !IO) :-
     pred_info::in, pred_info::out) is det.
 
 process_builtin_procs(MakeOptInt, PredId, ModuleInfo, !PredInfo) :-
-    pred_info_import_status(!.PredInfo, ImportStatus),
+    pred_info_get_import_status(!.PredInfo, ImportStatus),
     pred_info_get_markers(!.PredInfo, Markers),
     pred_info_context(!.PredInfo, Context),
     some [!ProcTable] (
-        pred_info_procedures(!.PredInfo, !:ProcTable),
+        pred_info_get_procedures(!.PredInfo, !:ProcTable),
         ProcIds = pred_info_procids(!.PredInfo),
         ( 
             set_compiler_gen_terminates(!.PredInfo, ProcIds, PredId,
@@ -410,8 +410,8 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, ModuleInfo,
     %
     ( SpecialPredId \= spec_pred_init ->
         ProcInfo0 = !.ProcTable ^ det_elem(ProcId),
-        proc_info_headvars(ProcInfo0, HeadVars),
-        proc_info_vartypes(ProcInfo0, VarTypes),
+        proc_info_get_headvars(ProcInfo0, HeadVars),
+        proc_info_get_vartypes(ProcInfo0, VarTypes),
         special_pred_id_to_termination(SpecialPredId, HeadVars, ModuleInfo, 
             VarTypes, ArgSize, Termination, VarMap, HeadSizeVars),
         some [!TermInfo] (
@@ -509,7 +509,7 @@ set_builtin_terminates([], _, _, _, !ProcTable).
 set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo, 
         !ProcTable) :-
     ProcInfo0 = !.ProcTable ^ det_elem(ProcId), 
-    proc_info_headvars(ProcInfo0, HeadVars),
+    proc_info_get_headvars(ProcInfo0, HeadVars),
     PredModule = pred_info_module(PredInfo),
     PredName   = pred_info_name(PredInfo),
     PredArity  = pred_info_orig_arity(PredInfo),
@@ -582,7 +582,7 @@ initialise_size_var_maps([], !ProcTable).
 initialise_size_var_maps([ProcId | ProcIds], !ProcTable) :-
     ProcInfo0 = !.ProcTable ^ det_elem(ProcId),
     proc_info_get_termination2_info(ProcInfo0, TermInfo0),
-    proc_info_headvars(ProcInfo0, HeadVars),
+    proc_info_get_headvars(ProcInfo0, HeadVars),
     make_size_var_map(HeadVars, _SizeVarset, SizeVarMap),
     TermInfo = TermInfo0 ^ size_var_map := SizeVarMap,
     proc_info_set_termination2_info(TermInfo, ProcInfo0, ProcInfo),

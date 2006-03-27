@@ -88,7 +88,7 @@ allocate_stack_slots_in_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
         OptNoReturnCalls),
     set.init(NondetLiveness0),
     SimpleStackAlloc0 = stack_alloc(set.make_singleton_set(FailVars)),
-    proc_info_goal(!.ProcInfo, Goal0),
+    proc_info_get_goal(!.ProcInfo, Goal0),
     build_live_sets_in_goal(Goal0, Goal, FailVars, AllocData,
         SimpleStackAlloc0, SimpleStackAlloc, Liveness0, _Liveness,
         NondetLiveness0, _NondetLiveness),
@@ -106,7 +106,7 @@ allocate_stack_slots_in_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
         MaybeReservedVarInfo = no,
         LiveSets1 = LiveSets0
     ),
-    proc_info_vartypes(!.ProcInfo, VarTypes),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes),
     filter_out_dummy_values(ModuleInfo, VarTypes, LiveSets1, LiveSets,
         DummyVars),
     graph_colour.group_elements(LiveSets, ColourSets),

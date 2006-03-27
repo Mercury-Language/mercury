@@ -176,7 +176,7 @@ expand_args_in_pred(PredId, !ModuleInfo, !TransformMap, !Counter) :-
     (
         % Only perform the transformation on predicates which
         % satisfy the following criteria.
-        pred_info_import_status(PredInfo, ImportStatus),
+        pred_info_get_import_status(PredInfo, ImportStatus),
         status_defined_in_this_module(ImportStatus, yes),
         pred_info_get_goal_type(PredInfo, clauses),
         % Some of these limitations may be able to be lifted later.
@@ -185,7 +185,7 @@ expand_args_in_pred(PredId, !ModuleInfo, !TransformMap, !Counter) :-
         pred_info_get_head_type_params(PredInfo, []),
         pred_info_get_class_context(PredInfo, constraints([], [])),
         pred_info_get_origin(PredInfo, user(_)),
-        pred_info_arg_types(PredInfo, TypeVarSet, ExistQVars, ArgTypes),
+        pred_info_get_arg_types(PredInfo, TypeVarSet, ExistQVars, ArgTypes),
         varset.is_empty(TypeVarSet),
         ExistQVars = [],
         at_least_one_expandable_type(ArgTypes, TypeTable)
@@ -225,11 +225,11 @@ expand_args_in_proc(PredId, ProcId, !ModuleInfo, !TransformMap, !Counter) :-
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
             PredInfo0, !:ProcInfo),
 
-        proc_info_headvars(!.ProcInfo, HeadVars0),
-        proc_info_argmodes(!.ProcInfo, ArgModes0),
-        proc_info_goal(!.ProcInfo, Goal0),
-        proc_info_vartypes(!.ProcInfo, VarTypes0),
-        proc_info_varset(!.ProcInfo, VarSet0),
+        proc_info_get_headvars(!.ProcInfo, HeadVars0),
+        proc_info_get_argmodes(!.ProcInfo, ArgModes0),
+        proc_info_get_goal(!.ProcInfo, Goal0),
+        proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+        proc_info_get_varset(!.ProcInfo, VarSet0),
 
         expand_args_in_proc_2(HeadVars0, ArgModes0, HeadVars, ArgModes,
             Goal0, Goal, VarSet0, VarSet, VarTypes0, VarTypes,
@@ -410,15 +410,15 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
         !ModuleInfo) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
 
-    proc_info_headvars(ProcInfo, AuxHeadVars),
-    proc_info_goal(ProcInfo, Goal @ (_GoalExpr - GoalInfo)),
+    proc_info_get_headvars(ProcInfo, AuxHeadVars),
+    proc_info_get_goal(ProcInfo, Goal @ (_GoalExpr - GoalInfo)),
     proc_info_get_initial_instmap(ProcInfo, !.ModuleInfo, InitialAuxInstMap),
-    pred_info_typevarset(PredInfo, TVarSet),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    pred_info_get_typevarset(PredInfo, TVarSet),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     pred_info_get_class_context(PredInfo, ClassContext),
-    proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
-    proc_info_varset(ProcInfo, VarSet),
-    proc_info_inst_varset(ProcInfo, InstVarSet),
+    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
+    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_inst_varset(ProcInfo, InstVarSet),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_origin(PredInfo, OrigOrigin),
 
@@ -477,9 +477,9 @@ fix_calls_in_proc(TransformMap, PredId, ProcId, !ModuleInfo) :-
     some [!ProcInfo] (
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
             PredInfo, !:ProcInfo),
-        proc_info_goal(!.ProcInfo, Goal0),
-        proc_info_vartypes(!.ProcInfo, VarTypes0),
-        proc_info_varset(!.ProcInfo, VarSet0),
+        proc_info_get_goal(!.ProcInfo, Goal0),
+        proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+        proc_info_get_varset(!.ProcInfo, VarSet0),
         fix_calls_in_goal(Goal0, Goal, VarSet0, VarSet,
             VarTypes0, VarTypes, TransformMap, !.ModuleInfo),
         ( Goal0 \= Goal ->
@@ -517,7 +517,7 @@ fix_calls_in_goal(Goal0 - GoalInfo0, Goal, !VarSet, !VarTypes,
         module_info_get_type_table(ModuleInfo, TypeTable),
         module_info_pred_proc_info(ModuleInfo, CalleePredId,
             CalleeProcId, _CalleePredInfo, CalleeProcInfo),
-        proc_info_argmodes(CalleeProcInfo, OrigArgModes),
+        proc_info_get_argmodes(CalleeProcInfo, OrigArgModes),
         expand_call_args(OrigArgs, OrigArgModes, Args,
             EnterUnifs, ExitUnifs, !VarSet, !VarTypes, TypeTable),
         ( CallAux = CallAux0 ^ call_args := Args ->

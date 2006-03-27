@@ -78,15 +78,15 @@
             ).
 
 fill_goal_path_slots(ModuleInfo, !Proc) :-
-    proc_info_goal(!.Proc, Goal0),
-    proc_info_vartypes(!.Proc, VarTypes),
+    proc_info_get_goal(!.Proc, Goal0),
+    proc_info_get_vartypes(!.Proc, VarTypes),
     fill_goal_path_slots_in_goal(Goal0, VarTypes, ModuleInfo, Goal),
     proc_info_set_goal(Goal, !Proc).
 
 fill_goal_path_slots_in_clauses(ModuleInfo, OmitModeEquivPrefix, !PredInfo) :-
     pred_info_clauses_info(!.PredInfo, ClausesInfo0),
     clauses_info_clauses_only(ClausesInfo0, Clauses0),
-    clauses_info_vartypes(ClausesInfo0, VarTypes),
+    clauses_info_get_vartypes(ClausesInfo0, VarTypes),
     SlotInfo = slot_info(VarTypes, ModuleInfo, OmitModeEquivPrefix),
     list.map_foldl(fill_slots_in_clause(SlotInfo), Clauses0, Clauses, 1, _),
     clauses_info_set_clauses(Clauses, ClausesInfo0, ClausesInfo),

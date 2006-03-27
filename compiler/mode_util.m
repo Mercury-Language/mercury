@@ -928,9 +928,9 @@ mode_get_insts(ModuleInfo, Mode, InstA, InstB) :-
     %
 recompute_instmap_delta_proc(RecomputeAtomic, !ProcInfo, !ModuleInfo) :-
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
-    proc_info_vartypes(!.ProcInfo, VarTypes),
-    proc_info_goal(!.ProcInfo, Goal0),
-    proc_info_inst_varset(!.ProcInfo, InstVarSet),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes),
+    proc_info_get_goal(!.ProcInfo, Goal0),
+    proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
     recompute_instmap_delta(RecomputeAtomic, Goal0, Goal,
         VarTypes, InstVarSet, InstMap0, !ModuleInfo),
     proc_info_set_goal(Goal, !ProcInfo).
@@ -1252,8 +1252,8 @@ recompute_instmap_delta_call(PredId, ProcId, Args, VarTypes, InstMap,
     ( determinism_components(Detism, _, at_most_zero) ->
         instmap_delta_init_unreachable(InstMapDelta)
     ;
-        proc_info_argmodes(ProcInfo, ArgModes0),
-        proc_info_inst_varset(ProcInfo, ProcInstVarSet),
+        proc_info_get_argmodes(ProcInfo, ArgModes0),
+        proc_info_get_inst_varset(ProcInfo, ProcInstVarSet),
         InstVarSet = !.RI ^ inst_varset,
         rename_apart_inst_vars(InstVarSet, ProcInstVarSet,
             ArgModes0, ArgModes1),

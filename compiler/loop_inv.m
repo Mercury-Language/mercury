@@ -158,9 +158,9 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
             % Obtain the requisite info for this procedure.
             %
         PredProcId = proc(PredId, ProcId),
-        hlds_pred.proc_info_goal(!.ProcInfo, Body),
-        hlds_pred.proc_info_headvars(!.ProcInfo, HeadVars),
-        hlds_pred.proc_info_argmodes(!.ProcInfo, HeadVarModes),
+        hlds_pred.proc_info_get_goal(!.ProcInfo, Body),
+        hlds_pred.proc_info_get_headvars(!.ProcInfo, HeadVars),
+        hlds_pred.proc_info_get_argmodes(!.ProcInfo, HeadVarModes),
         hlds_pred.proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo,
             InitialInstMap),
 
@@ -741,13 +741,13 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
     hlds_module.module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
         PredInfo, ProcInfo),
 
-    hlds_pred.proc_info_goal(ProcInfo, Goal @ (_GoalExpr - GoalInfo)),
-    hlds_pred.pred_info_typevarset(PredInfo, TVarSet),
-    hlds_pred.proc_info_vartypes(ProcInfo, VarTypes),
+    hlds_pred.proc_info_get_goal(ProcInfo, Goal @ (_GoalExpr - GoalInfo)),
+    hlds_pred.pred_info_get_typevarset(PredInfo, TVarSet),
+    hlds_pred.proc_info_get_vartypes(ProcInfo, VarTypes),
     hlds_pred.pred_info_get_class_context(PredInfo, ClassContext),
-    hlds_pred.proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
-    hlds_pred.proc_info_varset(ProcInfo, VarSet),
-    hlds_pred.proc_info_inst_varset(ProcInfo, InstVarSet),
+    hlds_pred.proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
+    hlds_pred.proc_info_get_varset(ProcInfo, VarSet),
+    hlds_pred.proc_info_get_inst_varset(ProcInfo, InstVarSet),
     hlds_pred.pred_info_get_markers(PredInfo, Markers),
     hlds_pred.pred_info_get_origin(PredInfo, OrigOrigin),
 
@@ -929,10 +929,10 @@ gen_out_proc(PredProcId, PredInfo0, ProcInfo0, ProcInfo, CallAux, Body0,
         %
     PredProcId = proc(PredId, ProcId),
 
-    hlds_pred.proc_info_varset(ProcInfo0, VarSet),
-    hlds_pred.proc_info_vartypes(ProcInfo0, VarTypes),
-    hlds_pred.proc_info_headvars(ProcInfo0, HeadVars),
-    hlds_pred.proc_info_rtti_varmaps(ProcInfo0, RttiVarMaps),
+    hlds_pred.proc_info_get_varset(ProcInfo0, VarSet),
+    hlds_pred.proc_info_get_vartypes(ProcInfo0, VarTypes),
+    hlds_pred.proc_info_get_headvars(ProcInfo0, HeadVars),
+    hlds_pred.proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps),
 
     hlds_pred.proc_info_set_body(VarSet, VarTypes, HeadVars, Body,
         RttiVarMaps, ProcInfo0, ProcInfo1),
@@ -1125,7 +1125,7 @@ uniquely_used_args(MI, X, M) = X :-
 argmodes(ModuleInfo, PredId, ProcId) = ArgModes :-
     hlds_module.module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _,
         ProcInfo),
-    hlds_pred.proc_info_argmodes(ProcInfo, ArgModes).
+    hlds_pred.proc_info_get_argmodes(ProcInfo, ArgModes).
 
 %-----------------------------------------------------------------------------%
 

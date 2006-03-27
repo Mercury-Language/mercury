@@ -429,10 +429,10 @@ should_use_tupling_scheme(TuningParams,
 candidate_headvars_of_proc(ModuleInfo, PredProcId @ proc(PredId, ProcId),
         CandidateHeadVars) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-    proc_info_varset(ProcInfo, VarSet),
-    proc_info_vartypes(ProcInfo, VarTypes),
-    proc_info_headvars(ProcInfo, HeadVars),
-    proc_info_argmodes(ProcInfo, ArgModes),
+    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    proc_info_get_headvars(ProcInfo, HeadVars),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
     CandidateHeadVars = list.filter_map_corresponding(
         candidate_headvars_of_proc_2(PredProcId, VarSet, VarTypes, ModuleInfo),
         HeadVars, ArgModes).
@@ -541,8 +541,8 @@ find_best_tupling_scheme_2(TraceCounts, TuningParams, ModuleInfo,
 make_tupling_proposal(ModuleInfo, CandidateHeadVars, MinArgsToTuple,
         PredProcId @ proc(PredId, ProcId), TuplingProposal) :-
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-    proc_info_varset(ProcInfo, VarSet),
-    proc_info_headvars(ProcInfo, HeadVars),
+    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_headvars(ProcInfo, HeadVars),
     FieldVarArgPos = list.filter_map(
         (func(_ - Annotation) = (Var - Pos) is semidet :-
             map.search(Annotation, PredProcId, Var),
@@ -623,7 +623,7 @@ add_transformed_proc(PredProcId, tupling(_, FieldVars, _),
 
         % Create the cell variable.
         list.length(FieldVars, TupleArity),
-        proc_info_vartypes(!.ProcInfo, VarTypes),
+        proc_info_get_vartypes(!.ProcInfo, VarTypes),
         list.map(map.lookup(VarTypes), FieldVars, TupleArgTypes),
         construct_type(unqualified("{}") - TupleArity, TupleArgTypes,
             TupleConsType),
@@ -631,7 +631,7 @@ add_transformed_proc(PredProcId, tupling(_, FieldVars, _),
             yes("TuplingCellVar"), CellVar, !ProcInfo),
 
         % Get the argument positions of the parameters to be tupled.
-        proc_info_headvars(!.ProcInfo, HeadVars),
+        proc_info_get_headvars(!.ProcInfo, HeadVars),
         list.map(nth_member_lookup(HeadVars), FieldVars, ArgsToTuple),
 
         % Build an insertion map of where the deconstruction
@@ -661,8 +661,8 @@ add_transformed_proc(_, no_tupling, !ModuleInfo, !TransformMap, !Counter).
 
 make_transformed_proc(CellVar, FieldVarsList, InsertMap, !ProcInfo) :-
     % Modify the procedure's formal parameters.
-    proc_info_headvars(!.ProcInfo, HeadVars0),
-    proc_info_argmodes(!.ProcInfo, ArgModes0),
+    proc_info_get_headvars(!.ProcInfo, HeadVars0),
+    proc_info_get_argmodes(!.ProcInfo, ArgModes0),
     HeadVarsAndModes = list.filter_map_corresponding(
         (func(Var, Mode) = (Var - Mode) is semidet :-
             not Var `list.member` FieldVarsList),
@@ -672,9 +672,9 @@ make_transformed_proc(CellVar, FieldVarsList, InsertMap, !ProcInfo) :-
     proc_info_set_argmodes(ArgModes ++ [in_mode], !ProcInfo),
 
     % Insert the necessary deconstruction unifications.
-    proc_info_goal(!.ProcInfo, Goal0),
-    proc_info_vartypes(!.ProcInfo, VarTypes0),
-    proc_info_varset(!.ProcInfo, VarSet0),
+    proc_info_get_goal(!.ProcInfo, Goal0),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_varset(!.ProcInfo, VarSet0),
     % XXX: I haven't checked if adding this feature has any effect.
     MaybeGoalFeature = yes(tuple_opt),
     record_decisions_in_goal(Goal0, Goal1, VarSet0, VarSet1,
@@ -739,16 +739,16 @@ create_aux_pred(PredId, ProcId, PredInfo, ProcInfo, Counter,
         AuxPredProcId, CallAux, ModuleInfo0, ModuleInfo) :-
     module_info_get_name(ModuleInfo0, ModuleName),
 
-    proc_info_headvars(ProcInfo, AuxHeadVars),
-    proc_info_goal(ProcInfo, Goal @ (_GoalExpr - GoalInfo)),
+    proc_info_get_headvars(ProcInfo, AuxHeadVars),
+    proc_info_get_goal(ProcInfo, Goal @ (_GoalExpr - GoalInfo)),
     proc_info_get_initial_instmap(ProcInfo, ModuleInfo0,
         InitialAuxInstMap),
-    pred_info_typevarset(PredInfo, TVarSet),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    pred_info_get_typevarset(PredInfo, TVarSet),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     pred_info_get_class_context(PredInfo, ClassContext),
-    proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
-    proc_info_varset(ProcInfo, VarSet),
-    proc_info_inst_varset(ProcInfo, InstVarSet),
+    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
+    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_inst_varset(ProcInfo, InstVarSet),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_origin(PredInfo, OrigOrigin),
 
@@ -858,7 +858,7 @@ prepare_proc_for_counting(PredProcId, !ModuleInfo, !IO) :-
     some [!ProcInfo] (
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
             PredInfo, !:ProcInfo),
-        pred_info_arg_types(PredInfo, ArgTypes),
+        pred_info_get_arg_types(PredInfo, ArgTypes),
         generate_proc_arg_info(ArgTypes, !.ModuleInfo, !ProcInfo),
 
         detect_liveness_proc(PredId, ProcId, !.ModuleInfo, !ProcInfo, !IO),
@@ -870,7 +870,7 @@ prepare_proc_for_counting(PredProcId, !ModuleInfo, !IO) :-
         AllocData = alloc_data(!.ModuleInfo, !.ProcInfo,
             TypeInfoLiveness, OptNoReturnCalls),
         fill_goal_path_slots(!.ModuleInfo, !ProcInfo),
-        proc_info_goal(!.ProcInfo, Goal0),
+        proc_info_get_goal(!.ProcInfo, Goal0),
         OptTupleAlloc0 = opt_tuple_alloc,
         set.init(FailVars),
         set.init(NondetLiveness0),
@@ -973,7 +973,7 @@ count_load_stores_in_proc(CountInfo, Loads, Stores) :-
     ModuleInfo = CountInfo ^ count_info_module,
     initial_liveness(ProcInfo, PredId, ModuleInfo, InitialLiveness),
     CountState0 = count_state(InitialLiveness, set.init, 0.0, 0.0),
-    proc_info_goal(ProcInfo, Goal),
+    proc_info_get_goal(ProcInfo, Goal),
     count_load_stores_in_goal(Goal, CountInfo, CountState0, CountState1),
     arg_info.partition_proc_args(ProcInfo, ModuleInfo, _, OutputArgs, _),
     cls_require_in_regs(CountInfo, set.to_sorted_list(OutputArgs),
@@ -996,7 +996,7 @@ count_load_stores_in_goal(Goal - GoalInfo, CountInfo, !CountState) :-
     ArgVars = list.map(foreign_arg_var, Args),
     ExtraVars = list.map(foreign_arg_var, ExtraArgs),
     CallingProcInfo = CountInfo ^ count_info_proc,
-    proc_info_vartypes(CallingProcInfo, VarTypes),
+    proc_info_get_vartypes(CallingProcInfo, VarTypes),
     arg_info.partition_proc_call_args(ProcInfo, VarTypes,
         ModuleInfo, ArgVars, InputArgVarSet, OutputArgVarSet, _),
     set.to_sorted_list(InputArgVarSet, InputArgVars),
@@ -1018,7 +1018,7 @@ count_load_stores_in_goal(Goal - GoalInfo, CountInfo, !CountState) :-
     ProcInfo = CountInfo ^ count_info_proc,
     ModuleInfo = CountInfo ^ count_info_module,
     goal_info_get_maybe_need_across_call(GoalInfo, MaybeNeedAcrossCall),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     list.map(map.lookup(VarTypes), ArgVars, ArgTypes),
     arg_info.compute_in_and_out_vars(ModuleInfo, ArgVars,
         ArgModes, ArgTypes, InputArgs, OutputArgs),
@@ -1162,7 +1162,7 @@ count_load_stores_in_call_to_tupled(Goal - GoalInfo, CountInfo,
     module_info_pred_proc_info(ModuleInfo, CalleePredId, CalleeProcId,
         _, CalleeProcInfo),
     CallingProcInfo = CountInfo ^ count_info_proc,
-    proc_info_vartypes(CallingProcInfo, VarTypes),
+    proc_info_get_vartypes(CallingProcInfo, VarTypes),
     arg_info.partition_proc_call_args(CalleeProcInfo, VarTypes,
         ModuleInfo, ArgVars, InputArgs0, Outputs, _),
     (
@@ -1209,7 +1209,7 @@ count_load_stores_in_call_to_not_tupled(Goal - GoalInfo, CountInfo,
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
         _PredInfo, CalleeProcInfo),
     ProcInfo = CountInfo ^ count_info_proc,
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     arg_info.partition_proc_call_args(CalleeProcInfo, VarTypes,
         ModuleInfo, ArgVars, InputArgs, Outputs, _),
     set.to_sorted_list(InputArgs, Inputs),
@@ -1494,8 +1494,8 @@ add_branch_costs(BranchState, Weight, !CountState) :-
     is det.
 
 build_interval_info(ModuleInfo, ProcInfo, IntervalInfo) :-
-    proc_info_goal(ProcInfo, Goal),
-    proc_info_vartypes(ProcInfo, VarTypes),
+    proc_info_get_goal(ProcInfo, Goal),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
     arg_info.partition_proc_args(ProcInfo, ModuleInfo,
         _InputArgs, OutputArgs, _UnusedArgs),
     Counter0 = counter.init(1),
@@ -1647,9 +1647,9 @@ fix_calls_in_proc(TransformMap, proc(PredId, ProcId), !ModuleInfo) :-
         ( Origin = transformed(type_specialization(_), _, _) ->
             true
         ;
-            proc_info_goal(!.ProcInfo, Goal0),
-            proc_info_vartypes(!.ProcInfo, VarTypes0),
-            proc_info_varset(!.ProcInfo, VarSet0),
+            proc_info_get_goal(!.ProcInfo, Goal0),
+            proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+            proc_info_get_varset(!.ProcInfo, VarSet0),
             fix_calls_in_goal(Goal0, Goal, VarSet0, VarSet,
                 VarTypes0, VarTypes, TransformMap),
             proc_info_set_goal(Goal, !ProcInfo),

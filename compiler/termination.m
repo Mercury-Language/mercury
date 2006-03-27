@@ -169,11 +169,11 @@ check_foreign_code_attributes_2([PPId], !ModuleInfo, !IO) :-
     some [!ProcInfo] (
         module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, !:ProcInfo),
         (
-            proc_info_goal(!.ProcInfo, Goal),
+            proc_info_get_goal(!.ProcInfo, Goal),
             Goal = foreign_proc(Attributes, _, _, _, _, _) - _GoalInfo
         ->
             proc_info_get_maybe_termination_info(!.ProcInfo, MaybeTermination),
-            proc_info_context(!.ProcInfo, Context),
+            proc_info_get_context(!.ProcInfo, Context),
             (
                 MaybeTermination = no,
                 ( attributes_imply_termination(Attributes) ->
@@ -441,7 +441,7 @@ set_finite_arg_size_infos([Soln | Solns], OutputSupplierMap, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
     module_info_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo),
-    pred_info_procedures(PredInfo, ProcTable),
+    pred_info_get_procedures(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo),
     map.lookup(OutputSupplierMap, PPId, OutputSuppliers),
     ArgSizeInfo = finite(Gamma, OutputSuppliers),
@@ -461,7 +461,7 @@ set_infinite_arg_size_infos([PPId | PPIds], ArgSizeInfo, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
     module_info_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo),
-    pred_info_procedures(PredInfo, ProcTable),
+    pred_info_get_procedures(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo),
     % XXX intermod
     proc_info_set_maybe_arg_size_info(yes(ArgSizeInfo), ProcInfo, ProcInfo1),
@@ -481,7 +481,7 @@ set_termination_infos([PPId | PPIds], TerminationInfo, !ModuleInfo) :-
     PPId = proc(PredId, ProcId),
     module_info_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_procedures(PredInfo0, ProcTable0),
+    pred_info_get_procedures(PredInfo0, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
     % XXX intermod
     proc_info_set_maybe_termination_info(yes(TerminationInfo),
@@ -598,9 +598,9 @@ check_preds([PredId | PredIds], !ModuleInfo, !IO) :-
     globals.io_lookup_bool_option(make_optimization_interface, MakeOptInt, !IO),
     module_info_preds(!.ModuleInfo, PredTable0),
     map.lookup(PredTable0, PredId, PredInfo0),
-    pred_info_import_status(PredInfo0, ImportStatus),
+    pred_info_get_import_status(PredInfo0, ImportStatus),
     pred_info_context(PredInfo0, Context),
-    pred_info_procedures(PredInfo0, ProcTable0),
+    pred_info_get_procedures(PredInfo0, ProcTable0),
     pred_info_get_markers(PredInfo0, Markers),
     ProcIds = pred_info_procids(PredInfo0),
     (
@@ -717,7 +717,7 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, !ProcTable) :-
     % 
     ( SpecialPredId \= spec_pred_init -> 
         map.lookup(!.ProcTable, ProcId, ProcInfo0),
-        proc_info_headvars(ProcInfo0, HeadVars),
+        proc_info_get_headvars(ProcInfo0, HeadVars),
         special_pred_id_to_termination(SpecialPredId, HeadVars,
             ArgSize, Termination),
         proc_info_set_maybe_arg_size_info(yes(ArgSize), ProcInfo0,
@@ -769,7 +769,7 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
         % The size of the output arguments will all be 0, independent of the
         % size of the input variables.
         % UsedArgs should be set to yes([no, no, ...]).
-        proc_info_headvars(ProcInfo0, HeadVars),
+        proc_info_get_headvars(ProcInfo0, HeadVars),
         term_util.make_bool_list(HeadVars, [], UsedArgs),
         ArgSizeInfo = yes(finite(0, UsedArgs))
     ;
@@ -788,8 +788,8 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
     proc_info::in) is semidet.
 
 all_args_input_or_zero_size(ModuleInfo, PredInfo, ProcInfo) :-
-    pred_info_arg_types(PredInfo, TypeList),
-    proc_info_argmodes(ProcInfo, ModeList),
+    pred_info_get_arg_types(PredInfo, TypeList),
+    proc_info_get_argmodes(ProcInfo, ModeList),
     all_args_input_or_zero_size_2(TypeList, ModeList, ModuleInfo).
 
 :- pred all_args_input_or_zero_size_2(list(mer_type)::in, list(mer_mode)::in,
@@ -913,7 +913,7 @@ make_termination_opt_int(PredIds, ModuleInfo, !IO) :-
 
 write_pred_termination_info(ModuleInfo, PredId, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_import_status(PredInfo, ImportStatus),
+    pred_info_get_import_status(PredInfo, ImportStatus),
     module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
     TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
 
@@ -935,7 +935,7 @@ write_pred_termination_info(ModuleInfo, PredId, !IO) :-
         ProcIds = pred_info_procids(PredInfo),
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         ModuleName = pred_info_module(PredInfo),
-        pred_info_procedures(PredInfo, ProcTable),
+        pred_info_get_procedures(PredInfo, ProcTable),
         pred_info_context(PredInfo, Context),
         SymName = qualified(ModuleName, PredName),
         write_proc_termination_info(PredId, ProcIds, ProcTable,

@@ -1148,9 +1148,9 @@ find_items_used_by_pred(PredOrFunc, Name - Arity, PredId - PredModule,
         NameArity = qualified(PredModule, Name) - Arity,
         record_expanded_items_used_by_item(ItemType, NameArity, !Info),
         record_imported_item(ItemType, NameArity, !Info),
-        pred_info_arg_types(PredInfo, ArgTypes),
+        pred_info_get_arg_types(PredInfo, ArgTypes),
         find_items_used_by_types(ArgTypes, !Info),
-        pred_info_procedures(PredInfo, Procs),
+        pred_info_get_procedures(PredInfo, Procs),
         map.foldl(find_items_used_by_proc_arg_modes, Procs, !Info),
         pred_info_get_class_context(PredInfo, ClassContext),
         find_items_used_by_class_context(ClassContext, !Info),
@@ -1169,7 +1169,7 @@ find_items_used_by_pred(PredOrFunc, Name - Arity, PredId - PredModule,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_proc_arg_modes(_ProcId, ProcInfo, !Info) :-
-    proc_info_argmodes(ProcInfo, ArgModes),
+    proc_info_get_argmodes(ProcInfo, ArgModes),
     find_items_used_by_modes(ArgModes, !Info).
 
 :- pred find_items_used_by_type_spec(pragma_type::in,

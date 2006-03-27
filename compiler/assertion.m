@@ -724,7 +724,7 @@ normalise_goals([Goal0 | Goal0s], [Goal | Goals]) :-
 in_interface_check(call(PredId,_,_,_,_,SymName) - GoalInfo, _PredInfo,
         !Module, !IO) :-
     module_info_pred_info(!.Module, PredId, CallPredInfo),
-    pred_info_import_status(CallPredInfo, ImportStatus),
+    pred_info_get_import_status(CallPredInfo, ImportStatus),
     ( is_defined_in_implementation_section(ImportStatus) = yes ->
         goal_info_get_context(GoalInfo, Context),
         PredOrFunc = pred_info_is_pred_or_func(CallPredInfo),
@@ -742,7 +742,7 @@ in_interface_check(unify(Var, RHS, _, _, _) - GoalInfo, PredInfo,
 in_interface_check(foreign_proc(_, PredId, _, _, _, _) -
         GoalInfo, _PredInfo, !Module, !IO) :-
     module_info_pred_info(!.Module, PredId, PragmaPredInfo),
-    pred_info_import_status(PragmaPredInfo, ImportStatus),
+    pred_info_get_import_status(PragmaPredInfo, ImportStatus),
     ( is_defined_in_implementation_section(ImportStatus) = yes ->
         goal_info_get_context(GoalInfo, Context),
         PredOrFunc = pred_info_is_pred_or_func(PragmaPredInfo),
@@ -791,7 +791,7 @@ in_interface_check_unify_rhs(var(_), _, _, _, !Module, !IO).
 in_interface_check_unify_rhs(functor(ConsId, _, _), Var, Context,
         PredInfo, !Module, !IO) :-
     pred_info_clauses_info(PredInfo, ClausesInfo),
-    clauses_info_vartypes(ClausesInfo, VarTypes),
+    clauses_info_get_vartypes(ClausesInfo, VarTypes),
     map.lookup(VarTypes, Var, Type),
     ( type_to_ctor_and_args(Type, TypeCtor, _) ->
         module_info_get_type_table(!.Module, Types),

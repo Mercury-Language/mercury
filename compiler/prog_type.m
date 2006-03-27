@@ -1266,7 +1266,7 @@ arg_type_list_subsumes(TVarSet, ActualArgTypes, CalleeTVarSet, PredKindMap,
     % [This is the right thing to do even for calls to
     % existentially typed preds, because we're using the
     % type variables from the callee's pred decl (obtained
-    % from the pred_info via pred_info_arg_types) not the types
+    % from the pred_info via pred_info_get_arg_types) not the types
     % inferred from the callee's clauses (and stored in the
     % clauses_info and proc_info) -- the latter
     % might not subsume the actual argument types.]

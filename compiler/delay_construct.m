@@ -71,12 +71,12 @@ delay_construct_proc(PredId, ProcId, ModuleInfo, !ProcInfo, !IO) :-
 
 delay_construct_proc_no_io(PredInfo, ModuleInfo, Globals, !ProcInfo) :-
     body_should_use_typeinfo_liveness(PredInfo, Globals, BodyTypeinfoLiveness),
-    proc_info_vartypes(!.ProcInfo, VarTypes),
-    proc_info_rtti_varmaps(!.ProcInfo, RttiVarMaps),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes),
+    proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps),
     proc_info_get_initial_instmap(!.ProcInfo, ModuleInfo, InstMap0),
     DelayInfo = delay_construct_info(ModuleInfo, BodyTypeinfoLiveness,
         VarTypes, RttiVarMaps),
-    proc_info_goal(!.ProcInfo, Goal0),
+    proc_info_get_goal(!.ProcInfo, Goal0),
     delay_construct_in_goal(Goal0, InstMap0, DelayInfo, Goal),
     proc_info_set_goal(Goal, !ProcInfo).
 

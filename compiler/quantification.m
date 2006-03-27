@@ -210,10 +210,10 @@ requantify_proc(ProcInfo0, ProcInfo) :-
     requantify_proc(ordinary_nonlocals, ProcInfo0, ProcInfo).
 
 requantify_proc(RecomputeNonLocals, !ProcInfo) :-
-    proc_info_headvars(!.ProcInfo, HeadVars),
-    proc_info_varset(!.ProcInfo, Varset0),
-    proc_info_vartypes(!.ProcInfo, VarTypes0),
-    proc_info_goal(!.ProcInfo, Goal0),
+    proc_info_get_headvars(!.ProcInfo, HeadVars),
+    proc_info_get_varset(!.ProcInfo, Varset0),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_goal(!.ProcInfo, Goal0),
     implicitly_quantify_clause_body(RecomputeNonLocals, HeadVars, _,
         Goal0, Goal, Varset0, Varset, VarTypes0, VarTypes),
     proc_info_set_varset(Varset, !ProcInfo),

@@ -288,8 +288,8 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, NumErrors, !IO) :-
     some [!ClausesInfo] (
         pred_info_clauses_info(!.PredInfo, !:ClausesInfo),
         clauses_info_clauses(Clauses0, !ClausesInfo),
-        clauses_info_vartypes(!.ClausesInfo, VarTypes0),
-        clauses_info_varset(!.ClausesInfo, VarSet0),
+        clauses_info_get_vartypes(!.ClausesInfo, VarTypes0),
+        clauses_info_get_varset(!.ClausesInfo, VarSet0),
         RunPostTypecheck = yes,
         PurityInfo0 = purity_info(ModuleInfo, RunPostTypecheck,
             !.PredInfo, VarTypes0, VarSet0, [], dont_make_implicit_promises),
@@ -334,11 +334,11 @@ puritycheck_pred(PredId, !PredInfo, ModuleInfo, NumErrors, !IO) :-
     ).
 
 repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
-    pred_info_procedures(!.PredInfo, Procs0),
+    pred_info_get_procedures(!.PredInfo, Procs0),
     map.lookup(Procs0, ProcId, ProcInfo0),
-    proc_info_goal(ProcInfo0, Goal0),
-    proc_info_vartypes(ProcInfo0, VarTypes0),
-    proc_info_varset(ProcInfo0, VarSet0),
+    proc_info_get_goal(ProcInfo0, Goal0),
+    proc_info_get_vartypes(ProcInfo0, VarTypes0),
+    proc_info_get_varset(ProcInfo0, VarSet0),
     RunPostTypeCheck = no,
     PurityInfo0 = purity_info(ModuleInfo, RunPostTypeCheck,
         !.PredInfo, VarTypes0, VarSet0, [], dont_make_implicit_promises),
@@ -645,7 +645,7 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
             _EvalMethod, VarArgTypes)
     ->
         PredInfo = !.Info ^ pred_info,
-        pred_info_typevarset(PredInfo, TVarSet),
+        pred_info_get_typevarset(PredInfo, TVarSet),
         map.apply_to_list(Args, VarTypes, ArgTypes0),
         list.append(ArgTypes0, VarArgTypes, PredArgTypes),
         ModuleInfo = !.Info ^ module_info,

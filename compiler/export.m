@@ -344,7 +344,7 @@ get_export_info(Preds, PredId, ProcId, _Globals, ModuleInfo, HowToDeclareLabel,
         C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSucceed,
         ArgInfoTypes) :-
     map.lookup(Preds, PredId, PredInfo),
-    pred_info_import_status(PredInfo, Status),
+    pred_info_get_import_status(PredInfo, Status),
     (
         (
             procedure_is_exported(ModuleInfo, PredInfo, ProcId)
@@ -357,10 +357,10 @@ get_export_info(Preds, PredId, ProcId, _Globals, ModuleInfo, HowToDeclareLabel,
         HowToDeclareLabel = "MR_declare_static"
     ),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    pred_info_procedures(PredInfo, ProcTable),
+    pred_info_get_procedures(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo),
     proc_info_maybe_arg_info(ProcInfo, MaybeArgInfos),
-    pred_info_arg_types(PredInfo, ArgTypes),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
     (
         MaybeArgInfos = yes(ArgInfos0),
         ArgInfos = ArgInfos0

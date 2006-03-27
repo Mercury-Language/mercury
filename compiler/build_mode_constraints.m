@@ -266,8 +266,8 @@ add_mc_vars_for_scc_heads(ModuleInfo, PredIds, !VarInfo) :-
 add_mc_vars_for_pred_head(ModuleInfo, PredId, !VarInfo) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_clauses_info(PredInfo, ClausesInfo),
-    clauses_info_headvars(ClausesInfo, Headvars),
-    clauses_info_varset(ClausesInfo, ProgVarset),
+    clauses_info_get_headvars(ClausesInfo, Headvars),
+    clauses_info_get_varset(ClausesInfo, ProgVarset),
     list.foldl(add_mc_var_for_pred_head(ProgVarset, PredId), Headvars,
         !VarInfo).
 
@@ -339,9 +339,9 @@ add_mc_vars_for_goal(PredId, ProgVarset, GoalExpr - GoalInfo, !VarInfo) :-
 add_clauses_constraints(ModuleInfo, PredId, PredInfo, !VarInfo,
         !Constraints) :-
     pred_info_clauses_info(PredInfo, ClausesInfo),
-    clauses_info_headvars(ClausesInfo, HeadVars),
+    clauses_info_get_headvars(ClausesInfo, HeadVars),
     clauses_info_clauses_only(ClausesInfo, Clauses),
-    clauses_info_varset(ClausesInfo, ProgVarset),
+    clauses_info_get_varset(ClausesInfo, ProgVarset),
 
     (
         % If the clause list is empty, then there are no goals
@@ -442,16 +442,16 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, CallerPredId, GoalExpr,
     ( pred_info_infer_modes(CalleePredInfo) ->
         % No modes declared so just constrain the hearvars
         pred_info_clauses_info(CalleePredInfo, CalleeClausesInfo),
-        clauses_info_headvars(CalleeClausesInfo, CalleeHeadVars),
+        clauses_info_get_headvars(CalleeClausesInfo, CalleeHeadVars),
         add_mode_infer_callee(CalleePredId, !Constraints),
         add_call_headvar_constraints(ProgVarset, Context, GoalPath,
             CallerPredId, Args, CalleePredId, CalleeHeadVars,
             !VarInfo, !Constraints)
     ;
         % At least one declared mode
-        pred_info_procedures(CalleePredInfo, CalleeProcTable),
+        pred_info_get_procedures(CalleePredInfo, CalleeProcTable),
         map.values(CalleeProcTable, CalleeProcInfos),
-        list.map(proc_info_argmodes, CalleeProcInfos, CalleeArgModeDecls),
+        list.map(proc_info_get_argmodes, CalleeProcInfos, CalleeArgModeDecls),
         add_call_mode_decls_constraints(ModuleInfo, ProgVarset, Context,
             CallerPredId, CalleeArgModeDecls, GoalPath, Args, !VarInfo,
             !Constraints)
@@ -642,8 +642,8 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
         Context, GoalPath, _Nonlocals, !VarInfo, !Constraints) :-
     CallArgs = list.map(foreign_arg_var, ForeignArgs),
     module_info_pred_proc_info(ModuleInfo, CalledPred, ProcId, _, ProcInfo),
-    ( proc_info_maybe_declared_argmodes(ProcInfo, yes(_OrigDecl)) ->
-        proc_info_argmodes(ProcInfo, Decl),
+    ( proc_info_get_maybe_declared_argmodes(ProcInfo, yes(_OrigDecl)) ->
+        proc_info_get_argmodes(ProcInfo, Decl),
 
         % This pred should strip the disj(conj()) for the single declaration.
         add_call_mode_decls_constraints(ModuleInfo, ProgVarset, Context,
@@ -682,8 +682,8 @@ mode_decls_constraints(ModuleInfo, VarMap, PredId, Decls, HeadVarsList,
 add_mode_decl_constraints(ModuleInfo, PredId, ProcId, Decl, Args,
         !VarInfo, !Constraints) :-
     module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
-    proc_info_varset(ProcInfo, ProgVarset),
-    proc_info_context(ProcInfo, Context),
+    proc_info_get_varset(ProcInfo, ProgVarset),
+    proc_info_get_context(ProcInfo, Context),
 
     prog_vars_at_path(ProgVarset, PredId, Args, [], ArgsAtHead, !VarInfo),
 

@@ -418,7 +418,7 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs, !ModuleInfo,
                 MaybeBestResult = yes({_, unused_args(UnusedArgs), _}),
                 ( 
                     UnusedArgs = [_|_],
-                    proc_info_headvars(ProcInfo, HeadVars),
+                    proc_info_get_headvars(ProcInfo, HeadVars),
                     list.map(list.index1_det(HeadVars), UnusedArgs,
                         UnusedVars),
                     initialise_vardep(UnusedVars, !.VarDep, VarDep),
@@ -471,13 +471,13 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs, !ModuleInfo,
             ;
                 % Unused argument optimization and tabling are
                 % not compatible with each other.
-                proc_info_eval_method(ProcInfo, EvalMethod),
+                proc_info_get_eval_method(ProcInfo, EvalMethod),
                 EvalMethod \= eval_normal
             )
         ->
             true
         ;
-            proc_info_vartypes(ProcInfo, VarTypes),
+            proc_info_get_vartypes(ProcInfo, VarTypes),
             map.keys(VarTypes, Vars),
             initialise_vardep(Vars, !VarDep),
             setup_output_args(!.ModuleInfo, ProcInfo, !VarDep),
@@ -487,14 +487,14 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs, !ModuleInfo,
                 Globals, TypeInfoLiveness),
             (
                 TypeInfoLiveness = yes,
-                proc_info_rtti_varmaps(ProcInfo, RttiVarMaps),
+                proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
                 setup_typeinfo_deps(Vars, VarTypes, proc(PredId, ProcId),
                     RttiVarMaps, !VarDep)
             ;
                 TypeInfoLiveness = no
             ),
 
-            proc_info_goal(ProcInfo, Goal),
+            proc_info_get_goal(ProcInfo, Goal),
             Info = traverse_info(!.ModuleInfo, VarTypes),
             traverse_goal(Info, Goal, !VarDep),
             svmap.set(proc(PredId, ProcId), !.VarDep, !VarUsage),
@@ -638,7 +638,7 @@ traverse_goal(Info, Goal, !VarDep) :-
         GoalExpr = call(PredId, ProcId, Args, _, _, _),
         module_info_pred_proc_info(Info ^ module_info, PredId, ProcId,
             _Pred, Proc),
-        proc_info_headvars(Proc, HeadVars),
+        proc_info_get_headvars(Proc, HeadVars),
         add_pred_call_arg_dep(proc(PredId, ProcId), Args, HeadVars, !VarDep)
     ;
         GoalExpr = if_then_else(_, Cond, Then, Else),
@@ -940,7 +940,7 @@ get_unused_arg_info(ModuleInfo, [PredProc | PredProcs], VarUsage,
     PredProc = proc(PredId, ProcId),
     map.lookup(VarUsage, PredProc, LocalVarUsage),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
-    proc_info_headvars(ProcInfo, HeadVars),
+    proc_info_get_headvars(ProcInfo, HeadVars),
     get_unused_arg_nos(LocalVarUsage, HeadVars, 1, UnusedArgs),
     svmap.det_insert(PredProc, UnusedArgs, !UnusedArgInfo),
     get_unused_arg_info(ModuleInfo, PredProcs, VarUsage, !UnusedArgInfo).
@@ -1035,7 +1035,7 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
         UnusedArgs = []
     ;
         UnusedArgs = [_ | _],
-        pred_info_import_status(OrigPredInfo, Status0),
+        pred_info_get_import_status(OrigPredInfo, Status0),
         (
             Status0 = opt_imported,
             IntermodResultsTriples = [_ | _],
@@ -1058,7 +1058,7 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
         make_new_pred_info(!.ModuleInfo, UnusedArgs, Status,
             proc(PredId, ProcId), OrigPredInfo, NewPredInfo0),
         NewPredName = pred_info_name(NewPredInfo0),
-        pred_info_procedures(NewPredInfo0, NewProcs0),
+        pred_info_get_procedures(NewPredInfo0, NewProcs0),
 
         % Assign the old procedure to a new predicate, which will be fixed up
         % in fixup_unused_args.
@@ -1108,13 +1108,13 @@ make_intermod_proc(PredId, NewPredId, ProcId, NewPredName,
     PredModule = pred_info_module(OrigPredInfo),
     create_call_goal(UnusedArgs, NewPredId, ProcId,
         PredModule, NewPredName, OrigProcInfo, ExtraProc0),
-    proc_info_headvars(OrigProcInfo, HeadVars0),
+    proc_info_get_headvars(OrigProcInfo, HeadVars0),
     remove_listof_elements(1, UnusedArgs2, HeadVars0, IntermodHeadVars),
     proc_info_set_headvars(IntermodHeadVars, ExtraProc0, ExtraProc1),
-    proc_info_argmodes(OrigProcInfo, ArgModes0),
+    proc_info_get_argmodes(OrigProcInfo, ArgModes0),
     remove_listof_elements(1, UnusedArgs2, ArgModes0, IntermodArgModes),
     proc_info_set_argmodes(IntermodArgModes, ExtraProc1, ExtraProc),
-    pred_info_procedures(ExtraPredInfo0, ExtraProcs0),
+    pred_info_get_procedures(ExtraPredInfo0, ExtraProcs0),
     map.set(ExtraProcs0, ProcId, ExtraProc, ExtraProcs),
     pred_info_set_procedures(ExtraProcs, ExtraPredInfo0, ExtraPredInfo),
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
@@ -1129,7 +1129,7 @@ make_new_pred_info(ModuleInfo, UnusedArgs, Status, proc(PredId, ProcId),
     PredModule = pred_info_module(!.PredInfo),
     Name0 = pred_info_name(!.PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(!.PredInfo),
-    pred_info_arg_types(!.PredInfo, Tvars, ExistQVars, ArgTypes0),
+    pred_info_get_arg_types(!.PredInfo, Tvars, ExistQVars, ArgTypes0),
     pred_info_get_origin(!.PredInfo, OrigOrigin),
     % Create a unique new pred name using the old proc_id.
     (
@@ -1166,7 +1166,7 @@ make_new_pred_info(ModuleInfo, UnusedArgs, Status, proc(PredId, ProcId),
     proc_id_to_int(ProcId, ProcInt),
     add_sym_name_suffix(Name2, "_" ++ int_to_string(ProcInt), Name),
     Arity = pred_info_orig_arity(!.PredInfo),
-    pred_info_typevarset(!.PredInfo, TypeVars),
+    pred_info_get_typevarset(!.PredInfo, TypeVars),
     remove_listof_elements(1, UnusedArgs, ArgTypes0, ArgTypes),
     pred_info_context(!.PredInfo, Context),
     pred_info_clauses_info(!.PredInfo, ClausesInfo),
@@ -1195,8 +1195,8 @@ make_new_pred_info(ModuleInfo, UnusedArgs, Status, proc(PredId, ProcId),
 
 create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule, PredName,
         !OldProc) :-
-    proc_info_headvars(!.OldProc, HeadVars),
-    proc_info_goal(!.OldProc, Goal0),
+    proc_info_get_headvars(!.OldProc, HeadVars),
+    proc_info_get_goal(!.OldProc, Goal0),
     Goal0 = _GoalExpr - GoalInfo0,
 
     % We must use the interface determinism for determining the determinism
@@ -1206,13 +1206,13 @@ create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule, PredName,
     proc_info_interface_determinism(!.OldProc, Determinism),
     goal_info_set_determinism(Determinism, GoalInfo0, GoalInfo1),
 
-    proc_info_vartypes(!.OldProc, VarTypes0),
+    proc_info_get_vartypes(!.OldProc, VarTypes0),
     set.list_to_set(HeadVars, NonLocals),
     map.apply_to_list(HeadVars, VarTypes0, VarTypeList),
     map.from_corresponding_lists(HeadVars, VarTypeList, VarTypes1),
     % The varset should probably be fixed up, but it shouldn't make
     % too much difference.
-    proc_info_varset(!.OldProc, VarSet0),
+    proc_info_get_varset(!.OldProc, VarSet0),
     remove_listof_elements(1, UnusedArgs, HeadVars, NewHeadVars),
     GoalExpr = call(NewPredId, NewProcId, NewHeadVars,
         not_builtin, no, qualified(PredModule, PredName)),
@@ -1237,13 +1237,13 @@ make_imported_unused_args_pred_info(OptProc, UnusedArgs, !ProcCallInfo,
         PredInfo0, ProcInfo0),
     make_new_pred_info(!.ModuleInfo, UnusedArgs, imported(interface),
         OptProc, PredInfo0, NewPredInfo0),
-    pred_info_procedures(NewPredInfo0, NewProcs0),
+    pred_info_get_procedures(NewPredInfo0, NewProcs0),
 
     % Assign the old procedure to a new predicate.
-    proc_info_headvars(ProcInfo0, HeadVars0),
+    proc_info_get_headvars(ProcInfo0, HeadVars0),
     remove_listof_elements(1, UnusedArgs, HeadVars0, HeadVars),
     proc_info_set_headvars(HeadVars, ProcInfo0, ProcInfo1),
-    proc_info_argmodes(ProcInfo1, ArgModes0),
+    proc_info_get_argmodes(ProcInfo1, ArgModes0),
     remove_listof_elements(1, UnusedArgs, ArgModes0, ArgModes),
     proc_info_set_argmodes(ArgModes, ProcInfo1, ProcInfo),
     map.set(NewProcs0, ProcId, ProcInfo, NewProcs),
@@ -1354,14 +1354,14 @@ do_fixup_unused_args(VarUsage, proc(OldPredId, OldProcId), ProcCallInfo,
     map.keys(UsageInfos, UnusedVars),
     module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
         PredInfo0, ProcInfo0),
-    proc_info_vartypes(ProcInfo0, VarTypes0),
+    proc_info_get_vartypes(ProcInfo0, VarTypes0),
     module_info_preds(ModuleInfo0, Preds0),
-    pred_info_procedures(PredInfo0, Procs0),
+    pred_info_get_procedures(PredInfo0, Procs0),
 
-    proc_info_headvars(ProcInfo0, HeadVars0),
-    proc_info_argmodes(ProcInfo0, ArgModes0),
-    proc_info_varset(ProcInfo0, VarSet0),
-    proc_info_goal(ProcInfo0, Goal0),
+    proc_info_get_headvars(ProcInfo0, HeadVars0),
+    proc_info_get_argmodes(ProcInfo0, ArgModes0),
+    proc_info_get_varset(ProcInfo0, VarSet0),
+    proc_info_get_goal(ProcInfo0, Goal0),
     remove_listof_elements(1, UnusedArgs, HeadVars0, HeadVars),
     remove_listof_elements(1, UnusedArgs, ArgModes0, ArgModes),
 
@@ -1701,7 +1701,7 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
         (
             Name = pred_info_name(PredInfo),
             \+ pred_info_is_imported(PredInfo),
-            \+ pred_info_import_status(PredInfo, opt_imported),
+            \+ pred_info_get_import_status(PredInfo, opt_imported),
 
             % Don't warn about builtins that have unused arguments.
             \+ pred_info_is_builtin(PredInfo),
@@ -1782,9 +1782,9 @@ maybe_warn_unused_args(yes, _ModuleInfo, PredInfo, PredId, ProcId,
         true
     ;
         set.insert(!.WarnedPredIds, PredId, !:WarnedPredIds),
-        pred_info_procedures(PredInfo, Procs),
+        pred_info_get_procedures(PredInfo, Procs),
         map.lookup(Procs, ProcId, Proc),
-        proc_info_headvars(Proc, HeadVars),
+        proc_info_get_headvars(Proc, HeadVars),
         list.length(HeadVars, NumHeadVars),
 
         % Strip off the extra type_info arguments
@@ -1888,7 +1888,7 @@ record_intermod_dependencies(ModuleInfo, CallerPredProcId,
         CallerPredInfo, CallerProcInfo),
     ( not pred_info_is_imported(CallerPredInfo) ->
         CallerModule = pred_info_module(CallerPredInfo),
-        proc_info_goal(CallerProcInfo, Goal),
+        proc_info_get_goal(CallerProcInfo, Goal),
         pred_proc_ids_from_goal(Goal, CalleePredProcIds),
         list.foldl2(record_intermod_dependencies_2(ModuleInfo, CallerModule),
             CalleePredProcIds, !AnalysisInfo, !IO)
