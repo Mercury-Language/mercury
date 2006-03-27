@@ -454,44 +454,22 @@ typedef	struct MR_Label_Layout_No_Var_Info_Struct {
 #define	MR_DEF_LLT(e, ln, port, num, path, vc, lt, vn, tv)		\
 	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, vc, lt, vn, tv)
 
-#define	MR_DEF_LLCCC(e, ln, port, num, path, vc, lt, vn, tv)		\
-	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, vc,		\
-		&MR_PASTE2(mercury_common_, lt),			\
-		&MR_PASTE2(mercury_common_, vn),			\
-		&MR_PASTE2(mercury_common_, tv))
-
 #define	MR_DEF_LLXCCC(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc, tvt, tvc)\
 	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, vc,		\
 		MR_XCOMMON(ltt, ltc),					\
 		MR_XCOMMON(vnt, vnc),					\
 		MR_XCOMMON(tvt, tvc))
 
-#define	MR_DEF_LLCC0(e, ln, port, num, path, vc, lt, vn)		\
-	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, vc,		\
-		&MR_PASTE2(mercury_common_, lt),			\
-		&MR_PASTE2(mercury_common_, vn), 0)			\
-
 #define	MR_DEF_LLXCC0(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc)	\
 	MR_DEF_LL_GEN(e, ln, port, MR_FALSE, num, path, vc,		\
 		MR_XCOMMON(ltt, ltc),					\
 		MR_XCOMMON(vnt, vnc), 0)
-
-#define	MR_DEF_LLTCCC(e, ln, port, num, path, vc, lt, vn, tv)		\
-	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, vc,		\
-		&MR_PASTE2(mercury_common_, lt),			\
-		&MR_PASTE2(mercury_common_, vn),			\
-		&MR_PASTE2(mercury_common_, tv))
 
 #define	MR_DEF_LLTXCCC(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc, tvt,tvc)\
 	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, vc,		\
 		MR_XCOMMON(ltt, ltc),					\
 		MR_XCOMMON(vnt, vnc),					\
 		MR_XCOMMON(tvt, tvc))
-
-#define	MR_DEF_LLTCC0(e, ln, port, num, path, vc, lt, vn)		\
-	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, vc,		\
-		&MR_PASTE2(mercury_common_, lt),			\
-		&MR_PASTE2(mercury_common_, vn), 0)
 
 #define	MR_DEF_LLTXCC0(e, ln, port, num, path, vc, ltt, ltc, vnt, vnc)	\
 	MR_DEF_LL_GEN(e, ln, port, MR_TRUE, num, path, vc,		\
