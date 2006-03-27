@@ -203,7 +203,6 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
-:- import_module bintree_set.
 :- import_module char.
 :- import_module deconstruct.
 :- import_module dir.
@@ -1347,13 +1346,13 @@ output_c_procedure(PrintComments, EmitCLoops, Proc, !IO) :-
     ),
 
     find_caller_label(Instrs, CallerLabel),
-    find_cont_labels(Instrs, bintree_set.init, ContLabelSet),
+    find_cont_labels(Instrs, set_tree234.init, ContLabelSet),
     (
         EmitCLoops = yes,
-        find_while_labels(Instrs, bintree_set.init, WhileSet)
+        find_while_labels(Instrs, set_tree234.init, WhileSet)
     ;
         EmitCLoops = no,
-        WhileSet = bintree_set.init
+        WhileSet = set_tree234.init
     ),
     output_instruction_list(Instrs, PrintComments,
         CallerLabel - ContLabelSet, WhileSet, !IO).
@@ -1382,7 +1381,7 @@ find_caller_label([Instr0 - _ | Instrs], CallerLabel) :-
     % nondet disjunctions, forks or joins, and store them in ContLabelSet.
     %
 :- pred find_cont_labels(list(instruction)::in,
-    bintree_set(label)::in, bintree_set(label)::out) is det.
+    set_tree234(label)::in, set_tree234(label)::out) is det.
 
 find_cont_labels([], !ContLabelSet).
 find_cont_labels([Instr - _ | Instrs], !ContLabelSet) :-
@@ -1398,12 +1397,11 @@ find_cont_labels([Instr - _ | Instrs], !ContLabelSet) :-
             Const = code_addr_const(label(ContLabel))
         )
     ->
-        bintree_set.insert(!.ContLabelSet, ContLabel, !:ContLabelSet)
+        set_tree234.insert(ContLabel, !ContLabelSet)
     ;
         Instr = fork(Label1, Label2, _)
     ->
-        bintree_set.insert_list(!.ContLabelSet, [Label1, Label2],
-            !:ContLabelSet)
+        set_tree234.insert_list([Label1, Label2], !ContLabelSet)
     ;
         Instr = block(_, _, Block)
     ->
@@ -1432,7 +1430,7 @@ find_cont_labels([Instr - _ | Instrs], !ContLabelSet) :-
     % The second of these is better if we don't have fast jumps.
     %
 :- pred find_while_labels(list(instruction)::in,
-    bintree_set(label)::in, bintree_set(label)::out) is det.
+    set_tree234(label)::in, set_tree234(label)::out) is det.
 
 find_while_labels([], !WhileSet).
 find_while_labels([Instr0 - _ | Instrs0], !WhileSet) :-
@@ -1441,7 +1439,7 @@ find_while_labels([Instr0 - _ | Instrs0], !WhileSet) :-
         is_while_label(Label, Instrs0, Instrs1, 0, UseCount),
         UseCount > 0
     ->
-        bintree_set.insert(!.WhileSet, Label, !:WhileSet),
+        set_tree234.insert(Label, !WhileSet),
         find_while_labels(Instrs1, !WhileSet)
     ;
         find_while_labels(Instrs0, !WhileSet)
@@ -1624,7 +1622,7 @@ output_pragma_c_component_decls(pragma_c_noop, !DeclSet, !IO).
 %-----------------------------------------------------------------------------%
 
 :- pred output_instruction_list(list(instruction)::in, bool::in,
-    pair(label, bintree_set(label))::in, bintree_set(label)::in,
+    pair(label, set_tree234(label))::in, set_tree234(label)::in,
     io::di, io::uo) is det.
 
 output_instruction_list([], _, _, _, !IO).
@@ -1634,7 +1632,7 @@ output_instruction_list([Instr0 - Comment0 | Instrs], PrintComments, ProfInfo,
         !IO),
     (
         Instr0 = label(Label),
-        bintree_set.is_member(Label, WhileSet)
+        set_tree234.contains(WhileSet, Label)
     ->
         io.write_string("\twhile (1) {\n", !IO),
         output_instruction_list_while(Instrs, Label,
@@ -1648,7 +1646,7 @@ output_instruction_list([Instr0 - Comment0 | Instrs], PrintComments, ProfInfo,
     ).
 
 :- pred output_instruction_list_while(list(instruction)::in, label::in,
-    bool::in, pair(label, bintree_set(label))::in, bintree_set(label)::in,
+    bool::in, pair(label, set_tree234(label))::in, set_tree234(label)::in,
     io::di, io::uo) is det.
 
 output_instruction_list_while([], _, _, _, _, !IO) :-
@@ -1693,7 +1691,7 @@ output_instruction_list_while([Instr0 - Comment0 | Instrs], Label,
     ).
 
 :- pred output_instruction_list_while_block(list(instruction)::in, label::in,
-    bool::in, pair(label, bintree_set(label))::in, io::di, io::uo) is det.
+    bool::in, pair(label, set_tree234(label))::in, io::di, io::uo) is det.
 
 output_instruction_list_while_block([], _, _, _, !IO).
 output_instruction_list_while_block([Instr0 - Comment0 | Instrs], Label,
@@ -1730,7 +1728,7 @@ output_instruction_list_while_block([Instr0 - Comment0 | Instrs], Label,
     ).
 
 :- pred output_instruction_and_comment(instr::in, string::in, bool::in,
-    pair(label, bintree_set(label))::in, io::di, io::uo) is det.
+    pair(label, set_tree234(label))::in, io::di, io::uo) is det.
 
 output_instruction_and_comment(Instr, Comment, PrintComments, ProfInfo, !IO) :-
     (
@@ -1760,7 +1758,7 @@ output_instruction_and_comment(Instr, Comment, PrintComments, ProfInfo, !IO) :-
     % Normally we use output_instruction_and_comment/6.
     %
 output_debug_instruction_and_comment(Instr, Comment, PrintComments, !IO) :-
-    bintree_set.init(ContLabelSet),
+    ContLabelSet = set_tree234.init,
     DummyModule = unqualified("DEBUG"),
     DummyPredName = "DEBUG",
     proc_id_to_int(hlds_pred.initial_proc_id, InitialProcIdInt),
@@ -1774,7 +1772,7 @@ output_debug_instruction_and_comment(Instr, Comment, PrintComments, !IO) :-
     % Normally we use output_instruction/4.
     %
 output_debug_instruction(Instr, !IO) :-
-    bintree_set.init(ContLabelSet),
+    ContLabelSet = set_tree234.init,
     DummyModule = unqualified("DEBUG"),
     DummyPredName = "DEBUG",
     proc_id_to_int(hlds_pred.initial_proc_id, InitialProcIdInt),
@@ -1807,7 +1805,7 @@ output_block_start(TempR, TempF, !IO) :-
 output_block_end(!IO) :-
     io.write_string("\t}\n", !IO).
 
-:- pred output_instruction(instr::in, pair(label, bintree_set(label))::in,
+:- pred output_instruction(instr::in, pair(label, set_tree234(label))::in,
     io::di, io::uo) is det.
 
 output_instruction(comment(Comment), _, !IO) :-
@@ -1823,7 +1821,7 @@ output_instruction(block(TempR, TempF, Instrs), ProfInfo, !IO) :-
     output_block_start(TempR, TempF, !IO),
     globals.io_lookup_bool_option(auto_comments, PrintComments, !IO),
     output_instruction_list(Instrs, PrintComments, ProfInfo,
-        bintree_set.init, !IO),
+        set_tree234.init, !IO),
     output_block_end(!IO).
 
 output_instruction(assign(Lval, Rval), _, !IO) :-
@@ -3353,14 +3351,14 @@ output_indent(FirstIndent, LaterIndent, N0, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pred maybe_output_update_prof_counter(label::in,
-    pair(label, bintree_set(label))::in, io::di, io::uo) is det.
+    pair(label, set_tree234(label))::in, io::di, io::uo) is det.
 
 maybe_output_update_prof_counter(Label, CallerLabel - ContLabelSet, !IO) :-
     % If ProfileTime is no, the definition of MR_update_prof_current_proc
     % is empty anyway.
     globals.io_lookup_bool_option(profile_time, ProfileTime, !IO),
     (
-        bintree_set.is_member(Label, ContLabelSet),
+        set_tree234.member(ContLabelSet, Label),
         ProfileTime = yes
     ->
         io.write_string("\tMR_update_prof_current_proc(MR_LABEL_AP(", !IO),
