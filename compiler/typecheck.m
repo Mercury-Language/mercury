@@ -76,7 +76,7 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module check_hlds__typecheck.
+:- module check_hlds.typecheck.
 
 :- interface.
 
@@ -153,8 +153,8 @@
 %-----------------------------------------------------------------------------%
 
 typecheck(!Module, FoundError, ExceededIterationLimit, !IO) :-
-    globals__io_lookup_bool_option(statistics, Statistics, !IO),
-    globals__io_lookup_bool_option(verbose, Verbose, !IO),
+    globals.io_lookup_bool_option(statistics, Statistics, !IO),
+    globals.io_lookup_bool_option(verbose, Verbose, !IO),
     maybe_write_string(Verbose, "% Type-checking clauses...\n", !IO),
     typecheck_module(!Module, FoundError, ExceededIterationLimit, !IO),
     maybe_report_stats(Statistics, !IO).
@@ -168,7 +168,7 @@ typecheck(!Module, FoundError, ExceededIterationLimit, !IO) :-
 
 typecheck_module(!Module, FoundError, ExceededIterationLimit, !IO) :-
     module_info_predids(!.Module, PredIds),
-    globals__io_lookup_int_option(type_inference_iteration_limit,
+    globals.io_lookup_int_option(type_inference_iteration_limit,
         MaxIterations, !IO),
     typecheck_to_fixpoint(1, MaxIterations, PredIds, !Module,
         FoundError, ExceededIterationLimit, !IO),
@@ -193,7 +193,7 @@ typecheck_to_fixpoint(Iteration, NumIterations, PredIds, !Module,
         FoundError = FoundError1,
         ExceededIterationLimit = no
     ;
-        globals__io_lookup_bool_option(debug_types, DebugTypes, !IO),
+        globals.io_lookup_bool_option(debug_types, DebugTypes, !IO),
         (
             DebugTypes = yes,
             write_inference_messages(PredIds, !.Module, !IO)
@@ -213,17 +213,17 @@ typecheck_to_fixpoint(Iteration, NumIterations, PredIds, !Module,
 :- pred typecheck_report_max_iterations_exceeded(io::di, io::uo) is det.
 
 typecheck_report_max_iterations_exceeded(!IO) :-
-    io__set_exit_status(1, !IO),
-    io__write_strings([
+    io.set_exit_status(1, !IO),
+    io.write_strings([
         "Type inference iteration limit exceeded.\n",
         "This probably indicates that your program has a type error.\n",
         "You should declare the types explicitly.\n"
     ], !IO),
-    globals__io_lookup_int_option(type_inference_iteration_limit,
+    globals.io_lookup_int_option(type_inference_iteration_limit,
         MaxIterations, !IO),
-    io__format("(The current limit is %d iterations.  You can use the\n",
+    io.format("(The current limit is %d iterations.  You can use the\n",
         [i(MaxIterations)], !IO),
-    io__write_string("`--type-inference-iteration-limit' option " ++
+    io.write_string("`--type-inference-iteration-limit' option " ++
         "to increase the limit).\n", !IO).
 
 %-----------------------------------------------------------------------------%
@@ -238,7 +238,7 @@ typecheck_module_one_iteration(_, [], !ModuleInfo, !Error, !Changed, !IO).
 typecheck_module_one_iteration(Iteration, [PredId | PredIds], !ModuleInfo,
         !Error, !Changed, !IO) :-
     module_info_preds(!.ModuleInfo, Preds0),
-    map__lookup(Preds0, PredId, PredInfo0),
+    map.lookup(Preds0, PredId, PredInfo0),
     ( pred_info_is_imported(PredInfo0) ->
         true
     ;
@@ -246,7 +246,7 @@ typecheck_module_one_iteration(Iteration, [PredId | PredIds], !ModuleInfo,
             PredInfo1, !ModuleInfo, NewError, NewChanged, !IO),
         (
             NewError = no,
-            map__det_update(Preds0, PredId, PredInfo1, Preds),
+            map.det_update(Preds0, PredId, PredInfo1, Preds),
             module_info_set_preds(Preds, !ModuleInfo)
         ;
             NewError = yes,
@@ -270,14 +270,14 @@ typecheck_module_one_iteration(Iteration, [PredId | PredIds], !ModuleInfo,
 %           %
 %           post_finish_ill_typed_pred(ModuleInfo0,
 %               PredId, PredInfo1, PredInfo),
-%           map__det_update(Preds0, PredId, PredInfo, Preds),
+%           map.det_update(Preds0, PredId, PredInfo, Preds),
 %       *******************/
-            map__det_update(Preds0, PredId, PredInfo1, Preds),
+            map.det_update(Preds0, PredId, PredInfo1, Preds),
             module_info_set_preds(Preds, !ModuleInfo),
             module_info_remove_predid(PredId, !ModuleInfo)
         ),
-        bool__or(NewError, !Error),
-        bool__or(NewChanged, !Changed)
+        bool.or(NewError, !Error),
+        bool.or(NewChanged, !Changed)
     ),
     typecheck_module_one_iteration(Iteration, PredIds, !ModuleInfo,
         !Error, !Changed, !IO).
@@ -324,7 +324,7 @@ typecheck_pred_if_needed(Iteration, PredId, !PredInfo, !ModuleInfo,
 
 typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
         !IO) :-
-    globals__io_get_globals(Globals, !IO),
+    globals.io_get_globals(Globals, !IO),
     ( Iteration = 1 ->
         % Goal paths are used to identify typeclass constraints.
         fill_goal_path_slots_in_clauses(!.ModuleInfo, no, !PredInfo),
@@ -351,10 +351,10 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
         % generate a "stub" clause that just throws an exception.
         (
             clause_list_is_empty(ClausesRep0) = yes,
-            globals__lookup_bool_option(Globals, allow_stubs, yes),
+            globals.lookup_bool_option(Globals, allow_stubs, yes),
             \+ check_marker(Markers0, class_method)
         ->
-            globals__lookup_bool_option(Globals, warn_stubs, WarnStubs),
+            globals.lookup_bool_option(Globals, warn_stubs, WarnStubs),
             (
                 WarnStubs = yes,
                 report_no_clauses("Warning", PredId, !.PredInfo, !.ModuleInfo,
@@ -377,19 +377,18 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
         clause_list_is_empty(ClausesRep1) = ClausesRep1IsEmpty,
         (
             ClausesRep1IsEmpty = yes,
-            % There are no clauses for class methods.
-            % The clauses are generated later on,
-            % in polymorphism__expand_class_method_bodies
+            % There are no clauses for class methods. The clauses are generated
+            % later on, in polymorphism.expand_class_method_bodies.
             ( check_marker(Markers0, class_method) ->
-                % For the moment, we just insert the types
-                % of the head vars into the clauses_info
-                map__from_corresponding_lists(HeadVars, ArgTypes0, VarTypes),
+                % For the moment, we just insert the types of the head varss
+                % into the clauses_info.
+                map.from_corresponding_lists(HeadVars, ArgTypes0, VarTypes),
                 clauses_info_set_vartypes(VarTypes, !ClausesInfo),
                 pred_info_set_clauses_info(!.ClausesInfo, !PredInfo),
                 % We also need to set the head_type_params field to indicate
                 % that all the existentially quantified tvars in the head
                 % of this pred are indeed bound by this predicate.
-                prog_type__vars_list(ArgTypes0, HeadVarsIncludingExistentials),
+                prog_type.vars_list(ArgTypes0, HeadVarsIncludingExistentials),
                 pred_info_set_head_type_params(HeadVarsIncludingExistentials,
                     !PredInfo),
                 Error = no,
@@ -419,13 +418,13 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
                 Inferring = no,
                 write_pred_progress_message("% Type-checking ", PredId,
                     !.ModuleInfo, !IO),
-                prog_type__vars_list(ArgTypes0, !:HeadTypeParams),
+                prog_type.vars_list(ArgTypes0, !:HeadTypeParams),
                 pred_info_get_class_context(!.PredInfo, PredConstraints),
                 constraint_list_get_tvars(PredConstraints ^ univ_constraints,
                     UnivTVars),
-                list__append(UnivTVars, !HeadTypeParams),
-                list__sort_and_remove_dups(!HeadTypeParams),
-                list__delete_elems(!.HeadTypeParams, ExistQVars0,
+                list.append(UnivTVars, !HeadTypeParams),
+                list.sort_and_remove_dups(!HeadTypeParams),
+                list.delete_elems(!.HeadTypeParams, ExistQVars0,
                     !:HeadTypeParams)
             ),
 
@@ -454,7 +453,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
                 !:HeadTypeParams, InferredVarTypes0,
                 InferredTypeConstraints0, ConstraintProofs,
                 ConstraintMap, TVarRenaming, ExistTypeRenaming),
-            map__optimize(InferredVarTypes0, InferredVarTypes),
+            map.optimize(InferredVarTypes0, InferredVarTypes),
             clauses_info_set_vartypes(InferredVarTypes, !ClausesInfo),
 
             % Apply substitutions to the explicit vartypes.
@@ -479,8 +478,8 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
             % Split the inferred type class constraints into those that
             % apply only to the head variables, and those that apply to
             % type variables which occur only in the body.
-            map__apply_to_list(HeadVars, InferredVarTypes, ArgTypes),
-            prog_type__vars_list(ArgTypes, ArgTypeVars),
+            map.apply_to_list(HeadVars, InferredVarTypes, ArgTypes),
+            prog_type.vars_list(ArgTypes, ArgTypeVars),
             restrict_to_head_vars(InferredTypeConstraints0, ArgTypeVars,
                 InferredTypeConstraints, UnprovenBodyConstraints),
 
@@ -544,7 +543,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
                     Origin1 = Origin0
                 ;
                     ExistQVars0 = [_ | _],
-                    list__foldl(
+                    list.foldl(
                         check_existq_clause(!.Info, TypeVarSet, ExistQVars0),
                         Clauses, !IO),
 
@@ -586,7 +585,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
 check_existq_clause(Info, TypeVarSet, ExistQVars, Clause, !IO) :-
     Goal = Clause ^ clause_body,
     ( Goal = foreign_proc(_, _, _, _, _, Impl) - _ ->
-        list__foldl(check_mention_existq_var(Info, TypeVarSet, Impl),
+        list.foldl(check_mention_existq_var(Info, TypeVarSet, Impl),
             ExistQVars, !IO)
     ;
         true
@@ -596,7 +595,7 @@ check_existq_clause(Info, TypeVarSet, ExistQVars, Clause, !IO) :-
     pragma_foreign_code_impl::in, tvar::in, io::di, io::uo) is det.
 
 check_mention_existq_var(Info, TypeVarSet, Impl, TVar, !IO) :-
-    varset__lookup_name(TypeVarSet, TVar, Name),
+    varset.lookup_name(TypeVarSet, TVar, Name),
     VarName = "TypeInfo_for_" ++ Name,
     ( foreign_code_uses_variable(Impl, VarName) ->
         true
@@ -625,7 +624,7 @@ generate_stub_clause(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
     pred_info_set_markers(Markers, !PredInfo),
 
     % Generate `PredName = "<PredName>"'.
-    varset__new_named_var(!.VarSet, "PredName", PredNameVar, !:VarSet),
+    varset.new_named_var(!.VarSet, "PredName", PredNameVar, !:VarSet),
     make_string_const_construction(PredNameVar, PredName, UnifyGoal),
 
     % Generate `private_builtin.no_clauses(PredName)'
@@ -680,12 +679,12 @@ infer_existential_types(ArgTypeVars, ExistQVars,
     % are "more general" than existentially quantified types, so we prefer to
     % infer a concrete type if we can rather than an existential type.)
 
-    set__list_to_set(ArgTypeVars, ArgTypeVarsSet),
-    set__list_to_set(HeadTypeParams0, HeadTypeParamsSet),
-    set__intersect(ArgTypeVarsSet, HeadTypeParamsSet, ExistQVarsSet),
-    set__difference(ArgTypeVarsSet, ExistQVarsSet, UnivQVarsSet),
-    set__to_sorted_list(ExistQVarsSet, ExistQVars),
-    set__to_sorted_list(UnivQVarsSet, UnivQVars),
+    set.list_to_set(ArgTypeVars, ArgTypeVarsSet),
+    set.list_to_set(HeadTypeParams0, HeadTypeParamsSet),
+    set.intersect(ArgTypeVarsSet, HeadTypeParamsSet, ExistQVarsSet),
+    set.difference(ArgTypeVarsSet, ExistQVarsSet, UnivQVarsSet),
+    set.to_sorted_list(ExistQVarsSet, ExistQVars),
+    set.to_sorted_list(UnivQVarsSet, UnivQVars),
 
     % Then we need to insert the universally quantified head variable types
     % into the HeadTypeParams set, which will now contain all the type
@@ -693,7 +692,7 @@ infer_existential_types(ArgTypeVars, ExistQVars,
     % This is needed so that it has the right value when post_typecheck.m
     % uses it to check for unbound type variables.
 
-    list__append(UnivQVars, HeadTypeParams0, HeadTypeParams).
+    list.append(UnivQVars, HeadTypeParams0, HeadTypeParams).
 
     % restrict_to_head_vars(Constraints0, HeadVarTypes, Constraints,
     %       UnprovenConstraints):
@@ -716,7 +715,7 @@ restrict_to_head_vars(constraints(UnivCs0, ExistCs0), ArgVarTypes,
 
 restrict_to_head_vars_2(ClassConstraints, HeadTypeVars, HeadClassConstraints,
         OtherClassConstraints) :-
-    list__filter(is_head_class_constraint(HeadTypeVars),
+    list.filter(is_head_class_constraint(HeadTypeVars),
         ClassConstraints, HeadClassConstraints, OtherClassConstraints).
 
 :- pred is_head_class_constraint(list(tvar)::in, prog_constraint::in)
@@ -724,9 +723,9 @@ restrict_to_head_vars_2(ClassConstraints, HeadTypeVars, HeadClassConstraints,
 
 is_head_class_constraint(HeadTypeVars, constraint(_Name, Types)) :-
     all [TVar] (
-            prog_type__type_list_contains_var(Types, TVar)
+            prog_type.type_list_contains_var(Types, TVar)
         =>
-            list__member(TVar, HeadTypeVars)
+            list.member(TVar, HeadTypeVars)
     ).
 
     % Check whether the argument types, type quantifiers, and type
@@ -746,12 +745,10 @@ argtypes_identical_up_to_renaming(KindMap, ExistQVarsA, ArgTypesA,
         TypeConstraintsA, ExistQVarsB, ArgTypesB, TypeConstraintsB) :-
     same_structure(TypeConstraintsA, TypeConstraintsB,
         ConstrainedTypesA, ConstrainedTypesB),
-    prog_type__var_list_to_type_list(KindMap, ExistQVarsA, ExistQVarTypesA),
-    prog_type__var_list_to_type_list(KindMap, ExistQVarsB, ExistQVarTypesB),
-    list__condense([ExistQVarTypesA, ArgTypesA, ConstrainedTypesA],
-        TypesListA),
-    list__condense([ExistQVarTypesB, ArgTypesB, ConstrainedTypesB],
-        TypesListB),
+    prog_type.var_list_to_type_list(KindMap, ExistQVarsA, ExistQVarTypesA),
+    prog_type.var_list_to_type_list(KindMap, ExistQVarsB, ExistQVarTypesB),
+    list.condense([ExistQVarTypesA, ArgTypesA, ConstrainedTypesA], TypesListA),
+    list.condense([ExistQVarTypesB, ArgTypesB, ConstrainedTypesB], TypesListB),
     identical_up_to_renaming(TypesListA, TypesListB).
 
     % Check if two sets of type class constraints have the same structure
@@ -767,12 +764,12 @@ same_structure(ConstraintsA, ConstraintsB, TypesA, TypesB) :-
     ConstraintsB = constraints(UnivCsB, ExistCsB),
     % these calls to same_length are just an optimization,
     % to catch the simple cases quicker
-    list__same_length(UnivCsA, UnivCsB),
-    list__same_length(ExistCsA, ExistCsB),
+    list.same_length(UnivCsA, UnivCsB),
+    list.same_length(ExistCsA, ExistCsB),
     same_structure_2(UnivCsA, UnivCsB, UnivTypesA, UnivTypesB),
     same_structure_2(ExistCsA, ExistCsB, ExistTypesA, ExistTypesB),
-    list__append(ExistTypesA, UnivTypesA, TypesA),
-    list__append(ExistTypesB, UnivTypesB, TypesB).
+    TypesA = ExistTypesA ++ UnivTypesA,
+    TypesB = ExistTypesB ++ UnivTypesB.
 
 :- pred same_structure_2(list(prog_constraint)::in, list(prog_constraint)::in,
     list(mer_type)::out, list(mer_type)::out) is semidet.
@@ -782,10 +779,10 @@ same_structure_2([ConstraintA | ConstraintsA], [ConstraintB | ConstraintsB],
         TypesA, TypesB) :-
     ConstraintA = constraint(ClassName, ArgTypesA),
     ConstraintB = constraint(ClassName, ArgTypesB),
-    list__same_length(ArgTypesA, ArgTypesB),
+    list.same_length(ArgTypesA, ArgTypesB),
     same_structure_2(ConstraintsA, ConstraintsB, TypesA0, TypesB0),
-    list__append(ArgTypesA, TypesA0, TypesA),
-    list__append(ArgTypesB, TypesB0, TypesB).
+    TypesA = ArgTypesA ++ TypesA0,
+    TypesB = ArgTypesB ++ TypesB0.
 
     % Check whether two lists of types are identical up to renaming.
     %
@@ -816,13 +813,13 @@ special_pred_needs_typecheck(PredInfo, ModuleInfo) :-
 
     % Check that the special pred isn't one of the builtin types which don't
     % have a hlds_type_defn.
-    \+ list__member(TypeCtor, builtin_type_ctors_with_no_hlds_type_defn),
+    \+ list.member(TypeCtor, builtin_type_ctors_with_no_hlds_type_defn),
 
     % Check whether that type is a type for which there is a user-defined
     % equality predicate, or which is existentially typed.
     module_info_get_type_table(ModuleInfo, TypeTable),
-    map__lookup(TypeTable, TypeCtor, TypeDefn),
-    hlds_data__get_type_defn_body(TypeDefn, Body),
+    map.lookup(TypeTable, TypeCtor, TypeDefn),
+    hlds_data.get_type_defn_body(TypeDefn, Body),
     special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, Body).
 
 %-----------------------------------------------------------------------------%
@@ -857,7 +854,7 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
             functor(cons(FuncSymName, FuncArity), no, FuncArgs),
             Context, explicit, [], Goal0),
         Goal0 = GoalExpr - GoalInfo0,
-        set__list_to_set(HeadVars, NonLocals),
+        set.list_to_set(HeadVars, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
         Goal = GoalExpr - GoalInfo,
         ProcIds = [], % the clause applies to all procedures.
@@ -893,7 +890,7 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
         % places the original argument terms, not just the argument
         % variables in the clause head, and this pass would make it
         % difficult to work out what were the original arguments).
-        globals__lookup_bool_option(Globals, make_optimization_interface, yes)
+        globals.lookup_bool_option(Globals, make_optimization_interface, yes)
     ->
         true
     ;
@@ -904,12 +901,12 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
         Goal0 = _ - GoalInfo0,
         goal_to_conj_list(Goal0, Conj0),
         improve_single_clause_headvars(Conj0, HeadVars0, [],
-            VarSet0, VarSet, map__init, Subst, [], RevConj),
+            VarSet0, VarSet, map.init, Subst, [], RevConj),
 
         goal_info_get_nonlocals(GoalInfo0, NonLocals0),
-        goal_util__rename_vars_in_var_set(no, Subst, NonLocals0, NonLocals),
+        goal_util.rename_vars_in_var_set(no, Subst, NonLocals0, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
-        conj_list_to_goal(list__reverse(RevConj), GoalInfo, Goal),
+        conj_list_to_goal(list.reverse(RevConj), GoalInfo, Goal),
 
         apply_partial_map_to_list(Subst, HeadVars0, HeadVars),
         clauses_info_set_headvars(HeadVars, ClausesInfo0, ClausesInfo1),
@@ -921,9 +918,9 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
     ;
         % If a headvar is assigned to a variable with the same name
         % (or no name) in every clause, rename it to have that name.
-        list__foldl2(find_headvar_names_in_clause(VarSet0, HeadVars0),
-            Clauses0, map__init, HeadVarNames, yes, _),
-        map__foldl(maybe_update_headvar_name, HeadVarNames, VarSet0, VarSet),
+        list.foldl2(find_headvar_names_in_clause(VarSet0, HeadVars0),
+            Clauses0, map.init, HeadVarNames, yes, _),
+        map.foldl(maybe_update_headvar_name, HeadVarNames, VarSet0, VarSet),
         clauses_info_set_varset(VarSet, ClausesInfo0, ClausesInfo),
         pred_info_set_clauses_info(ClausesInfo, !PredInfo)
     ).
@@ -934,7 +931,7 @@ maybe_improve_headvar_names(Globals, !PredInfo) :-
 maybe_update_headvar_name(HeadVar, MaybeHeadVarName, VarSet0, VarSet) :-
     (
         MaybeHeadVarName = yes(HeadVarName),
-        varset__name_var(VarSet0, HeadVar, HeadVarName, VarSet)
+        varset.name_var(VarSet0, HeadVar, HeadVarName, VarSet)
     ;
         MaybeHeadVarName = no,
         VarSet = VarSet0
@@ -954,40 +951,40 @@ improve_single_clause_headvars([Goal | Conj0], HeadVars, SeenVars0,
         (
             % The headvars must be distinct variables, so check that this
             % variable doesn't already appear in the argument list.
-            \+ list__member(OtherVar, HeadVars),
-            \+ list__member(OtherVar, SeenVars0),
+            \+ list.member(OtherVar, HeadVars),
+            \+ list.member(OtherVar, SeenVars0),
 
             \+ ( some [OtherGoal] (
-                ( list__member(OtherGoal, Conj0)
-                ; list__member(OtherGoal, !.RevConj)
+                ( list.member(OtherGoal, Conj0)
+                ; list.member(OtherGoal, !.RevConj)
                 ),
                 OtherGoal = _ - OtherGoalInfo,
                 goal_info_get_nonlocals(OtherGoalInfo, OtherNonLocals),
-                set__member(HeadVar, OtherNonLocals)
+                set.member(HeadVar, OtherNonLocals)
             ))
         ->
             SeenVars = [OtherVar | SeenVars0],
-            !:Subst = map__det_insert(!.Subst, HeadVar, OtherVar),
+            !:Subst = map.det_insert(!.Subst, HeadVar, OtherVar),
 
             % If the variable wasn't named, use the `HeadVar__n' name.
             (
-                \+ varset__search_name(!.VarSet, OtherVar, _),
-                varset__search_name(!.VarSet, HeadVar, HeadVarName)
+                \+ varset.search_name(!.VarSet, OtherVar, _),
+                varset.search_name(!.VarSet, HeadVar, HeadVarName)
             ->
-                varset__name_var(!.VarSet, OtherVar, HeadVarName, !:VarSet)
+                varset.name_var(!.VarSet, OtherVar, HeadVarName, !:VarSet)
             ;
                 true
             )
         ;
             !:RevConj = [Goal | !.RevConj],
             SeenVars = SeenVars0,
-            ( varset__search_name(!.VarSet, OtherVar, OtherVarName) ->
+            ( varset.search_name(!.VarSet, OtherVar, OtherVarName) ->
                 % The unification can't be eliminated,
                 % so just rename the head variable.
-                varset__name_var(!.VarSet, HeadVar, OtherVarName, !:VarSet)
-            ; varset__search_name(!.VarSet, HeadVar, HeadVarName) ->
+                varset.name_var(!.VarSet, HeadVar, OtherVarName, !:VarSet)
+            ; varset.search_name(!.VarSet, HeadVar, HeadVarName) ->
                 % If the variable wasn't named, use the `HeadVar__n' name.
-                varset__name_var(!.VarSet, OtherVar, HeadVarName, !:VarSet)
+                varset.name_var(!.VarSet, OtherVar, HeadVarName, !:VarSet)
             ;
                 true
             )
@@ -999,7 +996,7 @@ improve_single_clause_headvars([Goal | Conj0], HeadVars, SeenVars0,
     improve_single_clause_headvars(Conj0, HeadVars, SeenVars,
         !VarSet, !Subst, !RevConj).
 
-    % Head variables which have the same name in each clause.
+    % Head variables that have the same name in each clause
     % will have an entry of `yes(Name)' in the result map.
     %
 :- pred find_headvar_names_in_clause(prog_varset::in,
@@ -1011,8 +1008,8 @@ find_headvar_names_in_clause(VarSet, HeadVars, Clause, HeadVarMap0, HeadVarMap,
         IsFirstClause, no) :-
     Goal = Clause ^ clause_body,
     goal_to_conj_list(Goal, Conj),
-    ClauseHeadVarMap = list__foldl(
-        find_headvar_names_in_goal(VarSet, HeadVars), Conj, map__init),
+    ClauseHeadVarMap = list.foldl(
+        find_headvar_names_in_goal(VarSet, HeadVars), Conj, map.init),
     (
         IsFirstClause = yes,
         HeadVarMap = ClauseHeadVarMap
@@ -1020,15 +1017,15 @@ find_headvar_names_in_clause(VarSet, HeadVars, Clause, HeadVarMap0, HeadVarMap,
         IsFirstClause = no,
         % Check that the variables in this clause match
         % the names in previous clauses.
-        HeadVarMap1 = map__foldl(
+        HeadVarMap1 = map.foldl(
             (func(HeadVar, MaybeHeadVarName, Map) =
                 (
-                    map__search(Map, HeadVar, MaybeClauseHeadVarName),
+                    map.search(Map, HeadVar, MaybeClauseHeadVarName),
                     MaybeHeadVarName = MaybeClauseHeadVarName
                 ->
                     Map
                 ;
-                    map__set(Map, HeadVar, no)
+                    map.set(Map, HeadVar, no)
                 )
             ), HeadVarMap0, ClauseHeadVarMap),
 
@@ -1037,12 +1034,12 @@ find_headvar_names_in_clause(VarSet, HeadVars, Clause, HeadVarMap0, HeadVarMap,
         % `A' in the second clause below.
         %   p(A, _).
         %   p([_ | _], _).
-        HeadVarMap = map__foldl(
+        HeadVarMap = map.foldl(
             (func(HeadVar, _, Map) =
-                ( map__contains(HeadVarMap0, HeadVar) ->
+                ( map.contains(HeadVarMap0, HeadVar) ->
                     Map
                 ;
-                    map__set(Map, HeadVar, no)
+                    map.set(Map, HeadVar, no)
                 )
             ), HeadVarMap1, HeadVarMap1)
     ).
@@ -1052,15 +1049,15 @@ find_headvar_names_in_clause(VarSet, HeadVars, Clause, HeadVarMap0, HeadVarMap,
 
 find_headvar_names_in_goal(VarSet, HeadVars, Goal, HeadVarMap0) = HeadVarMap :-
     ( goal_is_headvar_unification(HeadVars, Goal, HeadVar, OtherVar) ->
-        maybe_pred(varset__search_name(VarSet), OtherVar, MaybeOtherVarName),
-        ( map__search(HeadVarMap0, HeadVar, MaybeHeadVarName) ->
+        maybe_pred(varset.search_name(VarSet), OtherVar, MaybeOtherVarName),
+        ( map.search(HeadVarMap0, HeadVar, MaybeHeadVarName) ->
             ( MaybeOtherVarName = MaybeHeadVarName ->
                 HeadVarMap = HeadVarMap0
             ;
-                HeadVarMap = map__det_update(HeadVarMap0, HeadVar, no)
+                HeadVarMap = map.det_update(HeadVarMap0, HeadVar, no)
             )
         ;
-            HeadVarMap = map__set(HeadVarMap0, HeadVar, MaybeOtherVarName)
+            HeadVarMap = map.set(HeadVarMap0, HeadVar, MaybeOtherVarName)
         )
     ;
         HeadVarMap = HeadVarMap0
@@ -1071,10 +1068,10 @@ find_headvar_names_in_goal(VarSet, HeadVars, Goal, HeadVarMap0) = HeadVarMap :-
 
 goal_is_headvar_unification(HeadVars, Goal, HeadVar, OtherVar) :-
     Goal = unify(LVar, var(RVar), _, _, _) - _,
-    ( list__member(LVar, HeadVars) ->
+    ( list.member(LVar, HeadVars) ->
         HeadVar = LVar,
         OtherVar = RVar
-    ; list__member(RVar, HeadVars) ->
+    ; list.member(RVar, HeadVars) ->
         HeadVar = RVar,
         OtherVar = LVar
     ;
@@ -1190,8 +1187,8 @@ typecheck_check_for_ambiguity(StuffToCheck, HeadVars, !Info, !IO) :-
                 type_assign_get_var_types(TypeAssign2, VarTypes2),
                 type_assign_get_type_bindings(TypeAssign1, TypeBindings1),
                 type_assign_get_type_bindings(TypeAssign2, TypeBindings2),
-                map__apply_to_list(HeadVars, VarTypes1, HeadTypes1),
-                map__apply_to_list(HeadVars, VarTypes2, HeadTypes2),
+                map.apply_to_list(HeadVars, VarTypes1, HeadTypes1),
+                map.apply_to_list(HeadVars, VarTypes2, HeadTypes2),
                 apply_rec_subst_to_type_list(TypeBindings1, HeadTypes1,
                     FinalHeadTypes1),
                 apply_rec_subst_to_type_list(TypeBindings2, HeadTypes2,
@@ -1220,7 +1217,7 @@ typecheck_check_for_ambiguity(StuffToCheck, HeadVars, !Info, !IO) :-
     %
 typecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info, !IO) :-
     goal_info_get_context(GoalInfo0, Context),
-    term__context_init(EmptyContext),
+    term.context_init(EmptyContext),
     ( Context = EmptyContext ->
         typecheck_info_get_context(!.Info, EnclosingContext),
         goal_info_set_context(EnclosingContext, GoalInfo0, GoalInfo)
@@ -1280,7 +1277,7 @@ typecheck_goal_2(scope(Reason, SubGoal0), scope(Reason, SubGoal), _, !Info,
 typecheck_goal_2(call(_, B, Args, D, E, Name),
         call(PredId, B, Args, D, E, Name), GoalInfo, !Info, !IO) :-
     checkpoint("call", !Info, !IO),
-    list__length(Args, Arity),
+    list.length(Args, Arity),
     typecheck_info_set_called_predid(call(predicate - Name/Arity), !Info),
     goal_info_get_goal_path(GoalInfo, GoalPath),
     typecheck_call_pred(predicate - Name/Arity, Args, GoalPath,
@@ -1288,7 +1285,7 @@ typecheck_goal_2(call(_, B, Args, D, E, Name),
 
 typecheck_goal_2(generic_call(GenericCall0, Args, C, D),
         generic_call(GenericCall, Args, C, D), _GoalInfo, !Info, !IO) :-
-    hlds_goal__generic_call_id(GenericCall0, CallId),
+    hlds_goal.generic_call_id(GenericCall0, CallId),
     typecheck_info_set_called_predid(CallId, !Info),
     (
         GenericCall0 = higher_order(PredVar, Purity, _, _),
@@ -1324,7 +1321,7 @@ typecheck_goal_2(Goal @ foreign_proc(_, PredId, _, Args, _, _), Goal, GoalInfo,
     % existentially typed foreign_procs. (We could probably do that
     % more efficiently than the way it is done below, though.)
     typecheck_info_get_type_assign_set(!.Info, OrigTypeAssignSet),
-    ArgVars = list__map(foreign_arg_var, Args),
+    ArgVars = list.map(foreign_arg_var, Args),
     goal_info_get_goal_path(GoalInfo, GoalPath),
     typecheck_call_pred_id(PredId, ArgVars, GoalPath, !Info, !IO),
     perform_context_reduction(OrigTypeAssignSet, !Info, !IO).
@@ -1368,10 +1365,10 @@ ensure_vars_have_a_type(Vars, !Info, !IO) :-
         % Invent some new type variables to use as the types of these
         % variables. Since each type is the type of a program variable,
         % each must have kind `star'.
-        list__length(Vars, NumVars),
-        varset__init(TypeVarSet0),
-        varset__new_vars(TypeVarSet0, NumVars, TypeVars, TypeVarSet),
-        prog_type__var_list_to_type_list(map__init, TypeVars, Types),
+        list.length(Vars, NumVars),
+        varset.init(TypeVarSet0),
+        varset.new_vars(TypeVarSet0, NumVars, TypeVars, TypeVarSet),
+        prog_type.var_list_to_type_list(map.init, TypeVars, Types),
         empty_hlds_constraints(EmptyConstraints),
         typecheck_var_has_polymorphic_type_list(Vars, TypeVarSet, [],
             Types, EmptyConstraints, !Info, !IO)
@@ -1384,7 +1381,7 @@ ensure_vars_have_a_type(Vars, !Info, !IO) :-
     io::di, io::uo) is det.
 
 typecheck_higher_order_call(PredVar, Purity, Args, !Info, !IO) :-
-    list__length(Args, Arity),
+    list.length(Args, Arity),
     higher_order_pred_type(Purity, Arity, lambda_normal,
         TypeVarSet, PredVarType, ArgTypes),
     % The class context is empty because higher-order predicates
@@ -1406,10 +1403,10 @@ typecheck_higher_order_call(PredVar, Purity, Args, !Info, !IO) :-
     %
 higher_order_pred_type(Purity, Arity, EvalMethod, TypeVarSet, PredType,
         ArgTypes) :-
-    varset__init(TypeVarSet0),
-    varset__new_vars(TypeVarSet0, Arity, ArgTypeVars, TypeVarSet),
+    varset.init(TypeVarSet0),
+    varset.new_vars(TypeVarSet0, Arity, ArgTypeVars, TypeVarSet),
     % Argument types always have kind `star'.
-    prog_type__var_list_to_type_list(map__init, ArgTypeVars, ArgTypes),
+    prog_type.var_list_to_type_list(map.init, ArgTypeVars, ArgTypes),
     construct_higher_order_type(Purity, predicate, EvalMethod, ArgTypes,
         PredType).
 
@@ -1426,11 +1423,11 @@ higher_order_pred_type(Purity, Arity, EvalMethod, TypeVarSet, PredType,
     %
 higher_order_func_type(Purity, Arity, EvalMethod, TypeVarSet,
         FuncType, ArgTypes, RetType) :-
-    varset__init(TypeVarSet0),
-    varset__new_vars(TypeVarSet0, Arity, ArgTypeVars, TypeVarSet1),
-    varset__new_var(TypeVarSet1, RetTypeVar, TypeVarSet),
+    varset.init(TypeVarSet0),
+    varset.new_vars(TypeVarSet0, Arity, ArgTypeVars, TypeVarSet1),
+    varset.new_var(TypeVarSet1, RetTypeVar, TypeVarSet),
     % Argument and return types always have kind `star'.
-    prog_type__var_list_to_type_list(map__init, ArgTypeVars, ArgTypes),
+    prog_type.var_list_to_type_list(map.init, ArgTypeVars, ArgTypes),
     RetType = variable(RetTypeVar, star),
     construct_higher_order_func_type(Purity, EvalMethod, ArgTypes, RetType,
         FuncType).
@@ -1534,7 +1531,7 @@ typecheck_call_pred_id_adjust_arg_types(PredId, Args, GoalPath, AdjustArgTypes,
     module_info_get_class_table(ModuleInfo, ClassTable),
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     predicate_table_get_preds(PredicateTable, Preds),
-    map__lookup(Preds, PredId, PredInfo),
+    map.lookup(Preds, PredId, PredInfo),
     pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
         PredArgTypes0),
     AdjustArgTypes(PredArgTypes0, PredArgTypes),
@@ -1545,7 +1542,7 @@ typecheck_call_pred_id_adjust_arg_types(PredId, Args, GoalPath, AdjustArgTypes,
     % predicates' arg types (optimize for the common case of a non-polymorphic,
     % non-constrained predicate).
     (
-        varset__is_empty(PredTypeVarSet),
+        varset.is_empty(PredTypeVarSet),
         PredClassContext = constraints([], [])
     ->
         typecheck_var_has_type_list(Args, PredArgTypes, 1, !Info, !IO)
@@ -1586,7 +1583,7 @@ get_overloaded_pred_arg_types([], _Preds, _ClassTable, _GoalPath,
         _AdjustArgTypes, _TypeAssignSet0, !ArgsTypeAssignSet).
 get_overloaded_pred_arg_types([PredId | PredIds], Preds, ClassTable, GoalPath,
         AdjustArgTypes, TypeAssignSet0, !ArgsTypeAssignSet) :-
-    map__lookup(Preds, PredId, PredInfo),
+    map.lookup(Preds, PredId, PredInfo),
     pred_info_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
         PredArgTypes0),
     call(AdjustArgTypes, PredArgTypes0, PredArgTypes),
@@ -1639,7 +1636,7 @@ rename_apart([TypeAssign0 | TypeAssigns0], PredTypeVarSet, PredExistQVars,
     % predicate into HeadTypeParams (which holds the set of type
     % variables which the caller is not allowed to bind).
     type_assign_get_head_type_params(TypeAssign1, HeadTypeParams0),
-    list__append(ParentExistQVars, HeadTypeParams0, HeadTypeParams),
+    list.append(ParentExistQVars, HeadTypeParams0, HeadTypeParams),
     type_assign_set_head_type_params(HeadTypeParams, TypeAssign1, TypeAssign),
 
     % Save the results and recurse.
@@ -1736,18 +1733,17 @@ arg_type_assign_var_has_type(TypeAssign0, ArgTypes0, Var, ClassContext,
     type_assign_get_var_types(TypeAssign0, VarTypes0),
     (
         ArgTypes0 = [Type | ArgTypes],
-        ( map__search(VarTypes0, Var, VarType) ->
+        ( map.search(VarTypes0, Var, VarType) ->
             (
                 type_assign_unify_type(TypeAssign0, VarType, Type, TypeAssign1)
             ->
-                NewTypeAssign = args(TypeAssign1, ArgTypes,
-                    ClassContext),
+                NewTypeAssign = args(TypeAssign1, ArgTypes, ClassContext),
                 !:ArgTypeAssignSet = [NewTypeAssign | !.ArgTypeAssignSet]
             ;
                 true
             )
         ;
-            map__det_insert(VarTypes0, Var, Type, VarTypes),
+            map.det_insert(VarTypes0, Var, Type, VarTypes),
             type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
             NewTypeAssign = args(TypeAssign, ArgTypes, ClassContext),
             !:ArgTypeAssignSet = [NewTypeAssign | !.ArgTypeAssignSet]
@@ -1807,14 +1803,14 @@ typecheck_var_has_type_2([TypeAssign0 | TypeAssignSet0], Var, Type,
 
 type_assign_var_has_type(TypeAssign0, Var, Type, !TypeAssignSet) :-
     type_assign_get_var_types(TypeAssign0, VarTypes0),
-    ( map__search(VarTypes0, Var, VarType) ->
+    ( map.search(VarTypes0, Var, VarType) ->
         ( type_assign_unify_type(TypeAssign0, VarType, Type, TypeAssign1) ->
             !:TypeAssignSet = [TypeAssign1 | !.TypeAssignSet]
         ;
             !:TypeAssignSet = !.TypeAssignSet
         )
     ;
-        map__det_insert(VarTypes0, Var, Type, VarTypes),
+        map.det_insert(VarTypes0, Var, Type, VarTypes),
         type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
         !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
     ).
@@ -1826,7 +1822,7 @@ type_assign_var_has_type(TypeAssign0, Var, Type, !TypeAssignSet) :-
     % Let TAs = { TA | TA is an extension of TypeAssign
     %       for which the types of the Vars unify with
     %       their respective Types },
-    % list__append(TAs, TypeAssignSet0, TypeAssignSet).
+    % list.append(TAs, TypeAssignSet0, TypeAssignSet).
     %
 :- pred type_assign_var_has_type_list(list(prog_var)::in, list(mer_type)::in,
     type_assign::in, typecheck_info::in,
@@ -1849,7 +1845,7 @@ type_assign_var_has_type_list([Arg | Args], [Type | Types], TypeAssign0,
     % Let TAs2 = { TA | TA is an extension of a member of TAs
     %       for which the types of the Terms unify with
     %       their respective Types },
-    % list__append(TAs, TypeAssignSet0, TypeAssignSet).
+    % list.append(TAs, TypeAssignSet0, TypeAssignSet).
     %
 :- pred type_assign_list_var_has_type_list(type_assign_set::in,
     list(prog_var)::in, list(mer_type)::in, typecheck_info::in,
@@ -1859,8 +1855,7 @@ type_assign_list_var_has_type_list([], _, _, _, !TypeAssignSet).
 type_assign_list_var_has_type_list([TA | TAs], Args, Types, Info,
         !TypeAssignSet) :-
     type_assign_var_has_type_list(Args, Types, TA, Info, !TypeAssignSet),
-    type_assign_list_var_has_type_list(TAs, Args, Types, Info,
-        !TypeAssignSet).
+    type_assign_list_var_has_type_list(TAs, Args, Types, Info, !TypeAssignSet).
 
 %-----------------------------------------------------------------------------%
 
@@ -1878,7 +1873,7 @@ check_warn_too_much_overloading(!Info, !IO) :-
         typecheck_info_get_warned_about_overloading(!.Info, AlreadyWarned),
         AlreadyWarned = no,
         typecheck_info_get_type_assign_set(!.Info, TypeAssignSet),
-        list__length(TypeAssignSet, Count),
+        list.length(TypeAssignSet, Count),
         Count > 50
     ->
         report_warning_too_much_overloading(!.Info, !IO),
@@ -1936,7 +1931,7 @@ typecheck_unify_var_var(X, Y, !Info, !IO) :-
 typecheck_unify_var_functor(Var, Functor, Args, GoalPath, !Info, !IO) :-
     % Get the list of possible constructors that match this functor/arity.
     % If there aren't any, report an undefined constructor error.
-    list__length(Args, Arity),
+    list.length(Args, Arity),
     typecheck_info_get_ctor_list(!.Info, Functor, Arity, GoalPath,
         ConsDefnList, InvalidConsDefnList),
     (
@@ -2046,7 +2041,7 @@ typecheck_unify_var_functor_get_ctors_2([ConsDefn | ConsDefns], Info,
         TypeAssign0, !ConsTypeAssignSet) :-
     get_cons_stuff(ConsDefn, TypeAssign0, Info, ConsType, ArgTypes,
         TypeAssign1),
-    list__append([TypeAssign1 - cons_type(ConsType, ArgTypes)],
+    list.append([TypeAssign1 - cons_type(ConsType, ArgTypes)],
         !ConsTypeAssignSet),
     typecheck_unify_var_functor_get_ctors_2(ConsDefns, Info, TypeAssign0,
         !ConsTypeAssignSet).
@@ -2113,38 +2108,36 @@ typecheck_unify_var_var_2([TypeAssign0 | TypeAssigns0], X, Y,
 
 type_assign_unify_var_var(X, Y, TypeAssign0, !TypeAssignSet) :-
     type_assign_get_var_types(TypeAssign0, VarTypes0),
-    ( map__search(VarTypes0, X, TypeX) ->
-        ( map__search(VarTypes0, Y, TypeY) ->
+    ( map.search(VarTypes0, X, TypeX) ->
+        ( map.search(VarTypes0, Y, TypeY) ->
             % Both X and Y already have types - just unify their types.
-            (
-                type_assign_unify_type(TypeAssign0, TypeX, TypeY, TypeAssign3)
-            ->
+            ( type_assign_unify_type(TypeAssign0, TypeX, TypeY, TypeAssign3) ->
                 !:TypeAssignSet = [TypeAssign3 | !.TypeAssignSet]
             ;
                 !:TypeAssignSet = !.TypeAssignSet
             )
         ;
             % Y is a fresh variable which hasn't been assigned a type yet.
-            map__det_insert(VarTypes0, Y, TypeX, VarTypes),
+            map.det_insert(VarTypes0, Y, TypeX, VarTypes),
             type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
             !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
         )
     ;
-        ( map__search(VarTypes0, Y, TypeY) ->
+        ( map.search(VarTypes0, Y, TypeY) ->
             % X is a fresh variable which hasn't been assigned a type yet.
-            map__det_insert(VarTypes0, X, TypeY, VarTypes),
+            map.det_insert(VarTypes0, X, TypeY, VarTypes),
             type_assign_set_var_types(VarTypes, TypeAssign0, TypeAssign),
             !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
         ;
             % Both X and Y are fresh variables - introduce a fresh type
             % variable with kind `star' to represent their type.
             type_assign_get_typevarset(TypeAssign0, TypeVarSet0),
-            varset__new_var(TypeVarSet0, TypeVar, TypeVarSet),
+            varset.new_var(TypeVarSet0, TypeVar, TypeVarSet),
             type_assign_set_typevarset(TypeVarSet, TypeAssign0, TypeAssign1),
             Type = variable(TypeVar, star),
-            map__det_insert(VarTypes0, X, Type, VarTypes1),
+            map.det_insert(VarTypes0, X, Type, VarTypes1),
             ( X \= Y ->
-                map__det_insert(VarTypes1, Y, Type, VarTypes)
+                map.det_insert(VarTypes1, Y, Type, VarTypes)
             ;
                 VarTypes = VarTypes1
             ),
@@ -2163,7 +2156,7 @@ type_assign_check_functor_type(ConsType, ArgTypes, Y, TypeAssign1,
         !TypeAssignSet) :-
     % Unify the type of Var with the type of the constructor.
     type_assign_get_var_types(TypeAssign1, VarTypes0),
-    ( map__search(VarTypes0, Y, TypeY) ->
+    ( map.search(VarTypes0, Y, TypeY) ->
         ( type_assign_unify_type(TypeAssign1, ConsType, TypeY, TypeAssign2) ->
             % The constraints are empty here because none are added by
             % unification with a functor.
@@ -2176,7 +2169,7 @@ type_assign_check_functor_type(ConsType, ArgTypes, Y, TypeAssign1,
     ;
         % The constraints are empty here because none are added by
         % unification with a functor.
-        map__det_insert(VarTypes0, Y, ConsType, VarTypes),
+        map.det_insert(VarTypes0, Y, ConsType, VarTypes),
         type_assign_set_var_types(VarTypes, TypeAssign1, TypeAssign3),
         empty_hlds_constraints(EmptyConstraints),
         ArgsTypeAssign = args(TypeAssign3, ArgTypes, EmptyConstraints),
@@ -2199,7 +2192,7 @@ get_cons_stuff(ConsDefn, TypeAssign0, _Info, ConsType, ArgTypes, TypeAssign) :-
     % Rename apart the type vars in the type of the constructor
     % and the types of its arguments.
     % (Optimize the common case of a non-polymorphic type)
-    ( varset__is_empty(ConsTypeVarSet) ->
+    ( varset.is_empty(ConsTypeVarSet) ->
         ConsType = ConsType0,
         ArgTypes = ArgTypes0,
         TypeAssign2 = TypeAssign0,
@@ -2209,14 +2202,14 @@ get_cons_stuff(ConsDefn, TypeAssign0, _Info, ConsType, ArgTypes, TypeAssign) :-
             [ConsType0 | ArgTypes0], TypeAssign1, [ConsType1 | ArgTypes1],
             Renaming)
     ->
-        apply_variable_renaming_to_tvar_list(Renaming, ConsExistQVars0,
-            ConsExistQVars),
-        apply_variable_renaming_to_constraints(Renaming, ClassConstraints0,
-            ConstraintsToAdd),
+        apply_variable_renaming_to_tvar_list(Renaming,
+            ConsExistQVars0, ConsExistQVars),
+        apply_variable_renaming_to_constraints(Renaming,
+            ClassConstraints0, ConstraintsToAdd),
         type_assign_get_head_type_params(TypeAssign1, HeadTypeParams0),
-        list__append(ConsExistQVars, HeadTypeParams0, HeadTypeParams),
-        type_assign_set_head_type_params(HeadTypeParams, TypeAssign1,
-            TypeAssign2),
+        HeadTypeParams = ConsExistQVars ++ HeadTypeParams0,
+        type_assign_set_head_type_params(HeadTypeParams,
+            TypeAssign1, TypeAssign2),
 
         ConsType = ConsType1,
         ArgTypes = ArgTypes1
@@ -2242,21 +2235,21 @@ get_cons_stuff(ConsDefn, TypeAssign0, _Info, ConsType, ArgTypes, TypeAssign) :-
     term(T))::in, list(var(T))::out) is det.
 
 apply_substitution_to_var_list(Vars0, RenameSubst, Vars) :-
-    term__var_list_to_term_list(Vars0, Terms0),
-    term__apply_substitution_to_list(Terms0, RenameSubst, Terms),
-    term__term_list_to_var_list(Terms, Vars).
+    term.var_list_to_term_list(Vars0, Terms0),
+    term.apply_substitution_to_list(Terms0, RenameSubst, Terms),
+    term.term_list_to_var_list(Terms, Vars).
 
 :- pred apply_var_renaming_to_var_list(list(var(T))::in, map(var(T),
     var(T))::in, list(var(T))::out) is det.
 
 apply_var_renaming_to_var_list(Vars0, RenameSubst, Vars) :-
-    list__map(apply_var_renaming_to_var(RenameSubst), Vars0, Vars).
+    list.map(apply_var_renaming_to_var(RenameSubst), Vars0, Vars).
 
 :- pred apply_var_renaming_to_var(map(var(T), var(T))::in, var(T)::in,
     var(T)::out) is det.
 
 apply_var_renaming_to_var(RenameSubst, Var0, Var) :-
-    ( map__search(RenameSubst, Var0, Var1) ->
+    ( map.search(RenameSubst, Var0, Var1) ->
         Var = Var1
     ;
         Var = Var0
@@ -2311,17 +2304,17 @@ type_assign_get_types_of_vars([], [], !TypeAssign).
 type_assign_get_types_of_vars([Var | Vars], [Type | Types], !TypeAssign) :-
     % Check whether the variable already has a type.
     type_assign_get_var_types(!.TypeAssign, VarTypes0),
-    ( map__search(VarTypes0, Var, VarType) ->
+    ( map.search(VarTypes0, Var, VarType) ->
         % If so, use that type.
         Type = VarType
     ;
         % Otherwise, introduce a fresh type variable with kind `star' to use
         % as the type of that variable.
         type_assign_get_typevarset(!.TypeAssign, TypeVarSet0),
-        varset__new_var(TypeVarSet0, TypeVar, TypeVarSet),
+        varset.new_var(TypeVarSet0, TypeVar, TypeVarSet),
         type_assign_set_typevarset(TypeVarSet, !TypeAssign),
         Type = variable(TypeVar, star),
-        map__det_insert(VarTypes0, Var, Type, VarTypes1),
+        map.det_insert(VarTypes0, Var, Type, VarTypes1),
         type_assign_set_var_types(VarTypes1, !TypeAssign)
     ),
     % Recursively process the rest of the variables.
@@ -2355,7 +2348,7 @@ builtin_atomic_type(int_const(_), "int").
 builtin_atomic_type(float_const(_), "float").
 builtin_atomic_type(string_const(_), "string").
 builtin_atomic_type(cons(unqualified(String), 0), "character") :-
-    string__char_to_string(_, String).
+    string.char_to_string(_, String).
 
     % builtin_pred_type(Info, Functor, Arity, GoalPath, PredConsInfoList):
     %
@@ -2367,7 +2360,7 @@ builtin_atomic_type(cons(unqualified(String), 0), "character") :-
     % or equal to Arity.  GoalPath is used to identify any constraints
     % introduced.
     %
-    % For example, functor `map__search/1' has type `pred(K,V)'
+    % For example, functor `map.search/1' has type `pred(K,V)'
     % (hence PredTypeParams = [K,V]) and argument types [map(K,V)].
     %
 :- pred builtin_pred_type(typecheck_info::in, cons_id::in, int::in,
@@ -2409,7 +2402,7 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
         !ConsInfos) :-
     typecheck_info_get_module_info(Info, ModuleInfo),
     module_info_get_class_table(ModuleInfo, ClassTable),
-    map__lookup(PredTable, PredId, PredInfo),
+    map.lookup(PredTable, PredId, PredInfo),
     PredArity = pred_info_orig_arity(PredInfo),
     IsPredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_class_context(PredInfo, PredClassContext),
@@ -2424,7 +2417,7 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
         PredExistQVars = []
     ->
         (
-            list__split_list(FuncArity, CompleteArgTypes,
+            list.split_list(FuncArity, CompleteArgTypes,
                 ArgTypes, PredTypeParams)
         ->
             construct_higher_order_pred_type(Purity, lambda_normal,
@@ -2447,7 +2440,7 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
         ( PredExistQVars = [] ; PredAsFuncArity = FuncArity )
     ->
         (
-            list__split_list(FuncArity, CompleteArgTypes,
+            list.split_list(FuncArity, CompleteArgTypes,
                 FuncArgTypes, FuncTypeParams),
             pred_args_to_func_args(FuncTypeParams,
                 FuncArgTypeParams, FuncReturnTypeParam)
@@ -2518,9 +2511,9 @@ builtin_field_access_function_type(Info, GoalPath, Functor, Arity,
         FieldName),
 
     module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
-    map__search(CtorFieldTable, FieldName, FieldDefns),
+    map.search(CtorFieldTable, FieldName, FieldDefns),
 
-    list__filter_map(
+    list.filter_map(
         make_field_access_function_cons_type_info(Info, GoalPath, Name,
             Arity, AccessType, FieldName),
         FieldDefns, MaybeConsTypeInfos).
@@ -2572,8 +2565,8 @@ get_field_access_constructor(Info, GoalPath, FuncName, Arity, AccessType,
         Info ^ is_field_access_function = yes
     ),
     module_info_get_cons_table(ModuleInfo, Ctors),
-    map__lookup(Ctors, ConsId, ConsDefns0),
-    list__filter(
+    map.lookup(Ctors, ConsId, ConsDefns0),
+    list.filter(
         (pred(CtorDefn::in) is semidet :-
             TypeCtor = CtorDefn ^ cons_type_ctor
         ), ConsDefns0, ConsDefns),
@@ -2602,7 +2595,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
     FunctorConsTypeInfo = cons_type_info(TVarSet0, ExistQVars,
         FunctorType, ConsArgTypes, Constraints0),
     FieldDefn = hlds_ctor_field_defn(_, _, _, _, FieldNumber),
-    list__index1_det(ConsArgTypes, FieldNumber, FieldType),
+    list.index1_det(ConsArgTypes, FieldNumber, FieldType),
     (
         AccessType = get,
         RetType = FieldType,
@@ -2626,7 +2619,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
         %   Pair0 = 1 - 'a',
         %   Pair = Pair0 ^ snd := 2.
 
-        prog_type__vars(FieldType, TVarsInField),
+        prog_type.vars(FieldType, TVarsInField),
         (
             TVarsInField = [],
             TVarSet = TVarSet0,
@@ -2655,27 +2648,26 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
             % requires that the fields are of the same type. It probably won't
             % come up too often.
             %
-            list__replace_nth_det(ConsArgTypes, FieldNumber, int_type,
+            list.replace_nth_det(ConsArgTypes, FieldNumber, int_type,
                 ArgTypesWithoutField),
-            prog_type__vars_list(ArgTypesWithoutField, TVarsInOtherArgs),
-            set__intersect(
-                set__list_to_set(TVarsInField),
-                set__intersect(
-                    set__list_to_set(TVarsInOtherArgs),
-                    set__list_to_set(OrigExistTVars)
+            prog_type.vars_list(ArgTypesWithoutField, TVarsInOtherArgs),
+            set.intersect(
+                set.list_to_set(TVarsInField),
+                set.intersect(
+                    set.list_to_set(TVarsInOtherArgs),
+                    set.list_to_set(OrigExistTVars)
                 ),
                 ExistQVarsInFieldAndOthers),
-            ( set__empty(ExistQVarsInFieldAndOthers) ->
+            ( set.empty(ExistQVarsInFieldAndOthers) ->
                 % Rename apart type variables occurring only in the field
                 % to be replaced - the values of those type variables will be
                 % supplied by the replacement field value.
-                list__delete_elems(TVarsInField,
+                list.delete_elems(TVarsInField,
                     TVarsInOtherArgs, TVarsOnlyInField0),
-                list__sort_and_remove_dups(TVarsOnlyInField0,
-                    TVarsOnlyInField),
-                list__length(TVarsOnlyInField, NumNewTVars),
-                varset__new_vars(TVarSet0, NumNewTVars, NewTVars, TVarSet),
-                map__from_corresponding_lists(TVarsOnlyInField,
+                list.sort_and_remove_dups(TVarsOnlyInField0, TVarsOnlyInField),
+                list.length(TVarsOnlyInField, NumNewTVars),
+                varset.new_vars(TVarSet0, NumNewTVars, NewTVars, TVarSet),
+                map.from_corresponding_lists(TVarsOnlyInField,
                     NewTVars, TVarRenaming),
                 apply_variable_renaming_to_type(TVarRenaming, FieldType,
                     RenamedFieldType),
@@ -2686,8 +2678,8 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
                 % onto the set of type variables occuring in the types of the
                 % arguments of the call to `'field :='/2'. Note that we have
                 % already flipped the constraints.
-                prog_type__vars_list([FunctorType, FieldType], CallTVars0),
-                set__list_to_set(CallTVars0, CallTVars),
+                prog_type.vars_list([FunctorType, FieldType], CallTVars0),
+                set.list_to_set(CallTVars0, CallTVars),
                 project_and_rename_constraints(ClassTable, TVarSet, CallTVars,
                     TVarRenaming, Constraints0, Constraints),
 
@@ -2700,7 +2692,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
                 % we can give a better error message. Errors involving changing
                 % the types of universally quantified type variables will be
                 % caught by typecheck_functor_arg_types.
-                set__to_sorted_list(ExistQVarsInFieldAndOthers,
+                set.to_sorted_list(ExistQVarsInFieldAndOthers,
                     ExistQVarsInFieldAndOthers1),
                 ConsTypeInfo = error(invalid_field_update(FieldName,
                     FieldDefn, TVarSet0, ExistQVarsInFieldAndOthers1))
@@ -2734,10 +2726,10 @@ project_and_rename_constraints(ClassTable, TVarSet, CallTVars, TVarRenaming,
 
 project_constraint(CallTVars, Constraint) :-
     Constraint = constraint(_, _, TypesToCheck),
-    prog_type__vars_list(TypesToCheck, TVarsToCheck0),
-    set__list_to_set(TVarsToCheck0, TVarsToCheck),
-    set__intersect(TVarsToCheck, CallTVars, RelevantTVars),
-    \+ set__empty(RelevantTVars).
+    prog_type.vars_list(TypesToCheck, TVarsToCheck0),
+    set.list_to_set(TVarsToCheck0, TVarsToCheck),
+    set.intersect(TVarsToCheck, CallTVars, RelevantTVars),
+    \+ set.empty(RelevantTVars).
 
 :- pred rename_constraint(tvar_renaming::in, hlds_constraint::in,
     hlds_constraint::out) is semidet.
@@ -2746,7 +2738,7 @@ rename_constraint(TVarRenaming, Constraint0, Constraint) :-
     Constraint0 = constraint(Ids, Name, Types0),
     some [Var] (
         type_list_contains_var(Types0, Var),
-        map__contains(TVarRenaming, Var)
+        map.contains(TVarRenaming, Var)
     ),
     apply_variable_renaming_to_type_list(TVarRenaming, Types0, Types),
     Constraint = constraint(Ids, Name, Types).
@@ -2756,9 +2748,9 @@ rename_constraint(TVarRenaming, Constraint0, Constraint) :-
 
     % Note: changes here may require changes to
     % post_resolve_unify_functor,
-    % intermod__module_qualify_unify_rhs,
-    % recompilation__usage__find_matching_constructors
-    % and recompilation__check__check_functor_ambiguities.
+    % intermod.module_qualify_unify_rhs,
+    % recompilation.usage.find_matching_constructors
+    % and recompilation.check.check_functor_ambiguities.
     %
 :- pred typecheck_info_get_ctor_list(typecheck_info::in, cons_id::in, int::in,
     goal_path::in, list(cons_type_info)::out, list(cons_error)::out)
@@ -2804,7 +2796,7 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfoList,
     typecheck_info_get_ctors(Info, Ctors),
     (
         Functor = cons(_, _),
-        map__search(Ctors, Functor, HLDS_ConsDefnList)
+        map.search(Ctors, Functor, HLDS_ConsDefnList)
     ->
         convert_cons_defn_list(Info, GoalPath, do_not_flip_constraints,
             HLDS_ConsDefnList, MaybeConsInfoList0)
@@ -2834,12 +2826,12 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfoList,
         Functor = cons(Name, Arity),
         remove_new_prefix(Name, OrigName),
         OrigFunctor = cons(OrigName, Arity),
-        map__search(Ctors, OrigFunctor, HLDS_ExistQConsDefnList)
+        map.search(Ctors, OrigFunctor, HLDS_ExistQConsDefnList)
     ->
         convert_cons_defn_list(Info, GoalPath,
             flip_constraints_for_new, HLDS_ExistQConsDefnList,
             UnivQuantifiedConsInfoList),
-        list__append(UnivQuantifiedConsInfoList,
+        list.append(UnivQuantifiedConsInfoList,
             MaybeConsInfoList0, MaybeConsInfoList1)
     ;
         MaybeConsInfoList1 = MaybeConsInfoList0
@@ -2867,7 +2859,7 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfoList,
         builtin_atomic_type(Functor, BuiltInTypeName)
     ->
         construct_type(unqualified(BuiltInTypeName) - 0, [], ConsType),
-        varset__init(ConsTypeVarSet),
+        varset.init(ConsTypeVarSet),
         ConsInfo = cons_type_info(ConsTypeVarSet, [], ConsType, [],
             EmptyConstraints),
         ConsInfoList2 = [ConsInfo | ConsInfoList1]
@@ -2883,10 +2875,10 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfoList,
         % kind `star' since there are values (namely the arguments of the
         % tuple constructor) which have these types.
 
-        varset__init(TupleConsTypeVarSet0),
-        varset__new_vars(TupleConsTypeVarSet0, TupleArity, TupleArgTVars,
+        varset.init(TupleConsTypeVarSet0),
+        varset.new_vars(TupleConsTypeVarSet0, TupleArity, TupleArgTVars,
             TupleConsTypeVarSet),
-        prog_type__var_list_to_type_list(map__init, TupleArgTVars,
+        prog_type.var_list_to_type_list(map.init, TupleArgTVars,
             TupleArgTypes),
 
         construct_type(unqualified("{}") - TupleArity, TupleArgTypes,
@@ -2906,14 +2898,14 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfoList,
     % Arity arguments. If so, insert the resulting cons_type_info
     % at the start of the list.
     ( builtin_pred_type(Info, Functor, Arity, GoalPath, PredConsInfoList) ->
-        list__append(ConsInfoList3, PredConsInfoList, ConsInfoList4)
+        ConsInfoList4 = ConsInfoList3 ++ PredConsInfoList
     ;
         ConsInfoList4 = ConsInfoList3
     ),
 
     % Check for higher-order function calls.
     ( builtin_apply_type(Info, Functor, Arity, ApplyConsInfoList) ->
-        ConsInfoList = list__append(ConsInfoList4, ApplyConsInfoList)
+        ConsInfoList = ConsInfoList4 ++ ApplyConsInfoList
     ;
         ConsInfoList = ConsInfoList4
     ).
@@ -2924,11 +2916,11 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfoList,
 split_cons_errors(MaybeConsInfoList, ConsInfoList, ConsErrors) :-
     % Filter out the errors (they aren't actually reported as errors
     % unless there was no other matching constructor).
-    list__filter_map(
+    list.filter_map(
         (pred(ok(ConsInfo)::in, ConsInfo::out) is semidet),
         MaybeConsInfoList, ConsInfoList, ConsErrors0),
     (
-        list__map((pred(error(ConsError)::in, ConsError::out) is semidet),
+        list.map((pred(error(ConsError)::in, ConsError::out) is semidet),
             ConsErrors0, ConsErrors1)
     ->
         ConsErrors = ConsErrors1
@@ -2959,13 +2951,13 @@ convert_cons_defn_list(Info, GoalPath, Action, [X | Xs], [Y | Ys]) :-
 convert_cons_defn(Info, GoalPath, Action, HLDS_ConsDefn, ConsTypeInfo) :-
     HLDS_ConsDefn = hlds_cons_defn(ExistQVars0, ExistProgConstraints, Args,
         TypeCtor, _),
-    assoc_list__values(Args, ArgTypes),
+    assoc_list.values(Args, ArgTypes),
     typecheck_info_get_types(Info, Types),
-    map__lookup(Types, TypeCtor, TypeDefn),
-    hlds_data__get_type_defn_tvarset(TypeDefn, ConsTypeVarSet),
-    hlds_data__get_type_defn_tparams(TypeDefn, ConsTypeParams),
-    hlds_data__get_type_defn_kind_map(TypeDefn, ConsTypeKinds),
-    hlds_data__get_type_defn_body(TypeDefn, Body),
+    map.lookup(Types, TypeCtor, TypeDefn),
+    hlds_data.get_type_defn_tvarset(TypeDefn, ConsTypeVarSet),
+    hlds_data.get_type_defn_tparams(TypeDefn, ConsTypeParams),
+    hlds_data.get_type_defn_kind_map(TypeDefn, ConsTypeKinds),
+    hlds_data.get_type_defn_body(TypeDefn, Body),
 
     % If this type has `:- pragma foreign_type' declarations, we
     % can only use its constructors in predicates which have foreign
@@ -3002,7 +2994,7 @@ convert_cons_defn(Info, GoalPath, Action, HLDS_ConsDefn, ConsTypeInfo) :-
     ;
         % Do not allow constructors for abstract_imported types unless
         % the current predicate is opt_imported.
-        hlds_data__get_type_defn_status(TypeDefn, abstract_imported),
+        hlds_data.get_type_defn_status(TypeDefn, abstract_imported),
         \+ is_unify_or_compare_pred(PredInfo),
         \+ pred_info_import_status(PredInfo, opt_imported)
     ->

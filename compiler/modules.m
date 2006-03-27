@@ -48,6 +48,7 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_io.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module io.
 :- import_module list.
@@ -409,16 +410,16 @@
 :- pred module_imports_set_indirect_deps(list(module_name)::in,
     module_imports::in, module_imports::out) is det.
 
-    % Make an item_and_context for a module declaration
-    % or pseudo-declaration such as `:- imported'
-    % (which is inserted by the compiler, but can't be used
-    % in user code).
+    % Make an item_and_context for a module declaration or pseudo-declaration
+    % such as `:- imported' (which is inserted by the compiler, but can't be
+    % used in user code).
     %
 :- func make_pseudo_decl(module_defn) = item_and_context.
 
     % append_pseudo_decl(PseudoDecl, Module0, Module):
-    % Append the specified module declaration to the list
-    % of items in Module0 to give Module.
+    %
+    % Append the specified module declaration to the list of items in Module0
+    % to give Module.
     %
 :- pred append_pseudo_decl(module_defn::in, module_imports::in,
     module_imports::out) is det.
@@ -433,12 +434,15 @@
     item_list::in, item_list::out) is det.
 
     % Remove all the imported items the list.
+    %
 :- pred strip_imported_items(item_list::in, item_list::out) is det.
 
 %-----------------------------------------------------------------------------%
 
-    % Given a module (well, a list of items), split it into
-    % its constituent sub-modules, in top-down order.
+:- type module_list == assoc_list(module_name, item_list).
+
+    % Given a module (well, a list of items), split it into its constituent
+    % sub-modules, in top-down order.
     % Also do some error checking:
     % - report an error if the `implementation' section of a sub-module
     %   is contained inside the `interface' section of its parent module
@@ -446,16 +450,14 @@
     % - check for non-abstract typeclass instance declarations in module
     %   interfaces.
     %
-:- type module_list == list(pair(module_name, item_list)).
-
 :- pred split_into_submodules(module_name::in, item_list::in, module_list::out,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
     % grab_imported_modules(SourceFileName, SourceFileModuleName,
-    %   ModuleName, NestedSubModules, ReadModules,
-    %   ModuleTimestamp, Items, Module, Error)
+    %   ModuleName, NestedSubModules, ReadModules, ModuleTimestamp, Items,
+    %   Module, Error):
     %
     % Given a source file name and the top-level module name in that file,
     % the current module name, the nested sub-modules in the file if this
@@ -537,9 +539,8 @@
     list(module_name)::in, list(module_name)::out,
     module_imports::in, module_imports::out, io::di, io::uo) is det.
 
-    % process_module_short_interfaces_and_impls_transitively(
-    %   ReadModules, IndirectImports, Ext,
-    %   IntStatusItem, ImpStatusItem, !Module):
+    % process_module_short_interfaces_and_impls_transitively(ReadModules,
+    %   IndirectImports, Ext, IntStatusItem, ImpStatusItem, !Module):
     %
     % Read the short interfaces for modules in IndirectImports (unless they've
     % already been read in) and any modules that those modules import
@@ -555,9 +556,9 @@
     item_and_context::in, item_and_context::in,
     module_imports::in, module_imports::out, io::di, io::uo) is det.
 
-    % process_module_short_interfaces(ReadModules, IntStatusItem,
-    %   ImpStatusItem, Modules, Ext, !IndirectImports,
-    %   !ImpIndirectImports, !Module):
+    % process_module_short_interfaces(ReadModules,
+    %   IntStatusItem, ImpStatusItem, Modules, Ext,
+    %   !IndirectImports, !ImpIndirectImports, !Module):
     %
     % Read the short interfaces for modules in Modules (unless they've already
     % been read in). Append the modules imported by the interface of Modules to
@@ -812,7 +813,6 @@
 :- import_module parse_tree.source_file_map.
 :- import_module recompilation.version.
 
-:- import_module assoc_list.
 :- import_module char.
 :- import_module dir.
 :- import_module getopt_io.
@@ -2995,8 +2995,8 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             set.intersect(TransOptDepsSet0, LongDepsSet, TransOptDepsSet),
             set.to_sorted_list(TransOptDepsSet, TransOptDateDeps),
             %
-            % note that maybe_read_dependency_file searches for
-            % this exact pattern
+            % Note that maybe_read_dependency_file searches for
+            % this exact pattern.
             %
             io.write_strings(DepStream, [TransOptDateFileName, " :"], !IO),
             write_dependencies_list(TransOptDateDeps, ".trans_opt", DepStream,
@@ -3092,12 +3092,12 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
                 ".il_date",
                 ".java_date"],
 
-            % If a module contains nested-submodules then we need to build
-            % the nested children before attempting to build the parent
-            % module
-        ( NestedDeps = [] ->
-            true
+        % If a module contains nested-submodules then we need to build
+        % the nested children before attempting to build the parent module.
+        (
+            NestedDeps = []
         ;
+            NestedDeps = [_ | _],
             Write = (pred(Ext::in, !.LIO::di, !:LIO::uo) is det :-
                 module_name_to_file_name(ModuleName, Ext, no, ExtName, !LIO),
                 io.write_strings(DepStream, ["\n\n", ExtName, " : "], !LIO),
@@ -3120,15 +3120,13 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         ),
 
         globals.io_lookup_bool_option(use_opt_files, UseOptFiles, !IO),
-        globals.io_lookup_bool_option(intermodule_optimization, Intermod,
-            !IO),
+        globals.io_lookup_bool_option(intermodule_optimization, Intermod, !IO),
         globals.io_lookup_accumulating_option(intermod_directories,
             IntermodDirs, !IO),
 
-            % If intermodule_optimization is enabled then
-            % all the .mh files must exist because it is
-            % possible that the .c file imports them
-            % directly or indirectly.
+        % If intermodule_optimization is enabled then all the .mh files
+        % must exist because it is possible that the .c file imports them
+        % directly or indirectly.
         (
             Intermod = yes,
             io.write_strings(DepStream, ["\n\n", ObjFileName, " : "], !IO),
@@ -3136,7 +3134,11 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         ;
             Intermod = no
         ),
-        ( ( Intermod = yes ; UseOptFiles = yes ) ->
+        (
+            ( Intermod = yes
+            ; UseOptFiles = yes
+            )
+        ->
             io.write_strings(DepStream, [
                 "\n\n",
                 TransOptDateFileName, " ",
@@ -3163,7 +3165,11 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             globals.io_lookup_bool_option(use_trans_opt_files, UseTransOpt,
                 !IO),
 
-            ( ( TransOpt = yes ; UseTransOpt = yes ) ->
+            (
+                ( TransOpt = yes
+                ; UseTransOpt = yes
+                )
+            ->
                 bool.not(UseTransOpt, BuildOptFiles),
                 get_both_opt_deps(BuildOptFiles, [ModuleName | LongDeps],
                     IntermodDirs, OptDeps, TransOptDeps, !IO),
@@ -3297,12 +3303,10 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         write_dependencies_list(ShortDeps, ".int3", DepStream, !IO),
         io.write_string(DepStream, "\n\n", !IO),
 
-        %
-        % If we can pass the module name rather than the
-        % file name then do so. `--smart-recompilation'
-        % doesn't work if the file name is passed and the
-        % module name doesn't match the file name.
-        %
+        % If we can pass the module name rather than the file name,
+        % then do so. `--smart-recompilation' doesn't work if the file name
+        % is passed and the module name doesn't match the file name.
+
         have_source_file_map(HaveMap, !IO),
         (
             HaveMap = yes,
@@ -3359,17 +3363,16 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             ForeignImports = ForeignImports0
         ),
 
-        %
         % Handle dependencies introduced by
         % `:- pragma foreign_import_module' declarations.
-        %
+
         list.filter_map(
             (pred(ForeignImportMod::in, Import::out) is semidet :-
                 Import = foreign_import_module_name(ForeignImportMod,
                     SourceFileModuleName),
 
-                % XXX We can't include mercury.dll as mmake
-                % can't find it, but we know that it exists.
+                % XXX We can't include mercury.dll as mmake can't find it,
+                % but we know that it exists.
                 Import \= unqualified("mercury")
             ), ForeignImports, ForeignImportedModules),
         (
@@ -3412,12 +3415,11 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             true
         ),
 
-            % If we are signing the assembly, then we will
-            % need the strong key to sign the il file with
-            % so add a dependency that the il file requires
-            % the strong name file `mercury.sn'.
-            % Also add the variable ILASM_KEYFLAG-<module> which
-            % is used to build the command line for ilasm.
+        % If we are signing the assembly, then we will need the strong key
+        % to sign the il file with so add a dependency that the il file
+        % requires the strong name file `mercury.sn'. Also add the variable
+        % ILASM_KEYFLAG-<module> which is used to build the command line
+        % for ilasm.
         (
             Target = il,
             SignAssembly = yes
@@ -3441,24 +3443,21 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
             TransOptFileName, !IO),
         module_name_to_file_name(ModuleName, ".date3", no, Date3FileName, !IO),
 
+        % We add some extra dependencies to the generated `.d' files, so that
+        % local `.int', `.opt', etc. files shadow the installed versions
+        % properly (e.g. for when you're trying to build a new version
+        % of an installed library). This saves the user from having to add
+        % these explicitly if they have multiple libraries installed
+        % in the same installation hierarchy which aren't independent (e.g.
+        % one uses another). These extra dependencies are necessary due to
+        % the way the combination of search paths and pattern rules
+        % works in Make.
         %
-        % We add some extra dependencies to the generated `.d' files,
-        % so that local `.int', `.opt', etc. files shadow the
-        % installed versions properly (e.g. for when you're trying
-        % to build a new version of an installed library).  This
-        % saves the user from having to add these explicitly if
-        % they have multiple libraries installed in the same
-        % installation hierarchy which aren't independent (e.g.
-        % one uses another). These extra dependencies are necessary
-        % due to the way the combination of search paths and
-        % pattern rules works in Make.
-        %
-        % Be very careful about changing the following rules.
-        % The `@:' is a silent do-nothing command.
-        % It is used to force GNU Make to recheck the timestamp
-        % on the target file.  (It is a pity that GNU Make doesn't
-        % have a way of handling these sorts of rules in a nicer manner.)
-        %
+        % Be very careful about changing the following rules. The `@:' is a
+        % silent do-nothing command. It is used to force GNU Make to recheck
+        % the timestamp on the target file.  (It is a pity that GNU Make
+        % doesn't have a way of handling these sorts of rules in a
+        % nicer manner.)
 
         io.write_strings(DepStream, [
             "\n",
@@ -3488,25 +3487,20 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         ),
 
         ( SourceFileName \= default_source_file(ModuleName) ->
+            % The pattern rules in Mmake.rules won't work, since the source
+            % file name doesn't match the expected source file name for this
+            % module name. This can occur due to just the use of different
+            % source file names, or it can be due to the use of nested modules.
+            % So we need to output hard-coded rules in this case.
             %
-            % The pattern rules in Mmake.rules won't work,
-            % since the source file name doesn't match the
-            % expected source file name for this module name.
-            % This can occur due to just the use of different
-            % source file names, or it can be due to the use
-            % of nested modules.  So we need to output
-            % hard-coded rules in this case.
+            % The rules output below won't work in the case of nested modules
+            % with parallel makes, because it will end up invoking the same
+            % command twice (since it produces two output files) at the same
+            % time.
             %
-            % The rules output below won't work in the case
-            % of nested modules with parallel makes,
-            % because it will end up invoking the same
-            % command twice (since it produces two output files)
-            % at the same time.
-            %
-            % Any changes here will require corresponding
-            % changes to scripts/Mmake.rules.  See that
-            % file for documentation on these rules.
-            %
+            % Any changes here will require corresponding changes to
+            % scripts/Mmake.rules. See that file for documentation
+            % on these rules.
 
             io.write_strings(DepStream, [
                 "\n",
@@ -3658,9 +3652,8 @@ write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps,
                 Prefix = "/r:"
             ),
             ForeignDeps = list.map(
-                (func(M) =
-                    foreign_import_module_name(M, ModuleName)
-                ), ForeignImports),
+                (func(M) = foreign_import_module_name(M, ModuleName)),
+                ForeignImports),
             Deps = AllDeps ++ ForeignDeps,
             write_dll_dependencies_list(referenced_dlls(ModuleName, Deps),
                 Prefix, DepStream, !IO),
@@ -3743,6 +3736,7 @@ maybe_read_dependency_file(ModuleName, MaybeTransOptDeps, !IO) :-
 
     % Read lines from the dependency file (module.d) until one is found
     % which begins with SearchPattern.
+    %
 :- pred read_dependency_file_find_start(list(char)::in, bool::out,
     io::di, io::uo) is det.
 
@@ -3750,7 +3744,7 @@ read_dependency_file_find_start(SearchPattern, Success, !IO) :-
     io.read_line(Result, !IO),
     ( Result = ok(CharList) ->
         ( list.append(SearchPattern, _, CharList) ->
-            % Have found the start
+            % Have found the start.
             Success = yes
         ;
             read_dependency_file_find_start(SearchPattern, Success, !IO)
@@ -3760,9 +3754,10 @@ read_dependency_file_find_start(SearchPattern, Success, !IO) :-
     ).
 
     % Read lines until one is found which does not contain whitespace
-    % followed by a word which ends in .trans_opt.  Remove the
-    % .trans_opt ending from all the words which are read in and return
-    % the resulting list of modules..
+    % followed by a word which ends in .trans_opt.  Remove the .trans_opt
+    % ending from all the words which are read in and return the resulting
+    % list of modules.
+    %
 :- pred read_dependency_file_get_modules(list(module_name)::out,
     io::di, io::uo) is det.
 
@@ -3964,9 +3959,11 @@ generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
             ModuleString, "'."], Message),
         report_error(Message, !IO)
     ;
-        ( Mode = output_d_file_only,
+        (
+            Mode = output_d_file_only,
             true
-        ; Mode = output_all_dependencies,
+        ;
+            Mode = output_all_dependencies,
             module_imports_get_source_file_name(ModuleImports, SourceFileName),
             generate_dependencies_write_dv_file(SourceFileName, ModuleName,
                 DepsMap, !IO),
@@ -4222,7 +4219,7 @@ generate_dependencies_write_d_files([Dep | Deps],
         ),
         list.takewhile(FindModule, TransOptOrder, _, TransOptDeps0),
         ( TransOptDeps0 = [ _ | TransOptDeps1 ] ->
-            % The module was found in the list
+            % The module was found in the list.
             TransOptDeps = TransOptDeps1
         ;
             TransOptDeps = []
@@ -4302,8 +4299,7 @@ generate_deps_map([Module | Modules], Search, !DepsMap, !IO) :-
     generate_deps_map(Modules1, Search, !DepsMap, !IO).
 
     % Construct a pair of dependency relations (the interface dependencies
-    % and the implementation dependencies) for all the modules in the
-    % program.
+    % and the implementation dependencies) for all the modules in the program.
     %
 :- pred deps_list_to_deps_rel(list(deps)::in, deps_map::in,
     deps_rel::in, deps_rel::out, deps_rel::in, deps_rel::out) is det.
