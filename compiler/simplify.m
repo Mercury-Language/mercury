@@ -75,6 +75,7 @@
     ;       warn_duplicate_calls    % --warn-duplicate-calls
     ;       warn_known_bad_format   % --warn-known-bad-format-calls
     ;       warn_unknown_format     % --warn-unknown-format-calls
+    ;       warn_obsolete           % --warn-obsolete
     ;       do_once                 % run things that should be done once
     ;       excess_assigns          % remove excess assignment unifications
     ;       duplicate_calls         % optimize duplicate calls
@@ -373,7 +374,9 @@ find_simplifications_2(WarnThisPass, Globals, !Simps) :-
         set_by_option(Globals, warn_known_bad_format_calls,
             warn_known_bad_format, !Simps),
         set_by_option(Globals, warn_unknown_format_calls,
-            warn_unknown_format, !Simps)
+            warn_unknown_format, !Simps),
+        set_by_option(Globals, warn_obsolete, warn_obsolete,
+            !Simps)
     ;
         WarnThisPass = no
     ),
@@ -1299,17 +1302,24 @@ call_goal(PredId, ProcId, Args, IsBuiltin, Goal0, Goal, GoalInfo0, GoalInfo,
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     % Check for calls to predicates with `pragma obsolete' declarations.
     (
-        simplify_do_warn(!.Info),
+        simplify_do_warn_obsolete(!.Info),
         pred_info_get_markers(PredInfo, Markers),
         check_marker(Markers, obsolete),
 
+        simplify_info_get_det_info(!.Info, DetInfo0),
+        det_info_get_pred_id(DetInfo0, ThisPredId),
+        
         % Don't warn about directly recursive calls. (That would cause
         % spurious warnings, particularly with builtin predicates,
         % or preds defined using foreign_procs.)
+        PredId \= ThisPredId,
 
-        simplify_info_get_det_info(!.Info, DetInfo0),
-        det_info_get_pred_id(DetInfo0, ThisPredId),
-        PredId \= ThisPredId
+        % Don't warn about calls from predicates that also have a 
+        % `pramga obsolete' declaration.  Doing so just results in 
+        % spurious warnings.
+        module_info_pred_info(ModuleInfo, ThisPredId, ThisPredInfo),
+        pred_info_get_markers(ThisPredInfo, ThisPredMarkers),
+        not check_marker(ThisPredMarkers, obsolete)
     ->
         goal_info_get_context(GoalInfo0, Context1),
         ObsoleteMsg = warn_obsolete(PredId),
@@ -2486,6 +2496,7 @@ simplify_info_apply_type_substitution(TSubst, !Info) :-
 
 :- pred simplify_do_warn(simplify_info::in) is semidet.
 :- pred simplify_do_warn_calls(simplify_info::in) is semidet.
+:- pred simplify_do_warn_obsolete(simplify_info::in) is semidet.
 :- pred simplify_do_once(simplify_info::in) is semidet.
 :- pred simplify_do_common(simplify_info::in) is semidet.
 :- pred simplify_do_excess_assigns(simplify_info::in) is semidet.
@@ -2501,6 +2512,9 @@ simplify_do_warn(Info) :-
 simplify_do_warn_calls(Info) :-
     simplify_info_get_simplifications(Info, Simplifications),
     set.member(warn_duplicate_calls, Simplifications).
+simplify_do_warn_obsolete(Info) :-
+    simplify_info_get_simplifications(Info, Simplifications),
+    set.member(warn_obsolete, Simplifications).
 simplify_do_once(Info) :-
     simplify_info_get_simplifications(Info, Simplifications),
     set.member(do_once, Simplifications).

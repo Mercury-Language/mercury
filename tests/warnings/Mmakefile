@@ -27,6 +27,7 @@ ERRORCHECK_PROGS= \
 	purity_warnings \
 	simple_code \
 	singleton_test \
+	spurious_obsolete \
 	state_vars_test \
 	table_with_inline \
 	unify_f_g \

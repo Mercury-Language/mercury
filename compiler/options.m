@@ -109,6 +109,7 @@
     ;       warn_non_term_special_preds
     ;       warn_known_bad_format_calls
     ;       warn_unknown_format_calls
+    ;       warn_obsolete
 
     % Verbosity options
     ;       verbose
@@ -848,7 +849,8 @@ option_defaults_2(warning_option, [
     warn_table_with_inline              -   bool(yes),
     warn_non_term_special_preds         -   bool(yes),
     warn_known_bad_format_calls         -   bool(yes),
-    warn_unknown_format_calls           -   bool(no)
+    warn_unknown_format_calls           -   bool(no),
+    warn_obsolete                       -   bool(yes)
 ]).
 option_defaults_2(verbosity_option, [
     % Verbosity Options
@@ -1541,6 +1543,7 @@ long_option("warn-table-with-inline",   warn_table_with_inline).
 long_option("warn-non-term-special-preds", warn_non_term_special_preds).
 long_option("warn-known-bad-format-calls", warn_known_bad_format_calls).
 long_option("warn-unknown-format-calls", warn_unknown_format_calls).
+long_option("warn-obsolete",             warn_obsolete).
 
 % verbosity options
 long_option("verbose",                  verbose).
@@ -2805,7 +2808,10 @@ options_help_warning -->
         "--warn-unknown-format-call",
         "\tWarn about calls to string.format or io.format for which",
         "\tthe compiler cannot tell whether there are any mismatches",
-        "\tbetween the format string and the supplied values."
+        "\tbetween the format string and the supplied values.",
+        "--no-warn-obsolete",
+        "\tDo not warn about calls to predicates or functions that have been",
+        "\tmarked as obsolete."
     ]).
 
 :- pred options_help_verbosity(io::di, io::uo) is det.

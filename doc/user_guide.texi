@@ -5268,6 +5268,12 @@ Warn about calls to string.format or io.format for which
 the compiler cannot tell whether there are any mismatches between
 the format string and the supplied values.
 
+@sp 1
+@item --no-warn-obsolete
+@findex --no-warn-obsolete
+Do not warn about calls to predicates or functionat that have been
+marked as obsolete.
+
 @end table
 
 @node Verbosity options

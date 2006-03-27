@@ -87,6 +87,7 @@ MCFLAGS-loop_inv_bug		= --common-struct --loop-invariants
 MCFLAGS-middle_rec_labels	= --middle-rec
 MCFLAGS-mostly_uniq_mode_inf	= --infer-all
 MCFLAGS-mpj6			= --infer-all
+MCFLAGS-no_warn_obsolete	= --no-warn-obsolete
 MCFLAGS-pred_with_no_modes	= --infer-all
 MCFLAGS-quantifier_warning	= --halt-at-warn
 MCFLAGS-simplify_bug2		= -O3
