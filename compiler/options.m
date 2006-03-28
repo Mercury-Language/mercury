@@ -2810,8 +2810,8 @@ options_help_warning -->
         "\tthe compiler cannot tell whether there are any mismatches",
         "\tbetween the format string and the supplied values.",
         "--no-warn-obsolete",
-        "\tDo not warn about calls to predicates or functions that have been",
-        "\tmarked as obsolete."
+        "\tDo not warn about calls to predicates or functions that have",
+        "\tbeen marked as obsolete."
     ]).
 
 :- pred options_help_verbosity(io::di, io::uo) is det.
