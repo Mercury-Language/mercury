@@ -394,17 +394,6 @@
 :- use_module private_builtin. % for the `heap_pointer' type.
 :- use_module solutions.
 
-% XXX This should not be necessary, but the current compiler is broken in that
-% it puts foreign_proc clauses into deconstruct.opt without also putting the
-% foreign_decl they require into deconstruct.opt as well.
-
-:- pragma foreign_decl("C", "
-
-#include ""mercury_deconstruct.h""
-#include ""mercury_deconstruct_macros.h""
-
-").
-
 %-----------------------------------------------------------------------------%
 
 map_maybe(_, no, no).

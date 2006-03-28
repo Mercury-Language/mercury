@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1995-2005 The University of Melbourne.
+** Copyright (C) 1995-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -32,7 +32,7 @@
 **      library/array.m
 **      library/builtin.m
 **      library/private_builtin.m
-**      library/std_util.m
+**      library/type_desc.m
 **      runtime/mercury_bootstrap.c
 **      runtime/mercury_mcpp.h
 **          (for updating the hand-written RTTI
@@ -44,7 +44,7 @@
 **      runtime/mercury_deep_copy_body.h
 **      runtime/mercury_tabling.c
 **      runtime/mercury_type_info.c
-**      library/std_util.m
+**      library/type_desc.m
 **
 **      runtime/mercury_mcpp.h:
 **          (for updating the MC++ backend RTTI structures)

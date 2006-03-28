@@ -230,7 +230,12 @@
 :- import_module rtti_implementation.
 :- import_module string.
 
-:- pragma foreign_import_module("C", std_util).
+:- pragma foreign_decl("C", "
+
+#include ""mercury_deconstruct.h""
+#include ""mercury_deconstruct_macros.h""
+
+").
 
 %-----------------------------------------------------------------------------%
 

@@ -647,7 +647,7 @@ term_to_univ_special_case(_, "std_util", "univ", [],
     % like all the other results returned from this procedure.
     Result = ok(univ(Univ)).
 
-term_to_univ_special_case(_, "std_util", "type_info", _, _, _, _, _) :-
+term_to_univ_special_case(_, "type_desc", "type_desc", _, _, _, _, _) :-
     % Ditto.
     fail.
 
@@ -759,7 +759,7 @@ univ_to_term_special_case("builtin", "character", [], Univ,
 univ_to_term_special_case("builtin", "string", [], Univ, Context,
         functor(string(String), [], Context)) :-
     det_univ_to_type(Univ, String).
-univ_to_term_special_case("std_util", "type_info", [], Univ, Context,
+univ_to_term_special_case("type_desc", "type_desc", [], Univ, Context,
         functor(atom("type_info"), [Term], Context)) :-
     det_univ_to_type(Univ, TypeInfo),
     type_info_to_term(Context, TypeInfo, Term).

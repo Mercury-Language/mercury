@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1999-2005 The University of Melbourne.
+** Copyright (C) 1999-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -170,10 +170,6 @@ extern const struct MR_TypeCtorInfo_Struct
   MR_TYPE_CTOR_INFO_NAME(private_builtin, typeclass_info, 0);
 extern const struct MR_TypeCtorInfo_Struct
   MR_TYPE_CTOR_INFO_NAME(private_builtin, base_typeclass_info, 0);
-extern const struct MR_TypeCtorInfo_Struct
-  MR_TYPE_CTOR_INFO_NAME(std_util, type_desc, 0);
-extern const struct MR_TypeCtorInfo_Struct
-  MR_TYPE_CTOR_INFO_NAME(std_util, type_ctor_desc, 0);
 extern const struct MR_TypeCtorInfo_Struct
   MR_TYPE_CTOR_INFO_NAME(type_desc, type_desc, 0);
 extern const struct MR_TypeCtorInfo_Struct
