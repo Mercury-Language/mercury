@@ -311,7 +311,7 @@ store.new(S) :-
     [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     MR_offset_incr_hp_msg(Mutvar, MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1,
-        MR_PROC_LABEL, ""store:mutvar/2"");
+        MR_PROC_LABEL, ""store.mutvar/2"");
     MR_define_size_slot(0, Mutvar, 1);
     * (MR_Word *) Mutvar = Val;
     S = S0;
@@ -333,13 +333,13 @@ store.new(S) :-
     S = S0;
 ").
 
-:- pragma foreign_type(java, generic_mutvar(T, S), "mercury.std_util.Mutvar").
+:- pragma foreign_type(java, generic_mutvar(T, S), "mercury.mutvar.Mutvar").
 
 :- pragma foreign_proc("Java",
     new_mutvar(Val::in, Mutvar::out, _S0::di, _S::uo),
     [will_not_call_mercury, promise_pure],
 "
-    Mutvar = new mercury.std_util.Mutvar(Val);
+    Mutvar = new mercury.mutvar.Mutvar(Val);
 ").
 
 :- pragma foreign_proc("Java",
@@ -368,7 +368,7 @@ copy_mutvar(Mutvar, Copy, !S) :-
     [will_not_call_mercury, promise_pure, will_not_modify_trail],
 "
     MR_offset_incr_hp_msg(Mutvar, MR_SIZE_SLOT_SIZE, MR_SIZE_SLOT_SIZE + 1,
-        MR_PROC_LABEL, ""store:mutvar/2"");
+        MR_PROC_LABEL, ""store.mutvar/2"");
     MR_define_size_slot(0, Mutvar, 1);
     S = S0;
 ").
@@ -377,7 +377,7 @@ copy_mutvar(Mutvar, Copy, !S) :-
     unsafe_new_uninitialized_mutvar(Mutvar::out, _S0::di, _S::uo),
     [will_not_call_mercury, promise_pure],
 "
-    Mutvar = new mercury.std_util.Mutvar(null);
+    Mutvar = new mercury.mutvar.Mutvar(null);
 ").
 
 store.new_cyclic_mutvar(Func, MutVar, !Store) :-

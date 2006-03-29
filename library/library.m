@@ -130,6 +130,7 @@
 :- import_module version_types.
 
 % The modules intended for Mercury system implementors.
+:- import_module mutvar.
 :- import_module private_builtin.
 :- import_module profiling_builtin.
 :- import_module rtti_implementation.
@@ -217,6 +218,7 @@ mercury_std_library_module("list").
 mercury_std_library_module("map").
 mercury_std_library_module("math").
 mercury_std_library_module("multi_map").
+mercury_std_library_module("mutvar").
 mercury_std_library_module("ops").
 mercury_std_library_module("parser").
 mercury_std_library_module("pprint").

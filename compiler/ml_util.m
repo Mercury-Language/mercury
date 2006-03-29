@@ -622,6 +622,7 @@ type_ctor_needs_lowlevel_rep(il, TypeName - _Arity) :-
     mercury_private_builtin_module(PrivateBuiltin),
     RttiImplementation = unqualified("rtti_implementation"),
     StdUtil = unqualified("std_util"),
+    MutVar = unqualified("mutvar"),
     TypeDesc = unqualified("type_desc"),
     ( TypeName = qualified(PrivateBuiltin, "base_typeclass_info")
     ; TypeName = qualified(PrivateBuiltin, "type_ctor_info")
@@ -647,7 +648,7 @@ type_ctor_needs_lowlevel_rep(il, TypeName - _Arity) :-
         % for the moment.
     ; TypeName = qualified(Builtin, "comparison_result")
     ; TypeName = qualified(StdUtil, "univ")
-    ; TypeName = qualified(StdUtil, "mutvar")
+    ; TypeName = qualified(MutVar, "mutvar")
     ).
 
 %-----------------------------------------------------------------------------%
