@@ -280,7 +280,7 @@ poly_io_retry2.out: poly_io_retry2 poly_io_retry2.inp
 	$(MDB_STD) ./poly_io_retry2 < poly_io_retry2.inp \
 		> poly_io_retry2.out 2>&1
 
-# The exception_cmd, exception_vars, polymorphic_output and loopcheck tests
+# The exception_cmd, exception_vars and loopcheck tests
 # are supposed to return a non-zero exit status, since they exit by throwing
 # an exception. We strip the goal paths from their exception events, since
 # the exact goal paths are dependent on optimization level. The stripping
@@ -426,19 +426,8 @@ output_term_dep.out: output_term_dep output_term_dep.inp
 		sed 's/io.m:[0-9]*/io.m:NNNN/g' > output_term_dep.out 2>&1
 
 polymorphic_output.out: polymorphic_output polymorphic_output.inp
-	if $(MDB_STD) ./polymorphic_output < polymorphic_output.inp	\
-		> polymorphic_output.tmp 2>&1;			\
-	then							\
-		sed -e '/EXCP/s/).*/)/' < polymorphic_output.tmp\
-			> polymorphic_output.out 2>&1;		\
-		rm polymorphic_output.tmp;			\
-		false;						\
-	else							\
-		sed -e '/EXCP/s/).*/)/' < polymorphic_output.tmp\
-			> polymorphic_output.out 2>&1;		\
-		rm polymorphic_output.tmp;			\
-		true;						\
-	fi
+	$(MDB_STD) ./polymorphic_output < polymorphic_output.inp \
+		> polymorphic_output.out 2>&1;
 
 print_goal.out: print_goal print_goal.inp
 	$(MDB_STD) ./print_goal < print_goal.inp > print_goal.out 2>&1
