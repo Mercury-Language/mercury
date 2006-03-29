@@ -243,9 +243,9 @@
 :- import_module transform_hlds.ctgc.selector.
 
 :- import_module int.
+:- import_module pair.
 :- import_module require.
 :- import_module solutions.
-:- import_module std_util.
 :- import_module svmap.
 :- import_module svset.
 

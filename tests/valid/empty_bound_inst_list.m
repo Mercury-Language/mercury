@@ -5,7 +5,7 @@
 :- pred p is failure.
 
 :- implementation.
-:- import_module std_util.
+:- import_module maybe.
 
 :- type some_functors ---> foo ; bar ; baz.
 

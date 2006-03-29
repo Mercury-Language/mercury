@@ -39,8 +39,8 @@
 
 :- import_module io.
 :- import_module map.
+:- import_module pair.
 :- import_module set.
-:- import_module std_util.
 :- import_module term.
 
 :- include_module recompilation.check.

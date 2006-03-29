@@ -14,7 +14,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module type_desc.
-
 :- interface.
 
 :- import_module list.
@@ -214,7 +213,6 @@
 :- import_module string.
 
 :- use_module    rtti_implementation.
-:- use_module    std_util.
 
 :- pragma foreign_decl("C", "
 #include ""mercury_heap.h"" /* for MR_incr_hp_msg() etc. */
@@ -340,7 +338,7 @@ pseudo_type_desc_to_rep(PseudoTypeDesc) = PseudoTypeRep :-
 is_univ_pseudo_type_desc(_PseudoTypeDesc, -1) :-
     % The backends in which we use this definition of this predicate
     % don't yet support pseudo_type_descs.
-    std_util.semidet_fail.
+    semidet_fail.
 
 :- pred is_exist_pseudo_type_desc(pseudo_type_desc::in, int::out) is semidet.
 
@@ -364,7 +362,7 @@ is_univ_pseudo_type_desc(_PseudoTypeDesc, -1) :-
 is_exist_pseudo_type_desc(_PseudoTypeDesc, -1) :-
     % The backends in which we use this definition of this predicate
     % don't yet support pseudo_type_descs.
-    std_util.semidet_fail.
+    semidet_fail.
 
 :- pragma foreign_proc("C",
     type_desc_to_pseudo_type_desc(TypeDesc::in) = (PseudoTypeDesc::out),

@@ -1,13 +1,14 @@
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % Copyright (C) 1999-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-% file: interactive_query.m
-% author: fjh
+% File: interactive_query.m.
+% Author: fjh.
+
 % A module to invoke interactive queries using dynamic linking.
 %
 % This module reads in a query, writes out Mercury code for it to the file
@@ -17,12 +18,15 @@
 % procedure query/2 in that module, calls that procedure, and then
 % cleans up the generated files.
 
-:- module mdb.interactive_query.
+%-----------------------------------------------------------------------------%
 
+:- module mdb.interactive_query.
 :- interface.
 
 :- import_module io.
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
 :- pred query(query_type::in, imports::in, options::in,
     io.input_stream::in, io.output_stream::in, io::di, io::uo) is det.
@@ -41,6 +45,9 @@
 :- type imports == list(string).
 :- type options == string.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module mdb.dl.
@@ -48,12 +55,14 @@
 :- import_module mdb.util.
 
 :- import_module bool.
+:- import_module maybe.
 :- import_module parser.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
 :- import_module term_io.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 :- pragma export(query(in, in, in, in, in, di, uo), "ML_query").
 

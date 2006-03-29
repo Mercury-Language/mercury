@@ -46,7 +46,8 @@
 
 :- import_module ll_backend.opt_util.
 
-:- import_module std_util.
+:- import_module maybe.
+:- import_module pair.
 :- import_module svset.
 
 %-----------------------------------------------------------------------------%

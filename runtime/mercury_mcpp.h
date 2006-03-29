@@ -1,5 +1,5 @@
 //
-// Copyright (C) 2000-2005 The University of Melbourne.
+// Copyright (C) 2000-2006 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -50,7 +50,7 @@ typedef MR_Ref(MR_Word) MR_Word_Ref;
   typedef __gc public class mercury::private_builtin::type_info_1* MR_TypeInfo;
   typedef __gc public class mercury::rtti_implementation::type_info_0* MR_TypeInfo_0;
   typedef __gc public class mercury::builtin::comparison_result_0 *MR_ComparisonResult;
-  typedef __gc public class mercury::std_util::univ_0 *MR_Univ;
+  typedef __gc public class mercury::univ::univ_0 *MR_Univ;
 #else
 */
   typedef __gc public class System::Object * MR_TypeInfo[];

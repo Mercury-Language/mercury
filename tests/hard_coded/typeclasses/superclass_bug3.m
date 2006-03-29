@@ -8,7 +8,7 @@
 
 :- implementation.
 
-:- import_module string, std_util.
+:- import_module string, unit.
 
 main -->
 	{ parse_result_entry(unit, 1, unit, String) },

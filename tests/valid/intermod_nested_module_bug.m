@@ -9,7 +9,7 @@
 
 :- implementation.
 
-:- import_module std_util.
+:- import_module maybe.
 :- import_module intermod_nested_module_bug2, intermod_nested_module_bug2__sub.
 
 main -->

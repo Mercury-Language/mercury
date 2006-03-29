@@ -25,8 +25,8 @@
 :- import_module counter.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module set.
-:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -103,6 +103,7 @@
 :- import_module ll_backend.opt_util.
 
 :- import_module int.
+:- import_module pair.
 :- import_module svmap.
 :- import_module svset.
 

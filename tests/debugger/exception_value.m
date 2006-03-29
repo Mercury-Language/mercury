@@ -7,7 +7,7 @@
 
 :- implementation.
 
-:- import_module std_util, exception, list.
+:- import_module pair, exception, list.
 
 main -->
 	{ test1(Res1) },

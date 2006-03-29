@@ -14,11 +14,13 @@
 %-----------------------------------------------------------------------------%
 
 :- module deconstruct.
-
 :- interface.
 
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module univ.
+
+%-----------------------------------------------------------------------------%
 
     % Values of type noncanon_handling are intended to control how
     % predicates that deconstruct terms behave when they find that

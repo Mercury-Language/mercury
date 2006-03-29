@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,7 +22,7 @@
 
 :- import_module io.
 :- import_module map.
-:- import_module std_util.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
@@ -189,9 +189,9 @@
 :- import_module float.
 :- import_module int.
 :- import_module list.
+:- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 :- import_module svmap.
 

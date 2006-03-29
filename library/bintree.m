@@ -132,8 +132,8 @@
 :- implementation.
 
 :- import_module int.
+:- import_module pair.
 :- import_module require.
-:- import_module std_util.
 :- import_module string.
 
 :- type bintree(K, V)

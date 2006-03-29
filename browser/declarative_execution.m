@@ -5,9 +5,10 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% File: declarative_execution.m
-% Author: Mark Brown
-%
+
+% File: declarative_execution.m.
+% Author: Mark Brown.
+
 % This module defines a Mercury representation of Mercury program
 % execution, the annotated trace.  This structure is described in
 % papers/decl_debug.  The declarative debugging infrastructure in the
@@ -16,8 +17,9 @@
 % end (in browser/declarative_debugger.m) where it is analysed
 % to produce a bug diagnosis.
 
-:- module mdb.declarative_execution.
+%-----------------------------------------------------------------------------%
 
+:- module mdb.declarative_execution.
 :- interface.
 
 :- import_module mdb.term_rep.
@@ -28,7 +30,9 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
+
+%-----------------------------------------------------------------------------%
 
     % This type represents a port in the annotated trace.
     % The type R is the type of references to other nodes in the store.
@@ -471,6 +475,7 @@
 :- import_module require.
 :- import_module store.
 :- import_module string.
+:- import_module univ.
 
 %-----------------------------------------------------------------------------%
 

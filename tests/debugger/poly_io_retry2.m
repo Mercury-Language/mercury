@@ -8,7 +8,7 @@
 
 :- implementation.
 
-:- import_module list, int, std_util.
+:- import_module list, int, univ.
 
 main(!IO) :-
 	io_set_globals(univ(3), !IO),

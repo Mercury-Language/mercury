@@ -35,16 +35,18 @@
 % XXX Also, the existing Java code needs to be reviewed.
 %
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module rtti_implementation.
-
 :- interface.
 
 :- import_module deconstruct.
 :- import_module list.
+:- import_module univ.
 
-:- use_module std_util.
 :- use_module type_desc.
+
+%-----------------------------------------------------------------------------%
 
     % Our type_info and type_ctor_info implementations are both
     % abstract types.
@@ -67,7 +69,7 @@
 :- pred type_ctor_name_and_arity(type_ctor_info::in,
         string::out, string::out, int::out) is det.
 
-:- pred deconstruct(T, noncanon_handling, string, int, list(std_util.univ)).
+:- pred deconstruct(T, noncanon_handling, string, int, list(univ)).
 :- mode deconstruct(in, in(do_not_allow), out, out, out) is det.
 :- mode deconstruct(in, in(canonicalize), out, out, out) is det.
 :- mode deconstruct(in, in(include_details_cc), out, out, out) is cc_multi.
@@ -99,13 +101,10 @@
 :- import_module array.
 :- import_module bool.
 :- import_module int.
+:- import_module maybe.
 :- import_module require.
 :- import_module string.
 :- import_module type_desc.
-
-    % Std_util has a lot of types and functions with the same names,
-    % so we prefer to keep the namespace separate.
-:- use_module std_util.
 
     % It is convenient to represent the type_ctor_rep as a Mercury
     % enumeration, so
@@ -1083,7 +1082,7 @@ deconstruct(Term, NonCanon, Functor, Arity, Arguments) :-
         Functor, Arity, Arguments).
 
 :- pred deconstruct(T, type_info, type_ctor_info, type_ctor_rep,
-    noncanon_handling, string, int, list(std_util.univ)).
+    noncanon_handling, string, int, list(univ)).
 :- mode deconstruct(in, in, in, in, in(do_not_allow), out, out, out) is det.
 :- mode deconstruct(in, in, in, in, in(canonicalize), out, out, out) is det.
 :- mode deconstruct(in, in, in, in,
@@ -1134,7 +1133,7 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             Functor = FunctorDesc ^ du_functor_name,
             Arity = FunctorDesc ^ du_functor_arity,
             Arguments = iterate(0, Arity - 1,
-                (func(X) = std_util.univ(
+                (func(X) = univ(
                     get_arg(Term, X, SecTagLocn, FunctorDesc, TypeInfo))
                 ))
         ;
@@ -1149,7 +1148,7 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
             Functor = FunctorDesc ^ du_functor_name,
             Arity = FunctorDesc ^ du_functor_arity,
             Arguments = iterate(0, Arity - 1,
-                (func(X) = std_util.univ(
+                (func(X) = univ(
                     get_arg(Term, X, SecTagLocn, FunctorDesc, TypeInfo))
                 ))
         ;
@@ -1234,7 +1233,7 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         list.map_foldl(
             (pred(TI::in, U::out, Index::in, Next::out) is det :-
                 SubTerm = get_subterm(TI, Term, Index, 0),
-                U = std_util.univ(SubTerm),
+                U = univ(SubTerm),
                 Next = Index + 1
             ), TypeArgs, Arguments, 0, _)
     ;
@@ -1289,7 +1288,7 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
         Functor = "<<array>>",
         Arity = array.size(Array),
         Arguments = array.foldr(
-            (func(Elem, List) = [std_util.univ(Elem) | List]),
+            (func(Elem, List) = [univ(Elem) | List]),
             Array, [])
     ;
         TypeCtorRep = succip,
@@ -1395,8 +1394,8 @@ deconstruct(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon,
 :- pred det_dynamic_cast(T::in, U::out) is det.
 
 det_dynamic_cast(Term, Actual) :-
-    std_util.type_to_univ(Term, Univ),
-    std_util.det_univ_to_type(Univ, Actual).
+    type_to_univ(Term, Univ),
+    det_univ_to_type(Univ, Actual).
 
 :- pred same_array_elem_type(array(T)::unused, T::unused) is det.
 
@@ -1406,7 +1405,7 @@ same_array_elem_type(_, _).
     notag_ground_usereq; reserved_addr_usereq).
 
 :- pred handle_usereq_type(T, type_info, type_ctor_info, type_ctor_rep,
-        noncanon_handling, string, int, list(std_util.univ)).
+        noncanon_handling, string, int, list(univ)).
 
 :- mode handle_usereq_type(in, in, in, in(usereq),
     in(do_not_allow), out, out, out) is erroneous.
@@ -1546,7 +1545,7 @@ get_arg_type_info(TypeInfoParams, PseudoTypeInfo, Term, FunctorDesc,
             Arity = TypeCtorInfo ^ type_ctor_arity,
             StartRegionSize = 1
         ),
-        ArgTypeInfo0 = std_util.no,
+        ArgTypeInfo0 = maybe.no,
         UpperBound = Arity + StartRegionSize - 1,
 
         iterate_foldl(StartRegionSize, UpperBound,
@@ -1559,23 +1558,23 @@ get_arg_type_info(TypeInfoParams, PseudoTypeInfo, Term, FunctorDesc,
                 ->
                     TI = TI0
                 ;
-                    TI0 = std_util.yes(TypeInfo0)
+                    TI0 = maybe.yes(TypeInfo0)
                 ->
                     unsafe_promise_unique(TypeInfo0, TypeInfo1),
                     update_type_info_index(I, ETypeInfo, TypeInfo1, TypeInfo),
-                    TI = std_util.yes(TypeInfo)
+                    TI = maybe.yes(TypeInfo)
                 ;
                     NewTypeInfo0 = new_type_info(CastTypeInfo, UpperBound),
                     update_type_info_index(I, ETypeInfo, NewTypeInfo0,
                         NewTypeInfo),
-                    TI = std_util.yes(NewTypeInfo)
+                    TI = maybe.yes(NewTypeInfo)
                 )
             ), ArgTypeInfo0, MaybeArgTypeInfo),
         (
-            MaybeArgTypeInfo = std_util.yes(ArgTypeInfo1),
+            MaybeArgTypeInfo = maybe.yes(ArgTypeInfo1),
             ArgTypeInfo = ArgTypeInfo1
         ;
-            MaybeArgTypeInfo = std_util.no,
+            MaybeArgTypeInfo = maybe.no,
             ArgTypeInfo = CastTypeInfo
         )
     ).

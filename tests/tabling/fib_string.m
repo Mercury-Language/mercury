@@ -8,8 +8,8 @@
 
 :- implementation.
 
-:- import_module benchmarking, require, std_util.
-:- import_module int, string, list, assoc_list.
+:- import_module benchmarking, require, pair.
+:- import_module int, string, list, assoc_list, solutions.
 
 main(!IO) :-
 	perform_trials("oneone", !IO).

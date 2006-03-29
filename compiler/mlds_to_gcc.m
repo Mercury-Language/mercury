@@ -98,6 +98,8 @@
 :- import_module bool.
 :- use_module io.
 
+%-----------------------------------------------------------------------------%
+
 	% run_gcc_backend(ModuleName, CallBack, CallBackOutput):
 	%
 	% Set things up to generate an assembler file whose name
@@ -182,8 +184,9 @@
 :- import_module library.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
+:- import_module pair.
 :- import_module solutions.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
 

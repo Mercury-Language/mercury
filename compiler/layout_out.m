@@ -115,9 +115,12 @@
 :- import_module char.
 :- import_module int.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module pair.
 :- import_module string.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 output_layout_data_defn(label_layout_data(ProcLabel, LabelNum, ProcLayoutAddr,
         MaybePort, MaybeIsHidden, LabelNumber, MaybeGoalPath,

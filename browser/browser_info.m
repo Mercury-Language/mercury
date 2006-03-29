@@ -5,15 +5,16 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
+
 % File: browser_info.m
 % Main author: Mark Brown
-%
+
 % Basic data structures used by the browser.
-%
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdb.browser_info.
-
 :- interface.
 
 :- import_module mdb.browser_term.
@@ -25,7 +26,10 @@
 :- import_module getopt.
 :- import_module io.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module univ.
+
+%---------------------------------------------------------------------------%
 
     % The non-persistent browser information.  A new one of these is created
     % every time the browser is called, based on the contents of the persistent
@@ -254,14 +258,16 @@
 
 :- implementation.
 
+:- import_module mdb.term_rep.
+
 :- import_module deconstruct.
 :- import_module int.
 :- import_module io.
+:- import_module maybe.
 :- import_module require.
 :- import_module string.
 :- import_module type_desc.
 
-:- import_module mdb.term_rep.
 
 :- pragma export(init_persistent_state(out),
     "ML_BROWSE_init_persistent_state").

@@ -1,13 +1,13 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2002, 2005 The University of Melbourne.
+% Copyright (C) 2002, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% file: term_constr_data.m
-% main author: juliensf
+
+% File: term_constr_data.m.
+% Main author: juliensf.
 
 % This module defines data structures that are common to all modules in the
 % termination analyser.

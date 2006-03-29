@@ -9,6 +9,8 @@
 % File: state_var.m.
 % Main author: rafe.
 
+%-----------------------------------------------------------------------------%
+
 :- module hlds.make_hlds.state_var.
 :- interface.
 
@@ -20,6 +22,8 @@
 :- import_module list.
 :- import_module map.
 :- import_module set.
+
+%-----------------------------------------------------------------------------%
 
     % This synonym improves code legibility.
     %
@@ -292,6 +296,7 @@
     svar::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -301,10 +306,12 @@
 
 :- import_module char.
 :- import_module int.
-:- import_module std_util.
+:- import_module pair.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 new_svar_info = svar_info(in_head, 0, map.init, map.init, map.init).
 

@@ -26,7 +26,7 @@
 
 :- import_module list.
 :- import_module map.
-:- import_module std_util.
+:- import_module pair.
 
 :- type special_pred_map    ==  map(special_pred, pred_id).
 
@@ -120,7 +120,10 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module bool.
+:- import_module maybe.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 special_pred_list([spec_pred_unify, spec_pred_index, spec_pred_compare]).
 

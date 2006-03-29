@@ -24,7 +24,7 @@
 
 :- import_module bool.
 :- import_module list.
-:- import_module std_util.
+:- import_module unit.
 
 %-----------------------------------------------------------------------------%
 
@@ -144,6 +144,7 @@
 :- import_module float.
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
 :- import_module require.
 :- import_module string.
 

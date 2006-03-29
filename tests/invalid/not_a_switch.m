@@ -4,7 +4,7 @@
 
 :- interface.
 
-:- import_module int, std_util.
+:- import_module int, maybe.
 
 :- pred not_a_switch(maybe(int)::in, int::out) is det.
 

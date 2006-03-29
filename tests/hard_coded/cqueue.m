@@ -24,7 +24,7 @@
 
 :- implementation.
 
-:- import_module list, std_util.
+:- import_module list, pair.
 
 :- type cqueue(T) ==	pair(list(T)).
 

@@ -18,7 +18,6 @@
 %------------------------------------------------------------------------------%
 
 :- module relation.
-
 :- interface.
 
 :- import_module assoc_list.
@@ -308,11 +307,13 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module pair.
 :- import_module queue.
 :- import_module require.
 :- import_module sparse_bitset.
 :- import_module stack.
-:- import_module std_util.
+
+%------------------------------------------------------------------------------%
 
 :- type relation_key
     --->    relation_key(int).

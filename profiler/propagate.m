@@ -21,13 +21,14 @@
 %-----------------------------------------------------------------------------%
 
 :- module propagate.
-
 :- interface.
 
 :- import_module prof_info.
 
 :- import_module io.
 :- import_module relation.
+
+%-----------------------------------------------------------------------------%
 
 :- pred propagate.counts(relation(string)::in, prof::in, prof::out,
     io::di, io::uo) is det.
@@ -43,9 +44,9 @@
 :- import_module list.
 :- import_module map.
 :- import_module multi_map.
+:- import_module pair.
 :- import_module require.
 :- import_module sparse_bitset.
-:- import_module std_util.
 :- import_module string.
 :- import_module svmap.
 

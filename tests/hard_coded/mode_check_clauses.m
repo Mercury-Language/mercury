@@ -8,7 +8,7 @@
 
 :- implementation.
 
-:- import_module std_util.
+:- import_module pair, solutions.
 
 main(!IO) :-
 	solutions(test02_base, Base02),

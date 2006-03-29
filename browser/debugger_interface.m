@@ -5,8 +5,10 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% File: debugger_interface.m
-% Authors: fjh, jahier
+
+% File: debugger_interface.m.
+% Authors: fjh, jahier.
+
 % Purpose:
 %   This module provide support routines needed by
 %   runtime/mercury_trace_external.c for interfacing to an external
@@ -31,6 +33,9 @@
 
 :- pred dummy_pred_to_avoid_warning_about_nothing_exported is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module mdb.interactive_query.
@@ -42,7 +47,7 @@
 :- import_module io.
 :- import_module list.
 :- import_module require.
-:- import_module std_util.
+:- import_module univ.
 
 dummy_pred_to_avoid_warning_about_nothing_exported.
 

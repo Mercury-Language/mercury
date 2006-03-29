@@ -1165,7 +1165,6 @@
 
 :- import_module require.
 :- import_module set_tree234.
-:- import_module std_util.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%

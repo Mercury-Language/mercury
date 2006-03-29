@@ -28,7 +28,7 @@
 
 :- import_module io.
 :- import_module map.
-:- import_module std_util.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
@@ -85,6 +85,7 @@
 :- import_module bool.
 :- import_module int.
 :- import_module list.
+:- import_module pair.
 :- import_module queue.
 :- import_module set.
 :- import_module string.

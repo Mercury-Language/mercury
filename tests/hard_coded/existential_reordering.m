@@ -12,7 +12,7 @@
 :- pred main(io__state::di, state::uo) is det.
 
 :- implementation.
-:- import_module std_util, list.
+:- import_module univ, list.
 
 main -->
 	% do something which requires knowing the type of L

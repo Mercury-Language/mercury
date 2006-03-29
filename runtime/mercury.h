@@ -135,7 +135,7 @@ struct MR_StackChain {
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
 	mercury__array__array__type_ctor_info_array_1);
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(
-	mercury__std_util__std_util__type_ctor_info_univ_0);
+	mercury__univ__univ__type_ctor_info_univ_0);
 
 /*
 ** When generating code which passes an io__state or a store__store

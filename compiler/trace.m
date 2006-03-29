@@ -57,8 +57,10 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module map.
+:- import_module maybe.
 :- import_module set.
-:- import_module std_util.
+:- import_module pair.
+
 %-----------------------------------------------------------------------------%
 
     % The kinds of external ports for which the code we generate will
@@ -249,8 +251,6 @@
 :- import_module bool.
 :- import_module int.
 :- import_module list.
-:- import_module map.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
 :- import_module varset.

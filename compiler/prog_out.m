@@ -28,7 +28,8 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module pair.
 
 :- pred maybe_report_stats(bool::in, io::di, io::uo) is det.
 :- pred maybe_write_string(bool::in, string::in, io::di, io::uo) is det.

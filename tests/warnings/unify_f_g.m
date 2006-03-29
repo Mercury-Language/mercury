@@ -7,7 +7,7 @@
 :- interface.
 
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
 
 :- pred p(list(int)::in, maybe(int)::in, maybe(int)::out,
 	maybe(int)::in, maybe(int)::out) is semidet.

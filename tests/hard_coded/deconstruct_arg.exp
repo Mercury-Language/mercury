@@ -115,14 +115,14 @@ deconstruct deconstruct: functor newline arity 0
 deconstruct limited deconstruct 3 of '<<predicate>>'
 functor newline arity 0 []
 
-deconstruct functor: lambda_deconstruct_arg_m_106/1
+deconstruct functor: lambda_deconstruct_arg_m_108/1
 deconstruct argument 0 of '<<predicate>>' is [1, 2]
 deconstruct argument 1 of '<<predicate>>' doesn't exist
 deconstruct argument 2 of '<<predicate>>' doesn't exist
-deconstruct deconstruct: functor lambda_deconstruct_arg_m_106 arity 1
+deconstruct deconstruct: functor lambda_deconstruct_arg_m_108 arity 1
 [[1, 2]]
 deconstruct limited deconstruct 3 of '<<predicate>>'
-functor lambda_deconstruct_arg_m_106 arity 1 [[1, 2]]
+functor lambda_deconstruct_arg_m_108 arity 1 [[1, 2]]
 
 deconstruct functor: {}/2
 deconstruct argument 0 of {1, 'b'} is 1

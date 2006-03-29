@@ -22,7 +22,8 @@
 :- import_module hlds.hlds_pred.
 
 :- import_module io.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 

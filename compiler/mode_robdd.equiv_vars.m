@@ -7,8 +7,9 @@
 % File: mode_robdd.equiv_vars.m.
 % Main author: dmo
 
-:- module mode_robdd__equiv_vars.
+%---------------------------------------------------------------------------%
 
+:- module mode_robdd__equiv_vars.
 :- interface.
 
 :- import_module check_hlds.
@@ -17,6 +18,8 @@
 :- import_module bool.
 :- import_module robdd.
 :- import_module term.
+
+%---------------------------------------------------------------------------%
 
 :- func init_equiv_vars = equiv_vars(T).
 
@@ -62,17 +65,20 @@
 :- func remove_equiv(equiv_vars(T), robdd(T)) = robdd(T).
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module assoc_list.
 :- import_module list.
 :- import_module map.
+:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module solutions.
 :- import_module sparse_bitset.
-:- import_module std_util.
+
+%---------------------------------------------------------------------------%
 
 init_equiv_vars = equiv_vars(map__init).
 

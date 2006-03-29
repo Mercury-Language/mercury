@@ -8,7 +8,7 @@
 
 :- implementation.
 
-:- import_module char, float, int, list, string, std_util.
+:- import_module char, float, int, list, string, maybe.
 
 :- type opt(T)
 	--->	a(pred(int, T, T))

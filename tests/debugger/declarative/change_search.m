@@ -8,7 +8,7 @@
 
 :- implementation.
 
-:- import_module list, int, std_util.
+:- import_module list, int, maybe.
 
 main(!IO) :-
 	mylast(1 .. 1000, L),

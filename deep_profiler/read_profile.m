@@ -18,7 +18,7 @@
 :- import_module profile.
 
 :- import_module io.
-:- import_module std_util.
+:- import_module maybe.
 
 :- pred read_call_graph(string::in, maybe_error(initial_deep)::out,
     io::di, io::uo) is det.

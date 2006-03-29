@@ -458,9 +458,12 @@
 :- import_module counter.
 :- import_module int.
 :- import_module list.
+:- import_module pair.
+:- import_module maybe.
 :- import_module solutions.
-:- import_module std_util.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
     % Perform the specified action on the whole MLDS.
     %

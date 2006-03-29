@@ -21,7 +21,7 @@
 :- import_module parse_tree.prog_io_util.
 
 :- import_module io.
-:- import_module std_util.
+:- import_module maybe.
 :- import_module term.
 
     % compute_version_numbers(SourceFileModTime, NewItems, MaybeOldItems,

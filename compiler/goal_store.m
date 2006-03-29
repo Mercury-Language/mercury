@@ -24,8 +24,8 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
+:- import_module pair.
 :- import_module set.
-:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 

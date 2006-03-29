@@ -11,7 +11,7 @@
 
 :- implementation.
 
-:- import_module list, assoc_list, std_util.
+:- import_module list, assoc_list, pair, solutions.
 
 main(!IO) :-
 	solutions(test([1 - "one", 2 - "two", 2 - "two", 1 - "one"]),

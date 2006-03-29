@@ -8,7 +8,7 @@
 
 :- implementation.
 
-:- import_module term_to_xml, map, svmap, std_util, list, string.
+:- import_module term_to_xml, map, pair, svmap, list, string.
 
 main(!IO) :-
 	map.init(Map),

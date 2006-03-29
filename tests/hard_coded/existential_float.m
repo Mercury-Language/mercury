@@ -6,7 +6,7 @@
 
 :- module existential_float.
 :- interface.
-:- import_module std_util.
+:- import_module univ.
 
 :- type foo ---> left ; right.
 
@@ -25,6 +25,7 @@
 
 :- implementation.
 :- import_module int.
+:- import_module solutions.
 
 main -->
 	foo(univ(my_exist_c)),

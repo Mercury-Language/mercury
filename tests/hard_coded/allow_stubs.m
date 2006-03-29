@@ -7,7 +7,7 @@
 :- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
-:- import_module exception, std_util.
+:- import_module exception, univ.
 
 main -->
 	hello,

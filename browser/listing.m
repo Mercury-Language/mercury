@@ -20,7 +20,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module mdb.listing.
-
 :- interface.
 
 :- import_module io.
@@ -89,7 +88,9 @@
 :- import_module dir.
 :- import_module int.
 :- import_module map.
-:- import_module std_util.
+:- import_module maybe.
+
+%-----------------------------------------------------------------------------%
 
 :- type search_path  == list(path_name).
 

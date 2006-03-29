@@ -21,7 +21,9 @@
 
 :- import_module io.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
+
+%-----------------------------------------------------------------------------%
 
 :- type options_variables.
 
@@ -87,8 +89,10 @@
 :- import_module dir.
 :- import_module exception.
 :- import_module map.
+:- import_module std_util.
 :- import_module string.
 :- import_module term.
+:- import_module univ.
 
 %-----------------------------------------------------------------------------%
 

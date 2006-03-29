@@ -123,6 +123,8 @@
 :- import_module bool.
 :- import_module io.
 
+%-----------------------------------------------------------------------------%
+
     % Purity check a whole module.  Also do the post-typecheck stuff described
     % above, and eliminate double negations and calls to
     % `private_builtin.unsafe_type_cast/2'.  The first argument specifies
@@ -189,8 +191,9 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
+:- import_module pair.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
 :- import_module varset.

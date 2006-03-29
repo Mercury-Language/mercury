@@ -15,7 +15,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_tag_switch.
-
 :- interface.
 
 :- import_module backend_libs.switch_util.
@@ -25,6 +24,8 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
     % Generate efficient indexing code for tag based switches.
     %
@@ -51,7 +52,7 @@
 :- import_module assoc_list.
 :- import_module int.
 :- import_module map.
-:- import_module std_util.
+:- import_module pair.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%

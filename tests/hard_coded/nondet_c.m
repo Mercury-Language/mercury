@@ -11,7 +11,7 @@
 
 :- implementation.
 
-:- import_module std_util, list.
+:- import_module list, pair, solutions.
 
 main -->
 	{ solutions(split_pairs1("abcdef"), Pairs1) },

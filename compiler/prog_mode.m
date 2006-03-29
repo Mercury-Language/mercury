@@ -21,6 +21,8 @@
 
 :- import_module list.
 
+%-----------------------------------------------------------------------------%
+
     % Construct a mode corresponding to the standard `in', `out', `uo'
     % or `unused' mode.
     %
@@ -123,6 +125,7 @@
 :- pred strip_builtin_qualifiers_from_inst(mer_inst::in, mer_inst::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -131,10 +134,12 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module map.
+:- import_module pair.
 :- import_module set.
-:- import_module std_util.
 :- import_module term.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 in_mode(in_mode).
 out_mode(out_mode).

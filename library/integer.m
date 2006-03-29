@@ -5,12 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% file: integer.m
-% main authors:
-% aet Mar 1998.
-% Dan Hazel <odin@svrc.uq.edu.au> Oct 1999.
-%
+
+% File: integer.m.
+% Main authors: aet, Dan Hazel <odin@svrc.uq.edu.au>.
+% Stability: high.
+
 % Implements an arbitrary precision integer type and basic
 % operations on it. (An arbitrary precision integer may have
 % any number of digits, unlike an int, which is limited to the
@@ -18,11 +17,11 @@
 %
 % NOTE: All operators behave as the equivalent operators on ints do.
 % This includes the division operators: / // rem div mod.
-%
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module integer.
-
 :- interface.
 
 :- import_module float.
@@ -105,7 +104,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module require.
-:- import_module std_util.
 
 % Possible improvements:
 %

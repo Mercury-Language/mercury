@@ -5,19 +5,18 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
+
 % File: term_size_prof.m.
 % Author: zs.
 % Stability: low.
-%
+
 % This file is automatically imported into every module when term size
 % profiling is enabled. It contains support predicates used for term size
 % profiling.
-%
+
 %---------------------------------------------------------------------------%
 
 :- module term_size_prof_builtin.
-
 :- interface.
 
     % measure_size(Term, Size): return the size of Term as Size.
@@ -78,7 +77,9 @@
 
 :- import_module int.
 :- import_module require.
-:- import_module std_util.
+
+%---------------------------------------------------------------------------%
+
 
 :- pragma foreign_decl("C", "
 #ifndef MR_TERM_SIZE_PROFILING_GUARD

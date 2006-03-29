@@ -12,7 +12,7 @@
 
 :- implementation.
 
-:- import_module bool, int, list, std_util.
+:- import_module bool, int, list, pair.
 
 power_2_5 --> power(2,5).
 

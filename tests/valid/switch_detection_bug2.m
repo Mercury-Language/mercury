@@ -5,7 +5,7 @@
 :- module switch_detection_bug2.
 
 :- interface.
-:- import_module io, int, list, string, std_util.
+:- import_module io, int, list, pair.
 
 %-----------------------------------------------------------------------------%
 

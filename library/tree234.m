@@ -216,8 +216,8 @@
 
 :- import_module bool.
 :- import_module int.
+:- import_module pair.
 :- import_module require.
-:- import_module std_util.
 
 :- type tree234(K, V)
     --->    empty

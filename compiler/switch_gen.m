@@ -54,6 +54,8 @@
 
 :- import_module list.
 
+%-----------------------------------------------------------------------------%
+
 :- pred generate_switch(code_model::in, prog_var::in, can_fail::in,
     list(case)::in, hlds_goal_info::in, code_tree::out,
     code_info::in, code_info::out) is det.
@@ -81,7 +83,8 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module pair.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%

@@ -5,7 +5,7 @@
 :- pred main(io::di, io::uo) is det.
 
 :- implementation.
-:- import_module std_util, list, set, relation.
+:- import_module pair, list, set, relation.
 
 main -->
 	{ relation__from_assoc_list(

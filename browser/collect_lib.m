@@ -71,7 +71,6 @@
 :- import_module int.
 :- import_module io.
 :- import_module list.
-:- import_module std_util.
 
 dummy_pred_to_avoid_warning_about_nothing_exported.
 

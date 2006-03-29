@@ -15,9 +15,9 @@
 :- import_module list.
 :- import_module map.
 :- import_module prolog.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
+:- import_module univ.
 
 :- pred test_builtins(io::di, io::uo) is det.
 :- pred test_discriminated(io::di, io::uo) is det.

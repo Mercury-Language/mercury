@@ -5,17 +5,20 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% File: declarative_user.m
-% Author: Mark Brown
+
+% File: declarative_user.m.
+% Author: Mark Brown.
+
 % Purpose:
 %   This module performs all the user interaction of the front
 % end of the declarative debugger.  It is responsible for displaying
 % questions and bugs in a human-readable format, and for getting
 % responses to debugger queries from the user.
-%
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module mdb.declarative_user.
-
 :- interface.
 
 :- import_module mdb.browser_info.
@@ -24,6 +27,8 @@
 
 :- import_module bool.
 :- import_module io.
+
+%-----------------------------------------------------------------------------%
 
 :- type user_question(T)
     --->    plain_question(decl_question(T))
@@ -92,6 +97,7 @@
     is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -107,15 +113,17 @@
 :- import_module mdbcomp.program_representation.
 :- import_module mdbcomp.rtti_access.
 
-:- import_module bool.
 :- import_module char.
 :- import_module deconstruct.
 :- import_module exception.
 :- import_module getopt.
 :- import_module int.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
 :- import_module string.
+:- import_module univ.
+
+%-----------------------------------------------------------------------------%
 
 :- type user_state
     --->    user(

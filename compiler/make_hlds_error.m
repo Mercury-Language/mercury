@@ -79,7 +79,6 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_out.
 
-:- import_module std_util.
 :- import_module string.
 :- import_module varset.
 

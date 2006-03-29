@@ -16,11 +16,13 @@ exiting from signal handler
 
 :- module partition.
 :- interface.
-:- import_module io, int, list, std_util.
+:- import_module io.
 
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
+
+:- import_module int, list, pair, solutions.
 
 main -->
 	{ solutions(bug, List) },

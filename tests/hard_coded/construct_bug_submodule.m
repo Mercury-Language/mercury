@@ -47,7 +47,8 @@
 :- implementation.
 
 :- import_module bag.
-:- import_module std_util.
+:- import_module pair.
+:- import_module solutions.
 
 :- type stat == bag(list(string)).
 

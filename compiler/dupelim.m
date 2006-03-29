@@ -68,10 +68,13 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module map.
+:- import_module maybe.
+:- import_module pair.
 :- import_module set.
-:- import_module std_util.
 :- import_module svmap.
 :- import_module svset.
+
+%-----------------------------------------------------------------------------%
 
     % A std_map maps a list of standardized instructions to the list
     % of labels whose basic blocks have that standardized form.

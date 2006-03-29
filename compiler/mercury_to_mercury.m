@@ -54,7 +54,7 @@
 :- import_module char.
 :- import_module io.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
 :- import_module term.
 :- import_module varset.
 
@@ -394,6 +394,7 @@
 :- import_module int.
 :- import_module lexer.
 :- import_module map.
+:- import_module pair.
 :- import_module ops.
 :- import_module set.
 :- import_module string.

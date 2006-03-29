@@ -15,9 +15,9 @@
 % EDT, storing information relevant to the bug search.  Throughout this module
 % the type variables T and S refer to the types of nodes in the EDT and the
 % store of EDT nodes respectively.
+%-----------------------------------------------------------------------------%
 
 :- module mdb.declarative_analyser.
-
 :- interface.
 
 :- import_module mdb.declarative_debugger.
@@ -26,7 +26,9 @@
 :- import_module mdb.declarative_user.
 
 :- import_module io.
-:- import_module std_util.
+:- import_module maybe.
+
+%-----------------------------------------------------------------------------%
 
 :- type analyser_response(T)
     --->    no_suspects
@@ -136,6 +138,7 @@
     maybe(subterm_origin(T))::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -155,7 +158,11 @@
 :- import_module list.
 :- import_module map.
 :- import_module math.
+:- import_module pair.
 :- import_module string.
+:- import_module unit.
+
+%-----------------------------------------------------------------------------%
 
     % Describes what search strategy is being used by the analyser and the
     % state of the search.

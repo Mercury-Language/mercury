@@ -54,12 +54,13 @@
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_tailcall.
-
 :- interface.
 
 :- import_module ml_backend.mlds.
 
 :- import_module io.
+
+%-----------------------------------------------------------------------------%
 
     % Traverse the MLDS, marking all optimizable tail calls
     % as tail calls.
@@ -86,9 +87,12 @@
 
 :- import_module int.
 :- import_module list.
+:- import_module maybe.
+:- import_module pair.
 :- import_module solutions.
-:- import_module std_util.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 ml_mark_tailcalls(MLDS0, MLDS, !IO) :-
     MLDS = MLDS0 ^ defns := mark_tailcalls_in_defns(MLDS0 ^ defns).

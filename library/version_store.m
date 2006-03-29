@@ -1,13 +1,13 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2005 The University of Melbourne.
+% Copyright (C) 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% version_store.m
-% Ralph Becket <rafe@cs.mu.oz.au>
-% Thu Jan 22 12:01:19 EST 2004
-%
+
+% File: version_store.m.
+% Author: Ralph Becket <rafe@cs.mu.oz.au>
+
 % (See the header comments in version_types.m for an explanation of version
 % types.)
 %
@@ -17,12 +17,13 @@
 % Note that, unlike ordinary stores, liveness of data is via the version store
 % rather than the mutvars.  This means that dead data (i.e.  whose mutvar is
 % out of scope) in a version_store may not be garbage collected.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module version_store.
-
 :- interface.
+
+%-----------------------------------------------------------------------------%
 
 :- type version_store(S).
 
@@ -99,8 +100,11 @@
 :- import_module counter.
 :- import_module int.
 :- import_module list.
-:- import_module std_util.
+:- import_module unit.
+:- import_module univ.
 :- import_module version_array.
+
+%-----------------------------------------------------------------------------%
 
     % Index 0 of the version_store contains the counter used to assign
     % new version store mutvars.  A mutvar is just an index into the

@@ -1,26 +1,29 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2005 The University of Melbourne.
+% Copyright (C) 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% version_array2d.m
-% Ralph Becket <rafe@cs.mu.oz.au>
-% Wed Jan 15 15:17:11 EST 2003
-%
+
+% File: version_array2d.m.
+% Author: Ralph Becket <rafe@cs.mu.oz.au>.
+% Stability: medium-low.
+
 % Two-dimensional rectangular (i.e. not ragged) version arrays.
 %
 % See the header comments in version_types.m for more details about version
 % structures.
-%
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module version_array2d.
-
 :- interface.
 
-:- import_module list.
 :- import_module int.
+:- import_module list.
+
+%-----------------------------------------------------------------------------%
 
     % A version_array2d is a two-dimensional version array stored in row-major
     % order (that is, the elements of the first row in left-to-right order,
@@ -106,9 +109,11 @@
 :- implementation.
 
 :- import_module require.
-:- import_module std_util.
 :- import_module string.
 :- import_module version_array.
+
+%-----------------------------------------------------------------------------%
+
 
     % version_array2d(Rows, Cols, Array)
     %

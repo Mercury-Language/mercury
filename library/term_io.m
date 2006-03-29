@@ -5,15 +5,16 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
+
 % File: term_io.m.
 % Main author: fjh.
 % Stability: medium to high.
-%
+
 % This file encapsulates all the term I/O.
 % This exports predicates to read and write terms in the
 % nice ground representation provided in term.m.
-%
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module term_io.
@@ -24,6 +25,8 @@
 :- import_module ops.
 :- import_module term.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 % External interface: exported predicates
 
@@ -180,8 +183,9 @@
 :- import_module list.
 :- import_module parser.
 :- import_module require.
-:- import_module std_util.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 term_io.read_term(Result, !IO) :-
     io.get_op_table(Ops, !IO),

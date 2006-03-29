@@ -6,7 +6,7 @@
 
 :- module semidet_map.
 :- interface.
-:- import_module std_util, list, io.
+:- import_module maybe, list, io.
 
 :- pred main(io__state::di, io__state::uo) is det.
 

@@ -4,7 +4,7 @@
 
 :- module existential_types_test.
 :- interface.
-:- import_module std_util.
+:- import_module univ.
 
 	% my_univ_value(Univ):
 	%	returns the value of the object stored in Univ.

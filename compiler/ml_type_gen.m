@@ -33,6 +33,8 @@
 
 :- import_module io.
 
+%-----------------------------------------------------------------------------%
+
     % Generate MLDS definitions for all the types in the HLDS.
     %
 :- pred ml_gen_types(module_info::in, mlds_defns::out, io::di, io::uo) is det.
@@ -60,7 +62,6 @@
     %
 :- func ml_gen_special_member_decl_flags = mlds_decl_flags.
 
-    %
     % ml_uses_secondary_tag(ConsTagValues, Ctor, SecondaryTag):
     % Check if this constructor uses a secondary tag,
     % and if so, return the secondary tag value.
@@ -74,6 +75,7 @@
     %
 :- pred ml_tag_uses_base_class(cons_tag::in) is semidet.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -95,9 +97,12 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module pair.
 :- import_module string.
 :- import_module term.
+
+%-----------------------------------------------------------------------------%
 
 ml_gen_types(ModuleInfo, MLDS_TypeDefns, !IO) :-
     globals.io_lookup_bool_option(highlevel_data, HighLevelData, !IO),

@@ -48,7 +48,7 @@
 %
 % Mercury module names map directly to MLDS package names, except that
 % modules in the Mercury standard library map get a `mercury' prefix,
-% e.g. `mercury.builtin', `mercury.io', `mercury.std_util', etc.
+% e.g. `mercury.builtin', `mercury.io', `mercury.univ', etc.
 % [Rationale: omitting the `mercury' prefix would lead to namespace
 % pollution in the generated target language code.]
 
@@ -345,7 +345,8 @@
 :- import_module bool.
 :- import_module list.
 :- import_module map.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 
@@ -1816,7 +1817,7 @@ mlds_get_arg_types(Parameters) = ArgTypes :-
 % in the package XML.
 %
 % Note that modules in the Mercury standard library map get a `mercury'
-% prefix e.g. `mercury.builtin', `mercury.io', `mercury.std_util', etc.,
+% prefix e.g. `mercury.builtin', `mercury.io', `mercury.univ', etc.,
 % when mapped to MLDS package names.
 
 % :- type mlds_module_name == prim_data.module_name.

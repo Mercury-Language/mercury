@@ -22,7 +22,10 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module pair.
+
+%-----------------------------------------------------------------------------%
 
 :- pred module_add_pred_or_func(tvarset::in, inst_varset::in, existq_tvars::in,
     pred_or_func::in, sym_name::in, list(type_and_mode)::in,

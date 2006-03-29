@@ -23,7 +23,7 @@ The "imperative-solve.power" Benchmark
 :- implementation.
 
 
-:- import_module imperative_solve_impl, run, assoc_list, list, std_util.
+:- import_module imperative_solve_impl, run, assoc_list, list, pair.
 
 imperative_solve_power :-
  power_2_5([],Eout1),

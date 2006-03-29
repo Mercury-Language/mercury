@@ -58,6 +58,8 @@
 
 :- import_module bool.
 
+%-----------------------------------------------------------------------------%
+
 :- pred add_trail_ops(bool::in, bool::in, module_info::in,
     proc_info::in, proc_info::out) is det.
 
@@ -86,8 +88,9 @@
 :- import_module assoc_list.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
+:- import_module pair.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
 :- import_module varset.

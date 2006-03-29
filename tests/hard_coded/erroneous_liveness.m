@@ -7,7 +7,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- implementation.
-:- import_module std_util, char, int, string, list, set, require.
+:- import_module univ, char, int, string, list, set, require.
 
 :- type indexing ---> indexed ; unindexed.
 

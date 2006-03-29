@@ -45,7 +45,7 @@
 :- import_module parse_tree.prog_mode.
 
 :- import_module map.
-:- import_module std_util.
+:- import_module pair.
 :- import_module string.
 
 %----------------------------------------------------------------------------%

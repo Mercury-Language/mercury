@@ -5,8 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % This submodule of make_hlds handles the declarations of new types.
+
+%-----------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.add_type.
 :- interface.
@@ -21,6 +23,8 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
     % We allow more than one "definition" for a given type so
     % long all of them except one are actually just declarations,
@@ -69,10 +73,12 @@
 :- import_module int.
 :- import_module map.
 :- import_module multi_map.
-:- import_module std_util.
+:- import_module pair.
 :- import_module string.
 :- import_module svmap.
 :- import_module term.
+
+%-----------------------------------------------------------------------------%
 
 module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         item_status(Status0, NeedQual), !ModuleInfo, !IO) :-

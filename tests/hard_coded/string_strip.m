@@ -23,7 +23,7 @@
 
 :- implementation.
 
-:- import_module string, int, list, std_util, char.
+:- import_module string, int, list, pair, char, solutions.
 
 
 

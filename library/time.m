@@ -22,7 +22,7 @@
 :- interface.
 
 :- import_module io.
-:- import_module std_util.
+:- import_module maybe.
 
     % The `clock_t' type represents times measured in clock ticks.
     % NOTE: the unit used for a value of this type depends on whether it was

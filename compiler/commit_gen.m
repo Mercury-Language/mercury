@@ -35,7 +35,7 @@
 :- import_module libs.tree.
 :- import_module ll_backend.code_gen.
 
-:- import_module std_util.
+:- import_module pair.
 :- import_module string.
 
 %---------------------------------------------------------------------------%

@@ -21,6 +21,7 @@
 % data structures to MLDS (and then to C or Java, etc.).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module ll_backend.rtti_out.
 :- interface.
@@ -121,9 +122,11 @@
 :- import_module counter.
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
 :- import_module multi_map.
-:- import_module std_util.
+:- import_module pair.
 :- import_module string.
+:- import_module univ.
 
 %-----------------------------------------------------------------------------%
 

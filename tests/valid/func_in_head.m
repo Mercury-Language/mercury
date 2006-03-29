@@ -18,7 +18,7 @@
 
 :- implementation.
 
-:- import_module list, set, std_util.
+:- import_module list, set, pair.
 
 main(!IO) :-
 	test([1, 2] - "dummy", Set),

@@ -113,9 +113,9 @@
 :- import_module int.
 :- import_module list.
 :- import_module require.
-:- import_module std_util.
 :- import_module string.
 :- import_module type_desc.
+:- import_module univ.
 
 :- pragma foreign_code("C#", "
 
@@ -967,7 +967,7 @@ trailed_nondet_pragma_foreign_code :-
 :- pred reclaim_heap_nondet_pragma_foreign_code is erroneous.
 
     % The following is a built-in reference type. It is used to define the
-    % types store.generic_ref/2, store.generic_mutvar/2, std_util.mutvar/1,
+    % types store.generic_ref/2, store.generic_mutvar/2, solutions.mutvar/1,
     % benchmarking.int_ref/0, etc.
 :- type ref(T).
 
@@ -1137,14 +1137,14 @@ special.Compare.private_builtin.ref_1_0(
 #include ""mercury_builtin_types.h""
 
 MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(list, list, 1));
-MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(std_util, univ, 0));
+MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(univ, univ, 0));
 
 ").
 
 :- pragma foreign_code("C", "
 
 const MR_TypeCtorInfo ML_type_ctor_info_for_univ =
-    &MR_TYPE_CTOR_INFO_NAME(std_util, univ, 0);
+    &MR_TYPE_CTOR_INFO_NAME(univ, univ, 0);
 
 const MR_TypeCtorInfo ML_type_info_for_type_info =
     &MR_TYPE_CTOR_INFO_NAME(private_builtin, type_info, 0);
@@ -1158,7 +1158,7 @@ const MR_TypeCtorInfo ML_type_info_for_pseudo_type_info =
 
 const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_univ = {
     &MR_TYPE_CTOR_INFO_NAME(list, list, 1),
-    { (MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(std_util, univ, 0) }
+    { (MR_TypeInfo) &MR_TYPE_CTOR_INFO_NAME(univ, univ, 0) }
 };
 
 const MR_FA_TypeInfo_Struct1 ML_type_info_for_list_of_int = {
@@ -1259,7 +1259,7 @@ nyi_foreign_type_compare(Result, _, _) :-
 
     % var/1 is intended to make it possible to write code that effectively
     % has different implementations for different modes (see type_to_univ
-    % in std_util.m as an example). It has to be impure to ensure that
+    % in univ.m as an example). It has to be impure to ensure that
     % reordering doesn't cause the wrong mode to be selected.
     %
 :- impure pred var(T).

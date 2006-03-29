@@ -34,7 +34,7 @@
 :- import_module integer.
 :- import_module io.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -355,6 +355,7 @@
 :- import_module char.
 :- import_module getopt_io.
 :- import_module int.
+:- import_module pair.
 :- import_module pprint.
 :- import_module string.
 :- import_module term_io.

@@ -29,14 +29,15 @@
 :- import_module io.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
+:- import_module pair.
 :- import_module set.
-:- import_module std_util.
 :- import_module term.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
 %
-% Linear constraints over Q^n.
+% Linear constraints over Q^n
 %
 
 :- type constant == rat.
@@ -173,7 +174,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Bounding boxes and other approximations.
+% Bounding boxes and other approximations
 %
     % Approximate the solution space of a set of constraints using
     % a bounding box. If the system is inconsistent then the resulting
@@ -189,7 +190,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Linear solver.
+% Linear solver
 %
 
 :- type objective == lp_terms.
@@ -217,7 +218,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Projection. 
+% Projection
 %
 
 :- type projection_result 
@@ -254,7 +255,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Entailment. 
+% Entailment
 %
 
 :- type entailment_result
@@ -285,7 +286,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Stuff for intermodule optimization.
+% Stuff for intermodule optimization
 %
 
     % A function that converts an lp_var into a string.
@@ -300,7 +301,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Debugging predicates.
+% Debugging predicates
 %
 
     % Print out the constraints using the names in the varset.  If the 

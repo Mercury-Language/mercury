@@ -321,7 +321,6 @@
 
 :- import_module int.
 :- import_module solutions.
-:- import_module std_util.
 :- import_module string.
 :- import_module svmap.
 :- import_module term.

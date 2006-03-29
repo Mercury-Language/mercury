@@ -16,7 +16,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module output.
-
 :- interface.
 
 :- import_module output_prof_info.
@@ -25,6 +24,8 @@
 :- import_module io.
 :- import_module map.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 :- pred output.main(output::in, map(string, int)::in, io::di, io::uo) is det.
 
@@ -41,8 +42,8 @@
 :- import_module bool.
 :- import_module float.
 :- import_module list.
+:- import_module pair.
 :- import_module require.
-:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 

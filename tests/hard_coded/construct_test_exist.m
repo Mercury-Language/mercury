@@ -11,7 +11,7 @@
 
 :- implementation.
 
-:- import_module list, int, std_util, term, map, string, require.
+:- import_module list, int, maybe, pair, term, map, string, require.
 :- import_module type_desc, construct.
 
 :- typeclass tc1(V) where [

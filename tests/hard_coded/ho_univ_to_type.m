@@ -21,7 +21,7 @@
 
 :- implementation.
 
-:- import_module std_util, int, require.
+:- import_module univ, int, require.
 
 :- type mypred == (pred(int, int, int)).
 :- type mypred2 == (pred(float, int, int)).

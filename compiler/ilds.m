@@ -28,7 +28,8 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 

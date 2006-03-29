@@ -8,7 +8,7 @@
 
 :- implementation.
 
-:- import_module term, term_io, varset, std_util.
+:- import_module term, term_io, varset, univ.
 
 main -->
 	{ X = 4 },

@@ -49,8 +49,8 @@
 :- import_module getopt.
 :- import_module library.
 :- import_module list.
+:- import_module maybe.
 :- import_module relation.
-:- import_module std_util.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%

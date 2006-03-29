@@ -47,7 +47,8 @@
 :- import_module transform_hlds.pd_info.
 
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 

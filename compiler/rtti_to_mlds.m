@@ -80,9 +80,11 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module pair.
 :- import_module string.
 :- import_module term.
+:- import_module univ.
 
 %-----------------------------------------------------------------------------%
 

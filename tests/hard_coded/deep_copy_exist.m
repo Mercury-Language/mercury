@@ -9,8 +9,9 @@
 
 :- implementation.
 
-:- import_module char, list, int, std_util, term, map, string, require.
+:- import_module char, list, int, term, map, string, require.
 :- import_module enum.
+:- import_module univ.
 
 :- pred test_builtins(io__state::di, io__state::uo) is det.
 :- pred test_discriminated(io__state::di, io__state::uo) is det.

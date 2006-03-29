@@ -14,7 +14,7 @@
 :- pred main(io__state::di, io__state::uo) is cc_multi.
 
 :- implementation.
-:- import_module std_util, exception, list, int, string.
+:- import_module univ, maybe, exception, list, int, string.
 
 main --> 
 	{ try_all(det_throw, DetThrowExcp, DetThrowSols) },

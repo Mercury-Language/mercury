@@ -50,18 +50,18 @@ Launching XML browser (this may take some time) ...
 <?xml version="1.0"?>
 <predicate functor="predicate" type="mdb.browse.xml_predicate_wrapper" arity="2">
 	<String type="string" field="predicate_name">browse_arg.p</String>
-	<List functor="[|]" field="predicate_arguments" type="list.list(std_util.univ)" arity="2">
-		<univ_cons functor="univ_cons" type="std_util.univ" arity="1">
+	<List functor="[|]" field="predicate_arguments" type="list.list(univ.univ)" arity="2">
+		<univ_cons functor="univ_cons" type="univ.univ" arity="1">
 			<Int type="int">1</Int>
 		</univ_cons>
-		<List functor="[|]" type="list.list(std_util.univ)" arity="2">
-			<univ_cons functor="univ_cons" type="std_util.univ" arity="1">
+		<List functor="[|]" type="list.list(univ.univ)" arity="2">
+			<univ_cons functor="univ_cons" type="univ.univ" arity="1">
 				<baz functor="baz" type="browse_arg.foo" arity="2">
 					<Int type="int">1</Int>
 					<bar functor="bar" type="browse_arg.foo" arity="0" />
 				</baz>
 			</univ_cons>
-			<Nil functor="[]" type="list.list(std_util.univ)" arity="0" />
+			<Nil functor="[]" type="list.list(univ.univ)" arity="0" />
 		</List>
 	</List>
 </predicate>

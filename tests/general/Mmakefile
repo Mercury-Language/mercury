@@ -65,7 +65,7 @@ ORDINARY_PROGS=	\
 		string_test \
 		string_test_2 \
 		string_to_float \
-		univ \
+		test_univ \
 		unreachable \
 		unsafe_uniqueness
 

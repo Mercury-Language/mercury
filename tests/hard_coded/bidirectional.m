@@ -9,7 +9,7 @@
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
-:- import_module string, std_util, list, char.
+:- import_module string, maybe, list, char.
 
 main -->
 	format_list_of_int(read, List),

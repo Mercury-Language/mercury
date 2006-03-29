@@ -5,15 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% Main authors: rafe, juliensf
-%
+
+% File: prog_mutable.m.
+% Main authors: rafe, juliensf.
+
 % Utility predicates for dealing with mutable declarations.
-%
+
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_mutable.
-
 :- interface.
 
 :- import_module mdbcomp.prim_data.
@@ -68,7 +68,7 @@
 :- import_module libs.compiler_util.
 
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%

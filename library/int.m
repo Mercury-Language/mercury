@@ -381,7 +381,8 @@
 
 :- import_module exception.
 :- import_module math.
-:- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- instance enum(int) where [
     to_int(X) = X,

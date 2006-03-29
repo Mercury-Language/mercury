@@ -8,7 +8,7 @@
 
 :- implementation.
 
-:- import_module std_util, time, float.
+:- import_module maybe, time, float.
 
 main -->
 	time(Time),

@@ -83,7 +83,7 @@
 
 :- implementation.
 
-:- import_module bool, exception, list, int, require, set, std_util, string.
+:- import_module bool, exception, list, int, require, set, pair, string.
 :- import_module sparse_bitset.
 
 :- type bitset_tester(T) == pair(sparse_bitset(T), set__set(T)).

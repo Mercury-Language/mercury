@@ -7,7 +7,7 @@
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
-:- import_module std_util, list.
+:- import_module pair, list, solutions.
 
 main -->
 	{ solutions((pred(Pair::out) is multi :-
@@ -25,7 +25,7 @@ print_list([X-Y|Rest]) -->
 	io__write_string("\n"),
 	print_list(Rest).
 
-:- pred q(int::out, int::out) is multidet.
+:- pred q(int::out, int::out) is multi.
 
 q(X, Y) :-
 	p(X),
@@ -35,7 +35,7 @@ q(X, Y) :-
 		Y = 42
 	).
 
-:- pred p(int::out) is multidet.
+:- pred p(int::out) is multi.
 
 p(1).
 p(2).

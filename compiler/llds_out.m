@@ -208,11 +208,11 @@
 :- import_module dir.
 :- import_module int.
 :- import_module library.   % for the version number.
+:- import_module maybe.
+:- import_module pair.
 :- import_module multi_map.
 :- import_module set.
 :- import_module set_tree234.
-:- import_module std_util.
-:- import_module std_util.
 :- import_module string.
 :- import_module svmulti_map.
 :- import_module term.

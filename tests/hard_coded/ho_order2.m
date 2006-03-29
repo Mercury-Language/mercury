@@ -16,7 +16,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, list, map, require, std_util, string.
+:- import_module int, list, map, require, maybe, string, pair.
 
 %-----------------------------------------------------------------------------%
 

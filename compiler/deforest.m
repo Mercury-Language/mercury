@@ -38,6 +38,8 @@
 
 :- import_module io.
 
+%-----------------------------------------------------------------------------%
+
 :- pred deforestation(module_info::in, module_info::out, io::di, io::uo)
     is det.
 
@@ -85,10 +87,12 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
+:- import_module pair.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
+:- import_module univ.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%

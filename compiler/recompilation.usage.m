@@ -25,8 +25,8 @@
 :- import_module io.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module set.
-:- import_module std_util.
 
     % The resolved_used_items records the possible matches for a program item.
     % It is used by recompilation_check.m to work out whether a new item
@@ -107,7 +107,6 @@
 :- import_module int.
 :- import_module queue.
 :- import_module solutions.
-:- import_module std_util.
 :- import_module string.
 :- import_module svmap.
 

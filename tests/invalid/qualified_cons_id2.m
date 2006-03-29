@@ -2,7 +2,7 @@
 :- module qualified_cons_id2.
 :- interface.
 
-:- import_module std_util.
+:- import_module maybe.
 
 :- type foo(T)
 	---> yes(T)
@@ -17,4 +17,4 @@
 
 :- implementation.
 
-test(std_util.yes(T), T).
+test(maybe.yes(T), T).

@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: term_rep.m
-% Author: Ian MacLarty
-%
+
+% File: term_rep.m.
+% Author: Ian MacLarty.
+
 % This module implements an abstract type, term_rep, values of which are the
 % representation of some other value.  Constructing a representation from a
 % term is cc_multi, but then doing comparisons on the representation is
@@ -17,14 +17,18 @@
 % This is useful when we only want to consider the representation of a term
 % and don't care about it's actual value.
 
-:- module mdb.term_rep.
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
+:- module mdb.term_rep.
 :- interface.
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.program_representation.
 
-:- import_module std_util.
+:- import_module univ.
+
+%-----------------------------------------------------------------------------%
 
 :- type term_rep.
 
@@ -47,18 +51,22 @@
 :- pred field_pos(string::in, term_rep::in, int::out) is semidet.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module mdb.declarative_debugger.
 
 :- import_module construct.
 :- import_module deconstruct.
 :- import_module exception.
 :- import_module int.
 :- import_module list.
+:- import_module maybe.
 :- import_module string.
 :- import_module type_desc.
 
-:- import_module mdb.declarative_debugger.
+%-----------------------------------------------------------------------------%
 
 :- type term_rep
     ---> term_rep(univ)

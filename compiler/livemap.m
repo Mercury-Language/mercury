@@ -20,8 +20,10 @@
 
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module set.
-:- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- type livemap     ==  map(label, lvalset).
 :- type lvalset     ==  set(lval).
@@ -42,6 +44,7 @@
 :- import_module ll_backend.opt_util.
 
 :- import_module bool.
+:- import_module pair.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%

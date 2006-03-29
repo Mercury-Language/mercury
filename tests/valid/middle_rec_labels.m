@@ -9,7 +9,7 @@
 
 :- interface.
 
-:- import_module list, std_util.
+:- import_module list, maybe.
 
 :- type liveinfo	--->	live_lvalue(
 					lval,

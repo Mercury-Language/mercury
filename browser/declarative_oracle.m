@@ -173,7 +173,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module set.
-:- import_module std_util.
 :- import_module svmap.
 
 query_oracle(Question, Response, FromUser, !Oracle, !IO) :-

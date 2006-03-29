@@ -31,8 +31,9 @@
 :- import_module bag.
 :- import_module io.
 :- import_module list.
+:- import_module maybe.
+:- import_module pair.
 :- import_module set.
-:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 

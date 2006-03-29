@@ -15,7 +15,9 @@
 :- import_module hlds.pred_table.
 
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
+
+%-----------------------------------------------------------------------------%
 
     % In the hlds, we initially record the clauses for a predicate
     % in the clauses_info data structure which is part of the
@@ -82,6 +84,7 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
+:- import_module pair.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.

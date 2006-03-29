@@ -11,7 +11,7 @@
 
 :- interface.
 
-:- import_module io, std_util.
+:- import_module io, maybe.
 
 :- pred main(io__state::di, io__state::uo) is det.
 

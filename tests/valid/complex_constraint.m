@@ -1,6 +1,6 @@
 :- module complex_constraint.
 :- interface.
-:- import_module std_util, map, list.
+:- import_module map, list, pair.
 
 :- typeclass foo(A, B, C) <= (A -> B) where [].
 :- typeclass bar(B, C) <= (B -> C) where [].

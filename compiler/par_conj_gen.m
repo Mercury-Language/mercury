@@ -96,7 +96,6 @@
 %---------------------------------------------------------------------------%
 
 :- module ll_backend.par_conj_gen.
-
 :- interface.
 
 :- import_module hlds.code_model.
@@ -135,8 +134,9 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
+:- import_module pair.
 :- import_module set.
-:- import_module std_util.
 
 %---------------------------------------------------------------------------%
 

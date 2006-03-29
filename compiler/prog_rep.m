@@ -28,7 +28,7 @@
 
 :- import_module list.
 :- import_module map.
-:- import_module std_util.
+:- import_module pair.
 
 %---------------------------------------------------------------------------%
 
@@ -60,16 +60,15 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module libs.compiler_util.
+:- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
-:- import_module mdbcomp.
-:- import_module mdbcomp.program_representation.
-
 :- import_module int.
+:- import_module maybe.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
 

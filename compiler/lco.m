@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: lco.m.
 % Author: zs.
-%
+
 % Transform predicates with calls that are tail recursive modulo construction
 % where (1) all recursive calls have the same args participating in the "modulo
 % construction" part and (2) all the other output args are returned in the same
@@ -138,8 +138,9 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
+:- import_module pair.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 :- import_module svbag.
 :- import_module svmap.

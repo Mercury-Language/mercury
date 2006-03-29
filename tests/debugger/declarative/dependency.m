@@ -6,7 +6,7 @@
 :- pred main(io__state::di, io__state::uo) is cc_multi.
 
 :- implementation.
-:- import_module bool, int, list, require, std_util.
+:- import_module bool, int, list, require, pair.
 :- pragma promise_pure(main/2).
 main -->
 	{ impure turn_on_origin_debug },

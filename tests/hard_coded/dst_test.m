@@ -16,7 +16,7 @@
 
 :- implementation.
 
-:- import_module std_util, time.
+:- import_module maybe, time.
 
 main -->
 	difftest,

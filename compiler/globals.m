@@ -29,7 +29,7 @@
 :- import_module io.
 :- import_module list.
 :- import_module map.
-:- import_module std_util.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
@@ -280,9 +280,8 @@
 
 :- import_module libs.compiler_util.
 
-:- import_module map.
-:- import_module std_util.
 :- import_module string.
+:- import_module univ.
 
 %-----------------------------------------------------------------------------%
 

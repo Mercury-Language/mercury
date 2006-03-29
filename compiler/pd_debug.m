@@ -14,7 +14,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.pd_debug.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -25,6 +24,8 @@
 :- import_module io.
 :- import_module list.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 :- pred pd_debug_do_io(pred(io, io)::pred(di, uo) is det,
     io::di, io::uo) is det.
@@ -52,6 +53,7 @@
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -66,8 +68,10 @@
 :- import_module parse_tree.prog_out.
 
 :- import_module bool.
+:- import_module pair.
 :- import_module set.
-:- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 pd_debug_do_io(Pred, !IO) :-
     globals.io_lookup_bool_option(debug_pd, DoDebug, !IO),

@@ -24,8 +24,8 @@
 :- import_module list.
 :- import_module map.
 :- import_module string.
-:- import_module std_util.
 :- import_module term.
+:- import_module univ.
 
 :- type enum
 	--->	one

@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2005 The University of Melbourne.
+% Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -9,13 +9,16 @@
 
 % This module 
 
-:- module mode_robdd__implications.
+%---------------------------------------------------------------------------%
 
+:- module mode_robdd.implications.
 :- interface.
 
 :- import_module bool.
 :- import_module robdd.
 :- import_module term.
+
+%---------------------------------------------------------------------------%
 
 :- func init_imp_vars = imp_vars(T).
 
@@ -58,6 +61,7 @@
 :- func add_equalities_to_imp_vars(equiv_vars(T), imp_vars(T)) = imp_vars(T).
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -66,13 +70,15 @@
 :- import_module assoc_list.
 :- import_module list.
 :- import_module map.
+:- import_module pair.
 :- import_module require.
 :- import_module sparse_bitset.
-:- import_module std_util.
 :- import_module term.
 
 % Uncomment these for debugging.
 % :- import_module unsafe, io.
+
+%---------------------------------------------------------------------------%
 
 init_imp_vars = imp_vars(init, init, init, init).
 

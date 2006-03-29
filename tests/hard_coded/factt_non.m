@@ -7,7 +7,7 @@
 :- implementation.
 
 :- import_module int, float, string.
-:- import_module std_util, list, bool.
+:- import_module pair, maybe, list, bool, solutions.
 
 :- pred example(int, float, string).
 :- mode example(in, in, in) is semidet.

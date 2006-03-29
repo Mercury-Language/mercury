@@ -7,8 +7,8 @@
 %---------------------------------------------------------------------------%
 
 % File: robdd.m.
-% Main author: dmo
-% Stability: low
+% Main author: dmo.
+% Stability: low.
 
 % This module contains a Mercury interface to Peter Schachte's C
 % implementation of Reduced Ordered Binary Decision Diagrams (ROBDDs).
@@ -51,7 +51,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module robdd.
-
 :- interface.
 
 :- import_module io.
@@ -356,10 +355,10 @@
 :- import_module list.
 :- import_module map.
 :- import_module multi_map.
+:- import_module pair.
 :- import_module require.
 :- import_module set_bbbtree.
 :- import_module set_unordlist.
-:- import_module std_util.
 :- import_module string.
 
 % :- import_module unsafe.

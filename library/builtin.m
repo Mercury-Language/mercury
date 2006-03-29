@@ -128,7 +128,7 @@
 % PREDICATES.
 %
 % Most of these probably ought to be moved to another
-% module in the standard library such as std_util.m.
+% module in the standard library such as util.m.
 
     % copy/2 makes a deep copy of a data structure.  The resulting copy is
     % a `unique' value, so you can use destructive update on it.
@@ -421,7 +421,6 @@
 :- import_module int.
 :- import_module list.
 :- import_module require.
-:- import_module std_util.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%

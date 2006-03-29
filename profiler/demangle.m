@@ -19,17 +19,28 @@
 %-----------------------------------------------------------------------------%
 
 :- module demangle.
-
 :- interface.
 
 :- import_module string.
 
+%-----------------------------------------------------------------------------%
+
 :- pred demangle(string::in, string::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, list, char, std_util, bool, require.
+
+:- import_module bool.
+:- import_module char.
+:- import_module int.
+:- import_module list.
+:- import_module maybe.
+:- import_module pair.
+:- import_module require.
+
+%-----------------------------------------------------------------------------%
 
 :- type pred_category
     --->    index

@@ -206,9 +206,10 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
 :- import_module multi_map.
+:- import_module pair.
 :- import_module sparse_bitset.
-:- import_module std_util.
 :- import_module string.
 :- import_module svbimap.
 :- import_module svmulti_map.

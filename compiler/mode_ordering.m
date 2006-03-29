@@ -58,11 +58,11 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
+:- import_module pair.
 :- import_module relation.
 :- import_module set.
 :- import_module solutions.
 :- import_module stack.
-:- import_module std_util.
 
 mode_ordering(PredConstraintMap, SCCs, !ModuleInfo, !IO) :-
     list.foldl(mode_ordering.scc(PredConstraintMap), SCCs, !ModuleInfo),

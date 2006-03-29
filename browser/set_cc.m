@@ -6,7 +6,7 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 
-% Set_cc is an implementation of sets which uses compare_representation
+% set_cc is an implementation of sets which uses compare_representation
 % instead of builtin comparison, hence it is suitable for use with terms
 % that don't have a canonical representation.  It is implemented using
 % tree234_cc; see that module for further discussion about the implications
@@ -39,7 +39,7 @@
 
 :- import_module mdb.tree234_cc.
 
-:- import_module std_util.
+:- import_module maybe.
 
 :- type set_cc(T) == tree234_cc(T, unit).
 

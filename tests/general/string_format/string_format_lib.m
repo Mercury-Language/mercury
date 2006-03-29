@@ -28,7 +28,7 @@
 
 :- implementation.
 
-:- import_module float, std_util.
+:- import_module float, pair, maybe.
 
 %-----------------------------------------------------------------------------%
 

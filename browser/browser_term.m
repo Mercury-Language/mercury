@@ -6,16 +6,23 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 
+% File: browser_term.m.
+
 % This module defines a type to represent both natural and synthetic terms
 % for use by the browser.
 
-:- module mdb.browser_term.
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
+:- module mdb.browser_term.
 :- interface.
 
 :- import_module bool.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module univ.
+
+%---------------------------------------------------------------------------%
 
 :- type browser_term
     --->    plain_term(

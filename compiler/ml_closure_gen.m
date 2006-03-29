@@ -77,6 +77,7 @@
     ml_gen_info::in, ml_gen_info::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -89,8 +90,6 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
-:- import_module mdbcomp.prim_data.
-:- import_module parse_tree.prog_type.
 
 % XXX The following modules depend on the LLDS,
 % so ideally they should not be used here.
@@ -100,19 +99,23 @@
 :- import_module ll_backend.llds.              % needed for `layout_locn'
 :- import_module ll_backend.stack_layout.      % needed for
                                                % `represent_locn_as_int'
-
+:- import_module mdbcomp.prim_data.
 :- import_module ml_backend.ml_call_gen.
 :- import_module ml_backend.ml_unify_gen.
 :- import_module ml_backend.rtti_to_mlds.
+:- import_module parse_tree.prog_type.
 
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
+:- import_module pair.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
+
+%-----------------------------------------------------------------------------%
 
 ml_gen_closure(PredId, ProcId, Var, ArgVars, ArgModes, HowToConstruct, Context,
         Decls, Statements, !Info) :-

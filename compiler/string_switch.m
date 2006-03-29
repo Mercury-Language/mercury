@@ -48,8 +48,11 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module pair.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 generate_string_switch(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
         EndLabel, !MaybeEnd, Code, !CI) :-

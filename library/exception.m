@@ -19,13 +19,17 @@
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
 :- module exception.
 :- interface.
 
 :- import_module io.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
 :- import_module store.
+:- import_module univ.
+
+%-----------------------------------------------------------------------------%
 
     % throw(Exception):
     %   Throw the specified exception.
@@ -242,9 +246,11 @@
 :- implementation.
 
 :- import_module require.
+:- import_module solutions.
 :- import_module string.
+:- import_module unit.
 
-:- use_module solutions.
+%-----------------------------------------------------------------------------%
 
 :- pred try(determinism,          pred(T),        exception_result(T)).
 :- mode try(in(bound(det)),   pred(out) is det,       out(cannot_fail))
@@ -1052,7 +1058,7 @@ mercury__exception__builtin_catch_gc_trace(void *frame)
     type_info_for_handler_pred.MR_ti_var_arity_arity = 2;
     type_info_for_handler_pred.MR_ti_var_arity_arg_typeinfos[0] =
         (MR_TypeInfo)
-        &mercury__std_util__std_util__type_ctor_info_univ_0;
+        &mercury__univ__univ__type_ctor_info_univ_0;
     type_info_for_handler_pred.MR_ti_var_arity_arg_typeinfos[1] =
         (MR_TypeInfo) agc_locals->type_info;
     /*
@@ -1529,7 +1535,7 @@ call_handler(Handler, Exception, Result) :- Handler(Exception, Result).
     #include ""mercury_deep_profiling_hand.h""
 
     MR_DECLARE_TYPE_CTOR_INFO_STRUCT( \
-            mercury_data_std_util__type_ctor_info_univ_0);
+            mercury_data_univ__type_ctor_info_univ_0);
 #endif
 ").
 
@@ -2356,7 +2362,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
         MR_EXCEPTION_STRUCT->MR_excp_heap_zone->MR_zone_top);
     MR_save_transient_registers();
     exception = MR_deep_copy(exception,
-        (MR_TypeInfo) &mercury_data_std_util__type_ctor_info_univ_0,
+        (MR_TypeInfo) &mercury_data_univ__type_ctor_info_univ_0,
         MR_EXCEPTION_STRUCT->MR_excp_heap_ptr,
         MR_EXCEPTION_STRUCT->MR_excp_heap_zone->MR_zone_top);
     MR_restore_transient_registers();
@@ -2373,7 +2379,7 @@ MR_define_entry(mercury__exception__builtin_throw_1_0);
         MR_ENGINE(MR_eng_solutions_heap_zone)->MR_zone_top);
     MR_save_transient_registers();
     exception = MR_deep_copy(exception,
-        (MR_TypeInfo) &mercury_data_std_util__type_ctor_info_univ_0,
+        (MR_TypeInfo) &mercury_data_univ__type_ctor_info_univ_0,
         saved_solns_heap_ptr,
         MR_ENGINE(MR_eng_solutions_heap_zone)->MR_zone_top);
     MR_restore_transient_registers();

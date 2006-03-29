@@ -8,7 +8,7 @@
 
 :- implementation.
 
-:- import_module int, exception, std_util, list.
+:- import_module int, exception, list, maybe, univ.
 
 main(!IO) :-
 	% Test finding wrong answer children with a try_all.

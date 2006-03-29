@@ -369,8 +369,9 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module int.
+:- import_module maybe.
+:- import_module pair.
 :- import_module solutions.
-:- import_module std_util.
 :- import_module string.
 :- import_module svmap.
 :- import_module svset.

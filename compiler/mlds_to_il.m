@@ -54,6 +54,9 @@
 % [ ] Should replace hard-coded of int32 with a more abstract name such
 %     as `mercury_int_il_type'.
 
+% XXX We should rename this module to mlds_to_ilds, since that is what
+%     it actually does.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -69,8 +72,8 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
+:- import_module maybe.
 :- import_module set.
-:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -174,6 +177,7 @@
 :- import_module int.
 :- import_module library.
 :- import_module map.
+:- import_module pair.
 :- import_module string.
 :- import_module term.
 
@@ -1160,7 +1164,7 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
             )
         ),
 
-        UnivSymName = qualified(unqualified("std_util"), "univ"),
+        UnivSymName = qualified(unqualified("univ"), "univ"),
         UnivMercuryType = defined(UnivSymName, [], star),
         UnivMLDSType = mercury_type(UnivMercuryType,
             type_cat_user_ctor, non_foreign_type(UnivMercuryType)),

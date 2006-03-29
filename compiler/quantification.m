@@ -124,9 +124,9 @@
 :- import_module bool.
 :- import_module enum.
 :- import_module map.
-:- import_module require.
+:- import_module maybe.
+:- import_module pair.
 :- import_module sparse_bitset.
-:- import_module std_util.
 :- import_module term.
 :- import_module varset.
 
@@ -959,14 +959,14 @@ case_vars(NonLocalsToRecompute, Cases, !Set, !LambdaSet) :-
         [], CaseSets, [], CaseLambdaSets),
     (
         CaseSets = [],
-        error("case_vars: no cases")
+        unexpected(this_file, "case_vars: no cases (1)")
     ;
         CaseSets = [_ | _],
         union_list(CaseSets, CasesSet)
     ),
     (
         CaseLambdaSets = [],
-        error("case_vars: no cases")
+        unexpected(this_file, "case_vars: no cases (2)")
     ;
         CaseLambdaSets = [_ | _],
         union_list(CaseLambdaSets, CasesLambdaSet)

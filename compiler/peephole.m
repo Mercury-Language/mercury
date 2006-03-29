@@ -6,14 +6,14 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% peephole.m - local LLDS to LLDS optimizations based on pattern-matching.
+% File: peeophole.m:
+% Authors: fjh, zs.
 
-% Authors: fjh and zs.
+% Local LLDS to LLDS optimizations based on pattern-matching.
 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.peephole.
-
 :- interface.
 
 :- import_module ll_backend.llds.
@@ -41,7 +41,8 @@
 
 :- import_module int.
 :- import_module map.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module pair.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%

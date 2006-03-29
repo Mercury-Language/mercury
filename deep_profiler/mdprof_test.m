@@ -42,9 +42,9 @@
 :- import_module int.
 :- import_module library.
 :- import_module list.
+:- import_module maybe.
 :- import_module require.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%

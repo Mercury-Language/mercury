@@ -14,7 +14,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module prof_debug.
-
 :- interface.
 
 :- import_module assoc_list.
@@ -36,7 +35,7 @@
 
 :- implementation.
 
-:- import_module std_util.
+:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 

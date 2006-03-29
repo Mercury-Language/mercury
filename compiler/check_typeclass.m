@@ -110,10 +110,11 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module multi_map.
+:- import_module pair.
 :- import_module set.
 :- import_module solutions.
-:- import_module std_util.
 :- import_module string.
 :- import_module svmap.
 :- import_module svmulti_map.

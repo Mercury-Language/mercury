@@ -190,7 +190,6 @@
 :- import_module libs.compiler_util.
 
 :- import_module set.
-:- import_module std_util.
 :- import_module term.
 :- import_module term_io.
 :- import_module varset.

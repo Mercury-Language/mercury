@@ -19,10 +19,13 @@
 % The put and get operations are amortized constant-time.
 
 %--------------------------------------------------------------------------%
+%--------------------------------------------------------------------------%
 
 :- module queue.
 :- interface.
 :- import_module list.
+
+%--------------------------------------------------------------------------%
 
 :- type queue(T).
 
@@ -121,7 +124,9 @@
 :- implementation.
 
 :- import_module int.
-:- import_module std_util.
+:- import_module pair.
+
+%--------------------------------------------------------------------------%
 
     % This implementation is in terms of a pair of lists. We impose the
     % extra constraint that the `off' list is empty if and only if the queue

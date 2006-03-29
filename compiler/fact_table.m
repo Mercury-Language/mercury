@@ -127,8 +127,9 @@
 :- import_module library.
 :- import_module map.
 :- import_module math.
+:- import_module maybe.
+:- import_module pair.
 :- import_module parser.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
 :- import_module term_io.

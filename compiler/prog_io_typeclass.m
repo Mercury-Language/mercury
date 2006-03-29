@@ -26,6 +26,8 @@
 :- import_module term.
 :- import_module varset.
 
+%-----------------------------------------------------------------------------%
+
     % Parse a typeclass declaration.
     %
 :- pred parse_typeclass(module_name::in, varset::in, list(term)::in,
@@ -62,11 +64,13 @@
 
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 parse_typeclass(ModuleName, VarSet, TypeClassTerm, Result) :-
     % XXX We should return an error if we get more than one arg, instead of

@@ -19,6 +19,8 @@
 :- import_module bool.
 :- import_module list.
 
+%--------------------------------------------------------------------------%
+
 :- type set_unordlist(_T).
 
 	% `set_unordlist.list_to_set(List, Set)' is true iff `Set' is the set
@@ -240,11 +242,11 @@
 :- mode set_unordlist.divide(pred(in) is semidet, in, out, out) is det.
 
 %--------------------------------------------------------------------------%
+%--------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module list.
-:- import_module std_util.
+%--------------------------------------------------------------------------%
 
 :- type set_unordlist(T) ==	  list(T).
 

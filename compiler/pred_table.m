@@ -26,7 +26,7 @@
 
 :- import_module list.
 :- import_module map.
-:- import_module std_util.
+:- import_module maybe.
 
 :- implementation.
 
@@ -39,6 +39,7 @@
 :- import_module bool.
 :- import_module int.
 :- import_module multi_map.
+:- import_module pair.
 :- import_module string.
 :- import_module svmap.
 :- import_module svmulti_map.

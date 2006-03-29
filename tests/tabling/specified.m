@@ -22,7 +22,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module require.
-:- import_module std_util.
+:- import_module pair.
 
 main(!IO) :-
     perform_trials(aplp_vs_vplp, [1, 4], 14, 3, 0, 0, !IO),

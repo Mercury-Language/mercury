@@ -16,16 +16,20 @@
 %	<http://www.cl.cam.ac.uk/~njn25/pubs/masters2001.ps.gz>.
 %
 %-----------------------------------------------------------------------------%
-:- module analysis.
 
+:- module analysis.
 :- interface.
 
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module io.
 :- import_module list.
+:- import_module maybe.
 :- import_module set.
-:- import_module std_util.
+:- import_module unit.
+:- import_module univ.
+
+%-----------------------------------------------------------------------------%
 
 	% The intention is that eventually any compiler can
 	% use this library via .NET by defining an instance

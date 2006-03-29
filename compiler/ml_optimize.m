@@ -41,6 +41,7 @@
 :- pred optimize(mlds::in, mlds::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -57,8 +58,12 @@
 :- import_module bool.
 :- import_module int.
 :- import_module list.
+:- import_module maybe.
+:- import_module pair.
 :- import_module std_util.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 :- type opt_info
     --->    opt_info(

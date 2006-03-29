@@ -5,22 +5,24 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
+
 % File: profiling_builtin.m.
 % Authors: conway, zs.
 % Stability: low.
-%
+
 % This file is automatically imported into every module when deep profiling
 % is enabled. It contains support predicates used for deep profiling.
 % The tasks of the support predicates are described in some detail in
 % ``Engineering a profiler for a logic programming language'' by Thomas Conway
 % and Zoltan Somogyi.
-%
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- module profiling_builtin.
-
 :- interface.
+
+%---------------------------------------------------------------------------%
 
 :- type proc_layout.
 :- type proc_dynamic.
@@ -1507,8 +1509,6 @@
 #undef MR_PROCNAME
 #undef MR_REC_DEPTH_BODY
 }").
-
-:- import_module std_util.
 
 % These versions are only used for back-ends for which there is no
     % matching foreign_proc version.

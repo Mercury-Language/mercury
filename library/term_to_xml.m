@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: term_to_xml.m.
 % Main author: maclarty.
 % Stability: low.
-%
+
 % This module provides two mechanisms for converting Mercury terms
 % to XML documents.
 %
@@ -46,7 +46,7 @@
 %
 % In both methods the XML document can be annotated with a stylesheet
 % reference.
-%
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -57,7 +57,7 @@
 :- import_module int.
 :- import_module io.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
 :- import_module type_desc.
 
 %-----------------------------------------------------------------------------%
@@ -529,6 +529,8 @@
 :- import_module map.
 :- import_module require.
 :- import_module string.
+:- import_module unit.
+:- import_module univ.
 
 %-----------------------------------------------------------------------------%
 

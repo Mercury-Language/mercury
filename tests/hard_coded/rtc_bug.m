@@ -4,7 +4,7 @@
 :- pred main(state::di, state::uo) is det.
 
 :- implementation.
-:- import_module relation, std_util, list.
+:- import_module relation, pair, list.
 
 main -->
 	{ l(L) },

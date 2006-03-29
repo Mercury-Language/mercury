@@ -18,7 +18,7 @@
 
 :- implementation.
 
-:- import_module std_util, list, int, require.
+:- import_module pair, list, int, require.
 
 :- type interval == pair(int).
 

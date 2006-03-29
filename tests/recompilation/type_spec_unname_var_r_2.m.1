@@ -2,7 +2,7 @@
 
 :- interface.
 
-:- import_module list, std_util.
+:- import_module list, pair.
 
 :- pred p(T::in, U::in, V::in, pair(T, U)::out) is det.
 :- pragma type_spec(p/4, T = list(V)).

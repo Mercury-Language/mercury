@@ -62,8 +62,8 @@
 :- interface.
 
 :- import_module list.
+:- import_module maybe.
 :- import_module random.
-:- import_module std_util.
 
 :- type array(T).
 

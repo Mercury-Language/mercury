@@ -19,6 +19,8 @@
 :- interface.
 :- import_module list.
 
+%--------------------------------------------------------------------------%
+
 :- type stack(T).
 
 	% `stack.init(Stack)' is true iff `Stack' is an empty stack.
@@ -86,7 +88,8 @@
 :- implementation.
 
 :- import_module require.
-:- import_module std_util.
+
+%--------------------------------------------------------------------------%
 
 :- type stack(T) == list(T).
 

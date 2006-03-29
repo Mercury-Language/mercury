@@ -5,7 +5,7 @@
 
 :- interface.
 
-:- import_module std_util.
+:- import_module maybe, pair.
 
 :- type agg_func(T, S) ---> agg(S, func(S, T) = S).
 :- inst agg_mode == bound(agg(ground, func(in, in) = out is det)).
@@ -61,7 +61,7 @@
 
 :- implementation.
 
-:- import_module list.
+:- import_module list, solutions.
 
 aggregate(P, agg(S0, F), S) :-
 	A = (pred(Val::in, Acc0::in, Acc::out) is det :- Acc = F(Acc0, Val)),

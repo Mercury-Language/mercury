@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: format_call.m.
-% Author: zs
-%
+% Author: zs.
+
 % The job of this module is to generate warnings about calls to string.format
 % and io.format in which the format string and the supplied lists of values
 % do not agree. The difficult part of this job is actually finding the values
@@ -74,7 +74,8 @@
 % functions such as string.append. However, there is no convenient way to
 % evaluate the extent of a need for this capability until this change is
 % bootstrapped, so that is left for future work.
-%
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.format_call.
@@ -90,12 +91,15 @@
 :- import_module list.
 :- import_module set.
 
+%-----------------------------------------------------------------------------%
+
 :- pred is_format_call(module_name::in, string::in, list(prog_var)::in,
     prog_var::out, prog_var::out) is semidet.
 
 :- pred find_format_call_errors(module_info::in, hlds_goal::in,
     set(context_det_msg)::in, set(context_det_msg)::out) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -106,11 +110,15 @@
 :- import_module counter.
 :- import_module exception.
 :- import_module map.
+:- import_module maybe.
+:- import_module pair.
 :- import_module require.
-:- import_module std_util.
 :- import_module string.
 :- import_module svmap.
 :- import_module svset.
+:- import_module univ.
+
+%-----------------------------------------------------------------------------%
 
 :- type format_call_site
     --->    format_call_site(

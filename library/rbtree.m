@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% Red-black tree module.
+
+% File: rbtree.m.
 % Main author: petdr.
 % Stability: medium.
-%
+
 % Contains an implementation of red black trees.
 %
 % *** Exit conditions of main predicates ***
@@ -45,6 +45,8 @@
 
 :- import_module assoc_list.
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
 :- type rbtree(Key, Value).
 
@@ -229,8 +231,11 @@
 
 :- import_module bool.
 :- import_module int.
+:- import_module maybe.
+:- import_module pair.
 :- import_module require.
-:- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 :- type rbtree(K,V)
     --->    empty

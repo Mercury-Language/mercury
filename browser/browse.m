@@ -6,7 +6,11 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 
-% browse - implements a very simple term browser.
+% File: browse.m.
+% Author: aet.
+% Stability: low.
+
+% Implements a very simple term browser.
 % There are a number of features that haven't been incorporated:
 %
 % - Scripting language that allows precise control over
@@ -14,12 +18,11 @@
 % - User preferences, which use the scripting language
 %   to allow user control beyond the provided defaults.
 % - Node expansion and contraction in the style of Windows Explorer.
-%
-% authors: aet
-% stability: low
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdb.browse.
-
 :- interface.
 
 :- import_module mdb.browser_info.
@@ -27,7 +30,10 @@
 
 :- import_module io.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module univ.
+
+%---------------------------------------------------------------------------%
 
     % The interactive term browser. The caller type will be `browse', and
     % the default format for the `browse' caller type will be used. Since
@@ -173,10 +179,10 @@
 :- import_module getopt.
 :- import_module int.
 :- import_module map.
+:- import_module pair.
 :- import_module parser.
 :- import_module pprint.
 :- import_module require.
-:- import_module std_util.
 :- import_module string.
 :- import_module term_to_xml.
 :- import_module type_desc.

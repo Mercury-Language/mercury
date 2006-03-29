@@ -32,7 +32,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module mdbcomp.program_representation.
-
 :- interface.
 
 :- import_module mdbcomp.prim_data.
@@ -40,7 +39,7 @@
 :- import_module bool.
 :- import_module char.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
 :- import_module type_desc.
 
     % A representation of the goal we execute. These need to be generated

@@ -243,6 +243,9 @@
     %
 :- pred dir.use_windows_paths is semidet.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module char.
@@ -251,6 +254,8 @@
 :- import_module int.
 :- import_module require.
 :- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
 dir.directory_separator = (if have_win32 then ('\\') else ('/')).
 

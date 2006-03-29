@@ -12,7 +12,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_type_subst.
-
 :- interface.
 
 :- import_module parse_tree.prog_data.
@@ -128,7 +127,7 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module map.
-:- import_module std_util.
+:- import_module maybe.
 :- import_module svmap.
 
 %-----------------------------------------------------------------------------%

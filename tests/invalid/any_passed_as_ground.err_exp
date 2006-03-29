@@ -3,8 +3,8 @@ any_passed_as_ground.m:036:   in call to predicate `list.member/2':
 any_passed_as_ground.m:036:   mode error: arguments `TypeInfo_16, V_11, Xs'
 any_passed_as_ground.m:036:   have the following insts:
 any_passed_as_ground.m:036:     unique(private_builtin.type_info(unique(<type_ctor_info
-any_passed_as_ground.m:036:     for std_util.pair/2>), unique(<type_ctor_info
-any_passed_as_ground.m:036:     for .int/0>), unique(<type_ctor_info for
+any_passed_as_ground.m:036:     for pair.pair/2>), unique(<type_ctor_info for
+any_passed_as_ground.m:036:     .int/0>), unique(<type_ctor_info for
 any_passed_as_ground.m:036:     any_passed_as_ground.st/0>))),
 any_passed_as_ground.m:036:     free,
 any_passed_as_ground.m:036:     any

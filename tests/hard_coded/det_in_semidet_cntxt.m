@@ -17,7 +17,7 @@
 
 :- implementation.
 
-:- import_module list, require, std_util, string.
+:- import_module list, require, maybe, string.
 
 :- type	name	== 	string.
 :- type sympton	== 	string.

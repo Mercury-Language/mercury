@@ -25,7 +25,9 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module io.
-:- import_module std_util.
+:- import_module pair.
+
+%-----------------------------------------------------------------------------%
 
     % Get the hlds_goal which represents the assertion.
     %
@@ -124,6 +126,7 @@
 :- pred normalise_goal(hlds_goal::in, hlds_goal::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -146,7 +149,6 @@
 :- import_module map.
 :- import_module set.
 :- import_module solutions.
-:- import_module std_util.
 :- import_module string.
 
 :- type subst == map(prog_var, prog_var).

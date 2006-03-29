@@ -31,6 +31,8 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
+%-----------------------------------------------------------------------------%
+
 :- type store_map_run_type
     --->    final_allocation
     ;       for_stack_opt.
@@ -64,8 +66,9 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
+:- import_module pair.
 :- import_module set.
-:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 

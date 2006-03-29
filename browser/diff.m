@@ -9,16 +9,16 @@
 % This module computes diffs between terms.
 
 :- module mdb.diff.
-
 :- interface.
 
 :- import_module int.
 :- import_module io.
-:- import_module std_util.
+:- import_module univ.
 
 :- pred report_diffs(int::in, int::in, univ::in, univ::in, io::di, io::uo)
     is cc_multi.
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.

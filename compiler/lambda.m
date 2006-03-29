@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: lambda.m.
 % Main author: fjh.
-%
+
 % This module is a pass over the HLDS to deal with lambda expressions.
 %
 % Lambda expressions are converted into separate predicates, so for
@@ -105,8 +105,8 @@
 :- import_module bool.
 :- import_module list.
 :- import_module map.
+:- import_module pair.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
 :- import_module varset.

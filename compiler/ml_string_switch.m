@@ -51,8 +51,11 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module pair.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 generate(Cases, Var, CodeModel, _CanFail, Context, Decls, Statements, !Info) :-
     MLDS_Context = mlds_make_context(Context),

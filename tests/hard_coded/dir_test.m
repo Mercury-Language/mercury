@@ -8,7 +8,7 @@
 
 :- implementation.
 
-:- import_module bool, dir, exception, list, require, std_util, string.
+:- import_module bool, dir, exception, list, require, univ, string.
 
 main -->
 	io__write_string("Directory separator is '"),

@@ -299,8 +299,8 @@
 
 :- implementation.
 
+:- import_module pair.
 :- import_module require.
-:- import_module std_util.
 
 :- type bimap(K, V) --->    bimap(map(K, V), map(V, K)).
 

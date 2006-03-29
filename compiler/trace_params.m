@@ -5,11 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: trace_params.m.
-%
 % Author: zs.
-%
+
 % This module defines the parameters of execution tracing at various trace
 % levels and with various settings of the --suppress-trace option.
 %
@@ -34,7 +33,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module libs.trace_params.
-
 :- interface.
 
 :- import_module hlds.
@@ -42,7 +40,9 @@
 :- import_module mdbcomp.prim_data.
 
 :- import_module bool.
-:- import_module std_util.
+:- import_module maybe.
+
+%-----------------------------------------------------------------------------%
 
 :- type trace_level.
 :- type trace_suppress_items.
@@ -110,6 +110,9 @@
 
 :- func encode_suppressed_events(trace_suppress_items) = int.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module hlds.special_pred.
@@ -119,8 +122,11 @@
 :- import_module char.
 :- import_module int.
 :- import_module list.
+:- import_module pair.
 :- import_module set.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 :- type trace_level
     --->    none

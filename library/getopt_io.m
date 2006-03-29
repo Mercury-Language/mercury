@@ -89,8 +89,8 @@
 :- import_module io.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module set.
-:- import_module std_util.
 
 % getopt_io.process_options(OptionOps, Args, NonOptionArgs, Result)
 % getopt_io.process_options(OptionOps, Args, OptionArgs, NonOptionArgs, Result)
@@ -286,6 +286,7 @@
 
 :- implementation.
 
+:- import_module pair.
 :- import_module require.
 :- import_module string.
 :- import_module svset.

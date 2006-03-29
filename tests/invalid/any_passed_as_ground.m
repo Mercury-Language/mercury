@@ -21,7 +21,7 @@
 
 :- implementation.
 
-:- import_module int, list, std_util.
+:- import_module int, list, pair.
 
 :- solver type st where representation is int, initialisation is i.
 

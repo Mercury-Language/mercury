@@ -32,10 +32,11 @@
 :- import_module bag.
 :- import_module bool.
 :- import_module list.
+:- import_module maybe.
+:- import_module pair.
 :- import_module set.
-:- import_module std_util.
 
-:- interface.
+%-----------------------------------------------------------------------------%
 
     % The mode_info data structure and access predicates.
 
@@ -282,7 +283,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module queue.
-:- import_module std_util.
 :- import_module string.
 :- import_module svbag.
 :- import_module term.

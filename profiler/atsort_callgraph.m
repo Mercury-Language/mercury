@@ -16,7 +16,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module atsort_callgraph.
-
 :- interface.
 
 :- import_module io.
@@ -32,7 +31,6 @@
 
 :- import_module relation.
 :- import_module set.
-:- import_module std_util.
 
 main(!IO) :-
     io.command_line_arguments(Files, !IO),

@@ -183,7 +183,7 @@
 
 :- import_module io.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -405,6 +405,7 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
+:- import_module pair.
 :- import_module set.
 :- import_module string.
 :- import_module svmap.

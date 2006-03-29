@@ -36,6 +36,8 @@
 
 :- import_module io.
 
+%----------------------------------------------------------------------------%
+
     % Prepare a module for running the main termination pass.
     % This involves setting up argument size and termination information
     % for builtin and compiler-generated predicates and also setting
@@ -88,6 +90,8 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
+:- import_module pair.
 :- import_module relation.
 :- import_module set.
 :- import_module std_util.

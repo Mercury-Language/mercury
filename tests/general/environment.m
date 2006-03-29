@@ -10,7 +10,7 @@
 :- pred main(io__state :: di, io__state :: uo) is det.
 
 :- implementation.
-:- import_module list, bool, std_util, string.
+:- import_module list, bool, maybe, string.
 
 :- pred environment__test(string, bool, bool, io__state, io__state).
 :- mode environment__test(in, in, in, di, uo) is det.

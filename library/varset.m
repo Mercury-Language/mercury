@@ -34,8 +34,8 @@
 :- import_module assoc_list.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module set.
-:- import_module std_util.
 :- import_module term.
 
 :- type varset(T).
@@ -256,6 +256,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module string.

@@ -3,7 +3,7 @@
 :- import_module io.
 :- pred main(io__state::di, io__state::uo) is cc_multi.
 :- implementation.
-:- import_module std_util.
+:- import_module univ, pair.
 
 main -->
 	test(d1, d1),

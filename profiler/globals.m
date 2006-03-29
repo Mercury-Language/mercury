@@ -6,6 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
+% File: globals.m.
 % Main author: fjh.
 
 % This module exports the `globals' type and associated access predicates.
@@ -16,31 +17,35 @@
 %-----------------------------------------------------------------------------%
 
 :- module globals.
-
 :- interface.
+
+:- import_module options.
 
 :- import_module bool.
 :- import_module getopt.
 :- import_module io.
 :- import_module list.
-:- import_module options.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- type globals.
 
-%-----------------------------------------------------------------------------%
-
 :- type what_to_profile
     --->    memory_words
-    ;   memory_cells
-    ;   user_plus_system_time
-    ;   user_time
-    ;   real_time.
+    ;       memory_cells
+    ;       user_plus_system_time
+    ;       user_time
+    ;       real_time.
 
 :- pred what_to_profile(string, what_to_profile) is semidet.
 :- mode what_to_profile(in, out) is semidet.
 :- mode what_to_profile(out, in) is det.
 
-    % Access predicates for the `globals' structure.
+%-----------------------------------------------------------------------------%
+%
+% Access predicates for the `globals' structure
+%
 
 :- pred globals.init(option_table::in, globals::out) is det.
 
@@ -95,8 +100,8 @@
 
 :- import_module map.
 :- import_module require.
-:- import_module std_util.
 :- import_module string.
+:- import_module univ.
 
 %-----------------------------------------------------------------------------%
 

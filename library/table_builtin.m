@@ -1389,11 +1389,11 @@ pretend_to_generate_value(Bogus) :-
 :- implementation.
 
 :- import_module require.
-:- import_module std_util.
+:- import_module univ.
 
 :- pragma foreign_decl("C", "
 
-#include ""mercury_misc.h""     /* for MR_fatal_error(); */
+#include ""mercury_misc.h""         /* for MR_fatal_error(); */
 #include ""mercury_type_info.h""    /* for MR_TypeCtorInfo_Struct; */
 #include ""mercury_tabling.h""      /* for MR_TrieNode, etc. */
 

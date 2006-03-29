@@ -13,15 +13,17 @@
 % can parse the command-line options.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module options.
-
 :- interface.
 
 :- import_module bool.
 :- import_module getopt.
 :- import_module io.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 :- type option
     % Verbosity options
@@ -63,8 +65,9 @@
 
 :- implementation.
 
-:- import_module std_util.
 :- import_module map.
+
+%-----------------------------------------------------------------------------%
 
     % Verbosity Options
 option_default(verbose,                 bool(no)).

@@ -5,7 +5,7 @@
 
 :- interface.
 
-:- import_module list, set, std_util.
+:- import_module list, set, pair.
 
 :- type instr == pair(instruction, string).
 

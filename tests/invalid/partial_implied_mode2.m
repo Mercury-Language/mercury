@@ -3,7 +3,7 @@
 
 :- interface.
 
-:- import_module std_util, list.
+:- import_module list, maybe, pair.
 
 :- type pin.
 :- type quantity_key.

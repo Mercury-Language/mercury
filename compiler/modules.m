@@ -53,9 +53,10 @@
 :- import_module io.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
+:- import_module pair.
 :- import_module relation.
 :- import_module set.
-:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -825,6 +826,7 @@
 :- import_module svrelation.
 :- import_module svset.
 :- import_module term.
+:- import_module unit.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%

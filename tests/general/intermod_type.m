@@ -9,7 +9,7 @@
 :- interface.
 
 :- import_module intermod_type2.
-:- import_module int, io, list, std_util.
+:- import_module int, io, list, pair.
 
 :- pred main(io__state::di, io__state::uo) is det.
 

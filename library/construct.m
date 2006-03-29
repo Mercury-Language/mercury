@@ -14,14 +14,16 @@
 %-----------------------------------------------------------------------------%
 
 :- module construct.
-
 :- interface.
 
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module univ.
 :- import_module type_desc.
 
-    % num_functors(TypeInfo)
+%-----------------------------------------------------------------------------%
+
+    % num_functors(TypeInfo).
     %
     % Returns the number of different functors for the top-level
     % type constructor of the type specified by TypeInfo, or -1
@@ -35,7 +37,7 @@
     %
 :- func num_functors(type_desc) = int.
 
-    % get_functor(Type, FunctorNumber, FunctorName, Arity, ArgTypes)
+    % get_functor(Type, FunctorNumber, FunctorName, Arity, ArgTypes).
     %
     % Binds FunctorName and Arity to the name and arity of functor number
     % FunctorNumber for the specified type, and binds ArgTypes to the
@@ -47,7 +49,7 @@
     list(pseudo_type_desc)::out) is semidet.
 
     % get_functor_with_names(Type, FunctorNumber, FunctorName, Arity, ArgTypes,
-    %   ArgNames)
+    %   ArgNames).
     %
     % Binds FunctorName and Arity to the name and arity of functor number
     % FunctorNumber for the specified type, ArgTypes to the type_descs
@@ -58,7 +60,7 @@
 :- pred get_functor_with_names(type_desc::in, int::in, string::out, int::out,
     list(pseudo_type_desc)::out, list(maybe(string))::out) is semidet.
 
-    % get_functor_ordinal(Type, I, Ordinal)
+    % get_functor_ordinal(Type, I, Ordinal).
     %
     % Returns Ordinal, where Ordinal is the position in declaration order
     % for the specified type of the function symbol that is in position I
@@ -67,7 +69,7 @@
     %
 :- pred get_functor_ordinal(type_desc::in, int::in, int::out) is semidet.
 
-    % construct(TypeInfo, I, Args) = Term
+    % construct(TypeInfo, I, Args) = Term.
     %
     % Returns a term of the type specified by TypeInfo whose functor
     % is functor number I of the type given by TypeInfo, and whose
@@ -80,7 +82,7 @@
 :- func construct(type_desc::in, int::in, list(univ)::in) = (univ::out)
     is semidet.
 
-    % construct_tuple(Args) = Term
+    % construct_tuple(Args) = Term.
     %
     % Returns a tuple whose arguments are given by Args.
     %

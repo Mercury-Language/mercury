@@ -12,11 +12,16 @@
 % of Mercury and Prolog.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- module prolog.
 :- interface.
 
 :- import_module list.
-:- import_module std_util.
+:- import_module pair.
+:- import_module univ.
+
+%-----------------------------------------------------------------------------%
 
 % Prolog arithmetic operators.
 
@@ -69,12 +74,15 @@ is/2 is currently defined in int.m, for historical reasons.
 :- pred det_arg(int::in, T::in, univ::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module deconstruct.
 :- import_module int.
 :- import_module require.
+
+%-----------------------------------------------------------------------------%
 
 % we use module qualifiers here to avoid
 % overriding the builtin Prolog versions

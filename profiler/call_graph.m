@@ -17,10 +17,15 @@
 %-----------------------------------------------------------------------------%
 
 :- module call_graph.
-
 :- interface.
 
-:- import_module relation, io, list, string.
+:- import_module io.
+:- import_module list.
+:- import_module relation.
+:- import_module string.
+
+%-----------------------------------------------------------------------------%
+
 
 :- pred call_graph.main(list(string)::in,
     relation(string)::in, relation(string)::out, io::di, io::uo) is det.
@@ -35,8 +40,8 @@
 :- import_module globals.
 
 :- import_module bool.
+:- import_module maybe.
 :- import_module require.
-:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 

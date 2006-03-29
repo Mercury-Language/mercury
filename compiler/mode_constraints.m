@@ -79,12 +79,13 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module multi_map.
+:- import_module pair.
 :- import_module robdd.
 :- import_module set.
 :- import_module solutions.
 :- import_module sparse_bitset.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
 :- import_module term_io.

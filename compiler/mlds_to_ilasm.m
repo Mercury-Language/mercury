@@ -22,6 +22,8 @@
 
 :- import_module io.
 
+%-----------------------------------------------------------------------------%
+
     % Convert the MLDS to IL and write it to a file.
     %
 :- pred mlds_to_ilasm.output_mlds(mlds::in, io::di, io::uo) is det.
@@ -61,8 +63,8 @@
 :- import_module library.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
 

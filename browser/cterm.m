@@ -5,18 +5,23 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
+
+% File: cterm.m.
+% Author: zs.
+
 % This module provides a mechanism for matching terms from the running program
 % against terms specified by debugger commands, which are implemented in C in
 % runtime/mercury_trace_term.[ch].
-%
-% Author: zs
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdb.cterm.
-
 :- interface.
 
 :- import_module bool.
+
+%---------------------------------------------------------------------------%
 
 :- type cterm.
 :- type cargs.
@@ -34,11 +39,16 @@
     %
 :- pred cterm_head_tail(cargs::in, cterm::out, cargs::out) is semidet.
 
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module deconstruct.
 :- import_module list.
-:- import_module std_util.
+:- import_module univ.
+
+%---------------------------------------------------------------------------%
 
 :- pragma foreign_decl(c, "
 #include ""mercury_trace_term.h""
@@ -48,6 +58,8 @@
 :- pragma foreign_type(c, cargs, "MR_CArgs", [can_pass_as_mercury_type]).
 
 :- pragma export(match_with_cterm(in, in, out), "ML_BROWSE_match_with_cterm").
+
+%---------------------------------------------------------------------------%
 
 % Uncomment these and the unsafe_perform_ios below to debug match_with_cterm
 % and its callers in the trace directory.

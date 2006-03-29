@@ -5,10 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % This submodule of make_hlds handles the creation of unify, compare and
 % (if needed) index and init predicates for the types defined or imported
 % by the module being compiled.
+
+%-----------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.add_special_pred.
 :- interface.
@@ -18,6 +20,8 @@
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
+
+%-----------------------------------------------------------------------------%
 
     % do_add_special_pred_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
     %   TypeBody, TypeContext, TypeStatus, !ModuleInfo).
@@ -68,7 +72,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module std_util.
+:- import_module pair.
 :- import_module string.
 :- import_module varset.
 

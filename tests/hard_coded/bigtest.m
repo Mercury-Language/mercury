@@ -15,7 +15,7 @@
 :- implementation.
 
 :- import_module lp.
-:- import_module float, list, require, std_util, term, varset.
+:- import_module float, list, require, term, varset, pair.
 
 main -->
 	{ data(Eqns, Dir, Obj, Varset) },

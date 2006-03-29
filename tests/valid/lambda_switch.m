@@ -6,7 +6,7 @@
 
 :- interface.
 
-:- import_module std_util.
+:- import_module maybe.
 
 :- type agg_func(T, S) ---> agg(S, func(S, T) = S).
 :- inst agg_mode == bound(agg(ground, func(in, in) = out is det)).

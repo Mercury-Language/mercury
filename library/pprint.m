@@ -5,12 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: pprint.m
 % Main author: rafe
 % Stability: medium
-%
-%
+
 % ABOUT
 % -----
 %
@@ -147,11 +146,11 @@
 %   Look! Goodbye
 %   Look!    cruel
 %   Look!    world
-%
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module pprint.
-
 :- interface.
 
 :- import_module char.
@@ -159,8 +158,10 @@
 :- import_module int.
 :- import_module io.
 :- import_module list.
-:- import_module std_util.
 :- import_module string.
+:- import_module univ.
+
+%-----------------------------------------------------------------------------%
 
     % Clients must translate data structures into docs for
     % the pretty printer to display.
@@ -381,10 +382,13 @@
 :- import_module exception.
 :- import_module map.
 :- import_module ops.
+:- import_module pair.
 :- import_module robdd.
 :- import_module sparse_bitset.
 :- import_module term.
 :- import_module type_desc.
+
+%-----------------------------------------------------------------------------%
 
 :- type doc
     --->    'NIL'

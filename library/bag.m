@@ -5,17 +5,17 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
-% file: bag.m
-%   An implementation of multisets.
-% main author: conway, crs.
-% stability: medium
-%
+
+% File: bag.m.
+% Main authors: conway, crs.
+% Stability: medium.
+
+% An implementation of multisets.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- module bag.
-
 :- interface.
 
 :- import_module assoc_list.
@@ -223,8 +223,8 @@
 
 :- import_module int.
 :- import_module map.
+:- import_module pair.
 :- import_module require.
-:- import_module std_util.
 
 :- type bag(T)      ==  map(T, int).
 

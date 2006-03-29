@@ -20,7 +20,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module int, list, map, std_util, string.
+:- import_module int, list, map, maybe, string, pair.
 
 %-----------------------------------------------------------------------------%
 

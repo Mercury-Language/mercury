@@ -5,14 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% File: source_file_map.m
-% Author: stayl
-%
+
+% File: source_file_map.m.
+% Author: stayl.
+
 % Maintain a mapping from module name to source file name.
+
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.source_file_map.
-
 :- interface.
 
 :- import_module mdbcomp.prim_data.
@@ -21,6 +22,8 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
     % lookup_module_source_file(ModuleName, FileName, !IO)
     %
@@ -40,6 +43,7 @@
 :- pred write_source_file_map(list(string)::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -52,8 +56,10 @@
 :- import_module char.
 :- import_module dir.
 :- import_module map.
-:- import_module std_util.
+:- import_module maybe.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 lookup_module_source_file(ModuleName, FileName, !IO) :-
     get_source_file_map(SourceFileMap, !IO),

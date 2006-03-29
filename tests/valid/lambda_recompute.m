@@ -16,7 +16,7 @@
 
 :- implementation.
 
-:- import_module bool, char, float, int, list, map, require, std_util, string.
+:- import_module bool, char, float, int, list, map, require, std_util, pair, string.
 
 %------------------------------------------------------------------------------%
 

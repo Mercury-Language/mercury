@@ -6,7 +6,7 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: io.m.
+% File: io_combinator.m.
 % Authors: conway, zs.
 % Stability: low
 %
@@ -40,7 +40,7 @@
 :- interface.
 
 :- import_module io.
-:- import_module std_util.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 

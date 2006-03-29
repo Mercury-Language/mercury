@@ -23,7 +23,7 @@
 
 :- import_module list.
 :- import_module set.
-:- import_module std_util.
+:- import_module unit.
 
     % graph(Node, Arc) represents a directed graph with information of
     % type Node associated with each node, and information of type Arc
@@ -166,6 +166,7 @@
 :- mode graph.path(in, in, out, out) is nondet.
 
 %------------------------------------------------------------------------------%
+%------------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -174,9 +175,10 @@
 :- import_module list.
 :- import_module map.
 :- import_module require.
-:- import_module std_util.
 
 :- use_module solutions.
+
+%------------------------------------------------------------------------------%
 
 :- type graph(N, A)
     --->    graph(

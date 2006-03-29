@@ -29,6 +29,8 @@
 
 :- import_module io.
 
+%-----------------------------------------------------------------------------%
+
     % output_mlds(MLDS, Suffix):
     %
     % Output C code the the appropriate C file and C declarations to the
@@ -98,8 +100,9 @@
 :- import_module library.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
+:- import_module pair.
 :- import_module solutions.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
 

@@ -66,7 +66,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
-:- import_module std_util.
+:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 

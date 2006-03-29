@@ -6,12 +6,13 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 
+% File: sized_pretty.m:
+% Author: sthur.
+
 % When printing a term during debugging this module allows the user to put
 % a limit on the size of the term displayed. This limit is specified by
 % setting the number of lines you want and the width of these lines.
-%
-% author: sthur
-%
+
 % How to use sized_pretty.m :
 % ---------------------------
 %
@@ -156,17 +157,19 @@
 % big/3
 %
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdb.sized_pretty.
-
 :- interface.
 
 :- import_module mdb.browser_info.
 :- import_module mdb.browser_term.
 
 :- import_module int.
-:- import_module std_util.
 :- import_module string.
+:- import_module univ.
+
+%---------------------------------------------------------------------------%
 
     % univ_to_string_line(Univ, LineWidth, Lines, String):
     %
@@ -183,6 +186,7 @@
     browser_term::in, int::in, int::in, string::out) is cc_multi.
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -190,8 +194,13 @@
 :- import_module bool.
 :- import_module deconstruct.
 :- import_module list.
+:- import_module maybe.
+:- import_module pair.
 :- import_module pprint.
 :- import_module require.
+:- import_module std_util.
+
+%---------------------------------------------------------------------------%
 
 :- type no_measure_params
     --->    no_measure_params.

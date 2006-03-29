@@ -37,7 +37,8 @@
 :- import_module list.
 :- import_module set.
 :- import_module map.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module univ.
 
 %-----------------------------------------------------------------------------%
 %
@@ -847,6 +848,7 @@
 :- import_module parse_tree.prog_util. % for mercury_public_builtin_module
 
 :- import_module int.
+:- import_module pair.
 :- import_module string.
 :- import_module varset.
 

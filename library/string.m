@@ -6,6 +6,7 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 
+% File: string.m.
 % Main authors: fjh, petdr.
 % Stability: medium to high.
 
@@ -17,6 +18,7 @@
 % avoid creating strings that might contain null characters.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module string.
 :- interface.
@@ -25,6 +27,8 @@
 :- import_module deconstruct.
 :- import_module list.
 :- import_module ops.
+
+%-----------------------------------------------------------------------------%
 
     % Determine the length of a string.
     % An empty string has length zero.
@@ -743,6 +747,7 @@
 :- func string.word_wrap(string, int, string) = string.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -751,12 +756,16 @@
 :- import_module float.
 :- import_module int.
 :- import_module integer.
+:- import_module maybe.
 :- import_module require.
 :- import_module std_util.
 :- import_module type_desc.
+:- import_module univ.
 
 :- use_module rtti_implementation.
 :- use_module term_io.
+
+%-----------------------------------------------------------------------------%
 
 string.replace(Str, Pat, Subst, Result) :-
     sub_string_search(Str, Pat, Index),

@@ -10,7 +10,7 @@
 
 :- implementation.
 
-:- import_module list, int, std_util, term, map, string, require.
+:- import_module list, int, univ, maybe, term, map, string, require.
 :- import_module construct, type_desc.
 
 :- type enum	--->	one	;	two	;	three.

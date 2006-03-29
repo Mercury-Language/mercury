@@ -1,6 +1,6 @@
 :- module recursive_no_tag_type.
 :- interface.
-:- import_module std_util.
+:- import_module pair, unit.
 
 :- type t ---> f(t).
 

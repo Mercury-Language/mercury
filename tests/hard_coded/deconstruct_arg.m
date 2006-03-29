@@ -16,8 +16,10 @@
 :- import_module array.
 :- import_module list.
 :- import_module string.
-:- import_module std_util.
 :- import_module deconstruct.
+:- import_module maybe.
+:- import_module pair.
+:- import_module univ.
 
 :- type enum
 	--->	one

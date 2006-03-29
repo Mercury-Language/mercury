@@ -39,6 +39,7 @@
 :- pred add_heap_ops(module_info::in, proc_info::in, proc_info::out) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -61,11 +62,14 @@
 :- import_module bool.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
+:- import_module pair.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
     % As we traverse the goal, we add new variables to hold the saved values
     % of the heap pointer. So we need to thread a varset and a vartypes mapping

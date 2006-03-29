@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2002-2005 The University of Melbourne.
+** Copyright (C) 2002-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -62,7 +62,7 @@ typedef void MR_CALL (*MR_Cont) (void *); /* for --no-gcc-nested-functions */
   typedef MR_ClosurePtr MR_Pred;
   typedef MR_ClosurePtr MR_Func;
   typedef struct mercury__array__array_1_s * MR_Array;
-  typedef struct mercury__std_util__univ_0_s * MR_Univ;
+  typedef struct mercury__univ__univ_0_s * MR_Univ;
   typedef struct mercury__type_desc__type_desc_0_s * MR_Type_Desc;
   typedef struct mercury__type_desc__pseudo_type_desc_0_s * MR_Pseudo_Type_Desc;
   typedef struct mercury__type_desc__type_ctor_desc_0_s * MR_Type_Ctor_Desc;

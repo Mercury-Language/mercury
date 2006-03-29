@@ -18,13 +18,14 @@
 %-----------------------------------------------------------------------------%
 
 :- module process_file.
-
 :- interface.
 
 :- import_module prof_info.
 
 :- import_module io.
 :- import_module relation.
+
+%-----------------------------------------------------------------------------%
 
 :- pred process_file.main(prof::out, relation(string)::out, io::di, io::uo)
     is det.
@@ -42,11 +43,12 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module require.
-:- import_module std_util.
 :- import_module string.
 :- import_module svmap.
 :- import_module svrelation.
+:- import_module unit.
 
 %-----------------------------------------------------------------------------%
 

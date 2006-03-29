@@ -13,12 +13,13 @@
 %-----------------------------------------------------------------------------%
 
 :- module mdb.declarative_tree.
-
 :- interface.
 
 :- import_module mdb.declarative_edt.
 :- import_module mdb.declarative_execution.
 :- import_module mdbcomp.program_representation.
+
+%-----------------------------------------------------------------------------%
 
     % The type of nodes in our implementation of EDTs.  The parameter
     % is meant to be the type of references to trace nodes.  In
@@ -46,6 +47,8 @@
 :- pred trace_implicit_tree_info(wrap(S)::in, edt_node(R)::in,
     implicit_tree_info::out) is semidet <= annotated_trace(S, R).
 
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -66,8 +69,13 @@
 :- import_module io.
 :- import_module list.
 :- import_module map.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module pair.
 :- import_module string.
+:- import_module unit.
+:- import_module univ.
+
+%-----------------------------------------------------------------------------%
 
 :- instance mercury_edt(wrap(S), edt_node(R)) <= annotated_trace(S, R)
     where [

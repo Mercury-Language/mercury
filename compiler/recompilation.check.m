@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% File: recompilation_check.m
-% Main author: stayl
+% File: recompilation_check.m.
+% Main author: stayl.
 
 % Check whether a module should be recompiled.
 
@@ -22,6 +22,8 @@
 
 :- import_module io.
 :- import_module list.
+
+%-----------------------------------------------------------------------------%
 
 :- type modules_to_recompile
     --->    all_modules
@@ -55,6 +57,7 @@
     modules_to_recompile::out, read_modules::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -78,13 +81,16 @@
 :- import_module exception.
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
 :- import_module parser.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 :- import_module svmap.
 :- import_module term.
 :- import_module term_io.
+:- import_module univ.
+
+%-----------------------------------------------------------------------------%
 
 should_recompile(ModuleName, FindTargetFiles, FindTimestampFiles,
         Info ^ modules_to_recompile, Info ^ read_modules, !IO) :-

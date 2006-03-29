@@ -6,7 +6,7 @@
 
 :- implementation.
 
-:- import_module string, std_util.
+:- import_module string, maybe.
 
 foo.
 

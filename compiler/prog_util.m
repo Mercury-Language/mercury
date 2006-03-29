@@ -22,7 +22,7 @@
 :- import_module parse_tree.prog_item.
 
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
 :- import_module term.
 :- import_module varset.
 
@@ -268,6 +268,7 @@
     term(T).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -279,6 +280,7 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
+:- import_module pair.
 :- import_module string.
 :- import_module svmap.
 :- import_module varset.

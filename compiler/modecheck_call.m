@@ -32,7 +32,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 

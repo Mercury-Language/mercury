@@ -37,7 +37,7 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
 :- import_module term.
 
 :- type make_hlds_qual_info.

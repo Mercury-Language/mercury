@@ -19,6 +19,8 @@
 :- module benchmarking.
 :- interface.
 
+:- import_module int.
+
     % `report_stats' is a non-logical procedure intended for use in profiling
     % the performance of a program. It has the side-effect of reporting
     % some memory and time usage statistics about the time period since
@@ -70,8 +72,7 @@
 
 :- implementation.
 
-:- import_module int.
-:- import_module std_util.
+%-----------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
 
@@ -82,7 +83,7 @@ extern void ML_report_stats(void);
 
 extern void ML_report_full_memory_stats(void);
 
-"). % end pragma foreign_decl
+").
 
 :- pragma foreign_proc("C",
     report_stats,

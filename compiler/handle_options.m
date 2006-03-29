@@ -90,6 +90,8 @@
 :- import_module int.
 :- import_module library.
 :- import_module map.
+:- import_module maybe.
+:- import_module pair.
 :- import_module set.
 :- import_module solutions.
 :- import_module std_util.

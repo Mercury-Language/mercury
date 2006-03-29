@@ -21,7 +21,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
@@ -173,8 +173,8 @@
 
 :- import_module bool.
 :- import_module list.
+:- import_module pair.
 :- import_module solutions.
-:- import_module std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -621,7 +621,7 @@ type_ctor_needs_lowlevel_rep(il, TypeName - _Arity) :-
     mercury_public_builtin_module(Builtin),
     mercury_private_builtin_module(PrivateBuiltin),
     RttiImplementation = unqualified("rtti_implementation"),
-    StdUtil = unqualified("std_util"),
+    Univ = unqualified("univ"),
     MutVar = unqualified("mutvar"),
     TypeDesc = unqualified("type_desc"),
     ( TypeName = qualified(PrivateBuiltin, "base_typeclass_info")
@@ -647,7 +647,7 @@ type_ctor_needs_lowlevel_rep(il, TypeName - _Arity) :-
         % so it is easier to just keep their low level representation
         % for the moment.
     ; TypeName = qualified(Builtin, "comparison_result")
-    ; TypeName = qualified(StdUtil, "univ")
+    ; TypeName = qualified(Univ, "univ")
     ; TypeName = qualified(MutVar, "mutvar")
     ).
 

@@ -8,7 +8,7 @@
 
 :- implementation.
 
-:- import_module std_util, list.
+:- import_module list, pair, solutions.
 
 main -->
 	{ solutions((pred(Pair::out) is multi :-

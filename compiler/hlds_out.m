@@ -281,12 +281,15 @@
 :- import_module getopt_io.
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
 :- import_module multi_map.
+:- import_module pair.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 :- import_module term_io.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 write_type_ctor(Name - Arity, !IO) :-
     prog_out.write_sym_name_and_arity(Name / Arity, !IO).

@@ -24,7 +24,7 @@
 
 :- implementation.
 
-:- import_module map, require, set, std_util.
+:- import_module map, require, set, univ. 
 
 lookup_call_pattern(CallPattern, Results, AnswerPatterns) :-
 	AnswerPatterns = list__filter_map(filter_results(CallPattern),

@@ -21,7 +21,7 @@
 
 :- implementation.
 
-:- import_module string, list, std_util.
+:- import_module string, list, pair.
 
 :- type tree ---> leaf; branch(tree, tree).
 

@@ -10,7 +10,7 @@
 
 :- implementation.
 
-:- import_module list, int, std_util, term, map, array.
+:- import_module list, int, term, map, array, univ.
 
 :- pred test_ops(io__state::di, io__state::uo) is det.
 :- pred test_builtins(io__state::di, io__state::uo) is det.

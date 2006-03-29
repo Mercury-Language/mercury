@@ -8,7 +8,7 @@
 
 :- interface.
 
-:- import_module list, std_util, set.
+:- import_module list, pair, set.
 
 :- type pos
 	--->	pos(int, int).
@@ -23,7 +23,7 @@
 
 :- implementation.
 
-:- import_module int, require.
+:- import_module int, require, solutions.
 
 adj(pos(X, Y), Adjs) :-
 	Pred = (pred(Adj::out) is nondet :-

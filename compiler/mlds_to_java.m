@@ -89,6 +89,8 @@
 
 :- import_module io.
 
+%-----------------------------------------------------------------------------%
+
 :- pred output_mlds(module_info::in, mlds::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -132,8 +134,9 @@
 :- import_module library.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
+:- import_module pair.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
 

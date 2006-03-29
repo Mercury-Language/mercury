@@ -19,7 +19,7 @@
 
 :- implementation.
 
-:- import_module list, int, std_util, term, map, deconstruct.
+:- import_module list, int, univ, term, map, deconstruct.
 
 :- pred test_builtins(io__output_stream::in, io__state::di, io__state::uo)
 	is cc_multi.

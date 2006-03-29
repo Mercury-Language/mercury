@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: sparse_bitset.m.
-% Author: stayl
+% Author: stayl.
 % Stability: medium.
-%
+
 % This module provides an ADT for storing sets of integers.
 % If the integers stored are closely grouped, a sparse_bitset
 % is much more compact than the representation provided by set.m,
@@ -36,11 +36,11 @@
 % In the asymptotic complexities of the operations below,
 % `rep_size(Set)' is the number of pairs needed to represent `Set',
 % and `card(Set)' is the number of elements in `Set'.
-%
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-:- module sparse_bitset.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
+:- module sparse_bitset.
 :- interface.
 
 :- import_module enum.
@@ -48,6 +48,8 @@
 :- import_module term.
 
 :- use_module set.
+
+%-----------------------------------------------------------------------------%
 
 :- type sparse_bitset(T). % <= enum(T).
 
@@ -386,7 +388,8 @@
 :- import_module int.
 :- import_module list.
 :- import_module require.
-:- import_module std_util.
+
+%-----------------------------------------------------------------------------%
 
     % The number of variables for most procedures
     % should fit into one or two words.

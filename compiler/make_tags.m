@@ -66,7 +66,7 @@
 
 :- import_module bool.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
 
     % assign_constructor_tags(Constructors, MaybeUserEq, TypeCtor,
     %   ReservedTagPragma, Globals, TagValues, IsEnum):

@@ -5,11 +5,13 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
-% file pqueue.m - implements a priority queue ADT.
-% main author: conway.
-% stability: high.
-%
+
+% File: pqueue.m.
+% Main author: conway.
+% Stability: high.
+
+% This module implements a priority queue ADT.
+% 
 % A pqueue is a priority queue.  A priority queue holds a collection
 % of key-value pairs; the interface provides operations to create
 % an empty priority queue, to insert a key-value pair into a priority
@@ -18,15 +20,16 @@
 % Insertion/removal is not guaranteed to be "stable"; that is,
 % if you insert two values with the same key, the order in which
 % they will be removed is unspecified.
-%
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- module pqueue.
-
 :- interface.
 
 :- import_module assoc_list.
+
+%---------------------------------------------------------------------------%
 
 :- type pqueue(K, V).
 
@@ -71,7 +74,7 @@
 
 :- import_module int.
 :- import_module list.
-:- import_module std_util.
+:- import_module pair.
 
 :- type pqueue(K, V)
     --->    empty

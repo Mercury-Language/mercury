@@ -67,9 +67,10 @@
 
 :- import_module exception.
 :- import_module list.
-:- import_module std_util.
 :- import_module string.
 :- import_module type_desc.
+
+%-----------------------------------------------------------------------------%
 
 require(Goal, Message) :-
     ( call(Goal) ->

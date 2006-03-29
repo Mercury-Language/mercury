@@ -22,7 +22,7 @@
 
 :- module agc_ho_pred.
 :- interface.
-:- import_module bool, char, list, map, std_util.
+:- import_module bool, char, list, map, maybe, pair, solutions.
 
 :- type option_ops(OptionType)
 	--->	option_ops(

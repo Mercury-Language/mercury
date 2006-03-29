@@ -9,7 +9,7 @@
 :- module unused_float_box_test.
 :- interface.
 
-:- import_module io, list, std_util.
+:- import_module io, list, univ.
 
 :- pred main(io__state::di, io__state::uo) is det.
 

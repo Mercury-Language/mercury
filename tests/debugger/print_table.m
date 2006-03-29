@@ -8,7 +8,7 @@
 
 :- implementation.
 
-:- import_module std_util, int, float, string, list.
+:- import_module maybe, int, float, string, list, solutions.
 
 main -->
 	{ p(5, 5, P55) },

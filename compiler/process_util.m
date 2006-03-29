@@ -89,8 +89,6 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 
-:- import_module std_util.
-
 build_with_check_for_interrupt(Build, Cleanup, Succeeded, !Info, !IO) :-
     setup_signal_handlers(MaybeSigIntHandler, !IO),
     Build(Succeeded0, !Info, !IO),

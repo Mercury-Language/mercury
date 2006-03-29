@@ -19,6 +19,8 @@
 :- import_module bool.
 :- import_module list.
 
+%--------------------------------------------------------------------------%
+
 :- type set_ordlist(_T).
 
 	% `set_ordlist.list_to_set(List, Set)' is true iff `Set' is the set
@@ -270,8 +272,7 @@
 
 :- implementation.
 
-:- import_module list.
-:- import_module std_util.
+%-----------------------------------------------------------------------------%
 
 :- type set_ordlist(T)	==	  list(T).
 

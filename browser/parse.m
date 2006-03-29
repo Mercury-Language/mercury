@@ -5,9 +5,9 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
-% file: parse.m:
-% author: aet
+
+% File: parse.m.
+% Author: aet.
 
 % This file contains the parser for the term browser command language.
 % If the term browser is called from mdb, it parses the stuff you type
@@ -105,9 +105,9 @@
 %       num
 %       ".."
 %
+%---------------------------------------------------------------------------%
 
 :- module mdb.parse.
-
 :- interface.
 
 :- import_module mdb.browser_info.
@@ -115,8 +115,10 @@
 :- import_module getopt.
 :- import_module io.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
 :- import_module string.
+
+%---------------------------------------------------------------------------%
 
 :- type command
     --->    print(maybe(maybe_option_table(format_option)), maybe(path))

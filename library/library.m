@@ -11,11 +11,10 @@
 % It is used as a way for the Makefiles to know which library interface
 % files, objects, etc., need to be installed.
 %
-% ---------------------------------------------------------------------------%
-% ---------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
 
 :- module library.
-
 :- interface.
 
 :- pred library.version(string::out) is det.
@@ -80,8 +79,10 @@
 :- import_module list.
 :- import_module map.
 :- import_module math.
+:- import_module maybe.
 :- import_module multi_map.
 :- import_module ops.
+:- import_module pair.
 :- import_module parser.
 :- import_module pprint.
 :- import_module pqueue.
@@ -121,6 +122,8 @@
 :- import_module time.
 :- import_module tree234.
 :- import_module type_desc.
+:- import_module univ.
+:- import_module unit.
 :- import_module varset.
 :- import_module version_array.
 :- import_module version_array2d.
@@ -217,9 +220,11 @@ mercury_std_library_module("library").
 mercury_std_library_module("list").
 mercury_std_library_module("map").
 mercury_std_library_module("math").
+mercury_std_library_module("maybe").
 mercury_std_library_module("multi_map").
 mercury_std_library_module("mutvar").
 mercury_std_library_module("ops").
+mercury_std_library_module("pair").
 mercury_std_library_module("parser").
 mercury_std_library_module("pprint").
 mercury_std_library_module("pqueue").
@@ -264,6 +269,8 @@ mercury_std_library_module("term_to_xml").
 mercury_std_library_module("time").
 mercury_std_library_module("tree234").
 mercury_std_library_module("type_desc").
+mercury_std_library_module("univ").
+mercury_std_library_module("unit").
 % mercury_std_library_module("unsafe").
 mercury_std_library_module("varset").
 mercury_std_library_module("version_array").

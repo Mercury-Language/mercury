@@ -13,7 +13,7 @@
 :- interface.
 
 :- import_module list.
-:- import_module std_util.
+:- import_module pair.
 
 :- type hlds_goal == pair(hlds_goal_expr, hlds_goal_info).
 

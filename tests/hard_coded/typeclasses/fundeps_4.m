@@ -24,7 +24,7 @@
 :- implementation.
 
 :- import_module list.
-:- import_module std_util.
+:- import_module pair.
 
 :- type no_propagator_info
 	--->	no_propagator_info.

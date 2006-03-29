@@ -2,7 +2,7 @@
 
 :- interface.
 
-:- import_module io, list, std_util.
+:- import_module io, list, unit.
 
 :- type analysis_request
 	---> some [FuncInfo, Call] analysis_request(unit(FuncInfo), Call)

@@ -32,6 +32,8 @@
 
 :- import_module io.
 
+%-----------------------------------------------------------------------------%
+
 :- pred saved_vars_proc(pred_id::in, proc_id::in,
     proc_info::in, proc_info::out, module_info::in, module_info::out,
     io::di, io::uo) is det.
@@ -55,8 +57,8 @@
 :- import_module bool.
 :- import_module list.
 :- import_module map.
+:- import_module pair.
 :- import_module set.
-:- import_module std_util.
 :- import_module term.
 :- import_module varset.
 

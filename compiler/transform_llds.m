@@ -26,6 +26,8 @@
 :- import_module ll_backend.llds.
 :- import_module io.
 
+%-----------------------------------------------------------------------------%
+
 :- pred transform_llds(c_file::in, c_file::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -47,7 +49,8 @@
 :- import_module counter.
 :- import_module int.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module pair.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%

@@ -4,10 +4,11 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% File: version_hash_table.m
-% Main author: rafe
-% Stability: low
-%
+
+% File: version_hash_table.m.
+% Main author: rafe.
+% Stability: low.
+
 % (See the header comments in version_types.m for an explanation of version
 % types.)
 %
@@ -16,11 +17,11 @@
 % implementation.  "Older" versions of the hash table are still
 % accessible, but will incurr a growing performance penalty as
 % more updates are made to the hash table.
-%
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module version_hash_table.
-
 :- interface.
 
 :- import_module assoc_list.
@@ -28,6 +29,8 @@
 :- import_module float.
 :- import_module int.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 :- type version_hash_table(K, V).
 
@@ -144,6 +147,7 @@
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module array.
@@ -152,10 +156,13 @@
 :- import_module exception.
 :- import_module list.
 :- import_module math.
+:- import_module pair.
 :- import_module require.
-:- import_module std_util.
 :- import_module type_desc.
+:- import_module univ.
 :- import_module version_array.
+
+%-----------------------------------------------------------------------------%
 
 :- type version_hash_table(K, V)
     --->    ht(

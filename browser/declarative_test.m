@@ -28,7 +28,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module require.
-:- import_module std_util.
 
 main(!IO) :-
     process_arguments(MaybeFile, !IO),

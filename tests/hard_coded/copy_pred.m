@@ -7,7 +7,7 @@
         :- implementation.
 
         :- import_module list, map.
-        :- import_module std_util, string.
+        :- import_module univ, string.
 
         main -->
                 { F = foo(10, 20) },

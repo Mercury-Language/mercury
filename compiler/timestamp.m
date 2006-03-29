@@ -5,14 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% File: timestamp.m
-% Main author: stayl
-%
+
+% File: timestamp.m.
+% Main author: stayl.
+
 % Timestamp representation for smart recompilation.
+
 %-----------------------------------------------------------------------------%
 
 :- module libs.timestamp.
-
 :- interface.
 
 :- import_module time.
@@ -48,12 +49,15 @@
 :- func newest_timestamp = timestamp.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module int.
-:- import_module std_util.
+:- import_module maybe.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
     % A timestamp is a string formatted as "yyyy-mm-dd hh:mm:ss"
     % representing a time expressed as UTC (Universal Coordinated Time).

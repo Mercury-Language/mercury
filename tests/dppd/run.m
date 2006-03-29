@@ -10,7 +10,7 @@
 
 :- implementation.
 
-:- import_module benchmarking, gc, list, string, int, std_util.
+:- import_module benchmarking, gc, list, string, int, pair.
 
 	% The imports which are modules to be benchmarked.
 :- import_module 

@@ -54,7 +54,7 @@
 
 :- implementation.
 
-:- import_module list, map, std_util.
+:- import_module list, map, pair, std_util.
 
 :- type my_pair(T, U) ---> (fst::T) - (snd::U).
 

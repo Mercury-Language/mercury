@@ -6,7 +6,7 @@
 
 %------------------------------------------------------------------------------%
 
-:- import_module float, io, list, map, std_util, term, varset.
+:- import_module float, io, list, map, pair, term, varset.
 
 :- type coeff	==	pair(var, float).
 
@@ -38,7 +38,7 @@
 
 :- implementation.
 
-:- import_module array, bool, int, require, set.
+:- import_module array, bool, int, require, set, solutions, maybe.
 
 lp_solve(Equations, Dir, Objective, Varset0, Result, IO0, IO) :-
 	form_tableau(Equations, Dir, Objective, Varset0, 
@@ -78,8 +78,8 @@ form_tableau(Equations, Dir, Objective, Varset0,
 	collect_vars(NormalEquations, Objective, Vars),
 	set__to_sorted_list(Vars, VarList),
 	list__length(VarList, NumVars),
-	NumVars1 is NumVars,
-	NumNormEqns1 is NumNormEqns,
+	NumVars1 = NumVars,
+	NumNormEqns1 = NumNormEqns,
 	init_tableau(NumNormEqns1, NumVars1, Tableau0),
 	map__init(VarNumbers0),
 	number_vars(VarList, 0, VarNumbers0, VarNumbers),
@@ -87,7 +87,7 @@ form_tableau(Equations, Dir, Objective, Varset0,
 		Dir = max,
 		Neg = (pred(Pair0::in, Pair::out) is det :-
 				Pair0 = V - X0,
-				X1 is -X0,
+				X1 = -X0,
 				Pair = V - (X1)
 		),
 		list__map(Neg, Objective, NegObjective)
@@ -134,7 +134,7 @@ simplify(eqn(Coeffs0, Op, Const), eqn(Coeffs, Op, Const)) :-
 		;
 			Acc1 = 0.0
 		),
-		Acc is Acc1 + Coeff,
+		Acc = Acc1 + Coeff,
 		map__set(Map0, Var, Acc, Map)
 	),
 	list__foldl(AddCoeff, Coeffs0, CoeffMap0, CoeffMap),
@@ -164,7 +164,7 @@ collect_vars(Eqns, Obj, Vars) :-
 number_vars([], _, VarNumbers, VarNumbers).
 number_vars([Var|Vars], N, VarNumbers0, VarNumbers) :-
 	map__det_insert(VarNumbers0, Var, N, VarNumbers1),
-	N1 is N + 1,
+	N1 = N + 1,
 	number_vars(Vars, N1, VarNumbers1, VarNumbers).
 
 :- pred insert_equations(equations, int, int, map(var, int), 
@@ -177,7 +177,7 @@ insert_equations([Eqn|Eqns], Row, ConstCol, VarNumbers, N, M,
 	Eqn = eqn(Coeffs, _Op, Const),
 	insert_coeffs(Coeffs, Row, VarNumbers, N, M, Tableau0, Tableau1),
 	set_index(Tableau1, N, M, Row, ConstCol, Const, Tableau2),
-	Row1 is Row + 1,
+	Row1 = Row + 1,
 	insert_equations(Eqns, Row1, ConstCol, VarNumbers, N, M,
 		Tableau2, Tableau).
 
@@ -254,7 +254,7 @@ simplex(N, M, A0, A, Result, IO0, IO) :-
 				index(A0, N, M, Row, Q, MaxVal),
 				( MaxVal > 0.0 ->
 					index(A0, N, M, Row, M, MVal),
-					CVal is MVal/MaxVal,
+					CVal = MVal/MaxVal,
 					Max = yes(Row - CVal)
 				;
 					Max = no
@@ -265,7 +265,7 @@ simplex(N, M, A0, A, Result, IO0, IO) :-
 				index(A0, N, M, Row, M, MVal),
 				(
 					CellVal > 0.0,
-					MaxVal1 is MVal/CellVal,
+					MaxVal1 = MVal/CellVal,
 					MaxVal1 =< MaxVal0
 				->
 					Max = yes(Row - MaxVal1)
@@ -316,7 +316,7 @@ pivot(P, Q, N, M, A0, A) :-
 		index(T0, N, M, J, K, Ajk),
 		index(T0, N, M, J, Q, Ajq),
 		index(T0, N, M, P, K, Apk),
-		NewAjk is Ajk - Apk * Ajq / Apq,
+		NewAjk = Ajk - Apk * Ajq / Apq,
 		set_index(T0, N, M, J, K, NewAjk, T)
 	),
 	unsorted_aggregate(MostCells, ScaleCell, A0, A1),
@@ -332,7 +332,7 @@ pivot(P, Q, N, M, A0, A) :-
 	PRow = (pred(K::out) is nondet :- between(0, M, K)),
 	ScaleRow = (pred(K::in, T0::in, T::out) is det :-
 		index(T0, N, M, P, K, Apk),
-		NewApk is Apk / Apq,
+		NewApk = Apk / Apq,
 		set_index(T0, N, M, P, K, NewApk, T)
 	),
 	aggregate(PRow, ScaleRow, A2, A3),
@@ -345,7 +345,7 @@ pivot(P, Q, N, M, A0, A) :-
 :- pred init_tableau(int::in, int::in, tableau::out) is det.
 
 init_tableau(Rows0, Cols0, Tableau) :-
-	Rows is Rows0 + 1, Cols is Cols0 + 1,
+	Rows = Rows0 + 1, Cols = Cols0 + 1,
 	NumCells = Rows*Cols,
 	array__init(NumCells, 0.0, Tableau).
 
@@ -353,7 +353,7 @@ init_tableau(Rows0, Cols0, Tableau) :-
 :- mode index(in, in, in, in, in, out) is det.
 
 index(Tableau, Rows0, Cols0, J, K, R) :-
-	_Rows is Rows0 + 1, Cols is Cols0 + 1,
+	_Rows = Rows0 + 1, Cols = Cols0 + 1,
 	Index = J * Cols + K,
 	array__lookup(Tableau, Index, R).
 
@@ -361,7 +361,7 @@ index(Tableau, Rows0, Cols0, J, K, R) :-
 :- mode set_index(in, in, in, in, in, in, out) is det.
 
 set_index(Tableau0, Rows0, Cols0, J, K, R, Tableau) :-
-	_Rows is Rows0 + 1, Cols is Cols0 + 1,
+	_Rows = Rows0 + 1, Cols = Cols0 + 1,
 	Index = J * Cols + K,
 	mkuniq(Tableau0, Tableau1),
 	array__set(Tableau1, Index, R, Tableau).
@@ -417,7 +417,7 @@ between(Min, Max, I) :-
 	(
 		I = Min
 	;
-		Min1 is Min + 1,
+		Min1 = Min + 1,
 		between(Min1, Max, I)
 	).
 

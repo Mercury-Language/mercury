@@ -8,7 +8,7 @@
 :- import_module injection.
 :- import_module int.
 :- import_module list.
-:- import_module std_util.
+:- import_module pair .
 
 :- type test_inj == injection(int, int).
 :- type test_data == assoc_list(int, int).

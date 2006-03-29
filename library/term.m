@@ -16,6 +16,7 @@
 % thing can be made to be of different types so they don't get mixed up.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module term.
 :- interface.
@@ -23,8 +24,8 @@
 :- import_module enum.
 :- import_module list.
 :- import_module map.
-:- import_module std_util.
 :- import_module type_desc.
+:- import_module univ.
 
 %-----------------------------------------------------------------------------%
 
@@ -469,7 +470,6 @@
 :- import_module float.
 :- import_module int.
 :- import_module require.
-:- import_module std_util.
 :- import_module string.
 :- import_module svmap.
 
@@ -623,8 +623,7 @@ term_to_univ_special_case(IsAditiTuple, "array", "array", [ElemType],
     ).
 term_to_univ_special_case(_, "builtin", "c_pointer", _, _, _, _, _) :-
     fail.
-term_to_univ_special_case(_, "std_util", "univ", [],
-        Term, _, _, Result) :-
+term_to_univ_special_case(_, "univ", "univ", [], Term, _, _, Result) :-
     % Implementing this properly would require keeping a global table mapping
     % from type names to type_infos for all of the types in the program...
     % so for the moment, we only allow it for basic types.
@@ -763,7 +762,7 @@ univ_to_term_special_case("type_desc", "type_desc", [], Univ, Context,
         functor(atom("type_info"), [Term], Context)) :-
     det_univ_to_type(Univ, TypeInfo),
     type_info_to_term(Context, TypeInfo, Term).
-univ_to_term_special_case("std_util", "univ", [], Univ, Context, Term) :-
+univ_to_term_special_case("univ", "univ", [], Univ, Context, Term) :-
     det_univ_to_type(Univ, NestedUniv),
     Term = functor(atom("univ"),
         % XXX what operator should we use for type qualification?

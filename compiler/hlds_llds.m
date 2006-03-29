@@ -22,8 +22,8 @@
 
 :- import_module bool.
 :- import_module map.
+:- import_module maybe.
 :- import_module set.
-:- import_module std_util.
 
 % The following types are annotations on the HLDS
 % that are used only by the LLDS back-end.
@@ -282,7 +282,10 @@
 
 :- import_module assoc_list.
 :- import_module list.
+:- import_module pair.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
     % For the meaning of this type, see the documentation of the
     % maybe_need field of llds_code_gen_details below.

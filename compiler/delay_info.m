@@ -94,9 +94,9 @@
 
 :- import_module int.
 :- import_module map.
+:- import_module pair.
 :- import_module set.
 :- import_module stack.
-:- import_module std_util.
 :- import_module svmap.
 
 %-----------------------------------------------------------------------------%

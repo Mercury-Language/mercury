@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-2005 The University of Melbourne.
+** Copyright (C) 1993-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -153,7 +153,7 @@ extern	const char *MR_trace_browse_all_on_level(FILE *,
 extern	void	MR_trace_init_external(void);
 extern	void	MR_trace_final_external(void);
 
-/* in library/std_util.m  */
+/* in library/type_desc.m  */
 extern	MR_String	ML_type_name(MR_Word);
 
 /* in runtime/mercury_trace_base.c */

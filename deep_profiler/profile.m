@@ -20,7 +20,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module profile.
-
 :- interface.
 
 :- import_module measurements.
@@ -29,7 +28,7 @@
 :- import_module bool.
 :- import_module list.
 :- import_module map.
-:- import_module std_util.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 

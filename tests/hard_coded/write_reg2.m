@@ -15,7 +15,7 @@
 
 :- implementation.
 
-:- import_module std_util.
+:- import_module pair, univ.
 
 main -->
 	io__write(univ((1 - 2))),

@@ -5,17 +5,17 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: io_action.m
+
+% File: io_action.m.
 % Author: zs.
-%
+
 % This module defines the representation of I/O actions used by the
 % declarative debugger.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module mdb.io_action.
-
 :- interface.
 
 :- import_module mdb.browser_term.
@@ -23,7 +23,9 @@
 
 :- import_module list. 
 :- import_module io.
-:- import_module std_util. 
+:- import_module univ.
+
+%-----------------------------------------------------------------------------%
 
 :- type io_action
     --->    io_action(
@@ -50,6 +52,7 @@
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -58,8 +61,11 @@
 :- import_module bool.
 :- import_module exception.
 :- import_module int.
+:- import_module maybe.
 :- import_module require.
 :- import_module svmap.
+
+%-----------------------------------------------------------------------------%
 
 get_maybe_io_action(IoActionNum, MaybeTabledIoAction, !IO) :-
     pickup_io_action(IoActionNum, MaybeIoAction, !IO),

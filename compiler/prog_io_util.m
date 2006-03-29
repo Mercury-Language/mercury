@@ -22,7 +22,6 @@
 % The `Term' there should be the term which is syntactically incorrect.
 
 :- module parse_tree.prog_io_util.
-
 :- interface.
 
 :- import_module mdbcomp.prim_data.
@@ -31,8 +30,11 @@
 
 :- import_module list.
 :- import_module map.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module pair.
 :- import_module term.
+
+%-----------------------------------------------------------------------------%
 
 :- type maybe2(T1, T2)
     --->    error(string, term)
@@ -177,7 +179,6 @@
 
 :- import_module bool.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
 :- import_module term.
 

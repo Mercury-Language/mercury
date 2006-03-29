@@ -1,13 +1,13 @@
 % Some very simple tests of type_to_univ and univ_to_type.
 
-:- module univ.
+:- module test_univ.
 :- interface.
 :- import_module io.
 
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
-:- import_module std_util, list, bool.
+:- import_module univ, list, bool.
 
 main --> 
 	( { test1 } ->

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2005 The University of Melbourne.
+% Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,15 +13,14 @@
 % types which are used in the C backend of the debugger.
 
 :- module mdbcomp.rtti_access.
-
 :- interface.
-
-:- import_module list.
-:- import_module std_util.
 
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 :- import_module mdbcomp.trace_counts.
+
+:- import_module list.
+:- import_module maybe.
 
 :- type label_layout.
 

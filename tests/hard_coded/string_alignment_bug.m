@@ -12,7 +12,8 @@
 
 :- implementation.
 
-:- import_module bool, int, list, map, require, set_ordlist, std_util, string.
+:- import_module bool, int, list, map, require, set_ordlist, string.
+:- import_module univ, pair, maybe, solutions.
 
 main -->
 	init_globals,
@@ -87,7 +88,7 @@ between(Min, Max, I) :-
 :- pred set_global(string, T, io__state, io__state).
 :- mode set_global(in, in, di, uo) is det.
 
-:- import_module list, map, require, string, std_util.
+:- import_module list, map, require, string.
 
 init_globals -->
 	{ my_map_init(Map) },

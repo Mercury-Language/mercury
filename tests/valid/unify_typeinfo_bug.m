@@ -12,7 +12,7 @@
 
 :- implementation.
 
-:- import_module std_util.
+:- import_module univ.
 
 unify_t(t(A1, B1), t(A2, B2)) :-
 	unify_map(A1, A2),

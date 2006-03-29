@@ -10,7 +10,7 @@
 
 :- implementation.
 
-:- import_module bool, int, list, assoc_list, std_util, random, require.
+:- import_module bool, int, list, assoc_list, pair, random, require.
 
 main(!IO) :-
 	random__init(0, RS0),

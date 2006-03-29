@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
-%
-% file: term_constr_main.m 
-% main author: juliensf
-%
+
+% File: term_constr_main.m. 
+% Main author: juliensf.
+
 % This module contains the top level of a termination analyser for Mercury.
 % It is responsible for setting up the relevant data structures and invoking
 % all the other passes.
@@ -66,26 +66,22 @@
 %   * experiment with different representation for the polyhedra.
 %
 %----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_main. 
-
 :- interface.
 
 :- import_module hlds.hlds_module. 
 :- import_module hlds.hlds_pred.
-
 :- import_module parse_tree.prog_data.
-
 :- import_module libs.polyhedron.
-
 :- import_module mdbcomp.prim_data.
-
 :- import_module transform_hlds.term_constr_data.
 :- import_module transform_hlds.term_constr_errors.
 
 :- import_module io.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
 
 %----------------------------------------------------------------------------%
 % 
@@ -237,6 +233,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module set.
+:- import_module std_util.
 :- import_module string.
 :- import_module term.
 :- import_module varset.    

@@ -102,10 +102,10 @@
 :- import_module bool.
 :- import_module int.
 :- import_module multi_map.
+:- import_module pair.
 :- import_module robdd.
 :- import_module set.
 :- import_module sparse_bitset.
-:- import_module std_util.
 :- import_module string.
 :- import_module svmap.
 :- import_module svset.

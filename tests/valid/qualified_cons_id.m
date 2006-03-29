@@ -2,24 +2,24 @@
 :- module qualified_cons_id.
 :- interface.
 
-:- import_module std_util.
+:- import_module maybe.
 
 :- type foo(T)
 	---> yes(T)
 	;    no.
 
 :- inst yes
-	--->	std_util.yes(ground).
+	--->	maybe.yes(ground).
 
 :- pred test(maybe(T), T).
-:- mode test(in(bound(std_util.yes(ground))), out) is det.
+:- mode test(in(bound(maybe.yes(ground))), out) is det.
 
 :- pred test2(maybe(T), T).
 :- mode test2(in(yes), out) is det.
 
 :- implementation.
 
-test(std_util.yes(T), T).
+test(maybe.yes(T), T).
 
-test2(std_util.yes(T), T).
+test2(maybe.yes(T), T).
 

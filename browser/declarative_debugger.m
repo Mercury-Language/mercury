@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: declarative_debugger.m
-% Author: Mark Brown
-%
+
+% File: declarative_debugger.m.
+% Author: Mark Brown.
+
 % This module has two main purposes:
 %   - to define the interface between the front and back ends of
 %     a Mercury declarative debugger, and
@@ -53,11 +53,11 @@
 % portion of the annotated trace, although the backend will not materialize
 % nodes which already exist in the current annotated trace when materializing
 % a supertree.
-%
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module mdb.declarative_debugger.
-
 :- interface.
 
 :- import_module mdb.browser_info.
@@ -71,8 +71,11 @@
 
 :- import_module io.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
 :- import_module string.
+:- import_module unit.
+
+%-----------------------------------------------------------------------------%
 
     % This type represents the possible truth values for nodes
     % in the EDT.
@@ -302,6 +305,7 @@
             ).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -318,6 +322,9 @@
 :- import_module int.
 :- import_module map.
 :- import_module require.
+:- import_module univ.
+
+%-----------------------------------------------------------------------------%
 
 unravel_decl_atom(DeclAtom, TraceAtom, MaybeIoActions) :-
     (

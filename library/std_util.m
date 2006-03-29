@@ -8,10 +8,25 @@
 
 % File: std_util.m.
 % Main author: fjh.
-% Stability: medium.
+% Stability: high.
 
-% This file is intended for all the useful standard utilities
-% that don't belong elsewhere, like <stdlib.h> in C.
+% This file contains higher-order programming constructs and other 
+% useful standard utilities.
+
+% NOTE: fomerly this module contained considerably more functionality but
+%       most of that has now been moved to other modules.  In particular:
+%
+%       * the `univ' type is now defined in the module univ.
+%       
+%       * the `maybe' and `maybe_error' types are now defined in the module
+%         maybe.
+%
+%       * the `unit' type is now defined in the module unit.
+%
+%       * the `pair' type is now defined in the module pair.
+
+% This module also used to define a number of RTTI access predicates.  These
+% are now to be found in the modules type_desc, construct and deconstruct.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -20,159 +35,65 @@
 :- interface.
 
 :- import_module bool.
+:- import_module int.
 :- import_module list.
+:- import_module maybe.
 :- import_module set.
-:- import_module type_desc.
 
 %-----------------------------------------------------------------------------%
 %
-% The universal type `univ'
+% General purpose higher-order programming constructs
 %
 
-    % An object of type `univ' can hold the type and value of an object of any
-    % other type.
-:- type univ.
+    % compose(F, G, X) = F(G(X))
+    %
+    % Function composition.
+    % XXX It would be nice to have infix `o' or somesuch for this.
+    %
+:- func compose(func(T2) = T3, func(T1) = T2, T1) = T3.
 
-    % type_to_univ(Object, Univ):
+    % converse(F, X, Y) = F(Y, X).
     %
-    % True iff the type stored in `Univ' is the same as the type of `Object',
-    % and the value stored in `Univ' is equal to the value of `Object'.
-    %
-    % Operational, the forwards mode converts an object to type `univ',
-    % while the reverse mode converts the value stored in `Univ'
-    % to the type of `Object', but fails if the type stored in `Univ'
-    % does not match the type of `Object'.
-    %
-:- pred type_to_univ(T, univ).
-:- mode type_to_univ(di, uo) is det.
-:- mode type_to_univ(in, out) is det.
-:- mode type_to_univ(out, in) is semidet.
+:- func converse(func(T1, T2) = T3, T2, T1) = T3.
 
-    % univ_to_type(Univ, Object) :- type_to_univ(Object, Univ).
+    % pow(F, N, X) = F^N(X)
     %
-:- pred univ_to_type(univ, T).
-:- mode univ_to_type(in, out) is semidet.
-:- mode univ_to_type(out, in) is det.
-:- mode univ_to_type(uo, di) is det.
+    % Function exponentiation.
+    %
+:- func pow(func(T) = T, int, T) = T.
 
-    % The function univ/1 provides the same functionality as type_to_univ/2.
-    % univ(Object) = Univ :- type_to_univ(Object, Univ).
+    % The identity function.
     %
-:- func univ(T) = univ.
-:- mode univ(in) = out is det.
-:- mode univ(di) = uo is det.
-:- mode univ(out) = in is semidet.
-
-    % det_univ_to_type(Univ, Object):
-    %
-    % The same as the forwards mode of univ_to_type, but aborts
-    % if univ_to_type fails.
-    %
-:- pred det_univ_to_type(univ::in, T::out) is det.
-
-    % univ_type(Univ):
-    %
-    % Returns the type_desc for the type stored in `Univ'.
-    %
-:- func univ_type(univ) = type_desc.type_desc.
-
-    % univ_value(Univ):
-    %
-    % Returns the value of the object stored in Univ.
-    %
-:- some [T] func univ_value(univ) = T.
+:- func id(T) = T.
 
 %-----------------------------------------------------------------------------%
-%
-% The "maybe" type
-%
 
-:- type maybe(T) ---> no ; yes(T).
-:- inst maybe(I) ---> no ; yes(I).
-
-:- type maybe_error ---> ok ; error(string).
-:- type maybe_error(T) ---> ok(T) ; error(string).
-:- inst maybe_error(I) ---> ok(I) ; error(ground).
-
-    % map_maybe(P, yes(Value0), yes(Value)) :- P(Value, Value).
-    % map_maybe(_, no, no).
+    % maybe_pred(Pred, X, Y) takes a closure Pred which transforms an
+    % input semideterministically. If calling the closure with the input
+    % X succeeds, Y is bound to `yes(Z)' where Z is the output of the
+    % call, or to `no' if the call fails.
     %
-:- pred map_maybe(pred(T, U), maybe(T), maybe(U)).
-:- mode map_maybe(pred(in, out) is det, in, out) is det.
-:- mode map_maybe(pred(in, out) is semidet, in, out) is semidet.
-:- mode map_maybe(pred(in, out) is multi, in, out) is multi.
-:- mode map_maybe(pred(in, out) is nondet, in, out) is nondet.
+:- pred maybe_pred(pred(T1, T2), T1, maybe(T2)).
+:- mode maybe_pred(pred(in, out) is semidet, in, out) is det.
 
-    % map_maybe(F, yes(Value)) = yes(F(Value)).
-    % map_maybe(_, no) = no.
-    %
-:- func map_maybe(func(T) = U, maybe(T)) = maybe(U).
-
-    % fold_maybe(P, yes(Value), Acc0, Acc) :- P(Value, Acc0, Acc).
-    % fold_maybe(_, no, Acc, Acc).
-    %
-:- pred fold_maybe(pred(T, U, U), maybe(T), U, U).
-:- mode fold_maybe(pred(in, in, out) is det, in, in, out) is det.
-:- mode fold_maybe(pred(in, in, out) is semidet, in, in, out) is semidet.
-:- mode fold_maybe(pred(in, di, uo) is det, in, di, uo) is det.
-
-    % fold_maybe(F, yes(Value), Acc0) = F(Acc0).
-    % fold_maybe(_, no, Acc) = Acc.
-    %
-:- func fold_maybe(func(T, U) = U, maybe(T), U) = U.
-
-    % map_fold_maybe(P, yes(Value0), yes(Value), Acc0, Acc) :-
-    %       P(Value, Value, Acc0, Acc).
-    % map_fold_maybe(_, no, no, Acc, Acc).
-    %
-:- pred map_fold_maybe(pred(T, U, Acc, Acc), maybe(T), maybe(U), Acc, Acc).
-:- mode map_fold_maybe(pred(in, out, in, out) is det, in, out, in, out) is det.
-:- mode map_fold_maybe(pred(in, out, di, uo) is det, in, out, di, uo) is det.
-
-    % As above, but with two accumulators.
-    %
-:- pred map_fold2_maybe(pred(T, U, Acc1, Acc1, Acc2, Acc2),
-    maybe(T), maybe(U), Acc1, Acc1, Acc2, Acc2).
-:- mode map_fold2_maybe(pred(in, out, in, out, in, out) is det, in, out,
-    in, out, in, out) is det.
-:- mode map_fold2_maybe(pred(in, out, in, out, di, uo) is det,
-    in, out, in, out, di, uo) is det.
+:- func maybe_func(func(T1) = T2, T1) = maybe(T2).
+:- mode maybe_func(func(in) = out is semidet, in) = out is det.
 
 %-----------------------------------------------------------------------------%
-%
-% The "unit" type - stores no information at all.
-%
 
-:- type unit        --->    unit.
-
-:- type unit(T)     --->    unit1.
+    % isnt(Pred, X) <=> not Pred(X)
+    %
+    % This is useful in higher order programming, e.g.
+    %   Odds  = list.filter(odd, Xs)
+    %   Evens = list.filter(isnt(odd), Xs)
+    %
+:- pred isnt(pred(T)::(pred(in) is semidet), T::in) is semidet.
 
 %-----------------------------------------------------------------------------%
-%
-% The "pair" type.  Useful for many purposes.
-%
-
-:- type pair(T1, T2)
-    --->    (T1 - T2).
-:- type pair(T) ==  pair(T, T).
-
-:- inst pair(I1, I2)
-    --->    (I1 - I2).
-:- inst pair(I) ==  pair(I, I).
-
-    % Return the first element of the pair.
-    %
-:- pred fst(pair(X, Y)::in, X::out) is det.
-:- func fst(pair(X, Y)) = X.
-
-    % Return the second element of the pair.
-    %
-:- pred snd(pair(X, Y)::in, Y::out) is det.
-:- func snd(pair(X, Y)) = Y.
-
-:- func pair(T1, T2) = pair(T1, T2).
-
 %-----------------------------------------------------------------------------%
+%
+% All-solutions predicates
+%
 
 % NOTE: the procedures in this section are all obsolete and will be deleted
 %       in a later release.  New code should use the versions defined in
@@ -330,115 +251,35 @@
     is cc_multi.
 
 %-----------------------------------------------------------------------------%
-%
-% General purpose higher-order programming constructs.
-%
-
-    % compose(F, G, X) = F(G(X))
-    %
-    % Function composition.
-    % XXX It would be nice to have infix `o' or somesuch for this.
-    %
-:- func compose(func(T2) = T3, func(T1) = T2, T1) = T3.
-
-    % converse(F, X, Y) = F(Y, X).
-    %
-:- func converse(func(T1, T2) = T3, T2, T1) = T3.
-
-    % pow(F, N, X) = F^N(X)
-    %
-    % Function exponentiation.
-    %
-:- func pow(func(T) = T, int, T) = T.
-
-    % The identity function.
-    %
-:- func id(T) = T.
-
-%-----------------------------------------------------------------------------%
-
-    % maybe_pred(Pred, X, Y) takes a closure Pred which transforms an
-    % input semideterministically. If calling the closure with the input
-    % X succeeds, Y is bound to `yes(Z)' where Z is the output of the
-    % call, or to `no' if the call fails.
-    %
-:- pred maybe_pred(pred(T1, T2), T1, maybe(T2)).
-:- mode maybe_pred(pred(in, out) is semidet, in, out) is det.
-
-:- func maybe_func(func(T1) = T2, T1) = maybe(T2).
-:- mode maybe_func(func(in) = out is semidet, in) = out is det.
-
-%-----------------------------------------------------------------------------%
-
-    % isnt(Pred, X) <=> not Pred(X)
-    %
-    % This is useful in higher order programming, e.g.
-    %   Odds  = list.filter(odd, Xs)
-    %   Evens = list.filter(isnt(odd), Xs)
-    %
-:- pred isnt(pred(T)::(pred(in) is semidet), T::in) is semidet.
-
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module bool.
-:- import_module construct.
-:- import_module deconstruct.
-:- import_module int.
-:- import_module require.
-:- import_module set.
-:- import_module string.
-
-:- use_module private_builtin. % for the `heap_pointer' type.
 :- use_module solutions.
 
 %-----------------------------------------------------------------------------%
 
-map_maybe(_, no, no).
-map_maybe(P, yes(T0), yes(T)) :- P(T0, T).
-
-map_maybe(_, no) = no.
-map_maybe(F, yes(T)) = yes(F(T)).
-
-fold_maybe(P, yes(Value), Acc0, Acc) :- P(Value, Acc0, Acc).
-fold_maybe(_, no, Acc, Acc).
-
-fold_maybe(F, yes(Value), Acc0) = F(Value, Acc0).
-fold_maybe(_, no, Acc) = Acc.
-
-map_fold_maybe(_, no, no, Acc, Acc).
-map_fold_maybe(P, yes(T0), yes(T), Acc0, Acc) :-
-    P(T0, T, Acc0, Acc).
-
-map_fold2_maybe(_, no, no, A, A, B, B).
-map_fold2_maybe(P, yes(T0), yes(T), A0, A, B0, B) :-
-    P(T0, T, A0, A, B0, B).
-
-%   Is this really useful?
-% % for use in lambda expressions where the type of functor '-' is ambiguous
-% :- pred pair(X, Y, pair(X, Y)).
-% :- mode pair(in, in, out) is det.
-% :- mode pair(out, out, in) is det.
-%
-% pair(X, Y, X-Y).
-
-fst(X-_Y) = X.
-fst(P, X) :-
-    X = fst(P).
-
-snd(_X-Y) = Y.
-snd(P, X) :-
-    X = snd(P).
-
 maybe_pred(Pred, X, Y) :-
-    ( call(Pred, X, Z) ->
-        Y = yes(Z)
-    ;
-        Y = no
-    ).
+    Y = ( Pred(X, Z) -> yes(Z) ; no ).
 
+maybe_func(PF, X) =
+    ( if Y = PF(X) then yes(Y) else no ).
+
+compose(F, G, X) =
+    F(G(X)).
+
+converse(F, X, Y) =
+    F(Y, X).
+
+pow(F, N, X) =
+    ( if N = 0 then X else pow(F, N - 1, F(X)) ).
+
+isnt(P, X) :-
+    not P(X).
+
+id(X) = X.
+
+%-----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
 
 % NOTE: the implementations for these predicates is in solutions.m.
@@ -465,89 +306,11 @@ do_while(GeneratorPred, CollectorPred, Accumulator0, Accumulator) :-
     solutions.do_while(GeneratorPred, CollectorPred,
         Accumulator0, Accumulator).
 
-%-----------------------------------------------------------------------------%
-
-    % We call the constructor for univs `univ_cons' to avoid ambiguity
-    % with the univ/1 function which returns a univ.
-:- type univ
-    --->    some [T] univ_cons(T).
-
-univ_to_type(Univ, X) :- type_to_univ(X, Univ).
-
-univ(X) = Univ :- type_to_univ(X, Univ).
-
-det_univ_to_type(Univ, X) :-
-    ( type_to_univ(X0, Univ) ->
-        X = X0
-    ;
-        UnivTypeName = type_desc.type_name(univ_type(Univ)),
-        ObjectTypeName = type_desc.type_name(type_desc.type_of(X)),
-        string.append_list(["det_univ_to_type: conversion failed\\n",
-            "\tUniv Type: ", UnivTypeName,
-            "\\n\tObject Type: ", ObjectTypeName], ErrorString),
-        error(ErrorString)
-    ).
-
-univ_value(univ_cons(X)) = X.
-
-:- pragma promise_pure(type_to_univ/2).
-
-type_to_univ(T::di, Univ::uo) :-
-    Univ0 = 'new univ_cons'(T),
-    unsafe_promise_unique(Univ0, Univ).
-type_to_univ(T::in, Univ::out) :-
-    Univ0 = 'new univ_cons'(T),
-    unsafe_promise_unique(Univ0, Univ).
-type_to_univ(T::out, Univ::in) :-
-    Univ = univ_cons(T0),
-    private_builtin.typed_unify(T0, T).
-
-univ_type(Univ) = type_desc.type_of(univ_value(Univ)).
-
-:- pred construct_univ(T, univ).
-:- mode construct_univ(in, out) is det.
-:- pragma export(construct_univ(in, out), "ML_construct_univ").
-
-construct_univ(X, Univ) :-
-    Univ = univ(X).
-
-:- some [T] pred unravel_univ(univ, T).
-:- mode unravel_univ(in, out) is det.
-:- pragma export(unravel_univ(in, out), "ML_unravel_univ").
-
-unravel_univ(Univ, X) :-
-    univ_value(Univ) = X.
-
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-% Ralph Becket <rwab1@cam.sri.com> 24/04/99
-%   Function forms added.
-
-pair(X, Y) =
-    X-Y.
-
-maybe_func(PF, X) =
-    ( if Y = PF(X) then yes(Y) else no ).
-
-compose(F, G, X) =
-    F(G(X)).
-
-converse(F, X, Y) =
-    F(Y, X).
-
-pow(F, N, X) =
-    ( if N = 0 then X else pow(F, N - 1, F(X)) ).
-
-isnt(P, X) :-
-    not P(X).
-
-id(X) = X.
-
 solutions(P) = solutions.solutions(P).
 
 solutions_set(P) = solutions.solutions_set(P).
 
 aggregate(P, F, Acc0) = solutions.aggregate(P, F, Acc0).
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

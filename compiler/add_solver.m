@@ -65,7 +65,6 @@
 :- import_module bool.
 :- import_module map.
 :- import_module string.
-:- import_module std_util.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%

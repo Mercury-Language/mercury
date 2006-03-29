@@ -46,7 +46,7 @@
 :- import_module profile.
 
 :- import_module io.
-:- import_module std_util.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 

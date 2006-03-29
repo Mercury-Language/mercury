@@ -55,9 +55,9 @@
 % compiling with the C macro MR_DD_CHECK_SEARCH_SPACE defined (i.e. by
 % putting "EXTRA_CFLAGS=-DMR_DD_CHECK_SEARCH_SPACE" in Mmake.browser.params).
 %
+%-----------------------------------------------------------------------------%
 
 :- module mdb.declarative_edt.
-
 :- interface.
 
 :- import_module mdb.browser_info.
@@ -70,7 +70,11 @@
 :- import_module bool.
 :- import_module list.
 :- import_module map.
-:- import_module std_util.
+:- import_module maybe.
+:- import_module pair.
+:- import_module unit.
+
+%-----------------------------------------------------------------------------%
 
     % This typeclass defines how EDTs may be accessed by this module.
     % An EDT is a tree of nodes, each of which contains a question
@@ -576,7 +580,6 @@
 :- import_module float.
 :- import_module int.
 :- import_module svmap.
-:- import_module std_util.
 :- import_module string.
 
 :- import_module mdb.declarative_execution.

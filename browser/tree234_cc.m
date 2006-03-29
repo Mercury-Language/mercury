@@ -40,7 +40,7 @@
 
 :- interface.
 
-:- import_module std_util.
+:- import_module maybe.
 
 :- type tree234_cc(K, V).
 
