@@ -56,9 +56,9 @@ Is this a bug? yes
       E5:     C3 EXIT pred input_term_dep.q/1-0 (semidet) input_term_dep.m:69 (input_term_dep.m:58)
 mdb> continue
 [[2, 3], [], [1]]
-      E6:     C4 CALL pred input_term_dep.r/2-0 (det) input_term_dep.m:111 (input_term_dep.m:93)
+      E6:     C4 CALL pred input_term_dep.r/2-0 (det) input_term_dep.m:100 (input_term_dep.m:93)
 mdb> finish
-      E7:     C4 EXIT pred input_term_dep.r/2-0 (det) input_term_dep.m:111 (input_term_dep.m:93)
+      E7:     C4 EXIT pred input_term_dep.r/2-0 (det) input_term_dep.m:100 (input_term_dep.m:93)
 mdb> dd -d 3 -n 7
 r(1, 33)
 Valid? browse 2
@@ -74,12 +74,12 @@ Found inadmissible call:
 Parent r(1, _)
 Call rc(3, _)
 Is this a bug? yes
-      E7:     C4 EXIT pred input_term_dep.r/2-0 (det) input_term_dep.m:111 (input_term_dep.m:93)
+      E7:     C4 EXIT pred input_term_dep.r/2-0 (det) input_term_dep.m:100 (input_term_dep.m:93)
 mdb> continue
 33
-      E8:     C5 CALL pred input_term_dep.s/1-0 (semidet) input_term_dep.m:146 (input_term_dep.m:135)
+      E8:     C5 CALL pred input_term_dep.s/1-0 (semidet) input_term_dep.m:145 (input_term_dep.m:135)
 mdb> finish
-      E9:     C5 EXIT pred input_term_dep.s/1-0 (semidet) input_term_dep.m:146 (input_term_dep.m:135)
+      E9:     C5 EXIT pred input_term_dep.s/1-0 (semidet) input_term_dep.m:145 (input_term_dep.m:135)
 mdb> dd -d 3 -n 7
 s(1)
 Valid? no
@@ -94,6 +94,6 @@ Found inadmissible call:
 Parent s(1)
 Call sc(7)
 Is this a bug? yes
-      E9:     C5 EXIT pred input_term_dep.s/1-0 (semidet) input_term_dep.m:146 (input_term_dep.m:135)
+      E9:     C5 EXIT pred input_term_dep.s/1-0 (semidet) input_term_dep.m:145 (input_term_dep.m:135)
 mdb> continue
 yes

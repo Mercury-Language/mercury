@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred args.main/2-0 (cc_multi) args.m:17
+      E1:     C1 CALL pred args.main/2-0 (cc_multi) args.m:8
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet

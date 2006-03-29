@@ -1,4 +1,4 @@
-%-----------------------------------------------------------------------------%
+    %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2001, 2003-2006 The University of Melbourne.
@@ -141,6 +141,7 @@
 :- pred mode_info_get_may_change_called_proc(mode_info::in,
     may_change_called_proc::out) is det.
 :- pred mode_info_get_initial_instmap(mode_info::in, instmap::out) is det.
+:- pred mode_info_get_in_from_ground_term(mode_info::in, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -198,6 +199,8 @@
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_checking_extra_goals(bool::in,
     mode_info::in, mode_info::out) is det.
+:- pred mode_info_set_in_from_ground_term(bool::in,
+    mode_info::in, mode_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -219,12 +222,15 @@
 :- pred mode_info_get_call_id(mode_info::in, pred_id::in,
     simple_call_id::out) is det.
 
+    % Check whether a variable or a list of variables are live or not.
+    %
 :- pred mode_info_var_list_is_live(mode_info::in, list(prog_var)::in,
     list(is_live)::out) is det.
-
 :- pred mode_info_var_is_live(mode_info::in, prog_var::in,
     is_live::out) is det.
 
+    % Check whether a variable is nondet_live or not.
+    %
 :- pred mode_info_var_is_nondet_live(mode_info::in, prog_var::in,
     is_live::out) is det.
 
@@ -321,11 +327,16 @@
                 % after mode analysis finishes.
                 need_to_requantify      :: bool,
 
-                % Set to `yes' if we are in a promise_<purity> scope.  This
-                % information is needed to check that potentially impure
-                % uses of inst any non-locals in negated contexts are
-                % properly acknowledged by the programmer.
-                in_promise_purity_scope :: bool
+                % Set to `yes' if we are in a promise_<purity> scope.
+                % This information is needed to check that potentially impure
+                % uses of inst any non-locals in negated contexts are properly
+                % acknowledged by the programmer.
+                in_promise_purity_scope :: bool,
+
+                % Set to `yes' if we are in a from_ground_term scope.
+                % This information allows us to optimize some aspects of
+                % mode analysis.
+                in_from_ground_term     :: bool
             ).
 
 :- type mode_info
@@ -380,7 +391,7 @@
                 % mostly_unique rather than unique.)
                 nondet_live_vars        :: bag(prog_var),
 
-                instvarset  :: inst_varset,
+                instvarset              :: inst_varset,
 
                 % A stack of pairs of sets of variables used to mode-check
                 % parallel conjunctions. The first set is the nonlocals of the
@@ -388,19 +399,20 @@
                 % first, and is the set of variables that have been [further]
                 % bound inside the current parallel conjunct - the stack
                 % is for the correct handling of nested parallel conjunctions.
-                parallel_vars   :: list(pair(set(prog_var), set(prog_var))),
+                parallel_vars           :: list(pair(set(prog_var),
+                                            set(prog_var))),
 
-                how_to_check    :: how_to_check_goal,
+                how_to_check            :: how_to_check_goal,
 
                 % Is mode analysis allowed to change which procedure is called?
-                may_change_called_proc :: may_change_called_proc,
+                may_change_called_proc  :: may_change_called_proc,
 
                 % `yes' if calls to the initialisation predicates for solver
                 % vars can be inserted during mode analysis in order to make
                 % goals schedulable.
                 may_initialise_solver_vars :: bool,
 
-                mode_sub_info   :: mode_sub_info
+                mode_sub_info           :: mode_sub_info
             ).
 
 %-----------------------------------------------------------------------------%
@@ -416,10 +428,8 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMapping0,
         DebugModes = yes,
         ( DebugModesPredId >= 0 => DebugModesPredId = PredIdInt )
     ->
-        globals.lookup_bool_option(Globals, debug_modes_verbose,
-            DebugVerbose),
-        globals.lookup_bool_option(Globals, debug_modes_minimal,
-            DebugMinimal),
+        globals.lookup_bool_option(Globals, debug_modes_verbose, DebugVerbose),
+        globals.lookup_bool_option(Globals, debug_modes_minimal, DebugMinimal),
         globals.lookup_bool_option(Globals, debug_modes_statistics,
             Statistics),
         Flags = debug_flags(DebugVerbose, DebugMinimal, Statistics),
@@ -434,7 +444,6 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMapping0,
     delay_info_init(DelayInfo),
     ErrorList = [],
     WarningList = [],
-        % look up the varset and var types
     module_info_preds(ModuleInfo, Preds),
     map.lookup(Preds, PredId, PredInfo),
     pred_info_get_procedures(PredInfo, Procs),
@@ -454,7 +463,7 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMapping0,
 
     ModeSubInfo = mode_sub_info(ProcId, VarSet, Unreachable, Changed,
         CheckingExtraGoals, InstMapping0, WarningList, NeedToRequantify,
-        InNegatedContext),
+        InNegatedContext, no),
 
     ModeInfo = mode_info(ModuleInfo, PredId, VarTypes, Debug,
         Context, ModeContext, InstMapping0, LockedVars, DelayInfo,
@@ -489,6 +498,8 @@ mode_info_get_changed_flag(MI, MI ^ mode_sub_info ^ changed_flag).
 mode_info_get_how_to_check(MI, MI ^ how_to_check).
 mode_info_get_may_change_called_proc(MI, MI ^ may_change_called_proc).
 mode_info_get_initial_instmap(MI, MI ^ mode_sub_info ^ initial_instmap).
+mode_info_get_in_from_ground_term(MI,
+    MI ^ mode_sub_info ^ in_from_ground_term).
 
 mode_info_set_module_info(ModuleInfo, MI, MI ^ module_info := ModuleInfo).
 mode_info_set_predid(PredId, MI, MI ^ predid := PredId).
@@ -517,6 +528,8 @@ mode_info_set_changed_flag(Changed, MI,
 mode_info_set_how_to_check(How, MI, MI ^ how_to_check := How).
 mode_info_set_may_change_called_proc(MayChange, MI,
     MI ^ may_change_called_proc := MayChange).
+mode_info_set_in_from_ground_term(FGI, MI,
+    MI ^ mode_sub_info ^ in_from_ground_term := FGI).
 
 %-----------------------------------------------------------------------------%
 
@@ -537,8 +550,7 @@ mode_info_set_call_context(call(CallId), !MI) :-
 mode_info_set_call_arg_context(ArgNum, ModeInfo0, ModeInfo) :-
     mode_info_get_mode_context(ModeInfo0, ModeContext0),
     ( ModeContext0 = call(CallId, _) ->
-        mode_info_set_mode_context(call(CallId, ArgNum),
-            ModeInfo0, ModeInfo)
+        mode_info_set_mode_context(call(CallId, ArgNum), ModeInfo0, ModeInfo)
     ; ModeContext0 = unify(_UnifyContext, _Side) ->
         % This only happens when checking that the typeinfo variables
         % for polymorphic complicated unifications are ground.
@@ -579,8 +591,8 @@ mode_info_get_num_errors(ModeInfo, NumErrors) :-
     % This allows us to easily add and remove sets of variables.
     % It's probably not maximally efficient.
 
-    % Add a set of vars to the bag of live vars and
-    % the bag of nondet-live vars.
+    % Add a set of vars to the bag of live vars and the bag of
+    % nondet-live vars.
 
 mode_info_add_live_vars(NewLiveVars, !MI) :-
     LiveVars0 = !.MI ^ live_vars,
@@ -607,8 +619,6 @@ mode_info_remove_live_vars(OldLiveVars, !MI) :-
     delay_info_bind_var_list(VarList, DelayInfo0, DelayInfo),
     !:MI = !.MI ^ delay_info := DelayInfo.
 
-    % Check whether a list of variables are live or not
-
 mode_info_var_list_is_live(_, [], []).
 mode_info_var_list_is_live(ModeInfo, [Var | Vars], [Live | Lives]) :-
     mode_info_var_is_live(ModeInfo, Var, Live),
@@ -622,8 +632,6 @@ mode_info_var_is_live(ModeInfo, Var, Result) :-
     ;
         Result = dead
     ).
-
-    % Check whether a variable is nondet_live or not.
 
 mode_info_var_is_nondet_live(ModeInfo, Var, Result) :-
     ( bag.contains(ModeInfo ^ nondet_live_vars, Var) ->

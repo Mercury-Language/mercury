@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred oracle_db.main/2-0 (det) oracle_db.m:12
+       1:      1  1 CALL pred oracle_db.main/2-0 (det) oracle_db.m:7
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet

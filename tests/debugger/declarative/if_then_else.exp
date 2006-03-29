@@ -5,9 +5,9 @@ mdb> register --quiet
 mdb> break if_then_else.ite
  0: + stop  interface pred if_then_else.ite/2-0 (det)
 mdb> continue
-      E2:     C2 CALL pred if_then_else.ite/2-0 (det) if_then_else.m:22 (if_then_else.m:8)
+      E2:     C2 CALL pred if_then_else.ite/2-0 (det) if_then_else.m:19 (if_then_else.m:8)
 mdb> finish
-      E3:     C2 EXIT pred if_then_else.ite/2-0 (det) if_then_else.m:22 (if_then_else.m:8)
+      E3:     C2 EXIT pred if_then_else.ite/2-0 (det) if_then_else.m:19 (if_then_else.m:8)
 mdb> dd -d 3 -n 7
 ite(0, 1)
 Valid? no
@@ -20,12 +20,12 @@ a(0)
 b(1)
 ite(0, 1)
 Is this a bug? yes
-      E3:     C2 EXIT pred if_then_else.ite/2-0 (det) if_then_else.m:22 (if_then_else.m:8)
+      E3:     C2 EXIT pred if_then_else.ite/2-0 (det) if_then_else.m:19 (if_then_else.m:8)
 mdb> continue
 ite(0, 1).
-      E4:     C3 CALL pred if_then_else.ite/2-0 (det) if_then_else.m:22 (if_then_else.m:12)
+      E4:     C3 CALL pred if_then_else.ite/2-0 (det) if_then_else.m:19 (if_then_else.m:12)
 mdb> finish
-      E5:     C3 EXIT pred if_then_else.ite/2-0 (det) if_then_else.m:22 (if_then_else.m:12)
+      E5:     C3 EXIT pred if_then_else.ite/2-0 (det) if_then_else.m:19 (if_then_else.m:12)
 mdb> dd -d 3 -n 7
 ite(1, 0)
 Valid? no
@@ -35,6 +35,6 @@ Found incorrect contour:
 a(0)
 ite(1, 0)
 Is this a bug? yes
-      E5:     C3 EXIT pred if_then_else.ite/2-0 (det) if_then_else.m:22 (if_then_else.m:12)
+      E5:     C3 EXIT pred if_then_else.ite/2-0 (det) if_then_else.m:19 (if_then_else.m:12)
 mdb> continue
 ite(1, 0).

@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred browser_mode.main/2-0 (det) browser_mode.m:11
+      E1:     C1 CALL pred browser_mode.main/2-0 (det) browser_mode.m:8
 mdb> mdb> Contexts will not be printed.
 mdb> echo on
 Command echo enabled.

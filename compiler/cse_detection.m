@@ -105,13 +105,21 @@ detect_cse_in_procs([ProcId | ProcIds], PredId, !ModuleInfo, !IO) :-
 
 detect_cse_in_proc(ProcId, PredId, !ModuleInfo, !IO) :-
     detect_cse_in_proc_2(ProcId, PredId, Redo, !ModuleInfo),
+    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    (
+        VeryVerbose = yes,
+        io.write_string("% Detecting common deconstructions for ", !IO),
+        hlds_out.write_pred_id(!.ModuleInfo, PredId, !IO),
+        io.write_string("\n", !IO)
+    ;
+        VeryVerbose = no
+    ),
     globals.io_lookup_bool_option(detailed_statistics, Statistics, !IO),
     maybe_report_stats(Statistics, !IO),
     (
         Redo = no
     ;
         Redo = yes,
-        globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
         (
             VeryVerbose = yes,
             io.write_string("% Repeating mode check for ", !IO),

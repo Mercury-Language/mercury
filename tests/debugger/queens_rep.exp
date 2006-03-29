@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred queens_rep.main/2-0 (cc_multi) queens_rep.m:17
+       1:      1  1 CALL pred queens_rep.main/2-0 (cc_multi) queens_rep.m:14
 mdb> echo on
 Command echo enabled.
 mdb> context none

@@ -45,7 +45,7 @@
 
     % Apply simplify.m to the goal.
     %
-:- pred simplify_goal(list(simplification)::in, hlds_goal::in,
+:- pred simplify_goal(simplifications::in, hlds_goal::in,
     hlds_goal::out, pd_info::in, pd_info::out, io::di, io::uo) is det.
 
     % Apply unique_modes.m to the goal.
@@ -120,8 +120,7 @@
     % expanded inst_name.
     %
 :- pred inst_size(module_info::in, mer_inst::in, int::out) is det.
-:- pred inst_list_size(module_info::in, list(mer_inst)::in,
-        int::out) is det.
+:- pred inst_list_size(module_info::in, list(mer_inst)::in, int::out) is det.
 
     % goals_match(ModuleInfo, OldGoal, OldArgs, OldArgTypes,
     %   NewGoal, NewArgTypes, OldToNewVarRenaming, OldToNewTypeSubst):
@@ -255,7 +254,7 @@ simplify_goal(Simplifications, Goal0, Goal, !PDInfo, !IO) :-
     simplify_info_init(DetInfo0, Simplifications, InstMap0, ProcInfo0,
         SimplifyInfo0),
 
-    simplify.process_goal(Goal0, Goal, SimplifyInfo0, SimplifyInfo, !IO),
+    simplify_process_goal(Goal0, Goal, SimplifyInfo0, SimplifyInfo, !IO),
 
     % Deconstruct the simplify_info.
     simplify_info_get_module_info(SimplifyInfo, ModuleInfo),

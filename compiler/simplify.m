@@ -47,27 +47,27 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred simplify_pred(list(simplification)::in, pred_id::in,
+:- pred simplify_pred(simplifications::in, pred_id::in,
     module_info::in, module_info::out, pred_info::in, pred_info::out,
     int::out, int::out, io::di, io::uo) is det.
 
-:- pred simplify_proc(list(simplification)::in, pred_id::in, proc_id::in,
+:- pred simplify_proc(simplifications::in, pred_id::in, proc_id::in,
     module_info::in, module_info::out, proc_info::in, proc_info::out,
     io::di, io::uo) is det.
 
-:- pred simplify_proc_return_msgs(list(simplification)::in, pred_id::in,
+:- pred simplify_proc_return_msgs(simplifications::in, pred_id::in,
     proc_id::in, module_info::in, module_info::out,
     proc_info::in, proc_info::out, set(context_det_msg)::out,
     io::di, io::uo) is det.
 
-:- pred process_goal(hlds_goal::in, hlds_goal::out,
+:- pred simplify_process_goal(hlds_goal::in, hlds_goal::out,
     simplify_info::in, simplify_info::out, io::di, io::uo) is det.
 
     % Find out which simplifications should be run from the options table
     % stored in the globals. The first argument states whether warnings
     % should be issued during this pass of simplification.
     %
-:- pred find_simplifications(bool::in, globals::in, list(simplification)::out)
+:- pred find_simplifications(bool::in, globals::in, simplifications::out)
     is det.
 
 :- type simplification
@@ -78,7 +78,7 @@
     ;       warn_obsolete           % --warn-obsolete
     ;       do_once                 % run things that should be done once
     ;       excess_assigns          % remove excess assignment unifications
-    ;       duplicate_calls         % optimize duplicate calls
+    ;       opt_duplicate_calls     % optimize duplicate calls
     ;       constant_prop           % partially evaluate calls
     ;       common_struct           % common structure elimination
     ;       extra_common_struct     % do common structure elimination
@@ -86,7 +86,24 @@
                                     % usage (used by deforestation).
     .
 
+:- type simplifications.
+
+:- func simplifications_to_list(simplifications) = list(simplification).
+:- func list_to_simplifications(list(simplification)) = simplifications.
+
 :- type simplify_info.
+
+:- pred simplify_do_warn_simple_code(simplify_info::in) is semidet.
+:- pred simplify_do_warn_duplicate_calls(simplify_info::in) is semidet.
+:- pred simplify_do_warn_known_bad_format(simplify_info::in) is semidet.
+:- pred simplify_do_warn_unknown_format(simplify_info::in) is semidet.
+:- pred simplify_do_warn_obsolete(simplify_info::in) is semidet.
+:- pred simplify_do_once(simplify_info::in) is semidet.
+:- pred simplify_do_excess_assign(simplify_info::in) is semidet.
+:- pred simplify_do_opt_duplicate_calls(simplify_info::in) is semidet.
+:- pred simplify_do_const_prop(simplify_info::in) is semidet.
+:- pred simplify_do_common_struct(simplify_info::in) is semidet.
+:- pred simplify_do_extra_common_struct(simplify_info::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -133,16 +150,127 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type simplifications
+    --->    simplifications(
+                do_warn_simple_code         :: bool,
+                do_warn_duplicate_calls     :: bool,
+                do_warn_known_bad_format    :: bool,
+                do_warn_unknown_format      :: bool,
+                do_warn_obsolete            :: bool,
+                do_do_once                  :: bool,
+                do_excess_assign            :: bool,
+                do_opt_duplicate_calls      :: bool,
+                do_constant_prop            :: bool,
+                do_common_struct            :: bool,
+                do_extra_common_struct      :: bool
+            ).
+
+simplifications_to_list(Simplifications) = List :-
+    Simplifications = simplifications(WarnSimpleCode, WarnDupCalls,
+        WarnKnownBadFormat, WarnUnknownFormat, WarnObsolete, DoOnce,
+        ExcessAssign, OptDuplicateCalls, ConstantProp,
+        CommonStruct, ExtraCommonStruct),
+    List = 
+        ( WarnSimpleCode = yes -> [warn_simple_code] ; [] ) ++
+        ( WarnDupCalls = yes -> [warn_duplicate_calls] ; [] ) ++
+        ( WarnKnownBadFormat = yes -> [warn_known_bad_format] ; [] ) ++
+        ( WarnUnknownFormat = yes -> [warn_unknown_format] ; [] ) ++
+        ( WarnObsolete = yes -> [warn_obsolete] ; [] ) ++
+        ( DoOnce = yes -> [do_once] ; [] ) ++
+        ( ExcessAssign = yes -> [excess_assigns] ; [] ) ++
+        ( OptDuplicateCalls = yes -> [opt_duplicate_calls] ; [] ) ++
+        ( ConstantProp = yes -> [constant_prop] ; [] ) ++
+        ( CommonStruct = yes -> [common_struct] ; [] ) ++
+        ( ExtraCommonStruct = yes -> [extra_common_struct] ; [] ).
+
+list_to_simplifications(List) =
+    simplifications(
+        ( list.member(warn_simple_code, List) -> yes ; no ),
+        ( list.member(warn_duplicate_calls, List) -> yes ; no ),
+        ( list.member(warn_known_bad_format, List) -> yes ; no ),
+        ( list.member(warn_unknown_format, List) -> yes ; no ),
+        ( list.member(warn_obsolete, List) -> yes ; no ),
+        ( list.member(do_once, List) -> yes ; no ),
+        ( list.member(excess_assigns, List) -> yes ; no ),
+        ( list.member(opt_duplicate_calls, List) -> yes ; no ),
+        ( list.member(constant_prop, List) -> yes ; no ),
+        ( list.member(common_struct, List) -> yes ; no ),
+        ( list.member(extra_common_struct, List) -> yes ; no )
+    ).
+
+find_simplifications(WarnThisPass, Globals, Simplifications) :-
+    globals.lookup_bool_option(Globals, warn_simple_code, WarnSimple),
+    globals.lookup_bool_option(Globals, warn_duplicate_calls, WarnDupCalls),
+    globals.lookup_bool_option(Globals, warn_known_bad_format_calls,
+        WarnKnownBadFormat),
+    globals.lookup_bool_option(Globals, warn_unknown_format_calls,
+        WarnUnknownFormat),
+    globals.lookup_bool_option(Globals, warn_obsolete, WarnObsolete),
+    globals.lookup_bool_option(Globals, excess_assign, ExcessAssign),
+    globals.lookup_bool_option(Globals, common_struct, CommonStruct),
+    globals.lookup_bool_option(Globals, optimize_duplicate_calls,
+        OptDuplicateCalls),
+    globals.lookup_bool_option(Globals, constant_propagation, ConstantProp),
+    DoOnce = no,
+    ExtraCommonStruct = no,
+
+    Simplifications = simplifications(
+        ( WarnSimple = yes, WarnThisPass = yes -> yes ; no),
+        ( WarnDupCalls = yes, WarnThisPass = yes -> yes ; no),
+        ( WarnKnownBadFormat = yes, WarnThisPass = yes -> yes ; no),
+        ( WarnUnknownFormat = yes, WarnThisPass = yes -> yes ; no),
+        ( WarnObsolete = yes, WarnThisPass = yes -> yes ; no),
+        DoOnce,
+        ExcessAssign,
+        OptDuplicateCalls,
+        ConstantProp,
+        CommonStruct,
+        ExtraCommonStruct
+    ).
+
+simplify_do_warn_simple_code(Info) :-
+    simplify_info_get_simplifications(Info, Simplifications),
+    Simplifications ^ do_warn_simple_code = yes.
+simplify_do_warn_duplicate_calls(Info) :-
+    simplify_info_get_simplifications(Info, Simplifications),
+    Simplifications ^ do_warn_duplicate_calls = yes.
+simplify_do_warn_known_bad_format(Info) :-
+    simplify_info_get_simplifications(Info, Simplifications),
+    Simplifications ^ do_warn_known_bad_format = yes.
+simplify_do_warn_unknown_format(Info) :-
+    simplify_info_get_simplifications(Info, Simplifications),
+    Simplifications ^ do_warn_unknown_format = yes.
+simplify_do_warn_obsolete(Info) :-
+    simplify_info_get_simplifications(Info, Simplifications),
+    Simplifications ^ do_warn_obsolete = yes.
+simplify_do_once(Info) :-
+    simplify_info_get_simplifications(Info, Simplifications),
+    Simplifications ^ do_do_once = yes.
+simplify_do_excess_assign(Info) :-
+    simplify_info_get_simplifications(Info, Simplifications),
+    Simplifications ^ do_excess_assign = yes.
+simplify_do_opt_duplicate_calls(Info) :-
+    simplify_info_get_simplifications(Info, Simplifications),
+    Simplifications ^ do_opt_duplicate_calls = yes.
+simplify_do_const_prop(Info) :-
+    simplify_info_get_simplifications(Info, Simplifications),
+    Simplifications ^ do_constant_prop = yes.
+simplify_do_common_struct(Info) :-
+    simplify_info_get_simplifications(Info, Simplifications),
+    Simplifications ^ do_common_struct = yes.
+simplify_do_extra_common_struct(Info) :-
+    simplify_info_get_simplifications(Info, Simplifications),
+    Simplifications ^ do_extra_common_struct = yes.
+
+%-----------------------------------------------------------------------------%
+
 simplify_pred(Simplifications0, PredId, !ModuleInfo, !PredInfo,
         WarnCnt, ErrCnt, !IO) :-
     write_pred_progress_message("% Simplifying ", PredId, !.ModuleInfo, !IO),
     ProcIds = pred_info_non_imported_procids(!.PredInfo),
-    (
-        % Don't warn for compiler-generated procedures.
-        list.member(warn_simple_code, Simplifications0),
-        is_unify_or_compare_pred(!.PredInfo)
-    ->
-        list.delete_all(Simplifications0, warn_simple_code, Simplifications)
+    % Don't warn for compiler-generated procedures.
+    ( is_unify_or_compare_pred(!.PredInfo) ->
+        Simplifications = Simplifications0 ^ do_warn_simple_code := no
     ;
         Simplifications = Simplifications0
     ),
@@ -162,7 +290,7 @@ simplify_pred(Simplifications0, PredId, !ModuleInfo, !PredInfo,
     globals.io_lookup_bool_option(detailed_statistics, Statistics, !IO),
     maybe_report_stats(Statistics, !IO).
 
-:- pred simplify_procs(list(simplification)::in, pred_id::in,
+:- pred simplify_procs(simplifications::in, pred_id::in,
     list(proc_id)::in, module_info::in, module_info::out,
     pred_info::in, pred_info::out,
     maybe(pair(set(context_det_msg)))::in,
@@ -201,12 +329,25 @@ simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !Proc, !IO)  :-
     simplify_proc_return_msgs(Simplifications, PredId, ProcId, !ModuleInfo,
         !Proc, _, !IO).
 
-simplify_proc_return_msgs(Simplifications, PredId, ProcId, !ModuleInfo,
+:- func turn_off_common_struct_threshold = int.
+
+turn_off_common_struct_threshold = 1000.
+
+simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
         !ProcInfo, DetMsgs, !IO) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
-    det_info_init(!.ModuleInfo, VarTypes0, PredId, ProcId, Globals,
-        DetInfo0),
+    NumVars = map.count(VarTypes0),
+    ( NumVars > turn_off_common_struct_threshold ->
+        % If we have too many variables, common_struct takes so long that
+        % either the compiler runs out of memory or the user runs out of
+        % patience. The fact that we would generate better code if the
+        % compilation finished is therefore of limited interest.
+        Simplifications = Simplifications0 ^ do_common_struct := no
+    ;
+        Simplifications = Simplifications0
+    ),
+    det_info_init(!.ModuleInfo, VarTypes0, PredId, ProcId, Globals, DetInfo0),
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
     simplify_info_init(DetInfo0, Simplifications, InstMap0, !.ProcInfo, Info0),
     proc_info_get_goal(!.ProcInfo, Goal0),
@@ -226,7 +367,7 @@ simplify_proc_return_msgs(Simplifications, PredId, ProcId, !ModuleInfo,
         Goal1 = Goal0
     ),
 
-    process_goal(Goal1, Goal, Info0, Info, !IO),
+    simplify_process_goal(Goal1, Goal, Info0, Info, !IO),
 
     simplify_info_get_varset(Info, VarSet),
     simplify_info_get_var_types(Info, VarTypes),
@@ -240,9 +381,9 @@ simplify_proc_return_msgs(Simplifications, PredId, ProcId, !ModuleInfo,
     (
         Info ^ format_calls = yes,
         (
-            list.member(warn_known_bad_format, Simplifications)
+            Simplifications ^ do_warn_known_bad_format = yes
         ;
-            list.member(warn_unknown_format, Simplifications)
+            Simplifications ^ do_warn_unknown_format = yes
         )
     ->
         % We must use the original goal, Goal0, here. This is because excess
@@ -269,26 +410,26 @@ simplify_proc_return_msgs(Simplifications, PredId, ProcId, !ModuleInfo,
         DetMsgs = DetMsgs1
     ).
 
-process_goal(Goal0, Goal, !Info, !IO) :-
+simplify_process_goal(Goal0, Goal, !Info, !IO) :-
     simplify_info_get_simplifications(!.Info, Simplifications0),
     simplify_info_get_instmap(!.Info, InstMap0),
-
     (
-        ( simplify_do_common(!.Info)
-        ; simplify_do_calls(!.Info)
+        ( simplify_do_common_struct(!.Info)
+        ; simplify_do_opt_duplicate_calls(!.Info)
         )
     ->
-        % On the first pass do common structure and call elimination.
-        NotOnFirstPass = [do_once, excess_assigns],
-
-        set.delete_list(Simplifications0, NotOnFirstPass, Simplifications1),
+        Simplifications1 = ((Simplifications0
+            ^ do_do_once := no)
+            ^ do_excess_assign := no),
         simplify_info_set_simplifications(Simplifications1, !Info),
 
         do_process_goal(Goal0, Goal1, !Info, !IO),
 
-        NotOnSecondPass = [warn_simple_code, warn_duplicate_calls,
-            common_struct, duplicate_calls],
-        set.delete_list(Simplifications0, NotOnSecondPass, Simplifications2),
+        Simplifications2 = ((((Simplifications0
+            ^ do_warn_simple_code := no)
+            ^ do_warn_duplicate_calls := no)
+            ^ do_common_struct := no)
+            ^ do_opt_duplicate_calls := no),
         simplify_info_reinit(Simplifications2, InstMap0, !Info)
     ;
         Goal1 = Goal0
@@ -314,9 +455,9 @@ do_process_goal(Goal0, Goal, !Info, !IO) :-
         simplify_info_set_varset(VarSet1, !Info),
         simplify_info_set_var_types(VarTypes1, !Info),
 
-        % Always recompute instmap_deltas for atomic goals - this
-        % is safer in the case where unused variables should no
-        % longer be included in the instmap_delta for a goal.
+        % Always recompute instmap_deltas for atomic goals - this is safer
+        % in the case where unused variables should no longer be included
+        % in the instmap_delta for a goal.
         % In the alias branch this is necessary anyway.
         RecomputeAtomic = yes,
 
@@ -333,8 +474,7 @@ do_process_goal(Goal0, Goal, !Info, !IO) :-
         det_get_soln_context(Det, SolnContext),
 
         % det_infer_goal looks up the proc_info in the module_info
-        % for the vartypes, so we'd better stick them back in the
-        % module_info.
+        % for the vartypes, so we'd better stick them back in the module_info.
         simplify_info_get_module_info(!.Info, ModuleInfo2),
         simplify_info_get_varset(!.Info, VarSet2),
         simplify_info_get_var_types(!.Info, VarTypes2),
@@ -354,47 +494,6 @@ do_process_goal(Goal0, Goal, !Info, !IO) :-
             _, _, _)
     ;
         Goal = Goal3
-    ).
-
-%-----------------------------------------------------------------------------%
-
-find_simplifications(WarnThisPass, Globals, Simps) :-
-    find_simplifications_2(WarnThisPass, Globals, [], Simps).
-
-:- pred find_simplifications_2(bool::in, globals::in,
-    list(simplification)::in, list(simplification)::out) is det.
-
-find_simplifications_2(WarnThisPass, Globals, !Simps) :-
-    (
-        WarnThisPass = yes,
-        set_by_option(Globals, warn_duplicate_calls,
-            warn_duplicate_calls, !Simps),
-        set_by_option(Globals, warn_simple_code,
-            warn_simple_code, !Simps),
-        set_by_option(Globals, warn_known_bad_format_calls,
-            warn_known_bad_format, !Simps),
-        set_by_option(Globals, warn_unknown_format_calls,
-            warn_unknown_format, !Simps),
-        set_by_option(Globals, warn_obsolete, warn_obsolete,
-            !Simps)
-    ;
-        WarnThisPass = no
-    ),
-    set_by_option(Globals, excess_assign, excess_assigns, !Simps),
-    set_by_option(Globals, common_struct, common_struct, !Simps),
-    set_by_option(Globals, optimize_duplicate_calls, duplicate_calls, !Simps),
-    set_by_option(Globals, constant_propagation, constant_prop, !Simps).
-
-:- pred set_by_option(globals::in, option::in, simplification::in,
-    list(simplification)::in, list(simplification)::out) is det.
-
-set_by_option(Globals, Option, Simplification, !Simplifications) :-
-    globals.lookup_bool_option(Globals, Option, Result),
-    (
-        Result = yes,
-        !:Simplifications = [Simplification | !.Simplifications]
-    ;
-        Result = no
     ).
 
 %-----------------------------------------------------------------------------%
@@ -428,11 +527,12 @@ simplify_goal(Goal0, Goal - GoalInfo, !Info, !IO) :-
         %
         goal_info_get_context(GoalInfo0, Context),
         (
-            simplify_do_warn(!.Info),
+            simplify_do_warn_simple_code(!.Info),
             \+ (
                     goal_contains_goal(Goal0, SubGoal),
                     ( SubGoal = disj([]) - _
-                    ; goal_is_call_to_builtin_false(SubGoal))
+                    ; goal_is_call_to_builtin_false(SubGoal)
+                    )
             )
         ->
             Msg = goal_cannot_succeed,
@@ -492,7 +592,7 @@ simplify_goal(Goal0, Goal - GoalInfo, !Info, !IO) :-
 %       % quantifications, because it seems that warnings in those
 %       % cases are usually spurious.
 %       (
-%           simplify_do_warn(!.Info),
+%           simplify_do_warn_simple_code(!.Info),
 %           % Goal0 \= conj(plain_conj, []) - _,
 %           \+ (Goal0 = call(_, _, _, _, _, SymName) - _,
 %               unqualify_name(SymName, "!")),
@@ -639,8 +739,7 @@ simplify_goal_2(conj(ConjType, Goals0), Goal, GoalInfo0, GoalInfo,
 
 simplify_goal_2(disj(Disjuncts0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
     simplify_info_get_instmap(!.Info, InstMap0),
-    simplify_disj(Disjuncts0, [], Disjuncts, [], InstMaps, !.Info, !Info,
-        !IO),
+    simplify_disj(Disjuncts0, [], Disjuncts, [], InstMaps, !.Info, !Info, !IO),
     (
         Disjuncts = [],
         goal_info_get_context(GoalInfo0, Context),
@@ -654,8 +753,8 @@ simplify_goal_2(disj(Disjuncts0), Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
         Disjuncts = [_, _ | _],
         Goal = disj(Disjuncts),
         ( goal_info_has_feature(GoalInfo0, mode_check_clauses_goal) ->
-            % Recomputing the instmap delta would take very long and is
-            % very unlikely to get any better precision.
+            % Recomputing the instmap delta would take very long
+            % and is very unlikely to get any better precision.
             GoalInfo = GoalInfo0
         ;
             simplify_info_get_module_info(!.Info, ModuleInfo1),
@@ -801,24 +900,24 @@ simplify_goal_2(switch(Var, SwitchCanFail0, Cases0), Goal,
 simplify_goal_2(Goal0, Goal, GoalInfo, GoalInfo, !Info, !IO) :-
     Goal0 = generic_call(GenericCall, Args, Modes, Det),
     (
-        simplify_do_calls(!.Info),
+        simplify_do_opt_duplicate_calls(!.Info),
         % XXX We should do duplicate call elimination for
         % class method calls here.
         GenericCall = higher_order(Closure, Purity, _, _),
         % XXX Should we handle semipure higher-order calls too?
         Purity = purity_pure
     ->
-        common.optimise_higher_order_call(Closure, Args, Modes, Det,
+        common_optimise_higher_order_call(Closure, Args, Modes, Det,
             GoalInfo, Goal0, Goal, !Info)
     ;
-        simplify_do_warn_calls(!.Info),
+        simplify_do_warn_duplicate_calls(!.Info),
         GenericCall = higher_order(Closure, Purity, _, _),
         % XXX Should we handle impure/semipure higher-order calls too?
         Purity = purity_pure
     ->
         % We need to do the pass, for the warnings, but we ignore
         % the optimized goal and instead use the original one.
-        common.optimise_higher_order_call(Closure, Args, Modes, Det,
+        common_optimise_higher_order_call(Closure, Args, Modes, Det,
             GoalInfo, Goal0, _Goal1, !Info),
         Goal = Goal0
     ;
@@ -902,21 +1001,20 @@ simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
             unexpected(this_file, "invalid RHS for complicated unify")
         )
     ;
-        simplify_do_common(!.Info)
+        simplify_do_common_struct(!.Info)
     ->
-        common.optimise_unification(U0, LT0, RT0, M, C,
+        common_optimise_unification(U0, LT0, RT0, M, C,
             Goal0, Goal, GoalInfo0, GoalInfo, !Info)
     ;
-        ( simplify_do_calls(!.Info)
-        ; simplify_do_warn_calls(!.Info)
+        ( simplify_do_opt_duplicate_calls(!.Info)
+        ; simplify_do_warn_duplicate_calls(!.Info)
         )
     ->
-        % We need to do the pass, to record the variable
-        % equivalences used for optimizing or warning about
-        % duplicate calls.  But we don't want to perform
-        % the optimization, so we disregard the optimized goal
-        % and instead use the original one.
-        common.optimise_unification(U0, LT0, RT0, M, C,
+        % We need to do the pass, to record the variable equivalences
+        % used for optimizing or warning about duplicate calls.
+        % But we don't want to perform the optimization, so we disregard
+        % the optimized goal and instead use the original one.
+        common_optimise_unification(U0, LT0, RT0, M, C,
             Goal0, _Goal1, GoalInfo0, _GoalInfo1, !Info),
         Goal = Goal0,
         GoalInfo = GoalInfo0
@@ -1204,12 +1302,12 @@ simplify_goal_2(Goal0, Goal, GoalInfo, GoalInfo, !Info, !IO) :-
         Goal1 = foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs, Impl)
     ),
     (
-        simplify_do_calls(!.Info),
+        simplify_do_opt_duplicate_calls(!.Info),
         goal_info_is_pure(GoalInfo),
         ExtraArgs = []
-        ->
+    ->
         ArgVars = list.map(foreign_arg_var, Args),
-        common.optimise_call(PredId, ProcId, ArgVars, GoalInfo, Goal1, Goal,
+        common_optimise_call(PredId, ProcId, ArgVars, GoalInfo, Goal1, Goal,
             !Info)
     ;
         Goal = Goal1
@@ -1332,7 +1430,7 @@ call_goal(PredId, ProcId, Args, IsBuiltin, Goal0, Goal, GoalInfo0, GoalInfo,
     % Check for recursive calls with the same input arguments,
     % and warn about them (since they will lead to infinite loops).
     (
-        simplify_do_warn(!.Info),
+        simplify_do_warn_simple_code(!.Info),
 
         % Is this a (directly) recursive call, i.e. is the procedure being
         % called the same as the procedure we're analyzing?
@@ -1402,18 +1500,18 @@ call_goal(PredId, ProcId, Args, IsBuiltin, Goal0, Goal, GoalInfo0, GoalInfo,
 
     % Check for duplicate calls to the same procedure.
     (
-        simplify_do_calls(!.Info),
+        simplify_do_opt_duplicate_calls(!.Info),
         goal_info_is_pure(GoalInfo0)
     ->
-        common.optimise_call(PredId, ProcId, Args, GoalInfo0, Goal0, Goal1,
+        common_optimise_call(PredId, ProcId, Args, GoalInfo0, Goal0, Goal1,
             !Info)
     ;
-        simplify_do_warn_calls(!.Info),
+        simplify_do_warn_duplicate_calls(!.Info),
         goal_info_is_pure(GoalInfo0)
     ->
-        % we need to do the pass, for the warnings, but we ignore
-        % the optimized goal and instead use the original one
-        common.optimise_call(PredId, ProcId, Args, GoalInfo0, Goal0, _Goal1,
+        % We need to do the pass, for the warnings, but we ignore
+        % the optimized goal and instead use the original one.
+        common_optimise_call(PredId, ProcId, Args, GoalInfo0, Goal0, _Goal1,
             !Info),
         Goal1 = Goal0
     ;
@@ -1668,7 +1766,7 @@ input_args_are_equiv([], [], _, _, _).
 input_args_are_equiv([Arg | Args], [HeadVar | HeadVars], [Mode | Modes],
         CommonInfo, ModuleInfo) :-
     ( mode_is_input(ModuleInfo, Mode) ->
-        common.vars_are_equivalent(Arg, HeadVar, CommonInfo)
+        common_vars_are_equivalent(Arg, HeadVar, CommonInfo)
     ;
         true
     ),
@@ -1870,7 +1968,7 @@ simplify_par_conj([Goal0 |Goals0], [Goal | Goals], Info0, !Info, !IO) :-
     simplify_info::in, simplify_info::out) is det.
 
 excess_assigns_in_conj(ConjInfo, Goals0, Goals, !Info) :-
-    ( simplify_do_excess_assigns(!.Info) ->
+    ( simplify_do_excess_assign(!.Info) ->
         goal_info_get_nonlocals(ConjInfo, ConjNonLocals),
         map.init(Subn0),
         simplify_info_get_module_info(!.Info, ModuleInfo),
@@ -1886,7 +1984,7 @@ excess_assigns_in_conj(ConjInfo, Goals0, Goals, !Info) :-
             renaming_transitive_closure(Subn1, Subn),
             list.reverse(RevGoals, Goals1),
             MustSub = no,
-            goal_util.rename_vars_in_goals(MustSub, Subn, Goals1, Goals),
+            rename_vars_in_goals(MustSub, Subn, Goals1, Goals),
             map.keys(Subn0, RemovedVars),
             varset.delete_vars(VarSet0, RemovedVars, VarSet),
             simplify_info_set_varset(VarSet, !Info),
@@ -2116,7 +2214,7 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals, !PostBranchInstMaps,
         MaxSolns = at_most_zero
     ->
         (
-            simplify_do_warn(!.Info),
+            simplify_do_warn_simple_code(!.Info),
             % Don't warn where the initial goal was fail, since that can result
             % from mode analysis pruning away cases in a switch which cannot
             % succeed due to sub-typing in the modes.
@@ -2271,7 +2369,7 @@ contains_multisoln_goal(Goals) :-
     --->    simplify_info(
                 det_info                :: det_info,
                 msgs                    :: set(context_det_msg),
-                simplifications         :: set(simplification),
+                simplifications         :: simplifications,
                 common_info             :: common_info,
                                         % Info about common subexpressions.
                 instmap                 :: instmap,
@@ -2304,14 +2402,13 @@ simplify_info_init(DetInfo, Simplifications, InstMap, ProcInfo, Info) :-
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     set.init(Msgs),
-    set.list_to_set(Simplifications, SimplificationsSet),
-    Info = simplify_info(DetInfo, Msgs, SimplificationsSet,
+    Info = simplify_info(DetInfo, Msgs, Simplifications,
         common_info_init, InstMap, VarSet, InstVarSet,
         no, no, no, 0, 0, RttiVarMaps, no).
 
     % Reinitialise the simplify_info before reprocessing a goal.
     %
-:- pred simplify_info_reinit(set(simplification)::in, instmap::in,
+:- pred simplify_info_reinit(simplifications::in, instmap::in,
     simplify_info::in, simplify_info::out) is det.
 
 simplify_info_reinit(Simplifications, InstMap0, !Info) :-
@@ -2329,14 +2426,14 @@ simplify_info_reinit(Simplifications, InstMap0, !Info) :-
 :- import_module parse_tree.prog_data.
 :- import_module set.
 
-:- pred simplify_info_init(det_info::in, list(simplification)::in,
+:- pred simplify_info_init(det_info::in, simplifications::in,
     instmap::in, proc_info::in, simplify_info::out) is det.
 
 :- pred simplify_info_get_det_info(simplify_info::in, det_info::out) is det.
 :- pred simplify_info_get_det_msgs(simplify_info::in,
     set(context_det_msg)::out) is det.
 :- pred simplify_info_get_simplifications(simplify_info::in,
-    set(simplification)::out) is det.
+    simplifications::out) is det.
 :- pred simplify_info_get_common_info(simplify_info::in, common_info::out)
     is det.
 :- pred simplify_info_get_instmap(simplify_info::in, instmap::out) is det.
@@ -2406,7 +2503,7 @@ simplify_info_get_pred_info(Info, PredInfo) :-
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_det_msgs(set(context_det_msg)::in,
     simplify_info::in, simplify_info::out) is det.
-:- pred simplify_info_set_simplifications(set(simplification)::in,
+:- pred simplify_info_set_simplifications(simplifications::in,
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_instmap(instmap::in,
     simplify_info::in, simplify_info::out) is det.
@@ -2452,7 +2549,7 @@ simplify_info_incr_cost_delta(Incr, Info,
     Info ^ cost_delta := Info ^ cost_delta + Incr).
 
 simplify_info_add_det_msg(Msg, !Info) :-
-    ( simplify_do_warn(!.Info) ->
+    ( simplify_do_warn_simple_code(!.Info) ->
         simplify_info_do_add_det_msg(Msg, !Info)
     ;
         true
@@ -2492,48 +2589,6 @@ simplify_info_apply_type_substitution(TSubst, !Info) :-
     simplify_info_set_var_types(VarTypes, !Info),
     simplify_info_set_rtti_varmaps(RttiVarMaps, !Info).
 
-:- interface.
-
-:- pred simplify_do_warn(simplify_info::in) is semidet.
-:- pred simplify_do_warn_calls(simplify_info::in) is semidet.
-:- pred simplify_do_warn_obsolete(simplify_info::in) is semidet.
-:- pred simplify_do_once(simplify_info::in) is semidet.
-:- pred simplify_do_common(simplify_info::in) is semidet.
-:- pred simplify_do_excess_assigns(simplify_info::in) is semidet.
-:- pred simplify_do_calls(simplify_info::in) is semidet.
-:- pred simplify_do_const_prop(simplify_info::in) is semidet.
-:- pred simplify_do_more_common(simplify_info::in) is semidet.
-
-:- implementation.
-
-simplify_do_warn(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    set.member(warn_simple_code, Simplifications).
-simplify_do_warn_calls(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    set.member(warn_duplicate_calls, Simplifications).
-simplify_do_warn_obsolete(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    set.member(warn_obsolete, Simplifications).
-simplify_do_once(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    set.member(do_once, Simplifications).
-simplify_do_common(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    set.member(common_struct, Simplifications).
-simplify_do_excess_assigns(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    set.member(excess_assigns, Simplifications).
-simplify_do_calls(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    set.member(duplicate_calls, Simplifications).
-simplify_do_const_prop(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    set.member(constant_prop, Simplifications).
-simplify_do_more_common(Info) :-
-    simplify_info_get_simplifications(Info, Simplifications),
-    set.member(extra_common_struct, Simplifications).
-
 :- pred simplify_info_update_instmap(hlds_goal::in,
     simplify_info::in, simplify_info::out) is det.
 
@@ -2558,8 +2613,8 @@ simplify_info_update_instmap(Goal, Info, Info ^ instmap := InstMap) :-
 
 simplify_info_maybe_clear_structs(BeforeAfter, Goal, !Info) :-
     (
-        simplify_do_common(!.Info),
-        \+ simplify_do_more_common(!.Info),
+        simplify_do_common_struct(!.Info),
+        \+ simplify_do_extra_common_struct(!.Info),
         Goal = GoalExpr - _,
         will_flush(GoalExpr, BeforeAfter) = yes
     ->

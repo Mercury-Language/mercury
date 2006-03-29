@@ -314,6 +314,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module set.
+:- import_module set_tree234.
 :- import_module std_util.
 :- import_module svset.
 :- import_module term.
@@ -363,7 +364,26 @@ inst_matches_initial_1(InstA, InstB, Type, !ModuleInfo, !MaybeSub) :-
                 mer_inst,
                 maybe(mer_type)
             ).
-:- type expansions == set(inst_match_inputs).
+
+:- type expansions == set_tree234(inst_match_inputs).
+
+:- func expansion_init = expansions.
+:- pragma inline(expansion_init/0).
+
+expansion_init = set_tree234.init.
+
+:- pred expansion_member(inst_match_inputs::in, expansions::in) is semidet.
+:- pragma inline(expansion_member/2).
+
+expansion_member(E, S) :-
+    set_tree234.member(S, E).
+
+:- pred expansion_insert(inst_match_inputs::in,
+    expansions::in, expansions::out) is det.
+:- pragma inline(expansion_insert/3).
+
+expansion_insert(E, S0, S) :-
+    set_tree234.insert(E, S0, S).
 
     % The uniqueness_comparison type is used by the predicate
     % compare_uniqueness to determine what order should be used for
@@ -371,12 +391,12 @@ inst_matches_initial_1(InstA, InstB, Type, !ModuleInfo, !MaybeSub) :-
 
 :- type uniqueness_comparison
     --->    match
-            % We are doing a "matches" comparison, e.g. at a
-            % predicate call or the end of a procedure body.
+            % We are doing a "matches" comparison, e.g. at a predicate call
+            % or the end of a procedure body.
     ;       instantiated.
-            % We are comparing two insts for how "instantiated" they
-            % are.  The uniqueness order here should be the reverse
-            % of the order used for matching.
+            % We are comparing two insts for how "instantiated" they are.
+            % The uniqueness order here should be the reverse of the order
+            % used for matching.
 
 :- type inst_match_info
     --->    inst_match_info(
@@ -417,7 +437,7 @@ sub(Info) = Sub :-
 :- func init_inst_match_info(module_info) = inst_match_info.
 
 init_inst_match_info(ModuleInfo) =
-    inst_match_info(ModuleInfo, set.init, no, none, match, yes).
+    inst_match_info(ModuleInfo, expansion_init, no, none, match, yes).
 
 :- pred swap_sub(
     pred(inst_match_info, inst_match_info)::in(pred(in, out) is semidet),
@@ -446,12 +466,12 @@ swap_calculate_sub(none) = none.
 
 inst_matches_initial_2(InstA, InstB, MaybeType, !Info) :-
     ThisExpansion = inst_match_inputs(InstA, InstB, MaybeType),
-    ( set.member(ThisExpansion, !.Info ^ expansions) ->
+    ( expansion_member(ThisExpansion, !.Info ^ expansions) ->
         true
     ;
         inst_expand(!.Info ^ module_info, InstA, InstA2),
         inst_expand(!.Info ^ module_info, InstB, InstB2),
-        set.insert(!.Info ^ expansions, ThisExpansion, Expansions1),
+        expansion_insert(ThisExpansion, !.Info ^ expansions, Expansions1),
         handle_inst_var_subs(inst_matches_initial_2,
             inst_matches_initial_4, InstA2, InstB2, MaybeType,
             !.Info ^ expansions := Expansions1, !:Info)
@@ -962,14 +982,14 @@ inst_matches_final(InstA, InstB, Type, ModuleInfo) :-
 
 inst_matches_final_2(InstA, InstB, MaybeType, !Info) :-
     ThisExpansion = inst_match_inputs(InstA, InstB, MaybeType),
-    ( set.member(ThisExpansion, !.Info ^ expansions) ->
+    ( expansion_member(ThisExpansion, !.Info ^ expansions) ->
         true
     ; InstA = InstB ->
         true
     ;
         inst_expand(!.Info ^ module_info, InstA, InstA2),
         inst_expand(!.Info ^ module_info, InstB, InstB2),
-        set.insert(!.Info ^ expansions, ThisExpansion, Expansions1),
+        expansion_insert(ThisExpansion, !.Info ^ expansions, Expansions1),
         handle_inst_var_subs(inst_matches_final_2,
             inst_matches_final_3, InstA2, InstB2, MaybeType,
             !.Info ^ expansions := Expansions1, !:Info)
@@ -1082,15 +1102,13 @@ inst_list_matches_final([ArgA | ArgsA], [ArgB | ArgsB], [Type | Types],
     inst_matches_final_2(ArgA, ArgB, Type, !Info),
     inst_list_matches_final(ArgsA, ArgsB, Types, !Info).
 
-    % Here we check that the functors in the first list are a
-    % subset of the functors in the second list.
-    % (If a bound(...) inst only specifies the insts for some of
-    % the constructors of its type, then it implicitly means that
-    % all other constructors must have all their arguments
-    % `not_reached'.)
-    % The code here makes use of the fact that the bound_inst lists
-    % are sorted.
-
+    % Here we check that the functors in the first list are a subset of the
+    % functors in the second list. (If a bound(...) inst only specifies
+    % the insts for some of the constructors of its type, then it implicitly
+    % means that all other constructors must have all their arguments
+    % `not_reached'.) The code here makes use of the fact that the bound_inst
+    % lists are sorted.
+    %
 :- pred bound_inst_list_matches_final(list(bound_inst)::in,
     list(bound_inst)::in, maybe(mer_type)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
@@ -1133,14 +1151,14 @@ inst_matches_binding_allow_any_any(InstA, InstB, Type, ModuleInfo) :-
 
 inst_matches_binding_2(InstA, InstB, MaybeType, !Info) :-
     ThisExpansion = inst_match_inputs(InstA, InstB, MaybeType),
-    ( set.member(ThisExpansion, !.Info ^ expansions) ->
+    ( expansion_member(ThisExpansion, !.Info ^ expansions) ->
         true
     ;
         inst_expand_and_remove_constrained_inst_vars(
             !.Info ^ module_info, InstA, InstA2),
         inst_expand_and_remove_constrained_inst_vars(
             !.Info ^ module_info, InstB, InstB2),
-        set.insert(!.Info ^ expansions, ThisExpansion, Expansions1),
+        expansion_insert(ThisExpansion, !.Info ^ expansions, Expansions1),
         inst_matches_binding_3(InstA2, InstB2, MaybeType,
             !.Info ^ expansions := Expansions1, !:Info)
     ).
@@ -1228,15 +1246,13 @@ inst_list_matches_binding([ArgA | ArgsA], [ArgB | ArgsB],
     inst_matches_binding_2(ArgA, ArgB, MaybeType, !Info),
     inst_list_matches_binding(ArgsA, ArgsB, MaybeTypes, !Info).
 
-    % Here we check that the functors in the first list are a
-    % subset of the functors in the second list.
-    % (If a bound(...) inst only specifies the insts for some of
-    % the constructors of its type, then it implicitly means that
-    % all other constructors must have all their arguments
-    % `not_reached'.)
-    % The code here makes use of the fact that the bound_inst lists
-    % are sorted.
-
+    % Here we check that the functors in the first list are a subset of the
+    % functors in the second list. (If a bound(...) inst only specifies
+    % the insts for some of the constructors of its type, then it implicitly
+    % means that all other constructors must have all their arguments
+    % `not_reached'.) The code here makes use of the fact that the bound_inst
+    % lists are sorted.
+    %
 :- pred bound_inst_list_matches_binding(list(bound_inst)::in,
     list(bound_inst)::in, maybe(mer_type)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
@@ -1847,6 +1863,20 @@ inst_contains_instname_2(defined_inst(InstName1), ModuleInfo, InstName,
     ).
 inst_contains_instname_2(bound(_Uniq, ArgInsts), ModuleInfo,
         InstName, Result, !Expansions) :-
+    % XXX This code has a performance problem.
+    %
+    % The problem is that e.g. in a list of length N, you'll have N variables
+    % for the skeletons whose insts contain an average of N/2 occurences of
+    % `bound' each, so the complexity of running inst_contains_instname_2
+    % on all their insts is quadratic in N.
+    %
+    % One solution to this would be to add an extra argument to bound/2
+    % that gives the set of included inst_names, or simply asserts that this
+    % set is empty. This field can be set at the time of the construction
+    % of the inst, avoiding quadratic behavior in inst_contains_instname_2.
+    % The complexity of constructing all the insts will remain quadratic in N,
+    % of course.
+
     bound_inst_list_contains_instname(ArgInsts, ModuleInfo,
         InstName, Result, !Expansions).
 
@@ -1854,8 +1884,7 @@ inst_contains_instname_2(bound(_Uniq, ArgInsts), ModuleInfo,
     module_info::in, inst_name::in, bool::out,
     inst_names::in, inst_names::out) is det.
 
-bound_inst_list_contains_instname([], _ModuleInfo,
-        _InstName, no, !Expansions).
+bound_inst_list_contains_instname([], _ModuleInfo, _InstName, no, !Expansions).
 bound_inst_list_contains_instname([BoundInst | BoundInsts], ModuleInfo,
         InstName, Result, !Expansions) :-
     BoundInst = functor(_Functor, ArgInsts),
@@ -1873,19 +1902,17 @@ bound_inst_list_contains_instname([BoundInst | BoundInsts], ModuleInfo,
 :- pred inst_list_contains_instname(list(mer_inst)::in, module_info::in,
     inst_name::in, bool::out, inst_names::in, inst_names::out) is det.
 
-inst_list_contains_instname([], _ModuleInfo, _InstName, no,
-        !Expansions).
+inst_list_contains_instname([], _ModuleInfo, _InstName, no, !Expansions).
 inst_list_contains_instname([Inst | Insts], ModuleInfo, InstName, Result,
         !Expansions) :-
-    inst_contains_instname_2(Inst, ModuleInfo, InstName, Result1,
-        !Expansions),
+    inst_contains_instname_2(Inst, ModuleInfo, InstName, Result1, !Expansions),
     (
         Result1 = yes,
         Result = yes
     ;
         Result1 = no,
-        inst_list_contains_instname(Insts, ModuleInfo, InstName,
-            Result, !Expansions)
+        inst_list_contains_instname(Insts, ModuleInfo, InstName, Result,
+            !Expansions)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1895,12 +1922,12 @@ inst_list_contains_instname([Inst | Insts], ModuleInfo, InstName, Result,
 inst_name_contains_inst_var(user_inst(_Name, ArgInsts), InstVar) :-
     inst_list_contains_inst_var(ArgInsts, InstVar).
 inst_name_contains_inst_var(merge_inst(InstA, InstB), InstVar) :-
-    (   inst_contains_inst_var(InstA, InstVar)
-    ;   inst_contains_inst_var(InstB, InstVar)
+    ( inst_contains_inst_var(InstA, InstVar)
+    ; inst_contains_inst_var(InstB, InstVar)
     ).
 inst_name_contains_inst_var(unify_inst(_Live, InstA, InstB, _Real), InstVar) :-
-    (   inst_contains_inst_var(InstA, InstVar)
-    ;   inst_contains_inst_var(InstB, InstVar)
+    ( inst_contains_inst_var(InstA, InstVar)
+    ; inst_contains_inst_var(InstB, InstVar)
     ).
 inst_name_contains_inst_var(ground_inst(InstName, _Live, _Uniq, _Real),
         InstVar) :-

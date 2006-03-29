@@ -104,18 +104,13 @@
 :- type quant_warning
     --->    warn_overlap(list(prog_var), prog_context).
 
-    % goal_vars(NonLocalsToRecompute, Goal, Vars):
+    % free_goal_vars(Goal) = Vars:
     %
-    % Vars is the set of variables that occur free (unquantified)
-    % in Goal, excluding unset fields of reconstructions if
+    % Vars is the set of variables that occur free (unquantified) in Goal
+    % excluding unset fields of reconstructions if
     % NonLocalsToRecompute is `code_gen_nonlocals'.
     %
-:- pred goal_vars(nonlocals_to_recompute::in, hlds_goal::in,
-    set(prog_var)::out) is det.
-
-    % As above, with `ordinary_nonlocals' passed as the first argument.
-    %
-:- pred goal_vars(hlds_goal::in, set(prog_var)::out) is det.
+:- func free_goal_vars(hlds_goal) = set(prog_var).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -129,6 +124,7 @@
 :- import_module bool.
 :- import_module enum.
 :- import_module map.
+:- import_module require.
 :- import_module sparse_bitset.
 :- import_module std_util.
 :- import_module term.
@@ -192,6 +188,9 @@
     % QuantifiedVars will be [X]; when processing `q(X)',
     % OutsideVars will be [X] and QuantifiedVars will be [],
     % since the quantification can't be pushed inside the negation.
+
+:- inst ordinary_nonlocals ---> ordinary_nonlocals.
+:- inst code_gen_nonlocals ---> code_gen_nonlocals.
 
 %-----------------------------------------------------------------------------%
 
@@ -268,7 +267,8 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info) :-
     (
         % If there are any variables that are local to the goal
         % which we have come across before, then we rename them apart.
-        goal_vars_bitset(NonLocalsToRecompute, Goal0 - GoalInfo0, GoalVars0),
+        goal_vars_bitset_choose(NonLocalsToRecompute, Goal0 - GoalInfo0,
+            GoalVars0),
         difference(GoalVars0, NonLocalVars, LocalVars),
         intersect(SeenVars, LocalVars, RenameVars),
         \+ empty(RenameVars)
@@ -442,7 +442,8 @@ implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
     ),
     insert_list(QuantVars, Vars, QuantVars1),
     get_nonlocals_to_recompute(!.Info, NonLocalsToRecompute),
-    goal_vars(NonLocalsToRecompute, Then1, VarsThen, LambdaVarsThen),
+    goal_vars_both_choose(NonLocalsToRecompute, Then1,
+        VarsThen, LambdaVarsThen),
     union(OutsideVars, VarsThen, OutsideVars1),
     union(LambdaOutsideVars, LambdaVarsThen, LambdaOutsideVars1),
     set_quant_vars(QuantVars1, !Info),
@@ -566,7 +567,8 @@ implicitly_quantify_goal_2_shorthand(bi_implication(LHS0, RHS0), Context, Goal,
     % Prepare for quantifying the LHS: add variables from the RHS to the
     % outside vars and the outside lambda vars sets.
     get_nonlocals_to_recompute(!.Info, NonLocalsToRecompute),
-    goal_vars(NonLocalsToRecompute, RHS0, RHS_Vars, RHS_LambdaVars),
+    goal_vars_both_choose(NonLocalsToRecompute, RHS0,
+        RHS_Vars, RHS_LambdaVars),
     union(OutsideVars1, RHS_Vars, LHS_OutsideVars),
     union(LambdaOutsideVars1, RHS_LambdaVars, LHS_LambdaOutsideVars),
 
@@ -621,7 +623,8 @@ implicitly_quantify_goal_2_shorthand(bi_implication(LHS0, RHS0), Context, Goal,
 
     % Rename apart the local variables of the goals we've just duplicated.
     ReverseImplication0 = not(conj(plain_conj, [RHS, NotLHS]) - GI) - GI,
-    goal_vars_bitset(NonLocalsToRecompute, ReverseImplication0, GoalVars),
+    goal_vars_bitset_choose(NonLocalsToRecompute, ReverseImplication0,
+        GoalVars),
     difference(GoalVars, NonLocalVars, RenameVars),
     rename_apart(RenameVars, _, ReverseImplication0, ReverseImplication,
         !Info),
@@ -772,7 +775,7 @@ implicitly_quantify_unify_rhs(_, Context, !RHS, !Unification, !Info) :-
 
 implicitly_quantify_conj(!Goals, !Info) :-
     get_nonlocals_to_recompute(!.Info, NonLocalsToRecompute),
-    get_vars(NonLocalsToRecompute, !.Goals, FollowingVarsList),
+    get_vars_choose(NonLocalsToRecompute, !.Goals, FollowingVarsList),
     implicitly_quantify_conj_2(FollowingVarsList, !Goals, !Info).
 
 :- pred implicitly_quantify_conj_2(list(pair(set_of_var))::in,
@@ -857,16 +860,32 @@ update_seen_vars(NewVars, !Info) :-
     % contains following variables that occur not in lambda goals, and the
     % second contains following variables that occur in lambda goals.
     %
-:- pred get_vars(nonlocals_to_recompute::in, list(hlds_goal)::in,
+:- pred get_vars_choose(nonlocals_to_recompute::in, list(hlds_goal)::in,
     list(pair(set_of_var))::out) is det.
+
+get_vars_choose(NonLocalsToRecompute, Goals, Pairs) :-
+    (
+        NonLocalsToRecompute = ordinary_nonlocals,
+        get_vars(ordinary_nonlocals, Goals, Pairs)
+    ;
+        NonLocalsToRecompute = code_gen_nonlocals,
+        get_vars(code_gen_nonlocals, Goals, Pairs)
+    ).
+
+:- pred get_vars(nonlocals_to_recompute, list(hlds_goal),
+    list(pair(set_of_var))).
+:- mode get_vars(in(ordinary_nonlocals), in, out) is det.
+:- mode get_vars(in(code_gen_nonlocals), in, out) is det.
 
 get_vars(_, [], []).
 get_vars(NonLocalsToRecompute, [_Goal | Goals],
         [Set - LambdaSet | SetPairs]) :-
     get_vars_2(NonLocalsToRecompute, Goals, Set, LambdaSet, SetPairs).
 
-:- pred get_vars_2(nonlocals_to_recompute::in, list(hlds_goal)::in,
-    set_of_var::out, set_of_var::out, list(pair(set_of_var))::out) is det.
+:- pred get_vars_2(nonlocals_to_recompute, list(hlds_goal),
+    set_of_var, set_of_var, list(pair(set_of_var))).
+:- mode get_vars_2(in(ordinary_nonlocals), in, out, out, out) is det.
+:- mode get_vars_2(in(code_gen_nonlocals), in, out, out, out) is det.
 
 get_vars_2(_, [], Set, LambdaSet, []) :-
     init(Set),
@@ -874,60 +893,199 @@ get_vars_2(_, [], Set, LambdaSet, []) :-
 get_vars_2(NonLocalsToRecompute, [Goal | Goals], Set, LambdaSet,
         SetPairList) :-
     get_vars_2(NonLocalsToRecompute, Goals, Set0, LambdaSet0, SetPairList0),
-    goal_vars(NonLocalsToRecompute, Goal, Set1, LambdaSet1),
+    goal_vars_both(NonLocalsToRecompute, Goal, Set1, LambdaSet1),
     union(Set0, Set1, Set),
     union(LambdaSet0, LambdaSet1, LambdaSet),
     SetPairList = [Set0 - LambdaSet0 | SetPairList0].
 
-:- pred goal_list_vars_2(nonlocals_to_recompute::in, list(hlds_goal)::in,
-    set_of_var::in, set_of_var::out, set_of_var::in, set_of_var::out) is det.
+:- pred conj_vars(nonlocals_to_recompute, list(hlds_goal),
+    set_of_var, set_of_var, set_of_var, set_of_var).
+:- mode conj_vars(in(ordinary_nonlocals), in, in, out, in, out) is det.
+:- mode conj_vars(in(code_gen_nonlocals), in, in, out, in, out) is det.
 
-goal_list_vars_2(_, [], !Set, !LambdaSet).
-goal_list_vars_2(NonLocalsToRecompute, [Goal - _GoalInfo| Goals],
-        !Set, !LambdaSet) :-
+conj_vars(_, [], !Set, !LambdaSet).
+conj_vars(NonLocalsToRecompute, [Goal - _GoalInfo| Goals], !Set, !LambdaSet) :- 
     goal_vars_2(NonLocalsToRecompute, Goal, !Set, !LambdaSet),
-    goal_list_vars_2(NonLocalsToRecompute, Goals, !Set, !LambdaSet).
+    conj_vars(NonLocalsToRecompute, Goals, !Set, !LambdaSet).
 
-:- pred case_list_vars_2(nonlocals_to_recompute::in, list(case)::in,
-    set_of_var::in, set_of_var::out, set_of_var::in, set_of_var::out) is det.
+:- pred disj_vars(nonlocals_to_recompute, list(hlds_goal),
+    set_of_var, set_of_var, set_of_var, set_of_var).
+:- mode disj_vars(in(ordinary_nonlocals), in, in, out, in, out) is det.
+:- mode disj_vars(in(code_gen_nonlocals), in, in, out, in, out) is det.
 
-case_list_vars_2(_, [], !Set, !LambdaSet).
-case_list_vars_2(NonLocalsToRecompute, [case(_Cons, Goal - _GoalInfo) | Cases],
-        !Set, !LambdaSet) :-
-    goal_vars_2(NonLocalsToRecompute, Goal, !Set, !LambdaSet),
-    case_list_vars_2(NonLocalsToRecompute, Cases, !Set, !LambdaSet).
+disj_vars(NonLocalsToRecompute, Goals, !Set, !LambdaSet) :-
+    compute_disj_vars(NonLocalsToRecompute, Goals,
+        [], GoalSets, [], GoalLambdaSets),
+    (
+        GoalSets = [],
+        init(GoalsSet)
+    ;
+        GoalSets = [_ | _],
+        union_list(GoalSets, GoalsSet)
+    ),
+    (
+        GoalLambdaSets = [],
+        init(GoalsLambdaSet)
+    ;
+        GoalLambdaSets = [_ | _],
+        union_list(GoalLambdaSets, GoalsLambdaSet)
+    ),
+    union(GoalsSet, !Set),
+    union(GoalsLambdaSet, !LambdaSet).
 
-goal_vars(NonLocalsToRecompute, Goal, bitset_to_set(BothSet)) :-
+:- pred compute_disj_vars(nonlocals_to_recompute, list(hlds_goal),
+    list(set_of_var), list(set_of_var), list(set_of_var), list(set_of_var)).
+:- mode compute_disj_vars(in(ordinary_nonlocals), in, in, out, in, out) is det.
+:- mode compute_disj_vars(in(code_gen_nonlocals), in, in, out, in, out) is det.
+
+compute_disj_vars(_, [], !Sets, !LambdaSets).
+compute_disj_vars(NonLocalsToRecompute, [Goal | Goals], !Sets, !LambdaSets) :-
+    init(EmptySet),
+    init(EmptyLambdaSet),
+    Goal = GoalExpr - _,
+    goal_vars_2(NonLocalsToRecompute, GoalExpr,
+        EmptySet, GoalSet, EmptyLambdaSet, GoalLambdaSet),
+    !:Sets = [GoalSet | !.Sets],
+    !:LambdaSets = [GoalLambdaSet | !.LambdaSets],
+    compute_disj_vars(NonLocalsToRecompute, Goals, !Sets, !LambdaSets).
+
+:- pred case_vars(nonlocals_to_recompute, list(case),
+    set_of_var, set_of_var, set_of_var, set_of_var).
+:- mode case_vars(in(ordinary_nonlocals), in, in, out, in, out) is det.
+:- mode case_vars(in(code_gen_nonlocals), in, in, out, in, out) is det.
+
+case_vars(NonLocalsToRecompute, Cases, !Set, !LambdaSet) :-
+    compute_case_vars(NonLocalsToRecompute, Cases,
+        [], CaseSets, [], CaseLambdaSets),
+    (
+        CaseSets = [],
+        error("case_vars: no cases")
+    ;
+        CaseSets = [_ | _],
+        union_list(CaseSets, CasesSet)
+    ),
+    (
+        CaseLambdaSets = [],
+        error("case_vars: no cases")
+    ;
+        CaseLambdaSets = [_ | _],
+        union_list(CaseLambdaSets, CasesLambdaSet)
+    ),
+    union(CasesSet, !Set),
+    union(CasesLambdaSet, !LambdaSet).
+
+:- pred compute_case_vars(nonlocals_to_recompute, list(case),
+    list(set_of_var), list(set_of_var), list(set_of_var), list(set_of_var)).
+:- mode compute_case_vars(in(ordinary_nonlocals), in, in, out, in, out) is det.
+:- mode compute_case_vars(in(code_gen_nonlocals), in, in, out, in, out) is det.
+
+compute_case_vars(_, [], !Sets, !LambdaSets).
+compute_case_vars(NonLocalsToRecompute, [Case | Cases], !Sets, !LambdaSets) :-
+    Case = case(_Cons, Goal - _GoalInfo),
+    init(EmptySet),
+    init(EmptyLambdaSet),
+    goal_vars_2(NonLocalsToRecompute, Goal,
+        EmptySet, GoalSet, EmptyLambdaSet, GoalLambdaSet),
+    !:Sets = [GoalSet | !.Sets],
+    !:LambdaSets = [GoalLambdaSet | !.LambdaSets],
+    compute_case_vars(NonLocalsToRecompute, Cases, !Sets, !LambdaSets).
+
+:- pred union_list(list(set_of_var)::in, set_of_var::out) is det.
+
+union_list(Sets, Union) :-
+    (
+        Sets = [],
+        init(Union)
+    ;
+        Sets = [_ | _],
+        union_list_pass(Sets, [], MergedSets),
+        ( MergedSets = [Set] ->
+            Union = Set
+        ;
+            union_list(MergedSets, Union)
+        )
+    ).
+
+:- pred union_list_pass(list(set_of_var)::in,
+    list(set_of_var)::in, list(set_of_var)::out) is det.
+
+union_list_pass([], !MergedSets).
+union_list_pass([Set], !MergedSets) :-
+    !:MergedSets = [Set | !.MergedSets].
+union_list_pass([Set1, Set2 | Sets], !MergedSets) :-
+    union(Set1, Set2, Set12),
+    !:MergedSets = [Set12 | !.MergedSets],
+    union_list_pass(Sets, !MergedSets).
+
+free_goal_vars(Goal) =
+    free_goal_vars_nl(ordinary_nonlocals, Goal).
+
+    % free_goal_vars_nl(NonLocalsToRecompute, Goal) = Vars:
+    %
+    % Vars is the set of variables that occur free (unquantified) in Goal,
+    % excluding unset fields of reconstructions if NonLocalsToRecompute
+    % is `code_gen_nonlocals'.
+    %
+:- func free_goal_vars_nl(nonlocals_to_recompute, hlds_goal) = set(prog_var).
+:- mode free_goal_vars_nl(in(ordinary_nonlocals), in) = out is det.
+:- mode free_goal_vars_nl(in(code_gen_nonlocals), in) = out is det.
+
+free_goal_vars_nl(NonLocalsToRecompute, Goal) = bitset_to_set(BothSet) :-
     goal_vars_bitset(NonLocalsToRecompute, Goal, BothSet).
 
-goal_vars(Goal, BothSet) :-
-    goal_vars(ordinary_nonlocals, Goal, BothSet).
-
-:- pred goal_vars_bitset(nonlocals_to_recompute::in, hlds_goal::in,
+:- pred goal_vars_bitset_choose(nonlocals_to_recompute::in, hlds_goal::in,
     set_of_var::out) is det.
 
+goal_vars_bitset_choose(NonLocalsToRecompute, Goal, BothSet) :-
+    (
+        NonLocalsToRecompute = ordinary_nonlocals,
+        goal_vars_bitset(ordinary_nonlocals, Goal, BothSet)
+    ;
+        NonLocalsToRecompute = code_gen_nonlocals,
+        goal_vars_bitset(code_gen_nonlocals, Goal, BothSet)
+    ).
+
+:- pred goal_vars_bitset(nonlocals_to_recompute, hlds_goal, set_of_var).
+:- mode goal_vars_bitset(in(ordinary_nonlocals), in, out) is det.
+:- mode goal_vars_bitset(in(code_gen_nonlocals), in, out) is det.
+
 goal_vars_bitset(NonLocalsToRecompute, Goal, BothSet) :-
-    goal_vars(NonLocalsToRecompute, Goal, Set, LambdaSet),
+    goal_vars_both(NonLocalsToRecompute, Goal, Set, LambdaSet),
     BothSet = union(Set, LambdaSet).
 
-    % goal_vars(Goal, NonLambdaSet, LambdaSet):
+:- pred goal_vars_both_choose(nonlocals_to_recompute::in, hlds_goal::in,
+    set_of_var::out, set_of_var::out) is det.
+
+goal_vars_both_choose(NonLocalsToRecompute, Goal, Set, LambdaSet) :-
+    (
+        NonLocalsToRecompute = ordinary_nonlocals,
+        goal_vars_both(ordinary_nonlocals, Goal, Set, LambdaSet)
+    ;
+        NonLocalsToRecompute = code_gen_nonlocals,
+        goal_vars_both(code_gen_nonlocals, Goal, Set, LambdaSet)
+    ).
+
+    % goal_vars_both(NonLocalsToRecompute, Goal, NonLambdaSet, LambdaSet):
     %
     % Set is the set of variables that occur free (unquantified) in Goal,
     % not counting occurrences in lambda expressions. LambdaSet is the set
     % of variables that occur free (unquantified) in lambda expressions
     % in Goal.
     %
-:- pred goal_vars(nonlocals_to_recompute::in, hlds_goal::in,
-    set_of_var::out, set_of_var::out) is det.
+:- pred goal_vars_both(nonlocals_to_recompute, hlds_goal,
+    set_of_var, set_of_var).
+:- mode goal_vars_both(in(ordinary_nonlocals), in, out, out) is det.
+:- mode goal_vars_both(in(code_gen_nonlocals), in, out, out) is det.
 
-goal_vars(NonLocalsToRecompute, Goal - _GoalInfo, Set, LambdaSet) :-
+goal_vars_both(NonLocalsToRecompute, Goal - _GoalInfo, Set, LambdaSet) :-
     init(Set0),
     init(LambdaSet0),
     goal_vars_2(NonLocalsToRecompute, Goal, Set0, Set, LambdaSet0, LambdaSet).
 
-:- pred goal_vars_2(nonlocals_to_recompute::in, hlds_goal_expr::in,
-    set_of_var::in, set_of_var::out,
-    set_of_var::in, set_of_var::out) is det.
+:- pred goal_vars_2(nonlocals_to_recompute, hlds_goal_expr,
+    set_of_var, set_of_var, set_of_var, set_of_var).
+:- mode goal_vars_2(in(ordinary_nonlocals), in, in, out, in, out) is det.
+:- mode goal_vars_2(in(code_gen_nonlocals), in, in, out, in, out) is det.
 
 goal_vars_2(NonLocalsToRecompute, unify(LHS, RHS, _, Unification, _),
         !Set, !LambdaSet) :-
@@ -969,19 +1127,19 @@ goal_vars_2(NonLocalsToRecompute, conj(ConjType, Goals), !Set, !LambdaSet) :-
     ;
         ConjType = parallel_conj
     ),
-    goal_list_vars_2(NonLocalsToRecompute, Goals, !Set, !LambdaSet).
+    conj_vars(NonLocalsToRecompute, Goals, !Set, !LambdaSet).
 
 goal_vars_2(NonLocalsToRecompute, disj(Goals), !Set, !LambdaSet) :-
-    goal_list_vars_2(NonLocalsToRecompute, Goals, !Set, !LambdaSet).
+    disj_vars(NonLocalsToRecompute, Goals, !Set, !LambdaSet).
 
 goal_vars_2(NonLocalsToRecompute, switch(Var, _Det, Cases), !Set,
         !LambdaSet) :-
     insert(!.Set, Var, !:Set),
-    case_list_vars_2(NonLocalsToRecompute, Cases, !Set, !LambdaSet).
+    case_vars(NonLocalsToRecompute, Cases, !Set, !LambdaSet).
 
 goal_vars_2(NonLocalsToRecompute, scope(Reason, Goal), Set0, !:Set,
         LambdaSet0, !:LambdaSet) :-
-    goal_vars(NonLocalsToRecompute, Goal, !:Set, !:LambdaSet),
+    goal_vars_both(NonLocalsToRecompute, Goal, !:Set, !:LambdaSet),
     (
         Reason = exist_quant(Vars),
         delete_list(!.Set, Vars, !:Set),
@@ -1009,9 +1167,9 @@ goal_vars_2(NonLocalsToRecompute, if_then_else(Vars, Cond, Then, Else),
     % This code does the following:
     %     !:Set = !.Set + ( (vars(Cond) + vars(Then)) \ Vars ) + vars(Else)
     % where `+' is set union and `\' is relative complement.
-    goal_vars(NonLocalsToRecompute, Cond, CondSet, CondLambdaSet),
-    goal_vars(NonLocalsToRecompute, Then, ThenSet, ThenLambdaSet),
-    goal_vars(NonLocalsToRecompute, Else, ElseSet, ElseLambdaSet),
+    goal_vars_both(NonLocalsToRecompute, Cond, CondSet, CondLambdaSet),
+    goal_vars_both(NonLocalsToRecompute, Then, ThenSet, ThenLambdaSet),
+    goal_vars_both(NonLocalsToRecompute, Else, ElseSet, ElseLambdaSet),
     union(CondSet, ThenSet, CondThenSet),
     union(CondLambdaSet, ThenLambdaSet, CondThenLambdaSet),
     delete_list(CondThenSet, Vars, SomeCondThenSet),
@@ -1032,17 +1190,23 @@ goal_vars_2(NonLocalsToRecompute, shorthand(ShorthandGoal), !Set,
     goal_vars_2_shorthand(NonLocalsToRecompute, ShorthandGoal, !Set,
         !LambdaSet).
 
-:- pred goal_vars_2_shorthand(nonlocals_to_recompute::in,
-    shorthand_goal_expr::in, set_of_var::in, set_of_var::out,
-    set_of_var::in, set_of_var::out) is det.
+:- pred goal_vars_2_shorthand(nonlocals_to_recompute, shorthand_goal_expr,
+    set_of_var, set_of_var, set_of_var, set_of_var).
+:- mode goal_vars_2_shorthand(in(ordinary_nonlocals), in, in, out, in, out)
+    is det.
+:- mode goal_vars_2_shorthand(in(code_gen_nonlocals), in, in, out, in, out)
+    is det.
 
 goal_vars_2_shorthand(NonLocalsToRecompute, bi_implication(LHS, RHS), !Set,
         !LambdaSet) :-
-    goal_list_vars_2(NonLocalsToRecompute, [LHS, RHS], !Set, !LambdaSet).
+    conj_vars(NonLocalsToRecompute, [LHS, RHS], !Set, !LambdaSet).
 
-:- pred unify_rhs_vars(nonlocals_to_recompute::in, unify_rhs::in,
-    maybe(list(bool))::in, set_of_var::in, set_of_var::out,
-    set_of_var::in, set_of_var::out) is det.
+:- pred unify_rhs_vars(nonlocals_to_recompute, unify_rhs, maybe(list(bool)),
+    set_of_var, set_of_var, set_of_var, set_of_var).
+:- mode unify_rhs_vars(in(ordinary_nonlocals), in, in, in, out, in, out)
+    is det.
+:- mode unify_rhs_vars(in(code_gen_nonlocals), in, in, in, out, in, out)
+    is det.
 
 unify_rhs_vars(_, var(Y), _, !Set, !LambdaSet) :-
     insert(!.Set, Y, !:Set).

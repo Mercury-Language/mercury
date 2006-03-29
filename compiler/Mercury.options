@@ -9,7 +9,12 @@
 # llds_out.m contains some sanity checking code that is usually turned off.
 # However, the cost of checking whether they turned off exceeds the cost of
 # performing them unless inlining is enabled.
-MCFLAGS-ll_backend.llds_out=--inlining
+MCFLAGS-ll_backend.llds_out = --inlining
+
+# Several predicates in quantification.m contain an argument which is needed
+# only to select the right mode. We want to make sure that we don't take up
+# code space or execution time to pass these arguments.
+MCFLAGS-hlds.quantification = --optimize-unused-args
 
 # process_util.m uses `kill' and `struct sigaction' from <signal.h>,
 # which are not available with `--ansi'.

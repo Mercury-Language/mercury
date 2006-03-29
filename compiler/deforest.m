@@ -1627,10 +1627,11 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     simplify.find_simplifications(no, Globals, Simplifications0),
-
+    SimpList0 = simplifications_to_list(Simplifications0),
     % Be a bit more aggressive with common structure elimination.
     % This helps achieve folding in some cases.
-    Simplifications = [extra_common_struct | Simplifications0],
+    SimpList = [extra_common_struct | SimpList0],
+    Simplifications = list_to_simplifications(SimpList),
     pd_util.simplify_goal(Simplifications, Goal2, Goal3, !PDInfo, !IO),
     pd_info_set_instmap(InstMap0, !PDInfo),
 

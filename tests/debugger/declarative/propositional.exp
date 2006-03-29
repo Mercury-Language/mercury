@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred propositional.main/2-0 (det) propositional.m:13
+      E1:     C1 CALL pred propositional.main/2-0 (det) propositional.m:8
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet

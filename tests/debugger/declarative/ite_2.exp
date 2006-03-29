@@ -11,9 +11,9 @@ Which do you want to put a breakpoint on (0-1 or *)? *
  0: + stop  interface pred ite_2.ite/3-1 (multi)
  1: + stop  interface pred ite_2.ite/3-0 (det)
 mdb> continue
-       2:      2  2 CALL pred ite_2.ite/3-0 (det) ite_2.m:27 (ite_2.m:9)
+       2:      2  2 CALL pred ite_2.ite/3-0 (det) ite_2.m:21 (ite_2.m:9)
 mdb> finish
-      11:      2  2 EXIT pred ite_2.ite/3-0 (det) ite_2.m:27 (ite_2.m:9)
+      11:      2  2 EXIT pred ite_2.ite/3-0 (det) ite_2.m:21 (ite_2.m:9)
 mdb> dd -d 3 -n 7
 ite(a, 1, 1)
 Valid? no
@@ -27,11 +27,11 @@ Found incorrect contour:
 c(1, 1)
 ite(a, 1, 1)
 Is this a bug? yes
-      11:      2  2 EXIT pred ite_2.ite/3-0 (det) ite_2.m:27 (ite_2.m:9)
+      11:      2  2 EXIT pred ite_2.ite/3-0 (det) ite_2.m:21 (ite_2.m:9)
 mdb> continue
-      12:      6  2 CALL pred ite_2.ite/3-1 (multi) ite_2.m:27 (ite_2.m:10)
+      12:      6  2 CALL pred ite_2.ite/3-1 (multi) ite_2.m:21 (ite_2.m:10)
 mdb> finish
-      29:      6  2 EXIT pred ite_2.ite/3-1 (multi) ite_2.m:27 (ite_2.m:10)
+      29:      6  2 EXIT pred ite_2.ite/3-1 (multi) ite_2.m:21 (ite_2.m:10)
 mdb> dd -d 3 -n 7
 ite(b, 1, 1)
 Valid? no
@@ -50,7 +50,7 @@ Found incorrect contour:
 c(1, 1)
 ite(b, 1, 1)
 Is this a bug? yes
-      29:      6  2 EXIT pred ite_2.ite/3-1 (multi) ite_2.m:27 (ite_2.m:10)
+      29:      6  2 EXIT pred ite_2.ite/3-1 (multi) ite_2.m:21 (ite_2.m:10)
 mdb> continue
 ite(a, 1, 1).
 ite(b, 1, 1).

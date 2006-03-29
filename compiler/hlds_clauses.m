@@ -77,6 +77,10 @@
     %
 :- func clause_list_is_empty(clauses_rep) = bool.
 
+    % Returns the number of clauses in the clauses list.
+    %
+:- func num_clauses_in_clauses_rep(clauses_rep) = int.
+
     % Adds the given clause to the end of the clause list.
     %
 :- pred add_clause(clause::in, clauses_rep::in, clauses_rep::out) is det.
@@ -215,27 +219,43 @@ clauses_info_set_varset(X, CI, CI ^ varset := X).
 clauses_info_set_explicit_vartypes(X, CI, CI ^ explicit_vartypes := X).
 clauses_info_set_vartypes(X, CI, CI ^ vartypes := X).
 clauses_info_set_headvars(X, CI, CI ^ headvars := X).
-clauses_info_set_clauses(X, CI, CI ^ clauses_rep := forw(X)).
+clauses_info_set_clauses(X, CI, CI ^ clauses_rep := Rep) :-
+    set_clause_list(X, Rep).
 clauses_info_set_clauses_rep(X, CI, CI ^ clauses_rep := X).
 clauses_info_set_rtti_varmaps(X, CI, CI ^ clauses_rtti_varmaps := X).
 
+    % In each of the alternatives below, the num field gives the number of
+    % clauses. in the forw_list and both_forw fields, the clauses are in
+    % program order. In the rev_list and both_rev fields, the clauses are in
+    % reverse program order. It is an invariant that
+    %
+    %   list.reverse(Rep ^ both_rev, Rep & both_forw)
+    %
+    % holds.
 :- type clauses_rep
-    --->    rev(list(clause))
-    ;       forw(list(clause))
+    --->    rev(
+                rev_num     :: int,
+                rev_list    :: list(clause)
+            )
+    ;       forw(
+                forw_num    :: int,
+                forw_list   :: list(clause)
+            )
     ;       both(
-                rev :: list(clause),
-                forw :: list(clause)
+                both_num    :: int,
+                both_rev    :: list(clause),
+                both_forw   :: list(clause)
             ).
 
-init_clauses_rep = forw([]).
+init_clauses_rep = forw(0, []).
 
 clause_list_is_empty(ClausesRep) = IsEmpty :-
     (
-        ClausesRep = rev(List)
+        ClausesRep = rev(_, List)
     ;
-        ClausesRep = forw(List)
+        ClausesRep = forw(_, List)
     ;
-        ClausesRep = both(List, _)
+        ClausesRep = both(_, List, _)
     ),
     (
         List = [],
@@ -245,26 +265,35 @@ clause_list_is_empty(ClausesRep) = IsEmpty :-
         IsEmpty = no
     ).
 
+num_clauses_in_clauses_rep(ClausesRep) = NumClauses :-
+    (
+        ClausesRep = rev(NumClauses, _)
+    ;
+        ClausesRep = forw(NumClauses, _)
+    ;
+        ClausesRep = both(NumClauses, _, _)
+    ).
+
 get_clause_list_any_order(ClausesRep, Clauses) :-
     (
-        ClausesRep = rev(Clauses)
+        ClausesRep = rev(_, Clauses)
     ;
-        ClausesRep = forw(Clauses)
+        ClausesRep = forw(_, Clauses)
     ;
-        ClausesRep = both(_, Clauses)
+        ClausesRep = both(_, _, Clauses)
     ).
 
 get_clause_list(ClausesRep, Clauses) :-
     (
-        ClausesRep = rev(RevClauses),
+        ClausesRep = rev(_, RevClauses),
         list.reverse(RevClauses, Clauses)
     ;
-        ClausesRep = forw(Clauses)
+        ClausesRep = forw(_, Clauses)
     ;
-        ClausesRep = both(_, Clauses)
+        ClausesRep = both(_, _, Clauses)
     ).
 
-set_clause_list(Clauses, forw(Clauses)).
+set_clause_list(Clauses, forw(list.length(Clauses), Clauses)).
 
 clauses_info_clauses_only(CI, Clauses) :-
     ClausesRep = CI ^ clauses_rep,
@@ -273,31 +302,34 @@ clauses_info_clauses_only(CI, Clauses) :-
 clauses_info_clauses(Clauses, !CI) :-
     ClausesRep = !.CI ^ clauses_rep,
     (
-        ClausesRep = rev(RevClauses),
+        ClausesRep = rev(NumClauses, RevClauses),
         list.reverse(RevClauses, Clauses),
-        !:CI = !.CI ^ clauses_rep := both(RevClauses, Clauses)
+        !:CI = !.CI ^ clauses_rep := both(NumClauses, RevClauses, Clauses)
     ;
-        ClausesRep = forw(Clauses)
+        ClausesRep = forw(_, Clauses)
     ;
-        ClausesRep = both(_, Clauses)
+        ClausesRep = both(_, _, Clauses)
     ).
 
 add_clause(Clause, !ClausesRep) :-
     % We keep the clause list in reverse order, to make it possible
     % to add other clauses without quadratic behavior.
     (
-        !.ClausesRep = rev(RevClauses0),
+        !.ClausesRep = rev(NumClauses0, RevClauses0),
+        NumClauses = NumClauses0 + 1,
         RevClauses = [Clause | RevClauses0],
-        !:ClausesRep = rev(RevClauses)
+        !:ClausesRep = rev(NumClauses, RevClauses)
     ;
-        !.ClausesRep = forw(Clauses0),
+        !.ClausesRep = forw(NumClauses0, Clauses0),
+        NumClauses = NumClauses0 + 1,
         list.reverse(Clauses0, RevClauses0),
         RevClauses = [Clause | RevClauses0],
-        !:ClausesRep = rev(RevClauses)
+        !:ClausesRep = rev(NumClauses, RevClauses)
     ;
-        !.ClausesRep = both(RevClauses0, _),
+        !.ClausesRep = both(NumClauses0, RevClauses0, _),
+        NumClauses = NumClauses0 + 1,
         RevClauses = [Clause | RevClauses0],
-        !:ClausesRep = rev(RevClauses)
+        !:ClausesRep = rev(NumClauses, RevClauses)
     ).
 
 %-----------------------------------------------------------------------------%

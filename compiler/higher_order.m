@@ -449,10 +449,9 @@ get_specialization_requests(PredId, !GlobalInfo) :-
         !:GlobalInfo = !.GlobalInfo ^ goal_sizes := GoalSizes
     ).
 
-    % This is called when the first procedure of a predicate was
-    % changed. It fixes up all the other procedures, ignoring the
-    % goal_size and requests that come out, since that information has
-    % already been collected.
+    % This is called when the first procedure of a predicate was changed.
+    % It fixes up all the other procedures, ignoring the goal_size and requests
+    % that come out, since that information has already been collected.
     %
 :- pred traverse_proc(bool::in, pred_id::in, proc_id::in,
     higher_order_global_info::in, higher_order_global_info::out) is det.
@@ -500,7 +499,9 @@ traverse_goal(MustRecompute, !Info) :-
 
 fixup_proc_info(MustRecompute, Goal0, !Info) :-
     (
-        ( !.Info ^ changed = changed ; MustRecompute = yes )
+        ( !.Info ^ changed = changed
+        ; MustRecompute = yes
+        )
     ->
         some [!ModuleInfo, !ProcInfo] (
             !:ModuleInfo = !.Info ^ global_info ^ module_info,
@@ -580,13 +581,13 @@ traverse_goal_2(Goal0, Goal, !Info) :-
     % if-then-elses are handled as disjunctions.
     %
     Goal0 = if_then_else(Vars, Cond0, Then0, Else0) - GoalInfo,
-    get_pre_branch_info(PreInfo, !Info),
+    get_pre_branch_info(!.Info, PreInfo),
     traverse_goal_2(Cond0, Cond, !Info),
     traverse_goal_2(Then0, Then, !Info),
-    get_post_branch_info(PostThenInfo, !Info),
+    get_post_branch_info(!.Info, PostThenInfo),
     set_pre_branch_info(PreInfo, !Info),
     traverse_goal_2(Else0, Else, !Info),
-    get_post_branch_info(PostElseInfo, !Info),
+    get_post_branch_info(!.Info, PostElseInfo),
     Goal = if_then_else(Vars, Cond, Then, Else) - GoalInfo,
     merge_post_branch_infos(PostThenInfo, PostElseInfo, PostInfo),
     set_post_branch_info(PostInfo, !Info).
@@ -628,145 +629,204 @@ traverse_goal_2(shorthand(_) - _, _, !Info) :-
 :- pred traverse_independent_goals(hlds_goals::in, hlds_goals::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-traverse_independent_goals([], [], !Info).
-traverse_independent_goals([Goal0 | Goals0], [Goal | Goals], !Info) :-
-    get_pre_branch_info(PreInfo, !Info),
-    traverse_goal_2(Goal0, Goal, !Info),
-    get_post_branch_info(PostInfo0, !Info),
-    traverse_independent_goals_2(PreInfo, Goals0, Goals, PostInfo0, PostInfo,
-        !Info),
-    set_post_branch_info(PostInfo, !Info).
+traverse_independent_goals(Goals0, Goals, !Info) :-
+    % We handle empty lists separately because merge_post_branch_infos_into_one
+    % works only on nonempty lists.
+    (
+        Goals0 = [],
+        Goals = []
+    ;
+        Goals0 = [_ | _],
+        get_pre_branch_info(!.Info, PreInfo),
+        traverse_independent_goals_2(PreInfo, Goals0, Goals, [], PostInfos,
+            !Info),
+        merge_post_branch_infos_into_one(PostInfos, PostInfo),
+        set_post_branch_info(PostInfo, !Info)
+    ).
 
 :- pred traverse_independent_goals_2(pre_branch_info::in,
     hlds_goals::in, hlds_goals::out,
-    post_branch_info::in, post_branch_info::out,
+    list(post_branch_info)::in, list(post_branch_info)::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-traverse_independent_goals_2(_, [], [], PostInfo, PostInfo, !Info).
+traverse_independent_goals_2(_, [], [], !PostInfos, !Info).
 traverse_independent_goals_2(PreInfo, [Goal0 | Goals0], [Goal | Goals],
-        PostInfo0, PostInfo, !Info) :-
+        !PostInfos, !Info) :-
     set_pre_branch_info(PreInfo, !Info),
     traverse_goal_2(Goal0, Goal, !Info),
-    get_post_branch_info(PostInfo1, !Info),
-    merge_post_branch_infos(PostInfo0, PostInfo1, PostInfo2),
-    traverse_independent_goals_2(PreInfo, Goals0, Goals, PostInfo2, PostInfo,
-        !Info).
+    get_post_branch_info(!.Info, GoalPostInfo),
+    !:PostInfos = [GoalPostInfo | !.PostInfos],
+    traverse_independent_goals_2(PreInfo, Goals0, Goals, !PostInfos, !Info).
 
     % Switches are treated in exactly the same way as disjunctions.
     %
 :- pred traverse_cases(list(case)::in, list(case)::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-traverse_cases([], [], !Info).
-traverse_cases([case(ConsId, Goal0) | Cases0], [case(ConsId, Goal) | Cases],
-        !Info) :-
-    get_pre_branch_info(PreInfo, !Info),
-    traverse_goal_2(Goal0, Goal, !Info),
-    get_post_branch_info(PostInfo0, !Info),
-    traverse_cases_2(PreInfo, Cases0, Cases, PostInfo0, PostInfo, !Info),
-    set_post_branch_info(PostInfo, !Info).
+traverse_cases(Cases0, Cases, !Info) :-
+    % We handle empty lists separately because merge_post_branch_infos_into_one
+    % works only on nonempty lists.
+    (
+        Cases0 = [],
+        unexpected(this_file, "traverse_cases: empty list of cases")
+    ;
+        Cases0 = [_ | _],
+        get_pre_branch_info(!.Info, PreInfo),
+        traverse_cases_2(PreInfo, Cases0, Cases, [], PostInfos, !Info),
+        merge_post_branch_infos_into_one(PostInfos, PostInfo),
+        set_post_branch_info(PostInfo, !Info)
+    ).
 
 :- pred traverse_cases_2(pre_branch_info::in, list(case)::in, list(case)::out,
-    post_branch_info::in, post_branch_info::out,
+    list(post_branch_info)::in, list(post_branch_info)::out,
     higher_order_info::in, higher_order_info::out) is det.
 
-traverse_cases_2(_, [], [], !PostInfo, !Info).
-traverse_cases_2(PreInfo, [Case0 | Cases0], [Case | Cases],
-        PostInfo0, PostInfo, !Info) :-
+traverse_cases_2(_, [], [], !PostInfos, !Info).
+traverse_cases_2(PreInfo, [Case0 | Cases0], [Case | Cases], !PostInfos,
+        !Info) :-
     set_pre_branch_info(PreInfo, !Info),
     Case0 = case(ConsId, Goal0),
     traverse_goal_2(Goal0, Goal, !Info),
     Case = case(ConsId, Goal),
-    get_post_branch_info(PostInfo1, !Info),
-    merge_post_branch_infos(PostInfo0, PostInfo1, PostInfo2),
-    traverse_cases_2(PreInfo, Cases0, Cases, PostInfo2, PostInfo, !Info).
+    get_post_branch_info(!.Info, GoalPostInfo),
+    !:PostInfos = [GoalPostInfo | !.PostInfos],
+    traverse_cases_2(PreInfo, Cases0, Cases, !PostInfos, !Info).
 
-:- type pre_branch_info == pred_vars.
-:- type post_branch_info == pred_vars.
+:- type pre_branch_info
+    --->    pre_branch_info(pred_vars).
 
-:- pred get_pre_branch_info(pre_branch_info::out,
-    higher_order_info::in, higher_order_info::out) is det.
+:- type post_branch_info
+    --->    post_branch_info(pred_vars).
 
-get_pre_branch_info(Info ^ pred_vars, Info, Info).
+:- pred get_pre_branch_info(higher_order_info::in, pre_branch_info::out)
+    is det.
+
+get_pre_branch_info(Info, pre_branch_info(Info ^ pred_vars)).
 
 :- pred set_pre_branch_info(pre_branch_info::in,
     higher_order_info::in, higher_order_info::out) is det.
 
-set_pre_branch_info(PreInfo, Info, Info ^ pred_vars := PreInfo).
+set_pre_branch_info(pre_branch_info(PreInfo),
+    Info, Info ^ pred_vars := PreInfo).
 
-:- pred get_post_branch_info(pre_branch_info::out,
-    higher_order_info::in, higher_order_info::out) is det.
+:- pred get_post_branch_info(higher_order_info::in, post_branch_info::out)
+    is det.
 
-get_post_branch_info(Info ^ pred_vars, Info, Info).
+get_post_branch_info(Info, post_branch_info(Info ^ pred_vars)).
 
 :- pred set_post_branch_info(post_branch_info::in,
     higher_order_info::in, higher_order_info::out) is det.
 
-set_post_branch_info(PostInfo, Info, Info ^ pred_vars := PostInfo).
+set_post_branch_info(post_branch_info(PostInfo),
+    Info, Info ^ pred_vars := PostInfo).
 
-    % This is used in traversing disjunctions. We save the initial
-    % accumulator, then traverse each disjunct starting with the initial
-    % info. We then merge the resulting infos.
+    % Merge a bunch of post_branch_infos into one.
+    %
+    % The algorithm we use has a complexity of N log N, whereas the obvious
+    % algorithm is quadratic. Since N can be very large for predicates defined
+    % lots of facts, this can be the difference between being able to compile
+    % them and having the compiler exhaust available memory in the attempt.
+    %
+:- pred merge_post_branch_infos_into_one(list(post_branch_info)::in,
+    post_branch_info::out) is det.
+
+merge_post_branch_infos_into_one([], _) :-
+    unexpected(this_file, "merge_post_branch_infos_into_one: empty list").
+merge_post_branch_infos_into_one([PostInfo], PostInfo).
+merge_post_branch_infos_into_one(PostInfos @ [_, _ | _], PostInfo) :-
+    merge_post_branch_info_pass(PostInfos, [], MergedPostInfos),
+    merge_post_branch_infos_into_one(MergedPostInfos, PostInfo).
+
+:- pred merge_post_branch_info_pass(list(post_branch_info)::in,
+    list(post_branch_info)::in, list(post_branch_info)::out) is det.
+
+merge_post_branch_info_pass([], !MergedPostInfos).
+merge_post_branch_info_pass([PostInfo], !MergedPostInfos) :-
+    !:MergedPostInfos = [PostInfo | !.MergedPostInfos].
+merge_post_branch_info_pass([PostInfo1, PostInfo2 | Rest], !MergedPostInfos) :-
+    merge_post_branch_infos(PostInfo1, PostInfo2, PostInfo12),
+    !:MergedPostInfos = [PostInfo12 | !.MergedPostInfos],
+    merge_post_branch_info_pass(Rest, !MergedPostInfos).
+
+    % Merge two post_branch_infos.
+    %
+    % The algorithm we use is designed to minimize worst case complexity,
+    % to minimize compilation time for predicates defined by clauses in which
+    % each clause contains lots of variables. This will happen e.g. when the
+    % clause contains some large ground terms.
+    %
+    % We separate out the variables that occur in only one post_branch_info
+    % to avoid having to process them at all, while allowing the variables
+    % occur in both post_branch_infos to be processed using a linear algorithm.
+    % The algorithm here is mostly linear, with an extra log N factor coming in
+    % from the operations on maps.
     %
 :- pred merge_post_branch_infos(post_branch_info::in,
     post_branch_info::in, post_branch_info::out) is det.
 
-merge_post_branch_infos(PredVars1, PredVars2, PredVars) :-
-    map.to_assoc_list(PredVars1, PredVarList1),
-    map.to_assoc_list(PredVars2, PredVarList2),
-    merge_pred_var_lists(PredVarList1, PredVarList2, PredVarList),
-    map.from_assoc_list(PredVarList, PredVars).
+merge_post_branch_infos(PostA, PostB, Post) :-
+    PostA = post_branch_info(VarConstMapA),
+    PostB = post_branch_info(VarConstMapB),
+    map.keys(VarConstMapA, VarListA),
+    map.keys(VarConstMapB, VarListB),
+    set.sorted_list_to_set(VarListA, VarsA),
+    set.sorted_list_to_set(VarListB, VarsB),
+    set.intersect(VarsA, VarsB, CommonVars),
+    VarConstCommonMapA = map.select(VarConstMapA, CommonVars),
+    VarConstCommonMapB = map.select(VarConstMapB, CommonVars),
+    map.to_assoc_list(VarConstCommonMapA, VarConstCommonListA),
+    map.to_assoc_list(VarConstCommonMapB, VarConstCommonListB),
+    merge_common_var_const_list(VarConstCommonListA, VarConstCommonListB,
+        [], VarConstCommonList),
+    set.difference(VarsA, CommonVars, OnlyVarsA),
+    set.difference(VarsB, CommonVars, OnlyVarsB),
+    VarConstOnlyMapA = map.select(VarConstMapA, OnlyVarsA),
+    VarConstOnlyMapB = map.select(VarConstMapB, OnlyVarsB),
+    map.to_assoc_list(VarConstOnlyMapA, VarConstOnlyListA),
+    map.to_assoc_list(VarConstOnlyMapB, VarConstOnlyListB),
+    FinalList = VarConstOnlyListA ++ VarConstOnlyListB ++ VarConstCommonList,
+    map.from_assoc_list(FinalList, FinalVarConstMap),
+    Post = post_branch_info(FinalVarConstMap).
 
-    % Find out which variables after a disjunction cannot be specialized.
-    %
-:- pred merge_pred_var_lists(assoc_list(prog_var, maybe_const)::in,
+:- pred merge_common_var_const_list(assoc_list(prog_var, maybe_const)::in,
+    assoc_list(prog_var, maybe_const)::in,
     assoc_list(prog_var, maybe_const)::in,
     assoc_list(prog_var, maybe_const)::out) is det.
 
-merge_pred_var_lists([], !MergedList).
-merge_pred_var_lists([PredVar | PredVars], !MergedList) :-
-    merge_pred_var_with_list(PredVar, !MergedList),
-    merge_pred_var_lists(PredVars, !MergedList).
-
-:- pred merge_pred_var_with_list(pair(prog_var, maybe_const)::in,
-    assoc_list(prog_var, maybe_const)::in,
-    assoc_list(prog_var, maybe_const)::out) is det.
-
-merge_pred_var_with_list(VarValue, [], [VarValue]).
-merge_pred_var_with_list(Var1 - Value1, [Var2 - Value2 | Vars], MergedList) :-
-    ( Var1 = Var2 ->
-        (
-            ( Value1 \= Value2
-            ; Value1 = multiple_values
-            ; Value2 = multiple_values
-            )
-        ->
-            MergedList = [Var1 - multiple_values | Vars]
-        ;
-            MergedList = [Var2 - Value2 | Vars]
-        )
-        % Each var occurs at most once most in each list
-        % so if we have seen it we don't need to go on.
+merge_common_var_const_list([], [], !List).
+merge_common_var_const_list([], [_ | _], !MergedList) :-
+    unexpected(this_file, "merge_common_var_const_list: mismatched list").
+merge_common_var_const_list([_ | _], [], !MergedList) :-
+    unexpected(this_file, "merge_common_var_const_list: mismatched list").
+merge_common_var_const_list([VarA - ValueA | ListA], [VarB - ValueB | ListB],
+        !MergedList) :-
+    expect(unify(VarA, VarB), this_file,
+        "merge_common_var_const_list: var mismatch"),
+    ( ValueA = ValueB ->
+        % It does not matter whether ValueA is bound to constant(_, _)
+        % or to multiple_values, in both cases, if ValueA = ValueB, the
+        % right value for Value is ValueA.
+        Value = ValueA
     ;
-        MergedList = [Var2 - Value2 | MergedList1],
-        merge_pred_var_with_list(Var1 - Value1, Vars, MergedList1)
-    ).
+        % Either ValueA and ValueB are both bound to different constants,
+        % or one is constant and the other is multiple_values. In both cases,
+        % the right value for Value is multiple_values.
+        Value = multiple_values
+    ),
+    !:MergedList = [VarA - Value | !.MergedList],
+    merge_common_var_const_list(ListA, ListB, !MergedList).
 
 :- pred check_unify(unification::in,
     higher_order_info::in, higher_order_info::out) is det.
 
-    % Testing two higher order terms for equality is not allowed.
-    %
 check_unify(simple_test(_, _), !Info).
-check_unify(assign(Var1, Var2), !Info) :- maybe_add_alias(Var1, Var2, !Info).
-    % Deconstructing a higher order term is not allowed.
-    %
+    % Testing two higher order terms for equality is not allowed.
+check_unify(assign(Var1, Var2), !Info) :-
+    maybe_add_alias(Var1, Var2, !Info).
 check_unify(deconstruct(_, _, _, _, _, _), !Info).
+    % Deconstructing a higher order term is not allowed.
 check_unify(construct(LVar, ConsId, Args, _Modes, _, _, _), !Info) :-
-    (
-        is_interesting_cons_id(!.Info ^ global_info ^ ho_params,
-            ConsId) = yes
-    ->
+    ( is_interesting_cons_id(!.Info ^ global_info ^ ho_params, ConsId) = yes ->
         ( map.search(!.Info ^ pred_vars, LVar, Specializable) ->
             (
                 % We cannot specialize calls involving a variable with

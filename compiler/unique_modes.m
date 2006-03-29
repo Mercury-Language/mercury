@@ -275,7 +275,7 @@ check_goal_2(conj(ConjType, List0), GoalInfo0, conj(ConjType, List),
         % parallel conjunction.
         make_par_conj_nonlocal_multiset(List0, NonLocalsBag),
         check_par_conj(List0, NonLocalsBag, List, InstMapList, !ModeInfo, !IO),
-        instmap.unify(NonLocals, InstMapList, !ModeInfo),
+        instmap_unify(NonLocals, InstMapList, !ModeInfo),
         mode_info_remove_live_vars(NonLocals, !ModeInfo),
         mode_checkpoint(exit, "par_conj", !ModeInfo, !IO)
     ).
@@ -314,7 +314,7 @@ check_goal_2(disj(List0), GoalInfo0, disj(List), !ModeInfo, !IO) :-
         % merge the resulting instmaps.
         check_disj(List0, Determinism, NonLocals, List, InstMapList,
             !ModeInfo, !IO),
-        instmap.merge(NonLocals, InstMapList, disj, !ModeInfo)
+        instmap_merge(NonLocals, InstMapList, disj, !ModeInfo)
     ),
     mode_checkpoint(exit, "disj", !ModeInfo, !IO).
 
@@ -381,7 +381,7 @@ check_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, Goal,
     check_goal(Else0, Else, !ModeInfo, !IO),
     mode_info_get_instmap(!.ModeInfo, InstMapElse),
     mode_info_set_instmap(InstMap0, !ModeInfo),
-    instmap.merge(NonLocals, [InstMapThen, InstMapElse], if_then_else,
+    instmap_merge(NonLocals, [InstMapThen, InstMapElse], if_then_else,
         !ModeInfo),
     Goal = if_then_else(Vars, Cond, Then, Else),
     mode_checkpoint(exit, "if-then-else", !ModeInfo, !IO).
@@ -416,9 +416,16 @@ check_goal_2(not(SubGoal0), GoalInfo0, not(SubGoal), !ModeInfo, !IO) :-
 
 check_goal_2(scope(Reason, SubGoal0), _, scope(Reason, SubGoal),
         !ModeInfo, !IO) :-
-    mode_checkpoint(enter, "some", !ModeInfo, !IO),
-    check_goal(SubGoal0, SubGoal, !ModeInfo, !IO),
-    mode_checkpoint(exit, "some", !ModeInfo, !IO).
+    mode_checkpoint(enter, "scope", !ModeInfo, !IO),
+    ( Reason = from_ground_term(_) ->
+        mode_info_get_in_from_ground_term(!.ModeInfo, WasInFromGroundTerm),
+        mode_info_set_in_from_ground_term(yes, !ModeInfo),
+        check_goal(SubGoal0, SubGoal, !ModeInfo, !IO),
+        mode_info_set_in_from_ground_term(WasInFromGroundTerm, !ModeInfo)
+    ;
+        check_goal(SubGoal0, SubGoal, !ModeInfo, !IO)
+    ),
+    mode_checkpoint(exit, "scope", !ModeInfo, !IO).
 
 check_goal_2(generic_call(GenericCall, Args, Modes, Det), _GoalInfo0, Goal,
         !ModeInfo, !IO) :-
@@ -481,7 +488,7 @@ check_goal_2(switch(Var, CanFail, Cases0), GoalInfo0,
         Cases0 = [_ | _],
         goal_info_get_nonlocals(GoalInfo0, NonLocals),
         check_case_list(Cases0, Var, Cases, InstMapList, !ModeInfo, !IO),
-        instmap.merge(NonLocals, InstMapList, disj, !ModeInfo)
+        instmap_merge(NonLocals, InstMapList, disj, !ModeInfo)
     ),
     mode_checkpoint(exit, "switch", !ModeInfo, !IO).
 

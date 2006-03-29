@@ -1,4 +1,4 @@
-      E1:     C1 CALL pred aadebug.main/2-0 (det) aadebug.m:11
+      E1:     C1 CALL pred aadebug.main/2-0 (det) aadebug.m:8
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet

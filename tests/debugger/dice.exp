@@ -18,8 +18,8 @@ pred dice.merge/3-0      <s2;c2;s2;c4;t;> dice.m:71   10 (3)    3      0.23
 pred dice.merge/3-0      <s2;c2;s2;c4;e;> dice.m:74    0 (0)    1      1.00
 pred dice.merge_sort/2-0 CALL             dice.m:31    3 (3)    1      0.25
 pred dice.merge_sort/2-0 EXIT             dice.m:31    3 (3)    1      0.25
-pred dice.msort_n/4-0    CALL             dice.m:43   19 (3)    7      0.27
-pred dice.msort_n/4-0    EXIT             dice.m:43   19 (3)    7      0.27
+pred dice.msort_n/4-0    CALL             dice.m:37   19 (3)    7      0.27
+pred dice.msort_n/4-0    EXIT             dice.m:37   19 (3)    7      0.27
 pred dice.msort_n/4-0    <?;>             dice.m:39   19 (3)    7      0.27
 pred dice.msort_n/4-0    <e;>             dice.m:54   19 (3)    7      0.27
 pred dice.msort_n/4-0    <e;?;>           dice.m:44   19 (3)    7      0.27
@@ -38,8 +38,8 @@ pred dice.merge/3-0      CALL             dice.m:64   18 (3)    7      0.28
 pred dice.merge/3-0      EXIT             dice.m:64   18 (3)    7      0.28
 pred dice.merge/3-0      <s1;>            dice.m:64    8 (3)    3      0.27
 pred dice.msort_n/4-0    <e;e;>           dice.m:55    8 (3)    3      0.27
-pred dice.msort_n/4-0    CALL             dice.m:43   19 (3)    7      0.27
-pred dice.msort_n/4-0    EXIT             dice.m:43   19 (3)    7      0.27
+pred dice.msort_n/4-0    CALL             dice.m:37   19 (3)    7      0.27
+pred dice.msort_n/4-0    EXIT             dice.m:37   19 (3)    7      0.27
 pred dice.msort_n/4-0    <?;>             dice.m:39   19 (3)    7      0.27
 pred dice.msort_n/4-0    <e;>             dice.m:54   19 (3)    7      0.27
 pred dice.msort_n/4-0    <e;?;>           dice.m:44   19 (3)    7      0.27
@@ -62,8 +62,8 @@ pred dice.merge/3-0      CALL             dice.m:64   18 (3)    7      0.28
 pred dice.merge/3-0      EXIT             dice.m:64   18 (3)    7      0.28
 pred dice.merge/3-0      <s1;>            dice.m:64    8 (3)    3      0.27
 pred dice.msort_n/4-0    <e;e;>           dice.m:55    8 (3)    3      0.27
-pred dice.msort_n/4-0    CALL             dice.m:43   19 (3)    7      0.27
-pred dice.msort_n/4-0    EXIT             dice.m:43   19 (3)    7      0.27
+pred dice.msort_n/4-0    CALL             dice.m:37   19 (3)    7      0.27
+pred dice.msort_n/4-0    EXIT             dice.m:37   19 (3)    7      0.27
 pred dice.msort_n/4-0    <?;>             dice.m:39   19 (3)    7      0.27
 pred dice.msort_n/4-0    <e;>             dice.m:54   19 (3)    7      0.27
 pred dice.msort_n/4-0    <e;?;>           dice.m:44   19 (3)    7      0.27
@@ -78,15 +78,15 @@ pred dice.merge_sort/2-0 EXIT             dice.m:31    3 (3)    1      0.25
 pred dice.merge/3-0      <s2;c2;s2;c4;t;> dice.m:71   10 (3)    3      0.23
 mdb> dice -n 3 -s P -m dice
 Procedure             Path/Port File:Line Pass (3) Fail Suspicion
-pred dice.msort_n/4-0 CALL      dice.m:43   19 (3)    7      0.27
-pred dice.msort_n/4-0 EXIT      dice.m:43   19 (3)    7      0.27
+pred dice.msort_n/4-0 CALL      dice.m:37   19 (3)    7      0.27
+pred dice.msort_n/4-0 EXIT      dice.m:37   19 (3)    7      0.27
 pred dice.msort_n/4-0 <?;>      dice.m:39   19 (3)    7      0.27
 mdb> dice -s Fp -m dice
 Procedure                Path/Port        File:Line Pass (3) Fail Suspicion
 pred dice.merge/3-0      CALL             dice.m:64   18 (3)    7      0.28
 pred dice.merge/3-0      EXIT             dice.m:64   18 (3)    7      0.28
-pred dice.msort_n/4-0    CALL             dice.m:43   19 (3)    7      0.27
-pred dice.msort_n/4-0    EXIT             dice.m:43   19 (3)    7      0.27
+pred dice.msort_n/4-0    CALL             dice.m:37   19 (3)    7      0.27
+pred dice.msort_n/4-0    EXIT             dice.m:37   19 (3)    7      0.27
 pred dice.msort_n/4-0    <?;>             dice.m:39   19 (3)    7      0.27
 pred dice.msort_n/4-0    <e;>             dice.m:54   19 (3)    7      0.27
 pred dice.msort_n/4-0    <e;?;>           dice.m:44   19 (3)    7      0.27

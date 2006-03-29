@@ -31,7 +31,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module set.
-:- import_module std_util.
 
 :- type instmap.
 :- type instmap_delta.
@@ -197,16 +196,16 @@
 :- pred instmap_delta_apply_instmap_delta(instmap_delta::in, instmap_delta::in,
     overlay_how::in, instmap_delta::out) is det.
 
-    % instmap_merge(NonLocalVars, InstMaps, MergeContext):
+    % instmap_merge(NonLocalVars, InstMaps, MergeContext, !ModeInfo):
     %
     % Merge the `InstMaps' resulting from different branches of a disjunction
     % or if-then-else, and update the instantiatedness of all the nonlocal
     % variables, checking that it is the same for every branch.
     %
-:- pred merge(set(prog_var)::in, list(instmap)::in, merge_context::in,
+:- pred instmap_merge(set(prog_var)::in, list(instmap)::in, merge_context::in,
     mode_info::in, mode_info::out) is det.
 
-    % unify(NonLocalVars, InstMapNonlocalvarPairss):
+    % instmap_unify(NonLocalVars, InstMapNonlocalvarPairs, !ModeInfo):
     %
     % Unify the `InstMaps' in the list of pairs resulting from different
     % branches of a parallel conjunction and update the instantiatedness
@@ -214,14 +213,14 @@
     % when modechecking the individual conjuncts ensures that variables
     % have at most one producer.
     %
-:- pred unify(set(prog_var)::in, list(pair(instmap,
-    set(prog_var)))::in, mode_info::in, mode_info::out) is det.
+:- pred instmap_unify(set(prog_var)::in,
+    assoc_list(instmap, set(prog_var))::in,
+    mode_info::in, mode_info::out) is det.
 
-    % restrict takes an instmap and a set of vars and returns
+    % instmap_restrict takes an instmap and a set of vars and returns
     % an instmap with its domain restricted to those vars.
     %
-:- pred restrict(set(prog_var)::in, instmap::in, instmap::out)
-    is det.
+:- pred instmap_restrict(set(prog_var)::in, instmap::in, instmap::out) is det.
 
     % instmap_delta_restrict takes an instmap and a set of vars and returns
     % an instmap_delta with its domain restricted to those vars.
@@ -252,8 +251,8 @@
     instmap_delta::in, instmap_delta::in, instmap_delta::out,
     module_info::in, module_info::out) is det.
 
-    % merge_instmap_deltas(Vars, InstMapDeltas,
-    %   MergedInstMapDelta, ModuleInfo):
+    % merge_instmap_deltas(Vars, InstMapDeltas, MergedInstMapDelta,
+    %   !ModuleInfo):
     %
     % Takes a list of instmap deltas from the branches of an if-then-else,
     % switch, or disj and merges them. This is used in situations
@@ -600,13 +599,13 @@ instmap_delta_apply_instmap_delta(InstMap1, InstMap2, How, InstMap) :-
 
 %-----------------------------------------------------------------------------%
 
-restrict(_, unreachable, unreachable).
-restrict(Vars, reachable(InstMapping0), reachable(InstMapping)) :-
+instmap_restrict(_, unreachable, unreachable).
+instmap_restrict(Vars, reachable(InstMapping0), reachable(InstMapping)) :-
     map.select(InstMapping0, Vars, InstMapping).
 
 instmap_delta_restrict(_, unreachable, unreachable).
-instmap_delta_restrict(Vars, reachable(InstMapping0),
-        reachable(InstMapping)) :-
+instmap_delta_restrict(Vars,
+        reachable(InstMapping0), reachable(InstMapping)) :-
     map.select(InstMapping0, Vars, InstMapping).
 
 instmap_delta_delete_vars(_, unreachable, unreachable).
@@ -617,13 +616,7 @@ instmap_delta_delete_vars(Vars,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    % merge(NonLocals, InstMapList, MergeContext, !ModeInfo):
-    %
-    % Merge the `InstMapList' resulting from different branches of a
-    % disjunction or if-then-else, and update the instantiatedness of all
-    % the nonlocal variables, checking that it is the same for every branch.
-    %
-merge(NonLocals, InstMapList, MergeContext, !ModeInfo) :-
+instmap_merge(NonLocals, InstMapList, MergeContext, !ModeInfo) :-
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     get_reachable_instmaps(InstMapList, InstMappingList),
@@ -742,8 +735,7 @@ lookup_var_in_instmap(Var, InstMap, Inst) :-
     module_info::in, module_info::out, maybe(mer_inst)::out) is det.
 
 merge_var(Insts, Var, Type, !ModuleInfo, MaybeMergedInst) :-
-    merge_var_2(Insts, Var, Type, [], MergedInsts, !ModuleInfo,
-        no, Error),
+    merge_var_2(Insts, Var, Type, [], MergedInsts, !ModuleInfo, no, Error),
     (
         Error = yes,
         MaybeMergedInst = no
@@ -757,8 +749,7 @@ merge_var(Insts, Var, Type, !ModuleInfo, MaybeMergedInst) :-
             MaybeMergedInst = yes(MergedInst)
         ;
             MergedInsts = [_, _ | _],
-            merge_var(MergedInsts, Var, Type, !ModuleInfo,
-                MaybeMergedInst)
+            merge_var(MergedInsts, Var, Type, !ModuleInfo, MaybeMergedInst)
         )
     ).
 
@@ -769,12 +760,11 @@ merge_var(Insts, Var, Type, !ModuleInfo, MaybeMergedInst) :-
 merge_var_2([], _, _, !MergedInsts, !ModuleInfo, !Error).
 merge_var_2([Inst], _Var, _Type, !MergedInsts, !ModuleInfo, !Error) :-
     !:MergedInsts = [Inst | !.MergedInsts].
-merge_var_2([Inst1, Inst2 | Insts], Var, Type, !MergedInsts,
-        !ModuleInfo, !Error) :-
+merge_var_2([Inst1, Inst2 | Insts], Var, Type, !MergedInsts, !ModuleInfo,
+        !Error) :-
     ( inst_merge(Inst1, Inst2, yes(Type), MergedInst, !ModuleInfo) ->
         !:MergedInsts = [MergedInst | !.MergedInsts],
-        merge_var_2(Insts, Var, Type, !MergedInsts, !ModuleInfo,
-            !Error)
+        merge_var_2(Insts, Var, Type, !MergedInsts, !ModuleInfo, !Error)
     ;
         !:Error = yes
     ).
@@ -818,7 +808,7 @@ merge_instmap_deltas_2(InstMap, NonLocals, VarTypes, [Delta1, Delta2 | Deltas],
 
 %-----------------------------------------------------------------------------%
 
-unify(NonLocals, InstMapList, !ModeInfo) :-
+instmap_unify(NonLocals, InstMapList, !ModeInfo) :-
     (
         % If any of the instmaps is unreachable, then the final instmap
         % is unreachable.

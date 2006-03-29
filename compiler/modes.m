@@ -1320,7 +1320,7 @@ modecheck_goal_expr(conj(ConjType, Goals0), GoalInfo0, Goal, !ModeInfo, !IO) :-
         modecheck_par_conj_list(Goals0, Goals, NonLocals, InstMapNonlocalList,
             !ModeInfo, !IO),
         Goal = conj(parallel_conj, Goals),
-        instmap.unify(NonLocals, InstMapNonlocalList, !ModeInfo),
+        instmap_unify(NonLocals, InstMapNonlocalList, !ModeInfo),
         mode_checkpoint(exit, "par_conj", !ModeInfo, !IO)
     ).
 
@@ -1342,7 +1342,7 @@ modecheck_goal_expr(disj(Disjs0), GoalInfo0, Goal, !ModeInfo, !IO) :-
         handle_solver_vars_in_disjs(set.to_sorted_list(NonLocals),
             VarTypes, Disjs1, Disjs2, InstMapList0, InstMapList, !ModeInfo),
         Disjs = flatten_disjs(Disjs2),
-        instmap.merge(NonLocals, InstMapList, disj, !ModeInfo),
+        instmap_merge(NonLocals, InstMapList, disj, !ModeInfo),
         disj_list_to_goal(Disjs, GoalInfo0, Goal - _GoalInfo)
     ),
     mode_checkpoint(exit, "disj", !ModeInfo, !IO).
@@ -1381,13 +1381,11 @@ modecheck_goal_expr(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, Goal,
         Then1, Then, Else1, Else,
         InstMapThen1, InstMapThen, InstMapElse1, InstMapElse, !ModeInfo),
     mode_info_set_instmap(InstMap0, !ModeInfo),
-    instmap.merge(NonLocals, [InstMapThen, InstMapElse], if_then_else,
+    instmap_merge(NonLocals, [InstMapThen, InstMapElse], if_then_else,
         !ModeInfo),
     Goal = if_then_else(Vars, Cond, Then, Else),
     mode_info_get_instmap(!.ModeInfo, InstMap),
-    (
-        mode_info_get_in_promise_purity_scope(!.ModeInfo, no)
-    ->
+    ( mode_info_get_in_promise_purity_scope(!.ModeInfo, no) ->
         goal_get_nonlocals(Cond, CondNonLocals0),
         CondNonLocals =
             set.to_sorted_list(CondNonLocals0 `intersect` NonLocals),
@@ -1423,9 +1421,7 @@ modecheck_goal_expr(not(SubGoal0), GoalInfo0, not(SubGoal), !ModeInfo, !IO) :-
     mode_info_set_live_vars(LiveVars0, !ModeInfo),
     mode_info_unlock_vars(negation, NonLocals, !ModeInfo),
     mode_info_set_instmap(InstMap0, !ModeInfo),
-    (
-        mode_info_get_in_promise_purity_scope(!.ModeInfo, no)
-    ->
+    ( mode_info_get_in_promise_purity_scope(!.ModeInfo, no) ->
         goal_info_get_nonlocals(GoalInfo0, NegNonLocals),
         instmap.init_unreachable(Unreachable),
         check_no_inst_any_vars(negation, set.to_sorted_list(NegNonLocals),
@@ -1439,20 +1435,17 @@ modecheck_goal_expr(scope(Reason, SubGoal0), _GoalInfo, GoalExpr,
         !ModeInfo, !IO) :-
     ( Reason = from_ground_term(TermVar) ->
         % The original goal does no quantification, so deleting the `scope'
-        % is OK, and it is necessary for avoiding bad performance in
-        % later compiler phases, such as simplification. This deletion
-        % undoes the insertion done in the base case of unravel_unification
-        % in superhomogeneous.m.
+        % would be OK. However, deleting it during mode analysis would mean
+        % we don't have it during unique mode analysis.
         (
             mode_info_get_instmap(!.ModeInfo, InstMap0),
             instmap.lookup_var(InstMap0, TermVar, InstOfVar),
             InstOfVar = free,
             SubGoal0 = conj(plain_conj, [UnifyTermGoal | UnifyArgGoals])
                 - SubGoalInfo,
-            % If TermVar created by an impure unification, which is
-            % possible for solver types, it is possible for
-            % UnifyTermGoal to contain a unification other than
-            % one involving TermVar.
+            % If TermVar is created by an impure unification, which is
+            % possible for solver types, it is possible for UnifyTermGoal
+            % to contain a unification other than one involving TermVar.
             UnifyTermGoal = unify(TermVar, _, _, _, _) - _
         ->
             % UnifyTerm unifies TermVar with the arguments created
@@ -1461,22 +1454,26 @@ modecheck_goal_expr(scope(Reason, SubGoal0), _GoalInfo, GoalExpr,
             % UnifyTerm cannot succeed until *after* the argument
             % variables become ground.
             %
-            % Putting UnifyTerm after UnifyArgs here is much more
-            % efficient than letting the usual more ordering
-            % algorithm delay it repeatedly.
+            % Putting UnifyTerm after UnifyArgs here is much more efficient
+            % than letting the usual more ordering algorithm delay it
+            % repeatedly: it is linear instead of quadratic.
 
             list.reverse([UnifyTermGoal | UnifyArgGoals], RevConj),
             RevSubGoal0 = conj(plain_conj, RevConj) - SubGoalInfo,
+            mode_info_get_in_from_ground_term(!.ModeInfo, WasInFromGroundTerm),
+            mode_info_set_in_from_ground_term(yes, !ModeInfo),
             mode_checkpoint(enter, "ground scope", !ModeInfo, !IO),
             modecheck_goal(RevSubGoal0, SubGoal, !ModeInfo, !IO),
             mode_checkpoint(exit, "ground scope", !ModeInfo, !IO),
+            mode_info_set_in_from_ground_term(WasInFromGroundTerm, !ModeInfo),
 
-            SubGoal = GoalExpr - _
+            GoalExpr = scope(Reason, SubGoal)
         ;
             mode_checkpoint(enter, "scope", !ModeInfo, !IO),
             modecheck_goal(SubGoal0, SubGoal, !ModeInfo, !IO),
             mode_checkpoint(exit, "scope", !ModeInfo, !IO),
-            SubGoal = GoalExpr - _
+
+            GoalExpr = scope(Reason, SubGoal)
         )
     ; Reason = promise_purity(_Implicit, _Purity) ->
         mode_info_get_in_promise_purity_scope(!.ModeInfo, InPPScope),
@@ -1609,7 +1606,7 @@ modecheck_goal_expr(switch(Var, CanFail, Cases0), GoalInfo0,
         goal_info_get_nonlocals(GoalInfo0, NonLocals),
         modecheck_case_list(Cases0, Var, Cases, InstMapList,
             !ModeInfo, !IO),
-        instmap.merge(NonLocals, InstMapList, disj, !ModeInfo)
+        instmap_merge(NonLocals, InstMapList, disj, !ModeInfo)
     ),
     mode_checkpoint(exit, "switch", !ModeInfo, !IO).
 
@@ -1643,7 +1640,6 @@ modecheck_goal_expr(ForeignProc, GoalInfo, Goal, !ModeInfo, !IO) :-
 modecheck_goal_expr(shorthand(_), _, _, !ModeInfo, !IO) :-
     % these should have been expanded out by now
     unexpected(this_file, "modecheck_goal_expr: unexpected shorthand").
-
 
     % If the condition of a negation or if-then-else contains any inst any
     % non-locals (a potential referential transparency violation)
@@ -2067,11 +2063,11 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals, !ImpurityErrors, !ModeInfo,
     list(hlds_goal)::out, impurity_errors::in, impurity_errors::out,
     mode_info::in, mode_info::out, io::di, io::uo) is det.
 
-    % Schedule a conjunction.  If it's empty, then there is nothing to do.
-    % For non-empty conjunctions, we attempt to schedule the first
-    % goal in the conjunction.  If successful, we wakeup a newly
-    % pending goal (if any), and if not, we delay the goal.  Then we
-    % continue attempting to schedule all the rest of the goals.
+    % Schedule a conjunction. If it is empty, then there is nothing to do.
+    % For non-empty conjunctions, we attempt to schedule the first goal
+    % in the conjunction. If successful, we wakeup a newly pending goal
+    % (if any), and if not, we delay the goal. Then we continue attempting
+    % to schedule all the rest of the goals.
     %
 modecheck_conj_list_3(Goal0, Goals0, Goals, !ImpurityErrors, !ModeInfo, !IO) :-
     Goal0 = _GoalExpr - GoalInfo0,
@@ -2084,7 +2080,7 @@ modecheck_conj_list_3(Goal0, Goals0, Goals, !ImpurityErrors, !ModeInfo, !IO) :-
         ScheduledSolverGoals = []
     ),
 
-        % Hang onto the original instmap, delay_info, and live_vars
+        % Hang onto the original instmap, delay_info, and live_vars.
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     mode_info_get_delay_info(!.ModeInfo, DelayInfo0),
 
@@ -2141,10 +2137,9 @@ modecheck_conj_list_3(Goal0, Goals0, Goals, !ImpurityErrors, !ModeInfo, !IO) :-
     mode_info_set_delay_info(DelayInfo, !ModeInfo),
     mode_info_get_instmap(!.ModeInfo, InstMap),
     ( instmap.is_unreachable(InstMap) ->
-        % We should not mode-analyse the remaining goals, since they
-        % are unreachable.  Instead we optimize them away, so that
-        % later passes won't complain about them not having mode
-        % information.
+        % We should not mode-analyse the remaining goals, since they are
+        % unreachable. Instead we optimize them away, so that later passes
+        % won't complain about them not having mode information.
         mode_info_remove_goals_live_vars(Goals1, !ModeInfo),
         Goals2  = []
     ;
@@ -2168,9 +2163,9 @@ modecheck_conj_list_3(Goal0, Goals0, Goals, !ImpurityErrors, !ModeInfo, !IO) :-
         )
     ).
 
-    % We may still have some unscheduled goals.  This may be because some
+    % We may still have some unscheduled goals. This may be because some
     % initialisation calls are needed to turn some solver type vars
-    % from inst free to inst any.  This predicate attempts to schedule
+    % from inst free to inst any. This predicate attempts to schedule
     % such goals.
     %
 :- pred modecheck_delayed_solver_goals(list(hlds_goal)::out,
@@ -2182,8 +2177,7 @@ modecheck_delayed_solver_goals(Goals, DelayedGoals0, DelayedGoals,
         !ImpurityErrors, !ModeInfo, !IO) :-
 
         % Try to handle any unscheduled goals by inserting solver
-        % initialisation calls, aiming for a deterministic
-        % schedule.
+        % initialisation calls, aiming for a deterministic schedule.
         %
     modecheck_delayed_goals_try_det(DelayedGoals0, DelayedGoals1, Goals0,
         !ImpurityErrors, !ModeInfo, !IO),
@@ -2231,45 +2225,36 @@ modecheck_delayed_solver_goals(Goals, DelayedGoals0, DelayedGoals,
 modecheck_delayed_goals_try_det(DelayedGoals0, DelayedGoals, Goals,
         !ImpurityErrors, !ModeInfo, !IO) :-
     (
-            % There are no unscheduled goals, so we don't
-            % need to do anything.
-            %
+        % There are no unscheduled goals, so we don't need to do anything.
+
         DelayedGoals0 = [],
         DelayedGoals  = [],
         Goals         = []
     ;
-            % There are some unscheduled goals.  See if
-            % allowing extra initialisation calls (for
-            % a single goal) makes a difference.
-            %
-        DelayedGoals0 = [_ | _],
+        % There are some unscheduled goals. See if allowing extra
+        % initialisation calls (for a single goal) makes a difference.
 
+        DelayedGoals0 = [_ | _],
         (
-                % Extract the HLDS goals from the delayed
-                % goals.
-                %
+            % Extract the HLDS goals from the delayed goals.
             Goals0 = list.map(hlds_goal_from_delayed_goal, DelayedGoals0),
 
-                % Work out which vars are already
-                % instantiated (i.e. have non-free insts).
-                %
+            % Work out which vars are already instantiated
+            % (i.e. have non-free insts).
             mode_info_get_instmap(!.ModeInfo, InstMap),
             instmap.to_assoc_list(InstMap, VarInsts),
             NonFreeVars0 = set.list_to_set(
                 non_free_vars_in_assoc_list(VarInsts)),
 
-                % Find the set of vars whose instantiation should lead to
-                % a deterministic schedule.
-                %
+            % Find the set of vars whose instantiation should lead to
+            % a deterministic schedule.
             promise_equivalent_solutions [CandidateInitVars] (
                 candidate_init_vars(!.ModeInfo, Goals0, NonFreeVars0,
                     CandidateInitVars)
             ),
 
-                % And verify that all of these vars are
-                % solver type vars (and can therefore be
-                % initialised.)
-                %
+            % And verify that all of these vars are solver type vars
+            % (and can therefore be initialised.)
             mode_info_get_module_info(!.ModeInfo, ModuleInfo),
             mode_info_get_var_types(!.ModeInfo, VarTypes),
             all [Var] (
@@ -2281,9 +2266,8 @@ modecheck_delayed_goals_try_det(DelayedGoals0, DelayedGoals, Goals,
                 )
             )
         ->
-                % Construct the inferred initialisation goals
-                % and try scheduling again.
-                %
+            % Construct the inferred initialisation goals
+            % and try scheduling again.
             CandidateInitVarList = set.to_sorted_list(CandidateInitVars),
             construct_initialisation_calls(CandidateInitVarList,
                 InitGoals, !ModeInfo),
@@ -2328,7 +2312,11 @@ construct_initialisation_calls([Var | Vars], [Goal | Goals], !ModeInfo) :-
 
 non_free_vars_in_assoc_list([]) = [].
 non_free_vars_in_assoc_list([Var - Inst | AssocList]) =
-    ( ( Inst = free ; Inst = free(_) ) ->
+    (
+        ( Inst = free
+        ; Inst = free(_)
+        )
+    ->
         non_free_vars_in_assoc_list(AssocList)
     ;
         [Var | non_free_vars_in_assoc_list(AssocList)]
@@ -2373,15 +2361,15 @@ candidate_init_vars_3(_ModeInfo, Goal, !NonFree, !CandidateVars) :-
         set.member(X, !.NonFree)
     ->
         not set.member(Y, !.NonFree),
-            % It's an assignment from X to Y.
+            % It is an assignment from X to Y.
         !:NonFree = set.insert(!.NonFree, Y)
     ;
         set.member(Y, !.NonFree)
     ->
-            % It's an assignment from Y to X.
+            % It is an assignment from Y to X.
         !:NonFree = set.insert(!.NonFree, X)
     ;
-            % It's an assignment one way or the other.
+            % It is an assignment one way or the other.
         (
             !:NonFree       = set.insert(!.NonFree, X),
             !:CandidateVars = set.insert(!.CandidateVars, Y)

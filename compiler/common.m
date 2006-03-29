@@ -47,7 +47,7 @@
     % have seen before, replace the construction with an assignment from the
     % variable unified with that cell.
     %
-:- pred optimise_unification(unification::in, prog_var::in,
+:- pred common_optimise_unification(unification::in, prog_var::in,
     unify_rhs::in, unify_mode::in, unify_context::in,
     hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
@@ -60,11 +60,11 @@
     % and no destructive inputs.
     % It is the caller's responsibility to check that the call is pure.
     %
-:- pred optimise_call(pred_id::in, proc_id::in, list(prog_var)::in,
+:- pred common_optimise_call(pred_id::in, proc_id::in, list(prog_var)::in,
     hlds_goal_info::in, hlds_goal_expr::in, hlds_goal_expr::out,
     simplify_info::in, simplify_info::out) is det.
 
-:- pred optimise_higher_order_call(prog_var::in, list(prog_var)::in,
+:- pred common_optimise_higher_order_call(prog_var::in, list(prog_var)::in,
     list(mer_mode)::in, determinism::in, hlds_goal_info::in,
     hlds_goal_expr::in, hlds_goal_expr::out,
     simplify_info::in, simplify_info::out) is det.
@@ -72,7 +72,7 @@
     % Succeeds if the two variables are equivalent according to the specified
     % equivalence class.
     %
-:- pred vars_are_equivalent(prog_var::in, prog_var::in,
+:- pred common_vars_are_equivalent(prog_var::in, prog_var::in,
     common_info::in) is semidet.
 
     % Assorted stuff used here that simplify.m doesn't need to know about.
@@ -236,7 +236,7 @@ common_info_clear_structs(!Info) :-
 
 %---------------------------------------------------------------------------%
 
-optimise_unification(Unification0, _Left0, _Right0, Mode, _Context,
+common_optimise_unification(Unification0, _Left0, _Right0, Mode, _Context,
         Goal0, Goal, GoalInfo0, GoalInfo, !Info) :-
     (
         Unification0 = construct(Var, ConsId, ArgVars, _, _, _, SubInfo),
@@ -247,12 +247,12 @@ optimise_unification(Unification0, _Left0, _Right0, Mode, _Context,
             Goal = Goal0,
             GoalInfo = GoalInfo0
         ;
-            optimise_construct(Var, ConsId, ArgVars, Mode,
+            common_optimise_construct(Var, ConsId, ArgVars, Mode,
                 Goal0, Goal, GoalInfo0, GoalInfo, !Info)
         )
     ;
         Unification0 = deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, _),
-        optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail,
+        common_optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail,
             Mode, Goal0, Goal, GoalInfo0, GoalInfo, !Info)
     ;
         Unification0 = assign(Var1, Var2),
@@ -270,22 +270,22 @@ optimise_unification(Unification0, _Left0, _Right0, Mode, _Context,
         GoalInfo = GoalInfo0
     ).
 
-:- pred optimise_construct(prog_var::in, cons_id::in,
+:- pred common_optimise_construct(prog_var::in, cons_id::in,
     list(prog_var)::in, unify_mode::in,
     hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-optimise_construct(Var, ConsId, ArgVars, Mode, Goal0, Goal,
+common_optimise_construct(Var, ConsId, ArgVars, Mode, Goal0, Goal,
         GoalInfo0, GoalInfo, !Info) :-
     Mode = LVarMode - _,
     simplify_info_get_module_info(!.Info, ModuleInfo),
     mode_get_insts(ModuleInfo, LVarMode, _, Inst),
     (
-            % Don't optimise partially instantiated deconstruction
-            % unifications, because it's tricky to work out how to mode
-            % the replacement asssignment unifications. In the vast
-            % majority of cases, the variable is ground.
+        % Don't optimise partially instantiated construction unifications,
+        % because it would be tricky to work out how to mode the replacement
+        % assignment unifications. In the vast majority of cases, the variable
+        % is ground.
         \+ inst_is_ground(ModuleInfo, Inst)
     ->
         Goal = Goal0,
@@ -338,20 +338,20 @@ optimise_construct(Var, ConsId, ArgVars, Mode, Goal0, Goal,
         )
     ).
 
-:- pred optimise_deconstruct(prog_var::in, cons_id::in,
+:- pred common_optimise_deconstruct(prog_var::in, cons_id::in,
     list(prog_var)::in, list(uni_mode)::in, can_fail::in, unify_mode::in,
     hlds_goal_expr::in, hlds_goal_expr::out,
     hlds_goal_info::in, hlds_goal_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, Mode,
+common_optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, Mode,
         Goal0, Goal, GoalInfo0, GoalInfo, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
     (
         % Don't optimise partially instantiated deconstruction unifications,
-        % because it's tricky to work out how to mode the replacement
-        % asssignment unifications. In the vast majority of cases,
-        % the variable is ground.
+        % because it would be tricky to work out how to mode the replacement
+        % asssignment unifications. In the vast majority of cases, the variable
+        % is ground.
         Mode = LVarMode - _,
         mode_get_insts(ModuleInfo, LVarMode, Inst0, _),
         \+ inst_is_ground(ModuleInfo, Inst0)
@@ -365,8 +365,8 @@ optimise_deconstruct(Var, ConsId, ArgVars, UniModes, CanFail, Mode,
         SinceCallStructMap0 = CommonInfo0 ^ since_call_structs,
         (
             % Do not delete deconstruction unifications inserted by
-            % stack_opt.m, which has done a more comprehensive cost
-            % analysis than common.m can do.
+            % stack_opt.m or tupling.m, which have done a more comprehensive
+            % cost analysis than common.m can do.
             \+ goal_info_has_feature(GoalInfo, stack_opt),
             \+ goal_info_has_feature(GoalInfo, tuple_opt),
 
@@ -444,9 +444,9 @@ ids_vars_match([Id | Ids], [Var | Vars], VarEqv) :-
     id_var_match(Id, Var, VarEqv),
     ids_vars_match(Ids, Vars, VarEqv).
 
-:- pragma inline(id_var_match/3).
 :- pred id_var_match(partition_id::in, prog_var::in,
     eqvclass(prog_var)::in) is semidet.
+:- pragma inline(id_var_match/3).
 
 id_var_match(Id, Var, VarEqv) :-
     eqvclass.partition_id(VarEqv, Var, VarId),
@@ -504,7 +504,7 @@ record_equivalence(Var1, Var2, !Info) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-optimise_call(PredId, ProcId, Args, GoalInfo, Goal0, Goal, !Info) :-
+common_optimise_call(PredId, ProcId, Args, GoalInfo, Goal0, Goal, !Info) :-
     (
         goal_info_get_determinism(GoalInfo, Det),
         check_call_detism(Det),
@@ -515,13 +515,13 @@ optimise_call(PredId, ProcId, Args, GoalInfo, Goal0, Goal, !Info) :-
         partition_call_args(VarTypes, ModuleInfo, ArgModes, Args,
             InputArgs, OutputArgs, OutputModes)
     ->
-        optimise_call_2(seen_call(PredId, ProcId), InputArgs,
+        common_optimise_call_2(seen_call(PredId, ProcId), InputArgs,
             OutputArgs, OutputModes, GoalInfo, Goal0, Goal, !Info)
     ;
         Goal = Goal0
     ).
 
-optimise_higher_order_call(Closure, Args, Modes, Det, GoalInfo,
+common_optimise_higher_order_call(Closure, Args, Modes, Det, GoalInfo,
         Goal0, Goal, !Info) :-
     (
         check_call_detism(Det),
@@ -530,7 +530,7 @@ optimise_higher_order_call(Closure, Args, Modes, Det, GoalInfo,
         partition_call_args(VarTypes, ModuleInfo, Modes, Args,
             InputArgs, OutputArgs, OutputModes)
     ->
-        optimise_call_2(higher_order_call, [Closure | InputArgs],
+        common_optimise_call_2(higher_order_call, [Closure | InputArgs],
             OutputArgs, OutputModes, GoalInfo, Goal0, Goal, !Info)
     ;
         Goal = Goal0
@@ -546,12 +546,12 @@ check_call_detism(Det) :-
     ; SolnCount = at_most_many_cc
     ).
 
-:- pred optimise_call_2(seen_call_id::in, list(prog_var)::in,
+:- pred common_optimise_call_2(seen_call_id::in, list(prog_var)::in,
     list(prog_var)::in, list(mer_mode)::in, hlds_goal_info::in,
     hlds_goal_expr::in, hlds_goal_expr::out,
     simplify_info::in, simplify_info::out) is det.
 
-optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
+common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
         Goal0, Goal, !Info) :-
     simplify_info_get_common_info(!.Info, CommonInfo0),
     Eqv0 = CommonInfo0 ^ var_eqv,
@@ -568,7 +568,7 @@ optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
             Goal = conj(plain_conj, Goals),
             simplify_info_get_var_types(!.Info, VarTypes),
             (
-                simplify_do_warn_calls(!.Info),
+                simplify_do_warn_duplicate_calls(!.Info),
                 % Don't warn for cases such as:
                 % set.init(Set1 : set(int)),
                 % set.init(Set2 : set(float)).
@@ -615,6 +615,7 @@ optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
     % Partition the arguments of a call into inputs and outputs,
     % failing if any of the outputs have a unique component
     % or if any of the outputs contain any `any' insts.
+    %
 :- pred partition_call_args(vartypes::in, module_info::in,
     list(mer_mode)::in, list(prog_var)::in, list(prog_var)::out,
     list(prog_var)::out, list(mer_mode)::out) is semidet.
@@ -664,7 +665,7 @@ partition_call_args(VarTypes, ModuleInfo, [ArgMode | ArgModes],
 find_previous_call([SeenCall | SeenCalls], InputArgs, Eqv, OutputArgs,
         PrevContext) :-
     SeenCall = call_args(PrevContext, InputArgs1, OutputArgs1),
-    ( var_lists_are_equiv(InputArgs, InputArgs1, Eqv) ->
+    ( common_var_lists_are_equiv(InputArgs, InputArgs1, Eqv) ->
         OutputArgs = OutputArgs1
     ;
         find_previous_call(SeenCalls, InputArgs, Eqv, OutputArgs, PrevContext)
@@ -672,27 +673,28 @@ find_previous_call([SeenCall | SeenCalls], InputArgs, Eqv, OutputArgs,
 
 %---------------------------------------------------------------------------%
 
-    % succeeds if the two lists of variables are equivalent
+    % Succeeds if the two lists of variables are equivalent
     % according to the specified equivalence class.
-:- pred var_lists_are_equiv(list(prog_var)::in, list(prog_var)::in,
+    %
+:- pred common_var_lists_are_equiv(list(prog_var)::in, list(prog_var)::in,
     eqvclass(prog_var)::in) is semidet.
 
-var_lists_are_equiv([], [], _VarEqv).
-var_lists_are_equiv([X | Xs], [Y | Ys], VarEqv) :-
-    vars_are_equiv(X, Y, VarEqv),
-    var_lists_are_equiv(Xs, Ys, VarEqv).
+common_var_lists_are_equiv([], [], _VarEqv).
+common_var_lists_are_equiv([X | Xs], [Y | Ys], VarEqv) :-
+    common_vars_are_equiv(X, Y, VarEqv),
+    common_var_lists_are_equiv(Xs, Ys, VarEqv).
 
-vars_are_equivalent(X, Y, CommonInfo) :-
+common_vars_are_equivalent(X, Y, CommonInfo) :-
     EqvVars = CommonInfo ^ var_eqv,
-    vars_are_equiv(X, Y, EqvVars).
+    common_vars_are_equiv(X, Y, EqvVars).
 
     % Succeeds if the two variables are equivalent according to the
     % specified equivalence class.
     %
-:- pred vars_are_equiv(prog_var::in, prog_var::in,
+:- pred common_vars_are_equiv(prog_var::in, prog_var::in,
     eqvclass(prog_var)::in) is semidet.
 
-vars_are_equiv(X, Y, VarEqv) :-
+common_vars_are_equiv(X, Y, VarEqv) :-
     (
         X = Y
     ;

@@ -105,11 +105,13 @@ detect_switches_in_pred(PredId, PredInfo0, !ModuleInfo, !IO) :-
     (
         ProcIds = [_ | _],
         write_pred_progress_message("% Detecting switches in ", PredId,
-            !.ModuleInfo, !IO)
+            !.ModuleInfo, !IO),
+        detect_switches_in_procs(ProcIds, PredId, !ModuleInfo)
+        % This is where we should print statistics, if we ever need
+        % to debug the performance of switch detection.
     ;
         ProcIds = []
-    ),
-    detect_switches_in_procs(ProcIds, PredId, !ModuleInfo).
+    ).
 
 :- pred detect_switches_in_procs(list(proc_id)::in, pred_id::in,
     module_info::in, module_info::out) is det.

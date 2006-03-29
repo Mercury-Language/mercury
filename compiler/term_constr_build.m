@@ -935,7 +935,7 @@ build_goal_from_unify(Constraints) = primitive(Polyhedron, [], []) :-
 
 local_vars(GoalExpr - GoalInfo) = Locals :-
     goal_info_get_nonlocals(GoalInfo, NonLocals),
-    quantification.goal_vars(GoalExpr - GoalInfo, QuantVars),
+    QuantVars = free_goal_vars(GoalExpr - GoalInfo),
     LocalsSet = set.difference(QuantVars, NonLocals),
     Locals = set.to_sorted_list(LocalsSet).
 
@@ -946,7 +946,7 @@ local_vars(GoalExpr - GoalInfo) = Locals :-
 
 partition_vars(GoalExpr - GoalInfo, Locals, NonLocals) :-
     goal_info_get_nonlocals(GoalInfo, NonLocals0),
-    quantification.goal_vars(GoalExpr - GoalInfo, QuantVars),
+    QuantVars = free_goal_vars(GoalExpr - GoalInfo),
     Locals = set.to_sorted_list(set.difference(QuantVars, NonLocals0)),
     NonLocals = set.to_sorted_list(NonLocals0).
 
@@ -975,7 +975,7 @@ allocate_sizevars(HeadProgVars, Goal, SizeVarMap, !SizeVarset) :-
     size_varset::in, size_varset::out, size_var_map::out) is det.
 
 fill_var_to_sizevar_map(Goal, !SizeVarset, SizeVarMap) :-
-    quantification.goal_vars(Goal, ProgVarsInGoal),
+    ProgVarsInGoal = free_goal_vars(Goal),
     ProgVars = set.to_sorted_list(ProgVarsInGoal),
     make_size_var_map(ProgVars, !SizeVarset, SizeVarMap).
 

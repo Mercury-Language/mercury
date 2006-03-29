@@ -236,7 +236,7 @@ process_proc_msg(Transform, PredId, ProcId, ProcInfo0, ProcInfo,
     io::di, io::uo) is det.
 
 process_proc(Transform, PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
-    Simplifications = [],
+    Simplifications = list_to_simplifications([]),
     simplify_proc_return_msgs(Simplifications, PredId, ProcId,
         !ModuleInfo, !ProcInfo, _Msgs, !IO),
 

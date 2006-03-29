@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred shallow.main/2-0 (cc_multi) shallow.m:18
+       1:      1  1 CALL pred shallow.main/2-0 (cc_multi) shallow.m:15
 mdb> echo on
 Command echo enabled.
 mdb> context before

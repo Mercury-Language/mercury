@@ -157,7 +157,7 @@ warn_singletons_in_goal_2(Goal, GoalInfo, QuantVars, VarSet, PredCallId,
         ),
         Vars = [_ | _]
     ->
-        quantification.goal_vars(SubGoal, SubGoalVars),
+        SubGoalVars = free_goal_vars(SubGoal),
         goal_info_get_context(GoalInfo, Context),
         set.init(EmptySet),
         warn_singletons(Vars, GoalInfo, EmptySet, SubGoalVars, VarSet,
@@ -177,8 +177,8 @@ warn_singletons_in_goal_2(Goal, GoalInfo, QuantVars, VarSet, PredCallId,
     %
     (
         Vars = [_ | _],
-        quantification.goal_vars(Cond, CondVars),
-        quantification.goal_vars(Then, ThenVars),
+        CondVars = free_goal_vars(Cond),
+        ThenVars = free_goal_vars(Then),
         set.union(CondVars, ThenVars, CondThenVars),
         goal_info_get_context(GoalInfo, Context),
         set.init(EmptySet),

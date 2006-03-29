@@ -784,8 +784,8 @@ unify_uniq(live, _, _, unique, unique, shared).
 unify_uniq(live, _, _, unique, mostly_unique, shared).
 unify_uniq(dead, _, _, unique, unique, unique).
 unify_uniq(dead, _, _, unique, mostly_unique, mostly_unique).
-        % XXX the above line is a conservative approximation
-        % sometimes it should return unique not mostly_unique
+        % XXX The above line is a conservative approximation;
+        % sometimes it should return unique not mostly_unique.
 unify_uniq(Live, Real, Det, unique, clobbered, clobbered) :-
     allow_unify_with_clobbered(Live, Real, Det).
 unify_uniq(Live, Real, Det, unique, mostly_clobbered, mostly_clobbered) :-
@@ -795,8 +795,8 @@ unify_uniq(_, _, _, mostly_unique, shared, shared).
 unify_uniq(live, _, _, mostly_unique, unique, shared).
 unify_uniq(live, _, _, mostly_unique, mostly_unique, shared).
 unify_uniq(dead, _, _, mostly_unique, unique, mostly_unique).
-        % XXX the above line is a conservative approximation
-        % sometimes it should return unique not mostly_unique
+        % XXX The above line is a conservative approximation;
+        % sometimes it should return unique not mostly_unique.
 unify_uniq(dead, _, _, mostly_unique, mostly_unique, mostly_unique).
 unify_uniq(Live, Real, Det, mostly_unique, clobbered, clobbered) :-
     allow_unify_with_clobbered(Live, Real, Det).
@@ -808,7 +808,11 @@ unify_uniq(Live, Real, Det, clobbered, _, clobbered) :-
     allow_unify_with_clobbered(Live, Real, Det).
 
 unify_uniq(Live, Real, Det, mostly_clobbered, Uniq0, Uniq) :-
-    ( Uniq0 = clobbered -> Uniq = clobbered ; Uniq = mostly_clobbered ),
+    ( Uniq0 = clobbered ->
+        Uniq = clobbered
+    ;
+        Uniq = mostly_clobbered
+    ),
     allow_unify_with_clobbered(Live, Real, Det).
 
 :- pred allow_unify_with_clobbered(is_live::in, unify_is_real::in,
@@ -1143,6 +1147,29 @@ make_shared_inst(free(T), free(T), !ModuleInfo) :-
         "make_shared_inst: cannot make shared version of `free(T)'").
 make_shared_inst(bound(Uniq0, BoundInsts0), bound(Uniq, BoundInsts),
         !ModuleInfo) :-
+    % XXX This code has a performance problem.
+    %
+    % The problem is that e.g. in a list of length N, you'll have N variables
+    % for the skeletons whose insts contain an average of N/2 occurences of
+    % `bound' each, so the complexity of running make_shared_inst on all their
+    % insts is quadratic in N.
+    %
+    % One potential way to fix this would be to introduce a new function
+    % symbol for insts, make_shared(mer_inst), which would have the meaning of
+    % requiring any compiler component that finds it to run make_shared_inst
+    % on its argument before using it. That would require parameterizing
+    % make_shared_inst to say whether it is being used in such a manner.
+    %
+    % Another similar fix would be to add an extra argument to bound/2
+    % to say whether the insts in its last argument should implicitly be made
+    % shared.
+    %
+    % If Uniq0 = shared, then all the other cells below it should also be
+    % shared as well, which means we should be able to avoid the call to
+    % make_shared_bound_inst_list below. However, for the kinds of goals
+    % for which the call is a bottleneck, the goals resulting from the
+    % construction of large ground terms, Uniq0 will in fact be `unique'.
+
     make_shared(Uniq0, Uniq),
     make_shared_bound_inst_list(BoundInsts0, BoundInsts, !ModuleInfo).
 make_shared_inst(ground(Uniq0, PredInst), ground(Uniq, PredInst),
@@ -1188,8 +1215,7 @@ make_shared_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
         inst_table_get_shared_insts(InstTable2, SharedInsts2),
         svmap.det_update(InstName, known(SharedInst),
             SharedInsts2, SharedInsts),
-        inst_table_set_shared_insts(SharedInsts,
-            InstTable2, InstTable),
+        inst_table_set_shared_insts(SharedInsts, InstTable2, InstTable),
         module_info_set_inst_table(InstTable, !ModuleInfo)
     ),
     % Avoid expanding recursive insts.
@@ -1283,7 +1309,7 @@ make_mostly_uniq_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
             InstTable2, InstTable),
         module_info_set_inst_table(InstTable, !ModuleInfo)
     ),
-        % avoid expanding recursive insts
+    % Avoid expanding recursive insts.
     ( inst_contains_instname(NondetLiveInst, !.ModuleInfo, InstName) ->
         Inst = defined_inst(InstName)
     ;

@@ -437,15 +437,84 @@ replace_in_mode(EqvMap, Mode0 @ user_defined_mode(Name, Insts0), Mode,
     inst_cache::in, inst_cache::out) is det.
 
 replace_in_inst(EqvMap, Inst0, Inst, Changed, !TVarSet, !Cache) :-
-    replace_in_inst_2(EqvMap, Inst0, Inst1, Changed, !TVarSet, !Cache),
+    % The call to replace_in_inst_2 can allocate a *lot* of cells if the
+    % inst is complex, as it will be for an inst describing a large term.
+    % The fact that we traverse the inst twice if ContainsType = yes
+    % shouldn't be a problem, since we expect that ContainsType = no
+    % almost all the time.
+
+    ContainsType = type_may_occur_in_inst(Inst0),
     (
-        Changed = yes,
-        % Doing this when the inst has not changed is too slow,
-        % and makes the cache potentially very large.
-        hash_cons_inst(Inst1, Inst, !Cache)
+        ContainsType = yes,
+        replace_in_inst_2(EqvMap, Inst0, Inst1, Changed, !TVarSet, !Cache),
+        (
+            Changed = yes,
+            % Doing this when the inst has not changed is too slow,
+            % and makes the cache potentially very large.
+            hash_cons_inst(Inst1, Inst, !Cache)
+        ;
+            Changed = no,
+            Inst = Inst1
+        )
     ;
-        Changed = no,
-        Inst = Inst1
+        ContainsType = no,
+        Inst = Inst0,
+        Changed = no
+    ).
+
+    % Return true if any type may occur inside the given inst.
+    %
+    % The logic here should be a conservative approximation of the code
+    % of replace_in_inst_2.
+    %
+:- func type_may_occur_in_inst(mer_inst) = bool.
+
+type_may_occur_in_inst(any(_)) = no.
+type_may_occur_in_inst(free) = no.
+type_may_occur_in_inst(free(_)) = yes.
+type_may_occur_in_inst(bound(_, BoundInsts)) =
+    type_may_occur_in_bound_insts(BoundInsts).
+type_may_occur_in_inst(ground(_, none)) = no.
+type_may_occur_in_inst(ground(_, higher_order(_PredInstInfo))) = yes.
+    % This is a conservative approximation; the mode in _PredInstInfo
+    % may contain a reference to a type.
+type_may_occur_in_inst(not_reached) = no.
+type_may_occur_in_inst(inst_var(_)) = no.
+type_may_occur_in_inst(constrained_inst_vars(_, CInst)) =
+    type_may_occur_in_inst(CInst).
+type_may_occur_in_inst(defined_inst(_)) = yes.
+    % This is also a conservative approximation.
+type_may_occur_in_inst(abstract_inst(_, Insts)) =
+    type_may_occur_in_insts(Insts).
+
+    % Return true if any type may occur inside any of the given bound insts.
+    %
+    % The logic here should be a conservative approximation of the code
+    % of replace_in_bound_insts.
+    %
+:- func type_may_occur_in_bound_insts(list(bound_inst)) = bool.
+
+type_may_occur_in_bound_insts([]) = no.
+type_may_occur_in_bound_insts([functor(_, Insts) | BoundInsts]) =
+    ( type_may_occur_in_insts(Insts) = yes ->
+        yes
+    ;
+        type_may_occur_in_bound_insts(BoundInsts)
+    ).
+
+    % Return true if any type may occur inside any of the given insts.
+    %
+    % The logic here should be a conservative approximation of the code
+    % of replace_in_insts.
+    %
+:- func type_may_occur_in_insts(list(mer_inst)) = bool.
+
+type_may_occur_in_insts([]) = no.
+type_may_occur_in_insts([Inst | Insts]) =
+    ( type_may_occur_in_inst(Inst) = yes ->
+        yes
+    ;
+        type_may_occur_in_insts(Insts)
     ).
 
 :- pred replace_in_inst_2(eqv_map::in, mer_inst::in, mer_inst::out, bool::out,
@@ -574,8 +643,7 @@ replace_in_inst_name(EqvMap, InstName0 @ typed_inst(Type0, Name0),
 replace_in_bound_insts(_EqvMap, [], [], no, !TVarSet, !Cache).
 replace_in_bound_insts(EqvMap, List0 @ [functor(ConsId, Insts0) | BoundInsts0],
         List, Changed, !TVarSet, !Cache) :-
-    replace_in_insts(EqvMap, Insts0, Insts,
-        InstsChanged, !TVarSet, !Cache),
+    replace_in_insts(EqvMap, Insts0, Insts, InstsChanged, !TVarSet, !Cache),
     replace_in_bound_insts(EqvMap, BoundInsts0, BoundInsts,
         BoundInstsChanged, !TVarSet, !Cache),
     Changed = InstsChanged `or` BoundInstsChanged,

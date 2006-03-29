@@ -2637,6 +2637,7 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
         true
     ),
     find_simplifications(no, Globals, Simplifications0),
+    SimpList0 = simplifications_to_list(Simplifications0),
 
     globals.lookup_bool_option(Globals, profile_deep, DeepProf),
     globals.lookup_bool_option(Globals, record_term_sizes_as_words, TSWProf),
@@ -2651,14 +2652,15 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
         %       mercury_compile.simplify.
         %
         ProfTrans = yes,
-        Simplifications = list.delete_all(Simplifications0, constant_prop)
+        SimpList1 = list.delete_all(SimpList0, constant_prop)
     ;
         ProfTrans = no,
-        Simplifications = Simplifications0
+        SimpList1 = SimpList0
     ),
       
-    simplify_proc([do_once | Simplifications], PredId, ProcId,
-        !HLDS, !ProcInfo, !IO),
+    SimpList = [do_once | SimpList1],
+    Simplifications = list_to_simplifications(SimpList),
+    simplify_proc(Simplifications, PredId, ProcId, !HLDS, !ProcInfo, !IO),
     write_proc_progress_message("% Computing liveness in ", PredId, ProcId,
         !.HLDS, !IO),
     detect_liveness_proc(PredId, ProcId, !.HLDS, !ProcInfo, !IO),
@@ -3040,22 +3042,23 @@ simplify(Warn, SimplifyPass, Verbose, Stats, Process, !HLDS, !IO) :-
     ->
         true
     ;
-        some [!Simplifications] (
-            maybe_write_string(Verbose, "% Simplifying goals...\n", !IO),
-            maybe_flush_output(Verbose, !IO),
+        maybe_write_string(Verbose, "% Simplifying goals...\n", !IO),
+        maybe_flush_output(Verbose, !IO),
            
-            simplify.find_simplifications(Warn, Globals, !:Simplifications),
+        some [!SimpList] (
+            simplify.find_simplifications(Warn, Globals, Simplifications0),
+            !:SimpList = simplifications_to_list(Simplifications0),
             (
                 SimplifyPass = frontend
             ;
                 SimplifyPass = post_untuple,
-                list.cons(do_once, !Simplifications) 
+                list.cons(do_once, !SimpList) 
             ;
                 SimplifyPass = pre_prof_transforms,
-                list.cons(do_once, !Simplifications)
+                list.cons(do_once, !SimpList)
             ;
                 SimplifyPass = ml_backend,
-                list.cons(do_once, !Simplifications)
+                list.cons(do_once, !SimpList)
             ;
                 % Don't perform constant propagation if one of the
                 % profiling transformations has been applied.
@@ -3068,19 +3071,18 @@ simplify(Warn, SimplifyPass, Verbose, Stats, Process, !HLDS, !IO) :-
                     IsProfPass = yes,
                     % XXX Why does find_simplifications return a list of
                     % them rather than a set?
-                    list.delete_all(!.Simplifications, constant_prop,
-                        !:Simplifications)
+                    list.delete_all(!.SimpList, constant_prop, !:SimpList)
                 ;
                     IsProfPass = no
                 ),
-                list.cons(do_once, !Simplifications)
+                list.cons(do_once, !SimpList)
             ),
-            Process(update_pred_error(simplify_pred(!.Simplifications)), !HLDS,
-                !IO),
-    
-            maybe_write_string(Verbose, "% done.\n", !IO),
-            maybe_report_stats(Stats, !IO)
-        )
+            Simplifications = list_to_simplifications(!.SimpList)
+        ),
+
+        Process(update_pred_error(simplify_pred(Simplifications)), !HLDS, !IO),
+        maybe_write_string(Verbose, "% done.\n", !IO),
+        maybe_report_stats(Stats, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -3298,11 +3300,25 @@ maybe_polymorphism(Verbose, Stats, !HLDS, !IO) :-
     globals.io_lookup_bool_option(polymorphism, Polymorphism, !IO),
     (
         Polymorphism = yes,
-        maybe_write_string(Verbose,
-            "% Transforming polymorphic unifications...", !IO),
+        globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+        (
+            VeryVerbose = no,
+            maybe_write_string(Verbose,
+                "% Transforming polymorphic unifications...", !IO)
+        ;
+            VeryVerbose = yes,
+            maybe_write_string(Verbose,
+                "% Transforming polymorphic unifications...\n", !IO)
+        ),
         maybe_flush_output(Verbose, !IO),
         polymorphism.process_module(!HLDS, !IO),
-        maybe_write_string(Verbose, " done.\n", !IO),
+        (
+            VeryVerbose = no,
+            maybe_write_string(Verbose, " done.\n", !IO)
+        ;
+            VeryVerbose = yes,
+            maybe_write_string(Verbose, "% done.\n", !IO)
+        ),
         maybe_report_stats(Stats, !IO)
     ;
         Polymorphism = no,
