@@ -4304,6 +4304,21 @@ else
 	fi
 fi
 
+# The references to $conf_h_copy and $had_old_conf_h below are in code that
+# autoconf puts into a subshell, so we must export them.
+conf_h_copy=/tmp/mercury_conf.h.$$
+# trap "rm -f $conf_h_copy" 0 1 2 3 13 15
+export conf_h_copy
+if test -f runtime/mercury_conf.h
+then
+	/bin/rm -f $conf_h_copy
+	cp runtime/mercury_conf.h $conf_h_copy
+	had_old_conf_h=true
+else
+	had_old_conf_h=false
+fi
+export had_old_conf_h
+
 # IMPORTANT NOTE
 # --------------
 # Any new entries here may need to be handled by scripts/mercury_config.in.
@@ -4338,7 +4353,18 @@ deep_profiler/DEEP_FLAGS
 case $reconfiguring in no)
 	for header in $CONFIG_HEADERS ; do
 		if test "$header" = "runtime/mercury_conf.h"; then
-			touch runtime/mercury_conf.h.date
+			if $had_old_conf_h && \
+				cmp runtime/mercury_conf.h "$conf_h_copy" \
+					> /dev/null && \
+				test -f runtime/mercury_conf.h.date
+			then
+				# The date file need not be updated, so don't
+				# update it, since that would lead to the
+				# recompilation of a bunch of files.
+				true
+			else
+				touch runtime/mercury_conf.h.date
+			fi
 		fi
 	done
 	# conftest.junk is used to avoid a warning if there
