@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1994-2005 The University of Melbourne.
+** Copyright (C) 1994-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -238,12 +238,12 @@ typedef struct {
         MR_IF_USE_TRAIL((setjmp_env)->saved_ticket_high_water =               \
             MR_ticket_high_water);                                            \
         if (setjmp((setjmp_env)->env)) {                                      \
-            MR_ENGINE(MR_eng_jmp_buf) = (setjmp_env)->mercury_env;\           \
+            MR_ENGINE(MR_eng_jmp_buf) = (setjmp_env)->mercury_env;            \
             MR_restore_regs_from_mem((setjmp_env)->regs);                     \
-            MR_succip_word = (MR_Word) (setjmp_env)->saved_succip;\           \
+            MR_succip_word = (MR_Word) (setjmp_env)->saved_succip;            \
             MR_sp_word = (MR_Word) (setjmp_env)->saved_sp;                    \
-            MR_curfr_word = (MR_Word) (setjmp_env)->saved_curfr;\             \
-            MR_maxfr_word = (MR_Word) (setjmp_env)->saved_maxfr;\             \
+            MR_curfr_word = (MR_Word) (setjmp_env)->saved_curfr;              \
+            MR_maxfr_word = (MR_Word) (setjmp_env)->saved_maxfr;              \
             MR_IF_USE_TRAIL(MR_trail_ptr = (setjmp_env)->saved_trail_ptr);    \
             MR_IF_USE_TRAIL(MR_ticket_counter =                               \
                 (setjmp_env)->saved_ticket_counter);                          \
