@@ -28,7 +28,7 @@
 
 :- implementation.
 
-:- import_module float, pair, maybe.
+:- import_module float, pair, maybe, solutions.
 
 %-----------------------------------------------------------------------------%
 

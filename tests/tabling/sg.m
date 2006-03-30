@@ -10,7 +10,7 @@
 
 :- implementation.
 
-:- import_module std_util, list.
+:- import_module pair, list, solutions.
 
 main(!IO) :-
 	solutions(sg1, Solns1),

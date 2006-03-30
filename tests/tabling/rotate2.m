@@ -11,7 +11,7 @@
 
 :- implementation.
 
-:- import_module std_util, int, list, set.
+:- import_module maybe, int, list, set, solutions.
 
 main(!IO) :-
 	testgroup(3, 2, !IO),

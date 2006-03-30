@@ -11,7 +11,7 @@
 :- implementation.
 
 :- import_module list.
-:- import_module std_util.
+:- import_module solutions.
 
 :- type set_ctree234(T)
     --->    ct(int, set_tree234(T))
