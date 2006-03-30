@@ -9,7 +9,7 @@
 :- implementation.
 
 :- import_module list, int, string, map, svmap, term_to_xml, assoc_list,
-	std_util.
+	pair.
 
 main(!IO) :-
 	some [!Map] (

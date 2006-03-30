@@ -19,5 +19,5 @@ Found inadmissible call:
 Parent q(1, _)
 Call p(2, _)
 Is this a bug? y
-      E4:     C3 EXIT pred priv_builtin_bug.q/2-0 (det) priv_builtin_bug.m:26 (priv_builtin_bug.m:14)
+      E4:     C3 EXIT pred priv_builtin_bug.q/2-0 (det) priv_builtin_bug.m:20 (priv_builtin_bug.m:14)
 mdb> quit -y
