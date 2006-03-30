@@ -13,7 +13,7 @@ MAIN_TARGET = libmercury_glut
 # The following libraries are for X on Linux (Debian) using Mesa.
 	
 # Libaries required by X windows.
-X_LIBS = -lX11 -lXext -lXmu -lXt -lXi -lSM -lICE -L/usr/X11R6/lib
+X_LIBS = -lX11 -lXext -lXt -lXi -lSM -lICE -L/usr/X11R6/lib
 
 # Libraries required by OpenGL.
 GL_LIBS = -lGL -LGL

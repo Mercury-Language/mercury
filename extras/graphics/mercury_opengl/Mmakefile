@@ -11,7 +11,7 @@ MAIN_TARGET = libmercury_opengl
 
 # Specify what libraries we need to link against for OpenGL on this system.
 # (The following works on Debian with mesa as the OpenGL implementation).
-GL_LIBS = -lGL -lGLU -L/usr/X11R6/lib -lX11 -lXi -lXmu -lXt -lICE -lXext -lSM
+GL_LIBS = -lGL -lGLU -L/usr/X11R6/lib -lX11 -lXi -lXt -lICE -lXext -lSM
 
 # Don't issue a warning because mercury_opengl doesn't export anything.
 MCFLAGS-mercury_opengl = --no-warn-nothing-exported

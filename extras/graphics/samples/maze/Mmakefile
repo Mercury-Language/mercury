@@ -9,7 +9,7 @@ MERCURY_GLUT_DIR = ../../mercury_glut
 MGNUCFLAGS = --pic-reg -I$(MERCURY_OPENGL_DIR) -I$(MERCURY_GLUT_DIR)
 EXTRA_MLFLAGS = -shared
 
-EXTRA_MLLIBS = -lGLU -lglut -lGL -L/usr/X11R6/lib -lX11 -lXext -lXmu -lXi \
+EXTRA_MLLIBS = -lGLU -lglut -lGL -L/usr/X11R6/lib -lX11 -lXext -lXi \
 	 -lpthread -ldl -lm
 
 VPATH = $(MERCURY_OPENGL_DIR):$(MERCURY_GLUT_DIR):$(MMAKE_VPATH)

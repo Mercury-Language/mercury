@@ -48,10 +48,11 @@
 :- import_module list.
 :- import_module map.
 :- import_module math.
+:- import_module pair.
 :- import_module random.
 :- import_module require.
 :- import_module set.
-:- import_module std_util.
+:- import_module solutions.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -87,10 +88,10 @@ main(!IO) :-
 		getopt.lookup_int_option(Opts, height, YMax),
 		getopt.lookup_int_option(Opts, seed, Seed),
 		globals.set("Size", float(XMax), !IO),
-		std_util.solutions(
+		solutions(
 			(pred(X::out) is nondet :- between(0, XMax - 1, X)),
 			XIndexs),
-		std_util.solutions(
+		solutions(
 			(pred(Y::out) is nondet :- between(0, YMax - 1, Y)),
 			YIndexes),
 		random.init(Seed, Rnd0),
@@ -395,7 +396,7 @@ maze.adj(pos(FarX, FarY), pos(X, Y), Adjs, !Rnd) :-
 			X1 >= 0, X1 < FarX,
 			Y1 >= 0, Y1 < FarY
 	),
-	std_util.solutions(Pred, Adjs0),
+	solutions(Pred, Adjs0),
 	shuffle(20, Adjs0, Adjs, !Rnd).
 
 :- pred knock_out_wall(pos::in, pos::in, maze::in, maze::out) is det.
