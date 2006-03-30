@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998,2000, 2003-2005 The University of Melbourne.
+% Copyright (C) 1997-1998,2000, 2003-2006 The University of Melbourne.
 % Copyright (C) 2001 The Rationalizer Intelligent Software AG
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -25,11 +25,19 @@
 %           would result in the invalid name "..button13"
 %
 %-----------------------------------------------------------------------------%
-:- module mtk.
 
+:- module mtk.
 :- interface.
 
-:- import_module io, mtcltk, std_util, bool, list.
+:- import_module mtcltk.
+
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module maybe.
+:- import_module pair.
+
+%-----------------------------------------------------------------------------%
 
 :- type widget.
 
