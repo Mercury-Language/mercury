@@ -9,7 +9,7 @@
 
 :- interface.
 
-:- import_module std_util.
+:- import_module unit.
 
 :- type graph(N, A).
 

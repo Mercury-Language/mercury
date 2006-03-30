@@ -227,7 +227,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module require.
-:- import_module std_util.
+:- import_module pair.
 
 :- type mc_bag(T)      ==  map(T, int).
 

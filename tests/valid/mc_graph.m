@@ -26,7 +26,7 @@
 
 :- import_module list.
 :- import_module set.
-:- import_module std_util.
+:- import_module unit.
 
     % mc_graph(Node, Arc) represents a directed mc_graph with information of
     % type Node associated with each node, and information of type Arc
