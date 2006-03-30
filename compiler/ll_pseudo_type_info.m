@@ -153,8 +153,8 @@ convert_compound_pseudo_type_info(RttiTypeCtor, ArgRvals0, Args,
         )
     ), Args, ArgRvals1, !StaticCellInfo),
     list.append(ArgRvals0, ArgRvals1, ArgRvals),
-    add_static_cell_natural_types([TypeCtorInfoRval | ArgRvals], DataAddr,
-        !StaticCellInfo),
+    add_scalar_static_cell_natural_types([TypeCtorInfoRval | ArgRvals],
+        DataAddr, !StaticCellInfo),
     Rval = const(data_addr_const(DataAddr, no)).
 
 :- pred convert_compound_type_info(rtti_type_ctor::in, list(rval)::in,
@@ -172,8 +172,8 @@ convert_compound_type_info(RttiTypeCtor, ArgRvals0, Args, !StaticCellInfo,
         convert_plain_type_info(A, SCI0, SCI, AR, _LldsType)
     ), Args, ArgRvals1, !StaticCellInfo),
     list.append(ArgRvals0, ArgRvals1, ArgRvals),
-    add_static_cell_natural_types([TypeCtorInfoRval | ArgRvals], DataAddr,
-        !StaticCellInfo),
+    add_scalar_static_cell_natural_types([TypeCtorInfoRval | ArgRvals],
+        DataAddr, !StaticCellInfo),
     Rval = const(data_addr_const(DataAddr, no)).
 
 %-----------------------------------------------------------------------------%

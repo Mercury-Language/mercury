@@ -302,10 +302,13 @@ vars_in_lval(lvar(Var), [Var]).
 
 :- pred vars_in_mem_ref(mem_ref::in, list(prog_var)::out) is det.
 
-vars_in_mem_ref(stackvar_ref(_SlotNum), []).
-vars_in_mem_ref(framevar_ref(_SlotNum), []).
-vars_in_mem_ref(heap_ref(Rval, _Tag, _FieldNum), Vars) :-
+vars_in_mem_ref(stackvar_ref(Rval), Vars) :-
     vars_in_rval(Rval, Vars).
+vars_in_mem_ref(framevar_ref(Rval), Vars) :-
+    vars_in_rval(Rval, Vars).
+vars_in_mem_ref(heap_ref(BaseRval, _Tag, FieldRval), BaseVars ++ FieldVars) :-
+    vars_in_rval(BaseRval, BaseVars),
+    vars_in_rval(FieldRval, FieldVars).
 
 %-----------------------------------------------------------------------------%
 
@@ -560,15 +563,20 @@ substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N) :-
 
 substitute_lval_in_mem_ref(OldLval, NewLval, MemRef0, MemRef, !N) :-
     (
-        MemRef0 = stackvar_ref(_SlotNum),
-        MemRef = MemRef0
-    ;
-        MemRef0 = framevar_ref(_SlotNum),
-        MemRef = MemRef0
-    ;
-        MemRef0 = heap_ref(Rval0, Tag, FieldNum),
+        MemRef0 = stackvar_ref(Rval0),
         substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
-        MemRef = heap_ref(Rval, Tag, FieldNum)
+        MemRef = stackvar_ref(Rval)
+    ;
+        MemRef0 = framevar_ref(Rval0),
+        substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
+        MemRef = framevar_ref(Rval)
+    ;
+        MemRef0 = heap_ref(BaseRval0, Tag, FieldRval0),
+        substitute_lval_in_rval_count(OldLval, NewLval, BaseRval0, BaseRval,
+            !N),
+        substitute_lval_in_rval_count(OldLval, NewLval, FieldRval0, FieldRval,
+            !N),
+        MemRef = heap_ref(BaseRval, Tag, FieldRval)
     ).
 
 :- pred substitute_lval_in_lval_count(lval::in, lval::in,

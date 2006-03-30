@@ -377,10 +377,9 @@ negate_the_test([Instr0 | Instrs0], Instrs) :-
 %-----------------------------------------------------------------------------%
 
 lvals_in_lvals([], []).
-lvals_in_lvals([First | Rest], Lvals) :-
+lvals_in_lvals([First | Rest], FirstLvals ++ RestLvals) :-
     lvals_in_lval(First, FirstLvals),
-    lvals_in_lvals(Rest, RestLvals),
-    list.append(FirstLvals, RestLvals, Lvals).
+    lvals_in_lvals(Rest, RestLvals).
 
 lvals_in_rval(lval(Lval), [Lval | Lvals]) :-
     lvals_in_lval(Lval, Lvals).
@@ -390,10 +389,9 @@ lvals_in_rval(mkword(_, Rval), Lvals) :-
 lvals_in_rval(const(_), []).
 lvals_in_rval(unop(_, Rval), Lvals) :-
     lvals_in_rval(Rval, Lvals).
-lvals_in_rval(binop(_, Rval1, Rval2), Lvals) :-
+lvals_in_rval(binop(_, Rval1, Rval2), Lvals1 ++ Lvals2) :-
     lvals_in_rval(Rval1, Lvals1),
-    lvals_in_rval(Rval2, Lvals2),
-    list.append(Lvals1, Lvals2, Lvals).
+    lvals_in_rval(Rval2, Lvals2).
 lvals_in_rval(mem_addr(MemRef), Lvals) :-
     lvals_in_mem_ref(MemRef, Lvals).
 
@@ -415,10 +413,9 @@ lvals_in_lval(prevfr(Rval), Lvals) :-
     lvals_in_rval(Rval, Lvals).
 lvals_in_lval(hp, []).
 lvals_in_lval(sp, []).
-lvals_in_lval(field(_, Rval1, Rval2), Lvals) :-
+lvals_in_lval(field(_, Rval1, Rval2), Lvals1 ++ Lvals2) :-
     lvals_in_rval(Rval1, Lvals1),
-    lvals_in_rval(Rval2, Lvals2),
-    list.append(Lvals1, Lvals2, Lvals).
+    lvals_in_rval(Rval2, Lvals2).
 lvals_in_lval(lvar(_), []).
 lvals_in_lval(temp(_, _), []).
 lvals_in_lval(mem_ref(Rval), Lvals) :-
@@ -426,10 +423,13 @@ lvals_in_lval(mem_ref(Rval), Lvals) :-
 
 :- pred lvals_in_mem_ref(mem_ref::in, list(lval)::out) is det.
 
-lvals_in_mem_ref(stackvar_ref(_), []).
-lvals_in_mem_ref(framevar_ref(_), []).
-lvals_in_mem_ref(heap_ref(Rval, _, _), Lvals) :-
+lvals_in_mem_ref(stackvar_ref(Rval), Lvals) :-
     lvals_in_rval(Rval, Lvals).
+lvals_in_mem_ref(framevar_ref(Rval), Lvals) :-
+    lvals_in_rval(Rval, Lvals).
+lvals_in_mem_ref(heap_ref(Rval1, _, Rval2), Lvals1 ++ Lvals2) :-
+    lvals_in_rval(Rval1, Lvals1),
+    lvals_in_rval(Rval2, Lvals2).
 
 %-----------------------------------------------------------------------------%
 

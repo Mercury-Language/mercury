@@ -50,30 +50,22 @@
 :- import_module ll_backend.llds.
 :- import_module parse_tree.prog_data.
 
-:- import_module list.
-:- import_module map.
-:- import_module maybe.
-:- import_module pair.
-:- import_module set.
-
 %-----------------------------------------------------------------------------%
 
-:- type case_consts == list(pair(int, list(rval))).
+:- type lookup_switch_info.
 
-:- type rval_map == map(prog_var, list(pair(int, rval))).
-
+    % Decide whether we can generate code for this switch using a lookup table.
+    %
 :- pred is_lookup_switch(prog_var::in, cases_list::in,
     hlds_goal_info::in, can_fail::in, int::in, abs_store_map::in,
-    branch_end::in, branch_end::out, code_model::in, int::out, int::out,
-    can_fail::out, can_fail::out, list(prog_var)::out, case_consts::out,
-    maybe(set(prog_var))::out, code_info::in, code_info::out) is semidet.
+    branch_end::in, branch_end::out, code_model::in, lookup_switch_info::out,
+    code_info::in, code_info::out) is semidet.
 
-    % Generate code for a switch using a lookup table.
+    % Generate code for the switch that the lookup_switch_info came from.
     %
-:- pred generate_lookup_switch(prog_var::in, list(prog_var)::in,
-    case_consts::in, int::in, int::in, can_fail::in, can_fail::in,
-    maybe(set(prog_var))::in, abs_store_map::in, branch_end::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+:- pred generate_lookup_switch(prog_var::in, abs_store_map::in, branch_end::in,
+    lookup_switch_info::in, code_tree::out, code_info::in, code_info::out)
+    is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -98,16 +90,44 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module maybe.
+:- import_module pair.
+:- import_module set.
 :- import_module solutions.
+
+:- type case_consts == assoc_list(int, list(rval)).
+
+:- type lookup_switch_info
+    --->    lookup_switch_info(
+                lsi_first               :: int,
+                lsi_last                :: int,
+                                        % The first and last values of the
+                                        % switched-on rval covered by the
+                                        % switch.
+                lsi_cases               :: case_consts,
+                                        % The map from the switched-on value
+                                        % to the the values of the variables.
+                lsi_variables           :: list(prog_var),
+                                        % The output variables.
+                lsi_field_types         :: list(llds_type),
+                                        % The types of the fields in the C
+                                        % structure we generate for each case.
+                lsi_need_range_check    :: can_fail,
+                lsi_need_bit_vec_check  :: can_fail,
+                                        % Do we need a range check and/or a
+                                        % bit vector check on the switched-on
+                                        % variable?
+                lsi_liveness            :: maybe(set(prog_var))
+            ).
 
 %-----------------------------------------------------------------------------%
 
     % Most of this predicate is taken from dense_switch.m.
     %
-is_lookup_switch(CaseVar, TaggedCases, GoalInfo, SwitchCanFail,
-        ReqDensity, StoreMap, !MaybeEnd, CodeModel,
-        FirstVal, LastVal, NeedRangeCheck, NeedBitVecTest, OutVars,
-        CaseValues, MLiveness, !CI) :-
+is_lookup_switch(CaseVar, TaggedCases, GoalInfo, SwitchCanFail, ReqDensity,
+        StoreMap, !MaybeEnd, CodeModel, LookupSwitchInfo, !CI) :-
     % We need the code_info structure to generate code for the cases to
     % get the constants (if they exist). We can't throw it away at the
     % end because we may have allocated some new static ground term labels.
@@ -137,9 +157,9 @@ is_lookup_switch(CaseVar, TaggedCases, GoalInfo, SwitchCanFail,
     % If there are going to be no gaps in the lookup table then we won't need
     % a bitvector test to see if this switch has a value for this case.
     ( NumCases = Range ->
-        NeedBitVecTest0 = cannot_fail
+        NeedBitVecCheck0 = cannot_fail
     ;
-        NeedBitVecTest0 = can_fail
+        NeedBitVecCheck0 = can_fail
     ),
     (
         SwitchCanFail = can_fail,
@@ -157,25 +177,33 @@ is_lookup_switch(CaseVar, TaggedCases, GoalInfo, SwitchCanFail,
             DetDensity > ReqDensity
         ->
             NeedRangeCheck = cannot_fail,
-            NeedBitVecTest = can_fail,
+            NeedBitVecCheck = can_fail,
             FirstVal = 0,
             LastVal = TypeRange - 1
         ;
             NeedRangeCheck = SwitchCanFail,
-            NeedBitVecTest = NeedBitVecTest0,
+            NeedBitVecCheck = NeedBitVecCheck0,
             FirstVal = FirstCaseVal,
             LastVal = LastCaseVal
         )
     ;
         SwitchCanFail = cannot_fail,
         NeedRangeCheck = cannot_fail,
-        NeedBitVecTest = NeedBitVecTest0,
+        NeedBitVecCheck = NeedBitVecCheck0,
         FirstVal = FirstCaseVal,
         LastVal = LastCaseVal
     ),
     figure_out_output_vars(!.CI, GoalInfo, OutVars),
     generate_constants(TaggedCases, OutVars, StoreMap, !MaybeEnd, CodeModel,
-        CaseValues, MLiveness, !CI).
+        CaseValuePairs, MaybeLiveness, !CI),
+    VarTypes = get_var_types(!.CI),
+    list.map(map.lookup(VarTypes), OutVars, OutTypes),
+    assoc_list.values(CaseValuePairs, CaseValues),
+    code_info.get_globals(!.CI, Globals),
+    globals.lookup_bool_option(Globals, unboxed_float, UnboxFloat),
+    find_general_llds_types(UnboxFloat, OutTypes, CaseValues, LLDSTypes),
+    LookupSwitchInfo = lookup_switch_info(FirstVal, LastVal, CaseValuePairs,
+        OutVars, LLDSTypes, NeedRangeCheck, NeedBitVecCheck, MaybeLiveness).
 
 %---------------------------------------------------------------------------%
 
@@ -280,9 +308,10 @@ rvals_are_constant([MRval | MRvals], ExprnOpts) :-
 
 %---------------------------------------------------------------------------%
 
-generate_lookup_switch(Var, OutVars, CaseValues, StartVal, EndVal,
-        NeedRangeCheck, NeedBitVecCheck, MLiveness, StoreMap, MaybeEnd0,
-        Code, !CI) :-
+generate_lookup_switch(Var, StoreMap, MaybeEnd0, LookupSwitchInfo, Code,
+        !CI) :-
+    LookupSwitchInfo = lookup_switch_info(StartVal, EndVal, CaseValues,
+        OutVars, LLDSTypes, NeedRangeCheck, NeedBitVecCheck, MaybeLiveness),
 
     % Evaluate the variable which we are going to be switching on.
     code_info.produce_variable(Var, VarCode, Rval, !CI),
@@ -290,9 +319,9 @@ generate_lookup_switch(Var, OutVars, CaseValues, StartVal, EndVal,
     % If the case values start at some number other than 0,
     % then subtract that number to give us a zero-based index.
     ( StartVal = 0 ->
-        Index = Rval
+        IndexRval = Rval
     ;
-        Index = binop(int_sub, Rval, const(int_const(StartVal)))
+        IndexRval = binop(int_sub, Rval, const(int_const(StartVal)))
     ),
 
     % If the switch is not locally deterministic, we need to check that
@@ -300,39 +329,62 @@ generate_lookup_switch(Var, OutVars, CaseValues, StartVal, EndVal,
     (
         NeedRangeCheck = can_fail,
         Difference = EndVal - StartVal,
-        code_info.fail_if_rval_is_false(
-            binop(unsigned_le, Index,
-                const(int_const(Difference))), RangeCheck, !CI)
+        CmpRval = binop(unsigned_le, IndexRval, const(int_const(Difference))),
+        code_info.fail_if_rval_is_false(CmpRval, RangeCheckCode, !CI)
     ;
         NeedRangeCheck = cannot_fail,
-        RangeCheck = empty
+        RangeCheckCode = empty
     ),
     (
         NeedBitVecCheck = can_fail,
-        generate_bitvec_test(Index, CaseValues, StartVal, EndVal, CheckBitVec,
-            !CI)
+        generate_bitvec_test(IndexRval, CaseValues, StartVal, EndVal,
+            CheckBitVecCode, !CI)
     ;
         NeedBitVecCheck = cannot_fail,
-        CheckBitVec = empty
+        CheckBitVecCode = empty
     ),
 
-    % Now generate the terms into which we do the lookups.
-    generate_terms(Index, OutVars, CaseValues, StartVal, !CI),
+    % Now generate the terms into which we do the lookups of the values of
+    % the output variables, if there are any.
+    % 
+    % Note that invoking generate_terms when OutVars = [] would lead to
+    % a compiler abort, since we cannot create C structures with zero fields.
+    (
+        OutVars = [],
+        BaseRegCode = empty,
+        MaybeBaseReg = no
+    ;
+        OutVars = [_ | _],
+        % Since we release BaseReg only after the call to generate_branch_end,
+        % we must make sure that generate_branch_end won't want to overwrite
+        % BaseReg.
+        code_info.acquire_reg_not_in_storemap(StoreMap, BaseReg, !CI),
+        MaybeBaseReg = yes(BaseReg),
+        generate_terms(IndexRval, OutVars, LLDSTypes, CaseValues, StartVal,
+            BaseRegCode, BaseReg, !CI)
+    ),
 
     % We keep track of what variables are supposed to be live at the end
     % of cases. We have to do this explicitly because generating a `fail' slot
     % last would yield the wrong liveness.
     (
-        MLiveness = yes(Liveness),
+        MaybeLiveness = yes(Liveness),
         code_info.set_forward_live_vars(Liveness, !CI)
     ;
-        MLiveness = no,
+        MaybeLiveness = no,
         unexpected(this_file, "generate_lookup_switch: no liveness!")
     ),
-    code_info.generate_branch_end(StoreMap, MaybeEnd0, _MaybeEnd, LookupCode,
-        !CI),
+    code_info.generate_branch_end(StoreMap, MaybeEnd0, _MaybeEnd,
+        BranchEndCode, !CI),
+    (
+        MaybeBaseReg = no
+    ;
+        MaybeBaseReg = yes(FinalBaseReg),
+        code_info.release_reg(FinalBaseReg, !CI)
+    ),
     Comment = node([comment("lookup switch") - ""]),
-    Code = tree_list([Comment, VarCode, RangeCheck, CheckBitVec, LookupCode]).
+    Code = tree_list([Comment, VarCode, RangeCheckCode, CheckBitVecCode,
+        BaseRegCode, BranchEndCode]).
 
 %-----------------------------------------------------------------------------%
 
@@ -344,7 +396,7 @@ generate_lookup_switch(Var, OutVars, CaseValues, StartVal, EndVal,
 :- pred generate_bitvec_test(rval::in, case_consts::in, int::in, int::in,
     code_tree::out, code_info::in, code_info::out) is det.
 
-generate_bitvec_test(Index, CaseVals, Start, _End, CheckCode, !CI) :-
+generate_bitvec_test(IndexRval, CaseVals, Start, _End, CheckCode, !CI) :-
     get_word_bits(!.CI, WordBits, Log2WordBits),
     generate_bit_vec(CaseVals, Start, WordBits, BitVecArgs, BitVecRval, !CI),
 
@@ -354,20 +406,20 @@ generate_bitvec_test(Index, CaseVals, Start, _End, CheckCode, !CI) :-
     % and the low bits specify which bit.
     ( BitVecArgs = [SingleWord] ->
         Word = SingleWord,
-        BitNum = Index
+        BitNum = IndexRval
     ;
         % This is the same as
-        % WordNum = binop(int_div, Index, const(int_const(WordBits)))
+        % WordNum = binop(int_div, IndexRval, const(int_const(WordBits)))
         % except that it can generate more efficient code.
-        WordNum = binop(unchecked_right_shift, Index,
+        WordNum = binop(unchecked_right_shift, IndexRval,
             const(int_const(Log2WordBits))),
 
         Word = lval(field(yes(0), BitVecRval, WordNum)),
 
         % This is the same as
-        % BitNum = binop(int_mod, Index, const(int_const(WordBits)))
+        % BitNum = binop(int_mod, IndexRval, const(int_const(WordBits)))
         % except that it can generate more efficient code.
-        BitNum = binop(bitwise_and, Index, const(int_const(WordBits - 1)))
+        BitNum = binop(bitwise_and, IndexRval, const(int_const(WordBits - 1)))
     ),
     HasBit = binop(bitwise_and,
         binop(unchecked_left_shift, const(int_const(1)), BitNum), Word),
@@ -408,7 +460,7 @@ generate_bit_vec(CaseVals, Start, WordBits, Args, BitVec, !CI) :-
     generate_bit_vec_2(CaseVals, Start, WordBits, Empty, BitMap),
     map.to_assoc_list(BitMap, WordVals),
     generate_bit_vec_args(WordVals, 0, Args),
-    add_static_cell_natural_types(Args, DataAddr, !CI),
+    add_scalar_static_cell_natural_types(Args, DataAddr, !CI),
     BitVec = const(data_addr_const(DataAddr, no)).
 
 :- pred generate_bit_vec_2(case_consts::in, int::in, int::in,
@@ -448,76 +500,57 @@ generate_bit_vec_args([Word - Bits | Rest], Count, [Rval | Rvals]) :-
     % Add an expression to the expression cache in the code_info structure
     % for each of the output variables of the lookup switch. This is done by
     % creating a `create' term for the array, and caching an expression
-    % for the variable to get the Index'th field of that term.
+    % for the variable to get the IndexRval'th field of that term.
     %
-:- pred generate_terms(rval::in, list(prog_var)::in, case_consts::in, int::in,
+:- pred generate_terms(rval::in, list(prog_var)::in, list(llds_type)::in,
+    case_consts::in, int::in, code_tree::out, lval::in,
     code_info::in, code_info::out) is det.
 
-generate_terms(Index, OutVars, CaseVals, Start, !CI) :-
-    map.init(Empty),
-    rearrange_vals(OutVars, CaseVals, Start, Empty, ValMap),
-    generate_terms_2(Index, OutVars, ValMap, !CI).
+generate_terms(IndexRval, OutVars, OutTypes, CaseVals, Start, Code, BaseReg,
+        !CI) :-
+    list.length(OutVars, NumOutVars),
+    construct_vector(Start, CaseVals, VectorRvals),
+    code_info.add_vector_static_cell(OutTypes, VectorRvals, VectorAddr, !CI),
 
-:- pred generate_terms_2(rval::in, list(prog_var)::in,
-    rval_map::in, code_info::in, code_info::out) is det.
-
-generate_terms_2(_Index, [], _Map, !CI).
-generate_terms_2(Index, [Var | Vars], Map, !CI) :-
-    map.lookup(Map, Var, Vals0),
-    list.sort(Vals0, Vals),
-    construct_args(Vals, 0, Args),
-    code_info.add_static_cell_natural_types(Args, DataAddr, !CI),
-    ArrayTerm = const(data_addr_const(DataAddr, no)),
-    LookupLval = field(yes(0), ArrayTerm, Index),
-    code_info.assign_lval_to_var(Var, LookupLval, Code, !CI),
-    expect(tree.is_empty(Code), this_file, "generate_terms_2: nonempty code"),
-    generate_terms_2(Index, Vars, Map, !CI).
-
-:- pred construct_args(list(pair(int, rval))::in, int::in, list(rval)::out)
-    is det.
-
-construct_args([], _, []).
-construct_args([Index - Rval | Rest], Count0, [Arg | Args]) :-
-    ( Count0 < Index ->
-        % If this argument (array element) is a place-holder and
-        % will never be referenced, just fill it in with a `0'.
-        Arg = const(int_const(0)),
-        Remainder = [Index - Rval | Rest]
+    VectorAddrRval = const(data_addr_const(VectorAddr, no)),
+    % IndexRval has already had Start subtracted from it.
+    ( NumOutVars = 1 ->
+        BaseRval = IndexRval
     ;
-        Arg = Rval,
+        BaseRval = binop(int_mul, IndexRval, const(int_const(NumOutVars)))
+    ),
+    Code = node([
+        assign(BaseReg, mem_addr(heap_ref(VectorAddrRval, 0, BaseRval)))
+            - "Compute base address for this case"
+    ]),
+    generate_offset_assigns(OutVars, 0, BaseReg, !CI).
+
+:- pred construct_vector(int::in, case_consts::in,
+    list(maybe(list(rval)))::out) is det.
+
+construct_vector(_, [], []).
+construct_vector(CurIndex, [Index - Rvals | Rest], [MaybeRow | MaybeRows]) :-
+    ( CurIndex < Index ->
+        % If this argument (array element) is a place-holder and
+        % will never be referenced, just fill it in with a dummy entry.
+        MaybeRow = no,
+        Remainder = [Index - Rvals | Rest]
+    ;
+        MaybeRow = yes(Rvals),
         Remainder = Rest
     ),
-    Count1 = Count0 + 1,
-    construct_args(Remainder, Count1, Args).
+    construct_vector(CurIndex + 1, Remainder, MaybeRows).
 
-%-----------------------------------------------------------------------------%
+:- pred generate_offset_assigns(list(prog_var)::in, int::in, lval::in,
+    code_info::in, code_info::out) is det.
 
-    % For the purpose of constructing the terms, the case_consts structure
-    % is a bit inconvenient, so we rearrange the data into a map from var
-    % to list of tag-value pairs.
-    %
-:- pred rearrange_vals(list(prog_var)::in, case_consts::in, int::in,
-    rval_map::in, rval_map::out) is det.
-
-rearrange_vals(_Vars, [], _Start, Map, Map).
-rearrange_vals(Vars, [Tag - Rvals | Rest], Start, Map0, Map) :-
-    assoc_list.from_corresponding_lists(Vars, Rvals, Pairs),
-    Index = Tag - Start,
-    rearrange_vals_2(Pairs, Index, Map0, Map1),
-    rearrange_vals(Vars, Rest, Start, Map1, Map).
-
-:- pred rearrange_vals_2(list(pair(prog_var, rval))::in, int::in,
-    rval_map::in, rval_map::out) is det.
-
-rearrange_vals_2([], _, Map, Map).
-rearrange_vals_2([Var - Rval | Rest], Tag, Map0, Map) :-
-    ( map.search(Map0, Var, Vals0) ->
-        Vals = [Tag - Rval | Vals0]
-    ;
-        Vals = [Tag - Rval]
-    ),
-    map.set(Map0, Var, Vals, Map1),
-    rearrange_vals_2(Rest, Tag, Map1, Map).
+generate_offset_assigns([], _, _, !CI).
+generate_offset_assigns([Var | Vars], Offset, BaseReg, !CI) :-
+    LookupLval = field(yes(0), lval(BaseReg), const(int_const(Offset))),
+    code_info.assign_lval_to_var(Var, LookupLval, Code, !CI),
+    expect(tree.is_empty(Code), this_file,
+        "generate_offset_assigns: nonempty code"),
+    generate_offset_assigns(Vars, Offset + 1, BaseReg, !CI).
 
 %-----------------------------------------------------------------------------%
 

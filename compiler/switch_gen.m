@@ -125,13 +125,11 @@ generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo, Code, !CI) :-
         globals.lookup_int_option(Globals, lookup_switch_req_density,
             ReqDensity),
         is_lookup_switch(CaseVar, TaggedCases, GoalInfo, CanFail, ReqDensity,
-            StoreMap, no, MaybeEndPrime, CodeModel, FirstVal, LastVal,
-            NeedRangeCheck, NeedBitVecCheck, OutVars, CaseVals, MLiveness, !CI)
+            StoreMap, no, MaybeEndPrime, CodeModel, LookupSwitchInfo, !CI)
     ->
         MaybeEnd = MaybeEndPrime,
-        generate_lookup_switch(CaseVar, OutVars, CaseVals, FirstVal, LastVal,
-            NeedRangeCheck, NeedBitVecCheck, MLiveness, StoreMap, no,
-            Code, !CI)
+        generate_lookup_switch(CaseVar, StoreMap, no, LookupSwitchInfo, Code,
+            !CI)
     ;
         Indexing = yes,
         SwitchCategory = atomic_switch,

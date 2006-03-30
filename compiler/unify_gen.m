@@ -670,8 +670,8 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
         code_info.add_closure_layout(Data, !CI),
         % For now, closures always have zero size, and the size slot
         % is never looked at.
-        code_info.add_static_cell(ClosureLayoutRvalsTypes, ClosureDataAddr,
-            !CI),
+        code_info.add_scalar_static_cell(ClosureLayoutRvalsTypes,
+            ClosureDataAddr, !CI),
         ClosureLayoutRval = const(data_addr_const(ClosureDataAddr, no)),
         list.length(Args, NumArgs),
         proc_info_arg_info(ProcInfo, ArgInfo),
@@ -815,7 +815,8 @@ construct_cell(Var, Ptag, MaybeRvals, MaybeSize, FieldAddrs, Code, !CI) :-
 generate_field_take_address_assigns([], _, _, empty, !CI).
 generate_field_take_address_assigns([FieldNum - Var | FieldAddrs],
         CellVar, CellPtag, tree(ThisCode, RestCode), !CI) :-
-    Addr = mem_addr(heap_ref(var(CellVar), CellPtag, FieldNum)),
+    FieldNumRval = const(int_const(FieldNum)),
+    Addr = mem_addr(heap_ref(var(CellVar), CellPtag, FieldNumRval)),
     assign_expr_to_var(Var, Addr, ThisCode, !CI),
     generate_field_take_address_assigns(FieldAddrs, CellVar, CellPtag,
         RestCode, !CI).

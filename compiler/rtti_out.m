@@ -443,7 +443,7 @@ output_type_info_defn(TypeInfo, !DeclSet, !IO) :-
     (
         rtti_data_to_id(type_info(TypeInfo), RttiId),
         DataAddr = rtti_addr(RttiId),
-        decl_set_is_member(data_addr(DataAddr), !.DeclSet)
+        decl_set_is_member(decl_data_addr(DataAddr), !.DeclSet)
     ->
         true
     ;
@@ -499,7 +499,7 @@ output_pseudo_type_info_defn(PseudoTypeInfo, !DeclSet, !IO) :-
     ;
         rtti_data_to_id(pseudo_type_info(PseudoTypeInfo), RttiId),
         DataAddr = rtti_addr(RttiId),
-        decl_set_is_member(data_addr(DataAddr), !.DeclSet)
+        decl_set_is_member(decl_data_addr(DataAddr), !.DeclSet)
     ->
         true
     ;
@@ -1304,7 +1304,7 @@ output_rtti_data_decl_chunk_entries(_IsArray, [], !DeclSet, !IO) :-
 output_rtti_data_decl_chunk_entries(IsArray, [RttiId | RttiIds],
         !DeclSet, !IO) :-
     DataAddr = rtti_addr(RttiId),
-    decl_set_insert(data_addr(DataAddr), !DeclSet),
+    decl_set_insert(decl_data_addr(DataAddr), !DeclSet),
     io.write_string("\t", !IO),
     output_rtti_id(RttiId, !IO),
     (
@@ -1343,7 +1343,7 @@ output_generic_rtti_data_decl(RttiId, !DeclSet, !IO) :-
     output_rtti_id_storage_type_name(RttiId, no, !DeclSet, !IO),
     io.write_string(";\n", !IO),
     DataAddr = rtti_addr(RttiId),
-    decl_set_insert(data_addr(DataAddr), !DeclSet).
+    decl_set_insert(decl_data_addr(DataAddr), !DeclSet).
 
 :- pred output_generic_rtti_data_defn_start(rtti_id::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
@@ -1352,7 +1352,7 @@ output_generic_rtti_data_defn_start(RttiId, !DeclSet, !IO) :-
     io.write_string("\n", !IO),
     output_rtti_id_storage_type_name(RttiId, yes, !DeclSet, !IO),
     DataAddr = rtti_addr(RttiId),
-    decl_set_insert(data_addr(DataAddr), !DeclSet).
+    decl_set_insert(decl_data_addr(DataAddr), !DeclSet).
 
 output_rtti_id_storage_type_name_no_decl(RttiId, BeingDefined, !IO) :-
     decl_set_init(DeclSet0),
@@ -1392,7 +1392,7 @@ output_rtti_type_decl(RttiId, !DeclSet, !IO) :-
         rtti_type_ctor_template_arity(RttiName, Arity),
         Arity > max_always_declared_arity_type_ctor
     ->
-        DeclId = type_info_like_struct(Arity),
+        DeclId = decl_type_info_like_struct(Arity),
         ( decl_set_is_member(DeclId, !.DeclSet) ->
             true
         ;
@@ -1410,7 +1410,7 @@ MR_DECLARE_ALL_TYPE_INFO_LIKE_STRUCTS_FOR_ARITY(%d);
         rtti_type_class_constraint_template_arity(TCRttiName, Arity),
         Arity > max_always_declared_arity_type_class_constraint
     ->
-        DeclId = typeclass_constraint_struct(Arity),
+        DeclId = decl_typeclass_constraint_struct(Arity),
         ( decl_set_is_member(DeclId, !.DeclSet) ->
             true
         ;

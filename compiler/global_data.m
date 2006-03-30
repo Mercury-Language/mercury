@@ -20,11 +20,13 @@
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.exprn_aux.
 :- import_module ll_backend.llds.
-:- import_module mdbcomp.prim_data. % for module_name
+:- import_module mdbcomp.prim_data.     % for module_name
+:- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
+:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
@@ -69,22 +71,28 @@
 
 :- func init_static_cell_info(module_name, bool, bool) = static_cell_info.
 
-:- pred add_static_cell(assoc_list(rval, llds_type)::in, data_addr::out,
+:- pred add_scalar_static_cell(assoc_list(rval, llds_type)::in, data_addr::out,
     static_cell_info::in, static_cell_info::out) is det.
 
-:- pred add_static_cell_natural_types(list(rval)::in, data_addr::out,
+:- pred add_scalar_static_cell_natural_types(list(rval)::in, data_addr::out,
     static_cell_info::in, static_cell_info::out) is det.
 
-:- pred search_static_cell_offset(static_cell_info::in, data_addr::in, int::in,
-    rval::out) is semidet.
+:- pred find_general_llds_types(bool::in, list(mer_type)::in,
+    list(list(rval))::in, list(llds_type)::out) is semidet.
+
+:- pred add_vector_static_cell(list(llds_type)::in,
+    list(maybe(list(rval)))::in, data_addr::out,
+    static_cell_info::in, static_cell_info::out) is det.
+
+:- pred search_scalar_static_cell_offset(static_cell_info::in, data_addr::in,
+    int::in, rval::out) is semidet.
 
 :- func get_static_cells(static_cell_info) = list(comp_gen_c_data).
 
-    % Given an rval, figure out the type it would have as
-    % an argument.  Normally that's the same as its usual type;
-    % the exception is that for boxed floats, the type is data_ptr
-    % (i.e. the type of the boxed value) rather than float
-    % (the type of the unboxed value).
+    % Given an rval, figure out the type it would have as an argument.
+    % Normally that's the same as its usual type; the exception is that for
+    % boxed floats, the type is data_ptr (i.e. the type of the boxed value)
+    % rather than float (the type of the unboxed value).
     %
 :- pred rval_type_as_arg(rval::in, exprn_opts::in, llds_type::out) is det.
 
@@ -103,6 +111,7 @@
 :- import_module int.
 :- import_module map.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 
 %-----------------------------------------------------------------------------%
@@ -194,50 +203,78 @@ global_data_set_static_cell_info(StaticCellInfo, !GlobalData) :-
 
 %-----------------------------------------------------------------------------%
 
-    % There is one cell_type_group for every group of cells that share
-    % the same sequence of argument types. We don't actually need the
-    % cell type here, since we can't get to a cell_type_group from
-    % the cell_group_map without knowing it.
+    % There is one scalar_cell_group for every group of scalar cells that
+    % share the same sequence of argument types. We don't actually need the
+    % cell type here, since we can't get to a scalar_cell_group from
+    % the scalar_cell_group_map field of the static_cell_sub_info
+    % without knowing it.
     %
-:- type cell_type_group
-    --->    cell_type_group(
-                cell_counter        :: counter, % next cell number
-                cell_group_members  :: bimap(list(rval), data_name),
-                cell_rev_array      :: list(common_cell_value)
+:- type scalar_cell_group
+    --->    scalar_cell_group(
+                scalar_cell_counter         :: counter, % next cell number
+                scalar_cell_group_members   :: bimap(list(rval), data_name),
+                scalar_cell_rev_array       :: list(common_cell_value)
             ).
+
+    % There is one vector_cell_group for every group of vector cells that
+    % share the same sequence of argument types. We don't actually need the
+    % cell type here, since we can't get to a vector_cell_group from
+    % the vector_cell_group_map field of the static_cell_sub_info
+    % without knowing it.
+    %
+    % Whereas in a scalar_cell_group, we try to find cells with the same
+    % content and represent them just once, we do not do so for vectors,
+    % because (a) the required lookup would be expensive due to the huge keys
+    % required, and (b) the probability of finding two vectors with identical
+    % contents is about zero.
+    %
+    % The vector_cell_map field maps the cell num of a vector cell to its
+    % contents, the contents being a sequence of cells.
+    %
+:- type vector_cell_group
+    --->    vector_cell_group(
+                vector_cell_counter         :: counter, % next cell number
+                vector_cell_map             :: map(int, vector_contents)
+            ).
+
+:- type vector_contents
+    --->    vector_contents(list(common_cell_value)).
 
 :- type static_cell_sub_info
     --->    static_cell_sub_info(
-                module_name         :: module_name, % base file name
-                unbox_float         :: bool,
-                common_data         :: bool
+                module_name                 :: module_name, % base file name
+                unbox_float                 :: bool,
+                common_data                 :: bool
             ).
 
 :- type static_cell_info
     --->    static_cell_info(
-                sub_info            :: static_cell_sub_info,
-                type_counter        :: counter, % next type number
+                sub_info                    :: static_cell_sub_info,
+                type_counter                :: counter, % next type number
 
-                cell_type_num_map   :: bimap(common_cell_type, int),
-                                    % Maps types to type numbers and vice
-                                    % versa.
+                % Maps types to type numbers and vice versa.
+                cell_type_num_map           :: bimap(common_cell_type, int),
 
-                cell_group_map      :: map(int, cell_type_group)
-                                    % Maps the cell type number to the
-                                    % information we have for all cells of that
-                                    % type.
+                % Maps the cell type number to the information we have
+                % for all scalar cells of that type.
+                scalar_cell_group_map       :: map(int, scalar_cell_group),
+
+                vector_cell_group_map       :: map(int, vector_cell_group)
             ).
 
 init_static_cell_info(BaseName, UnboxFloat, CommonData) = Info0 :-
     SubInfo0 = static_cell_sub_info(BaseName, UnboxFloat, CommonData),
-    Info0 = static_cell_info(SubInfo0, counter.init(0), bimap.init, map.init).
+    Info0 = static_cell_info(SubInfo0, counter.init(0), bimap.init,
+        map.init, map.init).
 
-add_static_cell_natural_types(Args, DataAddr, !Info) :-
+%-----------------------------------------------------------------------------%
+
+add_scalar_static_cell_natural_types(Args, DataAddr, !Info) :-
     list.map(associate_natural_type(!.Info ^ sub_info ^ unbox_float),
         Args, ArgsTypes),
-    add_static_cell(ArgsTypes, DataAddr, !Info).
+    add_scalar_static_cell(ArgsTypes, DataAddr, !Info).
 
-add_static_cell(ArgsTypes0, DataAddr, !Info) :-
+add_scalar_static_cell(ArgsTypes0, DataAddr, !Info) :-
     % If we have an empty cell, place a dummy field in it,
     % so that the generated C structure isn't empty.
     (
@@ -248,20 +285,25 @@ add_static_cell(ArgsTypes0, DataAddr, !Info) :-
         ArgsTypes = ArgsTypes0
     ),
     compute_cell_type(ArgsTypes, CellType, CellTypeAndValue),
-    do_add_static_cell(ArgsTypes, CellType, CellTypeAndValue, DataAddr, !Info).
+    do_add_scalar_static_cell(ArgsTypes, CellType, CellTypeAndValue, DataAddr,
+        !Info).
 
-:- pred do_add_static_cell(assoc_list(rval, llds_type)::in,
+:- pred do_add_scalar_static_cell(assoc_list(rval, llds_type)::in,
     common_cell_type::in, common_cell_value::in, data_addr::out,
     static_cell_info::in, static_cell_info::out) is det.
 
-do_add_static_cell(ArgsTypes, CellType, CellValue, DataAddr, !Info) :-
+do_add_scalar_static_cell(ArgsTypes, CellType, CellValue, DataAddr, !Info) :-
     assoc_list.keys(ArgsTypes, Args),
     some [!CellGroup] (
         TypeNumMap0 = !.Info ^ cell_type_num_map,
-        CellGroupMap0 = !.Info ^ cell_group_map,
+        CellGroupMap0 = !.Info ^ scalar_cell_group_map,
         ( bimap.search(TypeNumMap0, CellType, TypeNumPrime) ->
             TypeNum = TypeNumPrime,
-            map.lookup(CellGroupMap0, TypeNum, !:CellGroup)
+            ( map.search(CellGroupMap0, TypeNum, !:CellGroup) ->
+                true
+            ;
+                !:CellGroup = init_scalar_cell_group
+            )
         ;
             TypeNumCounter0 = !.Info ^ type_counter,
             counter.allocate(TypeNum, TypeNumCounter0, TypeNumCounter),
@@ -270,24 +312,25 @@ do_add_static_cell(ArgsTypes, CellType, CellValue, DataAddr, !Info) :-
             bimap.det_insert(TypeNumMap0, CellType, TypeNum, TypeNumMap),
             !:Info = !.Info ^ cell_type_num_map := TypeNumMap,
 
-            !:CellGroup = cell_type_group(counter.init(0), bimap.init, [])
+            !:CellGroup = init_scalar_cell_group
         ),
-        MembersMap0 = !.CellGroup ^ cell_group_members,
+        MembersMap0 = !.CellGroup ^ scalar_cell_group_members,
         ( bimap.search(MembersMap0, Args, DataNamePrime) ->
             DataName = DataNamePrime
         ;
-            CellNumCounter0 = !.CellGroup ^ cell_counter,
+            CellNumCounter0 = !.CellGroup ^ scalar_cell_counter,
             counter.allocate(CellNum, CellNumCounter0, CellNumCounter),
-            !:CellGroup = !.CellGroup ^ cell_counter := CellNumCounter,
-            DataName = common_ref(TypeNum, CellNum),
-            RevArray0 = !.CellGroup ^ cell_rev_array,
+            !:CellGroup = !.CellGroup ^ scalar_cell_counter := CellNumCounter,
+            DataName = scalar_common_ref(TypeNum, CellNum),
+            RevArray0 = !.CellGroup ^ scalar_cell_rev_array,
             RevArray = [CellValue | RevArray0],
-            !:CellGroup = !.CellGroup ^ cell_rev_array := RevArray,
+            !:CellGroup = !.CellGroup ^ scalar_cell_rev_array := RevArray,
             InsertCommonData = !.Info ^ sub_info ^ common_data,
             (
                 InsertCommonData = yes,
                 bimap.det_insert(MembersMap0, Args, DataName, MembersMap),
-                !:CellGroup = !.CellGroup ^ cell_group_members := MembersMap
+                !:CellGroup = !.CellGroup ^ scalar_cell_group_members
+                    := MembersMap
             ;
                 InsertCommonData = no
                 % With --no-common-data, we never insert any cell into
@@ -295,11 +338,209 @@ do_add_static_cell(ArgsTypes, CellType, CellValue, DataAddr, !Info) :-
                 % be useful when comparing the LLDS and MLDS backends.
             ),
             map.set(CellGroupMap0, TypeNum, !.CellGroup, CellGroupMap),
-            !:Info = !.Info ^ cell_group_map := CellGroupMap
+            !:Info = !.Info ^ scalar_cell_group_map := CellGroupMap
         )
     ),
     ModuleName = !.Info ^ sub_info ^ module_name,
     DataAddr = data_addr(ModuleName, DataName).
+
+:- func init_scalar_cell_group = scalar_cell_group.
+
+init_scalar_cell_group = scalar_cell_group(counter.init(0), bimap.init, []).
+
+search_scalar_static_cell_offset(Info, DataAddr, Offset, Rval) :-
+    DataAddr = data_addr(Info ^ sub_info ^ module_name, DataName),
+    DataName = scalar_common_ref(TypeNum, _CellNum),
+    CellGroupMap = Info ^ scalar_cell_group_map,
+    map.lookup(CellGroupMap, TypeNum, CellGroup),
+    CellGroupMembers = CellGroup ^ scalar_cell_group_members,
+    bimap.reverse_lookup(CellGroupMembers, Rvals, DataName),
+    list.index0_det(Rvals, Offset, Rval).
+
+%-----------------------------------------------------------------------------%
+
+find_general_llds_types(UnboxFloat, Types, [Vector | Vectors], LLDSTypes) :-
+    list.map(natural_type(UnboxFloat), Vector, LLDSTypes0),
+    find_general_llds_types_2(UnboxFloat, Types, Vectors,
+        LLDSTypes0, LLDSTypes).
+
+:- pred find_general_llds_types_2(bool::in, list(mer_type)::in,
+    list(list(rval))::in, list(llds_type)::in, list(llds_type)::out)
+    is semidet.
+
+find_general_llds_types_2(_UnboxFloat, _Types, [], !LLDSTypes).
+find_general_llds_types_2(UnboxFloat, Types, [Vector | Vectors], !LLDSTypes) :-
+    find_general_llds_types_in_cell(UnboxFloat, Types, Vector, !LLDSTypes),
+    find_general_llds_types_2(UnboxFloat, Types, Vectors, !LLDSTypes).
+
+:- pred find_general_llds_types_in_cell(bool::in, list(mer_type)::in,
+    list(rval)::in, list(llds_type)::in, list(llds_type)::out) is semidet.
+
+find_general_llds_types_in_cell(_UnboxFloat, [], [], [], []).
+find_general_llds_types_in_cell(UnboxFloat, [_Type | Types], [Rval | Rvals],
+        [LLDSType0 | LLDSTypes0], [LLDSType | LLDSTypes]) :-
+    natural_type(UnboxFloat, Rval, NaturalType),
+    % For user-defined types, some function symbols may be constants
+    % (whose representations yield integer rvals) while others may be
+    % non-constants (whose representations yield data_ptr rvals).
+    % We need to be able to handle switches in which a variable of such a type
+    % has a value of one kind in one switch arm and a value of the other kind
+    % in another switch arm. We can mix the two because it is OK to initialize
+    % a field declared to be a data_ptr with an integer rval.
+    % 
+    % If there are any other similar cases, they should be added here.
+    % The value of Type may be useful in such code.
+    (
+        NaturalType = LLDSType0
+    ->
+        LLDSType = LLDSType0
+    ;
+        NaturalType = integer,
+        LLDSType0 = data_ptr
+    ->
+        LLDSType = data_ptr
+    ;
+        NaturalType = data_ptr,
+        LLDSType0 = integer
+    ->
+        LLDSType = data_ptr
+    ;
+        fail
+    ),
+    find_general_llds_types_in_cell(UnboxFloat, Types, Rvals,
+        LLDSTypes0, LLDSTypes).
+
+%-----------------------------------------------------------------------------%
+
+add_vector_static_cell(LLDSTypes, VectorData, DataAddr, !Info) :-
+    require(list.is_not_empty(LLDSTypes), "add_vector_static_cell: no types"),
+    require(list.is_not_empty(VectorData), "add_vector_static_cell: no data"),
+
+    % We don't to use grouped_args_type, since that would (a) make the code
+    % below significantly more complex, and (b) the type declaration can be
+    % expected to be only a small fraction of the size of the variable
+    % definition, so the saving in C code size wouldn't be significant.
+
+    CellType = plain_type(LLDSTypes),
+    VectorCells = list.map(pair_vector_element(LLDSTypes), VectorData),
+    some [!CellGroup] (
+        TypeNumMap0 = !.Info ^ cell_type_num_map,
+        CellGroupMap0 = !.Info ^ vector_cell_group_map,
+        ( bimap.search(TypeNumMap0, CellType, TypeNumPrime) ->
+            TypeNum = TypeNumPrime,
+            ( map.search(CellGroupMap0, TypeNum, !:CellGroup) ->
+                true
+            ;
+                !:CellGroup = init_vector_cell_group
+            )
+        ;
+            TypeNumCounter0 = !.Info ^ type_counter,
+            counter.allocate(TypeNum, TypeNumCounter0, TypeNumCounter),
+            !:Info = !.Info ^ type_counter := TypeNumCounter,
+
+            bimap.det_insert(TypeNumMap0, CellType, TypeNum, TypeNumMap),
+            !:Info = !.Info ^ cell_type_num_map := TypeNumMap,
+
+            !:CellGroup = init_vector_cell_group
+        ),
+        CellNumCounter0 = !.CellGroup ^ vector_cell_counter,
+        counter.allocate(CellNum, CellNumCounter0, CellNumCounter),
+        !:CellGroup = !.CellGroup ^ vector_cell_counter := CellNumCounter,
+        DataName = vector_common_ref(TypeNum, CellNum),
+        CellMap0 = !.CellGroup ^ vector_cell_map,
+        VectorContents = vector_contents(VectorCells),
+        map.det_insert(CellMap0, CellNum, VectorContents, CellMap),
+        !:CellGroup = !.CellGroup ^ vector_cell_map := CellMap,
+        map.set(CellGroupMap0, TypeNum, !.CellGroup, CellGroupMap),
+        !:Info = !.Info ^ vector_cell_group_map := CellGroupMap
+    ),
+    ModuleName = !.Info ^ sub_info ^ module_name,
+    DataAddr = data_addr(ModuleName, DataName).
+
+:- func init_vector_cell_group = vector_cell_group.
+
+init_vector_cell_group = vector_cell_group(counter.init(0), map.init).
+
+:- func pair_vector_element(list(llds_type), maybe(list(rval)))
+    = common_cell_value.
+
+pair_vector_element(Types, MaybeArgs) = plain_value(ArgsTypes) :-
+    (
+        MaybeArgs = no,
+        ArgsTypes = list.map(pair_with_default_value, Types)
+    ;
+        MaybeArgs = yes(Args),
+        assoc_list.from_corresponding_lists(Args, Types, ArgsTypes)
+    ).
+
+:- func pair_with_default_value(llds_type) = pair(rval, llds_type).
+
+pair_with_default_value(Type) = const(default_value_for_type(Type)) - Type.
+
+:- func default_value_for_type(llds_type) = rval_const.
+
+default_value_for_type(bool) = int_const(0).
+default_value_for_type(int_least8) = int_const(0).
+default_value_for_type(uint_least8) = int_const(0).
+default_value_for_type(int_least16) = int_const(0).
+default_value_for_type(uint_least16) = int_const(0).
+default_value_for_type(int_least32) = int_const(0).
+default_value_for_type(uint_least32) = int_const(0).
+default_value_for_type(integer) = int_const(0).
+default_value_for_type(unsigned) = int_const(0).
+default_value_for_type(float) = float_const(0.0).
+default_value_for_type(string) = string_const("").
+default_value_for_type(data_ptr) = int_const(0).
+default_value_for_type(code_ptr) = int_const(0).
+default_value_for_type(word) = int_const(0).
+
+%-----------------------------------------------------------------------------%
+
+get_static_cells(Info) = VectorDatas ++ ScalarDatas :-
+    ModuleName = Info ^ sub_info ^ module_name,
+    TypeNumMap = Info ^ cell_type_num_map,
+    map.foldl(add_scalar_static_cell_for_type(ModuleName, TypeNumMap),
+        Info ^ scalar_cell_group_map, [], RevScalarDatas),
+    list.reverse(RevScalarDatas, ScalarDatas),
+    map.foldl(add_all_vector_static_cells_for_type(ModuleName, TypeNumMap),
+        Info ^ vector_cell_group_map, [], RevVectorDatas),
+    list.reverse(RevVectorDatas, VectorDatas).
+
+:- pred add_scalar_static_cell_for_type(module_name::in,
+    bimap(common_cell_type, int)::in, int::in, scalar_cell_group::in,
+    list(comp_gen_c_data)::in, list(comp_gen_c_data)::out) is det.
+
+add_scalar_static_cell_for_type(ModuleName, TypeNumMap, TypeNum, CellGroup,
+        !Datas) :-
+    bimap.reverse_lookup(TypeNumMap, CellType, TypeNum),
+    list.reverse(CellGroup ^ scalar_cell_rev_array, ArrayContents),
+    Array = scalar_common_data_array(ModuleName, CellType, TypeNum,
+        ArrayContents),
+    Data = scalar_common_data(Array),
+    !:Datas = [Data | !.Datas].
+
+:- pred add_all_vector_static_cells_for_type(module_name::in,
+    bimap(common_cell_type, int)::in, int::in, vector_cell_group::in,
+    list(comp_gen_c_data)::in, list(comp_gen_c_data)::out) is det.
+
+add_all_vector_static_cells_for_type(ModuleName, TypeNumMap, TypeNum,
+        CellGroup, !Datas) :-
+    bimap.reverse_lookup(TypeNumMap, CellType, TypeNum),
+    map.foldl(add_one_vector_static_cell(ModuleName, TypeNum, CellType),
+        CellGroup ^ vector_cell_map, !Datas).
+
+:- pred add_one_vector_static_cell(module_name::in, int::in,
+    common_cell_type::in, int::in, vector_contents::in,
+    list(comp_gen_c_data)::in, list(comp_gen_c_data)::out) is det.
+
+add_one_vector_static_cell(ModuleName, TypeNum, CellType, CellNum,
+        vector_contents(VectorContents), !Datas) :-
+    Array = vector_common_data_array(ModuleName, CellType, TypeNum, CellNum,
+        VectorContents),
+    Data = vector_common_data(Array),
+    !:Datas = [Data | !.Datas].
+
+%-----------------------------------------------------------------------------%
 
 :- pred compute_cell_type(assoc_list(rval, llds_type)::in,
     common_cell_type::out, common_cell_value::out) is det.
@@ -358,35 +599,6 @@ make_arg_groups(Type, RevArgs, TypeGroup, TypeAndArgGroup) :-
         TypeGroup = Type - NumArgs,
         TypeAndArgGroup = common_cell_grouped_args(Type, NumArgs, Args)
     ).
-
-search_static_cell_offset(Info, DataAddr, Offset, Rval) :-
-    DataAddr = data_addr(Info ^ sub_info ^ module_name, DataName),
-    DataName = common_ref(TypeNum, _CellNum),
-    CellGroupMap = Info ^ cell_group_map,
-    map.lookup(CellGroupMap, TypeNum, CellGroup),
-    CellGroupMembers = CellGroup ^ cell_group_members,
-    bimap.reverse_lookup(CellGroupMembers, Rvals, DataName),
-    list.index0_det(Rvals, Offset, Rval).
-
-%-----------------------------------------------------------------------------%
-
-get_static_cells(Info) = Datas :-
-    ModuleName = Info ^ sub_info ^ module_name,
-    TypeNumMap = Info ^ cell_type_num_map,
-    map.foldl(add_static_cell_for_type(ModuleName, TypeNumMap),
-        Info ^ cell_group_map, [], RevDatas),
-    list.reverse(RevDatas, Datas).
-
-:- pred add_static_cell_for_type(module_name::in,
-    bimap(common_cell_type, int)::in, int::in, cell_type_group::in,
-    list(comp_gen_c_data)::in, list(comp_gen_c_data)::out) is det.
-
-add_static_cell_for_type(ModuleName, TypeNumMap, TypeNum, CellGroup, !Datas) :-
-    bimap.reverse_lookup(TypeNumMap, CellType, TypeNum),
-    list.reverse(CellGroup ^ cell_rev_array, ArrayContents),
-    Array = common_data_array(ModuleName, CellType, TypeNum, ArrayContents),
-    Data = common_data(Array),
-    !:Datas = [Data | !.Datas].
 
 %-----------------------------------------------------------------------------%
 

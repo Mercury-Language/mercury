@@ -707,7 +707,7 @@ assign_lval_to_var(ModuleInfo, Var, Lval0, StaticCellInfo, Code, !VLI) :-
             % XXX We could drop the MaybeBaseOffset = no condition,
             % but this would require more complex code below.
             MaybeBaseOffset = no,
-            search_static_cell_offset(StaticCellInfo, DataAddr, Offset,
+            search_scalar_static_cell_offset(StaticCellInfo, DataAddr, Offset,
                 SelectedArgRval)
         ->
             MaybeConstRval = yes(SelectedArgRval),
@@ -820,7 +820,7 @@ assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag, MaybeRvals0,
     get_var_state_map(!.VLI, VarStateMap),
     get_exprn_opts(!.VLI, ExprnOpts),
     ( cell_is_constant(VarStateMap, ExprnOpts, MaybeRvals, RvalsTypes) ->
-        add_static_cell(RvalsTypes, DataAddr, !StaticCellInfo),
+        add_scalar_static_cell(RvalsTypes, DataAddr, !StaticCellInfo),
         CellPtrConst = const(data_addr_const(DataAddr, MaybeOffset)),
         CellPtrRval = mkword(Ptag, CellPtrConst),
         assign_const_to_var(Var, CellPtrRval, !VLI),

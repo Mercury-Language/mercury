@@ -301,73 +301,65 @@
                 % All four of these fields are computed by liveness.m.
                 % For atomic goals, the post-deadness should be applied
                 % _before_ the goal.
-                pre_births      :: set(prog_var),
-                post_births     :: set(prog_var),
-                pre_deaths      :: set(prog_var),
-                post_deaths     :: set(prog_var),
+                pre_births          :: set(prog_var),
+                post_births         :: set(prog_var),
+                pre_deaths          :: set(prog_var),
+                post_deaths         :: set(prog_var),
 
-                % Initially set to `no' for all goals, which
-                % means the absence of the advisory
-                % information. Can be set to `yes' by the
-                % follow_vars pass, if it is invoked. Can be
-                % set to `yes' for any kind of goal.
+                % Initially set to `no' for all goals, which means the absence
+                % of the advisory information. Can be set to `yes' by the
+                % follow_vars pass, if it is invoked. Can be set to `yes'
+                % for any kind of goal.
                 %
                 % For the semantics of the value inside a `yes',
                 % see the documentation of the follow_vars type.
-                follow_vars     :: maybe(abs_follow_vars),
+                follow_vars         :: maybe(abs_follow_vars),
 
-                % This annotation is meaningful only after the
-                % store_alloc pass, and even then only if
-                % attached to a goal representing a branched
-                % control structure, i.e. an if_then_else,
-                % switch or disj goal. For those goals, the map
-                % will have an entry for every variable that is
-                % forward live after the goal, and will map
-                % each of those variables to the location where
-                % all the branches will leave the value of the
-                % variable. The code after the branched goal
-                % can therefore pick it up from there.
+                % This annotation is meaningful only after the store_alloc
+                % pass, and even then only if attached to a goal representing
+                % a branched control structure, i.e. an if_then_else, switch
+                % or disj goal. For those goals, the map will have an entry
+                % for every variable that is forward live after the goal,
+                % and will map each of those variables to the location where
+                % all the branches will leave the value of the variable.
+                % The code after the branched goal can therefore pick it
+                % up from there.
                 %
-                % This field should contain an empty map if its
-                % contents are not meaningful.
-                store_map       :: abs_store_map,
+                % This field should contain an empty map if its contents
+                % are not meaningful.
+                store_map           :: abs_store_map,
 
-                % If this goal establishes a resumption point,
-                % i.e. it is the second or later disjunct of a
-                % disjunction or if it is the condition of an
-                % if-then-else, this field will state what variables
-                % need to be saved for that resumption point, and
-                % which entry labels of the resumption point will be
+                % If this goal establishes a resumption point, i.e. it is
+                % the second or later disjunct of a disjunction or if it is
+                % the condition of an if-then-else, this field will state
+                % what variables need to be saved for that resumption point,
+                % and which entry labels of the resumption point will be
                 % needed. (See compiler/notes/allocation.html)
                 %
-                % This field is filled in during the liveness
-                % pass. Before then, and after then if the goal
-                % does not establish a resumption point, it
-                % should contain no_resume_point.
+                % This field is filled in during the liveness pass. Before
+                % then, and after then if the goal does not establish a
+                % resumption point, it should contain no_resume_point.
                 resume_point        :: resume_point,
 
                 % This field is filled in during the stackvars pass.
-                % It is not meaningful before then, and should
-                % contain `no_need'.
+                % It is not meaningful before then, and should contain
+                % `no_need'.
                 %
-                % For calls, generic calls, and for foreign_proc
-                % goals that may call back to Mercury, the stackvars
-                % pass will set this argument to need_call(NC), where
-                % NC specifies what variables need to be stored on the
-                % stack across the call.
+                % For calls, generic calls, and for foreign_proc goals
+                % that may call back to Mercury, the stackvars pass will set
+                % this argument to need_call(NC), where NC specifies what
+                % variables need to be stored on the stack across the call.
                 %
-                % For disjunctions, if-then-elses and negations,
-                % the stackvars pass will set this argument to
-                % need_resume(NR), where NR specifies what variables
-                % need to be stored on the stack at the resumption
-                % point established by the goal.
+                % For disjunctions, if-then-elses and negations, the stackvars
+                % pass will set this argument to need_resume(NR), where NR
+                % specifies what variables need to be stored on the stack
+                % at the resumption point established by the goal.
                 %
-                % For parallel conjunctions, the stackvars pass will
-                % set this argument to need_par_conj(NPC), where NPC
-                % specifies what variables are required to be stored
-                % on the stack by the parallel conjunction execution
-                % mechanism.
-                maybe_need      :: maybe_need
+                % For parallel conjunctions, the stackvars pass will set
+                % this argument to need_par_conj(NPC), where NPC specifies
+                % what variables are required to be stored on the stack
+                % by the parallel conjunction execution mechanism.
+                maybe_need          :: maybe_need
             ).
 
 %-----------------------------------------------------------------------------%

@@ -118,17 +118,36 @@
     % exception: data containing code addresses must be initialized.
     %
 :- type comp_gen_c_data
-    --->    common_data(common_data_array)
+    --->    scalar_common_data(scalar_common_data_array)
+    ;       vector_common_data(vector_common_data_array)
     ;       rtti_data(rtti_data)
     ;       layout_data(layout_data).
 
-:- type common_data_array
-    --->    common_data_array(
-                module_name,        % The basename of this C file.
-                common_cell_type,   % The type of the elements of the array.
-                int,                % The type number.
-                list(common_cell_value)
-                                    % The array elements, starting at offset 0.
+:- type scalar_common_data_array
+    --->    scalar_common_data_array(
+                scda_module     :: module_name,
+                                % The basename of this C file.
+                scda_rval_types :: common_cell_type,
+                                % The type of the elements of the array.
+                scda_type_num   :: int,
+                                % The type number.
+                scda_values     :: list(common_cell_value)
+                                % The array elements, starting at offset 0.
+            ).
+
+:- type vector_common_data_array
+    --->    vector_common_data_array(
+                vcda_module     :: module_name,
+                                % The basename of this C file.
+                vcda_rval_types :: common_cell_type,
+                                % The type of the elements of the array.
+                vcda_type_num   :: int,
+                                % The type number.
+                vcda_vector_num :: int,
+                                % The number of this vector, among all the
+                                % vector cells with this type for the elements.
+                vcda_values     :: list(common_cell_value)
+                                % The array elements, starting at offset 0.
             ).
 
 :- type comp_gen_c_module
@@ -828,9 +847,9 @@
             % stack.
 
 :- type mem_ref
-    --->    stackvar_ref(int)           % Stack slot number.
-    ;       framevar_ref(int)           % Stack slot number.
-    ;       heap_ref(rval, int, int).   % The cell pointer, the tag to
+    --->    stackvar_ref(rval)          % Stack slot number.
+    ;       framevar_ref(rval)          % Stack slot number.
+    ;       heap_ref(rval, int, rval).  % The cell pointer, the tag to
                                         % subtract, and the field number.
 
 :- type rval_const
@@ -854,9 +873,18 @@
     ;       layout_addr(layout_name).
 
 :- type data_name
-    --->    common_ref(int, int)
-            % The first int is the type and thus array number, the second
-            % is the offset in the array.
+    --->    scalar_common_ref(int, int)
+            % We store all standalone (scalar) common cells of the same type
+            % in an array. A reference to one of these cells contains the
+            % the type number (which becomes the distinguishing part of the
+            % name of the global variable containing all these scalar cells)
+            % which is stored in the first integer, and the offset within
+            % this array, which is stored in the second integer.
+
+    ;       vector_common_ref(int, int)
+            % We store each vector of common cells in its own global variable,
+            % identified by a sequence number. The first integer is this
+            % sequence number; the second is the offset in the array.
 
     ;       tabling_pointer(proc_label).
             % A variable that contains a pointer that points to the table

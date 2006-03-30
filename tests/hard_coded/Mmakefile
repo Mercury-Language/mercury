@@ -42,6 +42,9 @@ ORDINARY_PROGS=	\
 	deep_copy_bug \
 	deep_copy_exist \
 	deforest_cc_bug \
+	dense_lookup_switch \
+	dense_lookup_switch2 \
+	dense_lookup_switch3 \
 	det_in_semidet_cntxt \
 	division_test \
 	dos \

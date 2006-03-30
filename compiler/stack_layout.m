@@ -952,7 +952,7 @@ construct_tvar_vector(TVarLocnMap, TypeParamRval, !StaticCellInfo) :-
         TypeParamRval = const(int_const(0))
     ;
         construct_tvar_rvals(TVarLocnMap, Vector),
-        add_static_cell(Vector, DataAddr, !StaticCellInfo),
+        add_scalar_static_cell(Vector, DataAddr, !StaticCellInfo),
         TypeParamRval = const(data_addr_const(DataAddr, no))
     ).
 
@@ -1125,7 +1125,7 @@ construct_liveval_arrays(VarInfos, VarNumMap, EncodedLength,
     list.append(IntLocnsTypes, ByteLocnsTypes, AllLocnsTypes),
     list.append(AllTypeRvalsTypes, AllLocnsTypes, TypeLocnVectorRvalsTypes),
     get_static_cell_info(!.Info, StaticCellInfo0),
-    add_static_cell(TypeLocnVectorRvalsTypes, TypeLocnVectorAddr,
+    add_scalar_static_cell(TypeLocnVectorRvalsTypes, TypeLocnVectorAddr,
         StaticCellInfo0, StaticCellInfo1),
     TypeLocnVector = const(data_addr_const(TypeLocnVectorAddr, no)),
     set_static_cell_info(StaticCellInfo1, !Info),
@@ -1137,7 +1137,7 @@ construct_liveval_arrays(VarInfos, VarNumMap, EncodedLength,
         list.reverse(RevVarNumRvals, VarNumRvals),
         list.map(associate_type(uint_least16), VarNumRvals, VarNumRvalsTypes),
         get_static_cell_info(!.Info, StaticCellInfo2),
-        add_static_cell(VarNumRvalsTypes, NumVectorAddr,
+        add_scalar_static_cell(VarNumRvalsTypes, NumVectorAddr,
             StaticCellInfo2, StaticCellInfo),
         set_static_cell_info(StaticCellInfo, !Info),
         NumVector = const(data_addr_const(NumVectorAddr, no))
@@ -1302,7 +1302,7 @@ convert_table_arg_info(TableArgInfos, NumPTIs,
     list.length(Args, NumPTIs),
     list.map_foldl(construct_table_arg_pti_rval, Args, PTIRvalsTypes,
         !StaticCellInfo),
-    add_static_cell(PTIRvalsTypes, PTIVectorAddr, !StaticCellInfo),
+    add_scalar_static_cell(PTIRvalsTypes, PTIVectorAddr, !StaticCellInfo),
     PTIVectorRval = const(data_addr_const(PTIVectorAddr, no)),
     map.map_values(convert_slot_to_locn_map, TVarSlotMap, TVarLocnMap),
     construct_tvar_vector(TVarLocnMap, TVarVectorRval, !StaticCellInfo).

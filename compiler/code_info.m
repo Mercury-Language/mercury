@@ -724,11 +724,15 @@ set_static_cell_info(SCI, CI,
 :- pred add_closure_layout(comp_gen_c_data::in,
     code_info::in, code_info::out) is det.
 
-:- pred add_static_cell(assoc_list(rval, llds_type)::in,
+:- pred add_scalar_static_cell(assoc_list(rval, llds_type)::in,
     data_addr::out, code_info::in, code_info::out) is det.
 
-:- pred add_static_cell_natural_types(list(rval)::in,
+:- pred add_scalar_static_cell_natural_types(list(rval)::in,
     data_addr::out, code_info::in, code_info::out) is det.
+
+:- pred add_vector_static_cell(list(llds_type)::in,
+    list(maybe(list(rval)))::in, data_addr::out,
+    code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -973,15 +977,21 @@ add_closure_layout(ClosureLayout, !CI) :-
     get_closure_layouts(!.CI, ClosureLayouts),
     set_closure_layouts([ClosureLayout | ClosureLayouts], !CI).
 
-add_static_cell(RvalsTypes, DataAddr, !CI) :-
+add_scalar_static_cell(RvalsTypes, DataAddr, !CI) :-
     get_static_cell_info(!.CI, StaticCellInfo0),
-    add_static_cell(RvalsTypes, DataAddr,
+    global_data.add_scalar_static_cell(RvalsTypes, DataAddr,
         StaticCellInfo0, StaticCellInfo),
     set_static_cell_info(StaticCellInfo, !CI).
 
-add_static_cell_natural_types(Rvals, DataAddr, !CI) :-
+add_scalar_static_cell_natural_types(Rvals, DataAddr, !CI) :-
     get_static_cell_info(!.CI, StaticCellInfo0),
-    add_static_cell_natural_types(Rvals, DataAddr,
+    global_data.add_scalar_static_cell_natural_types(Rvals, DataAddr,
+        StaticCellInfo0, StaticCellInfo),
+    set_static_cell_info(StaticCellInfo, !CI).
+
+add_vector_static_cell(Types, Vector, DataAddr, !CI) :-
+    get_static_cell_info(!.CI, StaticCellInfo0),
+    global_data.add_vector_static_cell(Types, Vector, DataAddr,
         StaticCellInfo0, StaticCellInfo),
     set_static_cell_info(StaticCellInfo, !CI).
 
@@ -3106,6 +3116,9 @@ maybe_discard_and_release_ticket(MaybeTicketSlot, Code, !CI) :-
 :- pred acquire_reg_for_var(prog_var::in, lval::out,
     code_info::in, code_info::out) is det.
 
+:- pred acquire_reg_not_in_storemap(abs_store_map::in, lval::out,
+    code_info::in, code_info::out) is det.
+
 :- pred acquire_reg(reg_type::in, lval::out,
     code_info::in, code_info::out) is det.
 
@@ -3317,6 +3330,32 @@ acquire_reg_for_var(Var, Lval, !CI) :-
             VarLocnInfo0, VarLocnInfo)
     ),
     set_var_locn_info(VarLocnInfo, !CI).
+
+acquire_reg_not_in_storemap(StoreMap, Lval, !CI) :-
+    map.foldl(record_highest_used_reg, StoreMap, 0, HighestUsedRegNum),
+    get_var_locn_info(!.CI, VarLocnInfo0),
+    var_locn.acquire_reg_start_at_given(HighestUsedRegNum + 1, Lval,
+        VarLocnInfo0, VarLocnInfo),
+    set_var_locn_info(VarLocnInfo, !CI).
+
+:- pred record_highest_used_reg(prog_var::in, abs_locn::in, int::in, int::out)
+    is det.
+
+record_highest_used_reg(_, AbsLocn, !HighestUsedRegNum) :-
+    (
+        AbsLocn = any_reg
+    ;
+        AbsLocn = abs_reg(N),
+        ( N > !.HighestUsedRegNum ->
+            !:HighestUsedRegNum = N
+        ;
+            true
+        )
+    ;
+        AbsLocn = abs_stackvar(_)
+    ;
+        AbsLocn = abs_framevar(_)
+    ).
 
 acquire_reg(Type, Lval, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
@@ -3772,9 +3811,9 @@ stack_variable(CI, Num, Lval) :-
 
 stack_variable_reference(CI, Num, mem_addr(Ref)) :-
     ( get_proc_model(CI) = model_non ->
-        Ref = framevar_ref(Num)
+        Ref = framevar_ref(const(int_const(Num)))
     ;
-        Ref = stackvar_ref(Num)
+        Ref = stackvar_ref(const(int_const(Num)))
     ).
 
 %---------------------------------------------------------------------------%

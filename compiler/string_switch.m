@@ -99,9 +99,10 @@ generate_string_switch(Cases, Var, CodeModel, _CanFail, SwitchGoalInfo,
 
     % Generate code which does the hash table lookup
     (
-        add_static_cell_natural_types(NextSlots, NextSlotsTableAddr, !CI),
+        add_scalar_static_cell_natural_types(NextSlots, NextSlotsTableAddr,
+            !CI),
         NextSlotsTable = const(data_addr_const(NextSlotsTableAddr, no)),
-        add_static_cell_natural_types(Strings, StringTableAddr, !CI),
+        add_scalar_static_cell_natural_types(Strings, StringTableAddr, !CI),
         StringTable = const(data_addr_const(StringTableAddr, no)),
         HashLookupCode = node([
             comment("hashed string switch") - "",

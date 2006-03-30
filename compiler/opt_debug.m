@@ -303,12 +303,12 @@ dump_rvals([Rval | Rvals]) =
     dump_rval(Rval) ++ ", " ++ dump_rvals(Rvals).
 
 dump_mem_ref(stackvar_ref(N)) =
-    "stackvar_ref(" ++ int_to_string(N) ++ ")".
+    "stackvar_ref(" ++ dump_rval(N) ++ ")".
 dump_mem_ref(framevar_ref(N)) =
-    "framevar_ref(" ++ int_to_string(N) ++ ")".
+    "framevar_ref(" ++ dump_rval(N) ++ ")".
 dump_mem_ref(heap_ref(R, T, N)) =
     "heap_ref(" ++ dump_rval(R) ++ ", " ++ int_to_string(T) ++ ", "
-        ++ int_to_string(N) ++ ")".
+        ++ dump_rval(N) ++ ")".
 
 dump_const(true) = "true".
 dump_const(false) = "false".
@@ -345,8 +345,11 @@ dump_data_addr(rtti_addr(tc_rtti_id(TCName, TCDataName))) =
 dump_data_addr(layout_addr(LayoutName)) =
     "layout_addr(" ++ dump_layout_name(LayoutName) ++ ")".
 
-dump_data_name(common_ref(TypeNum, Offset)) =
-    "common_ref(" ++ int_to_string(TypeNum) ++ ", "
+dump_data_name(scalar_common_ref(TypeNum, Offset)) =
+    "scalar_common_ref(" ++ int_to_string(TypeNum) ++ ", "
+        ++ int_to_string(Offset) ++ ")".
+dump_data_name(vector_common_ref(TypeNum, Offset)) =
+    "vector_common_ref(" ++ int_to_string(TypeNum) ++ ", "
         ++ int_to_string(Offset) ++ ")".
 dump_data_name(tabling_pointer(ProcLabel)) =
     "tabling_pointer(" ++ dump_proclabel(ProcLabel) ++ ")".

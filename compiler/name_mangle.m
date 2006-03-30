@@ -80,11 +80,12 @@
 :- func mercury_label_prefix = string.
 
     % All the C data structures we generate which are either fully static
-    % or static after initialization should have one of these two prefixes,
+    % or static after initialization should have one of these yrefixes,
     % to ensure that Mercury global variables don't clash with C symbols.
     %
 :- func mercury_data_prefix = string.
-:- func mercury_common_prefix = string.
+:- func mercury_scalar_common_array_prefix = string.
+:- func mercury_vector_common_array_prefix = string.
 
     % All the C types we generate should have this prefix to ensure
     % that they don't clash with C symbols.
@@ -278,8 +279,8 @@ output_tabling_pointer_var_name(ProcLabel, !IO) :-
 mercury_label_prefix = "mercury__".
 
 mercury_data_prefix = "mercury_data_".
-
-mercury_common_prefix = "mercury_common_".
+mercury_scalar_common_array_prefix = "mercury_common_".
+mercury_vector_common_array_prefix = "mercury_vector_common_".
 
 mercury_common_type_prefix = "mercury_type_".
 

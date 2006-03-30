@@ -132,14 +132,14 @@
     % to put these in a new module (maybe llds_out_util).
 
 :- type decl_id
-    --->    common_type(int)
-    ;       common_array(int)
-    ;       float_label(string)
-    ;       code_addr(code_addr)
-    ;       data_addr(data_addr)
-    ;       pragma_c_struct(string)
-    ;       type_info_like_struct(int)
-    ;       typeclass_constraint_struct(int).
+    --->    decl_common_type(int)
+    ;       decl_scalar_common_array(int)
+    ;       decl_float_label(string)
+    ;       decl_code_addr(code_addr)
+    ;       decl_data_addr(data_addr)
+    ;       decl_pragma_c_struct(string)
+    ;       decl_type_info_like_struct(int)
+    ;       decl_typeclass_constraint_struct(int).
 
 :- type decl_set.
 
@@ -302,15 +302,23 @@ output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
 
     gather_c_file_labels(Modules, Labels),
     classify_comp_gen_c_data(Datas,
-        [], CommonDatas0, [], RttiDatas, [], LayoutDatas0),
-    list.reverse(CommonDatas0, CommonDatas),
+        [], ScalarCommonDatas0, [], VectorCommonDatas0,
+        [], RttiDatas, [], LayoutDatas0),
+    list.reverse(ScalarCommonDatas0, ScalarCommonDatas),
+    list.reverse(VectorCommonDatas0, VectorCommonDatas),
     order_layout_datas(LayoutDatas0, LayoutDatas),
 
-    list.foldl2(output_common_data_decl, CommonDatas, !DeclSet, !IO),
+    list.foldl2(output_scalar_common_data_decl, ScalarCommonDatas,
+        !DeclSet, !IO),
+    list.foldl2(output_vector_common_data_decl, VectorCommonDatas,
+        !DeclSet, !IO),
     output_rtti_data_decl_list(RttiDatas, !DeclSet, !IO),
     output_c_label_decls(StackLayoutLabels, Labels, !DeclSet, !IO),
     list.foldl2(output_comp_gen_c_var, Vars, !DeclSet, !IO),
-    list.foldl2(output_common_data_defn, CommonDatas, !DeclSet, !IO),
+    list.foldl2(output_scalar_common_data_defn, ScalarCommonDatas,
+        !DeclSet, !IO),
+    list.foldl2(output_vector_common_data_defn, VectorCommonDatas,
+        !DeclSet, !IO),
     list.foldl2(output_rtti_data_defn, RttiDatas, !DeclSet, !IO),
     list.foldl2(output_layout_data_defn, LayoutDatas, !DeclSet, !IO),
 
@@ -795,16 +803,21 @@ output_bunch_name(ModuleName, InitStatus, Number, !IO) :-
     io.write_int(Number, !IO).
 
 :- pred classify_comp_gen_c_data(list(comp_gen_c_data)::in,
-    list(common_data_array)::in, list(common_data_array)::out,
+    list(scalar_common_data_array)::in, list(scalar_common_data_array)::out,
+    list(vector_common_data_array)::in, list(vector_common_data_array)::out,
     list(rtti_data)::in, list(rtti_data)::out,
     list(layout_data)::in, list(layout_data)::out) is det.
 
-classify_comp_gen_c_data([], !CommonList, !RttiList, !LayoutList).
-classify_comp_gen_c_data([Data | Datas], !CommonList, !RttiList,
-        !LayoutList) :-
+classify_comp_gen_c_data([], !ScalarCommonList, !VectorCommonList,
+        !RttiList, !LayoutList).
+classify_comp_gen_c_data([Data | Datas], !ScalarCommonList, !VectorCommonList,
+        !RttiList, !LayoutList) :-
     (
-        Data = common_data(CommonData),
-        !:CommonList = [CommonData | !.CommonList]
+        Data = scalar_common_data(ScalarCommonData),
+        !:ScalarCommonList = [ScalarCommonData | !.ScalarCommonList]
+    ;
+        Data = vector_common_data(VectorCommonData),
+        !:VectorCommonList = [VectorCommonData | !.VectorCommonList]
     ;
         Data = rtti_data(Rtti),
         !:RttiList = [Rtti | !.RttiList]
@@ -812,7 +825,8 @@ classify_comp_gen_c_data([Data | Datas], !CommonList, !RttiList,
         Data = layout_data(Layout),
         !:LayoutList = [Layout | !.LayoutList]
     ),
-    classify_comp_gen_c_data(Datas, !CommonList, !RttiList, !LayoutList).
+    classify_comp_gen_c_data(Datas, !ScalarCommonList, !VectorCommonList,
+        !RttiList, !LayoutList).
 
     % output_c_data_type_def outputs the given the type definition.
     % This is needed because some compilers need the type definition
@@ -822,22 +836,53 @@ classify_comp_gen_c_data([Data | Datas], !CommonList, !RttiList,
 :- pred output_c_data_type_def(comp_gen_c_data::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_c_data_type_def(common_data(CommonData), !DeclSet, !IO) :-
-    output_common_data_decl(CommonData, !DeclSet, !IO).
+output_c_data_type_def(scalar_common_data(ScalarCommonData), !DeclSet, !IO) :-
+    output_scalar_common_data_decl(ScalarCommonData, !DeclSet, !IO).
+output_c_data_type_def(vector_common_data(VectorCommonData), !DeclSet, !IO) :-
+    output_vector_common_data_decl(VectorCommonData, !DeclSet, !IO).
 output_c_data_type_def(rtti_data(RttiData), !DeclSet, !IO) :-
     output_rtti_data_decl(RttiData, !DeclSet, !IO).
 output_c_data_type_def(layout_data(LayoutData), !DeclSet, !IO) :-
     output_maybe_layout_data_decl(LayoutData, !DeclSet, !IO).
 
-:- pred output_common_data_decl(common_data_array::in,
+:- pred output_scalar_common_data_decl(scalar_common_data_array::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_common_data_decl(CommonDataArray, !DeclSet, !IO) :-
-    CommonDataArray = common_data_array(_ModuleName, CellType, TypeNum,
-        _Values),
+output_scalar_common_data_decl(ScalarCommonDataArray, !DeclSet, !IO) :-
+    ScalarCommonDataArray = scalar_common_data_array(_ModuleName, CellType,
+        TypeNum, _Values),
     io.write_string("\n", !IO),
+    output_common_type_defn(TypeNum, CellType, !DeclSet, !IO),
+    VarDeclId = decl_scalar_common_array(TypeNum),
+    io.write_string("static const struct ", !IO),
+    output_common_cell_type_name(TypeNum, !IO),
+    io.write_string(" ", !IO),
+    output_common_scalar_cell_array_name(TypeNum, !IO),
+    io.write_string("[];\n", !IO),
+    decl_set_insert(VarDeclId, !DeclSet).
 
-    TypeDeclId = common_type(TypeNum),
+:- pred output_vector_common_data_decl(vector_common_data_array::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_vector_common_data_decl(VectorCommonDataArray, !DeclSet, !IO) :-
+    VectorCommonDataArray = vector_common_data_array(ModuleName, CellType,
+        TypeNum, CellNum, _Values),
+    io.write_string("\n", !IO),
+    output_common_type_defn(TypeNum, CellType, !DeclSet, !IO),
+    VarDeclId = decl_data_addr(data_addr(ModuleName,
+        vector_common_ref(TypeNum, CellNum))),
+    io.write_string("static const struct ", !IO),
+    output_common_cell_type_name(TypeNum, !IO),
+    io.write_string(" ", !IO),
+    output_common_vector_cell_array_name(TypeNum, CellNum, !IO),
+    io.write_string("[];\n", !IO),
+    decl_set_insert(VarDeclId, !DeclSet).
+
+:- pred output_common_type_defn(int::in, common_cell_type::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_common_type_defn(TypeNum, CellType, !DeclSet, !IO) :-
+    TypeDeclId = decl_common_type(TypeNum),
     ( decl_set_is_member(TypeDeclId, !.DeclSet) ->
         true
     ;
@@ -853,14 +898,7 @@ output_common_data_decl(CommonDataArray, !DeclSet, !IO) :-
         ),
         io.write_string("};\n", !IO),
         decl_set_insert(TypeDeclId, !DeclSet)
-    ),
-    VarDeclId = common_array(TypeNum),
-    io.write_string("static const struct ", !IO),
-    output_common_cell_type_name(TypeNum, !IO),
-    io.write_string(" ", !IO),
-    output_common_cell_array_name(TypeNum, !IO),
-    io.write_string("[];\n", !IO),
-    decl_set_insert(VarDeclId, !DeclSet).
+    ).
 
 :- pred output_comp_gen_c_module(map(label, data_addr)::in,
     comp_gen_c_module::in, decl_set::in, decl_set::out, io::di, io::uo)
@@ -893,23 +931,26 @@ output_comp_gen_c_var(tabling_pointer_var(ModuleName, ProcLabel),
     output_tabling_pointer_var_name(ProcLabel, !IO),
     io.write_string(" = { 0 };\n", !IO),
     DataAddr = data_addr(ModuleName, tabling_pointer(ProcLabel)),
-    decl_set_insert(data_addr(DataAddr), !DeclSet).
+    decl_set_insert(decl_data_addr(DataAddr), !DeclSet).
 
 :- pred output_comp_gen_c_data(comp_gen_c_data::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_comp_gen_c_data(common_data(CommonData), !DeclSet, !IO) :-
-    output_common_data_defn(CommonData, !DeclSet, !IO).
+output_comp_gen_c_data(scalar_common_data(ScalarCommonData), !DeclSet, !IO) :-
+    output_scalar_common_data_defn(ScalarCommonData, !DeclSet, !IO).
+output_comp_gen_c_data(vector_common_data(VectorCommonData), !DeclSet, !IO) :-
+    output_vector_common_data_defn(VectorCommonData, !DeclSet, !IO).
 output_comp_gen_c_data(rtti_data(RttiData), !DeclSet, !IO) :-
     output_rtti_data_defn(RttiData, !DeclSet, !IO).
 output_comp_gen_c_data(layout_data(LayoutData), !DeclSet, !IO) :-
     output_layout_data_defn(LayoutData, !DeclSet, !IO).
 
-:- pred output_common_data_defn(common_data_array::in,
+:- pred output_scalar_common_data_defn(scalar_common_data_array::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_common_data_defn(CommonData, !DeclSet, !IO) :-
-    CommonData = common_data_array(_ModuleName, _CellType, TypeNum, Values),
+output_scalar_common_data_defn(ScalarCommonDataArray, !DeclSet, !IO) :-
+    ScalarCommonDataArray = scalar_common_data_array(_ModuleName, _CellType,
+        TypeNum, Values),
     io.write_string("\n", !IO),
     ArgLists = list.map(common_cell_get_rvals, Values),
     list.condense(ArgLists, Args),
@@ -917,13 +958,40 @@ output_common_data_defn(CommonData, !DeclSet, !IO) :-
 
     % Although the array should have ben declared by now, it is OK if it
     % hasn't.
-    VarDeclId = common_array(TypeNum),
+    VarDeclId = decl_scalar_common_array(TypeNum),
     decl_set_insert(VarDeclId, !DeclSet),
 
     io.write_string("static const struct ", !IO),
     output_common_cell_type_name(TypeNum, !IO),
     io.write_string(" ", !IO),
-    output_common_cell_array_name(TypeNum, !IO),
+    output_common_scalar_cell_array_name(TypeNum, !IO),
+    io.write_string("[", !IO),
+    io.write_int(list.length(Values), !IO),
+    io.write_string("] =\n{\n", !IO),
+    list.foldl(output_common_cell_value, Values, !IO),
+    io.write_string("};\n", !IO).
+
+:- pred output_vector_common_data_defn(vector_common_data_array::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_vector_common_data_defn(VectorCommonDataArray, !DeclSet, !IO) :-
+    VectorCommonDataArray = vector_common_data_array(ModuleName, _CellType,
+        TypeNum, CellNum, Values),
+    io.write_string("\n", !IO),
+    ArgLists = list.map(common_cell_get_rvals, Values),
+    list.condense(ArgLists, Args),
+    output_rvals_decls(Args, !DeclSet, !IO),
+
+    % Although the array should have ben declared by now, it is OK if it
+    % hasn't.
+    VarDeclId = decl_data_addr(data_addr(ModuleName,
+        vector_common_ref(TypeNum, CellNum))),
+    decl_set_insert(VarDeclId, !DeclSet),
+
+    io.write_string("static const struct ", !IO),
+    output_common_cell_type_name(TypeNum, !IO),
+    io.write_string(" ", !IO),
+    output_common_vector_cell_array_name(TypeNum, CellNum, !IO),
     io.write_string("[", !IO),
     io.write_int(list.length(Values), !IO),
     io.write_string("] =\n{\n", !IO),
@@ -1116,14 +1184,14 @@ output_local_label_decl_group(ProcLabel, LabelNums, !DeclSet, !IO) :-
 insert_var_info_label_layout_decl(ProcLabel, LabelNum, !DeclSet) :-
     LayoutName = label_layout(ProcLabel, LabelNum, label_has_var_info),
     DataAddr = layout_addr(LayoutName),
-    DeclId = data_addr(DataAddr),
+    DeclId = decl_data_addr(DataAddr),
     decl_set_insert(DeclId, !DeclSet).
 
 :- pred insert_code_addr_decl(proc_label::in, int::in,
     decl_set::in, decl_set::out) is det.
 
 insert_code_addr_decl(ProcLabel, LabelNum, !DeclSet) :-
-    DeclId = code_addr(label(internal(LabelNum, ProcLabel))),
+    DeclId = decl_code_addr(label(internal(LabelNum, ProcLabel))),
     decl_set_insert(DeclId, !DeclSet).
 
 :- pred output_c_label_decl(map(label, data_addr)::in, label::in,
@@ -1188,7 +1256,7 @@ output_c_label_decl(StackLayoutLabels, Label, !DeclSet, !IO) :-
     ;
         AlreadyDeclaredLabel = yes
     ),
-    decl_set_insert(code_addr(label(Label)), !DeclSet).
+    decl_set_insert(decl_code_addr(label(Label)), !DeclSet).
 
 :- pred output_stack_layout_decl(data_addr::in, decl_set::in, decl_set::out,
     io::di, io::uo) is det.
@@ -1516,7 +1584,7 @@ output_instr_decls(_, mkframe(FrameInfo, MaybeFailureContinuation),
         Struct = pragma_c_struct(StructName, StructFields,
             MaybeStructFieldsContext)
     ->
-        ( decl_set_is_member(pragma_c_struct(StructName), !.DeclSet) ->
+        ( decl_set_is_member(decl_pragma_c_struct(StructName), !.DeclSet) ->
             Msg = "struct " ++ StructName ++ " has been declared already",
             unexpected(this_file, Msg)
         ;
@@ -1535,7 +1603,7 @@ output_instr_decls(_, mkframe(FrameInfo, MaybeFailureContinuation),
             io.write_string(StructFields, !IO)
         ),
         io.write_string("\n};\n", !IO),
-        decl_set_insert(pragma_c_struct(StructName), !DeclSet)
+        decl_set_insert(decl_pragma_c_struct(StructName), !DeclSet)
     ;
         true
     ),
@@ -2560,7 +2628,7 @@ output_rval_decls_format(const(Const), FirstIndent, LaterIndent, !N, !DeclSet,
             StaticGroundTerms = yes
         ->
             float_literal_name(FloatVal, FloatName),
-            FloatLabel = float_label(FloatName),
+            FloatLabel = decl_float_label(FloatName),
             ( decl_set_is_member(FloatLabel, !.DeclSet) ->
                 true
             ;
@@ -2602,7 +2670,7 @@ output_rval_decls_format(binop(Op, Rval1, Rval2), FirstIndent, LaterIndent,
             StaticGroundTerms = yes,
             float_const_binop_expr_name(Op, Rval1, Rval2, FloatName)
         ->
-            FloatLabel = float_label(FloatName),
+            FloatLabel = decl_float_label(FloatName),
             ( decl_set_is_member(FloatLabel, !.DeclSet) ->
                 true
             ;
@@ -2656,11 +2724,20 @@ output_rvals_decls_format([Rval | Rvals], FirstIndent, LaterIndent,
 :- pred output_mem_ref_decls_format(mem_ref::in, string::in, string::in,
     int::in, int::out, decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_mem_ref_decls_format(stackvar_ref(_), _, _, !N, !DeclSet, !IO).
-output_mem_ref_decls_format(framevar_ref(_), _, _, !N, !DeclSet, !IO).
-output_mem_ref_decls_format(heap_ref(Rval, _, _), FirstIndent, LaterIndent,
+output_mem_ref_decls_format(stackvar_ref(Rval), FirstIndent, LaterIndent,
         !N, !DeclSet, !IO) :-
-    output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
+    output_rval_decls_format(Rval, FirstIndent, LaterIndent,
+        !N, !DeclSet, !IO).
+output_mem_ref_decls_format(framevar_ref(Rval), FirstIndent, LaterIndent,
+        !N, !DeclSet, !IO) :-
+    output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N,
+        !DeclSet, !IO).
+output_mem_ref_decls_format(heap_ref(BaseRval, _, OffsetRval),
+        FirstIndent, LaterIndent, !N, !DeclSet, !IO) :-
+    output_rval_decls_format(BaseRval, FirstIndent, LaterIndent, !N,
+        !DeclSet, !IO),
+    output_rval_decls_format(OffsetRval, FirstIndent, LaterIndent, !N,
+        !DeclSet, !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2744,26 +2821,27 @@ data_addr_may_include_non_static_code_address(layout_addr(LayoutName)) =
 
 % Common structures can include code addresses, but only in grades with
 % static code addresses.
-data_name_may_include_non_static_code_address(common_ref(_, _)) = no.
+data_name_may_include_non_static_code_address(scalar_common_ref(_, _)) = no.
+data_name_may_include_non_static_code_address(vector_common_ref(_, _)) = no.
 data_name_may_include_non_static_code_address(tabling_pointer(_)) = no.
 
 :- pred output_decl_id(decl_id::in, io::di, io::uo) is det.
 
-output_decl_id(common_type(TypeNum), !IO) :-
+output_decl_id(decl_common_type(TypeNum), !IO) :-
     output_common_cell_type_name(TypeNum, !IO).
-output_decl_id(common_array(TypeNum), !IO) :-
-    output_common_cell_array_name(TypeNum, !IO).
-output_decl_id(data_addr(DataAddr), !IO) :-
+output_decl_id(decl_scalar_common_array(TypeNum), !IO) :-
+    output_common_scalar_cell_array_name(TypeNum, !IO).
+output_decl_id(decl_data_addr(DataAddr), !IO) :-
     output_data_addr(DataAddr, !IO).
-output_decl_id(code_addr(_CodeAddress), !IO) :-
+output_decl_id(decl_code_addr(_CodeAddress), !IO) :-
     unexpected(this_file, "output_decl_id: code_addr unexpected").
-output_decl_id(float_label(_Label), !IO) :-
+output_decl_id(decl_float_label(_Label), !IO) :-
     unexpected(this_file, "output_decl_id: float_label unexpected").
-output_decl_id(pragma_c_struct(_Name), !IO) :-
+output_decl_id(decl_pragma_c_struct(_Name), !IO) :-
     unexpected(this_file, "output_decl_id: pragma_c_struct unexpected").
-output_decl_id(type_info_like_struct(_Name), !IO) :-
+output_decl_id(decl_type_info_like_struct(_Name), !IO) :-
     unexpected(this_file, "output_decl_id: type_info_like_struct unexpected").
-output_decl_id(typeclass_constraint_struct(_Name), !IO) :-
+output_decl_id(decl_typeclass_constraint_struct(_Name), !IO) :-
     unexpected(this_file,
         "output_decl_id: class_constraint_struct unexpected").
 
@@ -3106,10 +3184,10 @@ output_code_addr_decls(CodeAddress, !DeclSet, !IO) :-
 
 output_code_addr_decls_format(CodeAddress, FirstIndent, LaterIndent, !N,
         !DeclSet, !IO) :-
-    ( decl_set_is_member(code_addr(CodeAddress), !.DeclSet) ->
+    ( decl_set_is_member(decl_code_addr(CodeAddress), !.DeclSet) ->
         true
     ;
-        decl_set_insert(code_addr(CodeAddress), !DeclSet),
+        decl_set_insert(decl_code_addr(CodeAddress), !DeclSet),
         need_code_addr_decls(CodeAddress, NeedDecl, !IO),
         (
             NeedDecl = yes,
@@ -3225,8 +3303,8 @@ output_data_addr_decls(DataAddr, !DeclSet, !IO) :-
 
 output_data_addr_decls_format(DataAddr, FirstIndent, LaterIndent, !N, !DeclSet,
         !IO) :-
-    ( DataAddr = data_addr(_, common_ref(TypeNum, _CellNum)) ->
-        DeclId = common_array(TypeNum),
+    ( DataAddr = data_addr(_, scalar_common_ref(TypeNum, _CellNum)) ->
+        DeclId = decl_scalar_common_array(TypeNum),
         ( decl_set_is_member(DeclId, !.DeclSet) ->
             true
         ;
@@ -3236,11 +3314,11 @@ output_data_addr_decls_format(DataAddr, FirstIndent, LaterIndent, !N, !DeclSet,
             io.write_string("static ", !IO),
             output_common_cell_type_name(TypeNum, !IO),
             io.write_string(" ", !IO),
-            output_common_cell_array_name(TypeNum, !IO),
+            output_common_scalar_cell_array_name(TypeNum, !IO),
             io.write_string("[];\n", !IO)
         )
     ;
-        DeclId = data_addr(DataAddr),
+        DeclId = decl_data_addr(DataAddr),
         ( decl_set_is_member(DeclId, !.DeclSet) ->
             true
         ;
@@ -3334,7 +3412,8 @@ output_data_addr_storage_type_name(ModuleName, DataVarName, BeingDefined,
 
 :- pred data_name_linkage(data_name::in, linkage::out) is det.
 
-data_name_linkage(common_ref(_, _),   static).
+data_name_linkage(scalar_common_ref(_, _),   static).
+data_name_linkage(vector_common_ref(_, _),   static).
 data_name_linkage(tabling_pointer(_), static).
 
 %-----------------------------------------------------------------------------%
@@ -3793,12 +3872,15 @@ output_data_addr(layout_addr(LayoutName), !IO) :-
 
 output_data_addr_2(_ModuleName, VarName, !IO) :-
     (
-        VarName = common_ref(TypeNum, CellNum),
+        VarName = scalar_common_ref(TypeNum, CellNum),
         io.write_string("&", !IO),
-        output_common_cell_array_name(TypeNum, !IO),
+        output_common_scalar_cell_array_name(TypeNum, !IO),
         io.write_string("[", !IO),
         io.write_int(CellNum, !IO),
         io.write_string("]", !IO)
+    ;
+        VarName = vector_common_ref(TypeNum, CellNum),
+        output_common_vector_cell_array_name(TypeNum, CellNum, !IO)
     ;
         VarName = tabling_pointer(ProcLabel),
         output_tabling_pointer_var_name(ProcLabel, !IO)
@@ -3807,29 +3889,23 @@ output_data_addr_2(_ModuleName, VarName, !IO) :-
 :- pred output_common_cell_type_name(int::in, io::di, io::uo) is det.
 
 output_common_cell_type_name(TypeNum, !IO) :-
-    output_common_prefix(common_prefix_type, !IO),
+    io.write_string(mercury_common_type_prefix, !IO),
     io.write_int(TypeNum, !IO).
 
-:- pred output_common_cell_array_name(int::in, io::di, io::uo) is det.
+:- pred output_common_scalar_cell_array_name(int::in, io::di, io::uo) is det.
 
-output_common_cell_array_name(TypeNum, !IO) :-
-    output_common_prefix(common_prefix_var, !IO),
+output_common_scalar_cell_array_name(TypeNum, !IO) :-
+    io.write_string(mercury_scalar_common_array_prefix, !IO),
     io.write_int(TypeNum, !IO).
 
-:- type common_prefix
-    --->    common_prefix_var
-    ;       common_prefix_type.
+:- pred output_common_vector_cell_array_name(int::in, int::in, io::di, io::uo)
+    is det.
 
-:- pred output_common_prefix(common_prefix::in, io::di, io::uo) is det.
-
-output_common_prefix(Prefix, !IO) :-
-    (
-        Prefix = common_prefix_var,
-        io.write_string(mercury_common_prefix, !IO)
-    ;
-        Prefix = common_prefix_type,
-        io.write_string(mercury_common_type_prefix, !IO)
-    ).
+output_common_vector_cell_array_name(TypeNum, CellNum, !IO) :-
+    io.write_string(mercury_vector_common_array_prefix, !IO),
+    io.write_int(TypeNum, !IO),
+    io.write_string("_", !IO),
+    io.write_int(CellNum, !IO).
 
 :- pred output_label_as_code_addr(label::in, io::di, io::uo) is det.
 
@@ -4357,7 +4433,7 @@ output_rval(mkword(Tag, Exprn), !IO) :-
     (
         Exprn = const(data_addr_const(DataAddr, no)),
         DataAddr = data_addr(_, DataName),
-        DataName = common_ref(TypeNum, CellNum)
+        DataName = scalar_common_ref(TypeNum, CellNum)
     ->
         io.write_string("MR_TAG_XCOMMON(", !IO),
         io.write_int(Tag, !IO),
@@ -4411,26 +4487,26 @@ output_rval(var(_), !IO) :-
     unexpected(this_file, "Cannot output a var(_) expression in code").
 output_rval(mem_addr(MemRef), !IO) :-
     (
-        MemRef = stackvar_ref(N),
+        MemRef = stackvar_ref(Rval),
         output_llds_type_cast(data_ptr, !IO),
         io.write_string("&MR_sv(", !IO),
-        io.write_int(N, !IO),
+        output_rval(Rval, !IO),
         io.write_string(")", !IO)
     ;
-        MemRef = framevar_ref(N),
+        MemRef = framevar_ref(Rval),
         output_llds_type_cast(data_ptr, !IO),
         io.write_string("&MR_fv(", !IO),
-        io.write_int(N, !IO),
+        output_rval(Rval, !IO),
         io.write_string(")", !IO)
     ;
-        MemRef = heap_ref(Rval, Tag, FieldNum),
+        MemRef = heap_ref(BaseRval, Tag, FieldNumRval),
         output_llds_type_cast(data_ptr, !IO),
         io.write_string("&MR_tfield(", !IO),
         io.write_int(Tag, !IO),
         io.write_string(", ", !IO),
-        output_rval(Rval, !IO),
+        output_rval(BaseRval, !IO),
         io.write_string(", ", !IO),
-        io.write_int(FieldNum, !IO),
+        output_rval(FieldNumRval, !IO),
         io.write_string(")", !IO)
     ).
 
@@ -4483,7 +4559,7 @@ output_rval_const(data_addr_const(DataAddr, MaybeOffset), !IO) :-
         % file size difference can be very substantial.
         (
             DataAddr = data_addr(_, DataName),
-            DataName = common_ref(TypeNum, CellNum)
+            DataName = scalar_common_ref(TypeNum, CellNum)
         ->
             io.write_string("MR_XCOMMON(", !IO),
             io.write_int(TypeNum, !IO),
