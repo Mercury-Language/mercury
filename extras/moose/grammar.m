@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1998-2001, 2003 The University of Melbourne.
+% Copyright (C) 1998-2001, 2003, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %----------------------------------------------------------------------------%
@@ -149,7 +149,7 @@
 :- implementation.
 
 :- import_module misc.
-:- import_module bool, int, require, std_util, string.
+:- import_module bool, int, require, pair, string, solutions.
 
 %------------------------------------------------------------------------------%
 

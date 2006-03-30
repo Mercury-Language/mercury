@@ -543,8 +543,8 @@
 :- import_module wix_language.
 
 :- import_module exception.
-:- import_module std_util.
 :- import_module term_to_xml.
+:- import_module univ.
 
 generate_installer(Installer, GUIDFile, FileName, Result, !IO) :-
     io.open_output(FileName, OpenOutputResult, !IO),

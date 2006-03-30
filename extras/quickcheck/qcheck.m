@@ -23,9 +23,9 @@
 :- import_module float.
 :- import_module io.
 :- import_module list.
-:- import_module std_util.
 :- import_module string.
 :- import_module type_desc.
+:- import_module univ.
 
 %---------------------------------------------------------------------------%
 

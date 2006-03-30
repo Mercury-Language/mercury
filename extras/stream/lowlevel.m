@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2000-2001 The University of Melbourne.
+% Copyright (C) 2000-2001, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB
 %-----------------------------------------------------------------------------%
@@ -90,7 +90,7 @@
 :- implementation.
 
 :- import_module mvar.
-:- import_module exception, std_util.
+:- import_module exception, unit.
 
 :- type lowlevel(S)
 	--->	lowlevel(

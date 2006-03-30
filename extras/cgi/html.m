@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997 The University of Melbourne.
+% Copyright (C) 1997, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,7 +19,12 @@
 
 :- module html.
 :- interface.
-:- import_module bool, io, string, std_util, list.
+
+:- import_module bool.
+:- import_module io.
+:- import_module list.
+:- import_module pair.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

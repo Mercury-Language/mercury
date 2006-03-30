@@ -15,10 +15,19 @@
 :- pred main(io__state::di, io__state::uo) is cc_multi.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
-:- import_module exception, list, string, std_util.
 :- import_module odbc.
+
+:- import_module exception.
+:- import_module list.
+:- import_module pair.
+:- import_module string.
+:- import_module univ.
+
+%-----------------------------------------------------------------------------%
 
 main -->
 	odbc__data_sources(SourceResult - SourceMessages),

@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % regex.m
 % Ralph Becket <rafe@cs.mu.oz.au>
-% Copyright (C) 2002 The University of Melbourne
+% Copyright (C) 2002, 2006 The University of Melbourne
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %
 % This module provides basic string matching and search and replace
@@ -180,7 +180,7 @@
 
 :- implementation.
 
-:- import_module int, char, bool, require, std_util, io.
+:- import_module int, char, bool, require, std_util, pair, io.
 
 
 

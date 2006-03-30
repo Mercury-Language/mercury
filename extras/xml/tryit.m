@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000, 2001, 2004-2005 The University of Melbourne.
+% Copyright (C) 2000, 2001, 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -19,7 +19,7 @@
 
 :- import_module parsing, xml, xml__cat, xml__encoding.
 :- import_module xml__parse, xml__ns.
-:- import_module char, list, map, std_util, string.
+:- import_module char, list, map, maybe, pair, string.
 
 main -->
     io__command_line_arguments(Args),

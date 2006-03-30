@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1998-2004 The University of Melbourne.
+% Copyright (C) 1998-2004, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %
@@ -23,7 +23,7 @@
 
 :- import_module grammar, lalr, tables, check, mercury_syntax, misc, options.
 :- import_module array, bool, getopt, int, list, map, require.
-:- import_module set, std_util, string, term, term_io, varset.
+:- import_module set, pair, string, term, term_io, varset.
 
 main(!IO) :-
 	parse_options(MOptions, Args, !IO),

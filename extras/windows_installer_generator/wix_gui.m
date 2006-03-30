@@ -203,7 +203,7 @@
 
 :- import_module int.
 :- import_module require.
-:- import_module std_util.
+:- import_module pair.
 :- import_module string.
 :- import_module svmap.
 

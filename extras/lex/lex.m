@@ -8,7 +8,7 @@
 %   The changes made by Rationalizer are contributed under the terms 
 %   of the GNU Lesser General Public License, see the file COPYING.LGPL
 %   in this directory.
-% Copyright (C) 2002 The University of Melbourne
+% Copyright (C) 2002, 2006 The University of Melbourne
 %
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -21,10 +21,14 @@
 %-----------------------------------------------------------------------------%
 
 :- module lex.
-
 :- interface.
 
-:- import_module std_util, string, char, list, io.
+:- import_module char.
+:- import_module io.
+:- import_module list.
+:- import_module maybe.
+:- import_module pair.
+:- import_module string.
 
 :- type token_creator(Token)
     ==                        (func(string) = Token).

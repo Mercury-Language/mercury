@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2002-2003, 2005 The University of Melbourne.
+% Copyright (C) 1998-2000, 2002-2003, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -28,7 +28,7 @@
 
 :- module var.
 :- interface.
-:- import_module io, std_util.
+:- import_module io, maybe.
 
 	% A `var(T)' is a Prolog-style variable that holds a value of type T.
 	%
@@ -146,6 +146,7 @@
 :- import_module bool.
 :- import_module unsafe, io.
 :- import_module require.
+:- import_module type_desc.
 
 :- pragma foreign_decl("C", "#include <stdio.h>").
 
@@ -233,7 +234,7 @@
 % types; instead we just hack it by munging the type_infos manually
 % using some unsafe casts
 
-:- type type_info_for_t2 == type_info.
+:- type type_info_for_t2 == type_desc.
 :- type t2 == c_pointer.
 
 :- type delayed_goal(T)

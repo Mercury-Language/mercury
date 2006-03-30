@@ -1,14 +1,15 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000, 2003 The University of Melbourne.
+% Copyright (C) 1998-2000, 2003, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %----------------------------------------------------------------------------%
 
 :- module misc.
-
 :- interface.
 
-:- import_module map, set, std_util.
+:- import_module map.
+:- import_module pair.
+:- import_module set.
 
 :- type '' ---> ''.
 

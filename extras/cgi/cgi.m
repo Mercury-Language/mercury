@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001 The University of Melbourne.
+% Copyright (C) 1997-2001, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -19,7 +19,11 @@
 
 :- module cgi.
 :- interface.
-:- import_module io, string, assoc_list, std_util.
+
+:- import_module assoc_list.
+:- import_module io.
+:- import_module maybe.
+:- import_module string.
 
 % cgi__get_form(MaybeFormEntries):
 %	This procedure should be called form within a CGI program
@@ -45,7 +49,13 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module html, int, char, list.
+
+:- import_module html.
+
+:- import_module char.
+:- import_module int.
+:- import_module list.
+:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 

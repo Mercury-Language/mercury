@@ -1,5 +1,5 @@
 %----------------------------------------------------------------------------%
-% Copyright (C) 1994-2000, 2005 The University of Melbourne.
+% Copyright (C) 1994-2000, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury Distribution.
 %----------------------------------------------------------------------------%
@@ -25,7 +25,7 @@
 :- module mcurses__user.
 :- interface.
 
-:- import_module char, io, list, std_util.
+:- import_module char, io, list, pair.
 
   % The ADT used to represent a curses window.
 :- type win.

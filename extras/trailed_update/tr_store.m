@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2000,2002-2003, 2005 The University of Melbourne.
+% Copyright (C) 1997-2000,2002-2003, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -163,7 +163,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module std_util.
+:- import_module deconstruct.
 
 :- pragma foreign_proc("C",
 	new_mutvar(Val::in, Mutvar::out, S0::mdi, S::muo),
@@ -226,7 +226,7 @@ copy_ref_value(Ref, Val) -->
 
 ref_functor(Ref, Functor, Arity, !S) :-
 	unsafe_ref_value(Ref, Val, !S),
-	functor(Val, Functor, Arity).
+	functor(Val, canonicalize, Functor, Arity).
 
 :- pragma foreign_decl("C", "#include ""mercury_deconstruct.h""").
 

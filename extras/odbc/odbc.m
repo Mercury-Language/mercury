@@ -1,6 +1,6 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997 Mission Critical.
-% Copyright (C) 1997-2000, 2002, 2004-2005 The University of Melbourne.
+% Copyright (C) 1997-2000, 2002, 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -55,14 +55,14 @@
 %	SQL strings.
 % 
 %-----------------------------------------------------------------------------%
-%
-:- module odbc.
-%
-%-----------------------------------------------------------------------------%
 
+:- module odbc.
 :- interface.
 
-:- import_module io, list, std_util.
+:- import_module list.
+:- import_module io.
+:- import_module string.
+:- import_module pair.
 
 %-----------------------------------------------------------------------------%
 
@@ -277,9 +277,15 @@
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
 :- implementation.
 
-:- import_module assoc_list, exception, int, require, std_util, string.
+:- import_module assoc_list.
+:- import_module exception.
+:- import_module int.
+:- import_module require.
+:- import_module unit.
+:- import_module univ.
 
 %-----------------------------------------------------------------------------%
 

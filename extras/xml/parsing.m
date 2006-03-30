@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000, 2005 The University of Melbourne.
+% Copyright (C) 2000, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -37,7 +37,7 @@
 :- interface.
 
 :- import_module string, unicode.
-:- import_module io, list, map, std_util.
+:- import_module io, list, map, unit, univ.
 
 :- mode pdi == in.
 :- mode puo == out.

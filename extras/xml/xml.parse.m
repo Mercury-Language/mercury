@@ -1,5 +1,5 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2000, 2005 The University of Melbourne.
+% Copyright (C) 2000, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -324,7 +324,7 @@
 
 :- import_module xml.encoding.
 :- import_module unicode.
-:- import_module array, char, int, io, map, require, std_util, string.
+:- import_module array, char, int, io, map, pair, require, string, unit.
 
 :- instance global(gCatalog, catalog) where [].
 :- instance global(gDirs, parse.dirs) where [].
