@@ -138,15 +138,15 @@ add_trail_ops(OptTrailUsage, GenerateInline, ModuleInfo0, !Proc) :-
 
 goal_add_trail_ops(!Goal, !Info) :-
     OptTrailUsage = !.Info ^ opt_trail_usage,
+    !.Goal = GoalExpr0 - GoalInfo,
     (
         OptTrailUsage = yes,
-        goal_cannot_modify_trail(!.Goal)
+        goal_cannot_modify_trail(GoalInfo) = yes
     ->
         % Don't add trail ops if the goal cannot modify the trail
         % and we are optimizing trail usage.
         true
     ;
-        !.Goal = GoalExpr0 - GoalInfo,
         goal_expr_add_trail_ops(GoalExpr0, GoalInfo, !:Goal, !Info)
     ). 
 
@@ -378,7 +378,7 @@ disj_add_trail_ops([Goal0 | Goals0], IsFirstBranch, PrevDisjunctModifiesTrail,
     % if the disjunct doesn't modify the trail and `--optimize-trail-usage' is
     % set.
     %
-    ThisDisjunctModifiesTrail = pred_to_bool(goal_may_modify_trail(Goal0)),
+    ThisDisjunctModifiesTrail = goal_may_modify_trail(GoalInfo0),
     CanOmitTrailOps =
         not(ThisDisjunctModifiesTrail) `and` !.Info ^ opt_trail_usage,
     (

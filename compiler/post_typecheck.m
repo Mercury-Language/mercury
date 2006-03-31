@@ -514,7 +514,7 @@ store_promise(PromiseType, PromiseId, !Module, Goal) :-
         assertion_table_add_assertion(PromiseId, AssertionId,
             AssertTable0, AssertTable),
         module_info_set_assertion_table(AssertTable, !Module),
-        assertion.goal(AssertionId, !.Module, Goal),
+        assertion.assert_id_goal(!.Module, AssertionId, Goal),
         assertion.record_preds_used_in(Goal, AssertionId, !Module)
     ;
         % Case for exclusivity.

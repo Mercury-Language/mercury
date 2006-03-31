@@ -147,7 +147,7 @@ generate_real_disj(AddTrailOps, CodeModel, ResumeVars, Goals, DisjGoalInfo,
         true
     ),
     Code = tree_list([FlushCode, SaveTicketCode, SaveHpCode, PrepareHijackCode,
-             GoalsCode]).
+         GoalsCode]).
 
 %---------------------------------------------------------------------------%
 
@@ -300,7 +300,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         % Check if this branch modifies the trail. If it doesn't then the next
         % branch can avoid resetting it.
         %
-        ThisBranchModifiesTrail = pred_to_bool(goal_may_modify_trail(Goal)),
+        ThisBranchModifiesTrail = goal_may_modify_trail(GoalInfo),
 
         disj_gen.generate_disjuncts(Goals, CodeModel, FullResumeMap,
             yes(NextResumePoint), HijackInfo, DisjGoalInfo,

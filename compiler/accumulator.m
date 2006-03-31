@@ -958,7 +958,7 @@ is_associative(PredId, ModuleInfo, Args, Result) :-
 associativity_assertion([AssertId | AssertIds], ModuleInfo, Args0, VarAB,
         OutputVar) :-
     (
-        assertion.is_associativity_assertion(AssertId, ModuleInfo,
+        assertion.is_associativity_assertion(ModuleInfo, AssertId,
             Args0, VarA - VarB, OutputVar0)
     ->
         \+ associativity_assertion(AssertIds, ModuleInfo, Args0, _, _),
@@ -981,7 +981,7 @@ associativity_assertion([AssertId | AssertIds], ModuleInfo, Args0, VarAB,
 commutativity_assertion([AssertId | AssertIds], ModuleInfo, Args0,
         PossibleStaticVars) :-
     (
-        assertion.is_commutativity_assertion(AssertId, ModuleInfo,
+        assertion.is_commutativity_assertion(ModuleInfo, AssertId,
             Args0, StaticVarA - StaticVarB)
     ->
         \+ commutativity_assertion(AssertIds, ModuleInfo, Args0, _),
@@ -1005,7 +1005,7 @@ is_update(PredId, ModuleInfo, Args, ResultStateVars) :-
 
     list.filter_map(
         (pred(AssertId::in, StateVars::out) is semidet :-
-            assertion.is_update_assertion(AssertId, ModuleInfo,
+            assertion.is_update_assertion(ModuleInfo, AssertId,
                 PredId, Args, StateVars)
         ),
         set.to_sorted_list(Assertions), Result),
@@ -1027,8 +1027,8 @@ is_associative_construction(ConsId, PredId, ModuleInfo) :-
     pred_info_get_assertions(PredInfo, Assertions),
     list.filter(
         (pred(AssertId::in) is semidet :-
-            assertion.is_construction_equivalence_assertion(AssertId,
-                ModuleInfo, ConsId, PredId)
+            assertion.is_construction_equivalence_assertion(ModuleInfo,
+                AssertId, ConsId, PredId)
         ),
         set.to_sorted_list(Assertions), Result),
     Result = [_ | _].

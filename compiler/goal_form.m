@@ -29,19 +29,19 @@
     % An indication of whether a goal can loop forever.
     %
 :- type goal_loop_status
-    --->    can_loop 
-    ;       cannot_loop. 
+    --->    can_loop
+    ;       cannot_loop.
 
     % An indication of whether a goal can throw an exception.
     %
 :- type goal_throw_status
-    --->    can_throw 
-    ;       cannot_throw. 
+    --->    can_throw
+    ;       cannot_throw.
 
     % An indication of whether a goal can loop forever or throw an exception.
     %
 :- type goal_loop_or_throw_status
-    --->    can_loop_or_throw 
+    --->    can_loop_or_throw
     ;       cannot_loop_or_throw.
 
 %-----------------------------------------------------------------------------%
@@ -80,7 +80,7 @@
     % Succeeds if the goal cannot loop forever.
     %
 :- pred goal_cannot_loop(module_info::in, hlds_goal::in) is semidet.
-    
+
     % Succeeds if the goal can loop forever.
     %
 :- pred goal_can_loop(module_info::in, hlds_goal::in) is semidet.
@@ -102,7 +102,7 @@
 :- pred goal_can_loop_or_throw(module_info::in, hlds_goal::in) is semidet.
 
 %
-% These versions do not use the results of the termination or exception 
+% These versions do not use the results of the termination or exception
 % analyses.
 %
 
@@ -158,13 +158,13 @@
 % Trail usage
 %
 
-    % Succeeds if the goal does not modify the trail.
+    % Returns `yes' if the goal does not modify the trail.
     %
-:- pred goal_cannot_modify_trail(hlds_goal::in) is semidet.
+:- func goal_cannot_modify_trail(hlds_goal_info) = bool.
 
-    % Succeeds if the goal may modify the trail.
+    % Returns `yes' if the goal may modify the trail.
     %
-:- pred goal_may_modify_trail(hlds_goal::in) is semidet.
+:- func goal_may_modify_trail(hlds_goal_info) = bool.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -233,7 +233,7 @@ goal_can_throw_2(Goal, _GoalInfo, Result, !ModuleInfo, !IO) :-
     Goal = unify(_, _, _, Uni, _),
     % Complicated unifies are _non_builtin_
     ( Uni = complicated_unify(_, _, _) ->
-        Result = can_throw 
+        Result = can_throw
     ;
         Result = cannot_throw
     ).
@@ -248,11 +248,11 @@ goal_can_throw_2(Goal, _, Result, !ModuleInfo, !IO) :-
     Goal = foreign_proc(Attributes, _, _, _, _, _),
     ExceptionStatus = may_throw_exception(Attributes),
     (
-        ( 
+        (
             ExceptionStatus = will_not_throw_exception
         ;
             ExceptionStatus = default_exception_behaviour,
-            may_call_mercury(Attributes) = will_not_call_mercury    
+            may_call_mercury(Attributes) = will_not_call_mercury
         )
     ->
         Result = cannot_throw
@@ -261,7 +261,7 @@ goal_can_throw_2(Goal, _, Result, !ModuleInfo, !IO) :-
     ).
 goal_can_throw_2(Goal, _, can_throw, !ModuleInfo, !IO) :-
     Goal = shorthand(_).    % XXX maybe call unexpected/2 here.
-    
+
 :- pred goals_can_throw(hlds_goals::in, goal_throw_status::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
@@ -273,7 +273,7 @@ goals_can_throw([Goal | Goals], Result, !ModuleInfo, !IO) :-
         goals_can_throw(Goals, Result, !ModuleInfo, !IO)
     ;
         Result0 = can_throw,
-        Result  = can_throw 
+        Result  = can_throw
     ).
 
 :- pred cases_can_throw(list(case)::in, goal_throw_status::out,
@@ -288,7 +288,7 @@ cases_can_throw([Case | Cases], Result, !ModuleInfo, !IO) :-
         cases_can_throw(Cases, Result, !ModuleInfo, !IO)
     ;
         Result0 = can_throw,
-        Result  = can_throw 
+        Result  = can_throw
     ).
 
 goal_can_loop_or_throw(Goal, Result, !ModuleInfo, !IO) :-
@@ -403,7 +403,7 @@ goal_cannot_throw(ModuleInfo, Goal) :-
     goal_cannot_throw_aux(yes(ModuleInfo), Goal).
 
 :- pred goal_cannot_throw_aux(maybe(module_info)::in, hlds_goal::in)
-    is semidet.  
+    is semidet.
 
 goal_cannot_throw_aux(MaybeModuleInfo, GoalExpr - GoalInfo) :-
     goal_info_get_determinism(GoalInfo, Determinism),
@@ -436,12 +436,12 @@ goal_cannot_throw_expr(MaybeModuleInfo, Goal) :-
 goal_cannot_throw_expr(_MaybeModuleInfo, Goal) :-
     Goal = foreign_proc(Attributes, _, _, _, _, _),
     ExceptionStatus = may_throw_exception(Attributes),
-    ( 
+    (
         ExceptionStatus = will_not_throw_exception
     ;
         ExceptionStatus = default_exception_behaviour,
-        may_call_mercury(Attributes) = will_not_call_mercury    
-    ).  
+        may_call_mercury(Attributes) = will_not_call_mercury
+    ).
 goal_cannot_loop_expr(MaybeModuleInfo, Goal) :-
     Goal = call(PredId, ProcId, _, _, _, _),
     MaybeModuleInfo = yes(ModuleInfo),
@@ -752,15 +752,20 @@ count_recursive_calls_cases([case(_, Goal) | Cases], PredId, ProcId,
         int.min(Min0, Min1, Min),
         int.max(Max0, Max1, Max)
     ).
+
 %-----------------------------------------------------------------------------%
 %
 % Trail usage
 %
 
-goal_cannot_modify_trail(Goal) :-
-    goal_has_feature(Goal, will_not_modify_trail).
-goal_may_modify_trail(Goal) :-
-    not goal_cannot_modify_trail(Goal).
+goal_cannot_modify_trail(GoalInfo) =
+    ( goal_info_has_feature(GoalInfo, will_not_modify_trail) ->
+        yes
+    ;
+        no
+    ).
+
+goal_may_modify_trail(GoalInfo) = bool.not(goal_cannot_modify_trail(GoalInfo)).
 
 %-----------------------------------------------------------------------------%
 

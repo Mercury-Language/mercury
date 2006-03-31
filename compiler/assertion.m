@@ -31,7 +31,7 @@
 
     % Get the hlds_goal which represents the assertion.
     %
-:- pred goal(assert_id::in, module_info::in, hlds_goal::out) is det.
+:- pred assert_id_goal(module_info::in, assert_id::in, hlds_goal::out) is det.
 
     % Record into the pred_info of each pred used in the assertion
     % the assert_id.
@@ -39,7 +39,7 @@
 :- pred record_preds_used_in(hlds_goal::in, assert_id::in,
     module_info::in, module_info::out) is det.
 
-    % is_commutativity_assertion(Id, MI, Vs, CVs):
+    % is_commutativity_assertion(MI, Id, Vs, CVs):
     %
     % Does the assertion represented by the assertion id, Id,
     % state the commutativity of a pred/func?
@@ -55,10 +55,10 @@
     % arguments, Is, can be any where providing they are in
     % identical locations on both sides of the equivalence).
     %
-:- pred is_commutativity_assertion(assert_id::in, module_info::in,
+:- pred is_commutativity_assertion(module_info::in, assert_id::in,
     prog_vars::in, pair(prog_var)::out) is semidet.
 
-    % is_associativity_assertion(Id, MI, Vs, CVs, OV):
+    % is_associativity_assertion(MI, Id, Vs, CVs, OV):
     %
     % Does the assertion represented by the assertion id, Id,
     % state the associativity of a pred/func?
@@ -72,46 +72,56 @@
     % AB, BC or ABC).
     %
     % The assertion must be in a form similar to this
+    %
     %   all [Is,A,B,C,ABC]
     %   (
     %     some [AB] p(Is,A,B,AB), p(Is,AB,C,ABC)
     %   <=>
     %     some [BC] p(Is,B,C,BC), p(Is,A,BC,ABC)
     %   )
+    %
     % for the predicate to return true (note that the invariant
     % arguments, Is, can be any where providing they are in
     % identical locations on both sides of the equivalence).
     %
-:- pred is_associativity_assertion(assert_id::in, module_info::in,
+:- pred is_associativity_assertion(module_info::in, assert_id::in,
     prog_vars::in, pair(prog_var)::out, prog_var::out) is semidet.
 
-    % is_associativity_assertion(Id, MI, PId, Vs, SPair):
+    % is_update_assertion(MI, Id, PId, Ss):
     %
-    % Recognise assertions in the form
-    %   all [A,B,S0,S]
+    % is true iff the assertion, Id, is about a predicate, PId,
+    % which takes some state as input and produces some state as output
+    % and we are guaranteed to get the same final state regardless of
+    % the order that the state is updated.
+    %
+    % i.e. the promise should look something like this, note that A
+    % and B could be vectors of variables.
+    %
+    % :- promise all [A,B,SO,S]
     %   (
-    %     some [SA] p(A,S0,SA), p(B,SA,S)
+    %       (some [SA] (update(S0,A,SA), update(SA,B,S)))
     %   <=>
-    %     some [SB] p(B,S0,SB), p(A,SB,S)
-    %   )
-    % and given the actual variables, Vs, to the call to p, return
+    %       (some [SB] (update(S0,B,SB), update(SB,A,S)))
+    %   ).
+    %
+    % Given the actual variables, Vs, to the call to update, return
     % the pair of variables which are state variables, SPair.
     %
-:- pred is_update_assertion(assert_id::in, module_info::in,
+:- pred is_update_assertion(module_info::in, assert_id::in,
     pred_id::in, prog_vars::in, pair(prog_var)::out) is semidet.
 
-    % is_construction_equivalence_assertion(Id, MI, C, P):
+    % is_construction_equivalence_assertion(MI, Id, C, P):
     %
-    % Can a single construction unification whose functor is
-    % determined by the cons_id, C, be expressed as a call
-    % to the predid, P (with possibly some construction unifications
-    % to initialise the arguments).
+    % Can a single construction unification whose functor is determined
+    % by the cons_id, C, be expressed as a call to the predid, P (with possibly
+    % some construction unifications to initialise the arguments).
     %
     % The assertion will be in a form similar to
-    %   all [L,H,T] ( L = [H|T] <=> append([H], T, L) )
     %
-:- pred is_construction_equivalence_assertion(assert_id::in,
-    module_info::in, cons_id::in, pred_id::in) is semidet.
+    %   all [L,H,T] ( L = [H | T] <=> append([H], T, L) )
+    %
+:- pred is_construction_equivalence_assertion(module_info::in, assert_id::in,
+    cons_id::in, pred_id::in) is semidet.
 
     % Ensure that an assertion which is defined in an interface
     % doesn't refer to any constructors, functions and predicates
@@ -156,10 +166,9 @@
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-is_commutativity_assertion(AssertId, Module, CallVars,
-        CommutativeVars) :-
-    goal(AssertId, Module, Goal),
-    equivalent(Goal, P, Q),
+is_commutativity_assertion(Module, AssertId, CallVars, CommutativeVars) :-
+    assert_id_goal(Module, AssertId, Goal),
+    goal_is_equivalence(Goal, P, Q),
     P = call(PredId, _, VarsP, _, _, _) - _,
     Q = call(PredId, _, VarsQ, _, _, _) - _,
     commutative_var_ordering(VarsP, VarsQ, CallVars, CommutativeVars).
@@ -184,7 +193,7 @@ commutative_var_ordering([P | Ps], [Q | Qs], [V | Vs], CommutativeVars) :-
     ).
 
 :- pred commutative_var_ordering_2(prog_var::in, prog_var::in, prog_vars::in,
-        prog_vars::in, prog_vars::in, prog_var::out) is semidet.
+    prog_vars::in, prog_vars::in, prog_var::out) is semidet.
 
 commutative_var_ordering_2(VarP, VarQ, [P | Ps], [Q | Qs], [V | Vs],
         CallVarB) :-
@@ -200,10 +209,10 @@ commutative_var_ordering_2(VarP, VarQ, [P | Ps], [Q | Qs], [V | Vs],
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-is_associativity_assertion(AssertId, Module, CallVars,
+is_associativity_assertion(Module, AssertId, CallVars,
         AssociativeVars, OutputVar) :-
-    goal(AssertId, Module, Goal - GoalInfo),
-    equivalent(Goal - GoalInfo, P, Q),
+    assert_id_goal(Module, AssertId, Goal - GoalInfo),
+    goal_is_equivalence(Goal - GoalInfo, P, Q),
 
     goal_info_get_nonlocals(GoalInfo, UniversiallyQuantifiedVars),
 
@@ -308,26 +317,9 @@ number_of_associative_vars = 3.
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-    % is_update_assertion(Id, MI, PId, Ss):
-    %
-    % is true iff the assertion, Id, is about a predicate, PId,
-    % which takes some state as input and produces some state as
-    % output and the same state is produced as input regardless of
-    % the order that the state is updated.
-    %
-    % i.e. the promise should look something like this, note that A
-    % and B could be vectors of variables.
-    % :- promise all [A,B,SO,S]
-    %   (
-    %       (some [SA] (update(S0,A,SA), update(SA,B,S)))
-    %   <=>
-    %       (some [SB] (update(S0,B,SB), update(SB,A,S)))
-    %   ).
-    %
-is_update_assertion(AssertId, Module, _PredId, CallVars,
-        StateA - StateB) :-
-    goal(AssertId, Module, Goal - GoalInfo),
-    equivalent(Goal - GoalInfo, P, Q),
+is_update_assertion(Module, AssertId, _PredId, CallVars, StateA - StateB) :-
+    assert_id_goal(Module, AssertId, Goal - GoalInfo),
+    goal_is_equivalence(Goal - GoalInfo, P, Q),
     goal_info_get_nonlocals(GoalInfo, UniversiallyQuantifiedVars),
 
         % There may or may not be an explicit some [Vars] there,
@@ -410,9 +402,9 @@ process_two_linked_calls(Goals, UniversiallyQuantifiedVars, PredId,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-is_construction_equivalence_assertion(AssertId, Module, ConsId, PredId) :-
-    goal(AssertId, Module, Goal),
-    equivalent(Goal, P, Q),
+is_construction_equivalence_assertion(Module, AssertId, ConsId, PredId) :-
+    assert_id_goal(Module, AssertId, Goal),
+    goal_is_equivalence(Goal, P, Q),
     ( single_construction(P, ConsId) ->
         predicate_call(Q, PredId)
     ;
@@ -455,7 +447,7 @@ predicate_call(Goal, PredId) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-goal(AssertId, Module, Goal) :-
+assert_id_goal(Module, AssertId, Goal) :-
     module_info_get_assertion_table(Module, AssertTable),
     assertion_table_lookup(AssertTable, AssertId, PredId),
     module_info_pred_info(Module, PredId, PredInfo),
@@ -470,9 +462,10 @@ goal(AssertId, Module, Goal) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- pred implies(hlds_goal::in, hlds_goal::out, hlds_goal::out) is semidet.
+:- pred goal_is_implication(hlds_goal::in, hlds_goal::out, hlds_goal::out)
+    is semidet.
 
-implies(Goal, P, Q) :-
+goal_is_implication(Goal, P, Q) :-
         % Goal = (P => Q)
     Goal = not(conj(plain_conj, GoalList) - GI) - _,
     list.reverse(GoalList) = [NotQ | Ps],
@@ -483,14 +476,15 @@ implies(Goal, P, Q) :-
     ),
     NotQ = not(Q) - _.
 
-:- pred equivalent(hlds_goal::in, hlds_goal::out, hlds_goal::out) is semidet.
+:- pred goal_is_equivalence(hlds_goal::in, hlds_goal::out, hlds_goal::out)
+    is semidet.
 
-equivalent(Goal, P, Q) :-
+goal_is_equivalence(Goal, P, Q) :-
         % Goal = P <=> Q
     Goal = conj(plain_conj, [A, B]) - _GoalInfo,
     map.init(Subst),
-    implies(A, PA, QA),
-    implies(B, QB, PB),
+    goal_is_implication(A, PA, QA),
+    goal_is_implication(B, QB, PB),
     equal_goals(PA, PB, Subst, _),
     equal_goals(QA, QB, Subst, _),
     P = PA,
@@ -535,8 +529,7 @@ equal_goals(if_then_else(VarsA, IfA, ThenA, ElseA) - _,
     equal_goals(ThenA, ThenB, !Subst),
     equal_goals(ElseA, ElseB, !Subst).
 equal_goals(foreign_proc(Attribs, PredId, _, ArgsA, ExtraA, _) - _,
-        foreign_proc(Attribs, PredId, _, ArgsB, ExtraB, _) - _,
-        !Subst) :-
+        foreign_proc(Attribs, PredId, _, ArgsB, ExtraB, _) - _, !Subst) :-
     % Foreign_procs with extra args are compiler generated,
     % and as such will not participate in assertions.
     ExtraA = [],
@@ -625,8 +618,8 @@ equal_goals_cases([CaseA | CaseAs], [CaseB | CaseBs], !Subst) :-
 %-----------------------------------------------------------------------------%
 
 record_preds_used_in(Goal, AssertId, !Module) :-
-        % Explicit lambda expression needed since
-        % goal_calls_pred_id has multiple modes.
+    % Explicit lambda expression needed since goal_calls_pred_id
+    % has multiple modes.
     P = (pred(PredId::out) is nondet :- goal_calls_pred_id(Goal, PredId)),
     solutions.solutions(P, PredIds),
     list.foldl(update_pred_info(AssertId), PredIds, !Module).
@@ -655,8 +648,7 @@ normalise_goal(Goal @ call(_, _, _, _, _, _) - GI, Goal - GI).
 normalise_goal(Goal @ generic_call(_, _, _, _) - GI, Goal - GI).
 normalise_goal(Goal @ unify(_, _, _, _, _) - GI, Goal - GI).
 normalise_goal(Goal @ foreign_proc(_, _, _, _, _, _) - GI, Goal - GI).
-normalise_goal(conj(ConjType, Goals0) - GI,
-        conj(ConjType, Goals) - GI) :-
+normalise_goal(conj(ConjType, Goals0) - GI, conj(ConjType, Goals) - GI) :-
     (
         ConjType = plain_conj,
         normalise_conj(Goals0, Goals)

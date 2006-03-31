@@ -62,6 +62,7 @@
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.arg_info.
+:- import_module hlds.goal_form.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_rtti.
 :- import_module libs.compiler_util.
@@ -144,6 +145,8 @@
 
 :- pred get_maybe_trace_info(code_info::in, maybe(trace_info)::out) is det.
 
+:- pred get_emit_trail_ops(code_info::in, add_trail_ops::out) is det.
+
     % Get the set of currently forward-live variables.
     %
 :- pred get_forward_live_vars(code_info::in, set(prog_var)::out) is det.
@@ -206,6 +209,8 @@
     code_info::in, code_info::out) is det.
 
 :- pred get_opt_no_return_calls(code_info::in, bool::out) is det.
+
+:- pred get_opt_trail_ops(code_info::in, bool::out) is det.
 
 :- pred get_zombies(code_info::in, set(prog_var)::out) is det.
 
@@ -319,7 +324,16 @@
                                     % are stored in, provided tracing is
                                     % switched on.
                 
-                opt_no_resume_calls :: bool
+                opt_no_resume_calls :: bool,
+                                    % Should we optimize calls that cannot
+                                    % return?
+
+                emit_trail_ops      :: bool,
+                                    % Should we emit trail operations?
+
+                opt_trail_ops       :: bool
+                                    % Should we try to avoid emiting trail
+                                    % operations?
             ).
 
 :- type code_info_loc_dep
@@ -455,6 +469,17 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
     int.max(VarSlotMax, FixedSlots, SlotMax),
     globals.lookup_bool_option(Globals, opt_no_return_calls,
         OptNoReturnCalls),
+    globals.lookup_bool_option(Globals, use_trail, UseTrail),
+    globals.lookup_bool_option(Globals, disable_trail_ops, DisableTrailOps),
+    (
+        UseTrail = yes,
+        DisableTrailOps = no
+    ->
+        EmitTrailOps = yes
+    ;
+        EmitTrailOps = no
+    ),
+    globals.lookup_bool_option(Globals, optimize_trail_usage, OptTrailOps),
     CodeInfo0 = code_info(
         code_info_static(
             Globals,
@@ -466,7 +491,9 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
             VarSet,
             SlotMax,
             no,
-            OptNoReturnCalls
+            OptNoReturnCalls,
+            EmitTrailOps,
+            OptTrailOps
         ),
         code_info_loc_dep(
             Liveness,
@@ -530,6 +557,10 @@ get_maybe_trace_info(CI,
     CI ^ code_info_static ^ maybe_trace_info).
 get_opt_no_return_calls(CI,
     CI ^ code_info_static ^ opt_no_resume_calls).
+get_emit_trail_ops(CI,
+    CI ^ code_info_static ^ emit_trail_ops).
+get_opt_trail_ops(CI,
+    CI ^ code_info_static ^ opt_trail_ops).
 get_forward_live_vars(CI,
     CI ^ code_info_loc_dep ^ forward_live_vars).
 get_instmap(CI,
@@ -2875,6 +2906,14 @@ pickup_zombies(Zombies, !CI) :-
 :- pred maybe_discard_and_release_ticket(maybe(lval)::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
+    % Tests if we should add trail ops to the code we generate for the goal
+    % with the given goalinfo. This will be 'no' unless we are compiling
+    % in trailing grade. It may also be 'no' in trailing grades if we are
+    % optimizing trail usage and trail usage analysis tells us that it is safe
+    % to omit the trail ops.
+    %
+:- func should_add_trail_ops(code_info, hlds_goal_info) = add_trail_ops.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -3061,6 +3100,23 @@ maybe_discard_and_release_ticket(MaybeTicketSlot, Code, !CI) :-
     ;
         MaybeTicketSlot = no,
         Code = empty
+    ).
+
+should_add_trail_ops(CodeInfo, GoalInfo) = AddTrailOps :-
+    get_emit_trail_ops(CodeInfo, EmitTrailOps),
+    (
+        EmitTrailOps = no,
+        AddTrailOps = no
+    ;
+        EmitTrailOps = yes,
+        get_opt_trail_ops(CodeInfo, OptTrailOps),
+        (
+            OptTrailOps = no,
+            AddTrailOps = yes
+        ;
+            OptTrailOps = yes,
+            AddTrailOps = goal_may_modify_trail(GoalInfo)
+        )
     ).
 
 %---------------------------------------------------------------------------%

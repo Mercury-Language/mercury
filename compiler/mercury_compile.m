@@ -3119,8 +3119,7 @@ maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO) :-
         EmitTrailOps = no
     ;
         UseTrail = yes,
-        globals.io_lookup_bool_option(disable_trail_ops, DisableTrailOps,
-            !IO),
+        globals.io_lookup_bool_option(disable_trail_ops, DisableTrailOps, !IO),
         (
             DisableTrailOps = yes,
             EmitTrailOps = no
@@ -3143,7 +3142,8 @@ maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO) :-
             %
             ( Target = il
             ; Target = java
-            ; Target = asm ),
+            ; Target = asm
+            ),
             GenerateInline = no
         ),
         maybe_write_string(Verbose, "% Adding trailing operations...\n", !IO),
