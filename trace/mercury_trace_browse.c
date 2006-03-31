@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2005 The University of Melbourne.
+** Copyright (C) 1998-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -304,78 +304,70 @@ MR_trace_set_browser_param(MR_Word print, MR_Word browse, MR_Word print_all,
         MR_trace_is_portray_format(value, &new_format))
     {
         MR_TRACE_CALL_MERCURY(
-            ML_BROWSE_set_param_format_from_mdb(print, browse,
+            ML_BROWSE_set_format_from_mdb(print, browse,
                 print_all, new_format,
                 MR_trace_browser_persistent_state,
                 &MR_trace_browser_persistent_state);
         );
-    }
-    else if (MR_streq(param, "depth") &&
+    } else if (MR_streq(param, "depth") &&
         MR_trace_is_natural_number(value, &depth))
     {
         MR_TRACE_CALL_MERCURY(
-            ML_BROWSE_set_param_depth_from_mdb(print, browse, print_all,
+            ML_BROWSE_set_depth_from_mdb(print, browse, print_all,
                 flat, raw_pretty, verbose, pretty, depth,
                 MR_trace_browser_persistent_state,
                 &MR_trace_browser_persistent_state);
         );
-    }
-    else if (MR_streq(param, "size") &&
+    } else if (MR_streq(param, "size") &&
         MR_trace_is_natural_number(value, &size))
     {
         MR_TRACE_CALL_MERCURY(
-            ML_BROWSE_set_param_size_from_mdb(print, browse, print_all,
+            ML_BROWSE_set_size_from_mdb(print, browse, print_all,
                 flat, raw_pretty, verbose, pretty, size,
                 MR_trace_browser_persistent_state,
                 &MR_trace_browser_persistent_state);
         );
-    }
-    else if (MR_streq(param, "width") &&
+    } else if (MR_streq(param, "width") &&
         MR_trace_is_natural_number(value, &width))
     {
         MR_TRACE_CALL_MERCURY(
-            ML_BROWSE_set_param_width_from_mdb(print, browse, print_all,
+            ML_BROWSE_set_width_from_mdb(print, browse, print_all,
                 flat, raw_pretty, verbose, pretty, width,
                 MR_trace_browser_persistent_state,
                 &MR_trace_browser_persistent_state);
         );
-    }
-    else if (MR_streq(param, "lines") &&
+    } else if (MR_streq(param, "lines") &&
         MR_trace_is_natural_number(value, &lines))
     {
         MR_TRACE_CALL_MERCURY(
-            ML_BROWSE_set_param_lines_from_mdb(print, browse, print_all,
+            ML_BROWSE_set_lines_from_mdb(print, browse, print_all,
                 flat, raw_pretty, verbose, pretty, lines,
                 MR_trace_browser_persistent_state,
                 &MR_trace_browser_persistent_state);
         );
-    }
-    else if (MR_streq(param, "xml_browser_cmd")) {
-        copied_value = (char*)MR_GC_malloc(strlen(value) + 1);
+    } else if (MR_streq(param, "xml_browser_cmd")) {
+        copied_value = (char *) MR_GC_malloc(strlen(value) + 1);
         strcpy(copied_value, value);
         MR_TRACE_USE_HP(
             MR_make_aligned_string(aligned_value, copied_value);
         );
         MR_TRACE_CALL_MERCURY(
-            ML_BROWSE_set_param_xml_browser_cmd_from_mdb(aligned_value, 
+            ML_BROWSE_set_xml_browser_cmd_from_mdb(aligned_value, 
                 MR_trace_browser_persistent_state,
                 &MR_trace_browser_persistent_state);
         );
-    }
-    else if (MR_streq(param, "xml_tmp_filename")) {
-        copied_value = (char*)MR_GC_malloc(strlen(value) + 1);
+    } else if (MR_streq(param, "xml_tmp_filename")) {
+        copied_value = (char *) MR_GC_malloc(strlen(value) + 1);
         strcpy(copied_value, value);
         MR_TRACE_USE_HP(
             MR_make_aligned_string(aligned_value, copied_value);
         );
         MR_TRACE_CALL_MERCURY(
-            ML_BROWSE_set_param_xml_tmp_filename_from_mdb(aligned_value, 
+            ML_BROWSE_set_xml_tmp_filename_from_mdb(aligned_value, 
                 MR_trace_browser_persistent_state,
                 &MR_trace_browser_persistent_state);
         );
-    }
-    else
-    {
+    } else {
         return MR_FALSE;
     }
 
@@ -404,6 +396,20 @@ MR_trace_is_portray_format(const char *str, MR_Browse_Format *format)
         return MR_TRUE;
     }
     return MR_FALSE;
+}
+
+void
+MR_trace_print_all_browser_params(FILE *fp, MR_bool mdb_command_format)
+{
+    MR_String   param_string;
+
+    MR_trace_browse_ensure_init();
+    MR_TRACE_CALL_MERCURY(
+        ML_BROWSE_browser_params_to_string(MR_trace_browser_persistent_state,
+            mdb_command_format, &param_string);
+    );
+
+    fprintf(fp, param_string);
 }
 
 void

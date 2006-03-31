@@ -1,5 +1,8 @@
 /*
-** Copyright (C) 1998,2000-2002 The University of Melbourne.
+** vim: ts=4 sw=4 expandtab
+*/
+/*
+** Copyright (C) 1998,2000-2002, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -10,18 +13,18 @@
 ** Defines the interface of the alias system for the internal debugger.
 */
 
-#ifndef	MERCURY_TRACE_ALIAS_H
+#ifndef MERCURY_TRACE_ALIAS_H
 #define MERCURY_TRACE_ALIAS_H
 
-#include "mercury_std.h"	/* for MR_bool */
+#include "mercury_std.h"    /* for MR_bool */
 #include <stdio.h>
 
 #include "mercury_trace_completion.h"
 
 typedef struct {
-	char		*MR_alias_name;
-	char		**MR_alias_words;
-	int		MR_alias_word_count;
+    char        *MR_alias_name;
+    char        **MR_alias_words;
+    int         MR_alias_word_count;
 } MR_Alias;
 
 /*
@@ -33,8 +36,8 @@ typedef struct {
 ** Overwrites any previous alias with the same name.
 */
 
-extern	void		MR_trace_add_alias(char *name, char **words,
-				int word_count);
+extern  void        MR_trace_add_alias(char *name, char **words,
+                        int word_count);
 
 /*
 ** Remove the given alias from the list. Returns MR_FALSE if there is no
@@ -42,7 +45,7 @@ extern	void		MR_trace_add_alias(char *name, char **words,
 ** successful.
 */
 
-extern	MR_bool		MR_trace_remove_alias(const char *name);
+extern  MR_bool     MR_trace_remove_alias(const char *name);
 
 /*
 ** Looks up whether the given alias exists. If yes, returns MR_TRUE, and
@@ -51,15 +54,15 @@ extern	MR_bool		MR_trace_remove_alias(const char *name);
 ** returns MR_FALSE.
 */
 
-extern	MR_bool		MR_trace_lookup_alias(const char *name,
-				char ***words_ptr, int *word_count_ptr);
+extern  MR_bool     MR_trace_lookup_alias(const char *name,
+                        char ***words_ptr, int *word_count_ptr);
 
 /*
 ** Print the alias of the given name, if it exists, and an error message
 ** if it does not.
 */
 
-extern	void		MR_trace_print_alias(FILE *fp, const char *name);
+extern  void        MR_trace_print_alias(FILE *fp, const char *name);
 
 /*
 ** Print all the aliases to the given file. If mdb_command_format is MR_TRUE,
@@ -67,11 +70,12 @@ extern	void		MR_trace_print_alias(FILE *fp, const char *name);
 ** Otherwise, print the aliases in a format that is nice for humans to read.
 */
 
-extern	void		MR_trace_print_all_aliases(FILE *fp,
-				MR_bool mdb_command_format);
+extern  void        MR_trace_print_all_aliases(FILE *fp,
+                        MR_bool mdb_command_format);
 
 /* A Readline completer for aliases. */ 
-extern	MR_Completer_List *MR_trace_alias_completer(const char *word,
-				size_t word_length);
+extern  MR_Completer_List
+                    *MR_trace_alias_completer(const char *word,
+                        size_t word_length);
 
-#endif	/* MERCURY_TRACE_ALIAS_H */
+#endif  /* MERCURY_TRACE_ALIAS_H */

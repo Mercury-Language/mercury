@@ -1,0 +1,11 @@
+echo on
+register --quiet
+b data
+b nodiag
+condition B = 5
+context nextline
+scroll 42
+alias x save
+trust save
+save save_file
+continue -n -S

@@ -1,0 +1,106 @@
+       1:      1  1 CALL pred save.main/2-0 (cc_multi) save.m:17
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> b data
+ 0: + stop  interface pred save.data/1-0 (det)
+mdb> b nodiag
+ 1: + stop  interface pred save.nodiag/3-0 (semidet)
+mdb> condition B = 5
+ 1: + stop  interface pred save.nodiag/3-0 (semidet)
+            B = 5
+mdb> context nextline
+Contexts will be printed on the next line.
+mdb> scroll 42
+Scroll window size set to 42.
+mdb> alias x save
+x      =>    save
+mdb> trust save
+Trusting module save
+mdb> save save_file
+Debugger state saved to save_file.
+mdb> continue -n -S
+[1, 3, 5, 2, 4]
+alias ? help
+alias EMPTY step
+alias NUMBER step
+alias P print *
+alias b break
+alias c continue
+alias d stack
+alias e exception
+alias excp exception
+alias f finish
+alias g goto
+alias h help
+alias p print
+alias r retry
+alias s step
+alias v vars
+alias x save
+printlevel some
+echo on
+scroll on
+scroll 42
+stack_default_limit 0
+context nextline
+goal_paths on
+break pred*save.data/1-0
+break pred*save.nodiag/3-0
+condition B = 5
+scope interface
+set -P format flat
+set -P -f depth 3
+set -P -f size 10
+set -P -f width 80
+set -P -f lines 25
+set -P -r depth 3
+set -P -r size 10
+set -P -r width 80
+set -P -r lines 25
+set -P -v depth 3
+set -P -v size 10
+set -P -v width 80
+set -P -v lines 25
+set -P -p depth 3
+set -P -p size 10
+set -P -p width 80
+set -P -p lines 25
+set -B format flat
+set -B -f depth 10
+set -B -f size 30
+set -B -f width 80
+set -B -f lines 25
+set -B -r depth 10
+set -B -r size 30
+set -B -r width 80
+set -B -r lines 25
+set -B -v depth 10
+set -B -v size 30
+set -B -v width 80
+set -B -v lines 25
+set -B -p depth 10
+set -B -p size 30
+set -B -p width 80
+set -B -p lines 25
+set -A format flat
+set -A -f depth 3
+set -A -f size 10
+set -A -f width 80
+set -A -f lines 2
+set -A -r depth 3
+set -A -r size 10
+set -A -r width 80
+set -A -r lines 2
+set -A -v depth 3
+set -A -v size 10
+set -A -v width 80
+set -A -v lines 5
+set -A -p depth 3
+set -A -p size 10
+set -A -p width 80
+set -A -p lines 2
+set max_io_actions 20
+trust save
+trust std lib
+set list_context_lines 2

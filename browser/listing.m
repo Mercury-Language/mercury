@@ -99,19 +99,19 @@
     % These predicates are called from trace/mercury_trace_internal.c.
     %
 :- pragma export(new_list_path = out,
-    "MR_LISTING_new_list_path").
+    "ML_LISTING_new_list_path").
 :- pragma export(get_list_path(in) = out,
-    "MR_LISTING_get_list_path").
+    "ML_LISTING_get_list_path").
 :- pragma export(set_list_path(in, in, out),
-    "MR_LISTING_set_list_path").
+    "ML_LISTING_set_list_path").
 :- pragma export(clear_list_path(in, out),
-    "MR_LISTING_clear_list_path").
+    "ML_LISTING_clear_list_path").
 :- pragma export(push_list_path(in, in, out),
-    "MR_LISTING_push_list_path").
+    "ML_LISTING_push_list_path").
 :- pragma export(pop_list_path(in, out),
-    "MR_LISTING_pop_list_path").
+    "ML_LISTING_pop_list_path").
 :- pragma export(list_file(in, in, in, in, in, in, in, di, uo),
-    "MR_LISTING_list_file").
+    "ML_LISTING_list_file").
 
 %-----------------------------------------------------------------------------%
 

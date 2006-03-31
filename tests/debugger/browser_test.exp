@@ -10,7 +10,7 @@ mdb> finish
       E3:     C2 EXIT pred browser_test.big_data/1-0 (det) browser_test.m:37 (browser_test.m:20)
 mdb> delete *
  0: E stop  interface pred browser_test.big_data/1-0 (det)
-mdb> save_to_file 1 browser_test.save.1
+mdb> dump 1 browser_test.save.1
 mdb> set format raw_pretty
 mdb> print *
        Data (arg 1)           	
@@ -187,7 +187,7 @@ big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big(small, 5, smal
       E4:     C3 CALL pred browser_test.list_data/1-0 (det) browser_test.m:66 (browser_test.m:23)
 mdb> finish
       E5:     C3 EXIT pred browser_test.list_data/1-0 (det) browser_test.m:66 (browser_test.m:23)
-mdb> save_to_file Data browser_test.save.2
+mdb> dump Data browser_test.save.2
 mdb> break a_func
  1: + stop  interface func browser_test.a_func/1-0 (det)
 mdb> continue

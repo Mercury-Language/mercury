@@ -231,11 +231,11 @@ static  MR_Context_Position MR_context_position = MR_CONTEXT_AFTER;
 static  MR_bool     MR_print_goal_paths = MR_TRUE;
 
 /*
-** MR_LISTING_path holds the current value of the listings structure
+** MR_listing_path holds the current value of the listings structure
 ** as defined in browser/listing.m.
 */
 
-static  MR_Word     MR_LISTING_path;
+static  MR_Word     MR_listing_path;
 
 /*
 ** MR_num_context_lines holds the current number of context lines to be
@@ -476,7 +476,7 @@ static  MR_TraceCmdFunc MR_trace_cmd_set;
 static  MR_TraceCmdFunc MR_trace_cmd_view;
 static  MR_TraceCmdFunc MR_trace_cmd_hold;
 static  MR_TraceCmdFunc MR_trace_cmd_diff;
-static  MR_TraceCmdFunc MR_trace_cmd_save_to_file;
+static  MR_TraceCmdFunc MR_trace_cmd_dump;
 static  MR_TraceCmdFunc MR_trace_cmd_list;
 static  MR_TraceCmdFunc MR_trace_cmd_set_list_dir_path;
 static  MR_TraceCmdFunc MR_trace_cmd_push_list_dir;
@@ -629,7 +629,7 @@ static  MR_bool     MR_trace_options_ambiguity(const char **outfile,
                         char ***words, int *word_count);
 static  MR_bool     MR_trace_options_diff(int *start, int *max,
                         char ***words, int *word_count);
-static  MR_bool     MR_trace_options_save_to_file(MR_bool *xml,
+static  MR_bool     MR_trace_options_dump(MR_bool *xml,
                         char ***words, int *word_count);
 static  MR_bool     MR_trace_options_dice(char **pass_trace_counts_file,
                         char **fail_trace_count_file, char **sort_str,
@@ -1016,10 +1016,9 @@ MR_trace_internal_create_mdb_window(void)
 #if defined(MR_HAVE_TCGETATTR) && defined(MR_HAVE_TCSETATTR) && \
         defined(ECHO) && defined(TCSADRAIN)
     /*
-    ** Turn off echoing before starting the xterm so that
-    ** the user doesn't see the window ID printed by xterm
-    ** on startup (this behaviour is not documented in the
-    ** xterm manual).
+    ** Turn off echoing before starting the xterm so that the user doesn't see
+    ** the window ID printed by xterm on startup (this behaviour is not
+    ** documented in the xterm manual).
     */
     tcgetattr(slave_fd, &termio);
     termio.c_lflag &= ~ECHO;
@@ -1460,8 +1459,8 @@ MR_trace_var_print_list(MR_Spy_Print_List print_list)
                 problem = MR_trace_parse_browse_one(MR_mdb_out, MR_TRUE,
                     node->p_name, MR_trace_browse_internal,
                     MR_BROWSE_CALLER_PRINT, node->p_format, MR_FALSE);
-                if (problem != NULL && MR_streq(problem,
-                    "there is no such variable"))
+                if (problem != NULL &&
+                    MR_streq(problem, "there is no such variable"))
                 {
                     if (node->p_warn) {
                         problem = "there is no variable named";
@@ -2307,35 +2306,41 @@ MR_trace_cmd_set(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_Word             raw_pretty_format;
     MR_Word             verbose_format;
     MR_Word             pretty_format;
+    int                 max_io_actions;
 
     if (word_count >= 3 && MR_streq(words[1], "list_context_lines")) {
-
         if (word_count > 3
             || !MR_trace_is_natural_number(words[2], &MR_num_context_lines)) {
             MR_trace_usage_cur_cmd();
         }
-
     } else if (word_count >= 3 && MR_streq(words[1], "list_path")) {
-
         MR_trace_cmd_set_list_dir_path(words, word_count, cmd, event_info,
             jumpaddr);
-
-    } else if (word_count == 3 && (  MR_streq(words[1], "fail_trace_count")
-                                  || MR_streq(words[1], "fail_trace_counts")))
+    } else if (word_count == 3 &&
+        (  MR_streq(words[1], "fail_trace_count")
+        || MR_streq(words[1], "fail_trace_counts")))
     {
         if (MR_dice_fail_trace_counts_file != NULL) {
             free(MR_dice_fail_trace_counts_file);
         }
         MR_dice_fail_trace_counts_file = MR_copy_string(words[2]);
-
-    } else if (word_count == 3 && (  MR_streq(words[1], "pass_trace_count")
-                                  || MR_streq(words[1], "pass_trace_counts")))
+    } else if (word_count == 3 &&
+        (  MR_streq(words[1], "pass_trace_count")
+        || MR_streq(words[1], "pass_trace_counts")))
     {
         if (MR_dice_pass_trace_counts_file != NULL) {
             free(MR_dice_pass_trace_counts_file);
         }
         MR_dice_pass_trace_counts_file = MR_copy_string(words[2]);
-
+    } else if (word_count == 3 &&
+        MR_streq(words[1], "max_io_actions") &&
+        MR_trace_is_natural_number(words[2], &max_io_actions))
+    {
+        MR_TRACE_CALL_MERCURY(
+            ML_BROWSE_set_num_io_actions_from_mdb(max_io_actions,
+                MR_trace_browser_persistent_state,
+                &MR_trace_browser_persistent_state);
+        );
     } else if (! MR_trace_options_param_set(&print_set, &browse_set,
         &print_all_set, &flat_format, &raw_pretty_format, &verbose_format,
         &pretty_format, &words, &word_count))
@@ -2500,7 +2505,7 @@ MR_trace_cmd_diff(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
 }
 
 static MR_Next
-MR_trace_cmd_save_to_file(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+MR_trace_cmd_dump(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_Event_Info *event_info, MR_Code **jumpaddr)
 {
     MR_bool         verbose = MR_FALSE;
@@ -2513,7 +2518,7 @@ MR_trace_cmd_save_to_file(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     */
     browser_term = (MR_Word) NULL;
 
-    if (! MR_trace_options_save_to_file(&xml, &words, &word_count)) {
+    if (! MR_trace_options_dump(&xml, &words, &word_count)) {
         ; /* the usage message has already been printed */
     } else if (word_count != 3) {
         MR_trace_usage_cur_cmd();
@@ -2582,18 +2587,18 @@ MR_trace_cmd_save_to_file(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     return KEEP_INTERACTING;
 }
 
-    /*
-    ** list [num]
-    **  List num lines of context around the line number of the context of the
-    **  current point (i.e., level in the call stack).  If num is not given,
-    **  the number of context lines defaults to the value of the context_lines
-    **  setting.
-    **
-    ** TODO: add the following (use MR_parse_source_locn()):
-    ** list filename:num[-num]
-    **  List a range of lines from a given file.  If only one number is
-    **  given, the default number of lines of context is used.
-    */
+/*
+** list [num]
+**  List num lines of context around the line number of the context of the
+**  current point (i.e., level in the call stack).  If num is not given,
+**  the number of context lines defaults to the value of the context_lines
+**  setting.
+**
+** TODO: add the following (use MR_parse_source_locn()):
+** list filename:num[-num]
+**  List a range of lines from a given file.  If only one number is
+**  given, the default number of lines of context is used.
+*/
 
 static MR_Next
 MR_trace_cmd_list(char **words, int word_count,
@@ -2627,8 +2632,8 @@ MR_trace_cmd_list(char **words, int word_count,
     );
 
     MR_TRACE_CALL_MERCURY(
-        MR_LISTING_list_file(MR_mdb_out, MR_mdb_err, (char *) aligned_filename,
-            lineno - num, lineno + num, lineno, MR_LISTING_path);
+        ML_LISTING_list_file(MR_mdb_out, MR_mdb_err, (char *) aligned_filename,
+            lineno - num, lineno + num, lineno, MR_listing_path);
     );
 
     return KEEP_INTERACTING;
@@ -2644,13 +2649,13 @@ MR_trace_cmd_set_list_dir_path(char **words, int word_count,
     MR_trace_listing_path_ensure_init();
 
     MR_TRACE_CALL_MERCURY(
-        MR_LISTING_clear_list_path(MR_LISTING_path, &MR_LISTING_path);
+        ML_LISTING_clear_list_path(MR_listing_path, &MR_listing_path);
         for(i = word_count - 1; i >= 1; i--) {
             MR_TRACE_USE_HP(
                 MR_make_aligned_string(aligned_word, (MR_String) words[i]);
             );
-            MR_LISTING_push_list_path(aligned_word,
-                MR_LISTING_path, &MR_LISTING_path);
+            ML_LISTING_push_list_path(aligned_word,
+                MR_listing_path, &MR_listing_path);
         }
     );
 
@@ -2676,8 +2681,8 @@ MR_trace_cmd_push_list_dir(char **words, int word_count,
             MR_TRACE_USE_HP(
                 MR_make_aligned_string(aligned_word, (MR_String) words[i]);
             );
-            MR_LISTING_push_list_path(aligned_word,
-                MR_LISTING_path, &MR_LISTING_path);
+            ML_LISTING_push_list_path(aligned_word,
+                MR_listing_path, &MR_listing_path);
         }
     );
 
@@ -2696,7 +2701,7 @@ MR_trace_cmd_pop_list_dir(char **words, int word_count,
     }
 
     MR_TRACE_CALL_MERCURY(
-        MR_LISTING_pop_list_path(MR_LISTING_path, &MR_LISTING_path);
+        ML_LISTING_pop_list_path(MR_listing_path, &MR_listing_path);
     );
 
     return KEEP_INTERACTING;
@@ -2709,7 +2714,7 @@ MR_trace_listing_path_ensure_init()
 
     if (! MR_trace_listing_path_initialized) {
         MR_TRACE_CALL_MERCURY(
-            MR_LISTING_path = MR_LISTING_new_list_path();
+            MR_listing_path = ML_LISTING_new_list_path();
         );
         MR_trace_listing_path_initialized = MR_TRUE;
     }
@@ -2824,8 +2829,7 @@ MR_trace_cmd_break(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
             fprintf(MR_mdb_err,
                 "Ambiguous procedure specification. The matches are:\n");
 
-            for (i = 0; i < matches.match_proc_next; i++)
-            {
+            for (i = 0; i < matches.match_proc_next; i++) {
                 fprintf(MR_mdb_out, "%d: ", i);
                 MR_print_proc_id_and_nl(MR_mdb_out, matches.match_procs[i]);
             }
@@ -3019,8 +3023,7 @@ MR_trace_cmd_ignore(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
         &words, &word_count))
     {
         ; /* the usage message has already been printed */
-    } else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n))
-    {
+    } else if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
         if (0 <= n && n < MR_spy_point_next && MR_spy_points[n]->spy_exists) {
             problem = MR_ignore_spy_point(n, ignore_when, ignore_count);
             MR_maybe_print_spy_point(n, problem);
@@ -3078,8 +3081,7 @@ MR_trace_cmd_break_print(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
         &words, &word_count))
     {
         ; /* the usage message has already been printed */
-    } else if (word_count > 2 && MR_trace_is_natural_number(words[1], &n))
-    {
+    } else if (word_count > 2 && MR_trace_is_natural_number(words[1], &n)) {
         if (word_count == 3 && MR_streq(words[2], "none")) {
             MR_clear_spy_point_print_list(n);
             MR_print_spy_point(MR_mdb_out, n, MR_TRUE);
@@ -4471,7 +4473,7 @@ MR_trace_cmd_print_optionals(char **words, int word_count,
     } else if (word_count == 2 && MR_streq(words[1], "on")) {
         MR_print_optionals = MR_TRUE;
         MR_trace_set_level(MR_trace_current_level(), MR_print_optionals);
-    } else if (word_count == 1)  {
+    } else if (word_count == 1) {
         fprintf(MR_mdb_out, "optional values are %sbeing printed\n",
             MR_print_optionals? "" : "not ");
     } else {
@@ -4492,7 +4494,7 @@ MR_trace_cmd_unhide_events(char **words, int word_count,
         MR_trace_unhide_events = MR_TRUE;
         MR_trace_have_unhid_events = MR_TRUE;
         fprintf(MR_mdb_out, "Hidden events are exposed.\n");
-    } else if (word_count == 1)  {
+    } else if (word_count == 1) {
         fprintf(MR_mdb_out, "Hidden events are %s.\n",
             MR_trace_unhide_events? "exposed" : "hidden");
     } else {
@@ -4524,8 +4526,7 @@ MR_find_single_matching_proc(MR_Proc_Spec *spec, MR_bool verbose)
         fflush(MR_mdb_out);
         fprintf(MR_mdb_err, "Ambiguous procedure specification. "
             "The matches are:\n");
-        for (i = 0; i < matches.match_proc_next; i++)
-        {
+        for (i = 0; i < matches.match_proc_next; i++) {
             fprintf(MR_mdb_out, "%d: ", i);
             MR_print_proc_id_and_nl(MR_mdb_out, matches.match_procs[i]);
         }
@@ -4869,8 +4870,7 @@ MR_trace_fill_in_int_table_arg_slot(MR_TrieNode *table_cur_ptr,
     MR_Integer  n;
     MR_TrieNode table_next;
 
-    if (! MR_trace_is_integer(given_arg, &n))
-    {
+    if (! MR_trace_is_integer(given_arg, &n)) {
         fprintf(MR_mdb_out, "argument %d is not an integer.\n", arg_num);
         return MR_FALSE;
     }
@@ -5778,6 +5778,7 @@ MR_trace_cmd_save(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     if (word_count == 2) {
         FILE    *fp;
         MR_bool found_error;
+        MR_Word path_list;
 
         fp = fopen(words[1], "w");
         if (fp == NULL) {
@@ -5788,6 +5789,63 @@ MR_trace_cmd_save(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
         }
 
         MR_trace_print_all_aliases(fp, MR_TRUE);
+        switch (MR_default_print_level) {
+            case MR_PRINT_LEVEL_NONE:
+                fprintf(fp, "printlevel none\n");
+                break;
+
+            case MR_PRINT_LEVEL_SOME:
+                fprintf(fp, "printlevel some\n");
+                break;
+
+            case MR_PRINT_LEVEL_ALL:
+                fprintf(fp, "printlevel all\n");
+                break;
+        }
+
+        if (MR_echo_commands) {
+            fprintf(fp, "echo on\n");
+        } else {
+            fprintf(fp, "echo off\n");
+        }
+
+        if (MR_scroll_control) {
+            fprintf(fp, "scroll on\n");
+        } else {
+            fprintf(fp, "scroll off\n");
+        }
+
+        fprintf(fp, "scroll %d\n", MR_scroll_limit);
+        fprintf(fp, "stack_default_limit %d\n", MR_stack_default_line_limit);
+
+        switch (MR_context_position) {
+            case MR_CONTEXT_NOWHERE:
+                fprintf(fp, "context nowhere\n");
+                break;
+
+            case MR_CONTEXT_AFTER:
+                fprintf(fp, "context after\n");
+                break;
+
+            case MR_CONTEXT_BEFORE:
+                fprintf(fp, "context before\n");
+                break;
+
+            case MR_CONTEXT_PREVLINE:
+                fprintf(fp, "context prevline\n");
+                break;
+
+            case MR_CONTEXT_NEXTLINE:
+                fprintf(fp, "context nextline\n");
+                break;
+        }
+
+        if (MR_print_goal_paths) {
+            fprintf(fp, "goal_paths on\n");
+        } else {
+            fprintf(fp, "goal_paths off\n");
+        }
+
         found_error = MR_save_spy_points(fp, MR_mdb_err);
 
         switch (MR_default_breakpoint_scope) {
@@ -5803,11 +5861,35 @@ MR_trace_cmd_save(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
                 fprintf(fp, "scope entry\n");
                 break;
 
-            default:
+            case MR_SPY_LINENO:
+            case MR_SPY_SPECIFIC:
                 MR_fatal_error("save cmd: invalid default scope");
         }
 
+        MR_trace_print_all_browser_params(fp, MR_TRUE);
         MR_decl_print_all_trusted(fp, MR_TRUE);
+
+        if (MR_dice_fail_trace_counts_file != NULL) {
+            fprintf(fp, "set fail_trace_counts %s\n",
+                MR_dice_fail_trace_counts_file);
+        }
+        if (MR_dice_pass_trace_counts_file != NULL) {
+            fprintf(fp, "set pass_trace_counts %s\n",
+                MR_dice_pass_trace_counts_file);
+        }
+
+        fprintf(fp, "set list_context_lines %d\n", MR_num_context_lines);
+        MR_TRACE_CALL_MERCURY(
+            path_list = ML_LISTING_get_list_path(MR_listing_path);
+            if (! MR_list_is_empty(path_list)) {
+                fprintf(fp, "set list_path");
+                while (! MR_list_is_empty(path_list)) {
+                    fprintf(fp, " %s", (const char *) MR_list_head(path_list));
+                    path_list = MR_list_tail(path_list);
+                }
+                fprintf(fp, "\n");
+            }
+        );
 
         if (found_error) {
             fflush(MR_mdb_out);
@@ -5975,7 +6057,7 @@ MR_trace_cmd_trust(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
         if (matches.match_proc_next > 0) {
             MR_decl_add_trusted_module(words[1]);
             fprintf(MR_mdb_out, "Trusting module %s\n", words[1]);
-        } else if (MR_parse_proc_spec(words[1], &spec)){
+        } else if (MR_parse_proc_spec(words[1], &spec)) {
             /* Check to see if the argument is a pred/func */
             matches = MR_search_for_matching_procedures(&spec);
             MR_filter_user_preds(&matches);
@@ -6246,8 +6328,8 @@ MR_parse_source_locn(char *word, const char **file, int *line)
 */
 static const char *
 MR_trace_new_source_window(const char *window_cmd, const char *server_cmd,
-        const char *server_name, int timeout, MR_bool force,
-        MR_bool verbose, MR_bool split)
+    const char *server_name, int timeout, MR_bool force,
+    MR_bool verbose, MR_bool split)
 {
     const char  *msg;
 
@@ -6269,13 +6351,10 @@ MR_trace_new_source_window(const char *window_cmd, const char *server_cmd,
         MR_trace_source_server.server_cmd = NULL;
     }
 
-    if (server_name == NULL)
-    {
+    if (server_name == NULL) {
         msg = MR_trace_source_open_server(&MR_trace_source_server,
                 window_cmd, timeout, verbose);
-    }
-    else
-    {
+    } else {
         MR_trace_source_server.server_name = MR_copy_string(server_name);
         msg = MR_trace_source_attach(&MR_trace_source_server, timeout,
             verbose);
@@ -7557,20 +7636,20 @@ MR_trace_options_diff(int *start, int *max, char ***words, int *word_count)
     return MR_TRUE;
 }
 
-static struct MR_option MR_trace_save_to_file_opts[] =
+static struct MR_option MR_trace_dump_opts[] =
 {
     { "xml",        MR_no_argument,     NULL,   'x' },
     { NULL,         MR_no_argument,     NULL,   0 }
 };
 
 static MR_bool
-MR_trace_options_save_to_file(MR_bool *xml, char ***words, int *word_count)
+MR_trace_options_dump(MR_bool *xml, char ***words, int *word_count)
 {
     int c;
 
     MR_optind = 0;
     while ((c = MR_getopt_long(*word_count, *words, "x",
-        MR_trace_save_to_file_opts, NULL)) != EOF)
+        MR_trace_dump_opts, NULL)) != EOF)
     {
         switch (c) {
 
@@ -7869,8 +7948,7 @@ MR_trace_expand_aliases(char ***words, int *word_max, int *word_count)
         alias_copy_start = 1;
     }
 
-    if (MR_trace_lookup_alias(alias_key, &alias_words, &alias_word_count))
-    {
+    if (MR_trace_lookup_alias(alias_key, &alias_words, &alias_word_count)) {
         MR_ensure_big_enough(*word_count + alias_word_count, *word, char *,
             MR_INIT_WORD_COUNT);
 
@@ -8419,7 +8497,7 @@ static const MR_Trace_Command_Info  MR_trace_command_infos[] =
         NULL, MR_trace_var_completer },
     { "browsing", "diff", MR_trace_cmd_diff,
         NULL, MR_trace_var_completer },
-    { "browsing", "save_to_file", MR_trace_cmd_save_to_file,
+    { "browsing", "dump", MR_trace_cmd_dump,
         NULL, MR_trace_var_completer },
     { "browsing", "list", MR_trace_cmd_list,
         NULL, MR_trace_null_completer },

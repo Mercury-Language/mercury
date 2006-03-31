@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1998-2002, 2005 The University of Melbourne.
+** Copyright (C) 1998-2002, 2005-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1063,6 +1063,37 @@ MR_save_spy_points(FILE *fp, FILE *err_fp)
             default:
                 fprintf(err_fp, "mdb: internal error: unknown spy when\n");
                 return MR_TRUE;
+        }
+
+        if (point->spy_cond != NULL) {
+            MR_Spy_Cond *cond;
+
+            cond = point->spy_cond;
+            fprintf(fp, "condition ");
+
+            if (!cond->cond_require_var) {
+                fprintf(fp, "-v "); /* also implies -p */
+            } else if (!cond->cond_require_path) {
+                fprintf(fp, "-p ");
+            }
+
+            fprintf(fp, "%s ", cond->cond_what_string);
+
+            switch (cond->cond_test) {
+                case MR_SPY_TEST_EQUAL:
+                    fprintf(fp, "= ");
+                    break;
+
+                case MR_SPY_TEST_NOT_EQUAL:
+                    fprintf(fp, "!= ");
+                    break;
+
+                default:
+                    MR_fatal_error("MR_save_spy_points: bad condition test");
+                    break;
+            }
+
+            fprintf(fp, "%s\n", cond->cond_term_string);
         }
 
         if (!point->spy_enabled) {

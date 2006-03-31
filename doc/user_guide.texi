@@ -2847,27 +2847,27 @@ specifies how many of the initial differences to skip.
 The option @samp{-m} (or @samp{--max}), if present,
 specifies how many differences to print.
 @sp 1
-@item save_to_file [-x] goal @var{filename}
-@kindex save_to_file (mdb command)
+@item dump [-x] goal @var{filename}
+@kindex dump (mdb command)
 Writes the goal of the current call in its present state of instantiation
 to the specified file.
 The option @samp{-x} (or @samp{--xml}) causes the output to be in XML.
 @sp 1
-@item save_to_file [-x] exception @var{filename}
+@item dump [-x] exception @var{filename}
 Writes the value of the exception at an EXCP port
 to the specified file.
 Reports an error if the current event does not refer to such a port.
 The option @samp{-x} (or @samp{--xml}) causes the
 output to be in XML.
 @sp 1
-@item save_to_file [-x] @var{name} @var{filename}
-@itemx save_to_file [-x] @var{num} @var{filename}
+@item dump [-x] @var{name} @var{filename}
+@itemx dump [-x] @var{num} @var{filename}
 Writes the value of the variable in the current environment
 with the given ordinal number or with the given name
 to the specified file. The option @samp{-x} (or @samp{--xml}) causes the
 output to be in XML.
 @c @sp 1
-@c @item save_to_file [-x] proc_body @var{filename}
+@c @item dump [-x] proc_body @var{filename}
 @c Writes the representation of the body of the current procedure,
 @c if it is available,
 @c to the specified file. The option @samp{-x} (or @samp{--xml}) causes the
@@ -3746,12 +3746,18 @@ not to complain if the named file does not exist or is not readable.
 @sp 1
 @item save @var{filename}
 @kindex save (mdb command)
-Saves the current set of breakpoints, the current set of aliases and the
-current set of objects trusted by the declarative debugger
-in the named file as a set of @samp{break}, @samp{alias} and @samp{trust} 
-commands.
-Sourcing the file will recreate the current breakpoints and aliases and will
-trust the currently trusted objects.
+Saves the persistent state of the debugger
+(aliases, print level, scroll controls,
+set of breakpoints, browser parameters,
+set of objects trusted by the declarative debugger, etc)
+to the specified file.
+The state is saved in the form of mdb commands,
+so that sourcing the file will recreate the saved state.
+Note that this command does not save transient state,
+such as the current event.
+There is also a small part of the persistent state
+(breakpoints established with a @samp{break here} command)
+that cannot be saved.
 @sp 1
 @item quit [-y]
 @kindex quit (mdb command)

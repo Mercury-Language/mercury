@@ -210,8 +210,8 @@
 :- pragma export(save_term_to_file_xml(in, in, in, di, uo),
     "ML_BROWSE_save_term_to_file_xml").
 
-:- pragma export(save_and_browse_browser_term_xml(in, in, in, in,
-    di, uo), "ML_BROWSE_browse_term_xml").
+:- pragma export(save_and_browse_browser_term_xml(in, in, in, in, di, uo),
+    "ML_BROWSE_browse_term_xml").
 
 %---------------------------------------------------------------------------%
 %
@@ -329,34 +329,40 @@ maybe_save_term_to_file_xml(FileName, BrowserTerm, FileStreamRes, !IO) :-
 
 save_and_browse_browser_term_xml(Term, OutStream, ErrStream, State, !IO) :-
     MaybeXMLBrowserCmd = State ^ xml_browser_cmd,
+    MaybeTmpFileName = State ^ xml_tmp_filename,
     (
         MaybeXMLBrowserCmd = yes(CommandStr),
-        MaybeTmpFileName = State ^ xml_tmp_filename,
+        MaybeTmpFileName = yes(TmpFileName),
+        io.write_string(OutStream, "Saving term to XML file...\n", !IO),
+        maybe_save_term_to_file_xml(TmpFileName, Term, SaveResult, !IO),
         (
-            MaybeTmpFileName = yes(TmpFileName),
-            io.write_string(OutStream, "Saving term to XML file...\n", !IO),
-            maybe_save_term_to_file_xml(TmpFileName, Term,
-                SaveResult, !IO),
-            (
-                SaveResult = ok,
-                launch_xml_browser(OutStream, ErrStream, CommandStr, !IO)
-            ;
-                SaveResult = error(Error),
-                io.error_message(Error, Msg),
-                io.write_string(ErrStream,
-                    "Error opening file `" ++ TmpFileName ++ "': ", !IO),
-                io.write_string(ErrStream, Msg, !IO),
-                io.nl(!IO)
-            )
+            SaveResult = ok,
+            launch_xml_browser(OutStream, ErrStream, CommandStr, !IO)
         ;
-            MaybeTmpFileName = no,
-            io.write_string(ErrStream, "mdb: You need to issue a " ++
-                "\"set xml_tmp_filename '<filename>'\" command first.\n", !IO)
+            SaveResult = error(Error),
+            io.error_message(Error, Msg),
+            io.write_string(ErrStream,
+                "Error opening file `" ++ TmpFileName ++ "': ", !IO),
+            io.write_string(ErrStream, Msg, !IO),
+            io.nl(!IO)
         )
     ;
+        MaybeXMLBrowserCmd = yes(_),
+        MaybeTmpFileName = no,
+        io.write_string(ErrStream, "mdb: You need to issue a " ++
+            "\"set xml_tmp_filename '<filename>'\" command first.\n", !IO)
+    ;
         MaybeXMLBrowserCmd = no,
+        MaybeTmpFileName = yes(_),
         io.write_string(ErrStream, "mdb: You need to issue a " ++
             "\"set xml_browser_cmd '<command>'\" command first.\n", !IO)
+    ;
+        MaybeXMLBrowserCmd = no,
+        MaybeTmpFileName = no,
+        io.write_string(ErrStream, "mdb: You need to issue a " ++
+            "\"set xml_browser_cmd '<command>'\" command\n" ++
+            "and a \"set xml_tmp_filename '<filename>'\" command first.\n",
+            !IO)
     ).
 
 :- pred launch_xml_browser(io.output_stream::in, io.output_stream::in,
@@ -768,8 +774,8 @@ bool_format_option_is_true(Format - bool(yes), Format).
     browser_info::in, browser_info::out) is det.
 
 set_browse_param(OptionTable, Setting, !Info) :-
-    browser_info.set_param(yes, OptionTable, Setting, !.Info ^ state,
-        NewState),
+    set_browser_param_from_option_table(yes, OptionTable, Setting,
+        !.Info ^ state, NewState),
     !:Info = !.Info ^ state := NewState.
 
 :- pred help(debugger::in, io::di, io::uo) is det.

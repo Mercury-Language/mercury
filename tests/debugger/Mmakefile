@@ -47,6 +47,7 @@ NONRETRY_PROGS = \
 	print_table			\
 	queens_rep			\
 	resume_typeinfos		\
+	save				\
 	solver_test			\
 	type_desc_test			\
 	uci_index
@@ -462,6 +463,9 @@ resume_typeinfos.out: resume_typeinfos resume_typeinfos.inp
 
 retry.out: retry retry.inp
 	$(MDB_STD) ./retry < retry.inp > retry.out 2>&1
+
+save.out: save save.inp
+	$(MDB) ./save < save.inp > save.out 2>&1
 
 shallow.out: shallow shallow.inp
 	$(MDB) ./shallow < shallow.inp > shallow.out 2>&1

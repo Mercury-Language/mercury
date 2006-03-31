@@ -268,8 +268,8 @@ handle_command(set(MaybeOptionTable, Setting), UserQuestion, Response, !User,
         !IO) :-
     (
         MaybeOptionTable = ok(OptionTable),
-        browser_info.set_param(no, OptionTable, Setting, !.User ^ browser,
-            Browser),
+        set_browser_param_from_option_table(no, OptionTable, Setting,
+            !.User ^ browser, Browser),
         !:User = !.User ^ browser := Browser
     ;
         MaybeOptionTable = error(Msg),

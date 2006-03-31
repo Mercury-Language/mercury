@@ -39,7 +39,7 @@ current              xyzzy xyzzy xyzzy xyzzy xyzzy
 view                 xyzzy xyzzy xyzzy xyzzy xyzzy
 hold                 xyzzy xyzzy xyzzy xyzzy xyzzy
 diff                 xyzzy xyzzy xyzzy xyzzy xyzzy
-save_to_file         xyzzy xyzzy xyzzy xyzzy xyzzy
+dump                 xyzzy xyzzy xyzzy xyzzy xyzzy
 list                 xyzzy xyzzy xyzzy xyzzy xyzzy
 push_list_dir        xyzzy xyzzy xyzzy xyzzy xyzzy
 pop_list_dir         xyzzy xyzzy xyzzy xyzzy xyzzy

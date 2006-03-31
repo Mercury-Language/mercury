@@ -205,7 +205,7 @@
     % seven arguments indicate the presence of the `set' options
     % -P, -B, -A, -f, -r, -v and -p, in that order.
     %
-:- pred set_param(bool::in, bool::in, bool::in, bool::in,
+:- pred set_browser_param(bool::in, bool::in, bool::in, bool::in,
     bool::in, bool::in, bool::in, bool::in, setting::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
 
@@ -215,16 +215,22 @@
     % -P, -B, -A, while the next four indicate the presence of -f, -r, -v
     % and -p, in that order.
     %
-:- pred set_param(bool::in, maybe(browse_caller_type)::in,
+:- pred set_browser_param_maybe_caller_type(bool::in,
+    maybe(browse_caller_type)::in,
     bool::in, bool::in, bool::in, bool::in, setting::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
 
-    % browser_info.set_param(FromBrowser, OptionTable, Setting, !State)
+    % set_param_from_option_table(FromBrowser, OptionTable, Setting, !State):
+    %
     % Same as set_param/11, but looks up the options in the
     % supplied option table.
     %
-:- pred set_param(bool::in, option_table(setting_option)::in, setting::in,
+:- pred set_browser_param_from_option_table(bool::in,
+    option_table(setting_option)::in, setting::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
+
+:- pred browser_params_to_string(browser_persistent_state::in, bool::in,
+    string::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -277,73 +283,82 @@
 % call set_param from C code.
 %
 
-:- pred set_param_depth_from_mdb(bool::in, bool::in, bool::in, bool::in,
-    bool::in, bool::in, bool::in, int::in, browser_persistent_state::in,
-    browser_persistent_state::out) is det.
-:- pragma export(set_param_depth_from_mdb(in, in, in, in, in, in, in, in,
-    in, out), "ML_BROWSE_set_param_depth_from_mdb").
+:- pred set_depth_from_mdb(bool::in, bool::in, bool::in,
+    bool::in, bool::in, bool::in, bool::in, int::in,
+    browser_persistent_state::in, browser_persistent_state::out) is det.
+:- pragma export(set_depth_from_mdb(in, in, in, in, in, in, in,
+    in, in, out), "ML_BROWSE_set_depth_from_mdb").
 
-set_param_depth_from_mdb(P, B, A, F, Pr, V, NPr, Depth) -->
-    set_param(no, P, B, A, F, Pr, V, NPr,  depth(Depth)).
+set_depth_from_mdb(P, B, A, F, Pr, V, NPr, Depth, !Browser) :-
+    set_browser_param(no, P, B, A, F, Pr, V, NPr,  depth(Depth), !Browser).
 
-:- pred set_param_size_from_mdb(bool::in, bool::in, bool::in, bool::in,
-    bool::in, bool::in, bool::in, int::in, browser_persistent_state::in,
-    browser_persistent_state::out) is det.
-:- pragma export(set_param_size_from_mdb(in, in, in, in, in, in, in, in,
-    in, out), "ML_BROWSE_set_param_size_from_mdb").
-
-set_param_size_from_mdb(P, B, A, F, Pr, NPr, V, Size) -->
-    set_param(no, P, B, A, F, Pr, V, NPr, size(Size)).
-
-:- pred set_param_width_from_mdb(bool::in, bool::in, bool::in, bool::in,
-    bool::in, bool::in, bool::in, int::in, browser_persistent_state::in,
-    browser_persistent_state::out) is det.
-:- pragma export(set_param_width_from_mdb(in, in, in, in, in, in, in, in,
-    in, out), "ML_BROWSE_set_param_width_from_mdb").
-
-set_param_width_from_mdb(P, B, A, F, Pr, V, NPr, Width) -->
-    set_param(no, P, B, A, F, Pr, V, NPr, width(Width)).
-
-:- pred set_param_lines_from_mdb(bool::in, bool::in, bool::in, bool::in,
+:- pred set_size_from_mdb(bool::in, bool::in, bool::in, bool::in,
     bool::in, bool::in, bool::in, int::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
-:- pragma export(set_param_lines_from_mdb(in, in, in, in, in, in, in, in,
-    in, out), "ML_BROWSE_set_param_lines_from_mdb").
+:- pragma export(set_size_from_mdb(in, in, in, in, in, in, in,
+    in, in, out), "ML_BROWSE_set_size_from_mdb").
 
-set_param_lines_from_mdb(P, B, A, F, Pr, V, NPr, Lines) -->
-    set_param(no, P, B, A, F, Pr, V, NPr, lines(Lines)).
+set_size_from_mdb(P, B, A, F, Pr, NPr, V, Size, !Browser) :-
+    set_browser_param(no, P, B, A, F, Pr, V, NPr, size(Size), !Browser).
 
-:- pred set_param_format_from_mdb(bool::in, bool::in, bool::in,
-    portray_format::in,
+:- pred set_width_from_mdb(bool::in, bool::in, bool::in,
+    bool::in, bool::in, bool::in, bool::in, int::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
-:- pragma export(set_param_format_from_mdb(in, in, in, in, in, out),
-    "ML_BROWSE_set_param_format_from_mdb").
+:- pragma export(set_width_from_mdb(in, in, in, in, in, in, in,
+    in, in, out), "ML_BROWSE_set_width_from_mdb").
 
-set_param_format_from_mdb(P, B, A, Format, !Browser) :-
+set_width_from_mdb(P, B, A, F, Pr, V, NPr, Width, !Browser) :-
+    set_browser_param(no, P, B, A, F, Pr, V, NPr, width(Width), !Browser).
+
+:- pred set_lines_from_mdb(bool::in, bool::in, bool::in,
+    bool::in, bool::in, bool::in, bool::in, int::in,
+    browser_persistent_state::in, browser_persistent_state::out) is det.
+:- pragma export(set_lines_from_mdb(in, in, in, in, in, in, in,
+    in, in, out), "ML_BROWSE_set_lines_from_mdb").
+
+set_lines_from_mdb(P, B, A, F, Pr, V, NPr, Lines, !Browser) :-
+    set_browser_param(no, P, B, A, F, Pr, V, NPr, lines(Lines), !Browser).
+
+:- pred set_format_from_mdb(bool::in, bool::in, bool::in, portray_format::in,
+    browser_persistent_state::in, browser_persistent_state::out) is det.
+:- pragma export(set_format_from_mdb(in, in, in, in, in, out),
+    "ML_BROWSE_set_format_from_mdb").
+
+set_format_from_mdb(P, B, A, Format, !Browser) :-
     % Any format flags are ignored for this parameter.
-    set_param(no, P, B, A, no, no, no, no, format(Format), !Browser).
+    set_browser_param(no, P, B, A, no, no, no, no, format(Format), !Browser).
 
-:- pred set_param_xml_browser_cmd_from_mdb(string::in,
+:- pred set_num_io_actions_from_mdb(int::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
-:- pragma export(mdb.browser_info.set_param_xml_browser_cmd_from_mdb(in, in,
-    out), "ML_BROWSE_set_param_xml_browser_cmd_from_mdb").
+:- pragma export(set_num_io_actions_from_mdb(in, in, out),
+    "ML_BROWSE_set_num_io_actions_from_mdb").
 
-set_param_xml_browser_cmd_from_mdb(Command, !Browser) :-
-    browser_info.set_param(no`with_type`bool,
-        no`with_type`bool, no`with_type`bool, no`with_type`bool,
-        no`with_type`bool, no`with_type`bool, no`with_type`bool,
-        no`with_type`bool, xml_browser_cmd(Command), !Browser).
+set_num_io_actions_from_mdb(NumIOActions, !Browser) :-
+    !:Browser = !.Browser ^ num_printed_io_actions := NumIOActions.
 
-:- pred set_param_xml_tmp_filename_from_mdb(string::in,
+:- pred set_xml_browser_cmd_from_mdb(string::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
-:- pragma export(mdb.browser_info.set_param_xml_tmp_filename_from_mdb(in, in,
-    out), "ML_BROWSE_set_param_xml_tmp_filename_from_mdb").
+:- pragma export(set_xml_browser_cmd_from_mdb(in, in, out),
+    "ML_BROWSE_set_xml_browser_cmd_from_mdb").
 
-set_param_xml_tmp_filename_from_mdb(FileName, !Browser) :-
-    browser_info.set_param(no `with_type` bool,
-        no `with_type` bool, no `with_type` bool, no `with_type` bool,
-        no `with_type` bool, no `with_type` bool, no `with_type` bool,
-        no `with_type` bool, xml_tmp_filename(FileName), !Browser).
+set_xml_browser_cmd_from_mdb(Command, !Browser) :-
+    ( Command = "" ->
+        !:Browser = !.Browser ^ xml_browser_cmd := no
+    ;
+        !:Browser = !.Browser ^ xml_browser_cmd := yes(Command)
+    ).
+
+:- pred set_xml_tmp_filename_from_mdb(string::in,
+    browser_persistent_state::in, browser_persistent_state::out) is det.
+:- pragma export(set_xml_tmp_filename_from_mdb(in, in, out),
+    "ML_BROWSE_set_xml_tmp_filename_from_mdb").
+
+set_xml_tmp_filename_from_mdb(FileName, !Browser) :-
+    ( FileName = "" ->
+        !:Browser = !.Browser ^ xml_tmp_filename := no
+    ;
+        !:Browser = !.Browser ^ xml_tmp_filename := yes(FileName)
+    ).
 
 %
 % The following exported functions allow C code to create
@@ -474,11 +489,8 @@ caller_type_print_all_defaults = Params :-
 % context.
 num_printed_io_actions_default = 20.
 
-set_param(FromBrowser, MaybeCallerType, F0, Pr0, V0, NPr0, Setting, !State) :-
-    affected_caller_types(FromBrowser, MaybeCallerType, P, B, A),
-    set_param(FromBrowser, P, B, A, F0, Pr0, V0, NPr0, Setting, !State).
-
-set_param(FromBrowser, P0, B0, A0, F0, Pr0, V0, NPr0, Setting, !State) :-
+set_browser_param(FromBrowser, P0, B0, A0, F0, Pr0, V0, NPr0, Setting,
+        !State) :-
     ( Setting = num_io_actions(NumIoActions) ->
         !:State = !.State ^ num_printed_io_actions := NumIoActions
     ; Setting = xml_browser_cmd(CommandStr) ->
@@ -515,15 +527,22 @@ set_param(FromBrowser, P0, B0, A0, F0, Pr0, V0, NPr0, Setting, !State) :-
             !.State ^ xml_browser_cmd, !.State ^ xml_tmp_filename)
     ).
 
-browser_info.set_param(FromBrowser, OptionTable, Setting, !State) :-
-    browser_info.set_param(FromBrowser,
-        lookup_bool_option(OptionTable, print) `with_type` bool,
-        lookup_bool_option(OptionTable, browse) `with_type` bool,
-        lookup_bool_option(OptionTable, print_all) `with_type` bool,
-        lookup_bool_option(OptionTable, flat) `with_type` bool,
-        lookup_bool_option(OptionTable, raw_pretty) `with_type` bool,
-        lookup_bool_option(OptionTable, verbose) `with_type` bool,
-        lookup_bool_option(OptionTable, pretty) `with_type` bool,
+set_browser_param_maybe_caller_type(FromBrowser, MaybeCallerType,
+        F0, Pr0, V0, NPr0, Setting, !State) :-
+    affected_caller_types(FromBrowser, MaybeCallerType, P, B, A),
+    set_browser_param(FromBrowser, P, B, A, F0, Pr0, V0, NPr0, Setting,
+        !State).
+
+set_browser_param_from_option_table(FromBrowser, OptionTable, Setting,
+        !State) :-
+    set_browser_param(FromBrowser,
+        lookup_bool_option(OptionTable, print):bool,
+        lookup_bool_option(OptionTable, browse):bool,
+        lookup_bool_option(OptionTable, print_all):bool,
+        lookup_bool_option(OptionTable, flat):bool,
+        lookup_bool_option(OptionTable, raw_pretty):bool,
+        lookup_bool_option(OptionTable, verbose):bool,
+        lookup_bool_option(OptionTable, pretty):bool,
         Setting, !State).
 
 :- pred affected_caller_types(bool::in, maybe(browse_caller_type)::in,
@@ -640,6 +659,127 @@ get_caller_format_params(Params, pretty, Params ^ pretty_params).
 
 get_num_printed_io_actions(State) =
     State ^ num_printed_io_actions.
+
+%---------------------------------------------------------------------------%
+
+:- pragma export(browser_params_to_string(in, in, out),
+    "ML_BROWSE_browser_params_to_string").
+
+browser_params_to_string(Browser, MDBCommandFormat, Desc) :-
+    Browser = browser_persistent_state(PrintParams, BrowseParams,
+        PrintAllParams, NumIOActions, MaybeXMLBrowserCmd, MaybeXMLTmpFileName),
+    (
+        MDBCommandFormat = yes,
+        ParamCmds = 
+            caller_params_to_mdb_command("-P", PrintParams) ++
+            caller_params_to_mdb_command("-B", BrowseParams) ++
+            caller_params_to_mdb_command("-A", PrintAllParams),
+        NumIOActionCmd =
+            "set max_io_actions " ++ int_to_string(NumIOActions) ++ "\n",
+        (
+            MaybeXMLBrowserCmd = yes(XMLBrowserCmd),
+            % XMLBrowserCmd shouldn't be "" if MaybeXMLBrowserCmd is yes,
+            % but better safe than sorry.
+            XMLBrowserCmd \= ""
+        ->
+            XMLBrowserCmdCmd =
+                "set xml_browser_cmd " ++ XMLBrowserCmd ++ "\n"
+        ;
+            XMLBrowserCmdCmd = ""
+        ),
+        (
+            MaybeXMLTmpFileName = yes(XMLTmpFileName),
+            % XMLTmpFileName shouldn't be "" if MaybeXMLTmpFileName is yes,
+            % but better safe than sorry.
+            XMLTmpFileName \= ""
+        ->
+            XMLTmpFileNameCmd =
+                "set xml_tmp_filename " ++ XMLTmpFileName ++ "\n"
+        ;
+            XMLTmpFileNameCmd = ""
+        ),
+        Desc = ParamCmds ++ NumIOActionCmd ++
+            XMLBrowserCmdCmd ++ XMLTmpFileNameCmd
+    ;
+        MDBCommandFormat = no,
+        ParamDesc =
+            "Print paramaters:\n" ++
+            caller_params_to_desc(PrintParams) ++
+            "Browse paramaters:\n" ++
+            caller_params_to_desc(BrowseParams) ++
+            "Print all paramaters:\n" ++
+            caller_params_to_desc(PrintAllParams),
+        NumIOActionDesc =
+            "Maximum number of I/O actions printed: " ++
+                int_to_string(NumIOActions) ++ "\n",
+        (
+            MaybeXMLBrowserCmd = yes(XMLBrowserCmd),
+            XMLBrowserCmdDesc =
+                "XML browser command:    " ++ XMLBrowserCmd ++ "\n"
+        ;
+            MaybeXMLBrowserCmd = no,
+            XMLBrowserCmdDesc = ""
+        ),
+        (
+            MaybeXMLTmpFileName = yes(XMLTmpFileName),
+            XMLTmpFileNameDesc =
+                "XML temporary filename: " ++ XMLTmpFileName ++ "\n"
+        ;
+            MaybeXMLTmpFileName = no,
+            XMLTmpFileNameDesc = ""
+        ),
+        Desc = ParamDesc ++ NumIOActionDesc ++
+            XMLBrowserCmdDesc ++ XMLTmpFileNameDesc
+    ).
+
+:- func caller_params_to_mdb_command(string, caller_params) = string.
+
+caller_params_to_mdb_command(CallerOpt, CallerParams) = Cmds :-
+    CmdCallerOpt = "set " ++ CallerOpt ++ " ",
+    CallerParams = caller_params(Format, FlatParams, RawPrettyParams,
+        VerboseParams, PrettyParams),
+    FormatCmd = CmdCallerOpt ++ "format " ++ format_to_string(Format) ++ "\n",
+    FormatParamCmds =
+        format_params_to_mdb_command(CmdCallerOpt ++ "-f ", FlatParams) ++
+        format_params_to_mdb_command(CmdCallerOpt ++ "-r ", RawPrettyParams) ++
+        format_params_to_mdb_command(CmdCallerOpt ++ "-v ", VerboseParams) ++
+        format_params_to_mdb_command(CmdCallerOpt ++ "-p ", PrettyParams),
+    Cmds = FormatCmd ++ FormatParamCmds.
+
+:- func caller_params_to_desc(caller_params) = string.
+
+caller_params_to_desc(caller_params(Format, FlatParams, RawPrettyParams,
+        VerboseParams, PrettyParams)) =
+    "default format " ++ format_to_string(Format) ++ "\n" ++
+    "flat parameters:       " ++ format_params_to_desc(FlatParams) ++
+    "raw_pretty parameters: " ++ format_params_to_desc(RawPrettyParams) ++
+    "verbose parameters:    " ++ format_params_to_desc(VerboseParams) ++
+    "pretty parameters:     " ++ format_params_to_desc(PrettyParams).
+
+:- func format_params_to_mdb_command(string, format_params) = string.
+
+format_params_to_mdb_command(CmdCallerOpt, FormatParams) = Cmds :-
+    FormatParams = format_params(Depth, Size, Width, Lines),
+    DepthCmd = CmdCallerOpt ++ "depth " ++ int_to_string(Depth) ++ "\n",
+    SizeCmd  = CmdCallerOpt ++ "size "  ++ int_to_string(Size) ++ "\n",
+    WidthCmd = CmdCallerOpt ++ "width " ++ int_to_string(Width) ++ "\n",
+    LinesCmd = CmdCallerOpt ++ "lines " ++ int_to_string(Lines) ++ "\n",
+    Cmds = DepthCmd ++ SizeCmd ++ WidthCmd ++ LinesCmd.
+
+:- func format_params_to_desc(format_params) = string.
+
+format_params_to_desc(format_params(Depth, Size, Width, Lines)) =
+    "depth " ++ int_to_string(Depth) ++ ", " ++
+    "size "  ++ int_to_string(Size) ++ ", " ++
+    "width " ++ int_to_string(Width) ++ ", " ++
+    "lines " ++ int_to_string(Lines) ++ "\n".
+
+:- func format_to_string(portray_format) = string.
+
+format_to_string(flat) = "flat".
+format_to_string(raw_pretty) = "raw_pretty".
+format_to_string(verbose) = "verbose".
+format_to_string(pretty) = "pretty".
 
 %---------------------------------------------------------------------------%
 

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002, 2004-2005 The University of Melbourne.
+** Copyright (C) 1998-2002, 2004-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -44,6 +44,7 @@ extern	void	MR_trace_save_term_xml(const char *filename,
 ** browser/browser_info.m, so that it is possible to cast to/from MR_Word
 ** in order to interface with Mercury code.
 */
+
 typedef enum {
 	MR_DEFINE_MERCURY_ENUM_CONST(MR_BROWSE_CALLER_PRINT),
 	MR_DEFINE_MERCURY_ENUM_CONST(MR_BROWSE_CALLER_BROWSE),
@@ -65,6 +66,7 @@ typedef enum {
 /*
 ** Interactively browse a term.
 */
+
 extern 	void	MR_trace_browse(MR_Word type_info, MR_Word value,
 			MR_Browse_Format format);
 extern 	void	MR_trace_browse_goal(MR_ConstString name, MR_Word arg_list,
@@ -77,11 +79,13 @@ extern 	void	MR_trace_browse_external(MR_Word type_info, MR_Word value,
 /*
 ** Browse a term using an XML browser.
 */
+
 extern	void	MR_trace_save_and_invoke_xml_browser(MR_Word browser_term);
 
 /*
 ** Display a term non-interactively.
 */
+
 extern	void	MR_trace_print(MR_Word type_info, MR_Word value,
 			MR_Browse_Caller_Type caller, MR_Browse_Format format);
 extern	void	MR_trace_print_goal(MR_ConstString name, MR_Word arg_list,
@@ -91,10 +95,20 @@ extern	void	MR_trace_print_goal(MR_ConstString name, MR_Word arg_list,
 /*
 ** Set browser parameters.
 */
+
 extern	MR_bool	MR_trace_set_browser_param(MR_Word print, MR_Word browse,
 			MR_Word print_all, MR_Word flat, MR_Word raw_pretty,
 			MR_Word verbose, MR_Word pretty, const char *param, 
 			const char *value);
+
+/*
+** Print all the browser parameters. If mdb_command_format is true, print them
+** in the form of the mdb commands required to recreate this state; otherwise,
+** print them in a user-friendly form.
+*/
+
+extern	void	MR_trace_print_all_browser_params(FILE *fp,
+			MR_bool mdb_command_format);
 
 /*
 ** Invoke an interactive query.
