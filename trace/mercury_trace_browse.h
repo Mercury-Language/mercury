@@ -19,6 +19,8 @@
 #include "mercury_std.h"	/* for MR_bool                     */
 #include "mercury_tags.h"	/* for MR_DEFINE_MERCURY_ENUM_CONST     */
 
+#include <stdio.h>	/* For FILE */
+
 /*
 ** Convert a term (expressed either as a typeinfo/value pair or as a univ)
 ** or a synthetic term to a browser term.
