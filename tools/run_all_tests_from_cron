@@ -73,7 +73,7 @@ ARCH="`expr $FULLARCH : '\([^-]*\)-.*' `"
 
 #-----------------------------------------------------------------------------#
 
-release_branch=0.12
+release_branch=0.13
 case "$BRANCH" in
     "")
         DAY=`date '+%e'`
@@ -96,8 +96,8 @@ case "$BRANCH" in
 		BRANCH=latest
 	   	;;
 	   jupiter)
-		case `date '+%w'` in
-			0) BRANCH=$release_branch ;;
+		case $DAY in
+			*[13579]) BRANCH=$release_branch ;;
 			*) BRANCH=latest ;;
 		esac
 	   	;;
