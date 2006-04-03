@@ -454,8 +454,8 @@ missing_answer_special_case(Atom) :-
     ProcLabel = get_proc_label_from_layout(Atom ^ proc_layout),
     ProcLabel = proc(StdUtilModule1, predicate, StdUtilModule2,
         "builtin_aggregate", 4, _),
-    possible_sym_library_module_name("std_util", StdUtilModule1),
-    possible_sym_library_module_name("std_util", StdUtilModule2).
+    possible_sym_library_module_name("solutions", StdUtilModule1),
+    possible_sym_library_module_name("solutions", StdUtilModule2).
 
 :- pred possible_sym_library_module_name(string::in, module_name::out)
     is multi.
@@ -513,11 +513,9 @@ contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
         (
             Node = call(_, _, _, _, _, _, _, _, _, _)
         ;
-            %
             % A non-failed NEGE could be encountered when gathering
-            % the children of an exception node, since the
-            % exception may have been thrown inside the negation.
-            %
+            % the children of an exception node, since the exception
+            % may have been thrown inside the negation.
             (
                 ContourType = normal,
                 Node = neg(_, _, _)
@@ -534,69 +532,55 @@ contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
     ;
         Node = exit(_, _, _, _, _, _, _, _)
     ->
-            %
-            % Add a child for this node.
-            %
+        % Add a child for this node.
         Ns1 = [dynamic(NodeId) | Ns0]
     ;
         Node = fail(_, CallId, _, _, _, _)
     ->
-            %
-            % Fail events can be reached here if there
-            % were events missing due to a parent being
-            % shallow traced.  In this case, we can't tell
-            % whether the call was in a negated context
-            % or backtracked over, so we have to assume
-            % the former.
-            %
-            % Fail events can also be reached here if the
-            % parent was a variant of solutions/2.
-            %
-            % If this really is in a negated context, the start of
-            % the context would be just before the entry to this
-            % failed call, modulo any det/semidet code which
-            % succeeded.
-            %
+        % Fail events can be reached here if there were events missing
+        % due to a parent being shallow traced. In this case, we can't tell
+        % whether the call was in a negated context or backtracked over,
+        % so we have to assume the former.
+        %
+        % Fail events can also be reached here if the parent was a variant
+        % of solutions/2.
+        %
+        % If this really is in a negated context, the start of the context
+        % would be just before the entry to this failed call, modulo
+        % any det/semidet code which succeeded.
+
         call_node_from_id(Store, CallId, Call),
         NestedStartId = Call ^ call_preceding,
         stratum_children(Store, NodeId, NestedStartId, Ns0, Ns1)
     ;
         Node = neg_fail(Prec, NestedStartId, _)
     ->
-            %
-            % There is a nested context.  Neg_fail events can be
-            % reached here if there were events missing due to a
-            % parent being shallow traced.  In this case, we can't
-            % tell whether the call was in a negated context or
-            % backtracked over, so we have to assume the former.
-            %
+        % There is a nested context.  Neg_fail events can be reached here
+        % if there were events missing due to a parent being shallow traced.
+        % In this case, we can't tell whether the call was in a negated context
+        % or backtracked over, so we have to assume the former.
+
         contour_children(ContourType, Store, Prec, NestedStartId, Ns0, Ns1)
     ;
         ( Node = else(Prec, NestedStartId, _)
         ; Node = neg_succ(Prec, NestedStartId, _)
         )
     ->
-            %
-            % There is a nested context.
-            %
+        % There is a nested context.
         stratum_children(Store, Prec, NestedStartId, Ns0, Ns1)
     ;
         Node = excp(_, CallId, _, _, _, _, _)
     ->
-            %
-            % If the contour ends in an exception, then add this
-            % exception to the list of contour children and
-            % continue along the contour, since in this case we are
-            % only interested in nodes that caused the exception to
-            % be thrown.
-            %
-            % If the contour ends with an exit then the exception
-            % must have been caught by a try/2 or try_all/3 or
-            % similar.  In this case we want to add all the exits
-            % of the call that threw the exception to the list of
-            % children since one of the generated solutions may
-            % be incorrect.
-            %
+        % If the contour ends in an exception, then add this exception
+        % to the list of contour children and continue along the contour,
+        % since in this case we are only interested in nodes that caused
+        % the exception to be thrown.
+        %
+        % If the contour ends with an exit then the exception must have been
+        % caught by a try/2 or try_all/3 or similar. In this case we want to
+        % add all the exits of the call that threw the exception to the list
+        % of children since one of the generated solutions may be incorrect.
+
         (
             ContourType = exception,
             Ns1 = [dynamic(NodeId) | Ns0]
@@ -607,18 +591,15 @@ contour_children_2(ContourType, Store, NodeId, StartId, Ns0, Ns) :-
             stratum_children(Store, NodeId, NestedStartId, Ns0, Ns1)
         )
     ;
-            %
-            % This handles the following cases:
-            % redo, switch, first_disj, later_disj, and
-            % then.  Also handles cond when the status is
-            % anything other than failed.
-            %
-            % Redo events can be reached here if there
-            % were missing events due to a shallow tracing.
-            % In this case, we have to scan over the entire
-            % previous contour, since there is no way to
-            % tell how much of it was backtracked over.
-            %
+        % This handles the following cases: redo, switch, first_disj,
+        % later_disj, and then. Also handles cond when the status is anything
+        % other than failed.
+        %
+        % Redo events can be reached here if there were missing events
+        % due to a shallow tracing. In this case, we have to scan over
+        % the entire previous contour, since there is no way to tell
+        % how much of it was backtracked over.
+
         Ns1 = Ns0
     ),
     Next = step_left_in_contour(Store, Node),
@@ -652,51 +633,40 @@ stratum_children_2(Store, NodeId, StartId, Ns0, Ns) :-
         ; Node = excp(_, _, _, _, _, _, _)
         )
     ->
-            %
-            % Add a child for this node.
-            %
+        % Add a child for this node.
         Ns1 = [dynamic(NodeId) | Ns0]
     ;
         Node = neg_fail(Prec, NestedStartId, _)
     ->
-            %
-            % There is a nested successful context.
-            %
+        % There is a nested successful context.
         contour_children(normal, Store, Prec, NestedStartId, Ns0, Ns1)
     ;
         Node = else(Prec, NestedStartId, _)
     ->
-            %
-            % There is a nested failed context.
-            %
+        % There is a nested failed context.
         stratum_children(Store, Prec, NestedStartId, Ns0, Ns1)
     ;
         Node = exit(_, CallId, _, _, _, _, _, _)
     ->
-            %
-            % Only include an exit node as a missing answer child
-            % if it produces output.  If the exit event doesn't
-            % produce output then the only way the call could have
-            % behaved differently is by failing, which won't change
-            % the fail, negs or else event anchoring the end of the
-            % current stratum, since the rest of the goal failed
-            % anyway.
-            %
+        % Only include an exit node as a missing answer child if it
+        % produces output. If the exit event doesn't produce output
+        % then the only way the call could have behaved differently
+        % is by failing, which won't change the fail, negs or else event
+        % anchoring the end of the current stratum, since the rest of the goal
+        % failed anyway.
+
         ( calls_arguments_are_all_ground(Store, CallId) ->
             Ns1 = Ns0
         ;
             Ns1 = [dynamic(NodeId) | Ns0]
         )
     ;
-            %
-            % This handles the following cases: redo, switch,
-            % first_disj, later_disj, then and neg_succ.  Also
-            % handles cond when the status is anything other than
-            % failed.
-            % We skip neg_succ nodes for the same reason that we
-            % skip exit nodes where there are no outputs (see
-            % above).
-            %
+        % This handles the following cases: redo, switch, first_disj,
+        % later_disj, then and neg_succ. Also handles cond when the status is
+        % anything other than failed. We skip neg_succ nodes for the same
+        % reason that we skip exit nodes where there are no outputs (see
+        % above).
+
         Ns1 = Ns0
     ),
     Next = step_in_stratum(Store, Node),
@@ -1076,11 +1046,9 @@ materialize_contour(Store, NodeId, Node, Nodes0, Nodes) :-
     ( Node = call(_, _, _, _, _, _, _, _, _, _) ->
         Nodes = Nodes0
     ;
-        %
-        % We include NEGE and (possibly failed) COND events in the
-        % contour so we can track input sub-terms through negated
-        % contexts.
-        %
+        % We include NEGE and (possibly failed) COND events in the contour
+        % so we can track input sub-terms through negated contexts.
+
         ( Node = neg(NegPrec, _, _) ->
             PrevNodeId = NegPrec
         ; Node = cond(CondPrec, _, _) ->
@@ -1090,9 +1058,9 @@ materialize_contour(Store, NodeId, Node, Nodes0, Nodes) :-
         ),
         det_trace_node_from_id(Store, PrevNodeId, PrevNode),
         ( Node = then(_, _, _) ->
-            % The cond node is enough to tell us which way the
-            % if-then-else went; the then node would just
-            % complicate the job of make_primitive_list.
+            % The cond node is enough to tell us which way the if-then-else
+            % went; the then node would just complicate the job of
+            % make_primitive_list.
             Nodes1 = Nodes0
         ;
             Nodes1 = [NodeId - Node | Nodes0]
@@ -1425,9 +1393,8 @@ match_atomic_goal_to_contour_event(Store, File, Line, BoundVars, AtomicGoal,
                 )
             ->
                 (
-                    % Test to see that the argument is not
-                    % a closure argument (passed in when
-                    % the closure was created)
+                    % Test to see that the argument is not a closure argument
+                    % (passed in when the closure was created).
                     ArgNum > TotalArgs - length(AtomicGoalArgs)
                 ->
                     find_variable_in_args(AtomicGoalArgs, ArgNum, TotalArgs,
@@ -1641,7 +1608,6 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep, Origin) :-
                     % functor of Var0 without finding the unification which
                     % bound the TermPathStep0'th argument of that functor.
                     % So something has gone wrong.
-                    %
                     throw(internal_error("traverse_primitives",
                         "input argument not found"))
                 )
@@ -1715,18 +1681,16 @@ traverse_primitives([Prim | Prims], Var0, TermPath0, Store, ProcRep, Origin) :-
     ).
 
     % Some foreign calls, such as casts, are handled specially
-    % to improve the accuracy of the subterm dependency tracking
-    % algorithm.
+    % to improve the accuracy of the subterm dependency tracking algorithm.
     %
 :- pred plain_call_is_special_case(string::in, string::in, list(var_rep)::in,
     var_rep::out) is semidet.
 
 plain_call_is_special_case(Module, Name, Args, NewVar) :-
-    %
-    % std_util.cc_multi_equal is the same as a unification for the
+    % builtin.cc_multi_equal is the same as a unification for the
     % purposes of subterm dependency tracking.
-    %
-    Module = "std_util",
+
+    Module = "builtin",
     Name = "cc_multi_equal",
     list.length(Args, 3),
     index1_det(Args, 2) = NewVar.
