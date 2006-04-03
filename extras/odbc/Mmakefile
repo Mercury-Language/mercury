@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1997-2000, 2003 The University of Melbourne.
+# Copyright (C) 1997-2000, 2003, 2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -10,19 +10,17 @@
 # Configuration
 
 # The driver manager.
-# Legal values for MODBC_DRIVER are MODBC_IODBC and MODBC_MS.
+# Legal values for MODBC_DRIVER are MODBC_IODBC, MODBC_UNIX, and MODBC_MS.
 # Feel free to add more (and handle them in odbc.m).
-MODBC_DRIVER=MODBC_IODBC
-#MODBC_DRIVER=MODBC_MS
+MODBC_DRIVER=MODBC_UNIX
 
 # The database.
 # Legal values for MODBC_DB are MODBC_MYSQL and MODBC_SQL_SERVER.
 # Feel free to add more (and handle them in odbc.m).
 MODBC_DB = MODBC_MYSQL
-#MODBC_DB=MODBC_SQL_SERVER
 
 # Pathname for iODBC (only for MODBC_IODBC)
-IODBC_DIR=/home/aditi_db1/stayl/libiodbc-2.50.3
+#IODBC_DIR=
 
 # Pathname for the ODBC SDK (only for MODBC_MS)
 ODBC_SDK_DIR=/odbcsdk
@@ -37,10 +35,17 @@ ifeq ($(MODBC_DRIVER),MODBC_MS)
 	ODBC_INCL_DIR=$(ODBC_SDK_DIR)/include
 	MLLIBS=-lodbc32
 else 
-	ODBC_LIB_DIR=$(IODBC_DIR)/lib
-	ODBC_INCL_DIR=$(IODBC_DIR)/include
+	#ODBC_LIB_DIR=$(IODBC_DIR)/lib
+	#ODBC_INCL_DIR=$(IODBC_DIR)/include
+
+	# The following are for Debian.
+
+	# for unixODBC
+	MLLIBS=-lodbc -lpthread -lltdl -ldl
+
+	# for iODBC
+	# MLLIBS=-liodbc l-pthread -ldl
 	# note: on a DEC Alpha using OSF1 remove the -ldl.
-	MLLIBS=-L$(ODBC_LIB_DIR) -R$(ODBC_LIB_DIR) -liodbc -ldl
 endif
 
 MAIN_TARGET=odbc_test
