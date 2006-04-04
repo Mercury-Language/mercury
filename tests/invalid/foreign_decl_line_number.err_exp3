@@ -1,0 +1,3 @@
+foreign_decl_line_number.m:19:2: error: #error Error in foreign decl
+foreign_decl_line_number.m:23:2: error: #error Error in foreign code
+foreign_decl_line_number.m:37:2: error: #error Error in foreign proc
