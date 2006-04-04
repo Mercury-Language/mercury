@@ -430,6 +430,9 @@ false :-
 
 %-----------------------------------------------------------------------------%
 
+% NOTE: dynamic_cast/2 is handled specially compiler/const_prop.m.
+%       Any changes here may need to be reflected here.
+
 dynamic_cast(X, Y) :-
     private_builtin.typed_unify(X, Y).
 
@@ -1051,6 +1054,9 @@ semidet_false :- semidet_fail.
 %
 % cc_multi_equal
 %
+
+% NOTE: cc_multi_equal/2 is handled specially in browser/declarative_tree.m.
+%       Any changes here may need to be reflected there.
 
 :- pragma foreign_proc("C",
     cc_multi_equal(X::in, Y::out),

@@ -12,7 +12,7 @@
 
 :- implementation.
 
-:- import_module int, std_util, list, term, varset.
+:- import_module int, solutions, std_util, list, term, varset.
 
 main --> test1, test2, test3.
 

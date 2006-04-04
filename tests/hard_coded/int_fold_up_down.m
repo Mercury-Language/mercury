@@ -19,7 +19,7 @@
 
 :- implementation.
 
-:- import_module int, string, list, std_util.
+:- import_module int, string, list, solutions, std_util.
 
 %-----------------------------------------------------------------------------%
 
@@ -47,7 +47,7 @@ main(!IO) :-
     UpNondetPred = (pred(Res::out) is nondet :-
         int.fold_up(p_nondet, 1, 5, "", Res)
     ), 
-    std_util.solutions(UpNondetPred, NondetSolnsUp),
+    solutions(UpNondetPred, NondetSolnsUp),
     io.write_list(NondetSolnsUp, "\n", io.write_string, !IO),
     io.nl(!IO),   
  
@@ -55,7 +55,7 @@ main(!IO) :-
     DownNondetPred = (pred(Res::out) is nondet :-
         int.fold_down(p_nondet, 1, 6, "", Res)
     ),
-    std_util.solutions(DownNondetPred, NondetSolnsDown),
+    solutions(DownNondetPred, NondetSolnsDown),
     io.write_list(NondetSolnsDown, "\n", io.write_string, !IO),
     io.nl(!IO),
         

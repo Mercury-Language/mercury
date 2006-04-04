@@ -13,8 +13,8 @@
 :- import_module char.
 :- import_module string.
 :- import_module int.
+:- import_module solutions.
 :- import_module term.
-:- import_module std_util.
 :- import_module type_desc.
 :- import_module term_io.
 :- import_module varset.

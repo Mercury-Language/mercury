@@ -8,7 +8,7 @@
 
 :- implementation.
 
-:- import_module std_util.
+:- import_module solutions.
 
 :- typeclass thisclass(T) where [
 	pred c(T, T),

@@ -21,7 +21,7 @@
 :- pred 'yet another test'('another wierd type'::out) is det.
 
 :- implementation.
-:- import_module std_util.
+:- import_module solutions, std_util.
 
 mk_pair(A,B) = (A,B).
 

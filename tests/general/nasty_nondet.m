@@ -5,10 +5,10 @@
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
-:- import_module list, int, std_util.
+:- import_module list, int, solutions.
 
-:- pred p(int::in, int::out) is multidet.
-:- pred q(int::in, int::out) is multidet.
+:- pred p(int::in, int::out) is multi.
+:- pred q(int::in, int::out) is multi.
 
 
 p(Z, Y) :-

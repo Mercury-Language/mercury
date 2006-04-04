@@ -21,7 +21,7 @@
 
 :- implementation.
 
-:- import_module std_util, string, int, list.
+:- import_module solutions, string, int, list.
 
 %------------------------------------------------------------------------------%
 

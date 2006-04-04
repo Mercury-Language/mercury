@@ -23,7 +23,7 @@
 
 :- implementation.
 
-:- import_module char, string, int, list, std_util, require.
+:- import_module char, string, int, list, solutions, require.
 :- import_module getopt, bool.
 
 :- type option

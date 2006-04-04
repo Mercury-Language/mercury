@@ -9,7 +9,7 @@
 
 :- implementation.
 
-:- import_module int, std_util.
+:- import_module int, solutions.
 
 main(!IO) :-
 	solutions(non(10), N),

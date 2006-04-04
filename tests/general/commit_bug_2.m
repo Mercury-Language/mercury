@@ -11,7 +11,7 @@
 
 :- implementation.
 
-:- import_module int, list, std_util.
+:- import_module int, list, solutions.
 
 main -->
 	{ solutions(test, List) },

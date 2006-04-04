@@ -8,7 +8,7 @@
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
-:- import_module list, std_util.
+:- import_module list, solutions.
 
 main -->
 	{ q(Y) },

@@ -25,9 +25,9 @@
     % solutions/2 collects all the solutions to a predicate and returns
     % them as a list in sorted order, with duplicates removed.
     % solutions_set/2 returns them as a set.  unsorted_solutions/2 returns
-    % them as an unsorted list with possible duplicates; since there are an
-    % infinite number of such lists, this must be called from a context in
-    % which only a single solution is required.
+    % them as an unsorted list with possible duplicates; since there are 
+    % an infinite number of such lists, this must be called from a context
+    % in which only a single solution is required.
     %
 :- pred solutions(pred(T), list(T)).
 :- mode solutions(pred(out) is multi, out(non_empty_list)) is det.
@@ -167,6 +167,12 @@
 :- implementation.
 
 :- import_module mutvar.
+
+%-----------------------------------------------------------------------------%
+
+% NOTE: the all-solutions predicates are handled specially in
+%       browser/declarative_tree.m.  Any changes here may need to be reflected
+%       there.
 
 %-----------------------------------------------------------------------------%
 

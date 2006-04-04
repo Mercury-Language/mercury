@@ -7,7 +7,7 @@
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
-:- import_module list, int, std_util.
+:- import_module list, int, solutions.
 
 :- pred q(int::out) is nondet.
 

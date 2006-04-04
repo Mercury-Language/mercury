@@ -21,7 +21,7 @@
 
 :- implementation.
 
-:- import_module cord, list, string, std_util.
+:- import_module cord, list, string, solutions.
 
 %-----------------------------------------------------------------------------%
 

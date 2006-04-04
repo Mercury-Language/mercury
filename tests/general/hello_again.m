@@ -7,7 +7,7 @@
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
-:- import_module std_util.
+:- import_module solutions.
 
 main --> 
 	{ solutions(hello(1, 1), List) },

@@ -5,7 +5,7 @@
 :- pred main(io__state::di, io__state::uo) is det.
 
 :- implementation.
-:- import_module int, std_util.
+:- import_module int, solutions.
 :- use_module array.
 
 main -->

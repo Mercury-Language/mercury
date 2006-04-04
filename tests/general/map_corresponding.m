@@ -21,7 +21,7 @@
 
 :- implementation.
 
-:- import_module list, bool, int, string, pprint, std_util, exception.
+:- import_module list, bool, int, string, pprint, solutions, exception.
 
 %------------------------------------------------------------------------------%
 

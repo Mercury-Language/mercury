@@ -8,7 +8,7 @@
 
 :- implementation.
 
-:- import_module std_util, list.
+:- import_module solutions, list.
 
 main(!IO) :-
 	solutions(tc(1), Solns),

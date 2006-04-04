@@ -8,7 +8,7 @@
 :- pred main(io::di, io::uo) is det.
 
 :- implementation.
-:- import_module int, std_util.
+:- import_module int, solutions.
 
 main(!IO) :-
 	solutions(test_non(1, 2), NonSoln1),

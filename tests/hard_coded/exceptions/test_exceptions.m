@@ -21,8 +21,8 @@
 :- pred main(io__state::di, io__state::uo) is cc_multi.
 
 :- implementation.
-:- import_module std_util.
 :- import_module exception.
+:- import_module solutions.
 
 main --> 
 	{ try(det_throw, DetThrowResult) },

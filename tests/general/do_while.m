@@ -1,5 +1,5 @@
 % tests/general/do_while.m:
-%	A test case for std_util__do_while/4.
+%	A test case for solutions.do_while/4.
 %
 % Adapted from tests/general/nondet_ite.m.
 
@@ -10,7 +10,7 @@
 :- pred main(io__state::di, io__state::uo) is cc_multi.
 
 :- implementation.
-:- import_module list, int, std_util, bool.
+:- import_module list, int, solutions, bool.
 
 main -->
 	do_while(r(100), write_answer("foo")),

@@ -7,7 +7,7 @@
 
 :- implementation.
 
-:- import_module int, std_util.
+:- import_module int, solutions.
 
 main(!IO) :-
 	solutions(loop(2), Y),

@@ -14,7 +14,7 @@
 
 %---------------------------------------------------------------------------
 :- implementation.
-:- import_module list, bool, std_util, char.
+:- import_module list, bool, solutions, char.
 
 %--------------------------------------------------
 :- type node ---> a ; b ; c ; d ; e ; f ; g ; h ; i ; j ; k ; l.

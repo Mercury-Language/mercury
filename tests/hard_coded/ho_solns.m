@@ -20,7 +20,7 @@
 
 :- implementation.
 
-:- import_module list, std_util, int.
+:- import_module list, solutions, std_util, int.
 
 main -->
 	{ unsorted_solutions(foo, List0) },
