@@ -3,18 +3,18 @@ register --quiet
 break p
 continue
 finish
-set depth 10
-set xml_browser_cmd 'cat ./browse_arg.xml.out'
-set xml_tmp_filename './browse_arg.xml.out'
+format_param depth 10
+xml_browser_cmd 'cat ./browse_arg.xml.out'
+xml_tmp_filename './browse_arg.xml.out'
 dd -d 3 -n 7
 browse 2
 ls
 quit
-set format verbose
+format verbose
 print
-set -B format pretty
+format -B pretty
 p
-set -P format pretty
+format -P pretty
 p
 b -x 2
 b --xml

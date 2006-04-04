@@ -1,6 +1,6 @@
 #-----------------------------------------------------------------------------#
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1996-2005 The University of Melbourne.
+# Copyright (C) 1996-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -69,7 +69,7 @@ EMACS_SCRIPTS = gud.el
 		chmod a+x $* ; \
 		fi \
 	done
-	@for file in $(CONF_FILES) ; do \
+	@for file in $(CONF_FILES) $(CONF_DEBUG_SCRIPTS) ; do \
 		if test "$*" = "$$file" ; then \
 		$(MERCURY_DIR)/config.status --file=$* ; \
 		if grep -n '[^$$]@' $@; then false; else true; fi \

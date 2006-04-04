@@ -8,8 +8,8 @@ print exception
 continue
 finish
 browse exception
-set depth 9
-set size 99
+depth 9
+size 99
 ls
 quit
 continue

@@ -215,26 +215,6 @@
 
 %---------------------------------------------------------------------------%
 %
-% If the term browser is called from the internal debugger, input is
-% done via a call to the readline library (if available), using streams
-% MR_mdb_in and MR_mdb_out.  If it is called from the external debugger,
-% Input/Output are done via MR_debugger_socket_in/MR_debugger_socket_out.
-% In the latter case we need to output terms; their type is
-% term_browser_response.
-
-:- type term_browser_response
-    --->    browser_str(string)
-    ;       browser_int(int)
-    ;       browser_nl
-    ;       browser_end_command
-    ;       browser_quit.
-
-:- type debugger
-    --->    internal
-    ;       external.
-
-%---------------------------------------------------------------------------%
-%
 % Saving terms to files
 %
 
@@ -614,18 +594,8 @@ run_command(Debugger, Command, Quit, !Info, !IO) :-
         help(Debugger, !IO),
         Quit = no
     ;
-        Command = set,
-        show_settings(Debugger, !.Info, !IO),
-        Quit = no
-    ;
-        Command = set(MaybeOptionTable, Setting),
-        (
-            MaybeOptionTable = ok(OptionTable),
-            set_browse_param(OptionTable, Setting, !Info)
-        ;
-            MaybeOptionTable = error(Msg),
-            write_string_debugger(Debugger, Msg, !IO)
-        ),
+        Command = param_command(ParamCmd),
+        run_param_command(Debugger, ParamCmd, yes, !Info, !IO),
         Quit = no
     ;
         Command = cd,
@@ -770,27 +740,25 @@ interpret_format_options(OptionTable, MaybeMaybeFormat) :-
 
 bool_format_option_is_true(Format - bool(yes), Format).
 
-:- pred set_browse_param(option_table(setting_option)::in, setting::in,
-    browser_info::in, browser_info::out) is det.
-
-set_browse_param(OptionTable, Setting, !Info) :-
-    set_browser_param_from_option_table(yes, OptionTable, Setting,
-        !.Info ^ state, NewState),
-    !:Info = !.Info ^ state := NewState.
-
 :- pred help(debugger::in, io::di, io::uo) is det.
 
-help(Debugger) -->
-    { string.append_list([
+help(Debugger, !IO) :-
+    string.append_list([
 "Commands are:\n",
 "\t[print|p|ls] [format_options] [path]\n",
 "\t               -- print the specified subterm using the `browse' params\n",
 "\tcd [path]      -- cd to the specified subterm (default is root)\n",
 "\tcdr n path     -- repeatedly apply the cd command n times\n",
 "\tpwd            -- print the path to the current subterm\n",
-"\tset [setting_options] var value\n",
+"\tformat [format_options] <flat|raw-prety|verbose|pretty>\n",
+"\t               -- set the format\n",
+"\tdepth [format_param_options] <n>\n",
+"\tsize  [format_param_options] <n>\n",
+"\twidth [format_param_options] <n>\n",
+"\tlines [format_param_options] <n>\n",
+"\tnum_io_actions <n>\n",
 "\t               -- set a parameter value\n",
-"\tset            -- show parameter values\n",
+"\tparams         -- show format and parameter values\n",
 "\tmark [path]    -- mark the given subterm (default is current) and quit\n",
 "\tmode [path]    -- show the mode of a subterm (default is current)\n",
 "\tquit           -- quit browser\n",
@@ -802,14 +770,10 @@ help(Debugger) -->
 "\t?              -- help\n",
 "\th              -- help\n",
 "\n",
-"-- Parameter variables with integer values:\n",
-"--  size <n>; depth <n>; path <n>; width <n>; lines <n>; num_io_actions <n>;\n",
-"-- Parameter variables with non-integer values:\n",
-"--  format <flat,raw_pretty,verbose,pretty>;\n",
 "-- Paths can be Unix-style or SICStus-style: /2/3/1 or ^2^3^1\n",
 "\n"],
-        HelpMessage) },
-    write_string_debugger(Debugger, HelpMessage).
+        HelpMessage),
+    write_string_debugger(Debugger, HelpMessage, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -1336,60 +1300,6 @@ unlines([Line | Lines], Str) :-
 % Miscellaneous path handling
 %
 
-:- pred write_path(debugger::in, list(dir)::in, io::di, io::uo) is det.
-
-write_path(Debugger, [], !IO) :-
-    write_string_debugger(Debugger, "/", !IO).
-write_path(Debugger, [Dir], !IO) :-
-    (
-        Dir = parent,
-        write_string_debugger(Debugger, "/", !IO)
-    ;
-        Dir = child_num(N),
-        write_string_debugger(Debugger, "/", !IO),
-        write_int_debugger(Debugger, N, !IO)
-    ;
-        Dir = child_name(Name),
-        write_string_debugger(Debugger, "/", !IO),
-        write_string_debugger(Debugger, Name, !IO)
-    ).
-write_path(Debugger, [Dir, Dir2 | Dirs], !IO) :-
-    write_path_2(Debugger, [Dir, Dir2 | Dirs], !IO).
-
-:- pred write_path_2(debugger::in, list(dir)::in, io::di, io::uo) is det.
-
-write_path_2(Debugger, [], !IO) :-
-    write_string_debugger(Debugger, "/", !IO).
-write_path_2(Debugger, [Dir], !IO) :-
-    (
-        Dir = parent,
-        write_string_debugger(Debugger, "/..", !IO)
-    ;
-        Dir = child_num(N),
-        write_string_debugger(Debugger, "/", !IO),
-        write_int_debugger(Debugger, N, !IO)
-    ;
-        Dir = child_name(Name),
-        write_string_debugger(Debugger, "/", !IO),
-        write_string_debugger(Debugger, Name, !IO)
-    ).
-write_path_2(Debugger, [Dir, Dir2 | Dirs], !IO) :-
-    (
-        Dir = parent,
-        write_string_debugger(Debugger, "/..", !IO),
-        write_path_2(Debugger, [Dir2 | Dirs], !IO)
-    ;
-        Dir = child_num(N),
-        write_string_debugger(Debugger, "/", !IO),
-        write_int_debugger(Debugger, N, !IO),
-        write_path_2(Debugger, [Dir2 | Dirs], !IO)
-    ;
-        Dir = child_name(Name),
-        write_string_debugger(Debugger, "/", !IO),
-        write_string_debugger(Debugger, Name, !IO),
-        write_path_2(Debugger, [Dir2 | Dirs], !IO)
-    ).
-
 :- type deref_result(T)
     --->    deref_result(T)
     ;       deref_error(list(dir), dir).
@@ -1574,8 +1484,8 @@ show_settings_caller(Debugger, Info, Caller, CallerName, !IO) :-
     write_string_debugger(Debugger, pad_right("", ' ', row_name_len), !IO),
     write_string_debugger(Debugger, pad_right("depth", ' ', depth_len), !IO),
     write_string_debugger(Debugger, pad_right("size", ' ', size_len), !IO),
-    write_string_debugger(Debugger, pad_right("x clip", ' ', x_len), !IO),
-    write_string_debugger(Debugger, pad_right("y clip", ' ', y_len), !IO),
+    write_string_debugger(Debugger, pad_right("x clip", ' ', width_len), !IO),
+    write_string_debugger(Debugger, pad_right("y clip", ' ', lines_len), !IO),
     nl_debugger(Debugger, !IO),
 
     show_settings_caller_format(Debugger, Info, Caller, CallerName,
@@ -1605,24 +1515,24 @@ show_settings_caller_format(Debugger, Info, Caller, CallerName,
     write_string_debugger(Debugger,
         pad_right(int_to_string(Params ^ size), ' ', size_len), !IO),
     write_string_debugger(Debugger,
-        pad_right(int_to_string(Params ^ width), ' ', x_len), !IO),
+        pad_right(int_to_string(Params ^ width), ' ', width_len), !IO),
     write_string_debugger(Debugger,
-        pad_right(int_to_string(Params ^ lines), ' ', y_len), !IO),
+        pad_right(int_to_string(Params ^ lines), ' ', lines_len), !IO),
     nl_debugger(Debugger, !IO).
 
 :- func row_name_len = int.
 :- func centering_len = int.
 :- func depth_len = int.
 :- func size_len = int.
-:- func x_len = int.
-:- func y_len = int.
+:- func width_len = int.
+:- func lines_len = int.
 
 row_name_len  = 30.
 centering_len =  3.
 depth_len     = 10.
 size_len      = 10.
-x_len         = 10.
-y_len         = 10.
+width_len     = 10.
+lines_len     = 10.
 
 :- pred string_to_path(string::in, path::out) is semidet.
 
@@ -1732,13 +1642,6 @@ dirs_to_string([Dir | Dirs]) =
 
 %---------------------------------------------------------------------------%
 
-:- pred write_string_debugger(debugger::in, string::in, io::di, io::uo) is det.
-
-write_string_debugger(internal, String, !IO) :-
-    io.write_string(String, !IO).
-write_string_debugger(external, String, !IO) :-
-    send_term_to_socket(browser_str(String), !IO).
-
 :- pred write_term_mode_debugger(debugger::in, maybe(browser_mode_func)::in,
     list(dir)::in, io::di, io::uo) is det.
 
@@ -1760,47 +1663,6 @@ browser_mode_to_string(input) = "Input".
 browser_mode_to_string(output) = "Output".
 browser_mode_to_string(not_applicable) = "Not Applicable".
 browser_mode_to_string(unbound) = "Unbound".
-
-:- pred nl_debugger(debugger::in, io::di, io::uo) is det.
-
-nl_debugger(internal, !IO) :-
-    io.nl(!IO).
-nl_debugger(external, !IO) :-
-    send_term_to_socket(browser_nl, !IO).
-
-:- pred write_int_debugger(debugger::in, int::in, io::di, io::uo) is det.
-
-write_int_debugger(internal, Int, !IO) :-
-    io.write_int(Int, !IO).
-write_int_debugger(external, Int, !IO) :-
-    send_term_to_socket(browser_int(Int), !IO).
-
-:- pred print_format_debugger(debugger::in, portray_format::in,
-    io::di, io::uo) is det.
-
-print_format_debugger(internal, X, !IO) :-
-    io.print(X, !IO).
-print_format_debugger(external, X, !IO) :-
-    (
-        X = flat,
-        send_term_to_socket(browser_str("flat"), !IO)
-    ;
-        X = raw_pretty,
-        send_term_to_socket(browser_str("raw_pretty"), !IO)
-    ;
-        X = verbose,
-        send_term_to_socket(browser_str("verbose"), !IO)
-    ;
-        X = pretty,
-        send_term_to_socket(browser_str("pretty"), !IO)
-    ).
-
-:- pred send_term_to_socket(term_browser_response::in, io::di, io::uo) is det.
-
-send_term_to_socket(Term, !IO) :-
-    write(Term, !IO),
-    print(".\n", !IO),
-    flush_output(!IO).
 
 %---------------------------------------------------------------------------%
 

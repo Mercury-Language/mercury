@@ -106,8 +106,8 @@ mdb> continue
 
 mdb> break_print 1 none
  1: + stop  interface pred breakpoints.qperm/2-0 (nondet)
-mdb> set -p depth 10
-mdb> set -p size 20
+mdb> format_param -p depth 10
+mdb> format_param -p size 20
 mdb> break_print -p -n 1 HeadVar__1 HeadVar__2
  1: + stop  interface pred breakpoints.qperm/2-0 (nondet)
             HeadVar__1 (pretty, nowarn), HeadVar__2 (pretty, nowarn)

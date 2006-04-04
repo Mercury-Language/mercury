@@ -30,8 +30,8 @@ break nodiag
 break_print -v -n 1 HeadVar__1 HeadVar__2
 continue
 break_print 1 none
-set -p depth 10
-set -p size 20
+format_param -p depth 10
+format_param -p size 20
 break_print -p -n 1 HeadVar__1 HeadVar__2
 continue
 finish -N

@@ -6,9 +6,9 @@ browse 1
 quit
 step
 finish
-set depth 20
-set size 201
-set format raw_pretty
+format_param depth 20
+format_param size 201
+format raw_pretty
 p proc_body
 dd -d 3 -n 7
 browse 1

@@ -149,12 +149,9 @@
 :- type setting
     --->    depth(int)
     ;       size(int)
-    ;       format(portray_format)
     ;       width(int)
     ;       lines(int)
-    ;       num_io_actions(int)
-    ;       xml_browser_cmd(string)
-    ;       xml_tmp_filename(string).
+    ;       format(portray_format).
 
     % Initialise a new browser_info.  The optional portray_format
     % overrides the default format.
@@ -181,7 +178,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % An data type that holds persistent browser settings.
+    % A data type that holds persistent browser settings.
     % This state must be saved by the caller of the browse module
     % between calls.
     %
@@ -228,6 +225,74 @@
 :- pred set_browser_param_from_option_table(bool::in,
     option_table(setting_option)::in, setting::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
+
+:- pred info_set_browse_param(option_table(setting_option)::in,
+    setting::in, browser_info::in, browser_info::out) is det.
+
+:- pred info_set_num_io_actions(int::in,
+    browser_info::in, browser_info::out) is det.
+
+:- pred info_set_xml_browser_cmd(string::in,
+    browser_info::in, browser_info::out) is det.
+
+:- pred info_set_xml_tmp_filename(string::in,
+    browser_info::in, browser_info::out) is det.
+
+:- pred get_num_io_actions(browser_persistent_state::in, int::out) is det.
+:- pred set_num_io_actions(int::in,
+    browser_persistent_state::in, browser_persistent_state::out) is det.
+
+:- type param_cmd
+    --->    format(maybe_option_table(setting_option), setting)
+    ;       format_param(maybe_option_table(setting_option), setting)
+    ;       num_io_actions(int)
+    ;       print_params.
+% We can't set the browser command from within the browser because we parse
+% user commands from the browser by breaking them up into words at whitespace,
+% which doesn't respect quotation marks. Since the browser command will usually
+% include spaces, this parsing method would need to be changed before we could
+% include xml_browser_cmd here. And until we handle xml_browser_cmd, there is
+% no point in handling xml_tmp_filename.
+%
+%   ;       xml_browser_cmd(string)
+%   ;       xml_tmp_filename(string)
+
+:- type debugger
+    --->    internal
+    ;       external.
+%
+% If the term browser is called from the internal debugger, input is
+% done via a call to the readline library (if available), using streams
+% MR_mdb_in and MR_mdb_out.  If it is called from the external debugger,
+% Input/Output are done via MR_debugger_socket_in/MR_debugger_socket_out.
+% In the latter case we need to output terms; their type is
+% term_browser_response.
+
+:- type term_browser_response
+    --->    browser_str(string)
+    ;       browser_int(int)
+    ;       browser_nl
+    ;       browser_end_command
+    ;       browser_quit.
+
+:- pred run_param_command(debugger::in, param_cmd::in, bool::in,
+    browser_info::in, browser_info::out, io::di, io::uo) is det.
+
+:- pred show_settings(debugger::in, bool::in, browser_info::in,
+    io::di, io::uo) is det.
+
+:- pred nl_debugger(debugger::in, io::di, io::uo) is det.
+
+:- pred write_string_debugger(debugger::in, string::in, io::di, io::uo) is det.
+
+:- pred write_int_debugger(debugger::in, int::in, io::di, io::uo) is det.
+
+:- pred print_format_debugger(debugger::in, portray_format::in,
+    io::di, io::uo) is det.
+
+:- pred write_path(debugger::in, list(dir)::in, io::di, io::uo) is det.
+
+:- pred send_term_to_socket(term_browser_response::in, io::di, io::uo) is det.
 
 :- pred browser_params_to_string(browser_persistent_state::in, bool::in,
     string::out) is det.
@@ -319,6 +384,27 @@ set_width_from_mdb(P, B, A, F, Pr, V, NPr, Width, !Browser) :-
 set_lines_from_mdb(P, B, A, F, Pr, V, NPr, Lines, !Browser) :-
     set_browser_param(no, P, B, A, F, Pr, V, NPr, lines(Lines), !Browser).
 
+info_set_browse_param(OptionTable, Setting, !Info) :-
+    PersistentState0 = !.Info ^ state,
+    set_browser_param_from_option_table(yes, OptionTable, Setting,
+        PersistentState0, PersistentState),
+    !:Info = !.Info ^ state := PersistentState.
+
+info_set_num_io_actions(N, !Info) :-
+    PersistentState0 = !.Info ^ state,
+    set_num_io_actions(N, PersistentState0, PersistentState),
+    !:Info = !.Info ^ state := PersistentState.
+
+info_set_xml_browser_cmd(Cmd, !Info) :-
+    PersistentState0 = !.Info ^ state,
+    set_xml_browser_cmd_from_mdb(Cmd, PersistentState0, PersistentState),
+    !:Info = !.Info ^ state := PersistentState.
+
+info_set_xml_tmp_filename(FileName, !Info) :-
+    PersistentState0 = !.Info ^ state,
+    set_xml_tmp_filename_from_mdb(FileName, PersistentState0, PersistentState),
+    !:Info = !.Info ^ state := PersistentState.
+
 :- pred set_format_from_mdb(bool::in, bool::in, bool::in, portray_format::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
 :- pragma export(set_format_from_mdb(in, in, in, in, in, out),
@@ -328,13 +414,31 @@ set_format_from_mdb(P, B, A, Format, !Browser) :-
     % Any format flags are ignored for this parameter.
     set_browser_param(no, P, B, A, no, no, no, no, format(Format), !Browser).
 
-:- pred set_num_io_actions_from_mdb(int::in,
-    browser_persistent_state::in, browser_persistent_state::out) is det.
-:- pragma export(set_num_io_actions_from_mdb(in, in, out),
-    "ML_BROWSE_set_num_io_actions_from_mdb").
+:- pragma export(get_num_io_actions(in, out),
+    "ML_BROWSE_get_num_io_actions").
 
-set_num_io_actions_from_mdb(NumIOActions, !Browser) :-
+get_num_io_actions(Browser, NumIOActions) :-
+    NumIOActions = Browser ^ num_printed_io_actions.
+
+:- pragma export(set_num_io_actions(in, in, out),
+    "ML_BROWSE_set_num_io_actions").
+
+set_num_io_actions(NumIOActions, !Browser) :-
     !:Browser = !.Browser ^ num_printed_io_actions := NumIOActions.
+
+:- pred get_xml_browser_cmd_from_mdb(browser_persistent_state::in,
+    string::out) is det.
+:- pragma export(get_xml_browser_cmd_from_mdb(in, out),
+    "ML_BROWSE_get_xml_browser_cmd_from_mdb").
+
+get_xml_browser_cmd_from_mdb(Browser, Command) :-
+    MaybeCommand = Browser ^ xml_browser_cmd,
+    (
+        MaybeCommand = no,
+        Command = ""
+    ;
+        MaybeCommand = yes(Command)
+    ).
 
 :- pred set_xml_browser_cmd_from_mdb(string::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
@@ -346,6 +450,20 @@ set_xml_browser_cmd_from_mdb(Command, !Browser) :-
         !:Browser = !.Browser ^ xml_browser_cmd := no
     ;
         !:Browser = !.Browser ^ xml_browser_cmd := yes(Command)
+    ).
+
+:- pred get_xml_tmp_filename_from_mdb(browser_persistent_state::in,
+    string::out) is det.
+:- pragma export(get_xml_tmp_filename_from_mdb(in, out),
+    "ML_BROWSE_get_xml_tmp_filename_from_mdb").
+
+get_xml_tmp_filename_from_mdb(Browser, FileName) :-
+    MaybeFileName = Browser ^ xml_tmp_filename,
+    (
+        MaybeFileName = no,
+        FileName = ""
+    ;
+        MaybeFileName = yes(FileName)
     ).
 
 :- pred set_xml_tmp_filename_from_mdb(string::in,
@@ -491,13 +609,6 @@ num_printed_io_actions_default = 20.
 
 set_browser_param(FromBrowser, P0, B0, A0, F0, Pr0, V0, NPr0, Setting,
         !State) :-
-    ( Setting = num_io_actions(NumIoActions) ->
-        !:State = !.State ^ num_printed_io_actions := NumIoActions
-    ; Setting = xml_browser_cmd(CommandStr) ->
-        !:State = !.State ^ xml_browser_cmd := yes(CommandStr)
-    ; Setting = xml_tmp_filename(CommandStr) ->
-        !:State = !.State ^ xml_tmp_filename := yes(CommandStr)
-    ;
         (
             FromBrowser = no,
             default_all_yes(P0, B0, A0, P, B, A)
@@ -524,8 +635,7 @@ set_browser_param(FromBrowser, P0, B0, A0, F0, Pr0, V0, NPr0, Setting,
         maybe_set_param(A, F, Pr, V, NPr, Setting, AParams0, AParams),
         !:State = browser_persistent_state(PParams, BParams, AParams,
             !.State ^ num_printed_io_actions,
-            !.State ^ xml_browser_cmd, !.State ^ xml_tmp_filename)
-    ).
+        !.State ^ xml_browser_cmd, !.State ^ xml_tmp_filename).
 
 set_browser_param_maybe_caller_type(FromBrowser, MaybeCallerType,
         F0, Pr0, V0, NPr0, Setting, !State) :-
@@ -536,13 +646,13 @@ set_browser_param_maybe_caller_type(FromBrowser, MaybeCallerType,
 set_browser_param_from_option_table(FromBrowser, OptionTable, Setting,
         !State) :-
     set_browser_param(FromBrowser,
-        lookup_bool_option(OptionTable, print):bool,
-        lookup_bool_option(OptionTable, browse):bool,
-        lookup_bool_option(OptionTable, print_all):bool,
-        lookup_bool_option(OptionTable, flat):bool,
-        lookup_bool_option(OptionTable, raw_pretty):bool,
-        lookup_bool_option(OptionTable, verbose):bool,
-        lookup_bool_option(OptionTable, pretty):bool,
+        lookup_bool_option(OptionTable, set_print):bool,
+        lookup_bool_option(OptionTable, set_browse):bool,
+        lookup_bool_option(OptionTable, set_print_all):bool,
+        lookup_bool_option(OptionTable, set_flat):bool,
+        lookup_bool_option(OptionTable, set_raw_pretty):bool,
+        lookup_bool_option(OptionTable, set_verbose):bool,
+        lookup_bool_option(OptionTable, set_pretty):bool,
         Setting, !State).
 
 :- pred affected_caller_types(bool::in, maybe(browse_caller_type)::in,
@@ -635,12 +745,6 @@ maybe_set_param_2(yes, format(_), _, _) :-
     error("maybe_set_param_2: cannot set format here").
 maybe_set_param_2(yes, width(W), Params, Params ^ width := W).
 maybe_set_param_2(yes, lines(L), Params, Params ^ lines := L).
-maybe_set_param_2(yes, num_io_actions(_), _, _) :-
-    error("maybe_set_param_2: num_io_actions").
-maybe_set_param_2(yes, xml_browser_cmd(_), _, _) :-
-    error("maybe_set_param_2: xml_browser_cmd").
-maybe_set_param_2(yes, xml_tmp_filename(_), _, _) :-
-    error("maybe_set_param_2: xml_tmp_filename").
 
 :- pred get_caller_params(browser_persistent_state::in, browse_caller_type::in,
     caller_params::out) is det.
@@ -662,6 +766,218 @@ get_num_printed_io_actions(State) =
 
 %---------------------------------------------------------------------------%
 
+run_param_command(Debugger, ParamCmd, ShowPath, !PersistentState, !IO) :-
+    (
+        ParamCmd = format(MaybeOptionTable, Setting),
+        (
+            MaybeOptionTable = ok(OptionTable),
+            info_set_browse_param(OptionTable, Setting, !PersistentState)
+        ;
+            MaybeOptionTable = error(Msg),
+            write_string_debugger(Debugger, Msg, !IO)
+        )
+    ;
+        ParamCmd = format_param(MaybeOptionTable, Setting),
+        (
+            MaybeOptionTable = ok(OptionTable),
+            info_set_browse_param(OptionTable, Setting, !PersistentState)
+        ;
+            MaybeOptionTable = error(Msg),
+            write_string_debugger(Debugger, Msg, !IO)
+        )
+    ;
+        ParamCmd = num_io_actions(N),
+        info_set_num_io_actions(N, !PersistentState)
+    ;
+        ParamCmd = print_params,
+        show_settings(Debugger, ShowPath, !.PersistentState, !IO)
+%   ;
+%       ParamCmd = xml_browser_cmd(Cmd),
+%       set_xml_browser_cmd(Cmd, !PersistentState)
+%   ;
+%       ParamCmd = xml_tmp_filename(FileName),
+%       set_xml_tmp_filename(FileName, !PersistentState)
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% Display predicates.
+%
+
+show_settings(Debugger, ShowPath, Info, !IO) :-
+    show_settings_caller(Debugger, Info, browse, "Browser", !IO),
+    show_settings_caller(Debugger, Info, print, "Print", !IO),
+    show_settings_caller(Debugger, Info, print_all, "Printall", !IO),
+
+    write_string_debugger(Debugger,
+        "Number of I/O actions printed is: ", !IO),
+    write_int_debugger(Debugger,
+        get_num_printed_io_actions(Info ^ state), !IO),
+    nl_debugger(Debugger, !IO),
+
+    (
+        ShowPath = yes,
+        write_string_debugger(Debugger, "Current path is: ", !IO),
+        write_path(Debugger, Info ^ dirs, !IO),
+        nl_debugger(Debugger, !IO)
+    ;
+        ShowPath = no
+    ).
+
+:- pred show_settings_caller(debugger::in, browser_info::in,
+    browse_caller_type::in, string::in, io::di, io::uo) is det.
+
+show_settings_caller(Debugger, Info, Caller, CallerName, !IO) :-
+    browser_info.get_format(Info, Caller, no, Format),
+    write_string_debugger(Debugger, CallerName ++ " default format: ", !IO),
+    print_format_debugger(Debugger, Format, !IO),
+    nl_debugger(Debugger, !IO),
+
+    write_string_debugger(Debugger, pad_right("", ' ', row_name_len), !IO),
+    write_string_debugger(Debugger, pad_right(" ", ' ', centering_len), !IO),
+    write_string_debugger(Debugger, pad_right("depth", ' ', depth_len), !IO),
+    write_string_debugger(Debugger, pad_right("size", ' ', size_len), !IO),
+    write_string_debugger(Debugger, pad_right("width", ' ', width_len), !IO),
+    write_string_debugger(Debugger, pad_right("lines", ' ', lines_len), !IO),
+    nl_debugger(Debugger, !IO),
+
+    show_settings_caller_format(Debugger, Info, Caller, CallerName,
+        flat, "flat", !IO),
+    show_settings_caller_format(Debugger, Info, Caller, CallerName,
+        verbose, "verbose", !IO),
+    show_settings_caller_format(Debugger, Info, Caller, CallerName,
+        pretty, "pretty", !IO),
+    show_settings_caller_format(Debugger, Info, Caller, CallerName,
+        raw_pretty, "raw_pretty", !IO),
+    nl_debugger(Debugger, !IO).
+
+:- pred show_settings_caller_format(debugger::in, browser_info::in,
+    browse_caller_type::in, string::in, portray_format::in, string::in,
+    io::di, io::uo) is det.
+
+show_settings_caller_format(Debugger, Info, Caller, CallerName,
+        Format, FormatName, !IO) :-
+    browser_info.get_format_params(Info, Caller, Format, Params),
+    write_string_debugger(Debugger,
+        pad_right(CallerName ++ " " ++ FormatName ++ ":", ' ', row_name_len),
+        !IO),
+    write_string_debugger(Debugger,
+        pad_right(" ", ' ', centering_len), !IO),
+    write_string_debugger(Debugger,
+        pad_right(int_to_string(Params ^ depth), ' ', depth_len), !IO),
+    write_string_debugger(Debugger,
+        pad_right(int_to_string(Params ^ size), ' ', size_len), !IO),
+    write_string_debugger(Debugger,
+        pad_right(int_to_string(Params ^ width), ' ', width_len), !IO),
+    write_string_debugger(Debugger,
+        pad_right(int_to_string(Params ^ lines), ' ', lines_len), !IO),
+    nl_debugger(Debugger, !IO).
+
+:- func row_name_len = int.
+:- func centering_len = int.
+:- func depth_len = int.
+:- func size_len = int.
+:- func width_len = int.
+:- func lines_len = int.
+
+row_name_len  = 30.
+centering_len =  3.
+depth_len     = 10.
+size_len      = 10.
+width_len     = 10.
+lines_len     = 10.
+
+nl_debugger(internal, !IO) :-
+    io.nl(!IO).
+nl_debugger(external, !IO) :-
+    send_term_to_socket(browser_nl, !IO).
+
+write_string_debugger(internal, String, !IO) :-
+    io.write_string(String, !IO).
+write_string_debugger(external, String, !IO) :-
+    send_term_to_socket(browser_str(String), !IO).
+
+write_int_debugger(internal, Int, !IO) :-
+    io.write_int(Int, !IO).
+write_int_debugger(external, Int, !IO) :-
+    send_term_to_socket(browser_int(Int), !IO).
+
+print_format_debugger(internal, X, !IO) :-
+    io.print(X, !IO).
+print_format_debugger(external, X, !IO) :-
+    (
+        X = flat,
+        send_term_to_socket(browser_str("flat"), !IO)
+    ;
+        X = raw_pretty,
+        send_term_to_socket(browser_str("raw_pretty"), !IO)
+    ;
+        X = verbose,
+        send_term_to_socket(browser_str("verbose"), !IO)
+    ;
+        X = pretty,
+        send_term_to_socket(browser_str("pretty"), !IO)
+    ).
+
+write_path(Debugger, [], !IO) :-
+    write_string_debugger(Debugger, "/", !IO).
+write_path(Debugger, [Dir], !IO) :-
+    (
+        Dir = parent,
+        write_string_debugger(Debugger, "/", !IO)
+    ;
+        Dir = child_num(N),
+        write_string_debugger(Debugger, "/", !IO),
+        write_int_debugger(Debugger, N, !IO)
+    ;
+        Dir = child_name(Name),
+        write_string_debugger(Debugger, "/", !IO),
+        write_string_debugger(Debugger, Name, !IO)
+    ).
+write_path(Debugger, [Dir, Dir2 | Dirs], !IO) :-
+    write_path_2(Debugger, [Dir, Dir2 | Dirs], !IO).
+
+:- pred write_path_2(debugger::in, list(dir)::in, io::di, io::uo) is det.
+
+write_path_2(Debugger, [], !IO) :-
+    write_string_debugger(Debugger, "/", !IO).
+write_path_2(Debugger, [Dir], !IO) :-
+    (
+        Dir = parent,
+        write_string_debugger(Debugger, "/..", !IO)
+    ;
+        Dir = child_num(N),
+        write_string_debugger(Debugger, "/", !IO),
+        write_int_debugger(Debugger, N, !IO)
+    ;
+        Dir = child_name(Name),
+        write_string_debugger(Debugger, "/", !IO),
+        write_string_debugger(Debugger, Name, !IO)
+    ).
+write_path_2(Debugger, [Dir, Dir2 | Dirs], !IO) :-
+    (
+        Dir = parent,
+        write_string_debugger(Debugger, "/..", !IO),
+        write_path_2(Debugger, [Dir2 | Dirs], !IO)
+    ;
+        Dir = child_num(N),
+        write_string_debugger(Debugger, "/", !IO),
+        write_int_debugger(Debugger, N, !IO),
+        write_path_2(Debugger, [Dir2 | Dirs], !IO)
+    ;
+        Dir = child_name(Name),
+        write_string_debugger(Debugger, "/", !IO),
+        write_string_debugger(Debugger, Name, !IO),
+        write_path_2(Debugger, [Dir2 | Dirs], !IO)
+    ).
+
+send_term_to_socket(Term, !IO) :-
+    write(Term, !IO),
+    print(".\n", !IO),
+    flush_output(!IO).
+
+%---------------------------------------------------------------------------%
+
 :- pragma export(browser_params_to_string(in, in, out),
     "ML_BROWSE_browser_params_to_string").
 
@@ -671,11 +987,11 @@ browser_params_to_string(Browser, MDBCommandFormat, Desc) :-
     (
         MDBCommandFormat = yes,
         ParamCmds = 
-            caller_params_to_mdb_command("-P", PrintParams) ++
-            caller_params_to_mdb_command("-B", BrowseParams) ++
-            caller_params_to_mdb_command("-A", PrintAllParams),
+            caller_params_to_mdb_command("-P ", PrintParams) ++
+            caller_params_to_mdb_command("-B ", BrowseParams) ++
+            caller_params_to_mdb_command("-A ", PrintAllParams),
         NumIOActionCmd =
-            "set max_io_actions " ++ int_to_string(NumIOActions) ++ "\n",
+            "max_io_actions " ++ int_to_string(NumIOActions) ++ "\n",
         (
             MaybeXMLBrowserCmd = yes(XMLBrowserCmd),
             % XMLBrowserCmd shouldn't be "" if MaybeXMLBrowserCmd is yes,
@@ -683,7 +999,7 @@ browser_params_to_string(Browser, MDBCommandFormat, Desc) :-
             XMLBrowserCmd \= ""
         ->
             XMLBrowserCmdCmd =
-                "set xml_browser_cmd " ++ XMLBrowserCmd ++ "\n"
+                "xml_browser_cmd " ++ XMLBrowserCmd ++ "\n"
         ;
             XMLBrowserCmdCmd = ""
         ),
@@ -694,7 +1010,7 @@ browser_params_to_string(Browser, MDBCommandFormat, Desc) :-
             XMLTmpFileName \= ""
         ->
             XMLTmpFileNameCmd =
-                "set xml_tmp_filename " ++ XMLTmpFileName ++ "\n"
+                "xml_tmp_filename " ++ XMLTmpFileName ++ "\n"
         ;
             XMLTmpFileNameCmd = ""
         ),
@@ -735,15 +1051,15 @@ browser_params_to_string(Browser, MDBCommandFormat, Desc) :-
 :- func caller_params_to_mdb_command(string, caller_params) = string.
 
 caller_params_to_mdb_command(CallerOpt, CallerParams) = Cmds :-
-    CmdCallerOpt = "set " ++ CallerOpt ++ " ",
     CallerParams = caller_params(Format, FlatParams, RawPrettyParams,
         VerboseParams, PrettyParams),
-    FormatCmd = CmdCallerOpt ++ "format " ++ format_to_string(Format) ++ "\n",
+    FormatCmd = "format " ++ CallerOpt ++ format_to_string(Format) ++ "\n",
+    CmdPrefix = "format_param " ++ CallerOpt,
     FormatParamCmds =
-        format_params_to_mdb_command(CmdCallerOpt ++ "-f ", FlatParams) ++
-        format_params_to_mdb_command(CmdCallerOpt ++ "-r ", RawPrettyParams) ++
-        format_params_to_mdb_command(CmdCallerOpt ++ "-v ", VerboseParams) ++
-        format_params_to_mdb_command(CmdCallerOpt ++ "-p ", PrettyParams),
+        format_params_to_mdb_command(CmdPrefix ++ "-f ", FlatParams) ++
+        format_params_to_mdb_command(CmdPrefix ++ "-r ", RawPrettyParams) ++
+        format_params_to_mdb_command(CmdPrefix ++ "-v ", VerboseParams) ++
+        format_params_to_mdb_command(CmdPrefix ++ "-p ", PrettyParams),
     Cmds = FormatCmd ++ FormatParamCmds.
 
 :- func caller_params_to_desc(caller_params) = string.

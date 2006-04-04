@@ -34,10 +34,10 @@ read_char_code('<<c_pointer>>', 50)
 dd> browse io 4
 browser> print
 read_char_code('<<c_pointer>>', 10)
-browser> set num_io_actions 3
+browser> num_io_actions 3
 browser> quit
 dd> browse 1
-browser> set num_io_actions 10
+browser> num_io_actions 10
 browser> quit
 dd> no
 test_2('<<c_pointer>>', 1, 1123, _, _)

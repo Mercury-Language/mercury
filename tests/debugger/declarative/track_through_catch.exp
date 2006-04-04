@@ -35,13 +35,14 @@ try(q(2), succeeded(2))
 Valid? b 2
 browser> cd 1
 browser> track
-cc_multi_equal(succeeded(2), succeeded(2))
+succeeded(2)
+p(2)
 Valid? info
-Context of current question : builtin.m:1061 (exception.m:488)
+Context of current question : track_through_catch.m:21 (track_through_catch.m:14)
 Search mode                 : top down                        
 The current question was chosen because the marked subterm was bound by
-the foreign procedure call inside the predicate builtin.cc_multi_equal/2
-(builtin.m:1055). The path to the subterm in the atom is 2/1.
+the unification inside the predicate track_through_catch.p/1
+(track_through_catch.m:21). The path to the subterm in the atom is 1.
 dd> quit
 Diagnosis aborted.
       E5:     C2 EXIT pred exception.try/2-0 (cc_multi) exception.m:480 (track_through_catch.m:15)

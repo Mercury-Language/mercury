@@ -125,6 +125,72 @@
 
 %-----------------------------------------------------------------------------%
 
+:- type user_command
+    --->    yes
+            % The node is correct.
+
+    ;       no
+            % The node is erroneous.
+
+    ;       inadmissible
+            % The node is inadmissible.
+
+    ;       skip
+            % The user has no answer.
+
+    ;       browse_arg(maybe(int))
+            % Browse the nth argument before answering.  Or browse
+            % the whole predicate/function if the maybe is no.
+
+    ;       browse_xml_arg(maybe(int))
+            % Browse the argument using an XML browser.
+
+    ;       browse_io(int)
+            % Browse the nth IO action before answering.
+
+    ;       print_arg(int, int)
+            % Print the nth to the mth arguments before answering.
+
+    ;       print_io(int, int)
+            % Print the nth to the mth IO actions before answering.
+
+    ;       pd
+            % Commence procedural debugging from this point.
+
+    ;       param_command(param_cmd)
+
+    ;       trust_predicate
+            % Trust the predicate being asked about.
+
+    ;       trust_module
+            % Trust the module being asked about.
+
+    ;       info
+            % Print some information about the current question.
+
+    ;       undo
+            % Undo the user's last answer.
+
+    ;       ask
+            % The user wants the current question re-asked.
+
+    ;       change_search(user_search_mode)
+            % Change the current search strategy.
+
+    ;       quit
+            % Abort this diagnosis session.
+
+    ;       help(maybe(string))
+            % Request help before answering.  If the maybe argument
+            % is no then a general help message is displayed,
+            % otherwise help on the given command is displayed.
+
+    ;       empty_command
+            % User just pressed return.
+
+    ;       illegal_command.
+            % None of the above.
+
 :- type user_state
     --->    user(
                 instr               :: io.input_stream,
@@ -264,17 +330,14 @@ handle_command(print_arg(From, To), UserQuestion, Response,
     print_atom_arguments(TraceAtom, From, To, !.User, !IO),
     query_user(UserQuestion, Response, !User, !IO).
 
-handle_command(set(MaybeOptionTable, Setting), UserQuestion, Response, !User,
-        !IO) :-
-    (
-        MaybeOptionTable = ok(OptionTable),
-        set_browser_param_from_option_table(no, OptionTable, Setting,
-            !.User ^ browser, Browser),
-        !:User = !.User ^ browser := Browser
-    ;
-        MaybeOptionTable = error(Msg),
-        io.write_string(Msg++"\n", !IO)
-    ),
+handle_command(param_command(ParamCommand), UserQuestion, Response,
+        !User, !IO) :-
+    Browser0 = !.User ^ browser,
+    DummyTerm = synthetic_term("", [], no),
+    Info0 = browser_info(DummyTerm, [], browse, no, Browser0, no_track, no),
+    run_param_command(internal, ParamCommand, no, Info0, Info, !IO),
+    Info = browser_info(_, _, _, _, Browser, _, _),
+    !:User = !.User ^ browser := Browser,
     query_user(UserQuestion, Response, !User, !IO).
 
 handle_command(trust_predicate, UserQuestion, trust_predicate(Question),
@@ -770,73 +833,6 @@ reverse_and_append([A | As], Bs, Cs) :-
 
 %-----------------------------------------------------------------------------%
 
-:- type user_command
-    --->    yes
-            % The node is correct.
-
-    ;       no
-            % The node is erroneous.
-
-    ;       inadmissible
-            % The node is inadmissible.
-
-    ;       skip
-            % The user has no answer.
-
-    ;       browse_arg(maybe(int))
-            % Browse the nth argument before answering.  Or browse
-            % the whole predicate/function if the maybe is no.
-
-    ;       browse_xml_arg(maybe(int))
-            % Browse the argument using an XML browser.
-
-    ;       browse_io(int)
-            % Browse the nth IO action before answering.
-
-    ;       print_arg(int, int)
-            % Print the nth to the mth arguments before answering.
-
-    ;       print_io(int, int)
-            % Print the nth to the mth IO actions before answering.
-
-    ;       pd
-            % Commence procedural debugging from this point.
-
-    ;       set(maybe_option_table(setting_option), setting)
-            % Set a browser option.
-
-    ;       trust_predicate
-            % Trust the predicate being asked about.
-
-    ;       trust_module
-            % Trust the module being asked about.
-
-    ;       info
-            % Print some information about the current question.
-
-    ;       undo
-            % Undo the user's last answer.
-
-    ;       ask
-            % The user wants the current question re-asked.
-
-    ;       change_search(user_search_mode)
-            % Change the current search strategy.
-
-    ;       quit
-            % Abort this diagnosis session.
-
-    ;       help(maybe(string))
-            % Request help before answering.  If the maybe argument
-            % is no then a general help message is displayed,
-            % otherwise help on the given command is displayed.
-
-    ;       empty_command
-            % User just pressed return.
-
-    ;       illegal_command.
-            % None of the above.
-
 :- pred user_confirm_bug_help(user_state::in, io::di, io::uo) is det.
 
 user_confirm_bug_help(User, !IO) :-
@@ -909,7 +905,14 @@ cmd_handler("b",        browse_arg_cmd).
 cmd_handler("browse",       browse_arg_cmd).
 cmd_handler("p",        print_arg_cmd).
 cmd_handler("print",        print_arg_cmd).
-cmd_handler("set",      set_arg_cmd).
+cmd_handler("format",   format_arg_cmd).
+cmd_handler("depth",    format_param_arg_cmd("depth")).
+cmd_handler("size",     format_param_arg_cmd("size")).
+cmd_handler("width",    format_param_arg_cmd("width")).
+cmd_handler("lines",    format_param_arg_cmd("lines")).
+cmd_handler("num_io_actions",  num_io_actions_cmd).
+% cmd_handler("xml_browser_cmd", set_xml_browser_cmd_cmd).
+% cmd_handler("xml_tmp_filename", set_xml_tmp_filename_cmd).
 cmd_handler("t",        trust_arg_cmd).
 cmd_handler("trust",        trust_arg_cmd).
 cmd_handler("mode",     search_mode_cmd).
@@ -946,13 +949,36 @@ print_arg_cmd([Arg]) = print_arg(From, To) :-
 print_arg_cmd(["io", Arg]) = print_io(From, To) :-
     string_to_range(Arg, From, To).
 
-:- pred string_to_range(string::in, int::out, int::out) is semidet.
+:- func format_arg_cmd(list(string)::in) = (user_command::out) is semidet.
 
-:- func set_arg_cmd(list(string)::in) = (user_command::out) is semidet.
-
-set_arg_cmd(ArgWords) = set(MaybeOptionTable, Setting) :-
+format_arg_cmd(ArgWords) = param_command(format(MaybeOptionTable, Setting)) :-
     ArgWords \= [],
-    parse.parse(["set" | ArgWords], set(MaybeOptionTable, Setting)).
+    parse.parse(["format" | ArgWords],
+        param_command(format(MaybeOptionTable, Setting))).
+
+:- func format_param_arg_cmd(string::in, list(string)::in)
+    = (user_command::out) is semidet.
+
+format_param_arg_cmd(Cmd, ArgWords)
+        = param_command(format_param(MaybeOptionTable, Setting)) :-
+    ArgWords \= [],
+    parse.parse([Cmd | ArgWords],
+        param_command(format_param(MaybeOptionTable, Setting))).
+
+:- func num_io_actions_cmd(list(string)::in) = (user_command::out) is semidet.
+
+num_io_actions_cmd([Arg]) = param_command(num_io_actions(N)) :-
+    string.to_int(Arg, N).
+
+% :- func set_xml_browser_cmd_cmd(list(string)::in) = (user_command::out)
+%     is semidet.
+%
+% set_xml_browser_cmd_cmd([Arg]) = param_command(xml_browser_cmd(Arg)).
+%
+% :- func set_xml_tmp_filename_cmd(list(string)::in) = (user_command::out)
+%     is semidet.
+%
+% set_xml_tmp_filename_cmd([Arg]) = param_command(xml_tmp_filename(Arg)).
 
 :- func trust_arg_cmd(list(string)::in) = (user_command::out) is semidet.
 
@@ -980,6 +1006,8 @@ search_mode_cmd(["sdq"]) =
 
 help_cmd([]) = help(no).
 help_cmd([Cmd]) = help(yes(Cmd)).
+
+:- pred string_to_range(string::in, int::out, int::out) is semidet.
 
 string_to_range(Arg, From, To) :-
     ( string.to_int(Arg, Num) ->

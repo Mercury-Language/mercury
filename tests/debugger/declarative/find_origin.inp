@@ -19,7 +19,7 @@ dd -d 3 -n 7
 b 2
 mark
 browse
-set format pretty
+format pretty
 p
 quit
 no

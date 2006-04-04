@@ -18,10 +18,14 @@
 #include "mercury_array_macros.h"
 
 #include "mercury_trace_alias.h"
+#include "mercury_trace_util.h"
 
 static  MR_Alias    *MR_alias_records = NULL;
 static  int         MR_alias_record_max = 0;
 static  int         MR_alias_record_next = 0;
+
+/* The initial size of arrays of words. */
+#define MR_INIT_WORD_COUNT  20
 
 /* The initial size of the alias table. */
 #define INIT_ALIAS_COUNT    32
@@ -179,4 +183,43 @@ static MR_bool
 MR_trace_filter_alias_completions(const char *word, MR_Completer_Data *data)
 {
     return (MR_strdiff(word, "EMPTY") && MR_strdiff(word, "NUMBER"));
+}
+
+void
+MR_trace_expand_aliases(char ***words, int *word_max, int *word_count)
+{
+    const char  *alias_key;
+    char        **alias_words;
+    int         alias_word_count;
+    int         alias_copy_start;
+    int         i;
+    int         n;
+
+    if (*word_count == 0) {
+        alias_key = "EMPTY";
+        alias_copy_start = 0;
+    } else if (MR_trace_is_natural_number(*words[0], &n)) {
+        alias_key = "NUMBER";
+        alias_copy_start = 0;
+    } else {
+        alias_key = *words[0];
+        alias_copy_start = 1;
+    }
+
+    if (MR_trace_lookup_alias(alias_key, &alias_words, &alias_word_count)) {
+        MR_ensure_big_enough(*word_count + alias_word_count, *word, char *,
+            MR_INIT_WORD_COUNT);
+
+        /* Move the original words (except the alias key) up. */
+        for (i = *word_count - 1; i >= alias_copy_start; i--) {
+            (*words)[i + alias_word_count - alias_copy_start] = (*words)[i];
+        }
+
+        /* Move the alias body to the words array. */
+        for (i = 0; i < alias_word_count; i++) {
+            (*words)[i] = alias_words[i];
+        }
+
+        *word_count += alias_word_count - alias_copy_start;
+    }
 }

@@ -74,6 +74,7 @@ extern	void	MR_print_debug_vars(FILE *fp, MR_Event_Info *event_info);
 ** and false otherwise.  Because builtin_catch creates a stack frame, but no
 ** events, it must be handled specially by some parts of the debugger.
 */
+
 extern	MR_bool	MR_trace_proc_layout_is_builtin_catch(
 			const MR_Proc_Layout *layout);
 

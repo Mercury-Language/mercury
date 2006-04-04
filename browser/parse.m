@@ -35,7 +35,13 @@
 %       "p" [formatoptions] [path]  // short for print
 %       "display"
 %       "write"
-%       "set" [[setoptions] varvalue]
+%       "format" [formatcmdoptions] fmt
+%       "depth" [formatparamcmdoptions] value
+%       "size" [formatparamcmdoptions] value
+%       "width" [formatparamcmdoptions] value
+%       "lines" [formatparamcmdoptions] value
+%       "num_io_actions" int
+%       "params"
 %       "track" [--accurate] [path]
 %       "t" [--accurate] [path]
 %       "mark" [--accurate] [path]
@@ -57,11 +63,23 @@
 %       --verbose
 %       --pretty
 %
-%   setoptions:
+%   formatcmdoptions:
 %       /* empty */
-%       setoption setoptions
+%       formatcmdoption formatcmdoptions
 %
-%   setoption:
+%   formatcmdoption:
+%       -P
+%       -B
+%       -A
+%       --print
+%       --browse
+%       --print-all
+%
+%   formatparamcmdoptions:
+%       /* empty */
+%       formatparamcmdoption formatparamcmdoptions
+%
+%   formatparamcmdoption:
 %       -P
 %       -B
 %       -A
@@ -76,18 +94,6 @@
 %       --raw-pretty
 %       --verbose
 %       --pretty
-%
-%   varvalue:
-%       "depth" num
-%       "size" num
-%       "clipx" num
-%       "clipy" num
-%       "format" fmt
-%       "num_io_actions" num
-%
-%   numlist:
-%       num
-%       num numlist
 %
 %   fmt:
 %       "flat"
@@ -129,13 +135,18 @@
     ;       mode_query
     ;       pwd
     ;       help
-    ;       set(maybe_option_table(setting_option), setting)
-    ;       set
+    ;       param_command(param_cmd)
     ;       quit
     ;       display
     ;       write
     ;       empty
     ;       unknown.
+
+:- type format_param_cmd
+    --->    param_depth
+    ;       param_size
+    ;       param_width
+    ;       param_lines.
 
 :- type path
     --->    root_rel(list(dir))
@@ -148,13 +159,13 @@
     ;       pretty.
 
 :- type setting_option
-    --->    print
-    ;       browse
-    ;       print_all
-    ;       flat
-    ;       raw_pretty
-    ;       verbose
-    ;       pretty.
+    --->    set_print
+    ;       set_browse
+    ;       set_print_all
+    ;       set_flat
+    ;       set_raw_pretty
+    ;       set_verbose
+    ;       set_pretty.
 
     % If the term browser is called from the external debugger, the term
     % browser commands are send through the socket via terms of type
@@ -178,10 +189,13 @@
 
 :- import_module mdb.util.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module char.
 :- import_module int.
 :- import_module list.
+:- import_module map.
+:- import_module pair.
 
 :- type token
     --->    (.)
@@ -442,22 +456,62 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
             Command = mode_query(Path)
         )
     ;
-        CmdToken = name("set")
+        CmdToken = name("format")
     ->
         (
             ArgTokens = [],
-            Command = set
+            Command = param_command(print_params)
         ;
             ArgTokens = [_ | _],
             MaybeArgWords = yes(ArgWords),
-            OptionOps = option_ops_multi(short_setting_option,
-                long_setting_option, setting_option_defaults),
+            OptionOps = option_ops_multi(short_format_cmd_option,
+                long_format_cmd_option, format_cmd_option_defaults),
             getopt.process_options(OptionOps, ArgWords,
                 RemainingWords, MaybeOptionTable),
             lexer_words(RemainingWords, RemainingTokens),
-            parse_setting(RemainingTokens, Setting),
-            Command = set(MaybeOptionTable, Setting)
+            parse_format(RemainingTokens, Setting),
+            Command = param_command(format(MaybeOptionTable, Setting))
         )
+    ;
+        (
+            CmdToken = name("depth"),
+            ParamCmd = param_depth
+        ;
+            CmdToken = name("size"),
+            ParamCmd = param_size
+        ;
+            CmdToken = name("width"),
+            ParamCmd = param_width
+        ;
+            CmdToken = name("lines"),
+            ParamCmd = param_lines
+        )
+    ->
+        (
+            ArgTokens = [],
+            Command = param_command(print_params)
+        ;
+            ArgTokens = [_ | _],
+            MaybeArgWords = yes(ArgWords),
+            OptionOps = option_ops_multi(short_format_param_cmd_option,
+                long_format_param_cmd_option,
+                format_param_cmd_option_defaults),
+            getopt.process_options(OptionOps, ArgWords,
+                RemainingWords, MaybeOptionTable),
+            lexer_words(RemainingWords, RemainingTokens),
+            RemainingTokens = [num(N)],
+            param_cmd_to_setting(ParamCmd, N, Setting),
+            Command = param_command(format_param(MaybeOptionTable, Setting))
+        )
+    ;
+        CmdToken = name("params")
+    ->
+        Command = param_command(print_params)
+    ;
+        CmdToken = name("num_io_actions")
+    ->
+        ArgTokens = [num(N)],
+        Command = param_command(num_io_actions(N))
     ;
         CmdToken = name("quit")
     ->
@@ -509,14 +563,21 @@ parse_cmd(CmdToken, ArgTokens, MaybeArgWords, Command) :-
         CmdToken = (<)
     ->
         ArgTokens = [num(Depth)],
-        % compute the default MaybeOptionTable
-        OptionOps = option_ops_multi(short_setting_option,
-            long_setting_option, setting_option_defaults),
+        OptionOps = option_ops_multi(short_format_param_cmd_option,
+            long_format_param_cmd_option, format_param_cmd_option_defaults),
         getopt.process_options(OptionOps, [], _, MaybeOptionTable),
-        Command = set(MaybeOptionTable, depth(Depth))
+        Command = param_command(format_param(MaybeOptionTable, depth(Depth)))
     ;
         fail
     ).
+
+:- pred param_cmd_to_setting(format_param_cmd::in, int::in, setting::out)
+    is det.
+
+param_cmd_to_setting(param_depth, N, depth(N)).
+param_cmd_to_setting(param_size,  N, size(N)).
+param_cmd_to_setting(param_width, N, width(N)).
+param_cmd_to_setting(param_lines, N, lines(N)).
 
 :- pred parse_path(list(token)::in, path::out) is semidet.
 
@@ -558,9 +619,24 @@ parse_dirs([Token | Tokens], Dirs) :-
         parse_dirs(Tokens, Dirs)
     ).
 
-:- pred parse_setting(list(token)::in, setting::out) is semidet.
+:- pred parse_format(list(token)::in, setting::out) is semidet.
 
-parse_setting([Token | Tokens], Setting) :-
+parse_format([Fmt], Setting) :-
+    ( Fmt = name("flat") ->
+        Setting = format(flat)
+    ; Fmt = name("raw_pretty") ->
+        Setting = format(raw_pretty)
+    ; Fmt = name("verbose") ->
+        Setting = format(verbose)
+    ; Fmt = name("pretty") ->
+        Setting = format(pretty)
+    ;
+        fail
+    ).
+
+:- pred parse_format_param(list(token)::in, setting::out) is semidet.
+
+parse_format_param([Token | Tokens], Setting) :-
     ( Token = name("depth") ->
         Tokens = [num(Depth)],
         Setting = depth(Depth)
@@ -573,21 +649,6 @@ parse_setting([Token | Tokens], Setting) :-
     ; Token = name("lines") ->
         Tokens = [num(Y)],
         Setting = lines(Y)
-    ; Token = name("num_io_actions") ->
-        Tokens = [num(Y)],
-        Setting = num_io_actions(Y)
-    ; Token = name("format") ->
-        Tokens = [Fmt],
-        ( Fmt = name("flat") ->
-            Setting = format(flat)
-        ; Fmt = name("raw_pretty") ->
-            Setting = format(raw_pretty)
-        ; Fmt = name("verbose") ->
-            Setting = format(verbose)
-        ;
-            Fmt = name("pretty"),
-            Setting = format(pretty)
-        )
     ;
         fail
     ).
@@ -617,36 +678,63 @@ format_option_defaults(pretty,      bool(no)).
 
 %---------------------------------------------------------------------------%
 
-:- pred short_setting_option(char::in, setting_option::out) is semidet.
+:- pred short_format_cmd_option(char::in, setting_option::out) is semidet.
 
-short_setting_option('P', print).
-short_setting_option('B', browse).
-short_setting_option('A', print_all).
-short_setting_option('f', flat).
-short_setting_option('r', raw_pretty).
-short_setting_option('v', verbose).
-short_setting_option('p', pretty).
+short_format_cmd_option('P', set_print).
+short_format_cmd_option('B', set_browse).
+short_format_cmd_option('A', set_print_all).
 
-:- pred long_setting_option(string::in, setting_option::out) is semidet.
+:- pred long_format_cmd_option(string::in, setting_option::out) is semidet.
 
-long_setting_option("print", print).
-long_setting_option("browse", browse).
-long_setting_option("print-all", print_all).
-long_setting_option("flat", flat).
-long_setting_option("raw-pretty", raw_pretty).
-long_setting_option("verbose", verbose).
-long_setting_option("pretty", pretty).
+long_format_cmd_option("print", set_print).
+long_format_cmd_option("browse", set_browse).
+long_format_cmd_option("print-all", set_print_all).
 
-:- pred setting_option_defaults(setting_option::out, option_data::out)
+:- pred format_cmd_option_defaults(setting_option::out, option_data::out)
     is multi.
 
-setting_option_defaults(print,      bool(no)).
-setting_option_defaults(browse,     bool(no)).
-setting_option_defaults(print_all,  bool(no)).
-setting_option_defaults(flat,       bool(no)).
-setting_option_defaults(raw_pretty, bool(no)).
-setting_option_defaults(verbose,    bool(no)).
-setting_option_defaults(pretty,     bool(no)).
+format_cmd_option_defaults(set_print,      bool(no)).
+format_cmd_option_defaults(set_browse,     bool(no)).
+format_cmd_option_defaults(set_print_all,  bool(no)).
+format_cmd_option_defaults(set_flat,       bool(no)).
+format_cmd_option_defaults(set_raw_pretty, bool(no)).
+format_cmd_option_defaults(set_verbose,    bool(no)).
+format_cmd_option_defaults(set_pretty,     bool(no)).
+
+%---------------------------------------------------------------------------%
+
+:- pred short_format_param_cmd_option(char::in, setting_option::out)
+    is semidet.
+
+short_format_param_cmd_option('P', set_print).
+short_format_param_cmd_option('B', set_browse).
+short_format_param_cmd_option('A', set_print_all).
+short_format_param_cmd_option('f', set_flat).
+short_format_param_cmd_option('r', set_raw_pretty).
+short_format_param_cmd_option('v', set_verbose).
+short_format_param_cmd_option('p', set_pretty).
+
+:- pred long_format_param_cmd_option(string::in, setting_option::out)
+    is semidet.
+
+long_format_param_cmd_option("print", set_print).
+long_format_param_cmd_option("browse", set_browse).
+long_format_param_cmd_option("print-all", set_print_all).
+long_format_param_cmd_option("flat", set_flat).
+long_format_param_cmd_option("raw-pretty", set_raw_pretty).
+long_format_param_cmd_option("verbose", set_verbose).
+long_format_param_cmd_option("pretty", set_pretty).
+
+:- pred format_param_cmd_option_defaults(setting_option::out,
+    option_data::out) is multi.
+
+format_param_cmd_option_defaults(set_print,      bool(no)).
+format_param_cmd_option_defaults(set_browse,     bool(no)).
+format_param_cmd_option_defaults(set_print_all,  bool(no)).
+format_param_cmd_option_defaults(set_flat,       bool(no)).
+format_param_cmd_option_defaults(set_raw_pretty, bool(no)).
+format_param_cmd_option_defaults(set_verbose,    bool(no)).
+format_param_cmd_option_defaults(set_pretty,     bool(no)).
 
 %---------------------------------------------------------------------------%
 
@@ -676,12 +764,6 @@ setting_option_defaults(pretty,     bool(no)).
 %   io.write_string("pwd\n").
 % show_command(help) -->
 %   io.write_string("help\n").
-% show_command(set(Setting)) -->
-%   io.write_string("set "),
-%   show_setting(Setting),
-%   io.nl.
-% show_command(set) -->
-%   io.write_string("set\n").
 % show_command(quit) -->
 %   io.write_string("quit\n").
 % show_command(print) -->

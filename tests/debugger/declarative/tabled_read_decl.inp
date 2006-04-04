@@ -13,10 +13,10 @@ p io 1-2
 print io 2-1
 browse io 4
 print
-set num_io_actions 3
+num_io_actions 3
 quit
 browse 1
-set num_io_actions 10
+num_io_actions 10
 quit
 no
 yes

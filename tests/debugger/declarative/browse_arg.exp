@@ -8,9 +8,9 @@ mdb> continue
        2:      2  2 CALL pred browse_arg.p/2-0 (det) browse_arg.m:19 (browse_arg.m:8)
 mdb> finish
        3:      2  2 EXIT pred browse_arg.p/2-0 (det) browse_arg.m:19 (browse_arg.m:8)
-mdb> set depth 10
-mdb> set xml_browser_cmd 'cat ./browse_arg.xml.out'
-mdb> set xml_tmp_filename './browse_arg.xml.out'
+mdb> format_param depth 10
+mdb> xml_browser_cmd 'cat ./browse_arg.xml.out'
+mdb> xml_tmp_filename './browse_arg.xml.out'
 mdb> dd -d 3 -n 7
 p(1, baz(1, bar))
 Valid? browse 2

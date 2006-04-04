@@ -12,8 +12,8 @@ mdb> delete 0
  0: E stop  interface func polymorphic_output.functor_names/1-0 (det)
 mdb> p goal
 functor_names(two("three", 3, three("four", 4, "one", 1, empty, empty, empty), two("two", 2, empty, empty))) = _
-mdb> set format verbose
-mdb> set lines 100
+mdb> format verbose
+mdb> format_param lines 100
 mdb> p goal
 functor_names
 1-two
@@ -34,7 +34,7 @@ functor_names
 |   4-empty
 2-_
 
-mdb> set format flat
+mdb> format flat
 mdb> browse goal
 browser> ^1
 browser> p
