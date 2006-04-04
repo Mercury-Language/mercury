@@ -3,41 +3,43 @@ mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> 
-?                    exception            query
-P                    excp                 quit
-alias                f                    r
-all_class_decls      finish               register
-all_procedures       flag                 retry
-all_regs             forward              return
-all_type_ctors       g                    s
-ambiguity            gen_stack            save
-b                    goal_paths           save_to_file
-break                goto                 scope
-break_print          h                    scroll
-browse               held_vars            set
-c                    help                 source
-cc_query             histogram_all        stack
-class_decl           histogram_exp        stack_default_limit
-clear_histogram      hold                 stack_regs
-condition            ignore               stats
-consumer             io_query             step
-context              level                subgoal
-continue             list                 table
-current              maxdepth             table_io
-cut_stack            mindepth             term_size
-d                    mm_stacks            trust
-dd                   mmc_options          trusted
-debug_vars           modules              type_ctor
-delete               next                 unalias
-dice                 nondet_stack         unhide_events
-diff                 p                    untrust
-disable              pneg_stack           up
-document             pop_list_dir         v
-document_category    print                var_details
-down                 print_optionals      vars
-e                    printlevel           view
-echo                 procedures           
-enable               push_list_dir        
+?                    excp                 print_optionals
+P                    f                    printlevel
+alias                fail_trace_counts    procedures
+all_class_decls      finish               push_list_dir
+all_procedures       flag                 query
+all_regs             format               quit
+all_type_ctors       format_param         r
+ambiguity            forward              register
+b                    g                    retry
+break                gen_stack            return
+break_print          goal_paths           s
+browse               goto                 save
+c                    h                    scope
+cc_query             held_vars            scroll
+class_decl           help                 source
+clear_histogram      histogram_all        stack
+condition            histogram_exp        stack_default_limit
+consumer             hold                 stack_regs
+context              ignore               stats
+continue             io_query             step
+current              level                subgoal
+cut_stack            list                 table
+d                    list_context_lines   table_io
+dd                   list_path            term_size
+debug_vars           max_io_actions       trust
+delete               maxdepth             trusted
+dice                 mindepth             type_ctor
+diff                 mm_stacks            unalias
+disable              mmc_options          unhide_events
+document             modules              untrust
+document_category    next                 up
+down                 nondet_stack         v
+dump                 p                    var_details
+e                    pass_trace_counts    vars
+echo                 pneg_stack           view
+enable               pop_list_dir         xml_browser_cmd
+exception            print                xml_tmp_filename
 h              help           histogram_exp  
 held_vars      histogram_all  hold           
 var_details  vars         view         
@@ -63,7 +65,9 @@ procedures completion.sub1
 List of procedures in module `completion.sub1'
 pred completion.sub1.zp/1-0 (det)
 func completion.sub1.z1/0-0 (det)
-mdb> set --flat format pretty 
+mdb> 
+format        format_param  
+format_param  --flat  lines 10
 mdb> unalias excp 
 Alias `excp' removed.
 mdb> b zabc3 
@@ -91,7 +95,7 @@ b completion.sub2.sub3.zabc3
 mdb> 
 2d                  2dice               2document_category
 2dd                 2diff               2down
-2debug_vars         2disable            
+2debug_vars         2disable            2dump
 2delete             2document           
 2debug_vars  2delete      
 2delete 

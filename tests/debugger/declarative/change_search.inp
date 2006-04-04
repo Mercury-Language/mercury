@@ -4,8 +4,8 @@ echo on
 break mylast
 continue
 finish -n
-set format pretty
-set depth 10
+format pretty
+format_param depth 10
 dd
 info
 no

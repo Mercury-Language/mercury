@@ -2,30 +2,30 @@ echo on
 goto 3
 print *
 browse 1
-set format pretty
-set depth 10
+format pretty
+depth 10
 ls
-set width 131
+width 131
 ls
-set width 30
+width 30
 ls
-set width 10
+width 10
 ls
-set width 79
-set depth 3
+width 79
+depth 3
 ls
-set format raw_pretty
-set lines 4
-set width 40
+format raw_pretty
+lines 4
+width 40
 ls
-set width 80
+width 80
 ls
-set lines 12
-set width 40
+lines 12
+width 40
 ls
 cd 3
-set lines 4
-set width 30
+lines 4
+width 30
 ls
 quit
 print goal

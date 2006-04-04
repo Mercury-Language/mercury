@@ -2,8 +2,8 @@
 mdb> mdb> Contexts will not be printed.
 mdb> echo on
 Command echo enabled.
-mdb> set format flat
-mdb> set size 100
+mdb> format flat
+mdb> format_param size 100
 mdb> break to_b
  0: + stop  interface pred divide_and_query1.to_b/2-0 (det)
 mdb> c -n

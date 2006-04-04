@@ -2,8 +2,8 @@ register --quiet
 context none
 echo on
 dice -f dice.fail -p dice.passes -m dice
-set fail_trace_count dice.fail
-set pass_trace_counts dice.passes
+fail_trace_counts dice.fail
+pass_trace_counts dice.passes
 dice -sS -m dice
 dice -sSF -m dice
 dice -n 3 -s P -m dice

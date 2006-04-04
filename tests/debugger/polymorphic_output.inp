@@ -5,10 +5,10 @@ b functor_names
 c
 delete 0
 p goal
-set format verbose
-set lines 100
+format verbose
+format_param lines 100
 p goal
-set format flat
+format flat
 browse goal
 ^1
 p

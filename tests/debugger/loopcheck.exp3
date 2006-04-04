@@ -10,9 +10,9 @@ mdb> break loopcheck.loop
  1: + stop  interface pred loopcheck.loop/1-0 (det)
 mdb> finish
        2:      2  2 CALL pred loopcheck.loop/1-0 (det)
-                         loopcheck.m:21 (from loopcheck.m:14)
+                         loopcheck.m:20 (from loopcheck.m:14)
        3:      3  3 CALL pred loopcheck.loop/1-0 (det)
-                         loopcheck.m:21 (from loopcheck.m:21)
+                         loopcheck.m:20 (from loopcheck.m:21)
       12:      3  3 EXCP pred loopcheck.loop/1-0 (det)
                          loopcheck.m:21 (from loopcheck.m:21)
       13:      2  2 EXCP pred loopcheck.loop/1-0 (det)

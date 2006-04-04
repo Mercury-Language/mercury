@@ -775,9 +775,10 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
     ** Search backwards for the end of the final module qualifier.
     ** There must be at least one character before the qualifier.
     */
+
     while (end > str) {
-        if (*end == ':' || *end == '.' || (*end == '_' && *(end + 1) == '_')) {
-            if (*end  == ':' || *end == '.') {
+        if (*end == '.' || (*end == '_' && *(end + 1) == '_')) {
+            if (*end == '.') {
                 spec->MR_proc_name = end + 1;
             } else {
                 spec->MR_proc_name = end + 2;
@@ -812,6 +813,7 @@ MR_parse_proc_spec(char *str, MR_Proc_Spec *spec)
 /*
 ** Convert all occurrences of `__' to `.'.
 */
+
 static void
 MR_translate_double_underscores(char *start)
 {
@@ -1078,6 +1080,11 @@ MR_trace_proc_spec_completer(const char *word, size_t word_len)
         data->MR_complete_pf = MR_FUNCTION;
         word += 5;
     } else {
+        /*
+        ** We don't complete on the names of special (unify, index compare,
+        ** or init) predicates.
+        */
+
         data->MR_complete_pf = -1;
     }
 
@@ -1091,21 +1098,19 @@ MR_trace_proc_spec_completer(const char *word, size_t word_len)
     data->MR_complete_current_proc= -1;
 
     /*
-    ** Handle the case where the word matches the first part of
-    ** a module name. If the word unambiguously determines the
-    ** module name we want to return module qualified completions
-    ** for all the procedures in that module. Otherwise, we just
-    ** complete on the names of all of the matching modules and
-    ** unqualified procedure names.
+    ** Handle the case where the word matches the first part of a module name.
+    ** If the word unambiguously determines the module name we want to return
+    ** module qualified completions for all the procedures in that module.
+    ** Otherwise, we just complete on the names of all of the matching modules
+    ** and unqualified procedure names.
     **
-    ** For example, given word to complete `f' and modules `foo'
-    ** and `bar', we want to return all the procedures in module
-    ** `foo' as completions, as well as all procedures whose
-    ** unqualified names begin with `f'.
-    ** Given word to complete `foo.' and modules `foo' and `foo.bar'
-    ** we want to return `foo.bar.' and all the procedures in
-    ** module `foo' as completions.
+    ** For example, given word to complete `f' and modules `foo' and `bar',
+    ** we want to return all the procedures in module `foo' as completions,
+    ** as well as all procedures whose unqualified names begin with `f'.
+    ** Given word to complete `foo.' and modules `foo' and `foo.bar' we want to
+    ** return `foo.bar.' and all the procedures in module `foo' as completions.
     */
+
     MR_bsearch(MR_module_info_next, slot, found,
         strncmp(MR_module_infos[slot]->MR_ml_name,
             data->MR_complete_name, data->MR_complete_name_len));
@@ -1157,6 +1162,7 @@ try_completion:
         /*
         ** Move on to the next module.
         */
+
         data->MR_complete_current_module++;
         if (data->MR_complete_current_module >= MR_module_info_next) {
             return NULL;
@@ -1167,6 +1173,7 @@ try_completion:
         ** Complete on the module name if we aren't finding
         ** qualified completions in this module.
         */
+
         module_name = MR_module_infos[data->MR_complete_current_module]
             ->MR_ml_name;
         if (data->MR_complete_word_matches_module == 0 &&
@@ -1194,6 +1201,7 @@ try_completion:
 /*
 ** Set up the completer data for processing a module.
 */
+
 static void
 MR_trace_proc_spec_completer_init_module(MR_Proc_Completer_Data *data)
 {
@@ -1213,6 +1221,7 @@ MR_trace_proc_spec_completer_init_module(MR_Proc_Completer_Data *data)
     ** Work out whether we should find qualified completions
     ** for procedures in this module.
     */
+
     if (MR_strneq(module_name, name, module_name_len)
         && name_len > module_name_len
         && name[module_name_len] == '.'
@@ -1223,6 +1232,7 @@ MR_trace_proc_spec_completer_init_module(MR_Proc_Completer_Data *data)
         ** When searching for qualified completions skip past
         ** the module name and the trailing '.'.
         */
+
         data->MR_complete_word_matches_module = module_name_len + 1;
     } else if (data->MR_complete_current_module ==
         data->MR_unambiguous_matching_module)
@@ -1233,6 +1243,7 @@ MR_trace_proc_spec_completer_init_module(MR_Proc_Completer_Data *data)
         ** matching all procedures, use the empty string as the
         ** name to match against.
         */
+
         data->MR_complete_word_matches_module = name_len;
     } else {
         data->MR_complete_word_matches_module = 0;
@@ -1255,6 +1266,7 @@ MR_trace_proc_spec_completer_init_module(MR_Proc_Completer_Data *data)
 ** Check whether the current procedure matches the word to be completed.
 ** To do: complete on arity and mode number.
 */
+
 static char *
 MR_trace_complete_proc(MR_Proc_Completer_Data *data)
 {
@@ -1298,6 +1310,7 @@ MR_trace_complete_proc(MR_Proc_Completer_Data *data)
     /*
     ** Move on to the next procedure in the current module.
     */
+
     data->MR_complete_current_proc++;
 
     if (data->MR_complete_word_matches_module != 0

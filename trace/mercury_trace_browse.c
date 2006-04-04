@@ -45,9 +45,6 @@ static  MR_TypeInfo MR_trace_browser_persistent_state_type;
 
 MR_Word             MR_trace_browser_persistent_state;
 
-static  MR_bool     MR_trace_is_portray_format(const char *str,
-                        MR_Browse_Format *format);
-
 MR_Word
 MR_type_value_to_browser_term(MR_TypeInfo type_info, MR_Word value)
 {
@@ -132,6 +129,28 @@ MR_trace_save_and_invoke_xml_browser(MR_Word browser_term)
     );
 }
 
+MR_bool
+MR_trace_is_portray_format(const char *str, MR_Browse_Format *format)
+{
+    *format = MR_BROWSE_DEFAULT_FORMAT;
+
+    if (MR_streq(str, "flat")) {
+        *format = MR_BROWSE_FORMAT_FLAT;
+        return MR_TRUE;
+    } else if (MR_streq(str, "raw_pretty")) {
+        *format = MR_BROWSE_FORMAT_RAW_PRETTY;
+        return MR_TRUE;
+    } else if (MR_streq(str, "verbose")) {
+        *format = MR_BROWSE_FORMAT_VERBOSE;
+        return MR_TRUE;
+    } else if (MR_streq(str, "pretty")) {
+        *format = MR_BROWSE_FORMAT_PRETTY;
+        return MR_TRUE;
+    }
+
+    return MR_FALSE;
+}
+
 void
 MR_trace_browse(MR_Word type_info, MR_Word value, MR_Browse_Format format)
 {
@@ -205,8 +224,8 @@ MR_trace_browse_goal(MR_ConstString name, MR_Word arg_list, MR_Word is_func,
 }
 
 /*
-** MR_trace_browse_external() is the same as MR_trace_browse() except it 
-** uses debugger_socket_in and debugger_socket_out to read program-readable 
+** MR_trace_browse_external() is the same as MR_trace_browse() except it
+** uses debugger_socket_in and debugger_socket_out to read program-readable
 ** terms, whereas MR_trace_browse() uses mdb_in and mdb_out to read
 ** human-readable strings.
 */
@@ -283,119 +302,6 @@ MR_trace_print_goal(MR_ConstString name, MR_Word arg_list, MR_Word is_func,
                 (MR_Word) caller, MR_trace_browser_persistent_state);
         );
     }
-}
-
-MR_bool
-MR_trace_set_browser_param(MR_Word print, MR_Word browse, MR_Word print_all,
-    MR_Word flat, MR_Word raw_pretty, MR_Word verbose, 
-    MR_Word pretty, const char *param, const char *value)
-{
-    int                 depth;
-    int                 size;
-    int                 width;
-    int                 lines;
-    MR_Browse_Format    new_format;
-    MR_String           aligned_value;
-    char                *copied_value;
-
-    MR_trace_browse_ensure_init();
-
-    if (MR_streq(param, "format") &&
-        MR_trace_is_portray_format(value, &new_format))
-    {
-        MR_TRACE_CALL_MERCURY(
-            ML_BROWSE_set_format_from_mdb(print, browse,
-                print_all, new_format,
-                MR_trace_browser_persistent_state,
-                &MR_trace_browser_persistent_state);
-        );
-    } else if (MR_streq(param, "depth") &&
-        MR_trace_is_natural_number(value, &depth))
-    {
-        MR_TRACE_CALL_MERCURY(
-            ML_BROWSE_set_depth_from_mdb(print, browse, print_all,
-                flat, raw_pretty, verbose, pretty, depth,
-                MR_trace_browser_persistent_state,
-                &MR_trace_browser_persistent_state);
-        );
-    } else if (MR_streq(param, "size") &&
-        MR_trace_is_natural_number(value, &size))
-    {
-        MR_TRACE_CALL_MERCURY(
-            ML_BROWSE_set_size_from_mdb(print, browse, print_all,
-                flat, raw_pretty, verbose, pretty, size,
-                MR_trace_browser_persistent_state,
-                &MR_trace_browser_persistent_state);
-        );
-    } else if (MR_streq(param, "width") &&
-        MR_trace_is_natural_number(value, &width))
-    {
-        MR_TRACE_CALL_MERCURY(
-            ML_BROWSE_set_width_from_mdb(print, browse, print_all,
-                flat, raw_pretty, verbose, pretty, width,
-                MR_trace_browser_persistent_state,
-                &MR_trace_browser_persistent_state);
-        );
-    } else if (MR_streq(param, "lines") &&
-        MR_trace_is_natural_number(value, &lines))
-    {
-        MR_TRACE_CALL_MERCURY(
-            ML_BROWSE_set_lines_from_mdb(print, browse, print_all,
-                flat, raw_pretty, verbose, pretty, lines,
-                MR_trace_browser_persistent_state,
-                &MR_trace_browser_persistent_state);
-        );
-    } else if (MR_streq(param, "xml_browser_cmd")) {
-        copied_value = (char *) MR_GC_malloc(strlen(value) + 1);
-        strcpy(copied_value, value);
-        MR_TRACE_USE_HP(
-            MR_make_aligned_string(aligned_value, copied_value);
-        );
-        MR_TRACE_CALL_MERCURY(
-            ML_BROWSE_set_xml_browser_cmd_from_mdb(aligned_value, 
-                MR_trace_browser_persistent_state,
-                &MR_trace_browser_persistent_state);
-        );
-    } else if (MR_streq(param, "xml_tmp_filename")) {
-        copied_value = (char *) MR_GC_malloc(strlen(value) + 1);
-        strcpy(copied_value, value);
-        MR_TRACE_USE_HP(
-            MR_make_aligned_string(aligned_value, copied_value);
-        );
-        MR_TRACE_CALL_MERCURY(
-            ML_BROWSE_set_xml_tmp_filename_from_mdb(aligned_value, 
-                MR_trace_browser_persistent_state,
-                &MR_trace_browser_persistent_state);
-        );
-    } else {
-        return MR_FALSE;
-    }
-
-    MR_trace_browser_persistent_state =
-        MR_make_permanent(MR_trace_browser_persistent_state,
-            MR_trace_browser_persistent_state_type);
-    return MR_TRUE;
-}
-
-static MR_bool
-MR_trace_is_portray_format(const char *str, MR_Browse_Format *format)
-{
-    *format = MR_BROWSE_DEFAULT_FORMAT;
-
-    if (MR_streq(str, "flat")) {
-        *format = MR_BROWSE_FORMAT_FLAT;
-        return MR_TRUE;
-    } else if (MR_streq(str, "raw_pretty")) {
-        *format = MR_BROWSE_FORMAT_RAW_PRETTY;
-        return MR_TRUE;
-    } else if (MR_streq(str, "verbose")) {
-        *format = MR_BROWSE_FORMAT_VERBOSE;
-        return MR_TRUE;
-    } else if (MR_streq(str, "pretty")) {
-        *format = MR_BROWSE_FORMAT_PRETTY;
-        return MR_TRUE;
-    }
-    return MR_FALSE;
 }
 
 void

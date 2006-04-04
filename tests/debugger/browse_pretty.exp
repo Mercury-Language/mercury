@@ -6,17 +6,17 @@ mdb> goto 3
 mdb> print *
        Data (arg 1)           	big(big(big(small, [|]/2, small), [1, ...], small), [1, 2, 3], big(big/3, [|]/2, small))
 mdb> browse 1
-browser> set format pretty
-browser> set depth 10
+browser> format pretty
+browser> depth 10
 browser> ls
 big(big(big(small, [1], small), [1, 2], small), [1, 2, 3], 
   big(big(small, [1, 2, 3, 4], big(small, [1, 2, 3, 4, 5], small)), 
     [1, 2, 3, 4, 5, 6], small))
-browser> set width 131
+browser> width 131
 browser> ls
 big(big(big(small, [1], small), [1, 2], small), [1, 2, 3], 
   big(big(small, [1, 2, 3, 4], big(small, [1, 2, 3, 4, 5], small)), [1, 2, 3, 4, 5, 6], small))
-browser> set width 30
+browser> width 30
 browser> ls
 big(
   big(
@@ -29,7 +29,7 @@ big(
         [1, 2, 3, 4, 5], 
         small)), 
     [1, 2, 3, 4, 5, 6], small))
-browser> set width 10
+browser> width 10
 browser> ls
 big(
   big(
@@ -64,26 +64,26 @@ big(
      4, 
      5, 6], 
     small))
-browser> set width 79
-browser> set depth 3
+browser> width 79
+browser> depth 3
 browser> ls
 big(big(big(...), ...), [1, ...], ...)
-browser> set format raw_pretty
-browser> set lines 4
-browser> set width 40
+browser> format raw_pretty
+browser> lines 4
+browser> width 40
 browser> ls
 big(
   big(big/3, [|]/2, small), 
   [|](1, [|](2, [|](3, []))), 
   big(big/3, [|]/2, small))
-browser> set width 80
+browser> width 80
 browser> ls
 big(
   big(big(small, [|](1, []), small), [|](1, [|](2, [])), small), 
   [|](1, [|](2, [|](3, []))), 
   big(big(small, [|]/2, big/3), [|](1, [|](2, [|](3, [|]/2))), small))
-browser> set lines 12
-browser> set width 40
+browser> lines 12
+browser> width 40
 browser> ls
 big(
   big(
@@ -96,8 +96,8 @@ big(
     [|](1, [|](2, [|](3, [|]/2))), 
     small))
 browser> cd 3
-browser> set lines 4
-browser> set width 30
+browser> lines 4
+browser> width 30
 browser> ls
 big(
   big(small, [|]/2, big/3), 

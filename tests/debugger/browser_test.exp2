@@ -3,11 +3,11 @@ mdb> echo on
 Command echo enabled.
 mdb> goto 3
       E2:     C2  2 EXIT pred browser_test.big_data/1-0 (det) browser_test.m:18 (browser_test.m:12)
-mdb> set format pretty
+mdb> format pretty
 mdb> print *
        Data (arg 1)           	
 big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big/3), 6, small))
-mdb> set -A format verbose
+mdb> format -A verbose
 mdb> print *
        Data (arg 1)           	
 big
@@ -21,7 +21,7 @@ big(
   big(big(small, 1, small), 2, small), 
   3, 
   big(big(small, 4, big(small, 5, small)), 6, small))
-mdb> set -AP format flat
+mdb> format -AP flat
 mdb> print -f 1
        Data (arg 1)           	big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big/3), 6, small))
 mdb> print -r 1
@@ -84,12 +84,12 @@ big(
   3, 
   big(big(small, 4, big(small, 5, small)), 6, small))
 browser> quit
-mdb> set -A -f depth 1
+mdb> format_param -A -f depth 1
 mdb> print *
        Data (arg 1)           	big(big/3, 3, big/3)
 mdb> print Data/1
        Data (arg 1)           	big(big(small, 1, small), 2, small)
-mdb> set -f depth 3
+mdb> format_param -f depth 3
 mdb> print 1
        Data (arg 1)           	big(big(big(small, 1, small), 2, small), 3, big(big(small, 4, big/3), 6, small))
 mdb> print Data/1/2

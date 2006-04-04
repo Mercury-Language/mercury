@@ -6,8 +6,8 @@ break dice.merge_sort
 continue
 delete *
 finish
-set format pretty
-set depth 10
+format pretty
+format_param depth 10
 dd -s sdq -f dice.fail -p dice.pass
 n
 n

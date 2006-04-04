@@ -5,12 +5,12 @@ continue
 finish
 delete *
 dump 1 browser_test.save.1
-set format raw_pretty
+format raw_pretty
 print *
-set -A format verbose
+format -A verbose
 print *
 browse 1; ls; quit
-set -AP format flat
+format -AP flat
 print -f 1
 print -p 1
 print -v 1
@@ -36,14 +36,14 @@ ls
 cdr 3 ../1/..
 ls
 quit
-set xml_tmp_filename './browser_test.xml.out'
-set xml_browser_cmd 'cat ./browser_test.xml.out'
+xml_tmp_filename './browser_test.xml.out'
+xml_browser_cmd 'cat ./browser_test.xml.out'
 browse --xml 1
 browse -x Data
-set -A -f depth 1
+format_param -A -f depth 1
 print *
 print Data/1
-set -f depth 3
+format_param -f depth 3
 print 1
 print Data/1/2
 print 1^1^2^3

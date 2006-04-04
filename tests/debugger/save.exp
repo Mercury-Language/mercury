@@ -49,58 +49,58 @@ break pred*save.data/1-0
 break pred*save.nodiag/3-0
 condition B = 5
 scope interface
-set -P format flat
-set -P -f depth 3
-set -P -f size 10
-set -P -f width 80
-set -P -f lines 25
-set -P -r depth 3
-set -P -r size 10
-set -P -r width 80
-set -P -r lines 25
-set -P -v depth 3
-set -P -v size 10
-set -P -v width 80
-set -P -v lines 25
-set -P -p depth 3
-set -P -p size 10
-set -P -p width 80
-set -P -p lines 25
-set -B format flat
-set -B -f depth 10
-set -B -f size 30
-set -B -f width 80
-set -B -f lines 25
-set -B -r depth 10
-set -B -r size 30
-set -B -r width 80
-set -B -r lines 25
-set -B -v depth 10
-set -B -v size 30
-set -B -v width 80
-set -B -v lines 25
-set -B -p depth 10
-set -B -p size 30
-set -B -p width 80
-set -B -p lines 25
-set -A format flat
-set -A -f depth 3
-set -A -f size 10
-set -A -f width 80
-set -A -f lines 2
-set -A -r depth 3
-set -A -r size 10
-set -A -r width 80
-set -A -r lines 2
-set -A -v depth 3
-set -A -v size 10
-set -A -v width 80
-set -A -v lines 5
-set -A -p depth 3
-set -A -p size 10
-set -A -p width 80
-set -A -p lines 2
-set max_io_actions 20
+format -P flat
+format_param -P -f depth 3
+format_param -P -f size 10
+format_param -P -f width 80
+format_param -P -f lines 25
+format_param -P -r depth 3
+format_param -P -r size 10
+format_param -P -r width 80
+format_param -P -r lines 25
+format_param -P -v depth 3
+format_param -P -v size 10
+format_param -P -v width 80
+format_param -P -v lines 25
+format_param -P -p depth 3
+format_param -P -p size 10
+format_param -P -p width 80
+format_param -P -p lines 25
+format -B flat
+format_param -B -f depth 10
+format_param -B -f size 30
+format_param -B -f width 80
+format_param -B -f lines 25
+format_param -B -r depth 10
+format_param -B -r size 30
+format_param -B -r width 80
+format_param -B -r lines 25
+format_param -B -v depth 10
+format_param -B -v size 30
+format_param -B -v width 80
+format_param -B -v lines 25
+format_param -B -p depth 10
+format_param -B -p size 30
+format_param -B -p width 80
+format_param -B -p lines 25
+format -A flat
+format_param -A -f depth 3
+format_param -A -f size 10
+format_param -A -f width 80
+format_param -A -f lines 2
+format_param -A -r depth 3
+format_param -A -r size 10
+format_param -A -r width 80
+format_param -A -r lines 2
+format_param -A -v depth 3
+format_param -A -v size 10
+format_param -A -v width 80
+format_param -A -v lines 5
+format_param -A -p depth 3
+format_param -A -p size 10
+format_param -A -p width 80
+format_param -A -p lines 2
+max_io_actions 20
 trust save
 trust std lib
-set list_context_lines 2
+list_context_lines 2

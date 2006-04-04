@@ -61,6 +61,10 @@ Changes to the Mercury debugger:
   left the goal at which the term was available as the value of a program
   variable.
 * Users can now see the set of places where two terms differ from each other.
+* The `set' command has been replaced by several other commands: the `format',
+  `format_param', `list_context_lines', `list_path', `xml_browser_cmd',
+  `xml_tmp_filename', `fail_trace_counts', `pass_trace_counts' and
+  `max_io_actions' commands.
 * The `save_to_file' command has been renamed the `dump' command.
 * The `save' command now saves the entire persistent state of the debugger
   (with one small exception that cannot be reestablished by an mdb command from

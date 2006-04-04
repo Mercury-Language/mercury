@@ -54,8 +54,8 @@ func int.+/2-0                   CALL             int.m:82            44 (3)   1
 func int.+/2-0                   EXIT             int.m:82            44 (3)   13      0.23
 func int.-/2-0                   CALL             int.m:96            34 (3)   11      0.24
 func int.-/2-0                   EXIT             int.m:96            34 (3)   11      0.24
-mdb> set fail_trace_count dice.fail
-mdb> set pass_trace_counts dice.passes
+mdb> fail_trace_counts dice.fail
+mdb> pass_trace_counts dice.passes
 mdb> dice -sS
 Procedure                          Path/Port        File:Line       Pass (3) Fail Suspicion
 pred dice.merge/3-0                <s2;c2;s2;c4;e;> dice.m:74          0 (0)    1      1.00

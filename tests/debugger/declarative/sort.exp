@@ -10,8 +10,8 @@ ian
 ian
 ian
       E2:     C1 EXIT pred sort.main/2-0 (det) sort.m:27
-mdb> set format pretty
-mdb> set depth 1
+mdb> format pretty
+mdb> format_param depth 1
 mdb> dd
 main(...)
 16 tabled IO actions:
@@ -31,10 +31,10 @@ write_string(...)
 write_string(...)
 write_string(...)
 write_string(...)
-Valid? set depth 10
+Valid? depth 10
 dd> print io 9
 read_line_as_string_2(<<foreign>>, yes, -1, "")
-dd> set depth 1
+dd> depth 1
 dd> no
 open_stream(...)
 3 tabled IO actions:

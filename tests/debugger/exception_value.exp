@@ -21,8 +21,8 @@ exception(univ_cons("p exception"))
 mdb> finish
       E5:     C3 EXCP pred exception_value.q/1-0 (det)
 mdb> browse exception
-browser> set depth 9
-browser> set size 99
+browser> depth 9
+browser> size 99
 browser> ls
 "q oops" - [1, 2, 3]
 browser> quit

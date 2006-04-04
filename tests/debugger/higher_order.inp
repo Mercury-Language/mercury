@@ -1,8 +1,8 @@
 echo on
 context none
-set size 100
-set depth 100
-set format flat
+format_param size 100
+format_param depth 100
+format flat
 step
 print *
 finish

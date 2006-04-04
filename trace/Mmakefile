@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1998-2005 The University of Melbourne.
+# Copyright (C) 1998-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -13,6 +13,18 @@
 HDRS		=	\
 			mercury_trace_alias.h		\
 			mercury_trace_browse.h		\
+			mercury_trace_cmd_backward.h	\
+			mercury_trace_cmd_breakpoint.h	\
+			mercury_trace_cmd_browsing.h	\
+			mercury_trace_cmd_dd.h		\
+			mercury_trace_cmd_developer.h	\
+			mercury_trace_cmd_exp.h		\
+			mercury_trace_cmd_help.h	\
+			mercury_trace_cmd_misc.h	\
+			mercury_trace_cmd_parameter.h	\
+			mercury_trace_cmd_queries.h	\
+			mercury_trace_cmds.h		\
+			mercury_trace_cmd_table_io.h	\
 			mercury_trace_completion.h	\
 			mercury_trace_declarative.h	\
 			mercury_trace_external.h 	\
@@ -32,6 +44,18 @@ CFILES		= 	\
 			mercury_trace_alias.c		\
 			mercury_trace_browse.c		\
 			mercury_trace.c			\
+			mercury_trace_cmd_backward.c	\
+			mercury_trace_cmd_breakpoint.c	\
+			mercury_trace_cmd_browsing.c	\
+			mercury_trace_cmd_dd.c		\
+			mercury_trace_cmd_developer.c	\
+			mercury_trace_cmd_exp.c		\
+			mercury_trace_cmd_forward.c	\
+			mercury_trace_cmd_help.c	\
+			mercury_trace_cmd_misc.c	\
+			mercury_trace_cmd_parameter.c	\
+			mercury_trace_cmd_queries.c	\
+			mercury_trace_cmd_table_io.c	\
 			mercury_trace_completion.c	\
 			mercury_trace_declarative.c	\
 			mercury_trace_external.c 	\

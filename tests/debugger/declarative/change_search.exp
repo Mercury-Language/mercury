@@ -8,8 +8,8 @@ mdb> continue
       E2:     C2 CALL pred change_search.mylast/2-0 (det)
 mdb> finish -n
       E3:     C2 EXIT pred change_search.mylast/2-0 (det)
-mdb> set format pretty
-mdb> set depth 10
+mdb> format pretty
+mdb> format_param depth 10
 mdb> dd
 mylast([1, 2, 3, 4, 5, 6, 7, 8, ...], no)
 Valid? info

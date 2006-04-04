@@ -26,8 +26,8 @@ pred dice.msort_n/4-0    <e;?;>           dice.m:44   19 (3)    7      0.27
 pred dice.msort_n/4-0    <e;t;>           dice.m:50   11 (3)    4      0.27
 pred dice.msort_n/4-0    <e;t;s2;>        dice.m:47   11 (3)    4      0.27
 pred dice.msort_n/4-0    <e;e;>           dice.m:55    8 (3)    3      0.27
-mdb> set fail_trace_count dice.fail
-mdb> set pass_trace_counts dice.passes
+mdb> fail_trace_counts dice.fail
+mdb> pass_trace_counts dice.passes
 mdb> dice -sS -m dice
 Procedure                Path/Port        File:Line Pass (3) Fail Suspicion
 pred dice.merge/3-0      <s2;c2;s2;c4;e;> dice.m:74    0 (0)    1      1.00

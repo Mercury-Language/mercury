@@ -1571,8 +1571,12 @@ The then part of an if-then-else.
 The else part of an if-then-else.
 @item ~
 The goal inside a negation.
+@item q!
+The goal inside an existential quantification or other scope
+that changes the determinism of the goal.
 @item q
-The goal inside an existential quantification.
+The goal inside an existential quantification or other scope
+that doesn't change the determinism of the goal.
 @end table
 
 A path describes the position of a goal
@@ -2073,9 +2077,9 @@ An optional prefix of the form
 that specifies whether the procedure belongs
 to a unify, compare, index or init predicate.
 @item
-An optional prefix of the form @samp{@var{module}:}, @samp{@var{module}.}
-or @samp{@var{module}__} that specifies the name of the module that defines
-the predicate or function to which the procedure belongs.
+An optional prefix of the form @samp{@var{module}.} or @samp{@var{module}__}
+that specifies the name of the module that defines the predicate or function
+to which the procedure belongs.
 @item
 The name of the type constructor.
 @item
@@ -2878,16 +2882,6 @@ output to be in XML.
 Lists the source code text for the current environment, including
 @var{num} preceding and following lines.  If @var{num} is not provided then
 the default of two is used.
-@sp 1
-@item push_list_dir @var{dir1} @var{dir2} ...
-@kindex push_list_dir (mdb command)
-The @samp{list} command searches a list of directories when looking for a
-source code file.  The @samp{push_list_dir} pushes one or more such
-directories on to this list.
-@sp 1
-@item pop_list_dir
-@kindex pop_list_dir (mdb command)
-Pops the most recent @samp{push_list_dir}' directory from the search list.
 @end table
 
 @sp 1
@@ -3158,12 +3152,14 @@ Lists all the debuggable modules
 @kindex procedures (mdb command)
 Lists all the procedures in the debuggable module @var{module}.
 @sp 1
-@item register
+@item register [-q]
 @kindex register (mdb command)
 Registers all debuggable modules with the debugger.
 Has no effect if this registration has already been done.
 The debugger will perform this registration when creating breakpoints
 and when listing debuggable modules and/or procedures.
+The command will print a message to this effect
+unless the @samp{-q} or @samp{--quiet} option is given.
 @end table
 
 @sp 1
@@ -3219,16 +3215,6 @@ Sets the default print level to @samp{all}.
 @item printlevel
 Reports the current default print level.
 @sp 1
-@item echo on
-@kindex echo (mdb command)
-Turns on the echoing of commands.
-@sp 1
-@item echo off
-Turns off the echoing of commands.
-@sp 1
-@item echo
-Reports whether commands are being echoed or not.
-@sp 1
 @item scroll on
 @kindex scroll (mdb command)
 Turns on user control over the scrolling of sequences of event reports.
@@ -3262,6 +3248,45 @@ Reports whether user scroll control is enabled and what the window size is.
 Set the default number of lines printed by
 the @samp{stack} and @samp{nondet_stack} commands to @var{size}.
 If @var{size} is zero, the limit is disabled.
+@sp 1
+@item goal_paths on
+@kindex goal_path (mdb command)
+Turns on printing of goal paths at events.
+@sp 1
+@item goal_paths off
+Turns off printing of goal paths at events.
+@sp 1
+@item goal_paths
+Reports whether goal paths are printed at events.
+@sp 1
+@item scope all
+@kindex scope (mdb command)
+Sets the default scope of new breakpoints to ``all'',
+i.e.@: by default, new breakpoints on procedures
+will stop at all events in the procedure.
+@sp 1
+@item scope interface
+Sets the default scope of new breakpoints to ``interface'',
+i.e.@: by default, new breakpoints on procedures
+will stop at all interface events in the procedure.
+@sp 1
+@item scope entry
+Sets the default scope of new breakpoints to ``entry'',
+i.e.@: by default, new breakpoints on procedures
+will stop only at events representing calls to the procedure.
+@sp 1
+@item scope
+Reports the current default scope of new breakpoints.
+@sp 1
+@item echo on
+@kindex echo (mdb command)
+Turns on the echoing of commands.
+@sp 1
+@item echo off
+Turns off the echoing of commands.
+@sp 1
+@item echo
+Reports whether commands are being echoed or not.
 @sp 1
 @item context none
 @kindex context (mdb command)
@@ -3299,33 +3324,175 @@ after the identification of the event or call to which they refer.
 @item context
 Reports where contexts are being printed.
 @sp 1
-@item goal_paths on
-@kindex goal_path (mdb command)
-Turns on printing of goal paths at events.
+@item list_context_lines @var{num}
+@kindex list_context_lines (mdb command)
+Sets the number of lines to be printed by the @samp{list} command
+printed before and after the target context.
 @sp 1
-@item goal_paths off
-Turns off printing of goal paths at events.
+@item list_context_lines
+Prints the number of lines to be printed by the @samp{list} command
+printed before and after the target context.
 @sp 1
-@item goal_paths
-Reports whether goal paths are printed at events.
+@item list_path @var{dir1} @var{dir2} ...
+@kindex list_path (mdb command)
+The @samp{list} command searches a list of directories
+when looking for a source code file.
+The @samp{list_path} command sets the search path
+to the given list of directories.
 @sp 1
-@item scope all
-Sets the default scope of new breakpoints to ``all'',
-i.e.@: by default, new breakpoints on procedures
-will stop at all events in the procedure.
+@item list_path
+When invoked without arguments, the @samp{list_path} command
+prints the search path consulted by the @samp{list} command.
 @sp 1
-@item scope interface
-Sets the default scope of new breakpoints to ``interface'',
-i.e.@: by default, new breakpoints on procedures
-will stop at all interface events in the procedure.
+@item push_list_dir @var{dir1} @var{dir2} ...
+@kindex push_list_dir (mdb command)
+Pushes the given directories
+on to the search path consulted by the @samp{list} command.
 @sp 1
-@item scope entry
-Sets the default scope of new breakpoints to ``entry'',
-i.e.@: by default, new breakpoints on procedures
-will stop only at events representing calls to the procedure.
+@item pop_list_dir
+@kindex pop_list_dir (mdb command)
+Pops the leftmost (most recently pushed) directory
+from the search path consulted by the @samp{list} command.
 @sp 1
-@item scope
-Reports the current default scope of new breakpoints.
+@item fail_trace_counts @var{filename}
+@kindex fail_trace_counts (mdb command)
+The declarative debugger can exploit information
+about the failing and passing test cases to ask better questions.
+This command tells the @samp{dice} command
+that @var{filename} contains execution trace counts from failing test cases.
+The @samp{dice} command will use this file
+unless this is overridden with its @samp{--fail-trace-counts} option.
+@sp 1
+@item fail_trace_counts
+Prints the name of the file containing
+execution trace counts from failing test cases,
+if this has already been set.
+@sp 1
+@item pass_trace_counts @var{filename}
+@kindex pass_trace_counts (mdb command)
+The declarative debugger can exploit information
+about the failing and passing test cases to ask better questions.
+This command tells the @samp{dice} command
+that @var{filename} contains execution trace counts from passing test cases.
+The @samp{dice} command will use this file
+unless this is overridden with its @samp{--pass-trace-counts} option.
+@sp 1
+@item pass_trace_counts
+Prints the name of the file containing
+execution trace counts from passing test cases,
+if this has already been set.
+@sp 1
+@item max_io_actions @var{num}
+@kindex max_io_actions (mdb command)
+Set the maximum number of I/O actions to print
+in questions from the declarative debugger to @var{num}.
+@sp 1
+@item max_io_actions
+Prints the maximum number of I/O actions to print
+in questions from the declarative debugger.
+@sp 1
+@item xml_browser_cmd @var{command}
+@kindex xml_browser_cmd (mdb command)
+Set the shell command used to launch an XML browser to @var{command}.
+If you want a stylesheet to be applied to the XML
+before the browser is invoked,
+then you should do that in this command using the appropriate program 
+(such as xsltproc, which comes with libxslt
+and is available from http://xmlsoft.org/XSLT/).  
+By default if xsltproc and mozilla (or firefox) are available,
+xsltproc is invoked to apply the xul_tree.xsl stylesheet in
+extras/xml_stylesheets, then mozilla is invoked on the resulting XUL file.  
+@sp 1
+You can use the apostrophe character (') to quote the command string,
+for example "xml_browser_cmd 'firefox file:///tmp/mdbtmp.xml'".
+@sp 1
+@item xml_browser_cmd
+Prints the shell command used to launch an XML browser,
+if this has been set.
+@sp 1
+@item xml_tmp_filename @var{filename}
+@kindex xml_tmp_filename (mdb command)
+Tells the debugger to dump XML into the named file
+before invoking the XML browser.
+The command named as the argument of @samp{xml_browser_cmd}
+will usually refer to this file.
+@sp 1
+@item xml_tmp_filename
+Prints the temporary filename used for XML browsing,
+if this has been set.
+@sp 1
+@item format [-APB] @var{format}
+@kindex format (mdb command)
+Sets the default format of the browser to @var{format},
+which should be one of @samp{flat}, @samp{pretty} and @samp{verbose}.
+@sp 1
+The browser maintains separate configuration parameters
+for the three commands @samp{print *}, @samp{print @var{var}},
+and @samp{browse @var{var}}.
+A @samp{format} command applies to all three,
+unless it specifies one or more of the options
+@samp{-A} or @samp{--print-all},
+@samp{-P} or @samp{--print},
+and @samp{-B} or @samp{--browse},
+in which case it will set only the selected command's default format.
+@sp 1
+@item format_param [-APBfpv] @var{param} @var{value}
+@kindex format_param (mdb command)
+@kindex depth (mdb command)
+@kindex size (mdb command)
+@kindex width (mdb command)
+@kindex lines (mdb command)
+Sets one of the parameters of the browser to the given value.
+The parameter @var{param} must be one of
+@samp{depth}, @samp{size}, @samp{width} and @samp{lines}.
+@sp 1
+@itemize @bullet
+@item
+@samp{depth} is the maximum depth to which subterms will be displayed.
+Subterms at the depth limit may be abbreviated as functor/arity,
+or (in lists) may be replaced by an ellipsis (@samp{...}).
+The principal functor of any term has depth zero.
+For subterms which are not lists,
+the depth of any argument of the functor is one greater than the
+depth of the functor.
+For subterms which are lists,
+the depth of each element of the list
+is one greater than the depth of the list.
+@sp 1
+@item
+@samp{size} is the suggested maximum number of functors to display.
+Beyond this limit, subterms may be abbreviated as functor/arity,
+or (in lists) may be replaced by an ellipsis (@samp{...}).
+For the purposes of this parameter,
+the size of a list is one greater than
+the sum of the sizes of the elements in the list.
+@sp 1
+@item
+@samp{width} is the width of the screen in characters.
+@sp 1
+@item
+@samp{lines} is the preferred maximum number of lines of one term to display.
+@sp 1
+@end itemize
+@sp 1
+The browser maintains separate configuration parameters
+for the three commands @samp{print *}, @samp{print @var{var}},
+and @samp{browse @var{var}}.
+A @samp{format_param} command applies to all three,
+unless it specifies one or more of the options
+@samp{-A} or @samp{--print-all},
+@samp{-P} or @samp{--print},
+and @samp{-B} or @samp{--browse},
+in which case it will set only the selected command's parameters.
+@sp 1
+The browser also maintains separate configuration parameters
+for the different output formats: flat, pretty and verbose.
+A @samp{format_param} command applies to all of these,
+unless it specifies one or more of the options
+@samp{-f} or @samp{--flat},
+@samp{-p} or @samp{--pretty},
+and @samp{-v} or @samp{--verbose},
+in which case it will set only the selected format's parameter.
 @sp 1
 @item alias @var{name} @var{command} [@var{command-parameter} ...]
 @kindex alias (mdb command)
@@ -3338,7 +3505,6 @@ before executing the command line.
 If @var{name} is the upper-case word @samp{EMPTY},
 the debugger will substitute the given command and parameters
 whenever the user types in an empty command line.
-@sp 1
 @sp 1
 If @var{name} is the upper-case word @samp{NUMBER},
 the debugger will insert the given command and parameters
@@ -3586,7 +3752,7 @@ was executed in passing test runs.
 @end itemize
 @sp 1
 The name of the file containing the failing slice can be specified with the 
-@samp{-f} or @samp{--fail-trace-count} option or with a separate 
+@samp{-f} or @samp{--fail-trace-counts} option or with a separate 
 @samp{set fail_trace_count @var{filename}} command.
 @sp 1
 The name of a file containing a list of the files containing the passing
@@ -3633,110 +3799,6 @@ and its submodules, if any.
 
 @sp 1
 @table @code
-@item set [-APBfpv] @var{param} @var{value}
-@kindex set (mdb command)
-@kindex format (mdb command)
-@kindex depth (mdb command)
-@kindex size (mdb command)
-@kindex width (mdb command)
-@kindex lines (mdb command)
-@kindex xml_browser_cmd (mdb command)
-@kindex xml_tmp_filename (mdb command)
-@kindex fail_trace_counts (mdb command)
-@kindex pass_trace_counts (mdb command)
-@kindex list_path (mdb command)
-@kindex list_context_lines (mdb command)
-Updates the given configuration parameter.
-The parameters that can be configured are
-@samp{format}, @samp{depth}, @samp{size}, @samp{width}, @samp{lines}, 
-@samp{xml_browser_cmd}, @samp{xml_tmp_filename}, @samp{fail_trace_counts},
-@samp{pass_trace_counts}.
-@sp 1
-@itemize @bullet
-@item
-@samp{format} can be set to @samp{flat}, @samp{pretty} or @samp{verbose}
-to change the output style of the browser.
-@sp 1
-@item
-@samp{depth} is the maximum depth to which subterms will be displayed.
-Subterms at the depth limit may be abbreviated as functor/arity,
-or (in lists) may be replaced by an ellipsis (@samp{...}).
-The principal functor of any term has depth zero.
-For subterms which are not lists,
-the depth of any argument of the functor is one greater than the
-depth of the functor.
-For subterms which are lists,
-the depth of each element of the list
-is one greater than the depth of the list.
-@sp 1
-@item
-@samp{size} is the suggested maximum number of functors to display.
-Beyond this limit, subterms may be abbreviated as functor/arity,
-or (in lists) may be replaced by an ellipsis (@samp{...}).
-For the purposes of this parameter,
-the size of a list is one greater than
-the sum of the sizes of the elements in the list.
-@sp 1
-@item
-@samp{width} is the width of the screen in characters.
-@sp 1
-@item
-@samp{lines} is the maximum number of lines of one term to display.
-@sp 1
-@item
-@samp{xml_tmp_filename} is the name of the file to dump XML to before
-invoking your XML browser.
-@sp 1
-@item
-@samp{xml_browser_cmd} is the shell command(s) used to invoke your XML browser.
-If you want a stylesheet to be applied to the XML before the browser is invoked
-then you should do that in this command using the appropriate program 
-(such as xsltproc, which comes with libxslt and is available from
-http://xmlsoft.org/XSLT/).  
-By default if xsltproc and mozilla (or firefox) are available,
-xsltproc is invoked to apply the xul_tree.xsl stylesheet in
-extras/xml_stylesheets, then mozilla is invoked on the resulting XUL file.  
-@sp 1
-You can use the apostrophe character (') to quote the command string when using
-the @samp{set} command, for example "set xml_browser_cmd 'firefox
-file:///tmp/mdbtmp.xml'".
-@item
-@samp{fail_trace_count} is the name of a file that contains the slice of a
-failing test case run.  This configuration parameter is used by the 
-@samp{dice} command if no @samp{--fail-trace-count} option is given for that
-command.  See @ref{Experimental commands} for more information on the 
-@samp{dice} command.
-@sp 1
-@item
-@samp{pass_trace_counts} is the name of a file that contains a list of file
-names which contain the slices of passing test case runs.  This configuration
-parameter is used by the @samp{dice} command if no @samp{--pass-trace-counts}
-option is given for that command.  See @ref{Experimental commands} for more
-information on the @samp{dice} command.
-@end itemize
-@sp 1
-The browser maintains separate configuration parameters
-for the three commands @samp{print *}, @samp{print @var{var}},
-and @samp{browse @var{var}}.
-A single @samp{set} command can modify the parameters
-for more than one of these;
-the options @samp{-A} or @samp{--print-all}, @samp{-P} or @samp{--print},
-and @samp{-B} or @samp{--browse}
-select which commands will be affected by the change.
-If none of these options is given,
-the default is to affect all commands.
-@sp 1
-The browser also maintains separate configuration parameters
-for the three different output formats.
-This applies to all parameters except for the format itself.
-The options @samp{-f} or @samp{--flat}, @samp{-p} or @samp{--pretty},
-and @samp{-v} or @samp{--verbose}
-select which formats will be affected by the change.
-If none of these options is given,
-the default is to affect all formats.
-In the case that the format itself is being set,
-these options are ignored.
-@sp 1
 @item source [-i] @var{filename}
 @kindex source (mdb command)
 Executes the commands in the file named @var{filename}.
@@ -4254,11 +4316,28 @@ Print the @var{n}th IO action.
 @item print io @var{n}-@var{m}
 Print the @var{n}th to @var{m}th IO actions (inclusive).
 @sp 1
-@item set @var{param} @var{value}
-Update the given configuration parameter.
-The parameters that can be configured are
-@samp{list_path}, @samp{list_context_lines}, @samp{format}, @samp{depth},
-@samp{size}, @samp{width} and @samp{lines}.
+@item format @var{format}
+Set the default format to @var{format},
+which should be one of @samp{flat}, @samp{verbose} and @samp{pretty}.
+@sp 1
+@item depth @var{num}
+Set the maximum depth to which terms are printed to @var{num}.
+@sp 1
+@item size @var{num}
+Set the maximum number of function symbols
+to be printed in terms to @var{num}.
+@sp 1
+@item width @var{num}
+Set the number of columnds in which terms are to be printed to @var{num}.
+@sp 1
+@item lines @var{num}
+Set the maximum number of lines in terms to be printed to @var{num}.
+@sp 1
+@item actions @var{num}
+Set the maximum number of I/O actions to be printed in questions to @var{num}.
+@sp 1
+@item params
+Print the current values of browser parameters.
 @sp 1
 @item track [-a] [@var{term-path}]
 The @samp{track} command can only be given from within the interactive

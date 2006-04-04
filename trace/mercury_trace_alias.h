@@ -73,9 +73,19 @@ extern  void        MR_trace_print_alias(FILE *fp, const char *name);
 extern  void        MR_trace_print_all_aliases(FILE *fp,
                         MR_bool mdb_command_format);
 
+/*
+** If the main command in *words[0] MR_trace_expand_aliases is an alias, then
+** expand the alias. Words, word_max and word_count should form a resizeable
+** array of words, in the sense of mercury_array_macros.h.
+*/
+
+extern  void        MR_trace_expand_aliases(char ***words, int *word_max,
+                        int *word_count);
+
 /* A Readline completer for aliases. */ 
 extern  MR_Completer_List
                     *MR_trace_alias_completer(const char *word,
                         size_t word_length);
+
 
 #endif  /* MERCURY_TRACE_ALIAS_H */
