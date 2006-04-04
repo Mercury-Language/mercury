@@ -310,7 +310,7 @@ build_target(CompilationTask, TargetFile, Imports, TouchedTargetFiles,
     CompilationTask = Task - TaskOptions,
     (
         CompilationTask = process_module(ModuleTask) - _,
-        forkable_module_compilation_task_type(ModuleTask),
+        forkable_module_compilation_task_type(ModuleTask) = yes,
         \+ can_fork
     ->
         % We need a temporary file to pass the arguments to
@@ -379,7 +379,7 @@ build_target_2(ModuleName, process_module(ModuleTask), ArgFileName,
     % it can be difficult to kill the compiler otherwise.
     io.set_output_stream(ErrorStream, OldOutputStream, !IO),
     ( 
-        forkable_module_compilation_task_type(ModuleTask)
+        forkable_module_compilation_task_type(ModuleTask) = yes
     ->
         call_in_forked_process(call_mercury_compile_main([ModuleArg]),
             invoke_mmc(ErrorStream, ArgFileName, AllOptionArgs ++ [ModuleArg]),
@@ -482,12 +482,16 @@ compile_foreign_code_file(ErrorStream, _, Imports,
     compile_target_code.compile_csharp_file(ErrorStream, Imports,
         CSharpFile, DLLFile, Succeeded, !IO).
 
-:- pred forkable_module_compilation_task_type(module_compilation_task_type::in)
-    is semidet.
+:- func forkable_module_compilation_task_type(module_compilation_task_type)
+    = bool.
 
-forkable_module_compilation_task_type(compile_to_target_code).
-forkable_module_compilation_task_type(make_optimization_interface).
-forkable_module_compilation_task_type(make_analysis_registry).
+forkable_module_compilation_task_type(errorcheck) = no.
+forkable_module_compilation_task_type(make_short_interface) = no.
+forkable_module_compilation_task_type(make_interface) = no.
+forkable_module_compilation_task_type(make_private_interface) = no.
+forkable_module_compilation_task_type(make_optimization_interface) = yes.
+forkable_module_compilation_task_type(make_analysis_registry) = yes.
+forkable_module_compilation_task_type(compile_to_target_code) = yes.
 
 %-----------------------------------------------------------------------------%
 
