@@ -261,6 +261,8 @@ library-menu.texi_pp: $(LIBRARY_DIR)/*.m
 				;;					\
 			$(LIBRARY_DIR)/mutvar.m)			\
 				;;					\
+			$(LIBRARY_DIR)/rtree.m)				\
+				;;					\
 			*)						\
 				echo "* `basename $$filename .m`::"; 	\
 				;;					\
@@ -288,6 +290,8 @@ library-chapters.texi_pp: $(LIBRARY_DIR)/[a-z]*.m
 			$(LIBRARY_DIR)/term_size_prof_builtin.m)	\
 				;;					\
 			$(LIBRARY_DIR)/mutvar.m)			\
+				;;					\
+			$(LIBRARY_DIR)/rtree.m)				\
 				;;					\
 			*)						\
 				file="`basename $$filename .m`"; 	\
