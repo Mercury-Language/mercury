@@ -24,7 +24,7 @@
 :- implementation.
 
 :- import_module pprint.
-:- import_module int, list, map, array, string, rbtree, solutions, std_util.
+:- import_module int, list, map, array, string, rbtree, solutions.
 
 :- type tree(T) ---> branch(tree(T), T, tree(T)) ; leaf.
 

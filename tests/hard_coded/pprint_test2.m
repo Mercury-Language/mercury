@@ -21,7 +21,7 @@
 
 :- implementation.
 
-:- import_module int, solutions, std_util, pprint.
+:- import_module int, solutions, pprint.
 
 :- type t
     --->    a
