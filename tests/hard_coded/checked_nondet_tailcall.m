@@ -8,7 +8,7 @@
 
 :- implementation.
 
-:- import_module list, solutions, std_util.
+:- import_module list, solutions.
 
 main --> 
 	{ join(1, Ones) },

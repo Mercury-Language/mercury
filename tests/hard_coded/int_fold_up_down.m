@@ -19,7 +19,7 @@
 
 :- implementation.
 
-:- import_module int, string, list, solutions, std_util.
+:- import_module int, string, list, solutions.
 
 %-----------------------------------------------------------------------------%
 
