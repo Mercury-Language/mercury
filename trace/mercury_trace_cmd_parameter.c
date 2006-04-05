@@ -23,6 +23,7 @@
 #include "mercury_std.h"
 #include "mercury_getopt.h"
 #include "mercury_stack_trace.h"    /* for MR_Context_Position  */
+#include "mercury_string.h"
 
 #include "mercury_trace.h"
 #include "mercury_trace_internal.h"

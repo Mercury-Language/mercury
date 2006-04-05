@@ -22,6 +22,7 @@
 
 #include "mercury_std.h"
 #include "mercury_getopt.h"
+#include "mercury_string.h"
 
 #include "mercury_trace_internal.h"
 #include "mercury_trace_cmds.h"
