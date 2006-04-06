@@ -102,8 +102,15 @@ case "$BRANCH" in
 		esac
 	   	;;
 	   uranus|swordfish|ceres|earth)
-		BRANCH=latest ;;
-	    *)
+		BRANCH=latest
+		;;
+	   saturn)
+ 	       	case $DAY in
+			*[02468]) BRANCH=$release_branch ;;
+		        *) BRANCH=latest ;;
+	       	esac
+	       	;;	
+	   *)
 	    	# On anything else just test the main branch.
 		BRANCH=latest
 		;;
