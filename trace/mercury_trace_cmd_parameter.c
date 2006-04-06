@@ -26,6 +26,7 @@
 #include "mercury_string.h"
 
 #include "mercury_trace.h"
+#include "mercury_trace_browse.h"
 #include "mercury_trace_internal.h"
 #include "mercury_trace_cmds.h"
 #include "mercury_trace_cmd_parameter.h"
@@ -468,7 +469,8 @@ MR_trace_cmd_list_path(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
         );
 
         MR_listing_path =
-            MR_make_permanent(MR_listing_path, ML_LISTING_listing_type);
+            MR_make_permanent(MR_listing_path,
+                (MR_TypeInfo) ML_LISTING_listing_type());
     }
 
     return KEEP_INTERACTING;
@@ -497,7 +499,8 @@ MR_trace_cmd_push_list_dir(char **words, int word_count,
     );
 
     MR_listing_path =
-        MR_make_permanent(MR_listing_path, ML_LISTING_listing_type);
+        MR_make_permanent(MR_listing_path,
+            (MR_TypeInfo) ML_LISTING_listing_type());
 
     return KEEP_INTERACTING;
 }
@@ -516,7 +519,8 @@ MR_trace_cmd_pop_list_dir(char **words, int word_count,
     );
 
     MR_listing_path =
-        MR_make_permanent(MR_listing_path, ML_LISTING_listing_type);
+        MR_make_permanent(MR_listing_path,
+            (MR_TypeInfo) ML_LISTING_listing_type());
 
     return KEEP_INTERACTING;
 }
@@ -577,22 +581,33 @@ MR_Next
 MR_trace_cmd_max_io_actions(char **words, int word_count,
     MR_Trace_Cmd_Info *cmd, MR_Event_Info *event_info, MR_Code **jumpaddr)
 {
-    int                 n;
+    int num_io_actions;
 
-    if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
+    if (word_count == 2 &&
+            MR_trace_is_natural_number(words[1], &num_io_actions)) {
         MR_TRACE_CALL_MERCURY(
-            ML_BROWSE_set_num_io_actions(n,
+            ML_BROWSE_set_num_io_actions(num_io_actions,
                 MR_trace_browser_persistent_state,
                 &MR_trace_browser_persistent_state);
         );
     } else if (word_count == 1) {
+    
+        MR_Integer n;
+        
         MR_TRACE_CALL_MERCURY(
             ML_BROWSE_get_num_io_actions(
                 MR_trace_browser_persistent_state, &n);
         );
+        
+        /*
+        ** We do this to avoid warnings about MR_Integer and int
+        ** having different sizes on 64-bit architectures.
+        */
+        num_io_actions = (int) n;
+        
         fprintf(MR_mdb_out,
             "The maximum number of I/O actions printed is %d\n",
-            n);
+            num_io_actions);
     } else {
         MR_trace_usage_cur_cmd();
     }
