@@ -114,10 +114,10 @@
 :- pragma export(list_file(in, in, in, in, in, in, in, di, uo),
     "ML_LISTING_list_file").
 
-:- pred listing_type(type_desc::out) is det.
-:- pragma export(listing_type(out), "ML_LISTING_listing_type").
+:- func listing_type = type_desc.
+:- pragma export(listing_type = out, "ML_LISTING_listing_type").
 
-listing_type(type_of(Path)) :-
+listing_type = type_of(Path) :-
     clear_list_path(Path @ [], _).
 
 %-----------------------------------------------------------------------------%

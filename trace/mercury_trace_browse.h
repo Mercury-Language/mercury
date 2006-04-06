@@ -149,6 +149,7 @@ extern  void        MR_trace_query_external(MR_Query_Type type,
 */
 
 extern	MR_Word	MR_trace_browser_persistent_state;
+extern  MR_TypeInfo MR_trace_browser_persistent_state_type;
 
 /*
 ** Initializes the interactive term browser persistent state or does nothing

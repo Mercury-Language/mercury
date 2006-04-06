@@ -41,7 +41,7 @@
 
 #include <stdio.h>
 
-static  MR_TypeInfo MR_trace_browser_persistent_state_type;
+MR_TypeInfo         MR_trace_browser_persistent_state_type;
 
 MR_Word             MR_trace_browser_persistent_state;
 

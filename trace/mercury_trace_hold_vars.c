@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2005 The University of Melbourne.
+** Copyright (C) 2005-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -46,8 +46,8 @@ MR_add_hold_var(const char *name, const MR_TypeInfo typeinfo, MR_Word value)
     MR_prepare_insert_into_sorted(MR_held_vars, MR_held_var_next, slot,
         strcmp(MR_held_vars[slot].MR_held_name, name));
     MR_held_vars[slot].MR_held_name = strdup(name);
-    MR_held_vars[slot].MR_held_type = (MR_TypeInfo) MR_make_permanent(typeinfo,
-        typeinfo_type_word);
+    MR_held_vars[slot].MR_held_type = (MR_TypeInfo) MR_make_permanent(
+        (MR_Word) typeinfo, (MR_TypeInfo) typeinfo_type_word);
     MR_held_vars[slot].MR_held_value = MR_make_permanent(value, typeinfo);
 
     return MR_TRUE;
