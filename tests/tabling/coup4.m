@@ -13,7 +13,7 @@
 
 :- implementation.
 
-:- import_module std_util, int, list.
+:- import_module solutions, int, list.
 
 main(!IO) :-
 	solutions(p, SolnsP),
