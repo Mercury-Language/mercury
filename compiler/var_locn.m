@@ -2061,10 +2061,13 @@ materialize_vars_in_mem_ref(ModuleInfo, MemRef0, MemRef, Avoid, Code, !VLI) :-
         MemRef = MemRef0,
         Code = empty
     ;
-        MemRef0 = heap_ref(PtrRval0, Ptag, FieldNum),
-        materialize_vars_in_rval(ModuleInfo, PtrRval0, no, Avoid, PtrRval,
-            Code, !VLI),
-        MemRef = heap_ref(PtrRval, Ptag, FieldNum)
+        MemRef0 = heap_ref(PtrRval0, Ptag, FieldNumRval0),
+        materialize_vars_in_rval(ModuleInfo, PtrRval0, no, Avoid,
+            PtrRval, PtrCode, !VLI),
+        materialize_vars_in_rval(ModuleInfo, FieldNumRval0, no, Avoid,
+            FieldNumRval, FieldNumCode, !VLI),
+        Code = tree(PtrCode, FieldNumCode),
+        MemRef = heap_ref(PtrRval, Ptag, FieldNumRval)
     ).
 
 :- type var_avail

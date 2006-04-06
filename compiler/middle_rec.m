@@ -615,10 +615,13 @@ find_used_registers_rval(Rval, !Used) :-
 :- pred find_used_registers_mem_ref(mem_ref::in,
     set(int)::in, set(int)::out) is det.
 
-find_used_registers_mem_ref(stackvar_ref(_), !Used).
-find_used_registers_mem_ref(framevar_ref(_), !Used).
-find_used_registers_mem_ref(heap_ref(Rval, _, _), !Used) :-
+find_used_registers_mem_ref(stackvar_ref(Rval), !Used) :-
     find_used_registers_rval(Rval, !Used).
+find_used_registers_mem_ref(framevar_ref(Rval), !Used) :-
+    find_used_registers_rval(Rval, !Used).
+find_used_registers_mem_ref(heap_ref(Rval1, _, Rval2), !Used) :-
+    find_used_registers_rval(Rval1, !Used),
+    find_used_registers_rval(Rval2, !Used).
 
 :- pred find_used_registers_maybe_rvals(list(maybe(rval))::in,
     set(int)::in, set(int)::out) is det.

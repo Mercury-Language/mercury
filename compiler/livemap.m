@@ -424,10 +424,13 @@ livemap.make_live_in_rval(mem_addr(MemRef), !Live) :-
 :- pred livemap.make_live_in_mem_ref(mem_ref::in, lvalset::in, lvalset::out)
     is det.
 
-livemap.make_live_in_mem_ref(stackvar_ref(_), !Live).
-livemap.make_live_in_mem_ref(framevar_ref(_), !Live).
-livemap.make_live_in_mem_ref(heap_ref(Rval, _, _), !Live) :-
+livemap.make_live_in_mem_ref(stackvar_ref(Rval), !Live) :-
     livemap.make_live_in_rval(Rval, !Live).
+livemap.make_live_in_mem_ref(framevar_ref(Rval), !Live) :-
+    livemap.make_live_in_rval(Rval, !Live).
+livemap.make_live_in_mem_ref(heap_ref(Rval1, _, Rval2), !Live) :-
+    livemap.make_live_in_rval(Rval1, !Live),
+    livemap.make_live_in_rval(Rval2, !Live).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
