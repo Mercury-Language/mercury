@@ -211,7 +211,7 @@ if test "$BOOTSTRAP_MC" != ""; then
 
 		:- implementation.
 
-		:- import_module bool, int, list.
+		:- import_module bool, int, list, univ.
        	
 		:- mutable(global_var,
 			int,
