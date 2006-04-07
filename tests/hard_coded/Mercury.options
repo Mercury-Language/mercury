@@ -12,6 +12,7 @@ MCFLAGS-func_test	=	--infer-all
 MCFLAGS-ho_order	=	--optimize-higher-order
 MCFLAGS-ho_order2	=	--optimize-higher-order
 MCFLAGS-no_fully_strict	=	--no-fully-strict
+MCFLAGS-one_member	=	-O5
 MCFLAGS-impure_foreign	=	--optimize-duplicate-calls
 MCFLAGS-intermod_c_code =	--intermodule-optimization
 MCFLAGS-intermod_c_code2 =	--intermodule-optimization
