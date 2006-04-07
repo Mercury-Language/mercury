@@ -465,7 +465,7 @@ case $HOST in
 		CONFIG_OPTS="--disable-java-grade"
 		case $BRANCH in
 			g12)
-				DEFAULT_GRADE=hlc.gc.tr
+				DEFAULT_GRADE="hlc.gc.tr"
 				export $DEFAULT_GRADE
 				INSTALL_LIBGRADES="hlc.gc.tr		\
 					hl.gc.tr			\
