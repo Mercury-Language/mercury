@@ -37,7 +37,7 @@ Valid? b 2
 browser> mark
 polytest4(u("hello"), u("hello"))
 Valid? browse
-browser> set format pretty
+browser> format pretty
 browser> p
 find_origin.polytest4(u("hello"), u("hello"))
 browser> quit
