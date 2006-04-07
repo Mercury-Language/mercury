@@ -433,13 +433,15 @@ partition_disj(Goals0, Var, GoalInfo, Left, CasesList, !Requant) :-
     map.init(Cases0),
     partition_disj_trial(Goals0, Var, [], Left1, Cases0, Cases1),
     map.to_assoc_list(Cases1, CasesAssocList1),
-    CasesAssocList1 = [_ | _], % There must be at least one case.
     (
         Left1 = [],
+        CasesAssocList1 = [_ | _], % There must be at least one case.
         Left = Left1,
         fix_case_list(CasesAssocList1, GoalInfo, CasesList)
     ;
         Left1 = [_ | _],
+        % We don't insist on CasesAssocList1 not being empty, to allow for
+        % switches in which *all* cases contain subsidiary disjunctions.
         ( expand_sub_disjs(Var, Left1, Cases1, Cases) ->
             Left = [],
             map.to_assoc_list(Cases, CasesAssocList),
@@ -589,21 +591,22 @@ find_bind_var(Var, ProcessUnify, !Goal, !Result, !Info, FoundDeconstruct) :-
     prog_substitution::in, prog_substitution::out, Result::in, Result::out,
     Info::in, Info::out, deconstruct_search::out) is det.
 
-find_bind_var_2(Var, ProcessUnify, Goal0 - GoalInfo, Goal, !Subst, !Result,
-        !Info, FoundDeconstruct) :-
+find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst, !Result, !Info,
+        FoundDeconstruct) :-
+    Goal0 = GoalExpr0 - GoalInfo,
     (
-        Goal0 = scope(Reason, SubGoal0)
+        GoalExpr0 = scope(Reason, SubGoal0)
     ->
         find_bind_var_2(Var, ProcessUnify, SubGoal0, SubGoal, !Subst,
             !Result, !Info, FoundDeconstruct),
         Goal = scope(Reason, SubGoal) - GoalInfo
     ;
-        Goal0 = conj(ConjType, SubGoals0),
+        GoalExpr0 = conj(ConjType, SubGoals0),
         ConjType = plain_conj
     ->
         (
             SubGoals0 = [],
-            Goal = Goal0 - GoalInfo,
+            Goal = Goal0,
             FoundDeconstruct = before_deconstruct
         ;
             SubGoals0 = [_ | _],
@@ -612,7 +615,7 @@ find_bind_var_2(Var, ProcessUnify, Goal0 - GoalInfo, Goal, !Subst, !Result,
             Goal = conj(ConjType, SubGoals) - GoalInfo
         )
     ;
-        Goal0 = unify(LHS, RHS, _, UnifyInfo0, _)
+        GoalExpr0 = unify(LHS, RHS, _, UnifyInfo0, _)
     ->
         (
             % Check whether the unification is a deconstruction unification
@@ -624,11 +627,11 @@ find_bind_var_2(Var, ProcessUnify, Goal0 - GoalInfo, Goal, !Subst, !Result,
                 !.Subst, term.variable(SubstUnifyVar)),
             SubstVar = SubstUnifyVar
         ->
-            call(ProcessUnify, Var, Goal0 - GoalInfo, Goals, !Result, !Info),
+            call(ProcessUnify, Var, Goal0, Goals, !Result, !Info),
             conj_list_to_goal(Goals, GoalInfo, Goal),
             FoundDeconstruct = found_deconstruct
         ;
-            Goal = Goal0 - GoalInfo,
+            Goal = Goal0,
             FoundDeconstruct = before_deconstruct,
             % Otherwise abstractly interpret the unification.
             ( interpret_unify(LHS, RHS, !.Subst, NewSubst) ->
@@ -639,7 +642,7 @@ find_bind_var_2(Var, ProcessUnify, Goal0 - GoalInfo, Goal, !Subst, !Result,
             )
         )
     ;
-        Goal = Goal0 - GoalInfo,
+        Goal = Goal0,
         ( goal_info_has_feature(GoalInfo, from_head) ->
             FoundDeconstruct = before_deconstruct
         ;
