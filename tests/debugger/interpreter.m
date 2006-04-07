@@ -29,7 +29,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, string, term, varset, term_io, require, std_util.
+:- import_module list, string, term, varset, term_io, require, solutions.
 
 main -->
 	io__write_string("Pure Prolog Interpreter.\n\n"),
