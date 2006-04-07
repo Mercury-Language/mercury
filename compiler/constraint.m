@@ -127,35 +127,34 @@ propagate_conj_sub_goal(Goal0, Constraints, Goals, !Info, !IO) :-
     list(hlds_goal)::out, constraint_info::in, constraint_info::out,
     io::di, io::uo) is det.
 
-propagate_conj_sub_goal_2(conj(ConjType, Goals0) - GoalInfo, Constraints0,
-        [conj(ConjType, Goals) - GoalInfo | MoreGoals], !Info, !IO) :-
+propagate_conj_sub_goal_2(GoalExpr - GoalInfo, Constraints, FinalGoals, !Info,
+        !IO) :-
+    (
+        GoalExpr = conj(ConjType, Goals0),
     (
         ConjType = plain_conj,
-        MoreGoals = [],
-        propagate_conj(Goals0, Constraints0, Goals, !Info, !IO)
+            propagate_conj(Goals0, Constraints, Goals, !Info, !IO),
+            FinalGoals = [conj(ConjType, Goals) - GoalInfo]
     ;
         ConjType = parallel_conj,
         % We can't propagate constraints into parallel conjunctions because
         % parallel conjunctions must have determinism det. However, we can
         % propagate constraints *within* the goals of the conjunction.
-        flatten_constraints(Constraints0, MoreGoals),
-        propagate_in_independent_goals(Goals0, [], Goals, !Info, !IO)
-    ).
-
-propagate_conj_sub_goal_2(disj(Goals0) - Info, Constraints,
-        [disj(Goals) - Info], !Info, !IO) :-
-    propagate_in_independent_goals(Goals0, Constraints, Goals, !Info, !IO).
-
-propagate_conj_sub_goal_2(switch(Var, CanFail, Cases0) - Info,
-        Constraints, [switch(Var, CanFail, Cases) - Info], !Info, !IO) :-
-    propagate_cases(Var, Constraints, Cases0, Cases, !Info, !IO).
-
-propagate_conj_sub_goal_2(
-        if_then_else(Vars, Cond0, Then0, Else0) - Info,
-        Constraints,
-        [if_then_else(Vars, Cond, Then, Else) - Info], !Info, !IO) :-
+            flatten_constraints(Constraints, MoreGoals),
+            propagate_in_independent_goals(Goals0, [], Goals, !Info, !IO),
+            FinalGoals = [conj(ConjType, Goals) - GoalInfo | MoreGoals]
+        )
+    ;
+        GoalExpr = disj(Goals0),
+        propagate_in_independent_goals(Goals0, Constraints, Goals, !Info, !IO),
+        FinalGoals = [disj(Goals) - GoalInfo]
+    ;
+        GoalExpr = switch(Var, CanFail, Cases0),
+        propagate_cases(Var, Constraints, Cases0, Cases, !Info, !IO),
+        FinalGoals = [switch(Var, CanFail, Cases) - GoalInfo]
+    ;
+        GoalExpr = if_then_else(Vars, Cond0, Then0, Else0),
     InstMap0 = !.Info ^ instmap,
-
     % We can't safely propagate constraints into the condition of an
     % if-then-else, because that would change the answers generated
     % by the procedure.
@@ -163,44 +162,51 @@ propagate_conj_sub_goal_2(
     constraint_info_update_goal(Cond, !Info),
     propagate_goal(Then0, Constraints, Then, !Info, !IO),
     !:Info = !.Info ^ instmap := InstMap0,
-    propagate_goal(Else0, Constraints, Else, !Info, !IO).
-
-propagate_conj_sub_goal_2(scope(Reason, Goal0) - GoalInfo, Constraints,
-        [scope(Reason, Goal) - GoalInfo], !Info, !IO) :-
-    propagate_goal(Goal0, Constraints, Goal, !Info, !IO).
-
-propagate_conj_sub_goal_2(not(NegGoal0) - GoalInfo, Constraints0,
-        [not(NegGoal) - GoalInfo | Constraints], !Info, !IO) :-
+        propagate_goal(Else0, Constraints, Else, !Info, !IO),
+        FinalGoals = [if_then_else(Vars, Cond, Then, Else) - GoalInfo]
+    ;
+        GoalExpr = scope(Reason, SubGoal0),
+        (
+            Reason = exist_quant(_),
+            propagate_goal(SubGoal0, Constraints, SubGoal, !Info, !IO),
+            FinalGoals = [scope(Reason, SubGoal) - GoalInfo]
+        ;
+            Reason = from_ground_term(_),
+            propagate_goal(SubGoal0, Constraints, SubGoal, !Info, !IO),
+            FinalGoals = [scope(Reason, SubGoal) - GoalInfo]
+        ;
+            ( Reason = promise_solutions(_, _)
+            ; Reason = promise_purity(_, _)
+            ; Reason = commit(_)
+            ; Reason = barrier(_)
+            ),
+            % We can't safely propagate constraints into one of these scopes.
+            % However, we can propagate constraints inside the scope goal.
+            propagate_goal(SubGoal0, [], SubGoal, !Info, !IO),
+            flatten_constraints(Constraints, ConstraintGoals),
+            FinalGoals = [scope(Reason, SubGoal) - GoalInfo | ConstraintGoals]
+        )
+    ;
+        GoalExpr = not(NegGoal0),
     % We can't safely propagate constraints into a negation,
     % because that would change the answers computed by the procedure.
     propagate_goal(NegGoal0, [], NegGoal, !Info, !IO),
-    flatten_constraints(Constraints0, Constraints).
-
-propagate_conj_sub_goal_2(Goal, Constraints0,
-        [Goal | Constraints], !Info, !IO) :-
+        flatten_constraints(Constraints, ConstraintGoals),
+        FinalGoals = [not(NegGoal) - GoalInfo | ConstraintGoals]
+    ;
+        ( GoalExpr = call(_, _, _, _, _, _)
+        ; GoalExpr = generic_call(_, _, _, _)
+        ; GoalExpr = foreign_proc(_, _, _, _, _, _)
+        ; GoalExpr = unify(_, _, _, _, _)
+        ),
     % Propagate_conj will move the constraints to the left of the call
-    % if that is possible, so nothing needs to be done here.
-    Goal = call(_, _, _, _, _, _) - _,
-    flatten_constraints(Constraints0, Constraints).
-
-propagate_conj_sub_goal_2(Goal, Constraints0,
-        [Goal | Constraints], !Info, !IO) :-
-    Goal = generic_call(_, _, _, _) - _,
-    flatten_constraints(Constraints0, Constraints).
-
-propagate_conj_sub_goal_2(Goal, Constraints0,
-        [Goal | Constraints], !Info, !IO) :-
-    Goal = foreign_proc(_, _, _, _, _, _) - _,
-    flatten_constraints(Constraints0, Constraints).
-
-propagate_conj_sub_goal_2(Goal, Constraints0,
-        [Goal | Constraints], !Info, !IO) :-
-    Goal = unify(_, _, _, _, _) - _,
-    flatten_constraints(Constraints0, Constraints).
-
-propagate_conj_sub_goal_2(Goal, _, _, !Info, !IO) :-
-    Goal = shorthand(_) - _,
-    unexpected(this_file, "propagate_conj_sub_goal_2: shorthand").
+        % or unification if that is possible, so nothing needs to be done here.
+        flatten_constraints(Constraints, ConstraintGoals),
+        FinalGoals = [GoalExpr - GoalInfo | ConstraintGoals]
+    ;
+        GoalExpr = shorthand(_),
+        unexpected(this_file, "propagate_conj_sub_goal_2: shorthand")
+    ).
 
 %-----------------------------------------------------------------------------%
 
