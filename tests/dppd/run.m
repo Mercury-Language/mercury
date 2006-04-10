@@ -1,97 +1,103 @@
+% vim: ts=4 sw=4 et
+
 :- module run.
 
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+:- pred main(io::di, io::uo) is cc_multi.
 
 :- pred use(T::in) is semidet.
 
 :- implementation.
 
-:- import_module benchmarking, gc, list, string, int, pair.
+:- import_module benchmarking.
+:- import_module gc.
+:- import_module list.
+:- import_module string.
+:- import_module int.
+:- import_module pair.
 
 	% The imports which are modules to be benchmarked.
-:- import_module 
-	advisor,
-	applast,
-	doubleapp,
-	flip,
-	grammar,
-	imperative_solve_power,
-	map_reduce,
-	map_rev,
-	match_kmp,
-	match,
-	match_append,
-	maxlength,
-	missionaries,
-	regexp_r1,
-	regexp_r2,
-	regexp_r3,
-	relative,
-	remove,
-	remove2,
-	ssuply,
-	transpose,
-	upto_sum1,
-	upto_sum2,
-	contains_kmp,
-	contains_lam,
-	rotateprune.
+:- import_module advisor.
+:- import_module applast.
+:- import_module doubleapp.
+:- import_module flip.
+:- import_module grammar.
+:- import_module imperative_solve_power.
+:- import_module map_reduce.
+:- import_module map_rev.
+:- import_module match_kmp.
+:- import_module match.
+:- import_module match_append.
+:- import_module maxlength.
+:- import_module missionaries.
+:- import_module regexp_r1.
+:- import_module regexp_r2.
+:- import_module regexp_r3.
+:- import_module relative.
+:- import_module remove.
+:- import_module remove2.
+:- import_module ssuply.
+:- import_module transpose.
+:- import_module upto_sum1.
+:- import_module upto_sum2.
+:- import_module contains_kmp.
+:- import_module contains_lam.
+:- import_module rotateprune.
 
-main -->
-	io__command_line_arguments(Args), 
+main(!IO) :-
+	io.command_line_arguments(Args, !IO),
 	(
-		{ Args = ["-n", Arg2] },
-		{ string__to_int(Arg2, Iterations0) }
+		Args = ["-n", Arg2],
+		string.to_int(Arg2, Iterations0)
 	->
-		{ Iterations = Iterations0 }
+		Iterations = Iterations0
 	;
-		{ Iterations = 1 }
+		Iterations = 1
 	),
-	io__write_string("Iterations: "),
-	io__write_int(Iterations),
-	io__nl,
-	io__nl,
-	run_benchmark_list(Iterations, benchmark_list).
+	io.write_string("Iterations: ", !IO),
+	io.write_int(Iterations, !IO),
+	io.nl(!IO),
+	io.nl(!IO),
+	run_benchmark_list(Iterations, benchmark_list, !IO).
 
-:- pred run_benchmark_list(int::in, list(benchmark)::in(list_skel(benchmark)), 
-		io__state::di, io__state::uo) is cc_multi.
+:- pred run_benchmark_list(int::in, list(benchmark)::in(list_skel(benchmark)),
+    io::di, io::uo) is cc_multi.
 
-run_benchmark_list(_, []) --> [].
-run_benchmark_list(Iterations, [Name - Closure | Benchmarks]) -->
-	run_benchmark(Iterations, Name, Closure),
-	run_benchmark_list(Iterations, Benchmarks).
+run_benchmark_list(_, [], !IO).
+run_benchmark_list(Iterations, [Name - Closure | Benchmarks], !IO) :-
+	run_benchmark(Iterations, Name, Closure, !IO),
+	run_benchmark_list(Iterations, Benchmarks, !IO).
 
-:- pred run_benchmark(int, string, pred, io__state, io__state). 
+:- pred run_benchmark(int, string, pred, io__state, io__state).
 :- mode run_benchmark(in, in, (pred) is semidet, di, uo) is cc_multi.
 
-run_benchmark(Iterations, Name, Closure) -->
+run_benchmark(Iterations, Name, Closure, !IO) :-
 	% By default, we just run a single iteration and print out
 	% for each test whether the query succeeded or failed;
 	% this is used by the test suite framework.
 	% If the `-n' option is used (see above), we run
 	% multiple iterations, and print out the times for each benchmark.
 	% This can be useful for testing the effect of optimizations.
-	{ CallClosure = 
+	CallClosure =
 		( pred(_Input::in, Output::out) is det :-
 			( call(Closure) ->
 				Output = 1
 			;
 				Output = 0
 			)
-		) },
-	{ benchmark_det(CallClosure, 0, Result, Iterations, Time) },
-	( { Iterations > 1 } ->
-		io__format("%-30s     result %3d        time (ms) %8d\n",
-			[s(Name), i(Result), i(Time)])
+		),
+	benchmark_det(CallClosure, 0, Result, Iterations, Time),
+	( Iterations > 1 ->
+		io.format("%-30s     result %3d        time (ms) %8d\n",
+			[s(Name), i(Result), i(Time)], !IO)
 	;
-		io__format("%-30s     result %3d\n", [s(Name), i(Result)])
+		io.format("%-30s     result %3d\n", [s(Name), i(Result)], !IO)
 	),
-	io__flush_output,
-	garbage_collect.
+	io.flush_output(!IO),
+	garbage_collect(!IO).
 
 :- func benchmark_list = list(benchmark).
 :- mode benchmark_list = list_skel_out(benchmark).
@@ -99,33 +105,34 @@ run_benchmark(Iterations, Name, Closure) -->
 :- type benchmark == pair(string, pred).
 :- inst benchmark == pair(ground, (pred) is semidet).
 
-use(_) :- semidet_succeed.
+use(_) :-
+    semidet_succeed.
 
 benchmark_list = [
-		"advisor" - advisor,
-		"applast" - applast,
-		"contains_kmp" - contains_kmp,
-		"contains_lam" - contains_lam,
-		"doubleapp" - doubleapp,
-		"flip" - flip, 
-		"grammar" - grammar,
-		"imperative_solve_power" - imperative_solve_power,
-		"map_reduce" - map_reduce,
-		"map_rev" - map_rev,
-		"match_kmp" - match_kmp,
-		"match" - match,
-		"match_append" - match_append,
-		"maxlength" - maxlength,
-		"missionaries" - missionaries,
-		"regexp_r1" - regexp_r1,
-		"regexp_r2" - regexp_r2,
-		"regexp_r3" - regexp_r3,
-		"relative" - relative,
-		"remove" - remove,
-		"remove2" - remove2,
-		"rotateprune" - rotateprune,
-		"ssuply" - ssuply,
-		"transpose" - transpose,
-		"upto_sum1" - upto_sum1,
-		"upto_sum2" - upto_sum2
-	].
+    "advisor" - advisor,
+    "applast" - applast,
+    "contains_kmp" - contains_kmp,
+    "contains_lam" - contains_lam,
+    "doubleapp" - doubleapp,
+    "flip" - flip,
+    "grammar" - grammar,
+    "imperative_solve_power" - imperative_solve_power,
+    "map_reduce" - map_reduce,
+    "map_rev" - map_rev,
+    "match_kmp" - match_kmp,
+    "match" - match,
+    "match_append" - match_append,
+    "maxlength" - maxlength,
+    "missionaries" - missionaries,
+    "regexp_r1" - regexp_r1,
+    "regexp_r2" - regexp_r2,
+    "regexp_r3" - regexp_r3,
+    "relative" - relative,
+    "remove" - remove,
+    "remove2" - remove2,
+    "rotateprune" - rotateprune,
+    "ssuply" - ssuply,
+    "transpose" - transpose,
+    "upto_sum1" - upto_sum1,
+    "upto_sum2" - upto_sum2
+].
