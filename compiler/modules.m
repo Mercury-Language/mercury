@@ -3947,7 +3947,8 @@ build_deps_map(FileName, ModuleName, DepsMap, !IO) :-
 
 generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
     % First, build up a map of the dependencies.
-    generate_deps_map([ModuleName], Search, DepsMap0, DepsMap, !IO),
+    generate_deps_map(set.make_singleton_set(ModuleName), Search,
+        DepsMap0, DepsMap, !IO),
 
     %
     % Check whether we could read the main `.m' file.
@@ -4265,40 +4266,49 @@ get_dependencies_from_relation(DepsRel0, ModuleName, Deps) :-
     % (Module1 deps_rel Module2) means Module1 is imported by Module2.
 :- type deps_rel == relation(module_name).
 
-:- pred generate_deps_map(list(module_name)::in, bool::in,
+:- pred generate_deps_map(set(module_name)::in, bool::in,
     deps_map::in, deps_map::out, io::di, io::uo) is det.
 
-generate_deps_map([], _, !DepsMap, !IO).
-generate_deps_map([Module | Modules], Search, !DepsMap, !IO) :-
+generate_deps_map(!.Modules, Search, !DepsMap, !IO) :-
+    ( set.remove_least(!.Modules, Module, !:Modules) ->
         % Look up the module's dependencies, and determine whether
         % it has been processed yet.
-    lookup_dependencies(Module, Search, Done, !DepsMap, ModuleImports, !IO),
-        % If the module hadn't been processed yet, then add its
-        % imports, parents, and public children to the list of
-        % dependencies we need to generate, and mark it as
-        % having been processed.
-    (
-        Done = no,
-        map.set(!.DepsMap, Module, deps(yes, ModuleImports), !:DepsMap),
-        ForeignImportedModules =
-            list.map(
-                (func(foreign_import_module(_, ImportedModule, _))
-                    = ImportedModule),
-                ModuleImports ^ foreign_import_module_info),
-        list.condense(
-            [ModuleImports ^ parent_deps,
-            ModuleImports ^ int_deps,
-            ModuleImports ^ impl_deps,
-            ModuleImports ^ public_children, % a.k.a. incl_deps
-            ForeignImportedModules,
-            Modules],
-            Modules1)
+        lookup_dependencies(Module, Search, Done, !DepsMap, ModuleImports,
+            !IO),
+
+        % If the module hadn't been processed yet, then add its imports,
+        % parents, and public children to the list of dependencies we need
+        % to generate, and mark it as having been processed.
+        (
+            Done = no,
+            map.set(!.DepsMap, Module, deps(yes, ModuleImports), !:DepsMap),
+            ForeignImportedModules =
+                list.map(
+                    (func(foreign_import_module(_, ImportedModule, _))
+                        = ImportedModule),
+                    ModuleImports ^ foreign_import_module_info),
+            list.condense(
+                [ModuleImports ^ parent_deps,
+                ModuleImports ^ int_deps,
+                ModuleImports ^ impl_deps,
+                ModuleImports ^ public_children, % a.k.a. incl_deps
+                ForeignImportedModules],
+                ModulesToAdd),
+            % We could keep a list of the modules we have already processed
+            % and subtract it from ModulesToAddSet here, but doing that
+            % actually leads to a small slowdown.
+            set.list_to_set(ModulesToAdd, ModulesToAddSet),
+            set.union(ModulesToAddSet, !Modules)
+        ;
+            Done = yes
+        ),
+        % Recursively process the remaining modules.
+        generate_deps_map(!.Modules, Search, !DepsMap, !IO)
     ;
-        Done = yes,
-        Modules1 = Modules
-    ),
-        % Recursively process the remaining modules
-    generate_deps_map(Modules1, Search, !DepsMap, !IO).
+        % If we can't remove the smallest, then the set of modules to be
+        % processed is empty.
+        true
+    ).
 
     % Construct a pair of dependency relations (the interface dependencies
     % and the implementation dependencies) for all the modules in the program.
