@@ -4510,6 +4510,14 @@ generate_dependencies_write_dep_file(SourceFileName, ModuleName, DepsMap,
         report_error(DepMessage, !IO)
     ).
 
+:- pred compare_module_names(module_name::in, module_name::in,
+    comparison_result::out) is det.
+
+compare_module_names(Sym1, Sym2, Result) :-
+    sym_name_to_string(Sym1, Str1),
+    sym_name_to_string(Sym2, Str2),
+    compare(Result, Str1, Str2).
+
 :- pred generate_dv_file(file_name::in, module_name::in, deps_map::in,
     io.output_stream::in, io::di, io::uo) is det.
 
@@ -4530,7 +4538,8 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     io.write_string(DepStream, ".\n\n", !IO),
 
     map.keys(DepsMap, Modules0),
-    select_ok_modules(Modules0, DepsMap, Modules),
+    select_ok_modules(Modules0, DepsMap, Modules1),
+    list.sort(compare_module_names, Modules1, Modules),
 
     module_name_to_make_var_name(ModuleName, MakeVarName),
     list.map(get_source_file(DepsMap), Modules, SourceFiles0),
@@ -6002,8 +6011,7 @@ write_compact_dependencies_separator(yes(_), DepStream, !IO) :-
     % save the dependencies in the dependency map.
     %
 :- pred lookup_dependencies(module_name::in, bool::in, bool::out,
-    deps_map::in, deps_map::out, module_imports::out,
-    io::di, io::uo) is det.
+    deps_map::in, deps_map::out, module_imports::out, io::di, io::uo) is det.
 
 lookup_dependencies(Module, Search, Done, !DepsMap, ModuleImports, !IO) :-
     ( map.search(!.DepsMap, Module, deps(DonePrime, ModuleImportsPrime)) ->
@@ -6017,27 +6025,24 @@ lookup_dependencies(Module, Search, Done, !DepsMap, ModuleImports, !IO) :-
 
     % insert_into_deps_map/3:
     %
-    % Insert a new entry into the deps_map.
-    % If the module already occured in the deps_map, then we just
-    % replace the old entry (presumed to be a dummy entry) with the
-    % new one.
+    % Insert a new entry into the deps_map. If the module already occurred
+    % in the deps_map, then we just replace the old entry (presumed to be
+    % a dummy entry) with the new one.
     %
-    % This can only occur for sub-modules which have
-    % been imported before their parent module was imported:
-    % before reading a module and inserting it into the
-    % deps map, we check if it was already there, but
-    % when we read in the module, we try to insert not just
-    % that module but also all the nested sub-modules inside
-    % that module.  If a sub-module was previously imported,
-    % then it may already have an entry in the deps_map.
-    % However, unless the sub-module is defined both as a
-    % separate sub-module and also as a nested sub-module,
-    % the previous entry will be a dummy entry that we inserted
-    % after trying to read the source file and failing.
+    % This can only occur for sub-modules which have been imported before
+    % their parent module was imported: before reading a module and
+    % inserting it into the deps map, we check if it was already there,
+    % but when we read in the module, we try to insert not just that module
+    % but also all the nested sub-modules inside that module. If a sub-module
+    % was previously imported, then it may already have an entry in the
+    % deps_map. However, unless the sub-module is defined both as a separate
+    % sub-module and also as a nested sub-module, the previous entry will be
+    % a dummy entry that we inserted after trying to read the source file
+    % and failing.
     %
-    % Note that the case where a module is defined as both a
-    % separate sub-module and also as a nested sub-module is
-    % caught in split_into_submodules.
+    % Note that the case where a module is defined as both a separate
+    % sub-module and also as a nested sub-module is caught in
+    % split_into_submodules.
     %
 :- pred insert_into_deps_map(module_imports::in, deps_map::in, deps_map::out)
     is det.
@@ -6046,8 +6051,8 @@ insert_into_deps_map(ModuleImports, DepsMap0, DepsMap) :-
     module_imports_get_module_name(ModuleImports, ModuleName),
     map.set(DepsMap0, ModuleName, deps(no, ModuleImports), DepsMap).
 
-    % Read a module to determine the (direct) dependencies
-    % of that module and any nested sub-modules it contains.
+    % Read a module to determine the (direct) dependencies of that module
+    % and any nested sub-modules it contains.
     %
 :- pred read_dependencies(module_name::in, bool::in, list(module_imports)::out,
     io::di, io::uo) is det.
