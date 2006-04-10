@@ -80,7 +80,6 @@
 :- pred rtree.is_empty(rtree(K, V)::in) is semidet.
 
     % Insert a new key and corresponding value into an rtree.
-    % XXX What does this do if the key is already in the tree?
     %
 :- func rtree.insert(K, V, rtree(K, V)) = rtree(K, V) <= region(K).
 :- pred rtree.insert(K::in, V::in, rtree(K, V)::in, rtree(K, V)::out) is det
@@ -90,7 +89,7 @@
     % Assumes that K is either the key for V, or is contained in the key for
     % V.
     %
-    % XXX When does this fail?
+    % Fails if the key-value pair is not in the tree.
     %
 :- pred rtree.delete(K::in, V::in, rtree(K, V)::in, rtree(K, V)::out) 
     is semidet <= region(K).
@@ -1248,7 +1247,7 @@ rtree.search_general_fold(KTest, VPred, rtree(T), !Acc) :-
     pred(in, in, di, uo) is det, di, uo) is det.
 
 search_general_fold_2(leaf(_), _, _, _, _) :-
-    error("search_general_fold0: unexpected leaf node").
+    error("search_general_fold_2: unexpected leaf node").
 search_general_fold_2(Node, KTest, VPred, !Acc) :-
     Node = two(K0, T0, K1, T1),
     search_general_fold_subtree(K0, T0, KTest, VPred, !Acc),
@@ -1274,7 +1273,11 @@ search_general_fold_2(Node, KTest, VPred, !Acc) :-
 
 search_general_fold_subtree(K, T, KTest, VPred, !Acc) :-
     ( KTest(K) ->
-        search_general_fold_2(T, KTest, VPred, !Acc)
+        ( T = leaf(V) ->
+            VPred(K, V, !Acc)
+        ;
+            search_general_fold_2(T, KTest, VPred, !Acc)
+        )
     ;
         true
     ).
