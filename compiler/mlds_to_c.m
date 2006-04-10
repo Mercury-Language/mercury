@@ -636,9 +636,21 @@ mlds_output_c_hdr_decls(ModuleName, Indent, ForeignCode, !IO) :-
     ;
         SymName = mlds_module_name_to_sym_name(ModuleName)
     ),
+    
     DeclGuard = decl_guard(SymName),
     io.write_strings(["#ifndef ", DeclGuard, "\n#define ", DeclGuard, "\n"],
         !IO),
+    % 
+    % We need to make sure we #include the .mih files for any ancestor modules
+    % in cases any foreign_types defined in them are referenced by the extern
+    % declarations required by mutables.
+    %
+    AncestorModuleNames = get_ancestors(SymName),
+    list.map(module_name_to_file_name, AncestorModuleNames, AncestorFileNames),
+    WriteAncestorInclude = (pred(Ancestor::in, !.IO::di, !:IO::uo) is det :-
+        io.write_strings(["#include \"", Ancestor, ".mih", "\"\n"], !IO)
+    ),
+    list.foldl(WriteAncestorInclude, AncestorFileNames, !IO),
     io.write_list(HeaderCode, "\n",
         mlds_output_c_hdr_decl(Indent, yes(foreign_decl_is_exported)), !IO),
     io.write_string("\n#endif\n", !IO).

@@ -70,7 +70,7 @@
     % Convert a module name and file extension to the corresponding file name.
     % If `MkDir' is yes, then create any directories needed.
     %
-    % Currently we use the convention that the module `foo:bar:baz' should be
+    % Currently we use the convention that the module `foo.bar.baz' should be
     % named `foo.bar.baz.m', and allow other naming conventions with the
     % `-f' option.
     %
