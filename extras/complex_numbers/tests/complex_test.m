@@ -6,22 +6,32 @@
 
 :- pred main(io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
-:- import_module float.
+
 :- import_module complex_numbers.
-:- import_module complex_numbers.complex, complex_numbers.imag.
-:- import_module complex_numbers.complex_imag, complex_numbers.imag_complex.
-:- import_module complex_numbers.float_imag, complex_numbers.imag_float.
+:- import_module complex_numbers.complex.
+:- import_module complex_numbers.complex_imag.
+:- import_module complex_numbers.float_imag.
+:- import_module complex_numbers.imag.
+:- import_module complex_numbers.imag_complex.
+:- import_module complex_numbers.imag_float.
+
+:- import_module float.
+
+%-----------------------------------------------------------------------------%
 
 main -->
 	print("tests of (complex op complex)"), nl,
-	{ X = 3.0 + 4.0 * i},
+	{ X = 3.0 + 4.0 * i },
 	print("X = "), print(X), nl,
 	print("X + X = "), print(X + X), nl,
 	print("X - X = "), print(X - X), nl,
 	print("X * X = "), print(X * X), nl,
 	print("X / X = "), print(X / X), nl,
-	{ Y = - 5.0 + 6.0 * i},
+	{ Y = - 5.0 + 6.0 * i },
 	print("Y = "), print(Y), nl,
 	print("Y + Y = "), print(Y + Y), nl,
 	print("Y - Y = "), print(Y - Y), nl,
@@ -34,7 +44,7 @@ main -->
 	nl,
 
 	print("tests of (imag op imag)"), nl,
-	{ Z = 4.0 * i},
+	{ Z = 4.0 * i },
 	print("Z = "), print(Z), nl,
 	print("Z + Z = "), print(Z + Z), nl,
 	print("Z - Z = "), print(Z - Z), nl,
@@ -76,3 +86,6 @@ main -->
 	print("Z - Y = "), print(Z - Y), nl,
 	print("Z * Y = "), print(Z * Y), nl,
 	print("Z / Y = "), print(Z / Y), nl.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
