@@ -48,7 +48,7 @@ extern FILE *MR_mdb_err;
 ** We print confirmation of commands (e.g. new aliases) if this is MR_TRUE.
 */ 
 
-MR_bool         MR_trace_internal_interacting;
+extern  MR_bool         MR_trace_internal_interacting;
 
 /*
 ** The structure of the input queue, and the operations that work on it.
