@@ -74,6 +74,7 @@
    :- include_module frameopt.
    :- include_module delay_slot.
    :- include_module labelopt.
+   :- include_module stdlabel.
    :- include_module peephole.
    :- include_module use_local_vars.
    :- include_module wrap_blocks.

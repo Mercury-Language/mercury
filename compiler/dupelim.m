@@ -110,7 +110,7 @@ dupelim_main(ProcLabel, !C, Instrs0, Instrs) :-
             ReplMap0, ReplMap),
         flatten_basic_blocks(LabelSeq, BlockMap, Instrs1),
         opt_util.replace_labels_instruction_list(Instrs1,
-            ReplMap, yes, Instrs2),
+            ReplMap, yes, no, Instrs2),
         list.append(Comments, Instrs2, Instrs)
     ).
 

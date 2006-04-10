@@ -285,6 +285,9 @@
     % called procedure) are always replaced; references that treat the label
     % as data are replaced iff the third argument is set to "yes".
     %
+    % With replace_labels_instruction_list, the fourth arg says whether
+    % it is OK to replace a label in a label instruction itself.
+    %
 :- pred replace_labels_instr(instr::in, map(label, label)::in,
     bool::in, instr::out) is det.
 
@@ -292,7 +295,7 @@
     map(label, label)::in, bool::in, instruction::out) is det.
 
 :- pred replace_labels_instruction_list(list(instruction)::in,
-    map(label, label)::in, bool::in, list(instruction)::out) is det.
+    map(label, label)::in, bool::in, bool::in, list(instruction)::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1730,11 +1733,20 @@ propagate_livevals_2([Instr0 | Instrs0], Livevals0,
 % The code in this section is concerned with replacing all references
 % to one given label with a reference to another given label.
 
-replace_labels_instruction_list([], _, _, []).
+replace_labels_instruction_list([], _, _, _, []).
 replace_labels_instruction_list([Instr0 | Instrs0], ReplMap, ReplData,
-        [Instr | Instrs]) :-
-    replace_labels_instruction(Instr0, ReplMap, ReplData, Instr),
-    replace_labels_instruction_list(Instrs0, ReplMap, ReplData, Instrs).
+        ReplLabel, [Instr | Instrs]) :-
+    (
+        Instr0 = label(InstrLabel) - Comment,
+        ReplLabel = yes
+    ->
+        replace_labels_label(InstrLabel, ReplMap, ReplInstrLabel),
+        Instr = label(ReplInstrLabel) - Comment
+    ;
+        replace_labels_instruction(Instr0, ReplMap, ReplData, Instr)
+    ),
+    replace_labels_instruction_list(Instrs0, ReplMap, ReplData, ReplLabel,
+        Instrs).
 
 replace_labels_instruction(Instr0 - Comment, ReplMap, ReplData,
         Instr - Comment) :-
@@ -1744,7 +1756,8 @@ replace_labels_instr(comment(Comment), _, _, comment(Comment)).
 replace_labels_instr(livevals(Livevals), _, _, livevals(Livevals)).
 replace_labels_instr(block(R, F, Instrs0), ReplMap, ReplData,
         block(R, F, Instrs)) :-
-    replace_labels_instruction_list(Instrs0, ReplMap, ReplData, Instrs).
+    % There should be no labels in Instrs0.
+    replace_labels_instruction_list(Instrs0, ReplMap, ReplData, no, Instrs).
 replace_labels_instr(assign(Lval0, Rval0), ReplMap, ReplData,
         assign(Lval, Rval)) :-
     (

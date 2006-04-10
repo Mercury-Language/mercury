@@ -580,6 +580,7 @@
     ;       checked_nondet_tailcalls
     ;       use_local_vars
     ;       local_var_access_threshold
+    ;       standardize_labels
     ;       optimize_labels
     ;       optimize_dups
     ;       optimize_proc_dups
@@ -1279,6 +1280,7 @@ option_defaults_2(optimization_option, [
     checked_nondet_tailcalls            -  bool(no),
     use_local_vars                      -   bool(no),
     local_var_access_threshold          -    int(2),
+    standardize_labels                  -   bool(no),
     optimize_labels                     -   bool(no),
     optimize_dups                       -   bool(no),
     optimize_proc_dups                  -   bool(no),
@@ -2018,6 +2020,8 @@ long_option("pessimize-tailcalls",  pessimize_tailcalls).
 long_option("checked-nondet-tailcalls", checked_nondet_tailcalls).
 long_option("use-local-vars",       use_local_vars).
 long_option("local-var-access-threshold", local_var_access_threshold).
+long_option("standardise-labels",   standardize_labels).
+long_option("standardize-labels",   standardize_labels).
 long_option("optimize-labels",      optimize_labels).
 long_option("optimise-labels",      optimize_labels).
 long_option("optimize-dups",        optimize_dups).
@@ -4114,6 +4118,9 @@ options_help_llds_llds_optimization -->
         "--no-use-local-vars",
         "\tDisable the transformation to use local variables in C code",
         "\tblocks wherever possible.",
+% This is useful for developers only.
+%       "--standardize-labels",
+%       "\tStandardize internal labels in the generated code.",
         "--no-optimize-labels",
         "\tDisable elimination of dead labels and code.",
         "--optimize-dups",

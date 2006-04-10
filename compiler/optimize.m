@@ -48,6 +48,7 @@
 :- import_module ll_backend.frameopt.
 :- import_module ll_backend.jumpopt.
 :- import_module ll_backend.labelopt.
+:- import_module ll_backend.stdlabel.
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.opt_debug.
 :- import_module ll_backend.opt_util.
@@ -98,7 +99,7 @@ optimize_proc(GlobalData, CProc0, CProc, !IO) :-
             !OptDebugInfo, !Instrs, !IO),
         optimize_middle(yes, LayoutLabelSet, ProcLabel, MayAlterRtti, !C,
             !OptDebugInfo, !Instrs, !IO),
-        optimize_last(LayoutLabelSet, ProcLabel, !.C, !.OptDebugInfo, !Instrs,
+        optimize_last(LayoutLabelSet, ProcLabel, !C, !.OptDebugInfo, !Instrs,
             !IO),
         CProc = c_procedure(Name, Arity, PredProcId, !.Instrs, ProcLabel,
             !.C, MayAlterRtti)
@@ -476,21 +477,23 @@ optimize_middle(Final, LayoutLabelSet, ProcLabel, MayAlterRtti, !C,
         UseLocalVars = no
     ).
 
-:- pred optimize_last(set(label)::in, proc_label::in, counter::in,
-    opt_debug_info::in, list(instruction)::in, list(instruction)::out,
-    io::di, io::uo) is det.
+:- pred optimize_last(set(label)::in, proc_label::in,
+    counter::in, counter::out, opt_debug_info::in,
+    list(instruction)::in, list(instruction)::out, io::di, io::uo) is det.
 
-optimize_last(LayoutLabelSet, ProcLabel, C, !.OptDebugInfo, !Instrs, !IO) :-
+optimize_last(LayoutLabelSet, ProcLabel, !C, !.OptDebugInfo, !Instrs, !IO) :-
     globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     LabelStr = opt_util.format_proc_label(ProcLabel),
 
     globals.io_lookup_bool_option(optimize_reassign, Reassign, !IO),
     globals.io_lookup_bool_option(optimize_delay_slot, DelaySlot, !IO),
     globals.io_lookup_bool_option(use_local_vars, UseLocalVars, !IO),
+    globals.io_lookup_bool_option(standardize_labels, StdLabels, !IO),
     (
         ( Reassign = yes
         ; DelaySlot = yes
         ; UseLocalVars = yes
+        ; StdLabels = yes
         )
     ->
         % We must get rid of any extra labels added by other passes,
@@ -504,7 +507,7 @@ optimize_last(LayoutLabelSet, ProcLabel, C, !.OptDebugInfo, !Instrs, !IO) :-
             VeryVerbose = no
         ),
         labelopt_main(no, LayoutLabelSet, !Instrs, _Mod1),
-        maybe_opt_debug(!.Instrs, C, "after label opt",
+        maybe_opt_debug(!.Instrs, !.C, "after label opt",
             ProcLabel, !OptDebugInfo, !IO)
     ;
         true
@@ -520,7 +523,7 @@ optimize_last(LayoutLabelSet, ProcLabel, C, !.OptDebugInfo, !Instrs, !IO) :-
             VeryVerbose = no
         ),
         remove_reassign(!Instrs),
-        maybe_opt_debug(!.Instrs, C, "after reassign",
+        maybe_opt_debug(!.Instrs, !.C, "after reassign",
             ProcLabel, !OptDebugInfo, !IO)
     ;
         Reassign = no
@@ -536,7 +539,7 @@ optimize_last(LayoutLabelSet, ProcLabel, C, !.OptDebugInfo, !Instrs, !IO) :-
             VeryVerbose = no
         ),
         fill_branch_delay_slot(!Instrs),
-        maybe_opt_debug(!.Instrs, C, "after delay slots",
+        maybe_opt_debug(!.Instrs, !.C, "after delay slots",
             ProcLabel, !OptDebugInfo, !IO)
     ;
         DelaySlot = no
@@ -550,8 +553,24 @@ optimize_last(LayoutLabelSet, ProcLabel, C, !.OptDebugInfo, !Instrs, !IO) :-
         VeryVerbose = no
     ),
     combine_decr_sp(!Instrs),
-    maybe_opt_debug(!.Instrs, C, "after combine decr_sp",
+    maybe_opt_debug(!.Instrs, !.C, "after combine decr_sp",
         ProcLabel, !OptDebugInfo, !IO),
+    (
+        StdLabels = yes,
+        (
+            VeryVerbose = yes,
+            io.write_string("% Standardizing labels for ", !IO),
+            io.write_string(LabelStr, !IO),
+            io.write_string("\n", !IO)
+        ;
+            VeryVerbose = no
+        ),
+        standardize_labels(!Instrs, !C),
+        maybe_opt_debug(!.Instrs, !.C, "after standard labels",
+            ProcLabel, !OptDebugInfo, !IO)
+    ;
+        StdLabels = no
+    ),
     (
         UseLocalVars = yes,
         (
@@ -563,7 +582,7 @@ optimize_last(LayoutLabelSet, ProcLabel, C, !.OptDebugInfo, !Instrs, !IO) :-
             VeryVerbose = no
         ),
         wrap_blocks(!Instrs),
-        maybe_opt_debug(!.Instrs, C, "after wrap blocks",
+        maybe_opt_debug(!.Instrs, !.C, "after wrap blocks",
             ProcLabel, !.OptDebugInfo, _OptDebugInfo, !IO)
     ;
         UseLocalVars = no
