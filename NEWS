@@ -1,3 +1,7 @@
+NEWS since 0.13 fork
+--------------------
+
+
 NEWS since Mercury 0.12
 -----------------------
 
@@ -51,7 +55,7 @@ Changes to the Mercury compiler:
   implementation of module initialisation and finalisation.
 
 Portability Improvements:
-* None yet.
+* We've ported Mercury to the x86_64 (AMD64 / Intel EMT64) architecure.
 
 Changes to the Mercury debugger:
 * Users can now see a listing of the source code lines referred to by the
