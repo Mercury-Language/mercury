@@ -503,7 +503,7 @@ Prolog's various different all-solutions predicates (findall/3, bagof/3,
 and setof/3) all have semantic problems.
 Mercury has a different set of all-solutions predicates (solutions/2,
 solutions_set/2, and unsorted_solutions/2 --- all defined in the library
-module @samp{std_util}) that
+module @samp{solutions}) that
 address the problems of the Prolog versions.
 To avoid the variable scoping problems of the Prolog
 versions, rather than taking both a goal to execute and an aliased
