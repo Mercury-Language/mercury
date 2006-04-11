@@ -1674,7 +1674,7 @@ A tuple type is equivalent to a discriminated union type
 @end example
 
 @item The universal type: @code{univ}.
-The type @code{univ} is defined in the standard library module @code{std_util},
+The type @code{univ} is defined in the standard library module @code{univ},
 along with the predicates @code{type_to_univ/2} and @code{univ_to_type/2}.
 With those predicates, any type can be converted to the universal type
 and back again.
@@ -3572,7 +3572,7 @@ If you want to use the values of output variables,
 then you need to ask yourself
 which one of possibly many solutions to a goal do you want?
 If you want all of them, you need to use the predicate
-@samp{solutions/2} in the standard library module @samp{std_util},
+@samp{solutions/2} in the standard library module @samp{solutions},
 which collects all of the solutions to a goal into a list ---
 @pxref{Higher-order}.
 
@@ -3875,7 +3875,7 @@ has determinism @samp{cc_multi}.
 @item
 Any attempts to examine the representation of a variable of type @var{T}
 using facilities of the standard library (e.g.@: @samp{argument}/3
-and @samp{functor/3} in @samp{std_util}) that do not have determinism
+and @samp{functor/3} in @samp{deconstruct}) that do not have determinism
 @samp{cc_multi} or @samp{cc_nondet} will result in a run-time error.
 
 @item
@@ -4226,7 +4226,7 @@ L = [[1,2,3],[1,3,2],[2,1,3],[2,3,1],[3,1,2],[3,2,1]].
 @end example
 
 See also @samp{unsorted_solutions/2} and @samp{solutions_set/2}, which
-are defined in the standard library module @samp{std_util} and documented
+are defined in the standard library module @samp{solutions} and documented
 in the Mercury Library Reference Manual.
 
 @node Higher-order modes
@@ -5767,13 +5767,13 @@ process_list(cons(Head, Tail)) = [show(Head) | process_list(Tail)].
 @node Some idioms using existentially quantified types
 @section Some idioms using existentially quantified types
 
-The standard library module @samp{std_util} provides an abstract
+The standard library module @samp{univ} provides an abstract
 type named @samp{univ} which can hold values of any type. 
 You can form heterogeneous containers (containers that can hold values of
 different types at the same time) by using data structures
 that contain @code{univ}s, e.g.@: @samp{list(univ)}.
 
-The interface to @samp{std_util} includes the following:
+The interface to @samp{univ} includes the following:
 
 @example
 % `univ' is a type which can hold any value.
@@ -7422,7 +7422,7 @@ the compiler will prepend one @samp{type_info} argument to the parameters
 passed to the C function for each polymorphic type variable in the
 Mercury procedure's type signature.  The values passed in these arguments
 will be the same as the values that would be obtained using the Mercury
-@samp{type_of} function in the Mercury standard library module @samp{std_util}.
+@samp{type_of} function in the Mercury standard library module @samp{type_desc}.
 These values may be useful in case the C function wishes to in turn call
 another polymorphic Mercury procedure (@pxref{Calling Mercury code from C}).
 
@@ -7870,7 +7870,7 @@ Mercury procedure's type signature.  The caller must arrange to pass
 in appropriate @samp{type_info} values corresponding to the types
 of the other arguments passed.  These @samp{type_info} arguments can
 be obtained using the Mercury @samp{type_of} function in the Mercury
-standard library module @samp{std_util}.
+standard library module @samp{type_desc}.
 
 It is an error to export Mercury procedures that have a determinism
 of multi or nondet to C.
