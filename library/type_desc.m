@@ -250,7 +250,7 @@ public static int MR_compare_type_info(object[] t1, object[] t2) {
 }
 
 public static void
-special._Compare._type_ctor_desc_0_0(
+special___Compare___type_ctor_desc_0_0(
     ref object[] result, object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(
@@ -258,7 +258,7 @@ special._Compare._type_ctor_desc_0_0(
 }
 
 public static bool
-special._Unify._type_ctor_desc_0_0(object[] x, object[] y)
+special___Unify___type_ctor_desc_0_0(object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(
         ""foreign code for unifying type_ctor_descs"");
@@ -266,7 +266,7 @@ special._Unify._type_ctor_desc_0_0(object[] x, object[] y)
 }
 
 public static void
-special._Compare._type_desc_0_0(
+special___Compare___type_desc_0_0(
     ref object[] result, object[] x, object[] y)
 {
     mercury.type_desc.mercury_code.ML_call_rtti_compare_type_infos(
@@ -274,13 +274,13 @@ special._Compare._type_desc_0_0(
 }
 
 public static bool
-special._Unify._type_desc_0_0(object[] x, object[] y)
+special___Unify___type_desc_0_0(object[] x, object[] y)
 {
     return (MR_compare_type_info(x, y) == 0);
 }
 
 public static void
-special._Compare._pseudo_type_desc_0_0(
+special___Compare___pseudo_type_desc_0_0(
     ref object[] result, object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(
@@ -288,7 +288,7 @@ special._Compare._pseudo_type_desc_0_0(
 }
 
 public static bool
-special._Unify._pseudo_type_desc_0_0(object[] x, object[] y)
+special___Unify___pseudo_type_desc_0_0(object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(
         ""foreign code for unifying pseudo_type_desc"");
@@ -804,14 +804,14 @@ get_type_info_for_type_info = TypeDesc :-
     }
 
     public static boolean
-    .Unify..type_desc_0_0(mercury.type_desc.Type_desc_0 x,
+    __Unify____type_desc_0_0(mercury.type_desc.Type_desc_0 x,
         mercury.type_desc.Type_desc_0 y)
     {
         return x.struct.unify(y.struct);
     }
 
     public static boolean
-    .Unify..type_ctor_desc_0_0(mercury.type_desc.Type_ctor_desc_0 x,
+    __Unify____type_ctor_desc_0_0(mercury.type_desc.Type_ctor_desc_0 x,
         mercury.type_desc.Type_ctor_desc_0 y)
     {
         // stub only
@@ -820,7 +820,7 @@ get_type_info_for_type_info = TypeDesc :-
     }
 
     public static mercury.builtin.Comparison_result_0
-    .Compare..type_desc_0_0(mercury.type_desc.Type_desc_0 x,
+    __Compare____type_desc_0_0(mercury.type_desc.Type_desc_0 x,
         mercury.type_desc.Type_desc_0 y)
     {
         // stub only
@@ -829,7 +829,7 @@ get_type_info_for_type_info = TypeDesc :-
     }
 
     public static mercury.builtin.Comparison_result_0
-    .Compare..type_ctor_desc_0_0(mercury.type_desc.Type_ctor_desc_0 x,
+    __Compare____type_ctor_desc_0_0(mercury.type_desc.Type_ctor_desc_0 x,
         mercury.type_desc.Type_ctor_desc_0 y)
     {
         // stub only

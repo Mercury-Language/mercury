@@ -62,7 +62,7 @@
     %     the functors [|]/2 and []/0 are used, even if the list uses
     %     the [....] shorthand.
     %   - for user-defined types with user-defined equality, the
-    %     functor will be of the form <<module:type/arity>>, except
+    %     functor will be of the form <<module.type/arity>>, except
     %     with include_details_cc, in which case the type will be
     %     handled as if it had standard equality.
     %   - for integers, the string is a base 10 number;
@@ -136,7 +136,8 @@
     ;       no_arg.
 
     % arg_cc/3 is similar to arg/4, except that it handles arguments with
-    % non-canonical types. See the documentation of std_util.arg_cc.
+    % non-canonical types.  The possible non-existence of an argument is
+    % encoded using a maybe type.
     %
 :- pred arg_cc(T::in, int::in, maybe_arg::out) is cc_multi.
 
@@ -217,8 +218,6 @@
 :- mode limited_deconstruct(in, in(canonicalize), in, out, out, out)
     is semidet.
 
-    % See the documentation of std_util.limited_deconstruct_cc.
-    %
 :- pred limited_deconstruct_cc(T::in, int::in,
     maybe({string, int, list(univ)})::out) is cc_multi.
 
