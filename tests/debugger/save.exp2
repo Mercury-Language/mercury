@@ -1,0 +1,108 @@
+       1:      1  1 CALL pred save.main/2-0 (cc_multi) save.m:17
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> b data
+ 0: + stop  interface pred save.data/1-0 (det)
+mdb> b nodiag
+ 1: + stop  interface pred save.nodiag/3-0 (semidet)
+mdb> condition B = 5
+ 1: + stop  interface pred save.nodiag/3-0 (semidet)
+            B = 5
+mdb> context nextline
+Contexts will be printed on the next line.
+mdb> scroll 42
+Scroll window size set to 42.
+mdb> alias x save
+x      =>    save
+mdb> trust save
+Trusting module save
+mdb> save save_file
+Debugger state saved to save_file.
+mdb> continue -n -S
+[1, 3, 5, 2, 4]
+alias ? help
+alias EMPTY step
+alias NUMBER step
+alias P print *
+alias b break
+alias c continue
+alias d stack
+alias e exception
+alias excp exception
+alias f finish
+alias g goto
+alias h help
+alias p print
+alias r retry
+alias s step
+alias v vars
+alias x save
+printlevel some
+echo on
+scroll on
+scroll 42
+stack_default_limit 0
+context nextline
+goal_paths on
+break pred*save.data/1-0
+break pred*save.nodiag/3-0
+condition B = 5
+scope interface
+format -P flat
+format_param -P -f depth 3
+format_param -P -f size 10
+format_param -P -f width 80
+format_param -P -f lines 25
+format_param -P -r depth 3
+format_param -P -r size 10
+format_param -P -r width 80
+format_param -P -r lines 25
+format_param -P -v depth 3
+format_param -P -v size 10
+format_param -P -v width 80
+format_param -P -v lines 25
+format_param -P -p depth 3
+format_param -P -p size 10
+format_param -P -p width 80
+format_param -P -p lines 25
+format -B flat
+format_param -B -f depth 10
+format_param -B -f size 30
+format_param -B -f width 80
+format_param -B -f lines 25
+format_param -B -r depth 10
+format_param -B -r size 30
+format_param -B -r width 80
+format_param -B -r lines 25
+format_param -B -v depth 10
+format_param -B -v size 30
+format_param -B -v width 80
+format_param -B -v lines 25
+format_param -B -p depth 10
+format_param -B -p size 30
+format_param -B -p width 80
+format_param -B -p lines 25
+format -A flat
+format_param -A -f depth 3
+format_param -A -f size 10
+format_param -A -f width 80
+format_param -A -f lines 2
+format_param -A -r depth 3
+format_param -A -r size 10
+format_param -A -r width 80
+format_param -A -r lines 2
+format_param -A -v depth 3
+format_param -A -v size 10
+format_param -A -v width 80
+format_param -A -v lines 5
+format_param -A -p depth 3
+format_param -A -p size 10
+format_param -A -p width 80
+format_param -A -p lines 2
+max_io_actions 20
+xml_browser_cmd XXX
+xml_tmp_filename XXX
+trust save
+trust std lib
+list_context_lines 2
