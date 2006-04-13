@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: io.m.
 % Main author: fjh.
 % Stability: medium to high.
-%
+
 % This file encapsulates all the file I/O.
 %
 % We implement a purely logical I/O system using non-logical I/O primitives
@@ -21,7 +21,7 @@
 %
 % Attempting any operation on a stream which has already been closed results
 % in undefined behaviour.
-%
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

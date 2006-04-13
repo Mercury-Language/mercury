@@ -1,14 +1,15 @@
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% File: injection.m
-% Author: mark
-%
+
+% File: injection.m.
+% Author: mark.
+% Stability: low.
+
 % This module provides the `injection' ADT.  An injection is like a `map'
 % (see map.m) but it allows efficient reverse lookups, similarly to `bimap'.
 % This time efficiency comes at the expense of using twice as much space
@@ -24,7 +25,7 @@
 %
 % 2) For any value V, if a reverse lookup succeeds with key K then a forward
 % lookup of key K will succeed with some value (not necessarily V).
-%
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

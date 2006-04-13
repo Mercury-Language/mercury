@@ -6,9 +6,9 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% File: getopt.m
-% Authors: fjh, zs
-% Stability: medium
+% File: getopt.m.
+% Authors: fjh, zs.
+% Stability: medium.
 
 % This module exports the predicate getopt.process_options/4,
 % which can be used to parse command-line options.
@@ -77,6 +77,9 @@
 % with another `-', e.g. `-x-' will negate the `-x' option.
 % Long options can be negated by preceding them with `--no-',
 % e.g. `--no-foo' will negate the `--foo' option.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module getopt.
 :- interface.

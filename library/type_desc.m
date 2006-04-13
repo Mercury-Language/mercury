@@ -24,7 +24,7 @@
     % A pseudo_type_desc represents a type that possibly contains type
     % variables, e.g. `list(T)'.
     % A type_ctor_desc represents a type constructor, e.g. `list/1'.
-
+    %
 :- type type_desc.
 :- type pseudo_type_desc.
 :- type type_ctor_desc.
@@ -38,7 +38,7 @@
     % by identical integers if and only if they are the same type variable.
     % Existentially quantified type variables may have type class
     % constraints placed on them, but for now we can't return these.
-
+    %
 :- type pseudo_type_rep
     --->    bound(type_ctor_desc, list(pseudo_type_desc))
     ;       univ_tvar(int)

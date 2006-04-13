@@ -5,21 +5,20 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: svmulti_map.m.
 % Author: dylan.
 % Stability: low.
-%
+
 % This file provides an interface to the 'multi_map' ADT that is conducive to
 % the use of state variable notation. The predicates here do the same thing as
 % their counterparts in the multi_map module; the only difference is the order
 % of the arguments.
-%
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module svmulti_map.
-
 :- interface.
 
 :- import_module list.

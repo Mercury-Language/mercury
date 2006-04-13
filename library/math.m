@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
-% File: math.m
-% Main author: bromage
-% Stability: high
-%
+
+% File: math.m.
+% Main author: bromage.
+% Stability: high.
+
 % Higher mathematical operations.  (The basics are in float.m.)
 %
 % By default, domain errors are currently handled by throwing an exception.
@@ -36,7 +36,8 @@
 % predicate the error occurred, as well as giving you a stack trace if
 % that is enabled; with the checks disabled you only have the information
 % that the floating-point exception signal handler gives you.
-%
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- module math.

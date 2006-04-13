@@ -8,7 +8,7 @@
 
 % File: exception.m.
 % Main author: fjh.
-% Stability: medium
+% Stability: medium.
 
 % This file defines the Mercury interface for exception handling.
 

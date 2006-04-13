@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: rtti_implementation.m.
 % Main author: trd, petdr.
 % Stability: low.
-%
+
 % This file is intended to provide portable RTTI functionality by implementing
 % most of Mercury's RTTI functionality in Mercury.
 %

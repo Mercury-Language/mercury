@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
+
 % File: varset.m.
 % Main author: fjh.
 % Stability: low.
-%
+
 % This file provides facilities for manipulating collections of
 % variables and terms.
 % It provides the 'varset' ADT. A varset is a set of variables.
@@ -24,7 +24,7 @@
 % destructive assignment, we will need to rethink the design;  we may
 % end up modifying these modules considerably, or we may end up
 % making new single-threaded versions of these modules.
-%
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -37,6 +37,8 @@
 :- import_module maybe.
 :- import_module set.
 :- import_module term.
+
+%-----------------------------------------------------------------------------%
 
 :- type varset(T).
 

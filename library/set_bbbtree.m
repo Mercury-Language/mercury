@@ -10,12 +10,12 @@
 % Main authors: benyi.
 % Stability: low.
 
-% set_bbbtree - implements sets using bounded balanced binary trees.
+% This module implements sets using bounded balanced binary trees.
 
+%------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
 :- module set_bbbtree.
-
 :- interface.
 
 :- import_module bool.

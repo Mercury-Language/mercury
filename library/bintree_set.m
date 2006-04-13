@@ -5,10 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %--------------------------------------------------------------------------%
-%
+
+% File: bintree_set.m.
 % Main authors: fjh.
 % Stability: medium (obsolete).
-%
+
 % This file provides an alternate implementation of the `set' ADT defined
 % in module `set'. See that file for comments about the semantics of the
 % predicates. This file implements sets as binary sorted trees, using module
@@ -18,12 +19,14 @@
 % restricted mode, which is implemented much more efficiently using
 % bintree.search.
 
-:- module bintree_set.
-
+%--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
 
+:- module bintree_set.
 :- interface.
 :- import_module list.
+
+%--------------------------------------------------------------------------%
 
 :- type bintree_set(_T).
 

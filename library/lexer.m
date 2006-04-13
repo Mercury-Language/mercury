@@ -5,16 +5,17 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
-% file: lexer.m.
-% main author: fjh.
-% stability: high.
-%
+
+% File: lexer.m.
+% Main author: fjh.
+% Stability: high.
+
 % Lexical analysis.  This module defines the representation of tokens
 % and exports predicates for reading in tokens from an input stream.
 %
 % See ISO Prolog 6.4.  Also see the comments at the top of parser.m.
-%
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module lexer.
@@ -22,6 +23,8 @@
 
 :- import_module char.
 :- import_module io.
+
+%-----------------------------------------------------------------------------%
 
 :- type token
     --->    name(string)

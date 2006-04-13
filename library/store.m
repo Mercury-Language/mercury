@@ -15,15 +15,15 @@
 % A store holds a set of nodes, each of which may contain a value of any
 % type.
 %
-% Stores may be used to implement cyclic data structures such as
-% circular linked lists, etc.
+% Stores may be used to implement cyclic data structures such as circular
+% linked lists, etc.
 %
 % Stores can have two different sorts of keys:
 % mutable variables (mutvars) and references (refs).
-% The difference between mutvars and refs is that
-% mutvars can only be updated atomically,
-% whereas it is possible to update individual fields of a reference
-% one at a time (presuming the reference refers to a structured term).
+% The difference between mutvars and refs is that mutvars can only be updated
+% atomically, whereas it is possible to update individual fields of a
+% reference one at a time (presuming the reference refers to a structured
+% term).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

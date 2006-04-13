@@ -13,21 +13,6 @@
 % This file contains higher-order programming constructs and other 
 % useful standard utilities.
 
-% NOTE: fomerly this module contained considerably more functionality but
-%       most of that has now been moved to other modules.  In particular:
-%
-%       * the `univ' type is now defined in the module univ.
-%       
-%       * the `maybe' and `maybe_error' types are now defined in the module
-%         maybe.
-%
-%       * the `unit' type is now defined in the module unit.
-%
-%       * the `pair' type is now defined in the module pair.
-
-% This module also used to define a number of RTTI access predicates.  These
-% are now to be found in the modules type_desc, construct and deconstruct.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

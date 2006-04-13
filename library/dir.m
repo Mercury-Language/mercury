@@ -18,7 +18,8 @@
 %
 % Duplicate directory separators and trailing separators are also removed
 % where that doesn't change the meaning of the path name.
-%
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module dir.
@@ -28,6 +29,8 @@
 :- import_module io.
 :- import_module list.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
     % predicates to isolate system dependencies
 

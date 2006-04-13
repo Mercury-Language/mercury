@@ -1,19 +1,22 @@
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % Copyright (C) 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 % File: svvarset.m.
+% Author: fjh.
+% Stability: low.
 
 % This file provides an interface to the 'varset' ADT that is conducive to the
 % user of state variable notation.  The predicates here do the same thing as
 % their counterparts in the varset module; the only difference is the order of
 % the arguments.
 
-%--------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module svvarset.
 :- interface.
@@ -24,6 +27,8 @@
 :- import_module string.
 :- import_module term.
 :- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
     % Create a new variable.
     %

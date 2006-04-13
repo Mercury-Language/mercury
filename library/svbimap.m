@@ -5,9 +5,9 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
+
 % File: svbimap.m.
-%
+
 % This file provides an interface to the 'bimap' ADT that is conducive to the
 % use of state variable notation. The predicates here do the same thing as
 % their counterparts in the bimap module; the only difference is the order
@@ -17,7 +17,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module svbimap.
-
 :- interface.
 
 :- import_module bimap.

@@ -6,9 +6,9 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-% File: hash_table.m
-% Main author: rafe
-% Stability: low
+% File: hash_table.m.
+% Main author: rafe.
+% Stability: low.
 
 % Hash table implementation.
 %

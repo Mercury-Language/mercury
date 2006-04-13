@@ -5,20 +5,23 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%
-% file: rational.m
-% authors: aet Apr 1998. (with plagiarism from rat.m)
-%
+
+% File: rational.m.
+% Authors: aet Apr 1998. (with plagiarism from rat.m)
+% Stability: high.
+
 % Implements a rational number type and a set of basic operations on
 % rational numbers.
-%
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module rational.
-
 :- interface.
 
 :- import_module integer.
+
+%-----------------------------------------------------------------------------%
 
 :- type rational.
 

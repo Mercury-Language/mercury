@@ -5,20 +5,19 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
-%
+
 % File: graph.m.
 % Main author: conway.
 % Stability: low.
-%
+
 % This module defines a directed graph data type. The type graph(N, A)
 % stores information of type N in the nodes, and information of type A
 % in the arcs.
-%
+
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
 :- module graph.
-
 :- interface.
 
 :- import_module list.

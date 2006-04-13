@@ -1,15 +1,15 @@
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % Copyright (C) 1994-1997, 1999, 2003, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%---------------------------------------------------------------------------%
-%
-% file: group.m.
-% main author: conway.
-% stability: low (obsolete).
-%
+%-----------------------------------------------------------------------------%
+
+% File: group.m.
+% Main author: conway.
+% Stability: low (obsolete).
+
 % This module is probably not terribly useful, and it may not be supported
 % in future releases.
 %
@@ -17,17 +17,18 @@
 % A group is a set of sets of elements, where each element is unique within
 % the scope of the group. The module provides moderately efficient ways for
 % manipulating groups and elements.
-%
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module group.
-
 :- interface.
 
 :- import_module assoc_list.
 :- import_module list.
 :- import_module set.
+
+%-----------------------------------------------------------------------------%
 
 :- type group(T).
 

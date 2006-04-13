@@ -12,6 +12,7 @@
 % Sets are implemented here as sorted lists without duplicates.
 
 %--------------------------------------------------------------------------%
+%--------------------------------------------------------------------------%
 
 :- module set_ordlist.
 :- interface.

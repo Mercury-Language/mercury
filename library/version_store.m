@@ -7,6 +7,7 @@
 
 % File: version_store.m.
 % Author: Ralph Becket <rafe@cs.mu.oz.au>
+% Stability: low.
 
 % (See the header comments in version_types.m for an explanation of version
 % types.)
@@ -18,6 +19,7 @@
 % rather than the mutvars.  This means that dead data (i.e.  whose mutvar is
 % out of scope) in a version_store may not be garbage collected.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module version_store.

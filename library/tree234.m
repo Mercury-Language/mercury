@@ -1,26 +1,29 @@
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % Copyright (C) 1994-1997,1999-2000,2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-% tree234 - implements a map (dictionary) using 2-3-4 trees.
-% main author: conway.
-% stability: medium.
+% File: tree234.m.
+% Main author: conway.
+% Stability: medium.
 
-% See map.m for documentation.
+% This module implements a map (dictionary) using 2-3-4 trees - see
+% map.m for futher documentation.
 
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module tree234.
-
 :- interface.
 
 :- import_module assoc_list.
 :- import_module list.
-:- import_module term.  % for var/1.
+:- import_module term.
+
+%-----------------------------------------------------------------------------%
 
 :- type tree234(K, V).
 

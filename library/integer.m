@@ -63,12 +63,11 @@
 
 :- func integer mod integer = integer.
 
-    %
     % divide_with_rem(X, Y, Q, R) where Q = X // Y and R = X rem Y
     % where both answers are calculated at the same time.
     %
 :- pred divide_with_rem(integer::in, integer::in,
-                integer::out, integer::out) is det.
+    integer::out, integer::out) is det.
 
 :- func integer << int = integer.
 
@@ -104,6 +103,8 @@
 :- import_module int.
 :- import_module list.
 :- import_module require.
+
+%-----------------------------------------------------------------------------%
 
 % Possible improvements:
 %
@@ -1194,4 +1195,5 @@ printbase_pos_mul_list([X|Xs], Carry, Y) =
     printbase_pos_mul_list(Xs, printbase_pos_plus(mul_base(Carry),
         printbase_mul_by_digit(X, Y)), Y).
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

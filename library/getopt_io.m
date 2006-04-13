@@ -81,6 +81,9 @@
 % contents into a sequence of words separated by white space, and interpreting
 % those words as options in the usual manner.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- module getopt_io.
 :- interface.
 

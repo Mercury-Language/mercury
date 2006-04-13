@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
-% file: random.m
-% main author: conway
-% stability: low
-%
+
+% File: random.m
+% Main author: conway
+% Stability: low
+
 % Define a set of random number generator predicates. This implementation
 % uses a threaded random-number supply.  The supply can be used in a
 % non-unique way, which means that each thread returns the same list of
@@ -44,16 +44,19 @@
 %	example, by generating each component of the tuple in sequential
 %	order.  If you do, it is likely that the resulting sequence will
 %	not cover the full range of possible tuples.
-%
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- module random.
-
 :- interface.
 
 :- import_module list.
 
+%---------------------------------------------------------------------------%
+
 	% The type `random.supply' represents a supply of random numbers.
+    %
 :- type random.supply.
 
 	% random.init(Seed, RS): creates a supply of random numbers RS
@@ -64,6 +67,7 @@
 	% random.random(Num, RS0, RS): extracts a number Num in the
 	% range 0 .. RandMax from the random number supply RS0, and
 	% binds RS to the new state of the random number supply.
+    %
 :- pred random.random(int, random.supply, random.supply).
 :- mode random.random(out, mdi, muo) is det.
 :- mode random.random(out, in, out) is det.
