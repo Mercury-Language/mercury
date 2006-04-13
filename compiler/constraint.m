@@ -167,11 +167,9 @@ propagate_conj_sub_goal_2(GoalExpr - GoalInfo, Constraints, FinalGoals, !Info,
     ;
         GoalExpr = scope(Reason, SubGoal0),
         (
-            Reason = exist_quant(_),
-            propagate_goal(SubGoal0, Constraints, SubGoal, !Info, !IO),
-            FinalGoals = [scope(Reason, SubGoal) - GoalInfo]
-        ;
-            Reason = from_ground_term(_),
+            ( Reason = exist_quant(_)
+            ; Reason = from_ground_term(_)
+            ),
             propagate_goal(SubGoal0, Constraints, SubGoal, !Info, !IO),
             FinalGoals = [scope(Reason, SubGoal) - GoalInfo]
         ;

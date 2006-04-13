@@ -274,84 +274,30 @@ if test "$BOOTSTRAP_MC" != ""; then
 			Version = MR_RTTI_VERSION;
 		").
 
-		% The code below is the valid/state_var_mode_bug2 test case.
+		% The code below is the hard_coded/disjs_in_switch test case.
 		% The compiler now depends on the installed compiler handling
 		% code like this test case correctly.
-		:- pred p(bool::in, bool::in, int::in, int::out) is semidet.
 
-		p(A, B, !Y) :-
-			some [[X0, _X]] (
-				p0(X0),
-				p2(X0, X1),
-				p2(X1, X2),
-				(
-					A = yes
-				->
-					(
-						B = yes,
-						p1(X2),
-						p2(X2, X3),
-						p1(X3),
-						X4 = X3
-					;
-						B = no,
-						(
-							p1(X2),
-							p2(X2, X3)
-						->
-							p1(X3),
-							X4 = X3
-						;
-							X4 = X2
-						)
-					),
-					X5 = X4
-				;
-					(
-						p1(X2),
-						p2(X2, X3)
-					->
-						(
-							A = yes,
-							p1(X3),
-							p2(X3, X4),
-							(
-								B = yes,
-								p2(X4, X5)
-							;
-								B = no,
-								X5 = X4
-							)
-						;
-							A = no,
-							X5 = X3
-						)
-					;
-						p1(X2)
-					->
-						p1(X2),
-						p2(X2, X3),
-						p1(X3),
-						X5 = X3
-					;
-						X5 = X2
-					)
+		:- type tp
+			--->	f(int)
+			;	g(int, int)
+			;	h(float)
+			;	i(string).
+
+		:- pred p(tp::in, string::out) is det.
+
+		p(T, U) :-
+			(
+				( T = f(_)
+				; T = g(_, _)
 				),
-				_X = X5
+				U = "f or g"
+			;
+				( T = h(_)
+				; T = i(_)
+				),
+				U = "h or i"
 			).
-
-		:- pred p0(int::out) is det.
-
-		p0(0).
-
-		:- pred p1(int::in) is semidet.
-
-		p1(1).
-
-		:- pred p2(int::in, int::out) is semidet.
-
-		p2(X0, X0) :-
-			p1(X0).
 EOF
 	if
 		# Test for the `--force-disable-tracing' option
