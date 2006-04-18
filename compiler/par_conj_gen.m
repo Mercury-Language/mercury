@@ -116,6 +116,7 @@
 :- implementation.
 
 :- import_module check_hlds.mode_util.
+:- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
@@ -137,6 +138,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -264,19 +266,28 @@ copy_outputs(_, [], _, empty).
 copy_outputs(CI, [Var | Vars], SpSlot, Code) :-
     code_info.get_variable_slot(CI, Var, SrcSlot),
     ( SrcSlot = stackvar(SlotNum) ->
-        % The stack pointer points to the last used word on the stack.
-        % We want MR_sp[-0] = MR_sv(1), MR_sp[-1] = MR_sv(2), etc.
-        NegSlotNum = (1 - SlotNum),
-        DestSlot = field(yes(0), lval(SpSlot), const(int_const(NegSlotNum)))
+        (
+            code_info.get_module_info(CI, ModuleInfo),
+            code_info.variable_type(CI, Var) = Type,
+            is_dummy_argument_type(ModuleInfo, Type)
+        ->
+            % Don't copy dummy values.
+            ThisCode = empty
+        ;
+            % The stack pointer points to the last used word on the stack.
+            % We want MR_sp[-0] = MR_sv(1), MR_sp[-1] = MR_sv(2), etc.
+            NegSlotNum = (1 - SlotNum),
+            DestSlot = field(yes(0), lval(SpSlot), const(int_const(NegSlotNum))),
+            VarName = code_info.variable_to_string(CI, Var),
+            Msg = "copy result " ++ VarName ++ " to parent stackframe",
+            ThisCode = node([assign(DestSlot, lval(SrcSlot)) - Msg])
+        ),
+        Code = tree(ThisCode, RestCode),
+        copy_outputs(CI, Vars, SpSlot, RestCode)
     ;
         unexpected(this_file,
             "copy_outputs: par conj in model non procedure!")
-    ),
-    ThisCode = node([
-        assign(DestSlot, lval(SrcSlot)) - "copy result to parent stackframe"
-    ]),
-    Code = tree(ThisCode, RestCode),
-    copy_outputs(CI, Vars, SpSlot, RestCode).
+    ).
 
 :- pred place_all_outputs(list(prog_var)::in, code_info::in, code_info::out)
     is det.
