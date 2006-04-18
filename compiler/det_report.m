@@ -1451,7 +1451,7 @@ det_report_msg(par_conj_not_det(InferredDetism, PredId, ProcId,
         unexpected(this_file,
             "strange determinism error for parallel conjunction")
     ),
-    Rest = "The current implementation supports only single-solution"
+    Rest = "The current implementation supports only single-solution "
         ++ "non-failing parallel conjunctions.",
     ReportSpec = error_msg_spec(no, Context, 0, [words(First), words(Rest)]),
     globals.io_get_globals(Globals, !IO),

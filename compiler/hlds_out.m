@@ -1591,6 +1591,7 @@ write_goal_2(conj(ConjType, List), ModuleInfo, VarSet, AppendVarNums, Indent,
             )
         ;
             ConjType = parallel_conj,
+            write_indent(Indent, !IO),
             io.write_string("( % parallel conjunction\n", !IO),
             write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent + 1,
                 "\n", TypeQual, !IO),

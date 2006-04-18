@@ -653,9 +653,9 @@ transform_goal_2(conj_expr(A0, B0), _, Subst, Goal, NumAdded, !VarSet,
     conj_list_to_goal(L, GoalInfo, Goal).
 transform_goal_2(par_conj_expr(A0, B0), _, Subst, Goal, NumAdded, !VarSet,
         !ModuleInfo, !QualInfo, !SInfo, !IO) :-
-    get_rev_par_conj(B0, Subst, [], R0, 0, NumAddedB,
+    get_rev_par_conj(A0, Subst, [], R0, 0, NumAddedA,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
-    get_rev_par_conj(A0, Subst, R0, R,  NumAddedB, NumAdded,
+    get_rev_par_conj(B0, Subst, R0, R,  NumAddedA, NumAdded,
         !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
     L = list.reverse(R),
     goal_info_init(GoalInfo),
