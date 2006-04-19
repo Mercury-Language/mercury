@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: hash_table.m.
 % Main author: rafe.
 % Stability: low.
-
+% 
 % Hash table implementation.
 %
 % This implementation uses double hashing and requires the user to
@@ -32,7 +32,7 @@
 % This means that care must be taken not to use an old version of a
 % destructively updated structure (such as a hash_table) since the
 % compiler will not currently detect such errors.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

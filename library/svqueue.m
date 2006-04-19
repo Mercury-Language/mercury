@@ -5,24 +5,26 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: svqueue.m.
 % Author: zs.
 % Stability: high.
-
+% 
 % This file provides an interface to the 'queue' ADT that is conducive to the
 % use of state variable notation. The predicates here do the same thing as
 % their counterparts in the queue module; the only difference is the order
 % of the arguments.
-
+% 
+%--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
 
 :- module svqueue.
-
 :- interface.
 
 :- import_module list.
 :- import_module queue.
+
+%--------------------------------------------------------------------------%
 
     % `svqueue.put(Elem, Queue0, Queue)' is true iff `Queue' is
     % the queue which results from appending `Elem' onto the end

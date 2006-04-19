@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: bintree.m.
 % Main author: conway.
 % Stability: medium (obsolete).
-
+% 
 % This module exists primarily for historical reasons. It is unlikely
 % to be useful, and may not be supported in future releases.
 % You should use `map' instead.
@@ -25,7 +25,7 @@
 % `set' will always succeed; it will replace the old value for that key
 % if the key was already in the tree, or insert a new node into the tree
 % if the key wasn't already present.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

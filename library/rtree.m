@@ -5,21 +5,21 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: rtree.m.
 % Main author: gjd.
 % Stability: low.
-
+% 
 % This file provides a region tree (R-tree) ADT.  An R-tree associates
 % values with regions in some space, e.g. rectangles in the 2D plane, or
 % bounding spheres in 3D space.  R-trees accept spatial queries, e.g. a
 % typical usage is "find all pubs within a 2km radius".
-
+% 
 % This module provides a region(K) typeclass that allows the user to
 % define new regions and spaces.  Three "builtin" instances for region(K)
 % are provided: region(interval), region(box) and region(box3d) corresponding
 % to "square" regions in 1, 2 and 3 dimensional space respectively.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: term.m.
 % Main author: fjh.
 % Stability: medium.
-
+% 
 % This file provides a type `term' used to represent Prolog terms,
 % and various predicates to manipulate terms and substitutions.
 % Terms are polymorphic so that terms representing different kinds of
 % thing can be made to be of different types so they don't get mixed up.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

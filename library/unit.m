@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: unit.m.
 % Main author: fjh.
 % Stability: high.
-
+% 
 % The "unit" type -  stores no information at all.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: builtin.m.
 % Main author: fjh.
 % Stability: low.
-
+% 
 % This file is automatically imported into every module.
 % It is intended for things that are part of the language,
 % but which are implemented just as normal user-level code
 % rather than with special coding in the compiler.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

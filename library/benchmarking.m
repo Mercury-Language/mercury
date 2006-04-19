@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: benchmarking.m.
 % Main author: zs.
 % Stability: medium to high.
-
+% 
 % This module contains predicates that deal with the CPU time requirements
 % of (various parts of) the program.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

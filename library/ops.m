@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: ops.m.
 % Main author: fjh.
 % Stability: low.
-
+% 
 % This module exports a typeclass `ops.op_table' which is used to define
 % operator precedence tables for use by `parser.read_term_with_op_table'
 % and `term_io.write_term_with_op_table'.
@@ -21,7 +21,7 @@
 %
 % XXX In the current implementation the table of Mercury operators
 % is fixed and cannot be modified at run-time.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

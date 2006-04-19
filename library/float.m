@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: float.m.
 % Main author: fjh.
 % Stability: medium.
-
+% 
 % Floating point support.
 %
 % Note that implementations which support IEEE floating point
@@ -44,7 +44,7 @@
 % level of optimization, in particular inlining and evaluation
 % of constant expressions.
 % For example, the goal `1.0/9.0 = std_util.id(1.0)/9.0' may fail.
-
+% 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 

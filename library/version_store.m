@@ -4,11 +4,11 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-
+% 
 % File: version_store.m.
 % Author: Ralph Becket <rafe@cs.mu.oz.au>
 % Stability: low.
-
+% 
 % (See the header comments in version_types.m for an explanation of version
 % types.)
 %
@@ -18,7 +18,7 @@
 % Note that, unlike ordinary stores, liveness of data is via the version store
 % rather than the mutvars.  This means that dead data (i.e.  whose mutvar is
 % out of scope) in a version_store may not be garbage collected.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

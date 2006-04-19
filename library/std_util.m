@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: std_util.m.
 % Main author: fjh.
 % Stability: high.
-
+% 
 % This file contains higher-order programming constructs and other 
 % useful standard utilities.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

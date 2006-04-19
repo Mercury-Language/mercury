@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: random.m
 % Main author: conway
 % Stability: low
-
+% 
 % Define a set of random number generator predicates. This implementation
 % uses a threaded random-number supply.  The supply can be used in a
 % non-unique way, which means that each thread returns the same list of
@@ -44,7 +44,7 @@
 %	example, by generating each component of the tuple in sequential
 %	order.  If you do, it is likely that the resulting sequence will
 %	not cover the full range of possible tuples.
-
+% 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 

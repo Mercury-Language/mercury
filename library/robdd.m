@@ -5,19 +5,19 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: robdd.m.
 % Main author: dmo.
 % Stability: low.
-
+% 
 % This module contains a Mercury interface to Peter Schachte's C
 % implementation of Reduced Ordered Binary Decision Diagrams (ROBDDs).
 % ROBDDs are an efficient representation for Boolean constraints.
-
+% 
 % Boolean variables are represented using the type var(T) from the
 % `term' library module (see the `term' module documentation for
 % more information).
-
+% 
 % Example usage:
 %   % Create some variables.
 %   term.init_var_supply(VarSupply0),
@@ -37,16 +37,16 @@
 %
 %   % Test R2 and R3 for equivalence (should succeed).
 %   R2 = R3.
-
+% 
 % ROBDDs are implemented so that two ROBDDs, R1 and R2, represent
 % the same Boolean constraint if and only iff `R1 = R2'. Checking
 % equivalence of ROBDDs is fast since it involves only a single
 % pointer comparison.
-
+% 
 % XXX This module is not yet sufficiently well tested or documented to be
 % included in the publically available part of the library, so at the moment
 % it is not included in the list of modules mentioned in the library manual.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

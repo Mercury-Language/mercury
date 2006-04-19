@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
+%
 % File: unsafe.m
 % Author: fjh
 % Stability: low
-%-----------------------------------------------------------------------------%
 %
 % WARNING: the procedures defined in this module are non-logical.
 % They may have side effects, they may violate type safety,
@@ -19,7 +19,8 @@
 % Use only as a last resort, and only with great care!
 %
 % You have been warned.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module unsafe.

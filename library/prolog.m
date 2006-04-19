@@ -3,15 +3,15 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: prolog.m.
 % Main author: fjh.
 % Stability: high.
-
+% 
 % This file contains predicates that are intended to help people
 % porting Prolog programs, or writing programs in the intersection
 % of Mercury and Prolog.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

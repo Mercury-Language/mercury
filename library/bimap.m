@@ -5,17 +5,17 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: bimap.m.
 % Main author: conway.
 % Stability: medium.
-
+% 
 % This file provides a bijective map ADT.
 % A map (also known as a dictionary or an associative array) is a collection
 % of (Key, Data) pairs which allows you to look up any Data item given the
 % Key.  A bimap also allows you to efficiently look up the Key given the Data.
 % This time efficiency comes at the expense of using twice as much space.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

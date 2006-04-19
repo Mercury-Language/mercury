@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: list.m.
 % Authors: fjh, conway, trd, zs, philip, warwick, ...
 % Stability: medium to high.
-
+% 
 % This module defines the list type, and various utility predicates that
 % operate on lists.
-
+% 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 

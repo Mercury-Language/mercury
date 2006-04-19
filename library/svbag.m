@@ -5,19 +5,18 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: svbag.m
-
+% 
 % This file provides an interface to the 'bag' ADT that is conducive to the
 % use of state variable notation. The predicates here do the same thing as
 % their counterparts in the bag module; the only difference is the order of the
 % arguments.
-
+% 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- module svbag.
-
 :- interface.
 
 :- import_module bag.

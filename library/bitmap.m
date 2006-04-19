@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: bitmap.m.
 % Main author: rafe.
 % Stability: low.
-
+% 
 % Efficient bitmap implementation.
 %
 % CAVEAT: the user is referred to the documentation in the header
@@ -18,7 +18,7 @@
 % non-unique modes until the situation is rectified; this places
 % a small burden on the programmer to ensure the correctness of his
 % code that would otherwise be assured by the compiler.)
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

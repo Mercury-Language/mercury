@@ -4,16 +4,16 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-
+% 
 % File: version_array2d.m.
 % Author: Ralph Becket <rafe@cs.mu.oz.au>.
 % Stability: medium-low.
-
+% 
 % Two-dimensional rectangular (i.e. not ragged) version arrays.
-
+% 
 % See the header comments in version_types.m for more details about version
 % structures.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

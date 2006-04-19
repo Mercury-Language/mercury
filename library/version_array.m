@@ -6,11 +6,11 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-
+% 
 % File: version_array.m.
 % Author: Ralph Becket <rafe@cs.mu.oz.au>.
 % Stability: low.
-
+% 
 % (See the header comments in version_types.m for an explanation of version
 % types.)
 %
@@ -28,7 +28,7 @@
 % XXX This implementation is not yet guaranteed to work with the agc (accurate
 % garbage collection) grades.  Specifically, MR_deep_copy and MR_agc_deep_copy
 % currently do not recognise version arrays.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

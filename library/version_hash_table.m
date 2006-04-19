@@ -4,11 +4,11 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-
+% 
 % File: version_hash_table.m.
 % Main author: rafe.
 % Stability: low.
-
+% 
 % (See the header comments in version_types.m for an explanation of version
 % types.)
 %
@@ -17,7 +17,7 @@
 % implementation.  "Older" versions of the hash table are still
 % accessible, but will incurr a growing performance penalty as
 % more updates are made to the hash table.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: enum.m.
 % Author: stayl.
 % Stability: medium
-
+% 
 % This module provides the typeclass `enum', which describes types
 % which can be converted to and from integers without loss of information.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

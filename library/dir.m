@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: dir.m.
 % Main authors: fjh, stayl.
 % Stability: high.
-
+% 
 % Filename and directory handling.
 %
 % Note that the predicates and functions in this module change directory
@@ -18,7 +18,7 @@
 %
 % Duplicate directory separators and trailing separators are also removed
 % where that doesn't change the meaning of the path name.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

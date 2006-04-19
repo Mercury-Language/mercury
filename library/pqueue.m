@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: pqueue.m.
 % Main author: conway.
 % Stability: high.
-
+% 
 % This module implements a priority queue ADT.
 % 
 % A pqueue is a priority queue.  A priority queue holds a collection
@@ -20,7 +20,7 @@
 % Insertion/removal is not guaranteed to be "stable"; that is,
 % if you insert two values with the same key, the order in which
 % they will be removed is unspecified.
-
+% 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 

@@ -9,7 +9,7 @@
 % File: cord.m.
 % Author: Ralph Becket <rafe@cs.mu.oz.au>
 % Stability: medium.
-
+% 
 % A cord is a sequence type supporting O(1) consing and
 % concatenation.  A cord is essentially a tree structure with data stored
 % in the leaf nodes.  Joining two cords together to construct a new cord
@@ -20,7 +20,7 @@
 %
 % While this data type presents a list-like interface, calls to list/1 and
 % head_tail/3 in particular are O(n) in the size of the cord.
-
+% 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 

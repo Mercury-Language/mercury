@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: counter.m.
 % Author: zs.
 % Stability: high.
-
+% 
 % Predicates for dealing with counters, which are mechanisms for allocating
 % consecutively numbered integers. The abstraction barrier eliminates the
 % possibility of confusion along the lines of "does this counter record
 % the next number to be handed out, or the last number that was handed out?".
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: int.m.
 % Main authors: conway, fjh.
 % Stability: medium.
-
+% 
 % Predicates and functions for dealing with machine-size integer numbers.
 %
 % The behaviour of a computation for which overflow occurs is undefined.
@@ -17,7 +17,7 @@
 % module do not check for overflow, and the results you get are those
 % delivered by the C compiler.  However, future implementations
 % might check for overflow.)
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

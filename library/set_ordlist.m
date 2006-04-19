@@ -3,14 +3,14 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: set_ordlist.m.
 % Main authors: conway, fjh.
 % Stability: medium.
-
+% 
 % This file contains a `set' ADT.
 % Sets are implemented here as sorted lists without duplicates.
-
+% 
 %--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
 

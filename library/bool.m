@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: bool.m.
 % Main authors: fjh, zs.
 % Stability: medium to high.
-
+% 
 % This module exports the boolean type `bool' and some operations on bools.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

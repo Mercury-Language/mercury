@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: group.m.
 % Main author: conway.
 % Stability: low (obsolete).
-
+% 
 % This module is probably not terribly useful, and it may not be supported
 % in future releases.
 %
@@ -17,7 +17,7 @@
 % A group is a set of sets of elements, where each element is unique within
 % the scope of the group. The module provides moderately efficient ways for
 % manipulating groups and elements.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

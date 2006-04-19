@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: integer.m.
 % Main authors: aet, Dan Hazel <odin@svrc.uq.edu.au>.
 % Stability: high.
-
+% 
 % Implements an arbitrary precision integer type and basic
 % operations on it. (An arbitrary precision integer may have
 % any number of digits, unlike an int, which is limited to the
@@ -17,7 +17,7 @@
 %
 % NOTE: All operators behave as the equivalent operators on ints do.
 % This includes the division operators: / // rem div mod.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
