@@ -162,7 +162,6 @@ OTHER_PROGS= \
 	no_warn_obsolete \
 	nondet_live \
 	overloading \
-	par_dummy \
 	parsing_bug_main \
 	pred_with_no_modes \
 	qualified_cons_id \
@@ -219,11 +218,17 @@ OTHER_PROGS= \
 DEEP_PROF_CAPABLE_PROGS = \
 	impure_detism
 
-	# These tests require debugging, which hasn't been
-	# implemented for the MLDS backend.
+# These tests require debugging, which hasn't been implemented for
+# the MLDS backend.
+#
 LLDS_PROGS= \
 	exists_cast_bug \
 	untuple_bug
+
+# These tests only work in grades that support parallel conjunction.
+#
+PAR_CONJ_PROGS = \
+	par_dummy
 
 # The following programs require that num_tag_bits >= 1
 RESERVE_TAG_PROGS = \
@@ -307,9 +312,15 @@ else
 endif
 
 ifneq "$(findstring tsw,$(GRADE))$(findstring tsc,$(GRADE))" ""
-	PROGS = $(OBJ_PROGS)
+	PROGS5 = $(OBJ_PROGS)
 else
-	PROGS = $(OBJ_PROGS) $(IL_PROGS)
+	PROGS5 = $(OBJ_PROGS) $(IL_PROGS)
+endif
+
+ifneq "$(findstring decldebug,$(GRADE))" ""
+	PROGS = $(PROGS5)
+else
+	PROGS = $(PROGS5) $(PAR_CONJ_PROGS)
 endif
 
 # `mmc --make' doesn't expect subdirectories to appear in targets.
