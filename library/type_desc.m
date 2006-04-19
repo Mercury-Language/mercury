@@ -79,13 +79,13 @@
     % get_functor/5 and construct/3 will fail if used upon a value of
     % this type.)
     %
-:- func type_of(T::unused) = (type_desc.type_desc::out) is det.
+:- func type_of(T::unused) = (type_desc::out) is det.
 
     % The predicate has_type/2 is basically an existentially typed inverse
     % to the function type_of/1. It constrains the type of the first argument
     % to be the type represented by the second argument.
     %
-:- some [T] pred has_type(T::unused, type_desc.type_desc::in) is det.
+:- some [T] pred has_type(T::unused, type_desc::in) is det.
 
     % type_name(Type) returns the name of the specified type
     % (e.g. type_name(type_of([2,3])) = "list:list(int)").
@@ -93,7 +93,7 @@
     % Builtin types (those defined in builtin.m) will not have
     % a module qualifier.
     %
-:- func type_name(type_desc.type_desc) = string.
+:- func type_name(type_desc) = string.
 
     % type_ctor_and_args(Type, TypeCtor, TypeArgs):
     %
@@ -113,8 +113,8 @@
     % constructor `bar/0', not `foo/0'. (If you don't want them expanded,
     %% you can use the reverse mode of make_type/2 instead.)
     %
-:- pred type_ctor_and_args(type_desc.type_desc::in,
-    type_desc.type_ctor_desc::out, list(type_desc.type_desc)::out) is det.
+:- pred type_ctor_and_args(type_desc::in,
+    type_ctor_desc::out, list(type_desc)::out) is det.
 
     % pseudo_type_ctor_and_args(Type, TypeCtor, TypeArgs):
     %
@@ -125,55 +125,52 @@
     % Similar to type_ctor_and_args, but works on pseudo_type_infos.
     % Fails if the input pseudo_type_info is a variable.
     %
-:- pred pseudo_type_ctor_and_args(type_desc.pseudo_type_desc::in,
-    type_desc.type_ctor_desc::out, list(type_desc.pseudo_type_desc)::out)
-    is semidet.
+:- pred pseudo_type_ctor_and_args(pseudo_type_desc::in,
+    type_ctor_desc::out, list(pseudo_type_desc)::out) is semidet.
 
     % type_ctor(Type) = TypeCtor :-
     %   type_ctor_and_args(Type, TypeCtor, _).
     %
-:- func type_ctor(type_desc.type_desc) = type_desc.type_ctor_desc.
+:- func type_ctor(type_desc) = type_ctor_desc.
 
     % pseudo_type_ctor(Type) = TypeCtor :-
     %   pseudo_type_ctor_and_args(Type, TypeCtor, _).
     %
-:- func pseudo_type_ctor(type_desc.pseudo_type_desc) =
-    type_desc.type_ctor_desc is semidet.
+:- func pseudo_type_ctor(pseudo_type_desc) = type_ctor_desc is semidet.
 
     % type_args(Type) = TypeArgs :-
     %   type_ctor_and_args(Type, _, TypeArgs).
     %
-:- func type_args(type_desc.type_desc) = list(type_desc.type_desc).
+:- func type_args(type_desc) = list(type_desc).
 
     % pseudo_type_args(Type) = TypeArgs :-
     %   pseudo_type_ctor_and_args(Type, _, TypeArgs).
     %
-:- func pseudo_type_args(type_desc.pseudo_type_desc) =
-    list(type_desc.pseudo_type_desc) is semidet.
+:- func pseudo_type_args(pseudo_type_desc) = list(pseudo_type_desc) is semidet.
 
     % type_ctor_name(TypeCtor) returns the name of specified type constructor.
     % (e.g. type_ctor_name(type_ctor(type_of([2,3]))) = "list").
     %
-:- func type_ctor_name(type_desc.type_ctor_desc) = string.
+:- func type_ctor_name(type_ctor_desc) = string.
 
     % type_ctor_module_name(TypeCtor) returns the module name of specified
     % type constructor.
     % (e.g. type_ctor_module_name(type_ctor(type_of(2))) = "builtin").
     %
-:- func type_ctor_module_name(type_desc.type_ctor_desc) = string.
+:- func type_ctor_module_name(type_ctor_desc) = string.
 
     % type_ctor_arity(TypeCtor) returns the arity of specified
     % type constructor.
     % (e.g. type_ctor_arity(type_ctor(type_of([2,3]))) = 1).
     %
-:- func type_ctor_arity(type_desc.type_ctor_desc) = int.
+:- func type_ctor_arity(type_ctor_desc) = int.
 
     % type_ctor_name_and_arity(TypeCtor, ModuleName, TypeName, Arity) :-
     %   Name = type_ctor_name(TypeCtor),
     %   ModuleName = type_ctor_module_name(TypeCtor),
     %   Arity = type_ctor_arity(TypeCtor).
     %
-:- pred type_ctor_name_and_arity(type_desc.type_ctor_desc::in,
+:- pred type_ctor_name_and_arity(type_ctor_desc::in,
     string::out, string::out, int::out) is det.
 
     % make_type(TypeCtor, TypeArgs) = Type:
@@ -189,8 +186,7 @@
     % type (and hence this reverse mode of make_type/2 may be more useful
     % for some purposes than the type_ctor/1 function).
     %
-:- func make_type(type_desc.type_ctor_desc, list(type_desc.type_desc)) =
-    type_desc.type_desc.
+:- func make_type(type_ctor_desc, list(type_desc)) = type_desc.
 :- mode make_type(in, in) = out is semidet.
 :- mode make_type(out, out) = in is cc_multi.
 
@@ -200,8 +196,7 @@
     % to the specified argument types. Aborts if the length of `TypeArgs'
     % is not the same as the arity of `TypeCtor'.
     %
-:- func det_make_type(type_desc.type_ctor_desc, list(type_desc.type_desc)) =
-    type_desc.type_desc.
+:- func det_make_type(type_ctor_desc, list(type_desc)) = type_desc.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -502,8 +497,8 @@ type_name(Type) = TypeName :-
     %   ["TypeName1", ",", "TypeName2", ") = ", "ReturnTypeName"]
     % It is the caller's reponsibility to add matching parentheses.
     %
-:- pred type_arg_names(list(type_desc.type_desc)::in, bool::in,
-    list(string)::out) is det.
+:- pred type_arg_names(list(type_desc)::in, bool::in, list(string)::out)
+    is det.
 
 type_arg_names([], _, []).
 type_arg_names([Type | Types], IsFunc, ArgNames) :-
@@ -771,10 +766,10 @@ type_ctor_name_and_arity(TypeCtorDesc::in, ModuleName::out,
     % itself. It is intended for use from C code, since Mercury code can access
     % this type_info easily enough even without this predicate.
     %
-    % XXX This code relies on the type "type_desc.type_desc" being the
-    % same type as the builtin type "typeinfo".
+    % XXX This code relies on the type "type_desc" being the same type
+    % as the builtin type "typeinfo".
     %
-:- func get_type_info_for_type_info = type_desc.type_desc.
+:- func get_type_info_for_type_info = type_desc.
 
 :- pragma export(get_type_info_for_type_info = out,
     "ML_get_type_info_for_type_info").
