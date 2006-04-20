@@ -1,4 +1,4 @@
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % philo3.m
 % Copyright (C) 2001-2002 Ralph Becket <rbeck@microsoft.com>
 % Mon May 14 14:32:29 BST 2001
@@ -8,92 +8,98 @@
 % WHATEVER LICENCE IS DEEMED APPROPRIATE BY THE PROJECT
 % MANAGEMENT.
 %
-% The dining philosophers using semaphores.  The philosophers
-% acquire forks such that even numbered philosophers pick up
-% left then right whereas odd numbered philosophers pick up
-% right then left.  This is guaranteed not to lead to deadlock.
+% The dining philosophers using semaphores.  The philosophers acquire forks
+% such that even numbered philosophers pick up left then right whereas odd
+% numbered philosophers pick up right then left.  This is guaranteed not to
+% lead to deadlock.
 %
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module philo3.
-
 :- interface.
 
 :- import_module io.
 
+:- pred main(io::di, io::uo) is cc_multi.
 
-
-:- pred main(io__state::di, io__state::uo) is cc_multi.
-
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module string, list.
-:- import_module semaphore, spawn.
+:- import_module semaphore.
+:- import_module spawn.
 
-%------------------------------------------------------------------------------%
+:- import_module list.
+:- import_module string.
 
-main -->
-    semaphore__new(Fork0), semaphore__signal(Fork0),
-    semaphore__new(Fork1), semaphore__signal(Fork1),
-    semaphore__new(Fork2), semaphore__signal(Fork2),
-    semaphore__new(Fork3), semaphore__signal(Fork3),
-    semaphore__new(Fork4), semaphore__signal(Fork4),
-    spawn(philosopher("Plato",      0, Fork0, 1, Fork1)),
-    spawn(philosopher("Aristotle",  2, Fork2, 1, Fork1)),
-    spawn(philosopher("Descartes",  2, Fork2, 3, Fork3)),
-    spawn(philosopher("Calvin",     4, Fork4, 3, Fork3)),
-          philosopher("Hobbes",     4, Fork4, 0, Fork0).
+%-----------------------------------------------------------------------------%
 
-%------------------------------------------------------------------------------%
+main(!IO) :-
+    semaphore.new(Fork0, !IO), semaphore.signal(Fork0, !IO),
+    semaphore.new(Fork1, !IO), semaphore.signal(Fork1, !IO),
+    semaphore.new(Fork2, !IO), semaphore.signal(Fork2, !IO),
+    semaphore.new(Fork3, !IO), semaphore.signal(Fork3, !IO),
+    semaphore.new(Fork4, !IO), semaphore.signal(Fork4, !IO),
+    spawn(philosopher("Plato",      0, Fork0, 1, Fork1), !IO),
+    spawn(philosopher("Aristotle",  2, Fork2, 1, Fork1), !IO),
+    spawn(philosopher("Descartes",  2, Fork2, 3, Fork3), !IO),
+    spawn(philosopher("Calvin",     4, Fork4, 3, Fork3), !IO),
+          philosopher("Hobbes",     4, Fork4, 0, Fork0, !IO).
 
-:- pred philosopher(string,int,semaphore,int,semaphore,io__state,io__state).
-:- mode philosopher(in, in, in, in, in, di, uo) is cc_multi.
+%-----------------------------------------------------------------------------%
 
-philosopher(Name, A, ForkA, B, ForkB) -->
+:- pred philosopher(string::in, int::in, semaphore::in, int::in,
+    semaphore::in, io::di, io::uo) is cc_multi.
 
-    io__format("%s is thinking\n", [s(Name)]),
-    yield,
-    rand_sleep(10),
+philosopher(Name, A, ForkA, B, ForkB, !IO) :-
 
-    semaphore__wait(ForkA),
-    io__format("%s has acquired fork %d\n", [s(Name), i(A)]),
-    semaphore__wait(ForkB),
-    io__format("%s has acquired fork %d\n", [s(Name), i(B)]),
+    io.format("%s is thinking\n", [s(Name)], !IO),
+    yield(!IO),
+    rand_sleep(10, !IO),
 
-    io__format("%s is eating\n", [s(Name)]),
-    yield,
-    rand_sleep(5),
+    semaphore.wait(ForkA, !IO),
+    io.format("%s has acquired fork %d\n", [s(Name), i(A)], !IO),
+    semaphore.wait(ForkB, !IO),
+    io.format("%s has acquired fork %d\n", [s(Name), i(B)], !IO),
 
-    io__format("%s relinquishes fork %d\n", [s(Name), i(B)]),
-    semaphore__signal(ForkB),
-    io__format("%s relinquishes fork %d\n", [s(Name), i(A)]),
-    semaphore__signal(ForkA),
+    io.format("%s is eating\n", [s(Name)], !IO),
+    yield(!IO),
+    rand_sleep(5, !IO),
 
-    philosopher(Name, A, ForkA, B, ForkB).
+    io.format("%s relinquishes fork %d\n", [s(Name), i(B)], !IO),
+    semaphore__signal(ForkB, !IO),
+    io.format("%s relinquishes fork %d\n", [s(Name), i(A)], !IO),
+    semaphore.signal(ForkA, !IO),
 
-%------------------------------------------------------------------------------%
+    philosopher(Name, A, ForkA, B, ForkB, !IO).
+
+%-----------------------------------------------------------------------------%
 
 :- pragma foreign_code("C#", "
 	public static System.Random rng = new System.Random();
 ").
 
-:- pred rand_sleep(int::in, io__state::di, io__state::uo) is det.
-:- pragma c_code(rand_sleep(Int::in, IO0::di, IO::uo),
-		[thread_safe, will_not_call_mercury], "{
+:- pred rand_sleep(int::in, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+    rand_sleep(Int::in, IO0::di, IO::uo),
+	[promise_pure, thread_safe, will_not_call_mercury],
+"
 #ifdef _MSC_VER
 	Sleep(1000 * (rand() % Int));
 #else
 	sleep((rand() % Int));
 #endif
 	IO =  IO0;
-}").
-:- pragma foreign_proc("C#", rand_sleep(Int::in, _IO0::di, _IO::uo),
-		[thread_safe, will_not_call_mercury, promise_pure], "{
-	System.Threading.Thread.Sleep(rng.Next(Int) * 1000);
-}").
+").
 
-%------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
+:- pragma foreign_proc("C#",
+    rand_sleep(Int::in, _IO0::di, _IO::uo),
+	[promise_pure, thread_safe, will_not_call_mercury],
+"
+	System.Threading.Thread.Sleep(rng.Next(Int) * 1000);
+").
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%

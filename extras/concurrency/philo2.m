@@ -1,109 +1,131 @@
-%---------------------------------------------------------------------------%
-% Copyright (C) 2000-2003 The University of Melbourne.
+%-----------------------------------------------------------------------------%
+% vim: ft=mercury ts=4 sw=4 et
+%-----------------------------------------------------------------------------%
+% Copyright (C) 2000-2003, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%---------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 %
+% File: philo2.m.
 % Main author: petdr (based on code by conway)
 %
 % The classic "Dining Philosophers" problem, to show how to use mvars
 % to do coroutining.
 %
+%-----------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
-:- module philo2.
 
+:- module philo2.
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is cc_multi.
+%---------------------------------------------------------------------------%
+
+:- pred main(io::di, io::uo) is cc_multi.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module mvar, spawn.
-:- import_module bool, list, require, string.
+:- import_module mvar.
+:- import_module spawn.
+
+:- import_module bool.
+:- import_module list.
+:- import_module require.
+:- import_module string.
+
+%---------------------------------------------------------------------------%
 
 :- type forks
-	--->	forks(bool, bool, bool, bool, bool).
+    --->    forks(bool, bool, bool, bool, bool).
 
 :- type philosopher
-	--->	plato
-	;	aristotle
-	;	descartes
-	;	russell
-	;	sartre
-	.
+    --->    plato
+    ;       aristotle
+    ;       descartes
+    ;       russell
+    ;       sartre.
 
-main -->
-	mvar__init(ForkGlob),
-	mvar__put(ForkGlob, forks(yes, yes, yes, yes, yes)),
-	spawn(philosopher(plato, ForkGlob)),
-	spawn(philosopher(aristotle, ForkGlob)),
-	spawn(philosopher(descartes, ForkGlob)),
-	spawn(philosopher(russell, ForkGlob)),
-	philosopher(sartre, ForkGlob).
+main(!IO) :-
+    mvar.init(ForkGlob, !IO),
+    mvar.put(ForkGlob, forks(yes, yes, yes, yes, yes), !IO),
+    spawn(philosopher(plato, ForkGlob), !IO),
+    spawn(philosopher(aristotle, ForkGlob), !IO),
+    spawn(philosopher(descartes, ForkGlob), !IO),
+    spawn(philosopher(russell, ForkGlob), !IO),
+    philosopher(sartre, ForkGlob, !IO).
 
-:- pred philosopher(philosopher, mvar(forks),
-		io__state, io__state).
-:- mode philosopher(in, in, di, uo) is cc_multi.
+:- pred philosopher(philosopher::in, mvar(forks)::in, io::di, io::uo)
+    is cc_multi.
 
-philosopher(Who, ForkGlob) -->
-	io__flush_output,
-	{ name(Who, Name) },
-	io__format("%s is thinking.\n", [s(Name)]),
-	rand_sleep(5),
-	mvar__take(ForkGlob, Forks0),
-	io__format("%s is attempting to eat.\n", [s(Name)]),
-	( { forks(Who, Forks0, Forks1) } ->
-		mvar__put(ForkGlob, Forks1),
-		io__format("%s is eating.\n", [s(Name)]),
-		rand_sleep(10),
-		mvar__take(ForkGlob, Forks2),
-		( { forks(Who, Forks3, Forks2) } ->
-			mvar__put(ForkGlob, Forks3)
-		;
-			{ error("all forked up") }
-		)
-	;
-		% Our 2 forks were not available
-		mvar__put(ForkGlob, Forks0)
-	),
-	philosopher(Who, ForkGlob).
+philosopher(Who, ForkGlob, !IO) :-
+    io.flush_output(!IO),
+    name(Who, Name),
+    io.format("%s is thinking.\n", [s(Name)], !IO),
+    rand_sleep(5, !IO),
+    mvar.take(ForkGlob, Forks0, !IO),
+    io.format("%s is attempting to eat.\n", [s(Name)], !IO),
+    ( forks(Who, Forks0, Forks1) ->
+        mvar.put(ForkGlob, Forks1, !IO),
+        io.format("%s is eating.\n", [s(Name)], !IO),
+        rand_sleep(10, !IO),
+        mvar.take(ForkGlob, Forks2, !IO),
+        ( forks(Who, Forks3, Forks2) ->
+            mvar.put(ForkGlob, Forks3, !IO)
+        ;
+            error("all forked up")
+        )
+    ;
+        % Our 2 forks were not available
+        mvar.put(ForkGlob, Forks0, !IO)
+    ),
+    philosopher(Who, ForkGlob, !IO).
 
 :- pred forks(philosopher, forks, forks).
 :- mode forks(in, in, out) is semidet.
 :- mode forks(in, out, in) is semidet.
 
-forks(plato,		forks(yes, yes, C, D, E), forks(no, no, C, D, E)).
-forks(aristotle,	forks(A, yes, yes, D, E), forks(A, no, no, D, E)).
-forks(descartes,	forks(A, B, yes, yes, E), forks(A, B, no, no, E)).
-forks(russell,		forks(A, B, C, yes, yes), forks(A, B, C, no, no)).
-forks(sartre,		forks(yes, B, C, D, yes), forks(no, B, C, D, no)).
+forks(plato,        forks(yes, yes, C, D, E), forks(no, no, C, D, E)).
+forks(aristotle,    forks(A, yes, yes, D, E), forks(A, no, no, D, E)).
+forks(descartes,    forks(A, B, yes, yes, E), forks(A, B, no, no, E)).
+forks(russell,      forks(A, B, C, yes, yes), forks(A, B, C, no, no)).
+forks(sartre,       forks(yes, B, C, D, yes), forks(no, B, C, D, no)).
 
-:- pred name(philosopher, string).
-:- mode name(in, out) is det.
+:- pred name(philosopher::in, string::out) is det.
 
-name(plato	, "Plato").
-name(aristotle	, "Aristotle").
-name(descartes	, "Descartes").
-name(russell	, "Russell").
-name(sartre	, "Sartre").
+name(plato,     "Plato").
+name(aristotle, "Aristotle").
+name(descartes, "Descartes").
+name(russell,   "Russell").
+name(sartre,    "Sartre").
 
 :- pragma foreign_code("C#", "
-	public static System.Random rng = new System.Random();
+    public static System.Random rng = new System.Random();
 ").
 
-:- pred rand_sleep(int::in, io__state::di, io__state::uo) is det.
-:- pragma c_code(rand_sleep(Int::in, IO0::di, IO::uo),
-		[thread_safe, will_not_call_mercury], "{
+:- pred rand_sleep(int::in, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    rand_sleep(Int::in, IO0::di, IO::uo),
+    [promise_pure, thread_safe, will_not_call_mercury],
+"
 #ifdef _MSC_VER
-	Sleep(1000 * (rand() % Int));
+    Sleep(1000 * (rand() % Int));
 #else
-	sleep((rand() % Int));
+    sleep((rand() % Int));
 #endif
-	IO =  IO0;
-}").
-:- pragma foreign_proc("C#", rand_sleep(Int::in, _IO0::di, _IO::uo),
-		[thread_safe, will_not_call_mercury, promise_pure], "{
-	System.Threading.Thread.Sleep(rng.Next(Int) * 1000);
-}").
+    IO =  IO0;
+").
+
+:- pragma foreign_proc("C#",
+    rand_sleep(Int::in, _IO0::di, _IO::uo),
+    [promise_pure, thread_safe, will_not_call_mercury],
+"
+    System.Threading.Thread.Sleep(rng.Next(Int) * 1000);
+").
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
