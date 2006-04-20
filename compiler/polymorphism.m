@@ -2727,7 +2727,7 @@ init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorInfoVar,
         TypeCtorInfoGoal, ModuleInfo, !VarSet, !VarTypes, !RttiVarMaps) :-
     type_util.type_ctor_module(ModuleInfo, TypeCtor, ModuleName),
     type_util.type_ctor_name(ModuleInfo, TypeCtor, TypeName),
-    TypeCtor = _ - Arity,
+    TypeCtor = type_ctor(_, Arity),
     ConsId = type_ctor_info_const(ModuleName, TypeName, Arity),
     TypeInfoTerm = functor(ConsId, no, []),
 
@@ -2999,13 +2999,14 @@ build_typeclass_info_type(_Constraint, DictionaryType) :-
 %---------------------------------------------------------------------------%
 
 type_is_typeclass_info(TypeClassInfoType) :-
-    PrivateBuiltin = mercury_private_builtin_module,
-    type_to_ctor_and_args(TypeClassInfoType,
-        qualified(PrivateBuiltin, "typeclass_info") - 0, [_ConstraintTerm]).
+    type_to_ctor_and_args(TypeClassInfoType, TypeCtor, [_ConstraintTerm]),
+    TypeCtor = type_ctor(qualified(ModuleName, "typeclass_info"), 0),
+    ModuleName = mercury_private_builtin_module.
 
 type_is_type_info_or_ctor_type(TypeInfoType) :-
-    type_to_ctor_and_args(TypeInfoType,
-        qualified(mercury_private_builtin_module, TypeName) - 0, []),
+    type_to_ctor_and_args(TypeInfoType, TypeCtor, []),
+    TypeCtor = type_ctor(qualified(ModuleName, TypeName), 0),
+    ModuleName = mercury_private_builtin_module,
     ( TypeName = "type_info"
     ; TypeName = "type_ctor_info"
     ).

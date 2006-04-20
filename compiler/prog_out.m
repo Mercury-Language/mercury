@@ -280,7 +280,7 @@ sym_name_and_arity_to_string(SymName/Arity, String) :-
 sym_name_and_arity_to_string(SymName/Arity) = String :-
     sym_name_and_arity_to_string(SymName/Arity, String).
 
-write_simple_call_id(PredOrFunc - Name/Arity, !IO) :-
+write_simple_call_id(simple_call_id(PredOrFunc, Name, Arity), !IO) :-
     Str = simple_call_id_to_string(PredOrFunc, Name, Arity),
     io.write_string(Str, !IO).
 
@@ -292,7 +292,7 @@ write_simple_call_id(PredOrFunc, Name, Arity, !IO) :-
     Str = simple_call_id_to_string(PredOrFunc, Name, Arity),
     io.write_string(Str, !IO).
 
-simple_call_id_to_string(PredOrFunc - Name/Arity) =
+simple_call_id_to_string(simple_call_id(PredOrFunc, Name, Arity)) =
     simple_call_id_to_string(PredOrFunc, Name, Arity).
 
 simple_call_id_to_string(PredOrFunc, Name/Arity) =
@@ -327,14 +327,14 @@ simple_call_id_to_string(PredOrFunc, Name, Arity) = Str :-
     ;
         MaybePromise = no,
         PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
-        simple_call_id_to_sym_name_and_arity(PredOrFunc - Name/Arity,
-            SymArity),
+        SimpleCallId = simple_call_id(PredOrFunc, Name, Arity),
+        simple_call_id_to_sym_name_and_arity(SimpleCallId, SymArity),
         SymArityStr = sym_name_and_arity_to_string(SymArity),
         Str = PredOrFuncStr ++ " `" ++ SymArityStr ++ "'"
     ).
 
-simple_call_id_to_sym_name_and_arity(PredOrFunc - SymName/Arity,
-        SymName/OrigArity) :-
+simple_call_id_to_sym_name_and_arity(SimpleCallId, SymName / OrigArity) :-
+    SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
     adjust_func_arity(PredOrFunc, OrigArity, Arity).
 
 write_module_spec(ModuleSpec, !IO) :-

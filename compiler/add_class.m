@@ -607,20 +607,21 @@ produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
             varset.init(TVarSet0),
 
             ProcIds = [],
-            % means this clause applies to _every_ mode of the procedure
+            % Means this clause applies to _every_ mode of the procedure.
             GoalType = none,    % goal is not a promise
             clauses_info_add_clause(ProcIds, CVarSet, TVarSet0, HeadTerms,
                 Body, Context, Status, PredOrFunc, Arity, GoalType, Goal,
                 VarSet, _TVarSet, !ClausesInfo, Warnings, !ModuleInfo,
                 !QualInfo, !IO),
 
+            SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
+
             % Warn about singleton variables.
-            maybe_warn_singletons(VarSet, PredOrFunc - PredName/Arity,
-                !.ModuleInfo, Goal, !IO),
+            maybe_warn_singletons(VarSet, SimpleCallId, !.ModuleInfo, Goal,
+                !IO),
 
             % Warn about variables with overlapping scopes.
-            maybe_warn_overlap(Warnings, VarSet, PredOrFunc - PredName/Arity,
-                !IO)
+            maybe_warn_overlap(Warnings, VarSet, SimpleCallId, !IO)
         )
     ;
         unexpected(this_file, "produce_clause: invalid instance item")

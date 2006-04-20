@@ -1367,7 +1367,7 @@ generic_call_pred_or_func(cast(_)) = predicate.
 
 :- func simple_call_id_pred_or_func(simple_call_id) = pred_or_func.
 
-simple_call_id_pred_or_func(PredOrFunc - _) = PredOrFunc.
+simple_call_id_pred_or_func(simple_call_id(PredOrFunc, _, _)) = PredOrFunc.
 
 %-----------------------------------------------------------------------------%
 %

@@ -1008,7 +1008,9 @@
 
 :- type type_term   ==  term(tvar_type).
 
-:- type tvar_type   --->    type_var.
+:- type tvar_type
+    --->    type_var.
+
 :- type tvar        ==  var(tvar_type).
                     % used for type variables
 :- type tvarset     ==  varset(tvar_type).
@@ -1016,7 +1018,8 @@
 :- type tsubst      ==  map(tvar, mer_type). % used for type substitutions
 :- type tvar_renaming   ==  map(tvar, tvar). % type renaming
 
-:- type type_ctor   ==  pair(sym_name, arity).
+:- type type_ctor
+    --->    type_ctor(sym_name, arity).
 
 :- type tvar_name_map   ==  map(string, tvar).
 
@@ -1163,11 +1166,15 @@
                                     % function.
             ).
 
-:- type inst_id     ==  pair(sym_name, arity).
+:- type inst_id
+    --->    inst_id(sym_name, arity).
 
-:- type bound_inst  --->    functor(cons_id, list(mer_inst)).
+:- type bound_inst
+    --->    functor(cons_id, list(mer_inst)).
 
-:- type inst_var_type   --->    inst_var_type.
+:- type inst_var_type
+    --->    inst_var_type.
+
 :- type inst_var    ==  var(inst_var_type).
 :- type inst_term   ==  term(inst_var_type).
 :- type inst_varset ==  varset(inst_var_type).
@@ -1239,7 +1246,8 @@
     --->    real_unify
     ;       fake_unify.
 
-:- type mode_id     ==  pair(sym_name, arity).
+:- type mode_id
+    --->    mode_id(sym_name, arity).
 
 :- type mode_defn
     --->    eqv_mode(mer_mode).
@@ -1333,7 +1341,8 @@
 :- type sym_name_and_arity
     --->    sym_name / arity.
 
-:- type simple_call_id == pair(pred_or_func, sym_name_and_arity).
+:- type simple_call_id
+    --->    simple_call_id(pred_or_func, sym_name, arity).
 
 :- type module_specifier == sym_name.
 :- type arity       ==  int.

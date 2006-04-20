@@ -129,7 +129,8 @@ module_id_to_module_name(ModuleId) = ModuleName :-
     string_to_sym_name(ModuleId, ".", ModuleName).
 
 pred_or_func_name_arity_to_func_id(PredOrFunc, Name, Arity, ProcId) = FuncId :-
-    FuncId0 = simple_call_id_to_string(PredOrFunc - unqualified(Name)/Arity),
+    SimpleCallId = simple_call_id(PredOrFunc, unqualified(Name), Arity),
+    FuncId0 = simple_call_id_to_string(SimpleCallId),
     proc_id_to_int(ProcId, ProcInt),
     FuncId = FuncId0 ++ "-" ++ int_to_string(ProcInt).
 

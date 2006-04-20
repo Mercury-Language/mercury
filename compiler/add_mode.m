@@ -65,7 +65,7 @@ module_add_inst_defn(VarSet, Name, Args, InstDefn, Cond, Context,
     % check if the inst is infinitely recursive (at the top level)
     %
     Arity = list.length(Args),
-    InstId = Name - Arity,
+    InstId = inst_id(Name, Arity),
     TestArgs = list.duplicate(Arity, not_reached),
     check_for_cyclic_inst(Insts, InstId, InstId, TestArgs, [], Context,
         InvalidMode, !IO).
@@ -81,9 +81,10 @@ insts_add(_, _, _, abstract_inst, _, _, _, !Insts, !IO) :-
 insts_add(VarSet, Name, Args, eqv_inst(Body), _Cond, Context, Status, !Insts,
         !IO) :-
     list.length(Args, Arity),
+    InstId = inst_id(Name, Arity),
     (
         I = hlds_inst_defn(VarSet, Args, eqv_inst(Body), Context, Status),
-        user_inst_table_insert(Name - Arity, I, !Insts)
+        user_inst_table_insert(InstId, I, !Insts)
     ->
         true
     ;
@@ -93,7 +94,7 @@ insts_add(VarSet, Name, Args, eqv_inst(Body), _Cond, Context, Status, !Insts,
         % XXX we should record each error using
         %    module_info_incr_errors
         user_inst_table_get_inst_defns(!.Insts, InstDefns),
-        map.lookup(InstDefns, Name - Arity, OrigI),
+        map.lookup(InstDefns, InstId, OrigI),
         OrigI = hlds_inst_defn(_, _, _, OrigContext, _),
         multiple_def_error(Status, Name, Arity, "inst", Context, OrigContext,
             _, !IO)
@@ -108,7 +109,7 @@ insts_add(VarSet, Name, Args, eqv_inst(Body), _Cond, Context, Status, !Insts,
 check_for_cyclic_inst(UserInstTable, OrigInstId, InstId0, Args0, Expansions0,
         Context, InvalidMode, !IO) :-
     ( list.member(InstId0, Expansions0) ->
-        report_circular_equiv_error("inst", OrigInstId, InstId0, Expansions0,
+        report_circular_inst_equiv_error(OrigInstId, InstId0, Expansions0,
             Context, !IO),
         InvalidMode = yes
     ;
@@ -121,7 +122,7 @@ check_for_cyclic_inst(UserInstTable, OrigInstId, InstId0, Args0, Expansions0,
             EqvInst = defined_inst(user_inst(Name, Args))
         ->
             Arity = list.length(Args),
-            InstId = Name - Arity,
+            InstId = inst_id(Name, Arity),
             Expansions = [InstId0 | Expansions0],
             check_for_cyclic_inst(UserInstTable, OrigInstId, InstId, Args,
                 Expansions, Context, InvalidMode, !IO)
@@ -146,7 +147,7 @@ module_add_mode_defn(VarSet, Name, Params, ModeDefn, Cond, Context,
 modes_add(VarSet, Name, Args, eqv_mode(Body), _Cond, Context, Status,
         !Modes, InvalidMode, !IO) :-
     list.length(Args, Arity),
-    ModeId = Name - Arity,
+    ModeId = mode_id(Name, Arity),
     (
         I = hlds_mode_defn(VarSet, Args, eqv_mode(Body), Context, Status),
         mode_table_insert(ModeId, I, !Modes)
@@ -156,8 +157,7 @@ modes_add(VarSet, Name, Args, eqv_mode(Body), _Cond, Context, Status,
         mode_table_get_mode_defns(!.Modes, ModeDefns),
         map.lookup(ModeDefns, ModeId, OrigI),
         OrigI = hlds_mode_defn(_, _, _, OrigContext, _),
-        % XXX we should record each error using
-        %   module_info_incr_errors
+        % XXX We should record each error using module_info_incr_errors.
         multiple_def_error(Status, Name, Arity, "mode", Context, OrigContext,
             _, !IO)
     ),
@@ -172,8 +172,8 @@ modes_add(VarSet, Name, Args, eqv_mode(Body), _Cond, Context, Status,
 check_for_cyclic_mode(ModeTable, OrigModeId, ModeId0, Expansions0, Context,
         InvalidMode, !IO) :-
     ( list.member(ModeId0, Expansions0) ->
-        report_circular_equiv_error("mode", OrigModeId, ModeId0,
-            Expansions0, Context, !IO),
+        report_circular_mode_equiv_error(OrigModeId, ModeId0, Expansions0,
+            Context, !IO),
         InvalidMode = yes
     ;
         mode_table_get_mode_defns(ModeTable, ModeDefns),
@@ -184,7 +184,7 @@ check_for_cyclic_mode(ModeTable, OrigModeId, ModeId0, Expansions0, Context,
             EqvMode = user_defined_mode(Name, Args)
         ->
             Arity = list.length(Args),
-            ModeId = Name - Arity,
+            ModeId = mode_id(Name, Arity),
             Expansions = [ModeId0 | Expansions0],
             check_for_cyclic_mode(ModeTable, OrigModeId, ModeId, Expansions,
                 Context, InvalidMode, !IO)
@@ -193,12 +193,41 @@ check_for_cyclic_mode(ModeTable, OrigModeId, ModeId0, Expansions0, Context,
         )
     ).
 
-:- type id == pair(sym_name, arity).
+:- pred report_circular_inst_equiv_error(inst_id::in, inst_id::in,
+    list(inst_id)::in, prog_context::in, io::di, io::uo) is det.
 
-:- pred report_circular_equiv_error(string::in, id::in, id::in, list(id)::in,
-    prog_context::in, io::di, io::uo) is det.
+report_circular_inst_equiv_error(OrigInstId, InstId, Expansions,
+        Context, !IO) :-
+    report_circular_equiv_error("inst", "insts",
+        inst_id_to_circ_id(OrigInstId), inst_id_to_circ_id(InstId),
+        list.map(inst_id_to_circ_id, Expansions),
+        Context, !IO).
 
-report_circular_equiv_error(Kind, OrigId, Id, Expansions, Context, !IO) :-
+:- pred report_circular_mode_equiv_error(mode_id::in, mode_id::in,
+    list(mode_id)::in, prog_context::in, io::di, io::uo) is det.
+
+report_circular_mode_equiv_error(OrigModeId, ModeId, Expansions,
+        Context, !IO) :-
+    report_circular_equiv_error("mode", "modes",
+        mode_id_to_circ_id(OrigModeId), mode_id_to_circ_id(ModeId),
+        list.map(mode_id_to_circ_id, Expansions),
+        Context, !IO).
+
+:- type circ_id
+    --->    circ_id(sym_name, arity).
+
+:- func inst_id_to_circ_id(inst_id) = circ_id.
+:- func mode_id_to_circ_id(mode_id) = circ_id.
+
+inst_id_to_circ_id(inst_id(SymName, Arity)) = circ_id(SymName, Arity).
+mode_id_to_circ_id(mode_id(SymName, Arity)) = circ_id(SymName, Arity).
+
+:- pred report_circular_equiv_error(string::in, string::in,
+    circ_id::in, circ_id::in, list(circ_id)::in, prog_context::in,
+    io::di, io::uo) is det.
+
+report_circular_equiv_error(One, Several, OrigId, Id, Expansions, Context,
+        !IO) :-
     ( Id = OrigId ->
         %
         % Report an error message of the form
@@ -210,9 +239,9 @@ report_circular_equiv_error(Kind, OrigId, Id, Expansions, Context, !IO) :-
         %   and baz/2.
         % where <kind> is either "inst" or "mode".
         %
-        Kinds = (if Expansions = [_] then Kind else Kind ++ "s"),
+        Kinds = choose_number(Expansions, One, Several),
         ExpansionPieces = list.map(
-            (func(SymName - Arity) =
+            (func(circ_id(SymName, Arity)) =
                 sym_name_and_arity(SymName / Arity)),
             Expansions),
         Pieces = [words("Error: circular equivalence"), fixed(Kinds)]

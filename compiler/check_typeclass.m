@@ -1640,7 +1640,7 @@ report_unbound_tvars_in_pred_context(Vars, PredInfo, !IO) :-
 report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn, !IO) :-
     get_type_defn_context(TypeDefn, Context),
     get_type_defn_tvarset(TypeDefn, TVarSet),
-    TypeCtor = SymName - Arity,
+    TypeCtor = type_ctor(SymName, Arity),
 
     VarsStrs = list.map((func(Var) = mercury_var_to_string(Var, TVarSet, no)),
         Vars),

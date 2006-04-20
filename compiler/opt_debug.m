@@ -610,7 +610,7 @@ dump_proclabel(ProcLabel) = Str :-
     ;
         ProcLabel = special_proc(Module, SpecialPredId, TypeModule,
             TypeName, TypeArity, Mode),
-        TypeCtor = qualified(TypeModule, TypeName) - TypeArity,
+        TypeCtor = type_ctor(qualified(TypeModule, TypeName), TypeArity),
         Str = sym_name_mangle(Module) ++ "_"
             ++ special_pred_name(SpecialPredId, TypeCtor) ++ "_"
             ++ qualify_name(sym_name_mangle(TypeModule), TypeName) ++ "_"

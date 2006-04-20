@@ -130,7 +130,7 @@ special_pred_list([spec_pred_unify, spec_pred_index, spec_pred_compare]).
 special_pred_mode_num(_, 0).
     % mode num for special procs is always 0 (the first mode)
 
-special_pred_name(SpecialPred, SymName - Arity) = Name :-
+special_pred_name(SpecialPred, type_ctor(SymName, Arity)) = Name :-
     BaseName = get_special_pred_id_target_name(SpecialPred),
     AppendTypeId = spec_pred_name_append_type_id,
     (
@@ -284,13 +284,13 @@ can_generate_special_pred_clauses_for_type(ModuleInfo, TypeCtor, Body) :-
 
 is_builtin_types_special_preds_defined_in_mercury(TypeCtor, TypeName) :-
     Builtin = mercury_public_builtin_module,
-    ( TypeCtor = qualified(Builtin, "int") - 0
-    ; TypeCtor = qualified(Builtin, "string") - 0
-    ; TypeCtor = qualified(Builtin, "character") - 0
-    ; TypeCtor = qualified(Builtin, "float") - 0
-    ; TypeCtor = qualified(Builtin, "pred") - 0
-    ),
-    TypeCtor = qualified(_Module, TypeName) - _Arity.
+    TypeCtor = type_ctor(qualified(Builtin, TypeName), 0),
+    ( TypeName = "int"
+    ; TypeName = "string"
+    ; TypeName = "character"
+    ; TypeName = "float"
+    ; TypeName = "pred"
+    ).
 
 %-----------------------------------------------------------------------------%
 

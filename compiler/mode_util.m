@@ -455,7 +455,7 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         inst_table_get_user_insts(InstTable, UserInstTable),
         user_inst_table_get_inst_defns(UserInstTable, InstDefns),
         list.length(Args, Arity),
-        ( map.search(InstDefns, Name - Arity, InstDefn) ->
+        ( map.search(InstDefns, inst_id(Name, Arity), InstDefn) ->
             InstDefn = hlds_inst_defn(_VarSet, Params, InstBody, _C, _),
             inst_lookup_subst_args(InstBody, Params, Name, Args, Inst)
         ;
@@ -789,7 +789,7 @@ propagate_ctor_info_2(ModuleInfo, Type, BoundInsts0, BoundInsts) :-
             BoundInsts0, BoundInsts)
     ;
         type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
-        TypeCtor = qualified(TypeModule, _) - _,
+        TypeCtor = type_ctor(qualified(TypeModule, _), _),
         module_info_get_type_table(ModuleInfo, TypeTable),
         map.search(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
@@ -900,7 +900,7 @@ mode_get_insts_semidet(ModuleInfo, user_defined_mode(Name, Args),
     list.length(Args, Arity),
     module_info_get_mode_table(ModuleInfo, Modes),
     mode_table_get_mode_defns(Modes, ModeDefns),
-    map.search(ModeDefns, Name - Arity, HLDS_Mode),
+    map.search(ModeDefns, mode_id(Name, Arity), HLDS_Mode),
     HLDS_Mode = hlds_mode_defn(_VarSet, Params, ModeDefn, _Context, _Status),
     ModeDefn = eqv_mode(Mode0),
     mode_substitute_arg_list(Mode0, Params, Args, Mode),

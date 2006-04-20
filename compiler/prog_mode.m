@@ -526,7 +526,7 @@ get_arg_insts_2([BoundInst | BoundInsts], ConsId, ArgInsts) :-
     ).
 
     % In case we later decided to change the representation of mode_ids.
-mode_id_to_int(_ - X, X).
+mode_id_to_int(mode_id(_, X), X).
 
 %-----------------------------------------------------------------------------%
 

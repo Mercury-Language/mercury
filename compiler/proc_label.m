@@ -77,15 +77,15 @@ make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
         (
             % All type_ctors other than tuples here should be module qualified,
             % since builtin types are handled separately in polymorphism.m.
+            TypeCtor = type_ctor(TypeCtorSymName, TypeArity),
             (
-                TypeCtor = unqualified(TypeName) - _,
+                TypeCtorSymName = unqualified(TypeName),
                 type_ctor_is_tuple(TypeCtor),
                 mercury_public_builtin_module(TypeModule)
             ;
-                TypeCtor = qualified(TypeModule, TypeName) - _
+                TypeCtorSymName = qualified(TypeModule, TypeName)
             )
         ->
-            TypeCtor = _ - TypeArity,
             (
                 ThisModule \= TypeModule,
                 SpecialPred = spec_pred_unify,
@@ -131,7 +131,7 @@ make_user_proc_label(ThisModule, PredIsImported, PredOrFunc, PredModule,
 
 make_uni_label(ModuleInfo, TypeCtor, UniModeNum) = ProcLabel :-
     module_info_get_name(ModuleInfo, ModuleName),
-    ( TypeCtor = qualified(TypeModule, TypeName) - Arity ->
+    ( TypeCtor = type_ctor(qualified(TypeModule, TypeName), Arity) ->
         ( hlds_pred.in_in_unification_proc_id(UniModeNum) ->
             Module = TypeModule
         ;

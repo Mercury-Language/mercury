@@ -1563,7 +1563,7 @@ generate_csn_vector_cell(Length, CSNVars, CellVar, CellGoal, !DeepInfo) :-
     varset.new_named_var(VarSet0, "CSNCell", CellVar, VarSet),
     mercury_profiling_builtin_module(ProfilingBuiltin),
     CellTypeName = string.format("call_site_nums_%d", [i(Length)]),
-    CellTypeId = qualified(ProfilingBuiltin, CellTypeName) - Length,
+    CellTypeId = type_ctor(qualified(ProfilingBuiltin, CellTypeName), Length),
     construct_type(CellTypeId, [], CellType),
     map.set(VarTypes0, CellVar, CellType, VarTypes),
     !:DeepInfo = !.DeepInfo ^ vars := VarSet,

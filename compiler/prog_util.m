@@ -628,10 +628,10 @@ make_cons_id(SymName0, Args, TypeCtor) = cons(SymName, Arity) :-
     ;
         SymName0 = unqualified(ConsName),
         (
-            TypeCtor = unqualified(_) - _,
+            TypeCtor = type_ctor(unqualified(_), _),
             SymName = SymName0
         ;
-            TypeCtor = qualified(TypeModule, _) - _,
+            TypeCtor = type_ctor(qualified(TypeModule, _), _),
             SymName = qualified(TypeModule, ConsName)
         )
     ),

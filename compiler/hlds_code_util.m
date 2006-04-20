@@ -148,7 +148,7 @@ make_instance_string(InstanceTypes, InstanceString) :-
 
 type_to_string(Type, String) :-
     ( type_to_ctor_and_args(Type, TypeCtor, _) ->
-        TypeCtor = TypeName - TypeArity,
+        TypeCtor = type_ctor(TypeName, TypeArity),
         sym_name_to_string(TypeName, "__", TypeNameString),
         string.int_to_string(TypeArity, TypeArityString),
         String = TypeNameString ++ "__arity" ++ TypeArityString ++ "__"

@@ -301,7 +301,7 @@ do_add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
 adjust_types_with_special_preds_in_private_builtin(Type) = NormalizedType :-
     ( type_to_ctor_and_args(Type, TypeCtor, []) ->
         ( is_builtin_types_special_preds_defined_in_mercury(TypeCtor, Name) ->
-            construct_type(unqualified(Name) - 0, [], NormalizedType)
+            construct_type(type_ctor(unqualified(Name), 0), [], NormalizedType)
         ;
             NormalizedType = Type
         )
@@ -346,7 +346,7 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
     special_pred_interface(SpecialPredId, Type, ArgTypes, ArgModes, Det),
     Name = special_pred_name(SpecialPredId, TypeCtor),
     ( SpecialPredId = spec_pred_init ->
-        TypeCtor = TypeSymName - _TypeArity,
+        TypeCtor = type_ctor(TypeSymName, _TypeArity),
         sym_name_get_module_name(TypeSymName, ModuleName, TypeModuleName),
         PredName = qualified(TypeModuleName, Name)
     ;

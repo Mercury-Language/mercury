@@ -3093,39 +3093,39 @@ gen_string_construction(VarName, VarValue, !VarTypes, !VarSet, Var, Goal) :-
 
 trie_node_type = Type :-
     mercury_table_builtin_module(TB),
-    construct_type(qualified(TB, "ml_trie_node") - 0, [], Type).
+    construct_type(type_ctor(qualified(TB, "ml_trie_node"), 0), [], Type).
 
 memo_non_record_type = Type :-
     mercury_table_builtin_module(TB),
-    construct_type(qualified(TB, "memo_non_record") - 0, [], Type).
+    construct_type(type_ctor(qualified(TB, "memo_non_record"), 0), [], Type).
 
 subgoal_type = Type :-
     mercury_table_builtin_module(TB),
-    construct_type(qualified(TB, "ml_subgoal") - 0, [], Type).
+    construct_type(type_ctor(qualified(TB, "ml_subgoal"), 0), [], Type).
 
 answer_block_type = Type :-
     mercury_table_builtin_module(TB),
-    construct_type(qualified(TB, "ml_answer_block") - 0, [], Type).
+    construct_type(type_ctor(qualified(TB, "ml_answer_block"), 0), [], Type).
 
 loop_status_type = Type :-
     mercury_table_builtin_module(TB),
-    construct_type(qualified(TB, "loop_status") - 0, [], Type).
+    construct_type(type_ctor(qualified(TB, "loop_status"), 0), [], Type).
 
 memo_det_status_type = Type :-
     mercury_table_builtin_module(TB),
-    construct_type(qualified(TB, "memo_det_status") - 0, [], Type).
+    construct_type(type_ctor(qualified(TB, "memo_det_status"), 0), [], Type).
 
 memo_semi_status_type = Type :-
     mercury_table_builtin_module(TB),
-    construct_type(qualified(TB, "memo_semi_status") - 0, [], Type).
+    construct_type(type_ctor(qualified(TB, "memo_semi_status"), 0), [], Type).
 
 memo_non_status_type = Type :-
     mercury_table_builtin_module(TB),
-    construct_type(qualified(TB, "memo_non_status") - 0, [], Type).
+    construct_type(type_ctor(qualified(TB, "memo_non_status"), 0), [], Type).
 
 mm_status_type = Type :-
     mercury_table_builtin_module(TB),
-    construct_type(qualified(TB, "mm_status") - 0, [], Type).
+    construct_type(type_ctor(qualified(TB, "mm_status"), 0), [], Type).
 
 %-----------------------------------------------------------------------------%
 
@@ -3133,13 +3133,13 @@ mm_status_type = Type :-
 
 consumer_type = Type :-
     mercury_table_builtin_module(TB),
-    construct_type(qualified(TB, "ml_consumer") - 0, [], Type).
+    construct_type(type_ctor(qualified(TB, "ml_consumer"), 0), [], Type).
 
 :- func generator_type = mer_type.
 
 generator_type = Type :-
     mercury_table_builtin_module(TB),
-    construct_type(qualified(TB, "ml_generator") - 0, [], Type).
+    construct_type(type_ctor(qualified(TB, "ml_generator"), 0), [], Type).
 
 :- type maybe_specified_method
     --->    all_same(arg_tabling_method)

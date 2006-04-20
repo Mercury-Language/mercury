@@ -130,7 +130,7 @@ gen_type_ctor_gen_infos([TypeCtor | TypeCtors], TypeTable, ModuleName,
         ModuleInfo, TypeCtorGenInfos) :-
     gen_type_ctor_gen_infos(TypeCtors, TypeTable, ModuleName, ModuleInfo,
         TypeCtorGenInfos1),
-    TypeCtor = SymName - TypeArity,
+    TypeCtor = type_ctor(SymName, TypeArity),
     (
         SymName = qualified(TypeModuleName, TypeName),
         (

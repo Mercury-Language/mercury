@@ -138,7 +138,7 @@ proc_label_to_c_string(special_proc(Module, SpecialPredId, TypeModule,
         TypeName, TypeArity, ModeInt), AddPrefix) = ProcLabelString :-
     % Figure out the LabelName.
     DummyArity = -1,    % not used by make_pred_or_func_name.
-    TypeCtor = qualified(TypeModule, TypeName) - TypeArity,
+    TypeCtor = type_ctor(qualified(TypeModule, TypeName), TypeArity),
     PredName = special_pred_name(SpecialPredId, TypeCtor),
     LabelName = make_pred_or_func_name(unqualified(""), predicate,
         unqualified(""), PredName, DummyArity, AddPrefix),

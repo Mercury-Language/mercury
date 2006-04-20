@@ -1857,7 +1857,7 @@ mlds_output_type_prefix(mlds_mercury_array_type(_ElemType), !IO) :-
     (
         HighLevelData = yes,
         mlds_output_mercury_user_type_name(
-            qualified(unqualified("array"), "array") - 1,
+            type_ctor(qualified(unqualified("array"), "array"), 1),
             type_cat_user_ctor, !IO)
     ;
         HighLevelData = no,

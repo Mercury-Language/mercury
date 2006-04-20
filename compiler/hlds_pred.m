@@ -1433,11 +1433,12 @@ pred_info_get_univ_quant_tvars(PredInfo, UnivQVars) :-
 
 %-----------------------------------------------------------------------------%
 
-pred_info_get_call_id(PredInfo, PredOrFunc - qualified(Module, Name)/Arity) :-
+pred_info_get_call_id(PredInfo, SimpleCallId) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     Module = pred_info_module(PredInfo),
     Name = pred_info_name(PredInfo),
-    Arity = pred_info_orig_arity(PredInfo).
+    Arity = pred_info_orig_arity(PredInfo),
+    SimpleCallId = simple_call_id(PredOrFunc, qualified(Module, Name), Arity).
 
 %-----------------------------------------------------------------------------%
 

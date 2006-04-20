@@ -1503,7 +1503,7 @@ format_proc_label(special_proc(_Module, SpecialPredId, TypeModule,
         TypeName, TypeArity, Mode)) =
         PredName ++ "_" ++ TypeName ++ "/" ++ int_to_string(TypeArity)
             ++ " mode " ++ int_to_string(Mode) :-
-    TypeCtor = qualified(TypeModule, TypeName) - TypeArity,
+    TypeCtor = type_ctor(qualified(TypeModule, TypeName), TypeArity),
     PredName = special_pred_name(SpecialPredId, TypeCtor).
 
 has_both_incr_decr_sp(Instrs) :-

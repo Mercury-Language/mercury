@@ -490,7 +490,7 @@ ml_gen_reserved_address(ModuleInfo, reserved_object(TypeCtor, QualCtorName,
     ( QualCtorName = qualified(ModuleName, CtorName) ->
         module_info_get_globals(ModuleInfo, Globals),
         MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-        TypeCtor = TypeName - TypeArity,
+        TypeCtor = type_ctor(TypeName, TypeArity),
         unqualify_name(TypeName, UnqualTypeName),
         MLDS_TypeName = mlds_append_class_qualifier(MLDS_ModuleName,
             module_qual, Globals, UnqualTypeName, TypeArity),

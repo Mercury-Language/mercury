@@ -196,12 +196,10 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
             Status \= opt_imported
         ->
             module_info_incr_errors(!ModuleInfo),
-            CallIdString0 = simple_call_id_to_string(
-                PredOrFunc - PredName/Arity),
-            string.append(CallIdString0, ".", CallIdString),
+            CallId = simple_call_id(PredOrFunc, PredName, Arity),
             ErrorPieces0 = [
                 words("Error: clause for automatically generated"),
-                words("field access"), fixed(CallIdString), nl
+                words("field access"), simple_call_id(CallId), suffix("."), nl
             ],
             globals.io_lookup_bool_option(verbose_errors, Verbose, !IO),
             (
@@ -271,11 +269,11 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
                 true
             ;
                 % Warn about singleton variables.
-                maybe_warn_singletons(VarSet, PredOrFunc - PredName/Arity,
-                    !.ModuleInfo, Goal, !IO),
+                SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
+                maybe_warn_singletons(VarSet, SimpleCallId, !.ModuleInfo,
+                    Goal, !IO),
                 % Warn about variables with overlapping scopes.
-                maybe_warn_overlap(Warnings, VarSet,
-                    PredOrFunc - PredName/Arity, !IO)
+                maybe_warn_overlap(Warnings, VarSet, SimpleCallId, !IO)
             )
         )
     ).
@@ -749,7 +747,7 @@ transform_goal_2(call_expr(Name, Args0, Purity), Context, Subst, Goal,
             MaybeUnifyContext = no,
             Call = call(PredId, ModeId, HeadVars, not_builtin,
                 MaybeUnifyContext, Name),
-            CallId = call(predicate - Name/Arity)
+            CallId = call(simple_call_id(predicate, Name, Arity))
         ),
         goal_info_init(Context, GoalInfo0),
         add_goal_info_purity_feature(Purity, GoalInfo0, GoalInfo),
@@ -947,7 +945,8 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
             % DCG arguments should always be distinct variables,
             % so this context should never be used.
             OutputTermArgNumber = 3,
-            OutputTermArgContext = call(call(function - FuncName/FuncArity)),
+            SimpleCallId = simple_call_id(function, FuncName, FuncArity),
+            OutputTermArgContext = call(call(SimpleCallId)),
 
             ArgContexts = [
                 FieldArgNumber - FieldArgContext,
@@ -974,7 +973,8 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
                 unexpected(this_file, "transform_dcg_record_syntax_2")
             ),
             FieldArgNumber = 2,
-            FieldArgContext = call(call(function - FuncName/FuncArity)),
+            SimpleCallId = simple_call_id(function, FuncName, FuncArity),
+            FieldArgContext = call(call(SimpleCallId)),
 
             % DCG arguments should always be distinct variables,
             % so this context should never be used.

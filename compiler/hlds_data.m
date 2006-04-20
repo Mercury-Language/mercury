@@ -866,15 +866,15 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
 
 :- interface.
 
-    % Identifiers for constraints which are unique across a given
-    % type_assign.  Integers in these values refer to the position in
-    % the list of constraints at that location, beginning from 1.
+    % Identifiers for constraints which are unique across a given type_assign.
+    % Integers in these values refer to the position in the list of constraints
+    % at that location, beginning from 1.
     %
-    % Only identifiers for constraints appearing directly on a goal are
-    % needed at the moment, so there is no way to represent the
-    % appropriate identifier for the superclass of such a constraint.
+    % Only identifiers for constraints appearing directly on a goal are needed
+    % at the moment, so there is no way to represent the appropriate identifier
+    % for the superclass of such a constraint.
     %
-    % XXX a more robust and efficient solution would be to allocate
+    % XXX A more robust and efficient solution would be to allocate
     % unique integers to the constraints as they are encountered, and
     % store the allocated integer in the relevant hlds_goal_expr.
     %
@@ -940,7 +940,7 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
     %
 :- type constraint_map == map(constraint_id, prog_constraint).
 
-    % `Proof' of why a constraint is redundant
+    % `Proof' of why a constraint is redundant.
 :- type constraint_proof
     --->    apply_instance(instance_id)
             % Apply the instance decl with the given identifier. Note that
@@ -1076,11 +1076,13 @@ make_hlds_constraint_list(ProgConstraints, ConstraintType, GoalPath,
     list(hlds_constraint)::out) is det.
 
 make_hlds_constraint_list_2([], _, _, _, []).
-make_hlds_constraint_list_2([P | Ps], T, G, N, [H | Hs]) :-
-    P = constraint(Name, Types),
-    Id = constraint_id(T, G, N),
-    H = constraint([Id], Name, Types),
-    make_hlds_constraint_list_2(Ps, T, G, N + 1, Hs).
+make_hlds_constraint_list_2([ProgConstraint | ProgConstraints], ConstraintType,
+        GoalPath, N, [HLDSConstraint | HLDSConstraints]) :-
+    ProgConstraint = constraint(Name, Types),
+    Id = constraint_id(ConstraintType, GoalPath, N),
+    HLDSConstraint = constraint([Id], Name, Types),
+    make_hlds_constraint_list_2(ProgConstraints, ConstraintType, GoalPath,
+        N + 1, HLDSConstraints).
 
 merge_hlds_constraints(ConstraintsA, ConstraintsB, Constraints) :-
     ConstraintsA = constraints(UnprovenA, AssumedA, RedundantA),

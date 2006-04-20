@@ -270,8 +270,9 @@ request_unify(UnifyId, InstVarSet, Determinism, Context, !ModuleInfo) :-
     module_info_get_maybe_recompilation_info(!.ModuleInfo, MaybeRecompInfo0),
     (
         MaybeRecompInfo0 = yes(RecompInfo0),
-        recompilation.record_used_item(type_body_item, TypeCtor, TypeCtor,
-            RecompInfo0, RecompInfo),
+        TypeCtorItem = type_ctor_to_item_name(TypeCtor),
+        recompilation.record_used_item(type_body_item,
+            TypeCtorItem, TypeCtorItem, RecompInfo0, RecompInfo),
         module_info_set_maybe_recompilation_info(yes(RecompInfo), !ModuleInfo)
     ;
         MaybeRecompInfo0 = no
@@ -287,7 +288,7 @@ request_unify(UnifyId, InstVarSet, Determinism, Context, !ModuleInfo) :-
             map.search(TypeTable, TypeCtor, TypeDefn),
             hlds_data.get_type_defn_body(TypeDefn, TypeBody),
             (
-                TypeCtor = TypeName - _TypeArity,
+                TypeCtor = type_ctor(TypeName, _TypeArity),
                 TypeName = qualified(TypeModuleName, _),
                 module_info_get_name(!.ModuleInfo, ModuleName),
                 ModuleName = TypeModuleName,
@@ -316,7 +317,7 @@ request_unify(UnifyId, InstVarSet, Determinism, Context, !ModuleInfo) :-
 
         % For polymorphic types, add extra modes for the type_infos.
         in_mode(InMode),
-        TypeCtor = _ - TypeArity,
+        TypeCtor = type_ctor(_, TypeArity),
         list.duplicate(TypeArity, InMode, TypeInfoModes),
         list.append(TypeInfoModes, ArgModes0, ArgModes),
 
@@ -490,7 +491,7 @@ save_proc_info(ProcId, PredId, ModuleInfo, !OldPredTable) :-
 
 add_lazily_generated_unify_pred(TypeCtor, PredId, !ModuleInfo) :-
     ( type_ctor_is_tuple(TypeCtor) ->
-        TypeCtor = _ - TupleArity,
+        TypeCtor = type_ctor(_, TupleArity),
 
         % Build a hlds_type_body for the tuple constructor, which will
         % be used by generate_clause_info.
@@ -711,7 +712,7 @@ generate_initialise_clauses(_Type, TypeBody, X, Context, Clauses, !Info) :-
         ),
         PredName = special_pred.special_pred_name(spec_pred_init, TypeCtor),
         hlds_module.module_info_get_name(ModuleInfo, ModuleName),
-        TypeCtor = TypeSymName - _TypeArity,
+        TypeCtor = type_ctor(TypeSymName, _TypeArity),
         sym_name_get_module_name(TypeSymName, ModuleName, TypeModuleName),
         InitPred = qualified(TypeModuleName, PredName),
         PredId   = invalid_pred_id,

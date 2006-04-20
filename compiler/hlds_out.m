@@ -291,10 +291,10 @@
 
 %-----------------------------------------------------------------------------%
 
-write_type_ctor(Name - Arity, !IO) :-
+write_type_ctor(type_ctor(Name, Arity), !IO) :-
     prog_out.write_sym_name_and_arity(Name / Arity, !IO).
 
-type_ctor_to_string(Name - Arity) = Str :-
+type_ctor_to_string(type_ctor(Name, Arity)) = Str :-
     prog_out.sym_name_and_arity_to_string(Name / Arity, Str).
 
 write_class_id(class_id(Name, Arity), !IO) :-
@@ -370,7 +370,7 @@ pred_id_to_string(ModuleInfo, PredId) = Str :-
             Origin = special_pred(SpecialId - TypeCtor)
         ->
             special_pred_description(SpecialId, Descr),
-            TypeCtor = _TypeSymName - TypeArity,
+            TypeCtor = type_ctor(_TypeSymName, TypeArity),
             ( TypeArity = 0 ->
                 ForStr = " for type "
             ;
@@ -494,7 +494,7 @@ write_arg_number(CallId, ArgNum, !IO) :-
 
 :- func arg_number_to_string(call_id, int) = string.
 
-arg_number_to_string(call(PredOrFunc - _/Arity), ArgNum) =
+arg_number_to_string(call(simple_call_id(PredOrFunc, _, Arity)), ArgNum) =
     (
         PredOrFunc = function,
         Arity = ArgNum
@@ -3074,12 +3074,12 @@ write_types_2(Indent, [TypeCtor - TypeDefn | Types], !IO) :-
 
 :- pred write_type_name(type_ctor::in, io::di, io::uo) is det.
 
-write_type_name(Name - _Arity, !IO) :-
+write_type_name(type_ctor(Name, _Arity), !IO) :-
     prog_out.write_sym_name(Name, !IO).
 
 :- func type_name_to_string(type_ctor) = string.
 
-type_name_to_string(Name - _Arity) =
+type_name_to_string(type_ctor(Name, _Arity)) =
     prog_out.sym_name_to_escaped_string(Name).
 
 :- pred write_type_params(tvarset::in, list(type_param)::in,

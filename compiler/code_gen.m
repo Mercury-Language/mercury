@@ -1385,7 +1385,7 @@ push_msg(ModuleInfo, PredId, ProcId) = PushMsg :-
 :- pred find_arg_type_ctor_name((type_ctor)::in, string::out) is det.
 
 find_arg_type_ctor_name(TypeCtor, TypeName) :-
-    TypeCtor = TypeCtorSymName - TypeCtorArity,
+    TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
     mdbcomp.prim_data.sym_name_to_string(TypeCtorSymName, TypeCtorName),
     string.int_to_string(TypeCtorArity, ArityStr),
     string.append_list([TypeCtorName, "_", ArityStr], TypeName).

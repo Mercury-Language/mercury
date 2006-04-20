@@ -187,16 +187,17 @@ distribute_pragma_items({ItemId, ItemAndContext, Section}, !GatheredItems) :-
     % Pragmas in the interface aren't common so this won't be too much of
     % a problem.
     AddIfNotExisting = yes,
+    ItemName = item_name(SymName, Arity),
     (
         MaybePredOrFunc = yes(PredOrFunc),
         ItemType = pred_or_func_to_item_type(PredOrFunc),
-        add_gathered_item(Item, item_id(ItemType, SymName - Arity),
+        add_gathered_item(Item, item_id(ItemType, ItemName),
             ItemContext, Section, AddIfNotExisting, !GatheredItems)
     ;
         MaybePredOrFunc = no,
-        add_gathered_item(Item, item_id(predicate_item, SymName - Arity),
+        add_gathered_item(Item, item_id(predicate_item, ItemName),
             ItemContext, Section, AddIfNotExisting, !GatheredItems),
-        add_gathered_item(Item, item_id(function_item, SymName - Arity),
+        add_gathered_item(Item, item_id(function_item, ItemName),
             ItemContext, Section, AddIfNotExisting, !GatheredItems)
     ),
 
@@ -301,11 +302,11 @@ gather_items_2(ItemAndContext, !Section, !Info) :-
             NameItem = Item,
             BodyItem = Item
         ),
-        TypeCtor = Name - list.length(Args),
+        TypeCtorItem = item_name(Name, list.length(Args)),
         GatheredItems0 = !.Info ^ gathered_items,
-        add_gathered_item(NameItem, item_id(type_item, TypeCtor),
+        add_gathered_item(NameItem, item_id(type_item, TypeCtorItem),
             ItemContext, !.Section, yes, GatheredItems0, GatheredItems1),
-        add_gathered_item(BodyItem, item_id(type_body_item, TypeCtor),
+        add_gathered_item(BodyItem, item_id(type_body_item, TypeCtorItem),
             ItemContext, !.Section, yes, GatheredItems1, GatheredItems),
         !:Info = !.Info ^ gathered_items := GatheredItems
     ;
@@ -313,12 +314,13 @@ gather_items_2(ItemAndContext, !Section, !Info) :-
     ->
         Instances0 = !.Info ^ instances,
         ClassArity = list.length(ClassArgs),
-        ( map.search(Instances0, ClassName - ClassArity, InstanceItems0) ->
-            InstanceItems = InstanceItems0
+        ClassItemName = item_name(ClassName, ClassArity),
+        ( map.search(Instances0, ClassItemName, InstanceItemsPrime) ->
+            InstanceItems = InstanceItemsPrime
         ;
             InstanceItems = []
         ),
-        map.set(Instances0, ClassName - ClassArity,
+        map.set(Instances0, ClassItemName,
             [!.Section - (Item - ItemContext) | InstanceItems], Instances),
         !:Info = !.Info ^ instances := Instances
     ;
@@ -332,7 +334,7 @@ gather_items_2(ItemAndContext, !Section, !Info) :-
         WithInst = yes(_)
     ->
         GatheredItems0 = !.Info ^ gathered_items,
-        ItemName = SymName - list.length(Modes),
+        ItemName = item_name(SymName, list.length(Modes)),
         add_gathered_item(Item, item_id(predicate_item, ItemName),
             ItemContext, !.Section, yes, GatheredItems0, GatheredItems1),
         add_gathered_item(Item, item_id(function_item, ItemName),
@@ -363,8 +365,8 @@ gather_items_2(ItemAndContext, !Section, !Info) :-
 
 add_gathered_item(Item, ItemId, ItemContext, Section, AddIfNotExisting,
         !GatheredItems) :-
-    ItemId = item_id(ItemType, Id),
-    Id = SymName - Arity,
+    ItemId = item_id(ItemType, ItemName),
+    ItemName = item_name(SymName, Arity),
     unqualify_name(SymName, Name),
     IdMap0 = extract_ids(!.GatheredItems, ItemType),
     NameArity = Name - Arity,
@@ -493,16 +495,16 @@ item_to_item_id(Item, ItemId) :-
 
 item_to_item_id_2(clause(_, _, _, _, _, _), no).
 item_to_item_id_2(type_defn(_, Name, Params, _, _),
-        yes(item_id(type_item, Name - Arity))) :-
+        yes(item_id(type_item, item_name(Name, Arity)))) :-
     list.length(Params, Arity).
 item_to_item_id_2(inst_defn(_, Name, Params, _, _),
-        yes(item_id(inst_item, Name - Arity))) :-
+        yes(item_id(inst_item, item_name(Name, Arity)))) :-
     list.length(Params, Arity).
 item_to_item_id_2(mode_defn(_, Name, Params, _, _),
-        yes(item_id(mode_item, Name - Arity))) :-
+        yes(item_id(mode_item, item_name(Name, Arity)))) :-
     list.length(Params, Arity).
 item_to_item_id_2(module_defn(_, _), no).
-item_to_item_id_2(Item, yes(item_id(ItemType, SymName - Arity))) :-
+item_to_item_id_2(Item, yes(item_id(ItemType, item_name(SymName, Arity)))) :-
     Item = pred_or_func(_, _, _, PredOrFunc, SymName, TypesAndModes, WithType,
         _, _, _, _, _),
     % For predicates or functions defined using `with_type` annotations
@@ -524,7 +526,7 @@ item_to_item_id_2(Item, ItemId) :-
         MaybePredOrFunc = yes(PredOrFunc),
         adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
         ItemType = pred_or_func_to_item_type(PredOrFunc),
-        ItemId = yes(item_id(ItemType, SymName - Arity))
+        ItemId = yes(item_id(ItemType, item_name(SymName, Arity)))
     ;
         MaybePredOrFunc = no,
         % We need to handle these separately because a `:- mode' declaration
@@ -537,7 +539,7 @@ item_to_item_id_2(Item, ItemId) :-
 item_to_item_id_2(pragma(_, _), no).
 item_to_item_id_2(promise(_, _, _, _), no).
 item_to_item_id_2(Item,
-        yes(item_id(typeclass_item, ClassName - ClassArity))) :-
+        yes(item_id(typeclass_item, item_name(ClassName, ClassArity)))) :-
     Item = typeclass(_, _, ClassName, ClassVars, _, _),
     list.length(ClassVars, ClassArity).
 
@@ -1027,10 +1029,10 @@ write_name_arity_version_number(NameArity - VersionNumber, !IO) :-
     write_version_number(VersionNumber, !IO).
 
 :- pred write_symname_arity_version_number(
-    pair(pair(sym_name, int), version_number)::in, io::di, io::uo) is det.
+    pair(item_name, version_number)::in, io::di, io::uo) is det.
 
-write_symname_arity_version_number(SymNameArity - VersionNumber, !IO) :-
-    SymNameArity = SymName - Arity,
+write_symname_arity_version_number(ItemName - VersionNumber, !IO) :-
+    ItemName = item_name(SymName, Arity),
     mercury_output_bracketed_sym_name(SymName, next_to_graphic_token, !IO),
     io.write_string("/", !IO),
     io.write_int(Arity, !IO),
@@ -1092,7 +1094,7 @@ parse_item_type_version_numbers(Term, Result) :-
             (pred(NameTerm::in, Name::out) is semidet :-
                 NameTerm = term.functor(term.atom(Name), [], _)
             ),
-        map_parser(parse_item_version_number(ParseName), ItemsVNsTerms,
+        map_parser(parse_key_version_number(ParseName), ItemsVNsTerms,
             Result0),
         (
             Result0 = ok(VNsAL),
@@ -1110,8 +1112,8 @@ parse_item_type_version_numbers(Term, Result) :-
             (pred(NameTerm::in, Name::out) is semidet :-
                 sym_name_and_args(NameTerm, Name, [])
             ),
-        map_parser(parse_item_version_number(ParseName),
-            InstanceVNsTerms, Result1),
+        map_parser(parse_item_version_number(ParseName), InstanceVNsTerms,
+            Result1),
         (
             Result1 = ok(VNsAL),
             map.from_assoc_list(VNsAL, VNsMap),
@@ -1124,10 +1126,11 @@ parse_item_type_version_numbers(Term, Result) :-
         Result = error("invalid item type version numbers", Term)
     ).
 
-:- pred parse_item_version_number(pred(term, T)::(pred(in, out) is semidet),
-    term::in, maybe1(pair(pair(T, arity), version_number))::out) is det.
+:- pred parse_key_version_number(
+    pred(term, string)::(pred(in, out) is semidet), term::in,
+    maybe1(pair(pair(string, arity), version_number))::out) is det.
 
-parse_item_version_number(ParseName, Term, Result) :-
+parse_key_version_number(ParseName, Term, Result) :-
     (
         Term = term.functor(term.atom("-"),
             [ItemNameArityTerm, VersionNumberTerm], _),
@@ -1138,6 +1141,25 @@ parse_item_version_number(ParseName, Term, Result) :-
         VersionNumber = term_to_version_number(VersionNumberTerm)
     ->
         Result = ok((Name - Arity) - VersionNumber)
+    ;
+        Result = error("error in item version number", Term)
+    ).
+
+:- pred parse_item_version_number(
+    pred(term, sym_name)::(pred(in, out) is semidet), term::in,
+    maybe1(pair(item_name, version_number))::out) is det.
+
+parse_item_version_number(ParseName, Term, Result) :-
+    (
+        Term = term.functor(term.atom("-"),
+            [ItemNameArityTerm, VersionNumberTerm], _),
+        ItemNameArityTerm = term.functor(term.atom("/"),
+            [NameTerm, ArityTerm], _),
+        ParseName(NameTerm, SymName),
+        ArityTerm = term.functor(term.integer(Arity), _, _),
+        VersionNumber = term_to_version_number(VersionNumberTerm)
+    ->
+        Result = ok(item_name(SymName, Arity) - VersionNumber)
     ;
         Result = error("error in item version number", Term)
     ).

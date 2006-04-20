@@ -265,12 +265,12 @@
 %-----------------------------------------------------------------------------%
 
 report_mode_error(ModeError, ModeInfo, !IO) :-
-    Specs = mode_error_to_specs(ModeError, ModeInfo),
+    ExtendedSpecs = mode_error_to_specs(ModeError, ModeInfo),
     % XXX This module needs some rearrangement for the global extra erro info
     % flag to be respected properly.  In the meantime we just set it to yes
     % because that was the original behaviour for this module was.
     globals.io_set_extra_error_info(yes, !IO),
-    write_error_specs(Specs, !IO).
+    write_extended_error_specs(ExtendedSpecs, !IO).
 
 report_mode_warning(ModeInfo, Warning, !IO) :-
     Specs = mode_warning_to_specs(ModeInfo, Warning),
@@ -278,86 +278,104 @@ report_mode_warning(ModeInfo, Warning, !IO) :-
     record_warning(!IO).
 
 :- func mode_error_to_specs(mode_error::in, mode_info::in)
-    = (list(error_msg_spec)::out(error_msg_specs)) is det.
+    = (list(extended_error_msg_spec)::out(extended_error_msg_specs)) is det.
 
-mode_error_to_specs(ModeError, ModeInfo) = Specs :-
+mode_error_to_specs(ModeError, ModeInfo) = ExtendedSpecs :-
     (
         ModeError = mode_error_disj(MergeContext, ErrorList),
-        Specs = mode_error_disj_to_specs(ModeInfo, MergeContext, ErrorList)
+        Specs = mode_error_disj_to_specs(ModeInfo, MergeContext, ErrorList),
+        extend_specs(Specs, ExtendedSpecs)
     ;
         ModeError = mode_error_par_conj(ErrorList),
-        Specs = mode_error_par_conj_to_specs(ModeInfo, ErrorList)
+        Specs = mode_error_par_conj_to_specs(ModeInfo, ErrorList),
+        extend_specs(Specs, ExtendedSpecs)
     ;
         ModeError = mode_error_higher_order_pred_var(PredOrFunc, Var, Inst,
             Arity),
         Specs = mode_error_higher_order_pred_var_to_specs(ModeInfo, PredOrFunc,
-            Var, Inst, Arity)
+            Var, Inst, Arity),
+            extend_specs(Specs, ExtendedSpecs)
     ;
         ModeError = mode_error_poly_unify(Var, Inst),
-        Specs = mode_error_poly_unify_to_specs(ModeInfo, Var, Inst)
+        Specs = mode_error_poly_unify_to_specs(ModeInfo, Var, Inst),
+        extend_specs(Specs, ExtendedSpecs)
     ;
         ModeError = mode_error_var_is_live(Var),
-        Specs = mode_error_var_is_live_to_specs(ModeInfo, Var)
+        Specs = mode_error_var_is_live_to_specs(ModeInfo, Var),
+        extend_specs(Specs, ExtendedSpecs)
     ;
         ModeError = mode_error_var_has_inst(Var, InstA, InstB),
-        Specs = mode_error_var_has_inst_to_specs(ModeInfo, Var, InstA, InstB)
+        Specs = mode_error_var_has_inst_to_specs(ModeInfo, Var, InstA, InstB),
+        extend_specs(Specs, ExtendedSpecs)
     ;
         ModeError = mode_error_unify_pred(Var, RHS, Type, PredOrFunc),
         Specs = mode_error_unify_pred_to_specs(ModeInfo, Var, RHS, Type,
-            PredOrFunc)
+            PredOrFunc),
+        extend_specs(Specs, ExtendedSpecs)
     ;
         ModeError = mode_error_implied_mode(Var, InstA, InstB),
-        Specs = mode_error_implied_mode_to_specs(ModeInfo, Var, InstA, InstB)
+        Specs = mode_error_implied_mode_to_specs(ModeInfo, Var, InstA, InstB),
+        extend_specs(Specs, ExtendedSpecs)
     ;
         ModeError = mode_error_no_mode_decl,
-        Specs = mode_error_no_mode_decl_to_specs(ModeInfo)
+        Specs = mode_error_no_mode_decl_to_specs(ModeInfo),
+        extend_specs(Specs, ExtendedSpecs)
     ;
         ModeError = mode_error_bind_var(Reason, Var, InstA, InstB),
         Specs = mode_error_bind_var_to_specs(ModeInfo, Reason, Var,
-            InstA, InstB)
+            InstA, InstB),
+        extend_specs(Specs, ExtendedSpecs)
     ;
         ModeError = mode_error_non_local_lambda_var(Var, Inst),
-        Specs = mode_error_non_local_lambda_var_to_specs(ModeInfo, Var, Inst)
+        Specs = mode_error_non_local_lambda_var_to_specs(ModeInfo, Var, Inst),
+        extend_specs(Specs, ExtendedSpecs)
     ;
         ModeError = mode_error_unify_var_var(VarA, VarB, InstA, InstB),
         Specs = mode_error_unify_var_var_to_specs(ModeInfo, VarA, VarB,
-            InstA, InstB)
+            InstA, InstB),
+        extend_specs(Specs, ExtendedSpecs)
     ;
         ModeError = mode_error_unify_var_lambda(VarA, InstA, InstB),
         Specs = mode_error_unify_var_lambda_to_specs(ModeInfo, VarA,
-            InstA, InstB)
+            InstA, InstB),
+        extend_specs(Specs, ExtendedSpecs)
     ;
         ModeError = mode_error_unify_var_functor(Var, Name, Args, Inst,
             ArgInsts),
         Specs = mode_error_unify_var_functor_to_specs(ModeInfo, Var, Name,
-            Args, Inst, ArgInsts)
+            Args, Inst, ArgInsts),
+        extend_specs(Specs, ExtendedSpecs)
     ;
         ModeError = mode_error_conj(Errors, Culprit),
-        Specs = mode_error_conj_to_specs(ModeInfo, Errors, Culprit)
+        ExtendedSpecs = mode_error_conj_to_specs(ModeInfo, Errors, Culprit)
     ;
         ModeError = mode_error_no_matching_mode(Vars, Insts),
-        Specs = mode_error_no_matching_mode_to_specs(ModeInfo, Vars, Insts)
+        Specs = mode_error_no_matching_mode_to_specs(ModeInfo, Vars, Insts),
+        extend_specs(Specs, ExtendedSpecs)
     ;
         ModeError = mode_error_in_callee(Vars, Insts,
             CalleePredId, CalleeProcId, CalleeErrors),
-        Specs = mode_error_in_callee_to_specs(ModeInfo, Vars, Insts,
+        ExtendedSpecs = mode_error_in_callee_to_specs(ModeInfo, Vars, Insts,
             CalleePredId, CalleeProcId, CalleeErrors)
     ;
         ModeError = mode_error_final_inst(ArgNum, Var, VarInst, Inst, Reason),
         Specs = mode_error_final_inst_to_specs(ModeInfo, ArgNum, Var, VarInst,
-            Inst, Reason)
+            Inst, Reason),
+        extend_specs(Specs, ExtendedSpecs)
     ;
         ModeError = purity_error_should_be_in_promise_purity_scope(NegCtxt,
             Var),
         Specs = purity_error_should_be_in_promise_purity_scope_to_specs(
-            NegCtxt, ModeInfo, Var)
+            NegCtxt, ModeInfo, Var),
+        extend_specs(Specs, ExtendedSpecs)
     ;
         ModeError = purity_error_lambda_should_be_impure(Vars),
-        Specs = purity_error_lambda_should_be_impure_to_specs(ModeInfo, Vars)
+        Specs = purity_error_lambda_should_be_impure_to_specs(ModeInfo, Vars),
+        extend_specs(Specs, ExtendedSpecs)
     ).
 
-:- func mode_warning_to_specs(mode_info::in, mode_warning_info::in)
-    = (list(error_msg_spec)::out(error_msg_specs)) is det.
+:- func mode_warning_to_specs(mode_info, mode_warning_info)
+    = list(error_msg_spec).
 
 mode_warning_to_specs(!.ModeInfo, Warning) = Specs :-
     Warning = mode_warning_info(ModeWarning, Context, ModeContext),
@@ -376,8 +394,8 @@ mode_warning_to_specs(!.ModeInfo, Warning) = Specs :-
 %-----------------------------------------------------------------------------%
 
 :- func mode_error_conj_to_specs(mode_info::in, list(delayed_goal)::in,
-    schedule_culprit::in) = (list(error_msg_spec)::out(error_msg_specs))
-    is det.
+    schedule_culprit::in)
+    = (list(extended_error_msg_spec)::out(extended_error_msg_specs)) is det.
 
 mode_error_conj_to_specs(ModeInfo, Errors, Culprit) = Specs :-
     mode_info_get_context(ModeInfo, Context),
@@ -396,8 +414,8 @@ mode_error_conj_to_specs(ModeInfo, Errors, Culprit) = Specs :-
         PiecesA = [words("mode error in conjunction. The next"),
             fixed(int_to_string(list.length(Errors))),
             words("error messages indicate possible causes of this error.")],
-        Specs1Start = [mode_info_context_to_spec(ModeInfo),
-            error_msg_spec(no, Context, 0, PiecesA)],
+        Specs1Start = [plain_spec(mode_info_context_to_spec(ModeInfo)),
+            plain_spec(error_msg_spec(no, Context, 0, PiecesA))],
         Specs1Rest = list.map(
             mode_error_conjunct_to_specs(VarSet, Context, ModeInfo),
             ImportantErrors ++ OtherErrors),
@@ -428,7 +446,7 @@ mode_error_conj_to_specs(ModeInfo, Errors, Culprit) = Specs :-
         Culprit = goal_itself_was_impure,
         Pieces = [words("The goal could not be reordered,"),
             words("because it was impure.")],
-        Specs2 = [error_msg_spec(no, Context, 0, Pieces)]
+        Specs2 = [plain_spec(error_msg_spec(no, Context, 0, Pieces))]
     ;
         Culprit = goals_followed_by_impure_goal(ImpureGoal),
         ImpureGoal = _ - ImpureGoalInfo,
@@ -436,8 +454,8 @@ mode_error_conj_to_specs(ModeInfo, Errors, Culprit) = Specs :-
         Pieces1 = [words("The goal could not be reordered,"),
             words("becaise it was followed by an impure goal.")],
         Pieces2 = [words("This is the location of the impure goal.")],
-        Specs2 = [error_msg_spec(no, Context, 0, Pieces1),
-            error_msg_spec(no, ImpureGoalContext, 0, Pieces2)]
+        Specs2 = [plain_spec(error_msg_spec(no, Context, 0, Pieces1)),
+            plain_spec(error_msg_spec(no, ImpureGoalContext, 0, Pieces2))]
     ),
     Specs = Specs1 ++ Specs2.
 
@@ -462,7 +480,7 @@ is_error_important(Error) :-
 
 :- func mode_error_conjunct_to_specs(prog_varset::in, prog_context::in,
     mode_info::in, delayed_goal::in)
-    = (list(error_msg_spec)::out(error_msg_specs)) is det.
+    = (list(extended_error_msg_spec)::out(extended_error_msg_specs)) is det.
 
 mode_error_conjunct_to_specs(VarSet, Context, !.ModeInfo, DelayedGoal)
         = Specs :-
@@ -476,7 +494,7 @@ mode_error_conjunct_to_specs(VarSet, Context, !.ModeInfo, DelayedGoal)
         Pieces1 = [words("Floundered goal, waiting on { "),
             words(mercury_vars_to_string(VarList, VarSet, no)),
             words(" } :"), nl],
-        Specs1 = [error_msg_spec(no, Context, 0, Pieces1)]
+        Specs1 = [plain_spec(error_msg_spec(no, Context, 0, Pieces1))]
     ;
         Debug = no,
         Specs1 = []
@@ -503,8 +521,8 @@ write_indented_goal(Goal, ModuleInfo, VarSet, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- func mode_error_disj_to_specs(mode_info::in, merge_context::in,
-    merge_errors::in) = (list(error_msg_spec)::out(error_msg_specs)) is det.
+:- func mode_error_disj_to_specs(mode_info, merge_context, merge_errors)
+    = list(error_msg_spec).
 
 mode_error_disj_to_specs(ModeInfo, MergeContext, ErrorList) = Specs :-
     mode_info_get_context(ModeInfo, Context),
@@ -514,8 +532,8 @@ mode_error_disj_to_specs(ModeInfo, MergeContext, ErrorList) = Specs :-
         error_msg_spec(no, Context, 0, Pieces) |
         list.map(merge_error_to_spec(ModeInfo), ErrorList)].
 
-:- func mode_error_par_conj_to_specs(mode_info::in, merge_errors::in)
-    = (list(error_msg_spec)::out(error_msg_specs)) is det.
+:- func mode_error_par_conj_to_specs(mode_info, merge_errors)
+    = list(error_msg_spec).
 
 mode_error_par_conj_to_specs(ModeInfo, ErrorList) = Specs :-
     mode_info_get_context(ModeInfo, Context),
@@ -527,8 +545,7 @@ mode_error_par_conj_to_specs(ModeInfo, ErrorList) = Specs :-
         error_msg_spec(no, Context, 0, Pieces) |
         list.map(merge_error_to_spec(ModeInfo), ErrorList)].
 
-:- func merge_error_to_spec(mode_info::in, merge_error::in)
-    = (error_msg_spec::out(error_msg_spec)) is det.
+:- func merge_error_to_spec(mode_info, merge_error) = error_msg_spec.
 
 merge_error_to_spec(ModeInfo, Var - Insts) = Spec :-
     mode_info_get_context(ModeInfo, Context),
@@ -545,9 +562,8 @@ merge_context_to_string(if_then_else) = "if-then-else".
 
 %-----------------------------------------------------------------------------%
 
-:- func mode_error_bind_var_to_specs(mode_info::in, var_lock_reason::in,
-    prog_var::in, mer_inst::in, mer_inst::in)
-    = (list(error_msg_spec)::out(error_msg_specs)) is det.
+:- func mode_error_bind_var_to_specs(mode_info, var_lock_reason,
+    prog_var, mer_inst, mer_inst) = list(error_msg_spec).
 
 mode_error_bind_var_to_specs(ModeInfo, Reason, Var, VarInst, Inst) = Specs :-
     mode_info_get_context(ModeInfo, Context),
@@ -613,8 +629,8 @@ mode_error_bind_var_to_specs(ModeInfo, Reason, Var, VarInst, Inst) = Specs :-
 
 %-----------------------------------------------------------------------------%
 
-:- func mode_error_non_local_lambda_var_to_specs(mode_info::in, prog_var::in,
-    mer_inst::in) = (list(error_msg_spec)::out(error_msg_specs)) is det.
+:- func mode_error_non_local_lambda_var_to_specs(mode_info, prog_var, mer_inst)
+    = list(error_msg_spec).
 
 mode_error_non_local_lambda_var_to_specs(ModeInfo, Var, VarInst) = Specs :-
     mode_info_get_context(ModeInfo, Context),
@@ -633,7 +649,7 @@ mode_error_non_local_lambda_var_to_specs(ModeInfo, Var, VarInst) = Specs :-
 
 :- func mode_error_in_callee_to_specs(mode_info::in, list(prog_var)::in,
     list(mer_inst)::in, pred_id::in, proc_id::in, list(mode_error_info)::in)
-    = (list(error_msg_spec)::out(error_msg_specs)) is det.
+    = (list(extended_error_msg_spec)::out(extended_error_msg_specs)) is det.
 
 mode_error_in_callee_to_specs(!.ModeInfo, Vars, Insts,
         CalleePredId, CalleeProcId, CalleeModeErrors) = Specs :-
@@ -657,8 +673,8 @@ mode_error_in_callee_to_specs(!.ModeInfo, Vars, Insts,
         VerboseErrors = no,
         Pieces2 = [words("the callee, because of the following error."), nl]
     ),
-    InitSpecs = [mode_info_context_to_spec(!.ModeInfo),
-        error_msg_spec(no, Context, 0, Pieces1 ++ Pieces2)],
+    InitSpecs = [plain_spec(mode_info_context_to_spec(!.ModeInfo)),
+        plain_spec(error_msg_spec(no, Context, 0, Pieces1 ++ Pieces2))],
     (
         CalleeModeErrors = [First | _],
         First = mode_error_info(_, CalleeModeError,
@@ -674,8 +690,9 @@ mode_error_in_callee_to_specs(!.ModeInfo, Vars, Insts,
         ;
             LaterSpecs0 = [LaterSpecsHead0 | LaterSpecsTail],
             (
-                LaterSpecsHead0 = error_msg_spec(_, _, _, _),
-                LaterSpecsHead = LaterSpecsHead0 ^ spec_treat_as_first := yes
+                LaterSpecsHead0 = plain_spec(Spec0),
+                Spec = Spec0 ^ spec_treat_as_first := yes,
+                LaterSpecsHead = plain_spec(Spec)
             ;
                 LaterSpecsHead0 = anything(_),
                 LaterSpecsHead = LaterSpecsHead0
@@ -688,8 +705,8 @@ mode_error_in_callee_to_specs(!.ModeInfo, Vars, Insts,
         unexpected(this_file, "report_mode_error_in_callee: no error")
     ).
 
-:- func mode_error_no_matching_mode_to_specs(mode_info::in, list(prog_var)::in,
-    list(mer_inst)::in) = (list(error_msg_spec)::out(error_msg_specs)) is det.
+:- func mode_error_no_matching_mode_to_specs(mode_info, list(prog_var),
+    list(mer_inst)) = list(error_msg_spec).
 
 mode_error_no_matching_mode_to_specs(ModeInfo, Vars, Insts) = Specs :-
     mode_info_get_context(ModeInfo, Context),
@@ -710,9 +727,8 @@ mode_error_no_matching_mode_to_specs(ModeInfo, Vars, Insts) = Specs :-
     Specs = [mode_info_context_to_spec(ModeInfo),
         error_msg_spec(no, Context, 0, Pieces)].
 
-:- func mode_error_higher_order_pred_var_to_specs(mode_info::in,
-    pred_or_func::in, prog_var::in, mer_inst::in, arity::in)
-    = (list(error_msg_spec)::out(error_msg_specs)) is det.
+:- func mode_error_higher_order_pred_var_to_specs(mode_info, pred_or_func,
+    prog_var, mer_inst, arity) = list(error_msg_spec).
 
 mode_error_higher_order_pred_var_to_specs(ModeInfo, PredOrFunc, Var, VarInst,
         Arity) = Specs :-
@@ -736,8 +752,8 @@ mode_error_higher_order_pred_var_to_specs(ModeInfo, PredOrFunc, Var, VarInst,
     Specs = [mode_info_context_to_spec(ModeInfo),
         error_msg_spec(no, Context, 0, Pieces)].
 
-:- func mode_error_poly_unify_to_specs(mode_info::in, prog_var::in,
-    mer_inst::in) = (list(error_msg_spec)::out(error_msg_specs)) is det.
+:- func mode_error_poly_unify_to_specs(mode_info, prog_var, mer_inst)
+    = list(error_msg_spec).
 
 mode_error_poly_unify_to_specs(ModeInfo, Var, VarInst) = Specs :-
     mode_info_get_context(ModeInfo, Context),
@@ -765,8 +781,8 @@ mode_error_poly_unify_to_specs(ModeInfo, Var, VarInst) = Specs :-
     Specs = [mode_info_context_to_spec(ModeInfo),
         error_msg_spec(no, Context, 0, Pieces1 ++ Pieces2)].
 
-:- func mode_error_var_is_live_to_specs(mode_info::in, prog_var::in)
-    = (list(error_msg_spec)::out(error_msg_specs)) is det.
+:- func mode_error_var_is_live_to_specs(mode_info, prog_var)
+    = list(error_msg_spec).
 
 mode_error_var_is_live_to_specs(ModeInfo, Var) = Specs :-
     mode_info_get_context(ModeInfo, Context),
@@ -778,9 +794,8 @@ mode_error_var_is_live_to_specs(ModeInfo, Var) = Specs :-
     Specs = [mode_info_context_to_spec(ModeInfo),
         error_msg_spec(no, Context, 0, Pieces)].
 
-:- func mode_error_var_has_inst_to_specs(mode_info::in, prog_var::in,
-    mer_inst::in, mer_inst::in) = (list(error_msg_spec)::out(error_msg_specs))
-    is det.
+:- func mode_error_var_has_inst_to_specs(mode_info, prog_var,
+    mer_inst, mer_inst) = list(error_msg_spec).
 
 mode_error_var_has_inst_to_specs(ModeInfo, Var, VarInst, Inst) = Specs :-
     mode_info_get_context(ModeInfo, Context),
@@ -794,9 +809,8 @@ mode_error_var_has_inst_to_specs(ModeInfo, Var, VarInst, Inst) = Specs :-
     Specs = [mode_info_context_to_spec(ModeInfo),
         error_msg_spec(no, Context, 0, Pieces)].
 
-:- func mode_error_implied_mode_to_specs(mode_info::in, prog_var::in,
-    mer_inst::in, mer_inst::in) = (list(error_msg_spec)::out(error_msg_specs))
-    is det.
+:- func mode_error_implied_mode_to_specs(mode_info, prog_var,
+    mer_inst, mer_inst) = list(error_msg_spec).
 
 mode_error_implied_mode_to_specs(ModeInfo, Var, VarInst, Inst) = Specs :-
         % This "error" message is really a "sorry, not implemented" message.
@@ -825,7 +839,7 @@ mode_error_implied_mode_to_specs(ModeInfo, Var, VarInst, Inst) = Specs :-
     ).
 
 :- func mode_error_no_mode_decl_to_specs(mode_info::in)
-    = (list(error_msg_spec)::out(error_msg_specs)) is det.
+    = (list(error_msg_spec)::out) is det.
 
 mode_error_no_mode_decl_to_specs(ModeInfo) = Specs :-
     mode_info_get_context(ModeInfo, Context),
@@ -833,9 +847,8 @@ mode_error_no_mode_decl_to_specs(ModeInfo) = Specs :-
     Specs = [mode_info_context_to_spec(ModeInfo),
         error_msg_spec(no, Context, 0, Pieces)].
 
-:- func mode_error_unify_pred_to_specs(mode_info::in, prog_var::in,
-    mode_error_unify_rhs::in, mer_type::in, pred_or_func::in)
-    = (list(error_msg_spec)::out(error_msg_specs)) is det.
+:- func mode_error_unify_pred_to_specs(mode_info, prog_var,
+    mode_error_unify_rhs, mer_type, pred_or_func) = list(error_msg_spec).
 
 mode_error_unify_pred_to_specs(ModeInfo, X, RHS, Type, PredOrFunc) = Specs :-
     mode_info_get_context(ModeInfo, Context),
@@ -889,9 +902,8 @@ mode_error_unify_pred_to_specs(ModeInfo, X, RHS, Type, PredOrFunc) = Specs :-
 
 %-----------------------------------------------------------------------------%
 
-:- func mode_error_unify_var_var_to_specs(mode_info::in, prog_var::in,
-    prog_var::in, mer_inst::in, mer_inst::in)
-    = (list(error_msg_spec)::out(error_msg_specs)) is det.
+:- func mode_error_unify_var_var_to_specs(mode_info, prog_var,
+    prog_var, mer_inst, mer_inst) = list(error_msg_spec).
 
 mode_error_unify_var_var_to_specs(ModeInfo, X, Y, InstX, InstY) = Specs :-
     mode_info_get_context(ModeInfo, Context),
@@ -914,9 +926,8 @@ mode_error_unify_var_var_to_specs(ModeInfo, X, Y, InstX, InstY) = Specs :-
 
 %-----------------------------------------------------------------------------%
 
-:- func mode_error_unify_var_lambda_to_specs(mode_info::in, prog_var::in,
-    mer_inst::in, mer_inst::in) = (list(error_msg_spec)::out(error_msg_specs))
-    is det.
+:- func mode_error_unify_var_lambda_to_specs(mode_info, prog_var,
+    mer_inst, mer_inst) = list(error_msg_spec).
 
 mode_error_unify_var_lambda_to_specs(ModeInfo, X, InstX, InstY) = Specs :-
     mode_info_get_context(ModeInfo, Context),
@@ -935,9 +946,8 @@ mode_error_unify_var_lambda_to_specs(ModeInfo, X, InstX, InstY) = Specs :-
 
 %-----------------------------------------------------------------------------%
 
-:- func mode_error_unify_var_functor_to_specs(mode_info::in, prog_var::in,
-    cons_id::in, list(prog_var)::in, mer_inst::in, list(mer_inst)::in)
-    = (list(error_msg_spec)::out(error_msg_specs)) is det.
+:- func mode_error_unify_var_functor_to_specs(mode_info, prog_var,
+    cons_id, list(prog_var), mer_inst, list(mer_inst)) = list(error_msg_spec).
 
 mode_error_unify_var_functor_to_specs(ModeInfo, X, ConsId, Args,
         InstX, ArgInsts) = Specs :-
@@ -975,9 +985,8 @@ mode_error_unify_var_functor_to_specs(ModeInfo, X, ConsId, Args,
 
 %-----------------------------------------------------------------------------%
 
-:- func mode_warning_cannot_succeed_var_var(mode_info::in,
-    prog_var::in, prog_var::in, mer_inst::in, mer_inst::in)
-    = (list(error_msg_spec)::out(error_msg_specs)) is det.
+:- func mode_warning_cannot_succeed_var_var(mode_info,
+    prog_var, prog_var, mer_inst, mer_inst) = list(error_msg_spec).
 
 mode_warning_cannot_succeed_var_var(ModeInfo, X, Y, InstX, InstY) = Specs :-
     mode_info_get_context(ModeInfo, Context),
@@ -996,9 +1005,8 @@ mode_warning_cannot_succeed_var_var(ModeInfo, X, Y, InstX, InstY) = Specs :-
     Specs = [mode_info_context_to_spec(ModeInfo),
         error_msg_spec(no, Context, 0, Pieces)].
 
-:- func mode_warning_cannot_succeed_var_functor(mode_info::in,
-    prog_var::in, mer_inst::in, cons_id::in)
-    = (list(error_msg_spec)::out(error_msg_specs)) is det.
+:- func mode_warning_cannot_succeed_var_functor(mode_info, prog_var, mer_inst,
+    cons_id) = list(error_msg_spec).
 
 mode_warning_cannot_succeed_var_functor(ModeInfo, X, InstX, ConsId) = Specs :-
     mode_info_get_context(ModeInfo, Context),
@@ -1016,8 +1024,7 @@ mode_warning_cannot_succeed_var_functor(ModeInfo, X, InstX, ConsId) = Specs :-
 
 %-----------------------------------------------------------------------------%
 
-:- func mode_info_context_to_spec(mode_info::in)
-    = (error_msg_spec::out(error_msg_spec)) is det.
+:- func mode_info_context_to_spec(mode_info) = error_msg_spec.
 
 mode_info_context_to_spec(ModeInfo) = Spec :-
     mode_info_get_module_info(ModeInfo, ModuleInfo),
@@ -1064,9 +1071,8 @@ mode_context_init(uninitialized).
 
 %-----------------------------------------------------------------------------%
 
-:- func mode_error_final_inst_to_specs(mode_info::in, int::in, prog_var::in,
-    mer_inst::in, mer_inst::in, final_inst_error::in)
-    = (list(error_msg_spec)::out(error_msg_specs)) is det.
+:- func mode_error_final_inst_to_specs(mode_info, int, prog_var,
+    mer_inst, mer_inst, final_inst_error) = list(error_msg_spec).
 
 mode_error_final_inst_to_specs(ModeInfo, ArgNum, Var, VarInst, Inst, Reason)
         = Specs :-
@@ -1095,8 +1101,7 @@ mode_error_final_inst_to_specs(ModeInfo, ArgNum, Var, VarInst, Inst, Reason)
 %-----------------------------------------------------------------------------%
 
 :- func purity_error_should_be_in_promise_purity_scope_to_specs(
-        negated_context_desc::in, mode_info::in, prog_var::in) =
-        (list(error_msg_spec)::out(error_msg_specs)) is det.
+    negated_context_desc, mode_info, prog_var) = list(error_msg_spec).
 
 purity_error_should_be_in_promise_purity_scope_to_specs(NegCtxtDesc,
         ModeInfo, Var) = Specs :-
@@ -1128,9 +1133,8 @@ purity_error_should_be_in_promise_purity_scope_to_specs(NegCtxtDesc,
 
 %-----------------------------------------------------------------------------%
 
-:- func purity_error_lambda_should_be_impure_to_specs(mode_info::in,
-        list(prog_var)::in) = (list(error_msg_spec)::out(error_msg_specs))
-        is det.
+:- func purity_error_lambda_should_be_impure_to_specs(mode_info,
+    list(prog_var)) = list(error_msg_spec).
 
 purity_error_lambda_should_be_impure_to_specs(ModeInfo, Vars) = Specs :-
     mode_info_get_context(ModeInfo, Context),

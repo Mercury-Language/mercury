@@ -918,7 +918,7 @@ ml_gen_mlds_field_decl(DataName, MLDS_Type, Context) = MLDS_Defn :-
 % Miscellaneous helper routines.
 %
 
-ml_gen_type_name(Name - Arity, QualifiedTypeName, Arity) :-
+ml_gen_type_name(type_ctor(Name, Arity), QualifiedTypeName, Arity) :-
     (
         Name = qualified(ModuleName, TypeName)
     ;
@@ -936,8 +936,8 @@ ml_gen_type_name(Name - Arity, QualifiedTypeName, Arity) :-
 :- pred ml_gen_equality_members(maybe(unify_compare)::in,
     list(mlds_defn)::out) is det.
 
-ml_gen_equality_members(_, []).  % XXX generation of `==' members
-                 % is not yet implemented.
+% XXX generation of `==' members is not yet implemented.
+ml_gen_equality_members(_, []).
 
 %-----------------------------------------------------------------------------%
 %

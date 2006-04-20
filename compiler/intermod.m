@@ -937,7 +937,7 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
     ;
         TypeCtors = [TheTypeCtor],
         MaybePredId = no,
-        ( TheTypeCtor = qualified(TypeModule, _) - _ ->
+        ( TheTypeCtor = type_ctor(qualified(TypeModule, _), _) ->
             unqualify_name(InstanceMethodName0, UnqualMethodName),
             InstanceMethodName = qualified(TypeModule, UnqualMethodName)
         ;
@@ -1105,7 +1105,7 @@ resolve_user_special_pred_overloading(ModuleInfo, SpecialId,
 
 should_write_type(ModuleName, TypeCtor, TypeDefn) :-
     hlds_data.get_type_defn_status(TypeDefn, ImportStatus),
-    TypeCtor = Name - _Arity,
+    TypeCtor = type_ctor(Name, _Arity),
     Name = qualified(ModuleName, _),
     import_status_to_write(ImportStatus).
 
@@ -1222,7 +1222,7 @@ write_type(TypeCtor - TypeDefn, !IO) :-
     hlds_data.get_type_defn_tparams(TypeDefn, Args),
     hlds_data.get_type_defn_body(TypeDefn, Body),
     hlds_data.get_type_defn_context(TypeDefn, Context),
-    TypeCtor = Name - Arity,
+    TypeCtor = type_ctor(Name, Arity),
     (
         Ctors = Body ^ du_type_ctors,
         MaybeUserEqComp = Body ^ du_type_usereq,
@@ -1313,7 +1313,7 @@ write_modes(ModuleInfo, !IO) :-
     io::di, io::uo) is det.
 
 write_mode(ModuleName, ModeId, ModeDefn, !IO) :-
-    ModeId = SymName - _Arity,
+    ModeId = mode_id(SymName, _Arity),
     ModeDefn = hlds_mode_defn(Varset, Args, eqv_mode(Mode), Context,
         ImportStatus),
     (
@@ -1340,7 +1340,7 @@ write_insts(ModuleInfo, !IO) :-
     io::di, io::uo) is det.
 
 write_inst(ModuleName, InstId, InstDefn, !IO) :-
-    InstId = SymName - _Arity,
+    InstId = inst_id(SymName, _Arity),
     InstDefn = hlds_inst_defn(Varset, Args, Body, Context, ImportStatus),
     (
         SymName = qualified(ModuleName, _),

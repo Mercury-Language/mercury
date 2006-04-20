@@ -259,7 +259,7 @@ make_atomic_unification(Var, Rhs, Context, MainContext, SubContext, Purity,
         MainContext, SubContext, Purity, Goal).
 
 record_called_pred_or_func(PredOrFunc, SymName, Arity, !QualInfo) :-
-    Id = SymName - Arity,
+    Id = item_name(SymName, Arity),
     apply_to_recompilation_info(recompilation.record_used_item(
         pred_or_func_to_item_type(PredOrFunc), Id, Id), !QualInfo).
 
@@ -267,7 +267,7 @@ record_called_pred_or_func(PredOrFunc, SymName, Arity, !QualInfo) :-
 
 record_used_functor(ConsId, !QualInfo) :-
     ( ConsId = cons(SymName, Arity) ->
-        Id = SymName - Arity,
+        Id = item_name(SymName, Arity),
         apply_to_recompilation_info(record_used_item(functor_item, Id, Id),
             !QualInfo)
     ;

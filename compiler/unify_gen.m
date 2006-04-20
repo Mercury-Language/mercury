@@ -1096,8 +1096,8 @@ generate_sub_assign(Left, Right, Code, !CI) :-
 
 var_type_msg(Type, Msg) :-
     ( type_to_ctor_and_args(Type, TypeCtor, _) ->
-        TypeCtor = TypeSym - TypeArity,
-        mdbcomp.prim_data.sym_name_to_string(TypeSym, TypeSymStr),
+        TypeCtor = type_ctor(TypeSym, TypeArity),
+        sym_name_to_string(TypeSym, TypeSymStr),
         string.int_to_string(TypeArity, TypeArityStr),
         string.append_list([TypeSymStr, "/", TypeArityStr], Msg)
     ;

@@ -617,7 +617,7 @@ type_needs_lowlevel_rep(Target, Type) :-
     type_ctor_needs_lowlevel_rep(Target, TypeCtor).
 
     % XXX Do we need to do the same for the Java back-end?
-type_ctor_needs_lowlevel_rep(il, TypeName - _Arity) :-
+type_ctor_needs_lowlevel_rep(il, type_ctor(TypeName, _Arity)) :-
     mercury_public_builtin_module(Builtin),
     mercury_private_builtin_module(PrivateBuiltin),
     RttiImplementation = unqualified("rtti_implementation"),

@@ -239,7 +239,7 @@ search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) :-
     ( map.search(WeightMap, TypeCtor - ConsId, WeightInfo0) ->
         WeightInfo = WeightInfo0
     ; type_ctor_is_tuple(TypeCtor) ->
-        TypeCtor = _ - Arity,
+        TypeCtor = type_ctor(_, Arity),
         find_weights_for_tuple(Arity, WeightInfo)
     ;
         fail

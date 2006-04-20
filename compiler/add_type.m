@@ -84,7 +84,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         item_status(Status0, NeedQual), !ModuleInfo, !IO) :-
     globals.io_get_globals(Globals, !IO),
     list.length(Args, Arity),
-    TypeCtor = Name - Arity,
+    TypeCtor = type_ctor(Name, Arity),
     convert_type_defn(TypeDefn, TypeCtor, Globals, Body0),
     module_info_get_type_table(!.ModuleInfo, Types0),
     (
@@ -104,8 +104,8 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         Status1 = Status0
     ),
     (
-        % the type is exported if *any* occurrence is exported,
-        % even a previous abstract occurrence
+        % The type is exported if *any* occurrence is exported,
+        % even a previous abstract occurrence.
         map.search(Types0, TypeCtor, OldDefn0)
     ->
         hlds_data.get_type_defn_status(OldDefn0, OldStatus),
@@ -113,9 +113,8 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         hlds_data.get_type_defn_body(OldDefn0, OldBody0),
         combine_is_solver_type(OldBody0, OldBody, Body0, Body),
         ( is_solver_type_is_inconsistent(OldBody, Body) ->
-            % The existing definition has an is_solver_type
-            % annotation which is different to the current
-            % definition.
+            % The existing definition has an is_solver_type annotation
+            % which is different to the current definition.
             module_info_incr_errors(!ModuleInfo),
             Pieces0 = [words("In definition of type"),
                 fixed(describe_sym_name_and_arity(Name / Arity) ++ ":"), nl,
@@ -169,7 +168,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         write_error_pieces(Context, 0, ErrorPieces, !IO),
         module_info_incr_errors(!ModuleInfo)
     ;
-        % if there was an existing non-abstract definition for the type
+        % If there was an existing non-abstract definition for the type, ...
         MaybeOldDefn = yes(T2),
         hlds_data.get_type_defn_tvarset(T2, TVarSet_2),
         hlds_data.get_type_defn_tparams(T2, Params_2),
@@ -190,8 +189,8 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
             true
         ),
         (
-            % then if this definition was abstract, ignore it
-            % (but update the status of the old defn if necessary)
+            % ... then if this definition was abstract, ignore it
+            % (but update the status of the old defn if necessary).
             Body = abstract_type(_)
         ->
             ( Status = OrigStatus ->
@@ -224,7 +223,7 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
                     Pieces, !IO)
             )
         ;
-            % otherwise issue an error message if the second
+            % ..., otherwise issue an error message if the second
             % definition wasn't read while reading .opt files.
             Status = opt_imported
         ->
@@ -238,11 +237,10 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         map.set(Types0, TypeCtor, T, Types),
         module_info_set_type_table(Types, !ModuleInfo),
         (
-            % XXX we can't handle abstract exported
-            % polymorphic equivalence types with monomorphic
-            % bodies, because the compiler stuffs up the
-            % type_info handling -- the caller passes type_infos,
-            % but the callee expects no type_infos
+            % XXX We can't handle abstract exported polymorphic equivalence
+            % types with monomorphic bodies, because the compiler stuffs up
+            % the type_info handling -- the caller passes type_infos,
+            % but the callee expects no type_infos.
             Body = eqv_type(EqvType),
             Status = abstract_exported,
             list.member(Var, Args),
@@ -412,7 +410,7 @@ process_type_defn(TypeCtor, TypeDefn, !FoundError, !ModuleInfo, !IO) :-
 
 check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError, !ModuleInfo,
         !IO) :-
-    TypeCtor = Name - Arity,
+    TypeCtor = type_ctor(Name, Arity),
     module_info_get_globals(!.ModuleInfo, Globals),
     generating_code(GeneratingCode, !IO),
     globals.get_target(Globals, Target),

@@ -101,7 +101,7 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
     pred_info_get_origin(PredInfo, Origin),
     ( Origin = special_pred(SpecialId - TypeCtor) ->
         special_pred_description(SpecialId, Descr),
-        TypeCtor = TypeSymName - TypeArity,
+        TypeCtor = type_ctor(TypeSymName, TypeArity),
         ( TypeArity = 0 ->
             Pieces = [words(Descr), words("for type"),
                 sym_name(TypeSymName)]

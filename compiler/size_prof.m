@@ -1062,7 +1062,8 @@ get_new_var(Type, Prefix, Var, !Info) :-
 
 record_known_type_ctor_info(Var, TypeCtorModule, TypeCtorName, TypeCtorArity,
         !Info) :-
-    TypeCtor = qualified(TypeCtorModule, TypeCtorName) - TypeCtorArity,
+    TypeCtor = type_ctor(qualified(TypeCtorModule, TypeCtorName),
+        TypeCtorArity),
     TypeCtorMap0 = !.Info ^ type_ctor_map,
     RevTypeCtorMap0 = !.Info ^ rev_type_ctor_map,
     map.set(TypeCtorMap0, TypeCtor, Var, TypeCtorMap),
@@ -1080,8 +1081,8 @@ record_known_type_info(Var, TypeCtorInfoVar, ArgTypeInfoVars, !Info) :-
         ( list.map(map.search(RevTypeInfoMap0), ArgTypeInfoVars, ArgTypes) ->
             list.length(ArgTypes, Arity),
             % Just in case TypeCtorInfo0 has fake arity, e.g. if it is a tuple.
-            TypeCtor0 = SymName - _DeclArity,
-            TypeCtor1 = SymName - Arity,
+            TypeCtor0 = type_ctor(SymName, _DeclArity),
+            TypeCtor1 = type_ctor(SymName, Arity),
             construct_type(TypeCtor1, ArgTypes, Type),
             record_type_info_var(Type, Var, !Info)
         ;

@@ -878,7 +878,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         (
             ConsId0 = cons(Name0, Arity),
             type_to_ctor_and_args(TypeOfX, TypeCtorOfX, _),
-            TypeCtorOfX = qualified(TypeModule, _) - _
+            TypeCtorOfX = type_ctor(qualified(TypeModule, _), _)
         ->
             unqualify_name(Name0, Name),
             ConsId = cons(qualified(TypeModule, Name), Arity)
@@ -1321,7 +1321,7 @@ check_for_missing_definitions_2(TypeCtor, TypeDefn, !NumErrors,
         % definitions in any of the builtin modules in the
         % standard library.
 
-        TypeCtor = SymName - Arity,
+        TypeCtor = type_ctor(SymName, Arity),
         BuiltinTypeCtors = builtin_type_ctors_with_no_hlds_type_defn,
         (
             sym_name_get_module_name(SymName, ModuleName),

@@ -464,51 +464,66 @@ type_has_variable_arity_ctor(Type, TypeCtor, TypeArgs) :-
     ( type_is_higher_order(Type, _Purity, PredOrFunc, _, TypeArgs0) ->
         TypeArgs = TypeArgs0,
         PredOrFuncStr = prog_out.pred_or_func_to_str(PredOrFunc),
-        TypeCtor = unqualified(PredOrFuncStr) - 0
+        TypeCtor = type_ctor(unqualified(PredOrFuncStr), 0)
     ; type_is_tuple(Type, TypeArgs1) ->
         TypeArgs = TypeArgs1,
         % XXX why tuple/0 and not {}/N ?
-        TypeCtor = unqualified("tuple") - 0
+        TypeCtor = type_ctor(unqualified("tuple"), 0)
     ;
         fail
     ).
 
-type_to_ctor_and_args(defined(SymName, Args, _), SymName - Arity, Args) :-
-    Arity = list.length(Args).
-type_to_ctor_and_args(builtin(BuiltinType), SymName - 0, []) :-
-    builtin_type_to_string(BuiltinType, Name),
-    SymName = unqualified(Name).
-type_to_ctor_and_args(higher_order(Args0, MaybeRet, Purity, _EvalMethod),
-        SymName - Arity, Args) :-
-    Arity = list.length(Args0),
+type_to_ctor_and_args(Type, TypeCtor, Args) :-
     (
-        MaybeRet = yes(Ret),
-        PorFStr = "func",
-        Args = list.append(Args0, [Ret])
+        Type = defined(SymName, Args, _),
+        Arity = list.length(Args),
+        TypeCtor = type_ctor(SymName, Arity)
     ;
-        MaybeRet = no,
-        PorFStr = "pred",
-        Args = Args0
-    ),
-    SymName0 = unqualified(PorFStr),
-    (
-        Purity = purity_pure,
-        SymName = SymName0
+        Type = builtin(BuiltinType),
+        builtin_type_to_string(BuiltinType, Name),
+        SymName = unqualified(Name),
+        Arity = 0,
+        Args = [],
+        TypeCtor = type_ctor(SymName, Arity)
     ;
-        Purity = purity_semipure,
-        insert_module_qualifier("semipure", SymName0, SymName)
+        Type = higher_order(Args0, MaybeRet, Purity, _EvalMethod),
+        Arity = list.length(Args0),
+        (
+            MaybeRet = yes(Ret),
+            PorFStr = "func",
+            Args = list.append(Args0, [Ret])
+        ;
+            MaybeRet = no,
+            PorFStr = "pred",
+            Args = Args0
+        ),
+        SymName0 = unqualified(PorFStr),
+        (
+            Purity = purity_pure,
+            SymName = SymName0
+        ;
+            Purity = purity_semipure,
+            insert_module_qualifier("semipure", SymName0, SymName)
+        ;
+            Purity = purity_impure,
+            insert_module_qualifier("impure", SymName0, SymName)
+        ),
+        TypeCtor = type_ctor(SymName, Arity)
     ;
-        Purity = purity_impure,
-        insert_module_qualifier("impure", SymName0, SymName)
+        Type = tuple(Args, _),
+        SymName = unqualified("{}"),
+        Arity = list.length(Args),
+        TypeCtor = type_ctor(SymName, Arity)
+    ;
+        Type = apply_n(_, _, _),
+        sorry(this_file, "apply/N types")
+    ;
+        Type = kinded(SubType, _),
+        type_to_ctor_and_args(SubType, TypeCtor, Args)
     ).
-type_to_ctor_and_args(tuple(Args, _), unqualified("{}") - Arity, Args) :-
-    Arity = list.length(Args).
-type_to_ctor_and_args(apply_n(_, _, _), _, _) :-
-    sorry(this_file, "apply/N types").
-type_to_ctor_and_args(kinded(Type, _), TypeCtor, Args) :-
-    type_to_ctor_and_args(Type, TypeCtor, Args).
 
-type_ctor_is_higher_order(SymName - _Arity, Purity, PredOrFunc, EvalMethod) :-
+type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc, EvalMethod) :-
+    TypeCtor = type_ctor(SymName, _Arity),
     get_purity_and_eval_method(SymName, Purity, EvalMethod, PorFStr),
     (
         PorFStr = "pred",
@@ -539,7 +554,7 @@ get_purity_and_eval_method(SymName, Purity, EvalMethod, PorFStr) :-
         Purity = purity_pure
     ).
 
-type_ctor_is_tuple(unqualified("{}") - _).
+type_ctor_is_tuple(type_ctor(unqualified("{}"), _)).
 
 type_list_to_var_list([], []).
 type_list_to_var_list([Type | Types], [Var | Vars]) :-
@@ -614,7 +629,7 @@ type_list_contains_var([_ | Types], Var) :-
 
 construct_type(TypeCtor, Args, Type) :-
     (
-        TypeCtor = unqualified(Name) - 0,
+        TypeCtor = type_ctor(unqualified(Name), 0),
         builtin_type_to_string(BuiltinType, Name)
     ->
         Type = builtin(BuiltinType)
@@ -628,7 +643,7 @@ construct_type(TypeCtor, Args, Type) :-
         % XXX kind inference: we assume the kind is star.
         Type = tuple(Args, star)
     ;
-        TypeCtor = SymName - _,
+        TypeCtor = type_ctor(SymName, _),
         % XXX kind inference: we assume the kind is star.
         Type = defined(SymName, Args, star)
     ).
@@ -709,14 +724,14 @@ get_unconstrained_tvars(Tvars, Constraints, Unconstrained) :-
 %-----------------------------------------------------------------------------%
 
 builtin_type_ctors_with_no_hlds_type_defn =
-    [ qualified(mercury_public_builtin_module, "int") - 0,
-      qualified(mercury_public_builtin_module, "string") - 0,
-      qualified(mercury_public_builtin_module, "character") - 0,
-      qualified(mercury_public_builtin_module, "float") - 0,
-      qualified(mercury_public_builtin_module, "pred") - 0,
-      qualified(mercury_public_builtin_module, "func") - 0,
-      qualified(mercury_public_builtin_module, "void") - 0,
-      qualified(mercury_public_builtin_module, "tuple") - 0
+    [ type_ctor(qualified(mercury_public_builtin_module, "int"), 0),
+      type_ctor(qualified(mercury_public_builtin_module, "string"), 0),
+      type_ctor(qualified(mercury_public_builtin_module, "character"), 0),
+      type_ctor(qualified(mercury_public_builtin_module, "float"), 0),
+      type_ctor(qualified(mercury_public_builtin_module, "pred"), 0),
+      type_ctor(qualified(mercury_public_builtin_module, "func"), 0),
+      type_ctor(qualified(mercury_public_builtin_module, "void"), 0),
+      type_ctor(qualified(mercury_public_builtin_module, "tuple"), 0)
     ].
 
 is_builtin_dummy_argument_type("io", "state", 0).    % io.state/0
@@ -728,16 +743,16 @@ constructor_list_represents_dummy_argument_type([Ctor], no) :-
 type_is_io_state(Type) :-
     type_to_ctor_and_args(Type, TypeCtor, []),
     mercury_std_lib_module_name("io", ModuleName),
-    TypeCtor = qualified(ModuleName, "state") - 0.
+    TypeCtor = type_ctor(qualified(ModuleName, "state"), 0).
 
-type_ctor_is_array(qualified(unqualified("array"), "array") - 1).
+type_ctor_is_array(type_ctor(qualified(unqualified("array"), "array"), 1)).
 
 is_introduced_type_info_type(Type) :-
     type_to_ctor_and_args(Type, TypeCtor, _),
     is_introduced_type_info_type_ctor(TypeCtor).
 
 is_introduced_type_info_type_ctor(TypeCtor) :-
-    TypeCtor = qualified(PrivateBuiltin, Name) - 0,
+    TypeCtor = type_ctor(qualified(PrivateBuiltin, Name), 0),
     mercury_private_builtin_module(PrivateBuiltin),
     ( Name = "type_info"
     ; Name = "type_ctor_info"
@@ -826,7 +841,7 @@ io_state_type = defined(Name, [], star) :-
     % use of integers/floats/strings as type names should
     % be rejected by the parser in prog_io.m, not in module_qual.m.
 
-make_type_ctor(term.atom(Name), Arity, unqualified(Name) - Arity).
+make_type_ctor(term.atom(Name), Arity, type_ctor(unqualified(Name), Arity)).
 
 %-----------------------------------------------------------------------------%
 
@@ -852,7 +867,7 @@ qualify_cons_id(Type, Args, ConsId0, ConsId, InstConsId) :-
     (
         ConsId0 = cons(Name0, OrigArity),
         type_to_ctor_and_args(Type, TypeCtor, _),
-        TypeCtor = qualified(TypeModule, _) - _
+        TypeCtor = type_ctor(qualified(TypeModule, _), _)
     ->
         unqualify_name(Name0, UnqualName),
         Name = qualified(TypeModule, UnqualName),
@@ -950,7 +965,7 @@ type_with_constructors_should_be_no_tag(Globals, TypeCtor, ReserveTagPragma,
 is_dummy_argument_type_with_constructors(TypeCtor, Ctors, UserEqCmp) :-
     % Keep this in sync with is_dummy_argument_type below.
     (
-        TypeCtor = CtorSymName - TypeArity,
+        TypeCtor = type_ctor(CtorSymName, TypeArity),
         CtorSymName = qualified(unqualified(ModuleName), TypeName),
         is_builtin_dummy_argument_type(ModuleName, TypeName, TypeArity)
     ;

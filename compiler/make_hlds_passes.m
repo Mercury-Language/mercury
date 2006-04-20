@@ -1593,7 +1593,7 @@ maybe_check_field_access_function(FuncName, FuncArity, Status, Context,
 check_field_access_function(_AccessType, FieldName, FuncName, FuncArity,
         FuncStatus, Context, Module, !IO) :-
     adjust_func_arity(function, FuncArity, PredArity),
-    FuncCallId = function - FuncName/PredArity,
+    FuncCallId = simple_call_id(function, FuncName, PredArity),
 
     %
     % Check that a function applied to an exported type
@@ -1601,12 +1601,12 @@ check_field_access_function(_AccessType, FieldName, FuncName, FuncArity,
     %
     module_info_get_ctor_field_table(Module, CtorFieldTable),
     (
-        % Abstract types have status `abstract_exported',
-        % so errors won't be reported for local field
-        % access functions for them.
+        % Abstract types have status `abstract_exported', so errors won't be
+        % reported for local field access functions for them.
         map.search(CtorFieldTable, FieldName, [FieldDefn]),
         FieldDefn = hlds_ctor_field_defn(_, DefnStatus, _, _, _),
-        DefnStatus = exported, FuncStatus \= exported
+        DefnStatus = exported,
+        FuncStatus \= exported
     ->
         report_field_status_mismatch(Context, FuncCallId, !IO)
     ;

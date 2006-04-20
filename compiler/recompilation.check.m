@@ -335,12 +335,11 @@ require_recompilation_if_not_up_to_date(RecordedTimestamp, TargetFile,
         record_recompilation_reason(Reason, !Info)
     ).
 
-:- pred parse_name_and_arity_to_used(term::in, pair(sym_name, arity)::out)
-    is semidet.
+:- pred parse_name_and_arity_to_used(term::in, item_name::out) is semidet.
 
 parse_name_and_arity_to_used(Term, UsedClass) :-
     parse_name_and_arity(Term, ClassName, ClassArity),
-    UsedClass = ClassName - ClassArity.
+    UsedClass = item_name(ClassName, ClassArity).
 
 %-----------------------------------------------------------------------------%
 
@@ -537,14 +536,15 @@ parse_resolved_functor(Info, Term, Ctor) :-
         Term = term.functor(term.atom("ctor"), [NameArityTerm], _),
         parse_name_and_arity(NameArityTerm, TypeName, TypeArity)
     ->
-        Ctor = constructor(TypeName - TypeArity)
+        Ctor = constructor(item_name(TypeName, TypeArity))
     ;
         Term = term.functor(term.atom("field"),
             [TypeNameArityTerm, ConsNameArityTerm], _),
         parse_name_and_arity(TypeNameArityTerm, TypeName, TypeArity),
         parse_name_and_arity(ConsNameArityTerm, ConsName, ConsArity)
     ->
-        Ctor = field(TypeName - TypeArity, ConsName - ConsArity)
+        Ctor = field(item_name(TypeName, TypeArity),
+            item_name(ConsName, ConsArity))
     ;
         Reason = syntax_error(get_term_context(Term),
             "error in functor match"),
@@ -552,8 +552,8 @@ parse_resolved_functor(Info, Term, Ctor) :-
     ).
 
 :- type parse_resolved_item_matches(T) ==
-        pred(recompilation_check_info, term, resolved_item_map(T),
-            resolved_item_map(T)).
+    pred(recompilation_check_info, term,
+        resolved_item_map(T), resolved_item_map(T)).
 :- inst parse_resolved_item_matches == (pred(in, in, in, out) is det).
 
 :- pred parse_resolved_item_set(recompilation_check_info::in,
@@ -763,7 +763,7 @@ check_module_used_items(ModuleName, NeedQualifier, OldTimestamp,
 :- func make_item_id(module_name, item_type, pair(string, arity)) = item_id.
 
 make_item_id(Module, ItemType, Name - Arity) =
-    item_id(ItemType, qualified(Module, Name) - Arity).
+    item_id(ItemType, item_name(qualified(Module, Name), Arity)).
 
 %-----------------------------------------------------------------------------%
 
@@ -845,7 +845,7 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
     (
         NeedsCheck = yes,
         check_type_defn_ambiguity_with_functor(NeedQualifier,
-            Name - Arity, Body, !Info)
+            type_ctor(Name, Arity), Body, !Info)
     ;
         NeedsCheck = no
     ).
@@ -969,8 +969,8 @@ check_for_simple_item_ambiguity_2(ItemType, NeedQualifier, SymName, Arity,
         \+ SymName = qualified(OldMatchingModuleName, _)
     ->
         OldMatchingName = qualified(OldMatchingModuleName, Name),
-        Reason = item_ambiguity(item_id(ItemType, SymName - Arity),
-            [item_id(ItemType, OldMatchingName - Arity)]),
+        Reason = item_ambiguity(item_id(ItemType, item_name(SymName, Arity)),
+            [item_id(ItemType, item_name(OldMatchingName, Arity))]),
         record_recompilation_reason(Reason, !Info)
     ;
         true
@@ -1081,10 +1081,10 @@ check_for_pred_or_func_item_ambiguity_2(ItemType, NeedQualifier,
         AmbiguousDecls = list.map(
             (func(_ - OldMatchingModule) = Item :-
                 OldMatchingName = qualified(OldMatchingModule, Name),
-                Item = item_id(ItemType, OldMatchingName - Arity)
+                Item = item_id(ItemType, item_name(OldMatchingName, Arity))
             ),
             set.to_sorted_list(OldMatchingModuleNames)),
-        Reason = item_ambiguity(item_id(ItemType, SymName - Arity),
+        Reason = item_ambiguity(item_id(ItemType, item_name(SymName, Arity)),
             AmbiguousDecls),
         record_recompilation_reason(Reason, !Info)
     ;
@@ -1112,14 +1112,15 @@ check_type_defn_ambiguity_with_functor(_, _, solver_type(_, _), !Info).
     constructor::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_functor_ambiguities(NeedQualifier, TypeCtor,
-        ctor(_, _, Name, Args), !Info) :-
-    ResolvedCtor = constructor(TypeCtor),
+check_functor_ambiguities(NeedQualifier, TypeCtor, ctor(_, _, Name, Args),
+        !Info) :-
+    TypeCtorItem = type_ctor_to_item_name(TypeCtor),
+    ResolvedCtor = constructor(TypeCtorItem),
     Arity = list.length(Args),
     check_functor_ambiguities(NeedQualifier, Name, exact(Arity),
         ResolvedCtor, !Info),
     list.foldl(check_field_ambiguities(NeedQualifier,
-        field(TypeCtor, Name - Arity)), Args, !Info).
+        field(TypeCtorItem, item_name(Name, Arity))), Args, !Info).
 
 :- pred check_field_ambiguities(need_qualifier::in, resolved_functor::in,
     constructor_arg::in,
@@ -1385,7 +1386,8 @@ recompile_reason_message(changed_item(Item), no,
 recompile_reason_message(removed_item(Item), no,
         list.append(describe_item(Item), [words("was removed.")])).
 recompile_reason_message(
-        changed_or_added_instance(ModuleName, ClassName - ClassArity),
+        changed_or_added_instance(ModuleName,
+            item_name(ClassName, ClassArity)),
         no,
         [
         words("an instance for class"),
@@ -1394,7 +1396,8 @@ recompile_reason_message(
         words(describe_sym_name(ModuleName)),
         words("was added or modified.")
         ]).
-recompile_reason_message(removed_instance(ModuleName, ClassName - ClassArity),
+recompile_reason_message(
+        removed_instance(ModuleName, item_name(ClassName, ClassArity)),
         no,
         [
         words("an instance for class "),
@@ -1406,7 +1409,7 @@ recompile_reason_message(removed_instance(ModuleName, ClassName - ClassArity),
 
 :- func describe_item(item_id) = list(format_component).
 
-describe_item(item_id(ItemType0, SymName - Arity)) = Pieces :-
+describe_item(item_id(ItemType0, item_name(SymName, Arity))) = Pieces :-
     ( body_item(ItemType0, ItemType1) ->
         ItemType = ItemType1,
         BodyWords = "body of "
@@ -1427,29 +1430,32 @@ body_item(type_body_item, type_item).
 :- func describe_functor(sym_name, arity, resolved_functor) =
     list(format_component).
 
-describe_functor(SymName, _Arity,
-        pred_or_func(_, ModuleName, PredOrFunc, PredArity)) =
-        [words(ItemTypeStr), SymNameAndArityPiece] :-
-    string_to_item_type(ItemTypeStr,
-        pred_or_func_to_item_type(PredOrFunc)),
+describe_functor(SymName, _Arity, ResolvedFunctor) = Pieces :-
+    ResolvedFunctor = pred_or_func(_, ModuleName, PredOrFunc, PredArity),
+    string_to_item_type(ItemTypeStr, pred_or_func_to_item_type(PredOrFunc)),
     unqualify_name(SymName, UnqualName),
-    SymNameAndArityPiece = words(describe_sym_name_and_arity(
-        qualified(ModuleName, UnqualName) / PredArity)).
-describe_functor(SymName, Arity, constructor(TypeName - TypeArity)) =
-        [words("constructor"),
-        words(describe_sym_name_and_arity(SymName / Arity)),
+    SymNameAndArityPiece =
+        sym_name_and_arity(qualified(ModuleName, UnqualName) / PredArity),
+    Pieces = [words(ItemTypeStr), SymNameAndArityPiece].
+describe_functor(SymName, Arity, ResolvedFunctor) = Pieces :-
+    ResolvedFunctor = constructor(item_name(TypeName, TypeArity)),
+    Pieces = [
+        words("constructor"),
+        sym_name_and_arity(SymName / Arity),
         words("of type"),
-        words(describe_sym_name_and_arity(TypeName / TypeArity))
-        ].
-describe_functor(SymName, Arity,
-            field(TypeName - TypeArity, ConsName - ConsArity)) =
-        [words("field access function"),
-        words(describe_sym_name_and_arity(SymName / Arity)),
+        sym_name_and_arity(TypeName / TypeArity)
+    ].
+describe_functor(SymName, Arity, ResolvedFunctor) = Pieces :-
+    ResolvedFunctor = field(item_name(TypeName, TypeArity),
+        item_name(ConsName, ConsArity)),
+    Pieces = [
+        words("field access function"),
+        sym_name_and_arity(SymName / Arity),
         words("for constructor"),
-        words(describe_sym_name_and_arity(ConsName / ConsArity)),
+        sym_name_and_arity(ConsName / ConsArity),
         words("of type"),
-        words(describe_sym_name_and_arity(TypeName / TypeArity))
-        ].
+        sym_name_and_arity(TypeName / TypeArity)
+    ].
 
 %-----------------------------------------------------------------------------%
 

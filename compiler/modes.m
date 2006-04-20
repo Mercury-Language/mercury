@@ -3164,9 +3164,9 @@ construct_initialisation_call(Var, VarType, Inst, Context,
         type_to_ctor_and_args(VarType, TypeCtor, _TypeArgs),
         PredName = special_pred.special_pred_name(spec_pred_init, TypeCtor),
         (
-            TypeCtor = qualified(ModuleName, _TypeName) - _Arity
+            TypeCtor = type_ctor(qualified(ModuleName, _TypeName), _Arity)
         ;
-            TypeCtor = unqualified(_TypeName) - _Arity,
+            TypeCtor = type_ctor(unqualified(_TypeName), _Arity),
             mode_info_get_module_info(!.ModeInfo, ModuleInfo),
             module_info_get_name(ModuleInfo, ModuleName)
         ),

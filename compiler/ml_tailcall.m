@@ -589,14 +589,13 @@ report_nontailcall_warning(tailcall_warning(PredLabel, ProcId, Context),
     (
         PredLabel = pred(PredOrFunc, _MaybeModule, Name, Arity,
             _CodeModel, _NonOutputFunc),
-        CallId = simple_call_id_to_string(PredOrFunc -
-            unqualified(Name) / Arity),
+        SimpleCallId = simple_call_id(PredOrFunc, unqualified(Name), Arity),
         proc_id_to_int(ProcId, ProcNumber0),
         ProcNumber = ProcNumber0 + 1,
         ProcNumberStr = string.int_to_string(ProcNumber),
         report_warning(mlds_get_prog_context(Context), 0, [
             words("In mode number"), words(ProcNumberStr),
-            words("of"), fixed(CallId ++ ":"), nl,
+            words("of"), simple_call_id(SimpleCallId), suffix(":"), nl,
             words("warning: recursive call is not tail recursive.")
         ], !IO)
     ;

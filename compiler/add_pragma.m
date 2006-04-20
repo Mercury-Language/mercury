@@ -52,7 +52,7 @@
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 :- pred add_pragma_structure_sharing(pred_or_func::in, sym_name::in,
-    list(mer_mode)::in, list(prog_var)::in, list(mer_type)::in, 
+    list(mer_mode)::in, list(prog_var)::in, list(mer_type)::in,
     maybe(structure_sharing_domain)::in, prog_context::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
@@ -382,7 +382,7 @@ add_pragma_export(Origin, Name, PredOrFunc, Modes, C_Function, Context,
             )
         )
     ;
-        ( 
+        (
             Origin = user,
             undefined_pred_or_func_error(Name, Arity, Context,
                 "`:- pragma export' declaration", !IO),
@@ -391,7 +391,7 @@ add_pragma_export(Origin, Name, PredOrFunc, Modes, C_Function, Context,
             Origin = compiler(Details),
             (
                 Details = initialise_decl
-            ;      
+            ;
                 Details = mutable_decl
             ;
                 Details = finalise_decl
@@ -406,7 +406,7 @@ add_pragma_export(Origin, Name, PredOrFunc, Modes, C_Function, Context,
 
 add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
         !IO) :-
-    TypeCtor = TypeName - TypeArity,
+    TypeCtor = type_ctor(TypeName, TypeArity),
     module_info_get_type_table(!.ModuleInfo, Types0),
     TypeStr = describe_sym_name_and_arity(TypeName / TypeArity),
     ErrorPieces1 = [
@@ -751,7 +751,8 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
                 ItemType = pred_or_func_to_item_type(PredOrFunc),
                 apply_to_recompilation_info(
                     recompilation.record_expanded_items(
-                        item_id(ItemType, SymName - Arity), ExpandedItems),
+                        item_id(ItemType, item_name(SymName, Arity)),
+                        ExpandedItems),
                     !QualInfo)
             ;
                 IsImported = no
@@ -977,9 +978,9 @@ report_pragma_type_spec(PredInfo) = Pieces :-
     Name = pred_info_name(PredInfo),
     Arity = pred_info_orig_arity(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    SimpleCallId = simple_call_id(PredOrFunc, qualified(Module, Name), Arity),
     Pieces = [words("In `:- pragma type_spec' declaration for"),
-        simple_call_id(PredOrFunc - qualified(Module, Name)/Arity),
-        suffix(":"), nl].
+        simple_call_id(SimpleCallId), suffix(":"), nl].
 
 :- func report_variables(list(tvar), tvarset) = string.
 
@@ -1075,13 +1076,14 @@ add_pragma_termination2_info(PredOrFunc, SymName, ModeList,
                 module_info_incr_errors(!ModuleInfo),
                 Pieces = [words("Error: `:- pragma termination2_info'"),
                     words("declaration for undeclared mode of"),
-                    simple_call_id(PredOrFunc - SymName/Arity), suffix(".")],
+                    simple_call_id(simple_call_id(PredOrFunc, SymName, Arity)),
+                    suffix(".")],
                 write_error_pieces(Context, 0, Pieces, !IO)
             )
         ;
             module_info_incr_errors(!ModuleInfo),
             Pieces = [words("Error: ambiguous predicate name"),
-                simple_call_id(PredOrFunc - SymName/Arity),
+                simple_call_id(simple_call_id(PredOrFunc, SymName, Arity)),
                 words("in"), fixed("`pragma termination2_info'.")],
             write_error_pieces(Context, 0, Pieces, !IO)
         )
@@ -1118,30 +1120,30 @@ add_pragma_structure_sharing(PredOrFunc, SymName, ModeList, HeadVars,
                     !.ModuleInfo, ProcId)
             ->
                 map.lookup(ProcTable0, ProcId, ProcInfo0),
-               
-                % Rename headvars/types to those used in the proc_info. 
-                proc_info_get_headvars(ProcInfo0, ProcHeadVars), 
+
+                % Rename headvars/types to those used in the proc_info.
+                proc_info_get_headvars(ProcInfo0, ProcHeadVars),
 
                 % As the HeadVars recorded in the pragma may contain additional
                 % vars (e.g. typeinfos), and in the same time ProcHeadVars does
-                % not, make sure to remove all TypeInfo-vars from HeadVars, 
+                % not, make sure to remove all TypeInfo-vars from HeadVars,
                 % the same for the list Types.
                 Diff = list.length(HeadVars) - list.length(ProcHeadVars),
                 (
-                    list.drop(Diff, HeadVars, RemHeadVars0), 
+                    list.drop(Diff, HeadVars, RemHeadVars0),
                     list.drop(Diff, Types, RemTypes0)
-                -> 
-                    RemHeadVars = RemHeadVars0, 
+                ->
+                    RemHeadVars = RemHeadVars0,
                     RemTypes = RemTypes0
                 ;
                     unexpected(this_file, "Impossible situation.")
                 ),
                 map.from_corresponding_lists(RemHeadVars, ProcHeadVars,
-                    MapHeadVars), 
+                    MapHeadVars),
                 pred_info_get_arg_types(PredInfo0, ArgTypes),
-                TypeSubst0 = map.init, 
+                TypeSubst0 = map.init,
                 (
-                    type_unify_list(RemTypes, ArgTypes, [], TypeSubst0, 
+                    type_unify_list(RemTypes, ArgTypes, [], TypeSubst0,
                         TypeSubst1)
                 ->
                     TypeSubst = TypeSubst1
@@ -1149,9 +1151,9 @@ add_pragma_structure_sharing(PredOrFunc, SymName, ModeList, HeadVars,
                     TypeSubst = TypeSubst0
                 ),
                 rename_structure_sharing_domain(MapHeadVars, TypeSubst,
-                    SharingDomain, RenamedSharingDomain), 
-                proc_info_set_structure_sharing(RenamedSharingDomain, 
-                    ProcInfo0, ProcInfo), 
+                    SharingDomain, RenamedSharingDomain),
+                proc_info_set_structure_sharing(RenamedSharingDomain,
+                    ProcInfo0, ProcInfo),
                 map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
                 pred_info_set_procedures(ProcTable, PredInfo0, PredInfo),
                 map.det_update(PredTable0, PredId, PredInfo, PredTable),
@@ -1160,13 +1162,14 @@ add_pragma_structure_sharing(PredOrFunc, SymName, ModeList, HeadVars,
                 module_info_incr_errors(!ModuleInfo),
                 Pieces = [words("Error: `:- pragma structure_sharing'"),
                     words("declaration for undeclared mode of"),
-                    simple_call_id(PredOrFunc - SymName/Arity), suffix(".")],
+                    simple_call_id(simple_call_id(PredOrFunc, SymName, Arity)),
+                    suffix(".")],
                 write_error_pieces(Context, 0, Pieces, !IO)
             )
         ;
             module_info_incr_errors(!ModuleInfo),
             Pieces = [words("Error: ambiguous predicate name"),
-                simple_call_id(PredOrFunc - SymName/Arity),
+                simple_call_id(simple_call_id(PredOrFunc, SymName, Arity)),
                 words("in"), fixed("`pragma structure_sharing'.")],
             write_error_pieces(Context, 0, Pieces, !IO)
         )
@@ -1179,7 +1182,6 @@ add_pragma_structure_sharing(PredOrFunc, SymName, ModeList, HeadVars,
         %       !IO),
         %   module_info_incr_errors(!ModuleInfo)
     ).
-
 
 %-----------------------------------------------------------------------------%
 
@@ -1219,13 +1221,14 @@ add_pragma_termination_info(PredOrFunc, SymName, ModeList,
                 module_info_incr_errors(!ModuleInfo),
                 Pieces = [words("Error: `:- pragma termination_info'"),
                     words("declaration for undeclared mode of"),
-                    simple_call_id(PredOrFunc - SymName/Arity), suffix(".")],
+                    simple_call_id(simple_call_id(PredOrFunc, SymName, Arity)),
+                    suffix(".")],
                 write_error_pieces(Context, 0, Pieces, !IO)
             )
         ;
             module_info_incr_errors(!ModuleInfo),
             Pieces = [words("Error: ambiguous predicate name"),
-                simple_call_id(PredOrFunc - SymName/Arity),
+                simple_call_id(simple_call_id(PredOrFunc, SymName, Arity)),
                 words("in"), fixed("`pragma termination_info'.")],
             write_error_pieces(Context, 0, Pieces, !IO)
         )
@@ -1282,12 +1285,13 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
     ( pred_info_is_imported(PredInfo1) ->
         module_info_incr_errors(!ModuleInfo),
         Pieces = [words("Error: `:- pragma import' declaration for imported"),
-            simple_call_id(PredOrFunc - PredName/Arity), suffix(".")],
+            simple_call_id(simple_call_id(PredOrFunc, PredName, Arity)),
+            suffix(".")],
         write_error_pieces(Context, 0, Pieces, !IO)
     ; pred_info_clause_goal_type(PredInfo1) ->
         module_info_incr_errors(!ModuleInfo),
         Pieces = [words("Error: `:- pragma import' declaration for"),
-            simple_call_id(PredOrFunc - PredName/Arity),
+            simple_call_id(simple_call_id(PredOrFunc, PredName, Arity)),
             words("with preceding clauses.")],
         write_error_pieces(Context, 0, Pieces, !IO)
     ;
@@ -1309,7 +1313,8 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
             module_info_incr_errors(!ModuleInfo),
             Pieces = [words("Error: `:- pragma import' declaration"),
                 words("for undeclared mode of"),
-                simple_call_id(PredOrFunc - PredName/Arity), suffix(".")],
+                simple_call_id(simple_call_id(PredOrFunc, PredName, Arity)),
+                suffix(".")],
             write_error_pieces(Context, 0, Pieces, !IO)
         )
     ).
@@ -1453,7 +1458,8 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
             Pieces = [words("Error: `:- pragma foreign_proc'"),
                 words("(or `pragma c_code')"),
                 words("declaration for imported"),
-                simple_call_id(PredOrFunc - PredName/Arity), suffix(".")],
+                simple_call_id(simple_call_id(PredOrFunc, PredName, Arity)),
+                suffix(".")],
             write_error_pieces(Context, 0, Pieces, !IO)
         ;
             % Don't add clauses for foreign languages other than the ones
@@ -1463,20 +1469,21 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
             pred_info_update_goal_type(pragmas, PredInfo0, !:PredInfo),
             module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
         ;
-            % add the pragma declaration to the proc_info for this procedure
+            % Add the pragma declaration to the proc_info for this procedure.
             pred_info_get_procedures(!.PredInfo, Procs),
             map.to_assoc_list(Procs, ExistingProcs),
             pragma_get_modes(PVars, Modes),
+            SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
             (
                 % The inst variables for the foreign_proc declaration
                 % and predmode declarations are from different varsets.
                 % We cannot just unify the argument modes directly because
                 % the representation of the inst variables may be different.
-                % Instead we need to allow for a renaming between the 
+                % Instead we need to allow for a renaming between the
                 % inst variables in the argument modes of the foreign_proc
                 % and those of the predmode declaration.
                 %
-                % XXX We should probably also check that each pair in 
+                % XXX We should probably also check that each pair in
                 % the renaming has the same name.
                 get_procedure_matching_argmodes_with_renaming(ExistingProcs,
                     Modes, !.ModuleInfo, ProcId)
@@ -1496,13 +1503,12 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
                 pragma_get_var_infos(PVars, ArgInfoBox),
                 assoc_list.keys(ArgInfoBox, ArgInfo),
                 maybe_warn_pragma_singletons(PragmaImpl, PragmaForeignLanguage,
-                    ArgInfo, Context, PredOrFunc - PredName/Arity,
-                    !.ModuleInfo, !IO)
+                    ArgInfo, Context, SimpleCallId, !.ModuleInfo, !IO)
             ;
                 module_info_incr_errors(!ModuleInfo),
                 Pieces = [words("Error: `:- pragma foreign_proc' declaration"),
                     words("for undeclared mode of"),
-                    simple_call_id(PredOrFunc - PredName/Arity), suffix(".")],
+                    simple_call_id(SimpleCallId), suffix(".")],
                 write_error_pieces(Context, 0, Pieces, !IO)
             )
         )
@@ -1608,13 +1614,14 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
     % declaration. Tabled procedures cannot be inlined.
     pred_info_get_markers(PredInfo0, Markers),
     globals.io_lookup_bool_option(warn_table_with_inline, WarnInline, !IO),
+    SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
     (
         check_marker(Markers, user_marked_inline),
         WarnInline = yes
     ->
         TablePragmaStr = string.format("`:- pragma %s'", [s(EvalMethodStr)]),
         InlineWarning = [
-            words("Warning: "), simple_call_id(PredOrFunc - PredName/Arity),
+            words("Warning: "), simple_call_id(SimpleCallId),
             words("has a"), fixed(TablePragmaStr),
             words("declaration but also has a"),
             fixed("`:- pragma inline'"), words("declaration."), nl,
@@ -1632,7 +1639,7 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
         Pieces1 = [words("Error: "),
             fixed("`:- pragma " ++ EvalMethodStr ++ "'"),
             words("declaration for imported"),
-            simple_call_id(PredOrFunc - PredName/Arity), suffix(".")],
+            simple_call_id(SimpleCallId), suffix(".")],
         write_error_pieces(Context, 0, Pieces1, !IO)
     ;
         % Do we have to make sure the tabled preds are stratified?
@@ -1647,7 +1654,6 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
         % Add the eval model to the proc_info for this procedure.
         pred_info_get_procedures(PredInfo0, ProcTable0),
         map.to_assoc_list(ProcTable0, ExistingProcs),
-        SimpleCallId = PredOrFunc - PredName/Arity,
         (
             MaybeModes = yes(Modes),
             (
@@ -2051,8 +2057,9 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
         MultipleArgs = [_ | _],
         io.set_exit_status(1, !IO),
         adjust_func_arity(PredOrFunc, OrigArity, Arity),
+        SimpleCallId = simple_call_id(PredOrFunc, PredName, OrigArity),
         Pieces1 = [words("In `:- pragma foreign_proc' declaration for"),
-            simple_call_id(PredOrFunc - PredName/OrigArity), suffix(":"), nl],
+            simple_call_id(SimpleCallId), suffix(":"), nl],
         (
             MultipleArgs = [MultipleArg],
             Pieces2 = [words("error: variable `" ++
@@ -2205,7 +2212,7 @@ get_procedure_matching_argmodes_2([P | Procs], Modes, ModuleInfo, OurProcId) :-
     ;
         get_procedure_matching_argmodes_2(Procs, Modes, ModuleInfo, OurProcId)
     ).
-    
+
     % Find the procedure with argmodes which match the ones we want but
     % allow for a renaming between the inst vars.
     %
@@ -2302,7 +2309,7 @@ mode_list_matches_with_renaming(ModesA, ModesB, Renaming, ModuleInfo) :-
     mode_get_insts_semidet(ModuleInfo, ModeB, InstBInitial, InstBFinal),
     match_insts_with_renaming(ModuleInfo, InstAInitial, InstBInitial,
         InitialSubst),
-    match_insts_with_renaming(ModuleInfo, InstAFinal, InstBFinal, 
+    match_insts_with_renaming(ModuleInfo, InstAFinal, InstBFinal,
         FinalSubst),
     list.append([InitialSubst, FinalSubst], !Substs),
     mode_list_matches_with_renaming_2(ModesA, ModesB, !Substs, ModuleInfo).
@@ -2392,13 +2399,13 @@ match_insts_with_renaming(ModuleInfo, InstA, InstB, Subst) :-
 match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
     InstA = defined_inst(InstNameA),
     InstB = defined_inst(InstNameB),
-    match_inst_names_with_renaming(ModuleInfo, InstNameA, InstNameB, Renaming). 
+    match_inst_names_with_renaming(ModuleInfo, InstNameA, InstNameB, Renaming).
 match_insts_with_renaming(ModuleInfo, InstA, InstB, Renaming) :-
     InstA = abstract_inst(Name, ArgsA),
     InstB = abstract_inst(Name, ArgsB),
     match_corresponding_inst_lists_with_renaming(ModuleInfo, ArgsA, ArgsB,
         map.init, Renaming).
-   
+
 :- pred match_inst_names_with_renaming(module_info::in,
     inst_name::in, inst_name::in, inst_var_renaming::out) is semidet.
 

@@ -1808,7 +1808,7 @@ strip_unnecessary_impl_types(NecessaryTypeCtors, !Items) :-
 is_necessary_impl_type(NecessaryTypeCtors, ItemAndContext) :-
     ItemAndContext = Item - _,
     ( Item = type_defn(_, SymName, Params, _, _) ->
-        TypeCtor = SymName - list.length(Params),
+        TypeCtor = type_ctor(SymName, list.length(Params)),
         set.member(TypeCtor, NecessaryTypeCtors)
     ;
         true
@@ -1916,10 +1916,8 @@ accumulate_abs_eqv_type_rhs_2(ImplTypeMap, TypeDefn - _, !AbsEqvRhsTypeCtors,
 
 accumulate_modules(TypeCtor, !Modules) :-
     % NOTE: This assumes that everything has been module qualified.
-    TypeCtor = SymName - _Arity,
-    (
-        sym_name_get_module_name(SymName, ModuleName)
-    ->
+    TypeCtor = type_ctor(SymName, _Arity),
+    ( sym_name_get_module_name(SymName, ModuleName) ->
         svset.insert(ModuleName, !Modules)
     ;
         unexpected(this_file, "accumulate_modules/3: unknown type encountered")
@@ -1933,7 +1931,7 @@ accumulate_modules(TypeCtor, !Modules) :-
 
 type_to_type_ctor_set(Type, !TypeCtors) :-
     ( type_to_ctor_and_args(Type, TypeCtor, Args) ->
-        TypeCtor = SymName - _Arity,
+        TypeCtor = type_ctor(SymName, _Arity),
         (
             type_ctor_is_higher_order(TypeCtor, _, _, _)
         ->
@@ -1981,7 +1979,7 @@ gather_type_defns(!.InInterface, [Item - Context | ItemContexts],
     ; Item = module_defn(_, implementation) ->
         !:InInterface = no
     ; Item = type_defn(_, Name, Args, Body, _) ->
-        TypeCtor = Name - length(Args),
+        TypeCtor = type_ctor(Name, length(Args)),
         (
             !.InInterface = yes,
             !:IntItems = [Item - Context | !.IntItems],

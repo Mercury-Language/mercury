@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: typecheck.m.
 % Main author: fjh.
-
+%
 % This file contains the Mercury type-checker.
 %
 % The predicates in this module are named as follows:
@@ -1234,103 +1234,110 @@ typecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info, !IO) :-
     hlds_goal_info::in, typecheck_info::in, typecheck_info::out,
     io::di, io::uo) is det.
 
-typecheck_goal_2(conj(ConjType, List0), conj(ConjType, List), _, !Info, !IO) :-
-    checkpoint("conj", !Info, !IO),
-    typecheck_goal_list(List0, List, !Info, !IO).
-
-typecheck_goal_2(disj(List0), disj(List), _, !Info, !IO) :-
-    checkpoint("disj", !Info, !IO),
-    typecheck_goal_list(List0, List, !Info, !IO).
-
-typecheck_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
-        if_then_else(Vars, Cond, Then, Else), _, !Info, !IO) :-
-    checkpoint("if", !Info, !IO),
-    typecheck_goal(Cond0, Cond, !Info, !IO),
-    checkpoint("then", !Info, !IO),
-    typecheck_goal(Then0, Then, !Info, !IO),
-    checkpoint("else", !Info, !IO),
-    typecheck_goal(Else0, Else, !Info, !IO),
-    ensure_vars_have_a_type(Vars, !Info, !IO).
-
-typecheck_goal_2(not(SubGoal0), not(SubGoal), _, !Info, !IO) :-
-    checkpoint("not", !Info, !IO),
-    typecheck_goal(SubGoal0, SubGoal, !Info, !IO).
-
-typecheck_goal_2(scope(Reason, SubGoal0), scope(Reason, SubGoal), _, !Info,
-        !IO) :-
-    checkpoint("scope", !Info, !IO),
-    typecheck_goal(SubGoal0, SubGoal, !Info, !IO),
+typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info, !IO) :-
     (
-        Reason = exist_quant(Vars),
-        ensure_vars_have_a_type(Vars, !Info, !IO)
+        GoalExpr0 = conj(ConjType, List0),
+        checkpoint("conj", !Info, !IO),
+        typecheck_goal_list(List0, List, !Info, !IO),
+        GoalExpr = conj(ConjType, List)
     ;
-        Reason = promise_purity(_, _)
+        GoalExpr0 = disj(List0),
+        checkpoint("disj", !Info, !IO),
+        typecheck_goal_list(List0, List, !Info, !IO),
+        GoalExpr = disj(List)
     ;
-        Reason = promise_solutions(Vars, _),
-        ensure_vars_have_a_type(Vars, !Info, !IO)
+        GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
+        checkpoint("if", !Info, !IO),
+        typecheck_goal(Cond0, Cond, !Info, !IO),
+        checkpoint("then", !Info, !IO),
+        typecheck_goal(Then0, Then, !Info, !IO),
+        checkpoint("else", !Info, !IO),
+        typecheck_goal(Else0, Else, !Info, !IO),
+        ensure_vars_have_a_type(Vars, !Info, !IO),
+        GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
-        Reason = commit(_)
+        GoalExpr0 = not(SubGoal0),
+        checkpoint("not", !Info, !IO),
+        typecheck_goal(SubGoal0, SubGoal, !Info, !IO),
+        GoalExpr = not(SubGoal)
     ;
-        Reason = barrier(_)
+        GoalExpr0 = scope(Reason, SubGoal0),
+        checkpoint("scope", !Info, !IO),
+        typecheck_goal(SubGoal0, SubGoal, !Info, !IO),
+        (
+            Reason = exist_quant(Vars),
+            ensure_vars_have_a_type(Vars, !Info, !IO)
+        ;
+            Reason = promise_purity(_, _)
+        ;
+            Reason = promise_solutions(Vars, _),
+            ensure_vars_have_a_type(Vars, !Info, !IO)
+        ;
+            Reason = commit(_)
+        ;
+            Reason = barrier(_)
+        ;
+            Reason = from_ground_term(_)
+        ),
+        GoalExpr = scope(Reason, SubGoal)
     ;
-        Reason = from_ground_term(_)
+        GoalExpr0 = call(_, B, Args, D, E, Name),
+        checkpoint("call", !Info, !IO),
+        list.length(Args, Arity),
+        CurCall = simple_call_id(predicate, Name, Arity),
+        typecheck_info_set_called_predid(call(CurCall), !Info),
+        goal_info_get_goal_path(GoalInfo, GoalPath),
+        typecheck_call_pred(CurCall, Args, GoalPath, PredId, !Info, !IO),
+        GoalExpr = call(PredId, B, Args, D, E, Name)
+    ;
+        GoalExpr0 = generic_call(GenericCall0, Args, C, D),
+        hlds_goal.generic_call_id(GenericCall0, CallId),
+        typecheck_info_set_called_predid(CallId, !Info),
+        (
+            GenericCall0 = higher_order(PredVar, Purity, _, _),
+            GenericCall = GenericCall0,
+            checkpoint("higher-order call", !Info, !IO),
+            typecheck_higher_order_call(PredVar, Purity, Args, !Info, !IO)
+        ;
+            GenericCall0 = class_method(_, _, _, _),
+            unexpected(this_file, "typecheck_goal_2:
+                unexpected class method call")
+        ;
+            GenericCall0 = cast(_),
+            % A cast imposes no restrictions on its argument types,
+            % so nothing needs to be done here.
+            GenericCall = GenericCall0
+        ),
+        GoalExpr = generic_call(GenericCall, Args, C, D)
+    ;
+        GoalExpr0 = unify(LHS, RHS0, C, D, UnifyContext),
+        checkpoint("unify", !Info, !IO),
+        typecheck_info_set_arg_num(0, !Info),
+        typecheck_info_set_unify_context(UnifyContext, !Info),
+        goal_info_get_goal_path(GoalInfo, GoalPath),
+        typecheck_unification(LHS, RHS0, RHS, GoalPath, !Info, !IO),
+        GoalExpr = unify(LHS, RHS, C, D, UnifyContext)
+    ;
+        GoalExpr0 = switch(_, _, _),
+        unexpected(this_file, "typecheck_goal_2: unexpected switch")
+    ;
+        GoalExpr0 = foreign_proc(_, PredId, _, Args, _, _),
+        % Foreign_procs are automatically generated, so they will always be
+        % type-correct, but we need to do the type analysis in order to
+        % correctly compute the HeadTypeParams that result from existentially
+        % typed foreign_procs. (We could probably do that more efficiently
+        % than the way it is done below, though.)
+        typecheck_info_get_type_assign_set(!.Info, OrigTypeAssignSet),
+        ArgVars = list.map(foreign_arg_var, Args),
+        goal_info_get_goal_path(GoalInfo, GoalPath),
+        typecheck_call_pred_id(PredId, ArgVars, GoalPath, !Info, !IO),
+        perform_context_reduction(OrigTypeAssignSet, !Info, !IO),
+        GoalExpr = GoalExpr0
+    ;
+        GoalExpr0 = shorthand(ShorthandGoal0),
+        typecheck_goal_2_shorthand(ShorthandGoal0, ShorthandGoal, !Info, !IO),
+        GoalExpr = shorthand(ShorthandGoal)
     ).
-
-typecheck_goal_2(call(_, B, Args, D, E, Name),
-        call(PredId, B, Args, D, E, Name), GoalInfo, !Info, !IO) :-
-    checkpoint("call", !Info, !IO),
-    list.length(Args, Arity),
-    typecheck_info_set_called_predid(call(predicate - Name/Arity), !Info),
-    goal_info_get_goal_path(GoalInfo, GoalPath),
-    typecheck_call_pred(predicate - Name/Arity, Args, GoalPath,
-        PredId, !Info, !IO).
-
-typecheck_goal_2(generic_call(GenericCall0, Args, C, D),
-        generic_call(GenericCall, Args, C, D), _GoalInfo, !Info, !IO) :-
-    hlds_goal.generic_call_id(GenericCall0, CallId),
-    typecheck_info_set_called_predid(CallId, !Info),
-    (
-        GenericCall0 = higher_order(PredVar, Purity, _, _),
-        GenericCall = GenericCall0,
-        checkpoint("higher-order call", !Info, !IO),
-        typecheck_higher_order_call(PredVar, Purity, Args, !Info, !IO)
-    ;
-        GenericCall0 = class_method(_, _, _, _),
-        unexpected(this_file, "typecheck_goal_2: unexpected class method call")
-    ;
-        GenericCall0 = cast(_),
-        % A cast imposes no restrictions on its argument types,
-        % so nothing needs to be done here.
-        GenericCall = GenericCall0
-    ).
-
-typecheck_goal_2(unify(LHS, RHS0, C, D, UnifyContext),
-        unify(LHS, RHS, C, D, UnifyContext), GoalInfo, !Info, !IO) :-
-    checkpoint("unify", !Info, !IO),
-    typecheck_info_set_arg_num(0, !Info),
-    typecheck_info_set_unify_context(UnifyContext, !Info),
-    goal_info_get_goal_path(GoalInfo, GoalPath),
-    typecheck_unification(LHS, RHS0, RHS, GoalPath, !Info, !IO).
-
-typecheck_goal_2(switch(_, _, _), _, _, !Info, !IO) :-
-    unexpected(this_file, "typecheck_goal_2: unexpected switch").
-
-typecheck_goal_2(Goal @ foreign_proc(_, PredId, _, Args, _, _), Goal, GoalInfo,
-        !Info, !IO) :-
-    % Foreign_procs are automatically generated, so they will
-    % always be type-correct, but we need to do the type analysis in order
-    % to correctly compute the HeadTypeParams that result from
-    % existentially typed foreign_procs. (We could probably do that
-    % more efficiently than the way it is done below, though.)
-    typecheck_info_get_type_assign_set(!.Info, OrigTypeAssignSet),
-    ArgVars = list.map(foreign_arg_var, Args),
-    goal_info_get_goal_path(GoalInfo, GoalPath),
-    typecheck_call_pred_id(PredId, ArgVars, GoalPath, !Info, !IO),
-    perform_context_reduction(OrigTypeAssignSet, !Info, !IO).
-
-typecheck_goal_2(shorthand(ShorthandGoal0), shorthand(ShorthandGoal), _, !Info,
-        !IO) :-
-    typecheck_goal_2_shorthand(ShorthandGoal0, ShorthandGoal, !Info, !IO).
 
 :- pred typecheck_goal_2_shorthand(shorthand_goal_expr::in,
     shorthand_goal_expr::out,
@@ -1461,10 +1468,9 @@ typecheck_call_pred(CallId, Args, GoalPath, PredId, !Info, !IO) :-
     % argument types.
     %
 :- pred typecheck_call_pred_adjust_arg_types(simple_call_id::in,
-    list(prog_var)::in, goal_path::in,
-    adjust_arg_types::in(adjust_arg_types),
-    pred_id::out, typecheck_info::in, typecheck_info::out,
-    io::di, io::uo) is det.
+    list(prog_var)::in, goal_path::in, adjust_arg_types::in(adjust_arg_types),
+    pred_id::out, typecheck_info::in, typecheck_info::out, io::di, io::uo)
+    is det.
 
 typecheck_call_pred_adjust_arg_types(CallId, Args, GoalPath, AdjustArgTypes,
         PredId, !Info, !IO) :-
@@ -1474,7 +1480,7 @@ typecheck_call_pred_adjust_arg_types(CallId, Args, GoalPath, AdjustArgTypes,
     typecheck_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     (
-        CallId = PorF - SymName/Arity,
+        CallId = simple_call_id(PorF, SymName, Arity),
         predicate_table_search_pf_sym_arity(PredicateTable,
             calls_are_fully_qualified(!.Info ^ pred_markers),
             PorF, SymName, Arity, PredIdList)
@@ -1487,7 +1493,7 @@ typecheck_call_pred_adjust_arg_types(CallId, Args, GoalPath, AdjustArgTypes,
             typecheck_call_pred_id_adjust_arg_types(PredId, Args,
                 GoalPath, AdjustArgTypes, !Info, !IO)
         ;
-            typecheck_call_overloaded_pred(PredIdList, Args,
+            typecheck_call_overloaded_pred(CallId, PredIdList, Args,
                 GoalPath, AdjustArgTypes, !Info, !IO),
 
             % In general, we can't figure out which predicate it is until
@@ -1555,12 +1561,18 @@ typecheck_call_pred_id_adjust_arg_types(PredId, Args, GoalPath, AdjustArgTypes,
             PredExistQVars, PredArgTypes, PredConstraints, !Info, !IO)
     ).
 
-:- pred typecheck_call_overloaded_pred(list(pred_id)::in, list(prog_var)::in,
-    goal_path::in, adjust_arg_types::in(adjust_arg_types),
+:- pred typecheck_call_overloaded_pred(simple_call_id::in, list(pred_id)::in,
+    list(prog_var)::in, goal_path::in, adjust_arg_types::in(adjust_arg_types),
     typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
 
-typecheck_call_overloaded_pred(PredIdList, Args, GoalPath, AdjustArgTypes,
-        !Info, !IO) :-
+typecheck_call_overloaded_pred(CallId, PredIdList, Args, GoalPath,
+        AdjustArgTypes, !Info, !IO) :-
+    typecheck_info_get_overloaded_symbols(!.Info, OverloadedSymbols0),
+    typecheck_info_get_context(!.Info, Context),
+    Symbol = overloaded_symbol(Context, overloaded_pred(CallId, PredIdList)),
+    set.insert(OverloadedSymbols0, Symbol, OverloadedSymbols),
+    typecheck_info_set_overloaded_symbols(OverloadedSymbols, !Info),
+
     % Let the new arg_type_assign_set be the cross-product of the current
     % type_assign_set and the set of possible lists of argument types
     % for the overloaded predicate, suitable renamed apart.
@@ -1942,7 +1954,18 @@ typecheck_unify_var_functor(Var, Functor, Args, GoalPath, !Info, !IO) :-
             !IO),
         typecheck_info_set_found_error(yes, !Info)
     ;
-        ConsDefnList = [_ | _],
+        (
+            ConsDefnList = [_]
+        ;
+            ConsDefnList = [_, _ | _],
+            typecheck_info_get_overloaded_symbols(!.Info, OverloadedSymbols0),
+            typecheck_info_get_context(!.Info, Context),
+            Sources = list.map(project_cons_type_info_source, ConsDefnList),
+            Symbol = overloaded_symbol(Context,
+                overloaded_func(Functor, Sources)),
+            set.insert(OverloadedSymbols0, Symbol, OverloadedSymbols),
+            typecheck_info_set_overloaded_symbols(OverloadedSymbols, !Info)
+        ),
 
         % Produce the ConsTypeAssignSet, which is essentially the
         % cross-product of the TypeAssignSet0 and the ConsDefnList.
@@ -1951,7 +1974,7 @@ typecheck_unify_var_functor(Var, Functor, Args, GoalPath, !Info, !IO) :-
             !.Info, ConsDefnList, [], ConsTypeAssignSet),
         (
             ConsTypeAssignSet = [],
-            TypeAssignSet0 \= []
+            TypeAssignSet0 = [_ | _]
         ->
             % This should never happen, since undefined ctors
             % should be caught by the check just above.
@@ -1962,8 +1985,7 @@ typecheck_unify_var_functor(Var, Functor, Args, GoalPath, !Info, !IO) :-
         ),
 
         % Check that the type of the functor matches the type of the variable.
-        typecheck_functor_type(ConsTypeAssignSet, Var, [],
-            ArgsTypeAssignSet),
+        typecheck_functor_type(ConsTypeAssignSet, Var, [], ArgsTypeAssignSet),
         (
             ArgsTypeAssignSet = [],
             ConsTypeAssignSet = [_ | _]
@@ -2001,11 +2023,12 @@ typecheck_unify_var_functor(Var, Functor, Args, GoalPath, !Info, !IO) :-
         )
     ).
 
-:- type cons_type ---> cons_type(mer_type, list(mer_type)).
+:- type cons_type
+    --->    cons_type(mer_type, list(mer_type)).
+
 :- type cons_type_assign_set == list(pair(type_assign, cons_type)).
 
-    % typecheck_unify_var_functor_get_ctors(TypeAssignSet, Info,
-    %   ConsDefns):
+    % typecheck_unify_var_functor_get_ctors(TypeAssignSet, Info, ConsDefns):
     %
     % Iterate over all the different possible type assignments and
     % constructor definitions.
@@ -2014,9 +2037,9 @@ typecheck_unify_var_functor(Var, Functor, Args, GoalPath, !Info, !IO) :-
     %
     %   TypeAssign - cons_type(Type, ArgTypes)
     %
-    % where `cons_type(Type, ArgTypes)' records one of the possible
-    % types for the constructor in `ConsDefns', and where `TypeAssign' is
-    % the type assignment renamed apart from the types of the constructors.
+    % where `cons_type(Type, ArgTypes)' records one of the possible types
+    % for the constructor in `ConsDefns', and where `TypeAssign' is the type
+    % assignment renamed apart from the types of the constructors.
     %
 :- pred typecheck_unify_var_functor_get_ctors(type_assign_set::in,
     typecheck_info::in, list(cons_type_info)::in,
@@ -2189,7 +2212,7 @@ type_assign_check_functor_type(ConsType, ArgTypes, Y, TypeAssign1,
 
 get_cons_stuff(ConsDefn, TypeAssign0, _Info, ConsType, ArgTypes, TypeAssign) :-
     ConsDefn = cons_type_info(ConsTypeVarSet, ConsExistQVars0,
-        ConsType0, ArgTypes0, ClassConstraints0),
+        ConsType0, ArgTypes0, ClassConstraints0, _Source),
 
     % Rename apart the type vars in the type of the constructor
     % and the types of its arguments.
@@ -2427,7 +2450,7 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
             make_body_hlds_constraints(ClassTable, PredTypeVarSet,
                 GoalPath, PredClassContext, PredConstraints),
             ConsInfo = cons_type_info(PredTypeVarSet, PredExistQVars,
-                PredType, ArgTypes, PredConstraints),
+                PredType, ArgTypes, PredConstraints, source_pred(PredId)),
             !:ConsInfos = [ConsInfo | !.ConsInfos]
         ;
             unexpected(this_file, "make_pred_cons_info: split_list failed")
@@ -2439,7 +2462,9 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
         % We don't support first-class polymorphism, so you can't take
         % the address of an existentially quantified function. You can however
         % call such a function, so long as you pass *all* the parameters.
-        ( PredExistQVars = [] ; PredAsFuncArity = FuncArity )
+        ( PredExistQVars = []
+        ; PredAsFuncArity = FuncArity
+        )
     ->
         (
             list.split_list(FuncArity, CompleteArgTypes,
@@ -2458,7 +2483,8 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
             make_body_hlds_constraints(ClassTable, PredTypeVarSet,
                 GoalPath, PredClassContext, PredConstraints),
             ConsInfo = cons_type_info(PredTypeVarSet,
-                PredExistQVars, FuncType, FuncArgTypes, PredConstraints),
+                PredExistQVars, FuncType, FuncArgTypes, PredConstraints,
+                source_pred(PredId)),
             !:ConsInfos = [ConsInfo | !.ConsInfos]
         ;
             unexpected(this_file, "make_pred_cons_info: split_list failed")
@@ -2479,11 +2505,23 @@ make_pred_cons_info(Info, PredId, PredTable, FuncArity, GoalPath,
 
 builtin_apply_type(_Info, Functor, Arity, ConsTypeInfos) :-
     Functor = cons(unqualified(ApplyName), _),
-    ( ApplyName = "apply", Purity = purity_pure
-    ; ApplyName = "", Purity = purity_pure
     % XXX FIXME handle impure apply/N more elegantly (e.g. nicer syntax)
-    ; ApplyName = "impure_apply", Purity = purity_impure
-    ; ApplyName = "semipure_apply", Purity = purity_semipure
+    (
+        ApplyName = "apply",
+        ApplyNameToUse = ApplyName,
+        Purity = purity_pure
+    ;
+        ApplyName = "",
+        ApplyNameToUse = "apply",
+        Purity = purity_pure
+    ;
+        ApplyName = "impure_apply",
+        ApplyNameToUse = ApplyName,
+        Purity = purity_impure
+    ;
+        ApplyName = "semipure_apply",
+        ApplyNameToUse = ApplyName,
+        Purity = purity_semipure
     ),
     Arity >= 1,
     Arity1 = Arity - 1,
@@ -2492,7 +2530,8 @@ builtin_apply_type(_Info, Functor, Arity, ConsTypeInfos) :-
     ExistQVars = [],
     empty_hlds_constraints(EmptyConstraints),
     ConsTypeInfos = [cons_type_info(TypeVarSet, ExistQVars, RetType,
-        [FuncType | ArgTypes], EmptyConstraints)].
+        [FuncType | ArgTypes], EmptyConstraints,
+        source_apply(ApplyNameToUse))].
 
     % builtin_field_access_function_type(Info, GoalPath, Functor,
     %   Arity, ConsTypeInfos):
@@ -2542,14 +2581,13 @@ make_field_access_function_cons_type_info(Info, GoalPath, FuncName, Arity,
     ).
 
 :- pred get_field_access_constructor(typecheck_info::in, goal_path::in,
-    sym_name::in, arity::in, field_access_type::in,
-    hlds_ctor_field_defn::in, existq_tvars::out, maybe_cons_type_info::out)
-    is semidet.
+    sym_name::in, arity::in, field_access_type::in, hlds_ctor_field_defn::in,
+    existq_tvars::out, maybe_cons_type_info::out) is semidet.
 
 get_field_access_constructor(Info, GoalPath, FuncName, Arity, AccessType,
         FieldDefn, OrigExistTVars, FunctorConsTypeInfo) :-
     FieldDefn = hlds_ctor_field_defn(_, _, TypeCtor, ConsId, _),
-    TypeCtor = qualified(TypeModule, _) - _,
+    TypeCtor = type_ctor(qualified(TypeModule, _), _),
 
     % If the user has supplied a declaration, we use that instead
     % of the automatically generated version, unless we are typechecking
@@ -2595,19 +2633,26 @@ get_field_access_constructor(Info, GoalPath, FuncName, Arity, AccessType,
 convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
         FieldDefn, FunctorConsTypeInfo, OrigExistTVars, ConsTypeInfo) :-
     FunctorConsTypeInfo = cons_type_info(TVarSet0, ExistQVars,
-        FunctorType, ConsArgTypes, Constraints0),
+        FunctorType, ConsArgTypes, Constraints0, Source0),
+    ( Source0 = source_type(SourceTypePrime) ->
+        SourceType = SourceTypePrime
+    ;
+        unexpected(this_file, "convert_field_access_cons_type_info: not type")
+    ),
     FieldDefn = hlds_ctor_field_defn(_, _, _, _, FieldNumber),
     list.index1_det(ConsArgTypes, FieldNumber, FieldType),
     (
         AccessType = get,
+        Source = source_get_field_access(SourceType),
         RetType = FieldType,
         ArgTypes = [FunctorType],
         TVarSet = TVarSet0,
         Constraints = Constraints0,
         ConsTypeInfo = ok(cons_type_info(TVarSet, ExistQVars,
-            RetType, ArgTypes, Constraints))
+            RetType, ArgTypes, Constraints, Source))
     ;
         AccessType = set,
+        Source = source_set_field_access(SourceType),
 
         % When setting a polymorphic field, the type of the field in the result
         % is not necessarily the same as in the input. If a type variable
@@ -2633,7 +2678,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
             Constraints = Constraints0,
 
             ConsTypeInfo = ok(cons_type_info(TVarSet, ExistQVars,
-                RetType, ArgTypes, Constraints))
+                RetType, ArgTypes, Constraints, Source))
         ;
             TVarsInField = [_ | _],
 
@@ -2688,7 +2733,7 @@ convert_field_access_cons_type_info(ClassTable, AccessType, FieldName,
                 RetType = OutputFunctorType,
                 ArgTypes = [FunctorType, RenamedFieldType],
                 ConsTypeInfo = ok(cons_type_info(TVarSet, ExistQVars,
-                    RetType, ArgTypes, Constraints))
+                    RetType, ArgTypes, Constraints, Source))
             ;
                 % This field cannot be set. Pass out some information so that
                 % we can give a better error message. Errors involving changing
@@ -2755,10 +2800,9 @@ rename_constraint(TVarRenaming, Constraint0, Constraint) :-
     % and recompilation.check.check_functor_ambiguities.
     %
 :- pred typecheck_info_get_ctor_list(typecheck_info::in, cons_id::in, int::in,
-    goal_path::in, list(cons_type_info)::out, list(cons_error)::out)
-    is det.
+    goal_path::in, list(cons_type_info)::out, list(cons_error)::out) is det.
 
-typecheck_info_get_ctor_list(Info, Functor, Arity, GoalPath, ConsInfoList,
+typecheck_info_get_ctor_list(Info, Functor, Arity, GoalPath, ConsInfos,
         ConsErrors) :-
     (
         % If we're typechecking the clause added for a field access function
@@ -2771,87 +2815,82 @@ typecheck_info_get_ctor_list(Info, Functor, Arity, GoalPath, ConsInfoList,
     ->
         (
             builtin_field_access_function_type(Info, GoalPath,
-                Functor, Arity, FieldAccessConsInfoList)
+                Functor, Arity, FieldAccessConsInfos)
         ->
-            split_cons_errors(FieldAccessConsInfoList,
-                ConsInfoList, ConsErrors)
+            split_cons_errors(FieldAccessConsInfos, ConsInfos, ConsErrors)
         ;
-            ConsInfoList = [],
+            ConsInfos = [],
             ConsErrors = []
         )
     ;
         typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath,
-            ConsInfoList, ConsErrors)
+            ConsInfos, ConsErrors)
     ).
 
 :- pred typecheck_info_get_ctor_list_2(typecheck_info::in, cons_id::in,
-    int::in, goal_path::in, list(cons_type_info)::out,
-    list(cons_error)::out) is det.
+    int::in, goal_path::in, list(cons_type_info)::out, list(cons_error)::out)
+    is det.
 
-typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfoList,
-        ConsErrors) :-
+typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfos,
+        DataConsErrors) :-
     empty_hlds_constraints(EmptyConstraints),
 
-    % Check if `Functor/Arity' has been defined as a constructor
-    % in some discriminated union type(s).  This gives
-    % us a list of possible cons_type_infos.
+    % Check if `Functor/Arity' has been defined as a constructor in some
+    % discriminated union type(s).  This gives us a list of possible
+    % cons_type_infos.
     typecheck_info_get_ctors(Info, Ctors),
     (
         Functor = cons(_, _),
-        map.search(Ctors, Functor, HLDS_ConsDefnList)
+        map.search(Ctors, Functor, HLDS_ConsDefns)
     ->
         convert_cons_defn_list(Info, GoalPath, do_not_flip_constraints,
-            HLDS_ConsDefnList, MaybeConsInfoList0)
+            HLDS_ConsDefns, PlainMaybeConsInfos)
     ;
-        MaybeConsInfoList0 = []
+        PlainMaybeConsInfos = []
     ),
 
-    % For "existentially typed" functors, whether the functor
-    % is actually existentially typed depends on whether it is
-    % used as a constructor or as a deconstructor.  As a constructor,
-    % it is universally typed, but as a deconstructor, it is
-    % existentially typed.  But type checking and polymorphism need
-    % to know whether it is universally or existentially quantified
-    % _before_ mode analysis has inferred the mode of the unification.
-    % Therefore, we use a special syntax for construction unifications
-    % with existentially quantified functors: instead of just using the
-    % functor name (e.g. "Y = foo(X)", the programmer must use the
-    % special functor name "new foo" (e.g. "Y = 'new foo'(X)").
+    % For "existentially typed" functors, whether the functor is actually
+    % existentially typed depends on whether it is used as a constructor
+    % or as a deconstructor. As a constructor, it is universally typed,
+    % but as a deconstructor, it is existentially typed. But type checking
+    % and polymorphism need to know whether it is universally or existentially
+    % quantified _before_ mode analysis has inferred the mode of the
+    % unification. Therefore, we use a special syntax for construction
+    % unifications with existentially quantified functors: instead of
+    % just using the functor name (e.g. "Y = foo(X)", the programmer must use
+    % the special functor name "new foo" (e.g. "Y = 'new foo'(X)").
     %
-    % Here we check for occurrences of functor names starting with
-    % "new ".  For these, we look up the original functor in the
-    % constructor symbol table, and for any occurrences of that
-    % functor we flip the quantifiers on the type definition
-    % (i.e. convert the existential quantifiers and constraints
-    % into universal ones).
+    % Here we check for occurrences of functor names starting with "new ".
+    % For these, we look up the original functor in the constructor symbol
+    % table, and for any occurrences of that functor we flip the quantifiers on
+    % the type definition (i.e. convert the existential quantifiers and
+    % constraints into universal ones).
     (
         Functor = cons(Name, Arity),
         remove_new_prefix(Name, OrigName),
         OrigFunctor = cons(OrigName, Arity),
-        map.search(Ctors, OrigFunctor, HLDS_ExistQConsDefnList)
+        map.search(Ctors, OrigFunctor, HLDS_ExistQConsDefns)
     ->
-        convert_cons_defn_list(Info, GoalPath,
-            flip_constraints_for_new, HLDS_ExistQConsDefnList,
-            UnivQuantifiedConsInfoList),
-        list.append(UnivQuantifiedConsInfoList,
-            MaybeConsInfoList0, MaybeConsInfoList1)
+        convert_cons_defn_list(Info, GoalPath, flip_constraints_for_new,
+            HLDS_ExistQConsDefns, UnivQuantifiedMaybeConsInfos)
     ;
-        MaybeConsInfoList1 = MaybeConsInfoList0
+        UnivQuantifiedMaybeConsInfos = []
     ),
 
     % Check if Functor is a field access function for which the user
     % has not supplied a declaration.
     (
         builtin_field_access_function_type(Info, GoalPath, Functor,
-            Arity, FieldAccessConsInfoList)
+            Arity, FieldAccessMaybeConsInfosPrime)
     ->
-        MaybeConsInfoList = FieldAccessConsInfoList ++
-            MaybeConsInfoList1
+        FieldAccessMaybeConsInfos = FieldAccessMaybeConsInfosPrime
     ;
-        MaybeConsInfoList = MaybeConsInfoList1
+        FieldAccessMaybeConsInfos = []
     ),
 
-    split_cons_errors(MaybeConsInfoList, ConsInfoList1, ConsErrors),
+    DataMaybeConsInfos = PlainMaybeConsInfos ++ UnivQuantifiedMaybeConsInfos
+        ++ FieldAccessMaybeConsInfos,
+    split_cons_errors(DataMaybeConsInfos, DataConsInfos, DataConsErrors),
 
     % Check if Functor is a constant of one of the builtin atomic types
     % (string, float, int, character). If so, insert the resulting
@@ -2860,19 +2899,18 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfoList,
         Arity = 0,
         builtin_atomic_type(Functor, BuiltInTypeName)
     ->
-        construct_type(unqualified(BuiltInTypeName) - 0, [], ConsType),
+        TypeCtor = type_ctor(unqualified(BuiltInTypeName), 0),
+        construct_type(TypeCtor, [], ConsType),
         varset.init(ConsTypeVarSet),
         ConsInfo = cons_type_info(ConsTypeVarSet, [], ConsType, [],
-            EmptyConstraints),
-        ConsInfoList2 = [ConsInfo | ConsInfoList1]
+            EmptyConstraints, source_builtin_type(BuiltInTypeName)),
+        BuiltinConsInfos = [ConsInfo]
     ;
-        ConsInfoList2 = ConsInfoList1
+        BuiltinConsInfos = []
     ),
 
     % Check if Functor is a tuple constructor.
-    (
-        Functor = cons(unqualified("{}"), TupleArity)
-    ->
+    ( Functor = cons(unqualified("{}"), TupleArity) ->
         % Make some fresh type variables for the argument types. These have
         % kind `star' since there are values (namely the arguments of the
         % tuple constructor) which have these types.
@@ -2883,34 +2921,38 @@ typecheck_info_get_ctor_list_2(Info, Functor, Arity, GoalPath, ConsInfoList,
         prog_type.var_list_to_type_list(map.init, TupleArgTVars,
             TupleArgTypes),
 
-        construct_type(unqualified("{}") - TupleArity, TupleArgTypes,
-            TupleConsType),
+        TupleTypeCtor = type_ctor(unqualified("{}"), TupleArity),
+        construct_type(TupleTypeCtor, TupleArgTypes, TupleConsType),
 
         % Tuples can't have existentially typed arguments.
         TupleExistQVars = [],
-        TupleConsInfo = cons_type_info(TupleConsTypeVarSet,
-            TupleExistQVars, TupleConsType,
-            TupleArgTypes, EmptyConstraints),
-        ConsInfoList3 = [TupleConsInfo | ConsInfoList2]
+        TupleConsInfo = cons_type_info(TupleConsTypeVarSet, TupleExistQVars,
+            TupleConsType, TupleArgTypes, EmptyConstraints,
+            source_builtin_type("tuple")),
+        TupleConsInfos = [TupleConsInfo]
     ;
-        ConsInfoList3 = ConsInfoList2
+        TupleConsInfos = []
     ),
 
     % Check if Functor is the name of a predicate which takes at least
     % Arity arguments. If so, insert the resulting cons_type_info
     % at the start of the list.
-    ( builtin_pred_type(Info, Functor, Arity, GoalPath, PredConsInfoList) ->
-        ConsInfoList4 = ConsInfoList3 ++ PredConsInfoList
+    ( builtin_pred_type(Info, Functor, Arity, GoalPath, PredConsInfosPrime) ->
+        PredConsInfos = PredConsInfosPrime
     ;
-        ConsInfoList4 = ConsInfoList3
+        PredConsInfos = []
     ),
 
     % Check for higher-order function calls.
-    ( builtin_apply_type(Info, Functor, Arity, ApplyConsInfoList) ->
-        ConsInfoList = ConsInfoList4 ++ ApplyConsInfoList
+    ( builtin_apply_type(Info, Functor, Arity, ApplyConsInfosPrime) ->
+        ApplyConsInfos = ApplyConsInfosPrime
     ;
-        ConsInfoList = ConsInfoList4
-    ).
+        ApplyConsInfos = []
+    ),
+
+    OtherConsInfos = BuiltinConsInfos ++ TupleConsInfos
+        ++ PredConsInfos ++ ApplyConsInfos,
+    ConsInfos = DataConsInfos ++ OtherConsInfos.
 
 :- pred split_cons_errors(list(maybe_cons_type_info)::in,
     list(cons_type_info)::out, list(cons_error)::out) is det.
@@ -3040,7 +3082,7 @@ convert_cons_defn(Info, GoalPath, Action, HLDS_ConsDefn, ConsTypeInfo) :-
         make_body_hlds_constraints(ClassTable, ConsTypeVarSet,
             GoalPath, ProgConstraints, Constraints),
         ConsTypeInfo = ok(cons_type_info(ConsTypeVarSet, ExistQVars,
-            ConsType, ArgTypes, Constraints))
+            ConsType, ArgTypes, Constraints, source_type(TypeCtor)))
     ).
 
 %-----------------------------------------------------------------------------%

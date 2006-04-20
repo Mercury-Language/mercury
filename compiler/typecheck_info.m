@@ -29,6 +29,7 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 %
@@ -80,9 +81,30 @@
                 found_error     :: bool,
                                 % Did we find any type errors?
 
+                overloaded_symbols :: set(overloaded_symbol),
+                                % The set of symbols used by the current
+                                % predicate that have more than one accessible
+                                % definition.
+
                 warned_about_overloading :: bool
                                 % Have we already warned about highly
                                 % ambiguous overloading?
+            ).
+
+:- type overloaded_symbol
+    --->    overloaded_symbol(
+                prog_context,
+                overloaded_symbol_info
+            ).
+
+:- type overloaded_symbol_info
+    --->    overloaded_pred(
+                simple_call_id,
+                list(pred_id)
+            )
+    ;       overloaded_func(
+                cons_id,
+                list(cons_type_info_source)
             ).
 
 %-----------------------------------------------------------------------------%
@@ -141,6 +163,8 @@
 :- pred typecheck_info_get_found_error(typecheck_info::in, bool::out) is det.
 :- pred typecheck_info_get_warned_about_overloading(typecheck_info::in,
     bool::out) is det.
+:- pred typecheck_info_get_overloaded_symbols(typecheck_info::in,
+    set(overloaded_symbol)::out) is det.
 :- pred typecheck_info_get_pred_import_status(typecheck_info::in,
     import_status::out) is det.
 
@@ -157,6 +181,8 @@
 :- pred typecheck_info_set_found_error(bool::in,
     typecheck_info::in, typecheck_info::out) is det.
 :- pred typecheck_info_set_warned_about_overloading(bool::in,
+    typecheck_info::in, typecheck_info::out) is det.
+:- pred typecheck_info_set_overloaded_symbols(set(overloaded_symbol)::in,
     typecheck_info::in, typecheck_info::out) is det.
 :- pred typecheck_info_set_pred_import_status(import_status::in,
     typecheck_info::in, typecheck_info::out) is det.
@@ -275,15 +301,36 @@
 
 :- type cons_type_info
     --->    cons_type_info(
-                tvarset,            % Type variables.
-                existq_tvars,       % Existentially quantified type vars.
-                mer_type,           % Constructor type.
-                list(mer_type),     % Types of the arguments.
-                hlds_constraints    % Constraints introduced by this
+                cti_varset          :: tvarset,
+                                    % Type variables.
+
+                cti_exit_tvars      :: existq_tvars,
+                                    % Existentially quantified type vars.
+
+                cti_result_type     :: mer_type,
+                                    % Constructor type.
+
+                cti_arg_types       :: list(mer_type),
+                                    % Types of the arguments.
+
+                cti_constraints     :: hlds_constraints,
+                                    % Constraints introduced by this
                                     % constructor (e.g. if it is actually
                                     % a function, or if it is an existentially
                                     % quantified data constructor).
+
+                cti_source          :: cons_type_info_source
             ).
+
+:- type cons_type_info_source
+    --->    source_type(type_ctor)
+    ;       source_builtin_type(string)
+    ;       source_get_field_access(type_ctor)
+    ;       source_set_field_access(type_ctor)
+    ;       source_apply(string)
+    ;       source_pred(pred_id).
+
+:- func project_cons_type_info_source(cons_type_info) = cons_type_info_source.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -308,20 +355,20 @@
 typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
         TypeVarSet, VarSet, VarTypes, HeadTypeParams,
         Constraints, Status, Markers, Info) :-
-    CallPredId = call(predicate - unqualified("") / 0),
+    CallPredId = call(simple_call_id(predicate, unqualified(""), 0)),
     term.context_init(Context),
     map.init(TypeBindings),
     map.init(Proofs),
     map.init(ConstraintMap),
     FoundTypeError = no,
     WarnedAboutOverloading = no,
-    Info = typecheck_info(
-        ModuleInfo, CallPredId, 0, PredId, Status, Markers,
+    set.init(OverloadedSymbols),
+    Info = typecheck_info(ModuleInfo, CallPredId, 0, PredId, Status, Markers,
         IsFieldAccessFunction, Context,
         unify_context(explicit, []), VarSet,
         [type_assign(VarTypes, TypeVarSet, HeadTypeParams,
             TypeBindings, Constraints, Proofs, ConstraintMap)],
-        FoundTypeError, WarnedAboutOverloading
+        FoundTypeError, OverloadedSymbols, WarnedAboutOverloading
     ).
 
 typecheck_info_get_final_info(Info, OldHeadTypeParams, OldExistQVars,
@@ -493,6 +540,7 @@ typecheck_info_get_type_assign_set(Info, Info ^ type_assign_set).
 typecheck_info_get_found_error(Info, Info ^ found_error).
 typecheck_info_get_warned_about_overloading(Info,
         Info ^ warned_about_overloading).
+typecheck_info_get_overloaded_symbols(Info, Info ^ overloaded_symbols).
 typecheck_info_get_pred_import_status(Info, Info ^ import_status).
 
 typecheck_info_set_called_predid(PredCallId, Info,
@@ -507,6 +555,8 @@ typecheck_info_set_found_error(FoundError, Info,
         Info ^ found_error := FoundError).
 typecheck_info_set_warned_about_overloading(Warned, Info,
         Info ^ warned_about_overloading := Warned).
+typecheck_info_set_overloaded_symbols(Symbols, Info,
+        Info ^ overloaded_symbols := Symbols).
 typecheck_info_set_pred_import_status(Status, Info,
         Info ^ import_status := Status).
 
@@ -552,12 +602,12 @@ type_assign_set_constraint_map(X, TA, TA ^ constraint_map := X).
 
 varnums = yes.
 
-write_type_assign_set([], _) --> [].
-write_type_assign_set([TypeAssign | TypeAssigns], VarSet) -->
-    io.write_string("\t"),
-    write_type_assign(TypeAssign, VarSet),
-    io.write_string("\n"),
-    write_type_assign_set(TypeAssigns, VarSet).
+write_type_assign_set([], _, !IO).
+write_type_assign_set([TypeAssign | TypeAssigns], VarSet, !IO) :-
+    io.write_string("\t", !IO),
+    write_type_assign(TypeAssign, VarSet, !IO),
+    io.write_string("\n", !IO),
+    write_type_assign_set(TypeAssigns, VarSet, !IO).
 
 :- pred write_type_assign(type_assign::in, prog_varset::in, io::di, io::uo)
     is det.
@@ -635,11 +685,9 @@ write_type_assign_constraints(Operator, [Constraint | Constraints],
         FoundOne = yes,
         io.write_string(",\n\t   ", !IO)
     ),
-    apply_rec_subst_to_constraint(TypeBindings, Constraint,
-        BoundConstraint),
+    apply_rec_subst_to_constraint(TypeBindings, Constraint, BoundConstraint),
     retrieve_prog_constraint(BoundConstraint, ProgConstraint),
-    mercury_output_constraint(TypeVarSet, varnums, ProgConstraint,
-        !IO),
+    mercury_output_constraint(TypeVarSet, varnums, ProgConstraint, !IO),
     write_type_assign_constraints(Operator, Constraints, TypeBindings,
         TypeVarSet, yes, !IO).
 
@@ -699,6 +747,8 @@ convert_args_type_assign(args(TypeAssign0, _, Constraints0), TypeAssign) :-
 get_caller_arg_assign(ArgsTypeAssign) = ArgsTypeAssign ^ caller_arg_assign.
 get_callee_arg_types(ArgsTypeAssign) = ArgsTypeAssign ^ callee_arg_types.
 get_callee_constraints(ArgsTypeAssign) = ArgsTypeAssign ^ callee_constraints.
+
+project_cons_type_info_source(CTI) = CTI ^ cti_source.
 
 %-----------------------------------------------------------------------------%
 

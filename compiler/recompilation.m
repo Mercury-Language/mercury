@@ -62,7 +62,8 @@
 :- type item_id
     --->    item_id(item_type, item_name).
 
-:- type item_name == pair(sym_name, arity).
+:- type item_name
+    --->    item_name(sym_name, arity).
 
 :- type item_type
     --->    type_item       % Just the name of the type, not its body.
@@ -103,6 +104,14 @@
 
 :- func pred_or_func_to_item_type(pred_or_func::in)
     = (item_type::out(pred_or_func)) is det.
+
+:- func type_ctor_to_item_name(type_ctor) = item_name.
+:- func inst_id_to_item_name(inst_id) = item_name.
+:- func mode_id_to_item_name(mode_id) = item_name.
+
+:- func item_name_to_type_ctor(item_name) = type_ctor.
+:- func item_name_to_inst_id(item_name) = inst_id.
+:- func item_name_to_mode_id(item_name) = mode_id.
 
 %-----------------------------------------------------------------------------%
 
@@ -299,6 +308,14 @@ string_to_item_type("function", function_item).
 string_to_item_type("functor", functor_item).
 string_to_item_type("mutable", mutable_item).
 
+type_ctor_to_item_name(type_ctor(SymName, Arity)) = item_name(SymName, Arity).
+inst_id_to_item_name(inst_id(SymName, Arity)) = item_name(SymName, Arity).
+mode_id_to_item_name(mode_id(SymName, Arity)) = item_name(SymName, Arity).
+
+item_name_to_type_ctor(item_name(SymName, Arity)) = type_ctor(SymName, Arity).
+item_name_to_inst_id(item_name(SymName, Arity)) = inst_id(SymName, Arity).
+item_name_to_mode_id(item_name(SymName, Arity)) = mode_id(SymName, Arity).
+
 %-----------------------------------------------------------------------------%
 
 init_item_id_set(Init) =
@@ -387,6 +404,7 @@ init_recompilation_info(ModuleName) =
     ).
 
 record_used_item(ItemType, Id, QualifiedId, !Info) :-
+    QualifiedId = item_name(QualifiedName, Arity),
     (
         % Don't record builtin items (QualifiedId may be unqualified
         % for predicates, functions and functors because they aren't
@@ -394,17 +412,16 @@ record_used_item(ItemType, Id, QualifiedId, !Info) :-
         ItemType \= predicate_item,
         ItemType \= function_item,
         ItemType \= functor_item,
-        QualifiedId = unqualified(_) - _
+        QualifiedName = unqualified(_)
     ->
         true
     ;
         ItemSet0 = !.Info ^ used_items,
         IdSet0 = extract_ids(ItemSet0, ItemType),
-        QualifiedId = QualifiedName - Arity,
         unqualify_name(QualifiedName, UnqualifiedName),
         ModuleName = find_module_qualifier(QualifiedName),
         UnqualifiedId = UnqualifiedName - Arity,
-        Id = SymName - _,
+        Id = item_name(SymName, _),
         ModuleQualifier = find_module_qualifier(SymName),
         ( map.search(IdSet0, UnqualifiedId, MatchingNames0) ->
             MatchingNames1 = MatchingNames0

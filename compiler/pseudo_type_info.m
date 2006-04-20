@@ -89,14 +89,14 @@ construct_maybe_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars,
 construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
     ( type_to_ctor_and_args(Type, TypeCtor, TypeArgs) ->
         ( type_is_var_arity(Type, VarArityId) ->
-            TypeCtor = _QualTypeName - RealArity,
+            TypeCtor = type_ctor(_QualTypeName, RealArity),
             generate_pseudo_args(TypeArgs, NumUnivQTvars, ExistQTvars,
                 PseudoArgs),
             expect(check_var_arity(VarArityId, PseudoArgs, RealArity),
                 this_file, "construct_pseudo_type_info: var arity mismatch"),
             PseudoTypeInfo = var_arity_pseudo_type_info(VarArityId, PseudoArgs)
         ;
-            TypeCtor = QualTypeName - Arity,
+            TypeCtor = type_ctor(QualTypeName, Arity),
             unqualify_name(QualTypeName, TypeName),
             sym_name_get_module_name(QualTypeName, unqualified("builtin"),
                 TypeModule),
@@ -156,13 +156,13 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
 construct_type_info(Type, TypeInfo) :-
     ( type_to_ctor_and_args(Type, TypeCtor, TypeArgs) ->
         ( type_is_var_arity(Type, VarArityId) ->
-            TypeCtor = _QualTypeName - RealArity,
+            TypeCtor = type_ctor(_QualTypeName, RealArity),
             generate_plain_args(TypeArgs, TypeInfoArgs),
             expect(check_var_arity(VarArityId, TypeInfoArgs, RealArity),
                 this_file, "construct_type_info: arity mismatch"),
             TypeInfo = var_arity_type_info(VarArityId, TypeInfoArgs)
         ;
-            TypeCtor = QualTypeName - Arity,
+            TypeCtor = type_ctor(QualTypeName, Arity),
             unqualify_name(QualTypeName, TypeName),
             sym_name_get_module_name(QualTypeName, unqualified("builtin"),
                 TypeModule),

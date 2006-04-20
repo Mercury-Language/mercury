@@ -557,7 +557,8 @@ pair_with_ground(Var) = Var - ground(shared, none).
 
 is_active_type = Type :-
     mercury_term_size_prof_builtin_module(M),
-    construct_type(qualified(M, "complexity_is_active") - 0, [], Type).
+    construct_type(type_ctor(qualified(M, "complexity_is_active"), 0), [],
+        Type).
 
 %-----------------------------------------------------------------------------%
 

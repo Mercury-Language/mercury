@@ -1131,7 +1131,7 @@ output_proc_id(ProcLabel, Origin, !IO) :-
     ;
         ProcLabel = special_proc(DefiningModule, SpecialPredId,
             TypeModule, TypeName, TypeArity, Mode),
-        TypeCtor = qualified(TypeModule, TypeName) - TypeArity,
+        TypeCtor = type_ctor(qualified(TypeModule, TypeName), TypeArity),
         PredName0 = special_pred_name(SpecialPredId, TypeCtor),
         PredName = origin_name(Origin, PredName0),
         sym_name_to_string(DefiningModule, DefiningModuleStr),

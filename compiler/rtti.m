@@ -1496,12 +1496,11 @@ type_ctor_rep_to_string(TypeCtorData, RepStr) :-
         impl_ctor_rep_to_string(ImplCtor, RepStr)
     ;
         TypeCtorDetails = foreign(IsStable),
-        (
-            ModuleName = TypeCtorData ^ tcr_module_name,
-            TypeName = TypeCtorData ^ tcr_type_name,
-            TypeArity = TypeCtorData ^ tcr_arity,
-            type_ctor_is_array(qualified(ModuleName, TypeName) - TypeArity)
-        ->
+        ModuleName = TypeCtorData ^ tcr_module_name,
+        TypeName = TypeCtorData ^ tcr_type_name,
+        TypeArity = TypeCtorData ^ tcr_arity,
+        TypeCtor = type_ctor(qualified(ModuleName, TypeName), TypeArity),
+        ( type_ctor_is_array(TypeCtor) ->
             % XXX This is a kludge to allow accurate GC to trace arrays.
             % We should allow users to provide tracing functions for
             % foreign types.

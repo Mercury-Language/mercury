@@ -2000,7 +2000,7 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
     Args = [TypeInfoVar | SpecialPredArgs],
     map.search(PredVars, TypeInfoVar,
         constant(_TypeInfoConsId, TypeInfoVarArgs)),
-    type_to_ctor_and_args(SpecialPredType, _ - TypeArity, _),
+    type_to_ctor_and_args(SpecialPredType, type_ctor(_, TypeArity), _),
     ( TypeArity = 0 ->
         TypeInfoArgs = []
     ;
@@ -2320,7 +2320,7 @@ find_builtin_type_with_equivalent_compare(ModuleInfo, Type, EqvType,
             "tuple type in find_builtin_type_with_equivalent_compare")
     ;
         TypeCategory = type_cat_enum,
-        construct_type(unqualified("int") - 0, [], EqvType),
+        construct_type(type_ctor(unqualified("int"), 0), [], EqvType),
         NeedIntCast = yes
     ;
         TypeCategory = type_cat_variable,

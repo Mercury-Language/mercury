@@ -1722,14 +1722,14 @@ mlds_get_prog_context(mlds_context(Context)) = Context.
 mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
     (
         type_to_ctor_and_args(Type, TypeCtor, [ElemType]),
-        TypeCtor = qualified(unqualified("array"), "array") - 1
+        TypeCtor = type_ctor(qualified(unqualified("array"), "array"), 1)
     ->
         MLDSElemType = mercury_type_to_mlds_type(ModuleInfo, ElemType),
         MLDSType = mlds_mercury_array_type(MLDSElemType)
     ;
         type_to_ctor_and_args(Type, TypeCtor, [RefType]),
-        TypeCtor = qualified(mercury_private_builtin_module,
-            "store_by_ref_type") - 1
+        TypeCtor = type_ctor(qualified(mercury_private_builtin_module,
+            "store_by_ref_type"), 1)
     ->
         MLDSRefType = mercury_type_to_mlds_type(ModuleInfo, RefType),
         MLDSType = mlds_ptr_type(MLDSRefType)

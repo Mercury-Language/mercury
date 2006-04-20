@@ -309,13 +309,13 @@
 %-----------------------------------------------------------------------------%
 
 
-type_ctor_module(_ModuleInfo, TypeName - _Arity, ModuleName) :-
+type_ctor_module(_ModuleInfo, type_ctor(TypeName, _Arity), ModuleName) :-
     sym_name_get_module_name(TypeName, unqualified(""), ModuleName).
 
-type_ctor_name(_ModuleInfo, Name0 - _Arity, Name) :-
+type_ctor_name(_ModuleInfo, type_ctor(Name0, _Arity), Name) :-
     unqualify_name(Name0, Name).
 
-type_ctor_arity(_ModuleInfo, _Name - Arity, Arity).
+type_ctor_arity(_ModuleInfo, type_ctor(_Name, Arity), Arity).
 
 type_is_atomic(Type, ModuleInfo) :-
     type_to_ctor_and_args(Type, TypeCtor, _),
@@ -344,7 +344,7 @@ type_category_is_atomic(type_cat_void) = yes.
 type_category_is_atomic(type_cat_user_ctor) = no.
 
 type_ctor_has_hand_defined_rtti(Type, Body) :-
-    Type = qualified(mercury_private_builtin_module, Name) - 0,
+    Type = type_ctor(qualified(mercury_private_builtin_module, Name), 0),
     ( Name = "type_info"
     ; Name = "type_ctor_info"
     ; Name = "typeclass_info"
@@ -365,24 +365,24 @@ classify_type(ModuleInfo, VarType) = TypeCategory :-
     ).
 
 classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
-    PrivateBuiltin = mercury_private_builtin_module,
-    ( TypeCtor = unqualified("character") - 0 ->
+    PB = mercury_private_builtin_module,
+    ( TypeCtor = type_ctor(unqualified("character"), 0) ->
         TypeCategory = type_cat_char
-    ; TypeCtor = unqualified("int") - 0 ->
+    ; TypeCtor = type_ctor(unqualified("int"), 0) ->
         TypeCategory = type_cat_int
-    ; TypeCtor = unqualified("float") - 0 ->
+    ; TypeCtor = type_ctor(unqualified("float"), 0) ->
         TypeCategory = type_cat_float
-    ; TypeCtor = unqualified("string") - 0 ->
+    ; TypeCtor = type_ctor(unqualified("string"), 0) ->
         TypeCategory = type_cat_string
-    ; TypeCtor = unqualified("void") - 0 ->
+    ; TypeCtor = type_ctor(unqualified("void"), 0) ->
         TypeCategory = type_cat_void
-    ; TypeCtor = qualified(PrivateBuiltin, "type_info") - 0 ->
+    ; TypeCtor = type_ctor(qualified(PB, "type_info"), 0) ->
         TypeCategory = type_cat_type_info
-    ; TypeCtor = qualified(PrivateBuiltin, "type_ctor_info") - 0 ->
+    ; TypeCtor = type_ctor(qualified(PB, "type_ctor_info"), 0) ->
         TypeCategory = type_cat_type_ctor_info
-    ; TypeCtor = qualified(PrivateBuiltin, "typeclass_info") - 0 ->
+    ; TypeCtor = type_ctor(qualified(PB, "typeclass_info"), 0) ->
         TypeCategory = type_cat_typeclass_info
-    ; TypeCtor = qualified(PrivateBuiltin, "base_typeclass_info") - 0 ->
+    ; TypeCtor = type_ctor(qualified(PB, "base_typeclass_info"), 0) ->
         TypeCategory = type_cat_base_typeclass_info
     ; type_ctor_is_higher_order(TypeCtor, _, _, _) ->
         TypeCategory = type_cat_higher_order
@@ -489,7 +489,7 @@ is_dummy_argument_type(ModuleInfo, Type) :-
         % Keep this in sync with is_dummy_argument_type_with_constructors
         % above.
         (
-            TypeCtor = CtorSymName - TypeArity,
+            TypeCtor = type_ctor(CtorSymName, TypeArity),
             CtorSymName = qualified(unqualified(ModuleName), TypeName),
             is_builtin_dummy_argument_type(ModuleName, TypeName, TypeArity)
         ;
@@ -540,7 +540,7 @@ type_constructors(Type, ModuleInfo, Constructors) :-
 
 switch_type_num_functors(ModuleInfo, Type, NumFunctors) :-
     type_to_ctor_and_args(Type, TypeCtor, _),
-    ( TypeCtor = unqualified("character") - 0 ->
+    ( TypeCtor = type_ctor(unqualified("character"), 0) ->
         % XXX The following code uses the source machine's character size,
         % not the target's, so it won't work if cross-compiling to a machine
         % with a different size character.

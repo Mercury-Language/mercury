@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: error_util.m.
 % Main author: zs.
-
+%
 % This module contains code that can be helpful in the formatting of
 % error messages.
 %
@@ -30,7 +30,7 @@
 % of a list of error message components. Each component may specify
 % a string to printed exactly as it is, or it may specify a string
 % containing a list of words, which may be broken at white space.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.error_util.
@@ -117,13 +117,16 @@
 :- func component_list_to_pieces(list(format_component)) =
     list(format_component).
 
-    % Convert a list of lines (each given by a list of format_components
-    % *without* a final nl) into a condensed list of format_components
-    % in which adjacent lines are separated by commas and newlines,
-    % with only a newline (no comma) after the last.
+    % component_list_to_line_pieces(Lines, Final):
     %
-:- func component_list_to_line_pieces(list(list(format_component))) =
-    list(format_component).
+    % Convert Lines, a list of lines (each given by a list of format_components
+    % *without* a final nl) into a condensed list of format_components
+    % in which adjacent lines are separated by commas and newlines.
+    % What goes between the last line and the newline ending is not
+    % a comma but the value of Final.
+    %
+:- func component_list_to_line_pieces(list(list(format_component)),
+    list(format_component)) = list(format_component).
 
     % choose_number(List, Singular, Plural) = Form
     %
@@ -180,12 +183,6 @@
     % treated as a first line if the treat_as_first_call field is set to yes,
     % and each call to write_error_pieces will be additionally indented
     % by the number of levels indicated by the extra_indent field.
-    %
-    % The anything alternative allows the caller to specify an arbitrary thing
-    % to be printed at any point in the sequence. Since things printed this way
-    % aren't formatted as error messages should be (context at start etc), this
-    % capability is intended only for messages that help debug the compiler
-    % itself.
 
 :- type error_msg_spec
     --->    error_msg_spec(
@@ -193,29 +190,43 @@
                 spec_context            :: prog_context,
                 spec_extra_indent       :: int,
                 spec_pieces             :: list(format_component)
+            ).
+
+    % In some circumstances, we need more descriptive power than an
+    % error_msg_spec provides.
+    %
+    % The anything alternative allows the caller to specify an arbitrary thing
+    % to be printed at any point in the sequence. Since things printed this way
+    % aren't formatted as error messages should be (context at start etc), this
+    % capability is intended only for messages that help debug the compiler
+    % itself.
+
+:- type extended_error_msg_spec
+    --->    plain_spec(
+                error_msg_spec
             )
     ;       anything(
                 spec_write_anything     :: pred(io, io)
             ).
 
-:- inst error_msg_spec ==
+:- inst extended_error_msg_spec ==
         bound(
-            error_msg_spec(ground, ground, ground, ground)
+            plain_spec(ground)
         ;
             anything(pred(di, uo) is det)
         ).
-:- inst known_error_msg_spec ==
-        bound(
-            error_msg_spec(ground, ground, ground, ground)
-        ).
-:- inst error_msg_specs == list_skel(error_msg_spec).
-:- inst known_error_msg_specs == list_skel(known_error_msg_spec).
+:- inst extended_error_msg_specs == list_skel(extended_error_msg_spec).
+
+:- pred extend_specs(list(error_msg_spec)::in,
+    list(extended_error_msg_spec)::out(extended_error_msg_specs)) is det.
 
 :- pred add_to_spec_at_end(list(format_component)::in,
-    error_msg_spec::in(known_error_msg_spec),
-    error_msg_spec::out(known_error_msg_spec)) is det.
+    error_msg_spec::in, error_msg_spec::out) is det.
 
-:- pred write_error_specs(list(error_msg_spec)::in(error_msg_specs),
+:- pred write_error_specs(list(error_msg_spec)::in, io::di, io::uo) is det.
+
+:- pred write_extended_error_specs(
+    list(extended_error_msg_spec)::in(extended_error_msg_specs),
     io::di, io::uo) is det.
 
 :- func describe_sym_name(sym_name) = string.
@@ -273,15 +284,25 @@ add_to_spec_at_end(NewPieces, Spec0, Spec) :-
     Spec = error_msg_spec(First, Context, ExtraIndent, Pieces).
 
 write_error_specs(Specs, !IO) :-
-    write_error_specs_2(Specs, yes, !IO).
+    extend_specs(Specs, ExtendedSpecs),
+    do_write_error_specs(ExtendedSpecs, yes, !IO).
 
-:- pred write_error_specs_2(list(error_msg_spec)::in(error_msg_specs),
+write_extended_error_specs(ExtendedSpecs, !IO) :-
+    do_write_error_specs(ExtendedSpecs, yes, !IO).
+
+extend_specs([], []).
+extend_specs([Spec | Specs], [plain_spec(Spec) | ExtendedSpecs]) :-
+    extend_specs(Specs, ExtendedSpecs).
+
+:- pred do_write_error_specs(
+    list(extended_error_msg_spec)::in(extended_error_msg_specs),
     bool::in, io::di, io::uo) is det.
 
-write_error_specs_2([], _First, !IO).
-write_error_specs_2([Spec | Specs], !.First, !IO) :-
+do_write_error_specs([], _First, !IO).
+do_write_error_specs([Spec | Specs], !.First, !IO) :-
     (
-        Spec = error_msg_spec(TreatAsFirst, Context, ExtraIndent, Pieces),
+        Spec = plain_spec(PlainSpec),
+        PlainSpec = error_msg_spec(TreatAsFirst, Context, ExtraIndent, Pieces),
         (
             TreatAsFirst = yes,
             !:First = yes
@@ -301,7 +322,7 @@ write_error_specs_2([Spec | Specs], !.First, !IO) :-
         Spec = anything(Pred),
         Pred(!IO)
     ),
-    write_error_specs_2(Specs, !.First, !IO).
+    do_write_error_specs(Specs, !.First, !IO).
 
 string_to_words_piece(Str) = words(Str).
 
@@ -326,11 +347,11 @@ component_list_to_pieces([Comp1, Comp2, Comp3 | Comps]) =
     [Comp1, suffix(",")]
     ++ component_list_to_pieces([Comp2, Comp3 | Comps]).
 
-component_list_to_line_pieces([]) = [].
-component_list_to_line_pieces([Comps]) = Comps ++ [nl].
-component_list_to_line_pieces([Comps1, Comps2 | CompLists]) =
+component_list_to_line_pieces([], _) = [].
+component_list_to_line_pieces([Comps], Final) = Comps ++ Final ++ [nl].
+component_list_to_line_pieces([Comps1, Comps2 | CompLists], Final) =
     Comps1 ++ [suffix(","), nl]
-    ++ component_list_to_line_pieces([Comps2 | CompLists]).
+    ++ component_list_to_line_pieces([Comps2 | CompLists], Final).
 
 choose_number([], _Singular, Plural) = Plural.
 choose_number([_], Singular, _Plural) = Singular.

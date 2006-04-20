@@ -133,7 +133,7 @@
 %-----------------------------------------------------------------------------%
 
 report_pred_call_error(PredCallId, !Info, !IO) :-
-    PredCallId = PredOrFunc0 - SymName/_Arity,
+    PredCallId = simple_call_id(PredOrFunc0, SymName, _Arity),
     typecheck_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     (
@@ -173,7 +173,8 @@ typecheck_find_arities(Preds, [PredId | PredIds], [Arity | Arities]) :-
 :- pred report_error_pred_num_args(typecheck_info::in, simple_call_id::in,
     list(int)::in, io::di, io::uo) is det.
 
-report_error_pred_num_args(Info, PredOrFunc - SymName/Arity, Arities, !IO) :-
+report_error_pred_num_args(Info, SimpleCallId, Arities, !IO) :-
+    SimpleCallId = simple_call_id(PredOrFunc, SymName, Arity),
     write_context_and_pred_id(Info, !IO),
     typecheck_info_get_context(Info, Context),
     prog_out.write_context(Context, !IO),
@@ -210,8 +211,8 @@ report_error_func_instead_of_pred(Info, PredOrFunc, PredCallId, !IO) :-
 :- pred report_error_undef_pred(typecheck_info::in, simple_call_id::in,
     io::di, io::uo) is det.
 
-report_error_undef_pred(Info, PredOrFunc - PredCallId, !IO) :-
-    PredCallId = PredName/Arity,
+report_error_undef_pred(Info, SimpleCallId, !IO) :-
+    SimpleCallId = simple_call_id(_PredOrFunc, PredName, Arity),
     typecheck_info_get_context(Info, Context),
     write_typecheck_info_context(Info, !IO),
     (
@@ -290,7 +291,7 @@ report_error_undef_pred(Info, PredOrFunc - PredCallId, !IO) :-
             "a list of variables.\n", !IO)
     ;
         io.write_string("  error: undefined ", !IO),
-        write_simple_call_id(PredOrFunc - PredCallId, !IO),
+        write_simple_call_id(SimpleCallId, !IO),
         ( PredName = qualified(ModuleQualifier, _) ->
             maybe_report_missing_import(Info, ModuleQualifier, !IO)
         ;
@@ -345,22 +346,114 @@ report_no_clauses(MessageKind, PredId, PredInfo, ModuleInfo, !IO) :-
 report_warning_too_much_overloading(Info, !IO) :-
     typecheck_info_get_context(Info, Context),
     make_pred_id_preamble(Info, Preamble),
-    SmallWarning = [fixed(Preamble),
-        words("warning: highly ambiguous overloading.") ],
+    InitWarning = [fixed(Preamble),
+        words("warning: highly ambiguous overloading."), nl],
+
     globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     (
         VerboseErrors = yes,
         VerboseWarning = [
-            words("This may cause type-checking to be very"),
-            words("slow. It may also make your code"),
-            words("difficult to understand.") ],
-        list.append(SmallWarning, VerboseWarning, Warning)
+            words("This may cause type-checking to be very slow."),
+            words("It may also make your code difficult to understand."), nl],
+        InitVerboseWarning = InitWarning ++ VerboseWarning
     ;
         VerboseErrors = no,
         globals.io_set_extra_error_info(yes, !IO),
-        Warning = SmallWarning
+        InitVerboseWarning = InitWarning
     ),
-    error_util.report_warning(Context, 0, Warning, !IO).
+    FirstSpec = error_msg_spec(yes, Context, 0, InitVerboseWarning),
+
+    typecheck_info_get_overloaded_symbols(Info, OverloadedSymbolSet),
+    set.to_sorted_list(OverloadedSymbolSet, OverloadedSymbols),
+    (
+        OverloadedSymbols = [],
+        Specs = [FirstSpec]
+    ;
+        (
+            OverloadedSymbols = [_],
+            SecondSpecPieces =
+                [words("The following symbol was overloaded"),
+                words("in the following context."), nl]
+        ;
+            OverloadedSymbols = [_, _ | _],
+            SecondSpecPieces =
+                [words("The following symbols were overloaded"),
+                words("in the following contexts."), nl]
+        ),
+        SecondSpec = error_msg_spec(no, Context, 0, SecondSpecPieces),
+        typecheck_info_get_module_info(Info, ModuleInfo),
+        DetailSpecs = list.map(describe_overloaded_symbol(ModuleInfo),
+            OverloadedSymbols),
+        Specs = [FirstSpec, SecondSpec | DetailSpecs]
+    ),
+    record_warning(!IO),
+    write_error_specs(Specs, !IO).
+
+:- func describe_overloaded_symbol(module_info, overloaded_symbol)
+    = error_msg_spec.
+
+describe_overloaded_symbol(ModuleInfo, Symbol) = Spec :-
+    Symbol = overloaded_symbol(Context, Info),
+    (
+        Info = overloaded_pred(CallId, PredIds),
+        StartPieces = [words("The predicate symbol"),
+            simple_call_id(CallId), suffix("."), nl,
+            words("The possible matches are:"), nl_indent_delta(1)],
+        PredIdPiecesList = list.map(describe_one_pred_name(ModuleInfo,
+            should_module_qualify), PredIds),
+        PredIdPieces = component_list_to_line_pieces(PredIdPiecesList,
+            [suffix(".")]),
+        Pieces = StartPieces ++ PredIdPieces
+    ;
+        Info = overloaded_func(ConsId, Sources),
+        ( ConsId = cons(SymName, Arity) ->
+            ConsIdPiece = sym_name_and_arity(SymName / Arity)
+        ;
+            ConsIdPiece = fixed(cons_id_to_string(ConsId))
+        ),
+        StartPieces = [words("The function symbol"), ConsIdPiece,
+            suffix("."), nl,
+            words("The possible matches are:"), nl_indent_delta(1)],
+        SourcePiecesList = list.map(describe_cons_type_info_source(ModuleInfo),
+            Sources),
+        SourcePieces = component_list_to_line_pieces(SourcePiecesList,
+            [suffix(".")]),
+        Pieces = StartPieces ++ SourcePieces
+    ),
+    Spec = error_msg_spec(no, Context, 0, Pieces).
+
+:- func describe_cons_type_info_source(module_info, cons_type_info_source)
+    = list(format_component).
+
+describe_cons_type_info_source(ModuleInfo, Source) = Pieces :-
+    (
+        Source = source_type(TypeCtor),
+        TypeCtor = type_ctor(SymName, Arity),
+        Pieces = [words("the type constructor"),
+            sym_name_and_arity(SymName / Arity)]
+    ;
+        Source = source_builtin_type(TypeCtorName),
+        Pieces = [words("the builtin type constructor"), quote(TypeCtorName)]
+    ;
+        Source = source_get_field_access(TypeCtor),
+        TypeCtor = type_ctor(SymName, Arity),
+        Pieces = [words("a `get' field access function"),
+            words("for the type constructor"),
+            sym_name_and_arity(SymName / Arity)]
+    ;
+        Source = source_set_field_access(TypeCtor),
+        TypeCtor = type_ctor(SymName, Arity),
+        Pieces = [words("a `set' field access function"),
+            words("for the type constructor"),
+            sym_name_and_arity(SymName / Arity)]
+    ;
+        Source = source_pred(PredId),
+        Pieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
+            PredId)
+    ;
+        Source = source_apply(ApplyOp),
+        Pieces = [words("the builtin operator constructor"), quote(ApplyOp)]
+    ).
 
 %-----------------------------------------------------------------------------%
 
@@ -558,12 +651,11 @@ report_error_functor_arg_types(Info, Var, ConsDefnList, Functor, Args,
         % can affect the valid types for the arguments.
         %
         (
-            % could the type of the functor be polymorphic?
+            % Could the type of the functor be polymorphic?
             list.member(ConsDefn, ConsDefnList),
-            ConsDefn = cons_type_info(_, _, _, ConsArgTypes, _),
-            ConsArgTypes \= []
+            ConsDefn ^ cti_arg_types = [_ | _]
         ->
-            % if so, print out the type of `Var'
+            % If so, print out the type of `Var'.
             prog_out.write_context(Context, !IO),
             io.write_string("  ", !IO),
             write_argument_name(VarSet, Var, !IO),
@@ -1039,7 +1131,8 @@ report_wrong_arity_constructor(Name, Arity, ActualArities, Context, !IO) :-
 
 report_cons_error(Context, ConsError, !IO) :-
     (
-        ConsError = foreign_type_constructor(TypeName - TypeArity, _),
+        ConsError = foreign_type_constructor(TypeCtor, _),
+        TypeCtor = type_ctor(TypeName, TypeArity),
         Pieces = [words("There are"),
             fixed("`:- pragma foreign_type'"),
             words("declarations for type"),
@@ -1089,7 +1182,7 @@ report_cons_error(Context, ConsError, !IO) :-
         write_error_pieces_not_first_line(DefnContext, 0, Pieces, !IO)
     ;
         ConsError = new_on_non_existential_type(TypeCtor),
-        TypeCtor = TypeName - TypeArity,
+        TypeCtor = type_ctor(TypeName, TypeArity),
         Pieces = [words("Invalid use of `new'"),
             words("on a constructor of type"),
             sym_name_and_arity(TypeName / TypeArity),
@@ -1322,8 +1415,8 @@ write_type_of_functor(Functor, Arity, Context, ConsDefnList, !IO) :-
     io::di, io::uo) is det.
 
     % XXX Should we mention the context here?
-write_cons_type(cons_type_info(TVarSet, ExistQVars, ConsType, ArgTypes, _),
-        Functor, _, !IO) :-
+write_cons_type(ConsInfo, Functor, _, !IO) :-
+    ConsInfo = cons_type_info(TVarSet, ExistQVars, ConsType, ArgTypes, _, _),
     (
         ArgTypes = [_ | _],
         (

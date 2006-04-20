@@ -137,7 +137,9 @@ mark_eqv_exported_types(TypeCtor, !TypeTable) :-
 replace_in_type_defn(ModuleName, EqvMap, TypeCtor, !Defn, !MaybeRecompInfo) :-
     hlds_data.get_type_defn_tvarset(!.Defn, TVarSet0),
     hlds_data.get_type_defn_body(!.Defn, Body0),
-    equiv_type.maybe_record_expanded_items(ModuleName, fst(TypeCtor),
+    TypeCtor = type_ctor(TypeCtorSymName, _TypeCtorArity),
+    TypeCtorItem = type_ctor_to_item_name(TypeCtor),
+    equiv_type.maybe_record_expanded_items(ModuleName, TypeCtorSymName,
         !.MaybeRecompInfo, EquivTypeInfo0),
     (
         Body0 = du_type(Ctors0, _, _, _, _, _),
@@ -170,13 +172,13 @@ replace_in_type_defn(ModuleName, EqvMap, TypeCtor, !Defn, !MaybeRecompInfo) :-
         TVarSet = TVarSet0
     ),
     equiv_type.finish_recording_expanded_items(
-        item_id(type_body_item, TypeCtor), EquivTypeInfo, !MaybeRecompInfo),
+        item_id(type_body_item, TypeCtorItem),
+        EquivTypeInfo, !MaybeRecompInfo),
     hlds_data.set_type_defn_body(Body, !Defn),
     hlds_data.set_type_defn_tvarset(TVarSet, !Defn).
 
 :- pred replace_in_inst_table(eqv_map::in,
-    inst_table::in, inst_table::out,
-    inst_cache::in, inst_cache::out) is det.
+    inst_table::in, inst_table::out, inst_cache::in, inst_cache::out) is det.
 
 replace_in_inst_table(EqvMap, !InstTable, !Cache) :-
 %   %
@@ -309,8 +311,8 @@ replace_in_pred(EqvMap, PredId, !ModuleInfo, !Cache) :-
 
     ItemId = item_id(pred_or_func_to_item_type(
         pred_info_is_pred_or_func(!.PredInfo)),
-        qualified(pred_info_module(!.PredInfo), PredName) -
-            pred_info_orig_arity(!.PredInfo)),
+        item_name(qualified(pred_info_module(!.PredInfo), PredName),
+            pred_info_orig_arity(!.PredInfo))),
     equiv_type.finish_recording_expanded_items(ItemId,
         !.EquivTypeInfo, MaybeRecompInfo0, MaybeRecompInfo),
     module_info_set_maybe_recompilation_info(MaybeRecompInfo, !ModuleInfo),

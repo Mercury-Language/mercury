@@ -450,7 +450,7 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, DetInfo,
 
 :- pred report_determinism_problem(pred_id::in, proc_id::in, module_info::in,
     string::in, determinism::in, determinism::in,
-    error_msg_spec::out(known_error_msg_spec)) is det.
+    error_msg_spec::out) is det.
 
 report_determinism_problem(PredId, ProcId, ModuleInfo, Message,
         DeclaredDetism, InferredDetism, Spec) :-
@@ -524,8 +524,7 @@ compare_solncounts(at_most_many,    at_most_many,    sameas).
     %
 :- pred det_diagnose_goal(hlds_goal::in, determinism::in,
     list(switch_context)::in, det_info::in, bool::out,
-    list(error_msg_spec)::in(known_error_msg_specs),
-    list(error_msg_spec)::out(known_error_msg_specs)) is det.
+    list(error_msg_spec)::in, list(error_msg_spec)::out) is det.
 
 det_diagnose_goal(Goal - GoalInfo, Desired, SwitchContext, DetInfo, Diagnosed,
         !Specs) :-
@@ -542,8 +541,7 @@ det_diagnose_goal(Goal - GoalInfo, Desired, SwitchContext, DetInfo, Diagnosed,
 :- pred det_diagnose_goal_2(hlds_goal_expr::in, hlds_goal_info::in,
     determinism::in, determinism::in, list(switch_context)::in,
     det_info::in, bool::out,
-    list(error_msg_spec)::in(known_error_msg_specs),
-    list(error_msg_spec)::out(known_error_msg_specs)) is det.
+    list(error_msg_spec)::in, list(error_msg_spec)::out) is det.
 
 det_diagnose_goal_2(conj(_, Goals), _GoalInfo, Desired, _Actual, Context,
         DetInfo, Diagnosed, !Specs) :-
@@ -709,7 +707,7 @@ det_diagnose_goal_2(shorthand(_), _, _, _, _, _, _, !Specs) :-
 %-----------------------------------------------------------------------------%
 
 :- pred report_generic_call_context(prog_context::in, generic_call::in,
-    error_msg_spec::out(known_error_msg_spec)) is det.
+    error_msg_spec::out) is det.
 
 report_generic_call_context(Context, CallType, Spec) :-
     hlds_goal.generic_call_id(CallType, CallId),
@@ -719,10 +717,8 @@ report_generic_call_context(Context, CallType, Spec) :-
 %-----------------------------------------------------------------------------%
 
 :- pred det_diagnose_atomic_goal(determinism::in, determinism::in,
-    list(error_msg_spec)::in(known_error_msg_specs),
-    error_msg_spec::in(known_error_msg_spec),
-    list(error_msg_spec)::in(known_error_msg_specs),
-    list(error_msg_spec)::out(known_error_msg_specs)) is det.
+    list(error_msg_spec)::in, error_msg_spec::in,
+    list(error_msg_spec)::in, list(error_msg_spec)::out) is det.
 
 det_diagnose_atomic_goal(Desired, Actual, InitSpecs, !.CurSpec, !Specs) :-
     determinism_components(Desired, DesiredCanFail, DesiredSolns),
@@ -767,8 +763,7 @@ det_diagnose_atomic_goal(Desired, Actual, InitSpecs, !.CurSpec, !Specs) :-
     %
 :- pred det_diagnose_conj(list(hlds_goal)::in, determinism::in,
     list(switch_context)::in, det_info::in, bool::out,
-    list(error_msg_spec)::in(known_error_msg_specs),
-    list(error_msg_spec)::out(known_error_msg_specs)) is det.
+    list(error_msg_spec)::in, list(error_msg_spec)::out) is det.
 
 det_diagnose_conj([], _Desired, _SwitchContext, _DetInfo, no, !Specs).
 det_diagnose_conj([Goal | Goals], Desired, SwitchContext, DetInfo,
@@ -782,8 +777,7 @@ det_diagnose_conj([Goal | Goals], Desired, SwitchContext, DetInfo,
 :- pred det_diagnose_disj(list(hlds_goal)::in,
     determinism::in, determinism::in, list(switch_context)::in,
     det_info::in, int::in, int::out, bool::out,
-    list(error_msg_spec)::in(known_error_msg_specs),
-    list(error_msg_spec)::out(known_error_msg_specs)) is det.
+    list(error_msg_spec)::in, list(error_msg_spec)::out) is det.
 
 det_diagnose_disj([], _Desired, _Actual, _SwitchContext, _DetInfo,
         !ClausesWithSoln, no, !Specs).
@@ -825,8 +819,7 @@ det_diagnose_disj([Goal | Goals], Desired, Actual, SwitchContext, DetInfo,
 
 :- pred det_diagnose_switch(prog_var::in, list(case)::in, determinism::in,
     list(switch_context)::in, det_info::in, bool::out,
-    list(error_msg_spec)::in(known_error_msg_specs),
-    list(error_msg_spec)::out(known_error_msg_specs)) is det.
+    list(error_msg_spec)::in, list(error_msg_spec)::out) is det.
 
 det_diagnose_switch(_Var, [], _Desired, _SwitchContext, _DetInfo, no, !Specs).
 det_diagnose_switch(Var, [case(ConsId, Goal) | Cases], Desired,
@@ -881,8 +874,7 @@ cons_id_list_to_pieces([ConsId | ConsIds], Pieces) :-
 
 :- pred det_diagnose_switch_context(prog_context::in,
     list(switch_context)::in, det_info::in,
-    list(error_msg_spec)::in(known_error_msg_specs),
-    list(error_msg_spec)::out(known_error_msg_specs)) is det.
+    list(error_msg_spec)::in, list(error_msg_spec)::out) is det.
 
 det_diagnose_switch_context(_Context, [], _, !Specs).
 det_diagnose_switch_context(Context, [SwitchContext | SwitchContexts],
@@ -902,8 +894,7 @@ det_diagnose_switch_context(Context, [SwitchContext | SwitchContexts],
 
 :- pred det_report_call_context(prog_context::in,
     maybe(call_unify_context)::in, det_info::in, pred_id::in, proc_id::in,
-    list(error_msg_spec)::out(known_error_msg_specs),
-    error_msg_spec::out(known_error_msg_spec)) is det.
+    list(error_msg_spec)::out, error_msg_spec::out) is det.
 
 det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
         InitSpecs, Spec) :-
@@ -969,7 +960,7 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
     %
 :- pred det_report_unify_context(bool::in, bool::in, prog_context::in,
     unify_context::in, det_info::in, prog_var::in, unify_rhs::in,
-    error_msg_spec::out(known_error_msg_spec)) is det.
+    error_msg_spec::out) is det.
 
 det_report_unify_context(!.First, Last, Context, UnifyContext, DetInfo,
         LHS, RHS, Spec) :-
@@ -1597,16 +1588,15 @@ promise_solutions_kind_str(equivalent_solution_sets_arbitrary)
 lookup_var_name_in_varset(VarSet, Var) =
     mercury_var_to_string(Var, VarSet, no).
 
-:- func failing_contexts_description(module_info::in, prog_varset::in,
-    list(failing_context)::in) =
-    (list(error_msg_spec)::out(known_error_msg_specs)) is det.
+:- func failing_contexts_description(module_info, prog_varset,
+    list(failing_context)) = list(error_msg_spec).
 
 failing_contexts_description(ModuleInfo, VarSet, FailingContexts) =
     list.map(failing_context_description(ModuleInfo, VarSet),
         FailingContexts).
 
-:- func failing_context_description(module_info::in, prog_varset::in,
-    failing_context::in) = (error_msg_spec::out(known_error_msg_spec)) is det.
+:- func failing_context_description(module_info, prog_varset,
+    failing_context) = error_msg_spec.
 
 failing_context_description(ModuleInfo, VarSet, Context - FailingGoal)
         = Spec :-
