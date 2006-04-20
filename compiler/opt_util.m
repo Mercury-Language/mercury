@@ -738,137 +738,166 @@ no_stackvars_til_decr_sp([Instr0 | Instrs0], FrameSize, Between, Remain) :-
     ).
 
 block_refers_stackvars([], no).
-block_refers_stackvars([Uinstr0 - _ | Instrs0], Need) :-
+block_refers_stackvars([Instr | Instrs], Refers) :-
+    instr_refers_stackvars(Instr, InstrRefers),
+    (
+        InstrRefers = yes,
+        Refers = yes
+    ;
+        InstrRefers = no,
+        block_refers_stackvars(Instrs, Refers)
+    ).
+
+:- pred instr_refers_stackvars(instruction::in, bool::out) is det.
+
+instr_refers_stackvars(Uinstr0 - _, Refers) :-
     (
         Uinstr0 = comment(_),
-        block_refers_stackvars(Instrs0, Need)
+        Refers = no
     ;
         Uinstr0 = livevals(_),
-        block_refers_stackvars(Instrs0, Need)
+        Refers = no
     ;
         Uinstr0 = block(_, _, BlockInstrs),
-        block_refers_stackvars(BlockInstrs, Need)
+        block_refers_stackvars(BlockInstrs, Refers)
     ;
         Uinstr0 = assign(Lval, Rval),
-        lval_refers_stackvars(Lval, Use1),
-        rval_refers_stackvars(Rval, Use2),
-        bool.or(Use1, Use2, Use),
-        need_if_use_or_refers_stackvars(Use, Instrs0, Need)
+        lval_refers_stackvars(Lval, Refers1),
+        rval_refers_stackvars(Rval, Refers2),
+        bool.or(Refers1, Refers2, Refers)
     ;
         Uinstr0 = call(_, _, _, _, _, _),
-        Need = no
+        Refers = no
     ;
         Uinstr0 = mkframe(_, _),
-        Need = no
+        Refers = no
     ;
         Uinstr0 = label(_),
-        Need = no
+        Refers = no
     ;
         Uinstr0 = goto(_),
-        Need = no
+        Refers = no
     ;
         Uinstr0 = computed_goto(Rval, _),
-        rval_refers_stackvars(Rval, Use),
-        Need = Use
+        rval_refers_stackvars(Rval, Refers)
     ;
         Uinstr0 = c_code(_, _),
-        Need = no
+        Refers = no
     ;
         Uinstr0 = if_val(Rval, _),
-        rval_refers_stackvars(Rval, Use),
-        Need = Use
+        rval_refers_stackvars(Rval, Refers)
     ;
         Uinstr0 = save_maxfr(Lval),
-        lval_refers_stackvars(Lval, Use),
-        need_if_use_or_refers_stackvars(Use, Instrs0, Need)
+        lval_refers_stackvars(Lval, Refers)
     ;
         Uinstr0 = restore_maxfr(Lval),
-        lval_refers_stackvars(Lval, Use),
-        need_if_use_or_refers_stackvars(Use, Instrs0, Need)
+        lval_refers_stackvars(Lval, Refers)
     ;
         Uinstr0 = incr_hp(Lval, _, _, Rval, _),
-        lval_refers_stackvars(Lval, Use1),
-        rval_refers_stackvars(Rval, Use2),
-        bool.or(Use1, Use2, Use),
-        need_if_use_or_refers_stackvars(Use, Instrs0, Need)
+        lval_refers_stackvars(Lval, Refers1),
+        rval_refers_stackvars(Rval, Refers2),
+        bool.or(Refers1, Refers2, Refers)
     ;
         Uinstr0 = mark_hp(Lval),
-        lval_refers_stackvars(Lval, Use),
-        need_if_use_or_refers_stackvars(Use, Instrs0, Need)
+        lval_refers_stackvars(Lval, Refers)
     ;
         Uinstr0 = restore_hp(Rval),
-        rval_refers_stackvars(Rval, Use),
-        need_if_use_or_refers_stackvars(Use, Instrs0, Need)
+        rval_refers_stackvars(Rval, Refers)
     ;
         Uinstr0 = free_heap(Rval),
-        rval_refers_stackvars(Rval, Use),
-        need_if_use_or_refers_stackvars(Use, Instrs0, Need)
+        rval_refers_stackvars(Rval, Refers)
     ;
         Uinstr0 = store_ticket(Lval),
-        lval_refers_stackvars(Lval, Use),
-        need_if_use_or_refers_stackvars(Use, Instrs0, Need)
+        lval_refers_stackvars(Lval, Refers)
     ;
         Uinstr0 = reset_ticket(Rval, _Reason),
-        rval_refers_stackvars(Rval, Use),
-        need_if_use_or_refers_stackvars(Use, Instrs0, Need)
+        rval_refers_stackvars(Rval, Refers)
     ;
         Uinstr0 = discard_ticket,
-        block_refers_stackvars(Instrs0, Need)
+        Refers = no
     ;
         Uinstr0 = prune_ticket,
-        block_refers_stackvars(Instrs0, Need)
+        Refers = no
     ;
         Uinstr0 = mark_ticket_stack(Lval),
-        lval_refers_stackvars(Lval, Use),
-        need_if_use_or_refers_stackvars(Use, Instrs0, Need)
+        lval_refers_stackvars(Lval, Refers)
     ;
         Uinstr0 = prune_tickets_to(Rval),
-        rval_refers_stackvars(Rval, Use),
-        need_if_use_or_refers_stackvars(Use, Instrs0, Need)
+        rval_refers_stackvars(Rval, Refers)
     ;
         % handled specially
         Uinstr0 = incr_sp(_, _),
-        Need = no
+        Refers = no
     ;
         % handled specially
         Uinstr0 = decr_sp(_),
-        Need = no
+        Refers = no
     ;
         % handled specially
         Uinstr0 = decr_sp_and_return(_),
-        Need = no
+        Refers = no
     ;
-        Uinstr0 = pragma_c(_, _, _, _, _, _, _, _, _),
-        Need = no
+        Uinstr0 = pragma_c(_, Components, _, _, _, _, _, _, _),
+        bool.or_list(list.map(pragma_c_component_refers_stackvars, Components),
+            Refers)
     ;
         Uinstr0 = init_sync_term(Lval, _),
-        lval_refers_stackvars(Lval, Need)
+        lval_refers_stackvars(Lval, Refers)
     ;
         Uinstr0 = fork(_, _, _),
-        Need = no
+        Refers = no
     ;
         Uinstr0 = join_and_terminate(Lval),
-        lval_refers_stackvars(Lval, Use),
-        need_if_use_or_refers_stackvars(Use, Instrs0, Need)
+        lval_refers_stackvars(Lval, Refers)
     ;
         Uinstr0 = join_and_continue(Lval, _),
-        lval_refers_stackvars(Lval, Use),
-        need_if_use_or_refers_stackvars(Use, Instrs0, Need)
+        lval_refers_stackvars(Lval, Refers)
     ).
 
-    % This is to make block_refers_stackvars tail recursive.
-:- pragma inline(need_if_use_or_refers_stackvars/3).
+:- func pragma_c_component_refers_stackvars(pragma_c_component) = bool.
 
-:- pred need_if_use_or_refers_stackvars(bool::in, list(instruction)::in,
-    bool::out) is det.
-
-need_if_use_or_refers_stackvars(Use, Instrs, Need) :-
+pragma_c_component_refers_stackvars(Component) = Refers :-
     (
-        Use = yes,
-        Need = yes
+        Component = pragma_c_inputs(Inputs),
+        bool.or_list(list.map(pragma_c_input_refers_stackvars, Inputs),
+            Refers)
     ;
-        Use = no,
-        block_refers_stackvars(Instrs, Need)
+        Component = pragma_c_outputs(Outputs),
+        bool.or_list(list.map(pragma_c_output_refers_stackvars, Outputs),
+            Refers)
+    ;
+        ( Component = pragma_c_user_code(_, _)
+        ; Component = pragma_c_raw_code(_, _, _)
+        ; Component = pragma_c_fail_to(_)
+        ; Component = pragma_c_noop
+        ),
+        Refers = no
+    ).
+
+:- func pragma_c_input_refers_stackvars(pragma_c_input) = bool.
+
+pragma_c_input_refers_stackvars(Input) = Refers :-
+    Input = pragma_c_input(_Name, _Type, IsDummy, _OrigType, Rval,
+        _MaybeForeign, _BoxPolicy),
+    (
+        IsDummy = yes,
+        Refers = no
+    ;
+        IsDummy = no,
+        rval_refers_stackvars(Rval, Refers)
+    ).
+
+:- func pragma_c_output_refers_stackvars(pragma_c_output) = bool.
+
+pragma_c_output_refers_stackvars(Input) = Refers :-
+    Input = pragma_c_output(Lval, _Type, IsDummy, _OrigType, _Name,
+        _MaybeForeign, _BoxPolicy),
+    (
+        IsDummy = yes,
+        Refers = no
+    ;
+        IsDummy = no,
+        lval_refers_stackvars(Lval, Refers)
     ).
 
 filter_out_labels([], []).
