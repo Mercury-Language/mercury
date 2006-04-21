@@ -62,7 +62,7 @@
 glob_Optimise = reference.from_c_pointer(glob_Optimise_2).
 
 :- func glob_Optimise_2 = c_pointer.
-:- pragma foreign_proc(
+:- pragma foreign_proc("C",
 	glob_Optimise_2 = (X::out),
 	[promise_pure, will_not_call_mercury],
 "
@@ -72,7 +72,7 @@ glob_Optimise = reference.from_c_pointer(glob_Optimise_2).
 glob_TargetLang = nb_reference__from_c_pointer(glob_TargetLang_2).
 
 :- func glob_TargetLang_2 = c_pointer.
-:- pragma foregin_proc("C",
+:- pragma foreign_proc("C",
 	glob_TargetLang_2 = (X::out),
 	[promise_pure, will_not_call_mercury],
 "
