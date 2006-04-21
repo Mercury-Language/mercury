@@ -26,7 +26,7 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, string, term, varset, term_io, require, std_util.
+:- import_module list, string, term, varset, term_io, require, pair, solutions.
 :- import_module store, tr_store, map, multi_map, assoc_list.
 :- import_module unsafe.
 

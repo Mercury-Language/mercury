@@ -841,10 +841,12 @@ var.rep_unify(XPtr, YPtr) :-
 		impure var.rep_unify(X, YPtr)
 	;
 		X = free,
-		( impure identical(XPtr, YPtr) ->
-			true
-		;
-			impure destructively_update_binding(XPtr, YPtr)
+		promise_pure (
+			( impure identical(XPtr, YPtr) ->
+				true
+			;
+				impure destructively_update_binding(XPtr, YPtr)
+			)
 		)
 	;
 		X = ground(_),
@@ -901,12 +903,14 @@ var.rep_unify_fr(XPtr, YPtr, X) :-
 	;
 		Y = free(YGoals),
 		X = free(XGoals),
-		( impure identical(XPtr, YPtr) ->
-			true
-		;
-			XY = free((XGoals, YGoals)),
-			impure destructively_update_binding(XPtr, XY),
-			impure destructively_update_binding(YPtr, XY)
+		promise_pure (
+			( impure identical(XPtr, YPtr) ->
+				true
+			;
+				XY = free((XGoals, YGoals)),
+				impure destructively_update_binding(XPtr, XY),
+				impure destructively_update_binding(YPtr, XY)
+			)
 		)
 	).
 
