@@ -8,7 +8,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module frogger.
-
 :- interface.
 
 :- import_module io.
@@ -16,12 +15,20 @@
 :- pred main(io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module bool, char, int, list, string.
+:- use_module curs.
+:- use_module sleep.
 
-:- use_module curs, sleep.
+:- import_module bool.
+:- import_module char.
+:- import_module int.
+:- import_module list.
+:- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 :- type world
 	--->	world(
@@ -254,22 +261,22 @@ move_frog_down(World0, World) :-
 %-----------------------------------------------------------------------------%
 
 :- pred move_world(world::in, world::out) is det.
-:- pred move_world_2(int::in, level::in, level::out, frog::in, frog::out)
-	is det.
-:- pred move_row(int::in, row::in, row::out, frog::in, frog::out) is det.
-
 move_world(World0, World) :-
 	move_world_2(0, World0 ^ level, Level, World0 ^ frog, Frog),
 	World = ((World0 ^ level := Level)
 			 ^ frog := Frog).
+
+:- pred move_world_2(int::in, level::in, level::out, frog::in, frog::out)
+	is det.
 
 move_world_2(_, [], [], Frog, Frog).
 move_world_2(RowNumber, [Row0 | Rows0], [Row | Rows], Frog0, Frog) :-
 	move_row(RowNumber, Row0, Row, Frog0, Frog1),
 	move_world_2(RowNumber+1, Rows0, Rows, Frog1, Frog).
 
-move_row(_RowNumber, Row @ row(stationary, _String), Row, Frog, Frog).
+:- pred move_row(int::in, row::in, row::out, frog::in, frog::out) is det.
 
+move_row(_RowNumber, Row @ row(stationary, _String), Row, Frog, Frog).
 move_row(RowNumber, row(leftwards(Speed, Counter, DragFrog), String), Row,
 		Frog0 @ frog(FrogX, FrogY), Frog) :-
 	(if Counter = Speed then
@@ -307,16 +314,14 @@ move_row(RowNumber, row(rightwards(Speed, Counter, DragFrog), String), Row,
 %-----------------------------------------------------------------------------%
 
 :- pred handle_logic(world::in, world::out) is det.
-:- pred check_frog_in_goal(world::in, world::out) is semidet.
-:- pred check_frog_went_splat(world::in, world::out) is semidet.
-:- pred chars_at_frog(world::in, char::out, char::out) is det.
-:- pred stamp_frog_in_goal(world::in, world::out) is det.
 
 handle_logic(!World) :-
 	( check_frog_in_goal(!World) -> true
 	; check_frog_went_splat(!World) -> true
 	; true
 	).
+
+:- pred check_frog_in_goal(world::in, world::out) is semidet.
 
 check_frog_in_goal(World0, World) :-
 	chars_at_frog(World0, C1, C2),
@@ -325,6 +330,8 @@ check_frog_in_goal(World0, World) :-
 	stamp_frog_in_goal(World0, World1),
 	World = ((World1 ^ remaining_goals := World0 ^ remaining_goals-1)
 			 ^ frog := initial_frog).
+
+:- pred check_frog_went_splat(world::in, world::out) is semidet.
 
 check_frog_went_splat(World0, World) :-
 	chars_at_frog(World0, C1, C2),
@@ -335,20 +342,25 @@ check_frog_went_splat(World0, World) :-
 	World = ((World0 ^ lives := World0 ^ lives - 1)
 			 ^ frog := initial_frog).
 
+:- pred chars_at_frog(world::in, char::out, char::out) is det.
+
 chars_at_frog(World, C1, C2) :-
 	frog(X, Y) = World ^ frog,
 	Row = list.index0_det(World ^ level, Y),
 	C1 = string.index_det(Row ^ str, X),
-	C2 = string.index_det(Row ^ str, X+1).
+	C2 = string.index_det(Row ^ str, X + 1).
+
+:- pred stamp_frog_in_goal(world::in, world::out) is det.
 
 stamp_frog_in_goal(World0, World) :-
 	frog(X, Y) = World0 ^ frog,
 	Level = World0 ^ level,
 	Row = list.index0_det(Level, Y),
 	NewStr = string.set_char_det('<', X,
-		string.set_char_det('>', X+1, Row ^ str)),
+		string.set_char_det('>', X + 1, Row ^ str)),
 	NewRow = Row ^ str := NewStr,
-	NewLevel = list.replace_nth_det(Level, Y+1, NewRow),
+	NewLevel = list.replace_nth_det(Level, Y + 1, NewRow),
 	World = World0 ^ level := NewLevel.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

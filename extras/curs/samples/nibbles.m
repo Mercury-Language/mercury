@@ -6,7 +6,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module nibbles.
-
 :- interface.
 
 :- import_module io.
@@ -14,12 +13,25 @@
 :- pred main(io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module assoc_list, bool, char, int, list, random, require.
-:- import_module std_util, string, time.
-:- use_module curs, sleep.
+:- use_module curs.
+:- use_module sleep.
+
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module char.
+:- import_module int.
+:- import_module list.
+:- import_module random.
+:- import_module require.
+:- import_module std_util.
+:- import_module string.
+:- import_module time.
+
+%-----------------------------------------------------------------------------%
 
 :- type rs == random.supply.
 
@@ -120,9 +132,10 @@ quit_key(char.to_int('q')).
 quit_key(27).	% escape
 
 :- pred direction_key(int::in, direction::out) is semidet.
-:- pred direction_key_2(int::in, direction::out) is cc_nondet.
 
 direction_key(Key, promise_only_solution(direction_key_2(Key))).
+
+:- pred direction_key_2(int::in, direction::out) is cc_nondet.
 
 direction_key_2(curs.key_up, up).
 direction_key_2(curs.key_down, down).
@@ -161,14 +174,17 @@ move_snake(World0, World) :-
 	; Dir = right,  NewHead = {HeadX+1, HeadY}
 	),
 	Result = ordering(Growth, 0),
-	( Result = (>),
+	( 
+		Result = (>),
 		World = World0 ^ snake := 
 			snake(Dir, NewHead, [Head | Tail], Growth-1)
-	; Result = (=),
+	; 
+		Result = (=),
 		NewTail = list.take_upto(length(Tail)-1, Tail),
 		World = World0 ^ snake := 
 			snake(Dir, NewHead, [Head | NewTail], Growth)
-	; Result = (<),
+	; 
+		Result = (<),
 		error("move_snake/2: Growth should be >= 0")
 	).
 
@@ -330,4 +346,5 @@ show_game_over(!IO) :-
 	curs.getch(_, !IO),
 	curs.nodelay(yes, !IO).
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
