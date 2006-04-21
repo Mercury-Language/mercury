@@ -84,6 +84,11 @@ VPATH= $(srcdir)
 CFLAGS= -I$(srcdir)/include \
 	-DSILENT -DNO_DEBUGGING -DNO_EXECUTE_PERMISSION \
 	$(BOEHM_CFLAGS) $(CFLAGS_FOR_PIC) $(DLL_CFLAGS) $(EXTRA_CFLAGS)
+
+ifeq ($(GC_GRADE),par_gc)
+CFLAGS += $(BOEHM_CFLAGS_FOR_THREADS)
+endif
+
 # Note that the `mgnuc' script also passes -DNO_SIGNALS, unless
 # profiling was enabled (see comments in runtime/mercury_prof_mem.h for why).
 # We need $(CFLAGS_FOR_PIC) because we might be building a shared library.

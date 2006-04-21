@@ -2474,6 +2474,7 @@ fi
 # Note that changes here may require changes in scripts/ml.in.
 LDFLAGS_FOR_THREADS=
 LD_LIBFLAGS_FOR_THREADS=
+ENABLE_BOEHM_THREAD_LOCAL_ALLOC=
 case "$host" in
 	*solaris*)
 		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DSOLARIS_THREADS \
@@ -2486,8 +2487,9 @@ case "$host" in
 		# you may also need to make sure that you don't
 		# pass -ansi to gcc.
 		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DLINUX_THREADS \
-			-D_THREAD_SAFE -D_REENTRANT"
+			-D_THREAD_SAFE -D_REENTRANT -DGC_REDIRECT_TO_LOCAL"
 		THREAD_LIBS="-lpthread -ldl"
+		ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
 		;;
 
 	*cygwin*)
@@ -2562,6 +2564,7 @@ AC_SUBST(CFLAGS_FOR_THREADS)
 AC_SUBST(THREAD_LIBS)
 AC_SUBST(LDFLAGS_FOR_THREADS)
 AC_SUBST(LD_LIBFLAGS_FOR_THREADS)
+AC_SUBST(ENABLE_BOEHM_THREAD_LOCAL_ALLOC)
 
 #-----------------------------------------------------------------------------#
 
