@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998,2000, 2003, 2005 The University of Melbourne.
+% Copyright (C) 1997-1998,2000, 2003, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -132,6 +132,7 @@
 	MR_Word l;
 	int     argc, i;
 	char    **argv;
+	MR_Word argv_word;
 
 	/*
 	** convert arguments from a list of strings to an array of strings
@@ -141,7 +142,8 @@
 		argc++;
 	}
 
-	MR_incr_hp(MR_LVALUE_CAST(MR_Word, argv), argc + 1);
+	MR_incr_hp(argv_word, argc + 1);
+	argv = (char **) argv_word;
 
 	for (i = 0, l = Args; l != list_empty(); l = list_tail(l), i++) {
 		argv[i] = (char *) MR_list_head(l);
