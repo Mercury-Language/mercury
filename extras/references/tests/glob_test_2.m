@@ -4,10 +4,13 @@
 
 :- pred main(io::di, io::uo) is det.
 
-:- implementation.
-:- import_module std_util, reference.
+%----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
 
-:- pragma c_header_code("
+:- implementation.
+:- import_module reference.
+
+:- pragma foreign_decl("C", "
 	#include ""c_reference.h""
 ").
 
@@ -18,11 +21,11 @@ main(!IO) :-
 		impure update(trailed_global, 2),
 		semidet_fail
 	->
-		write_string("I didn't expect that to succeed!\n", !IO)
+		io.write_string("I didn't expect that to succeed!\n", !IO)
 	;
 		semipure value(trailed_global, Value),
 		write_int(Value, !IO),
-		nl(!IO)
+		io.nl(!IO)
 	).
 
 :- func trailed_global = reference(int).
@@ -32,3 +35,5 @@ main(!IO) :-
 trailed_global = Ref :-
 	impure new_reference(1, Ref).
 
+%----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%

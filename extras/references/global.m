@@ -1,2 +1,5 @@
 :- module global.
-:- import_module reference, nb_reference, scoped_update.
+:- interface.
+:- import_module nb_reference.
+:- import_module reference.
+:- import_module scoped_update.

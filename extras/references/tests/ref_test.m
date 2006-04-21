@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998,2000, 2003 The University of Melbourne.
+% Copyright (C) 1998,2000, 2003, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -13,12 +13,20 @@
 :- interface.
 :- import_module io.
 
-:- impure pred main(io__state::di, io__state::uo) is det.
+:- impure pred main(io::di, io::uo) is det.
+
+%----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module int.
-:- import_module reference, nb_reference, scoped_update.
+
+:- import_module nb_reference.
+:- import_module reference.
+:- import_module scoped_update.
+
+%----------------------------------------------------------------------------%
 
 main(IO, IO) :-
 	impure new_reference(3, X),
@@ -53,8 +61,13 @@ main(IO, IO) :-
 %  global variables.  We implement global variables with a function that
 %  returns a reference.
 
-:- pragma c_header_code("extern Integer globalvar;").
-:- pragma c_code("Integer globalvar = 0;").
+:- pragma foreign_decl("C", "
+	extern MR_Integer globalvar;
+").
+
+:- pragma foreign_code("C", "
+	MR_Integer globalvar = 0;
+").
 
 :- func globalvar = nb_reference(int).
 :- pragma inline(globalvar/0).
@@ -64,8 +77,11 @@ globalvar = nb_reference__from_c_pointer(globalvar_2).
 :- func globalvar_2 = c_pointer.
 :- pragma inline(globalvar_2/0).
 
-:- pragma c_code(globalvar_2 = (Ref::out), will_not_call_mercury, "
-	Ref = (Word) &globalvar;
+:- pragma foreign_proc("C",
+	globalvar_2 = (Ref::out),
+	[promise_pure, will_not_call_mercury],
+"
+	Ref = (MR_Word) &globalvar;
 ").
 
 
@@ -138,22 +154,26 @@ small_int(1).
 small_int(2).
 small_int(3).
 
-:- impure pred scope_test_message(string::in, int::in, int::in) is det.
-
-:- pragma c_header_code("
-#include <stdio.h>
+:- pragma foreign_decl("C", "
+	#include <stdio.h>
 ").
 
-:- pragma c_code(scope_test_message(Prefix::in, Old::in, New::in),
-		will_not_call_mercury, "
-	printf(""%s scope ref = %d; reset to %d\n"", (char *) Prefix,
+:- impure pred scope_test_message(string::in, int::in, int::in) is det.
+:- pragma foreign_proc("C",
+	scope_test_message(Prefix::in, Old::in, New::in),
+	[promise_pure, will_not_call_mercury],
+"
+	printf(""%s scope ref = %d; reset to %d\\n"", (char *) Prefix,
 			(int) Old, (int) New);
 ").
 
-
 :- impure pred dump_integer(int::in) is det.
-
-:- pragma c_code(dump_integer(X::in), will_not_call_mercury, "
-	printf(""%d\n"", X);
+:- pragma foreign_proc("C",
+	dump_integer(X::in),
+	[promise_pure, will_not_call_mercury],
+"
+	printf(""%d\\n"", X);
 ").
 
+%----------------------------------------------------------------------------%
+%----------------------------------------------------------------------------%
