@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999-2000 Monash University,, 2003 The University of Melbourne &
+% Copyright (C) 1999-2000 Monash University,, 2003, 2006 The University of Melbourne &
 % KU Leuven.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
@@ -10,29 +10,35 @@
 % Main author: wharvey@cs.monash.edu.au (Warwick Harvey)
 
 :- module glob_test.
-
 :- interface.
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module std_util.
 :- import_module list.
 :- import_module require.
 :- import_module io.
 :- import_module reference.
 :- import_module nb_reference.
 
-:- type yesno ---> yes ; no.
-:- type target_lang  ---> mercury ; sicstus.
+%-----------------------------------------------------------------------------%
+
+:- type yesno
+	--->	yes
+	;	no.
+
+:- type target_lang
+	--->	mercury
+	;	sicstus.
 
 :- func glob_Optimise = reference(yesno).
 :- func glob_TargetLang = nb_reference(target_lang).
-
-
 
 :- func glob_var_init_Optimise_mode_proc_1=yesno.
 :- mode glob_var_init_Optimise_mode_proc_1=out is det.
@@ -40,32 +46,37 @@
 :- func glob_var_init_TargetLang_mode_proc_1=target_lang.
 :- mode glob_var_init_TargetLang_mode_proc_1=out is det.
 
+%-----------------------------------------------------------------------------%
 
-:- implementation.
-
-:- pragma c_header_code("
-#include ""c_reference.h""
-extern ME_Reference HAL_glob_Optimise;
-extern ME_NbReference HAL_glob_TargetLang;
+:- pragma foreign_decl("C", "
+	#include ""c_reference.h""
+	extern ME_Reference HAL_glob_Optimise;
+	extern ME_NbReference HAL_glob_TargetLang;
 ").
 
-:- pragma c_code("
-ME_Reference HAL_glob_Optimise;
-ME_NbReference HAL_glob_TargetLang;
+:- pragma foreign_code("C", "
+	ME_Reference HAL_glob_Optimise;
+	ME_NbReference HAL_glob_TargetLang;
 ").
 
-glob_Optimise = reference__from_c_pointer(glob_Optimise_2).
+glob_Optimise = reference.from_c_pointer(glob_Optimise_2).
 
 :- func glob_Optimise_2 = c_pointer.
-:- pragma c_code(glob_Optimise_2 = (X::out), will_not_call_mercury, "
-	X = (Word) &HAL_glob_Optimise;
+:- pragma foreign_proc(
+	glob_Optimise_2 = (X::out),
+	[promise_pure, will_not_call_mercury],
+"
+	X = (MR_Word) &HAL_glob_Optimise;
 ").
 
 glob_TargetLang = nb_reference__from_c_pointer(glob_TargetLang_2).
 
 :- func glob_TargetLang_2 = c_pointer.
-:- pragma c_code(glob_TargetLang_2 = (X::out), will_not_call_mercury, "
-	X = (Word) &HAL_glob_TargetLang;
+:- pragma foregin_proc("C",
+	glob_TargetLang_2 = (X::out),
+	[promise_pure, will_not_call_mercury],
+"
+	X = (MR_Word) &HAL_glob_TargetLang;
 ").
 
 :- impure pred glob_var_init is det.
@@ -136,3 +147,5 @@ main -->
 	io__write(Lang2),
 	nl.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
