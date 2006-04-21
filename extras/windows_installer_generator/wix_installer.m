@@ -10,7 +10,7 @@
 %
 %---------------------------------------------------------------------------%
 %
-% This moduleis reposible for generating the Wix source code for the
+% This module is responsible for generating the Wix source code for the
 % installer.
 % The installer is first converted to an annotated installer and then
 % to XML.  The annotated installer contains extra information, like Ids
