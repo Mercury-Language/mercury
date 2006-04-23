@@ -216,7 +216,7 @@ bool_to_int(no) = 0.
 ").
 
 :- pragma foreign_decl("C",
-    "static void MGLU_quadric_error_callback(GLenum);
+    "extern void MGLU_quadric_error_callback(GLenum);
 ").
 
 :- pragma foreign_code("C", "
