@@ -5,24 +5,24 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: lco.m.
 % Author: zs.
-
+%
 % Transform predicates with calls that are tail recursive modulo construction
 % where (1) all recursive calls have the same args participating in the "modulo
 % construction" part and (2) all the other output args are returned in the same
 % registers in all recursive calls as expected by the head.
-% 
+%
 %   p(In1, ... InN, Out1, ... OutM) :-
 %       Out1 = ground
 %   p(In1, ... InN, Out1, ... OutM) :-
 %       ...
 %       p(In1, ... InN, Mid1, Out2... OutM)
 %       Out1 = f1(...Mid1...)
-% 
+%
 % The definition of append fits this pattern:
-% 
+%
 % app(list(T)::in, list(T)::in, list(T)::out)
 % app(A, B, C) :-
 %   (
@@ -33,10 +33,10 @@
 %       app(T, B, NT),
 %       C <= [H | NT]
 %   )
-% 
+%
 % Concrete example of what the original predicate and its return-via-memory
 % variant should look like for append:
-% 
+%
 % app(list(T)::in, list(T)::in, list(T)::out)
 % app(A, B, C) :-
 %   (
@@ -47,7 +47,7 @@
 %       C <= [H | _NT] capture &HT in AddrHT
 %       app'(T, B, AddrHT)
 %   )
-% 
+%
 % app'(list(T)::in, list(T)::in, store_by_ref_type(T)::in)
 % app'(A, B, AddrC) :-
 %   (
@@ -60,28 +60,28 @@
 %       store_at_ref(AddrC, C)
 %       app'(T, B, AddrHT)
 %   )
-% 
+%
 % The transformation done on the original predicate is to take recursive calls
 % followed by construction unifications that use outputs of the recursive calls
 % (each being used just once) and
-% 
+%
 % 1 move the constructions from after the recursive call to before, and attach
 %   a feature to them that tells the code generator to not define a given list
 %   of fields, but to capture their addresses in the related variable instead,
-% 
+%
 % 2 make the call go to the variant, and pass the address variables (e.g.
 %   AddrHT) as inputs instead of the original variables (e.g. HT) as outputs.
-% 
+%
 % The variant predicate is based on the transformed version of the original
 % predicate, but it has a further transformation performed on it. This further
 % transformation
-% 
+%
 % 3 replaces the output arguments with input arguments of type
 %   store_by_ref_type(T), where T is type of the field pointed to, and
-% 
+%
 % 4 follows each primitive goal that binds one of the output arguments
 %   with a store to the memory location indicated by the corresponding pointer.
-% 
+%
 %   p(In1, ... InN, Out1, ... OutM) :-
 %       Out1 = ground
 %   p(In1, ... InN, Out1, ... OutM) :-
@@ -89,7 +89,7 @@
 %       Out1 = f1(...Mid1...)
 %           capture addr of Mid1 in Addr1
 %       p'(In1, ... InN, Addr1, Out2... OutM)
-% 
+%
 %   p'(In1, ... InN, Ref1, ... OutM) :-
 %       Out1 = ground,
 %       store_at_ref(Ref1, Out1)
@@ -781,7 +781,7 @@ transform_variant_proc(ModuleInfo, AddrOutArgPosns, ProcInfo,
     proc_info_get_vartypes(ProcInfo, VarTypes0),
     proc_info_get_headvars(ProcInfo, HeadVars0),
     proc_info_get_argmodes(ProcInfo, ArgModes0),
-    make_addr_vars(HeadVars0, ArgModes0, HeadVars, ArgModes, 
+    make_addr_vars(HeadVars0, ArgModes0, HeadVars, ArgModes,
         AddrOutArgPosns, 1, ModuleInfo, VarToAddr,
         VarSet0, VarSet, VarTypes0, VarTypes),
     proc_info_set_headvars(HeadVars, !VariantProcInfo),
@@ -791,7 +791,7 @@ transform_variant_proc(ModuleInfo, AddrOutArgPosns, ProcInfo,
 
     proc_info_get_initial_instmap(ProcInfo, ModuleInfo, InstMap0),
     proc_info_get_goal(ProcInfo, Goal0),
-    transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal),
+    transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal, _),
     proc_info_set_goal(Goal, !VariantProcInfo),
     % We changed the scopes of the headvars we now return via pointers.
     requantify_proc(!VariantProcInfo).
@@ -847,103 +847,124 @@ make_addr_vars([HeadVar0 | HeadVars0], [Mode0 | Modes0],
     ).
 
 :- pred transform_variant_goal(module_info::in, assoc_list(prog_var)::in,
-    instmap::in, hlds_goal::in, hlds_goal::out) is det.
+    instmap::in, hlds_goal::in, hlds_goal::out, bool::out) is det.
 
-transform_variant_goal(ModuleInfo, VarToAddr, InstMap0,
-        GoalExpr0 - GoalInfo, GoalExpr - GoalInfo) :-
+transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
+        Changed) :-
+    Goal0 = GoalExpr0 - GoalInfo0,
     (
         GoalExpr0 = conj(ConjType, Goals0),
         ( ConjType = parallel_conj ->
             unexpected(this_file, "transform_variant_goal: parallel_conj")
         ;
             transform_variant_conj(ModuleInfo, VarToAddr, InstMap0,
-                Goals0, Goals),
+                Goals0, Goals, Changed),
             GoalExpr = conj(ConjType, Goals)
         )
     ;
         GoalExpr0 = disj(Goals0),
-        list.map(transform_variant_goal(ModuleInfo, VarToAddr, InstMap0),
-            Goals0, Goals),
+        list.map2(transform_variant_goal(ModuleInfo, VarToAddr, InstMap0),
+            Goals0, Goals, DisjsChanged),
+        Changed = bool.or_list(DisjsChanged),
         GoalExpr = disj(Goals)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
-        list.map(transform_variant_case(ModuleInfo, VarToAddr, InstMap0),
-            Cases0, Cases),
+        list.map2(transform_variant_case(ModuleInfo, VarToAddr, InstMap0),
+            Cases0, Cases, CasesChanged),
+        Changed = bool.or_list(CasesChanged),
         GoalExpr = switch(Var, CanFail, Cases)
     ;
         GoalExpr0 = if_then_else(Vars, Cond, Then0, Else0),
         update_instmap(Cond, InstMap0, InstMap1),
-        transform_variant_goal(ModuleInfo, VarToAddr, InstMap1, Then0, Then),
-        transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Else0, Else),
+        transform_variant_goal(ModuleInfo, VarToAddr, InstMap1, Then0, Then,
+            ThenChanged),
+        transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Else0, Else,
+            ElseChanged),
+        Changed = bool.or(ThenChanged, ElseChanged),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
         transform_variant_goal(ModuleInfo, VarToAddr, InstMap0,
-            SubGoal0, SubGoal),
+            SubGoal0, SubGoal, Changed),
         GoalExpr = scope(Reason, SubGoal)
     ;
         GoalExpr0 = not(_),
-        GoalExpr = GoalExpr0
+        GoalExpr = GoalExpr0,
+        Changed = no
     ;
         GoalExpr0 = generic_call(_, _, _, _),
         transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
-            GoalInfo, GoalExpr0, GoalExpr)
+            GoalInfo0, GoalExpr0, GoalExpr, Changed)
     ;
         GoalExpr0 = call(_, _, _, _, _, _),
         % XXX We could handle recursive calls better.
         transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
-            GoalInfo, GoalExpr0, GoalExpr)
+            GoalInfo0, GoalExpr0, GoalExpr, Changed)
     ;
         GoalExpr0 = unify(_, _, _, _, _),
         transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
-            GoalInfo, GoalExpr0, GoalExpr)
+            GoalInfo0, GoalExpr0, GoalExpr, Changed)
     ;
         GoalExpr0 = foreign_proc(_, _,_,  _, _, _),
         transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
-            GoalInfo, GoalExpr0, GoalExpr)
+            GoalInfo0, GoalExpr0, GoalExpr, Changed)
     ;
         GoalExpr0 = shorthand(_),
         unexpected(this_file, "transform_variant_goal: shorthand")
+    ),
+    (
+        Changed = yes,
+        add_goal_info_purity_feature(purity_impure, GoalInfo0, GoalInfo),
+        Goal = GoalExpr - GoalInfo
+    ;
+        Changed = no,
+        Goal = Goal0
     ).
 
 :- pred transform_variant_conj(module_info::in, assoc_list(prog_var)::in,
-    instmap::in, list(hlds_goal)::in, list(hlds_goal)::out) is det.
+    instmap::in, list(hlds_goal)::in, list(hlds_goal)::out, bool::out) is det.
 
-transform_variant_conj(_, _, _, [], []).
+transform_variant_conj(_, _, _, [], [], no).
 transform_variant_conj(ModuleInfo, VarToAddr, InstMap0, [Goal0 | Goals0],
-        Conj) :-
-    transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal),
+        Conj, Changed) :-
+    transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
+        HeadChanged),
     update_instmap(Goal0, InstMap0, InstMap1),
-    transform_variant_conj(ModuleInfo, VarToAddr, InstMap1, Goals0, Goals),
+    transform_variant_conj(ModuleInfo, VarToAddr, InstMap1, Goals0, Goals,
+        TailChanged),
+    Changed = bool.or(HeadChanged, TailChanged),
     ( Goal = conj(plain_conj, SubConj) - _ ->
         Conj = SubConj ++ Goals
     ;
         Conj = [Goal | Goals]
     ).
 
-:- pred transform_variant_case(module_info::in,
-    assoc_list(prog_var)::in, instmap::in, case::in, case::out) is det.
+:- pred transform_variant_case(module_info::in, assoc_list(prog_var)::in,
+    instmap::in, case::in, case::out, bool::out) is det.
 
-transform_variant_case(ModuleInfo, VarToAddr, InstMap0, case(ConsId, Goal0),
-        case(ConsId, Goal)) :-
-    transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal).
+transform_variant_case(ModuleInfo, VarToAddr, InstMap0,
+        case(ConsId, Goal0), case(ConsId, Goal), Changed) :-
+    transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
+        Changed).
 
 :- pred transform_variant_atomic_goal(module_info::in,
     assoc_list(prog_var)::in, instmap::in, hlds_goal_info::in,
-    hlds_goal_expr::in, hlds_goal_expr::out) is det.
+    hlds_goal_expr::in, hlds_goal_expr::out, bool::out) is det.
 
 transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0, GoalInfo,
-        GoalExpr0, GoalExpr) :-
+        GoalExpr0, GoalExpr, Changed) :-
     update_instmap(GoalExpr0 - GoalInfo, InstMap0, InstMap1),
     list.filter(is_grounding(ModuleInfo, InstMap0, InstMap1), VarToAddr,
         GroundingVarToAddr),
     (
         GroundingVarToAddr = [],
-        GoalExpr = GoalExpr0
+        GoalExpr = GoalExpr0,
+        Changed = no
     ;
         GroundingVarToAddr = [_ | _],
         list.map(make_store_goal(ModuleInfo), GroundingVarToAddr, StoreGoals),
-        GoalExpr = conj(plain_conj, [GoalExpr0 - GoalInfo | StoreGoals])
+        GoalExpr = conj(plain_conj, [GoalExpr0 - GoalInfo | StoreGoals]),
+        Changed = yes
     ).
 
 :- pred is_grounding(module_info::in, instmap::in, instmap::in,
