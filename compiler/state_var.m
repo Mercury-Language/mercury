@@ -350,7 +350,7 @@ dot(Context, StateVar, Var, !VarSet, !SInfo, !IO) :-
             Var = Var0
         ; !.SInfo `has_svar_colon_mapping_for` StateVar ->
             new_dot_state_var(StateVar, Var, !VarSet, !SInfo),
-            report_unitialized_state_var(Context, !.VarSet, StateVar, !IO)
+            report_uninitialized_state_var(Context, !.VarSet, StateVar, !IO)
         ;
             Var = StateVar,
             report_non_visible_state_var(".", Context, !.VarSet, StateVar, !IO)
@@ -1053,12 +1053,12 @@ report_non_visible_state_var(DorC, Context, VarSet, StateVar, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred report_unitialized_state_var(prog_context::in, prog_varset::in,
+:- pred report_uninitialized_state_var(prog_context::in, prog_varset::in,
     svar::in, io::di, io::uo) is det.
 
-report_unitialized_state_var(Context, VarSet, StateVar, !IO) :-
+report_uninitialized_state_var(Context, VarSet, StateVar, !IO) :-
     Name = varset.lookup_name(VarSet, StateVar),
-    Pieces = [words("Warning: reference to unitialized state variable"),
+    Pieces = [words("Warning: reference to uninitialized state variable"),
         fixed("!." ++ Name), suffix("."), nl],
     write_error_pieces(Context, 0, Pieces, !IO),
     record_warning(!IO).
