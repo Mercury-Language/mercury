@@ -44,7 +44,7 @@ extern	void	MR_register_exception_cleanup(void (*func)(void *),
 extern	void	MR_perform_registered_exception_cleanups(void);
 
 /*
-** These macro are shorthands to allow reductions in the size of compiler
+** These macros are shorthands to allow reductions in the size of compiler
 ** generated C source files.
 */
 
@@ -54,8 +54,14 @@ extern	void	MR_perform_registered_exception_cleanups(void);
 #define	MR_COMMON_NAME(cellnum)					\
 	MR_PASTE2(mercury_common_, cellnum)
 
+#define	MR_COMMON(typenum, cellnum)				\
+	((MR_Word *) &MR_COMMON_NAME(typenum)[cellnum])
+
 #define	MR_XCOMMON(typenum, cellnum)				\
 	((MR_Word *) &MR_COMMON_NAME(typenum)[cellnum])
+
+#define	MR_TAG_COMMON(tag, typenum, cellnum)			\
+	(MR_mkword(MR_mktag(tag), MR_COMMON(typenum, cellnum)))
 
 #define	MR_TAG_XCOMMON(tag, typenum, cellnum)			\
 	(MR_mkword(MR_mktag(tag), MR_XCOMMON(typenum, cellnum)))
