@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1996-1999, 2001-2003, 2005 The University of Melbourne.
+# Copyright (C) 1996-1999, 2001-2003, 2005-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -32,7 +32,7 @@ INSTALL_MMAKE_EXTRAS	= scripts/Mmake.rules scripts/Mmake.vars
 
 INSTALL_MDB_EXTRAS	= scripts/mdbrc
 
-LIB_PARTS	= bin conf doc html inc ints lib mdb/mdb_doc modules reconf
+LIB_PARTS	= conf doc html inc ints lib mdb/mdb_doc modules reconf
 
 EXT_FOR_EXE		= @EXT_FOR_EXE@
 
@@ -61,7 +61,7 @@ all:
 # with minor changes.
 
 .PHONY: install
-install: install_lib install_info install_man \
+install: install_bin install_lib install_info install_man \
 		install_scripts install_emacs_scripts \
 		install_mmake install_mdb install_util
 	@echo
@@ -73,6 +73,14 @@ install: install_lib install_info install_man \
 	@echo "	(setq load-path (cons (expand-file-name "
 	@echo "		\"$(INSTALL_ELISP_DIR)\") load-path))"
 	@echo "	(autoload 'mdb \"gud\" \"Invoke the Mercury debugger\" t)"
+
+.PHONY: install_bin
+install_bin:
+	@echo "-- Installing bin in $(INSTALL_BINDIR)..."
+	test -d $(INSTALL_BINDIR) || mkdir -p $(INSTALL_BINDIR)
+	gzip --decompress --stdout bin.tar.gz | ( \
+		cd $(INSTALL_BINDIR)/.. && tar -xf - )
+	@echo "-- Done."
 
 .PHONY: install_lib
 install_lib:
