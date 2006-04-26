@@ -1,5 +1,5 @@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1996-2003, 2005 The University of Melbourne.
+# Copyright (C) 1996-2003, 2005-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -17,7 +17,7 @@ MERCURY_VERSION	= mercury-$(VERSION).$(FULLARCH)
 
 INSTALL_LIB_DIR	= $(INSTALL_PREFIX)/lib
 
-LIB_FILES	= bin conf doc html inc ints lib mdb/mdb_doc modules reconf
+LIB_FILES	= conf doc html inc ints lib mdb/mdb_doc modules reconf
 
 # Miscellaneous scripts and utilities not processed by configure
 UTILS		= $(INSTALL_PREFIX)/bin/mkinit$(EXT_FOR_EXE) \
@@ -78,6 +78,11 @@ binary_distribution: bindist.Makefile bindist.INSTALL
 	# tar it up
 	# (XXX don't use redirection or pipes, because on gnu-win32
 	# stdout defaults to text mode, which breaks tar and gzip)
+	# NOTE: we tar up all of the existing bin directory even though
+	# most of it will be replaced when the installation is reconfigured.
+	(dir=`pwd` && cd $(INSTALL_BINDIR)/.. && \
+		tar -cf $$dir/$(MERCURY_VERSION)/bin.tar bin && \
+		gzip $$dir/$(MERCURY_VERSION)/bin.tar)
 	(dir=`pwd` && cd $(INSTALL_LIB_DIR)/mercury && \
 		tar -cf $$dir/$(MERCURY_VERSION)/lib.tar $(LIB_FILES) && \
 		gzip $$dir/$(MERCURY_VERSION)/lib.tar)
