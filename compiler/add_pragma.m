@@ -1954,12 +1954,12 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
     fact_table_generate_c_code(SymName, PragmaVars, ProcID, PrimaryProcID,
         ProcInfo, ArgTypes, !.ModuleInfo, C_ProcCode, C_ExtraCode, !IO),
 
-    % XXX this should be modified to use nondet pragma c_code.
     Attrs0 = default_attributes(c),
     set_may_call_mercury(will_not_call_mercury, Attrs0, Attrs1),
     set_thread_safe(thread_safe, Attrs1, Attrs2),
     % Fact tables procedures should be considered pure.
-    set_purity(purity_pure, Attrs2, Attrs),
+    set_purity(purity_pure, Attrs2, Attrs3),
+    add_extra_attribute(refers_to_llds_stack, Attrs3, Attrs),
     module_add_pragma_foreign_proc(Attrs, SymName, PredOrFunc, PragmaVars,
         ProgVarSet, InstVarSet, ordinary(C_ProcCode, no), Status, Context,
         !ModuleInfo, !QualInfo, !IO),
@@ -2114,7 +2114,9 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
 is_applicable_for_current_backend(_CurrentBackend, []) = yes.
 is_applicable_for_current_backend(CurrentBackend, [Attr | Attrs]) = Result :-
     (
-        Attr = max_stack_size(_),
+        ( Attr = max_stack_size(_)
+        ; Attr = refers_to_llds_stack
+        ),
         Result = is_applicable_for_current_backend(CurrentBackend, Attrs)
     ;
         Attr = backend(Backend),

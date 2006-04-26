@@ -301,6 +301,8 @@
     --->    ticket          % A ticket (trail pointer).
     ;       ticket_counter  % A copy of the ticket counter.
     ;       trace_data
+    ;       lookup_switch_cur
+    ;       lookup_switch_max
     ;       sync_term       % A syncronization term used
                             % at the end of par_conjs.
                             % See par_conj_gen.m for details.
@@ -384,7 +386,8 @@
 
 maybe_process_llds([], _, !GlobalData).
 maybe_process_llds([Proc | Procs], ModuleInfo, !GlobalData) :-
-    Proc = c_procedure(_, _, PredProcId, Instrs, _, _, _),
+    PredProcId = Proc ^ cproc_id,
+    Instrs = Proc ^ cproc_code,
     maybe_process_proc_llds(Instrs, PredProcId, ModuleInfo, !GlobalData),
     maybe_process_llds(Procs, ModuleInfo, !GlobalData).
 
@@ -869,11 +872,11 @@ live_value_type(lval(succip), succip).
 live_value_type(lval(hp), hp).
 live_value_type(lval(maxfr), maxfr).
 live_value_type(lval(curfr), curfr).
-live_value_type(lval(succfr(_)), unwanted).
-live_value_type(lval(prevfr(_)), unwanted).
-live_value_type(lval(redofr(_)), unwanted).
-live_value_type(lval(redoip(_)), unwanted).
-live_value_type(lval(succip(_)), unwanted).
+live_value_type(lval(succfr_slot(_)), unwanted).
+live_value_type(lval(prevfr_slot(_)), unwanted).
+live_value_type(lval(redofr_slot(_)), unwanted).
+live_value_type(lval(redoip_slot(_)), unwanted).
+live_value_type(lval(succip_slot(_)), unwanted).
 live_value_type(lval(sp), unwanted).
 live_value_type(lval(lvar(_)), unwanted).
 live_value_type(lval(field(_, _, _)), unwanted).
@@ -886,6 +889,8 @@ live_value_type(ticket, unwanted).  % XXX we may need to modify this,
                                     % if the GC is going to garbage-collect
                                     % the trail.
 live_value_type(ticket_counter, unwanted).
+live_value_type(lookup_switch_cur, unwanted).
+live_value_type(lookup_switch_max, unwanted).
 live_value_type(sync_term, unwanted).
 live_value_type(trace_data, unwanted).
 

@@ -466,19 +466,19 @@ standardize_lval(Lval1, Lval) :-
         Lval1 = framevar(_),
         Lval = Lval1
     ;
-        Lval1 = succip(_),
+        Lval1 = succip_slot(_),
         Lval = Lval1
     ;
-        Lval1 = redoip(_),
+        Lval1 = redoip_slot(_),
         Lval = Lval1
     ;
-        Lval1 = succfr(_),
+        Lval1 = succfr_slot(_),
         Lval = Lval1
     ;
-        Lval1 = redofr(_),
+        Lval1 = redofr_slot(_),
         Lval = Lval1
     ;
-        Lval1 = prevfr(_),
+        Lval1 = prevfr_slot(_),
         Lval = Lval1
     ;
         Lval1 = field(_, Addr, FieldNum),
@@ -815,23 +815,23 @@ most_specific_lval(Lval1, Lval2, Lval) :-
         Lval2 = Lval1,
         Lval = Lval1
     ;
-        Lval1 = succip(_),
+        Lval1 = succip_slot(_),
         Lval2 = Lval1,
         Lval = Lval1
     ;
-        Lval1 = redoip(_),
+        Lval1 = redoip_slot(_),
         Lval2 = Lval1,
         Lval = Lval1
     ;
-        Lval1 = redofr(_),
+        Lval1 = redofr_slot(_),
         Lval2 = Lval1,
         Lval = Lval1
     ;
-        Lval1 = succfr(_),
+        Lval1 = succfr_slot(_),
         Lval2 = Lval1,
         Lval = Lval1
     ;
-        Lval1 = prevfr(_),
+        Lval1 = prevfr_slot(_),
         Lval2 = Lval1,
         Lval = Lval1
     ;

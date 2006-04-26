@@ -232,8 +232,16 @@ peephole.match(if_val(Rval, CodeAddr), Comment, _, Instrs0, Instrs) :-
     %   mkframe(NFI, label)         =>  mkframe(NFI, label)
     %   if_val(test, redo)              if_val(test, label)
     %
-    % These two classes of patterns are mutually exclusive because if_val
-    % is not straight-line code.
+    % If a `mkframe' is followed directly by a `fail', we optimize away
+    % the creation of the stack frame:
+    %
+    %   mkframe(NFI, <any>)         =>  goto redo
+    %   goto fail
+    %
+    % This last pattern can be created by frameopt.m.
+    %
+    % These three classes of patterns are mutually exclusive because if_val
+    % and goto are not straight-line code.
     %
     % We also look for the following pattern, which can happen when predicates
     % that are actually semidet are declared to be nondet:
@@ -299,6 +307,12 @@ peephole.match(mkframe(NondetFrameInfo, yes(Redoip1)), Comment, _,
     ->
         Instrs = InstrsPrime
     ;
+        opt_util.skip_comments_livevals(Instrs0, Instrs1),
+        Instrs1 = [Instr1 | Instrs2],
+        Instr1 = goto(do_fail) - Comment2
+    ->
+        Instrs = [goto(do_redo) - Comment2 | Instrs2]
+    ;
         Redoip1 = do_fail,
         no_stack_straight_line(Instrs0, Straight, Instrs1),
         Instrs1 = [Instr1 | Instrs2],
@@ -336,7 +350,7 @@ peephole.match(store_ticket(Lval), Comment, _, Instrs0, Instrs) :-
     % straight-line instructions, then we can discard the nondet stack
     % frame early.
     %
-peephole.match(assign(redoip(lval(Base)), Redoip), Comment, _,
+peephole.match(assign(redoip_slot(lval(Base)), Redoip), Comment, _,
         Instrs0, Instrs) :-
     (
         opt_util.next_assign_to_redoip(Instrs0, [Base], [], Redoip2,
@@ -344,7 +358,7 @@ peephole.match(assign(redoip(lval(Base)), Redoip), Comment, _,
         opt_util.touches_nondet_ctrl(Skipped, no)
     ->
         Instrs1 = Skipped ++ Rest,
-        Instrs = [assign(redoip(lval(Base)),
+        Instrs = [assign(redoip_slot(lval(Base)),
             const(code_addr_const(Redoip2))) - Comment | Instrs1]
     ;
         Base = curfr,

@@ -295,7 +295,9 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
                 % Look for det style tailcalls. We look for this even if
                 % the call is semidet, because one of the optimizations below
                 % turns a pair of semidet epilogs into a det epilog.
-                ( CallModel = det ; CallModel = semidet ),
+                ( CallModel = call_model_det
+                ; CallModel = call_model_semidet
+                ),
                 map.search(Procmap, RetLabel, Between0),
                 PrevInstr = livevals(Livevals),
                 MayAlterRtti = may_alter_rtti,
@@ -307,7 +309,7 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
                 NewRemain = specified(NewInstrs, Instrs0)
             ;
                 % Look for semidet style tailcalls.
-                CallModel = semidet,
+                CallModel = call_model_semidet,
                 map.search(Forkmap, RetLabel, Between),
                 PrevInstr = livevals(Livevals),
                 MayAlterRtti = may_alter_rtti,
@@ -319,7 +321,7 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
             ;
                 % Look for nondet style tailcalls which do not need
                 % a runtime check.
-                CallModel = nondet(unchecked_tail_call),
+                CallModel = call_model_nondet(unchecked_tail_call),
                 map.search(Succmap, RetLabel, BetweenIncl),
                 BetweenIncl = [livevals(_) - _, goto(_) - _],
                 PrevInstr = livevals(Livevals),
@@ -327,11 +329,11 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
                 not set.member(RetLabel, LayoutLabels)
             ->
                 NewInstrs = [
-                    assign(maxfr, lval(prevfr(lval(curfr))))
+                    assign(maxfr, lval(prevfr_slot(lval(curfr))))
                         - "discard this frame",
-                    assign(succip, lval(succip(lval(curfr))))
+                    assign(succip, lval(succip_slot(lval(curfr))))
                         - "setup PC on return from tailcall",
-                    assign(curfr, lval(succfr(lval(curfr))))
+                    assign(curfr, lval(succfr_slot(lval(curfr))))
                         - "setup curfr on return from tailcall",
                     livevals(Livevals) - "",
                     goto(Proc) - redirect_comment(Comment0)
@@ -340,7 +342,7 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
             ;
                 % Look for nondet style tailcalls which do need
                 % a runtime check.
-                CallModel = nondet(checked_tail_call),
+                CallModel = call_model_nondet(checked_tail_call),
                 !.CheckedNondetTailCallInfo = yes(ProcLabel - Counter0),
                 map.search(Succmap, RetLabel, BetweenIncl),
                 BetweenIncl = [livevals(_) - _, goto(_) - _],
@@ -354,11 +356,11 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
                     if_val(binop(ne, lval(curfr), lval(maxfr)),
                         label(NewLabel))
                         - "branch around if cannot tail call",
-                    assign(maxfr, lval(prevfr(lval(curfr))))
+                    assign(maxfr, lval(prevfr_slot(lval(curfr))))
                         - "discard this frame",
-                    assign(succip, lval(succip(lval(curfr))))
+                    assign(succip, lval(succip_slot(lval(curfr))))
                         - "setup PC on return from tailcall",
-                    assign(curfr, lval(succfr(lval(curfr))))
+                    assign(curfr, lval(succfr_slot(lval(curfr))))
                         - "setup curfr on return from tailcall",
                     livevals(Livevals) - "",
                     goto(Proc) - redirect_comment(Comment0),
@@ -1091,15 +1093,15 @@ jumpopt.short_labels_lval(_, sp, sp).
 jumpopt.short_labels_lval(_, temp(T, N), temp(T, N)).
 jumpopt.short_labels_lval(_, stackvar(N), stackvar(N)).
 jumpopt.short_labels_lval(_, framevar(N), framevar(N)).
-jumpopt.short_labels_lval(Instrmap, succip(Rval0), succip(Rval)) :-
+jumpopt.short_labels_lval(Instrmap, succip_slot(Rval0), succip_slot(Rval)) :-
     jumpopt.short_labels_rval(Instrmap, Rval0, Rval).
-jumpopt.short_labels_lval(Instrmap, redoip(Rval0), redoip(Rval)) :-
+jumpopt.short_labels_lval(Instrmap, redoip_slot(Rval0), redoip_slot(Rval)) :-
     jumpopt.short_labels_rval(Instrmap, Rval0, Rval).
-jumpopt.short_labels_lval(Instrmap, redofr(Rval0), redofr(Rval)) :-
+jumpopt.short_labels_lval(Instrmap, redofr_slot(Rval0), redofr_slot(Rval)) :-
     jumpopt.short_labels_rval(Instrmap, Rval0, Rval).
-jumpopt.short_labels_lval(Instrmap, succfr(Rval0), succfr(Rval)) :-
+jumpopt.short_labels_lval(Instrmap, succfr_slot(Rval0), succfr_slot(Rval)) :-
     jumpopt.short_labels_rval(Instrmap, Rval0, Rval).
-jumpopt.short_labels_lval(Instrmap, prevfr(Rval0), prevfr(Rval)) :-
+jumpopt.short_labels_lval(Instrmap, prevfr_slot(Rval0), prevfr_slot(Rval)) :-
     jumpopt.short_labels_rval(Instrmap, Rval0, Rval).
 jumpopt.short_labels_lval(Instrmap, field(Tag, Rval0, Field0),
         field(Tag, Rval, Field)) :-

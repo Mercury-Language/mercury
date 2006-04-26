@@ -372,14 +372,14 @@ call_gen.prepare_for_call(CodeModel, CallModel, TraceCode, !CI) :-
     code_info.succip_is_used(!CI),
     (
         CodeModel = model_det,
-        CallModel = det
+        CallModel = call_model_det
     ;
         CodeModel = model_semi,
-        CallModel = semidet
+        CallModel = call_model_semidet
     ;
         CodeModel = model_non,
         code_info.may_use_nondet_tailcall(!.CI, TailCallStatus),
-        CallModel = nondet(TailCallStatus),
+        CallModel = call_model_nondet(TailCallStatus),
         code_info.set_resume_point_and_frame_to_unknown(!CI)
     ),
     trace.prepare_for_call(!.CI, TraceCode).

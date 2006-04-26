@@ -7,7 +7,7 @@
 %-----------------------------------------------------------------------------%
 
 % File: lookup_switch.m.
-% Author: conway.
+% Authors: conway, zs.
 
 % For switches on atomic types in which the cases contain only the
 % construction of constants, generate code which just assigns the values of
@@ -55,6 +55,7 @@
 :- type lookup_switch_info.
 
     % Decide whether we can generate code for this switch using a lookup table.
+    % The cases_list must be sorted on the index values.
     %
 :- pred is_lookup_switch(prog_var::in, cases_list::in,
     hlds_goal_info::in, can_fail::in, int::in, abs_store_map::in,
@@ -75,6 +76,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
+:- import_module hlds.goal_form.
 :- import_module hlds.hlds_data.
 :- import_module hlds.instmap.
 :- import_module libs.compiler_util.
@@ -82,9 +84,11 @@
 :- import_module libs.options.
 :- import_module libs.tree.
 :- import_module ll_backend.code_gen.
+:- import_module ll_backend.continuation_info.
 :- import_module ll_backend.dense_switch.
 :- import_module ll_backend.exprn_aux.
 :- import_module ll_backend.global_data.
+:- import_module ll_backend.lookup_util.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
@@ -96,8 +100,32 @@
 :- import_module pair.
 :- import_module set.
 :- import_module solutions.
+:- import_module string.
 
-:- type case_consts == assoc_list(int, list(rval)).
+:- type case_consts
+    --->    all_one_soln(
+                assoc_list(int, list(rval))
+            )
+    ;       some_several_solns(
+                assoc_list(int, soln_consts),
+                set(prog_var),          % The resume vars.
+                bool                    % The Boolean "or" of the result
+                                        % of invoking should_emit_trail_ops
+                                        % on the goal_infos of the
+                                        % disjunctions.
+            ).
+
+:- type soln_consts
+    --->    one_soln(list(rval))
+    ;       several_solns(list(list(rval))).
+
+:- type need_range_check
+    --->    need_range_check
+    ;       dont_need_range_check.
+
+:- type need_bit_vec_check
+    --->    need_bit_vec_check
+    ;       dont_need_bit_vec_check.
 
 :- type lookup_switch_info
     --->    lookup_switch_info(
@@ -108,25 +136,26 @@
                                         % switch.
                 lsi_cases               :: case_consts,
                                         % The map from the switched-on value
-                                        % to the the values of the variables.
+                                        % to the values of the variables
+                                        % in each solution.
                 lsi_variables           :: list(prog_var),
                                         % The output variables.
                 lsi_field_types         :: list(llds_type),
                                         % The types of the fields in the C
                                         % structure we generate for each case.
-                lsi_need_range_check    :: can_fail,
-                lsi_need_bit_vec_check  :: can_fail,
+                lsi_need_range_check    :: need_range_check,
+                lsi_need_bit_vec_check  :: need_bit_vec_check,
                                         % Do we need a range check and/or a
                                         % bit vector check on the switched-on
                                         % variable?
-                lsi_liveness            :: maybe(set(prog_var))
+                lsi_liveness            :: set(prog_var)
             ).
 
 %-----------------------------------------------------------------------------%
 
     % Most of this predicate is taken from dense_switch.m.
     %
-is_lookup_switch(CaseVar, TaggedCases, GoalInfo, SwitchCanFail, ReqDensity,
+is_lookup_switch(CaseVar, TaggedCases0, GoalInfo, SwitchCanFail0, ReqDensity,
         StoreMap, !MaybeEnd, CodeModel, LookupSwitchInfo, !CI) :-
     % We need the code_info structure to generate code for the cases to
     % get the constants (if they exist). We can't throw it away at the
@@ -140,6 +169,25 @@ is_lookup_switch(CaseVar, TaggedCases, GoalInfo, SwitchCanFail, ReqDensity,
     % no lookup switch.
     code_info.get_globals(!.CI, Globals),
     globals.lookup_bool_option(Globals, static_ground_terms, yes),
+
+    goal_info_get_code_model(GoalInfo, CodeModel),
+    (
+        ( CodeModel = model_non
+        ; CodeModel = model_semi
+        ),
+        % We build up the list in reverse because that is linear and uses
+        % constant stack space, whereas building it up in the right order
+        % would either use linear stack space or require a quadratic algorithm.
+        % This doesn't matter if TaggedCases0 is short, but does matter if it
+        % contains thousands of elements.
+        filter_out_failing_cases(TaggedCases0, [], RevTaggedCases,
+            SwitchCanFail0, SwitchCanFail),
+        list.reverse(RevTaggedCases, TaggedCases)
+    ;
+        CodeModel = model_det,
+        TaggedCases = TaggedCases0,
+        SwitchCanFail = SwitchCanFail0
+    ),
 
     % We want to generate a lookup switch for any switch that is dense enough
     % - we don't care how many cases it has. A memory lookup tends to be
@@ -157,13 +205,13 @@ is_lookup_switch(CaseVar, TaggedCases, GoalInfo, SwitchCanFail, ReqDensity,
     % If there are going to be no gaps in the lookup table then we won't need
     % a bitvector test to see if this switch has a value for this case.
     ( NumCases = Range ->
-        NeedBitVecCheck0 = cannot_fail
+        NeedBitVecCheck0 = dont_need_bit_vec_check
     ;
-        NeedBitVecCheck0 = can_fail
+        NeedBitVecCheck0 = need_bit_vec_check
     ),
     (
         SwitchCanFail = can_fail,
-        % For semidet switches, we normally need to check that the variable
+        % For can_fail switches, we normally need to check that the variable
         % is in range before we index into the jump table. However, if the
         % range of the type is sufficiently small, we can make the jump table
         % large enough to hold all of the values for the type, but then we
@@ -176,142 +224,143 @@ is_lookup_switch(CaseVar, TaggedCases, GoalInfo, SwitchCanFail, ReqDensity,
             dense_switch.calc_density(NumCases, TypeRange, DetDensity),
             DetDensity > ReqDensity
         ->
-            NeedRangeCheck = cannot_fail,
-            NeedBitVecCheck = can_fail,
+            NeedRangeCheck = dont_need_range_check,
+            NeedBitVecCheck = need_bit_vec_check,
             FirstVal = 0,
             LastVal = TypeRange - 1
         ;
-            NeedRangeCheck = SwitchCanFail,
+            NeedRangeCheck = need_range_check,
             NeedBitVecCheck = NeedBitVecCheck0,
             FirstVal = FirstCaseVal,
             LastVal = LastCaseVal
         )
     ;
         SwitchCanFail = cannot_fail,
-        NeedRangeCheck = cannot_fail,
+        NeedRangeCheck = dont_need_range_check,
         NeedBitVecCheck = NeedBitVecCheck0,
         FirstVal = FirstCaseVal,
         LastVal = LastCaseVal
     ),
     figure_out_output_vars(!.CI, GoalInfo, OutVars),
-    generate_constants(TaggedCases, OutVars, StoreMap, !MaybeEnd, CodeModel,
-        CaseValuePairs, MaybeLiveness, !CI),
+    generate_constants(TaggedCases, OutVars, StoreMap, !MaybeEnd,
+        CaseSolns, MaybeLiveness, set.init, ResumeVars, no, GoalTrailOps, !CI),
+    (
+        MaybeLiveness = yes(Liveness)
+    ;
+        MaybeLiveness = no,
+        unexpected(this_file, "is_lookup_switch: no liveness!")
+    ),
     VarTypes = get_var_types(!.CI),
     list.map(map.lookup(VarTypes), OutVars, OutTypes),
-    assoc_list.values(CaseValuePairs, CaseValues),
+    ( project_all_to_one_solution(CaseSolns, [], RevCaseValuePairs) ->
+        list.reverse(RevCaseValuePairs, CaseValuePairs),
+        CaseConsts = all_one_soln(CaseValuePairs),
+        assoc_list.values(CaseValuePairs, CaseValues)
+    ;
+        CaseConsts = some_several_solns(CaseSolns, ResumeVars, GoalTrailOps),
+        % This generates CaseValues in reverse order of index, but given that
+        % we only use CaseValues to find out the right LLDSTypes, this is OK.
+        project_solns_to_rval_lists(CaseSolns, [], CaseValues)
+    ),
     code_info.get_globals(!.CI, Globals),
     globals.lookup_bool_option(Globals, unboxed_float, UnboxFloat),
     find_general_llds_types(UnboxFloat, OutTypes, CaseValues, LLDSTypes),
-    LookupSwitchInfo = lookup_switch_info(FirstVal, LastVal, CaseValuePairs,
-        OutVars, LLDSTypes, NeedRangeCheck, NeedBitVecCheck, MaybeLiveness).
+    LookupSwitchInfo = lookup_switch_info(FirstVal, LastVal, CaseConsts,
+        OutVars, LLDSTypes, NeedRangeCheck, NeedBitVecCheck, Liveness).
 
-%---------------------------------------------------------------------------%
+:- pred project_all_to_one_solution(assoc_list(int, soln_consts)::in,
+    assoc_list(int, list(rval))::in, assoc_list(int, list(rval))::out)
+    is semidet.
 
-    % Figure out which variables are bound in the switch.
-    % We do this by using the current instmap and the instmap delta in the
-    % goal info to work out which variables are [further] bound by the switch.
-    %
-:- pred figure_out_output_vars(code_info::in, hlds_goal_info::in,
-    list(prog_var)::out) is det.
+project_all_to_one_solution([], !RevCaseValuePairs).
+project_all_to_one_solution([Case - Solns | CaseSolns], !RevCaseValuePairs) :-
+    Solns = one_soln(Values),
+    !:RevCaseValuePairs = [Case - Values | !.RevCaseValuePairs],
+    project_all_to_one_solution(CaseSolns, !RevCaseValuePairs).
 
-figure_out_output_vars(CI, GoalInfo, OutVars) :-
-    goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
-    ( instmap_delta_is_unreachable(InstMapDelta) ->
-        OutVars = []
+:- pred project_solns_to_rval_lists(assoc_list(int, soln_consts)::in,
+    list(list(rval))::in, list(list(rval))::out) is det.
+
+project_solns_to_rval_lists([], !RvalsList).
+project_solns_to_rval_lists([Case | Cases], !RvalsList) :-
+    Case = _Index - Soln,
+    (
+        Soln = one_soln(Rvals),
+        !:RvalsList = [Rvals | !.RvalsList]
     ;
-        code_info.get_instmap(CI, CurrentInstMap),
-        code_info.get_module_info(CI, ModuleInfo),
-        instmap_delta_changed_vars(InstMapDelta, ChangedVars),
-        instmap.apply_instmap_delta(CurrentInstMap, InstMapDelta,
-            InstMapAfter),
-        Lambda = (pred(Var::out) is nondet :-
-            % If a variable has a final inst, then it changed
-            % instantiatedness during the switch.
-            set.member(Var, ChangedVars),
-            instmap.lookup_var(CurrentInstMap, Var, Initial),
-            instmap.lookup_var(InstMapAfter, Var, Final),
-            mode_is_output(ModuleInfo, (Initial -> Final))
-        ),
-        solutions.solutions(Lambda, OutVars)
-    ).
+        Soln = several_solns(SolnRvalsList),
+        !:RvalsList = SolnRvalsList ++ !.RvalsList
+    ),
+    project_solns_to_rval_lists(Cases, !RvalsList).
 
 %---------------------------------------------------------------------------%
 
-    % To figure out if the outputs are constants, we generate code for
-    % the cases, and check to see if each of the output vars is a constant,
-    % and that no actual code was generated for the goal.
-    %
+:- pred filter_out_failing_cases(cases_list::in,
+    cases_list::in, cases_list::out, can_fail::in, can_fail::out) is det.
+
+filter_out_failing_cases([], !RevTaggedCases, !SwitchCanFail).
+filter_out_failing_cases([Case | Cases], !RevTaggedCases, !SwitchCanFail) :-
+    Case = case(_, _, _, Goal),
+    Goal = GoalExpr - _,
+    ( GoalExpr = disj([]) ->
+        !:SwitchCanFail = can_fail
+    ;
+        !:RevTaggedCases = [Case | !.RevTaggedCases]
+    ),
+    filter_out_failing_cases(Cases, !RevTaggedCases, !SwitchCanFail).
+
+%---------------------------------------------------------------------------%
+
 :- pred generate_constants(cases_list::in, list(prog_var)::in,
-    abs_store_map::in, branch_end::in, branch_end::out, code_model::in,
-    case_consts::out, maybe(set(prog_var))::out,
+    abs_store_map::in, branch_end::in, branch_end::out,
+    assoc_list(int, soln_consts)::out, maybe(set(prog_var))::out,
+    set(prog_var)::in, set(prog_var)::out, bool::in, bool::out,
     code_info::in, code_info::out) is semidet.
 
-generate_constants([], _Vars, _StoreMap, !MaybeEnd, _CodeModel, [], no, !CI).
-generate_constants([Case | Cases], Vars, StoreMap, !MaybeEnd, CodeModel,
-        [CaseVal | Rest], yes(Liveness), !CI) :-
+generate_constants([], _Vars, _StoreMap, !MaybeEnd, [], no, !ResumeVars,
+    !GoalTrailOps, !CI).
+generate_constants([Case | Cases], Vars, StoreMap, !MaybeEnd, [CaseVal | Rest],
+        MaybeLiveness, !ResumeVars, !GoalTrailOps, !CI) :-
     Case = case(_, int_constant(CaseTag), _, Goal),
-    code_info.remember_position(!.CI, BranchStart),
-    code_gen.generate_goal(CodeModel, Goal, Code, !CI),
-    tree.tree_of_lists_is_empty(Code),
-    code_info.get_forward_live_vars(!.CI, Liveness),
-    get_case_rvals(Vars, CaseRvals, !CI),
-    CaseVal = CaseTag - CaseRvals,
-    % EndCode code may contain instructions that place Vars in the locations
-    % dictated by StoreMap, and thus does not have to be empty. (The array
-    % lookup code will put those variables in those locations directly.)
-    code_info.generate_branch_end(StoreMap, !MaybeEnd, _EndCode, !CI),
-    code_info.reset_to_position(BranchStart, !CI),
-    generate_constants(Cases, Vars, StoreMap, !MaybeEnd,
-        CodeModel, Rest, _, !CI).
-
-%---------------------------------------------------------------------------%
-
-:- pred get_case_rvals(list(prog_var)::in, list(rval)::out,
-    code_info::in, code_info::out) is semidet.
-
-get_case_rvals([], [], !CI).
-get_case_rvals([Var | Vars], [Rval | Rvals], !CI) :-
-    code_info.produce_variable(Var, Code, Rval, !CI),
-    tree.tree_of_lists_is_empty(Code),
-    code_info.get_globals(!.CI, Globals),
-    globals.get_options(Globals, Options),
-    exprn_aux.init_exprn_opts(Options, ExprnOpts),
-    rval_is_constant(Rval, ExprnOpts),
-    get_case_rvals(Vars, Rvals, !CI).
-
-%---------------------------------------------------------------------------%
-
-    % rval_is_constant(Rval, ExprnOpts) is true iff Rval is a constant.
-    % This depends on the options governing nonlocal gotos, asm labels enabled
-    % and static ground terms, etc.
-    %
-:- pred rval_is_constant(rval::in, exprn_opts::in) is semidet.
-
-rval_is_constant(const(Const), ExprnOpts) :-
-    exprn_aux.const_is_constant(Const, ExprnOpts, yes).
-rval_is_constant(unop(_, Exprn), ExprnOpts) :-
-    rval_is_constant(Exprn, ExprnOpts).
-rval_is_constant(binop(_, Exprn0, Exprn1), ExprnOpts) :-
-    rval_is_constant(Exprn0, ExprnOpts),
-    rval_is_constant(Exprn1, ExprnOpts).
-rval_is_constant(mkword(_, Exprn0), ExprnOpts) :-
-    rval_is_constant(Exprn0, ExprnOpts).
-
-:- pred rvals_are_constant(list(maybe(rval))::in,
-    exprn_opts::in) is semidet.
-
-rvals_are_constant([], _).
-rvals_are_constant([MRval | MRvals], ExprnOpts) :-
-    MRval = yes(Rval),
-    rval_is_constant(Rval, ExprnOpts),
-    rvals_are_constant(MRvals, ExprnOpts).
+    Goal = GoalExpr - GoalInfo,
+    ( GoalExpr = disj(Disjuncts) ->
+        bool.or(goal_may_modify_trail(GoalInfo), !GoalTrailOps),
+        (
+            Disjuncts = [],
+            % Cases like this should have been filtered out by
+            % filter_out_failing_cases above.
+            unexpected(this_file, "generate_constants: disj([])")
+        ;
+            Disjuncts = [FirstDisjunct | _],
+            FirstDisjunct = _ - FirstDisjunctGoalInfo,
+            goal_info_get_resume_point(FirstDisjunctGoalInfo, ThisResumePoint),
+            (
+                ThisResumePoint = resume_point(ThisResumeVars, _),
+                set.union(ThisResumeVars, !ResumeVars)
+            ;
+                ThisResumePoint = no_resume_point
+            )
+        ),
+        all_disjuncts_are_conj_of_unify(Disjuncts, StdDisjuncts),
+        generate_constants_for_disjuncts(StdDisjuncts, Vars, StoreMap,
+            !MaybeEnd, Solns, MaybeLiveness, !CI),
+        CaseVal = CaseTag - several_solns(Solns)
+    ;
+        goal_is_conj_of_unify(Goal, StdGoal),
+        generate_constants_for_arm(StdGoal, Vars, StoreMap, !MaybeEnd, Soln,
+            Liveness, !CI),
+        MaybeLiveness = yes(Liveness),
+        CaseVal = CaseTag - one_soln(Soln)
+    ),
+    generate_constants(Cases, Vars, StoreMap, !MaybeEnd, Rest, _, !ResumeVars,
+        !GoalTrailOps, !CI).
 
 %---------------------------------------------------------------------------%
 
 generate_lookup_switch(Var, StoreMap, MaybeEnd0, LookupSwitchInfo, Code,
         !CI) :-
-    LookupSwitchInfo = lookup_switch_info(StartVal, EndVal, CaseValues,
-        OutVars, LLDSTypes, NeedRangeCheck, NeedBitVecCheck, MaybeLiveness),
+    LookupSwitchInfo = lookup_switch_info(StartVal, EndVal, CaseConsts,
+        OutVars, LLDSTypes, NeedRangeCheck, NeedBitVecCheck, Liveness),
 
     % Evaluate the variable which we are going to be switching on.
     code_info.produce_variable(Var, VarCode, Rval, !CI),
@@ -324,34 +373,60 @@ generate_lookup_switch(Var, StoreMap, MaybeEnd0, LookupSwitchInfo, Code,
         IndexRval = binop(int_sub, Rval, const(int_const(StartVal)))
     ),
 
-    % If the switch is not locally deterministic, we need to check that
+    % If the switch is not locally deterministic, we may need to check that
     % the value of the variable lies within the appropriate range.
     (
-        NeedRangeCheck = can_fail,
+        NeedRangeCheck = need_range_check,
         Difference = EndVal - StartVal,
         CmpRval = binop(unsigned_le, IndexRval, const(int_const(Difference))),
         code_info.fail_if_rval_is_false(CmpRval, RangeCheckCode, !CI)
     ;
-        NeedRangeCheck = cannot_fail,
+        NeedRangeCheck = dont_need_range_check,
         RangeCheckCode = empty
     ),
+
     (
-        NeedBitVecCheck = can_fail,
+        CaseConsts = all_one_soln(CaseValues),
+        Comment = node([comment("simple lookup switch") - ""]),
+        generate_simple_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
+            StartVal, EndVal, CaseValues, OutVars, LLDSTypes,
+            NeedBitVecCheck, Liveness, RestCode, !CI)
+    ;
+        CaseConsts = some_several_solns(CaseSolns, ResumeVars, GoalTrailOps),
+        get_emit_trail_ops(!.CI, EmitTrailOps),
+        bool.and(EmitTrailOps, GoalTrailOps, AddTrailOps),
+        Comment = node([comment("several soln lookup switch") - ""]),
+        generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
+            StartVal, EndVal, CaseSolns, ResumeVars, AddTrailOps, OutVars,
+            LLDSTypes, NeedBitVecCheck, Liveness, RestCode, !CI)
+    ),
+    Code = tree_list([Comment, VarCode, RangeCheckCode, RestCode]).
+
+:- pred generate_simple_lookup_switch(rval::in, abs_store_map::in,
+    branch_end::in, int::in, int::in, assoc_list(int, list(rval))::in,
+    list(prog_var)::in, list(llds_type)::in, need_bit_vec_check::in,
+    set(prog_var)::in, code_tree::out, code_info::in, code_info::out) is det.
+
+generate_simple_lookup_switch(IndexRval, StoreMap, MaybeEnd0, StartVal, EndVal,
+        CaseValues, OutVars, LLDSTypes, NeedBitVecCheck, Liveness, Code,
+        !CI) :-
+    (
+        NeedBitVecCheck = need_bit_vec_check,
         generate_bitvec_test(IndexRval, CaseValues, StartVal, EndVal,
             CheckBitVecCode, !CI)
     ;
-        NeedBitVecCheck = cannot_fail,
+        NeedBitVecCheck = dont_need_bit_vec_check,
         CheckBitVecCode = empty
     ),
 
-    % Now generate the terms into which we do the lookups of the values of
-    % the output variables, if there are any.
-    % 
-    % Note that invoking generate_terms when OutVars = [] would lead to
+    % Now generate the static cells into which we do the lookups of the values
+    % of the output variables, if there are any.
+    %
+    % Note that invoking generate_simple_terms when OutVars = [] would lead to
     % a compiler abort, since we cannot create C structures with zero fields.
     (
         OutVars = [],
-        BaseRegCode = empty,
+        BaseRegInitCode = empty,
         MaybeBaseReg = no
     ;
         OutVars = [_ | _],
@@ -360,20 +435,14 @@ generate_lookup_switch(Var, StoreMap, MaybeEnd0, LookupSwitchInfo, Code,
         % BaseReg.
         code_info.acquire_reg_not_in_storemap(StoreMap, BaseReg, !CI),
         MaybeBaseReg = yes(BaseReg),
-        generate_terms(IndexRval, OutVars, LLDSTypes, CaseValues, StartVal,
-            BaseRegCode, BaseReg, !CI)
+        generate_simple_terms(IndexRval, OutVars, LLDSTypes, CaseValues,
+            StartVal, BaseReg, BaseRegInitCode, !CI)
     ),
 
     % We keep track of what variables are supposed to be live at the end
     % of cases. We have to do this explicitly because generating a `fail' slot
     % last would yield the wrong liveness.
-    (
-        MaybeLiveness = yes(Liveness),
-        code_info.set_forward_live_vars(Liveness, !CI)
-    ;
-        MaybeLiveness = no,
-        unexpected(this_file, "generate_lookup_switch: no liveness!")
-    ),
+    code_info.set_forward_live_vars(Liveness, !CI),
     code_info.generate_branch_end(StoreMap, MaybeEnd0, _MaybeEnd,
         BranchEndCode, !CI),
     (
@@ -382,9 +451,407 @@ generate_lookup_switch(Var, StoreMap, MaybeEnd0, LookupSwitchInfo, Code,
         MaybeBaseReg = yes(FinalBaseReg),
         code_info.release_reg(FinalBaseReg, !CI)
     ),
-    Comment = node([comment("lookup switch") - ""]),
-    Code = tree_list([Comment, VarCode, RangeCheckCode, CheckBitVecCode,
-        BaseRegCode, BranchEndCode]).
+    Code = tree_list([CheckBitVecCode, BaseRegInitCode, BranchEndCode]).
+
+    % Add an expression to the expression cache in the code_info structure
+    % for each of the output variables of the lookup switch. This is done by
+    % creating a `create' term for the array, and caching an expression
+    % for the variable to get the IndexRval'th field of that term.
+    %
+:- pred generate_simple_terms(rval::in, list(prog_var)::in,
+    list(llds_type)::in, assoc_list(int, list(rval))::in, int::in,
+    lval::in, code_tree::out, code_info::in, code_info::out) is det.
+
+generate_simple_terms(IndexRval, OutVars, OutTypes, CaseVals, Start, BaseReg,
+        Code, !CI) :-
+    list.length(OutVars, NumOutVars),
+    construct_simple_vector(Start, OutTypes, CaseVals, VectorRvals),
+    code_info.add_vector_static_cell(OutTypes, VectorRvals, VectorAddr, !CI),
+
+    VectorAddrRval = const(data_addr_const(VectorAddr, no)),
+    % IndexRval has already had Start subtracted from it.
+    ( NumOutVars = 1 ->
+        BaseRval = IndexRval
+    ;
+        BaseRval = binop(int_mul, IndexRval, const(int_const(NumOutVars)))
+    ),
+    Code = node([
+        assign(BaseReg, mem_addr(heap_ref(VectorAddrRval, 0, BaseRval)))
+            - "Compute base address for this case"
+    ]),
+    generate_offset_assigns(OutVars, 0, BaseReg, !CI).
+
+:- pred construct_simple_vector(int::in, list(llds_type)::in,
+    assoc_list(int, list(rval))::in, list(list(rval))::out) is det.
+
+construct_simple_vector(_, _, [], []).
+construct_simple_vector(CurIndex, LLDSTypes, [Index - Rvals | Rest],
+        [Row | Rows]) :-
+    ( CurIndex < Index ->
+        % If this argument (array element) is a place-holder and
+        % will never be referenced, just fill it in with a dummy entry.
+        Row = list.map(default_value_for_type, LLDSTypes),
+        Remainder = [Index - Rvals | Rest]
+    ;
+        Row = Rvals,
+        Remainder = Rest
+    ),
+    construct_simple_vector(CurIndex + 1, LLDSTypes, Remainder, Rows).
+
+%-----------------------------------------------------------------------------%
+
+:- pred generate_several_soln_lookup_switch(rval::in, abs_store_map::in,
+    branch_end::in, int::in, int::in, assoc_list(int, soln_consts)::in,
+    set(prog_var)::in, bool::in, list(prog_var)::in, list(llds_type)::in,
+    need_bit_vec_check::in, set(prog_var)::in, code_tree::out,
+    code_info::in, code_info::out) is det.
+
+generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
+        StartVal, EndVal, CaseSolns, ResumeVars, AddTrailOps, OutVars,
+        LLDSTypes, NeedBitVecCheck, Liveness, Code, !CI) :-
+    (
+        OutVars = [],
+        % If there are no output variables, then how can the individual
+        % solutions differ from each other?
+        unexpected(this_file,
+            "generate_several_soln_lookup_switch: no OutVars")
+    ;
+        OutVars = [_ | _]
+    ),
+
+    % Now generate the static cells into which we do the lookups of the values
+    % of the output variables, if there are any.
+    %
+    % We put a dummy row at the start
+    list.length(LLDSTypes, NumLLDSTypes),
+    InitRowNumber = 1,
+    DummyLaterSolnRow = list.map(default_value_for_type, LLDSTypes),
+    construct_several_soln_vector(StartVal, EndVal, InitRowNumber,
+        LLDSTypes, NumLLDSTypes, CaseSolns, MainRows,
+        [DummyLaterSolnRow], RevLaterSolnArray,
+        0, FailCaseCount, 0, OneSolnCaseCount, 0, SeveralSolnCaseCount),
+    (
+        (
+            NeedBitVecCheck = need_bit_vec_check
+        <=>
+            FailCaseCount > 0
+        )
+    ->
+        true
+    ;
+        unexpected(this_file,
+            "generate_several_soln_lookup_switch: bad FailCaseCount")
+    ),
+
+    list.reverse(RevLaterSolnArray, LaterSolnArray),
+    MainRowTypes = [integer, integer | LLDSTypes],
+    list.length(MainRowTypes, MainRowWidth),
+    code_info.add_vector_static_cell(MainRowTypes, MainRows,
+        MainVectorAddr, !CI),
+    MainVectorAddrRval = const(data_addr_const(MainVectorAddr, no)),
+    code_info.add_vector_static_cell(LLDSTypes, LaterSolnArray,
+        LaterVectorAddr, !CI),
+    LaterVectorAddrRval = const(data_addr_const(LaterVectorAddr, no)),
+
+    % Since we release BaseReg only after the calls to generate_branch_end,
+    % we must make sure that generate_branch_end won't want to overwrite
+    % BaseReg.
+    code_info.acquire_reg_not_in_storemap(StoreMap, BaseReg, !CI),
+    code_info.acquire_temp_slot(lookup_switch_cur, CurSlot, !CI),
+    code_info.acquire_temp_slot(lookup_switch_max, MaxSlot, !CI),
+    % IndexRval has already had Start subtracted from it.
+    BaseRval = binop(int_mul, IndexRval, const(int_const(MainRowWidth))),
+    BaseRegInitCode = node([
+        assign(BaseReg, mem_addr(heap_ref(MainVectorAddrRval, 0, BaseRval)))
+            - "Compute base address for this case"
+    ]),
+
+    list.sort([FailCaseCount - kind_zero_solns,
+        OneSolnCaseCount - kind_one_soln,
+        SeveralSolnCaseCount - kind_several_solns], AscendingSortedKinds),
+    list.reverse(AscendingSortedKinds, DescendingSortedKinds),
+
+    code_info.get_next_label(EndLabel, !CI),
+    code_info.remember_position(!.CI, BranchStart),
+    generate_code_for_each_kind(DescendingSortedKinds, BaseReg,
+        CurSlot, MaxSlot, LaterVectorAddrRval, EndLabel, BranchStart,
+        ResumeVars, AddTrailOps, OutVars, StoreMap, MaybeEnd0, Liveness,
+        KindsCode, !CI),
+
+    code_info.release_reg(BaseReg, !CI),
+    % We cannot release the stack slots, since they will be needed after
+    % backtracking.
+    code_info.set_resume_point_to_unknown(!CI),
+    EndLabelCode = node([
+        label(EndLabel) - "end of several_soln lookup switch"
+    ]),
+    Code = tree_list([BaseRegInitCode, KindsCode, EndLabelCode]).
+
+:- type case_kind
+    --->    kind_zero_solns
+    ;       kind_one_soln
+    ;       kind_several_solns.
+
+:- func case_kind_to_string(case_kind) = string.
+
+case_kind_to_string(kind_zero_solns) = "kind_zero_solns".
+case_kind_to_string(kind_one_soln) = "kind_one_soln".
+case_kind_to_string(kind_several_solns) = "kind_several_solns".
+
+:- pred generate_code_for_each_kind(assoc_list(int, case_kind)::in,
+    lval::in, lval::in, lval::in, rval::in, label::in, position_info::in,
+    set(prog_var)::in, bool::in, list(prog_var)::in, abs_store_map::in,
+    branch_end::in, set(prog_var)::in, code_tree::out,
+    code_info::in, code_info::out) is det.
+
+generate_code_for_each_kind([], _, _, _, _, _, _, _, _, _, _, _, _, _, !CI) :-
+    unexpected(this_file, "generate_code_for_each_kind: no kinds").
+generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
+        LaterVectorAddrRval, EndLabel, BranchStart, ResumeVars, AddTrailOps,
+        OutVars, StoreMap, MaybeEnd0, Liveness, Code, !CI) :-
+    (
+        Kind = kind_zero_solns,
+        TestOp = int_ge,
+        code_info.reset_to_position(BranchStart, !CI),
+        code_info.generate_failure(KindCode, !CI)
+    ;
+        Kind = kind_one_soln,
+        TestOp = ne,
+        code_info.reset_to_position(BranchStart, !CI),
+        generate_offset_assigns(OutVars, 2, BaseReg, !CI),
+        set_liveness_and_end_branch(StoreMap, MaybeEnd0, Liveness,
+            BranchEndCode, !CI),
+        GotoEndCode = node([
+            goto(label(EndLabel)) - "goto end of switch from one_soln"
+        ]),
+        KindCode = tree_list([BranchEndCode, GotoEndCode])
+    ;
+        Kind = kind_several_solns,
+        TestOp = int_le,
+        code_info.get_globals(!.CI, Globals),
+        code_info.reset_to_position(BranchStart, !CI),
+
+        % The code below is modelled on the code in disj_gen, but is
+        % specialized for the situation here.
+
+        code_info.produce_vars(ResumeVars, ResumeMap, FlushCode, !CI),
+        SaveSlotsCode = node([
+            assign(CurSlot,
+                lval(field(yes(0), lval(BaseReg), const(int_const(0)))))
+                - "Setup current slot in the later solution array",
+            assign(MaxSlot,
+                lval(field(yes(0), lval(BaseReg), const(int_const(1)))))
+                - "Setup maximum slot in the later solution array"
+        ]),
+        code_info.maybe_save_ticket(AddTrailOps, SaveTicketCode,
+            MaybeTicketSlot, !CI),
+        globals.lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
+            ReclaimHeap),
+        code_info.maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI),
+        code_info.prepare_for_disj_hijack(model_non, HijackInfo,
+            PrepareHijackCode, !CI),
+
+        code_info.remember_position(!.CI, DisjEntry),
+
+        % Generate code for the non-last disjunct.
+
+        code_info.make_resume_point(ResumeVars, stack_only, ResumeMap,
+            ResumePoint, !CI),
+        code_info.effect_resume_point(ResumePoint, model_non, UpdateRedoipCode,
+            !CI),
+        generate_offset_assigns(OutVars, 2, BaseReg, !CI),
+        code_info.flush_resume_vars_to_stack(FirstFlushResumeVarsCode, !CI),
+
+        % Forget the variables that are needed only at the resumption point at
+        % the start of the next disjunct, so that we don't generate exceptions
+        % when their storage is clobbered by the movement of the live
+        % variables to the places indicated in the store map.
+        code_info.pop_resume_point(!CI),
+        code_info.pickup_zombies(FirstZombies, !CI),
+        code_info.make_vars_forward_dead(FirstZombies, !CI),
+
+        set_liveness_and_end_branch(StoreMap, MaybeEnd0, Liveness,
+            FirstBranchEndCode, !CI),
+
+        GotoEndCode = node([
+            goto(label(EndLabel)) - "goto end of switch from several_soln"
+        ]),
+
+        code_info.reset_to_position(DisjEntry, !CI),
+        code_info.generate_resume_point(ResumePoint, ResumePointCode, !CI),
+
+        code_info.maybe_reset_ticket(MaybeTicketSlot, undo, RestoreTicketCode),
+        code_info.maybe_restore_hp(MaybeHpSlot, RestoreHpCode),
+
+        code_info.acquire_reg_not_in_storemap(StoreMap, LaterBaseReg, !CI),
+        code_info.get_next_label(UndoLabel, !CI),
+        code_info.get_next_label(AfterUndoLabel, !CI),
+        list.length(OutVars, NumOutVars),
+        TestMoreSolnsCode = node([
+            assign(LaterBaseReg, lval(CurSlot))
+                - "Init later base register",
+            if_val(binop(int_ge, lval(LaterBaseReg), lval(MaxSlot)),
+                label(UndoLabel))
+                - "Jump to undo hijack code if there are no more solutions",
+            assign(CurSlot,
+                binop(int_add, lval(CurSlot), const(int_const(NumOutVars))))
+                - "Update current slot in the later solution array",
+            goto(label(AfterUndoLabel))
+                - "Jump around undo hijack code",
+            label(UndoLabel)
+                - "Undo hijack code"
+        ]),
+        code_info.undo_disj_hijack(HijackInfo, UndoHijackCode, !CI),
+        AfterUndoLabelCode = node([
+            label(AfterUndoLabel)
+                - "Return later answer code",
+            assign(LaterBaseReg,
+                mem_addr(heap_ref(LaterVectorAddrRval, 0, lval(LaterBaseReg))))
+                - "Compute base address in later array for this solution"
+        ]),
+
+        % We need to call effect_resume_point in order to push ResumePoint
+        % onto the failure continuation stack, so pop_resume_point can pop
+        % it off. However, since the redoip already points there, we don't need
+        % to execute _LaterUpdateRedoipCode.
+        code_info.effect_resume_point(ResumePoint, model_non,
+            _LaterUpdateRedoipCode, !CI),
+
+        generate_offset_assigns(OutVars, 0, LaterBaseReg, !CI),
+        code_info.flush_resume_vars_to_stack(LaterFlushResumeVarsCode, !CI),
+
+        % Forget the variables that are needed only at the resumption point at
+        % the start of the next disjunct, so that we don't generate exceptions
+        % when their storage is clobbered by the movement of the live
+        % variables to the places indicated in the store map.
+        code_info.pop_resume_point(!CI),
+        code_info.pickup_zombies(LaterZombies, !CI),
+        code_info.make_vars_forward_dead(LaterZombies, !CI),
+
+        set_liveness_and_end_branch(StoreMap, MaybeEnd0, Liveness,
+            LaterBranchEndCode, !CI),
+
+        KindCode = tree_list([FlushCode, SaveSlotsCode,
+            SaveTicketCode, SaveHpCode, PrepareHijackCode,
+            UpdateRedoipCode, FirstFlushResumeVarsCode, FirstBranchEndCode,
+            GotoEndCode, ResumePointCode, RestoreTicketCode, RestoreHpCode,
+            TestMoreSolnsCode, UndoHijackCode, AfterUndoLabelCode,
+            LaterFlushResumeVarsCode, LaterBranchEndCode, GotoEndCode])
+    ),
+    (
+        Kinds = [],
+        Code = KindCode
+    ;
+        Kinds = [_ - NextKind | _],
+        code_info.get_next_label(NextKindLabel, !CI),
+        TestRval = binop(TestOp,
+            lval(field(yes(0), lval(BaseReg), const(int_const(0)))),
+            const(int_const(0))),
+        TestCode = node([
+            if_val(TestRval, label(NextKindLabel))
+                - "skip to next kind in several_soln lookup switch",
+            comment("This kind is " ++ case_kind_to_string(Kind))
+                - ""
+        ]),
+        generate_code_for_each_kind(Kinds, BaseReg, CurSlot, MaxSlot,
+            LaterVectorAddrRval, EndLabel, BranchStart, ResumeVars,
+            AddTrailOps, OutVars, StoreMap, MaybeEnd0, Liveness,
+            LaterKindsCode, !CI),
+        NextKindLabelCode = node([
+            label(NextKindLabel)
+                - "next kind in several_soln lookup switch",
+            comment("Next kind is " ++ case_kind_to_string(NextKind))
+                - ""
+        ]),
+        Code = tree_list([TestCode, KindCode, NextKindLabelCode,
+            LaterKindsCode])
+    ).
+
+:- pred set_liveness_and_end_branch(abs_store_map::in, branch_end::in,
+    set(prog_var)::in, code_tree::out, code_info::in, code_info::out) is det.
+
+set_liveness_and_end_branch(StoreMap, MaybeEnd0, Liveness, BranchEndCode,
+        !CI) :-
+    % We keep track of what variables are supposed to be live at the end
+    % of cases. We have to do this explicitly because generating a `fail' slot
+    % last would yield the wrong liveness.
+    code_info.set_forward_live_vars(Liveness, !CI),
+    code_info.generate_branch_end(StoreMap, MaybeEnd0, _MaybeEnd,
+        BranchEndCode, !CI).
+
+    % Note that we specify --optimise-constructor-last-call for this module
+    % in order to make this predicate tail recursive.
+    %
+:- pred construct_several_soln_vector(int::in, int::in, int::in,
+    list(llds_type)::in, int::in, assoc_list(int, soln_consts)::in,
+    list(list(rval))::out,
+    list(list(rval))::in, list(list(rval))::out,
+    int::in, int::out, int::in, int::out, int::in, int::out) is det.
+
+construct_several_soln_vector(CurIndex, EndVal, !.LaterNextRow, LLDSTypes,
+        NumLLDSTypes, [], MainRows, !RevLaterSolnArray,
+        !FailCaseCount, !OneSolnCaseCount, !SeveralSolnCaseCount) :-
+    ( CurIndex > EndVal ->
+        MainRows = []
+    ;
+        construct_fail_row(LLDSTypes, MainRow, !FailCaseCount),
+        construct_several_soln_vector(CurIndex + 1, EndVal, !.LaterNextRow,
+            LLDSTypes, NumLLDSTypes, [], MoreMainRows, !RevLaterSolnArray,
+            !FailCaseCount, !OneSolnCaseCount, !SeveralSolnCaseCount),
+        MainRows = [MainRow | MoreMainRows]
+    ).
+construct_several_soln_vector(CurIndex, EndVal, !.LaterNextRow, LLDSTypes,
+        NumLLDSTypes, [Index - Soln | Rest], [MainRow | MainRows],
+        !RevLaterSolnArray,
+        !FailCaseCount, !OneSolnCaseCount, !SeveralSolnCaseCount) :-
+    ( CurIndex < Index ->
+        construct_fail_row(LLDSTypes, MainRow, !FailCaseCount),
+        Remainder = [Index - Soln | Rest]
+    ;
+        (
+            Soln = one_soln(Rvals),
+            !:OneSolnCaseCount = !.OneSolnCaseCount + 1,
+            % The first 0 means there is exactly one solution for this case;
+            % the second 0 is a dummy that won't be referenced.
+            ControlRvals = [const(int_const(0)), const(int_const(0))],
+            MainRow = ControlRvals ++ Rvals
+        ;
+            Soln = several_solns([]),
+            unexpected(this_file, "construct_several_soln_vector: several = 0")
+        ;
+            Soln = several_solns([FirstSoln | LaterSolns]),
+            !:SeveralSolnCaseCount = !.SeveralSolnCaseCount + 1,
+            list.length(LaterSolns, NumLaterSolns),
+            FirstRowOffset = !.LaterNextRow * NumLLDSTypes,
+            LastRowOffset = (!.LaterNextRow + NumLaterSolns - 1)
+                * NumLLDSTypes,
+            ControlRvals = [const(int_const(FirstRowOffset)),
+                const(int_const(LastRowOffset))],
+            MainRow = ControlRvals ++ FirstSoln,
+            list.reverse(LaterSolns, RevLaterSolns),
+            !:RevLaterSolnArray = RevLaterSolns ++ !.RevLaterSolnArray,
+            !:LaterNextRow = !.LaterNextRow + NumLaterSolns
+        ),
+        Remainder = Rest
+    ),
+    construct_several_soln_vector(CurIndex + 1, EndVal, !.LaterNextRow,
+        LLDSTypes, NumLLDSTypes, Remainder, MainRows, !RevLaterSolnArray,
+        !FailCaseCount, !OneSolnCaseCount, !SeveralSolnCaseCount).
+
+:- pred construct_fail_row(list(llds_type)::in, list(rval)::out,
+    int::in, int::out) is det.
+
+construct_fail_row(LLDSTypes, MainRow, !FailCaseCount) :-
+    % The -1 means no solutions for this case; the 0 is a dummy that
+    % won't be referenced.
+    ControlRvals = [const(int_const(-1)), const(int_const(0))],
+
+    % Since this argument (array element) is a place-holder and will never be
+    % referenced, just fill it in with a dummy entry.
+    VarRvals = list.map(default_value_for_type, LLDSTypes),
+
+    MainRow = ControlRvals ++ VarRvals,
+    !:FailCaseCount = !.FailCaseCount + 1.
 
 %-----------------------------------------------------------------------------%
 
@@ -393,8 +860,8 @@ generate_lookup_switch(Var, StoreMap, MaybeEnd0, LookupSwitchInfo, Code,
     % input to the lookup switch. The bit is `1' iff we have a case for that
     % tag value.
     %
-:- pred generate_bitvec_test(rval::in, case_consts::in, int::in, int::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+:- pred generate_bitvec_test(rval::in, assoc_list(int, T)::in,
+    int::in, int::in, code_tree::out, code_info::in, code_info::out) is det.
 
 generate_bitvec_test(IndexRval, CaseVals, Start, _End, CheckCode, !CI) :-
     get_word_bits(!.CI, WordBits, Log2WordBits),
@@ -452,7 +919,7 @@ log2_rounded_down(X) = Log :-
     % for each case. (We represent the bitvector here as a map from the word
     % number in the vector to the bits for that word.
     %
-:- pred generate_bit_vec(case_consts::in, int::in, int::in,
+:- pred generate_bit_vec(assoc_list(int, T)::in, int::in, int::in,
     list(rval)::out, rval::out, code_info::in, code_info::out) is det.
 
 generate_bit_vec(CaseVals, Start, WordBits, Args, BitVec, !CI) :-
@@ -463,7 +930,7 @@ generate_bit_vec(CaseVals, Start, WordBits, Args, BitVec, !CI) :-
     add_scalar_static_cell_natural_types(Args, DataAddr, !CI),
     BitVec = const(data_addr_const(DataAddr, no)).
 
-:- pred generate_bit_vec_2(case_consts::in, int::in, int::in,
+:- pred generate_bit_vec_2(assoc_list(int, T)::in, int::in, int::in,
     map(int, int)::in, map(int, int)::out) is det.
 
 generate_bit_vec_2([], _, _, Bits, Bits).
@@ -497,50 +964,6 @@ generate_bit_vec_args([Word - Bits | Rest], Count, [Rval | Rvals]) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Add an expression to the expression cache in the code_info structure
-    % for each of the output variables of the lookup switch. This is done by
-    % creating a `create' term for the array, and caching an expression
-    % for the variable to get the IndexRval'th field of that term.
-    %
-:- pred generate_terms(rval::in, list(prog_var)::in, list(llds_type)::in,
-    case_consts::in, int::in, code_tree::out, lval::in,
-    code_info::in, code_info::out) is det.
-
-generate_terms(IndexRval, OutVars, OutTypes, CaseVals, Start, Code, BaseReg,
-        !CI) :-
-    list.length(OutVars, NumOutVars),
-    construct_vector(Start, CaseVals, VectorRvals),
-    code_info.add_vector_static_cell(OutTypes, VectorRvals, VectorAddr, !CI),
-
-    VectorAddrRval = const(data_addr_const(VectorAddr, no)),
-    % IndexRval has already had Start subtracted from it.
-    ( NumOutVars = 1 ->
-        BaseRval = IndexRval
-    ;
-        BaseRval = binop(int_mul, IndexRval, const(int_const(NumOutVars)))
-    ),
-    Code = node([
-        assign(BaseReg, mem_addr(heap_ref(VectorAddrRval, 0, BaseRval)))
-            - "Compute base address for this case"
-    ]),
-    generate_offset_assigns(OutVars, 0, BaseReg, !CI).
-
-:- pred construct_vector(int::in, case_consts::in,
-    list(maybe(list(rval)))::out) is det.
-
-construct_vector(_, [], []).
-construct_vector(CurIndex, [Index - Rvals | Rest], [MaybeRow | MaybeRows]) :-
-    ( CurIndex < Index ->
-        % If this argument (array element) is a place-holder and
-        % will never be referenced, just fill it in with a dummy entry.
-        MaybeRow = no,
-        Remainder = [Index - Rvals | Rest]
-    ;
-        MaybeRow = yes(Rvals),
-        Remainder = Rest
-    ),
-    construct_vector(CurIndex + 1, Remainder, MaybeRows).
-
 :- pred generate_offset_assigns(list(prog_var)::in, int::in, lval::in,
     code_info::in, code_info::out) is det.
 
@@ -551,6 +974,25 @@ generate_offset_assigns([Var | Vars], Offset, BaseReg, !CI) :-
     expect(tree.is_empty(Code), this_file,
         "generate_offset_assigns: nonempty code"),
     generate_offset_assigns(Vars, Offset + 1, BaseReg, !CI).
+
+%-----------------------------------------------------------------------------%
+
+:- func default_value_for_type(llds_type) = rval.
+
+default_value_for_type(bool) = const(int_const(0)).
+default_value_for_type(int_least8) = const(int_const(0)).
+default_value_for_type(uint_least8) = const(int_const(0)).
+default_value_for_type(int_least16) = const(int_const(0)).
+default_value_for_type(uint_least16) = const(int_const(0)).
+default_value_for_type(int_least32) = const(int_const(0)).
+default_value_for_type(uint_least32) = const(int_const(0)).
+default_value_for_type(integer) = const(int_const(0)).
+default_value_for_type(unsigned) = const(int_const(0)).
+default_value_for_type(float) = const(float_const(0.0)).
+default_value_for_type(string) = const(string_const("")).
+default_value_for_type(data_ptr) = const(int_const(0)).
+default_value_for_type(code_ptr) = const(int_const(0)).
+default_value_for_type(word) = const(int_const(0)).
 
 %-----------------------------------------------------------------------------%
 

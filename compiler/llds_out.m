@@ -1059,9 +1059,9 @@ output_foreign_header_include_line(Decl, !AlreadyDone, !IO) :-
                 PrintComments = yes,
                 io.write_string("/* ", !IO),
                 prog_out.write_context(Context, !IO),
-                io.write_string(" pragma foreign_decl_code( ", !IO),
+                io.write_string(" pragma foreign_decl_code(", !IO),
                 io.write(Lang, !IO),
-                io.write_string(" */\n", !IO)
+                io.write_string(") */\n", !IO)
             ;
                 PrintComments = no
             ),
@@ -1381,7 +1381,7 @@ label_is_proc_entry(entry(_, _), yes).
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_c_procedure_decls(StackLayoutLabels, Proc, !DeclSet, !IO) :-
-    Proc = c_procedure(_Name, _Arity, _PredProcId, Instrs, _, _, _),
+    Proc = c_procedure(_Name, _Arity, _PredProcId, _Model, Instrs, _, _, _),
     list.foldl2(output_instruction_decls(StackLayoutLabels), Instrs,
         !DeclSet, !IO).
 
@@ -1389,7 +1389,7 @@ output_c_procedure_decls(StackLayoutLabels, Proc, !DeclSet, !IO) :-
     io::di, io::uo) is det.
 
 output_c_procedure(PrintComments, EmitCLoops, Proc, !IO) :-
-    Proc = c_procedure(Name, Arity, proc(_, ProcId), Instrs, _, _, _),
+    Proc = c_procedure(Name, Arity, proc(_, ProcId), _, Instrs, _, _, _),
     proc_id_to_int(ProcId, ModeNum),
     (
         PrintComments = yes,
@@ -1461,7 +1461,7 @@ find_cont_labels([Instr - _ | Instrs], !ContLabelSet) :-
         ;
             Instr = join_and_continue(_, ContLabel)
         ;
-            Instr = assign(redoip(_), const(Const)),
+            Instr = assign(redoip_slot(_), const(Const)),
             Const = code_addr_const(label(ContLabel))
         )
     ->
@@ -1873,11 +1873,38 @@ output_block_start(TempR, TempF, !IO) :-
 output_block_end(!IO) :-
     io.write_string("\t}\n", !IO).
 
+:- pred output_comment_chars(char::in, list(char)::in, io::di, io::uo) is det.
+
+output_comment_chars(_PrevChar, [], !IO).
+output_comment_chars(PrevChar, [Char | Chars], !IO) :-
+    (
+        PrevChar = ('/'),
+        Char = ('*')
+    ->
+        io.write_string(" *", !IO)
+    ;
+        PrevChar = ('*'),
+        Char = ('/')
+    ->
+        io.write_string(" /", !IO)
+    ;
+        io.write_char(Char, !IO)
+    ),
+    output_comment_chars(Char, Chars, !IO).
+
 :- pred output_instruction(instr::in, pair(label, set_tree234(label))::in,
     io::di, io::uo) is det.
 
 output_instruction(comment(Comment), _, !IO) :-
-    io.write_strings(["/*", Comment, "*/\n"], !IO).
+    % Ensure that any comments embedded inside Comment are made safe, i.e.
+    % prevent the closing of embedded comments from closing the outer comment.
+    % The fact that the code here is not very efficient doesn't matter since
+    % we write out comments only with --auto-comments, which we enable only
+    % when we want to debug the generated C code.
+    io.write_string("/*", !IO),
+    string.to_char_list(Comment, CommentChars),
+    output_comment_chars('*', CommentChars, !IO),
+    io.write_string("*/\n", !IO).
 
 output_instruction(livevals(LiveVals), _, !IO) :-
     io.write_string("/*\n* Live lvalues:\n", !IO),
@@ -3148,24 +3175,24 @@ output_lval_decls_format(framevar(_), _, _, !N, !DeclSet, !IO).
 output_lval_decls_format(succip, _, _, !N, !DeclSet, !IO).
 output_lval_decls_format(maxfr, _, _, !N, !DeclSet, !IO).
 output_lval_decls_format(curfr, _, _, !N, !DeclSet, !IO).
-output_lval_decls_format(succfr(Rval), FirstIndent, LaterIndent, !N, !DeclSet,
-        !IO) :-
+output_lval_decls_format(succfr_slot(Rval), FirstIndent, LaterIndent,
+        !N, !DeclSet, !IO) :-
     output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N, !DeclSet,
         !IO).
-output_lval_decls_format(prevfr(Rval), FirstIndent, LaterIndent, !N, !DeclSet,
-        !IO) :-
+output_lval_decls_format(prevfr_slot(Rval), FirstIndent, LaterIndent,
+        !N, !DeclSet, !IO) :-
     output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N, !DeclSet,
         !IO).
-output_lval_decls_format(redofr(Rval), FirstIndent, LaterIndent, !N, !DeclSet,
-        !IO) :-
+output_lval_decls_format(redofr_slot(Rval), FirstIndent, LaterIndent,
+        !N, !DeclSet, !IO) :-
     output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N, !DeclSet,
         !IO).
-output_lval_decls_format(redoip(Rval), FirstIndent, LaterIndent, !N, !DeclSet,
-        !IO) :-
+output_lval_decls_format(redoip_slot(Rval), FirstIndent, LaterIndent,
+        !N, !DeclSet, !IO) :-
     output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N, !DeclSet,
         !IO).
-output_lval_decls_format(succip(Rval), FirstIndent, LaterIndent, !N, !DeclSet,
-        !IO) :-
+output_lval_decls_format(succip_slot(Rval), FirstIndent, LaterIndent,
+        !N, !DeclSet, !IO) :-
     output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N, !DeclSet,
         !IO).
 output_lval_decls_format(hp, _, _, !N, !DeclSet, !IO).
@@ -4699,23 +4726,23 @@ output_lval(maxfr, !IO) :-
     io.write_string("MR_maxfr", !IO).
 output_lval(curfr, !IO) :-
     io.write_string("MR_curfr", !IO).
-output_lval(succfr(Rval), !IO) :-
+output_lval(succfr_slot(Rval), !IO) :-
     io.write_string("MR_succfr_slot(", !IO),
     output_rval(Rval, !IO),
     io.write_string(")", !IO).
-output_lval(prevfr(Rval), !IO) :-
+output_lval(prevfr_slot(Rval), !IO) :-
     io.write_string("MR_prevfr_slot(", !IO),
     output_rval(Rval, !IO),
     io.write_string(")", !IO).
-output_lval(redofr(Rval), !IO) :-
+output_lval(redofr_slot(Rval), !IO) :-
     io.write_string("MR_redofr_slot(", !IO),
     output_rval(Rval, !IO),
     io.write_string(")", !IO).
-output_lval(redoip(Rval), !IO) :-
+output_lval(redoip_slot(Rval), !IO) :-
     io.write_string("MR_redoip_slot(", !IO),
     output_rval(Rval, !IO),
     io.write_string(")", !IO).
-output_lval(succip(Rval), !IO) :-
+output_lval(succip_slot(Rval), !IO) :-
     io.write_string("MR_succip_slot(", !IO),
     output_rval(Rval, !IO),
     io.write_string(")", !IO).
@@ -4789,23 +4816,23 @@ output_lval_for_assign(maxfr, word, !IO) :-
     io.write_string("MR_maxfr_word", !IO).
 output_lval_for_assign(curfr, word, !IO) :-
     io.write_string("MR_curfr_word", !IO).
-output_lval_for_assign(succfr(Rval), word, !IO) :-
+output_lval_for_assign(succfr_slot(Rval), word, !IO) :-
     io.write_string("MR_succfr_slot_word(", !IO),
     output_rval(Rval, !IO),
     io.write_string(")", !IO).
-output_lval_for_assign(prevfr(Rval), word, !IO) :-
+output_lval_for_assign(prevfr_slot(Rval), word, !IO) :-
     io.write_string("MR_prevfr_slot_word(", !IO),
     output_rval(Rval, !IO),
     io.write_string(")", !IO).
-output_lval_for_assign(redofr(Rval), word, !IO) :-
+output_lval_for_assign(redofr_slot(Rval), word, !IO) :-
     io.write_string("MR_redofr_slot_word(", !IO),
     output_rval(Rval, !IO),
     io.write_string(")", !IO).
-output_lval_for_assign(redoip(Rval), word, !IO) :-
+output_lval_for_assign(redoip_slot(Rval), word, !IO) :-
     io.write_string("MR_redoip_slot_word(", !IO),
     output_rval(Rval, !IO),
     io.write_string(")", !IO).
-output_lval_for_assign(succip(Rval), word, !IO) :-
+output_lval_for_assign(succip_slot(Rval), word, !IO) :-
     io.write_string("MR_succip_slot_word(", !IO),
     output_rval(Rval, !IO),
     io.write_string(")", !IO).
@@ -4940,8 +4967,8 @@ gather_labels_from_c_module(comp_gen_c_module(_, Procs), Labels0, Labels) :-
     list(label)::in, list(label)::out) is det.
 
 gather_labels_from_c_procs([], Labels, Labels).
-gather_labels_from_c_procs([c_procedure(_, _, _, Instrs, _, _, _) | Procs],
-        !Labels) :-
+gather_labels_from_c_procs([Proc | Procs], !Labels) :-
+    Instrs = Proc ^ cproc_code,
     gather_labels_from_instrs(Instrs, !Labels),
     gather_labels_from_c_procs(Procs, !Labels).
 

@@ -397,7 +397,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
     globals.lookup_bool_option(Globals, generate_bytecode, GenBytecode),
     (
         % XXX: There is a mass of calls above that the bytecode doesn't need;
-        % work out which is and isn't needed and put % inside the else case
+        % work out which is and isn't needed and put inside the else case
         % below.
         GenBytecode = yes,
         % We don't generate bytecode for unify and compare preds.
@@ -406,18 +406,17 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
         % compare predicates, we *assume* their correctness for now
         % (perhaps not wisely).
         \+ is_unify_or_compare_pred(PredInfo),
-        % Don't generate bytecode for procs with foreign code
+        % Don't generate bytecode for procs with foreign code.
         goal_has_foreign(Goal) = no
     ->
-        EmptyLabelCounter = counter.init(0),
-        bytecode_stub(ModuleInfo, PredId, ProcId,
-            BytecodeInstructions),
-        Proc = c_procedure(Name, Arity, proc(PredId, ProcId),
-            BytecodeInstructions, ProcLabel, EmptyLabelCounter, MayAlterRtti)
+        bytecode_stub(ModuleInfo, PredId, ProcId, ProcInstructions),
+        ProcLabelCounter = counter.init(0)
     ;
-        Proc = c_procedure(Name, Arity, proc(PredId, ProcId),
-            Instructions, ProcLabel, LabelCounter, MayAlterRtti)
-    ).
+        ProcInstructions = Instructions,
+        ProcLabelCounter = LabelCounter
+    ),
+    Proc = c_procedure(Name, Arity, proc(PredId, ProcId), CodeModel,
+        ProcInstructions, ProcLabel, ProcLabelCounter, MayAlterRtti).
 
 :- pred maybe_set_trace_level(pred_info::in,
     module_info::in, module_info::out) is det.

@@ -875,7 +875,13 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
         globals.lookup_int_option(!.Globals, debug_opt_pred_id,
             DebugOptPredId),
-        ( DebugOptPredId > 0 ->
+        globals.lookup_string_option(!.Globals, debug_opt_pred_name,
+            DebugOptPredName),
+        (
+            ( DebugOptPredId > 0
+            ; DebugOptPredName \= ""
+            )
+        ->
             globals.set_option(debug_opt, bool(yes), !Globals)
         ;
             true
@@ -905,6 +911,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             !Globals),
         option_implies(simple_mode_constraints, mode_constraints, bool(yes),
             !Globals),
+
+        option_implies(frameopt_comments, auto_comments, bool(yes), !Globals),
 
         % Minimal model tabling is not compatible with high level code
         % or with trailing; see the comments in runtime/mercury_grade.h.
@@ -1055,49 +1063,47 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
                 TraceOptimized = yes
             ),
 
-                % Disable hijacks if debugging is enabled. The
-                % code we now use to restore the stacks for
-                % direct retries works only if the retry does not
-                % "backtrack" over a hijacked nondet stack frame
-                % whose hijack has not been undone. Note that
-                % code compiled without debugging may still hijack
-                % nondet stack frames. Execution may reemerge from
-                % the nondebugged region in one of two ways. If
-                % the nondebugged code returns, then it will have
-                % undone hijack, and the retry code will work. If
-                % the nondebugged code calls debugged code, there
-                % will be a region on the stacks containing no
-                % debugging information, and the retry command will
-                % refuse to perform retries that go into or beyond
-                % this region. Both cases preserve correctness.
-                %
-                % An alternative solution would be to store everything
-                % on the nondet stack that may be hijacked in ordinary
-                % stack slots on entry to every procedure, but that
-                % would be not only more complex than simply disabling
-                % hijacks, it would be slower as well, except in
-                % procedures that would have many nested hijacks,
-                % and such code is extremely rare.
+            % Disable hijacks if debugging is enabled. The code we now use
+            % to restore the stacks for direct retries works only if the retry
+            % does not "backtrack" over a hijacked nondet stack frame whose
+            % hijack has not been undone. Note that code compiled without
+            % debugging may still hijack nondet stack frames. Execution may
+            % reemerge from the nondebugged region in one of two ways. If the
+            % nondebugged code returns, then it will have undone hijack,
+            % and the retry code will work. If the nondebugged code calls
+            % debugged code, there will be a region on the stacks containing
+            % no debugging information, and the retry command will refuse
+            % to perform retries that go into or beyond this region.
+            % Both cases preserve correctness.
+            %
+            % An alternative solution would be to store everything on the
+            % nondet stack that may be hijacked in ordinary stack slots
+            % on entry to every procedure, but that would be not only
+            % more complex than simply disabling hijacks, it would be slower
+            % as well, except in procedures that would have many nested
+            % hijacks, and such code is extremely rare.
             globals.set_option(allow_hijacks, bool(no), !Globals),
-                % The following option prevents useless variables
-                % from cluttering the trace. Its explicit setting
-                % removes a source of variability in the goal paths
-                % reported by tracing.
+
+            % The following option prevents useless variables from cluttering
+            % the trace. Its explicit setting removes a source of variability
+            % in the goal paths reported by tracing.
             globals.set_option(excess_assign, bool(yes), !Globals),
-                % The explicit setting of the following option
-                % removes a source of variability in the goal paths
-                % reported by tracing.
+
+            % The explicit setting of the following option removes a source
+            % of variability in the goal paths reported by tracing.
             globals.set_option(follow_code, bool(yes), !Globals),
-                % The following option selects a special-case
-                % code generator that cannot (yet) implement tracing.
+
+            % The following option selects a special-case code generator
+            % that cannot (yet) implement tracing.
             globals.set_option(middle_rec, bool(no), !Globals),
-                % The following options cause the info required
-                % by tracing to be generated.
+
+            % The following options cause the info required by tracing
+            % to be generated.
             globals.set_option(trace_stack_layout, bool(yes), !Globals),
             globals.set_option(body_typeinfo_liveness, bool(yes), !Globals),
-                % To support up-level printing, we need to save
-                % variables across a call even if the call cannot
-                % succeed.
+
+            % To support up-level printing, we need to save variables across
+            % a call even if the call cannot succeed.
             globals.set_option(opt_no_return_calls, bool(no), !Globals)
         ;
             true
@@ -1296,14 +1302,18 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         option_implies(agc_stack_layout, basic_stack_layout, bool(yes),
             !Globals),
 
-        % dupelim.m doesn't preserve label layout structures
-        % (e.g. it can change the return address in a call
-        % to a different label whose code is the same but
-        % which has a different label layout structure),
+        % dupelim.m doesn't preserve label layout structures (e.g. it can
+        % change the return address in a call to a different label whose code
+        % is the same but which has a different label layout structure),
         % so we need to disable it when tracing.
         option_implies(procid_stack_layout, optimize_dups, bool(no), !Globals),
-        % likewise for accurate GC
+        % Likewise for accurate GC.
         option_implies(agc_stack_layout, optimize_dups, bool(no), !Globals),
+
+        % stdlabel.m tries to perform operations that yield compiler aborts
+        % if any stack layout information is present in the generated code.
+        option_implies(basic_stack_layout, standardize_labels, bool(no),
+            !Globals),
 
         % XXX deforestation and constraint propagation do not perform
         % folding on polymorphic predicates correctly with
@@ -1389,7 +1399,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         option_implies(intermod_unused_args, intermodule_optimization,
             bool(yes), !Globals),
         option_implies(intermod_unused_args, optimize_unused_args, bool(yes),
-        !Globals),
+            !Globals),
 
         % --introduce-accumulators implies --excess-assign and
         % --common-struct.
@@ -1576,9 +1586,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
         %
         % When searching for a header (.mh or .mih) file,
-        % module_name_to_file_name uses the plain header
-        % name, so we need to add the full path to the
-        % header files in the current directory.
+        % module_name_to_file_name uses the plain header name, so we need to
+        % add the full path to the header files in the current directory.
         %
         globals.lookup_bool_option(!.Globals, use_subdirs, UseSubdirs),
         (
@@ -2040,13 +2049,12 @@ compute_grade_components(Options, GradeComponents) :-
         CompData = Comp - Name
     ), GradeComponents).
 
-    % grade_component_table(ComponetStr, Component,
-    %   Options, MaybeTargets, IncludeGradeStr).
+    % grade_component_table(ComponetStr, Component, Options, MaybeTargets,
+    %   IncludeGradeStr):
     %
-    % `IncludeGradeStr' is `yes' if the component should
-    % be included in the grade string.  It is `no' for
-    % those components that are just synonyms for other
-    % comments, as .mm is for .mmsc.
+    % `IncludeGradeStr' is `yes' if the component should be included
+    % in the grade string.  It is `no' for those components that are
+    % just synonyms for other comments, as .mm is for .mmsc.
     %
     % NOTE: .picreg components are handled separately.
     % (see compute_grade_components/3).
@@ -2061,108 +2069,108 @@ compute_grade_components(Options, GradeComponents) :-
     % These specify the basic compilation model we use,
     % including the choice of back-end and the use of gcc extensions.
 grade_component_table("none", gcc_ext, [
-        asm_labels      - bool(no),
-        gcc_non_local_gotos - bool(no),
+        asm_labels              - bool(no),
+        gcc_non_local_gotos     - bool(no),
         gcc_global_registers    - bool(no),
-        highlevel_code      - bool(no),
+        highlevel_code          - bool(no),
         gcc_nested_functions    - bool(no),
-        highlevel_data      - bool(no)],
+        highlevel_data          - bool(no)],
         yes([string("c")]), yes).
 grade_component_table("reg", gcc_ext, [
-        asm_labels      - bool(no),
-        gcc_non_local_gotos - bool(no),
+        asm_labels              - bool(no),
+        gcc_non_local_gotos     - bool(no),
         gcc_global_registers    - bool(yes),
-        highlevel_code      - bool(no),
+        highlevel_code          - bool(no),
         gcc_nested_functions    - bool(no),
-        highlevel_data      - bool(no)],
+        highlevel_data          - bool(no)],
         yes([string("c")]), yes).
 grade_component_table("jump", gcc_ext, [
-        asm_labels      - bool(no),
-        gcc_non_local_gotos - bool(yes),
+        asm_labels              - bool(no),
+        gcc_non_local_gotos     - bool(yes),
         gcc_global_registers    - bool(no),
-        highlevel_code      - bool(no),
+        highlevel_code          - bool(no),
         gcc_nested_functions    - bool(no),
-        highlevel_data      - bool(no)],
+        highlevel_data          - bool(no)],
         yes([string("c")]), yes).
 grade_component_table("asm_jump", gcc_ext, [
-        asm_labels      - bool(yes),
-        gcc_non_local_gotos - bool(yes),
+        asm_labels              - bool(yes),
+        gcc_non_local_gotos     - bool(yes),
         gcc_global_registers    - bool(no),
-        highlevel_code      - bool(no),
+        highlevel_code          - bool(no),
         gcc_nested_functions    - bool(no),
-        highlevel_data      - bool(no)],
+        highlevel_data          - bool(no)],
         yes([string("c")]), yes).
 grade_component_table("fast", gcc_ext, [
-        asm_labels      - bool(no),
-        gcc_non_local_gotos - bool(yes),
+        asm_labels              - bool(no),
+        gcc_non_local_gotos     - bool(yes),
         gcc_global_registers    - bool(yes),
-        highlevel_code      - bool(no),
+        highlevel_code          - bool(no),
         gcc_nested_functions    - bool(no),
-        highlevel_data      - bool(no)],
+        highlevel_data          - bool(no)],
         yes([string("c")]), yes).
 grade_component_table("asm_fast", gcc_ext, [
-        asm_labels      - bool(yes),
-        gcc_non_local_gotos - bool(yes),
+        asm_labels              - bool(yes),
+        gcc_non_local_gotos     - bool(yes),
         gcc_global_registers    - bool(yes),
-        highlevel_code      - bool(no),
+        highlevel_code          - bool(no),
         gcc_nested_functions    - bool(no),
-        highlevel_data      - bool(no)],
+        highlevel_data          - bool(no)],
         yes([string("c")]), yes).
 grade_component_table("hl", gcc_ext, [
-        asm_labels      - bool(no),
-        gcc_non_local_gotos - bool(no),
+        asm_labels              - bool(no),
+        gcc_non_local_gotos     - bool(no),
         gcc_global_registers    - bool(no),
-        highlevel_code      - bool(yes),
+        highlevel_code          - bool(yes),
         gcc_nested_functions    - bool(no),
-        highlevel_data      - bool(yes)],
+        highlevel_data          - bool(yes)],
         yes([string("c"), string("asm")]), yes).
 grade_component_table("hlc", gcc_ext, [
-        asm_labels      - bool(no),
-        gcc_non_local_gotos - bool(no),
+        asm_labels              - bool(no),
+        gcc_non_local_gotos     - bool(no),
         gcc_global_registers    - bool(no),
-        highlevel_code      - bool(yes),
+        highlevel_code          - bool(yes),
         gcc_nested_functions    - bool(no),
-        highlevel_data      - bool(no)],
+        highlevel_data          - bool(no)],
         yes([string("c"), string("asm")]), yes).
 grade_component_table("hl_nest", gcc_ext, [
-        asm_labels      - bool(no),
-        gcc_non_local_gotos - bool(no),
+        asm_labels              - bool(no),
+        gcc_non_local_gotos     - bool(no),
         gcc_global_registers    - bool(no),
-        highlevel_code      - bool(yes),
+        highlevel_code          - bool(yes),
         gcc_nested_functions    - bool(yes),
-        highlevel_data      - bool(yes)],
+        highlevel_data          - bool(yes)],
         yes([string("c"), string("asm")]), yes).
 grade_component_table("hlc_nest", gcc_ext, [
-        asm_labels      - bool(no),
-        gcc_non_local_gotos - bool(no),
+        asm_labels              - bool(no),
+        gcc_non_local_gotos     - bool(no),
         gcc_global_registers    - bool(no),
-        highlevel_code      - bool(yes),
+        highlevel_code          - bool(yes),
         gcc_nested_functions    - bool(yes),
-        highlevel_data      - bool(no)],
+        highlevel_data          - bool(no)],
         yes([string("c"), string("asm")]), yes).
 grade_component_table("il", gcc_ext, [
-        asm_labels      - bool(no),
-        gcc_non_local_gotos - bool(no),
+        asm_labels              - bool(no),
+        gcc_non_local_gotos     - bool(no),
         gcc_global_registers    - bool(no),
-        highlevel_code      - bool(yes),
+        highlevel_code          - bool(yes),
         gcc_nested_functions    - bool(no),
-        highlevel_data      - bool(yes)],
+        highlevel_data          - bool(yes)],
         yes([string("il")]), yes).
 grade_component_table("ilc", gcc_ext, [
-        asm_labels      - bool(no),
-        gcc_non_local_gotos - bool(no),
+        asm_labels              - bool(no),
+        gcc_non_local_gotos     - bool(no),
         gcc_global_registers    - bool(no),
-        highlevel_code      - bool(yes),
+        highlevel_code          - bool(yes),
         gcc_nested_functions    - bool(no),
-        highlevel_data      - bool(no)],
+        highlevel_data          - bool(no)],
         yes([string("il")]), yes).
 grade_component_table("java", gcc_ext, [
-        asm_labels      - bool(no),
-        gcc_non_local_gotos - bool(no),
+        asm_labels              - bool(no),
+        gcc_non_local_gotos     - bool(no),
         gcc_global_registers    - bool(no),
         gcc_nested_functions    - bool(no),
-        highlevel_code      - bool(yes),
-        highlevel_data      - bool(yes)],
+        highlevel_code          - bool(yes),
+        highlevel_data          - bool(yes)],
         yes([string("java")]), yes).
 
     % Parallelism/multithreading components.

@@ -719,6 +719,7 @@
 
 :- type pragma_foreign_proc_extra_attribute
     --->    max_stack_size(int)
+    ;       refers_to_llds_stack
     ;       backend(backend).
 
 :- type pragma_foreign_proc_extra_attributes ==
@@ -1376,10 +1377,10 @@
                 tabled_for_io           :: tabled_for_io,
                 purity                  :: purity,
                 terminates              :: terminates,
-                    % there is some special case behaviour for
-                    % pragma c_code and pragma import purity
-                    % if legacy_purity_behaviour is `yes'
                 may_throw_exception     :: may_throw_exception,
+
+                % There is some special case behaviour for pragma c_code
+                % and pragma import purity if legacy_purity_behaviour is `yes'.
                 legacy_purity_behaviour :: bool,
                 ordinary_despite_detism :: bool,
                 may_modify_trail        :: may_modify_trail,
@@ -1514,6 +1515,7 @@ add_extra_attribute(NewAttribute, Attributes0,
 :- func extra_attribute_to_string(pragma_foreign_proc_extra_attribute)
     = string.
 
+extra_attribute_to_string(refers_to_llds_stack) = "refers_to_llds_stack".
 extra_attribute_to_string(backend(low_level_backend)) = "low_level_backend".
 extra_attribute_to_string(backend(high_level_backend)) = "high_level_backend".
 extra_attribute_to_string(max_stack_size(Size)) =

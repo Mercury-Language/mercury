@@ -1948,30 +1948,30 @@ materialize_vars_in_lval(ModuleInfo, Lval0, Avoid, Lval, Code, !VLI) :-
         Lval = Lval0,
         Code = empty
     ;
-        Lval0 = succip(Rval0),
+        Lval0 = succip_slot(Rval0),
         materialize_vars_in_rval(ModuleInfo, Rval0, no, Avoid, Rval, Code,
             !VLI),
-        Lval = succip(Rval)
+        Lval = succip_slot(Rval)
     ;
-        Lval0 = redoip(Rval0),
+        Lval0 = redoip_slot(Rval0),
         materialize_vars_in_rval(ModuleInfo, Rval0, no, Avoid, Rval, Code,
             !VLI),
-        Lval = redoip(Rval)
+        Lval = redoip_slot(Rval)
     ;
-        Lval0 = succfr(Rval0),
+        Lval0 = succfr_slot(Rval0),
         materialize_vars_in_rval(ModuleInfo, Rval0, no, Avoid, Rval, Code,
             !VLI),
-        Lval = succfr(Rval)
+        Lval = succfr_slot(Rval)
     ;
-        Lval0 = redofr(Rval0),
+        Lval0 = redofr_slot(Rval0),
         materialize_vars_in_rval(ModuleInfo, Rval0, no, Avoid, Rval, Code,
             !VLI),
-        Lval = redofr(Rval)
+        Lval = redofr_slot(Rval)
     ;
-        Lval0 = prevfr(Rval0),
+        Lval0 = prevfr_slot(Rval0),
         materialize_vars_in_rval(ModuleInfo, Rval0, no, Avoid, Rval, Code,
             !VLI),
-        Lval = prevfr(Rval)
+        Lval = prevfr_slot(Rval)
     ;
         Lval0 = mem_ref(Rval0),
         materialize_vars_in_rval(ModuleInfo, Rval0, no, Avoid, Rval, Code,

@@ -26,7 +26,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module list.
-:- import_module maybe.
 
 %-----------------------------------------------------------------------------%
 
@@ -81,7 +80,7 @@
     list(list(rval))::in, list(llds_type)::out) is semidet.
 
 :- pred add_vector_static_cell(list(llds_type)::in,
-    list(maybe(list(rval)))::in, data_addr::out,
+    list(list(rval))::in, data_addr::out,
     static_cell_info::in, static_cell_info::out) is det.
 
 :- pred search_scalar_static_cell_offset(static_cell_info::in, data_addr::in,
@@ -461,38 +460,10 @@ add_vector_static_cell(LLDSTypes, VectorData, DataAddr, !Info) :-
 
 init_vector_cell_group = vector_cell_group(counter.init(0), map.init).
 
-:- func pair_vector_element(list(llds_type), maybe(list(rval)))
-    = common_cell_value.
+:- func pair_vector_element(list(llds_type), list(rval)) = common_cell_value.
 
-pair_vector_element(Types, MaybeArgs) = plain_value(ArgsTypes) :-
-    (
-        MaybeArgs = no,
-        ArgsTypes = list.map(pair_with_default_value, Types)
-    ;
-        MaybeArgs = yes(Args),
-        assoc_list.from_corresponding_lists(Args, Types, ArgsTypes)
-    ).
-
-:- func pair_with_default_value(llds_type) = pair(rval, llds_type).
-
-pair_with_default_value(Type) = const(default_value_for_type(Type)) - Type.
-
-:- func default_value_for_type(llds_type) = rval_const.
-
-default_value_for_type(bool) = int_const(0).
-default_value_for_type(int_least8) = int_const(0).
-default_value_for_type(uint_least8) = int_const(0).
-default_value_for_type(int_least16) = int_const(0).
-default_value_for_type(uint_least16) = int_const(0).
-default_value_for_type(int_least32) = int_const(0).
-default_value_for_type(uint_least32) = int_const(0).
-default_value_for_type(integer) = int_const(0).
-default_value_for_type(unsigned) = int_const(0).
-default_value_for_type(float) = float_const(0.0).
-default_value_for_type(string) = string_const("").
-default_value_for_type(data_ptr) = int_const(0).
-default_value_for_type(code_ptr) = int_const(0).
-default_value_for_type(word) = int_const(0).
+pair_vector_element(Types, Args) = plain_value(ArgsTypes) :-
+    assoc_list.from_corresponding_lists(Args, Types, ArgsTypes).
 
 %-----------------------------------------------------------------------------%
 

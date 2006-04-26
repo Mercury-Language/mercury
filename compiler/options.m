@@ -134,6 +134,7 @@
     ;       debug_opt
     ;       debug_term          % term = constraint termination analysis 
     ;       debug_opt_pred_id
+    ;       debug_opt_pred_name
     ;       debug_pd            % pd = partial deduction/deforestation
     ;       debug_il_asm        % il_asm = IL generation via asm
     ;       debug_liveness
@@ -878,6 +879,7 @@ option_defaults_2(verbosity_option, [
     debug_term                          -   bool(no),
     debug_opt                           -   bool(no),
     debug_opt_pred_id                   -   int(-1),
+    debug_opt_pred_name                 -   string(""),
     debug_pd                            -   bool(no),
     debug_il_asm                        -   bool(no),
     debug_liveness                      -   int(-1),
@@ -1574,6 +1576,7 @@ long_option("debug-termination",    debug_term).
 long_option("debug-term",           debug_term).
 long_option("debug-opt",            debug_opt).
 long_option("debug-opt-pred-id",    debug_opt_pred_id).
+long_option("debug-opt-pred-name",  debug_opt_pred_name).
 long_option("debug-pd",             debug_pd).
     % debug-il-asm does very low-level printf style debugging of
     % IL assembler.  Each instruction is written on stdout before it
@@ -2883,6 +2886,9 @@ options_help_verbosity -->
         "--debug-opt-pred-id <n>",
         "\tOutput detailed debugging traces of the optimization process",
         "\tonly for the predicate/function with the specified pred id.",
+        "--debug-opt-pred-name <name>",
+        "\tOutput detailed debugging traces of the optimization process",
+        "\tonly for the predicate/function with the specified name.",
         "--debug-pd",
         "\tOutput detailed debugging traces of the partial",
         "\tdeduction and deforestation process.",

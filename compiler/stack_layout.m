@@ -1446,15 +1446,15 @@ represent_lval(sp, Word) :-
 represent_lval(temp(_, _), _) :-
     unexpected(this_file, "continuation live value stored in temp register").
 
-represent_lval(succip(_), _) :-
+represent_lval(succip_slot(_), _) :-
     unexpected(this_file, "continuation live value stored in fixed slot").
-represent_lval(redoip(_), _) :-
+represent_lval(redoip_slot(_), _) :-
     unexpected(this_file, "continuation live value stored in fixed slot").
-represent_lval(redofr(_), _) :-
+represent_lval(redofr_slot(_), _) :-
     unexpected(this_file, "continuation live value stored in fixed slot").
-represent_lval(succfr(_), _) :-
+represent_lval(succfr_slot(_), _) :-
     unexpected(this_file, "continuation live value stored in fixed slot").
-represent_lval(prevfr(_), _) :-
+represent_lval(prevfr_slot(_), _) :-
     unexpected(this_file, "continuation live value stored in fixed slot").
 
 represent_lval(field(_, _, _), _) :-

@@ -214,8 +214,7 @@
 
 :- pred get_zombies(code_info::in, set(prog_var)::out) is det.
 
-:- pred set_zombies(set(prog_var)::in,
-    code_info::in, code_info::out) is det.
+:- pred set_zombies(set(prog_var)::in, code_info::in, code_info::out) is det.
 
 :- pred get_var_locn_info(code_info::in, var_locn_info::out) is det.
 
@@ -224,27 +223,22 @@
 
 :- pred get_temps_in_use(code_info::in, set(lval)::out) is det.
 
-:- pred set_temps_in_use(set(lval)::in,
-    code_info::in, code_info::out) is det.
+:- pred set_temps_in_use(set(lval)::in, code_info::in, code_info::out) is det.
 
 :- pred get_fail_info(code_info::in, fail_info::out) is det.
 
-:- pred set_fail_info(fail_info::in,
-    code_info::in, code_info::out) is det.
+:- pred set_fail_info(fail_info::in, code_info::in, code_info::out) is det.
 
-:- pred set_label_counter(counter::in,
-    code_info::in, code_info::out) is det.
+:- pred set_label_counter(counter::in, code_info::in, code_info::out) is det.
 
-:- pred set_succip_used(bool::in,
-    code_info::in, code_info::out) is det.
+:- pred set_succip_used(bool::in, code_info::in, code_info::out) is det.
 
 :- pred set_layout_info(proc_label_layout_info::in,
     code_info::in, code_info::out) is det.
 
 :- pred get_max_temp_slot_count(code_info::in, int::out) is det.
 
-:- pred set_max_temp_slot_count(int::in,
-    code_info::in, code_info::out) is det.
+:- pred set_max_temp_slot_count(int::in, code_info::in, code_info::out) is det.
 
 :- pred get_temp_content_map(code_info::in,
     map(lval, slot_contents)::out) is det.
@@ -260,8 +254,7 @@
 :- pred set_closure_seq_counter(counter::in,
     code_info::in, code_info::out) is det.
 
-:- pred set_created_temp_frame(bool::in,
-    code_info::in, code_info::out) is det.
+:- pred set_created_temp_frame(bool::in, code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -738,8 +731,7 @@ set_static_cell_info(SCI, CI,
 :- pred get_next_label(label::out, code_info::in, code_info::out)
     is det.
 
-    % Note that the succip slot is used, and thus cannot be
-    % optimized away.
+    % Note that the succip slot is used, and thus cannot be optimized away.
     %
 :- pred succip_is_used(code_info::in, code_info::out) is det.
 
@@ -761,9 +753,8 @@ set_static_cell_info(SCI, CI,
 :- pred add_scalar_static_cell_natural_types(list(rval)::in,
     data_addr::out, code_info::in, code_info::out) is det.
 
-:- pred add_vector_static_cell(list(llds_type)::in,
-    list(maybe(list(rval)))::in, data_addr::out,
-    code_info::in, code_info::out) is det.
+:- pred add_vector_static_cell(list(llds_type)::in, list(list(rval))::in,
+    data_addr::out, code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -1245,9 +1236,8 @@ save_hp_in_branch(Code, Slot, Pos0, Pos) :-
     %
 :- type ite_hijack_info.
 
-:- pred prepare_for_ite_hijack(code_model::in,
-    ite_hijack_info::out, code_tree::out,
-    code_info::in, code_info::out) is det.
+:- pred prepare_for_ite_hijack(code_model::in, ite_hijack_info::out,
+    code_tree::out, code_info::in, code_info::out) is det.
 
 :- pred ite_enter_then(ite_hijack_info::in,
     code_tree::out, code_tree::out, code_info::in, code_info::out) is det.
@@ -1307,29 +1297,26 @@ save_hp_in_branch(Code, Slot, Pos0, Pos) :-
     % Return the details of the resume point currently on top of the
     % failure continuation stack.
     %
-:- pred top_resume_point(code_info::in, resume_point_info::out)
-    is det.
+:- pred top_resume_point(code_info::in, resume_point_info::out) is det.
 
     % Call this predicate to say "we have just left a disjunction;
     % we don't know what address the following code will need to
     % backtrack to".
     %
-:- pred set_resume_point_to_unknown(code_info::in, code_info::out)
-    is det.
+:- pred set_resume_point_to_unknown(code_info::in, code_info::out) is det.
 
     % Call this predicate to say "we have just returned from a model_non
     % call; we don't know what address the following code will need to
     % backtrack to, and there may now be nondet frames on top of ours
     % that do not have their redofr slots pointing to our frame".
     %
-:- pred set_resume_point_and_frame_to_unknown(code_info::in,
-    code_info::out) is det.
+:- pred set_resume_point_and_frame_to_unknown(code_info::in, code_info::out)
+    is det.
 
     % Generate code for executing a failure that is appropriate for the
     % current failure environment.
     %
-:- pred generate_failure(code_tree::out,
-    code_info::in, code_info::out) is det.
+:- pred generate_failure(code_tree::out, code_info::in, code_info::out) is det.
 
     % Generate code that checks if the given rval is false, and if yes,
     % executes a failure that is appropriate for the current failure
@@ -1341,21 +1328,19 @@ save_hp_in_branch(Code, Slot, Pos0, Pos) :-
     % Checks whether the appropriate code for failure in the current
     % failure environment is a direct branch.
     %
-:- pred failure_is_direct_branch(code_info::in, code_addr::out)
-    is semidet.
+:- pred failure_is_direct_branch(code_info::in, code_addr::out) is semidet.
 
     % Checks under what circumstances the current failure environment
     % would allow a model_non call at this point to be turned into a
     % tail call, provided of course that the return from the call is
     % followed immediately by succeed().
     %
-:- pred may_use_nondet_tailcall(code_info::in,
-    nondet_tail_call::out) is det.
+:- pred may_use_nondet_tailcall(code_info::in, nondet_tail_call::out) is det.
 
     % Materialize the given variables into registers or stack slots.
     %
-:- pred produce_vars(set(prog_var)::in, resume_map::out,
-    code_tree::out, code_info::in, code_info::out) is det.
+:- pred produce_vars(set(prog_var)::in, resume_map::out, code_tree::out,
+    code_info::in, code_info::out) is det.
 
     % Put the variables needed in enclosing failure continuations
     % into their stack slots.
@@ -1365,26 +1350,23 @@ save_hp_in_branch(Code, Slot, Pos0, Pos) :-
 
     % Set up the resume_point_info structure.
     %
-:- pred make_resume_point(set(prog_var)::in, resume_locs::in,
-    resume_map::in, resume_point_info::out, code_info::in, code_info::out)
-    is det.
+:- pred make_resume_point(set(prog_var)::in, resume_locs::in, resume_map::in,
+    resume_point_info::out, code_info::in, code_info::out) is det.
 
     % Generate the code for a resume point.
     %
-:- pred generate_resume_point(resume_point_info::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+:- pred generate_resume_point(resume_point_info::in, code_tree::out,
+    code_info::in, code_info::out) is det.
 
     % List the variables that need to be preserved for the given resume point.
     %
-:- pred resume_point_vars(resume_point_info::in,
-    list(prog_var)::out) is det.
+:- pred resume_point_vars(resume_point_info::in, list(prog_var)::out) is det.
 
     % See whether the given resume point includes a code address that presumes
     % all the resume point variables to be in their stack slots. If yes,
     % return that code address; otherwise, abort the compiler.
     %
-:- pred resume_point_stack_addr(resume_point_info::in,
-    code_addr::out) is det.
+:- pred resume_point_stack_addr(resume_point_info::in, code_addr::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -1509,23 +1491,23 @@ prepare_for_disj_hijack(CodeModel, HijackInfo, Code, !CI) :-
     ->
         % Here ResumeKnown must be resume_point_unknown
         % or resume_point_known(wont_be_done).
-        acquire_temp_slot(lval(redoip(lval(curfr))), RedoipSlot, !CI),
+        acquire_temp_slot(lval(redoip_slot(lval(curfr))), RedoipSlot, !CI),
         HijackInfo = disj_half_hijack(RedoipSlot),
         Code = node([
-            assign(RedoipSlot, lval(redoip(lval(curfr))))
+            assign(RedoipSlot, lval(redoip_slot(lval(curfr))))
                 - "prepare for half disj hijack"
         ])
     ;
         % Here CurfrMaxfr must be may_be_different.
-        acquire_temp_slot(lval(redoip(lval(maxfr))), RedoipSlot, !CI),
-        acquire_temp_slot(lval(redofr(lval(maxfr))), RedofrSlot, !CI),
+        acquire_temp_slot(lval(redoip_slot(lval(maxfr))), RedoipSlot, !CI),
+        acquire_temp_slot(lval(redofr_slot(lval(maxfr))), RedofrSlot, !CI),
         HijackInfo = disj_full_hijack(RedoipSlot, RedofrSlot),
         Code = node([
-            assign(RedoipSlot, lval(redoip(lval(maxfr))))
+            assign(RedoipSlot, lval(redoip_slot(lval(maxfr))))
                 - "prepare for full disj hijack",
-            assign(RedofrSlot, lval(redofr(lval(maxfr))))
+            assign(RedofrSlot, lval(redofr_slot(lval(maxfr))))
                 - "prepare for full disj hijack",
-            assign(redofr(lval(maxfr)), lval(curfr))
+            assign(redofr_slot(lval(maxfr)), lval(curfr))
                 - "prepare for full disj hijack"
         ])
     ).
@@ -1540,7 +1522,7 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
     ;
         HijackInfo = disj_temp_frame,
         Code = node([
-            assign(maxfr, lval(prevfr(lval(maxfr))))
+            assign(maxfr, lval(prevfr_slot(lval(maxfr))))
                 - "restore maxfr for temp frame disj"
         ])
     ;
@@ -1552,7 +1534,7 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
         LabelConst = const(code_addr_const(StackLabel)),
         % peephole.m looks for the "curfr==maxfr" pattern in the comment.
         Code = node([
-            assign(redoip(lval(curfr)), LabelConst)
+            assign(redoip_slot(lval(curfr)), LabelConst)
                 - "restore redoip for quarter disj hijack (curfr==maxfr)"
         ])
     ;
@@ -1563,7 +1545,7 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
             "maxfr may differ from curfr in disj_half_hijack"),
         % peephole.m looks for the "curfr==maxfr" pattern in the comment.
         Code = node([
-            assign(redoip(lval(curfr)), lval(RedoipSlot))
+            assign(redoip_slot(lval(curfr)), lval(RedoipSlot))
                 - "restore redoip for half disj hijack (curfr==maxfr)"
         ])
     ;
@@ -1571,9 +1553,9 @@ undo_disj_hijack(HijackInfo, Code, !CI) :-
         expect(unify(CurfrMaxfr, may_be_different), this_file,
             "maxfr same as curfr in disj_full_hijack"),
         Code = node([
-            assign(redoip(lval(maxfr)), lval(RedoipSlot))
+            assign(redoip_slot(lval(maxfr)), lval(RedoipSlot))
                 - "restore redoip for full disj hijack",
-            assign(redofr(lval(maxfr)), lval(RedofrSlot))
+            assign(redofr_slot(lval(maxfr)), lval(RedofrSlot))
                 - "restore redofr for full disj hijack"
         ])
     ),
@@ -1651,26 +1633,26 @@ prepare_for_ite_hijack(EffCodeModel, HijackInfo, Code, !CI) :-
         CurfrMaxfr = must_be_equal
     ->
         % Here ResumeKnown must be resume_point_unknown.
-        acquire_temp_slot(lval(redoip(lval(curfr))), RedoipSlot, !CI),
+        acquire_temp_slot(lval(redoip_slot(lval(curfr))), RedoipSlot, !CI),
         HijackType = ite_half_hijack(RedoipSlot),
         Code = node([
-            assign(RedoipSlot, lval(redoip(lval(curfr))))
+            assign(RedoipSlot, lval(redoip_slot(lval(curfr))))
                 - "prepare for half ite hijack"
         ])
     ;
         % Here CurfrMaxfr must be may_be_different.
-        acquire_temp_slot(lval(redoip(lval(maxfr))), RedoipSlot, !CI),
-        acquire_temp_slot(lval(redofr(lval(maxfr))), RedofrSlot, !CI),
+        acquire_temp_slot(lval(redoip_slot(lval(maxfr))), RedoipSlot, !CI),
+        acquire_temp_slot(lval(redofr_slot(lval(maxfr))), RedofrSlot, !CI),
         acquire_temp_slot(lval(maxfr), MaxfrSlot, !CI),
         HijackType = ite_full_hijack(RedoipSlot, RedofrSlot, MaxfrSlot),
         Code = node([
             assign(MaxfrSlot, lval(maxfr))
                 - "prepare for full ite hijack",
-            assign(RedoipSlot, lval(redoip(lval(maxfr))))
+            assign(RedoipSlot, lval(redoip_slot(lval(maxfr))))
                 - "prepare for full ite hijack",
-            assign(RedofrSlot, lval(redofr(lval(maxfr))))
+            assign(RedofrSlot, lval(redofr_slot(lval(maxfr))))
                 - "prepare for full ite hijack",
-            assign(redofr(lval(maxfr)), lval(curfr))
+            assign(redofr_slot(lval(maxfr)), lval(curfr))
                 - "prepare for full ite hijack"
         ])
     ),
@@ -1694,12 +1676,13 @@ ite_enter_then(HijackInfo, ThenCode, ElseCode, !CI) :-
         HijackType = ite_temp_frame(MaxfrSlot),
         ThenCode = node([
             % We can't remove the frame, it may not be on top.
-            assign(redoip(lval(MaxfrSlot)), const(code_addr_const(do_fail)))
+            assign(redoip_slot(lval(MaxfrSlot)),
+                const(code_addr_const(do_fail)))
                 - "soft cut for temp frame ite"
         ]),
         ElseCode = node([
             % XXX, search /assign(maxfr
-            assign(maxfr, lval(prevfr(lval(MaxfrSlot))))
+            assign(maxfr, lval(prevfr_slot(lval(MaxfrSlot))))
                 - "restore maxfr for temp frame ite"
         ])
     ;
@@ -1708,7 +1691,7 @@ ite_enter_then(HijackInfo, ThenCode, ElseCode, !CI) :-
         ( maybe_pick_stack_resume_point(ResumePoint, _, StackLabel) ->
             LabelConst = const(code_addr_const(StackLabel)),
             ThenCode = node([
-                assign(redoip(lval(curfr)), LabelConst)
+                assign(redoip_slot(lval(curfr)), LabelConst)
                     - "restore redoip for quarter ite hijack"
             ])
         ;
@@ -1719,22 +1702,22 @@ ite_enter_then(HijackInfo, ThenCode, ElseCode, !CI) :-
     ;
         HijackType = ite_half_hijack(RedoipSlot),
         ThenCode = node([
-            assign(redoip(lval(curfr)), lval(RedoipSlot))
+            assign(redoip_slot(lval(curfr)), lval(RedoipSlot))
                 - "restore redoip for half ite hijack"
         ]),
         ElseCode = ThenCode
     ;
         HijackType = ite_full_hijack(RedoipSlot, RedofrSlot, MaxfrSlot),
         ThenCode = node([
-            assign(redoip(lval(MaxfrSlot)), lval(RedoipSlot))
+            assign(redoip_slot(lval(MaxfrSlot)), lval(RedoipSlot))
                 - "restore redoip for full ite hijack",
-            assign(redofr(lval(MaxfrSlot)), lval(RedofrSlot))
+            assign(redofr_slot(lval(MaxfrSlot)), lval(RedofrSlot))
                 - "restore redofr for full ite hijack"
         ]),
         ElseCode = node([
-            assign(redoip(lval(maxfr)), lval(RedoipSlot))
+            assign(redoip_slot(lval(maxfr)), lval(RedoipSlot))
                 - "restore redoip for full ite hijack",
-            assign(redofr(lval(maxfr)), lval(RedofrSlot))
+            assign(redofr_slot(lval(maxfr)), lval(RedofrSlot))
                 - "restore redofr for full ite hijack"
         ])
     ),
@@ -1777,7 +1760,7 @@ leave_simple_neg(GoalInfo, FailInfo, !CI) :-
 
 make_fake_resume_map([], ResumeMap, ResumeMap).
 make_fake_resume_map([Var | Vars], ResumeMap0, ResumeMap) :-
-        % a visibly fake location
+    % A visibly fake location.
     set.singleton_set(Locns, reg(r, -1)),
     map.det_insert(ResumeMap0, Var, Locns, ResumeMap1),
     make_fake_resume_map(Vars, ResumeMap1, ResumeMap).
@@ -1926,7 +1909,7 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
     ->
         HijackInfo = commit_quarter_hijack,
         HijackCode = node([
-            assign(redoip(lval(curfr)), StackLabelConst)
+            assign(redoip_slot(lval(curfr)), StackLabelConst)
                 - "hijack the redofr slot"
         ])
     ;
@@ -1935,30 +1918,30 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
         % Here ResumeKnown must be resume_point_unknown or
         % resume_point_known(wont_be_done).
 
-        acquire_temp_slot(lval(redoip(lval(curfr))), RedoipSlot, !CI),
+        acquire_temp_slot(lval(redoip_slot(lval(curfr))), RedoipSlot, !CI),
         HijackInfo = commit_half_hijack(RedoipSlot),
         HijackCode = node([
-            assign(RedoipSlot, lval(redoip(lval(curfr))))
+            assign(RedoipSlot, lval(redoip_slot(lval(curfr))))
                 - "prepare for half commit hijack",
-            assign(redoip(lval(curfr)), StackLabelConst)
+            assign(redoip_slot(lval(curfr)), StackLabelConst)
                 - "hijack the redofr slot"
         ])
     ;
         % Here CurfrMaxfr must be may_be_different.
-        acquire_temp_slot(lval(redoip(lval(maxfr))), RedoipSlot, !CI),
-        acquire_temp_slot(lval(redofr(lval(maxfr))), RedofrSlot, !CI),
+        acquire_temp_slot(lval(redoip_slot(lval(maxfr))), RedoipSlot, !CI),
+        acquire_temp_slot(lval(redofr_slot(lval(maxfr))), RedofrSlot, !CI),
         acquire_temp_slot(lval(maxfr), MaxfrSlot, !CI),
         HijackInfo = commit_full_hijack(RedoipSlot, RedofrSlot, MaxfrSlot),
         HijackCode = node([
-            assign(RedoipSlot, lval(redoip(lval(maxfr))))
+            assign(RedoipSlot, lval(redoip_slot(lval(maxfr))))
                 - "prepare for full commit hijack",
-            assign(RedofrSlot, lval(redofr(lval(maxfr))))
+            assign(RedofrSlot, lval(redofr_slot(lval(maxfr))))
                 - "prepare for full commit hijack",
             save_maxfr(MaxfrSlot)
                 - "prepare for full commit hijack",
-            assign(redofr(lval(maxfr)), lval(curfr))
+            assign(redofr_slot(lval(maxfr)), lval(curfr))
                 - "hijack the redofr slot",
-            assign(redoip(lval(maxfr)), StackLabelConst)
+            assign(redoip_slot(lval(maxfr)), StackLabelConst)
                 - "hijack the redoip slot"
         ])
     ),
@@ -2005,11 +1988,11 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
         SuccessUndoCode = node([
             assign(maxfr, lval(curfr))
                 - "restore maxfr for quarter commit hijack",
-            assign(redoip(lval(maxfr)), StackLabelConst)
+            assign(redoip_slot(lval(maxfr)), StackLabelConst)
                 - "restore redoip for quarter commit hijack"
         ]),
         FailureUndoCode = node([
-            assign(redoip(lval(maxfr)), StackLabelConst)
+            assign(redoip_slot(lval(maxfr)), StackLabelConst)
                 - "restore redoip for quarter commit hijack"
         ])
     ;
@@ -2017,11 +2000,11 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
         SuccessUndoCode = node([
             assign(maxfr, lval(curfr))
                 - "restore maxfr for half commit hijack",
-            assign(redoip(lval(maxfr)), lval(RedoipSlot))
+            assign(redoip_slot(lval(maxfr)), lval(RedoipSlot))
                 - "restore redoip for half commit hijack"
         ]),
         FailureUndoCode = node([
-            assign(redoip(lval(maxfr)), lval(RedoipSlot))
+            assign(redoip_slot(lval(maxfr)), lval(RedoipSlot))
                 - "restore redoip for half commit hijack"
         ])
     ;
@@ -2029,15 +2012,15 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
         SuccessUndoCode = node([
             restore_maxfr(MaxfrSlot)
                 - "restore maxfr for full commit hijack",
-            assign(redoip(lval(maxfr)), lval(RedoipSlot))
+            assign(redoip_slot(lval(maxfr)), lval(RedoipSlot))
                 - "restore redoip for full commit hijack",
-            assign(redofr(lval(maxfr)), lval(RedofrSlot))
+            assign(redofr_slot(lval(maxfr)), lval(RedofrSlot))
                 - "restore redofr for full commit hijack"
         ]),
         FailureUndoCode = node([
-            assign(redoip(lval(maxfr)), lval(RedoipSlot))
+            assign(redoip_slot(lval(maxfr)), lval(RedoipSlot))
                 - "restore redoip for full commit hijack",
-            assign(redofr(lval(maxfr)), lval(RedofrSlot))
+            assign(redofr_slot(lval(maxfr)), lval(RedofrSlot))
                 - "restore redofr for full commit hijack"
         ])
     ),
@@ -2116,7 +2099,7 @@ effect_resume_point(ResumePoint, CodeModel, Code, !CI) :-
         pick_stack_resume_point(ResumePoint, _, StackLabel),
         LabelConst = const(code_addr_const(StackLabel)),
         Code = node([
-            assign(redoip(lval(maxfr)), LabelConst)
+            assign(redoip_slot(lval(maxfr)), LabelConst)
                 - "hijack redoip to effect resume point"
         ]),
         RedoipUpdate = has_been_done
@@ -2651,8 +2634,7 @@ maybe_save_trail_info(AddTrailOps, MaybeTrailSlots, SaveTrailCode, !CI) :-
 :- pred maybe_restore_trail_info(maybe(pair(lval))::in,
     code_tree::out, code_tree::out, code_info::in, code_info::out) is det.
 
-maybe_restore_trail_info(MaybeTrailSlots, CommitCode, RestoreCode,
-        !CI) :-
+maybe_restore_trail_info(MaybeTrailSlots, CommitCode, RestoreCode, !CI) :-
     (
         MaybeTrailSlots = no,
         CommitCode = empty,
@@ -2663,8 +2645,7 @@ maybe_restore_trail_info(MaybeTrailSlots, CommitCode, RestoreCode,
             reset_ticket(lval(TrailPtrSlot), commit)
                 - "discard trail entries and restore trail ptr",
             prune_tickets_to(lval(CounterSlot))
-                - ("restore ticket counter " ++
-                "(but not high water mark)")
+                - ("restore ticket counter (but not high water mark)")
         ]),
         RestoreCode = node([
             reset_ticket(lval(TrailPtrSlot), undo)
@@ -2838,8 +2819,7 @@ pickup_zombies(Zombies, !CI) :-
 
 :- pred restore_hp(lval::in, code_tree::out) is det.
 
-:- pred release_hp(lval::in,
-    code_info::in, code_info::out) is det.
+:- pred release_hp(lval::in, code_info::in, code_info::out) is det.
 
 :- pred restore_and_release_hp(lval::in, code_tree::out,
     code_info::in, code_info::out) is det.
@@ -2858,18 +2838,15 @@ pickup_zombies(Zombies, !CI) :-
 :- pred save_ticket(code_tree::out, lval::out,
     code_info::in, code_info::out) is det.
 
-:- pred reset_ticket(lval::in, reset_trail_reason::in,
-    code_tree::out) is det.
+:- pred reset_ticket(lval::in, reset_trail_reason::in, code_tree::out) is det.
 
-:- pred release_ticket(lval::in,
-    code_info::in, code_info::out) is det.
+:- pred release_ticket(lval::in, code_info::in, code_info::out) is det.
 
 :- pred reset_and_prune_ticket(lval::in, reset_trail_reason::in,
     code_tree::out) is det.
 
-:- pred reset_prune_and_release_ticket(lval::in,
-    reset_trail_reason::in, code_tree::out,
-    code_info::in, code_info::out) is det.
+:- pred reset_prune_and_release_ticket(lval::in, reset_trail_reason::in,
+    code_tree::out, code_info::in, code_info::out) is det.
 
 :- pred reset_and_discard_ticket(lval::in, reset_trail_reason::in,
     code_tree::out) is det.
@@ -3180,8 +3157,7 @@ should_add_trail_ops(CodeInfo, GoalInfo) = AddTrailOps :-
 
 :- pred release_reg(lval::in, code_info::in, code_info::out) is det.
 
-:- pred reserve_r1(code_tree::out, code_info::in, code_info::out)
-    is det.
+:- pred reserve_r1(code_tree::out, code_info::in, code_info::out) is det.
 
 :- pred clear_r1(code_tree::out, code_info::in, code_info::out) is det.
 
@@ -3200,9 +3176,8 @@ should_add_trail_ops(CodeInfo, GoalInfo) = AddTrailOps :-
     %
     % - The input arguments will be moved to their registers.
     %
-:- pred setup_call(hlds_goal_info::in,
-    assoc_list(prog_var, arg_info)::in, set(lval)::out, code_tree::out,
-    code_info::in, code_info::out) is det.
+:- pred setup_call(hlds_goal_info::in, assoc_list(prog_var, arg_info)::in,
+    set(lval)::out, code_tree::out, code_info::in, code_info::out) is det.
 
     % Move the output arguments of the current procedure to where
     % they need to be at return.
@@ -3220,14 +3195,11 @@ should_add_trail_ops(CodeInfo, GoalInfo) = AddTrailOps :-
     % thus it is OK for this action to delete the last record of the state
     % of a variable.
     %
-:- pred clear_all_registers(bool::in,
-    code_info::in, code_info::out) is det.
+:- pred clear_all_registers(bool::in, code_info::in, code_info::out) is det.
 
-:- pred clobber_regs(list(lval)::in,
-    code_info::in, code_info::out) is det.
+:- pred clobber_regs(list(lval)::in, code_info::in, code_info::out) is det.
 
-:- pred save_variables(set(prog_var)::in,
-    set(lval)::out, code_tree::out,
+:- pred save_variables(set(prog_var)::in, set(lval)::out, code_tree::out,
     code_info::in, code_info::out) is det.
 
 :- pred save_variables_on_stack(list(prog_var)::in, code_tree::out,
@@ -3511,8 +3483,7 @@ valid_stack_slot(ModuleInfo, VarTypes, Var - Lval) :-
     code_info::in, code_info::out) is det.
 
 setup_call_args(AllArgsInfos, Direction, LiveLocs, Code, !CI) :-
-    list.filter(call_arg_in_selected_dir(Direction),
-        AllArgsInfos, ArgsInfos),
+    list.filter(call_arg_in_selected_dir(Direction), AllArgsInfos, ArgsInfos),
     var_arg_info_to_lval(ArgsInfos, ArgsLocns),
     get_module_info(!.CI, ModuleInfo),
     get_var_locn_info(!.CI, VarLocnInfo0),
@@ -3522,16 +3493,14 @@ setup_call_args(AllArgsInfos, Direction, LiveLocs, Code, !CI) :-
     assoc_list.values(ArgsLocns, LiveLocList),
     set.list_to_set(LiveLocList, LiveLocs),
     assoc_list.keys(ArgsLocns, ArgVars),
-    which_variables_are_forward_live(!.CI, ArgVars,
-        set.init, DeadVars),
+    which_variables_are_forward_live(!.CI, ArgVars, set.init, DeadVars),
     make_vars_forward_dead(DeadVars, !CI).
 
 :- pred var_arg_info_to_lval(assoc_list(prog_var, arg_info)::in,
     assoc_list(prog_var, lval)::out) is det.
 
 var_arg_info_to_lval([], []).
-var_arg_info_to_lval([Var - ArgInfo | RestInfos],
-        [Var - Lval | RestLvals]) :-
+var_arg_info_to_lval([Var - ArgInfo | RestInfos], [Var - Lval | RestLvals]) :-
     ArgInfo = arg_info(Loc, _Mode),
     code_util.arg_loc_to_register(Loc, Lval),
     var_arg_info_to_lval(RestInfos, RestLvals).
@@ -3768,15 +3737,13 @@ generate_resume_layout(Label, ResumeMap, !CI) :-
 
     % Release a stack slot acquired earlier for a temporary value.
     %
-:- pred release_temp_slot(lval::in,
-    code_info::in, code_info::out) is det.
+:- pred release_temp_slot(lval::in, code_info::in, code_info::out) is det.
 
     % Return the lval of the stack slot in which the given variable
     % is stored. Aborts if the variable does not have a stack slot
     % an assigned to it.
     %
-:- pred get_variable_slot(code_info::in, prog_var::in, lval::out)
-    is det.
+:- pred get_variable_slot(code_info::in, prog_var::in, lval::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -38,6 +38,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.proc_label.
+:- import_module hlds.code_model.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -119,7 +120,7 @@ gen_end_label_module(ModuleName, LastModule) = EndLabelModule :-
         Arity, proc_id_to_int(ProcId)),
     Instrs = [label(entry(local, ProcLabel)) -
         "label to indicate end of previous procedure"],
-    DummyProc = c_procedure(PredName, Arity, proc(PredId, ProcId),
+    DummyProc = c_procedure(PredName, Arity, proc(PredId, ProcId), model_det,
         Instrs, ProcLabel, counter.init(0), must_not_alter_rtti),
     EndLabelModule = comp_gen_c_module(LastModule ++ "_END", [DummyProc]).
 
@@ -159,7 +160,9 @@ transform_c_procedure_list([Proc0 | Proc0s], [Proc | Procs], MaxSize) :-
     is det.
 
 transform_c_procedure(!Proc, MaxSize) :-
-    !.Proc = c_procedure(_, _, _, Instrs0, ProcLabel, C0, _),
+    ProcLabel = !.Proc ^ cproc_proc_label,
+    Instrs0 = !.Proc ^ cproc_code,
+    C0 = !.Proc ^ cproc_label_nums,
     transform_instructions(Instrs0, Instrs, C0, C, ProcLabel, MaxSize),
     !:Proc = !.Proc ^ cproc_code := Instrs,
     !:Proc = !.Proc ^ cproc_label_nums := C.

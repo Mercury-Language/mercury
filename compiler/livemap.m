@@ -373,8 +373,8 @@ livemap.look_for_livevals(Instrs0, Instrs, !Livevals,
 livemap.special_code_addr(label(_), no).
 livemap.special_code_addr(imported(_), no).
 livemap.special_code_addr(succip, yes(succip)).
-livemap.special_code_addr(do_succeed(_), yes(succip(lval(curfr)))).
-livemap.special_code_addr(do_redo, yes(redoip(lval(maxfr)))).
+livemap.special_code_addr(do_succeed(_), yes(succip_slot(lval(curfr)))).
+livemap.special_code_addr(do_redo, yes(redoip_slot(lval(maxfr)))).
 livemap.special_code_addr(do_trace_redo_fail_shallow, no).
 livemap.special_code_addr(do_trace_redo_fail_deep, no).
 livemap.special_code_addr(do_fail, no).

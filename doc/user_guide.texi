@@ -5470,8 +5470,14 @@ Output detailed debugging traces of the optimization process.
 @sp 1
 @item --debug-opt-pred-id @var{predid}
 @findex --debug-opt-pred-id
-With @samp{--debug-opt}, restrict the debugging traces
-to the optimization of the predicate or function with the specified pred id.
+Output detailed debugging traces of the optimization process
+only for the predicate/function with the specified pred id.
+
+@sp 1
+@item --debug-opt-pred-name @var{name}
+@findex --debug-opt-pred-name
+Output detailed debugging traces of the optimization process
+only for the predicate/function with the specified name.
 
 @sp 1
 @item --debug-pd

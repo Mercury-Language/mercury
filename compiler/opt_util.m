@@ -218,17 +218,14 @@
 :- pred count_temps_instr(instr::in, int::in, int::out,
     int::in, int::out) is det.
 
-    % See whether an lval references any stackvars.
+    % See whether a (list of) instructions or instruction components
+    % references the current stack frame (on either stack).
     %
-:- pred lval_refers_stackvars(lval::in, bool::out) is det.
-
-    % See whether an rval references any stackvars.
-    %
-:- pred rval_refers_stackvars(rval::in, bool::out) is det.
-
-    % See whether a list of maybe rvals references any stackvars.
-    %
-:- pred rvals_refer_stackvars(list(maybe(rval))::in, bool::out) is det.
+:- func lval_refers_stackvars(lval) = bool.
+:- func rval_refers_stackvars(rval) = bool.
+:- func rvals_refer_stackvars(list(maybe(rval))) = bool.
+:- func instr_refers_to_stack(instruction) = bool.
+:- func block_refers_to_stack(list(instruction)) = bool.
 
     % See whether instructions until the next decr_sp (if any) refer to
     % any stackvars or branch away. If not, return the instructions up to
@@ -239,10 +236,6 @@
     %
 :- pred no_stackvars_til_decr_sp(list(instruction)::in, int::in,
     list(instruction)::out, list(instruction)::out) is semidet.
-
-    % See whether a list of instructions references any stackvars.
-    %
-:- pred block_refers_stackvars(list(instruction)::in, bool::out) is det.
 
     % Format a label or proc_label for verbose messages during compilation.
     %
@@ -296,6 +289,18 @@
 
 :- pred replace_labels_instruction_list(list(instruction)::in,
     map(label, label)::in, bool::in, bool::in, list(instruction)::out) is det.
+
+:- pred replace_labels_comps(list(pragma_c_component)::in,
+    map(label, label)::in, list(pragma_c_component)::out) is det.
+
+:- pred replace_labels_code_addr(code_addr::in, map(label, label)::in,
+    code_addr::out) is det.
+
+:- pred replace_labels_label_list(list(label)::in,
+    map(label, label)::in, list(label)::out) is det.
+
+:- pred replace_labels_label(label::in, map(label, label)::in,
+    label::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -395,7 +400,8 @@ next_assign_to_redoip([Instr | Instrs], AllowedBases, RevSkip,
         Redoip, Skip, Rest) :-
     Instr = Uinstr - _Comment,
     (
-        Uinstr = assign(redoip(lval(Fr)), const(code_addr_const(Redoip0))),
+        Uinstr = assign(redoip_slot(lval(Fr)),
+            const(code_addr_const(Redoip0))),
         list.member(Fr, AllowedBases)
     ->
         Redoip = Redoip0,
@@ -619,8 +625,8 @@ no_stack_straight_line_2([Instr0 | Instrs0], !RevStraightLine, Instrs) :-
             Uinstr = livevals(_)
         ;
             Uinstr = assign(Lval, Rval),
-            lval_refers_stackvars(Lval, no),
-            rval_refers_stackvars(Rval, no)
+            lval_refers_stackvars(Lval) = no,
+            rval_refers_stackvars(Rval) = no
         )
     ->
         !:RevStraightLine = [Instr0 | !.RevStraightLine],
@@ -629,72 +635,79 @@ no_stack_straight_line_2([Instr0 | Instrs0], !RevStraightLine, Instrs) :-
         Instrs = [Instr0 | Instrs0]
     ).
 
-lval_refers_stackvars(reg(_, _), no).
-lval_refers_stackvars(stackvar(_), yes).
-lval_refers_stackvars(framevar(_), yes).
-lval_refers_stackvars(succip, no).
-lval_refers_stackvars(maxfr, no).
-lval_refers_stackvars(curfr, no).
-lval_refers_stackvars(succfr(Rval), Refers) :-
-    rval_refers_stackvars(Rval, Refers).
-lval_refers_stackvars(prevfr(Rval), Refers) :-
-    rval_refers_stackvars(Rval, Refers).
-lval_refers_stackvars(redofr(Rval), Refers) :-
-    rval_refers_stackvars(Rval, Refers).
-lval_refers_stackvars(redoip(Rval), Refers) :-
-    rval_refers_stackvars(Rval, Refers).
-lval_refers_stackvars(succip(Rval), Refers) :-
-    rval_refers_stackvars(Rval, Refers).
-lval_refers_stackvars(hp, no).
-lval_refers_stackvars(sp, no).
-lval_refers_stackvars(field(_, Rval, FieldNum), Refers) :-
-    rval_refers_stackvars(Rval, Refers1),
-    rval_refers_stackvars(FieldNum, Refers2),
-    bool.or(Refers1, Refers2, Refers).
-lval_refers_stackvars(lvar(_), _) :-
+lval_refers_stackvars(reg(_, _)) = no.
+lval_refers_stackvars(stackvar(_)) = yes.
+lval_refers_stackvars(framevar(_)) = yes.
+lval_refers_stackvars(succip) = no.
+lval_refers_stackvars(maxfr) = no.
+lval_refers_stackvars(curfr) = no.
+lval_refers_stackvars(succfr_slot(_)) = yes.
+lval_refers_stackvars(prevfr_slot(_)) = yes.
+lval_refers_stackvars(redofr_slot(_)) = yes.
+lval_refers_stackvars(redoip_slot(_)) = yes.
+lval_refers_stackvars(succip_slot(_)) = yes.
+lval_refers_stackvars(hp) = no.
+lval_refers_stackvars(sp) = no.
+lval_refers_stackvars(field(_, Rval, FieldNum)) =
+    bool.or(
+        rval_refers_stackvars(Rval),
+        rval_refers_stackvars(FieldNum)).
+lval_refers_stackvars(lvar(_)) = _ :-
     unexpected(this_file, "found lvar in lval_refers_stackvars").
-lval_refers_stackvars(temp(_, _), no).
-lval_refers_stackvars(mem_ref(Rval), Refers) :-
-    rval_refers_stackvars(Rval, Refers).
+lval_refers_stackvars(temp(_, _)) = no.
+lval_refers_stackvars(mem_ref(Rval)) =
+    rval_refers_stackvars(Rval).
 
-:- pred mem_ref_refers_stackvars(mem_ref::in, bool::out) is det.
+:- func mem_ref_refers_stackvars(mem_ref) = bool.
 
-mem_ref_refers_stackvars(stackvar_ref(_), yes).
-mem_ref_refers_stackvars(framevar_ref(_), yes).
-mem_ref_refers_stackvars(heap_ref(Rval, _, _), Refers) :-
-    rval_refers_stackvars(Rval, Refers).
+mem_ref_refers_stackvars(stackvar_ref(_)) = yes.
+mem_ref_refers_stackvars(framevar_ref(_)) = yes.
+mem_ref_refers_stackvars(heap_ref(Rval1, _, Rval2)) =
+    bool.or(rval_refers_stackvars(Rval1), rval_refers_stackvars(Rval2)).
 
-rval_refers_stackvars(lval(Lval), Refers) :-
-    lval_refers_stackvars(Lval, Refers).
-rval_refers_stackvars(var(_), _) :-
+rval_refers_stackvars(lval(Lval)) =
+    lval_refers_stackvars(Lval).
+rval_refers_stackvars(var(_)) = _ :-
     unexpected(this_file, "found var in rval_refers_stackvars").
-rval_refers_stackvars(mkword(_, Rval), Refers) :-
-    rval_refers_stackvars(Rval, Refers).
-rval_refers_stackvars(const(_), no).
-rval_refers_stackvars(unop(_, Rval), Refers) :-
-    rval_refers_stackvars(Rval, Refers).
-rval_refers_stackvars(binop(_, Rval1, Rval2), Refers) :-
-    rval_refers_stackvars(Rval1, Refers1),
-    rval_refers_stackvars(Rval2, Refers2),
-    bool.or(Refers1, Refers2, Refers).
-rval_refers_stackvars(mem_addr(MemRef), Refers) :-
-    mem_ref_refers_stackvars(MemRef, Refers).
+rval_refers_stackvars(mkword(_, Rval)) =
+    rval_refers_stackvars(Rval).
+rval_refers_stackvars(const(_)) = no.
+rval_refers_stackvars(unop(_, Rval)) =
+    rval_refers_stackvars(Rval).
+rval_refers_stackvars(binop(_, Rval1, Rval2)) =
+    bool.or(rval_refers_stackvars(Rval1), rval_refers_stackvars(Rval2)).
+rval_refers_stackvars(mem_addr(MemRef)) =
+    mem_ref_refers_stackvars(MemRef).
 
 % XXX probably unused
-rvals_refer_stackvars([], no).
-rvals_refer_stackvars([MaybeRval | Tail], Refers) :-
+rvals_refer_stackvars([]) = no.
+rvals_refer_stackvars([MaybeRval | Tail]) =
     (
         (
             MaybeRval = no
         ;
             MaybeRval = yes(Rval),
-            rval_refers_stackvars(Rval, no)
+            rval_refers_stackvars(Rval) = no
         )
     ->
-        rvals_refer_stackvars(Tail, Refers)
+        rvals_refer_stackvars(Tail)
     ;
-        Refers = yes
+        yes
     ).
+
+:- func code_addr_refers_to_stack(code_addr) = bool.
+
+code_addr_refers_to_stack(label(_)) = no.
+code_addr_refers_to_stack(imported(_)) = no.
+code_addr_refers_to_stack(succip) = no.
+code_addr_refers_to_stack(do_succeed(_)) = yes.
+code_addr_refers_to_stack(do_redo) = yes.
+code_addr_refers_to_stack(do_fail) = yes.
+code_addr_refers_to_stack(do_trace_redo_fail_shallow) = yes.
+code_addr_refers_to_stack(do_trace_redo_fail_deep) = yes.
+code_addr_refers_to_stack(do_call_closure(_)) = no.
+code_addr_refers_to_stack(do_call_class_method(_)) = no.
+code_addr_refers_to_stack(do_not_reached) = no.
 
 no_stackvars_til_decr_sp([Instr0 | Instrs0], FrameSize, Between, Remain) :-
     Instr0 = Uinstr0 - _,
@@ -710,7 +723,7 @@ no_stackvars_til_decr_sp([Instr0 | Instrs0], FrameSize, Between, Remain) :-
         Uinstr0 = assign(Lval, Rval),
         (
             Lval = stackvar(_),
-            rval_refers_stackvars(Rval, no)
+            rval_refers_stackvars(Rval) = no
         ->
             no_stackvars_til_decr_sp(Instrs0, FrameSize, Between, Remain)
         ;
@@ -722,17 +735,16 @@ no_stackvars_til_decr_sp([Instr0 | Instrs0], FrameSize, Between, Remain) :-
             Between = [],
             Remain = Instrs2
         ;
-            lval_refers_stackvars(Lval, no),
-            rval_refers_stackvars(Rval, no),
+            lval_refers_stackvars(Lval) = no,
+            rval_refers_stackvars(Rval) = no,
             no_stackvars_til_decr_sp(Instrs0, FrameSize, Between0, Remain),
             Between = [Instr0 | Between0]
         )
     ;
         Uinstr0 = incr_hp(Lval, _, _, Rval, _),
-        lval_refers_stackvars(Lval, no),
-        rval_refers_stackvars(Rval, no),
-        no_stackvars_til_decr_sp(Instrs0, FrameSize,
-            Between0, Remain),
+        lval_refers_stackvars(Lval) = no,
+        rval_refers_stackvars(Rval) = no,
+        no_stackvars_til_decr_sp(Instrs0, FrameSize, Between0, Remain),
         Between = [Instr0 | Between0]
     ;
         Uinstr0 = decr_sp(FrameSize),
@@ -740,121 +752,126 @@ no_stackvars_til_decr_sp([Instr0 | Instrs0], FrameSize, Between, Remain) :-
         Remain = Instrs0
     ).
 
-block_refers_stackvars([], no).
-block_refers_stackvars([Instr | Instrs], Refers) :-
-    instr_refers_stackvars(Instr, InstrRefers),
+block_refers_to_stack([]) = no.
+block_refers_to_stack([Instr | Instrs]) = Refers :-
+    instr_refers_to_stack(Instr) = InstrRefers,
     (
         InstrRefers = yes,
         Refers = yes
     ;
         InstrRefers = no,
-        block_refers_stackvars(Instrs, Refers)
+        Instr = Uinstr - _,
+        can_instr_fall_through(Uinstr, CanFallThrough),
+        (
+            CanFallThrough = yes,
+            Refers = block_refers_to_stack(Instrs)
+        ;
+            CanFallThrough = no,
+            Refers = no
+        )
     ).
 
-:- pred instr_refers_stackvars(instruction::in, bool::out) is det.
-
-instr_refers_stackvars(Uinstr0 - _, Refers) :-
+instr_refers_to_stack(Uinstr - _) = Refers :-
     (
-        Uinstr0 = comment(_),
+        Uinstr = comment(_),
         Refers = no
     ;
-        Uinstr0 = livevals(_),
+        Uinstr = livevals(_),
         Refers = no
     ;
-        Uinstr0 = block(_, _, BlockInstrs),
-        block_refers_stackvars(BlockInstrs, Refers)
+        Uinstr = block(_, _, BlockInstrs),
+        Refers = block_refers_to_stack(BlockInstrs)
     ;
-        Uinstr0 = assign(Lval, Rval),
-        lval_refers_stackvars(Lval, Refers1),
-        rval_refers_stackvars(Rval, Refers2),
-        bool.or(Refers1, Refers2, Refers)
+        Uinstr = assign(Lval, Rval),
+        Refers = bool.or(
+            lval_refers_stackvars(Lval),
+            rval_refers_stackvars(Rval))
     ;
-        Uinstr0 = call(_, _, _, _, _, _),
+        Uinstr = call(_, _, _, _, _, _),
+        Refers = yes
+    ;
+        Uinstr = mkframe(_, _),
+        Refers = yes
+    ;
+        Uinstr = label(_),
         Refers = no
     ;
-        Uinstr0 = mkframe(_, _),
+        Uinstr = goto(CodeAddr),
+        Refers = code_addr_refers_to_stack(CodeAddr)
+    ;
+        Uinstr = computed_goto(Rval, _Labels),
+        Refers = rval_refers_stackvars(Rval)
+    ;
+        Uinstr = c_code(_, _),
         Refers = no
     ;
-        Uinstr0 = label(_),
+        Uinstr = if_val(Rval, CodeAddr),
+        Refers = bool.or(
+            rval_refers_stackvars(Rval),
+            code_addr_refers_to_stack(CodeAddr))
+    ;
+        Uinstr = save_maxfr(Lval),
+        Refers = lval_refers_stackvars(Lval)
+    ;
+        Uinstr = restore_maxfr(Lval),
+        Refers = lval_refers_stackvars(Lval)
+    ;
+        Uinstr = incr_hp(Lval, _, _, Rval, _),
+        Refers = bool.or(
+            lval_refers_stackvars(Lval),
+            rval_refers_stackvars(Rval))
+    ;
+        Uinstr = mark_hp(Lval),
+        Refers = lval_refers_stackvars(Lval)
+    ;
+        Uinstr = restore_hp(Rval),
+        Refers = rval_refers_stackvars(Rval)
+    ;
+        Uinstr = free_heap(Rval),
+        Refers = rval_refers_stackvars(Rval)
+    ;
+        Uinstr = store_ticket(Lval),
+        Refers = lval_refers_stackvars(Lval)
+    ;
+        Uinstr = reset_ticket(Rval, _Reason),
+        Refers = rval_refers_stackvars(Rval)
+    ;
+        Uinstr = discard_ticket,
         Refers = no
     ;
-        Uinstr0 = goto(_),
+        Uinstr = prune_ticket,
         Refers = no
     ;
-        Uinstr0 = computed_goto(Rval, _),
-        rval_refers_stackvars(Rval, Refers)
+        Uinstr = mark_ticket_stack(Lval),
+        Refers = lval_refers_stackvars(Lval)
     ;
-        Uinstr0 = c_code(_, _),
-        Refers = no
+        Uinstr = prune_tickets_to(Rval),
+        Refers = rval_refers_stackvars(Rval)
     ;
-        Uinstr0 = if_val(Rval, _),
-        rval_refers_stackvars(Rval, Refers)
+        Uinstr = incr_sp(_, _),
+        Refers = yes
     ;
-        Uinstr0 = save_maxfr(Lval),
-        lval_refers_stackvars(Lval, Refers)
+        Uinstr = decr_sp(_),
+        Refers = yes
     ;
-        Uinstr0 = restore_maxfr(Lval),
-        lval_refers_stackvars(Lval, Refers)
+        Uinstr = decr_sp_and_return(_),
+        Refers = yes
     ;
-        Uinstr0 = incr_hp(Lval, _, _, Rval, _),
-        lval_refers_stackvars(Lval, Refers1),
-        rval_refers_stackvars(Rval, Refers2),
-        bool.or(Refers1, Refers2, Refers)
+        Uinstr = pragma_c(_, Components, _, _, _, _, _, _, _),
+        Refers = bool.or_list(list.map(pragma_c_component_refers_stackvars,
+            Components))
     ;
-        Uinstr0 = mark_hp(Lval),
-        lval_refers_stackvars(Lval, Refers)
+        Uinstr = init_sync_term(Lval, _),
+        Refers = lval_refers_stackvars(Lval)
     ;
-        Uinstr0 = restore_hp(Rval),
-        rval_refers_stackvars(Rval, Refers)
+        Uinstr = fork(_, _, _),
+        Refers = yes
     ;
-        Uinstr0 = free_heap(Rval),
-        rval_refers_stackvars(Rval, Refers)
+        Uinstr = join_and_terminate(Lval),
+        Refers = lval_refers_stackvars(Lval)
     ;
-        Uinstr0 = store_ticket(Lval),
-        lval_refers_stackvars(Lval, Refers)
-    ;
-        Uinstr0 = reset_ticket(Rval, _Reason),
-        rval_refers_stackvars(Rval, Refers)
-    ;
-        Uinstr0 = discard_ticket,
-        Refers = no
-    ;
-        Uinstr0 = prune_ticket,
-        Refers = no
-    ;
-        Uinstr0 = mark_ticket_stack(Lval),
-        lval_refers_stackvars(Lval, Refers)
-    ;
-        Uinstr0 = prune_tickets_to(Rval),
-        rval_refers_stackvars(Rval, Refers)
-    ;
-        % handled specially
-        Uinstr0 = incr_sp(_, _),
-        Refers = no
-    ;
-        % handled specially
-        Uinstr0 = decr_sp(_),
-        Refers = no
-    ;
-        % handled specially
-        Uinstr0 = decr_sp_and_return(_),
-        Refers = no
-    ;
-        Uinstr0 = pragma_c(_, Components, _, _, _, _, _, _, _),
-        bool.or_list(list.map(pragma_c_component_refers_stackvars, Components),
-            Refers)
-    ;
-        Uinstr0 = init_sync_term(Lval, _),
-        lval_refers_stackvars(Lval, Refers)
-    ;
-        Uinstr0 = fork(_, _, _),
-        Refers = no
-    ;
-        Uinstr0 = join_and_terminate(Lval),
-        lval_refers_stackvars(Lval, Refers)
-    ;
-        Uinstr0 = join_and_continue(Lval, _),
-        lval_refers_stackvars(Lval, Refers)
+        Uinstr = join_and_continue(Lval, _),
+        Refers = lval_refers_stackvars(Lval)
     ).
 
 :- func pragma_c_component_refers_stackvars(pragma_c_component) = bool.
@@ -887,7 +904,7 @@ pragma_c_input_refers_stackvars(Input) = Refers :-
         Refers = no
     ;
         IsDummy = no,
-        rval_refers_stackvars(Rval, Refers)
+        Refers = rval_refers_stackvars(Rval)
     ).
 
 :- func pragma_c_output_refers_stackvars(pragma_c_output) = bool.
@@ -900,7 +917,7 @@ pragma_c_output_refers_stackvars(Input) = Refers :-
         Refers = no
     ;
         IsDummy = no,
-        lval_refers_stackvars(Lval, Refers)
+        Refers = lval_refers_stackvars(Lval)
     ).
 
 filter_out_labels([], []).
@@ -1603,11 +1620,11 @@ touches_nondet_ctrl_lval(framevar(_), no).
 touches_nondet_ctrl_lval(succip, no).
 touches_nondet_ctrl_lval(maxfr, yes).
 touches_nondet_ctrl_lval(curfr, yes).
-touches_nondet_ctrl_lval(succfr(_), yes).
-touches_nondet_ctrl_lval(prevfr(_), yes).
-touches_nondet_ctrl_lval(redofr(_), yes).
-touches_nondet_ctrl_lval(redoip(_), yes).
-touches_nondet_ctrl_lval(succip(_), yes).
+touches_nondet_ctrl_lval(succfr_slot(_), yes).
+touches_nondet_ctrl_lval(prevfr_slot(_), yes).
+touches_nondet_ctrl_lval(redofr_slot(_), yes).
+touches_nondet_ctrl_lval(redoip_slot(_), yes).
+touches_nondet_ctrl_lval(succip_slot(_), yes).
 touches_nondet_ctrl_lval(hp, no).
 touches_nondet_ctrl_lval(sp, no).
 touches_nondet_ctrl_lval(field(_, Rval1, Rval2), Touch) :-
@@ -1676,11 +1693,11 @@ lval_access_rvals(framevar(_), []).
 lval_access_rvals(succip, []).
 lval_access_rvals(maxfr, []).
 lval_access_rvals(curfr, []).
-lval_access_rvals(redoip(Rval), [Rval]).
-lval_access_rvals(succip(Rval), [Rval]).
-lval_access_rvals(redofr(Rval), [Rval]).
-lval_access_rvals(prevfr(Rval), [Rval]).
-lval_access_rvals(succfr(Rval), [Rval]).
+lval_access_rvals(redoip_slot(Rval), [Rval]).
+lval_access_rvals(succip_slot(Rval), [Rval]).
+lval_access_rvals(redofr_slot(Rval), [Rval]).
+lval_access_rvals(prevfr_slot(Rval), [Rval]).
+lval_access_rvals(succfr_slot(Rval), [Rval]).
 lval_access_rvals(hp, []).
 lval_access_rvals(sp, []).
 lval_access_rvals(field(_, Rval1, Rval2), [Rval1, Rval2]).
@@ -2000,9 +2017,6 @@ replace_labels_instr(pragma_c(A, Comps0, C, MaybeFix, MaybeLayout,
         replace_labels_comps(Comps0, ReplMap, Comps)
     ).
 
-:- pred replace_labels_comps(list(pragma_c_component)::in,
-    map(label, label)::in, list(pragma_c_component)::out) is det.
-
 replace_labels_comps([], _, []).
 replace_labels_comps([Comp0 | Comps0], ReplMap, [Comp | Comps]) :-
     replace_labels_comp(Comp0, ReplMap, Comp),
@@ -2030,15 +2044,15 @@ replace_labels_lval(framevar(N), _, framevar(N)).
 replace_labels_lval(succip, _, succip).
 replace_labels_lval(maxfr, _, maxfr).
 replace_labels_lval(curfr, _, curfr).
-replace_labels_lval(succip(Rval0), ReplMap, succip(Rval)) :-
+replace_labels_lval(succip_slot(Rval0), ReplMap, succip_slot(Rval)) :-
     replace_labels_rval(Rval0, ReplMap, Rval).
-replace_labels_lval(redoip(Rval0), ReplMap, redoip(Rval)) :-
+replace_labels_lval(redoip_slot(Rval0), ReplMap, redoip_slot(Rval)) :-
     replace_labels_rval(Rval0, ReplMap, Rval).
-replace_labels_lval(redofr(Rval0), ReplMap, redofr(Rval)) :-
+replace_labels_lval(redofr_slot(Rval0), ReplMap, redofr_slot(Rval)) :-
     replace_labels_rval(Rval0, ReplMap, Rval).
-replace_labels_lval(succfr(Rval0), ReplMap, succfr(Rval)) :-
+replace_labels_lval(succfr_slot(Rval0), ReplMap, succfr_slot(Rval)) :-
     replace_labels_rval(Rval0, ReplMap, Rval).
-replace_labels_lval(prevfr(Rval0), ReplMap, prevfr(Rval)) :-
+replace_labels_lval(prevfr_slot(Rval0), ReplMap, prevfr_slot(Rval)) :-
     replace_labels_rval(Rval0, ReplMap, Rval).
 replace_labels_lval(hp, _, hp).
 replace_labels_lval(sp, _, sp).
@@ -2096,9 +2110,6 @@ replace_labels_rval_const(code_addr_const(Addr0), ReplMap,
 replace_labels_rval_const(data_addr_const(DataAddr, MaybeOffset), _,
         data_addr_const(DataAddr, MaybeOffset)).
 
-:- pred replace_labels_code_addr(code_addr::in, map(label, label)::in,
-    code_addr::out) is det.
-
 replace_labels_code_addr(label(Label0), ReplMap, label(Label)) :-
     replace_labels_label(Label0, ReplMap, Label).
 replace_labels_code_addr(imported(Proc), _, imported(Proc)).
@@ -2116,16 +2127,10 @@ replace_labels_code_addr(do_call_class_method(MaybeSpec), _,
         do_call_class_method(MaybeSpec)).
 replace_labels_code_addr(do_not_reached, _, do_not_reached).
 
-:- pred replace_labels_label_list(list(label)::in,
-    map(label, label)::in, list(label)::out) is det.
-
 replace_labels_label_list([], _ReplMap, []).
 replace_labels_label_list([Label0 | Labels0], ReplMap, [Label | Labels]) :-
     replace_labels_label(Label0, ReplMap, Label),
     replace_labels_label_list(Labels0, ReplMap, Labels).
-
-:- pred replace_labels_label(label::in, map(label, label)::in,
-    label::out) is det.
 
 replace_labels_label(Label0, ReplMap, Label) :-
     ( map.search(ReplMap, Label0, NewLabel) ->

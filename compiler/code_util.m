@@ -388,15 +388,15 @@ lvals_in_lval(framevar(_), []).
 lvals_in_lval(succip, []).
 lvals_in_lval(maxfr, []).
 lvals_in_lval(curfr, []).
-lvals_in_lval(succip(Rval), Lvals) :-
+lvals_in_lval(succip_slot(Rval), Lvals) :-
     lvals_in_rval(Rval, Lvals).
-lvals_in_lval(redofr(Rval), Lvals) :-
+lvals_in_lval(redofr_slot(Rval), Lvals) :-
     lvals_in_rval(Rval, Lvals).
-lvals_in_lval(redoip(Rval), Lvals) :-
+lvals_in_lval(redoip_slot(Rval), Lvals) :-
     lvals_in_rval(Rval, Lvals).
-lvals_in_lval(succfr(Rval), Lvals) :-
+lvals_in_lval(succfr_slot(Rval), Lvals) :-
     lvals_in_rval(Rval, Lvals).
-lvals_in_lval(prevfr(Rval), Lvals) :-
+lvals_in_lval(prevfr_slot(Rval), Lvals) :-
     lvals_in_rval(Rval, Lvals).
 lvals_in_lval(hp, []).
 lvals_in_lval(sp, []).

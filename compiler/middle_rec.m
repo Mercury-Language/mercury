@@ -272,9 +272,9 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
 
     % In the code we generate, the base instruction sequence is executed
     % in situations where this procedure has no stack frame. If this
-    % sequence refers to stackvars, it will be to some other procedure's
+    % sequence refers to the stack frame, it will be to some other procedure's
     % variables, which is obviously incorrect.
-    opt_util.block_refers_stackvars(BaseList, no),
+    opt_util.block_refers_to_stack(BaseList) = no,
 
     list.append(BaseList, RecList, AvoidList),
     find_unused_register(AvoidList, AuxReg),
@@ -530,8 +530,8 @@ find_used_registers_instr(prune_tickets_to(Rval), !Used) :-
 find_used_registers_instr(incr_sp(_, _), !Used).
 find_used_registers_instr(decr_sp(_), !Used).
 find_used_registers_instr(decr_sp_and_return(_), !Used).
-find_used_registers_instr(pragma_c(_, Components,
-        _, _, _, _, _, _, _), !Used) :-
+find_used_registers_instr(pragma_c(_, Components, _, _, _, _, _, _, _),
+        !Used) :-
     find_used_registers_components(Components, !Used).
 find_used_registers_instr(init_sync_term(Lval, _), !Used) :-
     find_used_registers_lval(Lval, !Used).

@@ -246,16 +246,16 @@ dump_lval(framevar(N)) =
 dump_lval(succip) = "succip".
 dump_lval(maxfr) = "maxfr".
 dump_lval(curfr) = "curfr".
-dump_lval(succfr(R)) =
-    "succfr(" ++ dump_rval(R) ++ ")".
-dump_lval(prevfr(R)) =
-    "prevfr(" ++ dump_rval(R) ++ ")".
-dump_lval(redofr(R)) =
-    "redofr(" ++ dump_rval(R) ++ ")".
-dump_lval(redoip(R)) =
-    "redoip(" ++ dump_rval(R) ++ ")".
-dump_lval(succip(R)) =
-    "succip(" ++ dump_rval(R) ++ ")".
+dump_lval(succfr_slot(R)) =
+    "succfr_slot(" ++ dump_rval(R) ++ ")".
+dump_lval(prevfr_slot(R)) =
+    "prevfr_slot(" ++ dump_rval(R) ++ ")".
+dump_lval(redofr_slot(R)) =
+    "redofr_slot(" ++ dump_rval(R) ++ ")".
+dump_lval(redoip_slot(R)) =
+    "redoip_slot(" ++ dump_rval(R) ++ ")".
+dump_lval(succip_slot(R)) =
+    "succip_slot(" ++ dump_rval(R) ++ ")".
 dump_lval(hp) = "hp".
 dump_lval(sp) = "sp".
 dump_lval(field(MT, N, F)) = Str :-
@@ -641,9 +641,27 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Instr = assign(Lval, Rval),
         Str = dump_lval(Lval) ++ " := " ++ dump_rval(Rval)
     ;
-        Instr = call(Callee, ReturnLabel, _, _, _, _),
+        Instr = call(Callee, ReturnLabel, _LiveInfo, _Context, _GoalPath,
+            CallModel),
+        (
+            CallModel = call_model_det,
+            CallModelStr = "det"
+        ;
+            CallModel = call_model_semidet,
+            CallModelStr = "semidet"
+        ;
+            CallModel = call_model_nondet(no_tail_call),
+            CallModelStr = "nondet no_tail_call"
+        ;
+            CallModel = call_model_nondet(checked_tail_call),
+            CallModelStr = "nondet checked_tail_call"
+        ;
+            CallModel = call_model_nondet(unchecked_tail_call),
+            CallModelStr = "nondet unchecked_tail_call"
+        ),
         Str = "call(" ++ dump_code_addr(ProcLabel, Callee) ++ ", "
-            ++ dump_code_addr(ProcLabel, ReturnLabel) ++ ", ...)"
+            ++ dump_code_addr(ProcLabel, ReturnLabel) ++ ", ..., "
+            ++ CallModelStr ++ ")"
     ;
         Instr = mkframe(FrameInfo, MaybeRedoip),
         (
@@ -768,10 +786,48 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Str = "join(" ++ dump_lval(Lval) ++ ", "
             ++ dump_label(ProcLabel, Label) ++ ")"
     ;
-        Instr = pragma_c(_, Comps, _, _, _, _, _, _, _),
-        % XXX  should probably give more info than this
-        Str = "pragma_c(" ++ dump_components(ProcLabel, Comps) ++ ")"
+        Instr = pragma_c(Decls, Comps, MCM, MFNL, MFL, MFOL, MNF, SSR, MD),
+        Str = "pragma_c(\n"
+            ++ "declarations:\n" ++ dump_decls(Decls)
+            ++ "components:\n" ++ dump_components(ProcLabel, Comps)
+            ++ dump_may_call_mercury(MCM) ++ "\n"
+            ++ dump_maybe_label("fix nolayout:", ProcLabel, MFNL)
+            ++ dump_maybe_label("fix layout:", ProcLabel, MFL)
+            ++ dump_maybe_label("fix onlylayout:", ProcLabel, MFOL)
+            ++ dump_maybe_label("nofix:", ProcLabel, MNF)
+            ++ dump_bool("stack slot ref:", SSR)
+            ++ dump_bool("may duplicate:", MD)
+            ++ ")"
     ).
+
+:- func dump_may_call_mercury(may_call_mercury) = string.
+
+dump_may_call_mercury(may_call_mercury) = "may_call_mercury".
+dump_may_call_mercury(will_not_call_mercury) = "will_not_call_mercury".
+
+:- func dump_maybe_label(string, proc_label, maybe(label)) = string.
+
+dump_maybe_label(_Msg, _ProcLabel, no) = "".
+dump_maybe_label(Msg, ProcLabel, yes(Label)) =
+    Msg ++ " " ++ dump_label(ProcLabel, Label) ++ "\n".
+
+:- func dump_bool(string, bool) = string.
+
+dump_bool(Msg, no)  = Msg ++ " no\n".
+dump_bool(Msg, yes) = Msg ++ " yes\n".
+
+:- func dump_decls(list(pragma_c_decl)) = string.
+
+dump_decls([]) = "".
+dump_decls([Decl | Decls]) =
+    dump_decl(Decl) ++ dump_decls(Decls).
+
+:- func dump_decl(pragma_c_decl) = string.
+
+dump_decl(pragma_c_arg_decl(_MerType, TypeStr, VarName)) =
+    "decl " ++ TypeStr ++ " " ++ VarName ++ "\n".
+dump_decl(pragma_c_struct_ptr_decl(StructTag, VarName)) =
+    "decl struct" ++ StructTag ++ " " ++ VarName ++ "\n".
 
 :- func dump_components(proc_label, list(pragma_c_component)) = string.
 
@@ -781,13 +837,42 @@ dump_components(ProcLabel, [Comp | Comps]) =
 
 :- func dump_component(proc_label, pragma_c_component) = string.
 
-dump_component(_, pragma_c_inputs(_)) = "".
-dump_component(_, pragma_c_outputs(_)) = "".
-dump_component(_, pragma_c_user_code(_, Code)) = Code.
-dump_component(_, pragma_c_raw_code(Code, _, _)) = Code.
+dump_component(_, pragma_c_inputs(Inputs)) = dump_input_components(Inputs).
+dump_component(_, pragma_c_outputs(Outputs)) = dump_output_components(Outputs).
+dump_component(_, pragma_c_user_code(_, Code)) = Code ++ "\n".
+dump_component(_, pragma_c_raw_code(Code, _, _)) = Code ++ "\n".
 dump_component(ProcLabel, pragma_c_fail_to(Label)) =
-    "fail to " ++ dump_label(ProcLabel, Label).
+    "fail to " ++ dump_label(ProcLabel, Label) ++ "\n".
 dump_component(_, pragma_c_noop) = "".
+
+:- func dump_input_components(list(pragma_c_input)) = string.
+
+dump_input_components([]) = "".
+dump_input_components([Input | Inputs]) =
+    dump_input_component(Input) ++ "\n" ++
+    dump_input_components(Inputs).
+
+:- func dump_output_components(list(pragma_c_output)) = string.
+
+dump_output_components([]) = "".
+dump_output_components([Input | Inputs]) =
+    dump_output_component(Input) ++ "\n" ++
+    dump_output_components(Inputs).
+
+:- func dump_input_component(pragma_c_input) = string.
+
+dump_input_component(pragma_c_input(Var, _, Dummy, _, Rval, _, _)) =
+    Var ++ dump_maybe_dummy(Dummy) ++ " := " ++ dump_rval(Rval).
+
+:- func dump_output_component(pragma_c_output) = string.
+
+dump_output_component(pragma_c_output(Lval, _, Dummy, _, Var, _, _)) =
+    dump_lval(Lval) ++ " := " ++ Var ++ dump_maybe_dummy(Dummy).
+
+:- func dump_maybe_dummy(bool) = string.
+
+dump_maybe_dummy(no) = "".
+dump_maybe_dummy(yes) = " (dummy)".
 
 dump_fullinstr(ProcLabel, PrintComments, Uinstr - Comment) = Str :-
     (

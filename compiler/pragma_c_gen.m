@@ -572,9 +572,15 @@ ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
         ExtraArgs = [_ | _],
         MaybeDupl = no
     ),
+    ExtraAttributes = extra_attributes(Attributes),
+    ( list.member(refers_to_llds_stack, ExtraAttributes) ->
+        RefersToLLDSSTack = yes
+    ;
+        RefersToLLDSSTack = no
+    ),
     PragmaCCode = node([
         pragma_c(Decls, Components, MayCallMercury, no, no, no,
-            MaybeFailLabel, no, MaybeDupl)
+            MaybeFailLabel, RefersToLLDSSTack, MaybeDupl)
             - "Pragma C inclusion"
     ]),
     %
@@ -692,7 +698,8 @@ nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
 
     code_info.get_next_label(RetryLabel, !CI),
     ModFrameCode = node([
-        assign(redoip(lval(curfr)), const(code_addr_const(label(RetryLabel))))
+        assign(redoip_slot(lval(curfr)),
+            const(code_addr_const(label(RetryLabel))))
             - "Set up backtracking to retry label"
     ]),
     RetryLabelCode = node([

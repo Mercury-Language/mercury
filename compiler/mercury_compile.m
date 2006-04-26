@@ -2693,7 +2693,8 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
         Optimize = no,
         ProcCode = ProcCode0
     ),
-    ProcCode = c_procedure(_, _, PredProcId, Instructions, _, _, _),
+    PredProcId = ProcCode ^ cproc_id,
+    Instructions = ProcCode ^ cproc_code,
     write_proc_progress_message(
         "% Generating call continuation information for ",
         PredId, ProcId, !.HLDS, !IO),

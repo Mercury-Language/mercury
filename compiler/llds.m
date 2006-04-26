@@ -159,16 +159,19 @@
 :- type c_procedure
     --->    c_procedure(
                 cproc_name              :: string,
-                                        % predicate name
-                cproc_arity             :: int,
+                                        % Predicate name.
+                cproc_orig_arity        :: int,
+                                        % Original arity.
                 cproc_id                :: pred_proc_id,
-                                        % the pred_proc_id this code
+                                        % The pred_proc_id of this code.
+                cproc_code_model        :: code_model,
+                                        % The code model of the procedure.
                 cproc_code              :: list(instruction),
-                                        % the code for this procedure
+                                        % The code for this procedure.
                 cproc_proc_label        :: proc_label,
-                                        % proc_label of this procedure
+                                        % Proc_label of this procedure.
                 cproc_label_nums        :: counter,
-                                        % source for new label numbers
+                                        % Source for new label numbers.
                 cproc_may_alter_rtti    :: may_alter_rtti
                                         % The compiler is allowed to perform
                                         % optimizations on this c_procedure
@@ -213,9 +216,9 @@
             % call whenever its return address leads to the procedure epilogue.
 
 :- type call_model
-    --->    det
-    ;       semidet
-    ;       nondet(nondet_tail_call).
+    --->    call_model_det
+    ;       call_model_semidet
+    ;       call_model_nondet(nondet_tail_call).
 
     % The type defines the various LLDS virtual machine instructions.
     % Each instruction gets compiled to a simple piece of C code
@@ -774,26 +777,26 @@
             % value of `curfr'. These are used in nondet code. Framevar slot
             % numbers start at 1.
 
-    ;       succip(rval)
+    ;       succip_slot(rval)
             % The succip slot of the specified nondet stack frame; holds the
             % code address to jump to on successful exit from this nondet
             % procedure.
 
-    ;       redoip(rval)
+    ;       redoip_slot(rval)
             % The redoip slot of the specified nondet stack frame; holds the
             % code address to jump to on failure.
 
-    ;       redofr(rval)
+    ;       redofr_slot(rval)
             % The redofr slot of the specified nondet stack frame; holds the
             % address of the frame that the curfr register should be set to
             % when backtracking through the redoip slot.
 
-    ;       succfr(rval)
+    ;       succfr_slot(rval)
             % The succfr slot of the specified nondet stack frame; holds the
             % address of caller's nondet stack frame.  On successful exit
             % from this nondet procedure, we will set curfr to this value.
 
-    ;       prevfr(rval)
+    ;       prevfr_slot(rval)
             % The prevfr slot of the specified nondet stack frame; holds the
             % address of the previous frame on the nondet stack.
 
@@ -1120,11 +1123,11 @@ lval_type(temp(RegType, _), Type) :-
     register_type(RegType, Type).
 lval_type(stackvar(_), word).
 lval_type(framevar(_), word).
-lval_type(succip(_), code_ptr).
-lval_type(redoip(_), code_ptr).
-lval_type(redofr(_), data_ptr).
-lval_type(succfr(_), data_ptr).
-lval_type(prevfr(_), data_ptr).
+lval_type(succip_slot(_), code_ptr).
+lval_type(redoip_slot(_), code_ptr).
+lval_type(redofr_slot(_), data_ptr).
+lval_type(succfr_slot(_), data_ptr).
+lval_type(prevfr_slot(_), data_ptr).
 lval_type(field(_, _, _), word).
 lval_type(lvar(_), _) :-
     unexpected(this_file, "lvar unexpected in llds.lval_type").

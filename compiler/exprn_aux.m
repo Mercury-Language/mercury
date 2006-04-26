@@ -282,15 +282,15 @@ vars_in_lval(hp, []).
 vars_in_lval(sp, []).
 vars_in_lval(stackvar(_SlotNum), []).
 vars_in_lval(framevar(_SlotNum), []).
-vars_in_lval(succip(Rval), Vars) :-
+vars_in_lval(succip_slot(Rval), Vars) :-
     vars_in_rval(Rval, Vars).
-vars_in_lval(redoip(Rval), Vars) :-
+vars_in_lval(redoip_slot(Rval), Vars) :-
     vars_in_rval(Rval, Vars).
-vars_in_lval(redofr(Rval), Vars) :-
+vars_in_lval(redofr_slot(Rval), Vars) :-
     vars_in_rval(Rval, Vars).
-vars_in_lval(succfr(Rval), Vars) :-
+vars_in_lval(succfr_slot(Rval), Vars) :-
     vars_in_rval(Rval, Vars).
-vars_in_lval(prevfr(Rval), Vars) :-
+vars_in_lval(prevfr_slot(Rval), Vars) :-
     vars_in_rval(Rval, Vars).
 vars_in_lval(field(_MaybeTag, Rval0, Rval1), Vars) :-
     vars_in_rval(Rval0, Vars0),
@@ -622,25 +622,25 @@ substitute_lval_in_lval_count_2(OldLval, NewLval, Lval0, Lval, !N) :-
         Lval0 = framevar(_SlotNum),
         Lval = Lval0
     ;
-        Lval0 = succip(Rval0),
+        Lval0 = succip_slot(Rval0),
         substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
-        Lval = succip(Rval)
+        Lval = succip_slot(Rval)
     ;
-        Lval0 = redoip(Rval0),
+        Lval0 = redoip_slot(Rval0),
         substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
-        Lval = redoip(Rval)
+        Lval = redoip_slot(Rval)
     ;
-        Lval0 = redofr(Rval0),
+        Lval0 = redofr_slot(Rval0),
         substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
-        Lval = redofr(Rval)
+        Lval = redofr_slot(Rval)
     ;
-        Lval0 = succfr(Rval0),
+        Lval0 = succfr_slot(Rval0),
         substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
-        Lval = succfr(Rval)
+        Lval = succfr_slot(Rval)
     ;
-        Lval0 = prevfr(Rval0),
+        Lval0 = prevfr_slot(Rval0),
         substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
-        Lval = prevfr(Rval)
+        Lval = prevfr_slot(Rval)
     ;
         Lval0 = field(Tag, Rval1, Rval2),
         substitute_lval_in_rval_count(OldLval, NewLval, Rval1, Rval3, !N),
@@ -758,25 +758,25 @@ substitute_rval_in_lval(OldRval, NewRval, Lval0, Lval) :-
         Lval0 = framevar(N),
         Lval = framevar(N)
     ;
-        Lval0 = succip(Rval0),
+        Lval0 = succip_slot(Rval0),
         substitute_rval_in_rval(OldRval, NewRval, Rval0, Rval),
-        Lval = succip(Rval)
+        Lval = succip_slot(Rval)
     ;
-        Lval0 = redoip(Rval0),
+        Lval0 = redoip_slot(Rval0),
         substitute_rval_in_rval(OldRval, NewRval, Rval0, Rval),
-        Lval = redoip(Rval)
+        Lval = redoip_slot(Rval)
     ;
-        Lval0 = redofr(Rval0),
+        Lval0 = redofr_slot(Rval0),
         substitute_rval_in_rval(OldRval, NewRval, Rval0, Rval),
-        Lval = redofr(Rval)
+        Lval = redofr_slot(Rval)
     ;
-        Lval0 = succfr(Rval0),
+        Lval0 = succfr_slot(Rval0),
         substitute_rval_in_rval(OldRval, NewRval, Rval0, Rval),
-        Lval = succfr(Rval)
+        Lval = succfr_slot(Rval)
     ;
-        Lval0 = prevfr(Rval0),
+        Lval0 = prevfr_slot(Rval0),
         substitute_rval_in_rval(OldRval, NewRval, Rval0, Rval),
-        Lval = prevfr(Rval)
+        Lval = prevfr_slot(Rval)
     ;
         Lval0 = field(Tag, Rval1, Rval2),
         substitute_rval_in_rval(OldRval, NewRval, Rval1, Rval3),
@@ -937,15 +937,15 @@ lval_addrs(framevar(_SlotNum), [], []).
 lval_addrs(succip, [], []).
 lval_addrs(maxfr, [], []).
 lval_addrs(curfr, [], []).
-lval_addrs(prevfr(Rval), CodeAddrs, DataAddrs) :-
+lval_addrs(prevfr_slot(Rval), CodeAddrs, DataAddrs) :-
     rval_addrs(Rval, CodeAddrs, DataAddrs).
-lval_addrs(succfr(Rval), CodeAddrs, DataAddrs) :-
+lval_addrs(succfr_slot(Rval), CodeAddrs, DataAddrs) :-
     rval_addrs(Rval, CodeAddrs, DataAddrs).
-lval_addrs(redofr(Rval), CodeAddrs, DataAddrs) :-
+lval_addrs(redofr_slot(Rval), CodeAddrs, DataAddrs) :-
     rval_addrs(Rval, CodeAddrs, DataAddrs).
-lval_addrs(redoip(Rval), CodeAddrs, DataAddrs) :-
+lval_addrs(redoip_slot(Rval), CodeAddrs, DataAddrs) :-
     rval_addrs(Rval, CodeAddrs, DataAddrs).
-lval_addrs(succip(Rval), CodeAddrs, DataAddrs) :-
+lval_addrs(succip_slot(Rval), CodeAddrs, DataAddrs) :-
     rval_addrs(Rval, CodeAddrs, DataAddrs).
 lval_addrs(hp, [], []).
 lval_addrs(sp, [], []).
