@@ -1890,7 +1890,8 @@ parse_mutable_inst(InstTerm, InstResult) :-
     --->    trailed(trailed)
     ;       thread_safe(thread_safe)
     ;       foreign_name(foreign_name)
-    ;       attach_to_io_state(bool).
+    ;       attach_to_io_state(bool)
+    ;       constant(bool).
 
 :- pred parse_mutable_attrs(term::in,
     maybe1(mutable_var_attributes)::out) is det.
@@ -1899,7 +1900,10 @@ parse_mutable_attrs(MutAttrsTerm, MutAttrsResult) :-
     Attributes0 = default_mutable_attributes,
     ConflictingAttributes = [
         thread_safe(thread_safe) - thread_safe(not_thread_safe),
-        trailed(trailed) - trailed(untrailed)
+        trailed(trailed) - trailed(untrailed),
+        constant(yes) - trailed(trailed),
+        constant(yes) - thread_safe(not_thread_safe),
+        constant(yes) - attach_to_io_state(yes)
     ],
     (
         list_term_to_term_list(MutAttrsTerm, MutAttrTerms),
@@ -1938,6 +1942,16 @@ process_mutable_attribute(foreign_name(ForeignName), !Attributes) :-
     set_mutable_add_foreign_name(ForeignName, !Attributes).
 process_mutable_attribute(attach_to_io_state(AttachToIOState), !Attributes) :-
     set_mutable_var_attach_to_io_state(AttachToIOState, !Attributes).
+process_mutable_attribute(constant(Constant), !Attributes) :-
+    set_mutable_var_constant(Constant, !Attributes),
+    (
+        Constant = yes,
+        set_mutable_var_thread_safe(thread_safe, !Attributes),
+        set_mutable_var_trailed(untrailed, !Attributes),
+        set_mutable_var_attach_to_io_state(no, !Attributes)
+    ;
+        Constant = no
+    ).
 
 :- pred parse_mutable_attr(term::in,
     maybe1(collected_mutable_attribute)::out) is det.
@@ -1960,6 +1974,9 @@ parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
         ;
             String = "not_thread_safe",
             MutAttr = thread_safe(not_thread_safe)
+        ;
+            String = "constant",
+            MutAttr = constant(yes)
         )
     ->
         MutAttrResult = ok(MutAttr)

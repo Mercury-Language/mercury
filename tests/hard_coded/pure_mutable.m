@@ -15,9 +15,14 @@
 :- mutable(global, int, 561, ground,
 	[untrailed, thread_safe, attach_to_io_state]).
 
+:- mutable(const, int, 562, ground, [constant]).
+
 main(!IO) :-
 	get_global(X0, !IO),
 	io.format("Initial value of global = %d\n", [i(X0)], !IO),
 	set_global(X0 + 1, !IO),
 	get_global(X, !IO),
-	io.format("Final value of global = %d\n", [i(X)], !IO).
+	io.format("Final value of global = %d\n", [i(X)], !IO),
+
+	get_const(C),
+	io.format("Value of const = %d\n", [i(C)], !IO).

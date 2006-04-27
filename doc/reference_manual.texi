@@ -4759,14 +4759,14 @@ The following @samp{attributes} must be supported:
 
 @item @samp{thread_safe}/@samp{not_thread_safe}
 This attribute declares if it is safe for multiple threads to 
-access the mutable concurrently.  The default, in case none is
-specified, is @samp{not_thread_safe}.  (See @ref{Foreign code attributes}
-for further details.)
+access the mutable concurrently.
+The default, in case none is specified, is @samp{not_thread_safe}.
+(See @ref{Foreign code attributes} for further details.)
 
 @item @samp{trailed}/@samp{untrailed}
 This attribute declares if the implementation should generate code so that
-the effects of @samp{set_varname/1} can be undone on backtracking.  The
-default, in case none is specified, is @samp{trailed}.
+the effects of @samp{set_varname/1} can be undone on backtracking.
+The default, in case none is specified, is @samp{trailed}.
 
 @item @samp{attach_to_io_state}
 This attribute causes the compiler to also construct access predicates
@@ -4776,6 +4776,24 @@ that have the following signatures:
 :- pred get_varname(vartype::out(varinst), io::di, io::uo) is det.
 :- pred set_varname(vartype::in(varinst),  io::di, io::uo) is det.
 @end example
+
+@item @samp{constant}
+This attribute causes the compiler to construct
+only a @samp{get} access predicate, but not a @samp{set} access predicate.
+Since @samp{varname} will always have the initial value given to it,
+the @samp{get} access predicate is pure; its signature will be
+
+@example
+:- get_varname(vartype::out(varinst)) is det.
+@end example
+
+The @samp{constant} attribute cannot be specified together with
+the @samp{attach_to_io_state} attribute
+(since they disagree on this signature),
+It also cannot be specified together with explicit
+@samp{not_thread_safe} and @samp{trailed} attributes,
+since accesses consisting of all reads are always thread safe
+and the question of whether to trail updates is moot when there are no updates.
 
 @end table
 

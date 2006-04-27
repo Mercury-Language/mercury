@@ -1,6 +1,10 @@
 NEWS since 0.13 fork
 --------------------
 
+Changes to the Mercury language:
+* Mutables can now be marked as constant, which is useful when working with
+  constant data structures that cannot be conveniently represented as constant
+  terms.
 
 NEWS since Mercury 0.12
 -----------------------

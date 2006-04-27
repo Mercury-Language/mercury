@@ -1332,25 +1332,35 @@ make_private_interface(SourceFileName, SourceFileModuleName, ModuleName,
 
 handle_mutable_in_private_interface(ModuleName, Item - Context, !Items) :-
     ( Item = mutable(MutableName, Type, _Value, Inst, Attrs, _Varset) ->
-        NonPureGetPredDecl =
-            prog_mutable.nonpure_get_pred_decl(ModuleName, MutableName,
-                Type, Inst),
-        list.cons(NonPureGetPredDecl - Context, !Items),
-        NonPureSetPredDecl =
-            prog_mutable.nonpure_set_pred_decl(ModuleName, MutableName,
-                Type, Inst),
-        list.cons(NonPureSetPredDecl - Context, !Items),
-        ( mutable_var_attach_to_io_state(Attrs) = yes ->
-            PureGetPredDecl = 
-                prog_mutable.pure_get_pred_decl(ModuleName, MutableName,
-                   Type, Inst),
-            list.cons(PureGetPredDecl - Context, !Items),
-            PureSetPredDecl = 
-                prog_mutable.pure_set_pred_decl(ModuleName, MutableName,
-                    Type, Inst),
-            list.cons(PureSetPredDecl - Context, !Items)
+        ConstantInterface = mutable_var_constant(Attrs),
+        (
+            ConstantInterface = yes,
+            ConstantGetPredDecl =
+                constant_get_pred_decl(ModuleName, MutableName, Type, Inst),
+            list.cons(ConstantGetPredDecl - Context, !Items),
+            ConstantSetPredDecl =
+                constant_set_pred_decl(ModuleName, MutableName, Type, Inst),
+            list.cons(ConstantSetPredDecl - Context, !Items)
         ;
-            true
+            ConstantInterface = no,
+            StdGetPredDecl =
+                std_get_pred_decl(ModuleName, MutableName, Type, Inst),
+            list.cons(StdGetPredDecl - Context, !Items),
+            StdSetPredDecl =
+                std_set_pred_decl(ModuleName, MutableName, Type, Inst),
+            list.cons(StdSetPredDecl - Context, !Items),
+            IOStateInterface = mutable_var_attach_to_io_state(Attrs),
+            (
+                IOStateInterface = yes,
+                PureGetPredDecl = 
+                    io_get_pred_decl(ModuleName, MutableName, Type, Inst),
+                list.cons(PureGetPredDecl - Context, !Items),
+                PureSetPredDecl = 
+                    io_set_pred_decl(ModuleName, MutableName, Type, Inst),
+                list.cons(PureSetPredDecl - Context, !Items)
+            ;
+                IOStateInterface = no
+            )
         )
     ;
         list.cons(Item - Context, !Items) 

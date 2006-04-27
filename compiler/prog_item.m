@@ -329,6 +329,7 @@
 :- func mutable_var_trailed(mutable_var_attributes) = trailed.
 :- func mutable_var_maybe_foreign_names(mutable_var_attributes)
     = maybe(list(foreign_name)).
+:- func mutable_var_constant(mutable_var_attributes) = bool.
 :- func mutable_var_attach_to_io_state(mutable_var_attributes) = bool.
 
 :- pred set_mutable_var_thread_safe(thread_safe::in,
@@ -341,6 +342,9 @@
     mutable_var_attributes::in, mutable_var_attributes::out) is det.
 
 :- pred set_mutable_var_attach_to_io_state(bool::in,
+    mutable_var_attributes::in, mutable_var_attributes::out) is det.
+
+:- pred set_mutable_var_constant(bool::in,
     mutable_var_attributes::in, mutable_var_attributes::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -758,20 +762,22 @@
     %
 :- type mutable_var_attributes
     --->    mutable_var_attributes(
-                mutable_trailed            :: trailed,
-                mutable_thread_safe        :: thread_safe,
-                mutable_foreign_names      :: maybe(list(foreign_name)),
-                mutable_attach_to_io_state :: bool
+                mutable_trailed             :: trailed,
+                mutable_thread_safe         :: thread_safe,
+                mutable_foreign_names       :: maybe(list(foreign_name)),
+                mutable_attach_to_io_state  :: bool,
+                mutable_constant            :: bool
             ).
 
 default_mutable_attributes =
-    mutable_var_attributes(trailed, not_thread_safe, no, no).
+    mutable_var_attributes(trailed, not_thread_safe, no, no, no).
 
 mutable_var_thread_safe(MVarAttrs) = MVarAttrs ^ mutable_thread_safe.
 mutable_var_trailed(MVarAttrs) = MVarAttrs ^ mutable_trailed.
 mutable_var_maybe_foreign_names(MVarAttrs) = MVarAttrs ^ mutable_foreign_names.
 mutable_var_attach_to_io_state(MVarAttrs) =
     MVarAttrs ^ mutable_attach_to_io_state.
+mutable_var_constant(MVarAttrs) = MVarAttrs ^ mutable_constant.
 
 set_mutable_var_thread_safe(ThreadSafe, !Attributes) :-
     !:Attributes = !.Attributes ^ mutable_thread_safe := ThreadSafe.
@@ -789,8 +795,10 @@ set_mutable_add_foreign_name(ForeignName, !Attributes) :-
     ),
     !:Attributes = !.Attributes ^ mutable_foreign_names := MaybeForeignNames.
 set_mutable_var_attach_to_io_state(AttachToIOState, !Attributes) :-
-    !:Attributes =
-        !.Attributes ^ mutable_attach_to_io_state := AttachToIOState.
+    !:Attributes = !.Attributes ^ mutable_attach_to_io_state
+        := AttachToIOState.
+set_mutable_var_constant(Constant, !Attributes) :-
+    !:Attributes = !.Attributes ^ mutable_constant := Constant.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
