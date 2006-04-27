@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1994-2000,2002-2004 The University of Melbourne.
+** Copyright (C) 1994-2000,2002-2004, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -325,6 +325,15 @@ MR_GC_malloc(size_t num_bytes)
 	void	*ptr;
 
 #ifdef	MR_CONSERVATIVE_GC
+#ifdef	GC_REDIRECT_TO_LOCAL
+	/*
+	** Work around a bug in Boehm GC <= 6.7.
+	** It appears this problem is not in 7.0alpha5.
+	*/
+	if (num_bytes == 0) {
+		return NULL;
+	}
+#endif
 	ptr = GC_MALLOC(num_bytes);
 #else
 	ptr = malloc(num_bytes);
