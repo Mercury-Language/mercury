@@ -1004,7 +1004,7 @@ echo "test_mercury starting to create binary distribution at `date`" 1>&2
 # they were compiled with.
 case $HOST in
 	jupiter)	
-		fullname=i686-pc-linux-libc2.2-gnu-O5-intermod
+		fullname=i686-pc-linux-libc2.3-gnu-O5-intermod
 		;;
 	earth)
 		fullname=i686-pc-linux-libc2.3-gnu-O2
