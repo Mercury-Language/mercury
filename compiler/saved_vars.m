@@ -347,17 +347,20 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
                 IsNonLocal, !SlotInfo),
             Goals = [NewConstruct, Goal1 | Goals1]
         ;
-            Goal0Expr = conj(ConjType, Conj),
+            Goal0Expr = conj(ConjType, Conj0),
             (
                 ConjType = plain_conj,
-                list.append(Conj, Goals0, Goals1),
+                list.append(Conj0, Goals0, Goals1),
                 saved_vars_delay_goal(Goals1, Goals, Construct, Var,
                     IsNonLocal, !SlotInfo)
             ;
                 ConjType = parallel_conj,
+                push_into_goals_rename(Conj0, Conj, Construct, Var,
+                    !SlotInfo),
+                Goal1 = conj(ConjType, Conj) - Goal0Info,
                 saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                     IsNonLocal, !SlotInfo),
-                Goals = [Goal0 | Goals1]
+                Goals = [Goal1 | Goals1]
             )
         ;
             Goal0Expr = scope(Reason, SomeGoal0),
