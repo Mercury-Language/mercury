@@ -93,6 +93,7 @@ MCFLAGS-middle_rec_labels	= --middle-rec
 MCFLAGS-mostly_uniq_mode_inf	= --infer-all
 MCFLAGS-mpj6			= --infer-all
 MCFLAGS-no_warn_obsolete	= --no-warn-obsolete
+MCFLAGS-par_saved_const 	= -O3 --optimize-saved-vars-const
 MCFLAGS-pred_with_no_modes	= --infer-all
 MCFLAGS-quantifier_warning	= --halt-at-warn
 MCFLAGS-simplify_bug2		= -O3
