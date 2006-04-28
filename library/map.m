@@ -367,6 +367,10 @@
     %
 :- pred map.map_foldl2(pred(K, V, W, A, A, B, B), map(K, V), map(K, W),
     A, A, B, B).
+:- mode map.map_foldl2(pred(in, in, out, di, uo, di, uo) is det,
+    in, out, di, uo, di, uo) is det.
+:- mode map.map_foldl2(pred(in, in, out, in, out, di, uo) is det,
+    in, out, in, out, di, uo) is det.
 :- mode map.map_foldl2(pred(in, in, out, in, out, in, out) is det,
     in, out, in, out, in, out) is det.
 :- mode map.map_foldl2(pred(in, in, out, in, out, in, out) is semidet,
