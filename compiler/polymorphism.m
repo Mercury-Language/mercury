@@ -5,19 +5,19 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: polymorphism.m.
 % Main author: fjh.
-
+%
 % This module is a pass over the HLDS.
 % It does a syntactic transformation to implement polymorphism, including
 % typeclasses, by passing extra `type_info' and `typeclass_info' arguments.
 % These arguments are structures that contain, amongst other things,
 % higher order predicate terms for the polymorphic procedures or methods.
-
+%
 % See notes/type_class_transformation.html for a description of the
 % transformation and data structures used to implement type classes.
-
+%
 % XXX The way the code in this module handles existential type classes
 % and type class constraints is a bit ad hoc, in general; there are
 % definitely parts of this code (marked with XXXs below) that could
@@ -25,7 +25,7 @@
 %
 %-----------------------------------------------------------------------------%
 %
-% Tranformation of polymorphic code:
+% Transformation of polymorphic code:
 %
 % Every polymorphic predicate is transformed so that it takes one additional
 % argument for every type variable in the predicate's type declaration.
@@ -152,7 +152,7 @@
 %
 %   and finally the original arguments of the predicate.
 %
-% Bear in mind that for the purposes of this (and most other) calucaltions,
+% Bear in mind that for the purposes of this (and most other) calculations,
 % the return parameter of a function counts as the _last_ argument.
 %
 % The convention for class method implementations is slightly different
