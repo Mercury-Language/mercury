@@ -2776,9 +2776,13 @@ AC_ARG_ENABLE(hlc-prof-grades,
                           install profiling versions of the high level C grade],
 enable_hlc_prof_grades="$enableval",enable_hlc_prof_grades=no)
 
+# We don't enable the .NET grades by default because that may lead to 
+# installation process breaking on Linux systems that have DotGNU or Mono
+# installed.
+#
 AC_ARG_ENABLE(dotnet-grades,
-[  --disable-dotnet-grades do not install the .NET grades],
-enable_dotnet_grades="$enableval",enable_dotnet_grades=yes)
+[  --enable-dotnet-grades  install the .NET grades],
+enable_dotnet_grades="$enableval",enable_dotnet_grades=no)
 
 # XXX The java backend is currently broken, so we don't 
 # enable the java grade by default.
