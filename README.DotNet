@@ -64,16 +64,17 @@ call "C:\Program Files\Microsoft Visual Studio.NET\Common7\Tools\vsvars32.bat"
 	  after the line that says @echo off.
 	  Substitute your Visual Studio installation path for the default path
 	  given here.
-	  
-	- The Mercury distribution -- installed as usual.  Make sure
-	  the installation is run after the Microsoft .NET SDK is installed
-	  (run it again if necessary) so that the configuration scripts
-	  detect the installation path of the SDK.  If `configure' finds
-	  `ilasm' and `cl' then this has been successful.  You can install
-	  from either the source or binary distribution.
 
-	  If you're reading this file from somewhere other than the
-	  Mercury distribution, try the Mercury homepage at:
+	- The Mercury distribution -- installed as usual.  You invoke the
+	  configure with the option `--enable-dotnet-grades' in order to
+	  enable .NET support.  Make sure the installation is run after the
+	  Microsoft .NET SDK is installed (run it again if necessary) so that
+	  the configuration scripts detect the installation path of the SDK.
+	  If `configure' finds `ilasm' and `cl' then this has been successful.
+	  You can install from either the source or binary distribution.
+
+	  If you're reading this file from somewhere other than the Mercury
+	  distribution, try the Mercury homepage at:
 
 	  	<http://www.cs.mu.oz.au/mercury/>
 
