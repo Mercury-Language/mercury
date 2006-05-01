@@ -2246,7 +2246,7 @@ type_ctor_unify_pred(_) = "dummy value" :-
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     // XXX This should be something else.
-    TypeInfo_for_P = NULL;
+    TypeInfo_for_P = null;
 
     UnifyPred = TypeCtorInfo[
         (int) type_ctor_info_field_nums.type_ctor_compare_pred];
