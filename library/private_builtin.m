@@ -488,7 +488,7 @@ public static int MR_PREDICATE                          = 0;
 public static int MR_FUNCTION                           = 1;
 
 public static bool
-special.Unify..type_info_1_0(
+special__Unify____type_info_1_0(
     object[] type_info, object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(""unify for type_info"");
@@ -496,7 +496,7 @@ special.Unify..type_info_1_0(
 }
 
 public static bool
-special.Unify..typeclass_info_1_0(
+special__Unify____typeclass_info_1_0(
     object[] type_info, object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(""unify for typeclass_info"");
@@ -504,7 +504,7 @@ special.Unify..typeclass_info_1_0(
 }
 
 public static bool
-special.Unify..base_typeclass_info_1_0(
+special__Unify____base_typeclass_info_1_0(
     object[] type_info, object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(""unify for base_typeclass_info"");
@@ -512,7 +512,7 @@ special.Unify..base_typeclass_info_1_0(
 }
 
 public static bool
-special.Unify..type_ctor_info_1_0(
+special__Unify____type_ctor_info_1_0(
     object[] type_info, object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(""unify for type_ctor_info"");
@@ -520,28 +520,28 @@ special.Unify..type_ctor_info_1_0(
 }
 
 public static void
-special.Compare..type_ctor_info_1_0(
+special__Compare____type_ctor_info_1_0(
     object[] type_info, ref object[] result, object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(""compare for type_ctor_info"");
 }
 
 public static void
-special.Compare..type_info_1_0(
+special__Compare____type_info_1_0(
     object[] type_info, ref object[] result, object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(""compare for type_info"");
 }
 
 public static void
-special.Compare..typeclass_info_1_0(
+special__Compare____typeclass_info_1_0(
     object[] type_info, ref object[] result, object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(""compare for typeclass_info"");
 }
 
 public static void
-special.Compare..base_typeclass_info_1_0(
+special__Compare____base_typeclass_info_1_0(
     object[] type_info, ref object[] result, object[] x, object[] y)
 {
     mercury.runtime.Errors.SORRY(""compare for base_typeclass_info"");
@@ -1423,7 +1423,7 @@ no_clauses(PredName) :-
     //
 
     public static boolean
-    .Unify..ref_1_0(mercury.runtime.TypeInfo_Struct ti,
+    __Unify____ref_1_0(mercury.runtime.TypeInfo_Struct ti,
         mercury.private_builtin.Ref_1 x,
         mercury.private_builtin.Ref_1 y)
     {
@@ -1433,7 +1433,7 @@ no_clauses(PredName) :-
     }
 
     public static boolean
-    .Unify..heap_pointer_0_0 (mercury.private_builtin.Heap_pointer_0 x,
+    __Unify____heap_pointer_0_0 (mercury.private_builtin.Heap_pointer_0 x,
         mercury.private_builtin.Heap_pointer_0 y)
     {
         // stub only
@@ -1441,7 +1441,7 @@ no_clauses(PredName) :-
     }
 
     public static boolean
-    .Unify..type_ctor_info_1_0(mercury.runtime.TypeInfo_Struct ti,
+    __Unify____type_ctor_info_1_0(mercury.runtime.TypeInfo_Struct ti,
         mercury.runtime.TypeCtorInfo_Struct x,
         mercury.runtime.TypeCtorInfo_Struct y)
     {
@@ -1451,7 +1451,7 @@ no_clauses(PredName) :-
     }
 
     public static boolean
-    .Unify..type_info_1_0(mercury.runtime.TypeInfo_Struct ti,
+    __Unify____type_info_1_0(mercury.runtime.TypeInfo_Struct ti,
         mercury.runtime.TypeInfo_Struct x,
         mercury.runtime.TypeInfo_Struct y)
     {
@@ -1461,7 +1461,7 @@ no_clauses(PredName) :-
     }
 
     public static boolean
-    .Unify..base_typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
+    __Unify____base_typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
         java.lang.Object[] x, java.lang.Object[] y)
     {
         // stub only
@@ -1469,7 +1469,7 @@ no_clauses(PredName) :-
     }
 
     public static boolean
-    .Unify..typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
+    __Unify____typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
         java.lang.Object[] x, java.lang.Object[] y)
     {
         // stub only
@@ -1478,7 +1478,7 @@ no_clauses(PredName) :-
     }
 
     public static mercury.builtin.Comparison_result_0
-    .Compare..ref_1_0(mercury.runtime.TypeInfo_Struct ti,
+    __Compare____ref_1_0(mercury.runtime.TypeInfo_Struct ti,
         mercury.private_builtin.Ref_1 x,
         mercury.private_builtin.Ref_1 y)
     {
@@ -1488,7 +1488,7 @@ no_clauses(PredName) :-
     }
 
     public static mercury.builtin.Comparison_result_0
-    .Compare..heap_pointer_0_0 (mercury.private_builtin.Heap_pointer_0 x,
+    __Compare____heap_pointer_0_0 (mercury.private_builtin.Heap_pointer_0 x,
         mercury.private_builtin.Heap_pointer_0 y)
     {
         // stub only
@@ -1496,7 +1496,7 @@ no_clauses(PredName) :-
     }
 
     public static mercury.builtin.Comparison_result_0
-    .Compare..type_ctor_info_1_0(mercury.runtime.TypeInfo_Struct ti,
+    __Compare____type_ctor_info_1_0(mercury.runtime.TypeInfo_Struct ti,
         mercury.runtime.TypeCtorInfo_Struct x,
         mercury.runtime.TypeCtorInfo_Struct y)
     {
@@ -1506,7 +1506,7 @@ no_clauses(PredName) :-
     }
 
     public static mercury.builtin.Comparison_result_0
-    .Compare..type_info_1_0(mercury.runtime.TypeInfo_Struct ti,
+    __Compare____type_info_1_0(mercury.runtime.TypeInfo_Struct ti,
         mercury.runtime.TypeInfo_Struct x,
         mercury.runtime.TypeInfo_Struct y)
     {
@@ -1516,7 +1516,7 @@ no_clauses(PredName) :-
     }
 
     public static mercury.builtin.Comparison_result_0
-    .Compare..base_typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
+    __Compare____base_typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
         java.lang.Object[] x, java.lang.Object[] y)
     {
         // stub only
@@ -1524,7 +1524,7 @@ no_clauses(PredName) :-
     }
 
     public static mercury.builtin.Comparison_result_0
-    .Compare..typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
+    __Compare____typeclass_info_1_0(mercury.runtime.TypeInfo_Struct ti,
         java.lang.Object[] x, java.lang.Object[] y)
     {
         // stub only
