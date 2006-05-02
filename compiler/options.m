@@ -2062,6 +2062,7 @@ long_option("c-optimize",           c_optimize).
 % However for the moment they are just synonyms.
 long_option("c-debug",              target_debug).
 long_option("c-include-directory",  c_include_directory).
+long_option("c-include-dir",        c_include_directory).
 long_option("ansi-c",               ansi_c).
 long_option("cflags",               cflags).
 long_option("cflag",                quoted_cflag).
@@ -4224,7 +4225,7 @@ options_help_target_code_compilation -->
         "\t(This has the same effect as `--cflags ""-g""'",
         "\tand disables stripping of the executable.)",
 
-        "--c-include-directory <dir>",
+        "--c-include-directory <dir>, --c-include-dir <dir>",
         "\tAppend <dir> to the list of directories to be searched for",
         "\tC header files.  Note that if you want to override",
         "\tthis list, rather than append to it, then you can set the",

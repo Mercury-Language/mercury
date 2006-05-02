@@ -7709,6 +7709,7 @@ Specify which C compiler to use.
 
 @sp 1
 @item --c-include-directory @var{dir}
+@item --c-include-dir @var{dir}
 @findex --c-include-directory
 @cindex Include directories
 @cindex Directories
