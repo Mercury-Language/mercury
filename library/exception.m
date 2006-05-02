@@ -41,12 +41,12 @@
 
 :- type exception_result(T)
     --->    succeeded(T)
-    ;   failed
-    ;   exception(univ).
+    ;       failed
+    ;       exception(univ).
 
 :- inst cannot_fail
     --->    succeeded(ground)
-    ;   exception(ground).
+    ;       exception(ground).
 
     % try(Goal, Result):
     %
@@ -64,7 +64,7 @@
     %               ; Result = exception(_)
     %       ).
     %
-:- pred try(pred(T),            exception_result(T)).
+:- pred try(pred(T),                exception_result(T)).
 :- mode try(pred(out) is det,       out(cannot_fail)) is cc_multi.
 :- mode try(pred(out) is semidet,   out)              is cc_multi.
 :- mode try(pred(out) is cc_multi,  out(cannot_fail)) is cc_multi.
@@ -286,26 +286,26 @@
 
 :- type determinism
     --->    det
-    ;   semidet
-    ;   cc_multi
-    ;   cc_nondet
-    ;   multi
-    ;   nondet
-    ;   erroneous
-    ;   failure.
+    ;       semidet
+    ;       cc_multi
+    ;       cc_nondet
+    ;       multi
+    ;       nondet
+    ;       erroneous
+    ;       failure.
 
 :- pred get_determinism(pred(T), determinism).
 :- mode get_determinism(pred(out) is det,     out(bound(det)))     is cc_multi.
 :- mode get_determinism(pred(out) is semidet, out(bound(semidet))) is cc_multi.
-:- mode get_determinism(pred(out) is multi, out(bound(multi)))     is cc_multi.
-:- mode get_determinism(pred(out) is nondet, out(bound(nondet)))   is cc_multi.
+:- mode get_determinism(pred(out) is multi,   out(bound(multi)))   is cc_multi.
+:- mode get_determinism(pred(out) is nondet,  out(bound(nondet)))  is cc_multi.
 :- mode get_determinism(pred(out) is cc_multi, out(bound(cc_multi)))
-                                  is cc_multi.
+    is cc_multi.
 :- mode get_determinism(pred(out) is cc_nondet, out(bound(cc_nondet)))
-                                  is cc_multi.
+    is cc_multi.
 
-:- pred get_determinism_2(pred(T, S, S),                 determinism).
-:- mode get_determinism_2(pred(out, di, uo) is det,      out(bound(det)))
+:- pred get_determinism_2(pred(T, S, S), determinism).
+:- mode get_determinism_2(pred(out, di, uo) is det, out(bound(det)))
     is cc_multi.
 :- mode get_determinism_2(pred(out, di, uo) is cc_multi, out(bound(cc_multi)))
     is cc_multi.
@@ -346,30 +346,25 @@ get_determinism(_Pred::(pred(out) is nondet), Det::out(bound(nondet))) :-
 
 :- pragma promise_pure(get_determinism_2/2).
 
-get_determinism_2(
-        _Pred::pred(out, di, uo) is det,
-            Det::out(bound(det))) :-
+get_determinism_2(_Pred::pred(out, di, uo) is det, Det::out(bound(det))) :-
     ( cc_multi_equal(det, Det)
     ; error("get_determinism_2")
     ).
-get_determinism_2(
-        _Pred::pred(out, di, uo) is cc_multi,
-            Det::out(bound(cc_multi))) :-
+get_determinism_2(_Pred::pred(out, di, uo) is cc_multi,
+        Det::out(bound(cc_multi))) :-
     ( cc_multi_equal(cc_multi, Det)
     ; error("get_determinism_2")
     ).
 
-% These are not worth inlining, since they will
-% (presumably) not be called frequently, and so
-% any increase in speed from inlining is not worth
-% the increase in code size.
+% These are not worth inlining, since they will (presumably) not be called
+% frequently, and so any increase in speed from inlining is not worth the
+% increase in code size.
 :- pragma no_inline(throw/1).
 :- pragma no_inline(rethrow/1).
 
-% The termination analyzer can infer termination
-% of throw/1 itself but declaring it to be terminating
-% here means that all of the standard library will
-% treat it as terminating as well.
+% The termination analyzer can infer termination of throw/1 itself but
+% declaring it to be terminating here means that all of the standard library
+% will treat it as terminating as well.
 :- pragma terminates(throw/1).
 
 throw(Exception) :-
@@ -2603,4 +2598,5 @@ throw_if_near_stack_limits :-
 now_near_stack_limits :-
     semidet_fail.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
