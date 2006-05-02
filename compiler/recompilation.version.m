@@ -594,6 +594,9 @@ is_pred_pragma(termination_info(PredOrFunc, Name, Modes, _, _),
 is_pred_pragma(structure_sharing(PredOrFunc, Name, Modes, _, _, _),
         yes(yes(PredOrFunc) - Name / Arity)) :-
     adjust_func_arity(PredOrFunc, Arity, list.length(Modes)).  
+is_pred_pragma(structure_reuse(PredOrFunc, Name, Modes, _, _, _, _),
+        yes(yes(PredOrFunc) - Name / Arity)) :-
+    adjust_func_arity(PredOrFunc, Arity, list.length(Modes)).  
 is_pred_pragma(termination2_info(PredOrFunc, Name, Modes, _, _, _),
         yes(yes(PredOrFunc) - Name / Arity)) :-
     adjust_func_arity(PredOrFunc, Arity, list.length(Modes)).  

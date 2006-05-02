@@ -661,6 +661,8 @@ mercury_output_item(_UnqualifiedItemNames, pragma(_, Pragma), Context, !IO) :-
         write_pragma_structure_sharing_info(PredOrFunc, PredName, ModesList, 
             Context, HeadVars, no, Types, no, MaybeStructureSharing, !IO)
     ;
+        Pragma = structure_reuse(_, _, _, _, _, _, _)
+    ;
         Pragma = mode_check_clauses(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, predicate,
             "mode_check_clauses", no, !IO)

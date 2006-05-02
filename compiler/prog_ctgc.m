@@ -22,6 +22,7 @@
 :- import_module bool.
 :- import_module int.
 :- import_module io.
+:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module term.
@@ -38,6 +39,9 @@
 :- func parse_structure_sharing(term(T)) = structure_sharing.
 :- func parse_structure_sharing_domain(term(T)) = structure_sharing_domain.
 
+:- func parse_reuse_tuple(term(T)) = reuse_tuple.
+:- func parse_reuse_tuples(term(T)) = reuse_tuples.
+
 %-----------------------------------------------------------------------------%
 %
 % Printing routines
@@ -46,6 +50,9 @@
 :- pred print_selector(tvarset::in, selector::in, io::di, io::uo) is det.
 
 :- pred print_datastruct(prog_varset::in, tvarset::in, datastruct::in,
+    io::di, io::uo) is det.
+
+:- pred print_datastructs(prog_varset::in, tvarset::in, list(datastruct)::in,
     io::di, io::uo) is det.
 
 :- pred print_structure_sharing_pair(prog_varset::in, tvarset::in,
@@ -98,6 +105,15 @@
 :- pred print_interface_structure_sharing_domain(prog_varset::in,
     tvarset::in, maybe(structure_sharing_domain)::in, io::di, io::uo) is det.
 
+:- pred print_reuse_tuple(prog_varset::in, tvarset::in, reuse_tuple::in,
+    io::di, io::uo) is det.
+
+:- pred print_reuse_tuples(prog_varset::in, tvarset::in, reuse_tuples::in,
+    io::di, io::uo) is det.
+
+:- pred print_interface_maybe_reuse_tuples(prog_varset::in, tvarset::in, 
+    maybe(reuse_tuples)::in, io::di, io::uo) is det.
+
 %-----------------------------------------------------------------------------%
 %
 % Renaming operations
@@ -132,7 +148,6 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 
-:- import_module list.
 :- import_module string.
 :- import_module pair.
 :- import_module varset.
@@ -227,6 +242,30 @@ parse_datastruct(Term) = Datastruct :-
             "parse_datastruct: error while parsing datastruct.")
     ).
 
+:- func parse_datastruct_list(term(T)) = list(datastruct).
+
+parse_datastruct_list(Term) = Datastructs :- 
+    (
+        Term = term.functor(term.atom(Cons), Args, _)
+    -> 
+        ( 
+            Cons = "[|]",
+            Args = [FirstDataTerm, RestDataTerm]
+        ->
+            Datastructs = [parse_datastruct(FirstDataTerm)|
+                parse_datastruct_list(RestDataTerm)]
+        ;
+            Cons = "[]"
+        ->
+            Datastructs = [] 
+        ;
+            unexpected(this_file, "Error while parsing list of datastructs.")
+        )
+    ;
+        unexpected(this_file, "Error while parsing list of datastructs " ++
+            "(term not a functor).")
+    ).
+
 parse_structure_sharing_pair(Term) = SharingPair :-
     (
         Term = term.functor(term.atom(Cons), Args, _),
@@ -277,6 +316,54 @@ parse_structure_sharing_domain(Term) = SharingAs :-
         unexpected(this_file, "Error while parsing structure sharing domain.")
     ).
 
+    
+parse_reuse_tuple(Term) = ReuseTuple :- 
+    (
+        Term = term.functor(term.atom(Cons), Args, _)
+    -> 
+        ( 
+            Cons = "condition",
+            Args = [DeadNodesTerm, InUseNodesTerm, SharingTerm]
+        ->
+            DeadNodes = parse_datastruct_list(DeadNodesTerm),
+            InUseNodes = parse_datastruct_list(InUseNodesTerm),
+            Sharing = parse_structure_sharing_domain(SharingTerm),
+            ReuseTuple = conditional(DeadNodes, InUseNodes, Sharing)
+        ;
+            Cons = "unconditional"
+        -> 
+            ReuseTuple = unconditional
+        ;
+            unexpected(this_file, "Error while parsing reuse tuple.")
+        )
+    ;
+        unexpected(this_file, "Error while parsing reuse tuple " ++
+            "(term not a functor).")
+    ).
+
+parse_reuse_tuples(Term) = ReuseTuples :- 
+    (
+        Term = term.functor(term.atom(Cons), Args, _)
+    -> 
+        ( 
+            Cons = "[|]",
+            Args = [FirstTupleTerm, RestTuplesTerm]
+        ->
+            ReuseTuples = [parse_reuse_tuple(FirstTupleTerm)|
+                parse_reuse_tuples(RestTuplesTerm)]
+        ;
+            Cons = "[]"
+        ->
+            ReuseTuples = [] 
+        ;
+            unexpected(this_file, "Error while parsing list of reuse tuples.")
+        )
+    ;
+        unexpected(this_file, "Error while parsing list of reuse tuples " ++
+            "(term not a functor).")
+    ).
+    
+
 %-----------------------------------------------------------------------------%
 %
 % Printing routines
@@ -320,6 +407,12 @@ print_datastruct(ProgVarSet, TypeVarSet, DataStruct, !IO) :-
     io.write_strings(["cel(", VarName, ", "], !IO),
     print_selector(TypeVarSet, DataStruct^sc_selector, !IO),
     io.write_string(")", !IO).
+
+print_datastructs(ProgVarSet, TypeVarSet, Datastructs, !IO) :- 
+    io.write_string("[", !IO), 
+    io.write_list(Datastructs, ",", print_datastruct(ProgVarSet, TypeVarSet),
+        !IO), 
+    io.write_string("]", !IO). 
 
 print_structure_sharing_pair(ProgVarSet, TypeVarSet, SharingPair, !IO) :-
     SharingPair = D1 - D2,
@@ -407,6 +500,37 @@ print_interface_structure_sharing_domain(ProgVarSet, TypeVarSet,
     io.write_string("yes(", !IO),
     print_structure_sharing_domain(ProgVarSet, TypeVarSet, no, no, SharingAs,
         !IO),
+    io.write_string(")", !IO).
+
+print_reuse_tuple(ProgVarSet, TypeVarSet, ReuseTuple, !IO) :-
+    (
+        ReuseTuple = unconditional,
+        io.write_string("unconditional", !IO)
+    ;
+        ReuseTuple = conditional(DeadNodes, InUseNodes, Sharing), 
+        io.write_string("conditional(", !IO), 
+        print_datastructs(ProgVarSet, TypeVarSet, DeadNodes, !IO), 
+        io.write_string(",", !IO),
+        print_datastructs(ProgVarSet, TypeVarSet, InUseNodes, !IO), 
+        io.write_string(",", !IO),
+        print_structure_sharing_domain(ProgVarSet, TypeVarSet, no, no, 
+            Sharing, !IO),
+        io.write_string(")", !IO)
+    ).
+
+print_reuse_tuples(ProgVarSet, TypeVarSet, ReuseTuples, !IO) :- 
+    io.write_string("[", !IO), 
+    io.write_list(ReuseTuples, ",", print_reuse_tuple(ProgVarSet, TypeVarSet),
+        !IO), 
+    io.write_string("]", !IO).
+
+print_interface_maybe_reuse_tuples(_, _, no, !IO) :- 
+    io.write_string("not_available", !IO).
+
+print_interface_maybe_reuse_tuples(ProgVarSet, TypeVarSet, 
+        yes(ReuseTuples), !IO) :- 
+    io.write_string("yes(", !IO),
+    print_reuse_tuples(ProgVarSet, TypeVarSet, ReuseTuples, !IO),
     io.write_string(")", !IO).
 
 %-----------------------------------------------------------------------------%

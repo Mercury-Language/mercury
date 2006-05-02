@@ -608,7 +608,24 @@
             %
             % The list of modes consists of the declared argmodes (or inferred
             % argmodes if there are no declared ones). 
-
+    ;
+            structure_reuse(
+                reuse_p_or_f          :: pred_or_func,
+                reuse_name            :: sym_name,
+                reuse_mode            :: list(mer_mode),
+                reuse_headvars        :: prog_vars, 
+                reuse_headvartypes    :: list(mer_type),
+                reuse_description     :: maybe(reuse_tuples),
+                reuse_optimised_name  :: maybe(sym_name)
+            )
+            % After reuse analysis, the compiler generates structure reuse
+            % pragmas to be stored in and read from optimization interface
+            % files. 
+            %
+            % The list of modes consists of the declared argmodes (or inferred
+            % argmodes if there are no declared ones). 
+            % The last sym_name (reuse_optimised_name) stores the name of the
+            % optimised version of the exported predicate.
     .
 
 %-----------------------------------------------------------------------------%

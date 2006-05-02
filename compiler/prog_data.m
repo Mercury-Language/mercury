@@ -354,6 +354,35 @@
 
 %-----------------------------------------------------------------------------%
 %
+% Stuff for the `structure_reuse_info' pragma.
+%
+
+    % A reuse-tuple is used to describe the condition for which reuse
+    % within a particular procedure is allowed. 
+:- type reuse_tuple
+    --->    unconditional
+    ;       conditional(
+                reuse_nodes         :: list(datastruct),
+                    % The set of datastructures pointing to the memory that
+                    % becomes 'dead' and thus will be reused. This set is
+                    % restricted to the head variables of the involved
+                    % procedure. 
+                live_headvars       :: list(datastruct), 
+                    % The set of datastructures inherently live at the moment
+                    % where the reuse_nodes become dead.  This set is
+                    % restricted to the head variables of the procedure the
+                    % reuse condition refers to. 
+                sharing_headvars    :: structure_sharing_domain
+                    % Description of the structure sharing existing at the
+                    % moment where the reuse_nodes become dead. The sharing is
+                    % also restricted to the headvariables of the concerned
+                    % procedure. 
+            ).
+
+:- type reuse_tuples == list(reuse_tuple).
+
+%-----------------------------------------------------------------------------%
+%
 % Stuff for the `unused_args' pragma
 %
 

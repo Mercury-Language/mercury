@@ -303,6 +303,8 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
     ;
         Pragma = structure_sharing(_, _, _, _, _, _)
     ;
+        Pragma = structure_reuse(_, _, _, _, _, _, _)
+    ;
         Pragma = mode_check_clauses(Name, Arity),
         add_pred_marker("mode_check_clauses", Name, Arity, ImportStatus,
             Context, mode_check_clauses, [], !ModuleInfo, !IO),
