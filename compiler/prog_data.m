@@ -5,19 +5,20 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: prog_data.m.
 % Main author: fjh.
-
+% 
 % This module, together with prog_item, defines a data structure for
 % representing Mercury programs.
-
+% 
 % This data structure specifies basically the same information as is contained
 % in the source code, but in a parse tree rather than a flat file.  This
 % module defines the parts of the parse tree that are needed by the various
 % compiler backends; parts of the parse tree that are not needed by the
 % backends are contained in prog_item.m.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_data.
@@ -354,25 +355,28 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Stuff for the `structure_reuse_info' pragma.
+% Stuff for the `structure_reuse_info' pragma
 %
 
     % A reuse-tuple is used to describe the condition for which reuse
     % within a particular procedure is allowed. 
+    %
 :- type reuse_tuple
     --->    unconditional
     ;       conditional(
-                reuse_nodes         :: list(datastruct),
+                reuse_nodes :: list(datastruct),
                     % The set of datastructures pointing to the memory that
                     % becomes 'dead' and thus will be reused. This set is
                     % restricted to the head variables of the involved
                     % procedure. 
-                live_headvars       :: list(datastruct), 
+                
+                live_headvars :: list(datastruct), 
                     % The set of datastructures inherently live at the moment
                     % where the reuse_nodes become dead.  This set is
                     % restricted to the head variables of the procedure the
                     % reuse condition refers to. 
-                sharing_headvars    :: structure_sharing_domain
+                
+                sharing_headvars :: structure_sharing_domain
                     % Description of the structure sharing existing at the
                     % moment where the reuse_nodes become dead. The sharing is
                     % also restricted to the headvariables of the concerned

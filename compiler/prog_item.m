@@ -5,19 +5,20 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: prog_item.m.
 % Main author: fjh.
-
+% 
 % This module, together with prog_data, defines a data structure for
 % representing Mercury programs.  
-
+% 
 % This data structure specifies basically the same information as is
 % contained in the source code, but in a parse tree rather than a flat
 % file.  This module defines the parts of the parse tree that are *not*
 % needed by the various compiler backends; parts of the parse tree that
 % are needed by the backends are contained in prog_data.m.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_item.
@@ -591,8 +592,9 @@
             )
 
     %
-    % CTGC pragma: structure sharing / structure reuse analysis.
+    % CTGC pragmas: structure sharing / structure reuse analysis.
     %
+    
     ;
             structure_sharing(
                 sharing_p_or_f          :: pred_or_func,
@@ -617,7 +619,7 @@
                 reuse_headvartypes    :: list(mer_type),
                 reuse_description     :: maybe(reuse_tuples),
                 reuse_optimised_name  :: maybe(sym_name)
-            )
+            ).
             % After reuse analysis, the compiler generates structure reuse
             % pragmas to be stored in and read from optimization interface
             % files. 
@@ -626,7 +628,6 @@
             % argmodes if there are no declared ones). 
             % The last sym_name (reuse_optimised_name) stores the name of the
             % optimised version of the exported predicate.
-    .
 
 %-----------------------------------------------------------------------------%
 %

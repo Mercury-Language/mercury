@@ -5,13 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: prog_ctgc.m.
 % Main author: nancy.
-
+% 
 % Utility operations (parsing, printing, renaming) for compile-time garbage
 % collection related information, i.e. structure sharing and structure reuse.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_ctgc.
@@ -33,13 +34,19 @@
 %
 
 :- func parse_unit_selector(term(T)) = unit_selector.
+
 :- func parse_selector(term(T)) = selector.
+
 :- func parse_datastruct(term(T)) = datastruct.
+
 :- func parse_structure_sharing_pair(term(T)) = structure_sharing_pair.
+
 :- func parse_structure_sharing(term(T)) = structure_sharing.
+
 :- func parse_structure_sharing_domain(term(T)) = structure_sharing_domain.
 
 :- func parse_reuse_tuple(term(T)) = reuse_tuple.
+
 :- func parse_reuse_tuples(term(T)) = reuse_tuples.
 
 %-----------------------------------------------------------------------------%
@@ -65,7 +72,7 @@
     %
     % Print the list of sharing pairs using StartString to precede the
     % list, using EndString to end the list, using Separator to separate
-    % each of the sharing pairs occuring in the list. If a threshold, say
+    % each of the sharing pairs occurring in the list. If a threshold, say
     % N, is given, then only the first N pairs are printed (and "..."
     % is shown if there are more than N pairs).
     %
@@ -121,16 +128,22 @@
 
 :- pred rename_unit_selector(tsubst::in, unit_selector::in,
     unit_selector::out) is det.
+
 :- pred rename_selector(tsubst::in, selector::in, selector::out) is det.
+
 :- pred rename_datastruct(map(prog_var, prog_var)::in, tsubst::in,
     datastruct::in, datastruct::out) is det.
+
 :- func rename_datastruct(map(prog_var, prog_var), tsubst, datastruct)
     = datastruct.
+
 :- pred rename_structure_sharing_pair(map(prog_var, prog_var)::in,
     tsubst::in, structure_sharing_pair::in, structure_sharing_pair::out)
     is det.
+
 :- pred rename_structure_sharing(map(prog_var, prog_var)::in,
     tsubst::in, structure_sharing::in, structure_sharing::out) is det.
+
 :- pred rename_structure_sharing_domain(map(prog_var, prog_var)::in,
     tsubst::in, structure_sharing_domain::in,
     structure_sharing_domain::out) is det.
@@ -218,7 +231,7 @@ parse_selector(Term) = Selector :-
     ->
         (
             Cons = "[|]",
-            Args = [First , Rest]
+            Args = [First, Rest]
         ->
             Selector = [parse_unit_selector(First) | parse_selector(Rest)]
         ;
@@ -315,7 +328,6 @@ parse_structure_sharing_domain(Term) = SharingAs :-
     ;
         unexpected(this_file, "Error while parsing structure sharing domain.")
     ).
-
     
 parse_reuse_tuple(Term) = ReuseTuple :- 
     (
@@ -362,7 +374,6 @@ parse_reuse_tuples(Term) = ReuseTuples :-
         unexpected(this_file, "Error while parsing list of reuse tuples " ++
             "(term not a functor).")
     ).
-    
 
 %-----------------------------------------------------------------------------%
 %
@@ -376,7 +387,7 @@ selector_to_string(TVarSet, Selector) = String :-
         Selector = [],
         String = "[]"
     ;
-        Selector = [_|_],
+        Selector = [_ | _],
         SelectorStrings = list.map(unit_selector_to_string(TVarSet),
             Selector),
         string.append_list(["[", string.join_list(",", SelectorStrings), "]"],
@@ -403,9 +414,9 @@ print_selector(TVarSet, Selector, !IO) :-
     io.write_string(selector_to_string(TVarSet, Selector), !IO).
 
 print_datastruct(ProgVarSet, TypeVarSet, DataStruct, !IO) :-
-    varset.lookup_name(ProgVarSet, DataStruct^sc_var, VarName),
+    varset.lookup_name(ProgVarSet, DataStruct ^ sc_var, VarName),
     io.write_strings(["cel(", VarName, ", "], !IO),
-    print_selector(TypeVarSet, DataStruct^sc_selector, !IO),
+    print_selector(TypeVarSet, DataStruct ^ sc_selector, !IO),
     io.write_string(")", !IO).
 
 print_datastructs(ProgVarSet, TypeVarSet, Datastructs, !IO) :- 
@@ -534,6 +545,9 @@ print_interface_maybe_reuse_tuples(ProgVarSet, TypeVarSet,
     io.write_string(")", !IO).
 
 %-----------------------------------------------------------------------------%
+%
+% Renaming operations
+%
 
 rename_unit_selector(Subst, !UnitSelector) :-
     (
@@ -576,3 +590,4 @@ this_file = "prog_ctgc.m".
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
+
