@@ -242,8 +242,10 @@ is_lookup_switch(CaseVar, TaggedCases0, GoalInfo, SwitchCanFail0, ReqDensity,
         LastVal = LastCaseVal
     ),
     figure_out_output_vars(!.CI, GoalInfo, OutVars),
+    code_info.remember_position(!.CI, CurPos),
     generate_constants(TaggedCases, OutVars, StoreMap, !MaybeEnd,
         CaseSolns, MaybeLiveness, set.init, ResumeVars, no, GoalTrailOps, !CI),
+    code_info.reset_to_position(CurPos, !CI),
     (
         MaybeLiveness = yes(Liveness)
     ;
@@ -323,6 +325,12 @@ generate_constants([Case | Cases], Vars, StoreMap, !MaybeEnd, [CaseVal | Rest],
         MaybeLiveness, !ResumeVars, !GoalTrailOps, !CI) :-
     Case = case(_, int_constant(CaseTag), _, Goal),
     Goal = GoalExpr - GoalInfo,
+
+    % Goals with these features need special treatment in generate_goal.
+    goal_info_get_features(GoalInfo, Features),
+    not set.member(call_table_gen, Features),
+    not set.member(save_deep_excp_vars, Features),
+
     ( GoalExpr = disj(Disjuncts) ->
         bool.or(goal_may_modify_trail(GoalInfo), !GoalTrailOps),
         (
@@ -341,13 +349,25 @@ generate_constants([Case | Cases], Vars, StoreMap, !MaybeEnd, [CaseVal | Rest],
                 ThisResumePoint = no_resume_point
             )
         ),
-        all_disjuncts_are_conj_of_unify(Disjuncts, StdDisjuncts),
-        generate_constants_for_disjuncts(StdDisjuncts, Vars, StoreMap,
-            !MaybeEnd, Solns, MaybeLiveness, !CI),
+        all_disjuncts_are_conj_of_unify(Disjuncts),
+
+        % We execute the pre- and post-goal update for the disjunction.
+        % The pre- and post-goal updates for the disjuncts themselves are
+        % done as part of the call to generate_goal in
+        % generate_constants_for_disjuncts in lookup_util.m.
+        code_info.pre_goal_update(GoalInfo, no, !CI),
+        code_info.get_instmap(!.CI, InstMap),
+        generate_constants_for_disjuncts(Disjuncts, Vars, StoreMap, !MaybeEnd,
+            Solns, MaybeLiveness, !CI),
+        code_info.set_instmap(InstMap, !CI),
+        code_info.post_goal_update(GoalInfo, !CI),
         CaseVal = CaseTag - several_solns(Solns)
     ;
-        goal_is_conj_of_unify(Goal, StdGoal),
-        generate_constants_for_arm(StdGoal, Vars, StoreMap, !MaybeEnd, Soln,
+        goal_is_conj_of_unify(Goal),
+        % The pre- and post-goal updates for the goals themselves are
+        % done as part of the call to generate_goal in
+        % generate_constants_for_disjuncts in lookup_util.m.
+        generate_constants_for_arm(Goal, Vars, StoreMap, !MaybeEnd, Soln,
             Liveness, !CI),
         MaybeLiveness = yes(Liveness),
         CaseVal = CaseTag - one_soln(Soln)
@@ -546,8 +566,8 @@ generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
     list.reverse(RevLaterSolnArray, LaterSolnArray),
     MainRowTypes = [integer, integer | LLDSTypes],
     list.length(MainRowTypes, MainRowWidth),
-    code_info.add_vector_static_cell(MainRowTypes, MainRows,
-        MainVectorAddr, !CI),
+    code_info.add_vector_static_cell(MainRowTypes, MainRows, MainVectorAddr,
+        !CI),
     MainVectorAddrRval = const(data_addr_const(MainVectorAddr, no)),
     code_info.add_vector_static_cell(LLDSTypes, LaterSolnArray,
         LaterVectorAddr, !CI),
@@ -556,6 +576,14 @@ generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
     % Since we release BaseReg only after the calls to generate_branch_end,
     % we must make sure that generate_branch_end won't want to overwrite
     % BaseReg.
+    %
+    % We release BaseReg in each arm of generate_code_for_each_kind below.
+    % We cannot release it at the bottom of this predicate, because in the
+    % kind_several_solns arm of generate_code_for_each_kind the generation
+    % of the resume point will clobber the set of acquired registers.
+    %
+    % We cannot release the stack slots anywhere, since they will be needed
+    % after backtracking.
     code_info.acquire_reg_not_in_storemap(StoreMap, BaseReg, !CI),
     code_info.acquire_temp_slot(lookup_switch_cur, CurSlot, !CI),
     code_info.acquire_temp_slot(lookup_switch_max, MaxSlot, !CI),
@@ -578,9 +606,6 @@ generate_several_soln_lookup_switch(IndexRval, StoreMap, MaybeEnd0,
         ResumeVars, AddTrailOps, OutVars, StoreMap, MaybeEnd0, Liveness,
         KindsCode, !CI),
 
-    code_info.release_reg(BaseReg, !CI),
-    % We cannot release the stack slots, since they will be needed after
-    % backtracking.
     code_info.set_resume_point_to_unknown(!CI),
     EndLabelCode = node([
         label(EndLabel) - "end of several_soln lookup switch"
@@ -613,6 +638,7 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
         Kind = kind_zero_solns,
         TestOp = int_ge,
         code_info.reset_to_position(BranchStart, !CI),
+        code_info.release_reg(BaseReg, !CI),
         code_info.generate_failure(KindCode, !CI)
     ;
         Kind = kind_one_soln,
@@ -621,6 +647,7 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
         generate_offset_assigns(OutVars, 2, BaseReg, !CI),
         set_liveness_and_end_branch(StoreMap, MaybeEnd0, Liveness,
             BranchEndCode, !CI),
+        code_info.release_reg(BaseReg, !CI),
         GotoEndCode = node([
             goto(label(EndLabel)) - "goto end of switch from one_soln"
         ]),
@@ -672,6 +699,7 @@ generate_code_for_each_kind([_ - Kind | Kinds], BaseReg, CurSlot, MaxSlot,
 
         set_liveness_and_end_branch(StoreMap, MaybeEnd0, Liveness,
             FirstBranchEndCode, !CI),
+        code_info.release_reg(BaseReg, !CI),
 
         GotoEndCode = node([
             goto(label(EndLabel)) - "goto end of switch from several_soln"

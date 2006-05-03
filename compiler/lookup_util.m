@@ -36,15 +36,13 @@
 :- pred figure_out_output_vars(code_info::in, hlds_goal_info::in,
     list(prog_var)::out) is det.
 
-    % Is the input goal a conjunction of unifications, or a scope goal wrapped
-    % around one? If yes, return the bare-bones version.
+    % Is the input goal a conjunction of unifications?
     %
-:- pred goal_is_conj_of_unify(hlds_goal::in, hlds_goal::out) is semidet.
+:- pred goal_is_conj_of_unify(hlds_goal::in) is semidet.
 
     % Run goal_is_conj_of_unify on each goal in the list.
     %
-:- pred all_disjuncts_are_conj_of_unify(list(hlds_goal)::in,
-    list(hlds_goal)::out) is semidet.
+:- pred all_disjuncts_are_conj_of_unify(list(hlds_goal)::in) is semidet.
 
     % To figure out if the outputs are constants, we
     %
@@ -105,29 +103,17 @@ figure_out_output_vars(CI, GoalInfo, OutVars) :-
         solutions.solutions(Lambda, OutVars)
     ).
 
-goal_is_conj_of_unify(Goal0, Goal) :-
-    Goal0 = GoalExpr - GoalInfo,
+goal_is_conj_of_unify(Goal) :-
+    Goal = _GoalExpr - GoalInfo,
     goal_info_get_code_model(GoalInfo, CodeModel),
     CodeModel = model_det,
-    (
-        GoalExpr = scope(Reason, SubGoal),
-        ( Reason = exist_quant(_)
-        ; Reason = barrier(removable)
-        ; Reason = from_ground_term(_)
-        )
-    ->
-        Goal = SubGoal
-    ;
-        Goal = Goal0
-    ),
     goal_to_conj_list(Goal, Conj),
     only_constant_goals(Conj).
 
-all_disjuncts_are_conj_of_unify([], []).
-all_disjuncts_are_conj_of_unify([Disjunct0 | Disjuncts0],
-        [Disjunct | Disjuncts]) :-
-    goal_is_conj_of_unify(Disjunct0, Disjunct),
-    all_disjuncts_are_conj_of_unify(Disjuncts0, Disjuncts).
+all_disjuncts_are_conj_of_unify([]).
+all_disjuncts_are_conj_of_unify([Disjunct | Disjuncts]) :-
+    goal_is_conj_of_unify(Disjunct),
+    all_disjuncts_are_conj_of_unify(Disjuncts).
 
 :- pred only_constant_goals(list(hlds_goal)::in) is semidet.
 

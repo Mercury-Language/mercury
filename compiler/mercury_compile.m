@@ -94,21 +94,21 @@
 :- import_module ll_backend.deep_profiling.
 
     % the LLDS back-end
-:- import_module ll_backend.saved_vars.
-:- import_module ll_backend.stack_opt.
-:- import_module ll_backend.stack_alloc.
+:- import_module ll_backend.continuation_info.
+:- import_module ll_backend.dupproc.
 :- import_module ll_backend.follow_code.
+:- import_module ll_backend.global_data.
 :- import_module ll_backend.liveness.
 :- import_module ll_backend.live_vars.
-:- import_module ll_backend.store_alloc.
-:- import_module ll_backend.code_gen.
-:- import_module ll_backend.optimize.
-:- import_module ll_backend.transform_llds.
 :- import_module ll_backend.llds_out.
-:- import_module ll_backend.continuation_info.
+:- import_module ll_backend.optimize.
+:- import_module ll_backend.proc_gen.
+:- import_module ll_backend.saved_vars.
+:- import_module ll_backend.stack_alloc.
 :- import_module ll_backend.stack_layout.
-:- import_module ll_backend.global_data.
-:- import_module ll_backend.dupproc.
+:- import_module ll_backend.stack_opt.
+:- import_module ll_backend.store_alloc.
+:- import_module ll_backend.transform_llds.
 
     % the bytecode back-end
 :- import_module bytecode_backend.bytecode_gen.
@@ -436,10 +436,10 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
             % the `-E' (`--verbose-errors') option, give them a
             % hint about it.  Of course, we should only output the
             % hint when we have further information to give the user.
-            
+
             globals.lookup_bool_option(Globals, verbose_errors,
                 VerboseErrors),
-            globals.get_extra_error_info(Globals, ExtraErrorInfo), 
+            globals.get_extra_error_info(Globals, ExtraErrorInfo),
             (
                 VerboseErrors = no,
                 (
@@ -1155,10 +1155,10 @@ process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
 
         globals.io_get_globals(Globals, !IO),
         find_timestamp_files(ModuleName, Globals, FindTimestampFiles),
-        
+
         globals.io_lookup_bool_option(trace_prof, TraceProf, !IO),
-       
-        ( 
+
+        (
             non_traced_mercury_builtin_module(ModuleName),
             not (
                     mercury_profiling_builtin_module(ModuleName),
@@ -2036,8 +2036,8 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
     globals.lookup_bool_option(Globals, statistics, Stats),
     globals.lookup_bool_option(Globals, termination, Termination),
     globals.lookup_bool_option(Globals, termination2, Termination2),
-    globals.lookup_bool_option(Globals, structure_sharing_analysis, 
-        SharingAnalysis), 
+    globals.lookup_bool_option(Globals, structure_sharing_analysis,
+        SharingAnalysis),
     globals.lookup_bool_option(Globals, analyse_exceptions,
         ExceptionAnalysis),
     globals.lookup_bool_option(Globals, analyse_closures,
@@ -2099,7 +2099,7 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
                     Termination2 = no
                 ),
                 (
-                    SharingAnalysis = yes, 
+                    SharingAnalysis = yes,
                     maybe_structure_sharing_analysis(Verbose, Stats,
                         !HLDS, !IO)
                 ;
@@ -2299,7 +2299,7 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
 
     expand_equiv_types_hlds(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 115, "equiv_types", !DumpInfo, !IO),
-    
+
     maybe_closure_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 117, "closure_analysis", !DumpInfo, !IO),
 
@@ -2318,11 +2318,11 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     % ;
     %   true
     % ),
-    
+
     % Exception analysis and termination analysis need to come before any
     % optimization passes that could benefit from the information that
     % they provide.
-    %   
+    %
     maybe_exception_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 118, "exception_analysis", !DumpInfo, !IO),
 
@@ -2331,7 +2331,7 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
 
     maybe_termination2(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 121, "termination2", !DumpInfo, !IO),
-    
+
     maybe_type_ctor_infos(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 125, "type_ctor_infos", !DumpInfo, !IO),
 
@@ -2375,7 +2375,7 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
 
     maybe_unused_args(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 165, "unused_args", !DumpInfo, !IO),
-    
+
     maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 167, "trail_usage", !DumpInfo, !IO),
 
@@ -2388,14 +2388,14 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 192, "dead_procs", !DumpInfo, !IO),
 
-    maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO), 
-    maybe_dump_hlds(!.HLDS, 193, "structure_sharing", !DumpInfo, !IO), 
-    
+    maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 193, "structure_sharing", !DumpInfo, !IO),
+
     % If we are compiling in a deep profiling grade then now rerun simplify.
     % The reason for doing this now is that we want to take advantage of any
     % opportunities the other optimizations have provided for constant
     % propagation and we cannot do that once the term-size profiling or deep
-    % profiling transformations have been applied. 
+    % profiling transformations have been applied.
     %
     simplify(no, pre_prof_transforms, Verbose, Stats,
         process_all_nonimported_procs, !HLDS, !IO),
@@ -2474,8 +2474,8 @@ backend_pass_by_phases(!HLDS, !GlobalData, LLDS, !DumpInfo, !IO) :-
     maybe_followcode(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 320, "followcode", !DumpInfo, !IO),
 
-    simplify(no, ll_backend, Verbose, Stats,
-        process_all_nonimported_procs, !HLDS, !IO),
+    simplify(no, ll_backend, Verbose, Stats, process_all_nonimported_procs,
+        !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 325, "ll_backend_simplify", !DumpInfo, !IO),
 
     compute_liveness(Verbose, Stats, !HLDS, !IO),
@@ -2644,14 +2644,14 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
     globals.lookup_bool_option(Globals, profile_deep, DeepProf),
     globals.lookup_bool_option(Globals, record_term_sizes_as_words, TSWProf),
     globals.lookup_bool_option(Globals, record_term_sizes_as_cells, TSCProf),
-    
+
     ProfTrans = bool.or_list([DeepProf, TSWProf, TSCProf]),
-    ( 
+    (
         % Don't run constant propagation if any of the profiling
         % transformations has been applied.
         %
         % NOTE: Any changes here may also need to be made to
-        %       mercury_compile.simplify.
+        % mercury_compile.simplify.
         %
         ProfTrans = yes,
         SimpList1 = list.delete_all(SimpList0, constant_prop)
@@ -2659,8 +2659,8 @@ backend_pass_by_preds_4(PredInfo, !ProcInfo, ProcId, PredId, !HLDS,
         ProfTrans = no,
         SimpList1 = SimpList0
     ),
-      
-    SimpList = [do_once | SimpList1],
+
+    SimpList = [do_once, elim_removable_scopes | SimpList1],
     Simplifications = list_to_simplifications(SimpList),
     simplify_proc(Simplifications, PredId, ProcId, !HLDS, !ProcInfo, !IO),
     write_proc_progress_message("% Computing liveness in ", PredId, ProcId,
@@ -2889,7 +2889,7 @@ maybe_termination2(Verbose, Stats, !HLDS, !IO) :-
     globals.io_lookup_bool_option(termination2, Termination2, !IO),
     % Termination analysis requires polymorphism to be run,
     % as termination analysis does not handle complex unification.
-    ( 
+    (
         Polymorphism = yes,
         Termination2 = yes
     ->
@@ -3004,22 +3004,22 @@ maybe_warn_dead_procs(Verbose, Stats, !HLDS, !IO) :-
     % This type indicates what stage of compilation we are running
     % the simplification pass at.  The exact simplifications we run
     % will depend upon this.
-    % 
+    %
 :- type simplify_pass
     --->    frontend
             % Immediately after the frontend passes.
 
     ;       post_untuple
-            % After the untupling transformation has been applied. 
+            % After the untupling transformation has been applied.
 
     ;       pre_prof_transforms
             % If deep/term-size profiling is enabled then immediately
-            % before the source-to-source transformations that 
+            % before the source-to-source transformations that
             % implement them.
-    
+
     ;       ml_backend
             % The first stage of MLDS code generation.
-    
+
     ;       ll_backend.
             % The first stage of LLDS code generation.
 
@@ -3047,7 +3047,7 @@ simplify(Warn, SimplifyPass, Verbose, Stats, Process, !HLDS, !IO) :-
     ;
         maybe_write_string(Verbose, "% Simplifying goals...\n", !IO),
         maybe_flush_output(Verbose, !IO),
-           
+
         some [!SimpList] (
             simplify.find_simplifications(Warn, Globals, Simplifications0),
             !:SimpList = simplifications_to_list(Simplifications0),
@@ -3055,7 +3055,7 @@ simplify(Warn, SimplifyPass, Verbose, Stats, Process, !HLDS, !IO) :-
                 SimplifyPass = frontend
             ;
                 SimplifyPass = post_untuple,
-                list.cons(do_once, !SimpList) 
+                list.cons(do_once, !SimpList)
             ;
                 SimplifyPass = pre_prof_transforms,
                 list.cons(do_once, !SimpList)
@@ -3072,13 +3072,12 @@ simplify(Warn, SimplifyPass, Verbose, Stats, Process, !HLDS, !IO) :-
                 SimplifyPass = ll_backend,
                 (
                     IsProfPass = yes,
-                    % XXX Why does find_simplifications return a list of
-                    % them rather than a set?
                     list.delete_all(!.SimpList, constant_prop, !:SimpList)
                 ;
                     IsProfPass = no
                 ),
-                list.cons(do_once, !SimpList)
+                list.cons(do_once, !SimpList),
+                list.cons(elim_removable_scopes, !SimpList)
             ),
             Simplifications = list_to_simplifications(!.SimpList)
         ),
@@ -3406,7 +3405,7 @@ maybe_untuple_arguments(Verbose, Stats, !HLDS, !IO) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 maybe_tuple_arguments(Verbose, Stats, !HLDS, !IO) :-
-    globals.io_lookup_bool_option(tuple, Tuple, !IO),   
+    globals.io_lookup_bool_option(tuple, Tuple, !IO),
     (
         Tuple = yes,
         maybe_write_string(Verbose, "% Tupling...\n", !IO),
@@ -3616,15 +3615,15 @@ maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO) :-
 :- pred maybe_structure_sharing_analysis(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO) :- 
-    globals.io_lookup_bool_option(structure_sharing_analysis, 
-        Sharing, !IO), 
+maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO) :-
+    globals.io_lookup_bool_option(structure_sharing_analysis,
+        Sharing, !IO),
     (
-        Sharing = yes, 
+        Sharing = yes,
         maybe_write_string(Verbose, "% Structure sharing analysis...\n",
-            !IO), 
-        maybe_flush_output(Verbose, !IO), 
-        structure_sharing_analysis(!HLDS, _SharingTable, !IO), 
+            !IO),
+        maybe_flush_output(Verbose, !IO),
+        structure_sharing_analysis(!HLDS, _SharingTable, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;

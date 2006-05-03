@@ -3427,8 +3427,7 @@ setup_call(GoalInfo, ArgInfos, LiveLocs, Code, !CI) :-
         RealStackVarLocs = [],
         DummyStackVarLocs = []
     ;
-        compute_forward_live_var_saves(!.CI, OutVarSet,
-            ForwardVarLocs),
+        compute_forward_live_var_saves(!.CI, OutVarSet, ForwardVarLocs),
         goal_info_get_code_model(GoalInfo, CodeModel),
         ( CodeModel = model_non ->
             % Save variables protected by the nearest resumption point on the

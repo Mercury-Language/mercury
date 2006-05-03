@@ -400,25 +400,26 @@
     %   variable cached. The locs field will be nonempty, and both
     %   const_rval and expr_rval will be no.
 
-:- type var_state   --->
-    state(
-        locs            :: set(lval),
-                        % must not contain var(_)
+:- type var_state
+    --->    state(
+                locs            :: set(lval),
+                                % Must not contain var(_).
 
-        const_rval      :: maybe(rval),
-                        % must not contain var(_), must be constant
+                const_rval      :: maybe(rval),
+                                % Must not contain var(_), must be constant.
 
-        expr_rval       :: maybe(rval),
-                        % will contain var(_), must not contain lvals
+                expr_rval       :: maybe(rval),
+                                % Will contain var(_), must not contain lvals.
 
-        using_vars      :: set(prog_var),
-                        % The set of vars whose expr_rval field refers
-                        % to this var.
+                using_vars      :: set(prog_var),
+                                % The set of vars whose expr_rval field refers
+                                % to this var.
 
-        dead_or_alive   :: dead_or_alive
-                        % A dead variable should be removed from var_state_map
-                        % when its using_vars field becomes empty.
-    ).
+                dead_or_alive   :: dead_or_alive
+                                % A dead variable should be removed from
+                                % var_state_map when its using_vars field
+                                % becomes empty.
+            ).
 
 :- type var_state_map   ==  map(prog_var, var_state).
 
@@ -437,50 +438,54 @@
 
 :- type loc_var_map ==  map(lval, set(prog_var)).
 
-:- type var_locn_info   --->
-    var_locn_info(
-        varset          :: prog_varset,
-                        % The varset from the proc_info.
+:- type var_locn_info
+    --->    var_locn_info(
+                varset          :: prog_varset,
+                                % The varset from the proc_info.
 
-        vartypes        :: vartypes,
-                        % The vartypes from the proc_info.
+                vartypes        :: vartypes,
+                                % The vartypes from the proc_info.
 
-        stack_slots     :: stack_slots,
-                        % Maps each var to its stack slot, if it has one.
+                stack_slots     :: stack_slots,
+                                % Maps each var to its stack slot,
+                                % if it has one.
 
-        exprn_opts      :: exprn_opts,
-                        % The values of the options that are relevant to
-                        % decisions about which rvals are constants.
+                exprn_opts      :: exprn_opts,
+                                % The values of the options that are relevant
+                                % to decisions about which rvals are constants.
 
-        follow_vars_map :: abs_follow_vars_map,
-                        % Where vars are needed next.
+                follow_vars_map :: abs_follow_vars_map,
+                                % Where vars are needed next.
 
-        next_non_res    :: int,
-                        % Next register that isn't reserved in follow_vars_map.
+                next_non_res    :: int,
+                                % Next register that isn't reserved in
+                                % follow_vars_map.
 
-        var_state_map   :: var_state_map,
-                        % Documented above.
+                var_state_map   :: var_state_map,
+                                % Documented above.
 
-        loc_var_map     :: loc_var_map,
-                        % Documented above.
+                loc_var_map     :: loc_var_map,
+                                % Documented above.
 
-        acquired        :: set(lval),
-                        % Locations that are temporarily reserved for purposes
-                        % such as holding the tags of variables during
-                        % switches.
+                acquired        :: set(lval),
+                                % Locations that are temporarily reserved
+                                % for purposes such as holding the tags of
+                                % variables during switches.
 
-        locked          :: int,
-                        % If this slot contains N, then registers r1 through rN
-                        % can only be modified by a place_var operation, or
-                        % by a free_up_lval operation that moves a variable
-                        % to the (free or freeable) lval associated with it
-                        % in the exceptions field. Used to implement calls,
-                        % foreign_procs and the store_maps at the ends of
-                        % branched control structures.
+                locked          :: int,
+                                % If this slot contains N, then registers
+                                % r1 through rN can only be modified by
+                                % a place_var operation, or by a free_up_lval
+                                % operation that moves a variable to the
+                                % (free or freeable) lval associated with it
+                                % in the exceptions field. Used to implement
+                                % calls, foreign_procs and the store_maps
+                                % at the ends of branched control structures.
 
-        exceptions      :: assoc_list(prog_var, lval)
-                        % See the documentation of the locked field above.
-    ).
+                exceptions      :: assoc_list(prog_var, lval)
+                                % See the documentation of the locked field
+                                % above.
+            ).
 
 %----------------------------------------------------------------------------%
 

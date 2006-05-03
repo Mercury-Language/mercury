@@ -1133,16 +1133,19 @@ or perform LLDS-specific transformations on the HLDS:
 	For the LLDS back-end, this is also the point at which we
 	insert code to handle debugging and trailing, and to do
 	heap reclamation on failure.
-	The main code generation module is code_gen.m. 
-	It handles conjunctions and negations, but calls sub-modules
-	to do most of the other work:
+	The top level code generation module is proc_gen.m,
+	which looks after the generation of code for procedures
+	(including prologues and epilogues).
+	The predicate for generating code for arbitrary goals is in code_gen.m,
+	but that module handles only sequential conjunctions; it calls
+	other modules to handle other kinds of goals:
 
 		<ul>
 		<li> ite_gen.m (if-then-elses)
 		<li> call_gen.m (predicate calls and also calls to
 			out-of-line unification procedures)
 		<li> disj_gen.m (disjunctions)
-		<li> par_conj.m (parallel conjunctions)
+		<li> par_conj_gen.m (parallel conjunctions)
 		<li> unify_gen.m (unifications)
 		<li> switch_gen.m (switches), which has sub-modules
 			<ul>
@@ -1159,8 +1162,8 @@ or perform LLDS-specific transformations on the HLDS:
 
 	<p>
 
-	code_gen.m also calls middle_rec.m to do middle recursion optimization,
-	which is implemented during code generation.
+	The code generator also calls middle_rec.m to do middle recursion
+	optimization, which is implemented during code generation.
 
 	<p>
 
@@ -1651,6 +1654,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2006-04-26 03:06:23 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2006-05-03 06:46:20 $ by $Author: zs $@cs.mu.oz.au. <br>
 </body>
 </html>

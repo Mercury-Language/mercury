@@ -34,7 +34,8 @@
 :- include_module code_util.
 
 % The HLDS->LLDS code generator.
-:- include_module code_gen.
+:- include_module proc_gen.
+   :- include_module code_gen.
    :- include_module ite_gen.
    :- include_module call_gen.
    :- include_module disj_gen.

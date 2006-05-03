@@ -78,6 +78,8 @@
     ;       warn_obsolete           % --warn-obsolete
     ;       do_once                 % run things that should be done once
     ;       excess_assigns          % remove excess assignment unifications
+    ;       elim_removable_scopes   % remove scopes that do not need processing
+                                    % during llds code generation
     ;       opt_duplicate_calls     % optimize duplicate calls
     ;       constant_prop           % partially evaluate calls
     ;       common_struct           % common structure elimination
@@ -100,6 +102,7 @@
 :- pred simplify_do_warn_obsolete(simplify_info::in) is semidet.
 :- pred simplify_do_once(simplify_info::in) is semidet.
 :- pred simplify_do_excess_assign(simplify_info::in) is semidet.
+:- pred simplify_do_elim_removable_scopes(simplify_info::in) is semidet.
 :- pred simplify_do_opt_duplicate_calls(simplify_info::in) is semidet.
 :- pred simplify_do_const_prop(simplify_info::in) is semidet.
 :- pred simplify_do_common_struct(simplify_info::in) is semidet.
@@ -160,6 +163,7 @@
                 do_warn_obsolete            :: bool,
                 do_do_once                  :: bool,
                 do_excess_assign            :: bool,
+                do_elim_removable_scopes    :: bool,
                 do_opt_duplicate_calls      :: bool,
                 do_constant_prop            :: bool,
                 do_common_struct            :: bool,
@@ -169,7 +173,7 @@
 simplifications_to_list(Simplifications) = List :-
     Simplifications = simplifications(WarnSimpleCode, WarnDupCalls,
         WarnKnownBadFormat, WarnUnknownFormat, WarnObsolete, DoOnce,
-        ExcessAssign, OptDuplicateCalls, ConstantProp,
+        ExcessAssign, ElimRemovableScopes, OptDuplicateCalls, ConstantProp,
         CommonStruct, ExtraCommonStruct),
     List = 
         ( WarnSimpleCode = yes -> [warn_simple_code] ; [] ) ++
@@ -179,6 +183,7 @@ simplifications_to_list(Simplifications) = List :-
         ( WarnObsolete = yes -> [warn_obsolete] ; [] ) ++
         ( DoOnce = yes -> [do_once] ; [] ) ++
         ( ExcessAssign = yes -> [excess_assigns] ; [] ) ++
+        ( ElimRemovableScopes = yes -> [elim_removable_scopes] ; [] ) ++
         ( OptDuplicateCalls = yes -> [opt_duplicate_calls] ; [] ) ++
         ( ConstantProp = yes -> [constant_prop] ; [] ) ++
         ( CommonStruct = yes -> [common_struct] ; [] ) ++
@@ -193,6 +198,7 @@ list_to_simplifications(List) =
         ( list.member(warn_obsolete, List) -> yes ; no ),
         ( list.member(do_once, List) -> yes ; no ),
         ( list.member(excess_assigns, List) -> yes ; no ),
+        ( list.member(elim_removable_scopes, List) -> yes ; no ),
         ( list.member(opt_duplicate_calls, List) -> yes ; no ),
         ( list.member(constant_prop, List) -> yes ; no ),
         ( list.member(common_struct, List) -> yes ; no ),
@@ -213,6 +219,7 @@ find_simplifications(WarnThisPass, Globals, Simplifications) :-
         OptDuplicateCalls),
     globals.lookup_bool_option(Globals, constant_propagation, ConstantProp),
     DoOnce = no,
+    ElimRemovableScopes = no,
     ExtraCommonStruct = no,
 
     Simplifications = simplifications(
@@ -223,6 +230,7 @@ find_simplifications(WarnThisPass, Globals, Simplifications) :-
         ( WarnObsolete = yes, WarnThisPass = yes -> yes ; no),
         DoOnce,
         ExcessAssign,
+        ElimRemovableScopes,
         OptDuplicateCalls,
         ConstantProp,
         CommonStruct,
@@ -250,6 +258,9 @@ simplify_do_once(Info) :-
 simplify_do_excess_assign(Info) :-
     simplify_info_get_simplifications(Info, Simplifications),
     Simplifications ^ do_excess_assign = yes.
+simplify_do_elim_removable_scopes(Info) :-
+    simplify_info_get_simplifications(Info, Simplifications),
+    Simplifications ^ do_elim_removable_scopes = yes.
 simplify_do_opt_duplicate_calls(Info) :-
     simplify_info_get_simplifications(Info, Simplifications),
     Simplifications ^ do_opt_duplicate_calls = yes.
@@ -502,7 +513,7 @@ do_process_goal(Goal0, Goal, !Info, !IO) :-
 :- pred simplify_goal(hlds_goal::in, hlds_goal::out,
     simplify_info::in, simplify_info::out, io::di, io::uo) is det.
 
-simplify_goal(Goal0, Goal - GoalInfo, !Info, !IO) :-
+simplify_goal(Goal0, GoalExpr - GoalInfo, !Info, !IO) :-
     Goal0 = _ - GoalInfo0,
     goal_info_get_determinism(GoalInfo0, Detism),
     simplify_info_get_det_info(!.Info, DetInfo),
@@ -628,16 +639,27 @@ simplify_goal(Goal0, Goal - GoalInfo, !Info, !IO) :-
     % Remove unnecessary explicit quantifications before working
     % out whether the goal can cause a stack flush.
     %
-    ( Goal1 = scope(Reason, SomeGoal1) - GoalInfo1 ->
-        nested_scopes(Reason, SomeGoal1, GoalInfo1, Goal2)
+    ( Goal1 = scope(Reason1, SomeGoal1) - GoalInfo1 ->
+        nested_scopes(Reason1, SomeGoal1, GoalInfo1, Goal2)
     ;
         Goal2 = Goal1
     ),
-    simplify_info_maybe_clear_structs(before, Goal2, !Info),
-    Goal2 = GoalExpr2 - GoalInfo2,
-    simplify_goal_2(GoalExpr2, Goal, GoalInfo2, GoalInfo3, !Info, !IO),
-    simplify_info_maybe_clear_structs(after, Goal - GoalInfo3, !Info),
-    enforce_invariant(GoalInfo3, GoalInfo, !Info).
+    (
+        simplify_do_elim_removable_scopes(!.Info),
+        Goal2 = scope(Reason2, SomeGoal2) - _GoalInfo2,
+        ( Reason2 = barrier(removable)
+        ; Reason2 = from_ground_term(_)
+        )
+    ->
+        Goal3 = SomeGoal2
+    ;
+        Goal3 = Goal2
+    ),
+    simplify_info_maybe_clear_structs(before, Goal3, !Info),
+    Goal3 = GoalExpr3 - GoalInfo3,
+    simplify_goal_2(GoalExpr3, GoalExpr, GoalInfo3, GoalInfo4, !Info, !IO),
+    simplify_info_maybe_clear_structs(after, GoalExpr - GoalInfo4, !Info),
+    enforce_invariant(GoalInfo4, GoalInfo, !Info).
 
     % Ensure that the mode information and the determinism
     % information say consistent things about unreachability.
@@ -1804,8 +1826,7 @@ nested_scopes_2(Reason0, Reason, Goal0, Goal) :-
             Reason0 = exist_quant(Vars0),
             Reason1 = exist_quant(Vars1)
         ->
-            list.append(Vars0, Vars1, Vars2),
-            Reason2 = exist_quant(Vars2)
+            Reason2 = exist_quant(Vars0 ++ Vars1)
         ;
             Reason0 = from_ground_term(_)
         ->

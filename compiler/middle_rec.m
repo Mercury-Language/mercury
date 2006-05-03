@@ -42,6 +42,7 @@
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.opt_util.
+:- import_module ll_backend.proc_gen.
 :- import_module ll_backend.unify_gen.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
@@ -305,7 +306,7 @@ middle_rec_generate_switch(Var, BaseConsId, Base, Recursive, SwitchGoalInfo,
                 label(Loop2Label))
                 - "test on upward loop"]
     ;
-        PushMsg = code_gen.push_msg(ModuleInfo, PredId, ProcId),
+        PushMsg = proc_gen.push_msg(ModuleInfo, PredId, ProcId),
         MaybeIncrSp = [incr_sp(FrameSize, PushMsg) - ""],
         MaybeDecrSp = [decr_sp(FrameSize) - ""],
         InitAuxReg =  [assign(AuxReg, lval(sp))
