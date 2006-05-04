@@ -756,6 +756,10 @@ most_specific_instr(Instr1, Instr2, MaybeInstr) :-
         ; Instr1 = decr_sp(_)
         ; Instr1 = decr_sp_and_return(_)
         ; Instr1 = pragma_c(_, _, _, _, _, _, _, _, _)
+        ; Instr1 = fork(_, _, _)
+        ; Instr1 = init_sync_term(_, _)
+        ; Instr1 = join_and_continue(_, _)
+        ; Instr1 = join_and_terminate(_)
         ),
         ( Instr1 = Instr2 ->
             MaybeInstr = yes(Instr1)
@@ -763,12 +767,7 @@ most_specific_instr(Instr1, Instr2, MaybeInstr) :-
             MaybeInstr = no
         )
     ;
-        ( Instr1 = comment(_)
-        ; Instr1 = fork(_, _, _)
-        ; Instr1 = init_sync_term(_, _)
-        ; Instr1 = join_and_continue(_, _)
-        ; Instr1 = join_and_terminate(_)
-        ),
+        Instr1 = comment(_),
         MaybeInstr = no
     ).
 
