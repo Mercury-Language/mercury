@@ -228,7 +228,8 @@ LLDS_PROGS= \
 # These tests only work in grades that support parallel conjunction.
 #
 PAR_CONJ_PROGS = \
-	par_dummy
+	par_dummy \
+	par_dupelim
 
 # The following programs require that num_tag_bits >= 1
 RESERVE_TAG_PROGS = \
