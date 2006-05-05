@@ -5,10 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% mlds_to_c - Convert MLDS to C/C++ code.
+% 
+% File: mlds_to_c.m.
 % Main author: fjh.
-
+%
+% Convert MLDS to C/C++ code.
+% 
 % TODO:
 %   - RTTI for debugging (module_layout, proc_layout, internal_layout)
 %   - trail ops
@@ -19,7 +21,8 @@
 %     is to change some calls to sorry/2 to unexpected/2).
 %   - packages, classes and inheritance
 %     (currently we just generate all classes as structs)
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.mlds_to_c.
@@ -386,6 +389,13 @@ mlds_output_src_start(Indent, ModuleName, ForeignCode, InitPreds, FinalPreds,
 mlds_output_init_and_final_comments(ModuleName,
         UserInitPredCNames, UserFinalPredCNames, !IO) :-
     io.write_string("/*\n", !IO),
+    % In profiling grades the module mercury__<modulename>__init predicate
+    % is responsible for calling MR_init_entry, so the INIT comment must be
+    % present.
+    % XXX we could probably omit it in non-profiling grades.
+    io.write_string("INIT ", !IO),
+    output_init_name(ModuleName, !IO),
+    io.write_string("init\n", !IO),
     (
         UserInitPredCNames = [],
         UserFinalPredCNames = []
@@ -394,9 +404,6 @@ mlds_output_init_and_final_comments(ModuleName,
         % any module init or final preds.
         true
     ;
-        io.write_string("INIT ", !IO),
-        output_init_name(ModuleName, !IO),
-        io.write_string("init\n", !IO),
         list.foldl(mlds_output_required_user_init_comment,
             UserInitPredCNames, !IO),
         list.foldl(mlds_output_required_user_final_comment,
