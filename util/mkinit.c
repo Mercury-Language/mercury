@@ -515,7 +515,6 @@ static  void    process_init_file(const char *filename);
 static  void    output_init_function(const char *func_name,
                     int *num_bunches_ptr, int *num_calls_in_cur_bunch_ptr,
                     Purpose purpose);
-static  void    add_rl_data(char *data);
 static  int     get_line(FILE *file, char *line, int line_max);
 static  void    *checked_malloc(size_t size);
 static  char    *checked_strdup(const char *str);
@@ -1127,7 +1126,7 @@ process_init_file(const char *filename)
 {
     /*
     ** The strings that are supposed to be followed by other information
-    ** (INIT, REQUIRED_INIT, REQUIRED_FINAL, and ADITI_DATA) should end with
+    ** (INIT, REQUIRED_INIT, and REQUIRED_FINAL) should end with
     ** the space that separates the keyword from the following data.
     ** The string that is not supposed to be following by other information
     ** (ENDINIT) should not have a following space, since llds_out.m and
@@ -1143,7 +1142,6 @@ process_init_file(const char *filename)
     const int           reqfinal_strlen = strlen(reqfinal_str);
     const int           endinit_strlen = strlen(endinit_str);
     char                line[MAXLINE];
-    char                *rl_data_name;
     FILE                *cfile;
 
     cfile = fopen(filename, "r");
