@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: interactive_query.m.
 % Author: fjh.
-
+% 
 % A module to invoke interactive queries using dynamic linking.
 %
 % This module reads in a query, writes out Mercury code for it to the file
@@ -17,7 +17,8 @@
 % `mdb_query' from the file `libmdb_query.so', looks up the address of the
 % procedure query/2 in that module, calls that procedure, and then
 % cleans up the generated files.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module mdb.interactive_query.
@@ -233,7 +234,7 @@ run_query(Options, Program, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% print the program to a file
+% Print the program to a file
 %
 
 :- pred write_prog_to_file(prog::in, string::in, io::di, io::uo) is det.
@@ -279,7 +280,7 @@ write_prog_to_stream(prog(QueryType, Imports, Term, VarSet), !IO) :-
         :- implementation.
         ", !IO),
     io.output_stream(Out, !IO),
-    write_import_list(Out, ["std_util" | Imports], !IO),
+    write_import_list(Out, ["solutions" | Imports], !IO),
     io.write_string("
             :- pragma source_file(""<stdin>"").
             run -->
@@ -446,7 +447,7 @@ write_import_list(Out, Imports, !IO) :-
 
 %-----------------------------------------------------------------------------%
 %
-% invoke the Mercury compile to compile the file to a shared object
+% Invoke the Mercury compile to compile the file to a shared object
 %
 
 :- pred compile_file(options::in, bool::out, io::di, io::uo) is det.
