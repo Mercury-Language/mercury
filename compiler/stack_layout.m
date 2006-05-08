@@ -32,6 +32,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.global_data.
+:- import_module ll_backend.layout.
 :- import_module ll_backend.llds.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
@@ -46,13 +47,13 @@
     % converting it into LLDS data structures.
     %
 :- pred generate_llds(module_info::in, global_data::in, global_data::out,
-    list(comp_gen_c_data)::out, map(label, data_addr)::out) is det.
+    list(layout_data)::out, map(label, data_addr)::out) is det.
 
 :- pred construct_closure_layout(proc_label::in, int::in,
     closure_layout_info::in, proc_label::in, module_name::in,
-    string::in, int::in, pred_origin::in, string::in, static_cell_info::in,
-    static_cell_info::out, assoc_list(rval, llds_type)::out,
-    comp_gen_c_data::out) is det.
+    string::in, int::in, pred_origin::in, string::in,
+    static_cell_info::in, static_cell_info::out,
+    assoc_list(rval, llds_type)::out, layout_data::out) is det.
 
     % Construct a representation of a variable location as a 32-bit
     % integer.
@@ -166,9 +167,9 @@ generate_llds(ModuleInfo0, !GlobalData, Layouts, LayoutLabels) :-
         ),
         format_label_tables(EffLabelTables, SourceFileLayouts),
         SuppressedEvents = encode_suppressed_events(TraceSuppress),
-        ModuleLayout = layout_data(module_layout_data(ModuleName,
-            StringOffset, ConcatStrings, ProcLayoutNames,
-            SourceFileLayouts, TraceLevel, SuppressedEvents, NumLabels)),
+        ModuleLayout = module_layout_data(ModuleName,
+            StringOffset, ConcatStrings, ProcLayoutNames, SourceFileLayouts,
+            TraceLevel, SuppressedEvents, NumLabels),
         Layouts = [ModuleLayout | Layouts0]
     ;
         TraceLayout = no,
@@ -557,10 +558,8 @@ construct_proc_layout(ProcLayoutInfo, Kind, VarNumMap, !Info) :-
         More = proc_id(MaybeProcStatic, MaybeExecTrace)
     ),
     ProcLayout = proc_layout_data(RttiProcLabel, Traversal, More),
-    Data = layout_data(ProcLayout),
     LayoutName = proc_layout(RttiProcLabel, Kind),
-    add_proc_layout_data(Data, LayoutName, EntryLabel,
-        !Info),
+    add_proc_layout_data(ProcLayout, LayoutName, EntryLabel, !Info),
     (
         MaybeTableInfo = no
     ;
@@ -920,10 +919,9 @@ construct_internal_layout(ProcLabel, ProcLayoutName, VarNumMap,
     ),
     LayoutData = label_layout_data(ProcLabel, LabelNum, ProcLayoutName,
         MaybePort, MaybeIsHidden, LabelNumber, MaybeGoalPath, MaybeVarInfo),
-    CData = layout_data(LayoutData),
     LayoutName = label_layout(ProcLabel, LabelNum, LabelVars),
     Label = internal(LabelNum, ProcLabel),
-    add_internal_layout_data(CData, Label, LayoutName, !Info),
+    add_internal_layout_data(LayoutData, Label, LayoutName, !Info),
     LabelLayout = {ProcLabel, LabelNum, LabelVars, Internal}.
 
 %---------------------------------------------------------------------------%
@@ -1227,9 +1225,9 @@ construct_closure_layout(CallerProcLabel, SeqNo,
         RvalsTypes, Data) :-
     DataAddr = layout_addr(
         closure_proc_id(CallerProcLabel, SeqNo, ClosureProcLabel)),
-    Data = layout_data(closure_proc_id_data(CallerProcLabel, SeqNo,
+    Data = closure_proc_id_data(CallerProcLabel, SeqNo,
         ClosureProcLabel, ModuleName, FileName, LineNumber, Origin, 
-        GoalPath)),
+        GoalPath),
     ProcIdRvalType = const(data_addr_const(DataAddr, no)) - data_ptr,
     ClosureLayoutInfo = closure_layout_info(ClosureArgs, TVarLocnMap),
     construct_closure_arg_rvals(ClosureArgs,
@@ -1605,9 +1603,9 @@ represent_determinism_rval(Detism,
                 procid_stack_layout     :: bool, % generate proc id info?
                 static_code_addresses   :: bool, % have static code addresses?
                 label_counter           :: counter,
-                table_infos             :: list(comp_gen_c_data),
-                proc_layouts            :: list(comp_gen_c_data),
-                internal_layouts        :: list(comp_gen_c_data),
+                table_infos             :: list(layout_data),
+                proc_layouts            :: list(layout_data),
+                internal_layouts        :: list(layout_data),
                 label_set               :: map(label, data_addr),
                                         % The set of labels (both entry
                                         % and internal) with layouts.
@@ -1623,30 +1621,23 @@ represent_determinism_rval(Detism,
                 static_cell_info        :: static_cell_info
             ).
 
-:- pred get_module_info(stack_layout_info::in,
-    module_info::out) is det.
-:- pred get_agc_stack_layout(stack_layout_info::in,
-    bool::out) is det.
-:- pred get_trace_stack_layout(stack_layout_info::in,
-    bool::out) is det.
-:- pred get_procid_stack_layout(stack_layout_info::in,
-    bool::out) is det.
-:- pred get_static_code_addresses(stack_layout_info::in,
-    bool::out) is det.
-:- pred get_table_infos(stack_layout_info::in,
-    list(comp_gen_c_data)::out) is det.
-:- pred get_proc_layout_data(stack_layout_info::in,
-    list(comp_gen_c_data)::out) is det.
-:- pred get_internal_layout_data(stack_layout_info::in,
-    list(comp_gen_c_data)::out) is det.
-:- pred get_label_set(stack_layout_info::in,
-    map(label, data_addr)::out) is det.
-:- pred get_string_table(stack_layout_info::in,
-    string_table::out) is det.
-:- pred get_label_tables(stack_layout_info::in,
-    map(string, label_table)::out) is det.
-:- pred get_static_cell_info(stack_layout_info::in,
-    static_cell_info::out) is det.
+:- pred get_module_info(stack_layout_info::in, module_info::out) is det.
+:- pred get_agc_stack_layout(stack_layout_info::in, bool::out) is det.
+:- pred get_trace_stack_layout(stack_layout_info::in, bool::out) is det.
+:- pred get_procid_stack_layout(stack_layout_info::in, bool::out) is det.
+:- pred get_static_code_addresses(stack_layout_info::in, bool::out) is det.
+:- pred get_table_infos(stack_layout_info::in, list(layout_data)::out) is det.
+:- pred get_proc_layout_data(stack_layout_info::in, list(layout_data)::out)
+    is det.
+:- pred get_internal_layout_data(stack_layout_info::in, list(layout_data)::out)
+    is det.
+:- pred get_label_set(stack_layout_info::in, map(label, data_addr)::out)
+    is det.
+:- pred get_string_table(stack_layout_info::in, string_table::out) is det.
+:- pred get_label_tables(stack_layout_info::in, map(string, label_table)::out)
+    is det.
+:- pred get_static_cell_info(stack_layout_info::in, static_cell_info::out)
+    is det.
 
 get_module_info(LI, LI ^ module_info).
 get_agc_stack_layout(LI, LI ^ agc_stack_layout).
@@ -1674,11 +1665,10 @@ allocate_label_number(LabelNum, !LI) :-
 
 add_table_data(TableIoDeclData, !LI) :-
     TableIoDecls0 = !.LI ^ table_infos,
-    TableIoDecls = [layout_data(TableIoDeclData) | TableIoDecls0],
+    TableIoDecls = [TableIoDeclData | TableIoDecls0],
     !:LI = !.LI ^ table_infos := TableIoDecls.
 
-:- pred add_proc_layout_data(comp_gen_c_data::in,
-    layout_name::in, label::in,
+:- pred add_proc_layout_data(layout_data::in, layout_name::in, label::in,
     stack_layout_info::in, stack_layout_info::out) is det.
 
 add_proc_layout_data(ProcLayout, ProcLayoutName, Label, !LI) :-
@@ -1692,12 +1682,11 @@ add_proc_layout_data(ProcLayout, ProcLayoutName, Label, !LI) :-
     !:LI = !.LI ^ label_set := LabelSet,
     !:LI = !.LI ^ proc_layout_name_list := ProcLayoutNames.
 
-:- pred add_internal_layout_data(comp_gen_c_data::in,
+:- pred add_internal_layout_data(layout_data::in,
     label::in, layout_name::in, stack_layout_info::in,
     stack_layout_info::out) is det.
 
-add_internal_layout_data(InternalLayout, Label, LayoutName,
-        !LI) :-
+add_internal_layout_data(InternalLayout, Label, LayoutName, !LI) :-
     InternalLayouts0 = !.LI ^ internal_layouts,
     InternalLayouts = [InternalLayout | InternalLayouts0],
     LabelSet0 = !.LI ^ label_set,

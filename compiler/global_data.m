@@ -19,6 +19,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.exprn_aux.
+:- import_module ll_backend.layout.
 :- import_module ll_backend.llds.
 :- import_module mdbcomp.prim_data.     % for module_name
 :- import_module parse_tree.prog_data.
@@ -42,7 +43,7 @@
 :- pred global_data_update_proc_layout(pred_proc_id::in, proc_layout_info::in,
     global_data::in, global_data::out) is det.
 
-:- pred global_data_add_new_closure_layouts(list(comp_gen_c_data)::in,
+:- pred global_data_add_new_closure_layouts(list(layout_data)::in,
     global_data::in, global_data::out) is det.
 
 :- pred global_data_maybe_get_proc_layout(global_data::in, pred_proc_id::in,
@@ -58,7 +59,7 @@
     list(proc_layout_info)::out) is det.
 
 :- pred global_data_get_all_closure_layouts(global_data::in,
-    list(comp_gen_c_data)::out) is det.
+    list(layout_data)::out) is det.
 
 :- pred global_data_get_static_cell_info(global_data::in,
     static_cell_info::out) is det.
@@ -86,7 +87,9 @@
 :- pred search_scalar_static_cell_offset(static_cell_info::in, data_addr::in,
     int::in, rval::out) is semidet.
 
-:- func get_static_cells(static_cell_info) = list(comp_gen_c_data).
+:- pred get_static_cells(static_cell_info::in,
+    list(scalar_common_data_array)::out, list(vector_common_data_array)::out)
+    is det.
 
     % Given an rval, figure out the type it would have as an argument.
     % Normally that's the same as its usual type; the exception is that for
@@ -121,34 +124,24 @@
 :- type global_data
     --->    global_data(
                 proc_var_map        :: proc_var_map,
-                                    % Information about the global
-                                    % variables defined by each
-                                    % procedure.
+                                    % Information about the global variables
+                                    % defined by each procedure.
 
                 proc_layout_map     :: proc_layout_map,
-                                    % Information about the
-                                    % layout structures defined
-                                    % by each procedure.
+                                    % Information about the layout structures
+                                    % defined by each procedure.
 
-                closure_layouts     :: list(comp_gen_c_data),
-                                    % The list of all closure
-                                    % layouts generated in this
-                                    % module. While all closure
-                                    % layouts are different from
-                                    % all other comp_gen_c_datas,
-                                    % it is possible, although
-                                    % unlikely, for two closures
-                                    % to have the same layout.
+                closure_layouts     :: list(layout_data),
+                                    % The list of all closure layouts generated
+                                    % in this module. While all closure layouts
+                                    % are different from all other layout_data,
+                                    % it is possible, although unlikely, for
+                                    % two closures to have the same layout.
 
                 static_cell_info    :: static_cell_info
-                                    % Information about all the
-                                    % statically allocated cells
-                                    % created so far.
+                                    % Information about all the statically
+                                    % allocated cells created so far.
             ).
-
-:- func wrap_layout_data(layout_data) = comp_gen_c_data.
-
-wrap_layout_data(LayoutData) = layout_data(LayoutData).
 
 global_data_init(StaticCellInfo, GlobalData) :-
     map.init(EmptyDataMap),
@@ -467,7 +460,7 @@ pair_vector_element(Types, Args) = plain_value(ArgsTypes) :-
 
 %-----------------------------------------------------------------------------%
 
-get_static_cells(Info) = VectorDatas ++ ScalarDatas :-
+get_static_cells(Info, ScalarDatas, VectorDatas) :-
     ModuleName = Info ^ sub_info ^ module_name,
     TypeNumMap = Info ^ cell_type_num_map,
     map.foldl(add_scalar_static_cell_for_type(ModuleName, TypeNumMap),
@@ -479,37 +472,38 @@ get_static_cells(Info) = VectorDatas ++ ScalarDatas :-
 
 :- pred add_scalar_static_cell_for_type(module_name::in,
     bimap(common_cell_type, int)::in, int::in, scalar_cell_group::in,
-    list(comp_gen_c_data)::in, list(comp_gen_c_data)::out) is det.
+    list(scalar_common_data_array)::in, list(scalar_common_data_array)::out)
+    is det.
 
 add_scalar_static_cell_for_type(ModuleName, TypeNumMap, TypeNum, CellGroup,
-        !Datas) :-
+        !Arrays) :-
     bimap.reverse_lookup(TypeNumMap, CellType, TypeNum),
     list.reverse(CellGroup ^ scalar_cell_rev_array, ArrayContents),
     Array = scalar_common_data_array(ModuleName, CellType, TypeNum,
         ArrayContents),
-    Data = scalar_common_data(Array),
-    !:Datas = [Data | !.Datas].
+    !:Arrays = [Array | !.Arrays].
 
 :- pred add_all_vector_static_cells_for_type(module_name::in,
     bimap(common_cell_type, int)::in, int::in, vector_cell_group::in,
-    list(comp_gen_c_data)::in, list(comp_gen_c_data)::out) is det.
+    list(vector_common_data_array)::in, list(vector_common_data_array)::out)
+    is det.
 
 add_all_vector_static_cells_for_type(ModuleName, TypeNumMap, TypeNum,
-        CellGroup, !Datas) :-
+        CellGroup, !Arrays) :-
     bimap.reverse_lookup(TypeNumMap, CellType, TypeNum),
     map.foldl(add_one_vector_static_cell(ModuleName, TypeNum, CellType),
-        CellGroup ^ vector_cell_map, !Datas).
+        CellGroup ^ vector_cell_map, !Arrays).
 
 :- pred add_one_vector_static_cell(module_name::in, int::in,
     common_cell_type::in, int::in, vector_contents::in,
-    list(comp_gen_c_data)::in, list(comp_gen_c_data)::out) is det.
+    list(vector_common_data_array)::in, list(vector_common_data_array)::out)
+    is det.
 
 add_one_vector_static_cell(ModuleName, TypeNum, CellType, CellNum,
-        vector_contents(VectorContents), !Datas) :-
+        vector_contents(VectorContents), !Arrays) :-
     Array = vector_common_data_array(ModuleName, CellType, TypeNum, CellNum,
         VectorContents),
-    Data = vector_common_data(Array),
-    !:Datas = [Data | !.Datas].
+    !:Arrays = [Array | !.Arrays].
 
 %-----------------------------------------------------------------------------%
 

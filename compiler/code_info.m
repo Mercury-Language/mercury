@@ -39,6 +39,7 @@
 :- import_module libs.globals.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.global_data.
+:- import_module ll_backend.layout.
 :- import_module ll_backend.llds.
 :- import_module ll_backend.trace.
 :- import_module mdbcomp.prim_data.
@@ -182,7 +183,7 @@
     % Get the global static data structures that have
     % been created during code generation for closure layouts.
     %
-:- pred get_closure_layouts(code_info::in, list(comp_gen_c_data)::out) is det.
+:- pred get_closure_layouts(code_info::in, list(layout_data)::out) is det.
 
 :- pred get_max_reg_in_use_at_trace(code_info::in, int::out) is det.
 
@@ -246,7 +247,7 @@
 :- pred set_temp_content_map(map(lval, slot_contents)::in,
     code_info::in, code_info::out) is det.
 
-:- pred set_closure_layouts(list(comp_gen_c_data)::in,
+:- pred set_closure_layouts(list(layout_data)::in,
     code_info::in, code_info::out) is det.
 
 :- pred get_closure_seq_counter(code_info::in, counter::out) is det.
@@ -395,7 +396,7 @@
 
                 closure_layout_seq :: counter,
 
-                closure_layouts     :: list(comp_gen_c_data),
+                closure_layouts     :: list(layout_data),
                                     % Closure layout structures generated
                                     % by this procedure.
 
@@ -530,93 +531,54 @@ init_maybe_trace_info(TraceLevel, Globals, ModuleInfo, PredInfo,
 
 %---------------------------------------------------------------------------%
 
-get_globals(CI,
-    CI ^ code_info_static ^ globals).
-get_module_info(CI,
-    CI ^ code_info_static ^ module_info).
-get_pred_id(CI,
-    CI ^ code_info_static ^ pred_id).
-get_proc_id(CI,
-    CI ^ code_info_static ^ proc_id).
-get_proc_info(CI,
-    CI ^ code_info_static ^ proc_info).
-get_pred_info(CI,
-    CI ^ code_info_static ^ pred_info).
-get_varset(CI,
-    CI ^ code_info_static ^ varset).
-get_var_slot_count(CI,
-    CI ^ code_info_static ^ var_slot_count).
-get_maybe_trace_info(CI,
-    CI ^ code_info_static ^ maybe_trace_info).
-get_opt_no_return_calls(CI,
-    CI ^ code_info_static ^ opt_no_resume_calls).
-get_emit_trail_ops(CI,
-    CI ^ code_info_static ^ emit_trail_ops).
-get_opt_trail_ops(CI,
-    CI ^ code_info_static ^ opt_trail_ops).
-get_forward_live_vars(CI,
-    CI ^ code_info_loc_dep ^ forward_live_vars).
-get_instmap(CI,
-    CI ^ code_info_loc_dep ^ instmap).
-get_zombies(CI,
-    CI ^ code_info_loc_dep ^ zombies).
-get_var_locn_info(CI,
-    CI ^ code_info_loc_dep ^ var_locn_info).
-get_temps_in_use(CI,
-    CI ^ code_info_loc_dep ^ temps_in_use).
-get_fail_info(CI,
-    CI ^ code_info_loc_dep ^ fail_info).
-get_label_counter(CI,
-    CI ^ code_info_persistent ^ label_num_src).
-get_succip_used(CI,
-    CI ^ code_info_persistent ^ store_succip).
-get_layout_info(CI,
-    CI ^ code_info_persistent ^ label_info).
-get_max_temp_slot_count(CI,
-    CI ^ code_info_persistent ^ stackslot_max).
-get_temp_content_map(CI,
-    CI ^ code_info_persistent ^ temp_contents).
-get_closure_seq_counter(CI,
-    CI ^ code_info_persistent ^ closure_layout_seq).
-get_closure_layouts(CI,
-    CI ^ code_info_persistent ^ closure_layouts).
-get_max_reg_in_use_at_trace(CI,
-    CI ^ code_info_persistent ^ max_reg_used).
-get_created_temp_frame(CI,
-    CI ^ code_info_persistent ^ created_temp_frame).
-get_static_cell_info(CI,
-    CI ^ code_info_persistent ^ static_cell_info).
+get_globals(CI, CI ^ code_info_static ^ globals).
+get_module_info(CI, CI ^ code_info_static ^ module_info).
+get_pred_id(CI, CI ^ code_info_static ^ pred_id).
+get_proc_id(CI, CI ^ code_info_static ^ proc_id).
+get_proc_info(CI, CI ^ code_info_static ^ proc_info).
+get_pred_info(CI, CI ^ code_info_static ^ pred_info).
+get_varset(CI, CI ^ code_info_static ^ varset).
+get_var_slot_count(CI, CI ^ code_info_static ^ var_slot_count).
+get_maybe_trace_info(CI, CI ^ code_info_static ^ maybe_trace_info).
+get_opt_no_return_calls(CI, CI ^ code_info_static ^ opt_no_resume_calls).
+get_emit_trail_ops(CI, CI ^ code_info_static ^ emit_trail_ops).
+get_opt_trail_ops(CI, CI ^ code_info_static ^ opt_trail_ops).
+get_forward_live_vars(CI, CI ^ code_info_loc_dep ^ forward_live_vars).
+get_instmap(CI, CI ^ code_info_loc_dep ^ instmap).
+get_zombies(CI, CI ^ code_info_loc_dep ^ zombies).
+get_var_locn_info(CI, CI ^ code_info_loc_dep ^ var_locn_info).
+get_temps_in_use(CI, CI ^ code_info_loc_dep ^ temps_in_use).
+get_fail_info(CI, CI ^ code_info_loc_dep ^ fail_info).
+get_label_counter(CI, CI ^ code_info_persistent ^ label_num_src).
+get_succip_used(CI, CI ^ code_info_persistent ^ store_succip).
+get_layout_info(CI, CI ^ code_info_persistent ^ label_info).
+get_max_temp_slot_count(CI, CI ^ code_info_persistent ^ stackslot_max).
+get_temp_content_map(CI, CI ^ code_info_persistent ^ temp_contents).
+get_closure_seq_counter(CI, CI ^ code_info_persistent ^ closure_layout_seq).
+get_closure_layouts(CI, CI ^ code_info_persistent ^ closure_layouts).
+get_max_reg_in_use_at_trace(CI, CI ^ code_info_persistent ^ max_reg_used).
+get_created_temp_frame(CI, CI ^ code_info_persistent ^ created_temp_frame).
+get_static_cell_info(CI, CI ^ code_info_persistent ^ static_cell_info).
 
 %---------------------------------------------------------------------------%
 
-set_maybe_trace_info(TI, CI,
-    CI ^ code_info_static ^ maybe_trace_info := TI).
+set_maybe_trace_info(TI, CI, CI ^ code_info_static ^ maybe_trace_info := TI).
 set_forward_live_vars(LV, CI,
     CI ^ code_info_loc_dep ^ forward_live_vars := LV).
-set_instmap(IM, CI,
-    CI ^ code_info_loc_dep ^ instmap := IM).
-set_zombies(Zs, CI,
-    CI ^ code_info_loc_dep ^ zombies := Zs).
-set_var_locn_info(EI, CI,
-    CI ^ code_info_loc_dep ^ var_locn_info := EI).
-set_temps_in_use(TI, CI,
-    CI ^ code_info_loc_dep ^ temps_in_use := TI).
-set_fail_info(FI, CI,
-    CI ^ code_info_loc_dep ^ fail_info := FI).
-set_label_counter(LC, CI,
-    CI ^ code_info_persistent ^ label_num_src := LC).
-set_succip_used(SU, CI,
-    CI ^ code_info_persistent ^ store_succip := SU).
-set_layout_info(LI, CI,
-    CI ^ code_info_persistent ^ label_info := LI).
+set_instmap(IM, CI, CI ^ code_info_loc_dep ^ instmap := IM).
+set_zombies(Zs, CI, CI ^ code_info_loc_dep ^ zombies := Zs).
+set_var_locn_info(EI, CI, CI ^ code_info_loc_dep ^ var_locn_info := EI).
+set_temps_in_use(TI, CI, CI ^ code_info_loc_dep ^ temps_in_use := TI).
+set_fail_info(FI, CI, CI ^ code_info_loc_dep ^ fail_info := FI).
+set_label_counter(LC, CI, CI ^ code_info_persistent ^ label_num_src := LC).
+set_succip_used(SU, CI, CI ^ code_info_persistent ^ store_succip := SU).
+set_layout_info(LI, CI, CI ^ code_info_persistent ^ label_info := LI).
 set_max_temp_slot_count(TM, CI,
     CI ^ code_info_persistent ^ stackslot_max := TM).
-set_temp_content_map(CM, CI,
-    CI ^ code_info_persistent ^ temp_contents := CM).
+set_temp_content_map(CM, CI, CI ^ code_info_persistent ^ temp_contents := CM).
 set_closure_seq_counter(CLS, CI,
     CI ^ code_info_persistent ^ closure_layout_seq := CLS).
-set_closure_layouts(CG, CI,
-    CI ^ code_info_persistent ^ closure_layouts := CG).
+set_closure_layouts(CG, CI, CI ^ code_info_persistent ^ closure_layouts := CG).
 set_max_reg_in_use_at_trace(MR, CI,
     CI ^ code_info_persistent ^ max_reg_used := MR).
 set_created_temp_frame(MR, CI,
@@ -744,7 +706,7 @@ set_static_cell_info(SCI, CI,
 :- pred get_next_closure_seq_no(int::out,
     code_info::in, code_info::out) is det.
 
-:- pred add_closure_layout(comp_gen_c_data::in,
+:- pred add_closure_layout(layout_data::in,
     code_info::in, code_info::out) is det.
 
 :- pred add_scalar_static_cell(assoc_list(rval, llds_type)::in,

@@ -65,15 +65,16 @@ transform_llds(!LLDS, !IO) :-
 :- pred transform_c_file(c_file::in, c_file::out, globals::in) is det.
 
 transform_c_file(CFile0, CFile, Globals) :-
-    CFile0 = c_file(ModuleName, _, _, _, _, _, Modules0, _, _),
-    % split up large computed gotos
+    ModuleName = CFile0 ^ cfile_modulename,
+    Modules0 = CFile0 ^ cfile_code,
+    % Split up large computed gotos.
     globals.lookup_int_option(Globals, max_jump_table_size, MaxSize),
     ( MaxSize = 0 ->
         Modules1 = Modules0
     ;
         transform_c_module_list(Modules0, Modules1, MaxSize)
     ),
-    % append an end label for accurate GC
+    % Append an end label for accurate GC.
     globals.get_gc_method(Globals, GC),
     (
         GC = accurate,

@@ -3989,13 +3989,10 @@ output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
         FactTableObjFiles, !IO) :-
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     globals.io_lookup_bool_option(statistics, Stats, !IO),
-    %
-    % Here we generate the LLDS representations for
-    % various data structures used for RTTI, type classes,
-    % and stack layouts.
-    % XXX this should perhaps be part of backend_pass
-    % rather than output_pass.
-    %
+
+    % Here we generate the LLDS representations for various data structures
+    % used for RTTI, type classes, and stack layouts.
+    % XXX This should perhaps be part of backend_pass rather than output_pass.
     type_ctor_info.generate_rtti(HLDS, TypeCtorRttiData),
     generate_base_typeclass_info_rtti(HLDS, OldTypeClassInfoRttiData),
     globals.io_lookup_bool_option(new_type_class_rtti, NewTypeClassRtti, !IO),
@@ -4003,29 +4000,25 @@ output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
         NewTypeClassInfoRttiData),
     list.append(OldTypeClassInfoRttiData, NewTypeClassInfoRttiData,
         TypeClassInfoRttiData),
-    list.map(llds.wrap_rtti_data, TypeCtorRttiData, TypeCtorTables),
-    list.map(llds.wrap_rtti_data, TypeClassInfoRttiData, TypeClassInfos),
-    stack_layout.generate_llds(HLDS, GlobalData0, GlobalData, StackLayouts,
+    stack_layout.generate_llds(HLDS, GlobalData0, GlobalData, StackLayoutDatas,
         LayoutLabels),
-    %
+
     % Here we perform some optimizations on the LLDS data.
-    % XXX this should perhaps be part of backend_pass
-    % rather than output_pass.
-    %
-    % XXX We assume that the foreign language we use is C
+    % XXX This should perhaps be part of backend_pass rather than output_pass.
+    % XXX We assume that the foreign language we use is C.
     get_c_interface_info(HLDS, c, C_InterfaceInfo),
     global_data_get_all_proc_vars(GlobalData, GlobalVars),
-    global_data_get_all_closure_layouts(GlobalData, ClosureLayouts),
+    global_data_get_all_closure_layouts(GlobalData, ClosureLayoutDatas),
     global_data_get_static_cell_info(GlobalData, StaticCellInfo),
-    StaticCells = get_static_cells(StaticCellInfo),
+    get_static_cells(StaticCellInfo,
+        ScalarCommonCellDatas, VectorCommonCellDatas),
 
-    %
     % Next we put it all together and output it to one or more C files.
-    %
-    list.condense([StaticCells, ClosureLayouts, StackLayouts,
-        TypeCtorTables, TypeClassInfos], AllData),
-    construct_c_file(HLDS, C_InterfaceInfo, Procs, GlobalVars, AllData, CFile,
-        !IO),
+    RttiDatas = TypeCtorRttiData ++ TypeClassInfoRttiData,
+    LayoutDatas = ClosureLayoutDatas ++ StackLayoutDatas,
+    construct_c_file(HLDS, C_InterfaceInfo, Procs, GlobalVars,
+        ScalarCommonCellDatas, VectorCommonCellDatas, RttiDatas, LayoutDatas,
+        CFile, !IO),
     module_info_get_complexity_proc_infos(HLDS, ComplexityProcs),
     output_llds(ModuleName, CFile, ComplexityProcs, LayoutLabels,
         Verbose, Stats, !IO),
@@ -4033,9 +4026,7 @@ output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
     C_InterfaceInfo = foreign_interface_info(_, _, _, _, C_ExportDecls, _),
     export.produce_header_file(C_ExportDecls, ModuleName, !IO),
 
-    %
     % Finally we invoke the C compiler to compile it.
-    %
     globals.io_lookup_bool_option(target_code_only, TargetCodeOnly, !IO),
     (
         TargetCodeOnly = no,
@@ -4054,12 +4045,15 @@ output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
     ).
 
     % Split the code up into bite-size chunks for the C compiler.
-
+    %
 :- pred construct_c_file(module_info::in, foreign_interface_info::in,
-    list(c_procedure)::in, list(comp_gen_c_var)::in, list(comp_gen_c_data)::in,
-    c_file::out, io::di, io::uo) is det.
+    list(c_procedure)::in, list(comp_gen_c_var)::in,
+    list(scalar_common_data_array)::in, list(vector_common_data_array)::in,
+    list(rtti_data)::in, list(layout_data)::in, c_file::out, io::di, io::uo)
+    is det.
 
-construct_c_file(ModuleInfo, C_InterfaceInfo, Procedures, GlobalVars, AllData,
+construct_c_file(ModuleInfo, C_InterfaceInfo, Procedures, GlobalVars,
+        ScalarCommonCellDatas, VectorCommonCellDatas, RttiDatas, LayoutDatas,
         CFile, !IO) :-
     C_InterfaceInfo = foreign_interface_info(ModuleSymName, C_HeaderCode0,
         C_Includes, C_BodyCode0, _C_ExportDecls, C_ExportDefns),
@@ -4093,7 +4087,8 @@ construct_c_file(ModuleInfo, C_InterfaceInfo, Procedures, GlobalVars, AllData,
     module_info_user_final_pred_c_names(ModuleInfo, UserFinalPredCNames),
 
     CFile = c_file(ModuleSymName, C_HeaderCode, C_BodyCode, C_ExportDefns,
-        GlobalVars, AllData, ChunkedModules, UserInitPredCNames,
+        GlobalVars, ScalarCommonCellDatas, VectorCommonCellDatas,
+        RttiDatas, LayoutDatas, ChunkedModules, UserInitPredCNames,
         UserFinalPredCNames).
 
 :- pred foreign_decl_code_is_local(foreign_decl_code::in) is semidet.

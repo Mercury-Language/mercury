@@ -234,7 +234,7 @@ decl_set_is_member(DeclId, DeclSet) :-
 %-----------------------------------------------------------------------------%
 
 output_llds(CFile, ComplexityProcs, StackLayoutLabels, !IO) :-
-    CFile = c_file(ModuleName, _, _, _, _, _, _, _, _),
+    ModuleName = CFile ^ cfile_modulename,
     module_name_to_file_name(ModuleName, ".c", yes, FileName, !IO),
     io.open_output(FileName, Result, !IO),
     (
@@ -288,7 +288,8 @@ output_c_file_mercury_headers(!IO) :-
 output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
         FileStream, !DeclSet, !IO) :-
     CFile = c_file(ModuleName, C_HeaderLines, UserForeignCode, Exports,
-        Vars, Datas, Modules, UserInitPredCNames, UserFinalPredCNames),
+        Vars, ScalarCommonDatas, VectorCommonDatas, RttiDatas, LayoutDatas0,
+        Modules, UserInitPredCNames, UserFinalPredCNames),
     library.version(Version),
     io.set_output_stream(FileStream, OutputStream, !IO),
     module_name_to_file_name(ModuleName, ".m", no, SourceFileName, !IO),
@@ -301,11 +302,6 @@ output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
     io.write_string("\n", !IO),
 
     gather_c_file_labels(Modules, Labels),
-    classify_comp_gen_c_data(Datas,
-        [], ScalarCommonDatas0, [], VectorCommonDatas0,
-        [], RttiDatas, [], LayoutDatas0),
-    list.reverse(ScalarCommonDatas0, ScalarCommonDatas),
-    list.reverse(VectorCommonDatas0, VectorCommonDatas),
     order_layout_datas(LayoutDatas0, LayoutDatas),
 
     list.foldl2(output_scalar_common_data_decl, ScalarCommonDatas,
@@ -327,8 +323,8 @@ output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
     list.foldl(output_user_foreign_code, UserForeignCode, !IO),
     list.foldl(io.write_string, Exports, !IO),
     io.write_string("\n", !IO),
-    output_c_module_init_list(ModuleName, Modules, Datas, Vars,
-        ComplexityProcs, StackLayoutLabels, !DeclSet, !IO),
+    output_c_module_init_list(ModuleName, Modules, RttiDatas, LayoutDatas,
+        Vars, ComplexityProcs, StackLayoutLabels, !DeclSet, !IO),
     io.set_output_stream(OutputStream, _, !IO).
 
 :- pred order_layout_datas(list(layout_data)::in, list(layout_data)::out)
@@ -360,12 +356,12 @@ order_layout_datas_2([Layout | Layouts], !ProcLayouts, !LabelLayouts,
     order_layout_datas_2(Layouts, !ProcLayouts, !LabelLayouts, !OtherLayouts).
 
 :- pred output_c_module_init_list(module_name::in, list(comp_gen_c_module)::in,
-    list(comp_gen_c_data)::in, list(comp_gen_c_var)::in,
+    list(rtti_data)::in, list(layout_data)::in, list(comp_gen_c_var)::in,
     list(complexity_proc_info)::in, map(label, data_addr)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_c_module_init_list(ModuleName, Modules, Datas, Vars, ComplexityProcs,
-        StackLayoutLabels, !DeclSet, !IO) :-
+output_c_module_init_list(ModuleName, Modules, RttiDatas, LayoutDatas, Vars,
+        ComplexityProcs, StackLayoutLabels, !DeclSet, !IO) :-
     MustInit = (pred(Module::in) is semidet :-
         module_defines_label_with_layout(Module, StackLayoutLabels)
     ),
@@ -441,7 +437,7 @@ output_c_module_init_list(ModuleName, Modules, Datas, Vars, ComplexityProcs,
             "maybe", 0, !IO)
     ),
 
-    output_c_data_init_list(Datas, !IO),
+    output_c_data_init_list(RttiDatas, !IO),
     % The call to the debugger initialization function is for bootstrapping;
     % once the debugger has been modified to call do_init_modules_debugger()
     % and all debuggable object files created before this change have been
@@ -460,10 +456,10 @@ output_c_module_init_list(ModuleName, Modules, Datas, Vars, ComplexityProcs,
     io.write_string("\t\treturn;\n", !IO),
     io.write_string("\t}\n", !IO),
     io.write_string("\tdone = MR_TRUE;\n", !IO),
-    output_type_tables_init_list(Datas, !IO),
+    output_type_tables_init_list(RttiDatas, !IO),
     io.write_string("}\n\n", !IO),
 
-    output_debugger_init_list_decls(Datas, !DeclSet, !IO),
+    output_debugger_init_list_decls(LayoutDatas, !DeclSet, !IO),
     io.write_string("\n", !IO),
     io.write_string("void ", !IO),
     output_init_name(ModuleName, !IO),
@@ -474,16 +470,16 @@ output_c_module_init_list(ModuleName, Modules, Datas, Vars, ComplexityProcs,
     io.write_string("\t\treturn;\n", !IO),
     io.write_string("\t}\n", !IO),
     io.write_string("\tdone = MR_TRUE;\n", !IO),
-    output_debugger_init_list(Datas, !IO),
+    output_debugger_init_list(LayoutDatas, !IO),
     io.write_string("}\n\n", !IO),
 
     io.write_string("#ifdef MR_DEEP_PROFILING\n", !IO),
-    output_write_proc_static_list_decls(Datas, !DeclSet, !IO),
+    output_write_proc_static_list_decls(LayoutDatas, !DeclSet, !IO),
     io.write_string("\nvoid ", !IO),
     output_init_name(ModuleName, !IO),
     io.write_string("write_out_proc_statics(FILE *fp)\n", !IO),
     io.write_string("{\n", !IO),
-    output_write_proc_static_list(Datas, !IO),
+    output_write_proc_static_list(LayoutDatas, !IO),
     io.write_string("}\n", !IO),
     io.write_string("\n#endif\n\n", !IO),
 
@@ -565,45 +561,33 @@ output_init_bunch_calls([_ | Bunches], ModuleName, InitStatus, Seq, !IO) :-
 
     % Output MR_INIT_TYPE_CTOR_INFO(TypeCtorInfo, Typector);
     % for each type_ctor_info defined in this module.
-
-:- pred output_c_data_init_list(list(comp_gen_c_data)::in, io::di, io::uo)
-    is det.
+    %
+:- pred output_c_data_init_list(list(rtti_data)::in, io::di, io::uo) is det.
 
 output_c_data_init_list([], !IO).
 output_c_data_init_list([Data | Datas], !IO) :-
-    ( Data = rtti_data(RttiData) ->
-        rtti_out.init_rtti_data_if_nec(RttiData, !IO)
-    ;
-        true
-    ),
+    rtti_out.init_rtti_data_if_nec(Data, !IO),
     output_c_data_init_list(Datas, !IO).
 
     % Output code to register each type_ctor_info defined in this module.
-
-:- pred output_type_tables_init_list(list(comp_gen_c_data)::in,
-    io::di, io::uo) is det.
+    %
+:- pred output_type_tables_init_list(list(rtti_data)::in, io::di, io::uo)
+    is det.
 
 output_type_tables_init_list([], !IO).
 output_type_tables_init_list([Data | Datas], !IO) :-
-    ( Data = rtti_data(RttiData) ->
-        rtti_out.register_rtti_data_if_nec(RttiData, !IO)
-    ;
-        true
-    ),
+    rtti_out.register_rtti_data_if_nec(Data, !IO),
     output_type_tables_init_list(Datas, !IO).
 
     % Output declarations for each module layout defined in this module
     % (there should only be one, of course).
     %
-:- pred output_debugger_init_list_decls(list(comp_gen_c_data)::in,
+:- pred output_debugger_init_list_decls(list(layout_data)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_debugger_init_list_decls([], !DeclSet, !IO).
 output_debugger_init_list_decls([Data | Datas], !DeclSet, !IO) :-
-    (
-        Data = layout_data(LayoutData),
-        LayoutData = module_layout_data(ModuleName, _,_,_,_,_,_,_)
-    ->
+    ( Data = module_layout_data(ModuleName, _, _, _, _, _, _, _) ->
         output_data_addr_decls(layout_addr(module_layout(ModuleName)),
             !DeclSet, !IO)
     ;
@@ -615,15 +599,12 @@ output_debugger_init_list_decls([Data | Datas], !DeclSet, !IO) :-
     % for each module layout defined in this module
     % (there should only be one, of course).
     %
-:- pred output_debugger_init_list(list(comp_gen_c_data)::in, io::di, io::uo)
+:- pred output_debugger_init_list(list(layout_data)::in, io::di, io::uo)
     is det.
 
 output_debugger_init_list([], !IO).
 output_debugger_init_list([Data | Datas], !IO) :-
-    (
-        Data = layout_data(LayoutData),
-        LayoutData = module_layout_data(ModuleName, _,_,_,_,_,_,_)
-    ->
+    ( Data = module_layout_data(ModuleName, _, _, _, _, _, _, _) ->
         io.write_string("\tif (MR_register_module_layout != NULL) {\n", !IO),
         io.write_string("\t\t(*MR_register_module_layout)(", !IO),
         io.write_string("\n\t\t\t&", !IO),
@@ -634,30 +615,28 @@ output_debugger_init_list([Data | Datas], !IO) :-
     ),
     output_debugger_init_list(Datas, !IO).
 
-:- pred output_write_proc_static_list_decls(list(comp_gen_c_data)::in,
+:- pred output_write_proc_static_list_decls(list(layout_data)::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_write_proc_static_list_decls([], !DeclSet, !IO).
 output_write_proc_static_list_decls([Data | Datas], !DeclSet, !IO) :-
     (
-        Data = layout_data(LayoutData),
-        LayoutData = proc_layout_data(_, _, MaybeRest),
+        Data = proc_layout_data(_, _, MaybeRest),
         MaybeRest = proc_id(yes(_), _)
     ->
-        output_maybe_layout_data_decl(LayoutData, !DeclSet, !IO)
+        output_maybe_layout_data_decl(Data, !DeclSet, !IO)
     ;
         true
     ),
     output_write_proc_static_list_decls(Datas, !DeclSet, !IO).
 
-:- pred output_write_proc_static_list(list(comp_gen_c_data)::in,
+:- pred output_write_proc_static_list(list(layout_data)::in,
     io::di, io::uo) is det.
 
 output_write_proc_static_list([], !IO).
 output_write_proc_static_list([Data | Datas], !IO) :-
     (
-        Data = layout_data(LayoutData),
-        LayoutData = proc_layout_data(RttiProcLabel, _, MaybeRest),
+        Data = proc_layout_data(RttiProcLabel, _, MaybeRest),
         MaybeRest = proc_id(yes(_), _)
     ->
         ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
@@ -802,49 +781,6 @@ output_bunch_name(ModuleName, InitStatus, Number, !IO) :-
     io.write_string("_bunch_", !IO),
     io.write_int(Number, !IO).
 
-:- pred classify_comp_gen_c_data(list(comp_gen_c_data)::in,
-    list(scalar_common_data_array)::in, list(scalar_common_data_array)::out,
-    list(vector_common_data_array)::in, list(vector_common_data_array)::out,
-    list(rtti_data)::in, list(rtti_data)::out,
-    list(layout_data)::in, list(layout_data)::out) is det.
-
-classify_comp_gen_c_data([], !ScalarCommonList, !VectorCommonList,
-        !RttiList, !LayoutList).
-classify_comp_gen_c_data([Data | Datas], !ScalarCommonList, !VectorCommonList,
-        !RttiList, !LayoutList) :-
-    (
-        Data = scalar_common_data(ScalarCommonData),
-        !:ScalarCommonList = [ScalarCommonData | !.ScalarCommonList]
-    ;
-        Data = vector_common_data(VectorCommonData),
-        !:VectorCommonList = [VectorCommonData | !.VectorCommonList]
-    ;
-        Data = rtti_data(Rtti),
-        !:RttiList = [Rtti | !.RttiList]
-    ;
-        Data = layout_data(Layout),
-        !:LayoutList = [Layout | !.LayoutList]
-    ),
-    classify_comp_gen_c_data(Datas, !ScalarCommonList, !VectorCommonList,
-        !RttiList, !LayoutList).
-
-    % output_c_data_type_def outputs the given the type definition.
-    % This is needed because some compilers need the type definition
-    % to appear before any use of the type in forward declarations
-    % of static constants.
-    %
-:- pred output_c_data_type_def(comp_gen_c_data::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_c_data_type_def(scalar_common_data(ScalarCommonData), !DeclSet, !IO) :-
-    output_scalar_common_data_decl(ScalarCommonData, !DeclSet, !IO).
-output_c_data_type_def(vector_common_data(VectorCommonData), !DeclSet, !IO) :-
-    output_vector_common_data_decl(VectorCommonData, !DeclSet, !IO).
-output_c_data_type_def(rtti_data(RttiData), !DeclSet, !IO) :-
-    output_rtti_data_decl(RttiData, !DeclSet, !IO).
-output_c_data_type_def(layout_data(LayoutData), !DeclSet, !IO) :-
-    output_maybe_layout_data_decl(LayoutData, !DeclSet, !IO).
-
 :- pred output_scalar_common_data_decl(scalar_common_data_array::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
@@ -932,18 +868,6 @@ output_comp_gen_c_var(tabling_pointer_var(ModuleName, ProcLabel),
     io.write_string(" = { 0 };\n", !IO),
     DataAddr = data_addr(ModuleName, tabling_pointer(ProcLabel)),
     decl_set_insert(decl_data_addr(DataAddr), !DeclSet).
-
-:- pred output_comp_gen_c_data(comp_gen_c_data::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_comp_gen_c_data(scalar_common_data(ScalarCommonData), !DeclSet, !IO) :-
-    output_scalar_common_data_defn(ScalarCommonData, !DeclSet, !IO).
-output_comp_gen_c_data(vector_common_data(VectorCommonData), !DeclSet, !IO) :-
-    output_vector_common_data_defn(VectorCommonData, !DeclSet, !IO).
-output_comp_gen_c_data(rtti_data(RttiData), !DeclSet, !IO) :-
-    output_rtti_data_defn(RttiData, !DeclSet, !IO).
-output_comp_gen_c_data(layout_data(LayoutData), !DeclSet, !IO) :-
-    output_layout_data_defn(LayoutData, !DeclSet, !IO).
 
 :- pred output_scalar_common_data_defn(scalar_common_data_array::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
@@ -4462,7 +4386,7 @@ output_rval(mkword(Tag, Exprn), !IO) :-
         DataAddr = data_addr(_, DataName),
         DataName = scalar_common_ref(TypeNum, CellNum)
     ->
-        io.write_string("MR_TAG_XCOMMON(", !IO),
+        io.write_string("MR_TAG_COMMON(", !IO),
         io.write_int(Tag, !IO),
         io.write_string(",", !IO),
         io.write_int(TypeNum, !IO),
@@ -4579,16 +4503,16 @@ output_rval_const(data_addr_const(DataAddr, MaybeOffset), !IO) :-
     % cast them here to avoid type errors. The offset is also in MR_Words.
     (
         MaybeOffset = no,
-        % The tests for special cases below increase the runtime
-        % of the compiler very slightly, but the use of shorter names
-        % reduces the size of the generated C source file, which has
-        % a considerably longer lifetime. In debugging grades, the
-        % file size difference can be very substantial.
+        % The tests for special cases below increase the runtime of the
+        % compiler very slightly, but the use of shorter names reduces the size
+        % of the generated C source file, which has a considerably longer
+        % lifetime. In debugging grades, the file size difference can be
+        % very substantial.
         (
             DataAddr = data_addr(_, DataName),
             DataName = scalar_common_ref(TypeNum, CellNum)
         ->
-            io.write_string("MR_XCOMMON(", !IO),
+            io.write_string("MR_COMMON(", !IO),
             io.write_int(TypeNum, !IO),
             io.write_string(",", !IO),
             io.write_int(CellNum, !IO),
@@ -4626,8 +4550,8 @@ output_type_ctor_addr(Module0, Name, Arity, !IO) :-
     ;
         Module = Module0
     ),
-    % We don't need to mangle the module name, but we do need to
-    % convert it to a C identifier in the standard fashion.
+    % We don't need to mangle the module name, but we do need to convert it
+    % to a C identifier in the standard fashion.
     ModuleStr = sym_name_mangle(Module),
     ( Arity = 0 ->
         (
