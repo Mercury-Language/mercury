@@ -1,4 +1,4 @@
-       1:      1  1 CALL pred interactive.main/2-0 (cc_multi) interactive.m:21
+       1:      1  1 CALL pred interactive.main/2-0 (cc_multi) interactive.m:18
 mdb> echo on
 Command echo enabled.
 mdb> query interactive list
