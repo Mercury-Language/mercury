@@ -1,13 +1,13 @@
-       1:      1  1 CALL pred neg_conj.main/2-0 (det) neg_conj.m:11
+       1:      1  1 CALL pred neg_conj.main/2-0 (det) neg_conj.m:8
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> break p
  0: + stop  interface pred neg_conj.p/1-0 (semidet)
 mdb> continue
-       3:      2  2 CALL pred neg_conj.p/1-0 (semidet) neg_conj.m:19 (neg_conj.m:9)
+       3:      2  2 CALL pred neg_conj.p/1-0 (semidet) neg_conj.m:18 (neg_conj.m:9)
 mdb> finish
-      22:      2  2 EXIT pred neg_conj.p/1-0 (semidet) neg_conj.m:19 (neg_conj.m:9)
+      22:      2  2 EXIT pred neg_conj.p/1-0 (semidet) neg_conj.m:18 (neg_conj.m:9)
 mdb> dd -d 3 -n 7
 p(0)
 Valid? no
@@ -27,6 +27,6 @@ Complete? yes
 Found incorrect contour:
 p(0)
 Is this a bug? yes
-      22:      2  2 EXIT pred neg_conj.p/1-0 (semidet) neg_conj.m:19 (neg_conj.m:9)
+      22:      2  2 EXIT pred neg_conj.p/1-0 (semidet) neg_conj.m:18 (neg_conj.m:9)
 mdb> continue
 yes.
