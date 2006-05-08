@@ -25,11 +25,11 @@ Which do you want to put a breakpoint on (0-7 or *)? *
  6: + stop  interface pred exception.try/2-1 (cc_multi)
  7: + stop  interface pred exception.try/2-0 (cc_multi)
 mdb> c
-      E2:     C2 CALL pred exception.try/2-0 (cc_multi) exception.m:480 (track_through_catch.m:15)
+      E2:     C2 CALL pred exception.try/2-0 (cc_multi) exception.m:475 (track_through_catch.m:15)
 mdb> f
-      E3:     C3 CALL pred exception.try/3-0 (cc_multi) exception.m:484 (exception.m:482)
-      E4:     C3 EXIT pred exception.try/3-0 (cc_multi) exception.m:484 (exception.m:482)
-      E5:     C2 EXIT pred exception.try/2-0 (cc_multi) exception.m:480 (track_through_catch.m:15)
+      E3:     C3 CALL pred exception.try/3-0 (cc_multi) exception.m:479 (exception.m:477)
+      E4:     C3 EXIT pred exception.try/3-0 (cc_multi) exception.m:479 (exception.m:477)
+      E5:     C2 EXIT pred exception.try/2-0 (cc_multi) exception.m:475 (track_through_catch.m:15)
 mdb> dd
 try(q(2), succeeded(2))
 Valid? b 2
@@ -39,11 +39,11 @@ succeeded(2)
 p(2)
 Valid? info
 Context of current question : track_through_catch.m:21 (track_through_catch.m:14)
-Search mode                 : top down                        
+Search mode                 : top down                                           
 The current question was chosen because the marked subterm was bound by
 the unification inside the predicate track_through_catch.p/1
 (track_through_catch.m:21). The path to the subterm in the atom is 1.
 dd> quit
 Diagnosis aborted.
-      E5:     C2 EXIT pred exception.try/2-0 (cc_multi) exception.m:480 (track_through_catch.m:15)
+      E5:     C2 EXIT pred exception.try/2-0 (cc_multi) exception.m:475 (track_through_catch.m:15)
 mdb> quit -y
