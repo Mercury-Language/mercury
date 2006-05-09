@@ -1642,7 +1642,7 @@ get_pti_from_type_info(_::in, _::in) = (42::out) :-
     [promise_pure],
 "
     // XXX This should be something else.
-    TypeInfo_for_T = NULL;
+    TypeInfo_for_T = null;
 
     PTI = TypeInfo[Index];
 ").
