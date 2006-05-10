@@ -55,8 +55,8 @@
     % Normalize the representation of the datastructure using its
     % type information.
     %
-:- pred normalize_datastruct_with_type_information(module_info::in, mer_type::in,
-    datastruct::in, datastruct::out) is det.
+:- pred normalize_datastruct_with_type_information(module_info::in, 
+    mer_type::in, datastruct::in, datastruct::out) is det.
 :- func normalize_datastruct_with_type_information(module_info, mer_type,
     datastruct) = datastruct.
 
@@ -66,11 +66,15 @@
     datastruct::in, datastruct::in) is semidet.
 :- pred datastruct_subsumed_by_list(module_info::in, proc_info::in,
     datastruct::in, list(datastruct)::in) is semidet.
+:- pred datastructs_subsumed_by_list(module_info::in, proc_info::in,
+    list(datastruct)::in, list(datastruct)::in) is semidet.
 
 :- pred datastruct_apply_widening(module_info::in, proc_info::in,
     datastruct::in, datastruct::out) is det.
 
-%-----------------------------------------------------------------------------%
+:- func datastructs_project(list(prog_var), 
+    list(datastruct)) = list(datastruct).
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -133,6 +137,18 @@ datastruct_subsumed_by_list(ModuleInfo, ProcInfo, Data0, [Data | Rest]):-
         datastruct_subsumed_by_list(ModuleInfo, ProcInfo, Data0, Rest)
     ).
 
+datastructs_subsumed_by_list(ModuleInfo, ProcInfo, PerhapsSubsumedData, 
+        Data) :- 
+    list.takewhile(datastructs_subsume_datastruct(ModuleInfo, ProcInfo, Data), 
+        PerhapsSubsumedData, _, NotSubsumed), 
+    NotSubsumed = [].
+
+:- pred datastructs_subsume_datastruct(module_info::in, proc_info::in, 
+    list(datastruct)::in, datastruct::in) is semidet.
+
+datastructs_subsume_datastruct(ModuleInfo, ProcInfo, Datastructs, Data):- 
+    datastruct_subsumed_by_list(ModuleInfo, ProcInfo, Data, Datastructs).
+
 datastruct_apply_widening(ModuleInfo, ProcInfo, !Data) :-
     Var = !.Data ^ sc_var,
     Sel0 = !.Data ^ sc_selector,
@@ -140,6 +156,12 @@ datastruct_apply_widening(ModuleInfo, ProcInfo, !Data) :-
     map.lookup(VarTypes, Var, Type),
     selector_apply_widening(ModuleInfo, Type, Sel0, Sel),
     !:Data = datastruct_init_with_selector(Var, Sel).
+
+datastructs_project(Vars, DataIn) = 
+    list__filter(
+        pred(Data::in) is semidet :-
+          (list__member(Data^sc_var, Vars)),
+        DataIn).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.datastruct.

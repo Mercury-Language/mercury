@@ -1402,6 +1402,53 @@ write_goal_a(Goal - GoalInfo, ModuleInfo, VarSet, AppendVarNums, Indent,
     ;
         true
     ),
+    ( string.contains_char(Verbose, 'R') ->
+        (
+            goal_info_maybe_get_lfu(GoalInfo, LFU),
+            goal_info_maybe_get_lbu(GoalInfo, LBU), 
+            goal_info_maybe_get_reuse(GoalInfo, ReuseDescription), 
+            set.to_sorted_list(LFU, ListLFU),
+            set.to_sorted_list(LBU, ListLBU)
+        ->
+            write_indent(Indent, !IO),
+            io.write_string("% LFU: ", !IO),
+            mercury_output_vars(ListLFU, VarSet, AppendVarNums, !IO),
+            io.write_string("\n", !IO),
+            write_indent(Indent, !IO),
+            io.write_string("% LBU: ", !IO),
+            mercury_output_vars(ListLBU, VarSet, AppendVarNums, !IO),
+            io.write_string("\n", !IO),
+
+            write_indent(Indent, !IO),
+            write_string("% Reuse: ", !IO),
+            (
+                ReuseDescription = empty,
+                io.write_string("no", !IO)
+            ;
+                ReuseDescription = missed_reuse(Messages),
+                io.write_string("missed (", !IO), 
+                io.write_list(Messages, ", ", io.write_string, !IO),
+                io.write_string(")", !IO)
+            ;
+                ReuseDescription = potential_reuse(ShortReuseDescr),
+                io.write_string("potential reuse (", !IO), 
+                write_short_reuse_description(ShortReuseDescr, VarSet, 
+                    AppendVarNums, !IO), 
+                io.write_string(")", !IO)
+            ;
+                ReuseDescription = reuse(ShortReuseDescr),
+                io.write_string("reuse (", !IO), 
+                write_short_reuse_description(ShortReuseDescr, VarSet,
+                    AppendVarNums, !IO), 
+                io.write_string(")", !IO)
+            ), 
+            io.write_string("\n", !IO)
+        ;
+            true
+        )
+    ;
+        true
+    ),
     goal_info_get_code_gen_info(GoalInfo, CodeGenInfo),
     (
         CodeGenInfo = no_code_gen_info
@@ -4101,6 +4148,34 @@ mercury_expanded_inst_to_string(Inst, VarSet, ModuleInfo) = String :-
     mercury_format_inst(Inst,
         expanded_inst_info(VarSet, ModuleInfo, Expansions), "", String).
 
+:- pred write_short_reuse_description(short_reuse_description::in, 
+    prog_varset::in, bool::in, 
+    io::di, io::uo) is det.
+write_short_reuse_description(ShortDescription, VarSet, AppendVarnums, !IO):- 
+    (
+        ShortDescription = cell_died, 
+        io.write_string("cell died", !IO)
+    ;
+        ShortDescription = cell_reused(Var, IsConditional, _, _),
+        io.write_string("cell reuse - ", !IO),
+        mercury_output_var(Var, VarSet, AppendVarnums, !IO),
+        io.write_string(" - ", !IO), 
+        write_is_conditional(IsConditional, !IO)
+    ;
+        ShortDescription = reuse_call(IsConditional),
+        io.write_string("reuse call - ", !IO), 
+        write_is_conditional(IsConditional, !IO)
+    ).
+
+:- pred write_is_conditional(is_conditional::in, io::di, io::uo) is det.
+write_is_conditional(IsConditional, !IO) :- 
+    (
+        IsConditional = conditional_reuse,
+        io.write_string("with condition", !IO)
+    ;
+        IsConditional = unconditional_reuse,
+        io.write_string("always safe", !IO)
+    ).
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.

@@ -720,6 +720,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             globals.set_option(use_symlinks, bool(no), !Globals)
         ),
 
+        option_implies(structure_reuse_analysis, structure_sharing_analysis,
+            bool(yes), !Globals),
         option_implies(verbose_check_termination, check_termination,bool(yes),
             !Globals),
         option_implies(check_termination, termination, bool(yes), !Globals),
@@ -2329,7 +2331,7 @@ char_is_not(A, B) :-
 
 :- pred convert_dump_alias(string::in, string::out) is semidet.
 
-convert_dump_alias("ALL", "abcdfgilmnprstuvBCDIMPSTU").
+convert_dump_alias("ALL", "abcdfgilmnprstuvBCDIMPRSTU").
 convert_dump_alias("allD", "abcdfgilmnprstuvBCDMPT").
 convert_dump_alias("all", "abcdfgilmnprstuvBCMPST").
 convert_dump_alias("most", "bcdfgilmnprstuvP").
@@ -2342,6 +2344,7 @@ convert_dump_alias("petdr", "din").
 convert_dump_alias("mm", "bdgvP").      % for debugging minimal model
 convert_dump_alias("osv", "bcdglmnpruvP").  % for debugging
                                             % --optimize-saved-vars-cell
+convert_dump_alias("ctgc", "cdinpGDRS").
 
 %-----------------------------------------------------------------------------%
 :- end_module handle_options.

@@ -765,8 +765,9 @@
 
 :- type case
     --->    case(
-                cons_id,    % functor to match with,
-                hlds_goal   % goal to execute if match succeeds.
+                case_functor    :: cons_id,    % functor to match with,
+                case_goal       :: hlds_goal   % goal to execute if match
+                                               % succeeds.
             ).
 
 %-----------------------------------------------------------------------------%
@@ -1069,6 +1070,95 @@
 
 :- pred goal_info_set_ho_values(ho_values::in,
     hlds_goal_info::in, hlds_goal_info::out) is det.
+
+%-----------------------------------------------------------------------------%
+%
+% Types and get/set predicates for the CTGC related information stored for each
+% goal.
+%
+
+
+    % Information describing possible kinds of reuse on a per goal basis.
+    % - 'empty': before CTGC analysis, every goal is annotated with the reuse
+    % description 'empty', i.e. no information about any reuse. 
+    % - 'potential_reuse': the value 'potential_reuse' states that in a reuse
+    % version of the procedure to which the goal belongs, this goal may safely
+    % be replaced by a goal implementing structure reuse.
+    % - 'reuse': the value 'reuse' states that in the current procedure (either
+    % the specialised reuse version of a procedure, or the original procedure
+    % itself) the current goal can safely be replaced by a goal performing
+    % structure reuse. 
+    % - 'missed_reuse': the value 'missed_reuse' gives some feedback when an
+    % opportunity for reuse was missed for some reason (only used for calls).
+    %
+:- type reuse_description
+    --->    empty
+    ;       missed_reuse(list(missed_message))
+    ;       potential_reuse(short_reuse_description)
+    ;       reuse(short_reuse_description).
+
+    % A short description of the kind of reuse allowed in the associated
+    % goal:
+    % - 'cell_died' (only relevant for deconstructions): states that the cell
+    % of the deconstruction becomes dead after that deconstruction.
+    % - 'cell_reused' (only relevant for constructions): states that it is
+    % allowed to reuse a previously discovered dead term for constructing a
+    % new term in the given construction. Details of which term is reused are
+    % recorded.
+    % - 'reuse_call' (only applicable to procedure calls): the called 
+    % procedure is an optimised procedure w.r.t. CTGC. Records whether the 
+    % call is conditional or not. 
+    %
+:- type short_reuse_description 
+    --->    cell_died   
+    ;       cell_reused(
+                dead_var,       % The dead variable selected
+                                % for reusing.
+                is_conditional, % states if the reuse is conditional. 
+                list(cons_id),  % What are the possible cons_ids that the 
+                                % variable to be reused can have.
+                list(needs_update)   
+                                % Which of the fields of the cell to be 
+                                % reused already contain the correct value.
+            )
+    ;       reuse_call(is_conditional).
+
+    % Used to represent the fact whether a reuse opportunity is either
+    % always safe (unconditional_reuse) or involves a reuse condition to 
+    % be satisfied (conditional_reuse).
+    %
+:- type is_conditional 
+    --->    conditional_reuse
+    ;       unconditional_reuse.
+
+:- type needs_update
+    --->    needs_update
+    ;       does_not_need_update.
+
+:- type missed_message == string.
+
+    % The following functions produce an 'unexpected' error when the
+    % requested values have not been set.
+    %
+:- func goal_info_get_lfu(hlds_goal_info) = set(prog_var).
+:- func goal_info_get_lbu(hlds_goal_info) = set(prog_var).
+:- func goal_info_get_reuse(hlds_goal_info) = reuse_description.
+
+    % Same as above, but instead of producing an error, the predicate
+    % fails.
+:- pred goal_info_maybe_get_lfu(hlds_goal_info::in, set(prog_var)::out) is
+    semidet.
+:- pred goal_info_maybe_get_lbu(hlds_goal_info::in, set(prog_var)::out) is 
+    semidet.
+:- pred goal_info_maybe_get_reuse(hlds_goal_info::in, reuse_description::out) 
+    is semidet.
+
+:- pred goal_info_set_lfu(set(prog_var)::in, hlds_goal_info::in, 
+    hlds_goal_info::out) is det.
+:- pred goal_info_set_lbu(set(prog_var)::in, hlds_goal_info::in, 
+    hlds_goal_info::out) is det.
+:- pred goal_info_set_reuse(reuse_description::in, hlds_goal_info::in, 
+    hlds_goal_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -2243,20 +2333,131 @@ get_pragma_foreign_var_names_2([MaybeName | MaybeNames], !Names) :-
 
 :- type hlds_goal_extra_info
     --->    extra_info(
-                extra_info_ho_vals :: ho_values
+                extra_info_ho_vals              :: ho_values,
+                extra_info_maybe_ctgc_info      :: maybe(ctgc_info)
+                    % Any information related to structure reuse (CTGC). 
             ).
 
 :- func hlds_goal_extra_info_init = hlds_goal_extra_info.
 
 hlds_goal_extra_info_init = ExtraInfo :-
     HO_Values = map.init,
-    ExtraInfo = extra_info(HO_Values).
+    ExtraInfo = extra_info(HO_Values, no).
 
 goal_info_get_ho_values(GoalInfo) =
     GoalInfo ^ extra_goal_info ^ extra_info_ho_vals.
 
 goal_info_set_ho_values(Values, !GoalInfo) :-
     !:GoalInfo = !.GoalInfo ^ extra_goal_info ^ extra_info_ho_vals := Values.
+
+%-----------------------------------------------------------------------------%
+% hlds_goal_reuse_info
+
+:- type ctgc_info
+    --->    ctgc_info(
+                lfu     :: set(prog_var),
+                    % The local forward use set: this set contains the
+                    % variables that are syntactically needed during forward
+                    % execution. 
+                    % It is computed as the set of instantiated vars (input
+                    % vars + sum(pre_births), minus the set of dead vars
+                    % (sum(post_deaths and pre_deaths).
+                    % The information is needed for determining the direct
+                    % reuses. 
+                lbu     :: set(prog_var),
+                    % The local backward use set. This set contains the
+                    % instantiated variables that are needed upon backtracking
+                    % (i.e. syntactically appearing in any nondet call
+                    % preceding this goal). 
+
+                reuse   :: reuse_description
+                    % Any structure reuse information
+                    % related to this call.
+        ).
+
+
+:- func ctgc_info_init = ctgc_info.
+ctgc_info_init = ctgc_info(set.init, set.init, empty).
+
+goal_info_get_lfu(GoalInfo) = LFU :- 
+    (
+        goal_info_maybe_get_lfu(GoalInfo, LFU0)
+    -> 
+        LFU = LFU0
+    ;
+        unexpected(this_file, "Requesting LFU information while " ++ 
+            "CTGC field not set.")
+    ).
+goal_info_get_lbu(GoalInfo) = LBU :- 
+    (
+        goal_info_maybe_get_lbu(GoalInfo, LBU0)
+    ->
+        LBU = LBU0
+    ;
+        unexpected(this_file, "Requesting LBU information while " ++ 
+            "CTGC field not set.")
+    ).
+goal_info_get_reuse(GoalInfo) = Reuse :- 
+    (
+        goal_info_maybe_get_reuse(GoalInfo, Reuse0)
+    -> 
+        Reuse = Reuse0
+    ;   
+        unexpected(this_file, "Requesting reuse information while " ++ 
+            "CTGC field not set.")
+    ).
+
+goal_info_maybe_get_lfu(GoalInfo, LFU) :- 
+    MaybeCTGC = GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
+    MaybeCTGC = yes(CTGC),
+    LFU = CTGC ^ lfu. 
+goal_info_maybe_get_lbu(GoalInfo, LBU) :- 
+    MaybeCTGC = GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
+    MaybeCTGC = yes(CTGC),
+    LBU = CTGC ^ lbu. 
+goal_info_maybe_get_reuse(GoalInfo, Reuse) :- 
+    MaybeCTGC = GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
+    MaybeCTGC = yes(CTGC),
+    Reuse = CTGC ^ reuse. 
+    
+goal_info_set_lfu(LFU, !GoalInfo) :- 
+    MaybeCTGC0 = !.GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
+    (
+        MaybeCTGC0 = yes(CTGC0)
+    ;
+        MaybeCTGC0 = no, 
+        CTGC0 = ctgc_info_init
+    ),
+    CTGC = CTGC0 ^ lfu := LFU,
+    MaybeCTGC = yes(CTGC),
+    !:GoalInfo = !.GoalInfo ^ extra_goal_info 
+        ^ extra_info_maybe_ctgc_info := MaybeCTGC.
+
+goal_info_set_lbu(LBU, !GoalInfo) :- 
+    MaybeCTGC0 = !.GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
+    (
+        MaybeCTGC0 = yes(CTGC0)
+    ;
+        MaybeCTGC0 = no, 
+        CTGC0 = ctgc_info_init
+    ),
+    CTGC = CTGC0 ^ lbu := LBU,
+    MaybeCTGC = yes(CTGC),
+    !:GoalInfo = !.GoalInfo ^ extra_goal_info 
+        ^ extra_info_maybe_ctgc_info := MaybeCTGC.
+
+goal_info_set_reuse(Reuse, !GoalInfo) :- 
+    MaybeCTGC0 = !.GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
+    (
+        MaybeCTGC0 = yes(CTGC0)
+    ;
+        MaybeCTGC0 = no, 
+        CTGC0 = ctgc_info_init
+    ),
+    CTGC = CTGC0 ^ reuse := Reuse,
+    MaybeCTGC = yes(CTGC),
+    !:GoalInfo = !.GoalInfo ^ extra_goal_info 
+        ^ extra_info_maybe_ctgc_info := MaybeCTGC.
 
 %-----------------------------------------------------------------------------%
 

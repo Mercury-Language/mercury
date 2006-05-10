@@ -19,14 +19,13 @@
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module transform_hlds.ctgc.structure_sharing.domain.
 
 :- import_module io.
 
 %-----------------------------------------------------------------------------%
 
 :- pred structure_sharing_analysis(module_info::in, module_info::out,
-    sharing_as_table::out, io::di, io::uo) is det.
+    io::di, io::uo) is det.
 
 :- pred write_pred_sharing_info(module_info::in, pred_id::in,
     io::di, io::uo) is det.
@@ -36,8 +35,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.inst_match.
-:- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.passes_aux.
@@ -52,10 +49,10 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module transform_hlds.ctgc.fixpoint_table.
+:- import_module transform_hlds.ctgc.structure_sharing.domain.
 :- import_module transform_hlds.ctgc.util.
 :- import_module transform_hlds.dependency_graph.
 
-:- import_module assoc_list.
 :- import_module bool.
 :- import_module io.
 :- import_module list.
@@ -68,7 +65,7 @@
 
 %-----------------------------------------------------------------------------%
 
-structure_sharing_analysis(!ModuleInfo, !:SharingTable, !IO) :-
+structure_sharing_analysis(!ModuleInfo, !IO) :-
     %
     % Annotate the HLDS with liveness information.
     %
@@ -76,11 +73,11 @@ structure_sharing_analysis(!ModuleInfo, !:SharingTable, !IO) :-
     %
     % Load all structure sharing information present in the HLDS.
     %
-    load_structure_sharing_table(!.ModuleInfo, !:SharingTable),
+    LoadedSharingTable = load_structure_sharing_table(!.ModuleInfo), 
     %
     % Analyse structure sharing for the module.
     %
-    sharing_analysis(!ModuleInfo, !SharingTable, !IO),
+    sharing_analysis(!ModuleInfo, LoadedSharingTable, !IO),
     %
     % Maybe write structure sharing pragmas to .opt files.
     %
@@ -98,38 +95,6 @@ structure_sharing_analysis(!ModuleInfo, !:SharingTable, !IO) :-
 % Preliminary steps
 %
 
-:- pred load_structure_sharing_table(module_info::in, sharing_as_table::out)
-    is det.
-
-load_structure_sharing_table(ModuleInfo, SharingTable) :-
-    module_info_predids(ModuleInfo, PredIds),
-    list.foldl(load_structure_sharing_table_2(ModuleInfo), PredIds,
-        sharing_as_table_init, SharingTable).
-
-:- pred load_structure_sharing_table_2(module_info::in, pred_id::in,
-    sharing_as_table::in, sharing_as_table::out) is det.
-
-load_structure_sharing_table_2(ModuleInfo, PredId, !SharingTable) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_procids(PredInfo),
-    list.foldl(load_structure_sharing_table_3(ModuleInfo, PredId),
-        ProcIds, !SharingTable).
-
-:- pred load_structure_sharing_table_3(module_info::in, pred_id::in,
-    proc_id::in, sharing_as_table::in, sharing_as_table::out) is det.
-
-load_structure_sharing_table_3(ModuleInfo, PredId, ProcId, !SharingTable) :-
-    module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
-    proc_info_get_structure_sharing(ProcInfo, MaybePublicSharing),
-    (
-        MaybePublicSharing = yes(PublicSharing),
-        PPId = proc(PredId, ProcId),
-        PrivateSharing = from_structure_sharing_domain(PublicSharing),
-        sharing_as_table_set(PPId, PrivateSharing, !SharingTable)
-    ;
-        MaybePublicSharing = no
-    ).
-
     % Annotate the HLDS with pre-birth and post-death information, as
     % used by the liveness pass (liveness.m). This information is used to
     % eliminate useless sharing pairs during sharing analysis.
@@ -144,9 +109,9 @@ annotate_liveness(!ModuleInfo, !IO) :-
 %-----------------------------------------------------------------------------%
 
 :- pred sharing_analysis(module_info::in, module_info::out,
-    sharing_as_table::in, sharing_as_table::out, io::di, io::uo) is det.
+    sharing_as_table::in, io::di, io::uo) is det.
 
-sharing_analysis(!ModuleInfo, !SharingTable, !IO) :-
+sharing_analysis(!ModuleInfo, !.SharingTable, !IO) :-
     %
     % Perform a bottom-up traversal of the SCCs in the program,
     % analysing structure sharing in each one as we go.
@@ -272,40 +237,6 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !IO) :-
         ss_fixpoint_table_description(!.FixpointTable) ++ ")\n", !IO).
 
 %-----------------------------------------------------------------------------%
-
-    % Succeeds if the sharing of a procedure can safely be approximated by
-    % "bottom", simply by looking at the modes and types of the arguments.
-    %
-:- pred bottom_sharing_is_safe_approximation(module_info::in,
-    proc_info::in) is semidet.
-
-bottom_sharing_is_safe_approximation(ModuleInfo, ProcInfo) :-
-    proc_info_get_headvars(ProcInfo, HeadVars),
-    proc_info_get_argmodes(ProcInfo, Modes),
-    proc_info_get_vartypes(ProcInfo, VarTypes),
-    list.map(map.lookup(VarTypes), HeadVars, Types),
-
-    ModeTypePairs = assoc_list.from_corresponding_lists(Modes, Types),
-
-    Test = (pred(Pair::in) is semidet :-
-        Pair = Mode - Type,
-
-        % mode is not unique nor clobbered.
-        mode_get_insts(ModuleInfo, Mode, _LeftInst, RightInst),
-        \+ inst_is_unique(ModuleInfo, RightInst),
-        \+ inst_is_clobbered(ModuleInfo, RightInst),
-
-        % mode is output.
-        mode_to_arg_mode(ModuleInfo, Mode, Type, ArgMode),
-        ArgMode = top_out,
-
-        % type is not primitive
-        \+ type_is_atomic(Type, ModuleInfo)
-    ),
-    list.filter(Test, ModeTypePairs, TrueModeTypePairs),
-    TrueModeTypePairs = [].
-
-%-----------------------------------------------------------------------------%
 %
 % Structure sharing analysis of goals
 %
@@ -396,7 +327,7 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
         goal_info_get_context(GoalInfo, Context),
         context_to_string(Context, ContextString),
         !:SharingAs = sharing_as_top_sharing_accumulate(
-            "foreign_proc not handles yet (" ++ ContextString ++ ")",
+            "foreign_proc not handled yet (" ++ ContextString ++ ")",
             !.SharingAs)
     ;
         GoalExpr = shorthand(_),
@@ -445,86 +376,19 @@ analyse_case(ModuleInfo, PredInfo, ProcInfo, SharingTable, Sharing0,
     
     % Lookup the sharing information of a procedure identified by its
     % pred_proc_id.
-    % 1 - first look in the fixpoint table (which may change the state
-    %     of this table wrt recursiveness);
-    % 2 - then look in sharing_as_table (as we might already have analysed
-    %     the predicate, if defined in same module, or analysed in other
-    %     imported module)
-    % 3 - try to predict bottom;
-    % 4 - react appropriately if the calls happen to be to
-    %     * either compiler generated predicates
-    %     * or predicates from builtin.m and private_builtin.m
     %
 :- pred lookup_sharing(module_info::in, sharing_as_table::in, pred_proc_id::in,
     ss_fixpoint_table::in, ss_fixpoint_table::out, sharing_as::out) is det.
 
 lookup_sharing(ModuleInfo, SharingTable, PPId, !FixpointTable, SharingAs) :-
     (
-        % 1 -- check fixpoint table
+        % check fixpoint table
         ss_fixpoint_table_get_as(PPId, SharingAs0, !FixpointTable)
     ->
         SharingAs = SharingAs0
     ;
-        % 2 -- look up in SharingTable
-        SharingAs0 = sharing_as_table_search(PPId, SharingTable)
-    ->
-        SharingAs = SharingAs0
-    ;
-        % 3 -- predict bottom sharing
-        %
-        % If it is neither in the fixpoint table, nor in the sharing
-        % table, then this means that we have never analysed the called
-        % procedure, yet in some cases we can still simply predict that
-        % the sharing the called procedure creates is bottom.
-        predict_called_pred_is_bottom(ModuleInfo, PPId)
-    ->
-        SharingAs = sharing_as_init
-    ;
-        % 4 -- use top-sharing with appropriate message.
-        SharingAs = top_sharing_not_found(ModuleInfo, PPId)
+        lookup_sharing_or_predict(ModuleInfo, SharingTable, PPId, SharingAs)
     ).
-
-:- pred predict_called_pred_is_bottom(module_info::in, pred_proc_id::in)
-    is semidet.
-
-predict_called_pred_is_bottom(ModuleInfo, PPId) :-
-    module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, ProcInfo),
-    (
-        % 1. inferred determinism is erroneous/failure.
-        proc_info_get_inferred_determinism(ProcInfo, Determinism),
-        (
-            Determinism = erroneous
-        ;
-            Determinism = failure
-        )
-    ;
-        % 2. bottom_sharing_is_safe_approximation
-        bottom_sharing_is_safe_approximation(ModuleInfo, ProcInfo)
-    ;
-        % 3. call to a compiler generate special predicate:
-        % "unify", "index", "compare" or "initialise".
-        pred_info_get_origin(PredInfo, Origin),
-        Origin = special_pred(_)
-    ;
-        % 4. (XXX UNSAFE!! To verify) any call to private_builtin and builtin
-        % procedures.
-        PredModule = pred_info_module(PredInfo),
-        any_mercury_builtin_module(PredModule)
-    ).
-
-:- func top_sharing_not_found(module_info, pred_proc_id) = sharing_as.
-
-top_sharing_not_found(ModuleInfo, PPId) = TopSharing :-
-    module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, _),
-    PPId = proc(PredId, ProcId),
-    PredModuleName = pred_info_module(PredInfo),
-
-    TopSharing = sharing_as_top_sharing("Lookup sharing failed for " ++
-        sym_name_to_escaped_string(PredModuleName) ++ "." ++
-        pred_info_name(PredInfo) ++ "/" ++
-        int_to_string(pred_info_orig_arity(PredInfo)) ++ " (id = " ++
-        int_to_string(pred_id_to_int(PredId)) ++ "," ++
-        int_to_string(proc_id_to_int(ProcId))).
 
 %-----------------------------------------------------------------------------%
 

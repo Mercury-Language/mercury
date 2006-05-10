@@ -530,6 +530,9 @@
     % Stuff for the CTGC system (structure sharing / structure reuse).
     ;       structure_sharing_analysis
     ;           structure_sharing_widening
+    ;       structure_reuse_analysis
+    ;           structure_reuse_constraint
+    ;           structure_reuse_constraint_arg
 
     % Stuff for the new termination analyser.
     ;       termination2
@@ -1149,6 +1152,9 @@ option_defaults_2(special_optimization_option, [
     verbose_check_termination           -   bool(no),
     structure_sharing_analysis          -   bool(no), 
     structure_sharing_widening          -   int(0),
+    structure_reuse_analysis            -   bool(no), 
+    structure_reuse_constraint        -   string("within_n_cells_difference"),
+    structure_reuse_constraint_arg      -   int(0),
     termination                         -   bool(no),
     termination_single_args             -   int(0),
     termination_norm                    -   string("total"),
@@ -1981,6 +1987,12 @@ long_option("tuple-min-args",       tuple_min_args).
 % CTGC related options.
 long_option("structure-sharing",    structure_sharing_analysis).
 long_option("structure-sharing-widening", structure_sharing_widening).
+long_option("structure-reuse",      structure_reuse_analysis).
+long_option("ctgc",                 structure_reuse_analysis).
+long_option("structure-reuse-constraint", structure_reuse_constraint).
+long_option("ctgc-constraint",      structure_reuse_constraint).
+long_option("structure-reuse-constraint-arg", structure_reuse_constraint_arg).
+long_option("ctgc-constraint-arg",  structure_reuse_constraint_arg).
 
 % HLDS->LLDS optimizations
 long_option("smart-indexing",       smart_indexing).
@@ -3193,12 +3205,28 @@ options_help_ctgc -->
     io.write_string("\nCompile Time Garbage Collection Options:\n"),
     write_tabbed_lines([
         "--structure-sharing",
-        "\tPerform structure sharing analysis for all encountered",
-        "\tpredicates.", 
+        "\tPerform structure sharing analysis.",
         "--structure-sharing-widening <n>",
         "\tPerform widening when the set of structure sharing pairs becomes",
         "\tlarger than <n>. When n=0, widening is not enabled.",
-        "\t(default: 0)."
+        "\t(default: 0).",
+        "--structure-reuse, --ctgc",
+        "\tPerform structure reuse analysis (Compile Time Garbage ",            
+        "\tCollection).",
+        "--structure-reuse-constraint {same_cons_id, ",
+        "\twithin_n_cells_difference}, --ctgc-constraint {same_cons_id,",
+        "\twithin_n_cells_difference}",
+        "\tConstraint on the way we allow structure reuse. `same_cons_id'",
+        "\tspecifies that reuse is only allowed between terms of the same",
+        "\ttype and constructor. `within_n_cells_difference' states that",
+        "\treuse is allowed as long as the arities between the reused term",
+        "\tand new term does not exceed a certain threshold. The threshold ",
+        "\tneeds to be set using `--structure-reuse-constraint-arg'.",
+        "\t(default: within_n_cells_difference, with threshold 0)",
+        "--structure-reuse-constraint-arg, --ctgc-constraint-arg",
+        "\tSpecify the maximum difference in arities between the terms that",
+        "\tcan be reused, and the terms that reuse these terms.",
+        "\t(default: 0)"
     ]).
 
 :- pred options_help_termination(io::di, io::uo) is det.

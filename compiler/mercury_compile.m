@@ -88,6 +88,8 @@
 :- import_module transform_hlds.unneeded_code.
 :- import_module transform_hlds.lco.
 :- import_module transform_hlds.ctgc.
+:- import_module transform_hlds.ctgc.structure_reuse.
+:- import_module transform_hlds.ctgc.structure_reuse.analysis.
 :- import_module transform_hlds.ctgc.structure_sharing.
 :- import_module transform_hlds.ctgc.structure_sharing.analysis.
 :- import_module transform_hlds.size_prof.
@@ -2036,8 +2038,10 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
     globals.lookup_bool_option(Globals, statistics, Stats),
     globals.lookup_bool_option(Globals, termination, Termination),
     globals.lookup_bool_option(Globals, termination2, Termination2),
-    globals.lookup_bool_option(Globals, structure_sharing_analysis,
-        SharingAnalysis),
+    globals.lookup_bool_option(Globals, structure_sharing_analysis, 
+        SharingAnalysis), 
+    globals.lookup_bool_option(Globals, structure_reuse_analysis, 
+        ReuseAnalysis), 
     globals.lookup_bool_option(Globals, analyse_exceptions,
         ExceptionAnalysis),
     globals.lookup_bool_option(Globals, analyse_closures,
@@ -2059,6 +2063,7 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
             ; ExceptionAnalysis = yes
             ; TrailingAnalysis = yes
             ; SharingAnalysis = yes
+            ; ReuseAnalysis = yes
             )
         ->
             frontend_pass_by_phases(!HLDS, FoundModeError, !DumpInfo, !IO),
@@ -2104,6 +2109,13 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
                         !HLDS, !IO)
                 ;
                     SharingAnalysis = no
+                ),
+                (
+                    ReuseAnalysis = yes, 
+                    maybe_structure_reuse_analysis(Verbose, Stats,
+                        !HLDS, !IO)
+                ;
+                    ReuseAnalysis = no
                 ),
                 (
                     TrailingAnalysis = yes,
@@ -2178,6 +2190,8 @@ output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 167, "trail_usage", !DumpInfo, !IO),
     maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 193, "structure_sharing", !DumpInfo, !IO),
+    maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 194, "structure_reuse", !DumpInfo, !IO),
     trans_opt.write_optfile(!.HLDS, !IO).
 
 :- pred output_analysis_file(module_name::in,
@@ -2388,9 +2402,12 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 192, "dead_procs", !DumpInfo, !IO),
 
-    maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 193, "structure_sharing", !DumpInfo, !IO),
+    maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO), 
+    maybe_dump_hlds(!.HLDS, 193, "structure_sharing", !DumpInfo, !IO), 
 
+    maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO), 
+    maybe_dump_hlds(!.HLDS, 194, "structure_reuse", !DumpInfo, !IO), 
+    
     % If we are compiling in a deep profiling grade then now rerun simplify.
     % The reason for doing this now is that we want to take advantage of any
     % opportunities the other optimizations have provided for constant
@@ -3621,15 +3638,32 @@ maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO) :-
     (
         Sharing = yes,
         maybe_write_string(Verbose, "% Structure sharing analysis...\n",
-            !IO),
-        maybe_flush_output(Verbose, !IO),
-        structure_sharing_analysis(!HLDS, _SharingTable, !IO),
+            !IO), 
+        maybe_flush_output(Verbose, !IO), 
+        structure_sharing_analysis(!HLDS, !IO), 
         maybe_write_string(Verbose, "% done.\n", !IO),
         maybe_report_stats(Stats, !IO)
     ;
         Sharing = no
     ).
 
+:- pred maybe_structure_reuse_analysis(bool::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO) :- 
+    globals.io_lookup_bool_option(structure_reuse_analysis, 
+        ReuseAnalysis, !IO), 
+    (
+        ReuseAnalysis = yes, 
+        maybe_write_string(Verbose, "% Structure reuse analysis...\n",
+            !IO), 
+        maybe_flush_output(Verbose, !IO), 
+        structure_reuse_analysis(!HLDS, !IO), 
+        maybe_write_string(Verbose, "% done.\n", !IO),
+        maybe_report_stats(Stats, !IO)
+    ;
+        ReuseAnalysis = no
+    ).
 
 :- pred maybe_term_size_prof(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.

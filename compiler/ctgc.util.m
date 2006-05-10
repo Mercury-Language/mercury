@@ -31,35 +31,41 @@
 :- pred preds_requiring_no_analysis(module_info::in, list(pred_proc_id)::in)
     is semidet.
 
-%-----------------------------------------------------------------------------%
+:- pred pred_requires_no_analysis(module_info::in, pred_id::in) is semidet.
+:- pred pred_requires_analysis(module_info::in, pred_id::in) is semidet.
+
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module bool.
+:- import_module list.
 :- import_module map.
+
 
 %-----------------------------------------------------------------------------%
 
-preds_requiring_no_analysis(ModuleInfo, PPIds) :-
+pred_requires_no_analysis(ModuleInfo, PredId) :- 
     module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
     map.values(SpecialPredMap, SpecialPreds),
     (
-        list.filter(pred_id_in(SpecialPreds), PPIds, SpecialPredProcs),
-        SpecialPredProcs = [_|_]
-    ;
-        % or some of the predicates are not defined in this
-        % module.
-        list.filter(not_defined_in_this_module(ModuleInfo),
-            PPIds, FilteredPPIds),
-        FilteredPPIds = [_|_]
+        list.member(PredId, SpecialPreds)
+    ;   
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        pred_info_get_import_status(PredInfo, Status),
+        status_defined_in_this_module(Status, no)
     ).
 
-:- pred pred_id_in(list(pred_id)::in, pred_proc_id::in) is semidet.
+pred_requires_analysis(ModuleInfo, PredId) :- 
+    \+ pred_requires_no_analysis(ModuleInfo, PredId).
 
-pred_id_in(PredIds, PPId):-
-    PPId = proc(PredId, _),
-    list.member(PredId, PredIds).
+:- func get_pred_id(pred_proc_id) = pred_id. 
+get_pred_id(proc(PredId, _)) = PredId. 
+
+preds_requiring_no_analysis(ModuleInfo, PPIds) :-
+    list.takewhile(pred_requires_analysis(ModuleInfo),
+        list.map(get_pred_id, PPIds), _RequiresAnalysis, RequiresNoAnalysis),
+    RequiresNoAnalysis = [_|_].
 
 :- pred not_defined_in_this_module(module_info::in, pred_proc_id::in)
     is semidet.
