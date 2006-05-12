@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: mlds_to_c.m.
 % Main author: fjh.
 %
 % Convert MLDS to C/C++ code.
-% 
+%
 % TODO:
 %   - RTTI for debugging (module_layout, proc_layout, internal_layout)
 %   - trail ops
@@ -21,7 +21,7 @@
 %     is to change some calls to sorry/2 to unexpected/2).
 %   - packages, classes and inheritance
 %     (currently we just generate all classes as structs)
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -154,8 +154,8 @@ output_header_file(MLDS, Suffix, !IO) :-
 :- pred mlds_output_hdr_file(indent::in, mlds::in, io::di, io::uo) is det.
 
 mlds_output_hdr_file(Indent, MLDS, !IO) :-
-    MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns, _InitPreds,
-        _FinalPreds),
+    MLDS = mlds(ModuleName, AllForeignCode, Imports, Defns, InitPreds,
+        FinalPreds),
     mlds_output_hdr_start(Indent, ModuleName, !IO),
     io.nl(!IO),
     mlds_output_hdr_imports(Indent, Imports, !IO),
@@ -182,7 +182,7 @@ mlds_output_hdr_file(Indent, MLDS, !IO) :-
     io.nl(!IO),
     mlds_output_decls(Indent, MLDS_ModuleName, PublicNonTypeDefns, !IO),
     io.nl(!IO),
-    mlds_output_init_fn_decls(MLDS_ModuleName, !IO),
+    mlds_output_init_fn_decls(MLDS_ModuleName, InitPreds, FinalPreds, !IO),
     io.nl(!IO),
     mlds_output_hdr_end(Indent, ModuleName, !IO).
 
@@ -300,7 +300,7 @@ mlds_output_src_file(Indent, MLDS, !IO) :-
     mlds_output_defns(Indent, yes, MLDS_ModuleName, NonTypeDefns, !IO),
     io.nl(!IO),
     mlds_output_init_fn_defns(MLDS_ModuleName, FuncDefns, TypeCtorInfoDefns,
-        !IO),
+        InitPreds, FinalPreds, !IO),
     io.nl(!IO),
     mlds_output_grade_var(!IO),
     io.nl(!IO),
@@ -397,35 +397,24 @@ mlds_output_init_and_final_comments(ModuleName,
     output_init_name(ModuleName, !IO),
     io.write_string("init\n", !IO),
     (
-        UserInitPredCNames = [],
-        UserFinalPredCNames = []
-    ->
-        % There's no point writing out anything if this module doesn't have
-        % any module init or final preds.
-        true
+        UserInitPredCNames = []
     ;
-        list.foldl(mlds_output_required_user_init_comment,
-            UserInitPredCNames, !IO),
-        list.foldl(mlds_output_required_user_final_comment,
-            UserFinalPredCNames, !IO)
+        UserInitPredCNames = [_ | _],
+        io.write_string("REQUIRED_INIT ", !IO),
+        output_init_name(ModuleName, !IO),
+        io.write_string("required_init\n", !IO)
+    ),
+    (
+        UserFinalPredCNames = []
+    ;
+        UserFinalPredCNames = [_ | _],
+        io.write_string("REQUIRED_FINAL ", !IO),
+        output_init_name(ModuleName, !IO),
+        io.write_string("required_final\n", !IO)
     ),
     % We always write out ENDINIT so that mkinit doesn't scan the whole file.
     io.write_string("ENDINIT\n", !IO),
     io.write_string("*/\n\n", !IO).
-
-:- pred mlds_output_required_user_init_comment(string::in, io::di, io::uo)
-    is det.
-
-mlds_output_required_user_init_comment(CName, !IO) :-
-    io.write_string("REQUIRED_INIT ", !IO),
-    io.write_string(CName, !IO),
-    io.nl(!IO).
-
-:- pred mlds_output_required_user_final_comment(string::in, io::di, io::uo)
-    is det.
-
-mlds_output_required_user_final_comment(CName, !IO) :-
-    io.write_string("REQUIRED_FINAL " ++ CName ++ "\n", !IO).
 
     % Output any #defines which are required to bootstrap in the hlc
     % grade.
@@ -513,22 +502,44 @@ mlds_get_c_foreign_code(AllForeignCode) = ForeignCode :-
 
     % Maybe output the function `mercury__<modulename>__init()'.
     % The body of the function consists of calls MR_init_entry(<function>)
-    % for each function defined in the module.
+    % for each function defined in the module.  
     %
-:- pred mlds_output_init_fn_decls(mlds_module_name::in, io::di, io::uo) is det.
+    % If there are any user-defined intialisation or finalisation predicates
+    % then output the functions: `mercury__<modulename>__required_init()' and
+    % `mercury__<modulename>__required_final()' as necessary.
+    %   
+    %
+:- pred mlds_output_init_fn_decls(mlds_module_name::in, list(string)::in,
+    list(string)::in, io::di, io::uo) is det.
 
-mlds_output_init_fn_decls(ModuleName, !IO) :-
+mlds_output_init_fn_decls(ModuleName, InitPreds, FinalPreds, !IO) :-
     output_init_fn_name(ModuleName, "", !IO),
     io.write_string(";\n", !IO),
     output_init_fn_name(ModuleName, "_type_tables", !IO),
     io.write_string(";\n", !IO),
     output_init_fn_name(ModuleName, "_debugger", !IO),
-    io.write_string(";\n", !IO).
+    io.write_string(";\n", !IO),
+    (
+        InitPreds = []
+    ;
+        InitPreds = [_ | _],
+        output_required_fn_name(ModuleName, "required_init", !IO),
+        io.write_string(";\n", !IO)
+    ),
+    (
+        FinalPreds = []
+    ;
+        FinalPreds = [_ | _],
+        output_required_fn_name(ModuleName, "required_final", !IO),
+        io.write_string(";\n", !IO)
+    ).
 
 :- pred mlds_output_init_fn_defns(mlds_module_name::in, mlds_defns::in,
-    mlds_defns::in, io::di, io::uo) is det.
+    mlds_defns::in, list(string)::in, list(string)::in, io::di, io::uo)
+    is det.
 
-mlds_output_init_fn_defns(ModuleName, FuncDefns, TypeCtorInfoDefns, !IO) :-
+mlds_output_init_fn_defns(ModuleName, FuncDefns, TypeCtorInfoDefns, InitPreds,
+        FinalPreds, !IO) :-
     output_init_fn_name(ModuleName, "", !IO),
     io.write_string("\n{\n", !IO),
     globals.io_get_globals(Globals, !IO),
@@ -562,7 +573,38 @@ mlds_output_init_fn_defns(ModuleName, FuncDefns, TypeCtorInfoDefns, !IO) :-
     io.write_string("\n{\n", !IO),
     io.write_string("\tMR_fatal_error(""debugger initialization " ++
         "in MLDS grade"");\n", !IO),
-    io.write_string("}\n", !IO).
+    io.write_string("}\n", !IO),
+    %
+    % Maybe write out wrapper functions that call user-defined intialisation
+    % and finalisation predicates.
+    %
+    (
+        InitPreds = []
+    ;
+        InitPreds = [_ | _],
+        io.nl(!IO),
+        output_required_fn_name(ModuleName, "required_init", !IO),
+        io.write_string("\n{\n", !IO),
+        output_required_calls(InitPreds, !IO),
+        io.write_string("}\n", !IO)
+    ),
+    (
+        FinalPreds = []
+    ;
+        FinalPreds = [_ | _],
+        io.nl(!IO),
+        output_required_fn_name(ModuleName, "required_final", !IO),
+        io.write_string("\n{\n", !IO),
+        output_required_calls(FinalPreds, !IO),
+        io.write_string("}\n", !IO)
+    ).
+
+:- pred output_required_calls(list(string)::in, io::di, io::uo) is det.
+
+output_required_calls([], !IO).
+output_required_calls([ Call | Calls ], !IO) :-
+    io.write_string("\t" ++ Call ++ "();\n", !IO),
+    output_required_calls(Calls, !IO).
 
 :- pred output_init_fn_name(mlds_module_name::in, string::in,
     io::di, io::uo) is det.
@@ -580,6 +622,29 @@ output_init_fn_name(ModuleName, Suffix, !IO) :-
     io.write_string("void ", !IO),
     io.write_string(ModuleNameString, !IO),
     io.write_string("__init", !IO),
+    io.write_string(Suffix, !IO),
+    io.write_string("(void)", !IO).
+    
+    % Output a function name of the form:
+    %
+    %   mercury__<modulename>__<suffix>
+    %
+:- pred output_required_fn_name(mlds_module_name::in, string::in,
+    io::di, io::uo) is det.
+
+output_required_fn_name(ModuleName, Suffix, !IO) :-
+    % Here we ensure that we only get one "mercury__" at the start
+    % of the function name.
+    sym_name_to_string(mlds_module_name_to_sym_name(ModuleName), "__",
+        ModuleNameString0),
+    ( string.prefix(ModuleNameString0, "mercury__") ->
+        ModuleNameString = ModuleNameString0
+    ;
+        ModuleNameString = "mercury__" ++ ModuleNameString0
+    ),
+    io.write_string("void ", !IO),
+    io.write_string(ModuleNameString, !IO),
+    io.write_string("__", !IO),
     io.write_string(Suffix, !IO),
     io.write_string("(void)", !IO).
 
