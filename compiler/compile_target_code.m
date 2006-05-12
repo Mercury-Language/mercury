@@ -5,12 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: compile_target_code.m.
 % Main authors: fjh, stayl.
-
+% 
 % Code to compile the generated `.c', `.s', `.o', etc, files.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs.compile_target_code.
