@@ -813,9 +813,13 @@
     is det.
 :- mode list.map_foldl(pred(in, out, in, out) is det, in, out, in, out)
     is det.
+:- mode list.map_foldl(pred(in, out, mdi, muo) is det, in, out, mdi, muo)
+    is det.
 :- mode list.map_foldl(pred(in, out, di, uo) is cc_multi, in, out, di, uo)
     is cc_multi.
 :- mode list.map_foldl(pred(in, out, in, out) is cc_multi, in, out, in, out)
+    is cc_multi.
+:- mode list.map_foldl(pred(in, out, mdi, muo) is cc_multi, in, out, mdi, muo)
     is cc_multi.
 :- mode list.map_foldl(pred(in, out, in, out) is semidet, in, out, in, out)
     is semidet.
