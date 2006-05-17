@@ -15,6 +15,11 @@
 ** produces the initialization file (usually called *_init.c) on stdout.
 ** The initialization file is a small C program that calls the initialization
 ** functions for all the modules in a Mercury program.
+**
+** Alternatively, if invoked with the -k option, this program produces a 
+** list of intialization directives on stdout.  This mode of operation is
+** is used when building .init files for libraries.
+**
 */
 
 /*---------------------------------------------------------------------------*/
@@ -256,6 +261,7 @@ static char         **files;
 static MR_bool      output_main_func = MR_TRUE;
 static MR_bool      need_initialization_code = MR_FALSE;
 static MR_bool      need_tracing = MR_FALSE;
+static MR_bool      output_lib_init = MR_FALSE;
 static const char   *experimental_complexity = NULL;
 
 static int          num_experimental_complexity_procs = 0;
@@ -510,6 +516,8 @@ static  int     output_sub_init_functions(Purpose purpose,
                     const char **func_names, int num_func_names);
 static  void    output_main_init_function(Purpose purpose, int num_bunches);
 static  void    output_main(void);
+static  int     output_lib_init_file(void);
+static  int     output_init_program(void);
 static  void    process_file(const char *filename);
 static  void    process_init_file(const char *filename);
 static  void    output_init_function(const char *func_name,
@@ -558,12 +566,10 @@ FILE    *check_fp;
 int
 main(int argc, char **argv)
 {
-    int filenum;
-    int num_bunches;
-    int i;
 
     MR_progname = argv[0];
-
+    int exit_status;
+    
     parse_options(argc, argv);
 
 #ifdef  CHECK_GET_LINE
@@ -573,15 +579,74 @@ main(int argc, char **argv)
 
     set_output_file();
 
+    if (output_lib_init) {
+        exit_status = output_lib_init_file();  /* Output a .init file. */
+    } else {
+        exit_status = output_init_program();   /* Output a _init.c file. */
+    }
+
+    return exit_status;
+}
+
+/*---------------------------------------------------------------------------*/
+
+/*
+** Output the initialisation file for a Mercury library, the .init file.
+*/
+static int 
+output_lib_init_file(void)
+{
+    int filenum;
+    int i;
+        
+    for (filenum = 0; filenum < num_files; filenum++) {
+            process_file(files[filenum]);
+    }
+
+    for (i = 0; i < std_module_next; i++) {
+        printf("INIT %s%s\n", std_modules[i], module_suffix[PURPOSE_INIT]);
+    }
+
+    for (i = 0; i < req_init_module_next; i++) {
+        printf("REQUIRED_INIT %s\n", req_init_modules[i]);
+    }
+
+    for (i = 0; i < req_final_module_next; i++) {
+        printf("REQUIRED_FINAL %s\n", req_final_modules[i]);
+    }
+
+    if (num_errors > 0) {
+        fprintf(stderr, "%s: error while creating .init file.\n",
+            MR_progname);
+        return EXIT_FAILURE;
+    } else {
+        return EXIT_SUCCESS;
+    }
+    
+}
+    
+/*---------------------------------------------------------------------------*/
+
+/*
+** Output the initialisation program for a Mercury executable, the *_init.c
+** file.
+*/
+static int 
+output_init_program(void)
+{
+    int filenum;
+    int num_bunches;
+    int i;
+    
     do_path_search();
     output_headers();
 
-    if (need_initialization_code) {
-        printf("#define MR_MAY_NEED_INITIALIZATION\n\n");
-    }
-
     for (filenum = 0; filenum < num_files; filenum++) {
         process_file(files[filenum]);
+    }
+
+    if (need_initialization_code) {
+        printf("#define MR_MAY_NEED_INITIALIZATION\n\n");
     }
 
     std_and_special_modules = MR_NEW_ARRAY(const char *,
@@ -624,7 +689,7 @@ main(int argc, char **argv)
     output_main_init_function(PURPOSE_REQ_FINAL, num_bunches);
 
     output_main();
-
+    
     if (num_errors > 0) {
         fputs("/* Force syntax error, since there were */\n", stdout);
         fputs("/* errors in the generation of this file */\n", stdout);
@@ -648,7 +713,7 @@ parse_options(int argc, char *argv[])
     int         i;
     String_List *tmp_slist;
 
-    while ((c = getopt(argc, argv, "A:c:g:iI:lo:r:tw:xX:")) != EOF) {
+    while ((c = getopt(argc, argv, "A:c:g:iI:lo:r:tw:xX:k")) != EOF) {
         switch (c) {
         case 'A':
             /*
@@ -738,6 +803,10 @@ parse_options(int argc, char *argv[])
             experimental_complexity = optarg;
             break;
 
+        case 'k':
+            output_lib_init = MR_TRUE;
+            break;
+        
         default:
             usage();
         }
@@ -763,8 +832,9 @@ usage(void)
     fputs("  -o file:\toutput to the named file\n", stderr);
     fputs("  -r word:\tadd word to the flags for the runtime\n", stderr);
     fputs("  -t:\t\tenable execution tracing\n", stderr);
-    fputs("  -w entry:\tset the entry point to the egiven label\n", stderr);
+    fputs("  -w entry:\tset the entry point to the given label\n", stderr);
     fputs("  -I dir:\tadd dir to the search path for init files\n", stderr);
+    fputs("  -k:\t\tgenerate the .init for a library\n", stderr);
     exit(EXIT_FAILURE);
 }
 
