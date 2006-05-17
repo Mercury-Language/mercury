@@ -567,8 +567,9 @@ int
 main(int argc, char **argv)
 {
 
-    MR_progname = argv[0];
     int exit_status;
+    
+    MR_progname = argv[0];
     
     parse_options(argc, argv);
 
