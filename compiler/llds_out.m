@@ -5,15 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: llds_out.m.
 % Main authors: conway, fjh, zs.
-
+% 
 % LLDS - The Low-Level Data Structure.
-
+% 
 % This module defines the routines for printing out LLDS,
 % the Low Level Data Structure.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.llds_out.
@@ -328,7 +329,8 @@ output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
     list.foldl(io.write_string, Exports, !IO),
     io.write_string("\n", !IO),
     output_c_module_init_list(ModuleName, Modules, Datas, Vars,
-        ComplexityProcs, StackLayoutLabels, !DeclSet, !IO),
+        ComplexityProcs, StackLayoutLabels, UserInitPredCNames,
+        UserFinalPredCNames, !DeclSet, !IO),
     io.set_output_stream(OutputStream, _, !IO).
 
 :- pred order_layout_datas(list(layout_data)::in, list(layout_data)::out)
@@ -362,10 +364,11 @@ order_layout_datas_2([Layout | Layouts], !ProcLayouts, !LabelLayouts,
 :- pred output_c_module_init_list(module_name::in, list(comp_gen_c_module)::in,
     list(comp_gen_c_data)::in, list(comp_gen_c_var)::in,
     list(complexity_proc_info)::in, map(label, data_addr)::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
+    list(string)::in, list(string)::in, decl_set::in, decl_set::out,
+    io::di, io::uo) is det.
 
 output_c_module_init_list(ModuleName, Modules, Datas, Vars, ComplexityProcs,
-        StackLayoutLabels, !DeclSet, !IO) :-
+        StackLayoutLabels, InitPredNames, FinalPredNames, !DeclSet, !IO) :-
     MustInit = (pred(Module::in) is semidet :-
         module_defines_label_with_layout(Module, StackLayoutLabels)
     ),
@@ -407,6 +410,24 @@ output_c_module_init_list(ModuleName, Modules, Datas, Vars, ComplexityProcs,
     output_init_name(ModuleName, !IO),
     io.write_string("init_complexity_procs(void);\n", !IO),
     io.write_string("#endif\n", !IO),
+
+    (
+        InitPredNames = []
+    ;
+        InitPredNames = [_ | _],
+        io.write_string("void ", !IO),
+        output_init_name(ModuleName, !IO),
+        io.write_string("required_init(void);\n", !IO)
+    ),
+
+    (
+        FinalPredNames = []
+    ;
+        FinalPredNames = [_ | _],
+        io.write_string("void ", !IO),
+        output_init_name(ModuleName, !IO),
+        io.write_string("required_final(void);\n", !IO)
+    ),
 
     globals.io_lookup_bool_option(allow_table_reset, TableReset, !IO),
     (
@@ -496,6 +517,31 @@ output_c_module_init_list(ModuleName, Modules, Datas, Vars, ComplexityProcs,
     output_init_complexity_proc_list(ComplexityProcs, !IO),
     io.write_string("}\n", !IO),
     io.write_string("\n#endif\n\n", !IO),
+
+    (
+        InitPredNames = []
+    ;
+        InitPredNames = [_ | _],
+        io.write_string("void ", !IO),
+        output_init_name(ModuleName, !IO),
+        io.write_string("required_init(void)\n", !IO),
+        io.write_string("{\n", !IO),
+        output_required_init_or_final_calls(InitPredNames, !IO),
+        io.write_string("}\n", !IO),
+        io.nl(!IO)
+    ),
+
+    (
+        FinalPredNames = []
+    ;
+        FinalPredNames = [_ | _],
+        io.write_string("void ", !IO),
+        output_init_name(ModuleName, !IO),
+        io.write_string("required_final(void)\n", !IO),
+        io.write_string("{\n", !IO),
+        output_required_init_or_final_calls(FinalPredNames, !IO),
+        io.write_string("}\n", !IO)
+    ),
 
     (
         TableReset = yes,
@@ -771,8 +817,24 @@ output_init_comment(ModuleName, UserInitPredCNames, UserFinalPredCNames,
     io.write_string("INIT ", !IO),
     output_init_name(ModuleName, !IO),
     io.write_string("init\n", !IO),
-    list.foldl(output_required_user_init_comment, UserInitPredCNames, !IO),
-    list.foldl(output_required_user_final_comment, UserFinalPredCNames, !IO),
+    % We only print out the REQUIRED_INIT and REQUIRED_FINAL comments
+    % if there are user initialisation/finalisation predicates.
+    (
+        UserInitPredCNames = []
+    ;
+        UserInitPredCNames = [_ | _],
+        io.write_string("REQUIRED_INIT ", !IO),
+        output_init_name(ModuleName, !IO),
+        io.write_string("required_init\n", !IO)
+    ),
+    (
+        UserFinalPredCNames = []
+    ;
+        UserFinalPredCNames = [_ | _],
+        io.write_string("REQUIRED_FINAL ", !IO),
+        output_init_name(ModuleName, !IO),
+        io.write_string("required_final\n", !IO)
+    ),
     io.write_string("ENDINIT\n", !IO),
     io.write_string("*/\n\n", !IO).
 
@@ -789,6 +851,14 @@ output_required_user_final_comment(CName, !IO) :-
     io.write_string("REQUIRED_FINAL ", !IO),
     io.write_string(CName, !IO),
     io.nl(!IO).
+
+:- pred output_required_init_or_final_calls(list(string)::in, io::di, io::uo)
+    is det.
+
+output_required_init_or_final_calls([], !IO).
+output_required_init_or_final_calls([ Name | Names ], !IO) :-
+    io.write_string("\t" ++ Name ++ "();\n", !IO),
+    output_required_init_or_final_calls(Names, !IO).
 
 :- pred output_bunch_name(module_name::in, string::in, int::in, io::di, io::uo)
     is det.
