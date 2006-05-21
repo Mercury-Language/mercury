@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: modules.m.
 % Main author: fjh.
-
+% 
 % This module contains all the code for handling module imports and exports,
 % for computing module dependencies, and for generating makefile fragments to
 % record those dependencies.
@@ -36,6 +36,7 @@
 % It is used when compiling sub-modules.  The datestamp on the .date0
 % file gives the last time the .int0 file was checked.
 %
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.modules.
@@ -5048,9 +5049,6 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     io.write_string(DepStream, Version, !IO),
     io.write_string(DepStream, ".\n\n", !IO),
 
-    map.keys(DepsMap, Modules0),
-    select_ok_modules(Modules0, DepsMap, Modules),
-
     module_name_to_make_var_name(ModuleName, MakeVarName),
 
     module_name_to_file_name(ModuleName, ".init", yes, InitFileName, !IO),
@@ -5270,12 +5268,16 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
 
     module_name_to_file_name(ModuleName, ".dep", no, DepFileName, !IO),
     module_name_to_file_name(ModuleName, ".dv", no, DvFileName, !IO),
+    
     io.write_strings(DepStream, [
         InitFileName, " : ", DepFileName, "\n",
         "\techo > ", InitFileName, "\n"
     ], !IO),
-    list.foldl(append_to_init_list(DepStream, InitFileName), Modules, !IO),
-
+    io.write_strings(DepStream, [
+        "\t$(MKLIBINIT) ", "$(", MakeVarName, ".cs)", " >> ",
+        InitFileName, "\n"
+    ], !IO),
+    
     % $(EXTRA_INIT_COMMAND) should expand to a command to
     % generate extra entries in the `.init' file for a library.
     % It may expand to the empty string.

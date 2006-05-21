@@ -358,6 +358,10 @@ MLLIBS		=
 EXTRA_MLLIBS	=
 LIB_MLLIBS	= $(patsubst %,-l%,$(ALL_EXTRA_LIBRARIES))
 
+# Program used to create the .init file for a library.
+# This is usually just mkinit invoked with the `-k' option.
+MKLIBINIT	= mkinit -k
+
 # These only have an effect with `mmc --make'.
 LINKAGE = shared
 MERCURY_LINKAGE = @DEFAULT_LINKAGE@

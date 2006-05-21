@@ -5,12 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: make.program_target.m.
 % Main author: stayl.
-
+% 
 % Build targets which relate to whole programs or libraries.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module make.program_target.
@@ -560,32 +561,33 @@ make_misc_target(MainModuleName - TargetType, _, Succeeded, !Info, !IO) :-
             IntSucceeded, !Info, !IO),
         (
             IntSucceeded = yes,
-            % Errors while making the `.init' file should be very rare.
-            io.output_stream(ErrorStream, !IO),
-            compile_target_code.make_init_file(ErrorStream, MainModuleName,
-                AllModules, InitSucceeded, !IO),
+            make_linked_target(MainModuleName - static_library,
+                StaticSucceeded, !Info, !IO),
+            shared_libraries_supported(SharedLibsSupported, !IO),
             (
-                InitSucceeded = yes,
-                make_linked_target(MainModuleName - static_library,
-                    StaticSucceeded, !Info, !IO),
-                compile_target_code.shared_libraries_supported(
-                    SharedLibsSupported, !IO),
+                StaticSucceeded = yes,
                 (
-                    StaticSucceeded = yes,
-                    (
-                        SharedLibsSupported = yes,
-                        make_linked_target(MainModuleName - shared_library,
-                            Succeeded, !Info, !IO)
-                    ;
-                        SharedLibsSupported = no,
-                        Succeeded = yes
-                    )
+                    SharedLibsSupported = yes,
+                    make_linked_target(MainModuleName - shared_library,
+                        SharedLibsSucceeded, !Info, !IO)
                 ;
-                    StaticSucceeded = no,
-                    Succeeded = no
+                    SharedLibsSupported = no,
+                    SharedLibsSucceeded = yes
+                ),
+                % We can only build the .init file if we have succesfully
+                % built the .c files.
+                (
+                    SharedLibsSucceeded = yes,
+                    % Errors while making the .init file should be very rare.
+                    io.output_stream(ErrorStream, !IO),
+                    make_init_file(ErrorStream, MainModuleName,
+                        AllModules, Succeeded, !IO)
+                ;
+                    SharedLibsSucceeded = no,
+                    Succeeded = no 
                 )
             ;
-                InitSucceeded = no,
+                StaticSucceeded = no,
                 Succeeded = no
             )
         ;
