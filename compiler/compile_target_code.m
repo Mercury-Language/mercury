@@ -5,12 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: compile_target_code.m.
 % Main authors: fjh, stayl.
-
+% 
 % Code to compile the generated `.c', `.s', `.o', etc, files.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs.compile_target_code.
@@ -865,19 +866,40 @@ make_init_file(ErrorStream, MainModuleName, AllModules, Succeeded, !IO) :-
     io.open_output(TmpInitFileName, InitFileRes, !IO),
     (
         InitFileRes = ok(InitFileStream),
-        list.foldl(make_init_file(InitFileStream), AllModules, !IO),
-        globals.io_lookup_maybe_string_option(extra_init_command,
-            MaybeInitFileCommand, !IO),
-        (
-            MaybeInitFileCommand = yes(InitFileCommand),
-            make_all_module_command(InitFileCommand, MainModuleName,
-                AllModules, CommandString, !IO),
-            invoke_system_command(InitFileStream, verbose_commands,
-                CommandString, Succeeded0, !IO)
-        ;
-            MaybeInitFileCommand = no,
-            Succeeded0 = yes
+        ModuleNameToCFileName =
+            (pred(ThisModule::in, CFileName::out, !.IO::di, !:IO::uo) is det :-
+                module_name_to_file_name(ThisModule, ".c", no, CFileName, !IO)
         ),
+        list.map_foldl(ModuleNameToCFileName, AllModules, AllCFilesList, !IO),
+        join_quoted_string_list(AllCFilesList, "", "", " ", CFileNames),
+        
+        globals.io_lookup_string_option(mkinit_command, MkInit, !IO),
+        MkInitCmd = string.append_list(
+            [   MkInit,
+                " -k ",
+                " ", CFileNames
+            ]),
+        invoke_system_command(InitFileStream, verbose, MkInitCmd, MkInitOK,
+            !IO),
+       
+        ( 
+            MkInitOK =  yes,
+            globals.io_lookup_maybe_string_option(extra_init_command,
+                MaybeInitFileCommand, !IO),
+            (
+                MaybeInitFileCommand = yes(InitFileCommand),
+                make_all_module_command(InitFileCommand, MainModuleName,
+                    AllModules, CommandString, !IO),
+                invoke_system_command(InitFileStream, verbose_commands,
+                    CommandString, Succeeded0, !IO)
+            ;
+                MaybeInitFileCommand = no,
+                Succeeded0 = yes
+            )
+         ;
+            MkInitOK   = no,
+            Succeeded0 = no
+         ),
 
         io.close_output(InitFileStream, !IO),
         module_name_to_file_name(MainModuleName, ".init", yes, InitFileName,
@@ -896,16 +918,6 @@ make_init_file(ErrorStream, MainModuleName, AllModules, Succeeded, !IO) :-
         io.nl(ErrorStream, !IO),
         Succeeded = no
     ).
-
-:- pred make_init_file(io.output_stream::in, module_name::in,
-    io::di, io::uo) is det.
-
-make_init_file(InitFileStream, ModuleName, !IO) :-
-    InitFuncName0 = make_init_name(ModuleName),
-    InitFuncName = InitFuncName0 ++ "init",
-    io.write_string(InitFileStream, "INIT ", !IO),
-    io.write_string(InitFileStream, InitFuncName, !IO),
-    io.nl(InitFileStream, !IO).
 
 %-----------------------------------------------------------------------------%
 
