@@ -263,7 +263,8 @@ tags:	$(PREPROCESSED_M_FILES) *.m $(LIBRARY_DIR)/*.m $(MDBCOMP_DIR)/*.m \
 .PHONY: tags_file_exists
 tags_file_exists:
 	@if test ! -f tags; then echo making tags ; \
-	$(MTAGS) $(MTAGSFLAGS) *.m $(LIBRARY_DIR)/*.m ; fi
+	$(MTAGS) $(MTAGSFLAGS) *.m $(LIBRARY_DIR)/*.m $(MDBCOMP_DIR)/*.m \
+		$(ANALYSIS_DIR)/*.m ; fi
 
 $(MC_PROG).stats: source_stats.awk $($(MC_PROG).ms)
 	awk -f `vpath_find source_stats.awk` \
