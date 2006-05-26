@@ -692,14 +692,22 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         (
             WarnCannotSucceed = yes,
             InitMayHaveSubtype = init_instmap_may_have_subtype(!.ModeInfo),
+            mode_info_get_in_dupl_for_switch(!.ModeInfo, InDupForSwitch),
             (
-                InitMayHaveSubtype = yes
-                % Suppress the warning, since the unification may succeed
-                % in another mode in which the initial inst of X,
-                % or of another head variable that is unified with it,
-                % is not so constrained.
+                (
+                    InitMayHaveSubtype = yes
+                    % Suppress the warning, since the unification may succeed
+                    % in another mode in which the initial inst of X,
+                    % or of another head variable that is unified with it,
+                    % is not so constrained.
+                ;
+                    InDupForSwitch = yes
+                    % Suppress the warning, since the unification may succeed
+                    % in another copy of this duplicated switch arm.
+                )
+            ->
+                true
             ;
-                InitMayHaveSubtype = no,
                 Warning = cannot_succeed_var_functor(X, InstOfX, ConsId),
                 mode_info_warning(Warning, !ModeInfo)
             )

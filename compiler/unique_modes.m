@@ -130,6 +130,12 @@ check_goal(Goal0, Goal, !ModeInfo, !IO) :-
     ;
         mode_info_set_context(Context, !ModeInfo)
     ),
+    mode_info_get_in_dupl_for_switch(!.ModeInfo, InDuplForSwitch),
+    ( goal_info_has_feature(GoalInfo0, duplicated_for_switch) ->
+        mode_info_set_in_dupl_for_switch(yes, !ModeInfo)
+    ;
+        true
+    ),
 
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     % Grab the original bag of nondet-live vars.
@@ -152,7 +158,8 @@ check_goal(Goal0, Goal, !ModeInfo, !IO) :-
     % and save that instmap_delta in the goal_info.
     compute_goal_instmap_delta(InstMap0, GoalExpr, GoalInfo0, GoalInfo,
         !ModeInfo),
-    Goal = GoalExpr - GoalInfo.
+    Goal = GoalExpr - GoalInfo,
+    mode_info_set_in_dupl_for_switch(InDuplForSwitch, !ModeInfo).
 
 make_all_nondet_live_vars_mostly_uniq(ModeInfo0, ModeInfo) :-
     mode_info_get_instmap(ModeInfo0, FullInstMap0),
