@@ -175,7 +175,7 @@ simplifications_to_list(Simplifications) = List :-
         WarnKnownBadFormat, WarnUnknownFormat, WarnObsolete, DoOnce,
         ExcessAssign, ElimRemovableScopes, OptDuplicateCalls, ConstantProp,
         CommonStruct, ExtraCommonStruct),
-    List = 
+    List =
         ( WarnSimpleCode = yes -> [warn_simple_code] ; [] ) ++
         ( WarnDupCalls = yes -> [warn_duplicate_calls] ; [] ) ++
         ( WarnKnownBadFormat = yes -> [warn_known_bad_format] ; [] ) ++
@@ -515,6 +515,13 @@ do_process_goal(Goal0, Goal, !Info, !IO) :-
 
 simplify_goal(Goal0, GoalExpr - GoalInfo, !Info, !IO) :-
     Goal0 = _ - GoalInfo0,
+    simplify_info_get_inside_duplicated_for_switch(!.Info,
+        InsideDuplForSwitch),
+    ( goal_info_has_feature(GoalInfo0, duplicated_for_switch) ->
+        simplify_info_set_inside_duplicated_for_switch(yes, !Info)
+    ;
+        true
+    ),
     goal_info_get_determinism(GoalInfo0, Detism),
     simplify_info_get_det_info(!.Info, DetInfo),
     simplify_info_get_module_info(!.Info, ModuleInfo0),
@@ -659,6 +666,7 @@ simplify_goal(Goal0, GoalExpr - GoalInfo, !Info, !IO) :-
     Goal3 = GoalExpr3 - GoalInfo3,
     simplify_goal_2(GoalExpr3, GoalExpr, GoalInfo3, GoalInfo4, !Info, !IO),
     simplify_info_maybe_clear_structs(after, GoalExpr - GoalInfo4, !Info),
+    simplify_info_set_inside_duplicated_for_switch(InsideDuplForSwitch, !Info),
     enforce_invariant(GoalInfo4, GoalInfo, !Info).
 
     % Ensure that the mode information and the determinism
@@ -1082,10 +1090,21 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
         list.append(CondList, ThenList, List),
         simplify_goal(conj(plain_conj, List) - GoalInfo0, Goal - GoalInfo,
             !Info, !IO),
-        goal_info_get_context(GoalInfo0, Context),
-        Msg = ite_cond_cannot_fail,
-        ContextMsg = context_det_msg(Context, Msg),
-        simplify_info_add_det_msg(ContextMsg, !Info),
+        simplify_info_get_inside_duplicated_for_switch(!.Info,
+            InsideDuplForSwitch),
+        (
+            InsideDuplForSwitch = yes
+            % Do not generate the warning, since it is quite likely to be
+            % spurious: though the condition cannot fail in this arm of the
+            % switch, it likely can fail in other arms that derive from
+            % the exact same piece of source code.
+        ;
+            InsideDuplForSwitch = no,
+            goal_info_get_context(GoalInfo0, Context),
+            Msg = ite_cond_cannot_fail,
+            ContextMsg = context_det_msg(Context, Msg),
+            simplify_info_add_det_msg(ContextMsg, !Info)
+        ),
         simplify_info_set_requantify(!Info),
         simplify_info_set_rerun_det(!Info)
     ; CondSolns0 = at_most_zero ->
@@ -1126,10 +1145,21 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
         List = [Cond | ElseList],
         simplify_goal(conj(plain_conj, List) - GoalInfo0, Goal - GoalInfo,
             !Info, !IO),
-        goal_info_get_context(GoalInfo0, Context),
-        Msg = ite_cond_cannot_succeed,
-        ContextMsg = context_det_msg(Context, Msg),
-        simplify_info_add_det_msg(ContextMsg, !Info),
+        simplify_info_get_inside_duplicated_for_switch(!.Info,
+            InsideDuplForSwitch),
+        (
+            InsideDuplForSwitch = yes
+            % Do not generate the warning, since it is quite likely to be
+            % spurious: though the condition cannot succeed in this arm of the
+            % switch, it likely can succeed in other arms that derive from
+            % the exact same piece of source code.
+        ;
+            InsideDuplForSwitch = no,
+            goal_info_get_context(GoalInfo0, Context),
+            Msg = ite_cond_cannot_succeed,
+            ContextMsg = context_det_msg(Context, Msg),
+            simplify_info_add_det_msg(ContextMsg, !Info)
+        ),
         simplify_info_set_requantify(!Info),
         simplify_info_set_rerun_det(!Info)
     ; Else0 = disj([]) - _ ->
@@ -1429,14 +1459,14 @@ call_goal(PredId, ProcId, Args, IsBuiltin, Goal0, Goal, GoalInfo0, GoalInfo,
 
         simplify_info_get_det_info(!.Info, DetInfo0),
         det_info_get_pred_id(DetInfo0, ThisPredId),
-        
+
         % Don't warn about directly recursive calls. (That would cause
         % spurious warnings, particularly with builtin predicates,
         % or preds defined using foreign_procs.)
         PredId \= ThisPredId,
 
-        % Don't warn about calls from predicates that also have a 
-        % `pramga obsolete' declaration.  Doing so just results in 
+        % Don't warn about calls from predicates that also have a
+        % `pragma obsolete' declaration.  Doing so just results in
         % spurious warnings.
         module_info_pred_info(ModuleInfo, ThisPredId, ThisPredInfo),
         pred_info_get_markers(ThisPredInfo, ThisPredMarkers),
@@ -2414,9 +2444,12 @@ contains_multisoln_goal(Goals) :-
                 rtti_varmaps            :: rtti_varmaps,
                                         % Information about type_infos and
                                         % typeclass_infos.
-                format_calls            :: bool
+                format_calls            :: bool,
                                         % Do we have any calls to
                                         % string.format and io.format?
+                inside_dupl_for_switch  :: bool
+                                        % Are we currently inside a goal
+                                        % that was duplicated for a switch?
             ).
 
 simplify_info_init(DetInfo, Simplifications, InstMap, ProcInfo, Info) :-
@@ -2426,7 +2459,7 @@ simplify_info_init(DetInfo, Simplifications, InstMap, ProcInfo, Info) :-
     set.init(Msgs),
     Info = simplify_info(DetInfo, Msgs, Simplifications,
         common_info_init, InstMap, VarSet, InstVarSet,
-        no, no, no, 0, 0, RttiVarMaps, no).
+        no, no, no, 0, 0, RttiVarMaps, no, no).
 
     % Reinitialise the simplify_info before reprocessing a goal.
     %
@@ -2492,6 +2525,8 @@ simplify_info_reinit(Simplifications, InstMap0, !Info) :-
 :- implementation.
 
 :- pred simplify_info_get_format_calls(simplify_info::in, bool::out) is det.
+:- pred simplify_info_get_inside_duplicated_for_switch(simplify_info::in,
+    bool::out) is det.
 
 simplify_info_get_det_info(Info, Info ^ det_info).
 simplify_info_get_det_msgs(Info, Info ^ msgs).
@@ -2510,6 +2545,8 @@ simplify_info_rerun_det(Info) :-
 simplify_info_get_cost_delta(Info, Info ^ cost_delta).
 simplify_info_get_rtti_varmaps(Info, Info ^ rtti_varmaps).
 simplify_info_get_format_calls(Info, Info ^ format_calls).
+simplify_info_get_inside_duplicated_for_switch(Info,
+    Info ^ inside_dupl_for_switch).
 
 simplify_info_get_module_info(Info, ModuleInfo) :-
     simplify_info_get_det_info(Info, DetInfo),
@@ -2536,6 +2573,8 @@ simplify_info_get_pred_info(Info, PredInfo) :-
 :- pred simplify_info_set_recompute_atomic(
     simplify_info::in, simplify_info::out) is det.
 :- pred simplify_info_set_format_calls(bool::in,
+    simplify_info::in, simplify_info::out) is det.
+:- pred simplify_info_set_inside_duplicated_for_switch(bool::in,
     simplify_info::in, simplify_info::out) is det.
 
 :- pred simplify_info_add_det_msg(context_det_msg::in,
@@ -2566,6 +2605,8 @@ simplify_info_set_rerun_det(Info, Info ^ rerun_det := yes).
 simplify_info_set_cost_delta(Delta, Info, Info ^ cost_delta := Delta).
 simplify_info_set_rtti_varmaps(Rtti, Info, Info ^ rtti_varmaps := Rtti).
 simplify_info_set_format_calls(FC, Info, Info ^ format_calls := FC).
+simplify_info_set_inside_duplicated_for_switch(IDFS, Info,
+    Info ^ inside_dupl_for_switch := IDFS).
 
 simplify_info_incr_cost_delta(Incr, Info,
     Info ^ cost_delta := Info ^ cost_delta + Incr).

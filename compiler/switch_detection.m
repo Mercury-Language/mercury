@@ -468,7 +468,8 @@ expand_sub_disjs(Var, [LeftGoal | LeftGoals], !Cases) :-
     is semidet.
 
 expand_sub_disj(Var, Goal, !Cases) :-
-    Goal = GoalExpr - GoalInfo,
+    Goal = GoalExpr - GoalInfo0,
+    goal_info_add_feature(duplicated_for_switch, GoalInfo0, GoalInfo),
     ( GoalExpr = conj(plain_conj, SubGoals) ->
         expand_sub_disj_process_conj(Var, SubGoals, [], GoalInfo, !Cases)
     ; GoalExpr = disj(_) ->

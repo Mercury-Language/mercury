@@ -1006,6 +1006,10 @@
                             % mark the unifications it creates, and get
                             % the singleton warning code to respect it.
 
+    ;       duplicated_for_switch
+                            % This goal was created by switch detection by
+                            % duplicating the source code written by the user.
+
     ;       mode_check_clauses_goal
                             % This goal is the main disjunction of a predicate
                             % with the mode_check_clauses pragma. No compiler

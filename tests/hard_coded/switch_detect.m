@@ -1,5 +1,10 @@
 % This is a test to check the proper functioning of the code in switch_detect.m
 % that looks for switch unifications inside nested disjunctions.
+%
+% We also test that the compiler doesn't give a warning for the if-then-else
+% condition containing X = h(I, F): that unification is equivalent to false
+% in one arm of the generated switch and to true in the other, but it is
+% not redundant in the source code.
 
 :- module switch_detect.
 :- interface.
@@ -26,7 +31,16 @@ main(!IO) :-
 	;
 		( X = g(_) ; X = h(_, _) ),
 		io__write(X, !IO),
-		io__nl(!IO)
+		io__nl(!IO),
+		( X = h(I, F) ->
+			io.write_string("h: ", !IO),
+			io.write_int(I, !IO),
+			io.write_string(" ", !IO),
+			io.write_float(F, !IO),
+			io.nl(!IO)
+		;
+			true
+		)
 	),
 	read_t(Y, !IO),
 	(

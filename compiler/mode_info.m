@@ -143,6 +143,7 @@
     may_change_called_proc::out) is det.
 :- pred mode_info_get_initial_instmap(mode_info::in, instmap::out) is det.
 :- pred mode_info_get_in_from_ground_term(mode_info::in, bool::out) is det.
+:- pred mode_info_get_in_dupl_for_switch(mode_info::in, bool::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -201,6 +202,8 @@
 :- pred mode_info_set_checking_extra_goals(bool::in,
     mode_info::in, mode_info::out) is det.
 :- pred mode_info_set_in_from_ground_term(bool::in,
+    mode_info::in, mode_info::out) is det.
+:- pred mode_info_set_in_dupl_for_switch(bool::in,
     mode_info::in, mode_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -336,7 +339,11 @@
                 % Set to `yes' if we are in a from_ground_term scope.
                 % This information allows us to optimize some aspects of
                 % mode analysis.
-                in_from_ground_term     :: bool
+                in_from_ground_term     :: bool,
+
+                % Set to `yes' if we are inside a goal with a
+                % duplicate_for_switch feature.
+                in_dupl_for_switch      :: bool
             ).
 
 :- type mode_info
@@ -463,7 +470,7 @@ mode_info_init(ModuleInfo, PredId, ProcId, Context, LiveVars, InstMapping0,
 
     ModeSubInfo = mode_sub_info(ProcId, VarSet, Unreachable, Changed,
         CheckingExtraGoals, InstMapping0, WarningList, NeedToRequantify,
-        InNegatedContext, no),
+        InNegatedContext, no, no),
 
     ModeInfo = mode_info(ModuleInfo, PredId, VarTypes, Debug,
         Context, ModeContext, InstMapping0, LockedVars, DelayInfo,
@@ -500,6 +507,8 @@ mode_info_get_may_change_called_proc(MI, MI ^ may_change_called_proc).
 mode_info_get_initial_instmap(MI, MI ^ mode_sub_info ^ initial_instmap).
 mode_info_get_in_from_ground_term(MI,
     MI ^ mode_sub_info ^ in_from_ground_term).
+mode_info_get_in_dupl_for_switch(MI,
+    MI ^ mode_sub_info ^ in_dupl_for_switch).
 
 mode_info_set_module_info(ModuleInfo, MI, MI ^ module_info := ModuleInfo).
 mode_info_set_predid(PredId, MI, MI ^ predid := PredId).
@@ -530,6 +539,8 @@ mode_info_set_may_change_called_proc(MayChange, MI,
     MI ^ may_change_called_proc := MayChange).
 mode_info_set_in_from_ground_term(FGI, MI,
     MI ^ mode_sub_info ^ in_from_ground_term := FGI).
+mode_info_set_in_dupl_for_switch(INFS, MI,
+    MI ^ mode_sub_info ^ in_dupl_for_switch := INFS).
 
 %-----------------------------------------------------------------------------%
 

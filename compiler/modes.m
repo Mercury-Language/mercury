@@ -279,6 +279,19 @@
 
 % The following predicates are used by modecheck_unify.m.
 
+    % Modecheck a goal by abstractly interpreting it, as explained
+    % at the top of this file.
+    %
+    % Input-output:
+    %  InstMap          Stored in ModeInfo
+    %  DelayInfo        Stored in ModeInfo
+    %  Goal             Passed as an argument pair
+    % Input only:
+    %  ModuleInfo       Stored in ModeInfo (constant)
+    %  Context          Stored in ModeInfo (changing as we go along the clause)
+    % Output only:
+    %  Error Messages   Output directly to stdout.
+    %
 :- pred modecheck_goal(hlds_goal::in, hlds_goal::out,
     mode_info::in, mode_info::out, io::di, io::uo) is det.
 
@@ -1222,26 +1235,10 @@ prepend_initialisation_call(Var, VarType, InitialInst, Goal0, Goal,
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-% Modecheck a goal by abstractly interpreting it, as explained
-% at the top of this file.
-
-% Note: any changes here may need to be duplicated in unique_modes.m.
-
-% Input-output: InstMap - Stored in the ModeInfo, which is passed as an
-%             argument pair
-%       DelayInfo - Stored in the ModeInfo
-%       Goal    - Passed as an argument pair
-% Input only:   Symbol tables   (constant)
-%           - Stored in the ModuleInfo which is in the ModeInfo
-%       Context Info    (changing as we go along the clause)
-%           - Stored in the ModeInfo
-% Output only:  Error Message(s)
-%           - Output directly to stdout.
-
 modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !ModeInfo, !IO) :-
-        %
-        % store the current context in the mode_info
-        %
+    % Note: any changes here may need to be duplicated in unique_modes.m.
+
+    % Store the current context in the mode_info.
     goal_info_get_context(GoalInfo0, Context),
     term.context_init(EmptyContext),
     ( Context = EmptyContext ->
@@ -1249,14 +1246,19 @@ modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !ModeInfo, !IO) :-
     ;
         mode_info_set_context(Context, !ModeInfo)
     ),
-        %
-        % modecheck the goal, and then store the changes in
-        % instantiation of the vars in the delta_instmap
-        % in the goal's goal_info.
-        %
+    mode_info_get_in_dupl_for_switch(!.ModeInfo, InDuplForSwitch),
+    ( goal_info_has_feature(GoalInfo0, duplicated_for_switch) ->
+        mode_info_set_in_dupl_for_switch(yes, !ModeInfo)
+    ;
+        true
+    ),
+
+    % Modecheck the goal, and then store the changes in instantiation
+    % of the vars in the delta_instmap in the goal's goal_info.
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     modecheck_goal_expr(Goal0, GoalInfo0, Goal, !ModeInfo, !IO),
-    compute_goal_instmap_delta(InstMap0, Goal, GoalInfo0, GoalInfo, !ModeInfo).
+    compute_goal_instmap_delta(InstMap0, Goal, GoalInfo0, GoalInfo, !ModeInfo),
+    mode_info_set_in_dupl_for_switch(InDuplForSwitch, !ModeInfo).
 
 compute_goal_instmap_delta(InstMap0, Goal, !GoalInfo, !ModeInfo) :-
     ( Goal = conj(plain_conj, []) ->
