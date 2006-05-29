@@ -35,6 +35,11 @@
     %
 :- pred datastruct_equal(datastruct::in, datastruct::in) is semidet.
 
+    % Verify whether the datastructure represents a top cell, i.e. where
+    % the selector path is an empty path.
+    %
+:- pred datastruct_refers_to_topcell(datastruct::in) is semidet.
+
     % Select a subterm of the given datastructure using the specified selector.
     % It is assumed that the selector is a valid selector for that
     % datastructure.
@@ -69,6 +74,9 @@
 :- pred datastructs_subsumed_by_list(module_info::in, proc_info::in,
     list(datastruct)::in, list(datastruct)::in) is semidet.
 
+:- func datastruct_lists_least_upper_bound(module_info, proc_info,
+    list(datastruct), list(datastruct)) = list(datastruct).
+
 :- pred datastruct_apply_widening(module_info::in, proc_info::in,
     datastruct::in, datastruct::out) is det.
 
@@ -93,6 +101,10 @@ datastruct_init_with_pos(V, ConsId, Int)
     = datastruct_init_with_selector(V, selector_init(ConsId, Int)).
 
 datastruct_equal(D1, D2) :- D1 = D2.
+
+datastruct_refers_to_topcell(Data):-
+    DSel = Data ^ sc_selector,
+    DSel = [].
 
 datastruct_termshift(Sel, Data0, Data) :-
     DSel = Data0 ^ sc_selector,
@@ -156,6 +168,13 @@ datastruct_apply_widening(ModuleInfo, ProcInfo, !Data) :-
     map.lookup(VarTypes, Var, Type),
     selector_apply_widening(ModuleInfo, Type, Sel0, Sel),
     !:Data = datastruct_init_with_selector(Var, Sel).
+
+datastruct_lists_least_upper_bound(ModuleInfo, ProcInfo, Data1, Data2) 
+        = Data :- 
+    list.filter(
+        datastructs_subsume_datastruct(ModuleInfo, ProcInfo, Data1),
+        Data2, _SubsumedData, NotSubsumedData),
+    Data = list.append(NotSubsumedData, Data1).
 
 datastructs_project(Vars, DataIn) = 
     list__filter(

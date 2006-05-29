@@ -18,11 +18,15 @@
 
 :- interface.
 
+:- import_module hlds.goal_util.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.prog_data.
+:- import_module transform_hlds.ctgc.livedata.
 :- import_module transform_hlds.ctgc.structure_sharing.domain.
 
+:- import_module bool. 
+:- import_module io. 
 :- import_module map. 
 :- import_module set.
 :- import_module list.
@@ -57,7 +61,7 @@
     % This operation renames all occurrences of program variables and
     % type variables according to a program and type variable mapping.
     %
-:- pred reuse_condition_rename(map(prog_var, prog_var)::in, tsubst::in,
+:- pred reuse_condition_rename(prog_var_renaming::in, tsubst::in,
     reuse_condition::in, reuse_condition::out) is det.
 
     % Succeeds if the first condition is subsumed by the second one, i.e.,
@@ -96,6 +100,10 @@
 :- func reuse_as_init = reuse_as.
 :- func reuse_as_init_with_one_condition(reuse_condition) = reuse_as.
 
+    % Return a short description of the reuse information.
+    %
+:- func reuse_as_short_description(reuse_as) = string.
+
     % Succeeds if the first reuses description is subsumed by the second
     % description, i.e., if a procedure call satisfies all the conditions
     % expressed by the second reuses description, then it also satisfies all 
@@ -111,10 +119,23 @@
 :- pred reuse_as_all_unconditional_reuses(reuse_as::in) is semidet.
 :- pred reuse_as_conditional_reuses(reuse_as::in) is semidet.
 
+    % reuse_as_rename_using_module_info(ModuleInfo, PPId,
+    %   ActualVars, ActualTypes, ActualTVarset, FormalReuse, ActualReuse):
+    %
+    % Renaming of the formal description of structure reuse conditions to the
+    % actual description of these conditions. The information about the formal
+    % variables needs to be extracted from the module information. 
+    % The actual names are determined by the actual variables names, the 
+    % actual types, and the type-variables occurring in those types. 
+    %
+:- pred reuse_as_rename_using_module_info(module_info::in, 
+    pred_proc_id::in, prog_vars::in, list(mer_type)::in, tvarset::in,
+    reuse_as::in, reuse_as::out) is det.
+
     % Given a variable and type variable mapping, rename the reuses 
     % conditions accordingly. 
     %
-:- pred reuse_as_rename(map(prog_var, prog_var)::in, tsubst::in, reuse_as::in,
+:- pred reuse_as_rename(prog_var_renaming::in, tsubst::in, reuse_as::in,
     reuse_as::out) is det.
 
     % Add a reuse condition to the reuses description. The information of
@@ -123,12 +144,44 @@
     %
 :- pred reuse_as_add_condition(module_info::in, proc_info::in, 
     reuse_condition::in, reuse_as::in, reuse_as::out) is det.
+    
+    % A shortcut version of the above procedure when the additional condition
+    % is "unconditional". 
+    %
+:- pred reuse_as_add_unconditional(reuse_as::in, reuse_as::out) is det.
 
     % Compute the least upper bound of two reuses descriptions. Module_info 
     % and proc_info are needed for verifying subsumption.
     %
 :- pred reuse_as_least_upper_bound(module_info::in, proc_info::in, 
     reuse_as::in, reuse_as::in, reuse_as::out) is det.
+:- func reuse_as_least_upper_bound(module_info, proc_info, reuse_as, 
+    reuse_as) = reuse_as.
+
+    % reuse_as_from_called_procedure_to_local_reuse_as(ModuleInfo,
+    %   ProcInfo, HeadVars, InUseData, SharingAs, CalledReuseAs) = 
+    %       LocalReuseAs.
+    %
+    % Translate the reuse description of a called procedure to the 
+    % environment of the caller. This means taking into account the local
+    % sets of in use variables, as well as the local sharing. 
+    %
+    % Pre-condition: the reuse description of the called procedure is already
+    % correctly renamed to the caller's environment.
+    % Pre-condition: the reuse_as from the called procedure contains at 
+    % least one conditional reuse condition.
+    %
+:- func reuse_as_from_called_procedure_to_local_reuse_as(module_info,
+    proc_info, prog_vars, live_datastructs, sharing_as, reuse_as) = reuse_as.
+
+
+    % Succeeds if taking into account the live data and static variables the
+    % reuse conditions expressed by reuse_as are all satisfied, hence making
+    % the associated memory reuses safe for that particular calling
+    % environment.
+    % 
+:- pred reuse_as_satisfied(module_info::in, proc_info::in, livedata::in,
+    sharing_as::in, prog_vars::in, reuse_as::in) is semidet.
 
 % XXX TO DO!
 % :- func from_reuse_domain(reuse_domain) = reuse_as.
@@ -148,6 +201,10 @@
     = reuse_as is semidet.
 :- pred reuse_as_table_set(pred_proc_id::in, reuse_as::in, 
     reuse_as_table::in, reuse_as_table::out) is det.
+
+:- pred reuse_as_table_maybe_dump(bool::in, reuse_as_table::in, 
+    io::di, io::uo) is det.
+
 % XXX TO DO!
 % :- func load_structure_reuse_table(module_info) = reuse_as_table.
 
@@ -155,10 +212,14 @@
 
 :- implementation.
 
-:- import_module transform_hlds.ctgc.datastruct.
+:- import_module libs.compiler_util.
 :- import_module parse_tree.prog_ctgc.
+:- import_module transform_hlds.ctgc.datastruct.
+:- import_module transform_hlds.ctgc.util.
 
+:- import_module pair.
 :- import_module set.
+:- import_module string.
 
 :- type reuse_condition 
     --->    always      % The reuse is always safe and does not actually
@@ -303,6 +364,12 @@ reuse_as_init_with_one_condition(ReuseCondition) = ReuseAs :-
         ReuseAs = unconditional
     ).
 
+reuse_as_short_description(no_reuse) = "n".
+reuse_as_short_description(unconditional) = "u".
+reuse_as_short_description(conditional(Conds)) = "c(" ++ Size ++ ")" :- 
+    Size = string.int_to_string(list.length(Conds)).
+      
+
 reuse_as_subsumed_by(ModuleInfo, ProcInfo, FirstReuseAs, SecondReuseAs) :- 
     (
         FirstReuseAs = no_reuse
@@ -325,6 +392,13 @@ reuse_as_no_reuses(no_reuse).
 reuse_as_all_unconditional_reuses(unconditional).
 reuse_as_conditional_reuses(conditional(_)).
 
+reuse_as_rename_using_module_info(ModuleInfo, PPId, ActualArgs, ActualTypes,
+        ActualTVarset, FormalReuse, ActualReuse) :- 
+    reuse_as_rename(
+        get_variable_renaming(ModuleInfo, PPId, ActualArgs),
+        get_type_substitution(ModuleInfo, PPId, ActualTypes, ActualTVarset),
+        FormalReuse, ActualReuse).
+ 
 reuse_as_rename(MapVar, TypeSubst, ReuseAs, RenamedReuseAs) :- 
     (
         ReuseAs = no_reuse,
@@ -363,6 +437,16 @@ reuse_as_add_condition(ModuleInfo, ProcInfo, Condition, !ReuseAs) :-
                 Condition, Conditions, NewConditions),
             !:ReuseAs = conditional(NewConditions)
         )
+    ).
+
+reuse_as_add_unconditional(!ReuseAs) :- 
+    (
+        !.ReuseAs = no_reuse,
+        !:ReuseAs = unconditional
+    ;
+        !.ReuseAs = unconditional
+    ;
+        !.ReuseAs = conditional(_)
     ).
 
 :- pred reuse_conditions_add_condition(module_info::in, proc_info::in,
@@ -418,6 +502,118 @@ reuse_as_least_upper_bound(ModuleInfo, ProcInfo, NewReuseAs, !ReuseAs) :-
             
     ).
 
+reuse_as_least_upper_bound(ModuleInfo, ProcInfo, Reuse1, Reuse2) = Reuse :-
+    reuse_as_least_upper_bound(ModuleInfo, ProcInfo, Reuse1, Reuse2, Reuse).
+
+reuse_as_from_called_procedure_to_local_reuse_as(ModuleInfo, ProcInfo,
+        HeadVars, LuData, SharingAs, CalledReuseAs) = LocalReuseAs :- 
+    (
+        CalledReuseAs = no_reuse,
+        unexpected(this_file, 
+            "reuse_as_from_called_procedure_to_local_reuse_as: " ++ 
+            "reuse_as does not specify any reuses.")
+    ; 
+        CalledReuseAs = unconditional,
+        unexpected(this_file,
+            "reuse_as_from_called_procedure_to_local_reuse_as: " ++
+            "reuse_as is unconditional.")
+    ; 
+        CalledReuseAs = conditional(ConditionsCaller),
+        ConditionsCallee = 
+            list.map(reuse_condition_from_called_proc_to_local_condition(
+                ModuleInfo, ProcInfo, HeadVars, LuData, SharingAs), 
+                ConditionsCaller),
+        list.foldl(reuse_as_add_condition(ModuleInfo, ProcInfo), 
+            ConditionsCallee, reuse_as_init, LocalReuseAs)
+    ).
+        
+:- func reuse_condition_from_called_proc_to_local_condition(module_info,
+    proc_info, prog_vars, live_datastructs, sharing_as, reuse_condition) = 
+    reuse_condition.
+
+reuse_condition_from_called_proc_to_local_condition(ModuleInfo, ProcInfo, 
+        HeadVars, LuData, SharingAs, CalledCondition) = LocalCondition :- 
+    (
+        CalledCondition = always, 
+        unexpected(this_file, 
+            "reuse_condition_from_called_proc_to_local_condition: " ++
+            "explicit condition expected.")
+    ; 
+        CalledCondition = condition(CalledDeadNodes, 
+            CalledInUseNodes, CalledSharingAs),
+
+        % Translate the dead nodes: 
+        AllDeadNodes = extend_datastructs(ModuleInfo, ProcInfo, 
+            SharingAs, CalledDeadNodes),
+        AllDeadHeadVarNodes = datastructs_project(HeadVars, AllDeadNodes),
+
+        (
+            AllDeadHeadVarNodes = [],
+            LocalCondition = always
+        ;
+            AllDeadHeadVarNodes = [_|_],
+            % Translate the in use nodes:
+            AllInUseNodes = extend_datastructs(ModuleInfo, ProcInfo, 
+                SharingAs, list.append(LuData, CalledInUseNodes)),
+            AllInUseHeadVarNodes = datastructs_project(HeadVars, 
+                AllInUseNodes),
+
+            % Translate the sharing information: 
+            AllLocalSharing = sharing_as_comb(ModuleInfo, ProcInfo, 
+                CalledSharingAs, SharingAs),
+            AllHeadVarLocalSharing = sharing_as_project(HeadVars, 
+                AllLocalSharing),
+
+            LocalCondition = condition(AllDeadHeadVarNodes, 
+                AllInUseHeadVarNodes, AllHeadVarLocalSharing)
+        )
+    ). 
+
+reuse_as_satisfied(ModuleInfo, ProcInfo, LiveData, SharingAs, StaticVars,
+        ReuseAs) :- 
+    (
+        ReuseAs = no_reuse,
+        fail
+    ;
+        ReuseAs = unconditional,
+        true
+    ; 
+        ReuseAs = conditional(Conditions),
+        list.all_true(reuse_condition_satisfied(ModuleInfo, ProcInfo, 
+            LiveData, SharingAs, StaticVars), Conditions)
+            % XXX something about reuse conditions pointing to the
+            % same datastructure to be reused... 
+    ).
+
+:- pred reuse_condition_satisfied(module_info::in, proc_info::in,
+    livedata::in, sharing_as::in, prog_vars::in, reuse_condition::in) 
+    is semidet.
+
+reuse_condition_satisfied(ModuleInfo, ProcInfo, LiveData, SharingAs, 
+        StaticVars, Condition) :- 
+    (
+        Condition = always
+    ;
+        Condition = condition(DeadNodes, InUseNodes, SharingNodes),
+        % Reuse of static vars is not allowed:
+        StaticDeadNodes = datastructs_project(StaticVars, DeadNodes),
+        StaticDeadNodes = [],
+
+        % Using the InUseNodes, and the sharing recorded by the condition, 
+        % compute a new set of livedata that (safely) approximates the
+        % set of livedata that would have been obtained when looking at
+        % the program point from where the reuse condition actually comes from.
+        NewSharing = sharing_as_comb(ModuleInfo, ProcInfo, SharingNodes, 
+            SharingAs),
+        UpdatedLiveData = livedata_add_liveness(ModuleInfo, ProcInfo, 
+            InUseNodes, NewSharing, LiveData),
+        nodes_are_not_live(ModuleInfo, ProcInfo, DeadNodes,
+            UpdatedLiveData)
+    ).
+        
+    
+        
+    
 %-----------------------------------------------------------------------------%
 %
 % reuse_as_table
@@ -427,6 +623,35 @@ reuse_as_table_init = map.init.
 reuse_as_table_search(PPId, Table) = Table ^ elem(PPId). 
 reuse_as_table_set(PPId, ReuseAs, !Table) :- 
     !:Table = !.Table ^ elem(PPId) := ReuseAs.
+
+reuse_as_table_maybe_dump(DoDump, Table, !IO) :-
+    (
+        DoDump = no
+    ;   
+        DoDump = yes,
+        reuse_as_table_dump(Table, !IO)
+    ).
+
+:- pred reuse_as_table_dump(reuse_as_table::in, io::di, io::uo) is det.
+
+reuse_as_table_dump(Table, !IO) :-
+    (
+        map.is_empty(Table)
+    ->
+        io.write_string("% ReuseTable: Empty", !IO)
+    ;
+        io.write_string("% ReuseTable: PPId --> Reuse\n", !IO), 
+        io.write_list(map.to_assoc_list(Table), "", dump_entries, !IO)
+    ).
+
+:- pred dump_entries(pair(pred_proc_id, reuse_as)::in, io::di, io::uo) is det.
+
+dump_entries(PPId - ReuseAs, !IO) :-
+    PPId = proc(PredId, ProcId), 
+    io.write_string(
+        "% " ++ string.int_to_string(pred_id_to_int(PredId)) ++ ", " ++
+        string.int_to_string(proc_id_to_int(ProcId)) ++ "\t-->" ++
+        reuse_as_short_description(ReuseAs) ++ "\n", !IO).
 
 %-----------------------------------------------------------------------------%
 :- func this_file = string.

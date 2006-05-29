@@ -19,9 +19,10 @@
 
 :- include_module datastruct.
 :- include_module fixpoint_table.
+:- include_module livedata.
 :- include_module selector.
-:- include_module structure_sharing.
 :- include_module structure_reuse.
+:- include_module structure_sharing.
 :- include_module util.
 
 :- end_module transform_hlds.ctgc.

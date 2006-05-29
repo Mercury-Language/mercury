@@ -68,6 +68,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module transform_hlds.ctgc.structure_reuse.direct.
 :- import_module transform_hlds.ctgc.structure_reuse.domain.
+:- import_module transform_hlds.ctgc.structure_reuse.indirect.
 :- import_module transform_hlds.ctgc.structure_reuse.lbu.
 :- import_module transform_hlds.ctgc.structure_reuse.lfu.
 :- import_module transform_hlds.ctgc.structure_sharing.domain.
@@ -98,19 +99,23 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
     maybe_write_string(VeryVerbose, "% Direct reuse...\n", !IO), 
     DummyReuseTable = reuse_as_table_init, 
     direct_reuse_pass(SharingTable, !ModuleInfo, 
-        DummyReuseTable, _ReuseTable, !IO),
-    maybe_write_string(VeryVerbose, "% Direct reuse: done.\n", !IO).
+        DummyReuseTable, ReuseTable1, !IO),
+    maybe_write_string(VeryVerbose, "% Direct reuse: done.\n", !IO),
+    reuse_as_table_maybe_dump(VeryVerbose, ReuseTable1, !IO),
 
     % Determine information about possible indirect reuses.
-    % XXX TO DO!
-    % indirect_reuse_pass(SharingTable, ReuseTable1, ReuseTable2, 
-    %   !ModuleInfo, !IO), 
+    maybe_write_string(VeryVerbose, "% Indirect reuse...\n", !IO), 
+    indirect_reuse_pass(SharingTable, !ModuleInfo, ReuseTable1, ReuseTable2, 
+       !IO), 
+    maybe_write_string(VeryVerbose, "% Indirect reuse: done.\n", !IO),
+    reuse_as_table_maybe_dump(VeryVerbose, ReuseTable2, !IO).
 
     % For every procedure that has some potential (conditional) reuse (either 
     % direct or indirect), create a new procedure that actually implements
     % that reuse. 
     % XXX TO DO!
-    % split_reuse_procedures(ReuseTable2, ReuseTable3, !ModuleInfo, !IO), 
+    % split_reuse_procedures(!ModuleInfo, ReuseTable2, ReuseTable3, !IO), 
+    % reuse_as_table_maybe_dump(VeryVerbose, ReuseTable3, !IO).
 
     % Record the results of the reuse table into the HLDS.
     % XXX TO DO!

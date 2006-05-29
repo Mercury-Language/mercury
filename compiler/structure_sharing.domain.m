@@ -51,6 +51,7 @@
 :- module transform_hlds.ctgc.structure_sharing.domain.
 :- interface.
 
+:- import_module hlds.goal_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -87,7 +88,7 @@
 
     % Return a short description of the sharing information.
     %
-:- func short_description(sharing_as) = string.
+:- func sharing_as_short_description(sharing_as) = string.
 
     % Projection operation.
     % This operation reduces the sharing information to information
@@ -98,6 +99,7 @@
     %
 :- pred sharing_as_project(prog_vars::in,
     sharing_as::in, sharing_as::out) is det.
+:- func sharing_as_project(prog_vars, sharing_as) = sharing_as.
 :- pred sharing_as_project_set(set(prog_var)::in,
     sharing_as::in, sharing_as::out) is det.
 
@@ -106,17 +108,18 @@
     % in the sharing information according to a variable and type variable
     % mapping.
     %
-:- pred sharing_as_rename(map(prog_var, prog_var)::in, tsubst::in,
+:- pred sharing_as_rename(prog_var_renaming::in, tsubst::in,
     sharing_as::in, sharing_as::out) is det.
 
     % sharing_as_rename_using_module_info(ModuleInfo, PPId,
     %   ActualVars, ActualTypes, ActualTVarset, FormalSharing, ActualSharing):
     %
     % Renaming of the formal description of data structure sharing to the
-    % actual description of the sharing. The formal information is given
-    % using the module information. A list of variables and types is used as
-    % the actual variables and types.
-    % recorded in the module info.
+    % actual description of the sharing. The information about the formal
+    % variables needs to be extracted from the module information. 
+    % A list of variables and types is used as the actual variables and types.
+    % The type variables set in the actual context must also be specified.
+    % 
     %
 :- pred sharing_as_rename_using_module_info(module_info::in,
     pred_proc_id::in, prog_vars::in, list(mer_type)::in, tvarset::in,
@@ -175,6 +178,8 @@
     %
 :- func extend_datastruct(module_info, proc_info, sharing_as, datastruct)
     = list(datastruct).
+:- func extend_datastructs(module_info, proc_info, sharing_as, 
+    list(datastruct)) = list(datastruct).
 
     % apply_widening(ModuleInfo, ProcInfo, WideningLimit, WideningDone,
     %   SharingIn, SharingOut):
@@ -230,6 +235,15 @@
 
 %-----------------------------------------------------------------------------%
 
+    % Lookup the sharing information of a called procedure (given its
+    % pred_id and proc_id), and combine it with any existing
+    % sharing information.
+    %
+:- pred lookup_sharing_and_comb(module_info::in, proc_info::in,
+    sharing_as_table::in, pred_id::in, proc_id::in, prog_vars::in,
+    sharing_as::in, sharing_as::out) is det.
+
+
     % Lookup the sharing information in the sharing table, or if it is not
     % in there, try to predict it using the information available in the 
     % module_info. 
@@ -274,6 +288,7 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module transform_hlds.ctgc.datastruct.
 :- import_module transform_hlds.ctgc.selector.
+:- import_module transform_hlds.ctgc.util.
 
 :- import_module assoc_list.
 :- import_module int.
@@ -284,38 +299,39 @@
 :- import_module string.
 :- import_module svmap.
 :- import_module svset.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
 :- type sharing_as
-    --->    real_as(sharing_set)
-    ;       bottom
-    ;       top(list(string)).
+    --->    sharing_as_real_as(sharing_set)
+    ;       sharing_as_bottom
+    ;       sharing_as_top(list(string)).
 
-sharing_as_init = bottom.
-sharing_as_is_bottom(bottom).
-sharing_as_top_sharing(Msg) = top([Msg]).
+sharing_as_init = sharing_as_bottom.
+sharing_as_is_bottom(sharing_as_bottom).
+sharing_as_top_sharing(Msg) = sharing_as_top([Msg]).
 sharing_as_top_sharing_accumulate(Msg, SharingAs) = TopSharing :-
     (
-        SharingAs = real_as(_),
+        SharingAs = sharing_as_real_as(_),
         Msgs = [Msg]
     ;
-        SharingAs = bottom,
+        SharingAs = sharing_as_bottom,
         Msgs = [Msg]
     ;
-        SharingAs = top(Msgs0),
+        SharingAs = sharing_as_top(Msgs0),
         list.cons(Msg, Msgs0, Msgs)
     ),
-    TopSharing = top(Msgs).
+    TopSharing = sharing_as_top(Msgs).
 
-sharing_as_is_top(top(_)).
+sharing_as_is_top(sharing_as_top(_)).
 
-sharing_as_size(bottom) = 0.
-sharing_as_size(real_as(SharingSet)) =  sharing_set_size(SharingSet).
+sharing_as_size(sharing_as_bottom) = 0.
+sharing_as_size(sharing_as_real_as(SharingSet)) =  sharing_set_size(SharingSet).
 
-short_description(bottom) = "b".
-short_description(top(_)) = "t".
-short_description(real_as(SharingSet)) =
+sharing_as_short_description(sharing_as_bottom) = "b".
+sharing_as_short_description(sharing_as_top(_)) = "t".
+sharing_as_short_description(sharing_as_real_as(SharingSet)) =
     string.from_int(sharing_set_size(SharingSet)).
 
     % inproject = projection such that result contains information about
@@ -330,19 +346,21 @@ short_description(real_as(SharingSet)) =
 
 sharing_as_project(ListVars, !SharingAs) :-
     sharing_as_project_with_type(inproject, ListVars, !SharingAs).
+sharing_as_project(ListVars, SharingAs) = NewSharingAs :- 
+    sharing_as_project(ListVars, SharingAs, NewSharingAs).
 
 :- pred sharing_as_project_with_type(projection_type::in, prog_vars::in,
     sharing_as::in, sharing_as::out) is det.
 
 sharing_as_project_with_type(ProjectionType, ListVars, !SharingAs) :-
     (
-        !.SharingAs = bottom
+        !.SharingAs = sharing_as_bottom
     ;
-        !.SharingAs = real_as(SharingSet0),
+        !.SharingAs = sharing_as_real_as(SharingSet0),
         sharing_set_project(ProjectionType, ListVars, SharingSet0, SharingSet),
         !:SharingAs = wrap(SharingSet)
     ;
-        !.SharingAs = top(_)
+        !.SharingAs = sharing_as_top(_)
     ).
 
 sharing_as_project_set(SetVars, !SharingAs) :-
@@ -350,59 +368,42 @@ sharing_as_project_set(SetVars, !SharingAs) :-
 
 sharing_as_rename(MapVar, TypeSubst, !SharingAs) :-
     (
-        !.SharingAs = real_as(SharingSet0),
+        !.SharingAs = sharing_as_real_as(SharingSet0),
         sharing_set_rename(MapVar, TypeSubst, SharingSet0, SharingSet),
-        !:SharingAs = real_as(SharingSet)
+        !:SharingAs = sharing_as_real_as(SharingSet)
     ;
-        !.SharingAs = bottom
+        !.SharingAs = sharing_as_bottom
     ;
-        !.SharingAs = top(_)
+        !.SharingAs = sharing_as_top(_)
     ).
 
 sharing_as_rename_using_module_info(ModuleInfo, PPId, ActualVars, ActualTypes,
         ActualTVarset, FormalSharing, ActualSharing):-
-    module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, ProcInfo),
-
-    % head variables.
-    proc_info_get_headvars(ProcInfo, FormalVars),
-    map.from_corresponding_lists(FormalVars, ActualVars, Dict),
-
-    % types of the head variables.
-    pred_info_get_arg_types(PredInfo, FormalTVarset, _, FormalTypes),
-
-    % (this is a bit that was inspired by the code for
-    % arg_type_list_subsumes/6)
-    tvarset_merge_renaming(ActualTVarset, FormalTVarset,_TVarSet1, Renaming),
-    apply_variable_renaming_to_type_list(Renaming, FormalTypes,
-        RenFormalTypes),
-
-    ( type_list_subsumes(RenFormalTypes, ActualTypes, TypeSubstitution) ->
-        sharing_as_rename(Dict, TypeSubstitution, FormalSharing, ActualSharing)
-    ;
-        unexpected(this_file, "Types are supposed to be unifiable.")
-    ).
+    sharing_as_rename(get_variable_renaming(ModuleInfo, PPId, ActualVars),
+        get_type_substitution(ModuleInfo, PPId, ActualTypes, ActualTVarset),
+        FormalSharing, ActualSharing).
 
 sharing_as_comb(ModuleInfo, ProcInfo, NewSharing, OldSharing) = ResultSharing :-
     (
-        NewSharing = real_as(NewSharingSet),
+        NewSharing = sharing_as_real_as(NewSharingSet),
         (
-            OldSharing = real_as(OldSharingSet),
+            OldSharing = sharing_as_real_as(OldSharingSet),
             ResultSharing = wrap(sharing_set_comb(ModuleInfo, ProcInfo,
                 NewSharingSet, OldSharingSet))
         ;
-            OldSharing = bottom,
+            OldSharing = sharing_as_bottom,
             ResultSharing = NewSharing
         ;
-            OldSharing = top(_),
+            OldSharing = sharing_as_top(_),
             ResultSharing = OldSharing
         )
     ;
-        NewSharing = bottom,
+        NewSharing = sharing_as_bottom,
         ResultSharing = OldSharing
     ;
-        NewSharing = top(MsgNew),
-        ( OldSharing = top(MsgOld) ->
-            ResultSharing = top(list.append(MsgNew, MsgOld))
+        NewSharing = sharing_as_top(MsgNew),
+        ( OldSharing = sharing_as_top(MsgOld) ->
+            ResultSharing = sharing_as_top(list.append(MsgNew, MsgOld))
         ;
             ResultSharing = NewSharing
         )
@@ -586,12 +587,12 @@ optimization_remove_deaths(ProcInfo, GoalInfo, Sharing0) = Sharing :-
 
 sharing_as_is_subsumed_by(ModuleInfo, ProcInfo, Sharing1, Sharing2) :-
     (
-        Sharing2 = top(_)
+        Sharing2 = sharing_as_top(_)
     ;
-        Sharing1 = bottom
+        Sharing1 = sharing_as_bottom
     ;
-        Sharing1 = real_as(SharingSet1),
-        Sharing2 = real_as(SharingSet2),
+        Sharing1 = sharing_as_real_as(SharingSet1),
+        Sharing2 = sharing_as_real_as(SharingSet2),
         sharing_set_is_subsumed_by(ModuleInfo, ProcInfo, SharingSet1,
             SharingSet2)
     ).
@@ -599,26 +600,27 @@ sharing_as_is_subsumed_by(ModuleInfo, ProcInfo, Sharing1, Sharing2) :-
 sharing_as_least_upper_bound(ModuleInfo, ProcInfo, Sharing1, Sharing2)
         = Sharing :-
     (
-        Sharing1 = bottom,
+        Sharing1 = sharing_as_bottom,
         Sharing = Sharing2
     ;
-        Sharing1 = top(Msg1),
-        ( Sharing2 = top(Msg2) ->
-            Sharing = top(list.append(Msg1, Msg2))
+        Sharing1 = sharing_as_top(Msg1),
+        ( Sharing2 = sharing_as_top(Msg2) ->
+            Sharing = sharing_as_top(list.append(Msg1, Msg2))
         ;
             Sharing = Sharing1
         )
     ;
-        Sharing1 = real_as(SharingSet1),
+        Sharing1 = sharing_as_real_as(SharingSet1),
         (
-            Sharing2 = bottom,
+            Sharing2 = sharing_as_bottom,
             Sharing = Sharing1
         ;
-            Sharing2 = top(_),
+            Sharing2 = sharing_as_top(_),
             Sharing = Sharing2
         ;
-            Sharing2 = real_as(SharingSet2),
-            Sharing = real_as(sharing_set_least_upper_bound(ModuleInfo,
+            Sharing2 = sharing_as_real_as(SharingSet2),
+            Sharing = sharing_as_real_as(
+                sharing_set_least_upper_bound(ModuleInfo,
                 ProcInfo, SharingSet1, SharingSet2))
         )
     ).
@@ -630,26 +632,34 @@ sharing_as_least_upper_bound_of_list(ModuleInfo, ProcInfo, SharingList) =
 extend_datastruct(ModuleInfo, ProcInfo, SharingAs, Datastruct)
         = Datastructures :-
     (
-        SharingAs = bottom,
-        Datastructures = []
+        SharingAs = sharing_as_bottom,
+        Datastructures = [Datastruct]
     ;
-        SharingAs = real_as(SharingSet),
+        SharingAs = sharing_as_real_as(SharingSet),
         Datastructures = sharing_set_extend_datastruct(ModuleInfo, ProcInfo,
             Datastruct, SharingSet)
     ;
-        SharingAs = top(_),
+        SharingAs = sharing_as_top(_),
         unexpected(this_file, "extend_datastruct with top sharing set.")
     ).
 
+extend_datastructs(ModuleInfo, ProcInfo, SharingAs, Datastructs) 
+        = ExtendedDatastructs :- 
+    DataLists = list.map(extend_datastruct(ModuleInfo, ProcInfo, 
+        SharingAs), Datastructs),
+    ExtendedDatastructs = list.foldl(
+        datastruct_lists_least_upper_bound(ModuleInfo, ProcInfo), 
+        DataLists, []).
+
 apply_widening(ModuleInfo, ProcInfo, WideningLimit, WideningDone, !Sharing):-
     (
-        !.Sharing = bottom,
+        !.Sharing = sharing_as_bottom,
         WideningDone = no
     ;
-        !.Sharing = top(_),
+        !.Sharing = sharing_as_top(_),
         WideningDone = no
     ;
-        !.Sharing = real_as(SharingSet0),
+        !.Sharing = sharing_as_real_as(SharingSet0),
         ( WideningLimit = 0 ->
             WideningDone = no
         ; WideningLimit > sharing_set_size(SharingSet0) ->
@@ -657,7 +667,7 @@ apply_widening(ModuleInfo, ProcInfo, WideningLimit, WideningDone, !Sharing):-
         ;
             sharing_set_apply_widening(ModuleInfo, ProcInfo,
                 SharingSet0, SharingSet),
-            !:Sharing = real_as(SharingSet),
+            !:Sharing = sharing_as_real_as(SharingSet),
             WideningDone = yes
         )
     ).
@@ -665,25 +675,25 @@ apply_widening(ModuleInfo, ProcInfo, WideningLimit, WideningDone, !Sharing):-
 from_structure_sharing_domain(SharingDomain) = SharingAs :-
     (
         SharingDomain = bottom,
-        SharingAs = bottom
+        SharingAs = sharing_as_bottom
     ;
         SharingDomain = real(StructureSharing),
         SharingSet = from_sharing_pair_list(StructureSharing),
         wrap(SharingSet, SharingAs)
     ;
         SharingDomain = top(Msgs),
-        SharingAs = top(Msgs)
+        SharingAs = sharing_as_top(Msgs)
     ).
 
 to_structure_sharing_domain(SharingAs) = SharingDomain :-
     (
-        SharingAs = bottom,
+        SharingAs = sharing_as_bottom,
         SharingDomain = bottom
     ;
-        SharingAs = real_as(SharingSet),
+        SharingAs = sharing_as_real_as(SharingSet),
         SharingDomain = real(to_sharing_pair_list(SharingSet))
     ;
-        SharingAs = top(Msgs),
+        SharingAs = sharing_as_top(Msgs),
         SharingDomain = top(Msgs)
     ).
 
@@ -696,6 +706,26 @@ sharing_as_table_init = map.init.
 sharing_as_table_search(PPId, Table) = Table ^ elem(PPId).
 sharing_as_table_set(PPId, Sharing, !Table) :-
     !:Table = !.Table ^ elem(PPId) := Sharing.
+
+%-----------------------------------------------------------------------------%
+
+lookup_sharing_and_comb(ModuleInfo, ProcInfo, SharingTable, PredId, ProcId,
+        ActualVars, !Sharing):- 
+    PPId = proc(PredId, ProcId),
+    
+    lookup_sharing_or_predict(ModuleInfo, SharingTable, PPId, FormalSharing),
+
+    proc_info_get_vartypes(ProcInfo, VarTypes), 
+    list.map(map.lookup(VarTypes), ActualVars, ActualTypes), 
+       
+        % XXX To be checked!
+    ActualTVarset = varset.init, 
+    sharing_as_rename_using_module_info(ModuleInfo, PPId, 
+        ActualVars, ActualTypes, ActualTVarset, FormalSharing,
+        ActualSharing),
+
+    !:Sharing = sharing_as_comb(ModuleInfo, ProcInfo, 
+        ActualSharing, !.Sharing).
 
 lookup_sharing_or_predict(ModuleInfo, SharingTable, PPId, SharingAs) :- 
     (
@@ -905,7 +935,7 @@ bottom_sharing_is_safe_approximation(ModuleInfo, ProcInfo) :-
 :- pred sharing_set_project(projection_type::in, prog_vars::in,
     sharing_set::in, sharing_set::out) is det.
 
-:- pred sharing_set_rename(map(prog_var, prog_var)::in, tsubst::in,
+:- pred sharing_set_rename(prog_var_renaming::in, tsubst::in,
     sharing_set::in, sharing_set::out) is det.
 
 :- func sharing_set_comb(module_info, proc_info, sharing_set, sharing_set) =
@@ -941,9 +971,9 @@ sharing_set_size(sharing_set(Size, _)) = Size.
 
 wrap(SharingSet, SharingAs) :-
     ( sharing_set_is_empty(SharingSet) ->
-        SharingAs = bottom
+        SharingAs = sharing_as_bottom
     ;
-        SharingAs = real_as(SharingSet)
+        SharingAs = sharing_as_real_as(SharingSet)
     ).
 
 wrap(SharingSet) = SharingAs :-
@@ -984,7 +1014,7 @@ sharing_set_rename(Dict, TypeSubst, SharingSet0, SharingSet) :-
     map.foldl(do_sharing_set_rename(Dict, TypeSubst), Map0, map.init, Map),
     SharingSet  = sharing_set(Size, Map).
 
-:- pred do_sharing_set_rename(map(prog_var, prog_var)::in, tsubst::in,
+:- pred do_sharing_set_rename(prog_var_renaming::in, tsubst::in,
     prog_var::in, selector_sharing_set::in,
     map(prog_var, selector_sharing_set)::in,
     map(prog_var, selector_sharing_set)::out) is det.
@@ -1537,7 +1567,7 @@ directed_entry_is_member(FromData, ToData, SharingSet) :-
 :- pred selector_sharing_set_project(projection_type::in, prog_vars::in,
     selector_sharing_set::in, selector_sharing_set::out) is det.
 
-:- pred selector_sharing_set_rename(map(prog_var, prog_var)::in,
+:- pred selector_sharing_set_rename(prog_var_renaming::in,
     tsubst::in, selector_sharing_set::in, selector_sharing_set::out) is det.
 
     % selector_sharing_set_new_entry(Selector, Datastruct, SS0, SS):
@@ -1587,7 +1617,7 @@ selector_sharing_set_rename(Dict, Subst, SelSharingSet0, SelSharingSet):-
     map.foldl(selector_sharing_set_rename_2(Dict, Subst), Map0, map.init, Map),
     SelSharingSet = selector_sharing_set(Size, Map).
 
-:- pred selector_sharing_set_rename_2(map(prog_var, prog_var)::in,
+:- pred selector_sharing_set_rename_2(prog_var_renaming::in,
     tsubst::in, selector::in, data_set::in,
     map(selector, data_set)::in, map(selector, data_set)::out) is det.
 
@@ -1764,7 +1794,7 @@ selector_sharing_set_apply_widening_2(ModuleInfo, ProcInfo, ProgVar,
 :- pred data_set_project(projection_type::in, prog_vars::in,
     data_set::in, data_set::out) is det.
 
-:- pred data_set_rename(map(prog_var, prog_var)::in, tsubst::in,
+:- pred data_set_rename(prog_var_renaming::in, tsubst::in,
     data_set::in, data_set::out) is det.
 
 :- pred data_set_termshift(data_set::in, selector::in, data_set::out) is det.

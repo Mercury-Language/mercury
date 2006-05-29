@@ -54,7 +54,6 @@
 :- import_module transform_hlds.dependency_graph.
 
 :- import_module bool.
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -209,16 +208,16 @@ analyse_pred_proc(ModuleInfo, SharingTable, PPId, !FixpointTable, !IO) :-
             proc_info_get_goal(ProcInfo, Goal),
             analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
                 !FixpointTable, !Sharing, !IO),
-            FullAsDescr = short_description(!.Sharing),
+            FullAsDescr = sharing_as_short_description(!.Sharing),
 
             sharing_as_project(HeadVars, !Sharing),
-            ProjAsDescr = short_description(!.Sharing),
+            ProjAsDescr = sharing_as_short_description(!.Sharing),
 
             domain.apply_widening(ModuleInfo, ProcInfo, WideningLimit,
                 WideningDone, !Sharing),
             (
                 WideningDone = yes,
-                WidenAsDescr = short_description(!.Sharing)
+                WidenAsDescr = sharing_as_short_description(!.Sharing)
             ;
                 WideningDone = no,
                 WidenAsDescr = "-"
@@ -496,7 +495,7 @@ ss_fixpoint_table_get_as(PPId, SharingAs, !Table) :-
 
 ss_fixpoint_table_get_short_description(PPId, Table) = Descr :-
     ( As = ss_fixpoint_table_get_final_as_semidet(PPId, Table) ->
-        Descr = short_description(As)
+        Descr = sharing_as_short_description(As)
     ;
         Descr = "-"
     ).

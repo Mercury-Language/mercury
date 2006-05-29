@@ -20,7 +20,7 @@
 	:- include_module lfu.
 	:- include_module lbu.
 	:- include_module direct.
-	%:- include_module indirect.
+	:- include_module indirect.
 
 % :- include_module util.
 :- include_module domain.

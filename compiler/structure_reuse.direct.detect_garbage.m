@@ -90,6 +90,7 @@ determine_dead_deconstructions_2(ModuleInfo, ProcInfo, SharingTable,
                 func(C) = G :- (G = C ^ case_goal), Cases), !SharingAs,
             !DeadCellTable)
     ;
+        % XXX To check and compare with the theory. 
         GoalExpr = not(_Goal)
     ;
         GoalExpr = scope(_, SubGoal),
@@ -208,28 +209,6 @@ unification_verify_reuse(ModuleInfo, ProcInfo, GoalInfo, Unification,
 
 var_is_live(Var, LiveData) :- 
     list.member(datastruct_init(Var), LiveData).
-
-:- pred lookup_sharing_and_comb(module_info::in, proc_info::in,
-    sharing_as_table::in, pred_id::in, proc_id::in, prog_vars::in,
-    sharing_as::in, sharing_as::out) is det.
-lookup_sharing_and_comb(ModuleInfo, ProcInfo, SharingTable, PredId, ProcId,
-        ActualVars, !Sharing):- 
-    PPId = proc(PredId, ProcId),
-    
-    lookup_sharing_or_predict(ModuleInfo, SharingTable, PPId, FormalSharing),
-
-    proc_info_get_vartypes(ProcInfo, VarTypes), 
-    list.map(map.lookup(VarTypes), ActualVars, ActualTypes), 
-       
-        % XXX To be checked!
-    ActualTVarset = varset.init, 
-    sharing_as_rename_using_module_info(ModuleInfo, PPId, 
-        ActualVars, ActualTypes, ActualTVarset, FormalSharing,
-        ActualSharing),
-
-    !:Sharing = sharing_as_comb(ModuleInfo, ProcInfo, 
-        ActualSharing, !.Sharing).
-
 
 %-----------------------------------------------------------------------------%
 :- func this_file = string.

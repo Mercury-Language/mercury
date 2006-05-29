@@ -359,9 +359,11 @@
 %
 
 :- type dead_var == prog_var.
+:- type dead_vars == list(dead_var).
 :- type dead_datastruct == datastruct.
 :- type dead_datastructs == list(dead_datastruct).
 :- type live_var == prog_var.
+:- type live_vars == list(live_var).
 :- type live_datastruct == datastruct.
 :- type live_datastructs == list(live_datastruct).
 
