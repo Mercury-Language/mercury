@@ -15,6 +15,7 @@
 % It also contains code for handling the --grade option.
 %
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module libs.handle_options.
 :- interface.
@@ -956,8 +957,17 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
         % Inlining happens before the deep profiling transformation, so if
         % we allowed inlining to happen, then we would lose all profiling
-        % information about the inlined calls.
-        option_implies(profile_deep, allow_inlining, bool(no), !Globals),
+        % information about the inlined calls - this is not usually what we
+        % want so we disable inlining with deep profiling by default.  The
+        % user can re-enable it with the `--profile-optimized' option.
+        % 
+        globals.lookup_bool_option(!.Globals, prof_optimized, ProfOptimized),
+        (
+            ProfOptimized = yes
+        ;
+            ProfOptimized = no,
+            option_implies(profile_deep, allow_inlining, bool(no), !Globals)
+        ),
 
         globals.lookup_string_option(!.Globals, experimental_complexity,
             ExpComp),

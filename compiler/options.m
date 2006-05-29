@@ -5,17 +5,18 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: options.m.
 % Main author: fjh.
-
+% 
 % This defines the stuff necessary so that getopt_io.m can parse the
 % command-line options.
-
+% 
 % IMPORTANT NOTE: any changes to the options should be reflected in both the
 % help message produced below, and in the Mercury User's Guide
 % (../doc/user_guide.texi).
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module libs.options.
@@ -184,6 +185,7 @@
     ;       trace_table_io_states
     ;       trace_table_io_require
     ;       trace_table_io_all
+    ;       prof_optimized
     ;       delay_death
     ;       suppress_trace
     ;       force_disable_tracing
@@ -930,6 +932,7 @@ option_defaults_2(aux_output_option, [
     trace_table_io_states               -   bool(no),
     trace_table_io_require              -   bool(no),
     trace_table_io_all                  -   bool(no),
+    prof_optimized                      -   bool(no),
     suppress_trace                      -   string(""),
     force_disable_tracing               -   bool(no),
     delay_death                         -   bool(yes),
@@ -1645,6 +1648,8 @@ long_option("trace-table-io-only-retry", trace_table_io_only_retry).
 long_option("trace-table-io-states",    trace_table_io_states).
 long_option("trace-table-io-require",   trace_table_io_require).
 long_option("trace-table-io-all",   trace_table_io_all).
+long_option("profile-optimised",    prof_optimized).
+long_option("profile-optimized",    prof_optimized).
 long_option("suppress-trace",       suppress_trace).
 long_option("force-disable-tracing",    force_disable_tracing).
 long_option("delay-death",          delay_death).
@@ -3076,6 +3081,8 @@ options_help_aux_output -->
 %       "\tIf a primitive has no annotation specifying the type of",
 %       "\ttabling required, deduce it from the values of the other",
 %       "\tannotations.",
+        "--profile-optimized",
+        "\tDo not disable optimizations that can distort deep profiles.",
         "--no-delay-death",
         "\tWhen the trace level is `deep', the compiler normally",
         "\tpreserves the values of variables as long as possible, even",

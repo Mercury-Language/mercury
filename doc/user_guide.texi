@@ -5715,6 +5715,10 @@ Do not disable optimizations that can change the trace.
 @c Its main use is to turn off tracing in the browser directory
 @c even for .debug and .decldebug grades.
 
+@item --profile-optimized
+@findex --profile-optimized
+Do not disable optimizations that can distort deep profiles.
+
 @item --no-delay-death
 @findex --no-delay-death
 @findex --delay-death
