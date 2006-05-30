@@ -5,17 +5,18 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: options.m.
 % Main author: fjh.
-
+% 
 % This defines the stuff necessary so that getopt_io.m can parse the
 % command-line options.
-
+% 
 % IMPORTANT NOTE: any changes to the options should be reflected in both the
 % help message produced below, and in the Mercury User's Guide
 % (../doc/user_guide.texi).
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module libs.options.
@@ -3838,7 +3839,7 @@ options_help_optimization -->
         "\tThis option is not yet fully implemented.",
         "--analysis-repeat <n>",
         "\tThe maximum number of times to repeat analyses of",
-        "\tsuboptimal modules with `--intermodule-analyses'",
+        "\tsuboptimal modules with `--intermodule-analysis'",
         "\t(default: 0)."
     ]).
 
