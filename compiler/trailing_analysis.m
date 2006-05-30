@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
- 
+%  
 % File: trailing_analysis.m.
 % Author: juliensf.
-
+% 
 % This module implements trail usage analysis.  It annotates the HLDS with
 % information about which procedures will not modify the trail.
 %
 % The compiler can use this information to omit redundant trailing operations
 % in trailing grades.  After running the analysis the trailing status of each
-% procedue is one of:
+% procedure is one of:
 %
 %   (1) will_not_modify_trail
 %   (2) may_modify_trail
@@ -39,7 +39,7 @@
 %
 % The predicates for determining if individual goals modify the trail
 % are in goal_form.m.
- 
+%  
 % TODO:
 %
 %   - Use the results of closure analysis to determine the trailing
@@ -47,7 +47,8 @@
 %   - Improve the analysis in the presence of solver types.
 %   - Create specialised versions of higher-order procedures based on
 %     whether or not their arguments modify the trail.
-
+% 
+%----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
 
 :- module transform_hlds.trailing_analysis.
@@ -413,7 +414,7 @@ check_goal_for_trail_mods_2(_, _VarTypes, Goal, _GoalInfo,
     Goal = generic_call(Details, _Args, _ArgModes, _),
     (
         % XXX Use results of closure analysis to handle this.
-        Details = higher_order(_Var, _, _,  _),
+        Details = higher_order(_Var, _, _, _),
         Result = may_modify_trail,
         MaybeAnalysisStatus = yes(optimal)
     ;
@@ -886,8 +887,17 @@ annotate_goal_2(VarTypes, _, !Goal, Status, !ModuleInfo, !IO) :-
     ).
 annotate_goal_2(_VarTypes, _, !Goal, Status, !ModuleInfo, !IO) :-
     % XXX Use closure analysis results here.
-    !.Goal = generic_call(_, _, _, _),
-    Status = may_modify_trail.
+    !.Goal = generic_call(Details, _, _, _),
+    (
+        Details = higher_order(_, _, _, _),
+        Status = may_modify_trail
+    ;
+        Details = class_method(_, _, _, _),
+        Status = may_modify_trail
+    ;
+        Details = cast(_),
+        Status = will_not_modify_trail
+    ).
 annotate_goal_2(VarTypes, _, !Goal, Status, !ModuleInfo, !IO) :-
     !.Goal = switch(Var, CanFail, Cases0),
     annotate_cases(VarTypes, Cases0, Cases, Status, !ModuleInfo, !IO),
