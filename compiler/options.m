@@ -3882,7 +3882,7 @@ options_help_optimization -->
         "\tThis option is not yet fully implemented.",
         "--analysis-repeat <n>",
         "\tThe maximum number of times to repeat analyses of",
-        "\tsuboptimal modules with `--intermodule-analyses'",
+        "\tsuboptimal modules with `--intermodule-analysis'",
         "\t(default: 0)."
     ]).
 
