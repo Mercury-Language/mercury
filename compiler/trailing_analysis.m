@@ -141,7 +141,10 @@ analyse_trail_usage(!ModuleInfo, !IO) :-
             MakeOptInt, !IO),
         globals.io_lookup_bool_option(make_transitive_opt_interface,
             MakeTransOptInt, !IO),
-        Pass1Only = MakeOptInt `bool.or` MakeTransOptInt,
+        globals.io_lookup_bool_option(make_analysis_registry,
+            MakeAnalysisReg, !IO),
+        Pass1Only = MakeOptInt `bool.or` MakeTransOptInt
+            `bool.or` MakeAnalysisReg,
         module_info_ensure_dependency_info(!ModuleInfo),
         module_info_dependency_info(!.ModuleInfo, DepInfo),
         hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
