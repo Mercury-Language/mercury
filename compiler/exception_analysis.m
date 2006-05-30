@@ -5,7 +5,7 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: exception_analysis.m.
 % Author: juliensf.
 
@@ -58,6 +58,8 @@
 %       language for various things but we're not interested in that here.
 %
 % TODO:
+%   - improve handling of polymorphic procedures (requires type features
+%     analysis)
 %   - higher order stuff
 %   - check what user-defined equality and comparison preds
 %     actually do rather than assuming that they always
@@ -68,11 +70,12 @@
 %   - Fix optimizations to use exception information from the analysis
 %     registry correctly - predicates in goal_form.m and the optimizations
 %     that use them need to be updated.
-
+% 
 % XXX We need to be a bit careful with transformations like tabling that
 % might add calls to exception.throw - at the moment this isn't a problem
 % because exception analysis takes place after the tabling transformation.
-
+% 
+%----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
 
 :- module transform_hlds.exception_analysis.
@@ -876,20 +879,27 @@ check_type_2(_, _, type_cat_typeclass_info) = type_will_not_throw.
 check_type_2(_, _, type_cat_base_typeclass_info) = type_will_not_throw.
 check_type_2(_, _, type_cat_void) = type_will_not_throw.
 check_type_2(_, _, type_cat_dummy) = type_will_not_throw.
-
 check_type_2(_, _, type_cat_variable) = type_conditional.
-
-check_type_2(ModuleInfo, Type, type_cat_tuple) =
-    check_user_type(ModuleInfo, Type).
+check_type_2(ModuleInfo, Type, type_cat_tuple) = Status :-
+    ( type_to_ctor_and_args(Type, _TypeCtor, Args) ->
+        Status = check_types(ModuleInfo, Args)
+    ;
+        unexpected(this_file, "check_type_2/3: expected tuple type")
+    ).
 check_type_2(ModuleInfo, Type, type_cat_enum) =
-    check_user_type(ModuleInfo, Type).
+    ( type_has_user_defined_equality_pred(ModuleInfo, Type, _UnifyCompare) ->
+        % XXX This is very conservative.
+        type_may_throw
+    ;
+        type_will_not_throw
+    ).
 check_type_2(ModuleInfo, Type, type_cat_user_ctor) =
     check_user_type(ModuleInfo, Type).
 
 :- func check_user_type(module_info, mer_type) = type_status.
 
 check_user_type(ModuleInfo, Type) = Status :-
-    ( type_to_ctor_and_args(Type, _TypeCtor, Args) ->
+    ( type_to_ctor_and_args(Type, TypeCtor, Args) ->
         (
             type_has_user_defined_equality_pred(ModuleInfo, Type,
                 _UnifyCompare)
@@ -899,11 +909,77 @@ check_user_type(ModuleInfo, Type) = Status :-
             % termination analysis as well, so we'll wait until that is done.
             Status = type_may_throw
         ;
-            Status = check_types(ModuleInfo, Args)
+            ( type_ctor_is_safe(TypeCtor) ->
+                Status = check_types(ModuleInfo, Args)
+            ;
+                Status = type_may_throw
+            )
         )
     ;
         unexpected(this_file, "Unable to get ctor and args.")
     ).
+
+    % Succeeds if the exception status of the type represented by the given
+    % type_ctor can be determined by examining the exception status of the
+    % arguments, if any.
+    %
+    % NOTE: this list does not need to include enumerations since they
+    %       are already handled above.  Also, this list does not need to
+    %       include non-abstract equivalence types.
+    %
+:- pred type_ctor_is_safe(type_ctor::in) is semidet.
+
+type_ctor_is_safe(TypeCtor) :-
+    TypeCtor = qualified(unqualified(ModuleName), CtorName) - Arity,
+    type_ctor_is_safe_2(ModuleName, CtorName, Arity).
+
+:- pred type_ctor_is_safe_2(string::in, string::in, arity::in) is semidet.
+
+type_ctor_is_safe_2("assoc_list",    "assoc_list",    1).
+type_ctor_is_safe_2("bag",           "bag",           1).
+type_ctor_is_safe_2("bimap",         "bimap",         2).
+type_ctor_is_safe_2("builtin",       "c_pointer",     0).
+type_ctor_is_safe_2("cord",          "cord",          1).
+type_ctor_is_safe_2("eqvclass",      "eqvclass",      1).
+type_ctor_is_safe_2("injection",     "injection",     2).
+type_ctor_is_safe_2("integer",       "integer",       0).
+type_ctor_is_safe_2("io",            "input_stream",  0).
+type_ctor_is_safe_2("io",            "output_stream", 0).
+type_ctor_is_safe_2("io",            "binary_stream", 0).
+type_ctor_is_safe_2("io",            "stream_id",     0).
+type_ctor_is_safe_2("io",            "res",           0).
+type_ctor_is_safe_2("io",            "res",           1).
+type_ctor_is_safe_2("io",            "maybe_partial_res", 1).
+type_ctor_is_safe_2("io",            "result",            0).
+type_ctor_is_safe_2("io",            "result",            1).
+type_ctor_is_safe_2("io",            "read_result",       1).
+type_ctor_is_safe_2("io",            "error",         0).
+type_ctor_is_safe_2("list",          "list",          1).
+type_ctor_is_safe_2("map",           "map",           2).
+type_ctor_is_safe_2("maybe",         "maybe",         1).
+type_ctor_is_safe_2("maybe_error",   "maybe_error",   1).
+type_ctor_is_safe_2("multi_map",     "multi_map",     2).
+type_ctor_is_safe_2("pair",          "pair",          2).
+type_ctor_is_safe_2("pqueue",        "pqueue",        2).
+type_ctor_is_safe_2("queue",         "queue",         1).
+type_ctor_is_safe_2("rational",      "rational",      0).
+type_ctor_is_safe_2("rbtree",        "rbtree",        2).
+type_ctor_is_safe_2("rtree",         "rtree",         2).
+type_ctor_is_safe_2("set",           "set",           1).
+type_ctor_is_safe_2("set_bbbtree",   "set_bbbtree",   1).
+type_ctor_is_safe_2("set_ctree234",  "set_ctree234",  1).
+type_ctor_is_safe_2("set_ordlist",   "set_ordlist",   1).
+type_ctor_is_safe_2("set_tree234",   "set_tree234",   1).
+type_ctor_is_safe_2("set_unordlist", "set_unordlist", 1).
+type_ctor_is_safe_2("stack",         "stack",         1).
+type_ctor_is_safe_2("string",        "poly_type",     0).
+type_ctor_is_safe_2("string",        "justified_column", 0).
+type_ctor_is_safe_2("term",          "term",          1).
+type_ctor_is_safe_2("term",          "const",         0).
+type_ctor_is_safe_2("term",          "context",       0).
+type_ctor_is_safe_2("term",          "var",           1).
+type_ctor_is_safe_2("term",          "var_supply",    1).
+type_ctor_is_safe_2("varset",        "varset",        1).
 
 %----------------------------------------------------------------------------%
 %

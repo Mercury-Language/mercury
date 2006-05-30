@@ -9,6 +9,7 @@ MCFLAGS-dds3_15=--term-norm=simple
 MCFLAGS-dds3_17=--term-norm=simple
 MCFLAGS-dds3_8=--term-norm=simple
 MCFLAGS-exception_analysis_test=--analyse-exceptions --no-warn-inferred-erroneous --no-warn-simple-code
+MCFLAGS-exception_analysis_test2=--analyse-exceptions --no-warn-inferred-erroneous
 MCFLAGS-existential_error1=--term-norm=num-data-elems
 MCFLAGS-existential_error2=--term-norm=num-data-elems
 MCFLAGS-existential_error3=--term-norm=num-data-elems
