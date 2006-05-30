@@ -20,7 +20,7 @@ Changes to the Mercury language:
   of a given goal are equivalent with respect to the relevant equality
   theories.
 * We now have support for optional module initialisation and finalisation.
-* We now have support for impure module-local mutable variables.
+* We now have support for module-local mutable variables.
 * We now have support for recognizing switches in which multiple switch arms
   have shared code.
 * A new pragma allows programmers to promise that in a predicate or function
@@ -207,7 +207,7 @@ Changes to the Mercury language:
   "Module finalisation" section of the Mercury Language Reference
   Manual for details.
 
-* We have added support for impure module-local mutable variables.
+* We have added support for module-local mutable variables.
   See the "Module-local mutable variables" section of the Mercury Language
   Reference Manual for details.
 
