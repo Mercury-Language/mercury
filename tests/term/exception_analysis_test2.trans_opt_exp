@@ -1,0 +1,13 @@
+:- module exception_analysis_test2.
+:- pragma termination_info(exception_analysis_test2.test1((builtin.in), (builtin.in)), finite(0, [no, no]), cannot_loop).
+:- pragma termination_info(exception_analysis_test2.test2((builtin.in), (builtin.in)), finite(0, [no, no]), cannot_loop).
+:- pragma termination_info(exception_analysis_test2.my_unify((builtin.in), (builtin.in)), finite(0, [no, no, no]), cannot_loop).
+:- pragma termination_info(exception_analysis_test2.foo_equals((builtin.in), (builtin.in)), infinite, cannot_loop).
+:- pragma termination2_info(exception_analysis_test2.test1((builtin.in), (builtin.in)), constraints([]), not_set, cannot_loop).
+:- pragma termination2_info(exception_analysis_test2.test2((builtin.in), (builtin.in)), constraints([eq([term(0, r(1, 1)), term(1, r(-1, 1))], r(0, 1))]), not_set, cannot_loop).
+:- pragma termination2_info(exception_analysis_test2.my_unify((builtin.in), (builtin.in)), constraints([eq([term(1, r(-1, 1)), term(2, r(1, 1))], r(0, 1))]), not_set, cannot_loop).
+:- pragma termination2_info(exception_analysis_test2.foo_equals((builtin.in), (builtin.in)), constraints([]), not_set, can_loop).
+:- pragma exceptions(predicate, (exception_analysis_test2.test1), 2, 0, may_throw(type_exception)).
+:- pragma exceptions(predicate, (exception_analysis_test2.test2), 2, 0, may_throw(type_exception)).
+:- pragma exceptions(predicate, (exception_analysis_test2.my_unify), 2, 0, conditional).
+:- pragma exceptions(predicate, (exception_analysis_test2.foo_equals), 2, 0, may_throw(user_exception)).

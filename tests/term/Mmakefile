@@ -20,6 +20,7 @@ TERM_PROGS= \
 	dds3_17 \
 	dds3_8 \
 	exception_analysis_test \
+	exception_analysis_test2 \
 	existential_error1 \
 	existential_error2 \
 	existential_error3 \
