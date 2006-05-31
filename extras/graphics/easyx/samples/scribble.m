@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004 The University of Melbourne.
+% Copyright (C) 2004, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -47,7 +47,7 @@
 :- import_module easyx.
 :- import_module float.
 :- import_module list.
-:- import_module std_util.
+:- import_module maybe.
 
 :- type maybexy == maybe({float, float}).
 

@@ -4,8 +4,7 @@
 
 :- import_module io.
 
-:- pred main(io:state, io:state).
-:- mode main(di, uo) is det.
+:- pred main(io::di, io::uo) is det.
 
 :- implementation.
 
