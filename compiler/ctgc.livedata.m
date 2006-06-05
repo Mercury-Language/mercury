@@ -5,6 +5,7 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
+%
 % File: ctgc.livedata.m.
 % Main author: nancy.
 % 
@@ -14,6 +15,7 @@
 % that data structure may possibly be accessed during the further execution
 % of the program w.r.t. the program point (goal) looked at.
 %
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.livedata.
@@ -75,6 +77,8 @@
 
 :- pred nodes_are_not_live(module_info::in, proc_info::in, 
     list(datastruct)::in, livedata::in) is semidet.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -84,13 +88,14 @@
 
 :- import_module set.
 
+%-----------------------------------------------------------------------------%
 
 :- type livedata 
     --->    livedata_bottom      % There are no live data structures.
     ;       livedata_top         % All data structures may be live.
     ;       livedata_live(list(datastruct)).
-                        % Only the listed datastructures can possibly
-                        % be live.
+                                 % Only the listed datastructures can
+                                 % possibly be live.
     
 %-----------------------------------------------------------------------------%
 
@@ -141,6 +146,7 @@ livedata_subsumes_prog_var(LiveData, ProgVar) :-
     livedata_subsumes_topcell(LiveData, datastruct_init(ProgVar)).
 
 :- pred livedata_subsumes_topcell(livedata::in, datastruct::in) is semidet.
+
 livedata_subsumes_topcell(LiveData, TopCell) :- 
     (
         LiveData = livedata_top
@@ -161,6 +167,7 @@ livedata_subsumes_datastruct(ModuleInfo, ProcInfo, LiveData, Datastruct):-
 
 :- pred livedata_subsumes_datastruct_with_selector(module_info::in, 
     proc_info::in, livedata::in, datastruct::in) is semidet.
+
 livedata_subsumes_datastruct_with_selector(ModuleInfo, ProcInfo, LiveData,
         Datastruct) :- 
     (
@@ -185,7 +192,7 @@ livedata_project(ProgVars, LiveData) = ProjectedLiveData :-
             FilteredData = [],
             ProjectedLiveData = livedata_bottom
         ;  
-            FilteredData = [_|_],
+            FilteredData = [_ | _],
             ProjectedLiveData = livedata_live(FilteredData)
         )
     ).
@@ -199,6 +206,7 @@ list_contains_datastruct_var(ProgVars, Datastruct) :-
 
 livedata_init_at_goal(ModuleInfo, ProcInfo, GoalInfo, SharingAs) = LiveData :-
     % Collect the 
+    % (XXX collect the what?)
     Lfu = goal_info_get_lfu(GoalInfo),
     Lbu = goal_info_get_lbu(GoalInfo), 
     Lu = set.to_sorted_list(set.union(Lfu, Lbu)),
@@ -294,6 +302,9 @@ nodes_are_not_live(ModuleInfo, ProcInfo, Nodes, LiveData) :-
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.
+
 this_file = "ctgc.livedata.m".
 
+%-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.livedata.
+%-----------------------------------------------------------------------------%

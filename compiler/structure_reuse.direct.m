@@ -6,23 +6,24 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: structure_reuse.direct.m
-% Main authors: nancy
+% File: structure_reuse.direct.m.
+% Main authors: nancy.
 %
-% Procedures and types related to the detection of so called direct reuses
-% within the CTGC system. A "direct reuse" is a combination of the location of
-% a deconstruction unification (where a datastructure may become garbage under
-% certain conditions) and a set of locations of construction unifications where
-% the garbage datastructure can be reused locally. 
+% This module efined procedure and type related to the dectection of so called
+% direct reuses within the CTGC system.  A "direct reuse" is a combination of
+% the location of a deconstruction unification (where a datastructure may
+% become garbage under certain conditions) and a set of locations of
+% construction unifications where the garbage datastructure can be reused
+% locally. 
 %
 % Direct reuse analysis requires two steps: 
-% - detecting where datastructures may become garbage;
-% - and finding where these garbage datastructures can be reused.
+%   - Detecting where datastructures may become garbage.
+%   - Finding where these garbage datastructures can be reused.
 %
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.structure_reuse.direct.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -31,9 +32,14 @@
 
 :- import_module io.
 
+%-----------------------------------------------------------------------------%
+
 :- pred direct_reuse_pass(sharing_as_table::in, module_info::in,
     module_info::out, reuse_as_table::in, reuse_as_table::out, 
     io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation. 
 
@@ -56,13 +62,15 @@
 :- import_module list.
 :- import_module map.
 :- import_module set.
-:- import_module std_util.
 :- import_module string.
+:- import_module svmap.
 :- import_module term.
 :- import_module varset.
 
 :- include_module transform_hlds.ctgc.structure_reuse.direct.detect_garbage.
 :- include_module transform_hlds.ctgc.structure_reuse.direct.choose_reuse.
+
+%-----------------------------------------------------------------------------%
 
     % The strategy for determining the reuse possibilities, i.e., either
     % reuse is only allowed between terms that have exactly the same cons_id, 
@@ -115,7 +123,7 @@ direct_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, !IO):-
     reuse_as_table::out, io::di, io::uo) is det.
 
 direct_reuse_process_pred(Strategy, SharingTable, PredId, !ModuleInfo, 
-    !ReuseTable, !IO):-
+        !ReuseTable, !IO):-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0), 
     list.foldl3(direct_reuse_process_proc(Strategy, SharingTable, PredId), 
         pred_info_non_imported_procids(PredInfo0), !ModuleInfo, 
@@ -158,12 +166,14 @@ direct_reuse_process_procedure(Strategy, SharingTable, PredId, ProcId,
 
     % Determine the deconstructions in which data may potentially become
     % garbage.
+    %
     determine_dead_deconstructions(ModuleInfo, !.ProcInfo, SharingTable, 
         Goal0, DeadCellTable),
     dead_cell_table_maybe_dump(VeryVerbose, DeadCellTable, !IO),
 
     % Determine how the detected dead datastructures can be reused. 
     % This annotates the goal with potential reuses.
+    %
     determine_reuse(Strategy, ModuleInfo, !.ProcInfo, DeadCellTable,
         Goal0, Goal, ReuseAs, !IO),
 
@@ -211,28 +221,28 @@ direct_reuse_process_procedure(Strategy, SharingTable, PredId, ProcId,
     % the associated reuse_condition. 
     %
 :- func dead_cell_table_search(program_point, dead_cell_table) 
-        = reuse_condition is semidet.
+    = reuse_condition is semidet.
 
     % Add a program point and its associated reuse_condition to the table.
     %
 :- pred dead_cell_table_set(program_point::in, reuse_condition::in, 
-        dead_cell_table::in, dead_cell_table::out) is det.
+    dead_cell_table::in, dead_cell_table::out) is det.
 
     % Remove a program point from the table. 
     %
 :- pred dead_cell_table_remove(program_point::in, 
-        dead_cell_table::in, dead_cell_table::out) is det.
+    dead_cell_table::in, dead_cell_table::out) is det.
 
     % Remove all program points from the table for which the reuse_conditions
     % are "conditional". 
     %
 :- pred dead_cell_table_remove_conditionals(dead_cell_table::in, 
-        dead_cell_table::out) is det. 
+    dead_cell_table::out) is det. 
 
     % Dump the contents of the table. 
     %
 :- pred dead_cell_table_maybe_dump(bool::in, dead_cell_table::in, 
-        io__state::di, io__state::uo) is det.
+    io::di, io::uo) is det.
 
 program_point_init(Info) = PP :- 
     goal_info_get_context(Info, Context), 
@@ -273,19 +283,25 @@ dump_goal_path_step(later) -->
     io.write_char('l').
 
 dead_cell_table_init = map.init.
-dead_cell_table_is_empty(Table) :- map.is_empty(Table).
+
+dead_cell_table_is_empty(Table) :-
+    map.is_empty(Table).
+
 dead_cell_table_search(PP, Table) = Table ^ elem(PP). 
-dead_cell_table_set(PP, RC, Table0, Table) :- 
-    map.set(Table0, PP, RC, Table). 
+
+dead_cell_table_set(PP, RC, !Table) :- 
+    svmap.set(PP, RC, !Table). 
+
 dead_cell_table_remove(PP, !Table) :- 
-    map.det_remove(!.Table, PP, _, !:Table). 
+    svmap.det_remove(PP, _, !Table). 
+
 dead_cell_table_remove_conditionals(!Table) :- 
     map.foldl(dead_cell_table_add_unconditional, !.Table, 
         dead_cell_table_init, !:Table). 
 
 :- pred dead_cell_table_add_unconditional(program_point::in, 
-        reuse_condition::in, dead_cell_table::in, 
-        dead_cell_table::out) is det.
+    reuse_condition::in, dead_cell_table::in, dead_cell_table::out) is det.
+
 dead_cell_table_add_unconditional(PP, C, !Table) :- 
     (
         reuse_condition_is_conditional(C)
@@ -306,23 +322,25 @@ dead_cell_table_maybe_dump(MaybeDump, Table, !IO) :-
     ).
 
 :- pred dead_cell_entry_dump(program_point::in, reuse_condition::in, 
-        io__state::di, io__state::uo) is det.
+    io::di, io::uo) is det.
+
 dead_cell_entry_dump(PP, Cond, !IO) :- 
     (
         reuse_condition_is_conditional(Cond)
     -> 
-        write_string("\t\t|  cond  |\t", !IO)
+        io.write_string("\t\t|  cond  |\t", !IO)
     ;
-        write_string("\t\t| always |\t", !IO)
+        io.write_string("\t\t| always |\t", !IO)
     ), 
     dump_program_point(PP, !IO), 
-    write_string("\n", !IO). 
-
+    io.write_string("\n", !IO). 
 
 %-----------------------------------------------------------------------------%
+
 :- func this_file = string.
 
 this_file = "structure_sharing.direct.m".
 
+%-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_reuse.direct.
-
+%-----------------------------------------------------------------------------%

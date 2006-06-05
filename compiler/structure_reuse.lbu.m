@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: structure_reuse.lbu.m
-% Main authors: nancy
+% File: structure_reuse.lbu.m.
+% Main authors: nancy.
 %
 % Implementation of the process of annotating each program point within
 % a procedure with local backward use information. 
@@ -24,16 +24,19 @@
 % switches and if-then-elses. 
 % 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.structure_reuse.lbu.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
-:- pred backward_use_information(module_info::in, proc_info::in, 
-    proc_info::out) is det.
+:- pred backward_use_information(module_info::in,
+    proc_info::in, proc_info::out) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation. 
 
@@ -46,6 +49,8 @@
 :- import_module pair.
 :- import_module set.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 backward_use_information(ModuleInfo, !ProcInfo):- 
     proc_info_get_goal(!.ProcInfo, Goal0),
@@ -86,7 +91,7 @@ backward_use_in_goal_2(ModuleInfo, ProcInfo, Info0, !Expr, !LBU) :-
             detism_allows_multiple_solns(Det)
         ->
             % Implementation of Instantiation 2 from Nancy's Phd.
-            % In this instantation, a non deterministic procedure
+            % In this instantation, a non-deterministic procedure
             % call only adds its LFU-variables to the current set
             % of lbu-variables. Cf. Phd Nancy Mazur. 
 
@@ -163,9 +168,8 @@ backward_use_in_goal_2(ModuleInfo, ProcInfo, Info0, !Expr, !LBU) :-
         unexpected(this_file, "backward_use_in_goal_2: shorthand goal.")
     ).
 
-    
-
 :- func get_backtrack_vars(hlds_goal_info) = set(prog_var).
+
 get_backtrack_vars(Info) = Vars :-
     goal_info_get_resume_point(Info, ResPoint), 
     (
@@ -177,14 +181,15 @@ get_backtrack_vars(Info) = Vars :-
     ). 
 
 :- pred detism_allows_multiple_solns(prog_data__determinism::in) is semidet.
+
 detism_allows_multiple_solns(nondet).
 detism_allows_multiple_solns(multidet).
 detism_allows_multiple_solns(cc_nondet).
 detism_allows_multiple_solns(cc_multidet).
 
 :- pred backward_use_in_conj(module_info::in, proc_info::in, 
-    list(hlds_goal)::in, list(hlds_goal)::out, set(prog_var)::in,  
-    set(prog_var)::out) is det.
+    hlds_goals::in, hlds_goals::out, set(prog_var)::in, set(prog_var)::out)
+    is det.
 
 backward_use_in_conj(ModuleInfo, ProcInfo, !Goals, !LBU) :- 
     list.map_foldl(backward_use_in_goal(ModuleInfo, ProcInfo), !Goals, !LBU). 
@@ -210,8 +215,8 @@ backward_use_in_case(LBU0, ModuleInfo, ProcInfo, !Case, !LBU):-
     set.union(NewLBU, !LBU).
 
 :- pred backward_use_in_disj(module_info::in, proc_info::in, 
-    list(hlds_goal)::in, list(hlds_goal)::out,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    hlds_goals::in, hlds_goals::out, set(prog_var)::in, set(prog_var)::out)
+    is det.
 
 backward_use_in_disj(ModuleInfo, ProcInfo, !Goals, !LBU) :- 
     % Every disj-goal is analysed with the same initial set of LBU-vars.
@@ -230,6 +235,9 @@ backward_use_in_disj_goal(LBU0, ModuleInfo, ProcInfo, !Goal, !LBU) :-
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.
+
 this_file = "structure_reuse.lbu.m".
 
+%-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_reuse.lbu.
+%-----------------------------------------------------------------------------%

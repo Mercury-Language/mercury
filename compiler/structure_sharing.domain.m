@@ -5,18 +5,18 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: structure_sharing.domain.m.
 % Main author: nancy.
-
+% 
 % This module defines the abstract domain for representing structure sharing
 % between data structures.
-
+% 
 % This domain forms a complete lattice. It has a bottom element (representing
 % the definite absence of any possible structure sharing), and a top element
 % (that represents any possible structure sharing), a least upper bound
 % operation, and a comparison predicate (is_subsumed_by).
-
+% 
 % The auxiliary functions needed for using the domain within the abstract
 % semantics on which the implementation of the analysis is based are:
 %
@@ -36,7 +36,7 @@
 %
 %   * add: add the sharing created by a primitive operation (unification)
 %     to any existing sharing.
-
+% 
 % Additional operations:
 %   * extend_datastruct: compute the set of datastructures referring to the
 %     same memory space as a given datastructure, using sharing information;
@@ -45,7 +45,8 @@
 %
 %   * conversion operations between the public and private representation
 %     for sharing sets.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.structure_sharing.domain.
@@ -272,6 +273,7 @@
     %
 :- func load_structure_sharing_table(module_info) = sharing_as_table.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -790,7 +792,6 @@ top_sharing_not_found(ModuleInfo, PPId) = TopSharing :-
         int_to_string(pred_id_to_int(PredId)) ++ "," ++
         int_to_string(proc_id_to_int(ProcId))).
 
-
 %-----------------------------------------------------------------------------%
 
 load_structure_sharing_table(ModuleInfo) = SharingTable :-
@@ -822,6 +823,7 @@ load_structure_sharing_table_3(ModuleInfo, PredId, ProcId, !SharingTable) :-
         MaybePublicSharing = no
     ).
 %-----------------------------------------------------------------------------%
+    
     % Succeeds if the sharing of a procedure can safely be approximated by
     % "bottom", simply by looking at the modes and types of the arguments.
     %
@@ -1859,7 +1861,7 @@ data_set_directed_closure(FromData, ToData) = SharingPairs :-
     set(pair(T1, T2))::out) is det.
 
 set_cross_product(SetA, SetB, CrossProduct):-
-    solutions.solutions_set(cross_product(SetA, SetB), CrossProduct).
+    solutions_set(cross_product(SetA, SetB), CrossProduct).
 
 :- pred cross_product(set(T1)::in, set(T2)::in, pair(T1, T2)::out) is nondet.
 

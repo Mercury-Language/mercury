@@ -5,15 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: process_util.m.
 % Main author: stayl.
-
+% 
 % Process and signal handling, mainly for use by make.m and its sub-modules.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module libs__process_util.
+:- module libs.process_util.
 
 :- interface.
 
@@ -96,12 +97,12 @@ build_with_check_for_interrupt(Build, Cleanup, Succeeded, !Info, !IO) :-
     check_for_signal(Signalled, Signal, !IO),
     ( Signalled = 1 ->
         Succeeded = no,
-        globals__io_lookup_bool_option(verbose_make, Verbose, !IO),
+        globals.io_lookup_bool_option(verbose_make, Verbose, !IO),
         (
             Verbose = yes,
-            io__write_string("** Received signal ", !IO),
-            io__write_int(Signal, !IO),
-            io__write_string(", cleaning up.\n", !IO)
+            io.write_string("** Received signal ", !IO),
+            io.write_int(Signal, !IO),
+            io.write_string(", cleaning up.\n", !IO)
         ;
             Verbose = no
         ),
@@ -277,7 +278,7 @@ call_in_forked_process(P, AltP, Success, !IO) :-
         ( ForkStatus = 1 ->
             Success = no
         ;
-            Status = io__handle_system_command_exit_status(CallStatus),
+            Status = io.handle_system_command_exit_status(CallStatus),
             Success = (Status = ok(exited(0)) -> yes ; no)
         )
     ;

@@ -6,16 +6,16 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: structure_reuse.domain.m
-% Main authors: nancy
+% File: structure_reuse.domain.m.
+% Main authors: nancy.
 %
 % Definition of the abstract domain for keeping track of opportunities for
 % structure reuse. 
 %
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.structure_reuse.domain.
-
 :- interface.
 
 :- import_module hlds.goal_util.
@@ -31,6 +31,8 @@
 :- import_module set.
 :- import_module list.
 
+%-----------------------------------------------------------------------------%
+
     % A reuse condition stores all the necessary information to check if 
     % a procedure call is safe w.r.t. a structure reuse opportunity within
     % the body of the called procedure. 
@@ -43,6 +45,7 @@
 :- type reuse_as. 
 
 %-----------------------------------------------------------------------------%
+%
 % reuse_condition
 %
 
@@ -209,6 +212,7 @@
 % :- func load_structure_reuse_table(module_info) = reuse_as_table.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -220,6 +224,8 @@
 :- import_module pair.
 :- import_module set.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 :- type reuse_condition 
     --->    always      % The reuse is always safe and does not actually
@@ -254,7 +260,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% reuse_condition.
+% reuse_condition
 %
 
 reuse_condition_init(ModuleInfo, ProcInfo, DeadVar, LFU, LBU, 
@@ -273,7 +279,7 @@ reuse_condition_init(ModuleInfo, ProcInfo, DeadVar, LFU, LBU,
     %   obtained datastructures are kept as the nodes for our condition. 
     TopCell = ctgc.datastruct.datastruct_init(DeadVar),
     (
-        list__member(DeadVar, HeadVars)
+        list.member(DeadVar, HeadVars)
     ->
         Nodes = [TopCell]
     ;
@@ -290,7 +296,7 @@ reuse_condition_init(ModuleInfo, ProcInfo, DeadVar, LFU, LBU,
     ->
         Condition = always
     ;
-        set__union(LFU, LBU, LU),
+        set.union(LFU, LBU, LU),
             % XXX the old implementation did not bother about extending at
             % this place, which was contrary to the theory. Check the effect
             % of this change!
@@ -451,6 +457,7 @@ reuse_as_add_unconditional(!ReuseAs) :-
 
 :- pred reuse_conditions_add_condition(module_info::in, proc_info::in,
     reuse_condition::in, reuse_conditions::in, reuse_conditions::out) is det.
+
 reuse_conditions_add_condition(ModuleInfo, ProcInfo, Condition, !Conds):- 
     (
         reuse_condition_subsumed_by_list(ModuleInfo, ProcInfo, 
@@ -458,14 +465,15 @@ reuse_conditions_add_condition(ModuleInfo, ProcInfo, Condition, !Conds):-
     -> 
         true
     ;
-        !:Conds = [Condition|!.Conds]
+        !:Conds = [Condition | !.Conds]
     ).
 
 :- pred reuse_conditions_add_conditions(module_info::in, proc_info::in,
     reuse_conditions::in, reuse_conditions::in, reuse_conditions::out) is det.
+
 reuse_conditions_add_conditions(ModuleInfo, ProcInfo, NewConds, !Conds):- 
     (
-        NewConds = [Cond|RemainingConds],
+        NewConds = [Cond | RemainingConds],
         reuse_conditions_add_condition(ModuleInfo, ProcInfo, Cond, !Conds),
         reuse_conditions_add_conditions(ModuleInfo, ProcInfo, 
             RemainingConds, !Conds)
@@ -610,9 +618,6 @@ reuse_condition_satisfied(ModuleInfo, ProcInfo, LiveData, SharingAs,
         nodes_are_not_live(ModuleInfo, ProcInfo, DeadNodes,
             UpdatedLiveData)
     ).
-        
-    
-        
     
 %-----------------------------------------------------------------------------%
 %
@@ -654,9 +659,11 @@ dump_entries(PPId - ReuseAs, !IO) :-
         reuse_as_short_description(ReuseAs) ++ "\n", !IO).
 
 %-----------------------------------------------------------------------------%
+
 :- func this_file = string.
+
 this_file = "structure_reuse.domain.m".
 
+%-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_reuse.domain.
-
-
+%-----------------------------------------------------------------------------%

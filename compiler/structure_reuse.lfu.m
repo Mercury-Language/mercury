@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: structure_reuse.lfu.m
-% Main authors: nancy
+% File: structure_reuse.lfu.m.
+% Main authors: nancy.
 %
 % Implementation of the process of annotating each program point within
 % a procedure with local forward use information. 
@@ -18,14 +18,17 @@
 % forward execution. 
 %
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.structure_reuse.lfu.
-
 :- interface.
 
 :- import_module hlds.hlds_pred.
 
 :- pred forward_use_information(proc_info::in, proc_info::out) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -39,6 +42,8 @@
 :- import_module set.
 :- import_module pair.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 forward_use_information(!ProcInfo) :- 
     proc_info_get_goal(!.ProcInfo, Goal0), 
@@ -72,11 +77,10 @@ forward_use_in_goal(!Goal, !InstantiatedVars, !DeadVars) :-
     ;
         forward_use_in_composite_goal(!Goal, !InstantiatedVars, !DeadVars)
     ).
-       
 
 :- pred compute_instantiated_and_dead_vars(hlds_goal_info::in, 
-    set(prog_var)::in, set(prog_var)::out, set(prog_var)::in,
-    set(prog_var)::out) is det.
+    set(prog_var)::in, set(prog_var)::out,
+    set(prog_var)::in, set(prog_var)::out) is det.
 
 compute_instantiated_and_dead_vars(Info, !Inst, !Dead) :- 
     % Inst = Inst0 + birth-set
@@ -191,6 +195,9 @@ forward_use_in_disj_goal(Inst0, Dead0, !Goal, !InstantiatedVars, !DeadVars) :-
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.
+
 this_file = "structure_reuse.lfu.m".
 
+%-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_reuse.lfu.
+%-----------------------------------------------------------------------------%

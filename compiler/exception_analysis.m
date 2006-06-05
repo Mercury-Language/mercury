@@ -446,7 +446,7 @@ check_goal_for_exceptions_2(SCC, VarTypes, Goal, GoalInfo,
                     % The possible values of the higher-order variable are all
                     % procedures that are known not to throw exceptions.
                 ;
-                    ConditionalProcs = [_|_],
+                    ConditionalProcs = [_ | _],
                     %
                     % For 'conditional' procedures we need to make sure that
                     % if any type variables are bound at the generic_call

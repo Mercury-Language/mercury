@@ -15,8 +15,8 @@
 :- import_module mdbcomp.
 :- import_module parse_tree.
 
-% :- import_module check_hlds__type_analysis.
-% :- import_module check_hlds__mode_analysis.
+% :- import_module check_hlds.type_analysis.
+% :- import_module check_hlds.mode_analysis.
 
 %-----------------------------------------------------------------------------%
 

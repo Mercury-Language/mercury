@@ -5,7 +5,7 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: builtin_ops.m -- defines the builtin operator types.
 % Main author: fjh.
 %
@@ -13,10 +13,11 @@
 % operators.  Several of the different back-ends -- the bytecode back-end,
 % the LLDS, and the MLDS -- all use the same set of builtin operators.
 % These operators are defined here.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-:- module backend_libs__builtin_ops.
+:- module backend_libs.builtin_ops.
 :- interface.
 
 :- import_module hlds.hlds_pred.

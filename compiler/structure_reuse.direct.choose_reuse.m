@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: structure_reuse.direct.choose_reuse.m
-% Main authors: nancy
+% File: structure_reuse.direct.choose_reuse.m.
+% Main authors: nancy.
 %
 % Given a dead cell table listing the deconstructions that may leave garbage
 % (dead cells), we compute the concrete assignments of which constructions can
@@ -61,7 +61,8 @@
 % To cut the decision between different dead cells with the same
 % value, we select the dead cell that has the least number of
 % opportunities to be reused. 
-% E.g. 
+%
+% e.g. 
 %   X can be reused by 5 different constructions, 
 %       but reaches its highest value for a construction C1
 %       (value 10).
@@ -80,6 +81,7 @@
 %   
 % Note that cells being deconstructed in the different branches of a
 % disjunction can now also be reused after the the disjunction. 
+%
 % e.g.:
 %   ( 
 %       ..., X => f(... ), ...      % X dies
@@ -87,17 +89,22 @@
 %       ..., X => g(... ), ...      % X dies
 %   ), 
 %   Y <= f(... ), ...           % Y can reuse X
+%
 % In this example, it is allowed to reuse X for Y. And it will also be
 % discovered by the analysis. 
 %
 %-----------------------------------------------------------------------------%
-:- module transform_hlds.ctgc.structure_reuse.direct.choose_reuse.
+%-----------------------------------------------------------------------------%
 
+:- module transform_hlds.ctgc.structure_reuse.direct.choose_reuse.
 :- interface.
 
 :- pred determine_reuse(reuse_strategy::in, module_info::in, proc_info::in,
     dead_cell_table::in, hlds_goal::in, hlds_goal::out, reuse_as::out, 
     io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -111,12 +118,14 @@
 :- import_module pair.
 :- import_module svmulti_map.
 
-determine_reuse(Strategy, ModuleInfo, ProcInfo, DeadCellTable, 
-    !Goal, ReuseAs, !IO):-
+%-----------------------------------------------------------------------------%
+
+determine_reuse(Strategy, ModuleInfo, ProcInfo, DeadCellTable, !Goal,
+        ReuseAs, !IO):-
     % Check for local reuse:
-    process_goal(
-        background_info_init(Strategy, ModuleInfo, ProcInfo), DeadCellTable, 
-        RemainingDeadCellTable, !Goal, reuse_as_init, ReuseAs, !IO),
+    BackGroundInfo = background_info_init(Strategy, ModuleInfo, ProcInfo),
+    process_goal(BackGroundInfo, DeadCellTable, RemainingDeadCellTable,
+        !Goal, reuse_as_init, ReuseAs, !IO),
 
     % Check for cell caching.
     check_for_cell_caching(RemainingDeadCellTable, !Goal, !IO).
@@ -150,21 +159,21 @@ background_info_init(Strategy, ModuleInfo, ProcInfo) = Background :-
     %
 :- type deconstruction_spec
     --->    decon(
-            decon_var   :: dead_var, 
-            decon_pp    :: program_point, 
-            decon_cons_id   :: cons_id, 
-            decon_args  :: prog_vars, 
-            decon_conds :: reuse_as
-        ).
+                decon_var       :: dead_var, 
+                decon_pp        :: program_point, 
+                decon_cons_id   :: cons_id, 
+                decon_args      :: prog_vars, 
+                decon_conds     :: reuse_as
+            ).
 
     % Details of a construction possibly reusing some specific garbage cells
     % generated at a deconstruction.
     %
 :- type construction_spec 
     --->    con(
-            con_pp      :: program_point, 
-            con_reuse   :: reuse_type
-        ).
+                con_pp      :: program_point, 
+                con_reuse   :: reuse_type
+            ).
 
     % The reuse-type is a basic identification of whether the cons-ids involved
     % in the reuse are the same, what the arities of the old and new cells are,
@@ -172,18 +181,18 @@ background_info_init(Strategy, ModuleInfo, ProcInfo) = Background :-
     %
 :- type reuse_type 
     --->    reuse_type(
-            same_cons       :: bool,    
-            reuse_fields    :: list(needs_update),
-                % States whether the corresponding argument in the list of
-                % arguments of the reused cons needs to be updated when reused
-                % or not. 
-                % Note that list.length(reuse_fields) is the arity of the
-                % reused term.
-            reuse_value     :: float
-                % A metrics measuring the value of the reuse. A high value
-                % should represent a 'good' reuse (yielding possibly good
-                % results on the general memory behaviour of the procedure)
-                % compared to a reuse with a lower value. 
+                same_cons       :: bool,    
+                reuse_fields    :: list(needs_update),
+                    % States whether the corresponding argument in the list of
+                    % arguments of the reused cons needs to be updated when
+                    % reused or not. 
+                    % Note that list.length(reuse_fields) is the arity of the
+                    % reused term.
+                reuse_value     :: float
+                    % A metric measuring the value of the reuse. A high value
+                    % should represent a 'good' reuse (yielding possibly good
+                    % results on the general memory behaviour of the procedure)
+                    % compared to a reuse with a lower value. 
         ). 
 
         % A match is a description of a list of deconstructions and a list of
@@ -212,8 +221,8 @@ background_info_init(Strategy, ModuleInfo, ProcInfo) = Background :-
 :- func deconstruction_spec_init(dead_var, program_point, cons_id, 
     prog_vars, reuse_as) = deconstruction_spec.
 
-deconstruction_spec_init(Var, PP, ConsId, Args, Cond) =  DS :- 
-    DS = decon(Var, PP, ConsId, Args, Cond). 
+deconstruction_spec_init(Var, PP, ConsId, Args, Cond) 
+    = decon(Var, PP, ConsId, Args, Cond). 
 
     % Pre-condition: the set of variables to which the list of deconstructions
     % relate (the dead vars) should be a singleton set. In other words, 
@@ -221,33 +230,34 @@ deconstruction_spec_init(Var, PP, ConsId, Args, Cond) =  DS :-
     % dying variable. 
     %
 :- func match_init(list(deconstruction_spec)) = match.
-match_init(DS) =  match(DS, [], 0.00, 0).
+
+match_init(DS) = match(DS, [], 0.0, 0).
 
     % Verify that a match is still 'empty', i.e. has no constructions that can
     % reuse the dead cell available from the deconstructions listed in the
     % match.
     %
 :- pred match_has_no_construction_candidates(match::in) is semidet.
+
 match_has_no_construction_candidates(match(_, [], _, _)).
 
     % Determine the variable whose term is involved in the reuse if the
     % match would be implemented. 
     %
 :- func match_get_dead_var(match) = dead_var. 
+
 match_get_dead_var(Match) = Var :- 
-    GetVar = (pred(D::in, V::out) is det :- 
-            V = D ^ decon_var), 
-    list.map(GetVar, Match ^ decon_specs, DeadVars0), 
-    list.remove_dups(DeadVars0, DeadVars), 
+    GetVar = (func(D) = D ^ decon_var), 
+    DeadVars0 = list.map(GetVar, Match ^ decon_specs), 
+    DeadVars  = list.remove_dups(DeadVars0), 
     (
-        DeadVars = [Var|Rest], 
+        DeadVars = [Var | Rest], 
         (
-            Rest = [_|_]
-        -> 
+            Rest = []
+        ;
+            Rest = [_ | _],
             unexpected(choose_reuse.this_file, "match_get_dead_var: " ++
                 "too many dead vars.")
-        ;
-            true
         )
     ; 
         DeadVars = [], 
@@ -299,16 +309,17 @@ match_add_construction(ConSpec, Match0, Match) :-
     Match = match(DeconSpecs0, ConSpecs, Value, Degree).
 
 %-----------------------------------------------------------------------------%
+%
 % Manipulating the values of matches... 
 %
 
 :- func highest_match_degree_ratio(match_table) = match.
+
 highest_match_degree_ratio(MatchTable) = Match :-
     multi_map.values(MatchTable, Matches), 
-    list.sort(reverse_compare_matches_value_degree, 
-            Matches, Sorted), 
+    list.sort(reverse_compare_matches_value_degree, Matches, Sorted), 
     (
-        Sorted = [Match|_]
+        Sorted = [Match | _]
     ; 
         Sorted = [], 
         unexpected(choose_reuse.this_file, "highest_match_degree_ratio: " ++
@@ -317,48 +328,55 @@ highest_match_degree_ratio(MatchTable) = Match :-
 
 :- pred compare_matches_value_degree(match::in, match::in, 
         comparison_result::out) is det. 
-compare_matches_value_degree(Match1, Match2, Result) :- 
-    match_value_degree(Match1, V1), 
-    match_value_degree(Match2, V2), 
-    compare(Result, V1, V2). 
-:- pred reverse_compare_matches_value_degree(match::in, match::in,
-        comparison_result::out) is det. 
-reverse_compare_matches_value_degree(Match1, Match2, Result) :- 
-    compare_matches_value_degree(Match2, Match1, Result). 
 
-:- pred match_value_degree(match::in, float::out) is det.
-match_value_degree(Match, V) :- 
-    (
-        Match ^ match_value \= 0.00
-    -> 
-        V = Match ^ match_value / float(Match ^ match_degree)
+compare_matches_value_degree(MatchA, MatchB, Result) :- 
+    VA = match_value_degree(MatchA), 
+    VB = match_value_degree(MatchB), 
+    compare(Result, VA, VB). 
+
+:- pred reverse_compare_matches_value_degree(match::in, match::in,
+        comparison_result::out) is det.
+
+reverse_compare_matches_value_degree(MatchA, MatchB, Result) :- 
+    compare_matches_value_degree(MatchB, MatchA, Result). 
+
+:- func match_value_degree(match) = float.
+
+match_value_degree(Match) =
+    ( Match ^ match_value \= 0.0 ->
+        Match ^ match_value / float(Match ^ match_degree)
     ;
-        V = 0.00
+        0.0
     ).
 
 :- pred compare_matches_value(match::in, match::in, 
         comparison_result::out) is det.
+
 compare_matches_value(Match1, Match2, Result) :- 
     V1 = Match1 ^ match_value,
     V2 = Match2 ^ match_value,
     compare(Result, V1, V2).
+
 :- pred reverse_compare_matches_value(match::in, match::in, 
         comparison_result::out) is det.
+
 reverse_compare_matches_value(Match1, Match2, Result) :- 
     compare_matches_value(Match2, Match1, Result). 
     
 :- pred match_allows_reuse(match::in) is semidet. 
+
 match_allows_reuse(Match) :- 
     Constructions = Match ^ con_specs, 
     Value = Match ^ match_value,  
     Constructions = [_|_], 
-    Value > 0.00.
-    
+    Value > 0.0.
+
 :- pred highest_match_in_list(list(match)::in, match::in, match::out) is det.
+
 highest_match_in_list(Matches, Match0, Match) :- 
-    list__sort(reverse_compare_matches_value, [Match0 | Matches], Sorted), 
+    list.sort(reverse_compare_matches_value, [Match0 | Matches], Sorted), 
     (
-        Sorted = [Match|_]
+        Sorted = [Match | _]
     ;
         Sorted = [], 
         unexpected(choose_reuse.this_file, "highest_match_in_list: " ++
@@ -369,33 +387,37 @@ highest_match_in_list(Matches, Match0, Match) :-
     % compute the average reuse value of that deconstruction. This means
     % merging all the constructions together into one list, and using the
     % average value of the reuses of each of the matches. The final degree
-    % of the match is set to the sum of all degrees. 
+    % of the match is set to the sum of all degrees.
+    %
 :- pred average_match(list(match)::in, match::out) is det.
+
 average_match(List, AverageMatch):- 
     (
-        List = [First|Rest], 
-        list__length(List, Length), 
-        P = (pred(M::in, Acc0::in, Acc::out) is det :- 
-            DeconSpecs = Acc0 ^ decon_specs, 
-            ConSpecs = append(Acc0 ^ con_specs, M ^ con_specs),
-            Val = Acc0 ^ match_value + M ^ match_value, 
-            Deg = Acc0 ^ match_degree + M ^ match_degree, 
-            Acc = match(DeconSpecs, ConSpecs, Val, Deg)),
-        list__foldl(P, Rest, First, Match0), 
+        List = [First | Rest], 
+        list.length(List, Length), 
+        P = (pred(M::in, !.Acc::in, !:Acc::out) is det :- 
+            DeconSpecs = !.Acc ^ decon_specs, 
+            ConSpecs = append(!.Acc ^ con_specs, M ^ con_specs),
+            Val = !.Acc ^ match_value + M ^ match_value, 
+            Deg = !.Acc ^ match_degree + M ^ match_degree, 
+            !:Acc = match(DeconSpecs, ConSpecs, Val, Deg)
+        ),
+        list.foldl(P, Rest, First, Match0), 
         AverageMatch = (Match0 ^ match_value := 
-                (Match0 ^ match_value / float(Length)))
+            (Match0 ^ match_value / float(Length)))
     ; 
         List = [], 
-        unexpected(choose_reuse.this_file, "average_match: empty list.\n")
+        unexpected(choose_reuse.this_file, "average_match: empty list.")
     ). 
             
 %-----------------------------------------------------------------------------%
-% Process one single goal:
+%
+% Process a single goal
+%
 %   * determine a match table
 %   * find the best match
 %   * annotate the goal with the reuse described by that match
 %   * and reprocess the goal until no matches are found.
-%
 
 :- pred process_goal(background_info::in, dead_cell_table::in,
     dead_cell_table::out, hlds_goal::in, hlds_goal::out, reuse_as::in,
@@ -403,50 +425,52 @@ average_match(List, AverageMatch):-
 
 process_goal(Background, !DeadCellTable, !Goal, !ReuseAs, !IO):-
     globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    %
+    % Compute a match table.
+    %
+    compute_match_table(Background, !.DeadCellTable, !.Goal, MatchTable, !IO),  
 
-        % Compute a match table.
-    compute_match_table(Background, !.DeadCellTable, !.Goal, 
-        MatchTable, !IO),  
-
-        % As long as the match table is not empty, pick out the match
-        % with the highest value, annotate the goal accordingly, and
-        % repeat the procedure. 
-        % If the match table is empty, the work is finished.
-    (
-        multi_map__is_empty(MatchTable)
-    -> 
+    % As long as the match table is not empty, pick out the match with the
+    % highest value, annotate the goal accordingly, and repeat the procedure. 
+    % If the match table is empty, the work is finished.
+    %
+    ( multi_map.is_empty(MatchTable) -> 
         true
     ;
-        % 1. select the deconstructions-constructions with
-        % highest value. 
+        % Select the deconstructions-constructions with highest value. 
+        %
         Match = highest_match_degree_ratio(MatchTable),
 
-        % 2. dump all the matches recorded in the table, highlight the
+        % Maybe dump all the matches recorded in the table, highlight the
         % match with the highest value. 
-        maybe_write_string(VeryVerbose, "% Reuse results: \n", 
-            !IO), 
-        maybe_dump_match_table(VeryVerbose, MatchTable, 
-            Match, !IO), 
+        %
+        maybe_write_string(VeryVerbose, "% Reuse results: \n", !IO), 
+        maybe_dump_match_table(VeryVerbose, MatchTable, Match, !IO), 
 
-        % 3. realise the reuses by explicitly annotating the
-        % procedure goal. 
+        % Realise the reuses by explicitly annotating the procedure goal. 
+        %
         annotate_reuses_in_goal(Background, Match, !Goal), 
-        % remove the deconstructions from the available map of
-        % dead cells: 
+        %
+        % Remove the deconstructions from the available map of dead cells.
+        %
         remove_deconstructions_from_dead_cell_table(Match, !DeadCellTable),
 
-        % 4. Add the conditions involved in the reuses to the
-        % existing conditions. 
-        reuse_as_least_upper_bound(Background ^ module_info, 
-            Background ^ proc_info, match_get_condition(Background, Match),
-            !ReuseAs), 
-        % 5. Process the goal for further reuse-matches. 
-        process_goal(Background, !DeadCellTable, !Goal, 
-            !ReuseAs, !IO)
+        % Add the conditions involved in the reuses to the existing
+        % conditions. 
+        %
+        ModuleInfo = Background ^ module_info,
+        ProcInfo   = Background ^ proc_info,
+        reuse_as_least_upper_bound(ModuleInfo, ProcInfo, 
+            match_get_condition(Background, Match), !ReuseAs),
+
+        % Process the goal for further reuse-matches. 
+        %
+        process_goal(Background, !DeadCellTable, !Goal, !ReuseAs, !IO)
     ). 
 
 :- pred remove_deconstructions_from_dead_cell_table(match::in, 
     dead_cell_table::in, dead_cell_table::out) is det.
+
 remove_deconstructions_from_dead_cell_table(Match, !DeadCellTable):- 
     DeconSpecs = Match ^ decon_specs, 
     list.foldl(remove_deconstruction_from_dead_cell_table, DeconSpecs, 
@@ -454,12 +478,13 @@ remove_deconstructions_from_dead_cell_table(Match, !DeadCellTable):-
 
 :- pred remove_deconstruction_from_dead_cell_table(deconstruction_spec::in,
     dead_cell_table::in, dead_cell_table::out) is det.
+
 remove_deconstruction_from_dead_cell_table(DeconSpec, !DeadCellTable):- 
     dead_cell_table_remove(DeconSpec ^ decon_pp, !DeadCellTable).
 
 %-----------------------------------------------------------------------------%
 %
-% Compute the match table for a given goal. 
+% Compute the match table for a given goal
 %
 % The table is computed by traversing the whole goal. For each
 % deconstruction encountered that is also listed in the dead_cell_table,
@@ -475,11 +500,10 @@ compute_match_table(Background, DeadCellTable, Goal, MatchTable, !IO) :-
         Goal, ContinuationGoals, multi_map.init, MatchTable, !IO).
 
 :- pred compute_match_table_goal_list(background_info::in, dead_cell_table::in,
-    list(hlds_goal)::in, match_table::in, match_table::out, io::di, 
-    io::uo) is det.
+    hlds_goals::in, match_table::in, match_table::out, io::di, io::uo) is det.
 
-compute_match_table_goal_list(Background, DeadCellTable, Goals, 
-        !Table, !IO) :- 
+compute_match_table_goal_list(Background, DeadCellTable, Goals, !Table,
+        !IO) :- 
     (
         Goals = []
     ;
@@ -489,7 +513,7 @@ compute_match_table_goal_list(Background, DeadCellTable, Goals,
     ).
 
 :- pred compute_match_table_with_continuation(background_info::in,
-    dead_cell_table::in, hlds_goal::in, list(hlds_goal)::in, 
+    dead_cell_table::in, hlds_goal::in, hlds_goals::in, 
     match_table::in, match_table::out, io::di, io::uo) is det.
 
 compute_match_table_with_continuation(Background, DeadCellTable, 
@@ -545,9 +569,9 @@ compute_match_table_with_continuation(Background, DeadCellTable,
             !IO)
     ;
         GoalExpr = switch(_, _, Cases),
-        compute_match_table_in_disjunction(Background, DeadCellTable, 
-            list.map(func(C) = G :- (G = C ^ case_goal), Cases), 
-                Cont, !Table, !IO),
+        Goals = list.map((func(C) = C ^ case_goal), Cases),
+        compute_match_table_in_disjunction(Background, DeadCellTable,
+            Goals, Cont, !Table, !IO),
         compute_match_table_goal_list(Background, DeadCellTable, Cont, !Table,
             !IO)
     ;
@@ -584,6 +608,7 @@ compute_match_table_with_continuation(Background, DeadCellTable,
 
 :- pred compute_match_table_in_disjs(background_info::in, dead_cell_table::in,
     hlds_goals::in, list(match_table)::out, io::di, io::uo) is det.
+
 compute_match_table_in_disjs(Background, DeadCellTable, Branches, Tables, 
         !IO) :-     
     list.map_foldl(compute_match_table(Background, DeadCellTable),
@@ -592,6 +617,7 @@ compute_match_table_in_disjs(Background, DeadCellTable, Branches, Tables,
 :- pred compute_match_table_in_disjunction(background_info::in,
     dead_cell_table::in, hlds_goals::in, hlds_goals::in, 
     match_table::in, match_table::out, io::di, io::uo) is det.  
+
 compute_match_table_in_disjunction(Background, DeadCellTable, DisjGoals, Cont, 
         !Table, !IO) :-
     % Compute a match table for each of the branches of the disjunction.
@@ -612,11 +638,12 @@ compute_match_table_in_disjunction(Background, DeadCellTable, DisjGoals, Cont,
 
 :- pred process_possible_common_dead_vars(background_info::in, hlds_goals::in,
     list(match_table)::in, list(match_table)::out, io::di, io::uo) is det.
+
 process_possible_common_dead_vars(Background, Cont, DisjTables, 
         ExtraTables, !IO) :- 
     CommonDeadVars = common_vars(DisjTables),
     (
-        CommonDeadVars = [_|_]
+        CommonDeadVars = [_ | _]
     ->
         list.filter_map(process_common_var(Background, Cont, DisjTables),
             CommonDeadVars, ExtraTables)
@@ -624,7 +651,8 @@ process_possible_common_dead_vars(Background, Cont, DisjTables,
         ExtraTables = []
     ).
 
-:- func common_vars(list(match_table)) = list(dead_var).
+:- func common_vars(list(match_table)) = dead_vars.
+
 common_vars(Tables) = CommonVars :- 
     (  
         Tables = [ First | RestTables ],
@@ -635,7 +663,8 @@ common_vars(Tables) = CommonVars :-
         CommonVars = []
     ).
 
-:- func common_var_with_list(match_table, prog_vars) = list(dead_var).
+:- func common_var_with_list(match_table, prog_vars) = dead_vars.
+
 common_var_with_list(Table, List0) = List :- 
     map.keys(Table, Keys),
     Set = set.intersect(list_to_set(List0), list_to_set(Keys)), 
@@ -643,6 +672,7 @@ common_var_with_list(Table, List0) = List :-
 
 :- pred process_common_var(background_info::in, hlds_goals::in,
     list(match_table)::in, dead_var::in, match_table::out) is semidet.
+
 process_common_var(Background, Cont, DisjTables, CommonDeadVar, Table) :- 
     Match0 = match_init(deconstruction_specs(CommonDeadVar, DisjTables)),
     find_best_match_in_conjunction(Background, Cont, Match0, Match),
@@ -652,18 +682,21 @@ process_common_var(Background, Cont, DisjTables, CommonDeadVar, Table) :-
    
 :- func deconstruction_specs(prog_var, list(match_table)) = 
     list(deconstruction_spec).
+
 deconstruction_specs(DeadVar, Tables) = DeconstructionSpecs :- 
     list.foldl(deconstruction_specs_2(DeadVar), Tables, [], 
         DeconstructionSpecs).
 
 :- pred deconstruction_specs_2(prog_var::in, match_table::in, 
     list(deconstruction_spec)::in, list(deconstruction_spec)::out) is det.
+
 deconstruction_specs_2(DeadVar, Table, !DeconstructionSpecs) :- 
     multi_map.lookup(Table, DeadVar, Matches),
     NewSpecs = list.condense(list.map(match_get_decon_specs, Matches)),
     append(NewSpecs, !DeconstructionSpecs).
 
 :- func match_get_decon_specs(match) = list(deconstruction_spec). 
+
 match_get_decon_specs(Match) = Match ^ decon_specs. 
 
 %-----------------------------------------------------------------------------%
@@ -672,11 +705,10 @@ match_get_decon_specs(Match) = Match ^ decon_specs.
 % matches.
 %
 
-    % 
-    % Compute the value of a dead cell with respect to its possible reuses in a
-    % conjunction of goals. If reuse is possible, add the specification of the
-    % construction where it can be reused to the list of constructions recorded
-    % in the match. 
+    % Compute the value of a dead cell with respect to its possible reuses in
+    % a conjunction of goals. If reuse is possible, add the specification of
+    % the construction where it can be reused to the list of constructions
+    % recorded in the match. 
     %
     % In a conjunction, a dead cell can only be reused in at most one of its
     % direct children. This means that for each child a new value is computed.
@@ -689,8 +721,8 @@ match_get_decon_specs(Match) = Match ^ decon_specs.
     %
     % XXX What is the thing with the degrees here? 
     %
-:- pred find_best_match_in_conjunction(background_info::in, 
-    hlds_goals::in, match::in, match::out) is det.
+:- pred find_best_match_in_conjunction(background_info::in, hlds_goals::in,
+    match::in, match::out) is det.
 
 find_best_match_in_conjunction(Background, Goals, !Match) :- 
     Match0 = !.Match,
@@ -708,11 +740,12 @@ find_best_match_in_conjunction(Background, Goals, !Match) :-
     %
 :- pred find_match_in_disjunction(background_info::in, hlds_goals::in,
     match::in, match::out) is det.
+
 find_match_in_disjunction(Background, Branches, !Match) :- 
     (
         Branches = []
     ;
-        Branches = [_|_],
+        Branches = [_ | _],
         list.map(find_match_in_goal(Background, !.Match), Branches,
             BranchMatches),
         average_match(BranchMatches, !:Match)
@@ -737,8 +770,9 @@ find_match_in_goal_2(Background, Goal, !Match) :-
             empty_reuse_description(goal_info_get_reuse(GoalInfo))
 
         ->
-                % Is it possible for the construction to reuse the dead cell
-                % specified by the match?
+            % Is it possible for the construction to reuse the dead cell
+            % specified by the match?
+            %
             verify_match(Background, Var, Cons, Args, 
                 program_point_init(GoalInfo), !Match)
         ;
@@ -758,9 +792,8 @@ find_match_in_goal_2(Background, Goal, !Match) :-
         find_match_in_disjunction(Background, Goals, !Match)
     ;
         GoalExpr = switch(_, _, Cases),
-        find_match_in_disjunction(Background, 
-            list.map(func(C) = G :- (G = C ^ case_goal), Cases), 
-            !Match)
+        Goals = list.map((func(C) = C ^ case_goal), Cases),
+        find_match_in_disjunction(Background, Goals, !Match)
     ;
         GoalExpr = not(_)
     ;
@@ -780,17 +813,22 @@ find_match_in_goal_2(Background, Goal, !Match) :-
     ).
 
 :- func count_candidates(list(match)) = int.
+
 count_candidates(Matches) = list.foldl(add_degree, Matches, 0).
 
 :- func add_degree(match, int) = int. 
+
 add_degree(Match, Degree0) = Degree0 + Match ^ match_degree.
 
 :- pred empty_reuse_description(reuse_description::in) is semidet.
+
 empty_reuse_description(empty).
 
 %-----------------------------------------------------------------------------%
-% Verify the value of a match for a given construction.
 %
+% Verify the value of a match for a given construction
+%
+
 % The value is computed using the following rule: 
 %
 % Gain = (Alfa + Gamma) * ArityNewCell + Beta
@@ -804,14 +842,20 @@ empty_reuse_description(empty).
 % * Beta: cost of setting the value of the cons_id field; 
 
 :- func alfa_value = int is det.
-:- func gamma_value = int is det.
-:- func beta_value = int is det.
+
 alfa_value = 5. 
+
+:- func gamma_value = int is det.
+
 gamma_value = 1.
+
+:- func beta_value = int is det.
+
 beta_value = 1. 
 
 :- pred verify_match(background_info::in, prog_var::in, cons_id::in, 
     prog_vars::in, program_point::in, match::in, match::out) is det.
+
 verify_match(Background, NewVar, NewCons, NewArgs, PP, !Match) :- 
     DeconSpecs = !.Match ^ decon_specs, 
     list.filter_map(compute_reuse_type(Background, NewVar, NewCons, NewArgs),
@@ -836,15 +880,14 @@ verify_match(Background, NewVar, NewCons, NewArgs, PP, !Match) :-
     % deconstructed dead data structure.
     %
 :- pred compute_reuse_type(background_info::in, prog_var::in, cons_id::in,
-    prog_vars::in, deconstruction_spec::in, 
-    reuse_type::out) is semidet.
+    prog_vars::in, deconstruction_spec::in, reuse_type::out) is semidet.
     
 compute_reuse_type(Background, NewVar, NewCons, NewCellArgs, DeconSpec, 
             ReuseType) :- 
     DeconSpec = decon(DeadVar, _, DeadCons, DeadCellArgs, _),
 
     ModuleInfo = Background ^ module_info, 
-    Vartypes   = Background ^ vartypes, 
+    Vartypes = Background ^ vartypes, 
     NewArity = list.length(NewCellArgs), 
     DeadArity = list.length(DeadCellArgs), 
 
@@ -871,15 +914,12 @@ compute_reuse_type(Background, NewVar, NewCons, NewCellArgs, DeconSpec,
     % fields that do not require an update if the construction unification 
     % would reuse the deconstructed cell. 
     %
-    has_secondary_tag(ModuleInfo, Vartypes, NewVar, 
-        NewCons, SecTag), 
-    has_secondary_tag(ModuleInfo, Vartypes, DeadVar, 
-        DeadCons, DeadSecTag), 
-    ReuseFields = already_correct_fields(SecTag, NewCellArgs, 
+    has_secondary_tag(ModuleInfo, Vartypes, NewVar, NewCons, SecTag), 
+    has_secondary_tag(ModuleInfo, Vartypes, DeadVar, DeadCons, DeadSecTag), 
+    ReuseFields = already_correct_fields(SecTag, NewCellArgs,
         DeadSecTag - DeadCellArgs),
     UpToDateFields = list.length(
         list.delete_all(ReuseFields, needs_update)),
-
     %
     % Finally, compute the value of this reuse-configuration.
     %
@@ -907,6 +947,7 @@ glb_reuse_types_2(R1, R2) = R :-
         (V1 + V2) / 2.00 ).
 
 :- func ands(list(needs_update), list(needs_update)) = list(needs_update). 
+
 ands(L1, L2) = L :- 
     (
         length(L1) =< length(L2)
@@ -920,6 +961,7 @@ ands(L1, L2) = L :-
     L = list.map_corresponding(needs_update_and, L1b, L2b).
 
 :- func needs_update_and(needs_update, needs_update) = needs_update.
+
 needs_update_and(needs_update, needs_update) = needs_update.
 needs_update_and(needs_update, does_not_need_update) = needs_update.
 needs_update_and(does_not_need_update, needs_update) = needs_update.
@@ -928,18 +970,18 @@ needs_update_and(does_not_need_update, does_not_need_update) =
     
 
 %-----------------------------------------------------------------------------%
-        %
-        % has_secondary_tag(Var, ConsId, HasSecTag) is true iff the
+        
+        % has_secondary_tag(Var, ConsId, HasSecTag) returns `yes' iff the
         % variable, Var, with cons_id, ConsId, requires a remote
         % secondary tag to distinguish between its various functors.
         %
 :- pred has_secondary_tag(module_info::in, vartypes::in,
-                prog_var::in, cons_id::in, bool::out) is det.
+    prog_var::in, cons_id::in, bool::out) is det.
 
 has_secondary_tag(ModuleInfo, VarTypes, Var, ConsId, SecondaryTag) :- 
     (
         map.lookup(VarTypes, Var, Type),
-        type_util.type_to_type_defn_body(ModuleInfo, Type, TypeBody),
+        type_to_type_defn_body(ModuleInfo, Type, TypeBody),
         TypeBody = du_type(_, ConsTagValues, _, _, _, _),
         map.search(ConsTagValues, ConsId, ConsTag),
         MaybeSecondaryTag = get_secondary_tag(ConsTag), 
@@ -950,7 +992,6 @@ has_secondary_tag(ModuleInfo, VarTypes, Var, ConsId, SecondaryTag) :-
         SecondaryTag = no
     ).
 
-    %
     % already_correct_fields(HasSecTagC, VarsC, HasSecTagR - VarsR)
     % takes a list of variables, VarsC, which are the arguments for the cell to
     % be constructed and the list of variables, VarsR, which are the arguments
@@ -960,8 +1001,8 @@ has_secondary_tag(ModuleInfo, VarTypes, Var, ConsId, SecondaryTag) :-
     % correct value stored in it.  To do this correctly we
     % need to know whether each cell has a secondary tag field.
     %
-:- func already_correct_fields(bool, prog_vars,
-        pair(bool, prog_vars)) = list(needs_update).
+:- func already_correct_fields(bool, prog_vars, pair(bool, prog_vars)) =
+    list(needs_update).
 
 already_correct_fields(SecTagC, CurrentCellVars, SecTagR - ReuseCellVars)
         = NeedsNoUpdate ++ list.duplicate(LengthC - LengthB, needs_update) :-
@@ -982,7 +1023,6 @@ already_correct_fields_2(no, CurrentCellVars, yes, ReuseCellVars)
 already_correct_fields_2(no, CurrentCellVars, no, ReuseCellVars) 
     = equals(CurrentCellVars, ReuseCellVars).
 
-    %
     % equals(ListA, ListB) produces a list of 'needs_update' that indicates
     % whether the corresponding elements from ListA and ListB are equal.  If
     % ListA and ListB are of different lengths, the resulting list is the
@@ -1004,7 +1044,6 @@ equals([X | Xs], [Y | Ys]) = [NeedsUpdate | equals(Xs, Ys)] :-
 
 drop_one([]) = [].
 drop_one([_ | Xs]) = Xs.
-
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1079,9 +1118,9 @@ annotate_reuses_in_case(Background, Match, !Case) :-
     annotate_reuses_in_goal(Background, Match, Goal0, Goal), 
     !:Case = case(A, Goal).
 
-:- pred annotate_reuse_for_unification(background_info::in, 
-    match::in, unification::in, 
-    hlds_goal_info::in, hlds_goal_info::out) is det.
+:- pred annotate_reuse_for_unification(background_info::in, match::in,
+    unification::in, hlds_goal_info::in, hlds_goal_info::out) is det.
+
 annotate_reuse_for_unification(Background, Match, Unification, !GoalInfo):- 
     CurrentProgramPoint = program_point_init(!.GoalInfo),
     (
@@ -1145,34 +1184,41 @@ annotate_reuse_for_unification(Background, Match, Unification, !GoalInfo):-
 
 :- pred match_find_deconstruction_spec(match::in, program_point::in, 
     deconstruction_spec::out) is semidet.
+
 match_find_deconstruction_spec(Match, ProgramPoint, DeconstructionSpec) :-
     list.filter(deconstruction_spec_with_program_point(ProgramPoint),
         Match ^ decon_specs, [DeconstructionSpec]).
 
 :- pred match_find_construction_spec(match::in, program_point::in, 
     construction_spec::out) is semidet.
+
 match_find_construction_spec(Match, ProgramPoint, ConstructionSpec) :-
     list.filter(construction_spec_with_program_point(ProgramPoint),
         Match ^ con_specs, [ConstructionSpec]).
 
 :- pred deconstruction_spec_with_program_point(program_point::in, 
     deconstruction_spec::in) is semidet.
+
 deconstruction_spec_with_program_point(DeconstructionSpec ^ decon_pp, 
     DeconstructionSpec).
 
 :- pred construction_spec_with_program_point(program_point::in, 
     construction_spec::in) is semidet.
+
 construction_spec_with_program_point(ConstructionSpec ^ con_pp,
     ConstructionSpec).
 
 %-----------------------------------------------------------------------------%
-% Predicates to print intermediate results as stored in a match_table.
+%
+% Predicates to print intermediate results as stored in a match_table
 %
 
 :- func line_length = int. 
+
 line_length = 79.
 
 :- pred dump_line(string::in, io::di, io::uo) is det.
+
 dump_line(Msg, !IO) :- 
     Prefix = "%---", 
     Start = string.append(Prefix, Msg), 
@@ -1186,15 +1232,14 @@ dump_line(Msg, !IO) :-
 
 maybe_dump_match_table(VeryVerbose, MatchTable, HighestMatch, !IO) :- 
     (
-        VeryVerbose = yes
-    ->
+        VeryVerbose = yes,
         dump_line("reuse table", !IO), 
         io.write_string("%\t|\tvar\t|\tvalue\t|\tdegree\n", !IO),
         dump_match("%-sel- ", HighestMatch, !IO),
         dump_full_table(MatchTable, !IO),
         dump_line("", !IO)
     ;
-        true
+        VeryVerbose = no
     ).
 
 :- pred dump_match(string::in, match::in, io::di, io::uo) is det.
@@ -1205,7 +1250,7 @@ dump_match(Prefix, Match, !IO):-
     io.write_string("\t|\t", !IO),
     Val = Match ^ match_value, 
     (
-        Val \= 0.00 
+        Val \= 0.0 
     ->  
         io.format("%.2f", [f(Val)], !IO)
     ; 
@@ -1220,14 +1265,10 @@ dump_match(Prefix, Match, !IO):-
 
 :- pred dump_match_details(match::in, io::di, io::uo) is det.
 dump_match_details(Match, !IO) :- 
-    Conds = list.map(
-        (func(DeconSpec) = Cond :- 
-            Cond = DeconSpec ^ decon_conds), 
-            Match ^ decon_specs),
+    Conds = list.map((func(DeconSpec) = DeconSpec ^ decon_conds), 
+        Match ^ decon_specs),
     (
-        list.takewhile(
-            reuse_as_all_unconditional_reuses, 
-            Conds, _, [])
+        list.takewhile(reuse_as_all_unconditional_reuses, Conds, _, [])
     -> 
         CondsString = "A"
     ;
@@ -1254,12 +1295,15 @@ dump_full_table(MatchTable, !IO) :-
         dump_line("full table (end)", !IO)
     ).
 
-:- pred maybe_dump_full_table(bool::in, match_table::in, io::di,
-        io::uo) is det.
+:- pred maybe_dump_full_table(bool::in, match_table::in,
+    io::di, io::uo) is det.
+
 maybe_dump_full_table(no, _M, !IO).
-maybe_dump_full_table(yes, M, !IO) :- dump_full_table(M, !IO).
+maybe_dump_full_table(yes, M, !IO) :-
+    dump_full_table(M, !IO).
 
 %-----------------------------------------------------------------------------%
+    
     % After determining all local reuses of dead datastructures (a data
     % structure becomes dead and is reused in one and the same procedure), we
     % determine the 'global reuses': deconstructions that yield dead data
@@ -1271,7 +1315,7 @@ maybe_dump_full_table(yes, M, !IO) :- dump_full_table(M, !IO).
 
 check_for_cell_caching(DeadCellTable0, !Goal, !IO) :- 
     dead_cell_table_remove_conditionals(DeadCellTable0, DeadCellTable),
-    globals__io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
+    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     (
         \+ dead_cell_table_is_empty(DeadCellTable)
     -> 
@@ -1367,9 +1411,13 @@ check_for_cell_caching_in_unification(DeadCellTable, !Unification, !GoalInfo):-
     ;
         true
     ).
+
 %-----------------------------------------------------------------------------%
+
 :- func this_file = string.
+
 this_file = "structure_reuse.direct.choose_reuse.m". 
 
+%-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_reuse.direct.choose_reuse.
-
+%-----------------------------------------------------------------------------%

@@ -5,13 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: ctgc.datastruct.m.
 % Main author: nancy.
-
+% 
 % Definition of predicates and functions for the manipulation of
 % datastructures.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.datastruct.
@@ -177,9 +178,8 @@ datastruct_lists_least_upper_bound(ModuleInfo, ProcInfo, Data1, Data2)
     Data = list.append(NotSubsumedData, Data1).
 
 datastructs_project(Vars, DataIn) = 
-    list__filter(
-        pred(Data::in) is semidet :-
-          (list__member(Data^sc_var, Vars)),
+    list.filter(
+        (pred(Data::in) is semidet :- list.member(Data ^ sc_var, Vars)),
         DataIn).
 
 %-----------------------------------------------------------------------------%

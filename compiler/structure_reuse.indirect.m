@@ -5,14 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% File: structure_reuse.indirect.m
-% Main authors: nancy 
 %
-% Determine the indirect reuse. This requires a fixpoint computation.
+% File: structure_reuse.indirect.m.
+% Main authors: nancy.
+%
+% Determine the indirect reuse.  This requires a fixpoint computation.
+%
+%------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
 :- module structure_reuse.indirect.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -20,6 +22,8 @@
 :- import_module transform_hlds.ctgc.structure_sharing.domain.
 
 :- import_module io.
+
+%------------------------------------------------------------------------------%
 
     % Direct reuse analysis derives information about deconstructions that
     % under certain circumstances (formalised as "reuse conditions") form
@@ -66,6 +70,8 @@
 :- import_module set.
 :- import_module string.
 
+%------------------------------------------------------------------------------%
+
 indirect_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, !IO):-
     %
     % Perform a bottom-up traversal of the SCCs in the module,
@@ -76,8 +82,8 @@ indirect_reuse_pass(SharingTable, !ModuleInfo, !ReuseTable, !IO):-
     (
         MaybeDepInfo = yes(DepInfo),
         hlds_dependency_info_get_dependency_ordering(DepInfo, SCCs),
-        list.foldl3(indirect_reuse_analyse_scc(SharingTable), 
-            SCCs, !ModuleInfo, !ReuseTable, !IO)
+        list.foldl3(indirect_reuse_analyse_scc(SharingTable), SCCs,
+            !ModuleInfo, !ReuseTable, !IO)
     ;
         MaybeDepInfo = no,
         unexpected(this_file, "No dependency information.")
@@ -99,8 +105,8 @@ indirect_reuse_analyse_scc(SharingTable, SCC, !ModuleInfo, !ReuseTable, !IO) :-
 
 :- pred indirect_reuse_analyse_scc_until_fixpoint(sharing_as_table::in, 
     list(pred_proc_id)::in, reuse_as_table::in,
-    module_info::in, module_info::out, sr_fixpoint_table::in, 
-    sr_fixpoint_table::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    sr_fixpoint_table::in, sr_fixpoint_table::out, io::di, io::uo) is det.
 
 indirect_reuse_analyse_scc_until_fixpoint(SharingTable, SCC, 
         ReuseTable, !ModuleInfo, !FixpointTable, !IO):-
@@ -115,6 +121,7 @@ indirect_reuse_analyse_scc_until_fixpoint(SharingTable, SCC,
     ).
 
 %-----------------------------------------------------------------------------%
+
 :- pred indirect_reuse_analyse_pred_proc(sharing_as_table::in,
     reuse_as_table::in, pred_proc_id::in, module_info::in, module_info::out,
     sr_fixpoint_table::in, sr_fixpoint_table::out, io::di, io::uo) is det.
@@ -215,7 +222,7 @@ analysis_info_combine(BaseInfo, AnalysisInfoList, FixpointTable,
     (
         AnalysisInfoList = []
     ;
-        AnalysisInfoList = [_|_],
+        AnalysisInfoList = [_ | _],
         list.foldl(analysis_info_lub(BaseInfo), AnalysisInfoList, 
             !AnalysisInfo),
         !:AnalysisInfo = !.AnalysisInfo ^ fptable := FixpointTable
@@ -388,9 +395,8 @@ indirect_reuse_analyse_case(BaseInfo, AnalysisInfo0, Case0, Case, AnalysisInfo,
 %-----------------------------------------------------------------------------%
 
 :- pred verify_indirect_reuse(ir_background_info::in, pred_id::in, proc_id::in, 
-    list(prog_var)::in, hlds_goal_info::in, hlds_goal_info::out, 
-    ir_analysis_info::in, ir_analysis_info::out,
-    io::di, io::uo) is det.
+    prog_vars::in, hlds_goal_info::in, hlds_goal_info::out, 
+    ir_analysis_info::in, ir_analysis_info::out, io::di, io::uo) is det.
 
 verify_indirect_reuse(BaseInfo, CalleePredId, CalleeProcId, CalleeArgs,
         !GoalInfo, !AnalysisInfo, !IO):-
@@ -545,12 +551,11 @@ verify_indirect_reuse_2(BaseInfo, AnalysisInfo, GoalInfo, CalleePPId,
 
 update_reuse_in_table(FixpointTable, PPId, !ReuseTable) :-
     reuse_as_table_set(PPId,
-        sr_fixpoint_table_get_final_as(PPId, FixpointTable),
-        !ReuseTable).
+        sr_fixpoint_table_get_final_as(PPId, FixpointTable), !ReuseTable).
     
 %-----------------------------------------------------------------------------%
 %
-% Structure reuse fixpoint table.
+% Structure reuse fixpoint table
 %
 
 :- type sr_fixpoint_table == fixpoint_table(pred_proc_id, reuse_as).
@@ -631,7 +636,6 @@ get_reuse_as(ReuseTable, PPId) = ReuseAs :-
 
 sr_fixpoint_table_init(Keys, ReuseTable) = Table :-
     Table = init_fixpoint_table(get_reuse_as(ReuseTable), Keys).
-
 
 sr_fixpoint_table_new_run(!Table) :-
     fixpoint_table.new_run(!Table).

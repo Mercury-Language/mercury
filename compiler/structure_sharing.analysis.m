@@ -5,13 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: structure_sharing.analysis.m.
 % Main authors: nancy.
-
+% 
 % Implementation of the structure sharing analysis needed for compile-time
 % garbage collection (CTGC).
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.structure_sharing.analysis.

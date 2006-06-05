@@ -5,12 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: ctgc.selector.m.
 % Main author: nancy.
-
+% 
 % Definition of predicates and functions for the manipulation of selectors.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.selector.
@@ -86,9 +87,10 @@ top_selector = [].
 
 selector_init(Cons, Index) = [termsel(Cons, Index)].
 selector_init_from_list(Types)
-    = list.map(func(T) = US :- US = typesel(T), Types).
+    = list.map((func(T) = typesel(T)), Types).
 
-selector_termshift(S1, S2, S) :- list.append(S1, S2, S).
+selector_termshift(S1, S2, S) :-
+    list.append(S1, S2, S).
 
 subsumed_by(ModuleInfo, S1, S2, MainType, Extension):-
     % First make sure that both selectors are in a normalized form.
@@ -288,7 +290,7 @@ normalize_selector_with_type_information(ModuleInfo, Type, !Selector) :-
 do_normalize_selector(ModuleInfo, VarType, BranchMap0,
         SelectorAcc0, !Selector) :-
     (
-        !.Selector = [ UnitSelector | SelRest ],
+        !.Selector = [UnitSelector | SelRest],
         Class = classify_type(ModuleInfo, VarType),
         ( Class = type_cat_user_ctor ->
             % If it is either a term-selector of a non existentially typed

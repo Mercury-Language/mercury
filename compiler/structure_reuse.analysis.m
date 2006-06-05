@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: structure_reuse.analysis.m
-% Main authors: nancy
+% File: structure_reuse.analysis.m.
+% Main authors: nancy.
 %
 % Implementation of the structure reuse analysis (compile-time garbage
 % collection system): each procedure is analysed to see whether some
@@ -21,7 +21,7 @@
 % 
 % The following example shows instances of direct and indirect reuse: 
 %
-% list__append(H1, H2, H3) :-
+% list.append(H1, H2, H3) :-
 %   (
 %       H1 => [],
 %       H3 := H2
@@ -34,21 +34,21 @@
 %       H1 => [X | Xs],
 %
 %           % If the condition about the structure sharing of H1
-%           % is true then we can call the version of list__append 
+%           % is true then we can call the version of list.append 
 %           % which does reuse. Calling the optimised version here leads
 %           % to a new condition to be met by the headvars of any
 %           % call to the resulting optimised version of append.
 %           % This is an indirect reuse.
-%       list__append(Xs, H2, Zs),
+%       list.append(Xs, H2, Zs),
 %
 %           % Reuse the dead cell H1.  This is a direct reuse.
 %       H3 <= [X | Zs]
 %   ).
 %
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.structure_reuse.analysis.
-
 :- interface.
 
 :- import_module hlds.hlds_module.
@@ -57,6 +57,9 @@
 
 :- pred structure_reuse_analysis(module_info::in, module_info::out, 
     io::di, io::uo) is det.
+
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -75,6 +78,7 @@
 
 :- import_module string.
 
+%-----------------------------------------------------------------------------%
 
 structure_reuse_analysis(!ModuleInfo, !IO):- 
     globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
@@ -131,12 +135,14 @@ structure_reuse_analysis(!ModuleInfo, !IO):-
 annotate_in_use_information(_PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :- 
     forward_use_information(!ProcInfo), 
     backward_use_information(ModuleInfo, !ProcInfo),
-    goal_path.fill_goal_path_slots(ModuleInfo, !ProcInfo).
-
+    fill_goal_path_slots(ModuleInfo, !ProcInfo).
 
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.
+
 this_file = "structure_reuse.analysis.m".
 
+%-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_reuse.analysis.
+%-----------------------------------------------------------------------------%

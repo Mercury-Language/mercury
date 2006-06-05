@@ -6,16 +6,16 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: structure_reuse.direct.detect_garbage.m
-% Main authors: nancy
+% File: structure_reuse.direct.detect_garbage.m.
+% Main authors: nancy.
 %
 % Detect where datastructures become garbage in a given procedure: construct
 % a dead cell table.
 %
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.structure_reuse.direct.detect_garbage.
-
 :- interface.
     
     % Using the sharing table listing all the structure sharing of all 
@@ -27,11 +27,16 @@
 :- pred determine_dead_deconstructions(module_info::in, proc_info::in, 
     sharing_as_table::in, hlds_goal::in, dead_cell_table::out) is det.
 
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module check_hlds.type_util.
 
 :- import_module pair. 
+
+%-----------------------------------------------------------------------------%
 
 determine_dead_deconstructions(ModuleInfo, ProcInfo, SharingTable, 
     Goal, DeadCellTable):- 
@@ -123,9 +128,9 @@ determine_dead_deconstructions_2(ModuleInfo, ProcInfo, SharingTable,
     ).
        
 :- pred determine_dead_deconstructions_2_disj(module_info::in,
-    proc_info::in, sharing_as_table::in, list(hlds_goal)::in,
-    sharing_as::in, sharing_as::out, dead_cell_table::in,
-    dead_cell_table::out) is det.
+    proc_info::in, sharing_as_table::in, hlds_goals::in,
+    sharing_as::in, sharing_as::out,
+    dead_cell_table::in, dead_cell_table::out) is det.
 
 determine_dead_deconstructions_2_disj(ModuleInfo, ProcInfo, 
     SharingTable, Goals, !SharingAs, !DeadCellTable) :- 
@@ -135,12 +140,12 @@ determine_dead_deconstructions_2_disj(ModuleInfo, ProcInfo,
 
 :- pred determine_dead_deconstructions_2_disj_goal(module_info::in,
     proc_info::in, sharing_as_table::in, sharing_as::in, hlds_goal::in,
-    sharing_as::in, sharing_as::out, dead_cell_table::in, 
-    dead_cell_table::out) is det.
+    sharing_as::in, sharing_as::out,
+    dead_cell_table::in, dead_cell_table::out) is det.
 
 determine_dead_deconstructions_2_disj_goal(ModuleInfo, ProcInfo, 
-    SharingTable, SharingBeforeDisj, Goal, !SharingAs, 
-    !DeadCellTable) :-
+        SharingTable, SharingBeforeDisj, Goal, !SharingAs, 
+        !DeadCellTable) :-
     determine_dead_deconstructions_2(ModuleInfo, ProcInfo, SharingTable,
         Goal, SharingBeforeDisj, GoalSharing, !DeadCellTable),
     !:SharingAs = sharing_as_least_upper_bound(ModuleInfo, ProcInfo, 
@@ -158,7 +163,7 @@ determine_dead_deconstructions_2_disj_goal(ModuleInfo, ProcInfo,
     sharing_as::in, dead_cell_table::in, dead_cell_table::out) is det.
 
 unification_verify_reuse(ModuleInfo, ProcInfo, GoalInfo, Unification, 
-    PP, Sharing, !DeadCellTable):-
+        PP, Sharing, !DeadCellTable):-
     (
         Unification = deconstruct(Var, ConsId, _, _, _, _),
         LFU = goal_info_get_lfu(GoalInfo),
@@ -211,9 +216,11 @@ var_is_live(Var, LiveData) :-
     list.member(datastruct_init(Var), LiveData).
 
 %-----------------------------------------------------------------------------%
+
 :- func this_file = string.
 
 this_file = "structure_sharing.direct.detect_garbage.m".
-
     
+%-----------------------------------------------------------------------------%
 :- end_module transform_hlds.ctgc.structure_reuse.direct.detect_garbage.
+%-----------------------------------------------------------------------------%

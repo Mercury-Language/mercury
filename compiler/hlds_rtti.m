@@ -614,7 +614,7 @@ rtti_varmaps_transform_types(Pred, !RttiVarMaps) :-
     TypeMap0 = !.RttiVarMaps ^ ti_type_map,
     ConstraintMap0 = !.RttiVarMaps ^ tci_constraint_map,
     map.foldl(apply_constraint_key_transformation(Pred), TciMap0,
-    map.init, TciMap),
+        map.init, TciMap),
     Pred2 = (pred(_::in, V::in, W::out) is det :-
             Pred(V, W)
     ),
@@ -690,12 +690,12 @@ get_typeinfo_vars_2([Var | Vars], VarTypes, TVarMap, TypeInfoVars) :-
             % treat them specially.
 
             % The type_info is either stored in a variable, or in a
-            % typeclass_info. Either get the type_info variable or
+            % typeclass_info.  Either get the type_info variable or
             % the typeclass_info variable.
             LookupVar = (pred(TVar::in, TVarVar::out) is det :-
-                    map.lookup(TVarMap, TVar, Locn),
-                    type_info_locn_var(Locn, TVarVar)
-                ),
+                map.lookup(TVarMap, TVar, Locn),
+                type_info_locn_var(Locn, TVarVar)
+            ),
             list.map(LookupVar, TypeVars, TypeInfoVarsHead),
 
             get_typeinfo_vars_2(Vars, VarTypes, TVarMap, TypeInfoVarsTail),
