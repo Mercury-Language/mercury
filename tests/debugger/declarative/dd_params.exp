@@ -1,0 +1,64 @@
+       1:      1  1 CALL pred dd_params.main/2-0 (det) dd_params.m:10
+mdb> echo on
+Command echo enabled.
+mdb> register --quiet
+mdb> break p
+ 0: + stop  interface pred dd_params.p/2-0 (det)
+mdb> continue
+       2:      2  2 CALL pred dd_params.p/2-0 (det) dd_params.m:22 (dd_params.m:11)
+mdb> finish
+       3:      2  2 EXIT pred dd_params.p/2-0 (det) dd_params.m:22 (dd_params.m:11)
+mdb> dd -d 3 -n 7
+p(1, baz(1, bar))
+Valid? params
+Browser default format: flat
+                                 depth     size      width     lines     
+Browser flat:                    10        30        80        25        
+Browser verbose:                 10        30        80        25        
+Browser pretty:                  10        30        80        25        
+Browser raw_pretty:              10        30        80        25        
+
+Print default format: flat
+                                 depth     size      width     lines     
+Print flat:                      3         10        80        25        
+Print verbose:                   3         10        80        25        
+Print pretty:                    3         10        80        25        
+Print raw_pretty:                3         10        80        25        
+
+Printall default format: flat
+                                 depth     size      width     lines     
+Printall flat:                   3         10        80        2         
+Printall verbose:                3         10        80        5         
+Printall pretty:                 3         10        80        2         
+Printall raw_pretty:             3         10        80        2         
+
+Number of I/O actions printed is: 20
+dd> actions 10
+dd> params
+Browser default format: flat
+                                 depth     size      width     lines     
+Browser flat:                    10        30        80        25        
+Browser verbose:                 10        30        80        25        
+Browser pretty:                  10        30        80        25        
+Browser raw_pretty:              10        30        80        25        
+
+Print default format: flat
+                                 depth     size      width     lines     
+Print flat:                      3         10        80        25        
+Print verbose:                   3         10        80        25        
+Print pretty:                    3         10        80        25        
+Print raw_pretty:                3         10        80        25        
+
+Printall default format: flat
+                                 depth     size      width     lines     
+Printall flat:                   3         10        80        2         
+Printall verbose:                3         10        80        5         
+Printall pretty:                 3         10        80        2         
+Printall raw_pretty:             3         10        80        2         
+
+Number of I/O actions printed is: 10
+dd> quit
+Diagnosis aborted.
+       3:      2  2 EXIT pred dd_params.p/2-0 (det) dd_params.m:22 (dd_params.m:11)
+mdb> continue
+baz(1, bar)
