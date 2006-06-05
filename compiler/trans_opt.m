@@ -97,6 +97,7 @@
 :- import_module transform_hlds.ctgc.structure_sharing.analysis.
 :- import_module transform_hlds.exception_analysis.
 :- import_module transform_hlds.intermod.
+:- import_module transform_hlds.tabling_analysis.
 :- import_module transform_hlds.term_constr_main.
 :- import_module transform_hlds.termination.
 :- import_module transform_hlds.trailing_analysis.
@@ -156,6 +157,11 @@ write_optfile(Module, !IO) :-
         module_info_get_trailing_info(Module, TrailingInfo),
         list.foldl(
             write_pragma_trailing_info(Module, TrailingInfo), 
+            PredIds, !IO),
+
+        module_info_get_mm_tabling_info(Module, TablingInfo),
+        list.foldl(
+            write_pragma_mm_tabling_info(Module, TablingInfo),
             PredIds, !IO),
 
         io.set_output_stream(OldStream, _, !IO),

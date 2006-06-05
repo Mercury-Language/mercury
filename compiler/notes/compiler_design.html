@@ -168,7 +168,7 @@ The command-line options are defined in the module options.m.
 mercury_compile.m calls library/getopt.m, passing the predicates
 defined in options.m as arguments, to parse them.  It then invokes
 handle_options.m to postprocess the option set.  The results are
-stored in the io__state, using the type globals defined in globals.m.
+stored in the io.state, using the type globals defined in globals.m.
 
 
 <h3> Build system </h3>
@@ -434,7 +434,7 @@ Handles typeclass and instance declarations.
 <dt>
 qual_info.m
 <dd>
-Handles the abstract data types used for module qualication.
+Handles the abstract data types used for module qualification.
 
 <dt>
 make_hlds_warn.m
@@ -518,7 +518,7 @@ and do something with each one.
 <dd> Utility routines for printing nicely formatted error messages
 for symptoms involving HLDS data structures.
 For symptoms involving only structures defined in prog_data,
-use parse_tree__error_util.
+use parse_tree.error_util.
 
 <dt> code_model.m:
 <dd> Defines a type for classifying determinisms
@@ -636,7 +636,7 @@ so that the compiler does the right thing for options such as
 	Currently all the compiler does is type check the assertions and
 	record for each predicate that is used in an assertion, which
 	assertion it is used in.  The set up of the assertion table occurs
-	in post_typecheck__finish_assertion.
+	in post_typecheck.finish_assertion.
 	<p>
 
 <dt> purity analysis
@@ -650,7 +650,7 @@ so that the compiler does the right thing for options such as
 	and to check for unbound type variables.
 	Elimination of double negation is also done here; that needs to
 	be done after quantification analysis and before mode analysis.
-	Calls to `private_builtin__unsafe_type_cast/2' are converted
+	Calls to `private_builtin.unsafe_type_cast/2' are converted
 	into `generic_call(unsafe_cast, ...)' goals here.
 	<p>
 
@@ -946,6 +946,19 @@ Trail usage analysis. (trailing_analysis.m)
 
 <p>
 
+Minimal model tabling analysis. (tabling_analysis.m)
+
+<ul>
+<li>
+	This pass annotates each goal in a module with information about
+	whether the goal calls procedures that are evaluated using 
+	minimal model tabling.  This information can be used to reduce
+	the overhead of minimal model tabling.
+
+</ul>
+
+<p>
+
 Most of the remaining HLDS-to-HLDS transformations are optimizations:
 
 <ul>
@@ -1205,8 +1218,8 @@ or perform LLDS-specific transformations on the HLDS:
 
 <dt> code generation for `pragma export' declarations (export.m)
 <dd> This is handled separately from the other parts of code generation.
-     mercury_compile.m calls the procedures `export__produce_header_file'
-     and `export__get_pragma_exported_procs' to produce C code fragments
+     mercury_compile.m calls the procedures `export.produce_header_file'
+     and `export.get_pragma_exported_procs' to produce C code fragments
      which declare/define the C functions which are the interface stubs
      for procedures exported to C.
 
@@ -1647,13 +1660,13 @@ The following modules are part of the libs.m package.
 		<dd>
 		Approximate topological sort.
 		This was once used for traversing the call graph,
-		but nowadays we use relation__atsort from library/relation.m.
+		but nowadays we use relation.atsort from library/relation.m.
 
 	</dl>
 
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2006-05-03 06:46:20 $ by $Author: zs $@cs.mu.oz.au. <br>
+Last update was $Date: 2006-06-05 02:26:12 $ by $Author: juliensf $@cs.mu.oz.au. <br>
 </body>
 </html>

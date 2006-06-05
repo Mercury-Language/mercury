@@ -231,6 +231,7 @@ ok_to_duplicate(dont_warn_singleton) = yes.
 ok_to_duplicate(duplicated_for_switch) = yes.
 ok_to_duplicate(mode_check_clauses_goal) = yes.
 ok_to_duplicate(will_not_modify_trail) = yes.
+ok_to_duplicate(will_not_call_mm_tabled) = yes.
 
     % Divide a list of goals into an initial subsequence of goals
     % that construct constants, and all other goals.

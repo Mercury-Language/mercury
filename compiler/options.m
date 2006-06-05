@@ -145,6 +145,7 @@
     ;       debug_trail_usage
     ;       debug_mode_constraints 
     ;       debug_intermodule_analysis
+    ;       debug_mm_tabling_analysis
 
     % Output options
     ;       make_short_interface
@@ -549,6 +550,7 @@
     ;       analyse_closures
     ;       analyse_trail_usage
     ;       optimize_trail_usage
+    ;       analyse_mm_tabling
     ;       untuple
     ;       tuple
     ;       tuple_trace_counts_file
@@ -893,7 +895,8 @@ option_defaults_2(verbosity_option, [
     debug_closure                       -   bool(no),
     debug_trail_usage                   -   bool(no),
     debug_mode_constraints              -   bool(no),
-    debug_intermodule_analysis          -   bool(no)
+    debug_intermodule_analysis          -   bool(no),
+    debug_mm_tabling_analysis           -   bool(no)
 ]).
 option_defaults_2(output_option, [
     % Output Options (mutually exclusive)
@@ -1176,9 +1179,8 @@ option_defaults_2(special_optimization_option, [
     analyse_exceptions                  -   bool(no),
     analyse_closures                    -   bool(no),
     analyse_trail_usage                 -   bool(no),
-    % XXX Change this to yes when trailing analysis is
-    % complete.
-    optimize_trail_usage                -   bool(no)
+    optimize_trail_usage                -   bool(no),
+    analyse_mm_tabling                  -   bool(no)
 ]).
 option_defaults_2(optimization_option, [
     % Optimization options
@@ -1599,10 +1601,10 @@ long_option("debug-closure",        debug_closure).
 long_option("debug-trail-usage",    debug_trail_usage).
 long_option("debug-mode-constraints", debug_mode_constraints).
 long_option("debug-intermodule-analysis",   debug_intermodule_analysis).
+long_option("debug-mm-tabling-analysis",    debug_mm_tabling_analysis).
 
 % output options (mutually exclusive)
-long_option("generate-source-file-mapping",
-                    generate_source_file_mapping).
+long_option("generate-source-file-mapping", generate_source_file_mapping).
 long_option("generate-dependency-file", generate_dependency_file).
 long_option("generate-dependencies",    generate_dependencies).
 long_option("generate-module-order",    generate_module_order).
@@ -1616,9 +1618,9 @@ long_option("make-optimization-interface", make_optimization_interface).
 long_option("make-optimisation-interface", make_optimization_interface).
 long_option("make-opt-int",     make_optimization_interface).
 long_option("make-transitive-optimization-interface",
-                    make_transitive_opt_interface).
+        make_transitive_opt_interface).
 long_option("make-transitive-optimisation-interface",
-                    make_transitive_opt_interface).
+        make_transitive_opt_interface).
 long_option("make-trans-opt",       make_transitive_opt_interface).
 long_option("make-analysis-registry",   make_analysis_registry).
 long_option("convert-to-mercury",   convert_to_mercury).
@@ -1637,7 +1639,7 @@ long_option("output-shared-lib-link-command", output_shared_lib_link_command).
 long_option("smart-recompilation",  smart_recompilation).
 long_option("assume-gmake",         assume_gmake).
 long_option("generate-mmc-make-module-dependencies",
-                    generate_mmc_make_module_dependencies).
+        generate_mmc_make_module_dependencies).
 long_option("generate-mmc-deps",    generate_mmc_make_module_dependencies).
 long_option("trace",                trace).
 long_option("trace-optimised",      trace_optimized).
@@ -1982,7 +1984,7 @@ long_option("analyse-closures",     analyse_closures).
 long_option("analyse-local-closures",   analyse_closures).
 long_option("analyse-trail-usage",      analyse_trail_usage).
 long_option("optimize-trail-usage",     optimize_trail_usage).
-long_option("optimise-trail-usage",     optimize_trail_usage).
+long_option("analyse-mm-tabling",       analyse_mm_tabling).
 long_option("untuple",              untuple).
 long_option("tuple",                tuple).
 long_option("tuple-trace-counts-file",  tuple_trace_counts_file).
@@ -4049,15 +4051,19 @@ options_help_hlds_hlds_optimization -->
         "\tEnable trail usage analysis.  Identify those",
         "\tprocedures that will not modify the trail.",
         "\tThis information is used to reduce the overhead",
-        "\tof trailing."
+        "\tof trailing.",
 % `--no-optimize-trail-usage' is a developer-only option.  It 
 % is intended for benchmarking the trail usage optimization.
 % Otherwise, it should not be turned off as doing so interferes with
 % the results of the trail usage analysis.
         %"--no-optimize-trail-usage",
         %"\tDo not try and restrict trailing to those parts",
-        %"\tof the program that actually use it."
-        % ,
+        %"\tof the program that actually use it.",
+        "--analyse-mm-tabling",
+        "\tIdentify those goals that do not call procedures",
+        "\tthat are evaluated using minimal model tabling.",
+        "\tThis information is used to reduce the overhead",
+        "\tof minimal model tabling."
         % "--untuple",
         % "\tExpand out procedure arguments when the argument type",
         % "\tis a tuple or a type with exactly one functor.",

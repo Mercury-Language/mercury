@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: hlds_module.m.
 % Main authors: fjh, conway.
-
+% 
 % This module defines the part of the High Level Data Structure or HLDS
 % that deals with issues that are wider than a single predicate.
-
+% 
 % The main data structures defined here are the types
 %
 %   module_info
@@ -19,7 +19,8 @@
 %   predicate_table
 %
 % There is a separate interface section for each of these.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.hlds_module.
@@ -120,7 +121,26 @@
 :- type proc_trailing_info
     --->    proc_trailing_info(
                 proc_trailing_status :: trailing_status,
-                proc_maybe_trail_analysis_status  :: maybe(analysis_status)
+                proc_maybe_trail_analysis_status :: maybe(analysis_status)
+            ).
+
+    % Map from a proc to a indication of whether or not it (or one of 
+    % its subgoals) calls a procedure that is tabled using minimal
+    % model tabling.
+    %
+:- type mm_tabling_info == map(pred_proc_id, proc_mm_tabling_info).
+
+:- type proc_mm_tabling_info
+    --->    proc_mm_tabling_info(
+                proc_mm_status :: mm_tabling_status,
+                % The tabling status for this procedures as determined
+                % by tabling analysis.
+                
+                proc_mm_analysis_status :: maybe(analysis_status)
+                % The status of the tabling analysis results for this
+                % procedure.  This is used by the intermodule-analysis
+                % framework to determine if there is any benefit in
+                % re-analysing this procedure.
             ).
 
     % List of procedures for which there are user-requested type
@@ -381,6 +401,9 @@
 :- pred module_info_get_trailing_info(module_info::in, trailing_info::out)
     is det.
 
+:- pred module_info_get_mm_tabling_info(module_info::in, mm_tabling_info::out)
+    is det.
+
 :- pred module_info_set_proc_requests(proc_requests::in,
     module_info::in, module_info::out) is det.
 
@@ -391,6 +414,9 @@
     module_info::in, module_info::out) is det.
 
 :- pred module_info_set_trailing_info(trailing_info::in,
+    module_info::in, module_info::out) is det.
+
+:- pred module_info_set_mm_tabling_info(mm_tabling_info::in,
     module_info::in, module_info::out) is det.
 
 :- pred module_info_set_num_errors(int::in, module_info::in, module_info::out)
@@ -671,6 +697,12 @@
                 % NOTE: this includes opt_imported procedures.
                 trailing_info               :: trailing_info,
 
+                % Information about if procedures in the current module make
+                % calls to procedures that are evaluted using minimal model
+                % tabling.
+                % NOTE: this includes opt_imported procedures.
+                mm_tabling_info             :: mm_tabling_info,
+
                 % How many lambda expressions there are at different contexts
                 % in the module. This is used to uniquely identify lambda
                 % expressions that appear on the same line of the same file.
@@ -731,6 +763,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
     map.init(UnusedArgInfo),
     map.init(ExceptionInfo),
     map.init(TrailingInfo),
+    map.init(MM_TablingInfo),
 
     set.init(TypeSpecPreds),
     set.init(TypeSpecForcePreds),
@@ -755,7 +788,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
     map.init(NoTagTypes),
     ModuleSubInfo = module_sub_info(Name, Globals, no, [], [], [], [], no, 0,
         [], [], StratPreds, UnusedArgInfo, ExceptionInfo, TrailingInfo,
-        map.init, counter.init(1), ImportedModules,
+        MM_TablingInfo, map.init, counter.init(1), ImportedModules,
         IndirectlyImportedModules, TypeSpecInfo, NoTagTypes, no, [],
         init_analysis_info(mmc), [], [], structure_reuse_info(map.init)),
     ModuleInfo = module_info(ModuleSubInfo, PredicateTable, Requests,
@@ -829,6 +862,7 @@ module_info_get_stratified_preds(MI, MI ^ sub_info ^ must_be_stratified_preds).
 module_info_get_unused_arg_info(MI, MI ^ sub_info ^ unused_arg_info).
 module_info_get_exception_info(MI, MI ^ sub_info ^ exception_info).
 module_info_get_trailing_info(MI, MI ^ sub_info ^ trailing_info).
+module_info_get_mm_tabling_info(MI, MI ^ sub_info ^ mm_tabling_info).
 module_info_get_lambdas_per_context(MI, MI ^ sub_info ^ lambdas_per_context).
 module_info_get_model_non_pragma_counter(MI,
     MI ^ sub_info ^ model_non_pragma_counter).
@@ -932,6 +966,8 @@ module_info_set_exception_info(NewVal, MI,
     MI ^ sub_info ^ exception_info := NewVal).
 module_info_set_trailing_info(NewVal, MI,
     MI ^ sub_info ^ trailing_info := NewVal).
+module_info_set_mm_tabling_info(NewVal, MI,
+    MI ^ sub_info ^ mm_tabling_info := NewVal).
 module_info_set_lambdas_per_context(NewVal, MI,
     MI ^ sub_info ^ lambdas_per_context := NewVal).
 module_info_set_model_non_pragma_counter(NewVal, MI,

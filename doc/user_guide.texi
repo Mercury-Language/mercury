@@ -7183,6 +7183,14 @@ procedures that will not modify the trail.
 This information is used to reduce the overhead
 of trailing.
 
+@sp 1
+@item --analyse-mm-tabling
+@findex --analyse-mm-tabling
+Identify those goals that do not calls procedures
+that are evaluated using minimal model tabling.
+This information is used to reduce the overhead
+of minimal model tabling.
+
 @c @sp 1
 @c @item --untuple
 @c @findex --untuple

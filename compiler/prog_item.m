@@ -474,6 +474,16 @@
             )
                 % PredName, Arity, Mode number, Trailing status.
                 % Should on appear in `.opt' or `.trans_opt' files.
+   
+    ;       mm_tabling_info(
+                mm_tabling_info_p_or_f  :: pred_or_func,
+                mm_tabling_info_name    :: sym_name,
+                mm_tabling_info_arity   :: arity,
+                mm_tabling_info_mode    :: mode_num,
+                mm_tabling_info_status  :: mm_tabling_status
+            )
+                % PredName, Arity, Mode number, MM Tabling status.
+                % Should on appear in `.opt' or `.trans_opt' files.
     
     %
     % Diagnostics pragmas (pragmas related to compiler warnings/errors)

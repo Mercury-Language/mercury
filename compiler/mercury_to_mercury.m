@@ -161,6 +161,9 @@
 :- pred mercury_output_pragma_trailing_info(pred_or_func::in, sym_name::in,
     arity::in, mode_num::in, trailing_status::in, io::di, io::uo) is det.
 
+:- pred mercury_output_pragma_mm_tabling_info(pred_or_func::in, sym_name::in,
+    arity::in, mode_num::in, mm_tabling_status::in, io::di, io::uo) is det.
+
     % Output the given foreign_decl declaration.
     %
 :- pred mercury_output_pragma_foreign_decl(foreign_language::in,
@@ -609,6 +612,11 @@ mercury_output_item(_UnqualifiedItemNames, pragma(_, Pragma), Context, !IO) :-
             TrailingStatus),
         mercury_output_pragma_trailing_info(PredOrFunc, PredName, Arity,
             ModeNum, TrailingStatus, !IO)
+    ;
+        Pragma = mm_tabling_info(PredOrFunc, PredName, Arity, ModeNum,
+            MM_TablingStatus),
+        mercury_output_pragma_mm_tabling_info(PredOrFunc, PredName, Arity,
+            ModeNum, MM_TablingStatus, !IO)
     ;
         Pragma = fact_table(Pred, Arity, FileName),
         mercury_format_pragma_fact_table(Pred, Arity, FileName, !IO)
@@ -3335,6 +3343,31 @@ mercury_output_pragma_trailing_info(PredOrFunc, SymName, Arity, ModeNum,
     ;
         TrailingStatus = conditional,
         io.write_string("conditional", !IO)
+    ),
+    io.write_string(").\n", !IO).
+
+%-----------------------------------------------------------------------------%
+
+mercury_output_pragma_mm_tabling_info(PredOrFunc, SymName, Arity, ModeNum,
+        MM_TablingStatus, !IO) :-
+    io.write_string(":- pragma mm_tabling_info(", !IO),
+    write_pred_or_func(PredOrFunc, !IO),
+    io.write_string(", ", !IO),
+    mercury_output_bracketed_sym_name(SymName, !IO),
+    io.write_string(", ", !IO),
+    io.write_int(Arity, !IO),
+    io.write_string(", ", !IO),
+    io.write_int(ModeNum, !IO),
+    io.write_string(", ", !IO),
+    (
+        MM_TablingStatus = mm_tabled_may_call,
+        io.write_string("mm_tabled_may_call", !IO)
+    ;
+        MM_TablingStatus = mm_tabled_will_not_call,
+        io.write_string("mm_tabled_will_not_call", !IO)
+    ;
+        MM_TablingStatus = mm_tabled_conditional,
+        io.write_string("mm_tabled_conditional", !IO)
     ),
     io.write_string(").\n", !IO).
 

@@ -1204,6 +1204,47 @@ parse_pragma_type(ModuleName, "trailing_info", PragmaTerms, ErrorTerm,
         Result = error("error in `:- pragma trailing_info'", ErrorTerm)
     ).
 
+parse_pragma_type(ModuleName, "mm_tabling_info", PragmaTerms, ErrorTerm,
+        _VarSet, Result) :-
+    (
+        PragmaTerms = [
+            PredOrFuncTerm,
+            PredNameTerm,
+            term.functor(term.integer(Arity), [], _),
+            term.functor(term.integer(ModeNum), [], _),
+            MM_TablingStatusTerm
+        ],
+        (
+            PredOrFuncTerm = term.functor(term.atom("predicate"), [], _),
+            PredOrFunc = predicate
+        ;
+            PredOrFuncTerm = term.functor(term.atom("function"), [], _),
+            PredOrFunc = function
+        ),
+        parse_implicitly_qualified_term(ModuleName, PredNameTerm,
+            ErrorTerm, "`:- pragma mm_tabling_info' declaration",
+            PredNameResult),
+        PredNameResult = ok(PredName, []),
+        (
+            MM_TablingStatusTerm = term.functor(
+                term.atom("mm_tabled_will_not_call"), [], _),
+            MM_TablingStatus = mm_tabled_will_not_call
+        ;
+            MM_TablingStatusTerm = term.functor(
+                term.atom("mm_tabled_may_call"), [], _),
+            MM_TablingStatus = mm_tabled_may_call
+        ;
+            MM_TablingStatusTerm = term.functor(
+                term.atom("mm_tabled_conditional"), [], _),
+            MM_TablingStatus = mm_tabled_conditional
+        )
+    ->
+        Result = ok(pragma(user, mm_tabling_info(PredOrFunc, PredName,
+            Arity, ModeNum, MM_TablingStatus)))
+    ;
+        Result = error("error in `:- pragma mm_tabling_info'", ErrorTerm)
+    ).
+
 parse_pragma_type(ModuleName, "mode_check_clauses", PragmaTerms, ErrorTerm,
         _VarSet, Result) :-
     parse_simple_pragma(ModuleName, "mode_check_clauses",
@@ -1302,6 +1343,7 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
     ;       will_not_throw_exception
     ;       ordinary_despite_detism
     ;       may_modify_trail(may_modify_trail)
+    ;       may_call_mm_tabled(may_call_mm_tabled)
     ;       box_policy(box_policy).
 
 :- pred parse_pragma_foreign_proc_attributes_term(foreign_language::in,
@@ -1341,6 +1383,8 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Term,
         terminates(depends_on_mercury_calls) - terminates(does_not_terminate),
         may_modify_trail(may_modify_trail) -
             may_modify_trail(will_not_modify_trail),
+        may_call_mercury(will_not_call_mercury) -
+            may_call_mm_tabled(may_call_mm_tabled),
         box_policy(native_if_possible) - box_policy(always_boxed)
     ],
     (
@@ -1390,6 +1434,8 @@ process_attribute(ordinary_despite_detism, !Attrs) :-
     set_ordinary_despite_detism(yes, !Attrs).
 process_attribute(may_modify_trail(TrailMod), !Attrs) :-
     set_may_modify_trail(TrailMod, !Attrs).
+process_attribute(may_call_mm_tabled(MayCallTabled), !Attrs) :-
+    set_may_call_mm_tabled(MayCallTabled, !Attrs).
 process_attribute(box_policy(BoxPolicy), !Attrs) :-
     set_box_policy(BoxPolicy, !Attrs).
 
@@ -1464,6 +1510,8 @@ parse_single_pragma_foreign_proc_attribute(Term, Flag) :-
         Flag = ordinary_despite_detism
     ; parse_may_modify_trail(Term, TrailMod) ->
         Flag = may_modify_trail(TrailMod)
+    ; parse_may_call_mm_tabled(Term, CallsTabled) ->
+        Flag = may_call_mm_tabled(CallsTabled)
     ; parse_box_policy(Term, BoxPolicy) ->
         Flag = box_policy(BoxPolicy)
     ;
@@ -1496,6 +1544,13 @@ parse_may_modify_trail(term.functor(term.atom("may_modify_trail"), [], _),
     may_modify_trail).
 parse_may_modify_trail(term.functor(term.atom("will_not_modify_trail"), [], _),
     will_not_modify_trail).
+    
+:- pred parse_may_call_mm_tabled(term::in, may_call_mm_tabled::out) is semidet.
+
+parse_may_call_mm_tabled(Term, may_call_mm_tabled) :-
+    Term = term.functor(term.atom("may_call_mm_tabled"), [], _).
+parse_may_call_mm_tabled(Term, will_not_call_mm_tabled) :-
+    Term = term.functor(term.atom("will_not_call_mm_tabled"), [], _).
 
 :- pred parse_box_policy(term::in, box_policy::out) is semidet.
 

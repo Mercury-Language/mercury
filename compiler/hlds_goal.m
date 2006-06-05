@@ -1019,11 +1019,18 @@
                             % thousand). This feature may be attached to
                             % switches as well as disjunctions.
 
-    ;       will_not_modify_trail.
+    ;       will_not_modify_trail
                             % This goal will not modify the trail, so it
                             % is safe for the compiler to omit trailing
                             % primitives when generating code for this goal.
-
+    
+    ;       will_not_call_mm_tabled.
+                            % This goal will never call a procedure that
+                            % is evaluted using minimal model tabling.  It
+                            % is safe for the code generator to omit the
+                            % pneg context wrappers when generating code for
+                            % this goal.
+   
     % We can think of the goal that defines a procedure to be a tree,
     % whose leaves are primitive goals and whose interior nodes are
     % compound goals. These two types describe the position of a goal

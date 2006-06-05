@@ -579,6 +579,8 @@ is_pred_pragma(unused_args(PredOrFunc, Name, Arity, _, _),
 is_pred_pragma(exceptions(PredOrFunc, Name, Arity, _, _),
         yes(yes(PredOrFunc) - Name / Arity)).
 is_pred_pragma(trailing_info(PredOrFunc, Name, Arity, _, _),
+		yes(yes(PredOrFunc) - Name / Arity)).
+is_pred_pragma(mm_tabling_info(PredOrFunc, Name, Arity, _, _),
         yes(yes(PredOrFunc) - Name / Arity)).
 is_pred_pragma(fact_table(Name, Arity, _), yes(no - Name / Arity)).
 is_pred_pragma(reserve_tag(_TypeName, _TypeArity), no).

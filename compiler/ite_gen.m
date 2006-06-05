@@ -410,6 +410,8 @@ make_pneg_context_wrappers(Globals, GoalInfo, PNegCondCode, PNegThenCode,
         UseMinimalModelStackCopyPNeg),
     (
         UseMinimalModelStackCopyPNeg = yes,
+        not goal_info_has_feature(GoalInfo, will_not_call_mm_tabled)
+    ->      
         goal_info_get_context(GoalInfo, Context),
         term.context_file(Context, File),
         term.context_line(Context, Line),
@@ -450,7 +452,6 @@ make_pneg_context_wrappers(Globals, GoalInfo, PNegCondCode, PNegThenCode,
                 no, no, no, no, yes, yes) - ""
         ])
     ;
-        UseMinimalModelStackCopyPNeg = no,
         PNegCondCode = empty,
         PNegThenCode = empty,
         PNegElseCode = empty

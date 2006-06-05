@@ -2126,6 +2126,7 @@ pragma_allowed_in_interface(promise_equivalent_clauses(_, _), no).
 pragma_allowed_in_interface(unused_args(_, _, _, _, _), no).
 pragma_allowed_in_interface(exceptions(_, _, _, _, _), no).
 pragma_allowed_in_interface(trailing_info(_, _, _, _, _), no).
+pragma_allowed_in_interface(mm_tabling_info(_, _, _, _, _), no).
 pragma_allowed_in_interface(type_spec(_, _, _, _, _, _, _, _), yes).
 pragma_allowed_in_interface(termination_info(_, _, _, _, _), yes).
 pragma_allowed_in_interface(termination2_info(_,_, _, _, _, _), yes).
@@ -7648,6 +7649,7 @@ reorderable_item(pragma(_, Pragma)) = Reorderable :-
     ; Pragma = does_not_terminate(_, _), Reorderable = yes
     ; Pragma = exceptions(_, _, _, _, _), Reorderable = yes
     ; Pragma = trailing_info(_, _, _, _, _), Reorderable = yes
+    ; Pragma = mm_tabling_info(_, _, _, _, _), Reorderable = yes
     ; Pragma = export(_, _, _, _), Reorderable = yes
     ; Pragma = fact_table(_, _, _), Reorderable = no
     ; Pragma = foreign_code(_, _), Reorderable = no
@@ -7752,6 +7754,7 @@ chunkable_item(pragma(_, Pragma)) = Reorderable :-
     ; Pragma = structure_sharing(_, _, _, _, _, _), Reorderable = yes
     ; Pragma = structure_reuse(_, _, _, _, _, _, _), Reorderable = yes
     ; Pragma = trailing_info(_, _, _, _, _), Reorderable = yes
+    ; Pragma = mm_tabling_info(_, _, _, _, _), Reorderable = yes
     ; Pragma = type_spec(_, _, _, _, _, _, _, _), Reorderable = yes
     ; Pragma = unused_args(_, _, _, _, _), Reorderable = yes
     ).

@@ -6287,6 +6287,18 @@ efficient code for that procedure.  In compilation grades that do not
 support trailing this attribute is ignored.  The default, in case 
 none is specified, is @samp{may_modify_trail}.
 
+@item @samp{will_not_call_mm_tabled/may_call_mm_tabled}
+This attribute declares whether or not a foreign procedure makes calls back to
+Mercury procedures that are evaluated using minimal model tabling (see
+@ref{Tabled evaluation}).  Specifying that a foreign procedure will not call
+procedures evaluated using minimal model tabling may allow the compiler to
+generate more efficient code.  In compilation grades that do not support
+minimal model tabling this attribute is ignored.  These attributes may not be
+used with procedures that do not make calls back to Mercury, i.e. that have
+the @samp{will_not_call_mercury} attribute.  The default for foreign
+procedures that @samp{may_call_mercury}, in case none is specified, is
+@samp{may_call_mm_tabled}.
+
 @end table
 
 @c -----------------------------------------------------------------------

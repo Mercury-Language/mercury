@@ -449,6 +449,16 @@
 
 %-----------------------------------------------------------------------------%
 %
+% Stuff for minimal model tabling analysis
+%
+
+:- type mm_tabling_status
+    --->    mm_tabled_may_call 
+    ;       mm_tabled_will_not_call
+    ;       mm_tabled_conditional.
+
+%-----------------------------------------------------------------------------%
+%
 % Stuff for the `type_spec' pragma
 %
 
@@ -642,6 +652,8 @@
     may_throw_exception.
 :- func ordinary_despite_detism(pragma_foreign_proc_attributes) = bool.
 :- func may_modify_trail(pragma_foreign_proc_attributes) = may_modify_trail.
+:- func may_call_mm_tabled(pragma_foreign_proc_attributes) = 
+    may_call_mm_tabled.
 :- func box_policy(pragma_foreign_proc_attributes) = box_policy.
 :- func extra_attributes(pragma_foreign_proc_attributes)
     = pragma_foreign_proc_extra_attributes.
@@ -686,6 +698,10 @@
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
+:- pred set_may_call_mm_tabled(may_call_mm_tabled::in,
+    pragma_foreign_proc_attributes::in,
+    pragma_foreign_proc_attributes::out) is det.
+
 :- pred set_box_policy(box_policy::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
@@ -723,6 +739,20 @@
     --->    may_modify_trail
     ;       will_not_modify_trail.
 
+:- type may_call_mm_tabled
+    --->    may_call_mm_tabled
+            % The foreign code may make callbacks to minimal model tabled
+            % procedures.
+            
+    ;       will_not_call_mm_tabled
+            % The foreign code may make callbacks to Mercury, but they will
+            % not be to minimal model tabled code.
+    
+    ;       default_calls_mm_tabled. 
+            % If either of the above are not specified:
+            %   - for `will_not_call_mercury' set `will_not_call_mm_tabled'
+            %   - for `may_call_mercury' set `may_call_mm_tabled'
+    
 :- type pragma_var
     --->    pragma_var(prog_var, string, mer_mode, box_policy).
             % variable, name, mode
@@ -1426,6 +1456,7 @@
                 legacy_purity_behaviour :: bool,
                 ordinary_despite_detism :: bool,
                 may_modify_trail        :: may_modify_trail,
+                may_call_mm_tabled      :: may_call_mm_tabled,
                 box_policy              :: box_policy,
                 extra_attributes        ::
                                 list(pragma_foreign_proc_extra_attribute)
@@ -1435,7 +1466,7 @@ default_attributes(Language) =
     attributes(Language, may_call_mercury, not_thread_safe,
         not_tabled_for_io, purity_impure, depends_on_mercury_calls,
         default_exception_behaviour, no, no, may_modify_trail,
-        native_if_possible, []).
+        default_calls_mm_tabled, native_if_possible, []).
 
 set_may_call_mercury(MayCallMercury, Attrs0, Attrs) :-
     Attrs = Attrs0 ^ may_call_mercury := MayCallMercury.
@@ -1457,6 +1488,8 @@ set_ordinary_despite_detism(OrdinaryDespiteDetism, Attrs0, Attrs) :-
     Attrs = Attrs0 ^ ordinary_despite_detism := OrdinaryDespiteDetism.
 set_may_modify_trail(MayModifyTrail, Attrs0, Attrs) :-
     Attrs = Attrs0 ^ may_modify_trail := MayModifyTrail.
+set_may_call_mm_tabled(MayCallMM_Tabled, Attrs0, Attrs) :-
+    Attrs = Attrs0 ^ may_call_mm_tabled := MayCallMM_Tabled.
 set_box_policy(BoxPolicyStr, Attrs0, Attrs) :-
     Attrs = Attrs0 ^ box_policy := BoxPolicyStr.
 
@@ -1466,7 +1499,8 @@ attributes_to_strings(Attrs) = StringList :-
     % is at the start of the pragma.
     Attrs = attributes(_Lang, MayCallMercury, ThreadSafe, TabledForIO,
         Purity, Terminates, Exceptions, _LegacyBehaviour,
-        OrdinaryDespiteDetism, MayModifyTrail, BoxPolicy, ExtraAttributes),
+        OrdinaryDespiteDetism, MayModifyTrail, MayCallMM_Tabled,
+        BoxPolicy, ExtraAttributes),
     (
         MayCallMercury = may_call_mercury,
         MayCallMercuryStr = "may_call_mercury"
@@ -1539,6 +1573,16 @@ attributes_to_strings(Attrs) = StringList :-
         MayModifyTrailStrList = ["will_not_modify_trail"]
     ),
     (
+        MayCallMM_Tabled = may_call_mm_tabled,
+        MayCallMM_TabledStrList = ["may_call_mm_tabled"]
+    ;
+        MayCallMM_Tabled = will_not_call_mm_tabled,
+        MayCallMM_TabledStrList =["will_not_call_mm_tabled"]
+    ;
+        MayCallMM_Tabled = default_calls_mm_tabled,
+        MayCallMM_TabledStrList = []
+    ),
+    (
         BoxPolicy = native_if_possible,
         BoxPolicyStr = []
     ;
@@ -1548,7 +1592,8 @@ attributes_to_strings(Attrs) = StringList :-
     StringList = [MayCallMercuryStr, ThreadSafeStr, TabledForIOStr |
         PurityStrList] ++ TerminatesStrList ++ ExceptionsStrList ++
         OrdinaryDespiteDetismStrList ++ MayModifyTrailStrList ++
-        BoxPolicyStr ++ list.map(extra_attribute_to_string, ExtraAttributes).
+        MayCallMM_TabledStrList ++ BoxPolicyStr ++
+        list.map(extra_attribute_to_string, ExtraAttributes).
 
 add_extra_attribute(NewAttribute, Attributes0,
     Attributes0 ^ extra_attributes :=

@@ -51,6 +51,7 @@
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 :- import_module transform_hlds.exception_analysis.
+:- import_module transform_hlds.tabling_analysis.
 :- import_module transform_hlds.trailing_analysis.
 :- import_module transform_hlds.unused_args.
 
@@ -66,6 +67,11 @@
 
 :- instance compiler(mmc) where [
     compiler_name(mmc) = "mmc",
+
+    analyses(mmc, "mm_tabling_analysis") =
+        'new analysis_type'(
+            unit1 : unit(any_call),
+            unit1 : unit(mm_tabling_analysis_answer)),
 
     analyses(mmc, "trail_usage") =
         'new analysis_type'(

@@ -5,16 +5,17 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: mercury_compile.m.
 % Main authors: fjh, zs.
-
+% 
 % This is the top-level of the Mercury compiler.
-
+% 
 % This module invokes the different passes of the compiler as appropriate.
 % The constraints on pass ordering are documented in
 % compiler/notes/compiler_design.html.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module top_level.mercury_compile.
@@ -75,6 +76,7 @@
 :- import_module transform_hlds.term_constr_main.
 :- import_module transform_hlds.exception_analysis.
 :- import_module transform_hlds.trailing_analysis.
+:- import_module transform_hlds.tabling_analysis.
 :- import_module transform_hlds.higher_order.
 :- import_module transform_hlds.accumulator.
 :- import_module transform_hlds.tupling.
@@ -2048,6 +2050,8 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
         ClosureAnalysis),
     globals.lookup_bool_option(Globals, analyse_trail_usage,
         TrailingAnalysis),
+    globals.lookup_bool_option(Globals, analyse_mm_tabling,
+        TablingAnalysis),
     (
         MakeOptInt = yes,
         intermod.write_optfile(!HLDS, !IO),
@@ -2062,6 +2066,7 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
             ; Termination2 = yes
             ; ExceptionAnalysis = yes
             ; TrailingAnalysis = yes
+            ; TablingAnalysis = yes
             ; SharingAnalysis = yes
             ; ReuseAnalysis = yes
             )
@@ -2104,6 +2109,18 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
                     Termination2 = no
                 ),
                 (
+                    TrailingAnalysis = yes,
+                    maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO)
+                ;
+                    TrailingAnalysis = no
+                ),
+                (
+                    TablingAnalysis = yes,
+                    maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO)
+                ;
+                    TablingAnalysis = no
+                ),
+                (
                     SharingAnalysis = yes,
                     maybe_structure_sharing_analysis(Verbose, Stats,
                         !HLDS, !IO)
@@ -2116,12 +2133,6 @@ maybe_write_optfile(MakeOptInt, !HLDS, !DumpInfo, !IO) :-
                         !HLDS, !IO)
                 ;
                     ReuseAnalysis = no
-                ),
-                (
-                    TrailingAnalysis = yes,
-                    maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO)
-                ;
-                    TrailingAnalysis = no
                 )
             ;
                 io.set_exit_status(1, !IO)
@@ -2188,15 +2199,16 @@ output_trans_opt_file(!.HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 121, "termination_2", !DumpInfo, !IO),
     maybe_analyse_trail_usage(Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(!.HLDS, 167, "trail_usage", !DumpInfo, !IO),
+    maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 200, "mm_tabling_analysis", !DumpInfo, !IO),
     maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 193, "structure_sharing", !DumpInfo, !IO),
+    maybe_dump_hlds(!.HLDS, 210, "structure_sharing", !DumpInfo, !IO),
     maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 194, "structure_reuse", !DumpInfo, !IO),
+    maybe_dump_hlds(!.HLDS, 212, "structure_reuse", !DumpInfo, !IO),
     trans_opt.write_optfile(!.HLDS, !IO).
 
-:- pred output_analysis_file(module_name::in,
-    module_info::in, dump_info::in, dump_info::out,
-    io::di, io::uo) is det.
+:- pred output_analysis_file(module_name::in, module_info::in,
+    dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 output_analysis_file(ModuleName, !.HLDS, !DumpInfo, !IO) :-
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
@@ -2400,13 +2412,16 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     maybe_dump_hlds(!.HLDS, 175, "lco", !DumpInfo, !IO),
 
     maybe_eliminate_dead_procs(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 192, "dead_procs", !DumpInfo, !IO),
+    maybe_dump_hlds(!.HLDS, 190, "dead_procs", !DumpInfo, !IO),
+   
+    maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 200, "mm_tabling_analysis", !DumpInfo, !IO),
 
     maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO), 
-    maybe_dump_hlds(!.HLDS, 193, "structure_sharing", !DumpInfo, !IO), 
+    maybe_dump_hlds(!.HLDS, 210, "structure_sharing", !DumpInfo, !IO), 
 
     maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO), 
-    maybe_dump_hlds(!.HLDS, 194, "structure_reuse", !DumpInfo, !IO), 
+    maybe_dump_hlds(!.HLDS, 212, "structure_reuse", !DumpInfo, !IO), 
     
     % If we are compiling in a deep profiling grade then now rerun simplify.
     % The reason for doing this now is that we want to take advantage of any
@@ -2416,26 +2431,26 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
     %
     simplify(no, pre_prof_transforms, Verbose, Stats,
         process_all_nonimported_procs, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 197, "pre_prof_transform_simplify", !DumpInfo,
+    maybe_dump_hlds(!.HLDS, 215, "pre_prof_transform_simplify", !DumpInfo,
         !IO),
 
     % The term size profiling transformation should be after all
     % transformations that construct terms of non-zero size. (Deep profiling
     % does not construct non-zero size terms.)
     maybe_term_size_prof(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 200, "term_size_prof", !DumpInfo, !IO),
+    maybe_dump_hlds(!.HLDS, 220, "term_size_prof", !DumpInfo, !IO),
 
     % Deep profiling transformation should be done late in the piece
     % since it munges the code a fair amount and introduces strange
     % disjunctions that might confuse other hlds->hlds transformations.
     maybe_deep_profiling(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 205, "deep_profiling", !DumpInfo, !IO),
+    maybe_dump_hlds(!.HLDS, 225, "deep_profiling", !DumpInfo, !IO),
 
     % Experimental complexity transformation should be done late in the
     % piece for the same reason as deep profiling. At the moment, they are
     % exclusive.
     maybe_experimental_complexity(Verbose, Stats, !HLDS, !IO),
-    maybe_dump_hlds(!.HLDS, 210, "complexity", !DumpInfo, !IO),
+    maybe_dump_hlds(!.HLDS, 230, "complexity", !DumpInfo, !IO),
 
     maybe_dump_hlds(!.HLDS, 299, "middle_pass", !DumpInfo, !IO).
 
@@ -2846,10 +2861,27 @@ check_determinism(Verbose, Stats, !HLDS, FoundError, !IO) :-
     ),
     maybe_report_stats(Stats, !IO).
 
-:- pred mercury_compile.maybe_closure_analysis(bool::in, bool::in,
+:- pred maybe_analyse_mm_tabling(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-mercury_compile.maybe_closure_analysis(Verbose, Stats, !HLDS, !IO) :-
+maybe_analyse_mm_tabling(Verbose, Stats, !HLDS, !IO) :-
+    globals.io_lookup_bool_option(analyse_mm_tabling, TablingAnalysis,
+        !IO),
+    (
+        TablingAnalysis = yes,
+        maybe_write_string(Verbose, "% Analysing minimal model tabling...\n",
+            !IO),
+        analyse_mm_tabling_in_module(!HLDS, !IO),
+        maybe_write_string(Verbose, "% done.\n", !IO),
+        maybe_report_stats(Stats, !IO)
+    ;
+        TablingAnalysis = no
+    ).
+
+:- pred maybe_closure_analysis(bool::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+maybe_closure_analysis(Verbose, Stats, !HLDS, !IO) :-
     globals.io_lookup_bool_option(analyse_closures, ClosureAnalysis,
         !IO),
     (
