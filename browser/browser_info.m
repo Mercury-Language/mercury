@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: browser_info.m
 % Main author: Mark Brown
-
+% 
 % Basic data structures used by the browser.
-
+% 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -326,6 +326,7 @@
     int::out, bool::out) is cc_multi.
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -339,6 +340,7 @@
 :- import_module string.
 :- import_module type_desc.
 
+%---------------------------------------------------------------------------%
 
 :- pragma export(init_persistent_state(out),
     "ML_BROWSE_init_persistent_state").
@@ -646,13 +648,13 @@ set_browser_param_maybe_caller_type(FromBrowser, MaybeCallerType,
 set_browser_param_from_option_table(FromBrowser, OptionTable, Setting,
         !State) :-
     set_browser_param(FromBrowser,
-        lookup_bool_option(OptionTable, set_print):bool,
-        lookup_bool_option(OptionTable, set_browse):bool,
-        lookup_bool_option(OptionTable, set_print_all):bool,
-        lookup_bool_option(OptionTable, set_flat):bool,
-        lookup_bool_option(OptionTable, set_raw_pretty):bool,
-        lookup_bool_option(OptionTable, set_verbose):bool,
-        lookup_bool_option(OptionTable, set_pretty):bool,
+        lookup_bool_option(OptionTable, set_print)      : bool,
+        lookup_bool_option(OptionTable, set_browse)     : bool,
+        lookup_bool_option(OptionTable, set_print_all)  : bool,
+        lookup_bool_option(OptionTable, set_flat)       : bool,
+        lookup_bool_option(OptionTable, set_raw_pretty) : bool,
+        lookup_bool_option(OptionTable, set_verbose)    : bool,
+        lookup_bool_option(OptionTable, set_pretty)     : bool,
         Setting, !State).
 
 :- pred affected_caller_types(bool::in, maybe(browse_caller_type)::in,
