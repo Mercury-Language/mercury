@@ -5,16 +5,15 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: declarative_user.m.
 % Author: Mark Brown.
-
-% Purpose:
-%   This module performs all the user interaction of the front
-% end of the declarative debugger.  It is responsible for displaying
-% questions and bugs in a human-readable format, and for getting
-% responses to debugger queries from the user.
-
+% 
+% This module performs all the user interaction of the front end of the
+% declarative debugger.  It is responsible for displaying questions and bugs
+% in a human-readable format, and for getting responses to debugger queries
+% from the user.
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -40,9 +39,9 @@
     ;       trust_module(decl_question(T))
 
     ;       show_info(io.output_stream)
-            % Request that the analyser display some information
-            % about the state of the search and the current
-            % question to the given output stream.
+            % Request that the analyser display some information about the
+            % state of the search and the current question to the given output
+            % stream.
 
     ;       change_search(user_search_mode)
             % Request that a new search strategy be used.
@@ -198,7 +197,7 @@
                 browser             :: browser_persistent_state,
 
                 % Yes if the question should be displayed when querying
-                % the user. This is used to supress the displaying of the
+                % the user. This is used to suppress the displaying of the
                 % question after the user issues a command which does not
                 % answer the question (such as an `info' command).
                 display_question    :: bool,
@@ -910,7 +909,7 @@ cmd_handler("depth",    format_param_arg_cmd("depth")).
 cmd_handler("size",     format_param_arg_cmd("size")).
 cmd_handler("width",    format_param_arg_cmd("width")).
 cmd_handler("lines",    format_param_arg_cmd("lines")).
-cmd_handler("num_io_actions",  num_io_actions_cmd).
+cmd_handler("actions",  num_io_actions_cmd).
 % cmd_handler("xml_browser_cmd", set_xml_browser_cmd_cmd).
 % cmd_handler("xml_tmp_filename", set_xml_tmp_filename_cmd).
 cmd_handler("t",        trust_arg_cmd).
@@ -918,6 +917,7 @@ cmd_handler("trust",    trust_arg_cmd).
 cmd_handler("mode",     search_mode_cmd).
 cmd_handler("m",        search_mode_cmd).
 cmd_handler("undo",     one_word_cmd(undo)).
+cmd_handler("params",   one_word_cmd(param_command(print_params))).
 
 :- func one_word_cmd(user_command::in, list(string)::in) = (user_command::out)
     is semidet.

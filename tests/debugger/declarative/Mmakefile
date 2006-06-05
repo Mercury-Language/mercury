@@ -19,6 +19,7 @@ DECLARATIVE_PROGS=		\
 	comp_gen		\
 	confirm_abort		\
 	change_search		\
+	dd_params		\
 	deep_warning		\
 	dependency		\
 	dependency2		\
@@ -260,6 +261,10 @@ confirm_abort.out: confirm_abort confirm_abort.inp
 change_search.out: change_search change_search.inp
 	$(MDB_STD) ./change_search < change_search.inp \
 		> change_search.out 2>&1 \
+	|| { grep . $@ /dev/null; exit 1; }
+
+dd_params.out: dd_params dd_params.inp
+	$(MDB) ./dd_params < dd_params.inp > dd_params.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
 deep_warning.out: deep_warning deep_warning.inp

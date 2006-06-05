@@ -169,7 +169,8 @@
 
     % If the term browser is called from the external debugger, the term
     % browser commands are send through the socket via terms of type
-    %% external_request.
+    % external_request.
+    %
 :- type external_request
     ---> external_request(string).
 

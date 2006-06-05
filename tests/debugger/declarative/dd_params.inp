@@ -1,0 +1,11 @@
+echo on
+register --quiet
+break p
+continue
+finish
+dd -d 3 -n 7
+params
+actions 10
+params
+quit
+continue
