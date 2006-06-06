@@ -1202,17 +1202,8 @@ report_ambiguity_error(Info, TypeAssign1, TypeAssign2, !IO) :-
     report_ambiguity_error_2(Vars1, VarSet, Info, TypeAssign1, TypeAssign2,
         no, Found, !IO),
     globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
-    typecheck_info_get_context(Info, Context),
     ( Found = no ->
-        prog_out.write_context(Context, !IO),
-        io.write_string("  One or more of the predicates or " ++
-            "functions called\n", !IO),
-        prog_out.write_context(Context, !IO),
-        io.write_string("  is declared in more than one module.\n",
-            !IO),
-        prog_out.write_context(Context, !IO),
-        io.write_string("  Try adding explicit module qualifiers.\n",
-            !IO)
+        report_warning_too_much_overloading(Info, !IO)
     ; VerboseErrors = yes ->
         io.write_strings([
 "\tYou will need to add an explicit type qualification to resolve the\n",
