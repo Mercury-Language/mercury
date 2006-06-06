@@ -5,10 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
+%
 % File: declarative_oracle.m
 % Author: Mark Brown
-% Purpose:
-%   This module implements the oracle for a Mercury declarative debugger.
+%
+% This module implements the oracle for a Mercury declarative debugger.
 % It is called by the front end of the declarative debugger to provide 
 % information about the intended interpretation of the program being
 % debugged.
@@ -23,9 +24,10 @@
 % user.  If any new knowledge is obtained, it is added to the KB so
 % the user will not be asked the same question twice.
 %
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module mdb.declarative_oracle.
-
 :- interface.
 
 :- import_module mdb.browser_info.
@@ -156,6 +158,7 @@
     is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -174,6 +177,8 @@
 :- import_module map.
 :- import_module set.
 :- import_module svmap.
+
+%-----------------------------------------------------------------------------%
 
 query_oracle(Question, Response, FromUser, !Oracle, !IO) :-
     ( answer_known(!.Oracle, Question, Answer) ->

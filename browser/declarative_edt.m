@@ -5,6 +5,7 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
+%
 % File: declarative_edt.m
 % Authors: Ian MacLarty, Mark Brown
 %
@@ -15,13 +16,13 @@
 % The search space records extra information like which nodes have been
 % eliminated from the bug search, which nodes have been skipped or are
 % trusted, the weight of each node, and in future might also store information
-% like the probability of each node being buggy, based on some heursitic(s).
+% like the probability of each node being buggy, based on some heuristic(s).
 %
 % The search space provides a consistent view of the debug tree - combining
-% seperately generated EDT subtrees into one tree.  Each node in the search
+% separately generated EDT subtrees into one tree.  Each node in the search
 % space corresponds to a node either explicitly represented in a generated EDT
 % subtree or the root of an implicitly represented EDT subtree.  We maintain
-% the invarient that search space nodes always correspond with explicit nodes
+% the invariant that search space nodes always correspond with explicit nodes
 % where an explicit version of the EDT subtree containing that node exists, and
 % only correspond to implicit roots when an explicit version of the EDT subtree
 % rooted at the node has not yet been generated.
@@ -55,6 +56,7 @@
 % compiling with the C macro MR_DD_CHECK_SEARCH_SPACE defined (i.e. by
 % putting "EXTRA_CFLAGS=-DMR_DD_CHECK_SEARCH_SPACE" in Mmake.browser.params).
 %
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module mdb.declarative_edt.
@@ -102,12 +104,12 @@
     pred edt_question(S::in, T::in, decl_question(T)::out) is det,
 
         % If this node is an E-bug, then return the bug.
-        % An E-bug is an erroneous node whos children are all correct.
+        % An E-bug is an erroneous node whose children are all correct.
         %
     pred edt_get_e_bug(S::in, T::in, decl_e_bug::out) is det,
 
         % If this node is an I-bug then return the bug.
-        % An I-bug is an erroneous node whos children are all correct
+        % An I-bug is an erroneous node whose children are all correct
         % or inadmissible, with at least one child being inadmissible.
         %
     pred edt_get_i_bug(S::in, T::in, T::in, decl_i_bug::out) is det,
@@ -311,18 +313,18 @@
 :- pred parent(search_space(T)::in, suspect_id::in, suspect_id::out)
     is semidet.
 
-    % Marks the suspect correct and alls its decendents as pruned.
+    % Marks the suspect correct and all its descendents as pruned.
     %
 :- pred assert_suspect_is_correct(suspect_id::in,
     search_space(T)::in, search_space(T)::out) is det.
 
-    % Marks the supect erroneous and marks the complement of the subtree
+    % Marks the suspect erroneous and marks the complement of the subtree
     % rooted at the erroneous suspect as in_erroneous_subtree_complement.
     %
 :- pred assert_suspect_is_erroneous(suspect_id::in, search_space(T)::in,
     search_space(T)::out) is det.
 
-    % Marks the suspect inadmissible and alls its decendents as pruned.
+    % Marks the suspect inadmissible and all its descendents as pruned.
     %
 :- pred assert_suspect_is_inadmissible(suspect_id::in,
     search_space(T)::in, search_space(T)::out) is det.
@@ -570,6 +572,7 @@
     maybe(weighting_heuristic).
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -733,7 +736,7 @@ suspect_is_questionable(SearchSpace, SuspectId) :-
 
     % Does the given status mean the suspect is in a subtree that was
     % excluded from the bug search (because it was marked correct or
-    % inadmissible or is the descedent of such a suspect)?
+    % inadmissible or is the descendent of such a suspect)?
     %
 :- pred excluded_subtree(suspect_status::in, bool::out) is det.
 
@@ -766,7 +769,7 @@ suspect_in_excluded_complement(SearchSpace, SuspectId) :-
     excluded_complement(Suspect ^ status, yes).
 
     % Does the given status mean the suspect is in the complement of
-    % a subtree whos root was marked erroneous or is erroneous itself.
+    % a subtree whose root was marked erroneous or is erroneous itself.
     %
 :- pred excluded_complement(suspect_status::in, bool::out) is det.
 
@@ -850,7 +853,7 @@ assert_suspect_is_valid(Status, SuspectId, !SearchSpace) :-
     % now zero.
     add_weight_to_ancestors(SuspectId, - Suspect ^ weight, !SearchSpace),
     %
-    % If the suspect was erroneous or excluded because of another erronoeus
+    % If the suspect was erroneous or excluded because of another erroneous
     % suspect, then we should update the complement of the subtree rooted
     % at the suspect to unknown.
     %

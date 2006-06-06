@@ -5,17 +5,18 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: frame.m.
 % Author: aet.
-
+% 
 % frame - minimally implements ASCII graphics frames.
 % This module is used by the term browser for displaying terms.
 %
 % XXX: This implementation is:
 % - very inefficient.
 % - specific to our immediate needs, and could be made more general.
-
+% 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- module mdb.frame.
@@ -58,6 +59,7 @@
     %
 :- func clip(clip_rect, frame) = frame.
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.

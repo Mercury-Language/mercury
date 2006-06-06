@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: browse.m.
 % Author: aet.
 % Stability: low.
-
+% 
 % Implements a very simple term browser.
 % There are a number of features that haven't been incorporated:
 %
@@ -18,7 +18,7 @@
 % - User preferences, which use the scripting language
 %   to allow user control beyond the provided defaults.
 % - Node expansion and contraction in the style of Windows Explorer.
-
+% 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -163,6 +163,7 @@
     %
 :- pred string_is_return_value_alias(string::in) is semidet.
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.

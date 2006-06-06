@@ -5,18 +5,18 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: declarative_execution.m.
 % Author: Mark Brown.
-
-% This module defines a Mercury representation of Mercury program
-% execution, the annotated trace.  This structure is described in
-% papers/decl_debug.  The declarative debugging infrastructure in the
-% trace directory builds an annotated trace, using predicates exported
-% from this module.  Once built, the structure is passed to the front
-% end (in browser/declarative_debugger.m) where it is analysed
-% to produce a bug diagnosis.
-
+% 
+% This module defines a Mercury representation of Mercury program execution,
+% the annotated trace.  This structure is described in papers/decl_debug.  The
+% declarative debugging infrastructure in the trace directory builds an
+% annotated trace, using predicates exported from this module.  Once built,
+% the structure is passed to the front end (in browser/declarative_debugger.m)
+% where it is analysed to produce a bug diagnosis.
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module mdb.declarative_execution.
@@ -462,6 +462,7 @@
 
 :- pred user_arg_num(arg_pos::in, trace_atom::in, int::out) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1265,6 +1266,7 @@ add_trace_atom_arg_value(HldsNum, ProgVis, Val, Args, [Arg | Args]) :-
 
     % Like add_trace_atom_arg_value, except that the specified variable
     % has no value (i.e. it is not bound).
+    %
 :- pred add_trace_atom_arg_no_value(int::in, int::in,
     list(trace_atom_arg)::in, list(trace_atom_arg)::out) is det.
 :- pragma export(add_trace_atom_arg_no_value(in, in, in, out),
@@ -1274,6 +1276,7 @@ add_trace_atom_arg_no_value(HldsNum, ProgVis, Args, [Arg | Args]) :-
     Arg = arg_info(c_bool_to_merc_bool(ProgVis), HldsNum, no).
 
     % This code converts a C bool (represented as int) to a Mercury bool.
+    %
 :- func c_bool_to_merc_bool(int) = bool.
 
 c_bool_to_merc_bool(ProgVis) =
@@ -1844,4 +1847,5 @@ read_var_num_rep(Bytecode, !Pos, VarNumRep) :-
         error("read_var_num_rep: unknown var_num_rep")
     ).
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

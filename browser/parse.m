@@ -5,17 +5,18 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: parse.m.
 % Author: aet.
-
+% 
 % This file contains the parser for the term browser command language.
 % If the term browser is called from mdb, it parses the stuff you type
 % at the "browser> " prompt after typing "browse" from the mdb prompt.
 % If it is called from the external debugger, then it parses the stuff
 % contained in a term `external_request(<string to parse>)' send by the
 % external debugger.
-
+% 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 % The Command Language
@@ -112,6 +113,7 @@
 %       ".."
 %
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module mdb.parse.
 :- interface.
@@ -184,6 +186,7 @@
     %
 :- pred parse(list(string)::in, command::out) is semidet.
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.

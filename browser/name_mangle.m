@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: name_mangle.m.
 % Purpose: name mangling support.
 % Main author: fjh.
 % Stability: low.
-
+% 
 % This module provides the proc_name_mangle/1 function, which takes a value of
 % type `mercury_proc' and returns a string which is the symbol name for
 % specified procedure, and which is suitable for use in a call to dl.sym.
@@ -20,11 +20,11 @@
 % in different Mercury implementations.  Any code which creates or
 % examines values of that type should be carefully isolated so that
 % it can be easily changed if the representation of `mercury_proc' changes.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module mdb.name_mangle.
-
 :- interface.
 
     % Given a mercury_proc specifying the module name,

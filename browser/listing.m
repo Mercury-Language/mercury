@@ -6,9 +6,9 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% listing.m
-% Ralph Becket <rafe@cs.mu.oz.au>
-% Thu Oct  6 16:07:01 EST 2005
+%
+% File: listing.m.
+% Author: Ralph Becket <rafe@cs.mu.oz.au>
 %
 % Support for providing file listing functionality in the debugger.
 %
@@ -18,6 +18,7 @@
 % aspect using a bit of C code.
 %
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module mdb.listing.
 :- interface.
@@ -25,6 +26,8 @@
 :- import_module io.
 :- import_module list.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 :- type search_path.
 :- type line_no    == int.

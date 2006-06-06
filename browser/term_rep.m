@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: term_rep.m.
 % Author: Ian MacLarty.
-
+% 
 % This module implements an abstract type, term_rep, values of which are the
 % representation of some other value.  Constructing a representation from a
 % term is cc_multi, but then doing comparisons on the representation is
@@ -16,7 +16,7 @@
 %
 % This is useful when we only want to consider the representation of a term
 % and don't care about it's actual value.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

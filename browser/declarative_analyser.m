@@ -15,6 +15,8 @@
 % EDT, storing information relevant to the bug search.  Throughout this module
 % the type variables T and S refer to the types of nodes in the EDT and the
 % store of EDT nodes respectively.
+%
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module mdb.declarative_analyser.
@@ -302,7 +304,7 @@ top_down_search_mode = top_down.
     %
 :- type analyser_state(T)
     --->    analyser(
-                % Information about the EDT nodes relevent to
+                % Information about the EDT nodes relevant to
                 % the bug search.
                 search_space            :: search_space(T),
 
@@ -649,7 +651,7 @@ bug_response(Store, SearchSpace, BugId, Evidence, InadmissibleChildren,
 
     % Search the search space for a question for the oracle.  The search
     % should respond with a question about a suspect, or a request for an
-    % explicit subree to be generated.  A new search mode is returned so
+    % explicit subtree to be generated.  A new search mode is returned so
     % that the search algorithm being used can remember its current state
     % next time round.
     %

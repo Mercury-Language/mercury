@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: browser_term.m.
-
+% 
 % This module defines a type to represent both natural and synthetic terms
 % for use by the browser.
-
+% 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -59,6 +59,9 @@
     %
 :- func synthetic_term_to_browser_term(string, list(univ), bool)
     = browser_term.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 

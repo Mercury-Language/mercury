@@ -7,7 +7,6 @@
 %---------------------------------------------------------------------------%
 
 :- module mdb.util.
-
 :- interface.
 
 :- import_module mdbcomp.prim_data.
@@ -16,6 +15,8 @@
 :- import_module io.
 :- import_module list.
 :- import_module string.
+
+%---------------------------------------------------------------------------%
 
 :- func is_predicate(pred_or_func) = bool.
 :- func is_function(pred_or_func) = bool.
@@ -33,6 +34,7 @@
     % trace_get_command is similar to trace_getline except that it
     % breaks lines into semicolon separated commands, and replaces
     % EOF with the command 'quit'.
+    %
 :- pred trace_get_command(string::in, string::out, io::di, io::uo)
     is det.
 
@@ -44,6 +46,7 @@
 
     % Apply predicate to argument repeatedly until the result
     % remains the same.
+    %
 :- pred limit(pred(list(T), list(T))::in(pred(in, out) is det),
     list(T)::in, list(T)::out) is det.
 
@@ -51,6 +54,7 @@
     % commands in the debugger.
 :- type unbound ---> '_'.
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -174,4 +178,5 @@ limit(Pred, Xs, Ys) :-
         limit(Pred, Zs, Ys)
     ).
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
