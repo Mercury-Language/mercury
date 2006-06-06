@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 2000-2004 The University of Melbourne.
+# Copyright (C) 2000-2004, 2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -47,7 +47,7 @@ NO_SIGNALS
 # These are defined automatically by GCC -- gcc optionally passes
 # them on the command line when calling cc1, depending on the
 # exact options which gcc was invoked with.  These are not
-# namespace polution, since they are in the _[A-Z]* namespace
+# namespace pollution, since they are in the _[A-Z]* namespace
 # which is reserved for the C implementation, and they are being
 # defined by the C implementation.
 _GNU_SOURCE
