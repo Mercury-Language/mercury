@@ -4328,7 +4328,7 @@ Set the maximum number of function symbols
 to be printed in terms to @var{num}.
 @sp 1
 @item width @var{num}
-Set the number of columnds in which terms are to be printed to @var{num}.
+Set the number of columns in which terms are to be printed to @var{num}.
 @sp 1
 @item lines @var{num}
 Set the maximum number of lines in terms to be printed to @var{num}.
