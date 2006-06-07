@@ -5382,8 +5382,9 @@ since the variable @samp{T} may not always be bound to the same type.
 
 The extra requirements that result from the use of functional dependencies
 allow the bindings of some variables to be determined from the bindings
-of others.  This in turn relaxes some of the requirements on typeclass
-constraints on predicate and function signatures.
+of others.  This in turn relaxes some of the requirements of typeclass
+constraints on predicate and function signatures,
+and on existentially typed data constructors.
 
 Without any functional dependencies, all variables in constraints must
 appear in the signature of the predicate or function being declared.
@@ -5431,6 +5432,24 @@ induced functional dependency must include @var{Z}.
 Moreover, the typeclass @code{baz/2} would be allowed to have a method
 that only uses the first parameter, @var{A}, since the second parameter,
 @var{B}, would always be determined from the first.
+
+Note that, since all instances must satisfy the superclass constraints,
+the restrictions on instances obviously transfer from superclass to
+subclass.  Again, this allows the requirements of typeclass constraints
+to be relaxed.  Thus, the functional dependencies on the ancestors
+of constraints also induce functional dependencies on the variables,
+and the closure that we calculate takes these into account.
+
+For example, in this code
+
+@example
+	:- typeclass quux(P, Q, R) <= baz(R, P) where @dots{}
+
+	:- pred q(Q, R) <= quux(P, Q, R).
+@end example
+the signature of @code{q/2} is acceptable since the superclass constraint
+on @code{quux/2} induces the dependency @samp{R -> P} on the type variables,
+hence @var{P} is in the closure of @{@var{Q}, @var{R}@}.
 
 The presence of functional dependencies also allows ``improvement'' to
 occur during type inference.  This can occur in two ways.

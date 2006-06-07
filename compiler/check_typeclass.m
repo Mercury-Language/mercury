@@ -1437,10 +1437,11 @@ needs_no_ambiguity_check(pseudo_imported).
     module_info::out, bool::in, bool::out, io::di, io::uo) is det.
 
 check_pred_type_ambiguities(PredInfo, !ModuleInfo, !FoundError, !IO) :-
+    pred_info_get_typevarset(PredInfo, TVarSet),
     pred_info_get_arg_types(PredInfo, ArgTypes),
     pred_info_get_class_context(PredInfo, Constraints),
     prog_type.vars_list(ArgTypes, TVars),
-    get_unbound_tvars(TVars, Constraints, !.ModuleInfo, UnboundTVars),
+    get_unbound_tvars(TVarSet, TVars, Constraints, !.ModuleInfo, UnboundTVars),
     (
         UnboundTVars = []
     ;
@@ -1474,7 +1475,8 @@ check_ctor_type_ambiguities(TypeCtor, TypeDefn, Ctor, !ModuleInfo,
     prog_type.vars_list(ArgTypes, ArgTVars),
     list.filter((pred(V::in) is semidet :- list.member(V, ExistQVars)),
         ArgTVars, ExistQArgTVars),
-    get_unbound_tvars(ExistQArgTVars, constraints([], Constraints),
+    get_type_defn_tvarset(TypeDefn, TVarSet),
+    get_unbound_tvars(TVarSet, ExistQArgTVars, constraints([], Constraints),
         !.ModuleInfo, UnboundTVars),
     (
         UnboundTVars = []
@@ -1486,12 +1488,12 @@ check_ctor_type_ambiguities(TypeCtor, TypeDefn, Ctor, !ModuleInfo,
         module_info_incr_errors(!ModuleInfo)
     ).
 
-:- pred get_unbound_tvars(list(tvar)::in, prog_constraints::in,
+:- pred get_unbound_tvars(tvarset::in, list(tvar)::in, prog_constraints::in,
     module_info::in, list(tvar)::out) is det.
 
-get_unbound_tvars(TVars, Constraints, ModuleInfo, UnboundTVars) :-
+get_unbound_tvars(TVarSet, TVars, Constraints, ModuleInfo, UnboundTVars) :-
     module_info_get_class_table(ModuleInfo, ClassTable),
-    InducedFunDeps = induced_fundeps(ClassTable, Constraints),
+    InducedFunDeps = induced_fundeps(ClassTable, TVarSet, Constraints),
     FunDepsClosure = fundeps_closure(InducedFunDeps, list_to_set(TVars)),
     solutions.solutions(
         constrained_var_not_in_closure(Constraints, FunDepsClosure),
@@ -1518,16 +1520,53 @@ constrained_var_not_in_closure(ClassContext, Closure, UnboundTVar) :-
                 range       :: set(tvar)
             ).
 
-:- func induced_fundeps(class_table, prog_constraints) = induced_fundeps.
-
-induced_fundeps(ClassTable, constraints(UnivCs, ExistCs))
-    = foldl(induced_fundeps_2(ClassTable), UnivCs,
-        foldl(induced_fundeps_2(ClassTable), ExistCs, [])).
-
-:- func induced_fundeps_2(class_table, prog_constraint, induced_fundeps)
+:- func induced_fundeps(class_table, tvarset, prog_constraints)
     = induced_fundeps.
 
-induced_fundeps_2(ClassTable, constraint(Name, Args), FunDeps0) = FunDeps :-
+induced_fundeps(ClassTable, TVarSet, constraints(UnivCs, ExistCs))
+    = foldl(induced_fundeps_2(ClassTable, TVarSet), UnivCs,
+        foldl(induced_fundeps_2(ClassTable, TVarSet), ExistCs, [])).
+
+:- func induced_fundeps_2(class_table, tvarset, prog_constraint,
+    induced_fundeps) = induced_fundeps.
+
+induced_fundeps_2(ClassTable, TVarSet, Constraint, FunDeps0) = FunDeps :-
+    Constraint = constraint(Name, Args),
+    Arity = length(Args),
+    ClassDefn = map.lookup(ClassTable, class_id(Name, Arity)),
+    % The ancestors includes all superclasses of Constraint which have
+    % functional dependencies on them (possibly including Constraint itself).
+    ClassAncestors = ClassDefn ^ class_fundep_ancestors,
+    (
+        % Optimize the common case.
+        ClassAncestors = [],
+        FunDeps = FunDeps0
+    ;
+        ClassAncestors = [_ | _],
+        ClassTVarSet = ClassDefn ^ class_tvarset,
+        ClassParams = ClassDefn ^ class_vars,
+
+        % We can ignore the resulting tvarset, since any new variables
+        % will become bound when the arguments are bound. (This follows
+        % from the fact that constraints on class declarations can only use
+        % variables that appear in the head of the declaration.)
+
+        tvarset_merge_renaming(TVarSet, ClassTVarSet, _, Renaming),
+        apply_variable_renaming_to_prog_constraint_list(Renaming,
+            ClassAncestors, RenamedAncestors),
+        apply_variable_renaming_to_tvar_list(Renaming, ClassParams,
+            RenamedParams),
+        map.from_corresponding_lists(RenamedParams, Args, Subst),
+        apply_subst_to_prog_constraint_list(Subst, RenamedAncestors,
+            Ancestors),
+        FunDeps = foldl(induced_fundeps_3(ClassTable), Ancestors, FunDeps0)
+    ).
+
+:- func induced_fundeps_3(class_table, prog_constraint, induced_fundeps)
+    = induced_fundeps.
+
+induced_fundeps_3(ClassTable, Constraint, FunDeps0) = FunDeps :-
+    Constraint = constraint(Name, Args),
     Arity = length(Args),
     ClassDefn = map.lookup(ClassTable, class_id(Name, Arity)),
     FunDeps = foldl(induced_fundep(Args), ClassDefn ^ class_fundeps, FunDeps0).
