@@ -280,26 +280,22 @@ apply_improvement_rules(ClassTable, InstanceTable, HeadTypeParams, Constraints,
 do_class_improvement(ClassTable, HeadTypeParams, Constraints, !Bindings,
         Changed) :-
     Redundant = Constraints ^ redundant,
-    Assumed = Constraints ^ assumed,
     multi_map.keys(Redundant, ClassIds),
     list.foldl2(
-        do_class_improvement_2(ClassTable, HeadTypeParams, Redundant, Assumed),
+        do_class_improvement_2(ClassTable, HeadTypeParams, Redundant),
         ClassIds, !Bindings, no, Changed).
 
 :- pred do_class_improvement_2(class_table::in, head_type_params::in,
-    redundant_constraints::in, list(hlds_constraint)::in, class_id::in,
-    tsubst::in, tsubst::out, bool::in, bool::out) is det.
+    redundant_constraints::in, class_id::in, tsubst::in, tsubst::out,
+    bool::in, bool::out) is det.
 
 do_class_improvement_2(ClassTable, HeadTypeParams, RedundantConstraints,
-        Assumed, ClassId, !Bindings, !Changed) :-
+        ClassId, !Bindings, !Changed) :-
     map.lookup(ClassTable, ClassId, ClassDefn),
     FunDeps = ClassDefn ^ class_fundeps,
     map.lookup(RedundantConstraints, ClassId, Constraints),
     do_class_improvement_by_pairs(Constraints, FunDeps, HeadTypeParams,
-        !Bindings, !Changed),
-    list.filter(has_class_id(ClassId), Assumed, ThisClassAssumed),
-    do_class_improvement_by_assumed(ThisClassAssumed, Constraints, FunDeps,
-        HeadTypeParams, !Bindings, !Changed).
+        !Bindings, !Changed).
 
 :- pred has_class_id(class_id::in, hlds_constraint::in) is semidet.
 
@@ -332,33 +328,6 @@ do_class_improvement_by_pairs_2(Constraint, [HeadConstraint | TailConstraints],
         HeadTypeParams, !Bindings, !Changed),
     do_class_improvement_by_pairs_2(Constraint, TailConstraints, FunDeps,
         HeadTypeParams, !Bindings, !Changed).
-
-    % Try to find an opportunity for improvement for each pair of
-    % constraints where one comes from the assumed constraints and the
-    % other comes from the redundant constraints.
-    %
-:- pred do_class_improvement_by_assumed(list(hlds_constraint)::in,
-    list(hlds_constraint)::in, hlds_class_fundeps::in, head_type_params::in,
-    tsubst::in, tsubst::out, bool::in, bool::out) is det.
-
-do_class_improvement_by_assumed(Assumed, Constraints, FunDeps, HeadTypeParams,
-        !Bindings, !Changed) :-
-    list.foldl2(
-        do_class_improvement_by_assumed_2(Constraints, FunDeps,
-            HeadTypeParams),
-        Assumed, !Bindings, !Changed).
-
-:- pred do_class_improvement_by_assumed_2(list(hlds_constraint)::in,
-    hlds_class_fundeps::in, head_type_params::in, hlds_constraint::in,
-    tsubst::in, tsubst::out, bool::in, bool::out) is det.
-
-do_class_improvement_by_assumed_2([], _, _, _, !Bindings, !Changed).
-do_class_improvement_by_assumed_2([Constraint | Constraints], FunDeps,
-        HeadTypeParams, Assumed, !Bindings, !Changed) :-
-    do_class_improvement_pair(Constraint, Assumed, FunDeps, HeadTypeParams,
-        !Bindings, !Changed),
-    do_class_improvement_by_assumed_2(Constraints, FunDeps, HeadTypeParams,
-        Assumed, !Bindings, !Changed).
 
     % Try to find an opportunity for improvement for this pair of
     % constraints, using each fundep in turn.

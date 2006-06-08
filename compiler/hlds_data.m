@@ -923,10 +923,10 @@ restrict_list_elements_2(Elements, Index, [X | Xs]) =
                             % Constraints that are known to be redundant.
                             % This includes constraints that have already been
                             % proved as well as constraints that are ancestors
-                            % of other unproven or redundant constraints.
-                            % Not all such constraints are included, only those
-                            % which may be used for the purposes of
-                            % improvement.
+                            % of other unproven, assumed or redundant
+                            % constraints.  Not all such constraints are
+                            % included, only those which may be used for
+                            % the purposes of improvement.
             ).
 
     % Redundant constraints are partitioned by class, which helps us
@@ -1063,7 +1063,9 @@ make_body_hlds_constraints(ClassTable, TVarSet, GoalPath, ProgConstraints,
 
 make_hlds_constraints(ClassTable, TVarSet, Unproven, Assumed, Constraints) :-
     list.foldl(update_redundant_constraints_2(ClassTable, TVarSet),
-        Unproven, multi_map.init, Redundant),
+        Unproven, multi_map.init, Redundant0),
+    list.foldl(update_redundant_constraints_2(ClassTable, TVarSet),
+        Assumed, Redundant0, Redundant),
     Constraints = constraints(Unproven, Assumed, Redundant).
 
 make_hlds_constraint_list(ProgConstraints, ConstraintType, GoalPath,
