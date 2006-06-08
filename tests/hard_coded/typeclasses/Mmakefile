@@ -25,6 +25,8 @@ TYPECLASSES_PROGS= \
 	fundeps_3 \
 	fundeps_4 \
 	fundeps_5 \
+	fundeps_6 \
+	fundeps_7 \
 	ground_constraint \
 	ground_constraint_2 \
 	ho_map \
