@@ -11,6 +11,7 @@
 %
 % This file contains the CGI "script" that is executed by the web server
 % to handle web page requests implemented by the Mercury deep profiler server.
+%
 %-----------------------------------------------------------------------------%
 
 :- module mdprof_cgi.
@@ -160,10 +161,9 @@ write_help_message(ProgName, !IO) :-
 
 process_args(ProgName, Args, Options, !IO) :-
     ( Args = [FileName] ->
-        % Although this mode of usage is not intended for production
-        % use, allowing the filename and a limited range of commands
-        % to be supplied on the command line makes debugging very much
-        % easier.
+        % Although this mode of usage is not intended for production use,
+        % allowing the filename and a limited range of commands to be supplied
+        % on the command line makes debugging very much easier.
         process_query(default_cmd(Options), no, FileName, Options, !IO)
     ;
         io.set_exit_status(1, !IO),
@@ -303,8 +303,7 @@ handle_query_from_new_server(Cmd, Pref, FileName, ToServerPipe, FromServerPipe,
         try_exec(Cmd, Pref, Deep, HTML, !IO),
         (
             MaybeStartupStream = yes(StartupStream1),
-            io.format(StartupStream1, "query 0 output:\n%s\n",
-                [s(HTML)], !IO),
+            io.format(StartupStream1, "query 0 output:\n%s\n", [s(HTML)], !IO),
             % If we don't flush the output before the fork, it will
             % be flushed twice, once by the parent process and
             % once by the child process.
@@ -314,8 +313,7 @@ handle_query_from_new_server(Cmd, Pref, FileName, ToServerPipe, FromServerPipe,
         ),
         (
             ServerProcess = no,
-            % --no-server-process should be specified only during
-            % debugging.
+            % --no-server-process should be specified only during debugging.
             release_lock(Debug, MutexFile, !IO),
             remove_want_file(WantFile, !IO),
             io.write_string(HTML, !IO)
@@ -326,10 +324,8 @@ handle_query_from_new_server(Cmd, Pref, FileName, ToServerPipe, FromServerPipe,
                 Success = yes,
                 io.write_string(HTML, !IO),
                 io.flush_output(!IO),
-                start_server(Options,
-                    ToServerPipe, FromServerPipe,
-                    MaybeStartupStream,
-                    MutexFile, WantFile, Deep, !IO)
+                start_server(Options, ToServerPipe, FromServerPipe,
+                    MaybeStartupStream, MutexFile, WantFile, Deep, !IO)
             ;
                 Success = no,
                 release_lock(Debug, MutexFile, !IO),
@@ -371,21 +367,18 @@ start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
         % We are in the child; start serving queries.
         (
             ChildHasParent = child_has_parent,
-            % Our parent process will perform the file removals
-            % needed to exit the critical section; we don't
-            % want to duplicate them. We also don't want to delete
-            % the pipes we need or the startup file.
+            % Our parent process will perform the file removals needed to exit
+            % the critical section; we don't want to duplicate them. We also
+            % don't want to delete the pipes we need or the startup file.
             unregister_file_for_cleanup(MutexFile, !IO),
             unregister_file_for_cleanup(WantFile, !IO),
 
-            % We need to close stdout and stderr to let the web
-            % server know that there will be no further outputs
-            % on those streams. We also close stdin, since that may
-            % also be a named pipe.
+            % We need to close stdout and stderr to let the web server
+            % know that there will be no further outputs on those streams.
+            % We also close stdin, since that may also be a named pipe.
             %
-            % The binary streams are clones of the text streams,
-            % and we must close them too to let the web server
-            % finish displaying the page.
+            % The binary streams are clones of the text streams, and we must
+            % close them too to let the web server finish displaying the page.
             io.stdin_stream(StdIn, !IO),
             io.close_input(StdIn, !IO),
             io.stdout_stream(StdOut, !IO),
@@ -398,9 +391,8 @@ start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
             io.close_binary_output(BinaryStdOut, !IO)
         ;
             ChildHasParent = child_has_no_parent,
-            % We don't actually have a parent process, so we need
-            % to perform the file removals needed to exit the
-            % critical section ourselves.
+            % We don't actually have a parent process, so we need to perform
+            % the file removals needed to exit the critical section ourselves.
             release_lock(Debug, MutexFile, !IO),
             remove_want_file(WantFile, !IO)
         ),
@@ -416,19 +408,19 @@ start_server(Options, ToServerPipe, FromServerPipe, MaybeStartupStream,
         server_loop(ToServerPipe, FromServerPipe, TimeOut,
             MaybeDebugStream, Debug, Canonical, 0, Deep, !IO)
     ; DetachRes = in_parent ->
-        % We are in the parent after we spawned the child. We cause
-        % the process to exit simply by not calling server_loop.
+        % We are in the parent after we spawned the child. We cause the process
+        % to exit simply by not calling server_loop.
         %
-        % We leave the pipes and the startup file; we clean up only
-        % the files involved in the critical section.
+        % We leave the pipes and the startup file; we clean up only the files
+        % involved in the critical section.
         release_lock(Debug, MutexFile, !IO),
         remove_want_file(WantFile, !IO)
     ;
         % We are in the parent because the fork failed. Again we cause
-        % the process to exit simply by not calling server_loop, but we
-        % also report the failure through the exit status. We don't
-        % report it via the generated web page, since the cause could
-        % be transitory and may not recur.
+        % the process to exit simply by not calling server_loop, but we also
+        % report the failure through the exit status. We don't report it
+        % via the generated web page, since the cause could be transitory
+        % and may not recur.
         %
         % This deletes all the files created by the process, including
         % WantFile and MutexFile, with MutexFile being deleted last.
@@ -481,8 +473,7 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
         try_exec(Cmd, Pref0, Deep, HTML, !IO)
     ),
 
-    ResponseFileName =
-        response_file_name(Deep0 ^ data_file_name, QueryNum),
+    ResponseFileName = response_file_name(Deep0 ^ data_file_name, QueryNum),
     io.open_output(ResponseFileName, ResponseRes, !IO),
     (
         ResponseRes = ok(ResponseStream)
@@ -511,13 +502,11 @@ server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
         % WantFile and MutexFile, with MutexFile being deleted last.
         delete_cleanup_files(!IO)
     ; Cmd = timeout(TimeOut) ->
-        server_loop(ToServerPipe, FromServerPipe, TimeOut,
-            MaybeStartupStream, Debug, Canonical, QueryNum, Deep,
-            !IO)
+        server_loop(ToServerPipe, FromServerPipe, TimeOut, MaybeStartupStream,
+            Debug, Canonical, QueryNum, Deep, !IO)
     ;
-        server_loop(ToServerPipe, FromServerPipe, TimeOut0,
-            MaybeStartupStream, Debug, Canonical, QueryNum, Deep,
-            !IO)
+        server_loop(ToServerPipe, FromServerPipe, TimeOut0, MaybeStartupStream,
+            Debug, Canonical, QueryNum, Deep, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -539,12 +528,11 @@ make_pipes(FileName, Success, !IO) :-
         register_file_for_cleanup(FromServerPipe, !IO),
         Success = yes
     ;
-        % In case one of the pipes *was* created. We ignore the
-        % return values because at least one of these calls *will*
-        % fail (since we did not create both pipes), and if we can't
-        % remove a named pipe we did succeed in creating, then
-        % something is so screwed up that probably there is nothing
-        % we can do to fix the situation.
+        % In case one of the pipes *was* created. We ignore the return values
+        % because at least one of these calls *will* fail (since we did not
+        % create both pipes), and if we can't remove a named pipe we did
+        % succeed in creating, then something is so screwed up that probably
+        % there is nothing we can do to fix the situation.
         io.remove_file(ToServerPipe, _, !IO),
         io.remove_file(FromServerPipe, _, !IO),
         Success = no
@@ -641,9 +629,9 @@ detach_process(Result, !IO) :-
     } else {
 #ifdef  MR_HAVE_SETPGID
         /*
-        ** Try to detach the server process from the parent's process
-        ** group, in case it uses the number of processes in the
-        ** process group to decide when the cgi `script' is done
+        ** Try to detach the server process from the parent's process group,
+        ** in case it uses the number of processes in the process group
+        ** to decide when the cgi `script' is done.
         */
         setpgid(0, 0);
 #else
@@ -696,37 +684,37 @@ short('w',  write_query_string).
 :- pred long(string::in, option::out) is semidet.
 
 long("canonical-clique",    canonical_clique).
-long("clique",          clique).
-long("debug",           debug).
+long("clique",              clique).
+long("debug",               debug).
 long("detach-process",      detach_process).
-long("help",            help).
-long("modules",         modules).
-long("proc",            proc).
-long("quit",            quit).
-long("root",            root).
+long("help",                help).
+long("modules",             modules).
+long("proc",                proc).
+long("quit",                quit).
+long("root",                root).
 long("record-startup",      record_startup).
-long("record-loop",     record_loop).
+long("record-loop",         record_loop).
 long("server-process",      server_process).
-long("timeout",         timeout).
-long("version",         version).
+long("timeout",             timeout).
+long("version",             version).
 long("write-query-string",  write_query_string).
 
 :- pred defaults(option::out, option_data::out) is multi.
 
-defaults(canonical_clique,  bool(no)).
-defaults(clique,        int(0)).
-defaults(debug,         bool(no)).
-defaults(detach_process,    bool(yes)).
-defaults(help,          bool(no)).
-defaults(modules,       bool(no)).
-defaults(proc,          int(0)).
-defaults(quit,          bool(no)).
-defaults(root,          bool(no)).
-defaults(record_loop,       bool(yes)).
-defaults(record_startup,    bool(yes)).
-defaults(server_process,    bool(yes)).
-defaults(timeout,       int(30)).
-defaults(version,       bool(no)).
+defaults(canonical_clique,      bool(no)).
+defaults(clique,                int(0)).
+defaults(debug,                 bool(no)).
+defaults(detach_process,        bool(yes)).
+defaults(help,                  bool(no)).
+defaults(modules,               bool(no)).
+defaults(proc,                  int(0)).
+defaults(quit,                  bool(no)).
+defaults(root,                  bool(no)).
+defaults(record_loop,           bool(yes)).
+defaults(record_startup,        bool(yes)).
+defaults(server_process,        bool(yes)).
+defaults(timeout,               int(30)).
+defaults(version,               bool(no)).
 defaults(write_query_string,    bool(yes)).
 
 :- func default_cmd(option_table) = cmd.
