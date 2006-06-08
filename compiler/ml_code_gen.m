@@ -766,6 +766,7 @@
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.export.
 :- import_module backend_libs.foreign. % XXX needed for pragma foreign code
+:- import_module backend_libs.rtti.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
@@ -782,6 +783,7 @@
 :- import_module ml_backend.ml_switch_gen.
 :- import_module ml_backend.ml_type_gen.
 :- import_module ml_backend.ml_unify_gen.
+:- import_module ml_backend.ml_util.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
@@ -797,6 +799,7 @@
 :- import_module set.
 :- import_module solutions.
 :- import_module string.
+:- import_module std_util.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -848,8 +851,8 @@ ml_gen_foreign_code_lang(ModuleInfo, ForeignDecls, ForeignBodys,
     MLDSWantedForeignBodys = list.map(ConvBody, WantedForeignBodys),
     % XXX Exports are only implemented for C and IL at the moment.
     (
-        ( Lang = c
-        ; Lang = il
+        ( Lang = lang_c
+        ; Lang = lang_il
         )
     ->
         ml_gen_pragma_export(ModuleInfo, MLDS_PragmaExports)
@@ -886,13 +889,13 @@ ml_gen_imports(ModuleInfo, MLDS_ImportList) :-
 :- func foreign_type_required_imports(compilation_target, hlds_type_defn)
     = list(mlds_import).
 
-foreign_type_required_imports(c, _) = [].
-foreign_type_required_imports(il, TypeDefn) = Imports :-
+foreign_type_required_imports(target_c, _) = [].
+foreign_type_required_imports(target_il, TypeDefn) = Imports :-
     hlds_data.get_type_defn_body(TypeDefn, Body),
     ( Body = foreign_type(foreign_type_body(MaybeIL, _MaybeC, _MaybeJava)) ->
         (
             MaybeIL = yes(Data),
-            Data = foreign_type_lang_data(il(_, Location, _), _, _)
+            Data = foreign_type_lang_data(il_type(_, Location, _), _, _)
         ->
             Name = il_assembly_name(mercury_module_name_to_mlds(
                 unqualified(Location))),
@@ -903,8 +906,8 @@ foreign_type_required_imports(il, TypeDefn) = Imports :-
     ;
         Imports = []
     ).
-foreign_type_required_imports(java, _) = [].
-foreign_type_required_imports(asm, _) = [].
+foreign_type_required_imports(target_java, _) = [].
+foreign_type_required_imports(target_asm, _) = [].
 
 :- pred ml_gen_defns(module_info::in, mlds_defns::out, io::di, io::uo) is det.
 
@@ -1039,36 +1042,285 @@ ml_gen_proc(ModuleInfo, PredId, ProcId, _PredInfo, ProcInfo, !Defns) :-
 
 ml_gen_maybe_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo, !Defns) :-
     proc_info_get_eval_method(ProcInfo, EvalMethod),
+    HasTablingPointer = eval_method_has_per_proc_tabling_pointer(EvalMethod),
     (
-        eval_method_has_per_proc_tabling_pointer(EvalMethod) = yes
-    ->
-        ml_gen_pred_label(ModuleInfo, PredId, ProcId, PredLabel, _PredModule),
-        Var = tabling_pointer(PredLabel - ProcId),
-        Type = mlds_generic_type,
-        Initializer = init_obj(const(null(Type))),
-        proc_info_get_context(ProcInfo, Context),
-        (
-            module_info_get_globals(ModuleInfo, Globals),
-            globals.get_gc_method(Globals, GC_Method),
-            GC_Method = accurate
-        ->
-            % XXX To handle this case properly, the GC would need to trace
-            % through the global variable that we generate for the table
-            % pointer. Support for this is not yet implemented. Also, we'd need
-            % to add GC support (stack frame registration, and calls to
-            % MR_GC_check()) to MR_make_long_lived() and MR_deep_copy()
-            % so that we do garbage collection of the "global heap" which is
-            % used to store the tables.
-            sorry(this_file, "tabling and `--gc accurate'")
-        ;
-            GC_TraceCode = no
-        ),
-        TablePointerVarDefn = ml_gen_mlds_var_decl(Var, Type, Initializer,
-            GC_TraceCode, mlds_make_context(Context)),
-        !:Defns = [TablePointerVarDefn | !.Defns]
+        HasTablingPointer = yes,
+        ml_gen_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo, EvalMethod,
+            !Defns)
     ;
-        true
+        HasTablingPointer = no
     ).
+
+:- pred ml_gen_add_table_var(module_info::in, pred_id::in, proc_id::in,
+    proc_info::in, eval_method::in, mlds_defns::in, mlds_defns::out) is det.
+
+ml_gen_add_table_var(ModuleInfo, PredId, ProcId, ProcInfo, EvalMethod,
+        !Defns) :-
+    module_info_get_name(ModuleInfo, ModuleName),
+    MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
+    ml_gen_pred_label(ModuleInfo, PredId, ProcId, PredLabel, _PredModule),
+    ProcLabel = mlds_proc_label(PredLabel, ProcId),
+    proc_info_get_context(ProcInfo, Context),
+    MLDS_Context = mlds_make_context(Context),
+
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_gc_method(Globals, GC_Method),
+    % XXX To handle accurate GC properly, the GC would need to trace through
+    % the global variable that we generate for the table pointer. Support
+    % for this is not yet implemented. Also, we would need to add GC support
+    % (stack frame registration, and calls to MR_GC_check()) to
+    % MR_make_long_lived() and MR_deep_copy() so that we do garbage collection
+    % of the "global heap" which is used to store the tables.
+    expect(isnt(unify(accurate), GC_Method), this_file,
+        "tabling and `--gc accurate'"),
+
+    (
+        EvalMethod = eval_normal,
+        unexpected(this_file, "ml_gen_add_table_var: eval_normal")
+    ;   
+        EvalMethod = eval_table_io(_, _),
+        unexpected(this_file, "ml_gen_add_table_var: eval_table_io")
+    ;   
+        EvalMethod = eval_loop_check,
+        TableTypeStr = "MR_TABLE_TYPE_LOOPCHECK"
+    ;   
+        EvalMethod = eval_memo,
+        TableTypeStr = "MR_TABLE_TYPE_MEMO"
+    ;   
+        EvalMethod = eval_minimal(stack_copy),
+        TableTypeStr = "MR_TABLE_TYPE_MINIMAL_MODEL_STACK_COPY"
+    ;   
+        EvalMethod = eval_minimal(own_stacks),
+        TableTypeStr = "MR_TABLE_TYPE_MINIMAL_MODEL_OWN_STACKS"
+    ),
+    proc_info_get_maybe_proc_table_info(ProcInfo, MaybeTableInfo),
+    (
+        MaybeTableInfo = yes(TableInfo),
+        (
+            % The _ArgInfos argument is intended for the debugger,
+            % which isn't supported by the this backend.
+            TableInfo = table_gen_info(NumInputs, NumOutputs,
+                InputSteps, MaybeOutputSteps, _ArgInfos)
+        ;
+            TableInfo = table_io_decl_info(_),
+            unexpected(this_file, "ml_gen_add_table_var: bad TableInfo")
+        )
+    ;
+        MaybeTableInfo = no,
+        unexpected(this_file, "ml_gen_add_table_var: no TableInfo")
+    ),
+
+    (
+        InputSteps = [],
+        % We don't want to generate arrays with zero elements.
+        InputStepsName = gen_init_null_pointer(
+            mlds_tabling_type(tabling_input_steps)),
+        InputEnumParamsName = gen_init_null_pointer(
+            mlds_tabling_type(tabling_input_enum_params)),
+        InputStepsDefns = [],
+        InputEnumParamsDefns = [],
+        CallStatsName = gen_init_null_pointer(
+            mlds_tabling_type(tabling_call_stats)),
+        PrevCallStatsName = gen_init_null_pointer(
+            mlds_tabling_type(tabling_prev_call_stats)),
+        CallStatsDefns = []
+    ;
+        InputSteps = [_ | _],
+        list.map2(table_trie_step_to_c, InputSteps,
+            InputStepStrs, InputParams),
+        InputStepsInit = init_array(list.map(init_step, InputStepStrs)),
+        InputEnumParamsInit = init_array(
+            list.map(gen_init_enum_param, InputParams)),
+        InputStepsDefn = tabling_name_and_init_to_defn(ProcLabel,
+            MLDS_Context, const, tabling_input_steps,
+            InputStepsInit),
+        InputEnumParamsDefn = tabling_name_and_init_to_defn(ProcLabel,
+            MLDS_Context, const, tabling_input_enum_params,
+            InputEnumParamsInit),
+        InputStepsName = gen_init_tabling_name(MLDS_ModuleName,
+            ProcLabel, tabling_input_steps),
+        InputEnumParamsName = gen_init_tabling_name(MLDS_ModuleName,
+            ProcLabel, tabling_input_enum_params),
+        CallStatsInit =
+            init_array(list.map(init_stats(tabling_call_stats),
+            InputSteps)),
+        PrevCallStatsInit =
+            init_array(list.map(init_stats(tabling_prev_call_stats),
+            InputSteps)),
+        CallStatsDefn = tabling_name_and_init_to_defn(ProcLabel,
+            MLDS_Context, modifiable, tabling_call_stats,
+            CallStatsInit),
+        PrevCallStatsDefn = tabling_name_and_init_to_defn(ProcLabel,
+            MLDS_Context, modifiable, tabling_prev_call_stats,
+            PrevCallStatsInit),
+        CallStatsName = gen_init_tabling_name(MLDS_ModuleName,
+            ProcLabel, tabling_call_stats),
+        PrevCallStatsName = gen_init_tabling_name(MLDS_ModuleName,
+            ProcLabel, tabling_prev_call_stats),
+        InputStepsDefns = [InputStepsDefn],
+        InputEnumParamsDefns = [InputEnumParamsDefn],
+        CallStatsDefns = [CallStatsDefn, PrevCallStatsDefn]
+    ),
+    (
+        MaybeOutputSteps = no,
+        HasAnswerTable = 0,
+        OutputStepsName = gen_init_null_pointer(
+            mlds_tabling_type(tabling_output_steps)),
+        OutputEnumParamsName = gen_init_null_pointer(
+            mlds_tabling_type(tabling_output_enum_params)),
+        OutputStepsDefns = [],
+        OutputEnumParamsDefns = [],
+        AnswerStatsDefns = [],
+        AnswerStatsName = gen_init_null_pointer(
+            mlds_tabling_type(tabling_answer_stats)),
+        PrevAnswerStatsName = gen_init_null_pointer(
+            mlds_tabling_type(tabling_prev_answer_stats))
+    ;
+        MaybeOutputSteps = yes(OutputSteps),
+        HasAnswerTable = 1,
+        list.map2(table_trie_step_to_c, OutputSteps,
+            OutputStepStrs, OutputParams),
+        OutputStepsInit = init_array(list.map(init_step, OutputStepStrs)),
+        OutputEnumParamsInit = init_array(
+            list.map(gen_init_enum_param, OutputParams)),
+        OutputStepsDefn = tabling_name_and_init_to_defn(ProcLabel,
+            MLDS_Context, const, tabling_output_steps,
+            OutputStepsInit),
+        OutputEnumParamsDefn = tabling_name_and_init_to_defn(ProcLabel,
+            MLDS_Context, const, tabling_output_enum_params,
+            OutputEnumParamsInit),
+        OutputStepsName = gen_init_tabling_name(MLDS_ModuleName,
+            ProcLabel, tabling_output_steps),
+        OutputEnumParamsName = gen_init_tabling_name(MLDS_ModuleName,
+            ProcLabel, tabling_output_enum_params),
+        OutputStepsDefns = [OutputStepsDefn],
+        OutputEnumParamsDefns = [OutputEnumParamsDefn],
+        AnswerStatsInit =
+            init_array(list.map(init_stats(tabling_answer_stats),
+            OutputSteps)),
+        PrevAnswerStatsInit =
+            init_array(list.map(init_stats(tabling_prev_answer_stats),
+            OutputSteps)),
+        AnswerStatsDefn = tabling_name_and_init_to_defn(ProcLabel,
+            MLDS_Context, modifiable, tabling_answer_stats,
+            AnswerStatsInit),
+        PrevAnswerStatsDefn = tabling_name_and_init_to_defn(ProcLabel,
+            MLDS_Context, modifiable, tabling_prev_answer_stats,
+            PrevAnswerStatsInit),
+        AnswerStatsDefns = [AnswerStatsDefn, PrevAnswerStatsDefn],
+        AnswerStatsName = gen_init_tabling_name(MLDS_ModuleName,
+            ProcLabel, tabling_answer_stats),
+        PrevAnswerStatsName = gen_init_tabling_name(MLDS_ModuleName,
+            ProcLabel, tabling_prev_answer_stats)
+    ),
+
+    PTIsName = gen_init_null_pointer(mlds_tabling_type(tabling_ptis)),
+    TypeParamLocnsName = gen_init_null_pointer(
+        mlds_tabling_type(tabling_type_param_locns)),
+    RootNodeName = init_struct(mlds_tabling_type(tabling_root_node),
+        [gen_init_int(0)]),
+    TipsName = gen_init_null_pointer(mlds_tabling_type(tabling_tips)),
+
+    ProcTableInfoInit = init_struct(mlds_tabling_type(tabling_info), [
+        gen_init_builtin_const(TableTypeStr),
+        gen_init_int(NumInputs),
+        gen_init_int(NumOutputs),
+        gen_init_int(HasAnswerTable),
+        InputStepsName,
+        InputEnumParamsName,
+        OutputStepsName,
+        OutputEnumParamsName,
+        PTIsName,
+        TypeParamLocnsName,
+        RootNodeName,
+        gen_init_int(0),
+        gen_init_int(0),
+        CallStatsName,
+        gen_init_int(0),
+        gen_init_int(0),
+        PrevCallStatsName,
+        gen_init_int(0),
+        gen_init_int(0),
+        AnswerStatsName,
+        gen_init_int(0),
+        gen_init_int(0),
+        PrevAnswerStatsName,
+        gen_init_int(0),
+        TipsName,
+        gen_init_int(0),
+        gen_init_int(0)
+    ]),
+    ProcTableInfoDefn = tabling_name_and_init_to_defn(ProcLabel, MLDS_Context,
+        modifiable, tabling_info, ProcTableInfoInit),
+
+    !:Defns = InputStepsDefns ++ InputEnumParamsDefns ++
+        OutputStepsDefns ++ OutputEnumParamsDefns ++
+        CallStatsDefns ++ AnswerStatsDefns ++
+        [ProcTableInfoDefn | !.Defns].
+
+:- func init_step(string) = mlds_initializer.
+
+init_step(Str) = init_obj(Rval) :-
+    mercury_private_builtin_module(PrivateBuiltin),
+    MLDS_ModuleName = mercury_module_name_to_mlds(PrivateBuiltin),
+    Var = qual(MLDS_ModuleName, module_qual, mlds_var_name(Str, no)),
+    % XXX These are actually enumeration constants.
+    % Perhaps we should be using an enumeration type here,
+    % rather than `mlds_native_int_type'.
+    Type = mlds_native_int_type,
+    Rval = lval(var(Var, Type)).
+
+:- func gen_init_enum_param(maybe(int)) = mlds_initializer.
+
+gen_init_enum_param(no) = gen_init_int(-1).
+gen_init_enum_param(yes(NumFunctors)) = gen_init_int(NumFunctors).
+
+:- func gen_init_tabling_name(mlds_module_name, mlds_proc_label,
+    proc_tabling_struct_id) = mlds_initializer.
+
+gen_init_tabling_name(ModuleName, ProcLabel, TablingId) = Rval :-
+    DataAddr = data_addr(ModuleName, mlds_tabling_ref(ProcLabel, TablingId)),
+    Rval = init_obj(const(data_addr_const(DataAddr))).
+
+:- func init_stats(proc_tabling_struct_id, table_trie_step) = mlds_initializer.
+
+init_stats(Id, _) =
+    % Id should be one of tabling_{,prev_}{call,answer}_stats.
+    init_struct(mlds_tabling_type(Id), [
+        gen_init_int(0),
+        gen_init_int(0),
+        gen_init_int(0),
+        gen_init_int(0),
+        gen_init_int(0),
+        gen_init_int(0),
+        gen_init_int(0),
+        gen_init_int(0)
+    ]).
+
+:- func tabling_name_and_init_to_defn(mlds_proc_label, mlds_context, constness,
+    proc_tabling_struct_id, mlds_initializer) = mlds_defn.
+
+tabling_name_and_init_to_defn(ProcLabel, MLDS_Context, Constness, Id,
+        Initializer) = Defn :-
+    GC_TraceCode = no,
+    MLDS_Type = mlds_tabling_type(Id),
+    Flags = tabling_data_decl_flags(Constness),
+    DefnBody = mlds_data(MLDS_Type, Initializer, GC_TraceCode),
+    Name = data(mlds_tabling_ref(ProcLabel, Id)),
+    Defn = mlds_defn(Name, MLDS_Context, Flags, DefnBody).
+
+    % Return the declaration flags appropriate for a tabling data structure.
+    %
+:- func tabling_data_decl_flags(constness) = mlds_decl_flags.
+
+tabling_data_decl_flags(Constness) = MLDS_DeclFlags :-
+    Access = private,
+    PerInstance = one_copy,
+    Virtuality = non_virtual,
+    Finality = final,
+    Abstractness = concrete,
+    MLDS_DeclFlags = init_decl_flags(Access, PerInstance,
+        Virtuality, Finality, Constness, Abstractness).
 
     % Return the declaration flags appropriate for a procedure definition.
     %
@@ -2088,7 +2340,7 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
         SharedCode, SharedContext, Decls, Statements, !Info) :-
 
     Lang = foreign_language(Attributes),
-    ( Lang = csharp ->
+    ( Lang = lang_csharp ->
         sorry(this_file, "nondet pragma foreign_proc for C#")
     ;
         true
@@ -2167,7 +2419,7 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
         % to call back into IL and make the continuation call in IL. This is
         % called an "indirect" success continuation call.
 
-        ( Target = il ->
+        ( Target = target_il ->
             ml_gen_call_current_success_cont_indirectly(Context, CallCont,
                 !Info)
         ;
@@ -2241,28 +2493,28 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
         )
     ),
     (
-        Lang = c,
+        Lang = lang_c,
         ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes,
             PredId, ProcId, Args, ExtraArgs,
             Foreign_Code, Context, Decls, Statements, !Info)
     ;
-        Lang = managed_cplusplus,
+        Lang = lang_managed_cplusplus,
         ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes,
             PredId, ProcId, Args, ExtraArgs,
             Foreign_Code, Context, Decls, Statements, !Info)
     ;
-        Lang = csharp,
+        Lang = lang_csharp,
         ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes,
             PredId, ProcId, Args, ExtraArgs,
             Foreign_Code, Context, Decls, Statements, !Info)
     ;
-        Lang = il,
+        Lang = lang_il,
         % XXX should pass OrdinaryKind
         ml_gen_ordinary_pragma_il_proc(CodeModel, Attributes,
             PredId, ProcId, Args, ExtraArgs,
             Foreign_Code, Context, Decls, Statements, !Info)
     ;
-        Lang = java,
+        Lang = lang_java,
         % XXX should pass OrdinaryKind
         ml_gen_ordinary_pragma_java_proc(CodeModel, Attributes,
             PredId, ProcId, Args, ExtraArgs,
@@ -2474,7 +2726,7 @@ ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes, PredId, ProcId,
 
     OutlineStmt = inline_target_code(lang_il, [
         user_target_code(ForeignCode, yes(Context),
-            get_target_code_attributes(il,
+            get_target_code_attributes(lang_il,
                 Attributes ^ extra_attributes))
         ]),
 
@@ -2797,7 +3049,7 @@ get_target_code_attributes(Lang, [refers_to_llds_stack | Attrs]) =
 get_target_code_attributes(Lang, [backend(_Backend) | Attrs]) =
         get_target_code_attributes(Lang, Attrs).
 get_target_code_attributes(Lang, [max_stack_size(N) | Attrs]) =
-    ( Lang = il ->
+    ( Lang = lang_il ->
         [max_stack_size(N) | get_target_code_attributes(Lang, Attrs)]
     ;
         []
@@ -2927,14 +3179,14 @@ ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
     IsForeign = foreign.is_foreign_type(ExportedType),
     (
         (
-            Lang = java,
+            Lang = lang_java,
             MaybeCast = no
         ;
-            Lang = c,
+            Lang = lang_c,
             IsForeign = no,
             MaybeCast = no
         ;
-            Lang = c,
+            Lang = lang_c,
             IsForeign = yes(Assertions),
             list.member(can_pass_as_mercury_type, Assertions),
             MaybeCast = yes("(" ++ TypeString ++ ") ")
@@ -2965,7 +3217,7 @@ ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
                 Cast = ""
             )
         ),
-        string.format("\t%s = %s\n", [s(ArgName), s(Cast)], AssignToArgName),
+        string.format("\t%s = %s ", [s(ArgName), s(Cast)], AssignToArgName),
         AssignInput = [
             raw_target_code(AssignToArgName, []),
             target_code_input(ArgRval),
@@ -3117,15 +3369,15 @@ ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
     IsForeign = foreign.is_foreign_type(ExportedType),
     (
         (
-            Lang = java,
+            Lang = lang_java,
             IsForeign = no,
             Cast = no
         ;
-            Lang = c,
+            Lang = lang_c,
             IsForeign = no,
             Cast = no
         ;
-            Lang = c,
+            Lang = lang_c,
             IsForeign = yes(Assertions),
             list.member(can_pass_as_mercury_type, Assertions),
             Cast = yes
@@ -3164,7 +3416,7 @@ ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
         ),
         string.format(" = %s%s;\n", [s(RHS_Cast), s(ArgName)],
             AssignFromArgName),
-        string.format("\t%s\n", [s(LHS_Cast)], AssignTo),
+        string.format("\t%s ", [s(LHS_Cast)], AssignTo),
         AssignOutput = [
             raw_target_code(AssignTo, []),
             target_code_output(ArgLval),
@@ -3501,4 +3753,3 @@ this_file = "ml_code_gen.m".
 %-----------------------------------------------------------------------------%
 :- end_module ml_code_gen.
 %-----------------------------------------------------------------------------%
-

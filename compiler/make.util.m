@@ -913,7 +913,7 @@ timestamp_extension(_, c_code) = ".c_date".
 timestamp_extension(Globals, c_header(_)) = Ext :-
     globals.get_target(Globals, Target),
     Ext = timestamp_extension(Globals,
-        (Target = asm -> asm_code(non_pic) ; c_code)).
+        (Target = target_asm -> asm_code(non_pic) ; c_code)).
 timestamp_extension(_, il_code) = ".il_date".
 timestamp_extension(_, java_code) = ".java_date".
 timestamp_extension(_, asm_code(non_pic)) = ".s_date".

@@ -1,3 +1,4 @@
+@c vim: expandtab
 \input texinfo
 @setfilename mercury_ref.info
 @settitle The Mercury Language Reference Manual
@@ -9187,33 +9188,64 @@ then the answer(s) must be recomputed again.
 For some procedures, this recomputation can be very wasteful.
 
 With tabled evaluation, the implementation keeps a table containing the
-previously computed results of the specified procedure; at each
-procedure call, the implementation will search the table to check
-whether the answer(s) have already been computed and if so, the answers
-will be returned directly from the tables rather than being recomputed.
+previously computed results of the specified procedure;
+this table is sometimes called the memo table
+(since it ``remembers'' previous answers).
+At each procedure call, the implementation will search the memo table
+to check whether the answer(s) have already been computed,
+and if so, the answers will be returned directly from the memo table
+rather than being recomputed.
 This can result in much faster execution, at the cost of additional
 space to record answers in the table.
 
-The implementation can optionally also check at runtime for the situation
+The implementation can also check at runtime for the situation
 where a procedure calls itself recursively with the same arguments,
 which would normally result in a infinite loop;
 if this situation is encountered, it can (at the programmer's option)
 either throw an exception, or avoid the infinite loop
-by computing solutions using the ``minimal model'' semantics.
+by computing solutions using a ``minimal model'' semantics.
+(Specifically, the minimal model computed by our implementation
+is the perfect model.)
 
-The current Mercury implementation thus supports
+The current Mercury implementation supports
 three different pragmas for tabling, to cover these three cases:
-@samp{pragma memo} does no loop checking,
-@samp{pragma loop_check} checks for loops
-and throws an exception if a loop is detected,
-while @samp{pragma minimal_model} computes the ``minimal model'' semantics.
+@samp{loop_check}, @samp{memo}, and @samp{minimal_model}.
+The @samp{loop_check} pragma asks only for loop checking.
+With this pragma, the memo table will map each distinct set of input arguments
+only to a single boolean saying whether
+a call with those arguments is currently active or not;
+the pragma's only effect is to cause the predicate to throw an exception
+if this boolean says that the current call has the same arguments
+as one of its ancestors, which indicates an infinite recursive loop.
+The @samp{memo} pragma asks for both loop checking and memoization.
+With this pragma, the memo table will map each distinct set of input arguments
+either to the set of results computed previously for those arguments,
+or to an indication that the call is still active
+and thus those results are still being computed.
+This predicate will thus look for infinite recursive loops
+(and throw an exception if and when it finds one)
+but it will also record all its solutions in the memo table,
+and will avoid recomputing solutions
+that are already available in the memo table.
+The @samp{minimal_model} pragma asks for the computation
+of a ``minimal model'' semantics.
+These differs from the @samp{memo} pragma in that
+the detection of what appears to be an infinite recursive loop is not fatal.
+The implementation will consider the apparently infinitely recursive calls
+to fail if the call concerned has no way of computing any solutions
+it hasn't already computed and recorded,
+and it does have such a way, then it switches the execution to explore
+those ways before coming back to the apparently infinitely recursive call.
 
 The syntax for each of these declarations is
 
 @example
 :- pragma memo(@var{Name}/@var{Arity}).
+:- pragma memo(@var{Name}/@var{Arity}, [@var{list of tabling attributes}]).
 :- pragma loop_check(@var{Name}/@var{Arity}).
+:- pragma loop_check(@var{Name}/@var{Arity}, [@var{list of tabling attributes}]).
 :- pragma minimal_model(@var{Name}/@var{Arity}).
+:- pragma minimal_model(@var{Name}/@var{Arity}, [@var{list of tabling attributes}]).
 @end example
 
 @noindent
@@ -9229,46 +9261,93 @@ via declarations such as these:
 
 @example
 :- pragma memo(@var{Name}(in, in, out)).
+:- pragma memo(@var{Name}(in, in, out), [@var{list of tabling attributes}]).
 :- pragma loop_check(@var{Name}(in, out)).
+:- pragma loop_check(@var{Name}(in, out), [@var{list of tabling attributes}]).
 :- pragma minimal_model(@var{Name}(in, in, out, out)).
+:- pragma minimal_model(@var{Name}(in, in, out, out), [@var{list of tabling attributes}]).
 @end example
 
-We also support two faster variants of @samp{pragma memo}
-that may be applicable in some circumstances.
-The implementation of @samp{pragma memo}
-looks up the value of each input argument in the call table,
+Because all variants of tabling record the values of input arguments,
+and all except @samp{loop_check} also record the values of output arguments,
+you cannot apply any of these pragmas to procedures
+whose arguments' modes include any unique component.
+
+The optional list of attributes allows programmers
+to control some aspects of the management of the memo table(s)
+of the procedure(s) affected by the pragma.
+
+The @samp{allow_reset} attribute asks the compiler
+to define a predicate that, when called, resets the memo table.
+The name of this predicate will be ``table_reset_for'',
+followed by the name of the tabled predicate, followed by its arity,
+and (if the predicate has more than one mode) by the mode number
+(the first declared mode is mode 0, the second is mode 1, and so on).
+These three or four components are separated by underscores.
+The reset predicate takes a di/uo pair of I/O states as arguments.
+The presence of these I/O state arguments in the reset predicate,
+and the fact that tabled predicates cannot have unique arguments
+together imply that a memo table cannot be reset
+while a call using that memo table is active.
+
+The @samp{statistics} attribute asks the compiler
+to define a predicate that, when called,
+returns statistics about the memo table.
+The name of this predicate will be ``table_statistics_for'',
+followed by the name of the tabled predicate, followed by its arity,
+and (if the predicate has more than one mode) by the mode number
+(the first declared mode is mode 0, the second is mode 1, and so on).
+These three or four components are separated by underscores.
+The reset predicate takes three arguments.
+The second and third are a di/uo pair of I/O states as arguments,
+while the first is a output argument which contains information
+about accesses to and modifications of the procedure's memo table,
+both since the creation of the table,
+and since the last call to this predicate.
+The type of this argument is defined in the file table_builtin.m
+in the Mercury standard library.
+That module also contains a predicate for printing out this information 
+in a programmer-friendly format.
+
+The remaining two attributes, @samp{fast_loose} and @samp{specified},
+control how arguments are looked up in the memo table.
+The default implementation
+looks up the @emph{value} of each input argument,
 and thus requires time proportional to
-the number of function symbols in the input arguments
-to look up the current call in the call table.
-The @samp{pragma fast_loose_memo} variant
-looks up only the address of each input argument in the call table,
+the number of function symbols in the input arguments.
+This is the only implementation allowed for minimal model tabling,
+but for predicates tabled with the @samp{loop_check} and @samp{memo} pragmas,
+programmers can also choose some other tabling methods.
+
+The @samp{fast_loose_memo} attribute asks the compiler to generate code
+that looks up only the @emph{address} of each input argument in the memo table,
 which means that the time required
-to look up the current call in the call table
-is linear only in the number of input arguments.
+is linear only in the @emph{number} of input arguments, not their @emph{size}.
 The tradeoff is that @samp{fast_loose_memo} does not recognize
 calls as duplicates if they involve input arguments that are logically equal
 but are stored at different locations in memory.
-The following declarations call for this variant of tabling.
-
-@example
-:- pragma fast_loose_memo(@var{Name}/@var{Arity}).
-:- pragma fast_loose_memo(@var{Name}(in, in, out)).
-@end example
-
-The second variant of @samp{pragma memo} allows programmers to choose
-individually for each input argument whether that argument
-should be looked up in the call table by value or by address,
-or whether it should be looked up at all:
+The following declaration calls for this variant of tabling.
 
 @example
 :- pragma memo(@var{Name}(in, in, in, out),
-	[value, addr, promise_implied, output]).
+	[allow_reset, statistics, fast_loose]).
 @end example
 
-The second argument of this form of @samp{pragma memo} should be a list
-with an element for each argument of the predicate or function concerned
-(if a function, last element is for the return value).
-For output arguments, the list element should be @samp{output};
+The @samp{specified} attribute allows programmers to choose
+individually, for each input argument, whether that argument
+should be looked up in the memo table by value or by address,
+or whether it should be looked up at all:
+
+@example
+:- pragma memo(@var{Name}(in, in, in, out), [allow_reset, statistics,
+	specified([value, addr, promise_implied, output])]).
+@end example
+
+The @samp{specified} attribute should have an argument which is a list,
+and this list should contain one element
+for each argument of the predicate or function concerned
+(if a function, the last element is for the return value).
+For output arguments, the list element should be @samp{output}.
 For input arguments, the list element may be
 @samp{value}, @samp{addr} or @samp{promise_implied}.
 The first calls for tabling the argument by value,
@@ -9291,29 +9370,30 @@ If the tabled predicate or function has only one mode,
 then this declaration can also be specified without giving the argument modes:
 
 @example
-:- pragma memo(@var{Name}/@var{Arity},
-	[value, addr, promise_implied, output]).
+:- pragma memo(@var{Name}/@var{Arity}, [allow_reset, statistics,
+	specified([value, addr, promise_implied, output])]).
 @end example
 
 Note that a @samp{pragma minimal_model} declaration
 changes the declarative semantics of the specified predicate or function:
 instead of using the completion of the clauses as the basis for the semantics,
 as is normally the case in Mercury,
-the declarative semantics that is used is the ``minimal model'' semantics.
+the declarative semantics that is used is a ``minimal model'' semantics,
+specifically, the perfect model semantics.
 Anything which is true or false in the completion semantics
-is also true or false (respectively) in the minimal model semantics,
-but there are goals for which the minimal model specifies
+is also true or false (respectively) in the perfect model semantics,
+but there are goals for which the perfect model specifies
 that the result is true or false,
 whereas the completion semantics leaves the result unspecified. 
 For these goals, the usual Mercury semantics requires the
 implementation to either loop or report an error message,
-but the minimal model semantics requires a particular answer to be returned.
-In particular, the minimal model semantics says that
+but the perfect model semantics requires a particular answer to be returned.
+In particular, the perfect model semantics says that
 any call that is not true in @emph{all} models is false.
 
 Programmers should therefore use a @samp{pragma minimal_model} declaration
 only in cases where their intended interpretation for a procedure
-coincides with the minimal model for that procedure.
+coincides with the perfect model for that procedure.
 Fortunately, however, this is usually what programmers intend.
 
 @c XXX give an example
@@ -9329,15 +9409,13 @@ In the general case,
 the execution mechanism required by minimal model tabling is quite complicated,
 requiring the ability to delay goals and then wake them up again.
 The Mercury implementation uses a technique based on
-copying relevant parts of the stack to the heap when delaying goals,
-similar to the one described in
-@c XXX this citation doesn't come out properly in DVI format
-@cite{CAT: the copying approach to tabling},
-by B. Demoen and K. Sagonas.  @xref{[5]}.
-This ensures that code which does not use tabling
-does not pay any runtime overheads
-from the more complicated execution mechanism
-required by (minimal model) tabling.
+copying relevant parts of the stack to the heap when delaying goals.
+It is described in
+@c XXX this citation may not come out properly in DVI format
+@cite{Tabling in Mercury: design and implementation}
+by Z. Somogyi and K. Sagonas,
+Proceedings of the Eight International Symposium
+on Practical Aspects of Declarative Languages.
 
 @cartouche
 @strong{Please note:}

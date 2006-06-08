@@ -255,10 +255,11 @@ optimize_in_call_stmt(OptInfo, Stmt0) = Stmt :-
         % the --target asm back-end, whereas generating the
         % appropriate MLDS instructions does.
         %
-        FuncRval = const(code_addr_const(proc(qual(ModName, module_qual,
-                        pred(predicate, _DefnModName, PredName, _Arity,
-                _CodeModel, _NonOutputFunc) - _ProcId),
-            _FuncSignature))),
+        FuncRval = const(code_addr_const(
+            proc(qual(ModName, module_qual, ProcLabel), _FuncSignature))),
+        ProcLabel = mlds_proc_label(PredLabel, _ProcId),
+        PredLabel = mlds_user_pred_label(predicate, _DefnModName, PredName,
+            _Arity, _CodeModel, _NonOutputFunc),
         (
             PredName = "mark_hp",
             CallArgs = [mem_addr(Lval)],
@@ -448,11 +449,12 @@ target_supports_break_and_continue(Globals) :-
 
 :- func target_supports_break_and_continue_2(compilation_target) = bool.
 
-target_supports_break_and_continue_2(c) = yes.
-target_supports_break_and_continue_2(asm) = no. % asm means via gnu back-end
-target_supports_break_and_continue_2(il) = no.
-target_supports_break_and_continue_2(java) = yes.
-% target_supports_break_and_continue_2(c_sharp) = yes.
+target_supports_break_and_continue_2(target_c) = yes.
+target_supports_break_and_continue_2(target_asm) = no.
+    % asm means via gnu back-end
+target_supports_break_and_continue_2(target_il) = no.
+target_supports_break_and_continue_2(target_java) = yes.
+% target_supports_break_and_continue_2(target_c_sharp) = yes.
 
 %-----------------------------------------------------------------------------%
 

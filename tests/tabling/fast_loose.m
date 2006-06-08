@@ -71,7 +71,7 @@ fast_loose(N, R) :-
 	fast_loose_sum(iota(N), R).
 
 :- pred fast_loose_sum(list(int)::in, int::out) is det.
-:- pragma fast_loose_memo(fast_loose_sum/2).
+:- pragma memo(fast_loose_sum/2, [fast_loose]).
 
 fast_loose_sum([], 0).
 fast_loose_sum([H | T], H + TS) :-

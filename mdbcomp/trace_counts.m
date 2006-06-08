@@ -77,8 +77,8 @@
     --->    ok(trace_count_file_type, trace_counts)
     ;       syntax_error(string)
     ;       error_message(string)
-    ;       open_error(io__error)
-    ;       io_error(io__error).
+    ;       open_error(io.error)
+    ;       io_error(io.error).
 
     % read_trace_counts(FileName, Result, !IO):
     %
@@ -341,19 +341,19 @@ read_trace_counts(FileName, ReadResult, !IO) :-
     % and having to recreate it again. Unfortunately, we don't have any
     % facilities equivalent to popen in Unix, and I don't know how to
     % write one in a way that is portable to Windows. zs.
-    ( string__remove_suffix(FileName, ".gz", BaseName) ->
-        io__call_system("gunzip " ++ FileName, _UnzipResult, !IO),
+    ( string.remove_suffix(FileName, ".gz", BaseName) ->
+        io.call_system("gunzip " ++ FileName, _UnzipResult, !IO),
         ActualFileName = BaseName,
         GzipCmd = "gzip " ++ BaseName
     ;
         ActualFileName = FileName,
         GzipCmd = ""
     ),
-    io__open_input(ActualFileName, Result, !IO),
+    io.open_input(ActualFileName, Result, !IO),
     (
         Result = ok(FileStream),
-        io__set_input_stream(FileStream, OldInputStream, !IO),
-        io__read_line_as_string(IdReadResult, !IO),
+        io.set_input_stream(FileStream, OldInputStream, !IO),
+        io.read_line_as_string(IdReadResult, !IO),
         (
             IdReadResult = ok(FirstLine),
             string.rstrip(FirstLine) = trace_count_file_id
@@ -363,8 +363,8 @@ read_trace_counts(FileName, ReadResult, !IO) :-
         ;
             ReadResult = syntax_error("no trace count file id")
         ),
-        io__set_input_stream(OldInputStream, _, !IO),
-        io__close_input(FileStream, !IO)
+        io.set_input_stream(OldInputStream, _, !IO),
+        io.close_input(FileStream, !IO)
     ;
         Result = error(IOError),
         ReadResult = open_error(IOError)
@@ -372,7 +372,7 @@ read_trace_counts(FileName, ReadResult, !IO) :-
     ( GzipCmd = "" ->
         true
     ;
-        io__call_system(GzipCmd, _ZipResult, !IO)
+        io.call_system(GzipCmd, _ZipResult, !IO)
     ).
 
 :- func trace_count_file_id = string.
@@ -383,13 +383,13 @@ trace_count_file_id = "Mercury trace counts file".
     io::di, io::uo) is cc_multi.
 
 read_trace_counts_from_cur_stream(ReadResult, !IO) :-
-    io__read_line_as_string(IdResult, !IO),
+    io.read_line_as_string(IdResult, !IO),
     (
         IdResult = ok(IdStr),
         IdStrNoNL = string.rstrip(IdStr),
         string_to_file_type(IdStrNoNL, FileType)
     ->
-        try_io(read_trace_counts_setup(map__init), Result, !IO),
+        try_io(read_trace_counts_setup(map.init), Result, !IO),
         (
             Result = succeeded(TraceCounts),
             ReadResult = ok(FileType, TraceCounts)
@@ -414,8 +414,8 @@ read_trace_counts_from_cur_stream(ReadResult, !IO) :-
     io::di, io::uo) is det.
 
 read_trace_counts_setup(!TraceCounts, !IO) :-
-    io__get_line_number(LineNumber, !IO),
-    io__read_line_as_string(Result, !IO),
+    io.get_line_number(LineNumber, !IO),
+    io.read_line_as_string(Result, !IO),
     (
         Result = ok(Line),
         CurFileName = "",
@@ -436,7 +436,7 @@ read_trace_counts_setup(!TraceCounts, !IO) :-
 
 read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurFileName, !TraceCounts,
         !IO) :-
-    lexer__string_get_token_list(HeaderLine, string__length(HeaderLine),
+    lexer.string_get_token_list(HeaderLine, string.length(HeaderLine),
         TokenList, posn(HeaderLineNumber, 1, 0), _),
     (
         TokenList =
@@ -444,10 +444,10 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurFileName, !TraceCounts,
             token_cons(name(NextFileName), _,
             token_nil))
     ->
-        io__read_line_as_string(Result, !IO),
+        io.read_line_as_string(Result, !IO),
         (
             Result = ok(Line),
-            io__get_line_number(LineNumber, !IO),
+            io.get_line_number(LineNumber, !IO),
             read_proc_trace_counts(LineNumber, Line, NextFileName,
                 !TraceCounts, !IO)
         ;
@@ -472,21 +472,21 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurFileName, !TraceCounts,
         string_to_sym_name(DeclModuleStr, ".", DeclModuleName),
         % At the moment runtime/mercury_trace_base.c doesn't
         % write out data for unify, compare, index or init procedures.
-        ProcLabel = proc(DefModuleName, PredOrFunc, DeclModuleName,
-                Name, Arity, Mode),
+        ProcLabel = ordinary_proc_label(DefModuleName, PredOrFunc,
+            DeclModuleName, Name, Arity, Mode),
         ProcLabelAndFile = proc_label_and_filename(ProcLabel, CurFileName),
         % For whatever reason some of the trace counts for a single
         % procedure or function can be split over multiple spans.
         % We collate them as if they appeared in a single span.
-        ( svmap__remove(ProcLabelAndFile, ProbeCounts, !TraceCounts) ->
+        ( svmap.remove(ProcLabelAndFile, ProbeCounts, !TraceCounts) ->
             StartCounts = ProbeCounts
         ;
-            StartCounts = map__init
+            StartCounts = map.init
         ),
         read_proc_trace_counts_2(ProcLabelAndFile, StartCounts,
             !TraceCounts, !IO)
     ;
-        string__format("parse error on line %d of execution trace",
+        string.format("parse error on line %d of execution trace",
             [i(HeaderLineNumber)], Message),
         throw(trace_count_syntax_error(Message))
     ).
@@ -497,7 +497,7 @@ read_proc_trace_counts(HeaderLineNumber, HeaderLine, CurFileName, !TraceCounts,
 
 read_proc_trace_counts_2(ProcLabelAndFile, ProcCounts0, !TraceCounts, !IO) :-
     CurFileName = ProcLabelAndFile ^ filename,
-    io__read_line_as_string(Result, !IO),
+    io.read_line_as_string(Result, !IO),
     (
         Result = ok(Line),
         ( 
@@ -506,18 +506,18 @@ read_proc_trace_counts_2(ProcLabelAndFile, ProcCounts0, !TraceCounts, !IO) :-
         ->
             LineNoAndCount = line_no_and_count(LineNumber, ExecCount, 
                 NumTests),
-            map__det_insert(ProcCounts0, PathPort, LineNoAndCount, ProcCounts),
+            map.det_insert(ProcCounts0, PathPort, LineNoAndCount, ProcCounts),
             read_proc_trace_counts_2(ProcLabelAndFile, ProcCounts,
                 !TraceCounts, !IO)
         ;
-            svmap__det_insert(ProcLabelAndFile, ProcCounts0, !TraceCounts),
-            io__get_line_number(LineNumber, !IO),
+            svmap.det_insert(ProcLabelAndFile, ProcCounts0, !TraceCounts),
+            io.get_line_number(LineNumber, !IO),
             read_proc_trace_counts(LineNumber, Line, CurFileName, !TraceCounts,
                 !IO)
         )
     ;
         Result = eof,
-        svmap__det_insert(ProcLabelAndFile, ProcCounts0, !TraceCounts)
+        svmap.det_insert(ProcLabelAndFile, ProcCounts0, !TraceCounts)
     ;
         Result = error(Error),
         throw(Error)
@@ -527,7 +527,7 @@ read_proc_trace_counts_2(ProcLabelAndFile, ProcCounts0, !TraceCounts, !IO) :-
     int::out) is semidet.
 
 parse_path_port_line(Line, PathPort, LineNumber, ExecCount, NumTests) :-
-    Words = string__words(Line),
+    Words = string.words(Line),
     ( 
         (
             Words = [Word1, ExecCountStr, LineNumberStr],
@@ -542,9 +542,9 @@ parse_path_port_line(Line, PathPort, LineNumber, ExecCount, NumTests) :-
         ;
             fail
         ),
-        string__to_int(ExecCountStr, ExecCount0),
-        string__to_int(NumTestsStr, NumTests0),
-        string__to_int(LineNumberStr, LineNumber0)
+        string.to_int(ExecCountStr, ExecCount0),
+        string.to_int(NumTestsStr, NumTests0),
+        string.to_int(LineNumberStr, LineNumber0)
     ->
         PathPort = PathPort0,
         ExecCount = ExecCount0,
@@ -561,9 +561,9 @@ parse_path_port_line(Line, PathPort, LineNumber, ExecCount, NumTests) :-
         string_to_trace_port(PortStr, Port),
         Path = string_to_goal_path(PathStr),
         PathPort = port_and_path(Port, Path),
-        string__to_int(ExecCountStr, ExecCount),
-        string__to_int(NumTestsStr, NumTests),
-        string__to_int(LineNumberStr, LineNumber)
+        string.to_int(ExecCountStr, ExecCount),
+        string.to_int(NumTestsStr, NumTests),
+        string.to_int(LineNumberStr, LineNumber)
     ).
 
 :- pred string_to_pred_or_func(string, pred_or_func).
@@ -592,10 +592,10 @@ string_to_trace_port("LATR", nondet_pragma_later).
 :- func string_to_goal_path(string) = goal_path is semidet.
 
 string_to_goal_path(String) = Path :-
-    string__prefix(String, "<"),
-    string__suffix(String, ">"),
-    string__length(String, Length),
-    string__substring(String, 1, Length-2, SubString),
+    string.prefix(String, "<"),
+    string.suffix(String, ">"),
+    string.length(String, Length),
+    string.substring(String, 1, Length-2, SubString),
     path_from_string(SubString, Path).
 
     % This function should be kept in sync with the MR_named_count_port array
@@ -620,7 +620,7 @@ make_path_port(GoalPath, nondet_pragma_later) = path_only(GoalPath).
 %-----------------------------------------------------------------------------%
 
 write_trace_counts_to_file(FileType, TraceCounts, FileName, Res, !IO) :-
-    io__open_output(FileName, Result, !IO),
+    io.open_output(FileName, Result, !IO),
     (
         Result = ok(FileStream),
         Res = ok,
@@ -655,28 +655,31 @@ write_proc_label_and_file_trace_counts(ProcLabelAndFileName, PathPortCounts,
 
 :- pred write_proc_label(proc_label::in, io::di, io::uo) is det.
 
-write_proc_label(proc(DefModuleSym, PredOrFunc, DeclModuleSym, Name, Arity,
-        Mode), !IO) :-
-    sym_name_to_string(DefModuleSym, DefModuleStr),
-    sym_name_to_string(DeclModuleSym, DeclModuleStr),
-    string_to_pred_or_func(PredOrFuncStr, PredOrFunc),
-    io.write_string("proc ", !IO),
-    term_io.quote_atom(DefModuleStr, !IO),
-    io.write_string(" ", !IO),
-    io.write_string(PredOrFuncStr, !IO),
-    io.write_string(" ", !IO),
-    term_io.quote_atom(DeclModuleStr, !IO),
-    io.write_string(" ", !IO),
-    term_io.quote_atom(Name, !IO),
-    io.write_string(" ", !IO),
-    io.write_int(Arity, !IO),
-    io.write_string(" ", !IO),
-    io.write_int(Mode, !IO),
-    io.nl(!IO).
-
-    % We don't record special preds in trace counts.
-write_proc_label(special_proc(_, _, _, _, _, _), !IO) :-
-    error("write_proc_label: special_pred").
+write_proc_label(ProcLabel, !IO) :-
+    (
+        ProcLabel = ordinary_proc_label(DefModuleSym, PredOrFunc,
+            DeclModuleSym, Name, Arity, Mode),
+        sym_name_to_string(DefModuleSym, DefModuleStr),
+        sym_name_to_string(DeclModuleSym, DeclModuleStr),
+        string_to_pred_or_func(PredOrFuncStr, PredOrFunc),
+        io.write_string("proc ", !IO),
+        term_io.quote_atom(DefModuleStr, !IO),
+        io.write_string(" ", !IO),
+        io.write_string(PredOrFuncStr, !IO),
+        io.write_string(" ", !IO),
+        term_io.quote_atom(DeclModuleStr, !IO),
+        io.write_string(" ", !IO),
+        term_io.quote_atom(Name, !IO),
+        io.write_string(" ", !IO),
+        io.write_int(Arity, !IO),
+        io.write_string(" ", !IO),
+        io.write_int(Mode, !IO),
+        io.nl(!IO)
+    ;
+        ProcLabel = special_proc_label(_, _, _, _, _, _),
+        % We don't record special preds in trace counts.
+        error("write_proc_label: special_pred_label")
+    ).
 
 :- pred write_path_port_count(path_port::in, line_no_and_count::in, 
     io::di, io::uo) is det.
@@ -733,16 +736,16 @@ string_to_file_type(Str, FileType) :-
 %-----------------------------------------------------------------------------%
 
 restrict_trace_counts_to_module(ModuleName, TraceCounts0, TraceCounts) :-
-    map__foldl(restrict_trace_counts_2(ModuleName), TraceCounts0,
-        map__init, TraceCounts).
+    map.foldl(restrict_trace_counts_2(ModuleName), TraceCounts0,
+        map.init, TraceCounts).
     
 :- pred restrict_trace_counts_2(module_name::in, proc_label_and_filename::in, 
     proc_trace_counts::in, trace_counts::in, trace_counts::out) is det.
 
 restrict_trace_counts_2(ModuleName, ProcLabelAndFile, ProcCounts, Acc0, Acc) :-
     ProcLabel = ProcLabelAndFile ^ proc_label,
-    (if ProcLabel = proc(ModuleName, _, _, _, _, _) then
-        map__det_insert(Acc0, ProcLabelAndFile, ProcCounts, Acc)
+    (if ProcLabel = ordinary_proc_label(ModuleName, _, _, _, _, _) then
+        map.det_insert(Acc0, ProcLabelAndFile, ProcCounts, Acc)
     else
         Acc = Acc0
     ).

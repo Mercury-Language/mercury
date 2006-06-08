@@ -4,7 +4,7 @@
 
 :- import_module io.
 
-:- pred main(io__state::di, io__state::uo) is det.
+:- pred main(io.state::di, io.state::uo) is det.
 
 :- implementation.
 
@@ -37,48 +37,48 @@ main -->
 	{ solutions(u(1, 2, 2), U12) },
 	{ solutions(u(2, 2, 2), U22) },
 	{ udone },
-	io__write_int(P55),
-	io__nl,
-	io__write_int(P43),
-	io__nl,
-	io__write_int(P22),
-	io__nl,
-	io__write_int(P10),
-	io__nl,
-	io__write(MaybeQ32),
-	io__nl,
-	io__write(MaybeQ42),
-	io__nl,
-	io__write_int(R3),
-	io__nl,
-	io__write_string(SA),
-	io__write_string(" "),
-	io__write_float(TA),
-	io__nl,
-	io__write_string(SB),
-	io__write_string(" "),
-	io__write_float(TB),
-	io__nl,
-	io__write_string(SC),
-	io__write_string(" "),
-	io__write_float(TC),
-	io__nl,
-	io__write_string(SD),
-	io__write_string(" "),
-	io__write_float(TD),
-	io__nl,
-	io__write_string(SE),
-	io__write_string(" "),
-	io__write_float(TE),
-	io__nl,
-	io__write(T12),
-	io__nl,
-	io__write(T22),
-	io__nl,
-	io__write(U12),
-	io__nl,
-	io__write(U22),
-	io__nl.
+	io.write_int(P55),
+	io.nl,
+	io.write_int(P43),
+	io.nl,
+	io.write_int(P22),
+	io.nl,
+	io.write_int(P10),
+	io.nl,
+	io.write(MaybeQ32),
+	io.nl,
+	io.write(MaybeQ42),
+	io.nl,
+	io.write_int(R3),
+	io.nl,
+	io.write_string(SA),
+	io.write_string(" "),
+	io.write_float(TA),
+	io.nl,
+	io.write_string(SB),
+	io.write_string(" "),
+	io.write_float(TB),
+	io.nl,
+	io.write_string(SC),
+	io.write_string(" "),
+	io.write_float(TC),
+	io.nl,
+	io.write_string(SD),
+	io.write_string(" "),
+	io.write_float(TD),
+	io.nl,
+	io.write_string(SE),
+	io.write_string(" "),
+	io.write_float(TE),
+	io.nl,
+	io.write(T12),
+	io.nl,
+	io.write(T22),
+	io.nl,
+	io.write(U12),
+	io.nl,
+	io.write(U22),
+	io.nl.
 
 :- pred p(int::in, int::in, int::out) is det.
 :- pragma memo(p/3).
@@ -146,7 +146,7 @@ t(A, B, C) :-
 tdone.
 
 :- pred u(int::in, int::in, int::in, int::out) is nondet.
-:- pragma memo(u/4, [value, value, promise_implied, output]).
+:- pragma memo(u/4, [specified([value, value, promise_implied, output])]).
 
 u(A, B, Bcopy, C) :-
 	( A = 1 ->

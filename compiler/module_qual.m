@@ -1064,7 +1064,8 @@ qualify_pragma(X, Y, !Info, !IO) :-
     PragmaVars0 = X ^ proc_vars,
     qualify_pragma_vars(PragmaVars0, PragmaVars, !Info, !IO),
     Y = X ^ proc_vars := PragmaVars.
-qualify_pragma(tabled(A, B, C, D, MModes0), tabled(A, B, C, D, MModes),
+qualify_pragma(tabled(EvalMethod, Name, Arity, PredOrFunc, MModes0, Attrs),
+        tabled(EvalMethod, Name, Arity, PredOrFunc, MModes, Attrs),
         !Info, !IO) :-
     (
         MModes0 = yes(Modes0),

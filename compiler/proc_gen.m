@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+%
 % File: code_gen.m.
 % Main authors: conway, zs.
-
+%
 % Code generation - convert from HLDS to LLDS.
 %
 % The two main tasks of this module are
@@ -26,7 +26,7 @@
 % for switches by switch_gen and its subsidiary modules, for disjunctions
 % by disj_gen, and for pragma_c_codes by pragma_c_gen. The only kind of goal
 % handled directly by code_gen is the conjunction.
-
+%
 %---------------------------------------------------------------------------%
 
 :- module ll_backend.proc_gen.
@@ -91,6 +91,7 @@
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.middle_rec.
 :- import_module ll_backend.pragma_c_gen.
+:- import_module ll_backend.stack_layout.
 :- import_module ll_backend.trace.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
@@ -367,7 +368,7 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
     code_info.get_closure_layouts(CodeInfo, ClosureLayouts),
     global_data_add_new_closure_layouts(ClosureLayouts, !GlobalData),
     ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
-    maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo,
+    maybe_add_tabling_info_struct(ModuleInfo, PredId, ProcId, ProcInfo,
         ProcLabel, !GlobalData),
 
     Name = pred_info_name(PredInfo),
@@ -471,22 +472,64 @@ generate_deep_prof_info(ProcInfo, HLDSDeepInfo) = DeepProfInfo :-
         OldOutermostSlotNum),
     DeepProfInfo = proc_layout_proc_static(HLDSProcStatic, DeepExcpSlots).
 
-:- pred maybe_add_tabling_pointer_var(module_info::in,
+:- pred maybe_add_tabling_info_struct(module_info::in,
     pred_id::in, proc_id::in, proc_info::in, proc_label::in,
     global_data::in, global_data::out) is det.
 
-maybe_add_tabling_pointer_var(ModuleInfo, PredId, ProcId, ProcInfo, ProcLabel,
+maybe_add_tabling_info_struct(ModuleInfo, PredId, ProcId, ProcInfo, ProcLabel,
         !GlobalData) :-
     proc_info_get_eval_method(ProcInfo, EvalMethod),
     HasTablingPointer = eval_method_has_per_proc_tabling_pointer(EvalMethod),
     (
         HasTablingPointer = yes,
-        module_info_get_name(ModuleInfo, ModuleName),
-        Var = tabling_pointer_var(ModuleName, ProcLabel),
-        global_data_add_new_proc_var(proc(PredId, ProcId), Var, !GlobalData)
+        add_tabling_info_struct(ModuleInfo, PredId, ProcId, ProcInfo,
+            ProcLabel, EvalMethod, !GlobalData)
     ;
         HasTablingPointer = no
     ).
+
+:- pred add_tabling_info_struct(module_info::in, pred_id::in, proc_id::in,
+    proc_info::in, proc_label::in, eval_method::in,
+    global_data::in, global_data::out) is det.
+
+add_tabling_info_struct(ModuleInfo, PredId, ProcId, ProcInfo, ProcLabel,
+        EvalMethod, !GlobalData) :-
+    proc_info_get_maybe_proc_table_info(ProcInfo, MaybeTableInfo),
+    (
+        MaybeTableInfo = yes(TableInfo),
+        (
+            TableInfo = table_gen_info(NumInputs, NumOutputs,
+                InputSteps, MaybeOutputSteps, ArgInfos)
+        ;
+            TableInfo = table_io_decl_info(_),
+            unexpected(this_file, "add_tabling_info_struct: bad TableInfo")
+        )
+    ;
+        MaybeTableInfo = no,
+        unexpected(this_file, "add_tabling_info_struct: no TableInfo")
+    ),
+    global_data_get_static_cell_info(!.GlobalData, StaticCellInfo0),
+    convert_table_arg_info(ArgInfos, NumPTIs, PTIVectorRval,
+        TVarVectorRval, StaticCellInfo0, StaticCellInfo),
+    global_data_set_static_cell_info(StaticCellInfo, !GlobalData),
+    NumArgs = NumInputs + NumOutputs,
+    expect(unify(NumArgs, NumPTIs), this_file,
+        "add_tabling_info_struct: args mismatch"),
+
+    module_info_get_name(ModuleInfo, ModuleName),
+    proc_info_get_table_attributes(ProcInfo, MaybeAttributes),
+    (
+        MaybeAttributes = yes(Attributes)
+    ;
+        MaybeAttributes = no,
+        Attributes = default_memo_table_attributes
+    ),
+    MaybeSizeLimit = Attributes ^ table_attr_size_limit,
+    Statistics = Attributes ^ table_attr_statistics,
+    Var = tabling_info_struct(ModuleName, ProcLabel, EvalMethod,
+        NumInputs, NumOutputs, InputSteps, MaybeOutputSteps, PTIVectorRval,
+        TVarVectorRval, MaybeSizeLimit, Statistics),
+    global_data_add_new_proc_var(proc(PredId, ProcId), Var, !GlobalData).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

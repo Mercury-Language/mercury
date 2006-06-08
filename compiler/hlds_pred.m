@@ -166,7 +166,7 @@
     --->    live
     ;       dead.
 
-:- type arg_info   
+:- type arg_info
     --->    arg_info(
                 arg_loc,    % stored location
                 arg_mode    % mode of top functor
@@ -316,7 +316,7 @@
                         % not be inlined. Used for pragma(no_inline).
                         % Mutually exclusive with user_marked_inline.
 
-    ;       heuristic_inline     
+    ;       heuristic_inline
                         % The compiler (meaning probably inlining.m) requests
                         % that this predicate be inlined. Does not override
                         % user_marked_no_inline.
@@ -877,123 +877,105 @@ calls_are_fully_qualified(Markers) =
     % accurate GC for the MLDS back-end relies on this.
 :- type pred_info
     --->    pred_info(
+                % Module in which pred occurs.
                 module_name         :: module_name,
-                                    % Module in which pred occurs.
 
+                % Predicate name.
                 name                :: string,
-                                    % Predicate name.
 
+                % The arity of the pred (*not* counting any inserted type_info
+                % arguments).
                 orig_arity          :: arity,
-                                    % The arity of the pred (*not* counting any
-                                    % inserted type_info arguments)
 
+                % Whether this "predicate" is really a predicate or a function.
                 is_pred_or_func     :: pred_or_func,
-                                    % Whether this "predicate" was really
-                                    % a predicate or a function.
 
+                % The location (line #) of the :- pred decl.
                 context             :: prog_context,
-                                    % The location (line #) of the :- pred decl.
 
+                % Where did the predicate come from.
                 pred_origin         :: pred_origin,
-                                    % Where did the predicate come from.
 
                 import_status       :: import_status,
 
+                % Whether the goals seen so far, if any, for this predicate
+                % are clauses or foreign_code(...) pragmas.
                 goal_type           :: goal_type,
-                                    % Whether the goals seen so far, if any,
-                                    % for this predicate are clauses or
-                                    % foreign_code(...) pragmas.
 
+                % Various boolean flags.
                 markers             :: pred_markers,
-                                    % Various boolean flags.
 
+                % Various attributes.
                 attributes          :: pred_attributes,
-                                    % Various attributes.
 
+                % Argument types.
                 arg_types           :: list(mer_type),
-                                    % Argument types.
 
+                % Names of type vars in the predicate's type declaration.
                 decl_typevarset     :: tvarset,
-                                    % Names of type vars in the predicate's
-                                    % type declaration.
 
+                % Names of type vars in the predicate's type declaration
+                % or in the variable type assignments.
                 typevarset          :: tvarset,
-                                    % Names of type vars in the predicate's
-                                    % type declaration or in the variable
-                                    % type assignments.
 
+                % Kinds of the type vars.
                 tvar_kinds          :: tvar_kind_map,
-                                    % Kinds of the type vars.
 
+                % The set of existentially quantified type variables in the
+                % predicate's type declaration.
                 exist_quant_tvars   :: existq_tvars,
-                                    % The set of existentially quantified type
-                                    % variables in the predicate's type
-                                    % declaration.
 
+                % The statically known bindings of existentially quantified
+                % type variables inside this predicate. This field is set
+                % at the end of the polymorphism stage.
                 existq_tvar_binding :: tsubst,
-                                    % The statically known bindings of
-                                    % existentially quantified type variables
-                                    % inside this predicate. This field is set
-                                    % at the end of the polymorphism stage.
 
+                % The set of type variables which the body of the predicate
+                % can't bind, and whose type_infos are produced elsewhere.
+                % This includes universally quantified head types (the
+                % type_infos are passed in) plus existentially quantified types
+                % in preds called from the body (the type_infos are returned
+                % from the called predicates). Computed during type checking.
                 head_type_params    :: head_type_params,
-                                    % The set of type variables which the body
-                                    % of the predicate can't bind, and whose
-                                    % type_infos are produced elsewhere.
-                                    % This includes universally quantified
-                                    % head types (the type_infos are passed in)
-                                    % plus existentially quantified types
-                                    % in preds called from the body (the
-                                    % type_infos are returned from the
-                                    % called predicates). Computed during
-                                    % type checking.
 
+                % The class constraints on the type variables in the
+                % predicate's type declaration.
                 class_context       :: prog_constraints,
-                                    % The class constraints on the type
-                                    % variables in the predicate's type
-                                    % declaration.
 
+                % Explanations of how redundant constraints were eliminated.
+                % These are needed by polymorphism.m to work out where to get
+                % the typeclass_infos from. Computed during type checking.
                 constraint_proofs   :: constraint_proof_map,
-                                    % Explanations of how redundant constraints
-                                    % were eliminated. These are needed by
-                                    % polymorphism.m to work out where to get
-                                    % the typeclass_infos from. Computed
-                                    % during type checking.
 
+                % Maps constraint identifiers to the actual constraints.
+                % Computed during type checking.
                 constraint_map      :: constraint_map,
-                                    % Maps constraint identifiers to the actual
-                                    % constraints. Computed during type
-                                    % checking.
 
+                % Unproven class constraints on type variables in the
+                % predicate's body, if any (if this remains non-empty after
+                % type checking has finished, post_typecheck.m will report a
+                % type error).
                 unproven_body_constraints :: list(prog_constraint),
-                                    % Unproven class constraints on type
-                                    % variables in the predicate's body,
-                                    % if any (if this remains non-empty
-                                    % after type checking has finished,
-                                    % post_typecheck.m will report a
-                                    % type error).
 
+                % The predicate's inst graph, for constraint based
+                % mode analysis.
                 inst_graph_info     :: inst_graph_info,
-                                    % The predicate's inst graph, for
-                                    % constraint based mode analysis.
 
+                % Mode information extracted from constraint based
+                % mode analysis.
                 modes               :: list(arg_modes_map),
-                                    % Mode information extracted from
-                                    % constraint based mode analysis.
 
+                % List of assertions which mention this predicate.
                 assertions          :: set(assert_id),
-                                    % List of assertions which mention
-                                    % this predicate.
 
                 clauses_info        :: clauses_info,
 
                 procedures          :: proc_table
             ).
 
-pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context, Origin,
-        Status, GoalType, Markers, ArgTypes, TypeVarSet, ExistQVars,
-        ClassContext, ClassProofs, ClassConstraintMap, ClausesInfo,
-        PredInfo) :-
+pred_info_init(ModuleName, SymName, Arity, PredOrFunc, Context, Origin, Status,
+        GoalType, Markers, ArgTypes, TypeVarSet, ExistQVars, ClassContext,
+        ClassProofs, ClassConstraintMap, ClausesInfo, PredInfo) :-
     unqualify_name(SymName, PredName),
     sym_name_get_module_name(SymName, ModuleName, PredModuleName),
     prog_type.vars_list(ArgTypes, TVars),
@@ -1599,6 +1581,10 @@ attribute_list_to_attributes(Attributes, Attributes).
     --->    direct(int)
     ;       indirect(int, int).
 
+    % This type is differs from the type table_step_kind in
+    % library/table_builtin.m in that (a) in gives more information about the
+    % type of the corresponding argument (if this info is needed and
+    % available), and (b) it doesn't have to handle dummy steps.
 :- type table_trie_step
     --->    table_trie_step_int
     ;       table_trie_step_char
@@ -1623,29 +1609,30 @@ attribute_list_to_attributes(Attributes, Attributes).
             ).
 
 :- type proc_table_info
-
-        % The information we need to display an I/O action to the user.
-        %
-        % The table_arg_type_infos correspond one to one to the
-        % elements of the block saved for an I/O action. The first
-        % element will be the pointer to the proc_layout of the
-        % action's procedure.
     --->    table_io_decl_info(
+                % The information we need to display an I/O action to the user.
+                %
+                % The table_arg_type_infos correspond one to one to the
+                % elements of the block saved for an I/O action. The first
+                % element will be the pointer to the proc_layout of the
+                % action's procedure.
+
                 table_arg_infos
             )
-
-        % The information we need to interpret the data structures
-        % created by tabling for a procedure, except the information
-        % (such as determinism) that is already available from
-        % proc_layout structures.
-        %
-        % The table_arg_type_infos list first all the input arguments,
-        % then all the output arguments.
     ;       table_gen_info(
-                num_inputs      :: int,
-                num_outputs     :: int,
-                input_steps     :: list(table_trie_step),
-                gen_arg_infos   :: table_arg_infos
+                % The information we need to interpret the data structures
+                % created by tabling for a procedure, except the information
+                % (such as determinism) that is already available from
+                % proc_layout structures.
+                %
+                % The table_arg_type_infos list first all the input arguments,
+                % then all the output arguments.
+
+                num_inputs          :: int,
+                num_outputs         :: int,
+                input_steps         :: list(table_trie_step),
+                maybe_output_steps  :: maybe(list(table_trie_step)),
+                gen_arg_infos       :: table_arg_infos
             ).
 
 :- type untuple_proc_info
@@ -1713,6 +1700,8 @@ attribute_list_to_attributes(Attributes, Attributes).
     maybe(prog_var)::out) is det.
 :- pred proc_info_get_maybe_proc_table_info(proc_info::in,
     maybe(proc_table_info)::out) is det.
+:- pred proc_info_get_table_attributes(proc_info::in,
+    maybe(table_attributes)::out) is det.
 :- pred proc_info_get_maybe_deep_profile_info(proc_info::in,
     maybe(deep_profile_proc_info)::out) is det.
 :- pred proc_info_get_maybe_untuple_info(proc_info::in,
@@ -1762,6 +1751,8 @@ attribute_list_to_attributes(Attributes, Attributes).
     proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_maybe_proc_table_info(maybe(proc_table_info)::in,
     proc_info::in, proc_info::out) is det.
+:- pred proc_info_set_table_attributes(maybe(table_attributes)::in,
+    proc_info::in, proc_info::out) is det.
 :- pred proc_info_set_maybe_deep_profile_info(
     maybe(deep_profile_proc_info)::in,
     proc_info::in, proc_info::out) is det.
@@ -1778,7 +1769,7 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred proc_info_get_structure_sharing(proc_info::in,
     maybe(structure_sharing_domain)::out) is det.
 
-:- pred proc_info_set_structure_sharing(structure_sharing_domain::in, 
+:- pred proc_info_set_structure_sharing(structure_sharing_domain::in,
     proc_info::in, proc_info::out) is det.
 
 :- pred proc_info_head_modes_constraint(proc_info::in, mode_constraint::out)
@@ -1912,192 +1903,139 @@ attribute_list_to_attributes(Attributes, Attributes).
 
 :- type proc_info
     --->    proc_info(
+                % The context of the `:- mode' decl (or the context of the
+                % first clause, if there was no mode declaration).
                 proc_context                :: prog_context,
-                                            % The context of the `:- mode' decl
-                                            % (or the context of the first
-                                            % clause, if there was no mode
-                                            % declaration).
 
                 prog_varset                 :: prog_varset,
                 var_types                   :: vartypes,
                 head_vars                   :: list(prog_var),
                 inst_varset                 :: inst_varset,
 
+                % The declared modes of arguments.
                 maybe_declared_head_modes   :: maybe(list(mer_mode)),
-                                            % The declared modes of arguments.
+
                 actual_head_modes           :: list(mer_mode),
                 maybe_head_modes_constraint :: maybe(mode_constraint),
 
+                % Liveness (in the mode analysis sense) of the arguments
+                % in the caller; says whether each argument may be used
+                % after the call.
                 head_var_caller_liveness    :: maybe(list(is_live)),
-                                            % Liveness (in the mode analysis
-                                            % sense) of the arguments in the
-                                            % caller; says whether each
-                                            % argument may be used after
-                                            % the call.
 
+                % The _declared_ determinism of the procedure, or `no'
+                % if there was no detism declaration.
                 declared_detism             :: maybe(determinism),
-                                            % The _declared_ determinism of the
-                                            % procedure, or `no' if there was
-                                            % no detism declaration.
 
                 inferred_detism             :: determinism,
                 body                        :: hlds_goal,
+
+                % No if we must not process this procedure yet (used to delay
+                % mode checking etc. for complicated modes of unification
+                % predicates until the end of the unique_modes pass.)
                 can_process                 :: bool,
-                                            % No if we must not process
-                                            % this procedure yet (used to delay
-                                            % mode checking etc. for
-                                            % complicated modes of unification
-                                            % predicates until the end of the
-                                            % unique_modes pass.)
 
                 mode_errors                 :: list(mode_error_info),
 
+                % Information about type_infos and typeclass_infos.
                 proc_rtti_varmaps           :: rtti_varmaps,
-                                            % Information about type_infos and
-                                            % typeclass_infos.
 
+                % How should the proc be evaluated.
                 eval_method                 :: eval_method,
-                                            % How should the proc be evaluated.
 
                 proc_sub_info               :: proc_sub_info
             ).
 
 :- type proc_sub_info
     --->    proc_sub_info(
+                % Information about the relative sizes of the input and output
+                % args of the procedure. Set by termination analysis.
                 maybe_arg_sizes             :: maybe(arg_size_info),
-                                            % Information about the relative
-                                            % sizes of the input and output
-                                            % args of the procedure. Set by
-                                            % termination analysis.
 
+                % The termination properties of the procedure.
+                % Set by termination analysis.
                 maybe_termination           :: maybe(termination_info),
-                                            % The termination properties of the
-                                            % procedure. Set by termination
-                                            % analysis.
 
+                % Termination properties and argument size constraints for
+                % the procedure. Set by termination2 analysis.
                 termination2                :: termination2_info,
-                                            % Termination properties and
-                                            % argument size constraints for
-                                            % the procedure. Set by
-                                            % termination2 analysis.
 
+                % Is the address of this procedure taken? If yes, we will
+                % need to use typeinfo liveness for them, so that deep_copy
+                % and accurate gc have the RTTI they need for copying closures.
+                %
+                % Note that any non-local procedure must be considered
+                % as having its address taken, since it is possible that
+                % some other module may do so.
                 is_address_taken            :: is_address_taken,
-                                            % Is the address of this procedure
-                                            % taken? If yes, we will need to
-                                            % use typeinfo liveness for them,
-                                            % so that deep_copy and accurate gc
-                                            % have the RTTI they need for
-                                            % copying closures.
-                                            %
-                                            % Note that any non-local procedure
-                                            % must be considered as having its
-                                            % address taken, since it is
-                                            % possible that some other module
-                                            % may do so.
 
+                % Allocation of variables to stack slots.
                 stack_slots                 :: stack_slots,
-                                            % Allocation of variables
-                                            % to stack slots.
 
+                % The calling convention of each argument: information computed
+                % by arg_info.m (based on the modes etc.) and used by code
+                % generation to determine how each argument should be passed.
                 arg_pass_info               :: maybe(list(arg_info)),
-                                            % The calling convention of
-                                            % each argument: information
-                                            % computed by arg_info.m (based on
-                                            % the modes etc.) and used by code
-                                            % generation to determine how
-                                            % each argument should be passed.
 
+                % The initial liveness, for code generation.
                 initial_liveness            :: liveness_info,
-                                            % The initial liveness, for code
-                                            % generation.
 
+                % True iff tracing is enabled, this is a procedure that lives
+                % on the det stack, and the code of this procedure may create
+                % a frame on the det stack. (Only in these circumstances do we
+                % need to reserve a stack slot to hold the value of maxfr
+                % at the call, for use in implementing retry.) This slot
+                % is used only with the LLDS backend XXX. Its value is set
+                % during the live_vars pass; it is invalid before then.
                 need_maxfr_slot             :: bool,
-                                            % True iff tracing is enabled,
-                                            % this is a procedure that lives
-                                            % on the det stack, and the code
-                                            % of this procedure may create
-                                            % a frame on the det stack.
-                                            % (Only in these circumstances
-                                            % do we need to reserve a stack
-                                            % slot to hold the value of maxfr
-                                            % at the call, for use in
-                                            % implementing retry.)
-                                            % This slot is used only with
-                                            % the LLDS backend XXX.
-                                            % Its value is set during the
-                                            % live_vars pass; it is invalid
-                                            % before then.
 
+                % If the procedure's evaluation method is memo, loopcheck or
+                % minimal, this slot identifies the variable that holds the tip
+                % of the call table. Otherwise, this field will be set to `no'.
+                %
+                % Tabled procedures record, in the data structure identified
+                % by this variable, that the call is active. When performing
+                % a retry across such a procedure, we must reset the state
+                % of the call; if we don't, the retried call will find the
+                % active call and report an infinite loop error.
+                %
+                % Such resetting of course requires the debugger to know
+                % whether the procedure has reached the call table tip yet.
+                % Therefore when binding this variable, the code generator
+                % of the relevant backend must record this fact in a place
+                % accessible to the debugger, if debugging is enabled.
                 call_table_tip              :: maybe(prog_var),
-                                            % If the procedure's evaluation
-                                            % method is memo, loopcheck or
-                                            % minimal, this slot identifies the
-                                            % variable that holds the tip
-                                            % of the call table. Otherwise,
-                                            % this field will be set to `no'.
-                                            %
-                                            % Tabled procedures record, in the
-                                            % data structure identified by this
-                                            % variable, that the call is
-                                            % active. When performing a retry
-                                            % across such a procedure, we must
-                                            % reset the state of the call;
-                                            % if we don't, the retried call
-                                            % will find the active call and
-                                            % report an infinite loop error.
-                                            %
-                                            % Such resetting of course requires
-                                            % the debugger to know whether the
-                                            % procedure has reached the call
-                                            % table tip yet. Therefore when
-                                            % binding this variable, the code
-                                            % generator of the relevant backend
-                                            % must record this fact in a place
-                                            % accessible to the debugger,
-                                            % if debugging is enabled.
 
+                % If set, it means that procedure has been subject to a tabling
+                % transformation, either I/O tabling or the regular kind.
+                % In the former case, the argument will contain all the
+                % information we need to display I/O actions involving
+                % this procedure; in the latter case, it will contain
+                % all the information we need to display the call tables,
+                % answer tables and answer blocks of the procedure.
+                % XXX For now, the compiler fully supports only procedures
+                % whose arguments are all either ints, floats or strings.
+                % However, this is still sufficient for debugging most problems
+                % in the tabling system.
                 maybe_table_info            :: maybe(proc_table_info),
-                                            % If set, it means that procedure
-                                            % has been subject to a tabling
-                                            % transformation, either I/O
-                                            % tabling or the regular kind.
-                                            % In the former case, the argument
-                                            % will contain all the information
-                                            % we need to display I/O actions
-                                            % involving this procedure; in the
-                                            % latter case, it will contain
-                                            % all the information we need
-                                            % to display the call tables,
-                                            % answer tables and answer blocks
-                                            % of the procedure.
-                                            % XXX For now, the compiler fully
-                                            % supports only procedures whose
-                                            % arguments are all either ints,
-                                            % floats or strings. However, this
-                                            % is still sufficient for debugging
-                                            % most problems in the tabling
-                                            % system.
+
+                table_attributes            :: maybe(table_attributes),
 
                 maybe_deep_profile_proc_info :: maybe(deep_profile_proc_info),
 
-                maybe_untuple_info          :: maybe(untuple_proc_info), 
-                                            % If set, it means this procedure
-                                            % was created from another
-                                            % procedure by the untupling
-                                            % transformation. This slot records
-                                            % which of the procedure's
-                                            % arguments were derived from which
-                                            % arguments in the original
-                                            % procedure.
-                                            
+                % If set, it means this procedure was created from another
+                % procedure by the untupling transformation. This slot records
+                % which of the procedure's arguments were derived from which
+                % arguments in the original procedure.
+                maybe_untuple_info          :: maybe(untuple_proc_info),
+
+                % Structure sharing information as obtained by the structure
+                % sharing analysis.
                 maybe_structure_sharing     :: maybe(structure_sharing_domain)
-                                            % Structure sharing information
-                                            % as obtained by the structure
-                                            % sharing analysis.
         ).
 
 proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
-        MaybeDet, IsAddressTaken, NewProc) :-
+        MaybeDet, IsAddressTaken, ProcInfo) :-
     % Some parts of the procedure aren't known yet. We initialize them
     % to any old garbage which we will later throw away.
 
@@ -2118,11 +2056,12 @@ proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     CanProcess = yes,
     rtti_varmaps_init(RttiVarMaps),
     Term2Info = term_constr_main.term2_info_init,
-    NewProc = proc_info(MContext, BodyVarSet, BodyTypes, HeadVars, InstVarSet,
+    ProcSubInfo = proc_sub_info(no, no, Term2Info, IsAddressTaken, StackSlots,
+        ArgInfo, InitialLiveness, no, no, no, no, no, no, no),
+    ProcInfo = proc_info(MContext, BodyVarSet, BodyTypes, HeadVars, InstVarSet,
         DeclaredModes, Modes, no, MaybeArgLives, MaybeDet, InferredDet,
         ClauseBody, CanProcess, ModeErrors, RttiVarMaps, eval_normal,
-        proc_sub_info(no, no, Term2Info, IsAddressTaken, StackSlots,
-        ArgInfo, InitialLiveness, no, no, no, no, no, no)).
+        ProcSubInfo).
 
 proc_info_set(Context, BodyVarSet, BodyTypes, HeadVars, InstVarSet, HeadModes,
         HeadLives, DeclaredDetism, InferredDetism, Goal, CanProcess,
@@ -2130,7 +2069,8 @@ proc_info_set(Context, BodyVarSet, BodyTypes, HeadVars, InstVarSet, HeadModes,
         IsAddressTaken, StackSlots, ArgInfo, Liveness, ProcInfo) :-
     ModeErrors = [],
     ProcSubInfo = proc_sub_info(ArgSizes, Termination, Termination2,
-        IsAddressTaken, StackSlots, ArgInfo, Liveness, no, no, no, no, no, no),
+        IsAddressTaken, StackSlots, ArgInfo, Liveness, no, no, no, no,
+        no, no, no),
     ProcInfo = proc_info(Context, BodyVarSet, BodyTypes, HeadVars,
         InstVarSet, no, HeadModes, no, HeadLives,
         DeclaredDetism, InferredDetism, Goal, CanProcess, ModeErrors,
@@ -2151,7 +2091,7 @@ proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet, HeadModes,
     ModeErrors = [],
     Term2Info = term_constr_main.term2_info_init,
     ProcSubInfo = proc_sub_info(no, no, Term2Info, IsAddressTaken,
-        StackSlots, no, Liveness, no, no, no, no, no, no),
+        StackSlots, no, Liveness, no, no, no, no, no, no, no),
     ProcInfo = proc_info(Context, VarSet, VarTypes, HeadVars,
         InstVarSet, no, HeadModes, no, MaybeHeadLives,
         MaybeDeclaredDetism, Detism, Goal, yes, ModeErrors,
@@ -2189,6 +2129,7 @@ proc_info_get_liveness_info(PI, PI ^ proc_sub_info ^ initial_liveness).
 proc_info_get_need_maxfr_slot(PI, PI ^ proc_sub_info ^ need_maxfr_slot).
 proc_info_get_call_table_tip(PI, PI ^ proc_sub_info ^ call_table_tip).
 proc_info_get_maybe_proc_table_info(PI, PI ^ proc_sub_info ^ maybe_table_info).
+proc_info_get_table_attributes(PI, PI ^ proc_sub_info ^ table_attributes).
 proc_info_get_maybe_deep_profile_info(PI,
     PI ^ proc_sub_info ^ maybe_deep_profile_proc_info).
 proc_info_get_maybe_untuple_info(PI,
@@ -2223,6 +2164,8 @@ proc_info_set_call_table_tip(CTT, PI,
     PI ^ proc_sub_info ^ call_table_tip := CTT).
 proc_info_set_maybe_proc_table_info(MTI, PI,
     PI ^ proc_sub_info ^ maybe_table_info := MTI).
+proc_info_set_table_attributes(TA, PI,
+    PI ^ proc_sub_info ^ table_attributes := TA).
 proc_info_set_maybe_deep_profile_info(DPI, PI,
     PI ^ proc_sub_info ^ maybe_deep_profile_proc_info := DPI).
 proc_info_set_maybe_untuple_info(MUI, PI,
@@ -2316,7 +2259,7 @@ proc_info_set_termination2_info(Termination2Info, !ProcInfo) :-
 proc_info_get_structure_sharing(ProcInfo, MaybeSharing) :-
     MaybeSharing = ProcInfo ^ proc_sub_info ^ maybe_structure_sharing.
 
-proc_info_set_structure_sharing(Sharing, !ProcInfo) :- 
+proc_info_set_structure_sharing(Sharing, !ProcInfo) :-
     !:ProcInfo = !.ProcInfo ^ proc_sub_info ^ maybe_structure_sharing :=
         yes(Sharing).
 
@@ -2750,7 +2693,7 @@ valid_determinism_for_eval_method(eval_loop_check, Detism) = Valid :-
     ;
         Valid = yes
     ).
-valid_determinism_for_eval_method(eval_memo(_), Detism) = Valid :-
+valid_determinism_for_eval_method(eval_memo, Detism) = Valid :-
     determinism_components(Detism, _, MaxSoln),
     ( MaxSoln = at_most_zero ->
         Valid = no
@@ -2778,37 +2721,37 @@ valid_determinism_for_eval_method(eval_minimal(_), Detism) = Valid :-
 eval_method_needs_stratification(eval_normal) = no.
 eval_method_needs_stratification(eval_loop_check) = no.
 eval_method_needs_stratification(eval_table_io(_, _)) = no.
-eval_method_needs_stratification(eval_memo(_)) = no.
+eval_method_needs_stratification(eval_memo) = no.
 eval_method_needs_stratification(eval_minimal(_)) = yes.
 
 eval_method_has_per_proc_tabling_pointer(eval_normal) = no.
 eval_method_has_per_proc_tabling_pointer(eval_loop_check) = yes.
 eval_method_has_per_proc_tabling_pointer(eval_table_io(_, _)) = no.
-eval_method_has_per_proc_tabling_pointer(eval_memo(_)) = yes.
+eval_method_has_per_proc_tabling_pointer(eval_memo) = yes.
 eval_method_has_per_proc_tabling_pointer(eval_minimal(_)) = yes.
 
 eval_method_requires_tabling_transform(eval_normal) = no.
 eval_method_requires_tabling_transform(eval_loop_check) = yes.
 eval_method_requires_tabling_transform(eval_table_io(_, _)) = yes.
-eval_method_requires_tabling_transform(eval_memo(_)) = yes.
+eval_method_requires_tabling_transform(eval_memo) = yes.
 eval_method_requires_tabling_transform(eval_minimal(_)) = yes.
 
 eval_method_requires_ground_args(eval_normal) = no.
 eval_method_requires_ground_args(eval_loop_check) = yes.
 eval_method_requires_ground_args(eval_table_io(_, _)) = yes.
-eval_method_requires_ground_args(eval_memo(_)) = yes.
+eval_method_requires_ground_args(eval_memo) = yes.
 eval_method_requires_ground_args(eval_minimal(_)) = yes.
 
 eval_method_destroys_uniqueness(eval_normal) = no.
 eval_method_destroys_uniqueness(eval_loop_check) = yes.
 eval_method_destroys_uniqueness(eval_table_io(_, _)) = no.
-eval_method_destroys_uniqueness(eval_memo(_)) = yes.
+eval_method_destroys_uniqueness(eval_memo) = yes.
 eval_method_destroys_uniqueness(eval_minimal(_)) = yes.
 
 eval_method_change_determinism(eval_normal, Detism) = Detism.
 eval_method_change_determinism(eval_loop_check, Detism) = Detism.
 eval_method_change_determinism(eval_table_io(_, _), Detism) = Detism.
-eval_method_change_determinism(eval_memo(_), Detism) = Detism.
+eval_method_change_determinism(eval_memo, Detism) = Detism.
 eval_method_change_determinism(eval_minimal(_), Detism0) = Detism :-
     det_conjunction_detism(semidet, Detism0, Detism).
 

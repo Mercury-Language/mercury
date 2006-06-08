@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: dependency_graph.m.
 % Main authors: bromage, conway, stayl.
-
+%
 % The dependency_graph records which procedures depend on which other
 % procedures. It is defined as a relation (see hlds_module.m) R where xRy
 % means that the definition of x depends on the definition of y.
@@ -18,7 +18,7 @@
 % The other important structure is the dependency_ordering which is
 % a list of the cliques (strongly-connected components) of this relation,
 % in topological order. This is very handy for doing fixpoint iterations.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.dependency_graph.
@@ -512,46 +512,37 @@ dependency_graph.add_arcs_in_cons(pred_const(ShroudedPredProcId, _), Caller,
     ;
         true
     ).
-dependency_graph.add_arcs_in_cons(type_ctor_info_const(_, _, _),
-        _Caller, !DepGraph).
-dependency_graph.add_arcs_in_cons(base_typeclass_info_const(_, _, _, _),
-        _Caller, !DepGraph).
-dependency_graph.add_arcs_in_cons(type_info_cell_constructor(_),
-        _Caller, !DepGraph).
-dependency_graph.add_arcs_in_cons(typeclass_info_cell_constructor,
-        _Caller, !DepGraph).
-dependency_graph.add_arcs_in_cons(tabling_pointer_const(_),
-        _Caller, !DepGraph).
-dependency_graph.add_arcs_in_cons(deep_profiling_proc_layout(_),
-        _Caller, !DepGraph).
-dependency_graph.add_arcs_in_cons(table_io_decl(_),
-        _Caller, !DepGraph).
+dependency_graph.add_arcs_in_cons(type_ctor_info_const(_, _, _), _, !DepGraph).
+dependency_graph.add_arcs_in_cons(base_typeclass_info_const(_, _, _, _), _,
+    !DepGraph).
+dependency_graph.add_arcs_in_cons(type_info_cell_constructor(_), _, !DepGraph).
+dependency_graph.add_arcs_in_cons(typeclass_info_cell_constructor, _,
+    !DepGraph).
+dependency_graph.add_arcs_in_cons(tabling_info_const(_), _Caller, !DepGraph).
+dependency_graph.add_arcs_in_cons(deep_profiling_proc_layout(_), _, !DepGraph).
+dependency_graph.add_arcs_in_cons(table_io_decl(_), _Caller, !DepGraph).
 
 %-----------------------------------------------------------------------------%
 
-:- pred dependency_graph.write_dependency_ordering(
-    list(list(pred_proc_id))::in, module_info::in, int::in,
-    io::di, io::uo) is det.
+:- pred write_dependency_ordering( list(list(pred_proc_id))::in,
+    module_info::in, int::in, io::di, io::uo) is det.
 
-dependency_graph.write_dependency_ordering([], _ModuleInfo, _N, !IO) :-
+write_dependency_ordering([], _ModuleInfo, _N, !IO) :-
     io.write_string("\n", !IO).
-dependency_graph.write_dependency_ordering([Clique | Rest], ModuleInfo, N,
-        !IO) :-
+write_dependency_ordering([Clique | Rest], ModuleInfo, N, !IO) :-
     io.write_string("% Clique ", !IO),
     io.write_int(N, !IO),
     io.write_string("\n", !IO),
-    dependency_graph.write_clique(Clique, ModuleInfo, !IO),
+    write_clique(Clique, ModuleInfo, !IO),
     N1 = N + 1,
-    dependency_graph.write_dependency_ordering(Rest, ModuleInfo, N1, !IO).
+    write_dependency_ordering(Rest, ModuleInfo, N1, !IO).
 
-:- pred dependency_graph.write_clique(list(pred_proc_id)::in, module_info::in,
-    io::di, io::uo) is det.
+:- pred write_clique(list(pred_proc_id)::in, module_info::in, io::di, io::uo)
+    is det.
 
-dependency_graph.write_clique([], _ModuleInfo, !IO).
-dependency_graph.write_clique([proc(PredId, ProcId) | Rest], ModuleInfo,
-        !IO) :-
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-        PredInfo, ProcInfo),
+write_clique([], _ModuleInfo, !IO).
+write_clique([proc(PredId, ProcId) | Rest], ModuleInfo, !IO) :-
+    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo),
     Name = pred_info_name(PredInfo),
     proc_info_get_declared_determinism(ProcInfo, Det),
     proc_info_get_argmodes(ProcInfo, Modes),
@@ -562,17 +553,17 @@ dependency_graph.write_clique([proc(PredId, ProcId) | Rest], ModuleInfo,
     mercury_output_pred_mode_subdecl(ModeVarSet, unqualified(Name),
         Modes, Det, Context, !IO),
     io.write_string("\n", !IO),
-    dependency_graph.write_clique(Rest, ModuleInfo, !IO).
+    write_clique(Rest, ModuleInfo, !IO).
 
 %-----------------------------------------------------------------------------%
 
-dependency_graph.write_prof_dependency_graph(!ModuleInfo, !IO) :-
+write_prof_dependency_graph(!ModuleInfo, !IO) :-
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
     write_graph(DepInfo, write_empty_node,
         write_prof_dep_graph_link(!.ModuleInfo), !IO).
 
-dependency_graph.write_dependency_graph(!ModuleInfo, !IO) :-
+write_dependency_graph(!ModuleInfo, !IO) :-
     module_info_ensure_dependency_info(!ModuleInfo),
     module_info_dependency_info(!.ModuleInfo, DepInfo),
     io.write_string("% Dependency graph\n", !IO),
@@ -653,24 +644,22 @@ write_graph_children([ChildKey | Children], Parent, Graph, WriteLink, !IO) :-
 
     % Print out the label corresponding to the given pred_id and proc_id.
     %
-:- pred dependency_graph.output_label(module_info::in,
-    pred_id::in, proc_id::in, io::di, io::uo) is det.
+:- pred output_label(module_info::in, pred_id::in, proc_id::in, io::di, io::uo)
+    is det.
 
-dependency_graph.output_label(ModuleInfo, PredId, ProcId, !IO) :-
+output_label(ModuleInfo, PredId, ProcId, !IO) :-
     ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
     output_proc_label(ProcLabel, !IO).
 
 %-----------------------------------------------------------------------------%
 
-dependency_graph.get_scc_entry_points(SCC, HigherSCCs,
-        ModuleInfo, EntryPoints) :-
-    list.filter(dependency_graph.is_entry_point(HigherSCCs, ModuleInfo),
-        SCC, EntryPoints).
+get_scc_entry_points(SCC, HigherSCCs, ModuleInfo, EntryPoints) :-
+    list.filter(is_entry_point(HigherSCCs, ModuleInfo), SCC, EntryPoints).
 
-:- pred dependency_graph.is_entry_point(list(list(pred_proc_id))::in,
-    module_info::in, pred_proc_id::in) is semidet.
+:- pred is_entry_point(list(list(pred_proc_id))::in, module_info::in,
+    pred_proc_id::in) is semidet.
 
-dependency_graph.is_entry_point(HigherSCCs, ModuleInfo, PredProcId) :-
+is_entry_point(HigherSCCs, ModuleInfo, PredProcId) :-
     (
         % Is the predicate exported?
         PredProcId = proc(PredId, _ProcId),
@@ -693,10 +682,10 @@ dependency_graph.is_entry_point(HigherSCCs, ModuleInfo, PredProcId) :-
 
     % Find the SCCs called from a given SCC.
     %
-:- pred dependency_graph.get_called_scc_ids(scc_id::in, relation(scc_id)::in,
-    set(scc_id)::out) is det.
+:- pred get_called_scc_ids(scc_id::in, relation(scc_id)::in, set(scc_id)::out)
+    is det.
 
-dependency_graph.get_called_scc_ids(SCCid, SCCRel, CalledSCCSet) :-
+get_called_scc_ids(SCCid, SCCRel, CalledSCCSet) :-
     relation.lookup_element(SCCRel, SCCid, SCCidKey),
     relation.lookup_from(SCCRel, SCCidKey, CalledSCCKeys),
     set.to_sorted_list(CalledSCCKeys, CalledSCCKeyList),

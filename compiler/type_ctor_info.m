@@ -757,7 +757,7 @@ process_cons_tag(ConsTag, ConsRep) :-
         ; ConsTag = pred_closure_tag(_, _, _)
         ; ConsTag = type_ctor_info_constant(_, _, _)
         ; ConsTag = base_typeclass_info_constant(_, _, _)
-        ; ConsTag = tabling_pointer_constant(_, _)
+        ; ConsTag = tabling_info_constant(_, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ; ConsTag = table_io_decl_tag(_, _)
         ),

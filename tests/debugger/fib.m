@@ -12,7 +12,7 @@
 
 main(!IO) :-
 	perform_trial(23, !IO),
-	reset(!IO),
+	table_reset_for_mfib_2(!IO),
 	perform_trial(23, !IO).
 
 :- pred perform_trial(int::in, io::di, io::uo) is det.
@@ -40,7 +40,7 @@ fib(N, F) :-
 	).
 
 :- pred mfib(int::in, int::out) is det.
-:- pragma memo(mfib/2).
+:- pragma memo(mfib/2, [allow_reset]).
 
 mfib(N, F) :-
 	( N < 2 ->
@@ -50,14 +50,3 @@ mfib(N, F) :-
 		mfib(N - 2, F2),
 		F = F1 + F2
 	).
-
-:- pred reset(io::di, io::uo) is det.
-
-:- pragma foreign_proc("C",
-	reset(IO0::di, IO::uo),
-	[will_not_call_mercury, promise_pure],
-"
-	/* IO0, IO */
-	extern void mercury__fib__reset_tables(void);
-	mercury__fib__reset_tables();
-").

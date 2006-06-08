@@ -57,7 +57,7 @@
     % OutputVar in InstMapDelta (the initial inst is free).
     %
 :- pred create_renaming(prog_vars::in, instmap_delta::in,
-    vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     hlds_goals::out, prog_vars::out, prog_var_renaming::out) is det.
 
 % The predicates rename_var* take a structure and a mapping from var -> var
@@ -313,25 +313,22 @@
     list(goal_feature)::in, assoc_list(prog_var, mer_inst)::in,
     module_info::in, term.context::in, hlds_goal::out) is det.
 
-    % generate_foreign_proc(ModuleName, ProcName, PredOrFunc,
-    %   ModeNo, Detism, Attributes, Args, ExtraArgs, PrefixCode, Code,
-    %   SuffixCode, Features, InstMapDelta, ModuleInfo, Context,
-    %   CallGoal):
+    % generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
+    %   Attributes, Args, ExtraArgs, Code, Features, InstMapDelta,
+    %   ModuleInfo, Context, CallGoal):
     %
     % generate_foreign_proc is similar to generate_simple_call,
     % but also assumes that the called predicate is defined via a
     % foreign_proc, that the foreign_proc's arguments are as given in
     % Args, its attributes are Attributes, and its code is Code.
     % As well as returning a foreign_code instead of a call, effectively
-    % inlining the call, generate_foreign_proc also puts PrefixCode
-    % before Code, SuffixCode after Code, and passes ExtraArgs as well
-    % as Args.
+    % inlining the call, generate_foreign_proc also and passes ExtraArgs
+    % as well as Args.
     %
-:- pred generate_foreign_proc(module_name::in, string::in,
-    pred_or_func::in, mode_no::in, determinism::in,
-    pragma_foreign_proc_attributes::in,
-    list(foreign_arg)::in, list(foreign_arg)::in, string::in, string::in,
-    string::in, list(goal_feature)::in, assoc_list(prog_var, mer_inst)::in,
+:- pred generate_foreign_proc(module_name::in, string::in, pred_or_func::in,
+    mode_no::in, determinism::in, pragma_foreign_proc_attributes::in,
+    list(foreign_arg)::in, list(foreign_arg)::in, string::in,
+    list(goal_feature)::in, assoc_list(prog_var, mer_inst)::in,
     module_info::in, term.context::in, hlds_goal::out) is det.
 
     % Generate a cast goal.  The input and output insts are just ground.
@@ -386,21 +383,21 @@ update_instmap(_Goal0 - GoalInfo0, !InstMap) :-
 
 %-----------------------------------------------------------------------------%
 
-create_renaming(OrigVars, InstMapDelta, !VarTypes, !VarSet, Unifies, NewVars,
+create_renaming(OrigVars, InstMapDelta, !VarSet, !VarTypes, Unifies, NewVars,
         Renaming) :-
-    create_renaming_2(OrigVars, InstMapDelta, !VarTypes, !VarSet,
+    create_renaming_2(OrigVars, InstMapDelta, !VarSet, !VarTypes,
         [], RevUnifies, [], RevNewVars, map.init, Renaming),
     list.reverse(RevNewVars, NewVars),
     list.reverse(RevUnifies, Unifies).
 
 :- pred create_renaming_2(prog_vars::in, instmap_delta::in,
-    vartypes::in, vartypes::out, prog_varset::in, prog_varset::out,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     hlds_goals::in, hlds_goals::out, prog_vars::in, prog_vars::out,
     prog_var_renaming::in, prog_var_renaming::out) is det.
 
-create_renaming_2([], _, !VarTypes, !VarSet, !RevUnifies, !RevNewVars,
+create_renaming_2([], _, !VarSet, !VarTypes, !RevUnifies, !RevNewVars,
         !Renaming).
-create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarTypes, !VarSet,
+create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarSet, !VarTypes,
         !RevUnifies, !RevNewVars, !Renaming) :-
     svvarset.new_var(NewVar, !VarSet),
     map.lookup(!.VarTypes, OrigVar, Type),
@@ -422,7 +419,7 @@ create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarTypes, !VarSet,
     !:RevUnifies = [Goal | !.RevUnifies],
     svmap.det_insert(OrigVar, NewVar, !Renaming),
     !:RevNewVars = [NewVar | !.RevNewVars],
-    create_renaming_2(OrigVars, InstMapDelta, !VarTypes, !VarSet,
+    create_renaming_2(OrigVars, InstMapDelta, !VarSet, !VarTypes,
         !RevUnifies, !RevNewVars, !Renaming).
 
 %-----------------------------------------------------------------------------%
@@ -1589,15 +1586,14 @@ generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism, Args,
     Goal = GoalExpr - GoalInfo.
 
 generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
-        Attributes, Args, ExtraArgs, PrefixCode, Code, SuffixCode, Features,
-        InstMap, ModuleInfo, Context, Goal) :-
+        Attributes, Args, ExtraArgs, Code, Features, InstMap, ModuleInfo,
+        Context, Goal) :-
     list.length(Args, Arity),
     lookup_builtin_pred_proc_id(ModuleInfo, ModuleName, ProcName,
         PredOrFunc, Arity, ModeNo, PredId, ProcId),
 
-    AllCode = PrefixCode ++ Code ++ SuffixCode,
     GoalExpr = foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
-        ordinary(AllCode, no)),
+        ordinary(Code, no)),
     ArgVars = list.map(foreign_arg_var, Args),
     ExtraArgVars = list.map(foreign_arg_var, ExtraArgs),
     Vars = ArgVars ++ ExtraArgVars,

@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: size_prof.m
 % Author: zs.
-
+%
 % This module performs a source-to-source program transformation that
 % implements term size profiling. The objective of the transformation is to
 % make it possible to find out the size of every term in constant time, i.e.
@@ -818,7 +818,7 @@ generate_size_var(SizeVar0, KnownSize, Context, SizeVar, Goals, !Info) :-
         VarTypes0 = !.Info ^ vartypes,
         make_int_const_construction_alloc(KnownSize,
             yes("KnownSize"), KnownSizeGoal, KnownSizeVar,
-            VarTypes0, VarTypes1, VarSet0, VarSet1),
+            VarSet0, VarSet1, VarTypes0, VarTypes1),
         !:Info = !.Info ^ varset := VarSet1,
         !:Info = !.Info ^ vartypes := VarTypes1,
         get_new_var(int_type, "FinalSizeVar", SizeVar, !Info),
@@ -882,7 +882,7 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
                 !:Info = !.Info ^ rtti_varmaps := RttiVarMaps
             ),
             make_int_const_construction_alloc(Slot, yes("TypeClassInfoSlot"),
-                SlotGoal, SlotVar, VarTypes1, VarTypes, VarSet1, VarSet),
+                SlotGoal, SlotVar, VarSet1, VarSet, VarTypes1, VarTypes),
             !:Info = !.Info ^ varset := VarSet,
             !:Info = !.Info ^ vartypes := VarTypes,
             PrivateBuiltin = mercury_private_builtin_module,
@@ -922,7 +922,7 @@ construct_type_info(Context, Type, TypeCtor, ArgTypes, CtorIsVarArity,
         VarSet0 = !.Info ^ varset,
         VarTypes0 = !.Info ^ vartypes,
         make_int_const_construction_alloc(Arity, yes("TupleArity"), ArityGoal,
-            ArityVar, VarTypes0, VarTypes1, VarSet0, VarSet1),
+            ArityVar, VarSet0, VarSet1, VarTypes0, VarTypes1),
         !:Info = !.Info ^ varset := VarSet1,
         !:Info = !.Info ^ vartypes := VarTypes1,
         FrontGoals = list.append(TypeCtorGoals, [ArityGoal]),

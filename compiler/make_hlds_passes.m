@@ -44,6 +44,12 @@
     module_info::out, qual_info::out, bool::out, bool::out, io::di, io::uo)
     is det.
 
+    % The bool records whether any cyclic insts or modes were detected.
+    %
+:- pred add_item_decl_pass_1(item::in, prog_context::in,
+    item_status::in, item_status::out, module_info::in, module_info::out,
+    bool::out, io::di, io::uo) is det.
+
 :- pred add_item_clause(item::in, import_status::in, import_status::out,
     prog_context::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out, io::di, io::uo) is det.
@@ -147,11 +153,10 @@ do_parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, ModuleInfo,
                 item_status(local, may_be_unqualified)),
             InvalidTypes1, !Module, !IO),
 
-        % Add constructors and special preds to the HLDS.
-        % This must be done after adding all type and
-        % `:- pragma foreign_type' declarations.
-        % If there were errors in foreign type type declarations,
-        % doing this may cause a compiler abort.
+        % Add constructors and special preds to the HLDS. This must be done
+        % after adding all type and `:- pragma foreign_type' declarations.
+        % If there were errors in foreign type type declarations, doing this
+        % may cause a compiler abort.
         (
             InvalidTypes1 = no,
             module_info_get_type_table(!.Module, Types),
@@ -168,16 +173,8 @@ do_parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, ModuleInfo,
             Name = mercury_public_builtin_module,
             compiler_generated_rtti_for_builtins(!.Module)
         ->
-            varset.init(TVarSet),
-            Body = abstract_type(non_solver_type),
-            term.context_init(Context),
-            Status = local,
-            list.foldl(
-                (pred(TypeCtor::in, M0::in, M::out) is det :-
-                    construct_type(TypeCtor, [], Type),
-                    add_special_preds(TVarSet, Type, TypeCtor, Body, Context,
-                        Status, M0, M)
-                ), builtin_type_ctors_with_no_hlds_type_defn, !Module)
+            list.foldl(add_builtin_type_ctor_special_preds,
+                builtin_type_ctors_with_no_hlds_type_defn, !Module)
         ;
             true
         ),
@@ -205,6 +202,18 @@ do_parse_tree_to_hlds(module(Name, Items), MQInfo0, EqvMap, ModuleInfo,
         module_info_reverse_predids(!Module),
         ModuleInfo = !.Module
     ).
+
+:- pred add_builtin_type_ctor_special_preds(type_ctor::in,
+    module_info::in, module_info::out) is det.
+
+add_builtin_type_ctor_special_preds(TypeCtor, !ModuleInfo) :-
+    varset.init(TVarSet),
+    Body = abstract_type(non_solver_type),
+    term.context_init(Context),
+    Status = local,
+    construct_type(TypeCtor, [], Type),
+    add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
+        !ModuleInfo).
 
 check_for_errors(P, FoundError, !ModuleInfo, !IO) :-
     io.get_exit_status(BeforeStatus, !IO),
@@ -241,12 +250,12 @@ check_for_errors(P, FoundError, !ModuleInfo, !IO) :-
     io::di, io::uo) is det.
 
 add_item_list_decls_pass_1([], _, !ModuleInfo, !InvalidModes, !IO).
-add_item_list_decls_pass_1([Item - Context | Items], Status0, !ModuleInfo,
+add_item_list_decls_pass_1([Item - Context | Items], !.Status, !ModuleInfo,
         !InvalidModes, !IO) :-
-    add_item_decl_pass_1(Item, Context, Status0, Status1, !ModuleInfo,
+    add_item_decl_pass_1(Item, Context, !Status, !ModuleInfo,
         NewInvalidModes, !IO),
     !:InvalidModes = bool.or(!.InvalidModes, NewInvalidModes),
-    add_item_list_decls_pass_1(Items, Status1, !ModuleInfo, !InvalidModes,
+    add_item_list_decls_pass_1(Items, !.Status, !ModuleInfo, !InvalidModes,
         !IO).
 
     % pass 2:
@@ -279,14 +288,13 @@ add_item_list_decls_pass_2([Item - Context | Items], !.Status, !ModuleInfo,
     % pass 3:
     % Add the clauses one by one to the module.
     %
-    % Check that the declarations for field extraction
-    % and update functions are sensible.
+    % Check that the declarations for field extraction and update functions
+    % are sensible.
     %
-    % Check that predicates listed in `:- initialise' declarations
-    % exist and have the right signature, introduce pragma export
-    % declarations for them and record their exported name in the
-    % module_info so that we can tell the code generator to call
-    % it at initialisation time.
+    % Check that predicates listed in `:- initialise' declarations exist
+    % and have the right signature, introduce pragma export declarations
+    % for them and record their exported name in the module_info so that
+    % we can tell the code generator to call it at initialisation time.
     %
 :- pred add_item_list_clauses(item_list::in, import_status::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
@@ -300,13 +308,6 @@ add_item_list_clauses([Item - Context | Items], Status0,
     add_item_list_clauses(Items, Status1, !ModuleInfo, !QualInfo, !IO).
 
 %-----------------------------------------------------------------------------%
-
-    % The bool records whether any cyclic insts or modes were
-    % detected.
-    %
-:- pred add_item_decl_pass_1(item::in, prog_context::in,
-    item_status::in, item_status::out, module_info::in, module_info::out,
-    bool::out, io::di, io::uo) is det.
 
 add_item_decl_pass_1(clause(_, _, _, _, _, _), _, !Status, !ModuleInfo, no,
         !IO).
@@ -620,9 +621,10 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
                 Details = mutable_decl
             ;
                 ( Details = initialise_decl
+                ; Details = finalise_decl
                 ; Details = solver_type
                 ; Details = foreign_imports
-                ; Details = finalise_decl
+                ; Details = pragma_memo_attribute
                 ),
                 unexpected(this_file, "Bad introduced initialise declaration.")
             )
@@ -669,7 +671,7 @@ add_item_decl_pass_2(Item, Context, !Status, !ModuleInfo, !IO) :-
         % XXX We don't currently support the foreign_name attribute
         % for languages other than C.
         %
-        ( CompilationTarget = c ->
+        ( CompilationTarget = target_c ->
             mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
             module_info_get_name(!.ModuleInfo, ModuleName),
             (
@@ -719,7 +721,7 @@ add_solver_type_mutable_items_pass_2([Item | Items], Context, !Status,
 
 get_global_name_from_foreign_names(ReportErrors, Context, ModuleName,
         MercuryMutableName, ForeignNames, TargetMutableName, !IO) :-
-    solutions.solutions(get_matching_foreign_name(ForeignNames, c),
+    solutions.solutions(get_matching_foreign_name(ForeignNames, lang_c),
         TargetMutableNames),
     (
         TargetMutableNames = [],
@@ -774,10 +776,12 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
             Origin = compiler(Details),
             (
                 % Ignore clauses that are introduced as a result of
-                % `initialise', `finalise' or `mutable' declarations.
+                % `initialise', `finalise' or `mutable' declarations
+                % or pragma memos.
                 ( Details = initialise_decl
-                ; Details = mutable_decl
                 ; Details = finalise_decl
+                ; Details = mutable_decl
+                ; Details = pragma_memo_attribute
                 )
             ;
                 ( Details = solver_type
@@ -805,7 +809,8 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
     ->
         add_solver_type_clause_items(SymName, TypeParams, SolverTypeDetails,
             !Status, Context, !ModuleInfo, !QualInfo, !IO),
-        add_solver_type_mutable_items_clauses(SolverTypeDetails^mutable_items,
+        MutableItems = SolverTypeDetails ^ mutable_items,
+        add_solver_type_mutable_items_clauses(MutableItems,
             !Status, Context, !ModuleInfo, !QualInfo, !IO)
     ;
         true
@@ -869,19 +874,20 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         module_add_pragma_fact_table(Pred, Arity, File, !.Status,
             Context, !ModuleInfo, !QualInfo, !IO)
     ;
-        Pragma = tabled(Type, Name, Arity, PredOrFunc, Mode)
+        Pragma = tabled(Type, Name, Arity, PredOrFunc, MaybeModes,
+            MaybeAttributes)
     ->
         globals.io_lookup_bool_option(type_layout, TypeLayout, !IO),
         (
             TypeLayout = yes,
-            module_add_pragma_tabled(Type, Name, Arity, PredOrFunc,
-                Mode, !.Status, Context, !ModuleInfo, !IO)
+            module_add_pragma_tabled(Type, Name, Arity, PredOrFunc, MaybeModes,
+                MaybeAttributes, !Status, Context, !ModuleInfo, !QualInfo, !IO)
         ;
             TypeLayout = no,
             module_info_incr_errors(!ModuleInfo),
             prog_out.write_context(Context, !IO),
             io.write_string("Error: `:- pragma ", !IO),
-            EvalMethodS = eval_method_to_one_string(Type),
+            EvalMethodS = eval_method_to_string(Type),
             io.write_string(EvalMethodS, !IO),
             io.write_string("' declaration requires the type_ctor_layout\n",
                 !IO),
@@ -898,7 +904,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         % So we ignore these pragmas for the Java back-end.
         %
         globals.io_get_target(Target, !IO),
-        ( Target = java ->
+        ( Target = target_java ->
             true
         ;
             add_pragma_type_spec(Pragma, Context, !ModuleInfo, !QualInfo, !IO)
@@ -927,8 +933,8 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
     ;
         Pragma = reserve_tag(TypeName, TypeArity)
     ->
-        add_pragma_reserve_tag(TypeName, TypeArity, !.Status,
-            Context, !ModuleInfo, !IO)
+        add_pragma_reserve_tag(TypeName, TypeArity, !.Status, Context,
+            !ModuleInfo, !IO)
     ;
         Pragma = export(Name, PredOrFunc, Modes, C_Function)
     ->
@@ -1090,8 +1096,7 @@ add_item_clause(finalise(Origin, SymName, Arity),
             may_be_partially_qualified, SymName, Arity, PredIds)
     ->
         (
-            PredIds = [PredId]
-        ->
+            PredIds = [PredId],
             module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
             pred_info_get_arg_types(PredInfo, ArgTypes),
             pred_info_get_procedures(PredInfo, ProcTable),
@@ -1146,6 +1151,14 @@ add_item_clause(finalise(Origin, SymName, Arity),
                 module_info_incr_errors(!ModuleInfo)
             )
         ;
+            PredIds = [],
+            write_error_pieces(Context, 0, [words("Error:"),
+                sym_name_and_arity(SymName/Arity),
+                words(" used in finalise declaration has " ++
+                "no pred declarations.")], !IO),
+            module_info_incr_errors(!ModuleInfo)
+        ;
+            PredIds = [_, _ | _],
             write_error_pieces(Context, 0, [words("Error:"),
                 sym_name_and_arity(SymName/Arity),
                 words(" used in finalise declaration has " ++
@@ -1165,7 +1178,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         module_info_get_name(!.ModuleInfo, ModuleName),
         varset.new_named_var(varset.init, "X", X, ProgVarSet0),
         InstVarset = varset.init,
-        Attrs0 = default_attributes(c),
+        Attrs0 = default_attributes(lang_c),
         globals.io_lookup_bool_option(mutable_always_boxed, AlwaysBoxed, !IO),
         (
             AlwaysBoxed = yes,
@@ -1203,7 +1216,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         % XXX We don't currently support the foreign_name attribute
         % for languages other than C.
         %
-        ( CompilationTarget = c ->
+        ( CompilationTarget = target_c ->
             get_mutable_global_foreign_decl_defn(!.ModuleInfo, Type,
                 TargetMutableName, ForeignDecl, ForeignDefn),
             ItemStatus0 = item_status(local, may_be_unqualified),
@@ -1379,13 +1392,14 @@ get_mutable_global_foreign_decl_defn(ModuleInfo, Type, TargetMutableName,
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, mutable_always_boxed, AlwaysBoxed),
     globals.get_target(Globals, Backend),
-    ( Backend = c ->
-        TypeName = global_foreign_type_name(AlwaysBoxed, c, ModuleInfo, Type),
+    ( Backend = target_c ->
+        TypeName = global_foreign_type_name(AlwaysBoxed, lang_c, ModuleInfo,
+            Type),
         Decl = pragma(compiler(mutable_decl),
-            foreign_decl(c, foreign_decl_is_exported,
+            foreign_decl(lang_c, foreign_decl_is_exported,
                 "extern " ++ TypeName ++ " " ++ TargetMutableName ++ ";")),
         Defn = pragma(compiler(mutable_decl),
-            foreign_code(c, TypeName ++ " " ++ TargetMutableName ++ ";"))
+            foreign_code(lang_c, TypeName ++ " " ++ TargetMutableName ++ ";"))
     ;
         sorry(this_file, "we don't yet support mutables for non-C backends")
     ).

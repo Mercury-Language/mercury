@@ -507,7 +507,7 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0) = Defns :-
         % (Doing so would just slow things down unnecessarily.)
         \+ (
             Name = function(PredLabel, _, _, _),
-            PredLabel = pred(_, _, "gc_trace", 1, _, _),
+            PredLabel = mlds_user_pred_label(_, _, "gc_trace", 1, _, _),
             mercury_private_builtin_module(PrivateBuiltin),
             ModuleName = mercury_module_name_to_mlds(PrivateBuiltin)
         )
@@ -996,8 +996,9 @@ gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
         ),
         NewSeqNum = SeqNum + 100000,
         GCTraceFuncName = function(PredLabel, ProcId, yes(NewSeqNum), PredId),
-        ProcLabel = qual(PredModule, module_qual, PredLabel - ProcId),
-        GCTraceFuncAddr = internal(ProcLabel, NewSeqNum, Signature)
+        ProcLabel = mlds_proc_label(PredLabel, ProcId),
+        QualProcLabel = qual(PredModule, module_qual, ProcLabel),
+        GCTraceFuncAddr = internal(QualProcLabel, NewSeqNum, Signature)
     ;
         unexpected(this_file, "gen_gc_trace_func: not a function")
     ),
@@ -1129,7 +1130,7 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals, Defn0, Defn,
 ml_make_env_ptr_type(Globals, EnvType) = EnvPtrType :-
     globals.lookup_bool_option(Globals, put_nondet_env_on_heap, OnHeap),
     globals.get_target(Globals, Target),
-    ( Target = il, OnHeap = yes ->
+    ( Target = target_il, OnHeap = yes ->
         % For IL, a class type is already a pointer (object reference).
         EnvPtrType = EnvType
     ;
@@ -1276,8 +1277,8 @@ env_name_base(hoist_nested_funcs) = "env".
 
 :- func ml_pred_label_name(mlds_pred_label) = string.
 
-ml_pred_label_name(pred(PredOrFunc, MaybeDefiningModule, Name, Arity,
-        _CodeModel, _NonOutputFunc)) = LabelName :-
+ml_pred_label_name(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
+        Name, Arity, _CodeModel, _NonOutputFunc)) = LabelName :-
     ( PredOrFunc = predicate, Suffix = "p"
     ; PredOrFunc = function, Suffix = "f"
     ),
@@ -1291,7 +1292,7 @@ ml_pred_label_name(pred(PredOrFunc, MaybeDefiningModule, Name, Arity,
         string.format("%s_%d_%s",
             [s(Name), i(Arity), s(Suffix)], LabelName)
     ).
-ml_pred_label_name(special_pred(PredName, MaybeTypeModule,
+ml_pred_label_name(mlds_special_pred_label(PredName, MaybeTypeModule,
         TypeName, TypeArity)) = LabelName :-
     (
         MaybeTypeModule = yes(TypeModule),

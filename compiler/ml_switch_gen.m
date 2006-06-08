@@ -271,30 +271,30 @@ target_supports_computed_goto(Globals) :-
 :- func target_supports_goto_2(compilation_target) = bool.
 :- func target_supports_computed_goto_2(compilation_target) = bool.
 
-target_supports_int_switch_2(c) = yes.
-target_supports_int_switch_2(asm) = yes.    % asm means via gnu back-end
-target_supports_int_switch_2(il) = no.
-target_supports_int_switch_2(java) = yes.
+target_supports_int_switch_2(target_c) = yes.
+target_supports_int_switch_2(target_asm) = yes.
+target_supports_int_switch_2(target_il) = no.
+target_supports_int_switch_2(target_java) = yes.
 % target_supports_int_switch_2(c_sharp) = yes.
 
-target_supports_string_switch_2(c) = no.
-target_supports_string_switch_2(asm) = no.  % asm means via gnu back-end
-target_supports_string_switch_2(il) = no.
-target_supports_string_switch_2(java) = no.
+target_supports_string_switch_2(target_c) = no.
+target_supports_string_switch_2(target_asm) = no.
+target_supports_string_switch_2(target_il) = no.
+target_supports_string_switch_2(target_java) = no.
 % target_supports_string_switch_2(c_sharp) = yes.
 
-target_supports_computed_goto_2(c) = yes.
-target_supports_computed_goto_2(asm) = no.  % asm means via gnu back-end
+target_supports_computed_goto_2(target_c) = yes.
+target_supports_computed_goto_2(target_asm) = no.
     % XXX for asm, it should be `yes', but currently
     % computed gotos are not yet implemented in gcc.m.
-target_supports_computed_goto_2(il) = yes.
-target_supports_computed_goto_2(java) = no.
+target_supports_computed_goto_2(target_il) = yes.
+target_supports_computed_goto_2(target_java) = no.
 % target_supports_computed_goto_2(c_sharp) = no.
 
-target_supports_goto_2(c) = yes.
-target_supports_goto_2(asm) = yes.          % asm means via gnu back-end
-target_supports_goto_2(il) = yes.
-target_supports_goto_2(java) = no.
+target_supports_goto_2(target_c) = yes.
+target_supports_goto_2(target_asm) = yes.
+target_supports_goto_2(target_il) = yes.
+target_supports_goto_2(target_java) = no.
 % target_supports_goto_2(c_sharp) = yes.
 
 %-----------------------------------------------------------------------------%

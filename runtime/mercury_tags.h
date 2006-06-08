@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-2001, 2003-2005 The University of Melbourne.
+** Copyright (C) 1993-2001, 2003-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -334,7 +334,6 @@
 	#define MR_GET_ENUM_VALUE(x) (x)
 
 #endif
-
 
 /*
 ** For each enumeration constant defined in the runtime (not in Mercury)

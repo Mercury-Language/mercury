@@ -47,8 +47,10 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_io_goal.
+:- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
 :- import_module map.
@@ -243,7 +245,7 @@ parse_pragma_type(_ModuleName, "c_import_module", PragmaTerms, ErrorTerm,
         PragmaTerms = [ImportTerm],
         sym_name_and_args(ImportTerm, Import, [])
     ->
-        Result = ok(pragma(user, foreign_import_module(c, Import)))
+        Result = ok(pragma(user, foreign_import_module(lang_c, Import)))
     ;
         Result = error("wrong number of arguments or invalid " ++
             "module name in `:- pragma c_import_module' " ++
@@ -294,25 +296,31 @@ parse_foreign_language(term.functor(term.atom(String), _, _), Lang) :-
     maybe1(foreign_language_type)::out) is det.
 
 parse_foreign_language_type(InputTerm, Language, Result) :-
-    ( Language = il ->
+    (
+        Language = lang_il,
         ( InputTerm = term.functor(term.string(ILTypeName), [], _) ->
             parse_il_type_name(ILTypeName, InputTerm, Result)
         ;
             Result = error("invalid backend specification term", InputTerm)
         )
-    ; Language = c ->
+    ;
+        Language = lang_c,
         ( InputTerm = term.functor(term.string(CTypeName), [], _) ->
-            Result = ok(c(c(CTypeName)))
-        ;
-            Result = error("invalid backend specification term", InputTerm)
-        )
-    ; Language = java ->
-        ( InputTerm = term.functor(term.string(JavaTypeName), [], _) ->
-            Result = ok(java(java(JavaTypeName)))
+            Result = ok(c(c_type(CTypeName)))
         ;
             Result = error("invalid backend specification term", InputTerm)
         )
     ;
+        Language = lang_java,
+        ( InputTerm = term.functor(term.string(JavaTypeName), [], _) ->
+            Result = ok(java(java_type(JavaTypeName)))
+        ;
+            Result = error("invalid backend specification term", InputTerm)
+        )
+    ;
+        ( Language = lang_managed_cplusplus
+        ; Language = lang_csharp
+        ),
         Result = error("unsupported language specified, " ++
             "unable to parse backend type", InputTerm)
     ).
@@ -332,7 +340,7 @@ parse_il_type_name(String0, ErrorTerm, ForeignType) :-
         string.left(String1, Index, AssemblyName),
         string.split(String1, Index + 1, _, TypeNameStr),
         string_to_sym_name(TypeNameStr, ".", TypeSymName),
-        ForeignType = ok(il(il(reference, AssemblyName, TypeSymName)))
+        ForeignType = ok(il(il_type(reference, AssemblyName, TypeSymName)))
     ;
         string.append("valuetype [", String1, String0),
         string.sub_string_search(String1, "]", Index)
@@ -340,7 +348,7 @@ parse_il_type_name(String0, ErrorTerm, ForeignType) :-
         string.left(String1, Index, AssemblyName),
         string.split(String1, Index + 1, _, TypeNameStr),
         string_to_sym_name(TypeNameStr, ".", TypeSymName),
-        ForeignType = ok(il(il(value, AssemblyName, TypeSymName)))
+        ForeignType = ok(il(il_type(value, AssemblyName, TypeSymName)))
     ;
         ForeignType = error("invalid foreign language type description",
             ErrorTerm)
@@ -353,45 +361,45 @@ parse_il_type_name(String0, ErrorTerm, ForeignType) :-
 :- pred parse_special_il_type_name(string::in, il_foreign_type::out)
     is semidet.
 
-parse_special_il_type_name("bool", il(value, "mscorlib",
+parse_special_il_type_name("bool", il_type(value, "mscorlib",
         qualified(unqualified("System"), "Boolean"))).
-parse_special_il_type_name("char", il(value, "mscorlib",
+parse_special_il_type_name("char", il_type(value, "mscorlib",
         qualified(unqualified("System"), "Char"))).
-parse_special_il_type_name("object", il(reference, "mscorlib",
+parse_special_il_type_name("object", il_type(reference, "mscorlib",
         qualified(unqualified("System"), "Object"))).
-parse_special_il_type_name("string", il(reference, "mscorlib",
+parse_special_il_type_name("string", il_type(reference, "mscorlib",
         qualified(unqualified("System"), "String"))).
-parse_special_il_type_name("float32", il(value, "mscorlib",
+parse_special_il_type_name("float32", il_type(value, "mscorlib",
         qualified(unqualified("System"), "Single"))).
-parse_special_il_type_name("float64", il(value, "mscorlib",
+parse_special_il_type_name("float64", il_type(value, "mscorlib",
         qualified(unqualified("System"), "Double"))).
-parse_special_il_type_name("int8", il(value, "mscorlib",
+parse_special_il_type_name("int8", il_type(value, "mscorlib",
         qualified(unqualified("System"), "SByte"))).
-parse_special_il_type_name("int16", il(value, "mscorlib",
+parse_special_il_type_name("int16", il_type(value, "mscorlib",
         qualified(unqualified("System"), "Int16"))).
-parse_special_il_type_name("int32", il(value, "mscorlib",
+parse_special_il_type_name("int32", il_type(value, "mscorlib",
         qualified(unqualified("System"), "Int32"))).
-parse_special_il_type_name("int64", il(value, "mscorlib",
+parse_special_il_type_name("int64", il_type(value, "mscorlib",
         qualified(unqualified("System"), "Int64"))).
-parse_special_il_type_name("natural int", il(value, "mscorlib",
+parse_special_il_type_name("natural int", il_type(value, "mscorlib",
         qualified(unqualified("System"), "IntPtr"))).
-parse_special_il_type_name("native int", il(value, "mscorlib",
+parse_special_il_type_name("native int", il_type(value, "mscorlib",
         qualified(unqualified("System"), "IntPtr"))).
-parse_special_il_type_name("natural unsigned int", il(value, "mscorlib",
+parse_special_il_type_name("natural unsigned int", il_type(value, "mscorlib",
         qualified(unqualified("System"), "UIntPtr"))).
-parse_special_il_type_name("native unsigned int", il(value, "mscorlib",
+parse_special_il_type_name("native unsigned int", il_type(value, "mscorlib",
         qualified(unqualified("System"), "UIntPtr"))).
-parse_special_il_type_name("refany", il(value, "mscorlib",
+parse_special_il_type_name("refany", il_type(value, "mscorlib",
         qualified(unqualified("System"), "TypedReference"))).
-parse_special_il_type_name("typedref", il(value, "mscorlib",
+parse_special_il_type_name("typedref", il_type(value, "mscorlib",
         qualified(unqualified("System"), "TypedReference"))).
-parse_special_il_type_name("unsigned int8", il(value, "mscorlib",
+parse_special_il_type_name("unsigned int8", il_type(value, "mscorlib",
         qualified(unqualified("System"), "Byte"))).
-parse_special_il_type_name("unsigned int16", il(value, "mscorlib",
+parse_special_il_type_name("unsigned int16", il_type(value, "mscorlib",
         qualified(unqualified("System"), "UInt16"))).
-parse_special_il_type_name("unsigned int32", il(value, "mscorlib",
+parse_special_il_type_name("unsigned int32", il_type(value, "mscorlib",
         qualified(unqualified("System"), "UInt32"))).
-parse_special_il_type_name("unsigned int64", il(value, "mscorlib",
+parse_special_il_type_name("unsigned int64", il_type(value, "mscorlib",
         qualified(unqualified("System"), "UInt64"))).
 
 :- pred parse_maybe_foreign_type_assertions(maybe(term)::in,
@@ -708,7 +716,7 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
 parse_pragma_type(ModuleName, "import", PragmaTerms, ErrorTerm, _VarSet,
         Result) :-
         % XXX we assume all imports are C
-    ForeignLanguage = c,
+    ForeignLanguage = lang_c,
     (
         (
             PragmaTerms = [PredAndModesTerm, FlagsTerm, FunctionTerm],
@@ -800,14 +808,8 @@ parse_pragma_type(ModuleName, "no_inline", PragmaTerms, ErrorTerm, _VarSet,
 
 parse_pragma_type(ModuleName, "memo", PragmaTerms, ErrorTerm, _VarSet,
         Result) :-
-    % The eval_memo(all_strict) could be converted to eval_memo(specified(_))
-    % if the pragma specifies the ways to table the arguments.
-    parse_tabling_pragma(ModuleName, "memo",
-        eval_memo(all_strict), PragmaTerms, ErrorTerm, Result).
-parse_pragma_type(ModuleName, "fast_loose_memo", PragmaTerms, ErrorTerm,
-        _VarSet, Result) :-
-    parse_tabling_pragma(ModuleName, "fast_loose_memo",
-        eval_memo(all_fast_loose), PragmaTerms, ErrorTerm, Result).
+    parse_tabling_pragma(ModuleName, "memo", eval_memo,
+        PragmaTerms, ErrorTerm, Result).
 parse_pragma_type(ModuleName, "loop_check", PragmaTerms, ErrorTerm, _VarSet,
         Result) :-
     parse_tabling_pragma(ModuleName, "loop_check", eval_loop_check,
@@ -818,8 +820,8 @@ parse_pragma_type(ModuleName, "minimal_model", PragmaTerms, ErrorTerm, _VarSet,
     % own_stacks technique for computing minimal models. The decision
     % depends on the grade, and is made in make_hlds.m; the stack_copy here
     % is just a placeholder.
-    parse_tabling_pragma(ModuleName, "minimal_model",
-        eval_minimal(stack_copy), PragmaTerms, ErrorTerm, Result).
+    parse_tabling_pragma(ModuleName, "minimal_model", eval_minimal(stack_copy),
+        PragmaTerms, ErrorTerm, Result).
 
 parse_pragma_type(ModuleName, "obsolete", PragmaTerms, ErrorTerm, _VarSet,
         Result) :-
@@ -1450,10 +1452,10 @@ process_attribute(aliasing, Attrs, Attrs).
         pragma_foreign_proc_attributes, term)
     = maybe1(pragma_foreign_proc_attributes).
 
-check_required_attributes(c, Attrs, _Term) = ok(Attrs).
-check_required_attributes(managed_cplusplus, Attrs, _Term) = ok(Attrs).
-check_required_attributes(csharp, Attrs, _Term) = ok(Attrs).
-check_required_attributes(il, Attrs, Term) = Res :-
+check_required_attributes(lang_c, Attrs, _Term) = ok(Attrs).
+check_required_attributes(lang_managed_cplusplus, Attrs, _Term) = ok(Attrs).
+check_required_attributes(lang_csharp, Attrs, _Term) = ok(Attrs).
+check_required_attributes(lang_il, Attrs, Term) = Res :-
     MaxStackAttrs = list.filter_map(
         (func(X) = X is semidet :- X = max_stack_size(_)),
         Attrs ^ extra_attributes),
@@ -1464,7 +1466,7 @@ check_required_attributes(il, Attrs, Term) = Res :-
         MaxStackAttrs = [_ | _],
         Res = ok(Attrs)
     ).
-check_required_attributes(java, Attrs, _Term) = ok(Attrs).
+check_required_attributes(lang_java, Attrs, _Term) = ok(Attrs).
 
 :- pred parse_pragma_foreign_proc_attributes_term0(term::in,
     list(collected_pragma_foreign_proc_attribute)::out) is semidet.
@@ -1710,38 +1712,45 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
     (
         (
             PragmaTerms = [PredAndModesTerm0],
-            MaybeSpec = no
+            MaybeAttrs = no
         ;
-            PragmaTerms = [PredAndModesTerm0, SpecListTerm0],
-            TablingType = eval_memo(all_strict),
-            MaybeSpec = yes(SpecListTerm0)
+            PragmaTerms = [PredAndModesTerm0, AttrListTerm0],
+            MaybeAttrs = yes(AttrListTerm0)
         )
     ->
-        string.append_list(["`:- pragma ", PragmaName, "' declaration"],
-            ParseMsg),
+        ParseMsg = "`:- pragma " ++ PragmaName ++ "' declaration",
         parse_arity_or_modes(ModuleName, PredAndModesTerm0, ErrorTerm,
             ParseMsg, ArityModesResult),
         (
             ArityModesResult = ok(arity_or_modes(PredName, Arity,
                 MaybePredOrFunc, MaybeModes)),
             (
-                MaybeSpec = yes(SpecListTerm),
-                convert_list(SpecListTerm, parse_arg_tabling_method,
-                    "expected argument tabling method", MaybeArgMethods),
+                MaybeAttrs = no,
+                PragmaType = tabled(TablingType, PredName, Arity,
+                    MaybePredOrFunc, MaybeModes, no),
+                Result = ok(pragma(user, PragmaType))
+            ;
+                MaybeAttrs = yes(AttrsListTerm),
+                convert_maybe_list(AttrsListTerm,
+                    parse_tabling_attribute(TablingType),
+                    "expected tabling attribute", MaybeAttributeList),
                 (
-                    MaybeArgMethods = ok(ArgMethods),
-                    Result = ok(pragma(user,
-                        tabled(eval_memo(specified(ArgMethods)),
-                        PredName, Arity, MaybePredOrFunc, MaybeModes)))
+                    MaybeAttributeList = ok(AttributeList),
+                    update_tabling_attributes(AttributeList,
+                        default_memo_table_attributes, MaybeAttributes),
+                    (
+                        MaybeAttributes = ok(Attributes),
+                        PragmaType = tabled(eval_memo, PredName, Arity,
+                            MaybePredOrFunc, MaybeModes, yes(Attributes)),
+                        Result = ok(pragma(user, PragmaType))
+                    ;
+                        MaybeAttributes = error(Msg, Term),
+                        Result = error(Msg, Term)
+                    )
                 ;
-                    MaybeArgMethods = error(Msg, Term),
+                    MaybeAttributeList = error(Msg, Term),
                     Result = error(Msg, Term)
                 )
-            ;
-                MaybeSpec = no,
-                Result = ok(pragma(user,
-                    tabled(TablingType, PredName, Arity,
-                    MaybePredOrFunc, MaybeModes)))
             )
         ;
             ArityModesResult = error(Msg, Term),
@@ -1752,6 +1761,141 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
             PragmaName, "' declaration"], ErrorMessage),
         Result = error(ErrorMessage, ErrorTerm)
     ).
+
+:- type single_tabling_attribute
+    --->    attr_strictness(call_table_strictness)
+    ;       attr_size_limit(int)
+    ;       attr_statistics
+    ;       attr_allow_reset.
+
+:- pred update_tabling_attributes(
+    assoc_list(term, single_tabling_attribute)::in,
+    table_attributes::in, maybe1(table_attributes)::out) is det.
+
+update_tabling_attributes([], Attributes, ok(Attributes)).
+update_tabling_attributes([Term - SingleAttr | TermSingleAttrs], !.Attributes,
+        MaybeAttributes) :-
+    (
+        SingleAttr = attr_strictness(Strictness),
+        ( !.Attributes ^ table_attr_strictness = all_strict ->
+            !:Attributes = !.Attributes ^ table_attr_strictness := Strictness,
+            update_tabling_attributes(TermSingleAttrs, !.Attributes,
+                MaybeAttributes)
+        ;
+            Msg = "duplicate argument tabling methods attribute"
+                ++ "in `:- pragma memo' declaration",
+            MaybeAttributes = error(Msg, Term)
+        )
+    ;
+        SingleAttr = attr_size_limit(Limit),
+        ( !.Attributes ^ table_attr_size_limit = no ->
+            !:Attributes = !.Attributes ^ table_attr_size_limit := yes(Limit),
+            update_tabling_attributes(TermSingleAttrs, !.Attributes,
+                MaybeAttributes)
+        ;
+            Msg = "duplicate size limits attribute"
+                ++ "in `:- pragma memo' declaration",
+            MaybeAttributes = error(Msg, Term)
+        )
+    ;
+        SingleAttr = attr_statistics,
+        ( !.Attributes ^ table_attr_statistics = no ->
+            !:Attributes = !.Attributes ^ table_attr_statistics := yes,
+            update_tabling_attributes(TermSingleAttrs, !.Attributes,
+                MaybeAttributes)
+        ;
+            Msg = "duplicate statistics attribute"
+                ++ "in `:- pragma memo' declaration",
+            MaybeAttributes = error(Msg, Term)
+        )
+    ;
+        SingleAttr = attr_allow_reset,
+        ( !.Attributes ^ table_attr_allow_reset = no ->
+            !:Attributes = !.Attributes ^ table_attr_allow_reset := yes,
+            update_tabling_attributes(TermSingleAttrs, !.Attributes,
+                MaybeAttributes)
+        ;
+            Msg = "duplicate allow_reset attribute"
+                ++ "in `:- pragma memo' declaration",
+            MaybeAttributes = error(Msg, Term)
+        )
+    ).
+
+:- pred parse_tabling_attribute(eval_method::in, term::in,
+    maybe1(pair(term, single_tabling_attribute))::out) is semidet.
+
+parse_tabling_attribute(EvalMethod, Term, MaybeTermAttribute) :-
+    Term = term.functor(term.atom(Functor), Args, _),
+    (
+        Functor = "fast_loose",
+        Args = [],
+        ( eval_method_allows_fast_loose(EvalMethod) = yes ->
+            Attribute = attr_strictness(all_fast_loose),
+            MaybeTermAttribute = ok(Term - Attribute)
+        ;
+            Msg = "evaluation method " ++ eval_method_to_string(EvalMethod) ++
+                " doesn't allow fast_loose tabling",
+            MaybeTermAttribute = error(Msg, Term)
+        )
+    ;
+        Functor = "specified",
+        Args = [Arg],
+        convert_list(Arg, parse_arg_tabling_method,
+            "expected argument tabling method", MaybeMaybeArgMethods),
+        (
+            MaybeMaybeArgMethods = ok(MaybeArgMethods),
+            ( eval_method_allows_fast_loose(EvalMethod) = yes ->
+                Attribute = attr_strictness(specified(MaybeArgMethods)),
+                MaybeTermAttribute = ok(Term - Attribute)
+            ;
+                Msg = "evaluation method " ++
+                    eval_method_to_string(EvalMethod) ++
+                    " doesn't allow specified tabling methods",
+                MaybeTermAttribute = error(Msg, Term)
+            )
+        ;
+            MaybeMaybeArgMethods = error(Msg, ErrorTerm),
+            MaybeTermAttribute = error(Msg, ErrorTerm)
+        )
+    ;
+        Functor = "size_limit",
+        Args = [Arg],
+        Arg = term.functor(term.integer(Limit), [], _),
+        ( eval_method_allows_size_limit(EvalMethod) = yes ->
+            Attribute = attr_size_limit(Limit),
+            MaybeTermAttribute = ok(Term - Attribute)
+        ;
+            Msg = "evaluation method " ++ eval_method_to_string(EvalMethod) ++
+                " doesn't allow size limits",
+            MaybeTermAttribute = error(Msg, Term)
+        )
+    ;
+        Functor = "statistics",
+        Args = [],
+        Attribute = attr_statistics,
+        MaybeTermAttribute = ok(Term - Attribute)
+    ;
+        Functor = "allow_reset",
+        Args = [],
+        Attribute = attr_allow_reset,
+        MaybeTermAttribute = ok(Term - Attribute)
+    ).
+
+:- func eval_method_allows_fast_loose(eval_method) = bool.
+
+eval_method_allows_fast_loose(eval_normal) = no.
+eval_method_allows_fast_loose(eval_loop_check) = yes.
+eval_method_allows_fast_loose(eval_memo) = yes.
+eval_method_allows_fast_loose(eval_table_io(_, _)) = no.
+eval_method_allows_fast_loose(eval_minimal(_)) = no.
+
+:- func eval_method_allows_size_limit(eval_method) = bool.
+
+eval_method_allows_size_limit(eval_normal) = no.
+eval_method_allows_size_limit(eval_loop_check) = yes.
+eval_method_allows_size_limit(eval_memo) = yes.
+eval_method_allows_size_limit(eval_table_io(_, _)) = no.
+eval_method_allows_size_limit(eval_minimal(_)) = no.
 
 :- pred parse_arg_tabling_method(term::in, maybe(arg_tabling_method)::out)
     is semidet.
@@ -1901,6 +2045,52 @@ convert_list(term.functor(Functor, Args, Context), Pred, UnrecognizedMsg,
             ;
                 RestResult = error(_, _),
                 Result = RestResult
+            )
+        ;
+            Result = error(UnrecognizedMsg, Term)
+        )
+    ;
+        Functor = term.atom("[]"),
+        Args = []
+    ->
+        Result = ok([])
+    ;
+        Result = error("error in list", term.functor(Functor, Args, Context))
+    ).
+
+    % convert_list(T, P, M) will convert a term T into a list of
+    % type X where P is a predicate that converts each element of
+    % the list into the correct type.  M will hold the list if the
+    % conversion succeded for each element of M, otherwise it will
+    % hold the error.
+    %
+:- pred convert_maybe_list(term::in,
+    pred(term, maybe1(T))::(pred(in, out) is semidet),
+    string::in, maybe1(list(T))::out) is det.
+
+convert_maybe_list(term.variable(V), _, UnrecognizedMsg,
+        error(UnrecognizedMsg, term.variable(V))).
+convert_maybe_list(term.functor(Functor, Args, Context), Pred, UnrecognizedMsg,
+        Result) :-
+    (
+        Functor = term.atom("[|]"),
+        Args = [Term, RestTerm]
+    ->
+        ( call(Pred, Term, ElementResult) ->
+            (
+                ElementResult = ok(Element),
+                convert_maybe_list(RestTerm, Pred, UnrecognizedMsg,
+                    RestResult),
+                (
+                    RestResult = ok(List0),
+                    Result = ok([Element | List0])
+                ;
+                    RestResult = error(_, _),
+                    Result = RestResult
+                )
+            ;
+                ElementResult = error(Msg, ErrorTerm),
+                Result = error(Msg, ErrorTerm)
             )
         ;
             Result = error(UnrecognizedMsg, Term)

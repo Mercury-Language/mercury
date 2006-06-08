@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2003, 2005 The University of Melbourne.
+% Copyright (C) 2003, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -20,7 +20,7 @@
 
 :- interface.
 
-:- pred mdbcomp__version(string::out) is det.
+:- pred mdbcomp.version(string::out) is det.
 
 :- include_module prim_data.
 :- include_module program_representation.
@@ -33,7 +33,7 @@
 % See library/library.m for why we implement this predicate this way.
 
 :- pragma foreign_proc("C",
-    mdbcomp__version(Version::out),
+    mdbcomp.version(Version::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     MR_ConstString version_string;
@@ -46,6 +46,6 @@
     Version = (MR_String) (MR_Word) version_string;
 ").
 
-mdbcomp__version("unknown version").
+mdbcomp.version("unknown version").
 
 %---------------------------------------------------------------------------%

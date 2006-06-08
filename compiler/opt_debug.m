@@ -351,8 +351,8 @@ dump_data_name(scalar_common_ref(TypeNum, Offset)) =
 dump_data_name(vector_common_ref(TypeNum, Offset)) =
     "vector_common_ref(" ++ int_to_string(TypeNum) ++ ", "
         ++ int_to_string(Offset) ++ ")".
-dump_data_name(tabling_pointer(ProcLabel)) =
-    "tabling_pointer(" ++ dump_proclabel(ProcLabel) ++ ")".
+dump_data_name(proc_tabling_ref(ProcLabel, Id)) =
+    tabling_info_id_str(Id) ++ "(" ++ dump_proclabel(ProcLabel) ++ ")".
 
 dump_rtti_type_ctor(rtti_type_ctor(ModuleName, TypeName, Arity)) =
     "rtti_type_ctor(" ++ sym_name_mangle(ModuleName) ++ ", "
@@ -485,12 +485,6 @@ dump_layout_name(proc_static_call_sites(RttiProcLabel)) =
     "proc_static_call_sites(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
 dump_layout_name(table_io_decl(RttiProcLabel)) =
     "table_io_decl(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
-dump_layout_name(table_gen_info(RttiProcLabel)) =
-    "table_gen_info(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
-dump_layout_name(table_gen_enum_params(RttiProcLabel)) =
-    "table_gen_enum_params(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
-dump_layout_name(table_gen_steps(RttiProcLabel)) =
-    "table_gen_steps(" ++ dump_rttiproclabel(RttiProcLabel) ++ ")".
 
 dump_unop(mktag) = "mktag".
 dump_unop(tag) = "tag".
@@ -596,8 +590,8 @@ dump_rttiproclabel(RttiProcLabel) =
 
 dump_proclabel(ProcLabel) = Str :-
     (
-        ProcLabel = proc(Module, _PredOrFunc, PredModule, PredName,
-            Arity, Mode),
+        ProcLabel = ordinary_proc_label(Module, _PredOrFunc, PredModule,
+            PredName, Arity, Mode),
         ( Module = PredModule ->
             ExtraModule = ""
         ;
@@ -608,7 +602,7 @@ dump_proclabel(ProcLabel) = Str :-
             ++ int_to_string(Arity) ++ "_" ++ int_to_string(Mode)
 
     ;
-        ProcLabel = special_proc(Module, SpecialPredId, TypeModule,
+        ProcLabel = special_proc_label(Module, SpecialPredId, TypeModule,
             TypeName, TypeArity, Mode),
         TypeCtor = type_ctor(qualified(TypeModule, TypeName), TypeArity),
         Str = sym_name_mangle(Module) ++ "_"

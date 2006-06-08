@@ -419,7 +419,7 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
                 file_name_to_module_name(FirstModule,
                     MainModuleName),
                 globals.get_target(Globals, Target),
-                ( Target = java ->
+                ( Target = target_java ->
                     % For Java, at the "link" step we just
                     % generate a shell script; the actual
                     % linking will be done at runtime by
@@ -531,7 +531,7 @@ process_all_args(OptionVariables, OptionArgs, Args, ModulesToLink,
 :- pred compiling_to_asm(globals::in) is semidet.
 
 compiling_to_asm(Globals) :-
-    globals.get_target(Globals, asm),
+    globals.get_target(Globals, target_asm),
     % even if --target asm is specified,
     % it can be overridden by other options:
     OptionList = [convert_to_mercury, generate_dependencies,
@@ -1067,7 +1067,7 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
             recompilation.check.should_recompile(ModuleName, FindTargetFiles,
                 FindTimestampFiles, ModulesToRecompile0, ReadModules, !IO),
             (
-                Target = asm,
+                Target = target_asm,
                 ModulesToRecompile0 = some_modules([_ | _])
             ->
                 %
@@ -1095,7 +1095,7 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
             FactTableObjFiles = []
         ;
             (
-                Target = asm,
+                Target = target_asm,
                 Smart = yes
             ->
                 % See the comment in process_all_args.
@@ -1295,10 +1295,10 @@ compile_with_module_options(ModuleName, OptionVariables, OptionArgs,
 find_smart_recompilation_target_files(TopLevelModuleName,
         Globals, FindTargetFiles) :-
     globals.get_target(Globals, CompilationTarget),
-    ( CompilationTarget = c, TargetSuffix = ".c"
-    ; CompilationTarget = il, TargetSuffix = ".il"
-    ; CompilationTarget = java, TargetSuffix = ".java"
-    ; CompilationTarget = asm, TargetSuffix = ".s"
+    ( CompilationTarget = target_c, TargetSuffix = ".c"
+    ; CompilationTarget = target_il, TargetSuffix = ".il"
+    ; CompilationTarget = target_java, TargetSuffix = ".java"
+    ; CompilationTarget = target_asm, TargetSuffix = ".s"
     ),
     FindTargetFiles = usual_find_target_files(CompilationTarget,
         TargetSuffix, TopLevelModuleName).
@@ -1311,7 +1311,7 @@ usual_find_target_files(CompilationTarget, TargetSuffix, TopLevelModuleName,
         ModuleName, TargetFiles, !IO) :-
     % XXX Should we check the generated header files?
     (
-        CompilationTarget = asm,
+        CompilationTarget = target_asm,
         ModuleName \= TopLevelModuleName
     ->
         % With `--target asm' all the nested sub-modules are placed
@@ -1329,16 +1329,16 @@ find_timestamp_files(TopLevelModuleName, Globals, FindTimestampFiles) :-
     globals.lookup_bool_option(Globals, pic, Pic),
     globals.get_target(Globals, CompilationTarget),
     (
-        CompilationTarget = c,
+        CompilationTarget = target_c,
         TimestampSuffix = ".c_date"
     ;
-        CompilationTarget = il,
+        CompilationTarget = target_il,
         TimestampSuffix = ".il_date"
     ;
-        CompilationTarget = java,
+        CompilationTarget = target_java,
         TimestampSuffix = ".java_date"
     ;
-        CompilationTarget = asm,
+        CompilationTarget = target_asm,
         TimestampSuffix = (Pic = yes -> ".pic_s_date" ; ".s_date")
     ),
     FindTimestampFiles = find_timestamp_files_2(CompilationTarget,
@@ -1351,7 +1351,7 @@ find_timestamp_files(TopLevelModuleName, Globals, FindTimestampFiles) :-
 find_timestamp_files_2(CompilationTarget, TimestampSuffix,
         TopLevelModuleName, ModuleName, TimestampFiles, !IO) :-
     (
-        CompilationTarget = asm,
+        CompilationTarget = target_asm,
         ModuleName \= TopLevelModuleName
     ->
         % With `--target asm' all the nested
@@ -1504,8 +1504,8 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
     module_info_get_num_errors(!.HLDS, NumErrors),
     ( NumErrors = 0 ->
         (
-            ( Target = c
-            ; Target = asm
+            ( Target = target_c
+            ; Target = target_asm
             )
         ->
             %
@@ -1518,7 +1518,8 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
         ;
             true
         ),
-        ( Target = il ->
+        (
+            Target = target_il,
             mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
             (
                 TargetCodeOnly = yes,
@@ -1533,7 +1534,8 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
                 maybe_set_exit_status(Succeeded, !IO)
             ),
             FactTableBaseFiles = []
-        ; Target = java ->
+        ;
+            Target = target_java,
             mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
             mlds_to_java(!.HLDS, MLDS, !IO),
             (
@@ -1548,7 +1550,8 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
                 maybe_set_exit_status(Succeeded, !IO)
             ),
             FactTableBaseFiles = []
-        ; Target = asm ->
+        ;
+            Target = target_asm,
             % compile directly to assembler using the gcc back-end
             mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
             maybe_mlds_to_gcc(MLDS, ContainsCCode, !IO),
@@ -1570,28 +1573,34 @@ mercury_compile_after_front_end(NestedSubModules, FindTimestampFiles,
                 )
             ),
             FactTableBaseFiles = []
-        ; HighLevelCode = yes ->
-            mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
-            mlds_to_high_level_c(MLDS, !IO),
-            (
-                TargetCodeOnly = yes
-            ;
-                TargetCodeOnly = no,
-                module_name_to_file_name(ModuleName, ".c", no, C_File, !IO),
-                get_linked_target_type(TargetType, !IO),
-                get_object_code_type(TargetType, PIC, !IO),
-                maybe_pic_object_file_extension(PIC, Obj, !IO),
-                module_name_to_file_name(ModuleName, Obj, yes, O_File, !IO),
-                io.output_stream(OutputStream, !IO),
-                compile_target_code.compile_c_file(OutputStream, PIC, C_File,
-                    O_File, CompileOK, !IO),
-                maybe_set_exit_status(CompileOK, !IO)
-            ),
-            FactTableBaseFiles = []
         ;
-            backend_pass(!HLDS, GlobalData, LLDS, !DumpInfo, !IO),
-            output_pass(!.HLDS, GlobalData, LLDS, ModuleName,
-                _CompileErrors, FactTableBaseFiles, !IO)
+            Target = target_c,
+            (
+                HighLevelCode = yes,
+                mlds_backend(!.HLDS, _, MLDS, !DumpInfo, !IO),
+                mlds_to_high_level_c(MLDS, !IO),
+                (
+                    TargetCodeOnly = yes
+                ;
+                    TargetCodeOnly = no,
+                    module_name_to_file_name(ModuleName, ".c", no, C_File,
+                        !IO),
+                    get_linked_target_type(TargetType, !IO),
+                    get_object_code_type(TargetType, PIC, !IO),
+                    maybe_pic_object_file_extension(PIC, Obj, !IO),
+                    module_name_to_file_name(ModuleName, Obj, yes, O_File, !IO),
+                    io.output_stream(OutputStream, !IO),
+                    compile_target_code.compile_c_file(OutputStream, PIC,
+                        C_File, O_File, CompileOK, !IO),
+                    maybe_set_exit_status(CompileOK, !IO)
+                ),
+                FactTableBaseFiles = []
+            ;
+                HighLevelCode = no,
+                backend_pass(!HLDS, GlobalData, LLDS, !DumpInfo, !IO),
+                output_pass(!.HLDS, GlobalData, LLDS, ModuleName,
+                    _CompileErrors, FactTableBaseFiles, !IO)
+            )
         ),
         recompilation.usage.write_usage_file(!.HLDS, NestedSubModules,
             MaybeTimestamps, !IO),
@@ -1616,7 +1625,7 @@ mercury_compile_asm_c_code(ModuleName, !IO) :-
     get_object_code_type(TargetType, PIC, !IO),
     maybe_pic_object_file_extension(PIC, Obj, !IO),
     module_name_to_file_name(ModuleName, ".c", no, CCode_C_File, !IO),
-    ForeignModuleName = foreign_language_module_name(ModuleName, c),
+    ForeignModuleName = foreign_language_module_name(ModuleName, lang_c),
     module_name_to_file_name(ForeignModuleName, Obj, yes, CCode_O_File, !IO),
     io.output_stream(OutputStream, !IO),
     compile_target_code.compile_c_file(OutputStream, PIC,
@@ -3182,16 +3191,16 @@ maybe_add_trail_ops(Verbose, Stats, !HLDS, !IO) :-
         globals.io_lookup_bool_option(optimize_trail_usage, OptTrailUse, !IO),
         globals.io_get_target(Target, !IO),
         (
-            Target = c,
+            Target = target_c,
             globals.io_lookup_bool_option(generate_trail_ops_inline,
                 GenerateInline, !IO)
         ;
             % XXX Currently, we can only generate trail ops inline for
             % the C backends.
             %
-            ( Target = il
-            ; Target = java
-            ; Target = asm
+            ( Target = target_il
+            ; Target = target_java
+            ; Target = target_asm
             ),
             GenerateInline = no
         ),
@@ -3314,7 +3323,7 @@ maybe_output_prof_call_graph(Verbose, Stats, !HLDS, !IO) :-
 tabling(Verbose, Stats, !HLDS, !IO) :-
     maybe_write_string(Verbose, "% Transforming tabled predicates...", !IO),
     maybe_flush_output(Verbose, !IO),
-    table_gen.process_module(!HLDS, !IO),
+    table_gen_process_module(!HLDS, !IO),
     maybe_write_string(Verbose, " done.\n", !IO),
     maybe_report_stats(Stats, !IO).
 
@@ -4072,8 +4081,8 @@ output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
     % Here we perform some optimizations on the LLDS data.
     % XXX This should perhaps be part of backend_pass rather than output_pass.
     % XXX We assume that the foreign language we use is C.
-    get_c_interface_info(HLDS, c, C_InterfaceInfo),
-    global_data_get_all_proc_vars(GlobalData, GlobalVars),
+    get_c_interface_info(HLDS, lang_c, C_InterfaceInfo),
+    global_data_get_all_proc_vars(GlobalData, TablingInfoStructs),
     global_data_get_all_closure_layouts(GlobalData, ClosureLayoutDatas),
     global_data_get_static_cell_info(GlobalData, StaticCellInfo),
     get_static_cells(StaticCellInfo,
@@ -4082,7 +4091,7 @@ output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
     % Next we put it all together and output it to one or more C files.
     RttiDatas = TypeCtorRttiData ++ TypeClassInfoRttiData,
     LayoutDatas = ClosureLayoutDatas ++ StackLayoutDatas,
-    construct_c_file(HLDS, C_InterfaceInfo, Procs, GlobalVars,
+    construct_c_file(HLDS, C_InterfaceInfo, Procs, TablingInfoStructs,
         ScalarCommonCellDatas, VectorCommonCellDatas, RttiDatas, LayoutDatas,
         CFile, !IO),
     module_info_get_complexity_proc_infos(HLDS, ComplexityProcs),
@@ -4113,12 +4122,12 @@ output_pass(HLDS, GlobalData0, Procs, ModuleName, CompileErrors,
     % Split the code up into bite-size chunks for the C compiler.
     %
 :- pred construct_c_file(module_info::in, foreign_interface_info::in,
-    list(c_procedure)::in, list(comp_gen_c_var)::in,
+    list(c_procedure)::in, list(tabling_info_struct)::in,
     list(scalar_common_data_array)::in, list(vector_common_data_array)::in,
     list(rtti_data)::in, list(layout_data)::in, c_file::out, io::di, io::uo)
     is det.
 
-construct_c_file(ModuleInfo, C_InterfaceInfo, Procedures, GlobalVars,
+construct_c_file(ModuleInfo, C_InterfaceInfo, Procedures, TablingInfoStructs,
         ScalarCommonCellDatas, VectorCommonCellDatas, RttiDatas, LayoutDatas,
         CFile, !IO) :-
     C_InterfaceInfo = foreign_interface_info(ModuleSymName, C_HeaderCode0,
@@ -4153,7 +4162,7 @@ construct_c_file(ModuleInfo, C_InterfaceInfo, Procedures, GlobalVars,
     module_info_user_final_pred_c_names(ModuleInfo, UserFinalPredCNames),
 
     CFile = c_file(ModuleSymName, C_HeaderCode, C_BodyCode, C_ExportDefns,
-        GlobalVars, ScalarCommonCellDatas, VectorCommonCellDatas,
+        TablingInfoStructs, ScalarCommonCellDatas, VectorCommonCellDatas,
         RttiDatas, LayoutDatas, ChunkedModules, UserInitPredCNames,
         UserFinalPredCNames).
 
@@ -4169,9 +4178,9 @@ make_decl_guards(ModuleName, StartGuard, EndGuard) :-
     Define = decl_guard(ModuleName),
     Start = "#ifndef " ++ Define ++ "\n#define " ++ Define ++ "\n",
     End = "\n#endif",
-    StartGuard = foreign_decl_code(c, foreign_decl_is_exported, Start,
+    StartGuard = foreign_decl_code(lang_c, foreign_decl_is_exported, Start,
         term.context_init),
-    EndGuard = foreign_decl_code(c, foreign_decl_is_exported, End,
+    EndGuard = foreign_decl_code(lang_c, foreign_decl_is_exported, End,
         term.context_init).
 
 :- pred make_foreign_import_header_code(foreign_import_module::in,
@@ -4180,26 +4189,26 @@ make_decl_guards(ModuleName, StartGuard, EndGuard) :-
 make_foreign_import_header_code(ForeignImportModule, Include, !IO) :-
     ForeignImportModule = foreign_import_module(Lang, ModuleName, Context),
     (
-        Lang = c,
+        Lang = lang_c,
         module_name_to_search_file_name(ModuleName, ".mh", HeaderFileName,
             !IO),
         IncludeString = "#include """ ++ HeaderFileName ++ """\n",
-        Include = foreign_decl_code(c, foreign_decl_is_exported,
+        Include = foreign_decl_code(lang_c, foreign_decl_is_exported,
             IncludeString, Context)
     ;
-        Lang = csharp,
+        Lang = lang_csharp,
         sorry(this_file, ":- import_module not yet implemented: " ++
             "`:- pragma foreign_import_module' for C#")
     ;
-        Lang = managed_cplusplus,
+        Lang = lang_managed_cplusplus,
         sorry(this_file, ":- import_module not yet implemented: " ++
             "`:- pragma foreign_import_module' for Managed C++")
     ;
-        Lang = il,
+        Lang = lang_il,
         sorry(this_file, ":- import_module not yet implemented: " ++
             "`:- pragma foreign_import_module' for IL")
     ;
-        Lang = java,
+        Lang = lang_java,
         sorry(this_file, ":- import_module not yet implemented: " ++
             "`:- pragma foreign_import_module' for Java")
     ).

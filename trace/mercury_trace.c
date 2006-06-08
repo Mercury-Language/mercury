@@ -1566,9 +1566,7 @@ MR_maybe_record_call_table(const MR_Proc_Layout *level_layout,
         /* nothing to do */
         return;
 
-    case MR_EVAL_METHOD_MEMO_STRICT:
-    case MR_EVAL_METHOD_MEMO_FAST_LOOSE:
-    case MR_EVAL_METHOD_MEMO_SPECIFIED:
+    case MR_EVAL_METHOD_MEMO:
     case MR_EVAL_METHOD_LOOP_CHECK:
         if (MR_DETISM_DET_STACK(level_layout->MR_sle_detism)) {
             call_table = (MR_TrieNode) MR_based_stackvar(base_sp,

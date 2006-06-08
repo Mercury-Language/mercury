@@ -55,6 +55,9 @@
     static_cell_info::in, static_cell_info::out,
     assoc_list(rval, llds_type)::out, layout_data::out) is det.
 
+:- pred convert_table_arg_info(table_arg_infos::in, int::out,
+    rval::out, rval::out, static_cell_info::in, static_cell_info::out) is det.
+
     % Construct a representation of a variable location as a 32-bit
     % integer.
     %
@@ -74,6 +77,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.proc_label.
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
@@ -182,10 +186,10 @@ valid_proc_layout(ProcLayoutInfo) :-
     EntryLabel = ProcLayoutInfo ^ entry_label,
     ProcLabel = get_proc_label(EntryLabel),
     (
-        ProcLabel = proc(_, _, DeclModule, Name, Arity, _),
+        ProcLabel = ordinary_proc_label(_, _, DeclModule, Name, Arity, _),
         \+ no_type_info_builtin(DeclModule, Name, Arity)
     ;
-        ProcLabel = special_proc(_, _, _, _, _, _)
+        ProcLabel = special_proc_label(_, _, _, _, _, _)
     ).
 
 %---------------------------------------------------------------------------%
@@ -565,10 +569,10 @@ construct_proc_layout(ProcLayoutInfo, Kind, VarNumMap, !Info) :-
     ;
         MaybeTableInfo = yes(TableInfo),
         get_static_cell_info(!.Info, StaticCellInfo0),
-        make_table_data(RttiProcLabel, Kind, TableInfo, TableData,
+        make_table_data(RttiProcLabel, Kind, TableInfo, MaybeTableData,
             StaticCellInfo0, StaticCellInfo),
         set_static_cell_info(StaticCellInfo, !Info),
-        add_table_data(TableData, !Info)
+        add_table_data(MaybeTableData, !Info)
     ).
 
 :- pred construct_trace_layout(rtti_proc_label::in,
@@ -617,21 +621,24 @@ construct_trace_layout(RttiProcLabel, EvalMethod, EffTraceLevel,
         label_has_var_info),
     (
         MaybeTableInfo = no,
-        MaybeTableName = no
+        MaybeTableDataAddr = no
     ;
         MaybeTableInfo = yes(TableInfo),
         (
             TableInfo = table_io_decl_info(_),
-            MaybeTableName = yes(table_io_decl(RttiProcLabel))
+            MaybeTableDataAddr = yes(layout_addr(table_io_decl(RttiProcLabel)))
         ;
-            TableInfo = table_gen_info(_, _, _, _),
-            MaybeTableName = yes(table_gen_info(RttiProcLabel))
+            TableInfo = table_gen_info(_, _, _, _, _),
+            module_info_get_name(ModuleInfo, ModuleName),
+            ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
+            MaybeTableDataAddr = yes(data_addr(ModuleName,
+                proc_tabling_ref(ProcLabel, tabling_info)))
         )
     ),
     encode_exec_trace_flags(ModuleInfo, HeadVars, ArgModes, VarTypes,
         0, Flags),
     ExecTrace = proc_layout_exec_trace(CallLabelLayout, ProcBytes,
-        MaybeTableName, HeadVarNumVector, VarNameVector,
+        MaybeTableDataAddr, HeadVarNumVector, VarNameVector,
         MaxVarNum, MaxTraceReg, MaybeFromFullSlot, MaybeIoSeqSlot,
         MaybeTrailSlots, MaybeMaxfrSlot, EvalMethod,
         MaybeCallTableSlot, EffTraceLevel, Flags).
@@ -1221,13 +1228,12 @@ convert_var_to_int(VarNumMap, Var, VarNum) :-
     %
 construct_closure_layout(CallerProcLabel, SeqNo,
         ClosureLayoutInfo, ClosureProcLabel, ModuleName,
-        FileName, LineNumber, Origin, GoalPath, !StaticCellInfo, 
+        FileName, LineNumber, Origin, GoalPath, !StaticCellInfo,
         RvalsTypes, Data) :-
     DataAddr = layout_addr(
         closure_proc_id(CallerProcLabel, SeqNo, ClosureProcLabel)),
-    Data = closure_proc_id_data(CallerProcLabel, SeqNo,
-        ClosureProcLabel, ModuleName, FileName, LineNumber, Origin, 
-        GoalPath),
+    Data = closure_proc_id_data(CallerProcLabel, SeqNo, ClosureProcLabel,
+        ModuleName, FileName, LineNumber, Origin, GoalPath),
     ProcIdRvalType = const(data_addr_const(DataAddr, no)) - data_ptr,
     ClosureLayoutInfo = closure_layout_info(ClosureArgs, TVarLocnMap),
     construct_closure_arg_rvals(ClosureArgs,
@@ -1267,32 +1273,24 @@ construct_closure_arg_rval(ClosureArg, ArgRval - ArgRvalType,
 %---------------------------------------------------------------------------%
 
 :- pred make_table_data(rtti_proc_label::in,
-    proc_layout_kind::in, proc_table_info::in, layout_data::out,
+    proc_layout_kind::in, proc_table_info::in, maybe(layout_data)::out,
     static_cell_info::in, static_cell_info::out) is det.
 
-make_table_data(RttiProcLabel, Kind, TableInfo, TableData,
+make_table_data(RttiProcLabel, Kind, TableInfo, MaybeTableData,
         !StaticCellInfo) :-
     (
         TableInfo = table_io_decl_info(TableArgInfo),
         convert_table_arg_info(TableArgInfo, NumPTIs, PTIVectorRval,
             TVarVectorRval, !StaticCellInfo),
         TableData = table_io_decl_data(RttiProcLabel, Kind,
-            NumPTIs, PTIVectorRval, TVarVectorRval)
+            NumPTIs, PTIVectorRval, TVarVectorRval),
+        MaybeTableData = yes(TableData)
     ;
-        TableInfo = table_gen_info(NumInputs, NumOutputs, Steps,
-            TableArgInfo),
-        convert_table_arg_info(TableArgInfo, NumPTIs, PTIVectorRval,
-            TVarVectorRval, !StaticCellInfo),
-        NumArgs = NumInputs + NumOutputs,
-        expect(unify(NumArgs, NumPTIs), this_file,
-            "make_table_data: args mismatch"),
-        TableData = table_gen_data(RttiProcLabel, NumInputs, NumOutputs, Steps,
-            PTIVectorRval, TVarVectorRval)
+        TableInfo = table_gen_info(_NumInputs, _NumOutputs,
+            _InputSteps, _MaybeOutputSteps, _TableArgInfo),
+        % This structure is generated in add_tabling_info_struct in proc_gen.m.
+        MaybeTableData = no
     ).
-
-:- pred convert_table_arg_info(table_arg_infos::in,
-    int::out, rval::out, rval::out,
-    static_cell_info::in, static_cell_info::out) is det.
 
 convert_table_arg_info(TableArgInfos, NumPTIs,
         PTIVectorRval, TVarVectorRval, !StaticCellInfo) :-
@@ -1660,13 +1658,18 @@ allocate_label_number(LabelNum, !LI) :-
     counter.allocate(LabelNum, Counter0, Counter),
     !:LI = !.LI ^ label_counter := Counter.
 
-:- pred add_table_data(layout_data::in,
+:- pred add_table_data(maybe(layout_data)::in,
     stack_layout_info::in, stack_layout_info::out) is det.
 
-add_table_data(TableIoDeclData, !LI) :-
-    TableIoDecls0 = !.LI ^ table_infos,
-    TableIoDecls = [TableIoDeclData | TableIoDecls0],
-    !:LI = !.LI ^ table_infos := TableIoDecls.
+add_table_data(MaybeTableIoDeclData, !LI) :-
+    (
+        MaybeTableIoDeclData = yes(TableIoDeclData),
+        TableIoDecls0 = !.LI ^ table_infos,
+        TableIoDecls = [TableIoDeclData | TableIoDecls0],
+        !:LI = !.LI ^ table_infos := TableIoDecls
+    ;
+        MaybeTableIoDeclData = no
+    ).
 
 :- pred add_proc_layout_data(layout_data::in, layout_name::in, label::in,
     stack_layout_info::in, stack_layout_info::out) is det.

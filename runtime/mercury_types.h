@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1995-2005 The University of Melbourne.
+** Copyright (C) 1995-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -267,5 +267,9 @@ typedef	MR_Word		                            *MR_AnswerBlock;
 typedef	MR_Subgoal	                            *MR_SubgoalPtr;
 typedef	MR_Consumer	                            *MR_ConsumerPtr;
 typedef	MR_Generator	                        *MR_GeneratorPtr;
+
+typedef struct MR_TableStepStats_Struct         MR_TableStepStats;
+typedef struct MR_ProcTableInfo_Struct          MR_ProcTableInfo;
+typedef MR_ProcTableInfo                        *MR_ProcTableInfoPtr;
 
 #endif /* not MERCURY_TYPES_H */

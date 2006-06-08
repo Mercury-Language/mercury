@@ -831,6 +831,92 @@
     is semidet.
 
 %----------------------------------------------------------------------------%
+
+:- type proc_tabling_struct_id
+    --->    tabling_info
+            % A reference to the main structure containing the call table
+            % used to implement memoization, loop checking or minimal model
+            % semantics for the given procedure.
+
+    ;       tabling_input_steps
+            % A reference to the part of the tabling structure for the given
+            % procedure that gives the nature of each step in the call table.
+
+    ;       tabling_output_steps
+            % A reference to the part of the tabling structure for the given
+            % procedure that gives the nature of each step in the answer table
+            % (if any).
+
+    ;       tabling_input_enum_params
+            % A reference to the part of the tabling structure for the given
+            % procedure that gives parameters for the call table steps
+            % corresponding to enums.
+
+    ;       tabling_output_enum_params
+            % A reference to the part of the tabling structure for the given
+            % procedure that gives parameters for the answer table steps
+            % (if any) corresponding to enums.
+
+    ;       tabling_ptis
+            % A reference to the part of the tabling structure for the given
+            % procedure that contains pointers to the pseudotypeinfos
+            % describing the procedure's arguments.
+
+    ;       tabling_type_param_locns
+            % A reference to the part of the tabling structure for the given
+            % procedure that contains pointers to the locations of the
+            % typeinfos that give the parameters of the pseudotypeinfos
+            % in the tabling_ptis array.
+
+    ;       tabling_root_node
+            % A reference to the part of the tabling structure for the given
+            % procedure that contains the root of the call table.
+
+    ;       tabling_call_stats
+            % A reference to the part of the tabling structure for the given
+            % procedure that refers to the current cumulative statistics
+            % about operations on the call table.
+
+    ;       tabling_prev_call_stats
+            % A reference to the part of the tabling structure for the given
+            % procedure that refers to the previous snapshot of statistics
+            % about operations on the call table.
+
+    ;       tabling_answer_stats
+            % A reference to the part of the tabling structure for the given
+            % procedure that refers to the current cumulative statistics
+            % about operations on the answer table.
+
+    ;       tabling_prev_answer_stats
+            % A reference to the part of the tabling structure for the given
+            % procedure that refers to the previous snapshot of statistics
+            % about operations on the answer table.
+
+    ;       tabling_tips.
+            % A reference to the part of the tabling structure for the given
+            % procedure that contains pointers to the current set of call table
+            % tips, for use as a pool of replacements with limited size tables.
+
+:- func tabling_info_id_str(proc_tabling_struct_id) = string.
+
+    % tabling_id_c_type(TablingId, Type, IsArray):
+    %
+    % To declare a variable of the type specified by TablingId, put Type
+    % before the name of the variable; if IsArray is true, also put "[]"
+    % after the name.
+    %
+:- pred tabling_id_c_type(proc_tabling_struct_id::in, string::out,
+    bool::out) is det.
+
+:- pred tabling_id_java_type(proc_tabling_struct_id::in, string::out,
+    bool::out) is det.
+
+:- func tabling_id_has_array_type(proc_tabling_struct_id) = bool.
+
+:- pred table_trie_step_to_c(table_trie_step::in, string::out, maybe(int)::out)
+    is det.
+
+%----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
 
 :- implementation.
@@ -1703,7 +1789,7 @@ rtti_id_c_type(tc_rtti_id(_, TCRttiName), CTypeName, IsArray) :-
 
 ctor_rtti_name_c_type(RttiName, CTypeName, IsArray) :-
     ctor_rtti_name_type(RttiName, GenTypeName, IsArray),
-    CTypeName = string.append("MR_", GenTypeName).
+    CTypeName = "MR_" ++ GenTypeName.
 
 tc_rtti_name_c_type(TCRttiName, CTypeName, IsArray) :-
     tc_rtti_name_type(TCRttiName, GenTypeName, IsArray),
@@ -1924,6 +2010,71 @@ rtti_id_emits_type_ctor_info(RttiId, TypeCtor) :-
         RttiName = pseudo_type_info(PseudoTypeInfo),
         PseudoTypeInfo = plain_arity_zero_pseudo_type_info(TypeCtor)
     ).
+
+%-----------------------------------------------------------------------------%
+
+tabling_info_id_str(tabling_info) = "table_info".
+tabling_info_id_str(tabling_input_steps) = "table_input_steps".
+tabling_info_id_str(tabling_output_steps) = "table_output_steps".
+tabling_info_id_str(tabling_input_enum_params) = "table_input_enum_params".
+tabling_info_id_str(tabling_output_enum_params) = "table_output_enum_params".
+tabling_info_id_str(tabling_ptis) = "table_ptis".
+tabling_info_id_str(tabling_type_param_locns) = "tabling_type_param_locns".
+tabling_info_id_str(tabling_root_node) = "table_root_node".
+tabling_info_id_str(tabling_call_stats) = "table_call_stats".
+tabling_info_id_str(tabling_prev_call_stats) = "table_prev_call_stats".
+tabling_info_id_str(tabling_answer_stats) = "table_answer_stats".
+tabling_info_id_str(tabling_prev_answer_stats) = "table_prev_answer_stats".
+tabling_info_id_str(tabling_tips) = "table_tips".
+
+tabling_id_c_type(Id, JavaTypeName, IsArray) :-
+    % Since tabling is not yet implemented for Java, this is only provisional.
+    tabling_id_base_type(Id, CTypeName, IsArray),
+    JavaTypeName = "MR_" ++ CTypeName.
+
+tabling_id_java_type(Id, JavaTypeName, IsArray) :-
+    % Since tabling is not yet implemented for Java, this is only provisional.
+    tabling_id_base_type(Id, CTypeName, IsArray),
+    JavaTypeName = "mercury.runtime." ++ CTypeName.
+
+:- pred tabling_id_base_type(proc_tabling_struct_id::in, string::out,
+    bool::out) is det.
+
+tabling_id_base_type(tabling_info, "ProcTableInfo", no).
+tabling_id_base_type(tabling_input_steps,  "TableTrieStep", yes).
+tabling_id_base_type(tabling_output_steps, "TableTrieStep", yes).
+tabling_id_base_type(tabling_input_enum_params,  "Integer", yes).
+tabling_id_base_type(tabling_output_enum_params, "Integer", yes).
+tabling_id_base_type(tabling_ptis, "PseudoTypeInfo", yes).
+tabling_id_base_type(tabling_type_param_locns, "MR_Type_Param_Locns", yes).
+tabling_id_base_type(tabling_root_node, "TableNode", no).
+tabling_id_base_type(tabling_call_stats,        "TableStepStats", yes).
+tabling_id_base_type(tabling_prev_call_stats,   "TableStepStats", yes).
+tabling_id_base_type(tabling_answer_stats,      "TableStepStats", yes).
+tabling_id_base_type(tabling_prev_answer_stats, "TableStepStats", yes).
+tabling_id_base_type(tabling_tips, "TrieNode", yes).
+
+tabling_id_has_array_type(Id) = IsArray :-
+    tabling_id_base_type(Id, _, IsArray).
+
+table_trie_step_to_c(table_trie_step_dummy, "MR_TABLE_STEP_DUMMY", no).
+table_trie_step_to_c(table_trie_step_int, "MR_TABLE_STEP_INT", no).
+table_trie_step_to_c(table_trie_step_char, "MR_TABLE_STEP_CHAR", no).
+table_trie_step_to_c(table_trie_step_string, "MR_TABLE_STEP_STRING", no).
+table_trie_step_to_c(table_trie_step_float, "MR_TABLE_STEP_FLOAT", no).
+table_trie_step_to_c(table_trie_step_enum(EnumRange), "MR_TABLE_STEP_ENUM",
+    yes(EnumRange)).
+table_trie_step_to_c(table_trie_step_user(_), "MR_TABLE_STEP_USER", no).
+table_trie_step_to_c(table_trie_step_user_fast_loose(_),
+    "MR_TABLE_STEP_USER_FAST_LOOSE", no).
+table_trie_step_to_c(table_trie_step_poly, "MR_TABLE_STEP_POLY", no).
+table_trie_step_to_c(table_trie_step_poly_fast_loose,
+    "MR_TABLE_STEP_POLY_FAST_LOOSE", no).
+table_trie_step_to_c(table_trie_step_typeinfo, "MR_TABLE_STEP_TYPEINFO", no).
+table_trie_step_to_c(table_trie_step_typeclassinfo,
+    "MR_TABLE_STEP_TYPECLASSINFO", no).
+table_trie_step_to_c(table_trie_step_promise_implied,
+    "MR_TABLE_STEP_PROMISE_IMPLIED", no).
 
 %-----------------------------------------------------------------------------%
 

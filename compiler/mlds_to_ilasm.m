@@ -110,13 +110,14 @@ output_foreign_file(MLDS, ForeignLang, !IO) :-
 :- pred handle_foreign_lang(foreign_language::in,
     pred(mlds, io, io)::out(pred(in, di, uo) is det)) is det.
 
-handle_foreign_lang(managed_cplusplus, output_managed_code(managed_cplusplus)).
-handle_foreign_lang(csharp, output_managed_code(csharp)).
-handle_foreign_lang(c, _) :-
+handle_foreign_lang(lang_managed_cplusplus,
+        output_managed_code(lang_managed_cplusplus)).
+handle_foreign_lang(lang_csharp, output_managed_code(lang_csharp)).
+handle_foreign_lang(lang_c, _) :-
     sorry(this_file, "language C foreign code not supported").
-handle_foreign_lang(il, _) :-
+handle_foreign_lang(lang_il, _) :-
     sorry(this_file, "language IL foreign code not supported").
-handle_foreign_lang(java, _) :-
+handle_foreign_lang(lang_java, _) :-
     sorry(this_file, "language Java foreign code not supported").
 
     % Generate the `.il' file.

@@ -488,7 +488,7 @@ function_is_local(CodeAddr, Locals) :-
     % XXX we ignore the ModuleName -- that is safe, but might be
     % overly conservative.
     QualifiedProcLabel = qual(_ModuleName, _QualKind, ProcLabel),
-    ProcLabel = PredLabel - ProcId,
+    ProcLabel = mlds_proc_label(PredLabel, ProcId),
     some [Local] (
         locals_member(Local, Locals),
         Local = function(PredLabel, ProcId, MaybeSeqNum, _PredId)
@@ -576,7 +576,8 @@ nontailcall_in_statement(CallerModule, CallerFuncName, Statement, Warning) :-
         CodeAddr = internal(QualProcLabel, SeqNum, _Sig),
         MaybeSeqNum = yes(SeqNum)
     ),
-    QualProcLabel = qual(CallerModule, module_qual, PredLabel - ProcId),
+    ProcLabel = mlds_proc_label(PredLabel, ProcId),
+    QualProcLabel = qual(CallerModule, module_qual, ProcLabel),
     CallerFuncName = function(PredLabel, ProcId, MaybeSeqNum, _PredId),
     % If so, construct an appropriate warning.
     Warning = tailcall_warning(PredLabel, ProcId, Context).
@@ -587,7 +588,7 @@ nontailcall_in_statement(CallerModule, CallerFuncName, Statement, Warning) :-
 report_nontailcall_warning(tailcall_warning(PredLabel, ProcId, Context),
         !IO) :-
     (
-        PredLabel = pred(PredOrFunc, _MaybeModule, Name, Arity,
+        PredLabel = mlds_user_pred_label(PredOrFunc, _MaybeModule, Name, Arity,
             _CodeModel, _NonOutputFunc),
         SimpleCallId = simple_call_id(PredOrFunc, unqualified(Name), Arity),
         proc_id_to_int(ProcId, ProcNumber0),
@@ -599,7 +600,7 @@ report_nontailcall_warning(tailcall_warning(PredLabel, ProcId, Context),
             words("warning: recursive call is not tail recursive.")
         ], !IO)
     ;
-        PredLabel = special_pred(_, _, _, _)
+        PredLabel = mlds_special_pred_label(_, _, _, _)
         % Don't warn about these.
     ).
 

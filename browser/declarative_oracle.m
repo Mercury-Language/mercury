@@ -343,9 +343,10 @@ add_trusted_pred_or_func(ProcLayout, !Oracle) :-
     counter.allocate(Id, !.Oracle ^ trusted_id_counter, Counter),
     ProcLabel = get_proc_label_from_layout(ProcLayout),
     (
-        ProcLabel = proc(ModuleName, PredOrFunc, _, Name, Arity, _)
+        ProcLabel = ordinary_proc_label(ModuleName, PredOrFunc, _,
+            Name, Arity, _)
     ;
-        ProcLabel = special_proc(ModuleName, _, _, Name, Arity, _),
+        ProcLabel = special_proc_label(ModuleName, _, _, Name, Arity, _),
         PredOrFunc = predicate
     ),
     (
@@ -520,7 +521,7 @@ trusted(ProcLayout, Oracle) :-
     Trusted = Oracle ^ trusted,
     ProcLabel = get_proc_label_from_layout(ProcLayout),
     (
-        ProcLabel = proc(Module, PredOrFunc, _, Name, Arity, _),
+        ProcLabel = ordinary_proc_label(Module, PredOrFunc, _, Name, Arity, _),
         (
             bimap.search(Trusted, standard_library, _),
             (
@@ -539,7 +540,7 @@ trusted(ProcLayout, Oracle) :-
             bimap.search(Trusted, function(Module, Name, Arity), _)
         )
     ;
-        ProcLabel = special_proc(_, _, _, _, _, _)
+        ProcLabel = special_proc_label(_, _, _, _, _, _)
     ).
 
 :- pred query_oracle_kb(oracle_kb::in, decl_question(T)::in,

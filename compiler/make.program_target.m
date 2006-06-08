@@ -113,19 +113,19 @@ make_linked_target_2(MainModuleName - FileType, _, Succeeded, !Info, !IO) :-
         % as soon as possible.
         globals.io_get_target(CompilationTarget, !IO),
         (
-            CompilationTarget = c,
+            CompilationTarget = target_c,
             IntermediateTargetType = c_code,
             ObjectTargetType = object_code(PIC)
         ;
-            CompilationTarget = asm,
+            CompilationTarget = target_asm,
             IntermediateTargetType = asm_code(PIC),
             ObjectTargetType = object_code(PIC)
         ;
-            CompilationTarget = il,
+            CompilationTarget = target_il,
             IntermediateTargetType = il_code,
             ObjectTargetType = il_asm
         ;
-            CompilationTarget = java,
+            CompilationTarget = target_java,
             IntermediateTargetType = java_code,
             % XXX Whoever finishes the Java backend can fill this in.
             ObjectTargetType = object_code(non_pic)
@@ -179,7 +179,7 @@ get_target_modules(TargetType, AllModules, TargetModules, !Info, !IO) :-
         (
             TargetType = errors
         ;
-            CompilationTarget = asm,
+            CompilationTarget = target_asm,
             ( TargetType = asm_code(_)
             ; TargetType = object_code(_)
             )
@@ -225,13 +225,14 @@ get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info, !IO) :-
         unexpected(this_file, "unknown imports")
     ),
     (
-        CompilationTarget = asm,
+        CompilationTarget = target_asm,
         Imports ^ foreign_code = contains_foreign_code(Langs),
-        set.member(c, Langs)
+        set.member(lang_c, Langs)
     ->
-        ForeignObjectTargets = [target(ModuleName - foreign_object(PIC, c))]
+        ForeignObjectTargets =
+            [target(ModuleName - foreign_object(PIC, lang_c))]
     ;
-        CompilationTarget = il,
+        CompilationTarget = target_il,
         Imports ^ foreign_code = contains_foreign_code(Langs)
     ->
         ForeignObjectTargets = list.map(
@@ -244,8 +245,8 @@ get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info, !IO) :-
     % Find out if any externally compiled foreign code files for fact tables
     % exist.
     (
-        ( CompilationTarget = c
-        ; CompilationTarget = asm
+        ( CompilationTarget = target_c
+        ; CompilationTarget = target_asm
         )
     ->
         FactObjectTargets = list.map(
@@ -309,8 +310,8 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
     AllModulesList = set.to_sorted_list(AllModules),
     (
         FileType = executable,
-        ( CompilationTarget = c
-        ; CompilationTarget = asm
+        ( CompilationTarget = target_c
+        ; CompilationTarget = target_asm
         )
     ->
         compile_target_code.make_init_obj_file(ErrorStream,
@@ -411,7 +412,7 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
         % after all the object files on the linker command line.
         AllObjects = InitObjects ++ ObjList ++ ForeignObjects ++ LinkObjects,
         (
-            CompilationTarget = c,
+            CompilationTarget = target_c,
             % Run the link in a separate process so it can be killed
             % if an interrupt is received.
             call_in_forked_process(
@@ -419,7 +420,7 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
                     FileType, MainModuleName, AllObjects),
                 Succeeded, !IO)
         ;
-            CompilationTarget = asm,
+            CompilationTarget = target_asm,
             % Run the link in a separate process so it can
             % be killed if an interrupt is received.
             call_in_forked_process(
@@ -427,10 +428,10 @@ build_linked_target_2(MainModuleName, FileType, OutputFileName, MaybeTimestamp,
                     FileType, MainModuleName, AllObjects),
                 Succeeded, !IO)
         ;
-            CompilationTarget = il,
+            CompilationTarget = target_il,
             Succeeded = yes
         ;
-            CompilationTarget = java,
+            CompilationTarget = target_java,
             create_java_shell_script(MainModuleName, Succeeded, !IO)
         ),
         !:Info = !.Info ^ command_line_targets :=
@@ -477,8 +478,8 @@ linked_target_cleanup(MainModuleName, FileType, OutputFileName,
     make_remove_file(OutputFileName, !Info, !IO),
     (
         FileType = executable,
-        ( CompilationTarget = c
-        ; CompilationTarget = asm
+        ( CompilationTarget = target_c
+        ; CompilationTarget = target_asm
         )
     ->
         remove_init_files(MainModuleName, !Info, !IO)
@@ -843,7 +844,7 @@ install_ints_and_headers(SubdirLinkSucceeded, ModuleName, Succeeded, !Info,
             % otherwise there is trouble using libraries installed by
             % `mmc --make' with Mmake.
             % XXX If we ever phase out mmake we could revert this behaviour.
-            ( Target = c ; Target = asm )
+            ( Target = target_c ; Target = target_asm )
             % Imports ^ contains_foreign_export = contains_foreign_export
         ->
             module_name_to_file_name(ModuleName, ".mh", no, FileName, !IO),
@@ -1016,10 +1017,10 @@ install_grade_ints_and_headers(LinkSucceeded, GradeDir, ModuleName, Succeeded,
         globals.io_lookup_bool_option(highlevel_code, HighLevelCode, !IO),
         (
             (
-                Target = c,
+                Target = target_c,
                 HighLevelCode = yes
             ;
-                Target = asm,
+                Target = target_asm,
                 Imports ^ foreign_code = contains_foreign_code(_)
             )
         ->
@@ -1277,7 +1278,7 @@ make_module_clean(ModuleName, !Info, !IO) :-
             make_remove_file(FactTableCFile, !Info)
         ), FactTableFiles, !Info, !IO),
 
-    CCodeModule = foreign_language_module_name(ModuleName, c),
+    CCodeModule = foreign_language_module_name(ModuleName, lang_c),
     make_remove_target_file(CCodeModule, c_code, !Info, !IO),
 
     % Remove object and assembler files.
@@ -1285,7 +1286,8 @@ make_module_clean(ModuleName, !Info, !IO) :-
         (pred(PIC::in, !.Info::in, !:Info::out, !.IO::di, !:IO::uo) is det :-
         make_remove_target_file(ModuleName, object_code(PIC), !Info, !IO),
         make_remove_target_file(ModuleName, asm_code(PIC), !Info, !IO),
-        make_remove_target_file(ModuleName, foreign_object(PIC, c), !Info, !IO),
+        make_remove_target_file(ModuleName, foreign_object(PIC, lang_c),
+            !Info, !IO),
         list.foldl2(
             (pred(FactTableFile::in, !.Info::in, !:Info::out,
                     !.IO::di, !:IO::uo) is det :-
@@ -1296,16 +1298,18 @@ make_module_clean(ModuleName, !Info, !IO) :-
         [pic, link_with_pic, non_pic], !Info, !IO),
 
     % Remove IL foreign code files.
-    CSharpModule = foreign_language_module_name(ModuleName, csharp),
-    make_remove_file(CSharpModule, foreign_language_file_extension(csharp),
+    CSharpModule = foreign_language_module_name(ModuleName, lang_csharp),
+    make_remove_file(CSharpModule,
+        foreign_language_file_extension(lang_csharp), !Info, !IO),
+    make_remove_target_file(CSharpModule, foreign_il_asm(lang_csharp),
         !Info, !IO),
-    make_remove_target_file(CSharpModule, foreign_il_asm(csharp), !Info, !IO),
 
-    McppModule = foreign_language_module_name(ModuleName, managed_cplusplus),
+    McppModule = foreign_language_module_name(ModuleName,
+        lang_managed_cplusplus),
     make_remove_file(McppModule,
-        foreign_language_file_extension(managed_cplusplus),
+        foreign_language_file_extension(lang_managed_cplusplus),
         !Info, !IO),
-    make_remove_target_file(McppModule, foreign_il_asm(managed_cplusplus),
+    make_remove_target_file(McppModule, foreign_il_asm(lang_managed_cplusplus),
         !Info, !IO).
 
 :- pred make_module_realclean(module_name::in, make_info::in, make_info::out,

@@ -434,10 +434,10 @@ check_foreign_type(TypeCtor, ForeignTypeBody, Context, FoundError, !ModuleInfo,
             VeryVerbose = no,
             VerboseErrorPieces = []
         ),
-        ( Target = c, LangStr = "C"
-        ; Target = il, LangStr = "IL"
-        ; Target = java, LangStr = "Java"
-        ; Target = asm, LangStr = "C"
+        ( Target = target_c, LangStr = "C"
+        ; Target = target_il, LangStr = "IL"
+        ; Target = target_java, LangStr = "Java"
+        ; Target = target_asm, LangStr = "C"
         ),
         TypeStr = describe_sym_name_and_arity(Name/Arity),
         ErrorPieces = [

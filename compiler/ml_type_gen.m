@@ -718,17 +718,17 @@ ml_tag_uses_base_class(shared_with_reserved_addresses(_RAs, Tag)) :-
 
 :- func target_uses_constructors(compilation_target) = bool.
 
-target_uses_constructors(c) = no.
-target_uses_constructors(il)    = yes.
-target_uses_constructors(java)  = yes.
-target_uses_constructors(asm)   = no.
+target_uses_constructors(target_c) = no.
+target_uses_constructors(target_il) = yes.
+target_uses_constructors(target_java) = yes.
+target_uses_constructors(target_asm) = no.
 
 :- func target_uses_empty_base_classes(compilation_target) = bool.
 
-target_uses_empty_base_classes(c)   = no.
-target_uses_empty_base_classes(il)  = yes.
-target_uses_empty_base_classes(java)    = yes.
-target_uses_empty_base_classes(asm) = no.
+target_uses_empty_base_classes(target_c) = no.
+target_uses_empty_base_classes(target_il) = yes.
+target_uses_empty_base_classes(target_java) = yes.
+target_uses_empty_base_classes(target_asm) = no.
 
     % This should return yes if references to function parameters in
     % constructor functions must be qualified with the module name,
@@ -740,10 +740,10 @@ target_uses_empty_base_classes(asm) = no.
     %
 :- func target_requires_module_qualified_params(compilation_target) = bool.
 
-target_requires_module_qualified_params(c)   = no.
-target_requires_module_qualified_params(il)  = no.
-target_requires_module_qualified_params(java)    = yes.
-target_requires_module_qualified_params(asm)     = no.
+target_requires_module_qualified_params(target_c) = no.
+target_requires_module_qualified_params(target_il) = no.
+target_requires_module_qualified_params(target_java) = yes.
+target_requires_module_qualified_params(target_asm) = no.
 
 :- func gen_constructor_function(globals, mlds_class_id,
     mlds_type, mlds_module_name, mlds_class_id, maybe(int), mlds_defns,

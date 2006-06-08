@@ -237,78 +237,72 @@ extrude_pragma_implementation([TargetLang | TargetLangs], _PragmaVars,
 %       C_ExtraCode, Context, ModuleInfo0, ModuleInfo),
 %   Impl = import(NewName, ReturnCode, VarString, no)
 
-extrude_pragma_implementation_2(c, managed_cplusplus, _, _, _, _) :-
-    unimplemented_combination(c, managed_cplusplus).
-
-extrude_pragma_implementation_2(c, csharp, _, _, _, _) :-
-    unimplemented_combination(c, csharp).
-
-extrude_pragma_implementation_2(c, il, _, _, _, _) :-
-    unimplemented_combination(c, il).
-
-extrude_pragma_implementation_2(c, java, _, _, _, _) :-
-    unimplemented_combination(c, java).
-
-extrude_pragma_implementation_2(c, c, !ModuleInfo, !Impl).
-
-    % Don't do anything - C and MC++ are embedded inside MC++
-    % without any changes.
-extrude_pragma_implementation_2(managed_cplusplus, managed_cplusplus,
-    !ModuleInfo, !Impl).
-
-extrude_pragma_implementation_2(managed_cplusplus, c, !ModuleInfo, !Impl).
-
-extrude_pragma_implementation_2(managed_cplusplus, csharp, _, _, _, _) :-
-    unimplemented_combination(managed_cplusplus, csharp).
-
-extrude_pragma_implementation_2(managed_cplusplus, il, _, _, _, _) :-
-    unimplemented_combination(managed_cplusplus, il).
-
-extrude_pragma_implementation_2(managed_cplusplus, java, _, _, _, _) :-
-    unimplemented_combination(managed_cplusplus, java).
-
-extrude_pragma_implementation_2(csharp, csharp, !ModuleInfo, !Impl).
-
-extrude_pragma_implementation_2(csharp, c, _, _, _, _) :-
-    unimplemented_combination(csharp, c).
-
-extrude_pragma_implementation_2(csharp, managed_cplusplus, _, _, _, _) :-
-    unimplemented_combination(csharp, managed_cplusplus).
-
-extrude_pragma_implementation_2(csharp, il, _, _, _, _) :-
-    unimplemented_combination(csharp, il).
-
-extrude_pragma_implementation_2(csharp, java, _, _, _, _) :-
-    unimplemented_combination(csharp, java).
-
-extrude_pragma_implementation_2(il, il, !ModuleInfo, !Impl).
-
-extrude_pragma_implementation_2(il, c, _, _, _, _) :-
-    unimplemented_combination(il, c).
-
-extrude_pragma_implementation_2(il, managed_cplusplus, _, _, _, _) :-
-    unimplemented_combination(il, managed_cplusplus).
-
-extrude_pragma_implementation_2(il, csharp, _, _, _, _) :-
-    unimplemented_combination(il, csharp).
-
-extrude_pragma_implementation_2(il, java, _, _, _, _) :-
-    unimplemented_combination(il, java).
-
-extrude_pragma_implementation_2(java, java,
-    !ModuleInfo, !Impl).
-
-extrude_pragma_implementation_2(java, c, _, _, _, _) :-
-    unimplemented_combination(java, c).
-
-extrude_pragma_implementation_2(java, managed_cplusplus, _, _, _, _) :-
-    unimplemented_combination(java, managed_cplusplus).
-
-extrude_pragma_implementation_2(java, csharp, _, _, _, _) :-
-    unimplemented_combination(java, csharp).
-
-extrude_pragma_implementation_2(java, il, _, _, _, _) :-
-    unimplemented_combination(java, il).
+extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
+        !ModuleInfo, !Impl) :-
+    (
+        TargetLanguage = lang_c,
+        (
+            ForeignLanguage = lang_c
+        ;
+            ( ForeignLanguage = lang_managed_cplusplus
+            ; ForeignLanguage = lang_csharp
+            ; ForeignLanguage = lang_il
+            ; ForeignLanguage = lang_java
+            ),
+            unimplemented_combination(TargetLanguage, ForeignLanguage)
+        )
+    ;
+        TargetLanguage = lang_managed_cplusplus,
+        (
+            ( ForeignLanguage = lang_managed_cplusplus
+            ; ForeignLanguage = lang_c
+            )
+            % Don't do anything - C and MC++ are embedded inside MC++
+            % without any changes.
+        ;
+            ( ForeignLanguage = lang_csharp
+            ; ForeignLanguage = lang_il
+            ; ForeignLanguage = lang_java
+            ),
+            unimplemented_combination(TargetLanguage, ForeignLanguage)
+        )
+    ;
+        TargetLanguage = lang_csharp,
+        (
+            ForeignLanguage = lang_csharp
+        ;
+            ( ForeignLanguage = lang_c
+            ; ForeignLanguage = lang_managed_cplusplus
+            ; ForeignLanguage = lang_il
+            ; ForeignLanguage = lang_java
+            ),
+            unimplemented_combination(TargetLanguage, ForeignLanguage)
+        )
+    ;
+        TargetLanguage = lang_il,
+        (
+            ForeignLanguage = lang_il
+        ;
+            ( ForeignLanguage = lang_c
+            ; ForeignLanguage = lang_managed_cplusplus
+            ; ForeignLanguage = lang_csharp
+            ; ForeignLanguage = lang_java
+            ),
+            unimplemented_combination(TargetLanguage, ForeignLanguage)
+        )
+    ;
+        TargetLanguage = lang_java,
+        (
+            ForeignLanguage = lang_java
+        ;
+            ( ForeignLanguage = lang_c
+            ; ForeignLanguage = lang_managed_cplusplus
+            ; ForeignLanguage = lang_csharp
+            ; ForeignLanguage = lang_il
+            ),
+            unimplemented_combination(TargetLanguage, ForeignLanguage)
+        )
+    ).
 
 :- pred unimplemented_combination(foreign_language::in, foreign_language::in)
     is erroneous.
@@ -329,13 +323,13 @@ make_pred_name(Lang, SymName) =
 
 :- func make_pred_name_rest(foreign_language, sym_name) = string.
 
-make_pred_name_rest(c, _SymName) = "some_c_name".
-make_pred_name_rest(managed_cplusplus, qualified(ModuleSpec, Name)) =
-    make_pred_name_rest(managed_cplusplus, ModuleSpec) ++ "__" ++ Name.
-make_pred_name_rest(managed_cplusplus, unqualified(Name)) = Name.
-make_pred_name_rest(csharp, _SymName) = "some_csharp_name".
-make_pred_name_rest(il, _SymName) = "some_il_name".
-make_pred_name_rest(java, _SymName) = "some_java_name".
+make_pred_name_rest(lang_c, _SymName) = "some_c_name".
+make_pred_name_rest(lang_managed_cplusplus, qualified(ModuleSpec, Name)) =
+    make_pred_name_rest(lang_managed_cplusplus, ModuleSpec) ++ "__" ++ Name.
+make_pred_name_rest(lang_managed_cplusplus, unqualified(Name)) = Name.
+make_pred_name_rest(lang_csharp, _SymName) = "some_csharp_name".
+make_pred_name_rest(lang_il, _SymName) = "some_il_name".
+make_pred_name_rest(lang_java, _SymName) = "some_java_name".
 
 make_pragma_import(PredInfo, ProcInfo, C_Function, Context, PragmaImpl, VarSet,
         PragmaVars, ArgTypes, Arity, PredOrFunc, !ModuleInfo, !IO) :-
@@ -510,14 +504,14 @@ create_pragma_import_c_code([PragmaVar | PragmaVars], ModuleInfo, !C_Code) :-
 
 %-----------------------------------------------------------------------------%
 
-have_foreign_type_for_backend(c, ForeignTypeBody,
+have_foreign_type_for_backend(target_c, ForeignTypeBody,
         ( ForeignTypeBody ^ c = yes(_) -> yes ; no )).
-have_foreign_type_for_backend(il, ForeignTypeBody,
+have_foreign_type_for_backend(target_il, ForeignTypeBody,
         ( ForeignTypeBody ^ il = yes(_) -> yes ; no )).
-have_foreign_type_for_backend(java, ForeignTypeBody,
+have_foreign_type_for_backend(target_java, ForeignTypeBody,
         ( ForeignTypeBody ^ java = yes(_) -> yes ; no )).
-have_foreign_type_for_backend(asm, ForeignTypeBody, Result) :-
-    have_foreign_type_for_backend(c, ForeignTypeBody, Result).
+have_foreign_type_for_backend(target_asm, ForeignTypeBody, Result) :-
+    have_foreign_type_for_backend(target_c, ForeignTypeBody, Result).
 
 :- type exported_type
     --->    foreign(sym_name, list(foreign_type_assertion))
@@ -559,10 +553,10 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
-        Target = c,
+        Target = target_c,
         (
             MaybeC = yes(Data),
-            Data = foreign_type_lang_data(c(NameStr), MaybeUserEqComp,
+            Data = foreign_type_lang_data(c_type(NameStr), MaybeUserEqComp,
                 Assertions),
             Name = unqualified(NameStr)
         ;
@@ -570,20 +564,20 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
             unexpected(this_file, "to_exported_type: no C type")
         )
     ;
-        Target = il,
+        Target = target_il,
         (
             MaybeIL = yes(Data),
-            Data = foreign_type_lang_data(il(_, _, Name), MaybeUserEqComp,
+            Data = foreign_type_lang_data(il_type(_, _, Name), MaybeUserEqComp,
                 Assertions)
         ;
             MaybeIL = no,
             unexpected(this_file, "to_exported_type: no IL type")
         )
     ;
-        Target = java,
+        Target = target_java,
         (
             MaybeJava = yes(Data),
-            Data = foreign_type_lang_data(java(NameStr), MaybeUserEqComp,
+            Data = foreign_type_lang_data(java_type(NameStr), MaybeUserEqComp,
                 Assertions),
             Name = unqualified(NameStr)
         ;
@@ -591,10 +585,10 @@ foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody, Name,
             unexpected(this_file, "to_exported_type: no Java type")
         )
     ;
-        Target = asm,
+        Target = target_asm,
         (
             MaybeC = yes(Data),
-            Data = foreign_type_lang_data(c(NameStr), MaybeUserEqComp,
+            Data = foreign_type_lang_data(c_type(NameStr), MaybeUserEqComp,
                 Assertions),
             Name = unqualified(NameStr)
         ;
@@ -609,23 +603,24 @@ is_foreign_type(mercury(_)) = no.
 to_type_string(Lang, ModuleInfo, Type) =
     to_type_string(Lang, to_exported_type(ModuleInfo, Type)).
 
-to_type_string(c, foreign(ForeignType, _)) = Result :-
+to_type_string(lang_c, foreign(ForeignType, _)) = Result :-
     ( ForeignType = unqualified(Result0) ->
         Result = Result0
     ;
         unexpected(this_file, "to_type_string: qualified C type")
     ).
-to_type_string(csharp, foreign(ForeignType, _)) = Result :-
+to_type_string(lang_csharp, foreign(ForeignType, _)) = Result :-
     sym_name_to_string(ForeignType, ".", Result).
-to_type_string(managed_cplusplus, foreign(ForeignType, _)) = Result ++ " *" :-
+to_type_string(lang_managed_cplusplus, foreign(ForeignType, _)) =
+        Result ++ " *" :-
     sym_name_to_string(ForeignType, "::", Result).
-to_type_string(il, foreign(ForeignType, _)) = Result :-
+to_type_string(lang_il, foreign(ForeignType, _)) = Result :-
     sym_name_to_string(ForeignType, ".", Result).
-to_type_string(java, foreign(ForeignType, _)) = Result :-
+to_type_string(lang_java, foreign(ForeignType, _)) = Result :-
     sym_name_to_string(ForeignType, ".", Result).
 
     % XXX does this do the right thing for high level data?
-to_type_string(c, mercury(Type)) = Result :-
+to_type_string(lang_c, mercury(Type)) = Result :-
     ( Type = builtin(BuiltinType) ->
         (
             BuiltinType = int,
@@ -643,17 +638,17 @@ to_type_string(c, mercury(Type)) = Result :-
     ;
         Result = "MR_Word"
     ).
-to_type_string(csharp, mercury(_Type)) = _ :-
+to_type_string(lang_csharp, mercury(_Type)) = _ :-
     sorry(this_file, "to_type_string for csharp").
-to_type_string(managed_cplusplus, mercury(Type)) = TypeString :-
+to_type_string(lang_managed_cplusplus, mercury(Type)) = TypeString :-
     ( Type = variable(_, _) ->
         TypeString = "MR_Box"
     ;
-        TypeString = to_type_string(c, mercury(Type))
+        TypeString = to_type_string(lang_c, mercury(Type))
     ).
-to_type_string(il, mercury(_Type)) = _ :-
+to_type_string(lang_il, mercury(_Type)) = _ :-
     sorry(this_file, "to_type_string for il").
-to_type_string(java, mercury(Type)) = Result :-
+to_type_string(lang_java, mercury(Type)) = Result :-
     ( Type = builtin(BuiltinType) ->
         (
             BuiltinType = int,

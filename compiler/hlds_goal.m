@@ -1327,19 +1327,19 @@
 
 :- pred make_int_const_construction_alloc(int::in, maybe(string)::in,
     hlds_goal::out, prog_var::out,
-    vartypes::in, vartypes::out, prog_varset::in, prog_varset::out) is det.
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 :- pred make_string_const_construction_alloc(string::in, maybe(string)::in,
     hlds_goal::out, prog_var::out,
-    vartypes::in, vartypes::out, prog_varset::in, prog_varset::out) is det.
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 :- pred make_float_const_construction_alloc(float::in, maybe(string)::in,
     hlds_goal::out, prog_var::out,
-    vartypes::in, vartypes::out, prog_varset::in, prog_varset::out) is det.
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 :- pred make_char_const_construction_alloc(char::in, maybe(string)::in,
     hlds_goal::out, prog_var::out,
-    vartypes::in, vartypes::out, prog_varset::in, prog_varset::out) is det.
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 :- pred make_const_construction_alloc(cons_id::in, mer_type::in,
     maybe(string)::in, hlds_goal::out, prog_var::out,
-    vartypes::in, vartypes::out, prog_varset::in, prog_varset::out) is det.
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
 
 :- pred make_int_const_construction_alloc_in_proc(int::in,
     maybe(string)::in, hlds_goal::out, prog_var::out,
@@ -2221,31 +2221,31 @@ make_const_construction_alloc_in_proc(ConsId, Type, MaybeName, Goal, Var,
     make_const_construction(Var, ConsId, Goal).
 
 make_int_const_construction_alloc(Int, MaybeName, Goal, Var,
-        !VarTypes, !VarSet) :-
+        !VarSet, !VarTypes) :-
     svvarset.new_maybe_named_var(MaybeName, Var, !VarSet),
     svmap.det_insert(Var, int_type, !VarTypes),
     make_int_const_construction(Var, Int, Goal).
 
 make_string_const_construction_alloc(String, MaybeName, Goal, Var,
-        !VarTypes, !VarSet) :-
+        !VarSet, !VarTypes) :-
     svvarset.new_maybe_named_var(MaybeName, Var, !VarSet),
     svmap.det_insert(Var, string_type, !VarTypes),
     make_string_const_construction(Var, String, Goal).
 
 make_float_const_construction_alloc(Float, MaybeName, Goal, Var,
-        !VarTypes, !VarSet) :-
+        !VarSet, !VarTypes) :-
     svvarset.new_maybe_named_var(MaybeName, Var, !VarSet),
     svmap.det_insert(Var, float_type, !VarTypes),
     make_float_const_construction(Var, Float, Goal).
 
 make_char_const_construction_alloc(Char, MaybeName, Goal, Var,
-        !VarTypes, !VarSet) :-
+        !VarSet, !VarTypes) :-
     svvarset.new_maybe_named_var(MaybeName, Var, !VarSet),
     svmap.det_insert(Var, char_type, !VarTypes),
     make_char_const_construction(Var, Char, Goal).
 
 make_const_construction_alloc(ConsId, Type, MaybeName, Goal, Var,
-        !VarTypes, !VarSet) :-
+        !VarSet, !VarTypes) :-
     svvarset.new_maybe_named_var(MaybeName, Var, !VarSet),
     svmap.det_insert(Var, Type, !VarTypes),
     make_const_construction(Var, ConsId, Goal).

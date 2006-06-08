@@ -806,6 +806,8 @@
 
     ;       mlds_rtti_type(rtti_id_maybe_element)
 
+    ;       mlds_tabling_type(proc_tabling_struct_id)
+
     ;       mlds_unknown_type.
             % A type used by the ML code generator for references to variables
             % that have yet to be declared. This occurs once in ml_code_util.m
@@ -1571,31 +1573,31 @@
     --->    var(mlds_var_name)
             % Ordinary variables.
 
-    ;       common(int)
+    ;       mlds_common(int)
             % Compiler-introduced constants representing global constants.
             % These are called "common" because they may be common
             % subexpressions.
 
     % Stuff for handling polymorphism/RTTI and type classes.
 
-    ;       rtti(rtti_id)
+    ;       mlds_rtti(rtti_id)
 
     % Stuff for handling debugging and accurate garbage collection.
     % (Those features are not yet implemented for the MLDS back-end,
     % so these data_names are not yet used.)
 
-    ;       module_layout
+    ;       mlds_module_layout
             % Layout information for the current module.
 
-    ;       proc_layout(mlds_proc_label)
+    ;       mlds_proc_layout(mlds_proc_label)
             % Layout structure for the given procedure.
 
-    ;       internal_layout(mlds_proc_label, mlds_func_sequence_num)
+    ;       mlds_internal_layout(mlds_proc_label, mlds_func_sequence_num)
             % Layout structure for the given internal MLDS func.
 
-    % Stuff for tabling
+    % Stuff for tabling.
 
-    ;       tabling_pointer(mlds_proc_label).
+    ;       mlds_tabling_ref(mlds_proc_label, proc_tabling_struct_id).
             % A variable that contains a pointer that points to the table
             % used to implement memoization, loopcheck or minimal model
             % semantics for the given procedure.
@@ -1625,8 +1627,9 @@
 
 :- type mlds_qualified_proc_label
     ==  mlds_fully_qualified_name(mlds_proc_label).
+
 :- type mlds_proc_label
-    ==  pair(mlds_pred_label, proc_id).
+    --->    mlds_proc_label(mlds_pred_label, proc_id).
 
 :- type mlds_qualified_pred_label
     ==  mlds_fully_qualified_name(mlds_pred_label).
@@ -1641,7 +1644,7 @@
     % from `.opt' files, the defining module's name is added as a
     % qualifier to the pred name.
 :- type mlds_pred_label
-    --->    pred(
+    --->    mlds_user_pred_label(
                 pred_or_func,       % predicate/function
                 maybe(mercury_module_name),
                                     % The declaring module,
@@ -1652,8 +1655,7 @@
                 bool                % Function without return value
                                     % (i.e. non-default mode).
             )
-
-    ;       special_pred(
+    ;       mlds_special_pred_label(
                 string,             % pred name
                 maybe(mercury_module_name),
                                     % The module declaring the type,
@@ -1662,6 +1664,8 @@
                 string,             % The type name.
                 arity               % The type arity.
             ).
+
+:- func mlds_std_tabling_proc_label(mlds_proc_label) = mlds_proc_label.
 
 %-----------------------------------------------------------------------------%
 
@@ -1743,7 +1747,7 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
         module_info_get_globals(ModuleInfo, Globals),
         globals.get_target(Globals, Target),
         (
-            Target = c,
+            Target = target_c,
             (
                 MaybeC = yes(Data),
                 Data = foreign_type_lang_data(CForeignType, _, _),
@@ -1755,7 +1759,7 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
                     "mercury_type_to_mlds_type: No C foreign type")
             )
         ;
-            Target = il,
+            Target = target_il,
             (
                 MaybeIL = yes(Data),
                 Data = foreign_type_lang_data(ILForeignType, _, _),
@@ -1767,7 +1771,7 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
                     "mercury_type_to_mlds_type: No IL foreign type")
             )
         ;
-            Target = java,
+            Target = target_java,
             (
                 MaybeJava = yes(Data),
                 Data = foreign_type_lang_data(JavaForeignType, _, _),
@@ -1779,7 +1783,7 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
                     "mercury_type_to_mlds_type: no Java foreign type")
             )
         ;
-            Target = asm,
+            Target = target_asm,
             (
                 MaybeC = yes(Data),
                 Data = foreign_type_lang_data(CForeignType, _, _),
@@ -1859,7 +1863,7 @@ mlds_append_class_qualifier(name(Package, Module), QualKind, Globals,
     % in order to match the usual Java conventions.
     (
         globals.get_target(Globals, CompilationTarget),
-        CompilationTarget = java,
+        CompilationTarget = target_java,
         QualKind = type_qual
     ->
         AdjustedModule = flip_initial_case_of_final_part(Module)
@@ -1874,6 +1878,24 @@ mlds_append_name(name(Package, Module), Name)
     = name(Package, qualified(Module, Name)).
 
 wrapper_class_name = "mercury_code".
+
+mlds_std_tabling_proc_label(ProcLabel0) = ProcLabel :-
+     % We standardize the parts of PredLabel0 that aren't computable from
+    % the tabling pragma, because the code that creates the reset predicate
+    % in table_info_global_var_name in add_pragma.m doesn't have access to
+    % this information.
+    ProcLabel0 = mlds_proc_label(PredLabel0, ProcId),
+    (
+        PredLabel0 = mlds_user_pred_label(PorF, MaybeModuleName, Name,
+            Arity, _, _),
+        PredLabel = mlds_user_pred_label(PorF, MaybeModuleName, Name,
+            Arity, model_det, no)
+    ;
+        PredLabel0 = mlds_special_pred_label(_, _, _, _),
+        unexpected(this_file,
+            "mlds_std_tabling_proc_label: mlds_special_pred_label")
+    ),
+    ProcLabel = mlds_proc_label(PredLabel, ProcId).
 
 flip_initial_case_of_final_part(unqualified(Name)) =
     unqualified(flip_initial_case(Name)).

@@ -35,6 +35,8 @@
 #include "mercury_type_info.h"			/* for MR_PseudoTypeInfo */
 #include "mercury_proc_id.h"			/* for MR_Proc_Id */
 #include "mercury_goto.h"			/* for MR_PROC_LAYOUT etc */
+#include "mercury_tabling.h"			/* for MR_TableTrieStep etc */
+#include "mercury_bootstrap.h"			/* for MR_Table_Trie_Step */
 
 /*-------------------------------------------------------------------------*/
 /*
@@ -597,67 +599,22 @@ typedef struct MR_Table_Io_Decl_Struct {
 } MR_Table_Io_Decl;
 
 /*
-** The MR_Table_Gen structure.
-**
-** To enable debugging (especially performance debugging) of tabled predicates,
-** the compiler generates one of these structures for each tabled predicate
-** (except I/O primitives, for which it generates an MR_Table_Io_Decl
-** structure.)
-**
-** Each argument of a tabled predicate is an input or an output. Inputs are put
-** into the call trie, which has one level per input argument. The structure of
-** each level depends on what kind of type the corresponding input argument is;
-** this is recorded in the input_steps field, which points to an array of size
-** num_inputs. If the type is an enum, we cannot interpret the data structures
-** used on that level without also knowing how many alternatives the type has;
-** this is recorded in the corresponding element of the enum_params array,
-** which is likewise of size num_inputs. (Elements of the enum_params array
-** that correspond to arguments whose types are not enums are not meaningful.)
-**
-** The ptis field points to an array of pseudotypeinfos of size num_inputs +
-** num_outputs. The first num_inputs elements give the types of the input
-** arguments, while the remaining num_outputs elements give the types of the
-** output arguments.
-*/
-
-typedef enum {
-	MR_TABLE_STEP_DUMMY,
-	MR_TABLE_STEP_INT,
-	MR_TABLE_STEP_CHAR,
-	MR_TABLE_STEP_STRING,
-	MR_TABLE_STEP_FLOAT,
-	MR_TABLE_STEP_ENUM,
-	MR_TABLE_STEP_USER,
-	MR_TABLE_STEP_USER_FAST_LOOSE,
-	MR_TABLE_STEP_POLY,
-	MR_TABLE_STEP_POLY_FAST_LOOSE,
-	MR_TABLE_STEP_TYPEINFO,
-	MR_TABLE_STEP_TYPECLASSINFO,
-	MR_TABLE_STEP_PROMISE_IMPLIED
-} MR_Table_Trie_Step;
-
-typedef struct MR_Table_Gen_Struct {
-	int				MR_table_gen_num_inputs;
-	int				MR_table_gen_num_outputs;
-	const MR_Table_Trie_Step	*MR_table_gen_input_steps;
-	const MR_Integer		*MR_table_gen_enum_params;
-	const MR_PseudoTypeInfo		*MR_table_gen_ptis;
-	const MR_Type_Param_Locns	*MR_table_gen_type_params;
-} MR_Table_Gen;
-
-/*
 ** MR_Table_Info: compiler generated information describing the tabling 
 ** data structures used by a procedure.
 **
 ** For I/O tabled procedures, the information is in the io_decl field.
 ** For other kinds of tabled procedures, it is in the gen field.
 ** The init field is used for initialization only.
+**
+** The MR_table_proc field is not const because the structure it points to
+** has fields containing statistics, which are updated at runtime.
 */
 
 typedef union {
 	const void			*MR_table_init;
 	const MR_Table_Io_Decl		*MR_table_io_decl;
 	const MR_Table_Gen		*MR_table_gen;
+	MR_ProcTableInfo		*MR_table_proc;
 } MR_Table_Info;
 
 /*
@@ -772,12 +729,14 @@ typedef struct MR_Stack_Traversal_Struct {
 ** arguments.
 */
 
+#define	MR_EVAL_METHOD_MEMO_STRICT	MR_EVAL_METHOD_MEMO
+#define	MR_EVAL_METHOD_MEMO_FAST_LOOSE	MR_EVAL_METHOD_MEMO
+#define	MR_EVAL_METHOD_MEMO_SPECIFIED	MR_EVAL_METHOD_MEMO
+
 typedef	enum {
 	MR_EVAL_METHOD_NORMAL,
 	MR_EVAL_METHOD_LOOP_CHECK,
-	MR_EVAL_METHOD_MEMO_STRICT,
-	MR_EVAL_METHOD_MEMO_FAST_LOOSE,
-	MR_EVAL_METHOD_MEMO_SPECIFIED,
+	MR_EVAL_METHOD_MEMO,
 	MR_EVAL_METHOD_MINIMAL_STACK_COPY,
 	MR_EVAL_METHOD_MINIMAL_OWN_STACKS,
 	MR_EVAL_METHOD_TABLE_IO,
@@ -801,7 +760,7 @@ typedef	struct MR_Exec_Trace_Struct {
 	const MR_Label_Layout	*MR_exec_call_label;
 	const MR_Module_Layout	*MR_exec_module_layout;
 	const MR_uint_least8_t	*MR_exec_body_bytes;
-	MR_TrieNode		MR_exec_tabling_pointer;
+	MR_Word			MR_exec_unused;
 	MR_Table_Info		MR_exec_table_info;
 	const MR_uint_least16_t	*MR_exec_head_var_nums;
 	const MR_uint_least32_t	*MR_exec_used_var_names;

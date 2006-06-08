@@ -439,19 +439,21 @@ build_target_2(ModuleName, fact_table_code_to_object_code(PIC, FactTableFile),
     io.output_stream::in, module_imports::in, bool::out,
     io::di, io::uo) is det.
 
-build_object_code(ModuleName, c, PIC, ErrorStream, _Imports, Succeeded, !IO) :-
+build_object_code(ModuleName, target_c, PIC, ErrorStream, _Imports,
+        Succeeded, !IO) :-
     compile_target_code.compile_c_file(ErrorStream, PIC, ModuleName,
         Succeeded, !IO).
-build_object_code(ModuleName, asm, PIC, ErrorStream, _Imports, Succeeded,
-        !IO) :-
+build_object_code(ModuleName, target_asm, PIC, ErrorStream, _Imports,
+        Succeeded, !IO) :-
     compile_target_code.assemble(ErrorStream, PIC, ModuleName,
         Succeeded, !IO).
-build_object_code(ModuleName, java, _, ErrorStream, _Imports, Succeeded,
+build_object_code(ModuleName, target_java, _, ErrorStream, _Imports, Succeeded,
         !IO) :-
     module_name_to_file_name(ModuleName, ".java", yes, JavaFile, !IO),
     compile_target_code.compile_java_file(ErrorStream, JavaFile,
         Succeeded, !IO).
-build_object_code(ModuleName, il, _, ErrorStream, Imports, Succeeded, !IO) :-
+build_object_code(ModuleName, target_il, _, ErrorStream, Imports, Succeeded,
+        !IO) :-
     compile_target_code.il_assemble(ErrorStream, ModuleName,
         Imports ^ has_main, Succeeded, !IO).
 
@@ -460,24 +462,24 @@ build_object_code(ModuleName, il, _, ErrorStream, Imports, Succeeded, !IO) :-
     io::di, io::uo) is det.
 
 compile_foreign_code_file(ErrorStream, PIC, _Imports,
-        foreign_code_file(c, CFile, ObjFile), Succeeded, !IO) :-
+        foreign_code_file(lang_c, CFile, ObjFile), Succeeded, !IO) :-
     compile_target_code.compile_c_file(ErrorStream, PIC,
         CFile, ObjFile, Succeeded, !IO).
 compile_foreign_code_file(ErrorStream, _, _Imports,
-        foreign_code_file(il, ILFile, DLLFile), Succeeded, !IO) :-
+        foreign_code_file(lang_il, ILFile, DLLFile), Succeeded, !IO) :-
     compile_target_code.il_assemble(ErrorStream, ILFile, DLLFile,
         no_main, Succeeded, !IO).
 compile_foreign_code_file(ErrorStream, _, _Imports,
-        foreign_code_file(java, JavaFile, _ClassFile), Succeeded, !IO) :-
+        foreign_code_file(lang_java, JavaFile, _ClassFile), Succeeded, !IO) :-
     compile_target_code.compile_java_file(ErrorStream, JavaFile,
         Succeeded, !IO).
 compile_foreign_code_file(ErrorStream, _, _Imports,
-        foreign_code_file(managed_cplusplus, MCPPFile, DLLFile),
+        foreign_code_file(lang_managed_cplusplus, MCPPFile, DLLFile),
         Succeeded, !IO) :-
     compile_target_code.compile_managed_cplusplus_file(ErrorStream,
         MCPPFile, DLLFile, Succeeded, !IO).
 compile_foreign_code_file(ErrorStream, _, Imports,
-        foreign_code_file(csharp, CSharpFile, DLLFile),
+        foreign_code_file(lang_csharp, CSharpFile, DLLFile),
         Succeeded, !IO) :-
     compile_target_code.compile_csharp_file(ErrorStream, Imports,
         CSharpFile, DLLFile, Succeeded, !IO).
@@ -523,23 +525,23 @@ fact_table_foreign_code_file(ModuleName, PIC, FactTableName, ForeignCodeFile,
     ObjExt = get_object_extension(Globals, PIC),
     fact_table_file_name(ModuleName, FactTableName, ".c", yes, CFile, !IO),
     fact_table_file_name(ModuleName, FactTableName, ObjExt, yes, ObjFile, !IO),
-    ForeignCodeFile = foreign_code_file(c, CFile, ObjFile).
+    ForeignCodeFile = foreign_code_file(lang_c, CFile, ObjFile).
 
 :- func get_object_extension(globals, pic) = string.
 
 get_object_extension(Globals, PIC) = Ext :-
     globals.get_target(Globals, CompilationTarget),
     (
-        CompilationTarget = c,
+        CompilationTarget = target_c,
         maybe_pic_object_file_extension(Globals, PIC, Ext)
     ;
-        CompilationTarget = asm,
+        CompilationTarget = target_asm,
         maybe_pic_object_file_extension(Globals, PIC, Ext)
     ;
-        CompilationTarget = il,
+        CompilationTarget = target_il,
         Ext = ".dll"
     ;
-        CompilationTarget = java,
+        CompilationTarget = target_java,
         sorry(this_file, "object extension for java")
     ).
 
@@ -754,7 +756,7 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
     globals.io_get_target(CompilationTarget, !IO),
     (
         Task = compile_to_target_code,
-        CompilationTarget = asm
+        CompilationTarget = target_asm
     ->
         % For `--target asm' the code for the nested children
         % is placed in the `.s' file for the top-level module
@@ -777,7 +779,7 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
             list.map((func(ForeignFile) = ForeignFile ^ target_file),
                 list.condense(ForeignCodeFileList)),
         (
-            CompilationTarget = c,
+            CompilationTarget = target_c,
             globals.io_lookup_bool_option(highlevel_code, HighLevelCode, !IO),
             (
                 HighLevelCode = yes,
@@ -793,7 +795,7 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
                 HeaderTargets0 = []
             )
         ;
-            CompilationTarget = asm,
+            CompilationTarget = target_asm,
             %
             % When compiling to assembler, we only generate
             % a header file if the module contains foreign code.
@@ -805,16 +807,16 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
                     ), ModuleImportsList),
             HeaderTargets0 = make_target_list(HeaderModuleNames, c_header(mih))
         ;
-            CompilationTarget = il,
+            CompilationTarget = target_il,
             HeaderTargets0 = []
         ;
-            CompilationTarget = java,
+            CompilationTarget = target_java,
             HeaderTargets0 = []
         ),
 
         (
-            ( CompilationTarget = c
-            ; CompilationTarget = asm
+            ( CompilationTarget = target_c
+            ; CompilationTarget = target_asm
             )
         ->
             Names = SourceFileModuleNames,
@@ -881,17 +883,19 @@ external_foreign_code_files(PIC, Imports, ForeignFiles, !IO) :-
     globals.io_get_target(CompilationTarget, !IO),
     ModuleName = Imports ^ module_name,
     (
-        CompilationTarget = asm,
+        CompilationTarget = target_asm,
         Imports ^ foreign_code = contains_foreign_code(Langs),
-        set.member(c, Langs)
+        set.member(lang_c, Langs)
     ->
-        module_name_to_file_name(foreign_language_module_name(ModuleName, c),
+        module_name_to_file_name(
+            foreign_language_module_name(ModuleName, lang_c),
             ".c", no, CCodeFileName, !IO),
-        module_name_to_file_name(foreign_language_module_name(ModuleName, c),
+        module_name_to_file_name(
+            foreign_language_module_name(ModuleName, lang_c),
             ObjExt, no, ObjFileName, !IO),
-        ForeignFiles0 = [foreign_code_file(c, CCodeFileName, ObjFileName) ]
+        ForeignFiles0 = [foreign_code_file(lang_c, CCodeFileName, ObjFileName)]
     ;
-        CompilationTarget = il,
+        CompilationTarget = target_il,
         Imports ^ foreign_code = contains_foreign_code(Langs)
     ->
         list.map_foldl(external_foreign_code_files_for_il(ModuleName),
@@ -905,8 +909,8 @@ external_foreign_code_files(PIC, Imports, ForeignFiles, !IO) :-
     % Find externally compiled foreign code files for fact tables.
     %
     (
-        ( CompilationTarget = c
-        ; CompilationTarget = asm
+        ( CompilationTarget = target_c
+        ; CompilationTarget = target_asm
         )
     ->
         list.map_foldl(
@@ -916,7 +920,7 @@ external_foreign_code_files(PIC, Imports, ForeignFiles, !IO) :-
                     ".c", no, FactTableCFile),
                 fact_table_file_name(ModuleName, FactTableFile,
                     ObjExt, no, FactTableObjFile),
-                { FactTableForeignFile = foreign_code_file(c,
+                { FactTableForeignFile = foreign_code_file(lang_c,
                     FactTableCFile, FactTableObjFile) }
             ), Imports ^ fact_table_deps, FactTableForeignFiles, !IO),
         ForeignFiles = ForeignFiles0 ++ FactTableForeignFiles

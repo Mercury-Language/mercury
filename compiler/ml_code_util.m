@@ -1298,8 +1298,9 @@ ml_gen_new_func_label(MaybeParams, FuncLabel, FuncLabelRval, !Info) :-
         ),
         Signature = mlds_func_signature(ArgTypes, [])
     ),
-    ProcLabel = qual(PredModule, module_qual, PredLabel - ProcId),
-    FuncLabelRval = const(code_addr_const(internal(ProcLabel,
+    ProcLabel = mlds_proc_label(PredLabel, ProcId),
+    QualProcLabel = qual(PredModule, module_qual, ProcLabel),
+    FuncLabelRval = const(code_addr_const(internal(QualProcLabel,
         FuncLabel, Signature))).
 
     % Generate the mlds_pred_label and module name for a given procedure.
@@ -1344,8 +1345,8 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
                 DefiningModule = TypeModule,
                 MaybeDeclaringModule = no
             ),
-            MLDS_PredLabel = special_pred(PredName, MaybeDeclaringModule,
-                TypeName, TypeArity)
+            MLDS_PredLabel = mlds_special_pred_label(PredName,
+                MaybeDeclaringModule, TypeName, TypeArity)
         ;
             string.append_list(["ml_gen_pred_label:\n",
                 "cannot make label for special pred `",
@@ -1377,7 +1378,7 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
             NonOutputFunc = no
         ),
         determinism_to_code_model(Detism, CodeModel),
-        MLDS_PredLabel = pred(PredOrFunc, MaybeDeclaringModule,
+        MLDS_PredLabel = mlds_user_pred_label(PredOrFunc, MaybeDeclaringModule,
             PredName, PredArity, CodeModel, NonOutputFunc)
     ),
     MLDS_Module = mercury_module_name_to_mlds(DefiningModule).
@@ -1822,7 +1823,8 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
             yes(SeqNum), _), _, _, mlds_function(_, _, defined_here(_), _))
     ->
         % We call the proxy function.
-        QualProcLabel = qual(MLDS_Module, module_qual, PredLabel - ProcId),
+        ProcLabel = mlds_proc_label(PredLabel, ProcId),
+        QualProcLabel = qual(MLDS_Module, module_qual, ProcLabel),
         ProxyFuncRval = const(code_addr_const(
             internal(QualProcLabel, SeqNum, ProxySignature))),
 
@@ -1894,7 +1896,7 @@ ml_gen_maybe_gc_trace_code_2(VarName, DeclType, HowToGetTypeInfo, Context,
     (
         GC = accurate,
         MLDS_DeclType = mercury_type_to_mlds_type(ModuleInfo, DeclType),
-        ml_type_might_contain_pointers(MLDS_DeclType) = yes,
+        ml_type_might_contain_pointers_for_gc(MLDS_DeclType) = yes,
         % don't generate GC tracing code in no_type_info_builtins
         ml_gen_info_get_pred_id(!.Info, PredId),
         predicate_id(ModuleInfo, PredId, PredModule, PredName, PredArity),
@@ -1942,31 +1944,34 @@ ml_gen_maybe_gc_trace_code_2(VarName, DeclType, HowToGetTypeInfo, Context,
     % Similarly, the only pointers in type_ctor_infos and base_typeclass_infos
     % are to static code and/or static data, which do not need to be traced.
     %
-:- func ml_type_might_contain_pointers(mlds_type) = bool.
+:- func ml_type_might_contain_pointers_for_gc(mlds_type) = bool.
 
-ml_type_might_contain_pointers(mercury_type(_Type, TypeCategory, _)) =
+ml_type_might_contain_pointers_for_gc(mercury_type(_Type, TypeCategory, _)) =
     ml_type_category_might_contain_pointers(TypeCategory).
-ml_type_might_contain_pointers(mlds_mercury_array_type(_)) = yes.
-ml_type_might_contain_pointers(mlds_native_int_type) = no.
-ml_type_might_contain_pointers(mlds_native_float_type) = no.
-ml_type_might_contain_pointers(mlds_native_bool_type) = no.
-ml_type_might_contain_pointers(mlds_native_char_type) = no.
-ml_type_might_contain_pointers(mlds_foreign_type(_)) = no.
+ml_type_might_contain_pointers_for_gc(mlds_mercury_array_type(_)) = yes.
+ml_type_might_contain_pointers_for_gc(mlds_native_int_type) = no.
+ml_type_might_contain_pointers_for_gc(mlds_native_float_type) = no.
+ml_type_might_contain_pointers_for_gc(mlds_native_bool_type) = no.
+ml_type_might_contain_pointers_for_gc(mlds_native_char_type) = no.
+ml_type_might_contain_pointers_for_gc(mlds_foreign_type(_)) = no.
     % We assume that foreign types are not allowed to contain pointers
     % to the Mercury heap.  XXX is this requirement too strict?
-ml_type_might_contain_pointers(mlds_class_type(_, _, Category)) =
+ml_type_might_contain_pointers_for_gc(mlds_class_type(_, _, Category)) =
     (if Category = mlds_enum then no else yes).
-ml_type_might_contain_pointers(mlds_ptr_type(_)) = yes.
-ml_type_might_contain_pointers(mlds_array_type(_)) = yes.
-ml_type_might_contain_pointers(mlds_func_type(_)) = no.
-ml_type_might_contain_pointers(mlds_generic_type) = yes.
-ml_type_might_contain_pointers(mlds_generic_env_ptr_type) = yes.
-ml_type_might_contain_pointers(mlds_type_info_type) = yes.
-ml_type_might_contain_pointers(mlds_pseudo_type_info_type) = yes.
-ml_type_might_contain_pointers(mlds_cont_type(_)) = no.
-ml_type_might_contain_pointers(mlds_commit_type) = no.
-ml_type_might_contain_pointers(mlds_rtti_type(_)) = yes.
-ml_type_might_contain_pointers(mlds_unknown_type) = yes.
+ml_type_might_contain_pointers_for_gc(mlds_ptr_type(_)) = yes.
+ml_type_might_contain_pointers_for_gc(mlds_array_type(_)) = yes.
+ml_type_might_contain_pointers_for_gc(mlds_func_type(_)) = no.
+ml_type_might_contain_pointers_for_gc(mlds_generic_type) = yes.
+ml_type_might_contain_pointers_for_gc(mlds_generic_env_ptr_type) = yes.
+ml_type_might_contain_pointers_for_gc(mlds_type_info_type) = yes.
+ml_type_might_contain_pointers_for_gc(mlds_pseudo_type_info_type) = yes.
+ml_type_might_contain_pointers_for_gc(mlds_cont_type(_)) = no.
+ml_type_might_contain_pointers_for_gc(mlds_commit_type) = no.
+ml_type_might_contain_pointers_for_gc(mlds_rtti_type(_)) = yes.
+    % Values of mlds_tabling_type types may contain pointers, but they won't
+    % exist if we are using accurate GC.
+ml_type_might_contain_pointers_for_gc(mlds_tabling_type(_)) = no.
+ml_type_might_contain_pointers_for_gc(mlds_unknown_type) = yes.
 
 :- func ml_type_category_might_contain_pointers(type_category) = bool.
 
@@ -2089,16 +2094,18 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStatement) :-
     % Generate the address of `private_builtin.gc_trace/1#0'.
     PredName = "gc_trace",
     PredOrigArity = 1,
-    Pred = pred((predicate), no, PredName, PredOrigArity, model_det, no),
+    PredLabel = mlds_user_pred_label((predicate), no, PredName, PredOrigArity,
+        model_det, no),
     ProcId = hlds_pred.initial_proc_id,
     mercury_private_builtin_module(PredModule),
     MLDS_Module = mercury_module_name_to_mlds(PredModule),
-    Proc = qual(MLDS_Module, module_qual, Pred - ProcId),
+    ProcLabel = mlds_proc_label(PredLabel, ProcId),
+    QualProcLabel = qual(MLDS_Module, module_qual, ProcLabel),
     CPointerType = mercury_type(c_pointer_type, type_cat_user_ctor,
         non_foreign_type(c_pointer_type)),
     ArgTypes = [mlds_pseudo_type_info_type, CPointerType],
     Signature = mlds_func_signature(ArgTypes, []),
-    FuncAddr = const(code_addr_const(proc(Proc, Signature))),
+    FuncAddr = const(code_addr_const(proc(QualProcLabel, Signature))),
 
     % Generate the call
     % `private_builtin.gc_trace(TypeInfo, (MR_C_Pointer) &Var);'.

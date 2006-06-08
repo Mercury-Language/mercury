@@ -962,7 +962,7 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
 :- pred ok_to_inline_language(foreign_language::in, compilation_target::in)
     is semidet.
 
-ok_to_inline_language(c, c).
+ok_to_inline_language(lang_c, target_c).
 
 % ok_to_inline_language(il, il). %
 % XXX we need to fix the handling of parameter marhsalling for inlined code

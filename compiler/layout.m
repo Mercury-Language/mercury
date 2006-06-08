@@ -95,15 +95,6 @@
                 table_io_decl_ptis      :: rval,
                                         % pseudo-typeinfos for headvars
                 table_io_decl_type_params :: rval
-            )
-    ;       table_gen_data(
-                table_gen_proc_ptr      :: rtti_proc_label,
-                table_gen_num_inputs    :: int,
-                table_gen_num_outputs   :: int,
-                table_gen_steps         :: list(table_trie_step),
-                table_gen_ptis          :: rval,
-                                        % pseudo-typeinfos for headvars
-                table_gen_type_params   :: rval
             ).
 
 :- type label_var_info
@@ -161,7 +152,7 @@
                                         % The procedure body represented as
                                         % a list of bytecodes.
 
-                maybe_table_info        :: maybe(layout_name),
+                maybe_table_info        :: maybe(data_addr),
                 head_var_nums           :: list(int),
                                         % The variable numbers of the
                                         % head variables, including the
@@ -209,9 +200,6 @@
             % the string table) for a procedure layout structure.
     ;       proc_layout_body_bytecode(rtti_proc_label)
     ;       table_io_decl(rtti_proc_label)
-    ;       table_gen_info(rtti_proc_label)
-    ;       table_gen_enum_params(rtti_proc_label)
-    ;       table_gen_steps(rtti_proc_label)
     ;       closure_proc_id(proc_label, int, proc_label)
     ;       file_layout(module_name, int)
     ;       file_layout_line_number_vector(module_name, int)

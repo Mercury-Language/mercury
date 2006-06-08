@@ -507,7 +507,7 @@ X * Y = R :-
         (int) V);
 ").
 
-:- pragma memo(vars_entailed/1).
+% :- pragma memo(vars_entailed/1).
 
 vars_entailed(R) =
     ( R = one ->
@@ -525,7 +525,7 @@ vars_entailed(R) =
         )
     ).
 
-:- pragma memo(vars_disentailed/1).
+% :- pragma memo(vars_disentailed/1).
 
 vars_disentailed(R) =
     ( R = one ->
@@ -544,7 +544,7 @@ vars_disentailed(R) =
         )
     ).
 
-:- pragma memo(definite_vars/3).
+% :- pragma memo(definite_vars/3).
 
 definite_vars(R, T, F) :-
     ( R = one ->
@@ -577,7 +577,7 @@ equivalent_vars(R) = rev_map(equivalent_vars_2(R)).
 :- func equivalent_vars_2(robdd(T)) =
     entailment_result(leader_to_eqvclass(T)).
 
-:- pragma memo(equivalent_vars_2/1).
+% :- pragma memo(equivalent_vars_2/1).
 
 equivalent_vars_2(R) = EQ :-
     ( R = one ->
@@ -650,7 +650,7 @@ extract_implications(R) = implication_result_to_imp_vars(implications_2(R)).
 :- type imp_res_2(T) ---> imps(map(var(T), vars_entailed_result(T))).
 
 :- func implications_2(robdd(T)) = implication_result(T).
-:- pragma memo(implications_2/1).
+% :- pragma memo(implications_2/1).
 
 implications_2(R) = implication_result(Imps, RevImps, DisImps, RevDisImps) :-
     ( R = one ->
@@ -858,7 +858,7 @@ some_vars(Vs) `insert` V = some_vars(Vs `insert` V).
 
 %------------------------------------------------------------------------%
 
-:- pragma memo(dnf/1).
+% :- pragma memo(dnf/1).
 
 dnf(R) =
     ( R = zero ->
@@ -958,7 +958,7 @@ print_robdd_2(F, Trues, Falses) -->
         (MR_ROBDD_node *) F);
 ").
 
-:- pragma memo(rename_vars/2).
+% :- pragma memo(rename_vars/2).
 
 rename_vars(Subst, F) =
     ( is_terminal(F) ->
@@ -1043,7 +1043,7 @@ at_most_one_of_2(Vars, OneOf0, NoneOf0) = R :-
         ), list.reverse(to_sorted_list(Vars)),
         OneOf0, R, NoneOf0, _).
 
-:- pragma memo(var_restrict_true/2).
+% :- pragma memo(var_restrict_true/2).
 
 var_restrict_true(V, F0) = F :-
     ( is_terminal(F0) ->
@@ -1064,7 +1064,7 @@ var_restrict_true(V, F0) = F :-
         )
     ).
 
-:- pragma memo(var_restrict_false/2).
+% :- pragma memo(var_restrict_false/2).
 
 var_restrict_false(V, F0) = F :-
     ( is_terminal(F0) ->

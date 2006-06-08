@@ -34,7 +34,7 @@
 
 :- pred global_data_init(static_cell_info::in, global_data::out) is det.
 
-:- pred global_data_add_new_proc_var(pred_proc_id::in, comp_gen_c_var::in,
+:- pred global_data_add_new_proc_var(pred_proc_id::in, tabling_info_struct::in,
     global_data::in, global_data::out) is det.
 
 :- pred global_data_add_new_proc_layout(pred_proc_id::in, proc_layout_info::in,
@@ -53,7 +53,7 @@
     proc_layout_info::out) is det.
 
 :- pred global_data_get_all_proc_vars(global_data::in,
-    list(comp_gen_c_var)::out) is det.
+    list(tabling_info_struct)::out) is det.
 
 :- pred global_data_get_all_proc_layouts(global_data::in,
     list(proc_layout_info)::out) is det.
@@ -118,7 +118,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type proc_var_map    ==  map(pred_proc_id, comp_gen_c_var).
+:- type proc_var_map    ==  map(pred_proc_id, tabling_info_struct).
 :- type proc_layout_map ==  map(pred_proc_id, proc_layout_info).
 
 :- type global_data

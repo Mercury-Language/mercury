@@ -282,7 +282,7 @@ switch_priority(shared_with_reserved_addresses(RAs, Tag)) =
 switch_priority(pred_closure_tag(_, _, _)) = 6.
 switch_priority(type_ctor_info_constant(_, _, _)) = 6.
 switch_priority(base_typeclass_info_constant(_, _, _)) = 6.
-switch_priority(tabling_pointer_constant(_, _)) = 6.
+switch_priority(tabling_info_constant(_, _)) = 6.
 switch_priority(deep_profiling_proc_layout_tag(_, _)) = 6.
 switch_priority(table_io_decl_tag(_, _)) = 6.
 

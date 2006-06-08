@@ -6,7 +6,7 @@ INIT mercury_sys_init_trace
 ENDINIT
 */
 /*
-** Copyright (C) 1997-2005 The University of Melbourne.
+** Copyright (C) 1997-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -762,8 +762,8 @@ MR_trace_get_action(int action_number, MR_ConstString *proc_name_ptr,
         return MR_FALSE;
     }
 
-    MR_DEBUG_NEW_TABLE_START_INT(answer_block_trie,
-        (MR_TrieNode) &MR_io_tabling_pointer,
+    MR_TABLE_START_INT(NULL, MR_tabledebug, MR_FALSE,
+        answer_block_trie, (MR_TrieNode) &MR_io_tabling_pointer,
         MR_io_tabling_start, action_number);
     answer_block = answer_block_trie->MR_answerblock;
 
@@ -998,9 +998,8 @@ MR_io_tabling_stats(FILE *fp)
     num_entries = 0;
 
     for (i = MR_io_tabling_start; i < MR_io_tabling_counter_hwm; i++) {
-        MR_DEBUG_NEW_TABLE_START_INT(answer_block_trie,
-            (MR_TrieNode) &MR_io_tabling_pointer,
-            MR_io_tabling_start, i);
+        MR_TABLE_START_INT(NULL, MR_FALSE, MR_FALSE, answer_block_trie,
+            (MR_TrieNode) &MR_io_tabling_pointer, MR_io_tabling_start, i);
         answer_block = answer_block_trie->MR_answerblock;
 
         if (answer_block == NULL) {

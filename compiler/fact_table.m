@@ -3016,7 +3016,7 @@ generate_argument_vars_code_2(PragmaVars0, ArgInfos0, Types0, Module, DeclCode,
     string::out) is det.
 
 generate_arg_decl_code(Name, Type, Module, DeclCode) :-
-    C_Type = to_type_string(c, Module, Type),
+    C_Type = to_type_string(lang_c, Module, Type),
     string.format("\t\t%s %s;\n", [s(C_Type), s(Name)], DeclCode).
 
 :- pred generate_arg_input_code(string::in, mer_type::in, int::in, int::in,

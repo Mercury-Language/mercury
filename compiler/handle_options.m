@@ -134,7 +134,7 @@ handle_options(Args0, Errors, OptionArgs, Args, Link, !IO) :-
         globals.io_lookup_bool_option(target_code_only,
             TargetCodeOnly, !IO),
         globals.io_get_target(Target, !IO),
-        GenerateIL = (if Target = il then yes else no),
+        GenerateIL = (if Target = target_il then yes else no),
         globals.io_lookup_bool_option(compile_only, CompileOnly, !IO),
         bool.or_list([GenerateDependencies, GenerateDependencyFile,
             MakeInterface, MakePrivateInterface, MakeShortInterface,
@@ -214,7 +214,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
     ->
         Target = TargetPrime
     ;
-        Target = c,     % dummy
+        Target = target_c,     % dummy
         add_error("Invalid target option " ++
             "(must be `c', `asm', `il', or `java')", !Errors)
     ),
@@ -473,7 +473,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %         intermodule optimization pulls in a lot of code which isn't
         %         needed, so ensure that this dead code is removed.
 
-        ( Target = il ->
+        ( Target = target_il ->
             globals.set_gc_method(automatic, !Globals),
             globals.set_option(gc, string("automatic"), !Globals),
             globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
@@ -567,7 +567,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         %         intermodule optimization pulls in a lot of code which isn't
         %         needed, so ensure that this dead code is removed.
 
-        ( Target = java ->
+        ( Target = target_java ->
             globals.set_gc_method(automatic, !Globals),
             globals.set_option(gc, string("automatic"), !Globals),
             globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
@@ -597,7 +597,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         ),
         % Generating assembler via the gcc back-end requires
         % using high-level code.
-        ( Target = asm ->
+        ( Target = target_asm ->
             globals.set_option(highlevel_code, bool(yes), !Globals)
         ;
             true
@@ -607,8 +607,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         % in its own function, to avoid problems with setjmp() and
         % non-volatile local variables.
         (
-            ( Target = c
-            ; Target = asm
+            ( Target = target_c
+            ; Target = target_asm
             )
         ->
             option_implies(highlevel_code, put_commit_in_own_func, bool(yes),
@@ -1066,7 +1066,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
                 % For the IL backend we turn off optimize_peep
                 % so that we don't optimize away references to the
                 % local variables of a procedure.
-                ( Target = il ->
+                ( Target = target_il ->
                     globals.set_option(optimize_peep, bool(no), !Globals)
                 ;
                     true
@@ -1127,7 +1127,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             ProfileDeep = yes,
             (
                 HighLevel = no,
-                Target = c
+                Target = target_c
             ->
                 true
             ;
@@ -1181,8 +1181,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
         (
             ( given_trace_level_is_none(TraceLevel) = yes
-            ; HighLevel = no, Target = c
-            ; Target = il
+            ; HighLevel = no, Target = target_c
+            ; Target = target_il
             )
         ->
             true
@@ -1642,18 +1642,18 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
 
         % The backend foreign languages depend on the target.
         (
-            Target = c,
+            Target = target_c,
             BackendForeignLanguages = ["c"]
         ;
-            Target = il,
+            Target = target_il,
             BackendForeignLanguages = ["il", "csharp", "mc++"],
             set_option(optimize_constructor_last_call, bool(no), !Globals)
         ;
-            Target = asm,
+            Target = target_asm,
             % XXX This is wrong!  It should be asm.
             BackendForeignLanguages = ["c"]
         ;
-            Target = java,
+            Target = target_java,
             BackendForeignLanguages = ["java"],
             set_option(optimize_constructor_last_call, bool(no), !Globals)
         ),
@@ -1690,8 +1690,8 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
         (
             % In the non-C backends, it may not be possible to cast a value
             % of a non-enum du type to an integer.
-            ( Target = c
-            ; Target = asm
+            ( Target = target_c
+            ; Target = target_asm
             ),
 
             % To ensure that all constants in general du types are

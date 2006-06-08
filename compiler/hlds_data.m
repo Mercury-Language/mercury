@@ -249,10 +249,10 @@
             % uniquely identifies the instance declaration (it is made from
             % the type of the arguments to the instance decl).
 
-    ;       tabling_pointer_constant(pred_id, proc_id)
-            % This is how we refer to tabling pointer variables represented
-            % as global data. The word just contains the address of the tabling
-            % pointer of the specified procedure.
+    ;       tabling_info_constant(pred_id, proc_id)
+            % This is how we refer to the global structures containing
+            % tabling pointer variables and related data. The word just
+            % contains the address of the global struct.
 
     ;       deep_profiling_proc_layout_tag(pred_id, proc_id)
             % This is for constants representing procedure descriptions for
@@ -362,7 +362,7 @@ get_primary_tag(int_constant(_)) = no.
 get_primary_tag(pred_closure_tag(_, _, _)) = no.
 get_primary_tag(type_ctor_info_constant(_, _, _)) = no.
 get_primary_tag(base_typeclass_info_constant(_, _, _)) = no.
-get_primary_tag(tabling_pointer_constant(_, _)) = no.
+get_primary_tag(tabling_info_constant(_, _)) = no.
 get_primary_tag(deep_profiling_proc_layout_tag(_, _)) = no.
 get_primary_tag(table_io_decl_tag(_, _)) = no.
 get_primary_tag(single_functor) = yes(0).
@@ -381,7 +381,7 @@ get_secondary_tag(int_constant(_)) = no.
 get_secondary_tag(pred_closure_tag(_, _, _)) = no.
 get_secondary_tag(type_ctor_info_constant(_, _, _)) = no.
 get_secondary_tag(base_typeclass_info_constant(_, _, _)) = no.
-get_secondary_tag(tabling_pointer_constant(_, _)) = no.
+get_secondary_tag(tabling_info_constant(_, _)) = no.
 get_secondary_tag(deep_profiling_proc_layout_tag(_, _)) = no.
 get_secondary_tag(table_io_decl_tag(_, _)) = no.
 get_secondary_tag(single_functor) = no.

@@ -96,7 +96,7 @@ make_proc_label_from_rtti(RttiProcLabel) = ProcLabel :-
                 DefiningModule = TypeModule
             ),
             proc_id_to_int(ProcId, ProcIdInt),
-            ProcLabel = special_proc(DefiningModule, SpecialPred,
+            ProcLabel = special_proc_label(DefiningModule, SpecialPred,
                 TypeModule, TypeName, TypeArity, ProcIdInt)
         ;
             string.append_list(["make_proc_label:\n",
@@ -126,7 +126,7 @@ make_user_proc_label(ThisModule, PredIsImported, PredOrFunc, PredModule,
         DefiningModule = PredModule
     ),
     proc_id_to_int(ProcId, ProcIdInt),
-    ProcLabel = proc(DefiningModule, PredOrFunc,
+    ProcLabel = ordinary_proc_label(DefiningModule, PredOrFunc,
         PredModule, PredName, PredArity, ProcIdInt).
 
 make_uni_label(ModuleInfo, TypeCtor, UniModeNum) = ProcLabel :-
@@ -138,7 +138,7 @@ make_uni_label(ModuleInfo, TypeCtor, UniModeNum) = ProcLabel :-
             Module = ModuleName
         ),
         proc_id_to_int(UniModeNum, UniModeNumInt),
-        ProcLabel = special_proc(Module, spec_pred_unify, TypeModule,
+        ProcLabel = special_proc_label(Module, spec_pred_unify, TypeModule,
             TypeName, Arity, UniModeNumInt)
     ;
         unexpected(this_file, "make_uni_label: unqualified type_ctor")

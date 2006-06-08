@@ -51,5 +51,3 @@ MCFLAGS-solver_test = -O2 --no-optimize-dead-procs
 GRADEFLAGS-interactive = --pic-reg
 MLFLAGS-interactive = --shared
 MERCURY_LINKAGE-interactive = shared
-
-MCFLAGS-fib = --allow-table-reset

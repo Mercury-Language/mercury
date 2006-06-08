@@ -299,28 +299,28 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
         IsActiveVarName ++ ");\n",
 
     complexity_generate_foreign_proc(IsActivePred, det,
-        [IsActiveOutputArg], [], "", IsActiveStr, "", [IsActiveVar],
+        [IsActiveOutputArg], [], IsActiveStr, [IsActiveVar],
         !.ModuleInfo, Context, IsActiveGoal),
 
     ExitPred = "complexity_exit_proc",
     ExitStr = "\tMR_" ++ ExitPred ++ "(" ++
         ProcNumStr ++ ", " ++ slot_var_name ++ ");\n",
     complexity_generate_foreign_proc(ExitPred, det,
-        [SlotInputArg], [], "", ExitStr, "", [],
+        [SlotInputArg], [], ExitStr, [],
         !.ModuleInfo, Context, ExitGoal),
 
     FailPred = "complexity_fail_proc",
     FailStr = "\tMR_" ++ FailPred ++ "(" ++
         ProcNumStr ++ ", " ++ slot_var_name ++ ");\n",
     complexity_generate_foreign_proc(FailPred, failure,
-        [SlotInputArg], [], "", FailStr, "", [],
+        [SlotInputArg], [], FailStr, [],
         !.ModuleInfo, Context, FailGoal),
 
     RedoPred = "complexity_redo_proc",
     RedoStr = "\tMR_" ++ RedoPred ++ "(" ++
         ProcNumStr ++ ", " ++ slot_var_name ++ ");\n",
     complexity_generate_foreign_proc(RedoPred, failure,
-        [SlotInputArg], [], "", RedoStr, "", [],
+        [SlotInputArg], [], RedoStr, [],
         !.ModuleInfo, Context, RedoGoal0),
 
     (
@@ -415,7 +415,7 @@ generate_slot_goals(ProcNum, NumberedVars, NumProfiledVars, Context, PredId,
     ProcStr = "\t" ++ ProcVarName ++ " = &MR_complexity_procs[" ++
         int_to_string(ProcNum) ++ "];\n",
     complexity_generate_foreign_proc(PredName, det, [SlotVarArg],
-        ForeignArgs, DeclCodeStr, PredCodeStr, ProcStr ++ FillCodeStr,
+        ForeignArgs, DeclCodeStr ++ PredCodeStr ++ ProcStr ++ FillCodeStr,
         [SlotVar], !.ModuleInfo, Context, CallGoal),
     list.append(PrefixGoals, [CallGoal], Goals).
 
@@ -481,18 +481,17 @@ generate_new_var(Name, Type, !ProcInfo, Var) :-
     proc_info_set_vartypes(VarTypes, !ProcInfo).
 
 :- pred complexity_generate_foreign_proc(string::in, determinism::in,
-    list(foreign_arg)::in, list(foreign_arg)::in, string::in, string::in,
-    string::in, list(prog_var)::in, module_info::in, term.context::in,
-    hlds_goal::out) is det.
+    list(foreign_arg)::in, list(foreign_arg)::in, string::in,
+    list(prog_var)::in, module_info::in, term.context::in, hlds_goal::out)
+    is det.
 
 complexity_generate_foreign_proc(PredName, Detism, Args, ExtraArgs,
-        PrefixCode, Code, SuffixCode, BoundVars, ModuleInfo, Context, Goal) :-
+        Code, BoundVars, ModuleInfo, Context, Goal) :-
     mercury_term_size_prof_builtin_module(BuiltinModule),
-    Attrs0 = default_attributes(c),
+    Attrs0 = default_attributes(lang_c),
     set_may_call_mercury(will_not_call_mercury, Attrs0, Attrs),
     goal_util.generate_foreign_proc(BuiltinModule, PredName, predicate,
-        only_mode, Detism, Attrs, Args, ExtraArgs,
-        PrefixCode, Code, SuffixCode, [impure_goal],
+        only_mode, Detism, Attrs, Args, ExtraArgs, Code, [impure_goal],
         ground_vars(BoundVars), ModuleInfo, Context, Goal).
 
 %-----------------------------------------------------------------------------%

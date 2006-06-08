@@ -1514,9 +1514,10 @@ count_temps_rval(_, !R, !F).
 format_label(internal(_, ProcLabel)) = format_proc_label(ProcLabel).
 format_label(entry(_, ProcLabel)) = format_proc_label(ProcLabel).
 
-format_proc_label(proc(_Module, _PredOrFunc, _, Name, Arity, Mode)) =
+format_proc_label(ordinary_proc_label(_Module, _PredOrFunc, _, Name,
+        Arity, Mode)) =
     Name ++ "/" ++ int_to_string(Arity) ++ " mode " ++ int_to_string(Mode).
-format_proc_label(special_proc(_Module, SpecialPredId, TypeModule,
+format_proc_label(special_proc_label(_Module, SpecialPredId, TypeModule,
         TypeName, TypeArity, Mode)) =
         PredName ++ "_" ++ TypeName ++ "/" ++ int_to_string(TypeArity)
             ++ " mode " ++ int_to_string(Mode) :-

@@ -584,10 +584,61 @@ mercury_output_item(_UnqualifiedItemNames, pragma(_, Pragma), Context, !IO) :-
         Pragma = obsolete(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, predicate, "obsolete", no, !IO)
     ;
-        Pragma = tabled(Type, Pred, Arity, _PredOrFunc, _Mode),
-        TypeS - MaybeAfter = eval_method_to_string(Type),
-        mercury_output_pragma_decl(Pred, Arity, predicate, TypeS, MaybeAfter,
-            !IO)
+        Pragma = tabled(Type, Pred, Arity, _PredOrFunc, _Mode,
+            MaybeAttributes),
+        PragmaName = eval_method_to_string(Type),
+        (
+            MaybeAttributes = yes(Attributes),
+            Attributes = table_attributes(Strictness, MaybeSizeLimit, Stats,
+                AllowReset),
+            some [!Strs] (
+                !:Strs = [],
+                (
+                    Strictness = all_strict
+                ;
+                    Strictness = all_fast_loose,
+                    !:Strs = ["fast_loose" | !.Strs]
+                ;
+                    Strictness = specified(Args),
+                    ArgStrs = list.map(maybe_arg_tabling_method_to_string,
+                        Args),
+                    ArgsStr = string.join_list(", ", ArgStrs),
+                    !:Strs = ["specified(" ++ ArgsStr ++ ")" | !.Strs]
+                ),
+                (
+                    MaybeSizeLimit = yes(SizeLimit),
+                    LimitStr = "limit(" ++ int_to_string(SizeLimit) ++ ")",
+                    !:Strs = [LimitStr | !.Strs]
+                ;
+                    MaybeSizeLimit = no
+                ),
+                (
+                    Stats = yes,
+                    !:Strs = ["statistics" | !.Strs]
+                ;
+                    Stats = no
+                ),
+                (
+                    AllowReset = yes,
+                    !:Strs = ["allow_reset" | !.Strs]
+                ;
+                    AllowReset = no
+                ),
+                (
+                    !.Strs = [],
+                    MaybeAfter = no
+                ;
+                    !.Strs = [_ | _],
+                    MaybeAfter =
+                        yes("[" ++ string.join_list(", ", !.Strs) ++ "]")
+                )
+            )
+        ;
+            MaybeAttributes = no,
+            MaybeAfter = no
+        ),
+        mercury_output_pragma_decl(Pred, Arity, predicate, PragmaName,
+            MaybeAfter, !IO)
     ;
         Pragma = type_spec(_, _, _, _, _, _, _, _),
         AppendVarnums = no,
@@ -1525,8 +1576,8 @@ mercury_format_cons_id(type_info_cell_constructor(_), _, !U) :-
     add_string("<type_info_cell_constructor>", !U).
 mercury_format_cons_id(typeclass_info_cell_constructor, _, !U) :-
     add_string("<typeclass_info_cell_constructor>", !U).
-mercury_format_cons_id(tabling_pointer_const(_), _, !U) :-
-    add_string("<tabling pointer>", !U).
+mercury_format_cons_id(tabling_info_const(_), _, !U) :-
+    add_string("<tabling info>", !U).
 mercury_format_cons_id(deep_profiling_proc_layout(_), _, !U) :-
     add_string("<deep_profiling_proc_layout>", !U).
 mercury_format_cons_id(table_io_decl(_), _, !U) :-
@@ -1680,7 +1731,7 @@ mercury_output_type_defn(TVarSet, Name, TParams,
     mercury_output_term(MercuryType, TVarSet, no, !IO),
     io.write_string(", \"", !IO),
     (
-        ForeignType = il(il(RefOrVal, ForeignLocStr, ForeignTypeName)),
+        ForeignType = il(il_type(RefOrVal, ForeignLocStr, ForeignTypeName)),
         (
             RefOrVal = reference,
             RefOrValStr = "class "
@@ -1691,9 +1742,9 @@ mercury_output_type_defn(TVarSet, Name, TParams,
         sym_name_to_string(ForeignTypeName, ".", NameStr),
         ForeignTypeStr = RefOrValStr ++ "[" ++ ForeignLocStr ++ "]" ++ NameStr
     ;
-        ForeignType = c(c(ForeignTypeStr))
+        ForeignType = c(c_type(ForeignTypeStr))
     ;
-        ForeignType = java(java(ForeignTypeStr))
+        ForeignType = java(java_type(ForeignTypeStr))
     ),
     io.write_string(ForeignTypeStr, !IO),
     io.write_string("\"", !IO),
@@ -4097,7 +4148,7 @@ output_class_id(class_id(Name, Arity), !Str) :-
 
 output_eval_method(EvalMethod, !Str) :-
     output_string("eval_", !Str),
-    output_string(eval_method_to_one_string(EvalMethod), !Str).
+    output_string(eval_method_to_string(EvalMethod), !Str).
 
 :- pred output_lambda_eval_method(lambda_eval_method::in,
     string::di, string::uo) is det.

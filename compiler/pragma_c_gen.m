@@ -1206,7 +1206,7 @@ make_pragma_decls([Arg | Args], Module, CanOptAwayUnnamedArgs, Decls) :-
         MaybeName = yes(Name),
         (
             BoxPolicy = native_if_possible,
-            OrigTypeString = foreign.to_type_string(c, Module, OrigType)
+            OrigTypeString = foreign.to_type_string(lang_c, Module, OrigType)
         ;
             BoxPolicy = always_boxed,
             OrigTypeString = "MR_Word"
@@ -1284,7 +1284,7 @@ get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-
     ->
         (
             MaybeC = yes(Data),
-            Data = foreign_type_lang_data(c(Name), _, Assertions),
+            Data = foreign_type_lang_data(c_type(Name), _, Assertions),
             MaybeForeignTypeInfo = yes(pragma_c_foreign_type(Name, Assertions))
         ;
             MaybeC = no,

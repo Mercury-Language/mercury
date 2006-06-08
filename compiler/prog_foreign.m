@@ -120,9 +120,9 @@
     % we generate external files for foreign code.
     %
 :- inst lang_gen_ext_file
-    --->    c
-    ;       managed_cplusplus
-    ;       csharp.
+    --->    lang_c
+    ;       lang_managed_cplusplus
+    ;       lang_csharp.
 
     % The module name used for this foreign language.
     % Not all foreign languages generate external modules
@@ -200,20 +200,20 @@
 foreign_import_module_name(ImportModule) = ModuleName :-
     ImportModule = foreign_import_module(Lang, ForeignImportModule, _),
     (
-        Lang = c,
+        Lang = lang_c,
         ModuleName = ForeignImportModule
     ;
-        Lang = il,
+        Lang = lang_il,
         ModuleName = ForeignImportModule
     ;
-        Lang = java,
+        Lang = lang_java,
         ModuleName = ForeignImportModule
     ;
-        Lang = managed_cplusplus,
+        Lang = lang_managed_cplusplus,
         ModuleName = foreign_language_module_name(ForeignImportModule,
                 Lang)
     ;
-        Lang = csharp,
+        Lang = lang_csharp,
         ModuleName = foreign_language_module_name(ForeignImportModule, Lang)
     ).
 
@@ -223,22 +223,22 @@ foreign_import_module_name(ModuleForeignImported, CurrentModule) =
     ImportedForeignCodeModuleName1 = ModuleForeignImported ^
         foreign_import_module_name,
     (
-        Lang = c,
+        Lang = lang_c,
         ImportedForeignCodeModuleName = ImportedForeignCodeModuleName1
     ;
-        Lang = il,
+        Lang = lang_il,
         ImportedForeignCodeModuleName = handle_std_library(
             CurrentModule, ImportedForeignCodeModuleName1)
     ;
-        Lang = managed_cplusplus,
+        Lang = lang_managed_cplusplus,
         ImportedForeignCodeModuleName = handle_std_library(
             CurrentModule, ImportedForeignCodeModuleName1)
     ;
-        Lang = csharp,
+        Lang = lang_csharp,
         ImportedForeignCodeModuleName = handle_std_library(
             CurrentModule, ImportedForeignCodeModuleName1)
     ;
-        Lang = java,
+        Lang = lang_java,
         ImportedForeignCodeModuleName = handle_std_library(
             CurrentModule, ImportedForeignCodeModuleName1)
     ).
@@ -276,11 +276,11 @@ foreign_language_module_name(ModuleName, Lang) = FullyQualifiedModuleName :-
 
 %-----------------------------------------------------------------------------%
 
-foreign_language_file_extension(c) = ".c".
-foreign_language_file_extension(managed_cplusplus) = ".cpp".
-foreign_language_file_extension(csharp) = ".cs".
-foreign_language_file_extension(java) = ".java".
-foreign_language_file_extension(il) = _ :-
+foreign_language_file_extension(lang_c) = ".c".
+foreign_language_file_extension(lang_managed_cplusplus) = ".cpp".
+foreign_language_file_extension(lang_csharp) = ".cs".
+foreign_language_file_extension(lang_java) = ".java".
+foreign_language_file_extension(lang_il) = _ :-
     fail.
 
 %-----------------------------------------------------------------------------%
@@ -289,26 +289,26 @@ foreign_language_file_extension(il) = _ :-
     % interfaces, but if we added appropriate options we might want
     % to do this later.
     %
-prefer_foreign_language(_Globals, c, Lang1, Lang2) =
+prefer_foreign_language(_Globals, target_c, Lang1, Lang2) =
     % When compiling to C, C is always preferred over any other language.
-    ( Lang2 = c, not Lang1 = c ->
+    ( Lang2 = lang_c, not Lang1 = lang_c ->
         yes
     ;
         no
     ).
 
-prefer_foreign_language(_Globals, asm, Lang1, Lang2) =
+prefer_foreign_language(_Globals, target_asm, Lang1, Lang2) =
     % When compiling to asm, C is always preferred over any other language.
-    ( Lang2 = c, not Lang1 = c ->
+    ( Lang2 = lang_c, not Lang1 = lang_c ->
         yes
     ;
         no
     ).
 
-prefer_foreign_language(_Globals, il, Lang1, Lang2) = Comp :-
+prefer_foreign_language(_Globals, target_il, Lang1, Lang2) = Comp :-
     % Whe compiling to il, first we prefer il, then csharp, then
     % managed_cplusplus, after that we don't care.
-    PreferredList = [il, csharp, managed_cplusplus],
+    PreferredList = [lang_il, lang_csharp, lang_managed_cplusplus],
 
     FindLangPriority = (func(L) = X :-
         ( list.nth_member_search(PreferredList, L, X0) ->
@@ -324,23 +324,23 @@ prefer_foreign_language(_Globals, il, Lang1, Lang2) = Comp :-
         Comp = no
     ).
 
-prefer_foreign_language(_Globals, java, _Lang1, _Lang2) = no.
+prefer_foreign_language(_Globals, target_java, _Lang1, _Lang2) = no.
     % Nothing useful to do here, but when we add Java as a foreign language,
     % we should add it here.
 
 %-----------------------------------------------------------------------------%
 
-foreign_language(c).
-foreign_language(java).
-foreign_language(csharp).
-foreign_language(managed_cplusplus).
-foreign_language(il).
+foreign_language(lang_c).
+foreign_language(lang_java).
+foreign_language(lang_csharp).
+foreign_language(lang_managed_cplusplus).
+foreign_language(lang_il).
 
 %-----------------------------------------------------------------------------%
 
-foreign_type_language(il(_)) = il.
-foreign_type_language(c(_)) = c.
-foreign_type_language(java(_)) = java.
+foreign_type_language(il(_)) = lang_il.
+foreign_type_language(c(_)) = lang_c.
+foreign_type_language(java(_)) = lang_java.
 
 %-----------------------------------------------------------------------------%
 

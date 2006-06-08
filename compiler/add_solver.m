@@ -194,7 +194,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
     
     InstVarSet = varset.init,
     
-    Attrs0            = default_attributes(c),
+    Attrs0            = default_attributes(lang_c),
     some [!Attrs] (
         !:Attrs = Attrs0,
         set_may_call_mercury(will_not_call_mercury, !Attrs),

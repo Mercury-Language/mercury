@@ -1,15 +1,15 @@
-specified.m:167: Error: expected argument tabling method: implied.
-specified.m:152: Error in `pragma memo([addr, promise_implied, addr])'
-specified.m:152:   declaration for predicate `specified.ap_lp_fib/3':
-specified.m:152:   argument 3: argument tabling method `addr' is not compatible
-specified.m:152:   with output modes.
-specified.m:182: Error in `pragma memo([addr, promise_implied])' declaration
-specified.m:182:   for predicate `specified.ap_li_fib/3':
-specified.m:182:   not enough argument tabling methods specified.
-specified.m:220: Error in `pragma memo([output, value, promise_implied])'
-specified.m:220:   declaration for predicate `specified.vp_ll_fib/3':
-specified.m:220:   argument 1: argument tabling method `output' is not
-specified.m:220:   compatible with input modes.
-specified.m:239: Error in `pragma memo([value, value, output, output])'
-specified.m:239:   declaration for predicate `specified.vv_ll_fib/3':
-specified.m:239:   too many argument tabling methods specified.
+specified.m:155: Error: expected argument tabling method: implied.
+specified.m:138: Error in `pragma memo' declaration for predicate
+specified.m:138:   `specified.ap_lp_fib/3':
+specified.m:138:   argument 3: argument tabling method `addr' is not compatible
+specified.m:138:   with output modes.
+specified.m:170: Error in `pragma memo' declaration for predicate
+specified.m:170:   `specified.ap_li_fib/3':
+specified.m:170:   not enough argument tabling methods specified.
+specified.m:210: Error in `pragma memo' declaration for predicate
+specified.m:210:   `specified.vp_ll_fib/3':
+specified.m:210:   argument 1: argument tabling method `output' is not
+specified.m:210:   compatible with input modes.
+specified.m:230: Error in `pragma memo' declaration for predicate
+specified.m:230:   `specified.vv_ll_fib/3':
+specified.m:230:   too many argument tabling methods specified.

@@ -740,7 +740,7 @@ map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
         ConsId = typeclass_info_cell_constructor,
         ByteConsId = typeclass_info_cell_constructor
     ;
-        ConsId = tabling_pointer_const(_),
+        ConsId = tabling_info_const(_),
         sorry(this_file, "bytecode cannot implement tabling")
     ;
         ConsId = table_io_decl(_),
@@ -777,9 +777,9 @@ map_cons_tag(type_ctor_info_constant(_, _, _), _) :-
 map_cons_tag(base_typeclass_info_constant(_, _, _), _) :-
     unexpected(this_file, "base_typeclass_info_constant cons tag " ++
         "for non-base_typeclass_info_constant cons id").
-map_cons_tag(tabling_pointer_constant(_, _), _) :-
-    unexpected(this_file, "tabling_pointer_constant cons tag " ++
-        "for non-tabling_pointer_constant cons id").
+map_cons_tag(tabling_info_constant(_, _), _) :-
+    unexpected(this_file, "tabling_info_constant cons tag " ++
+        "for non-tabling_info_constant cons id").
 map_cons_tag(deep_profiling_proc_layout_tag(_, _), _) :-
     unexpected(this_file, "deep_profiling_proc_layout_tag cons tag " ++
         "for non-deep_profiling_proc_static cons id").

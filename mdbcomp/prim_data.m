@@ -51,7 +51,7 @@
 
 % was in compiler/prog_data.m
 
-    % The order that the sym_name function symbols appear in is significant
+    % The order that the sym_name function symbols appear in can be significant
     % for module dependency ordering.
 :- type sym_name
     --->    unqualified(string)
@@ -70,7 +70,7 @@
     % from `.opt' files, the defining module's name may need to be added
     % as a qualifier to the label.
 :- type proc_label
-    --->    proc(
+    --->    ordinary_proc_label(
                 ord_defining_module     :: module_name,
                 ord_p_or_f              :: pred_or_func,
                 ord_declaring_module    :: module_name,
@@ -78,7 +78,7 @@
                 ord_arity               :: int,
                 ord_mode_number         :: int
             )
-    ;       special_proc(
+    ;       special_proc_label(
                 spec_defining_module    :: module_name,
                 spec_spec_id            :: special_pred_id,
                                         % The special_pred_id indirectly
@@ -228,19 +228,19 @@
 :- import_module string.
 
 string_to_sym_name(String, ModuleSeparator, Result) :-
-    % This would be simpler if we had a string__rev_sub_string_search/3 pred.
+    % This would be simpler if we had a string.rev_sub_string_search/3 pred.
     % With that, we could search for underscores right-to-left, and construct
     % the resulting symbol directly. Instead, we search for them left-to-right,
     % and then call insert_module_qualifier to fix things up.
     (
-        string__sub_string_search(String, ModuleSeparator, LeftLength),
+        string.sub_string_search(String, ModuleSeparator, LeftLength),
         LeftLength > 0
     ->
-        string__left(String, LeftLength, ModuleName),
-        string__length(String, StringLength),
-        string__length(ModuleSeparator, SeparatorLength),
+        string.left(String, LeftLength, ModuleName),
+        string.length(String, StringLength),
+        string.length(ModuleSeparator, SeparatorLength),
         RightLength = StringLength - LeftLength - SeparatorLength,
-        string__right(String, RightLength, Name),
+        string.right(String, RightLength, Name),
         string_to_sym_name(Name, ModuleSeparator, NameSym),
         insert_module_qualifier(ModuleName, NameSym, Result)
     ;
@@ -265,7 +265,7 @@ sym_name_to_string(SymName, Separator) = String :-
 sym_name_to_string(unqualified(Name), _Separator, Name).
 sym_name_to_string(qualified(ModuleSym, Name), Separator, QualName) :-
     sym_name_to_string(ModuleSym, Separator, ModuleName),
-    string__append_list([ModuleName, Separator, Name], QualName).
+    string.append_list([ModuleName, Separator, Name], QualName).
 
 is_submodule(SymName, SymName).
 is_submodule(qualified(SymNameA, _), SymNameB) :-

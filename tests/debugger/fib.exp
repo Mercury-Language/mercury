@@ -37,7 +37,7 @@ memo table for pred fib.mfib/2-0 (det):
 <23>: succeeded <46368>
 end of table (24 entries)
 mdb> step 2
-      E4:     C3 EXIT pred fib.reset/2-0 (det)
+      E4:     C3 EXIT pred fib.table_reset_for_mfib_2/2-0 (det)
 mdb> table mfib
 memo table for pred fib.mfib/2-0 (det):
 end of table (0 entries)

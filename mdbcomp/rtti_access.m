@@ -140,19 +140,19 @@ get_proc_label_from_layout(Layout) = ProcLabel :-
         ),
         string_to_sym_name(DefModule, ".", SymDefModule),
         string_to_sym_name(TypeModule, ".", SymTypeModule),
-        ProcLabel = special_proc(SymDefModule, SpecialId, 
+        ProcLabel = special_proc_label(SymDefModule, SpecialId, 
             SymTypeModule, TypeName, TypeArity, ModeNum)
     ;
         proc_layout_get_non_uci_fields(Layout, PredOrFunc,
             DeclModule, DefModule, PredName, Arity, ModeNum),
         string_to_sym_name(DefModule, ".", SymDefModule),
         string_to_sym_name(DeclModule, ".", SymDeclModule),
-        ProcLabel = proc(SymDefModule, PredOrFunc, SymDeclModule, PredName,
-            Arity, ModeNum)
+        ProcLabel = ordinary_proc_label(SymDefModule, PredOrFunc,
+            SymDeclModule, PredName, Arity, ModeNum)
     ).
 
-get_proc_name(proc(_, _, _, ProcName, _, _)) = ProcName.
-get_proc_name(special_proc(_, _, _, ProcName , _, _)) = ProcName. 
+get_proc_name(ordinary_proc_label(_, _, _, ProcName, _, _)) = ProcName.
+get_proc_name(special_proc_label(_, _, _, ProcName , _, _)) = ProcName. 
 
 :- pred proc_layout_is_uci(proc_layout::in) is semidet.
 

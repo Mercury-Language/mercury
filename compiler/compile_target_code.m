@@ -945,7 +945,7 @@ link_module_list(Modules, FactTableObjFiles, Succeeded, !IO) :-
 
     globals.io_get_target(Target, !IO),
     io.output_stream(OutputStream, !IO),
-    ( Target = asm ->
+    ( Target = target_asm ->
         % For --target asm, we generate everything into a single object file.
         (
             Modules = [FirstModule | _],
@@ -1756,7 +1756,7 @@ get_object_code_type(FileType, ObjectCodeType, !IO) :-
                     ( LinkWithPicObjExt = ObjExt
                     ; HighLevelCode = yes
                     ; GCCGlobals = no
-                    ; Target \= c
+                    ; Target \= target_c
                     )
                 ->
                     ObjectCodeType = non_pic

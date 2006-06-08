@@ -595,7 +595,8 @@ ml_gen_proc_addr_rval(PredId, ProcId, CodeAddrRval, !Info) :-
     ml_gen_pred_label(ModuleInfo, PredId, ProcId, PredLabel, PredModule),
     ml_gen_proc_params(PredId, ProcId, Params, !Info),
     Signature = mlds_get_func_signature(Params),
-    QualifiedProcLabel = qual(PredModule, module_qual, PredLabel - ProcId),
+    ProcLabel = mlds_proc_label(PredLabel, ProcId),
+    QualifiedProcLabel = qual(PredModule, module_qual, ProcLabel),
     CodeAddrRval = const(code_addr_const(proc(QualifiedProcLabel, Signature))).
 
     % Generate rvals and lvals for the arguments of a procedure call

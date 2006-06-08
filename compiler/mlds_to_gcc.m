@@ -255,7 +255,7 @@ mlds_to_gcc__compile_to_asm(MLDS, ContainsCCode) -->
 	{ list__filter(defn_contains_foreign_code(lang_asm), Defns0,
 		ForeignDefns, Defns) },
 		% We only handle C currently, so we just look up C
-	{ ForeignCode = map__lookup(AllForeignCode, c) },
+	{ ForeignCode = map__lookup(AllForeignCode, lang_c) },
 	(
 		% Check if there is any C code from pragma foreign_code,
 		% pragma export, or pragma foreign_proc declarations.
@@ -1623,12 +1623,12 @@ get_func_name(FunctionName, FuncName, AsmFuncName) :-
 		% necessarily need to be unique.
 		%
 		(
-			PredLabel = pred(_PorF, _ModuleName, PredName, _Arity,
-				_CodeModel, _NonOutputFunc),
+			PredLabel = mlds_user_pred_label(_PorF, _ModuleName,
+				PredName, _Arity, _CodeModel, _NonOutputFunc),
 		  	FuncName = PredName
 		;
-			PredLabel = special_pred(SpecialPredName, _ModuleName,
-				TypeName, _Arity),
+			PredLabel = mlds_special_pred_label(SpecialPredName,
+				_ModuleName, TypeName, _Arity),
 			FuncName = SpecialPredName ++ TypeName
 		)
 	;
@@ -1640,8 +1640,8 @@ get_func_name(FunctionName, FuncName, AsmFuncName) :-
 :- pred get_pred_label_name(mlds_pred_label, string).
 :- mode get_pred_label_name(in, out) is det.
 
-get_pred_label_name(pred(PredOrFunc, MaybeDefiningModule, Name, Arity,
-			_CodeMode, _NonOutputFunc), LabelName) :-
+get_pred_label_name(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule, Name,
+		Arity, _CodeMode, _NonOutputFunc), LabelName) :-
 	( PredOrFunc = predicate, Suffix = "p"
 	; PredOrFunc = function, Suffix = "f"
 	),
@@ -1654,7 +1654,7 @@ get_pred_label_name(pred(PredOrFunc, MaybeDefiningModule, Name, Arity,
 	;
 		LabelName = LabelName0
 	).
-get_pred_label_name(special_pred(PredName, MaybeTypeModule,
+get_pred_label_name(mlds_special_pred_label(PredName, MaybeTypeModule,
 		TypeName, TypeArity), LabelName) :-
 	MangledPredName = name_mangle(PredName),
 	MangledTypeName = name_mangle(TypeName),
@@ -1855,6 +1855,9 @@ build_type(mlds_commit_type, _, _, gcc__jmpbuf_type_node) --> [].
 build_type(mlds_rtti_type(RttiIdMaybeElement), InitializerSize, _GlobalInfo,
 		GCC_Type) -->
 	build_rtti_type(RttiIdMaybeElement, InitializerSize, GCC_Type).
+build_type(mlds_tabling_type(_TablingId), _InitializerSize, _GlobalInfo,
+		_GCC_Type) -->
+	{ sorry(this_file, "NYI: tabling in the asm backend") }.
 build_type(mlds_unknown_type, _, _, _) -->
 	{ unexpected(this_file, "build_type: unknown type") }.
 
@@ -2550,10 +2553,10 @@ maybe_add_module_qualifier(QualifiedName, AsmName0, AsmName) :-
 			% don't module-qualify main/2
 			%
 			Name = function(PredLabel, _, _, _),
-			PredLabel = pred(predicate, no, "main", 2,
-				model_det, no)
+			PredLabel = mlds_user_pred_label(predicate, no,
+				"main", 2, model_det, no)
 		;
-			Name = data(rtti(RttiId)),
+			Name = data(mlds_rtti(RttiId)),
 			module_qualify_name_of_rtti_id(RttiId) = no
 		;
 			% We don't module qualify pragma export names.
@@ -2584,25 +2587,25 @@ build_name(export(Name)) = Name.
 :- func build_data_name(mlds_data_name) = string.
 
 build_data_name(var(Name)) = name_mangle(ml_var_name_to_string(Name)).
-build_data_name(common(Num)) =
+build_data_name(mlds_common(Num)) =
 	string__format("common_%d", [i(Num)]).
-build_data_name(rtti(RttiId0)) = RttiAddrName :-
+build_data_name(mlds_rtti(RttiId0)) = RttiAddrName :-
 	RttiId = fixup_rtti_id(RttiId0),
 	rtti__id_to_c_identifier(RttiId, RttiAddrName).
-build_data_name(module_layout) = _ :-
-	sorry(this_file, "module_layout").
-build_data_name(proc_layout(_ProcLabel)) = _ :-
-	sorry(this_file, "proc_layout").
-build_data_name(internal_layout(_ProcLabel, _FuncSeqNum)) = _ :-
-	sorry(this_file, "internal_layout").
-build_data_name(tabling_pointer(ProcLabel)) = TablingPointerName :-
+build_data_name(mlds_module_layout) = _ :-
+	sorry(this_file, "mlds_module_layout").
+build_data_name(mlds_proc_layout(_ProcLabel)) = _ :-
+	sorry(this_file, "mlds_proc_layout").
+build_data_name(mlds_internal_layout(_ProcLabel, _FuncSeqNum)) = _ :-
+	sorry(this_file, "mlds_internal_layout").
+build_data_name(mlds_tabling_ref(ProcLabel, Id)) = TablingPointerName :-
 	% convert the proc_label into an entity_name,
 	% so we can use get_func_name below
-	ProcLabel = PredLabel - ProcId,
+	ProcLabel = mlds_proc_label(PredLabel, ProcId),
 	MaybeSeqNum = no,
 	Name = function(PredLabel, ProcId, MaybeSeqNum, invalid_pred_id),
 	get_func_name(Name, _FuncName, AsmFuncName),
-	TablingPointerName = string__append("table_for_", AsmFuncName).
+	TablingPointerName = tabling_info_id_str(Id) ++ "_" ++ AsmFuncName.
 
 :- func fixup_rtti_id(rtti_id) = rtti_id.
 
@@ -3672,7 +3675,8 @@ build_code_addr(CodeAddr, GlobalInfo, Expr) -->
 	),
 	% convert the label into a entity_name,
 	% so we can use make_func_decl below
-	{ Label = qual(ModuleName, QualKind, PredLabel - ProcId) },
+	{ Label = qual(ModuleName, QualKind,
+		mlds_proc_label(PredLabel, ProcId)) },
 	{ Name = qual(ModuleName, QualKind, function(PredLabel, ProcId,
 		MaybeSeqNum, invalid_pred_id)) },
 	% build a function declaration for the function,
@@ -3702,7 +3706,7 @@ build_data_decl(data_addr(ModuleName, DataName), Decl) -->
 build_data_var_name(ModuleName, DataName) =
 		ModuleQualifier ++ build_data_name(DataName) :-
 	(
-		DataName = rtti(RttiId),
+		DataName = mlds_rtti(RttiId),
 		module_qualify_name_of_rtti_id(RttiId) = no
 	->
 		ModuleQualifier = ""

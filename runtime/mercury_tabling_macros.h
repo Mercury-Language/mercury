@@ -1,5 +1,8 @@
 /*
-** Copyright (C) 1997-2000,2002-2005 The University of Melbourne.
+** vim: ts=4 sw=4
+*/
+/*
+** Copyright (C) 1997-2000,2002-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -14,446 +17,284 @@
 ** information.
 */
 
-#include "mercury_deep_copy.h"	/* for MR_make_permanent */
+#include "mercury_deep_copy.h"  /* for MR_make_permanent */
 
-#define MR_RAW_TABLE_ANY(table, type_info, value)			\
-	MR_table_type((table), (type_info), (value))
+#define MR_RAW_TABLE_ANY(table, type_info, value)                           \
+    MR_table_type((table), (type_info), (value))
 
-#define MR_RAW_TABLE_ANY_FAST_LOOSE(table, type_info, value)		\
-	MR_word_hash_lookup_or_add((table), (value))
+#define MR_RAW_TABLE_ANY_DEBUG(table, type_info, value)                     \
+    MR_table_type_debug((table), (type_info), (value))
 
-#define MR_RAW_TABLE_TAG(table, tag)					\
-	MR_int_fix_index_lookup_or_add((table), 1 << MR_TAGBITS, (tag))
+#define MR_RAW_TABLE_ANY_STATS(stats, table, type_info, value)              \
+    MR_table_type_stats((stats), (table), (type_info), (value))
 
-#define MR_RAW_TABLE_ENUM(table, range, value)				\
-	MR_int_fix_index_lookup_or_add((table), (range), (value))
+#define MR_RAW_TABLE_ANY_STATS_DEBUG(stats, table, type_info, value)        \
+    MR_table_type_stats_debug((stats), (table), (type_info), (value))
 
-#define MR_RAW_TABLE_START_INT(table, start, value)			\
-	MR_int_start_index_lookup_or_add((table), (start), (value));
+#define MR_RAW_TABLE_ANY_ADDR(table, type_info, value)                      \
+    MR_word_hash_lookup_or_add((table), (value))
 
-#define MR_RAW_TABLE_WORD(table, value)					\
-	MR_int_hash_lookup_or_add((table), (value));
+#define MR_RAW_TABLE_ANY_ADDR_STATS(stats, table, type_info, value)         \
+    MR_word_hash_lookup_or_add_stats((stats), (table), (value))
 
-#define MR_RAW_TABLE_INT(table, value)					\
-	MR_int_hash_lookup_or_add((table), (value));
+#define MR_RAW_TABLE_TAG(table, tag)                                        \
+    MR_int_fix_index_lookup_or_add((table), 1 << MR_TAGBITS, (tag))
 
-#define MR_RAW_TABLE_CHAR(table, value)					\
-	MR_int_hash_lookup_or_add((table), (value));
+#define MR_RAW_TABLE_TAG_STATS(stats, table, tag)                           \
+    MR_int_fix_index_lookup_or_add_stats((stats), (table),                  \
+        1 << MR_TAGBITS, (tag))
 
-#define MR_RAW_TABLE_FLOAT(table, value)				\
-	MR_float_hash_lookup_or_add((table), (value));
+#define MR_RAW_TABLE_ENUM(table, range, value)                              \
+    MR_int_fix_index_lookup_or_add((table), (range), (value))
 
-#define MR_RAW_TABLE_STRING(table, value)	 			\
-	MR_string_hash_lookup_or_add((table), (value));
+#define MR_RAW_TABLE_ENUM_STATS(stats, table, range, value)                 \
+    MR_int_fix_index_lookup_or_add_stats((stats), (table),                  \
+        (range), (value))
 
-#define MR_RAW_TABLE_TYPEINFO(table, type_info)				\
-	MR_type_info_lookup_or_add((table), (type_info))
+#define MR_RAW_TABLE_START_INT(table, start, value)                         \
+    MR_int_start_index_lookup_or_add((table), (start), (value));
 
-#define MR_RAW_TABLE_TYPECLASSINFO(table, typeclass_info)		\
-	MR_type_class_info_lookup_or_add((table), (typeclass_info))
+#define MR_RAW_TABLE_START_INT_STATS(stats, table, start, value)            \
+    MR_int_start_index_lookup_or_add_stats((stats), (table),                \
+        (start), (value));
 
-#ifdef	MR_TABLE_DEBUG
+#define MR_RAW_TABLE_WORD(table, value)                                     \
+    MR_int_hash_lookup_or_add((table), (value));
 
-#define	MR_DEBUG_NEW_TABLE_ANY(table, table0, type_info, value)		\
-	do {								\
-		(table) = MR_RAW_TABLE_ANY((table0), (type_info),	\
-					   (value));			\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: any %x type %p => %p\n",	\
-				(table0), (value), (type_info), (table));\
-		}							\
-	} while (0)
-#define	MR_DEBUG_TABLE_ANY(table, type_info, value)			\
-	do {								\
-		MR_TrieNode prev_table = (table);			\
-		(table) = MR_RAW_TABLE_ANY((table), 			\
-			(type_info), (value));				\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: any %x type %p => %p\n",	\
-				prev_table, (value), (type_info),	\
-				(table));				\
-		}							\
-	} while (0)
+#define MR_RAW_TABLE_WORD_STATS(stats, table, value)                        \
+    MR_int_hash_lookup_or_add_stats((stats), (table), (value));
 
-#define	MR_DEBUG_NEW_TABLE_ANY_FAST_LOOSE(table, table0, type_info, value) \
-	do {								\
-		(table) = MR_RAW_TABLE_ANY_FAST_LOOSE((table0), (type_info), \
-			(value));					\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: any %x type %p => %p\n",	\
-				(table0), (value), (type_info), (table));\
-		}							\
-	} while (0)
-#define	MR_DEBUG_TABLE_ANY_FAST_LOOSE(table, type_info, value)		\
-	do {								\
-		MR_TrieNode prev_table = (table);			\
-		(table) = MR_RAW_TABLE_ANY_FAST_LOOSE((table),		\
-			(type_info), (value));				\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: any %x type %p => %p\n",	\
-				prev_table, (value), (type_info),	\
-				(table));				\
-		}							\
-	} while (0)
+#define MR_RAW_TABLE_INT(table, value)                                      \
+    MR_int_hash_lookup_or_add((table), (value));
 
-#define	MR_DEBUG_NEW_TABLE_TAG(table, table0, value)			\
-	do {								\
-		(table) = MR_RAW_TABLE_TAG((table0), (value));		\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: tag %d => %p\n", 		\
-				(table0), (value), (table))		\
-		}							\
-	} while (0)
-#define	MR_DEBUG_TABLE_TAG(table, value)				\
-	do {								\
-		MR_TrieNode prev_table = (table);			\
-		(table) = MR_RAW_TABLE_TAG((table), (value));		\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: tag %d => %p\n",		\
-				 prev_table, (value), (table));		\
-		}							\
-	} while (0)
+#define MR_RAW_TABLE_INT_STATS(stats, table, value)                         \
+    MR_int_hash_lookup_or_add_stats((stats), (table), (value));
 
-#define	MR_DEBUG_NEW_TABLE_ENUM(table, table0, count, value)		\
-	do {								\
-		(table) = MR_RAW_TABLE_ENUM((table0), (count), (value));\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: enum %d of %d => %p\n", 	\
-				(table0), (value), (count), (table));	\
-		}							\
-	} while (0)
-#define	MR_DEBUG_TABLE_ENUM(table, count, value)			\
-	do {								\
-		MR_TrieNode prev_table = (table);			\
-		(table) = MR_RAW_TABLE_ENUM((table), (count), (value));	\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: enum %d of %d => %p\n", 	\
-				prev_table, (value), (count), (table));	\
-		}							\
-	} while (0)
+#define MR_RAW_TABLE_CHAR(table, value)                                     \
+    MR_int_hash_lookup_or_add((table), (value));
 
-#define	MR_DEBUG_NEW_TABLE_START_INT(table, table0, start, value)	\
-	do {								\
-		(table) = MR_RAW_TABLE_START_INT((table0), (start), (value));\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: int %d - %d => %p\n",		\
-				(table0), (value), (start), (table));	\
-		}							\
-	} while (0)
-#define	MR_DEBUG_TABLE_START_INT(table, start, value)			\
-	do {								\
-		MR_TrieNode prev_table = (table);			\
-		(table) = MR_RAW_TABLE_START_INT((table), (start), (value));\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: int %d - %d => %p\n",		\
-				prev_table, (value), (start), (table));	\
-		}							\
-	} while (0)
+#define MR_RAW_TABLE_CHAR_STATS(stats, table, value)                        \
+    MR_int_hash_lookup_or_add_stats((stats), (table), (value));
 
-#define	MR_DEBUG_NEW_TABLE_WORD(table, table0, value)			\
-	do {								\
-		(table) = MR_RAW_TABLE_WORD((table0), (value));		\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: word %d => %p\n",		\
-				(table0), (value), (table));		\
-		}							\
-	} while (0)
-#define	MR_DEBUG_TABLE_WORD(table, value)				\
-	do {								\
-		MR_TrieNode prev_table = (table);			\
-		(table) = MR_RAW_TABLE_WORD((table), (value));		\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: word %d => %p\n",		\
-				prev_table, (value), (table));		\
-		}							\
-	} while (0)
+#define MR_RAW_TABLE_FLOAT(table, value)                                    \
+    MR_float_hash_lookup_or_add((table), (value));
 
-#define	MR_DEBUG_NEW_TABLE_INT(table, table0, value)			\
-	do {								\
-		(table) = MR_RAW_TABLE_INT((table0), (value));		\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: int %d => %p\n",		\
-				(table0), (value), (table));		\
-		}							\
-	} while (0)
-#define	MR_DEBUG_TABLE_INT(table, value)				\
-	do {								\
-		MR_TrieNode prev_table = (table);			\
-		(table) = MR_RAW_TABLE_INT((table), (value));		\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: int %d => %p\n",		\
-				prev_table, (value), (table));		\
-		}							\
-	} while (0)
+#define MR_RAW_TABLE_FLOAT_STATS(stats, table, value)                       \
+    MR_float_hash_lookup_or_add_stats((stats), (table), (value));
 
-#define	MR_DEBUG_NEW_TABLE_CHAR(table, table0, value)			\
-	do {								\
-		(table) = MR_RAW_TABLE_CHAR((table0), (value));		\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: char `%c'/%d => %p\n",	\
-				(table0), (int) (value),		\
-				(int) (value), (table));		\
-		}							\
-	} while (0)
-#define	MR_DEBUG_TABLE_CHAR(table, value)				\
-	do {								\
-		MR_TrieNode prev_table = (table);			\
-		(table) = MR_RAW_TABLE_CHAR((table), (value));		\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: char `%c'/%d => %p\n",	\
-				prev_table, (int) (value), 		\
-				(int) (value), (table));		\
-		}							\
-	} while (0)
+#define MR_RAW_TABLE_STRING(table, value)                                   \
+    MR_string_hash_lookup_or_add((table), (value));
 
-#define	MR_DEBUG_NEW_TABLE_FLOAT(table, table0, value)			\
-	do {								\
-		(table) = MR_RAW_TABLE_FLOAT((table0), (value));	\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: float %f => %p\n",		\
-				(table0), (double) (value), (table));	\
-		}							\
-	} while (0)
-#define	MR_DEBUG_TABLE_FLOAT(table, value)				\
-	do {								\
-		MR_TrieNode prev_table = (table);			\
-		(table) = MR_RAW_TABLE_FLOAT((table), (value));		\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: float %f => %p\n",		\
-				prev_table, (double) value, (table));	\
-		}							\
-	} while (0)
+#define MR_RAW_TABLE_STRING_STATS(stats, table, value)                      \
+    MR_string_hash_lookup_or_add_stats((stats), (table), (value));
 
-#define	MR_DEBUG_NEW_TABLE_STRING(table, table0, value)			\
-	do {								\
-		(table) = MR_RAW_TABLE_STRING((table0), (value));	\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: string `%s' => %p\n",		\
-				(table), (char *) (value), (table));	\
-		}							\
-	} while (0)
-#define	MR_DEBUG_TABLE_STRING(table, value)				\
-	do {								\
-		MR_TrieNode prev_table = (table);			\
-		(table) = MR_RAW_TABLE_STRING((table), (value));	\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: string `%s' => %p\n",		\
-				prev_table, (char *) (value), (table));	\
-		}							\
-	} while (0)
+#define MR_RAW_TABLE_TYPEINFO(table, type_info)                             \
+    MR_type_info_lookup_or_add((table), (type_info))
 
-#define	MR_DEBUG_NEW_TABLE_TYPEINFO(table, table0, value)		\
-	do {								\
-		(table) = MR_RAW_TABLE_TYPEINFO((table0), (value));	\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: typeinfo %p => %p\n",		\
-				(table), (value), (table));		\
-		}							\
-	} while (0)
-#define	MR_DEBUG_TABLE_TYPEINFO(table, value)				\
-	do {								\
-		MR_TrieNode prev_table = (table);			\
-		(table) = MR_RAW_TABLE_TYPEINFO((table), (value));	\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: typeinfo %p => %p\n",		\
-				prev_table, (value), (table));		\
-		}							\
-	} while (0)
+#define MR_RAW_TABLE_TYPEINFO_STATS(stats, table, type_info)                \
+    MR_type_info_lookup_or_add_stats((stats), (table), (type_info))
 
-#define	MR_DEBUG_NEW_TABLE_TYPECLASSINFO(table, table0, value)		\
-	do {								\
-		(table) = MR_RAW_TABLE_TYPECLASSINFO((table0), (value));\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: typeclassinfo %p => %p\n",	\
-				(table), (value), (table));		\
-		}							\
-	} while (0)
-#define	MR_DEBUG_TABLE_TYPECLASSINFO(table, value)			\
-	do {								\
-		MR_TrieNode prev_table = (table);			\
-		(table) = MR_RAW_TABLE_TYPECLASSINFO((table), (value));	\
-		if (MR_tabledebug) {					\
-			printf("TABLE %p: typeclassinfo %p => %p\n",	\
-				prev_table, (value), (table));		\
-		}							\
-	} while (0)
+#define MR_RAW_TABLE_TYPECLASSINFO(table, typeclass_info)                   \
+    MR_type_class_info_lookup_or_add((table), (typeclass_info))
 
-#else	/* not MR_TABLE_DEBUG */
-
-#define	MR_DEBUG_NEW_TABLE_ANY(table, table0, type_info, value)		\
-	do {								\
-		(table) = MR_RAW_TABLE_ANY((table0), (type_info), (value));\
-	} while (0)
-#define	MR_DEBUG_TABLE_ANY(table, type_info, value)			\
-	do {								\
-		(table) = MR_RAW_TABLE_ANY((table), (type_info), (value));\
-	} while (0)
-
-#define	MR_DEBUG_NEW_TABLE_ANY_FAST_LOOSE(table, table0, type_info, value) \
-	do {								\
-		(table) = MR_RAW_TABLE_ANY_FAST_LOOSE((table0), (type_info), \
-			(value));					\
-	} while (0)
-#define	MR_DEBUG_TABLE_ANY_FAST_LOOSE(table, type_info, value)		\
-	do {								\
-		(table) = MR_RAW_TABLE_ANY_FAST_LOOSE((table), (type_info), \
-			(value));					\
-	} while (0)
-
-#define	MR_DEBUG_NEW_TABLE_TAG(table, table0, value)			\
-	do {								\
-		(table) = MR_RAW_TABLE_TAG((table0), (value));		\
-	} while (0)
-#define	MR_DEBUG_TABLE_TAG(table, value)				\
-	do {								\
-		(table) = MR_RAW_TABLE_TAG((table), (value));		\
-	} while (0)
-
-#define	MR_DEBUG_NEW_TABLE_ENUM(table, table0, count, value)		\
-	do {								\
-		(table) = MR_RAW_TABLE_ENUM((table0), (count), (value));\
-	} while (0)
-#define	MR_DEBUG_TABLE_ENUM(table, count, value)			\
-	do {								\
-		(table) = MR_RAW_TABLE_ENUM((table), (count), (value));	\
-	} while (0)
-
-#define	MR_DEBUG_NEW_TABLE_START_INT(table, table0, start, value)	\
-	do {								\
-		(table) = MR_RAW_TABLE_START_INT((table0), (start), (value));\
-	} while (0)
-#define	MR_DEBUG_TABLE_START_INT(table, start, value)			\
-	do {								\
-		(table) = MR_RAW_TABLE_START_INT((table), (start), (value));\
-	} while (0)
-
-#define	MR_DEBUG_NEW_TABLE_WORD(table, table0, value)			\
-	do {								\
-		(table) = MR_RAW_TABLE_WORD((table0), (value));		\
-	} while (0)
-#define	MR_DEBUG_TABLE_WORD(table, value)				\
-	do {								\
-		(table) = MR_RAW_TABLE_WORD((table), (value));\
-	} while (0)
-
-#define	MR_DEBUG_NEW_TABLE_INT(table, table0, value)			\
-	do {								\
-		(table) = MR_RAW_TABLE_INT((table0), (value));		\
-	} while (0)
-#define	MR_DEBUG_TABLE_INT(table, value)				\
-	do {								\
-		(table) = MR_RAW_TABLE_INT((table), (value));		\
-	} while (0)
-
-#define	MR_DEBUG_NEW_TABLE_CHAR(table, table0, value)			\
-	do {								\
-		(table) = MR_RAW_TABLE_CHAR((table0), (value));		\
-	} while (0)
-#define	MR_DEBUG_TABLE_CHAR(table, value)				\
-	do {								\
-		(table) = MR_RAW_TABLE_CHAR((table), (value));		\
-	} while (0)
-
-#define	MR_DEBUG_NEW_TABLE_FLOAT(table, table0, value)			\
-	do {								\
-		(table) = MR_RAW_TABLE_FLOAT((table0), (value));	\
-	} while (0)
-#define	MR_DEBUG_TABLE_FLOAT(table, value)				\
-	do {								\
-		(table) = MR_RAW_TABLE_FLOAT((table), (value));		\
-	} while (0)
-
-#define	MR_DEBUG_NEW_TABLE_STRING(table, table0, value)			\
-	do {								\
-		(table) = MR_RAW_TABLE_STRING((table0), (value));	\
-	} while (0)
-#define	MR_DEBUG_TABLE_STRING(table, value)				\
-	do {								\
-		(table) = MR_RAW_TABLE_STRING((table), (value));	\
-	} while (0)
-
-#define	MR_DEBUG_NEW_TABLE_TYPEINFO(table, table0, value)		\
-	do {								\
-		(table) = MR_RAW_TABLE_TYPEINFO((table0), (value));	\
-	} while (0)
-#define	MR_DEBUG_TABLE_TYPEINFO(table, value)				\
-	do {								\
-		(table) = MR_RAW_TABLE_TYPEINFO((table), (value));	\
-	} while (0)
-
-#define	MR_DEBUG_NEW_TABLE_TYPECLASSINFO(table, table0, value)		\
-	do {								\
-		(table) = MR_RAW_TABLE_TYPECLASSINFO((table0), (value));\
-	} while (0)
-#define	MR_DEBUG_TABLE_TYPECLASSINFO(table, value)			\
-	do {								\
-		(table) = MR_RAW_TABLE_TYPECLASSINFO((table), (value));	\
-	} while (0)
-
-#endif	/* MR_TABLE_DEBUG */
+#define MR_RAW_TABLE_TYPECLASSINFO_STATS(stats, table, typeclass_info)      \
+    MR_type_class_info_lookup_or_add_stats((stats), (table), (typeclass_info))
 
 /***********************************************************************/
 
-#ifdef	MR_TABLE_DEBUG
+#define MR_TABLE_ANY(stats, debug, back, t, t0, type_info, value)           \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_ANY_STATS((stats), (t0),                     \
+                (type_info), (value));                                      \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_ANY((t0), (type_info), (value));             \
+        }                                                                   \
+        if (debug && MR_tabledebug) {                                       \
+            printf("TABLE %p: any %x type %p => %p\n",                      \
+                (t0), (value), (type_info), (t));                           \
+        }                                                                   \
+    } while (0)
 
-#define MR_TABLE_CREATE_ANSWER_BLOCK(table, num_slots)	 		\
-	do {								\
-		(table)->MR_answerblock = MR_TABLE_NEW_ARRAY(MR_Word,	\
-						(num_slots));		\
-		if (MR_tabledebug)					\
-			printf("allocated answer block %p -> %p, %d words\n",\
-				(table), (table)->MR_answerblock,	\
-				(int) (num_slots));			\
-	} while(0)
+#define MR_TABLE_ANY_ADDR(stats, debug, back, t, t0, type_info, value)      \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_ANY_ADDR_STATS((stats), (t0),                \
+                (type_info), (value));                                      \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_ANY_ADDR((t0), (type_info), (value));        \
+        }                                                                   \
+        if (debug && MR_tabledebug) {                                       \
+            printf("TABLE %p: any %x type %p => %p\n",                      \
+                (t0), (value), (type_info), (t));                           \
+        }                                                                   \
+    } while (0)
 
-#define MR_TABLE_CREATE_NODE_ANSWER_BLOCK(block_ptr, num_slots)		\
-	do {								\
-		*block_ptr = MR_TABLE_NEW_ARRAY(MR_Word, (num_slots));	\
-		if (MR_tabledebug)					\
-			printf("allocated node block %p -> %p, %d words\n",\
-				block_ptr, *block_ptr,			\
-				(int) (num_slots));			\
-	} while(0)
+#define MR_TABLE_TAG(stats, debug, back, t, t0, value)                      \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_TAG_STATS((stats), (t0), (value));           \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_TAG((t0), (value));                          \
+        }                                                                   \
+        if (debug && MR_tabledebug) {                                       \
+            printf("TABLE %p: tag %d => %p\n",                              \
+                (t0), (value), (t))                                         \
+        }                                                                   \
+    } while (0)
 
-#define MR_TABLE_GET_ANSWER(ab, offset)					\
-	(( MR_tabledebug ?						\
-		printf("using answer block: %p, slot %d\n",		\
-			(ab), (int) (offset))				\
-	:								\
-		(void) 0 /* do nothing */				\
-	),								\
-	(ab)[(offset)])
+#define MR_TABLE_ENUM(stats, debug, back, t, t0, count, value)              \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_ENUM_STATS((stats), (t0), (count), (value)); \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_ENUM((t0), (count), (value));                \
+        }                                                                   \
+        if (debug && MR_tabledebug) {                                       \
+            printf("TABLE %p: enum %d of %d => %p\n",                       \
+                (t0), (value), (count), (t));                               \
+        }                                                                   \
+    } while (0)
 
-#define MR_TABLE_SAVE_ANSWER(ab, offset, value, type_info)		\
-	do {								\
-		if (MR_tabledebug)					\
-			printf("saving to answer block: %p, "		\
-				"slot %d = %lx\n",			\
-				(ab), (int) (offset), (long) (value));	\
-		(ab)[offset] = MR_make_permanent((value),		\
-			(MR_TypeInfo) (type_info));			\
-	} while(0)
+#define MR_TABLE_START_INT(stats, debug, back, t, t0, start, value)         \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_START_INT_STATS((stats), (t0),               \
+                (start), (value));                                          \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_START_INT((t0), (start), (value));           \
+        }                                                                   \
+        if (debug && MR_tabledebug) {                                       \
+            printf("TABLE %p: int %d - %d => %p\n",                         \
+                (t0), (value), (start), (t));                               \
+        }                                                                   \
+    } while (0)
 
-#else
+#define MR_TABLE_WORD(stats, debug, back, t, t0, value)                     \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_WORD_STATS((stats), (t0), (value));          \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_WORD((t0), (value));                         \
+        }                                                                   \
+        if (debug && MR_tabledebug) {                                       \
+            printf("TABLE %p: word %d => %p\n",                             \
+                (t0), (value), (t));                                        \
+        }                                                                   \
+    } while (0)
 
-#define MR_TABLE_CREATE_ANSWER_BLOCK(table, num_slots)	 		\
-	do {								\
-		(table)->MR_answerblock = MR_TABLE_NEW_ARRAY(MR_Word,	\
-			(num_slots));					\
-	} while(0)
+#define MR_TABLE_INT(stats, debug, back, t, t0, value)                      \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_INT_STATS((stats), (t0), (value));           \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_INT((t0), (value));                          \
+        }                                                                   \
+        if (MR_tabledebug) {                                                \
+            printf("TABLE %p: int %d => %p\n",                              \
+                (t0), (value), (t));                                        \
+        }                                                                   \
+    } while (0)
 
-#define MR_TABLE_CREATE_NODE_ANSWER_BLOCK(block_ptr, num_slots)		\
-	do {								\
-		*block_ptr = MR_TABLE_NEW_ARRAY(MR_Word, (num_slots));	\
-	} while(0)
+#define MR_TABLE_CHAR(stats, debug, back, t, t0, value)                     \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_CHAR_STATS((stats), (t0), (value));          \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_CHAR((t0), (value));                         \
+        }                                                                   \
+        if (debug && MR_tabledebug) {                                       \
+            printf("TABLE %p: char `%c'/%d => %p\n",                        \
+                (t0), (int) (value), (int) (value), (t));                   \
+        }                                                                   \
+    } while (0)
 
-#define MR_TABLE_GET_ANSWER(ab, offset)					\
-	(ab)[(offset)]
+#define MR_TABLE_FLOAT(stats, debug, back, t, t0, value)                    \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_FLOAT_STATS((stats), (t0), (value));         \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_FLOAT((t0), (value));                        \
+        }                                                                   \
+        if (debug && MR_tabledebug) {                                       \
+            printf("TABLE %p: float %f => %p\n",                            \
+                (t0), (double) (value), (t));                               \
+        }                                                                   \
+    } while (0)
 
-#define MR_TABLE_SAVE_ANSWER(ab, offset, value, type_info)		\
-	do {								\
-		(ab)[offset] = MR_make_permanent((value),		\
-			(MR_TypeInfo) (type_info));			\
-	} while(0)
+#define MR_TABLE_STRING(stats, debug, back, t, t0, value)                   \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_STRING_STATS((stats), (t0), (value));        \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_STRING((t0), (value));                       \
+        }                                                                   \
+        if (debug && MR_tabledebug) {                                       \
+            printf("TABLE %p: string `%s' => %p\n",                         \
+                (t0), (char *) (value), (t));                               \
+        }                                                                   \
+    } while (0)
 
-#endif
+#define MR_TABLE_TYPEINFO(stats, debug, back, t, t0, value)                 \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_TYPEINFO_STATS((stats), (t0), (value));      \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_TYPEINFO((t0), (value));                     \
+        }                                                                   \
+        if (debug && MR_tabledebug) {                                       \
+            printf("TABLE %p: typeinfo %p => %p\n",                         \
+                (t0), (value), (t));                                        \
+        }                                                                   \
+    } while (0)
+
+#define MR_TABLE_TYPECLASSINFO(stats, debug, back, t, t0, value)            \
+    do {                                                                    \
+        if (stats != NULL) {                                                \
+            (t) = MR_RAW_TABLE_TYPECLASSINFO_STATS((stats), (t0), (value)); \
+        } else {                                                            \
+            (t) = MR_RAW_TABLE_TYPECLASSINFO((t0), (value));                \
+        }                                                                   \
+        if (debug && MR_tabledebug) {                                       \
+            printf("TABLE %p: typeclassinfo %p => %p\n",                    \
+                (t0), (value), (t));                                        \
+        }                                                                   \
+    } while (0)
+
+/***********************************************************************/
+
+#define MR_TABLE_CREATE_ANSWER_BLOCK(debug, table, num_slots)               \
+    do {                                                                    \
+        (table)->MR_answerblock = MR_TABLE_NEW_ARRAY(MR_Word, (num_slots)); \
+        if (debug && MR_tabledebug)  {                                      \
+            printf("allocated answer block %p -> %p, %d words\n",           \
+                (table), (table)->MR_answerblock, (int) (num_slots));       \
+        }                                                                   \
+    } while(0)
+
+#define MR_TABLE_CREATE_NODE_ANSWER_BLOCK(debug, block_ptr, num_slots)      \
+    do {                                                                    \
+        *block_ptr = MR_TABLE_NEW_ARRAY(MR_Word, (num_slots));              \
+        if (debug && MR_tabledebug) {                                       \
+            printf("allocated node block %p -> %p, %d words\n",             \
+                block_ptr, *block_ptr, (int) (num_slots));                  \
+        }                                                                   \
+    } while(0)
+
+#define MR_TABLE_GET_ANSWER(debug, ab, offset)                              \
+    (( (debug && MR_tabledebug) ?                                           \
+        printf("using answer block: %p, slot %d\n", (ab), (int) (offset))   \
+    :                                                                       \
+        (void) 0 /* do nothing */                                           \
+    ),                                                                      \
+    (ab)[(offset)])
+
+#define MR_TABLE_SAVE_ANSWER(debug, ab, offset, value, type_info)           \
+    do {                                                                    \
+        if (debug && MR_tabledebug) {                                       \
+            printf("saving to answer block: %p, slot %d = %lx\n",           \
+                (ab), (int) (offset), (long) (value));                      \
+        }                                                                   \
+        (ab)[offset] = 														\
+			MR_make_permanent((value), (MR_TypeInfo) (type_info)); 			\
+    } while(0)

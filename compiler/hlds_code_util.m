@@ -68,8 +68,8 @@ are_equivalence_types_expanded(ModuleInfo) :-
     globals.lookup_bool_option(Globals, highlevel_data, HighLevelData),
     HighLevelData = yes,
     globals.get_target(Globals, Target),
-    ( Target = il
-    ; Target = java
+    ( Target = target_il
+    ; Target = target_java
     ).
 
 %-----------------------------------------------------------------------------%
@@ -86,8 +86,8 @@ cons_id_to_tag(base_typeclass_info_const(M,C,_,N), _, _) =
         base_typeclass_info_constant(M,C,N).
 cons_id_to_tag(type_info_cell_constructor(_), _, _) = unshared_tag(0).
 cons_id_to_tag(typeclass_info_cell_constructor, _, _) = unshared_tag(0).
-cons_id_to_tag(tabling_pointer_const(ShroudedPredProcId), _, _) =
-        tabling_pointer_constant(PredId, ProcId) :-
+cons_id_to_tag(tabling_info_const(ShroudedPredProcId), _, _) =
+        tabling_info_constant(PredId, ProcId) :-
     proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId).
 cons_id_to_tag(deep_profiling_proc_layout(ShroudedPredProcId), _, _) =
         deep_profiling_proc_layout_tag(PredId, ProcId) :-

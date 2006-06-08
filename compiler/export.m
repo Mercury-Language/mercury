@@ -134,7 +134,8 @@ get_foreign_export_decls_2(Preds, [E | ExportedProcs], Globals,
         C_RetType, _DeclareReturnVal, _FailureAction, _SuccessAction,
         HeadArgInfoTypes),
     get_argument_declarations(HeadArgInfoTypes, no, ModuleInfo, ArgDecls),
-    C_ExportDecl = foreign_export_decl(c, C_RetType, C_Function, ArgDecls),
+    C_ExportDecl =
+        foreign_export_decl(lang_c, C_RetType, C_Function, ArgDecls),
     get_foreign_export_decls_2(Preds, ExportedProcs, Globals,
         ModuleInfo, C_ExportDecls0),
     C_ExportDecls = [C_ExportDecl | C_ExportDecls0].
@@ -385,7 +386,7 @@ get_export_info(Preds, PredId, ProcId, _Globals, ModuleInfo, HowToDeclareLabel,
             \+ is_dummy_argument_type(ModuleInfo, RetType)
         ->
             Export_RetType = foreign.to_exported_type(ModuleInfo, RetType),
-            C_RetType = foreign.to_type_string(c, Export_RetType),
+            C_RetType = foreign.to_type_string(lang_c, Export_RetType),
             argloc_to_string(RetArgLoc, RetArgString0),
             convert_type_from_mercury(RetArgString0, RetType, RetArgString),
             MaybeDeclareRetval = "\t" ++ C_RetType ++ " return_value;\n",
@@ -484,7 +485,7 @@ get_argument_declaration(ArgInfo, Type, Num, NameThem, ModuleInfo,
         NameThem = no,
         ArgName = ""
     ),
-    TypeString0 = foreign.to_type_string(c, ModuleInfo, Type),
+    TypeString0 = foreign.to_type_string(lang_c, ModuleInfo, Type),
     ( Mode = top_out ->
         % output variables are passed as pointers
         TypeString = TypeString0 ++ " *"
@@ -510,7 +511,7 @@ get_input_args([AT | ATs], Num0, ModuleInfo, Result) :-
         % We need to box non-word-sized foreign types
         % before passing them to Mercury code
         ( foreign.is_foreign_type(Export_Type) = yes(_) ->
-            C_Type = foreign.to_type_string(c, Export_Type),
+            C_Type = foreign.to_type_string(lang_c, Export_Type),
             string.append_list(["\tMR_MAYBE_BOX_FOREIGN_TYPE(",
                 C_Type, ", ", ArgName, ", ", ArgLocString, ");\n"], InputArg)
         ;
@@ -547,7 +548,7 @@ copy_output_args([AT | ATs], Num0, ModuleInfo, Result) :-
         % We need to unbox non-word-sized foreign types
         % before returning them to C code
         ( foreign.is_foreign_type(Export_Type) = yes(_) ->
-            C_Type = foreign.to_type_string(c, Export_Type),
+            C_Type = foreign.to_type_string(lang_c, Export_Type),
             string.append_list(["\tMR_MAYBE_UNBOX_FOREIGN_TYPE(", C_Type,
                 ", ", ArgLocString, ", * ", ArgName, ");\n"], OutputArg)
         ;
@@ -687,7 +688,7 @@ produce_header_file(ForeignExportDecls, ModuleName, !IO) :-
 produce_header_file_2([], !IO).
 produce_header_file_2([E | ExportedProcs], !IO) :-
     E = foreign_export_decl(Lang, C_RetType, C_Function, ArgDecls),
-    ( Lang = c ->
+    ( Lang = lang_c ->
         % Output the function header.
         io.write_string(C_RetType, !IO),
         io.write_string(" ", !IO),
@@ -706,7 +707,7 @@ produce_header_file_2([E | ExportedProcs], !IO) :-
 output_foreign_decl(MaybeDesiredIsLocal, DeclCode, !IO) :-
     DeclCode = foreign_decl_code(Lang, IsLocal, Code, Context),
     (
-        Lang = c,
+        Lang = lang_c,
         (
             MaybeDesiredIsLocal = no
         ;

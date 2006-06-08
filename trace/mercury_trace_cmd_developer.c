@@ -23,6 +23,7 @@
 #include "mercury_std.h"
 #include "mercury_getopt.h"
 #include "mercury_types.h"
+#include "mercury_tabling.h"
 #include "mercury_trace_base.h"
 
 #include "mercury_trace_internal.h"
@@ -64,7 +65,7 @@ static  const MR_Proc_Layout
 ** reach after following the current values of the previous arguments through
 ** the call table.
 **
-** The MR_{Int,Float,String}_Table_Arg_Values structs have the same fields and
+** The MR_{Int,Float,String}TableArgValues structs have the same fields and
 ** the same meanings, differing only in the types of the values they store.
 ** Each struct is used for one of two things.
 **
@@ -94,34 +95,34 @@ typedef struct {
     int                         MR_ctai_value_next;
     int                         MR_ctai_cur_index;
     MR_Integer                  MR_ctai_cur_value;
-} MR_Int_Table_Arg_Values;
+} MR_IntTableArgValues;
 
 typedef struct {
     MR_Float                    *MR_ctaf_values;
     int                         MR_ctaf_value_next;
     int                         MR_ctaf_cur_index;
     MR_Float                    MR_ctaf_cur_value;
-} MR_Float_Table_Arg_Values;
+} MR_FloatTableArgValues;
 
 typedef struct {
     MR_ConstString              *MR_ctas_values;
     int                         MR_ctas_value_next;
     int                         MR_ctas_cur_index;
     MR_ConstString              MR_ctas_cur_value;
-} MR_String_Table_Arg_Values;
+} MR_StringTableArgValues;
 
 typedef union {
-    MR_Int_Table_Arg_Values     MR_cta_values_int;
-    MR_Float_Table_Arg_Values   MR_cta_values_float;
-    MR_String_Table_Arg_Values  MR_cta_values_string;
-} MR_Table_Arg_Values;
+    MR_IntTableArgValues        MR_cta_values_int;
+    MR_FloatTableArgValues      MR_cta_values_float;
+    MR_StringTableArgValues     MR_cta_values_string;
+} MR_TableArgValues;
 
 typedef struct {
-    MR_Table_Trie_Step          MR_cta_step;
+    MR_TableTrieStep            MR_cta_step;
     int                         MR_cta_unfiltered_arg_num;
     MR_TrieNode                 MR_cta_start_node;
     MR_bool                     MR_cta_valid;
-    MR_Table_Arg_Values         MR_cta_arg_values;
+    MR_TableArgValues           MR_cta_arg_values;
 } MR_Call_Table_Arg;
 
 #define MR_cta_int_values       MR_cta_arg_values.MR_cta_values_int.\
@@ -738,7 +739,7 @@ MR_trace_cmd_table(char **words, int word_count,
     MR_Call_Table_Arg       *call_table_args;
     const MR_Proc_Layout    *proc;
     MR_Proc_Spec            spec;
-    const MR_Table_Gen      *table_gen;
+    MR_ProcTableInfo        *pt;
     MR_TrieNode             table_cur;
     int                     num_inputs;
     int                     filtered_num_inputs;
@@ -769,9 +770,7 @@ MR_trace_cmd_table(char **words, int word_count,
             return KEEP_INTERACTING;
 
         case MR_EVAL_METHOD_LOOP_CHECK:
-        case MR_EVAL_METHOD_MEMO_STRICT:
-        case MR_EVAL_METHOD_MEMO_FAST_LOOSE:
-        case MR_EVAL_METHOD_MEMO_SPECIFIED:
+        case MR_EVAL_METHOD_MEMO:
         case MR_EVAL_METHOD_MINIMAL_STACK_COPY:
         case MR_EVAL_METHOD_MINIMAL_OWN_STACKS:
             break;
@@ -788,15 +787,14 @@ MR_trace_cmd_table(char **words, int word_count,
     /*
     ** words[0] is the command, words[1] is the procedure spec;
     ** words[2] is the first argument. We step over the command and the
-    ** procedure spec, to leave words[] containing only the argument
-    ** values.
+    ** procedure spec, to leave words[] containing only the argument values.
     */
 
     words += 2;
     word_count -= 2;
 
-    table_gen = proc->MR_sle_table_info.MR_table_gen;
-    num_inputs = table_gen->MR_table_gen_num_inputs;
+    pt = proc->MR_sle_table_info.MR_table_proc;
+    num_inputs = pt->MR_pt_num_inputs;
 
     if (word_count > num_inputs) {
         fprintf(MR_mdb_out, "There are only %d input arguments.\n",
@@ -810,22 +808,22 @@ MR_trace_cmd_table(char **words, int word_count,
             "couldn't allocate call_table_args");
     }
 
-    table_cur = proc->MR_sle_tabling_pointer;
+    table_cur = &pt->MR_pt_tablenode;
     for (cur_arg = 0, filtered_cur_arg = 0; cur_arg < num_inputs; cur_arg++) {
-        switch (table_gen->MR_table_gen_input_steps[cur_arg]) {
+        switch (pt->MR_pt_input_steps[cur_arg]) {
             case MR_TABLE_STEP_INT:
             case MR_TABLE_STEP_FLOAT:
             case MR_TABLE_STEP_STRING:
-                /* these are OK */
+                /* These are OK. */
                 call_table_args[filtered_cur_arg].MR_cta_step =
-                    table_gen->MR_table_gen_input_steps[filtered_cur_arg];
+                    pt->MR_pt_input_steps[filtered_cur_arg];
                 call_table_args[filtered_cur_arg].MR_cta_valid = MR_FALSE;
                 call_table_args[filtered_cur_arg].MR_cta_unfiltered_arg_num =
                     cur_arg;
                 filtered_cur_arg++;
 
             case MR_TABLE_STEP_PROMISE_IMPLIED:
-                /* this argument doesn't exist in the table */
+                /* This argument doesn't exist in the table. */
                 break;
 
             default:
@@ -846,8 +844,8 @@ MR_trace_cmd_table(char **words, int word_count,
     }
 
     /*
-    ** Set up the values of the input arguments supplied on the command
-    ** line, to enable us to print them out in each call table entry.
+    ** Set up the values of the input arguments supplied on the command line,
+    ** to enable us to print them out in each call table entry.
     */
 
     for (filtered_cur_arg = 0;
@@ -911,9 +909,7 @@ MR_trace_cmd_table(char **words, int word_count,
             fprintf(MR_mdb_out, ":\n");
             break;
 
-        case MR_EVAL_METHOD_MEMO_STRICT:
-        case MR_EVAL_METHOD_MEMO_FAST_LOOSE:
-        case MR_EVAL_METHOD_MEMO_SPECIFIED:
+        case MR_EVAL_METHOD_MEMO:
             fprintf(MR_mdb_out, "memo table for ");
             MR_print_proc_id(MR_mdb_out, proc);
             fprintf(MR_mdb_out, ":\n");
@@ -1713,9 +1709,7 @@ MR_trace_cmd_table_print_tip(const MR_Proc_Layout *proc,
             }
             break;
 
-        case MR_EVAL_METHOD_MEMO_STRICT:
-        case MR_EVAL_METHOD_MEMO_FAST_LOOSE:
-        case MR_EVAL_METHOD_MEMO_SPECIFIED:
+        case MR_EVAL_METHOD_MEMO:
             {
                 MR_Determinism  detism;
 

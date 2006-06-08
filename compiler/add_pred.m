@@ -49,8 +49,7 @@
     % Whenever there is a clause or mode declaration for an undeclared
     % predicate, we add an implicit declaration
     %   :- pred p(T1, T2, ..., Tn).
-    % for that predicate; the real types will be inferred by
-    % type inference.
+    % for that predicate; the real types will be inferred by type inference.
     %
 :- pred preds_add_implicit_report_error(module_name::in, pred_or_func::in,
     sym_name::in, arity::in, import_status::in, bool::in, prog_context::in,

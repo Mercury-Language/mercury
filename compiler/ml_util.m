@@ -17,9 +17,12 @@
 :- interface.
 
 :- import_module libs.globals.  % for foreign_language
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_data.
 :- import_module ml_backend.mlds.
 :- import_module parse_tree.prog_data.
 
+:- import_module bool.
 :- import_module list.
 :- import_module maybe.
 
@@ -160,6 +163,32 @@
     type_ctor::in) is semidet.
 
 %-----------------------------------------------------------------------------%
+%
+% Functions for generating initializers.
+%
+% This handles arrays, maybe, null pointers, strings, ints, and builtin enums.
+
+:- func gen_init_builtin_const(string) = mlds_initializer.
+
+:- func gen_init_array(func(T) = mlds_initializer, list(T)) = mlds_initializer.
+
+:- func gen_init_maybe(mlds_type, func(T) = mlds_initializer, maybe(T)) =
+    mlds_initializer.
+
+:- func gen_init_null_pointer(mlds_type) = mlds_initializer.
+
+:- func gen_init_string(string) = mlds_initializer.
+
+:- func gen_init_int(int) = mlds_initializer.
+
+:- func gen_init_bool(bool) = mlds_initializer.
+
+:- func gen_init_boxed_int(int) = mlds_initializer.
+
+:- func gen_init_reserved_address(module_info, reserved_address) =
+    mlds_initializer.
+
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
@@ -167,9 +196,10 @@
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.type_util.
 :- import_module mdbcomp.prim_data.
+:- import_module ml_backend.ml_unify_gen.
 :- import_module parse_tree.prog_io.
-:- import_module parse_tree.prog_util.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module list.
@@ -182,7 +212,7 @@ defns_contain_main(Defns) :-
     list.member(Defn, Defns),
     Defn = mlds_defn(Name, _, _, _),
     Name = function(FuncName, _, _, _),
-    FuncName = pred(predicate, _, "main", 2, _, _).
+    FuncName = mlds_user_pred_label(predicate, _, "main", 2, _, _).
 
 can_optimize_tailcall(Name, Call) :-
     Call = call(_Signature, FuncRval, MaybeObject, _CallArgs,
@@ -199,7 +229,8 @@ can_optimize_tailcall(Name, Call) :-
         CodeAddr = internal(QualifiedProcLabel, SeqNum, _Sig),
         MaybeSeqNum = yes(SeqNum)
     ),
-    QualifiedProcLabel = qual(ModuleName, module_qual, PredLabel - ProcId),
+    ProcLabel = mlds_proc_label(PredLabel, ProcId),
+    QualifiedProcLabel = qual(ModuleName, module_qual, ProcLabel),
 
     % Check that the module name matches.
     Name = qual(ModuleName, module_qual, FuncName),
@@ -617,7 +648,7 @@ type_needs_lowlevel_rep(Target, Type) :-
     type_ctor_needs_lowlevel_rep(Target, TypeCtor).
 
     % XXX Do we need to do the same for the Java back-end?
-type_ctor_needs_lowlevel_rep(il, type_ctor(TypeName, _Arity)) :-
+type_ctor_needs_lowlevel_rep(target_il, type_ctor(TypeName, _Arity)) :-
     mercury_public_builtin_module(Builtin),
     mercury_private_builtin_module(PrivateBuiltin),
     RttiImplementation = unqualified("rtti_implementation"),
@@ -650,5 +681,39 @@ type_ctor_needs_lowlevel_rep(il, type_ctor(TypeName, _Arity)) :-
     ; TypeName = qualified(Univ, "univ")
     ; TypeName = qualified(MutVar, "mutvar")
     ).
+
+%-----------------------------------------------------------------------------%
+
+gen_init_builtin_const(Name) = init_obj(Rval) :-
+    mercury_private_builtin_module(PrivateBuiltin),
+    MLDS_Module = mercury_module_name_to_mlds(PrivateBuiltin),
+    % XXX These are actually enumeration constants.
+    % Perhaps we should be using an enumeration type here,
+    % rather than `mlds_native_int_type'.
+    Type = mlds_native_int_type,
+    Rval = lval(var(qual(MLDS_Module, module_qual, mlds_var_name(Name, no)),
+        Type)).
+
+gen_init_array(Conv, List) = init_array(list.map(Conv, List)).
+
+gen_init_maybe(_Type, Conv, yes(X)) = Conv(X).
+gen_init_maybe(Type, _Conv, no) = gen_init_null_pointer(Type).
+
+gen_init_null_pointer(Type) = init_obj(const(null(Type))).
+
+gen_init_string(String) = init_obj(const(string_const(String))).
+
+gen_init_int(Int) = init_obj(const(int_const(Int))).
+
+gen_init_bool(no) = init_obj(const(false)).
+gen_init_bool(yes) = init_obj(const(true)).
+
+gen_init_boxed_int(Int) =
+    init_obj(unop(box(mlds_native_int_type), const(int_const(Int)))).
+
+gen_init_reserved_address(ModuleInfo, ReservedAddress) =
+    % XXX using `mlds_generic_type' here is probably wrong
+    init_obj(ml_gen_reserved_address(ModuleInfo, ReservedAddress,
+        mlds_generic_type)).
 
 %-----------------------------------------------------------------------------%

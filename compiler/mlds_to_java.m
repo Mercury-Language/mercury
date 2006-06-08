@@ -469,7 +469,7 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
 
 output_java_decl(Indent, DeclCode, !IO) :-
     DeclCode = foreign_decl_code(Lang, _IsLocal, Code, Context),
-    ( Lang = java ->
+    ( Lang = lang_java ->
         indent_line(mlds_make_context(Context), Indent, !IO),
         io.write_string(Code, !IO),
         io.nl(!IO)
@@ -482,7 +482,7 @@ output_java_decl(Indent, DeclCode, !IO) :-
 
 output_java_body_code(Indent, user_foreign_code(Lang, Code, Context), !IO) :-
     % Only output Java code.
-    ( Lang = java ->
+    ( Lang = lang_java ->
         indent_line(mlds_make_context(Context), Indent, !IO),
         io.write_string(Code, !IO),
         io.nl(!IO)
@@ -496,7 +496,7 @@ output_java_body_code(Indent, user_foreign_code(Lang, Code, Context), !IO) :-
     = mlds_foreign_code.
 
 mlds_get_java_foreign_code(AllForeignCode) = ForeignCode :-
-    ( map.search(AllForeignCode, java, ForeignCode0) ->
+    ( map.search(AllForeignCode, lang_java, ForeignCode0) ->
         ForeignCode = ForeignCode0
     ;
         ForeignCode = mlds_foreign_code([], [], [], [])
@@ -760,7 +760,8 @@ generate_addr_wrapper_class(Interface, Context, CodeAddr, ClassDefn) :-
         CodeAddr = internal(ProcLabel, SeqNum, _FuncSig),
         MaybeSeqNum = yes(SeqNum)
     ),
-    ProcLabel = qual(ModuleQualifier, QualKind, PredLabel - ProcID),
+    ProcLabel = qual(ModuleQualifier, QualKind,
+        mlds_proc_label(PredLabel, ProcID)),
     PredName = make_pred_name_string(PredLabel, ProcID, MaybeSeqNum),
 
     % Create class components.
@@ -810,7 +811,7 @@ generate_call_method(CodeAddr, MethodDefn) :-
     ProcID = initial_proc_id,
 
     % Create new method name.
-    Label = special_pred("call", no, "", 0),
+    Label = mlds_special_pred_label("call", no, "", 0),
     MethodName = function(Label, ProcID, no, PredID),
 
     % Create method argument and return type.
@@ -931,8 +932,8 @@ make_pred_name_string(PredLabel, ProcId, MaybeSeqNum) = NameStr :-
 
 :- func pred_label_string(mlds_pred_label) = string.
 
-pred_label_string(pred(PredOrFunc, MaybeDefiningModule, Name, PredArity,
-        _CodeModel, _NonOutputFunc)) = PredLabelStr :-
+pred_label_string(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule, Name,
+        PredArity, _CodeModel, _NonOutputFunc)) = PredLabelStr :-
     (
         PredOrFunc = predicate,
         Suffix = "p",
@@ -953,8 +954,8 @@ pred_label_string(pred(PredOrFunc, MaybeDefiningModule, Name, PredArity,
         MaybeDefiningModule = no,
         PredLabelStr = PredLabelStr0
     ).
-pred_label_string(special_pred(PredName, MaybeTypeModule, TypeName, TypeArity))
-        = PredLabelStr :-
+pred_label_string(mlds_special_pred_label(PredName, MaybeTypeModule, TypeName,
+        TypeArity)) = PredLabelStr :-
     MangledPredName = name_mangle(PredName),
     MangledTypeName = name_mangle(TypeName),
     PredLabelStr0 = MangledPredName ++ "__",
@@ -1385,6 +1386,7 @@ get_java_type_initializer(mlds_generic_env_ptr_type) = "null".
 get_java_type_initializer(mlds_type_info_type) = "null".
 get_java_type_initializer(mlds_pseudo_type_info_type) = "null".
 get_java_type_initializer(mlds_rtti_type(_)) = "null".
+get_java_type_initializer(mlds_tabling_type(_)) = "null".
 get_java_type_initializer(mlds_unknown_type) = _ :-
     unexpected(this_file, "get_type_initializer: variable has unknown_type").
 
@@ -1674,7 +1676,7 @@ output_name(export(Name), !IO) :-
 
 :- pred output_pred_label(mlds_pred_label::in, io::di, io::uo) is det.
 
-output_pred_label(pred(PredOrFunc, MaybeDefiningModule, Name,
+output_pred_label(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule, Name,
         PredArity, _, _), !IO) :-
     (
         PredOrFunc = predicate,
@@ -1695,8 +1697,8 @@ output_pred_label(pred(PredOrFunc, MaybeDefiningModule, Name,
         MaybeDefiningModule = no
     ).
 
-output_pred_label(special_pred(PredName, MaybeTypeModule, TypeName, TypeArity),
-        !IO) :-
+output_pred_label(mlds_special_pred_label(PredName, MaybeTypeModule, TypeName,
+        TypeArity), !IO) :-
     MangledPredName = name_mangle(PredName),
     MangledTypeName = name_mangle(TypeName),
     io.write_string(MangledPredName, !IO),
@@ -1714,21 +1716,22 @@ output_pred_label(special_pred(PredName, MaybeTypeModule, TypeName, TypeArity),
 
 output_data_name(var(VarName), !IO) :-
     output_mlds_var_name(VarName, !IO).
-output_data_name(common(Num), !IO) :-
+output_data_name(mlds_common(Num), !IO) :-
     io.write_string("common_", !IO),
     io.write_int(Num, !IO).
-output_data_name(rtti(RttiId), !IO) :-
+output_data_name(mlds_rtti(RttiId), !IO) :-
     rtti.id_to_c_identifier(RttiId, RttiAddrName),
     io.write_string(RttiAddrName, !IO).
-output_data_name(module_layout, !IO) :-
-    unexpected(this_file, "NYI: module_layout").
-output_data_name(proc_layout(_ProcLabel), !IO) :-
-    unexpected(this_file, "NYI: proc_layout").
-output_data_name(internal_layout(_ProcLabel, _FuncSeqNum), !IO) :-
-    unexpected(this_file, "NYI: internal_layout").
-output_data_name(tabling_pointer(ProcLabel), !IO) :-
-    io.write_string("table_for_", !IO),
-    mlds_output_proc_label(ProcLabel, !IO).
+output_data_name(mlds_module_layout, !IO) :-
+    unexpected(this_file, "NYI: mlds_module_layout").
+output_data_name(mlds_proc_layout(_ProcLabel), !IO) :-
+    unexpected(this_file, "NYI: mlds_proc_layout").
+output_data_name(mlds_internal_layout(_ProcLabel, _FuncSeqNum), !IO) :-
+    unexpected(this_file, "NYI: mlds_internal_layout").
+output_data_name(mlds_tabling_ref(ProcLabel, Id), !IO) :-
+    Prefix = tabling_info_id_str(Id) ++ "_",
+    io.write_string(Prefix, !IO),
+    mlds_output_proc_label(mlds_std_tabling_proc_label(ProcLabel), !IO).
 
 :- pred output_mlds_var_name(mlds_var_name::in, io::di, io::uo) is det.
 
@@ -1781,7 +1784,7 @@ output_type(mlds_native_char_type, !IO)  :-
     io.write_string("char", !IO).
 output_type(mlds_foreign_type(ForeignType), !IO) :-
     (
-        ForeignType = java(java(Name)),
+        ForeignType = java(java_type(Name)),
         io.write_string(Name, !IO)
     ;
         ForeignType = c(_),
@@ -1819,6 +1822,15 @@ output_type(mlds_commit_type, !IO) :-
     io.write_string("mercury.runtime.Commit", !IO).
 output_type(mlds_rtti_type(RttiIdMaybeElement), !IO) :-
     rtti_id_maybe_element_java_type(RttiIdMaybeElement, JavaTypeName, IsArray),
+    io.write_string(JavaTypeName, !IO),
+    (
+        IsArray = yes,
+        io.write_string("[]", !IO)
+    ;
+        IsArray = no
+    ).
+output_type(mlds_tabling_type(TablingId), !IO) :-
+    tabling_id_java_type(TablingId, JavaTypeName, IsArray),
     io.write_string(JavaTypeName, !IO),
     (
         IsArray = yes,
@@ -3248,7 +3260,7 @@ mlds_output_code_addr(internal(Label, SeqNum, _Sig), IsCall, !IO) :-
 
 :- pred mlds_output_proc_label(mlds_proc_label::in, io::di, io::uo) is det.
 
-mlds_output_proc_label(PredLabel - ProcId, !IO) :-
+mlds_output_proc_label(mlds_proc_label(PredLabel, ProcId), !IO) :-
     output_pred_label(PredLabel, !IO),
     proc_id_to_int(ProcId, ModeNum),
     io.format("_%d", [i(ModeNum)], !IO).

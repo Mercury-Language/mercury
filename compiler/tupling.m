@@ -937,7 +937,7 @@ count_load_stores_for_scc_2(TraceCounts, TuningParams, ModuleInfo,
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
         PredInfo, ProcInfo),
     % XXX: Different declaring vs defining modules not handled.
-    ProcLabel = proc(pred_info_module(PredInfo),
+    ProcLabel = ordinary_proc_label(pred_info_module(PredInfo),
         pred_info_is_pred_or_func(PredInfo),
         pred_info_module(PredInfo),
         pred_info_name(PredInfo),

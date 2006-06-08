@@ -29,6 +29,7 @@
 :- interface.
 
 :- import_module ml_backend.mlds.
+:- import_module backend_libs.rtti.
 
 :- import_module io.
 
@@ -53,6 +54,9 @@
 :- pred output_header_file(mlds::in, string::in,
     io::di, io::uo) is det.
 
+:- func mlds_tabling_data_name(mlds_proc_label, proc_tabling_struct_id)
+    = string.
+
     % output_c_file(MLDS, Suffix):
     %
     % Output C code for the specified MLDS module to the appropriate C file.
@@ -75,7 +79,6 @@
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.name_mangle.
-:- import_module backend_libs.rtti.      % for rtti.addr_to_string.
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_pred.         % for pred_proc_id.
@@ -198,7 +201,7 @@ mlds_output_hdr_imports(_Indent, _Imports, !IO).
 
 mlds_output_src_imports(Indent, Imports, !IO) :-
     globals.io_get_target(Target, !IO),
-    ( Target = asm ->
+    ( Target = target_asm ->
         % For --target asm, we don't create the header files for modules that
         % don't contain C code, so we'd better not include them, since they
         % might not exist.
@@ -334,7 +337,7 @@ mlds_output_hdr_start(Indent, ModuleName, !IO) :-
     % can be #included by C++ programs.
 
     globals.io_get_target(Target, !IO),
-    ( Target = c ->
+    ( Target = target_c ->
         mlds_indent(Indent, !IO),
         io.write_string("#ifdef __cplusplus\n", !IO),
         mlds_indent(Indent, !IO),
@@ -428,7 +431,7 @@ mlds_output_src_bootstrap_defines(!IO).
 
 mlds_output_hdr_end(Indent, ModuleName, !IO) :-
     globals.io_get_target(Target, !IO),
-    ( Target = c ->
+    ( Target = target_c ->
         % Terminate the `extern "C"' wrapper.
         mlds_indent(Indent, !IO),
         io.write_string("#ifdef __cplusplus\n", !IO),
@@ -490,7 +493,7 @@ mlds_output_grade_var(!IO) :-
     = mlds_foreign_code.
 
 mlds_get_c_foreign_code(AllForeignCode) = ForeignCode :-
-    ( map.search(AllForeignCode, c, ForeignCode0) ->
+    ( map.search(AllForeignCode, lang_c, ForeignCode0) ->
         ForeignCode = ForeignCode0
     ;
         % This can occur when compiling to a non-C target using
@@ -733,7 +736,7 @@ mlds_output_c_hdr_decls(ModuleName, Indent, ForeignCode, !IO) :-
 mlds_output_c_hdr_decl(_Indent, MaybeDesiredIsLocal, DeclCode, !IO) :-
     DeclCode = foreign_decl_code(Lang, IsLocal, Code, Context),
     % Only output C code in the C header file.
-    ( Lang = c ->
+    ( Lang = lang_c ->
         (
             (
                 MaybeDesiredIsLocal = no
@@ -780,7 +783,7 @@ mlds_output_c_defns(ModuleName, Indent, ForeignCode, !IO) :-
 
 mlds_output_c_foreign_import_module(Indent, ForeignImport, !IO) :-
     ForeignImport = foreign_import_module(Lang, Import, _),
-    ( Lang = c ->
+    ( Lang = lang_c ->
         mlds_output_src_import(Indent,
             mercury_import(user_visible_interface,
                 mercury_module_name_to_mlds(Import)), !IO)
@@ -791,16 +794,17 @@ mlds_output_c_foreign_import_module(Indent, ForeignImport, !IO) :-
 :- pred mlds_output_c_defn(indent::in, user_foreign_code::in,
     io::di, io::uo) is det.
 
-mlds_output_c_defn(_Indent, user_foreign_code(c, Code, Context), !IO) :-
+mlds_output_c_defn(_Indent, user_foreign_code(lang_c, Code, Context), !IO) :-
     output_context(mlds_make_context(Context), !IO),
     io.write_string(Code, !IO).
-mlds_output_c_defn(_Indent, user_foreign_code(managed_cplusplus, _, _), !IO) :-
+mlds_output_c_defn(_Indent, user_foreign_code(lang_managed_cplusplus, _, _),
+        !IO) :-
     sorry(this_file, "foreign code other than C").
-mlds_output_c_defn(_Indent, user_foreign_code(csharp, _, _), !IO) :-
+mlds_output_c_defn(_Indent, user_foreign_code(lang_csharp, _, _), !IO) :-
     sorry(this_file, "foreign code other than C").
-mlds_output_c_defn(_Indent, user_foreign_code(il, _, _), !IO) :-
+mlds_output_c_defn(_Indent, user_foreign_code(lang_il, _, _), !IO) :-
     sorry(this_file, "foreign code other than C").
-mlds_output_c_defn(_Indent, user_foreign_code(java, _, _), !IO) :-
+mlds_output_c_defn(_Indent, user_foreign_code(lang_java, _, _), !IO) :-
     sorry(this_file, "foreign code other than C").
 
 :- pred mlds_output_pragma_export_defn(mlds_module_name::in, indent::in,
@@ -847,11 +851,12 @@ mlds_output_pragma_export_type(Type, !IO) :-
     io::di, io::uo) is det.
 
 mlds_output_pragma_export_type(suffix, _Type, !IO).
-mlds_output_pragma_export_type(prefix, mlds_mercury_array_type(_ElemType), !IO) :-
+mlds_output_pragma_export_type(prefix, mlds_mercury_array_type(_ElemType),
+        !IO) :-
     io.write_string("MR_ArrayPtr", !IO).
 mlds_output_pragma_export_type(prefix, mercury_type(_, _, ExportedType),
         !IO) :-
-    io.write_string(foreign.to_type_string(c, ExportedType), !IO).
+    io.write_string(foreign.to_type_string(lang_c, ExportedType), !IO).
 mlds_output_pragma_export_type(prefix, mlds_cont_type(_), !IO) :-
     io.write_string("MR_Word", !IO).
 mlds_output_pragma_export_type(prefix, mlds_commit_type, !IO) :-
@@ -866,7 +871,7 @@ mlds_output_pragma_export_type(prefix, mlds_native_char_type, !IO) :-
     io.write_string("MR_Char", !IO).
 mlds_output_pragma_export_type(prefix, mlds_foreign_type(ForeignType), !IO) :-
     (
-        ForeignType = c(c(Name)),
+        ForeignType = c(c_type(Name)),
         io.write_string(Name, !IO)
     ;
         ForeignType = il(_),
@@ -893,6 +898,10 @@ mlds_output_pragma_export_type(prefix, mlds_type_info_type, !IO) :-
 mlds_output_pragma_export_type(prefix, mlds_pseudo_type_info_type, !IO) :-
     io.write_string("MR_Word", !IO).
 mlds_output_pragma_export_type(prefix, mlds_rtti_type(_), !IO) :-
+    io.write_string("MR_Word", !IO).
+mlds_output_pragma_export_type(prefix, mlds_tabling_type(_), !IO) :-
+    % These types should never occur in procedures exported to C, so the
+    % fact the could generate a more accurate type shouldn't matter. 
     io.write_string("MR_Word", !IO).
 mlds_output_pragma_export_type(prefix, mlds_unknown_type, !IO) :-
     unexpected(this_file, "mlds_output_pragma_export_type: unknown_type").
@@ -1781,9 +1790,10 @@ mlds_output_fully_qualified_name(QualifiedName, !IO) :-
         (
             % Don't module-qualify main/2.
             Name = function(PredLabel, _, _, _),
-            PredLabel = pred(predicate, no, "main", 2, model_det, no)
+            PredLabel = mlds_user_pred_label(predicate, no, "main", 2,
+                model_det, no)
         ;
-            Name = data(rtti(RttiId)),
+            Name = data(mlds_rtti(RttiId)),
             module_qualify_name_of_rtti_id(RttiId) = no
         ;
             % We don't module qualify pragma export names.
@@ -1802,8 +1812,9 @@ mlds_output_fully_qualified_proc_label(QualifiedName, !IO) :-
     (
         % Don't module-qualify main/2.
         QualifiedName = qual(_ModuleName, _QualKind, Name),
-        Name = PredLabel - _ProcId,
-        PredLabel = pred(predicate, no, "main", 2, model_det, no)
+        Name = mlds_proc_label(PredLabel, _ProcId),
+        PredLabel = mlds_user_pred_label(predicate, no, "main", 2,
+            model_det, no)
     ->
         mlds_output_proc_label(Name, !IO)
     ;
@@ -1850,10 +1861,13 @@ mlds_output_name(function(PredLabel, ProcId, MaybeSeqNum, _PredId), !IO) :-
 mlds_output_name(export(Name), !IO) :-
     io.write_string(Name, !IO).
 
+    % mlds_output_pred_label should be kept in sync with
+    % mlds_pred_label_to_string.
+    %
 :- pred mlds_output_pred_label(mlds_pred_label::in, io::di, io::uo) is det.
 
-mlds_output_pred_label(pred(PredOrFunc, MaybeDefiningModule, Name, Arity,
-        _CodeModel, _NonOutputFunc), !IO) :-
+mlds_output_pred_label(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
+        Name, Arity, _CodeModel, _NonOutputFunc), !IO) :-
     ( PredOrFunc = predicate, Suffix = "p"
     ; PredOrFunc = function, Suffix = "f"
     ),
@@ -1866,7 +1880,7 @@ mlds_output_pred_label(pred(PredOrFunc, MaybeDefiningModule, Name, Arity,
     ;
         MaybeDefiningModule = no
     ).
-mlds_output_pred_label(special_pred(PredName, MaybeTypeModule,
+mlds_output_pred_label(mlds_special_pred_label(PredName, MaybeTypeModule,
         TypeName, TypeArity), !IO) :-
     MangledPredName = name_mangle(PredName),
     MangledTypeName = name_mangle(TypeName),
@@ -1883,25 +1897,62 @@ mlds_output_pred_label(special_pred(PredName, MaybeTypeModule,
     io.write_string("_", !IO),
     io.write_int(TypeArity, !IO).
 
+    % mlds_pred_label_to_string should be kept in sync with
+    % mlds_output_pred_label.
+    %
+:- func mlds_pred_label_to_string(mlds_pred_label) = string.
+
+mlds_pred_label_to_string(mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
+        Name, Arity, _CodeModel, _NonOutputFunc)) = Str :-
+    ( PredOrFunc = predicate, Suffix = "p"
+    ; PredOrFunc = function, Suffix = "f"
+    ),
+    MangledName = name_mangle(Name),
+    MainStr = string.format("%s_%d_%s", [s(MangledName), i(Arity), s(Suffix)]),
+    (
+        MaybeDefiningModule = yes(DefiningModule),
+        Str = MainStr ++ "_in__" ++ sym_name_mangle(DefiningModule)
+    ;
+        MaybeDefiningModule = no,
+        Str = MainStr
+    ).
+mlds_pred_label_to_string(mlds_special_pred_label(PredName, MaybeTypeModule,
+        TypeName, TypeArity)) = Str :-
+    MangledPredName = name_mangle(PredName),
+    MangledTypeName = name_mangle(TypeName),
+    PrefixStr = MangledPredName ++ "__",
+    (
+        MaybeTypeModule = yes(TypeModule),
+        MidStr = sym_name_mangle(TypeModule) ++ "__"
+    ;
+        MaybeTypeModule = no,
+        MidStr = ""
+    ),
+    Str = PrefixStr ++ MidStr ++ MangledTypeName ++ "_" ++
+        int_to_string(TypeArity).
+
 :- pred mlds_output_data_name(mlds_data_name::in, io::di, io::uo) is det.
 
 mlds_output_data_name(var(Name), !IO) :-
     mlds_output_mangled_name(ml_var_name_to_string(Name), !IO).
-mlds_output_data_name(common(Num), !IO) :-
+mlds_output_data_name(mlds_common(Num), !IO) :-
     io.write_string("common_", !IO),
     io.write_int(Num, !IO).
-mlds_output_data_name(rtti(RttiId), !IO) :-
+mlds_output_data_name(mlds_rtti(RttiId), !IO) :-
     rtti.id_to_c_identifier(RttiId, RttiAddrName),
     io.write_string(RttiAddrName, !IO).
-mlds_output_data_name(module_layout, !IO) :-
+mlds_output_data_name(mlds_module_layout, !IO) :-
     sorry(this_file, "NYI: module_layout").
-mlds_output_data_name(proc_layout(_ProcLabel), !IO) :-
+mlds_output_data_name(mlds_proc_layout(_ProcLabel), !IO) :-
     sorry(this_file, "NYI: proc_layout").
-mlds_output_data_name(internal_layout(_ProcLabel, _FuncSeqNum), !IO) :-
+mlds_output_data_name(mlds_internal_layout(_ProcLabel, _FuncSeqNum), !IO) :-
     sorry(this_file, "NYI: internal_layout").
-mlds_output_data_name(tabling_pointer(ProcLabel), !IO) :-
-    io.write_string("table_for_", !IO),
-    mlds_output_proc_label(ProcLabel, !IO).
+mlds_output_data_name(mlds_tabling_ref(ProcLabel, Id), !IO) :-
+    io.write_string(mlds_tabling_data_name(ProcLabel, Id), !IO).
+
+mlds_tabling_data_name(ProcLabel, Id) =
+    tabling_info_id_str(Id) ++ "_for_" ++
+        mlds_proc_label_to_string(mlds_std_tabling_proc_label(ProcLabel)).
 
 %-----------------------------------------------------------------------------%
 %
@@ -2013,6 +2064,9 @@ mlds_output_type_prefix(mlds_commit_type, !IO) :-
     ).
 mlds_output_type_prefix(mlds_rtti_type(RttiIdMaybeElement), !IO) :-
     rtti_id_maybe_element_c_type(RttiIdMaybeElement, CType, _IsArray),
+    io.write_string(CType, !IO).
+mlds_output_type_prefix(mlds_tabling_type(TablingId), !IO) :-
+    tabling_id_c_type(TablingId, CType, _IsArray),
     io.write_string(CType, !IO).
 mlds_output_type_prefix(mlds_unknown_type, !IO) :-
     unexpected(this_file, "prefix has unknown type").
@@ -2173,10 +2227,20 @@ mlds_output_type_suffix(mlds_cont_type(ArgTypes), _, !IO) :-
     ).
 mlds_output_type_suffix(mlds_commit_type, _, !IO).
 mlds_output_type_suffix(mlds_rtti_type(RttiIdMaybeElement), ArraySize, !IO) :-
-    ( rtti_id_maybe_element_has_array_type(RttiIdMaybeElement) = yes ->
+    IsArrayType = rtti_id_maybe_element_has_array_type(RttiIdMaybeElement),
+    (
+        IsArrayType = yes,
         mlds_output_array_type_suffix(ArraySize, !IO)
     ;
-        true
+        IsArrayType = no
+    ).
+mlds_output_type_suffix(mlds_tabling_type(TablingId), ArraySize, !IO) :-
+    IsArrayType = tabling_id_has_array_type(TablingId),
+    (
+        IsArrayType = yes,
+        mlds_output_array_type_suffix(ArraySize, !IO)
+    ;
+        IsArrayType = no
     ).
 mlds_output_type_suffix(mlds_unknown_type, _, !IO) :-
     unexpected(this_file, "mlds_output_type_suffix: unknown_type").
@@ -3050,10 +3114,10 @@ mlds_output_target_code_component(_Context, raw_target_code(CodeString,
     io.write_string(CodeString, !IO).
 mlds_output_target_code_component(_Context, target_code_input(Rval), !IO) :-
     mlds_output_rval(Rval, !IO),
-    io.write_string("\n", !IO).
+    io.write_string(" ", !IO).
 mlds_output_target_code_component(_Context, target_code_output(Lval), !IO) :-
     mlds_output_lval(Lval, !IO),
-    io.write_string("\n", !IO).
+    io.write_string(" ", !IO).
 mlds_output_target_code_component(_Context, name(Name), !IO) :-
     mlds_output_fully_qualified_name(Name, !IO),
     io.write_string("\n", !IO).
@@ -3083,6 +3147,11 @@ type_needs_forwarding_pointer_space(mlds_rtti_type(_)) = _ :-
     % so we should never get here.
     unexpected(this_file,
         "type_needs_forwarding_pointer_space: rtti_type").
+type_needs_forwarding_pointer_space(mlds_tabling_type(_)) = _ :-
+    % These should all be statically allocated, not dynamically allocated,
+    % so we should never get here.
+    unexpected(this_file,
+        "type_needs_forwarding_pointer_space: tabling_type").
 type_needs_forwarding_pointer_space(mlds_unknown_type) = _ :-
     unexpected(this_file, "type_needs_forwarding_pointer_space: unknown_type").
 
@@ -3596,19 +3665,30 @@ mlds_output_code_addr(internal(Label, SeqNum, _Sig), !IO) :-
 
 :- pred mlds_output_proc_label(mlds_proc_label::in, io::di, io::uo) is det.
 
-mlds_output_proc_label(PredLabel - ProcId, !IO) :-
+mlds_output_proc_label(mlds_proc_label(PredLabel, ProcId), !IO) :-
     mlds_output_pred_label(PredLabel, !IO),
     proc_id_to_int(ProcId, ModeNum),
     io.format("_%d", [i(ModeNum)], !IO).
 
+:- func mlds_proc_label_to_string(mlds_proc_label) = string.
+
+mlds_proc_label_to_string(mlds_proc_label(PredLabel, ProcId)) =
+    mlds_pred_label_to_string(PredLabel) ++
+        string.format("_%d", [i(proc_id_to_int(ProcId))]).
+
 :- pred mlds_output_data_addr(mlds_data_addr::in, io::di, io::uo) is det.
 
 mlds_output_data_addr(data_addr(ModuleName, DataName), !IO) :-
+    % If its an array type, then we just use the name, otherwise we must
+    % prefix the name with `&'.
     (
-        % If its an array type, then we just use the name,
-        % otherwise we must prefix the name with `&'.
-        DataName = rtti(RttiId),
+        DataName = mlds_rtti(RttiId),
         rtti_id_has_array_type(RttiId) = yes
+    ->
+        mlds_output_data_var_name(ModuleName, DataName, !IO)
+    ;
+        DataName = mlds_tabling_ref(_, TablingId),
+        tabling_id_has_array_type(TablingId) = yes
     ->
         mlds_output_data_var_name(ModuleName, DataName, !IO)
     ;
@@ -3622,7 +3702,7 @@ mlds_output_data_addr(data_addr(ModuleName, DataName), !IO) :-
 
 mlds_output_data_var_name(ModuleName, DataName, !IO) :-
     (
-        DataName = rtti(RttiId),
+        DataName = mlds_rtti(RttiId),
         module_qualify_name_of_rtti_id(RttiId) = no
     ->
         true

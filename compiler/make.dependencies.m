@@ -194,7 +194,7 @@ target_dependencies(Globals, asm_code(_)) =
         compiled_code_dependencies(Globals).
 target_dependencies(Globals, object_code(PIC)) = Deps :-
     globals.get_target(Globals, CompilationTarget),
-    TargetCode = ( CompilationTarget = asm -> asm_code(PIC) ; c_code ),
+    TargetCode = ( CompilationTarget = target_asm -> asm_code(PIC) ; c_code ),
     globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
 
     %
@@ -202,7 +202,7 @@ target_dependencies(Globals, object_code(PIC)) = Deps :-
     % file for all imported modules.
     %
     (
-        CompilationTarget = c,
+        CompilationTarget = target_c,
         HighLevelCode = yes
     ->
         HeaderDeps = combine_deps_list([
@@ -238,12 +238,12 @@ target_dependencies(_, foreign_il_asm(_)) =
         il_asm `of` self,
         il_asm `of` filter(maybe_keep_std_lib_module, direct_imports),
         il_asm `of` filter(maybe_keep_std_lib_module,
-            foreign_imports(il)),
-        foreign_il_asm(managed_cplusplus) `of`
+            foreign_imports(lang_il)),
+        foreign_il_asm(lang_managed_cplusplus) `of`
             filter(maybe_keep_std_lib_module,
-                foreign_imports(managed_cplusplus)),
-        foreign_il_asm(csharp) `of` filter(maybe_keep_std_lib_module,
-            foreign_imports(csharp))
+                foreign_imports(lang_managed_cplusplus)),
+        foreign_il_asm(lang_csharp) `of` filter(maybe_keep_std_lib_module,
+            foreign_imports(lang_csharp))
     ]).
 target_dependencies(Globals, foreign_object(PIC, _)) =
     get_foreign_deps(Globals, PIC).
@@ -255,7 +255,7 @@ target_dependencies(Globals, fact_table_object(PIC, _)) =
 
 get_foreign_deps(Globals, PIC) = Deps :-
     globals.get_target(Globals, CompilationTarget),
-    TargetCode = ( CompilationTarget = asm -> asm_code(PIC) ; c_code ),
+    TargetCode = ( CompilationTarget = target_asm -> asm_code(PIC) ; c_code ),
     Deps = combine_deps_list([
         TargetCode `of` self
     ]).
@@ -945,10 +945,8 @@ check_dependencies(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
     ;
         UnbuiltDependencies = [],
         debug_msg(
-            (pred(!.IO::di, !:IO::uo) is det :-
-                io.write_string(TargetFileName, !IO),
-                io.write_string(": finished dependencies\n", !IO)
-            ), !IO),
+            io.write_string(TargetFileName ++ ": finished dependencies\n"),
+            !IO),
         list.map_foldl2(get_dependency_timestamp, DepFiles,
             DepTimestamps, !Info, !IO),
 
@@ -986,11 +984,7 @@ check_dependency_timestamps(TargetFileName, MaybeTimestamp, BuildDepsSucceeded,
     (
         MaybeTimestamp = error(_),
         DepsResult = out_of_date,
-        debug_msg(
-            (pred(!.IO::di, !:IO::uo) is det :-
-                io.write_string(TargetFileName, !IO),
-                io.write_string(" does not exist.\n", !IO)
-            ), !IO)
+        debug_msg(io.write_string(TargetFileName ++ " does not exist.\n"), !IO)
     ;
         MaybeTimestamp = ok(Timestamp),
         globals.io_lookup_bool_option(rebuild, Rebuild, !IO),

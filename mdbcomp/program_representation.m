@@ -427,22 +427,22 @@ path_from_string_det(GoalPathStr, GoalPath) :-
     ).
 
 path_from_string(GoalPathStr, GoalPath) :-
-    StepStrs = string__words(is_path_separator, GoalPathStr),
-    list__map(path_step_from_string, StepStrs, GoalPath).
+    StepStrs = string.words(is_path_separator, GoalPathStr),
+    list.map(path_step_from_string, StepStrs, GoalPath).
 
 path_step_from_string(String, Step) :-
-    string__first_char(String, First, Rest),
+    string.first_char(String, First, Rest),
     path_step_from_string_2(First, Rest, Step).
 
 :- pred path_step_from_string_2(char::in, string::in, goal_path_step::out)
     is semidet.
 
 path_step_from_string_2('c', NStr, conj(N)) :-
-    string__to_int(NStr, N).
+    string.to_int(NStr, N).
 path_step_from_string_2('d', NStr, disj(N)) :-
-    string__to_int(NStr, N).
+    string.to_int(NStr, N).
 path_step_from_string_2('s', NStr, switch(N)) :-
-    string__to_int(NStr, N).
+    string.to_int(NStr, N).
 path_step_from_string_2('?', "", ite_cond).
 path_step_from_string_2('t', "", ite_then).
 path_step_from_string_2('e', "", ite_else).

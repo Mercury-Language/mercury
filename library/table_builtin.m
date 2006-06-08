@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: table_builtin.m.
 % Main authors: zs, fjh, ohutch.
 % Stability: low.
-% 
+%
 % This file is automatically imported, as if via `use_module', into every
 % module that contains a tabling pragma (`pragma loopcheck', `pragma memo',
 % or `pragma minimal_model').  It is intended for the builtin procedures
@@ -24,12 +24,15 @@
 % This module is a private part of the Mercury implementation; user modules
 % should never explicitly import this module. The interface for this module
 % does not get included in the Mercury library reference manual.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module table_builtin.
 :- interface.
+
+:- import_module maybe.
+:- import_module list.
 
 % This section of the module contains the predicates that are
 % automatically inserted by the table_gen pass of the compiler
@@ -106,16 +109,69 @@
     %
 :- type ml_trie_node.
 
-    % This type represents the blocks we use to store sets of output
-    % arguments.
+    % This type represents the blocks we use to store sets of output arguments.
     %
 :- type ml_answer_block.
+
+    % This type represents the data structure the implementation uses to store
+    % information related to a given procedure.
+    %
+:- type ml_proc_table_info.
+
+:- type proc_table_statistics
+    --->    proc_table_statistics(
+                call_table_stats            :: table_stats_pair,
+                maybe_answer_table_stats    :: maybe(table_stats_pair)
+            ).
+
+:- type table_stats_pair
+    --->    table_stats_pair(
+                overall_stats               :: table_stats,
+                stats_since_last            :: table_stats
+            ).
+
+:- type table_stats
+    --->    table_stats(
+                num_lookups                 :: int,
+                num_lookups_not_duplicate   :: int,
+                step_statistics             :: list(table_step_stats)
+            ).
+
+:- type table_step_kind
+    --->    table_step_dummy
+    ;       table_step_int
+    ;       table_step_char
+    ;       table_step_string
+    ;       table_step_float
+    ;       table_step_enum
+    ;       table_step_user
+    ;       table_step_user_fast_loose
+    ;       table_step_poly
+    ;       table_step_poly_fast_loose
+    ;       table_step_typeinfo
+    ;       table_step_typeclassinfo
+    ;       table_step_promise_implied.
+
+:- type table_step_stats
+    --->    table_step_stats(
+                table_step_kind                 :: table_step_kind,
+                step_num_allocs                 :: int,
+                step_num_inserts                :: int,
+                step_num_lookups                :: int,
+                step_num_insert_probes          :: int,
+                step_num_lookup_probes          :: int,
+                step_num_resizes                :: int,
+                step_num_resizes_old_entries    :: int,
+                step_num_resizes_new_entries    :: int
+            ).
 
     % N.B. interface continued below
 
 %-----------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module int.
 
     % This type represents the interior pointers of both call
     % tables and answer tables.
@@ -132,6 +188,255 @@
 :- pragma foreign_type("C", ml_answer_block, "MR_AnswerBlock",
     [can_pass_as_mercury_type]).
 :- pragma foreign_type(il,  ml_answer_block, "class [mscorlib]System.Object").
+
+:- type ml_proc_table_info ---> ml_proc_table_info(c_pointer).
+:- pragma foreign_type("C", ml_proc_table_info, "MR_ProcTableInfoPtr",
+    [can_pass_as_mercury_type]).
+:- pragma foreign_type(il,  ml_proc_table_info,
+    "class [mscorlib]System.Object").
+
+:- pred get_tabling_stats(ml_proc_table_info::in, proc_table_statistics::out,
+    io::di, io::uo) is det.
+:- pragma export(get_tabling_stats(in, out, di, uo), "MR_get_tabling_stats").
+
+get_tabling_stats(Info, Statistics, !IO) :-
+    get_direct_fields(Info, AnswerTable, NumInputs, NumOutputs,
+        CallTableLookups, CallTableNotDupl,
+        PrevCallTableLookups, PrevCallTableNotDupl,
+        AnswerTableLookups, AnswerTableNotDupl,
+        PrevAnswerTableLookups, PrevAnswerTableNotDupl, !IO),
+    get_all_input_step_stats(Info, NumInputs - 1,
+        [], CurCallTableStepStats, [], PrevCallTableStepStats, !IO),
+    CurCallTableStats = table_stats(CallTableLookups,
+        CallTableNotDupl, CurCallTableStepStats),
+    PrevCallTableStats = table_stats(PrevCallTableLookups,
+        PrevCallTableNotDupl, PrevCallTableStepStats),
+    CallTableStats = table_stats_pair(CurCallTableStats, PrevCallTableStats),
+    ( AnswerTable > 0 ->
+        get_all_output_step_stats(Info, NumOutputs - 1,
+            [], CurAnswerTableStepStats, [], PrevAnswerTableStepStats, !IO),
+        CurAnswerTableStats = table_stats(AnswerTableLookups,
+            AnswerTableNotDupl, CurAnswerTableStepStats),
+        PrevAnswerTableStats = table_stats(PrevAnswerTableLookups,
+            PrevAnswerTableNotDupl, PrevAnswerTableStepStats),
+        AnswerTableStats = table_stats_pair(CurAnswerTableStats,
+            PrevAnswerTableStats),
+        MaybeAnswerTableStats = yes(AnswerTableStats)
+    ;
+        MaybeAnswerTableStats = no
+    ),
+    Statistics = proc_table_statistics(CallTableStats, MaybeAnswerTableStats),
+    copy_current_stats_to_prev(Info, !IO).
+
+:- pred get_direct_fields(ml_proc_table_info::in, int::out, int::out, int::out,
+    int::out, int::out, int::out, int::out,
+    int::out, int::out, int::out, int::out,
+    io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    get_direct_fields(Info::in, AnswerTable::out, Inputs::out, Outputs::out,
+        CallTableLookups::out, CallTableNotDupl::out,
+        PrevCallTableLookups::out, PrevCallTableNotDupl::out,
+        AnswerTableLookups::out, AnswerTableNotDupl::out,
+        PrevAnswerTableLookups::out, PrevAnswerTableNotDupl::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    AnswerTable = ( Info->MR_pt_has_answer_table ? 1 : 0 );
+    Inputs = Info->MR_pt_num_inputs;
+    Outputs = Info->MR_pt_num_outputs;
+    CallTableLookups = Info->MR_pt_call_table_lookups;
+    PrevCallTableLookups = Info->MR_pt_prev_call_table_lookups;
+    CallTableNotDupl = Info->MR_pt_call_table_not_dupl;
+    PrevCallTableNotDupl = Info->MR_pt_prev_call_table_not_dupl;
+    AnswerTableLookups = Info->MR_pt_answer_table_lookups;
+    PrevAnswerTableLookups = Info->MR_pt_prev_answer_table_lookups;
+    AnswerTableNotDupl = Info->MR_pt_answer_table_not_dupl;
+    PrevAnswerTableNotDupl = Info->MR_pt_prev_answer_table_not_dupl;
+").
+
+:- pred get_all_input_step_stats(ml_proc_table_info::in, int::in,
+    list(table_step_stats)::in, list(table_step_stats)::out,
+    list(table_step_stats)::in, list(table_step_stats)::out,
+    io::di, io::uo) is det.
+
+get_all_input_step_stats(Info, CurSlot, !CurStepStats, !PrevStepStats, !IO) :-
+    ( CurSlot < 0 ->
+        true
+    ;
+        get_input_step_stats(Info, CurSlot, Kind,
+            NumAllocs, NumInserts, NumLookups,
+            NumInsertProbes, NumLookupProbes,
+            NumResizes, NumResizesOld, NumResizesNew,
+            PrevNumAllocs, PrevNumInserts, PrevNumLookups,
+            PrevNumInsertProbes, PrevNumLookupProbes,
+            PrevNumResizes, PrevNumResizesOld, PrevNumResizesNew, !IO),
+        Cur = table_step_stats(Kind, NumAllocs,
+            NumInserts, NumLookups,
+            NumInsertProbes, NumLookupProbes,
+            NumResizes, NumResizesOld, NumResizesNew),
+        Prev = table_step_stats(Kind, PrevNumAllocs,
+            PrevNumInserts, PrevNumLookups,
+            PrevNumInsertProbes, PrevNumLookupProbes,
+            PrevNumResizes, PrevNumResizesOld, PrevNumResizesNew),
+        !:CurStepStats = [Cur | !.CurStepStats],
+        !:PrevStepStats = [Prev | !.PrevStepStats],
+        get_all_input_step_stats(Info, CurSlot - 1,
+            !CurStepStats, !PrevStepStats, !IO)
+    ).
+
+:- pred get_all_output_step_stats(ml_proc_table_info::in, int::in,
+    list(table_step_stats)::in, list(table_step_stats)::out,
+    list(table_step_stats)::in, list(table_step_stats)::out,
+    io::di, io::uo) is det.
+
+get_all_output_step_stats(Info, CurSlot, !CurStepStats, !PrevStepStats, !IO) :-
+    ( CurSlot < 0 ->
+        true
+    ;
+        get_output_step_stats(Info, CurSlot, Kind,
+            NumAllocs, NumInserts, NumLookups,
+            NumInsertProbes, NumLookupProbes,
+            NumResizes, NumResizesOld, NumResizesNew,
+            PrevNumAllocs, PrevNumInserts, PrevNumLookups,
+            PrevNumInsertProbes, PrevNumLookupProbes,
+            PrevNumResizes, PrevNumResizesOld, PrevNumResizesNew, !IO),
+        Cur = table_step_stats(Kind, NumAllocs,
+            NumInserts, NumLookups,
+            NumInsertProbes, NumLookupProbes,
+            NumResizes, NumResizesOld, NumResizesNew),
+        Prev = table_step_stats(Kind, PrevNumAllocs,
+            PrevNumInserts, PrevNumLookups,
+            PrevNumInsertProbes, PrevNumLookupProbes,
+            PrevNumResizes, PrevNumResizesOld, PrevNumResizesNew),
+        !:CurStepStats = [Cur | !.CurStepStats],
+        !:PrevStepStats = [Prev | !.PrevStepStats],
+        get_all_output_step_stats(Info, CurSlot - 1,
+            !CurStepStats, !PrevStepStats, !IO)
+    ).
+
+:- pred get_input_step_stats(ml_proc_table_info::in, int::in,
+    table_step_kind::out,
+    int::out, int::out, int::out, int::out, int::out,
+    int::out, int::out, int::out,
+    int::out, int::out, int::out, int::out, int::out,
+    int::out, int::out, int::out,
+    io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    get_input_step_stats(Info::in, ArgNum::in, Kind::out,
+        NumAllocs::out, NumInserts::out, NumLookups::out,
+        NumInsertProbes::out, NumLookupProbes::out,
+        NumResizes::out, NumResizesOld::out, NumResizesNew::out,
+        PrevNumAllocs::out, PrevNumInserts::out, PrevNumLookups::out,
+        PrevNumInsertProbes::out, PrevNumLookupProbes::out,
+        PrevNumResizes::out, PrevNumResizesOld::out, PrevNumResizesNew::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    MR_TableStepStats   *cur;
+    MR_TableStepStats   *prev;
+
+    Kind = Info->MR_pt_input_steps[ArgNum];
+
+    cur  = &Info->MR_pt_call_table_stats[ArgNum];
+    prev = &Info->MR_pt_prev_call_table_stats[ArgNum];
+
+    NumAllocs = cur->MR_tss_num_allocs;
+    NumInserts = cur->MR_tss_num_inserts;
+    NumLookups = cur->MR_tss_num_lookups;
+    NumInsertProbes = cur->MR_tss_num_insert_probes;
+    NumLookupProbes = cur->MR_tss_num_lookup_probes;
+    NumResizes = cur->MR_tss_num_resizes;
+    NumResizesOld = cur->MR_tss_num_resizes_old_entries;
+    NumResizesNew = cur->MR_tss_num_resizes_new_entries;
+
+    PrevNumAllocs = prev->MR_tss_num_allocs;
+    PrevNumInserts = prev->MR_tss_num_inserts;
+    PrevNumLookups = prev->MR_tss_num_lookups;
+    PrevNumInsertProbes = prev->MR_tss_num_insert_probes;
+    PrevNumLookupProbes = prev->MR_tss_num_lookup_probes;
+    PrevNumResizes = prev->MR_tss_num_resizes;
+    PrevNumResizesOld = prev->MR_tss_num_resizes_old_entries;
+    PrevNumResizesNew = prev->MR_tss_num_resizes_new_entries;
+").
+
+:- pred get_output_step_stats(ml_proc_table_info::in, int::in,
+    table_step_kind::out,
+    int::out, int::out, int::out, int::out, int::out,
+    int::out, int::out, int::out,
+    int::out, int::out, int::out, int::out, int::out,
+    int::out, int::out, int::out,
+    io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    get_output_step_stats(Info::in, ArgNum::in, Kind::out,
+        NumAllocs::out, NumInserts::out, NumLookups::out,
+        NumInsertProbes::out, NumLookupProbes::out,
+        NumResizes::out, NumResizesOld::out, NumResizesNew::out,
+        PrevNumAllocs::out, PrevNumInserts::out, PrevNumLookups::out,
+        PrevNumInsertProbes::out, PrevNumLookupProbes::out,
+        PrevNumResizes::out, PrevNumResizesOld::out, PrevNumResizesNew::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    MR_TableStepStats   *cur;
+    MR_TableStepStats   *prev;
+
+    Kind = Info->MR_pt_output_steps[ArgNum];
+
+    cur  = &Info->MR_pt_answer_table_stats[ArgNum];
+    prev = &Info->MR_pt_prev_answer_table_stats[ArgNum];
+
+    NumAllocs = cur->MR_tss_num_allocs;
+    NumInserts = cur->MR_tss_num_inserts;
+    NumLookups = cur->MR_tss_num_lookups;
+    NumInsertProbes = cur->MR_tss_num_insert_probes;
+    NumLookupProbes = cur->MR_tss_num_lookup_probes;
+    NumResizes = cur->MR_tss_num_resizes;
+    NumResizesOld = cur->MR_tss_num_resizes_old_entries;
+    NumResizesNew = cur->MR_tss_num_resizes_new_entries;
+
+    PrevNumAllocs = prev->MR_tss_num_allocs;
+    PrevNumInserts = prev->MR_tss_num_inserts;
+    PrevNumLookups = prev->MR_tss_num_lookups;
+    PrevNumInsertProbes = prev->MR_tss_num_insert_probes;
+    PrevNumLookupProbes = prev->MR_tss_num_lookup_probes;
+    PrevNumResizes = prev->MR_tss_num_resizes;
+    PrevNumResizesOld = prev->MR_tss_num_resizes_old_entries;
+    PrevNumResizesNew = prev->MR_tss_num_resizes_new_entries;
+").
+
+:- pred copy_current_stats_to_prev(ml_proc_table_info::in,
+    io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    copy_current_stats_to_prev(Info::in, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    int i;
+    MR_TableStepStats   *cur;
+    MR_TableStepStats   *prev;
+
+    Info->MR_pt_prev_call_table_lookups = Info->MR_pt_call_table_lookups;
+    Info->MR_pt_prev_call_table_not_dupl = Info->MR_pt_call_table_not_dupl;
+    Info->MR_pt_prev_answer_table_lookups = Info->MR_pt_answer_table_lookups;
+    Info->MR_pt_prev_answer_table_not_dupl = Info->MR_pt_answer_table_not_dupl;
+
+    for (i = 0; i < Info->MR_pt_num_inputs; i++) {
+        cur  = &Info->MR_pt_call_table_stats[i];
+        prev = &Info->MR_pt_prev_call_table_stats[i];
+        MR_copy_table_step_stats(prev, cur);
+    }
+
+    if (Info->MR_pt_has_answer_table) {
+        for (i = 0; i < Info->MR_pt_num_outputs; i++) {
+            cur  = &Info->MR_pt_answer_table_stats[i];
+            prev = &Info->MR_pt_prev_answer_table_stats[i];
+            MR_copy_table_step_stats(prev, cur);
+        }
+    }
+").
 
 %-----------------------------------------------------------------------------%
 
@@ -179,35 +484,35 @@
     table_loop_setup(T::in, Status::out),
     [will_not_call_mercury],
 "
-    MR_table_loop_setup(T, Status);
+    MR_tbl_loop_setup(MR_TABLE_DEBUG_BOOL, MR_FALSE, T, Status);
 ").
 
 :- pragma foreign_proc("C",
     table_loop_setup_shortcut(T0::in, T::out, Status::out),
     [will_not_call_mercury],
 "
-    MR_table_loop_setup_shortcut(T0, T, Status);
+    MR_tbl_loop_setup_shortcut(T0, T, Status);
 ").
 
 :- pragma foreign_proc("C",
     table_loop_mark_as_inactive(T::in),
     [will_not_call_mercury],
 "
-    MR_table_loop_mark_as_inactive(T);
+    MR_tbl_loop_mark_as_inactive(MR_TABLE_DEBUG_BOOL, T);
 ").
 
 :- pragma foreign_proc("C",
     table_loop_mark_as_inactive_and_fail(T::in),
     [will_not_call_mercury],
 "
-    MR_table_loop_mark_as_inactive_and_fail(T);
+    MR_tbl_loop_mark_as_inactive_and_fail(MR_TABLE_DEBUG_BOOL, T);
 ").
 
 :- pragma foreign_proc("C",
     table_loop_mark_as_active_and_fail(T::in),
     [will_not_call_mercury],
 "
-    MR_table_loop_mark_as_active_and_fail(T);
+    MR_tbl_loop_mark_as_active_and_fail(MR_TABLE_DEBUG_BOOL, T);
 ").
 
 table_loop_setup(_, _) :-
@@ -372,119 +677,121 @@ table_loop_mark_as_active_and_fail(_) :-
     table_memo_det_setup(T::in, Status::out),
     [will_not_call_mercury],
 "
-    MR_table_memo_det_setup(T, Status);
+    MR_tbl_memo_det_setup(MR_TABLE_DEBUG_BOOL, MR_FALSE, T, Status);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_det_setup_shortcut(T0::in, T::out, Status::out),
     [will_not_call_mercury],
 "
-    MR_table_memo_det_setup_shortcut(T0, T, Status);
+    MR_tbl_memo_det_setup_shortcut(T0, T, Status);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_semi_setup(T::in, Status::out),
     [will_not_call_mercury],
 "
-    MR_table_memo_semi_setup(T, Status);
+    MR_tbl_memo_semi_setup(MR_TABLE_DEBUG_BOOL, MR_FALSE, T, Status);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_semi_setup_shortcut(T0::in, T::out, Status::out),
     [will_not_call_mercury],
 "
-    MR_table_memo_semi_setup_shortcut(T0, T, Status);
+    MR_tbl_memo_semi_setup_shortcut(T0, T, Status);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_non_setup(T0::in, Record::out, Status::out),
     [will_not_call_mercury],
 "
-    MR_table_memo_non_setup(T0, Record, Status);
+    MR_tbl_memo_non_setup(MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, Record, Status);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_mark_as_failed(T::in),
     [will_not_call_mercury],
 "
-    MR_table_memo_mark_as_failed(T);
+    MR_tbl_memo_mark_as_failed(MR_TABLE_DEBUG_BOOL, T);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_mark_as_succeeded(T::in),
     [will_not_call_mercury],
 "
-    MR_table_memo_mark_as_succeeded(T);
+    MR_tbl_memo_mark_as_succeeded(MR_TABLE_DEBUG_BOOL, T);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_mark_as_incomplete(R::in),
     [will_not_call_mercury],
 "
-    MR_table_memo_mark_as_incomplete(R);
+    MR_tbl_memo_mark_as_incomplete(MR_TABLE_DEBUG_BOOL, R);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_mark_as_active_and_fail(R::in),
     [will_not_call_mercury],
 "
-    MR_table_memo_mark_as_active_and_fail(R);
+    MR_tbl_memo_mark_as_active_and_fail(MR_TABLE_DEBUG_BOOL, R);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_mark_as_complete_and_fail(R::in),
     [will_not_call_mercury],
 "
-    MR_table_memo_mark_as_complete_and_fail(R);
+    MR_tbl_memo_mark_as_complete_and_fail(MR_TABLE_DEBUG_BOOL, R);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_create_answer_block(T::in, Size::in, AnswerBlock::out),
     [will_not_call_mercury],
 "
-    MR_table_memo_create_answer_block(T, Size, AnswerBlock);
+    MR_tbl_memo_create_answer_block(MR_TABLE_DEBUG_BOOL,
+        T, Size, AnswerBlock);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_fill_answer_block_shortcut(T::in),
     [will_not_call_mercury],
 "
-    MR_table_memo_fill_answer_block_shortcut(T);
+    MR_tbl_memo_fill_answer_block_shortcut(T);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_get_answer_block(T::in, AnswerBlock::out),
     [will_not_call_mercury, promise_semipure],
 "
-    MR_table_memo_get_answer_block(T, AnswerBlock);
+    MR_tbl_memo_get_answer_block(MR_TABLE_DEBUG_BOOL, T, AnswerBlock);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_get_answer_block_shortcut(T::in),
     [will_not_call_mercury, promise_semipure],
 "
-    MR_table_memo_get_answer_block_shortcut(T);
+    MR_tbl_memo_get_answer_block_shortcut(T);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_non_get_answer_table(R::in, AT::out),
     [will_not_call_mercury, promise_semipure],
 "
-    MR_table_memo_non_get_answer_table(R, AT);
+    MR_tbl_memo_non_get_answer_table(MR_TABLE_DEBUG_BOOL, R, AT);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_non_answer_is_not_duplicate(T::in),
     [will_not_call_mercury],
 "
-    MR_table_memo_non_answer_is_not_duplicate(T, SUCCESS_INDICATOR);
+    MR_tbl_memo_non_answer_is_not_duplicate(MR_TABLE_DEBUG_BOOL,
+        T, SUCCESS_INDICATOR);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_non_answer_is_not_duplicate_shortcut(R::in),
     [will_not_call_mercury],
 "
-    MR_table_memo_non_answer_is_not_duplicate_shortcut(R,
+    MR_tbl_memo_non_answer_is_not_duplicate_shortcut(R,
         SUCCESS_INDICATOR);
 ").
 
@@ -492,14 +799,14 @@ table_loop_mark_as_active_and_fail(_) :-
     table_memo_non_create_answer_block_shortcut(R::in),
     [will_not_call_mercury],
 "
-    MR_table_memo_non_create_answer_block_shortcut(R::in);
+    MR_tbl_memo_non_create_answer_block_shortcut(R::in);
 ").
 
 :- pragma foreign_proc("C",
     table_memo_non_return_all_shortcut(R::in),
     [will_not_call_mercury, promise_semipure],
 "
-    MR_table_memo_non_return_all_shortcut(R);
+    MR_tbl_memo_non_return_all_shortcut(R);
 ").
 
 :- external(table_memo_return_all_answers_nondet/2).
@@ -718,6 +1025,7 @@ table_memo_non_create_answer_block_shortcut(_) :-
 % program.
 
 :- pragma foreign_decl("C", "
+    #include ""mercury_tabling.h""      /* for MR_copy_table_steps */
     #include ""mercury_trace_base.h""   /* for MR_io_tabling_* */
 ").
 
@@ -725,14 +1033,15 @@ table_memo_non_create_answer_block_shortcut(_) :-
     table_io_in_range(T::out, Counter::out, Start::out),
     [will_not_call_mercury],
 "
-    MR_table_io_in_range(T, Counter, Start, SUCCESS_INDICATOR);
+    MR_tbl_io_in_range(MR_TABLE_DEBUG_BOOL, T, Counter, Start,
+        SUCCESS_INDICATOR);
 ").
 
 :- pragma foreign_proc("C",
     table_io_has_occurred(T::in),
     [will_not_call_mercury],
 "
-    MR_table_io_has_occurred(T, SUCCESS_INDICATOR);
+    MR_tbl_io_has_occurred(MR_TABLE_DEBUG_BOOL, T, SUCCESS_INDICATOR);
 ").
 
 table_io_copy_io_state(IO, IO).
@@ -741,14 +1050,14 @@ table_io_copy_io_state(IO, IO).
     table_io_left_bracket_unitized_goal(TraceEnabled::out),
     [will_not_call_mercury],
 "
-    MR_table_io_left_bracket_unitized_goal(TraceEnabled);
+    MR_tbl_io_left_bracket_unitized_goal(TraceEnabled);
 ").
 
 :- pragma foreign_proc("C",
     table_io_right_bracket_unitized_goal(TraceEnabled::in),
     [will_not_call_mercury],
 "
-    MR_table_io_right_bracket_unitized_goal(TraceEnabled);
+    MR_tbl_io_right_bracket_unitized_goal(TraceEnabled);
 ").
 
 table_io_in_range(_, _, _) :-
@@ -874,7 +1183,7 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
     table_mm_setup(T::in, Subgoal::out, Status::out),
     [will_not_call_mercury],
 "
-    MR_table_mm_setup(T, Subgoal, Status);
+    MR_tbl_mm_setup(MR_TABLE_DEBUG_BOOL, MR_FALSE, T, Subgoal, Status);
 ").
 
     % The definitions of these two predicates are in the runtime system,
@@ -889,21 +1198,22 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
     table_mm_return_all_shortcut(AnswerBlock::in),
     [will_not_call_mercury, promise_semipure],
 "
-    MR_table_mm_return_all_shortcut(AnswerBlock);
+    MR_tbl_mm_return_all_shortcut(AnswerBlock);
 ").
 
 :- pragma foreign_proc("C",
     table_mm_get_answer_table(Subgoal::in, AnswerTable::out),
     [will_not_call_mercury, promise_semipure],
 "
-    MR_table_mm_get_answer_table(Subgoal, AnswerTable);
+    MR_tbl_mm_get_answer_table(MR_TABLE_DEBUG_BOOL, Subgoal, AnswerTable);
 ").
 
 :- pragma foreign_proc("C",
     table_mm_answer_is_not_duplicate(TrieNode::in),
     [will_not_call_mercury],
 "
-    MR_table_mm_answer_is_not_duplicate(TrieNode, SUCCESS_INDICATOR);
+    MR_tbl_mm_answer_is_not_duplicate(MR_TABLE_DEBUG_BOOL, TrieNode,
+        SUCCESS_INDICATOR);
 ").
 
 :- pragma foreign_proc("C",
@@ -923,14 +1233,15 @@ table_io_right_bracket_unitized_goal(_TraceEnabled) :-
     table_mm_create_answer_block(Subgoal::in, Size::in, AnswerBlock::out),
     [will_not_call_mercury],
 "
-    MR_table_mm_create_answer_block(Subgoal, Size, AnswerBlock);
+    MR_tbl_mm_create_answer_block(MR_TABLE_DEBUG_BOOL,
+        Subgoal, Size, AnswerBlock);
 ").
 
 :- pragma foreign_proc("C",
     table_mm_fill_answer_block_shortcut(Subgoal::in),
     [will_not_call_mercury],
 "
-    MR_table_mm_fill_answer_block_shortcut(Subgoal);
+    MR_tbl_mm_fill_answer_block_shortcut(Subgoal);
 ").
 
 table_mm_return_all_shortcut(_) :-
@@ -1147,7 +1458,7 @@ table_mm_fill_answer_block_shortcut(_) :-
     [will_not_call_mercury, promise_semipure],
 "
     /*
-    MR_table_mmos_get_answer_table(Generator, TrieNode);
+    MR_tbl_mmos_get_answer_table(Generator, TrieNode);
     */
 ").
 
@@ -1170,7 +1481,7 @@ table_mm_fill_answer_block_shortcut(_) :-
     [will_not_call_mercury],
 "
     /*
-    MR_table_mmos_create_answer_block(Generator, BlockSize, AnswerBlock);
+    MR_tbl_mmos_create_answer_block(Generator, BlockSize, AnswerBlock);
     */
 ").
 
@@ -1179,7 +1490,7 @@ table_mm_fill_answer_block_shortcut(_) :-
     [will_not_call_mercury],
 "
     /*
-    MR_table_mmos_return_answer(Generator, AnswerBlock);
+    MR_tbl_mmos_return_answer(Generator, AnswerBlock);
     */
 ").
 
@@ -1188,7 +1499,7 @@ table_mm_fill_answer_block_shortcut(_) :-
     [will_not_call_mercury],
 "
     /*
-    MR_table_mmos_completion(Generator);
+    MR_tbl_mmos_completion(Generator);
     */
 ").
 
@@ -1404,84 +1715,91 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     table_lookup_insert_int(T0::in, V::in, T::out),
     [will_not_call_mercury],
 "
-    MR_table_lookup_insert_int(T0, V, T);
+    MR_tbl_lookup_insert_int(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_start_int(T0::in, S::in, V::in, T::out),
     [will_not_call_mercury],
 "
-    MR_table_lookup_insert_start_int(T0, S, V, T);
+    MR_tbl_lookup_insert_start_int(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE,
+        T0, S, V, T);
 ").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_char(T0::in, V::in, T::out),
     [will_not_call_mercury],
 "
-    MR_table_lookup_insert_char(T0, V, T);
+    MR_tbl_lookup_insert_char(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_string(T0::in, V::in, T::out),
     [will_not_call_mercury],
 "
-    MR_table_lookup_insert_string(T0, V, T);
+    MR_tbl_lookup_insert_string(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_float(T0::in, V::in, T::out),
     [will_not_call_mercury],
 "
-    MR_table_lookup_insert_float(T0, V, T);
+    MR_tbl_lookup_insert_float(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_enum(T0::in, R::in, V::in, T::out),
     [will_not_call_mercury],
 "
-    MR_table_lookup_insert_enum(T0, R, V, T);
+    MR_tbl_lookup_insert_enum(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0,
+        R, V, T);
 ").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_user(T0::in, V::in, T::out),
     [will_not_call_mercury],
 "
-    MR_table_lookup_insert_user(T0, TypeInfo_for_T, V, T);
+    MR_tbl_lookup_insert_user(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0,
+        TypeInfo_for_T, V, T);
 ").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_user_fast_loose(T0::in, V::in, T::out),
     [will_not_call_mercury],
 "
-    MR_table_lookup_insert_user_fast_loose(T0, TypeInfo_for_T, V, T);
+    MR_tbl_lookup_insert_user_addr(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0,
+        TypeInfo_for_T, V, T);
 ").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_poly(T0::in, V::in, T::out),
     [will_not_call_mercury],
 "
-    MR_table_lookup_insert_poly(T0, TypeInfo_for_T, V, T);
+    MR_tbl_lookup_insert_poly(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0,
+        TypeInfo_for_T, V, T);
 ").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_poly_fast_loose(T0::in, V::in, T::out),
     [will_not_call_mercury],
 "
-    MR_table_lookup_insert_poly_fast_loose(T0, TypeInfo_for_T, V, T);
+    MR_tbl_lookup_insert_poly_addr(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0,
+        TypeInfo_for_T, V, T);
 ").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_typeinfo(T0::in, V::in, T::out),
     [will_not_call_mercury],
 "
-    MR_table_lookup_insert_typeinfo(T0, V, T);
+    MR_tbl_lookup_insert_typeinfo(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE, T0, V, T);
 ").
 
 :- pragma foreign_proc("C",
     table_lookup_insert_typeclassinfo(T0::in, V::in, T::out),
     [will_not_call_mercury],
 "
-    MR_table_lookup_insert_typeclassinfo(T0, V, T);
+    MR_tbl_lookup_insert_typeclassinfo(NULL, MR_TABLE_DEBUG_BOOL, MR_FALSE,
+        T0, V, T);
 ").
 
 %-----------------------------------------------------------------------------%
@@ -1490,84 +1808,85 @@ MR_DECLARE_TYPE_CTOR_INFO_STRUCT(MR_TYPE_CTOR_INFO_NAME(io, state, 0));
     table_save_int_answer(AB::in, Offset::in, V::in),
     [will_not_call_mercury],
 "
-    MR_table_save_int_answer(AB, Offset, V);
+    MR_tbl_save_int_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
     table_save_char_answer(AB::in, Offset::in, V::in),
     [will_not_call_mercury],
 "
-    MR_table_save_char_answer(AB, Offset, V);
+    MR_tbl_save_char_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
     table_save_string_answer(AB::in, Offset::in, V::in),
     [will_not_call_mercury],
 "
-    MR_table_save_string_answer(AB, Offset, V);
+    MR_tbl_save_string_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
     table_save_float_answer(AB::in, Offset::in, V::in),
     [will_not_call_mercury],
 "
-    MR_table_save_float_answer(AB, Offset, V);
+    MR_tbl_save_float_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
     table_save_io_state_answer(AB::in, Offset::in, V::ui),
     [will_not_call_mercury],
 "
-    MR_table_save_io_state_answer(AB, Offset, V);
+    MR_tbl_save_io_state_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
     table_save_any_answer(AB::in, Offset::in, V::in),
     [will_not_call_mercury],
 "
-    MR_table_save_any_answer(AB, Offset, TypeInfo_for_T, V);
+    MR_tbl_save_any_answer(MR_TABLE_DEBUG_BOOL, AB, Offset,
+        TypeInfo_for_T, V);
 ").
 
 :- pragma foreign_proc("C",
     table_restore_int_answer(AB::in, Offset::in, V::out),
     [will_not_call_mercury, promise_semipure],
 "
-    MR_table_restore_int_answer(AB, Offset, V);
+    MR_tbl_restore_int_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
     table_restore_char_answer(AB::in, Offset::in, V::out),
     [will_not_call_mercury, promise_semipure],
 "
-    MR_table_restore_char_answer(AB, Offset, V);
+    MR_tbl_restore_char_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
     table_restore_string_answer(AB::in, Offset::in, V::out),
     [will_not_call_mercury, promise_semipure],
 "
-    MR_table_restore_string_answer(AB, Offset, V);
+    MR_tbl_restore_string_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
     table_restore_float_answer(AB::in, Offset::in, V::out),
     [will_not_call_mercury, promise_semipure],
 "
-    MR_table_restore_float_answer(AB, Offset, V);
+    MR_tbl_restore_float_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
     table_restore_io_state_answer(AB::in, Offset::in, V::uo),
     [will_not_call_mercury, promise_semipure],
 "
-    MR_table_restore_io_state_answer(AB, Offset, V);
+    MR_tbl_restore_io_state_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 :- pragma foreign_proc("C",
     table_restore_any_answer(AB::in, Offset::in, V::out),
     [will_not_call_mercury, promise_semipure],
 "
-    MR_table_restore_any_answer(AB, Offset, V);
+    MR_tbl_restore_any_answer(MR_TABLE_DEBUG_BOOL, AB, Offset, V);
 ").
 
 table_error(Message) :-

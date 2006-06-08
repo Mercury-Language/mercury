@@ -482,9 +482,9 @@
 
 get_pred_attributes(ProcId, Module, Name, Arity, PredOrFunc) :-
     (
-        ProcId = proc(Module, PredOrFunc, _, Name, Arity, _)
+        ProcId = ordinary_proc_label(Module, PredOrFunc, _, Name, Arity, _)
     ;
-        ProcId = special_proc(Module, SpecialId, _, _, _, _),
+        ProcId = special_proc_label(Module, SpecialId, _, _, _, _),
         PredOrFunc = predicate,
         Arity = get_special_pred_id_arity(SpecialId),
         Name = get_special_pred_id_target_name(SpecialId)

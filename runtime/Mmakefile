@@ -121,6 +121,13 @@ BODY_HDRS	=	\
 			mercury_ml_deconstruct_body.h	\
 			mercury_ml_expand_body.h	\
 			mercury_ml_functor_body.h	\
+			mercury_table_int_fix_index_body.h \
+			mercury_table_int_start_index_body.h \
+			mercury_table_typeinfo_body.h \
+			mercury_table_type_body.h 	\
+			mercury_tabling_stats_defs.h 	\
+			mercury_tabling_stats_nodefs.h 	\
+			mercury_tabling_stats_undefs.h 	\
 			mercury_unify_compare_body.h
 
 MACHHDRS	= 	machdeps/no_regs.h	\
@@ -279,6 +286,12 @@ mercury_deep_copy.$(EXT_FOR_PIC_OBJECTS):	mercury_deep_copy_body.h
 mercury_type_info.$(EXT_FOR_PIC_OBJECTS):	mercury_make_type_info_body.h
 mercury_ho_call.$(EXT_FOR_PIC_OBJECTS):		mercury_unify_compare_body.h
 
+# These files depend on several of the files in $(BODY_HDRS), and it is
+# easier to depend on them all than to specifically list only the ones
+# we mercury_tabling.c actually includes.
+mercury_tabling.$(O):				$(BODY_HDRS)
+mercury_tabling.$(EXT_FOR_PIC_OBJECTS):		$(BODY_HDRS)
+
 # ../tools/make_port_code makes both the .c and the .h file of the
 # mercury_profiling_builtin module.
 mercury_profiling_builtin.c:	mercury_profiling_builtin.h
@@ -410,9 +423,9 @@ mercury_conf.h: mercury_conf.h.date
 	@true
 
 .PHONY: cs
-cs: $(CFILES)
+cs:	$(CFILES)
 
-tags: $(CFILES) $(HDRS) $(BODY_HDRS) $(LIB_DLL_H)
+tags:	$(CFILES) $(HDRS) $(BODY_HDRS) $(LIB_DLL_H)
 	ctags $(CFILES) $(HDRS) $(BODY_HDRS) $(LIB_DLL_H)
 
 .PHONY: tags_file_exists

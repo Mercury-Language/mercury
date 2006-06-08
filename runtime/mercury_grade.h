@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2005 The University of Melbourne.
+** Copyright (C) 1997-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -61,7 +61,7 @@
 */
 
 #define MR_GRADE_PART_0	v14_
-#define MR_GRADE_EXEC_TRACE_VERSION_NO	4
+#define MR_GRADE_EXEC_TRACE_VERSION_NO	5
 #define MR_GRADE_DEEP_PROF_VERSION_NO	1
 
 #ifdef MR_HIGHLEVEL_CODE

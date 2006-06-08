@@ -69,6 +69,7 @@
 :- import_module ml_backend.ml_closure_gen.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.ml_unify_gen.
+:- import_module ml_backend.ml_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_type.
@@ -102,7 +103,7 @@ rtti_data_list_to_mlds(ModuleInfo, RttiDatas) = MLDS_Defns :-
 mlds_defn_is_potentially_duplicated(MLDS_Defn) :-
     MLDS_Defn = mlds_defn(EntityName, _, _, _),
     EntityName = data(DataName),
-    DataName = rtti(ctor_rtti_id(_, RttiName)),
+    DataName = mlds_rtti(ctor_rtti_id(_, RttiName)),
     ( RttiName = type_info(_)
     ; RttiName = pseudo_type_info(_)
     ).
@@ -118,7 +119,7 @@ rtti_data_to_mlds(ModuleInfo, RttiData) = MLDS_Defns :-
         MLDS_Defns = []
     ;
         rtti_data_to_id(RttiData, RttiId),
-        Name = data(rtti(RttiId)),
+        Name = data(mlds_rtti(RttiId)),
         gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo,
             Initializer, ExtraDefns),
         rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer,
@@ -137,7 +138,7 @@ rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer, MLDS_Defn) :-
     mlds_defn::out) is det.
 
 rtti_id_and_init_to_defn(RttiId, Initializer, MLDS_Defn) :-
-    Name = data(rtti(RttiId)),
+    Name = data(mlds_rtti(RttiId)),
     rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, MLDS_Defn).
 
 :- pred rtti_entity_name_and_init_to_defn(mlds_entity_name::in, rtti_id::in,
@@ -1111,7 +1112,7 @@ gen_init_cast_rtti_data(DestType, ModuleName, RttiData) = Initializer :-
         SrcType = mlds_rtti_type(item_type(tc_rtti_id(TCName,
             base_typeclass_info(InstanceModuleName, InstanceString)))),
         MLDS_ModuleName = mercury_module_name_to_mlds(InstanceModuleName),
-        MLDS_DataName = rtti(tc_rtti_id(TCName,
+        MLDS_DataName = mlds_rtti(tc_rtti_id(TCName,
             base_typeclass_info(InstanceModuleName, InstanceString))),
         DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
         Rval = const(data_addr_const(DataAddr)),
@@ -1224,7 +1225,7 @@ gen_rtti_name(ThisModuleName, RttiTypeCtor0, RttiName) = Rval :-
         )
     ),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    MLDS_DataName = rtti(ctor_rtti_id(RttiTypeCtor, RttiName)),
+    MLDS_DataName = mlds_rtti(ctor_rtti_id(RttiTypeCtor, RttiName)),
     DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
     Rval = const(data_addr_const(DataAddr)).
 
@@ -1268,7 +1269,7 @@ gen_tc_rtti_name(_ThisModuleName, TCName, TCRttiName) = Rval :-
         TCRttiName = type_class_instance_methods(_Types),
         MLDS_ModuleName = mlds_module_name_from_tc_name(TCName)
     ),
-    MLDS_DataName = rtti(tc_rtti_id(TCName, TCRttiName)),
+    MLDS_DataName = mlds_rtti(tc_rtti_id(TCName, TCRttiName)),
     DataAddr = data_addr(MLDS_ModuleName, MLDS_DataName),
     Rval = const(data_addr_const(DataAddr)).
 
@@ -1398,7 +1399,8 @@ gen_init_proc_id(ModuleInfo, RttiProcId) = Init :-
     % (this is similar to ml_gen_proc_addr_rval).
     ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcId, PredLabel, PredModule),
     ProcId = RttiProcId ^ proc_id,
-    QualifiedProcLabel = qual(PredModule, module_qual, PredLabel - ProcId),
+    QualifiedProcLabel = qual(PredModule, module_qual,
+        mlds_proc_label(PredLabel, ProcId)),
     Params = ml_gen_proc_params_from_rtti(ModuleInfo, RttiProcId),
     Signature = mlds_get_func_signature(Params),
     ProcAddrRval = const(code_addr_const(proc(QualifiedProcLabel, Signature))),
@@ -1461,65 +1463,6 @@ gen_init_sectag_locn(Locn) = gen_init_builtin_const(Name) :-
 
 gen_init_type_ctor_rep(TypeCtorData) = gen_init_builtin_const(Name) :-
     rtti.type_ctor_rep_to_string(TypeCtorData, Name).
-
-:- func gen_init_builtin_const(string) = mlds_initializer.
-
-gen_init_builtin_const(Name) = init_obj(Rval) :-
-        mercury_private_builtin_module(PrivateBuiltin),
-    MLDS_Module = mercury_module_name_to_mlds(PrivateBuiltin),
-    % XXX These are actually enumeration constants.
-    % Perhaps we should be using an enumeration type here,
-    % rather than `mlds_native_int_type'.
-    Type = mlds_native_int_type,
-    Rval = lval(var(qual(MLDS_Module, module_qual, mlds_var_name(Name, no)),
-        Type)).
-
-%-----------------------------------------------------------------------------%
-%
-% Conversion functions for the basic types.
-%
-% This handles arrays, maybe, null pointers, strings, and ints.
-
-:- func gen_init_array(func(T) = mlds_initializer, list(T)) =
-    mlds_initializer.
-
-gen_init_array(Conv, List) = init_array(list.map(Conv, List)).
-
-:- func gen_init_maybe(mlds_type, func(T) = mlds_initializer, maybe(T)) =
-    mlds_initializer.
-
-gen_init_maybe(_Type, Conv, yes(X)) = Conv(X).
-gen_init_maybe(Type, _Conv, no) = gen_init_null_pointer(Type).
-
-:- func gen_init_null_pointer(mlds_type) = mlds_initializer.
-
-gen_init_null_pointer(Type) = init_obj(const(null(Type))).
-
-:- func gen_init_string(string) = mlds_initializer.
-
-gen_init_string(String) = init_obj(const(string_const(String))).
-
-:- func gen_init_int(int) = mlds_initializer.
-
-gen_init_int(Int) = init_obj(const(int_const(Int))).
-
-:- func gen_init_bool(bool) = mlds_initializer.
-
-gen_init_bool(no) = init_obj(const(false)).
-gen_init_bool(yes) = init_obj(const(true)).
-
-:- func gen_init_boxed_int(int) = mlds_initializer.
-
-gen_init_boxed_int(Int) =
-    init_obj(unop(box(mlds_native_int_type), const(int_const(Int)))).
-
-:- func gen_init_reserved_address(module_info, reserved_address) =
-    mlds_initializer.
-
-gen_init_reserved_address(ModuleInfo, ReservedAddress) =
-    % XXX using `mlds_generic_type' here is probably wrong
-    init_obj(ml_gen_reserved_address(ModuleInfo, ReservedAddress,
-        mlds_generic_type)).
 
 %-----------------------------------------------------------------------------%
 

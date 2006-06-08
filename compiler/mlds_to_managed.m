@@ -23,7 +23,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- inst managed_lang == bound(csharp; managed_cplusplus).
+:- inst managed_lang == bound(lang_csharp; lang_managed_cplusplus).
 
     % Convert the MLDS to the specified foreign language and write
     % it to a file.
@@ -135,11 +135,11 @@ generate_code(Lang, MLDS, !IO) :-
     ), !IO),
 
     (
-        Lang = csharp,
+        Lang = lang_csharp,
         io.write_strings(["\npublic class " ++ wrapper_class_name, "{\n"],
             !IO)
     ;
-        Lang = managed_cplusplus,
+        Lang = lang_managed_cplusplus,
         io.write_strings(["\n__gc public class " ++ wrapper_class_name,
             "{\n", "public:\n"], !IO)
     ),
@@ -168,7 +168,8 @@ generate_code(Lang, MLDS, !IO) :-
     foreign_language::in(managed_lang), mercury_module_name::in,
     mlds_imports::in, io::di, io::uo) is det.
 
-output_language_specific_header_code(csharp, _ModuleName, _Imports, !IO) :-
+output_language_specific_header_code(lang_csharp, _ModuleName, _Imports,
+        !IO) :-
     get_il_data_rep(DataRep, !IO),
     ( DataRep = il_data_rep(yes, _) ->
         io.write_string("#define MR_HIGHLEVEL_DATA\n", !IO)
@@ -189,8 +190,8 @@ output_language_specific_header_code(csharp, _ModuleName, _Imports, !IO) :-
     ;
         SignAssembly = no
     ).
-output_language_specific_header_code(managed_cplusplus, ModuleName, Imports,
-        !IO) :-
+output_language_specific_header_code(lang_managed_cplusplus, ModuleName,
+        Imports, !IO) :-
     get_il_data_rep(DataRep, !IO),
     ( DataRep = il_data_rep(yes, _) ->
         io.write_string("#define MR_HIGHLEVEL_DATA\n", !IO)
@@ -269,7 +270,7 @@ generate_foreign_header_code(Lang, ModuleName, ForeignCode, !IO) :-
     % source file.  C# declares which assemblies it refers to via
     % command line arguments to the C# compiler.
     (
-        Lang = managed_cplusplus,
+        Lang = lang_managed_cplusplus,
         Imports = list.reverse(RevImports),
         list.foldl(
             (pred(ForeignImport::in, !.IO::di, !:IO::uo) is det :-
@@ -279,7 +280,7 @@ generate_foreign_header_code(Lang, ModuleName, ForeignCode, !IO) :-
                 io.write_strings(["#using """, FileName, """\n"], !IO)
             ), Imports, !IO)
     ;
-        Lang = csharp
+        Lang = lang_csharp
     ),
 
     HeaderCode = list.reverse(RevHeaderCode),
@@ -304,11 +305,11 @@ generate_namespace_details(Lang, ClassName, NameSpaceFmtStr, Namespace) :-
     % XXX We should consider what happens if we need to mangle
     % the namespace name.
     (
-        Lang = csharp,
+        Lang = lang_csharp,
         NameExt = "__csharp_code",
         NameSpaceFmtStr = "namespace @%s {"
     ;
-        Lang = managed_cplusplus,
+        Lang = lang_managed_cplusplus,
         NameExt = "__cpp_code",
         NameSpaceFmtStr = "namespace %s {"
     ),
@@ -374,10 +375,10 @@ generate_method_code(Lang, _ModuleName, Defn, !IO) :-
 
         predlabel_to_id(PredLabel, ProcId, MaybeSeqNum, Id),
         (
-            Lang = csharp,
+            Lang = lang_csharp,
             io.write_string("public static ", !IO)
         ;
-            Lang = managed_cplusplus,
+            Lang = lang_managed_cplusplus,
             io.write_string("static ", !IO)
         ),
         write_il_ret_type_as_foreign_type(Lang, ReturnType, !IO),
@@ -458,11 +459,11 @@ write_outline_arg_init(Lang, out(Type, VarName, _Lval), !IO) :-
     io.write_string(VarName, !IO),
     % In C# give output variables a default value to avoid warnings.
     (
-        Lang = csharp,
+        Lang = lang_csharp,
         io.write_string(" = ", !IO),
         write_parameter_initializer(Lang, Type, !IO)
     ;
-        Lang = managed_cplusplus
+        Lang = lang_managed_cplusplus
     ),
     io.write_string(";\n", !IO).
 write_outline_arg_init(_Lang, unused, !IO).
@@ -498,14 +499,13 @@ write_declare_and_assign_local(Lang, mlds_argument(Name, Type, _GcCode),
             io.write_string(" ", !IO),
             write_mlds_var_name_for_local(VarName, !IO),
 
-            % In C# give output types a default value to
-            % avoid warnings.
+            % In C# give output types a default value to avoid warnings.
             (
-                Lang = csharp,
+                Lang = lang_csharp,
                 io.write_string(" = ", !IO),
                 write_parameter_initializer(Lang, OutputType, !IO)
             ;
-                Lang = managed_cplusplus
+                Lang = lang_managed_cplusplus
             ),
             io.write_string(";\n", !IO)
         )
@@ -534,9 +534,9 @@ write_assign_local_to_output(Lang, mlds_argument(Name, Type, _GcCode), !IO) :-
         not is_anonymous_variable(VarName)
     ->
         (
-            Lang = csharp
+            Lang = lang_csharp
         ;
-            Lang = managed_cplusplus,
+            Lang = lang_managed_cplusplus,
             io.write_string("*", !IO)
         ),
         write_mlds_var_name_for_parameter(VarName, !IO),
@@ -651,10 +651,10 @@ write_rval_const(_Lang, data_addr_const(_), !IO) :-
     sorry(this_file, "data_addr_const rval").
 write_rval_const(Lang, null(_), !IO) :-
     (
-        Lang = csharp,
+        Lang = lang_csharp,
         io.write_string("null", !IO)
     ;
-        Lang = managed_cplusplus,
+        Lang = lang_managed_cplusplus,
         io.write_string("NULL", !IO)
     ).
 
@@ -677,10 +677,10 @@ write_lval(Lang, field(_, Rval, offset(OffSet), _, _), !IO) :-
     io.write_string("]", !IO).
 write_lval(Lang, mem_ref(Rval, _), !IO) :-
     (
-        Lang = managed_cplusplus,
+        Lang = lang_managed_cplusplus,
         io.write_string("*", !IO)
     ;
-        Lang = csharp
+        Lang = lang_csharp
     ),
     write_rval(Lang, Rval, !IO).
 write_lval(_Lang, var(Var, _VarType), !IO) :-
@@ -690,9 +690,9 @@ write_lval(_Lang, var(Var, _VarType), !IO) :-
 :- pred write_field_selector(foreign_language::in(managed_lang),
     io::di, io::uo) is det.
 
-write_field_selector(csharp, !IO) :-
+write_field_selector(lang_csharp, !IO) :-
     io.write_string(".", !IO).
-write_field_selector(managed_cplusplus, !IO) :-
+write_field_selector(lang_managed_cplusplus, !IO) :-
     io.write_string("->", !IO).
 
 :- pred write_defn_decl(foreign_language::in(managed_lang), mlds_defn::in,
@@ -739,9 +739,9 @@ write_input_arg_as_foreign_type(Lang, Arg, !IO) :-
 :- pred write_parameter_initializer(foreign_language::in(managed_lang),
     mlds_type::in, io::di, io::uo) is det.
 
-write_parameter_initializer(managed_cplusplus, _Type, !IO) :-
+write_parameter_initializer(lang_managed_cplusplus, _Type, !IO) :-
     unexpected(this_file, "initializer for MC++").
-write_parameter_initializer(csharp, Type, !IO) :-
+write_parameter_initializer(lang_csharp, Type, !IO) :-
     get_il_data_rep(DataRep, !IO),
     ILType = mlds_type_to_ilds_type(DataRep, Type),
     ILType = il_type(_, ILSimpleType),
@@ -780,9 +780,9 @@ write_il_type_modifier_as_foreign_type(_Lang, volatile, !IO) :-
     foreign_language::in(managed_lang),
     simple_type::in, io::di, io::uo) is det.
 
-write_il_simple_type_as_foreign_type(csharp, Type, !IO) :-
+write_il_simple_type_as_foreign_type(lang_csharp, Type, !IO) :-
     write_il_simple_type_as_foreign_type_cs(Type, !IO).
-write_il_simple_type_as_foreign_type(managed_cplusplus, Type, !IO) :-
+write_il_simple_type_as_foreign_type(lang_managed_cplusplus, Type, !IO) :-
     write_il_simple_type_as_foreign_type_mcpp(Type, !IO).
 
 :- pred write_il_simple_type_as_foreign_type_cs(
@@ -825,13 +825,13 @@ write_il_simple_type_as_foreign_type_cs(object, !IO) :-
 write_il_simple_type_as_foreign_type_cs(refany, !IO) :-
     io.write_string("mercury.MR_RefAny", !IO).
 write_il_simple_type_as_foreign_type_cs(class(ClassName), !IO) :-
-    write_class_name(csharp, ClassName, !IO).
+    write_class_name(lang_csharp, ClassName, !IO).
 write_il_simple_type_as_foreign_type_cs(valuetype(ClassName), !IO) :-
-    write_class_name(csharp, ClassName, !IO).
+    write_class_name(lang_csharp, ClassName, !IO).
 write_il_simple_type_as_foreign_type_cs(interface(_ClassName), !IO) :-
     sorry(this_file, "interfaces").
 write_il_simple_type_as_foreign_type_cs('[]'(Type, Bounds), !IO) :-
-    write_il_type_as_foreign_type(csharp, Type, !IO),
+    write_il_type_as_foreign_type(lang_csharp, Type, !IO),
     io.write_string("[]", !IO),
     (
         Bounds = []
@@ -842,9 +842,9 @@ write_il_simple_type_as_foreign_type_cs('[]'(Type, Bounds), !IO) :-
 write_il_simple_type_as_foreign_type_cs('&'(Type), !IO) :-
     % XXX Is this always right?
     io.write_string("ref ", !IO),
-    write_il_type_as_foreign_type(csharp, Type, !IO).
+    write_il_type_as_foreign_type(lang_csharp, Type, !IO).
 write_il_simple_type_as_foreign_type_cs('*'(Type), !IO) :-
-    write_il_type_as_foreign_type(csharp, Type, !IO),
+    write_il_type_as_foreign_type(lang_csharp, Type, !IO),
     io.write_string(" *", !IO).
 
 :- pred write_il_simple_type_as_foreign_type_mcpp(
@@ -891,26 +891,26 @@ write_il_simple_type_as_foreign_type_mcpp(class(ClassName), !IO) :-
         io.write_string("mercury::MR_Box", !IO)
     ;
         io.write_string("public class ", !IO),
-        write_class_name(managed_cplusplus, ClassName, !IO),
+        write_class_name(lang_managed_cplusplus, ClassName, !IO),
         io.write_string(" *", !IO)
     ).
 write_il_simple_type_as_foreign_type_mcpp(valuetype(ClassName), !IO) :-
     io.write_string("__value class ", !IO),
-    write_class_name(managed_cplusplus, ClassName, !IO).
+    write_class_name(lang_managed_cplusplus, ClassName, !IO).
         % XXX this is not the right syntax
 write_il_simple_type_as_foreign_type_mcpp(interface(ClassName), !IO) :-
     io.write_string("interface ", !IO),
-    write_class_name(managed_cplusplus, ClassName, !IO),
+    write_class_name(lang_managed_cplusplus, ClassName, !IO),
     io.write_string(" *", !IO).
         % XXX this needs more work
 write_il_simple_type_as_foreign_type_mcpp('[]'(_Type, _Bounds), !IO) :-
     io.write_string("mercury::MR_Word", !IO).
 write_il_simple_type_as_foreign_type_mcpp('&'(Type), !IO) :-
     io.write_string("MR_Ref(", !IO),
-    write_il_type_as_foreign_type(managed_cplusplus, Type, !IO),
+    write_il_type_as_foreign_type(lang_managed_cplusplus, Type, !IO),
     io.write_string(")", !IO).
 write_il_simple_type_as_foreign_type_mcpp('*'(Type), !IO) :-
-    write_il_type_as_foreign_type(managed_cplusplus, Type, !IO),
+    write_il_type_as_foreign_type(lang_managed_cplusplus, Type, !IO),
     io.write_string(" *", !IO).
 
 :- pred write_csharp_initializer(simple_type::in, io::di, io::uo) is det.
@@ -963,7 +963,7 @@ write_csharp_initializer('*'(_Type), !IO) :-
     io.write_string("null", !IO).
 write_csharp_initializer(valuetype(ClassName), !IO) :-
     io.write_string("new ", !IO),
-    write_class_name(csharp, ClassName, !IO),
+    write_class_name(lang_csharp, ClassName, !IO),
     io.write_string("()", !IO).
 
 :- pred write_class_name(foreign_language::in(managed_lang),
@@ -972,10 +972,10 @@ write_csharp_initializer(valuetype(ClassName), !IO) :-
 write_class_name(Lang, structured_name(_Asm, DottedName, NestedClasses),
         !IO) :-
     (
-        Lang = csharp,
+        Lang = lang_csharp,
         Sep = "."
     ;
-        Lang = managed_cplusplus,
+        Lang = lang_managed_cplusplus,
         Sep = "::"
     ),
     io.write_list(DottedName ++ NestedClasses, Sep, io.write_string, !IO).

@@ -2116,7 +2116,7 @@ pragma_allowed_in_interface(import(_, _, _, _, _), no).
 pragma_allowed_in_interface(source_file(_), yes).
     % yes, but the parser will strip out `source_file' pragmas anyway...
 pragma_allowed_in_interface(fact_table(_, _, _), no).
-pragma_allowed_in_interface(tabled(_, _, _, _, _), no).
+pragma_allowed_in_interface(tabled(_, _, _, _, _, _), no).
     % `reserve_tag' must be in the interface iff the corresponding
     % type definition is in the interface. This is checked in make_hlds.m.
 pragma_allowed_in_interface(reserve_tag(_, _), yes).
@@ -2800,7 +2800,7 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
 contains_tabling_pragma([Item | Items]) :-
     (
         Item = pragma(_, Pragma) - _Context,
-        Pragma = tabled(_, _, _, _, _)
+        Pragma = tabled(_, _, _, _, _, _)
     ;
         contains_tabling_pragma(Items)
     ).
@@ -3219,7 +3219,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         globals.io_get_target(CompilationTarget, !IO),
         (
             HighLevelCode = yes,
-            CompilationTarget = c
+            CompilationTarget = target_c
         ->
             % For --high-level-code with --target c, we need to make sure that
             % we generate the header files for imported modules before
@@ -3343,7 +3343,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         module_name_to_file_name(ModuleName, ".class", no, ClassFileName, !IO),
         SubModules = submodules(ModuleName, AllDeps),
         (
-            Target = il,
+            Target = target_il,
             SubModules = [_ | _]
         ->
             io.write_strings(DepStream, [DllFileName, " : "], !IO),
@@ -3393,19 +3393,19 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         ;
             ForeignImportedModules = [_ | _],
             (
-                Target = il,
+                Target = target_il,
                 ForeignImportTarget = DllFileName,
                 ForeignImportExt = ".dll"
             ;
-                Target = java,
+                Target = target_java,
                 ForeignImportTarget = ClassFileName,
                 ForeignImportExt = ".java"
             ;
-                Target = c,
+                Target = target_c,
                 ForeignImportTarget = ObjFileName,
                 ForeignImportExt = ".mh"
             ;
-                Target = asm,
+                Target = target_asm,
                 ForeignImportTarget = ObjFileName,
                 ForeignImportExt = ".mh"
             ),
@@ -3418,7 +3418,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         ),
 
         (
-            Target = il,
+            Target = target_il,
             not set.empty(LangSet)
         ->
             Langs = set.to_sorted_list(LangSet),
@@ -3434,7 +3434,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
         % ILASM_KEYFLAG-<module> which is used to build the command line
         % for ilasm.
         (
-            Target = il,
+            Target = target_il,
             SignAssembly = yes
         ->
             module_name_to_make_var_name(ModuleName, ModuleNameString),
@@ -3649,7 +3649,7 @@ write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps,
         io.write_strings(DepStream, [
             ForeignFileName, " : ", IlFileName, "\n\n"], !IO),
 
-        ( ForeignLang = csharp ->
+        ( ForeignLang = lang_csharp ->
             % Store in the variable
             % CSHARP_ASSEMBLY_REFS-foreign_code_name
             % the command line argument to reference all the
@@ -4058,7 +4058,10 @@ generate_dependencies(Mode, Search, ModuleName, DepsMap0, !IO) :-
     % time, since that is simpler and probably more efficient anyway.
     %
     globals.io_get_target(Target, !IO),
-    ( Target = java, Mode = output_all_dependencies ->
+    (
+        Target = target_java,
+        Mode = output_all_dependencies
+    ->
         create_java_shell_script(ModuleName, _Succeeded, !IO)
     ;
         true
@@ -4206,10 +4209,10 @@ generate_dependencies_write_d_files([Dep | Deps],
         ),
 
         globals.io_get_target(Target, !IO),
-        ( Target = c, Lang = c
-        ; Target = asm, Lang = c
-        ; Target = java, Lang = java
-        ; Target = il, Lang = il
+        ( Target = target_c, Lang = lang_c
+        ; Target = target_asm, Lang = lang_c
+        ; Target = target_java, Lang = lang_java
+        ; Target = target_il, Lang = lang_il
         ),
         % Assume we need the `.mh' files for all imported modules
         % (we will if they define foreign types).
@@ -4582,7 +4585,7 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     io.write_string(DepStream, "\n", !IO),
 
     globals.io_get_target(Target, !IO),
-    ( Target = il ->
+    ( Target = target_il ->
         ForeignModulesAndExts = foreign_modules(Modules, DepsMap)
     ;
         ForeignModulesAndExts = []
@@ -4696,7 +4699,7 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         % For --target asm, we only generate separate object files
         % for top-level modules and separate sub-modules, not for
         % nested sub-modules.
-        Target = asm,
+        Target = target_asm,
         list.filter(IsNested, Modules, NestedModules, MainModules),
         NestedModules = [_ | _]
     ->
@@ -4895,7 +4898,7 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
     globals.io_lookup_bool_option(highlevel_code, HighLevelCode, !IO),
     (
         HighLevelCode = yes,
-        ( ( Target = c ; Target = asm ) ->
+        ( ( Target = target_c ; Target = target_asm ) ->
             % For the `--target c' MLDS back-end, we
             % generate `.mih' files for every module.
             % Likewise for the `--target asm' back-end.
@@ -4921,7 +4924,7 @@ generate_dv_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
 
     io.write_string(DepStream, MakeVarName, !IO),
     io.write_string(DepStream, ".mhs = ", !IO),
-    ( ( Target = c ; Target = asm ) ->
+    ( ( Target = target_c ; Target = target_asm ) ->
         write_compact_dependencies_list(Modules, "", ".mh",
             Basis, DepStream, !IO)
     ;
@@ -5136,11 +5139,16 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
             MainRule ++ EndIf2 ++ EndIf
     ;
         Gmake = no,
-        ( Target = il ->
+        (
+            Target = target_il,
             Rules = ILMainRule
-        ; Target = java ->
+        ;
+            Target = target_java,
             Rules = JavaMainRule
         ;
+            ( Target = target_c
+            ; Target = target_asm
+            ),
             Rules = MainRule
         )
     ),
@@ -5224,11 +5232,16 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
             LibRule ++ EndIf2 ++ EndIf
     ;
         Gmake = no,
-        ( Target = il ->
+        (
+            Target = target_il,
             LibRules = ILLibRule
-        ; Target = java ->
+        ;
+            Target = target_java,
             LibRules = JavaLibRule
         ;
+            ( Target = target_c
+            ; Target = target_asm
+            ),
             LibRules = LibRule
         )
     ),
@@ -5671,7 +5684,7 @@ foreign_modules(Modules, DepsMap) = ForeignModules :-
 module_needs_header(DepsMap, Module) :-
     map.lookup(DepsMap, Module, deps(_, ModuleImports)),
     ModuleImports ^ foreign_code = contains_foreign_code(Langs),
-    set.member(c, Langs).
+    set.member(lang_c, Langs).
 
     % Succeed iff we need to generate a foreign language output file
     % for the specified module.
@@ -5719,9 +5732,9 @@ get_extra_link_objects_2([Module | Modules], DepsMap, Target,
     % XXX currently we only support `C' foreign code.
     %
     (
-        Target = asm,
+        Target = target_asm,
         ModuleImports ^ foreign_code = contains_foreign_code(Langs),
-        set.member(c, Langs)
+        set.member(lang_c, Langs)
     ->
         sym_name_to_string(Module, ".", FileName),
         NewLinkObjs = [(FileName ++ "__c_code") - Module | FactTableObjs]
@@ -5766,14 +5779,13 @@ get_item_foreign_code(Globals, Item - Context, !Info) :-
         % but we should handle the Java/IL backends here as well.
         % (See do_get_item_foreign_code for details/5).
         !:Info = !.Info ^ used_foreign_languages :=
-            set.insert(!.Info ^ used_foreign_languages, c)
+            set.insert(!.Info ^ used_foreign_languages, lang_c)
     ; ( Item = initialise(_, _, _) ; Item = finalise(_, _, _) ) ->
         % Intialise/finalise declarations introduce export pragmas, but
         % again they won't have been expanded by the time we get here.
         % XXX we don't currently support these on non-C backends. 
-        Lang = c,
         !:Info = !.Info ^ used_foreign_languages :=
-            set.insert(!.Info ^ used_foreign_languages, Lang),
+            set.insert(!.Info ^ used_foreign_languages, lang_c),
         !:Info = !.Info ^ module_contains_foreign_export :=
             contains_foreign_export
     ;      
@@ -5819,8 +5831,7 @@ do_get_item_foreign_code(Globals, Pragma, Context, Info0, Info) :-
         ;
             % is it one of the languages we support?
             ( list.member(NewLang, BackendLangs) ->
-                Info = Info0 ^ foreign_proc_languages
-                    ^ elem(Name) := NewLang
+                Info = Info0 ^ foreign_proc_languages ^ elem(Name) := NewLang
             ;
                 Info = Info0
             )
@@ -5834,10 +5845,10 @@ do_get_item_foreign_code(Globals, Pragma, Context, Info0, Info) :-
         % we need to treat `pragma export' like the
         % other pragmas for foreign code.
         Pragma = export(_, _, _, _),
-        list.member(c, BackendLangs)
+        list.member(lang_c, BackendLangs)
     ->
         % XXX we assume lang = c for exports
-        Lang = c,
+        Lang = lang_c,
         Info1 = Info0 ^ used_foreign_languages :=
             set.insert(Info0 ^ used_foreign_languages, Lang),
         Info = Info1 ^ module_contains_foreign_export :=
@@ -5854,13 +5865,13 @@ do_get_item_foreign_code(Globals, Pragma, Context, Info0, Info) :-
         % so we need to treat modules containing
         % fact tables as if they contain foreign
         % code.
-        ( Target = asm
-        ; Target = c
+        ( Target = target_asm
+        ; Target = target_c
         ),
         Pragma = fact_table(_, _, _)
     ->
         Info = Info0 ^ used_foreign_languages :=
-            set.insert(Info0 ^ used_foreign_languages, c)
+            set.insert(Info0 ^ used_foreign_languages, lang_c)
     ;
         Info = Info0
     ).
@@ -7353,7 +7364,7 @@ item_needs_foreign_imports(pragma(_, export(_, _, _, _)), Lang) :-
     foreign_language(Lang).
 
     % `:- pragma import' is only supported for C.
-item_needs_foreign_imports(pragma(_, import(_, _, _, _, _)), c).
+item_needs_foreign_imports(pragma(_, import(_, _, _, _, _)), lang_c).
 item_needs_foreign_imports(Item @ type_defn(_, _, _, _, _), Lang) :-
     Item ^ td_ctor_defn = foreign_type(ForeignType, _, _),
     Lang = foreign_type_language(ForeignType).
@@ -7666,7 +7677,7 @@ reorderable_item(pragma(_, Pragma)) = Reorderable :-
     ; Pragma = promise_equivalent_clauses(_, _), Reorderable = yes
     ; Pragma = reserve_tag(_, _), Reorderable = yes
     ; Pragma = source_file(_), Reorderable = no
-    ; Pragma = tabled(_, _, _, _, _), Reorderable = yes
+    ; Pragma = tabled(_, _, _, _, _, _), Reorderable = yes
     ; Pragma = terminates(_, _), Reorderable = yes
     ; Pragma = termination2_info(_, _, _, _, _, _), Reorderable = no
     ; Pragma = termination_info(_, _, _, _, _), Reorderable = yes
@@ -7747,7 +7758,7 @@ chunkable_item(pragma(_, Pragma)) = Reorderable :-
     ; Pragma = promise_equivalent_clauses(_, _), Reorderable = yes
     ; Pragma = reserve_tag(_, _), Reorderable = yes
     ; Pragma = source_file(_), Reorderable = no
-    ; Pragma = tabled(_, _, _, _, _), Reorderable = yes
+    ; Pragma = tabled(_, _, _, _, _, _), Reorderable = yes
     ; Pragma = terminates(_, _), Reorderable = yes
     ; Pragma = termination2_info( _, _, _, _, _, _), Reorderable = no
     ; Pragma = termination_info(_, _, _, _, _), Reorderable = yes

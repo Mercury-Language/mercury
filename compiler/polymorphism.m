@@ -2230,7 +2230,7 @@ make_typeclass_info_from_subclass(Constraint, Seen, ClassId,
     poly_info_get_varset(!.Info, VarSet0),
     poly_info_get_var_types(!.Info, VarTypes0),
     make_int_const_construction_alloc(SuperClassIndex, yes("SuperClassIndex"),
-        IndexGoal, IndexVar, VarTypes0, VarTypes, VarSet0, VarSet),
+        IndexGoal, IndexVar, VarSet0, VarSet, VarTypes0, VarTypes),
     poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
 
     % We extract the superclass typeclass_info by inserting a call
@@ -2580,7 +2580,7 @@ maybe_init_second_cell(Type, TypeCtorVar, TypeCtorIsVarArity, ArgTypeInfoVars,
         % we cannot use a one-cell representation for that type.
         list.length(ArgTypeInfoVars, ActualArity),
         make_int_const_construction_alloc(ActualArity, yes("ActualArity"),
-            ArityGoal, ArityVar, !VarTypes, !VarSet),
+            ArityGoal, ArityVar, !VarSet, !VarTypes),
         init_type_info_var(Type, [TypeCtorVar, ArityVar | ArgTypeInfoVars],
             no, Var, TypeInfoGoal, !VarSet, !VarTypes, !RttiVarMaps),
         ExtraGoals = ExtraGoals0 ++ [ArityGoal |  ArgTypeInfoGoals]
@@ -2855,7 +2855,7 @@ extract_type_info(TypeVar, TypeClassInfoVar, Index, Goals, TypeInfoVar,
 gen_extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index, ModuleInfo,
         Goals, TypeInfoVar, !VarSet, !VarTypes, !RttiVarMaps) :-
     make_int_const_construction_alloc(Index, yes("TypeInfoIndex"),
-        IndexGoal, IndexVar, !VarTypes, !VarSet),
+        IndexGoal, IndexVar, !VarSet, !VarTypes),
     Type = variable(TypeVar, Kind),
     new_type_info_var_raw(Type, type_info, TypeInfoVar,
         !VarSet, !VarTypes, !RttiVarMaps),

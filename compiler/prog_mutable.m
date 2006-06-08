@@ -175,10 +175,14 @@ mutable_init_pred_decl(ModuleName, Name) = InitPredDecl :-
     InstVarSet = varset.init,
     ExistQVars = [],
     Constraints = constraints([], []),
+    ArgDecls = [],
+    WithType = no,
+    WithInst = no,
+    Condition = true,
     InitPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars,
         predicate, mutable_init_pred_sym_name(ModuleName, Name),
-        [], no /* with_type */, no /* with_inst */, yes(det),
-        true /* condition */, purity_impure, Constraints).
+        ArgDecls, WithType, WithInst, yes(det), Condition, purity_impure,
+        Constraints).
 
 %-----------------------------------------------------------------------------%
 

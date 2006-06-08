@@ -197,7 +197,6 @@
 
     ;       stack_trace_higher_order
     ;       tabling_via_extra_args
-    ;       allow_table_reset
     ;       generate_bytecode
     ;       line_numbers
     ;       auto_comments
@@ -428,6 +427,7 @@
 
     % Code generation options
     ;       low_level_debug
+    ;       table_debug
     ;       trad_passes
     ;       polymorphism
     ;       reclaim_heap_on_failure
@@ -941,7 +941,6 @@ option_defaults_2(aux_output_option, [
     delay_death                         -   bool(yes),
     stack_trace_higher_order            -   bool(no),
     tabling_via_extra_args              -   bool(yes),
-    allow_table_reset                   -   bool(no),
     generate_bytecode                   -   bool(no),
     line_numbers                        -   bool(yes),
     auto_comments                       -   bool(no),
@@ -1097,6 +1096,7 @@ option_defaults_2(internal_use_option, [
 option_defaults_2(code_gen_option, [
     % Code Generation Options
     low_level_debug                     -   bool(no),
+    table_debug                         -   bool(no),
     trad_passes                         -   bool(yes),
     polymorphism                        -   bool(yes),
     reclaim_heap_on_failure             -   bool_special,
@@ -1657,7 +1657,6 @@ long_option("force-disable-tracing",    force_disable_tracing).
 long_option("delay-death",          delay_death).
 long_option("stack-trace-higher-order", stack_trace_higher_order).
 long_option("tabling-via-extra-args",   tabling_via_extra_args).
-long_option("allow-table-reset",    allow_table_reset).
 long_option("generate-bytecode",    generate_bytecode).
 long_option("line-numbers",         line_numbers).
 long_option("auto-comments",        auto_comments).
@@ -1805,6 +1804,7 @@ long_option("disable-trail-ops",    disable_trail_ops).
 
 % code generation options
 long_option("low-level-debug",      low_level_debug).
+long_option("table-debug",          table_debug).
 long_option("polymorphism",         polymorphism).
 long_option("trad-passes",          trad_passes).
 long_option("reclaim-heap-on-failure",  reclaim_heap_on_failure).
@@ -3741,13 +3741,17 @@ options_help_compilation_model -->
 options_help_code_generation -->
     io.write_string("\nCode generation options:\n"),
     write_tabbed_lines([
-        "--low-level-debug",
-        "\tEnables various low-level debugging stuff, that was in",
-        "\tthe distant past used to debug the low-level code generation.",
-        "\tYou don't want to use this option unless you are hacking",
-        "\tthe Mercury compiler itself (and probably not even then).",
-        "\tCauses the generated code to become VERY big and VERY",
-        "\tinefficient.  Slows down compilation a LOT.",
+%       "--low-level-debug",
+%       "\tEnables various low-level debugging stuff, that was in",
+%       "\tthe distant past used to debug the low-level code generation.",
+%       "\tYou don't want to use this option unless you are hacking",
+%       "\tthe Mercury compiler itself (and probably not even then).",
+%       "\tCauses the generated code to become VERY big and VERY",
+%       "\tinefficient.  Slows down compilation a LOT.",
+
+%       "--table-debug",
+%       "\tEnables the generation of code that helps to debug tabling",
+%       "\tprimitives.",
 
         "--pic",
         "\tGenerate position-independent code.",

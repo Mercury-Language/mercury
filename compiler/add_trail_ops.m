@@ -647,18 +647,15 @@ trail_generate_foreign_proc(PredName, Features, InstMap,
     Detism = det, 
     some [!ForeignProcAttrs] (
         % XXX handle other target languages here.
-        !:ForeignProcAttrs = default_attributes(c),
+        !:ForeignProcAttrs = default_attributes(lang_c),
         set_may_call_mercury(will_not_call_mercury, !ForeignProcAttrs),
         set_thread_safe(thread_safe, !ForeignProcAttrs),
         FinalForeignProcAttrs = !.ForeignProcAttrs
     ),
-    PrefixCode = "",
     ExtraArgs  = [],
-    SuffixCode = "",
     goal_util.generate_foreign_proc(PrivateBuiltinModule, PredName,
-        predicate, only_mode, Detism, FinalForeignProcAttrs,
-        Args, ExtraArgs, PrefixCode, ForeignCode, SuffixCode, Features,
-        InstMap, ModuleInfo, Context, ForeignProcGoal).
+        predicate, only_mode, Detism, FinalForeignProcAttrs, Args, ExtraArgs,
+        ForeignCode, Features, InstMap, ModuleInfo, Context, ForeignProcGoal).
 
 %-----------------------------------------------------------------------------%
 

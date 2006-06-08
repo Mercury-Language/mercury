@@ -5,15 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: llds_out.m.
 % Main authors: conway, fjh, zs.
-% 
+%
 % LLDS - The Low-Level Data Structure.
-% 
+%
 % This module defines the routines for printing out LLDS,
 % the Low Level Data Structure.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -25,6 +25,7 @@
 :- import_module hlds.hlds_module.
 :- import_module libs.globals.
 :- import_module ll_backend.llds.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -75,6 +76,8 @@
     int::in, int::out, decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 :- pred output_data_addr(data_addr::in, io::di, io::uo) is det.
+
+:- func proc_tabling_info_var_name(proc_label) = string.
 
     % c_data_linkage_string(DefaultLinkage, BeingDefined):
     %
@@ -196,7 +199,6 @@
 :- import_module ll_backend.layout_out.
 :- import_module ll_backend.pragma_c_gen.
 :- import_module ll_backend.rtti_out.
-:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_foreign.
@@ -260,6 +262,7 @@ output_llds(CFile, ComplexityProcs, StackLayoutLabels, !IO) :-
 :- pred output_c_file_mercury_headers(io::di, io::uo) is det.
 
 output_c_file_mercury_headers(!IO) :-
+    io.write_string("#define MR_ALLOW_RESET\n", !IO),
     globals.io_get_trace_level(TraceLevel, !IO),
     ( given_trace_level_is_none(TraceLevel) = no ->
         io.write_string("#include ""mercury_imp.h""\n", !IO),
@@ -289,8 +292,9 @@ output_c_file_mercury_headers(!IO) :-
 output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
         FileStream, !DeclSet, !IO) :-
     CFile = c_file(ModuleName, C_HeaderLines, UserForeignCode, Exports,
-        Vars, ScalarCommonDatas, VectorCommonDatas, RttiDatas, LayoutDatas0,
-        Modules, UserInitPredCNames, UserFinalPredCNames),
+        TablingInfoStructs, ScalarCommonDatas, VectorCommonDatas,
+        RttiDatas, LayoutDatas0, Modules,
+        UserInitPredCNames, UserFinalPredCNames),
     library.version(Version),
     io.set_output_stream(FileStream, OutputStream, !IO),
     module_name_to_file_name(ModuleName, ".m", no, SourceFileName, !IO),
@@ -311,7 +315,7 @@ output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
         !DeclSet, !IO),
     output_rtti_data_decl_list(RttiDatas, !DeclSet, !IO),
     output_c_label_decls(StackLayoutLabels, Labels, !DeclSet, !IO),
-    list.foldl2(output_comp_gen_c_var, Vars, !DeclSet, !IO),
+    list.foldl2(output_tabling_info_struct, TablingInfoStructs, !DeclSet, !IO),
     list.foldl2(output_scalar_common_data_defn, ScalarCommonDatas,
         !DeclSet, !IO),
     list.foldl2(output_vector_common_data_defn, VectorCommonDatas,
@@ -325,7 +329,7 @@ output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
     list.foldl(io.write_string, Exports, !IO),
     io.write_string("\n", !IO),
     output_c_module_init_list(ModuleName, Modules, RttiDatas, LayoutDatas,
-        Vars, ComplexityProcs, StackLayoutLabels, UserInitPredCNames,
+        ComplexityProcs, StackLayoutLabels, UserInitPredCNames,
         UserFinalPredCNames, !DeclSet, !IO),
     io.set_output_stream(OutputStream, _, !IO).
 
@@ -358,12 +362,11 @@ order_layout_datas_2([Layout | Layouts], !ProcLayouts, !LabelLayouts,
     order_layout_datas_2(Layouts, !ProcLayouts, !LabelLayouts, !OtherLayouts).
 
 :- pred output_c_module_init_list(module_name::in, list(comp_gen_c_module)::in,
-    list(rtti_data)::in, list(layout_data)::in, list(comp_gen_c_var)::in,
-    list(complexity_proc_info)::in, map(label, data_addr)::in,
-    list(string)::in, list(string)::in, decl_set::in, decl_set::out,
-    io::di, io::uo) is det.
+    list(rtti_data)::in, list(layout_data)::in, list(complexity_proc_info)::in,
+    map(label, data_addr)::in, list(string)::in, list(string)::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
 
-output_c_module_init_list(ModuleName, Modules, RttiDatas, LayoutDatas, Vars,
+output_c_module_init_list(ModuleName, Modules, RttiDatas, LayoutDatas,
         ComplexityProcs, StackLayoutLabels, InitPredNames, FinalPredNames,
         !DeclSet, !IO) :-
     MustInit = (pred(Module::in) is semidet :-
@@ -424,16 +427,6 @@ output_c_module_init_list(ModuleName, Modules, RttiDatas, LayoutDatas, Vars,
         io.write_string("void ", !IO),
         output_init_name(ModuleName, !IO),
         io.write_string("required_final(void);\n", !IO)
-    ),
-
-    globals.io_lookup_bool_option(allow_table_reset, TableReset, !IO),
-    (
-        TableReset = yes,
-        io.write_string("void ", !IO),
-        output_init_name(ModuleName, !IO),
-        io.write_string("reset_tables(void);\n", !IO)
-    ;
-        TableReset = no
     ),
 
     io.write_string("\n", !IO),
@@ -514,7 +507,7 @@ output_c_module_init_list(ModuleName, Modules, RttiDatas, LayoutDatas, Vars,
     output_init_complexity_proc_list(ComplexityProcs, !IO),
     io.write_string("}\n", !IO),
     io.write_string("\n#endif\n\n", !IO),
-   
+
     (
         InitPredNames = []
     ;
@@ -527,7 +520,7 @@ output_c_module_init_list(ModuleName, Modules, RttiDatas, LayoutDatas, Vars,
         io.write_string("}\n", !IO),
         io.nl(!IO)
     ),
-   
+
     (
         FinalPredNames = []
     ;
@@ -538,18 +531,6 @@ output_c_module_init_list(ModuleName, Modules, RttiDatas, LayoutDatas, Vars,
         io.write_string("{\n", !IO),
         output_required_init_or_final_calls(FinalPredNames, !IO),
         io.write_string("}\n", !IO)
-    ),
-
-    (
-        TableReset = yes,
-        io.write_string("void ", !IO),
-        output_init_name(ModuleName, !IO),
-        io.write_string("reset_tables(void)\n", !IO),
-        io.write_string("{\n", !IO),
-        list.foldl(output_init_reset_table, Vars, !IO),
-        io.write_string("}\n\n", !IO)
-    ;
-        TableReset = no
     ),
 
     io.write_string(
@@ -569,6 +550,8 @@ module_defines_label_with_layout(Module, StackLayoutLabels) :-
     gather_c_module_labels(Procedures, Labels),
     list.member(Label, Labels),
     map.search(StackLayoutLabels, Label, _).
+
+%-----------------------------------------------------------------------------%
 
 :- pred output_init_bunch_defs(list(list(comp_gen_c_module))::in,
     module_name::in, string::in, int::in, io::di, io::uo) is det.
@@ -777,13 +760,7 @@ output_init_complexity_proc_list([Info | Infos], !IO) :-
 complexity_arg_is_profiled(complexity_arg_info(_, Kind)) :-
     Kind = complexity_input_variable_size.
 
-:- pred output_init_reset_table(comp_gen_c_var::in, io::di, io::uo) is det.
-
-output_init_reset_table(Var, !IO) :-
-    Var = tabling_pointer_var(_Module, ProcLabel),
-    io.write_string("\t", !IO),
-    output_tabling_pointer_var_name(ProcLabel, !IO),
-    io.write_string(".MR_integer = 0;\n", !IO).
+%-----------------------------------------------------------------------------%
 
     % Output a comment to tell mkinit what functions to call from
     % <module>_init.c.
@@ -831,7 +808,7 @@ output_required_user_final_comment(CName, !IO) :-
     io.write_string("REQUIRED_FINAL ", !IO),
     io.write_string(CName, !IO),
     io.nl(!IO).
-    
+
 :- pred output_required_init_or_final_calls(list(string)::in, io::di, io::uo)
     is det.
 
@@ -851,6 +828,345 @@ output_bunch_name(ModuleName, InitStatus, Number, !IO) :-
     io.write_string(InitStatus, !IO),
     io.write_string("_bunch_", !IO),
     io.write_int(Number, !IO).
+
+%-----------------------------------------------------------------------------%
+
+:- pred output_comp_gen_c_module(map(label, data_addr)::in,
+    comp_gen_c_module::in, decl_set::in, decl_set::out, io::di, io::uo)
+    is det.
+
+output_comp_gen_c_module(StackLayoutLabels,
+        comp_gen_c_module(ModuleName, Procedures), !DeclSet, !IO) :-
+    io.write_string("\n", !IO),
+    list.foldl2(output_c_procedure_decls(StackLayoutLabels),
+        Procedures, !DeclSet, !IO),
+    io.write_string("\n", !IO),
+    io.write_string("MR_BEGIN_MODULE(", !IO),
+    io.write_string(ModuleName, !IO),
+    io.write_string(")\n", !IO),
+    gather_c_module_labels(Procedures, Labels),
+    output_c_label_inits(StackLayoutLabels, Labels, !IO),
+    io.write_string("MR_BEGIN_CODE\n", !IO),
+    io.write_string("\n", !IO),
+    globals.io_lookup_bool_option(auto_comments, PrintComments, !IO),
+    globals.io_lookup_bool_option(emit_c_loops, EmitCLoops, !IO),
+    list.foldl(output_c_procedure(PrintComments, EmitCLoops), Procedures, !IO),
+    io.write_string("MR_END_MODULE\n", !IO).
+
+%-----------------------------------------------------------------------------%
+
+:- pred output_tabling_info_struct(tabling_info_struct::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_tabling_info_struct(TablingInfoStruct, !DeclSet, !IO) :-
+    TablingInfoStruct = tabling_info_struct(ModuleName, ProcLabel, EvalMethod,
+        NumInputs, NumOutputs, InputSteps, MaybeOutputSteps, PTIVectorRval,
+        TypeParamsRval, MaybeSizeLimit, Stats),
+
+    InfoDataAddr = data_addr(ModuleName,
+        proc_tabling_ref(ProcLabel, tabling_info)),
+    InputStepsDataAddr = data_addr(ModuleName,
+        proc_tabling_ref(ProcLabel, tabling_input_steps)),
+    InputEnumParamsDataAddr = data_addr(ModuleName,
+        proc_tabling_ref(ProcLabel, tabling_input_enum_params)),
+    OutputStepsDataAddr = data_addr(ModuleName,
+        proc_tabling_ref(ProcLabel, tabling_output_steps)),
+    OutputEnumParamsDataAddr = data_addr(ModuleName,
+        proc_tabling_ref(ProcLabel, tabling_output_enum_params)),
+    TipsDataAddr = data_addr(ModuleName,
+        proc_tabling_ref(ProcLabel, tabling_tips)),
+
+    CallStatsDataName =
+        proc_tabling_ref(ProcLabel, tabling_call_stats),
+    PrevCallStatsDataName =
+        proc_tabling_ref(ProcLabel, tabling_prev_call_stats),
+    CallStatsDataAddr = data_addr(ModuleName, CallStatsDataName),
+    PrevCallStatsDataAddr = data_addr(ModuleName, PrevCallStatsDataName),
+
+    AnswerStatsDataName =
+        proc_tabling_ref(ProcLabel, tabling_answer_stats),
+    PrevAnswerStatsDataName =
+        proc_tabling_ref(ProcLabel, tabling_prev_answer_stats),
+    AnswerStatsDataAddr = data_addr(ModuleName, AnswerStatsDataName),
+    PrevAnswerStatsDataAddr = data_addr(ModuleName, PrevAnswerStatsDataName),
+
+    InputStepsDataName =
+        proc_tabling_ref(ProcLabel, tabling_input_steps),
+    output_table_steps_table(ModuleName, InputStepsDataName, InputSteps,
+        MaybeInputStepEnumParams, !DeclSet, !IO),
+    InputEnumParamsDataName =
+        proc_tabling_ref(ProcLabel, tabling_input_enum_params),
+    output_table_enum_params_table(ModuleName, InputEnumParamsDataName,
+        MaybeInputStepEnumParams, !DeclSet, !IO),
+    output_rval_decls(PTIVectorRval, !DeclSet, !IO),
+
+    (
+        MaybeOutputSteps = no
+    ;
+        MaybeOutputSteps = yes(OutputSteps),
+        OutputStepsDataName =
+            proc_tabling_ref(ProcLabel, tabling_output_steps),
+        output_table_steps_table(ModuleName, OutputStepsDataName, OutputSteps,
+            MaybeOutputStepEnumParams, !DeclSet, !IO),
+        OutputEnumParamsDataName =
+            proc_tabling_ref(ProcLabel, tabling_output_enum_params),
+        output_table_enum_params_table(ModuleName, OutputEnumParamsDataName,
+            MaybeOutputStepEnumParams, !DeclSet, !IO),
+        output_rval_decls(PTIVectorRval, !DeclSet, !IO)
+    ),
+
+    (
+        MaybeSizeLimit = no
+    ;
+        MaybeSizeLimit = yes(SizeLimit1),
+        output_table_tips(ModuleName, ProcLabel, SizeLimit1, !DeclSet, !IO)
+    ),
+
+    (
+        Stats = no
+    ;
+        Stats = yes,
+        output_table_stats(ModuleName, CallStatsDataName, NumInputs,
+            !DeclSet, !IO),
+        output_table_stats(ModuleName, PrevCallStatsDataName, NumInputs,
+            !DeclSet, !IO),
+        (
+            MaybeOutputSteps = no
+        ;
+            MaybeOutputSteps = yes(_),
+            output_table_stats(ModuleName, AnswerStatsDataName, NumOutputs,
+                !DeclSet, !IO),
+            output_table_stats(ModuleName, PrevAnswerStatsDataName, NumOutputs,
+                !DeclSet, !IO)
+        )
+    ),
+
+    io.write_string("\nstatic MR_ProcTableInfo ", !IO),
+    output_data_addr(InfoDataAddr, !IO),
+    io.write_string(" = {\n", !IO),
+    (
+        EvalMethod = eval_normal,
+        unexpected(this_file, "output_tabling_info_struct: eval_normal")
+    ;
+        EvalMethod = eval_loop_check,
+        io.write_string("MR_TABLE_TYPE_LOOPCHECK,\n", !IO)
+    ;
+        EvalMethod = eval_memo,
+        io.write_string("MR_TABLE_TYPE_MEMO,\n", !IO)
+    ;
+        EvalMethod = eval_minimal(stack_copy),
+        io.write_string("MR_TABLE_TYPE_MINIMAL_MODEL_STACK_COPY,\n", !IO)
+    ;
+        EvalMethod = eval_minimal(own_stacks),
+        io.write_string("MR_TABLE_TYPE_MINIMAL_MODEL_OWN_STACKS,\n", !IO)
+    ;
+        EvalMethod = eval_table_io(_, _),
+        unexpected(this_file, "output_tabling_info_struct: eval_table_io")
+    ),
+    io.write_int(NumInputs, !IO),
+    io.write_string(",\n", !IO),
+    io.write_int(NumOutputs, !IO),
+    io.write_string(",\n", !IO),
+    (
+        MaybeOutputSteps = no,
+        io.write_string("0,\n", !IO)
+    ;
+        MaybeOutputSteps = yes(_),
+        io.write_string("1,\n", !IO)
+    ),
+    output_data_addr(InputStepsDataAddr, !IO),
+    io.write_string(",\n", !IO),
+    output_data_addr(InputEnumParamsDataAddr, !IO),
+    io.write_string(",\n", !IO),
+    (
+        MaybeOutputSteps = no,
+        io.write_string("NULL,\n", !IO),
+        io.write_string("NULL,\n", !IO)
+    ;
+        MaybeOutputSteps = yes(_),
+        output_data_addr(OutputStepsDataAddr, !IO),
+        io.write_string(",\n", !IO),
+        output_data_addr(OutputEnumParamsDataAddr, !IO),
+        io.write_string(",\n", !IO)
+    ),
+    io.write_string("(const MR_PseudoTypeInfo *) ", !IO),
+    output_rval(PTIVectorRval, !IO),
+    io.write_string(",\n", !IO),
+    io.write_string("(const MR_Type_Param_Locns *) ", !IO),
+    output_rval(TypeParamsRval, !IO),
+    io.write_string(",\n", !IO),
+    io.write_string("{ 0 },\n", !IO),
+    (
+        Stats = no,
+        io.write_string("0,\n", !IO),
+        io.write_string("0,\n", !IO),
+        io.write_string("NULL,\n", !IO),
+        io.write_string("0,\n", !IO),
+        io.write_string("0,\n", !IO),
+        io.write_string("NULL,\n", !IO),
+        io.write_string("0,\n", !IO),
+        io.write_string("0,\n", !IO),
+        io.write_string("NULL,\n", !IO),
+        io.write_string("0,\n", !IO),
+        io.write_string("0,\n", !IO),
+        io.write_string("NULL,\n", !IO)
+    ;
+        Stats = yes,
+        io.write_string("0,\n", !IO),
+        io.write_string("0,\n", !IO),
+        output_data_addr(CallStatsDataAddr, !IO),
+        io.write_string(",\n", !IO),
+        io.write_string("0,\n", !IO),
+        io.write_string("0,\n", !IO),
+        output_data_addr(PrevCallStatsDataAddr, !IO),
+        io.write_string(",\n", !IO),
+        (
+            MaybeOutputSteps = no,
+            io.write_string("0,\n", !IO),
+            io.write_string("0,\n", !IO),
+            io.write_string("NULL,\n", !IO),
+            io.write_string("0,\n", !IO),
+            io.write_string("0,\n", !IO),
+            io.write_string("NULL,\n", !IO)
+        ;
+            MaybeOutputSteps = yes(_),
+            io.write_string("0,\n", !IO),
+            io.write_string("0,\n", !IO),
+            output_data_addr(AnswerStatsDataAddr, !IO),
+            io.write_string(",\n", !IO),
+            io.write_string("0,\n", !IO),
+            io.write_string("0,\n", !IO),
+            output_data_addr(PrevAnswerStatsDataAddr, !IO),
+            io.write_string(",\n", !IO)
+        )
+    ),
+    (
+        MaybeSizeLimit = no,
+        io.write_string("-1,\n", !IO),
+        io.write_string("NULL,\n", !IO),
+        io.write_string("0,\n", !IO),
+        io.write_string("0\n", !IO)
+    ;
+        MaybeSizeLimit = yes(SizeLimit2),
+        io.write_int(SizeLimit2, !IO),
+        io.write_string(",\n", !IO),
+        output_data_addr(TipsDataAddr, !IO),
+        io.write_string("0,\n", !IO),
+        io.write_string("0\n", !IO)
+    ),
+    io.write_string("};\n", !IO),
+    decl_set_insert(decl_data_addr(InfoDataAddr), !DeclSet).
+
+:- pred output_table_steps_table(module_name::in, data_name::in,
+    list(table_trie_step)::in, list(maybe(int))::out,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_table_steps_table(ModuleName, DataName, Steps, MaybeEnumParams,
+        !DeclSet, !IO) :-
+    DataAddr = data_addr(ModuleName, DataName),
+    io.write_string("\n", !IO),
+    io.write_string("static const MR_TableTrieStep ", !IO),
+    output_data_addr(DataAddr, !IO),
+    io.write_string("[] = {\n", !IO),
+    output_table_steps(Steps, MaybeEnumParams, !IO),
+    io.write_string("};\n", !IO),
+    decl_set_insert(decl_data_addr(DataAddr), !DeclSet).
+
+:- pred output_table_steps(list(table_trie_step)::in,
+    list(maybe(int))::out, io::di, io::uo) is det.
+
+output_table_steps([], [], !IO).
+output_table_steps([Step | Steps], [MaybeEnumParam | MaybeEnumParams],
+        !IO) :-
+    table_trie_step_to_c(Step, StepType, MaybeEnumParam),
+    io.write_string(StepType, !IO),
+    io.write_string(",\n", !IO),
+    output_table_steps(Steps, MaybeEnumParams, !IO).
+
+:- pred output_table_enum_params_table(module_name::in, data_name::in,
+    list(maybe(int))::in, decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_table_enum_params_table(ModuleName, DataName, MaybeEnumParams,
+        !DeclSet, !IO) :-
+    DataAddr = data_addr(ModuleName, DataName),
+    io.write_string("\n", !IO),
+    io.write_string("static const MR_Integer ", !IO),
+    output_data_addr(DataAddr, !IO),
+    io.write_string("[] = {\n", !IO),
+    output_table_enum_params(MaybeEnumParams, !IO),
+    io.write_string("};\n", !IO),
+    decl_set_insert(decl_data_addr(DataAddr), !DeclSet).
+
+:- pred output_table_enum_params(list(maybe(int))::in, io::di, io::uo) is det.
+
+output_table_enum_params([], !IO).
+output_table_enum_params([MaybeEnumParam | MaybeEnumParams], !IO) :-
+    (
+        MaybeEnumParam = no,
+        io.write_int(-1, !IO)
+    ;
+        MaybeEnumParam = yes(EnumRange),
+        io.write_int(EnumRange, !IO)
+    ),
+    io.write_string(",\n", !IO),
+    output_table_enum_params(MaybeEnumParams, !IO).
+
+:- pred output_table_tips(module_name::in, proc_label::in, int::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_table_tips(ModuleName, ProcLabel, SizeLimit, !DeclSet, !IO) :-
+    % We don't need to initialize the elements of the array, since the
+    % MR_pt_num_call_table_tips field explicitly says that none of the
+    % array elements are meaningful.
+    DataAddr = data_addr(ModuleName,
+        proc_tabling_ref(ProcLabel, tabling_tips)),
+    io.write_string("\n", !IO),
+    io.write_string("static MR_TrieNode ", !IO),
+    output_data_addr(DataAddr, !IO),
+    io.write_string("[", !IO),
+    io.write_int(SizeLimit, !IO),
+    io.write_string("];\n", !IO),
+    decl_set_insert(decl_data_addr(DataAddr), !DeclSet).
+
+:- pred output_table_stats(module_name::in, data_name::in, int::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_table_stats(ModuleName, DataName, NumInputs, !DeclSet, !IO) :-
+    % We don't need to initialize the elements of the array, because
+    % we want to initialize all members of the array to structures
+    % that contain all zeros, and C does that for us.
+    DataAddr = data_addr(ModuleName, DataName),
+    io.write_string("\n", !IO),
+    io.write_string("static MR_TableStepStats ", !IO),
+    output_data_addr(DataAddr, !IO),
+    io.write_string("[", !IO),
+    io.write_int(NumInputs, !IO),
+    io.write_string("];\n", !IO),
+    decl_set_insert(decl_data_addr(DataAddr), !DeclSet).
+
+%-----------------------------------------------------------------------------%
+
+:- pred output_common_type_defn(int::in, common_cell_type::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_common_type_defn(TypeNum, CellType, !DeclSet, !IO) :-
+    TypeDeclId = decl_common_type(TypeNum),
+    ( decl_set_is_member(TypeDeclId, !.DeclSet) ->
+        true
+    ;
+        io.write_string("struct ", !IO),
+        output_common_cell_type_name(TypeNum, !IO),
+        io.write_string(" {\n", !IO),
+        (
+            CellType = plain_type(Types),
+            output_cons_arg_types(Types, "\t", 1, !IO)
+        ;
+            CellType = grouped_args_type(ArgGroups),
+            output_cons_arg_group_types(ArgGroups, "\t", 1, !IO)
+        ),
+        io.write_string("};\n", !IO),
+        decl_set_insert(TypeDeclId, !DeclSet)
+    ).
 
 :- pred output_scalar_common_data_decl(scalar_common_data_array::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
@@ -885,60 +1201,7 @@ output_vector_common_data_decl(VectorCommonDataArray, !DeclSet, !IO) :-
     io.write_string("[];\n", !IO),
     decl_set_insert(VarDeclId, !DeclSet).
 
-:- pred output_common_type_defn(int::in, common_cell_type::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_common_type_defn(TypeNum, CellType, !DeclSet, !IO) :-
-    TypeDeclId = decl_common_type(TypeNum),
-    ( decl_set_is_member(TypeDeclId, !.DeclSet) ->
-        true
-    ;
-        io.write_string("struct ", !IO),
-        output_common_cell_type_name(TypeNum, !IO),
-        io.write_string(" {\n", !IO),
-        (
-            CellType = plain_type(Types),
-            output_cons_arg_types(Types, "\t", 1, !IO)
-        ;
-            CellType = grouped_args_type(ArgGroups),
-            output_cons_arg_group_types(ArgGroups, "\t", 1, !IO)
-        ),
-        io.write_string("};\n", !IO),
-        decl_set_insert(TypeDeclId, !DeclSet)
-    ).
-
-:- pred output_comp_gen_c_module(map(label, data_addr)::in,
-    comp_gen_c_module::in, decl_set::in, decl_set::out, io::di, io::uo)
-    is det.
-
-output_comp_gen_c_module(StackLayoutLabels,
-        comp_gen_c_module(ModuleName, Procedures), !DeclSet, !IO) :-
-    io.write_string("\n", !IO),
-    list.foldl2(output_c_procedure_decls(StackLayoutLabels),
-        Procedures, !DeclSet, !IO),
-    io.write_string("\n", !IO),
-    io.write_string("MR_BEGIN_MODULE(", !IO),
-    io.write_string(ModuleName, !IO),
-    io.write_string(")\n", !IO),
-    gather_c_module_labels(Procedures, Labels),
-    output_c_label_inits(StackLayoutLabels, Labels, !IO),
-    io.write_string("MR_BEGIN_CODE\n", !IO),
-    io.write_string("\n", !IO),
-    globals.io_lookup_bool_option(auto_comments, PrintComments, !IO),
-    globals.io_lookup_bool_option(emit_c_loops, EmitCLoops, !IO),
-    list.foldl(output_c_procedure(PrintComments, EmitCLoops), Procedures, !IO),
-    io.write_string("MR_END_MODULE\n", !IO).
-
-:- pred output_comp_gen_c_var(comp_gen_c_var::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_comp_gen_c_var(tabling_pointer_var(ModuleName, ProcLabel),
-        !DeclSet, !IO) :-
-    io.write_string("\nMR_TableNode ", !IO),
-    output_tabling_pointer_var_name(ProcLabel, !IO),
-    io.write_string(" = { 0 };\n", !IO),
-    DataAddr = data_addr(ModuleName, tabling_pointer(ProcLabel)),
-    decl_set_insert(decl_data_addr(DataAddr), !DeclSet).
+%-----------------------------------------------------------------------------%
 
 :- pred output_scalar_common_data_defn(scalar_common_data_array::in,
     decl_set::in, decl_set::out, io::di, io::uo) is det.
@@ -1010,11 +1273,13 @@ common_cell_get_rvals(Value) = Rvals :-
 common_group_get_rvals(common_cell_grouped_args(_, _, Rvals)) = Rvals.
 common_group_get_rvals(common_cell_ungrouped_arg(_, Rval)) = [Rval].
 
+%-----------------------------------------------------------------------------%
+
 :- pred output_user_foreign_code(user_foreign_code::in, io::di, io::uo) is det.
 
 output_user_foreign_code(user_foreign_code(Lang, Foreign_Code, Context),
         !IO) :-
-    ( Lang = c ->
+    ( Lang = lang_c ->
         globals.io_lookup_bool_option(auto_comments, PrintComments, !IO),
         (
             PrintComments = yes,
@@ -1044,7 +1309,7 @@ output_foreign_header_include_lines(Decls, !IO) :-
 
 output_foreign_header_include_line(Decl, !AlreadyDone, !IO) :-
     Decl = foreign_decl_code(Lang, _IsLocal, Code, Context),
-    ( Lang = c ->
+    ( Lang = lang_c ->
         ( set.member(Code, !.AlreadyDone) ->
             true
         ;
@@ -1140,7 +1405,7 @@ output_label_layout_decl_group(ProcLabel, LabelNums, !DeclSet, !IO) :-
     io.write_string("MR_DECL_LL", !IO),
     io.write_int(list.length(LabelNums), !IO),
     io.write_string("(", !IO),
-    output_proc_label(ProcLabel, no, !IO),
+    output_proc_label_no_prefix(ProcLabel, !IO),
     io.write_string(", ", !IO),
     io.write_list(LabelNums, ",", io.write_int, !IO),
     io.write_string(")\n", !IO).
@@ -1167,7 +1432,7 @@ output_local_label_decl_group(ProcLabel, LabelNums, !DeclSet, !IO) :-
     io.write_string("MR_decl_label", !IO),
     io.write_int(list.length(LabelNums), !IO),
     io.write_string("(", !IO),
-    output_proc_label(ProcLabel, no, !IO),
+    output_proc_label_no_prefix(ProcLabel, !IO),
     io.write_string(", ", !IO),
     io.write_list(LabelNums, ",", io.write_int, !IO),
     io.write_string(")\n", !IO),
@@ -1211,7 +1476,7 @@ output_c_label_decl(StackLayoutLabels, Label, !DeclSet, !IO) :-
             ),
             io.write_string(Macro, !IO),
             io.write_string("(", !IO),
-            output_proc_label(ProcLabel, no, !IO),
+            output_proc_label_no_prefix(ProcLabel, !IO),
             io.write_string(", ", !IO),
             io.write_int(LabelNum, !IO),
             % The final semicolon is in the macro definition.
@@ -1314,7 +1579,7 @@ output_c_label_init_chunk(Suffix, ProcLabel, LabelNums, !IO) :-
     io.write_string(Suffix, !IO),
     io.write_int(list.length(LabelNums), !IO),
     io.write_string("(", !IO),
-    output_proc_label(ProcLabel, no, !IO),
+    output_proc_label_no_prefix(ProcLabel, !IO),
     io.write_string(",", !IO),
     io.write_list(LabelNums, ",", io.write_int, !IO),
     io.write_string(")\n", !IO).
@@ -1356,7 +1621,7 @@ output_c_label_init(StackLayoutLabels, Label, !IO) :-
     ),
     io.write_string(TabInitMacro, !IO),
     io.write_string(SuffixOpen, !IO),
-    output_proc_label(ProcLabel, no, !IO),
+    output_proc_label_no_prefix(ProcLabel, !IO),
     io.write_string(");\n", !IO),
     (
         InitProcLayout = yes,
@@ -1825,7 +2090,7 @@ output_debug_instruction_and_comment(Instr, Comment, PrintComments, !IO) :-
     DummyModule = unqualified("DEBUG"),
     DummyPredName = "DEBUG",
     proc_id_to_int(hlds_pred.initial_proc_id, InitialProcIdInt),
-    ProcLabel = proc(DummyModule, predicate, DummyModule,
+    ProcLabel = ordinary_proc_label(DummyModule, predicate, DummyModule,
         DummyPredName, 0, InitialProcIdInt),
     ProfInfo = entry(local, ProcLabel) - ContLabelSet,
     output_instruction_and_comment(Instr, Comment, PrintComments,
@@ -1839,7 +2104,7 @@ output_debug_instruction(Instr, !IO) :-
     DummyModule = unqualified("DEBUG"),
     DummyPredName = "DEBUG",
     proc_id_to_int(hlds_pred.initial_proc_id, InitialProcIdInt),
-    ProcLabel = proc(DummyModule, predicate, DummyModule,
+    ProcLabel = ordinary_proc_label(DummyModule, predicate, DummyModule,
         DummyPredName, 0, InitialProcIdInt),
     ProfInfo = entry(local, ProcLabel) - ContLabelSet,
     output_instruction(Instr, ProfInfo, !IO).
@@ -2741,7 +3006,7 @@ output_rvals_decls_format([Rval | Rvals], FirstIndent, LaterIndent,
     output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N, !DeclSet,
         !IO),
     output_rvals_decls_format(Rvals, FirstIndent, LaterIndent, !N, !DeclSet,
-        !IO). 
+        !IO).
 
 :- pred output_mem_ref_decls_format(mem_ref::in, string::in, string::in,
     int::in, int::out, decl_set::in, decl_set::out, io::di, io::uo) is det.
@@ -2845,7 +3110,7 @@ data_addr_may_include_non_static_code_address(layout_addr(LayoutName)) =
 % static code addresses.
 data_name_may_include_non_static_code_address(scalar_common_ref(_, _)) = no.
 data_name_may_include_non_static_code_address(vector_common_ref(_, _)) = no.
-data_name_may_include_non_static_code_address(tabling_pointer(_)) = no.
+data_name_may_include_non_static_code_address(proc_tabling_ref(_, _)) = no.
 
 :- pred output_decl_id(decl_id::in, io::di, io::uo) is det.
 
@@ -3270,7 +3535,7 @@ output_code_addr_decls(label(Label), !IO) :-
     output_label_as_code_addr_decls(Label, !IO).
 output_code_addr_decls(imported(ProcLabel), !IO) :-
     io.write_string("MR_decl_entry(", !IO),
-    output_proc_label(ProcLabel, no, !IO),
+    output_proc_label_no_prefix(ProcLabel, !IO),
     io.write_string(");\n", !IO).
 output_code_addr_decls(succip, !IO).
 output_code_addr_decls(do_succeed(_), !IO).
@@ -3434,9 +3699,9 @@ output_data_addr_storage_type_name(ModuleName, DataVarName, BeingDefined,
 
 :- pred data_name_linkage(data_name::in, linkage::out) is det.
 
-data_name_linkage(scalar_common_ref(_, _),   static).
-data_name_linkage(vector_common_ref(_, _),   static).
-data_name_linkage(tabling_pointer(_), static).
+data_name_linkage(scalar_common_ref(_, _), static).
+data_name_linkage(vector_common_ref(_, _), static).
+data_name_linkage(proc_tabling_ref(_, _), static).
 
 %-----------------------------------------------------------------------------%
 
@@ -3543,7 +3808,7 @@ output_goto(imported(ProcLabel), CallerLabel, !IO) :-
     ;
         ProfileCalls = no,
         io.write_string("MR_np_tailcall_ent(", !IO),
-        output_proc_label(ProcLabel, no, !IO),
+        output_proc_label_no_prefix(ProcLabel, !IO),
         io.write_string(");\n", !IO)
     ).
 output_goto(succip, _, !IO) :-
@@ -3904,9 +4169,20 @@ output_data_addr_2(_ModuleName, VarName, !IO) :-
         VarName = vector_common_ref(TypeNum, CellNum),
         output_common_vector_cell_array_name(TypeNum, CellNum, !IO)
     ;
-        VarName = tabling_pointer(ProcLabel),
-        output_tabling_pointer_var_name(ProcLabel, !IO)
+        VarName = proc_tabling_ref(ProcLabel, TablingId),
+        io.write_string(tabling_struct_data_addr_string(ProcLabel, TablingId),
+            !IO)
     ).
+
+proc_tabling_info_var_name(ProcLabel) =
+    tabling_struct_data_addr_string(ProcLabel, tabling_info).
+
+:- func tabling_struct_data_addr_string(proc_label, proc_tabling_struct_id)
+    = string.
+
+tabling_struct_data_addr_string(ProcLabel, Id) =
+    mercury_var_prefix ++ "_proc" ++ tabling_info_id_str(Id) ++ "__" ++
+        proc_label_to_c_string(ProcLabel, no).
 
 :- pred output_common_cell_type_name(int::in, io::di, io::uo) is det.
 
@@ -3982,15 +4258,15 @@ output_label_defn(entry(exported, ProcLabel), !IO) :-
     io.write_string(");\n", !IO).
 output_label_defn(entry(local, ProcLabel), !IO) :-
     io.write_string("MR_def_static(", !IO),
-    output_proc_label(ProcLabel, no, !IO),
+    output_proc_label_no_prefix(ProcLabel, !IO),
     io.write_string(")\n", !IO).
 output_label_defn(entry(c_local, ProcLabel), !IO) :-
     io.write_string("MR_def_local(", !IO),
-    output_proc_label(ProcLabel, no, !IO),
+    output_proc_label_no_prefix(ProcLabel, !IO),
     io.write_string(")\n", !IO).
 output_label_defn(internal(Num, ProcLabel), !IO) :-
     io.write_string("MR_def_label(", !IO),
-    output_proc_label(ProcLabel, no, !IO),
+    output_proc_label_no_prefix(ProcLabel, !IO),
     io.write_string(",", !IO),
     io.write_int(Num, !IO),
     io.write_string(")\n", !IO).

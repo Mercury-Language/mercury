@@ -42,7 +42,7 @@
 **  that traverses type_infos and type_ctor_infos:
 **
 **      runtime/mercury_deep_copy_body.h
-**      runtime/mercury_tabling.c
+**      runtime/mercury_table_type_body.h
 **      runtime/mercury_type_info.c
 **      library/type_desc.m
 **

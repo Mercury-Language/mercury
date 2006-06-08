@@ -296,6 +296,7 @@ ml_gen_construct_2(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
         ml_gen_compound(Tag, ConsId, Var, Args, ArgModes, TakeAddr,
             HowToConstruct, Context, Decls, Statements, !Info)
     ;
+        % Constants.
         ( Tag = int_constant(_)
         ; Tag = float_constant(_)
         ; Tag = string_constant(_)
@@ -304,19 +305,18 @@ ml_gen_construct_2(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
         ; Tag = type_ctor_info_constant(_, _, _)
         ; Tag = base_typeclass_info_constant(_, _, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
-        ; Tag = tabling_pointer_constant(_, _)
+        ; Tag = tabling_info_constant(_, _)
         ; Tag = table_io_decl_tag(_, _)
         ),
         (
-            % Constants.
-            Args = []
-        ->
+            Args = [],
             ml_gen_var(!.Info, Var, VarLval),
             ml_gen_constant(Tag, Type, Rval, !Info),
             Statement = ml_gen_assign(VarLval, Rval, Context),
             Decls = [],
             Statements = [Statement]
         ;
+            Args = [_ | _],
             unexpected(this_file, "ml_gen_construct: bad constant term")
         )
     ).
@@ -425,7 +425,7 @@ ml_gen_constant(type_ctor_info_constant(ModuleName0, TypeName, TypeArity),
     MLDS_Module = mercury_module_name_to_mlds(ModuleName),
     RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
     DataAddr = data_addr(MLDS_Module,
-        rtti(ctor_rtti_id(RttiTypeCtor, type_ctor_info))),
+        mlds_rtti(ctor_rtti_id(RttiTypeCtor, type_ctor_info))),
     Rval = unop(cast(MLDS_VarType), const(data_addr_const(DataAddr))).
 
 ml_gen_constant(base_typeclass_info_constant(ModuleName, ClassId, Instance),
@@ -433,16 +433,16 @@ ml_gen_constant(base_typeclass_info_constant(ModuleName, ClassId, Instance),
     ml_gen_type(!.Info, VarType, MLDS_VarType),
     MLDS_Module = mercury_module_name_to_mlds(ModuleName),
     TCName = generate_class_name(ClassId),
-    DataAddr = data_addr(MLDS_Module, rtti(tc_rtti_id(TCName,
+    DataAddr = data_addr(MLDS_Module, mlds_rtti(tc_rtti_id(TCName,
         base_typeclass_info(ModuleName, Instance)))),
     Rval = unop(cast(MLDS_VarType), const(data_addr_const(DataAddr))).
 
-ml_gen_constant(tabling_pointer_constant(PredId, ProcId), VarType, Rval,
-        !Info) :-
+ml_gen_constant(tabling_info_constant(PredId, ProcId), VarType, Rval, !Info) :-
     ml_gen_type(!.Info, VarType, MLDS_VarType),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_pred_label(ModuleInfo, PredId, ProcId, PredLabel, PredModule),
-    DataAddr = data_addr(PredModule, tabling_pointer(PredLabel - ProcId)),
+    DataAddr = data_addr(PredModule,
+        mlds_tabling_ref(mlds_proc_label(PredLabel, ProcId), tabling_info)),
     Rval = unop(cast(MLDS_VarType), const(data_addr_const(DataAddr))).
 
 ml_gen_constant(deep_profiling_proc_layout_tag(_, _), _, _, !Info) :-
@@ -525,10 +525,10 @@ ml_gen_reserved_address(ModuleInfo, reserved_object(TypeCtor, QualCtorName,
     %
 :- func target_supports_inheritence(compilation_target) = bool.
 
-target_supports_inheritence(c) = no.
-target_supports_inheritence(il) = yes.
-target_supports_inheritence(java) = yes.
-target_supports_inheritence(asm) = no.
+target_supports_inheritence(target_c) = no.
+target_supports_inheritence(target_il) = yes.
+target_supports_inheritence(target_java) = yes.
+target_supports_inheritence(target_asm) = no.
 
 %-----------------------------------------------------------------------------%
 
@@ -1281,31 +1281,16 @@ ml_gen_det_deconstruct_2(Tag, Type, Var, ConsId, Args, Modes, Context,
     % For constants, if the deconstruction is det, then we already know
     % the value of the constant, so Statements = [].
     (
-        Tag = string_constant(_String),
-        Statements = []
-    ;
-        Tag = int_constant(_Int),
-        Statements = []
-    ;
-        Tag = float_constant(_Float),
-        Statements = []
-    ;
-        Tag = pred_closure_tag(_, _, _),
-        Statements = []
-    ;
-        Tag = type_ctor_info_constant(_, _, _),
-        Statements = []
-    ;
-        Tag = base_typeclass_info_constant(_, _, _),
-        Statements = []
-    ;
-        Tag = tabling_pointer_constant(_, _),
-        Statements = []
-    ;
-        Tag = deep_profiling_proc_layout_tag(_, _),
-        Statements = []
-    ;
-        Tag = table_io_decl_tag(_, _),
+        ( Tag = string_constant(_String)
+        ; Tag = int_constant(_Int)
+        ; Tag = float_constant(_Float)
+        ; Tag = pred_closure_tag(_, _, _)
+        ; Tag = type_ctor_info_constant(_, _, _)
+        ; Tag = base_typeclass_info_constant(_, _, _)
+        ; Tag = tabling_info_constant(_, _)
+        ; Tag = deep_profiling_proc_layout_tag(_, _)
+        ; Tag = table_io_decl_tag(_, _)
+        ),
         Statements = []
     ;
         Tag = no_tag,
@@ -1393,40 +1378,19 @@ ml_tag_offset_and_argnum(Tag, TagBits, OffSet, ArgNum) :-
         % Just recurse on ThisTag.
         ml_tag_offset_and_argnum(ThisTag, TagBits, OffSet, ArgNum)
     ;
-        Tag = string_constant(_String),
-        unexpected(this_file, "ml_tag_offset_and_argnum")
-    ;
-        Tag = int_constant(_Int),
-        unexpected(this_file, "ml_tag_offset_and_argnum")
-    ;
-        Tag = float_constant(_Float),
-        unexpected(this_file, "ml_tag_offset_and_argnum")
-    ;
-        Tag = pred_closure_tag(_, _, _),
-        unexpected(this_file, "ml_tag_offset_and_argnum")
-    ;
-        Tag = type_ctor_info_constant(_, _, _),
-        unexpected(this_file, "ml_tag_offset_and_argnum")
-    ;
-        Tag = base_typeclass_info_constant(_, _, _),
-        unexpected(this_file, "ml_tag_offset_and_argnum")
-    ;
-        Tag = tabling_pointer_constant(_, _),
-        unexpected(this_file, "ml_tag_offset_and_argnum")
-    ;
-        Tag = deep_profiling_proc_layout_tag(_, _),
-        unexpected(this_file, "ml_tag_offset_and_argnum")
-    ;
-        Tag = table_io_decl_tag(_, _),
-        unexpected(this_file, "ml_tag_offset_and_argnum")
-    ;
-        Tag = no_tag,
-        unexpected(this_file, "ml_tag_offset_and_argnum")
-    ;
-        Tag = shared_local_tag(_Bits1, _Num1),
-        unexpected(this_file, "ml_tag_offset_and_argnum")
-    ;
-        Tag = reserved_address(_),
+        ( Tag = string_constant(_String)
+        ; Tag = int_constant(_Int)
+        ; Tag = float_constant(_Float)
+        ; Tag = pred_closure_tag(_, _, _)
+        ; Tag = type_ctor_info_constant(_, _, _)
+        ; Tag = base_typeclass_info_constant(_, _, _)
+        ; Tag = tabling_info_constant(_, _)
+        ; Tag = deep_profiling_proc_layout_tag(_, _)
+        ; Tag = table_io_decl_tag(_, _)
+        ; Tag = no_tag
+        ; Tag = shared_local_tag(_Bits1, _Num1)
+        ; Tag = reserved_address(_)
+        ),
         unexpected(this_file, "ml_tag_offset_and_argnum")
     ).
 
@@ -1705,8 +1669,8 @@ ml_gen_tag_test_rval(type_ctor_info_constant(_, _, _), _, _, _) = _ :-
     unexpected(this_file, "Attempted type_ctor_info unification").
 ml_gen_tag_test_rval(base_typeclass_info_constant(_, _, _), _, _, _) = _ :-
     unexpected(this_file, "Attempted base_typeclass_info unification").
-ml_gen_tag_test_rval(tabling_pointer_constant(_, _), _, _, _) = _ :-
-    unexpected(this_file, "Attempted tabling_pointer unification").
+ml_gen_tag_test_rval(tabling_info_constant(_, _), _, _, _) = _ :-
+    unexpected(this_file, "Attempted tabling_info unification").
 ml_gen_tag_test_rval(deep_profiling_proc_layout_tag(_, _), _, _, _) = _ :-
     unexpected(this_file, "Attempted deep_profiling_proc_layout unification").
 ml_gen_tag_test_rval(table_io_decl_tag(_, _), _, _, _) = _ :-

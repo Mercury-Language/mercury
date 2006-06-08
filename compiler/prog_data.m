@@ -5,19 +5,19 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: prog_data.m.
 % Main author: fjh.
-% 
+%
 % This module, together with prog_item, defines a data structure for
 % representing Mercury programs.
-% 
+%
 % This data structure specifies basically the same information as is contained
 % in the source code, but in a parse tree rather than a flat file.  This
 % module defines the parts of the parse tree that are needed by the various
 % compiler backends; parts of the parse tree that are not needed by the
 % backends are contained in prog_item.m.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -93,23 +93,23 @@
 :- type can_fail
     --->    can_fail
     ;       cannot_fail.
-    
+
 :- type soln_count
     --->    at_most_zero
     ;       at_most_one
-    ;       at_most_many_cc 
+    ;       at_most_many_cc
             % "_cc" means "committed-choice": there is more than one logical
             % solution, but the pred or goal is being used in a context where
             % we are only looking for the first solution.
     ;       at_most_many.
-    
+
 :- pred determinism_components(determinism, can_fail, soln_count).
 :- mode determinism_components(in, out, out) is det.
 :- mode determinism_components(out, in, in) is det.
 
     % The following predicates implement the tables for computing the
     % determinism of compound goals from the determinism of their components.
-    
+
 :- pred det_conjunction_detism(determinism::in, determinism::in,
     determinism::out) is det.
 
@@ -117,7 +117,7 @@
     determinism::out) is det.
 
 :- pred det_switch_detism(determinism::in, determinism::in, determinism::out)
-    is det. 
+    is det.
 
 :- pred det_negation_det(determinism::in, maybe(determinism)::out) is det.
 
@@ -131,10 +131,10 @@
     soln_count::out) is det.
 
 :- pred det_disjunction_canfail(can_fail::in, can_fail::in, can_fail::out)
-    is det. 
-            
+    is det.
+
 :- pred det_switch_maxsoln(soln_count::in, soln_count::in, soln_count::out)
-    is det. 
+    is det.
 
 :- pred det_switch_canfail(can_fail::in, can_fail::in, can_fail::out) is det.
 
@@ -178,7 +178,7 @@
     ;       java(java_foreign_type).
 
 :- type il_foreign_type
-    --->    il(
+    --->    il_type(
                 ref_or_val, % An indicator of whether the type is a
                             % reference of value type.
                 string,     % The location of the .NET name (the assembly)
@@ -186,12 +186,12 @@
             ).
 
 :- type c_foreign_type
-    --->    c(
+    --->    c_type(
                 string      % The C type name
             ).
 
 :- type java_foreign_type
-    --->    java(
+    --->    java_type(
                 string      % The Java type name
             ).
 
@@ -213,14 +213,23 @@
 :- type eval_method
     --->    eval_normal                 % normal mercury evaluation
     ;       eval_loop_check             % loop check only
-    ;       eval_memo(call_table_strictness)
-                                        % memoing + loop check
+    ;       eval_memo                   % memoing + loop check
     ;       eval_table_io(              % memoing I/O actions for debugging
                 table_io_is_decl,
                 table_io_is_unitize
             )
     ;       eval_minimal(eval_minimal_method).
                                         % minimal model evaluation
+
+:- type table_attributes
+    --->    table_attributes(
+                table_attr_strictness   :: call_table_strictness,
+                table_attr_size_limit   :: maybe(int),
+                table_attr_statistics   :: bool,
+                table_attr_allow_reset  :: bool
+            ).
+
+:- func default_memo_table_attributes = table_attributes.
 
 :- type call_table_strictness
     --->    all_strict
@@ -283,11 +292,11 @@
 % Stuff for the `termination2_info' pragma
 %
 
-    % This is the form in which termination information from other 
+    % This is the form in which termination information from other
     % modules (imported via `.opt' or `.trans_opt' files) comes.
     % We convert this to an intermediate form and let the termination
     % analyser convert it to the correct form.
-    % 
+    %
     % NOTE: the reason that we cannot convert it to the correct form
     % is that we don't have complete information about how many typeinfo
     % related arguments there are until after the polymoprhism pass.
@@ -308,18 +317,18 @@
     % approximation of the set of structure sharing pairs that might exist
     % during the execution of a program, it must use "top" as the only safe
     % approximation. In order to collect some useful basic feedback information
-    % as to `why' a top was generated, we use: 
+    % as to `why' a top was generated, we use:
     %
-:- type top_feedback == string. 
+:- type top_feedback == string.
 
     % Elements of the structure sharing domain lattice are either bottom
     % (no structure sharing), top (any kind of structure sharing), or
-    % a list of structure sharing pairs. 
+    % a list of structure sharing pairs.
     %
 :- type structure_sharing_domain
     --->    bottom
     ;       real(structure_sharing)
-    ;       top(list(top_feedback)). 
+    ;       top(list(top_feedback)).
 
     % Public representation of structure sharing.
     %
@@ -332,9 +341,9 @@
 :- type structure_sharing_pair == pair(datastruct).
 
     % A datastructure is a concept that designates a particular subterm of the
-    % term to which a particular variable may be bound. 
+    % term to which a particular variable may be bound.
     %
-:- type datastruct 
+:- type datastruct
     --->    selected_cel(
                 sc_var      :: prog_var,
                 sc_selector :: selector
@@ -349,7 +358,7 @@
     % (identified by the cons_id), and n an integer.  A type selector
     % designates any subterm that has that specific type.
     %
-:- type unit_selector 
+:- type unit_selector
     --->    termsel(cons_id, int)       % term selector
     ;       typesel(mer_type).          % type selector
 
@@ -368,28 +377,26 @@
 :- type live_datastructs == list(live_datastruct).
 
     % A reuse-tuple is used to describe the condition for which reuse
-    % within a particular procedure is allowed. 
+    % within a particular procedure is allowed.
     %
 :- type reuse_tuple
     --->    unconditional
     ;       conditional(
-                reuse_nodes :: dead_datastructs,
-                    % The set of datastructures pointing to the memory that
-                    % becomes 'dead' and thus will be reused. This set is
-                    % restricted to the head variables of the involved
-                    % procedure. 
-                
-                live_headvars :: live_datastructs, 
-                    % The set of datastructures inherently live at the moment
-                    % where the reuse_nodes become dead.  This set is
-                    % restricted to the head variables of the procedure the
-                    % reuse condition refers to. 
-                
-                sharing_headvars :: structure_sharing_domain
-                    % Description of the structure sharing existing at the
-                    % moment where the reuse_nodes become dead. The sharing is
-                    % also restricted to the headvariables of the concerned
-                    % procedure. 
+                % The set of datastructures pointing to the memory that becomes
+                % 'dead' and thus will be reused. This set is restricted to
+                % the head variables of the involved procedure.
+                reuse_nodes         :: dead_datastructs,
+
+                % The set of datastructures inherently live at the moment
+                % where the reuse_nodes become dead. This set is restricted
+                % to the head variables of the procedure the reuse condition
+                % refers to.
+                live_headvars       :: live_datastructs,
+
+                % Description of the structure sharing existing at the moment
+                % where the reuse_nodes become dead. The sharing is also
+                % restricted to the headvariables of the concerned procedure.
+                sharing_headvars    :: structure_sharing_domain
             ).
 
 :- type reuse_tuples == list(reuse_tuple).
@@ -404,7 +411,7 @@
     % The mode_num gets converted to an HLDS proc_id by make_hlds.m.
     % We don't want to use the `proc_id' type here since the parse tree
     % (prog_data.m and prog_item.m) should not depend on the HLDS.
-    % 
+    %
 :- type mode_num == int.
 
 %-----------------------------------------------------------------------------%
@@ -412,26 +419,26 @@
 % Stuff for the `exceptions' pragma
 %
 
-:- type exception_status 
-    --->    will_not_throw 
+:- type exception_status
+    --->    will_not_throw
             % This procedure will not throw an exception.
-    
+
     ;       may_throw(exception_type)
             % This procedure may throw an exception. The exception is
             % classified by the `exception_type' type.
-        
+
     ;       conditional.
             % Whether the procedure will not throw an exception depends upon
             % the value of one or more polymorphic arguments. XXX This needs
             % to be extended for ho preds. (See exception_analysis.m for
             % more details).
 
-:- type exception_type  
+:- type exception_type
     --->    user_exception
             % The exception that might be thrown is of a result of some code
             % calling exception.throw/1.
 
-    ;       type_exception. 
+    ;       type_exception.
             % The exception is a result of a compiler introduced
             % unification/comparison maybe throwing an exception
             % (in the case of user-defined equality or comparison) or
@@ -682,7 +689,7 @@
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
-:- pred set_may_throw_exception(may_throw_exception::in,    
+:- pred set_may_throw_exception(may_throw_exception::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
@@ -782,12 +789,12 @@
 :- type may_throw_exception
     --->    will_not_throw_exception
             % The foreign code will not result in an exception being thrown.
-    
+
     ;       default_exception_behaviour.
             % If the foreign_proc is erroneous then mark it as throwing an
             % exception.  Otherwise mark it as throwing an exception if it
             % makes calls back to Mercury and not throwing an exception
-            % otherwise.  
+            % otherwise.
 
 :- type pragma_foreign_proc_extra_attribute
     --->    max_stack_size(int)
@@ -809,7 +816,7 @@
 % Goals
 %
 
-% NOTE: the representation of goals in the parse tree is defined in 
+% NOTE: the representation of goals in the parse tree is defined in
 %       prog_item.m.
 
 :- type implicit_purity_promise
@@ -907,10 +914,10 @@
     ;       type_info_cell_constructor(type_ctor)
     ;       typeclass_info_cell_constructor
 
-    ;       tabling_pointer_const(shrouded_pred_proc_id)
-            % The address of the static variable that points to the table
-            % that implements memoization, loop checking or the minimal
-            % model semantics for the given procedure.
+    ;       tabling_info_const(shrouded_pred_proc_id)
+            % The address of the static structure that holds information
+            % about the table that implements memoization, loop checking
+            % or the minimal model semantics for the given procedure.
 
     ;       deep_profiling_proc_layout(shrouded_pred_proc_id)
             % The Proc_Layout structure of a procedure. Its proc_static field
@@ -999,7 +1006,7 @@
     %   ground         is <<ground inst>>,
     %   any            is <<any inst>>,
     %   constraint_store is <<mutable(...) or [mutable(...), ...]>>
-    % 
+    %
 :- type solver_type_details
     --->    solver_type_details(
                 representation_type :: mer_type,
@@ -1023,7 +1030,7 @@
 :- type equality_pred   ==  sym_name.
 
     % The name of a user-defined comparison predicate.
-    % 
+    %
 :- type comparison_pred ==  sym_name.
 
     % Parameters of type definitions.
@@ -1436,6 +1443,8 @@
 
 :- import_module string.
 
+default_memo_table_attributes = table_attributes(all_strict, no, no, no).
+
 %-----------------------------------------------------------------------------%
 %
 % Some more stuff for the foreign language interface
@@ -1609,19 +1618,19 @@ extra_attribute_to_string(max_stack_size(Size)) =
     "max_stack_size(" ++ string.int_to_string(Size) ++ ")".
 
 %-----------------------------------------------------------------------------%
-% 
+%
 % Purity
 %
 
 less_pure(P1, P2) :-
     \+ ( worst_purity(P1, P2) = P2).
-    
+
     % worst_purity/3 could be written more compactly, but this definition
     % guarantees us a determinism error if we add to type `purity'.  We also
     % define less_pure/2 in terms of worst_purity/3 rather than the other way
-    % around for the same reason. 
+    % around for the same reason.
     %
-worst_purity(purity_pure, purity_pure) = purity_pure. 
+worst_purity(purity_pure, purity_pure) = purity_pure.
 worst_purity(purity_pure, purity_semipure) = purity_semipure.
 worst_purity(purity_pure, purity_impure) = purity_impure.
 worst_purity(purity_semipure, purity_pure) = purity_semipure.
@@ -1645,7 +1654,7 @@ best_purity(purity_impure, purity_semipure) = purity_semipure.
 best_purity(purity_impure, purity_impure) = purity_impure.
 
 %-----------------------------------------------------------------------------%
-% 
+%
 % Determinism
 %
 
@@ -1662,7 +1671,7 @@ det_conjunction_detism(DetismA, DetismB, Detism) :-
     % When figuring out the determinism of a conjunction, if the second goal
     % is unreachable, then then the determinism of the conjunction is just
     % the determinism of the first goal.
-    
+
     determinism_components(DetismA, CanFailA, MaxSolnA),
     ( MaxSolnA = at_most_zero ->
         Detism = DetismA
@@ -1672,12 +1681,12 @@ det_conjunction_detism(DetismA, DetismB, Detism) :-
         det_conjunction_maxsoln(MaxSolnA, MaxSolnB, MaxSoln),
         determinism_components(Detism, CanFail, MaxSoln)
     ).
-    
+
 det_par_conjunction_detism(DetismA, DetismB, Detism) :-
     % Figuring out the determinism of a parallel conjunction is much easier
     % than for a sequential conjunction, since you simply ignore the case
     % where the second goal is unreachable. Just do a normal solution count.
-    
+
     determinism_components(DetismA, CanFailA, MaxSolnA),
     determinism_components(DetismB, CanFailB, MaxSolnB),
     det_conjunction_canfail(CanFailA, CanFailB, CanFail),

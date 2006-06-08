@@ -380,11 +380,11 @@ should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
     list(clause)::in) is semidet.
 
 clauses_contain_noninlinable_foreign_code(Target, [C | _Cs]) :-
-    Target = il,
+    Target = target_il,
     Lang = C ^ clause_lang,
     Lang = foreign_language(ForeignLang),
-    ( ForeignLang = csharp
-    ; ForeignLang = managed_cplusplus
+    ( ForeignLang = lang_csharp
+    ; ForeignLang = lang_managed_cplusplus
     ).
 clauses_contain_noninlinable_foreign_code(Target, [_ | Cs]) :-
     clauses_contain_noninlinable_foreign_code(Target, Cs).
@@ -1035,22 +1035,38 @@ resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
     % for the other definitions to be present (e.g. when testing compiling
     % a module to IL when the workspace was compiled to C).
     %
-    ( ( Target = c ; Target = asm ) ->
+    (
+        ( Target = target_c
+        ; Target = target_asm
+        ),
         resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
             MaybeC0, MaybeC, !Info)
     ;
+        ( Target = target_il
+        ; Target = target_java
+        ),
         MaybeC = MaybeC0
     ),
-    ( Target = il ->
+    (
+        Target = target_il,
         resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
             MaybeIL0, MaybeIL, !Info)
     ;
+        ( Target = target_c
+        ; Target = target_asm
+        ; Target = target_java
+        ),
         MaybeIL = MaybeIL0
     ),
-    ( Target = java ->
+    (
+        Target = target_java,
         resolve_foreign_type_body_overloading_2(ModuleInfo, TypeCtor,
             MaybeJava0, MaybeJava, !Info)
     ;
+        ( Target = target_c
+        ; Target = target_asm
+        ; Target = target_il
+        ),
         MaybeJava = MaybeJava0
     ).
 

@@ -79,6 +79,9 @@
     ;       solver_type
             % Solver types cause the compiler to create foreign procs for the
             % init and representation functions.
+
+    ;       pragma_memo_attribute
+            % This item was introduced for an attribute given in a pragma memo.
     
     ;       foreign_imports.
             % The compiler sometimes needs to insert additional foreign_import
@@ -509,7 +512,8 @@
                 tabled_name             :: sym_name,
                 tabled_arity            :: int,
                 tabled_p_or_f           :: maybe(pred_or_func),
-                tabled_mode             :: maybe(list(mer_mode))
+                tabled_mode             :: maybe(list(mer_mode)),
+                tabled_attributes       :: maybe(table_attributes)
                 % Tabling type, Predname, Arity, PredOrFunc?, Mode?
             )
 

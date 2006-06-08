@@ -36,22 +36,23 @@
 :- type globals.
 
 :- type compilation_target
-    --->    c       % Generate C code (including GNU C)
-    ;       il      % Generate IL assembler code
-                    % IL is the Microsoft .NET Intermediate Language
-    ;       java    % Generate Java
-                    % (Work in progress)
-    ;       asm.    % Compile directly to assembler via the GCC back-end.
-                    % Do not go via C, instead generate GCC's internal
-                    % `tree' data structure. (Work in progress.)
+    --->    target_c        % Generate C code (including GNU C).
+    ;       target_il       % Generate IL assembler code.
+                            % IL is the Microsoft .NET Intermediate Language.
+    ;       target_java     % Generate Java.
+                            % (Work in progress)
+    ;       target_asm.     % Compile directly to assembler via the GCC
+                            % back-end. Do not go via C, instead generate GCC's
+                            % internal `tree' data structure.
+                            % (Work in progress.)
 
 :- type foreign_language
-    --->    c
-%   ;       cplusplus
-    ;       csharp
-    ;       managed_cplusplus
-    ;       java
-    ;       il.
+    --->    lang_c
+%   ;       lang_cplusplus
+    ;       lang_csharp
+    ;       lang_managed_cplusplus
+    ;       lang_java
+    ;       lang_il.
 
     % A string representation of the compilation target suitable
     % for use in human-readable error messages.
@@ -290,10 +291,10 @@ convert_target(String, Target) :-
 
 :- pred convert_target_2(string::in, compilation_target::out) is semidet.
 
-convert_target_2("java", java).
-convert_target_2("asm", asm).
-convert_target_2("il", il).
-convert_target_2("c", c).
+convert_target_2("java", target_java).
+convert_target_2("asm", target_asm).
+convert_target_2("il", target_il).
+convert_target_2("c", target_c).
 
 convert_foreign_language(String, ForeignLanguage) :-
     convert_foreign_language_2(string.to_lower(String), ForeignLanguage).
@@ -301,15 +302,15 @@ convert_foreign_language(String, ForeignLanguage) :-
 :- pred convert_foreign_language_2(string::in, foreign_language::out)
     is semidet.
 
-convert_foreign_language_2("c", c).
-convert_foreign_language_2("mc++", managed_cplusplus).
-convert_foreign_language_2("managedc++", managed_cplusplus).
-convert_foreign_language_2("managed c++", managed_cplusplus).
-convert_foreign_language_2("c#", csharp).
-convert_foreign_language_2("csharp", csharp).
-convert_foreign_language_2("c sharp", csharp).
-convert_foreign_language_2("il", il).
-convert_foreign_language_2("java", java).
+convert_foreign_language_2("c", lang_c).
+convert_foreign_language_2("mc++", lang_managed_cplusplus).
+convert_foreign_language_2("managedc++", lang_managed_cplusplus).
+convert_foreign_language_2("managed c++", lang_managed_cplusplus).
+convert_foreign_language_2("c#", lang_csharp).
+convert_foreign_language_2("csharp", lang_csharp).
+convert_foreign_language_2("c sharp", lang_csharp).
+convert_foreign_language_2("il", lang_il).
+convert_foreign_language_2("java", lang_java).
 
 convert_gc_method("none", none).
 convert_gc_method("conservative", boehm).
@@ -330,22 +331,23 @@ convert_termination_norm("size-data-elems", size_data_elems).
 convert_maybe_thread_safe("yes", yes).
 convert_maybe_thread_safe("no",  no).
 
-compilation_target_string(c)    = "C".
-compilation_target_string(il)   = "IL".
-compilation_target_string(java) = "Java".
-compilation_target_string(asm)  = "asm".
+compilation_target_string(target_c)    = "C".
+compilation_target_string(target_il)   = "IL".
+compilation_target_string(target_java) = "Java".
+compilation_target_string(target_asm)  = "asm".
 
-foreign_language_string(c) = "C".
-foreign_language_string(managed_cplusplus) = "Managed C++".
-foreign_language_string(csharp) = "C#".
-foreign_language_string(il) = "IL".
-foreign_language_string(java) = "Java".
+foreign_language_string(lang_c) = "C".
+foreign_language_string(lang_managed_cplusplus) = "Managed C++".
+foreign_language_string(lang_csharp) = "C#".
+foreign_language_string(lang_il) = "IL".
+foreign_language_string(lang_java) = "Java".
 
-simple_foreign_language_string(c) = "c".
-simple_foreign_language_string(managed_cplusplus) = "cpp". % XXX mcpp is better
-simple_foreign_language_string(csharp) = "csharp".
-simple_foreign_language_string(il) = "il".
-simple_foreign_language_string(java) = "java".
+simple_foreign_language_string(lang_c) = "c".
+simple_foreign_language_string(lang_managed_cplusplus) = "cpp".
+    % XXX mcpp is better
+simple_foreign_language_string(lang_csharp) = "csharp".
+simple_foreign_language_string(lang_il) = "il".
+simple_foreign_language_string(lang_java) = "java".
 
 gc_is_conservative(boehm) = yes.
 gc_is_conservative(mps) = yes.

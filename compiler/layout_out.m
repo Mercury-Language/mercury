@@ -152,11 +152,6 @@ output_layout_data_defn(Data, !DeclSet, !IO) :-
             PTIVectorRval, TypeParamsRval),
         output_table_io_decl(RttiProcLabel, Kind, NumPTIs,
             PTIVectorRval, TypeParamsRval, !DeclSet, !IO)
-    ;
-        Data = table_gen_data(RttiProcLabel, NumInputs, NumOutputs,
-            Steps, PTIVectorRval, TypeParamsRval),
-        output_table_gen(RttiProcLabel, NumInputs, NumOutputs, Steps,
-            PTIVectorRval, TypeParamsRval, !DeclSet, !IO)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -201,9 +196,6 @@ extract_layout_name(Data, LayoutName) :-
     ;
         Data = table_io_decl_data(RttiProcLabel, _, _, _, _),
         LayoutName = table_io_decl(RttiProcLabel)
-    ;
-        Data = table_gen_data(RttiProcLabel, _, _, _, _, _),
-        LayoutName = table_gen_info(RttiProcLabel)
     ).
 
 :- pred output_layout_decl(layout_name::in, decl_set::in, decl_set::out,
@@ -247,32 +239,36 @@ output_layout_name(Data, !IO) :-
         % mercury_data_prefix duplicates it, because there is no simply way
         % to make the MR_init_entryl_sl macro delete that prefix from the
         % entry label's name to get the name of its layout structure.
-        output_proc_label(make_proc_label_from_rtti(RttiProcLabel), yes, !IO)
+        output_proc_label(make_proc_label_from_rtti(RttiProcLabel), !IO)
     ;
         Data = proc_layout_exec_trace(RttiProcLabel),
         io.write_string(mercury_data_prefix, !IO),
         io.write_string("_proc_layout_exec_trace__", !IO),
-        output_proc_label(make_proc_label_from_rtti(RttiProcLabel), no, !IO)
+        output_proc_label_no_prefix(make_proc_label_from_rtti(RttiProcLabel),
+            !IO)
     ;
         Data = proc_layout_head_var_nums(RttiProcLabel),
         io.write_string(mercury_data_prefix, !IO),
         io.write_string("_head_var_nums__", !IO),
-        output_proc_label(make_proc_label_from_rtti(RttiProcLabel), no, !IO)
+        output_proc_label_no_prefix(make_proc_label_from_rtti(RttiProcLabel),
+            !IO)
     ;
         Data = proc_layout_var_names(RttiProcLabel),
         io.write_string(mercury_data_prefix, !IO),
         io.write_string("_var_names__", !IO),
-        output_proc_label(make_proc_label_from_rtti(RttiProcLabel), no, !IO)
+        output_proc_label_no_prefix(make_proc_label_from_rtti(RttiProcLabel),
+            !IO)
     ;
         Data = proc_layout_body_bytecode(RttiProcLabel),
         io.write_string(mercury_data_prefix, !IO),
         io.write_string("_body_bytecode__", !IO),
-        output_proc_label(make_proc_label_from_rtti(RttiProcLabel), no, !IO)
+        output_proc_label_no_prefix(make_proc_label_from_rtti(RttiProcLabel),
+            !IO)
     ;
         Data = closure_proc_id(CallerProcLabel, SeqNo, _),
         io.write_string(mercury_data_prefix, !IO),
         io.write_string("_closure_layout__", !IO),
-        output_proc_label(CallerProcLabel, no, !IO),
+        output_proc_label_no_prefix(CallerProcLabel, !IO),
         io.write_string("_", !IO),
         io.write_int(SeqNo, !IO)
     ;
@@ -334,37 +330,19 @@ output_layout_name(Data, !IO) :-
         io.write_string(mercury_data_prefix, !IO),
         io.write_string("_proc_static__", !IO),
         ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
-        output_proc_label(ProcLabel, no, !IO)
+        output_proc_label_no_prefix(ProcLabel, !IO)
     ;
         Data = proc_static_call_sites(RttiProcLabel),
         io.write_string(mercury_data_prefix, !IO),
         io.write_string("_proc_static_call_sites__", !IO),
         ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
-        output_proc_label(ProcLabel, no, !IO)
+        output_proc_label_no_prefix(ProcLabel, !IO)
     ;
         Data = table_io_decl(RttiProcLabel),
         io.write_string(mercury_data_prefix, !IO),
         io.write_string("_table_io_decl__", !IO),
         ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
-        output_proc_label(ProcLabel, no, !IO)
-    ;
-        Data = table_gen_info(RttiProcLabel),
-        io.write_string(mercury_data_prefix, !IO),
-        io.write_string("_table_gen__", !IO),
-        ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
-        output_proc_label(ProcLabel, no, !IO)
-    ;
-        Data = table_gen_enum_params(RttiProcLabel),
-        io.write_string(mercury_data_prefix, !IO),
-        io.write_string("_table_enum_params__", !IO),
-        ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
-        output_proc_label(ProcLabel, no, !IO)
-    ;
-        Data = table_gen_steps(RttiProcLabel),
-        io.write_string(mercury_data_prefix, !IO),
-        io.write_string("_table_steps__", !IO),
-        ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
-        output_proc_label(ProcLabel, no, !IO)
+        output_proc_label_no_prefix(ProcLabel, !IO)
     ).
 
 output_layout_name_storage_type_name(Data, BeingDefined, !IO) :-
@@ -421,10 +399,10 @@ output_layout_name_storage_type_name(Data, BeingDefined, !IO) :-
         Data = closure_proc_id(CallerProcLabel, SeqNo, ClosureProcLabel),
         io.write_string("static const ", !IO),
         (
-            ClosureProcLabel = proc(_, _, _, _, _, _),
+            ClosureProcLabel = ordinary_proc_label(_, _, _, _, _, _),
             io.write_string("MR_User_Closure_Id\n", !IO)
         ;
-            ClosureProcLabel = special_proc(_, _, _, _, _, _),
+            ClosureProcLabel = special_proc_label(_, _, _, _, _, _),
             io.write_string("MR_UCI_Closure_Id\n", !IO)
         ),
         output_layout_name(closure_proc_id(CallerProcLabel, SeqNo,
@@ -485,20 +463,6 @@ output_layout_name_storage_type_name(Data, BeingDefined, !IO) :-
         Data = table_io_decl(RttiProcLabel),
         io.write_string("static const MR_Table_Io_Decl ", !IO),
         output_layout_name(table_io_decl(RttiProcLabel), !IO)
-    ;
-        Data = table_gen_info(RttiProcLabel),
-        io.write_string("static const MR_Table_Gen ", !IO),
-        output_layout_name(table_gen_info(RttiProcLabel), !IO)
-    ;
-        Data = table_gen_enum_params(RttiProcLabel),
-        io.write_string("static const MR_Integer ", !IO),
-        output_layout_name(table_gen_enum_params(RttiProcLabel), !IO),
-        io.write_string("[]", !IO)
-    ;
-        Data = table_gen_steps(RttiProcLabel),
-        io.write_string("static const MR_Table_Trie_Step ", !IO),
-        output_layout_name(table_gen_steps(RttiProcLabel), !IO),
-        io.write_string("[]", !IO)
     ).
 
 layout_name_would_include_code_addr(label_layout(_, _, _)) = no.
@@ -520,9 +484,6 @@ layout_name_would_include_code_addr(module_layout(_)) = no.
 layout_name_would_include_code_addr(proc_static(_)) = no.
 layout_name_would_include_code_addr(proc_static_call_sites(_)) = no.
 layout_name_would_include_code_addr(table_io_decl(_)) = no.
-layout_name_would_include_code_addr(table_gen_info(_)) = no.
-layout_name_would_include_code_addr(table_gen_enum_params(_)) = no.
-layout_name_would_include_code_addr(table_gen_steps(_)) = no.
 
 :- func label_vars_to_type(label_vars) = string.
 
@@ -630,7 +591,7 @@ output_label_layout_data_defn(ProcLabel, LabelNum, ProcLayoutAddr, MaybePort,
     io.write_string("\n", !IO),
     io.write_string(Macro, !IO),
     io.write_string("(", !IO),
-    output_proc_label(ProcLabel, no, !IO),
+    output_proc_label_no_prefix(ProcLabel, !IO),
     io.write_string(",\n", !IO),
     io.write_int(LabelNum, !IO),
     io.write_string(", ", !IO),
@@ -784,8 +745,8 @@ maybe_proc_layout_and_more_kind(MaybeRest, ProcLabel) = Kind :-
         Kind = proc_layout_proc_id(proc_label_user_or_uci(ProcLabel))
     ).
 
-proc_label_user_or_uci(proc(_, _, _, _, _, _)) = user.
-proc_label_user_or_uci(special_proc(_, _, _, _, _, _)) = uci.
+proc_label_user_or_uci(ordinary_proc_label(_, _, _, _, _, _)) = user.
+proc_label_user_or_uci(special_proc_label(_, _, _, _, _, _)) = uci.
 
 :- pred output_proc_layout_data_defn_start(rtti_proc_label::in,
     proc_layout_kind::in, proc_layout_stack_traversal::in,
@@ -886,7 +847,7 @@ output_layout_exec_trace_decls(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
     output_layout_decl(module_layout(ModuleName), !DeclSet, !IO),
     (
         MaybeTableInfo = yes(TableInfo),
-        output_layout_decl(TableInfo, !DeclSet, !IO)
+        output_data_addr_decls(TableInfo, !DeclSet, !IO)
     ;
         MaybeTableInfo = no
     ).
@@ -971,19 +932,11 @@ output_layout_exec_trace(RttiProcLabel, ExecTrace, !DeclSet, !IO) :-
         output_layout_name(proc_layout_body_bytecode(RttiProcLabel), !IO)
     ),
     io.write_string(",\n", !IO),
-    (
-        MaybeCallTableSlot = yes(_),
-        io.write_string("&", !IO),
-        output_tabling_pointer_var_name(ProcLabel, !IO)
-    ;
-        MaybeCallTableSlot = no,
-        io.write_string("NULL", !IO)
-    ),
-    io.write_string(",\n{ ", !IO),
+    io.write_string("0,\n{ ", !IO),
     (
         MaybeTableInfo = yes(TableInfo),
         io.write_string("(const void *) &", !IO),
-        output_layout_name(TableInfo, !IO)
+        output_data_addr(TableInfo, !IO)
     ;
         MaybeTableInfo = no,
         io.write_string("NULL", !IO)
@@ -1027,17 +980,7 @@ write_maybe_slot_num(no, !IO) :-
 
 eval_method_to_c_string(eval_normal) =     "MR_EVAL_METHOD_NORMAL".
 eval_method_to_c_string(eval_loop_check) = "MR_EVAL_METHOD_LOOP_CHECK".
-eval_method_to_c_string(eval_memo(CallStrictness)) = Str :-
-    (
-        CallStrictness = all_strict,
-        Str = "MR_EVAL_METHOD_MEMO_STRICT"
-    ;
-        CallStrictness = all_fast_loose,
-        Str = "MR_EVAL_METHOD_MEMO_FAST_LOOSE"
-    ;
-        CallStrictness = specified(_),
-        Str = "MR_EVAL_METHOD_MEMO_SPECIFIED"
-    ).
+eval_method_to_c_string(eval_memo) =       "MR_EVAL_METHOD_MEMO".
 eval_method_to_c_string(eval_minimal(MinimalMethod)) = Str :-
     (
         MinimalMethod = stack_copy,
@@ -1140,8 +1083,8 @@ output_closure_proc_id_data_defn(CallerProcLabel, SeqNo, ClosureProcLabel,
 
 output_proc_id(ProcLabel, Origin, !IO) :-
     (
-        ProcLabel = proc(DefiningModule, PredOrFunc, DeclaringModule,
-            PredName0, Arity, Mode),
+        ProcLabel = ordinary_proc_label(DefiningModule, PredOrFunc,
+            DeclaringModule, PredName0, Arity, Mode),
         PredName = origin_name(Origin, PredName0),
         sym_name_to_string(DefiningModule, DefiningModuleStr),
         sym_name_to_string(DeclaringModule, DeclaringModuleStr),
@@ -1158,7 +1101,7 @@ output_proc_id(ProcLabel, Origin, !IO) :-
         io.write_int(Mode, !IO),
         io.write_string("\n", !IO)
     ;
-        ProcLabel = special_proc(DefiningModule, SpecialPredId,
+        ProcLabel = special_proc_label(DefiningModule, SpecialPredId,
             TypeModule, TypeName, TypeArity, Mode),
         TypeCtor = type_ctor(qualified(TypeModule, TypeName), TypeArity),
         PredName0 = special_pred_name(SpecialPredId, TypeCtor),
@@ -1363,7 +1306,7 @@ output_proc_layout_name_in_vector(LayoutName, !IO) :-
     ( LayoutName = proc_layout(RttiProcLabel, _) ->
         ProcLabel = make_proc_label_from_rtti(RttiProcLabel),
         io.write_string("MR_PROC_LAYOUT1(", !IO),
-        output_proc_label(ProcLabel, no, !IO),
+        output_proc_label_no_prefix(ProcLabel, !IO),
         io.write_string(")\n", !IO)
     ;
         unexpected(this_file,
@@ -1573,7 +1516,7 @@ output_label_layout_addrs_in_vector([Label | Labels], !IO) :-
         io.write_string("MR_LABEL_LAYOUT", !IO),
         io.write_int(list.length(LabelNums), !IO),
         io.write_string("(", !IO),
-        output_proc_label(ProcLabel, no, !IO),
+        output_proc_label_no_prefix(ProcLabel, !IO),
         io.write_string(",", !IO),
         io.write_list(LabelNums, ",", io.write_int, !IO),
         io.write_string(")\n", !IO),
@@ -1791,140 +1734,6 @@ output_table_io_decl(RttiProcLabel, ProcLayoutKind, NumPTIs,
     output_rval(TypeParamsRval, !IO),
     io.write_string("\n};\n", !IO),
     decl_set_insert(decl_data_addr(layout_addr(LayoutName)), !DeclSet).
-
-:- pred output_table_gen(rtti_proc_label::in, int::in, int::in,
-    list(table_trie_step)::in, rval::in, rval::in,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_table_gen(RttiProcLabel, NumInputs, NumOutputs, Steps,
-        PTIVectorRval, TypeParamsRval, !DeclSet, !IO) :-
-    output_table_gen_steps_table(RttiProcLabel, Steps, MaybeEnumParams,
-        !DeclSet, !IO),
-    output_table_gen_enum_params_table(RttiProcLabel, MaybeEnumParams,
-        !DeclSet, !IO),
-    output_rval_decls(PTIVectorRval, !DeclSet, !IO),
-    LayoutName = table_gen_info(RttiProcLabel),
-    io.write_string("\n", !IO),
-    output_layout_name_storage_type_name(LayoutName, yes, !IO),
-    io.write_string(" = {\n", !IO),
-    io.write_int(NumInputs, !IO),
-    io.write_string(",\n", !IO),
-    io.write_int(NumOutputs, !IO),
-    io.write_string(",\n", !IO),
-    output_layout_name(table_gen_steps(RttiProcLabel), !IO),
-    io.write_string(",\n", !IO),
-    output_layout_name(table_gen_enum_params(RttiProcLabel), !IO),
-    io.write_string(",\n(const MR_PseudoTypeInfo *)\n", !IO),
-    output_rval(PTIVectorRval, !IO),
-    io.write_string(",\n(const MR_Type_Param_Locns *)\n", !IO),
-    output_rval(TypeParamsRval, !IO),
-    io.write_string("\n};\n", !IO),
-    decl_set_insert(decl_data_addr(layout_addr(LayoutName)), !DeclSet).
-
-:- pred output_table_gen_steps_table(rtti_proc_label::in,
-    list(table_trie_step)::in, list(maybe(int))::out,
-    decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_table_gen_steps_table(RttiProcLabel, Steps, MaybeEnumParams,
-        !DeclSet, !IO) :-
-    LayoutName = table_gen_steps(RttiProcLabel),
-    io.write_string("\n", !IO),
-    output_layout_name_storage_type_name(LayoutName, yes, !IO),
-    io.write_string(" = {\n", !IO),
-    output_table_gen_steps(Steps, MaybeEnumParams, !IO),
-    io.write_string("};\n", !IO),
-    decl_set_insert(decl_data_addr(layout_addr(LayoutName)), !DeclSet).
-
-:- pred output_table_gen_steps(list(table_trie_step)::in,
-    list(maybe(int))::out, io::di, io::uo) is det.
-
-output_table_gen_steps([], [], !IO).
-output_table_gen_steps([Step | Steps], [MaybeEnumParam | MaybeEnumParams],
-        !IO) :-
-    (
-        Step = table_trie_step_dummy,
-        StepType = "MR_TABLE_STEP_DUMMY",
-        MaybeEnumParam = no
-    ;
-        Step = table_trie_step_int,
-        StepType = "MR_TABLE_STEP_INT",
-        MaybeEnumParam = no
-    ;
-        Step = table_trie_step_char,
-        StepType = "MR_TABLE_STEP_CHAR",
-        MaybeEnumParam = no
-    ;
-        Step = table_trie_step_string,
-        StepType = "MR_TABLE_STEP_STRING",
-        MaybeEnumParam = no
-    ;
-        Step = table_trie_step_float,
-        StepType = "MR_TABLE_STEP_FLOAT",
-        MaybeEnumParam = no
-    ;
-        Step = table_trie_step_enum(EnumRange),
-        StepType = "MR_TABLE_STEP_ENUM",
-        MaybeEnumParam = yes(EnumRange)
-    ;
-        Step = table_trie_step_user(_),
-        StepType = "MR_TABLE_STEP_USER",
-        MaybeEnumParam = no
-    ;
-        Step = table_trie_step_user_fast_loose(_),
-        StepType = "MR_TABLE_STEP_USER_FAST_LOOSE",
-        MaybeEnumParam = no
-    ;
-        Step = table_trie_step_poly,
-        StepType = "MR_TABLE_STEP_POLY",
-        MaybeEnumParam = no
-    ;
-        Step = table_trie_step_poly_fast_loose,
-        StepType = "MR_TABLE_STEP_POLY_FAST_LOOSE",
-        MaybeEnumParam = no
-    ;
-        Step = table_trie_step_typeinfo,
-        StepType = "MR_TABLE_STEP_TYPEINFO",
-        MaybeEnumParam = no
-    ;
-        Step = table_trie_step_typeclassinfo,
-        StepType = "MR_TABLE_STEP_TYPECLASSINFO",
-        MaybeEnumParam = no
-    ;
-        Step = table_trie_step_promise_implied,
-        StepType = "MR_TABLE_STEP_PROMISE_IMPLIED",
-        MaybeEnumParam = no
-    ),
-    io.write_string(StepType, !IO),
-    io.write_string(",\n", !IO),
-    output_table_gen_steps(Steps, MaybeEnumParams, !IO).
-
-:- pred output_table_gen_enum_params_table(rtti_proc_label::in,
-    list(maybe(int))::in, decl_set::in, decl_set::out, io::di, io::uo) is det.
-
-output_table_gen_enum_params_table(RttiProcLabel, MaybeEnumParams,
-        !DeclSet, !IO) :-
-    LayoutName = table_gen_enum_params(RttiProcLabel),
-    io.write_string("\n", !IO),
-    output_layout_name_storage_type_name(LayoutName, yes, !IO),
-    io.write_string(" = {\n", !IO),
-    output_table_gen_enum_params(MaybeEnumParams, !IO),
-    io.write_string("};\n", !IO),
-    decl_set_insert(decl_data_addr(layout_addr(LayoutName)), !DeclSet).
-
-:- pred output_table_gen_enum_params(list(maybe(int))::in,
-    io::di, io::uo) is det.
-
-output_table_gen_enum_params([], !IO).
-output_table_gen_enum_params([MaybeEnumParam | MaybeEnumParams], !IO) :-
-    (
-        MaybeEnumParam = no,
-        io.write_int(-1, !IO)
-    ;
-        MaybeEnumParam = yes(EnumRange),
-        io.write_int(EnumRange, !IO)
-    ),
-    io.write_string(",\n", !IO),
-    output_table_gen_enum_params(MaybeEnumParams, !IO).
 
 %-----------------------------------------------------------------------------%
 

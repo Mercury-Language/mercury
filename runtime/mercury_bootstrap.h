@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1999-2004 The University of Melbourne.
+** Copyright (C) 1999-2004, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -11,6 +11,8 @@
 ** for backwards compatibility.  All of the definitions here
 ** will go away eventually, so don't use them!
 */
+
+#define	MR_Table_Trie_Step	MR_TableTrieStep
 
 #ifndef	MERCURY_BOOTSTRAP_H
 #define	MERCURY_BOOTSTRAP_H
@@ -49,8 +51,10 @@ typedef MR_UnsignedChar 	UnsignedChar;
 typedef MR_String 		String;
 typedef MR_ConstString 		ConstString;
 
+#if 0
 #ifndef	MR_HIGHLEVEL_CODE
 typedef	MR_Context		Context;
+#endif
 #endif
 
 /*

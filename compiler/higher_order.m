@@ -873,7 +873,7 @@ is_interesting_cons_id(Params, type_info_cell_constructor(_)) =
     Params ^ user_type_spec.
 is_interesting_cons_id(Params, typeclass_info_cell_constructor) =
     Params ^ user_type_spec.
-is_interesting_cons_id(_Params, tabling_pointer_const(_)) = no.
+is_interesting_cons_id(_Params, tabling_info_const(_)) = no.
 is_interesting_cons_id(_Params, deep_profiling_proc_layout(_)) = no.
 is_interesting_cons_id(_Params, table_io_decl(_)) = no.
 

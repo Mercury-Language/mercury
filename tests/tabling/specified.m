@@ -28,6 +28,9 @@ main(!IO) :-
     perform_trials(aplp_vs_vplp, [1, 4], 14, 3, 0, 0, !IO),
     perform_trials(apli_vs_vpli, [1, 4], 14, 3, 0, 0, !IO),
     perform_trials(vvll_vs_vpll, [4, 4, 4], 444, 30, 0, 0, !IO).
+    % table_statistics_for_vv_ll_fib_3(Stats, !IO),
+    % io.write(Stats, !IO),
+    % io.nl(!IO).
 
 :- type trial_type
     --->    aplp_vs_vplp
@@ -102,26 +105,12 @@ trial(TrialType, ListN, IntN, Time, MTime, !IO) :-
         benchmark_det(vp_li_fib_test, ListN - IntN, MRes, 1, MTime)
     ;
         TrialType = vvll_vs_vpll,
-        reset_tables(!IO),
+        table_reset_for_vv_ll_fib_3(!IO),
+        table_reset_for_vp_ll_fib_3(!IO),
         benchmark_det(vv_ll_fib_test, ListN - ListN, Res, 1, Time),
         benchmark_det(vp_ll_fib_test, ListN - ListN, MRes, 1, MTime)
     ),
     require(unify(Res, MRes), "tabling produces wrong answer").
-
-:- pred reset_tables(io::di, io::uo) is det.
-
-:- pragma foreign_decl("C",
-"
-extern void mercury__specified__reset_tables(void);
-").
-
-:- pragma foreign_proc("C",
-    reset_tables(IO0::di, IO::uo),
-    [will_not_call_mercury, promise_pure],
-"
-    /* Mention IO0, IO */
-    mercury__specified__reset_tables();
-").
 
 %-----------------------------------------------------------------------------%
 
@@ -158,7 +147,8 @@ vv_ll_fib_test(N - CopyN, F) :-
 %-----------------------------------------------------------------------------%
 
 :- pred ap_lp_fib(list(int)::in, T::in, list(int)::out) is det.
-:- pragma memo(ap_lp_fib(in, in, out), [addr, promise_implied, output]).
+:- pragma memo(ap_lp_fib(in, in, out),
+    [allow_reset, statistics, specified([addr, promise_implied, output])]).
 
 ap_lp_fib(N, Dummy, F) :-
     RawN = digits_to_num(N),
@@ -173,7 +163,8 @@ ap_lp_fib(N, Dummy, F) :-
     ).
 
 :- pred vp_lp_fib(list(int)::in, T::in, list(int)::out) is det.
-:- pragma memo(vp_lp_fib/3, [value, promise_implied, output]).
+:- pragma memo(vp_lp_fib/3,
+    [allow_reset, statistics, specified([value, promise_implied, output])]).
 
 vp_lp_fib(N, Dummy, F) :-
     RawN = digits_to_num(N),
@@ -188,7 +179,8 @@ vp_lp_fib(N, Dummy, F) :-
     ).
 
 :- pred ap_li_fib(list(int)::in, int::in, list(int)::out) is det.
-:- pragma memo(ap_li_fib(in, in, out), [addr, promise_implied, output]).
+:- pragma memo(ap_li_fib(in, in, out),
+    [allow_reset, statistics, specified([addr, promise_implied, output])]).
 
 ap_li_fib(N, CopyN, F) :-
     RawN = digits_to_num(N),
@@ -207,7 +199,8 @@ ap_li_fib(N, CopyN, F) :-
     ).
 
 :- pred vp_li_fib(list(int)::in, int::in, list(int)::out) is det.
-:- pragma memo(vp_li_fib/3, [value, promise_implied, output]).
+:- pragma memo(vp_li_fib/3,
+    [allow_reset, statistics, specified([value, promise_implied, output])]).
 
 vp_li_fib(N, CopyN, F) :-
     RawN = digits_to_num(N),
@@ -226,7 +219,8 @@ vp_li_fib(N, CopyN, F) :-
     ).
 
 :- pred vp_ll_fib(list(int)::in, list(int)::in, list(int)::out) is det.
-:- pragma memo(vp_ll_fib/3, [value, promise_implied, output]).
+:- pragma memo(vp_ll_fib/3,
+    [allow_reset, statistics, specified([value, promise_implied, output])]).
 
 vp_ll_fib(N, CopyN, F) :-
     RawN = digits_to_num(N),
@@ -245,7 +239,8 @@ vp_ll_fib(N, CopyN, F) :-
     ).
 
 :- pred vv_ll_fib(list(int)::in, list(int)::in, list(int)::out) is det.
-:- pragma memo(vv_ll_fib/3, [value, value, output]).
+:- pragma memo(vv_ll_fib/3,
+    [allow_reset, statistics, specified([value, value, output])]).
 
 vv_ll_fib(N, CopyN, F) :-
     RawN = digits_to_num(N),

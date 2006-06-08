@@ -304,7 +304,7 @@ write_cons_id(ConsId, !IO) :-
     io.write_string(cons_id_to_string(ConsId), !IO).
 
 cons_id_to_string(cons(SymName, Arity)) = String :-
-    mdbcomp.prim_data.sym_name_to_string(SymName, SymNameString0),
+    sym_name_to_string(SymName, SymNameString0),
     ( string.contains_char(SymNameString0, '*') ->
         % We need to protect against the * appearing next to a /
         Stuff = (pred(Char::in, Str0::in, Str::out) is det :-
@@ -340,9 +340,8 @@ cons_id_to_string(type_info_cell_constructor(_)) =
     "<type_info_cell_constructor>".
 cons_id_to_string(typeclass_info_cell_constructor) =
     "<typeclass_info_cell_constructor>".
-cons_id_to_string(
-        tabling_pointer_const(shrouded_pred_proc_id(PredId, ProcId))) =
-    "<tabling_pointer " ++ int_to_string(PredId) ++
+cons_id_to_string(tabling_info_const(shrouded_pred_proc_id(PredId, ProcId))) =
+    "<tabling_info " ++ int_to_string(PredId) ++
     ", " ++ int_to_string(ProcId) ++ ">".
 cons_id_to_string(deep_profiling_proc_layout(
         shrouded_pred_proc_id(PredId, ProcId))) =
@@ -352,10 +351,10 @@ cons_id_to_string(table_io_decl(shrouded_pred_proc_id(PredId, ProcId))) =
     "<table_io_decl " ++ int_to_string(PredId) ++
     ", " ++ int_to_string(ProcId) ++ ">".
 
+write_pred_id(ModuleInfo, PredId, !IO) :-
     % The code of this predicate duplicates the functionality of
     % hlds_error_util.describe_one_pred_name. Changes here should be made
     % there as well.
-write_pred_id(ModuleInfo, PredId, !IO) :-
     io.write_string(pred_id_to_string(ModuleInfo, PredId), !IO).
 
 pred_id_to_string(ModuleInfo, PredId) = Str :-
@@ -2667,10 +2666,10 @@ functor_cons_id_to_string(ConsId, ArgVars, VarSet, ModuleInfo, AppendVarNums)
             term.atom("typeclass_info_cell_constructor"),
             ArgVars, VarSet, AppendVarNums, next_to_graphic_token)
     ;
-        ConsId = tabling_pointer_const(ShroudedPredProcId),
+        ConsId = tabling_info_const(ShroudedPredProcId),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         proc_id_to_int(ProcId, ProcIdInt),
-        Str = "tabling_pointer_const("
+        Str = "tabling_info_const("
             ++ pred_id_to_string(ModuleInfo, PredId)
             ++ ", " ++ int_to_string(ProcIdInt) ++ ")"
     ;
@@ -3762,7 +3761,7 @@ can_fail_to_string(can_fail) = "can_fail".
 can_fail_to_string(cannot_fail) = "cannot_fail".
 
 write_eval_method(EvalMethod, !IO) :-
-    io.write_string(eval_method_to_one_string(EvalMethod), !IO).
+    io.write_string(eval_method_to_string(EvalMethod), !IO).
 
 %-----------------------------------------------------------------------------%
 

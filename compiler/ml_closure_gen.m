@@ -355,7 +355,7 @@ ml_gen_pseudo_type_info(ModuleInfo, PseudoTypeInfo, Rval, Type, !Defns) :-
         ),
         MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
         Rval = const(data_addr_const(data_addr(MLDS_ModuleName,
-            rtti(RttiId)))),
+            mlds_rtti(RttiId)))),
         Type = mlds_rtti_type(item_type(RttiId))
     ).
 
@@ -388,7 +388,8 @@ ml_gen_type_info(ModuleInfo, TypeInfo, Rval, Type, !Defns) :-
             arg_type_infos(TypeInfo), !Defns)
     ),
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
-    Rval = const(data_addr_const(data_addr(MLDS_ModuleName, rtti(RttiId)))),
+    Rval = const(data_addr_const(data_addr(MLDS_ModuleName,
+        mlds_rtti(RttiId)))),
     Type = mlds_rtti_type(item_type(RttiId)).
 
 :- func arg_maybe_pseudo_type_infos(rtti_pseudo_type_info)

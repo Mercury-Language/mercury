@@ -367,8 +367,8 @@ cons_id_to_string(type_info_cell_constructor(_)) =
     "$type_info_cell_constructor".
 cons_id_to_string(typeclass_info_cell_constructor) =
     "$typeclass_info_cell_constructor".
-cons_id_to_string(tabling_pointer_const(_)) =
-    "$tabling_pointer_const".
+cons_id_to_string(tabling_info_const(_)) =
+    "$tabling_info_const".
 cons_id_to_string(deep_profiling_proc_layout(_)) =
     "$deep_profiling_procedure_data".
 cons_id_to_string(table_io_decl(_)) =

@@ -584,7 +584,7 @@ is_pred_pragma(mm_tabling_info(PredOrFunc, Name, Arity, _, _),
         yes(yes(PredOrFunc) - Name / Arity)).
 is_pred_pragma(fact_table(Name, Arity, _), yes(no - Name / Arity)).
 is_pred_pragma(reserve_tag(_TypeName, _TypeArity), no).
-is_pred_pragma(tabled(_, Name, Arity, MaybePredOrFunc, _),
+is_pred_pragma(tabled(_, Name, Arity, MaybePredOrFunc, _, _Attrs),
         yes(MaybePredOrFunc - Name / Arity)).
 is_pred_pragma(promise_pure(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(promise_semipure(Name, Arity), yes(no - Name / Arity)).

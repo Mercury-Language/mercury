@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-2000,2002-2005 The University of Melbourne.
+** Copyright (C) 1997-2000,2002-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -20,14 +20,20 @@
 #include "mercury_float.h"
 #include "mercury_reg_workarounds.h"
 #include "mercury_dlist.h"
-#include "mercury_goto.h"		/* for MR_declare_entry */
-#include "mercury_stack_layout.h"	/* for MR_Proc_Layout */
+#include "mercury_goto.h"	/* for MR_declare_entry */
+#include "mercury_tags.h"   	/* for `MR_DEFINE_BUILTIN_ENUM_CONST' */
 
 #ifndef MR_CONSERVATIVE_GC
   #include "mercury_deep_copy.h"
 #endif
 
 #include <stdio.h>
+
+#ifdef	MR_TABLE_DEBUG
+#define	MR_TABLE_DEBUG_BOOL	MR_TRUE
+#else
+#define	MR_TABLE_DEBUG_BOOL	MR_FALSE
+#endif
 
 /*---------------------------------------------------------------------------*/
 
@@ -169,6 +175,160 @@ struct MR_MemoNonRecord_Struct {
 	MR_AnswerList		*MR_mn_answer_list_tail;
 };
 
+/*
+** The MR_ProcTableInfo structure.
+**
+** To enable debugging (especially performance debugging) of tabled predicates,
+** the compiler generates one of these structures for each tabled predicate
+** (except I/O primitives, for which it generates an MR_Table_Io_Decl
+** structure).
+**
+** Each argument of a tabled predicate is an input or an output. Inputs are put
+** into the call trie (stored in the tablenode field), which has one level
+** per input argument. The structure of each level depends on what kind of type
+** the corresponding input argument is; this is recorded in the input_steps
+** field, which points to an array of size num_inputs. If the type is an enum,
+** we cannot interpret the data structures on that level without also knowing
+** how many alternatives the type has; this is recorded in the corresponding
+** element of the enum_params array, which is likewise of size num_inputs.
+** (Elements of the enum_params array that correspond to arguments whose types
+** are not enums are not meaningful.)
+**
+** The ptis field points to an array of pseudotypeinfos of size num_inputs +
+** num_outputs. The first num_inputs elements give the types of the input
+** arguments, while the remaining num_outputs elements give the types of the
+** output arguments. The type_params field describes where any typeinfos
+** among the input arguments are at call, since without this information
+** the debugger cannot turn the pseudotypeinfos pointed to by ptis field info
+** typeinfos.
+**
+** If the collection of statistics was not enabled for this table, then the
+** stats field will point to an array num_inputs MR_TableStepStats structures,
+** one for each input argument. Each element of this array contains statistics
+** about the corresponding level of the trie.
+**
+** Users can use the stats field to retrieve statistics derived from the
+** entire lifetime of the table so far. To enable users to derive information
+** derived only since the last such lookup, we record the information retrieved
+** on each lookup in the prev_stats field (which will be NULL until the first
+** such lookup).
+**
+** If there is no size limit on the table, then the size_limit field will be
+** zero and the call_table_tips, num_call_table_tips and next_to_evict fields
+** are not meaningful. If there is a size limit on the table, then the
+** size_limit field says how many call table tips are allowed to exist at
+** any one time, the num_call_table_tips field says how many exist at this time
+** (this number will be between zero and size_limit, both inclusive),
+** the call_table_tips field will point to an array of size_limit call table
+** tips, of which the first num_call_table_tips will be meaningful. The
+** next_to_evict field says which one of these entries is scheduled to be
+** evicted next under the FIFO replacement strategy.
+**
+** XXX We need other fields (e.g. in hash tables and tries) to allow us
+** to delete internal nodes of the trie that become empty after evictions.
+*/
+
+typedef	enum {
+	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_TYPE_LOOPCHECK),
+	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_TYPE_MEMO),
+	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_TYPE_MINIMAL_MODEL_STACK_COPY),
+	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_TYPE_MINIMAL_MODEL_OWN_STACKS)
+} MR_TableType;
+
+/*
+** The definition of this type should correspond to the type table_step_kind
+** in library/table_builtin.m.
+*/
+
+typedef enum {
+	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_DUMMY),
+	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_INT),
+	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_CHAR),
+	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_STRING),
+	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_FLOAT),
+	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_ENUM),
+	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_USER),
+	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_USER_FAST_LOOSE),
+	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_POLY),
+	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_POLY_FAST_LOOSE),
+	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_TYPEINFO),
+	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_TYPECLASSINFO),
+	MR_DEFINE_BUILTIN_ENUM_CONST(MR_TABLE_STEP_PROMISE_IMPLIED)
+} MR_TableTrieStep;
+
+typedef	MR_Unsigned	MR_Counter;
+
+struct MR_TableStepStats_Struct {
+	MR_Counter			MR_tss_num_allocs;
+	MR_Counter			MR_tss_num_inserts;
+	MR_Counter			MR_tss_num_lookups;
+	MR_Counter			MR_tss_num_insert_probes;
+	MR_Counter			MR_tss_num_lookup_probes;
+	MR_Counter			MR_tss_num_resizes;
+	MR_Counter			MR_tss_num_resizes_old_entries;
+	MR_Counter			MR_tss_num_resizes_new_entries;
+};
+
+#define	MR_copy_table_step_stats(prev, cur)				\
+	do {								\
+		prev->MR_tss_num_allocs = cur->MR_tss_num_allocs;	\
+		prev->MR_tss_num_inserts = cur->MR_tss_num_inserts;	\
+		prev->MR_tss_num_lookups = cur->MR_tss_num_lookups;	\
+		prev->MR_tss_num_insert_probes = 			\
+			cur->MR_tss_num_insert_probes;			\
+		prev->MR_tss_num_lookup_probes =			\
+			cur->MR_tss_num_lookup_probes;			\
+		prev->MR_tss_num_resizes = cur->MR_tss_num_resizes;	\
+		prev->MR_tss_num_resizes_old_entries =			\
+			cur->MR_tss_num_resizes_old_entries;		\
+		prev->MR_tss_num_resizes_new_entries =			\
+			cur->MR_tss_num_resizes_new_entries;		\
+	} while (0)
+
+struct MR_ProcTableInfo_Struct {
+	MR_TableType			MR_pt_table_type;
+	int				MR_pt_num_inputs;
+	int				MR_pt_num_outputs;
+	int				MR_pt_has_answer_table;
+	const MR_TableTrieStep		*MR_pt_input_steps;
+	const MR_Integer		*MR_pt_input_enum_params;
+	const MR_TableTrieStep		*MR_pt_output_steps;
+	const MR_Integer		*MR_pt_output_enum_params;
+	const MR_PseudoTypeInfo		*MR_pt_ptis;
+	const MR_Type_Param_Locns	*MR_pt_type_params;
+
+	MR_TableNode			MR_pt_tablenode;
+
+	MR_Counter			MR_pt_call_table_lookups;
+	MR_Counter			MR_pt_call_table_not_dupl;
+	MR_TableStepStats		*MR_pt_call_table_stats;
+	MR_Counter			MR_pt_prev_call_table_lookups;
+	MR_Counter			MR_pt_prev_call_table_not_dupl;
+	MR_TableStepStats		*MR_pt_prev_call_table_stats;
+
+	MR_Counter			MR_pt_answer_table_lookups;
+	MR_Counter			MR_pt_answer_table_not_dupl;
+	MR_TableStepStats		*MR_pt_answer_table_stats;
+	MR_Counter			MR_pt_prev_answer_table_lookups;
+	MR_Counter			MR_pt_prev_answer_table_not_dupl;
+	MR_TableStepStats		*MR_pt_prev_answer_table_stats;
+
+	MR_Unsigned			MR_pt_size_limit;
+	MR_TrieNode			*MR_pt_call_table_tips;
+	MR_Unsigned			MR_pt_num_call_table_tips;
+	MR_Unsigned			MR_pt_next_to_evict;
+};
+
+/* This type is only for backward compatibility */
+typedef struct MR_Table_Gen_Struct {
+	int				MR_table_gen_num_inputs;
+	int				MR_table_gen_num_outputs;
+	const MR_TableTrieStep		*MR_table_gen_input_steps;
+	const MR_Integer		*MR_table_gen_enum_params;
+	const MR_PseudoTypeInfo		*MR_table_gen_ptis;
+	const MR_Type_Param_Locns	*MR_table_gen_type_params;
+} MR_Table_Gen;
+
 /*---------------------------------------------------------------------------*/
 
 /*
@@ -187,11 +347,23 @@ struct MR_MemoNonRecord_Struct {
 
 extern	MR_TrieNode	MR_int_hash_lookup_or_add(MR_TrieNode table,
 				MR_Integer key);
+extern	MR_TrieNode	MR_int_hash_lookup_or_add_stats(
+				MR_TableStepStats *stats, MR_TrieNode table,
+				MR_Integer key);
 extern	MR_TrieNode	MR_float_hash_lookup_or_add(MR_TrieNode table,
+				MR_Float key);
+extern	MR_TrieNode	MR_float_hash_lookup_or_add_stats(
+				MR_TableStepStats *stats, MR_TrieNode table,
 				MR_Float key);
 extern	MR_TrieNode	MR_string_hash_lookup_or_add(MR_TrieNode table,
 				MR_ConstString key);
+extern	MR_TrieNode	MR_string_hash_lookup_or_add_stats(
+				MR_TableStepStats *stats, MR_TrieNode table,
+				MR_ConstString key);
 extern	MR_TrieNode	MR_word_hash_lookup_or_add(MR_TrieNode table,
+				MR_Word key);
+extern	MR_TrieNode	MR_word_hash_lookup_or_add_stats(
+				MR_TableStepStats *stats, MR_TrieNode table,
 				MR_Word key);
 
 /*
@@ -201,6 +373,9 @@ extern	MR_TrieNode	MR_word_hash_lookup_or_add(MR_TrieNode table,
 
 extern	MR_TrieNode	MR_int_fix_index_lookup_or_add(MR_TrieNode table,
 				MR_Integer range, MR_Integer key);
+extern	MR_TrieNode	MR_int_fix_index_lookup_or_add_stats(
+				MR_TableStepStats *stats, MR_TrieNode table,
+				MR_Integer range, MR_Integer key);
 
 /*
 ** This function assumes that the table is an expandable array,
@@ -209,6 +384,9 @@ extern	MR_TrieNode	MR_int_fix_index_lookup_or_add(MR_TrieNode table,
 
 extern	MR_TrieNode	MR_int_start_index_lookup_or_add(MR_TrieNode table,
 				MR_Integer start, MR_Integer key);
+extern	MR_TrieNode	MR_int_start_index_lookup_or_add_stats(
+				MR_TableStepStats *stats, MR_TrieNode table,
+				MR_Integer start, MR_Integer key);
 
 /*
 ** This function tables type_infos in a hash table.
@@ -216,12 +394,18 @@ extern	MR_TrieNode	MR_int_start_index_lookup_or_add(MR_TrieNode table,
 
 extern	MR_TrieNode	MR_type_info_lookup_or_add(MR_TrieNode table,
 				MR_TypeInfo type_info);
+extern	MR_TrieNode	MR_type_info_lookup_or_add_stats(
+				MR_TableStepStats *stats, MR_TrieNode table,
+				MR_TypeInfo type_info);
 
 /*
 ** This function tables typeclass_infos in a hash table.
 */
 
 extern	MR_TrieNode	MR_type_class_info_lookup_or_add(MR_TrieNode table,
+				MR_Word *type_class_info);
+extern	MR_TrieNode	MR_type_class_info_lookup_or_add_stats(
+				MR_TableStepStats *stats, MR_TrieNode table,
 				MR_Word *type_class_info);
 
 /*
@@ -233,6 +417,24 @@ extern	MR_TrieNode	MR_type_class_info_lookup_or_add(MR_TrieNode table,
 */
 
 extern	MR_TrieNode	MR_table_type(MR_TrieNode table,
+				MR_TypeInfo type_info, MR_Word data_value);
+extern	MR_TrieNode	MR_table_type_debug(MR_TrieNode table,
+				MR_TypeInfo type_info, MR_Word data_value);
+extern	MR_TrieNode	MR_table_type_stats(
+				MR_TableStepStats *stats, MR_TrieNode table,
+				MR_TypeInfo type_info, MR_Word data_value);
+extern	MR_TrieNode	MR_table_type_stats_debug(
+				MR_TableStepStats *stats, MR_TrieNode table,
+				MR_TypeInfo type_info, MR_Word data_value);
+extern	MR_TrieNode	MR_table_type_back(MR_TrieNode table,
+				MR_TypeInfo type_info, MR_Word data_value);
+extern	MR_TrieNode	MR_table_type_debug_back(MR_TrieNode table,
+				MR_TypeInfo type_info, MR_Word data_value);
+extern	MR_TrieNode	MR_table_type_stats_back(
+				MR_TableStepStats *stats, MR_TrieNode table,
+				MR_TypeInfo type_info, MR_Word data_value);
+extern	MR_TrieNode	MR_table_type_stats_debug_back(
+				MR_TableStepStats *stats, MR_TrieNode table,
 				MR_TypeInfo type_info, MR_Word data_value);
 
 /*
@@ -434,5 +636,8 @@ extern	void		MR_print_answerblock(FILE *fp,
 
 #include "mercury_tabling_macros.h"
 #include "mercury_tabling_preds.h"
+
+#include "mercury_stack_layout.h"	/* for MR_Proc_Layout and */
+					/* MR_Type_Param_Locns */
 
 #endif	/* not MERCURY_TABLING_H */

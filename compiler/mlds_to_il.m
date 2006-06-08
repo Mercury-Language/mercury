@@ -312,7 +312,7 @@ generate_il(MLDS, Version, ILAsm, ForeignLangs, !IO) :-
         IlInfo0, IlInfo),
 
     list.filter(has_foreign_code_defined(ForeignCode),
-        [managed_cplusplus, csharp], ForeignCodeLangs),
+        [lang_managed_cplusplus, lang_csharp], ForeignCodeLangs),
 
     ForeignLangs = IlInfo ^ file_foreign_langs `union`
         set.list_to_set(ForeignCodeLangs),
@@ -1101,7 +1101,7 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
         % C# file associated with this file.  This is very hackish.
         ForeignLangs = !.Info ^ file_foreign_langs,
         !:Info = !.Info ^ file_foreign_langs :=
-            set.insert(ForeignLangs, csharp),
+            set.insert(ForeignLangs, lang_csharp),
 
         mangle_dataname_module(no, ModuleName, NewModuleName),
         ClassName = mlds_module_name_to_class_name(NewModuleName),
@@ -1139,7 +1139,8 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
     % in the cctor of this module.
     (
         Name = function(PredLabel, _ProcId, MaybeSeqNum, _PredId),
-        PredLabel = pred(predicate, no, "main", 2, model_det, no),
+        PredLabel = mlds_user_pred_label(predicate, no, "main", 2,
+            model_det, no),
         MaybeSeqNum = no
     ->
         EntryPoint = [entrypoint],
@@ -1327,18 +1328,18 @@ attribute_to_custom_attribute(DataRep, custom(MLDSType))
 
 mangle_dataname(var(MLDSVarName))
     = mangle_mlds_var_name(MLDSVarName).
-mangle_dataname(common(Int))
+mangle_dataname(mlds_common(Int))
     = string.format("common_%d", [i(Int)]).
-mangle_dataname(rtti(RttiId)) = MangledName :-
+mangle_dataname(mlds_rtti(RttiId)) = MangledName :-
     rtti.id_to_c_identifier(RttiId, MangledName).
-mangle_dataname(module_layout) = _MangledName :-
-    unexpected(this_file, "unimplemented: mangling module_layout").
-mangle_dataname(proc_layout(_)) = _MangledName :-
-    unexpected(this_file, "unimplemented: mangling proc_layout").
-mangle_dataname(internal_layout(_, _)) = _MangledName :-
-    unexpected(this_file, "unimplemented: mangling internal_layout").
-mangle_dataname(tabling_pointer(_)) = _MangledName :-
-    unexpected(this_file, "unimplemented: mangling tabling_pointer").
+mangle_dataname(mlds_module_layout) = _MangledName :-
+    unexpected(this_file, "unimplemented: mangling mlds_module_layout").
+mangle_dataname(mlds_proc_layout(_)) = _MangledName :-
+    unexpected(this_file, "unimplemented: mangling mlds_proc_layout").
+mangle_dataname(mlds_internal_layout(_, _)) = _MangledName :-
+    unexpected(this_file, "unimplemented: mangling mlds_internal_layout").
+mangle_dataname(mlds_tabling_ref(_, _)) = _MangledName :-
+    unexpected(this_file, "unimplemented: mangling mlds_tabling_ref").
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1397,7 +1398,8 @@ mlds_export_to_mlds_defn(
     Signature = mlds_func_signature(ArgTypes, RetTypes),
     ( UnqualName = function(PredLabel, ProcId, _MaybeSeq, _PredId) ->
         CodeRval = const(code_addr_const(proc(
-            qual(ModuleName, module_qual, PredLabel - ProcId), Signature)))
+            qual(ModuleName, module_qual, mlds_proc_label(PredLabel, ProcId)),
+            Signature)))
     ;
         unexpected(this_file, "exported entity is not a function")
     ),
@@ -2013,7 +2015,7 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, HasSecTag, Type, Size,
         ;
             DataRep ^ highlevel_data = yes,
             Type = mercury_type(MercuryType, type_cat_user_ctor, _),
-            \+ type_needs_lowlevel_rep(il, MercuryType)
+            \+ type_needs_lowlevel_rep(target_il, MercuryType)
         )
     ->
         % If this is a class, we should call the constructor. (This is needed
@@ -3013,6 +3015,9 @@ mlds_type_to_ilds_simple_type(DataRep, MLDSType) = SimpleType :-
 
 mlds_type_to_ilds_type(_, mlds_rtti_type(_RttiName)) = il_object_array_type.
 
+    % This is a placeholder only.
+mlds_type_to_ilds_type(_, mlds_tabling_type(_Id)) = il_object_array_type.
+
 mlds_type_to_ilds_type(DataRep, mlds_mercury_array_type(ElementType)) =
     ( ElementType = mercury_type(_, type_cat_variable, _) ->
         il_generic_array_type
@@ -3067,7 +3072,7 @@ mlds_type_to_ilds_type(_, mlds_native_float_type) = il_type([], float64).
 mlds_type_to_ilds_type(_, mlds_foreign_type(ForeignType))
         = il_type([], Class) :-
     (
-        ForeignType = il(il(RefOrVal, Assembly, Type)),
+        ForeignType = il(il_type(RefOrVal, Assembly, Type)),
         sym_name_to_class_name(Type, ForeignClassName),
         (
             RefOrVal = reference,
@@ -3126,7 +3131,7 @@ mlds_mercury_type_to_ilds_type(DataRep, MercuryType,
 mlds_mercury_type_to_ilds_type(DataRep, MercuryType, type_cat_user_ctor) =
     (
         DataRep ^ highlevel_data = yes,
-        \+ type_needs_lowlevel_rep(il, MercuryType)
+        \+ type_needs_lowlevel_rep(target_il, MercuryType)
     ->
         mercury_type_to_highlevel_class_type(MercuryType)
     ;
@@ -3237,8 +3242,8 @@ get_ilds_type_class_name(ILType) = ClassName :-
     % XXX I think that it may be possible to have conflicts with
     % user names in the case where there is a <modulename>. - fjh
     %
-predlabel_to_id(pred(PredOrFunc, MaybeModuleName, Name, Arity, CodeModel,
-        NonOutputFunc), ProcId, MaybeSeqNum, Id) :-
+predlabel_to_id(mlds_user_pred_label(PredOrFunc, MaybeModuleName, Name, Arity,
+        CodeModel, NonOutputFunc), ProcId, MaybeSeqNum, Id) :-
     (
         MaybeModuleName = yes(ModuleName),
         mlds_to_il.sym_name_to_string(ModuleName, MStr),
@@ -3280,8 +3285,8 @@ predlabel_to_id(pred(PredOrFunc, MaybeModuleName, Name, Arity, CodeModel,
     Id = UnMangledId.
     % Id = name_mangle(UnMangledId).
 
-predlabel_to_id(special_pred(PredName, MaybeModuleName, TypeName, Arity),
-        ProcId, MaybeSeqNum, Id) :-
+predlabel_to_id(mlds_special_pred_label(PredName, MaybeModuleName, TypeName,
+        Arity), ProcId, MaybeSeqNum, Id) :-
     proc_id_to_int(ProcId, ProcIdInt),
     (
         MaybeModuleName = yes(ModuleName),
@@ -3371,7 +3376,7 @@ mangle_foreign_code_module(Lang, ModuleName0, ModuleName) :-
     mlds_module_name::in, mlds_module_name::out) is det.
 
 mangle_dataname_module(no, !ModuleName) :-
-    mangle_foreign_code_module(csharp, !ModuleName).
+    mangle_foreign_code_module(lang_csharp, !ModuleName).
 
 mangle_dataname_module(yes(DataName), !ModuleName) :-
     (
@@ -3394,22 +3399,22 @@ mangle_dataname_module(yes(DataName), !ModuleName) :-
 
 mangle_dataname(var(MLDSVarName), Name) :-
     Name = mangle_mlds_var_name(MLDSVarName).
-mangle_dataname(common(Int), MangledName) :-
+mangle_dataname(mlds_common(Int), MangledName) :-
     string.format("common_%d", [i(Int)], MangledName).
-mangle_dataname(rtti(RttiId), MangledName) :-
+mangle_dataname(mlds_rtti(RttiId), MangledName) :-
     rtti.id_to_c_identifier(RttiId, MangledName).
-mangle_dataname(module_layout, _MangledName) :-
-    sorry(this_file, "unimplemented: mangling module_layout").
-mangle_dataname(proc_layout(_), _MangledName) :-
-    sorry(this_file, "unimplemented: mangling proc_layout").
-mangle_dataname(internal_layout(_, _), _MangledName) :-
-    sorry(this_file, "unimplemented: mangling internal_layout").
-mangle_dataname(tabling_pointer(_), _MangledName) :-
-    sorry(this_file, "unimplemented: mangling tabling_pointer").
+mangle_dataname(mlds_module_layout, _MangledName) :-
+    sorry(this_file, "unimplemented: mangling mlds_module_layout").
+mangle_dataname(mlds_proc_layout(_), _MangledName) :-
+    sorry(this_file, "unimplemented: mangling mlds_proc_layout").
+mangle_dataname(mlds_internal_layout(_, _), _MangledName) :-
+    sorry(this_file, "unimplemented: mangling mlds_internal_layout").
+mangle_dataname(mlds_tabling_ref(_, _), _MangledName) :-
+    sorry(this_file, "unimplemented: mangling mlds_tabling_ref").
 
     % We turn procedures into methods of classes.
-mangle_mlds_proc_label(qual(ModuleName, _, PredLabel - ProcId), MaybeSeqNum,
-        ClassName, PredStr) :-
+mangle_mlds_proc_label(qual(ModuleName, _, mlds_proc_label(PredLabel, ProcId)),
+        MaybeSeqNum, ClassName, PredStr) :-
     ClassName = mlds_module_name_to_class_name(ModuleName),
     predlabel_to_id(PredLabel, ProcId, MaybeSeqNum, PredStr).
 

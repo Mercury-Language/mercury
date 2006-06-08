@@ -118,11 +118,11 @@
     % passing slices; read the slice(s) from FailSource and FailFile,
     % interpreting them as failing slices; then produce the dice you get
     % from them.
-    % 
+    %
 :- pred read_dice(slice_source::in, string::in, slice_source::in, string::in,
     maybe_error(dice)::out, io::di, io::uo) is det.
 
-    % Same as read_dice/7, but with PassSource and FailSource both 
+    % Same as read_dice/7, but with PassSource and FailSource both
     % try_single_first.
     %
 :- pred read_dice_try_single_first(string::in, string::in,
@@ -161,7 +161,7 @@
     %
 :- func suspicion_ratio(int, int) = float.
 
-    % suspicion_ratio_normalised(PassCount, PassTests, FailCount, FailTests) 
+    % suspicion_ratio_normalised(PassCount, PassTests, FailCount, FailTests)
     %   = Suspicion.
     % suspicion_ratio_normalised gives an indication of how likely a label is
     % to be buggy based on how many times it was executed in passing and
@@ -221,10 +221,10 @@ read_slice(Source, File, Result, !IO) :-
 slice_merge_trace_counts(TraceCounts, !SliceProcMap) :-
     map.foldl(slice_merge_proc_trace_counts, TraceCounts, !SliceProcMap).
 
-:- pred slice_merge_proc_trace_counts(proc_label_and_filename::in, 
+:- pred slice_merge_proc_trace_counts(proc_label_and_filename::in,
     proc_trace_counts::in, slice_proc_map::in, slice_proc_map::out) is det.
 
-slice_merge_proc_trace_counts(ProcLabelAndFile, ProcTraceCounts, 
+slice_merge_proc_trace_counts(ProcLabelAndFile, ProcTraceCounts,
         !SliceProcMap) :-
     ProcLabelAndFile = proc_label_and_filename(ProcLabel, FileName),
     ( map.search(!.SliceProcMap, ProcLabel, FoundProcSlice) ->
@@ -242,13 +242,13 @@ slice_merge_proc_trace_counts(ProcLabelAndFile, ProcTraceCounts,
 
 slice_merge_path_port(FileName, PathPort, LineNoAndCount, !ProcSlice) :-
     (
-        map.transform_value(slice_add_trace_count(LineNoAndCount), 
+        map.transform_value(slice_add_trace_count(LineNoAndCount),
             PathPort, !.ProcSlice, UpdatedProcSlice)
     ->
         !:ProcSlice = UpdatedProcSlice
     ;
         LineNoAndCount = line_no_and_count(LineNumber, ExecCount, NumTests),
-        SliceExecCount = slice_exec_count(FileName, LineNumber, ExecCount,  
+        SliceExecCount = slice_exec_count(FileName, LineNumber, ExecCount,
             NumTests),
         svmap.det_insert(PathPort, SliceExecCount, !ProcSlice)
     ).
@@ -259,7 +259,7 @@ slice_merge_path_port(FileName, PathPort, LineNoAndCount, !ProcSlice) :-
 slice_add_trace_count(LineNoAndCount, ExecCounts0, ExecCounts) :-
     LineNoAndCount = line_no_and_count(_LineNumber, ExecCount, NumTests),
     ExecCounts0 = slice_exec_count(FileName, LineNumber, Exec, Tests),
-    ExecCounts = slice_exec_count(FileName, LineNumber, Exec + ExecCount, 
+    ExecCounts = slice_exec_count(FileName, LineNumber, Exec + ExecCount,
         Tests + NumTests).
 
 %-----------------------------------------------------------------------------%
@@ -271,7 +271,7 @@ read_dice(PassSource, PassFile, FailSource, FailFile, Result, !IO) :-
     read_trace_counts_source(no, PassSource, PassFile, ReadPassResult, !IO),
     (
         ReadPassResult = list_ok(PassFileType, PassTraceCounts),
-        read_trace_counts_source(no, FailSource, FailFile, ReadFailResult, 
+        read_trace_counts_source(no, FailSource, FailFile, ReadFailResult,
             !IO),
         (
             ReadFailResult = list_ok(FailFileType, FailTraceCounts),
@@ -299,7 +299,7 @@ read_dice_try_single_first(PassFile, FailFile, Result, !IO) :-
     read_dice(try_single_first, PassFile, try_single_first, FailFile, Result,
         !IO).
 
-:- pred maybe_dice_error_to_problem_string(maybe_error(dice)::in, string::out) 
+:- pred maybe_dice_error_to_problem_string(maybe_error(dice)::in, string::out)
 	is det.
 
 :- pragma export(maybe_dice_error_to_problem_string(in, out),
@@ -314,7 +314,7 @@ maybe_dice_error_to_problem_string(error(ErrorStr), ErrorStr).
 	"MR_DD_det_maybe_dice_error_to_dice").
 
 det_maybe_dice_error_to_dice(ok(Dice), Dice).
-det_maybe_dice_error_to_dice(error(_), _) :- 
+det_maybe_dice_error_to_dice(error(_), _) :-
 	error("det_maybe_dice_error_to_dice: result is error").
 
 :- type trace_counts_kind
@@ -329,15 +329,15 @@ det_maybe_dice_error_to_dice(error(_), _) :-
 dice_merge_trace_counts(Kind, TraceCounts, !DiceProcMap) :-
     map.foldl(dice_merge_proc_trace_counts(Kind), TraceCounts, !DiceProcMap).
 
-:- pred dice_merge_proc_trace_counts(trace_counts_kind::in, 
+:- pred dice_merge_proc_trace_counts(trace_counts_kind::in,
     proc_label_and_filename::in, proc_trace_counts::in, dice_proc_map::in,
     dice_proc_map::out) is det.
 
-dice_merge_proc_trace_counts(Kind, ProcLabelAndFile, ProcTraceCounts, 
+dice_merge_proc_trace_counts(Kind, ProcLabelAndFile, ProcTraceCounts,
         !DiceProcMap) :-
     ProcLabelAndFile = proc_label_and_filename(ProcLabel, FileName),
     ( map.search(!.DiceProcMap, ProcLabel, FoundProcDice) ->
-        map.foldl(dice_merge_path_port(FileName, Kind), ProcTraceCounts, 
+        map.foldl(dice_merge_path_port(FileName, Kind), ProcTraceCounts,
             FoundProcDice, MergedProcDice),
         svmap.det_update(ProcLabel, MergedProcDice, !DiceProcMap)
     ;
@@ -351,7 +351,7 @@ dice_merge_proc_trace_counts(Kind, ProcLabelAndFile, ProcTraceCounts,
 
 dice_merge_path_port(FileName, Kind, PathPort, LineNoAndCount, !ProcDice) :-
     (
-        map.transform_value(dice_add_trace_count(Kind, LineNoAndCount), 
+        map.transform_value(dice_add_trace_count(Kind, LineNoAndCount),
             PathPort, !.ProcDice, UpdatedProcDice)
     ->
         !:ProcDice = UpdatedProcDice
@@ -359,11 +359,11 @@ dice_merge_path_port(FileName, Kind, PathPort, LineNoAndCount, !ProcDice) :-
         LineNoAndCount = line_no_and_count(LineNumber, ExecCount, NumTests),
         (
             Kind = pass,
-            InitCount = dice_exec_count(FileName, LineNumber, 
+            InitCount = dice_exec_count(FileName, LineNumber,
                 ExecCount, NumTests, 0, 0)
         ;
             Kind = fail,
-            InitCount = dice_exec_count(FileName, LineNumber, 0, 0, 
+            InitCount = dice_exec_count(FileName, LineNumber, 0, 0,
                 ExecCount, NumTests)
         ),
         svmap.det_insert(PathPort, InitCount, !ProcDice)
@@ -406,7 +406,7 @@ read_slice_to_string(File, SortStr0, N, Module, SliceStr, Problem, !IO) :-
             ;
                 ModuleFilteredLabelCounts = LabelCounts
             ),
-            ( string__append("z", SortStrPrime, SortStr0) ->
+            ( string.append("z", SortStrPrime, SortStr0) ->
                 SortStr = SortStrPrime,
                 list.filter(slice_label_count_is_zero,
                     ModuleFilteredLabelCounts, FilteredLabelCounts)
@@ -669,17 +669,17 @@ dice_exec_count_compare(SortStr, ExecCount1, ExecCount2, Result) :-
                 suspicion_ratio(ExecCount1 ^ pass_count,
                     ExecCount1 ^ fail_count))
         ; C = 'd' ->
-            % using - instead of int__minus is ambiguous
-            Diff1 = int__minus(ExecCount1 ^ pass_count,
+            % using - instead of int.minus is ambiguous.
+            Diff1 = int.minus(ExecCount1 ^ pass_count,
                 ExecCount1 ^ fail_count),
-            Diff2 = int__minus(ExecCount2 ^ pass_count,
+            Diff2 = int.minus(ExecCount2 ^ pass_count,
                 ExecCount2 ^ fail_count),
             builtin.compare(Result0, Diff1, Diff2)
         ; C = 'D' ->
-            % using - instead of int__minus is ambiguous
-            Diff1 = int__minus(ExecCount1 ^ pass_count,
+            % using - instead of int.minus is ambiguous.
+            Diff1 = int.minus(ExecCount1 ^ pass_count,
                 ExecCount1 ^ fail_count),
-            Diff2 = int__minus(ExecCount2 ^ pass_count,
+            Diff2 = int.minus(ExecCount2 ^ pass_count,
                 ExecCount2 ^ fail_count),
             builtin.compare(Result0, Diff2, Diff1)
         ;
@@ -792,7 +792,7 @@ suspicion_ratio_normalised(PassCount, PassTests, FailCount, FailTests) = R :-
     ;
         ( PassTests = 0 ->
             PassNorm = 0.0
-        ; 
+        ;
             PassNorm = float(PassCount) / float(PassTests)
         ),
         FailNorm = float(FailCount) / float(FailTests),
@@ -837,15 +837,15 @@ bracket_int(X) = "(" ++ string.int_to_string_thousands(X) ++ ")".
 :- func format_float(int, float) = string.
 
 format_float(DecimalPlaces, Flt) =
-    string.format("%.*f", [i(DecimalPlaces), f(Flt)]). 
+    string.format("%.*f", [i(DecimalPlaces), f(Flt)]).
 
 :- pred proc_label_is_for_module(string::in, proc_label::in) is semidet.
 
 proc_label_is_for_module(Module, ProcLabel) :-
     (
-        ProcLabel = proc(_, _, ProcSymModule, _, _, _)
+        ProcLabel = ordinary_proc_label(_, _, ProcSymModule, _, _, _)
     ;
-        ProcLabel = special_proc(_, _, ProcSymModule, _, _, _)
+        ProcLabel = special_proc_label(_, _, ProcSymModule, _, _, _)
     ),
     string_to_sym_name(Module, ".", SymModule),
     is_submodule(ProcSymModule, SymModule).
@@ -854,7 +854,8 @@ proc_label_is_for_module(Module, ProcLabel) :-
 
 format_proc_label(ProcLabel) = Str :-
     (
-        ProcLabel = proc(_, PredOrFunc, SymModule, Name, Arity, ModeNo),
+        ProcLabel = ordinary_proc_label(_, PredOrFunc, SymModule, Name, Arity,
+            ModeNo),
         Module = sym_name_to_string(SymModule),
         (
             PredOrFunc = function,
@@ -868,7 +869,7 @@ format_proc_label(ProcLabel) = Str :-
         Str = PredOrFuncStr ++ " " ++ Module ++ "." ++ Name ++
             "/" ++ ArityStr ++ "-" ++ int_to_string(ModeNo)
     ;
-        ProcLabel = special_proc(_, SpecialPredId, SymModule, TypeName,
+        ProcLabel = special_proc_label(_, SpecialPredId, SymModule, TypeName,
             _, _),
         Module = sym_name_to_string(SymModule),
         special_pred_name_arity(SpecialPredId, Name, _, Arity),

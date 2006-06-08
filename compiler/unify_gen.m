@@ -289,8 +289,8 @@ generate_tag_test_rval_2(ConsTag, Rval, TestRval) :-
         ConsTag = base_typeclass_info_constant(_, _, _),
         unexpected(this_file, "Attempted base_typeclass_info unification")
     ;
-        ConsTag = tabling_pointer_constant(_, _),
-        unexpected(this_file, "Attempted tabling_pointer unification")
+        ConsTag = tabling_info_constant(_, _),
+        unexpected(this_file, "Attempted tabling_info unification")
     ;
         ConsTag = deep_profiling_proc_layout_tag(_, _),
         unexpected(this_file,
@@ -452,13 +452,14 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
                 base_typeclass_info(ModuleName, Instance))), no)), !CI),
         Code = empty
     ;
-        ConsTag = tabling_pointer_constant(PredId, ProcId),
+        ConsTag = tabling_info_constant(PredId, ProcId),
         expect(unify(Args, []), this_file,
-            "generate_construction_2: tabling_pointer constant has args"),
+            "generate_construction_2: tabling_info constant has args"),
         code_info.get_module_info(!.CI, ModuleInfo),
         ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
         module_info_get_name(ModuleInfo, ModuleName),
-        DataAddr = data_addr(ModuleName, tabling_pointer(ProcLabel)),
+        DataAddr = data_addr(ModuleName,
+            proc_tabling_ref(ProcLabel, tabling_info)),
         code_info.assign_const_to_var(Var,
             const(data_addr_const(DataAddr, no)), !CI),
         Code = empty
@@ -873,28 +874,17 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
     % For constants, if the deconstruction is det, then we already know
     % the value of the constant, so Code = empty.
     (
-        Tag = string_constant(_String),
-        Code = empty
-    ;
-        Tag = int_constant(_Int),
-        Code = empty
-    ;
-        Tag = float_constant(_Float),
-        Code = empty
-    ;
-        Tag = pred_closure_tag(_, _, _),
-        Code = empty
-    ;
-        Tag = type_ctor_info_constant(_, _, _),
-        Code = empty
-    ;
-        Tag = base_typeclass_info_constant(_, _, _),
-        Code = empty
-    ;
-        Tag = tabling_pointer_constant(_, _),
-        Code = empty
-    ;
-        Tag = deep_profiling_proc_layout_tag(_, _),
+        ( Tag = string_constant(_String)
+        ; Tag = int_constant(_Int)
+        ; Tag = float_constant(_Float)
+        ; Tag = pred_closure_tag(_, _, _)
+        ; Tag = type_ctor_info_constant(_, _, _)
+        ; Tag = base_typeclass_info_constant(_, _, _)
+        ; Tag = tabling_info_constant(_, _)
+        ; Tag = deep_profiling_proc_layout_tag(_, _)
+        ; Tag = shared_local_tag(_Ptag, _Sectag2)
+        ; Tag = reserved_address(_RA)
+        ),
         Code = empty
     ;
         Tag = table_io_decl_tag(_, _),
@@ -948,12 +938,6 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
         make_fields_and_argvars(Args, Rval, 1, Ptag, Fields, ArgVars),
         var_types(!.CI, Args, ArgTypes),
         generate_unify_args(Fields, ArgVars, Modes, ArgTypes, Code, !CI)
-    ;
-        Tag = shared_local_tag(_Ptag, _Sectag2),
-        Code = empty
-    ;
-        Tag = reserved_address(_RA),
-        Code = empty
     ;
         % For shared_with_reserved_address, the sharing is only important
         % for tag tests, not for det deconstructions, so here we just recurse

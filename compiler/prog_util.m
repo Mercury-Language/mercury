@@ -590,9 +590,9 @@ cons_id_arity(type_info_cell_constructor(_)) =
 cons_id_arity(typeclass_info_cell_constructor) =
     unexpected(this_file, "cons_id_arity: " ++
         "can't get arity of typeclass_info_cell_constructor").
-cons_id_arity(tabling_pointer_const(_)) =
+cons_id_arity(tabling_info_const(_)) =
     unexpected(this_file,
-        "cons_id_arity: can't get arity of tabling_pointer_const").
+        "cons_id_arity: can't get arity of tabling_info_const").
 cons_id_arity(deep_profiling_proc_layout(_)) =
     unexpected(this_file, "cons_id_arity: " ++
         "can't get arity of deep_profiling_proc_layout").
@@ -608,7 +608,7 @@ cons_id_maybe_arity(type_ctor_info_const(_, _, _)) = no.
 cons_id_maybe_arity(base_typeclass_info_const(_, _, _, _)) = no.
 cons_id_maybe_arity(type_info_cell_constructor(_)) = no.
 cons_id_maybe_arity(typeclass_info_cell_constructor) = no.
-cons_id_maybe_arity(tabling_pointer_const(_)) = no.
+cons_id_maybe_arity(tabling_info_const(_)) = no.
 cons_id_maybe_arity(deep_profiling_proc_layout(_)) = no.
 cons_id_maybe_arity(table_io_decl(_)) = no.
 

@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2004 The University of Melbourne.
+** Copyright (C) 2004, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -29,7 +29,7 @@
         table = t->MR_hash_table; /* Deref the table pointer */
     }
 
-    /* Rehash the table if it has grown too full */
+    /* Rehash the table if it has grown too full. */
     if (table->value_count > table->threshold) {
         MR_HashTableSlotPtr     *old_hash_table;
         MR_HashTableSlotPtr     *new_hash_table;
