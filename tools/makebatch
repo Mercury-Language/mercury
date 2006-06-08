@@ -44,6 +44,11 @@ testparams=""
 stop_after_stage_2=""
 failed="continue"
 
+if test -f $HOME/.makebatch_save_stage2
+then
+        save_stage2="true"
+fi
+
 while test $# -gt 0
 do
     case $1 in
