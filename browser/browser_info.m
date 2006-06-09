@@ -206,6 +206,14 @@
     bool::in, bool::in, bool::in, bool::in, setting::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
 
+    % As above but the first argument specifies where the browser was
+    % invoked from.
+    %
+:- pred set_browser_param_with_caller_type(browse_caller_type::in,
+    bool::in, bool::in, bool::in, bool::in, bool::in, bool::in, bool::in,
+    setting::in, browser_persistent_state::in, browser_persistent_state::out)
+    is det.
+
     % Update a setting in the browser state.  The first argument should be
     % true iff the set command is invoked from within the browser. The next
     % argument indicates the presence of at most one of the options
@@ -217,12 +225,12 @@
     bool::in, bool::in, bool::in, bool::in, setting::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
 
-    % set_param_from_option_table(FromBrowser, OptionTable, Setting, !State):
+    % set_param_from_option_table(CallerType, OptionTable, Setting, !State).
     %
     % Same as set_param/11, but looks up the options in the
     % supplied option table.
     %
-:- pred set_browser_param_from_option_table(bool::in,
+:- pred set_browser_param_from_option_table(browse_caller_type::in,
     option_table(setting_option)::in, setting::in,
     browser_persistent_state::in, browser_persistent_state::out) is det.
 
@@ -388,7 +396,8 @@ set_lines_from_mdb(P, B, A, F, Pr, V, NPr, Lines, !Browser) :-
 
 info_set_browse_param(OptionTable, Setting, !Info) :-
     PersistentState0 = !.Info ^ state,
-    set_browser_param_from_option_table(yes, OptionTable, Setting,
+    CallerType = !.Info ^ caller_type,
+    set_browser_param_from_option_table(CallerType, OptionTable, Setting,
         PersistentState0, PersistentState),
     !:Info = !.Info ^ state := PersistentState.
 
@@ -639,15 +648,42 @@ set_browser_param(FromBrowser, P0, B0, A0, F0, Pr0, V0, NPr0, Setting,
             !.State ^ num_printed_io_actions,
         !.State ^ xml_browser_cmd, !.State ^ xml_tmp_filename).
 
+set_browser_param_with_caller_type(CallerType, P0, B0, A0, F0, Pr0, V0, NPr0,
+        Setting, !State) :-
+    (
+        P0 = no,
+        B0 = no,
+        A0 = no
+    ->
+        % DummyInBrowser will always be ignored because the second
+        % argument is yes/1.
+        DummyInBrowser = yes,
+        affected_caller_types(DummyInBrowser, yes(CallerType), P, B, A)
+    ;
+        P = P0,
+        B = B0,
+        A = A0
+    ),
+    default_all_yes(F0, Pr0, V0, NPr0, F, Pr, V, NPr),
+    PParams0 = !.State ^ print_params,
+    BParams0 = !.State ^ browse_params,
+    AParams0 = !.State ^ print_all_params,
+    maybe_set_param(P, F, Pr, V, NPr, Setting, PParams0, PParams),
+    maybe_set_param(B, F, Pr, V, NPr, Setting, BParams0, BParams),
+    maybe_set_param(A, F, Pr, V, NPr, Setting, AParams0, AParams),
+    !:State = browser_persistent_state(PParams, BParams, AParams,
+        !.State ^ num_printed_io_actions,
+        !.State ^ xml_browser_cmd, !.State ^ xml_tmp_filename).
+
 set_browser_param_maybe_caller_type(FromBrowser, MaybeCallerType,
         F0, Pr0, V0, NPr0, Setting, !State) :-
     affected_caller_types(FromBrowser, MaybeCallerType, P, B, A),
     set_browser_param(FromBrowser, P, B, A, F0, Pr0, V0, NPr0, Setting,
         !State).
 
-set_browser_param_from_option_table(FromBrowser, OptionTable, Setting,
+set_browser_param_from_option_table(CallerType, OptionTable, Setting,
         !State) :-
-    set_browser_param(FromBrowser,
+    set_browser_param_with_caller_type(CallerType,
         lookup_bool_option(OptionTable, set_print)      : bool,
         lookup_bool_option(OptionTable, set_browse)     : bool,
         lookup_bool_option(OptionTable, set_print_all)  : bool,

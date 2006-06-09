@@ -17,7 +17,7 @@ Valid? browse 2
 browser> ls
 baz(1, bar)
 browser> quit
-dd> set format verbose
+dd> format verbose
 dd> print
 p
 1-1
@@ -25,7 +25,7 @@ p
   1-1
   2-bar
 
-Valid? set -B format pretty
+Valid? format -B pretty
 dd> p
 p
 1-1
@@ -33,7 +33,7 @@ p
   1-1
   2-bar
 
-Valid? set -P format pretty
+Valid? format -P pretty
 dd> p
 p(1, baz(1, bar))
 Valid? b -x 2

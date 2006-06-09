@@ -333,7 +333,7 @@ handle_command(param_command(ParamCommand), UserQuestion, Response,
         !User, !IO) :-
     Browser0 = !.User ^ browser,
     DummyTerm = synthetic_term("", [], no),
-    Info0 = browser_info(DummyTerm, [], browse, no, Browser0, no_track, no),
+    Info0 = browser_info(DummyTerm, [], print, no, Browser0, no_track, no),
     run_param_command(internal, ParamCommand, no, Info0, Info, !IO),
     Info = browser_info(_, _, _, _, Browser, _, _),
     !:User = !.User ^ browser := Browser,
