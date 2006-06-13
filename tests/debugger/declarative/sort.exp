@@ -31,10 +31,10 @@ write_string(...)
 write_string(...)
 write_string(...)
 write_string(...)
-Valid? depth 10
+Valid? depth io 10
 dd> print io 9
 read_line_as_string_2(<<foreign>>, yes, -1, "")
-dd> depth 1
+dd> depth io 1
 dd> no
 open_stream(...)
 3 tabled IO actions:

@@ -120,6 +120,7 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module string.
+:- import_module svmap.
 :- import_module univ.
 
 %-----------------------------------------------------------------------------%
@@ -959,11 +960,33 @@ format_arg_cmd(ArgWords) = param_command(format(MaybeOptionTable, Setting)) :-
 :- func format_param_arg_cmd(string::in, list(string)::in)
     = (user_command::out) is semidet.
 
-format_param_arg_cmd(Cmd, ArgWords)
-        = param_command(format_param(MaybeOptionTable, Setting)) :-
+format_param_arg_cmd(Cmd, ArgWords0) = Command :-
+    ( ArgWords0 = ["io" | ArgWords1] ->
+        ArgWords = ArgWords1,
+        HasIOArg = yes : bool
+    ;
+        ArgWords = ArgWords0,
+        HasIOArg = no : bool
+    ),
     ArgWords \= [],
-    parse.parse([Cmd | ArgWords],
-        param_command(format_param(MaybeOptionTable, Setting))).
+    parse.parse([Cmd | ArgWords], ParsedCommand),
+    ParsedCommand = param_command(format_param(MaybeOptionTable0, Setting)),
+    ( 
+        HasIOArg = yes,
+        % Since the command was invoked with the `io' argument we want to
+        % change the settings for the `print all' configuration parameter,
+        % rather than the ones for `print'.
+        some [!OptionTable] (
+            MaybeOptionTable0 = ok(!:OptionTable),
+            svmap.det_update(set_print, bool(no), !OptionTable),
+            svmap.det_update(set_print_all, bool(yes), !OptionTable),
+            MaybeOptionTable = ok(!.OptionTable)
+        )
+    ;
+        HasIOArg = no,
+        MaybeOptionTable = MaybeOptionTable0
+    ),
+    Command = param_command(format_param(MaybeOptionTable, Setting)). 
 
 :- func num_io_actions_cmd(list(string)::in) = (user_command::out) is semidet.
 

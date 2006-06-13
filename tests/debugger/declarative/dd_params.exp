@@ -57,6 +57,37 @@ Printall pretty:                 3         10        80        2
 Printall raw_pretty:             3         10        80        2         
 
 Number of I/O actions printed is: 10
+dd> depth 5
+dd> size 5
+dd> width 5
+dd> lines 5
+dd> depth io 10
+dd> size io 10
+dd> width io 10
+dd> lines io 10
+dd> params
+Browser default format: flat
+                                 depth     size      width     lines     
+Browser flat:                    10        30        80        25        
+Browser verbose:                 10        30        80        25        
+Browser pretty:                  10        30        80        25        
+Browser raw_pretty:              10        30        80        25        
+
+Print default format: flat
+                                 depth     size      width     lines     
+Print flat:                      5         5         5         5         
+Print verbose:                   5         5         5         5         
+Print pretty:                    5         5         5         5         
+Print raw_pretty:                5         5         5         5         
+
+Printall default format: flat
+                                 depth     size      width     lines     
+Printall flat:                   10        10        10        10        
+Printall verbose:                10        10        10        10        
+Printall pretty:                 10        10        10        10        
+Printall raw_pretty:             10        10        10        10        
+
+Number of I/O actions printed is: 10
 dd> quit
 Diagnosis aborted.
        3:      2  2 EXIT pred dd_params.p/2-0 (det) dd_params.m:22 (dd_params.m:11)
