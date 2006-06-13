@@ -128,7 +128,7 @@
 % PREDICATES.
 %
 % Most of these probably ought to be moved to another
-% module in the standard library such as util.m.
+% module in the standard library such as std_util.m.
 
     % copy/2 makes a deep copy of a data structure.  The resulting copy is
     % a `unique' value, so you can use destructive update on it.
@@ -352,9 +352,7 @@
 :- mode cc_multi_equal(di, uo) is cc_multi.
 :- mode cc_multi_equal(in, out) is cc_multi.
 
-    % `impure_true' is exactly the same as `true' except that it is
-    % impure.  You can use calls to `impure_true' to 
-    %
+    % `impure_true' is like `true' except that it is impure.
     %
 :- impure pred impure_true is det.
 
