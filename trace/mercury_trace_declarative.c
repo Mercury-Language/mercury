@@ -2434,7 +2434,7 @@ MR_decl_print_edt_stats(void)
     pid = getpid();
     sprintf(cmdstr, "ps -p %i -o rss,vsz | tail -1 |"
     	"awk '{print \"RSS = \" $1 \"\\nVSZ = \" $2}' 1>&2", pid);
-    system(cmdstr);
+    MR_trace_call_system_display_error_on_failure(stderr, cmdstr);
 
     MR_debug_enabled = MR_FALSE;
     MR_update_trace_func_enabled();

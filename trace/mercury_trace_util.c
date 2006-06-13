@@ -207,3 +207,21 @@ MR_trace_proc_layout_is_builtin_catch(const MR_Proc_Layout *layout)
     }
     return MR_FALSE;
 }
+
+void
+MR_trace_call_system_display_error_on_failure(FILE *err_stream, char *command)
+{
+    int     system_rv;
+    
+    if (system(NULL)) {
+        system_rv = system(command);
+        if (system_rv != 0) {
+            fprintf(err_stream,
+                "mdb: the shell command returned a non-zero exit code or was"
+                " terminated abnormally.\n",
+                system_rv);
+        }
+    } else {
+        fprintf(err_stream, "mdb: no shell found.\n");
+    }
+}

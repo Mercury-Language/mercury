@@ -2870,6 +2870,22 @@ Writes the value of the variable in the current environment
 with the given ordinal number or with the given name
 to the specified file. The option @samp{-x} (or @samp{--xml}) causes the
 output to be in XML.
+@sp 1
+@item open @var{term}
+Save @var{term} to a temporary file and open the file in an editor.
+The environment variable EDITOR is consulted to determine what editor to
+use.
+If this environment variable is not set then @samp{vi} is used.
+@var{term} may be any term that can be saved to a file with the
+@samp{save_to_file} command.
+@sp 1
+@item grep @var{pattern} @var{term}
+Save the given term to a temporary file and perform a grep on the
+file using @var{pattern}.
+@var{term} may be any term that can be saved to a file with the
+@samp{save_to_file} command.
+The unix `grep' command must be available from the shell for this command
+to work.
 @c @sp 1
 @c @item dump [-x] proc_body @var{filename}
 @c Writes the representation of the body of the current procedure,
@@ -3799,9 +3815,13 @@ and its submodules, if any.
 
 @sp 1
 @table @code
-@item source [-i] @var{filename}
+@item source [-i] @var{filename} [@var{args}]
 @kindex source (mdb command)
 Executes the commands in the file named @var{filename}.
+Optionally a list of at most nine arguments can be given.
+Occurrences of the strings "$1" to "$9" in the sourced file
+will be replaced by the corresponding arguments given in the source
+command before the commands in the sourced file are executed.
 @sp 1
 The option @samp{-i} or @samp{--ignore-errors} tells @samp{mdb}
 not to complain if the named file does not exist or is not readable.

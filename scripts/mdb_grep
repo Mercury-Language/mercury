@@ -1,0 +1,3 @@
+save_to_file $2 .mdb_grep_tmp
+shell grep $1 .mdb_grep_tmp
+shell rm .mdb_grep_tmp

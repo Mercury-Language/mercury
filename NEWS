@@ -69,6 +69,12 @@ Changes to the Mercury debugger:
   left the goal at which the term was available as the value of a program
   variable.
 * Users can now see the set of places where two terms differ from each other.
+* Users can now execute system shell commands from within the debugger.
+* The source command now accepts optional additional arguments which
+  are substituted into the sourced file, allowing for parameterised
+  scripts.
+* Users can now open terms in their favorite editor, or
+  perform a grep on a term.
 * The `set' command has been replaced by several other commands: the `format',
   `format_param', `list_context_lines', `list_path', `xml_browser_cmd',
   `xml_tmp_filename', `fail_trace_counts', `pass_trace_counts' and
@@ -77,8 +83,9 @@ Changes to the Mercury debugger:
 * The `save' command now saves the entire persistent state of the debugger
   (with one small exception that cannot be reestablished by an mdb command from
   an arbitrary point of execution).
-* The declarative debugger now supports an `undo' command, and allows users to
-  select the search algorithm.
+* The declarative debugger now supports an `undo' command.
+* The declarative debugger now allows users to
+  change the search algorithm mid-session.
 * The declarative debugger can now exploit information from the "code
   footprints" of passed and failed test cases to find bugs with fewer
   questions. We have also added two tools, mslice and mdice, to manipulate
@@ -313,6 +320,46 @@ Changes to the Mercury compiler:
   will also generate error messages for calls to string.format and io.format
   in which the format string or the structure of the list of values to be
   printed are not statically available.
+
+Changes to the Mercury debugger:
+
+* A `list' command has ben added that displays a listing of the source code
+  lines referred to by the current environment.  To supporting commands
+  `pop_list_dir' and `push_list_dir' have also been added.
+ 
+* Users can now keep hold of a term, referring to it even when execution has
+  left the goal at which the term was available as the value of a program
+  variable.  The name of the new command is `hold'.
+
+* A `diff' command has been added that allows users to see the set of places
+  where two terms differ from each other.
+
+* A `shell' (or `!' for short) command has been added that allows users to
+  execute system shell commands from within the debugger.
+
+* The `source' command now accepts optional additional arguments which
+  are substituted into the sourced file, allowing for parameterised
+  scripts.  The strings "$1" through "$9" in the sourced file are replaced with
+  the corresponding argument of the `source' command.
+
+* The above two features have been used to create two additional commands: an
+  `open' command that lets users open a term in their favorite editor for 
+  browsing and a `grep' command that can be used to check if a term contains
+  a particular pattern.
+  
+* The declarative debugger now allows users to take back answers they gave
+  by means of an multi-level `undo' command.
+
+* The declarative debugger now allows users to change the search algorithm
+  mid-session by means of a `mode' command.
+
+* The declarative debugger can now exploit information from the "code
+  footprints" of passed and failed test cases to find bugs with fewer
+  questions. We have also added two tools, mslice and mdice, to manipulate
+  files containing such footprints.
+
+* Subterm dependency tracking in the declarative debugger is now significantly
+  faster.
 
 Changes to the extras distribution:
 

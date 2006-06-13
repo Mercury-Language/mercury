@@ -78,4 +78,13 @@ extern	void	MR_print_debug_vars(FILE *fp, MR_Event_Info *event_info);
 extern	MR_bool	MR_trace_proc_layout_is_builtin_catch(
 			const MR_Proc_Layout *layout);
 
+/*
+** MR_trace_call_system_display_error_on_failure executes the given command
+** and displays an error message if the command returned a non-zero exit
+** status, there was a problem executing the command, or no usable shell was
+** available.
+*/
+extern	void	MR_trace_call_system_display_error_on_failure(
+			FILE *err_stream, char *command);
+
 #endif /* MERCURY_TRACE_UTIL_H */

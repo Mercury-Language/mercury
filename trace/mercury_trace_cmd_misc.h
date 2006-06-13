@@ -11,6 +11,7 @@
 
 extern  MR_TraceCmdFunc     MR_trace_cmd_source;
 extern  MR_TraceCmdFunc     MR_trace_cmd_save;
+extern  MR_TraceCmdFunc     MR_trace_cmd_shell;
 extern  MR_TraceCmdFunc     MR_trace_cmd_quit;
 
 extern	const char *const   MR_trace_source_cmd_args[];

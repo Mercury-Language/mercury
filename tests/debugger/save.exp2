@@ -21,6 +21,7 @@ mdb> save save_file
 Debugger state saved to save_file.
 mdb> continue -n -S
 [1, 3, 5, 2, 4]
+alias ! shell
 alias ? help
 alias EMPTY step
 alias NUMBER step
@@ -32,7 +33,9 @@ alias e exception
 alias excp exception
 alias f finish
 alias g goto
+alias grep source ZZZ/mdb_grep
 alias h help
+alias open source ZZZ/mdb_open
 alias p print
 alias r retry
 alias s step
@@ -101,8 +104,8 @@ format_param -A -p size 10
 format_param -A -p width 80
 format_param -A -p lines 2
 max_io_actions 20
-xml_browser_cmd XXX
-xml_tmp_filename XXX
+xml_browser_cmd ZZZ
+xml_tmp_filename ZZZ
 trust save
 trust std lib
 list_context_lines 2

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1998-2002, 2005 The University of Melbourne.
+** Copyright (C) 1998-2002, 2005-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -50,13 +50,6 @@
 static	void	MR_dummy_prep_term_function(int ignored);
 static	void	MR_dummy_deprep_term_function(void);
 
-/*
-** Print the prompt to the `out' file, read a line from the `in' file,
-** and return it in a MR_malloc'd buffer holding the line (without the
-** final newline).
-** If EOF occurs on a nonempty line, treat the EOF as a newline; if EOF
-** occurs on an empty line, return NULL.
-*/
 char *
 MR_trace_readline(const char *prompt, FILE *in, FILE *out)
 {
@@ -147,12 +140,6 @@ MR_trace_readline(const char *prompt, FILE *in, FILE *out)
 	return MR_trace_readline_raw(in);
 }
 
-/*
-** Read a line from a file, and return a pointer to a MR_malloc'd buffer
-** holding the line (without the final newline). If EOF occurs on a
-** nonempty line, treat the EOF as a newline; if EOF occurs on an empty
-** line, return NULL.
-*/
 char *
 MR_trace_readline_raw(FILE *fp)
 {
@@ -178,6 +165,65 @@ MR_trace_readline_raw(FILE *fp)
 		MR_free(contents);
 		return NULL;
 	}
+}
+
+char *
+MR_trace_readline_expand_args(FILE *fp, char **args, int num_args)
+{
+	char	*line;
+	size_t	line_length;
+	int	line_index;
+	size_t	expanded_line_length;
+	char	*expanded_line;
+	int	expanded_line_index;
+	int	arg_num;
+	size_t	arg_length;
+	char	*arg;
+	
+	line = MR_trace_readline_raw(fp);
+	if (line == NULL) {
+		return NULL;
+	}
+	line_length = strlen(line);
+
+	expanded_line_length = line_length;
+	expanded_line = (char*) MR_malloc(line_length + 1);
+	expanded_line[0] = '\0';
+	expanded_line_index = 0;
+
+	for (line_index = 0; line_index < line_length; line_index++) {
+		if ((line[line_index] == '$') && 
+			(line_index < (line_length - 1)) &&
+			(line[line_index + 1] >= '1') &&
+			(line[line_index + 1] <= '9'))
+		{
+			arg_num = (int)(line[line_index + 1] - '1');
+			if (arg_num < num_args) {
+				arg = args[arg_num];
+				arg_length = strlen(arg);
+				/*
+				** Subtract 2 for the "$n" which will
+				** not occur in the expanded string.
+				*/
+				expanded_line_length += arg_length - 2;
+				expanded_line = MR_realloc(expanded_line, 
+					expanded_line_length + 1);
+				expanded_line[expanded_line_index] = '\0';
+				strcat(expanded_line, arg);
+				expanded_line_index += arg_length;
+			}
+			/* Skip the digit after the '$'. */
+			line_index++;
+		} else {
+			expanded_line[expanded_line_index] = line[line_index];
+			expanded_line_index++;
+		}
+	}
+
+	MR_free(line);
+	expanded_line[expanded_line_index] = '\0';
+	
+	return expanded_line;
 }
 
 static void

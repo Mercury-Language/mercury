@@ -83,13 +83,14 @@ extern  MR_Trace_Source_Server  MR_trace_source_server;
 */
 
 extern  MR_bool     MR_trace_source(const char *filename,
-                        MR_bool ignore_errors);
+                        MR_bool ignore_errors, char** args, int num_args);
 
 /*
 ** Source commands from the given file.
 */
 
-extern  void        MR_trace_source_from_open_file(FILE *fp);
+extern  void        MR_trace_source_from_open_file(FILE *fp,
+                        char **args, int num_args);
 
 /*
 ** Print a usage message for the currently executing command.

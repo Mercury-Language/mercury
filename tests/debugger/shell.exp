@@ -1,0 +1,16 @@
+      E1:     C1 CALL pred shell.main/2-0 (det) shell.m:11
+mdb> echo on
+Command echo enabled.
+mdb> shell echo hello
+hello
+mdb> alias test source shell_test_script
+test   =>    source shell_test_script
+mdb> test value1 value2 3 'value 4' "a" '' 'b' file_name.ext 9
+value1 value2
+value2 value1
+value1 value2 $ $abc 3 value 4 a b file_name.ext 9 $0 $b $
+mdb> test only_one_value
+only_one_value
+only_one_value
+only_one_value $ $abc $0 $b $
+mdb> quit -y

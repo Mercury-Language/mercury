@@ -27,7 +27,7 @@ document_category 400 browsing
 browsing   - Commands that let users explore the state of the computation.
              The browsing commands are `vars', `held_vars', `print', `browse',
              `stack', `up', `down', `level', `current', `view', `hold',
-             `diff', `dump', and `list'.
+             `diff', `dump', `grep', `list' and `open'.
 
 end
 document_category 500 breakpoint
@@ -70,8 +70,8 @@ decl       - Commands available from within the declarative debugger.  These
 end
 document_category 900 misc
 misc       - Commands that are of interest to most users but do not fit into
-             other categories. The misc commands are `source', `save' and 
-             `quit'.
+             other categories. The misc commands are `source', `save', `shell'
+             and `quit'.
 
 end
 document_category 1000 exp

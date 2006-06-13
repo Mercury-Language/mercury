@@ -47,17 +47,24 @@ MR_trace_cmd_source(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_Event_Info *event_info, MR_Code **jumpaddr)
 {
     MR_bool ignore_errors;
+    char    **args;
 
     ignore_errors = MR_FALSE;
     if (! MR_trace_options_ignore(&ignore_errors, &words, &word_count)) {
         ; /* the usage message has already been printed */
-    } else if (word_count == 2) {
+    } else if (word_count >= 2) {
         /*
         ** If the source fails, the error message
         ** will have already been printed by MR_trace_source
         ** (unless ignore_errors suppresses the message).
         */
-        (void) MR_trace_source(words[1], ignore_errors);
+        if (word_count == 2) {
+            args = NULL;
+        } else {
+            args = &words[2];
+        }
+        (void) MR_trace_source(words[1], ignore_errors, args,
+            word_count - 2);
     } else {
         MR_trace_usage_cur_cmd();
     }

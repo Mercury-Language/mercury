@@ -1,0 +1,6 @@
+echo on
+shell echo hello
+alias test source shell_test_script
+test value1 value2 3 'value 4' "a" '' 'b' file_name.ext 9
+test only_one_value
+quit -y

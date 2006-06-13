@@ -1,0 +1,3 @@
+save_to_file $1 .mdb_open_tmp
+shell ${EDITOR-vi} .mdb_open_tmp
+shell rm .mdb_open_tmp

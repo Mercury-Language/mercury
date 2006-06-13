@@ -634,7 +634,7 @@ MR_trace_internal_init_from_env(void)
 
     init = getenv("MERCURY_DEBUGGER_INIT");
     if (init != NULL) {
-        (void) MR_trace_source(init, MR_FALSE);
+        (void) MR_trace_source(init, MR_FALSE, NULL, 0);
         /* If the source failed, the error message has been printed. */
     }
 }
@@ -647,7 +647,7 @@ MR_trace_internal_init_from_local(void)
 
     init = MDBRC_FILENAME;
     if ((fp = fopen(init, "r")) != NULL) {
-        MR_trace_source_from_open_file(fp);
+        MR_trace_source_from_open_file(fp, NULL, 0);
         fclose(fp);
     }
 }
@@ -671,7 +671,7 @@ MR_trace_internal_init_from_home_dir(void)
     (void) strcat(buf, "/");
     (void) strcat(buf, MDBRC_FILENAME);
     if ((fp = fopen(buf, "r")) != NULL) {
-        MR_trace_source_from_open_file(fp);
+        MR_trace_source_from_open_file(fp, NULL, 0);
         fclose(fp);
     }
 
@@ -679,12 +679,13 @@ MR_trace_internal_init_from_home_dir(void)
 }
 
 MR_bool
-MR_trace_source(const char *filename, MR_bool ignore_errors)
+MR_trace_source(const char *filename, MR_bool ignore_errors,
+    char** args, int num_args)
 {
     FILE    *fp;
 
     if ((fp = fopen(filename, "r")) != NULL) {
-        MR_trace_source_from_open_file(fp);
+        MR_trace_source_from_open_file(fp, args, num_args);
         fclose(fp);
         return MR_TRUE;
     }
@@ -698,7 +699,7 @@ MR_trace_source(const char *filename, MR_bool ignore_errors)
 }
 
 void
-MR_trace_source_from_open_file(FILE *fp)
+MR_trace_source_from_open_file(FILE *fp, char **args, int num_args)
 {
     char    *contents;
     MR_Line *line;
@@ -713,7 +714,9 @@ MR_trace_source_from_open_file(FILE *fp)
     ** preserving their order in the sourced file.
     */
 
-    while ((contents = MR_trace_readline_raw(fp)) != NULL) {
+    while ((contents = MR_trace_readline_expand_args(fp, args, num_args))
+        != NULL)
+    {
         line = MR_NEW(MR_Line);
         line->MR_line_contents = MR_copy_string(contents);
 
@@ -750,6 +753,31 @@ MR_trace_do_noop(void)
 ** so that this function's address can be passed to
 ** MR_process_matching_procedures().
 */
+
+static MR_Next
+MR_trace_cmd_shell(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
+    MR_Event_Info *event_info, MR_Code **jumpaddr)
+{
+    char*       command_string;
+    size_t      command_string_length;
+    int         word_num;
+
+    command_string_length = 1;
+    for (word_num = 1; word_num < word_count; word_num++) {
+        command_string_length += strlen(words[word_num]) + 1;
+    }
+    command_string = (char*) MR_malloc(sizeof(char) * command_string_length);
+    command_string[0] = '\0';
+    for (word_num = 1; word_num < word_count; word_num++) {
+        strcat(command_string, words[word_num]);
+        strcat(command_string, " ");
+    }
+
+    MR_trace_call_system_display_error_on_failure(MR_mdb_err, command_string);
+    MR_free(command_string);
+
+    return KEEP_INTERACTING;
+}
 
 static void
 MR_mdb_print_proc_id_and_nl(void *data, const MR_Proc_Layout *entry_layout)
@@ -1628,6 +1656,8 @@ static const MR_Trace_Command_Info  MR_trace_command_infos[] =
         NULL, MR_trace_filename_completer },
     { "misc", "quit", MR_trace_cmd_quit,
         MR_trace_quit_cmd_args, MR_trace_null_completer },
+    { "misc", "shell", MR_trace_cmd_shell,
+        NULL, MR_trace_null_completer },
 
     { "exp", "histogram_all", MR_trace_cmd_histogram_all,
         NULL, MR_trace_filename_completer },

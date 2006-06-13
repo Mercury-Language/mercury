@@ -47,6 +47,7 @@ NONRETRY_PROGS = \
 	print_table			\
 	queens_rep			\
 	resume_typeinfos		\
+	shell				\
 	save				\
 	solver_test			\
 	type_desc_test			\
@@ -469,12 +470,17 @@ retry.out: retry retry.inp
 # with a known character sequence.
 save.out: save save.inp
 	$(MDB) ./save < save.inp 2>&1 | \
-		sed 's/xml_browser_cmd.*/xml_browser_cmd XXX/g' | \
-		sed 's/xml_tmp_filename.*/xml_tmp_filename XXX/g' \
-		> save.out 2>&1
+	    sed 's/xml_browser_cmd.*/xml_browser_cmd ZZZ/g' | \
+	    sed 's/xml_tmp_filename.*/xml_tmp_filename ZZZ/g' | \
+	    sed 's/^alias grep source.*$$/alias grep source ZZZ\/mdb_grep/' | \
+	    sed 's/^alias open source.*$$/alias open source ZZZ\/mdb_open/' \
+	    > save.out 2>&1
 
 shallow.out: shallow shallow.inp
 	$(MDB) ./shallow < shallow.inp > shallow.out 2>&1
+
+shell.out: shell shell.inp
+	$(MDB_STD) ./shell < shell.inp > shell.out 2>&1
 
 solver_test.out: solver_test solver_test.inp
 	$(MDB_STD) ./solver_test < solver_test.inp > solver_test.out 2>&1
