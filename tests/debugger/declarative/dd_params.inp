@@ -7,5 +7,14 @@ dd -d 3 -n 7
 params
 actions 10
 params
+depth 5
+size 5
+width 5
+lines 5
+depth io 10
+size io 10
+width io 10
+lines io 10
+params
 quit
 continue

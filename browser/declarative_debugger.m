@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: declarative_debugger.m.
 % Author: Mark Brown.
-
+% 
 % This module has two main purposes:
 %   - to define the interface between the front and back ends of
 %     a Mercury declarative debugger, and
@@ -53,7 +53,7 @@
 % portion of the annotated trace, although the backend will not materialize
 % nodes which already exist in the current annotated trace when materializing
 % a supertree.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

@@ -5,9 +5,9 @@ finish
 format pretty
 format_param depth 1
 dd
-depth 10
+depth io 10
 print io 9
-depth 1
+depth io 1
 no
 yes
 quit

@@ -4323,15 +4323,40 @@ which should be one of @samp{flat}, @samp{verbose} and @samp{pretty}.
 @item depth @var{num}
 Set the maximum depth to which terms are printed to @var{num}.
 @sp 1
+@item depth io @var{num}
+Set the maximum depth to which I/O actions are printed to @var{num}.
+I/O actions are printed using the browser's @samp{print *} command so the
+@samp{depth io} command updates the configuration parameters for the 
+browser's @samp{print *} command.
+@sp 1
 @item size @var{num}
 Set the maximum number of function symbols
 to be printed in terms to @var{num}.
 @sp 1
+@item size io @var{num}
+Set the maximum number of function symbols
+to be printed in I/O actions to @var{num}.
+I/O actions are printed using the browser's @samp{print *} command so the
+@samp{size io} command updates the configuration parameters for the 
+browser's @samp{print *} command.
+@sp 1
 @item width @var{num}
-Set the number of columnds in which terms are to be printed to @var{num}.
+Set the number of columns in which terms are to be printed to @var{num}.
+@sp 1
+@item width io @var{num}
+Set the number of columns in which I/O actions are to be printed to @var{num}.
+I/O actions are printed using the browser's @samp{print *} command so the
+@samp{width io} command updates the configuration parameters for the 
+browser's @samp{print *} command.
 @sp 1
 @item lines @var{num}
 Set the maximum number of lines in terms to be printed to @var{num}.
+@sp 1
+@item lines io @var{num}
+Set the maximum number of lines in I/O actions to printed to @var{num}.
+I/O actions are printed using the browser's @samp{print *} command so the
+@samp{lines io} command updates the configuration parameters for the 
+browser's @samp{print *} command.
 @sp 1
 @item actions @var{num}
 Set the maximum number of I/O actions to be printed in questions to @var{num}.
@@ -5356,7 +5381,7 @@ the format string and the supplied values.
 @sp 1
 @item --no-warn-obsolete
 @findex --no-warn-obsolete
-Do not warn about calls to predicates or functionat that have been
+Do not warn about calls to predicates or functions that have been
 marked as obsolete.
 
 @end table
@@ -6545,7 +6570,7 @@ This option is not yet supported for the IL or Java back-ends.
 @sp 1
 @item @code{--maybe-thread-safe @{yes, no@}}
 @findex --maybe-thread-safe
-Specify how to treate the @samp{maybe_thread_safe} foreign code
+Specify how to treat the @samp{maybe_thread_safe} foreign code
 attribute.  @samp{yes} means that a foreign procedure with the
 @samp{maybe_thread_safe} option is treated as thought is has a
 @samp{thread_safe} attribute.  @samp{no} means that the foreign
