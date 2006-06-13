@@ -208,7 +208,7 @@ process_scc(Debug, Pass1Only, SCC, !ModuleInfo, !IO) :-
     %
     % Record the analysis results for the intermodule analysis
     %
-    globals__io_lookup_bool_option(make_analysis_registry,
+    globals.io_lookup_bool_option(make_analysis_registry,
         MakeAnalysisRegistry, !IO),
     (
         MakeAnalysisRegistry = yes,
@@ -374,7 +374,7 @@ check_goal_for_trail_mods_2(SCC, VarTypes, Goal, _,
         Result = Result0,
         MaybeAnalysisStatus = yes(optimal)
     ;
-        globals__io_lookup_bool_option(intermodule_analysis, Intermod, !IO),
+        globals.io_lookup_bool_option(intermodule_analysis, Intermod, !IO),
         (
             Intermod = yes,
             pred_info_is_imported(CallPredInfo)
@@ -442,6 +442,11 @@ check_goal_for_trail_mods_2(SCC, VarTypes, Goal, OuterGoalInfo,
     InnerGoal = _ - InnerGoalInfo,
     goal_info_get_code_model(InnerGoalInfo, InnerCodeModel),
     goal_info_get_code_model(OuterGoalInfo, OuterCodeModel),
+    % 
+    % `conditional' scope goals (of the type that require extra trailing code)
+    % will have there status changed to `may_modify_trail'.  See the comment
+    % in the clause that handles if-then-elses below for the reason why.
+    % 
     Result = scope_implies_trail_mod(InnerCodeModel, OuterCodeModel, Result0).
 check_goal_for_trail_mods_2(_, _, Goal, _, Result, MaybeAnalysisStatus,
         !ModuleInfo, !IO) :-
@@ -468,6 +473,26 @@ check_goal_for_trail_mods_2(SCC, VarTypes, Goal, _,
         Result0 = will_not_modify_trail,
         Result  = will_not_modify_trail
     ;
+        % If some of the goals modify the trail then we need to emit trailing
+        % code around the if-then-else.  If the if-then-else has status
+        % `conditional' then we also need to emit trailing code around it
+        % because we cannot be sure that calls to builtin.{unify,compare}
+        % won't call user-defined equality/comparison predicates that modify
+        % the trail.
+        %
+        % XXX We change the status from `conditional' to `may_modify_trail'
+        % here because `conditional' currently means that the code for a
+        % procedure does not modify the state of the trail at all.  Since we
+        % emit trailing code for this if-then-else then by this definition it
+        % does modify the trail.  We may be able to relax this restriction in
+        % future, but at the moment doing this helps keep the contents of the
+        % .opt/.trans_opt/.analysis files consistent with the actual code we
+        % generate.
+        %
+        % NOTE: conditional procedures whose status is changed here are
+        %       candidates for generating specialized versions that omit the
+        %       trailing code.
+        % 
         ( Result0 = conditional ; Result0 = may_modify_trail),
         Result = may_modify_trail
     ).
@@ -485,9 +510,8 @@ check_goal_for_trail_mods_2(SCC, VarTypes, disj(Goals), _,
         Result0 = will_not_modify_trail,
         Result  = will_not_modify_trail
     ;
-        % One or or more of the disjuncts may modify the trail, so
-        % we need to emit the trailing code - XXX could do better by
-        % specialising conditional code.
+        % See the comment regarding if-then-elses above for the reason
+        % we treat `conditional' procedures like this.
         ( Result0 = conditional ; Result0 = may_modify_trail),
         Result = may_modify_trail
     ).
@@ -1148,7 +1172,7 @@ search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
     Call = any_call,
     analysis.lookup_best_result(ModuleId, FuncId, Call,
         MaybeBestStatus, !AnalysisInfo, !IO),
-    globals__io_lookup_bool_option(make_analysis_registry,
+    globals.io_lookup_bool_option(make_analysis_registry,
         MakeAnalysisRegistry, !IO),
     (
         MaybeBestStatus = yes({BestCall, trailing_analysis_answer(Result),
