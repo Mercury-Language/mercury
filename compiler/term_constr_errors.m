@@ -5,10 +5,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: term_constr_errors.m.
 % Main author: juliensf.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_errors.
@@ -33,34 +34,30 @@
 % unconstrained.
 
 :- type termination2_error
-    --->        imported_pred
-                % Termination could not be proved because
-                % it depends upon information from another
-                % module and that information is not
-                % available.
+    --->    imported_pred
+            % Termination could not be proved because it depends upon
+            % information from another module and that information is not
+            % available.
 
     ;       can_loop_proc_called(pred_proc_id, pred_proc_id)
-                % Termination could not be proved because
-                % the procedure called another procedure
-                % that may not terminate. 
+            % Termination could not be proved because the procedure called
+            % another procedure that may not terminate. 
     
     ;       cond_not_satisfied
-                % Termination could not be proved because
-                % no set of decreasing argument could be found. 
+            % Termination could not be proved because no set of decreasing
+            % argument could be found. 
     
     ;       horder_call             
-                % Termination could not be proved because
-                % the procedure makes higher-order calls.
+            % Termination could not be proved because the procedure makes
+            % higher-order calls.
     
     ;       does_not_term_pragma(pred_id)
-                % Termination could not be proved because
-                % the procedure was marked with a 
-                % `does_not_terminate' pragma.
+            % Termination could not be proved because the procedure was marked
+            % with a `does_not_terminate' pragma.
     
     ;       foreign_proc_called(pred_proc_id).
-                % Termination depends upon the properties
-                % of a piece of foreign code that cannot
-                % be established as terminating.
+            % Termination depends upon the properties of a piece of foreign
+            % code that cannot be established as terminating.
 
 :- type term_constr_errors.error == pair(prog_context, termination2_error).
 
@@ -90,13 +87,13 @@
 
 %-----------------------------------------------------------------------------%
 
-report_termination2_errors(SCC, Errors, !Module, !IO) :-
+report_termination2_errors(SCC, Errors, !ModuleInfo, !IO) :-
     globals.io_lookup_bool_option(check_termination2, NormalErrors, !IO),
     globals.io_lookup_bool_option(verbose_check_termination2,
         VerboseErrors, !IO),
     (
         IsCheckTerm = (pred(PPId::in) is semidet :-
-            module_info_pred_proc_info(!.Module, PPId, PredInfo, _),
+            module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, _),
             not pred_info_is_imported(PredInfo),
             pred_info_get_markers(PredInfo, Markers),
             check_marker(Markers, check_termination)
@@ -104,12 +101,12 @@ report_termination2_errors(SCC, Errors, !Module, !IO) :-
         CheckTermPPIds = list.filter(IsCheckTerm, SCC),
         list.is_not_empty(CheckTermPPIds)
     ->
-        report_term_errors(SCC, Errors, !.Module, !IO),
+        report_term_errors(SCC, Errors, !.ModuleInfo, !IO),
         io.set_exit_status(1, !IO),
-        module_info_incr_errors(!Module)
+        module_info_incr_errors(!ModuleInfo)
     ;
         IsNonImported = (pred(PPId::in) is semidet :- 
-            module_info_pred_proc_info(!.Module, PPId, PredInfo, _),
+            module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, _),
             not pred_info_is_imported(PredInfo)
         ),
         NonImportedPPIds = list.filter(IsNonImported, SCC),
@@ -123,19 +120,21 @@ report_termination2_errors(SCC, Errors, !Module, !IO) :-
             ),
             PrintErrors0 = list.filter(IsNonSimple, Errors),
             %
-            % If there are no direct errors report
-            % the indirect ones instead.
+            % If there are no direct errors report the indirect ones instead.
             %
-            ( if    PrintErrors0 = []
-              then  PrintErrors = Errors
-              else  PrintErrors = PrintErrors0
+            (
+                PrintErrors0 = [],
+                PrintErrors = Errors
+            ;
+                PrintErrors0 = [_ | _],
+                PrintErrors = PrintErrors0
             )
         ;
             fail
         )
     ->
-        term_constr_errors.report_term_errors(SCC, PrintErrors,
-            !.Module, !IO)
+        term_constr_errors.report_term_errors(SCC, PrintErrors, !.ModuleInfo,
+            !IO)
     ;
         true
     ).

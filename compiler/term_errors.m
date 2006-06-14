@@ -5,13 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: term_errors.m.
 % Main author: crs.
-
+% 
 % This module prints out the various error messages that are produced by the
 % various modules of termination analysis.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_errors.

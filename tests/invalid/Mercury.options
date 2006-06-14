@@ -60,7 +60,7 @@ MCFLAGS-missing_parent_import = --no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
 MCFLAGS-mode_inf	=	--infer-all
 MCFLAGS-mpj1		=	--infer-all
-MCFLAGS-multisoln_func	=	--infer-types
+MCFLAGS-multisoln_func	=	--infer-types --verbose-error-messages
 MCFLAGS-no_exports = 		--halt-at-warn
 MCFLAGS-nonexistent_import =    --no-verbose-make --make nonexistent_import
 MCFLAGS-overloading = 		--no-intermodule-optimization \

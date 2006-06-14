@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: mode_errors.m.
 % Main author: fjh.
-
+% 
 % This module contains all the error-reporting routines for the mode-checker.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -53,7 +53,7 @@
 
     ;       mode_error_par_conj(merge_errors)
             % Different arms of a parallel conj result in mutually exclusive
-            % bindings - ie the process of unifying the instmaps from the end
+            % bindings - i.e. the process of unifying the instmaps from the end
             % of each branch failed.
 
     ;       mode_error_higher_order_pred_var(pred_or_func, prog_var, mer_inst,
