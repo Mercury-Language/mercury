@@ -3833,6 +3833,10 @@ may be more specific (e.g.@: the determinism of the equality predicate
 could be any of @samp{det}, @samp{failure} or @samp{erroneous}).
 
 @item
+If the type is a discriminated union then its definition cannot be
+a single zero-arity constructor.
+
+@item
 The equality predicate must be ``pure'' (@pxref{Impurity}).
 
 @item
@@ -3907,6 +3911,10 @@ following conditions are satisfied:
 
 As with equality predicates, it is legal for the type, mode and
 determinism to be more permissive.
+
+@item
+If the type is a discriminated union then its definition cannot be
+a single zero-arity constructor.
 
 @item
 The comparison predicate must also be ``pure'' (@pxref{Impurity}).

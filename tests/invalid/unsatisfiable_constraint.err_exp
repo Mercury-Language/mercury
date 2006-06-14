@@ -10,3 +10,8 @@ unsatisfiable_constraint.m:038:       C: C
 unsatisfiable_constraint.m:038:       B: A
 unsatisfiable_constraint.m:038:   The unbound type variable(s) will be implicitly
 unsatisfiable_constraint.m:038:   bound to the builtin type `void'.
+	The body of the clause contains a call to a polymorphic predicate,
+	but I can't determine which version should be called,
+	because the type variables listed above didn't get bound.
+	(I ought to tell you which call caused the problem, but I'm afraid
+	you'll have to work it out yourself.  My apologies.)

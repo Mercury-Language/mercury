@@ -2,3 +2,9 @@ impure_pred_t2.m:019: In clause for predicate `impure_pred_t2.main/2':
 impure_pred_t2.m:019:   in argument 1 (i.e. the predicate term) of higher-order predicate call:
 impure_pred_t2.m:019:   type error: variable `Y' has type `(impure pred(int, int))',
 impure_pred_t2.m:019:   expected type was `pred(V_2, V_1)'.
+	The partial type assignment was:
+	Y_3: (impure pred(int, int))
+	DCG_0_5: (io.state)
+	DCG_3_8: (io.state)
+	V_9: int
+

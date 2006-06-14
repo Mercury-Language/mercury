@@ -1,6 +1,16 @@
 modes_erroneous.m:015: In clause for `p((ground >> ground), (free >> ground))':
+modes_erroneous.m:015:   mode error in conjunction. The next 2 error messages
+modes_erroneous.m:015:   indicate possible causes of this error.
+modes_erroneous.m:015:   In clause for `p((ground >> ground), (free >>
+modes_erroneous.m:015:   ground))':
 modes_erroneous.m:015:   in argument 1 of call to predicate
 modes_erroneous.m:015:   `modes_erroneous.p/2':
 modes_erroneous.m:015:   mode error: variable `V_5' has instantiatedness
 modes_erroneous.m:015:   `free',
 modes_erroneous.m:015:   expected instantiatedness was `ground'.
+modes_erroneous.m:014:   In clause for `p((ground >> ground), (free >>
+modes_erroneous.m:014:   ground))':
+modes_erroneous.m:014:   in argument 2 of clause head:
+modes_erroneous.m:014:   mode error in unification of `HeadVar__2' and `X'.
+modes_erroneous.m:014:   Variable `HeadVar__2' has instantiatedness `free',
+modes_erroneous.m:014:   variable `X' has instantiatedness `free'.

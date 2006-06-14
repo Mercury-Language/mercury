@@ -1,14 +1,82 @@
-ho_type_mode_bug.m:025: In clause for `my_foldl2((pred(in, in, out) is det),
+ho_type_mode_bug.m:026: In clause for `my_foldl2((pred(in, in, out) is det),
+ho_type_mode_bug.m:026:   in, in, out, in, out)':
+ho_type_mode_bug.m:026:   mode error in conjunction. The next 4 error messages
+ho_type_mode_bug.m:026:   indicate possible causes of this error.
+ho_type_mode_bug.m:025:   In clause for `my_foldl2((pred(in, in, out) is det),
 ho_type_mode_bug.m:025:   in, in, out, in, out)':
 ho_type_mode_bug.m:025:   in argument 1 (i.e. the predicate term) of
 ho_type_mode_bug.m:025:   higher-order predicate call:
 ho_type_mode_bug.m:025:   mode error: variable `P' has instantiatedness
 ho_type_mode_bug.m:025:   `(pred(in, in, out) is det)',
 ho_type_mode_bug.m:025:   expecting higher-order pred inst (of arity 5).
-ho_type_mode_bug.m:025: In clause for `my_foldl2((pred(in, in, out) is det),
+ho_type_mode_bug.m:026:   In clause for `my_foldl2((pred(in, in, out) is det),
+ho_type_mode_bug.m:026:   in, in, out, in, out)':
+ho_type_mode_bug.m:026:   in call to predicate `ho_type_mode_bug.my_foldl2/6':
+ho_type_mode_bug.m:026:   mode error: arguments
+ho_type_mode_bug.m:026:   `TypeInfo_for_X, TypeInfo_for_Y, TypeInfo_for_Z, P, T, FirstAcc1, FirstAcc, SecAcc1, SecAcc'
+ho_type_mode_bug.m:026:   have the following insts:
+ho_type_mode_bug.m:026:     ground,
+ho_type_mode_bug.m:026:     ground,
+ho_type_mode_bug.m:026:     ground,
+ho_type_mode_bug.m:026:     (pred(in, in, out) is det),
+ho_type_mode_bug.m:026:     ground,
+ho_type_mode_bug.m:026:     free,
+ho_type_mode_bug.m:026:     free,
+ho_type_mode_bug.m:026:     free,
+ho_type_mode_bug.m:026:     free
+ho_type_mode_bug.m:026:   which does not match any of the modes for predicate
+ho_type_mode_bug.m:026:   `ho_type_mode_bug.my_foldl2/6'.
+ho_type_mode_bug.m:024:   In clause for `my_foldl2((pred(in, in, out) is det),
+ho_type_mode_bug.m:024:   in, in, out, in, out)':
+ho_type_mode_bug.m:024:   in argument 4 of clause head:
+ho_type_mode_bug.m:024:   mode error in unification of `FirstAcc' and
+ho_type_mode_bug.m:024:   `FirstAcc'.
+ho_type_mode_bug.m:024:   Variable `FirstAcc' has instantiatedness `free',
+ho_type_mode_bug.m:024:   variable `FirstAcc' has instantiatedness `free'.
+ho_type_mode_bug.m:024:   In clause for `my_foldl2((pred(in, in, out) is det),
+ho_type_mode_bug.m:024:   in, in, out, in, out)':
+ho_type_mode_bug.m:024:   in argument 6 of clause head:
+ho_type_mode_bug.m:024:   mode error in unification of `SecAcc' and `SecAcc'.
+ho_type_mode_bug.m:024:   Variable `SecAcc' has instantiatedness `free',
+ho_type_mode_bug.m:024:   variable `SecAcc' has instantiatedness `free'.
+ho_type_mode_bug.m:026: In clause for `my_foldl2((pred(in, in, out) is det),
+ho_type_mode_bug.m:026:   in, in, out, di, uo)':
+ho_type_mode_bug.m:026:   mode error in conjunction. The next 4 error messages
+ho_type_mode_bug.m:026:   indicate possible causes of this error.
+ho_type_mode_bug.m:025:   In clause for `my_foldl2((pred(in, in, out) is det),
 ho_type_mode_bug.m:025:   in, in, out, di, uo)':
 ho_type_mode_bug.m:025:   in argument 1 (i.e. the predicate term) of
 ho_type_mode_bug.m:025:   higher-order predicate call:
 ho_type_mode_bug.m:025:   mode error: variable `P' has instantiatedness
 ho_type_mode_bug.m:025:   `(pred(in, in, out) is det)',
 ho_type_mode_bug.m:025:   expecting higher-order pred inst (of arity 5).
+ho_type_mode_bug.m:026:   In clause for `my_foldl2((pred(in, in, out) is det),
+ho_type_mode_bug.m:026:   in, in, out, di, uo)':
+ho_type_mode_bug.m:026:   in call to predicate `ho_type_mode_bug.my_foldl2/6':
+ho_type_mode_bug.m:026:   mode error: arguments
+ho_type_mode_bug.m:026:   `TypeInfo_for_X, TypeInfo_for_Y, TypeInfo_for_Z, P, T, FirstAcc1, FirstAcc, SecAcc1, SecAcc'
+ho_type_mode_bug.m:026:   have the following insts:
+ho_type_mode_bug.m:026:     ground,
+ho_type_mode_bug.m:026:     ground,
+ho_type_mode_bug.m:026:     ground,
+ho_type_mode_bug.m:026:     (pred(in, in, out) is det),
+ho_type_mode_bug.m:026:     ground,
+ho_type_mode_bug.m:026:     free,
+ho_type_mode_bug.m:026:     free,
+ho_type_mode_bug.m:026:     free,
+ho_type_mode_bug.m:026:     free
+ho_type_mode_bug.m:026:   which does not match any of the modes for predicate
+ho_type_mode_bug.m:026:   `ho_type_mode_bug.my_foldl2/6'.
+ho_type_mode_bug.m:024:   In clause for `my_foldl2((pred(in, in, out) is det),
+ho_type_mode_bug.m:024:   in, in, out, di, uo)':
+ho_type_mode_bug.m:024:   in argument 4 of clause head:
+ho_type_mode_bug.m:024:   mode error in unification of `FirstAcc' and
+ho_type_mode_bug.m:024:   `FirstAcc'.
+ho_type_mode_bug.m:024:   Variable `FirstAcc' has instantiatedness `free',
+ho_type_mode_bug.m:024:   variable `FirstAcc' has instantiatedness `free'.
+ho_type_mode_bug.m:024:   In clause for `my_foldl2((pred(in, in, out) is det),
+ho_type_mode_bug.m:024:   in, in, out, di, uo)':
+ho_type_mode_bug.m:024:   in argument 6 of clause head:
+ho_type_mode_bug.m:024:   mode error in unification of `SecAcc' and `SecAcc'.
+ho_type_mode_bug.m:024:   Variable `SecAcc' has instantiatedness `free',
+ho_type_mode_bug.m:024:   variable `SecAcc' has instantiatedness `free'.

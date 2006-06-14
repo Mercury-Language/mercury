@@ -1,4 +1,8 @@
 types.m:001: Warning: interface for module `types' does not export anything.
+types.m:001: To be useful, a module should export something. A file should
+types.m:001:   contain at least one declaration other than `:- import_module'
+types.m:001:   in its interface section(s). This would normally be a `:- pred',
+types.m:001:   `:- func', `:- type', `:- inst' or `:- mode' declaration.
 types.m:003: Error: constructor `types.a/0' for type `types.t/0' multiply
 types.m:003:   defined.
 types.m:003: Error: constructor `types.f/1' for type `types.t/0' multiply
@@ -14,6 +18,10 @@ types.m:013: In clause for predicate `types.q/0':
 types.m:013:   in argument 1 of call to predicate `p/1':
 types.m:013:   type error: argument has type `int',
 types.m:013:   expected type was `(pred)'.
+	The partial type assignment was:
+	V_1: (pred)
+	V_2: int
+
 types.m:014: In clause for predicate `types.q/0':
 types.m:014:   error: wrong number of arguments (0; should be 1)
 types.m:014:   in call to predicate `p'.
@@ -22,6 +30,10 @@ types.m:039:   type error in unification of variable `X'
 types.m:039:   and constant `0'.
 types.m:039:   variable `X' has type `(some [BarTypeParam] BarTypeParam)',
 types.m:039:   constant `0' has type `int'.
+	The partial type assignment was:
+	some [BarTypeParam_1]
+	X_2: BarTypeParam
+
 types.m:050: Error: no clauses for predicate `bar2/1'.
 types.m:018: In clause for predicate `types.r/0':
 types.m:018:   error: undefined predicate `s/0'.

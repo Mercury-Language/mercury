@@ -5,3 +5,22 @@ fundeps_unbound_in_ctor.m:008:   error in type class constraints: type variable
 fundeps_unbound_in_ctor.m:008:   C occurs in the constraints, but is not
 fundeps_unbound_in_ctor.m:008:   determined by the constructor's argument
 fundeps_unbound_in_ctor.m:008:   types.
+fundeps_unbound_in_ctor.m:008:   All types occurring in typeclass constraints
+fundeps_unbound_in_ctor.m:008:   must be fully determined. A type is fully
+fundeps_unbound_in_ctor.m:008:   determined if one of the following holds:
+fundeps_unbound_in_ctor.m:008:   1) All type variables occurring in the type
+fundeps_unbound_in_ctor.m:008:   are determined.
+fundeps_unbound_in_ctor.m:008:   2) The type occurs in a constraint argument,
+fundeps_unbound_in_ctor.m:008:   that argument is in the range of some
+fundeps_unbound_in_ctor.m:008:   functional dependency for that class, and the
+fundeps_unbound_in_ctor.m:008:   types in all of the domain arguments for that
+fundeps_unbound_in_ctor.m:008:   functional dependency are fully determined.
+fundeps_unbound_in_ctor.m:008:   A type variable is determined if one of the
+fundeps_unbound_in_ctor.m:008:   following holds:
+fundeps_unbound_in_ctor.m:008:   1) The type variable occurs in the argument
+fundeps_unbound_in_ctor.m:008:   types of the predicate, function, or
+fundeps_unbound_in_ctor.m:008:   constructor which is constrained.
+fundeps_unbound_in_ctor.m:008:   2) The type variable occurs in a type which is
+fundeps_unbound_in_ctor.m:008:   fully determined.
+fundeps_unbound_in_ctor.m:008:   See the "Functional dependencies" section of
+fundeps_unbound_in_ctor.m:008:   the reference manual for details.

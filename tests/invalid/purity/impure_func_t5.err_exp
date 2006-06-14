@@ -4,3 +4,9 @@ impure_func_t5.m:018:   type error in unification of argument
 impure_func_t5.m:018:   and constant `get_counter'.
 impure_func_t5.m:018:   argument has type `((func int) = int)',
 impure_func_t5.m:018:   constant `get_counter' has type `(impure ((func int) = int))'.
+	The partial type assignment was:
+	Y_3: (impure_func_t5.foo)
+	DCG_0_5: (io.state)
+	DCG_3_8: (io.state)
+	V_9: ((func int) = int)
+

@@ -7,3 +7,4 @@ state_vars_test4.m:021:   `free',
 state_vars_test4.m:021:   expected instantiatedness was `(func((ground >>
 state_vars_test4.m:021:   ground), (ground >> ground)) = (free >> ground) is
 state_vars_test4.m:021:   det)'.
+For more information, recompile with `-E'.

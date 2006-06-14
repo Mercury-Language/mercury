@@ -4,3 +4,26 @@ typeclass_constraint_extra_var.m:011:   error in type class constraints: type
 typeclass_constraint_extra_var.m:011:   variable U occurs in the constraints,
 typeclass_constraint_extra_var.m:011:   but is not determined by the
 typeclass_constraint_extra_var.m:011:   predicate's argument types.
+typeclass_constraint_extra_var.m:011:   All types occurring in typeclass
+typeclass_constraint_extra_var.m:011:   constraints must be fully determined. A
+typeclass_constraint_extra_var.m:011:   type is fully determined if one of the
+typeclass_constraint_extra_var.m:011:   following holds:
+typeclass_constraint_extra_var.m:011:   1) All type variables occurring in the
+typeclass_constraint_extra_var.m:011:   type are determined.
+typeclass_constraint_extra_var.m:011:   2) The type occurs in a constraint
+typeclass_constraint_extra_var.m:011:   argument, that argument is in the range
+typeclass_constraint_extra_var.m:011:   of some functional dependency for that
+typeclass_constraint_extra_var.m:011:   class, and the types in all of the
+typeclass_constraint_extra_var.m:011:   domain arguments for that functional
+typeclass_constraint_extra_var.m:011:   dependency are fully determined.
+typeclass_constraint_extra_var.m:011:   A type variable is determined if one of
+typeclass_constraint_extra_var.m:011:   the following holds:
+typeclass_constraint_extra_var.m:011:   1) The type variable occurs in the
+typeclass_constraint_extra_var.m:011:   argument types of the predicate,
+typeclass_constraint_extra_var.m:011:   function, or constructor which is
+typeclass_constraint_extra_var.m:011:   constrained.
+typeclass_constraint_extra_var.m:011:   2) The type variable occurs in a type
+typeclass_constraint_extra_var.m:011:   which is fully determined.
+typeclass_constraint_extra_var.m:011:   See the "Functional dependencies"
+typeclass_constraint_extra_var.m:011:   section of the reference manual for
+typeclass_constraint_extra_var.m:011:   details.

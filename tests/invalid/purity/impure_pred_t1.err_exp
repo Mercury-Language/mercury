@@ -4,3 +4,9 @@ impure_pred_t1.m:020:   type error in unification of argument
 impure_pred_t1.m:020:   and constant `get_counter'.
 impure_pred_t1.m:020:   argument has type `pred(int, int)',
 impure_pred_t1.m:020:   constant `get_counter' has type `(impure pred(int, int))'.
+	The partial type assignment was:
+	Y_3: (impure_pred_t1.foo)
+	DCG_0_6: (io.state)
+	DCG_3_9: (io.state)
+	V_10: pred(int, int)
+

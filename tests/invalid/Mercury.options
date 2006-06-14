@@ -2,17 +2,6 @@
 # tests (in most cases reporting diagnostics when writing the `.opt'
 # file). For those tests, we just disable inter-module optimization.
 
-MCFLAGS-aditi_errors =		--aditi --no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
-MCFLAGS-aditi_private_builtin = --allow-stubs
-MCFLAGS-aditi_state_errors =	--aditi --no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
-MCFLAGS-aditi_update_derived_relation =	--aditi --no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
-MCFLAGS-aditi_update_errors =	--aditi --no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
-MCFLAGS-aditi_update_mode_errors = --aditi --no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
 MCFLAGS-any_mode	=	--infer-types
 
 # XXX This test should work with --intermodule-optimization, but
@@ -20,7 +9,8 @@ MCFLAGS-any_mode	=	--infer-types
 # were imported in the interface or the implementation. The error
 # is reported correctly when building the `.opt' file.
 MCFLAGS-assert_in_interface =	--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
+				--no-automatic-intermodule-optimization \
+				--verbose-error-messages
 
 MCFLAGS-children =		--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
@@ -40,7 +30,8 @@ MCFLAGS-foreign_type_2 =	--no-intermodule-optimization \
 MCFLAGS-foreign_type_visibility = --no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
 MCFLAGS-illtyped_compare =	--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
+				--no-automatic-intermodule-optimization \
+				--verbose-error-messages
 MCFLAGS-import_in_parent =	--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
 MCFLAGS-import_in_parent.sub =	--no-intermodule-optimization \
@@ -48,20 +39,23 @@ MCFLAGS-import_in_parent.sub =	--no-intermodule-optimization \
 MCFLAGS-imported_mode =		--infer-all --no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
 MCFLAGS-impure_method_impl =	--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
-MCFLAGS-loopcheck =		--warn-inferred-erroneous
+				--no-automatic-intermodule-optimization \
+				--verbose-error-messages
+MCFLAGS-loopcheck =		--warn-inferred-erroneous \
+				--verbose-error-messages
 MCFLAGS-method_impl =		--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
-MCFLAGS-missing_det_decls =	--no-infer-det
+				--no-automatic-intermodule-optimization \
+				--verbose-error-messages
+MCFLAGS-missing_det_decls =	--no-infer-det --verbose-error-messages
 MCFLAGS-missing_interface_import = --make-interface
 MCFLAGS-missing_interface_import2 = --no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
 MCFLAGS-missing_parent_import = --no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
-MCFLAGS-mode_inf	=	--infer-all
-MCFLAGS-mpj1		=	--infer-all
+MCFLAGS-mode_inf	=	--infer-all --verbose-error-messages
+MCFLAGS-mpj1		=	--infer-all --verbose-error-messages
 MCFLAGS-multisoln_func	=	--infer-types --verbose-error-messages
-MCFLAGS-no_exports = 		--halt-at-warn
+MCFLAGS-no_exports = 		--halt-at-warn --verbose-error-messages
 MCFLAGS-nonexistent_import =    --no-verbose-make --make nonexistent_import
 MCFLAGS-overloading = 		--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
@@ -80,7 +74,8 @@ MCFLAGS-sub_c = 		--verbose-error-messages \
 MCFLAGS-trailed_mutable = --no-use-trail
 
 MCFLAGS-test_nested =		--no-intermodule-optimization \
-				--no-automatic-intermodule-optimization
+				--no-automatic-intermodule-optimization \
+				--verbose-error-messages
 MCFLAGS-transitive_import = --no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
 MCFLAGS-transitive_import2 = --no-intermodule-optimization \
@@ -96,3 +91,42 @@ MCFLAGS-undef_mod_qual = 	--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
 MCFLAGS-undef_symbol = 		--no-intermodule-optimization \
 				--no-automatic-intermodule-optimization
+
+# Include the verbose part of the error message where we have one.
+#
+MCFLAGS-ambiguous_method 		= --verbose-error-messages
+MCFLAGS-anys_in_negated_contexts	= --verbose-error-messages
+MCFLAGS-bigtest				= --verbose-error-messages
+MCFLAGS-bind_in_negated			= --verbose-error-messages
+MCFLAGS-complex_constraint_err		= --verbose-error-messages
+MCFLAGS-errors2				= --verbose-error-messages
+MCFLAGS-ext_type			= --verbose-error-messages
+MCFLAGS-ext_type_bug			= --verbose-error-messages
+MCFLAGS-freefree			= --verbose-error-messages
+MCFLAGS-fundeps_unbound_in_ctor		= --verbose-error-messages
+MCFLAGS-ho_default_func_1		= --verbose-error-messages
+MCFLAGS-ho_default_func_3		= --verbose-error-messages
+MCFLAGS-ho_type_mode_bug		= --verbose-error-messages
+MCFLAGS-make_opt_error			= --verbose-error-messages
+MCFLAGS-modes_erroneous			= --verbose-error-messages
+MCFLAGS-mpj4				= --verbose-error-messages
+MCFLAGS-multimode_syntax		= --verbose-error-messages
+MCFLAGS-nullary_ho_func_error		= --verbose-error-messages
+MCFLAGS-one_member			= --verbose-error-messages
+MCFLAGS-overloading			= --verbose-error-messages
+MCFLAGS-polymorphic_unification		= --verbose-error-messages
+MCFLAGS-predmode			= --verbose-error-messages
+MCFLAGS-prog_io_erroneous		= --verbose-error-messages
+MCFLAGS-tricky_assert1			= --verbose-error-messages
+MCFLAGS-typeclass_constraint_extra_var  = --verbose-error-messages
+MCFLAGS-typeclass_missing_det_3		= --verbose-error-messages
+MCFLAGS-typeclass_test_11		= --verbose-error-messages
+MCFLAGS-typeclass_test_12		= --verbose-error-messages
+MCFLAGS-typeclass_test_8		= --verbose-error-messages
+MCFLAGS-types				= --verbose-error-messages
+MCFLAGS-type_vars			= --verbose-error-messages
+MCFLAGS-unbound_type_vars		= --verbose-error-messages
+MCFLAGS-undef_type			= --verbose-error-messages
+MCFLAGS-unsatisfiable_constraint 	= --verbose-error-messages
+MCFLAGS-user_eq_dummy 			= --verbose-error-messages
+MCFLAGS-vars_in_wrong_places 		= --verbose-error-messages

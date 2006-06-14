@@ -3,10 +3,12 @@ mode_inf.m:009:   in call to predicate `mode_inf.q/2':
 mode_inf.m:009:   mode error: arguments `X, Y' have the following insts:
 mode_inf.m:009:     free,
 mode_inf.m:009:     free
-mode_inf.m:009:   which does not match any of the valid modes for the callee,
+mode_inf.m:009:   which does not match any of the valid modes for the callee
+mode_inf.m:009:   (predicate `mode_inf.q/2')
 mode_inf.m:009:   because of the following error.
 mode_inf.m:011: In clause for `q(out(not_reached), out(not_reached))':
 mode_inf.m:011:   in argument 2 of clause head:
 mode_inf.m:011:   mode error in unification of `HeadVar__2' and `X'.
 mode_inf.m:011:   Variable `HeadVar__2' has instantiatedness `free',
 mode_inf.m:011:   variable `X' has instantiatedness `free'.
+mode_inf.m:011: REJECTED :- mode q((free >> ...), (free >> ...)).

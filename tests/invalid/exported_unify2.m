@@ -2,7 +2,7 @@
 
 :- interface.
 
-:- type foo ---> foo where equality is unify_foo.
+:- type foo ---> foo1 ; foo2 where equality is unify_foo.
 
 :- implementation.
 

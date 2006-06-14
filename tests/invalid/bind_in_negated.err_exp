@@ -6,3 +6,6 @@ bind_in_negated.m:014:   Variable `A' has instantiatedness
 bind_in_negated.m:014:   `bound(bind_in_negated.f(free, ground))',
 bind_in_negated.m:014:   expected instantiatedness was
 bind_in_negated.m:014:   `bound(bind_in_negated.f(ground, ground))'.
+bind_in_negated.m:014:   The condition of an if-then-else is only allowed to
+bind_in_negated.m:014:   bind variables which are local to the condition or
+bind_in_negated.m:014:   which occur only in the condition and the `then' part.

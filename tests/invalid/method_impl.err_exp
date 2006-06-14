@@ -2,5 +2,9 @@ method_impl.m:022: In clause for type class method implementation:
 method_impl.m:022:   in argument 2 of predicate `foo_m1/2':
 method_impl.m:022:   type error: variable `HeadVar__2' has type `int',
 method_impl.m:022:   expected type was `string'.
+	The partial type assignment was:
+	HeadVar__1_1: (method_impl.foo)
+	HeadVar__2_2: int
+
 method_impl.m:025: In clause for type class method implementation:
 method_impl.m:025:   error: undefined predicate `bar_m1/2'.

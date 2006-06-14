@@ -2,3 +2,22 @@ ambiguous_method.m:018: In declaration for function `ambiguous_method.e/0':
 ambiguous_method.m:018:   error in type class constraints: type variable E
 ambiguous_method.m:018:   occurs in the constraints, but is not determined by
 ambiguous_method.m:018:   the function's argument or result types.
+ambiguous_method.m:018:   All types occurring in typeclass constraints must be
+ambiguous_method.m:018:   fully determined. A type is fully determined if one
+ambiguous_method.m:018:   of the following holds:
+ambiguous_method.m:018:   1) All type variables occurring in the type are
+ambiguous_method.m:018:   determined.
+ambiguous_method.m:018:   2) The type occurs in a constraint argument, that
+ambiguous_method.m:018:   argument is in the range of some functional
+ambiguous_method.m:018:   dependency for that class, and the types in all of
+ambiguous_method.m:018:   the domain arguments for that functional dependency
+ambiguous_method.m:018:   are fully determined.
+ambiguous_method.m:018:   A type variable is determined if one of the following
+ambiguous_method.m:018:   holds:
+ambiguous_method.m:018:   1) The type variable occurs in the argument types of
+ambiguous_method.m:018:   the predicate, function, or constructor which is
+ambiguous_method.m:018:   constrained.
+ambiguous_method.m:018:   2) The type variable occurs in a type which is fully
+ambiguous_method.m:018:   determined.
+ambiguous_method.m:018:   See the "Functional dependencies" section of the
+ambiguous_method.m:018:   reference manual for details.

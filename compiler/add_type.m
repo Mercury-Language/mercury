@@ -5,9 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % This submodule of make_hlds handles the declarations of new types.
-
+%
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.add_type.
@@ -83,6 +84,7 @@
 module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         item_status(Status0, NeedQual), !ModuleInfo, !IO) :-
     globals.io_get_globals(Globals, !IO),
+    globals.lookup_bool_option(Globals, verbose_errors, VerboseErrors),
     list.length(Args, Arity),
     TypeCtor = type_ctor(Name, Arity),
     convert_type_defn(TypeDefn, TypeCtor, Globals, Body0),
@@ -102,6 +104,42 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
         make_status_abstract(Status0, Status1)
     ;
         Status1 = Status0
+    ),
+    (
+        % Discriminated unions whose definition consists of a single
+        % zero-arity constructor are not allowed to have user-defined
+        % equality or comparison.
+        %
+        TypeDefn = du_type(Ctors, MaybeUserUC),
+        Ctors = [ Constructor ],
+        list.length(Constructor ^ cons_args, 0),
+        MaybeUserUC \= no,
+        % Only report errors for types defined in this module.
+        status_defined_in_this_module(Status0, yes)
+    ->
+        DummyTypeError = [
+            words("Error: the type"),
+            sym_name_and_arity(Name / Arity),
+            words("is not allowed to have user-defined equality"),
+            words("or comparison.")
+        ],
+        (
+            VerboseErrors = yes,
+            VerboseDummyTypeError = [
+                words("Discriminated unions whose body consists of a single"),
+                words("zero-arity constructor cannot have user-defined"),
+                words("equality or comparison.")
+            ],
+            CompleteDummyTypeError = DummyTypeError ++ VerboseDummyTypeError
+        ;
+            VerboseErrors = no,
+            globals.io_set_extra_error_info(yes, !IO),
+            CompleteDummyTypeError = DummyTypeError
+        ),
+        write_error_pieces(Context, 0, CompleteDummyTypeError, !IO),
+        io.set_exit_status(1, !IO)
+    ;
+        true
     ),
     (
         % The type is exported if *any* occurrence is exported,
@@ -251,7 +289,6 @@ module_add_type_defn(TVarSet, Name, Args, TypeDefn, _Cond, Context,
                 words("with monomorphic definition,"),
                 words("exported as abstract type.")],
             write_error_pieces(Context, 0, Pieces, !IO),
-            globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
             (
                 VerboseErrors = yes,
                 write_error_pieces(Context, 0, abstract_monotype_workaround,

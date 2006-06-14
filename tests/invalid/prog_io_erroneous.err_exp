@@ -1,7 +1,8 @@
-prog_io_erroneous.m:  1: Warning: interface for module `prog_io_erroneous' does not export anything.
-prog_io_erroneous.m:012: Error: no clauses for
-prog_io_erroneous.m:012:   predicate `prog_io_erroneous.q/2'.
-prog_io_erroneous.m:007: In clause for `p(in, out, out)':
-prog_io_erroneous.m:007:   in argument 1 of call to predicate `prog_io_erroneous.q/2':
-prog_io_erroneous.m:007:   mode error: variable `Y' has instantiatedness `free',
-prog_io_erroneous.m:007:   expected instantiatedness was `ground'.
+prog_io_erroneous.m:001: Warning: interface for module `prog_io_erroneous' does
+prog_io_erroneous.m:001:   not export anything.
+prog_io_erroneous.m:001: To be useful, a module should export something. A file
+prog_io_erroneous.m:001:   should contain at least one declaration other than
+prog_io_erroneous.m:001:   `:- import_module' in its interface section(s). This
+prog_io_erroneous.m:001:   would normally be a `:- pred', `:- func', `:- type',
+prog_io_erroneous.m:001:   `:- inst' or `:- mode' declaration.
+prog_io_erroneous.m:012: Error: no clauses for predicate `q/2'.

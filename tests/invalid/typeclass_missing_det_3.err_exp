@@ -1,6 +1,12 @@
 typeclass_missing_det_3.m:001: Warning: interface for module
 typeclass_missing_det_3.m:001:   `typeclass_missing_det_3' does not export
 typeclass_missing_det_3.m:001:   anything.
+typeclass_missing_det_3.m:001: To be useful, a module should export something.
+typeclass_missing_det_3.m:001:   A file should contain at least one declaration
+typeclass_missing_det_3.m:001:   other than `:- import_module' in its interface
+typeclass_missing_det_3.m:001:   section(s). This would normally be a
+typeclass_missing_det_3.m:001:   `:- pred', `:- func', `:- type', `:- inst'
+typeclass_missing_det_3.m:001:   or `:- mode' declaration.
 typeclass_missing_det_3.m:013: Error: no determinism declaration for type class
 typeclass_missing_det_3.m:013:   method predicate
 typeclass_missing_det_3.m:013:   `typeclass_missing_det_3.write'/3.
