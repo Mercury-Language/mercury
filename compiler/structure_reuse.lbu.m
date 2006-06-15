@@ -44,6 +44,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module libs.compiler_util.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_type.
 
 :- import_module list.
 :- import_module pair.
@@ -52,35 +53,35 @@
 
 %-----------------------------------------------------------------------------%
 
-backward_use_information(ModuleInfo, !ProcInfo):- 
+backward_use_information(_ModuleInfo, !ProcInfo):- 
     proc_info_get_goal(!.ProcInfo, Goal0),
+    proc_info_get_vartypes(!.ProcInfo, VarTypes), 
 
     % Before the first goal, the set of variables in LBU is empty.
     LBU0 = set.init,
-    backward_use_in_goal(ModuleInfo, !.ProcInfo, Goal0, Goal, LBU0, _LBU),
+    backward_use_in_goal(VarTypes, Goal0, Goal, LBU0, _LBU),
 
     proc_info_set_goal(Goal, !ProcInfo).
 
-:- pred backward_use_in_goal(module_info::in, proc_info::in, 
-    hlds_goal::in, hlds_goal::out, set(prog_var)::in, set(prog_var)::out)
-    is det.
+:- pred backward_use_in_goal(vartypes::in, hlds_goal::in, hlds_goal::out, 
+    set(prog_var)::in, set(prog_var)::out) is det.
 
-backward_use_in_goal(ModuleInfo, ProcInfo, !TopGoal, !LBU) :-
+backward_use_in_goal(VarTypes, !TopGoal, !LBU) :-
     !.TopGoal = Expr0 - Info0,
 
     % Add resume_vars to the LBU-set.
-    set.union(get_backtrack_vars(Info0), !LBU), 
+    set.union(get_backtrack_vars(VarTypes, Info0), !LBU), 
 
-    backward_use_in_goal_2(ModuleInfo, ProcInfo, Info0, Expr0, Expr, !LBU),
+    backward_use_in_goal_2(VarTypes, Info0, Expr0, Expr, !LBU),
 
     goal_info_set_lbu(!.LBU, Info0, Info), 
     !:TopGoal = Expr - Info.    
 
-:- pred backward_use_in_goal_2(module_info::in, proc_info::in, 
-    hlds_goal_info::in, hlds_goal_expr::in, hlds_goal_expr::out, 
-    set(prog_var)::in, set(prog_var)::out) is det.
+:- pred backward_use_in_goal_2(vartypes::in, hlds_goal_info::in, 
+    hlds_goal_expr::in, hlds_goal_expr::out, set(prog_var)::in, 
+    set(prog_var)::out) is det.
 
-backward_use_in_goal_2(ModuleInfo, ProcInfo, Info0, !Expr, !LBU) :- 
+backward_use_in_goal_2(VarTypes, Info0, !Expr, !LBU) :- 
     % Handle each goal type separately:
     (
         !.Expr = unify(_, _, _, _, _)
@@ -98,7 +99,8 @@ backward_use_in_goal_2(ModuleInfo, ProcInfo, Info0, !Expr, !LBU) :-
             goal_info_get_pre_births(Info0, PreBirths),
             goal_info_get_post_births(Info0, PostBirths),
             !:LBU = set.union_list([goal_info_get_lfu(Info0),
-                 PreBirths, PostBirths, !.LBU])
+                remove_typeinfo_vars_from_set(VarTypes, PreBirths), 
+                remove_typeinfo_vars_from_set(VarTypes, PostBirths), !.LBU])
         ;
             true
         )
@@ -110,22 +112,21 @@ backward_use_in_goal_2(ModuleInfo, ProcInfo, Info0, !Expr, !LBU) :-
         !.Expr = foreign_proc(_, _, _, _, _, _)
     ; 
         !.Expr = conj(ConjType, Goals0),
-        backward_use_in_conj(ModuleInfo, ProcInfo, 
-                Goals0, Goals, !LBU),
+        backward_use_in_conj(VarTypes, Goals0, Goals, !LBU),
         !:Expr = conj(ConjType, Goals)
     ;
         !.Expr = disj(Goals0),
-        backward_use_in_disj(ModuleInfo, ProcInfo, Goals0, Goals, !LBU),
+        backward_use_in_disj(VarTypes, Goals0, Goals, !LBU),
         !:Expr = disj(Goals)
     ;
         !.Expr = switch(A, B, Cases0),
-        backward_use_in_cases(ModuleInfo, ProcInfo, Cases0, Cases, !LBU),
+        backward_use_in_cases(VarTypes, Cases0, Cases, !LBU),
         !:Expr = switch(A, B, Cases)
     ;
         !.Expr = not(Goal0),
         % handled as: if(Goal0) then fail else true
         LBU0 = !.LBU, 
-        backward_use_in_goal(ModuleInfo, ProcInfo, Goal0, Goal, !.LBU, _),
+        backward_use_in_goal(VarTypes, Goal0, Goal, !.LBU, _),
         % A not does not introduce any choice-points! Hence the
         % not itself is deterministic, and no new variables in LBU
         % are introduced into the resulting LBU-set. 
@@ -133,7 +134,7 @@ backward_use_in_goal_2(ModuleInfo, ProcInfo, Info0, !Expr, !LBU) :-
         !:Expr = not(Goal)
     ;
         !.Expr = scope(Reason, SomeGoal0),
-        backward_use_in_goal(ModuleInfo, ProcInfo, SomeGoal0, SomeGoal, !LBU),
+        backward_use_in_goal(VarTypes, SomeGoal0, SomeGoal, !LBU),
         !:Expr = scope(Reason, SomeGoal)
     ;
         % XXX The implementation for if-then-else is different from the theory
@@ -145,7 +146,7 @@ backward_use_in_goal_2(ModuleInfo, ProcInfo, Info0, !Expr, !LBU) :-
         LBU0 = !.LBU, 
 
             % Annotate Cond-goal.
-        backward_use_in_goal(ModuleInfo, ProcInfo, Cond0, Cond, LBU0, _),
+        backward_use_in_goal(VarTypes, Cond0, Cond, LBU0, _),
 
             % Annotate Then-goal.
             % When annotating the then-part, the lbu used for it should not
@@ -155,12 +156,11 @@ backward_use_in_goal_2(ModuleInfo, ProcInfo, Info0, !Expr, !LBU) :-
         Cond0 = CondGoal0 - CondInfo0,
         goal_info_set_resume_point(no_resume_point, CondInfo0, InfoTmp),
         CondTmp = CondGoal0 - InfoTmp, 
-        backward_use_in_goal(ModuleInfo, ProcInfo, CondTmp, _, LBU0, LBU0T),
-        backward_use_in_goal(ModuleInfo, ProcInfo, Then0, Then, LBU0T, LBUT), 
+        backward_use_in_goal(VarTypes, CondTmp, _, LBU0, LBU0T),
+        backward_use_in_goal(VarTypes, Then0, Then, LBU0T, LBUT), 
 
             % Annotate Else-goal.
-        backward_use_in_goal(ModuleInfo, ProcInfo, Else0, Else, 
-                LBU0, LBUE), 
+        backward_use_in_goal(VarTypes, Else0, Else, LBU0, LBUE), 
         set.union(LBUT, LBUE, !:LBU),
         !:Expr = if_then_else(Vars, Cond, Then, Else)
     ;
@@ -168,13 +168,13 @@ backward_use_in_goal_2(ModuleInfo, ProcInfo, Info0, !Expr, !LBU) :-
         unexpected(this_file, "backward_use_in_goal_2: shorthand goal.")
     ).
 
-:- func get_backtrack_vars(hlds_goal_info) = set(prog_var).
+:- func get_backtrack_vars(vartypes, hlds_goal_info) = set(prog_var).
 
-get_backtrack_vars(Info) = Vars :-
+get_backtrack_vars(VarTypes, Info) = Vars :-
     goal_info_get_resume_point(Info, ResPoint), 
     (
         ResPoint = resume_point(ResVars, _),
-        Vars = ResVars
+        Vars = remove_typeinfo_vars_from_set(VarTypes, ResVars)
     ;
         ResPoint = no_resume_point,
         Vars = set.init
@@ -187,49 +187,43 @@ detism_allows_multiple_solns(multidet).
 detism_allows_multiple_solns(cc_nondet).
 detism_allows_multiple_solns(cc_multidet).
 
-:- pred backward_use_in_conj(module_info::in, proc_info::in, 
-    hlds_goals::in, hlds_goals::out, set(prog_var)::in, set(prog_var)::out)
-    is det.
+:- pred backward_use_in_conj(vartypes::in, list(hlds_goal)::in, 
+    list(hlds_goal)::out, set(prog_var)::in, set(prog_var)::out) is det.
 
-backward_use_in_conj(ModuleInfo, ProcInfo, !Goals, !LBU) :- 
-    list.map_foldl(backward_use_in_goal(ModuleInfo, ProcInfo), !Goals, !LBU). 
+backward_use_in_conj(VarTypes, !Goals, !LBU) :- 
+    list.map_foldl(backward_use_in_goal(VarTypes), !Goals, !LBU). 
 
-:- pred backward_use_in_cases(module_info::in, proc_info::in, 
-    list(case)::in, list(case)::out, set(prog_var)::in, set(prog_var)::out) 
-    is det.
+:- pred backward_use_in_cases(vartypes::in, list(case)::in, list(case)::out, 
+    set(prog_var)::in, set(prog_var)::out) is det.
 
-backward_use_in_cases(ModuleInfo, ProcInfo, !Cases, !LBU) :- 
+backward_use_in_cases(VarTypes, !Cases, !LBU) :- 
     % Every case is analysed with the same initial set of LBU-vars.
     LBU0 = !.LBU, 
-    list.map_foldl(backward_use_in_case(LBU0, ModuleInfo, ProcInfo),
-        !Cases, !LBU).
+    list.map_foldl(backward_use_in_case(LBU0, VarTypes), !Cases, !LBU).
  
-:- pred backward_use_in_case(set(prog_var)::in, module_info::in,
-    proc_info::in, case::in, case::out, set(prog_var)::in, set(prog_var)::out)
-    is det.
+:- pred backward_use_in_case(set(prog_var)::in, vartypes::in, case::in, 
+    case::out, set(prog_var)::in, set(prog_var)::out) is det.
 
-backward_use_in_case(LBU0, ModuleInfo, ProcInfo, !Case, !LBU):- 
+backward_use_in_case(LBU0, VarTypes, !Case, !LBU):- 
     !.Case = case(Cons, Goal0), 
-    backward_use_in_goal(ModuleInfo, ProcInfo, Goal0, Goal, LBU0, NewLBU),
+    backward_use_in_goal(VarTypes, Goal0, Goal, LBU0, NewLBU),
     !:Case = case(Cons, Goal), 
     set.union(NewLBU, !LBU).
 
-:- pred backward_use_in_disj(module_info::in, proc_info::in, 
-    hlds_goals::in, hlds_goals::out, set(prog_var)::in, set(prog_var)::out)
-    is det.
+:- pred backward_use_in_disj(vartypes::in, list(hlds_goal)::in, 
+    list(hlds_goal)::out, set(prog_var)::in, set(prog_var)::out) is det.
 
-backward_use_in_disj(ModuleInfo, ProcInfo, !Goals, !LBU) :- 
+backward_use_in_disj(VarTypes, !Goals, !LBU) :- 
     % Every disj-goal is analysed with the same initial set of LBU-vars.
     LBU0 = !.LBU, 
-    list.map_foldl(backward_use_in_disj_goal(LBU0, ModuleInfo, ProcInfo),
-        !Goals, !LBU).
+    list.map_foldl(backward_use_in_disj_goal(LBU0, VarTypes), !Goals, !LBU).
 
-:- pred backward_use_in_disj_goal(set(prog_var)::in, module_info::in,
-    proc_info::in, hlds_goal::in, hlds_goal::out, set(prog_var)::in,
+:- pred backward_use_in_disj_goal(set(prog_var)::in, vartypes::in, 
+    hlds_goal::in, hlds_goal::out, set(prog_var)::in,
     set(prog_var)::out) is det.
 
-backward_use_in_disj_goal(LBU0, ModuleInfo, ProcInfo, !Goal, !LBU) :- 
-    backward_use_in_goal(ModuleInfo, ProcInfo, !Goal, LBU0, NewLBU), 
+backward_use_in_disj_goal(LBU0, VarTypes, !Goal, !LBU) :- 
+    backward_use_in_goal(VarTypes, !Goal, LBU0, NewLBU), 
     set.union(NewLBU, !LBU).
 
 %-----------------------------------------------------------------------------%

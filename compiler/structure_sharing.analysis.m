@@ -25,9 +25,15 @@
 
 %-----------------------------------------------------------------------------%
 
+    % Perform structure sharing analysis on the procedures defined in the
+    % current module. 
+    %
 :- pred structure_sharing_analysis(module_info::in, module_info::out,
     io::di, io::uo) is det.
 
+    % Write all the sharing information concerning the specified predicate as
+    % reuse pragmas.  
+    %
 :- pred write_pred_sharing_info(module_info::in, pred_id::in,
     io::di, io::uo) is det.
 
@@ -47,8 +53,10 @@
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.modules.
+:- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 :- import_module transform_hlds.ctgc.fixpoint_table.
 :- import_module transform_hlds.ctgc.structure_sharing.domain.
 :- import_module transform_hlds.ctgc.util.
@@ -61,11 +69,16 @@
 :- import_module pair.
 :- import_module set.
 :- import_module string.
+:- import_module svmap.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
 
 structure_sharing_analysis(!ModuleInfo, !IO) :-
+    % 
+    % Process all the imported sharing information. 
+    %
+    process_imported_sharing(!ModuleInfo), 
     %
     % Annotate the HLDS with liveness information.
     %
@@ -94,6 +107,74 @@ structure_sharing_analysis(!ModuleInfo, !IO) :-
 %
 % Preliminary steps
 %
+
+    % Process the imported sharing information. 
+    %
+:- pred process_imported_sharing(module_info::in, module_info::out) is det.
+
+process_imported_sharing(!ModuleInfo):-
+    module_info_predids(!.ModuleInfo, PredIds), 
+    list.foldl(process_imported_sharing_in_pred, PredIds, !ModuleInfo).
+
+:- pred process_imported_sharing_in_pred(pred_id::in, module_info::in,
+    module_info::out) is det.
+
+process_imported_sharing_in_pred(PredId, !ModuleInfo) :- 
+    some [!PredTable] (
+        module_info_preds(!.ModuleInfo, !:PredTable), 
+        PredInfo0 = !.PredTable ^ det_elem(PredId), 
+        process_imported_sharing_in_procs(PredInfo0, PredInfo),
+        svmap.det_update(PredId, PredInfo, !PredTable),
+        module_info_set_preds(!.PredTable, !ModuleInfo)
+    ).
+
+:- pred process_imported_sharing_in_procs(pred_info::in, 
+    pred_info::out) is det.
+
+process_imported_sharing_in_procs(!PredInfo) :- 
+    some [!ProcTable] (
+        pred_info_get_procedures(!.PredInfo, !:ProcTable), 
+        ProcIds = pred_info_procids(!.PredInfo), 
+        list.foldl(process_imported_sharing_in_proc(!.PredInfo), 
+            ProcIds, !ProcTable),
+        pred_info_set_procedures(!.ProcTable, !PredInfo)
+    ).
+
+:- pred process_imported_sharing_in_proc(pred_info::in, proc_id::in, 
+    proc_table::in, proc_table::out) is det.
+
+process_imported_sharing_in_proc(PredInfo, ProcId, !ProcTable) :- 
+    some [!ProcInfo] (
+        !:ProcInfo = !.ProcTable ^ det_elem(ProcId), 
+        (
+            proc_info_get_imported_structure_sharing(!.ProcInfo, 
+                ImpHeadVars, ImpTypes, ImpSharing)
+        ->
+            proc_info_get_headvars(!.ProcInfo, HeadVars),
+            pred_info_get_arg_types(PredInfo, HeadVarTypes),
+            map.from_corresponding_lists(ImpHeadVars, HeadVars, VarRenaming), 
+            some [!TypeSubst] (
+                !:TypeSubst = map.init, 
+                (
+                    type_unify_list(ImpTypes, HeadVarTypes, [], !.TypeSubst,
+                        TypeSubstNew)
+                ->
+                    !:TypeSubst = TypeSubstNew
+                ;
+                    true
+                ),
+                rename_structure_sharing_domain(VarRenaming, !.TypeSubst,
+                    ImpSharing, Sharing)
+            ),
+            proc_info_set_structure_sharing(Sharing, !ProcInfo), 
+            proc_info_reset_imported_structure_sharing(!ProcInfo),
+            svmap.det_update(ProcId, !.ProcInfo, !ProcTable)
+        ;
+            true
+        )
+    ).
+
+%-----------------------------------------------------------------------------%
 
     % Annotate the HLDS with pre-birth and post-death information, as
     % used by the liveness pass (liveness.m). This information is used to
@@ -561,7 +642,7 @@ write_pred_sharing_info(ModuleInfo, PredId, !IO) :-
 
         % XXX These should be allowed, but the predicate declaration for the
         % specialized predicate is not produced before the structure_sharing
-        % pramgas are read in, resulting in an undefined predicate error.
+        % pragmas are read in, resulting in an undefined predicate error.
         \+ set.member(PredId, TypeSpecForcePreds)
     ->
         PredName = pred_info_name(PredInfo),

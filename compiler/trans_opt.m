@@ -93,6 +93,8 @@
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_out.
 :- import_module transform_hlds.ctgc.
+:- import_module transform_hlds.ctgc.structure_reuse.
+:- import_module transform_hlds.ctgc.structure_reuse.analysis.
 :- import_module transform_hlds.ctgc.structure_sharing.
 :- import_module transform_hlds.ctgc.structure_sharing.analysis.
 :- import_module transform_hlds.exception_analysis.
@@ -104,6 +106,7 @@
 
 :- import_module list.
 :- import_module map.
+:- import_module pair.
 :- import_module set.
 :- import_module string.
 :- import_module term.
@@ -141,28 +144,40 @@ write_optfile(Module, !IO) :-
         % All predicates to write global items into the .trans_opt
         % file should go here.
 
+        % Select all the predicates for which something should be writting
+        % into the .trans_opt file. 
+        %
         module_info_predids(Module, PredIds),
+        module_info_get_structure_reuse_map(Module, ReuseMap), 
+        map.values(ReuseMap, ReuseResults), 
+        list.map(fst, ReuseResults, ReusePredProcIds), 
+        list.map(get_pred_id, ReusePredProcIds, ReusePredIds), 
+        list.delete_elems(PredIds, ReusePredIds, PredIdsNoReuseVersions), 
+
         list.foldl(termination.write_pred_termination_info(Module),
-            PredIds, !IO),
+            PredIdsNoReuseVersions, !IO),
         list.foldl(term_constr_main.output_pred_termination2_info(Module),
-            PredIds, !IO),
+            PredIdsNoReuseVersions, !IO),
 
         list.foldl(structure_sharing.analysis.write_pred_sharing_info(Module),
-            PredIds, !IO), 
+            PredIdsNoReuseVersions, !IO), 
+        list.foldl(structure_reuse.analysis.write_pred_reuse_info(Module), 
+            PredIdsNoReuseVersions, !IO), 
+
         module_info_get_exception_info(Module, ExceptionInfo),
         list.foldl(
             exception_analysis.write_pragma_exceptions(Module, ExceptionInfo),
-            PredIds, !IO),
+            PredIdsNoReuseVersions, !IO),
 
         module_info_get_trailing_info(Module, TrailingInfo),
         list.foldl(
             write_pragma_trailing_info(Module, TrailingInfo), 
-            PredIds, !IO),
+            PredIdsNoReuseVersions, !IO),
 
         module_info_get_mm_tabling_info(Module, TablingInfo),
         list.foldl(
             write_pragma_mm_tabling_info(Module, TablingInfo),
-            PredIds, !IO),
+            PredIdsNoReuseVersions, !IO),
 
         io.set_output_stream(OldStream, _, !IO),
         io.close_output(Stream, !IO),
@@ -171,6 +186,10 @@ write_optfile(Module, !IO) :-
         update_interface(OptName, !IO),
         touch_interface_datestamp(ModuleName, ".trans_opt_date", !IO)
     ).
+
+:- pred get_pred_id(pred_proc_id::in, pred_id::out) is det.
+
+get_pred_id(proc(PredId, _ProcId), PredId). 
 
 %-----------------------------------------------------------------------------%
 %

@@ -63,6 +63,7 @@
 :- import_module transform_hlds.ctgc.util.
 :- import_module transform_hlds.dependency_graph.
 
+:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -196,9 +197,17 @@ indirect_reuse_analyse_pred_proc(SharingTable, ReuseTable, PPId,
 
 ir_background_info_init(ModuleInfo, PredInfo, ProcInfo, SharingTable, 
         ReuseTable) = BG :- 
+    PredOrigArity = pred_info_orig_arity(PredInfo), 
     proc_info_get_headvars(ProcInfo, HeadVars),
+    PredArity = list.length(HeadVars), 
+    Diff = PredArity - PredOrigArity, 
+    % We don't need to keep track of any information regarding inserted
+    % type-info arguments and alike, so we remove them from the list
+    % of headvariables: 
+    list.det_split_list(Diff, HeadVars, _AddedHeadVars, OrigHeadVars), 
+
     BG = ir_background_info(ModuleInfo, PredInfo, ProcInfo, 
-        SharingTable, ReuseTable, HeadVars).
+        SharingTable, ReuseTable, OrigHeadVars).
 
 :- func analysis_info_init(pred_proc_id, sr_fixpoint_table) = ir_analysis_info.
 
@@ -400,27 +409,8 @@ indirect_reuse_analyse_case(BaseInfo, AnalysisInfo0, Case0, Case, AnalysisInfo,
 
 verify_indirect_reuse(BaseInfo, CalleePredId, CalleeProcId, CalleeArgs,
         !GoalInfo, !AnalysisInfo, !IO):-
-    globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
-    reuse_as_table_maybe_dump(VeryVerbose, BaseInfo ^ reuse_table, !IO),
-
-    ModuleInfo = BaseInfo ^ module_info, 
-
-    % Check if the called procedure already has a reuse version (which can 
-    % be the case if it is a procedure belonging to an imported module).
-    module_info_get_structure_reuse_info(ModuleInfo, ModuleReuseInfo),
-    ModuleReuseInfo = structure_reuse_info(ReuseMap),
-    ( map.search(ReuseMap, proc(CalleePredId, CalleeProcId), Result) ->
-        Result = proc(ReuseCalleePredId, ReuseCalleeProcId) - _Name,
-        CalleePPId = proc(ReuseCalleePredId, ReuseCalleeProcId),
-        passes_aux.write_proc_progress_message(
-            "%\t\tSuccess lookup in reuse map: ", 
-            CalleePredId, CalleeProcId, ModuleInfo, !IO)
-    ;
-        CalleePPId = proc(CalleePredId, CalleeProcId)
-    ),
-
-    % Find the reuse information of the called procedure (or its explicit
-    % reuse version) in the reuse table:
+    % Find the reuse information of the called procedure in the reuse table:
+    CalleePPId = proc(CalleePredId, CalleeProcId),
     lookup_reuse_as(BaseInfo, CalleePPId, !AnalysisInfo, FormalReuseAs),
 
     (

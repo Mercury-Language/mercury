@@ -26,6 +26,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module set.
 :- import_module term.
 
 %-----------------------------------------------------------------------------%
@@ -230,6 +231,13 @@
     % original list).
     %
 :- func put_typeinfo_vars_first(list(prog_var), vartypes) = list(prog_var).
+
+    % Given a list of variables, remove all the type_info-related
+    % variables. 
+    %
+:- func remove_typeinfo_vars(vartypes, list(prog_var)) = list(prog_var).
+:- func remove_typeinfo_vars_from_set(vartypes, set(prog_var)) 
+    = set(prog_var).
 
     % In the forwards mode, this predicate checks for a "new " prefix
     % at the start of the functor name, and removes it if present;
@@ -780,10 +788,27 @@ is_introduced_type_info_type_category(type_cat_user_ctor) = no.
 
 put_typeinfo_vars_first(VarsList, VarTypes) =
         TypeInfoVarsList ++ NonTypeInfoVarsList :-
+    split_vars_typeinfo_no_typeinfo(VarsList, VarTypes, 
+        TypeInfoVarsList, NonTypeInfoVarsList). 
+
+remove_typeinfo_vars(VarTypes, VarsList) = NonTypeInfoVarsList :- 
+    split_vars_typeinfo_no_typeinfo(VarsList, VarTypes, _, 
+        NonTypeInfoVarsList).
+
+remove_typeinfo_vars_from_set(VarTypes, VarsSet) = 
+    set.from_list(remove_typeinfo_vars(VarTypes, 
+        set.to_sorted_list(VarsSet))).
+    
+:- pred split_vars_typeinfo_no_typeinfo(list(prog_var)::in, 
+    vartypes::in, list(prog_var)::out, list(prog_var)::out) is det.
+
+split_vars_typeinfo_no_typeinfo(VarsList, VarTypes, TypeInfoVarsList, 
+        NonTypeInfoVarsList) :- 
     list.filter((pred(Var::in) is semidet :-
             Type = map.lookup(VarTypes, Var),
             is_introduced_type_info_type(Type)),
         VarsList, TypeInfoVarsList, NonTypeInfoVarsList).
+
 
 remove_new_prefix(unqualified(Name0), unqualified(Name)) :-
     string.append("new ", Name, Name0).

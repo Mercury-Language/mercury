@@ -325,6 +325,8 @@
     % (no structure sharing), top (any kind of structure sharing), or
     % a list of structure sharing pairs.
     %
+    % This is the public representation of the type "sharing_as". 
+    %
 :- type structure_sharing_domain
     --->    bottom
     ;       real(structure_sharing)
@@ -364,7 +366,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Stuff for the `structure_reuse_info' pragma
+% Stuff for the `structure_reuse_info' pragma.
 %
 
 :- type dead_var == prog_var.
@@ -376,31 +378,34 @@
 :- type live_datastruct == datastruct.
 :- type live_datastructs == list(live_datastruct).
 
-    % A reuse-tuple is used to describe the condition for which reuse
-    % within a particular procedure is allowed.
+    % This is the public representation of the type "reuse_as". 
     %
-:- type reuse_tuple
-    --->    unconditional
-    ;       conditional(
-                % The set of datastructures pointing to the memory that becomes
-                % 'dead' and thus will be reused. This set is restricted to
-                % the head variables of the involved procedure.
-                reuse_nodes         :: dead_datastructs,
+:- type structure_reuse_domain
+    --->    has_no_reuse
+    ;       has_only_unconditional_reuse
+    ;       has_conditional_reuse(structure_reuse_conditions).
 
-                % The set of datastructures inherently live at the moment
-                % where the reuse_nodes become dead. This set is restricted
-                % to the head variables of the procedure the reuse condition
-                % refers to.
-                live_headvars       :: live_datastructs,
+:- type structure_reuse_conditions == list(structure_reuse_condition).
 
-                % Description of the structure sharing existing at the moment
-                % where the reuse_nodes become dead. The sharing is also
-                % restricted to the headvariables of the concerned procedure.
-                sharing_headvars    :: structure_sharing_domain
+    % A structure reuse condition specifies all the information needed to
+    % verify whether some memory cells can safely be considered as dead at
+    % some program point, depending on the calling context. 
+    % This information consists of three parts: 
+    %   - a list of dead datastructures specifying which memory cells 
+    %   might become dead, hence reuseable;
+    %   - a list of live datastructures that specifies which memory cells
+    %   are always live at the place where the above dead datastructures might
+    %   become dead;
+    %   - a description of the structure sharing existing at the place
+    %   where these datastructures might become dead.
+    %
+:- type structure_reuse_condition 
+    --->    structure_reuse_condition(
+                dead_nodes          :: dead_datastructs,
+                local_use_nodes     :: live_datastructs, 
+                local_sharing       :: structure_sharing_domain
             ).
-
-:- type reuse_tuples == list(reuse_tuple).
-
+            
 %-----------------------------------------------------------------------------%
 %
 % Stuff for the `unused_args' pragma

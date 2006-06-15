@@ -45,9 +45,11 @@
 
 :- func parse_structure_sharing_domain(term(T)) = structure_sharing_domain.
 
-:- func parse_reuse_tuple(term(T)) = reuse_tuple.
+:- func parse_structure_reuse_condition(term(T)) = structure_reuse_condition.
 
-:- func parse_reuse_tuples(term(T)) = reuse_tuples.
+:- func parse_structure_reuse_conditions(term(T)) = structure_reuse_conditions.
+
+:- func parse_structure_reuse_domain(term(T)) = structure_reuse_domain.
 
 %-----------------------------------------------------------------------------%
 %
@@ -112,14 +114,17 @@
 :- pred print_interface_structure_sharing_domain(prog_varset::in,
     tvarset::in, maybe(structure_sharing_domain)::in, io::di, io::uo) is det.
 
-:- pred print_reuse_tuple(prog_varset::in, tvarset::in, reuse_tuple::in,
-    io::di, io::uo) is det.
+:- pred print_structure_reuse_condition(prog_varset::in, tvarset::in, 
+    structure_reuse_condition::in, io::di, io::uo) is det.
 
-:- pred print_reuse_tuples(prog_varset::in, tvarset::in, reuse_tuples::in,
-    io::di, io::uo) is det.
+:- pred print_structure_reuse_conditions(prog_varset::in, tvarset::in, 
+    structure_reuse_conditions::in, io::di, io::uo) is det.
 
-:- pred print_interface_maybe_reuse_tuples(prog_varset::in, tvarset::in, 
-    maybe(reuse_tuples)::in, io::di, io::uo) is det.
+:- pred print_structure_reuse_domain(prog_varset::in, tvarset::in, 
+    structure_reuse_domain::in, io::di, io::uo) is det.
+
+:- pred print_interface_maybe_structure_reuse_domain(prog_varset::in, 
+    tvarset::in, maybe(structure_reuse_domain)::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -147,6 +152,18 @@
 :- pred rename_structure_sharing_domain(map(prog_var, prog_var)::in,
     tsubst::in, structure_sharing_domain::in,
     structure_sharing_domain::out) is det.
+
+:- pred rename_structure_reuse_condition(map(prog_var, prog_var)::in, 
+    tsubst::in, structure_reuse_condition::in, 
+    structure_reuse_condition::out) is det.
+
+:- pred rename_structure_reuse_conditions(map(prog_var, prog_var)::in, 
+    tsubst::in, structure_reuse_conditions::in, 
+    structure_reuse_conditions::out) is det.
+
+:- pred rename_structure_reuse_domain(map(prog_var, prog_var)::in, 
+    tsubst::in, structure_reuse_domain::in, 
+    structure_reuse_domain::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -329,7 +346,7 @@ parse_structure_sharing_domain(Term) = SharingAs :-
         unexpected(this_file, "Error while parsing structure sharing domain.")
     ).
     
-parse_reuse_tuple(Term) = ReuseTuple :- 
+parse_structure_reuse_condition(Term) = ReuseCondition :- 
     (
         Term = term.functor(term.atom(Cons), Args, _)
     -> 
@@ -340,20 +357,17 @@ parse_reuse_tuple(Term) = ReuseTuple :-
             DeadNodes = parse_datastruct_list(DeadNodesTerm),
             InUseNodes = parse_datastruct_list(InUseNodesTerm),
             Sharing = parse_structure_sharing_domain(SharingTerm),
-            ReuseTuple = conditional(DeadNodes, InUseNodes, Sharing)
+            ReuseCondition = structure_reuse_condition(DeadNodes, 
+                InUseNodes, Sharing)
         ;
-            Cons = "unconditional"
-        -> 
-            ReuseTuple = unconditional
-        ;
-            unexpected(this_file, "Error while parsing reuse tuple.")
+            unexpected(this_file, "Error while parsing reuse condition.")
         )
     ;
-        unexpected(this_file, "Error while parsing reuse tuple " ++
+        unexpected(this_file, "Error while parsing reuse condition " ++
             "(term not a functor).")
     ).
 
-parse_reuse_tuples(Term) = ReuseTuples :- 
+parse_structure_reuse_conditions(Term) = ReuseConditions :- 
     (
         Term = term.functor(term.atom(Cons), Args, _)
     -> 
@@ -361,19 +375,46 @@ parse_reuse_tuples(Term) = ReuseTuples :-
             Cons = "[|]",
             Args = [FirstTupleTerm, RestTuplesTerm]
         ->
-            ReuseTuples = [parse_reuse_tuple(FirstTupleTerm)|
-                parse_reuse_tuples(RestTuplesTerm)]
+            ReuseConditions = [parse_structure_reuse_condition(FirstTupleTerm)|
+                parse_structure_reuse_conditions(RestTuplesTerm)]
         ;
             Cons = "[]"
         ->
-            ReuseTuples = [] 
+            ReuseConditions = [] 
         ;
-            unexpected(this_file, "Error while parsing list of reuse tuples.")
+            unexpected(this_file, "Error while parsing reuse conditions.")
         )
     ;
-        unexpected(this_file, "Error while parsing list of reuse tuples " ++
+        unexpected(this_file, "Error while parsing reuse conditions " ++
             "(term not a functor).")
     ).
+
+parse_structure_reuse_domain(Term) = ReuseDomain :- 
+    (
+        Term = term.functor(term.atom(Cons), Args, _)
+    -> 
+        ( 
+            Cons = "has_no_reuse"
+        -> 
+            ReuseDomain = has_no_reuse
+        ;
+            Cons = "has_only_unconditional_reuse"
+        ->
+            ReuseDomain = has_only_unconditional_reuse
+        ;
+            Cons = "has_conditional_reuse",
+            Args = [ReuseConditionsTerm]
+        ->
+            ReuseDomain = has_conditional_reuse(
+                parse_structure_reuse_conditions(ReuseConditionsTerm))
+        ;
+            unexpected(this_file, "Error while parsing reuse domain.")
+        )
+    ;
+        unexpected(this_file, "Error while parsing reuse domain " ++
+            "(term not a functor).")
+    ).
+
 
 %-----------------------------------------------------------------------------%
 %
@@ -513,35 +554,45 @@ print_interface_structure_sharing_domain(ProgVarSet, TypeVarSet,
         !IO),
     io.write_string(")", !IO).
 
-print_reuse_tuple(ProgVarSet, TypeVarSet, ReuseTuple, !IO) :-
+print_structure_reuse_condition(ProgVarSet, TypeVarSet, ReuseCond, !IO) :-
+    ReuseCond = structure_reuse_condition(DeadNodes, InUseNodes, Sharing), 
+    io.write_string("condition(", !IO), 
+    print_datastructs(ProgVarSet, TypeVarSet, DeadNodes, !IO), 
+    io.write_string(",", !IO),
+    print_datastructs(ProgVarSet, TypeVarSet, InUseNodes, !IO), 
+    io.write_string(",", !IO),
+    print_structure_sharing_domain(ProgVarSet, TypeVarSet, no, no, 
+        Sharing, !IO),
+    io.write_string(")", !IO).
+
+print_structure_reuse_conditions(ProgVarSet, TypeVarSet, ReuseConds, !IO) :- 
+    io.write_string("[", !IO), 
+    io.write_list(ReuseConds, ",", 
+        print_structure_reuse_condition(ProgVarSet, TypeVarSet), !IO), 
+    io.write_string("]", !IO).
+
+print_structure_reuse_domain(ProgVarSet, TypeVarSet, ReuseDomain, !IO) :- 
     (
-        ReuseTuple = unconditional,
-        io.write_string("unconditional", !IO)
+        ReuseDomain = has_no_reuse,
+        io.write_string("has_no_reuse", !IO)
     ;
-        ReuseTuple = conditional(DeadNodes, InUseNodes, Sharing), 
-        io.write_string("conditional(", !IO), 
-        print_datastructs(ProgVarSet, TypeVarSet, DeadNodes, !IO), 
-        io.write_string(",", !IO),
-        print_datastructs(ProgVarSet, TypeVarSet, InUseNodes, !IO), 
-        io.write_string(",", !IO),
-        print_structure_sharing_domain(ProgVarSet, TypeVarSet, no, no, 
-            Sharing, !IO),
+        ReuseDomain = has_only_unconditional_reuse,
+        io.write_string("has_only_unconditional_reuse", !IO)
+    ;
+        ReuseDomain = has_conditional_reuse(ReuseConditions),
+        io.write_string("has_conditional_reuse(", !IO), 
+        print_structure_reuse_conditions(ProgVarSet, TypeVarSet, 
+            ReuseConditions, !IO), 
         io.write_string(")", !IO)
     ).
 
-print_reuse_tuples(ProgVarSet, TypeVarSet, ReuseTuples, !IO) :- 
-    io.write_string("[", !IO), 
-    io.write_list(ReuseTuples, ",", print_reuse_tuple(ProgVarSet, TypeVarSet),
-        !IO), 
-    io.write_string("]", !IO).
-
-print_interface_maybe_reuse_tuples(_, _, no, !IO) :- 
+print_interface_maybe_structure_reuse_domain(_, _, no, !IO) :- 
     io.write_string("not_available", !IO).
 
-print_interface_maybe_reuse_tuples(ProgVarSet, TypeVarSet, 
-        yes(ReuseTuples), !IO) :- 
+print_interface_maybe_structure_reuse_domain(ProgVarSet, TypeVarSet, 
+        yes(ReuseDomain), !IO) :- 
     io.write_string("yes(", !IO),
-    print_reuse_tuples(ProgVarSet, TypeVarSet, ReuseTuples, !IO),
+    print_structure_reuse_domain(ProgVarSet, TypeVarSet, ReuseDomain, !IO),
     io.write_string(")", !IO).
 
 %-----------------------------------------------------------------------------%
@@ -582,6 +633,24 @@ rename_structure_sharing_domain(_, _, X @ top(_), X).
 rename_structure_sharing_domain(Dict, TypeSubst, real(!.List), real(!:List)):-
     rename_structure_sharing(Dict, TypeSubst, !List).
 
+rename_structure_reuse_condition(Dict, TypeSubst, 
+        structure_reuse_condition(DeadNodes, LiveNodes, Sharing), 
+        structure_reuse_condition(RenDeadNodes, RenLiveNodes, RenSharing)) :- 
+    RenDeadNodes = list.map(rename_datastruct(Dict, TypeSubst), DeadNodes),
+    RenLiveNodes = list.map(rename_datastruct(Dict, TypeSubst), LiveNodes),
+    rename_structure_sharing_domain(Dict, TypeSubst, Sharing, RenSharing).
+
+rename_structure_reuse_conditions(Dict, TypeSubst, Conds, RenConds) :- 
+    list.map(rename_structure_reuse_condition(Dict, TypeSubst), 
+        Conds, RenConds).
+
+rename_structure_reuse_domain(_, _, has_no_reuse, has_no_reuse).
+rename_structure_reuse_domain(_, _, has_only_unconditional_reuse, 
+        has_only_unconditional_reuse).
+rename_structure_reuse_domain(Dict, TypeSubst, has_conditional_reuse(Conds),
+        has_conditional_reuse(RenConds)):- 
+    rename_structure_reuse_conditions(Dict, TypeSubst, Conds, RenConds).
+    
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.

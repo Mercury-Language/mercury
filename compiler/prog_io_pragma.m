@@ -1117,6 +1117,52 @@ parse_pragma_type(ModuleName, "structure_sharing", PragmaTerms, ErrorTerm,
             "declaration", ErrorTerm)
     ).
 
+parse_pragma_type(ModuleName, "structure_reuse", PragmaTerms, ErrorTerm,
+        _VarSet, Result) :-
+    (
+        PragmaTerms = [
+            PredAndModesTerm0,
+            HeadVarsTerm,
+            HeadVarTypesTerm,
+            MaybeStructureReuseTerm
+        ],
+        parse_pred_or_func_and_arg_modes(yes(ModuleName), PredAndModesTerm0,
+            ErrorTerm, "`:- pragma structure_reuse' declaration",
+            NameAndModesResult),
+        NameAndModesResult = ok(PredName - PredOrFunc, ModeList),
+
+        % Parse the headvariables:
+        HeadVarsTerm = term.functor(term.atom("vars"), ListHVTerm, _),
+        term.vars_list(ListHVTerm, HeadVarsGeneric),
+        list.map(term.coerce_var, HeadVarsGeneric, HeadVars),
+
+        % Parse the types:
+        HeadVarTypesTerm = term.functor(term.atom("types"), ListTypeTerms, _),
+        parse_types(ListTypeTerms, ok(Types)),
+
+        % Parse the actual structure reuse information.
+
+        (
+            MaybeStructureReuseTerm = term.functor(term.atom("not_available"),
+                _, _),
+            MaybeStructureReuse = no
+        ;
+            MaybeStructureReuseTerm = term.functor(term.atom("yes"),
+                MaybeStructureReuseTermArgs, _),
+            MaybeStructureReuseTermArgs = [ StructureReuseTerm ],
+            StructureReuse = parse_structure_reuse_domain(StructureReuseTerm),
+            MaybeStructureReuse = yes(StructureReuse)
+        ),
+
+        Result0 = ok(pragma(user, structure_reuse(PredOrFunc, PredName,
+            ModeList, HeadVars, Types, MaybeStructureReuse)))
+    ->
+        Result = Result0
+    ;
+        Result = error("syntax error in `:- pragma structure_reuse' " ++
+            "declaration", ErrorTerm)
+    ).
+
 parse_pragma_type(ModuleName, "exceptions", PragmaTerms, ErrorTerm, _VarSet,
         Result) :-
     (

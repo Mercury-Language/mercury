@@ -931,6 +931,12 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         add_pragma_structure_sharing(PredOrFunc, SymName, ModeList,
             HeadVars, Types, SharingDomain, Context, !ModuleInfo, !IO)
     ;
+        Pragma = structure_reuse(PredOrFunc, SymName, ModeList,
+            HeadVars, Types, MaybeReuseDomain)
+    -> 
+        add_pragma_structure_reuse(PredOrFunc, SymName, ModeList,
+            HeadVars, Types, MaybeReuseDomain, Context, !ModuleInfo, !IO)
+    ;
         Pragma = reserve_tag(TypeName, TypeArity)
     ->
         add_pragma_reserve_tag(TypeName, TypeArity, !.Status, Context,

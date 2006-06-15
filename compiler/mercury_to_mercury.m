@@ -318,6 +318,11 @@
     maybe(prog_varset)::in, list(mer_type)::in, maybe(tvarset)::in, 
     maybe(structure_sharing_domain)::in, io::di, io::uo) is det.
 
+:- pred write_pragma_structure_reuse_info(pred_or_func::in, sym_name::in,
+    list(mer_mode)::in, prog_context::in, prog_vars::in, 
+    maybe(prog_varset)::in, list(mer_type)::in, maybe(tvarset)::in, 
+    maybe(structure_reuse_domain)::in, io::di, io::uo) is det.
+
     % Write the given arg size info. Verbose if the second arg is yes.
     %
 :- pred write_maybe_arg_size_info(maybe(generic_arg_size_info(T))::in,
@@ -720,7 +725,10 @@ mercury_output_item(_UnqualifiedItemNames, pragma(_, Pragma), Context, !IO) :-
         write_pragma_structure_sharing_info(PredOrFunc, PredName, ModesList, 
             Context, HeadVars, no, Types, no, MaybeStructureSharing, !IO)
     ;
-        Pragma = structure_reuse(_, _, _, _, _, _, _)
+        Pragma = structure_reuse(PredOrFunc, PredName, ModesList, HeadVars,
+            Types, MaybeStructureReuseDomain),
+        write_pragma_structure_reuse_info(PredOrFunc, PredName, ModesList, 
+            Context, HeadVars, no, Types, no, MaybeStructureReuseDomain, !IO)
     ;
         Pragma = mode_check_clauses(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, predicate,
@@ -4400,6 +4408,43 @@ write_pragma_structure_sharing_info(PredOrFunc, SymName, Modes, Context,
     io.write_string(", ", !IO), 
     prog_ctgc.print_interface_structure_sharing_domain(VarSet, TypeVarSet, 
         MaybeSharingAs, !IO),
+    io.write_string(").\n", !IO).
+
+write_pragma_structure_reuse_info(PredOrFunc, SymName, Modes, Context, 
+        HeadVars, MaybeVarSet, HeadVarTypes, MaybeTypeVarSet, 
+        MaybeStructureReuseDomain, !IO) :- 
+    io.write_string(":- pragma structure_reuse(", !IO), 
+    varset.init(InitVarSet), 
+    (
+        MaybeVarSet = yes(VarSet)
+    ; 
+        MaybeVarSet = no, 
+        varset.init(VarSet)
+    ),
+    (
+        MaybeTypeVarSet = yes(TypeVarSet)
+    ;
+        MaybeTypeVarSet = no, 
+        varset.init(TypeVarSet)
+    ),
+
+    (
+        PredOrFunc = predicate, 
+        mercury_output_pred_mode_subdecl(InitVarSet, SymName,
+            Modes, no, Context, !IO)
+    ;
+        PredOrFunc = function,
+        pred_args_to_func_args(Modes, FuncModeList, RetMode),
+        mercury_output_func_mode_subdecl(InitVarSet, SymName,
+            FuncModeList, RetMode, no, Context, !IO)
+    ),
+    % write headvars and types:
+    io.write_string(", ", !IO), 
+    write_vars_and_types(HeadVars, VarSet, HeadVarTypes, TypeVarSet, !IO), 
+    % write structure reuse information. 
+    io.write_string(", ", !IO), 
+    prog_ctgc.print_interface_maybe_structure_reuse_domain(VarSet, TypeVarSet, 
+        MaybeStructureReuseDomain, !IO),
     io.write_string(").\n", !IO).
 
 :- pred write_vars_and_types(prog_vars::in, prog_varset::in, 

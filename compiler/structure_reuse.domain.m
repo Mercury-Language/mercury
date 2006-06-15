@@ -74,22 +74,6 @@
 :- pred reuse_condition_subsumed_by(module_info::in, proc_info::in,
     reuse_condition::in, reuse_condition::in) is semidet.
 
-    % Translate a reuse condition to its new environment. 
-    % E.g. Consider a procedure definition: p :- ..., q, ... ,
-    % where q contains a potential reuse expressed by a condition C, then this
-    % condition needs to be translated to calls to p, such that calls to p
-    % can be checked w.r.t. reuses that are possible in q. 
-    %
-    % In order to translate a condition to its new environment, the same kind
-    % of information is needed as when creating an initial condition, i.e.: 
-    % set of variables in local forward and backward use, as well as the 
-    % structure sharing existing at that place. 
-    %  
-% XXX To be implemented. Used at indirect-reuse-analysis stage.
-% :- pred reuse_condition_translate(module_info::in, proc_info::in,
-%    set(prog_var)::in, set(prog_var)::in, sharing_as::in, reuse_condition::in,
-%    reuse_condition::out) is det.
-
 %-----------------------------------------------------------------------------%
 % reuse_as
 %
@@ -186,9 +170,11 @@
 :- pred reuse_as_satisfied(module_info::in, proc_info::in, livedata::in,
     sharing_as::in, prog_vars::in, reuse_as::in) is semidet.
 
-% XXX TO DO!
-% :- func from_reuse_domain(reuse_domain) = reuse_as.
-% :- func to_reuse_domain(reuse_as) = reuse_domain.
+    % Conversion procedures between the public (structure_reuse_domain) 
+    % and private (reuse_as) representation for structure reuse conditions. 
+    %
+:- func from_structure_reuse_domain(structure_reuse_domain) = reuse_as.
+:- func to_structure_reuse_domain(reuse_as) = structure_reuse_domain.
 
 %-----------------------------------------------------------------------------%
 %
@@ -208,8 +194,10 @@
 :- pred reuse_as_table_maybe_dump(bool::in, reuse_as_table::in, 
     io::di, io::uo) is det.
 
-% XXX TO DO!
-% :- func load_structure_reuse_table(module_info) = reuse_as_table.
+    % Load all the structure reuse information present in the HLDS into
+    % a reuse table. 
+    %
+:- func load_structure_reuse_table(module_info) = reuse_as_table.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -221,6 +209,7 @@
 :- import_module transform_hlds.ctgc.datastruct.
 :- import_module transform_hlds.ctgc.util.
 
+:- import_module maybe. 
 :- import_module pair.
 :- import_module set.
 :- import_module string.
@@ -620,6 +609,63 @@ reuse_condition_satisfied(ModuleInfo, ProcInfo, LiveData, SharingAs,
     ).
     
 %-----------------------------------------------------------------------------%
+
+from_structure_reuse_domain(ReuseDomain) = ReuseAs :- 
+    (
+        ReuseDomain = has_no_reuse,
+        ReuseAs = no_reuse
+    ;
+        ReuseDomain = has_only_unconditional_reuse,
+        ReuseAs = unconditional
+    ; 
+        ReuseDomain = has_conditional_reuse(PublicReuseConditions),
+        ReuseAs = conditional(
+            from_public_reuse_conditions(PublicReuseConditions))
+    ).
+
+:- func from_public_reuse_conditions(structure_reuse_conditions) = 
+    reuse_conditions.
+
+from_public_reuse_conditions(PublicReuseConditions) =
+    list.map(from_public_reuse_condition, PublicReuseConditions).
+
+:- func from_public_reuse_condition(structure_reuse_condition) = 
+    reuse_condition.
+
+from_public_reuse_condition(PublicReuseCondition) = ReuseCondition :- 
+    PublicReuseCondition = structure_reuse_condition(DeadNodes, LiveNodes,
+        PublicSharing),
+    ReuseCondition = condition(DeadNodes, LiveNodes, 
+        from_structure_sharing_domain(PublicSharing)).
+   
+to_structure_reuse_domain(ReuseAs) = ReuseDomain :- 
+    (
+        ReuseAs = no_reuse,
+        ReuseDomain = has_no_reuse
+    ;
+        ReuseAs = unconditional,
+        ReuseDomain = has_only_unconditional_reuse
+    ; 
+        ReuseAs = conditional(ReuseConditions),
+        ReuseDomain = has_conditional_reuse(
+            to_structure_reuse_conditions(ReuseConditions))
+    ).
+
+:- func to_structure_reuse_conditions(reuse_conditions) = 
+    structure_reuse_conditions.
+
+to_structure_reuse_conditions(ReuseConditions) = 
+    list.filter_map(to_structure_reuse_condition, ReuseConditions).
+
+:- func to_structure_reuse_condition(reuse_condition) = 
+    structure_reuse_condition is semidet.
+
+to_structure_reuse_condition(Condition) = StructureReuseCondition :- 
+    Condition = condition(DeadNodes, LiveNodes, SharingAs), 
+    StructureReuseCondition = structure_reuse_condition(DeadNodes, LiveNodes,
+        to_structure_sharing_domain(SharingAs)).
+
+%-----------------------------------------------------------------------------%
 %
 % reuse_as_table
 %
@@ -658,6 +704,35 @@ dump_entries(PPId - ReuseAs, !IO) :-
         string.int_to_string(proc_id_to_int(ProcId)) ++ "\t-->" ++
         reuse_as_short_description(ReuseAs) ++ "\n", !IO).
 
+load_structure_reuse_table(ModuleInfo) = ReuseTable :- 
+    module_info_predids(ModuleInfo, PredIds),
+    list.foldl(load_structure_reuse_table_2(ModuleInfo), PredIds,
+        reuse_as_table_init, ReuseTable).
+
+:- pred load_structure_reuse_table_2(module_info::in, pred_id::in,
+    reuse_as_table::in, reuse_as_table::out) is det.
+
+load_structure_reuse_table_2(ModuleInfo, PredId, !ReuseTable) :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    ProcIds = pred_info_procids(PredInfo),
+    list.foldl(load_structure_reuse_table_3(ModuleInfo, PredId),
+        ProcIds, !ReuseTable).
+
+:- pred load_structure_reuse_table_3(module_info::in, pred_id::in,
+    proc_id::in, reuse_as_table::in, reuse_as_table::out) is det.
+
+load_structure_reuse_table_3(ModuleInfo, PredId, ProcId, !ReuseTable) :-
+    module_info_proc_info(ModuleInfo, PredId, ProcId, ProcInfo),
+    proc_info_get_structure_reuse(ProcInfo, MaybePublicReuse),
+    (
+        MaybePublicReuse = yes(PublicReuse),
+        PPId = proc(PredId, ProcId),
+        PrivateReuse = from_structure_reuse_domain(PublicReuse),
+        reuse_as_table_set(PPId, PrivateReuse, !ReuseTable)
+    ;
+        MaybePublicReuse = no
+    ).
+    
 %-----------------------------------------------------------------------------%
 
 :- func this_file = string.

@@ -1116,9 +1116,9 @@ qualify_pragma(structure_sharing(PredOrFunc, SymName, ModeList0, Vars, Types,
         !Info, !IO) :-
     qualify_mode_list(ModeList0, ModeList, !Info, !IO).
 qualify_pragma(structure_reuse(PredOrFunc, SymName, ModeList0, Vars, Types,
-        ReuseTuples, ReuseName),
+        ReuseTuples),
         structure_reuse(PredOrFunc, SymName, ModeList, Vars, Types, 
-            ReuseTuples, ReuseName),
+            ReuseTuples),
         !Info, !IO) :-
     qualify_mode_list(ModeList0, ModeList, !Info, !IO).
 qualify_pragma(termination2_info(PredOrFunc, SymName, ModeList0,

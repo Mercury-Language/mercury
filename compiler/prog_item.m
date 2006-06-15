@@ -631,8 +631,7 @@
                 reuse_mode            :: list(mer_mode),
                 reuse_headvars        :: prog_vars, 
                 reuse_headvartypes    :: list(mer_type),
-                reuse_description     :: maybe(reuse_tuples),
-                reuse_optimised_name  :: maybe(sym_name)
+                reuse_description     :: maybe(structure_reuse_domain)
             ).
             % After reuse analysis, the compiler generates structure reuse
             % pragmas to be stored in and read from optimization interface

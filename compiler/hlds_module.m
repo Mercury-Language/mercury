@@ -209,10 +209,8 @@
         % procedures, and their optimised versions with respect to 
         % structure reuse (CTGC). 
         %
-:- type structure_reuse_info
-    --->    structure_reuse_info(
-                map(pred_proc_id, pair(pred_proc_id, sym_name))
-            ).
+:- type structure_reuse_map == 
+    map(pred_proc_id, pair(pred_proc_id, sym_name)).
 %-----------------------------------------------------------------------------%
 %
 % Various predicates for manipulating the module_info data structure
@@ -489,10 +487,10 @@
 :- pred module_info_user_final_pred_c_names(module_info::in,
     list(string)::out) is det.
 
-:- pred module_info_get_structure_reuse_info(module_info::in, 
-    structure_reuse_info::out) is det.
+:- pred module_info_get_structure_reuse_map(module_info::in, 
+    structure_reuse_map::out) is det.
 
-:- pred module_info_set_structure_reuse_info(structure_reuse_info::in, 
+:- pred module_info_set_structure_reuse_map(structure_reuse_map::in, 
     module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -747,7 +745,7 @@
                 user_final_pred_c_names     :: assoc_list(sym_name, string),
 
                 % Information about which procedures implement structure reuse.
-                structure_reuse_info        :: structure_reuse_info
+                structure_reuse_map        :: structure_reuse_map
             ).
 
 module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
@@ -790,7 +788,7 @@ module_info_init(Name, Items, Globals, QualifierInfo, RecompInfo,
         [], [], StratPreds, UnusedArgInfo, ExceptionInfo, TrailingInfo,
         MM_TablingInfo, map.init, counter.init(1), ImportedModules,
         IndirectlyImportedModules, TypeSpecInfo, NoTagTypes, no, [],
-        init_analysis_info(mmc), [], [], structure_reuse_info(map.init)),
+        init_analysis_info(mmc), [], [], map.init),
     ModuleInfo = module_info(ModuleSubInfo, PredicateTable, Requests,
         UnifyPredMap, QualifierInfo, Types, Insts, Modes, Ctors,
         ClassTable, SuperClassTable, InstanceTable, AssertionTable,
@@ -877,8 +875,8 @@ module_info_get_maybe_complexity_proc_map(MI,
     MI ^ sub_info ^ maybe_complexity_proc_map).
 module_info_get_complexity_proc_infos(MI,
     MI ^ sub_info ^ complexity_proc_infos).
-module_info_get_structure_reuse_info(MI, 
-    MI ^ sub_info ^ structure_reuse_info).
+module_info_get_structure_reuse_map(MI, 
+    MI ^ sub_info ^ structure_reuse_map).
 
     % XXX There is some debate as to whether duplicate initialise directives
     % in the same module should constitute an error. Currently it is not, but
@@ -990,8 +988,8 @@ module_info_set_maybe_complexity_proc_map(NewVal, MI,
     MI ^ sub_info ^ maybe_complexity_proc_map := NewVal).
 module_info_set_complexity_proc_infos(NewVal, MI,
     MI ^ sub_info ^ complexity_proc_infos := NewVal).
-module_info_set_structure_reuse_info(ReuseMap, MI, 
-    MI ^ sub_info ^ structure_reuse_info := ReuseMap).
+module_info_set_structure_reuse_map(ReuseMap, MI, 
+    MI ^ sub_info ^ structure_reuse_map := ReuseMap).
 
 %-----------------------------------------------------------------------------%
 

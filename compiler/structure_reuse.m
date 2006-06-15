@@ -21,6 +21,7 @@
 	:- include_module lbu.
 	:- include_module direct.
 	:- include_module indirect.
+	:- include_module versions.
 
 % :- include_module util.
 :- include_module domain.
