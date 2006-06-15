@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % Module: accumulator.m.
 % Main authors: petdr.
-
+% 
 % Attempts to transform a single proc to a tail recursive form by
-% introducing accumlators.  The algorithm can do this if the code after
+% introducing accumulators.  The algorithm can do this if the code after
 % the recursive call has either the order independent state update or
 % associative property.
 %
@@ -136,10 +136,10 @@
 % transformation attempts to move each recursive call to the end
 % until one succeeds.  This makes the order of independent recursive
 % calls in the body irrelevant.
-
+% 
 % XXX replace calls to can_reorder_goals with calls to the version that
 %     use the intermodule-analysis framework.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -196,6 +196,7 @@
 %-----------------------------------------------------------------------------%
 
     % The form of the goal around the base and recursive cases.
+    %
 :- type top_level
     --->    switch_base_rec
     ;       switch_rec_base
@@ -208,19 +209,21 @@
     % stores which conjunction the goal came from (base or
     % recursive), and the second stores the location of the goal in
     % the conjunction.
+    %
 :- type goal_id == pair(int).
 
     % The goal_store associates a goal with each goal_id.
+    %
 :- type goal_store == goal_store(goal_id).
 
-    % A substition from the first variable name to the second.
+    % A substitution from the first variable name to the second.
+    %
 :- type subst == map(prog_var, prog_var).
 
 :- type warning
     --->    warn(prog_context, pred_id, prog_var, prog_var).
-            % Warn that two prog_vars in call to pred_id
-            % at prog_context were swapped, which may cause
-            % an efficiency problem.
+            % Warn that two prog_vars in call to pred_id at prog_context were
+            % swapped, which may cause an efficiency problem.
 
 :- type warnings == list(warning).
 
@@ -553,7 +556,7 @@ initialize_goal_store(Rec, RecInstMap, Base, BaseInstMap) = C :-
 
     % store(Id, G, SI0, SI) is true iff the goal G is stored inside
     % the goal_store (which is part of SI) with the correct
-    % identifier and instmap associatied with the goal.
+    % identifier and instmap associated with the goal.
     %
 :- pred store(int::in, hlds_goal::in, store_info::in, store_info::out) is det.
 
@@ -1246,7 +1249,7 @@ heuristic(unqualified("list"), "append", 3, [_Typeinfo, A, _B, _C], Set) :-
 
 %-----------------------------------------------------------------------------%
 
-    % For each member of the update set determine the substitions
+    % For each member of the update set determine the substitutions
     % needed (creating the accumulator variables when needed).
     % Also associate with each Output variable which accumulator
     % variable to get the result from.

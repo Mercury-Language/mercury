@@ -20,6 +20,9 @@
 % which will either be the `ok(ParseTree)' (or `ok(ParseTree1, ParseTree2)'),
 % if the parse is successful, or `error(Message, Term)' if it is not.
 % The `Term' there should be the term which is syntactically incorrect.
+%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_io_util.
 :- interface.

@@ -13,6 +13,7 @@
 % typechecking.
 %
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module check_hlds.typecheck_errors.
 :- interface.
@@ -1127,7 +1128,7 @@ report_ambiguity_error(Info, TypeAssign1, TypeAssign2, !IO) :-
 "\tThe way to add an explicit type qualification is to use ""with_type"".\n",
 "\tFor details see the ""Explicit type qualification"" sub-section\n",
 "\tof the ""Data-terms"" section of the ""Syntax"" chapter\n",
-"\tof the Mercury langauge reference manual.\n"
+"\tof the Mercury language reference manual.\n"
         ], !IO)
     ;
         true

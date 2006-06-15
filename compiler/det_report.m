@@ -5,14 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: det_report.m.
 % Author: zs.
-
+% 
 % This module handles reporting of determinism errors and warnings,
 % as well as errors and warnings from some other related compiler passes
 % such as simplify.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.det_report.
@@ -256,7 +257,7 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !IO) :-
                 \+ is_unify_or_compare_pred(PredInfo0),
 
                 % Don't warn about predicates which are inferred erroneous
-                % when the appropiate option is set. This is to avoid warnings
+                % when the appropriate option is set. This is to avoid warnings
                 % about unimplemented predicates.
                 (
                     WarnAboutInferredErroneous = yes
@@ -409,9 +410,8 @@ check_for_multisoln_func(PredId, _ProcId, PredInfo, ProcInfo,
         globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
         (
             VerboseErrors = yes,
-            ExtMsg = func_primary_mode_det_msg,
             write_error_pieces_not_first_line(FuncContext, 0,
-                [words(ExtMsg)], !IO)
+                func_primary_mode_det_msg, !IO)
         ;
             VerboseErrors = no,
             globals.io_set_extra_error_info(yes, !IO)
@@ -421,20 +421,22 @@ check_for_multisoln_func(PredId, _ProcId, PredInfo, ProcInfo,
         true
     ).
 
-:- func func_primary_mode_det_msg = string.
+:- func func_primary_mode_det_msg = format_components.
 
-func_primary_mode_det_msg =
-    "In Mercury, a function is supposed to be a true mathematical" ++
-    "function of its arguments; that is, the value of the function's" ++
-    "result should be determined only by the values of its arguments." ++
-    "(Allowing functions to have more than one result for the same" ++
-    "arguments would break referential transparency.)" ++
-    "Most likely, this procedure should be a predicate, not a function.".
+func_primary_mode_det_msg = [
+    words("In Mercury, a function is supposed to be a true mathematical"),
+    words("function of its arguments; that is, the value of the function's"),
+    words("result should be determined only by the values of its arguments."),
+    words("(Allowing functions to have more than one result for the same"),
+    words("arguments would break referential transparency.)"),
+    words("Most likely, this procedure should be a predicate, not a function.")
+    ].
 
 det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, DetInfo,
         Msgs) :-
     compare_determinisms(DeclaredDetism, InferredDetism, Cmp),
-    ( Cmp = tighter ->
+    (
+        Cmp = tighter,
         det_info_get_pred_id(DetInfo, PredId),
         det_info_get_proc_id(DetInfo, ProcId),
         goal_info_get_context(GoalInfo, Context),
@@ -443,6 +445,9 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, DetInfo,
         ContextMsg = context_det_msg(Context, Msg),
         Msgs = [ContextMsg]
     ;
+        ( Cmp = sameas
+        ; Cmp = looser
+        ),
         % We don't bother issuing warnings if the determinism was too loose;
         % that will often be the case, and should not be warned about.
         Msgs = []

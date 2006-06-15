@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: term_constr_errors.m.
 % Main author: juliensf.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_errors.
@@ -33,34 +33,30 @@
 % unconstrained.
 
 :- type termination2_error
-    --->        imported_pred
-                % Termination could not be proved because
-                % it depends upon information from another
-                % module and that information is not
-                % available.
+    --->    imported_pred
+            % Termination could not be proved because it depends upon
+            % information from another module and that information is not
+            % available.
 
     ;       can_loop_proc_called(pred_proc_id, pred_proc_id)
-                % Termination could not be proved because
-                % the procedure called another procedure
-                % that may not terminate. 
+            % Termination could not be proved because the procedure called
+            % another procedure that may not terminate. 
     
     ;       cond_not_satisfied
-                % Termination could not be proved because
-                % no set of decreasing argument could be found. 
+            % Termination could not be proved because no set of decreasing
+            % argument could be found. 
     
     ;       horder_call             
-                % Termination could not be proved because
-                % the procedure makes higher-order calls.
+            % Termination could not be proved because the procedure makes
+            % higher-order calls.
     
     ;       does_not_term_pragma(pred_id)
-                % Termination could not be proved because
-                % the procedure was marked with a 
-                % `does_not_terminate' pragma.
+            % Termination could not be proved because the procedure was marked
+            % with a `does_not_terminate' pragma.
     
     ;       foreign_proc_called(pred_proc_id).
-                % Termination depends upon the properties
-                % of a piece of foreign code that cannot
-                % be established as terminating.
+            % Termination depends upon the properties of a piece of foreign
+            % code that cannot be established as terminating.
 
 :- type term_constr_errors.error == pair(prog_context, termination2_error).
 
@@ -90,13 +86,13 @@
 
 %-----------------------------------------------------------------------------%
 
-report_termination2_errors(SCC, Errors, !Module, !IO) :-
+report_termination2_errors(SCC, Errors, !ModuleInfo, !IO) :-
     globals.io_lookup_bool_option(check_termination2, NormalErrors, !IO),
     globals.io_lookup_bool_option(verbose_check_termination2,
         VerboseErrors, !IO),
     (
         IsCheckTerm = (pred(PPId::in) is semidet :-
-            module_info_pred_proc_info(!.Module, PPId, PredInfo, _),
+            module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, _),
             not pred_info_is_imported(PredInfo),
             pred_info_get_markers(PredInfo, Markers),
             check_marker(Markers, check_termination)
@@ -104,12 +100,12 @@ report_termination2_errors(SCC, Errors, !Module, !IO) :-
         CheckTermPPIds = list.filter(IsCheckTerm, SCC),
         list.is_not_empty(CheckTermPPIds)
     ->
-        report_term_errors(SCC, Errors, !.Module, !IO),
+        report_term_errors(SCC, Errors, !.ModuleInfo, !IO),
         io.set_exit_status(1, !IO),
-        module_info_incr_errors(!Module)
+        module_info_incr_errors(!ModuleInfo)
     ;
         IsNonImported = (pred(PPId::in) is semidet :- 
-            module_info_pred_proc_info(!.Module, PPId, PredInfo, _),
+            module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, _),
             not pred_info_is_imported(PredInfo)
         ),
         NonImportedPPIds = list.filter(IsNonImported, SCC),
@@ -126,16 +122,19 @@ report_termination2_errors(SCC, Errors, !Module, !IO) :-
             % If there are no direct errors report
             % the indirect ones instead.
             %
-            ( if    PrintErrors0 = []
-              then  PrintErrors = Errors
-              else  PrintErrors = PrintErrors0
+            (
+                PrintErrors0 = [],
+                PrintErrors = Errors
+            ;
+                PrintErrors0 = [_ | _],
+                PrintErrors = PrintErrors0
             )
         ;
             fail
         )
     ->
         term_constr_errors.report_term_errors(SCC, PrintErrors,
-            !.Module, !IO)
+            !.ModuleInfo, !IO)
     ;
         true
     ).
@@ -145,11 +144,11 @@ report_termination2_errors(SCC, Errors, !Module, !IO) :-
 :- pred report_term_errors(list(pred_proc_id)::in, term2_errors::in,
     module_info::in, io::di, io::uo) is det.
 
-report_term_errors(SCC, Errors, Module, !IO) :- 
-    get_context_from_scc(SCC, Module, Context),
+report_term_errors(SCC, Errors, ModuleInfo, !IO) :- 
+    get_context_from_scc(SCC, ModuleInfo, Context),
     ( SCC = [PPId] ->   
         Pieces0  = [words("Termination of")], 
-        ProcName = describe_one_proc_name(Module, should_module_qualify,
+        ProcName = describe_one_proc_name(ModuleInfo, should_module_qualify,
             PPId),
         Pieces1  = Pieces0 ++ ProcName,
         Single   = yes(PPId)
@@ -158,7 +157,7 @@ report_term_errors(SCC, Errors, Module, !IO) :-
             words("Termination of the mutually"),
             words("recursive procedures")
         ],
-        ProcNames = describe_several_proc_names(Module,
+        ProcNames = describe_several_proc_names(ModuleInfo,
             should_module_qualify, SCC),
         Pieces1 = Pieces0 ++ ProcNames,
         Single = no
@@ -171,12 +170,12 @@ report_term_errors(SCC, Errors, Module, !IO) :-
         Errors = [Error],
         Pieces2 = [words("not proven for the following reason:")],
         write_error_pieces(Context, 0, Pieces1 ++ Pieces2, !IO),
-        output_error(Error, Single, no, 0, Module, !IO)
+        output_error(Error, Single, no, 0, ModuleInfo, !IO)
     ;
         Errors = [_, _ | _],
         Pieces2 = [words("not proven for the following reasons:")],
         write_error_pieces(Context, 0, Pieces1 ++ Pieces2, !IO),
-        output_errors(Errors, Single, 1, 0, Module, !IO)
+        output_errors(Errors, Single, 1, 0, ModuleInfo, !IO)
     ).
 
 :- pred output_errors(term2_errors::in,
@@ -184,15 +183,15 @@ report_term_errors(SCC, Errors, Module, !IO) :-
     io::di, io::uo) is det.
 
 output_errors([], _, _, _, _, !IO).
-output_errors([Error | Errors], Single, ErrNum0, Indent, Module, !IO) :-
-    output_error(Error, Single, yes(ErrNum0), Indent, Module, !IO),
-    output_errors(Errors, Single, ErrNum0 + 1, Indent, Module, !IO).
+output_errors([Error | Errors], Single, ErrNum0, Indent, ModuleInfo, !IO) :-
+    output_error(Error, Single, yes(ErrNum0), Indent, ModuleInfo, !IO),
+    output_errors(Errors, Single, ErrNum0 + 1, Indent, ModuleInfo, !IO).
 
 :- pred output_error(term_constr_errors.error::in, maybe(pred_proc_id)::in,
     maybe(int)::in, int::in, module_info::in, io::di, io::uo) is det.
 
-output_error(Context - Error, Single, ErrorNum, Indent, Module, !IO) :- 
-    description(Error, Single, Module, Pieces0, _),
+output_error(Context - Error, Single, ErrorNum, Indent, ModuleInfo, !IO) :- 
+    description(Error, Single, ModuleInfo, Pieces0, _),
     ( ErrorNum = yes(N) ->
         string.int_to_string(N, Nstr),
         string.append_list(["Reason ", Nstr, ":"], Preamble),
@@ -220,7 +219,7 @@ description(imported_pred, _, _, Pieces, no) :-
     ].
 
 description(can_loop_proc_called(CallerPPId, CalleePPId),
-        Single, Module, Pieces, no) :-
+        Single, ModuleInfo, Pieces, no) :-
     (
         Single = yes(PPId),
         expect(unify(PPId, CallerPPId), this_file,
@@ -228,12 +227,12 @@ description(can_loop_proc_called(CallerPPId, CalleePPId),
         Piece1 = [words("It")]
     ;
         Single = no,
-        ProcName = describe_one_proc_name(Module, should_module_qualify,
+        ProcName = describe_one_proc_name(ModuleInfo, should_module_qualify,
             CallerPPId),
         Piece1 = ProcName
     ),
     Piece2 = words("calls"),
-    CalleePiece = describe_one_proc_name(Module, should_module_qualify,
+    CalleePiece = describe_one_proc_name(ModuleInfo, should_module_qualify,
         CalleePPId),
     Pieces3 = [words("which could not be proven to terminate.")],
     Pieces  = Piece1 ++ [Piece2] ++ CalleePiece ++ Pieces3.
@@ -241,7 +240,7 @@ description(can_loop_proc_called(CallerPPId, CalleePPId),
 description(horder_call, _, _, Pieces, no) :-
     Pieces = [words("It contains a higher-order call.")].
 
-description(does_not_term_pragma(PredId), Single, Module, Pieces, no) :-
+description(does_not_term_pragma(PredId), Single, ModuleInfo, Pieces, no) :-
     Pieces1 = [
             words("There is a"),
             fixed("`:- pragma does_not_terminate'"), 
@@ -255,14 +254,14 @@ description(does_not_term_pragma(PredId), Single, Module, Pieces, no) :-
         Piece2 = [words("it.")]
     ;
         Single = no,
-        Piece2Nodot = describe_one_pred_name(Module,
+        Piece2Nodot = describe_one_pred_name(ModuleInfo,
             should_module_qualify, PredId),
         Piece2 = Piece2Nodot ++ [words(".")]
     ),
     Pieces = Pieces1 ++ Piece2.
 
-description(foreign_proc_called(PPId), _Single, Module, Pieces, no) :-
-    Name = describe_one_proc_name(Module, should_module_qualify, PPId), 
+description(foreign_proc_called(PPId), _Single, ModuleInfo, Pieces, no) :-
+    Name = describe_one_proc_name(ModuleInfo, should_module_qualify, PPId), 
     Pieces = [words("There is a call the foreign procedure")] ++
         Name ++ [words("which is not known to terminate.")].
 
