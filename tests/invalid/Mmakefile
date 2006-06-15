@@ -74,6 +74,7 @@ SINGLEMODULE= \
 	errors2 \
 	exist_foreign_error \
 	exported_mode \
+	extra_info_prompt \
 	external \
 	ext_type \
 	ext_type_bug \
@@ -200,6 +201,7 @@ SINGLEMODULE= \
 	uniq_neg \
 	unsatisfiable_constraint \
 	unsatisfiable_super \
+	user_eq_dummy \
 	uu_type \
 	vars_in_wrong_places \
 	with_type

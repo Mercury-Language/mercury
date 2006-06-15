@@ -8,3 +8,4 @@ merge_ground_any.m:013:   `bound(merge_ground_any.'+'(ground, ground) ;
 merge_ground_any.m:013:   merge_ground_any.'-'(ground, any))',
 merge_ground_any.m:013:   expected final instantiatedness was
 merge_ground_any.m:013:   `bound(merge_ground_any.'-'(ground, any))'.
+For more information, recompile with `-E'.

@@ -6,3 +6,9 @@ polymorphic_unification.m:019:   `bound([] ; '[|]'(free,
 polymorphic_unification.m:019:   list.list_skel(free)))',
 polymorphic_unification.m:019:   expected instantiatedness was `ground' or
 polymorphic_unification.m:019:   `any'.
+polymorphic_unification.m:019:   When unifying two variables whose type will
+polymorphic_unification.m:019:   not be known until runtime, the variables must
+polymorphic_unification.m:019:   both be ground (or have inst `any').
+polymorphic_unification.m:019:   Unifications of polymorphically-typed
+polymorphic_unification.m:019:   variables with partially instantiated modes
+polymorphic_unification.m:019:   are not allowed.

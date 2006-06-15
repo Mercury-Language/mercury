@@ -3,3 +3,4 @@ uniq_neg.m:025:   in argument 3 of call to predicate `uniq_neg.occurs/4':
 uniq_neg.m:025:   mode error: variable `DCG_0' has instantiatedness
 uniq_neg.m:025:   `mostly_unique',
 uniq_neg.m:025:   expected instantiatedness was `unique'.
+For more information, recompile with `-E'.

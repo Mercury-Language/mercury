@@ -5,3 +5,9 @@ mpj4.m:020:   type error in unification of argument
 mpj4.m:020:   and constant `"foo"'.
 mpj4.m:020:   argument has type `int',
 mpj4.m:020:   constant `"foo"' has type `string'.
+	The partial type assignment was:
+	HeadVar__2_2: (mpj4.intlist)
+	L_3: (mpj4.intlist)
+	V_4: int
+	V_5: int
+

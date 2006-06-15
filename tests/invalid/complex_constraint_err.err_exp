@@ -3,8 +3,46 @@ complex_constraint_err.m:009:   `complex_constraint_err.t/1':
 complex_constraint_err.m:009:   error in type class constraints: type variable
 complex_constraint_err.m:009:   C occurs in the constraints, but is not
 complex_constraint_err.m:009:   determined by the predicate's argument types.
+complex_constraint_err.m:009:   All types occurring in typeclass constraints
+complex_constraint_err.m:009:   must be fully determined. A type is fully
+complex_constraint_err.m:009:   determined if one of the following holds:
+complex_constraint_err.m:009:   1) All type variables occurring in the type are
+complex_constraint_err.m:009:   determined.
+complex_constraint_err.m:009:   2) The type occurs in a constraint argument,
+complex_constraint_err.m:009:   that argument is in the range of some
+complex_constraint_err.m:009:   functional dependency for that class, and the
+complex_constraint_err.m:009:   types in all of the domain arguments for that
+complex_constraint_err.m:009:   functional dependency are fully determined.
+complex_constraint_err.m:009:   A type variable is determined if one of the
+complex_constraint_err.m:009:   following holds:
+complex_constraint_err.m:009:   1) The type variable occurs in the argument
+complex_constraint_err.m:009:   types of the predicate, function, or
+complex_constraint_err.m:009:   constructor which is constrained.
+complex_constraint_err.m:009:   2) The type variable occurs in a type which is
+complex_constraint_err.m:009:   fully determined.
+complex_constraint_err.m:009:   See the "Functional dependencies" section of
+complex_constraint_err.m:009:   the reference manual for details.
 complex_constraint_err.m:013: In declaration for predicate
 complex_constraint_err.m:013:   `complex_constraint_err.u/1':
 complex_constraint_err.m:013:   error in type class constraints: type variables
 complex_constraint_err.m:013:   Z and X occur in the constraints, but are not
 complex_constraint_err.m:013:   determined by the predicate's argument types.
+complex_constraint_err.m:013:   All types occurring in typeclass constraints
+complex_constraint_err.m:013:   must be fully determined. A type is fully
+complex_constraint_err.m:013:   determined if one of the following holds:
+complex_constraint_err.m:013:   1) All type variables occurring in the type are
+complex_constraint_err.m:013:   determined.
+complex_constraint_err.m:013:   2) The type occurs in a constraint argument,
+complex_constraint_err.m:013:   that argument is in the range of some
+complex_constraint_err.m:013:   functional dependency for that class, and the
+complex_constraint_err.m:013:   types in all of the domain arguments for that
+complex_constraint_err.m:013:   functional dependency are fully determined.
+complex_constraint_err.m:013:   A type variable is determined if one of the
+complex_constraint_err.m:013:   following holds:
+complex_constraint_err.m:013:   1) The type variable occurs in the argument
+complex_constraint_err.m:013:   types of the predicate, function, or
+complex_constraint_err.m:013:   constructor which is constrained.
+complex_constraint_err.m:013:   2) The type variable occurs in a type which is
+complex_constraint_err.m:013:   fully determined.
+complex_constraint_err.m:013:   See the "Functional dependencies" section of
+complex_constraint_err.m:013:   the reference manual for details.

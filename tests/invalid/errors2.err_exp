@@ -1,4 +1,5 @@
-errors2.m:  1: Warning: interface for module `errors2' does not export anything.
+errors2.m:001: Warning: interface for module `errors2' does not export
+errors2.m:001:   anything.
 errors2.m:009: Error: clause for predicate `errors2.bind_type_param/1'
 errors2.m:009:   without preceding `pred' declaration.
 errors2.m:052: In clause for predicate `errors2.type_error_4/0':
@@ -11,9 +12,9 @@ errors2.m:070: In clause for predicate `errors2.type_error_7/0':
 errors2.m:070:   warning: variable `Y' occurs only once in this scope.
 errors2.m:071: In clause for predicate `errors2.type_error_7/0':
 errors2.m:071:   warning: variables `Z, A, B' occur only once in this scope.
-errors2.m:007: Error: no clauses for predicate `errors2.bind_type_param/2'.
-errors2.m:023: Error: no clauses for predicate `errors2.produce_string/1'.
-errors2.m:025: Error: no clauses for predicate `errors2.expect_int/1'.
+errors2.m:007: Error: no clauses for predicate `bind_type_param/2'.
+errors2.m:023: Error: no clauses for predicate `produce_string/1'.
+errors2.m:025: Error: no clauses for predicate `expect_int/1'.
 errors2.m:031: In clause for predicate `errors2.type_error/0':
 errors2.m:031:   in argument 1 of call to predicate `expect_int/1':
 errors2.m:031:   type error: variable `X' has type `string',
@@ -60,8 +61,4 @@ errors2.m:085:   and variable `Y'.
 errors2.m:085:   `X' has type `{int, string, character}',
 errors2.m:085:   `Y' has type `{string, character, int}'.
 errors2.m:009: Inferred :- pred bind_type_param(int).
-errors2.m:019: In clause for `unresolved_polymorphism':
-errors2.m:019:   in argument 1 of call to predicate `errors2.bind_type_param/2':
-errors2.m:019:   mode error: variable `Arg' has instantiatedness `free',
-errors2.m:019:   expected instantiatedness was `ground'.
-errors2.m:009: Error: no mode declaration for predicate `errors2.bind_type_param/1'.
+For more information, recompile with `-E'.

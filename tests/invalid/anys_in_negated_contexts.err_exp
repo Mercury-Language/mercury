@@ -8,7 +8,18 @@ anys_in_negated_contexts.m:049:   purity error: negation should be inside a
 anys_in_negated_contexts.m:049:   promise_purity scope because non-local
 anys_in_negated_contexts.m:049:   variable X has inst any and appears in the
 anys_in_negated_contexts.m:049:   body.
-anys_in_negated_contexts.m:070: In clause for `bad_lambda(in)':
+anys_in_negated_contexts.m:071: In clause for `bad_lambda(in)':
+anys_in_negated_contexts.m:071:   mode error in conjunction. The next 2 error
+anys_in_negated_contexts.m:071:   messages indicate possible causes of this
+anys_in_negated_contexts.m:071:   error.
+anys_in_negated_contexts.m:070:   In clause for `bad_lambda(in)':
 anys_in_negated_contexts.m:070:   purity error: lambda should be impure because
 anys_in_negated_contexts.m:070:   it contains the following non-local variables
 anys_in_negated_contexts.m:070:   whose insts contain `any': Y.
+anys_in_negated_contexts.m:071:   In clause for `bad_lambda(in)':
+anys_in_negated_contexts.m:071:   in argument 1 (i.e. the predicate term) of
+anys_in_negated_contexts.m:071:   higher-order predicate call:
+anys_in_negated_contexts.m:071:   mode error: variable `P' has instantiatedness
+anys_in_negated_contexts.m:071:   `free',
+anys_in_negated_contexts.m:071:   expecting higher-order pred inst (of arity
+anys_in_negated_contexts.m:071:   1).

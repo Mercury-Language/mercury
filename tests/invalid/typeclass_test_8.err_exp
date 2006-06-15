@@ -7,3 +7,8 @@ typeclass_test_8.m:004:   The variable with an unbound type was:
 typeclass_test_8.m:004:       X: T
 typeclass_test_8.m:004:   The unbound type variable(s) will be implicitly
 typeclass_test_8.m:004:   bound to the builtin type `void'.
+	The body of the clause contains a call to a polymorphic predicate,
+	but I can't determine which version should be called,
+	because the type variables listed above didn't get bound.
+	(I ought to tell you which call caused the problem, but I'm afraid
+	you'll have to work it out yourself.  My apologies.)

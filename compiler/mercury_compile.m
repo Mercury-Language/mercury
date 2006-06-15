@@ -439,7 +439,7 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
             
             globals.lookup_bool_option(Globals, verbose_errors,
                 VerboseErrors),
-            globals.get_extra_error_info(Globals, ExtraErrorInfo), 
+            globals.io_get_extra_error_info(ExtraErrorInfo, !IO), 
             (
                 VerboseErrors = no,
                 (

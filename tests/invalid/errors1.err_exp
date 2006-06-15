@@ -29,3 +29,4 @@ errors1.m:072:   `errors1.pred_with_unresolved_polymorphism/0':
 errors1.m:072:   warning: variable `Arg' occurs only once in this scope.
 errors1.m:088: In clause for predicate `errors1.pred_with_singleton_vars/1':
 errors1.m:088:   warning: variable `X' occurs only once in this scope.
+For more information, recompile with `-E'.

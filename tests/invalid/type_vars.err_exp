@@ -5,3 +5,18 @@ type_vars.m:006: In declaration for type `type_vars.t1'/0:
 type_vars.m:006:   error in type class constraints: type variable T2 occurs in
 type_vars.m:006:   the constraints, but is not determined by the constructor's
 type_vars.m:006:   argument types.
+type_vars.m:006:   All types occurring in typeclass constraints must be fully
+type_vars.m:006:   determined. A type is fully determined if one of the
+type_vars.m:006:   following holds:
+type_vars.m:006:   1) All type variables occurring in the type are determined.
+type_vars.m:006:   2) The type occurs in a constraint argument, that argument
+type_vars.m:006:   is in the range of some functional dependency for that
+type_vars.m:006:   class, and the types in all of the domain arguments for that
+type_vars.m:006:   functional dependency are fully determined.
+type_vars.m:006:   A type variable is determined if one of the following holds:
+type_vars.m:006:   1) The type variable occurs in the argument types of the
+type_vars.m:006:   predicate, function, or constructor which is constrained.
+type_vars.m:006:   2) The type variable occurs in a type which is fully
+type_vars.m:006:   determined.
+type_vars.m:006:   See the "Functional dependencies" section of the reference
+type_vars.m:006:   manual for details.

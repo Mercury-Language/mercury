@@ -5,15 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: globals.m.
 % Main author: fjh.
-
+% 
 % This module exports the `globals' type and associated access predicates.
 % The globals type is used to collect together all the various data
 % that would be global variables in an imperative language.
 % This global data is stored in the io.state.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module libs.globals.
@@ -152,7 +153,6 @@
     is det.
 :- pred get_maybe_thread_safe(globals::in, maybe_thread_safe::out)
     is det.
-:- pred get_extra_error_info(globals::in, bool::out) is det.
 
 :- pred set_option(option::in, option_data::in,
     globals::in, globals::out) is det.
@@ -167,8 +167,6 @@
 :- pred set_trace_level_none(globals::in, globals::out) is det.
 :- pred set_source_file_map(maybe(source_file_map)::in,
     globals::in, globals::out) is det.
-:- pred set_extra_error_info(bool::in, globals::in, globals::out)
-    is det.
 
 :- pred lookup_option(globals::in, option::in, option_data::out)
     is det.
@@ -367,20 +365,21 @@ gc_is_conservative(automatic) = no.
                 trace_suppress_items    :: trace_suppress_items,
                 source_file_map         :: maybe(source_file_map),
                 have_printed_usage      :: bool,
-                maybe_thread_safe       :: bool,
-                extra_error_info        :: bool
-                                        % Is there extra information
-                                        % about errors available, that
-                                        % could be printed out if `-E'
-                                        % were enabled.
+                maybe_thread_safe       :: bool
             ).
+
+    % Is there extra information about errors available that could be printed
+    % out if `-E' were enabled.
+    %
+:- mutable(extra_error_info, bool, no, ground,
+    [untrailed, attach_to_io_state]).
 
 globals_init(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
         MaybeThreadSafe,
     globals(Options, Target, GC_Method, TagsMethod,
         TerminationNorm, Termination2Norm, TraceLevel, TraceSuppress,
-        no, no, MaybeThreadSafe, no)).
+        no, no, MaybeThreadSafe)).
 
 get_options(Globals, Globals ^ options).
 get_target(Globals, Globals ^ target).
@@ -392,7 +391,6 @@ get_trace_level(Globals, Globals ^ trace_level).
 get_trace_suppress(Globals, Globals ^ trace_suppress_items).
 get_source_file_map(Globals, Globals ^ source_file_map).
 get_maybe_thread_safe(Globals, Globals ^ maybe_thread_safe).
-get_extra_error_info(Globals, Globals ^ extra_error_info).
 
 get_backend_foreign_languages(Globals, ForeignLangs) :-
     lookup_accumulating_option(Globals, backend_foreign_languages,
@@ -428,9 +426,6 @@ set_source_file_map(SourceFileMap, Globals,
 lookup_option(Globals, Option, OptionData) :-
     get_options(Globals, OptionTable),
     map.lookup(OptionTable, Option, OptionData).
-
-set_extra_error_info(ExtraErrorInfo, Globals,
-    Globals ^ extra_error_info := ExtraErrorInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -580,8 +575,7 @@ io_get_maybe_thread_safe(MaybeThreadSafe, !IO) :-
     get_maybe_thread_safe(Globals, MaybeThreadSafe).
 
 io_get_extra_error_info(ExtraErrorInfo, !IO) :-
-    io_get_globals(Globals, !IO),
-    get_extra_error_info(Globals, ExtraErrorInfo).
+    get_extra_error_info(ExtraErrorInfo, !IO).
 
 io_get_globals(Globals, !IO) :-
     io.get_globals(UnivGlobals, !IO),
@@ -637,14 +631,7 @@ io_set_trace_level(TraceLevel, !IO) :-
     io_set_globals(Globals, !IO).
 
 io_set_extra_error_info(ExtraErrorInfo, !IO) :-
-    some [!Globals] (
-        io_get_globals(!:Globals, !IO),
-        set_extra_error_info(ExtraErrorInfo, !Globals),
-        unsafe_promise_unique(!Globals),
-        % XXX there is a bit of a design flaw with regard to
-        % uniqueness and io.set_globals
-        io_set_globals(!.Globals, !IO)
-    ).
+    set_extra_error_info(ExtraErrorInfo, !IO).
 
     % This predicate is needed because mercury_compile.m doesn't know
     % anything about type trace_level.

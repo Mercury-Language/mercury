@@ -2,7 +2,45 @@ typeclass_test_12.m:003: In declaration for predicate `typeclass_test_12.p/0':
 typeclass_test_12.m:003:   error in type class constraints: type variable T
 typeclass_test_12.m:003:   occurs in the constraints, but is not determined by
 typeclass_test_12.m:003:   the predicate's argument types.
+typeclass_test_12.m:003:   All types occurring in typeclass constraints must be
+typeclass_test_12.m:003:   fully determined. A type is fully determined if one
+typeclass_test_12.m:003:   of the following holds:
+typeclass_test_12.m:003:   1) All type variables occurring in the type are
+typeclass_test_12.m:003:   determined.
+typeclass_test_12.m:003:   2) The type occurs in a constraint argument, that
+typeclass_test_12.m:003:   argument is in the range of some functional
+typeclass_test_12.m:003:   dependency for that class, and the types in all of
+typeclass_test_12.m:003:   the domain arguments for that functional dependency
+typeclass_test_12.m:003:   are fully determined.
+typeclass_test_12.m:003:   A type variable is determined if one of the
+typeclass_test_12.m:003:   following holds:
+typeclass_test_12.m:003:   1) The type variable occurs in the argument types of
+typeclass_test_12.m:003:   the predicate, function, or constructor which is
+typeclass_test_12.m:003:   constrained.
+typeclass_test_12.m:003:   2) The type variable occurs in a type which is fully
+typeclass_test_12.m:003:   determined.
+typeclass_test_12.m:003:   See the "Functional dependencies" section of the
+typeclass_test_12.m:003:   reference manual for details.
 typeclass_test_12.m:005: In declaration for function `typeclass_test_12.q/0':
 typeclass_test_12.m:005:   error in type class constraints: type variable T
 typeclass_test_12.m:005:   occurs in the constraints, but is not determined by
 typeclass_test_12.m:005:   the function's argument or result types.
+typeclass_test_12.m:005:   All types occurring in typeclass constraints must be
+typeclass_test_12.m:005:   fully determined. A type is fully determined if one
+typeclass_test_12.m:005:   of the following holds:
+typeclass_test_12.m:005:   1) All type variables occurring in the type are
+typeclass_test_12.m:005:   determined.
+typeclass_test_12.m:005:   2) The type occurs in a constraint argument, that
+typeclass_test_12.m:005:   argument is in the range of some functional
+typeclass_test_12.m:005:   dependency for that class, and the types in all of
+typeclass_test_12.m:005:   the domain arguments for that functional dependency
+typeclass_test_12.m:005:   are fully determined.
+typeclass_test_12.m:005:   A type variable is determined if one of the
+typeclass_test_12.m:005:   following holds:
+typeclass_test_12.m:005:   1) The type variable occurs in the argument types of
+typeclass_test_12.m:005:   the predicate, function, or constructor which is
+typeclass_test_12.m:005:   constrained.
+typeclass_test_12.m:005:   2) The type variable occurs in a type which is fully
+typeclass_test_12.m:005:   determined.
+typeclass_test_12.m:005:   See the "Functional dependencies" section of the
+typeclass_test_12.m:005:   reference manual for details.

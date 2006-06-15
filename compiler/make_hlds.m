@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: make_hlds.m.
 % Main author: fjh.
-
+% 
 % This module converts from the parse tree structure which is read in by
 % prog_io.m, into the simplified high level data structure defined in
 % hlds.m.  In the parse tree, the program is represented as a list of
@@ -18,10 +18,13 @@
 % super-homogenous form, and introduce implicit quantification.
 %
 % XXX we should record each error using module_info_incr_errors.
-
+% 
 % WISHLIST - we should handle explicit module quantification
+%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
-:- module hlds__make_hlds.
+:- module hlds.make_hlds.
 :- interface.
 
 :- import_module hlds.hlds_clauses.
@@ -93,7 +96,7 @@
     %
 :- pred produce_instance_method_clauses(instance_proc_def::in,
     pred_or_func::in, arity::in, list(mer_type)::in, pred_markers::in,
-    term__context::in, import_status::in, clauses_info::out,
+    term.context::in, import_status::in, clauses_info::out,
     module_info::in, module_info::out,
     make_hlds_qual_info::in, make_hlds_qual_info::out, io::di, io::uo) is det.
 
@@ -127,7 +130,7 @@
 :- import_module hlds.make_hlds.make_hlds_passes.
 :- import_module hlds.make_hlds.qual_info.
 
-:- type make_hlds_qual_info == hlds__make_hlds__qual_info__qual_info.
+:- type make_hlds_qual_info == hlds.make_hlds.qual_info.qual_info.
 
 parse_tree_to_hlds(Module, MQInfo0, EqvMap, ModuleInfo,
         QualInfo, InvalidTypes, InvalidModes, !IO) :-

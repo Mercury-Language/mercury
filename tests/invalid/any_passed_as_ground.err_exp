@@ -10,3 +10,4 @@ any_passed_as_ground.m:036:     free,
 any_passed_as_ground.m:036:     any
 any_passed_as_ground.m:036:   which does not match any of the modes for
 any_passed_as_ground.m:036:   predicate `list.member/2'.
+For more information, recompile with `-E'.
