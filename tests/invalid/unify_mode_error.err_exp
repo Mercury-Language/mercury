@@ -1,5 +1,5 @@
-unify_mode_error.m:001: Warning: module should start with a `:- module' declaration.
-unify_mode_error.m:001: Syntax error at token 'module': unexpected token at start of (sub)term.
-unify_mode_error.m:001: Warning: interface for module `unify_mode_error' does
-unify_mode_error.m:001:   not export anything.
+unify_mode_error.m:015: In clause for `foo(in, out)':
+unify_mode_error.m:015:   in argument 2 of call to predicate `builtin.unify/2':
+unify_mode_error.m:015:   mode error: variable `Y' has instantiatedness `free',
+unify_mode_error.m:015:   expected instantiatedness was `ground'.
 For more information, recompile with `-E'.
