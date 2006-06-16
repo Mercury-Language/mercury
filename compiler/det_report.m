@@ -730,18 +730,24 @@ det_diagnose_atomic_goal(Desired, Actual, InitSpecs, !.CurSpec, !Specs) :-
     determinism_components(Actual, ActualCanFail, ActualSolns),
     compare_canfails(DesiredCanFail, ActualCanFail, CmpCanFail),
     ( CmpCanFail = tighter ->
-        add_to_spec_at_end([words("can fail."), nl], !CurSpec),
+        add_to_spec_at_end([words("can fail")], !CurSpec),
         Diagnosed1 = yes
     ;
         Diagnosed1 = no
     ),
     compare_solncounts(DesiredSolns, ActualSolns, CmpSolns),
     ( CmpSolns = tighter ->
+        (
+            Diagnosed1 = yes,
+            add_to_spec_at_end([words("and")], !CurSpec)
+        ;
+            Diagnosed1 = no
+        ),
         ( DesiredSolns = at_most_one ->
-            add_to_spec_at_end([words("can succeed more than once."), nl],
+            add_to_spec_at_end([words("can succeed more than once")],
                 !CurSpec)
         ;
-            add_to_spec_at_end([words("can succeed."), nl], !CurSpec)
+            add_to_spec_at_end([words("can succeed")], !CurSpec)
         ),
         Diagnosed2 = yes
     ;
@@ -749,7 +755,8 @@ det_diagnose_atomic_goal(Desired, Actual, InitSpecs, !.CurSpec, !Specs) :-
     ),
     bool.or(Diagnosed1, Diagnosed2, Diagnosed),
     (
-        Diagnosed = yes
+        Diagnosed = yes,
+        add_to_spec_at_end([suffix("."), nl], !CurSpec)
     ;
         Diagnosed = no,
         Pieces = [words("has unknown determinism problem;"), nl,

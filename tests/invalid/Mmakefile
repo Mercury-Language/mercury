@@ -64,6 +64,7 @@ SINGLEMODULE= \
 	cyclic_typeclass \
 	cyclic_typeclass_2 \
 	cyclic_typeclass_3 \
+	det_atomic_goal_msgs \
 	det_errors \
 	det_errors_cc \
 	duplicate_modes \
