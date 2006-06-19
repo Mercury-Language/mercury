@@ -141,7 +141,7 @@ direct_reuse_process_proc(Strategy, SharingTable, PredId, ProcId,
     map.lookup(Procs0, ProcId, Proc0), 
 
     direct_reuse_process_procedure(Strategy, SharingTable, PredId, ProcId, 
-        !.ModuleInfo, Proc0, Proc, ReuseAs, !IO), 
+        !.ModuleInfo, Pred0, Proc0, Proc, ReuseAs, !IO), 
     reuse_as_table_set(proc(PredId, ProcId), ReuseAs, !ReuseTable),
 
     map.det_update(Procs0, ProcId, Proc, Procs),
@@ -153,10 +153,11 @@ direct_reuse_process_proc(Strategy, SharingTable, PredId, ProcId,
     %
 :- pred direct_reuse_process_procedure(reuse_strategy::in, 
     sharing_as_table::in, pred_id::in, proc_id::in, module_info::in, 
-    proc_info::in, proc_info::out, reuse_as::out, io::di, io::uo) is det.
+    pred_info::in, proc_info::in, proc_info::out, reuse_as::out, 
+    io::di, io::uo) is det.
 
 direct_reuse_process_procedure(Strategy, SharingTable, PredId, ProcId,
-        ModuleInfo, !ProcInfo, ReuseAs, !IO):- 
+        ModuleInfo, PredInfo, !ProcInfo, ReuseAs, !IO):- 
     io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
 
     write_proc_progress_message("% Direct reuse analysis of ",
@@ -167,8 +168,8 @@ direct_reuse_process_procedure(Strategy, SharingTable, PredId, ProcId,
     % Determine the deconstructions in which data may potentially become
     % garbage.
     %
-    determine_dead_deconstructions(ModuleInfo, !.ProcInfo, SharingTable, 
-        Goal0, DeadCellTable),
+    determine_dead_deconstructions(ModuleInfo, PredInfo, !.ProcInfo, 
+        SharingTable, Goal0, DeadCellTable),
     dead_cell_table_maybe_dump(VeryVerbose, DeadCellTable, !IO),
 
     % Determine how the detected dead datastructures can be reused. 

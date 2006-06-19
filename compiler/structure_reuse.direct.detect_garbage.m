@@ -24,8 +24,9 @@
     % procedure goal. The table also records the reuse condition associated
     % with each of the dead cells.
     %
-:- pred determine_dead_deconstructions(module_info::in, proc_info::in, 
-    sharing_as_table::in, hlds_goal::in, dead_cell_table::out) is det.
+:- pred determine_dead_deconstructions(module_info::in, pred_info::in, 
+    proc_info::in, sharing_as_table::in, hlds_goal::in, 
+    dead_cell_table::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -38,13 +39,36 @@
 
 %-----------------------------------------------------------------------------%
 
-determine_dead_deconstructions(ModuleInfo, ProcInfo, SharingTable, 
-    Goal, DeadCellTable):- 
+:- type detect_bg_info
+    --->    detect_bg_info(
+                module_info     ::  module_info, 
+                pred_info       ::  pred_info, 
+                proc_info       ::  proc_info, 
+                sharing_table   ::  sharing_as_table
+            ).
+   
+:- func detect_bg_info_init(module_info, pred_info, proc_info, 
+    sharing_as_table) = detect_bg_info.
+
+detect_bg_info_init(ModuleInfo, PredInfo, ProcInfo, SharingTable) =
+    detect_bg_info(ModuleInfo, PredInfo, ProcInfo, SharingTable). 
+
+
+determine_dead_deconstructions(ModuleInfo, PredInfo, ProcInfo, SharingTable, 
+        Goal, DeadCellTable) :- 
+   determine_dead_deconstructions(
+        detect_bg_info_init(ModuleInfo, PredInfo, ProcInfo, SharingTable), 
+        Goal, DeadCellTable). 
+ 
+:- pred determine_dead_deconstructions(detect_bg_info::in, hlds_goal::in, 
+    dead_cell_table::out) is det.
+
+determine_dead_deconstructions(Background, Goal, DeadCellTable):- 
     % In this process we need to know the sharing at each program point, 
     % which boils down to reconstructing that sharing information based on the
     % sharing recorded in the sharing table. 
-    determine_dead_deconstructions_2(ModuleInfo, ProcInfo, SharingTable, 
-        Goal, sharing_as_init, _, dead_cell_table_init, DeadCellTable).
+    determine_dead_deconstructions_2(Background, Goal, 
+        sharing_as_init, _, dead_cell_table_init, DeadCellTable).
 
     % Process a procedure goal, determining the sharing at each subgoal, as
     % well as constructing the table of dead cells. 
@@ -53,23 +77,24 @@ determine_dead_deconstructions(ModuleInfo, ProcInfo, SharingTable,
     %   - at each program point: compute sharing
     %   - at deconstruction unifications: check for a dead cell. 
     %
-:- pred determine_dead_deconstructions_2(module_info::in, proc_info::in,
-    sharing_as_table::in, hlds_goal::in, sharing_as::in, sharing_as::out,
-    dead_cell_table::in, dead_cell_table::out) is det.
+:- pred determine_dead_deconstructions_2(detect_bg_info::in, hlds_goal::in, 
+    sharing_as::in, sharing_as::out, dead_cell_table::in, 
+    dead_cell_table::out) is det.
 
-determine_dead_deconstructions_2(ModuleInfo, ProcInfo, SharingTable,
-    TopGoal, !SharingAs, !DeadCellTable) :- 
-
+determine_dead_deconstructions_2(Background, TopGoal, !SharingAs, 
+        !DeadCellTable) :- 
     TopGoal = GoalExpr - GoalInfo, 
+    ModuleInfo = Background ^ module_info, 
+    PredInfo = Background ^ pred_info, 
+    ProcInfo = Background ^ proc_info, 
+    SharingTable = Background ^ sharing_table, 
     (
         GoalExpr = conj(_, Goals),
-        list.foldl2(
-            determine_dead_deconstructions_2(ModuleInfo, ProcInfo, 
-                SharingTable), 
+        list.foldl2(determine_dead_deconstructions_2(Background),
             Goals, !SharingAs, !DeadCellTable)
     ;
         GoalExpr = call(PredId, ProcId, ActualVars, _, _, _),
-        lookup_sharing_and_comb(ModuleInfo, ProcInfo, SharingTable,
+        lookup_sharing_and_comb(ModuleInfo, PredInfo, ProcInfo, SharingTable,
             PredId, ProcId, ActualVars, !SharingAs)
     ;
         GoalExpr = generic_call(_GenDetails, _, _, _),
@@ -86,29 +111,28 @@ determine_dead_deconstructions_2(ModuleInfo, ProcInfo, SharingTable,
             GoalInfo, !.SharingAs)
     ;
         GoalExpr = disj(Goals),
-        determine_dead_deconstructions_2_disj(ModuleInfo, ProcInfo, 
-            SharingTable, Goals, !SharingAs, !DeadCellTable)
+        determine_dead_deconstructions_2_disj(Background, Goals, !SharingAs, 
+            !DeadCellTable)
     ;
         GoalExpr = switch(_, _, Cases),
-        determine_dead_deconstructions_2_disj(ModuleInfo, ProcInfo,
-            SharingTable, list.map(
-                func(C) = G :- (G = C ^ case_goal), Cases), !SharingAs,
+        determine_dead_deconstructions_2_disj(Background, 
+            list.map(func(C) = G :- (G = C ^ case_goal), Cases), !SharingAs,
             !DeadCellTable)
     ;
         % XXX To check and compare with the theory. 
         GoalExpr = not(_Goal)
     ;
         GoalExpr = scope(_, SubGoal),
-        determine_dead_deconstructions_2(ModuleInfo, ProcInfo, 
-            SharingTable, SubGoal, !SharingAs, !DeadCellTable)
+        determine_dead_deconstructions_2(Background, SubGoal, !SharingAs, 
+            !DeadCellTable)
     ;
         GoalExpr = if_then_else(_, IfGoal, ThenGoal, ElseGoal),
-        determine_dead_deconstructions_2(ModuleInfo, ProcInfo, SharingTable,
-            IfGoal, !.SharingAs, IfSharingAs, !DeadCellTable),
-        determine_dead_deconstructions_2(ModuleInfo, ProcInfo, SharingTable,
-            ThenGoal, IfSharingAs, ThenSharingAs, !DeadCellTable),
-        determine_dead_deconstructions_2(ModuleInfo, ProcInfo, SharingTable,
-            ElseGoal, !.SharingAs, ElseSharingAs, !DeadCellTable),
+        determine_dead_deconstructions_2(Background, IfGoal, !.SharingAs, 
+            IfSharingAs, !DeadCellTable),
+        determine_dead_deconstructions_2(Background, ThenGoal, IfSharingAs, 
+            ThenSharingAs, !DeadCellTable),
+        determine_dead_deconstructions_2(Background, ElseGoal, !.SharingAs, 
+            ElseSharingAs, !DeadCellTable),
         !:SharingAs = sharing_as_least_upper_bound(ModuleInfo, ProcInfo,
             ThenSharingAs, ElseSharingAs)
     ;
@@ -127,29 +151,25 @@ determine_dead_deconstructions_2(ModuleInfo, ProcInfo, SharingTable,
             "determine_dead_deconstructions_2: shorthand goal.")
     ).
        
-:- pred determine_dead_deconstructions_2_disj(module_info::in,
-    proc_info::in, sharing_as_table::in, hlds_goals::in,
-    sharing_as::in, sharing_as::out,
+:- pred determine_dead_deconstructions_2_disj(detect_bg_info::in, 
+    hlds_goals::in, sharing_as::in, sharing_as::out,
     dead_cell_table::in, dead_cell_table::out) is det.
 
-determine_dead_deconstructions_2_disj(ModuleInfo, ProcInfo, 
-    SharingTable, Goals, !SharingAs, !DeadCellTable) :- 
-    list.foldl2(determine_dead_deconstructions_2_disj_goal(ModuleInfo,
-        ProcInfo, SharingTable, !.SharingAs), Goals, !SharingAs,
-        !DeadCellTable).
+determine_dead_deconstructions_2_disj(Background, Goals, 
+        !SharingAs, !DeadCellTable) :- 
+    list.foldl2(determine_dead_deconstructions_2_disj_goal(Background, 
+        !.SharingAs), Goals, !SharingAs, !DeadCellTable).
 
-:- pred determine_dead_deconstructions_2_disj_goal(module_info::in,
-    proc_info::in, sharing_as_table::in, sharing_as::in, hlds_goal::in,
-    sharing_as::in, sharing_as::out,
+:- pred determine_dead_deconstructions_2_disj_goal(detect_bg_info::in, 
+    sharing_as::in, hlds_goal::in, sharing_as::in, sharing_as::out,
     dead_cell_table::in, dead_cell_table::out) is det.
 
-determine_dead_deconstructions_2_disj_goal(ModuleInfo, ProcInfo, 
-        SharingTable, SharingBeforeDisj, Goal, !SharingAs, 
-        !DeadCellTable) :-
-    determine_dead_deconstructions_2(ModuleInfo, ProcInfo, SharingTable,
-        Goal, SharingBeforeDisj, GoalSharing, !DeadCellTable),
-    !:SharingAs = sharing_as_least_upper_bound(ModuleInfo, ProcInfo, 
-        !.SharingAs, GoalSharing).
+determine_dead_deconstructions_2_disj_goal(Background, SharingBeforeDisj, 
+        Goal, !SharingAs, !DeadCellTable) :-
+    determine_dead_deconstructions_2(Background, Goal, SharingBeforeDisj, 
+        GoalSharing, !DeadCellTable),
+    !:SharingAs = sharing_as_least_upper_bound(Background ^ module_info, 
+        Background ^ proc_info, !.SharingAs, GoalSharing).
 
 
     % Verify whether the unification is a deconstruction in which the 

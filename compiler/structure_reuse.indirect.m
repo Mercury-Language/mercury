@@ -273,9 +273,10 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
         GoalExpr0 = call(CalleePredId, CalleeProcId, CalleeArgs, _, _, _),
         verify_indirect_reuse(BaseInfo, CalleePredId, CalleeProcId, 
             CalleeArgs, GoalInfo0, GoalInfo, !AnalysisInfo, !IO),
-        lookup_sharing_and_comb(BaseInfo ^ module_info, BaseInfo ^ proc_info,
-            BaseInfo ^ sharing_table, CalleePredId, CalleeProcId, 
-            CalleeArgs, !.AnalysisInfo ^ sharing_as, NewSharing),
+        lookup_sharing_and_comb(BaseInfo ^ module_info, BaseInfo ^ pred_info, 
+            BaseInfo ^ proc_info, BaseInfo ^ sharing_table, 
+            CalleePredId, CalleeProcId, CalleeArgs, 
+            !.AnalysisInfo ^ sharing_as, NewSharing),
         !:AnalysisInfo = !.AnalysisInfo ^ sharing_as := NewSharing,
         GoalExpr = GoalExpr0,
         !:Goal = GoalExpr - GoalInfo

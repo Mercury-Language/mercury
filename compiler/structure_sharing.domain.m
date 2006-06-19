@@ -240,7 +240,7 @@
     % pred_id and proc_id), and combine it with any existing
     % sharing information.
     %
-:- pred lookup_sharing_and_comb(module_info::in, proc_info::in,
+:- pred lookup_sharing_and_comb(module_info::in, pred_info::in, proc_info::in,
     sharing_as_table::in, pred_id::in, proc_id::in, prog_vars::in,
     sharing_as::in, sharing_as::out) is det.
 
@@ -381,9 +381,10 @@ sharing_as_rename(MapVar, TypeSubst, !SharingAs) :-
 
 sharing_as_rename_using_module_info(ModuleInfo, PPId, ActualVars, ActualTypes,
         ActualTVarset, FormalSharing, ActualSharing):-
-    sharing_as_rename(get_variable_renaming(ModuleInfo, PPId, ActualVars),
-        get_type_substitution(ModuleInfo, PPId, ActualTypes, ActualTVarset),
-        FormalSharing, ActualSharing).
+    VarRenaming = get_variable_renaming(ModuleInfo, PPId, ActualVars),
+    TypeRenaming = get_type_substitution(ModuleInfo, PPId, ActualTypes,
+        ActualTVarset), 
+    sharing_as_rename(VarRenaming, TypeRenaming, FormalSharing, ActualSharing).
 
 sharing_as_comb(ModuleInfo, ProcInfo, NewSharing, OldSharing) = ResultSharing :-
     (
@@ -711,8 +712,8 @@ sharing_as_table_set(PPId, Sharing, !Table) :-
 
 %-----------------------------------------------------------------------------%
 
-lookup_sharing_and_comb(ModuleInfo, ProcInfo, SharingTable, PredId, ProcId,
-        ActualVars, !Sharing):- 
+lookup_sharing_and_comb(ModuleInfo, PredInfo, ProcInfo, SharingTable, 
+        PredId, ProcId, ActualVars, !Sharing):- 
     PPId = proc(PredId, ProcId),
     
     lookup_sharing_or_predict(ModuleInfo, SharingTable, PPId, FormalSharing),
@@ -720,8 +721,7 @@ lookup_sharing_and_comb(ModuleInfo, ProcInfo, SharingTable, PredId, ProcId,
     proc_info_get_vartypes(ProcInfo, VarTypes), 
     list.map(map.lookup(VarTypes), ActualVars, ActualTypes), 
        
-        % XXX To be checked!
-    ActualTVarset = varset.init, 
+    pred_info_get_typevarset(PredInfo, ActualTVarset), 
     sharing_as_rename_using_module_info(ModuleInfo, PPId, 
         ActualVars, ActualTypes, ActualTVarset, FormalSharing,
         ActualSharing),
