@@ -10,6 +10,7 @@
 % Main author: rafe.
 % 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.state_var.
 :- interface.
@@ -434,8 +435,8 @@ prepare_for_head(new_svar_info).
 prepare_for_lambda(!SInfo) :-
     %
     % Construct the new external_dots mapping by overlaying the current dots
-    % mapping onto the existing external_dots one.  We cannot just throw the
-    % existing external_dots mapping away because otherwise the referring to
+    % mapping onto the existing external_dots mapping.  We cannot just throw
+    % the existing external_dots mapping away because otherwise referring to
     % externals from within closures that are nested more than one level deep
     % will not work.
     %
