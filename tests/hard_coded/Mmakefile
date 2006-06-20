@@ -187,6 +187,7 @@ ORDINARY_PROGS=	\
 	string_string \
 	string_strip \
 	string_suffix_bug \
+	sv_nested_closures \
 	switch_detect \
 	system_sort \
 	target_mlobjs \
