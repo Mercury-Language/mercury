@@ -5,10 +5,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: state_var.m.
 % Main author: rafe.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.state_var.
@@ -129,12 +130,11 @@
     %
 :- pred prepare_for_head(svar_info::out) is det.
 
-    % We need to make the current !.Xs external
-    % ("read-only") and clear the !.Xs and !:Xs.
+    % We need to add the current !.Xs to the set of external ("read-only")
+    % state variables and clear the !.Xs and !:Xs.
     %
-    % While processing the head, any state variables therein are
-    % implicitly scoped over the body and have !. and !: mappings
-    % set up.
+    % While processing the head, any state variables therein are implicitly
+    % scoped over the body and have !. and !: mappings set up.
     %
 :- pred prepare_for_lambda(svar_info::in, svar_info::out) is det.
 
@@ -433,7 +433,15 @@ prepare_for_head(new_svar_info).
 %-----------------------------------------------------------------------------%
 
 prepare_for_lambda(!SInfo) :-
-    !:SInfo = ( new_svar_info ^ external_dot := !.SInfo ^ dot ).
+    %
+    % Construct the new external_dots mapping by overlaying the current dots
+    % mapping onto the existing external_dots mapping.  We cannot just throw
+    % the existing external_dots mapping away because otherwise referring to
+    % externals from within closures that are nested more than one level deep
+    % will not work.
+    %
+    NewExternals = map.overlay(!.SInfo ^ external_dot, !.SInfo ^ dot),
+    !:SInfo = ( new_svar_info ^ external_dot := NewExternals ).
 
 %-----------------------------------------------------------------------------%
 
