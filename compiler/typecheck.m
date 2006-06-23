@@ -1443,37 +1443,11 @@ higher_order_func_type(Purity, Arity, EvalMethod, TypeVarSet,
 
 %-----------------------------------------------------------------------------%
 
-:- pred assign(T::in, T::out) is det.
-
-assign(X, X).
-
 :- pred typecheck_call_pred(simple_call_id::in, list(prog_var)::in,
     goal_path::in, pred_id::out, typecheck_info::in, typecheck_info::out,
     io::di, io::uo) is det.
 
 typecheck_call_pred(CallId, Args, GoalPath, PredId, !Info, !IO) :-
-    typecheck_call_pred_adjust_arg_types(CallId, Args, GoalPath, assign,
-        PredId, !Info, !IO).
-
-    % A closure of this type performs a transformation on the argument types
-    % of the called predicate. It is used to convert the argument types of the
-    % base relation for an Aditi update builtin to the type of the higher-order
-    % argument of the update predicate. For an ordinary predicate call,
-    % the types are not transformed.
-    %
-:- type adjust_arg_types == pred(list(mer_type), list(mer_type)).
-:- inst adjust_arg_types == (pred(in, out) is det).
-
-    % Typecheck a predicate, performing the given transformation on the
-    % argument types.
-    %
-:- pred typecheck_call_pred_adjust_arg_types(simple_call_id::in,
-    list(prog_var)::in, goal_path::in, adjust_arg_types::in(adjust_arg_types),
-    pred_id::out, typecheck_info::in, typecheck_info::out, io::di, io::uo)
-    is det.
-
-typecheck_call_pred_adjust_arg_types(CallId, Args, GoalPath, AdjustArgTypes,
-        PredId, !Info, !IO) :-
     typecheck_info_get_type_assign_set(!.Info, OrigTypeAssignSet),
 
     % Look up the called predicate's arg types.
@@ -1490,11 +1464,10 @@ typecheck_call_pred_adjust_arg_types(CallId, Args, GoalPath, AdjustArgTypes,
         % non-polymorphic predicate).
         ( PredIdList = [PredId0] ->
             PredId = PredId0,
-            typecheck_call_pred_id_adjust_arg_types(PredId, Args,
-                GoalPath, AdjustArgTypes, !Info, !IO)
+            typecheck_call_pred_id(PredId, Args, GoalPath, !Info, !IO)
         ;
             typecheck_call_overloaded_pred(CallId, PredIdList, Args,
-                GoalPath, AdjustArgTypes, !Info, !IO),
+                GoalPath, !Info, !IO),
 
             % In general, we can't figure out which predicate it is until
             % after we have resolved any overloading, which may require
@@ -1522,27 +1495,13 @@ typecheck_call_pred_adjust_arg_types(CallId, Args, GoalPath, AdjustArgTypes,
     typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
 
 typecheck_call_pred_id(PredId, Args, GoalPath, !Info, !IO) :-
-    typecheck_call_pred_id_adjust_arg_types(PredId, Args, GoalPath,
-        assign, !Info, !IO).
-
-    % Typecheck a call to a specific predicate, performing the given
-    % transformation on the argument types.
-    %
-:- pred typecheck_call_pred_id_adjust_arg_types(pred_id::in,
-    list(prog_var)::in, goal_path::in,
-    adjust_arg_types::in(adjust_arg_types),
-    typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
-
-typecheck_call_pred_id_adjust_arg_types(PredId, Args, GoalPath, AdjustArgTypes,
-        !Info, !IO) :-
     typecheck_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_class_table(ModuleInfo, ClassTable),
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     predicate_table_get_preds(PredicateTable, Preds),
     map.lookup(Preds, PredId, PredInfo),
     pred_info_get_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
-        PredArgTypes0),
-    AdjustArgTypes(PredArgTypes0, PredArgTypes),
+        PredArgTypes),
     pred_info_get_class_context(PredInfo, PredClassContext),
 
     % Rename apart the type variables in the called predicate's arg types
@@ -1562,11 +1521,11 @@ typecheck_call_pred_id_adjust_arg_types(PredId, Args, GoalPath, AdjustArgTypes,
     ).
 
 :- pred typecheck_call_overloaded_pred(simple_call_id::in, list(pred_id)::in,
-    list(prog_var)::in, goal_path::in, adjust_arg_types::in(adjust_arg_types),
-    typecheck_info::in, typecheck_info::out, io::di, io::uo) is det.
+    list(prog_var)::in, goal_path::in, typecheck_info::in, typecheck_info::out,
+    io::di, io::uo) is det.
 
 typecheck_call_overloaded_pred(CallId, PredIdList, Args, GoalPath,
-        AdjustArgTypes, !Info, !IO) :-
+        !Info, !IO) :-
     typecheck_info_get_overloaded_symbols(!.Info, OverloadedSymbols0),
     typecheck_info_get_context(!.Info, Context),
     Symbol = overloaded_symbol(Context, overloaded_pred(CallId, PredIdList)),
@@ -1582,25 +1541,23 @@ typecheck_call_overloaded_pred(CallId, PredIdList, Args, GoalPath,
     predicate_table_get_preds(PredicateTable, Preds),
     typecheck_info_get_type_assign_set(!.Info, TypeAssignSet0),
     get_overloaded_pred_arg_types(PredIdList, Preds, ClassTable, GoalPath,
-        AdjustArgTypes, TypeAssignSet0, [], ArgsTypeAssignSet),
+        TypeAssignSet0, [], ArgsTypeAssignSet),
 
     % Then unify the types of the call arguments with the
     % called predicates' arg types.
     typecheck_var_has_arg_type_list(Args, 1, ArgsTypeAssignSet, !Info, !IO).
 
 :- pred get_overloaded_pred_arg_types(list(pred_id)::in, pred_table::in,
-    class_table::in, goal_path::in, adjust_arg_types::in(adjust_arg_types),
-    type_assign_set::in,
+    class_table::in, goal_path::in, type_assign_set::in,
     args_type_assign_set::in, args_type_assign_set::out) is det.
 
 get_overloaded_pred_arg_types([], _Preds, _ClassTable, _GoalPath,
-        _AdjustArgTypes, _TypeAssignSet0, !ArgsTypeAssignSet).
+        _TypeAssignSet0, !ArgsTypeAssignSet).
 get_overloaded_pred_arg_types([PredId | PredIds], Preds, ClassTable, GoalPath,
-        AdjustArgTypes, TypeAssignSet0, !ArgsTypeAssignSet) :-
+        TypeAssignSet0, !ArgsTypeAssignSet) :-
     map.lookup(Preds, PredId, PredInfo),
     pred_info_get_arg_types(PredInfo, PredTypeVarSet, PredExistQVars,
-        PredArgTypes0),
-    call(AdjustArgTypes, PredArgTypes0, PredArgTypes),
+        PredArgTypes),
     pred_info_get_class_context(PredInfo, PredClassContext),
     pred_info_get_typevarset(PredInfo, TVarSet),
     make_body_hlds_constraints(ClassTable, TVarSet, GoalPath,
@@ -1608,7 +1565,7 @@ get_overloaded_pred_arg_types([PredId | PredIds], Preds, ClassTable, GoalPath,
     rename_apart(TypeAssignSet0, PredTypeVarSet, PredExistQVars,
         PredArgTypes, PredConstraints, !ArgsTypeAssignSet),
     get_overloaded_pred_arg_types(PredIds, Preds, ClassTable, GoalPath,
-        AdjustArgTypes, TypeAssignSet0, !ArgsTypeAssignSet).
+        TypeAssignSet0, !ArgsTypeAssignSet).
 
 %-----------------------------------------------------------------------------%
 
