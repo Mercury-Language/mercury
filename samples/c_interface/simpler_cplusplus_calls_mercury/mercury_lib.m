@@ -36,7 +36,7 @@
 
 :- import_module int.
 :- import_module list.
-:- import_module std_util.
+:- import_module solutions.
 
 % for this example, main/2 isn't useful
 main(!IO).
