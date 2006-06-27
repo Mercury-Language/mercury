@@ -4792,7 +4792,14 @@ attribute for each language.
 
 For the C backends this attribute allows foreign code to access
 the mutable variable as an external variable called @samp{Name}.
-This variable has type @samp{MR_Word}.
+For the low-level C backend, e.g. the asm_fast grades, the type of this
+variable will be @code{MR_Word}.
+For the high-level C backend, e.g. the hlc grades, the type of this variable
+depends upon the Mercury type of the mutable.  For mutables of the Mercury
+types @code{int}, @code{float}, @code{char} and @code{string}, the
+corresponding C types will be @code{MR_Integer}, @code{MR_Float},
+@code{MR_Char} and @code{MR_String} respectively.  For mutables of any other
+type the corresponding C type will be @code{MR_Word}.
 
 This attribute is not currently implemented for the non-C backends.
 
@@ -8661,7 +8668,7 @@ declares the predicate @var{Pred} to be impure and the function
 @var{Func} to be semipure, respectively.
 
 Type class methods may also be declared as @code{impure} or
-@code{semipure} by preceeding the word @code{pred} or @code{func} with the
+@code{semipure} by preceding the word @code{pred} or @code{func} with the
 appropriate purity level.  An instance of the type class must provide
 method implementations that are at least as pure as the method
 declaration. 
