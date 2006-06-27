@@ -1480,18 +1480,6 @@
 :- mode io.write_univ(in, in, in, di, uo) is cc_multi.
 
 %
-% For use by extras/aditi/aditi.m.
-%
-
-    % This is the same as io.read_from_string, except that an integer
-    % is allowed where a character is expected. This is needed because
-    % Aditi does not have a builtin character type. This also allows an
-    % integer where a float is expected.
-    %
-:- pred io.read_from_string_with_int_instead_of_char(string::in, string::in,
-    int::in, io.read_result(T)::out, posn::in, posn::out) is det.
-
-%
 % For use by compiler/process_util.m:
 %
 
@@ -3603,41 +3591,21 @@ io.putback_byte(Char, !IO) :-
 io.read(Result, !IO) :-
     term_io.read_term(ReadResult, !IO),
     io.get_line_number(LineNumber, !IO),
-    IsAditiTuple = no,
-    io.process_read_term(IsAditiTuple, ReadResult, LineNumber, Result).
-
-io.read_from_string_with_int_instead_of_char(FileName, String, Len, Result,
-        !Posn) :-
-    IsAditiTuple = yes,
-    io.read_from_string(IsAditiTuple, FileName, String, Len, Result, !Posn).
+    io.process_read_term(ReadResult, LineNumber, Result).
 
 io.read_from_string(FileName, String, Len, Result, !Posn) :-
-    IsAditiTuple = no,
-    io.read_from_string(IsAditiTuple, FileName, String, Len, Result, !Posn).
-
-:- pred io.read_from_string(bool::in, string::in, string::in, int::in,
-    io.read_result(T)::out, posn::in, posn::out) is det.
-
-io.read_from_string(IsAditiTuple, FileName, String, Len, Result, !Posn) :-
-    parser.read_term_from_string(FileName, String, Len, !Posn,
-        ReadResult),
+    parser.read_term_from_string(FileName, String, Len, !Posn, ReadResult),
     !.Posn = posn(LineNumber, _, _),
-    io.process_read_term(IsAditiTuple, ReadResult, LineNumber, Result).
+    io.process_read_term(ReadResult, LineNumber, Result).
 
-:- pred io.process_read_term(bool::in, read_term::in, int::in,
-    io.read_result(T)::out) is det.
+:- pred io.process_read_term(read_term::in, int::in, io.read_result(T)::out)
+    is det.
 
-io.process_read_term(IsAditiTuple, ReadResult, LineNumber, Result) :-
+io.process_read_term(ReadResult, LineNumber, Result) :-
     (
         ReadResult = term(_VarSet, Term),
         (
-            (
-                IsAditiTuple = yes,
-                term_to_type_with_int_instead_of_char(Term, Type)
-            ;
-                IsAditiTuple = no,
-                term_to_type(Term, Type)
-            )
+            term_to_type(Term, Type)
         ->
             Result = ok(Type)
         ;

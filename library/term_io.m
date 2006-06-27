@@ -5,15 +5,15 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: term_io.m.
 % Main author: fjh.
 % Stability: medium to high.
-
+% 
 % This file encapsulates all the term I/O.
 % This exports predicates to read and write terms in the
 % nice ground representation provided in term.m.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

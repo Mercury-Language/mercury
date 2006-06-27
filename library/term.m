@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: term.m.
 % Main author: fjh.
 % Stability: medium.
-
+% 
 % This file provides a type `term' used to represent Prolog terms,
 % and various predicates to manipulate terms and substitutions.
 % Terms are polymorphic so that terms representing different kinds of
 % thing can be made to be of different types so they don't get mixed up.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -445,14 +445,6 @@
 
 :- interface.
 
-% This is the same as term_to_type, except that an integer is allowed
-% where a character is expected. This is needed by extras/aditi/aditi.m
-% because Aditi does not have a builtin character type. This also allows
-% an integer where a float is expected.
-
-:- pred term_to_type_with_int_instead_of_char(term(U)::in, T::out)
-    is semidet.
-
     % Returns the highest numbered variable returned from this var_supply.
     %
 :- func var_supply_max_var(var_supply(T)) = var(T).
@@ -486,20 +478,8 @@
 term_to_type(Term, Val) :-
     try_term_to_type(Term, ok(Val)).
 
-term_to_type_with_int_instead_of_char(Term, Val) :-
-    IsAditiTuple = yes,
-    try_term_to_type(IsAditiTuple, Term, ok(Val)).
-
 try_term_to_type(Term, Result) :-
-    IsAditiTuple = no,
-    try_term_to_type(IsAditiTuple, Term, Result).
-
-:- pred try_term_to_type(bool::in, term(U)::in,
-    term_to_type_result(T, U)::out) is det.
-
-try_term_to_type(IsAditiTuple, Term, Result) :-
-    try_term_to_univ(IsAditiTuple, Term, type_desc.type_of(ValTypedVar),
-        UnivResult),
+    try_term_to_univ(Term, type_desc.type_of(ValTypedVar), UnivResult),
     (
         UnivResult = ok(Univ),
         det_univ_to_type(Univ, Val),
@@ -510,23 +490,23 @@ try_term_to_type(IsAditiTuple, Term, Result) :-
         Result = error(Error)
     ).
 
-:- pred try_term_to_univ(bool::in, term(T)::in, type_desc.type_desc::in,
+:- pred try_term_to_univ(term(T)::in, type_desc.type_desc::in,
     term_to_type_result(univ, T)::out) is det.
 
-try_term_to_univ(IsAditiTuple, Term, Type, Result) :-
-    try_term_to_univ_2(IsAditiTuple, Term, Type, [], Result).
+try_term_to_univ(Term, Type, Result) :-
+    try_term_to_univ_2(Term, Type, [], Result).
 
-:- pred try_term_to_univ_2(bool::in, term(T)::in,
+:- pred try_term_to_univ_2(term(T)::in,
     type_desc.type_desc::in, term_to_type_context::in,
     term_to_type_result(univ, T)::out) is det.
 
-try_term_to_univ_2(_, variable(Var), _Type, Context,
+try_term_to_univ_2(variable(Var), _Type, Context,
         error(mode_error(Var, Context))).
-try_term_to_univ_2(IsAditiTuple, Term, Type, Context, Result) :-
+try_term_to_univ_2(Term, Type, Context, Result) :-
     Term = functor(Functor, ArgTerms, TermContext),
     (
         type_desc.type_ctor_and_args(Type, TypeCtor, TypeArgs),
-        term_to_univ_special_case(IsAditiTuple,
+        term_to_univ_special_case(
             type_desc.type_ctor_module_name(TypeCtor),
             type_desc.type_ctor_name(TypeCtor),
             TypeArgs, Term, Type, Context, SpecialCaseResult)
@@ -536,8 +516,8 @@ try_term_to_univ_2(IsAditiTuple, Term, Type, Context, Result) :-
         Functor = atom(FunctorName),
         list.length(ArgTerms, Arity),
         find_functor(Type, FunctorName, Arity, FunctorNumber, ArgTypes),
-        term_list_to_univ_list(IsAditiTuple, ArgTerms,
-            ArgTypes, Functor, 1, Context, TermContext, ArgsResult)
+        term_list_to_univ_list(ArgTerms, ArgTypes, Functor, 1, Context,
+            TermContext, ArgsResult)
     ->
         (
             ArgsResult = ok(ArgValues),
@@ -557,44 +537,27 @@ try_term_to_univ_2(IsAditiTuple, Term, Type, Context, Result) :-
         Result = error(type_error(Term, Type, TermContext, RevContext))
     ).
 
-:- pred term_to_univ_special_case(bool::in, string::in, string::in,
+:- pred term_to_univ_special_case(string::in, string::in,
     list(type_desc.type_desc)::in,
     term(T)::in(bound(functor(ground, ground, ground))),
     type_desc.type_desc::in, term_to_type_context::in,
     term_to_type_result(univ, T)::out) is semidet.
 
-term_to_univ_special_case(IsAditiTuple, "builtin", "character", [],
-        Term, _, _, ok(Univ)) :-
-    (
-        IsAditiTuple = no,
-        Term = functor(atom(FunctorName), [], _),
-        string.first_char(FunctorName, Char, "")
-    ;
-        IsAditiTuple = yes,
-        Term = functor(integer(Int), [], _),
-        char.to_int(Char, Int)
-    ),
+term_to_univ_special_case("builtin", "character", [], Term, _, _, ok(Univ)) :-
+    Term = functor(atom(FunctorName), [], _),
+    string.first_char(FunctorName, Char, ""),
     type_to_univ(Char, Univ).
-term_to_univ_special_case(_, "builtin", "int", [],
-        Term, _, _, ok(Univ)) :-
+term_to_univ_special_case("builtin", "int", [], Term, _, _, ok(Univ)) :-
     Term = functor(integer(Int), [], _),
     type_to_univ(Int, Univ).
-term_to_univ_special_case(_, "builtin", "string", [],
-        Term, _, _, ok(Univ)) :-
+term_to_univ_special_case("builtin", "string", [], Term, _, _, ok(Univ)) :-
     Term = functor(string(String), [], _),
     type_to_univ(String, Univ).
-term_to_univ_special_case(IsAditiTuple, "builtin", "float", [],
-        Term, _, _, ok(Univ)) :-
-    ( Term = functor(float(Float), [], _) ->
-        type_to_univ(Float, Univ)
-    ;
-        IsAditiTuple = yes,
-        Term = functor(integer(Int), [], _),
-        Float = float.float(Int),
-        type_to_univ(Float, Univ)
-    ).
-term_to_univ_special_case(IsAditiTuple, "array", "array", [ElemType],
-        Term, _Type, PrevContext, Result) :-
+term_to_univ_special_case("builtin", "float", [], Term, _, _, ok(Univ)) :-
+    Term = functor(float(Float), [], _),
+    type_to_univ(Float, Univ).
+term_to_univ_special_case("array", "array", [ElemType], Term, _Type,
+        PrevContext, Result) :-
     %
     % arrays are represented as terms of the form
     %   array([elem1, elem2, ...])
@@ -609,7 +572,7 @@ term_to_univ_special_case(IsAditiTuple, "array", "array", [ElemType],
     ListType = type_desc.type_of([Elem]),
     ArgContext = arg_context(atom("array"), 1, TermContext),
     NewContext = [ArgContext | PrevContext],
-    try_term_to_univ_2(IsAditiTuple, ArgList, ListType, NewContext, ArgResult),
+    try_term_to_univ_2(ArgList, ListType, NewContext, ArgResult),
     (
         ArgResult = ok(ListUniv),
         type_desc.has_type(Elem2, ElemType),
@@ -621,9 +584,9 @@ term_to_univ_special_case(IsAditiTuple, "array", "array", [ElemType],
         ArgResult = error(Error),
         Result = error(Error)
     ).
-term_to_univ_special_case(_, "builtin", "c_pointer", _, _, _, _, _) :-
+term_to_univ_special_case("builtin", "c_pointer", _, _, _, _, _) :-
     fail.
-term_to_univ_special_case(_, "univ", "univ", [], Term, _, _, Result) :-
+term_to_univ_special_case("univ", "univ", [], Term, _, _, Result) :-
     % Implementing this properly would require keeping a global table mapping
     % from type names to type_infos for all of the types in the program...
     % so for the moment, we only allow it for basic types.
@@ -646,26 +609,26 @@ term_to_univ_special_case(_, "univ", "univ", [], Term, _, _, Result) :-
     % like all the other results returned from this procedure.
     Result = ok(univ(Univ)).
 
-term_to_univ_special_case(_, "type_desc", "type_desc", _, _, _, _, _) :-
+term_to_univ_special_case("type_desc", "type_desc", _, _, _, _, _) :-
     % Ditto.
     fail.
 
-:- pred term_list_to_univ_list(bool::in, list(term(T))::in,
+:- pred term_list_to_univ_list(list(term(T))::in,
     list(type_desc.type_desc)::in, const::in, int::in,
     term_to_type_context::in, context::in,
     term_to_type_result(list(univ), T)::out) is semidet.
 
-term_list_to_univ_list(_, [], [], _, _, _, _, ok([])).
-term_list_to_univ_list(IsAditiTuple, [ArgTerm | ArgTerms],
-        [Type | Types], Functor, ArgNum, PrevContext, TermContext, Result) :-
+term_list_to_univ_list([], [], _, _, _, _, ok([])).
+term_list_to_univ_list([ArgTerm | ArgTerms], [Type | Types], Functor, ArgNum,
+        PrevContext, TermContext, Result) :-
     ArgContext = arg_context(Functor, ArgNum, TermContext),
     NewContext = [ArgContext | PrevContext],
-    try_term_to_univ_2(IsAditiTuple, ArgTerm, Type, NewContext,
+    try_term_to_univ_2(ArgTerm, Type, NewContext,
         ArgResult),
     (
         ArgResult = ok(Arg),
-        term_list_to_univ_list(IsAditiTuple, ArgTerms, Types, Functor,
-            ArgNum + 1, PrevContext, TermContext, RestResult),
+        term_list_to_univ_list(ArgTerms, Types, Functor, ArgNum + 1,
+            PrevContext, TermContext, RestResult),
         (
             RestResult = ok(Rest),
             Result = ok([Arg | Rest])
