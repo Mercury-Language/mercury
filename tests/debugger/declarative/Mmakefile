@@ -249,8 +249,12 @@ comp_gen.out: comp_gen comp_gen.inp
 	$(MDB) ./comp_gen < comp_gen.inp > comp_gen.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
+# We need to pipe the output through sed to avoid hard-coding dependencies on
+# particular line numbers in the standard library source code.
 condition_bug.out: condition_bug condition_bug.inp
-	$(MDB_STD) ./condition_bug < condition_bug.inp \
+	$(MDB_STD) ./condition_bug < condition_bug.inp 2>&1 | \
+		sed -e 's/io.m:[0-9]*/io.m:NNNN/g' | \
+		sed -e 's/term_to_xml.m:[0-9]*/term_to_xml.m:NNNN/g' \
 		> condition_bug.out 2>&1 \
 	|| { grep . $@ /dev/null; exit 1; }
 
