@@ -28,7 +28,7 @@
 
 :- import_module int.
 :- import_module list.
-:- import_module std_util.
+:- import_module solutions.
 
 % well, this is just a silly example...
 foo(42).
