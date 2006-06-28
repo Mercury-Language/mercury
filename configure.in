@@ -928,7 +928,7 @@ MERCURY_CHECK_FOR_HEADERS( \
 		asm/sigcontext.h sys/param.h sys/time.h sys/times.h \
 		sys/types.h sys/stat.h fcntl.h termios.h sys/ioctl.h \
 		sys/stropts.h windows.h dirent.h getopt.h malloc.h \
-		semaphore.h)
+		semaphore.h pthread.h)
 
 if test "$MR_HAVE_GETOPT_H" = 1; then
 	GETOPT_H_AVAILABLE=yes
@@ -2964,7 +2964,11 @@ if test "$enable_debug_grades" = yes; then
 fi
 
 # Add the .par (thread-safe) grade, if it is supported for this system
-if test "$enable_par_grades" = yes -a "$CFLAGS_FOR_THREADS" != ""; then
+# Only enable it if this system has pthreads installed.
+#
+if test "$enable_par_grades" = yes -a "$CFLAGS_FOR_THREADS" != "" \
+	-a "$MR_HAVE_PTHREAD_H" = 1
+then
 	LIBGRADES="$LIBGRADES hlc.par.gc"
 fi
 
