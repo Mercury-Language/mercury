@@ -272,14 +272,14 @@ store_alloc_in_conj([Goal0 | Goals0], [Goal | Goals], !Liveness, !LastLocns,
     liveness_info::in, liveness_info::out, last_locns::in, last_locns::out,
     set(prog_var)::in, store_alloc_info::in) is det.
 
-store_alloc_in_par_conj([], [], !Liveness, !LastLocns, _, _).
+store_alloc_in_par_conj([], [], _Liveness0, set.init, !LastLocns, _, _).
 store_alloc_in_par_conj([Goal0 | Goals0], [Goal | Goals], Liveness0, Liveness,
         !LastLocns, ResumeVars0, StoreAllocInfo) :-
-    % XXX ignoring _Liveness1 looks fishy
-    store_alloc_in_goal(Goal0, Goal, Liveness0, Liveness,
+    store_alloc_in_goal(Goal0, Goal, Liveness0, Liveness1,
         !LastLocns, ResumeVars0, StoreAllocInfo),
-    store_alloc_in_par_conj(Goals0, Goals, Liveness0, _Liveness1,
-        !LastLocns, ResumeVars0, StoreAllocInfo).
+    store_alloc_in_par_conj(Goals0, Goals, Liveness0, Liveness2,
+        !LastLocns, ResumeVars0, StoreAllocInfo),
+    Liveness = set.union(Liveness1, Liveness2).
 
 %-----------------------------------------------------------------------------%
 

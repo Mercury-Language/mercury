@@ -540,7 +540,7 @@ inlining_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info) :-
             inlining_in_conj(Goals0, Goals, !Info)
         ;
             ConjType = parallel_conj,
-            inlining_in_goals(Goals0, Goals, !Info)
+            inlining_in_par_conj(Goals0, Goals, !Info)
         ),
         Goal = conj(ConjType, Goals),
         GoalInfo = GoalInfo0
@@ -830,6 +830,18 @@ inlining_in_conj([Goal0 | Goals0], Goals, !Info) :-
     inlining_in_goal(Goal0, Goal1, !Info),
     goal_to_conj_list(Goal1, Goal1List),
     inlining_in_conj(Goals0, Goals1, !Info),
+    list.append(Goal1List, Goals1, Goals).
+
+:- pred inlining_in_par_conj(list(hlds_goal)::in, list(hlds_goal)::out,
+    inline_info::in, inline_info::out) is det.
+
+inlining_in_par_conj([], [], !Info).
+inlining_in_par_conj([Goal0 | Goals0], Goals, !Info) :-
+    % Since a single goal may become a parallel conjunction,
+    % we flatten the conjunction as we go.
+    inlining_in_goal(Goal0, Goal1, !Info),
+    goal_to_par_conj_list(Goal1, Goal1List),
+    inlining_in_par_conj(Goals0, Goals1, !Info),
     list.append(Goal1List, Goals1, Goals).
 
 %-----------------------------------------------------------------------------%

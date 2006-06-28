@@ -1,0 +1,104 @@
+#-----------------------------------------------------------------------------#
+
+THIS_DIR = par_conj
+
+#-----------------------------------------------------------------------------#
+
+# please keep these lists sorted
+DEP_PAR_CONJ_PROGS= \
+	dep_par_1 \
+	dep_par_2 \
+	dep_par_3 \
+	dep_par_3b \
+	dep_par_3c \
+	dep_par_4 \
+	dep_par_5 \
+	dep_par_5b \
+	dep_par_5c \
+	dep_par_5d \
+	dep_par_6 \
+	dep_par_7 \
+	dep_par_8 \
+	dep_par_9 \
+	dep_par_10 \
+	dep_par_11 \
+	dep_par_11b \
+	dep_par_11c \
+	dep_par_12 \
+	dep_par_13 \
+	dep_par_14 \
+	dep_par_14b \
+	dep_par_14c \
+	dep_par_14d \
+	dep_par_16 \
+	dep_par_17 \
+	dep_par_18 \
+	dep_par_20 \
+	dep_par_21 \
+	dep_par_22 \
+	dep_par_23
+
+INDEP_PAR_CONJ_PROGS = \
+	indep_par_append \
+	indep_par_nested
+
+ifneq "$(findstring decldebug,$(GRADE))" ""
+	OBJ_PROGS =
+	PROGS =
+else
+	# Don't run dependent parallel conjunction programs as they can cause
+	# deadlocks if there are not enough threads available.  This will be
+	# fixed with coroutining support.
+	OBJ_PROGS = $(DEP_PAR_CONJ_PROGS)
+	PROGS = $(OBJ_PROGS) $(INDEP_PAR_CONJ_PROGS)
+endif
+
+# `mmc --make' doesn't expect subdirectories to appear in targets.
+ifeq ($(MMAKE_USE_MMC_MAKE),yes)
+OS_SUBDIR=
+ILS_SUBDIR=
+DLLS_SUBDIR=
+else
+OS_SUBDIR=$(os_subdir)
+ILS_SUBDIR=$(ils_subdir)
+DLLS_SUBDIR=$(dlls_subdir)
+endif
+
+
+ifeq ($(findstring il,$(GRADE)),il)
+	TARGET_OBJ_EXT=dll
+	TARGET_OBJ_SUBDIR=$(DLLS_SUBDIR)
+else
+	TARGET_OBJ_EXT=$(O)
+	TARGET_OBJ_SUBDIR=$(OS_SUBDIR)
+endif
+OBJS =	$(OBJ_PROGS:%=$(TARGET_OBJ_SUBDIR)%.$(TARGET_OBJ_EXT)) \
+		$(IL_PROGS:%=$(ILS_SUBDIR)%.il)
+
+#-----------------------------------------------------------------------------#
+
+TESTS = $(PROGS)
+SUBDIRS=
+TESTS_DIR=..
+include $(TESTS_DIR)/Mmake.common
+
+# Module-specific options should go in Mercury.options so they
+# can be found by `mmc --make'.
+include Mercury.options
+
+%.runtest: %.res ;
+
+$(OBJ_PROGS:%=%.runtest): %.runtest: %.$(TARGET_OBJ_EXT) ;
+
+#-----------------------------------------------------------------------------#
+
+printtests:
+	@echo $(PROGS)
+
+printobjs:
+	@echo $(OBJS)
+
+clean_local:
+	rm -f *.err *.h
+
+#-----------------------------------------------------------------------------#

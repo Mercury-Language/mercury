@@ -1,0 +1,14 @@
+*.d
+*.date
+*.date0
+*.date3
+*.dep
+*.int
+*.int0
+*.int2
+*.int3
+*.opt
+*.optdate
+*.res
+undead_proc.h
+CLEAN

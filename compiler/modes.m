@@ -251,7 +251,7 @@
 :- pred modecheck_lambda_final_insts(list(prog_var)::in, list(mer_inst)::in,
     hlds_goal::in, hlds_goal::out, mode_info::in, mode_info::out) is det.
 
-:- pred mode_info_add_goals_live_vars(list(hlds_goal)::in,
+:- pred mode_info_add_goals_live_vars(conj_type::in, list(hlds_goal)::in,
     mode_info::in, mode_info::out) is det.
 
 :- pred mode_info_remove_goals_live_vars(list(hlds_goal)::in,
@@ -1261,7 +1261,7 @@ modecheck_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !ModeInfo, !IO) :-
     mode_info_set_in_dupl_for_switch(InDuplForSwitch, !ModeInfo).
 
 compute_goal_instmap_delta(InstMap0, Goal, !GoalInfo, !ModeInfo) :-
-    ( Goal = conj(plain_conj, []) ->
+    ( Goal = conj(_, []) ->
         % When modecheck_unify.m replaces a unification with a dead variable
         % with `true', make sure the instmap_delta of the goal is empty.
         % The code generator and mode_util.recompute_instmap_delta can be
@@ -1286,43 +1286,16 @@ modecheck_goal_expr(conj(ConjType, Goals0), GoalInfo0, Goal, !ModeInfo, !IO) :-
             Goal = conj(plain_conj, [])
         ;
             Goals0 = [_ | _],
-            modecheck_conj_list(Goals0, Goals, !ModeInfo, !IO),
+            modecheck_conj_list(ConjType, Goals0, Goals, !ModeInfo, !IO),
             conj_list_to_goal(Goals, GoalInfo0, Goal - _GoalInfo)
         ),
         mode_checkpoint(exit, "conj", !ModeInfo, !IO)
     ;
         ConjType = parallel_conj,
-        % To modecheck a parallel conjunction, we modecheck each
-        % conjunct independently (just like for disjunctions).
-        % To make sure that we don't try to bind a variable more than
-        % once (by binding it in more than one conjunct), we maintain a
-        % datastructure that keeps track of three things:
-        %
-        % - the set of variables that are nonlocal to the conjuncts
-        %   (which may be a superset of the nonlocals of the par_conj
-        %   as a whole);
-        % - the set of nonlocal variables that have been bound in the
-        %   current conjunct; and
-        % - the set of variables that were bound in previous conjuncts.
-        %
-        % When binding a variable, we check that it wasn't in the set of
-        % variables bound in other conjuncts, and we add it to the set of
-        % variables bound in this conjunct.
-        %
-        % At the end of the conjunct, we add the set of variables bound in
-        % this conjunct to the set of variables bound in previous conjuncts
-        % and set the set of variables bound in the current conjunct to
-        % empty.
-        %
-        % A stack of these structures is maintained to handle nested parallel
-        % conjunctions properly.
-        %
         mode_checkpoint(enter, "par_conj", !ModeInfo, !IO),
-        goal_info_get_nonlocals(GoalInfo0, NonLocals),
-        modecheck_par_conj_list(Goals0, Goals, NonLocals, InstMapNonlocalList,
-            !ModeInfo, !IO),
-        Goal = conj(parallel_conj, Goals),
-        instmap_unify(NonLocals, InstMapNonlocalList, !ModeInfo),
+        % Empty parallel conjunction should not be a common case.
+        modecheck_conj_list(ConjType, Goals0, Goals, !ModeInfo, !IO),
+        par_conj_list_to_goal(Goals, GoalInfo0, Goal - _GoalInfo),
         mode_checkpoint(exit, "par_conj", !ModeInfo, !IO)
     ).
 
@@ -1750,7 +1723,7 @@ handle_extra_goals(MainGoal, extra_goals(BeforeGoals0, AfterGoals0),
         % is not, the main unification will be delayed until after the
         % argument unifications, which turns them into assignments,
         % and we end up repeating the process forever.
-        mode_info_add_goals_live_vars(GoalList0, !ModeInfo),
+        mode_info_add_goals_live_vars(plain_conj, GoalList0, !ModeInfo),
         modecheck_conj_list_no_delay(GoalList0, GoalList, !ModeInfo, !IO),
         Goal = conj(plain_conj, GoalList),
         mode_info_set_checking_extra_goals(no, !ModeInfo),
@@ -1934,10 +1907,11 @@ modecheck_conj_list_no_delay([Goal0 | Goals0], [Goal | Goals], !ModeInfo,
 
 %-----------------------------------------------------------------------------%
 
-:- pred modecheck_conj_list(list(hlds_goal)::in, list(hlds_goal)::out,
+:- pred modecheck_conj_list(conj_type::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
     mode_info::in, mode_info::out, io::di, io::uo) is det.
 
-modecheck_conj_list(Goals0, Goals, !ModeInfo, !IO) :-
+modecheck_conj_list(ConjType, Goals0, Goals, !ModeInfo, !IO) :-
     mode_info_get_errors(!.ModeInfo, OldErrors),
     mode_info_set_errors([], !ModeInfo),
 
@@ -1948,14 +1922,14 @@ modecheck_conj_list(Goals0, Goals, !ModeInfo, !IO) :-
     mode_info_set_delay_info(DelayInfo1, !ModeInfo),
 
     mode_info_get_live_vars(!.ModeInfo, LiveVars1),
-    mode_info_add_goals_live_vars(Goals0, !ModeInfo),
+    mode_info_add_goals_live_vars(ConjType, Goals0, !ModeInfo),
 
         % Try to schedule goals without inserting any solver
         % initialisation calls by setting the mode_info flag
         % may_initialise_solver_vars to no.
     mode_info_set_may_initialise_solver_vars(no, !ModeInfo),
 
-    modecheck_conj_list_2(Goals0, Goals1,
+    modecheck_conj_list_2(ConjType, Goals0, Goals1,
         [], RevImpurityErrors0, !ModeInfo, !IO),
 
     mode_info_get_delay_info(!.ModeInfo, DelayInfo2),
@@ -1964,8 +1938,9 @@ modecheck_conj_list(Goals0, Goals, !ModeInfo, !IO) :-
 
         % Otherwise try scheduling by inserting solver
         % initialisation calls where necessary.
-    modecheck_delayed_solver_goals(Goals2, DelayedGoals0, DelayedGoals,
-        RevImpurityErrors0, RevImpurityErrors, !ModeInfo, !IO),
+    modecheck_delayed_solver_goals(ConjType, Goals2,
+        DelayedGoals0, DelayedGoals, RevImpurityErrors0, RevImpurityErrors,
+        !ModeInfo, !IO),
 
     Goals = Goals1 ++ Goals2,
 
@@ -2004,8 +1979,8 @@ modecheck_conj_list(Goals0, Goals, !ModeInfo, !IO) :-
         % Restore the value of the may_initialise_solver_vars flag.
     mode_info_set_may_initialise_solver_vars(MayInitEntryValue, !ModeInfo).
 
-mode_info_add_goals_live_vars([], !ModeInfo).
-mode_info_add_goals_live_vars([Goal | Goals], !ModeInfo) :-
+mode_info_add_goals_live_vars(_ConjType, [], !ModeInfo).
+mode_info_add_goals_live_vars(ConjType, [Goal | Goals], !ModeInfo) :-
     % We add the live vars for the goals in the goal list
     % in reverse order, because this ensures that in the
     % common case (where there is no delaying), when we come
@@ -2013,13 +1988,13 @@ mode_info_add_goals_live_vars([Goal | Goals], !ModeInfo) :-
     % they will have been added last and will thus be
     % at the start of the list of live vars sets, which
     % makes them cheaper to remove.
-    mode_info_add_goals_live_vars(Goals, !ModeInfo),
+    mode_info_add_goals_live_vars(ConjType, Goals, !ModeInfo),
     (
         % Recurse into conjunctions, in case there are any conjunctions
         % that have not been flattened.
-        Goal = conj(plain_conj, ConjGoals) - _
+        Goal = conj(ConjType, ConjGoals) - _
     ->
-        mode_info_add_goals_live_vars(ConjGoals, !ModeInfo)
+        mode_info_add_goals_live_vars(ConjType, ConjGoals, !ModeInfo)
     ;
         goal_get_nonlocals(Goal, NonLocals),
         mode_info_add_live_vars(NonLocals, !ModeInfo)
@@ -2041,28 +2016,32 @@ mode_info_remove_goals_live_vars([Goal | Goals], !ModeInfo) :-
 
 :- type impurity_errors == list(mode_error_info).
 
-    % Flatten conjunctions as we go.  Call modecheck_conj_list_3 to do
-    % the actual scheduling.
+    % Flatten conjunctions as we go, as long as they are of the same type.
+    % Call modecheck_conj_list_3 to do the actual scheduling.
     %
-:- pred modecheck_conj_list_2(list(hlds_goal)::in, list(hlds_goal)::out,
+:- pred modecheck_conj_list_2(conj_type::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
     impurity_errors::in, impurity_errors::out,
     mode_info::in, mode_info::out, io::di, io::uo) is det.
 
-modecheck_conj_list_2([], [], !ImpurityErrors, !ModeInfo, !IO).
-modecheck_conj_list_2([Goal0 | Goals0], Goals, !ImpurityErrors, !ModeInfo,
-        !IO) :-
+modecheck_conj_list_2(_ConjType, [], [], !ImpurityErrors, !ModeInfo, !IO).
+modecheck_conj_list_2(ConjType, [Goal0 | Goals0], Goals, !ImpurityErrors,
+        !ModeInfo, !IO) :-
     (
-        Goal0 = conj(plain_conj, ConjGoals) - _
+        Goal0 = conj(ConjType, ConjGoals) - _,
+        ConjType = plain_conj
     ->
         list.append(ConjGoals, Goals0, Goals1),
-        modecheck_conj_list_2(Goals1, Goals, !ImpurityErrors, !ModeInfo, !IO)
+        modecheck_conj_list_2(ConjType, Goals1, Goals, !ImpurityErrors,
+            !ModeInfo, !IO)
     ;
-        modecheck_conj_list_3(Goal0, Goals0, Goals, !ImpurityErrors,
+        modecheck_conj_list_3(ConjType, Goal0, Goals0, Goals, !ImpurityErrors,
             !ModeInfo, !IO)
     ).
 
-:- pred modecheck_conj_list_3(hlds_goal::in, list(hlds_goal)::in,
-    list(hlds_goal)::out, impurity_errors::in, impurity_errors::out,
+:- pred modecheck_conj_list_3(conj_type::in, hlds_goal::in,
+    list(hlds_goal)::in, list(hlds_goal)::out,
+    impurity_errors::in, impurity_errors::out,
     mode_info::in, mode_info::out, io::di, io::uo) is det.
 
     % Schedule a conjunction. If it is empty, then there is nothing to do.
@@ -2071,7 +2050,8 @@ modecheck_conj_list_2([Goal0 | Goals0], Goals, !ImpurityErrors, !ModeInfo,
     % (if any), and if not, we delay the goal. Then we continue attempting
     % to schedule all the rest of the goals.
     %
-modecheck_conj_list_3(Goal0, Goals0, Goals, !ImpurityErrors, !ModeInfo, !IO) :-
+modecheck_conj_list_3(ConjType, Goal0, Goals0, Goals, !ImpurityErrors,
+        !ModeInfo, !IO) :-
     Goal0 = _GoalExpr - GoalInfo0,
     ( goal_info_is_impure(GoalInfo0) ->
         Impure = yes,
@@ -2146,7 +2126,8 @@ modecheck_conj_list_3(Goal0, Goals0, Goals, !ImpurityErrors, !ModeInfo, !IO) :-
         Goals2  = []
     ;
         % The remaining goals may still need to be flattened.
-        modecheck_conj_list_2(Goals1, Goals2, !ImpurityErrors, !ModeInfo, !IO)
+        modecheck_conj_list_2(ConjType, Goals1, Goals2, !ImpurityErrors,
+            !ModeInfo, !IO)
     ),
     (
         Errors = [_ | _],
@@ -2158,7 +2139,7 @@ modecheck_conj_list_3(Goal0, Goals0, Goals, !ImpurityErrors, !ModeInfo, !IO) :-
         % in the list of successfully scheduled goals.
         % We flatten out conjunctions if we can. They can arise
         % when Goal0 was a scope(from_ground_term, _) goal.
-        ( Goal = conj(plain_conj, SubGoals) - _ ->
+        ( Goal = conj(ConjType, SubGoals) - _ ->
             Goals = ScheduledSolverGoals ++ SubGoals ++ Goals2
         ;
             Goals = ScheduledSolverGoals ++ [Goal | Goals2]
@@ -2170,25 +2151,25 @@ modecheck_conj_list_3(Goal0, Goals0, Goals, !ImpurityErrors, !ModeInfo, !IO) :-
     % from inst free to inst any. This predicate attempts to schedule
     % such goals.
     %
-:- pred modecheck_delayed_solver_goals(list(hlds_goal)::out,
+:- pred modecheck_delayed_solver_goals(conj_type::in, list(hlds_goal)::out,
     list(delayed_goal)::in, list(delayed_goal)::out,
     impurity_errors::in, impurity_errors::out,
     mode_info::in, mode_info::out, io::di, io::uo) is det.
 
-modecheck_delayed_solver_goals(Goals, DelayedGoals0, DelayedGoals,
+modecheck_delayed_solver_goals(ConjType, Goals, DelayedGoals0, DelayedGoals,
         !ImpurityErrors, !ModeInfo, !IO) :-
 
         % Try to handle any unscheduled goals by inserting solver
         % initialisation calls, aiming for a deterministic schedule.
         %
-    modecheck_delayed_goals_try_det(DelayedGoals0, DelayedGoals1, Goals0,
-        !ImpurityErrors, !ModeInfo, !IO),
+    modecheck_delayed_goals_try_det(ConjType, DelayedGoals0, DelayedGoals1,
+        Goals0, !ImpurityErrors, !ModeInfo, !IO),
 
         % Try to handle any unscheduled goals by inserting solver
         % initialisation calls, aiming for *any* workable schedule.
         %
-    modecheck_delayed_goals_eager(DelayedGoals1, DelayedGoals, Goals1,
-        !ImpurityErrors, !ModeInfo, !IO),
+    modecheck_delayed_goals_eager(ConjType, DelayedGoals1, DelayedGoals,
+        Goals1, !ImpurityErrors, !ModeInfo, !IO),
     Goals = Goals0 ++ Goals1.
 
     % We may still have some unscheduled goals.  This may be because some
@@ -2219,12 +2200,12 @@ modecheck_delayed_solver_goals(Goals, DelayedGoals0, DelayedGoals,
     % XXX At some point we should extend this analysis to handle
     % disjunction, if-then-else goals, and negation.
     %
-:- pred modecheck_delayed_goals_try_det(list(delayed_goal)::in,
+:- pred modecheck_delayed_goals_try_det(conj_type::in, list(delayed_goal)::in,
     list(delayed_goal)::out, list(hlds_goal)::out,
     impurity_errors::in, impurity_errors::out,
     mode_info::in, mode_info::out, io::di, io::uo) is det.
 
-modecheck_delayed_goals_try_det(DelayedGoals0, DelayedGoals, Goals,
+modecheck_delayed_goals_try_det(ConjType, DelayedGoals0, DelayedGoals, Goals,
         !ImpurityErrors, !ModeInfo, !IO) :-
     (
         % There are no unscheduled goals, so we don't need to do anything.
@@ -2279,10 +2260,10 @@ modecheck_delayed_goals_try_det(DelayedGoals0, DelayedGoals, Goals,
             delay_info_enter_conj(DelayInfo0, DelayInfo1),
             mode_info_set_delay_info(DelayInfo1, !ModeInfo),
 
-            mode_info_add_goals_live_vars(InitGoals, !ModeInfo),
+            mode_info_add_goals_live_vars(ConjType, InitGoals, !ModeInfo),
 
-            modecheck_conj_list_2(Goals1, Goals, !ImpurityErrors, !ModeInfo,
-                !IO),
+            modecheck_conj_list_2(ConjType, Goals1, Goals, !ImpurityErrors,
+                !ModeInfo, !IO),
 
             mode_info_get_delay_info(!.ModeInfo, DelayInfo2),
             delay_info_leave_conj(DelayInfo2, DelayedGoals, DelayInfo3),
@@ -2539,12 +2520,12 @@ candidate_init_vars_call(ModeInfo, [Arg | Args], [Mode | Modes],
     % It is "eager" in the sense that as soon as it encounters a sub-goal
     % that may be unblocked this way it tries to do so.
     %
-:- pred modecheck_delayed_goals_eager(list(delayed_goal)::in,
+:- pred modecheck_delayed_goals_eager(conj_type::in, list(delayed_goal)::in,
     list(delayed_goal)::out, list(hlds_goal)::out,
     impurity_errors::in, impurity_errors::out,
     mode_info::in, mode_info::out, io::di, io::uo) is det.
 
-modecheck_delayed_goals_eager(DelayedGoals0, DelayedGoals, Goals,
+modecheck_delayed_goals_eager(ConjType, DelayedGoals0, DelayedGoals, Goals,
         !ImpurityErrors, !ModeInfo, !IO) :-
     (
             % There are no unscheduled goals, so we don't need to do anything.
@@ -2565,7 +2546,7 @@ modecheck_delayed_goals_eager(DelayedGoals0, DelayedGoals, Goals,
         mode_info_set_delay_info(DelayInfo1, !ModeInfo),
 
         mode_info_set_may_initialise_solver_vars(yes, !ModeInfo),
-        modecheck_conj_list_2(Goals0, Goals1, !ImpurityErrors,
+        modecheck_conj_list_2(ConjType, Goals0, Goals1, !ImpurityErrors,
             !ModeInfo, !IO),
         mode_info_set_may_initialise_solver_vars(no, !ModeInfo),
 
@@ -2581,8 +2562,9 @@ modecheck_delayed_goals_eager(DelayedGoals0, DelayedGoals, Goals,
                 % We scheduled some goals. Keep going until we either
                 % flounder or succeed.
                 %
-            modecheck_delayed_goals_eager(DelayedGoals1, DelayedGoals,
-                Goals2, !ImpurityErrors, !ModeInfo, !IO),
+            modecheck_delayed_goals_eager(ConjType,
+                DelayedGoals1, DelayedGoals, Goals2,
+                !ImpurityErrors, !ModeInfo, !IO),
             Goals = Goals1 ++ Goals2
         ;
             DelayedGoals = DelayedGoals1,
@@ -2619,7 +2601,7 @@ check_for_impurity_error(Goal, Goals, !ImpurityErrors, !ModeInfo, !IO) :-
     clauses_info_get_headvars(ClausesInfo, HeadVars),
     filter_headvar_unification_goals(HeadVars, DelayedGoals0,
         HeadVarUnificationGoals, NonHeadVarUnificationGoals0),
-    modecheck_delayed_solver_goals(Goals,
+    modecheck_delayed_solver_goals(plain_conj, Goals,
         NonHeadVarUnificationGoals0, NonHeadVarUnificationGoals,
         !ImpurityErrors, !ModeInfo, !IO),
     mode_info_get_delay_info(!.ModeInfo, DelayInfo2),
@@ -2753,47 +2735,6 @@ modecheck_functor_test(Var, ConsId, !ModeInfo) :-
     list.duplicate(AdjustedArity, free, ArgInsts),
     modecheck_set_var_inst(Var, bound(unique, [functor(ConsId, ArgInsts)]),
         no, !ModeInfo).
-
-%-----------------------------------------------------------------------------%
-
-:- pred modecheck_par_conj_list(list(hlds_goal)::in, list(hlds_goal)::out,
-    set(prog_var)::in, list(pair(instmap, set(prog_var)))::out,
-    mode_info::in, mode_info::out, io::di, io::uo) is det.
-
-modecheck_par_conj_list([], [], _NonLocals, [], !ModeInfo, !IO).
-modecheck_par_conj_list([Goal0 | Goals0], [Goal | Goals], NonLocals,
-        [InstMap - GoalNonLocals | InstMaps], !ModeInfo, !IO) :-
-    mode_info_get_instmap(!.ModeInfo, InstMap0),
-    Goal0 = _ - GoalInfo,
-    goal_info_get_nonlocals(GoalInfo, GoalNonLocals),
-    mode_info_get_parallel_vars(!.ModeInfo, PVars0),
-    set.init(Bound0),
-    mode_info_set_parallel_vars([NonLocals - Bound0 | PVars0], !ModeInfo),
-
-    modecheck_goal(Goal0, Goal, !ModeInfo, !IO),
-    mode_info_get_parallel_vars(!.ModeInfo, PVars1),
-    (
-        PVars1 = [_ - Bound1 | PVars2],
-        (
-            PVars2 = [OuterNonLocals - OuterBound0 | PVars3],
-            set.intersect(OuterNonLocals, Bound1, Bound),
-            set.union(OuterBound0, Bound, OuterBound),
-            PVars = [OuterNonLocals - OuterBound | PVars3],
-            mode_info_set_parallel_vars(PVars, !ModeInfo)
-        ;
-            PVars2 = [],
-            mode_info_set_parallel_vars(PVars2, !ModeInfo)
-        )
-    ;
-        PVars1 = [],
-        unexpected(this_file, "modecheck_par_conj_list: lost parallel vars")
-    ),
-    mode_info_get_instmap(!.ModeInfo, InstMap),
-    mode_info_set_instmap(InstMap0, !ModeInfo),
-    mode_info_lock_vars(par_conj, Bound1, !ModeInfo),
-    modecheck_par_conj_list(Goals0, Goals, NonLocals, InstMaps, !ModeInfo,
-        !IO),
-    mode_info_unlock_vars(par_conj, Bound1, !ModeInfo).
 
 %-----------------------------------------------------------------------------%
 

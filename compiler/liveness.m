@@ -995,14 +995,7 @@ delay_death_goal_expr(!GoalExpr, !GoalInfo, !BornVars, !DelayedDead, VarSet) :-
         !.GoalExpr = foreign_proc(_, _, _, _, _, _)
     ;
         !.GoalExpr = conj(ConjType, Goals0),
-        (
-            ConjType = plain_conj,
-            delay_death_conj(Goals0, Goals, !BornVars, !DelayedDead, VarSet)
-        ;
-            ConjType = parallel_conj,
-            delay_death_par_conj(Goals0, Goals, !BornVars, !DelayedDead,
-                VarSet)
-        ),
+        delay_death_conj(Goals0, Goals, !BornVars, !DelayedDead, VarSet),
         !:GoalExpr = conj(ConjType, Goals)
     ;
         !.GoalExpr = disj(Goals0),
@@ -1072,20 +1065,6 @@ delay_death_conj([Goal0 | Goals0], [Goal | Goals], !BornVars, !DelayedDead,
         VarSet) :-
     delay_death_goal(Goal0, Goal, !BornVars, !DelayedDead, VarSet),
     delay_death_conj(Goals0, Goals, !BornVars, !DelayedDead, VarSet).
-
-:- pred delay_death_par_conj(list(hlds_goal)::in, list(hlds_goal)::out,
-    set(prog_var)::in, set(prog_var)::out,
-    set(prog_var)::in, set(prog_var)::out, prog_varset::in) is det.
-
-delay_death_par_conj([], [], !BornVars, !DelayedDead, _).
-delay_death_par_conj([Goal0 | Goals0], [Goal | Goals],
-        BornVars0, BornVars, DelayedDead0, DelayedDead, VarSet) :-
-    delay_death_goal(Goal0, Goal, BornVars0, BornVarsGoal,
-        DelayedDead0, DelayedDeadGoal, VarSet),
-    delay_death_par_conj(Goals0, Goals, BornVars0, BornVarsGoals,
-        DelayedDead0, DelayedDeadGoals, VarSet),
-    set.union(BornVarsGoal, BornVarsGoals, BornVars),
-    set.union(DelayedDeadGoal, DelayedDeadGoals, DelayedDead).
 
 :- pred delay_death_disj(list(hlds_goal)::in,
     assoc_list(hlds_goal, set(prog_var))::out,
@@ -1481,8 +1460,8 @@ detect_resume_points_in_cases([case(ConsId, Goal0) | Cases0],
 
 detect_resume_points_in_par_conj([], [], !Liveness, _, _).
 detect_resume_points_in_par_conj([Goal0 | Goals0], [Goal | Goals],
-        Liveness0, LivenessFirst, LiveInfo, ResumeVars0) :-
-    detect_resume_points_in_goal(Goal0, Goal, Liveness0, LivenessFirst,
+        Liveness0, Liveness, LiveInfo, ResumeVars0) :-
+    detect_resume_points_in_goal(Goal0, Goal, Liveness0, Liveness,
         LiveInfo, ResumeVars0),
     detect_resume_points_in_par_conj(Goals0, Goals,
         Liveness0, _LivenessRest, LiveInfo, ResumeVars0).

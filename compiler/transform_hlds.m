@@ -83,6 +83,7 @@
 :- include_module size_prof.
 :- include_module tupling.
 :- include_module untupling.
+:- include_module dep_par_conj.
 
 :- include_module mmc_analysis.
 

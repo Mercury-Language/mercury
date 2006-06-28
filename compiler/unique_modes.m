@@ -258,35 +258,19 @@ make_var_mostly_uniq(Var, !ModeInfo) :-
     hlds_goal_expr::out, mode_info::in, mode_info::out,
     io::di, io::uo) is det.
 
-check_goal_2(conj(ConjType, List0), GoalInfo0, conj(ConjType, List),
+check_goal_2(conj(ConjType, List0), _GoalInfo0, conj(ConjType, List),
         !ModeInfo, !IO) :-
+    mode_checkpoint(enter, "*conj", !ModeInfo, !IO),
     (
-        ConjType = plain_conj,
-        mode_checkpoint(enter, "conj", !ModeInfo, !IO),
-        (
-            List0 = [],
-            % For efficiency, optimize common case.
-            List = []
-        ;
-            List0 = [_ | _],
-            mode_info_add_goals_live_vars(List0, !ModeInfo),
-            check_conj(List0, List, !ModeInfo, !IO)
-        ),
-        mode_checkpoint(exit, "conj", !ModeInfo, !IO)
+        List0 = [],
+        % For efficiency, optimize common case.
+        List = []
     ;
-        ConjType = parallel_conj,
-        mode_checkpoint(enter, "par_conj", !ModeInfo, !IO),
-        goal_info_get_nonlocals(GoalInfo0, NonLocals),
-        mode_info_add_live_vars(NonLocals, !ModeInfo),
-        % Build a multiset of the nonlocals of the conjuncts so that we can
-        % figure out which variables must be made shared at the start of the
-        % parallel conjunction.
-        make_par_conj_nonlocal_multiset(List0, NonLocalsBag),
-        check_par_conj(List0, NonLocalsBag, List, InstMapList, !ModeInfo, !IO),
-        instmap_unify(NonLocals, InstMapList, !ModeInfo),
-        mode_info_remove_live_vars(NonLocals, !ModeInfo),
-        mode_checkpoint(exit, "par_conj", !ModeInfo, !IO)
-    ).
+        List0 = [_ | _],
+        mode_info_add_goals_live_vars(ConjType, List0, !ModeInfo),
+        check_conj(ConjType, List0, List, !ModeInfo, !IO)
+    ),
+    mode_checkpoint(exit, "*conj", !ModeInfo, !IO).
 
 check_goal_2(disj(List0), GoalInfo0, disj(List), !ModeInfo, !IO) :-
     mode_checkpoint(enter, "disj", !ModeInfo, !IO),
@@ -642,27 +626,28 @@ check_call_modes(ArgVars, ProcArgModes, ArgOffset, Determinism, NeverSucceeds,
 
 %-----------------------------------------------------------------------------%
 
-:- pred check_conj(list(hlds_goal)::in, list(hlds_goal)::out,
+:- pred check_conj(conj_type::in, list(hlds_goal)::in, list(hlds_goal)::out,
     mode_info::in, mode_info::out, io::di, io::uo) is det.
 
     % Just process each conjunct in turn.  Note that we don't do any
     % reordering of conjuncts here, although we do flatten conjunctions.
     %
-check_conj([], [], !ModeInfo, !IO).
-check_conj([Goal0 | Goals0], Goals, !ModeInfo, !IO) :-
+check_conj(_ConjType, [], [], !ModeInfo, !IO).
+check_conj(ConjType, [Goal0 | Goals0], Goals, !ModeInfo, !IO) :-
     (
-        Goal0 = conj(plain_conj, ConjGoals) - _
+        Goal0 = conj(ConjType, ConjGoals) - _
     ->
         list.append(ConjGoals, Goals0, Goals1),
-        check_conj(Goals1, Goals, !ModeInfo, !IO)
+        check_conj(ConjType, Goals1, Goals, !ModeInfo, !IO)
     ;
-        check_conj_2(Goal0, Goals0, Goals, !ModeInfo, !IO)
+        check_conj_2(ConjType, Goal0, Goals0, Goals, !ModeInfo, !IO)
     ).
 
-:- pred check_conj_2(hlds_goal::in, list(hlds_goal)::in, list(hlds_goal)::out,
+:- pred check_conj_2(conj_type::in,
+    hlds_goal::in, list(hlds_goal)::in, list(hlds_goal)::out,
     mode_info::in, mode_info::out, io::di, io::uo) is det.
 
-check_conj_2(Goal0, Goals0, [Goal | Goals], !ModeInfo, !IO) :-
+check_conj_2(ConjType, Goal0, Goals0, [Goal | Goals], !ModeInfo, !IO) :-
     goal_get_nonlocals(Goal0, NonLocals),
     mode_info_remove_live_vars(NonLocals, !ModeInfo),
     check_goal(Goal0, Goal, !ModeInfo, !IO),
@@ -674,7 +659,7 @@ check_conj_2(Goal0, Goals0, [Goal | Goals], !ModeInfo, !IO) :-
         mode_info_remove_goals_live_vars(Goals0, !ModeInfo),
         Goals = []
     ;
-        check_conj(Goals0, Goals, !ModeInfo, !IO)
+        check_conj(ConjType, Goals0, Goals, !ModeInfo, !IO)
     ).
 
 %-----------------------------------------------------------------------------%

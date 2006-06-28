@@ -2754,6 +2754,7 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
     mercury_table_builtin_module(MercuryTableBuiltin),
     mercury_profiling_builtin_module(MercuryProfilingBuiltin),
     mercury_term_size_prof_builtin_module(MercuryTermSizeProfBuiltin),
+    mercury_par_builtin_module(MercuryParBuiltin),
     !:ImportDeps = [MercuryPublicBuiltin | !.ImportDeps],
     !:UseDeps = [MercuryPrivateBuiltin | !.UseDeps],
     (
@@ -2791,6 +2792,18 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
         )
     ->
         !:UseDeps = [MercuryTermSizeProfBuiltin | !.UseDeps]
+    ;
+        true
+    ),
+    globals.get_target(Globals, Target),
+    globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
+    globals.lookup_bool_option(Globals, parallel, Parallel),
+    (
+        Target = target_c,
+        HighLevelCode = no,
+        Parallel = yes
+    ->
+        !:UseDeps = [MercuryParBuiltin | !.UseDeps]
     ;
         true
     ).

@@ -1008,18 +1008,10 @@ recompute_instmap_delta_2(Atomic, switch(Var, Det, Cases0), GoalInfo,
             VarTypes, InstMap, NonLocals, InstMapDelta, !RI)
     ).
 
-recompute_instmap_delta_2(Atomic, conj(ConjType, Goals0), GoalInfo,
+recompute_instmap_delta_2(Atomic, conj(ConjType, Goals0), _GoalInfo,
         conj(ConjType, Goals), VarTypes, InstMap, InstMapDelta, !RI) :-
-    (
-        ConjType = plain_conj,
-        recompute_instmap_delta_conj(Atomic, Goals0, Goals,
-            VarTypes, InstMap, InstMapDelta, !RI)
-    ;
-        ConjType = parallel_conj,
-        goal_info_get_nonlocals(GoalInfo, NonLocals),
-        recompute_instmap_delta_par_conj(Atomic, Goals0, Goals,
-            VarTypes, InstMap, NonLocals, InstMapDelta, !RI)
-    ).
+    recompute_instmap_delta_conj(Atomic, Goals0, Goals,
+        VarTypes, InstMap, InstMapDelta, !RI).
 
 recompute_instmap_delta_2(Atomic, disj(Goals0), GoalInfo, disj(Goals),
         VarTypes, InstMap, InstMapDelta, !RI) :-
@@ -1142,28 +1134,6 @@ recompute_instmap_delta_conj(Atomic, [Goal0 | Goals0], [Goal | Goals],
         InstMapDelta1, !RI),
     instmap_delta_apply_instmap_delta(InstMapDelta0, InstMapDelta1,
         large_overlay, InstMapDelta).
-
-%-----------------------------------------------------------------------------%
-
-:- pred recompute_instmap_delta_par_conj(bool::in, list(hlds_goal)::in,
-    list(hlds_goal)::out, vartypes::in, instmap::in, set(prog_var)::in,
-    instmap_delta::out, recompute_info::in, recompute_info::out) is det.
-
-recompute_instmap_delta_par_conj(_, [], [], _, _, _, InstMapDelta, !RI) :-
-    instmap_delta_init_unreachable(InstMapDelta).
-recompute_instmap_delta_par_conj(Atomic, [Goal0], [Goal],
-        VarTypes, InstMap, _, InstMapDelta, !RI) :-
-    recompute_instmap_delta_1(Atomic, Goal0, Goal, VarTypes, InstMap,
-        InstMapDelta, !RI).
-recompute_instmap_delta_par_conj(Atomic, [Goal0 | Goals0], [Goal | Goals],
-        VarTypes, InstMap, NonLocals, InstMapDelta, !RI) :-
-    Goals0 = [_ | _],
-    recompute_instmap_delta_1(Atomic, Goal0, Goal,
-        VarTypes, InstMap, InstMapDelta0, !RI),
-    recompute_instmap_delta_par_conj(Atomic, Goals0, Goals,
-        VarTypes, InstMap, NonLocals, InstMapDelta1, !RI),
-    update_module_info(unify_instmap_delta(InstMap, NonLocals,
-        InstMapDelta0, InstMapDelta1), InstMapDelta, !RI).
 
 %-----------------------------------------------------------------------------%
 

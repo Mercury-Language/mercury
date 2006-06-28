@@ -204,6 +204,12 @@
 :- pred mercury_term_size_prof_builtin_module(sym_name::out) is det.
 :- func mercury_term_size_prof_builtin_module = sym_name.
 
+    % Returns the name of the module containing the builtins for parallelism.
+    % This module is automatically imported iff building in a .par grade.
+    %
+:- pred mercury_par_builtin_module(sym_name::out) is det.
+:- func mercury_par_builtin_module = sym_name.
+
     % Returns the sym_name of the module with the given name in the
     % Mercury standard library.
     %
@@ -299,6 +305,8 @@ mercury_profiling_builtin_module = unqualified("profiling_builtin").
 mercury_profiling_builtin_module(mercury_profiling_builtin_module).
 mercury_term_size_prof_builtin_module = unqualified("term_size_prof_builtin").
 mercury_term_size_prof_builtin_module(mercury_term_size_prof_builtin_module).
+mercury_par_builtin_module = unqualified("par_builtin").
+mercury_par_builtin_module(mercury_par_builtin_module).
 mercury_std_lib_module_name(Name) = unqualified(Name).
 mercury_std_lib_module_name(Name, unqualified(Name)).
 
@@ -308,10 +316,12 @@ any_mercury_builtin_module(Module) :-
     ; mercury_table_builtin_module(Module)
     ; mercury_profiling_builtin_module(Module)
     ; mercury_term_size_prof_builtin_module(Module)
+    ; mercury_par_builtin_module(Module)
     ).
 
 non_traced_mercury_builtin_module(Module) :-
     ( mercury_table_builtin_module(Module)
     ; mercury_profiling_builtin_module(Module)
     ; mercury_term_size_prof_builtin_module(Module)
+    ; mercury_par_builtin_module(Module)
     ).

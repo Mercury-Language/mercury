@@ -2010,7 +2010,7 @@ conjoin_goal_and_rev_goal_list(Goal, RevGoals0, RevGoals) :-
 simplify_par_conj([], [], _, !Info, !IO).
 simplify_par_conj([Goal0 |Goals0], [Goal | Goals], Info0, !Info, !IO) :-
     simplify_goal(Goal0, Goal, !Info, !IO),
-    simplify_info_post_branch_update(Info0, !Info),
+    simplify_info_update_instmap(Goal, !Info),
     simplify_par_conj(Goals0, Goals, Info0, !Info, !IO).
 
 %-----------------------------------------------------------------------------%

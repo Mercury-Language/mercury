@@ -31,6 +31,7 @@ pid_t
 __GC
 _GC_H
 HIDE_POINTER
+LINUX_THREADS
 REVEAL_POINTER
 #-----------------------------------------------------------------------------#
 # This is defined by mps_gc/code/mercury_mps.h,
@@ -54,4 +55,8 @@ _GNU_SOURCE
 __EXTENSIONS__
 __OPTIMIZE__
 __STRICT_ANSI__
+#-----------------------------------------------------------------------------#
+# These are defined in when threads are enabled.
+_REENTRANT
+_THREAD_SAFE
 #-----------------------------------------------------------------------------#

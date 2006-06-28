@@ -334,6 +334,13 @@
     % implemented by foreign language code in the standard library.
     % For some, but not all, the compiler generates code inline.
     %
+    % If you are adding a predicate to no_type_info_builtin, remember that
+    % this will only affect code built by a compiler linked with the new
+    % mdbcomp library.  e.g. if you add a predicate P to no_type_info_builtin,
+    % the compiler building the stage 1 library won't yet know about P.
+    % The stage 1 compiler _will_ know about P, so stage 2 is when P will
+    % be compiled differently.
+    %
 :- pred no_type_info_builtin(module_name::in, string::in, int::in) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -542,13 +549,17 @@ no_type_info_builtin(ModuleName, PredName, Arity) :-
     ;
         ModuleNameType = term_size_prof_builtin,
         mercury_term_size_prof_builtin_module(ModuleName)
+    ;
+        ModuleNameType = par_builtin,
+        mercury_par_builtin_module(ModuleName)
     ).
 
 :- type builtin_mod
     --->    builtin
     ;       private_builtin
     ;       table_builtin
-    ;       term_size_prof_builtin.
+    ;       term_size_prof_builtin
+    ;       par_builtin.
 
 :- pred no_type_info_builtin_2(builtin_mod::out, string::in, int::in)
     is semidet.
@@ -569,6 +580,9 @@ no_type_info_builtin_2(table_builtin, "table_lookup_insert_enum", 4).
 no_type_info_builtin_2(table_builtin, "table_lookup_insert_typeinfo", 3).
 no_type_info_builtin_2(table_builtin, "table_lookup_insert_typeclassinfo", 3).
 no_type_info_builtin_2(term_size_prof_builtin, "increment_size", 2).
+no_type_info_builtin_2(par_builtin, "new_future", 1).
+no_type_info_builtin_2(par_builtin, "wait", 2).
+no_type_info_builtin_2(par_builtin, "signal", 2).
 
     % True iff the given predicate is defined with an :- external
     % declaration.  Note that the arity includes the hidden type info

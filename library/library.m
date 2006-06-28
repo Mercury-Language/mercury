@@ -135,6 +135,7 @@
 
 % The modules intended for Mercury system implementors.
 :- import_module mutvar.
+:- import_module par_builtin.
 :- import_module private_builtin.
 :- import_module profiling_builtin.
 :- import_module rtti_implementation.
@@ -229,6 +230,7 @@ mercury_std_library_module("pair").
 mercury_std_library_module("parser").
 mercury_std_library_module("pprint").
 mercury_std_library_module("pqueue").
+mercury_std_library_module("par_builtin").
 mercury_std_library_module("private_builtin").
 mercury_std_library_module("profiling_builtin").
 mercury_std_library_module("prolog").

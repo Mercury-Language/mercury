@@ -259,6 +259,14 @@ find_outputs([Var | Vars],  Initial, Final, ModuleInfo, !Outputs) :-
     ),
     find_outputs(Vars, Initial, Final, ModuleInfo, !Outputs).
 
+    % XXX at the moment we are copying back too much.  Conjuncts which
+    % are only consumers of variable X should not be copying it back.
+    %
+    % Also, variables which are shared (i.e. we allocate a future for
+    % it) do not need copying back if we take the address of the
+    % shared variable and store it in the future, then write
+    % to that address on `signal' or the last `wait'.
+    %
 :- pred copy_outputs(code_info::in, list(prog_var)::in, lval::in,
     code_tree::out) is det.
 

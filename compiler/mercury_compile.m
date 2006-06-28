@@ -94,6 +94,7 @@
 :- import_module transform_hlds.ctgc.structure_reuse.analysis.
 :- import_module transform_hlds.ctgc.structure_sharing.
 :- import_module transform_hlds.ctgc.structure_sharing.analysis.
+:- import_module transform_hlds.dep_par_conj.
 :- import_module transform_hlds.size_prof.
 :- import_module ll_backend.deep_profiling.
 
@@ -2431,6 +2432,9 @@ middle_pass(ModuleName, !HLDS, !DumpInfo, !IO) :-
 
     maybe_structure_reuse_analysis(Verbose, Stats, !HLDS, !IO), 
     maybe_dump_hlds(!.HLDS, 212, "structure_reuse", !DumpInfo, !IO), 
+
+    maybe_dependent_par_conj(Verbose, Stats, !HLDS, !IO),
+    maybe_dump_hlds(!.HLDS, 214, "dependent_par_conj", !DumpInfo, !IO), 
     
     % If we are compiling in a deep profiling grade then now rerun simplify.
     % The reason for doing this now is that we want to take advantage of any
@@ -3687,6 +3691,20 @@ maybe_structure_sharing_analysis(Verbose, Stats, !HLDS, !IO) :-
     ;
         Sharing = no
     ).
+
+:- pred maybe_dependent_par_conj(bool::in, bool::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
+
+maybe_dependent_par_conj(Verbose, Stats, !HLDS, !IO) :- 
+    % XXX only do this if the module actually has parallel conjunctions
+    % This pass also converts dependent parallel conjunctions into
+    % plain conjunctions if we are not building in a parallel grade.
+    maybe_write_string(Verbose,
+        "% Dependent parallel conjunction transformation...\n", !IO), 
+    maybe_flush_output(Verbose, !IO), 
+    dependent_par_conj(!HLDS, !IO), 
+    maybe_write_string(Verbose, "% done.\n", !IO),
+    maybe_report_stats(Stats, !IO).
 
 :- pred maybe_structure_reuse_analysis(bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.

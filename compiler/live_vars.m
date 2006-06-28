@@ -149,7 +149,7 @@ resume_locs_include_stack(stack_and_orig, yes).
     % set of live variables, i.e. vars which have been referenced and may be
     % referenced again (during forward execution). `ResumeVars' is the set
     % of variables that may or may not be `live' during the current forward
-    % execution but will become live again on backtracking. `SaveInfo' is the
+    % execution but will become live again on backtracking. `StackAlloc' is the
     % interference graph, i.e. the set of sets of variables which need to be
     % on the stack at the same time.
     %
@@ -179,7 +179,7 @@ build_live_sets_in_goal_2(conj(ConjType, Goals0), conj(ConjType, Goals),
         NeedInParConj = need_in_par_conj(LiveSet),
         record_par_conj(NeedInParConj, GoalInfo0, GoalInfo, !StackAlloc),
         build_live_sets_in_par_conj(Goals0, Goals, ResumeVars0, AllocData,
-            !StackAlloc, !Liveness, !NondetLiveness)
+            !StackAlloc, !.Liveness, !Liveness, !NondetLiveness)
     ).
 
 build_live_sets_in_goal_2(disj(Goals0), disj(Goals), GoalInfo, GoalInfo,
@@ -423,17 +423,18 @@ build_live_sets_in_conj([Goal0 | Goals0], [Goal | Goals], ResumeVars0,
 
 :- pred build_live_sets_in_par_conj(list(hlds_goal)::in, list(hlds_goal)::out,
     set(prog_var)::in, alloc_data::in, T::in, T::out,
-    set(prog_var)::in, set(prog_var)::out,
+    set(prog_var)::in, set(prog_var)::in, set(prog_var)::out,
     set(prog_var)::in, set(prog_var)::out) is det <= stack_alloc_info(T).
 
 build_live_sets_in_par_conj([], [], _, _,
-        !StackAlloc, !Liveness, !NondetLiveness).
+        !StackAlloc, _Liveness0, !Liveness, !NondetLiveness).
 build_live_sets_in_par_conj([Goal0 | Goals0], [Goal | Goals], ResumeVars0,
-        AllocData, !StackAlloc, !Liveness, !NondetLiveness) :-
+        AllocData, !StackAlloc, Liveness0, !Liveness, !NondetLiveness) :-
     build_live_sets_in_goal(Goal0, Goal, ResumeVars0, AllocData,
-        !StackAlloc, !Liveness, !NondetLiveness),
+        !StackAlloc, Liveness0, Liveness1, !NondetLiveness),
+    set.union(Liveness1, !Liveness),
     build_live_sets_in_par_conj(Goals0, Goals, ResumeVars0, AllocData,
-        !StackAlloc, !Liveness, !NondetLiveness).
+        !StackAlloc, Liveness0, !Liveness, !NondetLiveness).
 
 %-----------------------------------------------------------------------------%
 

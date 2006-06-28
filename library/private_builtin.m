@@ -14,9 +14,10 @@
 % module. It is intended for builtins that are just implementation details,
 % such as procedures that the compiler generates implicit calls to when
 % implementing polymorphism, unification, compare/3, etc.
-% Note that the builtins used for tabling and deep profiling are in separate
-% modules (table_builtin.m and profiling_builtin.m).
-% 
+% Note that the builtins used for tabling, deep profiling and parallelism are
+% in separate modules (table_builtin.m, profiling_builtin.m and
+% par_builtin.m).
+
 % This module is a private part of the Mercury implementation; user modules
 % should never explicitly import this module. The interface for this module
 % does not get included in the Mercury library reference manual.

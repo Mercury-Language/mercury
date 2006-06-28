@@ -129,6 +129,7 @@
 **	MR_HAVE_IEEEFP_H	we have <ieeefp.h>
 **	MR_HAVE_DIRENT_H	we have <dirent.h>
 **	MR_HAVE_MALLOC_H	we have <malloc.h>
+**	MR_HAVE_SEMAPHORE_H	we have <semaphore.h>
 */
 #undef	MR_HAVE_SYS_SIGINFO_H
 #undef	MR_HAVE_SYS_SIGNAL_H
@@ -151,6 +152,7 @@
 #undef	MR_HAVE_IEEEFP_H
 #undef	MR_HAVE_DIRENT_H
 #undef	MR_HAVE_MALLOC_H
+#undef	MR_HAVE_SEMAPHORE_H
 
 /*
 ** MR_HAVE_POSIX_TIMES is defined if we have the POSIX
