@@ -249,6 +249,8 @@ library-menu.texi_pp: $(LIBRARY_DIR)/*.m
 				;;					\
 			$(LIBRARY_DIR)/profiling_builtin.m)		\
 				;;					\
+			$(LIBRARY_DIR)/par_builtin.m)			\
+				;;					\
 			$(LIBRARY_DIR)/rtti_implementation.m)		\
 				;;					\
 			$(LIBRARY_DIR)/table_builtin.m)			\
@@ -278,6 +280,8 @@ library-chapters.texi_pp: $(LIBRARY_DIR)/[a-z]*.m
 			$(LIBRARY_DIR)/private_builtin.m)		\
 				;;					\
 			$(LIBRARY_DIR)/profiling_builtin.m)		\
+				;;					\
+			$(LIBRARY_DIR)/par_builtin.m)			\
 				;;					\
 			$(LIBRARY_DIR)/rtti_implementation.m)		\
 				;;					\
