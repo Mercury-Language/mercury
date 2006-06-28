@@ -18,8 +18,21 @@
 :- pred main(io::di, io::uo) is cc_multi.
 
 :- implementation.
-:- import_module exception, int, list, map, ops, parser, require.
-:- import_module std_util, string, term, term_io, varset.
+
+:- import_module exception.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module maybe.
+:- import_module ops.
+:- import_module pair.
+:- import_module parser.
+:- import_module require.
+:- import_module string.
+:- import_module term.
+:- import_module term_io.
+:- import_module univ.
+:- import_module varset.
 
 :- type calc_info == map(string, int).
 

@@ -2,14 +2,15 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
+% 
 % File: eliza.m.
 % Main author: bromage.
-
+% 
 % This source file is hereby placed in the public domain.  -bromage.
-
+% 
 % Eliza, the famous psychotherapist.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module eliza.
@@ -23,13 +24,21 @@
 
 :- implementation.
 
-:- import_module bool, char, list, string, std_util, map, assoc_list, require.
+:- import_module assoc_list.
+:- import_module bool.
+:- import_module char.
+:- import_module list.
+:- import_module map.
+:- import_module maybe.
+:- import_module pair.
+:- import_module string.
+:- import_module require.
 
 %-----------------------------------------------------------------------------%
 
-    % Print the opening banner, initialise the response state,
-    % run the main loop.
-
+    % Print the opening banner, initialise the response state, run the main
+    % loop.
+    %
 main(!IO) :-
     io.write_string("\nHi!  I'm Eliza.  Please tell me your problem.\n", !IO),
     eliza.initial_state(State),

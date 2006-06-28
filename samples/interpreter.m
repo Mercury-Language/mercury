@@ -1,24 +1,25 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-
+% 
 % File: interpreter.m.
 % Main author: fjh.
-
+% 
 % This is an interpreter for definite logic programs
 % (i.e. pure Prolog with no negation or if-then-else.)
 %
 % This is just intended as a demonstration of the use of the
 % meta-programming library modules term, varset, and term_io.
-
+% 
 % There are many extensions/improvements that could be made;
 % they're left as an exercise for the reader.
-
+% 
 % For a more efficient version (using backtrackable destructive update),
 % see extras/trailed_update/samples/interpreter.m.
-
+% 
 % This source file is hereby placed in the public domain.  -fjh (the author).
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module interpreter.
@@ -28,9 +29,19 @@
 :- pred main(io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module list, string, term, varset, term_io, require, std_util.
+
+:- import_module list.
+:- import_module require.
+:- import_module solutions.
+:- import_module string.
+:- import_module term.
+:- import_module term_io.
+:- import_module varset.
+
+%-----------------------------------------------------------------------------%
 
 main(!IO) :-
     io.write_string("Pure Prolog Interpreter.\n\n", !IO),
