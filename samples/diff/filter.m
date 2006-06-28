@@ -1,40 +1,56 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 The University of Melbourne.
+% Copyright (C) 1998, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % Main author: bromage
-
+% 
 % This module contains code to filter the diff before output, based on
 % the command-line options presented.
-
+% 
 % At the moment, only one option is handled: --ignore-blank-lines.
 % This causes edits to be dropped if they contain changes which only
 % add, delete or change blank lines.
-
+% 
 % TO DO: What exactly is a blank line, and does its definition change
 %        if --ignore-space-change or --ignore-all-space have been
 %        specified?  At the moment, we define a blank line to be a line
 %        containing zero or more whitespace characters.  Check if this is
 %        correct or not.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module filter.
-
 :- interface.
-:- import_module difftype, file, io.
 
-:- pred filter_diff(diff :: in, file :: in, file :: in, diff :: out,
-		io__state :: di, io__state :: uo) is det.
+:- import_module difftype.
+:- import_module file.
+
+:- import_module io.
+
+%-----------------------------------------------------------------------------%
+
+:- pred filter_diff(diff::in, file::in, file::in, diff::out, io::di, io::uo)
+	is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module globals, options.
-:- import_module bool, list, int, std_util, string, char.
+
+:- import_module globals.
+:- import_module options.
+
+:- import_module bool.
+:- import_module char.
+:- import_module int.
+:- import_module list.
+:- import_module pair.
+:- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 filter_diff(Diff0, File1, File2, Diff) -->
 	globals__io_lookup_bool_option(ignore_blank_lines, FilterBlank),

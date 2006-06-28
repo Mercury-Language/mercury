@@ -1,28 +1,36 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1994-1998, 2001 The University of Melbourne.
+% Copyright (C) 1994-1998, 2001, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-:- module globals.
-
+%
+% File: globals.m.
 % Main author: conway, bromage.
-
+% 
 % This module exports the `globals' type and associated access predicates.
 % The globals type is used to collect together all the various data
 % that would be global variables in an imperative language.
-% This global data is stored in the io__state.
-
+% This global data is stored in the I/O state.
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
+:- module globals.
 :- interface.
-:- import_module options, diff_out.
-:- import_module getopt, bool, int, string, list.
+
+:- import_module diff_out.
+:- import_module options.
+
+:- import_module bool.
+:- import_module getopt.
+:- import_module int.
 :- import_module io.
+:- import_module list.
+:- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 :- type globals.
-
-%-----------------------------------------------------------------------------%
 
 	% Access predicates for the `globals' structure.
 
@@ -92,7 +100,10 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module map, std_util, io, require.
+
+:- import_module map.
+:- import_module require.
+:- import_module univ.
 
 %-----------------------------------------------------------------------------%
 

@@ -1,21 +1,25 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1998, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % Main author: bromage
 % Based heavily on lcsstype.m, written by bromage and simplified by
 % Marnix Klooster <marnix@worldonline.nl>
-
+% 
 % This module contains the type of a diff.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module difftype.
-
 :- interface.
-:- import_module std_util, list.
+
+:- import_module list.
+:- import_module pair.
+
+%-----------------------------------------------------------------------------%
 
 	% A pos is a non-negative number representing a position in a
 	% list.  The position before all elements is 0, the one

@@ -1,11 +1,12 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 The University of Melbourne.
+% Copyright (C) 1998, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% Main author: bromage
-
+% 
+% File: myers.m.
+% Main author: bromage.
+% 
 % TO DO: We should implement the big-snake heuristic (a.k.a.
 %	--speed-large-files).
 %
@@ -15,13 +16,19 @@
 %	retro-fitted onto that algorithm easily enough, we should try
 %	out this algorithm and see how fast it runs.  In theory, we
 %	should be looking at about a 2x speedup.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module myers.
-
 :- interface.
-:- import_module difftype, array, io.
+
+:- import_module difftype.
+
+:- import_module array.
+:- import_module io.
+
+%-----------------------------------------------------------------------------%
 
 :- pred diff_by_myers(array(int), array(int), diff, io__state, io__state).
 :- mode diff_by_myers(in, in, out, di, uo) is det.
@@ -30,8 +37,19 @@
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module options, globals.
-:- import_module map, require, std_util, int, list, char, bool.
+
+:- import_module globals.
+:- import_module options.
+
+:- import_module bool.
+:- import_module char.
+:- import_module int.
+:- import_module list.
+:- import_module map.
+:- import_module pair.
+:- import_module require.
+
+%-----------------------------------------------------------------------------%
 
 % The basic algorithm is described in:
 %	"An O(ND) Difference Algorithm and its Variations", Eugene Myers,

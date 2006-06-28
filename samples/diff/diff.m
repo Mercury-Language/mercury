@@ -1,13 +1,14 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1998, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % Main authors: bromage, Marnix Klooster <marnix@worldonline.nl>
-
+% 
 % Something very similar to the standard diff utility.  Sort of.  :-)
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module diff.
@@ -15,13 +16,26 @@
 :- interface.
 :- import_module io.
 
-:- pred main(io__state :: di, io__state :: uo) is det.
+:- pred main(io::di, io::uo) is det.
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
-:- import_module options, myers, diff_out, globals, filter, match.
-:- import_module string, list, file, std_util, require, getopt.
+
+:- import_module diff_out.
+:- import_module file.
+:- import_module filter.
+:- import_module globals.
+:- import_module match.
+:- import_module myers.
+:- import_module options.
+
+:- import_module getopt.
+:- import_module list.
+:- import_module maybe.
+:- import_module require.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
