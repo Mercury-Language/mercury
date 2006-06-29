@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1997-1998, 2000, 2003, 2005 The University of Melbourne.
+** Copyright (C) 1997-1998, 2000, 2003, 2005-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -46,6 +46,7 @@
     #define	MR_UNLOCK(lck, from)	pthread_mutex_unlock((lck))
 
     #define	MR_SIGNAL(cnd)		pthread_cond_signal((cnd))
+    #define	MR_BROADCAST(cnd)	pthread_cond_broadcast((cnd))
     #define	MR_WAIT(cnd, mtx)	pthread_cond_wait((cnd), (mtx))
   #else
     #define	MR_LOCK(lck, from)					\
@@ -66,6 +67,12 @@
 					MR_cond_signal((cnd))		\
 				:					\
 					pthread_cond_signal((cnd))	\
+				)
+    #define	MR_BROADCAST(cnd)					\
+    				( MR_debug_threads ?			\
+					MR_cond_broadcast((cnd))	\
+				:					\
+					pthread_cond_broadcast((cnd))	\
 				)
     #define	MR_WAIT(cnd, mtx)					\
     				( MR_debug_threads ?			\
@@ -141,6 +148,7 @@
   #define MR_UNLOCK(nothing, from)	do { } while (0)
 
   #define MR_SIGNAL(nothing)		do { } while (0)
+  #define MR_BROADCAST(nothing)		do { } while (0)
   #define MR_WAIT(no, thing)		do { } while (0)
 
   #define MR_OBTAIN_GLOBAL_LOCK(where)	do { } while (0)
