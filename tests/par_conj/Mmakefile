@@ -40,7 +40,8 @@ DEP_PAR_CONJ_PROGS= \
 
 INDEP_PAR_CONJ_PROGS = \
 	indep_par_append \
-	indep_par_nested
+	indep_par_nested \
+	threads_hang
 
 ifneq "$(findstring decldebug,$(GRADE))" ""
 	OBJ_PROGS =
@@ -89,6 +90,15 @@ include Mercury.options
 %.runtest: %.res ;
 
 $(OBJ_PROGS:%=%.runtest): %.runtest: %.$(TARGET_OBJ_EXT) ;
+
+# Run threads_hang with multiple OS threads in lowlevel parallel grades.
+# Repeat the test a few times in increase the chances of getting a deadlock.
+ifeq "$(filter hl% java% il%,$(GRADE))" ""
+threads_hang.out: threads_hang
+	for i in 1 2 3 4 5 ; do \
+		MERCURY_OPTIONS=-P10 ./threads_hang 2>&1 > threads_hang.out ;\
+	done
+endif
 
 #-----------------------------------------------------------------------------#
 

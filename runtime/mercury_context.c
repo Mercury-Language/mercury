@@ -347,7 +347,18 @@ MR_schedule(MR_Context *ctxt)
         MR_runqueue_head = ctxt;
         MR_runqueue_tail = ctxt;
     }
-    MR_SIGNAL(&MR_runqueue_cond);
+#ifdef MR_THREAD_SAFE
+    /*
+    ** Wake one or more threads waiting in MR_do_runnext.  If there is a
+    ** possibility that a woken thread might not accept this context then
+    ** we wake up all the waiting threads.
+    */
+    if (ctxt->MR_ctxt_owner_thread == (MercuryThread) NULL) {
+        MR_SIGNAL(&MR_runqueue_cond);
+    } else {
+        MR_BROADCAST(&MR_runqueue_cond);
+    }
+#endif
     MR_UNLOCK(&MR_runqueue_lock, "schedule");
 }
 
