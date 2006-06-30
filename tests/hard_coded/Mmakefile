@@ -8,6 +8,7 @@ ORDINARY_PROGS=	\
 	abstract_eqv \
 	address_of_builtins \
 	agg \
+	any_call_hoist_bug \
 	any_free_unify \
 	backquoted_qualified_ops \
 	bidirectional \

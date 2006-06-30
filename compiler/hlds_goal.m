@@ -5,12 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: hlds_goal.m.
 % Main authors: fjh, conway.
-
+% 
 % The module defines the part of the HLDS that deals with goals.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.hlds_goal.

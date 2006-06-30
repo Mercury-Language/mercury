@@ -5,14 +5,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: loop_inv.m.
 % Main author: rafe,
-
-% CONSERVATIVE LOOP INVARIANT HOISTING.
-
-%-----------------------------------------------------------------------------%
 %
+% This module implements conservative loop invariant hoisting.
 % The basic idea can be outlined as a transformation on functions.
 % We want to convert
 %
@@ -93,6 +90,8 @@
 % This may be the subject of a future improvement of the optimization.
 % Similarly for broadening the scope of the optimization to include non
 % model-det recursive paths.
+%
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.loop_inv.
@@ -120,6 +119,7 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.inst_match.
+:- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.purity.
 :- import_module hlds.code_model.
@@ -150,7 +150,7 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
             % We only want to apply this optimization to pure preds (e.g.
             % not benchmark_det_loop).
             %
-        hlds_pred.pred_info_get_purity(PredInfo, purity_pure),
+       pred_info_get_purity(PredInfo, purity_pure),
 
             % Next, work out whether this predicate is optimizable and
             % compute some auxiliary results along the way.
@@ -158,11 +158,9 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
             % Obtain the requisite info for this procedure.
             %
         PredProcId = proc(PredId, ProcId),
-        hlds_pred.proc_info_get_goal(!.ProcInfo, Body),
-        hlds_pred.proc_info_get_headvars(!.ProcInfo, HeadVars),
-        hlds_pred.proc_info_get_argmodes(!.ProcInfo, HeadVarModes),
-        hlds_pred.proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo,
-            InitialInstMap),
+        proc_info_get_goal(!.ProcInfo, Body),
+        proc_info_get_headvars(!.ProcInfo, HeadVars),
+        proc_info_get_argmodes(!.ProcInfo, HeadVarModes),
 
             % Find the set of variables that are used as (partly) unique
             % inputs to calls.  These variables are not safe candidates
@@ -241,6 +239,8 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
             % proc by applying the instmap_deltas from the InvGoals
             % to InitialInstMap.
             %
+        proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo,
+            InitialInstMap),
         InitialAuxInstMap =
             compute_initial_aux_instmap(InvGoals, InitialInstMap),
 
@@ -309,8 +309,7 @@ hoist_loop_invariants(PredId, ProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
 :- pred invariant_goal_candidates(pred_proc_id::in, hlds_goal::in,
     hlds_goals::out, hlds_goals::out) is det.
 
-invariant_goal_candidates(PredProcId, Body,
-        CandidateInvGoals, RecCallGoals) :-
+invariant_goal_candidates(PredProcId, Body, CandidateInvGoals, RecCallGoals) :-
     invariant_goal_candidates_acc(_, RecCalls) =
         invariant_goal_candidates_2(PredProcId, Body,
             invariant_goal_candidates_acc([], [])),
@@ -347,7 +346,7 @@ invariant_goal_candidates_2(_PPId,
         IGCs).
 
 invariant_goal_candidates_2(PPId,
-        conj(ConjType, Conjuncts)                    - _GoalInfo, IGCs0)
+        conj(ConjType, Conjuncts)                - _GoalInfo, IGCs0)
         = IGCs :-
     (
         ConjType = plain_conj,
@@ -515,7 +514,7 @@ arg_to_maybe_inv_arg(ModuleInfo, Arg, Mode) =
 %-----------------------------------------------------------------------------%
 
 :- func refine_candidate_inv_args(hlds_goal, list(maybe(prog_var))) =
-            list(maybe(prog_var)).
+    list(maybe(prog_var)).
 
 refine_candidate_inv_args(RecCall - _RecCallInfo, MaybeInvArgs) =
     ( if   RecCall = call(_, _, CallArgs, _, _, _)
@@ -584,7 +583,7 @@ inv_goals_vars_2(MI, UUVs, Goal, IGs0, IGs, IVs0, IVs) :-
 :- pred has_uniquely_used_arg(prog_vars::in, hlds_goal::in) is semidet.
 
 has_uniquely_used_arg(UUVs, _GoalExpr - GoalInfo) :-
-    hlds_goal.goal_info_get_nonlocals(GoalInfo, NonLocals),
+    goal_info_get_nonlocals(GoalInfo, NonLocals),
     list.member(UUV, UUVs),
     set.member(UUV, NonLocals).
 
@@ -614,26 +613,26 @@ input_args_are_invariant(ModuleInfo, Goal, InvVars) :-
 :- pred dont_hoist(module_info::in, hlds_goals::in,
     hlds_goals::out, prog_vars::out) is det.
 
-dont_hoist(MI, InvGoals, DontHoistGoals, DontHoistVars) :-
-    list.foldl2(dont_hoist_2(MI), InvGoals,
+dont_hoist(ModuleInfo, InvGoals, DontHoistGoals, DontHoistVars) :-
+    list.foldl2(dont_hoist_2(ModuleInfo), InvGoals,
         [], DontHoistGoals, [], DontHoistVars).
 
 :- pred dont_hoist_2(module_info::in, hlds_goal::in,
     hlds_goals::in, hlds_goals::out, prog_vars::in, prog_vars::out) is det.
 
-dont_hoist_2(MI, Goal, DHGs0, DHGs, DHVs0, DHVs) :-
+dont_hoist_2(ModuleInfo, Goal, !DHGs, !DHVs) :-
     ( if
-        (   const_construction(Goal)
-        ;   deconstruction(Goal)
-        ;   impure_goal(Goal)
-        ;   cannot_succeed(Goal)
+        ( const_construction(Goal)
+        ; deconstruction(Goal)
+        ; impure_goal(Goal)
+        ; cannot_succeed(Goal)
+        ; call_has_inst_any(ModuleInfo, Goal)
         )
       then
-        DHGs = [Goal | DHGs0],
-        DHVs = add_outputs(MI, [], Goal, DHVs0)
+        list.cons(Goal, !DHGs),
+        !:DHVs = add_outputs(ModuleInfo, [], Goal, !.DHVs)
       else
-        DHGs = DHGs0,
-        DHVs = DHVs0
+        true
     ).
 
 %-----------------------------------------------------------------------------%
@@ -675,6 +674,31 @@ cannot_succeed(_GoalExpr - GoalInfo) :-
 
 %-----------------------------------------------------------------------------%
 
+    % Succeeds if any of the components of the insts of the modes of a
+    % (generic) call is inst any.
+    %
+:- pred call_has_inst_any(module_info::in, hlds_goal::in) is semidet.
+      
+call_has_inst_any(ModuleInfo, Goal) :-
+    Goal = GoalExpr - _GoalInfo,
+    (
+        GoalExpr = generic_call(_, _, Modes, _)
+    ;
+        GoalExpr = call(PredId, ProcId, _, _, _, _),
+        Modes = argmodes(ModuleInfo, PredId, ProcId)
+    ),
+    some [Mode] (
+        list.member(Mode, Modes),
+        mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
+        (
+            inst_contains_any(ModuleInfo, InitialInst)
+        ;
+            inst_contains_any(ModuleInfo, FinalInst)
+        )
+    ).
+
+%-----------------------------------------------------------------------------%
+
 :- type inst_info == {module_info, instmap}.
 
 :- pred arg_is_input(inst_info::in, prog_var::in) is semidet.
@@ -692,8 +716,8 @@ arg_is_input(InstInfo, Arg) :-
 :- pred inst_is_input(inst_info::in, mer_inst::in) is semidet.
 
 inst_is_input({ModuleInfo, _InstMap}, Inst) :-
-    inst_match.inst_is_ground(ModuleInfo, Inst),
-    inst_match.inst_is_not_partly_unique(ModuleInfo, Inst).
+    inst_is_ground(ModuleInfo, Inst),
+    inst_is_not_partly_unique(ModuleInfo, Inst).
 
 %-----------------------------------------------------------------------------%
 
@@ -719,8 +743,8 @@ add_output(UniquelyUsedVars, X, InvVars) =
 compute_initial_aux_instmap(Gs, IM) = list.foldl(ApplyGoalInstMap, Gs, IM) :-
     ApplyGoalInstMap =
         ( func(_GoalExpr - GoalInfo, IM0) = IM1 :-
-            hlds_goal.goal_info_get_instmap_delta(GoalInfo, IMD),
-            instmap.apply_instmap_delta(IM0, IMD, IM1)
+            goal_info_get_instmap_delta(GoalInfo, IMD),
+            apply_instmap_delta(IM0, IMD, IM1)
         ).
 
 %-----------------------------------------------------------------------------%
@@ -737,27 +761,26 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
 
     AuxHeadVars = HeadVars ++ ComputedInvArgs,
 
-    hlds_module.module_info_get_name(ModuleInfo0, ModuleName),
-    hlds_module.module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
-        PredInfo, ProcInfo),
+    module_info_get_name(ModuleInfo0, ModuleName),
+    module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, PredInfo, ProcInfo),
 
-    hlds_pred.proc_info_get_goal(ProcInfo, Goal @ (_GoalExpr - GoalInfo)),
-    hlds_pred.pred_info_get_typevarset(PredInfo, TVarSet),
-    hlds_pred.proc_info_get_vartypes(ProcInfo, VarTypes),
-    hlds_pred.pred_info_get_class_context(PredInfo, ClassContext),
-    hlds_pred.proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
-    hlds_pred.proc_info_get_varset(ProcInfo, VarSet),
-    hlds_pred.proc_info_get_inst_varset(ProcInfo, InstVarSet),
-    hlds_pred.pred_info_get_markers(PredInfo, Markers),
-    hlds_pred.pred_info_get_origin(PredInfo, OrigOrigin),
+    proc_info_get_goal(ProcInfo, Goal @ (_GoalExpr - GoalInfo)),
+    pred_info_get_typevarset(PredInfo, TVarSet),
+    proc_info_get_vartypes(ProcInfo, VarTypes),
+    pred_info_get_class_context(PredInfo, ClassContext),
+    proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
+    proc_info_get_varset(ProcInfo, VarSet),
+    proc_info_get_inst_varset(ProcInfo, InstVarSet),
+    pred_info_get_markers(PredInfo, Markers),
+    pred_info_get_origin(PredInfo, OrigOrigin),
 
-    PredName = hlds_pred.pred_info_name(PredInfo),
-    PredOrFunc = hlds_pred.pred_info_is_pred_or_func(PredInfo),
-    hlds_goal.goal_info_get_context(GoalInfo, Context),
+    PredName = pred_info_name(PredInfo),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
+    goal_info_get_context(GoalInfo, Context),
     term.context_line(Context, Line),
     hlds_pred.proc_id_to_int(ProcId, ProcNo),
     AuxNamePrefix = string.format("loop_inv_%d", [i(ProcNo)]),
-    prog_util.make_pred_name_with_context(ModuleName, AuxNamePrefix,
+    make_pred_name_with_context(ModuleName, AuxNamePrefix,
         PredOrFunc, PredName, Line, 1, AuxPredSymName),
     (
         AuxPredSymName = unqualified(AuxPredName)
@@ -798,8 +821,8 @@ create_aux_pred(PredProcId, HeadVars, ComputedInvArgs,
         %   over the entire goal after we've transformed it.
 
     AuxPredProcId = proc(AuxPredId, AuxProcId),
-    hlds_module.module_info_pred_proc_info(ModuleInfo, AuxPredId, AuxProcId,
-            AuxPredInfo, AuxProcInfo).
+    module_info_pred_proc_info(ModuleInfo, AuxPredId, AuxProcId, AuxPredInfo,
+        AuxProcInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -831,10 +854,10 @@ gen_aux_proc(InvGoals, PredProcId, AuxPredProcId, CallAux, Body,
     AuxPredProcId = proc(AuxPredId, AuxProcId),
     hlds_pred.proc_info_set_goal(AuxBody, !AuxProcInfo),
 
-    quantification.requantify_proc(!AuxProcInfo),
-    mode_util.recompute_instmap_delta_proc(no, !AuxProcInfo, !ModuleInfo),
+    requantify_proc(!AuxProcInfo),
+    recompute_instmap_delta_proc(no, !AuxProcInfo, !ModuleInfo),
 
-    hlds_module.module_info_set_pred_proc_info(AuxPredId, AuxProcId,
+    module_info_set_pred_proc_info(AuxPredId, AuxProcId,
         AuxPredInfo, !.AuxProcInfo, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -929,19 +952,19 @@ gen_out_proc(PredProcId, PredInfo0, ProcInfo0, ProcInfo, CallAux, Body0,
         %
     PredProcId = proc(PredId, ProcId),
 
-    hlds_pred.proc_info_get_varset(ProcInfo0, VarSet),
-    hlds_pred.proc_info_get_vartypes(ProcInfo0, VarTypes),
-    hlds_pred.proc_info_get_headvars(ProcInfo0, HeadVars),
-    hlds_pred.proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps),
+    proc_info_get_varset(ProcInfo0, VarSet),
+    proc_info_get_vartypes(ProcInfo0, VarTypes),
+    proc_info_get_headvars(ProcInfo0, HeadVars),
+    proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps),
 
-    hlds_pred.proc_info_set_body(VarSet, VarTypes, HeadVars, Body,
+    proc_info_set_body(VarSet, VarTypes, HeadVars, Body,
         RttiVarMaps, ProcInfo0, ProcInfo1),
 
     quantification.requantify_proc(ProcInfo1, ProcInfo2),
-    mode_util.recompute_instmap_delta_proc(no, ProcInfo2, ProcInfo,
+    recompute_instmap_delta_proc(no, ProcInfo2, ProcInfo,
         ModuleInfo0, ModuleInfo1),
 
-    hlds_module.module_info_set_pred_proc_info(PredId, ProcId,
+    module_info_set_pred_proc_info(PredId, ProcId,
         PredInfo0, ProcInfo, ModuleInfo1, ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -1063,7 +1086,7 @@ uniquely_used_vars(ModuleInfo, Goal) =
 
 uniquely_used_vars_2(MI, call(PredId, ProcId, Args, _, _, _) - _) =
     list.filter_map_corresponding(uniquely_used_args(MI), Args,
-        argmodes(MI,PredId,ProcId)).
+        argmodes(MI, PredId, ProcId)).
 
 uniquely_used_vars_2(MI, generic_call(_, Args, Modes, _) - _) =
     list.filter_map_corresponding(uniquely_used_args(MI), Args, Modes).
@@ -1072,7 +1095,7 @@ uniquely_used_vars_2(MI, foreign_proc(_, PredId, ProcId, Args, Extras, _) - _)
         =
     %
     % XXX `Extras' should be empty for pure calls.  We cannot apply LIO to
-    % non-pure goals so we shoudn't need to consider `Extras'.  However, we
+    % non-pure goals so we shouldn't need to consider `Extras'.  However, we
     % currently don't deal with the situation where we may be trying to apply
     % LIO to a non-pure goal until *after* we have called this predicate, so
     % `Extras' may not be empty.  As a work-around we just add any variables
@@ -1115,17 +1138,16 @@ uniquely_used_vars_2(_MI, shorthand(_) - _) = _ :-
     is semidet.
 
 uniquely_used_args(MI, X, M) = X :-
-    mode_util.mode_get_insts(MI, M, InInst, _OutInst),
-    not inst_match.inst_is_not_partly_unique(MI, InInst).
+    mode_get_insts(MI, M, InInst, _OutInst),
+    not inst_is_not_partly_unique(MI, InInst).
 
 %-----------------------------------------------------------------------------%
 
 :- func argmodes(module_info, pred_id, proc_id) = list(mer_mode).
 
 argmodes(ModuleInfo, PredId, ProcId) = ArgModes :-
-    hlds_module.module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _,
-        ProcInfo),
-    hlds_pred.proc_info_get_argmodes(ProcInfo, ArgModes).
+    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+    proc_info_get_argmodes(ProcInfo, ArgModes).
 
 %-----------------------------------------------------------------------------%
 
@@ -1204,8 +1226,8 @@ goal_inputs(_MI, shorthand(_) - _) = _ :-
 :- func input_arg(module_info, prog_var, mer_mode) = prog_var is semidet.
 
 input_arg(MI, X, M) = X :-
-    mode_util.mode_get_insts(MI, M, InInst, _OutInst),
-    not inst_match.inst_is_free(MI, InInst).
+    mode_get_insts(MI, M, InInst, _OutInst),
+    not inst_is_free(MI, InInst).
 
 %-----------------------------------------------------------------------------%
 
@@ -1282,8 +1304,8 @@ goal_outputs(_MI, shorthand(_) - _) = _ :-
 :- func output_arg(module_info, prog_var, mer_mode) = prog_var is semidet.
 
 output_arg(MI, X, M) = X :-
-    mode_util.mode_get_insts(MI, M, InInst, _OutInst),
-    inst_match.inst_is_free(MI, InInst).
+    mode_get_insts(MI, M, InInst, _OutInst),
+    inst_is_free(MI, InInst).
 
 %-----------------------------------------------------------------------------%
 
