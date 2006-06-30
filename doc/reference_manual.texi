@@ -6126,7 +6126,7 @@ All @samp{foreign_proc} implementations are assumed to be impure.
 If they are actually pure or semipure, they must be explicitly
 promised as such by the user (either by using foreign language
 attributes specified below, or a promise_pure or promise_semipure pragma
-as specified in @ref{Impurity}.
+as specified in @ref{Impurity}).
 
 Additional restrictions on the foreign language interface code
 depend on the foreign language and compilation options.
