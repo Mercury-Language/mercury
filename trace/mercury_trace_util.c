@@ -218,8 +218,7 @@ MR_trace_call_system_display_error_on_failure(FILE *err_stream, char *command)
         if (system_rv != 0) {
             fprintf(err_stream,
                 "mdb: the shell command returned a non-zero exit code or was"
-                " terminated abnormally.\n",
-                system_rv);
+                " terminated abnormally.\n");
         }
     } else {
         fprintf(err_stream, "mdb: no shell found.\n");

@@ -754,7 +754,7 @@ MR_trace_do_noop(void)
 ** MR_process_matching_procedures().
 */
 
-static MR_Next
+MR_Next
 MR_trace_cmd_shell(char **words, int word_count, MR_Trace_Cmd_Info *cmd,
     MR_Event_Info *event_info, MR_Code **jumpaddr)
 {
