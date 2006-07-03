@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-1999, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -9,7 +9,7 @@
 
 :- module ztoken.
 :- interface.
-:- import_module word, list, string, std_util.
+:- import_module word, list, string, pair.
 
 :- type ztoken_list == list(pair(ztoken, zcontext)).
 
@@ -132,6 +132,8 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- implementation.
+
+:- import_module maybe.
 
 pragma("ABBREV", abbrev).
 pragma("MONOT", monot).

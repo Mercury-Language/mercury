@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-1999, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -18,7 +18,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- implementation.
 :- import_module word, ztoken_io, zparser, zabstract,
-	string, ztype, typecheck, std_util, list, dict,
+	string, ztype, typecheck, pair, maybe, list, dict,
 	getopt, require, bool.
 
 
@@ -50,9 +50,9 @@ long_option("prelude", toolkit).	% cf. short option 'p' used by fuzz
 long_option("toolkit", toolkit).
 
 
-option_defaults(_, abbreviate, bool(bool:yes)).
-option_defaults(_, debug, bool(bool:no)).
-option_defaults(_, help, bool(bool:no)).
+option_defaults(_, abbreviate, bool(bool.yes)).
+option_defaults(_, debug, bool(bool.no)).
+option_defaults(_, help, bool(bool.no)).
 option_defaults(T, toolkit, maybe_string(yes(T))).
 
 
