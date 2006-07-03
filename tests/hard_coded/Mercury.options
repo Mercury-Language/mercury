@@ -1,4 +1,5 @@
 MCFLAGS-allow_stubs	=	--allow-stubs --no-warn-stubs --infer-all
+MCFLAGS-any_call_hoist_bug =	--loop-invariants
 MCFLAGS-checked_nondet_tailcall	=	--checked-nondet-tailcalls
 MCFLAGS-bigtest		=	--intermodule-optimization -O3
 MCFLAGS-cc_and_non_cc_test = 	--no-inlining

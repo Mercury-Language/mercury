@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: inst_util.m.
 % Author: fjh.
-
+% 
 % This module defines some utility routines for manipulating insts.
 %
 % The handling of `any' insts is not complete.  (See also inst_match.m)
@@ -34,7 +34,8 @@
 % `bound', `ground', and `any' are all represented the same way.
 % That works fine for the CLP(R) interface but might not be ideal
 % in the general case.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.inst_util.
