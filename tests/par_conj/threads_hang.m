@@ -11,9 +11,13 @@
 :- import_module int.
 
 main(!IO) :-
-    fib(11, F),
+    fib(7, F),
+    fib(6, G),
     io.write_int(F, !IO),
-    io.nl(!IO).
+    io.nl(!IO),
+    io.write_int(G, !IO),
+    io.nl(!IO),
+    io.flush_output(!IO).
 
 :- pred fib(int::in, int::out) is det.
 

@@ -95,7 +95,7 @@ $(OBJ_PROGS:%=%.runtest): %.runtest: %.$(TARGET_OBJ_EXT) ;
 # Repeat the test a few times in increase the chances of getting a deadlock.
 ifeq "$(filter hl% java% il%,$(GRADE))" ""
 threads_hang.out: threads_hang
-	for i in 1 2 3 4 5 ; do \
+	for i in 1 2 3 4 5 6 7 8 9 10 ; do \
 		MERCURY_OPTIONS=-P10 ./threads_hang 2>&1 > threads_hang.out ;\
 	done
 endif
