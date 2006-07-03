@@ -23,6 +23,8 @@
 :- implementation.
 :- import_module char, require, maybe, pair, int, list, string, higher_order.
 
+:- import_module univ.
+
 % :- pred main(io__state::di, io__state::uo) is det.
 % main --> readTokenList(TS), writeTokenList(TS).
 
@@ -211,7 +213,7 @@ decoration(C0, C, L) -->
 							io__state, io__state).
 :- mode decoration(in, out, in, out, di, uo) is det.
 decoration(DC, C, L0, L) -->
-	( {DC = '!'} ->
+	( {DC = ('!')} ->
 		{M = no, S = exclamation_mark}
 	; {DC = '?'} ->
 		{M = no, S = question_mark}

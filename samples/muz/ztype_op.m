@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-1999, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -10,7 +10,9 @@
 :- module ztype_op.
 
 :- interface.
-:- import_module list, assoc_list, std_util, word, ztype, zabstract.
+:- import_module list, assoc_list, word, ztype, zabstract.
+:- import_module maybe.
+:- import_module pair.
 
 :- func givenT(ident) = ztype.
 :- func powerT(ztype) = ztype.
@@ -125,6 +127,8 @@
 :- implementation.
 :- import_module string, require, int, map, set,
 			higher_order.	% only for string_portray_list
+
+:- import_module solutions.
 
 ztypePortray(_, given(I)) =
 	identPortray(I).

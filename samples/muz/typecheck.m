@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-1999, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -22,7 +22,9 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- implementation.
-:- import_module std_util, set, string, require, int.
+:- import_module set, string, require, int.
+:- import_module pair.
+:- import_module maybe.
 :- import_module ztype_op.
 
 :- type cstate ---> c(io__state, status, dict, ptypes, subst, flags).
@@ -80,7 +82,7 @@ substEnv(P, T, R) --> getSubst(S0), {P(T, R, S0, S)}, putSubst(S).
 
 :- pred add_sexpr_type(ref::in, slist::in, cstate::in, cstate::out) is det.
 add_sexpr_type(Ref, DL, c(IO, S, D, PM0, Sub, F), c(IO, S, D, PM, Sub, F)) :-
-	ztype:add_sexpr_type(Ref, DL, PM0, PM).
+	ztype.add_sexpr_type(Ref, DL, PM0, PM).
 
 :- pred tout(list(string), cstate, cstate).
 :- mode tout(in, in, out /*cstate*/) is det.
