@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-1999, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -10,7 +10,7 @@
 :- module word.
 
 :- interface.
-:- import_module string, list, std_util, assoc_list, map.
+:- import_module string, list, maybe, assoc_list, map.
 
 :- type zcontext == int.
 

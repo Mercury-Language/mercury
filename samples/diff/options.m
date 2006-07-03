@@ -1,18 +1,24 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998 The University of Melbourne.
+% Copyright (C) 1998, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% Main author: bromage
-
+%
+% File: options.m.
+% Main author: bromage.
+% 
 % This module contains all the option handling code for diff.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module options.
 :- interface.
-:- import_module string, std_util, io, getopt.
+
+:- import_module getopt.
+:- import_module io.
+:- import_module maybe.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 

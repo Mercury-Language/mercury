@@ -1,20 +1,22 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1998 The University of Melbourne.
+% Copyright (C) 1995-1998, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% Main author: bromage
+%
+% File: diff_out.m.
+% Main author: bromage.
+%
 % Based on diffs.m, written by bromage and simplified by
 % Marnix Klooster <marnix@worldonline.nl>
-
+% 
 % This module contains the predicates to display a diff in various
 % output styles, based on the command-line options supplied.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module diff_out.
-
 :- interface.
 :- import_module file, io, int, string, difftype.
 
@@ -64,7 +66,7 @@
 
 :- implementation.
 :- import_module globals, options.
-:- import_module require, std_util, int, list, char, string, bool.
+:- import_module require, pair, int, list, char, string, bool.
 
 diff_out__default_output_style(normal).
 

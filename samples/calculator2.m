@@ -19,7 +19,7 @@
 
 :- implementation.
 :- import_module exception, int, list, map, ops, parser, require.
-:- import_module std_util, string, term, term_io, varset.
+:- import_module maybe, pair, string, term, term_io, univ, varset.
 
 :- type calc_info == map(string, int).
 

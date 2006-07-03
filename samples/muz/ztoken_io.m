@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-1999 The University of Melbourne.
+% Copyright (C) 1995-1999, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -21,7 +21,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 :- implementation.
-:- import_module char, require, std_util, int, list, string, higher_order.
+:- import_module char, require, maybe, pair, int, list, string, higher_order.
 
 % :- pred main(io__state::di, io__state::uo) is det.
 % main --> readTokenList(TS), writeTokenList(TS).
