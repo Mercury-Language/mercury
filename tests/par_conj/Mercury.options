@@ -1,0 +1,5 @@
+# These test cases are compiled with --trace deep because they
+# are regression tests for a bug that only shows up with deep
+# tracing.
+MCFLAGS-par_ddeath = --trace deep
+MCFLAGS-par_ddeath_2 = --trace deep

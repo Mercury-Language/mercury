@@ -43,6 +43,19 @@ INDEP_PAR_CONJ_PROGS = \
 	indep_par_nested \
 	threads_hang
 
+# These tests require debugging, which hasn't been implemented for
+# the MLDS backend.
+#
+LLDS_PROGS = \
+	par_ddeath \
+	par_ddeath_2
+
+ifeq "$(filter hl% java% il%,$(GRADE))" ""
+	PROGS0 = $(LLDS_PROGS)
+else
+	PROGS0 =
+endif
+
 ifneq "$(findstring decldebug,$(GRADE))" ""
 	OBJ_PROGS =
 	PROGS =
@@ -50,7 +63,7 @@ else
 	# Don't run dependent parallel conjunction programs as they can cause
 	# deadlocks if there are not enough threads available.  This will be
 	# fixed with coroutining support.
-	OBJ_PROGS = $(DEP_PAR_CONJ_PROGS)
+	OBJ_PROGS = $(PROGS0) $(DEP_PAR_CONJ_PROGS)
 	PROGS = $(OBJ_PROGS) $(INDEP_PAR_CONJ_PROGS)
 endif
 

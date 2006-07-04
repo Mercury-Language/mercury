@@ -544,8 +544,9 @@ detect_deadness_in_goal_2(conj(ConjType, Goals0), conj(ConjType, Goals),
             _, CompletedNonLocals),
         set.init(Union0),
         detect_deadness_in_par_conj(Goals0, Goals, !.Deadness, Liveness0,
-            CompletedNonLocals, LiveInfo, Union0, Union),
-        set.union(Union, !Deadness)
+            CompletedNonLocals, LiveInfo, Union0, Union,
+            _CompletedNonLocalUnion),
+        !:Deadness = Union
     ).
 
 detect_deadness_in_goal_2(disj(Goals0), disj(Goals), GoalInfo, !Deadness,
@@ -732,20 +733,30 @@ detect_deadness_in_cases(SwitchVar, [case(Cons, Goal0) | Goals0],
 
 :- pred detect_deadness_in_par_conj(list(hlds_goal)::in, list(hlds_goal)::out,
     set(prog_var)::in, set(prog_var)::in, set(prog_var)::in, live_info::in,
-    set(prog_var)::in, set(prog_var)::out) is det.
+    set(prog_var)::in, set(prog_var)::out, set(prog_var)::out) is det.
 
-detect_deadness_in_par_conj([], [], _Deadness0, _Liveness0, _NonLocals,
-        _LiveInfo, !Union).
+detect_deadness_in_par_conj([], [], _Deadness0, _Liveness0, CompletedNonLocals,
+        _LiveInfo, !Union, CompletedNonLocalUnion) :-
+    set.intersect(!.Union, CompletedNonLocals, CompletedNonLocalUnion).
 detect_deadness_in_par_conj([Goal0 | Goals0], [Goal | Goals], Deadness0,
-        Liveness0, NonLocals, LiveInfo, !Union) :-
-    detect_deadness_in_goal(Goal0, Goal1, Deadness0, Deadness1,
+        Liveness0, CompletedNonLocals, LiveInfo, !Union,
+        CompletedNonLocalUnion) :-
+    detect_deadness_in_goal(Goal0, Goal1, Deadness0, DeadnessGoal,
         Liveness0, LiveInfo),
-    set.union(Deadness1, !Union),
+    set.union(DeadnessGoal, !Union),
     detect_deadness_in_par_conj(Goals0, Goals, Deadness0,
-        Liveness0, NonLocals, LiveInfo, !Union),
-    set.intersect(!.Union, NonLocals, NonLocalUnion),
-    set.difference(NonLocalUnion, Deadness1, Residue),
-    add_deadness_before_goal(Residue, Goal1, Goal).
+        Liveness0, CompletedNonLocals, LiveInfo, !Union,
+        CompletedNonLocalUnion),
+    Goal1 = _ - GoalInfo1,
+    goal_info_get_instmap_delta(GoalInfo1, InstmapDelta1),
+    ( instmap_delta_is_reachable(InstmapDelta1) ->
+        InstmapReachable = yes
+    ;
+        unexpected(this_file,
+            "detect_deadness_in_par_conj: unreachable instmap")
+    ),
+    add_branch_pre_deaths(DeadnessGoal, Deadness0, CompletedNonLocalUnion,
+        InstmapReachable, Goal1, Goal).
 
 %-----------------------------------------------------------------------------%
 
@@ -995,7 +1006,14 @@ delay_death_goal_expr(!GoalExpr, !GoalInfo, !BornVars, !DelayedDead, VarSet) :-
         !.GoalExpr = foreign_proc(_, _, _, _, _, _)
     ;
         !.GoalExpr = conj(ConjType, Goals0),
-        delay_death_conj(Goals0, Goals, !BornVars, !DelayedDead, VarSet),
+        (
+            ConjType = plain_conj,
+            delay_death_conj(Goals0, Goals, !BornVars, !DelayedDead, VarSet)
+        ;
+            ConjType = parallel_conj,
+            delay_death_par_conj(Goals0, Goals, !BornVars, !DelayedDead,
+                VarSet)
+        ),
         !:GoalExpr = conj(ConjType, Goals)
     ;
         !.GoalExpr = disj(Goals0),
@@ -1065,6 +1083,20 @@ delay_death_conj([Goal0 | Goals0], [Goal | Goals], !BornVars, !DelayedDead,
         VarSet) :-
     delay_death_goal(Goal0, Goal, !BornVars, !DelayedDead, VarSet),
     delay_death_conj(Goals0, Goals, !BornVars, !DelayedDead, VarSet).
+
+:- pred delay_death_par_conj(list(hlds_goal)::in, list(hlds_goal)::out,
+    set(prog_var)::in, set(prog_var)::out,
+    set(prog_var)::in, set(prog_var)::out, prog_varset::in) is det.
+
+delay_death_par_conj([], [], !BornVars, !DelayedDead, _).
+delay_death_par_conj([Goal0 | Goals0], [Goal | Goals],
+        BornVars0, BornVars, DelayedDead0, DelayedDead, VarSet) :-
+    delay_death_goal(Goal0, Goal, BornVars0, BornVarsGoal,
+        DelayedDead0, DelayedDeadGoal, VarSet),
+    delay_death_par_conj(Goals0, Goals, BornVars0, BornVarsGoals,
+        DelayedDead0, DelayedDeadGoals, VarSet),
+    set.union(BornVarsGoal, BornVarsGoals, BornVars),
+    set.union(DelayedDeadGoal, DelayedDeadGoals, DelayedDead).
 
 :- pred delay_death_disj(list(hlds_goal)::in,
     assoc_list(hlds_goal, set(prog_var))::out,
