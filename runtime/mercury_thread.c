@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1997-2001, 2003, 2005 The University of Melbourne.
+** Copyright (C) 1997-2001, 2003, 2005-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -19,7 +19,11 @@
 
 #ifdef  MR_THREAD_SAFE
   MercuryThreadKey  MR_exception_handler_key;
-  MercuryThreadKey  MR_engine_base_key;
+  #ifdef MR_THREAD_LOCAL_STORAGE
+    __thread MercuryEngine *MR_thread_engine_base;
+  #else
+    MercuryThreadKey MR_engine_base_key;
+  #endif
   MercuryLock       MR_global_lock;
 #endif
 
@@ -80,14 +84,14 @@ MR_init_thread(MR_when_to_use when_to_use)
     ** Check to see whether there is already an engine that is initialized
     ** in this thread.  If so we just return, there's nothing for us to do.
     */
-    if (MR_GETSPECIFIC(MR_engine_base_key)) {
+    if (MR_thread_engine_base != NULL) {
         return MR_FALSE;
     }
 #endif
     eng = MR_create_engine();
 
 #ifdef MR_THREAD_SAFE
-    pthread_setspecific(MR_engine_base_key, eng);
+    MR_set_thread_engine_base(eng);
     MR_restore_registers();
   #ifdef MR_ENGINE_BASE_REGISTER
     MR_engine_base_word = (MR_Word) eng;
@@ -133,8 +137,8 @@ MR_finalize_thread_engine(void)
 #ifdef MR_THREAD_SAFE
     MercuryEngine   *eng;
 
-    eng = MR_GETSPECIFIC(MR_engine_base_key);
-    pthread_setspecific(MR_engine_base_key, NULL);
+    eng = MR_thread_engine_base;
+    MR_set_thread_engine_base(NULL);
     /*
     ** XXX calling destroy_engine(eng) here appears to segfault.
     ** This should probably be investigated and fixed.

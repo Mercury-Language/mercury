@@ -400,10 +400,20 @@ typedef struct MR_mercury_engine_struct {
 
 #ifdef  MR_THREAD_SAFE
 
-  extern MercuryThreadKey   MR_engine_base_key;
+  #ifdef MR_THREAD_LOCAL_STORAGE
+    extern __thread MercuryEngine *MR_thread_engine_base;
 
-  #define MR_thread_engine_base \
-    ((MercuryEngine *) MR_GETSPECIFIC(MR_engine_base_key))
+    #define MR_set_thread_engine_base(eng) \
+      do { MR_thread_engine_base = eng; } while (0)
+  #else
+    extern MercuryThreadKey   MR_engine_base_key;
+
+    #define MR_thread_engine_base \
+      ((MercuryEngine *) MR_GETSPECIFIC(MR_engine_base_key))
+
+    #define MR_set_thread_engine_base(eng) \
+      pthread_setspecific(MR_engine_base_key, eng)
+  #endif
 
   #if MR_NUM_REAL_REGS > 0
     #define MR_ENGINE_BASE_REGISTER

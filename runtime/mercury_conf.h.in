@@ -358,8 +358,12 @@
 ** Digital Unix doesn't conform to the letter of the Posix standard
 ** for Pthreads.
 **
+** MR_THREAD_LOCAL_STORAGE is defined if the thread-local storage extension
+** is supported.  That is, the compiler extends the C language with the
+** `__thread' specifier.
 */
 #undef MR_DIGITAL_UNIX_PTHREADS
+#undef MR_THREAD_LOCAL_STORAGE
 
 /*
 ** The bytecode files represent floats in 64-bit IEEE format.

@@ -69,7 +69,9 @@ MR_init_thread_stuff(void)
     pthread_mutex_init(&free_context_list_lock, MR_MUTEX_ATTR);
     pthread_mutex_init(&MR_global_lock, MR_MUTEX_ATTR);
     pthread_mutex_init(&MR_pending_contexts_lock, MR_MUTEX_ATTR);
+  #ifndef MR_THREAD_LOCAL_STORAGE
     MR_KEY_CREATE(&MR_engine_base_key, NULL);
+  #endif
     MR_KEY_CREATE(&MR_exception_handler_key, NULL);
 
 #endif

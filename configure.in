@@ -2569,6 +2569,22 @@ AC_SUBST(ENABLE_BOEHM_THREAD_LOCAL_ALLOC)
 
 #-----------------------------------------------------------------------------#
 
+AC_MSG_CHECKING(whether we can use thread-local storage class extension)
+AC_CACHE_VAL(mercury_cv_thread_local_storage,
+	AC_TRY_COMPILE([],[
+		static __thread int thread_local_variable;
+	],
+	[mercury_cv_thread_local_storage=yes],
+	[mercury_cv_thread_local_storage=no])
+)
+AC_MSG_RESULT($mercury_cv_thread_local_storage)
+
+if test "$mercury_cv_thread_local_storage" = yes; then
+	AC_DEFINE(MR_THREAD_LOCAL_STORAGE)
+fi
+
+#-----------------------------------------------------------------------------#
+
 #
 # Figure out which is the best grade to use for various different purposes.
 # In particular, choose the default grade for compiling applications.
