@@ -6153,7 +6153,7 @@ All @samp{foreign_proc} implementations are assumed to be impure.
 If they are actually pure or semipure, they must be explicitly
 promised as such by the user (either by using foreign language
 attributes specified below, or a promise_pure or promise_semipure pragma
-as specified in @ref{Impurity}.
+as specified in @ref{Impurity}).
 
 Additional restrictions on the foreign language interface code
 depend on the foreign language and compilation options.
@@ -6333,6 +6333,56 @@ used with procedures that do not make calls back to Mercury, i.e. that have
 the @samp{will_not_call_mercury} attribute.  The default for foreign
 procedures that @samp{may_call_mercury}, in case none is specified, is
 @samp{may_call_mm_tabled}.
+
+@c @item @samp{no_sharing/unknown_sharing/sharing(MaybeTypes, SharingList)}
+@c This attribute declares whether or not a foreign procedure creates any
+@c structure sharing @ref{Structure sharing analysis} between its input
+@c and output arguments.
+@c Specifying that a foreign
+@c procedure generates no sharing (attribute @samp{no_sharing}) is a promise
+@c to the compiler that the procedure does not create any sharing
+@c between its arguments. The attribute @samp{unknown_sharing} specifies 
+@c that the
+@c procedure may create any possible sharing between the arguments. 
+@c Finally, using
+@c @samp{sharing(MaybeTypes, SharingList)} it is possible to specify a list of
+@c sharing arguments, declaring that the foreign procedure creates at most
+@c the specified sharing between the arguments. @samp{MaybeTypes} takes 
+@c the values
+@c @samp{no/yes(Types)}, where @samp{Types} corresponds to the types used in 
+@c the predicate or function declaration for this foreign procedure. 
+@c @samp{SharingList} consists of a list
+@c @samp{[SharingPairA, SharingPairB, ...]}, where each sharing pair 
+@c is represented by a pair @samp{cel(Vari, Seli) - cel(Varj, Selj)}. 
+@c @samp{Vari, Varj} must be variables that are part of the mode declaration
+@c of the @samp{foreign_proc} definition. @samp{Seli, Selj} select
+@c the subterms of the given arguments that actually share. Each selector 
+@c @samp{Seli} is written as a list of types @samp{[Type1, Type2, ...]}
+@c representing a path in the term structure of the given argument. An
+@c empty list designates the complete term to which the argument corresponds.
+@c The types can make use of type variables as long as @samp{MaybeTypes} is
+@c set to @samp{yes(Types)}, and the type variables occur in any of the types
+@c used in @samp{Types}.
+@c 
+@c @example
+@c :- pred array.init_2(int::in, T::in, array(T)::array_uo) is det.
+@c 
+@c :- pragma foreign_proc("C",
+    @c array.init_2(Size::in, Item::in, Array::array_uo),
+    @c [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+    @c sharing(yes(int, T, array(T)), [cel(Item,[]) - cel(Array,[T])])],
+@c "
+    @c ML_alloc_array(Array, Size + 1, MR_PROC_LABEL);
+    @c ML_init_array(Array, Size, Item);
+@c ").
+@c @end example
+@c 
+@c This sharing declaration promises that a call 
+@c @code{init_2(Size, Item, Array)}, with types @code{int, T, array(T)}
+@c may create sharing between any 
+@c subterms of type @code{T} of the resulting array @code{Array} and the
+@c term @code{Item}. Reformulated: the elements of @code{Array} may refer
+@c to the same memory locations as @code{Item}.
 
 @end table
 
@@ -9578,6 +9628,26 @@ function then the compiler will quit with an error message.
 @c Note that neither the @samp{reserve_tag} pragma nor the @samp{--reserve-tag}
 @c compiler option will have any useful effect if the @samp{--high-level-data} 
 @c option is used (e.g. for the .NET or Java back-ends).
+
+
+@c XXX TO DO!
+@c @node Compile-time garbage collection
+@c @section Compile-time garbage collection
+@c
+@c The compiler includes a compile-time garbage collection system (CTGC). This
+@c system consists of a structure sharing analysis, followed by a structure
+@c reuse analysis. 
+@c 
+@c @node Structure sharing analysis
+@c @subsection Structure sharing analysis
+@c 
+@c The compiler includes a structure sharing analysis system. 
+@c
+@c @node Structure reuse analysis
+@c @subsection Structure reuse analysis
+@c 
+@c The compiler includes a structure reuse analysis system. 
+@c
 
 @node Bibliography
 @chapter Bibliography

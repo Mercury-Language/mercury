@@ -1060,10 +1060,17 @@ qualify_pragma(X@source_file(_), X, !Info, !IO).
 qualify_pragma(X@foreign_decl(_, _, _), X, !Info, !IO).
 qualify_pragma(X@foreign_code(_, _), X, !Info, !IO).
 qualify_pragma(X@foreign_import_module(_, _), X, !Info, !IO).
-qualify_pragma(X, Y, !Info, !IO) :-
-    PragmaVars0 = X ^ proc_vars,
-    qualify_pragma_vars(PragmaVars0, PragmaVars, !Info, !IO),
-    Y = X ^ proc_vars := PragmaVars.
+qualify_pragma(foreign_proc(Attrs0, Name, PredOrFunc, Vars0, Varset, 
+        InstVarset, Impl), foreign_proc(Attrs, Name, PredOrFunc, Vars, Varset,
+        InstVarset, Impl), !Info, !IO) :-
+    qualify_pragma_vars(Vars0, Vars, !Info, !IO), 
+    UserSharing0 = user_annotated_sharing(Attrs0),
+    qualify_user_sharing(UserSharing0, UserSharing, !Info, !IO),
+    set_user_annotated_sharing(UserSharing, Attrs0, Attrs).  
+% qualify_pragma(X, Y, !Info, !IO) :-
+    % PragmaVars0 = X ^ proc_vars,
+    % qualify_pragma_vars(PragmaVars0, PragmaVars, !Info, !IO),
+    % Y = X ^ proc_vars := PragmaVars.
 qualify_pragma(tabled(EvalMethod, Name, Arity, PredOrFunc, MModes0, Attrs),
         tabled(EvalMethod, Name, Arity, PredOrFunc, MModes, Attrs),
         !Info, !IO) :-
@@ -1347,6 +1354,25 @@ convert_simple_item_type(mode_id) = mode_item.
 convert_simple_item_type(inst_id) = inst_item.
 convert_simple_item_type(class_id) = typeclass_item.
 
+:- pred qualify_user_sharing(user_annotated_sharing::in, 
+    user_annotated_sharing::out, mq_info::in, mq_info::out, 
+    io::di, io::uo) is det.
+
+qualify_user_sharing(!UserSharing, !Info, !IO) :-
+    (
+        !.UserSharing = no_user_annotated_sharing
+    ;
+        !.UserSharing = user_sharing(Sharing, MaybeTypes0),
+        (
+            MaybeTypes0 = yes(user_type_info(Types0, TVarset))
+        ->
+            qualify_type_list(Types0, Types, !Info, !IO),
+            MaybeTypes = yes(user_type_info(Types, TVarset)), 
+            !:UserSharing = user_sharing(Sharing, MaybeTypes)
+        ;
+            true
+        )
+    ).
 %-----------------------------------------------------------------------------%
 
 :- type id_type

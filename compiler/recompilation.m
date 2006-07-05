@@ -80,7 +80,8 @@
     ;       functor_item     % The RHS of a var-functor unification.
     ;       predicate_item
     ;       function_item
-    ;       mutable_item.
+    ;       mutable_item
+    ;       foreign_proc_item.
 
 :- inst simple_item
     --->    type_item
@@ -162,15 +163,16 @@
 
 :- type item_id_set(Map, Set, Cons)
     --->    item_id_set(
-                types       :: Map,
-                type_bodies :: Map,
-                modes       :: Map,
-                insts       :: Map,
-                typeclasses :: Map,
-                functors    :: Cons,
-                predicates  :: Set,
-                functions   :: Set,
-                mutables    :: Set
+                types           :: Map,
+                type_bodies     :: Map,
+                modes           :: Map,
+                insts           :: Map,
+                typeclasses     :: Map,
+                functors        :: Cons,
+                predicates      :: Set,
+                functions       :: Set,
+                mutables        :: Set,
+                foreign_procs   :: Set 
             ).
 
 :- type item_id_set(T) == item_id_set(T, T, T).
@@ -307,6 +309,7 @@ string_to_item_type("predicate", predicate_item).
 string_to_item_type("function", function_item).
 string_to_item_type("functor", functor_item).
 string_to_item_type("mutable", mutable_item).
+string_to_item_type("foreign_proc", foreign_proc_item).
 
 type_ctor_to_item_name(type_ctor(SymName, Arity)) = item_name(SymName, Arity).
 inst_id_to_item_name(inst_id(SymName, Arity)) = item_name(SymName, Arity).
@@ -319,14 +322,14 @@ item_name_to_mode_id(item_name(SymName, Arity)) = mode_id(SymName, Arity).
 %-----------------------------------------------------------------------------%
 
 init_item_id_set(Init) =
-    item_id_set(Init, Init, Init, Init, Init, Init, Init, Init, Init).
+    item_id_set(Init, Init, Init, Init, Init, Init, Init, Init, Init, Init).
 
 init_item_id_set(Simple, PorF, Cons) =
     item_id_set(Simple, Simple, Simple, Simple, Simple, Cons, PorF, PorF,
-        PorF).
+        PorF, PorF).
 
 init_used_items = item_id_set(map.init, map.init, map.init, map.init,
-    map.init, map.init, map.init, map.init, map.init).
+    map.init, map.init, map.init, map.init, map.init, map.init).
 
 extract_simple_item_set(Items, type_item) = Items ^ types.
 extract_simple_item_set(Items, type_body_item) = Items ^ type_bodies.
@@ -359,6 +362,7 @@ extract_ids(Items, functor_item) = Items ^ functors.
 extract_ids(Items, predicate_item) = Items ^ predicates.
 extract_ids(Items, function_item) = Items ^ functions.
 extract_ids(Items, mutable_item) = Items ^ mutables.
+extract_ids(Items, foreign_proc_item) = Items ^ foreign_procs.
 
 update_ids(Items, type_item, IdMap) = Items ^ types := IdMap.
 update_ids(Items, type_body_item, IdMap) = Items ^ type_bodies := IdMap.
@@ -369,6 +373,7 @@ update_ids(Items, predicate_item, IdMap) = Items ^ predicates := IdMap.
 update_ids(Items, function_item, IdMap) = Items ^ functions := IdMap.
 update_ids(Items, functor_item, IdMap) = Items ^ functors := IdMap.
 update_ids(Items, mutable_item, IdMap) = Items ^ mutables := IdMap.
+update_ids(Items, foreign_proc_item, IdMap) = Items ^ foreign_procs := IdMap.
 
 map_ids(Func, Items0, Init) = Items :-
     Items1 = init_item_id_set(Init),

@@ -136,14 +136,11 @@ determine_dead_deconstructions_2(Background, TopGoal, !SharingAs,
         !:SharingAs = sharing_as_least_upper_bound(ModuleInfo, ProcInfo,
             ThenSharingAs, ElseSharingAs)
     ;
-        GoalExpr = foreign_proc(_Attrs, _ForeignPredId, _ForeignProcId,
+        GoalExpr = foreign_proc(Attributes, ForeignPredId, ForeignProcId,
             _ForeignArgs, _, _),
-        % XXX User annotated structure sharing information is not yet
-        % supported.
         goal_info_get_context(GoalInfo, Context),
-        context_to_string(Context, ContextString),
-        !:SharingAs = sharing_as_top_sharing_accumulate(
-            "foreign_proc not handled yet (" ++ ContextString ++ ")",
+        !:SharingAs = add_foreign_proc_sharing(ModuleInfo, ProcInfo, 
+            proc(ForeignPredId, ForeignProcId), Attributes, Context, 
             !.SharingAs)
     ;
         GoalExpr = shorthand(_),

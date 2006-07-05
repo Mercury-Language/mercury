@@ -549,14 +549,15 @@ find_all_used_imported_items(ModuleInfo,
     set.init(UsedClasses0),
 
     UsedItems = item_id_set(Types, TypeBodies, Modes, Insts, Classes,
-        _, _, _, _),
+        _, _, _, _, _),
     map.init(ResolvedCtors),
     map.init(ResolvedPreds),
     map.init(ResolvedFuncs),
     map.init(ResolvedMutables),
+    map.init(ResolvedForeignProcs),
     ResolvedUsedItems0 = item_id_set(Types, TypeBodies, Modes, Insts,
         Classes, ResolvedCtors, ResolvedPreds, ResolvedFuncs,
-        ResolvedMutables),
+        ResolvedMutables, ResolvedForeignProcs),
 
     Info0 = recompilation_usage_info(ModuleInfo, ItemsToProcess0,
         ImportedItems1, ModuleUsedClasses, Dependencies,
@@ -966,6 +967,8 @@ find_items_used_by_item(function_item, ItemId, !Info) :-
 find_items_used_by_item(functor_item, _, !Info) :-
     unexpected(this_file, "find_items_used_by_item: functor").
 find_items_used_by_item(mutable_item, _MutableItemId, !Info).
+    % XXX What should be done here??? 
+find_items_used_by_item(foreign_proc_item, _, !Info).
     %
     % Mutables are expanded into other item types which track the
     % types, insts, preds, and funcs used.

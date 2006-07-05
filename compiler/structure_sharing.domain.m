@@ -149,10 +149,13 @@
 :- func add_unify_sharing(module_info, proc_info, unification, hlds_goal_info,
     sharing_as) = sharing_as.
 
-    % XXX Not yet implemented.
-% :- func add_foreign_code_sharing(module_info, pred_proc_id, goal_info
-    % pragma_foreign_proc_attributes, list(foreign_arg),
-    % sharing_as) = sharing_as.
+    % Add the sharing created by a call to some foreign code. This
+    % sharing corresponds to the sharing information with which the
+    % foreign code was manually annotated, or can be predicted to 
+    % "bottom", and in the worst case to "top". 
+    %
+:- func add_foreign_proc_sharing(module_info, proc_info, pred_proc_id, 
+    pragma_foreign_proc_attributes, prog_context, sharing_as) = sharing_as. 
 
     % Compare two sharing sets. A sharing set Set1 is subsumed by a sharing set
     % Set2 iff the total set of sharing represented by Set1 is a subset of the
@@ -588,6 +591,59 @@ optimization_remove_deaths(ProcInfo, GoalInfo, Sharing0) = Sharing :-
     set.to_sorted_list(Deaths, DeathsList),
     sharing_as_project_with_type(outproject, DeathsList, Sharing0, Sharing).
 
+add_foreign_proc_sharing(ModuleInfo, ProcInfo, ForeignPPId, 
+        Attributes, GoalContext, OldSharing) = NewSharing :- 
+    ForeignSharing = sharing_as_for_foreign_proc(ModuleInfo, 
+        Attributes, ForeignPPId, GoalContext),
+    NewSharing = sharing_as_comb(ModuleInfo, ProcInfo, ForeignSharing, 
+        OldSharing).
+
+:- func sharing_as_for_foreign_proc(module_info, 
+    pragma_foreign_proc_attributes, pred_proc_id, prog_context) = sharing_as.
+
+sharing_as_for_foreign_proc(ModuleInfo, Attributes, ForeignPPId, 
+        ProgContext) = SharingAs :-
+    (
+        sharing_as_from_user_annotated_sharing(Attributes, SharingAs0)
+    ->
+        SharingAs = SharingAs0
+    ;
+        predict_called_pred_is_bottom(ModuleInfo, ForeignPPId)
+    ->
+        SharingAs = sharing_as_bottom
+    ;
+        context_to_string(ProgContext, ContextString), 
+        Msg = "foreign proc with unknown sharing (" 
+            ++ ContextString ++ ")",
+        SharingAs = sharing_as_top_sharing(Msg)
+    ).
+
+:- pred sharing_as_from_user_annotated_sharing(
+    pragma_foreign_proc_attributes::in, sharing_as::out) is semidet.
+
+sharing_as_from_user_annotated_sharing(Attributes, UserSharingAs) :- 
+    UserSharing = user_annotated_sharing(Attributes),
+    UserSharing = user_sharing(SharingDomain, _MaybeTypes), 
+    % Accept only the value "bottom" and "real" for the structure sharing.
+    % If the user has annotated the sharing with unknown sharing, we might
+    % try to predict bottom anyway.
+    some [!SharingAs] (
+        (
+            SharingDomain = structure_sharing_bottom,
+            !:SharingAs = sharing_as_bottom
+        ;
+            SharingDomain = structure_sharing_real(_SharingPairs),
+            !:SharingAs = from_structure_sharing_domain(SharingDomain)
+
+            % XXX 
+            % I have the feeling that renaming should not be needed at this
+            % place anymore, assuming that every foreign_proc call is
+            % correctly handled at the add_pragma stage? 
+        ), 
+        UserSharingAs = !.SharingAs
+    ).
+
+
 sharing_as_is_subsumed_by(ModuleInfo, ProcInfo, Sharing1, Sharing2) :-
     (
         Sharing2 = sharing_as_top(_)
@@ -677,27 +733,28 @@ apply_widening(ModuleInfo, ProcInfo, WideningLimit, WideningDone, !Sharing):-
 
 from_structure_sharing_domain(SharingDomain) = SharingAs :-
     (
-        SharingDomain = bottom,
+        SharingDomain = structure_sharing_bottom,
         SharingAs = sharing_as_bottom
     ;
-        SharingDomain = real(StructureSharing),
+        SharingDomain = structure_sharing_real(StructureSharing),
         SharingSet = from_sharing_pair_list(StructureSharing),
         wrap(SharingSet, SharingAs)
     ;
-        SharingDomain = top(Msgs),
+        SharingDomain = structure_sharing_top(Msgs),
         SharingAs = sharing_as_top(Msgs)
     ).
 
 to_structure_sharing_domain(SharingAs) = SharingDomain :-
     (
         SharingAs = sharing_as_bottom,
-        SharingDomain = bottom
+        SharingDomain = structure_sharing_bottom
     ;
         SharingAs = sharing_as_real_as(SharingSet),
-        SharingDomain = real(to_sharing_pair_list(SharingSet))
+        SharingDomain = structure_sharing_real(
+            to_sharing_pair_list(SharingSet))
     ;
         SharingAs = sharing_as_top(Msgs),
-        SharingDomain = top(Msgs)
+        SharingDomain = structure_sharing_top(Msgs)
     ).
 
 %-----------------------------------------------------------------------------%

@@ -1574,9 +1574,9 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
                 pred_info_get_arg_types(!.PredInfo, ArgTypes),
                 pred_info_get_purity(!.PredInfo, Purity),
                 clauses_info_add_pragma_foreign_proc(Purity, Attributes,
-                    PredId, ProcId, ProgVarSet, PVars, ArgTypes, PragmaImpl,
-                    Context, PredOrFunc, PredName, Arity, Clauses0, Clauses,
-                    !ModuleInfo, !IO),
+                    PredId, ProcId, ProgVarSet, PVars, ArgTypes, 
+                    PragmaImpl, Context, PredOrFunc, PredName, Arity, 
+                    Clauses0, Clauses, !ModuleInfo, !IO),
                 pred_info_set_clauses_info(Clauses, !PredInfo),
                 pred_info_update_goal_type(pragmas, !PredInfo),
                 map.det_update(Preds0, PredId, !.PredInfo, Preds),
@@ -2362,14 +2362,14 @@ fact_table_pragma_vars(Vars0, Modes0, VarSet, PragmaVars0) :-
     %
 :- pred clauses_info_add_pragma_foreign_proc(purity::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
-    prog_varset::in, list(pragma_var)::in, list(mer_type)::in,
+    prog_varset::in, list(pragma_var)::in, list(mer_type)::in, 
     pragma_foreign_code_impl::in, prog_context::in, pred_or_func::in,
     sym_name::in, arity::in, clauses_info::in, clauses_info::out,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
-        PVarSet, PVars, OrigArgTypes, PragmaImpl0, Context, PredOrFunc,
-        PredName, Arity, !ClausesInfo, !ModuleInfo, !IO) :-
+        PVarSet, PVars, OrigArgTypes, PragmaImpl0, Context, 
+        PredOrFunc, PredName, Arity, !ClausesInfo, !ModuleInfo, !IO) :-
 
     !.ClausesInfo = clauses_info(VarSet0, ExplicitVarTypes, TVarNameMap,
         InferredVarTypes, HeadVars, ClauseRep, RttiVarMaps,
@@ -2395,7 +2395,7 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
     %
     foreign.extrude_pragma_implementation(BackendForeignLanguages,
         PVars, PredName, PredOrFunc, Context, !ModuleInfo,
-        Attributes0, Attributes, PragmaImpl0, PragmaImpl),
+        Attributes0, Attributes1, PragmaImpl0, PragmaImpl),
 
     %
     % Check for arguments occurring multiple times.
@@ -2437,6 +2437,9 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
         % Put the purity in the goal_info in case this foreign code is inlined.
         add_goal_info_purity_feature(Purity, GoalInfo1, GoalInfo),
         make_foreign_args(HeadVars, ArgInfo, OrigArgTypes, ForeignArgs),
+        % Perform some renaming in any user annotated sharing information.
+        maybe_rename_user_annotated_sharing_information(Args0, HeadVars, 
+            OrigArgTypes, Attributes1, Attributes, !IO),
         HldsGoal0 = foreign_proc(Attributes, PredId, ProcId, ForeignArgs, [],
             PragmaImpl) - GoalInfo,
         map.init(EmptyVarTypes),
@@ -2465,6 +2468,31 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
             HasForeignClauses)
     ).
 
+    % Rename any user annotated structure sharing information from the
+    % variables (incl. type variables) in terms of which that information
+    % is expressed, to the formal variables in terms of which the clause
+    % is expressed. 
+    %
+:- pred maybe_rename_user_annotated_sharing_information(list(prog_var)::in,
+    list(prog_var)::in, list(mer_type)::in, 
+    pragma_foreign_proc_attributes::in, pragma_foreign_proc_attributes::out, 
+    io::di, io::uo) is det.
+
+maybe_rename_user_annotated_sharing_information(ActualHeadVars, FormalHeadVars,
+        FormalTypes, !Attributes, !IO):-
+    globals.io_lookup_bool_option(structure_sharing_analysis, SharingAnalysis,
+        !IO),
+    (
+        SharingAnalysis = no
+    ;
+        SharingAnalysis = yes, 
+        rename_user_annotated_sharing(ActualHeadVars, FormalHeadVars,
+            FormalTypes, user_annotated_sharing(!.Attributes), 
+            FormalUserSharing),
+        set_user_annotated_sharing(FormalUserSharing, !Attributes)
+    ).
+    
+    
 :- func is_applicable_for_current_backend(backend,
     list(pragma_foreign_proc_extra_attribute)) = bool.
 

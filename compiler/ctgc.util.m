@@ -47,9 +47,8 @@
     % Same as above, but then in the context of the types of the called 
     % procedures. 
     %
-:- func get_type_substitution(module_info, pred_proc_id, list(mer_type),
-    tvarset) = tsubst.
-
+:- func get_type_substitution(module_info, pred_proc_id, 
+    list(mer_type), tvarset) = tsubst.
 
 %-----------------------------------------------------------------------------%
 
@@ -101,25 +100,14 @@ get_variable_renaming(ModuleInfo, PPId, ActualArgs) = VariableRenaming :-
     proc_info_get_headvars(ProcInfo, FormalVars),
     map.from_corresponding_lists(FormalVars, ActualArgs, VariableRenaming).
 
-get_type_substitution(ModuleInfo, PPId, ActualTypes, ActualTVarset) = 
+get_type_substitution(ModuleInfo, PPId, ActualTypes, _TVarSet) = 
         TypeSubstitution :- 
     module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, _ProcInfo),
 
     % types of the head variables.
-    pred_info_get_arg_types(PredInfo, FormalTVarset, _, FormalTypes),
+    pred_info_get_arg_types(PredInfo, FormalTypes),
 
-    % (this is a bit that was inspired by the code for
-    % arg_type_list_subsumes/6)
-    tvarset_merge_renaming(ActualTVarset, FormalTVarset,_TVarSet1, Renaming),
-    apply_variable_renaming_to_type_list(Renaming, FormalTypes,
-        RenFormalTypes),
-
-    ( type_list_subsumes(RenFormalTypes, ActualTypes, TypeSubstitution0) ->
-        TypeSubstitution = TypeSubstitution0
-    ;
-        unexpected(this_file, "Types are supposed to be unifiable.")
-    ).
-    
+    type_list_subsumes_det(FormalTypes, ActualTypes, TypeSubstitution).
 
 %-----------------------------------------------------------------------------%
 

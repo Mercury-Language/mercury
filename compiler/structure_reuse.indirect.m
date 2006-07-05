@@ -262,6 +262,10 @@ analysis_info_lub(BaseInfo, AnalysisInfo0, !AnalysisInfo):-
     io::di, io::uo) is det.
 
 indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
+    ModuleInfo = BaseInfo ^ module_info, 
+    PredInfo = BaseInfo ^ pred_info, 
+    ProcInfo = BaseInfo ^ proc_info, 
+    SharingTable = BaseInfo ^ sharing_table, 
     !.Goal = GoalExpr0 - GoalInfo0,
     (
         GoalExpr0 = conj(ConjType, Goals0),
@@ -273,8 +277,7 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
         GoalExpr0 = call(CalleePredId, CalleeProcId, CalleeArgs, _, _, _),
         verify_indirect_reuse(BaseInfo, CalleePredId, CalleeProcId, 
             CalleeArgs, GoalInfo0, GoalInfo, !AnalysisInfo, !IO),
-        lookup_sharing_and_comb(BaseInfo ^ module_info, BaseInfo ^ pred_info, 
-            BaseInfo ^ proc_info, BaseInfo ^ sharing_table, 
+        lookup_sharing_and_comb(ModuleInfo, PredInfo, ProcInfo, SharingTable, 
             CalleePredId, CalleeProcId, CalleeArgs, 
             !.AnalysisInfo ^ sharing_as, NewSharing),
         !:AnalysisInfo = !.AnalysisInfo ^ sharing_as := NewSharing,
@@ -299,8 +302,8 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
             true
         ), 
         !:AnalysisInfo = !.AnalysisInfo ^ sharing_as :=
-            add_unify_sharing(BaseInfo ^ module_info, BaseInfo ^ proc_info, 
-                Unification, GoalInfo0, !.AnalysisInfo ^ sharing_as)
+            add_unify_sharing(ModuleInfo, ProcInfo, Unification, 
+            GoalInfo0, !.AnalysisInfo ^ sharing_as)
     ;
         GoalExpr0 = disj(Goals0),
         list.map2_foldl2(
@@ -356,16 +359,13 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
         GoalExpr = if_then_else(A, IfGoal, ThenGoal, ElseGoal),
         !:Goal = GoalExpr - GoalInfo0
     ;
-        GoalExpr0 = foreign_proc(_Attrs, _ForeignPredId, _ForeignProcId,
+        GoalExpr0 = foreign_proc(Attributes, ForeignPredId, ForeignProcId,
             _ForeignArgs, _, _),
-        % XXX User annotated structure sharing information is not yet
-        % supported.
         goal_info_get_context(GoalInfo0, Context),
-        context_to_string(Context, ContextString),
         !:AnalysisInfo = !.AnalysisInfo ^ sharing_as :=
-            sharing_as_top_sharing_accumulate(
-                "foreign_proc not handled yet (" ++ ContextString ++ ")",
-                !.AnalysisInfo ^ sharing_as)
+            add_foreign_proc_sharing(ModuleInfo, ProcInfo, 
+            proc(ForeignPredId, ForeignProcId), Attributes, Context, 
+            !.AnalysisInfo ^ sharing_as)
     ;
         GoalExpr0 = shorthand(_),
         unexpected(this_file, "indirect_reuse_analyse_goal: shorthand goal.")

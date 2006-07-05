@@ -528,7 +528,7 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
         PTerms6 = [PredAndVarsTerm, FlagsTerm, FieldsTerm,
             FirstTerm, LaterTerm, SharedTerm],
         parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma,
-            FlagsTerm, MaybeFlags),
+            VarSet, FlagsTerm, MaybeFlags),
         ( MaybeFlags = ok(Flags) ->
             (
                 parse_pragma_keyword("local_vars", FieldsTerm, Fields,
@@ -619,7 +619,7 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
         PTerms3 = [PredAndVarsTerm, FlagsTerm, CodeTerm],
         ( CodeTerm = term.functor(term.string(Code), [], Context) ->
             parse_pragma_foreign_proc_attributes_term(ForeignLanguage,
-                Pragma, FlagsTerm, MaybeFlags),
+                Pragma, VarSet, FlagsTerm, MaybeFlags),
             (
                 MaybeFlags = ok(Flags),
                 parse_pragma_foreign_code(ModuleName, Flags,
@@ -628,7 +628,7 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
             ;
                 MaybeFlags = error(FlagsErr, FlagsErrTerm),
                 parse_pragma_foreign_proc_attributes_term(
-                    ForeignLanguage, Pragma, PredAndVarsTerm,
+                    ForeignLanguage, Pragma, VarSet, PredAndVarsTerm,
                     MaybeFlags2),
                 (
                     MaybeFlags2 = ok(Flags),
@@ -713,7 +713,7 @@ parse_pragma_foreign_proc_pragma(ModuleName, Pragma, PragmaTerms,
         Result = error(string.append(InvalidDeclStr, ErrMsg0), ErrorTerm)
     ).
 
-parse_pragma_type(ModuleName, "import", PragmaTerms, ErrorTerm, _VarSet,
+parse_pragma_type(ModuleName, "import", PragmaTerms, ErrorTerm, VarSet,
         Result) :-
         % XXX we assume all imports are C
     ForeignLanguage = lang_c,
@@ -721,7 +721,7 @@ parse_pragma_type(ModuleName, "import", PragmaTerms, ErrorTerm, _VarSet,
         (
             PragmaTerms = [PredAndModesTerm, FlagsTerm, FunctionTerm],
             parse_pragma_foreign_proc_attributes_term(ForeignLanguage,
-                "import", FlagsTerm, MaybeFlags),
+                "import", VarSet, FlagsTerm, MaybeFlags),
             (
                 MaybeFlags = error(FlagError, ErrorTerm),
                 FlagsResult = error("invalid second argument in "
@@ -1384,7 +1384,7 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
     ;       thread_safe(thread_safe)
     ;       tabled_for_io(tabled_for_io)
     ;       purity(purity)
-    ;       aliasing
+    ;       user_annotated_sharing(user_annotated_sharing)
     ;       max_stack_size(int)
     ;       backend(backend)
     ;       terminates(terminates)
@@ -1395,11 +1395,11 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
     ;       box_policy(box_policy).
 
 :- pred parse_pragma_foreign_proc_attributes_term(foreign_language::in,
-    string::in, term::in, maybe1(pragma_foreign_proc_attributes)::out)
-    is det.
+    string::in, varset::in, term::in, 
+    maybe1(pragma_foreign_proc_attributes)::out) is det.
 
-parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Term,
-        MaybeAttributes) :-
+parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Varset, 
+        Term, MaybeAttributes) :-
     Attributes0 = default_attributes(ForeignLanguage),
     ( ( Pragma = "c_code" ; Pragma = "import" ) ->
         set_legacy_purity_behaviour(yes, Attributes0, Attributes1),
@@ -1436,7 +1436,7 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Term,
         box_policy(native_if_possible) - box_policy(always_boxed)
     ],
     (
-        parse_pragma_foreign_proc_attributes_term0(Term, AttrList)
+        parse_pragma_foreign_proc_attributes_term0(Varset, Term, AttrList)
     ->
         (
             list.member(Conflict1 - Conflict2, ConflictingAttributes),
@@ -1486,10 +1486,8 @@ process_attribute(may_call_mm_tabled(MayCallTabled), !Attrs) :-
     set_may_call_mm_tabled(MayCallTabled, !Attrs).
 process_attribute(box_policy(BoxPolicy), !Attrs) :-
     set_box_policy(BoxPolicy, !Attrs).
-
-    % Aliasing is currently ignored in the main branch compiler.
-    %
-process_attribute(aliasing, Attrs, Attrs).
+process_attribute(user_annotated_sharing(UserSharing), !Attrs) :-
+    set_user_annotated_sharing(UserSharing, !Attrs).
 
     % Check whether all the required attributes have been set for
     % a particular language
@@ -1514,11 +1512,11 @@ check_required_attributes(lang_il, Attrs, Term) = Res :-
     ).
 check_required_attributes(lang_java, Attrs, _Term) = ok(Attrs).
 
-:- pred parse_pragma_foreign_proc_attributes_term0(term::in,
+:- pred parse_pragma_foreign_proc_attributes_term0(varset::in, term::in, 
     list(collected_pragma_foreign_proc_attribute)::out) is semidet.
 
-parse_pragma_foreign_proc_attributes_term0(Term, Flags) :-
-    ( parse_single_pragma_foreign_proc_attribute(Term, Flag) ->
+parse_pragma_foreign_proc_attributes_term0(Varset, Term, Flags) :-
+    ( parse_single_pragma_foreign_proc_attribute(Varset, Term, Flag) ->
         Flags = [Flag]
     ;
         (
@@ -1526,24 +1524,25 @@ parse_pragma_foreign_proc_attributes_term0(Term, Flags) :-
             Flags = []
         ;
             Term = term.functor(term.atom("[|]"), [Head, Tail], _),
-            parse_single_pragma_foreign_proc_attribute(Head, HeadFlag),
-            parse_pragma_foreign_proc_attributes_term0(Tail, TailFlags),
+            parse_single_pragma_foreign_proc_attribute(Varset, Head, HeadFlag),
+            parse_pragma_foreign_proc_attributes_term0(Varset, Tail, 
+                TailFlags),
             Flags = [HeadFlag | TailFlags]
         )
     ).
 
-:- pred parse_single_pragma_foreign_proc_attribute(term::in,
+:- pred parse_single_pragma_foreign_proc_attribute(varset::in, term::in, 
     collected_pragma_foreign_proc_attribute::out) is semidet.
 
-parse_single_pragma_foreign_proc_attribute(Term, Flag) :-
+parse_single_pragma_foreign_proc_attribute(Varset, Term, Flag) :-
     ( parse_may_call_mercury(Term, MayCallMercury) ->
         Flag = may_call_mercury(MayCallMercury)
     ; parse_threadsafe(Term, ThreadSafe) ->
         Flag = thread_safe(ThreadSafe)
     ; parse_tabled_for_io(Term, TabledForIo) ->
         Flag = tabled_for_io(TabledForIo)
-    ; parse_aliasing(Term) ->
-        Flag = aliasing
+    ; parse_user_annotated_sharing(Varset, Term, UserSharing) ->
+        Flag = user_annotated_sharing(UserSharing)
     ; parse_max_stack_size(Term, Size) ->
         Flag = max_stack_size(Size)
     ; parse_backend(Term, Backend) ->
@@ -1623,17 +1622,6 @@ parse_tabled_for_io(term.functor(term.atom(Str), [], _), TabledForIo) :-
         Str = "not_tabled_for_io",
         TabledForIo = not_tabled_for_io
     ).
-
-    % XXX For the moment we just ignore the following attributes.
-    % These attributes are used for aliasing on the reuse branch,
-    % and ignoring them allows the main branch compiler to compile
-    % the reuse branch.
-    %
-:- pred parse_aliasing(term::in) is semidet.
-
-parse_aliasing(term.functor(term.atom("no_aliasing"), [], _)).
-parse_aliasing(term.functor(term.atom("unknown_aliasing"), [], _)).
-parse_aliasing(term.functor(term.atom("alias"), [_Types, _Alias], _)).
 
 :- pred parse_max_stack_size(term::in, int::out) is semidet.
 

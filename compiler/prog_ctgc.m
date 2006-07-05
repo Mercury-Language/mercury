@@ -27,6 +27,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 %
@@ -50,6 +51,9 @@
 :- func parse_structure_reuse_conditions(term(T)) = structure_reuse_conditions.
 
 :- func parse_structure_reuse_domain(term(T)) = structure_reuse_domain.
+
+:- pred parse_user_annotated_sharing(varset::in, term::in, 
+    user_annotated_sharing::out) is semidet.
 
 %-----------------------------------------------------------------------------%
 %
@@ -153,6 +157,10 @@
     tsubst::in, structure_sharing_domain::in,
     structure_sharing_domain::out) is det.
 
+:- pred rename_user_annotated_sharing(list(prog_var)::in, list(prog_var)::in,
+    list(mer_type)::in, user_annotated_sharing::in, 
+    user_annotated_sharing::out) is det.
+
 :- pred rename_structure_reuse_condition(map(prog_var, prog_var)::in, 
     tsubst::in, structure_reuse_condition::in, 
     structure_reuse_condition::out) is det.
@@ -175,11 +183,13 @@
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_out.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 
 :- import_module string.
 :- import_module pair.
+:- import_module set.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -331,14 +341,15 @@ parse_structure_sharing_domain(Term) = SharingAs :-
         Term = term.functor(term.atom(Cons), _, Context),
         (
             Cons = "[|]",
-            SharingAs0 = real(parse_structure_sharing(Term))
+            SharingAs0 = structure_sharing_real(parse_structure_sharing(Term))
         ;
             Cons = "bottom",
-            SharingAs0 = bottom
+            SharingAs0 = structure_sharing_bottom
         ;
             Cons = "top",
             context_to_string(Context, ContextMsg),
-            SharingAs0 = top(["imported top: " ++ ContextMsg ++ "."])
+            SharingAs0 = structure_sharing_top(["imported top: " 
+                ++ ContextMsg ++ "."])
         )
     ->
         SharingAs = SharingAs0
@@ -415,6 +426,88 @@ parse_structure_reuse_domain(Term) = ReuseDomain :-
             "(term not a functor).")
     ).
 
+%-----------------------------------------------------------------------------%
+
+parse_user_annotated_sharing(Varset, Term, UserSharing) :- 
+    (
+        Term = term.functor(term.atom("no_sharing"), [], _), 
+        UserSharing = user_sharing(structure_sharing_bottom, no)
+    ;
+        Term = term.functor(term.atom("unknown_sharing"), [], Context),
+        context_to_string(Context, ContextString), 
+        Msg = "user declared top(" ++ ContextString ++ ")",
+        UserSharing = user_sharing(structure_sharing_top([Msg]), no)
+    ;
+        Term = term.functor(term.atom("sharing"), 
+            [TypesTerm, UserSharingTerm], _),
+        (
+            TypesTerm = term.functor(term.atom("yes"), ListTypeTerms, _),
+            parse_types(ListTypeTerms, ok(Types)), 
+            term.vars_list(ListTypeTerms, TypeVars),
+            varset.select(Varset, set.list_to_set(TypeVars), Varset0),
+            MaybeUserTypes = yes(user_type_info(Types, 
+                varset.coerce(Varset0)))
+        ;
+            TypesTerm = term.functor(term.atom("no"), _, _), 
+            MaybeUserTypes = no
+        ), 
+        parse_user_annotated_sharing_term(UserSharingTerm, Sharing), 
+        UserSharing = user_sharing(Sharing, MaybeUserTypes)
+    ).
+
+:- pred parse_user_annotated_sharing_term(term::in, 
+    structure_sharing_domain::out) is semidet.
+
+parse_user_annotated_sharing_term(SharingDomainUserTerm, SharingDomain) :-
+    get_list_term_arguments(SharingDomainUserTerm, SharingPairTerms),
+    (
+        SharingPairTerms = [],
+        SharingDomain = structure_sharing_bottom
+    ;
+        SharingPairTerms = [_|_],
+        list.map(parse_user_annotated_sharing_pair_term, SharingPairTerms,
+            SharingPairs),
+        SharingDomain = structure_sharing_real(SharingPairs)
+    ).
+     
+:- pred get_list_term_arguments(term::in, list(term)::out) is semidet.
+
+get_list_term_arguments(ListTerm, ArgumentTerms) :-
+    ListTerm = term.functor(term.atom(Cons), Args, _),
+    (
+        Cons = "[|]",
+        Args = [FirstTerm, RestTerm],
+        get_list_term_arguments(RestTerm, RestList),
+        ArgumentTerms = [FirstTerm | RestList]
+    ;
+        Cons = "[]",
+        ArgumentTerms = []
+    ).
+
+:- pred parse_user_annotated_sharing_pair_term(term::in, 
+    structure_sharing_pair::out) is semidet.
+
+parse_user_annotated_sharing_pair_term(Term, SharingPair) :-
+    Term = term.functor(term.atom("-"), [Left, Right], _),
+    parse_user_annotated_datastruct_term(Left, LeftData),
+    parse_user_annotated_datastruct_term(Right, RightData),
+    SharingPair = LeftData - RightData.
+        
+:- pred parse_user_annotated_datastruct_term(term::in, datastruct::out) 
+    is semidet.
+
+parse_user_annotated_datastruct_term(Term, Datastruct) :- 
+    Term = term.functor(term.atom("cel"), [VarTerm, TypesTerm], _),
+    VarTerm = term.variable(GenericVar),
+    term.coerce_var(GenericVar, ProgVar),
+    get_list_term_arguments(TypesTerm, TypeTermsList),
+    parse_types(TypeTermsList, ok(Types)),
+    list.map(mer_type_to_typesel, Types, Selector),
+    Datastruct = selected_cel(ProgVar, Selector).
+
+:- pred mer_type_to_typesel(mer_type::in, unit_selector::out) is det.
+
+mer_type_to_typesel(Type, typesel(Type)).
 
 %-----------------------------------------------------------------------------%
 %
@@ -518,7 +611,7 @@ do_print_structure_sharing_domain(ProgVarSet, TypeVarSet, VerboseTop,
         MaybeThreshold, Start, Separator, End, SharingAs, !IO) :-
     io.write_string(Start, !IO),
     (
-        SharingAs = top(Msgs),
+        SharingAs = structure_sharing_top(Msgs),
         (
             VerboseTop = no,
             io.write_string("top", !IO)
@@ -529,10 +622,10 @@ do_print_structure_sharing_domain(ProgVarSet, TypeVarSet, VerboseTop,
             io.write_string("])", !IO)
         )
     ;
-        SharingAs = bottom,
+        SharingAs = structure_sharing_bottom,
         io.write_string("bottom", !IO)
     ;
-        SharingAs = real(SharingPairs),
+        SharingAs = structure_sharing_real(SharingPairs),
         print_structure_sharing(ProgVarSet, TypeVarSet,
         MaybeThreshold, "[", Separator, "]", SharingPairs, !IO)
     ),
@@ -628,11 +721,48 @@ rename_structure_sharing_pair(Dict, TypeSubst, !Pair) :-
 rename_structure_sharing(Dict, TypeSubst, !List) :-
     list.map(rename_structure_sharing_pair(Dict, TypeSubst), !List).
 
-rename_structure_sharing_domain(_, _, bottom, bottom).
-rename_structure_sharing_domain(_, _, X @ top(_), X).
-rename_structure_sharing_domain(Dict, TypeSubst, real(!.List), real(!:List)):-
+rename_structure_sharing_domain(_, _, X @ structure_sharing_bottom, X).
+rename_structure_sharing_domain(_, _, X @ structure_sharing_top(_), X).
+rename_structure_sharing_domain(Dict, TypeSubst, 
+        structure_sharing_real(!.List), structure_sharing_real(!:List)):-
     rename_structure_sharing(Dict, TypeSubst, !List).
 
+%-----------------------------------------------------------------------------%
+
+rename_user_annotated_sharing(HeadVars, NewHeadVars, NewTypes, 
+        !UserSharing) :- 
+    (
+        !.UserSharing = no_user_annotated_sharing
+    ;
+        !.UserSharing = user_sharing(Sharing, MaybeTypes),
+        some [!SharingDomain] (
+            !:SharingDomain = Sharing, 
+            (
+                !.SharingDomain = structure_sharing_bottom
+            ;
+                !.SharingDomain = structure_sharing_top(_)
+            ;
+                !.SharingDomain = structure_sharing_real(SharingPairs),
+                map.from_corresponding_lists(HeadVars, NewHeadVars, 
+                    VarRenaming),
+                (
+                    MaybeTypes = yes(user_type_info(UserSharingTypes, 
+                        _UserSharingTVarSet))
+                ->
+                    type_list_subsumes_det(UserSharingTypes, NewTypes, 
+                        TypeSubst)
+                ;
+                    TypeSubst = map.init
+                ),
+                rename_structure_sharing(VarRenaming, TypeSubst, 
+                        SharingPairs, NewSharingPairs),
+                !:SharingDomain = structure_sharing_real(NewSharingPairs)
+            ),
+            !:UserSharing = user_sharing(!.SharingDomain, no)
+        )
+    ). 
+
+%-----------------------------------------------------------------------------%
 rename_structure_reuse_condition(Dict, TypeSubst, 
         structure_reuse_condition(DeadNodes, LiveNodes, Sharing), 
         structure_reuse_condition(RenDeadNodes, RenLiveNodes, RenSharing)) :- 

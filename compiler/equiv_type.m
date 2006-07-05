@@ -416,6 +416,36 @@ replace_in_item(ModuleName,
     ).
 
 replace_in_item(ModuleName,
+        pragma(Origin, foreign_proc(Attrs0, PName, PredOrFunc, 
+            ProcVars, ProcVarset, ProcInstVarset, ProcImpl)),
+        _Context, EqvMap, _EqvInstMap,
+        pragma(Origin, foreign_proc(Attrs, PName, PredOrFunc, 
+            ProcVars, ProcVarset, ProcInstVarset, ProcImpl)),
+        [], !Info) :-
+    some [!EquivTypeInfo] (
+        maybe_record_expanded_items(ModuleName, PName, !.Info, 
+            !:EquivTypeInfo),
+        UserSharing0 = user_annotated_sharing(Attrs0), 
+        (   
+            UserSharing0 = user_sharing(Sharing0, MaybeTypes0),
+            MaybeTypes0 = yes(user_type_info(Types0, TVarset0))
+        ->
+            replace_in_type_list(EqvMap, Types0, Types, _AnythingChanged, 
+                TVarset0, TVarset, !EquivTypeInfo),
+            replace_in_structure_sharing_domain(EqvMap, Sharing0, Sharing,
+                TVarset0, !EquivTypeInfo),
+            MaybeTypes = yes(user_type_info(Types, TVarset)),
+            UserSharing = user_sharing(Sharing, MaybeTypes),
+            set_user_annotated_sharing(UserSharing, Attrs0, Attrs)
+        ;
+            Attrs = Attrs0
+        ),
+        ItemId = item_id(foreign_proc_item, item_name(PName, 
+            list.length(ProcVars))),
+        finish_recording_expanded_items(ItemId, !.EquivTypeInfo, !Info)
+    ). 
+
+replace_in_item(ModuleName,
         mutable(MutName, Type0, InitValue, Inst0, Attrs, Varset),
         _Context, EqvMap, EqvInstMap,
         mutable(MutName, Type, InitValue, Inst, Attrs, Varset),
@@ -953,6 +983,48 @@ replace_in_tm(EqvMap, type_only(Type0),
 replace_in_tm(EqvMap, type_and_mode(Type0, Mode),
         type_and_mode(Type, Mode), !VarSet, !Info) :-
     replace_in_type(EqvMap, Type0, Type, _, !VarSet, !Info).
+
+%-----------------------------------------------------------------------------%
+%
+:- pred replace_in_structure_sharing_domain(eqv_map::in, 
+    structure_sharing_domain::in, structure_sharing_domain::out, 
+    tvarset::in, equiv_type_info::in, equiv_type_info::out) is det.
+
+replace_in_structure_sharing_domain(_, X @ structure_sharing_bottom,
+    X, _TVarset, !EquivTypeInfo).
+replace_in_structure_sharing_domain(_, X @ structure_sharing_top(_), 
+    X, _TVarset, !EquivTypeInfo).
+replace_in_structure_sharing_domain(EqvMap, 
+        structure_sharing_real(SharingPairs0),
+        structure_sharing_real(SharingPairs), TVarset, !EquivTypeInfo) :- 
+    list.map_foldl(replace_in_structure_sharing_pair(EqvMap, TVarset), 
+        SharingPairs0, SharingPairs, !EquivTypeInfo).
+
+:- pred replace_in_structure_sharing_pair(eqv_map::in, tvarset::in, 
+    structure_sharing_pair::in, structure_sharing_pair::out,
+    equiv_type_info::in, equiv_type_info::out) is det.
+
+replace_in_structure_sharing_pair(EqvMap, TVarset, Data10 - Data20, 
+        Data1 - Data2, !EquivTypeInfo) :- 
+    replace_in_datastruct(EqvMap, TVarset, Data10, Data1, !EquivTypeInfo),
+    replace_in_datastruct(EqvMap, TVarset, Data20, Data2, !EquivTypeInfo).
+
+:- pred replace_in_datastruct(eqv_map::in, tvarset::in, datastruct::in,
+    datastruct::out, equiv_type_info::in, equiv_type_info::out) is det.
+
+replace_in_datastruct(EqvMap, TVarset, Data0, Data, !EquivTypeInfo) :- 
+    Sel0 = Data0 ^ sc_selector,
+    list.map_foldl(replace_in_unit_selector(EqvMap, TVarset), Sel0, Sel, 
+        !EquivTypeInfo), 
+    Data = Data0 ^ sc_selector := Sel.
+
+:- pred replace_in_unit_selector(eqv_map::in, tvarset::in, unit_selector::in,
+    unit_selector::out, equiv_type_info::in, equiv_type_info::out) is det.
+
+replace_in_unit_selector(_, _, X @ termsel(_, _), X, !EquivTypeInfo).
+replace_in_unit_selector(EqvMap, TVarset, typesel(Type0), typesel(Type),
+        !EquivTypeInfo) :-
+    replace_in_type(EqvMap, Type0, Type, _, TVarset, _, !EquivTypeInfo).
 
 %-----------------------------------------------------------------------------%
 

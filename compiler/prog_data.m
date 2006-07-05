@@ -328,9 +328,9 @@
     % This is the public representation of the type "sharing_as". 
     %
 :- type structure_sharing_domain
-    --->    bottom
-    ;       real(structure_sharing)
-    ;       top(list(top_feedback)).
+    --->    structure_sharing_bottom
+    ;       structure_sharing_real(structure_sharing)
+    ;       structure_sharing_top(list(top_feedback)).
 
     % Public representation of structure sharing.
     %
@@ -363,6 +363,25 @@
 :- type unit_selector
     --->    termsel(cons_id, int)       % term selector
     ;       typesel(mer_type).          % type selector
+
+    % Type to represent the sharing information that is manually added
+    % to procedures implemented as foreign_procs.
+    %
+:- type user_annotated_sharing
+    --->    no_user_annotated_sharing
+    ;       user_sharing(
+                sharing     ::  structure_sharing_domain, 
+                maybe_types ::  maybe(user_sharing_type_information)
+            ).
+
+    % The user may have declared the sharing in terms of type variables. In
+    % that case, we record the types, and the type variable set.
+    %
+:- type user_sharing_type_information
+    --->    user_type_info(
+                types       ::  list(mer_type),
+                typevarset  ::  tvarset
+            ).
 
 %-----------------------------------------------------------------------------%
 %
@@ -657,6 +676,8 @@
 :- func thread_safe(pragma_foreign_proc_attributes) = thread_safe.
 :- func purity(pragma_foreign_proc_attributes) = purity.
 :- func terminates(pragma_foreign_proc_attributes) = terminates.
+:- func user_annotated_sharing(pragma_foreign_proc_attributes) = 
+    user_annotated_sharing.
 :- func foreign_language(pragma_foreign_proc_attributes) = foreign_language.
 :- func tabled_for_io(pragma_foreign_proc_attributes) = tabled_for_io.
 :- func legacy_purity_behaviour(pragma_foreign_proc_attributes) = bool.
@@ -691,6 +712,10 @@
     pragma_foreign_proc_attributes::out) is det.
 
 :- pred set_terminates(terminates::in,
+    pragma_foreign_proc_attributes::in,
+    pragma_foreign_proc_attributes::out) is det.
+
+:- pred set_user_annotated_sharing(user_annotated_sharing::in, 
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
@@ -1463,6 +1488,7 @@ default_memo_table_attributes = table_attributes(all_strict, no, no, no).
                 tabled_for_io           :: tabled_for_io,
                 purity                  :: purity,
                 terminates              :: terminates,
+                user_annotated_sharing  :: user_annotated_sharing,
                 may_throw_exception     :: may_throw_exception,
 
                 % There is some special case behaviour for pragma c_code
@@ -1479,8 +1505,9 @@ default_memo_table_attributes = table_attributes(all_strict, no, no, no).
 default_attributes(Language) =
     attributes(Language, may_call_mercury, not_thread_safe,
         not_tabled_for_io, purity_impure, depends_on_mercury_calls,
-        default_exception_behaviour, no, no, may_modify_trail,
-        default_calls_mm_tabled, native_if_possible, []).
+        no_user_annotated_sharing, default_exception_behaviour, 
+        no, no, may_modify_trail, default_calls_mm_tabled, 
+        native_if_possible, []).
 
 set_may_call_mercury(MayCallMercury, Attrs0, Attrs) :-
     Attrs = Attrs0 ^ may_call_mercury := MayCallMercury.
@@ -1494,6 +1521,8 @@ set_purity(Purity, Attrs0, Attrs) :-
     Attrs = Attrs0 ^ purity := Purity.
 set_terminates(Terminates, Attrs0, Attrs) :-
     Attrs = Attrs0 ^ terminates := Terminates.
+set_user_annotated_sharing(UserSharing, Attrs0, Attrs) :-
+    Attrs = Attrs0 ^ user_annotated_sharing := UserSharing.
 set_may_throw_exception(MayThrowException, Attrs0, Attrs) :-
     Attrs = Attrs0 ^ may_throw_exception := MayThrowException.
 set_legacy_purity_behaviour(Legacy, Attrs0, Attrs) :-
@@ -1512,7 +1541,7 @@ attributes_to_strings(Attrs) = StringList :-
     % in the attribute list -- the foreign language specifier string
     % is at the start of the pragma.
     Attrs = attributes(_Lang, MayCallMercury, ThreadSafe, TabledForIO,
-        Purity, Terminates, Exceptions, _LegacyBehaviour,
+        Purity, Terminates, _UserSharing, Exceptions, _LegacyBehaviour,
         OrdinaryDespiteDetism, MayModifyTrail, MayCallMM_Tabled,
         BoxPolicy, ExtraAttributes),
     (
