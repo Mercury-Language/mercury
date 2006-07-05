@@ -183,7 +183,7 @@
         ** this future.
         */
         MR_save_context(ctxt);
-        ctxt->MR_ctxt_resume = MR_ENTRY_AP(par_builtin__wait_resume);
+        ctxt->MR_ctxt_resume = MR_ENTRY(mercury__par_builtin__wait_resume);
         ctxt->MR_ctxt_next = Future->suspended;
         Future->suspended = ctxt;
 
@@ -206,8 +206,12 @@
     % 
 :- pragma foreign_decl("C",
 "
+/*
+INIT mercury_par_builtin_wait_resume
+*/
+
 #if (!defined MR_HIGHLEVEL_CODE) && (defined MR_THREAD_SAFE)
-    MR_declare_entry(mercury__par_builtin__wait_resume);
+    MR_define_extern_entry(mercury__par_builtin__wait_resume);
 #endif
 ").
 
@@ -215,7 +219,8 @@
 "
 #if (!defined MR_HIGHLEVEL_CODE) && (defined MR_THREAD_SAFE)
 
-    MR_BEGIN_MODULE(par_builtin_wait_resume)
+    MR_BEGIN_MODULE(wait_resume_module)
+        MR_init_entry_ai(mercury__par_builtin__wait_resume);
     MR_BEGIN_CODE
     MR_define_entry(mercury__par_builtin__wait_resume);
     {
@@ -254,6 +259,32 @@
     MR_END_MODULE
 
 #endif
+
+    /* forward decls to suppress gcc warnings */
+    void mercury_par_builtin_wait_resume_init(void);
+    void mercury_par_builtin_wait_resume_init_type_tables(void);
+    #ifdef  MR_DEEP_PROFILING
+    void mercury_par_builtin_wait_resume_write_out_proc_statics(FILE *fp);
+    #endif
+
+    void mercury_par_builtin_wait_resume_init(void)
+    {
+    #if (!defined MR_HIGHLEVEL_CODE) && (defined MR_THREAD_SAFE)
+        wait_resume_module();
+    #endif
+    }
+
+    void mercury_par_builtin_wait_resume_init_type_tables(void)
+    {
+        /* no types to register */
+    }
+
+    #ifdef  MR_DEEP_PROFILING
+    void mercury_par_builtin_wait_resume_write_out_proc_statics(FILE *fp)
+    {
+        /* no proc_statics to write out */
+    }
+    #endif
 ").
 
 :- pragma foreign_proc("C",
