@@ -18,6 +18,8 @@
 #include <errno.h>
 
 #ifdef  MR_THREAD_SAFE
+  MercuryThread     MR_primordial_thread;
+
   MercuryThreadKey  MR_exception_handler_key;
   #ifdef MR_THREAD_LOCAL_STORAGE
     __thread MercuryEngine *MR_thread_engine_base;
@@ -40,6 +42,8 @@ MR_create_thread(MR_ThreadGoal *goal)
     MercuryThread   *thread;
     pthread_attr_t  attrs;
     int             err;
+
+    assert(MR_primordial_thread != (MercuryThread) 0);
 
     thread = MR_GC_NEW(MercuryThread);
     pthread_attr_init(&attrs);

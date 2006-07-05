@@ -122,6 +122,11 @@
   extern MR_bool	MR_exit_now;
 
   /*
+  ** The primordial thread. Currently used for debugging.
+  */
+  extern MercuryThread MR_primordial_thread;
+
+  /*
   ** MR_global_lock is a mutex for ensuring that only one non-threadsafe
   ** piece of pragma c code executes at a time. If `not_threadsafe' is
   ** given or `threadsafe' is not given in the attributes of a pragma

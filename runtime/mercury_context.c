@@ -387,6 +387,11 @@ MR_define_entry(MR_do_runnext);
 
     while (1) {
         if (MR_exit_now == MR_TRUE) {
+            /*
+            ** The primordial thread has the responsibility of cleaning
+            ** up the Mercury runtime.  It cannot exit by this route.
+            */
+            assert(thd != MR_primordial_thread);
             MR_UNLOCK(&MR_runqueue_lock, "MR_do_runnext (ii)");
             MR_destroy_thread(MR_cur_engine());
         }

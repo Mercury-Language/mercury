@@ -532,6 +532,7 @@ mercury_runtime_init(int argc, char **argv)
 #ifdef MR_THREAD_SAFE
     /* MR_init_thread_stuff() must be called prior to MR_init_memory() */
     MR_init_thread_stuff();
+    MR_primordial_thread = pthread_self();
 #endif
 
     /*
@@ -2287,6 +2288,12 @@ mercury_runtime_terminate(void)
   #ifdef MR_THREAD_SAFE
     MR_exit_now = MR_TRUE;
     pthread_cond_broadcast(&MR_runqueue_cond);
+
+    assert(MR_primordial_thread == pthread_self());
+    MR_primordial_thread = (MercuryThread) 0;
+
+    /* XXX seems to be needed or short programs may have no output */
+    fflush(stdout);
   #endif
 #endif
 

@@ -10,11 +10,11 @@
 :- import_module bool.
 :- import_module list.
 
-main(!IX) :-
+main(!IO) :-
     R = [1, 5, 3, 4, 7, 8, 6, 9, 2, 0],
     p(R, 1, S),
-    io.print(S, !IX),
-    io.nl(!IX).
+    io.print(S, !IO),
+    io.nl(!IO).
 
 :- pred p(list(int)::in, int::in, int::out) is cc_multi.
 

@@ -60,11 +60,8 @@ ifneq "$(findstring decldebug,$(GRADE))" ""
 	OBJ_PROGS =
 	PROGS =
 else
-	# Don't run dependent parallel conjunction programs as they can cause
-	# deadlocks if there are not enough threads available.  This will be
-	# fixed with coroutining support.
-	OBJ_PROGS = $(PROGS0) $(DEP_PAR_CONJ_PROGS)
-	PROGS = $(OBJ_PROGS) $(INDEP_PAR_CONJ_PROGS)
+	OBJ_PROGS =
+	PROGS = $(PROGS0) $(DEP_PAR_CONJ_PROGS) $(INDEP_PAR_CONJ_PROGS)
 endif
 
 # `mmc --make' doesn't expect subdirectories to appear in targets.
@@ -103,6 +100,16 @@ include Mercury.options
 %.runtest: %.res ;
 
 $(OBJ_PROGS:%=%.runtest): %.runtest: %.$(TARGET_OBJ_EXT) ;
+
+# Exercise multiple Mercury engines in lowlevel grades.
+ENGINES :=
+ifeq "$(filter hl% java% il%,$(GRADE))" ""
+	ENGINES := MERCURY_OPTIONS=-P2
+endif
+
+%.out: %
+	{ [ -f $*.inp ] && cat $*.inp; } | $(ENGINES) ./$< > $@ 2>&1 || \
+		{ grep . $@ /dev/null; exit 1; }
 
 # Run threads_hang with multiple OS threads in lowlevel parallel grades.
 # Repeat the test a few times in increase the chances of getting a deadlock.
