@@ -104,7 +104,7 @@ $(OBJ_PROGS:%=%.runtest): %.runtest: %.$(TARGET_OBJ_EXT) ;
 # Exercise multiple Mercury engines in lowlevel grades.
 ENGINES :=
 ifeq "$(filter hl% java% il%,$(GRADE))" ""
-	ENGINES := MERCURY_OPTIONS=-P2
+	ENGINES := MERCURY_OPTIONS=-P1
 endif
 
 %.out: %
