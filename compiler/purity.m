@@ -883,7 +883,7 @@ error_inconsistent_promise(ModuleInfo, PredInfo, PredId, Purity, !IO) :-
     purity_name(Purity, PurityName),
     PredContextPieces = pred_context(ModuleInfo, PredInfo, PredId),
     Pieces1 = PredContextPieces ++
-        [words("warning: declared"), fixed(PurityName),
+        [words("error: declared"), fixed(PurityName),
         words("but promised pure.")],
     globals.io_lookup_bool_option(verbose_errors, VerboseErrors, !IO),
     (
@@ -898,8 +898,7 @@ error_inconsistent_promise(ModuleInfo, PredInfo, PredId, Purity, !IO) :-
         globals.io_set_extra_error_info(yes, !IO),
         Pieces = Pieces1
     ),
-    write_error_pieces(Context, 0, Pieces, !IO),
-    record_warning(!IO).
+    write_error_pieces(Context, 0, Pieces, !IO).
 
 :- pred warn_exaggerated_impurity_decl(module_info::in, pred_info::in,
     pred_id::in, purity::in, purity::in,

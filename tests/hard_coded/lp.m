@@ -368,7 +368,12 @@ set_index(Tableau0, Rows0, Cols0, J, K, R, Tableau) :-
 
 :- pred mkuniq(array(float)::in, array(float)::array_uo) is det.
 
-:- pragma c_code(mkuniq(A::in, B::array_uo), "B = A;").
+:- pragma foreign_proc("C",
+	mkuniq(A::in, B::array_uo),
+	[will_not_call_mercury, promise_pure],
+"
+	B = A;
+").
 :- pragma foreign_proc(il, mkuniq(A::in, B::array_uo),
 		[will_not_call_mercury, max_stack_size(1), promise_pure],
 "

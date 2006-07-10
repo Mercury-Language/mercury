@@ -69,7 +69,10 @@ stringify_config(_Interp, title(Text), Str, IO, IO) :-
 
 :- pred get_thingy_counter(int::out, io__state::di, io__state::uo) is det.
 
-:- pragma c_code(get_thingy_counter(Int::out, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	get_thingy_counter(Int::out, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
 	Int = tk_direct_thingy_counter;
 	IO = IO0;
 ").
@@ -77,7 +80,10 @@ get_thingy_counter(5) --> [].
 
 :- pred set_thingy_counter(int::in, io__state::di, io__state::uo) is det.
 
-:- pragma c_code(set_thingy_counter(Int::in, IO0::di, IO::uo), "
+:- pragma foreign_proc("C",
+	set_thingy_counter(Int::in, IO0::di, IO::uo),
+	[will_not_call_mercury, promise_pure],
+"
 	tk_direct_thingy_counter = Int;
 	IO = IO0;
 ").

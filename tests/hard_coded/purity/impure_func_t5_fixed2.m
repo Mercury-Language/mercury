@@ -24,8 +24,12 @@ main -->
 
 :- impure func get_counter(int) = int is det.
 
-:- pragma c_header_code("extern Integer counter;").
-:- pragma c_code("Integer counter = 42;").
-:- pragma c_code(get_counter(Y::in) = (X::out), will_not_call_mercury,
-	"X = counter + Y; counter++;").
+:- pragma foreign_decl("C", "extern Integer counter;").
+:- pragma foreign_code("C", "Integer counter = 42;").
+:- pragma foreign_proc("C",
+	get_counter(Y::in) = (X::out),
+	[will_not_call_mercury],
+"
+	X = counter + Y; counter++;
+").
 get_counter(X) = X.

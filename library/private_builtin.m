@@ -1006,7 +1006,7 @@ trailed_nondet_pragma_foreign_code :-
 
 :- pragma foreign_proc("C",
     free_heap(Val::di),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, thread_safe, will_not_modify_trail],
 "
     MR_free_heap((void *) Val);
 ").

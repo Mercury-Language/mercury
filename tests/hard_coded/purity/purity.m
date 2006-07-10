@@ -31,45 +31,99 @@ main -->
 
 
 :- impure pred set_x(int::in) is det.
-:- pragma c_code(set_x(X::in), will_not_call_mercury, "x=X;" ).
-:- pragma foreign_proc("C#", set_x(X::in), will_not_call_mercury, "x=X;" ).
 :- pragma no_inline(set_x/1).
+:- pragma foreign_proc("C",
+	set_x(X::in),
+	[will_not_call_mercury],
+"
+	x = X;
+").
+:- pragma foreign_proc("C#",
+	set_x(X::in),
+	[will_not_call_mercury],
+"
+	x = X;
+").
 
 :- impure pred incr_x is det.
-:- pragma c_code(incr_x, will_not_call_mercury, "++x;" ).
-:- pragma foreign_proc("C#", incr_x, will_not_call_mercury, "++x;" ).
 :- pragma no_inline(incr_x/0).
+:- pragma foreign_proc("C",
+	incr_x,
+	[will_not_call_mercury],
+"
+	++x;
+").
+:- pragma foreign_proc("C#",
+	incr_x,
+	[will_not_call_mercury],
+"
+	++x;
+").
 
 :- semipure pred get_x(int::out) is det.
-:- pragma promise_semipure(get_x/1).
-:- pragma c_code(get_x(X::out), will_not_call_mercury, "X=x;").
-:- pragma foreign_proc("C#", get_x(X::out), will_not_call_mercury, "X=x;").
 :- pragma no_inline(get_x/1).
-
+:- pragma foreign_proc("C",
+	get_x(X::out),
+	[will_not_call_mercury, promise_semipure],
+"
+	X = x;
+").
+:- pragma foreign_proc("C#",
+	get_x(X::out),
+	[will_not_call_mercury, promise_semipure],
+"
+	X = x;
+").
 
 :- impure pred set_x_inline(int::in) is det.
-:- pragma c_code(set_x_inline(X::in), will_not_call_mercury, "x=X;" ).
-:- pragma foreign_proc("C#", set_x_inline(X::in),
-		will_not_call_mercury, "x=X;" ).
 :- pragma inline(set_x_inline/1).
+:- pragma foreign_proc("C",
+	set_x_inline(X::in),
+	[will_not_call_mercury],
+"
+	x = X;
+").
+:- pragma foreign_proc("C#",
+	set_x_inline(X::in),
+	[will_not_call_mercury],
+"
+	x = X;
+").
 
 :- impure pred incr_x_inline is det.
-:- pragma c_code(incr_x_inline, will_not_call_mercury, "++x;" ).
-:- pragma foreign_proc("C#", incr_x_inline, will_not_call_mercury, "++x;" ).
 :- pragma inline(incr_x_inline/0).
+:- pragma foreign_proc("C",
+	incr_x_inline,
+	[will_not_call_mercury],
+"
+	++x;
+").
+:- pragma foreign_proc("C#",
+	incr_x_inline,
+	[will_not_call_mercury],
+"
+	++x;
+").
 
 :- semipure pred get_x_inline(int::out) is det.
-:- pragma promise_semipure(get_x_inline/1).
-:- pragma c_code(get_x_inline(X::out), will_not_call_mercury, "X=x;").
-:- pragma foreign_proc("C#", get_x_inline(X::out),
-		will_not_call_mercury, "X=x;").
 :- pragma inline(get_x_inline/1).
-
-
-:- pragma c_header_code("int x = 0;").
-:- pragma foreign_code("C#", "
-static int x = 0;
+:- pragma foreign_proc("C",
+	get_x_inline(X::out),
+	[will_not_call_mercury, promise_semipure],
+"
+	X=x;
 ").
+:- pragma foreign_proc("C#",
+	get_x_inline(X::out),
+	[will_not_call_mercury, promise_semipure],
+"
+	X=x;
+").
+
+
+:- pragma foreign_decl("C", "extern int x;").
+:- pragma foreign_code("C", "int x = 0;").
+:- pragma foreign_code("C#", "static int x = 0;").
 
 
 % tempt compiler to optimize away duplicate semipure goals.

@@ -10,7 +10,9 @@ c_code(T, U) :- c_code_2(T, U).
 
 :- some [U] pred c_code_2(T::in, U::out) is det.
 
-:- pragma c_code(c_code_2(T::in, U::out),
+:- pragma foreign_proc("C",
+	c_code_2(T::in, U::out),
+	[will_not_call_mercury, promise_pure],
 "{
 	U = T;
 	TypeInfo_for_U = TypeInfo_for_T;

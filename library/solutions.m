@@ -630,26 +630,26 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 
 :- pragma foreign_proc("C",
     partial_deep_copy(SolutionsHeapPtr::in, OldVal::in, NewVal::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe],
 "
     MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr, OldVal, NewVal, TypeInfo_for_T);
 ").
 :- pragma foreign_proc("C",
     partial_deep_copy(SolutionsHeapPtr::in, OldVal::mdi, NewVal::muo),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe],
 "
     MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr, OldVal, NewVal, TypeInfo_for_T);
 ").
 :- pragma foreign_proc("C",
     partial_deep_copy(SolutionsHeapPtr::in, OldVal::di, NewVal::uo),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe],
 "
     MR_PARTIAL_DEEP_COPY(SolutionsHeapPtr, OldVal, NewVal, TypeInfo_for_T);
 ").
 
 :- pragma foreign_proc("C#",
     partial_deep_copy(_SolutionsHeapPtr::in, OldVal::in, NewVal::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe],
 "
     //
     // For the IL back-end, we don't do heap reclamation on failure,
@@ -660,20 +660,20 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 ").
 :- pragma foreign_proc("C#",
     partial_deep_copy(_SolutionsHeapPtr::in, OldVal::mdi, NewVal::muo),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe],
 "
     NewVal = OldVal;
 ").
 :- pragma foreign_proc("C#",
     partial_deep_copy(_SolutionsHeapPtr::in, OldVal::di, NewVal::uo),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe],
 "
     NewVal = OldVal;
 ").
 
 :- pragma foreign_proc("Java",
     partial_deep_copy(_SolutionsHeapPtr::in, OldVal::in, NewVal::out),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe],
 "
     /*
     ** For the Java back-end, as for the .NET implementation,
@@ -685,13 +685,13 @@ non_cc_call(P::pred(in, out, di, uo) is cc_multi, X::in, More::out,
 ").
 :- pragma foreign_proc("Java",
     partial_deep_copy(_SolutionsHeapPtr::in, OldVal::mdi, NewVal::muo),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe],
 "
     NewVal = OldVal;
 ").
 :- pragma foreign_proc("Java",
     partial_deep_copy(_SolutionsHeapPtr::in, OldVal::di, NewVal::uo),
-    [will_not_call_mercury, thread_safe, promise_pure],
+    [will_not_call_mercury, thread_safe],
 "
     NewVal = OldVal;
 ").

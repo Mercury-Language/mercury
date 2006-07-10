@@ -33,8 +33,10 @@ main -->
 :- pred convert_list(list(T), list(T)).
 :- mode convert_list(in, out(list_skel(mypred))) is det.
 
-:- pragma c_code(
-	convert_list(L0 :: in, L :: out(list_skel(mypred))), "
+:- pragma foreign_proc("C",
+	convert_list(L0 :: in, L :: out(list_skel(mypred))),
+	[will_not_call_mercury, promise_pure],	
+"
 {
 	L = L0;
 }

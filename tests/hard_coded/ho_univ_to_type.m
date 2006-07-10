@@ -47,18 +47,21 @@ main -->
 
 foo(X) :- X = (pred(A::in, B::in, C::out) is det :- C = A + B).
 
-% Some hacky pragma c_code to allow use to change an
+% Some hacky pragma foreign_proc to allow use to change an
 % inst from `ground' to `pred(in, in, out) is det'.
 
 :- pred convert_inst(mypred2::in, mypred2::out(mypred)) is det.
-
-:- pragma c_code(convert_inst(Pred1::in, Pred2::out(mypred)), "
+:- pragma foreign_proc("C",
+	convert_inst(Pred1::in, Pred2::out(mypred)),
+	[will_not_call_mercury, promise_pure],
+"
 {
 	Pred2 = Pred1;
 }
 ").
-:- pragma foreign_proc("C#", convert_inst(Pred1::in, Pred2::out(mypred)),
-		[promise_pure], "
+:- pragma foreign_proc("C#",
+	convert_inst(Pred1::in, Pred2::out(mypred)),
+	[will_not_call_mercury, promise_pure], "
 {
 	Pred2 = Pred1;
 }

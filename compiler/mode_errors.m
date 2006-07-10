@@ -452,7 +452,7 @@ mode_error_conj_to_specs(ModeInfo, Errors, Culprit) = Specs :-
         ImpureGoal = _ - ImpureGoalInfo,
         goal_info_get_context(ImpureGoalInfo, ImpureGoalContext),
         Pieces1 = [words("The goal could not be reordered,"),
-            words("becaise it was followed by an impure goal.")],
+            words("because it was followed by an impure goal.")],
         Pieces2 = [words("This is the location of the impure goal.")],
         Specs2 = [plain_spec(error_msg_spec(no, Context, 0, Pieces1)),
             plain_spec(error_msg_spec(no, ImpureGoalContext, 0, Pieces2))]

@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: simplify.m.
 % Main authors: zs, stayl.
-
+% 
 % The two jobs of the simplification module are
 %
 %   to find and exploit opportunities for simplifying the internal form
@@ -26,6 +26,7 @@
 % optimizations in common.m are run so that excess assignment elimination
 % works properly.
 %
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.simplify.
