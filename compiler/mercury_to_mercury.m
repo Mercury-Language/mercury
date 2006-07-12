@@ -618,16 +618,16 @@ mercury_output_item(_UnqualifiedItemNames, pragma(_, Pragma), Context, !IO) :-
                     MaybeSizeLimit = no
                 ),
                 (
-                    Stats = yes,
+                    Stats = table_gather_statistics,
                     !:Strs = ["statistics" | !.Strs]
                 ;
-                    Stats = no
+                    Stats = table_dont_gather_statistics
                 ),
                 (
-                    AllowReset = yes,
+                    AllowReset = table_allow_reset,
                     !:Strs = ["allow_reset" | !.Strs]
                 ;
-                    AllowReset = no
+                    AllowReset = table_dont_allow_reset
                 ),
                 (
                     !.Strs = [],

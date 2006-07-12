@@ -1650,7 +1650,7 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
         AllowReset = Attributes ^ table_attr_allow_reset,
         ( PredIds = [_, _ | _] ->
             (
-                Statistics = yes,
+                Statistics = table_gather_statistics,
                 StatsPieces = [words("Error: cannot request statistics"),
                     words("for the ambiguous name"),
                     sym_name_and_arity(PredName / Arity), suffix(","),
@@ -1659,10 +1659,10 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
                 write_error_pieces(Context, 0, StatsPieces, !IO),
                 io.set_exit_status(1, !IO)
             ;
-                Statistics = no
+                Statistics = table_dont_gather_statistics
             ),
             (
-                AllowReset = yes,
+                AllowReset = table_allow_reset,
                 ResetPieces = [words("Error: cannot request allow_reset"),
                     words("for the ambiguous name"),
                     sym_name_and_arity(PredName / Arity), suffix(","),
@@ -1671,7 +1671,7 @@ module_add_pragma_tabled(EvalMethod, PredName, Arity, MaybePredOrFunc,
                 write_error_pieces(Context, 0, ResetPieces, !IO),
                 io.set_exit_status(1, !IO)
             ;
-                AllowReset = no
+                AllowReset = table_dont_allow_reset
             )
         ;
             true
@@ -1899,8 +1899,8 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
             ;
                 MaybeAttributes = no,
                 Strictness = all_strict,
-                Statistics = no,
-                AllowReset = no
+                Statistics = table_gather_statistics,
+                AllowReset = table_allow_reset
             ),
             ( Strictness = specified(MaybeArgMethods) ->
                 check_pred_args_against_tabling_methods(DeclaredArgModes,
@@ -1931,20 +1931,20 @@ set_eval_method_create_aux_preds(ProcId, ProcInfo0, Context, SimpleCallId,
             % later compiler passes would report errors at the sites where
             % these predicates are called.
             (
-                Statistics = yes,
+                Statistics = table_gather_statistics,
                 create_tabling_statistics_pred(ProcId, Context,
                     SimpleCallId, SingleProc, !ProcTable,
                     !Status, !ModuleInfo, !QualInfo, !IO)
             ;
-                Statistics = no
+                Statistics = table_dont_gather_statistics
             ),
             (
-                AllowReset = yes,
+                AllowReset = table_allow_reset,
                 create_tabling_reset_pred(ProcId, Context,
                     SimpleCallId, SingleProc, !ProcTable,
                     !Status, !ModuleInfo, !QualInfo, !IO)
             ;
-                AllowReset = no
+                AllowReset = table_dont_allow_reset
             )
         )
     ).

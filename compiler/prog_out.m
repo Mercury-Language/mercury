@@ -421,10 +421,14 @@ eval_method_to_string(eval_memo) =  "memo".
 eval_method_to_string(eval_minimal(MinimalMethod)) = Str :-
     (
         MinimalMethod = own_stacks,
+        % The fact that this is not the name of the corresponding pragma
+        % won't matter until this becomes the default way of doing minimal
+        % model tabling, at which time we will return "minimal_model" here
+        % and "minimal_model_stack_copy" in the other arm of the switch.
         Str = "minimal_model_own_stacks"
     ;
         MinimalMethod = stack_copy,
-        Str = "minimal_model_stack_copy"
+        Str = "minimal_model"
     ).
 eval_method_to_string(eval_table_io(IsDecl, IsUnitize)) = Str :-
     (

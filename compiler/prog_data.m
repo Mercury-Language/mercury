@@ -225,11 +225,19 @@
     --->    table_attributes(
                 table_attr_strictness   :: call_table_strictness,
                 table_attr_size_limit   :: maybe(int),
-                table_attr_statistics   :: bool,
-                table_attr_allow_reset  :: bool
+                table_attr_statistics   :: table_attr_statistics,
+                table_attr_allow_reset  :: table_attr_allow_reset
             ).
 
 :- func default_memo_table_attributes = table_attributes.
+
+:- type table_attr_statistics
+    --->    table_gather_statistics
+    ;       table_dont_gather_statistics.
+
+:- type table_attr_allow_reset
+    --->    table_allow_reset
+    ;       table_dont_allow_reset.
 
 :- type call_table_strictness
     --->    all_strict
@@ -240,8 +248,7 @@
                 % argument of the predicate. Elements that correspond
                 % to output arguments should be "no". Elements that
                 % correspond to input arguments should be "yes",
-                % specifying how to look up that argument in the call
-                % table.
+                % specifying how to look up that argument in the call table.
             ).
 
 :- type arg_tabling_method
@@ -1473,7 +1480,9 @@
 
 :- import_module string.
 
-default_memo_table_attributes = table_attributes(all_strict, no, no, no).
+default_memo_table_attributes =
+    table_attributes(all_strict, no, table_dont_gather_statistics,
+        table_dont_allow_reset).
 
 %-----------------------------------------------------------------------------%
 %

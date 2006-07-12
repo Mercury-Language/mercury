@@ -1775,7 +1775,7 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
                         default_memo_table_attributes, MaybeAttributes),
                     (
                         MaybeAttributes = ok(Attributes),
-                        PragmaType = tabled(eval_memo, PredName, Arity,
+                        PragmaType = tabled(TablingType, PredName, Arity,
                             MaybePredOrFunc, MaybeModes, yes(Attributes)),
                         Result = ok(pragma(user, PragmaType))
                     ;
@@ -1834,8 +1834,12 @@ update_tabling_attributes([Term - SingleAttr | TermSingleAttrs], !.Attributes,
         )
     ;
         SingleAttr = attr_statistics,
-        ( !.Attributes ^ table_attr_statistics = no ->
-            !:Attributes = !.Attributes ^ table_attr_statistics := yes,
+        (
+            !.Attributes ^ table_attr_statistics
+                = table_dont_gather_statistics
+        ->
+            !:Attributes = !.Attributes ^ table_attr_statistics
+                := table_gather_statistics,
             update_tabling_attributes(TermSingleAttrs, !.Attributes,
                 MaybeAttributes)
         ;
@@ -1845,8 +1849,9 @@ update_tabling_attributes([Term - SingleAttr | TermSingleAttrs], !.Attributes,
         )
     ;
         SingleAttr = attr_allow_reset,
-        ( !.Attributes ^ table_attr_allow_reset = no ->
-            !:Attributes = !.Attributes ^ table_attr_allow_reset := yes,
+        ( !.Attributes ^ table_attr_allow_reset = table_dont_allow_reset ->
+            !:Attributes = !.Attributes ^ table_attr_allow_reset
+                := table_allow_reset,
             update_tabling_attributes(TermSingleAttrs, !.Attributes,
                 MaybeAttributes)
         ;

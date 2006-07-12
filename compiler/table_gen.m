@@ -427,7 +427,7 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
         % Since we don't actually create a call table for I/O tabled
         % procedures, the value of MaybeSpecMethod doesn't really matter.
         MaybeSpecMethod = all_same(arg_value),
-        Statistics = no,
+        Statistics = table_dont_gather_statistics,
         MaybeSizeLimit = no
     ;
         ( EvalMethod = eval_loop_check
@@ -649,7 +649,7 @@ table_gen_transform_proc(EvalMethod, PredId, ProcId, !ProcInfo, !PredInfo,
 %   ).
 
 :- pred create_new_loop_goal(determinism::in, hlds_goal::in,
-    bool::in, pred_id::in, proc_id::in, list(prog_var)::in,
+    table_attr_statistics::in, pred_id::in, proc_id::in, list(prog_var)::in,
     list(var_mode_pos_method)::in, list(var_mode_pos_method)::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, prog_var::out, hlds_goal::out,
@@ -889,7 +889,8 @@ create_new_loop_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
 % and filling it in, we call table_memo_mark_as_succeeded.
 
 :- pred create_new_memo_goal(determinism::in, hlds_goal::in,
-    bool::in, maybe(int)::in, pred_id::in, proc_id::in, list(prog_var)::in,
+    table_attr_statistics::in, maybe(int)::in,
+    pred_id::in, proc_id::in, list(prog_var)::in,
     list(var_mode_pos_method)::in, list(var_mode_pos_method)::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, prog_var::out, hlds_goal::out,
@@ -1010,7 +1011,8 @@ create_new_memo_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
     Goal = GoalExpr - GoalInfo.
 
 :- pred create_new_memo_non_goal(determinism::in, hlds_goal::in,
-    bool::in, maybe(int)::in, pred_id::in, proc_id::in, list(prog_var)::in,
+    table_attr_statistics::in, maybe(int)::in,
+    pred_id::in, proc_id::in, list(prog_var)::in,
     list(var_mode_pos_method)::in, list(var_mode_pos_method)::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, prog_var::out, hlds_goal::out,
@@ -1454,7 +1456,7 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
 %   ).
 
 :- pred create_new_mm_goal(determinism::in, hlds_goal::in,
-    bool::in, pred_id::in, proc_id::in, list(prog_var)::in,
+    table_attr_statistics::in, pred_id::in, proc_id::in, list(prog_var)::in,
     list(var_mode_pos_method)::in, list(var_mode_pos_method)::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, prog_var::out, hlds_goal::out,
@@ -1561,8 +1563,9 @@ create_new_mm_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
 %   impure table_mmos_consume_next_answer_nondet(Consumer, AnswerBlock),
 %   impure table_restore_int_ans(AnswerBlock, 0, B).
 
-:- pred do_own_stack_transform(determinism::in, hlds_goal::in, bool::in,
-    pred_id::in, proc_id::in, pred_info::in, proc_info::in, list(prog_var)::in,
+:- pred do_own_stack_transform(determinism::in, hlds_goal::in,
+    table_attr_statistics::in, pred_id::in, proc_id::in,
+    pred_info::in, proc_info::in, list(prog_var)::in,
     list(var_mode_pos_method)::in, list(var_mode_pos_method)::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, generator_map::in, generator_map::out,
@@ -1734,7 +1737,7 @@ generate_save_input_vars_code([InputArg - Mode | InputArgModes], ModuleInfo,
         PickupArgs, SaveVarCodes, PickupVarCodes).
 
 :- pred do_own_stack_create_generator(pred_id::in, proc_id::in,
-    pred_info::in, proc_info::in, bool::in, term.context::in,
+    pred_info::in, proc_info::in, table_attr_statistics::in, term.context::in,
     prog_var::in, string::in, list(foreign_arg)::in,
     list(var_mode_pos_method)::in, list(var_mode_pos_method)::in,
     set(prog_var)::in, instmap_delta::in,
@@ -1954,7 +1957,7 @@ generate_gen_proc_table_info(TableInfo, InputSteps, MaybeOutputSteps,
     %
 :- pred generate_simple_call_table_lookup_goal(mer_type::in,
     string::in, string::in, list(var_mode_pos_method)::in,
-    pred_id::in, proc_id::in, bool::in, term.context::in,
+    pred_id::in, proc_id::in, table_attr_statistics::in, term.context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, prog_var::out, prog_var::out,
     hlds_goal::out, list(table_trie_step)::out) is det.
@@ -2003,7 +2006,7 @@ generate_simple_call_table_lookup_goal(StatusType, PredName,
     % model_non memo predicates.
     %
 :- pred generate_memo_non_call_table_lookup_goal(list(var_mode_pos_method)::in,
-    pred_id::in, proc_id::in, bool::in, term.context::in,
+    pred_id::in, proc_id::in, table_attr_statistics::in, term.context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, prog_var::out, prog_var::out,
     hlds_goal::out, list(table_trie_step)::out) is det.
@@ -2060,7 +2063,7 @@ generate_memo_non_call_table_lookup_goal(NumberedVars, PredId, ProcId,
     % minimal model predicates.
     %
 :- pred generate_mm_call_table_lookup_goal(list(var_mode_pos_method)::in,
-    pred_id::in, proc_id::in, bool::in, term.context::in,
+    pred_id::in, proc_id::in, table_attr_statistics::in, term.context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, prog_var::out, prog_var::out,
     hlds_goal::out, list(table_trie_step)::out) is det.
@@ -2116,7 +2119,7 @@ generate_mm_call_table_lookup_goal(NumberedVars, PredId, ProcId,
 % Utility predicates used when creating table lookup goals.
 
 :- pred generate_call_table_lookup_goals(list(var_mode_pos_method)::in,
-    pred_id::in, proc_id::in, bool::in, term.context::in,
+    pred_id::in, proc_id::in, table_attr_statistics::in, term.context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, list(table_trie_step)::out,
     prog_var::out, foreign_arg::out, foreign_arg::out, list(foreign_arg)::out,
@@ -2153,7 +2156,7 @@ generate_call_table_lookup_goals(NumberedVars, PredId, ProcId,
         "\t" ++ CallTableTipVarName ++ " = " ++ cur_table_node_name ++ ";\n".
 
 :- pred generate_answer_table_lookup_goals(list(var_mode_pos_method)::in,
-    pred_id::in, proc_id::in, bool::in, term.context::in,
+    pred_id::in, proc_id::in, table_attr_statistics::in, term.context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, list(table_trie_step)::out,
     list(foreign_arg)::out, list(hlds_goal)::out, string::out) is det.
@@ -2175,19 +2178,20 @@ generate_answer_table_lookup_goals(NumberedVars, PredId, ProcId, Statistics,
     PrefixGoals = StatsPrefixGoals ++ LookupPrefixGoals.
 
 :- pred maybe_lookup_not_dupl_code_args(pred_id::in, proc_id::in,
-    string::in, string::in, bool::in, call_or_answer_table::in,
+    string::in, string::in, table_attr_statistics::in,
+    call_or_answer_table::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     list(hlds_goal)::out, list(foreign_arg)::out, string::out) is det.
 
 maybe_lookup_not_dupl_code_args(PredId, ProcId, InfoVarName, TipVarName,
         Statistics, Kind, !VarSet, !VarTypes, PrefixGoals, Args, CodeStr) :-
     (
-        Statistics = no,
+        Statistics = table_dont_gather_statistics,
         PrefixGoals = [],
         Args = [],
         CodeStr = ""
     ;
-        Statistics = yes,
+        Statistics = table_gather_statistics,
         generate_get_table_info_goal(PredId, ProcId, !VarSet, !VarTypes,
             InfoVarName, Arg, Goal),
         PrefixGoals = [Goal],
@@ -2240,7 +2244,7 @@ attach_call_table_tip(GoalExpr - GoalInfo0, GoalExpr - GoalInfo) :-
     % and answer tables.
     %
 :- pred generate_table_lookup_goals(list(var_mode_pos_method)::in,
-    bool::in, call_or_answer_table::in,
+    table_attr_statistics::in, call_or_answer_table::in,
     string::in, string::in, term.context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out, list(table_trie_step)::out,
@@ -2276,8 +2280,8 @@ generate_table_lookup_goals([VarModePos | NumberedVars], Statistics,
         Steps, RestForeignArgs, RestPrefixGoals, RestCodeStr).
 
 :- pred gen_lookup_call_for_type(arg_tabling_method::in, type_category::in,
-    mer_type::in, prog_var::in, int::in, bool::in, call_or_answer_table::in,
-    string::in, string::in, term.context::in,
+    mer_type::in, prog_var::in, int::in, table_attr_statistics::in,
+    call_or_answer_table::in, string::in, string::in, term.context::in,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
     table_info::in, table_info::out,
     table_trie_step::out, list(foreign_arg)::out, list(hlds_goal)::out,
@@ -2429,9 +2433,10 @@ generate_memo_save_goal(NumberedSaveVars, TableTipVar, BlockSize,
     %
 :- pred generate_memo_non_save_goals(list(var_mode_pos_method)::in,
     pred_id::in, proc_id::in, prog_var::in, int::in,
-    bool::in, term.context::in, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, table_info::in, table_info::out,
-    list(table_trie_step)::out, list(hlds_goal)::out) is det.
+    table_attr_statistics::in, term.context::in,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
+    table_info::in, table_info::out, list(table_trie_step)::out,
+    list(hlds_goal)::out) is det.
 
 generate_memo_non_save_goals(NumberedSaveVars, PredId, ProcId,
         RecordVar, BlockSize, Statistics, Context, !VarSet, !VarTypes,
@@ -2484,9 +2489,10 @@ generate_memo_non_save_goals(NumberedSaveVars, PredId, ProcId,
     %
 :- pred generate_mm_save_goals(list(var_mode_pos_method)::in,
     prog_var::in, pred_id::in, proc_id::in, int::in,
-    bool::in, term.context::in, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, table_info::in, table_info::out,
-    list(table_trie_step)::out, list(hlds_goal)::out) is det.
+    table_attr_statistics::in, term.context::in,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
+    table_info::in, table_info::out, list(table_trie_step)::out,
+    list(hlds_goal)::out) is det.
 
 generate_mm_save_goals(NumberedSaveVars, SubgoalVar, PredId, ProcId, BlockSize,
         Statistics, Context, !VarSet, !VarTypes, !TableInfo, OutputSteps,
@@ -2561,9 +2567,10 @@ generate_all_save_goals(NumberedSaveVars, BaseVarName, BlockSize,
     %
 :- pred generate_own_stack_save_goal(list(var_mode_pos_method)::in,
     prog_var::in, pred_id::in, proc_id::in, int::in,
-    bool::in, term.context::in, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out, table_info::in, table_info::out,
-    list(table_trie_step)::out, list(hlds_goal)::out) is det.
+    table_attr_statistics::in, term.context::in,
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
+    table_info::in, table_info::out, list(table_trie_step)::out,
+    list(hlds_goal)::out) is det.
 
 generate_own_stack_save_goal(NumberedOutputVars, GeneratorVar, PredId, ProcId,
         BlockSize, Statistics, Context, !VarSet, !VarTypes, !TableInfo,
@@ -3412,14 +3419,14 @@ get_back_arg_string(TableInfo) = BackArgStr :-
     --->    call_table
     ;       answer_table.
 
-:- func stats_arg(bool, call_or_answer_table, int) = string.
+:- func stats_arg(table_attr_statistics, call_or_answer_table, int) = string.
 
 stats_arg(Statistics, Kind, SeqNum) = ArgStr :-
     (
-        Statistics = no,
+        Statistics = table_dont_gather_statistics,
         ArgStr = "NULL"
     ;
-        Statistics = yes,
+        Statistics = table_gather_statistics,
         (
             Kind = call_table,
             ArgStr = "&" ++ proc_table_info_name ++

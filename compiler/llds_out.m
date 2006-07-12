@@ -923,9 +923,9 @@ output_tabling_info_struct(TablingInfoStruct, !DeclSet, !IO) :-
     ),
 
     (
-        Stats = no
+        Stats = table_dont_gather_statistics
     ;
-        Stats = yes,
+        Stats = table_gather_statistics,
         output_table_stats(ModuleName, CallStatsDataName, NumInputs,
             !DeclSet, !IO),
         output_table_stats(ModuleName, PrevCallStatsDataName, NumInputs,
@@ -997,7 +997,7 @@ output_tabling_info_struct(TablingInfoStruct, !DeclSet, !IO) :-
     io.write_string(",\n", !IO),
     io.write_string("{ 0 },\n", !IO),
     (
-        Stats = no,
+        Stats = table_dont_gather_statistics,
         io.write_string("0,\n", !IO),
         io.write_string("0,\n", !IO),
         io.write_string("NULL,\n", !IO),
@@ -1011,7 +1011,7 @@ output_tabling_info_struct(TablingInfoStruct, !DeclSet, !IO) :-
         io.write_string("0,\n", !IO),
         io.write_string("NULL,\n", !IO)
     ;
-        Stats = yes,
+        Stats = table_gather_statistics,
         io.write_string("0,\n", !IO),
         io.write_string("0,\n", !IO),
         output_data_addr(CallStatsDataAddr, !IO),

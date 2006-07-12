@@ -98,7 +98,7 @@
                 tis_type_params             :: rval,
                                             % Where to fill the ptis in from.
                 tis_size_limit              :: maybe(int),
-                tis_stats                   :: bool
+                tis_stats                   :: table_attr_statistics
             ).
 
 :- type common_cell_type 
