@@ -1009,7 +1009,7 @@ add_item_clause(initialise(user, SymName, Arity), !Status, Context,
                 HeadModes = [ di_mode, uo_mode ],
                 proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
                 MaybeDetism = yes(Detism),
-                ( Detism = det ; Detism = cc_multidet ),
+                ( Detism = detism_det ; Detism = detism_cc_multi ),
                 pred_info_get_purity(PredInfo, Purity),
                 Purity = purity_pure
             ->
@@ -1027,7 +1027,7 @@ add_item_clause(initialise(user, SymName, Arity), !Status, Context,
                 HeadModes = [],
                 proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
                 MaybeDetism = yes(Detism),
-                ( Detism = det; Detism = cc_multidet ),
+                ( Detism = detism_det; Detism = detism_cc_multi ),
                 pred_info_get_purity(PredInfo, Purity),
                 Purity = purity_impure
             ->
@@ -1117,7 +1117,7 @@ add_item_clause(finalise(Origin, SymName, Arity),
                 HeadModes = [ di_mode, uo_mode ],
                 proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
                 MaybeDetism = yes(Detism),
-                ( Detism = det ; Detism = cc_multidet ),
+                ( Detism = detism_det ; Detism = detism_cc_multi ),
                 pred_info_get_purity(PredInfo, Purity),
                 Purity = purity_pure
             ->
@@ -1135,7 +1135,7 @@ add_item_clause(finalise(Origin, SymName, Arity),
                 HeadModes = [],
                 proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
                 MaybeDetism = yes(Detism),
-                ( Detism = det; Detism = cc_multidet ),
+                ( Detism = detism_det; Detism = detism_cc_multi ),
                 pred_info_get_purity(PredInfo, Purity),
                 Purity = purity_impure
             ->

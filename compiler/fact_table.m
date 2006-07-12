@@ -833,7 +833,7 @@ infer_proc_determinism_pass_1([ProcID | ProcIDs], ModuleInfo, !ProcTable,
     fact_table_mode_type(ArgModes, ModuleInfo, ModeType),
     (
         ModeType = all_in,
-        InferredDetism = inferred(semidet),
+        InferredDetism = inferred(detism_semi),
         WriteHashTables0 = yes,
         WriteDataTable0 = no,
         MaybeAllInProc0 = yes(ProcID)
@@ -842,14 +842,14 @@ infer_proc_determinism_pass_1([ProcID | ProcIDs], ModuleInfo, !ProcTable,
         proc_info_get_declared_determinism(ProcInfo0, MaybeDet),
         (
             (
-                MaybeDet = yes(cc_multidet)
+                MaybeDet = yes(detism_cc_multi)
             ;
-                MaybeDet = yes(cc_nondet)
+                MaybeDet = yes(detism_cc_non)
             )
         ->
-            InferredDetism = inferred(cc_multidet)
+            InferredDetism = inferred(detism_cc_multi)
         ;
-            InferredDetism = inferred(multidet)
+            InferredDetism = inferred(detism_multi)
         ),
         WriteHashTables0 = no,
         WriteDataTable0 = yes,
@@ -1137,7 +1137,7 @@ infer_determinism_pass_2([ProcID - FileName | ProcFiles], ExistsAllInMode,
             )
         ->
             % No duplicate keys => procedure is semidet.
-            Determinism = semidet
+            Determinism = detism_semi
         ;
             ExitStatus >= 1
         ->
@@ -1145,14 +1145,14 @@ infer_determinism_pass_2([ProcID - FileName | ProcFiles], ExistsAllInMode,
             proc_info_get_declared_determinism(ProcInfo0, MaybeDet),
             (
                 (
-                    MaybeDet = yes(cc_multidet)
+                    MaybeDet = yes(detism_cc_multi)
                 ;
-                    MaybeDet = yes(cc_nondet)
+                    MaybeDet = yes(detism_cc_non)
                 )
             ->
-                Determinism = cc_nondet
+                Determinism = detism_cc_non
             ;
-                Determinism = nondet
+                Determinism = detism_non
             )
         ;
             io.progname_base("mercury_compile", ProgName, !IO),
@@ -1162,12 +1162,12 @@ infer_determinism_pass_2([ProcID - FileName | ProcFiles], ExistsAllInMode,
                 [s(ProgName)], Msg),
             write_error_pieces_plain([words(Msg)], !IO),
             io.set_exit_status(1, !IO),
-            Determinism = erroneous
+            Determinism = detism_erroneous
         )
     ;
         Result = error(ErrorCode),
         write_call_system_error_msg("sort", ErrorCode, !IO),
-        Determinism = erroneous
+        Determinism = detism_erroneous
     ),
     proc_info_set_inferred_determinism(Determinism, ProcInfo0, ProcInfo),
     map.det_update(!.ProcTable, ProcID, ProcInfo, !:ProcTable),
@@ -2270,27 +2270,27 @@ fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
     make_fact_table_identifier(PredName, Identifier),
     (
         ModeType = all_out,
-        Determinism = multidet
+        Determinism = detism_multi
     ->
         generate_multidet_code(Identifier, PragmaVars, ProcID, ArgTypes,
             ModuleInfo, FactTableSize, ProcCode, ExtraCode)
     ;
         ModeType = all_out,
-        Determinism = cc_multidet
+        Determinism = detism_cc_multi
     ->
         generate_cc_multi_code(Identifier, PragmaVars, ProcCode),
         ExtraCode = ""
     ;
         ModeType = all_in,
-        Determinism = semidet
+        Determinism = detism_semi
     ->
         generate_all_in_code(Identifier, PragmaVars, ProcID, ArgTypes,
             ModuleInfo, FactTableSize, ProcCode),
         ExtraCode = ""
     ;
         ModeType = in_out,
-        ( Determinism = semidet
-        ; Determinism = cc_nondet
+        ( Determinism = detism_semi
+        ; Determinism = detism_cc_non
         )
     ->
         generate_semidet_in_out_code(Identifier, PragmaVars, ProcID, ArgTypes,
@@ -2298,14 +2298,14 @@ fact_table_generate_c_code(PredName, PragmaVars, ProcID, PrimaryProcID,
         ExtraCode = ""
     ;
         ModeType = in_out,
-        Determinism = nondet,
+        Determinism = detism_non,
         ProcID = PrimaryProcID
     ->
         generate_primary_nondet_code(Identifier, PragmaVars, ProcID, ArgTypes,
             ModuleInfo, FactTableSize, ProcCode, ExtraCode)
     ;
         ModeType = in_out,
-        Determinism = nondet,
+        Determinism = detism_non,
         ProcID \= PrimaryProcID
     ->
         generate_secondary_nondet_code(Identifier, PragmaVars, ProcID,

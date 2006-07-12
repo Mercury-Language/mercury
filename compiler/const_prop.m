@@ -535,7 +535,7 @@ make_assignment_goal(OutputArg, InputArg, Goal, !GoalInfo) :-
     goal_info_get_instmap_delta(!.GoalInfo, Delta0),
     instmap_delta_set(OutputArg ^ arg_var, InputArg ^ arg_inst, Delta0, Delta),
     goal_info_set_instmap_delta(Delta, !GoalInfo),
-    goal_info_set_determinism(det, !GoalInfo).
+    goal_info_set_determinism(detism_det, !GoalInfo).
 
 :- pred make_construction_goal(arg_hlds_info::in, cons_id::in,
     hlds_goal_expr::out, hlds_goal_info::in, hlds_goal_info::out) is det.
@@ -546,7 +546,7 @@ make_construction_goal(OutputArg, Cons, Goal, !GoalInfo) :-
     instmap_delta_set(OutputArg ^ arg_var, bound(unique, [functor(Cons, [])]),
         Delta0, Delta),
     goal_info_set_instmap_delta(Delta, !GoalInfo),
-    goal_info_set_determinism(det, !GoalInfo).
+    goal_info_set_determinism(detism_det, !GoalInfo).
 
 :- pred make_assignment(arg_hlds_info::in, arg_hlds_info::in,
     hlds_goal_expr::out) is det.

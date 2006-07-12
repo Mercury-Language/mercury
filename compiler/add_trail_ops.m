@@ -195,7 +195,7 @@ goal_expr_add_trail_ops(not(InnerGoal), OuterGoalInfo, Goal, !Info) :-
         % `fail' for the "then" part.
         mercury_private_builtin_module(PrivateBuiltin),
         generate_simple_call(PrivateBuiltin, "unused", predicate, only_mode,
-            det, [], [], [], ModuleInfo, Context, ThenGoal)
+            detism_det, [], [], [], ModuleInfo, Context, ThenGoal)
     ;
         ThenGoal = Fail
     ),
@@ -312,8 +312,9 @@ goal_expr_add_trail_ops(PragmaForeign, GoalInfo, Goal, !Info) :-
         % "Sorry, not implemented" error message.
         ModuleInfo = !.Info^ module_info,
         goal_info_get_context(GoalInfo, Context),
-        trail_generate_call("trailed_nondet_pragma_foreign_code", erroneous,
-            [], [], [], ModuleInfo, Context, SorryNotImplementedCode),
+        trail_generate_call("trailed_nondet_pragma_foreign_code",
+            detism_erroneous, [], [], [], ModuleInfo, Context,
+            SorryNotImplementedCode),
         Goal = SorryNotImplementedCode
     ;
         Goal = PragmaForeign - GoalInfo
@@ -431,9 +432,9 @@ gen_store_ticket(TicketVar, Context, SaveTicketGoal, Info) :-
     GenerateInline = Info ^ inline_ops,
     (     
         GenerateInline = no,
-        trail_generate_call("store_ticket", det, [TicketVar], [impure_goal],
-            [TicketVar - trail_ground_inst], Info ^ module_info, Context,
-            SaveTicketGoal)
+        trail_generate_call("store_ticket", detism_det, [TicketVar],
+            [impure_goal], [TicketVar - trail_ground_inst],
+            Info ^ module_info, Context, SaveTicketGoal)
     ;
         GenerateInline =  yes,
         Args = [foreign_arg(TicketVar, yes("Ticket" - out_mode),
@@ -451,7 +452,7 @@ gen_reset_ticket_undo(TicketVar, Context, ResetTicketGoal, Info) :-
     GenerateInline = Info ^ inline_ops,
     (     
         GenerateInline = no,
-        trail_generate_call("reset_ticket_undo", det, [TicketVar],
+        trail_generate_call("reset_ticket_undo", detism_det, [TicketVar],
             [impure_goal], [], Info ^ module_info, Context, ResetTicketGoal)
     ;
         GenerateInline = yes,
@@ -470,7 +471,7 @@ gen_reset_ticket_solve(TicketVar, Context, ResetTicketGoal, Info) :-
     GenerateInline = Info ^ inline_ops,
     (     
         GenerateInline = no,
-        trail_generate_call("reset_ticket_solve", det, [TicketVar],
+        trail_generate_call("reset_ticket_solve", detism_det, [TicketVar],
             [impure_goal], [], Info ^ module_info, Context, ResetTicketGoal)
     ;
         GenerateInline = yes,
@@ -489,7 +490,7 @@ gen_reset_ticket_commit(TicketVar, Context, ResetTicketGoal, Info) :-
     GenerateInline = Info ^ inline_ops,
     (     
         GenerateInline = no,
-        trail_generate_call("reset_ticket_commit", det, [TicketVar],
+        trail_generate_call("reset_ticket_commit", detism_det, [TicketVar],
             [impure_goal], [], Info ^ module_info, Context, ResetTicketGoal)
     ;
         GenerateInline = yes,
@@ -508,7 +509,7 @@ gen_prune_ticket(Context, PruneTicketGoal, Info) :-
     GenerateInline = Info ^ inline_ops,
     (     
         GenerateInline = no,
-        trail_generate_call("prune_ticket", det, [], [impure_goal],
+        trail_generate_call("prune_ticket", detism_det, [], [impure_goal],
             [], Info ^ module_info, Context, PruneTicketGoal)
     ;   
         GenerateInline = yes,
@@ -526,8 +527,8 @@ gen_discard_ticket(Context, DiscardTicketGoal, Info) :-
     GenerateInline = Info ^ inline_ops,
     (   
         GenerateInline = no,
-        trail_generate_call("discard_ticket", det, [], [impure_goal], [],
-            Info ^ module_info, Context, DiscardTicketGoal)
+        trail_generate_call("discard_ticket", detism_det, [], [impure_goal],
+            [], Info ^ module_info, Context, DiscardTicketGoal)
     ;
         GenerateInline = yes,
         Args = [],
@@ -545,10 +546,9 @@ gen_mark_ticket_stack(SavedTicketCounterVar, Context, MarkTicketStackGoal,
     GenerateInline = Info ^ inline_ops,
     (   
         GenerateInline = no,
-        trail_generate_call("mark_ticket_stack", det,
-            [SavedTicketCounterVar],
-            [impure_goal], [], Info ^ module_info, Context,
-            MarkTicketStackGoal)
+        trail_generate_call("mark_ticket_stack", detism_det,
+            [SavedTicketCounterVar], [impure_goal], [], Info ^ module_info,
+            Context, MarkTicketStackGoal)
     ;
         GenerateInline = yes,
         Args = [foreign_arg(SavedTicketCounterVar,
@@ -568,9 +568,9 @@ gen_prune_tickets_to(SavedTicketCounterVar, Context, PruneTicketsToGoal,
     GenerateInline = Info ^ inline_ops,
     (   
         GenerateInline = no,
-        trail_generate_call("prune_tickets_to", det, [SavedTicketCounterVar],
-            [impure_goal], [], Info ^ module_info, Context,
-            PruneTicketsToGoal)
+        trail_generate_call("prune_tickets_to", detism_det,
+            [SavedTicketCounterVar], [impure_goal], [], Info ^ module_info,
+            Context, PruneTicketsToGoal)
     ;
         GenerateInline = yes,
         Args = [foreign_arg(SavedTicketCounterVar,
@@ -644,7 +644,7 @@ trail_generate_call(PredName, Detism, Args, Features, InstMap, ModuleInfo,
 trail_generate_foreign_proc(PredName, Features, InstMap,
         ModuleInfo, Context, Args, ForeignCode, ForeignProcGoal) :-
     mercury_private_builtin_module(PrivateBuiltinModule),
-    Detism = det, 
+    Detism = detism_det, 
     some [!ForeignProcAttrs] (
         % XXX handle other target languages here.
         !:ForeignProcAttrs = default_attributes(lang_c),

@@ -2237,7 +2237,7 @@ make_typeclass_info_from_subclass(Constraint, Seen, ClassId,
     % to superclass_from_typeclass_info in private_builtin.
     goal_util.generate_simple_call(mercury_private_builtin_module,
         "superclass_from_typeclass_info", predicate, only_mode,
-        det, [SubClassVar, IndexVar, Var], [], [], ModuleInfo,
+        detism_det, [SubClassVar, IndexVar, Var], [], [], ModuleInfo,
         term.context_init, SuperClassGoal),
     !:ExtraGoals = [SuperClassGoal, IndexGoal | !.ExtraGoals].
 
@@ -2291,7 +2291,8 @@ construct_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
     set.list_to_set([BaseVar], NonLocals),
     instmap_delta_from_assoc_list([BaseVar - ground(shared, none)],
         InstmapDelta),
-    goal_info_init(NonLocals, InstmapDelta, det, purity_pure, BaseGoalInfo),
+    goal_info_init(NonLocals, InstmapDelta, detism_det, purity_pure,
+        BaseGoalInfo),
 
     BaseGoal = BaseUnify - BaseGoalInfo,
 
@@ -2328,7 +2329,7 @@ construct_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
         [NewVar - bound(unique, [functor(InstConsId, ArgInsts)])],
         InstMapDelta),
     goal_info_set_instmap_delta(InstMapDelta, GoalInfo1, GoalInfo2),
-    goal_info_set_determinism(det, GoalInfo2, GoalInfo),
+    goal_info_set_determinism(detism_det, GoalInfo2, GoalInfo),
 
     TypeClassInfoGoal = Unify - GoalInfo,
     NewGoals0 = [TypeClassInfoGoal, BaseGoal],
@@ -2719,7 +2720,7 @@ init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
     instmap_delta_from_assoc_list(
         [TypeInfoVar - bound(unique, [functor(InstConsId, ArgInsts)])],
         InstMapDelta),
-    goal_info_init(NonLocals, InstMapDelta, det, purity_pure, GoalInfo),
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
 
     TypeInfoGoal = Unify - GoalInfo.
 
@@ -2749,7 +2750,7 @@ init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorInfoVar,
     set.list_to_set([TypeCtorInfoVar], NonLocals),
     instmap_delta_from_assoc_list([TypeCtorInfoVar - ground(shared, none)],
         InstmapDelta),
-    goal_info_init(NonLocals, InstmapDelta, det, purity_pure, GoalInfo),
+    goal_info_init(NonLocals, InstmapDelta, detism_det, purity_pure, GoalInfo),
 
     TypeCtorInfoGoal = Unify - GoalInfo.
 
@@ -2861,7 +2862,7 @@ gen_extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index, ModuleInfo,
         !VarSet, !VarTypes, !RttiVarMaps),
     goal_util.generate_simple_call(mercury_private_builtin_module,
         "type_info_from_typeclass_info", predicate, only_mode,
-        det, [TypeClassInfoVar, IndexVar, TypeInfoVar], [],
+        detism_det, [TypeClassInfoVar, IndexVar, TypeInfoVar], [],
         [TypeInfoVar - ground(shared, none)], ModuleInfo,
         term.context_init, CallGoal),
     Goals = [IndexGoal, CallGoal].
@@ -3141,7 +3142,7 @@ expand_one_body(hlds_class_proc(PredId, ProcId), !ProcNum, !ModuleInfo) :-
         % just pick some value at random; hopefully something that won't cause
         % flow-on errors. We also mark the predicate as invalid, also to avoid
         % flow-on errors.
-        Detism = nondet,
+        Detism = detism_non,
         module_info_remove_predid(PredId, !ModuleInfo)
     ),
 

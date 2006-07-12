@@ -589,7 +589,7 @@ common_optimise_call_2(SeenCall, InputArgs, OutputArgs, Modes, GoalInfo,
             simplify_info_incr_cost_delta(Cost, !Info),
             simplify_info_set_requantify(!Info),
             goal_info_get_determinism(GoalInfo, Detism0),
-            ( Detism0 \= det ->
+            ( Detism0 \= detism_det ->
                 simplify_info_set_rerun_det(!Info)
             ;
                 true
@@ -777,7 +777,7 @@ generate_assign(ToVar, FromVar, UniMode, _, Goal, !Info) :-
         % the input and output.
         Modes = [(ToVarInst -> ToVarInst), (free -> ToVarInst)],
         GoalExpr = generic_call(cast(unsafe_type_cast), [FromVar, ToVar],
-            Modes, det)
+            Modes, detism_det)
     ),
 
     % `ToVar' may not appear in the original instmap_delta,
@@ -785,7 +785,7 @@ generate_assign(ToVar, FromVar, UniMode, _, Goal, !Info) :-
     % original instmap_delta here.
     instmap_delta_from_assoc_list([ToVar - ToVarInst], InstMapDelta),
 
-    goal_info_init(NonLocals, InstMapDelta, det, purity_pure, GoalInfo),
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
     Goal = GoalExpr - GoalInfo,
     record_equivalence(ToVar, FromVar, !Info).
 

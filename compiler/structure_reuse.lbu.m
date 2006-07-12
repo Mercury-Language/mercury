@@ -182,10 +182,10 @@ get_backtrack_vars(VarTypes, Info) = Vars :-
 
 :- pred detism_allows_multiple_solns(prog_data__determinism::in) is semidet.
 
-detism_allows_multiple_solns(nondet).
-detism_allows_multiple_solns(multidet).
-detism_allows_multiple_solns(cc_nondet).
-detism_allows_multiple_solns(cc_multidet).
+detism_allows_multiple_solns(detism_non).
+detism_allows_multiple_solns(detism_multi).
+detism_allows_multiple_solns(detism_cc_non).
+detism_allows_multiple_solns(detism_cc_multi).
 
 :- pred backward_use_in_conj(vartypes::in, list(hlds_goal)::in, 
     list(hlds_goal)::out, set(prog_var)::in, set(prog_var)::out) is det.

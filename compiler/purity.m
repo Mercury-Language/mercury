@@ -477,7 +477,7 @@ compute_expr_purity(Goal0, Goal, GoalInfo, ActualPurity, !Info) :-
             Vars = [InputArg, OutputArg]
         ->
             Goal = generic_call(cast(unsafe_type_cast), [InputArg, OutputArg],
-                [in_mode, out_mode], det)
+                [in_mode, out_mode], detism_det)
         ;
             Goal = call(PredId, ProcId, Vars, BIState, UContext, Name)
         )

@@ -413,7 +413,7 @@ make_wait(ModuleInfo, FutureMap, Renaming, ConsumedVar, WaitGoal) :-
     InstMapSrc = [WaitVar - ground(shared, none)],
     Context = term.context_init,
     goal_util.generate_simple_call(ModuleName, PredName, predicate,
-        only_mode, det, Args, Features, InstMapSrc, ModuleInfo,
+        only_mode, detism_det, Args, Features, InstMapSrc, ModuleInfo,
         Context, WaitGoal).
 
     % Make a goal to signal that a variable is produced.
@@ -431,7 +431,7 @@ make_signal(ModuleInfo, FutureMap, ProducedVar, SignalGoal) :-
     InstMapSrc = [],
     Context = term.context_init,
     goal_util.generate_simple_call(ModuleName, PredName, predicate,
-        only_mode, det, Args, Features, InstMapSrc, ModuleInfo,
+        only_mode, detism_det, Args, Features, InstMapSrc, ModuleInfo,
         Context, SignalGoal).
 
     % Succeed if Var is a variable bound between InstMap and
@@ -564,7 +564,7 @@ make_future(ModuleInfo, SharedVarType, SharedVar, !VarTypes, !VarSet,
     InstMapSrc = [FutureVar - ground(shared, none)],
     Context = term.context_init,
     goal_util.generate_simple_call(ModuleName, PredName, predicate,
-        only_mode, det, Args, Features, InstMapSrc, ModuleInfo,
+        only_mode, detism_det, Args, Features, InstMapSrc, ModuleInfo,
         Context, AllocGoal).
 
     % Construct type future(T) given type T.

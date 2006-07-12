@@ -809,14 +809,14 @@ output_layout_traversal_group(Traversal, !IO) :-
 
 :- func detism_to_c_detism(determinism) = string.
 
-detism_to_c_detism(det) =         "MR_DETISM_DET".
-detism_to_c_detism(semidet) =     "MR_DETISM_SEMI".
-detism_to_c_detism(nondet) =      "MR_DETISM_NON".
-detism_to_c_detism(multidet) =    "MR_DETISM_MULTI".
-detism_to_c_detism(erroneous) =   "MR_DETISM_ERRONEOUS".
-detism_to_c_detism(failure) =     "MR_DETISM_FAILURE".
-detism_to_c_detism(cc_nondet) =   "MR_DETISM_CCNON".
-detism_to_c_detism(cc_multidet) = "MR_DETISM_CCMULTI".
+detism_to_c_detism(detism_det) =       "MR_DETISM_DET".
+detism_to_c_detism(detism_semi) =      "MR_DETISM_SEMI".
+detism_to_c_detism(detism_non) =       "MR_DETISM_NON".
+detism_to_c_detism(detism_multi) =     "MR_DETISM_MULTI".
+detism_to_c_detism(detism_erroneous) = "MR_DETISM_ERRONEOUS".
+detism_to_c_detism(detism_failure) =   "MR_DETISM_FAILURE".
+detism_to_c_detism(detism_cc_non) =    "MR_DETISM_CCNON".
+detism_to_c_detism(detism_cc_multi) =  "MR_DETISM_CCMULTI".
 
 :- pred output_layout_proc_id_group(proc_label::in, pred_origin::in,
     io::di, io::uo) is det.

@@ -1000,25 +1000,25 @@ byte_debug(not_supported,                   "not_supported").
 
 :- pred determinism_code(determinism::in, int::out) is det.
 
-determinism_code(det,           0).
-determinism_code(semidet,       1).
-determinism_code(multidet,      2).
-determinism_code(nondet,        3).
-determinism_code(cc_multidet,   4).
-determinism_code(cc_nondet,     5).
-determinism_code(erroneous,     6).
-determinism_code(failure,       7).
+determinism_code(detism_det,           0).
+determinism_code(detism_semi,          1).
+determinism_code(detism_multi,         2).
+determinism_code(detism_non,           3).
+determinism_code(detism_cc_multi,      4).
+determinism_code(detism_cc_non,        5).
+determinism_code(detism_erroneous,     6).
+determinism_code(detism_failure,       7).
 
 :- pred determinism_debug(determinism::in, string::out) is det.
 
-determinism_debug(det,          "det").
-determinism_debug(semidet,      "semidet").
-determinism_debug(multidet,     "multidet").
-determinism_debug(nondet,       "nondet").
-determinism_debug(cc_multidet,  "cc_multidet").
-determinism_debug(cc_nondet,    "cc_nondet").
-determinism_debug(erroneous,    "erroneous").
-determinism_debug(failure,      "failure").
+determinism_debug(detism_det,          "det").
+determinism_debug(detism_semi,         "semidet").
+determinism_debug(detism_multi,        "multidet").
+determinism_debug(detism_non,          "nondet").
+determinism_debug(detism_cc_multi,     "cc_multidet").
+determinism_debug(detism_cc_non,       "cc_nondet").
+determinism_debug(detism_erroneous,    "erroneous").
+determinism_debug(detism_failure,      "failure").
 
 :- pred binop_code(binary_op::in, int::out) is det.
 

@@ -1,0 +1,13 @@
+hawkins_mm_fail_reset.m:027: Error: `pragma memo' declaration not allowed for
+hawkins_mm_fail_reset.m:027:   procedure with determinism `failure'.
+hawkins_mm_fail_reset.m:036: Error: `pragma memo' declaration not allowed for
+hawkins_mm_fail_reset.m:036:   procedure with determinism `failure'.
+hawkins_mm_fail_reset.m:020: In `entry(out)':
+hawkins_mm_fail_reset.m:020:   warning: determinism declaration could be
+hawkins_mm_fail_reset.m:020:   tighter.
+hawkins_mm_fail_reset.m:020:   Declared `nondet', inferred `failure'.
+hawkins_mm_fail_reset.m:030: Warning: this disjunct will never have any
+hawkins_mm_fail_reset.m:030:   solutions.
+hawkins_mm_fail_reset.m:033: Warning: this disjunct will never have any
+hawkins_mm_fail_reset.m:033:   solutions.
+For more information, recompile with `-E'.

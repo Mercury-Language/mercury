@@ -563,7 +563,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
                 InstOfX, InstArgs),
             !ModeInfo),
         Inst = not_reached,
-        Det = erroneous,
+        Det = detism_erroneous,
         % If we get an error, set the inst to not_reached to avoid cascading
         % errors. But don't call categorize_unification, because that could
         % cause an invalid call to `unify_proc.request_unify'.
@@ -654,7 +654,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         % errors. But don't call categorize_unification, because that could
         % cause an invalid call to `unify_proc.request_unify'.
         Inst = not_reached,
-        Det = erroneous,
+        Det = detism_erroneous,
         ModeOfX = (InstOfX -> Inst),
         ModeOfY = (InstOfY -> Inst),
         Mode = ModeOfX - ModeOfY,
@@ -678,7 +678,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
     ->
         Goal = conj(plain_conj, [])
     ;
-        Det = failure
+        Det = detism_failure
     ->
         % This optimisation is safe because the only way that we can analyse
         % a unification as having no solutions is that the unification always
@@ -971,12 +971,12 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
         record_optimize_away(GoalInfo, AssignTarget, AssignSource, !ModeInfo)
     ;
         Unification = simple_test(TestVar1, TestVar2),
-        Det = det
+        Det = detism_det
     ->
         Unify = conj(plain_conj, []),
         record_optimize_away(GoalInfo, TestVar1, TestVar2, !ModeInfo)
     ;
-        Det = failure
+        Det = detism_failure
     ->
         % This optimisation is safe because the only way that we can analyse
         % a unification as having no solutions is that the unification

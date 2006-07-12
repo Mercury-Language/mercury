@@ -619,15 +619,15 @@ convert_simple_builtin_inst_2("mostly_clobbered",
     % `not_reached' inst
 convert_simple_builtin_inst_2("not_reached", not_reached).
 
-standard_det("det", det).
-standard_det("cc_nondet", cc_nondet).
-standard_det("cc_multi", cc_multidet).
-standard_det("nondet", nondet).
-standard_det("multi", multidet).
-standard_det("multidet", multidet).
-standard_det("semidet", semidet).
-standard_det("erroneous", erroneous).
-standard_det("failure", failure).
+standard_det("det", detism_det).
+standard_det("cc_nondet", detism_cc_non).
+standard_det("cc_multi", detism_cc_multi).
+standard_det("nondet", detism_non).
+standard_det("multi", detism_multi).
+standard_det("multidet", detism_multi).
+standard_det("semidet", detism_semi).
+standard_det("erroneous", detism_erroneous).
+standard_det("failure", detism_failure).
 
 :- pred parse_bound_inst_list(allow_constrained_inst_var::in, term::in,
     uniqueness::in, mer_inst::out) is semidet.

@@ -354,7 +354,7 @@ check_proc_for_exceptions(SCC, PPId, !Results, !ModuleInfo, !IO) :-
 
 check_goal_for_exceptions(SCC, VarTypes, Goal - GoalInfo, !Result,
         !ModuleInfo, !IO) :-
-    ( goal_info_get_determinism(GoalInfo, erroneous) ->
+    ( goal_info_get_determinism(GoalInfo, detism_erroneous) ->
         !:Result = !.Result ^ status := may_throw(user_exception)
     ;
         check_goal_for_exceptions_2(SCC, VarTypes, Goal, GoalInfo, !Result,

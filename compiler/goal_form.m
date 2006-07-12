@@ -193,7 +193,7 @@
 
 goal_can_throw(GoalExpr - GoalInfo, Result, !ModuleInfo, !IO) :-
     goal_info_get_determinism(GoalInfo, Determinism),
-    ( Determinism \= erroneous ->
+    ( Determinism \= detism_erroneous ->
         goal_can_throw_2(GoalExpr, GoalInfo, Result, !ModuleInfo, !IO)
     ;
         Result = can_throw
@@ -407,7 +407,7 @@ goal_cannot_throw(ModuleInfo, Goal) :-
 
 goal_cannot_throw_aux(MaybeModuleInfo, GoalExpr - GoalInfo) :-
     goal_info_get_determinism(GoalInfo, Determinism),
-    not Determinism = erroneous,
+    not Determinism = detism_erroneous,
     goal_cannot_throw_expr(MaybeModuleInfo, GoalExpr).
 
     % XXX This predicate should be replaced by a function returning a bool.

@@ -766,7 +766,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         % with `call(F, A, B, C, X)')
         list.append(FuncArgVars, [X0], ArgVars),
         Modes = [],
-        Det = erroneous,
+        Det = detism_erroneous,
         adjust_func_arity(function, Arity, FullArity),
         HOCall = generic_call(
             higher_order(FuncVar, Purity, function, FullArity),

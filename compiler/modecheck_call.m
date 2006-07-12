@@ -262,13 +262,13 @@ modecheck_higher_order_call(PredOrFunc, PredVar, Args0, Args, Modes, Det,
                 Arity),
             !ModeInfo),
         Modes = [],
-        Det = erroneous,
+        Det = detism_erroneous,
         Args = Args0,
         ExtraGoals = no_extra_goals
     ).
 
 modecheck_builtin_cast(Modes, Args0, Args, Det, ExtraGoals, !ModeInfo) :-
-    Det = det,
+    Det = detism_det,
     % These should always be mode correct.
     ArgOffset = 0,
     modecheck_arg_list(ArgOffset, Modes, ExtraGoals, Args0, Args, !ModeInfo).

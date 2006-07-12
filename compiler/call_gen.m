@@ -390,7 +390,7 @@ call_gen.prepare_for_call(CodeModel, CallModel, TraceCode, !CI) :-
 call_gen.handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI) :-
     ( CodeModel = model_semi ->
         goal_info_get_determinism(GoalInfo, Detism),
-        ( Detism = failure ->
+        ( Detism = detism_failure ->
             code_info.generate_failure(FailHandlingCode, !CI)
         ;
             code_info.get_next_label(ContLab, !CI),

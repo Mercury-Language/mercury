@@ -126,7 +126,7 @@ maybe_add_default_func_mode(PredInfo0, PredInfo, MaybeProcId) :-
         list.duplicate(FuncArity, InMode, FuncArgModes),
         FuncRetMode = OutMode,
         list.append(FuncArgModes, [FuncRetMode], PredArgModes),
-        Determinism = det,
+        Determinism = detism_det,
         pred_info_context(PredInfo0, Context),
         MaybePredArgLives = no,
         varset.init(InstVarSet),

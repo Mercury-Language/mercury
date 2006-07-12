@@ -298,28 +298,28 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
         int_to_string(NumProfiledVars) ++ ", " ++
         IsActiveVarName ++ ");\n",
 
-    complexity_generate_foreign_proc(IsActivePred, det,
+    complexity_generate_foreign_proc(IsActivePred, detism_det,
         [IsActiveOutputArg], [], IsActiveStr, [IsActiveVar],
         !.ModuleInfo, Context, IsActiveGoal),
 
     ExitPred = "complexity_exit_proc",
     ExitStr = "\tMR_" ++ ExitPred ++ "(" ++
         ProcNumStr ++ ", " ++ slot_var_name ++ ");\n",
-    complexity_generate_foreign_proc(ExitPred, det,
+    complexity_generate_foreign_proc(ExitPred, detism_det,
         [SlotInputArg], [], ExitStr, [],
         !.ModuleInfo, Context, ExitGoal),
 
     FailPred = "complexity_fail_proc",
     FailStr = "\tMR_" ++ FailPred ++ "(" ++
         ProcNumStr ++ ", " ++ slot_var_name ++ ");\n",
-    complexity_generate_foreign_proc(FailPred, failure,
+    complexity_generate_foreign_proc(FailPred, detism_failure,
         [SlotInputArg], [], FailStr, [],
         !.ModuleInfo, Context, FailGoal),
 
     RedoPred = "complexity_redo_proc",
     RedoStr = "\tMR_" ++ RedoPred ++ "(" ++
         ProcNumStr ++ ", " ++ slot_var_name ++ ");\n",
-    complexity_generate_foreign_proc(RedoPred, failure,
+    complexity_generate_foreign_proc(RedoPred, detism_failure,
         [SlotInputArg], [], RedoStr, [],
         !.ModuleInfo, Context, RedoGoal0),
 
@@ -344,7 +344,7 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
 
         instmap_delta_init_reachable(AfterInstMapDelta),
         goal_info_init(list_to_set([SlotVar]), AfterInstMapDelta,
-            multidet, purity_impure, Context, AfterGoalInfo),
+            detism_multi, purity_impure, Context, AfterGoalInfo),
         AfterGoal = disj([ExitGoal, RedoGoal]) - AfterGoalInfo,
 
         OrigAfterGoal = conj(plain_conj, [OrigGoal, AfterGoal])
@@ -414,7 +414,7 @@ generate_slot_goals(ProcNum, NumberedVars, NumProfiledVars, Context, PredId,
         int_to_string(ProcNum) ++ ", " ++ SlotVarName ++ ");\n",
     ProcStr = "\t" ++ ProcVarName ++ " = &MR_complexity_procs[" ++
         int_to_string(ProcNum) ++ "];\n",
-    complexity_generate_foreign_proc(PredName, det, [SlotVarArg],
+    complexity_generate_foreign_proc(PredName, detism_det, [SlotVarArg],
         ForeignArgs, DeclCodeStr ++ PredCodeStr ++ ProcStr ++ FillCodeStr,
         [SlotVar], !.ModuleInfo, Context, CallGoal),
     list.append(PrefixGoals, [CallGoal], Goals).

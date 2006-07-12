@@ -473,7 +473,7 @@ ml_gen_mlds_call(Signature, ObjectRval, FuncRval, ArgRvals0, RetLvals0,
     % If the called procedure has determinism `erroneous', then mark it
     % as never returning (this will ensure that it gets treated as a tail
     % call).
-    ( Detism = erroneous ->
+    ( Detism = detism_erroneous ->
         CallKind = no_return_call
     ;
         CallKind = ordinary_call

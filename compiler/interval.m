@@ -1023,7 +1023,7 @@ make_inserted_goal(!VarInfo, !VarRename, Spec, MaybeFeature, Goal) :-
     ->
         Unification1 = Unification0 ^ deconstruct_can_fail := cannot_fail,
         GoalExpr1 = GoalExpr0 ^ unify_kind := Unification1,
-        goal_info_set_determinism(det, GoalInfo0, GoalInfo1),
+        goal_info_set_determinism(detism_det, GoalInfo0, GoalInfo1),
         (
             MaybeFeature = yes(Feature),
             goal_info_add_feature(Feature, GoalInfo1, GoalInfo2)

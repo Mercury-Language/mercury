@@ -366,7 +366,7 @@ add_pragma_export(Origin, Name, PredOrFunc, Modes, C_Function, Context,
             % determinism analysis.
             (
                 MaybeDet = yes(Det),
-                ( Det = nondet ; Det = multidet )
+                ( Det = detism_non ; Det = detism_multi )
             ->
                 Pieces = [words("Error: "),
                     fixed("`:- pragma export' declaration"),
@@ -1975,7 +1975,7 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
     Condition = true,
     StatsPredDecl = pred_or_func(VarSet0, InstVarSet, ExistQVars,
         predicate, StatsPredSymName, ArgDecls, WithType, WithInst,
-        yes(det), Condition, purity_pure, Constraints),
+        yes(detism_det), Condition, purity_pure, Constraints),
     ItemStatus0 = item_status(!.Status, may_be_unqualified),
     add_item_decl_pass_1(StatsPredDecl, Context, ItemStatus0, _,
         !ModuleInfo, _, !IO),
@@ -2029,7 +2029,7 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
     Condition = true,
     ResetPredDecl = pred_or_func(VarSet0, InstVarSet, ExistQVars,
         predicate, ResetPredSymName, ArgDecls, WithType, WithInst,
-        yes(det), Condition, purity_pure, Constraints),
+        yes(detism_det), Condition, purity_pure, Constraints),
     ItemStatus0 = item_status(!.Status, may_be_unqualified),
     add_item_decl_pass_1(ResetPredDecl, Context, ItemStatus0, _,
         !ModuleInfo, _, !IO),

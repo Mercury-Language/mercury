@@ -3745,14 +3745,14 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
 write_determinism(Detism, !IO) :-
     io.write_string(determinism_to_string(Detism), !IO).
 
-determinism_to_string(det) = "det".
-determinism_to_string(semidet) = "semidet".
-determinism_to_string(nondet) = "nondet".
-determinism_to_string(multidet) = "multi".
-determinism_to_string(cc_nondet) = "cc_nondet".
-determinism_to_string(cc_multidet) = "cc_multi".
-determinism_to_string(erroneous) = "erroneous".
-determinism_to_string(failure) = "failure".
+determinism_to_string(detism_det) = "det".
+determinism_to_string(detism_semi) = "semidet".
+determinism_to_string(detism_non) = "nondet".
+determinism_to_string(detism_multi) = "multi".
+determinism_to_string(detism_cc_non) = "cc_nondet".
+determinism_to_string(detism_cc_multi) = "cc_multi".
+determinism_to_string(detism_erroneous) = "erroneous".
+determinism_to_string(detism_failure) = "failure".
 
 write_can_fail(CanFail, !IO) :-
     io.write_string(can_fail_to_string(CanFail), !IO).
@@ -4058,14 +4058,14 @@ det_to_term(Det, Context) = make_atom(det_to_string(Det), Context).
 
 :- func det_to_string(determinism) = string.
 
-det_to_string(erroneous) = "erroneous".
-det_to_string(failure) = "failure".
-det_to_string(det) = "det".
-det_to_string(semidet) = "semidet".
-det_to_string(cc_multidet) = "cc_multi".
-det_to_string(cc_nondet) = "cc_nondet".
-det_to_string(multidet) = "multi".
-det_to_string(nondet) = "nondet".
+det_to_string(detism_erroneous) = "erroneous".
+det_to_string(detism_failure) = "failure".
+det_to_string(detism_det) = "det".
+det_to_string(detism_semi) = "semidet".
+det_to_string(detism_cc_multi) = "cc_multi".
+det_to_string(detism_cc_non) = "cc_nondet".
+det_to_string(detism_multi) = "multi".
+det_to_string(detism_non) = "nondet".
 
 %-----------------------------------------------------------------------------%
 

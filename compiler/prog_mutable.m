@@ -108,7 +108,7 @@ std_get_pred_decl(ModuleName, Name, Type, Inst) = GetPredDecl :-
     GetPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
         mutable_get_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, out_mode(Inst))],
-        no /* with_type */, no /* with_inst */, yes(det),
+        no /* with_type */, no /* with_inst */, yes(detism_det),
         true /* condition */, purity_semipure, Constraints).
 
 std_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
@@ -119,7 +119,7 @@ std_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
     SetPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
         mutable_set_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, in_mode(Inst))],
-        no /* with_type */, no /* with_inst */, yes(det),
+        no /* with_type */, no /* with_inst */, yes(detism_det),
         true /* condition */, purity_impure, Constraints).
 
 constant_get_pred_decl(ModuleName, Name, Type, Inst) = GetPredDecl :-
@@ -130,7 +130,7 @@ constant_get_pred_decl(ModuleName, Name, Type, Inst) = GetPredDecl :-
     GetPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
         mutable_get_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, out_mode(Inst))],
-        no /* with_type */, no /* with_inst */, yes(det),
+        no /* with_type */, no /* with_inst */, yes(detism_det),
         true /* condition */, purity_pure, Constraints).
 
 constant_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
@@ -141,7 +141,7 @@ constant_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
     SetPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
         mutable_secret_set_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, in_mode(Inst))],
-        no /* with_type */, no /* with_inst */, yes(det),
+        no /* with_type */, no /* with_inst */, yes(detism_det),
         true /* condition */, purity_impure, Constraints).
 
 io_get_pred_decl(ModuleName, Name, Type, Inst) = GetPredDecl :-
@@ -154,7 +154,7 @@ io_get_pred_decl(ModuleName, Name, Type, Inst) = GetPredDecl :-
         [type_and_mode(Type, out_mode(Inst)),
         type_and_mode(io_state_type, di_mode),
         type_and_mode(io_state_type, uo_mode)],
-        no /* with_type */, no /* with_inst */, yes(det),
+        no /* with_type */, no /* with_inst */, yes(detism_det),
         true /* condition */, purity_pure, Constraints).
 
 io_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
@@ -167,7 +167,7 @@ io_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
         [type_and_mode(Type, in_mode(Inst)),
         type_and_mode(io_state_type, di_mode),
         type_and_mode(io_state_type, uo_mode)],
-        no /* with_type */, no /* with_inst */, yes(det),
+        no /* with_type */, no /* with_inst */, yes(detism_det),
         true /* condition */, purity_pure, Constraints).
 
 mutable_init_pred_decl(ModuleName, Name) = InitPredDecl :-
@@ -179,10 +179,10 @@ mutable_init_pred_decl(ModuleName, Name) = InitPredDecl :-
     WithType = no,
     WithInst = no,
     Condition = true,
-    InitPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars,
-        predicate, mutable_init_pred_sym_name(ModuleName, Name),
-        ArgDecls, WithType, WithInst, yes(det), Condition, purity_impure,
-        Constraints).
+    InitPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
+        mutable_init_pred_sym_name(ModuleName, Name), ArgDecls,
+        WithType, WithInst, yes(detism_det), Condition,
+        purity_impure, Constraints).
 
 %-----------------------------------------------------------------------------%
 

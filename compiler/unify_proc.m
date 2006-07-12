@@ -242,7 +242,7 @@ lookup_mode_num(ModuleInfo, TypeCtor, UniMode, Det, Num) :-
 search_mode_num(ModuleInfo, TypeCtor, UniMode, Determinism, ProcId) :-
     UniMode = (XInitial - YInitial -> _Final),
     (
-        Determinism = semidet,
+        Determinism = detism_semi,
         inst_is_ground_or_any(ModuleInfo, XInitial),
         inst_is_ground_or_any(ModuleInfo, YInitial)
     ->
@@ -1562,11 +1562,11 @@ generate_du_linear_compare_clauses_2(Type, Ctors, Res, X, Y, Context, Goal,
     instmap_delta_from_assoc_list([X_Index - ground(shared, none)],
         X_InstmapDelta),
     build_specific_call(Type, spec_pred_index, [X, X_Index],
-        X_InstmapDelta, det, Context, Call_X_Index, !Info),
+        X_InstmapDelta, detism_det, Context, Call_X_Index, !Info),
     instmap_delta_from_assoc_list([Y_Index - ground(shared, none)],
         Y_InstmapDelta),
     build_specific_call(Type, spec_pred_index, [Y, Y_Index],
-        Y_InstmapDelta, det, Context, Call_Y_Index, !Info),
+        Y_InstmapDelta, detism_det, Context, Call_Y_Index, !Info),
 
     build_call("builtin_int_lt", [X_Index, Y_Index], Context,
         Call_Less_Than, !Info),
@@ -1822,8 +1822,8 @@ build_call(Name, ArgVars, Context, Goal, !Info) :-
     ;
         MercuryBuiltin = mercury_private_builtin_module
     ),
-    goal_util.generate_simple_call(MercuryBuiltin, Name, predicate,
-        mode_no(0), erroneous, ArgVars, [], [], ModuleInfo, Context, Goal).
+    goal_util.generate_simple_call(MercuryBuiltin, Name, predicate, mode_no(0),
+        detism_erroneous, ArgVars, [], [], ModuleInfo, Context, Goal).
 
 :- pred build_specific_call(mer_type::in, special_pred_id::in,
     list(prog_var)::in, instmap_delta::in, determinism::in,

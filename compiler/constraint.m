@@ -417,8 +417,8 @@ annotate_conj_constraints(ModuleInfo,
         % need to be careful about reordering the constraints (the cc_nondet
         % goal can't be moved before any goals which can fail).
         goal_info_get_determinism(GoalInfo, Detism),
-        ( Detism = semidet
-        ; Detism = failure
+        ( Detism = detism_semi
+        ; Detism = detism_failure
         ),
 
         % XXX This is probably a bit too conservative. For example,

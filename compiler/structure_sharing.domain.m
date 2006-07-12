@@ -816,9 +816,9 @@ predict_called_pred_is_bottom(ModuleInfo, PPId) :-
         % 1. inferred determinism is erroneous/failure.
         proc_info_get_inferred_determinism(ProcInfo, Determinism),
         (
-            Determinism = erroneous
+            Determinism = detism_erroneous
         ;
-            Determinism = failure
+            Determinism = detism_failure
         )
     ;
         % 2. bottom_sharing_is_safe_approximation

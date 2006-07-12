@@ -413,7 +413,7 @@ create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarSet, !VarTypes,
     GoalExpr = unify(OrigVar, var(NewVar), Mode, UnifyInfo, UnifyContext),
     set.list_to_set([OrigVar, NewVar], NonLocals),
     instmap_delta_from_assoc_list([OrigVar - NewInst], UnifyInstMapDelta),
-    goal_info_init(NonLocals, UnifyInstMapDelta, det, purity_pure,
+    goal_info_init(NonLocals, UnifyInstMapDelta, detism_det, purity_pure,
         term.context_init, GoalInfo),
     Goal = GoalExpr - GoalInfo,
     !:RevUnifies = [Goal | !.RevUnifies],
@@ -1287,7 +1287,7 @@ case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct, !VarSet, !VarTypes,
     instmap_delta_bind_var_to_functor(Var, VarType, ConsId, InstMap,
         ExtraInstMapDelta0, ExtraInstMapDelta, !ModuleInfo),
     goal_info_init(NonLocals, ExtraInstMapDelta,
-        semidet, purity_pure, ExtraGoalInfo),
+        detism_semi, purity_pure, ExtraGoalInfo),
 
     % Conjoin the test and the rest of the case.
     goal_to_conj_list(CaseGoal, CaseGoalConj),
@@ -1302,7 +1302,7 @@ case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct, !VarSet, !VarTypes,
     instmap_delta_apply_instmap_delta(ExtraInstMapDelta, CaseInstMapDelta,
         test_size, InstMapDelta),
     goal_info_get_determinism(CaseGoalInfo, CaseDetism0),
-    det_conjunction_detism(semidet, CaseDetism0, Detism),
+    det_conjunction_detism(detism_semi, CaseDetism0, Detism),
     infer_goal_info_purity(CaseGoalInfo, CasePurity),
     goal_info_init(CaseNonLocals, InstMapDelta,
         Detism, CasePurity, CombinedGoalInfo),
@@ -1618,10 +1618,10 @@ generate_cast(CastType, InArg, OutArg, Context, Goal) :-
 generate_cast(CastType, InArg, OutArg, InInst, OutInst, Context, Goal) :-
     set.list_to_set([InArg, OutArg], NonLocals),
     instmap_delta_from_assoc_list([OutArg - OutInst], InstMapDelta),
-    goal_info_init(NonLocals, InstMapDelta, det, purity_pure, Context,
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, Context,
         GoalInfo),
     Goal = generic_call(cast(CastType), [InArg, OutArg],
-        [in_mode(InInst), out_mode(OutInst)], det) - GoalInfo.
+        [in_mode(InInst), out_mode(OutInst)], detism_det) - GoalInfo.
 
 %-----------------------------------------------------------------------------%
 

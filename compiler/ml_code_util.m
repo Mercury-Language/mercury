@@ -2030,7 +2030,8 @@ ml_gen_gc_trace_code(VarName, DeclType, ActualType, Context, GC_TraceCode,
     NonLocals = set.union_list(NonLocalsList),
     instmap_delta_from_assoc_list([TypeInfoVar - ground(shared, none)],
         InstMapDelta),
-    goal_info_init(NonLocals, InstMapDelta, det, purity_impure, GoalInfo),
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_impure,
+        GoalInfo),
     conj_list_to_goal(HLDS_TypeInfoGoals, GoalInfo, Conj),
 
     % Convert this HLDS code to MLDS.

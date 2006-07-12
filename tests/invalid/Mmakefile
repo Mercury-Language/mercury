@@ -32,8 +32,8 @@ SINGLEMODULE= \
 	any_mode \
 	any_passed_as_ground \
 	any_should_not_match_bound \
-	anys_in_negated_contexts \
 	any_to_ground_in_ite_cond \
+	anys_in_negated_contexts \
 	assert_in_interface \
 	bad_finalise_decl \
 	bad_initialise_decl \
@@ -75,10 +75,10 @@ SINGLEMODULE= \
 	errors2 \
 	exist_foreign_error \
 	exported_mode \
-	external \
-	extra_info_prompt \
 	ext_type \
 	ext_type_bug \
+	external \
+	extra_info_prompt \
 	field_syntax_error \
 	foreign_purity_mismatch \
 	foreign_singleton \
@@ -89,6 +89,7 @@ SINGLEMODULE= \
 	funcs_as_preds \
 	fundeps_unbound_in_ctor \
 	fundeps_vars \
+	hawkins_mm_fail_reset \
 	ho_default_func_1 \
 	ho_default_func_3 \
 	ho_type_mode_bug \
@@ -97,8 +98,8 @@ SINGLEMODULE= \
 	impure_method_impl \
 	inconsistent_instances \
 	inline_conflict \
-	instance_bug \
 	inst_list_dup \
+	instance_bug \
 	invalid_export_detism \
 	invalid_import_detism \
 	invalid_main \
@@ -161,6 +162,11 @@ SINGLEMODULE= \
 	tc_err1 \
 	tc_err2 \
 	tricky_assert1 \
+	type_inf_loop \
+	type_loop \
+	type_mismatch \
+	type_vars \
+	type_with_no_defn \
 	typeclass_bogus_method \
 	typeclass_constraint_extra_var \
 	typeclass_missing_det \
@@ -183,12 +189,7 @@ SINGLEMODULE= \
 	typeclass_test_7 \
 	typeclass_test_8 \
 	typeclass_test_9 \
-	type_inf_loop \
-	type_loop \
-	type_mismatch \
 	types	\
-	type_vars \
-	type_with_no_defn \
 	unbound_type_vars \
 	undeclared_mode \
 	undef_inst \

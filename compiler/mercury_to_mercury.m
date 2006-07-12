@@ -2090,7 +2090,7 @@ mercury_format_pred_or_func_type_2(PredOrFunc, VarSet, ExistQVars, PredName,
         list.length(Types, 2)
     ->
         % This determinism will be ignored.
-        mercury_format_det_annotation(yes(det), !U)
+        mercury_format_det_annotation(yes(detism_det), !U)
     ;
         mercury_format_det_annotation(MaybeDet, !U)
     ),
@@ -2512,14 +2512,14 @@ mercury_format_det_annotation(MaybeDet, !U) :-
 mercury_output_det(Detism, !UI) :-
     mercury_format_det(Detism, !UI).
 
-mercury_det_to_string(det) = "det".
-mercury_det_to_string(semidet) = "semidet".
-mercury_det_to_string(nondet) = "nondet".
-mercury_det_to_string(multidet) = "multi".
-mercury_det_to_string(cc_multidet) = "cc_multi".
-mercury_det_to_string(cc_nondet) = "cc_nondet".
-mercury_det_to_string(failure) = "failure".
-mercury_det_to_string(erroneous) = "erroneous".
+mercury_det_to_string(detism_det) = "det".
+mercury_det_to_string(detism_semi) = "semidet".
+mercury_det_to_string(detism_non) = "nondet".
+mercury_det_to_string(detism_multi) = "multi".
+mercury_det_to_string(detism_cc_multi) = "cc_multi".
+mercury_det_to_string(detism_cc_non) = "cc_nondet".
+mercury_det_to_string(detism_failure) = "failure".
+mercury_det_to_string(detism_erroneous) = "erroneous".
 
 :- pred mercury_format_det(determinism::in,
     U::di, U::uo) is det <= output(U).

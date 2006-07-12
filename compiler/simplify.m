@@ -534,7 +534,7 @@ simplify_goal(Goal0, GoalExpr - GoalInfo, !Info, !IO) :-
         % if --no-fully-strict,
         % replace goals with determinism failure with `fail'.
         %
-        Detism = failure,
+        Detism = detism_failure,
         % ensure goal is pure or semipure
         \+ goal_info_is_impure(GoalInfo0),
         ( det_info_get_fully_strict(DetInfo, no)
@@ -881,7 +881,7 @@ simplify_goal_2(switch(Var, SwitchCanFail0, Cases0), Goal,
                     ModuleInfo1, ModuleInfo),
                 simplify_info_set_module_info(ModuleInfo, !Info),
                 goal_info_get_determinism(GoalInfo0, CaseDetism),
-                det_conjunction_detism(semidet, CaseDetism, Detism),
+                det_conjunction_detism(detism_semi, CaseDetism, Detism),
                 goal_list_purity(GoalList, Purity),
                 goal_info_init(NonLocals, InstMapDelta, Detism, Purity,
                     CombinedGoalInfo),
@@ -1125,10 +1125,10 @@ simplify_goal_2(if_then_else(Vars, Cond0, Then0, Else0), Goal,
             (
                 MaybeNegDetism = yes(NegDetism1),
                 (
-                    NegDetism1 = erroneous,
+                    NegDetism1 = detism_erroneous,
                     instmap_delta_init_unreachable(NegInstMapDelta1)
                 ;
-                    NegDetism1 = det,
+                    NegDetism1 = detism_det,
                     instmap_delta_init_reachable(NegInstMapDelta1)
                 )
             ->
@@ -1413,7 +1413,7 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
     Unique   = ground(unique, none),
     ArgInsts = [R - Unique],
     goal_util.generate_simple_call(BuiltinModule, "compare", predicate,
-        mode_no(ModeNo), det, Args, [], ArgInsts, ModuleInfo, Context,
+        mode_no(ModeNo), detism_det, Args, [], ArgInsts, ModuleInfo, Context,
         CmpGoal0),
     CmpGoal0 = CmpExpr - CmpInfo0,
     goal_info_get_nonlocals(CmpInfo0, CmpNonLocals0),
@@ -1624,7 +1624,7 @@ process_compl_unify(XVar, YVar, UniMode, CanFail, _OldTypeInfoVars, Context,
         % builtin_unify_pred (which calls error/1).
         goal_info_get_context(GoalInfo0, GContext),
         generate_simple_call(mercury_private_builtin_module,
-            "builtin_unify_pred", predicate, mode_no(0), semidet,
+            "builtin_unify_pred", predicate, mode_no(0), detism_semi,
             [XVar, YVar], [], [], ModuleInfo, GContext, Call0 - _),
         simplify_goal_2(Call0, Call1, GoalInfo0, GoalInfo, !Info, !IO),
         Call = Call1 - GoalInfo,
@@ -1689,7 +1689,7 @@ call_generic_unify(TypeInfoVar, XVar, YVar, ModuleInfo, _, _, GoalInfo,
     ArgVars = [TypeInfoVar, XVar, YVar],
     goal_info_get_context(GoalInfo, Context),
     goal_util.generate_simple_call(mercury_public_builtin_module,
-        "unify", predicate, mode_no(0), semidet, ArgVars, [], [],
+        "unify", predicate, mode_no(0), detism_semi, ArgVars, [], [],
         ModuleInfo, Context, Call).
 
 :- pred call_specific_unify(type_ctor::in, list(prog_var)::in,
@@ -2241,7 +2241,7 @@ create_test_unification(Var, ConsId, ConsArity, ExtraGoal - ExtraGoalInfo,
 
     % The test can't bind any variables, so the InstMapDelta should be empty.
     instmap_delta_init_reachable(InstMapDelta),
-    goal_info_init(NonLocals, InstMapDelta, semidet, purity_pure,
+    goal_info_init(NonLocals, InstMapDelta, detism_semi, purity_pure,
         ExtraGoalInfo).
 
 %-----------------------------------------------------------------------------%

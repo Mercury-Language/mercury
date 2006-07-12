@@ -263,7 +263,7 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !IO) :-
                     WarnAboutInferredErroneous = yes
                 ;
                     WarnAboutInferredErroneous = no,
-                    InferredDetism \= erroneous
+                    InferredDetism \= detism_erroneous
                 )
             ->
                 Message = "warning: determinism declaration " ++
@@ -313,11 +313,17 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !IO) :-
             VerboseErrors = yes,
             solutions.solutions(get_valid_dets(EvalMethod), Detisms),
             DetismStrs = list.map(determinism_to_string, Detisms),
-            DetismPieces = list_to_pieces(DetismStrs),
+            list.sort(DetismStrs, SortedDetismStrs),
+            ( list.length(Detisms) = 1 ->
+                Plural = ""
+            ;
+                Plural = "s"
+            ),
+            DetismPieces = list_to_pieces(SortedDetismStrs),
             write_error_pieces_not_first_line(Context, 0,
                 [words("The pragma requested is only valid"),
-                words("for the following determinism(s):") |
-                DetismPieces], !IO)
+                words("for the following determinism" ++ Plural ++ ":") |
+                DetismPieces] ++ [suffix(".")], !IO)
         ;
             VerboseErrors = no,
             globals.io_set_extra_error_info(yes, !IO)
@@ -337,14 +343,14 @@ get_valid_dets(EvalMethod, Detism) :-
 :- mode determinism(out) is multi.
 :- mode determinism(in) is det.         % To ensure we don't forget any.
 
-determinism(det).
-determinism(semidet).
-determinism(multidet).
-determinism(nondet).
-determinism(cc_multidet).
-determinism(cc_nondet).
-determinism(erroneous).
-determinism(failure).
+determinism(detism_det).
+determinism(detism_semi).
+determinism(detism_multi).
+determinism(detism_non).
+determinism(detism_cc_multi).
+determinism(detism_cc_non).
+determinism(detism_erroneous).
+determinism(detism_failure).
 
 :- pred check_determinism_of_main(pred_id::in, proc_id::in,
     pred_info::in, proc_info::in, module_info::in, module_info::out,
@@ -360,8 +366,11 @@ check_determinism_of_main(_PredId, _ProcId, PredInfo, ProcInfo,
         pred_info_orig_arity(PredInfo) = 2,
         pred_info_is_exported(PredInfo),
         MaybeDetism = yes(DeclaredDetism),
-        DeclaredDetism \= det,
-        DeclaredDetism \= cc_multidet
+        \+ (
+            DeclaredDetism = detism_det
+        ;
+            DeclaredDetism = detism_cc_multi
+        )
     ->
         proc_info_get_context(ProcInfo, Context1),
         write_error_pieces(Context1, 0,
@@ -1461,7 +1470,7 @@ det_report_msg(par_conj_not_det(InferredDetism, PredId, ProcId,
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     proc_info_get_vartypes(ProcInfo, VarTypes),
     det_info_init(ModuleInfo, VarTypes, PredId, ProcId, Globals, DetInfo),
-    det_diagnose_conj(Goals, det, [], DetInfo, _, [ReportSpec], Specs),
+    det_diagnose_conj(Goals, detism_det, [], DetInfo, _, [ReportSpec], Specs),
     write_error_specs(Specs, !IO).
 det_report_msg(pragma_c_code_without_det_decl(PredId, ProcId), Context,
         ModuleInfo, !IO) :-

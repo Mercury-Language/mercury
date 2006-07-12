@@ -759,7 +759,7 @@ process_cons_deconstruct(Var, Args, ArgModes, UnifyGoal, GoalExpr, !Info) :-
         % so we make it a no_type_info_builtin.
         TermSizeProfBuiltin = mercury_term_size_prof_builtin_module,
         goal_util.generate_simple_call(TermSizeProfBuiltin,
-            "increment_size", predicate, only_mode, det,
+            "increment_size", predicate, only_mode, detism_det,
             [Var, SizeVar], [impure_goal], [], !.Info ^ module_info,
             Context, UpdateGoal),
         % Put UnifyGoal first in case it fails.
@@ -824,7 +824,7 @@ generate_size_var(SizeVar0, KnownSize, Context, SizeVar, Goals, !Info) :-
         get_new_var(int_type, "FinalSizeVar", SizeVar, !Info),
         TermSizeProfModule = mercury_term_size_prof_builtin_module,
         goal_util.generate_simple_call(TermSizeProfModule,
-            "term_size_plus", function, mode_no(0), det,
+            "term_size_plus", function, mode_no(0), detism_det,
             [SizeVar0, KnownSizeVar, SizeVar], [],
             [SizeVar - ground(shared, none)],
             !.Info ^ module_info, Context, AddGoal),
@@ -887,8 +887,8 @@ make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info) :-
             !:Info = !.Info ^ vartypes := VarTypes,
             PrivateBuiltin = mercury_private_builtin_module,
             goal_util.generate_simple_call(PrivateBuiltin,
-                "type_info_from_typeclass_info", predicate, only_mode, det,
-                [TypeClassInfoVar, SlotVar, TypeInfoVar], [],
+                "type_info_from_typeclass_info", predicate, only_mode,
+                detism_det, [TypeClassInfoVar, SlotVar, TypeInfoVar], [],
                 [TypeInfoVar - ground(shared, none)],
                 !.Info ^ module_info, Context, ExtractGoal),
             record_type_info_var(Type, TypeInfoVar, !Info),
@@ -1013,7 +1013,7 @@ make_size_goal(TypeInfoVar, Arg, Context, SizeGoal,
     ),
     TermSizeProfBuiltin = mercury_term_size_prof_builtin_module,
     goal_util.generate_simple_call(TermSizeProfBuiltin, Pred, predicate,
-        only_mode, det, Args, [], [SizeVar - ground(shared, none)],
+        only_mode, detism_det, Args, [], [SizeVar - ground(shared, none)],
         !.Info ^ module_info, Context, SizeGoal),
     MaybeSizeVar = yes(SizeVar).
 

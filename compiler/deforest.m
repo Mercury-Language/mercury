@@ -165,7 +165,8 @@ reset_inferred_proc_determinism(PredProcId, !ModuleInfo) :-
         % so resetting the determinism would cause determinism errors.
         true
     ;
-        proc_info_set_inferred_determinism(erroneous, ProcInfo0, ProcInfo),
+        proc_info_set_inferred_determinism(detism_erroneous,
+            ProcInfo0, ProcInfo),
         module_info_set_pred_proc_info(PredProcId, PredInfo, ProcInfo,
             !ModuleInfo)
     ).

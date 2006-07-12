@@ -408,7 +408,7 @@ parse_func_expression(FuncTerm, lambda_normal, Args, Modes, Det) :-
     list.length(Args0, NumArgs),
     list.duplicate(NumArgs, InMode, Modes0),
     RetMode = OutMode,
-    Det = det,
+    Det = detism_det,
     list.append(Modes0, [RetMode], Modes),
     inst_var_constraints_are_consistent_in_modes(Modes),
     list.append(Args0, [RetTerm], Args1),

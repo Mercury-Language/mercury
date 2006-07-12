@@ -733,7 +733,7 @@ transform_goal_2(call_expr(Name, Args0, Purity), Context, Subst, Goal,
         ->
             % Initialize some fields to junk.
             Modes = [],
-            Det = erroneous,
+            Det = detism_erroneous,
 
             GenericCall = higher_order(PredVar, Purity, predicate, Arity),
             Call = generic_call(GenericCall, RealHeadVars, Modes, Det),

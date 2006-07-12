@@ -496,7 +496,7 @@ ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
     % <for semidet code, check of SUCCESS_INDICATOR>
     goal_info_get_determinism(GoalInfo, Detism),
     ( CodeModel = model_semi ->
-        ( Detism = failure ->
+        ( Detism = detism_failure ->
             CheckSuccess_Comp = pragma_c_noop,
             MaybeFailLabel = no
         ;
@@ -606,7 +606,7 @@ ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
         FailLabelCode = node([label(TheFailLabel) - ""]),
         FailureCode = tree_list([GotoSkipLabelCode, FailLabelCode,
             FailCode, SkipLabelCode])
-    ; Detism = failure ->
+    ; Detism = detism_failure ->
         code_info.generate_failure(FailureCode, !CI)
     ;
         FailureCode = empty

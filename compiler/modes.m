@@ -2430,37 +2430,37 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
     candidate_init_vars_2(ModeInfo, Goals, !NonFree, !CandidateVars).
 
 candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
-        % XXX Is the determinism field of a generic_call valid at this point?
-        % Determinism analysis is run after mode analysis.
-        %
-        % We assume that generic calls are deterministic.
-        % The modes field of higher_order calls is junk until
-        % *after* mode analysis, hence we can't handle them here.
-        %
+    % XXX Is the determinism field of a generic_call valid at this point?
+    % Determinism analysis is run after mode analysis.
+    %
+    % We assume that generic calls are deterministic. The modes field of
+    % higher_order calls is junk until *after* mode analysis, hence we can't
+    % handle them here.
+    %
     Goal = generic_call(Details, Args, ArgModes, _JunkDetism) - _GoalInfo,
     Details \= higher_order(_, _, _, _),
     candidate_init_vars_call(ModeInfo, Args, ArgModes,
         !NonFree, !CandidateVars).
 
 candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
-        % A call (at this point the ProcId is just a dummy value
-        % since it isn't meaningful until the call is scheduled.)
-        %
+    % A call (at this point the ProcId is just a dummy value since it isn't
+    % meaningful until the call is scheduled.)
+    %
     Goal = call(PredId, _, Args, _, _, _) - _GoalInfo,
-        % Find a deterministic proc for this call.
-        %
+
+    % Find a deterministic proc for this call.
     mode_info_get_preds(ModeInfo, Preds),
     map.lookup(Preds, PredId, PredInfo),
     pred_info_get_procedures(PredInfo, ProcTable),
     map.values(ProcTable, ProcInfos),
     list.member(ProcInfo, ProcInfos),
     proc_info_get_declared_determinism(ProcInfo, yes(DeclaredDetism)),
-    ( DeclaredDetism = (det) ; DeclaredDetism = (cc_multidet) ),
-        % Find the argument modes.
-        %
+    ( DeclaredDetism = detism_det ; DeclaredDetism = detism_cc_multi ),
+
+    % Find the argument modes.
     proc_info_get_argmodes(ProcInfo, ArgModes),
-        % Process the call args.
-        %
+
+    % Process the call args.
     candidate_init_vars_call(ModeInfo, Args, ArgModes,
         !NonFree, !CandidateVars).
 

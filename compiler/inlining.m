@@ -938,7 +938,7 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
         HighLevelCode = no,
         CalledGoal = foreign_proc(_, _, _, _, _, _) - _,
         proc_info_interface_determinism(ProcInfo, Detism),
-        ( Detism = nondet ; Detism = multidet )
+        ( Detism = detism_non ; Detism = detism_multi )
     ),
 
     % Only inline foreign_code if it is appropriate for

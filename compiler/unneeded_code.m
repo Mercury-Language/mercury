@@ -490,14 +490,14 @@ adjust_where_needed(Goal, Options, !WhereInfo) :-
 
 :- pred detism_is_moveable(determinism::in, bool::out) is det.
 
-detism_is_moveable(det, yes).
-detism_is_moveable(semidet, no).
-detism_is_moveable(nondet, no).
-detism_is_moveable(multidet, yes).
-detism_is_moveable(erroneous, no).
-detism_is_moveable(failure, no).
-detism_is_moveable(cc_nondet, no).
-detism_is_moveable(cc_multidet, yes).
+detism_is_moveable(detism_det, yes).
+detism_is_moveable(detism_semi, no).
+detism_is_moveable(detism_non, no).
+detism_is_moveable(detism_multi, yes).
+detism_is_moveable(detism_erroneous, no).
+detism_is_moveable(detism_failure, no).
+detism_is_moveable(detism_cc_non, no).
+detism_is_moveable(detism_cc_multi, yes).
 
 %---------------------------------------------------------------------------%
 

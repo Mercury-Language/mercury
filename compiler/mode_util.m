@@ -748,7 +748,7 @@ default_higher_order_func_inst(ModuleInfo, PredArgTypes, PredInstInfo) :-
     list.append(FuncArgModes, [FuncRetMode], PredArgModes0),
     propagate_types_into_mode_list(ModuleInfo, PredArgTypes,
         PredArgModes0, PredArgModes),
-    PredInstInfo = pred_inst_info(function, PredArgModes, det).
+    PredInstInfo = pred_inst_info(function, PredArgModes, detism_det).
 
 constructors_to_bound_insts(ModuleInfo, Uniq, Constructors, BoundInsts) :-
     constructors_to_bound_insts_2(ModuleInfo, Uniq,

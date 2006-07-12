@@ -1772,11 +1772,11 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred proc_info_set_structure_sharing(structure_sharing_domain::in,
     proc_info::in, proc_info::out) is det.
 
-:- pred proc_info_get_imported_structure_sharing(proc_info::in, 
-    prog_vars::out, list(mer_type)::out, structure_sharing_domain::out) 
+:- pred proc_info_get_imported_structure_sharing(proc_info::in,
+    prog_vars::out, list(mer_type)::out, structure_sharing_domain::out)
     is semidet.
 
-:- pred proc_info_set_imported_structure_sharing(prog_vars::in, 
+:- pred proc_info_set_imported_structure_sharing(prog_vars::in,
     list(mer_type)::in, structure_sharing_domain::in, proc_info::in,
     proc_info::out) is det.
 
@@ -1786,14 +1786,14 @@ attribute_list_to_attributes(Attributes, Attributes).
 :- pred proc_info_get_structure_reuse(proc_info::in,
     maybe(structure_reuse_domain)::out) is det.
 
-:- pred proc_info_set_structure_reuse(structure_reuse_domain::in, 
+:- pred proc_info_set_structure_reuse(structure_reuse_domain::in,
     proc_info::in, proc_info::out) is det.
 
-:- pred proc_info_get_imported_structure_reuse(proc_info::in, 
-    prog_vars::out, list(mer_type)::out, structure_reuse_domain::out) 
+:- pred proc_info_get_imported_structure_reuse(proc_info::in,
+    prog_vars::out, list(mer_type)::out, structure_reuse_domain::out)
     is semidet.
 
-:- pred proc_info_set_imported_structure_reuse(prog_vars::in, 
+:- pred proc_info_set_imported_structure_reuse(prog_vars::in,
     list(mer_type)::in, structure_reuse_domain::in, proc_info::in,
     proc_info::out) is det.
 
@@ -2059,28 +2059,28 @@ attribute_list_to_attributes(Attributes, Attributes).
 
                 % Structure sharing information as obtained by the structure
                 % sharing analysis.
-                structure_sharing           :: structure_sharing_info, 
+                structure_sharing           :: structure_sharing_info,
 
                 % Structure reuse conditions obtained by the structure reuse
                 % analysis (CTGC).
                 structure_reuse             :: structure_reuse_info
-                                         
+
         ).
 
-:- type structure_sharing_info 
+:- type structure_sharing_info
     ---> structure_sharing_info(
             maybe_sharing           :: maybe(structure_sharing_domain),
             maybe_imported_sharing  :: maybe(imported_sharing)
                 % Records the sharing information from any `.opt' or
                 % `.trans_opt' file. This information needs to be processed
                 % at the beginning of structure sharing analysis. After that
-                % this field is of no use. 
+                % this field is of no use.
         ).
 
     % Sharing information is expressed in terms of headvariables and the
     % type variables occurring in their types. In order to correctly process
     % (mainly renaming) this information, we need both the list of head
-    % variables as well as their types. As this list of headvariables may 
+    % variables as well as their types. As this list of headvariables may
     % contain any compiler-added headvariables, the processing of imported
     % structure sharing information needs to be postponed until the actual
     % structure sharing analysis, which explains the need for the type
@@ -2088,39 +2088,39 @@ attribute_list_to_attributes(Attributes, Attributes).
     %
 :- type imported_sharing
     ---> imported_sharing(
-            s_headvars        :: prog_vars, 
+            s_headvars        :: prog_vars,
                 % The list of headvars in which terms the imported sharing
-                % is expressed. 
-            s_types           :: list(mer_type), 
+                % is expressed.
+            s_types           :: list(mer_type),
                 % The types of the headvars.
             s_sharing         :: structure_sharing_domain
-        ). 
+        ).
 
 :- func structure_sharing_info_init = structure_sharing_info.
 
 structure_sharing_info_init = structure_sharing_info(no, no).
 
-:- type structure_reuse_info 
+:- type structure_reuse_info
     ---> structure_reuse_info(
             maybe_reuse           :: maybe(structure_reuse_domain),
             maybe_imported_reuse  :: maybe(imported_reuse)
                 % Records the reuse information from any `.opt' or
                 % `.trans_opt' file. This information needs to be processed
                 % at the beginning of structure reuse analysis. After that
-                % this field is of no use. 
+                % this field is of no use.
         ).
 
     % Same rationale as for imported_sharing.
     %
 :- type imported_reuse
     ---> imported_reuse(
-            r_headvars        :: prog_vars, 
+            r_headvars        :: prog_vars,
                 % The list of headvars in which terms the imported reuse
-                % information is expressed. 
-            r_types           :: list(mer_type), 
+                % information is expressed.
+            r_types           :: list(mer_type),
                 % The types of the headvars.
             r_reuse           :: structure_reuse_domain
-        ). 
+        ).
 
 :- func structure_reuse_info_init = structure_reuse_info.
 
@@ -2139,7 +2139,7 @@ proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     varset.init(InstVarSet),
     map.from_corresponding_lists(HeadVars, Types, BodyTypes),
     ModeErrors = [],
-    InferredDet = erroneous,
+    InferredDet = detism_erroneous,
     map.init(StackSlots),
     set.init(InitialLiveness),
     ArgInfo = no,
@@ -2149,9 +2149,9 @@ proc_info_init(MContext, Arity, Types, DeclaredModes, Modes, MaybeArgLives,
     rtti_varmaps_init(RttiVarMaps),
     Term2Info = term_constr_main.term2_info_init,
     SharingInfo = structure_sharing_info_init,
-    ReuseInfo = structure_reuse_info_init, 
+    ReuseInfo = structure_reuse_info_init,
     ProcSubInfo = proc_sub_info(no, no, Term2Info, IsAddressTaken, StackSlots,
-        ArgInfo, InitialLiveness, no, no, no, no, no, no, 
+        ArgInfo, InitialLiveness, no, no, no, no, no, no,
         SharingInfo, ReuseInfo),
     ProcInfo = proc_info(MContext, BodyVarSet, BodyTypes, HeadVars, InstVarSet,
         DeclaredModes, Modes, no, MaybeArgLives, MaybeDet, InferredDet,
@@ -2164,9 +2164,9 @@ proc_info_set(Context, BodyVarSet, BodyTypes, HeadVars, InstVarSet, HeadModes,
         IsAddressTaken, StackSlots, ArgInfo, Liveness, ProcInfo) :-
     ModeErrors = [],
     SharingInfo = structure_sharing_info_init,
-    ReuseInfo = structure_reuse_info_init, 
+    ReuseInfo = structure_reuse_info_init,
     ProcSubInfo = proc_sub_info(ArgSizes, Termination, Termination2,
-        IsAddressTaken, StackSlots, ArgInfo, Liveness, no, no, no, no, no, 
+        IsAddressTaken, StackSlots, ArgInfo, Liveness, no, no, no, no, no,
         no, SharingInfo, ReuseInfo),
     ProcInfo = proc_info(Context, BodyVarSet, BodyTypes, HeadVars,
         InstVarSet, no, HeadModes, no, HeadLives,
@@ -2188,9 +2188,9 @@ proc_info_create(Context, VarSet, VarTypes, HeadVars, InstVarSet, HeadModes,
     ModeErrors = [],
     Term2Info = term_constr_main.term2_info_init,
     SharingInfo = structure_sharing_info_init,
-    ReuseInfo = structure_reuse_info_init, 
+    ReuseInfo = structure_reuse_info_init,
     ProcSubInfo = proc_sub_info(no, no, Term2Info, IsAddressTaken,
-        StackSlots, no, Liveness, no, no, no, no, no, no, 
+        StackSlots, no, Liveness, no, no, no, no, no, no,
         SharingInfo, ReuseInfo),
     ProcInfo = proc_info(Context, VarSet, VarTypes, HeadVars,
         InstVarSet, no, HeadModes, no, MaybeHeadLives,
@@ -2357,53 +2357,53 @@ proc_info_set_termination2_info(Termination2Info, !ProcInfo) :-
         Termination2Info.
 
 proc_info_get_structure_sharing(ProcInfo, MaybeSharing) :-
-    MaybeSharing = ProcInfo ^ proc_sub_info ^ structure_sharing 
+    MaybeSharing = ProcInfo ^ proc_sub_info ^ structure_sharing
         ^ maybe_sharing.
 
-proc_info_set_structure_sharing(Sharing, !ProcInfo) :- 
-    !:ProcInfo = !.ProcInfo ^ proc_sub_info ^ structure_sharing 
+proc_info_set_structure_sharing(Sharing, !ProcInfo) :-
+    !:ProcInfo = !.ProcInfo ^ proc_sub_info ^ structure_sharing
         ^ maybe_sharing := yes(Sharing).
 
-proc_info_get_imported_structure_sharing(ProcInfo, HeadVars, Types, 
-        Sharing) :- 
+proc_info_get_imported_structure_sharing(ProcInfo, HeadVars, Types,
+        Sharing) :-
     MaybeImportedSharing = ProcInfo ^ proc_sub_info ^ structure_sharing
-        ^ maybe_imported_sharing, 
-    MaybeImportedSharing = yes(ImportedSharing), 
+        ^ maybe_imported_sharing,
+    MaybeImportedSharing = yes(ImportedSharing),
     ImportedSharing = imported_sharing(HeadVars, Types, Sharing).
 
-proc_info_set_imported_structure_sharing(HeadVars, Types, Sharing, 
-        !ProcInfo) :- 
-    ImportedSharing = imported_sharing(HeadVars, Types, Sharing), 
-    MaybeImportedSharing = yes(ImportedSharing), 
+proc_info_set_imported_structure_sharing(HeadVars, Types, Sharing,
+        !ProcInfo) :-
+    ImportedSharing = imported_sharing(HeadVars, Types, Sharing),
+    MaybeImportedSharing = yes(ImportedSharing),
     !:ProcInfo = !.ProcInfo ^ proc_sub_info ^ structure_sharing
-        ^ maybe_imported_sharing := MaybeImportedSharing. 
+        ^ maybe_imported_sharing := MaybeImportedSharing.
 
-proc_info_reset_imported_structure_sharing(!ProcInfo) :- 
+proc_info_reset_imported_structure_sharing(!ProcInfo) :-
     !:ProcInfo = !.ProcInfo ^ proc_sub_info ^ structure_sharing
         ^ maybe_imported_sharing := no.
 
 proc_info_get_structure_reuse(ProcInfo, MaybeReuse) :-
     MaybeReuse = ProcInfo ^ proc_sub_info ^ structure_reuse ^ maybe_reuse.
 
-proc_info_set_structure_reuse(Reuse, !ProcInfo) :- 
-    !:ProcInfo = !.ProcInfo ^ proc_sub_info ^ structure_reuse 
+proc_info_set_structure_reuse(Reuse, !ProcInfo) :-
+    !:ProcInfo = !.ProcInfo ^ proc_sub_info ^ structure_reuse
         ^ maybe_reuse := yes(Reuse).
 
-proc_info_get_imported_structure_reuse(ProcInfo, HeadVars, Types, 
-        Reuse) :- 
+proc_info_get_imported_structure_reuse(ProcInfo, HeadVars, Types,
+        Reuse) :-
     MaybeImportedReuse = ProcInfo ^ proc_sub_info ^ structure_reuse
-        ^ maybe_imported_reuse, 
-    MaybeImportedReuse = yes(ImportedReuse), 
+        ^ maybe_imported_reuse,
+    MaybeImportedReuse = yes(ImportedReuse),
     ImportedReuse = imported_reuse(HeadVars, Types, Reuse).
 
-proc_info_set_imported_structure_reuse(HeadVars, Types, Reuse, 
-        !ProcInfo) :- 
-    ImportedReuse = imported_reuse(HeadVars, Types, Reuse), 
-    MaybeImportedReuse = yes(ImportedReuse), 
+proc_info_set_imported_structure_reuse(HeadVars, Types, Reuse,
+        !ProcInfo) :-
+    ImportedReuse = imported_reuse(HeadVars, Types, Reuse),
+    MaybeImportedReuse = yes(ImportedReuse),
     !:ProcInfo = !.ProcInfo ^ proc_sub_info ^ structure_reuse
-        ^ maybe_imported_reuse := MaybeImportedReuse. 
+        ^ maybe_imported_reuse := MaybeImportedReuse.
 
-proc_info_reset_imported_structure_reuse(!ProcInfo) :- 
+proc_info_reset_imported_structure_reuse(!ProcInfo) :-
     !:ProcInfo = !.ProcInfo ^ proc_sub_info ^ structure_reuse
         ^ maybe_imported_reuse := no.
 
@@ -2848,17 +2848,58 @@ valid_determinism_for_eval_method(eval_table_io(_, _), _) = _ :-
     unexpected(this_file,
         "valid_determinism_for_eval_method called after tabling phase").
 valid_determinism_for_eval_method(eval_minimal(_), Detism) = Valid :-
+    % The following reasons specify why a particular determinism is
+    % incompatible with minimal model tabling.
+    %
+    % Reason 1:
     % Determinism analysis isn't yet smart enough to know whether
-    % a cannot_fail execution path is guaranteed not to go through
-    % a call to a predicate that is mutually recursive with this one,
-    % which (if this predicate is minimal model) is the only way that
-    % the predicate can be properly cannot_fail. The problem is that in
-    % in general, the mutually recursive predicate may be in another
-    % module.
-    determinism_components(Detism, CanFail, _),
-    ( CanFail = can_fail ->
+    % a cannot_fail execution path is guaranteed not to go through a call
+    % to a predicate that is mutually recursive with this one, which (if this
+    % predicate is minimal model) is the only way that the predicate can be
+    % properly cannot_fail. The problem is that in in general, the mutually
+    % recursive predicate may be in another module.
+    %
+    % Reason 2:
+    % The transformation, as currently implemented, assumes that it is possible
+    % to reach the call table tip, and generates HLDS that refers to the
+    % introduced variable representing this tip. This variable however, will
+    % be optimized away if the code cannot succeed, causing a code generator
+    % abort.
+    %
+    % Reason 3:
+    % Minimal model semantics requires computing to a fixpoint, and this is
+    % incompatible with the notion of Committed choice.
+    %
+    % Reason 4:
+    % Doing the analysis required to ensure that a predicate can't have more
+    % than one solution is much harder if the predicate concerned is
+    % minimal_model. In theory, this analysis could be done, but it would
+    % take a lot of programming, and since there is a simple workaround
+    % make the predicate nondet, and check the number of solutions at the
+    % caller), this would not be cost-effective.
+    (
+        Detism = detism_det,
+        Valid = no                  % Reason 1
+    ;
+        Detism = detism_semi,
+        Valid = no                  % Reason 4
+    ;
+        Detism = detism_multi,      % Reason 1
         Valid = yes
     ;
+        Detism = detism_non,
+        Valid = yes
+    ;
+        Detism = detism_cc_multi,   % Reason 3
+        Valid = no
+    ;
+        Detism = detism_cc_non,     % Reason 3
+        Valid = no
+    ;
+        Detism = detism_erroneous,  % Reason 2
+        Valid = no
+    ;
+        Detism = detism_failure,    % Reason 2
         Valid = no
     ).
 
@@ -2897,7 +2938,7 @@ eval_method_change_determinism(eval_loop_check, Detism) = Detism.
 eval_method_change_determinism(eval_table_io(_, _), Detism) = Detism.
 eval_method_change_determinism(eval_memo, Detism) = Detism.
 eval_method_change_determinism(eval_minimal(_), Detism0) = Detism :-
-    det_conjunction_detism(semidet, Detism0, Detism).
+    det_conjunction_detism(detism_semi, Detism0, Detism).
 
 %-----------------------------------------------------------------------------%
 

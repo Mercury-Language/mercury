@@ -3383,7 +3383,7 @@ setup_call(GoalInfo, ArgInfos, LiveLocs, Code, !CI) :-
     get_opt_no_return_calls(!.CI, OptNoReturnCalls),
     get_module_info(!.CI, ModuleInfo),
     (
-        Detism = erroneous,
+        Detism = detism_erroneous,
         OptNoReturnCalls = yes
     ->
         RealStackVarLocs = [],

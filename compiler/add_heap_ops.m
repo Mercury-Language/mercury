@@ -165,7 +165,8 @@ goal_expr_add_heap_ops(not(InnerGoal), OuterGoalInfo, Goal, !Info) :-
         % make sure that it can't fail. So we use a call to
         % `private_builtin.unused' (which will call error/1) rather than
         % `fail' for the "then" part.
-        generate_call("unused", det, [], [], [], ModuleInfo, Context, ThenGoal)
+        generate_call("unused", detism_det, [], [], [], ModuleInfo, Context,
+            ThenGoal)
     ;
         ThenGoal = Fail
     ),
@@ -217,8 +218,9 @@ goal_expr_add_heap_ops(PragmaForeign, GoalInfo, Goal, !Info) :-
         % appropriate "Sorry, not implemented" error message.
         ModuleInfo = !.Info ^ module_info,
         goal_info_get_context(GoalInfo, Context),
-        generate_call("reclaim_heap_nondet_pragma_foreign_code", erroneous,
-            [], [], [], ModuleInfo, Context, SorryNotImplementedCode),
+        generate_call("reclaim_heap_nondet_pragma_foreign_code",
+            detism_erroneous, [], [], [], ModuleInfo, Context,
+            SorryNotImplementedCode),
         Goal = SorryNotImplementedCode
     ;
         Goal = PragmaForeign - GoalInfo
@@ -300,7 +302,7 @@ cases_add_heap_ops([Case0 | Cases0], [Case | Cases], !Info) :-
     heap_ops_info::in, heap_ops_info::out) is det.
 
 gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal, !Info) :-
-    generate_call("mark_hp", det, [SavedHeapPointerVar], [impure_goal],
+    generate_call("mark_hp", detism_det, [SavedHeapPointerVar], [impure_goal],
         [SavedHeapPointerVar - ground_inst], !.Info ^ module_info, Context,
         MarkHeapPointerGoal).
 
@@ -308,8 +310,9 @@ gen_mark_hp(SavedHeapPointerVar, Context, MarkHeapPointerGoal, !Info) :-
     heap_ops_info::in, heap_ops_info::out) is det.
 
 gen_restore_hp(SavedHeapPointerVar, Context, RestoreHeapPointerGoal, !Info) :-
-    generate_call("restore_hp", det, [SavedHeapPointerVar], [impure_goal],
-        [], !.Info ^ module_info, Context, RestoreHeapPointerGoal).
+    generate_call("restore_hp", detism_det, [SavedHeapPointerVar],
+        [impure_goal], [], !.Info ^ module_info, Context,
+        RestoreHeapPointerGoal).
 
 :- func ground_inst = mer_inst.
 

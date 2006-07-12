@@ -58,14 +58,14 @@
 :- import_module mdbcomp.program_representation.
 :- import_module int.
 
-determinism_to_code_model(det,         model_det).
-determinism_to_code_model(semidet,     model_semi).
-determinism_to_code_model(nondet,      model_non).
-determinism_to_code_model(multidet,    model_non).
-determinism_to_code_model(cc_nondet,   model_semi).
-determinism_to_code_model(cc_multidet, model_det).
-determinism_to_code_model(erroneous,   model_det).
-determinism_to_code_model(failure,     model_semi).
+determinism_to_code_model(detism_det,       model_det).
+determinism_to_code_model(detism_semi,      model_semi).
+determinism_to_code_model(detism_non,       model_non).
+determinism_to_code_model(detism_multi,     model_non).
+determinism_to_code_model(detism_cc_non,    model_semi).
+determinism_to_code_model(detism_cc_multi,  model_det).
+determinism_to_code_model(detism_erroneous, model_det).
+determinism_to_code_model(detism_failure,   model_semi).
 
 proc_info_interface_code_model(ProcInfo, CodeModel) :-
     proc_info_interface_determinism(ProcInfo, Determinism),
@@ -75,13 +75,13 @@ goal_info_get_code_model(GoalInfo, CodeModel) :-
     goal_info_get_determinism(GoalInfo, Determinism),
     determinism_to_code_model(Determinism, CodeModel).
 
-represent_determinism(det) = detism_rep(det_rep).
-represent_determinism(semidet) = detism_rep(semidet_rep).
-represent_determinism(nondet) = detism_rep(nondet_rep).
-represent_determinism(multidet) = detism_rep(multidet_rep).
-represent_determinism(erroneous) = detism_rep(erroneous_rep).
-represent_determinism(failure) = detism_rep(failure_rep).
-represent_determinism(cc_nondet) = detism_rep(cc_nondet_rep).
-represent_determinism(cc_multidet) = detism_rep(cc_multidet_rep).
+represent_determinism(detism_det) = detism_rep(det_rep).
+represent_determinism(detism_semi) = detism_rep(semidet_rep).
+represent_determinism(detism_non) = detism_rep(nondet_rep).
+represent_determinism(detism_multi) = detism_rep(multidet_rep).
+represent_determinism(detism_erroneous) = detism_rep(erroneous_rep).
+represent_determinism(detism_failure) = detism_rep(failure_rep).
+represent_determinism(detism_cc_non) = detism_rep(cc_nondet_rep).
+represent_determinism(detism_cc_multi) = detism_rep(cc_multidet_rep).
 
 %-----------------------------------------------------------------------------%

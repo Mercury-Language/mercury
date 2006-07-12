@@ -1561,7 +1561,7 @@ simple_call_id_pred_or_func(simple_call_id(PredOrFunc, _, _)) = PredOrFunc.
 :- pragma inline(goal_info_init/1).
 
 goal_info_init(GoalInfo) :-
-    Detism = erroneous,
+    Detism = detism_erroneous,
     instmap_delta_init_unreachable(InstMapDelta),
     set.init(NonLocals),
     term.context_init(Context),
@@ -1572,7 +1572,7 @@ goal_info_init(GoalInfo) :-
 :- pragma inline(goal_info_init/2).
 
 goal_info_init(Context, GoalInfo) :-
-    Detism = erroneous,
+    Detism = detism_erroneous,
     instmap_delta_init_unreachable(InstMapDelta),
     set.init(NonLocals),
     set.init(Features),
@@ -2063,7 +2063,7 @@ goal_is_atomic(shorthand(_)) = no.
 
 true_goal = true_goal_expr - GoalInfo :-
     instmap_delta_init_reachable(InstMapDelta),
-    goal_info_init(set.init, InstMapDelta, det, purity_pure, GoalInfo).
+    goal_info_init(set.init, InstMapDelta, detism_det, purity_pure, GoalInfo).
 
 true_goal_expr = conj(plain_conj, []).
 
@@ -2073,7 +2073,8 @@ true_goal_with_context(Context) = Goal - GoalInfo :-
 
 fail_goal = fail_goal_expr - GoalInfo :-
     instmap_delta_init_unreachable(InstMapDelta),
-    goal_info_init(set.init, InstMapDelta, failure, purity_pure, GoalInfo).
+    goal_info_init(set.init, InstMapDelta, detism_failure, purity_pure,
+        GoalInfo).
 
 fail_goal_expr = disj([]).
 
@@ -2107,7 +2108,7 @@ goal_list_determinism(Goals, Determinism) :-
         goal_info_get_determinism(GoalInfo, Det1),
         det_conjunction_detism(Det0, Det1, Det)
     ),
-    list.foldl(ComputeDeterminism, Goals, det, Determinism).
+    list.foldl(ComputeDeterminism, Goals, detism_det, Determinism).
 
 goal_list_purity(Goals, Purity) :-
     ComputePurity = (func(_ - GoalInfo, Purity0) = Purity1 :-
@@ -2189,7 +2190,7 @@ make_simple_test(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
     Unification = simple_test(X, Y),
     UnifyContext = unify_context(UnifyMainContext, UnifySubContext),
     instmap_delta_init_reachable(InstMapDelta),
-    goal_info_init(list_to_set([X, Y]), InstMapDelta, semidet, purity_pure,
+    goal_info_init(list_to_set([X, Y]), InstMapDelta, detism_semi, purity_pure,
         GoalInfo),
     Goal = unify(X, var(Y), Mode, Unification, UnifyContext) - GoalInfo.
 
@@ -2274,7 +2275,7 @@ make_const_construction(Var, ConsId, Goal - GoalInfo) :-
     set.singleton_set(NonLocals, Var),
     instmap_delta_init_reachable(InstMapDelta0),
     instmap_delta_insert(Var, Inst, InstMapDelta0, InstMapDelta),
-    goal_info_init(NonLocals, InstMapDelta, det, purity_pure, GoalInfo).
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo).
 
 construct_functor(Var, ConsId, Args, Goal) :-
     list.length(Args, Arity),
@@ -2288,7 +2289,7 @@ construct_functor(Var, ConsId, Args, Goal) :-
     Unify = unify(Var, Rhs, UnifyMode, Unification, UnifyContext),
     set.list_to_set([Var | Args], NonLocals),
     instmap_delta_from_assoc_list([Var - ground_inst], InstMapDelta),
-    goal_info_init(NonLocals, InstMapDelta, det, purity_pure, GoalInfo),
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
     Goal = Unify - GoalInfo.
 
 deconstruct_functor(Var, ConsId, Args, Goal) :-
@@ -2305,7 +2306,7 @@ deconstruct_functor(Var, ConsId, Args, Goal) :-
     list.duplicate(Arity, ground_inst, DeltaValues),
     assoc_list.from_corresponding_lists(Args, DeltaValues, DeltaAL),
     instmap_delta_from_assoc_list(DeltaAL, InstMapDelta),
-    goal_info_init(NonLocals, InstMapDelta, det, purity_pure, GoalInfo),
+    goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
     Goal = Unify - GoalInfo.
 
 construct_tuple(Tuple, Args, Goal) :-

@@ -134,50 +134,53 @@
 %-----------------------------------------------------------------------------%
 
 determinism_pass(!ModuleInfo, !IO) :-
-    determinism_declarations(!.ModuleInfo, DeclaredProcs,
-        UndeclaredProcs, NoInferProcs),
+    determinism_declarations(!.ModuleInfo, DeclaredProcs, UndeclaredProcs,
+        NoInferProcs),
     list.foldl(set_non_inferred_proc_determinism, NoInferProcs, !ModuleInfo),
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     globals.io_lookup_bool_option(debug_det, Debug, !IO),
     (
-        UndeclaredProcs = []
+        UndeclaredProcs = [],
+        Msgs = []
     ;
         UndeclaredProcs = [_ | _],
         maybe_write_string(Verbose, "% Doing determinism inference...\n", !IO),
-        global_inference_pass(!ModuleInfo, UndeclaredProcs, Debug, !IO),
+        global_inference_pass(!ModuleInfo, UndeclaredProcs, Debug, Msgs, !IO),
         maybe_write_string(Verbose, "% done.\n", !IO)
     ),
     maybe_write_string(Verbose, "% Doing determinism checking...\n", !IO),
-    global_final_pass(!ModuleInfo, DeclaredProcs, Debug, !IO),
+    global_final_pass(!ModuleInfo, UndeclaredProcs, DeclaredProcs, Debug,
+        Msgs, !IO),
     maybe_write_string(Verbose, "% done.\n", !IO).
 
 determinism_check_proc(ProcId, PredId, !ModuleInfo, !IO) :-
     globals.io_lookup_bool_option(debug_det, Debug, !IO),
-    global_final_pass(!ModuleInfo, [proc(PredId, ProcId)], Debug, !IO).
+    global_final_pass(!ModuleInfo, [], [proc(PredId, ProcId)], Debug, [], !IO).
 
 %-----------------------------------------------------------------------------%
 
 :- pred global_inference_pass(module_info::in, module_info::out,
-    pred_proc_list::in, bool::in, io::di, io::uo) is det.
+    pred_proc_list::in, bool::in, list(context_det_msg)::out,
+    io::di, io::uo) is det.
 
     % Iterate until a fixpoint is reached. This can be expensive if a module
     % has many predicates with undeclared determinisms. If this ever becomes
     % a problem, we should switch to doing iterations only on strongly
     % connected components of the dependency graph.
     %
-global_inference_pass(!ModuleInfo, ProcList, Debug, !IO) :-
-    global_inference_single_pass(ProcList, Debug, !ModuleInfo, [], Msgs,
+global_inference_pass(!ModuleInfo, ProcList, Debug, Msgs, !IO) :-
+    global_inference_single_pass(ProcList, Debug, !ModuleInfo, [], Msgs1,
         unchanged, Changed, !IO),
     maybe_write_string(Debug, "% Inference pass complete\n", !IO),
     (
         Changed = changed,
-        global_inference_pass(!ModuleInfo, ProcList, Debug, !IO)
+        global_inference_pass(!ModuleInfo, ProcList, Debug, Msgs, !IO)
     ;
         Changed = unchanged,
         % We have arrived at a fixpoint. Therefore all the messages we have
         % are based on the final determinisms of all procedures, which means
-        % it is safe to print them.
-        det_report_and_handle_msgs(Msgs, !ModuleInfo, !IO)
+        % it is safe to return them to be printed them.
+        Msgs = Msgs1
     ).
 
 :- pred global_inference_single_pass(pred_proc_list::in, bool::in,
@@ -212,13 +215,19 @@ global_inference_single_pass([proc(PredId, ProcId) | PredProcs], Debug,
         !Changed, !IO).
 
 :- pred global_final_pass(module_info::in, module_info::out,
-    pred_proc_list::in, bool::in, io::di, io::uo) is det.
+    pred_proc_list::in, pred_proc_list::in, bool::in,
+    list(context_det_msg)::in, io::di, io::uo) is det.
 
-global_final_pass(!ModuleInfo, ProcList, Debug, !IO) :-
-    global_inference_single_pass(ProcList, Debug, !ModuleInfo, [], Msgs,
+global_final_pass(!ModuleInfo, UndeclaredProcs, DeclaredProcs, Debug, !.Msgs,
+        !IO) :-
+    % We have already iterated global_inference_single_pass to a fixpoint
+    % on the undeclared procs.
+    global_inference_single_pass(DeclaredProcs, Debug, !ModuleInfo, !Msgs,
         unchanged, _, !IO),
-    det_report_and_handle_msgs(Msgs, !ModuleInfo, !IO),
-    global_checking_pass(ProcList, !ModuleInfo, !IO).
+    % We sort the messages by context.
+    list.sort_and_remove_dups(!Msgs),
+    det_report_and_handle_msgs(!.Msgs, !ModuleInfo, !IO),
+    global_checking_pass(UndeclaredProcs ++ DeclaredProcs, !ModuleInfo, !IO).
 
 %-----------------------------------------------------------------------------%
 
@@ -305,8 +314,8 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, OldDetism, NewDetism,
     module_info_get_pragma_exported_procs(!.ModuleInfo, ExportedProcs),
     (
         list.member(pragma_exported_proc(PredId, ProcId, _, _), ExportedProcs),
-        ( NewDetism = multidet
-        ; NewDetism = nondet
+        ( NewDetism = detism_multi
+        ; NewDetism = detism_non
         )
     ->
         (
@@ -593,7 +602,8 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
     list(failing_context)::out, list(context_det_msg)::out) is det.
 
 det_infer_conj([], [], _InstMap0, _SolnContext, _RightFailingContexts,
-        _MaybePromiseEqvSolutionSets, _DetInfo, det, !ConjFailingContexts, []).
+        _MaybePromiseEqvSolutionSets, _DetInfo, detism_det,
+        !ConjFailingContexts, []).
 det_infer_conj([Goal0 | Goals0], [Goal | Goals], InstMap0, SolnContext,
         RightFailingContexts, MaybePromiseEqvSolutionSets, DetInfo, Detism,
         !ConjFailingContexts, Msgs) :-
@@ -670,7 +680,7 @@ det_infer_par_conj(Goals0, Goals, GoalInfo, InstMap0, SolnContext,
 
 det_infer_par_conj_goals([], [], _InstMap0, _SolnContext,
         _RightFailingContexts, _MaybePromiseEqvSolutionSets, _DetInfo,
-        det, !ConjFailingContexts, []).
+        detism_det, !ConjFailingContexts, []).
 det_infer_par_conj_goals([Goal0 | Goals0], [Goal | Goals], InstMap0,
         SolnContext, RightFailingContexts, MaybePromiseEqvSolutionSets,
         DetInfo, Detism, !ConjFailingContexts, Msgs) :-
@@ -960,7 +970,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, PragmaCode,
         determinism_components(Detism0, CanFail, NumSolns0),
         (
             may_throw_exception(Attributes) = will_not_throw_exception,
-            Detism0 = erroneous
+            Detism0 = detism_erroneous
         ->
             proc_info_get_context(ProcInfo, ProcContext),
             WillNotThrowMsg = will_not_throw_with_erroneous(PredId, ProcId),
@@ -1007,7 +1017,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, PragmaCode,
         Msg = pragma_c_code_without_det_decl(PredId, ProcId),
         ContextMsg = context_det_msg(Context, Msg),
         !:Msgs = [ContextMsg],
-        Detism = erroneous,
+        Detism = detism_erroneous,
         GoalFailingContexts = []
     ).
 
@@ -1428,17 +1438,25 @@ det_get_soln_context(DeclaredDetism, SolnContext) :-
 %-----------------------------------------------------------------------------%
 
     % Determinism_declarations takes a module_info as input and returns
-    % two lists of procedure ids, the first being those with determinism
-    % declarations, and the second being those without.
+    % three lists of procedure ids:
+    %
+    % - DeclaredProcs holds the procedures that have declarations that need
+    %   to be checked.
+    %
+    % - UndeclaredProcs holds the procedures that don't have declarations
+    %   whose determinism needs to be inferred.
+    %
+    % - NoInferProcs holds the procedures whose determinism is already
+    %   known, and which should not be processed further.
     %
 :- pred determinism_declarations(module_info::in, pred_proc_list::out,
     pred_proc_list::out, pred_proc_list::out) is det.
 
-determinism_declarations(ModuleInfo, DeclaredProcs,
-        UndeclaredProcs, NoInferProcs) :-
+determinism_declarations(ModuleInfo, DeclaredProcs, UndeclaredProcs,
+        NoInferProcs) :-
     get_all_pred_procs(ModuleInfo, PredProcs),
-    segregate_procs(ModuleInfo, PredProcs, DeclaredProcs,
-        UndeclaredProcs, NoInferProcs).
+    segregate_procs(ModuleInfo, PredProcs, DeclaredProcs, UndeclaredProcs,
+        NoInferProcs).
 
     % Get_all_pred_procs takes a module_info and returns a list of all
     % the procedure ids for that module (except class methods, which

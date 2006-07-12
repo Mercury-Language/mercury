@@ -373,7 +373,7 @@ build_live_sets_in_call(OutVars, GoalInfo0, GoalInfo, ResumeVars0, AllocData,
 
     goal_info_get_determinism(GoalInfo0, Detism),
     (
-        Detism = erroneous,
+        Detism = detism_erroneous,
         AllocData ^ opt_no_return_calls = yes
     ->
         NeedAcrossCall = need_across_call(set.init, set.init, set.init)

@@ -81,14 +81,14 @@
     % may have.
     %
 :- type determinism
-    --->    det
-    ;       semidet
-    ;       nondet
-    ;       multidet
-    ;       cc_nondet
-    ;       cc_multidet
-    ;       erroneous
-    ;       failure.
+    --->    detism_det
+    ;       detism_semi
+    ;       detism_multi
+    ;       detism_non
+    ;       detism_cc_multi
+    ;       detism_cc_non
+    ;       detism_erroneous
+    ;       detism_failure.
 
 :- type can_fail
     --->    can_fail
@@ -1692,14 +1692,14 @@ best_purity(purity_impure, purity_impure) = purity_impure.
 % Determinism
 %
 
-determinism_components(det,         cannot_fail, at_most_one).
-determinism_components(semidet,     can_fail,    at_most_one).
-determinism_components(multidet,    cannot_fail, at_most_many).
-determinism_components(nondet,      can_fail,    at_most_many).
-determinism_components(cc_multidet, cannot_fail, at_most_many_cc).
-determinism_components(cc_nondet,   can_fail,    at_most_many_cc).
-determinism_components(erroneous,   cannot_fail, at_most_zero).
-determinism_components(failure,     can_fail,    at_most_zero).
+determinism_components(detism_det,       cannot_fail, at_most_one).
+determinism_components(detism_semi,      can_fail,    at_most_one).
+determinism_components(detism_multi,     cannot_fail, at_most_many).
+determinism_components(detism_non,       can_fail,    at_most_many).
+determinism_components(detism_cc_multi,  cannot_fail, at_most_many_cc).
+determinism_components(detism_cc_non,    can_fail,    at_most_many_cc).
+determinism_components(detism_erroneous, cannot_fail, at_most_zero).
+determinism_components(detism_failure,   can_fail,    at_most_zero).
 
 det_conjunction_detism(DetismA, DetismB, Detism) :-
     % When figuring out the determinism of a conjunction, if the second goal
@@ -1826,14 +1826,14 @@ det_switch_canfail(can_fail,    cannot_fail, can_fail).
 det_switch_canfail(cannot_fail, can_fail,    can_fail).
 det_switch_canfail(cannot_fail, cannot_fail, cannot_fail).
 
-det_negation_det(det,           yes(failure)).
-det_negation_det(semidet,       yes(semidet)).
-det_negation_det(multidet,      no).
-det_negation_det(nondet,        no).
-det_negation_det(cc_multidet,   no).
-det_negation_det(cc_nondet,     no).
-det_negation_det(erroneous,     yes(erroneous)).
-det_negation_det(failure,       yes(det)).
+det_negation_det(detism_det,       yes(detism_failure)).
+det_negation_det(detism_semi,      yes(detism_semi)).
+det_negation_det(detism_multi,     no).
+det_negation_det(detism_non,       no).
+det_negation_det(detism_cc_multi,  no).
+det_negation_det(detism_cc_non,    no).
+det_negation_det(detism_erroneous, yes(detism_erroneous)).
+det_negation_det(detism_failure,   yes(detism_det)).
 
 %-----------------------------------------------------------------------------%
 

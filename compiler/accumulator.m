@@ -1668,7 +1668,7 @@ acc_unification(Out - Acc, Goal) :-
     Expr = unify(Out, var(Acc), UniMode, assign(Out,Acc), Context),
     set.list_to_set([Out,Acc], NonLocalVars),
     instmap_delta_from_assoc_list([Out - ground(shared, none)], InstMapDelta),
-    goal_info_init(NonLocalVars, InstMapDelta, det, purity_pure, Info),
+    goal_info_init(NonLocalVars, InstMapDelta, detism_det, purity_pure, Info),
     Goal = Expr - Info.
 
 %-----------------------------------------------------------------------------%

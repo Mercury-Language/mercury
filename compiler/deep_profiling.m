@@ -675,7 +675,7 @@ transform_semi_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         generate_call(ModuleInfo, "semi_exit_port_code_sr", 3,
             [TopCSD, MiddleCSD, ActivationPtr1], [], ExitPortCode),
         generate_call(ModuleInfo, "semi_fail_port_code_sr", 3,
-            [TopCSD, MiddleCSD, ActivationPtr1], no, failure,
+            [TopCSD, MiddleCSD, ActivationPtr1], no, detism_failure,
             FailPortCode),
         NewNonlocals = list_to_set([TopCSD, MiddleCSD, ActivationPtr1])
     ;
@@ -688,7 +688,7 @@ transform_semi_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         generate_call(ModuleInfo, "semi_exit_port_code_ac", 2,
             [TopCSD, MiddleCSD], [], ExitPortCode),
         generate_call(ModuleInfo, "semi_fail_port_code_ac", 2,
-            [TopCSD, MiddleCSD], no, failure, FailPortCode),
+            [TopCSD, MiddleCSD], no, detism_failure, FailPortCode),
         NewNonlocals = list_to_set([TopCSD, MiddleCSD])
     ),
 
@@ -782,10 +782,10 @@ transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
             ExitPortCode),
         generate_call(ModuleInfo, "non_fail_port_code_sr", 3,
             [TopCSD, MiddleCSD, OldOutermostProcDyn2], no,
-            failure, FailPortCode),
+            detism_failure, FailPortCode),
         generate_call(ModuleInfo, "non_redo_port_code_sr", 2,
             [MiddleCSD, NewOutermostProcDyn], no,
-            failure, RedoPortCode0),
+            detism_failure, RedoPortCode0),
         NewNonlocals = list_to_set([TopCSD, MiddleCSD, OldOutermostProcDyn2])
     ;
         MaybeOldActivationPtr = no,
@@ -797,10 +797,10 @@ transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
         generate_call(ModuleInfo, "non_exit_port_code_ac", 2,
             [TopCSD, MiddleCSD], [], ExitPortCode),
         generate_call(ModuleInfo, "non_fail_port_code_ac", 2,
-            [TopCSD, MiddleCSD], no, failure, FailPortCode),
+            [TopCSD, MiddleCSD], no, detism_failure, FailPortCode),
         generate_call(ModuleInfo, "non_redo_port_code_ac", 2,
             [MiddleCSD, NewOutermostProcDyn], no,
-            failure, RedoPortCode0),
+            detism_failure, RedoPortCode0),
         NewNonlocals = list_to_set([TopCSD, MiddleCSD])
     ),
 
@@ -823,7 +823,7 @@ transform_non_proc(ModuleInfo, PredProcId, !ProcInfo) :-
     ExitRedoNonLocals = set.union(NewNonlocals,
         list_to_set([NewOutermostProcDyn])),
     ExitRedoGoalInfo = impure_reachable_init_goal_info(ExitRedoNonLocals,
-        multidet),
+        detism_multi),
 
     CallExitRedoGoalInfo = goal_info_add_nonlocals_make_impure(GoalInfo1,
         ExitRedoNonLocals),
@@ -1222,7 +1222,7 @@ wrap_call(GoalPath, Goal0, Goal, !DeepInfo) :-
                 goal_info_add_nonlocals_make_impure(GoalInfo, ExtraVars),
 
             ReturnFailsGoalInfo =
-                impure_unreachable_init_goal_info(ExtraVars, failure),
+                impure_unreachable_init_goal_info(ExtraVars, detism_failure),
 
             FailGoalInfo = fail_goal_info,
             FailGoal = disj([]) - FailGoalInfo,
@@ -1312,10 +1312,10 @@ transform_higher_order_call(Globals, CodeModel, Goal0, Goal, !DeepInfo) :-
     FailGoal = disj([]) - FailGoalInfo,
 
     RestoreFailGoalInfo = impure_unreachable_init_goal_info(ExtraNonLocals,
-        failure),
+        detism_failure),
 
     RezeroFailGoalInfo = impure_unreachable_init_goal_info(set.init,
-        failure),
+        detism_failure),
 
     make_impure(GoalInfo0, GoalInfo),
     (
@@ -1589,7 +1589,7 @@ generate_single_csn_unify(CSN, CSNVar - UnifyGoal, !DeepInfo) :-
 
 generate_call(ModuleInfo, Name, Arity, ArgVars, OutputVars, Goal) :-
     generate_call(ModuleInfo, Name, Arity, ArgVars, yes(OutputVars),
-        det, Goal).
+        detism_det, Goal).
 
 :- pred generate_call(module_info::in, string::in, int::in, list(prog_var)::in,
     maybe(list(prog_var))::in, determinism::in, hlds_goal::out) is det.
@@ -1619,7 +1619,7 @@ generate_unify(ConsId, Var, Goal) :-
     Ground = ground(shared, none),
     NonLocals = set.make_singleton_set(Var),
     instmap_delta_from_assoc_list([Var - ground(shared, none)], InstMapDelta),
-    Determinism = det,
+    Determinism = detism_det,
     goal_info_init(NonLocals, InstMapDelta, Determinism, purity_pure,
         GoalInfo),
     Goal = unify(Var, functor(ConsId, no, []),
@@ -1635,7 +1635,7 @@ generate_cell_unify(Length, ConsId, Args, Var, Goal) :-
     Ground = ground(shared, none),
     NonLocals = set.list_to_set([Var | Args]),
     instmap_delta_from_assoc_list([Var - Ground], InstMapDelta),
-    Determinism = det,
+    Determinism = detism_det,
     goal_info_init(NonLocals, InstMapDelta, Determinism, purity_pure,
         GoalInfo),
     ArgMode = ((free - Ground) -> (Ground - Ground)),
@@ -1729,7 +1729,8 @@ goal_info_add_nonlocals_make_impure(!.GoalInfo, NewNonLocals) = !:GoalInfo :-
 
 fail_goal_info = GoalInfo :-
     instmap_delta_init_unreachable(InstMapDelta),
-    goal_info_init(set.init, InstMapDelta, failure, purity_pure, GoalInfo).
+    goal_info_init(set.init, InstMapDelta, detism_failure, purity_pure,
+        GoalInfo).
 
 :- pred make_impure(hlds_goal_info::in, hlds_goal_info::out) is det.
 

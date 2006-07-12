@@ -153,17 +153,17 @@ special_pred_name(SpecialPred, type_ctor(SymName, Arity)) = Name :-
 spec_pred_name_append_type_id = no.
 
 special_pred_interface(spec_pred_unify, Type, [Type, Type], [In, In],
-        semidet) :-
+        detism_semi) :-
     in_mode(In).
 special_pred_interface(spec_pred_index, Type, [Type, int_type], [In, Out],
-        det) :-
+        detism_det) :-
     in_mode(In),
     out_mode(Out).
 special_pred_interface(spec_pred_compare, Type,
-        [comparison_result_type, Type, Type], [Uo, In, In], det) :-
+        [comparison_result_type, Type, Type], [Uo, In, In], detism_det) :-
     in_mode(In),
     uo_mode(Uo).
-special_pred_interface(spec_pred_init, Type, [Type], [InAny], det) :-
+special_pred_interface(spec_pred_init, Type, [Type], [InAny], detism_det) :-
     InAny = out_any_mode.
 
 special_pred_get_type(spec_pred_unify, Types, T) :-
