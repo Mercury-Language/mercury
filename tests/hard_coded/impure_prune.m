@@ -33,10 +33,20 @@ bump_counter :-
 :- semipure pred get_counter(int::out) is det.
 :- impure pred set_counter(int::in) is det.
 
-:- pragma c_header_code("extern MR_Integer counter;").
-:- pragma c_code("MR_Integer counter = 0;").
-:- pragma c_code(get_counter(X::out), will_not_call_mercury, "X = counter;").
-:- pragma c_code(set_counter(X::in), will_not_call_mercury, "counter = X;").
+:- pragma foreign_decl("C", "extern MR_Integer counter;").
+:- pragma foreign_code("C", "MR_Integer counter = 0;").
+:- pragma foreign_proc("C",
+	get_counter(X::out),
+	[promise_semipure, will_not_call_mercury],
+"
+	X = counter;
+").
+:- pragma foreign_proc("C",
+	set_counter(X::in),
+	[will_not_call_mercury],
+"
+	counter = X;
+").
 
 :- pragma foreign_code("C#", "static int counter = 0;").
 :- pragma foreign_proc("C#", get_counter(X::out),

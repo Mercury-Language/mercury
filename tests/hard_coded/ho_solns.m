@@ -33,18 +33,17 @@ main -->
 :- pred convert_list(list(T), list(T)).
 :- mode convert_list(in, out(list_skel(mypred))) is det.
 
-:- pragma c_code(
-	convert_list(L0 :: in, L :: out(list_skel(mypred))), "
-{
+:- pragma foreign_proc("C",
+	convert_list(L0::in, L::out(list_skel(mypred))),
+	[promise_pure, will_not_call_mercury],
+"
 	L = L0;
-}
 ").
 :- pragma foreign_proc("C#",
-	convert_list(L0 :: in, L :: out(list_skel(mypred))),
-	[promise_pure], "
-{
+	convert_list(L0::in, L::out(list_skel(mypred))),
+	[promise_pure, will_not_call_mercury],
+"
 	L = L0;
-}
 ").
 
 :- pred use_list(list(mypred), io__state, io__state).

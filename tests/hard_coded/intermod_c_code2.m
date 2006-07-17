@@ -10,14 +10,17 @@ c_code(T, U) :- c_code_2(T, U).
 
 :- some [U] pred c_code_2(T::in, U::out) is det.
 
-:- pragma c_code(c_code_2(T::in, U::out),
-"{
+:- pragma foreign_proc("C",
+	c_code_2(T::in, U::out),
+	[promise_pure, will_not_call_mercury],
+"
 	U = T;
 	TypeInfo_for_U = TypeInfo_for_T;
-}").
-:- pragma foreign_proc("C#", c_code_2(T::in, U::out), [promise_pure],
-"{
+").
+:- pragma foreign_proc("C#",
+	c_code_2(T::in, U::out),
+	[promise_pure, will_not_call_mercury],
+"
 	U = T;
 	TypeInfo_for_U = TypeInfo_for_T;
-}").
-
+").

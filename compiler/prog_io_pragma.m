@@ -5,12 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: prog_io_pragma.m.
 % Main authors: fjh, dgj.
-
+% 
 % This module handles the parsing of pragma directives.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_io_pragma.

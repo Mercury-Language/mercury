@@ -10,4 +10,9 @@ test(Int) :-
 	c_code(Int).
 
 :- pred c_code(int::out).
-:- pragma c_code(c_code(X::out), "X = 1").
+:- pragma foreign_proc("C",
+	c_code(X::out),
+	[promise_pure, will_not_call_mercury],
+"
+	X = 1;
+").

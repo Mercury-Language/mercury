@@ -86,6 +86,11 @@ test2(0::out, 0::out) :-
 	impure puts("test2(out, out)").
 
 :- impure pred puts(string::in) is det.
-:- pragma c_code(puts(S::in), [will_not_call_mercury], "puts(S)").
+:- pragma foreign_proc("C",
+	puts(S::in),
+	[will_not_call_mercury],
+"
+	puts(S);
+").
 :- pragma foreign_proc("C#", puts(S::in),
 		[promise_pure], "System.Console.WriteLine(S);").

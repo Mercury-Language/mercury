@@ -34,12 +34,27 @@ test2 -->
 :- impure pred next_x(int::out) is det.
 :- impure pred incr_x is det.
 
-:- pragma c_header_code("extern int my_global;").
-:- pragma c_code("int my_global;").
+:- pragma foreign_decl("C", "extern int my_global;").
+:- pragma foreign_code("C", "int my_global;").
 
-:- pragma c_code(get_x(X::out), "X = my_global;").
-:- pragma c_code(next_x(X::out), "X = my_global++;").
-:- pragma c_code(incr_x, "my_global++;").
+:- pragma foreign_proc("C",
+	get_x(X::out),
+	[promise_semipure, will_not_call_mercury],
+"
+	X = my_global;
+").
+:- pragma foreign_proc("C",
+	next_x(X::out),
+	[will_not_call_mercury],
+"
+	X = my_global++;
+").
+:- pragma foreign_proc("C",
+	incr_x,
+	[will_not_call_mercury],
+"
+	my_global++;
+").
 
 :- pragma foreign_code("C#", "static int my_global;").
 

@@ -241,12 +241,22 @@ set(Vec0, Ind, V, Vec) :-
 	).
 
 :- func rfloat(int) = float.
-:- pragma c_code(rfloat(I::in) = (F::out), "F = I;").
+:- pragma foreign_proc("C",
+	rfloat(I::in) = (F::out),
+	[promise_pure, will_not_call_mercury],
+"
+	F = I;
+").
 :- pragma foreign_proc("C#", rfloat(I::in) = (F::out),
 		[promise_pure], "F = I;").
 
 :- func rint(float) = int.
-:- pragma c_code(rint(F::in) = (I::out), "I = F;").
+:- pragma foreign_proc("C",
+	rint(F::in) = (I::out),
+	[promise_pure, will_not_call_mercury],
+"
+	I = F;
+").
 :- pragma foreign_proc("C#", rint(F::in) = (I::out),
 		[promise_pure], "I = (int) F;").
 

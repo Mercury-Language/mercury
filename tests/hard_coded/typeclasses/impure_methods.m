@@ -53,10 +53,21 @@ main -->
 	io__write_int(Y),
 	io__nl.
 
-:- pragma c_header_code("int foo_counter = 0;").
+:- pragma foreign_decl("C", "extern int foo_counter;").
+:- pragma foreign_code("C", "int foo_counter = 0;").
 
-:- pragma c_code(foo_m1(_F::in), "foo_counter++;").
-:- pragma c_code(foo_m2(_F::in, Val::out), "Val = foo_counter;").
+:- pragma foreign_proc("C",
+	foo_m1(_F::in),
+	[will_not_call_mercury],
+"
+	foo_counter++;
+").
+:- pragma foreign_proc("C",
+	foo_m2(_F::in, Val::out),
+	[promise_semipure, will_not_call_mercury],
+"
+	Val = foo_counter;
+").
 
 :- pragma foreign_code("C#", "static int foo_counter = 0;").
 

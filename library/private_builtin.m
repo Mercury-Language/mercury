@@ -5,26 +5,26 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: private_builtin.m.
 % Main authors: fjh, zs.
 % Stability: medium.
-
+% 
 % This file is automatically imported, as if via `use_module', into every
 % module. It is intended for builtins that are just implementation details,
 % such as procedures that the compiler generates implicit calls to when
 % implementing polymorphism, unification, compare/3, etc.
 % Note that the builtins used for tabling and deep profiling are in separate
 % modules (table_builtin.m and profiling_builtin.m).
-
+% 
 % This module is a private part of the Mercury implementation; user modules
 % should never explicitly import this module. The interface for this module
 % does not get included in the Mercury library reference manual.
-
+% 
 % Many of the predicates defined in this module are builtin - they do not have
 % definitions because the compiler generates code for them inline. Some others
 % are implemented in the runtime.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1005,7 +1005,7 @@ trailed_nondet_pragma_foreign_code :-
 
 :- pragma foreign_proc("C",
     free_heap(Val::di),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+    [will_not_call_mercury, thread_safe, will_not_modify_trail],
 "
     MR_free_heap((void *) Val);
 ").

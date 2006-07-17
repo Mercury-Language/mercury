@@ -56,7 +56,7 @@
     maybe(structure_sharing_domain)::in, prog_context::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-    % module_add_pragma_import:
+    % module_add_pragma_import.
     %
     % Handles `pragma import' declarations, by figuring out which predicate
     % the `pragma import' declaration applies to, and adding a clause
@@ -1335,11 +1335,13 @@ pred_add_pragma_import(PredId, ProcId, Attributes, C_Function, Context,
     PredModule = pred_info_module(!.PredInfo),
     pred_info_clauses_info(!.PredInfo, Clauses0),
     pred_info_get_purity(!.PredInfo, Purity),
+    pred_info_get_markers(!.PredInfo, Markers),
 
     % Add the code for this `pragma import' to the clauses_info.
-    clauses_info_add_pragma_foreign_proc(Purity, Attributes, PredId, ProcId,
+    clauses_info_add_pragma_foreign_proc(pragma_import_foreign_proc,
+        Purity, Attributes, PredId, ProcId,
         VarSet, PragmaVars, ArgTypes, PragmaImpl, Context, PredOrFunc,
-        qualified(PredModule, PredName), Arity, Clauses0, Clauses,
+        qualified(PredModule, PredName), Arity, Markers, Clauses0, Clauses,
         !ModuleInfo, !IO),
 
     % Store the clauses_info etc. back into the pred_info.
@@ -1484,10 +1486,11 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
                 pred_info_clauses_info(!.PredInfo, Clauses0),
                 pred_info_get_arg_types(!.PredInfo, ArgTypes),
                 pred_info_get_purity(!.PredInfo, Purity),
-                clauses_info_add_pragma_foreign_proc(Purity, Attributes,
-                    PredId, ProcId, ProgVarSet, PVars, ArgTypes, PragmaImpl,
-                    Context, PredOrFunc, PredName, Arity, Clauses0, Clauses,
-                    !ModuleInfo, !IO),
+                pred_info_get_markers(!.PredInfo, Markers),
+                clauses_info_add_pragma_foreign_proc(standard_foreign_proc,
+                    Purity, Attributes, PredId, ProcId, ProgVarSet, PVars,
+                    ArgTypes, PragmaImpl, Context, PredOrFunc, PredName,
+                    Arity, Markers, Clauses0, Clauses, !ModuleInfo, !IO),
                 pred_info_set_clauses_info(Clauses, !PredInfo),
                 pred_info_update_goal_type(pragmas, !PredInfo),
                 map.det_update(Preds0, PredId, !.PredInfo, Preds),
@@ -1992,21 +1995,31 @@ fact_table_pragma_vars(Vars0, Modes0, VarSet, PragmaVars0) :-
         PragmaVars0 = []
     ).
 
+    % This type is used to distinguish between those foreign_procs that
+    % were created by the transformation for `:- pragma import' and those
+    % that were not.
+    %
+:- type foreign_proc_origin
+    --->    standard_foreign_proc
+    ;       pragma_import_foreign_proc.
+
     % Add the pragma_foreign_proc goal to the clauses_info for this procedure.
     % To do so, we must also insert unifications between the variables in the
     % pragma foreign_proc declaration and the head vars of the pred. Also
     % return the hlds_goal.
     %
-:- pred clauses_info_add_pragma_foreign_proc(purity::in,
-    pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
+:- pred clauses_info_add_pragma_foreign_proc(foreign_proc_origin::in,
+    purity::in, pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
     prog_varset::in, list(pragma_var)::in, list(mer_type)::in,
     pragma_foreign_code_impl::in, prog_context::in, pred_or_func::in,
-    sym_name::in, arity::in, clauses_info::in, clauses_info::out,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    sym_name::in, arity::in, pred_markers::in,
+    clauses_info::in, clauses_info::out, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
-clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
-        PVarSet, PVars, OrigArgTypes, PragmaImpl0, Context, PredOrFunc,
-        PredName, Arity, !ClausesInfo, !ModuleInfo, !IO) :-
+clauses_info_add_pragma_foreign_proc(Origin, Purity, Attributes0,
+        PredId, ProcId, PVarSet, PVars, OrigArgTypes, PragmaImpl0,
+        Context, PredOrFunc, PredName, Arity, Markers, !ClausesInfo,
+        !ModuleInfo, !IO) :-
 
     !.ClausesInfo = clauses_info(VarSet0, ExplicitVarTypes, TVarNameMap,
         InferredVarTypes, HeadVars, ClauseRep, RttiVarMaps,
@@ -2070,7 +2083,48 @@ clauses_info_add_pragma_foreign_proc(Purity, Attributes0, PredId, ProcId,
         % Build the foreign_proc.
         goal_info_init(GoalInfo0),
         goal_info_set_context(Context, GoalInfo0, GoalInfo1),
+        %
+        % Check that the purity of a predicate/function declaration agrees with
+        % the (promised) purity of the foreign proc.  We do not perform this
+        % check there is a promise_{pure,semipure} pragma for the
+        % predicate/function since in that case they will differ anyway.  We
+        % also do not perform this check if the foreign_proc was introduced as
+        % a result of a `:- pragma import' declaration since doing so results
+        % in spurious error messages about non-existent foreign_procs.  For
+        % that case we assume that the code that constructs the foreign_procs
+        % from the import pragmas sets the purity attributes correctly.
+        %
+        (
+            ( Origin = pragma_import_foreign_proc
+            ; check_marker(Markers, promised_pure)
+            ; check_marker(Markers, promised_semipure)
+            )
+        ->
+            true
+        ;
+            ForeignAttributePurity = purity(Attributes),
+            (
+                ForeignAttributePurity \= Purity
+            ->
+                purity_name(ForeignAttributePurity, ForeignAttributePurityStr),
+                purity_name(Purity, PurityStr),
+                ErrorMsg = [
+                    words("Error: foreign clause for"),
+                    pred_or_func(PredOrFunc),
+                    sym_name_and_arity(PredName / Arity),
+                    words("has purity " ++ ForeignAttributePurityStr),
+                    words("but that"), pred_or_func(PredOrFunc),
+                    words("has been declared " ++ PurityStr), suffix(".")
+                ],
+                write_error_pieces(Context, 0, ErrorMsg, !IO),
+                io.set_exit_status(1, !IO)
+            ;
+                true
+            )
+        ),
+        %
         % Put the purity in the goal_info in case this foreign code is inlined.
+        %
         add_goal_info_purity_feature(Purity, GoalInfo1, GoalInfo),
         make_foreign_args(HeadVars, ArgInfo, OrigArgTypes, ForeignArgs),
         HldsGoal0 = foreign_proc(Attributes, PredId, ProcId, ForeignArgs, [],
