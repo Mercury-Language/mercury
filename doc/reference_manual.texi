@@ -8215,12 +8215,11 @@ undoing all those updates.
 
 The interface used is a set of C functions (which are actually
 implemented as macros) and types.  Typically these will be
-called from C code within @samp{pragma c_code} declarations
-in Mercury code.
+called from C code within @samp{pragma foreign_proc} or
+@samp{pramga foreign_code} declarations in Mercury code.
 
-For examples of the use of this interface, see the modules
-@file{extras/trailed_update/tr_array.m} and
-@file{extras/clpr/cfloat.m} in the Mercury distribution.
+For an example of the use of this interface, see the module
+@file{extras/trailed_update/tr_array.m} in the Mercury extras distribution.
 
 @menu
 * Choice points::
@@ -8380,10 +8379,8 @@ by simply calling @samp{MR_trail_function()} to add a function trail
 entry whenever you create a delayed goal, and putting the appropriate
 check for floundering in the @samp{MR_commit} and @samp{MR_solve} cases
 of your function.
-The Mercury distribution includes some examples of this:
-see the @samp{ML_cfloat_untrail_func()}
-function in the file @samp{extras/clpr/cfloat.m} and the
-@samp{ML_var_untrail_func()} function in the file
+The Mercury extras distribution includes an example of this:
+see the @samp{ML_var_untrail_func()} function in the file
 @samp{extras/trailed_update/var.m}.)
 If your function does detect floundering, then it should print
 an error message and then abort execution.
@@ -8508,71 +8505,69 @@ outweigh these costs will depend on your application.
 :- type int_ref.
 
     % Create a new int_ref with the specified value.
+    %
 :- pred new_int_ref(int_ref::uo, int::in) is det.
 
-    % update_int_ref(Ref0, Ref, OldVal, NewVal):
+    % update_int_ref(Ref0, Ref, OldVal, NewVal).
     % Ref0 has value OldVal and Ref has value NewVal.
-:- pred update_int_ref(int_ref::mdi, int_ref::muo,
-        int::out, int::in) is det.
+    %
+:- pred update_int_ref(int_ref::mdi, int_ref::muo, int::out, int::in)
+    is det.
 
 :- implementation.
 
-:- type int_ref ---> int_ref(c_pointer).
+:- pragma foreign_decl("C", "
 
-:- pragma import(new_int_ref(uo, in),
-	"new_int_ref").
-:- pragma import(update_int_ref(mdi, muo, out, in),
-	"update_int_ref").
-
-:- pragma c_header_code("
-typedef MR_Word Mercury_IntRef;
-void new_int_ref(Mercury_IntRef *ref, MR_Integer value);
-void update_int_ref(Mercury_IntRef ref0, Mercury_IntRef *ref,
-    MR_Integer *old_value, MR_Integer new_value);
-").
-
-:- pragma c_code("
 typedef struct @{
     MR_ChoicepointId prev_choicepoint;
     MR_Integer data;
 @} C_IntRef;
 
-void
-new_int_ref(Mercury_IntRef *ref, MR_Integer value)
-@{
-    C_IntRef *x = malloc(sizeof(C_IntRef));
+").
+
+:- pragma foreign_type("C", int_ref, "C_IntRef *").
+
+:- pragma foreign_proc("C",
+    new_int_ref(Ref::uo, Value::in),
+    [will_not_call_mercury, promise_pure],
+"
+    C_Intref *x = malloc(sizeof(C_IntRef));
     x->prev_choicepoint = MR_current_choicepoint_id();
-    x->data = value;
-    *ref = (Mercury_IntRef) x;
-@}
+    x->data = Value;
+    Ref = x;
+").
 
-void
-update_int_ref(Mercury_IntRef ref0, Mercury_IntRef *ref,
-    MR_Integer *old_value, MR_Integer new_value)
-@{
-    C_IntRef *x = (C_IntRef *) ref0;
-    *old_value = x->data;
+:- pragma foreign_proc("C",
+    update_int_ref(Ref0::mdi, Ref::muo, OldValue::out, NewValue::in),
+    [will_not_call_mercury, promise_pure],
+"
+    C_IntRef *x = Ref0;
+    OldValue = x->data;
 
-    /* check whether we need to trail this update */
+    /* Check whether we need to trail this update. */
     if (MR_choicepoint_newer(MR_current_choicepoint_id(),
         x->prev_choicepoint))
     @{
-        /* trail both x->data and x->prev_choicepoint,
-	   since we're about to update them both*/
+        /*
+        ** Trail both x->data and x->prev_choicepoint,
+        ** since we're about to update them both.
+        */
         assert(sizeof(x->data) == sizeof(MR_Word));
         assert(sizeof(x->prev_choicepoint) == sizeof(MR_Word));
         MR_trail_current_value((MR_Word *)&x->data);
         MR_trail_current_value((MR_Word *)&x->prev_choicepoint);
 
-        /* update x->prev_choicepoint to indicate that
-           x->data's previous value has been trailed
-           at this choice point */
+        /*
+        ** Update x->prev_choicepoint to indicate that
+        ** x->data's previous value has been trailed
+        ** at this choice point.
+        */
         x->prev_choicepoint = MR_current_choicepoint_id();
     @}
-    x->data = new_value;
-    *ref = ref0;
-@}
+    x->data = NewValue;
+    Ref = Ref0;
 ").
+
 @end example
 
 @c @item @code{void MR_untrail_to(MR_TrailEntry *@var{old_trail_ptr}, MR_untrail_reason @var{reason});}
