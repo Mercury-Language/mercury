@@ -5,8 +5,9 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% File: analysis.m
-% Main authors: stayl, wangp
+%
+% File: analysis.m.
+% Main authors: stayl, wangp.
 %
 % An inter-module analysis framework, as described in
 %
@@ -15,6 +16,7 @@
 %	University of Melbourne, September 2001, revised April 2002.
 %	<http://www.cl.cam.ac.uk/~njn25/pubs/masters2001.ps.gz>.
 %
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module analysis.
@@ -34,17 +36,21 @@
 	% The intention is that eventually any compiler can
 	% use this library via .NET by defining an instance
 	% of this class.
+	%
 :- typeclass compiler(Compiler) where [
 	func compiler_name(Compiler) = string,
 
 	% Describe the analyses which can be performed by a compiler.
+	%
 	func analyses(Compiler, analysis_name) = analysis_type is semidet,
 
 	% module_id_to_read_file_name(Compiler, ModuleId, Ext, FileName)
+	%
 	pred module_id_to_read_file_name(Compiler::in, module_id::in,
 		string::in, maybe_error(string)::out, io::di, io::uo) is det,
 
 	% module_id_to_write_file_name(Compiler, ModuleId, Ext, FileName)
+	%
 	pred module_id_to_write_file_name(Compiler::in, module_id::in,
 		string::in, string::out, io::di, io::uo) is det,
 

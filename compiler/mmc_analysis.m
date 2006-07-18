@@ -5,13 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% File: mmc_analysis.m
-% Main author: stayl
-
+% 
+% File: mmc_analysis.m.
+% Main author: stayl.
+% 
 % Specify Mercury compiler analyses to be used with the inter-module analysis
 % framework.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.mmc_analysis.

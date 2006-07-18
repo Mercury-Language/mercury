@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: unused_args.m.
 % Main author: stayl.
-
+% 
 % Detects and removes unused input arguments in procedures, especially
 % type_infos.
 %
@@ -41,7 +41,8 @@
 %
 % The predicates are then fixed up. Unused variables and unifications are
 % removed.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.unused_args.
@@ -448,11 +449,16 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs, !ModuleInfo,
                         MakeAnalysisRegistry, !IO),
                     (
                         MakeAnalysisRegistry = yes,
-                        analysis.record_result(PredModuleId, FuncId,
-                            Call, top(Call) : unused_args_answer, suboptimal,
-                            AnalysisInfo1, AnalysisInfo2),
-                        analysis.record_request(analysis_name, PredModuleId, 
-                            FuncId, Call, AnalysisInfo2, AnalysisInfo)
+                        ( not is_unify_or_compare_pred(PredInfo) ->
+                            analysis.record_result(PredModuleId, FuncId,
+                                Call, top(Call) : unused_args_answer,
+                                suboptimal, AnalysisInfo1, AnalysisInfo2),
+                            analysis.record_request(analysis_name,
+                                PredModuleId, FuncId, Call, AnalysisInfo2,
+                                AnalysisInfo)
+                        ;
+                            AnalysisInfo = AnalysisInfo1
+                        )
                     ;
                         MakeAnalysisRegistry = no,
                         AnalysisInfo = AnalysisInfo1
