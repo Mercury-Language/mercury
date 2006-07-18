@@ -1152,8 +1152,8 @@ trailing_status_to_string(will_not_modify_trail, "will_not_modify_trail").
 trailing_status_to_string(conditional, "conditional").
 
 :- pred search_analysis_status(pred_proc_id::in,
-        trailing_status::out, analysis_status::out, scc::in,
-        module_info::in, module_info::out, io::di, io::uo) is det.
+    trailing_status::out, analysis_status::out, scc::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
 search_analysis_status(PPId, Result, AnalysisStatus, CallerSCC,
         !ModuleInfo, !IO) :-
@@ -1163,8 +1163,8 @@ search_analysis_status(PPId, Result, AnalysisStatus, CallerSCC,
     module_info_set_analysis_info(AnalysisInfo, !ModuleInfo).
 
 :- pred search_analysis_status_2(module_info::in, pred_proc_id::in,
-        trailing_status::out, analysis_status::out, scc::in,
-        analysis_info::in, analysis_info::out, io::di, io::uo) is det.
+    trailing_status::out, analysis_status::out, scc::in,
+    analysis_info::in, analysis_info::out, io::di, io::uo) is det.
 
 search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
         !AnalysisInfo, !IO) :-
@@ -1196,12 +1196,21 @@ search_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus, CallerSCC,
             AnalysisStatus = suboptimal,
             (
                 MakeAnalysisRegistry = yes,
-                analysis.record_result(ModuleId, FuncId,
-                    Call, Answer, AnalysisStatus, !AnalysisInfo),
-                analysis.record_request(analysis_name, ModuleId, FuncId, Call,
-                    !AnalysisInfo),
-                record_dependencies(ModuleId, FuncId, Call,
-                    ModuleInfo, CallerSCC, !AnalysisInfo)
+                PPId = proc(PredId, _),
+                module_info_pred_info(ModuleInfo, PredId, PredInfo),
+                should_write_trailing_info(ModuleInfo, PredId, PredInfo,
+                    ShouldWrite),
+                (
+                    ShouldWrite = yes,
+                    analysis.record_result(ModuleId, FuncId,
+                        Call, Answer, AnalysisStatus, !AnalysisInfo),
+                    analysis.record_request(analysis_name, ModuleId, FuncId,
+                        Call, !AnalysisInfo),
+                    record_dependencies(ModuleId, FuncId, Call,
+                        ModuleInfo, CallerSCC, !AnalysisInfo)
+                ;
+                    ShouldWrite = no
+                )
             ;
                 MakeAnalysisRegistry = no
             )
