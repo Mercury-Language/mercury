@@ -8216,7 +8216,7 @@ undoing all those updates.
 The interface used is a set of C functions (which are actually
 implemented as macros) and types.  Typically these will be
 called from C code within @samp{pragma foreign_proc} or
-@samp{pramga foreign_code} declarations in Mercury code.
+@samp{pragma foreign_code} declarations in Mercury code.
 
 For an example of the use of this interface, see the module
 @file{extras/trailed_update/tr_array.m} in the Mercury extras distribution.
