@@ -602,6 +602,7 @@
     ;       emit_c_loops
     ;       procs_per_c_function
     ;       everything_in_one_c_function
+    ;       local_thread_engine_base
 
     %   - IL
     %   (none yet)
@@ -1306,7 +1307,8 @@ option_defaults_2(optimization_option, [
     use_macro_for_redo_fail             -   bool(no),
     emit_c_loops                        -   bool(no),
     procs_per_c_function                -   int(1),
-    everything_in_one_c_function        -   special
+    everything_in_one_c_function        -   special,
+    local_thread_engine_base            -   bool(yes)
 ]).
 option_defaults_2(target_code_compilation_option, [
     % Target code compilation options
@@ -2069,6 +2071,7 @@ long_option("procs-per-C-function", procs_per_c_function).
 long_option("everything-in-one-c-function", everything_in_one_c_function).
 long_option("everything-in-one-C-function", everything_in_one_c_function).
 long_option("inline-alloc",         inline_alloc).
+long_option("local-thread-engine-base", local_thread_engine_base).
 
 % Target code compilation options
 long_option("target-debug",         target_debug).
@@ -4235,7 +4238,12 @@ options_help_output_optimization -->
         "\tThis option has the effect of putting the code for all",
         "\tthe Mercury procedures in a single C function,",
         "\twhich produces the most efficient code but tends to",
-        "\tseverely stress the C compiler on large modules."
+        "\tseverely stress the C compiler on large modules.",
+        "--no-local-thread-engine-base",
+        "\tDon't copy the thread-local Mercury engine base address",
+        "\tinto local variables. This option only affects low-level",
+        "\tparallel grades not using the global register variables",
+        "\textension."
     ]).
 
 :- pred options_help_target_code_compilation(io::di, io::uo) is det.

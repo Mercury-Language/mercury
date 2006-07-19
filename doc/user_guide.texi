@@ -7538,6 +7538,14 @@ putting all the procedures in a single function,
 which produces the most efficient code
 but tends to severely stress the C compiler.
 
+@sp 1
+@item --no-local-thread-engine-base
+@findex --no-local-thread-engine-base
+Don't copy the thread-local Mercury engine base address
+into local variables. This option only affects low-level
+parallel grades not using the global register variables
+extension.
+
 @end table
 
 @node Build system options

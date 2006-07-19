@@ -392,9 +392,10 @@ typedef struct MR_mercury_engine_struct {
 ** MR_engine_base refers to the engine in which execution is taking place.
 ** In the non-thread-safe situation, it is just a global variable.
 ** In the thread-safe situation, MR_engine_base is either a global
-** register (if one is available), or a macro that accesses thread-local
-** storage. We provide two macros, MR_ENGINE(x) and MR_CONTEXT(x),
-** that can be used in both kinds of situations to refer to fields
+** register (if one is available), a thread-local variable (if compiler
+** support is available), or a macro that accesses thread-local storage.
+** We provide two macros, MR_ENGINE(x) and MR_CONTEXT(x),
+** that can be used in all three kinds of situations to refer to fields
 ** of the engine structure, and to fields of the engine's current context.
 */
 
@@ -421,7 +422,13 @@ typedef struct MR_mercury_engine_struct {
     ** MR_engine_base is defined in machdeps/{arch}.h
     */
   #else
-    #define MR_engine_base  MR_thread_engine_base
+    /*
+    ** MR_maybe_local_thread_engine_base can be redefined to refer to a
+    ** local copy of MR_thread_engine_base.
+    */
+    #define MR_maybe_local_thread_engine_base   MR_thread_engine_base
+
+    #define MR_engine_base  MR_maybe_local_thread_engine_base
   #endif
 
   #define MR_ENGINE(x)      (((MercuryEngine *) MR_engine_base)->x)

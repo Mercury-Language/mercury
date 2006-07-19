@@ -850,7 +850,11 @@ output_comp_gen_c_module(StackLayoutLabels,
     io.write_string("\n", !IO),
     globals.io_lookup_bool_option(auto_comments, PrintComments, !IO),
     globals.io_lookup_bool_option(emit_c_loops, EmitCLoops, !IO),
-    list.foldl(output_c_procedure(PrintComments, EmitCLoops), Procedures, !IO),
+    globals.io_lookup_bool_option(local_thread_engine_base,
+        LocalThreadEngineBase, !IO),
+    list.foldl(output_c_procedure(PrintComments, EmitCLoops,
+            LocalThreadEngineBase),
+        Procedures, !IO),
     io.write_string("MR_END_MODULE\n", !IO).
 
 %-----------------------------------------------------------------------------%
@@ -1645,10 +1649,11 @@ output_c_procedure_decls(StackLayoutLabels, Proc, !DeclSet, !IO) :-
     list.foldl2(output_instruction_decls(StackLayoutLabels), Instrs,
         !DeclSet, !IO).
 
-:- pred output_c_procedure(bool::in, bool::in, c_procedure::in,
+:- pred output_c_procedure(bool::in, bool::in, bool::in, c_procedure::in,
     io::di, io::uo) is det.
 
-output_c_procedure(PrintComments, EmitCLoops, Proc, !IO) :-
+output_c_procedure(PrintComments, EmitCLoops, LocalThreadEngineBase, Proc,
+        !IO) :-
     Proc = c_procedure(Name, Arity, proc(_, ProcId), _, Instrs, _, _, _),
     proc_id_to_int(ProcId, ModeNum),
     (
@@ -1682,8 +1687,31 @@ output_c_procedure(PrintComments, EmitCLoops, Proc, !IO) :-
         EmitCLoops = no,
         WhileSet = set_tree234.init
     ),
+
+    (
+        LocalThreadEngineBase = yes,
+        io.write_string("#ifdef MR_maybe_local_thread_engine_base\n", !IO),
+        io.write_string("\t#undef MR_maybe_local_thread_engine_base\n", !IO),
+        io.write_string("\t#define MR_maybe_local_thread_engine_base " ++
+            "MR_local_thread_engine_base\n", !IO),
+        io.write_string("#endif\n", !IO)
+    ;
+        LocalThreadEngineBase = no
+    ),
+
     output_instruction_list(Instrs, PrintComments,
-        CallerLabel - ContLabelSet, WhileSet, !IO).
+        CallerLabel - ContLabelSet, WhileSet, !IO),
+
+    (
+        LocalThreadEngineBase = yes,
+        io.write_string("#ifdef MR_maybe_local_thread_engine_base\n", !IO),
+        io.write_string("\t#undef MR_maybe_local_thread_engine_base\n", !IO),
+        io.write_string("\t#define MR_maybe_local_thread_engine_base " ++
+            "MR_thread_engine_base\n", !IO),
+        io.write_string("#endif\n", !IO)
+    ;
+        LocalThreadEngineBase = no
+    ).
 
     % Find the entry label for the procedure, for use as the profiling
     % "caller label" field in calls within this procedure.
@@ -2272,6 +2300,17 @@ output_instruction(mkframe(FrameInfo, MaybeFailCont), _, !IO) :-
 
 output_instruction(label(Label), ProfInfo, !IO) :-
     output_label_defn(Label, !IO),
+    globals.io_lookup_bool_option(local_thread_engine_base,
+        LocalThreadEngineBase, !IO),
+    (
+        LocalThreadEngineBase = yes,
+        io.write_string("#ifdef MR_maybe_local_thread_engine_base\n", !IO),
+        io.write_string("\tMercuryEngine *MR_local_thread_engine_base = " ++
+            "MR_thread_engine_base;\n", !IO),
+        io.write_string("#endif\n", !IO)
+    ;
+        LocalThreadEngineBase = no
+    ),
     maybe_output_update_prof_counter(Label, ProfInfo, !IO).
 
 output_instruction(goto(CodeAddr), ProfInfo, !IO) :-
