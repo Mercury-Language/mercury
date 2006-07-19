@@ -5,12 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % Module: mlds_to_managed.m.
 % Main author: trd, petdr.
-
+% 
 % Generate code for the foreign language interface to C# and managed C++.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.mlds_to_managed.

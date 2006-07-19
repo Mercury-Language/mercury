@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: mlds_to_java.m.
 % Main authors: juliensf, mjwybrow, fjh.
-
+% 
 % Convert MLDS to Java code.
-
+% 
 % DONE:
 %   det and semidet predicates
 %   multiple output arguments
@@ -55,7 +55,7 @@
 %   and if a definition relies on another static variable for its constructor
 %   but said variable has not been initialized, then it is treated as `null'
 %   by the JVM with no warning. The problem with this approach is that it
-%   won't work for cyclic definitions.  eg:
+%   won't work for cyclic definitions.  e.g.:
 %
 %       :- type foo ---> f(bar) ; g.
 %       :- type bar ---> f2(foo) ; g2
@@ -78,7 +78,8 @@
 % due to the fact that the back-end generates `break' statements for cases
 % in switches as they are output, meaning that we can't remove them in
 % a pass over the MLDS.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.mlds_to_java.
@@ -119,6 +120,7 @@
 :- import_module ml_backend.ml_type_gen.   % for ml_gen_type_name
 :- import_module ml_backend.ml_util.
 :- import_module ml_backend.rtti_to_mlds.  % for mlds_rtti_type_name.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.modules.       % for mercury_std_library_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign.
@@ -384,7 +386,6 @@ output_imports(Imports, !IO) :-
 :- pred output_import(mlds_import::in, io::di, io::uo) is det.
 
 output_import(Import, !IO) :-
-    % XXX Handle `:- pragma export' to Java.
     (
         Import = mercury_import(ImportType, ImportName),
         (
@@ -433,10 +434,10 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
     Defns = WrapperDefns ++ Defns0,
 
     % Get the foreign code for Java
-    % XXX We should not ignore _RevImports and _ExportDefns
+    % XXX We should not ignore _RevImports.
     ForeignCode = mlds_get_java_foreign_code(AllForeignCode),
     ForeignCode = mlds_foreign_code(RevForeignDecls, _RevImports,
-        RevBodyCode, _ExportDefns),
+        RevBodyCode, ExportDefns),
     ForeignDecls = list.reverse(RevForeignDecls),
     ForeignBodyCode = list.reverse(RevBodyCode),
 
@@ -456,6 +457,8 @@ output_java_src_file(ModuleInfo, Indent, MLDS, !IO) :-
         RttiDefns, !IO),
     output_defns(Indent + 1, ModuleInfo, MLDS_ModuleName, CtorData,
         NonRttiDefns, !IO),
+    output_exports(Indent + 1, ModuleInfo, MLDS_ModuleName, CtorData,
+        ExportDefns, !IO),
     output_src_end(Indent, ModuleName, !IO).
     % XXX Need to handle non-Java foreign code at this point.
 
@@ -501,6 +504,67 @@ mlds_get_java_foreign_code(AllForeignCode) = ForeignCode :-
     ;
         ForeignCode = mlds_foreign_code([], [], [], [])
     ).
+
+%-----------------------------------------------------------------------------%
+%
+% Code for handling `pragma foreign_export' for Java
+%
+    
+    % Exports are converted into forwarding methods that are given the
+    % specified name.  These simply call the exported procedure.
+    %
+    % NOTE: the forwarding methods must be declared public as they might
+    % be referred to within foreign_procs that are inlined across module
+    % boundaries.
+    % 
+:- pred output_exports(indent::in, module_info::in, mlds_module_name::in,
+    ctor_data::in, list(mlds_pragma_export)::in, io::di, io::uo) is det.
+
+output_exports(_, _, _, _, [], !IO).
+output_exports(Indent, ModuleInfo, MLDS_ModuleName, CtorData,
+        [Export | Exports], !IO) :-
+    Export = ml_pragma_export(Lang, ExportName, MLDS_Name, MLDS_Signature,
+        MLDS_Context),
+    expect(unify(Lang, lang_java), this_file,
+        "foreign_export for language other than Java."),
+    indent_line(Indent, !IO),
+    io.write_string("public static ", !IO),
+    MLDS_Signature = mlds_func_params(Parameters, ReturnTypes),
+    (
+        ReturnTypes = [],
+        io.write_string("void", !IO)
+    ;
+        ReturnTypes = [RetType],
+        output_type(RetType, !IO)
+    ;
+        ReturnTypes = [_, _ | _],
+        % For multiple outputs, we return an array of objects.
+        io.write_string("java.lang.Object []", !IO)
+    ),
+    io.write_string(" " ++ ExportName, !IO),
+    output_params(Indent + 1, MLDS_ModuleName, MLDS_Context, Parameters, !IO), 
+    io.nl(!IO),
+    indent_line(Indent, !IO),
+    io.write_string("{\n", !IO),
+    indent_line(Indent + 1, !IO),
+    (
+        ReturnTypes = []
+    ;
+        ReturnTypes = [_ | _],
+        io.write_string("return ", !IO)
+    ),
+    output_fully_qualified_name(MLDS_Name, !IO),
+    io.write_char('(', !IO),
+    WriteCallArg = (pred(Arg::in, !.IO::di, !:IO::uo) is det :-
+        Arg = mlds_argument(Name, _, _),
+        output_name(Name, !IO)
+    ),
+    io.write_list(Parameters, ", ", WriteCallArg, !IO),
+    io.write_string(");\n", !IO),
+    indent_line(Indent, !IO),
+    io.write_string("}\n", !IO),
+    output_exports(Indent, ModuleInfo, MLDS_ModuleName, CtorData, Exports,
+        !IO).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1089,10 +1153,11 @@ output_auto_gen_comment(ModuleName, !IO)  :-
 
     % Discriminated union which allows us to pass down the class name if
     % a definition is a constructor; this is needed since the class name
-    % is not available for a constructor in the mlds.
+    % is not available for a constructor in the MLDS.
+    %
 :- type ctor_data
-    --->    none                        % not a constructor
-    ;       cname(mlds_entity_name).   % constructor class name
+    --->    none                       % Not a constructor.
+    ;       cname(mlds_entity_name).   % Constructor class name.
 
 :- pred output_defns(indent::in, module_info::in, mlds_module_name::in,
     ctor_data::in, mlds_defns::in, io::di, io::uo) is det.

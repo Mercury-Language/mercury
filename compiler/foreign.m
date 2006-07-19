@@ -5,17 +5,18 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: foreign.m.
 % Main authors: trd, dgj.
-
+% 
 % This module defines predicates for interfacing with foreign languages.  In
 % particular, this module supports interfacing with languages other than the
 % target of compilation.
-
+% 
 % Parts of this code were originally written by dgj, and have since been moved
 % here.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs.foreign.

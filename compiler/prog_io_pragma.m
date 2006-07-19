@@ -214,6 +214,40 @@ parse_pragma_type(ModuleName, "foreign_proc", PragmaTerms, ErrorTerm,
     parse_pragma_foreign_proc_pragma(ModuleName, "foreign_proc",
         PragmaTerms, ErrorTerm, VarSet, Result).
 
+parse_pragma_type(_ModuleName, "foreign_export", PragmaTerms, ErrorTerm,
+        _VarSet, Result) :-
+    ( PragmaTerms = [LangTerm, PredAndModesTerm, FunctionTerm] ->
+        ( FunctionTerm = term.functor(term.string(Function), [], _) ->
+            parse_pred_or_func_and_arg_modes(no, PredAndModesTerm,
+                ErrorTerm, "`:- pragma foreign_export' declaration",
+                PredAndModesResult),
+            (
+                PredAndModesResult = ok(PredName - PredOrFunc, Modes),
+                ( parse_foreign_language(LangTerm, ForeignLanguage) ->
+                    Result = ok(pragma(user,
+                        foreign_export(ForeignLanguage, PredName,
+                            PredOrFunc, Modes, Function)))
+                ;
+                    Result = error(
+                        "invalid foreign language in " ++
+                        "`:- pragma foreign_export declaration",
+                        LangTerm)
+                )
+            ;
+                PredAndModesResult = error(Msg, Term),
+                Result = error(Msg, Term)
+            )
+        ;
+            Result = error(
+                 "expected pragma " ++ 
+                    "foreign_export(Lang, PredName(ModeList), Function)",
+                 PredAndModesTerm)
+        )
+    ;
+        Result = error("wrong number of arguments in " ++
+            "`:- pragma foreign_export' declaration", ErrorTerm)
+    ).
+
     % pragma c_code is almost as if we have written foreign_code
     % or foreign_proc with the language set to "C".
     % There are a few differences (error messages, some deprecated
@@ -769,7 +803,6 @@ parse_pragma_type(ModuleName, "import", PragmaTerms, ErrorTerm, VarSet,
 
 parse_pragma_type(_ModuleName, "export", PragmaTerms, ErrorTerm, _VarSet,
         Result) :-
-    % XXX we implicitly assume exports are only for C
     ( PragmaTerms = [PredAndModesTerm, FunctionTerm] ->
         ( FunctionTerm = term.functor(term.string(Function), [], _) ->
             parse_pred_or_func_and_arg_modes(no, PredAndModesTerm,
@@ -777,8 +810,9 @@ parse_pragma_type(_ModuleName, "export", PragmaTerms, ErrorTerm, _VarSet,
                 PredAndModesResult),
             (
                 PredAndModesResult = ok(PredName - PredOrFunc, Modes),
-                Result = ok(pragma(user, export(PredName, PredOrFunc, Modes,
-                    Function)))
+                Result = ok(pragma(user,
+                    foreign_export(lang_c, PredName, PredOrFunc, Modes,
+                        Function)))
             ;
                 PredAndModesResult = error(Msg, Term),
                 Result = error(Msg, Term)

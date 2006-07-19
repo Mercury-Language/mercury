@@ -1658,7 +1658,7 @@ postprocess_options_2(OptionTable0, Target, GC_Method, TagsMethod0,
             set_option(optimize_constructor_last_call, bool(no), !Globals)
         ),
 
-            % only set the backend foreign languages if they are unset
+        % Only set the backend foreign languages if they are unset.
         globals.lookup_accumulating_option(!.Globals,
             backend_foreign_languages, CurrentBackendForeignLanguage),
         (

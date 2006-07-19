@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: recompilation_version.m.
 % Main author: stayl.
-
+% 
 % Compute version numbers for program items in interface files.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module recompilation.version.
@@ -568,7 +568,7 @@ is_pred_pragma(type_spec(Name, _, Arity, MaybePredOrFunc, _, _, _, _),
 is_pred_pragma(inline(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(no_inline(Name, Arity), yes(no - Name / Arity)).
 is_pred_pragma(obsolete(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(export(Name, PredOrFunc, Modes, _),
+is_pred_pragma(foreign_export(_, Name, PredOrFunc, Modes, _),
         yes(yes(PredOrFunc) - Name / Arity)) :-
     adjust_func_arity(PredOrFunc, Arity, list.length(Modes)).
     % Pragma import declarations are never used directly by Mercury code.

@@ -5,17 +5,17 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: ml_code_gen.m.
 % Main author: fjh.
-
+% 
 % MLDS code generation -- convert from HLDS to MLDS.
-
+% 
 % This module is an alternative to the original code generator.
 % The original code generator compiles from HLDS to LLDS, generating
 % very low-level code. This code generator instead compiles to MLDS,
 % generating much higher-level code than the original code generator.
-
+% 
 % One of the aims of the MLDS is to be able to generated human-readable
 % code in languages like C or Java. This means that unlike the LLDS back-end,
 % we do not want to rely on macros or conditional compilation. If the
@@ -26,26 +26,26 @@
 % readability of the generated code, and to make sure that we can easily
 % adapt the MLDS code generator to target languages like Java that don't
 % support macros or conditional compilation.
-
+% 
 % A big challenge in generating MLDS code is handling nondeterminism.
 % For nondeterministic procedures, we generate code using an explicit
 % continuation passing style. Each nondeterministic procedures gets
 % translated into a function which takes an extra parameter which is a
 % function pointer that points to the success continuation. On success,
 % the function calls its success continuation, and on failure it returns.
-
+% 
 % To keep things easy, this pass generates code which may contain nested
 % functions; if the target language doesn't support nested functions (or
 % doesn't support them _efficiently_) then a later MLDS->MLDS simplification
 % pass will convert it to a form that does not use nested functions.
-
+% 
 % Note that when we take the address of a nested function, we only ever
 % do two things with it: pass it as a continuation argument, or call it.
 % The continuations are never returned and never stored inside heap objects
 % or global variables. These conditions are sufficient to ensure that
 % we never keep the address of a nested function after the containing
 % functions has returned, so we won't get any dangling continuations.
-
+% 
 %-----------------------------------------------------------------------------%
 % CODE GENERATION SUMMARY
 %-----------------------------------------------------------------------------%
@@ -115,7 +115,7 @@
 % for each subgoal must be done in the right order, so that the
 % const_num_map in the ml_gen_info holds the right sequence numbers
 % for the constants in scope.
-
+% 
 %-----------------------------------------------------------------------------%
 %
 % Code for wrapping goals
@@ -123,19 +123,19 @@
 % If a model_foo goal occurs in a model_bar context, where foo != bar,
 % then we need to modify the code that we emit for the goal so that
 % it conforms to the calling convenion expected for model_bar.
-
+% 
 %   det goal in semidet context:
 %       <succeeded = Goal>
 %   ===>
 %       <do Goal>
 %       succeeded = MR_TRUE;
-
+% 
 %   det goal in nondet context:
 %       <Goal && SUCCEED()>
 %   ===>
 %       <do Goal>
 %       SUCCEED();
-
+% 
 %   semi goal in nondet context:
 %       <Goal && SUCCEED()>
 %   ===>
@@ -143,12 +143,12 @@
 %
 %       <succeeded = Goal>
 %       if (succeeded) SUCCEED();
-
+% 
 %-----------------------------------------------------------------------------%
 %
 % Code for commits
 %
-
+% 
 % There's several different ways of handling commits:
 %   - using catch/throw
 %   - using setjmp/longjmp
@@ -177,7 +177,7 @@
 % would just set the flag and return. The flag could be in a global
 % (or thread-local) variable, or it could be an additional value returned
 % from each function.
-
+% 
 %   model_non in semi context: (using try_commit/do_commit)
 %       <succeeded = Goal>
 %   ===>
@@ -191,7 +191,7 @@
 %       }, {
 %           succeeded = MR_TRUE;
 %       })
-
+% 
 %   model_non in semi context: (using catch/throw)
 %       <succeeded = Goal>
 %   ===>
@@ -204,13 +204,13 @@
 %       } catch (COMMIT) {
 %           succeeded = MR_TRUE;
 %       }
-
+% 
 % The above is using C++ syntax. Here COMMIT is an exception type, which
 % can be defined trivially (e.g. "class COMMIT {};"). Note that when using
 % catch/throw, we don't need the "ref" argument at all; the target language's
 % exception handling implementation keeps track of all the information needed
 % to unwind the stack.
-
+% 
 %   model_non in semi context: (using setjmp/longjmp)
 %       <succeeded = Goal>
 %   ===>
@@ -224,7 +224,7 @@
 %           <Goal && success()>
 %           succeeded = MR_FALSE;
 %       }
-
+% 
 %   model_non in semi context: (using GNU C nested functions,
 %               GNU C local labels, and exiting
 %               the nested function by a goto
@@ -242,7 +242,7 @@
 %       succeeded = MR_TRUE;
 %   commit_done:
 %       ;
-
+% 
 %   model_non in det context: (using try_commit/do_commit)
 %       <do Goal>
 %   ===>
@@ -253,7 +253,7 @@
 %       MR_TRY_COMMIT(ref, {
 %           <Goal && success()>
 %       }, {})
-
+% 
 %   model_non in det context (using GNU C nested functions,
 %               GNU C local labels, and exiting
 %               the nested function by a goto
@@ -266,7 +266,7 @@
 %       }
 %       <Goal && success()>
 %   done:   ;
-
+% 
 %   model_non in det context (using catch/throw):
 %       <do Goal>
 %   ===>
@@ -276,7 +276,7 @@
 %       try {
 %           <Goal && success()>
 %       } catch (COMMIT) {}
-
+% 
 %   model_non in det context (using setjmp/longjmp):
 %       <do Goal>
 %   ===>
@@ -287,36 +287,36 @@
 %       if (setjmp(ref) == 0) {
 %           <Goal && success()>
 %       }
-
+% 
 % Note that for all of these versions, we must hoist any static declarations
 % generated for <Goal> out to the top level; this is needed so that such
 % declarations remain in scope for any following goals.
-
+% 
 %-----------------------------------------------------------------------------%
 %
 % Code for empty conjunctions (`true')
 %
-
+% 
 %   model_det goal:
 %       <do true>
 %   ===>
 %       /* fall through */
-
+% 
 %   model_semi goal:
 %       <succeeded = true>
 %   ===>
 %       succceeded = MR_TRUE;
-
+% 
 %   model_non goal
 %       <true && CONT()>
 %   ===>
 %       CONT();
-
+% 
 %-----------------------------------------------------------------------------%
 %
 % Code for non-empty conjunctions
 %
-
+% 
 % We need to handle the case where the first goal cannot succeed
 % specially:
 %
@@ -327,7 +327,7 @@
 %
 % The remaining cases for conjunction all assume that the first
 % goal's determinism is not `erroneous' or `failure'.
-
+% 
 % If the first goal is model_det, it is straight-forward:
 %
 %   model_det Goal:
@@ -335,7 +335,7 @@
 %   ===>
 %       <do Goal>
 %       <Goals>
-
+% 
 % If the first goal is model_semidet, then there are two cases:
 % if the conj as a whole is semidet, things are simple, and
 % if the conj as a whole is model_non, then we do the same as
@@ -365,7 +365,7 @@
 % rather than keeping them inside the `if', so that they remain in scope
 % for any later goals which follow this. This is needed for declarations
 % of static consts.
-
+% 
 % For model_non goals, there are a couple of different ways that we could
 % generate code, depending on whether we are aiming to maximize readability,
 % or whether we prefer to generate code that may be more efficient but is
@@ -463,35 +463,35 @@
 % local, since accessing local variables is more efficient that accessing
 % variables in the environment from a nested function. So we only hoist
 % declarations of static constants.
-
+% 
 %-----------------------------------------------------------------------------%
 %
 % Code for empty disjunctions (`fail')
 %
-
+% 
 %   model_semi goal:
 %       <succeeded = fail>
 %   ===>
 %       succeeded = MR_FALSE;
-
+% 
 %   model_non goal:
 %       <fail && CONT()>
 %   ===>
 %       /* fall through */
-
+% 
 %-----------------------------------------------------------------------------%
 %
 % Code for non-empty disjunctions
 %
-
+% 
 % model_det disj:
-
+% 
 %   model_det Goal:
 %       <do (Goal ; Goals)>
 %   ===>
 %       <do Goal>
 %       /* <Goals> will never be reached */
-
+% 
 %   model_semi Goal:
 %       <do (Goal ; Goals)>
 %   ===>
@@ -501,9 +501,9 @@
 %       if (!succeeded) {
 %           <do Goals>;
 %       }
-
+% 
 % model_semi disj:
-
+% 
 %   model_det Goal:
 %       <succeeded = (Goal ; Goals)>
 %   ===>
@@ -512,7 +512,7 @@
 %       <do Goal>
 %       succeeded = MR_TRUE
 %       /* <Goals> will never be reached */
-
+% 
 %   model_semi Goal:
 %       <succeeded = (Goal ; Goals)>
 %   ===>
@@ -522,7 +522,7 @@
 %       if (!succeeded) {
 %           <succeeded = Goals>;
 %       }
-
+% 
 % model_non disj:
 %
 %   model_det Goal:
@@ -546,18 +546,18 @@
 %   ===>
 %       <Goal && SUCCEED()>
 %       <Goals && SUCCEED()>
-
+% 
 %-----------------------------------------------------------------------------%
 %
 % Code for if-then-else
 %
-
+% 
 %   model_det Cond:
 %       <(Cond -> Then ; Else)>
 %   ===>
 %       <Cond>
 %       <Then>
-
+% 
 %   model_semi Cond:
 %       <(Cond -> Then ; Else)>
 %   ===>
@@ -569,7 +569,7 @@
 %       } else {
 %           <Else>
 %       }
-
+% 
 % XXX The following transformation does not do as good a job of GC as it could.
 % Ideally we ought to ensure that stuff used only in the `Else' part will be
 % reclaimed if a GC occurs during the `Then' part. But that is a bit tricky
@@ -594,12 +594,12 @@
 % except that we hoist any declarations generated for <Cond> to the top
 % of the scope, so that they are in scope for the <Then> goal
 % (this is needed for declarations of static consts).
-
+% 
 %-----------------------------------------------------------------------------%
 %
 % Code for negation
 %
-
+% 
 % model_det negation
 %       <not(Goal)>
 %   ===>
@@ -607,31 +607,31 @@
 %       <succeeded = Goal>
 %       /* now ignore the value of succeeded,
 %        which we know will be MR_FALSE */
-
+% 
 % model_semi negation, model_det Goal:
 %       <succeeded = not(Goal)>
 %   ===>
 %       <do Goal>
 %       succeeded = MR_FALSE;
-
+% 
 % model_semi negation, model_semi Goal:
 %       <succeeded = not(Goal)>
 %   ===>
 %       <succeeded = Goal>
 %       succeeded = !succeeded;
-
+% 
 %-----------------------------------------------------------------------------%
 %
 % Code for deconstruction unifications
 %
-
+% 
 %   det (cannot_fail) deconstruction:
 %       <succeeded = (X => f(A1, A2, ...))>
 %   ===>
 %       A1 = arg(X, f, 1);                  % extract arguments
 %       A2 = arg(X, f, 2);
 %       ...
-
+% 
 %   semidet (can_fail) deconstruction:
 %       <X => f(A1, A2, ...)>
 %   ===>
@@ -641,9 +641,9 @@
 %           A2 = arg(X, f, 2);
 %           ...
 %       }
-
+% 
 %-----------------------------------------------------------------------------%
-
+% 
 % This back-end is still not yet 100% complete.
 %
 % Done:
@@ -701,7 +701,8 @@
 %     the need to access the outermost function's `succeeded'
 %     variable via the environment pointer
 %     (be careful about the interaction with setjmp(), though)
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_code_gen.
@@ -849,16 +850,7 @@ ml_gen_foreign_code_lang(ModuleInfo, ForeignDecls, ForeignBodys,
     ConvBody = (func(foreign_body_code(L, S, C)) =
         user_foreign_code(L, S, C)),
     MLDSWantedForeignBodys = list.map(ConvBody, WantedForeignBodys),
-    % XXX Exports are only implemented for C and IL at the moment.
-    (
-        ( Lang = lang_c
-        ; Lang = lang_il
-        )
-    ->
-        ml_gen_pragma_export(ModuleInfo, MLDS_PragmaExports)
-    ;
-        MLDS_PragmaExports = []
-    ),
+    ml_gen_pragma_export(ModuleInfo, MLDS_PragmaExports),
     MLDS_ForeignCode = mlds_foreign_code(WantedForeignDecls,
         WantedForeignImports, MLDSWantedForeignBodys, MLDS_PragmaExports),
     map.det_insert(Map0, Lang, MLDS_ForeignCode, Map).
@@ -932,14 +924,14 @@ ml_gen_pragma_export(ModuleInfo, MLDS_PragmaExports) :-
 :- pred ml_gen_pragma_export_proc(module_info::in, pragma_exported_proc::in,
     mlds_pragma_export::out) is det.
 
-ml_gen_pragma_export_proc(ModuleInfo,
-        pragma_exported_proc(PredId, ProcId, C_Name, ProgContext), Defn) :-
-
+ml_gen_pragma_export_proc(ModuleInfo, PragmaExportedProc, Defn) :-
+    PragmaExportedProc = pragma_exported_proc(Lang, PredId, ProcId,
+        ExportName, ProgContext),
     ml_gen_proc_label(ModuleInfo, PredId, ProcId, Name, ModuleName),
     FuncParams = ml_gen_proc_params(ModuleInfo, PredId, ProcId),
     MLDS_Context = mlds_make_context(ProgContext),
-    Defn = ml_pragma_export(C_Name, qual(ModuleName, module_qual, Name),
-        FuncParams, MLDS_Context).
+    Defn = ml_pragma_export(Lang, ExportName,
+        qual(ModuleName, module_qual, Name), FuncParams, MLDS_Context).
 
 %-----------------------------------------------------------------------------%
 %

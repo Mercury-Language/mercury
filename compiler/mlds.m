@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % MLDS - The Medium-Level Data Structure.
 % Main author: fjh.
-
+% 
 % This module defines the MLDS data structure itself.
 % The MLDS is an intermediate data structure used in compilation;
 % we compile Mercury source -> parse tree -> HLDS -> MLDS -> target (e.g. C).
@@ -612,10 +612,10 @@
 :- type mlds_arguments == list(mlds_argument).
 :- type mlds_argument
     --->    mlds_argument(
-                mlds_entity_name,          % argument name
-                mlds_type,                  % argument type
+                mlds_entity_name,          % Argument name.
+                mlds_type,                 % Argument type.
                 mlds_maybe_gc_trace_code   % GC tracing code for this argument,
-                                            % if needed
+                                           % if needed.
             ).
 
 :- type mlds_arg_types == list(mlds_type).
@@ -889,11 +889,13 @@
 %-----------------------------------------------------------------------------%
 %
 % Foreign code interfacing
+%
 
     % Foreign code required for the foreign language interface.
     % When compiling to a language other than the foreign language,
     % this part still needs to be generated as C (or whatever) code
     % and compiled with a C (or whatever) compiler.
+    %
 :- type mlds_foreign_code
     --->    mlds_foreign_code(
                 foreign_decl_info,
@@ -902,10 +904,12 @@
                 list(mlds_pragma_export)
             ).
 
-    % Information required to generate code for each `pragma export'.
+    % Information required to generate code for each `pragma foreign_export'.
+    %
 :- type mlds_pragma_export
     --->    ml_pragma_export(
-                string,                         % Exported name
+                foreign_language,
+                string,                        % Exported name
                 mlds_qualified_entity_name,    % MLDS name for exported entity
                 mlds_func_params,              % MLDS function parameters
                 mlds_context

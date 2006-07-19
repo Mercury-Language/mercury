@@ -2111,7 +2111,7 @@ pragma_allowed_in_interface(foreign_proc(_, _, _, _, _, _, _), no).
 pragma_allowed_in_interface(inline(_, _), no).
 pragma_allowed_in_interface(no_inline(_, _), no).
 pragma_allowed_in_interface(obsolete(_, _), yes).
-pragma_allowed_in_interface(export(_, _, _, _), no).
+pragma_allowed_in_interface(foreign_export(_, _, _, _, _), no).
 pragma_allowed_in_interface(import(_, _, _, _, _), no).
 pragma_allowed_in_interface(source_file(_), yes).
     % yes, but the parser will strip out `source_file' pragmas anyway...
@@ -5857,11 +5857,9 @@ do_get_item_foreign_code(Globals, Pragma, Context, Info0, Info) :-
         % code for it, rather than assembler code.  So
         % we need to treat `pragma export' like the
         % other pragmas for foreign code.
-        Pragma = export(_, _, _, _),
-        list.member(lang_c, BackendLangs)
+        Pragma = foreign_export(Lang, _, _, _, _),
+        list.member(Lang, BackendLangs)
     ->
-        % XXX we assume lang = c for exports
-        Lang = lang_c,
         Info1 = Info0 ^ used_foreign_languages :=
             set.insert(Info0 ^ used_foreign_languages, Lang),
         Info = Info1 ^ module_contains_foreign_export :=
@@ -7373,8 +7371,7 @@ item_needs_imports(nothing(_)) = no.
 
 :- pred item_needs_foreign_imports(item::in, foreign_language::out) is nondet.
 
-item_needs_foreign_imports(pragma(_, export(_, _, _, _)), Lang) :-
-    foreign_language(Lang).
+item_needs_foreign_imports(pragma(_, foreign_export(Lang, _, _, _, _)), Lang).
 
     % `:- pragma import' is only supported for C.
 item_needs_foreign_imports(pragma(_, import(_, _, _, _, _)), lang_c).
@@ -7674,7 +7671,7 @@ reorderable_item(pragma(_, Pragma)) = Reorderable :-
     ; Pragma = exceptions(_, _, _, _, _), Reorderable = yes
     ; Pragma = trailing_info(_, _, _, _, _), Reorderable = yes
     ; Pragma = mm_tabling_info(_, _, _, _, _), Reorderable = yes
-    ; Pragma = export(_, _, _, _), Reorderable = yes
+    ; Pragma = foreign_export(_, _, _, _, _), Reorderable = yes
     ; Pragma = fact_table(_, _, _), Reorderable = no
     ; Pragma = foreign_code(_, _), Reorderable = no
     ; Pragma = foreign_decl(_, _, _), Reorderable = no
@@ -7755,7 +7752,7 @@ chunkable_item(pragma(_, Pragma)) = Reorderable :-
     ( Pragma = check_termination(_, _), Reorderable = yes
     ; Pragma = does_not_terminate(_, _), Reorderable = yes
     ; Pragma = exceptions(_, _, _, _, _), Reorderable = no
-    ; Pragma = export(_, _, _, _), Reorderable = yes
+    ; Pragma = foreign_export(_, _, _, _, _), Reorderable = yes
     ; Pragma = fact_table(_, _, _), Reorderable = no
     ; Pragma = foreign_code(_, _), Reorderable = no
     ; Pragma = foreign_decl(_, _, _), Reorderable = no

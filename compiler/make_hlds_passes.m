@@ -942,10 +942,10 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         add_pragma_reserve_tag(TypeName, TypeArity, !.Status, Context,
             !ModuleInfo, !IO)
     ;
-        Pragma = export(Name, PredOrFunc, Modes, C_Function)
+        Pragma = foreign_export(Lang, Name, PredOrFunc, Modes, C_Function)
     ->
-        add_pragma_export(Origin, Name, PredOrFunc, Modes, C_Function,
-            Context, !ModuleInfo, !IO)
+        add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
+            C_Function, Context, !ModuleInfo, !IO)
     ;
         % Don't worry about any pragma declarations other than the
         % clause-like pragmas (c_code, tabling and fact_table),
@@ -999,6 +999,7 @@ add_item_clause(initialise(user, SymName, Arity), !Status, Context,
             pred_info_get_arg_types(PredInfo, ArgTypes),
             pred_info_get_procedures(PredInfo, ProcTable),
             ProcInfos = map.values(ProcTable),
+            ExportLang = lang_c,
             (
                 ArgTypes = [Arg1Type, Arg2Type],
                 type_is_io_state(Arg1Type),
@@ -1016,7 +1017,8 @@ add_item_clause(initialise(user, SymName, Arity), !Status, Context,
                 module_info_new_user_init_pred(SymName, CName, !ModuleInfo),
                 PragmaExportItem =
                     pragma(compiler(initialise_decl),
-                        export(SymName, predicate, [di_mode, uo_mode], CName)),
+                        foreign_export(ExportLang, SymName, predicate,
+                            [di_mode, uo_mode], CName)),
                 add_item_clause(PragmaExportItem, !Status, Context,
                     !ModuleInfo, !QualInfo, !IO)
             ;
@@ -1034,7 +1036,8 @@ add_item_clause(initialise(user, SymName, Arity), !Status, Context,
                 module_info_new_user_init_pred(SymName, CName, !ModuleInfo),
                 PragmaExportedItem =
                     pragma(compiler(initialise_decl),
-                        export(SymName, predicate, [], CName)),
+                        foreign_export(ExportLang, SymName, predicate, [],
+                            CName)),
                 add_item_clause(PragmaExportedItem, !Status, Context,
                     !ModuleInfo, !QualInfo, !IO)
             ;
@@ -1067,16 +1070,17 @@ add_item_clause(initialise(user, SymName, Arity), !Status, Context,
 add_item_clause(initialise(compiler(Details), SymName, _Arity),
         !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
     %
-    % The compiler introduces initialise declarations that call
-    % impure predicates as part of the source-to-source transformation
-    % for mutable variables.  These predicates *must* be impure in order
-    % to prevent the compiler optimizing them away.
+    % The compiler introduces initialise declarations that call impure
+    % predicates as part of the source-to-source transformation for mutable
+    % variables.  These predicates *must* be impure in order to prevent the
+    % compiler optimizing them away.
     %
     ( Details = mutable_decl ->
         module_info_new_user_init_pred(SymName, CName, !ModuleInfo),
+        ExportLang = lang_c,    % XXX Implement for other backends.
         PragmaExportItem =
             pragma(compiler(mutable_decl),
-                export(SymName, predicate, [], CName)),
+                foreign_export(ExportLang, SymName, predicate, [], CName)),
         add_item_clause(PragmaExportItem, !Status, Context,
             !ModuleInfo, !QualInfo, !IO)
     ;
@@ -1087,7 +1091,7 @@ add_item_clause(finalise(Origin, SymName, Arity),
     %
     % To handle a `:- finalise finalpred.' declaration we need to:
     % (1) construct a new C function name, CName, to use to export finalpred,
-    % (2) add `:- pragma export(finalpred(di, uo), CName).',
+    % (2) add `:- pragma foreign_export("C", finalpred(di, uo), CName).',
     % (3) record the finalpred/cname pair in the ModuleInfo so that
     % code generation can ensure cname is called during module finalisation.
     %
@@ -1107,6 +1111,9 @@ add_item_clause(finalise(Origin, SymName, Arity),
             pred_info_get_arg_types(PredInfo, ArgTypes),
             pred_info_get_procedures(PredInfo, ProcTable),
             ProcInfos = map.values(ProcTable),
+            % XXX We currently only support finalise declarations for the C
+            % backends.
+            ExportLang = lang_c,   
             (
                 ArgTypes = [Arg1Type, Arg2Type],
                 type_is_io_state(Arg1Type),
@@ -1124,7 +1131,8 @@ add_item_clause(finalise(Origin, SymName, Arity),
                 module_info_new_user_final_pred(SymName, CName, !ModuleInfo),
                 PragmaExportItem =
                     pragma(compiler(finalise_decl),
-                        export(SymName, predicate, [di_mode, uo_mode], CName)),
+                        foreign_export(ExportLang, SymName, predicate,
+                            [di_mode, uo_mode], CName)),
                 add_item_clause(PragmaExportItem, !Status, Context,
                     !ModuleInfo, !QualInfo, !IO)
             ;
@@ -1142,7 +1150,8 @@ add_item_clause(finalise(Origin, SymName, Arity),
                 module_info_new_user_final_pred(SymName, CName, !ModuleInfo),
                 PragmaExportItem =
                     pragma(compiler(finalise_decl),
-                        export(SymName, predicate, [], CName)),
+                        foreign_export(ExportLang, SymName, predicate, [],
+                            CName)),
                 add_item_clause(PragmaExportItem, !Status, Context,
                     !ModuleInfo, !QualInfo, !IO)
             ;

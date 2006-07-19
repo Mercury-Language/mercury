@@ -146,6 +146,7 @@ ORDINARY_PROGS=	\
 	pprint_test2 \
 	pragma_c_code \
 	pragma_export \
+	pragma_foreign_export \
 	pragma_import \
 	pragma_inline \
 	pretty_printing \

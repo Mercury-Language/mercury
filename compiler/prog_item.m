@@ -397,7 +397,8 @@
                 % hard-coded, and mmake can use the dependency information.
             )
 
-    ;       export(
+    ;       foreign_export(
+                exp_language            :: foreign_language,
                 exp_predname            :: sym_name,
                 exp_p_or_f              :: pred_or_func,
                 exp_modes               :: list(mer_mode),

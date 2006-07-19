@@ -13,6 +13,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.make_hlds_passes.
 :- import_module hlds.make_hlds.qual_info.
+:- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.mercury_to_mercury.
@@ -28,9 +29,10 @@
     item_status::in, item_status::out, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-:- pred add_pragma_export(item_origin::in, sym_name::in, pred_or_func::in,
-    list(mer_mode)::in, string::in, prog_context::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred add_pragma_foreign_export(item_origin::in, foreign_language::in,
+    sym_name::in, pred_or_func::in, list(mer_mode)::in, string::in,
+    prog_context::in, module_info::in, module_info::out, io::di, io::uo)
+    is det.
 
 :- pred add_pragma_reserve_tag(sym_name::in, arity::in, import_status::in,
     prog_context::in, module_info::in, module_info::out,
@@ -227,9 +229,9 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
         % clauses and pragma c_code).
         Pragma = import(_, _, _, _, _)
     ;
-        % Handle pragma export decls later on, after default
+        % Handle pragma foreign_export decls later on, after default
         % function modes have been added.
-        Pragma = export(_, _, _, _)
+        Pragma = foreign_export(_, _, _, _, _)
     ;
         % Used for inter-module unused argument elimination.
         % This can only appear in .opt files.
@@ -343,8 +345,8 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
             !IO)
     ).
 
-add_pragma_export(Origin, Name, PredOrFunc, Modes, C_Function, Context,
-        !ModuleInfo, !IO) :-
+add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
+        ExportedName, Context, !ModuleInfo, !IO) :-
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
     list.length(Modes, Arity),
     (
@@ -361,37 +363,75 @@ add_pragma_export(Origin, Name, PredOrFunc, Modes, C_Function, Context,
         ->
             map.lookup(Procs, ProcId, ProcInfo),
             proc_info_get_declared_determinism(ProcInfo, MaybeDet),
-            % We cannot catch those multi or nondet procedures that
-            % don't have a determinism declaration until after
-            % determinism analysis.
+            % We cannot catch those multi or nondet procedures that don't have
+            % a determinism declaration until after determinism analysis.
             (
                 MaybeDet = yes(Det),
                 ( Det = detism_non ; Det = detism_multi )
             ->
                 Pieces = [words("Error: "),
-                    fixed("`:- pragma export' declaration"),
+                    fixed("`:- pragma foreign_export' declaration"),
                     words("for a procedure that has"),
                     words("a declared determinism of"),
                     fixed(hlds_out.determinism_to_string(Det) ++ ".")
                 ],
-                error_util.write_error_pieces(Context, 0, Pieces, !IO),
+                write_error_pieces(Context, 0, Pieces, !IO),
                 module_info_incr_errors(!ModuleInfo)
             ;
-                module_info_get_pragma_exported_procs(!.ModuleInfo,
-                    PragmaExportedProcs0),
-                NewExportedProc = pragma_exported_proc(PredId, ProcId,
-                    C_Function, Context),
-                PragmaExportedProcs = [NewExportedProc | PragmaExportedProcs0],
-                module_info_set_pragma_exported_procs(PragmaExportedProcs,
-                    !ModuleInfo)
+                % Emit a warning about using pragma foreign_export with
+                % a foreign language that is not supported.
+                % XXX That's currently all of them except C.
+                (
+                    ( Lang = lang_java
+                    ; Lang = lang_csharp
+                    ; Lang = lang_il
+                    ; Lang = lang_managed_cplusplus
+                    ),
+                    NotImplementedWarning = [
+                        words("Warning:"),
+                        fixed("`:- pragma foreign_export'"),
+                        words("declarations are not yet implemented"),
+                        words("for language"), 
+                        words(foreign_language_string(Lang)),
+                        suffix(".")
+                    ],
+                    report_warning(Context, 0, NotImplementedWarning, !IO)
+                ;
+                    Lang = lang_c
+                ),
+                %
+                % Only add the foreign export if the specified language
+                % matches one of the foreign languages available for this
+                % backend.
+                %
+                io_get_backend_foreign_languages(ForeignLanguages, !IO),
+                (   
+                    % XXX C# and Managed C++ exports currently cause an
+                    %     assertion failure in the MLDS->IL code generator.
+                    %
+                    Lang \= lang_csharp,
+                    Lang \= lang_managed_cplusplus,
+                    list.member(Lang, ForeignLanguages)
+                ->
+                    module_info_get_pragma_exported_procs(!.ModuleInfo,
+                        PragmaExportedProcs0),
+                    NewExportedProc = pragma_exported_proc(Lang, PredId, ProcId,
+                        ExportedName, Context),
+                    PragmaExportedProcs =
+                        [NewExportedProc | PragmaExportedProcs0],
+                    module_info_set_pragma_exported_procs(PragmaExportedProcs,
+                        !ModuleInfo)
+                ;
+                    true
+                )
             )
         ;
-            % We warn about errors in export pragmas created by the compiler
-            % as part of a source-to-source transformation.
+            % We do not warn about errors in export pragmas created by the
+            % compiler as part of a source-to-source transformation.
             (
                 Origin = user,
                 undefined_mode_error(Name, Arity, Context,
-                    "`:- pragma export' declaration", !IO),
+                    "`:- pragma foreign_export' declaration", !IO),
                 module_info_incr_errors(!ModuleInfo)
             ;
                 Origin = compiler(Details),
@@ -406,7 +446,8 @@ add_pragma_export(Origin, Name, PredOrFunc, Modes, C_Function, Context,
                     ; Details = foreign_imports
                     ; Details = pragma_memo_attribute
                     ),
-                    unexpected(this_file, "Bad introduced export pragma.")
+                    unexpected(this_file,
+                        "Bad introduced foreign_export pragma.")
                 )
             )
         )
@@ -414,7 +455,7 @@ add_pragma_export(Origin, Name, PredOrFunc, Modes, C_Function, Context,
         (
             Origin = user,
             undefined_pred_or_func_error(Name, Arity, Context,
-                "`:- pragma export' declaration", !IO),
+                "`:- pragma foreign_export' declaration", !IO),
             module_info_incr_errors(!ModuleInfo)
         ;
             Origin = compiler(Details),
@@ -429,7 +470,7 @@ add_pragma_export(Origin, Name, PredOrFunc, Modes, C_Function, Context,
                 ; Details = foreign_imports
                 ; Details = pragma_memo_attribute
                 ),
-                unexpected(this_file, "Bad introduced export pragma.")
+                unexpected(this_file, "Bad introduced foreign_export pragma.")
             )
         )
     ).

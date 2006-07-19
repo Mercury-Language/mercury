@@ -373,7 +373,8 @@ mlds_output_src_start(Indent, ModuleName, ForeignCode, InitPreds, FinalPreds,
         mercury_import(compiler_visible_interface,
             mercury_module_name_to_mlds(ModuleName)), !IO),
 
-    % If there are `:- pragma export' declarations, #include the `.mh' file.
+    % If there are `:- pragma foreign_export' declarations,
+    % #include the `.mh' file.
     ( ForeignCode = mlds_foreign_code(_, _, _, []) ->
         true
     ;
@@ -783,11 +784,17 @@ mlds_output_c_defns(ModuleName, Indent, ForeignCode, !IO) :-
 
 mlds_output_c_foreign_import_module(Indent, ForeignImport, !IO) :-
     ForeignImport = foreign_import_module(Lang, Import, _),
-    ( Lang = lang_c ->
+    ( 
+        Lang = lang_c,
         mlds_output_src_import(Indent,
             mercury_import(user_visible_interface,
                 mercury_module_name_to_mlds(Import)), !IO)
     ;
+        ( Lang = lang_il
+        ; Lang = lang_csharp
+        ; Lang = lang_managed_cplusplus
+        ; Lang = lang_java
+        ),
         sorry(this_file, "foreign code other than C")
     ).
 
@@ -811,8 +818,10 @@ mlds_output_c_defn(_Indent, user_foreign_code(lang_java, _, _), !IO) :-
     mlds_pragma_export::in, io::di, io::uo) is det.
 
 mlds_output_pragma_export_defn(ModuleName, Indent, PragmaExport, !IO) :-
-    PragmaExport = ml_pragma_export(_C_name, MLDS_Name, MLDS_Signature,
-        Context),
+    PragmaExport = ml_pragma_export(Lang, _ExportName, MLDS_Name,
+        MLDS_Signature, Context),
+    expect(unify(Lang, lang_c), this_file,
+        "foreign_export to language other than C."),
     mlds_output_pragma_export_func_name(ModuleName, Indent, PragmaExport, !IO),
     io.write_string("\n", !IO),
     mlds_indent(Context, Indent, !IO),
@@ -826,8 +835,10 @@ mlds_output_pragma_export_defn(ModuleName, Indent, PragmaExport, !IO) :-
     mlds_pragma_export::in, io::di, io::uo) is det.
 
 mlds_output_pragma_export_func_name(ModuleName, Indent, Export, !IO) :-
-    Export = ml_pragma_export(C_name, _MLDS_Name, Signature, Context),
-    Name = qual(ModuleName, module_qual, export(C_name)),
+    Export = ml_pragma_export(Lang, ExportName, _MLDS_Name, Signature, Context),
+    expect(unify(Lang, lang_c), this_file,
+        "export to language other than C."),
+    Name = qual(ModuleName, module_qual, export(ExportName)),
     mlds_indent(Context, Indent, !IO),
     % For functions exported using `pragma export',
     % we use the default C calling convention.
@@ -919,10 +930,12 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature, !IO) :-
     % parameters.
     IsCForeignType = (pred(Arg::in) is semidet :-
         Arg = mlds_argument(_Name, Type, _GCTraceCode),
-        Type = mlds_foreign_type(c(_))),
+        Type = mlds_foreign_type(c(_))
+    ),
     IsCForeignTypePtr = (pred(Arg::in) is semidet :-
         Arg = mlds_argument(_Name, Type, _GCTraceCode),
-        Type = mlds_ptr_type(mlds_foreign_type(c(_)))),
+        Type = mlds_ptr_type(mlds_foreign_type(c(_)))
+    ),
     CForeignTypeInputs = list.filter(IsCForeignType, Parameters),
     CForeignTypeOutputs = list.filter(IsCForeignTypePtr, Parameters),
     io.write_list(CForeignTypeInputs, "",

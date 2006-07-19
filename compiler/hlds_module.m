@@ -77,9 +77,12 @@
 
 :- type pragma_exported_proc
     --->    pragma_exported_proc(
+                foreign_language,       % The language we are exporting to.
                 pred_id,
                 proc_id,
-                string,                 % the name of the C function
+                string,                 % The exported name of the procedure.
+                                        % i.e. the function name in C, method
+                                        % name in Java etc.
                 prog_context
             ).
 

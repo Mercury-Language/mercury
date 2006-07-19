@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: det_analysis.m - the determinism analysis pass.
 % Main authors: conway, fjh, zs.
-
+% 
 % This pass has three components:
 %
 % - Segregate the procedures into those that have determinism declarations,
@@ -32,7 +32,7 @@
 % _make_ the predicate deterministic (or semideterministic) by inserting
 % run-time checking code which calls error/1 if the predicate really isn't
 % deterministic (semideterministic).
-
+% 
 % Determinism has three components:
 %
 %   whether a goal can fail
@@ -43,7 +43,8 @@
 % The first two components are synthesized attributes: they are inferred
 % bottom-up. The last component is an inherited attribute: it is propagated
 % top-down.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.det_analysis.
@@ -306,14 +307,15 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, OldDetism, NewDetism,
         true
     ),
 
-    % Check to make sure that if this procedure is exported to C via a
-    % pragma export declaration then the determinism is not multi or nondet
-    % - pragma exported procs that have been declared to have these
-    % determinisms should have been picked up in make_hlds, so this is just
-    % to catch those whose determinisms need to be inferred.
+    % Check to make sure that if this procedure is exported via a pragma
+    % foreign_export declaration then the determinism is not multi or nondet -
+    % pragma exported procs that have been declared to have these determinisms
+    % should have been picked up in make_hlds, so this is just to catch those
+    % whose determinisms need to be inferred.
     module_info_get_pragma_exported_procs(!.ModuleInfo, ExportedProcs),
     (
-        list.member(pragma_exported_proc(PredId, ProcId, _, _), ExportedProcs),
+        list.member(pragma_exported_proc(_, PredId, ProcId, _, _),
+            ExportedProcs),
         ( NewDetism = detism_multi
         ; NewDetism = detism_non
         )
@@ -347,7 +349,7 @@ det_infer_proc(PredId, ProcId, !ModuleInfo, Globals, OldDetism, NewDetism,
     pred_id::in, proc_id::in, prog_context::out) is semidet.
 
 get_exported_proc_context([Proc | Procs], PredId, ProcId, Context) :-
-    ( Proc = pragma_exported_proc(PredId, ProcId, _, Context0) ->
+    ( Proc = pragma_exported_proc(_, PredId, ProcId, _, Context0) ->
         Context = Context0
     ;
         get_exported_proc_context(Procs, PredId, ProcId, Context)

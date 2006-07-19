@@ -6,7 +6,7 @@
 
 :- implementation.
 
-:- pragma export(foo(in, out), "EXPORTED_FOO").
+:- pragma foreign_export("C", foo(in, out), "EXPORTED_FOO").
 
 foo(1, 2).
 foo(2, 3).

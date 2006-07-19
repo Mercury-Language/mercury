@@ -1089,8 +1089,8 @@ qualify_pragma(import(Name, PredOrFunc, Modes0, Attributes, CFunc),
         import(Name, PredOrFunc, Modes, Attributes, CFunc),
         !Info, !IO) :-
     qualify_mode_list(Modes0, Modes, !Info, !IO).
-qualify_pragma(export(Name, PredOrFunc, Modes0, CFunc),
-        export(Name, PredOrFunc, Modes, CFunc), !Info, !IO) :-
+qualify_pragma(foreign_export(Lang, Name, PredOrFunc, Modes0, CFunc),
+        foreign_export(Lang, Name, PredOrFunc, Modes, CFunc), !Info, !IO) :-
     qualify_mode_list(Modes0, Modes, !Info, !IO).
 qualify_pragma(X@unused_args(_, _, _, _, _), X, !Info, !IO).
 qualify_pragma(X@exceptions(_, _, _, _, _), X, !Info, !IO).

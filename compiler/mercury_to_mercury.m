@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: mercury_to_mercury.m.
 % Main author: fjh.
-
+% 
 % This program converts the parse tree structure provided by prog_io
 % back into Mercury source text.
 %
@@ -39,7 +39,8 @@
 % represent appending to the string by consing onto the front of the list).
 % The complexity of an implementation like that can be linear in the size
 % of the string being built, although it will have a higher constant factor.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.mercury_to_mercury.
@@ -582,9 +583,9 @@ mercury_output_item(_UnqualifiedItemNames, pragma(_, Pragma), Context, !IO) :-
         mercury_format_pragma_import(Pred, PredOrFunc, ModeList,
             Attributes, C_Function, !IO)
     ;
-        Pragma = export(Pred, PredOrFunc, ModeList, C_Function),
-        mercury_format_pragma_export(Pred, PredOrFunc, ModeList, C_Function,
-            !IO)
+        Pragma = foreign_export(Lang, Pred, PredOrFunc, ModeList, ExportName),
+        mercury_format_pragma_foreign_export(Lang, Pred, PredOrFunc, ModeList,
+            ExportName, !IO)
     ;
         Pragma = obsolete(Pred, Arity),
         mercury_output_pragma_decl(Pred, Arity, predicate, "obsolete", no, !IO)
@@ -3500,13 +3501,17 @@ mercury_format_pragma_import(Name, PredOrFunc, ModeList, Attributes,
     add_string(C_Function, !U),
     add_string(""").\n", !U).
 
-:- pred mercury_format_pragma_export(sym_name::in, pred_or_func::in,
-    list(mer_mode)::in, string::in, U::di, U::uo) is det <= output(U).
+:- pred mercury_format_pragma_foreign_export(foreign_language::in,
+    sym_name::in, pred_or_func::in, list(mer_mode)::in, string::in,
+    U::di, U::uo) is det <= output(U).
 
-mercury_format_pragma_export(Name, PredOrFunc, ModeList, C_Function, !U) :-
-    varset.init(Varset), % the varset isn't really used.
+mercury_format_pragma_foreign_export(Lang, Name, PredOrFunc, ModeList,
+    ExportName, !U) :-
+    varset.init(Varset), % The varset isn't really used.
     InstInfo = simple_inst_info(Varset),
-    add_string(":- pragma export(", !U),
+    add_string(":- pragma foreign_export(", !U),
+    mercury_format_foreign_language_string(Lang, !U),
+    add_string(", ", !U),
     mercury_format_sym_name(Name, !U),
     (
         PredOrFunc = function,
@@ -3522,7 +3527,7 @@ mercury_format_pragma_export(Name, PredOrFunc, ModeList, C_Function, !U) :-
         add_string(")", !U)
     ),
     add_string(", ", !U),
-    add_string(C_Function, !U),
+    add_string(ExportName, !U),
     add_string(").\n", !U).
 
 %-----------------------------------------------------------------------------%

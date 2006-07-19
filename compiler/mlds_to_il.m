@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: mlds_to_il.m - Convert MLDS to IL.
 % Main author: trd, petdr.
-
+% 
 % This module generates IL from MLDS.  Currently it's pretty tuned
 % towards generating assembler -- to generate code using
 % Reflection::Emit it is likely some changes will need to be made.
@@ -37,8 +37,8 @@
 % [ ] High-level RTTI data
 % [ ] Test unused mode (we seem to create a byref for it)
 % [ ] auto dependency generation for IL and assembler
-% [ ] build environment improvements (support
-%   libraries/packages/namespaces better)
+% [ ] build environment improvements
+%       (support libraries/packages/namespaces better)
 % [ ] verifiable code
 %   [ ] verifiable function pointers
 % [ ] omit empty cctors
@@ -53,10 +53,12 @@
 % [ ] Add an option to do overflow checking.
 % [ ] Should replace hard-coded of int32 with a more abstract name such
 %     as `mercury_int_il_type'.
-
+% [ ] Document `pragma foreign_export' for IL.
+% [ ] Implement `pragma foreign_export' for C# and MC++.
+%
 % XXX We should rename this module to mlds_to_ilds, since that is what
 %     it actually does.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -92,7 +94,7 @@
     % this file).
     %
     % XXX we should reduce the dependencies here to a bare minimum.
-
+    %
 :- func params_to_il_signature(il_data_rep, mlds_module_name,
     mlds_func_params) = signature.
 
@@ -1359,10 +1361,12 @@ mangle_dataname(mlds_tabling_ref(_, _)) = _MangledName :-
 :- pred mlds_export_to_mlds_defn(mlds_pragma_export::in, mlds_defn::out)
     is det.
 
-mlds_export_to_mlds_defn(
-    ml_pragma_export(ExportName, EntityName, Params, Context), Defn) :-
+mlds_export_to_mlds_defn(ExportDefn, Defn) :-
+    ExportDefn = ml_pragma_export(Lang, ExportName, EntityName, Params,
+        Context),
     EntityName = qual(ModuleName, _QualKind, UnqualName),
-
+    expect(unify(Lang, lang_il), this_file,
+        "export for language other than IL."),
     Params = mlds_func_params(Inputs, RetTypes),
     list.map_foldl(
         (pred(RT::in, RV - Lval::out, N0::in, N0 + 1::out) is det :-

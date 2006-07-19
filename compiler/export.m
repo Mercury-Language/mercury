@@ -5,16 +5,17 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: export.m.
 % Main author: dgj.
-
+% 
 % This module defines predicates to produce the functions which are
-% exported to a foreign language via a `pragma export' declaration.
-
+% exported to a foreign language via a `pragma foreign_export' declaration.
+% 
 % NOTE: any changes here might also require similar changes to the handling
 % of `pragma import' declarations, which are handled in make_hlds.m.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs.export.
@@ -118,9 +119,9 @@ get_foreign_export_decls(HLDS, ForeignExportDecls) :-
     module_info_get_pragma_exported_procs(HLDS, ExportedProcs),
     module_info_get_globals(HLDS, Globals),
     get_foreign_export_decls_2(Preds, ExportedProcs, Globals, HLDS,
-        C_ExportDecls),
+        ExportDecls),
 
-    ForeignExportDecls = foreign_export_decls(ForeignDecls, C_ExportDecls).
+    ForeignExportDecls = foreign_export_decls(ForeignDecls, ExportDecls).
 
 :- pred get_foreign_export_decls_2(pred_table::in,
     list(pragma_exported_proc)::in, globals::in, module_info::in,
@@ -128,17 +129,27 @@ get_foreign_export_decls(HLDS, ForeignExportDecls) :-
 
 get_foreign_export_decls_2(_Preds, [], _, _, []).
 get_foreign_export_decls_2(Preds, [E | ExportedProcs], Globals,
-        ModuleInfo, C_ExportDecls) :-
-    E = pragma_exported_proc(PredId, ProcId, C_Function, _Ctxt),
-    get_export_info(Preds, PredId, ProcId, Globals, ModuleInfo, _HowToDeclare,
-        C_RetType, _DeclareReturnVal, _FailureAction, _SuccessAction,
-        HeadArgInfoTypes),
-    get_argument_declarations(HeadArgInfoTypes, no, ModuleInfo, ArgDecls),
-    C_ExportDecl =
-        foreign_export_decl(lang_c, C_RetType, C_Function, ArgDecls),
-    get_foreign_export_decls_2(Preds, ExportedProcs, Globals,
-        ModuleInfo, C_ExportDecls0),
-    C_ExportDecls = [C_ExportDecl | C_ExportDecls0].
+        ModuleInfo, ExportDecls) :-
+    E = pragma_exported_proc(Lang, PredId, ProcId, ExportName, _Ctxt),
+    (
+        Lang = lang_c,
+        get_export_info_for_lang_c(Preds, PredId, ProcId, Globals, ModuleInfo,
+            _HowToDeclare, RetType, _DeclareReturnVal, _FailureAction,
+            _SuccessAction, HeadArgInfoTypes),
+            get_argument_declarations_for_lang_c(HeadArgInfoTypes, no,
+                ModuleInfo, ArgDecls)
+    ;
+        ( Lang = lang_csharp
+        ; Lang = lang_managed_cplusplus
+        ; Lang = lang_java
+        ; Lang = lang_il
+        ),
+        sorry(this_file,  ":- pragma foreign_export for non-C backends.")
+    ),          
+    ExportDecl = foreign_export_decl(Lang, RetType, ExportName, ArgDecls),
+    get_foreign_export_decls_2(Preds, ExportedProcs, Globals, ModuleInfo,
+        ExportDecls0),
+    ExportDecls = [ExportDecl | ExportDecls0].
 
 %-----------------------------------------------------------------------------%
 
@@ -258,14 +269,18 @@ get_foreign_export_defns(ModuleInfo, ExportedProcsCode) :-
 
 to_c(_Preds, [], _ModuleInfo, []).
 to_c(Preds, [E | ExportedProcs], ModuleInfo, ExportedProcsCode) :-
-    E = pragma_exported_proc(PredId, ProcId, C_Function, _Ctxt),
+    E = pragma_exported_proc(Lang, PredId, ProcId, C_Function, _Ctxt),
+    expect(unify(Lang, lang_c), this_file, "foreign language other than C"),
     module_info_get_globals(ModuleInfo, Globals),
-    get_export_info(Preds, PredId, ProcId, Globals, ModuleInfo, DeclareString,
-        C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSucceed, ArgInfoTypes),
-    get_argument_declarations(ArgInfoTypes, yes, ModuleInfo, ArgDecls),
-
-        % work out which arguments are input, and which are output,
-        % and copy to/from the mercury registers.
+    get_export_info_for_lang_c(Preds, PredId, ProcId, Globals, ModuleInfo,
+        DeclareString, C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSucceed,
+        ArgInfoTypes),
+    get_argument_declarations_for_lang_c(ArgInfoTypes, yes, ModuleInfo,
+        ArgDecls),
+    %
+    % Work out which arguments are input, and which are output, and copy
+    % to/from the Mercury registers.
+    %
     get_input_args(ArgInfoTypes, 0, ModuleInfo, InputArgs),
     copy_output_args(ArgInfoTypes, 0, ModuleInfo, OutputArgs),
 
@@ -327,7 +342,8 @@ to_c(Preds, [E | ExportedProcs], ModuleInfo, ExportedProcsCode) :-
     to_c(Preds, ExportedProcs, ModuleInfo, TheRest),
     ExportedProcsCode = [Code | TheRest].
 
-    % get_export_info(Preds, PredId, ProcId, Globals, DeclareString, C_RetType,
+    % get_export_info_for_lang_c(Preds, PredId, ProcId, Globals,
+    %   DeclareString, C_RetType,
     %   MaybeDeclareRetval, MaybeFail, MaybeSuccess, ArgInfoTypes):
     %
     % For a given procedure, figure out the information about that procedure
@@ -338,13 +354,13 @@ to_c(Preds, [E | ExportedProcs], ModuleInfo, ExportedProcsCode) :-
     % - the actions on success and failure, and
     % - the argument locations/modes/types.
     %
-:- pred get_export_info(pred_table::in, pred_id::in, proc_id::in, globals::in,
-    module_info::in, string::out, string::out, string::out, string::out,
-    string::out, assoc_list(arg_info, mer_type)::out) is det.
+:- pred get_export_info_for_lang_c(pred_table::in, pred_id::in, proc_id::in,
+    globals::in, module_info::in, string::out, string::out, string::out,
+    string::out, string::out, assoc_list(arg_info, mer_type)::out) is det.
 
-get_export_info(Preds, PredId, ProcId, _Globals, ModuleInfo, HowToDeclareLabel,
-        C_RetType, MaybeDeclareRetval, MaybeFail, MaybeSucceed,
-        ArgInfoTypes) :-
+get_export_info_for_lang_c(Preds, PredId, ProcId, _Globals, ModuleInfo,
+        HowToDeclareLabel, C_RetType, MaybeDeclareRetval, MaybeFail,
+        MaybeSucceed, ArgInfoTypes) :-
     map.lookup(Preds, PredId, PredInfo),
     pred_info_get_import_status(PredInfo, Status),
     (
@@ -446,11 +462,12 @@ include_arg(ModuleInfo, arg_info(_Loc, Mode) - Type) :-
     % Build a string to declare the argument types (and if NameThem = yes,
     % the argument names) of a C function.
     %
-:- pred get_argument_declarations(assoc_list(arg_info, mer_type)::in, bool::in,
+:- pred get_argument_declarations_for_lang_c(
+    assoc_list(arg_info, mer_type)::in, bool::in,
     module_info::in, string::out) is det.
 
-get_argument_declarations([], _, _, "void").
-get_argument_declarations([X | Xs], NameThem, ModuleInfo, Result) :-
+get_argument_declarations_for_lang_c([], _, _, "void").
+get_argument_declarations_for_lang_c([X | Xs], NameThem, ModuleInfo, Result) :-
     get_argument_declarations_2([X | Xs], 0, NameThem, ModuleInfo, Result).
 
 :- pred get_argument_declarations_2(assoc_list(arg_info, mer_type)::in,

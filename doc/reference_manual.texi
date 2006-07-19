@@ -6071,6 +6071,9 @@ fair search rule; and so forth.
 				       or function as a call to code
 				       written in a different
 				       programming language.
+* Calling Mercury from foreign code::  How to call a Mercury predicate
+                                       or funciton from a different
+                                       programming language.
 * Using foreign types from Mercury::   How to use a type defined in         
 				       a different programming language
 				       in Mercury code.                     
@@ -6385,6 +6388,41 @@ procedures that @samp{may_call_mercury}, in case none is specified, is
 @c to the same memory locations as @code{Item}.
 
 @end table
+
+@c -----------------------------------------------------------------------
+
+@node Calling Mercury from foreign code
+@section Calling Mercury from foreign code
+
+Mercury procedures may be exported so that they can be called by code written
+in a foreign language.
+
+A declaration of the form:
+
+@example
+:- pragma foreign_export("@var{Lang}",
+        @var{Pred}(@var{Mode1}, @var{Mode2}, @dots{}), "@var{ForeignName}").
+@end example
+
+@noindent
+or
+
+@example
+:- pragma foreign_export("@var{Lang}",
+        @var{Func}(@var{Mode1}, @var{Mode2}, @dots{}) = @var{Mode},
+        "@var{ForeignName}").
+@end example
+
+@noindent
+exports a procedure for use by foreign language @var{Lang}.
+For each exported procedure the Mercury implementation will create an
+interface to the named Mercury procedure in the foreign language using
+the name @var{ForeignName}.  The form of this interface is depenendent
+upon the specified foreign language.  For further details see the language
+specific information below.
+
+It is an error to export a Mercury procedure that has a determinism of
+multi or nondet.
 
 @c -----------------------------------------------------------------------
 
@@ -6765,6 +6803,7 @@ with and generating code for the .NET Common Language Runtime.
 @menu
 * Using pragma foreign_type for C 	:: Declaring C types in Mercury
 * Using pragma foreign_proc for C 	:: Calling C code from Mercury
+* Using pragma foreign_export for C     :: Calling Mercury code from C
 * Using pragma foreign_decl for C 	:: Including C declarations in Mercury
 * Using pragma foreign_code for C 	:: Including C code in Mercury
 @end menu
@@ -6862,6 +6901,59 @@ succeeds, the C code must set the values of all output arguments.
 If the procedure fails, the C code need only
 set @code{SUCCESS_INDICATOR} to false (zero).
 
+@node Using pragma foreign_export for C
+@subsubsection Using pragma foreign_export for C
+
+A @samp{pragma foreign_export} declaration for C has the form:
+
+@example
+:- pragma foreign_export("C", @var{MercuryMode}, "@var{C_Name}").
+@end example
+
+For example,
+
+@example
+:- pragma foreign_export("C", foo(in, in, out), "FOO").
+@end example
+
+For each Mercury module containing @samp{pragma foreign_export} declarations
+for C, the Mercury implementation will automatically create a header file for
+that module which declares a C function @var{C_Name}() for each of the
+@samp{pragma foreign_export} declarations.  Each such C function is the C
+interface to the specified Mercury procedure.
+
+The type signature of the C interface to a Mercury procedure is determined as
+follows.  Mercury types are converted to C types according to the rules in
+@ref{C data passing conventions}.  Input arguments are passed by value.
+For output arguments, the caller must pass the address in which to store the
+result.  If the Mercury procedure can fail, then its C interface function
+returns a truth value indicating success or failure.  If the Mercury procedure
+is a Mercury function that cannot fail, and the function result has an output
+mode, then the C interface function will return the Mercury function result
+value.  Otherwise the function result is appended as an extra argument.
+@c XXX We need to update this for dummy unit types.
+Arguments of type @samp{io.state} or @samp{store.store(_)} are not passed
+at all.  (The reason for this is that these types represent mutable state,
+and in C modifications to mutable state are done via side effects, rather than
+argument passing.)
+
+Calling polymorphically typed Mercury procedures from C is a little bit more
+difficult than calling ordinary (monomorphically typed) Mercury procedures.
+The simplest method is to just create monomorphic forwarding procedures that
+call the polymorphic procedures, and export them, rather than exporting the
+polymorphic procedures.
+
+If you do export a polymorphically typed Mercury procedure, the compiler
+will prepend one @samp{type_info} argument to the parameter list of
+the C interface function for each polymorphic type variable in the
+Mercury procedure's type signature.  The caller must arrange to pass
+in appropriate @samp{type_info} values corresponding to the types
+of the other arguments passed.  These @samp{type_info} arguments can
+be obtained using the Mercury @samp{type_of} function in the Mercury
+standard library module @samp{type_desc}.
+
+To use the C declarations procduced see @ref{Using pragma foreign_decl for C}.
+
 @node Using pragma foreign_decl for C
 @subsubsection Using pragma foreign_decl for C
 
@@ -6947,6 +7039,7 @@ Such code is copied verbatim into the generated C file.
 @menu
 * Using pragma foreign_type for C#	:: Declaring C# types in Mercury
 * Using pragma foreign_proc for C# 	:: Calling C# code from Mercury
+* Using pragma foreign_export for C#    :: Calling Mercury code from C#
 * Using pragma foreign_decl for C# 	:: Including C# declarations in Mercury
 * Using pragma foreign_code for C# 	:: Including C# code in Mercury
 @end menu
@@ -6999,6 +7092,11 @@ Mercury implementation on entry to the C# code.  If the procedure
 succeeds, the C# code must set the values of all output arguments.
 If the procedure fails, the C# code need only
 set @code{SUCCESS_INDICATOR} to false.
+
+@node Using pragma foreign_export for C#
+@subsubsection Using pragma foreign_export for C#
+
+@samp{pramga foreign_export} is not currently supported for C#.
 
 @node Using pragma foreign_decl for C#
 @subsubsection Using pragma foreign_decl for C#
@@ -7060,6 +7158,7 @@ For example:
 @menu
 * Using pragma foreign_type for IL	:: Declaring IL types in Mercury
 * Using pragma foreign_proc for IL 	:: Calling IL code from Mercury
+* Using pragma foreign_export for IL    :: Calling Mercury code from IL
 * Using pragma foreign_decl for IL 	:: Including IL declarations in Mercury
 * Using pragma foreign_code for IL 	:: Including IL code in Mercury
 @end menu
@@ -7177,6 +7276,11 @@ succeeds, the IL code must set the values of all output arguments.
 Each of the head variables will be represented by the Common Language
 Runtime types as specified in @ref{IL and C# data passing conventions}.
 
+@node Using pragma foreign_export for IL
+@subsubsection Using pragma foreign_export for IL
+
+@samp{pragma foreign_export} is currently not supported for IL.
+
 @node Using pragma foreign_decl for IL
 @subsubsection Using pragma foreign_decl for IL
 
@@ -7197,9 +7301,11 @@ Runtime types as specified in @ref{IL and C# data passing conventions}.
 @menu
 * Using pragma foreign_type for Java :: Declaring Java types in Mercury
 * Using pragma foreign_proc for Java :: Calling Java code from Mercury
+* Using pragma foreign_export for Java :: Calling Mercury from Java code
 * Using pragma foreign_decl for Java :: Including Java declarations in Mercury
 * Using pragma foreign_code for Java :: Including Java code in Mercury
 @end menu
+
 
 @node Using pragma foreign_type for Java
 @subsubsection Using pragma foreign_type for Java
@@ -7264,6 +7370,11 @@ of all output variables, even if the procedure fails
 @c succeeds, the Java code must set the values of all output arguments
 @c If the procedure fails, the Java code need only
 @c set the @code{succeeded} variable to false.
+
+@node Using pragma foreign_export for Java
+@subsubsection Using pragma foreign_export for Java
+
+@samp{pragma foreign_export} is not currently supported for Java.
 
 @node Using pragma foreign_decl for Java
 @subsubsection Using pragma foreign_decl for Java
@@ -7334,6 +7445,7 @@ For example:
 @menu
 * Using pragma foreign_type for MC++::  Declaring MC++ types in Mercury
 * Using pragma foreign_proc for MC++::  Calling MC++ code from Mercury
+* Using pragma foreign_export for MC++:: Calling Mercury from MC++ code
 * Using pragma foreign_decl for MC++::  Including MC++ declarations in Mercury
 * Using pragma foreign_code for MC++::  Including MC++ code in Mercury
 @end menu
@@ -7386,6 +7498,11 @@ Mercury implementation on entry to the MC++ code.  If the procedure
 succeeds, the MC++ code must set the values of all output arguments.
 If the procedure fails, the MC++ code need only
 set @code{SUCCESS_INDICATOR} to false.
+
+@node Using pragma foreign_export for MC++
+@subsubsection Using pragma foreign_export for MC++
+
+@samp{pragma foreign_export} is not currently supported for MC++.
 
 @node Using pragma foreign_decl for MC++
 @subsubsection Using pragma foreign_decl for MC++

@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
- 
+%  
 % File: dead_proc_elim.m.
 % Main author: zs.
-
+% 
 % The job of this module is to delete dead predicates, procedures and
 % type_ctor_gen_info structures from the HLDS.
 %
@@ -16,7 +16,8 @@
 % `--inline-single-use' option.
 %
 % It also issues warnings about unused procedures.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.dead_proc_elim.
@@ -180,8 +181,8 @@ initialize_procs(PredId, [ProcId | ProcIds],
     svmap.set(proc(PredId, ProcId), no, !Needed),
     initialize_procs(PredId, ProcIds, !Queue, !Needed).
 
-    % Add procedures exported to C by a pragma(export, ...) declaration
-    % to the queue and map.
+    % Add procedures exported to foreign language by a `:- pragma
+    % foreign_export(...)' declaration to the queue and map.
     %
 :- pred initialize_pragma_exports(list(pragma_exported_proc)::in,
     entity_queue::in, entity_queue::out, needed_map::in, needed_map::out)
@@ -189,7 +190,8 @@ initialize_procs(PredId, [ProcId | ProcIds],
 
 initialize_pragma_exports([], !Queue, !Needed).
 initialize_pragma_exports([PragmaProc | PragmaProcs], !Queue, !Needed) :-
-    PragmaProc = pragma_exported_proc(PredId, ProcId, _CFunction, _Ctxt),
+    PragmaProc = pragma_exported_proc(_Lang, PredId, ProcId,
+        _ExportName, _Ctxt),
     svqueue.put(proc(PredId, ProcId), !Queue),
     svmap.set(proc(PredId, ProcId), no, !Needed),
     initialize_pragma_exports(PragmaProcs, !Queue, !Needed).
