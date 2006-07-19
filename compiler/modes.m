@@ -3116,7 +3116,7 @@ construct_initialisation_call(Var, VarType, Inst, Context,
         NonLocals = set.make_singleton_set(Var),
         InstmapDeltaAL = [Var - Inst],
         instmap_delta_from_assoc_list(InstmapDeltaAL, InstmapDelta),
-        build_call(ModuleName, PredName, [Var], NonLocals,
+        build_call(ModuleName, PredName, [Var], [VarType], NonLocals,
             InstmapDelta, Context, MaybeCallUnifyContext,
             GoalExpr - GoalInfo, !ModeInfo)
     ->
@@ -3126,24 +3126,13 @@ construct_initialisation_call(Var, VarType, Inst, Context,
     ).
 
 :- pred build_call(module_name::in, string::in, list(prog_var)::in,
-    set(prog_var)::in, instmap_delta::in, prog_context::in,
-    maybe(call_unify_context)::in, hlds_goal::out,
+    list(mer_type)::in, set(prog_var)::in, instmap_delta::in,
+    prog_context::in, maybe(call_unify_context)::in, hlds_goal::out,
     mode_info::in, mode_info::out) is semidet.
 
-build_call(CalleeModuleName, CalleePredName, ArgVars, NonLocals, InstmapDelta,
-        Context, CallUnifyContext, Goal, !ModeInfo) :-
+build_call(CalleeModuleName, CalleePredName, ArgVars, ArgTypes, NonLocals,
+        InstmapDelta, Context, CallUnifyContext, Goal, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
-
-        % Get the pred_info and proc_info for the procedure we are calling.
-        %
-    module_info_get_predicate_table(ModuleInfo0, PredicateTable),
-    list.length(ArgVars, Arity),
-    predicate_table_search_pred_m_n_a(PredicateTable, is_fully_qualified,
-        CalleeModuleName, CalleePredName, Arity, [CalleePredId]),
-    CalleeProcNo = 0, % first mode
-    hlds_pred.proc_id_to_int(CalleeProcId, CalleeProcNo),
-    module_info_pred_proc_info(ModuleInfo0, CalleePredId, CalleeProcId,
-        CalleePredInfo, CalleeProcInfo),
 
         % Get the relevant information for the procedure we are transforming
         % (i.e., the caller).
@@ -3152,6 +3141,15 @@ build_call(CalleeModuleName, CalleePredName, ArgVars, NonLocals, InstmapDelta,
     mode_info_get_procid(!.ModeInfo, ProcId),
     module_info_pred_proc_info(ModuleInfo0, PredId, ProcId, PredInfo0,
         ProcInfo0),
+    pred_info_get_typevarset(PredInfo0, TVarSet),
+
+        % Get the pred_info and proc_info for the procedure we are calling.
+        %
+    SymName = qualified(CalleeModuleName, CalleePredName),
+    get_pred_id_and_proc_id(is_fully_qualified, SymName, predicate, TVarSet,
+        ArgTypes, ModuleInfo0, CalleePredId, CalleeProcId),
+    module_info_pred_proc_info(ModuleInfo0, CalleePredId, CalleeProcId,
+        CalleePredInfo, CalleeProcInfo),
 
         % Create a poly_info for the caller.  We have to set the varset and
         % vartypes from the mode_info, not the proc_info, because new vars may
