@@ -4798,7 +4798,7 @@ the @samp{get} access predicate is pure; its signature will be
 
 The @samp{constant} attribute cannot be specified together with
 the @samp{attach_to_io_state} attribute
-(since they disagree on this signature),
+(since they disagree on this signature).
 It also cannot be specified together with explicit
 @samp{not_thread_safe} and @samp{trailed} attributes,
 since accesses consisting of all reads are always thread safe
