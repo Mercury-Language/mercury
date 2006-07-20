@@ -5261,6 +5261,13 @@ Don't warn about procedures whose determinism is inferred erroneous
 but whose determinism declarations are laxer.
 
 @sp 1
+@item --no-warn-insts-without-matching-type
+@findex --no-warn-insts-without-matching-type
+@findex --warn-insts-without-matching-type
+Don't warn about insts that are not consistent with any
+types in scope.
+
+@sp 1
 @item --no-warn-nothing-exported
 @findex --no-warn-nothing-exported
 @findex --warn-nothing-exported

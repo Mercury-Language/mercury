@@ -45,3 +45,5 @@ MCFLAGS-non_term_user_special = --enable-termination
 MCFLAGS-warn_dead_procs 	= --warn-dead-procs --infer-all
 
 MCFLAGS-non_stratification = --warn-non-stratification --verbose-error-messages
+
+MCFLAGS-inst_with_no_type = --warn-insts-without-matching-type --intermodule-optimization --no-intermodule-analysis

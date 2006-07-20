@@ -57,6 +57,8 @@ Changes to the Mercury compiler:
   with many clauses.
 * We have deleted the old --split-c-files option, as it conflicted with the
   implementation of module initialisation and finalisation.
+* The compiler now issues a warning when an inst declaration isn't
+  consistent with any of the types in scope.
 
 Portability Improvements:
 * We've ported Mercury to the x86_64 (AMD64 / Intel EMT64) architecure.
@@ -320,6 +322,12 @@ Changes to the Mercury compiler:
   will also generate error messages for calls to string.format and io.format
   in which the format string or the structure of the list of values to be
   printed are not statically available.
+
+* The compiler now issues a warning when an inst declaration isn't
+  consistent with any of the types in scope.
+
+  This makes it easier to diagnose mode errors caused by insts that are not
+  consistent with the type they are intended to be consistent with.
 
 Changes to the Mercury debugger:
 

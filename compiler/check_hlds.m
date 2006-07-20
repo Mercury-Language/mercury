@@ -80,6 +80,9 @@
 :- include_module format_call.
 :- include_module simplify.
 
+% Warnings about insts with no matching types
+:- include_module inst_check.
+
 :- include_module goal_path.
 
 %-----------------------------------------------------------------------------%

@@ -137,6 +137,7 @@
 
     % miscellaneous compiler modules
 :- import_module check_hlds.goal_path.
+:- import_module check_hlds.inst_check.
 :- import_module hlds.arg_info.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
@@ -860,7 +861,7 @@ process_arg_2(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
 
 :- type file_or_module
     --->    file(file_name)
-    ;   module(module_name).
+    ;       module(module_name).
 
 :- func string_to_file_or_module(string) = file_or_module.
 
@@ -1948,6 +1949,20 @@ frontend_pass_no_type_error(FoundUndefModeError, !FoundError, !HLDS, !DumpInfo,
         maybe_dump_hlds(!.HLDS, 10, "dead_pred_elim", !DumpInfo, !IO)
     ;
         true
+    ),
+
+    globals.lookup_bool_option(Globals, warn_insts_without_matching_type,
+        WarnInstsWithNoMatchingType),
+    (
+        WarnInstsWithNoMatchingType = yes,
+        maybe_write_string(Verbose, 
+            "% Checking that insts have matching types... ", !IO),
+        check_hlds.inst_check.check_insts_have_matching_types(!.HLDS, !IO),
+        maybe_write_string(Verbose, "done.\n", !IO),
+        maybe_dump_hlds(!.HLDS, 12, "warn_insts_without_matching_type",
+            !DumpInfo, !IO)
+    ;
+        WarnInstsWithNoMatchingType = no
     ),
 
     %

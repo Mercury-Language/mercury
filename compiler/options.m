@@ -113,6 +113,7 @@
     ;       warn_known_bad_format_calls
     ;       warn_unknown_format_calls
     ;       warn_obsolete
+    ;       warn_insts_without_matching_type
 
     % Verbosity options
     ;       verbose
@@ -863,7 +864,8 @@ option_defaults_2(warning_option, [
     warn_non_term_special_preds         -   bool(yes),
     warn_known_bad_format_calls         -   bool(yes),
     warn_unknown_format_calls           -   bool(no),
-    warn_obsolete                       -   bool(yes)
+    warn_obsolete                       -   bool(yes),
+    warn_insts_without_matching_type    -   bool(no)
 ]).
 option_defaults_2(verbosity_option, [
     % Verbosity Options
@@ -1564,6 +1566,8 @@ long_option("warn-non-term-special-preds", warn_non_term_special_preds).
 long_option("warn-known-bad-format-calls", warn_known_bad_format_calls).
 long_option("warn-unknown-format-calls", warn_unknown_format_calls).
 long_option("warn-obsolete",             warn_obsolete).
+long_option("warn-insts-without-matching-type",
+    warn_insts_without_matching_type).
 
 % verbosity options
 long_option("verbose",                  verbose).
@@ -2769,6 +2773,9 @@ options_help_warning -->
         "--no-warn-inferred-erroneous",
         "\tDon't warn about procedures whose determinism is inferred",
         "\terroneous but whose determinism declarations are laxer.",
+        "--no-warn-insts-without-matching-type",
+        "\tDon't warn about insts that are not consistent with any",
+        "\tof the types in scope.",
         "--no-warn-nothing-exported",
         "\tDon't warn about modules which export nothing.",
         "--warn-unused-args",

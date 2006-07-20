@@ -21,6 +21,7 @@ ERRORCHECK_PROGS= \
 	inference_test \
 	infinite_recursion \
 	inf_recursion_lambda \
+	inst_with_no_type \
 	missing_if \
 	non_stratification \
 	pragma_source_file \

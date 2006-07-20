@@ -598,6 +598,19 @@ so that the compiler does the right thing for options such as
 	typeclass instance.
 	<p>
 
+<dt> check user defined insts for consistency with types
+	<dd>
+	inst_check.m checks that all user defined bound insts are consistent
+	with at least one type in scope
+	(i.e. that the set of function symbols
+	in the bound list for the inst are a subset of the allowed function
+	symbols for at least one type in scope).
+	
+	<p>
+	A warning is issued if it finds any user defined bound insts not
+	consistent with any types in scope.
+	<p>
+
 <dt> type checking
 
 	<dd>
@@ -1667,6 +1680,6 @@ The following modules are part of the libs.m package.
 <hr>
 <!-- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -->
 
-Last update was $Date: 2006-06-05 02:26:12 $ by $Author: juliensf $@cs.mu.oz.au. <br>
+Last update was $Date: 2006-07-20 01:50:45 $ by $Author: maclarty $@cs.mu.oz.au. <br>
 </body>
 </html>
