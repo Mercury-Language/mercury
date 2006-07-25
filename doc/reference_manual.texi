@@ -6952,7 +6952,7 @@ of the other arguments passed.  These @samp{type_info} arguments can
 be obtained using the Mercury @samp{type_of} function in the Mercury
 standard library module @samp{type_desc}.
 
-To use the C declarations procduced see @ref{Using pragma foreign_decl for C}.
+To use the C declarations produced see @ref{Using pragma foreign_decl for C}.
 
 @node Using pragma foreign_decl for C
 @subsubsection Using pragma foreign_decl for C
