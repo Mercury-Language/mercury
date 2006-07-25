@@ -752,8 +752,8 @@
     % Reads all the bytes from the given binary input stream until
     % eof or error.
     %
-:- pred io.read_binary_file(io.input_stream::in, io.result(list(int))::out,
-    io::di, io::uo) is det.
+:- pred io.read_binary_file(io.binary_input_stream::in,
+    io.result(list(int))::out, io::di, io::uo) is det.
 
     % Applies the given closure to each byte read from the current binary
     % input stream in turn, until eof or error.
