@@ -2147,6 +2147,7 @@ fi
 
 AC_CACHE_VAL(mercury_cv_gcc_labels,
 	AC_TRY_RUN([
+	extern void exit(int);
 	void *entry_foo_1;
 	void *entry_bar_1;
 	void *succip;
@@ -2158,6 +2159,7 @@ AC_CACHE_VAL(mercury_cv_gcc_labels,
 	return_label:
 		return;
 	foo_1:
+		__asm__ __volatile__("":::"memory");
 		if (global != 42) exit(1);
 		goto *entry_bar_1;
 	}
@@ -2167,6 +2169,7 @@ AC_CACHE_VAL(mercury_cv_gcc_labels,
 	return_label:
 		return;
 	bar_1:
+		__asm__ __volatile__("":::"memory");
 		if (global != 42) exit(1);
 		goto *succip;
 	}
@@ -2180,6 +2183,7 @@ AC_CACHE_VAL(mercury_cv_gcc_labels,
 		goto *entry_foo_1;
 		exit(1);
 	last:
+		__asm__ __volatile__("":::"memory");
 		if (global != 42) exit(1);
 		exit(0);
 	}
