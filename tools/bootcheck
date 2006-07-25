@@ -1463,6 +1463,7 @@ then
             invalid/purity
             misc_tests
             mmc_make
+            par_conj
             recompilation
             tabling
             term
