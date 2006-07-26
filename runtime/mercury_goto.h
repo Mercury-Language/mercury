@@ -696,6 +696,30 @@
   					general-purpose register
   	)
   */
+	
+  /*
+  ** The following macro expands into a dummy assembler statement that
+  ** contains no code.  It is used to suppress optimizations in gcc 4
+  ** and above that try to cache memory values in registers before labels
+  ** that Mercury uses as the target of non-local gotos.  It has no effect
+  ** with versions of gcc before version 4.
+  */
+  #define MR_PRETEND_REGS_ARE_USED \
+	__asm__ __volatile("":::"memory")
+  /*
+  Explanation:
+  	__asm__
+	__volatile__		 	Don't optimize this asm away.
+	(
+		""			Empty assembler code.
+		:			No outputs.
+		:			No inputs.
+		:"memory"		Tells gcc that this "instruction" might
+					clobber the register contents so it
+					shouldn't cache memory values in 
+					registers.
+	)
+  */
 
   /*
   ** Since we're jumping into and out of the middle of functions,
@@ -757,17 +781,21 @@
 	}					\
 	label:					\
 	MR_PRETEND_ADDRESS_IS_USED(&&MR_entry(label));	\
-	{
+	{ \
+	MR_PRETEND_REGS_ARE_USED;
     #define MR_define_static(label)		\
 		MR_ASM_STATIC_ENTRY(label) 	\
 	}					\
 	label:					\
 	MR_PRETEND_ADDRESS_IS_USED(&&MR_entry(label));	\
-	{
+	{ \
+	MR_PRETEND_REGS_ARE_USED;
     /*
     ** The MR_PRETEND_ADDRESS_IS_USED macro is necessary to
     ** prevent an over-zealous gcc from optimizing away `label'
-    ** and the code that followed.
+    ** and the code that followed.  The MR_PRETEND_REGS_ARE_USED
+    ** macro is used to prevent gcc from caching values in registers
+    ** before the label.
     */
     #define MR_init_entry(label)	\
 	MR_PRETEND_ADDRESS_IS_USED(&&label); \
