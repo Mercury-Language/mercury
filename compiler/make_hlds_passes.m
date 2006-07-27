@@ -1256,7 +1256,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
                     mutable_get_pred_sym_name(ModuleName, Name), predicate,
                     [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
                     ProgVarSet0, InstVarset,
-                    ordinary("X = " ++ TargetMutableName ++ ";",
+                    fc_impl_ordinary("X = " ++ TargetMutableName ++ ";",
                         yes(Context)))),
             add_item_clause(ConstantGetClause, !Status, Context, !ModuleInfo,
                 !QualInfo, !IO),
@@ -1269,7 +1269,8 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
                     predicate,
                     [pragma_var(X, "X", in_mode(Inst), BoxPolicy)],
                     ProgVarSet0, InstVarset,
-                    ordinary(TargetMutableName ++ " = X;", yes(Context)))),
+                    fc_impl_ordinary(TargetMutableName ++ " = X;",
+                        yes(Context)))),
             add_item_clause(ConstantSetClause, !Status, Context, !ModuleInfo,
                 !QualInfo, !IO)
         ;
@@ -1282,7 +1283,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
                     mutable_get_pred_sym_name(ModuleName, Name), predicate,
                     [pragma_var(X, "X", out_mode(Inst), BoxPolicy)],
                     ProgVarSet0, InstVarset,
-                    ordinary("X = " ++ TargetMutableName ++ ";",
+                    fc_impl_ordinary("X = " ++ TargetMutableName ++ ";",
                         yes(Context)))),
             add_item_clause(StdGetClause, !Status, Context, !ModuleInfo,
                 !QualInfo, !IO),
@@ -1320,8 +1321,8 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
                     mutable_set_pred_sym_name(ModuleName, Name), predicate,
                     [pragma_var(X, "X", in_mode(Inst), BoxPolicy)],
                     ProgVarSet0, InstVarset,
-                    ordinary(TrailCode ++ TargetMutableName ++ " = X;",
-                    yes(Context)))),
+                    fc_impl_ordinary(TrailCode ++ TargetMutableName ++ " = X;",
+                        yes(Context)))),
             add_item_clause(StdSetClause, !Status, Context, !ModuleInfo,
                 !QualInfo, !IO),
 
@@ -1350,7 +1351,8 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
                         [pragma_var(X,   "X",   in_mode(Inst), BoxPolicy)]
                             ++ IOArgs,
                         ProgVarSet, InstVarset,
-                        ordinary(TargetMutableName ++ " = X; IO = IO0;",
+                        fc_impl_ordinary(
+                            TargetMutableName ++ " = X; IO = IO0;",
                             yes(Context)
                         )
                     )
@@ -1364,7 +1366,8 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
                         [pragma_var(X,    "X",  out_mode(Inst), BoxPolicy)]
                             ++ IOArgs,
                         ProgVarSet, InstVarset,
-                        ordinary("X = " ++ TargetMutableName ++ "; IO = IO0;",
+                        fc_impl_ordinary(
+                            "X = " ++ TargetMutableName ++ "; IO = IO0;",
                             yes(Context)
                         )
                     )

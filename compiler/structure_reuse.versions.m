@@ -186,7 +186,8 @@ process_goal(ReuseMap, !Goal, !IO) :-
         GoalExpr = conj(ConjType, Goals),
         !:Goal = GoalExpr - GoalInfo0
     ;
-        GoalExpr0 = call(CalleePredId, CalleeProcId, A, B, C, CalleePredName),
+        GoalExpr0 = plain_call(CalleePredId, CalleeProcId, Args, BI, UC,
+            CalleePredName),
         ReuseDescription0 = goal_info_get_reuse(GoalInfo0), 
         (
             % If the reuse description already sais "reuse", then this is
@@ -200,8 +201,8 @@ process_goal(ReuseMap, !Goal, !IO) :-
             determine_reuse_version(ReuseMap, CalleePredId, CalleeProcId,
                 CalleePredName, ReuseCalleePredId, ReuseCalleeProcId, 
                 ReuseCalleePredName), 
-            GoalExpr = call(ReuseCalleePredId, ReuseCalleeProcId, A, B, C, 
-                ReuseCalleePredName), 
+            GoalExpr = plain_call(ReuseCalleePredId, ReuseCalleeProcId,
+                Args, BI, UC, ReuseCalleePredName), 
             !:Goal = GoalExpr - GoalInfo0
         ;
             ReuseDescription0 = potential_reuse(reuse_call(CondDescr))
@@ -211,8 +212,8 @@ process_goal(ReuseMap, !Goal, !IO) :-
             determine_reuse_version(ReuseMap, CalleePredId, CalleeProcId,
                 CalleePredName, ReuseCalleePredId, ReuseCalleeProcId, 
                 ReuseCalleePredName), 
-            GoalExpr = call(ReuseCalleePredId, ReuseCalleeProcId, A, B, C, 
-                ReuseCalleePredName), 
+            GoalExpr = plain_call(ReuseCalleePredId, ReuseCalleeProcId,
+                Args, BI, UC, ReuseCalleePredName), 
             ReuseDescription = reuse(reuse_call(CondDescr)), 
             goal_info_set_reuse(ReuseDescription, GoalInfo0, GoalInfo), 
             !:Goal = GoalExpr - GoalInfo
@@ -245,7 +246,7 @@ process_goal(ReuseMap, !Goal, !IO) :-
         !:Goal = GoalExpr - GoalInfo0
     ;
         % XXX To check and compare with the theory. 
-        GoalExpr0 = not(_Goal)
+        GoalExpr0 = negation(_Goal)
     ;
         GoalExpr0 = scope(A, SubGoal0),
         process_goal(ReuseMap, SubGoal0, SubGoal, !IO),
@@ -259,8 +260,8 @@ process_goal(ReuseMap, !Goal, !IO) :-
         GoalExpr = if_then_else(A, IfGoal, ThenGoal, ElseGoal),
         !:Goal = GoalExpr - GoalInfo0
     ;
-        GoalExpr0 = foreign_proc(_Attrs, _ForeignPredId, _ForeignProcId,
-            _ForeignArgs, _, _)
+        GoalExpr0 = call_foreign_proc(_Attrs, _ForeignPredId, _ForeignProcId,
+            _Args, _ExtraArgs, _MaybeTraceRuntimeCond, _Impl)
     ;
         GoalExpr0 = shorthand(_),
         unexpected(this_file, "process_goal: shorthand goal.")

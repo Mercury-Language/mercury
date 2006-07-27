@@ -366,7 +366,7 @@ make_pragma_import(PredInfo, ProcInfo, C_Function, Context, PragmaImpl, VarSet,
     create_pragma_import_c_code(ArgPragmaVars, !.ModuleInfo, "", Variables),
 
     % Make an import implementation.
-    PragmaImpl = import(C_Function, Return, Variables, yes(Context)).
+    PragmaImpl = fc_impl_import(C_Function, Return, Variables, yes(Context)).
 
     % handle_return_value(Contxt, DeclaredDetism, CodeModel, PredOrFunc, Args0,
     %   M, Args, C_Code0):

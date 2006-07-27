@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% File: trace.m.
+%
+% File: trace_gen.m.
 % Author: zs.
-
+%
 % This module handles the generation of traces for the trace analysis system.
 %
 % For the general basis of trace analysis systems, see the paper
@@ -45,7 +45,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- module ll_backend.trace.
+:- module ll_backend.trace_gen.
 :- interface.
 
 :- import_module hlds.hlds_goal.
@@ -138,7 +138,7 @@
     % although to handle them properly we need to record insts in stack
     % layouts), and those of dummy types.
     %
-:- pred fail_vars(module_info::in, proc_info::in,
+:- pred trace_fail_vars(module_info::in, proc_info::in,
     set(prog_var)::out) is det.
 
     % Figure out whether we need a slot for storing the value of maxfr
@@ -154,7 +154,7 @@
     % If so, the variable and its slot number are returned in the last
     % argument.
     %
-:- pred reserved_slots(module_info::in, pred_info::in, proc_info::in,
+:- pred trace_reserved_slots(module_info::in, pred_info::in, proc_info::in,
     globals::in, int::out, maybe(pair(prog_var, int))::out) is det.
 
     % Construct and return an abstract struct that represents the
@@ -162,7 +162,7 @@
     % info about the non-fixed slots used by the tracing system,
     % for eventual use in the constructing the procedure's layout structure.
     %
-:- pred setup(module_info::in, pred_info::in, proc_info::in,
+:- pred trace_setup(module_info::in, pred_info::in, proc_info::in,
     globals::in, trace_slot_info::out, trace_info::out,
     code_info::in, code_info::out) is det.
 
@@ -173,7 +173,7 @@
 
     % If we are doing execution tracing, generate code to prepare for a call.
     %
-:- pred prepare_for_call(code_info::in, code_tree::out) is det.
+:- pred trace_prepare_for_call(code_info::in, code_tree::out) is det.
 
     % If we are doing execution tracing, generate code for an internal
     % trace event. This predicate must be called just before generating code
@@ -273,7 +273,7 @@
             )
     ;       nondet_pragma.
 
-fail_vars(ModuleInfo, ProcInfo, FailVars) :-
+trace_fail_vars(ModuleInfo, ProcInfo, FailVars) :-
     proc_info_get_headvars(ProcInfo, HeadVars),
     proc_info_get_argmodes(ProcInfo, Modes),
     proc_info_arg_info(ProcInfo, ArgInfos),
@@ -303,8 +303,9 @@ do_we_need_maxfr_slot(Globals, PredInfo0, !ProcInfo) :-
     ),
     proc_info_set_need_maxfr_slot(MaxfrFlag, !ProcInfo).
 
-    % reserved_slots and setup cooperate in the allocation of stack slots
-    % for tracing purposes. The allocation is done in the following stages.
+    % trace_reserved_slots and trace_setup cooperate in the allocation of
+    % stack slots for tracing purposes. The allocation is done in the
+    % following stages.
     %
     % stage 1:  Allocate the fixed slots, slots 1, 2 and 3, to hold
     %           the event number of call, the call sequence number
@@ -376,7 +377,7 @@ do_we_need_maxfr_slot(Globals, PredInfo0, !ProcInfo) :-
     % exist or not. This is why setup returns TraceSlotInfo, which answers
     % such questions, for later inclusion in the procedure's layout structure.
     
-reserved_slots(_ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
+trace_reserved_slots(_ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
         MaybeTableVarInfo) :-
     globals.get_trace_level(Globals, TraceLevel),
     globals.get_trace_suppress(Globals, TraceSuppress),
@@ -443,7 +444,7 @@ reserved_slots(_ModuleInfo, PredInfo, ProcInfo, Globals, ReservedSlots,
         )
     ).
 
-setup(_ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo, TraceInfo,
+trace_setup(_ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo, TraceInfo,
         !CI) :-
     CodeModel = code_info.get_proc_model(!.CI),
     globals.get_trace_level(Globals, TraceLevel),
@@ -642,7 +643,7 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
     ),
     TraceCode = tree(TraceCode1, tree(TraceCode2, TraceCode3)).
 
-prepare_for_call(CI, TraceCode) :-
+trace_prepare_for_call(CI, TraceCode) :-
     code_info.get_maybe_trace_info(CI, MaybeTraceInfo),
     CodeModel = code_info.get_proc_model(CI),
     (

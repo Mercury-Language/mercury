@@ -137,8 +137,9 @@ find_follow_vars_in_goal_expr(disj(Goals0), disj(Goals), GoalInfo0, GoalInfo,
     find_follow_vars_in_independent_goals(Goals0, Goals, VarTypes, ModuleInfo,
         !FollowVarsMap, !NextNonReserved).
 
-find_follow_vars_in_goal_expr(not(Goal0), not(Goal), GoalInfo, GoalInfo,
-        VarTypes, ModuleInfo, !FollowVarsMap, !NextNonReserved) :-
+find_follow_vars_in_goal_expr(negation(Goal0), negation(Goal),
+        GoalInfo, GoalInfo, VarTypes, ModuleInfo, !FollowVarsMap,
+        !NextNonReserved) :-
     find_follow_vars_in_goal(Goal0, Goal, VarTypes, ModuleInfo,
         !FollowVarsMap, !NextNonReserved).
 
@@ -217,8 +218,8 @@ find_follow_vars_in_goal_expr(Goal @ unify(_, _, _, Unify, _), Goal,
         true
     ).
 
-find_follow_vars_in_goal_expr(Goal @ foreign_proc(_, _, _, _, _, _), Goal,
-        GoalInfo, GoalInfo, _, _, !FollowVarsMap, !NextNonReserved).
+find_follow_vars_in_goal_expr(Goal @ call_foreign_proc(_, _, _, _, _, _, _),
+        Goal, GoalInfo, GoalInfo, _, _, !FollowVarsMap, !NextNonReserved).
 
 find_follow_vars_in_goal_expr(shorthand(_), _, _, _, _, _, _, _, _, _) :-
     % these should have been expanded out by now
@@ -247,8 +248,9 @@ find_follow_vars_in_goal_expr(
             !FollowVarsMap, !:NextNonReserved)
     ).
 
-find_follow_vars_in_goal_expr(call(PredId, ProcId, Args, State, E, F),
-        call(PredId, ProcId, Args, State, E, F), GoalInfo, GoalInfo,
+find_follow_vars_in_goal_expr(
+        plain_call(PredId, ProcId, Args, State, UC, Name),
+        plain_call(PredId, ProcId, Args, State, UC, Name), GoalInfo, GoalInfo,
         _, ModuleInfo, !FollowVarsMap, !NextNonReserved) :-
     ( State = inline_builtin ->
         true
@@ -408,7 +410,7 @@ find_follow_vars_in_conj([Goal0 | Goals0], [Goal | Goals], VarTypes,
     (
         Goal0 = GoalExpr0 - _,
         (
-            GoalExpr0 = call(_, _, _, BuiltinState, _, _),
+            GoalExpr0 = plain_call(_, _, _, BuiltinState, _, _),
             BuiltinState = inline_builtin
         ;
             GoalExpr0 = unify(_, _, _, Unification, _),

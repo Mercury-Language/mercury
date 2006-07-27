@@ -642,7 +642,7 @@ traverse_goal(Info, Goal, !VarDep) :-
         list_case_to_list_goal(Cases, Goals),
         traverse_list_of_goals(Info, Goals, !VarDep)
     ;
-        GoalExpr = call(PredId, ProcId, Args, _, _, _),
+        GoalExpr = plain_call(PredId, ProcId, Args, _, _, _),
         module_info_pred_proc_info(Info ^ module_info, PredId, ProcId,
             _Pred, Proc),
         proc_info_get_headvars(Proc, HeadVars),
@@ -653,7 +653,7 @@ traverse_goal(Info, Goal, !VarDep) :-
         traverse_goal(Info, Then, !VarDep),
         traverse_goal(Info, Else, !VarDep)
     ;
-        GoalExpr = not(SubGoal),
+        GoalExpr = negation(SubGoal),
         traverse_goal(Info, SubGoal, !VarDep)
     ;
         GoalExpr = scope(_, SubGoal),
@@ -664,7 +664,7 @@ traverse_goal(Info, Goal, !VarDep) :-
         set_list_vars_used(CallArgs, !VarDep),
         set_list_vars_used(Args, !VarDep)
     ;
-        GoalExpr = foreign_proc(_, _, _, Args, ExtraArgs, _),
+        GoalExpr = call_foreign_proc(_, _, _, Args, ExtraArgs, _, _),
         % Only arguments with names can be used in the foreign code.  The code
         % in here should be kept in sync with the treatment of foreign_procs
         % in fixup_goal_expr: any variable considered unused here should be
@@ -1221,7 +1221,7 @@ create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule, PredName,
     % too much difference.
     proc_info_get_varset(!.OldProc, VarSet0),
     remove_listof_elements(1, UnusedArgs, HeadVars, NewHeadVars),
-    GoalExpr = call(NewPredId, NewProcId, NewHeadVars,
+    GoalExpr = plain_call(NewPredId, NewProcId, NewHeadVars,
         not_builtin, no, qualified(PredModule, PredName)),
     Goal1 = GoalExpr - GoalInfo1,
     implicitly_quantify_goal(NonLocals, _, Goal1, Goal, VarSet0, VarSet,
@@ -1446,9 +1446,9 @@ fixup_goal_expr(GoalExpr0 - GoalInfo0, Goal, !Info, Changed) :-
         GoalExpr = disj(Goals),
         Goal = GoalExpr - GoalInfo0
     ;
-        GoalExpr0 = not(NegGoal0),
+        GoalExpr0 = negation(NegGoal0),
         fixup_goal(NegGoal0, NegGoal, !Info, Changed),
-        GoalExpr = not(NegGoal),
+        GoalExpr = negation(NegGoal),
         Goal = GoalExpr - GoalInfo0
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
@@ -1469,14 +1469,15 @@ fixup_goal_expr(GoalExpr0 - GoalInfo0, Goal, !Info, Changed) :-
         GoalExpr = scope(Reason, SubGoal),
         Goal = GoalExpr - GoalInfo0
     ;
-        GoalExpr0 = call(PredId, ProcId, ArgVars0, Builtin, UnifyC, _Name),
+        GoalExpr0 = plain_call(PredId, ProcId, ArgVars0, Builtin,
+            UnifyC, _Name),
         ProcCallInfo = !.Info ^ fixup_proc_call_info,
         ( map.search(ProcCallInfo, proc(PredId, ProcId), CallInfo) ->
             CallInfo = call_info(NewPredId, NewProcId, NewName, UnusedArgs),
             Changed = yes,
             remove_listof_elements(1, UnusedArgs, ArgVars0, ArgVars),
-            GoalExpr = call(NewPredId, NewProcId, ArgVars, Builtin, UnifyC,
-                NewName),
+            GoalExpr = plain_call(NewPredId, NewProcId, ArgVars, Builtin,
+                UnifyC, NewName),
             Goal = GoalExpr - GoalInfo0
         ;
             Changed = no,
@@ -1499,8 +1500,8 @@ fixup_goal_expr(GoalExpr0 - GoalInfo0, Goal, !Info, Changed) :-
         Goal = GoalExpr0 - GoalInfo0,
         Changed = no
     ;
-        GoalExpr0 = foreign_proc(Attributes, PredId, ProcId, Args0, ExtraArgs0,
-            Impl),
+        GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId,
+            Args0, ExtraArgs0, MaybeTraceRuntimeCond, Impl),
         % The code in here should be kept in sync with the treatment of
         % foreign_procs in traverse_goal.
         Changed0 = no,
@@ -1509,8 +1510,8 @@ fixup_goal_expr(GoalExpr0 - GoalInfo0, Goal, !Info, Changed) :-
             Args0, Args, Subst0, Subst1, !Info, Changed0, ArgsChanged),
         list.map_foldl3(rename_apart_unused_foreign_arg,
             ExtraArgs0, ExtraArgs, Subst1, Subst, !Info, ArgsChanged, Changed),
-        GoalExpr = foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
-            Impl),
+        GoalExpr = call_foreign_proc(Attributes, PredId, ProcId,
+            Args, ExtraArgs, MaybeTraceRuntimeCond, Impl),
         rename_vars_in_goal_info(no, Subst, GoalInfo0, GoalInfo),
         Goal = GoalExpr - GoalInfo
     ;

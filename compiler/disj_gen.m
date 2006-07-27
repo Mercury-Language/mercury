@@ -42,7 +42,7 @@
 :- import_module libs.tree.
 :- import_module libs.tree.
 :- import_module ll_backend.code_gen.
-:- import_module ll_backend.trace.
+:- import_module ll_backend.trace_gen.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -250,8 +250,7 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
         code_info.effect_resume_point(NextResumePoint, CodeModel, ModContCode,
             !CI),
 
-        trace.maybe_generate_internal_event_code(Goal, DisjGoalInfo,
-            TraceCode, !CI),
+        maybe_generate_internal_event_code(Goal, DisjGoalInfo, TraceCode, !CI),
         goal_info_get_code_model(GoalInfo, GoalCodeModel),
         code_gen.generate_goal(GoalCodeModel, Goal, GoalCode, !CI),
 
@@ -330,8 +329,8 @@ generate_disjuncts([Goal0 | Goals], CodeModel, FullResumeMap,
 
         code_info.undo_disj_hijack(HijackInfo, UndoCode, !CI),
 
-        trace.maybe_generate_internal_event_code(Goal0, DisjGoalInfo,
-            TraceCode, !CI),
+        maybe_generate_internal_event_code(Goal0, DisjGoalInfo, TraceCode,
+            !CI),
         code_gen.generate_goal(CodeModel, Goal0, GoalCode, !CI),
         goal_info_get_store_map(DisjGoalInfo, StoreMap),
         code_info.generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, SaveCode,

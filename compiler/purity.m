@@ -345,7 +345,7 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
     RunPostTypeCheck = no,
     PurityInfo0 = purity_info(ModuleInfo, RunPostTypeCheck,
         !.PredInfo, VarTypes0, VarSet0, [], dont_make_implicit_promises),
-    compute_goal_purity(Goal0, Goal, Bodypurity, PurityInfo0, PurityInfo),
+    compute_goal_purity(Goal0, Goal, Bodypurity, _, PurityInfo0, PurityInfo),
     PurityInfo = purity_info(_, _, !:PredInfo, VarTypes, VarSet, _, _),
     proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
     proc_info_set_vartypes(VarTypes, ProcInfo1, ProcInfo2),
@@ -410,7 +410,7 @@ compute_purity([], [], _, !Purity, !Info).
 compute_purity([Clause0 | Clauses0], [Clause | Clauses], PredInfo, !Purity,
         !Info) :-
     Clause0 = clause(Ids, GoalExpr0 - GoalInfo0, Lang, Context),
-    compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo0, BodyPurity0, !Info),
+    compute_expr_purity(GoalExpr0, GoalExpr, GoalInfo0, BodyPurity0, _, !Info),
     % If this clause doesn't apply to all modes of this procedure,
     % i.e. the procedure has different clauses for different modes,
     % then we must treat it as impure, unless the programmer has promised
@@ -436,7 +436,7 @@ compute_purity([Clause0 | Clauses0], [Clause | Clauses], PredInfo, !Purity,
         ClausePurity = purity_impure
     ),
     BodyPurity = worst_purity(BodyPurity0, ClausePurity),
-    add_goal_info_purity_feature(BodyPurity, GoalInfo0, GoalInfo),
+    goal_info_set_purity(BodyPurity, GoalInfo0, GoalInfo),
     !:Purity = worst_purity(!.Purity, BodyPurity),
     Clause = clause(Ids, GoalExpr - GoalInfo, Lang, Context),
     compute_purity(Clauses0, Clauses, PredInfo, !Purity, !Info).
@@ -455,13 +455,16 @@ applies_to_all_modes(clause(ClauseProcIds, _, _, _), ProcIds) :-
     ).
 
 :- pred compute_expr_purity(hlds_goal_expr::in, hlds_goal_expr::out,
-    hlds_goal_info::in, purity::out, purity_info::in, purity_info::out) is det.
+    hlds_goal_info::in, purity::out, contains_trace_goal::out,
+    purity_info::in, purity_info::out) is det.
 
-compute_expr_purity(conj(ConjType, Goals0), conj(ConjType, Goals), _, Purity,
-        !Info) :-
-    compute_goals_purity(Goals0, Goals, purity_pure, Purity, !Info).
-compute_expr_purity(Goal0, Goal, GoalInfo, ActualPurity, !Info) :-
-    Goal0 = call(PredId0, ProcId, Vars, BIState, UContext, Name0),
+compute_expr_purity(conj(ConjType, Goals0), conj(ConjType, Goals), _,
+        Purity, ContainsTrace, !Info) :-
+    compute_goals_purity(Goals0, Goals, purity_pure, Purity,
+        contains_no_trace_goal, ContainsTrace, !Info).
+compute_expr_purity(Goal0, Goal, GoalInfo, ActualPurity,
+        contains_no_trace_goal, !Info) :-
+    Goal0 = plain_call(PredId0, ProcId, Vars, BIState, UContext, Name0),
     RunPostTypecheck = !.Info ^ run_post_typecheck,
     PredInfo = !.Info ^ pred_info,
     ModuleInfo = !.Info ^ module_info,
@@ -479,19 +482,19 @@ compute_expr_purity(Goal0, Goal, GoalInfo, ActualPurity, !Info) :-
             Goal = generic_call(cast(unsafe_type_cast), [InputArg, OutputArg],
                 [in_mode, out_mode], detism_det)
         ;
-            Goal = call(PredId, ProcId, Vars, BIState, UContext, Name)
+            Goal = plain_call(PredId, ProcId, Vars, BIState, UContext, Name)
         )
     ;
         RunPostTypecheck = no,
         PredId = PredId0,
         Goal = Goal0
     ),
-    infer_goal_info_purity(GoalInfo, DeclaredPurity),
+    goal_info_get_purity(GoalInfo, DeclaredPurity),
     goal_info_get_context(GoalInfo, CallContext),
     perform_goal_purity_checks(CallContext, PredId,
         DeclaredPurity, ActualPurity, !Info).
 compute_expr_purity(generic_call(GenericCall0, Args, Modes0, Det),
-        GoalExpr, _GoalInfo, Purity, !Info) :-
+        GoalExpr, _GoalInfo, Purity, contains_no_trace_goal, !Info) :-
     (
         GenericCall0 = higher_order(_, Purity, _, _),
         GoalExpr = generic_call(GenericCall0, Args, Modes0, Det)
@@ -505,9 +508,11 @@ compute_expr_purity(generic_call(GenericCall0, Args, Modes0, Det),
         GoalExpr = generic_call(GenericCall0, Args, Modes0, Det)
     ).
 compute_expr_purity(switch(Var, Canfail, Cases0),
-        switch(Var, Canfail, Cases), _, Purity, !Info) :-
-    compute_cases_purity(Cases0, Cases, purity_pure, Purity, !Info).
-compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity, !Info) :-
+        switch(Var, Canfail, Cases), _, Purity, ContainsTrace, !Info) :-
+    compute_cases_purity(Cases0, Cases, purity_pure, Purity,
+        contains_no_trace_goal, ContainsTrace, !Info).
+compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity,
+        ContainsTrace, !Info) :-
     Unif0 = unify(Var, RHS0, Mode, Unification, UnifyContext),
     (
         RHS0 = lambda_goal(LambdaPurity, F, EvalMethod, H, Vars,
@@ -515,12 +520,12 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity, !Info) :-
     ->
         RHS = lambda_goal(LambdaPurity, F, EvalMethod, H, Vars,
             Modes, K, Goal - Info0),
-        compute_expr_purity(Goal0, Goal, Info0, GoalPurity, !Info),
+        compute_expr_purity(Goal0, Goal, Info0, GoalPurity, _, !Info),
         check_closure_purity(GoalInfo, LambdaPurity, GoalPurity, !Info),
         GoalExpr = unify(Var, RHS, Mode, Unification, UnifyContext),
         % the unification itself is always pure,
         % even if the lambda expression body is impure
-        infer_goal_info_purity(GoalInfo, DeclaredPurity),
+        goal_info_get_purity(GoalInfo, DeclaredPurity),
         ( DeclaredPurity \= purity_pure ->
             goal_info_get_context(GoalInfo, Context),
             Message = impure_unification_expr_error(Context, DeclaredPurity),
@@ -528,7 +533,8 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity, !Info) :-
         ;
             true
         ),
-        ActualPurity = purity_pure
+        ActualPurity = purity_pure,
+        ContainsTrace = contains_no_trace_goal
     ;
         RHS0 = functor(ConsId, _, Args)
     ->
@@ -553,32 +559,38 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity, !Info) :-
         ( Goal1 = unify(_, _, _, _, _) - _ ->
             check_higher_order_purity(GoalInfo, ConsId, Var, Args,
                 ActualPurity, !Info),
+            ContainsTrace = contains_no_trace_goal,
             Goal = Goal1
         ;
-            compute_goal_purity(Goal1, Goal, ActualPurity, !Info)
+            compute_goal_purity(Goal1, Goal, ActualPurity, ContainsTrace,
+                !Info)
         ),
         Goal = GoalExpr - _
     ;
         GoalExpr = Unif0,
-        ActualPurity = purity_pure
+        ActualPurity = purity_pure,
+        ContainsTrace = contains_no_trace_goal
     ).
-compute_expr_purity(disj(Goals0), disj(Goals), _, Purity, !Info) :-
-    compute_goals_purity(Goals0, Goals, purity_pure, Purity, !Info).
-compute_expr_purity(not(Goal0), NotGoal, GoalInfo0, Purity, !Info) :-
+compute_expr_purity(disj(Goals0), disj(Goals), _, Purity, ContainsTrace,
+        !Info) :-
+    compute_goals_purity(Goals0, Goals, purity_pure, Purity,
+        contains_no_trace_goal, ContainsTrace, !Info).
+compute_expr_purity(negation(Goal0), NotGoal, GoalInfo0, Purity, ContainsTrace,
+        !Info) :-
     % Eliminate double negation.
     negate_goal(Goal0, GoalInfo0, NotGoal0),
-    ( NotGoal0 = not(Goal1) - _GoalInfo1 ->
-        compute_goal_purity(Goal1, Goal, Purity, !Info),
-        NotGoal = not(Goal)
+    ( NotGoal0 = negation(Goal1) - _GoalInfo1 ->
+        compute_goal_purity(Goal1, Goal, Purity, ContainsTrace, !Info),
+        NotGoal = negation(Goal)
     ;
-        compute_goal_purity(NotGoal0, NotGoal1, Purity, !Info),
+        compute_goal_purity(NotGoal0, NotGoal1, Purity, ContainsTrace, !Info),
         NotGoal1 = NotGoal - _
     ).
 compute_expr_purity(scope(Reason, Goal0), scope(Reason, Goal),
-        _, Purity, !Info) :-
+        _, Purity, ContainsTrace, !Info) :-
     (
         Reason = exist_quant(_),
-        compute_goal_purity(Goal0, Goal, Purity, !Info)
+        compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info)
     ;
         Reason = promise_purity(Implicit, PromisedPurity),
         ImplicitPurity0 = !.Info ^ implicit_purity,
@@ -588,31 +600,48 @@ compute_expr_purity(scope(Reason, Goal0), scope(Reason, Goal),
         ;
             Implicit = dont_make_implicit_promises
         ),
-        compute_goal_purity(Goal0, Goal, _, !Info),
+        compute_goal_purity(Goal0, Goal, _, ContainsTrace, !Info),
         !:Info = !.Info ^ implicit_purity := ImplicitPurity0,
         Purity = PromisedPurity
     ;
         Reason = promise_solutions(_, _),
-        compute_goal_purity(Goal0, Goal, Purity, !Info)
+        compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info)
     ;
         Reason = commit(_),
-        compute_goal_purity(Goal0, Goal, Purity, !Info)
+        compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info)
     ;
         Reason = barrier(_),
-        compute_goal_purity(Goal0, Goal, Purity, !Info)
+        compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info)
     ;
         Reason = from_ground_term(_),
-        compute_goal_purity(Goal0, Goal, Purity, !Info)
+        compute_goal_purity(Goal0, Goal, Purity, ContainsTrace, !Info)
+    ;
+        Reason = trace_goal(_, _, _, _),
+        compute_goal_purity(Goal0, Goal, _SubPurity, _, !Info),
+        Purity = purity_pure,
+        ContainsTrace = contains_trace_goal
     ).
 compute_expr_purity(if_then_else(Vars, Cond0, Then0, Else0),
-        if_then_else(Vars, Cond, Then, Else), _, Purity, !Info) :-
-    compute_goal_purity(Cond0, Cond, Purity1, !Info),
-    compute_goal_purity(Then0, Then, Purity2, !Info),
-    compute_goal_purity(Else0, Else, Purity3, !Info),
+        if_then_else(Vars, Cond, Then, Else), _, Purity, ContainsTrace,
+        !Info) :-
+    compute_goal_purity(Cond0, Cond, Purity1, ContainsTrace1, !Info),
+    compute_goal_purity(Then0, Then, Purity2, ContainsTrace2, !Info),
+    compute_goal_purity(Else0, Else, Purity3, ContainsTrace3, !Info),
     worst_purity(Purity1, Purity2) = Purity12,
-    worst_purity(Purity12, Purity3) = Purity.
-compute_expr_purity(ForeignProc0, ForeignProc, _, Purity, !Info) :-
-    ForeignProc0 = foreign_proc(_, _, _, _, _, _),
+    worst_purity(Purity12, Purity3) = Purity,
+    (
+        ( ContainsTrace1 = contains_trace_goal
+        ; ContainsTrace2 = contains_trace_goal
+        ; ContainsTrace3 = contains_trace_goal
+        )
+    ->
+        ContainsTrace = contains_trace_goal
+    ;
+        ContainsTrace = contains_no_trace_goal
+    ).
+compute_expr_purity(ForeignProc0, ForeignProc, _, Purity,
+        contains_no_trace_goal, !Info) :-
+    ForeignProc0 = call_foreign_proc(_, _, _, _, _, _, _),
     Attributes = ForeignProc0 ^ foreign_attr,
     PredId = ForeignProc0 ^ foreign_pred_id,
     ModuleInfo = !.Info ^ module_info,
@@ -628,8 +657,7 @@ compute_expr_purity(ForeignProc0, ForeignProc, _, Purity, !Info) :-
         ForeignProc = ForeignProc0,
         Purity = purity(Attributes)
     ).
-
-compute_expr_purity(shorthand(_), _, _, _, !Info) :-
+compute_expr_purity(shorthand(_), _, _, _, _, !Info) :-
     % These should have been expanded out by now.
     unexpected(this_file, "compute_expr_purity: unexpected shorthand").
 
@@ -676,7 +704,7 @@ check_higher_order_purity(GoalInfo, ConsId, Var, Args, ActualPurity, !Info) :-
     ActualPurity = purity_pure,
 
     % Check for a bogus purity annotation on the unification.
-    infer_goal_info_purity(GoalInfo, DeclaredPurity),
+    goal_info_get_purity(GoalInfo, DeclaredPurity),
     (
         DeclaredPurity \= purity_pure,
         !.Info ^ implicit_purity = dont_make_implicit_promises
@@ -835,34 +863,59 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
     ).
 
 :- pred compute_goal_purity(hlds_goal::in, hlds_goal::out, purity::out,
-    purity_info::in, purity_info::out) is det.
+    contains_trace_goal::out, purity_info::in, purity_info::out) is det.
 
-compute_goal_purity(Goal0 - GoalInfo0, Goal - GoalInfo, Purity, !Info) :-
-    compute_expr_purity(Goal0, Goal, GoalInfo0, Purity, !Info),
-    add_goal_info_purity_feature(Purity, GoalInfo0, GoalInfo).
+compute_goal_purity(Goal0 - GoalInfo0, Goal - GoalInfo, Purity, ContainsTrace,
+        !Info) :-
+    compute_expr_purity(Goal0, Goal, GoalInfo0, Purity, ContainsTrace, !Info),
+    goal_info_set_purity(Purity, GoalInfo0, GoalInfo1),
+    (
+        ContainsTrace = contains_trace_goal,
+        goal_info_add_feature(contains_trace, GoalInfo1, GoalInfo)
+    ;
+        ContainsTrace = contains_no_trace_goal,
+        goal_info_remove_feature(contains_trace, GoalInfo1, GoalInfo)
+    ).
 
     % Compute the purity of a list of hlds_goals.  Since the purity of a
     % disjunction is computed the same way as the purity of a conjunction,
     % we use the same code for both
     %
 :- pred compute_goals_purity(list(hlds_goal)::in, list(hlds_goal)::out,
-    purity::in, purity::out, purity_info::in, purity_info::out) is det.
+    purity::in, purity::out, contains_trace_goal::in, contains_trace_goal::out,
+    purity_info::in, purity_info::out) is det.
 
-compute_goals_purity([], [], !Purity, !Info).
-compute_goals_purity([Goal0 | Goals0], [Goal | Goals], !Purity, !Info) :-
-    compute_goal_purity(Goal0, Goal, GoalPurity, !Info),
-    worst_purity(GoalPurity, !.Purity) = !:Purity,
-    compute_goals_purity(Goals0, Goals, !Purity, !Info).
+compute_goals_purity([], [], !Purity, !ContainsTrace, !Info).
+compute_goals_purity([Goal0 | Goals0], [Goal | Goals], !Purity, !ContainsTrace,
+        !Info) :-
+    compute_goal_purity(Goal0, Goal, GoalPurity, GoalContainsTrace, !Info),
+    !:Purity = worst_purity(GoalPurity, !.Purity),
+    !:ContainsTrace = worst_contains_trace(GoalContainsTrace, !.ContainsTrace),
+    compute_goals_purity(Goals0, Goals, !Purity, !ContainsTrace, !Info).
 
 :- pred compute_cases_purity(list(case)::in, list(case)::out,
-    purity::in, purity::out, purity_info::in, purity_info::out) is det.
+    purity::in, purity::out, contains_trace_goal::in, contains_trace_goal::out,
+    purity_info::in, purity_info::out) is det.
 
-compute_cases_purity([], [], !Purity, !Info).
+compute_cases_purity([], [], !Purity, !ContainsTrace, !Info).
 compute_cases_purity([case(Ctor, Goal0) | Cases0], [case(Ctor, Goal) | Cases],
-        !Purity, !Info) :-
-    compute_goal_purity(Goal0, Goal, GoalPurity, !Info),
-    worst_purity(GoalPurity, !.Purity) = !:Purity,
-    compute_cases_purity(Cases0, Cases, !Purity, !Info).
+        !Purity, !ContainsTrace, !Info) :-
+    compute_goal_purity(Goal0, Goal, GoalPurity, GoalContainsTrace, !Info),
+    !:Purity = worst_purity(GoalPurity, !.Purity),
+    !:ContainsTrace = worst_contains_trace(GoalContainsTrace, !.ContainsTrace),
+    compute_cases_purity(Cases0, Cases, !Purity, !ContainsTrace, !Info).
+
+:- func worst_contains_trace(contains_trace_goal, contains_trace_goal)
+    = contains_trace_goal.
+
+worst_contains_trace(contains_trace_goal, contains_trace_goal) =
+    contains_trace_goal.
+worst_contains_trace(contains_trace_goal, contains_no_trace_goal) =
+    contains_trace_goal.
+worst_contains_trace(contains_no_trace_goal, contains_trace_goal) =
+    contains_trace_goal.
+worst_contains_trace(contains_no_trace_goal, contains_no_trace_goal) =
+    contains_no_trace_goal.
 
 %-----------------------------------------------------------------------------%
 

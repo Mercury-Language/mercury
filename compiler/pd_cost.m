@@ -69,7 +69,7 @@ goal_cost(if_then_else(_, Cond, Then, Else) - _, Cost) :-
     goal_cost(Else, Cost3),
     Cost = Cost1 + Cost2 + Cost3.
 
-goal_cost(call(_, _, Args, BuiltinState, _, _) - _, Cost) :-
+goal_cost(plain_call(_, _, Args, BuiltinState, _, _) - _, Cost) :-
     ( BuiltinState = inline_builtin ->
         Cost = cost_of_builtin_call
     ;
@@ -79,7 +79,7 @@ goal_cost(call(_, _, Args, BuiltinState, _, _) - _, Cost) :-
             + cost_of_reg_assign * InputArgs
     ).
 
-goal_cost(not(Goal) - _, Cost) :-
+goal_cost(negation(Goal) - _, Cost) :-
     goal_cost(Goal, Cost).
 
 goal_cost(scope(_, Goal) - _, Cost) :-
@@ -94,12 +94,13 @@ goal_cost(unify(_, _, _, Unification, _) - GoalInfo, Cost) :-
     goal_info_get_nonlocals(GoalInfo, NonLocals),
     unify_cost(NonLocals, Unification, Cost).
 
-goal_cost(foreign_proc(Attributes, _, _, Args, _, _) - _, Cost) :-
+goal_cost(call_foreign_proc(Attributes, _, _, Args, _, _, _) - _, Cost) :-
     ( may_call_mercury(Attributes) = will_not_call_mercury ->
         Cost1 = 0
     ;
         Cost1 = cost_of_stack_flush
     ),
+    % XXX This is *too* rough.
     list.length(Args, Arity),
     InputArgs = Arity // 2, % rough
     Cost = Cost1 + cost_of_call + cost_of_reg_assign * InputArgs.

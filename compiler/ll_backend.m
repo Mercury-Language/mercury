@@ -49,7 +49,7 @@
    :- include_module pragma_c_gen.
    :- include_module par_conj_gen.
    :- include_module middle_rec.
-   :- include_module trace.
+   :- include_module trace_gen.
 
    :- include_module code_info.
    :- include_module lookup_util.

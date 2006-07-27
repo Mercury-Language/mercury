@@ -689,7 +689,7 @@ generate_initialise_clauses(_Type, TypeBody, X, Context, Clauses, !Info) :-
         InitPred = SolverTypeDetails ^ init_pred,
         PredId = invalid_pred_id,
         ModeId = invalid_proc_id,
-        Call = call(PredId, ModeId, [X], not_builtin, no, InitPred),
+        Call = plain_call(PredId, ModeId, [X], not_builtin, no, InitPred),
         goal_info_init(Context, GoalInfo),
         Goal = Call - GoalInfo,
         quantify_clauses_body([X], Goal, Context, Clauses, !Info)
@@ -717,7 +717,7 @@ generate_initialise_clauses(_Type, TypeBody, X, Context, Clauses, !Info) :-
         InitPred = qualified(TypeModuleName, PredName),
         PredId   = invalid_pred_id,
         ModeId   = invalid_proc_id,
-        InitCall = call(PredId, ModeId, [X0], not_builtin, no, InitPred),
+        InitCall = plain_call(PredId, ModeId, [X0], not_builtin, no, InitPred),
         InitGoal = InitCall - GoalInfo,
 
         Any = any(shared),
@@ -868,7 +868,8 @@ generate_user_defined_unify_clauses(UserEqCompare, H1, H2, Context, Clauses,
 
         PredId = invalid_pred_id,
         ModeId = invalid_proc_id,
-        Call = call(PredId, ModeId, [H1, H2], not_builtin, no, UnifyPredName),
+        Call = plain_call(PredId, ModeId, [H1, H2], not_builtin, no,
+            UnifyPredName),
         goal_info_init(Context, GoalInfo),
         Goal = Call - GoalInfo
     ; MaybeCompare = yes(ComparePredName) ->
@@ -880,7 +881,7 @@ generate_user_defined_unify_clauses(UserEqCompare, H1, H2, Context, Clauses,
         info_new_var(comparison_result_type, ResultVar, !Info),
         PredId = invalid_pred_id,
         ModeId = invalid_proc_id,
-        Call = call(PredId, ModeId, [ResultVar, H1, H2], not_builtin, no,
+        Call = plain_call(PredId, ModeId, [ResultVar, H1, H2], not_builtin, no,
             ComparePredName),
         goal_info_init(Context, GoalInfo),
         CallGoal = Call - GoalInfo,
@@ -1150,7 +1151,8 @@ generate_user_defined_compare_clauses(unify_compare(_, MaybeCompare),
         %
         PredId = invalid_pred_id,
         ModeId = invalid_proc_id,
-        Call = call(PredId, ModeId, ArgVars, not_builtin, no, ComparePredName),
+        Call = plain_call(PredId, ModeId, ArgVars, not_builtin, no,
+            ComparePredName),
         goal_info_init(Context, GoalInfo),
         Goal = Call - GoalInfo
     ;
@@ -1787,7 +1789,7 @@ compare_args_2([_Name - Type | ArgTypes], ExistQTVars, [X | Xs], [Y | Ys], R,
         build_call(ComparePred, [R1, X, Y], Context, Do_Comparison, !Info),
 
         make_const_construction(R1, equal_cons_id, Check_Equal),
-        Check_Not_Equal = not(Check_Equal) - GoalInfo,
+        Check_Not_Equal = negation(Check_Equal) - GoalInfo,
 
         create_atomic_complicated_unification(R, var(R1),
             Context, explicit, [], Return_R1),
@@ -1823,7 +1825,8 @@ build_call(Name, ArgVars, Context, Goal, !Info) :-
         MercuryBuiltin = mercury_private_builtin_module
     ),
     goal_util.generate_simple_call(MercuryBuiltin, Name, predicate, mode_no(0),
-        detism_erroneous, ArgVars, [], [], ModuleInfo, Context, Goal).
+        detism_erroneous, purity_pure, ArgVars, [], [], ModuleInfo, Context,
+        Goal).
 
 :- pred build_specific_call(mer_type::in, special_pred_id::in,
     list(prog_var)::in, instmap_delta::in, determinism::in,
@@ -1837,7 +1840,8 @@ build_specific_call(Type, SpecialPredId, ArgVars, InstmapDelta, Detism,
         polymorphism.get_special_proc(Type, SpecialPredId, ModuleInfo,
             PredName, PredId, ProcId)
     ->
-        GoalExpr = call(PredId, ProcId, ArgVars, not_builtin, no, PredName),
+        GoalExpr = plain_call(PredId, ProcId, ArgVars, not_builtin, no,
+            PredName),
         set.list_to_set(ArgVars, NonLocals),
         goal_info_init(NonLocals, InstmapDelta, Detism, purity_pure,
             GoalInfo0),

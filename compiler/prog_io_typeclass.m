@@ -62,9 +62,11 @@
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.prog_type.
 
+:- import_module assoc_list.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
+:- import_module pair.
 :- import_module set.
 :- import_module string.
 :- import_module term.
@@ -87,29 +89,28 @@ parse_typeclass(ModuleName, VarSet, TypeClassTerm, Result) :-
 
 parse_non_empty_class(ModuleName, Name, Methods, VarSet, Result) :-
     varset.coerce(VarSet, TVarSet),
-    parse_class_methods(ModuleName, Methods, VarSet, ParsedMethods),
+    parse_class_methods(ModuleName, Methods, VarSet, MaybeParsedMethods),
     (
-        ParsedMethods = ok(MethodList),
-        parse_class_head(ModuleName, Name, VarSet, ParsedNameAndVars),
+        MaybeParsedMethods = ok1(MethodList),
+        parse_class_head(ModuleName, Name, VarSet, MaybeParsedNameAndVars),
         (
-            ParsedNameAndVars = error(String, Term)
-        ->
-            Result = error(String, Term)
+            MaybeParsedNameAndVars = error1(Errors),
+            Result = error1(Errors)
         ;
-            ParsedNameAndVars = ok(Item),
-            Item = typeclass(_, _, _, _, _, _)
-        ->
-            Result = ok((Item
-                ^ tc_class_methods := concrete(MethodList))
-                ^ tc_varset := TVarSet)
-        ;
-            % If the item we get back isn't a typeclass,
-            % something has gone wrong...
-            unexpected(this_file, "item should be a typeclass")
+            MaybeParsedNameAndVars = ok1(ParsedNameAndVars),
+            ( ParsedNameAndVars = typeclass(_, _, _, _, _, _) ->
+                Result = ok1((ParsedNameAndVars
+                    ^ tc_class_methods := concrete(MethodList))
+                    ^ tc_varset := TVarSet)
+            ;
+                % If the item we get back isn't a typeclass,
+                % something has gone wrong...
+                unexpected(this_file, "item should be a typeclass")
+            )
         )
     ;
-        ParsedMethods = error(String, Term),
-        Result = error(String, Term)
+        MaybeParsedMethods = error1(Errors),
+        Result = error1(Errors)
     ).
 
 :- pred parse_class_head(module_name::in, term::in, varset::in,
@@ -128,55 +129,57 @@ parse_class_head(ModuleName, Arg, VarSet, Result) :-
 
 parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
     varset.coerce(VarSet, TVarSet),
-    parse_superclass_constraints(ModuleName, Constraints, ParsedConstraints),
+    parse_superclass_constraints(ModuleName, Constraints,
+        MaybeParsedConstraints),
     (
-        ParsedConstraints = ok(ConstraintList, FunDeps),
+        MaybeParsedConstraints = ok2(ConstraintList, FunDeps),
         parse_unconstrained_class(ModuleName, Decl, TVarSet, Result0),
         (
-            Result0 = error(_, _)
-        ->
+            Result0 = error1(_),
             Result = Result0
         ;
-            Result0 = ok(Item),
-            Item = typeclass(_, _, _, _, _, _)
-        ->
-            (
-                % Check for type variables in the constraints which do not
-                % occur in the type class parameters.
-                prog_type.constraint_list_get_tvars(ConstraintList,
-                    ConstrainedVars),
-                list.member(Var, ConstrainedVars),
-                \+ list.member(Var, Item ^ tc_class_params)
-            ->
-                Result = error("type variable in superclass constraint " ++
-                    "is not a parameter of this type class", Constraints)
-            ;
-                % Check for type variables in the fundeps which do not occur
-                % in the type class parameters.
-                list.member(FunDep, FunDeps),
-                FunDep = fundep(Domain, Range),
+            Result0 = ok1(Item),
+            ( Item = typeclass(_, _, _, _, _, _) ->
                 (
-                    list.member(Var, Domain)
+                    % Check for type variables in the constraints which do not
+                    % occur in the type class parameters.
+                    prog_type.constraint_list_get_tvars(ConstraintList,
+                        ConstrainedVars),
+                    list.member(Var, ConstrainedVars),
+                    \+ list.member(Var, Item ^ tc_class_params)
+                ->
+                    Msg = "type variable in superclass constraint " ++
+                        "is not a parameter of this type class",
+                    Result = error1([Msg - Constraints])
                 ;
-                    list.member(Var, Range)
-                ),
-                \+ list.member(Var, Item ^ tc_class_params)
-            ->
-                Result = error("type variable in functional dependency " ++
-                    "is not a parameter of this type class", Constraints)
+                    % Check for type variables in the fundeps which do not
+                    % occur in the type class parameters.
+                    list.member(FunDep, FunDeps),
+                    FunDep = fundep(Domain, Range),
+                    (
+                        list.member(Var, Domain)
+                    ;
+                        list.member(Var, Range)
+                    ),
+                    \+ list.member(Var, Item ^ tc_class_params)
+                ->
+                    Msg = "type variable in functional dependency " ++
+                        "is not a parameter of this type class",
+                    Result = error1([Msg - Constraints])
+                ;
+                    Result = ok1((Item
+                        ^ tc_constraints := ConstraintList)
+                        ^ tc_fundeps := FunDeps)
+                )
             ;
-                Result = ok((Item
-                    ^ tc_constraints := ConstraintList)
-                    ^ tc_fundeps := FunDeps)
+                % If the item we get back isn't a typeclass,
+                % something has gone wrong...
+                unexpected(this_file, "item should be a typeclass")
             )
-        ;
-            % If the item we get back isn't a typeclass,
-            % something has gone wrong...
-            unexpected(this_file, "item should be a typeclass")
         )
     ;
-        ParsedConstraints = error(String, Term),
-        Result = error(String, Term)
+        MaybeParsedConstraints = error2(Errors),
+        Result = error1(Errors)
     ).
 
 :- pred parse_superclass_constraints(module_name::in, term::in,
@@ -185,20 +188,20 @@ parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
 parse_superclass_constraints(_ModuleName, ConstraintsTerm, Result) :-
     parse_arbitrary_constraints(ConstraintsTerm, Result0),
     (
-        Result0 = ok(ArbitraryConstraints),
+        Result0 = ok1(ArbitraryConstraints),
         (
             collect_simple_and_fundep_constraints(ArbitraryConstraints,
                 Constraints, FunDeps)
         ->
-            Result = ok(Constraints, FunDeps)
+            Result = ok2(Constraints, FunDeps)
         ;
-            ErrorMessage = "constraints on class declarations" ++
+            Msg = "constraints on class declarations" ++
                 " may only constrain type variables and ground types",
-            Result = error(ErrorMessage, ConstraintsTerm)
+            Result = error2([Msg - ConstraintsTerm])
         )
     ;
-        Result0 = error(String, Term),
-        Result = error(String, Term)
+        Result0 = error1(Errors),
+        Result = error2(Errors)
     ).
 
 :- pred collect_simple_and_fundep_constraints(list(arbitrary_constraint)::in,
@@ -226,21 +229,21 @@ parse_unconstrained_class(ModuleName, Name, TVarSet, Result) :-
     parse_implicitly_qualified_term(ModuleName,
         Name, Name, "typeclass declaration", MaybeClassName),
     (
-        MaybeClassName = ok(ClassName, TermVars0),
+        MaybeClassName = ok2(ClassName, TermVars0),
         list.map(term.coerce, TermVars0, TermVars),
         (
             term.var_list_to_term_list(Vars, TermVars),
             list.sort_and_remove_dups(TermVars, SortedTermVars),
             list.length(SortedTermVars) = list.length(TermVars) : int
         ->
-            Result = ok(typeclass([], [], ClassName, Vars, abstract, TVarSet))
+            Result = ok1(typeclass([], [], ClassName, Vars, abstract, TVarSet))
         ;
-            Result = error("expected distinct variables " ++
-                "as class parameters", Name)
+            Msg = "expected distinct variables as class parameters",
+            Result = error1([Msg - Name])
         )
     ;
-        MaybeClassName = error(String, Term),
-        Result = error(String, Term)
+        MaybeClassName = error2(Errors),
+        Result = error1(Errors)
     ).
 
 :- pred parse_class_methods(module_name::in, term::in, varset::in,
@@ -260,45 +263,53 @@ parse_class_methods(ModuleName, Methods, VarSet, Result) :-
             ), MethodList, Interface),
         find_errors(Interface, Result)
     ;
-        Result = error("expected list of class methods", Methods)
+        Result = error1(["expected list of class methods" - Methods])
     ).
 
 
 :- pred item_to_class_method(maybe2(item, prog_context)::in, term::in,
     maybe1(class_method)::out) is det.
 
-item_to_class_method(error(String, Term), _, error(String, Term)).
-item_to_class_method(ok(Item, Context), Term, Result) :-
+item_to_class_method(error2(Errors), _, error1(Errors)).
+item_to_class_method(ok2(Item, Context), Term, Result) :-
     ( Item = pred_or_func(A, B, C, D, E, F, G, H, I, J, K, L) ->
-        Result = ok(pred_or_func(A, B, C, D, E, F, G, H, I, J, K, L, Context))
+        Result = ok1(pred_or_func(A, B, C, D, E, F, G, H, I, J, K, L, Context))
     ; Item = pred_or_func_mode(A, B, C, D, E, F, G) ->
-        Result = ok(pred_or_func_mode(A, B, C, D, E, F, G, Context))
+        Result = ok1(pred_or_func_mode(A, B, C, D, E, F, G, Context))
     ;
-        Result = error("Only pred, func and mode declarations " ++
-            "allowed in class interface", Term)
+        Msg = "Only pred, func and mode declarations " ++
+            "allowed in class interface",
+        Result = error1([Msg - Term])
     ).
 
     % From a list of maybe1s, search through until you find an error.
-    % If an error is found, return it.
-    % If no error is found, return ok(the original elements).
+    % If some errors are found, error1(their union).
+    % If no error is found, return ok1(the original elements).
     %
 :- pred find_errors(list(maybe1(T))::in, maybe1(list(T))::out) is det.
 
-find_errors([], ok([])).
-find_errors([X|Xs], Result) :-
+find_errors(Xs, Result) :-
+    find_errors_2(Xs, [], Methods, [], Errors),
     (
-        X = ok(Method),
-        find_errors(Xs, Result0),
-        (
-            Result0 = ok(Methods),
-            Result = ok([Method|Methods])
-        ;
-            Result0 = error(String, Term),
-            Result = error(String, Term)
-        )
+        Errors = [],
+        Result = ok1(Methods)
     ;
-        X = error(String, Term),
-        Result = error(String, Term)
+        Errors = [_ | _],
+        Result = error1(Errors)
+    ).
+
+:- pred find_errors_2(list(maybe1(T))::in, list(T)::in, list(T)::out,
+    assoc_list(string, term)::in, assoc_list(string, term)::out) is det.
+
+find_errors_2([], !Methods, !Errors).
+find_errors_2([X | Xs], !Methods, !Errors) :-
+    find_errors_2(Xs, !Methods, !Errors),
+    (
+        X = ok1(CurMethod),
+        !:Methods = [CurMethod | !.Methods]
+    ;
+        X = error1(CurErrors),
+        !:Errors = CurErrors ++ !.Errors
     ).
 
 %-----------------------------------------------------------------------------%
@@ -324,18 +335,18 @@ parse_simple_class_constraints(_ModuleName, ConstraintsTerm, ErrorMessage,
         Result) :-
     parse_arbitrary_constraints(ConstraintsTerm, Result0),
     (
-        Result0 = ok(ArbitraryConstraints),
+        Result0 = ok1(ArbitraryConstraints),
         (
             % Fail if any of the constraints aren't simple.
             list.map(get_simple_constraint, ArbitraryConstraints, Constraints)
         ->
-            Result = ok(Constraints)
+            Result = ok1(Constraints)
         ;
-            Result = error(ErrorMessage, ConstraintsTerm)
+            Result = error1([ErrorMessage - ConstraintsTerm])
         )
     ;
-        Result0 = error(String, Term),
-        Result = error(String, Term)
+        Result0 = error1(Errors),
+        Result = error1(Errors)
     ).
 
 :- pred get_simple_constraint(arbitrary_constraint::in, prog_constraint::out)
@@ -346,20 +357,20 @@ get_simple_constraint(simple(Constraint), Constraint).
 parse_class_and_inst_constraints(_ModuleName, ConstraintsTerm, Result) :-
     parse_arbitrary_constraints(ConstraintsTerm, Result0),
     (
-        Result0 = ok(ArbitraryConstraints),
+        Result0 = ok1(ArbitraryConstraints),
         (
             collect_class_and_inst_constraints(ArbitraryConstraints,
                 ProgConstraints, InstVarSub)
         ->
-            Result = ok(ProgConstraints, InstVarSub)
+            Result = ok2(ProgConstraints, InstVarSub)
         ;
-            ErrorMessage = "functional dependencies are only" ++
-                " allowed in typeclass declarations",
-            Result = error(ErrorMessage, ConstraintsTerm)
+            ErrorMessage = "functional dependencies are only allowed " ++
+                "in typeclass declarations",
+            Result = error2([ErrorMessage - ConstraintsTerm])
         )
     ;
-        Result0 = error(Msg, Term),
-        Result = error(Msg, Term)
+        Result0 = error1(Errors),
+        Result = error2(Errors)
     ).
 
 :- pred collect_class_and_inst_constraints(list(arbitrary_constraint)::in,
@@ -398,7 +409,7 @@ collect_class_and_inst_constraints([Constraint | Constraints],
             % is '=<'/2).
 
     ;       fundep(prog_fundep).
-            % A functional dependency (that is, one whose head is '->'/2
+            % A functional dependency (that is, one whose head is '->'/2)
             % and whose arguments are comma-separated variables.
 
 :- type arbitrary_constraints == list(arbitrary_constraint).
@@ -413,7 +424,7 @@ parse_arbitrary_constraints(ConstraintsTerm, Result) :-
 :- pred parse_arbitrary_constraint_list(list(term)::in,
     maybe1(arbitrary_constraints)::out) is det.
 
-parse_arbitrary_constraint_list([], ok([])).
+parse_arbitrary_constraint_list([], ok1([])).
 parse_arbitrary_constraint_list([Term | Terms], Result) :-
     parse_arbitrary_constraint(Term, Result0),
     parse_arbitrary_constraint_list(Terms, Result1),
@@ -422,10 +433,12 @@ parse_arbitrary_constraint_list([Term | Terms], Result) :-
 :- func combine_parse_results(maybe1(arbitrary_constraint),
     maybe1(arbitrary_constraints)) = maybe1(arbitrary_constraints).
 
-combine_parse_results(error(String, Term), _) = error(String, Term).
-combine_parse_results(ok(_), error(String, Term)) = error(String, Term).
-combine_parse_results(ok(Constraint), ok(Constraints)) =
-    ok([Constraint | Constraints]).
+combine_parse_results(error1(Errors1), error1(Errors2)) =
+    error1(Errors1 ++ Errors2).
+combine_parse_results(error1(Errors), ok1(_)) = error1(Errors).
+combine_parse_results(ok1(_), error1(Errors)) = error1(Errors).
+combine_parse_results(ok1(Constraint), ok1(Constraints)) =
+    ok1([Constraint | Constraints]).
 
 :- pred parse_arbitrary_constraint(term::in, maybe1(arbitrary_constraint)::out)
     is det.
@@ -434,31 +447,31 @@ parse_arbitrary_constraint(ConstraintTerm, Result) :-
     (
         parse_inst_constraint(ConstraintTerm, InstVar, Inst)
     ->
-        Result = ok(inst_constraint(InstVar, Inst))
+        Result = ok1(inst_constraint(InstVar, Inst))
     ;
         parse_fundep(ConstraintTerm, Result0)
     ->
         Result = Result0
     ;
         parse_qualified_term(ConstraintTerm, ConstraintTerm,
-            "class constraint", ok(ClassName, Args0))
+            "class constraint", ok2(ClassName, Args0))
     ->
         parse_types(Args0, ArgsResult),
         (
-            ArgsResult = ok(Args),
+            ArgsResult = ok1(Args),
             Constraint = constraint(ClassName, Args),
             ( constraint_is_not_simple(Constraint) ->
-                Result = ok(non_simple(Constraint))
+                Result = ok1(non_simple(Constraint))
             ;
-                Result = ok(simple(Constraint))
+                Result = ok1(simple(Constraint))
             )
         ;
-            ArgsResult = error(Msg, ErrorTerm),
-            Result = error(Msg, ErrorTerm)
+            ArgsResult = error1(Errors),
+            Result = error1(Errors)
         )
     ;
-        Result = error("expected atom as class name or inst constraint",
-            ConstraintTerm)
+        Msg = "expected atom as class name or inst constraint",
+        Result = error1([Msg - ConstraintTerm])
     ).
 
 :- pred parse_inst_constraint(term::in, inst_var::out, mer_inst::out)
@@ -478,11 +491,11 @@ parse_fundep(Term, Result) :-
         parse_fundep_2(DomainTerm, Domain),
         parse_fundep_2(RangeTerm, Range)
     ->
-        Result = ok(fundep(fundep(Domain, Range)))
+        Result = ok1(fundep(fundep(Domain, Range)))
     ;
         ErrorMessage = "domain and range of functional dependency " ++
             "must be comma-separated lists of variables",
-        Result = error(ErrorMessage, Term)
+        Result = error1([ErrorMessage - Term])
     ).
 
 :- pred parse_fundep_2(term::in, list(tvar)::out) is semidet.
@@ -529,25 +542,30 @@ parse_instance_name(ModuleName, Arg, TVarSet, Result) :-
     tvarset::in, maybe1(item)::out) is det.
 
 parse_derived_instance(ModuleName, Decl, Constraints, TVarSet, Result) :-
-    parse_instance_constraints(ModuleName, Constraints, ParsedConstraints),
+    parse_instance_constraints(ModuleName, Constraints,
+        MaybeParsedConstraints),
     (
-        ParsedConstraints = ok(ConstraintList),
+        MaybeParsedConstraints = ok1(ConstraintList),
         parse_underived_instance(ModuleName, Decl, TVarSet, Result0),
-        ( Result0 = error(_, _) ->
+        (
+            Result0 = error1(_),
             Result = Result0
-        ; Result0 = ok(instance(_, Name, Types, Body, VarSet, ModName)) ->
-            Result = ok(instance(ConstraintList, Name, Types, Body, VarSet,
-                ModName))
         ;
-            % If the item we get back isn't an instance,
-            % something has gone wrong...
-            % Maybe we should use cleverer inst decls to avoid
-            % this call to error.
-            unexpected(this_file, "item should be an instance")
+            Result0 = ok1(Item),
+            ( Item = instance(_, Name, Types, Body, VarSet, ModName) ->
+                Result = ok1(instance(ConstraintList, Name, Types, Body,
+                    VarSet, ModName))
+            ;
+                % If the item we get back isn't an instance,
+                % something has gone wrong...
+                % Maybe we should use cleverer inst decls to avoid
+                % this call to error.
+                unexpected(this_file, "item should be an instance")
+            )
         )
     ;
-        ParsedConstraints = error(String, Term),
-        Result = error(String, Term)
+        MaybeParsedConstraints = error1(Errors),
+        Result = error1(Errors)
     ).
 
 :- pred parse_instance_constraints(module_name::in, term::in,
@@ -566,21 +584,21 @@ parse_underived_instance(ModuleName, Name, TVarSet, Result) :-
     % could well be for a typeclass defined in another module.
     parse_qualified_term(Name, Name, "instance declaration", MaybeClassName),
     (
-        MaybeClassName = ok(ClassName, TermTypes),
+        MaybeClassName = ok2(ClassName, TermTypes),
         parse_types(TermTypes, TypesResult),
         parse_underived_instance_2(Name, ClassName, TypesResult, TVarSet,
             ModuleName, Result)
     ;
-        MaybeClassName = error(String, Term),
-        Result = error(String, Term)
+        MaybeClassName = error2(Errors),
+        Result = error1(Errors)
     ).
 
 :- pred parse_underived_instance_2(term::in, class_name::in,
     maybe1(list(mer_type))::in, tvarset::in, module_name::in,
     maybe1(item)::out) is det.
 
-parse_underived_instance_2(_, _, error(Msg, Term), _, _, error(Msg, Term)).
-parse_underived_instance_2(ErrorTerm, ClassName, ok(Types), TVarSet,
+parse_underived_instance_2(_, _, error1(Errors), _, _, error1(Errors)).
+parse_underived_instance_2(ErrorTerm, ClassName, ok1(Types), TVarSet,
         ModuleName, Result) :-
     (
         % Check that each type in the arguments of the instance decl
@@ -590,10 +608,11 @@ parse_underived_instance_2(ErrorTerm, ClassName, ok(Types), TVarSet,
             \+ type_is_functor_and_vars(Type)
         )
     ->
-        Result = error("types in instance declarations must be " ++
-            "functors with distinct variables as arguments", ErrorTerm)
+        Msg = "types in instance declarations must be functors " ++
+            "with distinct variables as arguments",
+        Result = error1([Msg - ErrorTerm])
     ;
-        Result = ok(instance([], ClassName, Types, abstract, TVarSet,
+        Result = ok1(instance([], ClassName, Types, abstract, TVarSet,
             ModuleName))
     ).
 
@@ -631,36 +650,39 @@ functor_args_are_variables(Args) :-
     varset::in, tvarset::in, maybe1(item)::out) is det.
 
 parse_non_empty_instance(ModuleName, Name, Methods, VarSet, TVarSet, Result) :-
-    parse_instance_methods(ModuleName, Methods, VarSet, ParsedMethods),
+    parse_instance_methods(ModuleName, Methods, VarSet, MaybeParsedMethods),
     (
-        ParsedMethods = ok(MethodList),
-        parse_instance_name(ModuleName, Name, TVarSet, ParsedNameAndTypes),
+        MaybeParsedMethods = ok1(MethodList),
+        parse_instance_name(ModuleName, Name, TVarSet,
+            MaybeParsedNameAndTypes),
         (
-            ParsedNameAndTypes = error(String, Term)
-        ->
-            Result = error(String, Term)
+            MaybeParsedNameAndTypes = error1(Errors),
+            Result = error1(Errors)
         ;
-            ParsedNameAndTypes = ok(instance(Constraints, NameString, Types,
-                _, _, ModName))
-        ->
-            Result0 = ok(instance(Constraints, NameString, Types,
-                concrete(MethodList), TVarSet, ModName)),
-            check_tvars_in_instance_constraint(Result0, Name, Result)
-        ;
-            % If the item we get back isn't a typeclass,
-            % something has gone wrong...
-            unexpected(this_file, "item should be an instance")
+            MaybeParsedNameAndTypes = ok1(ParsedNameAndTypes),
+            (
+                ParsedNameAndTypes = instance(Constraints, NameString,
+                    Types, _, _, ModName)
+            ->
+                Result0 = ok1(instance(Constraints, NameString, Types,
+                    concrete(MethodList), TVarSet, ModName)),
+                check_tvars_in_instance_constraint(Result0, Name, Result)
+            ;
+                % If the item we get back isn't a typeclass,
+                % something has gone wrong...
+                unexpected(this_file, "item should be an instance")
+            )
         )
     ;
-        ParsedMethods = error(String, Term),
-        Result = error(String, Term)
+        MaybeParsedMethods = error1(Errors),
+        Result = error1(Errors)
     ).
 
 :- pred check_tvars_in_instance_constraint(maybe1(item)::in, term::in,
     maybe1(item)::out) is det.
 
-check_tvars_in_instance_constraint(error(M,E), _, error(M, E)).
-check_tvars_in_instance_constraint(ok(Item), InstanceTerm, Result) :-
+check_tvars_in_instance_constraint(error1(Errors), _, error1(Errors)).
+check_tvars_in_instance_constraint(ok1(Item), InstanceTerm, Result) :-
     (
         Item = instance(Constraints, _Name, Types, _Methods, _TVarSet,
             _ModName)
@@ -673,10 +695,11 @@ check_tvars_in_instance_constraint(ok(Item), InstanceTerm, Result) :-
             list.member(TVar, TVars),
             \+ type_list_contains_var(Types, TVar)
         ->
-            Result = error("unbound type variable(s) " ++
-                "in constraints on instance declaration", InstanceTerm)
+            Msg = "unbound type variable(s) " ++
+                "in constraints on instance declaration",
+            Result = error1([Msg - InstanceTerm])
         ;
-            Result = ok(Item)
+            Result = ok1(Item)
         )
     ;
         unexpected(this_file,
@@ -693,7 +716,7 @@ parse_instance_methods(ModuleName, Methods, VarSet, Result) :-
             Interface),
         find_errors(Interface, Result)
     ;
-        Result = error("expected list of instance methods", Methods)
+        Result = error1(["expected list of instance methods" - Methods])
     ).
 
     % Turn the term into a method instance.
@@ -712,16 +735,16 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
         ->
             (
                 parse_qualified_term(ClassMethod, ClassMethod,
-                    "instance method", ok(ClassMethodName, [])),
+                    "instance method", ok2(ClassMethodName, [])),
                 Arity = term.functor(term.integer(ArityInt), [], _),
                 parse_qualified_term(InstanceMethod, InstanceMethod,
-                    "instance method", ok(InstanceMethodName, []))
+                    "instance method", ok2(InstanceMethodName, []))
             ->
-                Result = ok(instance_method(predicate, ClassMethodName,
+                Result = ok1(instance_method(predicate, ClassMethodName,
                     name(InstanceMethodName), ArityInt, TermContext))
             ;
-                Result = error("expected `pred(<Name> / <Arity>) " ++
-                    "is <InstanceMethod>'", MethodTerm)
+                Msg = "expected `pred(<Name> / <Arity>) is <InstanceMethod>'",
+                Result = error1([Msg - MethodTerm])
             )
         ;
             ClassMethodTerm = term.functor(term.atom("func"),
@@ -729,20 +752,20 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
         ->
             (
                 parse_qualified_term(ClassMethod, ClassMethod,
-                    "instance method", ok(ClassMethodName, [])),
+                    "instance method", ok2(ClassMethodName, [])),
                 Arity = term.functor(term.integer(ArityInt), [], _),
                 parse_qualified_term(InstanceMethod, InstanceMethod,
-                    "instance method", ok(InstanceMethodName, []))
+                    "instance method", ok2(InstanceMethodName, []))
             ->
-                Result = ok(instance_method(function, ClassMethodName,
+                Result = ok1(instance_method(function, ClassMethodName,
                     name(InstanceMethodName), ArityInt, TermContext))
             ;
-                Result = error("expected `func(<Name> / <Arity>) " ++
-                    "is <InstanceMethod>'", MethodTerm)
+                Msg = "expected `func(<Name> / <Arity>) is <InstanceMethod>'",
+                Result = error1([Msg - MethodTerm])
             )
         ;
-            Result = error("expected `pred(<Name> / <Arity>) " ++
-                "is <InstanceName>'", MethodTerm)
+            Msg = "expected `pred(<Name> / <Arity>) is <InstanceName>'",
+            Result = error1([Msg - MethodTerm])
         )
     ;
         % For the clauses in an instance declaration, the default module name
@@ -756,23 +779,23 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
         DefaultModuleName = unqualified(""),
         parse_item(DefaultModuleName, VarSet, MethodTerm, Result0),
         (
-            Result0 = ok(Item, Context),
-            Item = clause(_Origin, _VarNames, PredOrFunc, ClassMethodName,
-                HeadArgs, _ClauseBody)
-        ->
-            adjust_func_arity(PredOrFunc, ArityInt, list.length(HeadArgs)),
-            Result = ok(instance_method(PredOrFunc, ClassMethodName,
-                clauses([Item]), ArityInt, Context))
+            Result0 = error2(Errors),
+            Result = error1(Errors)
         ;
-            Result0 = error(ErrorMsg, ErrorTerm)
-        ->
-            Result = error(ErrorMsg, ErrorTerm)
-        ;
-            % Catch-all error message for a syntactically valid item
-            % which is not a clause.
-            Result = error("expected clause or " ++
-                "`pred(<Name> / <Arity>) is <InstanceName>' or " ++
-                "`func(<Name> / <Arity>) is <InstanceName>')", MethodTerm)
+            Result0 = ok2(Item, Context),
+            (
+                Item = clause(_Origin, _VarNames, PredOrFunc, ClassMethodName,
+                    HeadArgs, _ClauseBody)
+            ->
+                adjust_func_arity(PredOrFunc, ArityInt, list.length(HeadArgs)),
+                Result = ok1(instance_method(PredOrFunc, ClassMethodName,
+                    clauses([Item]), ArityInt, Context))
+            ;
+                Msg = "expected clause or " ++
+                    "`pred(<Name> / <Arity>) is <InstanceName>' or " ++
+                    "`func(<Name> / <Arity>) is <InstanceName>')",
+                Result = error1([Msg - MethodTerm])
+            )
         )
     ).
 

@@ -281,7 +281,7 @@ check_option_values(OptionTable0, OptionTable, Target, GC_Method, TagsMethod,
     ( ForceDisableTracing = bool(yes) ->
         TraceLevel = trace_level_none
     ;
-        map.lookup(OptionTable0, trace, Trace),
+        map.lookup(OptionTable0, trace_level, Trace),
         map.lookup(OptionTable0, exec_trace, ExecTraceOpt),
         map.lookup(OptionTable0, decl_debug, DeclDebugOpt),
         (
@@ -1935,19 +1935,19 @@ long_usage(!IO) :-
     % actually matters is for constructing the pathname for the
     % grade of the library, etc for linking (and installation).
 :- type grade_component
-    --->    gcc_ext         % gcc extensions etc. -- see
-                            % grade_component_table
-    ;       par             % parallelism / multithreading
-    ;       gc              % the kind of GC to use
-    ;       prof            % what profiling options to use
-    ;       term_size       % whether or not to record term sizes
-    ;       trail           % whether or not to use trailing
-    ;       tag             % whether or not to reserve a tag
-    ;       minimal_model   % whether we set up for minimal model tabling
-    ;       pic             % Do we need to reserve a register for
-                            % PIC (position independent code)?
-    ;       trace           % tracing/debugging options
-    ;       stack_extend.   % automatic stack extension
+    --->    comp_gcc_ext        % gcc extensions etc. -- see
+                                % grade_component_table
+    ;       comp_par            % parallelism / multithreading
+    ;       comp_gc             % the kind of GC to use
+    ;       comp_prof           % what profiling options to use
+    ;       comp_term_size      % whether or not to record term sizes
+    ;       comp_trail          % whether or not to use trailing
+    ;       comp_tag            % whether or not to reserve a tag
+    ;       comp_minimal_model  % whether we set up for minimal model tabling
+    ;       comp_pic            % Do we need to reserve a register for
+                                % PIC (position independent code)?
+    ;       comp_trace          % tracing/debugging options
+    ;       comp_stack_extend.  % automatic stack extension
 
 convert_grade_option(GradeString, Options0, Options) :-
     reset_grade_options(Options0, Options1),
@@ -2080,7 +2080,7 @@ compute_grade_components(Options, GradeComponents) :-
     % Base components
     % These specify the basic compilation model we use,
     % including the choice of back-end and the use of gcc extensions.
-grade_component_table("none", gcc_ext, [
+grade_component_table("none", comp_gcc_ext, [
         asm_labels              - bool(no),
         gcc_non_local_gotos     - bool(no),
         gcc_global_registers    - bool(no),
@@ -2088,7 +2088,7 @@ grade_component_table("none", gcc_ext, [
         gcc_nested_functions    - bool(no),
         highlevel_data          - bool(no)],
         yes([string("c")]), yes).
-grade_component_table("reg", gcc_ext, [
+grade_component_table("reg", comp_gcc_ext, [
         asm_labels              - bool(no),
         gcc_non_local_gotos     - bool(no),
         gcc_global_registers    - bool(yes),
@@ -2096,7 +2096,7 @@ grade_component_table("reg", gcc_ext, [
         gcc_nested_functions    - bool(no),
         highlevel_data          - bool(no)],
         yes([string("c")]), yes).
-grade_component_table("jump", gcc_ext, [
+grade_component_table("jump", comp_gcc_ext, [
         asm_labels              - bool(no),
         gcc_non_local_gotos     - bool(yes),
         gcc_global_registers    - bool(no),
@@ -2104,7 +2104,7 @@ grade_component_table("jump", gcc_ext, [
         gcc_nested_functions    - bool(no),
         highlevel_data          - bool(no)],
         yes([string("c")]), yes).
-grade_component_table("asm_jump", gcc_ext, [
+grade_component_table("asm_jump", comp_gcc_ext, [
         asm_labels              - bool(yes),
         gcc_non_local_gotos     - bool(yes),
         gcc_global_registers    - bool(no),
@@ -2112,7 +2112,7 @@ grade_component_table("asm_jump", gcc_ext, [
         gcc_nested_functions    - bool(no),
         highlevel_data          - bool(no)],
         yes([string("c")]), yes).
-grade_component_table("fast", gcc_ext, [
+grade_component_table("fast", comp_gcc_ext, [
         asm_labels              - bool(no),
         gcc_non_local_gotos     - bool(yes),
         gcc_global_registers    - bool(yes),
@@ -2120,7 +2120,7 @@ grade_component_table("fast", gcc_ext, [
         gcc_nested_functions    - bool(no),
         highlevel_data          - bool(no)],
         yes([string("c")]), yes).
-grade_component_table("asm_fast", gcc_ext, [
+grade_component_table("asm_fast", comp_gcc_ext, [
         asm_labels              - bool(yes),
         gcc_non_local_gotos     - bool(yes),
         gcc_global_registers    - bool(yes),
@@ -2128,7 +2128,7 @@ grade_component_table("asm_fast", gcc_ext, [
         gcc_nested_functions    - bool(no),
         highlevel_data          - bool(no)],
         yes([string("c")]), yes).
-grade_component_table("hl", gcc_ext, [
+grade_component_table("hl", comp_gcc_ext, [
         asm_labels              - bool(no),
         gcc_non_local_gotos     - bool(no),
         gcc_global_registers    - bool(no),
@@ -2136,7 +2136,7 @@ grade_component_table("hl", gcc_ext, [
         gcc_nested_functions    - bool(no),
         highlevel_data          - bool(yes)],
         yes([string("c"), string("asm")]), yes).
-grade_component_table("hlc", gcc_ext, [
+grade_component_table("hlc", comp_gcc_ext, [
         asm_labels              - bool(no),
         gcc_non_local_gotos     - bool(no),
         gcc_global_registers    - bool(no),
@@ -2144,7 +2144,7 @@ grade_component_table("hlc", gcc_ext, [
         gcc_nested_functions    - bool(no),
         highlevel_data          - bool(no)],
         yes([string("c"), string("asm")]), yes).
-grade_component_table("hl_nest", gcc_ext, [
+grade_component_table("hl_nest", comp_gcc_ext, [
         asm_labels              - bool(no),
         gcc_non_local_gotos     - bool(no),
         gcc_global_registers    - bool(no),
@@ -2152,7 +2152,7 @@ grade_component_table("hl_nest", gcc_ext, [
         gcc_nested_functions    - bool(yes),
         highlevel_data          - bool(yes)],
         yes([string("c"), string("asm")]), yes).
-grade_component_table("hlc_nest", gcc_ext, [
+grade_component_table("hlc_nest", comp_gcc_ext, [
         asm_labels              - bool(no),
         gcc_non_local_gotos     - bool(no),
         gcc_global_registers    - bool(no),
@@ -2160,7 +2160,7 @@ grade_component_table("hlc_nest", gcc_ext, [
         gcc_nested_functions    - bool(yes),
         highlevel_data          - bool(no)],
         yes([string("c"), string("asm")]), yes).
-grade_component_table("il", gcc_ext, [
+grade_component_table("il", comp_gcc_ext, [
         asm_labels              - bool(no),
         gcc_non_local_gotos     - bool(no),
         gcc_global_registers    - bool(no),
@@ -2168,7 +2168,7 @@ grade_component_table("il", gcc_ext, [
         gcc_nested_functions    - bool(no),
         highlevel_data          - bool(yes)],
         yes([string("il")]), yes).
-grade_component_table("ilc", gcc_ext, [
+grade_component_table("ilc", comp_gcc_ext, [
         asm_labels              - bool(no),
         gcc_non_local_gotos     - bool(no),
         gcc_global_registers    - bool(no),
@@ -2176,7 +2176,7 @@ grade_component_table("ilc", gcc_ext, [
         gcc_nested_functions    - bool(no),
         highlevel_data          - bool(no)],
         yes([string("il")]), yes).
-grade_component_table("java", gcc_ext, [
+grade_component_table("java", comp_gcc_ext, [
         asm_labels              - bool(no),
         gcc_non_local_gotos     - bool(no),
         gcc_global_registers    - bool(no),
@@ -2186,87 +2186,87 @@ grade_component_table("java", gcc_ext, [
         yes([string("java")]), yes).
 
     % Parallelism/multithreading components.
-grade_component_table("par", par, [parallel - bool(yes)], no, yes).
+grade_component_table("par", comp_par, [parallel - bool(yes)], no, yes).
 
     % GC components
-grade_component_table("gc", gc, [gc - string("boehm")], no, yes).
-grade_component_table("mps", gc, [gc - string("mps")], no, yes).
-grade_component_table("agc", gc, [gc - string("accurate")], no, yes).
+grade_component_table("gc", comp_gc, [gc - string("boehm")], no, yes).
+grade_component_table("mps", comp_gc, [gc - string("mps")], no, yes).
+grade_component_table("agc", comp_gc, [gc - string("accurate")], no, yes).
 
     % Profiling components
-grade_component_table("prof", prof,
+grade_component_table("prof", comp_prof,
     [profile_time - bool(yes), profile_calls - bool(yes),
     profile_memory - bool(no), profile_deep - bool(no)], no, yes).
-grade_component_table("proftime", prof,
+grade_component_table("proftime", comp_prof,
     [profile_time - bool(yes), profile_calls - bool(no),
     profile_memory - bool(no), profile_deep - bool(no)], no, yes).
-grade_component_table("profcalls", prof,
+grade_component_table("profcalls", comp_prof,
     [profile_time - bool(no), profile_calls - bool(yes),
     profile_memory - bool(no), profile_deep - bool(no)], no, yes).
-grade_component_table("memprof", prof,
+grade_component_table("memprof", comp_prof,
     [profile_time - bool(no), profile_calls - bool(yes),
     profile_memory - bool(yes), profile_deep - bool(no)], no, yes).
-grade_component_table("profall", prof,
+grade_component_table("profall", comp_prof,
     [profile_time - bool(yes), profile_calls - bool(yes),
     profile_memory - bool(yes), profile_deep - bool(no)], no, yes).
-grade_component_table("profdeep", prof,
+grade_component_table("profdeep", comp_prof,
     [profile_time - bool(no), profile_calls - bool(no),
     profile_memory - bool(no), profile_deep - bool(yes)], no, yes).
 
     % Term size components
-grade_component_table("tsw", term_size,
+grade_component_table("tsw", comp_term_size,
     [record_term_sizes_as_words - bool(yes),
     record_term_sizes_as_cells - bool(no)], no, yes).
-grade_component_table("tsc", term_size,
+grade_component_table("tsc", comp_term_size,
     [record_term_sizes_as_words - bool(no),
     record_term_sizes_as_cells - bool(yes)], no, yes).
 
     % Trailing components
-grade_component_table("tr", trail, [use_trail - bool(yes)], no, yes).
+grade_component_table("tr", comp_trail, [use_trail - bool(yes)], no, yes).
 
     % Tag reservation components
-grade_component_table("rt", tag, [reserve_tag - bool(yes)], no, yes).
+grade_component_table("rt", comp_tag, [reserve_tag - bool(yes)], no, yes).
 
     % Minimal model tabling components
     % NOTE: we do not include `.mm' and `.dmm' in grade strings
     % because they are just synonyms for `.mmsc' and `.dmmsc'.
     %
-grade_component_table("mm", minimal_model,
+grade_component_table("mm", comp_minimal_model,
     [use_minimal_model_stack_copy - bool(yes),
     use_minimal_model_own_stacks - bool(no),
     minimal_model_debug - bool(no)], no, no).
-grade_component_table("dmm", minimal_model,
+grade_component_table("dmm", comp_minimal_model,
     [use_minimal_model_stack_copy - bool(yes),
     use_minimal_model_own_stacks - bool(no),
     minimal_model_debug - bool(yes)], no, no).
-grade_component_table("mmsc", minimal_model,
+grade_component_table("mmsc", comp_minimal_model,
     [use_minimal_model_stack_copy - bool(yes),
     use_minimal_model_own_stacks - bool(no),
     minimal_model_debug - bool(no)], no, yes).
-grade_component_table("dmmsc", minimal_model,
+grade_component_table("dmmsc", comp_minimal_model,
     [use_minimal_model_stack_copy - bool(yes),
     use_minimal_model_own_stacks - bool(no),
     minimal_model_debug - bool(yes)], no, yes).
-grade_component_table("mmos", minimal_model,
+grade_component_table("mmos", comp_minimal_model,
     [use_minimal_model_stack_copy - bool(no),
     use_minimal_model_own_stacks - bool(yes),
     minimal_model_debug - bool(no)], no, yes).
-grade_component_table("dmmos", minimal_model,
+grade_component_table("dmmos", comp_minimal_model,
     [use_minimal_model_stack_copy - bool(no),
     use_minimal_model_own_stacks - bool(yes),
     minimal_model_debug - bool(yes)], no, yes).
 
     % Pic reg components
-grade_component_table("picreg", pic, [pic_reg - bool(yes)], no, yes).
+grade_component_table("picreg", comp_pic, [pic_reg - bool(yes)], no, yes).
 
     % Debugging/Tracing components
-grade_component_table("decldebug", trace,
+grade_component_table("decldebug", comp_trace,
     [exec_trace - bool(yes), decl_debug - bool(yes)], no, yes).
-grade_component_table("debug", trace,
+grade_component_table("debug", comp_trace,
     [exec_trace - bool(yes), decl_debug - bool(no)], no, yes).
 
     % Stack extension components
-grade_component_table("exts", stack_extend,
+grade_component_table("exts", comp_stack_extend,
     [extend_stacks_when_needed - bool(yes)], no, yes).
 
 :- pred reset_grade_options(option_table::in, option_table::out) is det.

@@ -229,9 +229,9 @@ process_goal(GoalExpr0 - GoalInfo, GoalExpr - GoalInfo, !Info) :-
         process_goal_list(Goals0, Goals, !Info),
         GoalExpr = disj(Goals)
     ;
-        GoalExpr0 = not(Goal0),
+        GoalExpr0 = negation(Goal0),
         process_goal(Goal0, Goal, !Info),
-        GoalExpr = not(Goal)
+        GoalExpr = negation(Goal)
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
         process_cases(Cases0, Cases, !Info),
@@ -247,13 +247,10 @@ process_goal(GoalExpr0 - GoalInfo, GoalExpr - GoalInfo, !Info) :-
         process_goal(Else0, Else, !Info),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
-        GoalExpr0 = generic_call(_, _, _, _),
-        GoalExpr = GoalExpr0
-    ;
-        GoalExpr0 = call(_, _, _, _, _, _),
-        GoalExpr = GoalExpr0
-    ;
-        GoalExpr0 = foreign_proc(_, _, _, _, _, _),
+        ( GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = shorthand(_),
@@ -369,7 +366,7 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         % if all the inputs in the Yi precede the outputs. It's also not valid
         % if any of the Xi are in the Yi.
 
-        LambdaGoal = call(PredId0, ProcId0, CallVars, _, _, _) - _,
+        LambdaGoal = plain_call(PredId0, ProcId0, CallVars, _, _, _) - _,
         module_info_pred_proc_info(ModuleInfo0, PredId0, ProcId0,
             Call_PredInfo, Call_ProcInfo),
         list.remove_suffix(CallVars, Vars, InitialVars),

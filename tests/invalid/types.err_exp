@@ -11,7 +11,6 @@ types.m:017: Error: clause for predicate `types.r/0'
 types.m:017:   without preceding `pred' declaration.
 types.m:020: Error: clause for predicate `types.a/1'
 types.m:020:   without preceding `pred' declaration.
-types.m:005: Error: no clauses for predicate `p/1'.
 types.m:012: In clause for predicate `types.q/0':
 types.m:012:   error: undefined predicate `zzzzzzzz/0'.
 types.m:013: In clause for predicate `types.q/0':
@@ -34,7 +33,6 @@ types.m:039:   constant `0' has type `int'.
 	some [BarTypeParam_1]
 	X_2: BarTypeParam
 
-types.m:050: Error: no clauses for predicate `bar2/1'.
 types.m:018: In clause for predicate `types.r/0':
 types.m:018:   error: undefined predicate `s/0'.
 types.m:020: In clause for predicate `types.a/1':

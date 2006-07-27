@@ -466,7 +466,7 @@ is_error_important(Error) :-
     (
         % An error is important unless it is a non-explicit unification,
         % i.e. a head unification or a call argument unification.
-        ModeContext = unify(unify_context(UnifyContext, _), _),
+        ModeContext = mode_context_unify(unify_context(UnifyContext, _), _),
         UnifyContext \= explicit,
 
         % Except that errors in lambda goals are important even if the
@@ -569,19 +569,22 @@ mode_error_bind_var_to_specs(ModeInfo, Reason, Var, VarInst, Inst) = Specs :-
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
     (
-        Reason = negation,
-        ReasonStr = "attempt to bind a variable inside a negation."
+        Reason = var_lock_negation,
+        ReasonStr = "attempt to bind a non-local variable inside a negation."
     ;
-        Reason = if_then_else,
+        Reason = var_lock_if_then_else,
         ReasonStr = "attempt to bind a non-local variable" ++
             " inside the condition of an if-then-else."
     ;
-        Reason = lambda(PredOrFunc),
+        Reason = var_lock_lambda(PredOrFunc),
         PredOrFuncS = prog_out.pred_or_func_to_str(PredOrFunc),
         ReasonStr = "attempt to bind a non-local variable inside" ++
             " a " ++ PredOrFuncS ++ " lambda goal."
     ;
-        Reason = par_conj,
+        Reason = var_lock_trace_goal,
+        ReasonStr = "attempt to bind a non-local variable inside a trace goal."
+    ;
+        Reason = var_lock_par_conj,
         ReasonStr = "attempt to bind a non-local variable" ++
             "inside more than one parallel conjunct."
     ),
@@ -598,24 +601,28 @@ mode_error_bind_var_to_specs(ModeInfo, Reason, Var, VarInst, Inst) = Specs :-
     (
         VerboseErrors = yes,
         (
-            Reason = negation,
+            Reason = var_lock_negation,
             Pieces2 = [words("A negation is only allowed to bind variables"),
                 words("which are local to the negation, i.e. those which are"),
                 words("implicitly existentially quantified"),
                 words("inside the scope of the negation."), nl]
         ;
-            Reason = if_then_else,
+            Reason = var_lock_if_then_else,
             Pieces2 = [words("The condition of an if-then-else is only"),
                 words("allowed to bind variables which are local to the"),
                 words("condition or which occur only in the condition"),
                 words("and the `then' part."), nl]
         ;
-            Reason = lambda(_),
+            Reason = var_lock_lambda(_),
             Pieces2 = [words("A lambda goal is only allowed to bind"),
                 words("its arguments and variables local to the "),
                 words("lambda expression."), nl]
         ;
-            Reason = par_conj,
+            Reason = var_lock_trace_goal,
+            Pieces2 = [words("A trace goal is only allowed to bind variables"),
+                words("which are local to the trace goal."), nl]
+        ;
+            Reason = var_lock_par_conj,
             Pieces2 = [words("A nonlocal variable of a parallel conjunction"),
                 words("may be bound in at most one conjunct."), nl]
         )
@@ -712,7 +719,7 @@ mode_error_no_matching_mode_to_specs(ModeInfo, Vars, Insts) = Specs :-
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_varset(ModeInfo, VarSet),
     mode_info_get_mode_context(ModeInfo, ModeContext),
-    ( ModeContext = call(CallId, _) ->
+    ( ModeContext = mode_context_call(CallId, _) ->
         CallIdStr = hlds_out.call_id_to_string(CallId)
     ;
         unexpected(this_file,
@@ -1057,17 +1064,18 @@ mode_info_context_to_spec(ModeInfo) = Spec :-
 :- func mode_context_to_pieces(mode_context, pred_markers)
     = list(format_component).
 
-mode_context_to_pieces(uninitialized, _Markers) = [].
-mode_context_to_pieces(call(CallId, ArgNum), Markers) =
+mode_context_to_pieces(mode_context_uninitialized, _Markers) = [].
+mode_context_to_pieces(mode_context_call(CallId, ArgNum), Markers) =
     [words("in"),
         words(hlds_out.call_arg_id_to_string(CallId, ArgNum, Markers)),
         suffix(":"), nl].
-mode_context_to_pieces(unify(UnifyContext, _Side), _Markers) = Pieces :-
+mode_context_to_pieces(mode_context_unify(UnifyContext, _Side), _Markers)
+        = Pieces :-
     hlds_out.unify_context_to_pieces(no, _, UnifyContext, [], Pieces).
 
 %-----------------------------------------------------------------------------%
 
-mode_context_init(uninitialized).
+mode_context_init(mode_context_uninitialized).
 
 %-----------------------------------------------------------------------------%
 

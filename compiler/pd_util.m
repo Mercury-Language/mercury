@@ -45,7 +45,7 @@
 
     % Apply simplify.m to the goal.
     %
-:- pred simplify_goal(simplifications::in, hlds_goal::in,
+:- pred pd_simplify_goal(simplifications::in, hlds_goal::in,
     hlds_goal::out, pd_info::in, pd_info::out, io::di, io::uo) is det.
 
     % Apply unique_modes.m to the goal.
@@ -135,7 +135,7 @@
     list(mer_type)::in, hlds_goal::in, vartypes::in,
     map(prog_var, prog_var)::out, tsubst::out) is semidet.
 
-    % can_reorder_goals(ModuleInfo, FullyStrict, Goal1, Goal2).
+    % pd_can_reorder_goals(ModuleInfo, FullyStrict, Goal1, Goal2).
     %
     % Two goals can be reordered if
     % - the goals are independent
@@ -147,7 +147,7 @@
     %     version can be merged with the similarly named predicate in
     %     goal_util.m).
     %
-:- pred can_reorder_goals(module_info::in, bool::in,
+:- pred pd_can_reorder_goals(module_info::in, bool::in,
     hlds_goal::in, hlds_goal::in) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -189,7 +189,7 @@
 goal_get_calls(Goal0, CalledPreds) :-
     goal_to_conj_list(Goal0, GoalList),
     GetCalls = (pred(Goal::in, CalledPred::out) is semidet :-
-        Goal = call(PredId, ProcId, _, _, _, _) - _,
+        Goal = plain_call(PredId, ProcId, _, _, _, _) - _,
         CalledPred = proc(PredId, ProcId)
     ),
     list.filter_map(GetCalls, GoalList, CalledPreds).
@@ -228,7 +228,7 @@ propagate_constraints(!Goal, !PDInfo, !IO) :-
             rerun_det_analysis(!Goal, !PDInfo, !IO),
             module_info_get_globals(ModuleInfo, Globals),
             simplify.find_simplifications(no, Globals, Simplifications),
-            simplify_goal(Simplifications, !Goal, !PDInfo, !IO)
+            pd_simplify_goal(Simplifications, !Goal, !PDInfo, !IO)
         ;
             % Use Goal0 rather than the output of propagate_constraints_in_goal
             % because constraint propagation can make the quantification
@@ -243,7 +243,7 @@ propagate_constraints(!Goal, !PDInfo, !IO) :-
 
 %-----------------------------------------------------------------------------%
 
-simplify_goal(Simplifications, Goal0, Goal, !PDInfo, !IO) :-
+pd_simplify_goal(Simplifications, Goal0, Goal, !PDInfo, !IO) :-
     % Construct a simplify_info.
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     module_info_get_globals(ModuleInfo0, Globals),
@@ -719,7 +719,7 @@ examine_case_list(ProcArgInfo, BranchNo, Var,
 examine_branch(_, _, _, [], _, _, !Vars).
 examine_branch(ModuleInfo, ProcArgInfo, BranchNo, [Goal | Goals],
         VarTypes, InstMap, !Vars) :-
-    ( Goal = call(PredId, ProcId, Args, _, _, _) - _ ->
+    ( Goal = plain_call(PredId, ProcId, Args, _, _, _) - _ ->
         ( map.search(ProcArgInfo, proc(PredId, ProcId), ThisProcArgInfo) ->
             convert_branch_info(ThisProcArgInfo, Args, BranchInfo),
             BranchInfo = pd_branch_info(!:Vars, _, _),
@@ -1030,8 +1030,8 @@ goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals],
                 NewArgs = [NewVar | NewArgs1]
             )
         ;
-            OldGoal = call(PredId, ProcId, OldArgs, _, _, _) - _,
-            NewGoal = call(PredId, ProcId, NewArgs, _, _, _) - _
+            OldGoal = plain_call(PredId, ProcId, OldArgs, _, _, _) - _,
+            NewGoal = plain_call(PredId, ProcId, NewArgs, _, _, _) - _
         ;
             % We don't need to check the modes here - if the goals match
             % and the insts of the argument variables match, the modes
@@ -1059,8 +1059,8 @@ goals_match_2([OldGoal | OldGoals], [NewGoal | NewGoals],
         list.foldl(MapInsert, ONArgsList, !ONRenaming)
     ;
         (
-            OldGoal = not(OldSubGoal) - _,
-            NewGoal = not(NewSubGoal) - _
+            OldGoal = negation(OldSubGoal) - _,
+            NewGoal = negation(NewSubGoal) - _
         ;
             OldGoal = scope(_, OldSubGoal) - _,
             NewGoal = scope(_, NewSubGoal) - _
@@ -1085,7 +1085,10 @@ match_generic_call(class_method(_, MethodNum, ClassId, CallId),
 
 %-----------------------------------------------------------------------------%
 
-can_reorder_goals(ModuleInfo, FullyStrict, EarlierGoal, LaterGoal) :-
+pd_can_reorder_goals(ModuleInfo, FullyStrict, EarlierGoal, LaterGoal) :-
+    % The logic here is mostly duplicated in can_reorder_goals and
+    % can_reorder_goals_old in goal_util.m.
+
     EarlierGoal = _ - EarlierGoalInfo,
     LaterGoal = _ - LaterGoalInfo,
 
@@ -1101,9 +1104,13 @@ can_reorder_goals(ModuleInfo, FullyStrict, EarlierGoal, LaterGoal) :-
         \+ determinism_components(LaterDetism, _, at_most_many_cc)
     ),
 
-    % Impure goals cannot be reordered.
-    \+ goal_info_is_impure(EarlierGoalInfo),
-    \+ goal_info_is_impure(LaterGoalInfo),
+    % Impure goals and trace goals cannot be reordered.
+    goal_info_get_goal_purity(EarlierGoalInfo, EarlierPurity, EarlierTrace),
+    goal_info_get_goal_purity(LaterGoalInfo, LaterPurity, LaterTrace),
+    EarlierPurity \= purity_impure,
+    LaterPurity \= purity_impure,
+    EarlierTrace = contains_no_trace_goal,
+    LaterTrace = contains_no_trace_goal,
 
     goal_util.reordering_maintains_termination(ModuleInfo, FullyStrict,
         EarlierGoal, LaterGoal),

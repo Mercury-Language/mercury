@@ -379,7 +379,7 @@ check_goal_for_exceptions_2(_, _, Goal, _, !Result, !ModuleInfo, !IO) :-
     ).
 check_goal_for_exceptions_2(SCC, VarTypes, Goal, _, !Result,
         !ModuleInfo, !IO) :-
-    Goal = call(CallPredId, CallProcId, CallArgs, _, _, _),
+    Goal = plain_call(CallPredId, CallProcId, CallArgs, _, _, _),
     CallPPId = proc(CallPredId, CallProcId),
     module_info_pred_info(!.ModuleInfo, CallPredId, CallPredInfo),
     (
@@ -486,7 +486,7 @@ check_goal_for_exceptions_2(SCC, VarTypes, Goal, GoalInfo,
     ;
         Details = cast(_)
     ).
-check_goal_for_exceptions_2(SCC, VarTypes, not(Goal), _,
+check_goal_for_exceptions_2(SCC, VarTypes, negation(Goal), _,
         !Result, !ModuleInfo, !IO) :-
     check_goal_for_exceptions(SCC, VarTypes, Goal, !Result, !ModuleInfo, !IO).
 check_goal_for_exceptions_2(SCC, VarTypes, Goal, _,
@@ -495,7 +495,7 @@ check_goal_for_exceptions_2(SCC, VarTypes, Goal, _,
     check_goal_for_exceptions(SCC, VarTypes, ScopeGoal, !Result,
         !ModuleInfo, !IO).
 check_goal_for_exceptions_2(_, _, Goal, _, !Result, !ModuleInfo ,!IO) :-
-    Goal = foreign_proc(Attributes, _, _, _, _, _),
+    Goal = call_foreign_proc(Attributes, _, _, _, _, _, _),
     %    
     % NOTE: for --intermodule-analysis the results for for foreign_procs will
     % *always* be optimal (since we always rely on user annotation), so

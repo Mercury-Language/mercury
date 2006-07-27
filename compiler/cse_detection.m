@@ -243,11 +243,12 @@ detect_cse_in_goal_1(Goal0 - GoalInfo, InstMap0, !CseInfo, Redo,
     instmap::in, cse_info::in, cse_info::out, bool::out,
     hlds_goal_expr::out) is det.
 
-detect_cse_in_goal_2(Goal @ foreign_proc(_, _, _, _, _, _), _, _, !CseInfo,
-        no, Goal).
+detect_cse_in_goal_2(Goal @ call_foreign_proc(_, _, _, _, _, _, _), _, _,
+        !CseInfo, no, Goal).
 detect_cse_in_goal_2(Goal @ generic_call(_, _, _, _), _, _, !CseInfo,
         no, Goal).
-detect_cse_in_goal_2(Goal @ call(_, _, _, _, _, _), _, _, !CseInfo, no, Goal).
+detect_cse_in_goal_2(Goal @ plain_call(_, _, _, _, _, _), _, _, !CseInfo,
+        no, Goal).
 detect_cse_in_goal_2(unify(LHS, RHS0, Mode, Unify,  UnifyContext), _, InstMap0,
         !CseInfo, Redo, unify(LHS, RHS, Mode,Unify, UnifyContext)) :-
     (
@@ -263,8 +264,8 @@ detect_cse_in_goal_2(unify(LHS, RHS0, Mode, Unify,  UnifyContext), _, InstMap0,
         RHS = RHS0,
         Redo = no
     ).
-detect_cse_in_goal_2(not(Goal0), _GoalInfo, InstMap, !CseInfo, Redo,
-        not(Goal)) :-
+detect_cse_in_goal_2(negation(Goal0), _GoalInfo, InstMap, !CseInfo, Redo,
+        negation(Goal)) :-
     detect_cse_in_goal(Goal0, InstMap, !CseInfo, Redo, Goal).
 detect_cse_in_goal_2(scope(Reason, Goal0), _GoalInfo, InstMap,
         !CseInfo, Redo, scope(Reason, Goal)) :-

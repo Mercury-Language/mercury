@@ -242,13 +242,13 @@ goal_may_alloc_temp_frame(Goal - _GoalInfo, May) :-
     is det.
 
 goal_may_alloc_temp_frame_2(generic_call(_, _, _, _), no).
-goal_may_alloc_temp_frame_2(call(_, _, _, _, _, _), no).
+goal_may_alloc_temp_frame_2(plain_call(_, _, _, _, _, _), no).
 goal_may_alloc_temp_frame_2(unify(_, _, _, _, _), no).
     % We cannot safely say that a foreign code fragment does not allocate
     % temporary nondet frames without knowing all the #defined macros
     % that expand to mktempframe and variants thereof. The performance
     % impact of being too conservative is probably not too bad.
-goal_may_alloc_temp_frame_2(foreign_proc(_, _, _, _, _, _), yes).
+goal_may_alloc_temp_frame_2(call_foreign_proc(_, _, _, _, _, _, _), yes).
 goal_may_alloc_temp_frame_2(scope(_, Goal), May) :-
     Goal = _ - GoalInfo,
     goal_info_get_code_model(GoalInfo, CodeModel),
@@ -257,7 +257,7 @@ goal_may_alloc_temp_frame_2(scope(_, Goal), May) :-
     ;
         goal_may_alloc_temp_frame(Goal, May)
     ).
-goal_may_alloc_temp_frame_2(not(Goal), May) :-
+goal_may_alloc_temp_frame_2(negation(Goal), May) :-
     goal_may_alloc_temp_frame(Goal, May).
 goal_may_alloc_temp_frame_2(conj(_ConjType, Goals), May) :-
     goal_list_may_alloc_temp_frame(Goals, May).
@@ -407,6 +407,7 @@ lvals_in_lval(lvar(_), []).
 lvals_in_lval(temp(_, _), []).
 lvals_in_lval(mem_ref(Rval), Lvals) :-
     lvals_in_rval(Rval, Lvals).
+lvals_in_lval(global_var_ref(_), []).
 
 :- pred lvals_in_mem_ref(mem_ref::in, list(lval)::out) is det.
 

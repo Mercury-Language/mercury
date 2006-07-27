@@ -282,7 +282,7 @@ standardize_equation(Eqn0, Eqn, !Info) :-
     ;
         new_slack_var(Var, !Info),
         Coeffs = [Var - 1.0 | Coeffs0],
-        simplify(eqn(Coeffs, (=<), Const0), Eqn1),
+        simplify_eq(eqn(Coeffs, (=<), Const0), Eqn1),
         get_urs_vars(URS, !Info),
         expand_urs_vars_e(Eqn1, URS, Eqn)
     ).
@@ -295,7 +295,7 @@ standardize_equation(Eqn0, Eqn, !Info) :-
     ;
         new_art_var(Var, !Info),
         Coeffs = [Var - 1.0 | Coeffs0],
-        simplify(eqn(Coeffs, (=<), Const0), Eqn1),
+        simplify_eq(eqn(Coeffs, (=<), Const0), Eqn1),
         get_urs_vars(URS, !Info),
         expand_urs_vars_e(Eqn1, URS, Eqn)
     ).
@@ -309,7 +309,7 @@ standardize_equation(Eqn0, Eqn, !Info) :-
         new_slack_var(SVar, !Info),
         new_art_var(AVar, !Info),
         Coeffs = [SVar - (-1.0), AVar - (1.0) | Coeffs0],
-        simplify(eqn(Coeffs, (>=), Const0), Eqn1),
+        simplify_eq(eqn(Coeffs, (>=), Const0), Eqn1),
         get_urs_vars(URS, !Info),
         expand_urs_vars_e(Eqn1, URS, Eqn)
     ).
@@ -327,9 +327,9 @@ negate_equation(eqn(Coeffs0, Op0, Const0), eqn(Coeffs, Op, Const)) :-
     Coeffs = list.map((func(V - X) = V - (-X)), Coeffs0),
     Const = -Const0.
 
-:- pred simplify(equation::in, equation::out) is det.
+:- pred simplify_eq(equation::in, equation::out) is det.
 
-simplify(eqn(Coeffs0, Op, Const), eqn(Coeffs, Op, Const)) :-
+simplify_eq(eqn(Coeffs0, Op, Const), eqn(Coeffs, Op, Const)) :-
     simplify_coeffs(Coeffs0, Coeffs).
 
 :- pred simplify_coeffs(list(coeff)::in, list(coeff)::out) is det.

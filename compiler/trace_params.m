@@ -98,6 +98,9 @@
 
 :- func trace_level_none = trace_level.
 
+:- func at_least_at_shallow(trace_level) = bool.
+:- func at_least_at_deep(trace_level) = bool.
+
     % Given a trace level for a module, return the trace level we should
     % use for compiler-generated unify, index and compare predicates.
     %
@@ -148,6 +151,16 @@ trace_level_for_unify_compare(none) = none.
 trace_level_for_unify_compare(shallow) = shallow.
 trace_level_for_unify_compare(deep) = shallow.
 trace_level_for_unify_compare(decl_rep) = shallow.
+
+at_least_at_shallow(none) = no.
+at_least_at_shallow(shallow) = yes.
+at_least_at_shallow(deep) = yes.
+at_least_at_shallow(decl_rep) = yes.
+
+at_least_at_deep(none) = no.
+at_least_at_deep(shallow) = no.
+at_least_at_deep(deep) = yes.
+at_least_at_deep(decl_rep) = yes.
 
 convert_trace_level("minimum", no,  no,  yes(none)).
 convert_trace_level("minimum", yes, no,  yes(shallow)).

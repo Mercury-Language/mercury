@@ -306,6 +306,18 @@
 :- pred mercury_output_instance_methods(instance_methods::in,
     io::di, io::uo) is det.
 
+:- pred mercury_output_trace_expr(pred(T, io, io)::in(pred(in, di, uo) is det),
+    trace_expr(T)::in, io::di, io::uo) is det.
+
+:- pred mercury_output_trace_compiletime(trace_compiletime::in,
+    io::di, io::uo) is det.
+
+:- pred mercury_output_trace_runtime(trace_runtime::in,
+    io::di, io::uo) is det.
+
+:- pred mercury_output_trace_mutable_var(trace_mutable_var::in,
+    prog_varset::in, bool::in, io::di, io::uo) is det.
+
     % This predicate outputs termination_info pragmas;
     % such annotations can be part of .opt and .trans_opt files.
     %
@@ -2531,7 +2543,7 @@ mercury_format_det(Detism, !U) :-
 %-----------------------------------------------------------------------------%
 
     % Output a clause.
-
+    %
 :- pred mercury_output_pred_clause(prog_varset::in, sym_name::in,
     list(prog_term)::in, goal::in, prog_context::in, io::di, io::uo) is det.
 
@@ -2554,7 +2566,7 @@ mercury_output_pred_clause(VarSet, PredName, Args, Body, _Context, !IO) :-
     ).
 
     % Output an equation.
-
+    %
 :- pred mercury_output_func_clause(prog_varset::in, sym_name::in,
     list(prog_term)::in, prog_term::in, goal::in, prog_context::in,
     io::di, io::uo) is det.
@@ -2721,21 +2733,64 @@ mercury_output_goal_2(promise_purity_expr(_Implicit, Purity, Goal), VarSet,
     mercury_output_newline(Indent, !IO),
     io.write_string(")", !IO).
 
-mercury_output_goal_2(if_then_else_expr(Vars, StateVars, A, B, C), VarSet,
-        Indent, !IO) :-
+mercury_output_goal_2(Expr, VarSet, Indent, !IO) :-
+    Expr = trace_expr(MaybeCompileTime, MaybeRunTime, MaybeIO, MutableVars,
+        Goal),
+    Indent1 = Indent + 1,
+    io.write_string("trace [", !IO),
+    some [!NeedComma] (
+        !:NeedComma = no,
+        (
+            MaybeCompileTime = yes(CompileTime),
+            mercury_output_trace_expr(mercury_output_trace_compiletime,
+                CompileTime, !IO),
+            !:NeedComma = yes
+        ;
+            MaybeCompileTime = no
+        ),
+        (
+            MaybeRunTime = yes(RunTime),
+            mercury_output_comma_if_needed(!.NeedComma, !IO),
+            mercury_output_trace_expr(mercury_output_trace_runtime,
+                RunTime, !IO),
+            !:NeedComma = yes
+        ;
+            MaybeRunTime = no
+        ),
+        (
+            MaybeIO = yes(IOStateVar),
+            mercury_output_comma_if_needed(!.NeedComma, !IO),
+            io.write_string("io(!", !IO),
+            mercury_output_var(IOStateVar, VarSet, no, !IO),
+            io.write_string(")", !IO),
+            !:NeedComma = yes
+        ;
+            MaybeIO = no
+        ),
+        list.foldl2(mercury_output_trace_mutable_var_and_comma(VarSet, no),
+            MutableVars, !.NeedComma, _, !IO)
+    ),
+    io.write_string("]", !IO),
+    mercury_output_newline(Indent1, !IO),
+    mercury_output_goal(Goal, VarSet, Indent1, !IO),
+    mercury_output_newline(Indent, !IO),
+    io.write_string(")", !IO).
+
+mercury_output_goal_2(if_then_else_expr(Vars, StateVars, Cond, Then, Else),
+        VarSet, Indent, !IO) :-
     io.write_string("(if", !IO),
     mercury_output_some(Vars, StateVars, VarSet, !IO),
     Indent1 = Indent + 1,
     mercury_output_newline(Indent1, !IO),
-    mercury_output_goal(A, VarSet, Indent1, !IO),
+    mercury_output_goal(Cond, VarSet, Indent1, !IO),
     mercury_output_newline(Indent, !IO),
     io.write_string("then", !IO),
     mercury_output_newline(Indent1, !IO),
-    mercury_output_goal(B, VarSet, Indent1, !IO),
+    mercury_output_goal(Then, VarSet, Indent1, !IO),
     mercury_output_newline(Indent, !IO),
     io.write_string("else", !IO),
     mercury_output_newline(Indent1, !IO),
-    mercury_output_goal(C, VarSet, Indent1, !IO),
+    mercury_output_goal(Else, VarSet, Indent1, !IO),
     mercury_output_newline(Indent, !IO),
     io.write_string(")", !IO).
 
@@ -2847,6 +2902,74 @@ mercury_output_state_vars_using_prefix([SVar | SVars], BangPrefix, VarSet,
     ),
     mercury_output_state_vars_using_prefix(SVars, BangPrefix, VarSet,
         AppendVarnums, !IO).
+
+:- pred mercury_output_comma_if_needed(bool::in, io::di, io::uo) is det.
+
+mercury_output_comma_if_needed(no, !IO).
+mercury_output_comma_if_needed(yes, !IO) :-
+    io.write_string(", ", !IO).
+
+mercury_output_trace_expr(PrintBase, TraceExpr, !IO) :-
+    (
+        TraceExpr = trace_base(Base),
+        PrintBase(Base, !IO)
+    ;
+        TraceExpr = trace_op(trace_or, TraceExprA, TraceExprB),
+        io.write_string("(", !IO),
+        mercury_output_trace_expr(PrintBase, TraceExprA, !IO),
+        io.write_string(") or (", !IO),
+        mercury_output_trace_expr(PrintBase, TraceExprB, !IO),
+        io.write_string(")", !IO)
+    ;
+        TraceExpr = trace_op(trace_and, TraceExprA, TraceExprB),
+        mercury_output_trace_expr(PrintBase, TraceExprA, !IO),
+        io.write_string(" and ", !IO),
+        mercury_output_trace_expr(PrintBase, TraceExprB, !IO)
+    ).
+
+mercury_output_trace_compiletime(trace_flag(FlagName), !IO) :-
+    io.write_string("flag(", !IO),
+    io.write_string(FlagName, !IO),
+    io.write_string(")", !IO).
+mercury_output_trace_compiletime(trace_grade(Grade), !IO) :-
+    io.write_string("grade(", !IO),
+    (
+        Grade = trace_grade_debug,
+        io.write_string("debug", !IO)
+    ),
+    io.write_string(")", !IO).
+mercury_output_trace_compiletime(trace_trace_level(Level), !IO) :-
+    io.write_string("tracelevel(", !IO),
+    (
+        Level = trace_level_shallow,
+        io.write_string("shallow", !IO)
+    ;
+        Level = trace_level_deep,
+        io.write_string("deep", !IO)
+    ),
+    io.write_string(")", !IO).
+
+mercury_output_trace_runtime(trace_envvar(EnvVarName), !IO) :-
+    io.write_string("env(", !IO),
+    io.write_string(EnvVarName, !IO),
+    io.write_string(")", !IO).
+
+mercury_output_trace_mutable_var(MutableVar, VarSet, AppendVarnums, !IO) :-
+    MutableVar = trace_mutable_var(MutableName, StateVar),
+    io.write_string("state(", !IO),
+    io.write_string(MutableName, !IO),
+    io.write_string(", !", !IO),
+    mercury_output_var(StateVar, VarSet, AppendVarnums, !IO),
+    io.write_string(")", !IO).
+
+:- pred mercury_output_trace_mutable_var_and_comma(prog_varset::in, bool::in,
+    trace_mutable_var::in, bool::in, bool::out, io::di, io::uo) is det.
+
+mercury_output_trace_mutable_var_and_comma(VarSet, AppendVarnums,
+        MutableVar, !NeedComma, !IO) :-
+    mercury_output_comma_if_needed(!.NeedComma, !IO),
+    !:NeedComma = yes,
+    mercury_output_trace_mutable_var(MutableVar, VarSet, AppendVarnums, !IO).
 
 :- pred mercury_output_call(sym_name::in, list(prog_term)::in, prog_varset::in,
     int::in, io::di, io::uo) is det.
@@ -3136,7 +3259,7 @@ mercury_pragma_foreign_code_to_string(Attributes, PredName, PredOrFunc, Vars0,
 mercury_format_pragma_foreign_code(Attributes, PredName, PredOrFunc, Vars0,
         ProgVarset, InstVarset, PragmaCode, !U) :-
     (
-        PragmaCode = import(C_Function, _, _, _),
+        PragmaCode = fc_impl_import(C_Function, _, _, _),
         % The predicate or function arguments in a `:- pragma import'
         % declaration are not named.
         ImportModes = list.map(
@@ -3145,11 +3268,11 @@ mercury_format_pragma_foreign_code(Attributes, PredName, PredOrFunc, Vars0,
         mercury_format_pragma_import(PredName, PredOrFunc, ImportModes,
             Attributes, C_Function, !U)
     ;
-        PragmaCode = ordinary(_, _),
+        PragmaCode = fc_impl_ordinary(_, _),
         mercury_format_pragma_foreign_code_2(Attributes, PredName,
             PredOrFunc, Vars0, ProgVarset, InstVarset, PragmaCode, !U)
     ;
-        PragmaCode = nondet(_, _, _, _, _, _, _, _, _),
+        PragmaCode = fc_impl_model_non(_, _, _, _, _, _, _, _, _),
         mercury_format_pragma_foreign_code_2(Attributes, PredName,
             PredOrFunc, Vars0, ProgVarset, InstVarset, PragmaCode, !U)
     ).
@@ -3197,10 +3320,11 @@ mercury_format_pragma_foreign_code_2(Attributes, PredName, PredOrFunc, Vars0,
     mercury_format_pragma_foreign_attributes(Attributes, !U),
     add_string(", ", !U),
     (
-        PragmaCode = ordinary(C_Code, _),
+        PragmaCode = fc_impl_ordinary(C_Code, _),
         mercury_format_foreign_code_string(C_Code, !U)
     ;
-        PragmaCode = nondet(Fields, _, First, _, Later, _, Treat, Shared, _),
+        PragmaCode = fc_impl_model_non(Fields, _, First, _, Later, _,
+            Treat, Shared, _),
         add_string("local_vars(", !U),
         mercury_format_foreign_code_string(Fields, !U),
         add_string("), ", !U),
@@ -3223,7 +3347,7 @@ mercury_format_pragma_foreign_code_2(Attributes, PredName, PredOrFunc, Vars0,
         mercury_format_foreign_code_string(Shared, !U),
         add_string(")", !U)
     ;
-        PragmaCode = import(_, _, _, _),
+        PragmaCode = fc_impl_import(_, _, _, _),
         % This should be handle in mercury_output_pragma_foreign_code.
         unexpected(this_file, "mercury_output_pragma_foreign_code_2")
     ),

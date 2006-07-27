@@ -298,8 +298,7 @@
     % Mode-check a single goal-expression.
     %
 :- pred modecheck_goal_expr(hlds_goal_expr::in, hlds_goal_info::in,
-    hlds_goal_expr::out, mode_info::in, mode_info::out,
-    io::di, io::uo) is det.
+    hlds_goal_expr::out, mode_info::in, mode_info::out, io::di, io::uo) is det.
 
 :- type extra_goals
     --->    no_extra_goals
@@ -1332,12 +1331,12 @@ modecheck_goal_expr(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, Goal,
     % We need to lock the non-local variables, to ensure
     % that the condition of the if-then-else does not bind them.
     %
-    mode_info_lock_vars(if_then_else, NonLocals, !ModeInfo),
+    mode_info_lock_vars(var_lock_if_then_else, NonLocals, !ModeInfo),
     mode_info_add_live_vars(ThenVars, !ModeInfo),
     modecheck_goal(Cond0, Cond, !ModeInfo, !IO),
     mode_info_get_instmap(!.ModeInfo, InstMapCond),
     mode_info_remove_live_vars(ThenVars, !ModeInfo),
-    mode_info_unlock_vars(if_then_else, NonLocals, !ModeInfo),
+    mode_info_unlock_vars(var_lock_if_then_else, NonLocals, !ModeInfo),
     ( instmap.is_reachable(InstMapCond) ->
         modecheck_goal(Then0, Then1, !ModeInfo, !IO),
         mode_info_get_instmap(!.ModeInfo, InstMapThen1)
@@ -1371,30 +1370,27 @@ modecheck_goal_expr(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, Goal,
     ),
     mode_checkpoint(exit, "if-then-else", !ModeInfo, !IO).
 
-modecheck_goal_expr(not(SubGoal0), GoalInfo0, not(SubGoal), !ModeInfo, !IO) :-
+modecheck_goal_expr(negation(SubGoal0), GoalInfo0, negation(SubGoal),
+        !ModeInfo, !IO) :-
     mode_checkpoint(enter, "not", !ModeInfo, !IO),
     goal_info_get_nonlocals(GoalInfo0, NonLocals),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
-    %
-    % when analyzing a negated goal, nothing is forward-live
-    % (live on forward executution after that goal), because
-    % if the goal succeeds then execution will immediately backtrack.
-    % So we need to set the live variables set to empty here.
-    % This allows those variables to be backtrackably
-    % destructively updated.  (If you try to do non-backtrackable
-    % destructive update on such a variable, it will be caught
-    % later on by unique_modes.m.)
-    %
+
+    % When analyzing a negated goal, nothing is forward-live (live on forward
+    % execution after that goal), because if the goal succeeds then execution
+    % will immediately backtrack. So we need to set the live variables set
+    % to empty here. This allows those variables to be backtrackably
+    % destructively updated.  (If you try to do non-backtrackable destructive
+    % update on such a variable, it will be caught later on by unique_modes.m.)
     mode_info_get_live_vars(!.ModeInfo, LiveVars0),
     mode_info_set_live_vars(bag.init, !ModeInfo),
-    %
-    % We need to lock the non-local variables, to ensure
-    % that the negation does not bind them.
-    %
-    mode_info_lock_vars(negation, NonLocals, !ModeInfo),
+
+    % We need to lock the non-local variables, to ensure that
+    % the negation does not bind them.
+    mode_info_lock_vars(var_lock_negation, NonLocals, !ModeInfo),
     modecheck_goal(SubGoal0, SubGoal, !ModeInfo, !IO),
     mode_info_set_live_vars(LiveVars0, !ModeInfo),
-    mode_info_unlock_vars(negation, NonLocals, !ModeInfo),
+    mode_info_unlock_vars(var_lock_negation, NonLocals, !ModeInfo),
     mode_info_set_instmap(InstMap0, !ModeInfo),
     ( mode_info_get_in_promise_purity_scope(!.ModeInfo, no) ->
         goal_info_get_nonlocals(GoalInfo0, NegNonLocals),
@@ -1406,9 +1402,34 @@ modecheck_goal_expr(not(SubGoal0), GoalInfo0, not(SubGoal), !ModeInfo, !IO) :-
     ),
     mode_checkpoint(exit, "not", !ModeInfo, !IO).
 
-modecheck_goal_expr(scope(Reason, SubGoal0), _GoalInfo, GoalExpr,
-        !ModeInfo, !IO) :-
-    ( Reason = from_ground_term(TermVar) ->
+modecheck_goal_expr(scope(Reason, SubGoal0), GoalInfo0, GoalExpr, !ModeInfo,
+        !IO) :-
+    (
+        Reason = trace_goal(_, _, _, _),
+        mode_checkpoint(enter, "scope", !ModeInfo, !IO),
+        mode_info_get_instmap(!.ModeInfo, InstMap0),
+        goal_info_get_nonlocals(GoalInfo0, NonLocals),
+        % We need to lock the non-local variables, to ensure that
+        % the trace goal does not bind them. If it did, then the code
+        % would not be valid with the trace goal disabled.
+        mode_info_lock_vars(var_lock_trace_goal, NonLocals, !ModeInfo),
+        modecheck_goal(SubGoal0, SubGoal, !ModeInfo, !IO),
+        mode_info_unlock_vars(var_lock_trace_goal, NonLocals, !ModeInfo),
+        mode_info_set_instmap(InstMap0, !ModeInfo),
+        mode_checkpoint(exit, "scope", !ModeInfo, !IO),
+        GoalExpr = scope(Reason, SubGoal)
+    ;
+        ( Reason = exist_quant(_)
+        ; Reason = promise_solutions(_, _)
+        ; Reason = commit(_)
+        ; Reason = barrier(_)
+        ),
+        mode_checkpoint(enter, "scope", !ModeInfo, !IO),
+        modecheck_goal(SubGoal0, SubGoal, !ModeInfo, !IO),
+        mode_checkpoint(exit, "scope", !ModeInfo, !IO),
+        GoalExpr = scope(Reason, SubGoal)
+    ;
+        Reason = from_ground_term(TermVar),
         % The original goal does no quantification, so deleting the `scope'
         % would be OK. However, deleting it during mode analysis would mean
         % we don't have it during unique mode analysis.
@@ -1450,7 +1471,8 @@ modecheck_goal_expr(scope(Reason, SubGoal0), _GoalInfo, GoalExpr,
 
             GoalExpr = scope(Reason, SubGoal)
         )
-    ; Reason = promise_purity(_Implicit, _Purity) ->
+    ;
+        Reason = promise_purity(_Implicit, _Purity),
         mode_info_get_in_promise_purity_scope(!.ModeInfo, InPPScope),
         mode_info_set_in_promise_purity_scope(yes, !ModeInfo),
         mode_checkpoint(enter, "scope", !ModeInfo, !IO),
@@ -1458,14 +1480,9 @@ modecheck_goal_expr(scope(Reason, SubGoal0), _GoalInfo, GoalExpr,
         mode_checkpoint(exit, "scope", !ModeInfo, !IO),
         GoalExpr = scope(Reason, SubGoal),
         mode_info_set_in_promise_purity_scope(InPPScope, !ModeInfo)
-    ;
-        mode_checkpoint(enter, "scope", !ModeInfo, !IO),
-        modecheck_goal(SubGoal0, SubGoal, !ModeInfo, !IO),
-        mode_checkpoint(exit, "scope", !ModeInfo, !IO),
-        GoalExpr = scope(Reason, SubGoal)
     ).
 
-modecheck_goal_expr(call(PredId, ProcId0, Args0, _, Context, PredName),
+modecheck_goal_expr(plain_call(PredId, ProcId0, Args0, _, Context, PredName),
         GoalInfo0, Goal, !ModeInfo, !IO) :-
     sym_name_to_string(PredName, PredNameString),
     string.append("call ", PredNameString, CallString),
@@ -1482,7 +1499,7 @@ modecheck_goal_expr(call(PredId, ProcId0, Args0, _, Context, PredName),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_info_get_predid(!.ModeInfo, CallerPredId),
     Builtin = builtin_state(ModuleInfo, CallerPredId, PredId, ProcId),
-    Call = call(PredId, ProcId, Args, Builtin, Context, PredName),
+    Call = plain_call(PredId, ProcId, Args, Builtin, Context, PredName),
     handle_extra_goals(Call, ExtraGoals, GoalInfo0, Args0, Args,
         InstMap0, Goal, !ModeInfo, !IO),
 
@@ -1589,8 +1606,8 @@ modecheck_goal_expr(switch(Var, CanFail, Cases0), GoalInfo0,
     % which it is the goal.
     %
 modecheck_goal_expr(ForeignProc, GoalInfo, Goal, !ModeInfo, !IO) :-
-    ForeignProc = foreign_proc(Attributes, PredId, ProcId0, Args0, ExtraArgs,
-        PragmaCode),
+    ForeignProc = call_foreign_proc(Attributes, PredId, ProcId0,
+        Args0, ExtraArgs, MaybeTraceRuntimeCond, PragmaCode),
     mode_checkpoint(enter, "pragma_foreign_code", !ModeInfo, !IO),
     mode_info_get_call_id(!.ModeInfo, PredId, CallId),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
@@ -1604,8 +1621,8 @@ modecheck_goal_expr(ForeignProc, GoalInfo, Goal, !ModeInfo, !IO) :-
     % I think we should use Args after the following call:
     % replace_foreign_arg_vars(Args0, ArgVars, Args)
     % or is there some reason why Args0 and Args would be the same?
-    Pragma = foreign_proc(Attributes, PredId, ProcId, Args0, ExtraArgs,
-        PragmaCode),
+    Pragma = call_foreign_proc(Attributes, PredId, ProcId, Args0, ExtraArgs,
+        MaybeTraceRuntimeCond, PragmaCode),
     handle_extra_goals(Pragma, ExtraGoals, GoalInfo, ArgVars0, ArgVars,
         InstMap0, Goal, !ModeInfo, !IO),
 
@@ -2052,8 +2069,8 @@ modecheck_conj_list_2(ConjType, [Goal0 | Goals0], Goals, !ImpurityErrors,
     %
 modecheck_conj_list_3(ConjType, Goal0, Goals0, Goals, !ImpurityErrors,
         !ModeInfo, !IO) :-
-    Goal0 = _GoalExpr - GoalInfo0,
-    ( goal_info_is_impure(GoalInfo0) ->
+    goal_get_purity(Goal0, Purity),
+    ( Purity = purity_impure ->
         Impure = yes,
         check_for_impurity_error(Goal0, ScheduledSolverGoals,
             !ImpurityErrors, !ModeInfo, !IO)
@@ -2446,7 +2463,7 @@ candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
     % A call (at this point the ProcId is just a dummy value since it isn't
     % meaningful until the call is scheduled.)
     %
-    Goal = call(PredId, _, Args, _, _, _) - _GoalInfo,
+    Goal = plain_call(PredId, _, Args, _, _, _) - _GoalInfo,
 
     % Find a deterministic proc for this call.
     mode_info_get_preds(ModeInfo, Preds),
@@ -3194,10 +3211,11 @@ build_call(CalleeModuleName, CalleePredName, ArgVars, ArgTypes, NonLocals,
 
 %-----------------------------------------------------------------------------%
 
-mode_context_to_unify_context(_, unify(UnifyContext, _), UnifyContext).
-mode_context_to_unify_context(_, call(CallId, Arg),
+mode_context_to_unify_context(_, mode_context_unify(UnifyContext, _),
+        UnifyContext).
+mode_context_to_unify_context(_, mode_context_call(CallId, Arg),
         unify_context(call(CallId, Arg), [])).
-mode_context_to_unify_context(_, uninitialized, _) :-
+mode_context_to_unify_context(_, mode_context_uninitialized, _) :-
     unexpected(this_file,
         "mode_context_to_unify_context: uninitialized context").
 

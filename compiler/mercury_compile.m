@@ -886,12 +886,12 @@ file_or_module_to_module_name(file(FileName)) = ModuleName :-
     file_name_to_module_name(FileName, ModuleName).
 file_or_module_to_module_name(module(ModuleName)) = ModuleName.
 
-:- pred read_module(file_or_module::in, bool::in, module_name::out,
+:- pred read_module_or_file(file_or_module::in, bool::in, module_name::out,
     file_name::out, maybe(timestamp)::out, item_list::out,
     module_error::out, read_modules::in, read_modules::out,
     io::di, io::uo) is det.
 
-read_module(module(ModuleName), ReturnTimestamp, ModuleName, FileName,
+read_module_or_file(module(ModuleName), ReturnTimestamp, ModuleName, FileName,
         MaybeTimestamp, Items, Error, !ReadModules, !IO) :-
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     maybe_write_string(Verbose, "% Parsing module `", !IO),
@@ -919,8 +919,8 @@ read_module(module(ModuleName), ReturnTimestamp, ModuleName, FileName,
     ),
     globals.io_lookup_bool_option(statistics, Stats, !IO),
     maybe_report_stats(Stats, !IO).
-read_module(file(FileName), ReturnTimestamp, ModuleName, SourceFileName,
-        MaybeTimestamp, Items, Error, !ReadModules, !IO) :-
+read_module_or_file(file(FileName), ReturnTimestamp, ModuleName,
+        SourceFileName, MaybeTimestamp, Items, Error, !ReadModules, !IO) :-
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
     maybe_write_string(Verbose, "% Parsing file `", !IO),
     maybe_write_string(Verbose, FileName, !IO),
@@ -1017,8 +1017,9 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
             fail
         )
     ->
-        read_module(FileOrModule, ReturnTimestamp, ModuleName, FileName,
-            MaybeTimestamp, Items, Error, map.init, _, !IO),
+        read_module_or_file(FileOrModule, ReturnTimestamp,
+            ModuleName, FileName, MaybeTimestamp, Items, Error,
+            map.init, _, !IO),
         ( halt_at_module_error(HaltSyntax, Error) ->
             true
         ;
@@ -1031,8 +1032,8 @@ process_module(OptionVariables, OptionArgs, FileOrModule, ModulesToLink,
     ;
         ConvertToMercury = yes
     ->
-        read_module(FileOrModule, no, ModuleName, _, _,
-            Items, Error, map.init, _, !IO),
+        read_module_or_file(FileOrModule, no, ModuleName, _, _, Items, Error,
+            map.init, _, !IO),
         ( halt_at_module_error(HaltSyntax, Error) ->
             true
         ;
@@ -1140,7 +1141,7 @@ process_module_2_no_fact_table(FileOrModule, MaybeModulesToRecompile,
 
 process_module_2(FileOrModule, MaybeModulesToRecompile, ReadModules0,
         ModulesToLink, FactTableObjFiles, !IO) :-
-    read_module(FileOrModule, yes, ModuleName, FileName,
+    read_module_or_file(FileOrModule, yes, ModuleName, FileName,
         MaybeTimestamp, Items, Error, ReadModules0, ReadModules, !IO),
     globals.io_lookup_bool_option(halt_at_syntax_errors, HaltSyntax, !IO),
     ( halt_at_module_error(HaltSyntax, Error) ->
@@ -3129,7 +3130,8 @@ simplify(Warn, SimplifyPass, Verbose, Stats, Process, !HLDS, !IO) :-
             simplify.find_simplifications(Warn, Globals, Simplifications0),
             !:SimpList = simplifications_to_list(Simplifications0),
             (
-                SimplifyPass = frontend
+                SimplifyPass = frontend,
+                list.cons(after_front_end, !SimpList)
             ;
                 SimplifyPass = post_untuple,
                 list.cons(do_once, !SimpList)

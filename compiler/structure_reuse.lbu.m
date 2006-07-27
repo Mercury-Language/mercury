@@ -86,15 +86,15 @@ backward_use_in_goal_2(VarTypes, Info0, !Expr, !LBU) :-
     (
         !.Expr = unify(_, _, _, _, _)
     ;
-        !.Expr = call(_,_, _, _, _, _),
+        !.Expr = plain_call(_,_, _, _, _, _),
         goal_info_get_determinism(Info0, Det),
         (
             detism_allows_multiple_solns(Det)
         ->
-            % Implementation of Instantiation 2 from Nancy's Phd.
+            % Implementation of Instantiation 2 from Nancy's PhD.
             % In this instantation, a non-deterministic procedure
             % call only adds its LFU-variables to the current set
-            % of lbu-variables. Cf. Phd Nancy Mazur. 
+            % of lbu-variables. Cf. PhD Nancy Mazur. 
 
             goal_info_get_pre_births(Info0, PreBirths),
             goal_info_get_post_births(Info0, PostBirths),
@@ -109,7 +109,7 @@ backward_use_in_goal_2(VarTypes, Info0, !Expr, !LBU) :-
     ;
         % XXX Can they be nondet? If so, LFU variables need to be added
         % to !LBU.
-        !.Expr = foreign_proc(_, _, _, _, _, _)
+        !.Expr = call_foreign_proc(_, _, _, _, _, _, _)
     ; 
         !.Expr = conj(ConjType, Goals0),
         backward_use_in_conj(VarTypes, Goals0, Goals, !LBU),
@@ -123,7 +123,7 @@ backward_use_in_goal_2(VarTypes, Info0, !Expr, !LBU) :-
         backward_use_in_cases(VarTypes, Cases0, Cases, !LBU),
         !:Expr = switch(A, B, Cases)
     ;
-        !.Expr = not(Goal0),
+        !.Expr = negation(Goal0),
         % handled as: if(Goal0) then fail else true
         LBU0 = !.LBU, 
         backward_use_in_goal(VarTypes, Goal0, Goal, !.LBU, _),
@@ -131,7 +131,7 @@ backward_use_in_goal_2(VarTypes, Info0, !Expr, !LBU) :-
         % not itself is deterministic, and no new variables in LBU
         % are introduced into the resulting LBU-set. 
         !:LBU = LBU0,
-        !:Expr = not(Goal)
+        !:Expr = negation(Goal)
     ;
         !.Expr = scope(Reason, SomeGoal0),
         backward_use_in_goal(VarTypes, SomeGoal0, SomeGoal, !LBU),

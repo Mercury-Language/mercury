@@ -203,7 +203,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
         Attrs = !.Attrs
     ),
 
-    Impl              = ordinary("Y = X;", yes(Context)),
+    Impl              = fc_impl_ordinary("Y = X;", yes(Context)),
 
         % The `func(in) = out(<i_ground>) is det' mode.
         %

@@ -213,7 +213,7 @@ deforest_proc_2(proc(PredId, ProcId), CostDelta, SizeDelta, !PDInfo, !IO) :-
         % Inlining may have created some opportunities for simplification.
         globals.io_get_globals(Globals, !IO),
         simplify.find_simplifications(no, Globals, Simplifications),
-        pd_util.simplify_goal(Simplifications, !Goal, !PDInfo, !IO),
+        pd_util.pd_simplify_goal(Simplifications, !Goal, !PDInfo, !IO),
 
         pd_util.propagate_constraints(!Goal, !PDInfo, !IO),
 
@@ -331,12 +331,12 @@ deforest_goal(switch(Var, CanFail, Cases0) - Info,
     deforest_cases(Var, Cases0, Cases, !PDInfo, !IO).
 
 deforest_goal(Goal, Goal, !PDInfo, !IO) :-
-    Goal = foreign_proc(_, _, _, _, _, _) - _.
+    Goal = call_foreign_proc(_, _, _, _, _, _, _) - _.
 
 deforest_goal(Goal, Goal, !PDInfo, !IO) :-
     Goal = generic_call(_, _, _, _) - _.
 
-deforest_goal(not(Goal0) - Info, not(Goal) - Info, !PDInfo, !IO) :-
+deforest_goal(negation(Goal0) - Info, negation(Goal) - Info, !PDInfo, !IO) :-
     deforest_goal(Goal0, Goal, !PDInfo, !IO).
 
 deforest_goal(scope(Reason, Goal0) - Info,
@@ -344,7 +344,7 @@ deforest_goal(scope(Reason, Goal0) - Info,
     deforest_goal(Goal0, Goal, !PDInfo, !IO).
 
 deforest_goal(Goal0, Goal, !PDInfo, !IO) :-
-    Goal0 = call(PredId, ProcId, Args, BuiltinState, _, Name) - _,
+    Goal0 = plain_call(PredId, ProcId, Args, BuiltinState, _, Name) - _,
     deforest_call(PredId, ProcId, Args, Name, BuiltinState, Goal0, Goal,
         !PDInfo, !IO).
 
@@ -425,7 +425,7 @@ deforest_get_branch_vars_goal(Goal, MaybeBranchInfo, !PDInfo) :-
     Goal = GoalExpr - _,
     ( goal_util.goal_is_branched(GoalExpr) ->
         pd_util.get_branch_vars_goal(Goal, MaybeBranchInfo, !PDInfo)
-    ; GoalExpr = call(PredId, ProcId, Args, _, _, _) ->
+    ; GoalExpr = plain_call(PredId, ProcId, Args, _, _, _) ->
         pd_info_get_proc_arg_info(!.PDInfo, ProcBranchInfos),
         ( map.search(ProcBranchInfos, proc(PredId, ProcId), BranchInfo0) ->
             % Rename the branch_info for the called procedure
@@ -453,7 +453,7 @@ propagate_conj_constraints([Goal0 | Goals0],
     (
         % constraint.m ensures that only constraints relevant
         % to this goal are placed adjacent to it.
-        Goal0 = call(PredId, _ProcId, _Args, _, _, SymName) - _,
+        Goal0 = plain_call(PredId, _ProcId, _Args, _, _, SymName) - _,
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         \+ pred_info_is_imported(PredInfo),
         list.takewhile((pred(CnstrGoal::in) is semidet :-
@@ -645,8 +645,8 @@ handle_deforestation(NonLocals, DeforestInfo0, !RevBeforeGoals, !AfterGoals,
         Optimized0 = no,
         Goals = []
     ;
-        EarlierGoal = call(PredId1, _, _, _, _, _) - _,
-        LaterGoal = call(PredId2, _, _, _, _, _) - _
+        EarlierGoal = plain_call(PredId1, _, _, _, _, _) - _,
+        LaterGoal = plain_call(PredId2, _, _, _, _, _) - _
     ->
         % If both goals are calls create a new predicate for the conjunction
         % to be deforested and process it.
@@ -673,7 +673,7 @@ handle_deforestation(NonLocals, DeforestInfo0, !RevBeforeGoals, !AfterGoals,
         % since it is difficult to stop the process.
         EarlierGoal = EarlierGoalExpr - _,
         goal_util.goal_is_branched(EarlierGoalExpr),
-        LaterGoal = call(PredId, ProcId, _, _, _, _) - _,
+        LaterGoal = plain_call(PredId, ProcId, _, _, _, _) - _,
         PredProcId = proc(PredId, ProcId),
         PredProcId \= CurrPredProcId,
         \+ set.member(PredProcId, Parents0)
@@ -761,8 +761,8 @@ should_try_deforestation(DeforestInfo, ShouldTry, !PDInfo, !IO) :-
         BetweenGoals, LaterGoal, _, _),
     pd_info_get_useless_versions(!.PDInfo, UselessVersions),
     (
-        EarlierGoal = call(PredId1, ProcId1, _, _, _, _) - _,
-        LaterGoal = call(PredId2, ProcId2, _, _, _, _) - _,
+        EarlierGoal = plain_call(PredId1, ProcId1, _, _, _, _) - _,
+        LaterGoal = plain_call(PredId2, ProcId2, _, _, _, _) - _,
         set.member(proc(PredId1, ProcId1) - proc(PredId2, ProcId2),
             UselessVersions)
     ->
@@ -818,8 +818,8 @@ can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
         % (the specialized version will only include one branch of the
         % top-level switch).
         SizeLimit \= -1,
-        ( EarlierGoal = call(PredId, ProcId, _, _, _, _) - _
-        ; MaybeLaterGoal = yes(call(PredId, ProcId, _, _, _, _) - _)
+        ( EarlierGoal = plain_call(PredId, ProcId, _, _, _, _) - _
+        ; MaybeLaterGoal = yes(plain_call(PredId, ProcId, _, _, _, _) - _)
         ),
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
             _, CalledProcInfo),
@@ -832,8 +832,9 @@ can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
         ShouldTry = no
     ;
         % Check whether either of the goals to be deforested can't be inlined.
-        ( EarlierGoal = call(PredId, ProcId, _, BuiltinState, _, _) - _
-        ; MaybeLaterGoal = yes(call(PredId, ProcId, _, BuiltinState, _, _) - _)
+        ( EarlierGoal = plain_call(PredId, ProcId, _, BuiltinState, _, _) - _
+        ; MaybeLaterGoal = yes(plain_call(PredId, ProcId, _, BuiltinState,
+            _, _) - _)
         ),
 
         % We don't attempt to deforest predicates which are promised pure
@@ -864,7 +865,7 @@ can_optimize_conj(EarlierGoal, BetweenGoals, MaybeLaterGoal, ShouldTry,
         ; MaybeLaterGoal = yes(ImpureGoal)
         ),
         ImpureGoal = _ - ImpureGoalInfo,
-        \+ goal_info_is_pure(ImpureGoalInfo)
+        \+ goal_info_get_purity(ImpureGoalInfo, purity_pure)
     ->
         pd_debug_message("goal list contains impure goal(s)\n", [], !IO),
         ShouldTry = no
@@ -1031,7 +1032,7 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     globals.io_lookup_int_option(deforestation_vars_threshold, VarsOpt, !IO),
     (
-        EarlierGoal = call(PredId1, ProcId1, Args1, _, _, _) - _,
+        EarlierGoal = plain_call(PredId1, ProcId1, Args1, _, _, _) - _,
         (
             % No threshold set.
             VarsOpt = -1
@@ -1112,7 +1113,10 @@ create_deforest_goal(EarlierGoal, BetweenGoals, MaybeLaterGoal,
 
             PredName = predicate_name(ModuleInfo, PredId),
             pd_debug_message("\nCreated predicate %s\n", [s(PredName)], !IO),
-            ( MaybeLaterGoal = yes(call(PredId2, ProcId2, _, _, _, _) - _) ->
+            (
+                MaybeLaterGoal =
+                    yes(plain_call(PredId2, ProcId2, _, _, _, _) - _)
+            ->
                 CalledPreds = [proc(PredId1, ProcId1), proc(PredId2, ProcId2)]
             ;
                 CalledPreds = [proc(PredId1, ProcId1)]
@@ -1206,7 +1210,7 @@ create_call_goal(proc(PredId, ProcId), VersionInfo,
 
     PredModule = pred_info_module(CalledPredInfo),
     PredName = pred_info_name(CalledPredInfo),
-    Goal = call(PredId, ProcId, Args, not_builtin, no,
+    Goal = plain_call(PredId, ProcId, Args, not_builtin, no,
         qualified(PredModule, PredName)) - GoalInfo.
 
 :- pred create_deforest_call_args(list(prog_var)::in, list(mer_type)::in,
@@ -1390,7 +1394,7 @@ match_generalised_version(ModuleInfo, VersionGoal, VersionArgs,
         VersionArgTypes, FirstGoal, BetweenGoals, MaybeLastGoal,
         ConjNonLocals, !.VarSet, !.VarTypes, Versions, Renaming) :-
 
-    FirstGoal = call(FirstPredId, FirstProcId, FirstArgs, _, _, _) - _,
+    FirstGoal = plain_call(FirstPredId, FirstProcId, FirstArgs, _, _, _) - _,
 
     % Look up the version which the first goal calls.
     map.search(Versions, proc(FirstPredId, FirstProcId), FirstVersionInfo),
@@ -1418,7 +1422,7 @@ match_generalised_version(ModuleInfo, VersionGoal, VersionArgs,
     NonGeneralisedPredProcId = proc(NonGeneralisedPredId,
         NonGeneralisedProcId),
     goal_to_conj_list(VersionGoal, VersionGoalList),
-    VersionGoalList = [call(NonGeneralisedPredId, NonGeneralisedProcId,
+    VersionGoalList = [plain_call(NonGeneralisedPredId, NonGeneralisedProcId,
         _, _, _, _) - _ | _],
 
     % Find a renaming from the argument variables of the generalised
@@ -1440,8 +1444,9 @@ match_generalised_version(ModuleInfo, VersionGoal, VersionArgs,
 
     % Only fill in as much as pd_util.goals_match actually looks at.
     goal_info_init(GoalInfo),
-    NonGeneralFirstGoal = call(NonGeneralisedPredId, NonGeneralisedProcId,
-        NewArgs, not_builtin, no, unqualified("")) - GoalInfo,
+    NonGeneralFirstGoal = plain_call(NonGeneralisedPredId,
+        NonGeneralisedProcId, NewArgs, not_builtin, no, unqualified(""))
+        - GoalInfo,
     create_conj(NonGeneralFirstGoal, BetweenGoals, MaybeLastGoal,
         ConjNonLocals, GoalToMatch),
 
@@ -1560,8 +1565,7 @@ move_goals(CanMove, ModuleInfo, FullyStrict, [BetweenGoal | RevBetweenGoals0],
 can_move_goal_forward(ModuleInfo, FullyStrict, ThisGoal, Goals) :-
     \+ (
         list.member(LaterGoal, Goals),
-        \+ pd_util.can_reorder_goals(ModuleInfo, FullyStrict,
-            ThisGoal, LaterGoal)
+        \+ pd_can_reorder_goals(ModuleInfo, FullyStrict, ThisGoal, LaterGoal)
     ).
 
     % Check all goals occurring earlier in the conjunction to see
@@ -1573,8 +1577,7 @@ can_move_goal_forward(ModuleInfo, FullyStrict, ThisGoal, Goals) :-
 can_move_goal_backward(ModuleInfo, FullyStrict, ThisGoal, Goals) :-
     \+ (
         list.member(EarlierGoal, Goals),
-        \+ pd_util.can_reorder_goals(ModuleInfo, FullyStrict,
-            EarlierGoal, ThisGoal)
+        \+ pd_can_reorder_goals(ModuleInfo, FullyStrict, EarlierGoal, ThisGoal)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1624,7 +1627,7 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
     goal_info_get_determinism(LaterInfo, Detism1),
     det_conjunction_detism(Detism0, Detism1, Detism),
     goal_list_purity([EarlierGoal | BetweenGoals], Purity0),
-    infer_goal_info_purity(LaterInfo, Purity1),
+    goal_info_get_purity(LaterInfo, Purity1),
     worst_purity(Purity0, Purity1) = Purity,
     goal_info_init(NonLocals, Delta, Detism, Purity, GoalInfo),
     Goal2 = GoalExpr - GoalInfo,
@@ -1637,7 +1640,7 @@ push_goal_into_goal(NonLocals, DeforestInfo, EarlierGoal,
     % This helps achieve folding in some cases.
     SimpList = [extra_common_struct | SimpList0],
     Simplifications = list_to_simplifications(SimpList),
-    pd_util.simplify_goal(Simplifications, Goal2, Goal3, !PDInfo, !IO),
+    pd_util.pd_simplify_goal(Simplifications, Goal2, Goal3, !PDInfo, !IO),
     pd_info_set_instmap(InstMap0, !PDInfo),
 
     % Perform any folding which may now be possible.
@@ -1864,7 +1867,7 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         pd_info_get_module_info(!.PDInfo, ModuleInfo),
         module_info_get_globals(ModuleInfo, Globals),
         simplify.find_simplifications(no, Globals, Simplifications),
-        pd_util.simplify_goal(Simplifications, Goal3, Goal4, !PDInfo, !IO),
+        pd_util.pd_simplify_goal(Simplifications, Goal3, Goal4, !PDInfo, !IO),
 
         pd_info_get_cost_delta(!.PDInfo, CostDelta1),
         CostDelta = CostDelta1 - CostDelta0,
@@ -1939,7 +1942,7 @@ is_simple_goal(Goal - _) :-
     (
         goal_is_atomic(Goal)
     ;
-        Goal = not(Goal1),
+        Goal = negation(Goal1),
         % Handle a call or builtin + tests on the output.
         goal_to_conj_list(Goal1, GoalList1),
         is_simple_goal_list(GoalList1)

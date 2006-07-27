@@ -245,7 +245,7 @@ build_interval_info_in_goal(switch(Var, _Det, Cases) - GoalInfo,
     require_in_regs([Var], !IntervalInfo),
     require_access([Var], !IntervalInfo).
 
-build_interval_info_in_goal(not(Goal) - GoalInfo, !IntervalInfo, !Acc) :-
+build_interval_info_in_goal(negation(Goal) - GoalInfo, !IntervalInfo, !Acc) :-
     reached_branch_end(GoalInfo, yes(Goal), neg,
         StartAnchor, EndAnchor, BeforeId, AfterId, MaybeResumeVars,
         !IntervalInfo, !Acc),
@@ -302,7 +302,7 @@ build_interval_info_in_goal(Goal - GoalInfo, !IntervalInfo, !Acc) :-
     ).
 
 build_interval_info_in_goal(Goal - GoalInfo, !IntervalInfo, !Acc) :-
-    Goal = call(PredId, ProcId, ArgVars, Builtin, _, _),
+    Goal = plain_call(PredId, ProcId, ArgVars, Builtin, _, _),
     IntParams = !.IntervalInfo ^ interval_params,
     ModuleInfo = IntParams ^ module_info,
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
@@ -321,8 +321,8 @@ build_interval_info_in_goal(Goal - GoalInfo, !IntervalInfo, !Acc) :-
     ).
 
 build_interval_info_in_goal(Goal - GoalInfo, !IntervalInfo, !Acc) :-
-    Goal = foreign_proc(_Attributes, PredId, ProcId, Args, ExtraArgs,
-        _PragmaCode),
+    Goal = call_foreign_proc(_Attributes, PredId, ProcId, Args, ExtraArgs,
+        _MaybeTraceRuntimeCond, _PragmaCode),
     IntParams = !.IntervalInfo ^ interval_params,
     ModuleInfo = IntParams ^ module_info,
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
@@ -880,10 +880,10 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
 
 record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
         MaybeFeature) :-
-    Goal0 = not(NegGoal0) - GoalInfo0,
+    Goal0 = negation(NegGoal0) - GoalInfo0,
     record_decisions_in_goal(NegGoal0, NegGoal, !VarInfo, !.VarRename, _,
         InsertMap, MaybeFeature),
-    Goal1 = not(NegGoal) - GoalInfo0,
+    Goal1 = negation(NegGoal) - GoalInfo0,
     construct_anchors(neg, Goal0, _StartAnchor, EndAnchor),
     lookup_inserts(InsertMap, EndAnchor, Inserts),
     % XXX
@@ -935,6 +935,9 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
         Reason0 = from_ground_term(Var0),
         rename_var(no, !.VarRename, Var0, Var),
         Reason = from_ground_term(Var)
+    ;
+        Reason0 = trace_goal(_, _, _, _),
+        Reason = Reason0
     ),
     record_decisions_in_goal(SubGoal0, SubGoal, !VarInfo, !VarRename,
         InsertMap, MaybeFeature),
@@ -954,7 +957,7 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
 
 record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
         MaybeFeature) :-
-    Goal0 = call(_, _, _, Builtin, _, _) - _,
+    Goal0 = plain_call(_, _, _, Builtin, _, _) - _,
     ( Builtin = inline_builtin ->
         MustHaveMap = no
     ;
@@ -965,7 +968,7 @@ record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
 
 record_decisions_in_goal(Goal0, Goal, !VarInfo, !VarRename, InsertMap,
         MaybeFeature) :-
-    Goal0 = foreign_proc(_, _, _, _, _, _) - _,
+    Goal0 = call_foreign_proc(_, _, _, _, _, _, _) - _,
     record_decisions_at_call_site(Goal0, Goal, !VarInfo,
         !VarRename, no, InsertMap, MaybeFeature).
 

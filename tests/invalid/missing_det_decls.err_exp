@@ -14,7 +14,3 @@ missing_det_decls.m:016: (This is an error because you specified the
 missing_det_decls.m:016:   `--no-infer-det' options. Use the `--infer-det'
 missing_det_decls.m:016:   option if you want the compiler to automatically
 missing_det_decls.m:016:   infer the determinism of local predicates.)
-missing_det_decls.m:004: Error: no clauses for predicate `exp1/0'.
-missing_det_decls.m:007: Error: no clauses for predicate `exp2/1'.
-missing_det_decls.m:012: Error: no clauses for predicate `loc1/0'.
-missing_det_decls.m:015: Error: no clauses for predicate `loc2/1'.

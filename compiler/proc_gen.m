@@ -92,7 +92,7 @@
 :- import_module ll_backend.middle_rec.
 :- import_module ll_backend.pragma_c_gen.
 :- import_module ll_backend.stack_layout.
-:- import_module ll_backend.trace.
+:- import_module ll_backend.trace_gen.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_data.
@@ -404,8 +404,10 @@ generate_proc_code(PredInfo, ProcInfo0, ProcId, PredId, ModuleInfo0,
         ProcInstructions = Instructions,
         ProcLabelCounter = LabelCounter
     ),
+    code_info.get_used_env_vars(CodeInfo, UsedEnvVars),
     Proc = c_procedure(Name, Arity, proc(PredId, ProcId), CodeModel,
-        ProcInstructions, ProcLabel, ProcLabelCounter, MayAlterRtti).
+        ProcInstructions, ProcLabel, ProcLabelCounter, MayAlterRtti,
+        UsedEnvVars).
 
 :- pred maybe_set_trace_level(pred_info::in,
     module_info::in, module_info::out) is det.
@@ -596,8 +598,8 @@ generate_category_code(model_det, ProcContext, Goal, ResumePoint,
         code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
         (
             MaybeTraceInfo = yes(TraceInfo),
-            trace.generate_external_event_code(call, TraceInfo,
-                ProcContext, MaybeCallExternalInfo, !CI),
+            generate_external_event_code(call, TraceInfo, ProcContext,
+                MaybeCallExternalInfo, !CI),
             (
                 MaybeCallExternalInfo = yes(CallExternalInfo),
                 CallExternalInfo = external_event_info(TraceCallLabel, _,
@@ -614,10 +616,10 @@ generate_category_code(model_det, ProcContext, Goal, ResumePoint,
             MaybeTraceCallLabel = no
         ),
         generate_goal(model_det, Goal, BodyCode, !CI),
-        generate_entry(!.CI, model_det, Goal, ResumePoint,
-            FrameInfo, EntryCode),
-        generate_exit(model_det, FrameInfo, TraceSlotInfo,
-            ProcContext, _, ExitCode, !CI),
+        generate_entry(!.CI, model_det, Goal, ResumePoint, FrameInfo,
+            EntryCode),
+        generate_exit(model_det, FrameInfo, TraceSlotInfo, ProcContext,
+            _, ExitCode, !CI),
         Code = tree_list([EntryCode, TraceCallCode, BodyCode, ExitCode])
     ).
 
@@ -632,7 +634,7 @@ generate_category_code(model_semi, ProcContext, Goal, ResumePoint,
     code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
     (
         MaybeTraceInfo = yes(TraceInfo),
-        trace.generate_external_event_code(call, TraceInfo, ProcContext,
+        generate_external_event_code(call, TraceInfo, ProcContext,
             MaybeCallExternalInfo, !CI),
         (
             MaybeCallExternalInfo = yes(CallExternalInfo),
@@ -656,7 +658,7 @@ generate_category_code(model_semi, ProcContext, Goal, ResumePoint,
         code_info.set_forward_live_vars(ResumeVars, !CI),
         % XXX A context that gives the end of the procedure definition
         % would be better than ProcContext.
-        trace.generate_external_event_code(fail, TraceInfo, ProcContext,
+        generate_external_event_code(fail, TraceInfo, ProcContext,
             MaybeFailExternalInfo, !CI),
         (
             MaybeFailExternalInfo = yes(FailExternalInfo),
@@ -685,7 +687,7 @@ generate_category_code(model_non, ProcContext, Goal, ResumePoint,
     code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
     (
         MaybeTraceInfo = yes(TraceInfo),
-        trace.generate_external_event_code(call, TraceInfo, ProcContext,
+        generate_external_event_code(call, TraceInfo, ProcContext,
             MaybeCallExternalInfo, !CI),
         (
             MaybeCallExternalInfo = yes(CallExternalInfo),
@@ -709,7 +711,7 @@ generate_category_code(model_non, ProcContext, Goal, ResumePoint,
         code_info.set_forward_live_vars(ResumeVars, !CI),
         % XXX A context that gives the end of the procedure definition
         % would be better than ProcContext.
-        trace.generate_external_event_code(fail, TraceInfo, ProcContext,
+        generate_external_event_code(fail, TraceInfo, ProcContext,
             MaybeFailExternalInfo, !CI),
         (
             MaybeFailExternalInfo = yes(FailExternalInfo),
@@ -820,7 +822,7 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
     code_info.get_maybe_trace_info(CI, MaybeTraceInfo),
     (
         MaybeTraceInfo = yes(TraceInfo),
-        trace.generate_slot_fill_code(CI, TraceInfo, TraceFillCode)
+        generate_slot_fill_code(CI, TraceInfo, TraceFillCode)
     ;
         MaybeTraceInfo = no,
         TraceFillCode = empty
@@ -835,8 +837,8 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
         code_info.resume_point_stack_addr(OutsideResumePoint,
             OutsideResumeAddress),
         (
-            Goal = foreign_proc(_, _, _, _, _, PragmaCode) - _,
-            PragmaCode = nondet(Fields, FieldsContext,
+            Goal = call_foreign_proc(_, _, _, _, _, _, PragmaCode) - _,
+            PragmaCode = fc_impl_model_non(Fields, FieldsContext,
                 _, _, _, _, _, _, _)
         ->
             StructName = pragma_c_gen.struct_name(ModuleName, PredName, Arity,
@@ -1017,7 +1019,7 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
             MaybeTraceInfo = yes(TraceInfo),
             % XXX A context that gives the end of the procedure definition
             % would be better than CallContext.
-            trace.generate_external_event_code(exit, TraceInfo, ProcContext,
+            generate_external_event_code(exit, TraceInfo, ProcContext,
                 MaybeExitExternalInfo, !CI),
             (
                 MaybeExitExternalInfo = yes(ExitExternalInfo),
@@ -1068,7 +1070,7 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
             CodeModel = model_non,
             (
                 MaybeTraceInfo = yes(TraceInfo2),
-                trace.maybe_setup_redo_event(TraceInfo2, SetupRedoCode)
+                maybe_setup_redo_event(TraceInfo2, SetupRedoCode)
             ;
                 MaybeTraceInfo = no,
                 SetupRedoCode = empty

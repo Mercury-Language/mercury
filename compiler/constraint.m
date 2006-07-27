@@ -102,7 +102,7 @@ propagate_goal(Goal0, Constraints, Goal, !Info, !IO) :-
     goal_info_init(NonLocals, Delta, ConjDetism, purity_pure, Context,
         GoalInfo1),
     goal_info_set_features(Features0, GoalInfo1, GoalInfo2),
-    add_goal_info_purity_feature(Purity, GoalInfo2, GoalInfo),
+    goal_info_set_purity(Purity, GoalInfo2, GoalInfo),
     conj_list_to_goal(Goals, GoalInfo, Goal).
 
 :- pred propagate_conj_sub_goal(hlds_goal::in,
@@ -177,6 +177,7 @@ propagate_conj_sub_goal_2(GoalExpr - GoalInfo, Constraints, FinalGoals, !Info,
             ; Reason = promise_purity(_, _)
             ; Reason = commit(_)
             ; Reason = barrier(_)
+            ; Reason = trace_goal(_, _, _, _)
             ),
             % We can't safely propagate constraints into one of these scopes.
             % However, we can propagate constraints inside the scope goal.
@@ -185,16 +186,16 @@ propagate_conj_sub_goal_2(GoalExpr - GoalInfo, Constraints, FinalGoals, !Info,
             FinalGoals = [scope(Reason, SubGoal) - GoalInfo | ConstraintGoals]
         )
     ;
-        GoalExpr = not(NegGoal0),
+        GoalExpr = negation(NegGoal0),
         % We can't safely propagate constraints into a negation,
         % because that would change the answers computed by the procedure.
         propagate_goal(NegGoal0, [], NegGoal, !Info, !IO),
         flatten_constraints(Constraints, ConstraintGoals),
-        FinalGoals = [not(NegGoal) - GoalInfo | ConstraintGoals]
+        FinalGoals = [negation(NegGoal) - GoalInfo | ConstraintGoals]
     ;
-        ( GoalExpr = call(_, _, _, _, _, _)
+        ( GoalExpr = plain_call(_, _, _, _, _, _)
         ; GoalExpr = generic_call(_, _, _, _)
-        ; GoalExpr = foreign_proc(_, _, _, _, _, _)
+        ; GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
         ; GoalExpr = unify(_, _, _, _, _)
         ),
         % Propagate_conj will move the constraints to the left of the call
@@ -426,7 +427,7 @@ annotate_conj_constraints(ModuleInfo,
         set.empty(OutputVars),
 
         % Don't propagate impure goals.
-        goal_info_is_pure(GoalInfo),
+        goal_info_get_purity(GoalInfo, purity_pure),
 
         % Only propagate goals that cannot loop or throw exceptions.
         GoalCanLoopOrThrow = cannot_loop_or_throw
@@ -469,7 +470,7 @@ annotate_conj_constraints(ModuleInfo,
     ;
         % Don't propagate constraints into or past impure goals.
         Goal = _ - GoalInfo,
-        goal_info_is_impure(GoalInfo)
+        goal_info_get_purity(GoalInfo, purity_impure)
     ->
         Constraints1 = [],
         flatten_constraints(Constraints0,
@@ -511,15 +512,15 @@ add_empty_constraints(Goal, Goal - []).
     pair(hlds_goal, list(constraint)).
 
 attach_constraints(Goal, Constraints0) = Goal - Constraints :-
-        ( Goal = call(_, _, _, _, _, _) - _ ->
-            Constraints = list.map(
-                (func(constraint(Goal0, B, C, Constructs0)) =
-                    constraint(add_constraint_feature(Goal0), B, C,
-                        list.map(add_constraint_feature, Constructs0))
-                ), Constraints0)
-        ;
-                Constraints = Constraints0
-        ).
+    ( Goal = plain_call(_, _, _, _, _, _) - _ ->
+        Constraints = list.map(
+            (func(constraint(Goal0, B, C, Constructs0)) =
+                constraint(add_constraint_feature(Goal0), B, C,
+                    list.map(add_constraint_feature, Constructs0))
+            ), Constraints0)
+    ;
+        Constraints = Constraints0
+    ).
 
 :- func add_constraint_feature(hlds_goal) = hlds_goal.
 
@@ -712,7 +713,7 @@ goal_is_simple(Goal) :-
         goal_is_atomic(GoalExpr)
     ;
         ( GoalExpr = scope(_, SubGoal)
-        ; GoalExpr = not(SubGoal)
+        ; GoalExpr = negation(SubGoal)
         ),
         goal_is_simple(SubGoal)
     ).
@@ -800,8 +801,8 @@ strip_constraint_markers_expr(switch(Var, CanFail, Cases0)) =
         (func(case(ConsId, Goal)) =
             case(ConsId, strip_constraint_markers(Goal))
         ), Cases0).
-strip_constraint_markers_expr(not(Goal)) =
-        not(strip_constraint_markers(Goal)).
+strip_constraint_markers_expr(negation(Goal)) =
+        negation(strip_constraint_markers(Goal)).
 strip_constraint_markers_expr(scope(Reason, Goal)) =
         scope(Reason, strip_constraint_markers(Goal)).
 strip_constraint_markers_expr(if_then_else(Vars, If, Then, Else)) =
@@ -810,11 +811,11 @@ strip_constraint_markers_expr(if_then_else(Vars, If, Then, Else)) =
             strip_constraint_markers(Then),
             strip_constraint_markers(Else)).
 strip_constraint_markers_expr(Goal) = Goal :-
-    Goal = foreign_proc(_, _, _, _, _, _).
+    Goal = call_foreign_proc(_, _, _, _, _, _, _).
 strip_constraint_markers_expr(Goal) = Goal :-
     Goal = generic_call(_, _, _, _).
 strip_constraint_markers_expr(Goal) = Goal :-
-    Goal = call(_, _, _, _, _, _).
+    Goal = plain_call(_, _, _, _, _, _).
 strip_constraint_markers_expr(Goal) = Goal :-
     Goal = unify(_, _, _, _, _).
 strip_constraint_markers_expr(Goal) = Goal :-

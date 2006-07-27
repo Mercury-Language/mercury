@@ -716,11 +716,19 @@ check_module_used_items(ModuleName, NeedQualifier, OldTimestamp,
         UsedItemsTerm, NewVersionNumbers, Items, !Info) :-
     parse_version_numbers(UsedItemsTerm, UsedItemsResult),
     (
-        UsedItemsResult = ok(UsedVersionNumbers)
+        UsedItemsResult = ok1(UsedVersionNumbers)
     ;
-        UsedItemsResult = error(Msg, ErrorTerm),
-        Reason = syntax_error(get_term_context(ErrorTerm), Msg),
-        throw_syntax_error(Reason, !.Info)
+        UsedItemsResult = error1(Errors),
+        (
+            Errors = [],
+            unexpected(this_file, "check_module_used_items: error1([])")
+        ;
+            Errors = [Msg - ErrorTerm | _],
+            % XXX Can Errors contain more than oner error? If so, we should
+            % not ignore the tail of the list.
+            Reason = syntax_error(get_term_context(ErrorTerm), Msg),
+            throw_syntax_error(Reason, !.Info)
+        )
     ),
 
     UsedVersionNumbers = version_numbers(UsedItemVersionNumbers,

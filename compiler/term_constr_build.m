@@ -432,7 +432,7 @@ build_abstract_goal_2(scope(_, Goal)-_, AbstractGoal, !Info) :-
     build_abstract_goal(Goal, AbstractGoal, !Info).
 
 build_abstract_goal_2(Goal - GoalInfo, AbstractGoal, !Info) :- 
-    Goal = call(CallPredId, CallProcId, CallArgs, _, _, _),
+    Goal = plain_call(CallPredId, CallProcId, CallArgs, _, _, _),
     CallSizeArgs = prog_vars_to_size_vars(!.Info ^ var_map, CallArgs),
     build_abstract_call(proc(CallPredId, CallProcId), CallSizeArgs, 
         GoalInfo, AbstractGoal, !Info).
@@ -441,7 +441,7 @@ build_abstract_goal_2(Goal - _, AbstractGoal, !Info) :-
     Goal = unify(_, _, _, Unification, _),
     build_abstract_unification(Unification, AbstractGoal, !Info).
 
-build_abstract_goal_2(not(Goal) - _GoalInfo, AbstractGoal, !Info) :- 
+build_abstract_goal_2(negation(Goal) - _GoalInfo, AbstractGoal, !Info) :- 
     %
     % Event though a negated goal cannot have any output we still
     % need to check it for calls to non-terminating procedures.
@@ -459,7 +459,7 @@ build_abstract_goal_2(not(Goal) - _GoalInfo, AbstractGoal, !Info) :-
     % arg_size constraints for foreign_procs.
     %
 build_abstract_goal_2(Goal - GoalInfo, AbstractGoal, !Info) :- 
-    Goal = foreign_proc(Attrs, PredId, ProcId, Args, ExtraArgs, _), 
+    Goal = call_foreign_proc(Attrs, PredId, ProcId, Args, ExtraArgs, _, _), 
     %
     % Create non-negativity constraints for each non-zero argument
     % in the foreign proc.
@@ -1048,7 +1048,7 @@ find_failure_constraint_for_goal(Goal, Info) = AbstractGoal :-
     % substitutions below as the same code is used elsewhere.
     %
 find_failure_constraint_for_goal_2(Goal - _, Info, AbstractGoal) :-
-    Goal = call(PredId, ProcId, CallArgs, _, _, _),
+    Goal = plain_call(PredId, ProcId, CallArgs, _, _, _),
     CallSizeArgs0 = prog_vars_to_size_vars(Info ^ var_map, CallArgs),
     CallSizeArgs = list.filter(isnt(is_zero_size_var(Info ^ zeros)),
         CallSizeArgs0), 

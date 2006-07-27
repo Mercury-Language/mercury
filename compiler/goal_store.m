@@ -119,7 +119,7 @@ direct_ancestor(GoalStore, StartId, VarTypes, ModuleInfo, FullyStrict,
     goal_store_lookup(GoalStore, StartId, LaterGoal - LaterInstMap),
     goal_store_member(GoalStore, EarlierId, EarlierGoal - EarlierInstMap),
     compare((<), EarlierId, StartId),
-    not goal_util.can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
+    not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
         EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal).
 
 %-----------------------------------------------------------------------------%

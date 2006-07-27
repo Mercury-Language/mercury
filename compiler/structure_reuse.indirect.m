@@ -274,7 +274,8 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
         GoalExpr = conj(ConjType, Goals),
         !:Goal = GoalExpr - GoalInfo0
     ;
-        GoalExpr0 = call(CalleePredId, CalleeProcId, CalleeArgs, _, _, _),
+        GoalExpr0 = plain_call(CalleePredId, CalleeProcId, CalleeArgs,
+            _, _, _),
         verify_indirect_reuse(BaseInfo, CalleePredId, CalleeProcId, 
             CalleeArgs, GoalInfo0, GoalInfo, !AnalysisInfo, !IO),
         lookup_sharing_and_comb(ModuleInfo, PredInfo, ProcInfo, SharingTable, 
@@ -326,7 +327,7 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
         !:Goal = GoalExpr - GoalInfo0
     ;
         % XXX To check and compare with the theory. 
-        GoalExpr0 = not(_Goal)
+        GoalExpr0 = negation(_Goal)
     ;
         GoalExpr0 = scope(A, SubGoal0),
         indirect_reuse_analyse_goal(BaseInfo, SubGoal0, SubGoal, 
@@ -359,8 +360,8 @@ indirect_reuse_analyse_goal(BaseInfo, !Goal, !AnalysisInfo, !IO) :-
         GoalExpr = if_then_else(A, IfGoal, ThenGoal, ElseGoal),
         !:Goal = GoalExpr - GoalInfo0
     ;
-        GoalExpr0 = foreign_proc(Attributes, ForeignPredId, ForeignProcId,
-            _ForeignArgs, _, _),
+        GoalExpr0 = call_foreign_proc(Attributes, ForeignPredId, ForeignProcId,
+            _Args, _ExtraArgs, _MaybeTraceRuntimeCond, _Impl),
         goal_info_get_context(GoalInfo0, Context),
         !:AnalysisInfo = !.AnalysisInfo ^ sharing_as :=
             add_foreign_proc_sharing(ModuleInfo, ProcInfo, 

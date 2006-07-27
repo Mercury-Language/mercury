@@ -23,7 +23,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_commit(add_trail_ops::in, code_model::in,
+:- pred generate_scope(scope_reason::in, add_trail_ops::in, code_model::in,
     hlds_goal::in, code_tree::out, code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -31,23 +31,43 @@
 
 :- implementation.
 
+:- import_module backend_libs.builtin_ops.
 :- import_module libs.compiler_util.
 :- import_module libs.tree.
 :- import_module ll_backend.code_gen.
+:- import_module parse_tree.prog_data.
 
+:- import_module list.
+:- import_module maybe.
 :- import_module pair.
+:- import_module set.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
 
-generate_commit(AddTrailOps, OuterCodeModel, Goal, Code, !Info) :-
+generate_scope(Reason, AddTrailOps, OuterCodeModel, Goal, Code, !CI) :-
+    (
+        Reason = trace_goal(_, MaybeTraceRuntimeCond, _, _),
+        MaybeTraceRuntimeCond = yes(_)
+    ->
+        % These goals should have been transformed into other forms of goals
+        % by simplify.m at the end of semantics analysis.
+        unexpected(this_file, "generate_scope: trace_goal")
+    ;
+        generate_commit(AddTrailOps, OuterCodeModel, Goal, Code, !CI)
+    ).
+
+:- pred generate_commit(add_trail_ops::in, code_model::in,
+    hlds_goal::in, code_tree::out, code_info::in, code_info::out) is det.
+
+generate_commit(AddTrailOps, OuterCodeModel, Goal, Code, !CI) :-
     Goal = _ - InnerGoalInfo,
     goal_info_get_code_model(InnerGoalInfo, InnerCodeModel),
     (
         OuterCodeModel = model_det,
         (
             InnerCodeModel = model_det,
-            code_gen.generate_goal(InnerCodeModel, Goal, Code, !Info)
+            code_gen.generate_goal(InnerCodeModel, Goal, Code, !CI)
         ;
             InnerCodeModel = model_semi,
             unexpected(this_file, "generate_commit: " ++
@@ -55,30 +75,30 @@ generate_commit(AddTrailOps, OuterCodeModel, Goal, Code, !Info) :-
         ;
             InnerCodeModel = model_non,
             code_info.prepare_for_det_commit(AddTrailOps, CommitInfo,
-                PreCommit, !Info),
-            code_gen.generate_goal(InnerCodeModel, Goal, GoalCode, !Info),
-            code_info.generate_det_commit(CommitInfo, Commit, !Info),
+                PreCommit, !CI),
+            code_gen.generate_goal(InnerCodeModel, Goal, GoalCode, !CI),
+            code_info.generate_det_commit(CommitInfo, Commit, !CI),
             Code = tree(PreCommit, tree(GoalCode, Commit))
         )
     ;
         OuterCodeModel = model_semi,
         (
             InnerCodeModel = model_det,
-            code_gen.generate_goal(InnerCodeModel, Goal, Code, !Info)
+            code_gen.generate_goal(InnerCodeModel, Goal, Code, !CI)
         ;
             InnerCodeModel = model_semi,
-            code_gen.generate_goal(InnerCodeModel, Goal, Code, !Info)
+            code_gen.generate_goal(InnerCodeModel, Goal, Code, !CI)
         ;
             InnerCodeModel = model_non,
             code_info.prepare_for_semi_commit(AddTrailOps, CommitInfo,
-                PreCommit, !Info),
-            code_gen.generate_goal(InnerCodeModel, Goal, GoalCode, !Info),
-            code_info.generate_semi_commit(CommitInfo, Commit, !Info),
+                PreCommit, !CI),
+            code_gen.generate_goal(InnerCodeModel, Goal, GoalCode, !CI),
+            code_info.generate_semi_commit(CommitInfo, Commit, !CI),
             Code = tree(PreCommit, tree(GoalCode, Commit))
         )
     ;
         OuterCodeModel = model_non,
-        code_gen.generate_goal(InnerCodeModel, Goal, Code, !Info)
+        code_gen.generate_goal(InnerCodeModel, Goal, Code, !CI)
     ).
 
 %---------------------------------------------------------------------------%

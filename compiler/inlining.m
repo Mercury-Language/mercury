@@ -352,11 +352,11 @@ is_simple_goal(CalledGoal, SimpleThreshold) :-
 
 is_flat_simple_goal(conj(plain_conj, Goals) - _) :-
     is_flat_simple_goal_list(Goals).
-is_flat_simple_goal(not(Goal) - _) :-
+is_flat_simple_goal(negation(Goal) - _) :-
     is_flat_simple_goal(Goal).
 is_flat_simple_goal(scope(_, Goal) - _) :-
     is_flat_simple_goal(Goal).
-is_flat_simple_goal(call(_, _, _, BuiltinState, _, _) - _) :-
+is_flat_simple_goal(plain_call(_, _, _, BuiltinState, _, _) - _) :-
     BuiltinState = inline_builtin.
 is_flat_simple_goal(unify(_, _, _, _, _) - _).
 
@@ -562,9 +562,9 @@ inlining_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info) :-
         Goal = if_then_else(Vars, Cond, Then, Else),
         GoalInfo = GoalInfo0
     ;
-        Goal0 = not(SubGoal0),
+        Goal0 = negation(SubGoal0),
         inlining_in_goal(SubGoal0, SubGoal, !Info),
-        Goal = not(SubGoal),
+        Goal = negation(SubGoal),
         GoalInfo = GoalInfo0
     ;
         Goal0 = scope(Reason, SubGoal0),
@@ -572,15 +572,10 @@ inlining_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info) :-
         Goal = scope(Reason, SubGoal),
         GoalInfo = GoalInfo0
     ;
-        Goal0 = generic_call(_, _, _, _),
-        Goal = Goal0,
-        GoalInfo = GoalInfo0
-    ;
-        Goal0 = unify(_, _, _, _, _),
-        Goal = Goal0,
-        GoalInfo = GoalInfo0
-    ;
-        Goal0 = foreign_proc(_, _, _, _, _, _),
+        ( Goal0 = generic_call(_, _, _, _)
+        ; Goal0 = unify(_, _, _, _, _)
+        ; Goal0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
         Goal = Goal0,
         GoalInfo = GoalInfo0
     ;
@@ -588,7 +583,7 @@ inlining_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info) :-
         % These should have been expanded out by now.
         unexpected(this_file, "inlining_in_goal: unexpected shorthand")
     ;
-        Goal0 = call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
+        Goal0 = plain_call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
         inlining_in_call(PredId, ProcId, ArgVars, Builtin,
             Context, Sym, Goal, GoalInfo0, GoalInfo, !Info)
     ).
@@ -641,8 +636,8 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
         ),
 
         (
-            infer_goal_info_purity(GoalInfo0, Purity),
-            infer_goal_info_purity(GoalInfo, Purity)
+            goal_info_get_purity(GoalInfo0, Purity),
+            goal_info_get_purity(GoalInfo, Purity)
         ->
             PurityChanged = PurityChanged0
         ;
@@ -665,7 +660,7 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
             VarSet, VarTypes, TypeVarSet, RttiVarMaps,
             DidInlining, Requantify, DetChanged, PurityChanged)
     ;
-        Goal = call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
+        Goal = plain_call(PredId, ProcId, ArgVars, Builtin, Context, Sym),
         GoalInfo = GoalInfo0
     ).
 
@@ -936,7 +931,7 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
     proc_info_get_goal(ProcInfo, CalledGoal),
     \+ (
         HighLevelCode = no,
-        CalledGoal = foreign_proc(_, _, _, _, _, _) - _,
+        CalledGoal = call_foreign_proc(_, _, _, _, _, _, _) - _,
         proc_info_interface_determinism(ProcInfo, Detism),
         ( Detism = detism_non ; Detism = detism_multi )
     ),
@@ -947,8 +942,8 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
     globals.get_target(Globals, Target),
     (
         (
-            CalledGoal = foreign_proc(ForeignAttributes,
-                _, _, _, _, _) - _,
+            CalledGoal = call_foreign_proc(ForeignAttributes,
+                _, _, _, _, _, _) - _,
             ForeignLanguage = foreign_language(ForeignAttributes)
         )
     =>

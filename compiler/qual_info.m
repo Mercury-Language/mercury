@@ -288,8 +288,8 @@ do_construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args,
         GoalInfo, Goal) :-
     (
         PredOrFunc = predicate,
-        Goal = call(PredId, invalid_proc_id, Args, not_builtin, no, SymName)
-            - GoalInfo
+        Goal = plain_call(PredId, invalid_proc_id, Args, not_builtin, no,
+            SymName) - GoalInfo
     ;
         PredOrFunc = function,
         pred_args_to_func_args(Args, FuncArgs, RetArg),

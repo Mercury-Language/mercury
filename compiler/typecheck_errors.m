@@ -335,12 +335,24 @@ report_error_apply_instead_of_pred(Info, !IO) :-
 %-----------------------------------------------------------------------------%
 
 report_no_clauses(MessageKind, PredId, PredInfo, ModuleInfo, !IO) :-
-    pred_info_context(PredInfo, Context),
-    PredPieces = describe_one_pred_name(ModuleInfo,
-        should_not_module_qualify, PredId),
-    ErrorMsg = [words(MessageKind ++ ": no clauses for ") | PredPieces] ++
-        [suffix(".")],
-    error_util.write_error_pieces(Context, 0, ErrorMsg, !IO).
+    io.get_exit_status(Status, !IO),
+    ( Status = 0 ->
+        pred_info_context(PredInfo, Context),
+        PredPieces = describe_one_pred_name(ModuleInfo,
+            should_not_module_qualify, PredId),
+        ErrorMsg = [words(MessageKind ++ ": no clauses for ") | PredPieces] ++
+            [suffix(".")],
+        error_util.write_error_pieces(Context, 0, ErrorMsg, !IO)
+    ;
+        % It is possible (and even likely) that the error that got the exit
+        % status set was caused by a syntax error in a clause defining this
+        % predicate or function. Reporting a missing clause would therefore
+        % be quite likely to be redundant and misleading. Even if this
+        % predicate or function truly has no clauses, this error would be
+        % caught once the other errors (the ones leading to the exit status)
+        % are fixed by the programmer.
+        true
+    ).
 
 %-----------------------------------------------------------------------------%
 

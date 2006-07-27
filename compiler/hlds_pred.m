@@ -1104,7 +1104,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
     predicate_table_insert(PredInfo, PredId, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, ModuleInfo0, ModuleInfo),
 
-    GoalExpr = call(PredId, ProcId, ArgVars, not_builtin, no, SymName),
+    GoalExpr = plain_call(PredId, ProcId, ArgVars, not_builtin, no, SymName),
     Goal = GoalExpr - GoalInfo,
     PredProcId = proc(PredId, ProcId).
 

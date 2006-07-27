@@ -755,9 +755,10 @@ replace_in_goal_expr(EqvMap, Goal0 @ switch(A, B, Cases0), Goal, Changed,
     ( Changed = yes, Goal = switch(A, B, Cases)
     ; Changed = no, Goal = Goal0
     ).
-replace_in_goal_expr(EqvMap, Goal0 @ not(NegGoal0), Goal, Changed, !Info) :-
+replace_in_goal_expr(EqvMap, Goal0 @ negation(NegGoal0), Goal, Changed,
+        !Info) :-
     replace_in_goal(EqvMap, NegGoal0, NegGoal, Changed, !Info),
-    ( Changed = yes, Goal = not(NegGoal)
+    ( Changed = yes, Goal = negation(NegGoal)
     ; Changed = no, Goal = Goal0
     ).
 replace_in_goal_expr(EqvMap, Goal0 @ scope(Reason, SomeGoal0), Goal,
@@ -775,9 +776,9 @@ replace_in_goal_expr(EqvMap, Goal0 @ if_then_else(Vars, Cond0, Then0, Else0),
     ( Changed = yes, Goal = if_then_else(Vars, Cond, Then, Else)
     ; Changed = no, Goal = Goal0
     ).
-replace_in_goal_expr(_, Goal @ call(_, _, _, _, _, _), Goal, no, !Info).
-replace_in_goal_expr(EqvMap, Goal0 @ foreign_proc(_, _, _, _, _, _), Goal,
-        Changed, !Info) :-
+replace_in_goal_expr(_, Goal @ plain_call(_, _, _, _, _, _), Goal, no, !Info).
+replace_in_goal_expr(EqvMap, Goal0 @ call_foreign_proc(_, _, _, _, _, _, _),
+        Goal, Changed, !Info) :-
     TVarSet0 = !.Info ^ tvarset,
     replace_in_foreign_arg_list(EqvMap, Goal0 ^ foreign_args,
         Args, ChangedArgs, TVarSet0, TVarSet1, no, _),

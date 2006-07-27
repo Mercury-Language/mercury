@@ -32,6 +32,7 @@
 :- import_module io.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module set.
 :- import_module term.
 
@@ -233,7 +234,7 @@
 
 %-----------------------------------------------------------------------------%
 
-    % can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
+    % can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
     %   InstmapBeforeGoal1, Goal1, InstmapBeforeGoal2, Goal2).
     %
     % Goals can be reordered if
@@ -245,7 +246,7 @@
     % NOTE: this version is deprecated; new code should use the following
     %       version because it supports the intermodule-analysis framework.
     %
-:- pred can_reorder_goals(module_info::in, vartypes::in, bool::in,
+:- pred can_reorder_goals_old(module_info::in, vartypes::in, bool::in,
     instmap::in, hlds_goal::in, instmap::in, hlds_goal::in) is semidet.
 
     % can_reorder_goals(VarTypes, FullyStrict, InstmapBeforeGoal1, Goal1,
@@ -294,9 +295,8 @@
     hlds_goal::in, bool::out, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-    % generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo,
-    %   Detism, Args, Features, InstMapDelta, ModuleInfo, Context,
-    %   CallGoal):
+    % generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
+    %   Purity, Args, Features, InstMapDelta, ModuleInfo, Context, CallGoal):
     %
     % Generate a call to a builtin procedure (e.g. from the private_builtin
     % or table_builtin module). This is used by HLDS->HLDS transformation
@@ -309,13 +309,13 @@
     % from 0.
     %
 :- pred generate_simple_call(module_name::in, string::in,
-    pred_or_func::in, mode_no::in, determinism::in, prog_vars::in,
+    pred_or_func::in, mode_no::in, determinism::in, purity::in, prog_vars::in,
     list(goal_feature)::in, assoc_list(prog_var, mer_inst)::in,
     module_info::in, term.context::in, hlds_goal::out) is det.
 
     % generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
-    %   Attributes, Args, ExtraArgs, Code, Features, InstMapDelta,
-    %   ModuleInfo, Context, CallGoal):
+    %   Purity, Attributes, Args, ExtraArgs, MaybeTraceRuntimeCond, Code,
+    %   Features, InstMapDelta, ModuleInfo, Context, CallGoal):
     %
     % generate_foreign_proc is similar to generate_simple_call,
     % but also assumes that the called predicate is defined via a
@@ -326,8 +326,10 @@
     % as well as Args.
     %
 :- pred generate_foreign_proc(module_name::in, string::in, pred_or_func::in,
-    mode_no::in, determinism::in, pragma_foreign_proc_attributes::in,
-    list(foreign_arg)::in, list(foreign_arg)::in, string::in,
+    mode_no::in, determinism::in, purity::in,
+    pragma_foreign_proc_attributes::in,
+    list(foreign_arg)::in, list(foreign_arg)::in,
+    maybe(trace_expr(trace_runtime))::in, string::in,
     list(goal_feature)::in, assoc_list(prog_var, mer_inst)::in,
     module_info::in, term.context::in, hlds_goal::out) is det.
 
@@ -366,8 +368,8 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module int.
-:- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module solutions.
 :- import_module string.
 :- import_module svmap.
@@ -530,7 +532,7 @@ rename_vars_in_goal_expr(Must, Subn,
     rename_vars_in_goal(Must, Subn, Then0, Then),
     rename_vars_in_goal(Must, Subn, Else0, Else).
 
-rename_vars_in_goal_expr(Must, Subn, not(Goal0), not(Goal)) :-
+rename_vars_in_goal_expr(Must, Subn, negation(Goal0), negation(Goal)) :-
     rename_vars_in_goal(Must, Subn, Goal0, Goal).
 
 rename_vars_in_goal_expr(Must, Subn,
@@ -556,6 +558,9 @@ rename_vars_in_goal_expr(Must, Subn,
         Reason0 = from_ground_term(Var0),
         rename_var(Must, Subn, Var0, Var),
         Reason = from_ground_term(Var)
+    ;
+        Reason0 = trace_goal(_Flag, _Grade, _Env, _Vars),
+        Reason = Reason0
     ),
     rename_vars_in_goal(Must, Subn, Goal0, Goal).
 
@@ -566,8 +571,8 @@ rename_vars_in_goal_expr(Must, Subn,
     rename_var_list(Must, Subn, Args0, Args).
 
 rename_vars_in_goal_expr(Must, Subn,
-        call(PredId, ProcId, Args0, Builtin, Context, Sym),
-        call(PredId, ProcId, Args, Builtin, Context, Sym)) :-
+        plain_call(PredId, ProcId, Args0, Builtin, Context, Sym),
+        plain_call(PredId, ProcId, Args, Builtin, Context, Sym)) :-
     rename_var_list(Must, Subn, Args0, Args).
 
 rename_vars_in_goal_expr(Must, Subn,
@@ -578,8 +583,8 @@ rename_vars_in_goal_expr(Must, Subn,
     rename_unify(Must, Subn, Unify0, Unify).
 
 rename_vars_in_goal_expr(Must, Subn,
-        foreign_proc(A, B, C, Args0, Extra0, F),
-        foreign_proc(A, B, C, Args, Extra, F)) :-
+        call_foreign_proc(Attrs, PredId, ProcId, Args0, Extra0, MTRC, Impl),
+        call_foreign_proc(Attrs, PredId, ProcId, Args, Extra, MTRC, Impl)) :-
     rename_arg_list(Must, Subn, Args0, Args),
     rename_arg_list(Must, Subn, Extra0, Extra).
 
@@ -797,7 +802,7 @@ goal_vars_2(generic_call(GenericCall, ArgVars, _, _), !Set) :-
     svset.insert_list(Vars0, !Set),
     svset.insert_list(ArgVars, !Set).
 
-goal_vars_2(call(_, _, ArgVars, _, _, _), !Set) :-
+goal_vars_2(plain_call(_, _, ArgVars, _, _, _), !Set) :-
     svset.insert_list(ArgVars, !Set).
 
 goal_vars_2(conj(_, Goals), !Set) :-
@@ -826,10 +831,12 @@ goal_vars_2(scope(Reason, Goal - _), !Set) :-
     ;
         Reason = from_ground_term(Var),
         set.insert(!.Set, Var, !:Set)
+    ;
+        Reason = trace_goal(_, _, _, _)
     ),
     goal_vars_2(Goal, !Set).
 
-goal_vars_2(not(Goal - _GoalInfo), !Set) :-
+goal_vars_2(negation(Goal - _GoalInfo), !Set) :-
     goal_vars_2(Goal, !Set).
 
 goal_vars_2(if_then_else(Vars, A - _, B - _, C - _), !Set) :-
@@ -838,7 +845,7 @@ goal_vars_2(if_then_else(Vars, A - _, B - _, C - _), !Set) :-
     goal_vars_2(B, !Set),
     goal_vars_2(C, !Set).
 
-goal_vars_2(foreign_proc(_, _, _, Args, ExtraArgs, _), !Set) :-
+goal_vars_2(call_foreign_proc(_, _, _, Args, ExtraArgs, _, _), !Set) :-
     ArgVars = list.map(foreign_arg_var, Args),
     ExtraVars = list.map(foreign_arg_var, ExtraArgs),
     svset.insert_list(list.append(ArgVars, ExtraVars), !Set).
@@ -922,15 +929,15 @@ attach_features_goal_expr(Features, GoalExpr0, GoalExpr) :-
         attach_features_to_all_goals(Features, Else0, Else),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
-        GoalExpr0 = not(Goal0),
+        GoalExpr0 = negation(Goal0),
         attach_features_to_all_goals(Features, Goal0, Goal),
-        GoalExpr = not(Goal)
+        GoalExpr = negation(Goal)
     ;
         GoalExpr0 = scope(Reason, Goal0),
         attach_features_to_all_goals(Features, Goal0, Goal),
         GoalExpr = scope(Reason, Goal)
     ;
-        GoalExpr0 = call(_, _, _, _, _, _),
+        GoalExpr0 = plain_call(_, _, _, _, _, _),
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = generic_call(_, _, _, _),
@@ -939,7 +946,7 @@ attach_features_goal_expr(Features, GoalExpr0, GoalExpr) :-
         GoalExpr0 = unify(_, _, _, _, _),
         GoalExpr = GoalExpr0
     ;
-        GoalExpr0 = foreign_proc(_, _, _, _, _, _),
+        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = shorthand(_),
@@ -1055,16 +1062,16 @@ goal_expr_size(if_then_else(_, Cond, Then, Else), Size) :-
     goal_size(Then, Size2),
     goal_size(Else, Size3),
     Size = Size1 + Size2 + Size3 + 1.
-goal_expr_size(not(Goal), Size) :-
+goal_expr_size(negation(Goal), Size) :-
     goal_size(Goal, Size1),
     Size = Size1 + 1.
 goal_expr_size(scope(_, Goal), Size) :-
     goal_size(Goal, Size1),
     Size = Size1 + 1.
-goal_expr_size(call(_, _, _, _, _, _), 1).
+goal_expr_size(plain_call(_, _, _, _, _, _), 1).
 goal_expr_size(generic_call(_, _, _, _), 1).
 goal_expr_size(unify(_, _, _, _, _), 1).
-goal_expr_size(foreign_proc(_, _, _, _, _, _), 1).
+goal_expr_size(call_foreign_proc(_, _, _, _, _, _, _), 1).
 goal_expr_size(shorthand(ShorthandGoal), Size) :-
     goal_expr_size_shorthand(ShorthandGoal, Size).
 
@@ -1127,11 +1134,11 @@ goal_expr_calls(if_then_else(_, Cond, Then, Else), PredProcId) :-
     ;
         goal_calls(Else, PredProcId)
     ).
-goal_expr_calls(not(Goal), PredProcId) :-
+goal_expr_calls(negation(Goal), PredProcId) :-
     goal_calls(Goal, PredProcId).
 goal_expr_calls(scope(_, Goal), PredProcId) :-
     goal_calls(Goal, PredProcId).
-goal_expr_calls(call(PredId, ProcId, _, _, _, _), proc(PredId, ProcId)).
+goal_expr_calls(plain_call(PredId, ProcId, _, _, _, _), proc(PredId, ProcId)).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1185,11 +1192,11 @@ goal_expr_calls_pred_id(if_then_else(_, Cond, Then, Else), PredId) :-
     ;
         goal_calls_pred_id(Else, PredId)
     ).
-goal_expr_calls_pred_id(not(Goal), PredId) :-
+goal_expr_calls_pred_id(negation(Goal), PredId) :-
     goal_calls_pred_id(Goal, PredId).
 goal_expr_calls_pred_id(scope(_, Goal), PredId) :-
     goal_calls_pred_id(Goal, PredId).
-goal_expr_calls_pred_id(call(PredId, _, _, _, _, _), PredId).
+goal_expr_calls_pred_id(plain_call(PredId, _, _, _, _, _), PredId).
 
 %-----------------------------------------------------------------------------%
 
@@ -1210,7 +1217,7 @@ goal_expr_contains_reconstruction(switch(_, _, Cases)) :-
     goal_contains_reconstruction(Goal).
 goal_expr_contains_reconstruction(if_then_else(_, Cond, Then, Else)) :-
     goals_contain_reconstruction([Cond, Then, Else]).
-goal_expr_contains_reconstruction(not(Goal)) :-
+goal_expr_contains_reconstruction(negation(Goal)) :-
     goal_contains_reconstruction(Goal).
 goal_expr_contains_reconstruction(scope(_, Goal)) :-
     goal_contains_reconstruction(Goal).
@@ -1232,7 +1239,7 @@ goal_contains_goal(Goal - _, SubGoal) :-
     goal_contains_goal(DirectSubGoal, SubGoal).
 
 direct_subgoal(scope(_, Goal), Goal).
-direct_subgoal(not(Goal), Goal).
+direct_subgoal(negation(Goal), Goal).
 direct_subgoal(if_then_else(_, If, Then, Else), Goal) :-
     ( Goal = If
     ; Goal = Then
@@ -1303,7 +1310,7 @@ case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct, !VarSet, !VarTypes,
         test_size, InstMapDelta),
     goal_info_get_determinism(CaseGoalInfo, CaseDetism0),
     det_conjunction_detism(detism_semi, CaseDetism0, Detism),
-    infer_goal_info_purity(CaseGoalInfo, CasePurity),
+    goal_info_get_purity(CaseGoalInfo, CasePurity),
     goal_info_init(CaseNonLocals, InstMapDelta,
         Detism, CasePurity, CombinedGoalInfo),
     Disjunct = conj(plain_conj, GoalList) - CombinedGoalInfo.
@@ -1349,13 +1356,13 @@ if_then_else_to_disjunction(Cond0, Then, Else, GoalInfo, Goal) :-
         instmap_delta_init_reachable(NegCondDelta)
     ),
     goal_info_get_nonlocals(CondInfo, CondNonLocals),
-    infer_goal_info_purity(CondInfo, CondPurity),
+    goal_info_get_purity(CondInfo, CondPurity),
     goal_info_init(CondNonLocals, NegCondDelta, NegCondDet, CondPurity,
         NegCondInfo),
 
-    compute_disjunct_goal_info(not(Cond) - NegCondInfo, Else,
+    compute_disjunct_goal_info(negation(Cond) - NegCondInfo, Else,
         GoalInfo, NegCondElseInfo),
-    conj_list_to_goal([not(Cond) - NegCondInfo, Else],
+    conj_list_to_goal([negation(Cond) - NegCondInfo, Else],
         NegCondElseInfo, NegCondElse),
     Goal = disj([CondThen, NegCondElse]).
 
@@ -1391,47 +1398,57 @@ compute_disjunct_goal_info(Goal1, Goal2, GoalInfo, CombinedInfo) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-can_reorder_goals(ModuleInfo, VarTypes, FullyStrict, InstmapBeforeEarlierGoal,
-        EarlierGoal, InstmapBeforeLaterGoal, LaterGoal) :-
+can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
+        InstmapBeforeEarlierGoal, EarlierGoal,
+        InstmapBeforeLaterGoal, LaterGoal) :-
+    % The logic here is mostly duplicated in can_reorder_goals below
+    % and in pd_can_reorder_goals in pd_util.m.
 
     EarlierGoal = _ - EarlierGoalInfo,
     LaterGoal = _ - LaterGoalInfo,
 
-        % Impure goals cannot be reordered.
-    \+ goal_info_is_impure(EarlierGoalInfo),
-    \+ goal_info_is_impure(LaterGoalInfo),
+    % Impure goals and trace goals cannot be reordered.
+    goal_info_get_goal_purity(EarlierGoalInfo, EarlierPurity, EarlierTrace),
+    goal_info_get_goal_purity(LaterGoalInfo, LaterPurity, LaterTrace),
+    EarlierPurity \= purity_impure,
+    LaterPurity \= purity_impure,
+    EarlierTrace = contains_no_trace_goal,
+    LaterTrace = contains_no_trace_goal,
 
     reordering_maintains_termination(ModuleInfo, FullyStrict,
         EarlierGoal, LaterGoal),
 
-    %
-    % Don't reorder the goals if the later goal depends
-    % on the outputs of the current goal.
-    %
+    % Don't reorder the goals if the later goal depends on the outputs
+    % of the current goal.
     \+ goal_depends_on_earlier_goal(LaterGoal, EarlierGoal,
         InstmapBeforeEarlierGoal, VarTypes, ModuleInfo),
 
-    %
-    % Don't reorder the goals if the later goal changes the
-    % instantiatedness of any of the non-locals of the earlier
-    % goal. This is necessary if the later goal clobbers any
-    % of the non-locals of the earlier goal, and avoids rerunning
-    % full mode analysis in other cases.
-    %
+    % Don't reorder the goals if the later goal changes the instantiatedness
+    % of any of the non-locals of the earlier goal. This is necessary if the
+    % later goal clobbers any of the non-locals of the earlier goal, and
+    % avoids rerunning full mode analysis in other cases.
     \+ goal_depends_on_earlier_goal(EarlierGoal, LaterGoal,
         InstmapBeforeLaterGoal, VarTypes, ModuleInfo).
 
 can_reorder_goals(VarTypes, FullyStrict, InstmapBeforeEarlierGoal,
         EarlierGoal, InstmapBeforeLaterGoal, LaterGoal, CanReorder,
         !ModuleInfo, !IO) :-
+    % The logic here is mostly duplicated in can_reorder_goals_old above
+    % and in pd_can_reorder_goals in pd_util.m.
 
     EarlierGoal = _ - EarlierGoalInfo,
     LaterGoal = _ - LaterGoalInfo,
 
-    % Impure goals cannot be reordered.
-    ( goal_info_is_impure(EarlierGoalInfo) ->
-        CanReorder = no
-    ; goal_info_is_impure(LaterGoalInfo) ->
+    % Impure goals and trace goals cannot be reordered.
+    goal_info_get_goal_purity(EarlierGoalInfo, EarlierPurity, EarlierTrace),
+    goal_info_get_goal_purity(LaterGoalInfo, LaterPurity, LaterTrace),
+    (
+        ( EarlierPurity = purity_impure
+        ; LaterPurity = purity_impure
+        ; EarlierTrace = contains_trace_goal
+        ; LaterTrace = contains_trace_goal
+        )
+    ->
         CanReorder = no
     ;
         reordering_maintains_termination(FullyStrict,
@@ -1476,8 +1493,8 @@ reordering_maintains_termination(ModuleInfo, FullyStrict,
     goal_info_get_determinism(LaterGoalInfo, LaterDetism),
     determinism_components(LaterDetism, LaterCanFail, _),
 
-        % If --fully-strict was specified, don't convert
-        % (can_loop, can_fail) into (can_fail, can_loop).
+    % If --fully-strict was specified, don't convert (can_loop, can_fail)
+    % into (can_fail, can_loop).
     (
         FullyStrict = yes,
         \+ goal_cannot_loop_or_throw(EarlierGoal)
@@ -1486,9 +1503,8 @@ reordering_maintains_termination(ModuleInfo, FullyStrict,
     ;
         true
     ),
-        % Don't convert (can_fail, can_loop) into
-        % (can_loop, can_fail), since this could worsen
-        % the termination properties of the program.
+    % Don't convert (can_fail, can_loop) into (can_loop, can_fail), since
+    % this could worsen the termination properties of the program.
     ( EarlierCanFail = can_fail ->
         goal_cannot_loop_or_throw(ModuleInfo, LaterGoal)
     ;
@@ -1504,10 +1520,9 @@ reordering_maintains_termination(FullyStrict, EarlierGoal, LaterGoal,
     determinism_components(EarlierDetism, EarlierCanFail, _),
     goal_info_get_determinism(LaterGoalInfo, LaterDetism),
     determinism_components(LaterDetism, LaterCanFail, _),
-    %
+
     % If --fully-strict was specified, don't convert (can_loop, can_fail) into
     % (can_fail, can_loop).
-    %
     goal_can_loop_or_throw(EarlierGoal, EarlierCanLoopOrThrow, !ModuleInfo,
         !IO),
     (
@@ -1556,8 +1571,8 @@ goal_depends_on_earlier_goal(_ - LaterGoalInfo, _ - EarlierGoalInfo,
 
 %-----------------------------------------------------------------------------%
 
-generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism, Args,
-        Features, InstMap, ModuleInfo, Context, Goal) :-
+generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism, Purity,
+        Args, Features, InstMap, ModuleInfo, Context, Goal) :-
     list.length(Args, Arity),
     lookup_builtin_pred_proc_id(ModuleInfo, ModuleName, ProcName,
         PredOrFunc, Arity, ModeNo, PredId, ProcId),
@@ -1568,7 +1583,7 @@ generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism, Args,
     InvalidPredId = invalid_pred_id,
     BuiltinState = builtin_state(ModuleInfo, InvalidPredId, PredId, ProcId),
 
-    GoalExpr = call(PredId, ProcId, Args, BuiltinState, no,
+    GoalExpr = plain_call(PredId, ProcId, Args, BuiltinState, no,
         qualified(ModuleName, ProcName)),
     set.init(NonLocals0),
     set.insert_list(NonLocals0, Args, NonLocals),
@@ -1579,21 +1594,23 @@ generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism, Args,
         instmap_delta_from_assoc_list(InstMap, InstMapDelta)
     ),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_purity(PredInfo, Purity),
+    pred_info_get_purity(PredInfo, PredPurity),
+    require(unify(Purity, PredPurity),
+        "generate_simple_call: purity disagreement"),
     goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
         GoalInfo0),
     list.foldl(goal_info_add_feature, Features, GoalInfo0, GoalInfo),
     Goal = GoalExpr - GoalInfo.
 
 generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
-        Attributes, Args, ExtraArgs, Code, Features, InstMap, ModuleInfo,
-        Context, Goal) :-
+        Purity, Attributes, Args, ExtraArgs, MaybeTraceRuntimeCond, Code,
+        Features, InstMap, ModuleInfo, Context, Goal) :-
     list.length(Args, Arity),
     lookup_builtin_pred_proc_id(ModuleInfo, ModuleName, ProcName,
         PredOrFunc, Arity, ModeNo, PredId, ProcId),
 
-    GoalExpr = foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
-        ordinary(Code, no)),
+    GoalExpr = call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
+        MaybeTraceRuntimeCond, fc_impl_ordinary(Code, no)),
     ArgVars = list.map(foreign_arg_var, Args),
     ExtraArgVars = list.map(foreign_arg_var, ExtraArgs),
     Vars = ArgVars ++ ExtraArgVars,
@@ -1605,7 +1622,9 @@ generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
         instmap_delta_from_assoc_list(InstMap, InstMapDelta)
     ),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    pred_info_get_purity(PredInfo, Purity),
+    pred_info_get_purity(PredInfo, PredPurity),
+    require(unify(Purity, PredPurity),
+        "generate_simple_call: purity disagreement"),
     goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
         GoalInfo0),
     list.foldl(goal_info_add_feature, Features, GoalInfo0, GoalInfo),
@@ -1650,10 +1669,10 @@ pred_proc_ids_from_goal(Goal, PredProcIds) :-
 
 foreign_code_uses_variable(Impl, VarName) :-
     (
-        Impl = ordinary(ForeignBody, _),
+        Impl = fc_impl_ordinary(ForeignBody, _),
         string.sub_string_search(ForeignBody, VarName, _)
     ;
-        Impl = nondet(FB1, _, FB2, _, FB3, _, _, FB4, _),
+        Impl = fc_impl_model_non(FB1, _, FB2, _, FB3, _, _, FB4, _),
         ( string.sub_string_search(FB1, VarName, _)
         ; string.sub_string_search(FB2, VarName, _)
         ; string.sub_string_search(FB3, VarName, _)

@@ -32,13 +32,15 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
+:- import_module maybe.
 
 %---------------------------------------------------------------------------%
 
 :- pred generate_pragma_c_code(code_model::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,
-    list(foreign_arg)::in, list(foreign_arg)::in, hlds_goal_info::in,
-    pragma_foreign_code_impl::in, code_tree::out,
+    list(foreign_arg)::in, list(foreign_arg)::in,
+    maybe(trace_expr(trace_runtime))::in, pragma_foreign_code_impl::in,
+    hlds_goal_info::in, code_tree::out,
     code_info::in, code_info::out) is det.
 
 :- func struct_name(module_name, string, int, proc_id) = string.
@@ -53,6 +55,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.name_mangle.
@@ -69,7 +72,7 @@
 :- import_module libs.tree.
 :- import_module ll_backend.code_util.
 :- import_module ll_backend.llds_out.
-:- import_module ll_backend.trace.
+:- import_module ll_backend.trace_gen.
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_type.
 
@@ -77,8 +80,8 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
-:- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term.
@@ -347,27 +350,44 @@
 %---------------------------------------------------------------------------%
 
 generate_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
-        GoalInfo, PragmaImpl, Code, !CI) :-
+        MaybeTraceRuntimeCond, PragmaImpl, GoalInfo, Code, !CI) :-
     (
-        PragmaImpl = ordinary(C_Code, Context),
-        CanOptAwayUnnamedArgs = yes,
-        ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
-            Args, ExtraArgs, C_Code, Context, GoalInfo,
-            CanOptAwayUnnamedArgs, Code, !CI)
+        PragmaImpl = fc_impl_ordinary(C_Code, Context),
+        (
+            MaybeTraceRuntimeCond = no,
+            CanOptAwayUnnamedArgs = yes,
+            ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
+                Args, ExtraArgs, C_Code, Context, GoalInfo,
+                CanOptAwayUnnamedArgs, Code, !CI)
+        ;
+            MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
+            expect(unify(Args, []), this_file,
+                "generate_pragma_c_code: args runtime cond"),
+            expect(unify(ExtraArgs, []), this_file,
+                "generate_pragma_c_code: extra args runtime cond"),
+            expect(unify(CodeModel, model_semi), this_file,
+                "generate_pragma_c_code: non-semi runtime cond"),
+            trace_runtime_cond_pragma_c_code(TraceRuntimeCond, Code, !CI)
+        )
     ;
-        PragmaImpl = nondet(Fields, FieldsContext, First, FirstContext,
-            Later, LaterContext, Treat, Shared, SharedContext),
+        PragmaImpl = fc_impl_model_non(Fields, FieldsContext,
+            First, FirstContext, Later, LaterContext,
+            Treat, Shared, SharedContext),
         expect(unify(ExtraArgs, []), this_file,
             "generate_pragma_c_code: extra args nondet"),
+        require(unify(MaybeTraceRuntimeCond, no),
+            "generate_pragma_c_code: runtime cond nondet"),
         CanOptAwayUnnamedArgs = yes,
         nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
             Args, Fields, FieldsContext,
             First, FirstContext, Later, LaterContext,
             Treat, Shared, SharedContext, CanOptAwayUnnamedArgs, Code, !CI)
     ;
-        PragmaImpl = import(Name, HandleReturn, Vars, Context),
+        PragmaImpl = fc_impl_import(Name, HandleReturn, Vars, Context),
         expect(unify(ExtraArgs, []), this_file,
             "generate_pragma_c_code: extra args import"),
+        require(unify(MaybeTraceRuntimeCond, no),
+            "generate_pragma_c_code: runtime cond import"),
         C_Code = HandleReturn ++ " " ++ Name ++ "(" ++ Vars ++ ");",
 
         % The imported function was generated with all arguments present.
@@ -375,6 +395,51 @@ generate_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
         ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
             Args, ExtraArgs, C_Code, Context, GoalInfo,
             CanOptAwayUnnamedArgs, Code, !CI)
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred trace_runtime_cond_pragma_c_code(trace_expr(trace_runtime)::in,
+    code_tree::out, code_info::in, code_info::out) is det.
+
+trace_runtime_cond_pragma_c_code(RuntimeExpr, Code, !CI) :-
+    generate_runtime_cond_code(RuntimeExpr, CondRval, !CI),
+    code_info.get_next_label(SuccessLabel, !CI),
+    code_info.generate_failure(FailCode, !CI),
+    CondCode = node([
+        if_val(CondRval, label(SuccessLabel))
+            - "environment variable tests"
+    ]),
+    SuccessLabelCode = node([
+        label(SuccessLabel)
+            - "environment variable tests successful"
+    ]),
+    Code = tree_list([CondCode, FailCode, SuccessLabelCode]).
+
+:- pred generate_runtime_cond_code(trace_expr(trace_runtime)::in,
+    rval::out, code_info::in, code_info::out) is det.
+
+generate_runtime_cond_code(Expr, CondRval, !CI) :-
+    (
+        Expr = trace_base(trace_envvar(EnvVar)),
+        get_used_env_vars(!.CI, UsedEnvVars0),
+        set.insert(UsedEnvVars0, EnvVar, UsedEnvVars),
+        set_used_env_vars(UsedEnvVars, !CI),
+        EnvVarRval = lval(global_var_ref(env_var_ref(EnvVar))),
+        ZeroRval = const(int_const(0)),
+        CondRval = binop(ne, EnvVarRval, ZeroRval)
+    ;
+        Expr = trace_op(TraceOp, ExprA, ExprB),
+        generate_runtime_cond_code(ExprA, RvalA, !CI),
+        generate_runtime_cond_code(ExprB, RvalB, !CI),
+        (
+            TraceOp = trace_or,
+            Op = logical_or
+        ;
+            TraceOp = trace_and,
+            Op = logical_and
+        ),
+        CondRval = binop(Op, RvalA, RvalB)
     ).
 
 %---------------------------------------------------------------------------%
@@ -723,16 +788,16 @@ nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
         FirstContext = no,
         term.context_init(ActualFirstContext)
     ),
-    trace.maybe_generate_pragma_event_code(nondet_pragma_first,
-        ActualFirstContext, FirstTraceCode, !CI),
+    maybe_generate_pragma_event_code(nondet_pragma_first, ActualFirstContext,
+        FirstTraceCode, !CI),
     (
         LaterContext = yes(ActualLaterContext)
     ;
         LaterContext = no,
         term.context_init(ActualLaterContext)
     ),
-    trace.maybe_generate_pragma_event_code(nondet_pragma_later,
-        ActualLaterContext, LaterTraceCode, !CI),
+    maybe_generate_pragma_event_code(nondet_pragma_later, ActualLaterContext,
+        LaterTraceCode, !CI),
 
     FirstDisjunctCode = tree_list([SaveHeapCode, SaveTicketCode,
          FirstTraceCode]),

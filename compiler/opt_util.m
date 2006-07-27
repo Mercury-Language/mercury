@@ -657,6 +657,7 @@ lval_refers_stackvars(lvar(_)) = _ :-
 lval_refers_stackvars(temp(_, _)) = no.
 lval_refers_stackvars(mem_ref(Rval)) =
     rval_refers_stackvars(Rval).
+lval_refers_stackvars(global_var_ref(_)) = no.
 
 :- func mem_ref_refers_stackvars(mem_ref) = bool.
 
@@ -1636,6 +1637,7 @@ touches_nondet_ctrl_lval(lvar(_), no).
 touches_nondet_ctrl_lval(temp(_, _), no).
 touches_nondet_ctrl_lval(mem_ref(Rval), Touch) :-
     touches_nondet_ctrl_rval(Rval, Touch).
+touches_nondet_ctrl_lval(global_var_ref(_), no).
 
 :- pred touches_nondet_ctrl_rval(rval::in, bool::out) is det.
 
@@ -1706,6 +1708,7 @@ lval_access_rvals(temp(_, _), []).
 lval_access_rvals(lvar(_), _) :-
     unexpected(this_file, "lvar detected in lval_access_rvals").
 lval_access_rvals(mem_ref(Rval), [Rval]).
+lval_access_rvals(global_var_ref(_), []).
 
 %-----------------------------------------------------------------------------%
 
@@ -2065,6 +2068,7 @@ replace_labels_lval(lvar(Var), _, lvar(Var)).
 replace_labels_lval(temp(Type, Num), _, temp(Type, Num)).
 replace_labels_lval(mem_ref(Rval0), ReplMap, mem_ref(Rval)) :-
     replace_labels_rval(Rval0, ReplMap, Rval).
+replace_labels_lval(global_var_ref(Name), _, global_var_ref(Name)).
 
 :- pred replace_labels_rval(rval::in, map(label, label)::in,
     rval::out) is det.

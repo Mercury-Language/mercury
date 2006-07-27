@@ -247,7 +247,7 @@ build_live_sets_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
         Liveness0, Liveness, NondetLiveness0, NondetLivenessElse),
     set.union(NondetLivenessThen, NondetLivenessElse, NondetLiveness).
 
-build_live_sets_in_goal_2(not(Goal0), not(Goal), GoalInfo, GoalInfo,
+build_live_sets_in_goal_2(negation(Goal0), negation(Goal), GoalInfo, GoalInfo,
         ResumeVars0, AllocData, !StackAlloc, !Liveness, !NondetLiveness) :-
     build_live_sets_in_goal(Goal0, Goal, ResumeVars0, AllocData,
         !StackAlloc, !Liveness, !NondetLiveness).
@@ -289,7 +289,7 @@ build_live_sets_in_goal_2(Goal, Goal, GoalInfo0, GoalInfo, ResumeVars0,
 
 build_live_sets_in_goal_2(Goal, Goal, GoalInfo0, GoalInfo, ResumeVars0,
         AllocData, !StackAlloc, !Liveness, !NondetLiveness) :-
-    Goal = call(PredId, ProcId, ArgVars, Builtin, _, _),
+    Goal = plain_call(PredId, ProcId, ArgVars, Builtin, _, _),
     ModuleInfo = AllocData ^ module_info,
     CallerProcInfo = AllocData ^ proc_info,
     proc_info_get_vartypes(CallerProcInfo, VarTypes),
@@ -314,7 +314,7 @@ build_live_sets_in_goal_2(Goal, Goal, GoalInfo, GoalInfo,
 
 build_live_sets_in_goal_2(Goal, Goal, GoalInfo0, GoalInfo, ResumeVars0,
         AllocData, !StackAlloc, !Liveness, !NondetLiveness) :-
-    Goal = foreign_proc(Attributes, PredId, ProcId, Args, _, _),
+    Goal = call_foreign_proc(Attributes, PredId, ProcId, Args, _, _, _),
     ModuleInfo = AllocData ^ module_info,
     CallerProcInfo = AllocData ^ proc_info,
     proc_info_get_vartypes(CallerProcInfo, VarTypes),

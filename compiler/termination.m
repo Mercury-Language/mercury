@@ -172,7 +172,7 @@ check_foreign_code_attributes_2([PPId], !ModuleInfo, !IO) :-
         module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, !:ProcInfo),
         (
             proc_info_get_goal(!.ProcInfo, Goal),
-            Goal = foreign_proc(Attributes, _, _, _, _, _) - _GoalInfo
+            Goal = call_foreign_proc(Attributes, _, _, _, _, _, _) - _GoalInfo
         ->
             proc_info_get_maybe_termination_info(!.ProcInfo, MaybeTermination),
             proc_info_get_context(!.ProcInfo, Context),

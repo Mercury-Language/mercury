@@ -288,7 +288,7 @@ may_call_mercury_attributes(Goal, MayCallMercuryAttrs) :-
 subgoal_may_call_mercury_attribute(Goal, MayCallMercuryAttr) :-
     some [SubGoal, Attrs] (
         goal_contains_goal(Goal, SubGoal),
-        SubGoal = foreign_proc(Attrs, _, _, _, _, _) - _,
+        SubGoal = call_foreign_proc(Attrs, _, _, _, _, _, _) - _,
         MayCallMercuryAttr = may_call_mercury(Attrs)
     ).
 
@@ -305,7 +305,7 @@ tabled_for_io_attributes(Goal, TabledForIoAttrs) :-
 subgoal_tabled_for_io_attribute(Goal, TabledForIoAttr) :-
     some [SubGoal, Attrs] (
         goal_contains_goal(Goal, SubGoal),
-        SubGoal = foreign_proc(Attrs, _, _, _, _, _) - _,
+        SubGoal = call_foreign_proc(Attrs, _, _, _, _, _, _) - _,
         TabledForIoAttr = tabled_for_io(Attrs),
         \+ TabledForIoAttr = not_tabled_for_io
     ).
@@ -698,15 +698,15 @@ create_new_loop_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
 
     table_generate_foreign_proc(MarkInactivePredName, detism_det,
         tabling_c_attributes, [TableTipArg], [],
-        MarkInactiveCode, impure_code, [],
+        MarkInactiveCode, purity_impure, [],
         ModuleInfo, Context, MarkInactiveGoal),
     table_generate_foreign_proc(MarkInactiveFailPredName, detism_failure,
         tabling_c_attributes, [TableTipArg], [],
-        MarkInactiveFailCode, impure_code, [],
+        MarkInactiveFailCode, purity_impure, [],
         ModuleInfo, Context, MarkInactiveFailGoal),
     table_generate_foreign_proc(MarkActiveFailPredName, detism_failure,
         tabling_c_attributes, [TableTipArg], [],
-        MarkActiveFailCode, impure_code, [],
+        MarkActiveFailCode, purity_impure, [],
         ModuleInfo, Context, MarkActiveFailGoal),
 
     determinism_to_code_model(Detism, CodeModel),
@@ -981,7 +981,7 @@ create_new_memo_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
             "(" ++ DebugArgStr ++ ", " ++ cur_table_node_name ++ ");",
         table_generate_foreign_proc(MarkAsFailedPredName, detism_failure,
             tabling_c_attributes, [TableTipArg], [],
-            MarkAsFailedCode, impure_code, [],
+            MarkAsFailedCode, purity_impure, [],
             ModuleInfo, Context, ElseGoal),
         InactiveGoalExpr = if_then_else([], RenamedOrigGoal,
             ThenGoal, ElseGoal),
@@ -1072,15 +1072,15 @@ create_new_memo_non_goal(Detism, OrigGoal, Statistics, _MaybeSizeLimit,
 
     table_generate_foreign_proc(MarkIncompletePredName, detism_det,
         tabling_c_attributes, [RecordArg], [],
-        MarkIncompleteCode, impure_code, [],
+        MarkIncompleteCode, purity_impure, [],
         ModuleInfo, Context, MarkIncompleteGoal),
     table_generate_foreign_proc(MarkActivePredName, detism_failure,
         tabling_c_attributes, [RecordArg], [],
-        MarkActiveCode, impure_code, [],
+        MarkActiveCode, purity_impure, [],
         ModuleInfo, Context, MarkActiveGoal),
     table_generate_foreign_proc(MarkCompletePredName, detism_failure,
         tabling_c_attributes, [RecordArg], [],
-        MarkCompleteCode, impure_code, [],
+        MarkCompleteCode, purity_impure, [],
         ModuleInfo, Context, MarkCompleteGoal),
 
     OrigSaveExpr = conj(plain_conj, [OrigGoal | SaveAnswerGoals]),
@@ -1256,16 +1256,16 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
     generate_new_table_var("StartVar", int_type, !VarSet, !VarTypes,
         StartVar),
     generate_call("table_io_in_range", detism_semi,
-        [TableVar, CounterVar, StartVar], impure_code,
+        [TableVar, CounterVar, StartVar], purity_impure,
         ground_vars([TableVar, CounterVar, StartVar]),
         ModuleInfo, Context, InRangeGoal),
     generate_new_table_var("TipVar", trie_node_type, !VarSet, !VarTypes,
         TipVar),
     generate_call("table_lookup_insert_start_int", detism_det,
-        [TableVar, StartVar, CounterVar, TipVar], impure_code,
+        [TableVar, StartVar, CounterVar, TipVar], purity_impure,
         ground_vars([TipVar]), ModuleInfo, Context, LookupGoal),
     generate_call("table_io_has_occurred", detism_semi, [TipVar],
-        semipure_code, [], ModuleInfo, Context, OccurredGoal),
+        purity_impure, [], ModuleInfo, Context, OccurredGoal),
     (
         TableDecl = table_io_decl,
         ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
@@ -1318,7 +1318,7 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
                 "create_new_io_goal: one in / one out violation")
         ),
         generate_call("table_io_copy_io_state", detism_det,
-            [IoStateAssignFromVar, IoStateAssignToVar], pure_code,
+            [IoStateAssignFromVar, IoStateAssignToVar], purity_pure,
             [IoStateAssignFromVar - ground(clobbered, none),
             IoStateAssignToVar - ground(unique, none)],
             ModuleInfo, Context, IoStateAssignGoal),
@@ -1349,11 +1349,11 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
         generate_new_table_var("SavedTraceEnabled", int_type,
             !VarSet, !VarTypes, SavedTraceEnabledVar),
         generate_call("table_io_left_bracket_unitized_goal", detism_det,
-            [SavedTraceEnabledVar], impure_code,
+            [SavedTraceEnabledVar], purity_impure,
             ground_vars([SavedTraceEnabledVar]),
             ModuleInfo, Context, LeftBracketGoal),
         generate_call("table_io_right_bracket_unitized_goal", detism_det,
-            [SavedTraceEnabledVar], impure_code, [],
+            [SavedTraceEnabledVar], purity_impure, [],
             ModuleInfo, Context, RightBracketGoal),
         CallSaveAnswerGoalList = [LeftBracketGoal, NewGoal,
             RightBracketGoal, TableIoDeclGoal | SaveAnswerGoals]
@@ -1496,8 +1496,8 @@ create_new_mm_goal(Detism, OrigGoal, Statistics, PredId, ProcId,
         Context, MainGoalInfo),
     MainGoal = MainExpr - MainGoalInfo,
 
-    generate_call("table_mm_completion", detism_det, [SubgoalVar], impure_code,
-        [], ModuleInfo, Context, ResumeGoal0),
+    generate_call("table_mm_completion", detism_det, [SubgoalVar],
+        purity_impure, [], ModuleInfo, Context, ResumeGoal0),
     append_fail(ResumeGoal0, ResumeGoal),
     InactiveExpr = disj([MainGoal, ResumeGoal]),
     InactiveGoal = InactiveExpr - MainGoalInfo,
@@ -1656,7 +1656,7 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
     table_generate_foreign_proc(SetupPredName, detism_det,
         make_generator_c_attributes,
         [InfoArg, GeneratorPredArg, ConsumerArg], LookupForeignArgs,
-        LookupDeclCodeStr ++ SetupCode, impure_code,
+        LookupDeclCodeStr ++ SetupCode, purity_impure,
         ground_vars([ConsumerVar]), ModuleInfo, Context, SetupGoal),
     % We don't attach the call_table_tip attribute to the setup goal, since
     % retrying across the creation of the generator should not require undoing
@@ -1678,7 +1678,7 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
     ),
     % XXX consider inlining the predicate being called
     generate_call(ConsumePredName, Detism, [ConsumerVar, AnswerBlockVar],
-        impure_code, ground_vars([AnswerBlockVar]), ModuleInfo, Context,
+        purity_impure, ground_vars([AnswerBlockVar]), ModuleInfo, Context,
         GetNextAnswerGoal),
     DebugArgStr = get_debug_arg_string(!.TableInfo),
     generate_restore_goals(NumberedOutputVars, OrigInstMapDelta,
@@ -1690,7 +1690,8 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
     RestoreAllPredName = "table_mmos_restore_answers",
     table_generate_foreign_proc(RestoreAllPredName, detism_det,
         tabling_c_attributes, [AnswerBlockArg], RestoreArgs, RestoreCodeStr,
-        impure_code, RestoreInstMapDeltaSrc, ModuleInfo, Context, RestoreGoal),
+        purity_impure, RestoreInstMapDeltaSrc, ModuleInfo, Context,
+        RestoreGoal),
 
     GoalExpr = conj(plain_conj,
         LookupSetupGoals ++ [GetNextAnswerGoal, RestoreGoal]),
@@ -1765,7 +1766,7 @@ do_own_stack_create_generator(PredId, ProcId, !.PredInfo, !.ProcInfo,
         yes(generator_name - out_mode), generator_type, native_if_possible),
     table_generate_foreign_proc("table_mmos_pickup_inputs", detism_det,
         tabling_c_attributes, [PickupGeneratorArg], PickupForeignArgs,
-        PickupGeneratorCode ++ PickupVarCode, semipure_code,
+        PickupGeneratorCode ++ PickupVarCode, purity_semipure,
         PickupInstMapDeltaSrc, ModuleInfo0, Context, PickupGoal),
 
     list.length(NumberedOutputVars, BlockSize),
@@ -1885,7 +1886,7 @@ clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo) :-
     predicate_table_insert(NewPredInfo, NewPredId,
         PredicateTable0, PredicateTable),
     module_info_set_predicate_table(PredicateTable, !ModuleInfo),
-    CallExpr = call(NewPredId, NewProcId, ProcHeadVars, not_builtin, no,
+    CallExpr = plain_call(NewPredId, NewProcId, ProcHeadVars, not_builtin, no,
         NewPredName).
 
 :- pred keep_only_output_arg_types(assoc_list(prog_var, mer_type)::in,
@@ -1990,8 +1991,8 @@ generate_simple_call_table_lookup_goal(StatusType, PredName,
         CallTableTipAssignStr ++
         MainPredCodeStr,
     table_generate_foreign_proc(PredName, detism_det, tabling_c_attributes,
-        Args, LookupForeignArgs, CodeStr, impure_code, ground_vars(BoundVars),
-        ModuleInfo, Context, SetupGoal0),
+        Args, LookupForeignArgs, CodeStr, purity_impure,
+        ground_vars(BoundVars), ModuleInfo, Context, SetupGoal0),
     attach_call_table_tip(SetupGoal0, SetupGoal),
     LookupSetupGoals = LookupPrefixGoals ++ [SetupGoal],
 
@@ -2047,8 +2048,8 @@ generate_memo_non_call_table_lookup_goal(NumberedVars, PredId, ProcId,
         StatusVarName ++ ");\n",
     table_generate_foreign_proc(SetupPredName, detism_det,
         tabling_c_attributes, Args, LookupForeignArgs,
-        LookupDeclCodeStr ++ PredCodeStr, impure_code, ground_vars(BoundVars),
-        ModuleInfo, Context, SetupGoal0),
+        LookupDeclCodeStr ++ PredCodeStr, purity_impure,
+        ground_vars(BoundVars), ModuleInfo, Context, SetupGoal0),
     attach_call_table_tip(SetupGoal0, SetupGoal),
     LookupSetupGoals = LookupPrefixGoals ++ [SetupGoal],
 
@@ -2102,7 +2103,7 @@ generate_mm_call_table_lookup_goal(NumberedVars, PredId, ProcId,
     CodeStr = LookupDeclStr ++ LookupCodeStr ++ SetupCodeStr,
     ModuleInfo = !.TableInfo ^ table_module_info,
     table_generate_foreign_proc(SetupPredName, detism_det,
-        tabling_c_attributes, Args, LookupForeignArgs, CodeStr, impure_code,
+        tabling_c_attributes, Args, LookupForeignArgs, CodeStr, purity_impure,
         ground_vars(BoundVars), ModuleInfo, Context, SetupGoal0),
     attach_call_table_tip(SetupGoal0, SetupGoal),
     LookupSetupGoals = LookupPrefixGoals ++ [SetupGoal],
@@ -2227,7 +2228,7 @@ generate_get_table_info_goal(PredId, ProcId, !VarSet, !VarTypes,
     InfoConsId = tabling_info_const(ShroudedPredProcId),
     make_const_construction(ProcTableInfoVar, InfoConsId,
         GoalExpr - GoalInfo0),
-    goal_info_add_feature(impure_goal, GoalInfo0, GoalInfo),
+    goal_info_set_purity(purity_impure, GoalInfo0, GoalInfo),
     Goal = GoalExpr - GoalInfo.
 
 :- pred attach_call_table_tip(hlds_goal::in, hlds_goal::out) is det.
@@ -2413,7 +2414,7 @@ generate_memo_save_goal(NumberedSaveVars, TableTipVar, BlockSize,
             !TableInfo, SaveArgs, SavePrefixGoals, SaveDeclCode, SaveCode),
         table_generate_foreign_proc(CreatePredName, detism_det,
             tabling_c_attributes, [TableArg], SaveArgs,
-            SaveDeclCode ++ SaveCode, impure_code, [],
+            SaveDeclCode ++ SaveCode, purity_impure, [],
             ModuleInfo, Context, SaveGoal),
         Goals = SavePrefixGoals ++ [SaveGoal]
     ;
@@ -2423,7 +2424,7 @@ generate_memo_save_goal(NumberedSaveVars, TableTipVar, BlockSize,
             "(" ++ cur_table_node_name ++ ");",
         table_generate_foreign_proc(MarkAsSucceededPredName, detism_det,
             tabling_c_attributes, [TableArg], [],
-            MarkAsSucceededCode, impure_code, [],
+            MarkAsSucceededCode, purity_impure, [],
             ModuleInfo, Context, SaveGoal),
         Goals = [SaveGoal]
     ).
@@ -2481,7 +2482,7 @@ generate_memo_non_save_goals(NumberedSaveVars, PredId, ProcId,
         AssignSuccessCodeStr,
     table_generate_foreign_proc(DuplCheckPredName, detism_semi,
         tabling_c_attributes, [RecordArg], LookupForeignArgs, CodeStr,
-        impure_code, [], ModuleInfo, Context, DuplicateCheckSaveGoal),
+        purity_impure, [], ModuleInfo, Context, DuplicateCheckSaveGoal),
     Goals = LookupPrefixGoals ++ [DuplicateCheckSaveGoal].
 
     % Generate a goal for saving the output arguments in an answer block
@@ -2536,7 +2537,7 @@ generate_mm_save_goals(NumberedSaveVars, SubgoalVar, PredId, ProcId, BlockSize,
         CondSaveStr ++ AssignSuccessCodeStr,
     table_generate_foreign_proc(DuplCheckPredName, detism_semi,
         tabling_c_attributes, Args, LookupForeignArgs,
-        CodeStr, impure_code, [],
+        CodeStr, purity_impure, [],
         ModuleInfo, Context, DuplicateCheckSaveGoal),
     Goals = LookupPrefixGoals ++ [DuplicateCheckSaveGoal].
 
@@ -2619,7 +2620,7 @@ generate_own_stack_save_goal(NumberedOutputVars, GeneratorVar, PredId, ProcId,
     ModuleInfo = !.TableInfo ^ table_module_info,
     table_generate_foreign_proc(DuplCheckPredName, detism_semi,
         tabling_c_attributes, Args, LookupForeignArgs,
-        CodeStr, impure_code, [],
+        CodeStr, purity_impure, [],
         ModuleInfo, Context, DuplicateCheckSaveGoal),
     Goals = LookupPrefixGoals ++ SavePrefixGoals ++ [DuplicateCheckSaveGoal].
 
@@ -2717,7 +2718,7 @@ generate_memo_restore_goal(NumberedOutputVars, OrigInstMapDelta, TipVar,
             RestoreCodeStr,
         table_generate_foreign_proc(GetPredName, detism_det,
             tabling_c_attributes, Args, RestoreArgs,
-            DeclCodeStr ++ GetRestoreCodeStr, impure_code,
+            DeclCodeStr ++ GetRestoreCodeStr, purity_semipure,
             RestoreInstMapDeltaSrc, ModuleInfo, Context, ShortcutGoal),
         Goal = ShortcutGoal
     ;
@@ -2746,7 +2747,7 @@ generate_memo_non_restore_goal(Detism, NumberedOutputVars, OrigInstMapDelta,
         !VarSet, !VarTypes, AnswerBlockVar),
     ModuleInfo = TableInfo ^ table_module_info,
     generate_call(ReturnAllAns, Detism, [RecordVar, AnswerBlockVar],
-        semipure_code, ground_vars([AnswerBlockVar]), ModuleInfo,
+        purity_semipure, ground_vars([AnswerBlockVar]), ModuleInfo,
         Context, ReturnAnswerBlocksGoal),
     DebugArgStr = get_debug_arg_string(TableInfo),
     generate_restore_goals(NumberedOutputVars, OrigInstMapDelta,
@@ -2758,7 +2759,7 @@ generate_memo_non_restore_goal(Detism, NumberedOutputVars, OrigInstMapDelta,
     Args = [Arg],
     PredName = "table_memo_non_return_all_shortcut",
     table_generate_foreign_proc(PredName, detism_det, tabling_c_attributes,
-        Args, RestoreArgs, RestoreCodeStr, impure_code,
+        Args, RestoreArgs, RestoreCodeStr, purity_semipure,
         RestoreInstMapDeltaSrc, ModuleInfo, Context, ShortcutGoal),
 
     GoalExpr = conj(plain_conj, [ReturnAnswerBlocksGoal, ShortcutGoal]),
@@ -2818,7 +2819,7 @@ generate_mm_restore_or_suspend_goal(PredName, Detism, Purity,
         !VarSet, !VarTypes, AnswerBlockVar),
     ModuleInfo = TableInfo ^ table_module_info,
     generate_call(PredName, Detism, [SubgoalVar, AnswerBlockVar],
-        semipure_code, ground_vars([AnswerBlockVar]), ModuleInfo,
+        purity_semipure, ground_vars([AnswerBlockVar]), ModuleInfo,
         Context, ReturnAnswerBlocksGoal),
     DebugArgStr = get_debug_arg_string(TableInfo),
     generate_restore_goals(NumberedOutputVars, OrigInstMapDelta,
@@ -2831,7 +2832,7 @@ generate_mm_restore_or_suspend_goal(PredName, Detism, Purity,
     Args = [Arg],
     ReturnAllPredName = "table_mm_return_all_shortcut",
     table_generate_foreign_proc(ReturnAllPredName, detism_det,
-        tabling_c_attributes, Args, RestoreArgs, RestoreCodeStr, impure_code,
+        tabling_c_attributes, Args, RestoreArgs, RestoreCodeStr, purity_impure,
         RestoreInstMapDeltaSrc, ModuleInfo, Context, ReturnAllGoal),
     GoalExpr = conj(plain_conj, [ReturnAnswerBlocksGoal, ReturnAllGoal]),
 
@@ -2921,8 +2922,8 @@ generate_error_goal(TableInfo, Context, Msg, !VarSet, !VarTypes, Goal) :-
 
     gen_string_construction("Message", Message, !VarSet, !VarTypes,
         MessageVar, MessageStrGoal),
-    generate_call("table_error", detism_erroneous, [MessageVar], pure_code, [],
-        ModuleInfo, Context, CallGoal),
+    generate_call("table_error", detism_erroneous, [MessageVar], purity_pure,
+        [], ModuleInfo, Context, CallGoal),
 
     GoalExpr = conj(plain_conj, [MessageStrGoal, CallGoal]),
     goal_info_init_hide(set.init, bind_vars([]), detism_erroneous,
@@ -2939,55 +2940,51 @@ generate_new_table_var(Name, Type, !VarSet, !VarTypes, Var) :-
     varset.new_named_var(!.VarSet, Name, Var, !:VarSet),
     map.set(!.VarTypes, Var, Type, !:VarTypes).
 
-:- type impure_or_semipure
-    --->    impure_code
-    ;       semipure_code
-    ;       pure_code.
-
-:- func impure_or_semipure_to_features(impure_or_semipure)
-    = list(goal_feature).
-
-impure_or_semipure_to_features(impure_code) =
-    [impure_goal, not_impure_for_determinism].
-impure_or_semipure_to_features(semipure_code) =
-    [semipure_goal, not_impure_for_determinism].
-impure_or_semipure_to_features(pure_code) = [].
-
 :- pred generate_call(string::in, determinism::in, list(prog_var)::in,
-    impure_or_semipure::in, assoc_list(prog_var, mer_inst)::in,
+    purity::in, assoc_list(prog_var, mer_inst)::in,
     module_info::in, term.context::in, hlds_goal::out) is det.
 
 generate_call(PredName, Detism, Args, Purity, InstMapSrc, ModuleInfo, Context,
         Goal) :-
     mercury_table_builtin_module(BuiltinModule),
-    Features0 = impure_or_semipure_to_features(Purity),
+    ( Purity = purity_pure ->
+        Features0 = []
+    ;
+        Features0 = [not_impure_for_determinism]
+    ),
     ( Detism = detism_failure ->
         Features = [preserve_backtrack_into | Features0]
     ;
         Features = Features0
     ),
     goal_util.generate_simple_call(BuiltinModule, PredName, predicate,
-        only_mode, Detism, Args, Features, InstMapSrc, ModuleInfo,
+        only_mode, Detism, Purity, Args, Features, InstMapSrc, ModuleInfo,
         Context, Goal).
 
 :- pred table_generate_foreign_proc(string::in, determinism::in,
     pragma_foreign_proc_attributes::in,
     list(foreign_arg)::in, list(foreign_arg)::in, string::in,
-    impure_or_semipure::in, assoc_list(prog_var, mer_inst)::in,
+    purity::in, assoc_list(prog_var, mer_inst)::in,
     module_info::in, term.context::in, hlds_goal::out) is det.
 
 table_generate_foreign_proc(PredName, Detism, Attributes, Args, ExtraArgs,
         Code, Purity, InstMapSrc, ModuleInfo, Context, Goal) :-
     mercury_table_builtin_module(BuiltinModule),
-    Features0 = impure_or_semipure_to_features(Purity),
+    ( Purity = purity_pure ->
+        Features0 = []
+    ;
+        Features0 = [not_impure_for_determinism]
+    ),
     ( Detism = detism_failure ->
         Features = [preserve_backtrack_into | Features0]
     ;
         Features = Features0
     ),
+    MaybeTraceRuntimCond = no,
     goal_util.generate_foreign_proc(BuiltinModule, PredName, predicate,
-        only_mode, Detism, Attributes, Args, ExtraArgs, Code, Features,
-        InstMapSrc, ModuleInfo, Context, Goal).
+        only_mode, Detism, Purity, Attributes, Args, ExtraArgs,
+        MaybeTraceRuntimCond, Code, Features, InstMapSrc, ModuleInfo,
+        Context, Goal).
 
 :- pred append_fail(hlds_goal::in, hlds_goal::out) is det.
 

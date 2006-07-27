@@ -73,12 +73,14 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_io_util.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
 :- import_module map.
@@ -246,7 +248,8 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
                 pred_info_update_goal_type(clauses, !PredInfo)
             ),
             pred_info_set_typevarset(TVarSet, !PredInfo),
-            pred_info_get_arg_types(!.PredInfo, _ArgTVarSet, ExistQVars, ArgTypes),
+            pred_info_get_arg_types(!.PredInfo, _ArgTVarSet, ExistQVars,
+                ArgTypes),
             pred_info_set_arg_types(TVarSet, ExistQVars, ArgTypes, !PredInfo),
 
             %
@@ -497,8 +500,9 @@ clauses_info_add_clause(ModeIds0, CVarSet, TVarSet0, Args, Body, Context,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     io::di, io::uo) is det.
 
-add_clause_transform(Subst, HeadVars, Args0, Body0, Context, PredOrFunc, Arity,
-        GoalType, Goal, !VarSet, Warnings, !ModuleInfo, !QualInfo, !IO) :-
+add_clause_transform(Subst, HeadVars, Args0, ParseBody, Context, PredOrFunc,
+        Arity, GoalType, Goal, !VarSet, Warnings, !ModuleInfo,
+        !QualInfo, !IO) :-
     some [!SInfo] (
         prepare_for_head(!:SInfo),
         term.apply_substitution_to_list(Args0, Subst, Args1),
@@ -514,9 +518,9 @@ add_clause_transform(Subst, HeadVars, Args0, Body0, Context, PredOrFunc, Arity,
             attach_features_to_all_goals([from_head], HeadGoal1, HeadGoal)
         ),
         prepare_for_body(FinalSVarMap, !VarSet, !SInfo),
-        transform_goal(Body0, Subst, Body, _, !VarSet, !ModuleInfo, !QualInfo,
-            !SInfo, !IO),
-        finish_goals(Context, FinalSVarMap, [HeadGoal, Body], Goal0,
+        transform_goal(ParseBody, Subst, BodyGoal, _, !VarSet, !ModuleInfo,
+            !QualInfo, !SInfo, !IO),
+        finish_goals(Context, FinalSVarMap, [HeadGoal, BodyGoal], Goal0,
             !.SInfo),
         qual_info_get_var_types(!.QualInfo, VarTypes0),
         implicitly_quantify_clause_body(HeadVars, Warnings, Goal0, Goal,
@@ -612,6 +616,38 @@ transform_goal_2(
     transform_promise_eqv_goal(Vars0, DotSVars0, ColonSVars0, Subst, Context,
         Vars, Goal0, Goal, GoalInfo, NumAdded, !VarSet, !ModuleInfo,
         !QualInfo, !SInfo, !IO).
+transform_goal_2(
+        trace_expr(MaybeCompileTime, MaybeRunTime, MaybeIO, Mutables, Goal0),
+        Context, Subst, scope(Reason, Goal) - GoalInfo, NumAdded,
+        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
+    list.map4(extract_trace_mutable_var(Context, !.VarSet), Mutables,
+        MutableHLDSs, MutableStateVars, MutableGetGoals, MutableSetGoals),
+    (
+        MaybeIO = yes(IOStateVar),
+        varset.lookup_name(!.VarSet, IOStateVar, IOStateVarName),
+        MaybeIOHLDS = yes(IOStateVarName),
+        extract_trace_io_var(Context, IOStateVar, IOGetGoal, IOSetGoal),
+        StateVars0 = [IOStateVar | MutableStateVars],
+        GetGoals = [IOGetGoal | MutableGetGoals],
+        SetGoals = [IOSetGoal | MutableSetGoals]
+    ;
+        MaybeIO = no,
+        MaybeIOHLDS = no,
+        StateVars0 = MutableStateVars,
+        GetGoals = MutableGetGoals,
+        SetGoals = MutableSetGoals
+    ),
+    Reason = trace_goal(MaybeCompileTime, MaybeRunTime, MaybeIOHLDS,
+        MutableHLDSs),
+    Goal1 = goal_list_to_goal(Context, GetGoals ++ [Goal0] ++ SetGoals),
+    BeforeSInfo = !.SInfo,
+    substitute_vars(StateVars0, Subst, StateVars),
+    prepare_for_local_state_vars(StateVars, !VarSet, !SInfo),
+    transform_goal(Goal1, Subst, Goal, NumAdded1, !VarSet, !ModuleInfo,
+        !QualInfo, !SInfo, !IO),
+    NumAdded = list.length(GetGoals) + NumAdded1 + list.length(SetGoals),
+    finish_local_state_vars(StateVars, _Vars, BeforeSInfo, !SInfo),
+    goal_info_init(GoalInfo).
 transform_goal_2(if_then_else_expr(Vars0, StateVars0, Cond0, Then0, Else0),
         Context, Subst, if_then_else(Vars, Cond, Then, Else) - GoalInfo,
         NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
@@ -633,7 +669,7 @@ transform_goal_2(if_then_else_expr(Vars0, StateVars0, Cond0, Then0, Else0),
     goal_info_init(Context, GoalInfo),
     finish_if_then_else(Context, Then1, Then, Else1, Else,
         BeforeSInfo, AfterCondSInfo, AfterThenSInfo, !SInfo, !VarSet).
-transform_goal_2(not_expr(SubGoal0), _, Subst, not(SubGoal) - GoalInfo,
+transform_goal_2(not_expr(SubGoal0), _, Subst, negation(SubGoal) - GoalInfo,
         NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     BeforeSInfo = !.SInfo,
     transform_goal(SubGoal0, Subst, SubGoal, NumAdded, !VarSet, !ModuleInfo,
@@ -745,12 +781,12 @@ transform_goal_2(call_expr(Name, Args0, Purity), Context, Subst, Goal,
             ModeId = invalid_proc_id,
 
             MaybeUnifyContext = no,
-            Call = call(PredId, ModeId, HeadVars, not_builtin,
+            Call = plain_call(PredId, ModeId, HeadVars, not_builtin,
                 MaybeUnifyContext, Name),
             CallId = call(simple_call_id(predicate, Name, Arity))
         ),
         goal_info_init(Context, GoalInfo0),
-        add_goal_info_purity_feature(Purity, GoalInfo0, GoalInfo),
+        goal_info_set_purity(Purity, GoalInfo0, GoalInfo),
         Goal0 = Call - GoalInfo,
 
         record_called_pred_or_func(predicate, Name, Arity, !QualInfo),
@@ -759,8 +795,8 @@ transform_goal_2(call_expr(Name, Args0, Purity), Context, Subst, Goal,
             !SInfo, !IO),
         finish_call(!VarSet, !SInfo)
     ).
-transform_goal_2(unify_expr(A0, B0, Purity), Context, Subst, Goal, NumAdded,
-        !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
+transform_goal_2(unify_expr(A0, B0, Purity), Context, Subst, Goal,
+        NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     % It is an error for the left or right hand side of a
     % unification to be !X (it may be !.X or !:X, however).
     ( A0 = functor(atom("!"), [variable(StateVarA)], _) ->
@@ -779,6 +815,49 @@ transform_goal_2(unify_expr(A0, B0, Purity), Context, Subst, Goal, NumAdded,
             NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
         finish_call(!VarSet, !SInfo)
     ).
+
+:- pred extract_trace_mutable_var(prog_context::in, prog_varset::in,
+    trace_mutable_var::in, trace_mutable_var_hlds::out,
+    prog_var::out, goal::out, goal::out) is det.
+
+extract_trace_mutable_var(Context, VarSet, Mutable, MutableHLDS, StateVar,
+        GetGoal, SetGoal) :-
+    Mutable = trace_mutable_var(MutableName, StateVar),
+    varset.lookup_name(VarSet, StateVar, StateVarName),
+    MutableHLDS = trace_mutable_var_hlds(MutableName, StateVarName),
+    GetPredName = unqualified("get_" ++ MutableName),
+    SetPredName = unqualified("set_" ++ MutableName),
+    SetVar = functor(atom("!:"), [variable(StateVar)], Context),
+    UseVar = functor(atom("!."), [variable(StateVar)], Context),
+    GetPurity = purity_semipure,
+    SetPurity = purity_impure,
+    GetGoal = call_expr(GetPredName, [SetVar], GetPurity) - Context,
+    SetGoal = call_expr(SetPredName, [UseVar], SetPurity) - Context.
+
+:- pred extract_trace_io_var(prog_context::in, prog_var::in,
+    goal::out, goal::out) is det.
+
+extract_trace_io_var(Context, StateVar, GetGoal, SetGoal) :-
+    Builtin = mercury_private_builtin_module,
+    GetPredName = qualified(Builtin, "trace_get_io_state"),
+    SetPredName = qualified(Builtin, "trace_set_io_state"),
+    SetVar = functor(atom("!:"), [variable(StateVar)], Context),
+    UseVar = functor(atom("!."), [variable(StateVar)], Context),
+    Purity = purity_impure,
+    GetGoal = call_expr(GetPredName, [SetVar], Purity) - Context,
+    SetGoal = call_expr(SetPredName, [UseVar], Purity) - Context.
+
+:- func goal_list_to_goal(prog_context, list(goal)) = goal.
+
+goal_list_to_goal(Context, []) = true_expr - Context.
+goal_list_to_goal(Context, [Goal | Goals]) =
+    goal_list_to_goal_2(Context, Goal, Goals).
+
+:- func goal_list_to_goal_2(prog_context, goal, list(goal)) = goal.
+
+goal_list_to_goal_2(_, Goal, []) = Goal.
+goal_list_to_goal_2(Context, Goal0, [Goal1 | Goals]) =
+    conj_expr(Goal0, goal_list_to_goal_2(Context, Goal1, Goals)) - Context.
 
 :- pred transform_promise_eqv_goal(prog_vars::in, prog_vars::in, prog_vars::in,
     prog_substitution::in, prog_context::in, prog_vars::out,
@@ -860,47 +939,51 @@ transform_dcg_record_syntax(Operator, ArgTerms0, Context, Goal, NumAdded,
     ->
         parse_field_list(FieldNameTerm, MaybeFieldNames),
         (
-            MaybeFieldNames = ok(FieldNames),
+            MaybeFieldNames = ok1(FieldNames),
             ArgTerms = [FieldValueTerm, TermInputTerm, TermOutputTerm],
             transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms,
                 Context, Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
                 !SInfo, !IO)
         ;
-            MaybeFieldNames = error(Msg, ErrorTerm),
+            MaybeFieldNames = error1(Errors),
+            % Msg, ErrorTerm),
             invalid_goal("^", ArgTerms0, GoalInfo, Goal, !VarSet, !SInfo, !IO),
             NumAdded = 0,
             qual_info_set_found_syntax_error(yes, !QualInfo),
-            io.set_exit_status(1, !IO),
-            prog_out.write_context(Context, !IO),
-            io.write_string("In DCG field ", !IO),
-            (
-                AccessType = set,
-                io.write_string("update", !IO)
-            ;
-                AccessType = get,
-                io.write_string("extraction", !IO)
-            ),
-            io.write_string(" goal:\n", !IO),
-            prog_out.write_context(Context, !IO),
-            io.write_string("  error: ", !IO),
-            io.write_string(Msg, !IO),
-            io.write_string(" at term `", !IO),
-            term_io.write_term(!.VarSet, ErrorTerm, !IO),
-            io.write_string("'.\n", !IO)
+            list.foldl(report_dcg_field_error(Context, AccessType, !.VarSet),
+                Errors, !IO)
         )
     ;
         invalid_goal("^", ArgTerms0, GoalInfo, Goal, !VarSet, !SInfo, !IO),
         NumAdded = 0,
         qual_info_set_found_syntax_error(yes, !QualInfo),
-        io.set_exit_status(1, !IO),
-        prog_out.write_context(Context, !IO),
-        io.write_string("Error: expected " ++
-            "`Field =^ field1 ^ ... ^ fieldN'\n", !IO),
-        prog_out.write_context(Context, !IO),
-        io.write_string("  or `^ field1 ^ ... ^ fieldN := Field'.\n", !IO),
-        prog_out.write_context(Context, !IO),
-        io.write_string("  in DCG field access goal.\n", !IO)
+        Pieces = [words("Error: expected `Field =^ field1 ^ ... ^ fieldN'"),
+            words("or `^ field1 ^ ... ^ fieldN := Field'"),
+            words("in DCG field access goal."), nl],
+        write_error_pieces(Context, 0, Pieces, !IO),
+        io.set_exit_status(1, !IO)
     ).
+
+:- pred report_dcg_field_error(term.context::in, field_access_type::in,
+    prog_varset::in, pair(string, term(prog_var_type))::in, io::di, io::uo)
+    is det.
+
+report_dcg_field_error(Context, AccessType, VarSet, Error, !IO) :-
+    Error = Msg - ErrorTerm,
+    (
+        AccessType = set,
+        Action = "update"
+    ;
+        AccessType = get,
+        Action = "extraction"
+    ),
+    GenericVarSet = varset.coerce(VarSet),
+    TermStr = mercury_term_to_string(ErrorTerm, GenericVarSet, no),
+    Pieces = [words("In DCG field"), words(Action), words("goal:"), nl,
+        words("error:"), words(Msg), words("at term"),
+        fixed("`" ++ TermStr ++ "'."), nl],
+    write_error_pieces(Context, 0, Pieces, !IO),
+    io.set_exit_status(1, !IO).
 
     % Produce an invalid goal.
     %
@@ -911,7 +994,7 @@ transform_dcg_record_syntax(Operator, ArgTerms0, Context, Goal, NumAdded,
 invalid_goal(UpdateStr, Args0, GoalInfo, Goal, !VarSet, !SInfo, !IO) :-
     make_fresh_arg_vars(Args0, HeadVars, !VarSet, !SInfo, !IO),
     MaybeUnifyContext = no,
-    Goal = call(invalid_pred_id, invalid_proc_id, HeadVars, not_builtin,
+    Goal = plain_call(invalid_pred_id, invalid_proc_id, HeadVars, not_builtin,
         MaybeUnifyContext, unqualified(UpdateStr)) - GoalInfo.
 
 :- pred transform_dcg_record_syntax_2(field_access_type::in, field_list::in,

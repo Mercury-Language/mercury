@@ -330,7 +330,7 @@ check_goal_expr_non_term_calls(PPId, VarTypes, Goal, _, !Errors,
         !Errors, !ModuleInfo, !IO).
 check_goal_expr_non_term_calls(PPId, VarTypes, Goal, GoalInfo,
        !Errors, !ModuleInfo, !IO) :-
-    Goal = call(CallPredId, CallProcId, Args, _, _, _),
+    Goal = plain_call(CallPredId, CallProcId, Args, _, _, _),
     CallPPId = proc(CallPredId, CallProcId),
     module_info_pred_proc_info(!.ModuleInfo, CallPPId, _, ProcInfo),
     proc_info_get_maybe_termination_info(ProcInfo, TerminationInfo),
@@ -364,7 +364,7 @@ check_goal_expr_non_term_calls(PPId, VarTypes, Goal, _, !Errors, !ModuleInfo,
         !Errors, !ModuleInfo, !IO).
 check_goal_expr_non_term_calls(_, _, unify(_, _, _, _, _), _, !Errors,
         !ModuleInfo, !IO).
-check_goal_expr_non_term_calls(PPId, VarTypes, not(Goal), _,
+check_goal_expr_non_term_calls(PPId, VarTypes, negation(Goal), _,
         !Errors, !ModuleInfo, !IO) :-
     check_goal_non_term_calls(PPId, VarTypes, Goal, !Errors, !ModuleInfo,
         !IO).
@@ -381,7 +381,7 @@ check_goal_expr_non_term_calls(PPId, VarTypes, Goal, _, !Errors, !ModuleInfo,
         !Errors, !ModuleInfo, !IO).
 check_goal_expr_non_term_calls(_, _, Goal, _, !Errors, !ModuleInfo, !IO) :-
     % XXX This looks incomplete - juliensf.
-    Goal = foreign_proc(_, _, _, _, _, _).
+    Goal = call_foreign_proc(_, _, _, _, _, _, _).
 check_goal_expr_non_term_calls(_, _, shorthand(_), _, _, _, _, _, _, _) :-
     unexpected(this_file,
         "shorthand goal encountered during termination analysis.").

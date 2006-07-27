@@ -797,6 +797,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module solutions.
 :- import_module string.
@@ -2184,7 +2185,7 @@ ml_gen_goal_expr(if_then_else(_Vars, Cond, Then, Else),
         CodeModel, Context, Decls, Statements, !Info) :-
     ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info).
 
-ml_gen_goal_expr(not(Goal), CodeModel, Context,
+ml_gen_goal_expr(negation(Goal), CodeModel, Context,
         Decls, Statements, !Info) :-
     ml_gen_negation(Goal, CodeModel, Context, Decls, Statements, !Info).
 
@@ -2206,7 +2207,7 @@ ml_gen_goal_expr(generic_call(GenericCall, Vars, Modes, Detism), CodeModel,
     ml_gen_generic_call(GenericCall, Vars, Modes, Detism, Context,
         Decls, Statements, !Info).
 
-ml_gen_goal_expr(call(PredId, ProcId, ArgVars, BuiltinState, _, _),
+ml_gen_goal_expr(plain_call(PredId, ProcId, ArgVars, BuiltinState, _, _),
         CodeModel, Context, Decls, Statements, !Info) :-
     ( BuiltinState = not_builtin ->
         ml_gen_var_list(!.Info, ArgVars, ArgLvals),
@@ -2225,10 +2226,13 @@ ml_gen_goal_expr(unify(_LHS, _RHS, _Mode, Unification, _UnifyContext),
     ml_gen_unification(Unification, CodeModel, Context, Decls, Statements,
         !Info).
 
-ml_gen_goal_expr(foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
-        PragmaImpl), CodeModel, OuterContext, Decls, Statements, !Info) :-
+ml_gen_goal_expr(call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
+        MaybeTraceRuntimeCond, PragmaImpl), CodeModel, OuterContext,
+        Decls, Statements, !Info) :-
+    require(unify(MaybeTraceRuntimeCond, no),
+        "ml_gen_goal_expr: MaybeTraceRuntimeCond NYI"),
     (
-        PragmaImpl = ordinary(ForeignCode, MaybeContext),
+        PragmaImpl = fc_impl_ordinary(ForeignCode, MaybeContext),
         (
             MaybeContext = yes(Context)
         ;
@@ -2239,7 +2243,7 @@ ml_gen_goal_expr(foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
             PredId, ProcId, Args, ExtraArgs, ForeignCode,
             Context, Decls, Statements, !Info)
     ;
-        PragmaImpl = nondet(LocalVarsDecls, LocalVarsContext,
+        PragmaImpl = fc_impl_model_non(LocalVarsDecls, LocalVarsContext,
             FirstCode, FirstContext, LaterCode, LaterContext,
             _Treatment, SharedCode, SharedContext),
         expect(unify(ExtraArgs, []), this_file,
@@ -2250,7 +2254,7 @@ ml_gen_goal_expr(foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
             FirstCode, FirstContext, LaterCode, LaterContext,
             SharedCode, SharedContext, Decls, Statements, !Info)
     ;
-        PragmaImpl = import(Name, HandleReturn, Vars, _Context),
+        PragmaImpl = fc_impl_import(Name, HandleReturn, Vars, _Context),
         expect(unify(ExtraArgs, []), this_file,
             "ml_gen_goal_expr: extra args"),
         ForeignCode = string.append_list([HandleReturn, " ",

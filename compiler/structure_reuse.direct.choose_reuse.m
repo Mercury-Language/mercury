@@ -545,7 +545,7 @@ compute_match_table_with_continuation(Background, DeadCellTable,
         compute_match_table_goal_list(Background, DeadCellTable, Cont, !Table,
             !IO)
     ;
-        GoalExpr = call(_, _, _, _, _, _),
+        GoalExpr = plain_call(_, _, _, _, _, _),
         compute_match_table_goal_list(Background, DeadCellTable, 
             Cont, !Table, !IO)
     ;
@@ -553,7 +553,7 @@ compute_match_table_with_continuation(Background, DeadCellTable,
         compute_match_table_goal_list(Background, DeadCellTable, 
             Cont, !Table, !IO)
     ;
-        GoalExpr = foreign_proc(_, _, _, _, _, _),
+        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
         compute_match_table_goal_list(Background, DeadCellTable, 
             Cont, !Table, !IO)
     ;
@@ -575,7 +575,7 @@ compute_match_table_with_continuation(Background, DeadCellTable,
         compute_match_table_goal_list(Background, DeadCellTable, Cont, !Table,
             !IO)
     ;
-        GoalExpr = not(Goal),
+        GoalExpr = negation(Goal),
         % if Goal contains deconstructions, they should not be reused within
         % Cont. 
         compute_match_table_with_continuation(Background, DeadCellTable, 
@@ -779,11 +779,11 @@ find_match_in_goal_2(Background, Goal, !Match) :-
             true
         )
     ;
-        GoalExpr = call(_, _, _, _, _, _)
+        GoalExpr = plain_call(_, _, _, _, _, _)
     ;
         GoalExpr = generic_call( _, _, _, _)
     ;
-        GoalExpr = foreign_proc(_, _, _, _, _, _)
+        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
     ;
         GoalExpr = conj(_, Goals),
         find_best_match_in_conjunction(Background, Goals, !Match)
@@ -795,7 +795,7 @@ find_match_in_goal_2(Background, Goal, !Match) :-
         Goals = list.map((func(C) = C ^ case_goal), Cases),
         find_match_in_disjunction(Background, Goals, !Match)
     ;
-        GoalExpr = not(_)
+        GoalExpr = negation(_)
     ;
         GoalExpr = scope(_, ScopeGoal),
         find_match_in_goal_2(Background, ScopeGoal, !Match)
@@ -1062,7 +1062,7 @@ annotate_reuses_in_goal(Background, Match, !Goal) :-
         annotate_reuse_for_unification(Background, Match, Unification, 
             GoalInfo0, GoalInfo)
     ;
-        GoalExpr0 = call(_, _, _, _, _, _),
+        GoalExpr0 = plain_call(_, _, _, _, _, _),
         GoalExpr = GoalExpr0, 
         GoalInfo = GoalInfo0
     ;
@@ -1070,7 +1070,7 @@ annotate_reuses_in_goal(Background, Match, !Goal) :-
         GoalExpr = GoalExpr0, 
         GoalInfo = GoalInfo0
     ;
-        GoalExpr0 = foreign_proc(_, _, _, _, _, _),
+        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
         GoalExpr = GoalExpr0, 
         GoalInfo = GoalInfo0
     ;
@@ -1089,7 +1089,7 @@ annotate_reuses_in_goal(Background, Match, !Goal) :-
         GoalExpr = switch(A, B, Cases),
         GoalInfo = GoalInfo0
     ;
-        GoalExpr0 = not(_),
+        GoalExpr0 = negation(_),
         GoalExpr = GoalExpr0, 
         GoalInfo = GoalInfo0
     ;
@@ -1336,7 +1336,7 @@ check_for_cell_caching_2(DeadCellTable, !Goal):-
             Unification0, Unification, GoalInfo0, GoalInfo),
         GoalExpr = unify(A, B, C, Unification, D)
     ;
-        GoalExpr0 = call(_, _, _, _, _, _),
+        GoalExpr0 = plain_call(_, _, _, _, _, _),
         GoalExpr = GoalExpr0, 
         GoalInfo = GoalInfo0
     ;
@@ -1344,7 +1344,7 @@ check_for_cell_caching_2(DeadCellTable, !Goal):-
         GoalExpr = GoalExpr0, 
         GoalInfo = GoalInfo0
     ;
-        GoalExpr0 = foreign_proc(_, _, _, _, _, _),
+        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
         GoalExpr = GoalExpr0, 
         GoalInfo = GoalInfo0
     ;
@@ -1363,7 +1363,7 @@ check_for_cell_caching_2(DeadCellTable, !Goal):-
         GoalExpr = switch(A, B, Cases),
         GoalInfo = GoalInfo0
     ;
-        GoalExpr0 = not(_),
+        GoalExpr0 = negation(_),
         GoalExpr = GoalExpr0, 
         GoalInfo = GoalInfo0
     ;

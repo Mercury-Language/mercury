@@ -1024,7 +1024,7 @@ recompute_instmap_delta_2(Atomic, disj(Goals0), GoalInfo, disj(Goals),
             VarTypes, InstMap, NonLocals, InstMapDelta, !RI)
     ).
 
-recompute_instmap_delta_2(Atomic, not(Goal0), _, not(Goal),
+recompute_instmap_delta_2(Atomic, negation(Goal0), _, negation(Goal),
         VarTypes, InstMap, InstMapDelta, !RI) :-
     instmap_delta_init_reachable(InstMapDelta),
     recompute_instmap_delta_1(Atomic, Goal0, Goal, VarTypes, InstMap, _,
@@ -1059,8 +1059,8 @@ recompute_instmap_delta_2(_, generic_call(Details, Vars, Modes, Detism), _,
     ModuleInfo = !.RI ^ module_info,
     instmap_delta_from_mode_list(Vars, Modes, ModuleInfo, InstMapDelta).
 
-recompute_instmap_delta_2(_, call(PredId, ProcId, Args, D, E, F), _,
-        call(PredId, ProcId, Args, D, E, F), VarTypes,
+recompute_instmap_delta_2(_, plain_call(PredId, ProcId, Args, BI, UC, Name), _,
+        plain_call(PredId, ProcId, Args, BI, UC, Name), VarTypes,
         InstMap, InstMapDelta, !RI) :-
     recompute_instmap_delta_call(PredId, ProcId,
         Args, VarTypes, InstMap, InstMapDelta, !RI).
@@ -1093,8 +1093,9 @@ recompute_instmap_delta_2(Atomic, unify(LHS, RHS0, UniMode0, Uni, Context),
     ).
 
 recompute_instmap_delta_2(_,
-        foreign_proc(A, PredId, ProcId, Args, ExtraArgs, F), GoalInfo,
-        foreign_proc(A, PredId, ProcId, Args, ExtraArgs, F),
+        call_foreign_proc(Attr, PredId, ProcId, Args, ExtraArgs, MTRC, Impl),
+        GoalInfo,
+        call_foreign_proc(Attr, PredId, ProcId, Args, ExtraArgs, MTRC, Impl),
         VarTypes, InstMap, InstMapDelta, !RI) :-
     ArgVars = list.map(foreign_arg_var, Args),
     recompute_instmap_delta_call(PredId, ProcId,

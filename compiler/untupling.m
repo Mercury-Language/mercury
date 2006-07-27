@@ -503,14 +503,14 @@ fix_calls_in_proc(TransformMap, PredId, ProcId, !ModuleInfo) :-
     module_info::in) is det.
 
 fix_calls_in_goal(Goal - GoalInfo, Goal - GoalInfo, !_, !_, _, _) :-
-    Goal = foreign_proc(_, _, _, _, _, _).
+    Goal = call_foreign_proc(_, _, _, _, _, _, _).
 
 fix_calls_in_goal(Goal - GoalInfo, Goal - GoalInfo, !_, !_, _, _) :-
     Goal = generic_call(_, _, _, _).
 
 fix_calls_in_goal(Goal0 - GoalInfo0, Goal, !VarSet, !VarTypes,
         TransformMap, ModuleInfo) :-
-    Goal0 = call(CalleePredId, CalleeProcId, OrigArgs, _, _, _),
+    Goal0 = plain_call(CalleePredId, CalleeProcId, OrigArgs, _, _, _),
     (
         map.search(TransformMap, proc(CalleePredId, CalleeProcId),
             transformed_proc(_, CallAux0 - CallAuxInfo))
@@ -535,7 +535,7 @@ fix_calls_in_goal(Goal0 - GoalInfo0, Goal, !VarSet, !VarTypes,
 fix_calls_in_goal(Goal - GoalInfo, Goal - GoalInfo, !_, !_, _, _) :-
     Goal = unify(_, _, _, _, _).
 
-fix_calls_in_goal(not(Goal0) - GoalInfo, not(Goal) - GoalInfo,
+fix_calls_in_goal(negation(Goal0) - GoalInfo, negation(Goal) - GoalInfo,
         !VarSet, !VarTypes, TransformMap, ModuleInfo) :-
     fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap,
         ModuleInfo).

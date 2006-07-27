@@ -142,6 +142,7 @@
     ;       decl_code_addr(code_addr)
     ;       decl_data_addr(data_addr)
     ;       decl_pragma_c_struct(string)
+    ;       decl_c_global_var(c_global_var_ref)
     ;       decl_type_info_like_struct(int)
     ;       decl_typeclass_constraint_struct(int).
 
@@ -299,8 +300,10 @@ output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
     io.set_output_stream(FileStream, OutputStream, !IO),
     module_name_to_file_name(ModuleName, ".m", no, SourceFileName, !IO),
     output_c_file_intro_and_grade(SourceFileName, Version, !IO),
-    output_init_comment(ModuleName, UserInitPredCNames,
-        UserFinalPredCNames, !IO),
+    module_gather_env_var_names(Modules, set.init, EnvVarNameSet),
+    EnvVarNames = set.to_sorted_list(EnvVarNameSet),
+    output_init_comment(ModuleName, UserInitPredCNames, UserFinalPredCNames,
+        EnvVarNames, !IO),
     output_c_file_mercury_headers(!IO),
 
     output_foreign_header_include_lines(C_HeaderLines, !IO),
@@ -332,6 +335,22 @@ output_single_c_file(CFile, ComplexityProcs, StackLayoutLabels,
         ComplexityProcs, StackLayoutLabels, UserInitPredCNames,
         UserFinalPredCNames, !DeclSet, !IO),
     io.set_output_stream(OutputStream, _, !IO).
+
+:- pred module_gather_env_var_names(list(comp_gen_c_module)::in,
+    set(string)::in, set(string)::out) is det.
+
+module_gather_env_var_names([], !EnvVarNames).
+module_gather_env_var_names([Module | Modules], !EnvVarNames) :-
+    proc_gather_env_var_names(Module ^ cgcm_procs, !EnvVarNames),
+    module_gather_env_var_names(Modules, !EnvVarNames).
+
+:- pred proc_gather_env_var_names(list(c_procedure)::in,
+    set(string)::in, set(string)::out) is det.
+
+proc_gather_env_var_names([], !EnvVarNames).
+proc_gather_env_var_names([Proc | Procs], !EnvVarNames) :-
+    set.union(Proc ^ cproc_c_global_vars, !EnvVarNames),
+    proc_gather_env_var_names(Procs, !EnvVarNames).
 
 :- pred order_layout_datas(list(layout_data)::in, list(layout_data)::out)
     is det.
@@ -766,10 +785,10 @@ complexity_arg_is_profiled(complexity_arg_info(_, Kind)) :-
     % <module>_init.c.
     %
 :- pred output_init_comment(module_name::in, list(string)::in,
-    list(string)::in, io::di, io::uo) is det.
+    list(string)::in, list(string)::in, io::di, io::uo) is det.
 
 output_init_comment(ModuleName, UserInitPredCNames, UserFinalPredCNames,
-        !IO) :-
+        EnvVarNames, !IO) :-
     io.write_string("/*\n", !IO),
     io.write_string("INIT ", !IO),
     output_init_name(ModuleName, !IO),
@@ -792,21 +811,15 @@ output_init_comment(ModuleName, UserInitPredCNames, UserFinalPredCNames,
         output_init_name(ModuleName, !IO),
         io.write_string("required_final\n", !IO)
     ),
+    list.foldl(output_env_var_init, EnvVarNames, !IO),
     io.write_string("ENDINIT\n", !IO),
     io.write_string("*/\n\n", !IO).
 
-:- pred output_required_user_init_comment(string::in, io::di, io::uo) is det.
+:- pred output_env_var_init(string::in, io::di, io::uo) is det.
 
-output_required_user_init_comment(CName, !IO) :-
-    io.write_string("REQUIRED_INIT ", !IO),
-    io.write_string(CName, !IO),
-    io.nl(!IO).
-
-:- pred output_required_user_final_comment(string::in, io::di, io::uo) is det.
-
-output_required_user_final_comment(CName, !IO) :-
-    io.write_string("REQUIRED_FINAL ", !IO),
-    io.write_string(CName, !IO),
+output_env_var_init(EnvVarName, !IO) :-
+    io.write_string("ENVVAR ", !IO),
+    io.write_string(EnvVarName, !IO),
     io.nl(!IO).
 
 :- pred output_required_init_or_final_calls(list(string)::in, io::di, io::uo)
@@ -835,8 +848,8 @@ output_bunch_name(ModuleName, InitStatus, Number, !IO) :-
     comp_gen_c_module::in, decl_set::in, decl_set::out, io::di, io::uo)
     is det.
 
-output_comp_gen_c_module(StackLayoutLabels,
-        comp_gen_c_module(ModuleName, Procedures), !DeclSet, !IO) :-
+output_comp_gen_c_module(StackLayoutLabels, CompGenCModule, !DeclSet, !IO) :-
+    CompGenCModule = comp_gen_c_module(ModuleName, Procedures),
     io.write_string("\n", !IO),
     list.foldl2(output_c_procedure_decls(StackLayoutLabels),
         Procedures, !DeclSet, !IO),
@@ -852,8 +865,8 @@ output_comp_gen_c_module(StackLayoutLabels,
     globals.io_lookup_bool_option(emit_c_loops, EmitCLoops, !IO),
     globals.io_lookup_bool_option(local_thread_engine_base,
         LocalThreadEngineBase, !IO),
-    list.foldl(output_c_procedure(PrintComments, EmitCLoops,
-            LocalThreadEngineBase),
+    list.foldl(
+        output_c_procedure(PrintComments, EmitCLoops, LocalThreadEngineBase),
         Procedures, !IO),
     io.write_string("MR_END_MODULE\n", !IO).
 
@@ -1645,29 +1658,45 @@ label_is_proc_entry(entry(_, _), yes).
     decl_set::in, decl_set::out, io::di, io::uo) is det.
 
 output_c_procedure_decls(StackLayoutLabels, Proc, !DeclSet, !IO) :-
-    Proc = c_procedure(_Name, _Arity, _PredProcId, _Model, Instrs, _, _, _),
+    Instrs = Proc ^ cproc_code,
+    CGlobalVarSet = Proc ^ cproc_c_global_vars,
+    set.to_sorted_list(CGlobalVarSet, CGlobalVars),
+    list.foldl2(output_c_global_var_decl, CGlobalVars, !DeclSet, !IO),
     list.foldl2(output_instruction_decls(StackLayoutLabels), Instrs,
         !DeclSet, !IO).
+
+:- pred output_c_global_var_decl(string::in,
+    decl_set::in, decl_set::out, io::di, io::uo) is det.
+
+output_c_global_var_decl(VarName, !DeclSet, !IO) :-
+    GlobalVar = env_var_ref(VarName),
+    ( decl_set_is_member(decl_c_global_var(GlobalVar), !.DeclSet) ->
+        true
+    ;
+        decl_set_insert(decl_c_global_var(GlobalVar), !DeclSet),
+        io.write_string("extern MR_Word ", !IO),
+        io.write_string(c_global_var_name(GlobalVar), !IO),
+        io.write_string(";\n", !IO)
+    ).
 
 :- pred output_c_procedure(bool::in, bool::in, bool::in, c_procedure::in,
     io::di, io::uo) is det.
 
 output_c_procedure(PrintComments, EmitCLoops, LocalThreadEngineBase, Proc,
         !IO) :-
-    Proc = c_procedure(Name, Arity, proc(_, ProcId), _, Instrs, _, _, _),
+    Name = Proc ^ cproc_name,
+    Arity = Proc ^ cproc_orig_arity,
+    Instrs = Proc ^ cproc_code,
+    PredProcId = Proc ^ cproc_id,
+    PredProcId = proc(_, ProcId),
     proc_id_to_int(ProcId, ModeNum),
     (
         PrintComments = yes,
         io.write_string("\n/*-------------------------------------", !IO),
-        io.write_string("------------------------------------*/\n", !IO)
-    ;
-        PrintComments = no
-    ),
-    (
-        PrintComments = yes,
+        io.write_string("------------------------------------*/\n", !IO),
         io.write_string("/* code for predicate '", !IO),
-            % Now that we have unused_args.m mangling predicate
-            % names, we should probably demangle them here.
+        % Now that we have unused_args.m mangling predicate names,
+        % we should probably demangle them here.
         io.write_string(Name, !IO),
         io.write_string("'/", !IO),
         io.write_int(Arity, !IO),
@@ -1677,7 +1706,6 @@ output_c_procedure(PrintComments, EmitCLoops, LocalThreadEngineBase, Proc,
     ;
         PrintComments = no
     ),
-
     find_caller_label(Instrs, CallerLabel),
     find_cont_labels(Instrs, set_tree234.init, ContLabelSet),
     (
@@ -1687,7 +1715,6 @@ output_c_procedure(PrintComments, EmitCLoops, LocalThreadEngineBase, Proc,
         EmitCLoops = no,
         WhileSet = set_tree234.init
     ),
-
     (
         LocalThreadEngineBase = yes,
         io.write_string("#ifdef MR_maybe_local_thread_engine_base\n", !IO),
@@ -1698,10 +1725,8 @@ output_c_procedure(PrintComments, EmitCLoops, LocalThreadEngineBase, Proc,
     ;
         LocalThreadEngineBase = no
     ),
-
-    output_instruction_list(Instrs, PrintComments,
-        CallerLabel - ContLabelSet, WhileSet, !IO),
-
+    output_instruction_list(Instrs, PrintComments, CallerLabel - ContLabelSet,
+        WhileSet, !IO),
     (
         LocalThreadEngineBase = yes,
         io.write_string("#ifdef MR_maybe_local_thread_engine_base\n", !IO),
@@ -3165,6 +3190,8 @@ output_decl_id(decl_float_label(_Label), !IO) :-
     unexpected(this_file, "output_decl_id: float_label unexpected").
 output_decl_id(decl_pragma_c_struct(_Name), !IO) :-
     unexpected(this_file, "output_decl_id: pragma_c_struct unexpected").
+output_decl_id(decl_c_global_var(_), !IO) :-
+    unexpected(this_file, "output_decl_id: c_global_var unexpected").
 output_decl_id(decl_type_info_like_struct(_Name), !IO) :-
     unexpected(this_file, "output_decl_id: type_info_like_struct unexpected").
 output_decl_id(decl_typeclass_constraint_struct(_Name), !IO) :-
@@ -3500,7 +3527,18 @@ output_lval_decls_format(lvar(_), _, _, !N, !DeclSet, !IO).
 output_lval_decls_format(temp(_, _), _, _, !N, !DeclSet, !IO).
 output_lval_decls_format(mem_ref(Rval), FirstIndent, LaterIndent,
         !N, !DeclSet, !IO) :-
-    output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N, !DeclSet, !IO).
+    output_rval_decls_format(Rval, FirstIndent, LaterIndent, !N, !DeclSet,
+        !IO).
+output_lval_decls_format(global_var_ref(CGlobalVar), _, _, !N, !DeclSet,
+        !IO) :-
+    ( decl_set_is_member(decl_c_global_var(CGlobalVar), !.DeclSet) ->
+        true
+    ;
+        % All env_var_ref global_var_refs should have been output by
+        % output_c_procedure_decls already, and as of now there are no
+        % other global_var_refs.
+        unexpected(this_file, "output_lval_decls_format: global_var_ref")
+    ).
 
 output_code_addr_decls(CodeAddress, !DeclSet, !IO) :-
     output_code_addr_decls_format(CodeAddress, "", "", 0, _, !DeclSet, !IO).
@@ -5091,6 +5129,8 @@ output_lval(mem_ref(Rval), !IO) :-
     io.write_string("* (MR_Word *) (", !IO),
     output_rval(Rval, !IO),
     io.write_string(")", !IO).
+output_lval(global_var_ref(GlobalVar), !IO) :-
+    io.write_string(c_global_var_name(GlobalVar), !IO).
 
 :- pred output_lval_for_assign(lval::in, llds_type::out, io::di, io::uo)
     is det.
@@ -5181,6 +5221,15 @@ output_lval_for_assign(temp(RegType, Num), Type, !IO) :-
     ).
 output_lval_for_assign(mem_ref(MemRef), word, !IO) :-
     output_lval(mem_ref(MemRef), !IO).
+output_lval_for_assign(global_var_ref(GlobalVar), word, !IO) :-
+    io.write_string(c_global_var_name(GlobalVar), !IO).
+
+:- func c_global_var_name(c_global_var_ref) = string.
+
+% The calls to env_var_is_acceptable_char in prog_io_goal.m  ensure that
+% EnvVarName is acceptable as part of a C identifier.
+% The prefix must be identical to envvar_prefix in util/mkinit.c.
+c_global_var_name(env_var_ref(EnvVarName)) = "mercury_envvar_" ++ EnvVarName.
 
 %-----------------------------------------------------------------------------%
 

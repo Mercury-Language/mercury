@@ -200,15 +200,17 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
     get_clause_goals(MatchingClauses, GoalList),
     ( GoalList = [SingleGoal] ->
         SingleGoal = SingleExpr - _,
-        ( SingleExpr = foreign_proc(_, _, _, Args, ExtraArgs, _) ->
-            %
-            % Use the original variable names for the headvars
-            % of foreign_proc clauses, not the introduced
-            % `HeadVar.n' names.
-            %
+        (
+            SingleExpr = call_foreign_proc(_, _, _, Args, ExtraArgs,
+                MaybeTraceRuntimeCond, _)
+        ->
+            % Use the original variable names for the headvars of foreign_proc
+            % clauses, not the introduced `HeadVar.n' names.
             VarSet = list.foldl(set_arg_names, Args, VarSet0),
             expect(unify(ExtraArgs, []), this_file,
-                "copy_clauses_to_proc: extra_args")
+                "copy_clauses_to_proc: extra_args"),
+            expect(unify(MaybeTraceRuntimeCond, no), this_file,
+                "copy_clauses_to_proc: trace runtime cond")
         ;
             VarSet = VarSet0
         ),
@@ -246,9 +248,9 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
         % is impure/semipure.
         %
         ( contains_nonpure_goal(GoalList) ->
-            list.map(get_purity, GoalList, PurityList),
+            list.map(goal_get_purity, GoalList, PurityList),
             Purity = list.foldl(worst_purity, PurityList, purity_pure),
-            add_goal_info_purity_feature(Purity, GoalInfo2, GoalInfo)
+            goal_info_set_purity(Purity, GoalInfo2, GoalInfo)
         ;
             GoalInfo2 = GoalInfo
         ),
@@ -261,8 +263,8 @@ copy_clauses_to_proc(ProcId, ClausesInfo, !Proc) :-
 
 contains_nonpure_goal([Goal | Goals]) :-
     (
-        Goal = _ - GoalInfo,
-        \+ goal_info_is_pure(GoalInfo)
+        goal_get_purity(Goal, Purity),
+        Purity \= purity_pure
     ;
         contains_nonpure_goal(Goals)
     ).
@@ -279,11 +281,6 @@ set_arg_names(Arg, Vars0) = Vars :-
         MaybeNameMode = no,
         Vars = Vars0
     ).
-
-:- pred get_purity(hlds_goal::in, purity::out) is det.
-
-get_purity(_Goal - GoalInfo, Purity) :-
-    infer_goal_info_purity(GoalInfo, Purity).
 
 :- pred select_matching_clauses(list(clause)::in, proc_id::in,
     list(clause)::out) is det.

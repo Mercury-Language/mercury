@@ -166,12 +166,12 @@ search_goal_for_par_conj_2(_ModuleInfo, !VarSet, !VarTypes, _InstMap,
     Goal = unify(_, _, _, _Kind, _).
 search_goal_for_par_conj_2(_ModuleInfo, !VarSet, !VarTypes, _InstMap,
         G @ (Goal - _), G, !IO) :-
-    Goal = call(_CallPredId, _CallProcId, _CallArgs, _, _, _).
+    Goal = plain_call(_CallPredId, _CallProcId, _CallArgs, _, _, _).
 search_goal_for_par_conj_2(_ModuleInfo, !VarSet, !VarTypes, _InstMap,
         G @ (Goal - _), G, !IO) :-
     Goal = generic_call(_Details, _Args, _ArgModes, _).
 search_goal_for_par_conj_2(ModuleInfo, !VarSet, !VarTypes, InstMap,
-        not(Goal0) - GI, not(Goal) - GI, !IO) :-
+        negation(Goal0) - GI, negation(Goal) - GI, !IO) :-
     search_goal_for_par_conj(ModuleInfo, !VarSet, !VarTypes, InstMap, _,
         Goal0, Goal, !IO).
 search_goal_for_par_conj_2(ModuleInfo, !VarSet, !VarTypes, InstMap,
@@ -182,7 +182,7 @@ search_goal_for_par_conj_2(ModuleInfo, !VarSet, !VarTypes, InstMap,
     Goal = scope(Reason, ScopeGoal).
 search_goal_for_par_conj_2(_ModuleInfo, !VarSet, !VarTypes, _InstMap,
         G @ (Goal - _), G, !IO) :-
-    Goal = foreign_proc(_Attributes, _, _, _, _, _).
+    Goal = call_foreign_proc(_Attributes, _, _, _, _, _, _).
 search_goal_for_par_conj_2(_, _,_, _,_, _, shorthand(_) - _, _, _,_) :-
     unexpected(this_file,
         "shorthand goal encountered during dependent parallel " ++
@@ -342,7 +342,7 @@ transform_conjunction(ModuleInfo, SharedVars, Goals, GoalInfo, NewGoal,
     conj_list_to_goal(Conj, GoalInfo, NewGoal0),
     % Wrap a purity scope around the goal if purity would have been lessened 
     % by the addition of signal goals.
-    infer_goal_info_purity(GoalInfo, Purity),
+    goal_info_get_purity(GoalInfo, Purity),
     (if Purity = purity_impure then
         NewGoal = NewGoal0
     else
@@ -413,8 +413,8 @@ make_wait(ModuleInfo, FutureMap, Renaming, ConsumedVar, WaitGoal) :-
     InstMapSrc = [WaitVar - ground(shared, none)],
     Context = term.context_init,
     goal_util.generate_simple_call(ModuleName, PredName, predicate,
-        only_mode, detism_det, Args, Features, InstMapSrc, ModuleInfo,
-        Context, WaitGoal).
+        only_mode, detism_det, purity_pure, Args, Features, InstMapSrc,
+        ModuleInfo, Context, WaitGoal).
 
     % Make a goal to signal that a variable is produced.
     %
@@ -431,8 +431,8 @@ make_signal(ModuleInfo, FutureMap, ProducedVar, SignalGoal) :-
     InstMapSrc = [],
     Context = term.context_init,
     goal_util.generate_simple_call(ModuleName, PredName, predicate,
-        only_mode, detism_det, Args, Features, InstMapSrc, ModuleInfo,
-        Context, SignalGoal).
+        only_mode, detism_det, purity_pure, Args, Features, InstMapSrc,
+        ModuleInfo, Context, SignalGoal).
 
     % Succeed if Var is a variable bound between InstMap and
     % InstMap+InstMapDelta.
@@ -564,8 +564,8 @@ make_future(ModuleInfo, SharedVarType, SharedVar, !VarTypes, !VarSet,
     InstMapSrc = [FutureVar - ground(shared, none)],
     Context = term.context_init,
     goal_util.generate_simple_call(ModuleName, PredName, predicate,
-        only_mode, detism_det, Args, Features, InstMapSrc, ModuleInfo,
-        Context, AllocGoal).
+        only_mode, detism_det, purity_pure, Args, Features, InstMapSrc,
+        ModuleInfo, Context, AllocGoal).
 
     % Construct type future(T) given type T.
     %

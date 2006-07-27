@@ -407,7 +407,7 @@ dependency_graph.add_arcs_in_goal_2(if_then_else(_Vars, Cond, Then, Else),
     dependency_graph.add_arcs_in_goal(Then, Caller, !DepGraph),
     dependency_graph.add_arcs_in_goal(Else, Caller, !DepGraph).
 
-dependency_graph.add_arcs_in_goal_2(not(Goal), Caller, !DepGraph) :-
+dependency_graph.add_arcs_in_goal_2(negation(Goal), Caller, !DepGraph) :-
     dependency_graph.add_arcs_in_goal(Goal, Caller, !DepGraph).
 
 dependency_graph.add_arcs_in_goal_2(scope(_, Goal), Caller, !DepGraph) :-
@@ -415,8 +415,8 @@ dependency_graph.add_arcs_in_goal_2(scope(_, Goal), Caller, !DepGraph) :-
 
 dependency_graph.add_arcs_in_goal_2(generic_call(_, _, _, _), _, !DepGraph).
 
-dependency_graph.add_arcs_in_goal_2(call(PredId, ProcId, _, Builtin, _, _),
-        Caller, !DepGraph) :-
+dependency_graph.add_arcs_in_goal_2(plain_call(PredId, ProcId, _, Builtin,
+        _, _), Caller, !DepGraph) :-
     ( Builtin = inline_builtin ->
         true
     ;
@@ -450,7 +450,7 @@ dependency_graph.add_arcs_in_goal_2(unify(_,_,_,Unify,_), Caller,
 
 % There can be no dependencies within a foreign_proc
 dependency_graph.add_arcs_in_goal_2(
-    foreign_proc(_, _, _, _, _, _), _, !DepGraph).
+    call_foreign_proc(_, _, _, _, _, _, _), _, !DepGraph).
 
 dependency_graph.add_arcs_in_goal_2(shorthand(ShorthandGoal), Caller,
         !DepGraph) :-

@@ -1,13 +1,3 @@
 some.m:006: Error: unrecognized declaration: some junk pred p2((int :: in)) is semidet.
-some.m:012: In clause for predicate `some.p1/1':
-some.m:012:   in argument 1 of call to predicate `some/2':
-some.m:012:   error: undefined symbol `junk/0'.
-some.m:012: In clause for predicate `some.p1/1':
-some.m:012:   syntax error in existential quantification: first
-some.m:012:   argument of `some' should be a list of variables.
-some.m:013: In clause for predicate `some.p3/1':
-some.m:013:   in argument 1 of call to predicate `some/2':
-some.m:013:   error: undefined symbol `junk/0'.
-some.m:013: In clause for predicate `some.p3/1':
-some.m:013:   syntax error in existential quantification: first
-some.m:013:   argument of `some' should be a list of variables.
+some.m:012: Error: in first argument of some: expected list of variables and/or state variables: junk.
+some.m:013: Error: in first argument of some: expected list of variables and/or state variables: junk.

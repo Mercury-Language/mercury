@@ -1062,7 +1062,7 @@ parse_version_numbers(VersionNumbersTerm, Result) :-
     map_parser(parse_item_type_version_numbers, VersionNumbersTermList,
         Result0),
     (
-        Result0 = ok(List),
+        Result0 = ok1(List),
         VersionNumbers0 = version_numbers(init_item_id_set(map.init),
             map.init),
         VersionNumbers = list.foldl(
@@ -1077,10 +1077,10 @@ parse_version_numbers(VersionNumbersTerm, Result) :-
                     VNs = VNs0
                 )
             ), List, VersionNumbers0),
-        Result = ok(VersionNumbers)
+        Result = ok1(VersionNumbers)
     ;
-        Result0 = error(A, B),
-        Result = error(A, B)
+        Result0 = error1(Errors),
+        Result = error1(Errors)
     ).
 
 :- type item_version_numbers_result
@@ -1102,12 +1102,12 @@ parse_item_type_version_numbers(Term, Result) :-
         map_parser(parse_key_version_number(ParseName), ItemsVNsTerms,
             Result0),
         (
-            Result0 = ok(VNsAL),
+            Result0 = ok1(VNsAL),
             map.from_assoc_list(VNsAL, VNsMap),
-            Result = ok(items(ItemType, VNsMap))
+            Result = ok1(items(ItemType, VNsMap))
         ;
-            Result0 = error(A, B),
-            Result = error(A, B)
+            Result0 = error1(Errors),
+            Result = error1(Errors)
         )
     ;
         Term = term.functor(term.atom("instance"),
@@ -1120,15 +1120,15 @@ parse_item_type_version_numbers(Term, Result) :-
         map_parser(parse_item_version_number(ParseName), InstanceVNsTerms,
             Result1),
         (
-            Result1 = ok(VNsAL),
+            Result1 = ok1(VNsAL),
             map.from_assoc_list(VNsAL, VNsMap),
-            Result = ok(instances(VNsMap))
+            Result = ok1(instances(VNsMap))
         ;
-            Result1 = error(A, B),
-            Result = error(A, B)
+            Result1 = error1(Errors),
+            Result = error1(Errors)
         )
     ;
-        Result = error("invalid item type version numbers", Term)
+        Result = error1(["invalid item type version numbers" - Term])
     ).
 
 :- pred parse_key_version_number(
@@ -1145,9 +1145,9 @@ parse_key_version_number(ParseName, Term, Result) :-
         ArityTerm = term.functor(term.integer(Arity), _, _),
         VersionNumber = term_to_version_number(VersionNumberTerm)
     ->
-        Result = ok((Name - Arity) - VersionNumber)
+        Result = ok1((Name - Arity) - VersionNumber)
     ;
-        Result = error("error in item version number", Term)
+        Result = error1(["error in item version number" - Term])
     ).
 
 :- pred parse_item_version_number(
@@ -1164,9 +1164,9 @@ parse_item_version_number(ParseName, Term, Result) :-
         ArityTerm = term.functor(term.integer(Arity), _, _),
         VersionNumber = term_to_version_number(VersionNumberTerm)
     ->
-        Result = ok(item_name(SymName, Arity) - VersionNumber)
+        Result = ok1(item_name(SymName, Arity) - VersionNumber)
     ;
-        Result = error("error in item version number", Term)
+        Result = error1(["error in item version number" - Term])
     ).
 
 %-----------------------------------------------------------------------------%

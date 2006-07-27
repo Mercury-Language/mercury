@@ -372,7 +372,7 @@ modecheck_unification_2(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
         mode_info_set_module_info(ModuleInfo3, !ModeInfo),
         mode_info_set_instmap(InstMap2, !ModeInfo),
 
-        mode_info_lock_vars(lambda(PredOrFunc), NonLocals, !ModeInfo),
+        mode_info_lock_vars(var_lock_lambda(PredOrFunc), NonLocals, !ModeInfo),
 
         mode_checkpoint(enter, "lambda goal", !ModeInfo, !IO),
         % If we're being called from unique_modes.m, then we need to
@@ -389,7 +389,8 @@ modecheck_unification_2(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
         mode_checkpoint(exit, "lambda goal", !ModeInfo, !IO),
 
         mode_info_remove_live_vars(LiveVars, !ModeInfo),
-        mode_info_unlock_vars(lambda(PredOrFunc), NonLocals, !ModeInfo),
+        mode_info_unlock_vars(var_lock_lambda(PredOrFunc), NonLocals,
+            !ModeInfo),
 
         % Ensure that the non-local vars are shared OUTSIDE the
         % lambda unification as well as inside.
@@ -1192,7 +1193,7 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
                 unshroud_pred_proc_id(ShroudedPredProcId),
             (
                 RHS0 = lambda_goal(_, _, EvalMethod, _, _, _, _, Goal),
-                Goal = call(PredId, ProcId, _, _, _, _) - _
+                Goal = plain_call(PredId, ProcId, _, _, _, _) - _
             ->
                 module_info_pred_info(ModuleInfo, PredId, PredInfo),
                 PredModule = pred_info_module(PredInfo),

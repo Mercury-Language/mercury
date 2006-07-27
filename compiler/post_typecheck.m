@@ -820,7 +820,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         list.append(ArgVars0, [X0], ArgVars),
         FuncCallUnifyContext = call_unify_context(X0,
             functor(ConsId0, no, ArgVars0), UnifyContext),
-        FuncCall = call(PredId, ProcId, ArgVars, not_builtin,
+        FuncCall = plain_call(PredId, ProcId, ArgVars, not_builtin,
             yes(FuncCallUnifyContext), QualifiedFuncName),
         Goal = FuncCall - GoalInfo0
     ;

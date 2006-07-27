@@ -194,7 +194,7 @@
 :- import_module libs.options.
 :- import_module libs.trace_params.
 :- import_module ll_backend.llds.
-:- import_module ll_backend.trace.
+:- import_module ll_backend.trace_gen.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
@@ -255,7 +255,7 @@ detect_liveness_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
 
     globals.get_trace_level(Globals, TraceLevel),
     ( eff_trace_level_is_none(PredInfo, !.ProcInfo, TraceLevel) = no ->
-        trace.fail_vars(ModuleInfo, !.ProcInfo, ResumeVars0)
+        trace_fail_vars(ModuleInfo, !.ProcInfo, ResumeVars0)
     ;
         set.init(ResumeVars0)
     ),
@@ -361,7 +361,8 @@ detect_liveness_in_goal_2(switch(Var, Det, Cases0), switch(Var, Det, Cases),
     detect_liveness_in_cases(Cases0, Cases, !.Liveness, NonLocals,
         LiveInfo, !Liveness).
 
-detect_liveness_in_goal_2(not(Goal0), not(Goal), !Liveness, _, LiveInfo) :-
+detect_liveness_in_goal_2(negation(Goal0), negation(Goal), !Liveness, _,
+        LiveInfo) :-
     detect_liveness_in_goal(Goal0, Goal, !Liveness, LiveInfo).
 
 detect_liveness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
@@ -400,13 +401,13 @@ detect_liveness_in_goal_2(scope(Reason, Goal0), scope(Reason, Goal),
 detect_liveness_in_goal_2(generic_call(_, _, _, _), _, _, _, _, _) :-
     unexpected(this_file, "higher-order-call in detect_liveness_in_goal_2").
 
-detect_liveness_in_goal_2(call(_, _, _, _, _, _), _, _, _, _, _) :-
+detect_liveness_in_goal_2(plain_call(_, _, _, _, _, _), _, _, _, _, _) :-
     unexpected(this_file, "call in detect_liveness_in_goal_2").
 
 detect_liveness_in_goal_2(unify(_, _, _, _, _), _, _, _, _, _) :-
     unexpected(this_file, "unify in detect_liveness_in_goal_2").
 
-detect_liveness_in_goal_2(foreign_proc(_, _, _, _, _, _),
+detect_liveness_in_goal_2(call_foreign_proc(_, _, _, _, _, _, _),
         _, _, _, _, _) :-
     unexpected(this_file, "foreign_proc in detect_liveness_in_goal_2").
 
@@ -567,8 +568,8 @@ detect_deadness_in_goal_2(switch(Var, Det, Cases0), switch(Var, Det, Cases),
         CompletedNonLocals, LiveInfo, Union0, Union, _),
     !:Deadness = Union.
 
-detect_deadness_in_goal_2(not(Goal0), not(Goal), _, !Deadness, Liveness0,
-        LiveInfo) :-
+detect_deadness_in_goal_2(negation(Goal0), negation(Goal), _,
+        !Deadness, Liveness0, LiveInfo) :-
     detect_deadness_in_goal(Goal0, Goal, !Deadness, Liveness0, LiveInfo).
 
 detect_deadness_in_goal_2(if_then_else(Vars, Cond0, Then0, Else0),
@@ -637,13 +638,13 @@ detect_deadness_in_goal_2(scope(Reason, Goal0), scope(Reason, Goal), _,
 detect_deadness_in_goal_2(generic_call(_,_,_,_), _, _, _, _, _, _) :-
     unexpected(this_file, "higher-order-call in detect_deadness_in_goal_2").
 
-detect_deadness_in_goal_2(call(_,_,_,_,_,_), _, _, _, _, _, _) :-
+detect_deadness_in_goal_2(plain_call(_,_,_,_,_,_), _, _, _, _, _, _) :-
     unexpected(this_file, "call in detect_deadness_in_goal_2").
 
 detect_deadness_in_goal_2(unify(_,_,_,_,_), _, _, _, _, _, _) :-
     unexpected(this_file, "unify in detect_deadness_in_goal_2").
 
-detect_deadness_in_goal_2(foreign_proc(_, _, _, _, _, _),
+detect_deadness_in_goal_2(call_foreign_proc(_, _, _, _, _, _, _),
         _, _, _, _, _, _) :-
     unexpected(this_file, "foreign_proc in detect_deadness_in_goal_2").
 
@@ -845,10 +846,10 @@ update_liveness_goal(GoalExpr - GoalInfo, LiveInfo, !Liveness) :-
 :- pred update_liveness_expr(hlds_goal_expr::in, hlds_goal_info::in,
     live_info::in, set(prog_var)::in, set(prog_var)::out) is det.
 
-update_liveness_expr(call(_, _, _, _, _, _), _, _, !Liveness).
+update_liveness_expr(plain_call(_, _, _, _, _, _), _, _, !Liveness).
 update_liveness_expr(generic_call(_, _, _, _), _, _, !Liveness).
 update_liveness_expr(unify(_, _, _, _, _), _, _, !Liveness).
-update_liveness_expr(foreign_proc(_, _, _, _, _, _), _, _, !Liveness).
+update_liveness_expr(call_foreign_proc(_, _, _, _, _, _, _), _, _, !Liveness).
 update_liveness_expr(conj(_ConjType, Goals), _, LiveInfo, !Liveness) :-
     % XXX Do parallel conjunctions need special treatment?
     update_liveness_conj(Goals, LiveInfo, !Liveness).
@@ -885,7 +886,7 @@ update_liveness_expr(if_then_else(_, Cond, Then, Else), _GoalInfo, LiveInfo,
     ;
         true
     ).
-update_liveness_expr(not(Goal), _, LiveInfo, !Liveness) :-
+update_liveness_expr(negation(Goal), _, LiveInfo, !Liveness) :-
     update_liveness_goal(Goal, LiveInfo, !Liveness).
 update_liveness_expr(scope(_, Goal), _, LiveInfo, !Liveness) :-
     update_liveness_goal(Goal, LiveInfo, !Liveness).
@@ -997,13 +998,13 @@ var_is_named(VarSet, Var) :-
 
 delay_death_goal_expr(!GoalExpr, !GoalInfo, !BornVars, !DelayedDead, VarSet) :-
     (
-        !.GoalExpr = call(_, _, _, _, _, _)
+        !.GoalExpr = plain_call(_, _, _, _, _, _)
     ;
         !.GoalExpr = generic_call(_, _, _, _)
     ;
         !.GoalExpr = unify(_, _, _, _, _)
     ;
-        !.GoalExpr = foreign_proc(_, _, _, _, _, _)
+        !.GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
     ;
         !.GoalExpr = conj(ConjType, Goals0),
         (
@@ -1043,9 +1044,9 @@ delay_death_goal_expr(!GoalExpr, !GoalInfo, !BornVars, !DelayedDead, VarSet) :-
             unexpected(this_file, "delay_death_goal_expr: empty switch")
         )
     ;
-        !.GoalExpr = not(Goal0),
+        !.GoalExpr = negation(Goal0),
         delay_death_goal(Goal0, Goal, !.BornVars, _, !DelayedDead, VarSet),
-        !:GoalExpr = not(Goal)
+        !:GoalExpr = negation(Goal)
     ;
         !.GoalExpr = if_then_else(QuantVars, Cond0, Then0, Else0),
         BornVars0 = !.BornVars,
@@ -1282,8 +1283,8 @@ detect_resume_points_in_goal_2(scope(Reason, Goal0), scope(Reason, Goal),
     detect_resume_points_in_goal(Goal0, Goal, !Liveness,
         LiveInfo, ResumeVars0).
 
-detect_resume_points_in_goal_2(not(Goal0), not(Goal), Liveness0, Liveness, _,
-        LiveInfo, ResumeVars0) :-
+detect_resume_points_in_goal_2(negation(Goal0), negation(Goal),
+        Liveness0, Liveness, _, LiveInfo, ResumeVars0) :-
     detect_resume_points_in_goal(Goal0, _, Liveness0, Liveness,
         LiveInfo, ResumeVars0),
     liveness.maybe_complete_with_typeinfos(LiveInfo, Liveness,
@@ -1312,14 +1313,14 @@ detect_resume_points_in_goal_2(not(Goal0), not(Goal), Liveness0, Liveness, _,
 detect_resume_points_in_goal_2(Goal @ generic_call(_, _, _, _), Goal,
         !Liveness, _, _, _).
 
-detect_resume_points_in_goal_2(Goal @ call(_, _, _, _, _, _), Goal,
+detect_resume_points_in_goal_2(Goal @ plain_call(_, _, _, _, _, _), Goal,
         !Liveness, _, _, _).
 
 detect_resume_points_in_goal_2(Goal @ unify(_, _, _, _, _), Goal,
         !Liveness, _, _, _).
 
-detect_resume_points_in_goal_2(Goal @ foreign_proc(_, _, _, _, _, _), Goal,
-        !Liveness, _, _, _).
+detect_resume_points_in_goal_2(Goal @ call_foreign_proc(_, _, _, _, _, _, _),
+        Goal, !Liveness, _, _, _).
 
 detect_resume_points_in_goal_2(shorthand(_), _, _, _, _, _, _) :-
     % These should have been expanded out by now.

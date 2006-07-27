@@ -514,22 +514,18 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
         term.coerce(DeclType0, DeclType1),
         parse_type(DeclType1, DeclTypeResult),
         (
-            DeclTypeResult = ok(DeclType),
+            DeclTypeResult = ok1(DeclType),
             varset.coerce(!.VarSet, DeclVarSet),
             process_type_qualification(X, DeclType, DeclVarSet,
                 Context, !ModuleInfo, !QualInfo, !IO)
         ;
-            DeclTypeResult = error(Msg, ErrorTerm),
+            DeclTypeResult = error1(Errors),
             % The varset is a prog_varset even though it contains the names
             % of type variables in ErrorTerm, which is a generic term.
             GenericVarSet = varset.coerce(!.VarSet),
-            TermStr = mercury_term_to_string(ErrorTerm, GenericVarSet, no),
-            Pieces = [words("In explicit type qualification:"),
-                    words(Msg),
-                    suffix(":"),
-                    fixed("`" ++ TermStr ++ "'.")],
-            write_error_pieces(Context, 0, Pieces, !IO),
-            io.set_exit_status(1, !IO)
+            list.foldl(
+                report_error_in_type_qualification(GenericVarSet, Context),
+                Errors, !IO)
         ),
         do_unravel_unification(term.variable(X), RVal, Context, MainContext,
             SubContext, Purity, Goal, no, NumAdded, !VarSet, !ModuleInfo,
@@ -573,11 +569,21 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
             !QualInfo, !IO),
         Det = Det1,
         term.coerce(GoalTerm1, GoalTerm),
-        parse_goal(GoalTerm, ParsedGoal, !VarSet),
-        build_lambda_expression(X, Purity, LambdaPurity, PredOrFunc,
-            EvalMethod, Vars1, Modes, Det, ParsedGoal, Context, MainContext,
-            SubContext, Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
-            !.SInfo, !IO)
+        parse_goal(GoalTerm, MaybeParsedGoal, !VarSet),
+        (
+            MaybeParsedGoal = ok1(ParsedGoal),
+            build_lambda_expression(X, Purity, LambdaPurity, PredOrFunc,
+                EvalMethod, Vars1, Modes, Det, ParsedGoal,
+                Context, MainContext, SubContext, Goal, NumAdded,
+                !VarSet, !ModuleInfo, !QualInfo, !.SInfo, !IO)
+        ;
+            MaybeParsedGoal = error1(Errors),
+            varset.coerce(!.VarSet, ProgVarSet),
+            list.foldl(report_string_term_error(Context, ProgVarSet), Errors,
+                !IO),
+            NumAdded = 0,
+            Goal = true_goal
+        )
     ;
         % Handle higher-order dcg pred expressions. They have the same
         % semantics as higher-order pred expressions, but have two extra
@@ -591,15 +597,25 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
         qualify_lambda_mode_list_if_not_opt_imported(Modes0, Modes, Context,
             !QualInfo, !IO),
         term.coerce(GoalTerm0, GoalTerm),
-        parse_dcg_pred_goal(GoalTerm, ParsedGoal, DCG0, DCGn, !VarSet),
-        Vars1 = Vars0 ++ [term.variable(DCG0), term.variable(DCGn)],
-        build_lambda_expression(X, Purity, DCGLambdaPurity, predicate,
-            EvalMethod, Vars1, Modes, Det, ParsedGoal, Context, MainContext,
-            SubContext, Goal0, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
-            !.SInfo, !IO),
-        Goal0 = GoalExpr - GoalInfo0,
-        add_goal_info_purity_feature(Purity, GoalInfo0, GoalInfo),
-        Goal = GoalExpr - GoalInfo
+        parse_dcg_pred_goal(GoalTerm, MaybeParsedGoal, DCG0, DCGn, !VarSet),
+        (
+            MaybeParsedGoal = ok1(ParsedGoal),
+            Vars1 = Vars0 ++ [term.variable(DCG0), term.variable(DCGn)],
+            build_lambda_expression(X, Purity, DCGLambdaPurity, predicate,
+                EvalMethod, Vars1, Modes, Det, ParsedGoal, Context, MainContext,
+                SubContext, Goal0, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
+                !.SInfo, !IO),
+            Goal0 = GoalExpr - GoalInfo0,
+            goal_info_set_purity(Purity, GoalInfo0, GoalInfo),
+            Goal = GoalExpr - GoalInfo
+        ;
+            MaybeParsedGoal = error1(Errors),
+            varset.coerce(!.VarSet, ProgVarSet),
+            list.foldl(report_string_term_error(Context, ProgVarSet), Errors,
+                !IO),
+            NumAdded = 0,
+            Goal = true_goal
+        )
     ;
         % Handle if-then-else expressions
         (
@@ -614,38 +630,48 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
                 [CondTerm0, ThenTerm], _)
         ),
         term.coerce(CondTerm0, CondTerm),
-        parse_some_vars_goal(CondTerm, Vars, StateVars, CondParseTree, !VarSet)
+        parse_some_vars_goal(CondTerm, MaybeVarsCond, !VarSet)
     ->
-        BeforeSInfo = !.SInfo,
-        prepare_for_if_then_else_expr(StateVars, !VarSet, !SInfo),
+        (
+            MaybeVarsCond = ok3(Vars, StateVars, CondParseTree),
+            BeforeSInfo = !.SInfo,
+            prepare_for_if_then_else_expr(StateVars, !VarSet, !SInfo),
 
-        map.init(EmptySubst),
-        transform_goal(CondParseTree, EmptySubst, CondGoal, CondAdded, !VarSet,
-            !ModuleInfo, !QualInfo, !SInfo, !IO),
+            map.init(EmptySubst),
+            transform_goal(CondParseTree, EmptySubst, CondGoal, CondAdded,
+                !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
 
-        finish_if_then_else_expr_condition(BeforeSInfo, !SInfo),
+            finish_if_then_else_expr_condition(BeforeSInfo, !SInfo),
 
-        do_unravel_unification(term.variable(X), ThenTerm,
-            Context, MainContext, SubContext, Purity, ThenGoal, no, ThenAdded,
-            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
+            do_unravel_unification(term.variable(X), ThenTerm,
+                Context, MainContext, SubContext, Purity, ThenGoal, no,
+                ThenAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
 
-        finish_if_then_else_expr_then_goal(StateVars, BeforeSInfo, !SInfo),
+            finish_if_then_else_expr_then_goal(StateVars, BeforeSInfo, !SInfo),
 
-        do_unravel_unification(term.variable(X), ElseTerm,
-            Context, MainContext, SubContext, Purity, ElseGoal, no, ElseAdded,
-            !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
+            do_unravel_unification(term.variable(X), ElseTerm,
+                Context, MainContext, SubContext, Purity, ElseGoal, no,
+                ElseAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
 
-        NumAdded = CondAdded + ThenAdded + ElseAdded,
-        GoalExpr = if_then_else(StateVars ++ Vars,
-            CondGoal, ThenGoal, ElseGoal),
-        goal_info_init(Context, GoalInfo),
-        Goal = GoalExpr - GoalInfo
+            NumAdded = CondAdded + ThenAdded + ElseAdded,
+            GoalExpr = if_then_else(StateVars ++ Vars,
+                CondGoal, ThenGoal, ElseGoal),
+            goal_info_init(Context, GoalInfo),
+            Goal = GoalExpr - GoalInfo
+        ;
+            MaybeVarsCond = error3(Errors),
+            varset.coerce(!.VarSet, ProgVarSet),
+            list.foldl(report_string_term_error(Context, ProgVarSet), Errors,
+                !IO),
+            NumAdded = 0,
+            Goal = true_goal
+        )
     ;
         % Handle field extraction expressions.
         F = term.atom("^"),
         Args = [InputTerm, FieldNameTerm],
         parse_field_list(FieldNameTerm, FieldNameResult),
-        FieldNameResult = ok(FieldNames)
+        FieldNameResult = ok1(FieldNames)
     ->
         make_fresh_arg_var(InputTerm, InputTermVar, [], !VarSet, !SInfo, !IO),
         expand_get_field_function_call(Context, MainContext, SubContext,
@@ -664,7 +690,7 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
         FieldDescrTerm = term.functor(term.atom("^"),
             [InputTerm, FieldNameTerm], _),
         parse_field_list(FieldNameTerm, FieldNameResult),
-        FieldNameResult = ok(FieldNames)
+        FieldNameResult = ok1(FieldNames)
     ->
         make_fresh_arg_var(InputTerm, InputTermVar, [], !VarSet, !SInfo, !IO),
         make_fresh_arg_var(FieldValueTerm, FieldValueVar, [InputTermVar],
@@ -692,13 +718,13 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
         RHS = term.functor(F, Args1, FunctorContext),
         parse_qualified_term(RHS, RHS, "", MaybeFunctor),
         (
-            MaybeFunctor = ok(FunctorName, FunctorArgs),
+            MaybeFunctor = ok2(FunctorName, FunctorArgs),
             list.length(FunctorArgs, Arity),
             ConsId = cons(FunctorName, Arity)
         ;
             % float, int or string constant
             %   - any errors will be caught by typechecking
-            MaybeFunctor = error(_, _),
+            MaybeFunctor = error2(_),
             list.length(Args, Arity),
             ConsId = make_functor_cons_id(F, Arity),
             FunctorArgs = Args
@@ -709,7 +735,7 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
                 MainContext, SubContext, Purity, Goal0, !QualInfo),
             NumAdded = 1,
             Goal0 = GoalExpr - GoalInfo0,
-            add_goal_info_purity_feature(Purity, GoalInfo0, GoalInfo),
+            goal_info_set_purity(Purity, GoalInfo0, GoalInfo),
             % We could wrap a from_ground_term(X) scope around Goal,
             % but there would be no gain from doing so, whereas the
             % increase would lead to a slight increase in memory and time
@@ -733,7 +759,7 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
                     !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO)
             ;
                 Goal0 = GoalExpr0 - GoalInfo0,
-                add_goal_info_purity_feature(Purity, GoalInfo0, GoalInfo1),
+                goal_info_set_purity(Purity, GoalInfo0, GoalInfo1),
                 Goal1 = GoalExpr0 - GoalInfo1,
                 do_insert_arg_unifications(HeadVars, FunctorArgs,
                     FunctorContext, ArgContext, Goal1, Goal, no, ArgAdded,
@@ -742,6 +768,17 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
             NumAdded = MainFunctorAdded + ArgAdded
         )
     ).
+
+:- pred report_error_in_type_qualification(varset::in, term.context::in,
+    pair(string, term)::in, io::di, io::uo) is det.
+
+report_error_in_type_qualification(GenericVarSet, Context, Error, !IO) :-
+    Error = Msg - ErrorTerm,
+    TermStr = mercury_term_to_string(ErrorTerm, GenericVarSet, no),
+    Pieces = [words("In explicit type qualification:"),
+        words(Msg), suffix(":"), fixed("`" ++ TermStr ++ "'.")],
+    write_error_pieces(Context, 0, Pieces, !IO),
+    io.set_exit_status(1, !IO).
 
 %-----------------------------------------------------------------------------%
 %

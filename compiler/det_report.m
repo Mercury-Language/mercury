@@ -88,7 +88,8 @@
     ;       promise_solutions_missing_vars(promise_solutions_kind, prog_varset,
                 set(prog_var))
     ;       promise_solutions_extra_vars(promise_solutions_kind, prog_varset,
-                set(prog_var)).
+                set(prog_var))
+    ;       trace_goal_not_det(determinism).
 
 :- type seen_call_id
     --->    seen_call(pred_id, proc_id)
@@ -621,7 +622,7 @@ det_diagnose_goal_2(switch(Var, SwitchCanFail, Cases), GoalInfo,
         Diagnosed2, !Specs),
     bool.or(Diagnosed1, Diagnosed2, Diagnosed).
 
-det_diagnose_goal_2(call(PredId, ProcId, _, _, CallContext, _), GoalInfo,
+det_diagnose_goal_2(plain_call(PredId, ProcId, _, _, CallContext, _), GoalInfo,
         Desired, Actual, _, DetInfo, yes, !Specs) :-
     goal_info_get_context(GoalInfo, Context),
     det_report_call_context(Context, CallContext, DetInfo, PredId, ProcId,
@@ -666,7 +667,7 @@ det_diagnose_goal_2(if_then_else(_Vars, Cond, Then, Else), _GoalInfo,
     bool.or(Diagnosed2, Diagnosed3, Diagnosed23),
     bool.or(Diagnosed1, Diagnosed23, Diagnosed).
 
-det_diagnose_goal_2(not(_), GoalInfo, Desired, Actual, _, _, Diagnosed,
+det_diagnose_goal_2(negation(_), GoalInfo, Desired, Actual, _, _, Diagnosed,
         !Specs) :-
     determinism_components(Desired, DesiredCanFail, DesiredSolns),
     determinism_components(Actual, ActualCanFail, ActualSolns),
@@ -705,7 +706,7 @@ det_diagnose_goal_2(scope(_, Goal), _, Desired, Actual,
     det_diagnose_goal(Goal, InternalDesired, SwitchContext, DetInfo, Diagnosed,
         !Specs).
 
-det_diagnose_goal_2(foreign_proc(_, _, _, _, _, _), GoalInfo, Desired,
+det_diagnose_goal_2(call_foreign_proc(_, _, _, _, _, _, _), GoalInfo, Desired,
         _, _, _, yes, !Specs) :-
     goal_info_get_context(GoalInfo, Context),
     DesiredStr = determinism_to_string(Desired),
@@ -1159,6 +1160,7 @@ det_msg_get_type(arbitrary_without_promise, det_error).
 det_msg_get_type(arbitrary_promise_overlap(_, _, _), det_error).
 det_msg_get_type(promise_solutions_missing_vars(_, _, _), det_error).
 det_msg_get_type(promise_solutions_extra_vars(_, _, _), det_error).
+det_msg_get_type(trace_goal_not_det(_), det_error).
 
 det_msg_is_any_mode_msg(multidet_disj(_), all_modes).
 det_msg_is_any_mode_msg(det_disj(_), all_modes).
@@ -1193,6 +1195,7 @@ det_msg_is_any_mode_msg(arbitrary_without_promise, any_mode).
 det_msg_is_any_mode_msg(arbitrary_promise_overlap(_, _, _), any_mode).
 det_msg_is_any_mode_msg(promise_solutions_missing_vars(_, _, _), any_mode).
 det_msg_is_any_mode_msg(promise_solutions_extra_vars(_, _, _), any_mode).
+det_msg_is_any_mode_msg(trace_goal_not_det(_), any_mode).
 
 :- pred det_report_msg(det_msg::in, prog_context::in, module_info::in,
     io::di, io::uo) is det.
@@ -1593,6 +1596,11 @@ det_report_msg(promise_solutions_extra_vars(Kind, VarSet, Vars), Context, _,
     Pieces = [words("Error: the"), words(add_quotes(KindStr)),
         words("goal lists"), words(ListStr)]
         ++ list_to_pieces(VarNames) ++ [suffix(".")],
+    error_util.write_error_pieces(Context, 0, Pieces, !IO).
+det_report_msg(trace_goal_not_det(Detism), Context, _, !IO) :-
+    DetismStr = determinism_to_string(Detism),
+    Pieces = [words("Error: trace goal has determinism"),
+        quote(DetismStr), suffix(","), words("should be det or cc_multi.")],
     error_util.write_error_pieces(Context, 0, Pieces, !IO).
 
 :- func promise_solutions_kind_str(promise_solutions_kind) = string.

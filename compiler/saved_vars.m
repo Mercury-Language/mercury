@@ -128,9 +128,9 @@ saved_vars_in_goal(GoalExpr0 - GoalInfo0, Goal, !SlotInfo) :-
         saved_vars_in_independent_goals(Goals0, Goals, !SlotInfo),
         Goal = disj(Goals) - GoalInfo0
     ;
-        GoalExpr0 = not(NegGoal0),
+        GoalExpr0 = negation(NegGoal0),
         saved_vars_in_goal(NegGoal0, NegGoal, !SlotInfo),
-        Goal = not(NegGoal) - GoalInfo0
+        Goal = negation(NegGoal) - GoalInfo0
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
         saved_vars_in_switch(Cases0, Cases, !SlotInfo),
@@ -149,13 +149,13 @@ saved_vars_in_goal(GoalExpr0 - GoalInfo0, Goal, !SlotInfo) :-
         GoalExpr0 = generic_call(_, _, _, _),
         Goal = GoalExpr0 - GoalInfo0
     ;
-        GoalExpr0 = call(_, _, _, _, _, _),
+        GoalExpr0 = plain_call(_, _, _, _, _, _),
         Goal = GoalExpr0 - GoalInfo0
     ;
         GoalExpr0 = unify(_, _, _, _, _),
         Goal = GoalExpr0 - GoalInfo0
     ;
-        GoalExpr0 = foreign_proc(_, _, _, _, _, _),
+        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
         Goal = GoalExpr0 - GoalInfo0
     ;
         GoalExpr0 = shorthand(_),
@@ -216,8 +216,6 @@ saved_vars_in_conj([Goal0 | Goals0], Goals, NonLocals, !SlotInfo) :-
 
 ok_to_duplicate(constraint) = no.
 ok_to_duplicate(from_head) = yes.
-ok_to_duplicate(impure_goal) = no.
-ok_to_duplicate(semipure_goal) = no.
 ok_to_duplicate(not_impure_for_determinism) = no.
 ok_to_duplicate(stack_opt) = no.
 ok_to_duplicate(tuple_opt) = no.
@@ -232,6 +230,7 @@ ok_to_duplicate(duplicated_for_switch) = yes.
 ok_to_duplicate(mode_check_clauses_goal) = yes.
 ok_to_duplicate(will_not_modify_trail) = yes.
 ok_to_duplicate(will_not_call_mm_tabled) = yes.
+ok_to_duplicate(contains_trace) = yes.
 
     % Divide a list of goals into an initial subsequence of goals
     % that construct constants, and all other goals.
@@ -270,7 +269,7 @@ can_push(Var, First) :-
         ;
             FirstExpr = scope(_, _)
         ;
-            FirstExpr = not(_)
+            FirstExpr = negation(_)
         ;
             FirstExpr = disj(_)
         ;
@@ -325,7 +324,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
                 IsNonLocal, !SlotInfo),
             Goals = [NewConstruct, Goal1 | Goals1]
         ;
-            Goal0Expr = call(_, _, _, _, _, _),
+            Goal0Expr = plain_call(_, _, _, _, _, _),
             rename_var(Var, _NewVar, Subst, !SlotInfo),
             goal_util.rename_vars_in_goal(Subst, Construct, NewConstruct),
             goal_util.rename_vars_in_goal(Subst, Goal0, Goal1),
@@ -341,7 +340,7 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
                 IsNonLocal, !SlotInfo),
             Goals = [NewConstruct, Goal1 | Goals1]
         ;
-            Goal0Expr = foreign_proc(_, _, _, _, _, _),
+            Goal0Expr = call_foreign_proc(_, _, _, _, _, _, _),
             rename_var(Var, _NewVar, Subst, !SlotInfo),
             goal_util.rename_vars_in_goal(Subst, Construct, NewConstruct),
             goal_util.rename_vars_in_goal(Subst, Goal0, Goal1),
@@ -376,13 +375,13 @@ saved_vars_delay_goal([Goal0 | Goals0], Goals, Construct, Var, IsNonLocal,
                 IsNonLocal, !SlotInfo),
             Goals = [Goal1 | Goals1]
         ;
-            Goal0Expr = not(NegGoal0),
+            Goal0Expr = negation(NegGoal0),
             rename_var(Var, NewVar, Subst, !SlotInfo),
             goal_util.rename_vars_in_goal(Subst, Construct, NewConstruct),
             goal_util.rename_vars_in_goal(Subst, NegGoal0, NegGoal1),
             push_into_goal(NegGoal1, NegGoal, NewConstruct, NewVar,
                 !SlotInfo),
-            Goal1 = not(NegGoal) - Goal0Info,
+            Goal1 = negation(NegGoal) - Goal0Info,
             saved_vars_delay_goal(Goals0, Goals1, Construct, Var,
                 IsNonLocal, !SlotInfo),
             Goals = [Goal1 | Goals1]

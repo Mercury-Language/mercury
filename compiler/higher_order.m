@@ -577,7 +577,7 @@ traverse_goal_2(Goal0, Goal, !Info) :-
 traverse_goal_2(Goal0, Goal, !Info) :-
     % Check whether this call can be specialized.
     %
-    Goal0 = call(_, _, _, _, _, _) - _,
+    Goal0 = plain_call(_, _, _, _, _, _) - _,
     maybe_specialize_call(Goal0, Goal, !Info).
 
 traverse_goal_2(Goal0, Goal, !Info) :-
@@ -595,7 +595,8 @@ traverse_goal_2(Goal0, Goal, !Info) :-
     merge_post_branch_infos(PostThenInfo, PostElseInfo, PostInfo),
     set_post_branch_info(PostInfo, !Info).
 
-traverse_goal_2(not(NegGoal0) - GoalInfo, not(NegGoal) - GoalInfo, !Info) :-
+traverse_goal_2(negation(NegGoal0) - GoalInfo, negation(NegGoal) - GoalInfo,
+        !Info) :-
     traverse_goal_2(NegGoal0, NegGoal, !Info).
 
 traverse_goal_2(scope(Reason, Goal0) - GoalInfo,
@@ -603,7 +604,7 @@ traverse_goal_2(scope(Reason, Goal0) - GoalInfo,
     traverse_goal_2(Goal0, Goal, !Info).
 
 traverse_goal_2(Goal, Goal, !Info) :-
-    Goal = foreign_proc(_, _, _, _, _, _) - _.
+    Goal = call_foreign_proc(_, _, _, _, _, _, _) - _.
 
 traverse_goal_2(Goal0, Goal, !Info) :-
     Goal0 = GoalExpr0 - _,
@@ -1111,7 +1112,7 @@ get_typeclass_info_args_2(TypeClassInfoVar, PredId, ProcId, SymName,
     instmap_delta_insert(ResultVar, ground(shared, none),
         InstMapDelta0, InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
-    CallGoal = call(PredId, ProcId, CallArgs, not_builtin,
+    CallGoal = plain_call(PredId, ProcId, CallArgs, not_builtin,
         MaybeContext, SymName) - GoalInfo,
     get_typeclass_info_args_2(TypeClassInfoVar, PredId, ProcId, SymName,
         MakeResultType, Args, Index + 1, Goals, Vars, !ProcInfo).
@@ -1133,7 +1134,8 @@ construct_specialized_higher_order_call(PredId, ProcId, AllArgs, GoalInfo,
     Builtin = builtin_state(ModuleInfo, CallerPredId, PredId, ProcId),
 
     MaybeContext = no,
-    Goal1 = call(PredId, ProcId, AllArgs, Builtin, MaybeContext, SymName),
+    Goal1 = plain_call(PredId, ProcId, AllArgs, Builtin, MaybeContext,
+        SymName),
     !:Info = !.Info ^ changed := changed,
     maybe_specialize_call(Goal1 - GoalInfo, Goal - _, !Info).
 
@@ -1142,8 +1144,8 @@ construct_specialized_higher_order_call(PredId, ProcId, AllArgs, GoalInfo,
 
 maybe_specialize_call(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
     ModuleInfo0 = !.Info ^ global_info ^ module_info,
-    ( Goal0 = call(_, _, _, _, _, _) ->
-        Goal0 = call(CalledPred, CalledProc, Args0, IsBuiltin,
+    ( Goal0 = plain_call(_, _, _, _, _, _) ->
+        Goal0 = plain_call(CalledPred, CalledProc, Args0, IsBuiltin,
             MaybeContext, _SymName0)
     ;
         unexpected(this_file, "maybe_specialize_call: expected call")
@@ -1254,7 +1256,7 @@ maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
         (
             Result = specialized(ExtraTypeInfoGoals0, Goal1),
             (
-                Goal1 = call(NewPredId0, NewProcId0, NewArgs0, _, _, _),
+                Goal1 = plain_call(NewPredId0, NewProcId0, NewArgs0, _, _, _),
                 list.remove_suffix(NewArgs0, UncurriedArgs, NewArgs1)
             ->
                 NewPredId = NewPredId0,
@@ -1387,7 +1389,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
                 ExtraTypeInfoVars, ExtraTypeInfoGoals, !Info),
 
             list.append(ExtraTypeInfoVars, Args1, Args),
-            CallGoal = call(NewCalledPred, NewCalledProc, Args,
+            CallGoal = plain_call(NewCalledPred, NewCalledProc, Args,
                 IsBuiltin, MaybeContext, NewName),
             Result = specialized(ExtraTypeInfoGoals, CallGoal),
             !:Info = !.Info ^ changed := changed
@@ -2098,7 +2100,7 @@ call_type_specific_unify_or_compare(SpecialPredType, SpecialId,
     ;
         list.append(TypeInfoArgs, SpecialPredArgs, CallArgs)
     ),
-    Goal = call(SpecialPredId, SpecialProcId, CallArgs, not_builtin,
+    Goal = plain_call(SpecialPredId, SpecialProcId, CallArgs, not_builtin,
         MaybeContext, SymName).
 
 :- pred specialize_unify_or_compare_pred_for_dummy(maybe(prog_var)::in,
@@ -2138,7 +2140,7 @@ specialize_unify_or_compare_pred_for_atomic(SpecialPredType, MaybeResult,
         (
             NeedIntCast = no,
             NewCallArgs = [ComparisonResult, Arg1, Arg2],
-            GoalExpr = call(SpecialPredId, SpecialProcId, NewCallArgs,
+            GoalExpr = plain_call(SpecialPredId, SpecialProcId, NewCallArgs,
                 not_builtin, MaybeContext, SymName)
         ;
             NeedIntCast = yes,
@@ -2148,7 +2150,7 @@ specialize_unify_or_compare_pred_for_atomic(SpecialPredType, MaybeResult,
             generate_unsafe_type_cast(Context, CompareType, Arg2, CastArg2,
                 CastGoal2, ProcInfo1, ProcInfo),
             NewCallArgs = [ComparisonResult, CastArg1, CastArg2],
-            Call = call(SpecialPredId, SpecialProcId, NewCallArgs,
+            Call = plain_call(SpecialPredId, SpecialProcId, NewCallArgs,
                 not_builtin, MaybeContext, SymName),
             set.list_to_set([ComparisonResult, Arg1, Arg2], NonLocals),
             instmap_delta_from_assoc_list(
@@ -2206,7 +2208,7 @@ specialize_unify_or_compare_pred_for_no_tag(WrappedType, Constructor,
         (
             NeedIntCast = no,
             NewCallArgs = [ComparisonResult, UnwrappedArg1, UnwrappedArg2],
-            SpecialGoal = call(SpecialPredId, SpecialProcId, NewCallArgs,
+            SpecialGoal = plain_call(SpecialPredId, SpecialProcId, NewCallArgs,
                 not_builtin, MaybeContext, SymName),
             goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure,
                 Context, GoalInfo),
@@ -2220,7 +2222,7 @@ specialize_unify_or_compare_pred_for_no_tag(WrappedType, Constructor,
             generate_unsafe_type_cast(Context, CompareType,
                 UnwrappedArg2, CastArg2, CastGoal2, ProcInfo3, ProcInfo4),
             NewCallArgs = [ComparisonResult, CastArg1, CastArg2],
-            SpecialGoal = call(SpecialPredId, SpecialProcId, NewCallArgs,
+            SpecialGoal = plain_call(SpecialPredId, SpecialProcId, NewCallArgs,
                 not_builtin, MaybeContext, SymName),
             goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure,
                 Context, GoalInfo),

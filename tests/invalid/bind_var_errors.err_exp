@@ -1,6 +1,6 @@
 bind_var_errors.m:033: In clause for `bind_var_in_negation':
-bind_var_errors.m:033:   scope error: attempt to bind a variable inside a
-bind_var_errors.m:033:   negation.
+bind_var_errors.m:033:   scope error: attempt to bind a non-local variable
+bind_var_errors.m:033:   inside a negation.
 bind_var_errors.m:033:   Variable `X' has instantiatedness `free',
 bind_var_errors.m:033:   expected instantiatedness was `unique(42)'.
 bind_var_errors.m:039: In clause for `bind_var_in_ite_cond(in)':

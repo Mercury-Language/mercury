@@ -411,7 +411,7 @@ examine_expr(disj(Goals), CurrProc, !Queue, !Needed) :-
     examine_goals(Goals, CurrProc, !Queue, !Needed).
 examine_expr(conj(_ConjType, Goals), CurrProc, !Queue, !Needed) :-
     examine_goals(Goals, CurrProc, !Queue, !Needed).
-examine_expr(not(Goal), CurrProc, !Queue, !Needed) :-
+examine_expr(negation(Goal), CurrProc, !Queue, !Needed) :-
     examine_goal(Goal, CurrProc, !Queue, !Needed).
 examine_expr(scope(_, Goal), CurrProc, !Queue, !Needed) :-
     examine_goal(Goal, CurrProc, !Queue, !Needed).
@@ -422,7 +422,7 @@ examine_expr(if_then_else(_, Cond, Then, Else), CurrProc, !Queue, !Needed) :-
     examine_goal(Then, CurrProc, !Queue, !Needed),
     examine_goal(Else, CurrProc, !Queue, !Needed).
 examine_expr(generic_call(_,_,_,_), _, !Queue, !Needed).
-examine_expr(call(PredId, ProcId, _,_,_,_), CurrProc, !Queue, !Needed) :-
+examine_expr(plain_call(PredId, ProcId, _,_,_,_), CurrProc, !Queue, !Needed) :-
     queue.put(!.Queue, proc(PredId, ProcId), !:Queue),
     ( proc(PredId, ProcId) = CurrProc ->
         % if it's reachable and recursive, then we can't
@@ -442,7 +442,7 @@ examine_expr(call(PredId, ProcId, _,_,_,_), CurrProc, !Queue, !Needed) :-
         NewNotation = yes(1),
         svmap.set(proc(PredId, ProcId), NewNotation, !Needed)
     ).
-examine_expr(foreign_proc(_, PredId, ProcId, _, _, _), _CurrProc,
+examine_expr(call_foreign_proc(_, PredId, ProcId, _, _, _, _), _CurrProc,
         !Queue, !Needed) :-
     svqueue.put(proc(PredId, ProcId), !Queue),
     svmap.set(proc(PredId, ProcId), no, !Needed).
@@ -858,13 +858,15 @@ pre_modecheck_examine_goal(switch(_, _, Cases) - _, !DeadInfo) :-
     ),
     list.foldl(ExamineCase, Cases, !DeadInfo).
 pre_modecheck_examine_goal(generic_call(_,_,_,_) - _, !DeadInfo).
-pre_modecheck_examine_goal(not(Goal) - _, !DeadInfo) :-
+pre_modecheck_examine_goal(negation(Goal) - _, !DeadInfo) :-
     pre_modecheck_examine_goal(Goal, !DeadInfo).
 pre_modecheck_examine_goal(scope(_, Goal) - _, !DeadInfo) :-
     pre_modecheck_examine_goal(Goal, !DeadInfo).
-pre_modecheck_examine_goal(call(_, _, _, _, _, PredName) - _, !DeadInfo) :-
+pre_modecheck_examine_goal(plain_call(_, _, _, _, _, PredName) - _,
+        !DeadInfo) :-
     dead_pred_info_add_pred_name(PredName, !DeadInfo).
-pre_modecheck_examine_goal(foreign_proc(_, _, _, _, _, _) - _, !DeadInfo).
+pre_modecheck_examine_goal(call_foreign_proc(_, _, _, _, _, _, _) - _,
+        !DeadInfo).
 pre_modecheck_examine_goal(unify(_, Rhs, _, _, _) - _, !DeadInfo) :-
     pre_modecheck_examine_unify_rhs(Rhs, !DeadInfo).
 pre_modecheck_examine_goal(shorthand(_) - _, !DeadInfo) :-

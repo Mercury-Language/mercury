@@ -197,7 +197,7 @@ mode_order_goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
     ).
 
 mode_order_goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
-    Goal0 = call(PredId, _, Args, _, _, _),
+    Goal0 = plain_call(PredId, _, Args, _, _, _),
     Goal = Goal0 ^ call_proc_id := ProcId,
     set_atomic_prod_vars(ProdVars, !GoalInfo, !MOI),
     MakeVisibleVars = list_to_set(Args) `intersect` ProdVars,
@@ -297,8 +297,8 @@ mode_order_goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
     mode_order_disj(Goals, !GoalInfo).
 
 mode_order_goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
-    Goal0 = not(SubGoal0),
-    Goal = not(SubGoal),
+    Goal0 = negation(SubGoal0),
+    Goal = negation(SubGoal),
     mode_order_goal(SubGoal0, SubGoal, !MOI),
     goal_info_copy_mode_var_sets(SubGoal ^ snd, !GoalInfo).
 
@@ -327,7 +327,7 @@ mode_order_goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
     combine_mode_vars_sets(Else ^ snd, !GoalInfo).
 
 mode_order_goal_2(Goal0, _, !GoalInfo, !MOI) :-
-    Goal0 = foreign_proc(_, _, _, _, _, _),
+    Goal0 = call_foreign_proc(_, _, _, _, _, _, _),
     unexpected(this_file, "mode_order_goal_2: pragma_foreign_code NYI").
 
 mode_order_goal_2(Goal0, _, !GoalInfo, !MOI) :-

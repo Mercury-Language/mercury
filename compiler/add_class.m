@@ -554,9 +554,9 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         set.list_to_set(HeadVars, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo1, GoalInfo2),
         ( check_marker(Markers, is_impure) ->
-            goal_info_add_feature(impure_goal, GoalInfo2, GoalInfo)
+            goal_info_set_purity(purity_impure, GoalInfo2, GoalInfo)
         ; check_marker(Markers, is_semipure) ->
-            goal_info_add_feature(semipure_goal, GoalInfo2, GoalInfo)
+            goal_info_set_purity(purity_semipure, GoalInfo2, GoalInfo)
         ;
             GoalInfo = GoalInfo2
         ),

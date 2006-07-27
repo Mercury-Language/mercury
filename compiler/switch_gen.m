@@ -77,7 +77,7 @@
 :- import_module ll_backend.lookup_switch.
 :- import_module ll_backend.string_switch.
 :- import_module ll_backend.tag_switch.
-:- import_module ll_backend.trace.
+:- import_module ll_backend.trace_gen.
 :- import_module ll_backend.unify_gen.
 
 :- import_module bool.
@@ -294,8 +294,8 @@ generate_cases([case(_, _, Cons, Goal) | Cases], Var, CodeModel, CanFail,
     ->
         unify_gen.generate_tag_test(Var, Cons, branch_on_failure, NextLabel,
             TestCode, !CI),
-        trace.maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
-            TraceCode, !CI),
+        maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
+            !CI),
         code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
         code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
         ElseCode = node([
@@ -305,8 +305,8 @@ generate_cases([case(_, _, Cons, Goal) | Cases], Var, CodeModel, CanFail,
         ThisCaseCode = tree_list([TestCode, TraceCode, GoalCode, SaveCode,
              ElseCode])
     ;
-        trace.maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
-            TraceCode, !CI),
+        maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
+            !CI),
         code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
         code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
         ThisCaseCode = tree_list([TraceCode, GoalCode, SaveCode])

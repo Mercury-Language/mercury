@@ -479,7 +479,7 @@ traverse_goal(conj(ConjType, Goals0) - Info, conj(ConjType, Goals) - Info,
 traverse_goal(disj(Goals0) - Info, disj(Goals) - Info, DoWrite, !Info) :-
     traverse_list_of_goals(Goals0, Goals, DoWrite, !Info).
 traverse_goal(Goal, Goal, DoWrite, !Info) :-
-    Goal = call(PredId, _, _, _, _, _) - _,
+    Goal = plain_call(PredId, _, _, _, _, _) - _,
     % Ensure that the called predicate will be exported.
     add_proc(PredId, DoWrite, !Info).
 traverse_goal(Goal @ generic_call(CallType, _, _, _) - Info,
@@ -496,7 +496,7 @@ traverse_goal(switch(Var, CanFail, Cases0) - Info,
 traverse_goal(unify(LVar, RHS0, C, D, E) - Info,
         unify(LVar, RHS, C, D, E) - Info, DoWrite, !Info) :-
     module_qualify_unify_rhs(LVar, RHS0, RHS, DoWrite, !Info).
-traverse_goal(not(Goal0) - Info, not(Goal) - Info, DoWrite, !Info) :-
+traverse_goal(negation(Goal0) - Info, negation(Goal) - Info, DoWrite, !Info) :-
     traverse_goal(Goal0, Goal, DoWrite, !Info).
 traverse_goal(scope(Reason, Goal0) - Info,
         scope(Reason, Goal) - Info, DoWrite, !Info) :-
@@ -509,7 +509,7 @@ traverse_goal(if_then_else(Vars, Cond0, Then0, Else0) - Info,
     bool.and_list([DoWrite1, DoWrite2, DoWrite3], DoWrite).
     % Inlineable exported pragma_foreign_code goals can't use any
     % non-exported types, so we just write out the clauses.
-traverse_goal(Goal @ foreign_proc(_, _, _, _, _, _) - Info,
+traverse_goal(Goal @ call_foreign_proc(_, _, _, _, _, _, _) - Info,
         Goal - Info, yes, !Info).
 traverse_goal(shorthand(_) - _, _, _, _, _) :-
     % These should have been expanded out by now.
@@ -1597,12 +1597,13 @@ write_clause(ModuleInfo, PredId, VarSet, _HeadVars, PredOrFunc, SymName,
             % Pull the foreign code out of the goal.
             Goal = conj(plain_conj, Goals) - _,
             list.filter((pred(X::in) is semidet :-
-                    X = foreign_proc(_, _, _, _, _, _) - _
+                    X = call_foreign_proc(_, _, _, _, _, _, _) - _
                 ), Goals, [ForeignCodeGoal]),
-            ForeignCodeGoal = foreign_proc(Attributes,
-                _, _, Args, _, PragmaCode) - _
+            ForeignCodeGoal = call_foreign_proc(Attributes,
+                _, _, Args, _ExtraArgs, _MaybeTraceRuntimeCond, PragmaCode) - _
         ;
-            Goal = foreign_proc(Attributes, _, _, Args, _, PragmaCode) - _
+            Goal = call_foreign_proc(Attributes, _, _, Args, _ExtraArgs,
+                _MaybeTraceRuntimeCond, PragmaCode) - _
         )
     ->
         list.foldl(write_foreign_clause(Procs, PredOrFunc,

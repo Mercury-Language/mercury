@@ -334,6 +334,7 @@ ops.op_table("or", after, xfy, 740).       % NU-Prolog extension
 ops.op_table("pragma", before, fx, 1199).  % Mercury extension
 ops.op_table("pred", before, fx, 800).     % Mercury/NU-Prolog extension
 ops.op_table("promise", before, fx, 1199). % Mercury extension
+ops.op_table("trace", before, fxy, 950).   % Mercury extension
 ops.op_table("promise_exclusive", before, fy, 950). % Mercury extension
 ops.op_table("promise_exhaustive", before, fy, 950). % Mercury extension
 ops.op_table("promise_exclusive_exhaustive", before, fy, 950).

@@ -139,8 +139,8 @@ goal_expr_to_byte_list(disj(Goals), _, InstMap0, Info, !StackInfo, Bytes) :-
     disj_to_byte_list(Goals, InstMap0, Info, !StackInfo, DisjBytes),
     Bytes = [goal_type_to_byte(goal_disj)] ++
         length_to_byte_list(Goals) ++ DisjBytes.
-goal_expr_to_byte_list(not(Goal), _GoalInfo, InstMap0, Info, !StackInfo, Bytes)
-        :-
+goal_expr_to_byte_list(negation(Goal), _GoalInfo, InstMap0, Info, !StackInfo,
+        Bytes) :-
     goal_to_byte_list(Goal, InstMap0, Info, !StackInfo, GoalBytes),
     Bytes = [goal_type_to_byte(goal_neg)] ++ GoalBytes.
 goal_expr_to_byte_list(if_then_else(_, Cond, Then, Else), _, InstMap0, Info,
@@ -253,7 +253,7 @@ goal_expr_to_byte_list(generic_call(GenericCall, Args, _, _),
             unexpected(this_file, "goal_expr_to_byte_list: cast arity != 2")
         )
     ).
-goal_expr_to_byte_list(call(PredId, _, Args, Builtin, _, _),
+goal_expr_to_byte_list(plain_call(PredId, _, Args, Builtin, _, _),
         GoalInfo, InstMap0, Info, !StackInfo, Bytes) :-
     atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, !StackInfo,
         AtomicBytes, _),
@@ -276,7 +276,7 @@ goal_expr_to_byte_list(call(PredId, _, Args, Builtin, _, _),
             vars_to_byte_list(Info, Args) ++
             AtomicBytes
     ).
-goal_expr_to_byte_list(foreign_proc(_, _PredId, _, Args, _, _),
+goal_expr_to_byte_list(call_foreign_proc(_, _PredId, _, Args, _, _, _),
         GoalInfo, InstMap0, Info, !StackInfo, Bytes) :-
     ArgVars = list.map(foreign_arg_var, Args),
     atomic_goal_info_to_byte_list(GoalInfo, InstMap0, Info, !StackInfo,

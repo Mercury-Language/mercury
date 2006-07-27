@@ -1093,6 +1093,7 @@ jumpopt.short_labels_lval(_, sp, sp).
 jumpopt.short_labels_lval(_, temp(T, N), temp(T, N)).
 jumpopt.short_labels_lval(_, stackvar(N), stackvar(N)).
 jumpopt.short_labels_lval(_, framevar(N), framevar(N)).
+jumpopt.short_labels_lval(_, global_var_ref(Var), global_var_ref(Var)).
 jumpopt.short_labels_lval(Instrmap, succip_slot(Rval0), succip_slot(Rval)) :-
     jumpopt.short_labels_rval(Instrmap, Rval0, Rval).
 jumpopt.short_labels_lval(Instrmap, redoip_slot(Rval0), redoip_slot(Rval)) :-

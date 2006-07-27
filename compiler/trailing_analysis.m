@@ -332,7 +332,7 @@ check_goal_for_trail_mods_2(_, _, Goal, _, will_not_modify_trail, yes(optimal),
     ).
 check_goal_for_trail_mods_2(SCC, VarTypes, Goal, _,
         Result, MaybeAnalysisStatus, !ModuleInfo, !IO) :-
-    Goal = call(CallPredId, CallProcId, CallArgs, _, _, _),
+    Goal = plain_call(CallPredId, CallProcId, CallArgs, _, _, _),
     CallPPId = proc(CallPredId, CallProcId),    
     module_info_pred_info(!.ModuleInfo, CallPredId, CallPredInfo),
     (
@@ -430,7 +430,7 @@ check_goal_for_trail_mods_2(_, _VarTypes, Goal, _GoalInfo,
         Result  = will_not_modify_trail,
         MaybeAnalysisStatus = yes(optimal)
     ).
-check_goal_for_trail_mods_2(SCC, VarTypes, not(Goal), _,
+check_goal_for_trail_mods_2(SCC, VarTypes, negation(Goal), _,
         Result, MaybeAnalysisStatus, !ModuleInfo, !IO) :-
     check_goal_for_trail_mods(SCC, VarTypes, Goal, Result, MaybeAnalysisStatus,
         !ModuleInfo, !IO).
@@ -450,7 +450,7 @@ check_goal_for_trail_mods_2(SCC, VarTypes, Goal, OuterGoalInfo,
     Result = scope_implies_trail_mod(InnerCodeModel, OuterCodeModel, Result0).
 check_goal_for_trail_mods_2(_, _, Goal, _, Result, MaybeAnalysisStatus,
         !ModuleInfo, !IO) :-
-    Goal = foreign_proc(Attributes, _, _, _, _, _),
+    Goal = call_foreign_proc(Attributes, _, _, _, _, _, _),
     Result = attributes_imply_trail_mod(Attributes),
     MaybeAnalysisStatus = yes(optimal).
 check_goal_for_trail_mods_2(_, _, shorthand(_), _, _, _, !ModuleInfo, !IO) :-
@@ -857,7 +857,7 @@ annotate_goal_2(VarTypes, _, !Goal, Status, !ModuleInfo, !IO) :-
         !IO),
     !:Goal = conj(ConjType, Conjuncts). 
 annotate_goal_2(VarTypes, _, !Goal, Status, !ModuleInfo, !IO) :-
-    !.Goal = call(CallPredId, CallProcId, CallArgs, _, _, _),
+    !.Goal = plain_call(CallPredId, CallProcId, CallArgs, _, _, _),
     CallPPId = proc(CallPredId, CallProcId),
     module_info_pred_info(!.ModuleInfo, CallPredId, CallPredInfo),
     (
@@ -943,9 +943,9 @@ annotate_goal_2(VarTypes, _, !Goal, Status, !ModuleInfo, !IO) :-
         !ModuleInfo, !IO),
     !:Goal = disj(Disjuncts).
 annotate_goal_2(VarTypes, _, !Goal, Status, !ModuleInfo, !IO) :-
-    !.Goal = not(NegGoal0),
+    !.Goal = negation(NegGoal0),
     annotate_goal(VarTypes, NegGoal0, NegGoal, Status, !ModuleInfo, !IO),
-    !:Goal = not(NegGoal).
+    !:Goal = negation(NegGoal).
 annotate_goal_2(VarTypes, OuterGoalInfo, !Goal, Status, !ModuleInfo, !IO) :-
     !.Goal = scope(Reason, InnerGoal0),
     annotate_goal(VarTypes, InnerGoal0, InnerGoal, Status0, !ModuleInfo, !IO),
@@ -970,7 +970,7 @@ annotate_goal_2(VarTypes, _, !Goal, Status, !ModuleInfo, !IO) :-
     ), 
     !:Goal = if_then_else(Vars, If, Then, Else).
 annotate_goal_2(_, _, !Goal, Status, !ModuleInfo, !IO) :-
-    !.Goal = foreign_proc(Attributes, _, _, _, _, _),
+    !.Goal = call_foreign_proc(Attributes, _, _, _, _, _, _),
     Status = attributes_imply_trail_mod(Attributes).
 annotate_goal_2(_, _, shorthand(_), _, _, _, _, _, _) :-
     unexpected(this_file, "shorthand goal").

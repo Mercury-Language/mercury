@@ -80,7 +80,7 @@
 :- import_module libs.options.
 :- import_module libs.tree.
 :- import_module ll_backend.code_util.
-:- import_module ll_backend.trace.
+:- import_module ll_backend.trace_gen.
 
 :- import_module bool.
 :- import_module int.
@@ -382,7 +382,7 @@ call_gen.prepare_for_call(CodeModel, CallModel, TraceCode, !CI) :-
         CallModel = call_model_nondet(TailCallStatus),
         code_info.set_resume_point_and_frame_to_unknown(!CI)
     ),
-    trace.prepare_for_call(!.CI, TraceCode).
+    trace_prepare_for_call(!.CI, TraceCode).
 
 :- pred call_gen.handle_failure(code_model::in, hlds_goal_info::in,
     code_tree::out, code_info::in, code_info::out) is det.

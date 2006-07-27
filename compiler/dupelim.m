@@ -437,57 +437,31 @@ standardize_instr(Instr1, Instr) :-
     %
 :- pred standardize_lval(lval::in, lval::out) is det.
 
-standardize_lval(Lval1, Lval) :-
+standardize_lval(Lval0, Lval) :-
     (
-        Lval1 = reg(_, _),
-        Lval = Lval1
+        ( Lval0 = reg(_, _)
+        ; Lval0 = succip
+        ; Lval0 = maxfr
+        ; Lval0 = curfr
+        ; Lval0 = hp
+        ; Lval0 = sp
+        ; Lval0 = temp(_, _)
+        ; Lval0 = stackvar(_)
+        ; Lval0 = framevar(_)
+        ; Lval0 = succip_slot(_)
+        ; Lval0 = redoip_slot(_)
+        ; Lval0 = succfr_slot(_)
+        ; Lval0 = redofr_slot(_)
+        ; Lval0 = prevfr_slot(_)
+        ; Lval0 = mem_ref(_)
+        ; Lval0 = global_var_ref(_)
+        ),
+        Lval = Lval0
     ;
-        Lval1 = succip,
-        Lval = Lval1
-    ;
-        Lval1 = maxfr,
-        Lval = Lval1
-    ;
-        Lval1 = curfr,
-        Lval = Lval1
-    ;
-        Lval1 = hp,
-        Lval = Lval1
-    ;
-        Lval1 = sp,
-        Lval = Lval1
-    ;
-        Lval1 = temp(_, _),
-        Lval = Lval1
-    ;
-        Lval1 = stackvar(_),
-        Lval = Lval1
-    ;
-        Lval1 = framevar(_),
-        Lval = Lval1
-    ;
-        Lval1 = succip_slot(_),
-        Lval = Lval1
-    ;
-        Lval1 = redoip_slot(_),
-        Lval = Lval1
-    ;
-        Lval1 = succfr_slot(_),
-        Lval = Lval1
-    ;
-        Lval1 = redofr_slot(_),
-        Lval = Lval1
-    ;
-        Lval1 = prevfr_slot(_),
-        Lval = Lval1
-    ;
-        Lval1 = field(_, Addr, FieldNum),
+        Lval0 = field(_, Addr, FieldNum),
         Lval = field(no, Addr, FieldNum)
     ;
-        Lval1 = mem_ref(_),
-        Lval = Lval1
-    ;
-        Lval1 = lvar(_),
+        Lval0 = lvar(_),
         unexpected(this_file, "lvar in standardize_lval")
     ).
 

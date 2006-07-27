@@ -86,7 +86,7 @@ goal_expr_mark_static_terms(switch(A, B, Cases0), switch(A, B, Cases), !SI) :-
     % We revert to the original static_info at the end of branched goals.
     cases_mark_static_terms(Cases0, Cases, !.SI).
 
-goal_expr_mark_static_terms(not(Goal0), not(Goal), !SI) :-
+goal_expr_mark_static_terms(negation(Goal0), negation(Goal), !SI) :-
     % We revert to the original static_info at the end of the negation.
     goal_mark_static_terms(Goal0, Goal, !.SI, _SI).
 
@@ -103,7 +103,7 @@ goal_expr_mark_static_terms(if_then_else(A, Cond0, Then0, Else0),
     goal_mark_static_terms(Then0, Then, SI_Cond, _SI_Then),
     goal_mark_static_terms(Else0, Else, SI0, _SI_Else).
 
-goal_expr_mark_static_terms(Goal @ call(_, _, _, _, _, _), Goal, !SI).
+goal_expr_mark_static_terms(Goal @ plain_call(_, _, _, _, _, _), Goal, !SI).
 
 goal_expr_mark_static_terms(Goal @ generic_call(_, _, _, _), Goal, !SI).
 
@@ -111,7 +111,8 @@ goal_expr_mark_static_terms(unify(LHS, RHS, Mode, Unification0, Context),
         unify(LHS, RHS, Mode, Unification, Context), !SI) :-
     unification_mark_static_terms(Unification0, Unification, !SI).
 
-goal_expr_mark_static_terms(Goal @ foreign_proc(_, _, _, _, _, _), Goal, !SI).
+goal_expr_mark_static_terms(Goal @ call_foreign_proc(_, _, _, _, _, _, _),
+        Goal, !SI).
 
 goal_expr_mark_static_terms(shorthand(_), _, !SI) :-
     % These should have been expanded out by now.

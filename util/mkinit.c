@@ -250,6 +250,23 @@ static int          req_final_module_max = 0;
 static int          req_final_module_next = 0;
 #define MR_FINAL_REQ_MODULE_SIZE    10
 
+/*
+** List of names of environment variables whose values should be sampled
+** at initialization. The list is not ordered, but must not contain duplicates,
+** since that would lead to duplicate definitions of C global variables and
+** hence errors from the C compiler.
+*/
+static const char   **mercury_env_vars = NULL;
+static int          mercury_env_var_max = 0;
+static int          mercury_env_var_next = 0;
+#define MR_ENV_VAR_LIST_SIZE    10
+
+/*
+** This should be kept in sync with the code of c_global_var_name
+** in llds_out.m.
+*/
+const char  *envvar_prefix = "mercury_envvar_";
+
 /* options and arguments, set by parse_options() */
 static const char   *output_file_name = NULL;
 static const char   *entry_point = "mercury__main_2_0";
@@ -616,9 +633,12 @@ output_lib_init_file(void)
         printf("REQUIRED_FINAL %s\n", req_final_modules[i]);
     }
 
+    for (i = 0; i < mercury_env_var_next; i++) {
+        printf("ENVVAR %s\n", mercury_env_vars[i]);
+    }
+
     if (num_errors > 0) {
-        fprintf(stderr, "%s: error while creating .init file.\n",
-            MR_progname);
+        fprintf(stderr, "%s: error while creating .init file.\n", MR_progname);
         return EXIT_FAILURE;
     } else {
         return EXIT_SUCCESS;
@@ -644,6 +664,11 @@ output_init_program(void)
 
     for (filenum = 0; filenum < num_files; filenum++) {
         process_file(files[filenum]);
+    }
+
+    printf("\n");
+    for (i = 0; i < mercury_env_var_next; i++) {
+        printf("MR_Word %s%s = 0;\n", envvar_prefix, mercury_env_vars[i]);
     }
 
     if (need_initialization_code) {
@@ -1125,6 +1150,7 @@ output_main(void)
 {
     String_List *list;
     char        *options_str;
+    int         i;
 
     if (experimental_complexity != NULL) {
         output_complexity_experiment_table(experimental_complexity);
@@ -1158,6 +1184,15 @@ output_main(void)
         putchar(' ');
     }
     printf("\";\n");
+
+    printf("\n");
+    for (i = 0; i < mercury_env_var_next; i++) {
+        printf("    if (getenv(\"%s\") != NULL) {\n", mercury_env_vars[i]);
+        printf("        %s%s = 1;\n", envvar_prefix, mercury_env_vars[i]);
+        printf("    } else {\n");
+        printf("        %s%s = 0;\n", envvar_prefix, mercury_env_vars[i]);
+        printf("    }\n");
+    }
 
     fputs(mercury_funcs3, stdout);
 
@@ -1207,10 +1242,12 @@ process_init_file(const char *filename)
     const char * const  init_str = "INIT ";
     const char * const  reqinit_str = "REQUIRED_INIT ";
     const char * const  reqfinal_str = "REQUIRED_FINAL ";
+    const char * const  envvar_str = "ENVVAR ";
     const char * const  endinit_str = "ENDINIT";
     const int           init_strlen = strlen(init_str);
     const int           reqinit_strlen = strlen(reqinit_str);
     const int           reqfinal_strlen = strlen(reqfinal_str);
+    const int           envvar_strlen = strlen(envvar_str);
     const int           endinit_strlen = strlen(endinit_str);
     char                line[MAXLINE];
     FILE                *cfile;
@@ -1279,6 +1316,51 @@ process_init_file(const char *filename)
             req_final_modules[req_final_module_next] =
                 checked_strdup(func_name);
             req_final_module_next++;
+        } else if (strncmp(line, envvar_str, envvar_strlen) == 0) {
+            char    *envvar_name;
+            int     i;
+            int     j;
+            MR_bool found;
+
+            /*
+            ** Check that all characters in the name of the environment
+            ** variable are acceptable as components of a C variable name.
+            ** Note that the variable name doesn't have to start with a letter
+            ** because the variable name has a prefix.
+            */
+            for (j = envvar_strlen; MR_isalnumunder(line[j]); j++) {
+                /* VOID */
+            }
+
+            if (line[j] != '\n') {
+                printf("mkinit: error: bad environment variable name %s\n",
+                    line);
+            }
+
+            line[j] = '\0';     /* overwrite the newline */
+
+            envvar_name = line + envvar_strlen;
+
+            /*
+            ** Since the number of distinct environment variables used by
+            ** a program is likely to be in the single digits, linear search
+            ** should be efficient enough.
+            */
+            found = MR_FALSE;
+            for (i = 0; i < mercury_env_var_next; i++) {
+                if (strcmp(envvar_name, mercury_env_vars[i]) == 0) {
+                    found = MR_TRUE;
+                    break;
+                }
+            }
+
+            if (!found) {
+                MR_ensure_room_for_next(mercury_env_var, const char *,
+                    MR_ENV_VAR_LIST_SIZE);
+                mercury_env_vars[mercury_env_var_next] =
+                    checked_strdup(envvar_name);
+                mercury_env_var_next++;
+            }
         } else if (strncmp(line, endinit_str, endinit_strlen) == 0) {
             break;
         }

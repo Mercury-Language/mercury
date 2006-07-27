@@ -237,12 +237,18 @@ parse_unit_selector(Term) = UnitSelector :-
         ->
             parse_type(term.coerce(TypeSelectorTerm), MaybeTypeSelector),
             (
-                MaybeTypeSelector = ok(TypeSelector),
+                MaybeTypeSelector = ok1(TypeSelector),
                 UnitSelector = typesel(TypeSelector)
             ;
-                MaybeTypeSelector = error(Msg, _),
-                unexpected(this_file, "parse_unit_selector: " ++
-                    "error parsing type selector (" ++ Msg ++ ").")
+                MaybeTypeSelector = error1(Errors),
+                (
+                    Errors = [],
+                    unexpected(this_file, "parse_unit_selector: empty Errors")
+                ;
+                    Errors = [Msg - _ | _],
+                    unexpected(this_file, "parse_unit_selector: " ++
+                        "error parsing type selector (" ++ Msg ++ ").")
+                )
             )
         ;
             unexpected(this_file, "parse_unit_selector: " ++
@@ -442,7 +448,7 @@ parse_user_annotated_sharing(Varset, Term, UserSharing) :-
             [TypesTerm, UserSharingTerm], _),
         (
             TypesTerm = term.functor(term.atom("yes"), ListTypeTerms, _),
-            parse_types(ListTypeTerms, ok(Types)), 
+            parse_types(ListTypeTerms, ok1(Types)), 
             term.vars_list(ListTypeTerms, TypeVars),
             varset.select(Varset, set.list_to_set(TypeVars), Varset0),
             MaybeUserTypes = yes(user_type_info(Types, 
@@ -501,7 +507,7 @@ parse_user_annotated_datastruct_term(Term, Datastruct) :-
     VarTerm = term.variable(GenericVar),
     term.coerce_var(GenericVar, ProgVar),
     get_list_term_arguments(TypesTerm, TypeTermsList),
-    parse_types(TypeTermsList, ok(Types)),
+    parse_types(TypeTermsList, ok1(Types)),
     list.map(mer_type_to_typesel, Types, Selector),
     Datastruct = selected_cel(ProgVar, Selector).
 

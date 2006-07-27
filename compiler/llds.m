@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: llds.m.
 % Main authors: conway, fjh.
-
+%
 % LLDS - The Low-Level Data Structure.
-
+%
 % This module defines the LLDS data structure itself.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.llds.
@@ -160,8 +160,10 @@
 
 :- type comp_gen_c_module
     --->    comp_gen_c_module(
-                string,                 % The name of this C module.
-                list(c_procedure)       % The code.
+                cgcm_name               :: string,
+                                        % The name of this C module.
+                cgcm_procs              :: list(c_procedure)
+                                        % The code.
             ).
 
 :- type c_procedure
@@ -180,13 +182,14 @@
                                         % Proc_label of this procedure.
                 cproc_label_nums        :: counter,
                                         % Source for new label numbers.
-                cproc_may_alter_rtti    :: may_alter_rtti
+                cproc_may_alter_rtti    :: may_alter_rtti,
                                         % The compiler is allowed to perform
                                         % optimizations on this c_procedure
                                         % that could alter RTTI information
                                         % (e.g. the set of variables live at
                                         % a label) only if this field is set
                                         % to `may_alter_rtti'.
+                cproc_c_global_vars     :: set(string)
             ).
 
 :- type may_alter_rtti
@@ -824,6 +827,11 @@
             % A word in the heap, in the det stack or in the nondet stack.
             % The rval should have originally come from a mem_addr rval.
 
+    ;       global_var_ref(c_global_var_ref)
+            % A reference to the value of the C global variable with the given
+            % name. At least for now, the global variable's type must be
+            % MR_Word.
+
     % Pseudo-values.
 
     ;       lvar(prog_var).
@@ -862,6 +870,9 @@
     ;       framevar_ref(rval)          % Stack slot number.
     ;       heap_ref(rval, int, rval).  % The cell pointer, the tag to
                                         % subtract, and the field number.
+
+:- type c_global_var_ref
+    --->    env_var_ref(string).
 
 :- type rval_const
     --->    true
@@ -1133,6 +1144,7 @@ lval_type(field(_, _, _), word).
 lval_type(lvar(_), _) :-
     unexpected(this_file, "lvar unexpected in llds.lval_type").
 lval_type(mem_ref(_), word).
+lval_type(global_var_ref(_), word).
 
 rval_type(lval(Lval), Type) :-
     lval_type(Lval, Type).

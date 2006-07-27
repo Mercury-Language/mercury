@@ -230,13 +230,13 @@ process_goal_expr(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI) :-
         process_unify(RHS, NonLocals, GoalInfo, Var, Mode, Unif, Context,
             GoalExpr, !HI)
     ;
-        GoalExpr0 = call(_, _, _, _, _, _),
+        GoalExpr0 = plain_call(_, _, _, _, _, _),
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = generic_call(_, _, _, _),
         GoalExpr = GoalExpr0
     ;
-        GoalExpr0 = foreign_proc(_, _, _, _, _, _),
+        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
         GoalExpr = GoalExpr0
     ;
         GoalExpr0 = conj(ConjType, Goals0),
@@ -261,9 +261,9 @@ process_goal_expr(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI) :-
         process_goal(NonLocals, SubGoal0, SubGoal, !HI),
         GoalExpr = scope(Reason, SubGoal)
     ;
-        GoalExpr0 = not(SubGoal0),
+        GoalExpr0 = negation(SubGoal0),
         process_goal(NonLocals, SubGoal0, SubGoal, !HI),
-        GoalExpr = not(SubGoal)
+        GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = if_then_else(Vs, Cond0, Then0, Else0),
         process_goal(NonLocals, Cond0, Cond, !HI),

@@ -54,7 +54,7 @@
 :- import_module ll_backend.liveness.
 :- import_module ll_backend.llds.
 :- import_module ll_backend.stack_opt.
-:- import_module ll_backend.trace.
+:- import_module ll_backend.trace_gen.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
@@ -78,7 +78,7 @@ allocate_stack_slots_in_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
         eff_trace_level_needs_input_vars(PredInfo, !.ProcInfo, TraceLevel)
             = yes
     ->
-        trace.fail_vars(ModuleInfo, !.ProcInfo, FailVars)
+        trace_fail_vars(ModuleInfo, !.ProcInfo, FailVars)
     ;
         set.init(FailVars)
     ),
@@ -96,8 +96,8 @@ allocate_stack_slots_in_proc(PredId, _ProcId, ModuleInfo, !ProcInfo, !IO) :-
     proc_info_set_goal(Goal, !ProcInfo),
     SimpleStackAlloc = stack_alloc(LiveSets0),
 
-    trace.do_we_need_maxfr_slot(Globals, PredInfo, !ProcInfo),
-    trace.reserved_slots(ModuleInfo, PredInfo, !.ProcInfo, Globals,
+    do_we_need_maxfr_slot(Globals, PredInfo, !ProcInfo),
+    trace_reserved_slots(ModuleInfo, PredInfo, !.ProcInfo, Globals,
         NumReservedSlots, MaybeReservedVarInfo),
     (
         MaybeReservedVarInfo = yes(ResVar - _),

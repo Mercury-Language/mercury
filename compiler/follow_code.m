@@ -127,7 +127,7 @@ move_follow_code_in_goal_2(conj(ConjType, Goals0), conj(ConjType, Goals),
     ).
 move_follow_code_in_goal_2(disj(Goals0), disj(Goals), Flags, !R) :-
     move_follow_code_in_independent_goals(Goals0, Goals, Flags, !R).
-move_follow_code_in_goal_2(not(Goal0), not(Goal), Flags, !R) :-
+move_follow_code_in_goal_2(negation(Goal0), negation(Goal), Flags, !R) :-
     move_follow_code_in_goal(Goal0, Goal, Flags, !R).
 move_follow_code_in_goal_2(switch(Var, Det, Cases0),
         switch(Var, Det, Cases), Flags, !R) :-
@@ -141,9 +141,10 @@ move_follow_code_in_goal_2(scope(Remove, Goal0), scope(Remove, Goal),
         Flags, !R) :-
     move_follow_code_in_goal(Goal0, Goal, Flags, !R).
 move_follow_code_in_goal_2(Goal @ generic_call(_, _, _, _), Goal, _, !R).
-move_follow_code_in_goal_2(Goal @ call(_, _, _, _, _, _), Goal, _, !R).
+move_follow_code_in_goal_2(Goal @ plain_call(_, _, _, _, _, _), Goal, _, !R).
 move_follow_code_in_goal_2(Goal @ unify(_, _, _, _, _), Goal, _, !R).
-move_follow_code_in_goal_2(Goal @ foreign_proc(_, _, _, _, _, _), Goal, _, !R).
+move_follow_code_in_goal_2(Goal @ call_foreign_proc(_, _, _, _, _, _, _), Goal,
+        _, !R).
 move_follow_code_in_goal_2(shorthand(_), _, _, _, _) :-
     % These should have been expanded out by now.
     unexpected(this_file, "move_follow_code_in_goal_2: unexpected shorthand").
@@ -309,7 +310,7 @@ check_follow_code_detism([_ - GoalInfo | Goals], Detism0) :-
 
 move_follow_code_is_builtin(unify(_, _, _, Unification, _) - _GoalInfo) :-
     Unification \= complicated_unify(_, _, _).
-move_follow_code_is_builtin(call(_, _, _, Builtin, _, _) - _GoalInfo) :-
+move_follow_code_is_builtin(plain_call(_, _, _, Builtin, _, _) - _GoalInfo) :-
     Builtin = inline_builtin.
 
 %-----------------------------------------------------------------------------%

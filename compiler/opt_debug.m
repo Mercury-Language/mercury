@@ -273,6 +273,8 @@ dump_lval(temp(Type, Num)) =
     "temp_" ++ dump_reg(Type, Num).
 dump_lval(mem_ref(R)) =
     "mem_ref(" ++ dump_rval(R) ++ ")".
+dump_lval(global_var_ref(env_var_ref(VarName))) =
+    "global_var_ref(env_var_ref(" ++ VarName ++ "))".
 
 dump_rval(lval(Lval)) =
     dump_lval(Lval).

@@ -127,11 +127,11 @@ forward_use_in_composite_goal(VarTypes, !Goal, !InstantiatedVars,
             !InstantiatedVars, !DeadVars),
         GoalExpr = disj(Disj)
     ;
-        GoalExpr0 = not(Goal0)
+        GoalExpr0 = negation(Goal0)
     -> 
         forward_use_in_goal(VarTypes, Goal0, Goal, 
             !InstantiatedVars, !DeadVars),
-        GoalExpr = not(Goal)
+        GoalExpr = negation(Goal)
     ;
         GoalExpr0 = scope(A, Goal0)
     ->
@@ -147,8 +147,7 @@ forward_use_in_composite_goal(VarTypes, !Goal, !InstantiatedVars,
             !InstantiatedVars, !DeadVars),
         forward_use_in_goal(VarTypes, Then0, Then, 
             !InstantiatedVars, !DeadVars),
-        forward_use_in_goal(VarTypes, Else0, Else, Inst0, Inst1, 
-            Dead0, Dead1),
+        forward_use_in_goal(VarTypes, Else0, Else, Inst0, Inst1, Dead0, Dead1),
         set.union(Inst1, !InstantiatedVars), 
         set.union(Dead1, !DeadVars), 
         GoalExpr = if_then_else(V, Cond, Then, Else)

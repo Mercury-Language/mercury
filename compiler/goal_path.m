@@ -153,9 +153,9 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, Goal0, Goal) :-
         fill_switch_slots(Path0, 0, NumCases, SlotInfo, Cases0, Cases),
         Goal = switch(Var, CanFail, Cases)
     ;
-        Goal0 = not(SubGoal0),
+        Goal0 = negation(SubGoal0),
         fill_goal_slots([neg | Path0], SlotInfo, SubGoal0, SubGoal),
-        Goal = not(SubGoal)
+        Goal = negation(SubGoal)
     ;
         Goal0 = scope(Reason, SubGoal0),
         SubGoal0 = _ - InnerInfo,
@@ -185,13 +185,13 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, Goal0, Goal) :-
         ),
         Goal = unify(LHS, RHS,  Mode, Kind, Context)
     ;
-        Goal0 = call(_, _, _, _, _, _),
+        Goal0 = plain_call(_, _, _, _, _, _),
         Goal = Goal0
     ;
         Goal0 = generic_call(_, _, _, _),
         Goal = Goal0
     ;
-        Goal0 = foreign_proc(_, _, _, _, _, _),
+        Goal0 = call_foreign_proc(_, _, _, _, _, _, _),
         Goal = Goal0
     ;
         Goal0 = shorthand(_),

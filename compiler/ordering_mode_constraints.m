@@ -365,13 +365,13 @@ goal_expr_reordering(PredId, VarMap, Bindings, conj(ConjType, Goals0),
     %
 goal_expr_reordering(_PredId, _VarMap, _Bindings, GoalExpr, GoalExpr) :-
     (
-        GoalExpr = call(_, _, _, _, _, _)
+        GoalExpr = plain_call(_, _, _, _, _, _)
     ;
         GoalExpr = generic_call(_, _, _, _)
     ;
         GoalExpr = unify(_, _, _, _, _)
     ;
-        GoalExpr = foreign_proc(_, _, _, _, _, _)
+        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
     ;
         GoalExpr = shorthand(_),
         unexpected(this_file, "shorthand goal")
@@ -383,7 +383,8 @@ goal_expr_reordering(_PredId, _VarMap, _Bindings, GoalExpr, GoalExpr) :-
 goal_expr_reordering(PredId, VarMap, Bindings, disj(Goals0), disj(Goals)) :-
     list.map(goal_reordering(PredId, VarMap, Bindings), Goals0, Goals).
 
-goal_expr_reordering(PredId, VarMap, Bindings, not(Goal0), not(Goal)) :-
+goal_expr_reordering(PredId, VarMap, Bindings,
+        negation(Goal0), negation(Goal)) :-
     goal_reordering(PredId, VarMap, Bindings, Goal0, Goal).
 
 goal_expr_reordering(PredId, VarMap, Bindings, scope(Reason, Goal0),
@@ -779,13 +780,13 @@ dump_goal_expr_goal_paths(_Indent, GoalExpr, !IO) :-
     % Do nothing for atomic goals.
     %
     (
-        GoalExpr = call(_, _, _, _, _, _)
+        GoalExpr = plain_call(_, _, _, _, _, _)
     ;
         GoalExpr = generic_call(_, _, _, _)
     ;
         GoalExpr = unify(_, _, _, _, _)
     ;
-        GoalExpr = foreign_proc(_, _, _, _, _, _)
+        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
     ).
 
 dump_goal_expr_goal_paths(_Indent, GoalExpr, !IO) :-
@@ -806,7 +807,7 @@ dump_goal_expr_goal_paths(Indent, GoalExpr, !IO) :-
     list.foldl(dump_goal_goal_paths(Indent), Goals, !IO).
 
 dump_goal_expr_goal_paths(Indent, GoalExpr, !IO) :-
-    GoalExpr = not(Goal),
+    GoalExpr = negation(Goal),
     dump_goal_goal_paths(Indent, Goal, !IO).
 
 dump_goal_expr_goal_paths(Indent, GoalExpr, !IO) :-

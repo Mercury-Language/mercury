@@ -45,7 +45,10 @@
 %   % Does not modify the io.state.
 % :- pred term_io.current_ops(list(op_details)::out, io::di, io::uo) is det.
 
-:- type read_term(T) ---> eof ; error(string, int) ; term(varset(T), term(T)).
+:- type read_term(T)
+    --->    eof
+    ;       error(string, int)
+    ;       term(varset(T), term(T)).
 
 :- type read_term   == read_term(generic).
 

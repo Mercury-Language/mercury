@@ -214,7 +214,7 @@ goal_can_throw_2(Goal, _GoalInfo, Result, !ModuleInfo, !IO) :-
     ),
     goals_can_throw(Goals, Result, !ModuleInfo, !IO).
 goal_can_throw_2(Goal, _GoalInfo, Result, !ModuleInfo, !IO) :-
-    Goal = call(PredId, ProcId, _, _, _, _),
+    Goal = plain_call(PredId, ProcId, _, _, _, _),
     lookup_exception_analysis_result(proc(PredId, ProcId), Status,
         !ModuleInfo, !IO),
     ( Status = will_not_throw ->
@@ -239,13 +239,13 @@ goal_can_throw_2(Goal, _GoalInfo, Result, !ModuleInfo, !IO) :-
     ).
 goal_can_throw_2(OuterGoal, _, Result, !ModuleInfo, !IO) :-
     (
-        OuterGoal = not(InnerGoal)
+        OuterGoal = negation(InnerGoal)
     ;
         OuterGoal = scope(_, InnerGoal)
     ),
     goal_can_throw(InnerGoal, Result, !ModuleInfo, !IO).
 goal_can_throw_2(Goal, _, Result, !ModuleInfo, !IO) :-
-    Goal = foreign_proc(Attributes, _, _, _, _, _),
+    Goal = call_foreign_proc(Attributes, _, _, _, _, _, _),
     ExceptionStatus = may_throw_exception(Attributes),
     (
         (
@@ -357,7 +357,7 @@ goal_cannot_loop_expr(MaybeModuleInfo, switch(_Var, _Category, Cases)) :-
             Case = case(_, Goal),
             goal_cannot_loop_aux(MaybeModuleInfo, Goal)
         ).
-goal_cannot_loop_expr(MaybeModuleInfo, not(Goal)) :-
+goal_cannot_loop_expr(MaybeModuleInfo, negation(Goal)) :-
     goal_cannot_loop_aux(MaybeModuleInfo, Goal).
 goal_cannot_loop_expr(MaybeModuleInfo, scope(_, Goal)) :-
     goal_cannot_loop_aux(MaybeModuleInfo, Goal).
@@ -367,7 +367,7 @@ goal_cannot_loop_expr(MaybeModuleInfo, Goal) :-
     goal_cannot_loop_aux(MaybeModuleInfo, Then),
     goal_cannot_loop_aux(MaybeModuleInfo, Else).
 goal_cannot_loop_expr(_MaybeModuleInfo, Goal) :-
-    Goal = foreign_proc(Attributes, _, _, _, _, _),
+    Goal = call_foreign_proc(Attributes, _, _, _, _, _, _),
     (
         terminates(Attributes) = terminates
     ;
@@ -375,7 +375,7 @@ goal_cannot_loop_expr(_MaybeModuleInfo, Goal) :-
         may_call_mercury(Attributes) = will_not_call_mercury
     ).
 goal_cannot_loop_expr(MaybeModuleInfo, Goal) :-
-    Goal = call(PredId, ProcId, _, _, _, _),
+    Goal = plain_call(PredId, ProcId, _, _, _, _),
     MaybeModuleInfo = yes(ModuleInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     (
@@ -424,7 +424,7 @@ goal_cannot_throw_expr(MaybeModuleInfo, disj(Goals)) :-
 goal_cannot_throw_expr(MaybeModuleInfo, switch(_Var, _Category, Cases)) :-
     list.member(case(_, Goal), Cases) =>
         goal_cannot_throw_aux(MaybeModuleInfo, Goal).
-goal_cannot_throw_expr(MaybeModuleInfo, not(Goal)) :-
+goal_cannot_throw_expr(MaybeModuleInfo, negation(Goal)) :-
     goal_cannot_throw_aux(MaybeModuleInfo, Goal).
 goal_cannot_throw_expr(MaybeModuleInfo, scope(_, Goal)) :-
     goal_cannot_throw_aux(MaybeModuleInfo, Goal).
@@ -434,7 +434,7 @@ goal_cannot_throw_expr(MaybeModuleInfo, Goal) :-
     goal_cannot_throw_aux(MaybeModuleInfo, Then),
     goal_cannot_throw_aux(MaybeModuleInfo, Else).
 goal_cannot_throw_expr(_MaybeModuleInfo, Goal) :-
-    Goal = foreign_proc(Attributes, _, _, _, _, _),
+    Goal = call_foreign_proc(Attributes, _, _, _, _, _, _),
     ExceptionStatus = may_throw_exception(Attributes),
     (
         ExceptionStatus = will_not_throw_exception
@@ -443,7 +443,7 @@ goal_cannot_throw_expr(_MaybeModuleInfo, Goal) :-
         may_call_mercury(Attributes) = will_not_call_mercury
     ).
 goal_cannot_loop_expr(MaybeModuleInfo, Goal) :-
-    Goal = call(PredId, ProcId, _, _, _, _),
+    Goal = plain_call(PredId, ProcId, _, _, _, _),
     MaybeModuleInfo = yes(ModuleInfo),
     module_info_get_exception_info(ModuleInfo, ExceptionInfo),
     map.search(ExceptionInfo, proc(PredId, ProcId), ProcExceptionInfo),
@@ -467,9 +467,9 @@ goal_is_flat(Goal - _GoalInfo) = goal_is_flat_expr(Goal).
 :- func goal_is_flat_expr(hlds_goal_expr) = bool.
 
 goal_is_flat_expr(generic_call(_, _, _, _)) = yes.
-goal_is_flat_expr(call(_, _, _, _, _, _)) = yes.
+goal_is_flat_expr(plain_call(_, _, _, _, _, _)) = yes.
 goal_is_flat_expr(unify(_, _, _, _, _)) = yes.
-goal_is_flat_expr(foreign_proc(_, _, _, _, _, _)) = yes.
+goal_is_flat_expr(call_foreign_proc(_, _, _, _, _, _, _)) = yes.
 goal_is_flat_expr(conj(ConjType, Goals)) = IsFlat :-
     (
         ConjType = parallel_conj,
@@ -481,7 +481,7 @@ goal_is_flat_expr(conj(ConjType, Goals)) = IsFlat :-
 goal_is_flat_expr(disj(_)) = no.
 goal_is_flat_expr(switch(_, _, _)) = no.
 goal_is_flat_expr(if_then_else(_, _, _, _)) = no.
-goal_is_flat_expr(not(Goal)) = goal_is_flat(Goal).
+goal_is_flat_expr(negation(Goal)) = goal_is_flat(Goal).
 goal_is_flat_expr(scope(_, Goal)) = goal_is_flat(Goal).
 goal_is_flat_expr(shorthand(_)) = no.
 
@@ -511,7 +511,7 @@ goal_may_allocate_heap(Goal - _GoalInfo, May) :-
 :- pred goal_may_allocate_heap_2(hlds_goal_expr::in, bool::out) is det.
 
 goal_may_allocate_heap_2(generic_call(_, _, _, _), yes).
-goal_may_allocate_heap_2(call(_, _, _, Builtin, _, _), May) :-
+goal_may_allocate_heap_2(plain_call(_, _, _, Builtin, _, _), May) :-
     ( Builtin = inline_builtin ->
         May = no
     ;
@@ -531,10 +531,10 @@ goal_may_allocate_heap_2(unify(_, _, _, Unification, _), May) :-
     % expand to incr_hp and variants thereof.
     % XXX You could make it an attribute of the foreign code and
     % trust the programmer.
-goal_may_allocate_heap_2(foreign_proc(_, _, _, _, _, _), yes).
+goal_may_allocate_heap_2(call_foreign_proc(_, _, _, _, _, _, _), yes).
 goal_may_allocate_heap_2(scope(_, Goal), May) :-
     goal_may_allocate_heap(Goal, May).
-goal_may_allocate_heap_2(not(Goal), May) :-
+goal_may_allocate_heap_2(negation(Goal), May) :-
     goal_may_allocate_heap(Goal, May).
 goal_may_allocate_heap_2(conj(ConjType, Goals), May) :-
     (
@@ -598,14 +598,14 @@ cannot_stack_flush(GoalExpr - _) :-
 
 cannot_stack_flush_2(unify(_, _, _, Unify, _)) :-
     Unify \= complicated_unify(_, _, _).
-cannot_stack_flush_2(call(_, _, _, BuiltinState, _, _)) :-
+cannot_stack_flush_2(plain_call(_, _, _, BuiltinState, _, _)) :-
     BuiltinState = inline_builtin.
 cannot_stack_flush_2(conj(ConjType, Goals)) :-
     ConjType = plain_conj,
     cannot_stack_flush_goals(Goals).
 cannot_stack_flush_2(switch(_, _, Cases)) :-
     cannot_stack_flush_cases(Cases).
-cannot_stack_flush_2(not(unify(_, _, _, Unify, _) - _)) :-
+cannot_stack_flush_2(negation(unify(_, _, _, Unify, _) - _)) :-
     Unify \= complicated_unify(_, _, _).
 
 :- pred cannot_stack_flush_goals(list(hlds_goal)::in) is semidet.
@@ -647,7 +647,7 @@ cannot_fail_before_stack_flush_conj([Goal | Goals]) :-
     Goal = GoalExpr - GoalInfo,
     (
         (
-            GoalExpr = call(_, _, _, BuiltinState, _, _),
+            GoalExpr = plain_call(_, _, _, BuiltinState, _, _),
             BuiltinState \= inline_builtin
         ;
             GoalExpr = generic_call(_, _, _, _)
@@ -671,14 +671,14 @@ count_recursive_calls(Goal - _, PredId, ProcId, Min, Max) :-
 :- pred count_recursive_calls_2(hlds_goal_expr::in, pred_id::in, proc_id::in,
     int::out, int::out) is det.
 
-count_recursive_calls_2(not(Goal), PredId, ProcId, Min, Max) :-
+count_recursive_calls_2(negation(Goal), PredId, ProcId, Min, Max) :-
     count_recursive_calls(Goal, PredId, ProcId, Min, Max).
 count_recursive_calls_2(scope(_, Goal), PredId, ProcId, Min, Max) :-
     count_recursive_calls(Goal, PredId, ProcId, Min, Max).
 count_recursive_calls_2(unify(_, _, _, _, _), _, _, 0, 0).
 count_recursive_calls_2(generic_call(_, _, _, _), _, _, 0, 0).
-count_recursive_calls_2(foreign_proc(_, _, _, _, _, _), _, _, 0, 0).
-count_recursive_calls_2(call(CallPredId, CallProcId, _, _, _, _),
+count_recursive_calls_2(call_foreign_proc(_, _, _, _, _, _, _), _, _, 0, 0).
+count_recursive_calls_2(plain_call(CallPredId, CallProcId, _, _, _, _),
         PredId, ProcId, Count, Count) :-
     (
         PredId = CallPredId,

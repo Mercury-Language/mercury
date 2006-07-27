@@ -285,29 +285,27 @@ parse_field_list(Term, MaybeFieldNames) :-
         (
             parse_qualified_term(FieldNameTerm, FieldNameTerm,
                 "field name", Result),
-            Result = ok(FieldName, Args)
+            Result = ok2(FieldName, Args)
         ->
-            parse_field_list(OtherFieldNamesTerm,
-                MaybeFieldNames1),
+            parse_field_list(OtherFieldNamesTerm, MaybeFieldNames1),
             (
-                MaybeFieldNames1 = error(_, _),
+                MaybeFieldNames1 = error1(_),
                 MaybeFieldNames = MaybeFieldNames1
             ;
-                MaybeFieldNames1 = ok(FieldNames1),
-                MaybeFieldNames =
-                    ok([FieldName - Args | FieldNames1])
+                MaybeFieldNames1 = ok1(FieldNames1),
+                MaybeFieldNames = ok1([FieldName - Args | FieldNames1])
             )
         ;
-            MaybeFieldNames = error("expected field name", FieldNameTerm)
+            MaybeFieldNames = error1(["expected field name" - FieldNameTerm])
         )
     ;
         (
             parse_qualified_term(Term, Term, "field name", Result),
-            Result = ok(FieldName, Args)
+            Result = ok2(FieldName, Args)
         ->
-            MaybeFieldNames = ok([FieldName - Args])
+            MaybeFieldNames = ok1([FieldName - Args])
         ;
-            MaybeFieldNames = error("expected field name", Term)
+            MaybeFieldNames = error1(["expected field name" - Term])
         )
     ).
 

@@ -31,26 +31,45 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
+:- import_module assoc_list.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module term.
+:- import_module varset.
 
 %-----------------------------------------------------------------------------%
 
-:- type maybe2(T1, T2)
-    --->    error(string, term)
-    ;       ok(T1, T2).
+:- type maybe1(T1) ==  maybe1(T1, generic).
+:- type maybe1(T1, U)
+    --->    error1(assoc_list(string, term(U)))
+    ;       ok1(T1).
 
-:- type maybe3(T1, T2, T3)
-    --->    error(string, term)
-    ;       ok(T1, T2, T3).
+:- type maybe2(T1, T2) ==  maybe2(T1, T2, generic).
+:- type maybe2(T1, T2, U)
+    --->    error2(assoc_list(string, term(U)))
+    ;       ok2(T1, T2).
 
-:- type maybe1(T)   ==  maybe1(T, generic).
-:- type maybe1(T, U)
-    --->    error(string, term(U))
-    ;       ok(T).
+:- type maybe3(T1, T2, T3) ==  maybe3(T1, T2, T3, generic).
+:- type maybe3(T1, T2, T3, U)
+    --->    error3(assoc_list(string, term(U)))
+    ;       ok3(T1, T2, T3).
+
+:- type maybe4(T1, T2, T3, T4) ==  maybe4(T1, T2, T3, T4, generic).
+:- type maybe4(T1, T2, T3, T4, U)
+    --->    error4(assoc_list(string, term(U)))
+    ;       ok4(T1, T2, T3, T4).
+
+:- func get_any_errors1(maybe1(T1, U)) = assoc_list(string, term(U)).
+:- func get_any_errors2(maybe2(T1, T2, U)) = assoc_list(string, term(U)).
+:- func get_any_errors3(maybe3(T1, T2, T3, U)) = assoc_list(string, term(U)).
+:- func get_any_errors4(maybe4(T1, T2, T3, T4, U))
+    = assoc_list(string, term(U)).
+
+:- pred report_string_term_error(term.context::in, varset(U)::in,
+    pair(string, term(U))::in, io::di, io::uo) is det.
 
 :- type maybe_functor    ==  maybe_functor(generic).
 :- type maybe_functor(T) ==  maybe2(sym_name, list(term(T))).
@@ -75,15 +94,15 @@
 
 :- pred parse_list_of_vars(term(T)::in, list(var(T))::out) is semidet.
 
-    % Parse a list of quantified variables, splitting it into
-    % state variables and ordinary logic variables, respectively.
-    %
-:- pred parse_quantifier_vars(term(T)::in, list(var(T))::out,
-    list(var(T))::out) is semidet.
-
     % Parse a list of quantified variables.
     %
-:- pred parse_vars(term(T)::in, list(var(T))::out) is semidet.
+:- pred parse_vars(term(T)::in, maybe1(list(var(T)), T)::out) is det.
+
+    % Parse a list of quantified variables, splitting it into
+    % ordinary logic variables and state variables respectively.
+    %
+:- pred parse_quantifier_vars(term(T)::in,
+    maybe2(list(var(T)), list(var(T)), T)::out) is det.
 
     % parse_vars_and_state_vars(Term, OrdinaryVars, DotStateVars,
     %   ColonStateVars):
@@ -93,8 +112,8 @@
     % variables, state variables listed as !.X, and state variables
     % listed as !:X.
     %
-:- pred parse_vars_and_state_vars(term(T)::in, list(var(T))::out,
-    list(var(T))::out, list(var(T))::out) is semidet.
+:- pred parse_vars_and_state_vars(term(T)::in,
+    maybe3(list(var(T)), list(var(T)), list(var(T)), T)::out) is det.
 
 :- pred parse_name_and_arity(module_name::in, term(_T)::in,
     sym_name::out, arity::out) is semidet.
@@ -175,6 +194,8 @@
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module parse_tree.mercury_to_mercury.
+:- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_io.
 :- import_module parse_tree.prog_io_goal.
 :- import_module parse_tree.prog_out.
@@ -185,14 +206,33 @@
 :- import_module string.
 :- import_module term.
 
-add_context(error(M, T), _, error(M, T)).
-add_context(ok(Item), Context, ok(Item, Context)).
+get_any_errors1(ok1(_)) = [].
+get_any_errors1(error1(Errors)) = Errors.
+
+get_any_errors2(ok2(_, _)) = [].
+get_any_errors2(error2(Errors)) = Errors.
+
+get_any_errors3(ok3(_, _, _)) = [].
+get_any_errors3(error3(Errors)) = Errors.
+
+get_any_errors4(ok4(_, _, _, _)) = [].
+get_any_errors4(error4(Errors)) = Errors.
+
+report_string_term_error(Context, VarSet, Msg - ErrorTerm, !IO) :-
+    TermStr = mercury_term_to_string(ErrorTerm, VarSet, no),
+    Pieces = [words("Error:"), words(Msg), suffix(":"),
+        fixed("`" ++ TermStr ++ "'.")],
+    write_error_pieces(Context, 0, Pieces, !IO),
+    io.set_exit_status(1, !IO).
+
+add_context(error1(Errs), _, error2(Errs)).
+add_context(ok1(Item), Context, ok2(Item, Context)).
 
 parse_name_and_arity(ModuleName, PredAndArityTerm, SymName, Arity) :-
     PredAndArityTerm = term.functor(term.atom("/"),
         [PredNameTerm, ArityTerm], _),
     parse_implicitly_qualified_term(ModuleName,
-        PredNameTerm, PredNameTerm, "", ok(SymName, [])),
+        PredNameTerm, PredNameTerm, "", ok2(SymName, [])),
     ArityTerm = term.functor(term.integer(Arity), [], _).
 
 parse_name_and_arity(PredAndArityTerm, SymName, Arity) :-
@@ -215,7 +255,7 @@ parse_pred_or_func_name_and_arity(PorFPredAndArityTerm,
 
 parse_pred_or_func_and_args(Term, PredOrFunc, SymName, ArgTerms) :-
     parse_pred_or_func_and_args(no, Term, Term, "",
-        ok(SymName, ArgTerms0 - MaybeRetTerm)),
+        ok2(SymName, ArgTerms0 - MaybeRetTerm)),
     (
         MaybeRetTerm = yes(RetTerm),
         PredOrFunc = function,
@@ -247,18 +287,12 @@ parse_pred_or_func_and_args(MaybeModuleName, PredAndArgsTerm, ErrorTerm,
         parse_qualified_term(FunctorTerm, ErrorTerm, Msg, Result)
     ),
     (
-        Result = ok(SymName, Args),
-        PredAndArgsResult = ok(SymName, Args - MaybeFuncResult)
+        Result = ok2(SymName, Args),
+        PredAndArgsResult = ok2(SymName, Args - MaybeFuncResult)
     ;
-        Result = error(ErrorMsg, Term),
-        PredAndArgsResult = error(ErrorMsg, Term)
+        Result = error2(Errors),
+        PredAndArgsResult = error2(Errors)
     ).
-
-parse_list_of_vars(term.functor(term.atom("[]"), [], _), []).
-parse_list_of_vars(term.functor(term.atom("[|]"), [Head, Tail], _),
-        [V | Vs]) :-
-    Head = term.variable(V),
-    parse_list_of_vars(Tail, Vs).
 
     % XXX kind inference: We currently give all types kind `star'.
     % This will be different when we have a kind system.
@@ -268,49 +302,49 @@ parse_type(Term, Result) :-
         Term = term.variable(Var0)
     ->
         term.coerce_var(Var0, Var),
-        Result = ok(variable(Var, star))
+        Result = ok1(variable(Var, star))
     ;
         parse_builtin_type(Term, BuiltinType)
     ->
-        Result = ok(builtin(BuiltinType))
+        Result = ok1(builtin(BuiltinType))
     ;
         parse_higher_order_type(Term, HOArgs, MaybeRet, Purity, EvalMethod)
     ->
-        Result = ok(higher_order(HOArgs, MaybeRet, Purity, EvalMethod))
+        Result = ok1(higher_order(HOArgs, MaybeRet, Purity, EvalMethod))
     ;
         Term = term.functor(term.atom("{}"), Args, _)
     ->
         parse_types(Args, ArgsResult),
         (
-            ArgsResult = ok(ArgTypes),
-            Result = ok(tuple(ArgTypes, star))
+            ArgsResult = ok1(ArgTypes),
+            Result = ok1(tuple(ArgTypes, star))
         ;
-            ArgsResult = error(Msg, ErrorTerm),
-            Result = error(Msg, ErrorTerm)
+            ArgsResult = error1(Errors),
+            Result = error1(Errors)
         )
     ;
         % We don't support apply/N types yet, so we just detect them
         % and report an error message.
         Term = term.functor(term.atom(""), _, _)
     ->
-        Result = error("ill-formed type", Term)
+        Result = error1(["ill-formed type" - Term])
     ;
         % We don't support kind annotations yet, and we don't report
         % an error either. Perhaps we should?
         parse_qualified_term(Term, Term, "type", NameResult),
         (
-            NameResult = ok(SymName, ArgTerms),
+            NameResult = ok2(SymName, ArgTerms),
             parse_types(ArgTerms, ArgsResult),
             (
-                ArgsResult = ok(ArgTypes),
-                Result = ok(defined(SymName, ArgTypes, star))
+                ArgsResult = ok1(ArgTypes),
+                Result = ok1(defined(SymName, ArgTypes, star))
             ;
-                ArgsResult = error(Msg, ErrorTerm),
-                Result = error(Msg, ErrorTerm)
+                ArgsResult = error1(Errors),
+                Result = error1(Errors)
             )
         ;
-            NameResult = error(Msg, ErrorTerm),
-            Result = error(Msg, ErrorTerm)
+            NameResult = error2(Errors),
+            Result = error1(Errors)
         )
     ).
 
@@ -320,16 +354,16 @@ parse_types(Terms, Result) :-
 :- pred parse_types_2(list(term)::in, list(mer_type)::in,
     maybe1(list(mer_type))::out) is det.
 
-parse_types_2([], RevTypes, ok(Types)) :-
+parse_types_2([], RevTypes, ok1(Types)) :-
     list.reverse(RevTypes, Types).
 parse_types_2([Term | Terms], RevTypes, Result) :-
     parse_type(Term, Result0),
     (
-        Result0 = ok(Type),
+        Result0 = ok1(Type),
         parse_types_2(Terms, [Type | RevTypes], Result)
     ;
-        Result0 = error(Msg, ErrorTerm),
-        Result = error(Msg, ErrorTerm)
+        Result0 = error1(Errors),
+        Result = error1(Errors)
     ).
 
 :- pred parse_builtin_type(term::in, builtin_type::out) is semidet.
@@ -349,13 +383,13 @@ parse_higher_order_type(Term0, ArgTypes, MaybeRet, Purity, lambda_normal) :-
     parse_purity_annotation(Term0, Purity, Term1),
     ( Term1 = term.functor(term.atom("="), [FuncAndArgs, Ret], _) ->
         FuncAndArgs = term.functor(term.atom("func"), Args, _),
-        parse_type(Ret, ok(RetType)),
+        parse_type(Ret, ok1(RetType)),
         MaybeRet = yes(RetType)
     ;
         Term1 = term.functor(term.atom("pred"), Args, _),
         MaybeRet = no
     ),
-    parse_types(Args, ok(ArgTypes)).
+    parse_types(Args, ok1(ArgTypes)).
 
 parse_purity_annotation(Term0, Purity, Term) :-
     (
@@ -490,7 +524,7 @@ convert_mode(AllowConstrainedInstVar, Term, Mode) :-
         Mode = (Inst -> Inst)
     ;
         parse_qualified_term(Term, Term, "mode definition", R),
-        R = ok(Name, Args), % should improve error reporting
+        R = ok2(Name, Args), % should improve error reporting
         convert_inst_list(AllowConstrainedInstVar, Args, ConvertedArgs),
         Mode = user_defined_mode(Name, ConvertedArgs)
     ).
@@ -564,7 +598,7 @@ convert_inst(AllowConstrainedInstVar, Term, Result) :-
             term.coerce_var(Var)), Inst)
     ;
         % Anything else must be a user-defined inst.
-        parse_qualified_term(Term, Term, "inst", ok(QualifiedName, Args1)),
+        parse_qualified_term(Term, Term, "inst", ok2(QualifiedName, Args1)),
         (
             mercury_public_builtin_module(BuiltinModule),
             sym_name_get_module_name(QualifiedName, unqualified(""),
@@ -659,7 +693,7 @@ convert_bound_inst_list(AllowConstrainedInstVar, [H0 | T0], [H | T]) :-
 convert_bound_inst(AllowConstrainedInstVar, InstTerm, functor(ConsId, Args)) :-
     InstTerm = term.functor(Functor, Args0, _),
     ( Functor = term.atom(_) ->
-        parse_qualified_term(InstTerm, InstTerm, "inst", ok(SymName, Args1)),
+        parse_qualified_term(InstTerm, InstTerm, "inst", ok2(SymName, Args1)),
         list.length(Args1, Arity),
         ConsId = cons(SymName, Arity)
     ;
@@ -706,7 +740,7 @@ parse_list(Parser, Term, Result) :-
     conjunction_to_list(Term, List),
     map_parser(Parser, List, Result).
 
-map_parser(_, [], ok([])).
+map_parser(_, [], ok1([])).
 map_parser(Parser, [X | Xs], Result) :-
     call(Parser, X, X_Result),
     map_parser(Parser, Xs, Xs_Result),
@@ -718,45 +752,122 @@ map_parser(Parser, [X | Xs], Result) :-
 :- pred combine_list_results(maybe1(T)::in, maybe1(list(T))::in,
     maybe1(list(T))::out) is det.
 
-combine_list_results(error(Msg, Term), _, error(Msg, Term)).
-combine_list_results(ok(_), error(Msg, Term), error(Msg, Term)).
-combine_list_results(ok(X), ok(Xs), ok([X | Xs])).
+combine_list_results(error1(ErrorsA), error1(ErrorsB),
+    error1(ErrorsA ++ ErrorsB)).
+combine_list_results(error1(Errors), ok1(_), error1(Errors)).
+combine_list_results(ok1(_), error1(Errors), error1(Errors)).
+combine_list_results(ok1(X), ok1(Xs), ok1([X | Xs])).
 
 %-----------------------------------------------------------------------------%
 
-parse_quantifier_vars(functor(atom("[]"),  [],     _), [],  []).
-parse_quantifier_vars(functor(atom("[|]"), [H, T], _), !:SVs, !:Vs) :-
-    parse_quantifier_vars(T, !:SVs, !:Vs),
-    (
-        H = functor(atom("!"), [variable(SV)], _),
-        !:SVs = [SV | !.SVs]
+parse_list_of_vars(term.functor(term.atom("[]"), [], _), []).
+parse_list_of_vars(term.functor(term.atom("[|]"), [Head, Tail], _),
+        [V | Vs]) :-
+    Head = term.variable(V),
+    parse_list_of_vars(Tail, Vs).
+
+parse_vars(Term, MaybeVars) :-
+    ( Term = functor(atom("[]"), [], _) ->
+        MaybeVars = ok1([])
+    ; Term = functor(atom("[|]"), [Head, Tail], _) ->
+        ( Head = variable(V) ->
+            parse_vars(Tail, MaybeVarsTail),
+            (
+                MaybeVarsTail = ok1(TailVars),
+                Vars = [V] ++ TailVars,
+                MaybeVars = ok1(Vars)
+            ;
+                MaybeVarsTail = error1(_),
+                MaybeVars = MaybeVarsTail
+            )
+        ;
+            Msg = "expected variable",
+            MaybeVars = error1([Msg - Head])
+        )
     ;
-        H = variable(V),
-        !:Vs = [V | !.Vs]
+        Msg = "expected list of variables",
+        MaybeVars = error1([Msg - Term])
     ).
 
-parse_vars(functor(atom("[]"),  [],     _), []).
-parse_vars(functor(atom("[|]"), [H, T], _), !:Vs) :-
-    parse_vars(T, !:Vs),
-    H = variable(V),
-    !:Vs = [V | !.Vs].
+parse_quantifier_vars(Term, MaybeQVars) :-
+    ( Term = functor(atom("[]"), [], _) ->
+        MaybeQVars = ok2([], [])
+    ; Term = functor(atom("[|]"), [Head, Tail], _) ->
+        (
+            (
+                Head = functor(atom("!"), [variable(SV)], _),
+                HeadVars = [],
+                HeadStateVars = [SV]
+            ;
+                Head = variable(V),
+                HeadVars = [V],
+                HeadStateVars = []
+            )
+        ->
+            parse_quantifier_vars(Tail, MaybeQVarsTail),
+            (
+                MaybeQVarsTail = ok2(TailVars, TailStateVars),
+                Vars = HeadVars ++ TailVars,
+                StateVars = HeadStateVars ++ TailStateVars,
+                MaybeQVars = ok2(Vars, StateVars)
+            ;
+                MaybeQVarsTail = error2(_),
+                MaybeQVars = MaybeQVarsTail
+            )
+        ;
+            Msg = "expected variable or state variable",
+            MaybeQVars = error2([Msg - Head])
+        )
+    ;
+        Msg = "expected list of variables and/or state variables",
+        MaybeQVars = error2([Msg - Term])
+    ).
 
-parse_vars_and_state_vars(functor(atom("[]"),  [],     _), [],   [],   []).
-parse_vars_and_state_vars(functor(atom("[|]"), [H, T], _), !:Os, !:Ds, !:Cs) :-
-    parse_vars_and_state_vars(T, !:Os, !:Ds, !:Cs),
-    (
-        H = functor(atom("!"), [variable(V)], _),
-        !:Ds = [V | !.Ds],
-        !:Cs = [V | !.Cs]
+parse_vars_and_state_vars(Term, MaybeVars) :-
+    ( Term = functor(atom("[]"), [], _) ->
+        MaybeVars = ok3([], [], [])
+    ; Term = functor(atom("[|]"), [Head, Tail], _) ->
+        (
+            (
+                Head = functor(atom("!"), [variable(SV)], _),
+                HeadVars = [],
+                HeadDotVars = [SV],
+                HeadColonVars = [SV]
+            ;
+                Head = functor(atom("!."), [variable(SV)], _),
+                HeadVars = [],
+                HeadDotVars = [SV],
+                HeadColonVars = []
+            ;
+                Head = functor(atom("!:"), [variable(SV)], _),
+                HeadVars = [],
+                HeadDotVars = [],
+                HeadColonVars = [SV]
+            ;
+                Head = variable(V),
+                HeadVars = [V],
+                HeadDotVars = [],
+                HeadColonVars = []
+            )
+        ->
+            parse_vars_and_state_vars(Tail, MaybeVarsTail),
+            (
+                MaybeVarsTail = ok3(TailVars, TailDotVars, TailColonVars),
+                Vars = HeadVars ++ TailVars,
+                DotVars = HeadDotVars ++ TailDotVars,
+                ColonVars = HeadColonVars ++ TailColonVars,
+                MaybeVars = ok3(Vars, DotVars, ColonVars)
+            ;
+                MaybeVarsTail = error3(_),
+                MaybeVars = MaybeVarsTail
+            )
+        ;
+            Msg = "expected variable or state variable",
+            MaybeVars = error3([Msg - Head])
+        )
     ;
-        H = functor(atom("!."), [variable(V)], _),
-        !:Ds = [V | !.Ds]
-    ;
-        H = functor(atom("!:"), [variable(V)], _),
-        !:Cs = [V | !.Cs]
-    ;
-        H = variable(V),
-        !:Os = [V | !.Os]
+        Msg = "expected list of variables and/or state variables",
+        MaybeVars = error3([Msg - Term])
     ).
 
 %-----------------------------------------------------------------------------%

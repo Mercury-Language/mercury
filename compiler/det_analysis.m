@@ -367,8 +367,9 @@ det_infer_goal(Goal0 - GoalInfo0, Goal - GoalInfo, InstMap0, !.SolnContext,
     % is in a single-solution context.
     (
         det_no_output_vars(NonLocalVars, InstMap0, InstmapDelta, DetInfo),
+        goal_info_get_purity(GoalInfo0, Purity),
         (
-            goal_info_is_impure(GoalInfo0)
+            Purity = purity_impure
         =>
             goal_info_has_feature(GoalInfo0, not_impure_for_determinism)
         )
@@ -547,11 +548,13 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
             DetInfo, Detism, GoalFailingContexts, !:Msgs),
         GoalExpr = switch(Var, SwitchCanFail, Cases)
     ;
-        GoalExpr0 = call(PredId, ProcId0, Args, Builtin, UnifyContext, Name),
+        GoalExpr0 = plain_call(PredId, ProcId0, Args, Builtin, UnifyContext,
+            Name),
         det_infer_call(PredId, ProcId0, ProcId, GoalInfo, SolnContext,
             RightFailingContexts, DetInfo,
             Detism, GoalFailingContexts, !:Msgs),
-        GoalExpr = call(PredId, ProcId, Args, Builtin, UnifyContext, Name)
+        GoalExpr = plain_call(PredId, ProcId, Args, Builtin, UnifyContext,
+            Name)
     ;
         GoalExpr0 = generic_call(GenericCall, _ArgVars, _Modes, CallDetism),
         det_infer_generic_call(GenericCall, CallDetism, GoalInfo, SolnContext,
@@ -572,11 +575,11 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
             GoalFailingContexts, !:Msgs),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
-        GoalExpr0 = not(Goal0),
+        GoalExpr0 = negation(Goal0),
         det_infer_not(Goal0, Goal, GoalInfo, InstMap0,
             MaybePromiseEqvSolutionSets, DetInfo, Detism,
             GoalFailingContexts, !:Msgs),
-        GoalExpr = not(Goal)
+        GoalExpr = negation(Goal)
     ;
         GoalExpr0 = scope(Reason, Goal0),
         det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
@@ -584,8 +587,8 @@ det_infer_goal_2(GoalExpr0, GoalExpr, GoalInfo, InstMap0, SolnContext,
             Detism, GoalFailingContexts, !:Msgs),
         GoalExpr = scope(Reason, Goal)
     ;
-        GoalExpr0 = foreign_proc(Attributes, PredId, ProcId, _Args, _ExtraArgs,
-            PragmaCode),
+        GoalExpr0 = call_foreign_proc(Attributes, PredId, ProcId,
+            _Args, _ExtraArgs, _MaybeTraceRuntimeCond, PragmaCode),
         det_infer_foreign_proc(Attributes, PredId, ProcId, PragmaCode,
             GoalInfo, SolnContext, RightFailingContexts, DetInfo, Detism,
             GoalFailingContexts, !:Msgs),
@@ -982,7 +985,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, PragmaCode,
         ;
             !:Msgs = []
         ),
-        ( PragmaCode = nondet(_, _, _, _, _, _, _, _, _) ->
+        ( PragmaCode = fc_impl_model_non(_, _, _, _, _, _, _, _, _) ->
             % Foreign_procs codes of this form can have more than one
             % solution.
             NumSolns1 = at_most_many
@@ -1213,7 +1216,8 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
     % Existential quantification may require a cut to throw away solutions,
     % but we cannot rely on explicit quantification to detect this.
     % Therefore cuts are handled in det_infer_goal.
-    ( Reason = promise_solutions(Vars, Kind) ->
+    (
+        Reason = promise_solutions(Vars, Kind),
         det_get_proc_info(DetInfo, ProcInfo),
         proc_info_get_varset(ProcInfo, VarSet),
 
@@ -1290,17 +1294,39 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             ContextScopeMsg2 = context_det_msg(Context, ScopeMsg2),
             ScopeMsgs2 = [ContextScopeMsg2]
         ),
-        ScopeMsgs = ScopeMsgs1 ++ ScopeMsgs2
+        ScopeMsgs = ScopeMsgs1 ++ ScopeMsgs2,
+        det_infer_goal(Goal0, Goal, InstMap0, SolnContextToUse,
+            RightFailingContexts, MaybePromiseEqvSolutionSets, DetInfo, Detism,
+            GoalFailingContexts, SubMsgs),
+        !:Msgs = PromiseMsgs ++ SubMsgs ++ ScopeMsgs
     ;
-        SolnContextToUse = SolnContext,
-        MaybePromiseEqvSolutionSets = MaybePromiseEqvSolutionSets0,
-        PromiseMsgs = [],
-        ScopeMsgs = []
-    ),
-    det_infer_goal(Goal0, Goal, InstMap0, SolnContextToUse,
-        RightFailingContexts, MaybePromiseEqvSolutionSets, DetInfo, Detism,
-        GoalFailingContexts, SubMsgs),
-    !:Msgs = PromiseMsgs ++ SubMsgs ++ ScopeMsgs.
+        Reason = trace_goal(_, _, _, _),
+        det_infer_goal(Goal0, Goal, InstMap0, SolnContext,
+            RightFailingContexts, MaybePromiseEqvSolutionSets0, DetInfo,
+            Detism, GoalFailingContexts, !:Msgs),
+        (
+            ( Detism = detism_det
+            ; Detism = detism_cc_multi
+            )
+        ->
+            true
+        ;
+            TraceMsg = trace_goal_not_det(Detism),
+            goal_info_get_context(GoalInfo, Context),
+            ContextMsg = context_det_msg(Context, TraceMsg),
+            !:Msgs = [ContextMsg | !.Msgs]
+        )
+    ;
+        ( Reason = exist_quant(_)
+        ; Reason = promise_purity(_, _)
+        ; Reason = commit(_)
+        ; Reason = barrier(_)
+        ; Reason = from_ground_term(_)
+        ),
+        det_infer_goal(Goal0, Goal, InstMap0, SolnContext,
+            RightFailingContexts, MaybePromiseEqvSolutionSets0, DetInfo,
+            Detism, GoalFailingContexts, !:Msgs)
+    ).
 
 %-----------------------------------------------------------------------------%
 

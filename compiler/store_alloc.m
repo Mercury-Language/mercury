@@ -58,7 +58,7 @@
 :- import_module ll_backend.follow_vars.
 :- import_module ll_backend.liveness.
 :- import_module ll_backend.llds.
-:- import_module ll_backend.trace.
+:- import_module ll_backend.trace_gen.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
@@ -92,7 +92,7 @@ allocate_store_maps(RunType, PredId, ModuleInfo, !ProcInfo) :-
     globals.get_trace_level(Globals, TraceLevel),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ( eff_trace_level_is_none(PredInfo, !.ProcInfo, TraceLevel) = no ->
-        trace.fail_vars(ModuleInfo, !.ProcInfo, ResumeVars0)
+        trace_fail_vars(ModuleInfo, !.ProcInfo, ResumeVars0)
     ;
         set.init(ResumeVars0)
     ),
@@ -191,7 +191,7 @@ store_alloc_in_goal_2(disj(Goals0), disj(Goals), !Liveness, !LastLocns,
         !.LastLocns, LastLocnsList, ResumeVars0, StoreAllocInfo),
     merge_last_locations(LastLocnsList, !:LastLocns).
 
-store_alloc_in_goal_2(not(Goal0), not(Goal), !Liveness, !LastLocns,
+store_alloc_in_goal_2(negation(Goal0), negation(Goal), !Liveness, !LastLocns,
         _ResumeVars0, _, StoreAllocInfo) :-
     Goal0 = _ - GoalInfo0,
     goal_info_get_resume_point(GoalInfo0, ResumeNot),
@@ -228,13 +228,13 @@ store_alloc_in_goal_2(scope(Remove, Goal0), scope(Remove, Goal),
 store_alloc_in_goal_2(Goal @ generic_call(_, _, _, _), Goal,
         !Liveness, !LastLocns, _, _, _).
 
-store_alloc_in_goal_2(Goal @ call(_, _, _, _, _, _), Goal,
+store_alloc_in_goal_2(Goal @ plain_call(_, _, _, _, _, _), Goal,
         !Liveness, !LastLocns, _, _, _).
 
 store_alloc_in_goal_2(Goal @ unify(_, _, _, _, _), Goal,
         !Liveness, !LastLocns, _, _, _).
 
-store_alloc_in_goal_2(Goal @ foreign_proc(_, _, _, _, _, _), Goal,
+store_alloc_in_goal_2(Goal @ call_foreign_proc(_, _, _, _, _, _, _), Goal,
         !Liveness, !LastLocns, _, _, _).
 
 store_alloc_in_goal_2(shorthand(_), _, _, _, _, _, _, _, _) :-

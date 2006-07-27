@@ -64,7 +64,7 @@
 :- import_module hlds.hlds_module.
 :- import_module libs.tree.
 :- import_module ll_backend.code_gen.
-:- import_module ll_backend.trace.
+:- import_module ll_backend.trace_gen.
 
 :- import_module char.
 :- import_module int.
@@ -216,8 +216,8 @@ generate_case(!Cases, NextVal, CodeModel, SwitchGoalInfo, !MaybeEnd, Code,
         % We need to save the expression cache, etc.,
         % and restore them when we've finished.
         code_info.remember_position(!.CI, BranchStart),
-        trace.maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
-            TraceCode, !CI),
+        maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
+            !CI),
         code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
         goal_info_get_store_map(SwitchGoalInfo, StoreMap),
         code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),

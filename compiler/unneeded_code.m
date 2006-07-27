@@ -359,9 +359,8 @@ process_goal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes, ModuleInfo,
     undemand_virgin_outputs(Goal0, ModuleInfo, InitInstMap,
         !WhereNeededMap),
     (
-        Goal = _ - GoalInfo,
-        goal_info_get_features(GoalInfo, Features),
-        set.member(impure_goal, Features)
+        goal_get_purity(Goal, Purity),
+        Purity = purity_impure
     ->
         % By saying that all vars that are live before the impure goal are
         % needed everywhere, we prevent the movement of the goals producing
@@ -447,8 +446,8 @@ adjust_where_needed(Goal, Options, !WhereInfo) :-
         ;
             % Do not move impure or semipure goals, since their ordering
             % wrt other such goals must be preserved.
-            goal_info_get_features(GoalInfo, Features),
-            set.member(impure_goal, Features)
+            goal_info_get_purity(GoalInfo, Purity),
+            Purity \= purity_pure
         ;
             % With --fully-strict, we cannot optimize away infinite loops
             % or exceptions.
@@ -583,7 +582,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
         demand_inputs(Goal, ModuleInfo, InitInstMap, everywhere,
             !WhereNeededMap)
     ;
-        GoalExpr0 = call(_, _, _, _, _, _),
+        GoalExpr0 = plain_call(_, _, _, _, _, _),
         Goal = Goal0,
         demand_inputs(Goal, ModuleInfo, InitInstMap, everywhere,
             !WhereNeededMap)
@@ -593,7 +592,7 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
         demand_inputs(Goal, ModuleInfo, InitInstMap, everywhere,
             !WhereNeededMap)
     ;
-        GoalExpr0 = foreign_proc(_, _, _, _, _, _),
+        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
         Goal = Goal0,
         demand_inputs(Goal, ModuleInfo, InitInstMap, everywhere,
             !WhereNeededMap)
@@ -657,11 +656,11 @@ process_goal_internal(Goal0, Goal, InitInstMap, FinalInstMap, VarTypes,
         GoalExpr = if_then_else(Quant, Cond, Then, Else),
         Goal = GoalExpr - GoalInfo0
     ;
-        GoalExpr0 = not(NegGoal0),
+        GoalExpr0 = negation(NegGoal0),
         process_goal(NegGoal0, NegGoal, InitInstMap, FinalInstMap,
             VarTypes, ModuleInfo, Options,
             !WhereNeededMap, !RefinedGoals, !Changed),
-        GoalExpr = not(NegGoal),
+        GoalExpr = negation(NegGoal),
         Goal = GoalExpr - GoalInfo0
     ;
         GoalExpr0 = scope(Reason, SomeGoal0),
@@ -885,16 +884,11 @@ add_alt_start([Var - BranchWhere0 | WhereNeededList],
 refine_goal(Goal0, Goal, !RefinedGoals) :-
     Goal0 = GoalExpr0 - GoalInfo0,
     (
-        GoalExpr0 = unify(_, _, _, _, _),
-        Goal = Goal0
-    ;
-        GoalExpr0 = call(_, _, _, _, _, _),
-        Goal = Goal0
-    ;
-        GoalExpr0 = generic_call(_, _, _, _),
-        Goal = Goal0
-    ;
-        GoalExpr0 = foreign_proc(_, _, _, _, _, _),
+        ( GoalExpr0 = unify(_, _, _, _, _)
+        ; GoalExpr0 = plain_call(_, _, _, _, _, _)
+        ; GoalExpr0 = generic_call(_, _, _, _)
+        ; GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _)
+        ),
         Goal = Goal0
     ;
         GoalExpr0 = conj(ConjType, Conjuncts0),
@@ -927,9 +921,9 @@ refine_goal(Goal0, Goal, !RefinedGoals) :-
         GoalExpr = if_then_else(Quant, Cond, Then, Else),
         Goal = GoalExpr - GoalInfo0
     ;
-        GoalExpr0 = not(NegGoal0),
+        GoalExpr0 = negation(NegGoal0),
         refine_goal(NegGoal0, NegGoal, !RefinedGoals),
-        GoalExpr = not(NegGoal),
+        GoalExpr = negation(NegGoal),
         Goal = GoalExpr - GoalInfo0
     ;
         GoalExpr0 = scope(Reason, SomeGoal0),

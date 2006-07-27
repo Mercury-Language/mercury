@@ -78,7 +78,7 @@ optimize_procs(GlobalData, !Procs, !IO) :-
 optimize_proc(GlobalData, CProc0, CProc, !IO) :-
     some [!OptDebugInfo, !C, !Instrs] (
         CProc0 = c_procedure(Name, Arity, PredProcId, CodeModel, !:Instrs,
-            ProcLabel, !:C, MayAlterRtti),
+            ProcLabel, !:C, MayAlterRtti, CGlobalVars),
         init_opt_debug_info(Name, Arity, PredProcId, ProcLabel,
             !.Instrs, !.C, !:OptDebugInfo, !IO),
         globals.io_lookup_int_option(optimize_repeat, Repeat, !IO),
@@ -103,7 +103,7 @@ optimize_proc(GlobalData, CProc0, CProc, !IO) :-
         optimize_last(LayoutLabelSet, ProcLabel, !C, !.OptDebugInfo, !Instrs,
             !IO),
         CProc = c_procedure(Name, Arity, PredProcId, CodeModel, !.Instrs,
-            ProcLabel, !.C, MayAlterRtti)
+            ProcLabel, !.C, MayAlterRtti, CGlobalVars)
     ).
 
 :- func make_internal_label(proc_label, int) = label.

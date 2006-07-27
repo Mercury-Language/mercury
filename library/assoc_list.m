@@ -78,6 +78,11 @@
 :- pred assoc_list.remove(assoc_list(K, V)::in, K::in, V::out,
     assoc_list(K, V)::out) is semidet.
 
+:- func assoc_list.map_keys_only(func(K) = L, assoc_list(K, V))
+    = assoc_list(L, V).
+:- func assoc_list.map_values_only(func(V) = W, assoc_list(K, V))
+    = assoc_list(K, W).
+
 :- func assoc_list.map_values(func(K, V) = W, assoc_list(K, V))
     = assoc_list(K, W).
 
@@ -166,9 +171,19 @@ assoc_list.keys(AL) = Ks :-
 assoc_list.values(AL) = Vs :-
     assoc_list.values(AL, Vs).
 
+assoc_list.map_keys_only(_F, []) = [].
+assoc_list.map_keys_only(F, [K0 - V | KVs0]) = [K - V | KVs] :-
+    K = F(K0),
+    KVs = assoc_list.map_keys_only(F, KVs0).
+
+assoc_list.map_values_only(_F, []) = [].
+assoc_list.map_values_only(F, [K - V0 | KVs0]) = [K - V | KVs] :-
+    V = F(V0),
+    KVs = assoc_list.map_values_only(F, KVs0).
+
 assoc_list.map_values(_F, []) = [].
 assoc_list.map_values(F, [K - V0 | KVs0]) = [K - V | KVs] :-
-    V = apply(F, K, V0),
+    V = F(K, V0),
     KVs = assoc_list.map_values(F, KVs0).
 
 AL ^ elem(K) = V :-

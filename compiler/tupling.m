@@ -990,8 +990,8 @@ count_load_stores_in_proc(CountInfo, Loads, Stores) :-
     count_state::in, count_state::out) is det.
 
 count_load_stores_in_goal(Goal - GoalInfo, CountInfo, !CountState) :-
-    Goal = foreign_proc(_Attributes, PredId, ProcId, Args, ExtraArgs,
-        _PragmaCode),
+    Goal = call_foreign_proc(_Attributes, PredId, ProcId, Args, ExtraArgs,
+        _MaybeTraceRuntimeCond, _PragmaCode),
     ModuleInfo = CountInfo ^ count_info_module,
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
         _PredInfo, ProcInfo),
@@ -1041,7 +1041,7 @@ count_load_stores_in_goal(Goal - GoalInfo, CountInfo, !CountState) :-
     ).
 
 count_load_stores_in_goal(Goal - GoalInfo, CountInfo, !CountState) :-
-    Goal = call(PredId, ProcId, _, Builtin, _, _),
+    Goal = plain_call(PredId, ProcId, _, Builtin, _, _),
     (
         Builtin = not_builtin,
         TuplingProposal = get_tupling_proposal(CountInfo,
@@ -1099,7 +1099,8 @@ count_load_stores_in_goal(switch(_Var, _Det, Cases) - _GoalInfo, CountInfo,
         !CountState) :-
     count_load_stores_in_cases(Cases, CountInfo, !CountState).
 
-count_load_stores_in_goal(not(Goal) - _GoalInfo, CountInfo, !CountState) :-
+count_load_stores_in_goal(negation(Goal) - _GoalInfo, CountInfo,
+        !CountState) :-
     goal_info_get_resume_point(snd(Goal), ResumePoint),
     (
         ResumePoint = resume_point(LiveVars, _ResumeLocs),
@@ -1147,7 +1148,7 @@ count_load_stores_in_goal(shorthand(_) - _, _, !_) :-
 %-----------------------------------------------------------------------------%
 
 :- inst call_goal_expr
-    ==  bound(call(ground, ground, ground, ground, ground, ground)).
+    ==  bound(plain_call(ground, ground, ground, ground, ground, ground)).
 :- mode in_call_goal
     ==  in(pair(call_goal_expr, ground)).
 
@@ -1158,7 +1159,7 @@ count_load_stores_in_goal(shorthand(_) - _, _, !_) :-
 
 count_load_stores_in_call_to_tupled(Goal - GoalInfo, CountInfo,
         CalleeTuplingProposal, !CountState) :-
-    Goal = call(CalleePredId, CalleeProcId, ArgVars, _, _, _),
+    Goal = plain_call(CalleePredId, CalleeProcId, ArgVars, _, _, _),
     CalleeTuplingProposal = tupling(CellVar, FieldVars, FieldVarArgPos),
     ModuleInfo = CountInfo ^ count_info_module,
     module_info_pred_proc_info(ModuleInfo, CalleePredId, CalleeProcId,
@@ -1206,7 +1207,7 @@ count_load_stores_in_call_to_tupled(Goal - GoalInfo, CountInfo,
 
 count_load_stores_in_call_to_not_tupled(Goal - GoalInfo, CountInfo,
         !CountState) :-
-    Goal = call(PredId, ProcId, ArgVars, Builtin, _, _),
+    Goal = plain_call(PredId, ProcId, ArgVars, Builtin, _, _),
     ModuleInfo = CountInfo ^ count_info_module,
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
         _PredInfo, CalleeProcInfo),
@@ -1671,13 +1672,13 @@ fix_calls_in_proc(TransformMap, proc(PredId, ProcId), !ModuleInfo) :-
     is det.
 
 fix_calls_in_goal(Goal - GoalInfo, Goal - GoalInfo, !_, !_, _TransformMap) :-
-    Goal = foreign_proc(_, _, _, _, _, _).
+    Goal = call_foreign_proc(_, _, _, _, _, _, _).
 
 fix_calls_in_goal(Goal - GoalInfo, Goal - GoalInfo, !_, !_, _TransformMap) :-
     Goal = generic_call(_, _, _, _).
 
 fix_calls_in_goal(Goal0 - GoalInfo0, Goal, !VarSet, !VarTypes, TransformMap) :-
-    Goal0 = call(CalledPredId0, CalledProcId0, Args0, Builtin,
+    Goal0 = plain_call(CalledPredId0, CalledProcId0, Args0, Builtin,
         _Context, _SymName),
     (
         Builtin = not_builtin,
@@ -1710,7 +1711,7 @@ fix_calls_in_goal(Goal0 - GoalInfo0, Goal, !VarSet, !VarTypes, TransformMap) :-
 fix_calls_in_goal(Goal - GoalInfo, Goal - GoalInfo, !_, !_, _TransformMap) :-
     Goal = unify(_, _, _, _, _).
 
-fix_calls_in_goal(not(Goal0) - GoalInfo, not(Goal) - GoalInfo,
+fix_calls_in_goal(negation(Goal0) - GoalInfo, negation(Goal) - GoalInfo,
         !VarSet, !VarTypes, TransformMap) :-
     fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap).
 

@@ -426,7 +426,7 @@ number_robdd_variables_in_goal_2(InstGraph, _, _, NonLocals, Occurring,
     number_robdd_variables_in_cases(InstGraph, NonLocals, Occurring,
         Cases0, Cases, !RInfo).
 number_robdd_variables_in_goal_2(InstGraph, _, _, NonLocals, Occurring,
-        not(Goal0), not(Goal), !RInfo) :-
+        negation(Goal0), negation(Goal), !RInfo) :-
     number_robdd_variables_in_goal(InstGraph, NonLocals, Occurring,
         Goal0, Goal, !RInfo).
 number_robdd_variables_in_goal_2(InstGraph, _, _, NonLocals, Occurring,
@@ -448,7 +448,7 @@ number_robdd_variables_in_goal_2(_, _, _, _, _, shorthand(_), _, !RInfo) :-
 
 number_robdd_variables_in_goal_2(InstGraph, GoalPath, ParentNonLocals, _,
         Occurring, GoalExpr, GoalExpr, !RInfo) :-
-    GoalExpr = call(_, _, Args, _, _, _),
+    GoalExpr = plain_call(_, _, Args, _, _, _),
     number_robdd_variables_at_goal_path(InstGraph, GoalPath,
         ParentNonLocals, Args, Occurring, !RInfo).
 number_robdd_variables_in_goal_2(InstGraph, GoalPath, ParentNonLocals, _,
@@ -466,7 +466,7 @@ number_robdd_variables_in_goal_2(InstGraph, GoalPath, ParentNonLocals, _,
         ParentNonLocals, [VarL | Vars], Occurring, !RInfo).
 number_robdd_variables_in_goal_2(InstGraph, GoalPath, ParentNonLocals, _,
         Occurring, GoalExpr, GoalExpr, !RInfo) :-
-    GoalExpr = foreign_proc(_, _, _, Args, _, _),
+    GoalExpr = call_foreign_proc(_, _, _, Args, _, _, _),
     ArgVars = list.map(foreign_arg_var, Args),
     number_robdd_variables_at_goal_path(InstGraph, GoalPath,
         ParentNonLocals, ArgVars, Occurring, !RInfo).
@@ -1239,7 +1239,7 @@ goal_constraints_2(GoalPath, _NonLocals, _, CanSucceed, GoalExpr0, GoalExpr,
 
 goal_constraints_2(GoalPath, _NonLocals, _, CanSucceed, GoalExpr, GoalExpr,
         !Constraint, !GCInfo) :-
-    GoalExpr = call(PredId, _, Args, _, _, _),
+    GoalExpr = plain_call(PredId, _, Args, _, _, _),
     SCC = !.GCInfo ^ scc,
     InstGraph = !.GCInfo ^ inst_graph,
     ModuleInfo = !.GCInfo ^ module_info,
@@ -1331,11 +1331,11 @@ goal_constraints_2(GoalPath, _NonLocals, _Vars, CanSucceed, GoalExpr, GoalExpr,
         sorry(this_file, "type/inst cast call NYI")
     ).
 
-goal_constraints_2(_,_,_,_,switch(_,_,_),_,_,_,_,_) :-
+goal_constraints_2(_, _, _, _, switch(_, _, _), _, _, _, _, _) :-
     unexpected(this_file, "goal_constraints_2: switch (should be disj)").
 
 goal_constraints_2(GoalPath, NonLocals, Vars, CanSucceed,
-        not(Goal0), not(Goal), !Constraint, !GCInfo) :-
+        negation(Goal0), negation(Goal), !Constraint, !GCInfo) :-
     goal_constraints(NonLocals, _, Goal0, Goal, !Constraint, !GCInfo),
 
     CanSucceed = yes,
@@ -1416,9 +1416,10 @@ goal_constraints_2(GoalPath, NonLocals, Vars, CanSucceed,
             C = C0 ^ disj_vars_eq(Vs, Vgp)
         ), Locals, !Constraint, !GCInfo).
 
-goal_constraints_2(_,_,_,_,foreign_proc(_,_,_,_,_,_),_,_,_,_,_) :-
+goal_constraints_2(_, _, _, _, call_foreign_proc(_, _, _, _, _, _, _),
+        _, _, _, _, _) :-
     sorry(this_file, "goal_constraints_2: foreign_proc NYI").
-goal_constraints_2(_,_,_,_,shorthand(_),_,_,_,_,_) :-
+goal_constraints_2(_, _, _, _, shorthand(_), _, _, _, _, _) :-
     sorry(this_file, "goal_constraints_2: shorthand").
 
     % Constraints for the conjunction. If UseKnownVars = yes, generate

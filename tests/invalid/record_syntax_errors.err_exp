@@ -3,9 +3,9 @@ record_syntax_errors.m:023:   `record_syntax_errors.field8/1'
 record_syntax_errors.m:023:   without preceding `func' declaration.
 record_syntax_errors.m:028: In DCG field update goal:
 record_syntax_errors.m:028:   error: expected field name at term `Field'.
-record_syntax_errors.m:031: Error: expected `Field =^ field1 ^ ... ^ fieldN'
-record_syntax_errors.m:031:   or `^ field1 ^ ... ^ fieldN := Field'.
-record_syntax_errors.m:031:   in DCG field access goal.
+record_syntax_errors.m:031: Error: expected `Field =^ field1 ^ ... ^ fieldN' or
+record_syntax_errors.m:031:   `^ field1 ^ ... ^ fieldN := Field' in DCG field
+record_syntax_errors.m:031:   access goal.
 record_syntax_errors.m:048: Error: clause for predicate
 record_syntax_errors.m:048:   `record_syntax_errors.term_type_error/1'
 record_syntax_errors.m:048:   without preceding `pred' declaration.
@@ -21,8 +21,6 @@ record_syntax_errors.m:057:   supply your own definition for a field access
 record_syntax_errors.m:057:   function, for example to check the input to a
 record_syntax_errors.m:057:   field update, give the field of the constructor a
 record_syntax_errors.m:057:   different name.
-record_syntax_errors.m:014: Error: no clauses for predicate `dcg_syntax/2'.
-record_syntax_errors.m:016: Error: no clauses for predicate `dcg_syntax_2/2'.
 record_syntax_errors.m:042: In clause for predicate `record_syntax_errors.construct_exist_cons/1':
 record_syntax_errors.m:042:   error: undefined symbol `field2 :=/2'.
 record_syntax_errors.m:005:   Field `field2' cannot be updated because the

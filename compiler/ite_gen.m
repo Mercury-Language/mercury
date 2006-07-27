@@ -47,7 +47,7 @@
 :- import_module libs.options.
 :- import_module libs.tree.
 :- import_module ll_backend.code_gen.
-:- import_module ll_backend.trace.
+:- import_module ll_backend.trace_gen.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
@@ -126,8 +126,8 @@ generate_ite(AddTrailOps, CodeModel, CondGoal0, ThenGoal, ElseGoal,
         !CI),
 
     % Generate the condition.
-    trace.maybe_generate_internal_event_code(CondGoal, IteGoalInfo,
-        CondTraceCode, !CI),
+    maybe_generate_internal_event_code(CondGoal, IteGoalInfo, CondTraceCode,
+        !CI),
     code_gen.generate_goal(CondCodeModel, CondGoal, CondCode, !CI),
 
     code_info.ite_enter_then(HijackInfo, ThenNeckCode, ElseNeckCode, !CI),
@@ -162,8 +162,8 @@ generate_ite(AddTrailOps, CodeModel, CondGoal0, ThenGoal, ElseGoal,
             MaybeEnd0, ThenSaveCode, !CI)
     ;
         % Generate the then branch.
-        trace.maybe_generate_internal_event_code(ThenGoal,
-            IteGoalInfo, ThenTraceCode, !CI),
+        maybe_generate_internal_event_code(ThenGoal, IteGoalInfo,
+            ThenTraceCode, !CI),
         code_gen.generate_goal(CodeModel, ThenGoal, ThenCode, !CI),
         code_info.generate_branch_end(StoreMap, no,
             MaybeEnd0, ThenSaveCode, !CI)
@@ -179,8 +179,8 @@ generate_ite(AddTrailOps, CodeModel, CondGoal0, ThenGoal, ElseGoal,
         RestoreTicketCode, !CI),
 
     % Generate the else branch.
-    trace.maybe_generate_internal_event_code(ElseGoal, IteGoalInfo,
-        ElseTraceCode, !CI),
+    maybe_generate_internal_event_code(ElseGoal, IteGoalInfo, ElseTraceCode,
+        !CI),
     code_gen.generate_goal(CodeModel, ElseGoal, ElseCode, !CI),
     code_info.generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd,
         ElseSaveCode, !CI),
@@ -319,8 +319,7 @@ generate_negation_general(AddTrailOps, CodeModel, Goal, NotGoalInfo,
 
     % Generate the negated goal as a semi-deterministic goal; it cannot be
     % nondet, since mode correctness requires it to have no output vars.
-    trace.maybe_generate_internal_event_code(Goal, NotGoalInfo,
-        EnterTraceCode, !CI),
+    maybe_generate_internal_event_code(Goal, NotGoalInfo, EnterTraceCode, !CI),
     code_gen.generate_goal(model_semi, Goal, GoalCode, !CI),
 
     code_info.ite_enter_then(HijackInfo, ThenNeckCode, ElseNeckCode, !CI),
@@ -343,8 +342,8 @@ generate_negation_general(AddTrailOps, CodeModel, Goal, NotGoalInfo,
         code_info.maybe_release_hp(MaybeHpSlot, !CI),
         code_info.maybe_reset_prune_and_release_ticket(MaybeTicketSlot,
             commit, PruneTicketCode, !CI),
-        trace.maybe_generate_negated_event_code(Goal, NotGoalInfo,
-            neg_failure, FailTraceCode, !CI),
+        maybe_generate_negated_event_code(Goal, NotGoalInfo, neg_failure,
+            FailTraceCode, !CI),
         code_info.generate_failure(FailCode, !CI),
         % We want liveness after not(G) to be the same as after G.
         % Information about what variables are where will be set
@@ -361,8 +360,8 @@ generate_negation_general(AddTrailOps, CodeModel, Goal, NotGoalInfo,
     code_info.maybe_restore_and_release_hp(MaybeHpSlot, RestoreHpCode, !CI),
     code_info.maybe_reset_discard_and_release_ticket(MaybeTicketSlot, undo,
         RestoreTicketCode, !CI),
-    trace.maybe_generate_negated_event_code(Goal, NotGoalInfo,
-        neg_success, SuccessTraceCode, !CI),
+    maybe_generate_negated_event_code(Goal, NotGoalInfo, neg_success,
+        SuccessTraceCode, !CI),
 
     make_pneg_context_wrappers(Globals, NotGoalInfo, PNegCondCode,
         PNegThenCode, PNegElseCode),

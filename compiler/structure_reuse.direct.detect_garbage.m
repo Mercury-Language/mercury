@@ -93,7 +93,7 @@ determine_dead_deconstructions_2(Background, TopGoal, !SharingAs,
         list.foldl2(determine_dead_deconstructions_2(Background),
             Goals, !SharingAs, !DeadCellTable)
     ;
-        GoalExpr = call(PredId, ProcId, ActualVars, _, _, _),
+        GoalExpr = plain_call(PredId, ProcId, ActualVars, _, _, _),
         lookup_sharing_and_comb(ModuleInfo, PredInfo, ProcInfo, SharingTable,
             PredId, ProcId, ActualVars, !SharingAs)
     ;
@@ -120,7 +120,7 @@ determine_dead_deconstructions_2(Background, TopGoal, !SharingAs,
             !DeadCellTable)
     ;
         % XXX To check and compare with the theory. 
-        GoalExpr = not(_Goal)
+        GoalExpr = negation(_Goal)
     ;
         GoalExpr = scope(_, SubGoal),
         determine_dead_deconstructions_2(Background, SubGoal, !SharingAs, 
@@ -136,8 +136,8 @@ determine_dead_deconstructions_2(Background, TopGoal, !SharingAs,
         !:SharingAs = sharing_as_least_upper_bound(ModuleInfo, ProcInfo,
             ThenSharingAs, ElseSharingAs)
     ;
-        GoalExpr = foreign_proc(Attributes, ForeignPredId, ForeignProcId,
-            _ForeignArgs, _, _),
+        GoalExpr = call_foreign_proc(Attributes, ForeignPredId, ForeignProcId,
+            _Args, _ExtraArgs, _MaybeTraceRuntimeCond, _Impl),
         goal_info_get_context(GoalInfo, Context),
         !:SharingAs = add_foreign_proc_sharing(ModuleInfo, ProcInfo, 
             proc(ForeignPredId, ForeignProcId), Attributes, Context, 

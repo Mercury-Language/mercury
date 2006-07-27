@@ -203,10 +203,10 @@ detect_switches_in_goal_2(ModuleInfo, VarTypes, InstMap0, GoalInfo,
             Goals0, Goals, !Requant),
         Goal = conj(ConjType, Goals)
     ;
-        Goal0 = not(SubGoal0),
+        Goal0 = negation(SubGoal0),
         detect_switches_in_goal(ModuleInfo, VarTypes, InstMap0,
             SubGoal0, SubGoal, !Requant),
-        Goal = not(SubGoal)
+        Goal = negation(SubGoal)
     ;
         Goal0 = if_then_else(Vars, Cond0, Then0, Else0),
         detect_switches_in_goal_1(ModuleInfo, VarTypes, InstMap0, InstMap1,
@@ -244,10 +244,10 @@ detect_switches_in_goal_2(ModuleInfo, VarTypes, InstMap0, GoalInfo,
         Goal0 = generic_call(_, _, _, _),
         Goal = Goal0
     ;
-        Goal0 = call(_, _, _, _, _, _),
+        Goal0 = plain_call(_, _, _, _, _, _),
         Goal = Goal0
     ;
-        Goal0 = foreign_proc(_, _, _, _, _, _),
+        Goal0 = call_foreign_proc(_, _, _, _, _, _, _),
         Goal = Goal0
     ;
         Goal0 = shorthand(_),

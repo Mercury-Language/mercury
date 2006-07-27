@@ -52,6 +52,7 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
+:- import_module set.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -122,7 +123,7 @@ gen_end_label_module(ModuleName, LastModule) = EndLabelModule :-
     Instrs = [label(entry(local, ProcLabel)) -
         "label to indicate end of previous procedure"],
     DummyProc = c_procedure(PredName, Arity, proc(PredId, ProcId), model_det,
-        Instrs, ProcLabel, counter.init(0), must_not_alter_rtti),
+        Instrs, ProcLabel, counter.init(0), must_not_alter_rtti, set.init),
     EndLabelModule = comp_gen_c_module(LastModule ++ "_END", [DummyProc]).
 
 %-----------------------------------------------------------------------------%

@@ -586,7 +586,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
 
 check_existq_clause(Info, TypeVarSet, ExistQVars, Clause, !IO) :-
     Goal = Clause ^ clause_body,
-    ( Goal = foreign_proc(_, _, _, _, _, Impl) - _ ->
+    ( Goal = call_foreign_proc(_, _, _, _, _, _, Impl) - _ ->
         list.foldl(check_mention_existq_var(Info, TypeVarSet, Impl),
             ExistQVars, !IO)
     ;
@@ -639,8 +639,8 @@ generate_stub_clause(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
     ),
     pred_info_context(!.PredInfo, Context),
     generate_simple_call(mercury_private_builtin_module, CalleeName,
-        predicate, only_mode, detism_det, [PredNameVar], [], [], ModuleInfo,
-        Context, CallGoal),
+        predicate, only_mode, detism_det, purity_pure, [PredNameVar], [], [],
+        ModuleInfo, Context, CallGoal),
 
     % Combine the unification and call into a conjunction.
     goal_info_init(Context, GoalInfo),
@@ -1256,10 +1256,10 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info, !IO) :-
         ensure_vars_have_a_type(Vars, !Info, !IO),
         GoalExpr = if_then_else(Vars, Cond, Then, Else)
     ;
-        GoalExpr0 = not(SubGoal0),
+        GoalExpr0 = negation(SubGoal0),
         checkpoint("not", !Info, !IO),
         typecheck_goal(SubGoal0, SubGoal, !Info, !IO),
-        GoalExpr = not(SubGoal)
+        GoalExpr = negation(SubGoal)
     ;
         GoalExpr0 = scope(Reason, SubGoal0),
         checkpoint("scope", !Info, !IO),
@@ -1278,17 +1278,19 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info, !IO) :-
             Reason = barrier(_)
         ;
             Reason = from_ground_term(_)
+        ;
+            Reason = trace_goal(_, _, _, _)
         ),
         GoalExpr = scope(Reason, SubGoal)
     ;
-        GoalExpr0 = call(_, B, Args, D, E, Name),
+        GoalExpr0 = plain_call(_, ProcId, Args, BI, UC, Name),
         checkpoint("call", !Info, !IO),
         list.length(Args, Arity),
         CurCall = simple_call_id(predicate, Name, Arity),
         typecheck_info_set_called_predid(call(CurCall), !Info),
         goal_info_get_goal_path(GoalInfo, GoalPath),
         typecheck_call_pred(CurCall, Args, GoalPath, PredId, !Info, !IO),
-        GoalExpr = call(PredId, B, Args, D, E, Name)
+        GoalExpr = plain_call(PredId, ProcId, Args, BI, UC, Name)
     ;
         GoalExpr0 = generic_call(GenericCall0, Args, C, D),
         hlds_goal.generic_call_id(GenericCall0, CallId),
@@ -1321,7 +1323,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info, !IO) :-
         GoalExpr0 = switch(_, _, _),
         unexpected(this_file, "typecheck_goal_2: unexpected switch")
     ;
-        GoalExpr0 = foreign_proc(_, PredId, _, Args, _, _),
+        GoalExpr0 = call_foreign_proc(_, PredId, _, Args, _, _, _),
         % Foreign_procs are automatically generated, so they will always be
         % type-correct, but we need to do the type analysis in order to
         % correctly compute the HeadTypeParams that result from existentially

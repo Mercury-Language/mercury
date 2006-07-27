@@ -42,17 +42,17 @@
 
     % XXX `side' is not used
 :- type mode_context
-    --->    call(
+    --->    mode_context_call(
                 call_id,
                 int             % Argument number (offset so that the real
                                 % arguments start at number 1 whereas the
                                 % type_info arguments have numbers <= 0).
             )
-    ;       unify(
+    ;       mode_context_unify(
                 unify_context,  % original source of the unification
                 side            % LHS or RHS
             )
-    ;       uninitialized.
+    ;       mode_context_uninitialized.
 
 :- type side
     --->    left
@@ -63,10 +63,11 @@
     ;       call(call_id).
 
 :- type var_lock_reason
-    --->    negation
-    ;       if_then_else
-    ;       lambda(pred_or_func)
-    ;       par_conj.
+    --->    var_lock_negation
+    ;       var_lock_if_then_else
+    ;       var_lock_lambda(pred_or_func)
+    ;       var_lock_trace_goal
+    ;       var_lock_par_conj.
 
     % Specify how to process goals - using either modes.m or unique_modes.m.
 :- type how_to_check_goal
@@ -554,25 +555,29 @@ mode_info_get_insts(ModeInfo, Insts) :-
     module_info_get_inst_table(ModeInfo ^ module_info, Insts).
 
 mode_info_set_call_context(unify(UnifyContext), !MI) :-
-    mode_info_set_mode_context(unify(UnifyContext, left), !MI).
+    mode_info_set_mode_context(mode_context_unify(UnifyContext, left), !MI).
 mode_info_set_call_context(call(CallId), !MI) :-
-    mode_info_set_mode_context(call(CallId, 0), !MI).
+    mode_info_set_mode_context(mode_context_call(CallId, 0), !MI).
 
 mode_info_set_call_arg_context(ArgNum, ModeInfo0, ModeInfo) :-
     mode_info_get_mode_context(ModeInfo0, ModeContext0),
-    ( ModeContext0 = call(CallId, _) ->
-        mode_info_set_mode_context(call(CallId, ArgNum), ModeInfo0, ModeInfo)
-    ; ModeContext0 = unify(_UnifyContext, _Side) ->
+    (
+        ModeContext0 = mode_context_call(CallId, _),
+        mode_info_set_mode_context(mode_context_call(CallId, ArgNum),
+            ModeInfo0, ModeInfo)
+    ;
+        ModeContext0 = mode_context_unify(_UnifyContext, _Side),
         % This only happens when checking that the typeinfo variables
         % for polymorphic complicated unifications are ground.
         % For that case, we don't care about the ArgNum.
         ModeInfo = ModeInfo0
     ;
-        unexpected(this_file, "mode_info_set_call_arg_context")
+        ModeContext0 = mode_context_uninitialized,
+        unexpected(this_file, "mode_info_set_call_arg_context uninitialized")
     ).
 
 mode_info_unset_call_context(!MI) :-
-    mode_info_set_mode_context(uninitialized, !MI).
+    mode_info_set_mode_context(mode_context_uninitialized, !MI).
 
 %-----------------------------------------------------------------------------%
 

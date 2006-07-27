@@ -328,6 +328,10 @@ implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
         Reason0 = from_ground_term(_),
         Reason1 = Reason0,
         Vars0 = []
+    ;
+        Reason0 = trace_goal(_, _, _, _),
+        Reason1 = Reason0,
+        Vars0 = []
     ),
     get_outside(!.Info, OutsideVars),
     get_lambda_outside(!.Info, LambdaOutsideVars),
@@ -346,25 +350,21 @@ implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
         rename_apart(RenameVars, RenameMap, Goal0, Goal1, !Info),
         goal_util.rename_var_list(no, RenameMap, Vars0, Vars),
         (
-            Reason1 = exist_quant(_),
-            % We have already handled this case.
-            Reason = Reason1
-        ;
-            Reason1 = promise_purity(_, _),
-            Reason = Reason1
-        ;
             Reason1 = promise_solutions(PromiseVars0, Kind),
             goal_util.rename_var_list(no, RenameMap,
                 PromiseVars0, PromiseVars),
             Reason = promise_solutions(PromiseVars, Kind)
         ;
-            Reason1 = commit(_),
+            Reason1 = exist_quant(_),
+            % We have already handled this case.
             Reason = Reason1
         ;
-            Reason1 = barrier(_),
-            Reason = Reason1
-        ;
-            Reason1 = from_ground_term(_),
+            ( Reason1 = promise_purity(_, _)
+            ; Reason1 = commit(_)
+            ; Reason1 = barrier(_)
+            ; Reason1 = from_ground_term(_)
+            ; Reason1 = trace_goal(_, _, _, _)
+            ),
             Reason = Reason1
         )
     ),
@@ -399,7 +399,7 @@ implicitly_quantify_goal_2(Expr0, Expr, _, !Info) :-
     Expr = switch(Var, Det, Cases).
 
 implicitly_quantify_goal_2(Expr0, Expr, _, !Info) :-
-    Expr0 = not(Goal0),
+    Expr0 = negation(Goal0),
     % Quantified variables cannot be pushed inside a negation, so we insert
     % the quantified vars into the outside vars set, and initialize the new
     % quantified vars set to be empty (the lambda outside vars remain
@@ -411,7 +411,7 @@ implicitly_quantify_goal_2(Expr0, Expr, _, !Info) :-
     set_quant_vars(QuantVars1, !Info),
     set_outside(OutsideVars1, !Info),
     implicitly_quantify_goal(Goal0, Goal, !Info),
-    Expr = not(Goal),
+    Expr = negation(Goal),
     set_outside(OutsideVars, !Info),
     set_quant_vars(QuantVars, !Info).
 
@@ -471,7 +471,7 @@ implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
     set_nonlocals(NonLocals, !Info).
 
 implicitly_quantify_goal_2(Expr, Expr, _, !Info) :-
-    Expr = call(_, _, HeadVars, _, _, _),
+    Expr = plain_call(_, _, HeadVars, _, _, _),
     implicitly_quantify_atomic_goal(HeadVars, !Info).
 
 implicitly_quantify_goal_2(Expr, Expr, _, !Info) :-
@@ -533,7 +533,7 @@ implicitly_quantify_goal_2(Expr0, Expr, Context, !Info) :-
     set_nonlocals(NonLocalVars, !Info).
 
 implicitly_quantify_goal_2(Expr, Expr, _, !Info) :-
-    Expr = foreign_proc(_, _, _, Args, ExtraArgs, _),
+    Expr = call_foreign_proc(_, _, _, Args, ExtraArgs, _, _),
     Vars = list.map(foreign_arg_var, Args),
     ExtraVars = list.map(foreign_arg_var, ExtraArgs),
     list.append(Vars, ExtraVars, AllVars),
@@ -617,12 +617,12 @@ implicitly_quantify_goal_2_shorthand(bi_implication(LHS0, RHS0), Context, Goal,
     set_goal_nonlocals(LHS_NonLocalVars, GoalInfo1, LHS_GI, !Info),
     set_goal_nonlocals(RHS_NonLocalVars, GoalInfo1, RHS_GI, !Info),
     set_goal_nonlocals(NonLocalVars, GoalInfo1, GI, !Info),
-    NotLHS = not(LHS) - LHS_GI,
-    NotRHS = not(RHS) - RHS_GI,
-    ForwardsImplication = not(conj(plain_conj, [LHS, NotRHS]) - GI) - GI,
+    NotLHS = negation(LHS) - LHS_GI,
+    NotRHS = negation(RHS) - RHS_GI,
+    ForwardsImplication = negation(conj(plain_conj, [LHS, NotRHS]) - GI) - GI,
 
     % Rename apart the local variables of the goals we've just duplicated.
-    ReverseImplication0 = not(conj(plain_conj, [RHS, NotLHS]) - GI) - GI,
+    ReverseImplication0 = negation(conj(plain_conj, [RHS, NotLHS]) - GI) - GI,
     goal_vars_bitset_choose(NonLocalsToRecompute, ReverseImplication0,
         GoalVars),
     difference(GoalVars, NonLocalVars, RenameVars),
@@ -1118,7 +1118,7 @@ goal_vars_2(_, generic_call(GenericCall, ArgVars1, _, _), !Set, !LambdaSet) :-
     insert_list(!.Set, ArgVars0, !:Set),
     insert_list(!.Set, ArgVars1, !:Set).
 
-goal_vars_2(_, call(_, _, ArgVars, _, _, _), !Set, !LambdaSet) :-
+goal_vars_2(_, plain_call(_, _, ArgVars, _, _, _), !Set, !LambdaSet) :-
     insert_list(!.Set, ArgVars, !:Set).
 
 goal_vars_2(NonLocalsToRecompute, conj(ConjType, Goals), !Set, !LambdaSet) :-
@@ -1155,11 +1155,14 @@ goal_vars_2(NonLocalsToRecompute, scope(Reason, Goal), Set0, !:Set,
         Reason = barrier(_)
     ;
         Reason = from_ground_term(_)
+    ;
+        Reason = trace_goal(_, _, _, _)
     ),
     union(Set0, !Set),
     union(LambdaSet0, !LambdaSet).
 
-goal_vars_2(NonLocalsToRecompute, not(Goal - _GoalInfo), !Set, !LambdaSet) :-
+goal_vars_2(NonLocalsToRecompute, negation(Goal - _GoalInfo),
+        !Set, !LambdaSet) :-
     goal_vars_2(NonLocalsToRecompute, Goal, !Set, !LambdaSet).
 
 goal_vars_2(NonLocalsToRecompute, if_then_else(Vars, Cond, Then, Else),
@@ -1179,7 +1182,8 @@ goal_vars_2(NonLocalsToRecompute, if_then_else(Vars, Cond, Then, Else),
     union(!.Set, ElseSet, !:Set),
     union(!.LambdaSet, ElseLambdaSet, !:LambdaSet).
 
-goal_vars_2(_, foreign_proc(_, _, _, Args, ExtraArgs, _), !Set, !LambdaSet) :-
+goal_vars_2(_, call_foreign_proc(_, _, _, Args, ExtraArgs, _, _), !Set,
+        !LambdaSet) :-
     Vars = list.map(foreign_arg_var, Args),
     ExtraVars = list.map(foreign_arg_var, ExtraArgs),
     list.append(Vars, ExtraVars, AllVars),

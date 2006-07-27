@@ -1569,6 +1569,40 @@ write_goal_2(scope(Reason, Goal), ModuleInfo, VarSet, AppendVarNums, Indent,
         io.write_string("% from_ground_term [", !IO),
         mercury_output_var(Var, VarSet, AppendVarNums, !IO),
         io.write_string("]\n", !IO)
+    ;
+        Reason = trace_goal(MaybeCompileTime, MaybeRunTime, MaybeIO,
+            MutableVars),
+        io.write_string("(\n", !IO),
+        write_indent(Indent + 1, !IO),
+        io.write_string("% trace\n", !IO),
+        (
+            MaybeCompileTime = yes(CompileTime),
+            write_indent(Indent + 1, !IO),
+            io.write_string("% compiletime(", !IO),
+            mercury_output_trace_expr(mercury_output_trace_compiletime,
+                CompileTime, !IO),
+            io.write_string(")\n", !IO)
+        ;
+            MaybeCompileTime = no
+        ),
+        (
+            MaybeRunTime = yes(RunTime),
+            write_indent(Indent + 1, !IO),
+            io.write_string("% runtime(", !IO),
+            mercury_output_trace_expr(mercury_output_trace_runtime,
+                RunTime, !IO),
+            io.write_string(")\n", !IO)
+        ;
+            MaybeRunTime = no
+        ),
+        (
+            MaybeIO = yes(IOStateVarName),
+            write_indent(Indent + 1, !IO),
+            io.write_string("% io(!" ++ IOStateVarName ++ ")\n", !IO)
+        ;
+            MaybeIO = no
+        ),
+        list.foldl(write_trace_mutable_var_hlds(Indent + 1), MutableVars, !IO)
     ),
     write_goal_a(Goal, ModuleInfo, VarSet, AppendVarNums, Indent + 1, "\n",
         TypeQual, !IO),
@@ -1606,7 +1640,7 @@ write_goal_2(if_then_else(Vars, Cond, Then, Else), ModuleInfo, VarSet,
     io.write_string(")", !IO),
     io.write_string(Follow, !IO).
 
-write_goal_2(not(Goal), ModuleInfo, VarSet, AppendVarNums, Indent, Follow,
+write_goal_2(negation(Goal), ModuleInfo, VarSet, AppendVarNums, Indent, Follow,
         TypeQual, !IO) :-
     write_indent(Indent, !IO),
     io.write_string("\\+ (\n", !IO),
@@ -1761,7 +1795,7 @@ write_goal_2(generic_call(GenericCall, ArgVars, Modes, _),
         io.write_string(Follow, !IO)
     ).
 
-write_goal_2(call(PredId, ProcId, ArgVars, Builtin, MaybeUnifyContext,
+write_goal_2(plain_call(PredId, ProcId, ArgVars, Builtin, MaybeUnifyContext,
         PredName), ModuleInfo, VarSet, AppendVarNums, Indent, Follow,
         TypeQual, !IO) :-
     globals.io_lookup_string_option(dump_hlds_options, Verbose, !IO),
@@ -1874,9 +1908,9 @@ write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet, AppendVarNums,
         true
     ).
 
-write_goal_2(foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
-        PragmaCode), ModuleInfo, VarSet, AppendVarNums, Indent, Follow, _,
-        !IO) :-
+write_goal_2(call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
+        MaybeTraceRuntimeCond, PragmaCode), ModuleInfo, VarSet, AppendVarNums,
+        Indent, Follow, _, !IO) :-
     ForeignLang = foreign_language(Attributes),
     write_indent(Indent, !IO),
     io.write_string("$pragma_foreign_proc(/* ", !IO),
@@ -1890,6 +1924,16 @@ write_goal_2(foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
     proc_id_to_int(ProcId, ProcIdInt),
     io.write_int(ProcIdInt, !IO),
     io.write_string(",\n", !IO),
+    (
+        MaybeTraceRuntimeCond = no
+    ;
+        MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
+        write_indent(Indent, !IO),
+        io.write_string("% trace_runtime_cond(", !IO),
+        mercury_output_trace_expr(mercury_output_trace_runtime,
+            TraceRuntimeCond, !IO),
+        io.write_string(")\n", !IO)
+    ),
     write_indent(Indent, !IO),
     % XXX We don't have the TypeVarSet available here, but it is only used
     % for printing out the names of the type variables, which isn't essential.
@@ -1907,13 +1951,14 @@ write_goal_2(foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
         io.write_string("},\n", !IO)
     ),
     (
-        PragmaCode = ordinary(C_Code, _),
+        PragmaCode = fc_impl_ordinary(C_Code, _),
         io.write_string("""", !IO),
         io.write_string(C_Code, !IO),
         io.write_string("""", !IO)
     ;
-        PragmaCode = nondet(Fields, _FieldsContext, First, _FirstContext,
-            Later, _LaterContext, Treat, Shared, _SharedContext),
+        PragmaCode = fc_impl_model_non(Fields, _FieldsContext,
+            First, _FirstContext, Later, _LaterContext,
+            Treat, Shared, _SharedContext),
         io.write_string("local_vars(""", !IO),
         io.write_string(Fields, !IO),
         io.write_string("""), ", !IO),
@@ -1936,7 +1981,7 @@ write_goal_2(foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
         io.write_string(Shared, !IO),
         io.write_string(""")", !IO)
     ;
-        PragmaCode = import(Name, _, _, _Context),
+        PragmaCode = fc_impl_import(Name, _, _, _Context),
         io.write_string("""", !IO),
         io.write_string(Name, !IO),
         io.write_string("""", !IO)
@@ -1967,6 +2012,15 @@ write_goal_2_shorthand(bi_implication(LHS, RHS), ModuleInfo, VarSet,
     write_indent(Indent, !IO),
     io.write_string(")", !IO),
     io.write_string(Follow, !IO).
+
+:- pred write_trace_mutable_var_hlds(int::in, trace_mutable_var_hlds::in,
+    io::di, io::uo) is det.
+
+write_trace_mutable_var_hlds(Indent, MutableVar, !IO) :-
+    MutableVar = trace_mutable_var_hlds(MutableName, StateVarName),
+    write_indent(Indent, !IO),
+    io.write_string("% mutable " ++ MutableName ++ ": ", !IO),
+    io.write_string("!" ++ StateVarName ++ "\n", !IO).
 
 :- pred write_foreign_args(list(foreign_arg)::in, prog_varset::in,
     tvarset::in, bool::in, io::di, io::uo) is det.

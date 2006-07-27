@@ -324,7 +324,7 @@ check_goal_for_mm_tabling_2(_, _, Goal, _, mm_tabled_will_not_call,
     ).
 check_goal_for_mm_tabling_2(SCC, VarTypes, Goal, _, Result,
         MaybeAnalysisStatus, !ModuleInfo, !IO) :-
-    Goal = call(CalleePredId, CalleeProcId, CallArgs, _, _, _),
+    Goal = plain_call(CalleePredId, CalleeProcId, CallArgs, _, _, _),
     CalleePPId = proc(CalleePredId, CalleeProcId),
     check_call_for_mm_tabling(CalleePPId, CallArgs, SCC, VarTypes, Result,
         MaybeAnalysisStatus, !ModuleInfo, !IO).
@@ -333,7 +333,7 @@ check_goal_for_mm_tabling_2(_, _VarTypes, Goal, _GoalInfo, Result,
     Goal = generic_call(Details, _Args, _ArgModes, _),
     check_generic_call_for_mm_tabling(Details, Result, MaybeAnalysisStatus,
         !ModuleInfo, !IO).
-check_goal_for_mm_tabling_2(SCC, VarTypes, not(Goal), _, Result,
+check_goal_for_mm_tabling_2(SCC, VarTypes, negation(Goal), _, Result,
         MaybeAnalysisStatus, !ModuleInfo, !IO) :-
     check_goal_for_mm_tabling(SCC, VarTypes, Goal, Result,
         MaybeAnalysisStatus, !ModuleInfo, !IO).
@@ -344,7 +344,7 @@ check_goal_for_mm_tabling_2(SCC, VarTypes, Goal, _, Result,
         MaybeAnalysisStatus, !ModuleInfo, !IO).
 check_goal_for_mm_tabling_2(_, _, Goal, _, Result, MaybeAnalysisStatus,
         !ModuleInfo, !IO) :-
-    Goal = foreign_proc(Attributes, _, _, _, _, _),
+    Goal = call_foreign_proc(Attributes, _, _, _, _, _, _),
     Result = get_mm_tabling_status_from_attributes(Attributes),
     MaybeAnalysisStatus = yes(optimal).
 check_goal_for_mm_tabling_2(_, _, shorthand(_), _, _, _, !ModuleInfo, !IO) :-
@@ -610,7 +610,7 @@ annotate_goal_2(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
         !IO),
     !:Goal = conj(ConjType, Conjuncts). 
 annotate_goal_2(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
-    !.Goal = call(CalleePredId, CalleeProcId, CallArgs, _, _, _),
+    !.Goal = plain_call(CalleePredId, CalleeProcId, CallArgs, _, _, _),
     CalleePPId = proc(CalleePredId, CalleeProcId),
     annotate_call(CalleePPId, CallArgs, VarTypes, Status, !ModuleInfo, !IO).
 annotate_goal_2(_VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
@@ -634,9 +634,9 @@ annotate_goal_2(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
         !IO),
     !:Goal = disj(Disjuncts).
 annotate_goal_2(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
-    !.Goal = not(NegGoal0),
+    !.Goal = negation(NegGoal0),
     annotate_goal(VarTypes, NegGoal0, NegGoal, Status, !ModuleInfo, !IO),
-    !:Goal = not(NegGoal).
+    !:Goal = negation(NegGoal).
 annotate_goal_2(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
     !.Goal = scope(Reason, InnerGoal0),
     annotate_goal(VarTypes, InnerGoal0, InnerGoal, Status, !ModuleInfo, !IO),
@@ -657,7 +657,7 @@ annotate_goal_2(VarTypes, !Goal, Status, !ModuleInfo, !IO) :-
     ), 
     !:Goal = if_then_else(Vars, If, Then, Else).
 annotate_goal_2(_, !Goal, Status, !ModuleInfo, !IO) :-
-    !.Goal = foreign_proc(Attributes, _, _, _, _, _),
+    !.Goal = call_foreign_proc(Attributes, _, _, _, _, _, _),
     Status = get_mm_tabling_status_from_attributes(Attributes).
 annotate_goal_2(_, shorthand(_), _, _, _, _, _, _) :-
     unexpected(this_file, "shorthand goal").

@@ -344,7 +344,7 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
                 "par_conj (" ++ ContextString ++ ")", !.SharingAs)
         )
     ;
-        GoalExpr = call(CalleePredId, CalleeProcId, CalleeArgs, _, _, _),
+        GoalExpr = plain_call(CalleePredId, CalleeProcId, CalleeArgs,_, _, _),
         CalleePPId = proc(CalleePredId, CalleeProcId),
         lookup_sharing(ModuleInfo, SharingTable, CalleePPId,
             !FixpointTable, CalleeSharing),
@@ -382,7 +382,7 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
                 SharingTable, !.SharingAs),
             Cases, !FixpointTable, sharing_as_init, !:SharingAs, !IO)
     ;
-        GoalExpr = not(_Goal)
+        GoalExpr = negation(_Goal)
         % XXX Check theory, but a negated goal can not create bindings,
         % hence it also can not create additional sharing.
     ;
@@ -401,8 +401,8 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Goal,
         !:SharingAs = sharing_as_least_upper_bound(ModuleInfo, ProcInfo,
             ThenSharingAs, ElseSharingAs)
     ;
-        GoalExpr = foreign_proc(Attributes, ForeignPredId, ForeignProcId,
-            _ForeignArgs, _, _),
+        GoalExpr = call_foreign_proc(Attributes, ForeignPredId, ForeignProcId,
+            _Args, _ExtraArgs, _MaybeTraceRuntimeCond, _Impl),
         goal_info_get_context(GoalInfo, Context),
         !:SharingAs = add_foreign_proc_sharing(ModuleInfo, ProcInfo, 
             proc(ForeignPredId, ForeignProcId), Attributes, Context, 

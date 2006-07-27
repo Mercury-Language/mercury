@@ -213,7 +213,7 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
             Code = node([not_supported])
         )
     ;
-        GoalExpr = call(PredId, ProcId, ArgVars, BuiltinState, _, _),
+        GoalExpr = plain_call(PredId, ProcId, ArgVars, BuiltinState, _, _),
         ( BuiltinState = not_builtin ->
             goal_info_get_determinism(GoalInfo, Detism),
             gen_call(PredId, ProcId, ArgVars, Detism, !.ByteInfo, Code)
@@ -224,7 +224,7 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
         GoalExpr = unify(Var, RHS, _Mode, Unification, _),
         gen_unify(Unification, Var, RHS, !.ByteInfo, Code)
     ;
-        GoalExpr = not(Goal),
+        GoalExpr = negation(Goal),
         gen_goal(Goal, !ByteInfo, SomeCode),
         get_next_label(EndLabel, !ByteInfo),
         get_next_temp(FrameTemp, !ByteInfo),
@@ -291,7 +291,7 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
         Code = tree_list([EnterIfCode, CondCode, EnterThenCode, ThenCode,
             EndofThenCode, ElseCode, EndofIfCode])
     ;
-        GoalExpr = foreign_proc(_, _, _, _, _, _),
+        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
         Code = node([not_supported])
     ;
         GoalExpr = shorthand(_),

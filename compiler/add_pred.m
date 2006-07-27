@@ -240,7 +240,7 @@ add_builtin(PredId, Types, !PredInfo) :-
     ->
         GoalExpr = conj(plain_conj, [])
     ;
-        GoalExpr = call(PredId, ModeId, HeadVars, inline_builtin,
+        GoalExpr = plain_call(PredId, ModeId, HeadVars, inline_builtin,
             MaybeUnifyContext, SymName)
     ),
 

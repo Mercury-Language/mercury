@@ -396,7 +396,7 @@ traverse_conj([Goal | Goals], CurId, !FormatCallSites, !Counter,
             !Counter, !ConjMaps, !PredMap, !RelevantVars, ModuleInfo),
         svmap.det_insert(CondThenId, CurId, !PredMap)
     ;
-        GoalExpr = not(SubGoal),
+        GoalExpr = negation(SubGoal),
         traverse_goal(SubGoal, SubGoalId, !FormatCallSites,
             !Counter, !ConjMaps, !PredMap, !RelevantVars, ModuleInfo),
         svmap.det_insert(SubGoalId, CurId, !PredMap)
@@ -407,9 +407,9 @@ traverse_conj([Goal | Goals], CurId, !FormatCallSites, !Counter,
     ;
         GoalExpr = generic_call(_, _, _, _)
     ;
-        GoalExpr = foreign_proc(_, _, _, _, _, _)
+        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
     ;
-        GoalExpr = call(PredId, _ProcId, Args, _, _, _),
+        GoalExpr = plain_call(PredId, _ProcId, Args, _, _, _),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         ModuleName = pred_info_module(PredInfo),
         Name = pred_info_name(PredInfo),

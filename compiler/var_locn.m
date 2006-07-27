@@ -1921,35 +1921,16 @@ materialize_vars_in_lval(ModuleInfo, Lval0, Lval, Code, !VLI) :-
 
 materialize_vars_in_lval(ModuleInfo, Lval0, Avoid, Lval, Code, !VLI) :-
     (
-        Lval0 = reg(_, _),
-        Lval = Lval0,
-        Code = empty
-    ;
-        Lval0 = stackvar(_),
-        Lval = Lval0,
-        Code = empty
-    ;
-        Lval0 = framevar(_),
-        Lval = Lval0,
-        Code = empty
-    ;
-        Lval0 = succip,
-        Lval = Lval0,
-        Code = empty
-    ;
-        Lval0 = maxfr,
-        Lval = Lval0,
-        Code = empty
-    ;
-        Lval0 = curfr,
-        Lval = Lval0,
-        Code = empty
-    ;
-        Lval0 = hp,
-        Lval = Lval0,
-        Code = empty
-    ;
-        Lval0 = sp,
+        ( Lval0 = reg(_, _)
+        ; Lval0 = stackvar(_)
+        ; Lval0 = framevar(_)
+        ; Lval0 = global_var_ref(_)
+        ; Lval0 = succip
+        ; Lval0 = maxfr
+        ; Lval0 = curfr
+        ; Lval0 = hp
+        ; Lval0 = sp
+        ),
         Lval = Lval0,
         Code = empty
     ;

@@ -270,8 +270,7 @@ process_proc(NumProcs, ProcNum, FullName, PredId, !ProcInfo, !ModuleInfo) :-
     set.list_to_set(HeadVars, OrigNonLocals),
     OrigGoal = _ - OrigGoalInfo,
     goal_info_get_instmap_delta(OrigGoalInfo, OrigInstMapDelta),
-    add_goal_info_purity_feature(purity_impure,
-        OrigGoalInfo, ImpureOrigGoalInfo),
+    goal_info_set_purity(purity_impure, OrigGoalInfo, ImpureOrigGoalInfo),
 
     IsActiveVarName = "IsActive",
     generate_new_var(IsActiveVarName, is_active_type, !ProcInfo, IsActiveVar),
@@ -490,9 +489,11 @@ complexity_generate_foreign_proc(PredName, Detism, Args, ExtraArgs,
     mercury_term_size_prof_builtin_module(BuiltinModule),
     Attrs0 = default_attributes(lang_c),
     set_may_call_mercury(will_not_call_mercury, Attrs0, Attrs),
+    MaybeTraceRuntimeCond = no,
     goal_util.generate_foreign_proc(BuiltinModule, PredName, predicate,
-        only_mode, Detism, Attrs, Args, ExtraArgs, Code, [impure_goal],
-        ground_vars(BoundVars), ModuleInfo, Context, Goal).
+        only_mode, Detism, purity_impure, Attrs, Args, ExtraArgs,
+        MaybeTraceRuntimeCond, Code, [], ground_vars(BoundVars),
+        ModuleInfo, Context, Goal).
 
 %-----------------------------------------------------------------------------%
 

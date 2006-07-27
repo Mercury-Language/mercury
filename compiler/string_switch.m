@@ -41,7 +41,7 @@
 :- import_module libs.compiler_util.
 :- import_module libs.tree.
 :- import_module ll_backend.code_gen.
-:- import_module ll_backend.trace.
+:- import_module ll_backend.trace_gen.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -182,8 +182,8 @@ gen_hash_slot(Slot, TblSize, HashSlotMap, CodeModel, SwitchGoalInfo, FailLabel,
         string.append_list(["case """, String, """"], Comment),
         LabelCode = node([label(Label) - Comment]),
         code_info.remember_position(!.CI, BranchStart),
-        trace.maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
-            TraceCode, !CI),
+        maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
+            !CI),
         code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
         goal_info_get_store_map(SwitchGoalInfo, StoreMap),
         code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),

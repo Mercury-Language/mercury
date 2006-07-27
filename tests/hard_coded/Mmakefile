@@ -201,6 +201,8 @@ ORDINARY_PROGS=	\
 	test_promise_impure_implicit \
 	time_test \
 	tim_qual1 \
+	trace_goal_1 \
+	trace_goal_2 \
 	transform_value \
 	trans_intermod_user_equality \
 	transitive_inst_type \
@@ -304,12 +306,15 @@ endif
 # Fact tables currently work only in the C grades.
 # The foreign_type_assertion test is currently meaningful only in C grades.
 # Mutables work properly only in C grades.
+# Trace goal with runtime conditions work properly only in C grades.
 ifeq "$(filter il% java%,$(GRADE))" ""
 	C_ONLY_PROGS= \
 		factt \
 		factt_sort_test \
 		float_gv \
-		foreign_type_assertion
+		foreign_type_assertion \
+		trace_goal_env_1 \
+		trace_goal_env_2
 else
 	C_ONLY_PROGS=
 endif
@@ -562,6 +567,15 @@ nonascii.data:	nonascii_gen
 
 nonascii_gen:	nonascii_gen.c
 	$(CC) nonascii_gen.c -o nonascii_gen
+
+% The trace_goal_env_1 and trace_goal_env_2 test cases differ from each other
+% only in that the latter is executed with the TRACE_ABC environment variable
+% set.
+trace_goal_env_1.out:	trace_goal_env_1
+	./trace_goal_env_1 > trace_goal_env_1.out
+
+trace_goal_env_2.out:	trace_goal_env_2
+	TRACE_ABC=set ./trace_goal_env_2 > trace_goal_env_2.out
 
 # no_fully_strict is expected to fail (it calls error/1).
 # We also need to pipe the output through sed to avoid hard-coding

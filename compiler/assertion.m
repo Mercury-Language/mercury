@@ -157,6 +157,7 @@
 :- import_module bool.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module set.
 :- import_module solutions.
 :- import_module string.
@@ -169,8 +170,8 @@
 is_commutativity_assertion(Module, AssertId, CallVars, CommutativeVars) :-
     assert_id_goal(Module, AssertId, Goal),
     goal_is_equivalence(Goal, P, Q),
-    P = call(PredId, _, VarsP, _, _, _) - _,
-    Q = call(PredId, _, VarsQ, _, _, _) - _,
+    P = plain_call(PredId, _, VarsP, _, _, _) - _,
+    Q = plain_call(PredId, _, VarsQ, _, _, _) - _,
     commutative_var_ordering(VarsP, VarsQ, CallVars, CommutativeVars).
 
     % commutative_var_ordering(Ps, Qs, Vs, CommutativeVs):
@@ -386,8 +387,8 @@ update(PCalls, QCalls, UniversiallyQuantifiedVars, CallVars,
 
 process_two_linked_calls(Goals, UniversiallyQuantifiedVars, PredId,
         LinkingVar, Vars, VarsA) :-
-    Goals = [call(PredId, _, VarsA, _, _, _) - _,
-        call(PredId, _, VarsB, _, _, _) - _],
+    Goals = [plain_call(PredId, _, VarsA, _, _, _) - _,
+        plain_call(PredId, _, VarsB, _, _, _) - _],
 
         % Determine the linking variable, L.
         % By definition it must be existentially quantified and
@@ -431,7 +432,7 @@ single_construction(unify(_, UnifyRhs, _, _, _) - _,
 predicate_call(Goal, PredId) :-
     ( Goal = conj(plain_conj, Goals) - _ ->
         list.member(Call, Goals),
-        Call = call(PredId, _, _, _, _, _) - _,
+        Call = plain_call(PredId, _, _, _, _, _) - _,
         list.delete(Goals, Call, Unifications),
         P = (pred(G::in) is semidet :-
             not (
@@ -441,7 +442,7 @@ predicate_call(Goal, PredId) :-
         ),
         list.filter(P, Unifications, [])
     ;
-        Goal = call(PredId, _, _, _, _, _) - _
+        Goal = plain_call(PredId, _, _, _, _, _) - _
     ).
 
 %-----------------------------------------------------------------------------%
@@ -467,14 +468,14 @@ assert_id_goal(Module, AssertId, Goal) :-
 
 goal_is_implication(Goal, P, Q) :-
         % Goal = (P => Q)
-    Goal = not(conj(plain_conj, GoalList) - GI) - _,
+    Goal = negation(conj(plain_conj, GoalList) - GI) - _,
     list.reverse(GoalList) = [NotQ | Ps],
     ( Ps = [P0] ->
         P = P0
     ;
         P = conj(plain_conj, list.reverse(Ps)) - GI
     ),
-    NotQ = not(Q) - _.
+    NotQ = negation(Q) - _.
 
 :- pred goal_is_equivalence(hlds_goal::in, hlds_goal::out, hlds_goal::out)
     is semidet.
@@ -502,8 +503,8 @@ goal_is_equivalence(Goal, P, Q) :-
 
 equal_goals(conj(ConjType, GoalAs) - _, conj(ConjType, GoalBs) - _, !Subst) :-
     equal_goals_list(GoalAs, GoalBs, !Subst).
-equal_goals(call(PredId, _, VarsA, _, _, _) - _,
-        call(PredId, _, VarsB, _, _, _) - _, !Subst) :-
+equal_goals(plain_call(PredId, _, VarsA, _, _, _) - _,
+        plain_call(PredId, _, VarsB, _, _, _) - _, !Subst) :-
     equal_vars(VarsA, VarsB, !Subst).
 equal_goals(generic_call(Type, VarsA, _, _) - _,
         generic_call(Type, VarsB, _, _) - _, !Subst) :-
@@ -517,7 +518,7 @@ equal_goals(unify(VarA, RHSA, _, _, _) - _, unify(VarB, RHSB, _, _, _) - _,
     equal_unification(RHSA, RHSB, !Subst).
 equal_goals(disj(GoalAs) - _, disj(GoalBs) - _, !Subst) :-
     equal_goals_list(GoalAs, GoalBs, !Subst).
-equal_goals(not(GoalA) - _, not(GoalB) - _, !Subst) :-
+equal_goals(negation(GoalA) - _, negation(GoalB) - _, !Subst) :-
     equal_goals(GoalA, GoalB, !Subst).
 equal_goals(scope(ReasonA, GoalA) - _, scope(ReasonB, GoalB) - _, !Subst) :-
     equal_reason(ReasonA, ReasonB, !Subst),
@@ -528,12 +529,18 @@ equal_goals(if_then_else(VarsA, IfA, ThenA, ElseA) - _,
     equal_goals(IfA, IfB, !Subst),
     equal_goals(ThenA, ThenB, !Subst),
     equal_goals(ElseA, ElseB, !Subst).
-equal_goals(foreign_proc(Attribs, PredId, _, ArgsA, ExtraA, _) - _,
-        foreign_proc(Attribs, PredId, _, ArgsB, ExtraB, _) - _, !Subst) :-
-    % Foreign_procs with extra args are compiler generated,
-    % and as such will not participate in assertions.
+equal_goals(
+        call_foreign_proc(Attribs, PredId, _, ArgsA, ExtraA, MaybeTraceA, _)
+            - _,
+        call_foreign_proc(Attribs, PredId, _, ArgsB, ExtraB, MaybeTraceB, _)
+            - _,
+        !Subst) :-
+    % Foreign_procs with extra args and trace runtime conditions are compiler
+    % generated, and as such will not participate in assertions.
     ExtraA = [],
     ExtraB = [],
+    MaybeTraceA = no,
+    MaybeTraceB = no,
     VarsA = list.map(foreign_arg_var, ArgsA),
     VarsB = list.map(foreign_arg_var, ArgsB),
     equal_vars(VarsA, VarsB, !Subst).
@@ -644,10 +651,10 @@ update_pred_info(AssertId, PredId, !Module) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-normalise_goal(Goal @ call(_, _, _, _, _, _) - GI, Goal - GI).
+normalise_goal(Goal @ plain_call(_, _, _, _, _, _) - GI, Goal - GI).
 normalise_goal(Goal @ generic_call(_, _, _, _) - GI, Goal - GI).
 normalise_goal(Goal @ unify(_, _, _, _, _) - GI, Goal - GI).
-normalise_goal(Goal @ foreign_proc(_, _, _, _, _, _) - GI, Goal - GI).
+normalise_goal(Goal @ call_foreign_proc(_, _, _, _, _, _, _) - GI, Goal - GI).
 normalise_goal(conj(ConjType, Goals0) - GI, conj(ConjType, Goals) - GI) :-
     (
         ConjType = plain_conj,
@@ -660,7 +667,7 @@ normalise_goal(switch(A,B,Case0s) - GI, switch(A,B,Cases)-GI) :-
     normalise_cases(Case0s, Cases).
 normalise_goal(disj(Goal0s) - GI, disj(Goals) - GI) :-
     normalise_goals(Goal0s, Goals).
-normalise_goal(not(Goal0) - GI, not(Goal) - GI) :-
+normalise_goal(negation(Goal0) - GI, negation(Goal) - GI) :-
     normalise_goal(Goal0, Goal).
 normalise_goal(scope(Reason, Goal0) - GI,
         scope(Reason, Goal) - GI) :-
@@ -715,7 +722,7 @@ normalise_goals([Goal0 | Goal0s], [Goal | Goals]) :-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
-in_interface_check(call(PredId,_,_,_,_,SymName) - GoalInfo, _PredInfo,
+in_interface_check(plain_call(PredId,_,_,_,_,SymName) - GoalInfo, _PredInfo,
         !Module, !IO) :-
     module_info_pred_info(!.Module, PredId, CallPredInfo),
     pred_info_get_import_status(CallPredInfo, ImportStatus),
@@ -733,7 +740,7 @@ in_interface_check(unify(Var, RHS, _, _, _) - GoalInfo, PredInfo,
         !Module, !IO) :-
     goal_info_get_context(GoalInfo, Context),
     in_interface_check_unify_rhs(RHS, Var, Context, PredInfo, !Module, !IO).
-in_interface_check(foreign_proc(_, PredId, _, _, _, _) -
+in_interface_check(call_foreign_proc(_, PredId, _, _, _, _, _) -
         GoalInfo, _PredInfo, !Module, !IO) :-
     module_info_pred_info(!.Module, PredId, PragmaPredInfo),
     pred_info_get_import_status(PragmaPredInfo, ImportStatus),
@@ -754,7 +761,7 @@ in_interface_check(switch(_, _, _) - _, _, _, _, !IO) :-
     unexpected(this_file, "in_interface_check: assertion contains switch.").
 in_interface_check(disj(Goals) - _, PredInfo, !Module, !IO) :-
     in_interface_check_list(Goals, PredInfo, !Module, !IO).
-in_interface_check(not(Goal) - _, PredInfo, !Module, !IO) :-
+in_interface_check(negation(Goal) - _, PredInfo, !Module, !IO) :-
     in_interface_check(Goal, PredInfo, !Module, !IO).
 in_interface_check(scope(_, Goal) - _, PredInfo, !Module, !IO) :-
     in_interface_check(Goal, PredInfo, !Module, !IO).

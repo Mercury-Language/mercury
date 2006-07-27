@@ -308,7 +308,7 @@ add_mc_vars_for_goal(PredId, ProgVarset, GoalExpr - GoalInfo, !VarInfo) :-
             % XXX handle this
         )
     ;
-        GoalExpr = call(_, _, _, _, _, _)
+        GoalExpr = plain_call(_, _, _, _, _, _)
     ;
         GoalExpr = generic_call(_, _, _, _)
     ;
@@ -321,7 +321,7 @@ add_mc_vars_for_goal(PredId, ProgVarset, GoalExpr - GoalInfo, !VarInfo) :-
         GoalExpr = disj(Goals),
         list.foldl(add_mc_vars_for_goal(PredId, ProgVarset), Goals, !VarInfo)
     ;
-        GoalExpr = not(Goal),
+        GoalExpr = negation(Goal),
         add_mc_vars_for_goal(PredId, ProgVarset, Goal, !VarInfo)
     ;   GoalExpr = scope(_, Goal),
         add_mc_vars_for_goal(PredId, ProgVarset, Goal, !VarInfo)
@@ -330,7 +330,7 @@ add_mc_vars_for_goal(PredId, ProgVarset, GoalExpr - GoalInfo, !VarInfo) :-
         Goals = [Cond, Then, Else],
         list.foldl(add_mc_vars_for_goal(PredId, ProgVarset), Goals, !VarInfo)
     ;
-        GoalExpr = foreign_proc(_, _, _, _, _, _)
+        GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
     ;
         GoalExpr = shorthand(_ShorthandGoalExpr)
     ).
@@ -437,7 +437,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
 
 add_goal_expr_constraints(ModuleInfo, ProgVarset, CallerPredId, GoalExpr,
         Context, GoalPath, _Nonlocals, !VarInfo, !Constraints) :-
-    GoalExpr = call(CalleePredId, _, Args, _, _, _),
+    GoalExpr = plain_call(CalleePredId, _, Args, _, _, _),
     module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
 
     ( pred_info_infer_modes(CalleePredInfo) ->
@@ -542,7 +542,8 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
     list.foldl(equivalent(Context), EquivVarss, !Constraints).
 
 add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
-        not(Goal), Context, GoalPath, Nonlocals, !VarInfo, !Constraints) :-
+        negation(Goal), Context, GoalPath, Nonlocals, !VarInfo,
+        !Constraints) :-
     Goal = _ - NegatedGoalInfo,
     goal_info_get_goal_path(NegatedGoalInfo, NegatedGoalPath),
     VarMap = rep_var_map(!.VarInfo),
@@ -639,7 +640,7 @@ add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
         LocalAndSharedAtThen, !Constraints).
 
 add_goal_expr_constraints(ModuleInfo, ProgVarset, PredId,
-        foreign_proc(_, CalledPred, ProcId, ForeignArgs, _, _),
+        call_foreign_proc(_, CalledPred, ProcId, ForeignArgs, _, _, _),
         Context, GoalPath, _Nonlocals, !VarInfo, !Constraints) :-
     CallArgs = list.map(foreign_arg_var, ForeignArgs),
     module_info_pred_proc_info(ModuleInfo, CalledPred, ProcId, _, ProcInfo),

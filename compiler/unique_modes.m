@@ -318,7 +318,7 @@ check_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, Goal,
     goal_get_nonlocals(Then0, Then_Vars),
     goal_get_nonlocals(Else0, Else_Vars),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
-    mode_info_lock_vars(if_then_else, NonLocals, !ModeInfo),
+    mode_info_lock_vars(var_lock_if_then_else, NonLocals, !ModeInfo),
 
     % At this point, we should set the inst of any `unique' variables which
     % occur in the condition and which are live to `mostly_unique'. However,
@@ -357,7 +357,7 @@ check_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, Goal,
     mode_info_add_live_vars(Then_Vars, !ModeInfo),
     check_goal(Cond0, Cond, !ModeInfo, !IO),
     mode_info_remove_live_vars(Then_Vars, !ModeInfo),
-    mode_info_unlock_vars(if_then_else, NonLocals, !ModeInfo),
+    mode_info_unlock_vars(var_lock_if_then_else, NonLocals, !ModeInfo),
     mode_info_get_instmap(!.ModeInfo, InstMapCond),
     ( instmap.is_reachable(InstMapCond) ->
         check_goal(Then0, Then, !ModeInfo, !IO),
@@ -378,7 +378,8 @@ check_goal_2(if_then_else(Vars, Cond0, Then0, Else0), GoalInfo0, Goal,
     Goal = if_then_else(Vars, Cond, Then, Else),
     mode_checkpoint(exit, "if-then-else", !ModeInfo, !IO).
 
-check_goal_2(not(SubGoal0), GoalInfo0, not(SubGoal), !ModeInfo, !IO) :-
+check_goal_2(negation(SubGoal0), GoalInfo0, negation(SubGoal), !ModeInfo,
+        !IO) :-
     mode_checkpoint(enter, "not", !ModeInfo, !IO),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
 
@@ -399,9 +400,9 @@ check_goal_2(not(SubGoal0), GoalInfo0, not(SubGoal), !ModeInfo, !IO) :-
 
     % We need to lock the non-local variables, to ensure that the negation
     % does not bind them.
-    mode_info_lock_vars(negation, NonLocals, !ModeInfo),
+    mode_info_lock_vars(var_lock_negation, NonLocals, !ModeInfo),
     check_goal(SubGoal0, SubGoal, !ModeInfo, !IO),
-    mode_info_unlock_vars(negation, NonLocals, !ModeInfo),
+    mode_info_unlock_vars(var_lock_negation, NonLocals, !ModeInfo),
     mode_info_set_live_vars(LiveVars0, !ModeInfo),
     mode_info_set_instmap(InstMap0, !ModeInfo),
     mode_checkpoint(exit, "not", !ModeInfo, !IO).
@@ -447,7 +448,7 @@ check_goal_2(generic_call(GenericCall, Args, Modes, Det), _GoalInfo0, Goal,
     mode_info_unset_call_context(!ModeInfo),
     mode_checkpoint(exit, "generic_call", !ModeInfo, !IO).
 
-check_goal_2(call(PredId, ProcId0, Args, Builtin, CallContext,
+check_goal_2(plain_call(PredId, ProcId0, Args, Builtin, CallContext,
         PredName), GoalInfo0, Goal, !ModeInfo, !IO) :-
     sym_name_to_string(PredName, PredNameString),
     string.append("call ", PredNameString, CallString),
@@ -455,7 +456,7 @@ check_goal_2(call(PredId, ProcId0, Args, Builtin, CallContext,
     mode_info_get_call_id(!.ModeInfo, PredId, CallId),
     mode_info_set_call_context(call(call(CallId)), !ModeInfo),
     check_call(PredId, ProcId0, Args, GoalInfo0, ProcId, !ModeInfo),
-    Goal = call(PredId, ProcId, Args, Builtin, CallContext, PredName),
+    Goal = plain_call(PredId, ProcId, Args, Builtin, CallContext, PredName),
     mode_info_unset_call_context(!ModeInfo),
     mode_checkpoint(exit, "call", !ModeInfo, !IO).
 
@@ -484,8 +485,8 @@ check_goal_2(switch(Var, CanFail, Cases0), GoalInfo0,
     ),
     mode_checkpoint(exit, "switch", !ModeInfo, !IO).
 
-check_goal_2(foreign_proc(Attributes, PredId, ProcId0, Args, ExtraArgs,
-        PragmaCode), GoalInfo0, Goal, !ModeInfo, !IO) :-
+check_goal_2(call_foreign_proc(Attributes, PredId, ProcId0, Args, ExtraArgs,
+        MaybeTraceRuntimeCond, PragmaCode), GoalInfo0, Goal, !ModeInfo, !IO) :-
     % To modecheck a pragma_c_code, we just modecheck the proc for
     % which it is the goal.
     mode_checkpoint(enter, "foreign_proc", !ModeInfo, !IO),
@@ -493,8 +494,8 @@ check_goal_2(foreign_proc(Attributes, PredId, ProcId0, Args, ExtraArgs,
     mode_info_set_call_context(call(call(CallId)), !ModeInfo),
     ArgVars = list.map(foreign_arg_var, Args),
     check_call(PredId, ProcId0, ArgVars, GoalInfo0, ProcId, !ModeInfo),
-    Goal = foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
-        PragmaCode),
+    Goal = call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
+        MaybeTraceRuntimeCond, PragmaCode),
     mode_info_unset_call_context(!ModeInfo),
     mode_checkpoint(exit, "foreign_proc", !ModeInfo, !IO).
 

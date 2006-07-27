@@ -1050,7 +1050,7 @@ process_goal_expr(Goal0, GoalInfo0, Goal, !Info) :-
     conj_list_to_goal(GoalList, GoalInfo0, Goal).
 
 process_goal_expr(Goal0, GoalInfo0, Goal, !Info) :-
-    Goal0 = foreign_proc(_, PredId, _, _, _, _),
+    Goal0 = call_foreign_proc(_, PredId, _, _, _, _, _),
     poly_info_get_module_info(!.Info, ModuleInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     PredModule = pred_info_module(PredInfo),
@@ -1079,9 +1079,9 @@ process_goal_expr(GoalExpr, GoalInfo, Goal, !Info) :-
     process_goal_list(Goals0, Goals, !Info),
     Goal = disj(Goals) - GoalInfo.
 process_goal_expr(GoalExpr, GoalInfo, Goal, !Info) :-
-    GoalExpr = not(SubGoal0),
+    GoalExpr = negation(SubGoal0),
     process_goal(SubGoal0, SubGoal, !Info),
-    Goal = not(SubGoal) - GoalInfo.
+    Goal = negation(SubGoal) - GoalInfo.
 process_goal_expr(GoalExpr, GoalInfo, Goal, !Info) :-
     GoalExpr = switch(Var, CanFail, Cases0),
     process_case_list(Cases0, Cases, !Info),
@@ -1356,7 +1356,7 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     CallUnifyContext = call_unify_context(X0,
         functor(cons(QualifiedPName, list.length(ArgVars0)), no, ArgVars0),
         UnifyContext),
-    LambdaGoalExpr = call(PredId, ProcId, Args, not_builtin,
+    LambdaGoalExpr = plain_call(PredId, ProcId, Args, not_builtin,
         yes(CallUnifyContext), QualifiedPName),
 
     % Construct a goal_info for the lambda goal, making sure to set up
@@ -1371,7 +1371,7 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     goal_info_init(LambdaGoalInfo0),
     goal_info_set_context(Context, LambdaGoalInfo0, LambdaGoalInfo1),
     goal_info_set_nonlocals(LambdaNonLocals, LambdaGoalInfo1, LambdaGoalInfo2),
-    add_goal_info_purity_feature(Purity, LambdaGoalInfo2, LambdaGoalInfo3),
+    goal_info_set_purity(Purity, LambdaGoalInfo2, LambdaGoalInfo3),
     goal_info_set_goal_path(GoalPath, LambdaGoalInfo3, LambdaGoalInfo),
     LambdaGoal = LambdaGoalExpr - LambdaGoalInfo,
 
@@ -1493,19 +1493,19 @@ process_existq_unify_functor(CtorDefn, IsConstruction,
 %-----------------------------------------------------------------------------%
 
 :- pred process_foreign_proc(module_info::in, pred_info::in,
-    hlds_goal_expr::in(bound(foreign_proc(ground,ground,ground,ground,
-    ground,ground))), hlds_goal_info::in, hlds_goal::out,
+    hlds_goal_expr::in(bound(call_foreign_proc(ground,ground,ground,ground,
+    ground,ground,ground))), hlds_goal_info::in, hlds_goal::out,
     poly_info::in, poly_info::out) is det.
 
 process_foreign_proc(ModuleInfo, PredInfo, Goal0, GoalInfo0, Goal, !Info) :-
     % Insert the type_info vars into the argname map, so that the foreign_proc
     % can refer to the type_info variable for type T as `TypeInfo_for_T'.
-    Goal0 = foreign_proc(Attributes, PredId, ProcId, Args0, ProcExtraArgs,
-        Impl0),
+    Goal0 = call_foreign_proc(Attributes, PredId, ProcId, Args0, ProcExtraArgs,
+        MaybeTraceRuntimeCond, Impl0),
     ArgVars0 = list.map(foreign_arg_var, Args0),
     process_call(PredId, ArgVars0, GoalInfo0, GoalInfo, ExtraVars, ExtraGoals,
         !Info),
-    ( Impl0 = import(_, _, _, _) ->
+    ( Impl0 = fc_impl_import(_, _, _, _) ->
         % The reference manual guarantees a one-to-one correspondence between
         % the arguments of the predicate (as augmented by with type_info and/or
         % typeclass_info arguments by polymorphism.m) and the arguments of the
@@ -1520,16 +1520,16 @@ process_foreign_proc(ModuleInfo, PredInfo, Goal0, GoalInfo0, Goal, !Info) :-
 
     % Add the type info arguments to the list of variables
     % to call for a pragma import.
-    ( Impl0 = import(Name, HandleReturn, Variables0, MaybeContext) ->
+    ( Impl0 = fc_impl_import(Name, HandleReturn, Variables0, MaybeContext) ->
         Variables = type_info_vars(ModuleInfo, ExtraArgs, Variables0),
-        Impl = import(Name, HandleReturn, Variables, MaybeContext)
+        Impl = fc_impl_import(Name, HandleReturn, Variables, MaybeContext)
     ;
         Impl = Impl0
     ),
 
     % Plug it all back together.
-    CallExpr = foreign_proc(Attributes, PredId, ProcId, Args, ProcExtraArgs,
-        Impl),
+    CallExpr = call_foreign_proc(Attributes, PredId, ProcId,
+        Args, ProcExtraArgs, MaybeTraceRuntimeCond, Impl),
     Call = CallExpr - GoalInfo,
     list.append(ExtraGoals, [Call], GoalList),
     conj_list_to_goal(GoalList, GoalInfo0, Goal).
@@ -1906,7 +1906,7 @@ process_new_call(CalleePredInfo, CalleeProcInfo, PredId, ProcId, CallArgs0,
     NonLocals1 = set.list_to_set(ExtraArgs),
     NonLocals = set.union(NonLocals0, NonLocals1),
     goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
-    CallGoalExpr = call(PredId, ProcId, CallArgs, BuiltinState,
+    CallGoalExpr = plain_call(PredId, ProcId, CallArgs, BuiltinState,
         MaybeCallUnifyContext, SymName),
     CallGoal = CallGoalExpr - GoalInfo,
     conj_list_to_goal(ExtraGoals ++ [CallGoal], GoalInfo, Goal).
@@ -2237,8 +2237,8 @@ make_typeclass_info_from_subclass(Constraint, Seen, ClassId,
     % to superclass_from_typeclass_info in private_builtin.
     goal_util.generate_simple_call(mercury_private_builtin_module,
         "superclass_from_typeclass_info", predicate, only_mode,
-        detism_det, [SubClassVar, IndexVar, Var], [], [], ModuleInfo,
-        term.context_init, SuperClassGoal),
+        detism_det, purity_pure, [SubClassVar, IndexVar, Var], [], [],
+        ModuleInfo, term.context_init, SuperClassGoal),
     !:ExtraGoals = [SuperClassGoal, IndexGoal | !.ExtraGoals].
 
 :- pred construct_typeclass_info(list(prog_var)::in, list(prog_var)::in,
@@ -2862,7 +2862,7 @@ gen_extract_type_info(TypeVar, Kind, TypeClassInfoVar, Index, ModuleInfo,
         !VarSet, !VarTypes, !RttiVarMaps),
     goal_util.generate_simple_call(mercury_private_builtin_module,
         "type_info_from_typeclass_info", predicate, only_mode,
-        detism_det, [TypeClassInfoVar, IndexVar, TypeInfoVar], [],
+        detism_det, purity_pure, [TypeClassInfoVar, IndexVar, TypeInfoVar], [],
         [TypeInfoVar - ground(shared, none)], ModuleInfo,
         term.context_init, CallGoal),
     Goals = [IndexGoal, CallGoal].

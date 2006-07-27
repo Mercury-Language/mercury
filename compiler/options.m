@@ -179,7 +179,7 @@
 
     ;       generate_mmc_make_module_dependencies
     ;       assume_gmake
-    ;       trace
+    ;       trace_level
     ;       trace_optimized
     ;       trace_prof
     ;       trace_table_io
@@ -187,6 +187,7 @@
     ;       trace_table_io_states
     ;       trace_table_io_require
     ;       trace_table_io_all
+    ;       trace_goal_flags
     ;       prof_optimized
     ;       delay_death
     ;       suppress_trace
@@ -197,7 +198,6 @@
             % grade.
 
     ;       stack_trace_higher_order
-    ;       tabling_via_extra_args
     ;       generate_bytecode
     ;       line_numbers
     ;       auto_comments
@@ -930,7 +930,7 @@ option_defaults_2(aux_output_option, [
     generate_item_version_numbers       -   bool(no),
     generate_mmc_make_module_dependencies - bool(no),
     assume_gmake                        -   bool(yes),
-    trace                               -   string("default"),
+    trace_level                         -   string("default"),
     trace_optimized                     -   bool(no),
     trace_prof                          -   bool(no),
     trace_table_io                      -   bool(no),
@@ -938,12 +938,12 @@ option_defaults_2(aux_output_option, [
     trace_table_io_states               -   bool(no),
     trace_table_io_require              -   bool(no),
     trace_table_io_all                  -   bool(no),
+    trace_goal_flags                    -   accumulating([]),
     prof_optimized                      -   bool(no),
     suppress_trace                      -   string(""),
     force_disable_tracing               -   bool(no),
     delay_death                         -   bool(yes),
     stack_trace_higher_order            -   bool(no),
-    tabling_via_extra_args              -   bool(yes),
     generate_bytecode                   -   bool(no),
     line_numbers                        -   bool(yes),
     auto_comments                       -   bool(no),
@@ -1647,7 +1647,7 @@ long_option("assume-gmake",         assume_gmake).
 long_option("generate-mmc-make-module-dependencies",
         generate_mmc_make_module_dependencies).
 long_option("generate-mmc-deps",    generate_mmc_make_module_dependencies).
-long_option("trace",                trace).
+long_option("trace",                trace_level).
 long_option("trace-optimised",      trace_optimized).
 long_option("trace-optimized",      trace_optimized).
 long_option("trace-prof",           trace_prof).
@@ -1656,13 +1656,13 @@ long_option("trace-table-io-only-retry", trace_table_io_only_retry).
 long_option("trace-table-io-states",    trace_table_io_states).
 long_option("trace-table-io-require",   trace_table_io_require).
 long_option("trace-table-io-all",   trace_table_io_all).
+long_option("trace-flag",           trace_goal_flags).
 long_option("profile-optimised",    prof_optimized).
 long_option("profile-optimized",    prof_optimized).
 long_option("suppress-trace",       suppress_trace).
 long_option("force-disable-tracing",    force_disable_tracing).
 long_option("delay-death",          delay_death).
 long_option("stack-trace-higher-order", stack_trace_higher_order).
-long_option("tabling-via-extra-args",   tabling_via_extra_args).
 long_option("generate-bytecode",    generate_bytecode).
 long_option("line-numbers",         line_numbers).
 long_option("auto-comments",        auto_comments).
@@ -3093,6 +3093,8 @@ options_help_aux_output -->
 %       "\tIf a primitive has no annotation specifying the type of",
 %       "\ttabling required, deduce it from the values of the other",
 %       "\tannotations.",
+        "--trace-flag <keyword>",
+        "\tEnable the trace goals that depend on the <keyword> trace flag.",
         "--profile-optimized",
         "\tDo not disable optimizations that can distort deep profiles.",
         "--no-delay-death",

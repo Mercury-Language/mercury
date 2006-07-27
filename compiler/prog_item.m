@@ -686,17 +686,27 @@
                 prog_vars,  % OrdinaryVars
                 prog_vars,  % DotStateVars
                 prog_vars,  % ColonStateVars
-                goal)
+                goal
+            )
     ;       promise_equivalent_solution_sets_expr(
                 prog_vars,  % OrdinaryVars
                 prog_vars,  % DotStateVars
                 prog_vars,  % ColonStateVars
-                goal)
+                goal
+            )
     ;       promise_equivalent_solution_arbitrary_expr(
                 prog_vars,  % OrdinaryVars
                 prog_vars,  % DotStateVars
                 prog_vars,  % ColonStateVars
-                goal)
+                goal
+            )
+    ;       trace_expr(
+                texpr_compiletime   :: maybe(trace_expr(trace_compiletime)),
+                texpr_runtime       :: maybe(trace_expr(trace_runtime)),
+                texpr_maybe_io      :: maybe(prog_var),
+                texpr_mutable_vars  :: list(trace_mutable_var),
+                texpr_goal          :: goal
+            )
 
     % implications
     ;       implies_expr(goal, goal)

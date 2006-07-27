@@ -97,7 +97,7 @@
 :- import_module ll_backend.llds_out.
 :- import_module ll_backend.ll_pseudo_type_info.
 :- import_module ll_backend.prog_rep.
-:- import_module ll_backend.trace.
+:- import_module ll_backend.trace_gen.
 :- import_module mdbcomp.program_representation.
 :- import_module parse_tree.prog_out.
 :- import_module parse_tree.prog_util.
@@ -1457,6 +1457,8 @@ represent_lval(field(_, _, _), _) :-
     unexpected(this_file, "continuation live value stored in field").
 represent_lval(mem_ref(_), _) :-
     unexpected(this_file, "continuation live value stored in mem_ref").
+represent_lval(global_var_ref(_), _) :-
+    unexpected(this_file, "continuation live value stored in global_var_ref").
 represent_lval(lvar(_), _) :-
     unexpected(this_file, "continuation live value stored in lvar").
 

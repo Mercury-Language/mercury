@@ -298,6 +298,7 @@ vars_in_lval(field(_MaybeTag, Rval0, Rval1), Vars) :-
     list.append(Vars0, Vars1, Vars).
 vars_in_lval(mem_ref(Rval), Vars) :-
     vars_in_rval(Rval, Vars).
+vars_in_lval(global_var_ref(_), []).
 vars_in_lval(lvar(Var), [Var]).
 
 :- pred vars_in_mem_ref(mem_ref::in, list(prog_var)::out) is det.
@@ -595,31 +596,18 @@ substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N) :-
 
 substitute_lval_in_lval_count_2(OldLval, NewLval, Lval0, Lval, !N) :-
     (
-        Lval0 = reg(_Type, _RegNum),
-        Lval = Lval0
-    ;
-        Lval0 = succip,
-        Lval = succip
-    ;
-        Lval0 = maxfr,
-        Lval = maxfr
-    ;
-        Lval0 = curfr,
-        Lval = curfr
-    ;
-        Lval0 = hp,
-        Lval = hp
-    ;
-        Lval0 = sp,
-        Lval = sp
-    ;
-        Lval0 = temp(_Type, _TmpNum),
-        Lval = Lval0
-    ;
-        Lval0 = stackvar(_SlotNum),
-        Lval = Lval0
-    ;
-        Lval0 = framevar(_SlotNum),
+        ( Lval0 = reg(_Type, _RegNum)
+        ; Lval0 = succip
+        ; Lval0 = maxfr
+        ; Lval0 = curfr
+        ; Lval0 = hp
+        ; Lval0 = sp
+        ; Lval0 = temp(_Type, _TmpNum)
+        ; Lval0 = stackvar(_SlotNum)
+        ; Lval0 = framevar(_SlotNum)
+        ; Lval0 = lvar(_Var)
+        ; Lval0 = global_var_ref(_GlobalVarName)
+        ),
         Lval = Lval0
     ;
         Lval0 = succip_slot(Rval0),
@@ -650,9 +638,6 @@ substitute_lval_in_lval_count_2(OldLval, NewLval, Lval0, Lval, !N) :-
         Lval0 = mem_ref(Rval0),
         substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
         Lval = mem_ref(Rval)
-    ;
-        Lval0 = lvar(_Var),
-        Lval = Lval0
     ).
 
 :- pred substitute_lval_in_args(lval::in, lval::in,
@@ -731,32 +716,19 @@ substitute_rval_in_mem_ref(OldRval, NewRval, MemRef0, MemRef) :-
 
 substitute_rval_in_lval(OldRval, NewRval, Lval0, Lval) :-
     (
-        Lval0 = reg(T, N),
-        Lval = reg(T, N)
-    ;
-        Lval0 = succip,
-        Lval = succip
-    ;
-        Lval0 = maxfr,
-        Lval = maxfr
-    ;
-        Lval0 = curfr,
-        Lval = curfr
-    ;
-        Lval0 = hp,
-        Lval = hp
-    ;
-        Lval0 = sp,
-        Lval = sp
-    ;
-        Lval0 = temp(T, N),
-        Lval = temp(T, N)
-    ;
-        Lval0 = stackvar(N),
-        Lval = stackvar(N)
-    ;
-        Lval0 = framevar(N),
-        Lval = framevar(N)
+        ( Lval0 = reg(_, _)
+        ; Lval0 = succip
+        ; Lval0 = maxfr
+        ; Lval0 = curfr
+        ; Lval0 = hp
+        ; Lval0 = sp
+        ; Lval0 = temp(_, _)
+        ; Lval0 = stackvar(_)
+        ; Lval0 = framevar(_)
+        ; Lval0 = global_var_ref(_)
+        ; Lval0 = lvar(_)
+        ),
+        Lval = Lval0
     ;
         Lval0 = succip_slot(Rval0),
         substitute_rval_in_rval(OldRval, NewRval, Rval0, Rval),
@@ -786,9 +758,6 @@ substitute_rval_in_lval(OldRval, NewRval, Lval0, Lval) :-
         Lval0 = mem_ref(Rval0),
         substitute_rval_in_rval(OldRval, NewRval, Rval0, Rval),
         Lval = mem_ref(Rval)
-    ;
-        Lval0 = lvar(N),
-        Lval = lvar(N)
     ).
 
 :- pred substitute_rval_in_args(rval::in, rval::in,
@@ -958,6 +927,7 @@ lval_addrs(lvar(_Var), [], []).
 lval_addrs(temp(_Type, _TmpNum), [], []).
 lval_addrs(mem_ref(Rval), CodeAddrs, DataAddrs) :-
     rval_addrs(Rval, CodeAddrs, DataAddrs).
+lval_addrs(global_var_ref(_), [], []).
 
 rval_list_addrs([], [], []).
 rval_list_addrs([Rval | Rvals], CodeAddrs, DataAddrs) :-

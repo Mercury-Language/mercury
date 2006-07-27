@@ -109,7 +109,7 @@ contains_simple_recursive_call_conj([Goal | Goals], CodeInfo) :-
 :- pred is_recursive_call(hlds_goal_expr::in, code_info::in) is semidet.
 
 is_recursive_call(Goal, CodeInfo) :-
-    Goal = call(CallPredId, CallProcId, _, BuiltinState, _, _),
+    Goal = plain_call(CallPredId, CallProcId, _, BuiltinState, _, _),
     BuiltinState = not_builtin,
     code_info.get_pred_id(CodeInfo, PredId),
     PredId = CallPredId,
@@ -140,7 +140,7 @@ contains_only_builtins_expr(disj(Goals)) =
     contains_only_builtins_list(Goals).
 contains_only_builtins_expr(switch(_Var, _Category, Cases)) =
     contains_only_builtins_cases(Cases).
-contains_only_builtins_expr(not(Goal)) =
+contains_only_builtins_expr(negation(Goal)) =
     contains_only_builtins(Goal).
 contains_only_builtins_expr(scope(_, Goal)) =
     contains_only_builtins(Goal).
@@ -155,7 +155,7 @@ contains_only_builtins_expr(if_then_else(_Vars, Cond, Then, Else))
     ;
         OnlyBuiltins = no
     ).
-contains_only_builtins_expr(call(_, _, _, BuiltinState, _, _))
+contains_only_builtins_expr(plain_call(_, _, _, BuiltinState, _, _))
         = OnlyBuiltins :-
     (
         BuiltinState = inline_builtin,
@@ -197,7 +197,7 @@ contains_only_builtins_expr(unify(_, _, _, Uni, _)) = OnlyBuiltins :-
         Uni = complicated_unify(_, _, _),
         OnlyBuiltins = no
     ).
-contains_only_builtins_expr(foreign_proc(_, _, _, _, _, _)) = no.
+contains_only_builtins_expr(call_foreign_proc(_, _, _, _, _, _, _)) = no.
 contains_only_builtins_expr(generic_call(_, _, _, _)) = no.
 contains_only_builtins_expr(shorthand(_)) = no.
 

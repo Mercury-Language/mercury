@@ -190,12 +190,12 @@ first_order_check_goal(scope(_, Goal - GoalInfo), _GoalInfo, Negated,
         WholeScc, ThisPredProcId, Error, !ModuleInfo, !IO) :-
     first_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
         ThisPredProcId, Error, !ModuleInfo, !IO).
-first_order_check_goal(not(Goal - GoalInfo), _GoalInfo, _Negated,
+first_order_check_goal(negation(Goal - GoalInfo), _GoalInfo, _Negated,
         WholeScc, ThisPredProcId, Error, !ModuleInfo, !IO) :-
     first_order_check_goal(Goal, GoalInfo, yes, WholeScc, ThisPredProcId,
         Error, !ModuleInfo, !IO).
-first_order_check_goal(foreign_proc(_Attributes, CPred, CProc, _, _, _),
-        GoalInfo, Negated, WholeScc, ThisPredProcId, Error,
+first_order_check_goal(call_foreign_proc(_Attributes, CPred, CProc,
+        _, _, _, _), GoalInfo, Negated, WholeScc, ThisPredProcId, Error,
         !ModuleInfo, !IO) :-
     (
         Negated = yes,
@@ -209,8 +209,9 @@ first_order_check_goal(foreign_proc(_Attributes, CPred, CProc, _, _, _),
     ).
 first_order_check_goal(unify(_Var, _RHS, _Mode, _Uni, _Context), _GoalInfo,
         _Negated, _WholeScc, _ThisPredProcId, _, !ModuleInfo, !IO).
-first_order_check_goal(call(CPred, CProc, _Args, _BuiltinState, _Contex, _Sym),
-        GInfo, Negated, WholeScc, ThisPredProcId, Error, !ModuleInfo, !IO) :-
+first_order_check_goal(plain_call(CPred, CProc, _Args, _BuiltinState, _UC,
+        _Sym), GInfo, Negated, WholeScc, ThisPredProcId, Error, !ModuleInfo,
+        !IO) :-
     Callee = proc(CPred, CProc),
     (
         Negated = yes,
@@ -329,17 +330,17 @@ higher_order_check_goal(scope(_, Goal - GoalInfo), _GoalInfo, Negated,
         WholeScc, ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
     higher_order_check_goal(Goal, GoalInfo, Negated, WholeScc,
         ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO).
-higher_order_check_goal(not(Goal - GoalInfo), _GoalInfo, _Negated, WholeScc,
-        ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
+higher_order_check_goal(negation(Goal - GoalInfo), _GoalInfo, _Negated,
+        WholeScc, ThisPredProcId, HighOrderLoops, Error, !ModuleInfo, !IO) :-
     higher_order_check_goal(Goal, GoalInfo, yes, WholeScc, ThisPredProcId,
         HighOrderLoops, Error, !ModuleInfo, !IO).
-higher_order_check_goal(foreign_proc(_IsRec, _, _, _, _, _), _GoalInfo,
+higher_order_check_goal(call_foreign_proc(_IsRec, _, _, _, _, _, _), _GoalInfo,
         _Negated, _WholeScc, _ThisPredProcId, _HighOrderLoops, _,
         !ModuleInfo, !IO).
 higher_order_check_goal(unify(_Var, _RHS, _Mode, _Uni, _Context), _GoalInfo,
         _Negated, _WholeScc, _ThisPredProcId, _HighOrderLoops, _Error,
         !ModuleInfo, !IO).
-higher_order_check_goal((call(_CPred, _CProc, _Args, _Builtin, _Contex, Sym)),
+higher_order_check_goal(plain_call(_CPred, _CProc, _Args, _Builtin, _UC, Sym),
         GoalInfo, _Negated, _WholeScc, ThisPredProcId, HighOrderLoops,
         Error, !ModuleInfo, !IO) :-
     (
@@ -725,7 +726,7 @@ check_goal1(unify(_Var, RHS, _Mode, Unification, _Context), !Calls,
     ;
         true
     ).
-check_goal1(call(CPred, CProc, _Args, _Builtin, _Contex, _Sym), !Calls,
+check_goal1(plain_call(CPred, CProc, _Args, _Builtin, _UC, _Sym), !Calls,
         !HasAT, !CallsHO) :-
     % Add this call to the call list.
     set.insert(!.Calls, proc(CPred, CProc), !:Calls).
@@ -744,9 +745,9 @@ check_goal1(if_then_else(_Vars, Cond - _CInfo, Then - _TInfo, Else - _EInfo),
     check_goal1(Else, !Calls, !HasAT, !CallsHO).
 check_goal1(scope(_, Goal - _GoalInfo), !Calls, !HasAT, !CallsHO) :-
     check_goal1(Goal, !Calls, !HasAT, !CallsHO).
-check_goal1(not(Goal - _GoalInfo), !Calls, !HasAT, !CallsHO) :-
+check_goal1(negation(Goal - _GoalInfo), !Calls, !HasAT, !CallsHO) :-
     check_goal1(Goal, !Calls, !HasAT, !CallsHO).
-check_goal1(foreign_proc(_Attrib, _CPred, _CProc, _, _, _),
+check_goal1(call_foreign_proc(_Attrib, _CPred, _CProc, _, _, _, _),
         !Calls, !HasAT, !CallsHO).
 check_goal1(shorthand(_), _, _, _, _, _, _) :-
     % These should have been expanded out by now.
@@ -805,7 +806,8 @@ get_called_procs(unify(_Var, RHS, _Mode, Unification, _Context), !Calls) :-
         true
     ).
 
-get_called_procs(call(CPred, CProc, _Args, _Builtin, _Contex, _Sym), !Calls) :-
+get_called_procs(plain_call(CPred, CProc, _Args, _Builtin, _UC, _Sym),
+        !Calls) :-
     % Add this call to the call list.
     !:Calls = [proc(CPred, CProc) | !.Calls].
 
@@ -823,9 +825,10 @@ get_called_procs(if_then_else(_Vars, Cond - _, Then - _, Else - _), !Calls) :-
     get_called_procs(Else, !Calls).
 get_called_procs(scope(_, Goal - _GoalInfo), !Calls) :-
     get_called_procs(Goal, !Calls).
-get_called_procs(not(Goal - _GoalInfo), !Calls) :-
+get_called_procs(negation(Goal - _GoalInfo), !Calls) :-
     get_called_procs(Goal, !Calls).
-get_called_procs(foreign_proc(_Attrib, _CPred, _CProc, _, _, _), !Calls).
+get_called_procs(call_foreign_proc(_Attrib, _CPred, _CProc, _, _, _, _),
+        !Calls).
 get_called_procs(shorthand(_), !Calls) :-
     % These should have been expanded out by now.
     unexpected(this_file, "get_called_procs: unexpected shorthand").

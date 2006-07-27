@@ -51,7 +51,7 @@
 :- import_module libs.options.
 :- import_module libs.tree.
 :- import_module ll_backend.code_gen.
-:- import_module ll_backend.trace.
+:- import_module ll_backend.trace_gen.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
@@ -610,8 +610,8 @@ generate_primary_tag_code(GoalMap, Primary, MaxSecondary, StagLoc, Rval,
         ( GoalList = [-1 - stag_goal(ConsId, Goal)] ->
             Comment = "case " ++ cons_id_to_string(ConsId),
             CommentCode = node([comment(Comment) - ""]),
-            trace.maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
-                TraceCode, !CI),
+            maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
+                !CI),
             code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
             goal_info_get_store_map(SwitchGoalInfo, StoreMap),
             code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
@@ -743,8 +743,8 @@ generate_secondary_try_me_else_chain([Case0 | Cases0], StagRval, CodeModel,
                 label(ElseLabel))
                 - "test remote sec tag only"
         ]),
-        trace.maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
-            TraceCode, !CI),
+        maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
+            !CI),
         code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
         code_info.generate_branch_end(StoreMap, !MaybeEnd,
             SaveCode, !CI),
@@ -769,8 +769,8 @@ generate_secondary_try_me_else_chain([Case0 | Cases0], StagRval, CodeModel,
             Code = tree(ThisCode, FailCode)
         )
     ;
-        trace.maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
-            TraceCode, !CI),
+        maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
+            !CI),
         code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
         code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
         GotoCode = node([
@@ -813,8 +813,8 @@ generate_secondary_try_chain([Case0 | Cases0], StagRval, CodeModel, CanFail,
             label(ThisStagLabel)
                 - ("handle next secondary tag for " ++ Comment)
         ]),
-        trace.maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
-            TraceCode, !CI),
+        maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
+            !CI),
         code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
         code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
         GotoCode = node([
@@ -840,8 +840,8 @@ generate_secondary_try_chain([Case0 | Cases0], StagRval, CodeModel, CanFail,
         )
     ;
         CommentCode = node([comment(Comment) - ""]),
-        trace.maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
-            TraceCode, !CI),
+        maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
+            !CI),
         code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
         code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
         GotoCode = node([
@@ -878,8 +878,8 @@ generate_secondary_jump_table(CaseList, CurSecondary, MaxSecondary, CodeModel,
                     ("start of " ++ Comment ++ " in secondary tag switch")
             ]),
             code_info.remember_position(!.CI, BranchStart),
-            trace.maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
-                TraceCode, !CI),
+            maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
+                !CI),
             code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
             goal_info_get_store_map(SwitchGoalInfo, StoreMap),
             code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),
@@ -941,8 +941,8 @@ generate_secondary_binary_search(StagGoals, MinStag, MaxStag, StagRval,
             CommentCode = node([comment(Comment) - ""]),
             expect(unify(CurSec, CurSecPrime), this_file,
                 "generate_secondary_binary_search: cur_secondary mismatch"),
-            trace.maybe_generate_internal_event_code(Goal, SwitchGoalInfo,
-                TraceCode, !CI),
+            maybe_generate_internal_event_code(Goal, SwitchGoalInfo, TraceCode,
+                !CI),
             code_gen.generate_goal(CodeModel, Goal, GoalCode, !CI),
             goal_info_get_store_map(SwitchGoalInfo, StoreMap),
             code_info.generate_branch_end(StoreMap, !MaybeEnd, SaveCode, !CI),

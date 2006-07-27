@@ -2042,7 +2042,8 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
         StatsPredClause = pragma(compiler(pragma_memo_attribute),
             foreign_proc(!.Attrs, StatsPredSymName, predicate,
                 [Arg1, Arg2, Arg3], !.VarSet, InstVarSet,
-                ordinary("MR_get_tabling_stats(&" ++ Global ++ ", &Stats);",
+                fc_impl_ordinary(
+                    "MR_get_tabling_stats(&" ++ Global ++ ", &Stats);",
                     yes(Context))))
     ),
     add_item_clause(StatsPredClause, !Status, Context, !ModuleInfo,
@@ -2091,7 +2092,8 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
         ResetPredClause = pragma(compiler(pragma_memo_attribute),
             foreign_proc(!.Attrs, ResetPredSymName, predicate,
                 [Arg1, Arg2], !.VarSet, InstVarSet,
-                ordinary(Global ++ ".MR_pt_tablenode.MR_integer = 0;",
+                fc_impl_ordinary(
+                    Global ++ ".MR_pt_tablenode.MR_integer = 0;",
                     yes(Context))))
     ),
     add_item_clause(ResetPredClause, !Status, Context, !ModuleInfo,
@@ -2362,8 +2364,8 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
     set_purity(purity_pure, Attrs2, Attrs3),
     add_extra_attribute(refers_to_llds_stack, Attrs3, Attrs),
     module_add_pragma_foreign_proc(Attrs, SymName, PredOrFunc, PragmaVars,
-        ProgVarSet, InstVarSet, ordinary(C_ProcCode, no), Status, Context,
-        !ModuleInfo, !QualInfo, !IO),
+        ProgVarSet, InstVarSet, fc_impl_ordinary(C_ProcCode, no), Status,
+        Context, !ModuleInfo, !QualInfo, !IO),
     ( C_ExtraCode = "" ->
         true
     ;
@@ -2527,16 +2529,16 @@ clauses_info_add_pragma_foreign_proc(Origin, Purity, Attributes0,
                 true
             )
         ),
-        % 
         % Put the purity in the goal_info in case this foreign code is inlined.
-        %
-        add_goal_info_purity_feature(Purity, GoalInfo1, GoalInfo),
+        goal_info_set_purity(Purity, GoalInfo1, GoalInfo),
         make_foreign_args(HeadVars, ArgInfo, OrigArgTypes, ForeignArgs),
         % Perform some renaming in any user annotated sharing information.
         maybe_rename_user_annotated_sharing_information(Args0, HeadVars, 
             OrigArgTypes, Attributes1, Attributes, !IO),
-        HldsGoal0 = foreign_proc(Attributes, PredId, ProcId, ForeignArgs, [],
-            PragmaImpl) - GoalInfo,
+        ExtraArgs = [],
+        MaybeTraceRuntimeCond = no,
+        HldsGoal0 = call_foreign_proc(Attributes, PredId, ProcId, ForeignArgs,
+            ExtraArgs, MaybeTraceRuntimeCond, PragmaImpl) - GoalInfo,
         map.init(EmptyVarTypes),
         implicitly_quantify_clause_body(HeadVars, _Warnings,
             HldsGoal0, HldsGoal, VarSet0, VarSet, EmptyVarTypes, _),

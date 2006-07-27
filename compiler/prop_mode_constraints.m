@@ -307,8 +307,8 @@ ensure_unique_arguments_in_goal(!.GoalExpr - !.GoalInfo,
 
         )
     ;
-        !.GoalExpr = call(CalleePredId, CalleeProcId, Args0, Builtin,
-            UnifyContext, SymName),
+        !.GoalExpr = plain_call(CalleePredId, CalleeProcId, Args0,
+            Builtin, UnifyContext, SymName),
         goal_info_get_context(!.GoalInfo, Context),
         make_unifications(Context, Unifications, Args0, Args, !SeenSoFar,
             !Varset, !Vartypes),
@@ -320,8 +320,8 @@ ensure_unique_arguments_in_goal(!.GoalExpr - !.GoalInfo,
             % Need to put the call with its new args in a conjunction
             % with the unifications.
             Unifications = [_ | _],
-            CallGoalExpr = call(CalleePredId, CalleeProcId, Args, Builtin,
-                UnifyContext, SymName),
+            CallGoalExpr = plain_call(CalleePredId, CalleeProcId, Args,
+                Builtin, UnifyContext, SymName),
             replace_call_with_conjunction(CallGoalExpr, Unifications,
                 Args, !:GoalExpr, !GoalInfo)
         )
@@ -354,10 +354,10 @@ ensure_unique_arguments_in_goal(!.GoalExpr - !.GoalInfo,
             !SeenSoFar, !Varset, !Vartypes),
         !:GoalExpr = disj(Goals)
     ;
-        !.GoalExpr = not(Goal0),
+        !.GoalExpr = negation(Goal0),
         ensure_unique_arguments_in_goal(Goal0, Goal, !SeenSoFar, !Varset,
             !Vartypes),
-        !:GoalExpr = not(Goal)
+        !:GoalExpr = negation(Goal)
     ;
         !.GoalExpr = scope(Reason, Goal0),
         ensure_unique_arguments_in_goal(Goal0, Goal, !SeenSoFar, !Varset,
@@ -373,7 +373,7 @@ ensure_unique_arguments_in_goal(!.GoalExpr - !.GoalInfo,
             !Vartypes),
         !:GoalExpr = if_then_else(ExistVars, Cond, Then, Else)
     ;
-        !.GoalExpr = foreign_proc(_, _, _, _, _, _)
+        !.GoalExpr = call_foreign_proc(_, _, _, _, _, _, _)
     ;
         !.GoalExpr = shorthand(_),
         unexpected(this_file, "shorthand goal expression")

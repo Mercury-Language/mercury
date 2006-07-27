@@ -525,6 +525,8 @@ process_assert(promise_equivalent_solution_sets_expr(_V, _D, _C, G) - _,
 process_assert(promise_equivalent_solution_arbitrary_expr(_V, _D, _C, G) - _,
         Symbols, Success) :-
     process_assert(G, Symbols, Success).
+process_assert(trace_expr(_C, _R, _I, _M, G) - _, Symbols, Success) :-
+    process_assert(G, Symbols, Success).
 process_assert(implies_expr(GA, GB) - _, Symbols, Success) :-
     process_assert(GA, SymbolsA, SuccessA),
     process_assert(GB, SymbolsB, SuccessB),

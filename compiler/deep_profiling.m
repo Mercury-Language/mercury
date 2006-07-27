@@ -44,7 +44,7 @@
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.code_util.
-:- import_module ll_backend.trace.
+:- import_module ll_backend.trace_gen.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
@@ -195,11 +195,12 @@ apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall,
         Continue) :-
     Goal0 = GoalExpr0 - GoalInfo0,
     (
-        GoalExpr0 = foreign_proc(_, _, _, _, _, _),
+        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
         Goal = Goal0,
         Continue = no
     ;
-        GoalExpr0 = call(PredId, ProcId, Args, Builtin, UnifyContext, SymName),
+        GoalExpr0 = plain_call(PredId, ProcId, Args, Builtin, UnifyContext,
+            SymName),
         (
             PredProcId = proc(PredId, ProcId),
             assoc_list.search(ApplyInfo ^ scc_ppids, PredProcId,
@@ -216,7 +217,7 @@ apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall,
             Builtin = not_builtin
         ->
             ClonePredProcId = proc(ClonePredId, CloneProcId),
-            GoalExpr = call(ClonePredId, CloneProcId, Args,
+            GoalExpr = plain_call(ClonePredId, CloneProcId, Args,
                 Builtin, UnifyContext, SymName),
             goal_info_add_feature(tailcall, GoalInfo0, GoalInfo),
             Goal = GoalExpr - GoalInfo,
@@ -281,7 +282,7 @@ apply_tail_recursion_to_goal(Goal0, ApplyInfo, Goal, !FoundTailCall,
         Goal = Goal0,
         Continue = no
     ;
-        GoalExpr0 = not(_),
+        GoalExpr0 = negation(_),
         Goal = Goal0,
         Continue = no
     ;
@@ -354,14 +355,14 @@ apply_tail_recursion_to_cases([case(ConsId, Goal0) | Cases0], ApplyInfo,
 figure_out_rec_call_numbers(Goal, !N, !TailCallSites) :-
     Goal = GoalExpr - GoalInfo,
     (
-        GoalExpr = foreign_proc(Attrs, _, _, _, _, _),
+        GoalExpr = call_foreign_proc(Attrs, _, _, _, _, _, _),
         ( may_call_mercury(Attrs) = may_call_mercury ->
             !:N = !.N + 1
         ;
             true
         )
     ;
-        GoalExpr = call(_, _, _, BuiltinState, _, _),
+        GoalExpr = plain_call(_, _, _, BuiltinState, _, _),
         goal_info_get_features(GoalInfo, Features),
         ( set.member(tailcall, Features) ->
             !:TailCallSites = [!.N | !.TailCallSites]
@@ -396,7 +397,7 @@ figure_out_rec_call_numbers(Goal, !N, !TailCallSites) :-
         GoalExpr = scope(_, Goal1),
         figure_out_rec_call_numbers(Goal1, !N, !TailCallSites)
     ;
-        GoalExpr = not(Goal1),
+        GoalExpr = negation(Goal1),
         figure_out_rec_call_numbers(Goal1, !N, !TailCallSites)
     ;
         GoalExpr = shorthand(_),
@@ -443,8 +444,8 @@ maybe_transform_procedure(ModuleInfo, PredId, ProcId, !ProcTable) :-
     PredModuleName = predicate_module(ModuleInfo, PredId),
     (
         % XXX We need to eliminate nondet C code...
-        Goal0 = foreign_proc(_, _, _, _, _, Impl) - _,
-        Impl = nondet(_, _, _, _, _, _, _, _, _)
+        Goal0 = call_foreign_proc(_, _, _, _, _, _, Impl) - _,
+        Impl = fc_impl_model_non(_, _, _, _, _, _, _, _, _)
     ->
         unexpected(this_file,
             "deep profiling is incompatible with nondet foreign code")
@@ -916,7 +917,7 @@ transform_goal(Path, disj(Goals0) - GoalInfo0, disj(Goals) - GoalInfo,
     transform_disj(0, Path, Goals0, Goals, AddedImpurity, !DeepInfo),
     add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo).
 
-transform_goal(Path, not(Goal0) - GoalInfo0, not(Goal) - GoalInfo,
+transform_goal(Path, negation(Goal0) - GoalInfo0, negation(Goal) - GoalInfo,
         AddedImpurity, !DeepInfo) :-
     transform_goal([neg | Path], Goal0, Goal, AddedImpurity, !DeepInfo),
     add_impurity_if_needed(AddedImpurity, GoalInfo0, GoalInfo).
@@ -983,7 +984,7 @@ transform_goal(_, shorthand(_) - _, _, _, !DeepInfo) :-
 
 transform_goal(Path, Goal0 - GoalInfo0, GoalAndInfo, AddedImpurity,
         !DeepInfo) :-
-    Goal0 = foreign_proc(Attrs, _, _, _, _, _),
+    Goal0 = call_foreign_proc(Attrs, _, _, _, _, _, _),
     ( may_call_mercury(Attrs) = may_call_mercury ->
         wrap_foreign_code(Path, Goal0 - GoalInfo0, GoalAndInfo, !DeepInfo),
         AddedImpurity = yes
@@ -996,7 +997,7 @@ transform_goal(_Path, Goal - GoalInfo, Goal - GoalInfo, no, !DeepInfo) :-
     Goal = unify(_, _, _, _, _).
 
 transform_goal(Path, Goal0 - GoalInfo0, GoalAndInfo, yes, !DeepInfo) :-
-    Goal0 = call(_, _, _, BuiltinState, _, _),
+    Goal0 = plain_call(_, _, _, BuiltinState, _, _),
     ( BuiltinState \= inline_builtin ->
         wrap_call(Path, Goal0 - GoalInfo0, GoalAndInfo, !DeepInfo)
     ;
@@ -1417,7 +1418,7 @@ compress_filename(Deep, FileName0, FileName) :-
     call_class::out) is det.
 
 classify_call(ModuleInfo, Expr, Class) :-
-    ( Expr = call(PredId, ProcId, Args, _, _, _) ->
+    ( Expr = plain_call(PredId, ProcId, Args, _, _, _) ->
         (
             lookup_builtin_pred_proc_id(ModuleInfo,
                 mercury_public_builtin_module, "unify",
@@ -1610,7 +1611,7 @@ generate_call(ModuleInfo, Name, Arity, ArgVars, MaybeOutputVars, Detism,
         instmap_delta_init_unreachable(InstMapDelta)
     ),
     GoalInfo = impure_init_goal_info(NonLocals, InstMapDelta, Detism),
-    Goal = call(PredId, ProcId, ArgVars, not_builtin, no,
+    Goal = plain_call(PredId, ProcId, ArgVars, not_builtin, no,
         unqualified(Name)) - GoalInfo.
 
 :- pred generate_unify(cons_id::in, prog_var::in, hlds_goal::out) is det.
@@ -1735,12 +1736,12 @@ fail_goal_info = GoalInfo :-
 :- pred make_impure(hlds_goal_info::in, hlds_goal_info::out) is det.
 
 make_impure(!GoalInfo) :-
-    ( goal_info_has_feature(!.GoalInfo, impure_goal) ->
+    ( goal_info_get_purity(!.GoalInfo, purity_impure) ->
         % We don't add not_impure_for_determinism, since we want to
         % keep the existing determinism.
         true
     ;
-        goal_info_add_feature(impure_goal, !GoalInfo),
+        goal_info_set_purity(purity_impure, !GoalInfo),
         goal_info_add_feature(not_impure_for_determinism, !GoalInfo)
     ).
 

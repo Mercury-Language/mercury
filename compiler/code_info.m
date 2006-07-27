@@ -41,7 +41,7 @@
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.layout.
 :- import_module ll_backend.llds.
-:- import_module ll_backend.trace.
+:- import_module ll_backend.trace_gen.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 
@@ -199,6 +199,11 @@
 
 :- pred set_static_cell_info(static_cell_info::in,
     code_info::in, code_info::out) is det.
+
+:- pred get_used_env_vars(code_info::in, set(string)::out) is det.
+
+:- pred set_used_env_vars(set(string)::in, code_info::in, code_info::out)
+    is det.
 
 %---------------------------------------------------------------------------%
 
@@ -415,7 +420,9 @@
                                     % True iff the procedure has created one or
                                     % more temporary nondet frames.
 
-                static_cell_info    :: static_cell_info
+                static_cell_info    :: static_cell_info,
+
+                used_env_vars       :: set(string)
             ).
 
 %---------------------------------------------------------------------------%
@@ -433,7 +440,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
     globals.get_options(Globals, Options),
     globals.get_trace_level(Globals, TraceLevel),
     ( eff_trace_level_is_none(PredInfo, ProcInfo, TraceLevel) = no ->
-        trace.fail_vars(ModuleInfo, ProcInfo, FailVars),
+        trace_fail_vars(ModuleInfo, ProcInfo, FailVars),
         MaybeFailVars = yes(FailVars),
         set.union(Liveness, FailVars, EffLiveness)
     ;
@@ -458,7 +465,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
     set.init(Zombies),
     map.init(LayoutMap),
     max_var_slot(StackSlots, VarSlotMax),
-    trace.reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals,
+    trace_reserved_slots(ModuleInfo, PredInfo, ProcInfo, Globals,
         FixedSlots, _),
     int.max(VarSlotMax, FixedSlots, SlotMax),
     globals.lookup_bool_option(Globals, opt_no_return_calls,
@@ -507,7 +514,8 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
             [],
             -1,
             no,
-            StaticCellInfo
+            StaticCellInfo,
+            set.init
         )
     ),
     init_maybe_trace_info(TraceLevel, Globals, ModuleInfo,
@@ -522,7 +530,7 @@ code_info_init(SaveSuccip, Globals, PredId, ProcId, PredInfo, ProcInfo,
 init_maybe_trace_info(TraceLevel, Globals, ModuleInfo, PredInfo,
         ProcInfo, TraceSlotInfo, !CI) :-
     ( eff_trace_level_is_none(PredInfo, ProcInfo, TraceLevel) = no ->
-        trace.setup(ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo,
+        trace_setup(ModuleInfo, PredInfo, ProcInfo, Globals, TraceSlotInfo,
             TraceInfo, !CI),
         set_maybe_trace_info(yes(TraceInfo), !CI)
     ;
@@ -559,6 +567,7 @@ get_closure_layouts(CI, CI ^ code_info_persistent ^ closure_layouts).
 get_max_reg_in_use_at_trace(CI, CI ^ code_info_persistent ^ max_reg_used).
 get_created_temp_frame(CI, CI ^ code_info_persistent ^ created_temp_frame).
 get_static_cell_info(CI, CI ^ code_info_persistent ^ static_cell_info).
+get_used_env_vars(CI, CI ^ code_info_persistent ^ used_env_vars).
 
 %---------------------------------------------------------------------------%
 
@@ -585,6 +594,7 @@ set_created_temp_frame(MR, CI,
     CI ^ code_info_persistent ^ created_temp_frame := MR).
 set_static_cell_info(SCI, CI,
     CI ^ code_info_persistent ^ static_cell_info := SCI).
+set_used_env_vars(UEV, CI, CI ^ code_info_persistent ^ used_env_vars := UEV).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

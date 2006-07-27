@@ -145,7 +145,7 @@ warn_singletons_in_goal_2(Goal, _GoalInfo, QuantVars, VarSet, PredCallId,
     warn_singletons_in_cases(Cases, QuantVars, VarSet, PredCallId, MI, !IO).
 warn_singletons_in_goal_2(Goal, _GoalInfo, QuantVars, VarSet, PredCallId,
         MI, !IO) :-
-    Goal = not(SubGoal),
+    Goal = negation(SubGoal),
     warn_singletons_in_goal(SubGoal, QuantVars, VarSet, PredCallId, MI, !IO).
 warn_singletons_in_goal_2(Goal, GoalInfo, QuantVars, VarSet, PredCallId,
         MI, !IO) :-
@@ -193,7 +193,7 @@ warn_singletons_in_goal_2(Goal, GoalInfo, QuantVars, VarSet, PredCallId,
     warn_singletons_in_goal(Else, QuantVars, VarSet, PredCallId, MI, !IO).
 warn_singletons_in_goal_2(Goal, GoalInfo, QuantVars, VarSet, PredCallId,
         _, !IO) :-
-    Goal = call(_, _, Args, _, _, _),
+    Goal = plain_call(_, _, Args, _, _, _),
     goal_info_get_nonlocals(GoalInfo, NonLocals),
     goal_info_get_context(GoalInfo, Context),
     warn_singletons(Args, GoalInfo, NonLocals, QuantVars, VarSet, Context,
@@ -214,7 +214,7 @@ warn_singletons_in_goal_2(Goal, GoalInfo, QuantVars, VarSet, PredCallId,
         PredCallId, MI, !IO).
 warn_singletons_in_goal_2(Goal, GoalInfo, _QuantVars, _VarSet, PredCallId,
         MI, !IO) :-
-    Goal = foreign_proc(Attrs, _, _, Args, _, PragmaImpl),
+    Goal = call_foreign_proc(Attrs, _, _, Args, _, _, PragmaImpl),
     goal_info_get_context(GoalInfo, Context),
     Lang = foreign_language(Attrs),
     NamesModes = list.map(foreign_arg_maybe_name_mode, Args),
@@ -325,7 +325,7 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
         PredOrFuncCallId, ModuleInfo, !IO) :-
     LangStr = foreign_language_string(Lang),
     (
-        PragmaImpl = ordinary(C_Code, _),
+        PragmaImpl = fc_impl_ordinary(C_Code, _),
         c_code_to_name_list(C_Code, C_CodeList),
         Filter = (pred(Name::out) is nondet :-
             list.member(yes(Name - _), Args),
@@ -344,8 +344,8 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
             write_error_pieces(Context, 0, Pieces, !IO)
         )
     ;
-        PragmaImpl = nondet(_, _, FirstCode, _, LaterCode, _, _, SharedCode,
-            _),
+        PragmaImpl = fc_impl_model_non(_, _, FirstCode, _, LaterCode,
+            _, _, SharedCode, _),
         c_code_to_name_list(FirstCode, FirstCodeList),
         c_code_to_name_list(LaterCode, LaterCodeList),
         c_code_to_name_list(SharedCode, SharedCodeList),
@@ -405,7 +405,7 @@ warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang, Args, Context,
             write_error_pieces(Context, 0, Pieces3, !IO)
         )
     ;
-        PragmaImpl = import(_, _, _, _)
+        PragmaImpl = fc_impl_import(_, _, _, _)
     ).
 
 :- func variable_warning_start(list(string)) = string.

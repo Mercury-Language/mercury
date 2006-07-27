@@ -62,7 +62,7 @@
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.layout.
 :- import_module ll_backend.llds.
-:- import_module ll_backend.trace.
+:- import_module ll_backend.trace_gen.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
 
@@ -885,6 +885,7 @@ live_value_type(lval(reg(_, _)), unwanted).
 live_value_type(lval(stackvar(_)), unwanted).
 live_value_type(lval(framevar(_)), unwanted).
 live_value_type(lval(mem_ref(_)), unwanted). % XXX
+live_value_type(lval(global_var_ref(_)), unwanted).
 live_value_type(ticket, unwanted).  % XXX we may need to modify this,
                                     % if the GC is going to garbage-collect
                                     % the trail.

@@ -216,7 +216,7 @@ generate_goal_2(GoalExpr, GoalInfo, CodeModel, Code, !CI) :-
         disj_gen.generate_disj(AddTrailOps, CodeModel, Goals, GoalInfo, Code,
             !CI)
     ;
-        GoalExpr = not(Goal),
+        GoalExpr = negation(Goal),
         AddTrailOps = should_add_trail_ops(!.CI, GoalInfo),
         ite_gen.generate_negation(AddTrailOps, CodeModel, Goal, GoalInfo,
             Code, !CI)
@@ -230,15 +230,16 @@ generate_goal_2(GoalExpr, GoalInfo, CodeModel, Code, !CI) :-
         switch_gen.generate_switch(CodeModel, Var, CanFail, CaseList, GoalInfo,
             Code, !CI)
     ;
-        GoalExpr = scope(_, Goal),
+        GoalExpr = scope(Reason, Goal),
         AddTrailOps = should_add_trail_ops(!.CI, GoalInfo),
-        commit_gen.generate_commit(AddTrailOps, CodeModel, Goal, Code, !CI)
+        commit_gen.generate_scope(Reason, AddTrailOps, CodeModel, Goal, Code,
+            !CI)
     ;
         GoalExpr = generic_call(GenericCall, Args, Modes, Det),
         call_gen.generate_generic_call(CodeModel, GenericCall, Args,
             Modes, Det, GoalInfo, Code, !CI)
     ;
-        GoalExpr = call(PredId, ProcId, Args, BuiltinState, _, _),
+        GoalExpr = plain_call(PredId, ProcId, Args, BuiltinState, _, _),
         ( BuiltinState = not_builtin ->
             call_gen.generate_call(CodeModel, PredId, ProcId, Args,
                 GoalInfo, Code, !CI)
@@ -247,12 +248,12 @@ generate_goal_2(GoalExpr, GoalInfo, CodeModel, Code, !CI) :-
                 Code, !CI)
         )
     ;
-        GoalExpr = foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
-            PragmaCode),
+        GoalExpr = call_foreign_proc(Attributes, PredId, ProcId,
+            Args, ExtraArgs, MaybeTraceRuntimeCond, PragmaCode),
         ( foreign_language(Attributes) = lang_c ->
             pragma_c_gen.generate_pragma_c_code(CodeModel, Attributes,
-                PredId, ProcId, Args, ExtraArgs, GoalInfo, PragmaCode, Code,
-                    !CI)
+                PredId, ProcId, Args, ExtraArgs, MaybeTraceRuntimeCond,
+                PragmaCode, GoalInfo, Code, !CI)
         ;
             unexpected(this_file,
                 "generate_goal_2: foreign code other than C unexpected")

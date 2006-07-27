@@ -134,9 +134,9 @@ delay_construct_in_goal(GoalExpr0 - GoalInfo0, InstMap0, DelayInfo, Goal) :-
         delay_construct_in_goals(Goals0, InstMap0, DelayInfo, Goals),
         Goal = disj(Goals) - GoalInfo0
     ;
-        GoalExpr0 = not(NegGoal0),
+        GoalExpr0 = negation(NegGoal0),
         delay_construct_in_goal(NegGoal0, InstMap0, DelayInfo, NegGoal),
-        Goal = not(NegGoal) - GoalInfo0
+        Goal = negation(NegGoal) - GoalInfo0
     ;
         GoalExpr0 = switch(Var, CanFail, Cases0),
         delay_construct_in_cases(Cases0, InstMap0, DelayInfo, Cases),
@@ -158,13 +158,13 @@ delay_construct_in_goal(GoalExpr0 - GoalInfo0, InstMap0, DelayInfo, Goal) :-
         GoalExpr0 = generic_call(_, _, _, _),
         Goal = GoalExpr0 - GoalInfo0
     ;
-        GoalExpr0 = call(_, _, _, _, _, _),
+        GoalExpr0 = plain_call(_, _, _, _, _, _),
         Goal = GoalExpr0 - GoalInfo0
     ;
         GoalExpr0 = unify(_, _, _, _, _),
         Goal = GoalExpr0 - GoalInfo0
     ;
-        GoalExpr0 = foreign_proc(_, _, _, _, _, _),
+        GoalExpr0 = call_foreign_proc(_, _, _, _, _, _, _),
         Goal = GoalExpr0 - GoalInfo0
     ;
         GoalExpr0 = shorthand(_),
@@ -234,8 +234,7 @@ delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
         set.intersect(CompletedNonLocals, ConstructedVars0,
             Intersection),
         set.empty(Intersection),
-        \+ goal_info_has_feature(GoalInfo0, impure_goal),
-        \+ goal_info_has_feature(GoalInfo0, semipure_goal)
+        goal_info_get_purity(GoalInfo0, purity_pure)
     ->
         delay_construct_in_conj(Goals0, InstMap1, DelayInfo,
             ConstructedVars0, RevDelayedGoals0, Goals1),
@@ -254,7 +253,7 @@ delay_construct_skippable(GoalExpr, GoalInfo) :-
     (
         GoalExpr = unify(_, _, _, _, _)
     ;
-        GoalExpr = call(_, _, _, inline_builtin, _, _)
+        GoalExpr = plain_call(_, _, _, inline_builtin, _, _)
     ),
     goal_info_get_determinism(GoalInfo, Detism),
     determinism_components(Detism, _CanFail, MaxSoln),

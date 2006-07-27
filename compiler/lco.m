@@ -402,19 +402,12 @@ lco_in_goal(Goal0 - GoalInfo, Goal - GoalInfo, !Info, ConstInfo) :-
         lco_in_goal(SubGoal0, SubGoal, !Info, ConstInfo),
         Goal = scope(Reason, SubGoal)
     ;
-        Goal0 = not(_),
-        Goal = Goal0
-    ;
-        Goal0 = generic_call(_, _, _, _),
-        Goal = Goal0
-    ;
-        Goal0 = call(_, _, _, _, _, _),
-        Goal = Goal0
-    ;
-        Goal0 = unify(_, _, _, _, _),
-        Goal = Goal0
-    ;
-        Goal0 = foreign_proc(_, _,_,  _, _, _),
+        ( Goal0 = negation(_)
+        ; Goal0 = generic_call(_, _, _, _)
+        ; Goal0 = plain_call(_, _, _, _, _, _)
+        ; Goal0 = unify(_, _, _, _, _)
+        ; Goal0 = call_foreign_proc(_, _, _, _,  _, _, _)
+        ),
         Goal = Goal0
     ;
         Goal0 = shorthand(_),
@@ -498,7 +491,7 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
         lco_in_conj(RevGoals, !.Unifies, !.UnifyInputVars, MaybeGoals,
             !Info, ConstInfo)
     ;
-        RevGoalExpr = call(PredId, ProcId, Args, Builtin, UnifyContext,
+        RevGoalExpr = plain_call(PredId, ProcId, Args, Builtin, UnifyContext,
             SymName),
         set.member(proc(PredId, ProcId), ConstInfo ^ cur_scc),
         goal_info_get_determinism(RevGoalInfo, RevGoalDetism),
@@ -534,7 +527,7 @@ lco_in_conj([RevGoal | RevGoals], !.Unifies, !.UnifyInputVars, MaybeGoals,
         update_call_args(ModuleInfo, VarTypes, CalleeModes, Args,
             UpdatedCallOutArgs, UpdatedArgs),
         VariantPredProcId = proc(VariantPredId, VariantProcId),
-        UpdatedGoalExpr = call(VariantPredId, VariantProcId, UpdatedArgs,
+        UpdatedGoalExpr = plain_call(VariantPredId, VariantProcId, UpdatedArgs,
             Builtin, UnifyContext, SymName),
         UpdatedGoalInfo = RevGoalInfo,
         UpdatedGoal = UpdatedGoalExpr - UpdatedGoalInfo,
@@ -888,7 +881,7 @@ transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
             SubGoal0, SubGoal, Changed),
         GoalExpr = scope(Reason, SubGoal)
     ;
-        GoalExpr0 = not(_),
+        GoalExpr0 = negation(_),
         GoalExpr = GoalExpr0,
         Changed = no
     ;
@@ -896,7 +889,7 @@ transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
         transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
             GoalInfo0, GoalExpr0, GoalExpr, Changed)
     ;
-        GoalExpr0 = call(_, _, _, _, _, _),
+        GoalExpr0 = plain_call(_, _, _, _, _, _),
         % XXX We could handle recursive calls better.
         transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
             GoalInfo0, GoalExpr0, GoalExpr, Changed)
@@ -905,7 +898,7 @@ transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
         transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
             GoalInfo0, GoalExpr0, GoalExpr, Changed)
     ;
-        GoalExpr0 = foreign_proc(_, _,_,  _, _, _),
+        GoalExpr0 = call_foreign_proc(_, _, _, _,  _, _, _),
         transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
             GoalInfo0, GoalExpr0, GoalExpr, Changed)
     ;
@@ -914,7 +907,7 @@ transform_variant_goal(ModuleInfo, VarToAddr, InstMap0, Goal0, Goal,
     ),
     (
         Changed = yes,
-        add_goal_info_purity_feature(purity_impure, GoalInfo0, GoalInfo),
+        goal_info_set_purity(purity_impure, GoalInfo0, GoalInfo),
         Goal = GoalExpr - GoalInfo
     ;
         Changed = no,
@@ -981,8 +974,8 @@ is_grounding(ModuleInfo, InstMap0, InstMap, Var - _AddrVar) :-
 
 make_store_goal(ModuleInfo, Var - AddrVar, Goal) :-
     generate_simple_call(mercury_private_builtin_module, "store_at_ref",
-        predicate, only_mode, detism_det, [AddrVar, Var], [impure_goal], [],
-        ModuleInfo, term.context_init, Goal).
+        predicate, only_mode, detism_det, purity_impure, [AddrVar, Var],
+        [], [], ModuleInfo, term.context_init, Goal).
 
 %-----------------------------------------------------------------------------%
 

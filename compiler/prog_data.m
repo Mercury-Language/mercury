@@ -525,7 +525,7 @@
     % foreign languages.
     %
 :- type pragma_foreign_code_impl
-    --->    ordinary(
+    --->    fc_impl_ordinary(
                 % This is a foreign language definition of a model_det or
                 % model_semi procedure. (We also allow model_non, until
                 % everyone has had time to adapt to the new way of handling
@@ -535,7 +535,7 @@
                 maybe(prog_context)
             )
 
-    ;       nondet(
+    ;       fc_impl_model_non(
                 % This is a foreign language definition of a model_non
                 % procedure.
 
@@ -567,7 +567,7 @@
                     % code fragments.  May not access the input variables.
             )
 
-    ;       import(
+    ;       fc_impl_import(
                 string,     % Pragma imported C func name
                 string,     % Code to handle return value
                 string,     % Comma separated variables which the import
@@ -859,6 +859,35 @@
 :- type implicit_purity_promise
     --->    make_implicit_promises
     ;       dont_make_implicit_promises.
+
+:- type trace_expr(Base)
+    --->    trace_base(Base)
+    ;       trace_op(trace_op, trace_expr(Base), trace_expr(Base)).
+
+:- type trace_op
+    --->    trace_or
+    ;       trace_and.
+
+:- type trace_compiletime
+    --->    trace_flag(string)
+    ;       trace_grade(trace_grade)
+    ;       trace_trace_level(trace_trace_level).
+
+:- type trace_grade
+    --->    trace_grade_debug.
+
+:- type trace_trace_level
+    --->    trace_level_shallow
+    ;       trace_level_deep.
+
+:- type trace_runtime
+    --->    trace_envvar(string).
+
+:- type trace_mutable_var
+    --->    trace_mutable_var(
+                trace_mutable_name      :: string,
+                trace_state_var         :: prog_var
+            ).
 
     % These type equivalences are for the type of program variables
     % and associated structures.

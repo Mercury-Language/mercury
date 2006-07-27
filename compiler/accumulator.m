@@ -528,7 +528,7 @@ identify_goal_type(PredId, ProcId, Goal, InitialInstMap,
 
 is_recursive_case(Goals, proc(PredId, ProcId)) :-
     list.append(_Initial, [RecursiveCall | _Final], Goals),
-    RecursiveCall = call(PredId, ProcId, _, _, _, _) - _.
+    RecursiveCall = plain_call(PredId, ProcId, _, _, _, _) - _.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -582,7 +582,7 @@ identify_recursive_calls(PredId, ProcId, GoalStore, Ids) :-
     P = (pred(Key::out) is nondet :-
         goal_store_member(GoalStore, Key, Goal - _InstMap),
         Key = rec - _,
-        Goal = call(PredId, ProcId, _, _, _, _) - _
+        Goal = plain_call(PredId, ProcId, _, _, _, _) - _
     ),
     solutions.solutions(P, Ids).
 
@@ -609,7 +609,7 @@ identify_out_and_out_prime(_N - K, Rec, HeadVars, InitialInstMap, VarTypes,
     (
         list.take(K, Rec, InitialGoals),
         list.drop(K-1, Rec, FinalGoals),
-        FinalGoals = [call(_, _, Args, _, _, _) - _ | Rest]
+        FinalGoals = [plain_call(_, _, Args, _, _, _) - _ | Rest]
     ->
         goal_list_instmap_delta(InitialGoals, InitInstMapDelta),
         instmap.apply_instmap_delta(InitialInstMap,
@@ -786,9 +786,8 @@ before(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
     (
         member_lessthan_goalid(GoalStore, N - I, N - J,
             EarlierGoal - EarlierInstMap),
-        not goal_util.can_reorder_goals(ModuleInfo, VarTypes,
-            FullyStrict, EarlierInstMap, EarlierGoal,
-            LaterInstMap, LaterGoal)
+        not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
+            EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal)
     )
     =>
     (
@@ -806,12 +805,12 @@ before(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
 assoc(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
         FullyStrict, VarTypes, ModuleInfo) :-
     goal_store_lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
-    LaterGoal = call(PredId, _, Args, _, _, _) - _,
+    LaterGoal = plain_call(PredId, _, Args, _, _, _) - _,
     is_associative(PredId, ModuleInfo, Args, _),
     (
         member_lessthan_goalid(GoalStore, N - I, _N - J,
             EarlierGoal - EarlierInstMap),
-        not goal_util.can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
+        not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
             EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal)
     )
     =>
@@ -835,7 +834,7 @@ construct(N - I, K, GoalStore, sets(Before, _, _, Construct, _, _),
     (
         member_lessthan_goalid(GoalStore, N - I, _N - J,
             EarlierGoal - EarlierInstMap),
-        not goal_util.can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
+        not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
             EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal)
     )
     =>
@@ -867,13 +866,13 @@ construct_assoc(N - I, K, GoalStore, sets(Before, Assoc, ConstructAssoc,
 
     set.singleton_set(Assoc `intersect` Ancestors, AssocId),
     goal_store_lookup(GoalStore, AssocId, AssocGoal - _AssocInstMap),
-    AssocGoal = call(PredId, _, _, _, _, _) - _,
+    AssocGoal = plain_call(PredId, _, _, _, _, _) - _,
 
     is_associative_construction(ConsId, PredId, ModuleInfo),
     (
         member_lessthan_goalid(GoalStore, N - I, _N - J,
             EarlierGoal - EarlierInstMap),
-        not goal_util.can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
+        not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
             EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal)
     )
     =>
@@ -893,12 +892,12 @@ construct_assoc(N - I, K, GoalStore, sets(Before, Assoc, ConstructAssoc,
 update(N - I, K, GoalStore, sets(Before, _, _, _, _, _),
         FullyStrict, VarTypes, ModuleInfo) :-
     goal_store_lookup(GoalStore, N - I, LaterGoal - LaterInstMap),
-    LaterGoal = call(PredId, _, Args, _, _, _) - _,
+    LaterGoal = plain_call(PredId, _, Args, _, _, _) - _,
     is_update(PredId, ModuleInfo, Args, _),
     (
         member_lessthan_goalid(GoalStore, N - I, _N - J,
             EarlierGoal - EarlierInstMap),
-        not goal_util.can_reorder_goals(ModuleInfo, VarTypes, FullyStrict,
+        not can_reorder_goals_old(ModuleInfo, VarTypes, FullyStrict,
             EarlierInstMap, EarlierGoal, LaterInstMap, LaterGoal)
     )
     =>
@@ -1177,7 +1176,7 @@ process_assoc_set([Id | Ids], GS, OutPrime, ModuleInfo, !Substs,
 
     lookup_call(GS, Id, Goal - InstMap),
 
-    Goal = call(PredId, _, Args, _, _, _) - GoalInfo,
+    Goal = plain_call(PredId, _, Args, _, _, _) - GoalInfo,
     is_associative(PredId, ModuleInfo, Args, AssocInfo),
     AssocInfo = assoc(Vars, AssocOutput, IsCommutative),
     set.singleton_set(Vars `intersect` OutPrime, DuringAssocVar),
@@ -1268,7 +1267,7 @@ process_update_set([Id | Ids], GS, OutPrime, ModuleInfo, !Substs,
         UpdateSubst0),
     lookup_call(GS, Id, Goal - _InstMap),
 
-    Goal = call(PredId, _, Args, _, _, _) - _GoalInfo,
+    Goal = plain_call(PredId, _, Args, _, _, _) - _GoalInfo,
     is_update(PredId, ModuleInfo, Args, StateVarA - StateVarB),
 
     ( set.member(StateVarA, OutPrime) ->
@@ -1373,7 +1372,7 @@ related(GS, VarTypes, ModuleInfo, Var, Related) :-
 
 %-----------------------------------------------------------------------------%
 
-:- inst call ---> call(ground, ground, ground, ground, ground, ground).
+:- inst call ---> plain_call(ground, ground, ground, ground, ground, ground).
 :- inst hlds_call ---> call - ground.
 :- inst call_goal ---> hlds_call - ground.
 
@@ -1384,7 +1383,7 @@ related(GS, VarTypes, ModuleInfo, Var, Related) :-
 
 lookup_call(GoalStore, Id, Call - InstMap) :-
     goal_store_lookup(GoalStore, Id, Goal - InstMap),
-    ( Goal = call(_, _, _, _, _, _) - _ ->
+    ( Goal = plain_call(_, _, _, _, _, _) - _ ->
         Call = Goal
     ;
         unexpected(this_file, "lookup_call: not a call.")
@@ -1541,8 +1540,9 @@ create_goal(RecCallId, Accs, AccPredId, AccProcId, AccName, Substs,
     proc_id::in, sym_name::in) = (hlds_goal::out(hlds_call)) is det.
 
 create_acc_call(OrigCall, Accs, AccPredId, AccProcId, AccName) = Call :-
-    OrigCall = call(_PredId, _ProcId, Args, Builtin, Context, _Name) - GI,
-    Call = call(AccPredId, AccProcId, Accs ++ Args,
+    OrigCall = plain_call(_PredId, _ProcId, Args, Builtin, Context, _Name)
+        - GI,
+    Call = plain_call(AccPredId, AccProcId, Accs ++ Args,
         Builtin, Context, AccName) - GI.
 
     % Create the goals which are to replace the original predicate.

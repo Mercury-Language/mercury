@@ -193,7 +193,7 @@ traverse_goal_2(switch(_, _, Cases), _, Params, !Info, !ModuleInfo, !IO) :-
 traverse_goal_2(disj(Goals), _, Params, !Info, !ModuleInfo, !IO) :-
     traverse_disj(Goals, Params, !Info, !ModuleInfo, !IO).
 
-traverse_goal_2(not(Goal), _, Params, !Info, !ModuleInfo, !IO) :-
+traverse_goal_2(negation(Goal), _, Params, !Info, !ModuleInfo, !IO) :-
     % The negated goal will not affect the argument sizes since it cannot bind
     % any active variables.  However, we must traverse it during pass 1 to
     % ensure that it does not call any non-terminating procedures.  Pass 2
@@ -211,7 +211,8 @@ traverse_goal_2(Goal, _, Params, !Info, !ModuleInfo, !IO) :-
     combine_paths(CondThenInfo, ElseInfo, Params, !:Info).
 
 traverse_goal_2(Goal, GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
-    Goal = foreign_proc(Attributes, CallPredId, CallProcId, Args, _, _),
+    Goal = call_foreign_proc(Attributes, CallPredId, CallProcId, Args,
+        _, _, _),
     module_info_pred_proc_info(!.ModuleInfo, CallPredId, CallProcId, _,
         CallProcInfo),
     proc_info_get_argmodes(CallProcInfo, CallArgModes),
@@ -276,7 +277,7 @@ traverse_goal_2(Goal, GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
     ).
 
 traverse_goal_2(Goal, GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
-    Goal = call(CallPredId, CallProcId, Args, _, _, _),
+    Goal = plain_call(CallPredId, CallProcId, Args, _, _, _),
     goal_info_get_context(GoalInfo, Context),
     params_get_ppid(Params, PPId),
     CallPPId = proc(CallPredId, CallProcId),
