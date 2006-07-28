@@ -307,19 +307,20 @@ error_rest([_Line - Messages|Rest]) -->
 
 %------------------------------------------------------------------------------%
 
-:- pragma c_header_code("
-	#include <unistd.h>
-").
+:- pragma foreign_decl("C", "#include <unistd.h>").
 
 :- pred rename(string, string, bool, io__state, io__state).
 :- mode rename(in, in, out, di, uo) is det.
 
-:- pragma c_code(rename(Old::in, New::in, Res::out, IO0::di, IO::uo), "{
+:- pragma foreign_proc("C",
+	rename(Old::in, New::in, Res::out, IO0::di, IO::uo),
+	[promise_pure, will_not_call_mercury],
+"
 	int err;
 	err = rename(Old, New);
-	Res = (err == 0 ? 1 : 0);
+	Res = (err == 0 ? MR_YES : MR_NO);
 	IO = IO0;
-}").
+").
 
 %------------------------------------------------------------------------------%
 
