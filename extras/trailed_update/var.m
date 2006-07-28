@@ -1114,7 +1114,7 @@ debug_pred2(Msg, Pred, X, Y) :-
 
 :- pragma foreign_proc("C",
 	unsafe_dump_var(Var::ia),
-	[promise_pure,  may_call_mercury],
+	[may_call_mercury],
 "
 	ML_var_print(TypeInfo_for_T, Var);
 ").
