@@ -3587,6 +3587,6 @@ table_info_extract(TableInfo, ModuleInfo, PredInfo, ProcInfo) :-
 
 :- func this_file = string.
 
-this_file = "table.m".
+this_file = "table_gen.m".
 
 %-----------------------------------------------------------------------------%
