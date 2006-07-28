@@ -1,5 +1,5 @@
 %------------------------------------------------------------------------------%
-% Copyright (C) 2001 The University of Melbourne.
+% Copyright (C) 2001, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
@@ -25,11 +25,10 @@
 
 :- implementation.
 
-:- import_module array, std_util.
+:- import_module array.
+:- import_module pair.
 
-:- pragma c_header_code("
-	#include <unistd.h>
-").
+:- pragma foreign_decl("C", "#include <unistd.h>").
 
 %------------------------------------------------------------------------------%
 
