@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1999 The University of Melbourne.
+% Copyright (C) 1999, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -151,14 +151,14 @@ do_force(Lazy, Value) :-
 
 % Note that the implementation of this impure predicate relies on
 % some details of the Mercury implementation.
-:- pragma c_code(
+:- pragma foreign_proc("C", 
 	update_closure(MercuryTerm::in, NewValue::in),
 	[will_not_call_mercury],
-"{
+"
 	/* strip off tag bits */
 	Word *ptr = (Word *) MR_strip_tag(MercuryTerm);
 	/* destructively update value */
 	*ptr = NewValue;
-}").
+").
 
 %-----------------------------------------------------------------------------%
