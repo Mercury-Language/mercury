@@ -53,18 +53,21 @@
     % Opaque handles for text I/O streams.
     %
 :- type io.input_stream.
-
 :- type io.output_stream.
+
+    % Alternative names for the above.
+    %
+:- type io.text_input_stream == io.input_stream.
+:- type io.text_output_stream == io.output_stream.
 
     % Opaque handles for binary I/O streams.
     %
 :- type io.binary_input_stream     ==  io.binary_stream.
-
 :- type io.binary_output_stream    ==  io.binary_stream.
 
 :- type io.binary_stream.
 
-    % A unique identifier for an IO stream.
+    % A unique identifier for an I/O stream.
     %
 :- type io.stream_id.
 
@@ -103,14 +106,14 @@
 
     % Poly-type is used for io.write_many and io.format,
     % which do printf-like formatting.
-
+    %
 :- type io.poly_type == string.poly_type.
 
     % io.whence denotes the base for a seek operation.
     %   set - seek relative to the start of the file
     %   cur - seek relative to the current position in the file
     %   end - seek relative to the end of the file.
-
+    %
 :- type io.whence
     --->    set
     ;       cur
@@ -317,6 +320,7 @@
     is det.
 
     % The type `posn' represents a position within a string.
+    %
 :- type posn
     --->    posn(int, int, int).
             % line number, offset of start of line, current offset (the first
@@ -386,8 +390,7 @@
 
 :- pred io.print(io.output_stream::in, T::in, io::di, io::uo) is det.
 
-:- pred io.print(io.output_stream, deconstruct.noncanon_handling, T,
-    io, io).
+:- pred io.print(io.output_stream, deconstruct.noncanon_handling, T, io, io).
 :- mode io.print(in, in(do_not_allow), in, di, uo) is det.
 :- mode io.print(in, in(canonicalize), in, di, uo) is det.
 :- mode io.print(in, in(include_details_cc), in, di, uo) is cc_multi.
@@ -531,10 +534,10 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Input text stream predicates.
+% Input text stream predicates
 %
 
-    % io.see(File, Result, !IO):
+    % io.see(File, Result, !IO).
     % Attempts to open a file for input, and if successful,
     % sets the current input stream to the newly opened stream.
     % Result is either 'ok' or 'error'.
@@ -553,12 +556,13 @@
 :- pred io.open_input(string::in, io.res(io.input_stream)::out,
     io::di, io::uo) is det.
 
-    % Closes an open input stream. This will throw an io.error exception
-    % if an I/O error occurs.
+    % Closes an open input stream.
+    % Throw an io.error exception if an I/O error occurs.
     %
 :- pred io.close_input(io.input_stream::in, io::di, io::uo) is det.
 
-    % Retrieves the current input stream. Does not modify the IO state.
+    % Retrieves the current input stream.
+    % Does not modify the I/O state.
     %
 :- pred io.input_stream(io.input_stream::out, io::di, io::uo) is det.
 
@@ -573,7 +577,8 @@
     %
 :- func io.stdin_stream = io.input_stream.
 
-    % Retrieves the standard input stream. Does not modify the IO state.
+    % Retrieves the standard input stream.
+    % Does not modify the I/O state.
     %
 :- pred io.stdin_stream(io.input_stream::out, io::di, io::uo) is det.
 
@@ -614,7 +619,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Output text stream predicates.
+% Output text stream predicates
 %
 
     % Attempts to open a file for output, and if successful sets the current
@@ -646,7 +651,8 @@
     %
 :- pred io.close_output(io.output_stream::in, io::di, io::uo) is det.
 
-    % Retrieves the current output stream. Does not modify the IO state.
+    % Retrieves the current output stream.
+    % Does not modify the I/O state.
     %
 :- pred io.output_stream(io.output_stream::out, io::di, io::uo) is det.
 
@@ -660,7 +666,8 @@
     %
 :- func io.stdout_stream = io.output_stream.
 
-    % Retrieves the standard output stream. Does not modify the IO state.
+    % Retrieves the standard output stream.
+    % Does not modify the I/O state.
     %
 :- pred io.stdout_stream(io.output_stream::out, io::di, io::uo) is det.
     
@@ -668,7 +675,8 @@
     %
 :- func io.stderr_stream = io.output_stream.
 
-    % Retrieves the standard error stream. Does not modify the IO state.
+    % Retrieves the standard error stream.
+    % Does not modify the I/O state.
     %
 :- pred io.stderr_stream(io.output_stream::out, io::di, io::uo) is det.
 
@@ -712,7 +720,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Binary input predicates.
+% Binary input predicates
 %
 
     % Reads a binary representation of a term of type T from the current
@@ -860,7 +868,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Binary output predicates.
+% Binary output predicates
 %
 
 % These will all throw an io.error exception if an I/O error occurs.
@@ -925,7 +933,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Binary input stream predicates.
+% Binary input stream predicates
 %
 
     % Attempts to open a file for binary input, and if successful sets
@@ -953,7 +961,7 @@
     io::di, io::uo) is det.
 
     % Retrieves the current binary input stream.
-    % Does not modify the IO state.
+    % Does not modify the I/O state.
     %
 :- pred io.binary_input_stream(io.binary_input_stream::out,
     io::di, io::uo) is det.
@@ -965,7 +973,7 @@
     io.binary_input_stream::out, io::di, io::uo) is det.
 
     % Retrieves the standard binary input stream.
-    % Does not modify the IO state.
+    % Does not modify the I/O state.
     %
 :- pred io.stdin_binary_stream(io.binary_input_stream::out,
     io::di, io::uo) is det.
@@ -983,7 +991,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Binary output stream predicates.
+% Binary output stream predicates
 %
 
     % Attempts to open a file for binary output, and if successful sets
@@ -1011,20 +1019,19 @@
     io.res(io.binary_output_stream)::out, io::di, io::uo) is det.
 
     % Closes an open binary output stream.
-    % This will throw an io.error exception
-    % if an I/O error occurs.
+    % This will throw an io.error exception if an I/O error occurs.
     %
 :- pred io.close_binary_output(io.binary_output_stream::in,
     io::di, io::uo) is det.
 
     % Retrieves the current binary output stream.
-    % Does not modify the IO state.
+    % Does not modify the I/O state.
     %
 :- pred io.binary_output_stream(io.binary_output_stream::out,
     io::di, io::uo) is det.
 
     % Retrieves the standard binary output stream.
-    % Does not modify the IO state.
+    % Does not modify the I/O state.
     %
 :- pred io.stdout_binary_stream(io.binary_output_stream::out,
     io::di, io::uo) is det.
@@ -1048,18 +1055,18 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Global state predicates.
+% Global state predicates
 %
 
-    % io.progname(DefaultProgname, Progname):
+    % io.progname(DefaultProgname, Progname).
     %
     % Returns the name that the program was invoked with, if available,
     % or DefaultProgname if the name is not available.
-    % Does not modify the IO state.
+    % Does not modify the I/O state.
     %
 :- pred io.progname(string::in, string::out, io::di, io::uo) is det.
 
-    % io.progname_base(DefaultProgname, Progname):
+    % io.progname_base(DefaultProgname, Progname).
     %
     % Like `io.progname', except that it strips off any path name
     % preceding the program name.  Useful for error messages.
@@ -1067,17 +1074,16 @@
 :- pred io.progname_base(string::in, string::out, io::di, io::uo) is det.
 
     % Returns the arguments that the program was invoked with,
-    % if available, otherwise an empty list. Does not modify the IO state.
+    % if available, otherwise an empty list. Does not modify the I/O state.
     %
 :- pred io.command_line_arguments(list(string)::out, io::di, io::uo) is det.
 
-    % The io.state contains an integer used to record the program's exit
+    % The I/O state contains an integer used to record the program's exit
     % status. When the program finishes, it will return this exit status
     % to the operating system. The following predicates can be used to get
     % and set the exit status.
     %
 :- pred io.get_exit_status(int::out, io::di, io::uo) is det.
-
 :- pred io.set_exit_status(int::in, io::di, io::uo) is det.
 
     % The io.state includes a `globals' field which is not used by the I/O
@@ -1085,7 +1091,7 @@
     % of type `univ' so that the application can store any data it wants there.
     % The following predicates can be used to access this global state.
     %
-    % Doesn't modify the io.state.
+    % Does not modify the I/O state.
     %
 :- pred io.get_globals(univ::uo, io::di, io::uo) is det.
 
@@ -1135,15 +1141,15 @@
     %
 :- pred io.make_temp(string::out, io::di, io::uo) is det.
 
-    % io.make_temp(Dir, Prefix, Name, IO0, IO) creates an empty file whose
+    % io.make_temp(Dir, Prefix, Name, !IO) creates an empty file whose
     % name is different to the name of any existing file. The file will reside
     % in the directory specified by `Dir' and will have a prefix using up to
     % the first 5 characters of `Prefix'. Name is bound to the name of the
     % file. It is the responsibility of the program to delete the file
     % when it is no longer needed.
     %
-:- pred io.make_temp(string::in, string::in, string::out,
-    io::di, io::uo) is det.
+:- pred io.make_temp(string::in, string::in, string::out, io::di, io::uo)
+    is det.
 
     % io.remove_file(FileName, Result, !IO) attempts to remove the file
     % `FileName', binding Result to ok/0 if it succeeds, or error/1 if it
@@ -1152,7 +1158,7 @@
     %
 :- pred io.remove_file(string::in, io.res::out, io::di, io::uo) is det.
 
-    % io.rename_file(OldFileName, NewFileName, Result, !IO):
+    % io.rename_file(OldFileName, NewFileName, Result, !IO).
     %
     % Attempts to rename the file `OldFileName' as `NewFileName', binding
     % Result to ok/0 if it succeeds, or error/1 if it fails. If `OldFileName'
@@ -1162,21 +1168,21 @@
     % the file previously named `NewFileName' will be deleted and replaced
     % with the file previously named `OldFileName'.
     %
-:- pred io.rename_file(string::in, string::in, io.res::out,
-    io::di, io::uo) is det.
+:- pred io.rename_file(string::in, string::in, io.res::out, io::di, io::uo)
+    is det.
 
-    % Can this platform read and create symbolic links.
+    % Succeeds if this platform can read and create symbolic links.
     %
 :- pred io.have_symlinks is semidet.
 
-    % io.make_symlink(FileName, LinkFileName, Result, !IO):
+    % io.make_symlink(FileName, LinkFileName, Result, !IO).
     %
     % Attempts to make `LinkFileName' be a symbolic link to `FileName'.
     % If `FileName' is a relative path, it is interpreted relative
     % to the directory containing `LinkFileName'.
     %
-:- pred io.make_symlink(string::in, string::in, io.res::out,
-    io::di, io::uo) is det.
+:- pred io.make_symlink(string::in, string::in, io.res::out, io::di, io::uo)
+    is det.
 
     % io.read_symlink(FileName, Result, !IO) returns `ok(LinkTarget)'
     % if `FileName' is a symbolic link pointing to `LinkTarget', and
@@ -1229,7 +1235,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Memory management predicates.
+% Memory management predicates
 %
 
     % Write memory/time usage statistics to stderr.

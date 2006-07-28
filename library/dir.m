@@ -31,8 +31,9 @@
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
-
-    % predicates to isolate system dependencies
+%
+% Predicates to isolate system dependencies
+%
 
     % Returns the default separator between components of a pathname --
     % '/' on Unix systems and '\\' on Microsoft Windows systems.

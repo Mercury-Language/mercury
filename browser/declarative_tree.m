@@ -1026,7 +1026,7 @@ step_left_to_call(Store, NodeId, ParentCallNode) :-
     ;
         %
         % We wish to step through negated contexts, so we handle NEGE
-        % and COND events seperately, since step_left_in_contour/2
+        % and COND events separately, since step_left_in_contour/2
         % will throw an exception if it reaches the boundary of a
         % negated context.
         %

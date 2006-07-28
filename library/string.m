@@ -738,10 +738,10 @@
     %
 :- func string.word_wrap(string, int) = string.
 
-    % word_wrap(Str, N, WordSeperator) = Wrapped.
+    % word_wrap(Str, N, WordSeparator) = Wrapped.
     % word_wrap/3 is like word_wrap/2, except that words that need to be broken
-    % up over multiple lines have WordSeperator inserted between each piece.
-    % If the length of WordSeperator is greater that or equal to N, then
+    % up over multiple lines have WordSeparator inserted between each piece.
+    % If the length of WordSeparator is greater that or equal to N, then
     % no separator is used.
     %
 :- func string.word_wrap(string, int, string) = string.
@@ -4576,13 +4576,13 @@ char_list_equal([X | Xs], [X | Ys]) :-
 
 %------------------------------------------------------------------------------%
 
-string.format_table(Columns, Seperator) = Table :-
+string.format_table(Columns, Separator) = Table :-
     MaxWidths = list.map(find_max_length, Columns),
     PaddedColumns = list.map_corresponding(pad_column, MaxWidths, Columns),
     (
         PaddedColumns = [PaddedHead | PaddedTail],
         Rows = list.foldl(list.map_corresponding(
-            string.join_rev_columns(Seperator)), PaddedTail, PaddedHead)
+            string.join_rev_columns(Separator)), PaddedTail, PaddedHead)
     ;
         PaddedColumns = [],
         Rows = []
@@ -4591,7 +4591,7 @@ string.format_table(Columns, Seperator) = Table :-
 
 :- func join_rev_columns(string, string, string) = string.
 
-join_rev_columns(Seperator, Col1, Col2) = Col2 ++ Seperator ++ Col1.
+join_rev_columns(Separator, Col1, Col2) = Col2 ++ Separator ++ Col1.
 
 :- func find_max_length(justified_column) = int.
 

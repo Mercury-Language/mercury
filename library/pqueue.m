@@ -76,9 +76,11 @@
 :- import_module list.
 :- import_module pair.
 
+%---------------------------------------------------------------------------%
+
 :- type pqueue(K, V)
     --->    empty
-    ;   pqueue(int, K, V, pqueue(K, V), pqueue(K, V)).
+    ;       pqueue(int, K, V, pqueue(K, V), pqueue(K, V)).
 
 %---------------------------------------------------------------------------%
 

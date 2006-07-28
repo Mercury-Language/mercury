@@ -784,7 +784,7 @@ process_arg_list_2(OptionVariables, OptionArgs, [Arg | Args],
     % Figure out whether the argument is a module name or a file name.
     % Open the specified file or module, and process it.
     % Return the list of modules (including sub-modules,
-    % if they were compiled to seperate object files)
+    % if they were compiled to separate object files)
     % that should be linked into the final executable.
 
 :- pred process_arg(options_variables::in, list(string)::in, string::in,
