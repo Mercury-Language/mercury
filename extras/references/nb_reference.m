@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000,2002-2003 University of Melbourne.
+% Copyright (C) 1998-2000,2002-2003, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -56,7 +56,7 @@
 %  updated.
 :- type nb_reference(T) ---> nb_reference(private_builtin.ref(T)).
 
-:- pragma c_header_code("#include ""mercury_deep_copy.h""").
+:- pragma foreign_decl("C", "#include ""mercury_deep_copy.h""").
 
 :- pragma inline(new_nb_reference/2).
 
@@ -65,7 +65,10 @@ new_nb_reference(X, nb_reference(Ref)) :-
 
 :- impure pred new_nb_reference_2(T::in, private_builtin.ref(T)::out) is det.
 :- pragma inline(new_nb_reference_2/2).
-:- pragma c_code(new_nb_reference_2(X::in, Ref::out), will_not_call_mercury, "
+:- pragma foreign_proc("C",
+	new_nb_reference_2(X::in, Ref::out),
+	[will_not_call_mercury],
+"
 	MR_incr_hp(Ref, 1);
 #ifndef MR_CONSERVATIVE_GC
 	MR_save_transient_registers();
@@ -84,7 +87,10 @@ value(nb_reference(Ref), X) :-
 
 :- semipure pred value_2(private_builtin.ref(T)::in, T::out) is det.
 :- pragma inline(value_2/2).
-:- pragma c_code(value_2(Ref::in, X::out), will_not_call_mercury, "
+:- pragma foreign_proc("C",
+	value_2(Ref::in, X::out),
+	[promise_semipure, will_not_call_mercury],
+"
 	X = *(MR_Word *) Ref;
 ").
 
@@ -95,7 +101,10 @@ update(nb_reference(Ref), X) :-
 
 :- impure pred update_2(private_builtin.ref(T)::in, T::in) is det.
 :- pragma inline(update_2/2).
-:- pragma c_code(update_2(Ref::in, X::in), will_not_call_mercury, "
+:- pragma foreign_proc("C",
+	update_2(Ref::in, X::in),
+	[will_not_call_mercury],
+"
 #ifndef MR_CONSERVATIVE_GC
 	MR_save_transient_registers();
 #endif
