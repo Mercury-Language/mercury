@@ -1299,7 +1299,7 @@ tabling_name_and_init_to_defn(ProcLabel, MLDS_Context, Constness, Id,
     MLDS_Type = mlds_tabling_type(Id),
     Flags = tabling_data_decl_flags(Constness),
     DefnBody = mlds_data(MLDS_Type, Initializer, GC_TraceCode),
-    Name = data(mlds_tabling_ref(ProcLabel, Id)),
+    Name = entity_data(mlds_tabling_ref(ProcLabel, Id)),
     Defn = mlds_defn(Name, MLDS_Context, Flags, DefnBody).
 
     % Return the declaration flags appropriate for a tabling data structure.
@@ -1375,7 +1375,7 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcDefnBody, ExtraDefns) :-
             % definition, making sure that the function is declared as `extern'
             % rather than `static'.
             %
-            FunctionBody = external,
+            FunctionBody = body_external,
             ExtraDefns = [],
             ml_gen_proc_params(PredId, ProcId, MLDS_Params, !.Info, _Info)
         ;
@@ -1425,7 +1425,7 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcDefnBody, ExtraDefns) :-
             ml_gen_info_get_extra_defns(!.Info, ExtraDefns),
             Decls = list.append(MLDS_LocalVars, Decls0),
             Statement = ml_gen_block(Decls, Statements, Context),
-            FunctionBody = defined_here(Statement)
+            FunctionBody = body_defined_here(Statement)
         )
     ),
 
@@ -1780,7 +1780,7 @@ ml_gen_wrap_goal(model_semi, model_det, Context, !Statements, !Info) :-
     %   <do Goal>
     %   succeeded = MR_TRUE
     %
-    ml_gen_set_success(!.Info, const(true), Context, SetSuccessTrue),
+    ml_gen_set_success(!.Info, const(true_const), Context, SetSuccessTrue),
     !:Statements = !.Statements ++ [SetSuccessTrue].
 
 ml_gen_wrap_goal(model_non, model_det, Context, !Statements, !Info) :-
@@ -1905,8 +1905,10 @@ ml_gen_commit(Goal, CodeModel, Context, Decls, Statements, !Info) :-
         GoalStatement = ml_gen_block(GoalOtherDecls, GoalStatements,
             GoalContext),
         ml_gen_info_pop_success_cont(!Info),
-        ml_gen_set_success(!.Info, const(false), Context, SetSuccessFalse),
-        ml_gen_set_success(!.Info, const(true), Context, SetSuccessTrue),
+        ml_gen_set_success(!.Info, const(false_const), Context,
+            SetSuccessFalse),
+        ml_gen_set_success(!.Info, const(true_const), Context,
+            SetSuccessTrue),
         TryCommitStmt = try_commit(CommitRefLval,
             ml_gen_block([], [GoalStatement, SetSuccessFalse], Context),
             ml_gen_block([], list.append(CopyLocalsToOutputArgs,
@@ -2063,7 +2065,7 @@ maybe_put_commit_in_own_func(CommitFuncLocalDecls, TryCommitStatements,
         RetTypes = [],
         Signature = mlds_func_signature(ArgTypes, RetTypes),
         CallKind = ordinary_call,
-        CallStmt = call(Signature, CommitFuncLabelRval, no, ArgRvals, [],
+        CallStmt = mlcall(Signature, CommitFuncLabelRval, no, ArgRvals, [],
             CallKind),
         CallStatement = statement(CallStmt, mlds_make_context(Context)),
         % Package it all up.
@@ -3506,7 +3508,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
         ml_gen_info_new_cond_var(CondVar, !Info),
         MLDS_Context = mlds_make_context(Context),
         CondVarDecl = ml_gen_cond_var_decl(CondVar, MLDS_Context),
-        ml_gen_set_cond_var(!.Info, CondVar, const(false), Context,
+        ml_gen_set_cond_var(!.Info, CondVar, const(false_const), Context,
             SetCondFalse),
 
         % Allocate a name for the `then_func'.
@@ -3523,7 +3525,7 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context, Decls, Statements, !Info) :-
         % push nesting level
         Then = _ - ThenGoalInfo,
         goal_info_get_context(ThenGoalInfo, ThenContext),
-        ml_gen_set_cond_var(!.Info, CondVar, const(true), ThenContext,
+        ml_gen_set_cond_var(!.Info, CondVar, const(true_const), ThenContext,
             SetCondTrue),
         ml_gen_goal(CodeModel, Then, ThenStatement, !Info),
         ThenFuncBody = ml_gen_block([], [SetCondTrue, ThenStatement],
@@ -3578,7 +3580,8 @@ ml_gen_negation(Cond, CodeModel, Context, Decls, Statements, !Info) :-
 
         CodeModel = model_semi, CondCodeModel = model_det,
         ml_gen_goal(model_det, Cond, CondDecls, CondStatements, !Info),
-        ml_gen_set_success(!.Info, const(false), Context, SetSuccessFalse),
+        ml_gen_set_success(!.Info, const(false_const), Context,
+            SetSuccessFalse),
         Decls = CondDecls,
         Statements = list.append(CondStatements, [SetSuccessFalse])
     ;

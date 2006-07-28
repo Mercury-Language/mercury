@@ -589,10 +589,10 @@ find_pointer_addressed_methods([Defn | Defns], !CodeAddrs) :-
 method_ptrs_in_entity_defn(mlds_function(_MaybeID, _Params, Body,
         _Attributes), !CodeAddrs) :-
     (
-        Body = defined_here(Statement),
+        Body = body_defined_here(Statement),
         method_ptrs_in_statement(Statement, !CodeAddrs)
     ;
-        Body = external
+        Body = body_external
     ).
 method_ptrs_in_entity_defn(mlds_data(_Type, Initializer, _GC_TraceCode),
         !CodeAddrs) :-
@@ -662,7 +662,7 @@ method_ptrs_in_stmt(do_commit(_Rval), !CodeAddrs).
     % of type mlds_commit_type.
 method_ptrs_in_stmt(return(Rvals), !CodeAddrs) :-
     method_ptrs_in_rvals(Rvals, !CodeAddrs).
-method_ptrs_in_stmt(call(_FuncSig, _Rval, _MaybeThis, Rvals, _ReturnVars,
+method_ptrs_in_stmt(mlcall(_FuncSig, _Rval, _MaybeThis, Rvals, _ReturnVars,
         _IsTailCall), !CodeAddrs) :-
     % We don't check "_Rval" - it may be a code address but is a
     % standard call rather than a function pointer use.
@@ -848,7 +848,7 @@ generate_addr_wrapper_class(Interface, Context, CodeAddr, ClassDefn) :-
     % Put it all together.
     ClassMembers  = [MethodDefn],
     ClassCtors    = [],
-    ClassName     = type(MangledClassEntityName, 0),
+    ClassName     = entity_type(MangledClassEntityName, 0),
     ClassContext  = Context,
     ClassFlags    = ml_gen_type_decl_flags,
     ClassBodyDefn = mlds_class_defn(mlds_class, ClassImports,
@@ -876,13 +876,13 @@ generate_call_method(CodeAddr, MethodDefn) :-
 
     % Create new method name.
     Label = mlds_special_pred_label("call", no, "", 0),
-    MethodName = function(Label, ProcID, no, PredID),
+    MethodName = entity_function(Label, ProcID, no, PredID),
 
     % Create method argument and return type.
     % It will have the argument type java.lang.Object[]
     % It will have the return type java.lang.Object
     MethodArgVariable = mlds_var_name("args", no),
-    MethodArgType = mlds_argument(data(var(MethodArgVariable)),
+    MethodArgType = mlds_argument(entity_data(var(MethodArgVariable)),
         mlds_array_type(mlds_generic_type), no),
     MethodRetType = mlds_generic_type,
     MethodArgs = [MethodArgType],
@@ -905,7 +905,7 @@ generate_call_method(CodeAddr, MethodDefn) :-
         ReturnVarType = mlds_array_type(mlds_generic_type)
     ),
     ReturnLval = var(ReturnVar, ReturnVarType),
-    ReturnEntityName = data(var(ReturnVarName)),
+    ReturnEntityName = entity_data(var(ReturnVarName)),
 
     ReturnDecFlags = ml_gen_local_var_decl_flags,
     GCTraceCode = no,  % The Java back-end does its own garbage collection.
@@ -930,7 +930,7 @@ generate_call_method(CodeAddr, MethodDefn) :-
         OrigRetTypes = [_ | _],
         CallRetLvals = [ReturnLval]
     ),
-    Call = call(OrigFuncSignature, CallRval, no, CallArgs,
+    Call = mlcall(OrigFuncSignature, CallRval, no, CallArgs,
         CallRetLvals, ordinary_call),
     CallStatement = statement(Call, Context),
 
@@ -948,7 +948,7 @@ generate_call_method(CodeAddr, MethodDefn) :-
     MethodMaybeID = no,
     MethodAttribs = [],
     MethodBody   = mlds_function(MethodMaybeID, MethodParams,
-        defined_here(Statements), MethodAttribs),
+        body_defined_here(Statements), MethodAttribs),
     MethodFlags  = ml_gen_special_member_decl_flags,
     MethodDefn   = mlds_defn(MethodName, Context, MethodFlags, MethodBody).
 
@@ -1172,7 +1172,7 @@ output_defns(Indent, ModuleInfo, ModuleName, CtorData, Defns, !IO) :-
 output_defn(Indent, ModuleInfo, ModuleName, CtorData, Defn, !IO) :-
     Defn = mlds_defn(Name, Context, Flags, DefnBody),
     indent_line(Context, Indent, !IO),
-    ( DefnBody = mlds_function(_, _, external, _) ->
+    ( DefnBody = mlds_function(_, _, body_external, _) ->
         % This is just a function declaration, with no body.
         % Java doesn't support separate declarations and definitions,
         % so just output the declaration as a comment.
@@ -1219,8 +1219,9 @@ output_defn_body(Indent, ModuleInfo, Name, _, Context, mlds_class(ClassDefn),
 
 output_class(Indent, ModuleInfo, Name, _Context, ClassDefn, !IO) :-
     Name = qual(ModuleName, _QualKind, UnqualName),
-    ( UnqualName = type(_, _) ->
-        true
+    ( UnqualName = entity_type(ClassNamePrime, ArityPrime) ->
+        ClassName = ClassNamePrime,
+        Arity = ArityPrime
     ;
         unexpected(this_file, "output_class")
     ),
@@ -1231,7 +1232,7 @@ output_class(Indent, ModuleInfo, Name, _Context, ClassDefn, !IO) :-
     ;
         io.write_string("class ", !IO)
     ),
-    output_class_name_and_arity(UnqualName, !IO),
+    output_class_name_and_arity(ClassName, Arity, !IO),
     io.nl(!IO),
     output_extends_list(Indent + 1, BaseClasses, !IO),
     output_implements_list(Indent + 1, Implements, !IO),
@@ -1581,7 +1582,7 @@ output_pred_proc_id(proc(PredId, ProcId), !IO) :-
 output_func(Indent, ModuleInfo, Name, CtorData, Context, Signature, MaybeBody,
         !IO) :-
     (
-        MaybeBody = defined_here(Body),
+        MaybeBody = body_defined_here(Body),
         output_func_decl(Indent, Name, CtorData, Context, Signature, !IO),
         io.write_string("\n", !IO),
         indent_line(Context, Indent, !IO),
@@ -1592,7 +1593,7 @@ output_func(Indent, ModuleInfo, Name, CtorData, Context, Signature, MaybeBody,
         indent_line(Context, Indent, !IO),
         io.write_string("}\n", !IO)    % end the function
     ;
-        MaybeBody = external
+        MaybeBody = body_external
     ).
 
 :- pred output_func_decl(indent::in, mlds_qualified_entity_name::in,
@@ -1699,18 +1700,12 @@ output_fully_qualified(qual(ModuleName, QualKind, Name), OutputFunc,
 output_module_name(ModuleName, !IO) :-
     io.write_string(sym_name_mangle(ModuleName), !IO).
 
-:- pred output_class_name_and_arity(mlds_entity_name::in, io::di, io::uo)
-    is det.
+:- pred output_class_name_and_arity(mlds_class_name::in, arity::in,
+    io::di, io::uo) is det.
 
-output_class_name_and_arity(type(Name, Arity), !IO) :-
+output_class_name_and_arity(Name, Arity, !IO) :-
     output_class_name(Name, !IO),
     io.format("_%d", [i(Arity)], !IO).
-output_class_name_and_arity(data(_), !IO) :-
-    unexpected(this_file, "output_class_name_and_arity").
-output_class_name_and_arity(function(_, _, _, _), !IO) :-
-    unexpected(this_file, "output_class_name_and_arity").
-output_class_name_and_arity(export(_), !IO) :-
-    unexpected(this_file, "output_class_name_and_arity").
 
 :- pred output_class_name(mlds_class_name::in, io::di, io::uo) is det.
 
@@ -1722,11 +1717,11 @@ output_class_name(Name, !IO) :-
 
 :- pred output_name(mlds_entity_name::in, io::di, io::uo) is det.
 
-output_name(type(Name, Arity), !IO) :-
-    output_class_name_and_arity(type(Name, Arity), !IO).
-output_name(data(DataName), !IO) :-
+output_name(entity_type(Name, Arity), !IO) :-
+    output_class_name_and_arity(Name, Arity, !IO).
+output_name(entity_data(DataName), !IO) :-
     output_data_name(DataName, !IO).
-output_name(function(PredLabel, ProcId, MaybeSeqNum, _PredId), !IO) :-
+output_name(entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId), !IO) :-
     output_pred_label(PredLabel, !IO),
     proc_id_to_int(ProcId, ModeNum),
     io.format("_%d", [i(ModeNum)], !IO),
@@ -1736,7 +1731,7 @@ output_name(function(PredLabel, ProcId, MaybeSeqNum, _PredId), !IO) :-
     ;
         MaybeSeqNum = no
     ).
-output_name(export(Name), !IO) :-
+output_name(entity_export(Name), !IO) :-
     io.write_string(Name, !IO).
 
 :- pred output_pred_label(mlds_pred_label::in, io::di, io::uo) is det.
@@ -2189,7 +2184,7 @@ output_stmt(Indent, ModuleInfo, FuncInfo, while(Cond, Statement, no),
     % The contained statement is reachable iff the while statement is
     % reachable and the condition expression is not a constant expression
     % whose value is false.
-    ( Cond = const(false) ->
+    ( Cond = const(false_const) ->
         indent_line(Indent, !IO),
         io.write_string("{  /* Unreachable code */  }\n", !IO),
         ExitMethods = set.make_singleton_set(can_fall_through)
@@ -2298,7 +2293,7 @@ output_stmt(_, _, _, computed_goto(_, _), _, _, _, _) :-
     %
 output_stmt(Indent, ModuleInfo, CallerFuncInfo, Call, Context, ExitMethods,
         !IO) :-
-    Call = call(Signature, FuncRval, MaybeObject, CallArgs, Results,
+    Call = mlcall(Signature, FuncRval, MaybeObject, CallArgs, Results,
         _IsTailCall),
     Signature = mlds_func_signature(ArgTypes, RetTypes),
     ModuleName = CallerFuncInfo ^ func_info_name ^ mod_name,
@@ -2532,7 +2527,7 @@ while_exit_methods(Cond, BlockExitMethods) = ExitMethods :-
         % XXX This is not a sufficient way of testing for a Java
         % "constant expression", though determining these accurately
         % is a little difficult to do here.
-        Cond = const(true),
+        Cond = const(true_const),
         not set.member(can_break, BlockExitMethods)
     ->
         % Cannot complete normally
@@ -2798,7 +2793,7 @@ output_atomic_stmt(Indent, ModuleInfo, FuncInfo, NewObject, Context, !IO) :-
         io.write_char('.', !IO),
         QualifiedCtorId = qual(_ModuleName, _QualKind, CtorDefn),
         CtorDefn = ctor_id(CtorName, CtorArity),
-        output_class_name_and_arity(type(CtorName, CtorArity), !IO)
+        output_class_name_and_arity(CtorName, CtorArity, !IO)
     ;
         output_type(Type, !IO)
     ),
@@ -2970,8 +2965,8 @@ output_lval(ModuleInfo, mem_ref(Rval, _Type), ModuleName, !IO) :-
 
 output_lval(_, var(qual(ModName, QualKind, Name), _), CurrentModuleName,
         !IO) :-
-    output_maybe_qualified_name(qual(ModName, QualKind, data(var(Name))),
-        CurrentModuleName, !IO).
+    QualName = qual(ModName, QualKind, entity_data(var(Name))),
+    output_maybe_qualified_name(QualName, CurrentModuleName, !IO).
 
 :- pred output_mangled_name(string::in, io::di, io::uo) is det.
 
@@ -3257,10 +3252,10 @@ output_binary_op(Op, !IO) :-
 
 :- pred output_rval_const(mlds_rval_const::in, io::di, io::uo) is det.
 
-output_rval_const(true, !IO) :-
+output_rval_const(true_const, !IO) :-
     io.write_string("true", !IO).
 
-output_rval_const(false, !IO) :-
+output_rval_const(false_const, !IO) :-
     io.write_string("false", !IO).
 
 output_rval_const(int_const(N), !IO) :-

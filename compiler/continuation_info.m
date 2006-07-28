@@ -426,7 +426,7 @@ process_proc_llds(PredProcId, Instructions, WantReturnInfo, !GlobalData) :-
     global_data_get_proc_layout(!.GlobalData, PredProcId, ProcLayoutInfo0),
     Internals0 = ProcLayoutInfo0^internal_map,
     GetCallInfo = (pred(Instr::in, Call::out) is semidet :-
-        Instr = call(Target, label(ReturnLabel), LiveInfo, Context,
+        Instr = llcall(Target, label(ReturnLabel), LiveInfo, Context,
             GoalPath, _) - _Comment,
         Call = call_info(ReturnLabel, Target, LiveInfo, Context, GoalPath)
     ),

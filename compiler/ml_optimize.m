@@ -117,13 +117,13 @@ optimize_in_defn(ModuleName, Globals, Defn0) = Defn :-
 :- func optimize_in_function_body(opt_info, mlds_function_body)
     = mlds_function_body.
 
-optimize_in_function_body(_, external) = external.
-optimize_in_function_body(OptInfo, defined_here(Statement0)) =
-        defined_here(Statement) :-
+optimize_in_function_body(_, body_external) = body_external.
+optimize_in_function_body(OptInfo, body_defined_here(Statement0)) =
+        body_defined_here(Statement) :-
     Statement = optimize_in_statement(OptInfo, Statement0).
 
-:- func optimize_in_maybe_statement(opt_info,
-    maybe(statement)) = maybe(statement).
+:- func optimize_in_maybe_statement(opt_info, maybe(statement))
+    = maybe(statement).
 
 optimize_in_maybe_statement(_, no) = no.
 optimize_in_maybe_statement(OptInfo, yes(Statement0)) = yes(Statement) :-
@@ -143,7 +143,7 @@ optimize_in_statement(OptInfo, statement(Stmt, Context)) =
 
 optimize_in_stmt(OptInfo, Stmt0) = Stmt :-
     (
-        Stmt0 = call(_, _, _, _, _, _),
+        Stmt0 = mlcall(_, _, _, _, _, _),
         Stmt = optimize_in_call_stmt(OptInfo, Stmt0)
     ;
         Stmt0 = block(Defns0, Statements0),
@@ -209,13 +209,13 @@ optimize_in_default(OptInfo, default_case(Statement0)) =
 %-----------------------------------------------------------------------------%
 
 :- inst g == ground.
-:- inst call ---> ml_backend.mlds.call(g, g, g, g, g, g).
+:- inst mlcall ---> ml_backend.mlds.mlcall(g, g, g, g, g, g).
 
-:- func optimize_in_call_stmt(opt_info::in, mlds_stmt::in(call))
+:- func optimize_in_call_stmt(opt_info::in, mlds_stmt::in(mlcall))
     = (mlds_stmt::out) is det.
 
 optimize_in_call_stmt(OptInfo, Stmt0) = Stmt :-
-    Stmt0 = call(_Signature, FuncRval, _MaybeObject, CallArgs,
+    Stmt0 = mlcall(_Signature, FuncRval, _MaybeObject, CallArgs,
         _Results, _IsTailCall),
         % If we have a self-tailcall, assign to the arguments and
         % then goto the top of the tailcall loop.
@@ -320,7 +320,7 @@ generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
     Arg = mlds_argument(Name, Type, _ArgGCTraceCode),
     (
         % Extract the variable name.
-        Name = data(var(VarName))
+        Name = entity_data(var(VarName))
     ->
         QualVarName = qual(OptInfo ^ module_name, module_qual, VarName),
         (
@@ -382,9 +382,9 @@ generate_assign_args(OptInfo, [Arg | Args], [ArgRval | ArgRvals],
 
 :- func optimize_func(opt_info, mlds_function_body) = mlds_function_body.
 
-optimize_func(_, external) = external.
-optimize_func(OptInfo, defined_here(Statement)) =
-    defined_here(optimize_func_stmt(OptInfo, Statement)).
+optimize_func(_, body_external) = body_external.
+optimize_func(OptInfo, body_defined_here(Statement)) =
+    body_defined_here(optimize_func_stmt(OptInfo, Statement)).
 
 :- func optimize_func_stmt(opt_info, statement) = statement.
 
@@ -416,7 +416,7 @@ optimize_func_stmt(OptInfo, statement(Stmt0, Context)) =
             %   }
             % Any tail calls in the function body will have
             % been replaced with `continue' statements.
-            Stmt = while(const(true),
+            Stmt = while(const(true_const),
                 statement(block([],
                     [CommentStmt,
                     statement(Stmt0, Context),
@@ -601,7 +601,7 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Statements) :-
         \+ rval_contains_var(RHS, ThisData),
         \+ (
             list.member(OtherDefn, FollowingDefns),
-            OtherDefn = mlds_defn(data(OtherVarName),
+            OtherDefn = mlds_defn(entity_data(OtherVarName),
                 _, _, mlds_data(_Type, OtherInitializer, _GC)),
             (
                 rval_contains_var(RHS, qual(Qualifier, QualKind, OtherVarName))
@@ -624,7 +624,7 @@ convert_assignments_into_initializers(OptInfo, !Defns, !Statements) :-
 :- pred var_defn(mlds_var_name::in, mlds_defn::in) is semidet.
 
 var_defn(VarName, Defn) :-
-    Defn = mlds_defn(data(var(VarName)), _, _, _).
+    Defn = mlds_defn(entity_data(var(VarName)), _, _, _).
 
     % set_initializer(Defns0, VarName, Rval, Defns):
     %
@@ -639,7 +639,7 @@ set_initializer([], _, _, _) :-
 set_initializer([Defn0 | Defns0], VarName, Rval, [Defn | Defns]) :-
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     (
-        Name = data(var(VarName)),
+        Name = entity_data(var(VarName)),
         DefnBody0 = mlds_data(Type, _OldInitializer, GC_TraceCode)
     ->
         DefnBody = mlds_data(Type, init_obj(Rval), GC_TraceCode),
@@ -722,7 +722,7 @@ try_to_eliminate_defn(OptInfo, Defn0, Defns0, Defns, !Statements) :-
     Defn0 = mlds_defn(Name, _Context, Flags, DefnBody),
 
     % Check if this definition is a local variable definition...
-    Name = data(var(VarName)),
+    Name = entity_data(var(VarName)),
     Flags = ml_gen_local_var_decl_flags,
     DefnBody = mlds_data(_Type, Initializer, _MaybeGCTraceCode),
 
@@ -928,9 +928,9 @@ eliminate_var_in_defn(Defn0, Defn, !VarElimInfo) :-
     mlds_function_body::in, mlds_function_body::out,
     var_elim_info::in, var_elim_info::out) is det.
 
-eliminate_var_in_function_body(external, external, !VarElimInfo).
-eliminate_var_in_function_body(defined_here(Stmt0), defined_here(Stmt),
-        !VarElimInfo) :-
+eliminate_var_in_function_body(body_external, body_external, !VarElimInfo).
+eliminate_var_in_function_body(body_defined_here(Stmt0),
+        body_defined_here(Stmt), !VarElimInfo) :-
     eliminate_var_in_statement(Stmt0, Stmt, !VarElimInfo).
 
 :- pred eliminate_var_in_initializer(
@@ -1099,12 +1099,12 @@ eliminate_var_in_stmt(Stmt0, Stmt, !VarElimInfo) :-
         eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
         Stmt = computed_goto(Rval, Labels)
     ;
-        Stmt0 = call(Sig, Func0, Obj0, Args0, RetLvals0, TailCall),
+        Stmt0 = mlcall(Sig, Func0, Obj0, Args0, RetLvals0, TailCall),
         eliminate_var_in_rval(Func0, Func, !VarElimInfo),
         eliminate_var_in_maybe_rval(Obj0, Obj, !VarElimInfo),
         eliminate_var_in_rvals(Args0, Args, !VarElimInfo),
         eliminate_var_in_lvals(RetLvals0, RetLvals, !VarElimInfo),
-        Stmt = call(Sig, Func, Obj, Args, RetLvals, TailCall)
+        Stmt = mlcall(Sig, Func, Obj, Args, RetLvals, TailCall)
     ;
         Stmt0 = return(Rvals0),
         eliminate_var_in_rvals(Rvals0, Rvals, !VarElimInfo),

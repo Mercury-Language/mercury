@@ -1675,8 +1675,8 @@ ml_gen_tag_test_rval(deep_profiling_proc_layout_tag(_, _), _, _, _) = _ :-
     unexpected(this_file, "Attempted deep_profiling_proc_layout unification").
 ml_gen_tag_test_rval(table_io_decl_tag(_, _), _, _, _) = _ :-
     unexpected(this_file, "Attempted table_io_decl unification").
-ml_gen_tag_test_rval(no_tag, _, _, _Rval) = const(true).
-ml_gen_tag_test_rval(single_functor, _, _, _Rval) = const(true).
+ml_gen_tag_test_rval(no_tag, _, _, _Rval) = const(true_const).
+ml_gen_tag_test_rval(single_functor, _, _, _Rval) = const(true_const).
 ml_gen_tag_test_rval(unshared_tag(UnsharedTag), _, _, Rval) =
     binop(eq, unop(std_unop(tag), Rval),
         unop(std_unop(mktag), const(int_const(UnsharedTag)))).

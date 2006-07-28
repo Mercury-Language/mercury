@@ -252,9 +252,9 @@
             % Assign the value specified by rval to the location
             % specified by lval.
 
-    ;       call(code_addr, code_addr, list(liveinfo), term.context,
+    ;       llcall(code_addr, code_addr, list(liveinfo), term.context,
                 goal_path, call_model)
-            % call(Target, Continuation, _, _, _) is the same as
+            % llcall(Target, Continuation, _, _, _) is the same as
             % succip = Continuation; goto(Target).
             % The third argument is the live value info for the values live
             % on return. The fourth argument gives the context of the call.
@@ -263,6 +263,10 @@
             % The last gives the code model of the called procedure, and if
             % it is model_non, says whether tail recursion elimination is
             % potentially applicable to the call.
+            %
+            % The ll prefix on call is to avoid the use of the call keyword
+            % and to distinguish this function symbol from a similar one
+            % in the MLDS.
 
     ;       mkframe(nondet_frame_info, maybe(code_addr))
             % mkframe(NondetFrameInfo, MaybeAddr) creates a nondet stack frame.
@@ -292,7 +296,7 @@
             % (rval+1)th label in the list. e.g. computed_goto(2, [A, B, C, D])
             % will branch to label C.
 
-    ;       c_code(string, c_code_live_lvals)
+    ;       arbitrary_c_code(string, c_code_live_lvals)
             % Do whatever is specified by the string, which can be any piece
             % of C code that does not have any non-local flow of control.
 

@@ -173,13 +173,13 @@ mark_tailcalls_in_defn(Defn0) = Defn :-
 :- func mark_tailcalls_in_function_body(mlds_function_body, at_tail, locals)
     = mlds_function_body.
 
-mark_tailcalls_in_function_body(external, _, _) = external.
-mark_tailcalls_in_function_body(defined_here(Statement0), AtTail, Locals) =
-        defined_here(Statement) :-
+mark_tailcalls_in_function_body(body_external, _, _) = body_external.
+mark_tailcalls_in_function_body(body_defined_here(Statement0), AtTail,
+        Locals) = body_defined_here(Statement) :-
     Statement = mark_tailcalls_in_statement(Statement0, AtTail, Locals).
 
-:- func mark_tailcalls_in_maybe_statement(maybe(statement),
-    at_tail, locals) = maybe(statement).
+:- func mark_tailcalls_in_maybe_statement(maybe(statement), at_tail, locals)
+    = maybe(statement).
 
 mark_tailcalls_in_maybe_statement(no, _, _) = no.
 mark_tailcalls_in_maybe_statement(yes(Statement0), AtTail, Locals) =
@@ -264,7 +264,7 @@ mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
         Stmt0 = computed_goto(_, _),
         Stmt = Stmt0
     ;
-        Stmt0 = call(Sig, Func, Obj, Args, ReturnLvals, CallKind0),
+        Stmt0 = mlcall(Sig, Func, Obj, Args, ReturnLvals, CallKind0),
         %
         % check if we can mark this call as a tail call
         %
@@ -288,7 +288,7 @@ mark_tailcalls_in_stmt(Stmt0, AtTail, Locals) = Stmt :-
         ->
             % Mark this call as a tail call.
             CallKind = tail_call,
-            Stmt = call(Sig, Func, Obj, Args, ReturnLvals, CallKind)
+            Stmt = mlcall(Sig, Func, Obj, Args, ReturnLvals, CallKind)
         ;
             % Leave this call unchanged.
             Stmt = Stmt0
@@ -469,7 +469,7 @@ var_is_local(Var, Locals) :-
     Var = qual(_ModuleName, _QualKind, VarName),
     some [Local] (
         locals_member(Local, Locals),
-        Local = data(var(VarName))
+        Local = entity_data(var(VarName))
     ).
 
     % Check whether the specified function is defined locally (i.e. as a
@@ -491,7 +491,7 @@ function_is_local(CodeAddr, Locals) :-
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
     some [Local] (
         locals_member(Local, Locals),
-        Local = function(PredLabel, ProcId, MaybeSeqNum, _PredId)
+        Local = entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId)
     ).
 
     % locals_member(Name, Locals):
@@ -547,7 +547,7 @@ nontailcall_in_defn(ModuleName, Defn, Warning) :-
     (
         DefnBody = mlds_function(_PredProcId, _Params, FuncBody,
             _Attributes),
-        FuncBody = defined_here(Body),
+        FuncBody = body_defined_here(Body),
         nontailcall_in_statement(ModuleName, Name, Body, Warning)
     ;
         DefnBody = mlds_class(ClassDefn),
@@ -565,7 +565,7 @@ nontailcall_in_statement(CallerModule, CallerFuncName, Statement, Warning) :-
     % Nondeterministically find a non-tail call.
     statement_contains_statement(Statement, SubStatement),
     SubStatement = statement(SubStmt, Context),
-    SubStmt = call(_CallSig, Func, _This, _Args, _RetVals, CallKind),
+    SubStmt = mlcall(_CallSig, Func, _This, _Args, _RetVals, CallKind),
     CallKind = ordinary_call,
     % Check if this call is a directly recursive call.
     Func = const(code_addr_const(CodeAddr)),
@@ -578,7 +578,7 @@ nontailcall_in_statement(CallerModule, CallerFuncName, Statement, Warning) :-
     ),
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
     QualProcLabel = qual(CallerModule, module_qual, ProcLabel),
-    CallerFuncName = function(PredLabel, ProcId, MaybeSeqNum, _PredId),
+    CallerFuncName = entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId),
     % If so, construct an appropriate warning.
     Warning = tailcall_warning(PredLabel, ProcId, Context).
 

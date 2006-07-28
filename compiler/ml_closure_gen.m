@@ -726,7 +726,7 @@ ml_gen_closure_wrapper(PredId, ProcId, ClosureKind, NumClosureArgs,
         gen_closure_gc_trace_code(ClosureArgName, ClosureArgDeclType,
             ClosureKind, WrapperArgTypes, Purity, PredOrFunc,
             Context, ClosureArgGCTraceCode, !Info),
-        ClosureArg = mlds_argument(data(var(ClosureArgName)),
+        ClosureArg = mlds_argument(entity_data(var(ClosureArgName)),
             ClosureArgType, ClosureArgGCTraceCode),
         MaybeClosureA = yes({ClosureArgType, ClosureArgName}),
         WrapperArgs = [ClosureArg | WrapperArgs1]

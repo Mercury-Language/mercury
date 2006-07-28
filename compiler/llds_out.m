@@ -1768,7 +1768,7 @@ find_cont_labels([], !ContLabelSet).
 find_cont_labels([Instr - _ | Instrs], !ContLabelSet) :-
     (
         (
-            Instr = call(_, label(ContLabel), _, _, _, _)
+            Instr = llcall(_, label(ContLabel), _, _, _, _)
         ;
             Instr = mkframe(_, yes(label(ContLabel)))
         ;
@@ -1886,10 +1886,10 @@ output_instr_decls( StackLayoutLabels, block(_TempR, _TempF, Instrs),
 output_instr_decls(_, assign(Lval, Rval), !DeclSet, !IO) :-
     output_lval_decls(Lval, !DeclSet, !IO),
     output_rval_decls(Rval, !DeclSet, !IO).
-output_instr_decls(_, call(Target, ContLabel, _, _, _, _), !DeclSet, !IO) :-
+output_instr_decls(_, llcall(Target, ContLabel, _, _, _, _), !DeclSet, !IO) :-
     output_code_addr_decls(Target, !DeclSet, !IO),
     output_code_addr_decls(ContLabel, !DeclSet, !IO).
-output_instr_decls(_, c_code(_, _), !DeclSet, !IO).
+output_instr_decls(_, arbitrary_c_code(_, _), !DeclSet, !IO).
 output_instr_decls(_, mkframe(FrameInfo, MaybeFailureContinuation),
         !DeclSet, !IO) :-
     (
@@ -2239,13 +2239,13 @@ output_instruction(assign(Lval, Rval), _, !IO) :-
     output_rval_as_type(Rval, Type, !IO),
     io.write_string(";\n", !IO).
 
-output_instruction(call(Target, ContLabel, LiveVals, _, _, _), ProfInfo,
+output_instruction(llcall(Target, ContLabel, LiveVals, _, _, _), ProfInfo,
         !IO) :-
     ProfInfo = CallerLabel - _,
     output_call(Target, ContLabel, CallerLabel, !IO),
     output_gc_livevals(LiveVals, !IO).
 
-output_instruction(c_code(C_Code_String, _), _, !IO) :-
+output_instruction(arbitrary_c_code(C_Code_String, _), _, !IO) :-
     io.write_string("\t", !IO),
     io.write_string(C_Code_String, !IO).
 

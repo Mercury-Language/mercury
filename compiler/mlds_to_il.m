@@ -395,7 +395,7 @@ transform_mlds(MLDS0) = MLDS :-
     AllExports = list.condense(
         list.map(
             (func(mlds_foreign_code(_, _, _, Exports)) = Exports),
-            map.values(MLDS0 ^ foreign_code))
+            map.values(MLDS0 ^ foreign_code_map))
         ),
 
     % Generate the exports for this file, they will be placed into
@@ -417,7 +417,7 @@ transform_mlds(MLDS0) = MLDS :-
 
 wrapper_class(Members) =
     mlds_defn(
-        export(wrapper_class_name),
+        entity_export(wrapper_class_name),
         mlds_make_context(term.context_init),
         ml_gen_type_decl_flags,
         mlds_class(mlds_class_defn(mlds_package, [], [], [], [], Members))
@@ -435,11 +435,11 @@ rename_defn(mlds_defn(Name, Context, Flags, Entity0))
         Entity0 = mlds_function(MaybePredProcId, Params, FunctionBody0,
             Attributes),
         (
-            FunctionBody0 = defined_here(Stmt),
-            FunctionBody = defined_here(rename_statement(Stmt))
+            FunctionBody0 = body_defined_here(Stmt),
+            FunctionBody = body_defined_here(rename_statement(Stmt))
         ;
-            FunctionBody0 = external,
-            FunctionBody = external
+            FunctionBody0 = body_external,
+            FunctionBody = body_external
         ),
         Entity = mlds_function(MaybePredProcId, Params, FunctionBody,
             Attributes)
@@ -491,9 +491,9 @@ rename_statement(statement(computed_goto(Rval, Labels), Context))
     = statement(computed_goto(rename_rval(Rval), Labels), Context).
 
 rename_statement(statement(
-        call(Signature, Rval, MaybeThis0, Args, Results, TailCall),
+        mlcall(Signature, Rval, MaybeThis0, Args, Results, TailCall),
         Context))
-    = statement(call(Signature, rename_rval(Rval),
+    = statement(mlcall(Signature, rename_rval(Rval),
         MaybeThis, list.map(rename_rval, Args),
         list.map(rename_lval, Results), TailCall), Context) :-
     (
@@ -555,8 +555,8 @@ rename_rval(self(Type)) = self(Type).
 
 :- func rename_const(mlds_rval_const) = mlds_rval_const.
 
-rename_const(true) = true.
-rename_const(false) = false.
+rename_const(true_const) = true_const.
+rename_const(false_const) = false_const.
 rename_const(int_const(I)) = int_const(I).
 rename_const(float_const(F)) = float_const(F).
 rename_const(string_const(S)) = string_const(S).
@@ -714,12 +714,12 @@ maybe_add_empty_ctor(Ctors0, Kind, Context) = Ctors :-
         Stmt = statement(block([], []), Context),
 
         Attributes = [],
-        Ctor = mlds_function(no, mlds_func_params([], []), defined_here(Stmt),
-            Attributes),
+        Ctor = mlds_function(no, mlds_func_params([], []),
+            body_defined_here(Stmt), Attributes),
         CtorFlags = init_decl_flags(public, per_instance, non_virtual,
             overridable, modifiable, concrete),
 
-        CtorDefn = mlds_defn(export(".ctor"), Context, CtorFlags, Ctor),
+        CtorDefn = mlds_defn(entity_export(".ctor"), Context, CtorFlags, Ctor),
         Ctors = [CtorDefn]
     ;
         Ctors = Ctors0
@@ -936,12 +936,13 @@ decl_flags_to_fieldattrs(Flags)
 
 :- func entity_name_to_ilds_id(mlds_entity_name) = ilds.id.
 
-entity_name_to_ilds_id(export(Name)) = Name.
-entity_name_to_ilds_id(function(PredLabel, ProcId, MaybeSeqNum, _)) = Name :-
+entity_name_to_ilds_id(entity_export(Name)) = Name.
+entity_name_to_ilds_id(entity_function(PredLabel, ProcId, MaybeSeqNum, _))
+        = Name :-
     predlabel_to_id(PredLabel, ProcId, MaybeSeqNum, Name).
-entity_name_to_ilds_id(type(Name, Arity))
+entity_name_to_ilds_id(entity_type(Name, Arity))
     = string.format("%s_%d", [s(Name), i(Arity)]).
-entity_name_to_ilds_id(data(DataName))
+entity_name_to_ilds_id(entity_data(DataName))
     = mangle_dataname(DataName).
 
 :- func interface_id_to_class_name(mlds_interface_id) = ilds.class_name.
@@ -1086,7 +1087,7 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
 
     % Generate the code of the statement.
     (
-        MaybeStatement = defined_here(Statement),
+        MaybeStatement = body_defined_here(Statement),
         statement_to_il(Statement, InstrsTree1, !Info),
         % Need to insert a ret for functions returning void (MLDS doesn't).
         (
@@ -1097,7 +1098,7 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
             MaybeRet = empty
         )
     ;
-        MaybeStatement = external,
+        MaybeStatement = body_external,
 
         % XXX The external reference must currently reside in the
         % C# file associated with this file.  This is very hackish.
@@ -1140,7 +1141,7 @@ generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
     % in an exception handler and call the initialization instructions
     % in the cctor of this module.
     (
-        Name = function(PredLabel, _ProcId, MaybeSeqNum, _PredId),
+        Name = entity_function(PredLabel, _ProcId, MaybeSeqNum, _PredId),
         PredLabel = mlds_user_pred_label(predicate, no, "main", 2,
             model_det, no),
         MaybeSeqNum = no
@@ -1382,7 +1383,7 @@ mlds_export_to_mlds_defn(ExportDefn, Defn) :-
         ), RetTypes, ReturnVars, 0, _),
 
     EntNameToVarName = (func(EntName) = VarName :-
-        ( EntName = data(var(VarName0)) ->
+        ( EntName = entity_data(var(VarName0)) ->
             VarName = qual(ModuleName, module_qual, VarName0)
         ;
             unexpected(this_file,
@@ -1400,7 +1401,7 @@ mlds_export_to_mlds_defn(ExportDefn, Defn) :-
     ReturnRvals = list.map((func(X) = lval(X)), ReturnLvals),
 
     Signature = mlds_func_signature(ArgTypes, RetTypes),
-    ( UnqualName = function(PredLabel, ProcId, _MaybeSeq, _PredId) ->
+    ( UnqualName = entity_function(PredLabel, ProcId, _MaybeSeq, _PredId) ->
         CodeRval = const(code_addr_const(proc(
             qual(ModuleName, module_qual, mlds_proc_label(PredLabel, ProcId)),
             Signature)))
@@ -1410,7 +1411,7 @@ mlds_export_to_mlds_defn(ExportDefn, Defn) :-
 
     % XXX Should we look for tail calls?
     CallStatement = statement(
-        call(Signature, CodeRval, no, ArgRvals, ReturnLvals,
+        mlcall(Signature, CodeRval, no, ArgRvals, ReturnLvals,
             ordinary_call), Context),
     ReturnStatement = statement(return(ReturnRvals), Context),
 
@@ -1423,12 +1424,12 @@ mlds_export_to_mlds_defn(ExportDefn, Defn) :-
     ), Context),
 
     Attributes = [],
-    DefnEntity = mlds_function(no, Params, defined_here(Statement),
+    DefnEntity = mlds_function(no, Params, body_defined_here(Statement),
         Attributes),
 
     Flags = init_decl_flags(public, one_copy, non_virtual, overridable,
         const, concrete),
-    Defn = mlds_defn(export(ExportName), Context, Flags, DefnEntity).
+    Defn = mlds_defn(entity_export(ExportName), Context, Flags, DefnEntity).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1445,7 +1446,7 @@ mlds_export_to_mlds_defn(ExportDefn, Defn) :-
 generate_defn_initializer(mlds_defn(Name, Context, _DeclFlags, Entity),
         !Tree, !Info) :-
     (
-        Name = data(DataName),
+        Name = entity_data(DataName),
         Entity = mlds_data(MLDSType, Initializer, _GC_TraceCode)
     ->
         ( Initializer = no_initializer ->
@@ -1637,8 +1638,9 @@ statement_to_il(statement(atomic(Atomic), Context), Instrs, !Info) :-
     atomic_statement_to_il(Atomic, AtomicInstrs, !Info),
     Instrs = tree(context_node(Context), AtomicInstrs).
 
-statement_to_il(statement(call(Sig, Function, _This, Args, Returns, CallKind),
-        Context), Instrs, !Info) :-
+statement_to_il(statement(
+        mlcall(Sig, Function, _This, Args, Returns, CallKind), Context),
+        Instrs, !Info) :-
     VerifiableCode = !.Info ^ verifiable_code,
     ByRefTailCalls = !.Info ^ il_byref_tailcalls,
     MsCLR = !.Info ^ support_ms_clr,
@@ -2036,7 +2038,8 @@ atomic_statement_to_il(new_object(Target, _MaybeTag, HasSecTag, Type, Size,
         (
             MaybeCtorName = yes(QualifiedCtorName),
             QualifiedCtorName = qual(_, _, ctor_id(CtorName, CtorArity)),
-            CtorType = entity_name_to_ilds_id(type(CtorName, CtorArity)),
+            CtorType =
+                entity_name_to_ilds_id(entity_type(CtorName, CtorArity)),
             ClassName = append_nested_class_name(ClassName0, [CtorType])
         ;
             MaybeCtorName = no,
@@ -2316,10 +2319,10 @@ load(const(Const), Instrs, !Info) :-
     DataRep = !.Info ^ il_data_rep,
         % true and false are just the integers 1 and 0
     (
-        Const = true,
+        Const = true_const,
         Instrs = instr_node(ldc(bool, i(1)))
     ;
-        Const = false,
+        Const = false_const,
         Instrs = instr_node(ldc(bool, i(0)))
     ;
         Const = string_const(Str),
@@ -3424,13 +3427,13 @@ mangle_mlds_proc_label(qual(ModuleName, _, mlds_proc_label(PredLabel, ProcId)),
 
 :- pred mangle_entity_name(mlds_entity_name::in, string::out) is det.
 
-mangle_entity_name(type(_TypeName, _), _MangledName) :-
+mangle_entity_name(entity_type(_TypeName, _), _MangledName) :-
     unexpected(this_file, "can't mangle type names").
-mangle_entity_name(data(DataName), MangledName) :-
+mangle_entity_name(entity_data(DataName), MangledName) :-
     mangle_dataname(DataName, MangledName).
-mangle_entity_name(function(_, _, _, _), _MangledName) :-
+mangle_entity_name(entity_function(_, _, _, _), _MangledName) :-
     unexpected(this_file, "can't mangle function names").
-mangle_entity_name(export(_), _MangledName) :-
+mangle_entity_name(entity_export(_), _MangledName) :-
     unexpected(this_file, "can't mangle export names").
 
     % Any valid Mercury identifier will be fine here too.
@@ -3601,8 +3604,8 @@ rval_const_to_type(float_const(_))
         = mercury_type(FloatType, type_cat_float,
             non_foreign_type(FloatType)) :-
     FloatType = builtin(float).
-rval_const_to_type(false) = mlds_native_bool_type.
-rval_const_to_type(true) = mlds_native_bool_type.
+rval_const_to_type(false_const) = mlds_native_bool_type.
+rval_const_to_type(true_const) = mlds_native_bool_type.
 rval_const_to_type(string_const(_))
         = mercury_type(StrType, type_cat_string, non_foreign_type(StrType)) :-
     StrType = builtin(string).
@@ -3756,7 +3759,7 @@ common_prefix([X | Xs], [Y | Ys], Prefix, TailXs,   TailYs) :-
 defn_to_local(ModuleName, Defn, Id - MLDSType) :-
     Defn = mlds_defn(Name, _Context, _DeclFlags, Entity),
     (
-        Name = data(DataName),
+        Name = entity_data(DataName),
         Entity = mlds_data(MLDSType0, _Initializer, _GC_TraceCode)
     ->
         mangle_dataname(DataName, MangledDataName),

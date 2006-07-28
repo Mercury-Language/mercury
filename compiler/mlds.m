@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % MLDS - The Medium-Level Data Structure.
 % Main author: fjh.
-% 
+%
 % This module defines the MLDS data structure itself.
 % The MLDS is an intermediate data structure used in compilation;
 % we compile Mercury source -> parse tree -> HLDS -> MLDS -> target (e.g. C).
@@ -25,7 +25,7 @@
 % HLDS is that MLDS does not have any support for non-determinism, so the
 % HLDS->MLDS compiler must compile non-deterministic code into code that
 % uses continuation passing.
-
+%
 % The MLDS data structure is quite full-featured, including for example
 % support for arbitrary nesting, multiple return values, and tagged pointers.
 % However, many
@@ -363,7 +363,7 @@
 
                 % Code defined in some other language, e.g.  for
                 % `pragma c_header_code', etc.
-                foreign_code        :: map(foreign_language,
+                foreign_code_map    :: map(foreign_language,
                                         mlds_foreign_code),
 
                 % The MLDS code itself.
@@ -516,18 +516,18 @@
     ;       type_qual.
 
 :- type mlds_entity_name
-    --->    type(mlds_class_name, arity)   % Name, arity.
-    ;       data(mlds_data_name)
-    ;       function(
+    --->    entity_type(mlds_class_name, arity)   % Name, arity.
+    ;       entity_data(mlds_data_name)
+    ;       entity_function(
                 % Identifies the source code predicate or function.
-                mlds_pred_label,
+                ef_pred_label       :: mlds_pred_label,
 
-                proc_id,
+                ef_proc_id          :: proc_id,
 
                 % A sequence number used to distinguish different MLDS
                 % functions when compiling a single HLDS predicate into
                 % multiple MLDS functions (e.g. to handle backtracking).
-                maybe(mlds_func_sequence_num),
+                ef_maybe_func_seq   :: maybe(mlds_func_sequence_num),
 
                 % Specifies the HLDS pred_id.
                 % This should generally not be needed much, since all the
@@ -535,9 +535,9 @@
                 % and/or in the mlds_entity_defn. However, the target
                 % generator may want to refer to the HLDS for additional
                 % information.
-                pred_id
+                ef_pred_id          :: pred_id
             )
-    ;       export(
+    ;       entity_export(
                 % A pragma export name.
                 string
             ).
@@ -590,8 +590,8 @@
     % (If you want to generate an abstract body consider adding another
     % alternative here).
 :- type mlds_function_body
-    --->    defined_here(statement)
-    ;       external.
+    --->    body_defined_here(statement)
+    ;       body_external.
 
     % Note that `one_copy' variables *must* have an initializer
     % (the GCC back-end relies on this).
@@ -1012,8 +1012,8 @@
 
     % Function call/return.
 
-    ;       call(
-                mlds_func_signature,   % Signature of the function.
+    ;       mlcall(
+                mlds_func_signature,    % Signature of the function.
                 mlds_rval,              % The function to call.
                 maybe(mlds_rval),       % For method calls, this field
                                         % specifies the `this' object.
@@ -1534,8 +1534,8 @@
     ;       std_unop(builtin_ops.unary_op).
 
 :- type mlds_rval_const
-    --->    true
-    ;       false
+    --->    true_const
+    ;       false_const
     ;       int_const(int)
     ;       float_const(float)
     ;       string_const(string)
@@ -1568,7 +1568,7 @@
 :- type mlds_data_addr
     --->    data_addr(
                 mlds_module_name,   % The name of the module module.
-                mlds_data_name     % The id of the variable inside the module.
+                mlds_data_name      % The id of the variable inside the module.
             ).
 
 :- type mlds_data == mlds_fully_qualified_name(mlds_data_name).
@@ -1948,11 +1948,11 @@ flip_initial_case(S0) = S :-
 :- func access_bits(access) = int.
 :- mode access_bits(in) = out is det.
 :- mode access_bits(out) = in is semidet.
-access_bits(public)     = 0x00.
-access_bits(private)    = 0x01.
-access_bits(protected)  = 0x02.
-access_bits(default)    = 0x03.
-access_bits(local)  = 0x04.
+access_bits(public)    = 0x00.
+access_bits(private)   = 0x01.
+access_bits(protected) = 0x02.
+access_bits(default)   = 0x03.
+access_bits(local)     = 0x04.
 % 0x5 - 0x7 reserved
 
 :- func access_mask = int.
@@ -1970,8 +1970,8 @@ per_instance_mask = per_instance_bits(per_instance).
 :- func virtuality_bits(virtuality) = int.
 :- mode virtuality_bits(in) = out is det.
 :- mode virtuality_bits(out) = in is semidet.
-virtuality_bits(non_virtual)    = 0x00.
-virtuality_bits(virtual)    = 0x10.
+virtuality_bits(non_virtual) = 0x00.
+virtuality_bits(virtual)     = 0x10.
 
 :- func virtuality_mask = int.
 virtuality_mask = virtuality_bits(virtual).
@@ -1979,8 +1979,8 @@ virtuality_mask = virtuality_bits(virtual).
 :- func finality_bits(finality) = int.
 :- mode finality_bits(in) = out is det.
 :- mode finality_bits(out) = in is semidet.
-finality_bits(overridable)  = 0x00.
-finality_bits(final)        = 0x20.
+finality_bits(overridable) = 0x00.
+finality_bits(final)       = 0x20.
 
 :- func finality_mask = int.
 finality_mask = finality_bits(final).
@@ -1988,8 +1988,8 @@ finality_mask = finality_bits(final).
 :- func constness_bits(constness) = int.
 :- mode constness_bits(in) = out is det.
 :- mode constness_bits(out) = in is semidet.
-constness_bits(modifiable)  = 0x00.
-constness_bits(const)       = 0x40.
+constness_bits(modifiable) = 0x00.
+constness_bits(const)      = 0x40.
 
 :- func constness_mask = int.
 constness_mask = constness_bits(const).
@@ -1997,7 +1997,7 @@ constness_mask = constness_bits(const).
 :- func abstractness_bits(abstractness) = int.
 :- mode abstractness_bits(in) = out is det.
 :- mode abstractness_bits(out) = in is semidet.
-abstractness_bits(abstract)     = 0x00.
+abstractness_bits(abstract)  = 0x00.
 abstractness_bits(concrete) = 0x80.
 
 :- func abstractness_mask = int.

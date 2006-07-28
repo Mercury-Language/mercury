@@ -1107,12 +1107,12 @@ add_saved_succip([Instrn0 - Comment | Instrns0 ], StackLoc,
         set.insert(LiveVals0, stackvar(StackLoc), LiveVals1),
         Instrn = livevals(LiveVals1)
     ;
-        Instrn0 = call(Target, ReturnLabel, LiveVals0, Context, GP, CM)
+        Instrn0 = llcall(Target, ReturnLabel, LiveVals0, Context, GP, CM)
     ->
         map.init(Empty),
         LiveVals = [live_lvalue(direct(stackvar(StackLoc)), succip, Empty)
             | LiveVals0],
-        Instrn = call(Target, ReturnLabel, LiveVals, Context, GP, CM)
+        Instrn = llcall(Target, ReturnLabel, LiveVals, Context, GP, CM)
     ;
         Instrn = Instrn0
     ),

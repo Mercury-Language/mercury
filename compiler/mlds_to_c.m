@@ -838,7 +838,7 @@ mlds_output_pragma_export_func_name(ModuleName, Indent, Export, !IO) :-
     Export = ml_pragma_export(Lang, ExportName, _MLDS_Name, Signature, Context),
     expect(unify(Lang, lang_c), this_file,
         "export to language other than C."),
-    Name = qual(ModuleName, module_qual, export(ExportName)),
+    Name = qual(ModuleName, module_qual, entity_export(ExportName)),
     mlds_indent(Context, Indent, !IO),
     % For functions exported using `pragma export',
     % we use the default C calling convention.
@@ -1073,8 +1073,8 @@ pointed_to_type(PtrType) =
 :- func boxed_name(mlds_entity_name) = mlds_entity_name.
 
 boxed_name(Name) = BoxedName :-
-    ( Name = data(var(mlds_var_name(VarName, Seq))) ->
-        BoxedName = data(var(mlds_var_name("boxed_" ++ VarName, Seq)))
+    ( Name = entity_data(var(mlds_var_name(VarName, Seq))) ->
+        BoxedName = entity_data(var(mlds_var_name("boxed_" ++ VarName, Seq)))
     ;
         unexpected(this_file, "boxed_name called for non-var argument")
     ).
@@ -1385,7 +1385,7 @@ mlds_output_class(Indent, Name, Context, ClassDefn, !IO) :-
     % appropriate qualifier.
 
     Name = qual(ModuleName, QualKind, UnqualName),
-    ( UnqualName = type(ClassName, ClassArity) ->
+    ( UnqualName = entity_type(ClassName, ClassArity) ->
         globals.io_get_globals(Globals, !IO),
         ClassModuleName = mlds_append_class_qualifier(ModuleName,
             QualKind, Globals, ClassName, ClassArity)
@@ -1452,7 +1452,7 @@ mlds_output_class(Indent, Name, Context, ClassDefn, !IO) :-
 
 is_static_member(Defn) :-
     Defn = mlds_defn(Name, _, Flags, _),
-    ( Name = type(_, _)
+    ( Name = entity_type(_, _)
     ; per_instance(Flags) = one_copy
     ).
 
@@ -1468,7 +1468,7 @@ mlds_make_base_class(Context, ClassId, MLDS_Defn, BaseNum0, BaseNum) :-
     % We only need GC tracing code for top-level variables,
     % not for base classes.
     GC_TraceCode = no,
-    MLDS_Defn = mlds_defn(data(var(BaseName)), Context,
+    MLDS_Defn = mlds_defn(entity_data(var(BaseName)), Context,
         ml_gen_public_field_decl_flags,
         mlds_data(Type, no_initializer, GC_TraceCode)),
     BaseNum = BaseNum0 + 1.
@@ -1645,10 +1645,10 @@ mlds_output_pred_proc_id(proc(PredId, ProcId), !IO) :-
 mlds_output_func(Indent, Name, Context, Params, FunctionBody, !IO) :-
     mlds_output_func_decl(Indent, Name, Context, Params, !IO),
     (
-        FunctionBody = external,
+        FunctionBody = body_external,
         io.write_string(";\n", !IO)
     ;
-        FunctionBody = defined_here(Body),
+        FunctionBody = body_defined_here(Body),
         io.write_string("\n", !IO),
 
         mlds_indent(Context, Indent, !IO),
@@ -1802,15 +1802,15 @@ mlds_output_fully_qualified_name(QualifiedName, !IO) :-
     (
         (
             % Don't module-qualify main/2.
-            Name = function(PredLabel, _, _, _),
+            Name = entity_function(PredLabel, _, _, _),
             PredLabel = mlds_user_pred_label(predicate, no, "main", 2,
                 model_det, no)
         ;
-            Name = data(mlds_rtti(RttiId)),
+            Name = entity_data(mlds_rtti(RttiId)),
             module_qualify_name_of_rtti_id(RttiId) = no
         ;
             % We don't module qualify pragma export names.
-            Name = export(_)
+            Name = entity_export(_)
         )
     ->
         mlds_output_name(Name, !IO)
@@ -1856,12 +1856,13 @@ mlds_output_module_name(ModuleName, !IO) :-
 
     % XXX We should avoid appending the arity, modenum, and seqnum
     % if they are not needed.
-mlds_output_name(type(Name, Arity), !IO) :-
+mlds_output_name(entity_type(Name, Arity), !IO) :-
     MangledName = name_mangle(Name),
     io.format("%s_%d", [s(MangledName), i(Arity)], !IO).
-mlds_output_name(data(DataName), !IO) :-
+mlds_output_name(entity_data(DataName), !IO) :-
     mlds_output_data_name(DataName, !IO).
-mlds_output_name(function(PredLabel, ProcId, MaybeSeqNum, _PredId), !IO) :-
+mlds_output_name(entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId),
+        !IO) :-
     mlds_output_pred_label(PredLabel, !IO),
     proc_id_to_int(ProcId, ModeNum),
     io.format("_%d", [i(ModeNum)], !IO),
@@ -1871,7 +1872,7 @@ mlds_output_name(function(PredLabel, ProcId, MaybeSeqNum, _PredId), !IO) :-
     ;
         MaybeSeqNum = no
     ).
-mlds_output_name(export(Name), !IO) :-
+mlds_output_name(entity_export(Name), !IO) :-
     io.write_string(Name, !IO).
 
     % mlds_output_pred_label should be kept in sync with
@@ -2356,22 +2357,22 @@ mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, Name, DefnBody,
             Access = local,
             PerInstance = one_copy
         ),
-        Name \= type(_, _),
+        Name \= entity_type(_, _),
         % Don't output "static" for functions that don't have a body.
         % This can happen for Mercury procedures declared `:- external'
-        DefnBody \= mlds_function(_, _, external, _)
+        DefnBody \= mlds_function(_, _, body_external, _)
     ->
         io.write_string("static ", !IO)
     ;
         DeclOrDefn = forward_decl,
-        Name = data(_)
+        Name = entity_data(_)
     ->
         io.write_string("extern ", !IO)
     ;
         % Forward declarations for GNU C nested functions need to be prefixed
         % with "auto".
         DeclOrDefn = forward_decl,
-        Name = function(_, _, _, _),
+        Name = entity_function(_, _, _, _),
         Access = local
     ->
         io.write_string("auto ", !IO)
@@ -2577,7 +2578,7 @@ mlds_output_stmt(Indent, _FuncInfo, computed_goto(Expr, Labels), Context,
     io.write_string("}\n", !IO).
 
 mlds_output_stmt(Indent, CallerFuncInfo, Call, Context, !IO) :-
-    Call = call(Signature, FuncRval, MaybeObject, CallArgs,
+    Call = mlcall(Signature, FuncRval, MaybeObject, CallArgs,
         Results, IsTailCall),
     CallerFuncInfo = func_info(CallerName, CallerSignature),
 
@@ -3624,9 +3625,9 @@ mlds_output_binary_op(Op, !IO) :-
 
 :- pred mlds_output_rval_const(mlds_rval_const::in, io::di, io::uo) is det.
 
-mlds_output_rval_const(true, !IO) :-
+mlds_output_rval_const(true_const, !IO) :-
     io.write_string("MR_TRUE", !IO).
-mlds_output_rval_const(false, !IO) :-
+mlds_output_rval_const(false_const, !IO) :-
     io.write_string("MR_FALSE", !IO).
 mlds_output_rval_const(int_const(N), !IO) :-
     % We need to cast to (MR_Integer) to ensure things like 1 << 32 work

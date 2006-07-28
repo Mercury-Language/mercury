@@ -502,11 +502,11 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0) = Defns :-
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     (
         DefnBody0 = mlds_function(PredProcId, Params0,
-            defined_here(FuncBody0), Attributes),
+            body_defined_here(FuncBody0), Attributes),
         % Don't add GC tracing code to the gc_trace/1 primitive!
         % (Doing so would just slow things down unnecessarily.)
         \+ (
-            Name = function(PredLabel, _, _, _),
+            Name = entity_function(PredLabel, _, _, _),
             PredLabel = mlds_user_pred_label(_, _, "gc_trace", 1, _, _),
             mercury_private_builtin_module(PrivateBuiltin),
             ModuleName = mercury_module_name_to_mlds(PrivateBuiltin)
@@ -653,7 +653,7 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0) = Defns :-
         ),
         Params = mlds_func_params(Arguments, RetValues),
         DefnBody = mlds_function(PredProcId, Params,
-            defined_here(FuncBody), Attributes),
+            body_defined_here(FuncBody), Attributes),
         Defn = mlds_defn(Name, Context, Flags, DefnBody),
         Defns = list.append(HoistedDefns, [Defn])
     ;
@@ -677,7 +677,7 @@ strip_gc_trace_code(Argument0) = Argument :-
 ml_maybe_add_args([], _, _, _, !Info).
 ml_maybe_add_args([Arg|Args], FuncBody, ModuleName, Context, !Info) :-
     (
-        Arg = mlds_argument(data(var(VarName)), _Type, GC_TraceCode),
+        Arg = mlds_argument(entity_data(var(VarName)), _Type, GC_TraceCode),
         ml_should_add_local_data(!.Info, var(VarName), GC_TraceCode,
             [], [FuncBody])
     ->
@@ -702,7 +702,8 @@ ml_maybe_copy_args([Arg|Args], FuncBody, ElimInfo, ClassType, EnvPtrTypeName,
         EnvPtrTypeName, Context, ArgsToCopy0, CodeToCopyArgs0),
     ModuleName = elim_info_get_module_name(ElimInfo),
     (
-        Arg = mlds_argument(data(var(VarName)), FieldType, GC_TraceCode),
+        Arg = mlds_argument(entity_data(var(VarName)), FieldType,
+            GC_TraceCode),
         ml_should_add_local_data(ElimInfo, var(VarName), GC_TraceCode,
             [], [FuncBody])
     ->
@@ -810,7 +811,7 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
         EnvTypeKind = mlds_struct,
         BaseClasses = []
     ),
-    EnvTypeEntityName = type(EnvClassName, 0),
+    EnvTypeEntityName = entity_type(EnvClassName, 0),
     EnvTypeFlags = env_type_decl_flags,
     Fields0 = list.map(convert_local_to_field, LocalVars),
 
@@ -850,7 +851,7 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     %   struct <EnvClassName> env; // = { ... }
     %
     EnvVarName = mlds_var_name(env_name_base(Action), no),
-    EnvVarEntityName = data(var(EnvVarName)),
+    EnvVarEntityName = entity_data(var(EnvVarName)),
     EnvVarFlags = ml_gen_local_var_decl_flags,
     EnvVarDefnBody = mlds_data(EnvTypeName, EnvInitializer, GC_TraceEnv),
     EnvVarDecl = mlds_defn(EnvVarEntityName, Context, EnvVarFlags,
@@ -920,14 +921,14 @@ ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
     %
     %   void *prev;
     %   void (*trace)(...);
-    PrevFieldName = data(var(mlds_var_name("prev", no))),
+    PrevFieldName = entity_data(var(mlds_var_name("prev", no))),
     PrevFieldFlags = ml_gen_public_field_decl_flags,
     PrevFieldType = ml_stack_chain_type,
     PrevFieldDefnBody = mlds_data(PrevFieldType, no_initializer, no),
     PrevFieldDecl = mlds_defn(PrevFieldName, Context, PrevFieldFlags,
         PrevFieldDefnBody),
 
-    TraceFieldName = data(var(mlds_var_name("trace", no))),
+    TraceFieldName = entity_data(var(mlds_var_name("trace", no))),
     TraceFieldFlags = ml_gen_public_field_decl_flags,
     TraceFieldType = mlds_func_type(GCTraceFuncParams),
     TraceFieldDefnBody = mlds_data(TraceFieldType, no_initializer, no),
@@ -974,7 +975,7 @@ ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
 gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
         Context, GCTraceFuncAddr, FuncParams, GCTraceFuncDefn) :-
     % Compute the signature of the GC tracing function
-    ArgName = data(var(mlds_var_name("this_frame", no))),
+    ArgName = entity_data(var(mlds_var_name("this_frame", no))),
     ArgType = mlds_generic_type,
     Argument = mlds_argument(ArgName, ArgType, no),
     FuncParams = mlds_func_params([Argument], []),
@@ -987,7 +988,7 @@ gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
     % XXX This is a bit of a hack; maybe we should add
     % another field to the `function' ctor for mlds_entity_name.
     %
-    ( FuncName = function(PredLabel, ProcId, MaybeSeqNum, PredId) ->
+    ( FuncName = entity_function(PredLabel, ProcId, MaybeSeqNum, PredId) ->
         (
             MaybeSeqNum = yes(SeqNum)
         ;
@@ -995,7 +996,8 @@ gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
             SeqNum = 0
         ),
         NewSeqNum = SeqNum + 100000,
-        GCTraceFuncName = function(PredLabel, ProcId, yes(NewSeqNum), PredId),
+        GCTraceFuncName = entity_function(PredLabel, ProcId, yes(NewSeqNum),
+            PredId),
         ProcLabel = mlds_proc_label(PredLabel, ProcId),
         QualProcLabel = qual(PredModule, module_qual, ProcLabel),
         GCTraceFuncAddr = internal(QualProcLabel, NewSeqNum, Signature)
@@ -1010,7 +1012,7 @@ gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
     MaybePredProcId = no,
     Attributes = [],
     FuncDefn = mlds_function(MaybePredProcId, FuncParams,
-        defined_here(Statement), Attributes),
+        body_defined_here(Statement), Attributes),
     GCTraceFuncDefn = mlds_defn(GCTraceFuncName, Context, DeclFlags,
         FuncDefn).
 
@@ -1099,7 +1101,7 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals, Defn0, Defn,
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     (
         DefnBody0 = mlds_function(PredProcId, Params,
-            defined_here(FuncBody0), Attributes),
+            body_defined_here(FuncBody0), Attributes),
         statement_contains_var(FuncBody0, qual(ModuleName, module_qual,
             var(mlds_var_name("env_ptr", no))))
     ->
@@ -1117,7 +1119,7 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals, Defn0, Defn,
         FuncBody = statement(block([EnvPtrDecl],
             [InitEnvPtr, FuncBody0]), Context),
         DefnBody = mlds_function(PredProcId, Params,
-            defined_here(FuncBody), Attributes),
+            body_defined_here(FuncBody), Attributes),
         Defn = mlds_defn(Name, Context, Flags, DefnBody),
         Init = yes
     ;
@@ -1153,7 +1155,7 @@ ml_init_env(Action, EnvTypeName, EnvPtrVal, Context, ModuleName, Globals,
     %   <EnvTypeName> *env_ptr;
     %
     EnvPtrVarName = mlds_var_name(env_name_base(Action) ++ "_ptr", no),
-    EnvPtrVarEntityName = data(var(EnvPtrVarName)),
+    EnvPtrVarEntityName = entity_data(var(EnvPtrVarName)),
     EnvPtrVarFlags = ml_gen_local_var_decl_flags,
     EnvPtrVarType = ml_make_env_ptr_type(Globals, EnvTypeName),
     % The env_ptr never needs to be traced by the GC, since the environment
@@ -1249,11 +1251,11 @@ ml_stack_chain_type = mlds_generic_env_ptr_type.
     %
 :- func ml_env_name(mlds_entity_name, action) = mlds_class_name.
 
-ml_env_name(type(_, _), _) = _ :-
+ml_env_name(entity_type(_, _), _) = _ :-
     unexpected(this_file, "ml_env_name: expected function, got type").
-ml_env_name(data(_), _) = _ :-
+ml_env_name(entity_data(_), _) = _ :-
     unexpected(this_file, "ml_env_name: expected function, got data").
-ml_env_name(function(PredLabel, ProcId, MaybeSeqNum, _PredId), Action)
+ml_env_name(entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId), Action)
         = ClassName :-
     Base = env_name_base(Action),
     PredLabelString = ml_pred_label_name(PredLabel),
@@ -1267,7 +1269,7 @@ ml_env_name(function(PredLabel, ProcId, MaybeSeqNum, _PredId), Action)
         string.format("%s_%d_%s",
             [s(PredLabelString), i(ModeNum), s(Base)], ClassName)
     ).
-ml_env_name(export(_), _) = _ :-
+ml_env_name(entity_export(_), _) = _ :-
     unexpected(this_file, "ml_env_name: expected function, got export").
 
 :- func env_name_base(action) = string.
@@ -1345,9 +1347,9 @@ flatten_argument(Argument0, Argument, !Info) :-
 :- pred flatten_function_body(mlds_function_body::in, mlds_function_body::out,
     elim_info::in, elim_info::out) is det.
 
-flatten_function_body(external, external, !Info).
-flatten_function_body(defined_here(Statement0), defined_here(Statement),
-        !Info) :-
+flatten_function_body(body_external, body_external, !Info).
+flatten_function_body(body_defined_here(Statement0),
+        body_defined_here(Statement), !Info) :-
     flatten_statement(Statement0, Statement, !Info).
 
 :- pred flatten_maybe_statement(maybe(statement)::in,
@@ -1410,12 +1412,12 @@ flatten_stmt(Stmt0, Stmt, !Info) :-
         fixup_rval(Rval0, Rval, !Info),
         Stmt = computed_goto(Rval, Labels)
     ;
-        Stmt0 = call(Sig, Func0, Obj0, Args0, RetLvals0, TailCall),
+        Stmt0 = mlcall(Sig, Func0, Obj0, Args0, RetLvals0, TailCall),
         fixup_rval(Func0, Func, !Info),
         fixup_maybe_rval(Obj0, Obj, !Info),
         fixup_rvals(Args0, Args, !Info),
         fixup_lvals(RetLvals0, RetLvals, !Info),
-        Stmt = call(Sig, Func, Obj, Args, RetLvals, TailCall)
+        Stmt = mlcall(Sig, Func, Obj, Args, RetLvals, TailCall)
     ;
         Stmt0 = return(Rvals0),
         fixup_rvals(Rvals0, Rvals, !Info),
@@ -1590,7 +1592,7 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
             InitStatements = []
         ;
             % Hoist ordinary local variables.
-            Name = data(DataName),
+            Name = entity_data(DataName),
             DataName = var(VarName),
             ml_should_add_local_data(!.Info,
                 DataName, MaybeGCTraceCode0,
@@ -1885,7 +1887,7 @@ fixup_var(ThisVar, ThisVarType, Lval, !Info) :-
         ThisVarModuleName = ModuleName,
         IsLocalVar = (pred(VarType::out) is nondet :-
             list.member(Var, Locals),
-            Var = mlds_defn(data(var(ThisVarName)), _, _,
+            Var = mlds_defn(entity_data(var(ThisVarName)), _, _,
                 mlds_data(VarType, _, _)),
             \+ ml_decl_is_static_const(Var)
         ),
@@ -2050,8 +2052,8 @@ maybe_statement_contains_defn(yes(Statement), Defn) :-
 :- pred function_body_contains_defn(mlds_function_body::in, mlds_defn::out)
     is nondet.
 
-% function_body_contains_defn(external, _Defn) :- fail.
-function_body_contains_defn(defined_here(Statement), Defn) :-
+% function_body_contains_defn(body_external, _Defn) :- fail.
+function_body_contains_defn(body_defined_here(Statement), Defn) :-
     statement_contains_defn(Statement, Defn).
 
 :- pred statement_contains_defn(statement::in, mlds_defn::out)
@@ -2092,7 +2094,7 @@ stmt_contains_defn(Stmt, Defn) :-
         Stmt = computed_goto(_Rval, _Labels),
         fail
     ;
-        Stmt = call(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall),
+        Stmt = mlcall(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall),
         fail
     ;
         Stmt = return(_Rvals),
@@ -2188,7 +2190,7 @@ add_unchain_stack_to_stmt(Stmt0, Context, Stmt, !Info) :-
         Stmt0 = computed_goto(_Rval, _Labels),
         Stmt = Stmt0
     ;
-        Stmt0 = call(_Sig, _Func, _Obj, _Args, RetLvals, CallKind),
+        Stmt0 = mlcall(_Sig, _Func, _Obj, _Args, RetLvals, CallKind),
         add_unchain_stack_to_call(Stmt0, RetLvals, CallKind, Context,
             Stmt, !Info)
     ;
@@ -2305,7 +2307,7 @@ ml_gen_unchain_frame(Context, ElimInfo) = UnchainFrame :-
 :- func gen_saved_stack_chain_var(int, mlds_context) = mlds_defn.
 
 gen_saved_stack_chain_var(Id, Context) = Defn :-
-    Name = data(var(ml_saved_stack_chain_name(Id))),
+    Name = entity_data(var(ml_saved_stack_chain_name(Id))),
     Flags = ml_gen_local_var_decl_flags,
     Type = ml_stack_chain_type,
     Initializer = no_initializer,

@@ -345,15 +345,15 @@ generate_foreign_code(Lang, _ModuleName, ForeignCode, !IO) :-
 :- pred generate_method_code(foreign_language::in(managed_lang),
     mlds_module_name::in, mlds_defn::in, io::di, io::uo) is det.
 
-generate_method_code(_, _, mlds_defn(export(_), _, _, _), !IO).
-generate_method_code(_, _, mlds_defn(data(_), _, _, _), !IO).
-generate_method_code(_, _, mlds_defn(type(_, _), _, _, _), !IO).
+generate_method_code(_, _, mlds_defn(entity_export(_), _, _, _), !IO).
+generate_method_code(_, _, mlds_defn(entity_data(_), _, _, _), !IO).
+generate_method_code(_, _, mlds_defn(entity_type(_, _), _, _, _), !IO).
 generate_method_code(Lang, _ModuleName, Defn, !IO) :-
-    Defn = mlds_defn(function(PredLabel, ProcId, MaybeSeqNum, _PredId),
+    Defn = mlds_defn(entity_function(PredLabel, ProcId, MaybeSeqNum, _PredId),
         _Context, _DeclFlags, Entity),
     (
         % XXX we ignore the attributes
-        Entity = mlds_function(_, Params, defined_here(Statement),
+        Entity = mlds_function(_, Params, body_defined_here(Statement),
             _Attributes),
         has_foreign_languages(Statement, Langs),
         list.member(Lang, Langs)
@@ -485,7 +485,7 @@ write_outline_arg_final(_Lang, unused, !IO).
 
 write_declare_and_assign_local(Lang, mlds_argument(Name, Type, _GcCode),
         !IO) :-
-    ( Name = data(var(VarName0)) ->
+    ( Name = entity_data(var(VarName0)) ->
         VarName = VarName0
     ;
         unexpected(this_file, "not a variable name")
@@ -523,7 +523,7 @@ write_declare_and_assign_local(Lang, mlds_argument(Name, Type, _GcCode),
     mlds_argument::in, io::di, io::uo) is det.
 
 write_assign_local_to_output(Lang, mlds_argument(Name, Type, _GcCode), !IO) :-
-    ( Name = data(var(VarName0)) ->
+    ( Name = entity_data(var(VarName0)) ->
         VarName = VarName0
     ;
         unexpected(this_file, "not a variable name")
@@ -617,9 +617,9 @@ write_rval(_Lang, self(_), !IO) :-
 :- pred write_rval_const(foreign_language::in(managed_lang),
     mlds_rval_const::in, io::di, io::uo) is det.
 
-write_rval_const(_Lang, true, !IO) :-
+write_rval_const(_Lang, true_const, !IO) :-
     io.write_string("1", !IO).
-write_rval_const(_Lang, false, !IO) :-
+write_rval_const(_Lang, false_const, !IO) :-
     io.write_string("0", !IO).
 write_rval_const(_Lang, int_const(I), !IO) :-
     io.write_int(I, !IO).
@@ -703,7 +703,7 @@ write_defn_decl(Lang, Defn, !IO) :-
     Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
     (
         DefnBody = mlds_data(Type, _Initializer, _GC_TraceCode),
-        Name = data(var(VarName))
+        Name = entity_data(var(VarName))
     ->
         write_parameter_type(Lang, Type, !IO),
         io.write_string(" ", !IO),
@@ -731,7 +731,7 @@ write_input_arg_as_foreign_type(Lang, Arg, !IO) :-
     write_il_type_as_foreign_type(Lang, mlds_type_to_ilds_type(DataRep, Type),
         !IO),
     io.write_string(" ", !IO),
-    ( EntityName = data(var(VarName)) ->
+    ( EntityName = entity_data(var(VarName)) ->
         write_mlds_var_name_for_parameter(VarName, !IO)
     ;
         unexpected(this_file, "found a variable in a list")

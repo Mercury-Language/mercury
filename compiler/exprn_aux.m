@@ -331,7 +331,18 @@ substitute_lval_in_instr(OldLval, NewLval, Instr0, Instr, !N) :-
 
 substitute_lval_in_uinstr(OldLval, NewLval, Uinstr0, Uinstr, !N) :-
     (
-        Uinstr0 = comment(_Comment),
+        ( Uinstr0 = comment(_Comment)
+        ; Uinstr0 = llcall(_, _, _, _, _, _)
+        ; Uinstr0 = mkframe(_, _)
+        ; Uinstr0 = label(_)
+        ; Uinstr0 = goto(_)
+        ; Uinstr0 = prune_ticket
+        ; Uinstr0 = discard_ticket
+        ; Uinstr0 = incr_sp(_, _)
+        ; Uinstr0 = decr_sp(_)
+        ; Uinstr0 = decr_sp_and_return(_)
+        ; Uinstr0 = fork(_, _, _)
+        ),
         Uinstr = Uinstr0
     ;
         Uinstr0 = livevals(LvalSet0),
@@ -351,26 +362,14 @@ substitute_lval_in_uinstr(OldLval, NewLval, Uinstr0, Uinstr, !N) :-
         substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
         Uinstr = assign(Lval, Rval)
     ;
-        Uinstr0 = call(_, _, _, _, _, _),
-        Uinstr = Uinstr0
-    ;
-        Uinstr0 = mkframe(_, _),
-        Uinstr = Uinstr0
-    ;
-        Uinstr0 = label(_),
-        Uinstr = Uinstr0
-    ;
-        Uinstr0 = goto(_),
-        Uinstr = Uinstr0
-    ;
         Uinstr0 = computed_goto(Rval0, Labels),
         substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
         Uinstr = computed_goto(Rval, Labels)
     ;
-        Uinstr0 = c_code(Code, LiveLvals0),
+        Uinstr0 = arbitrary_c_code(Code, LiveLvals0),
         substitute_lval_in_live_lval_info(OldLval, NewLval,
             LiveLvals0, LiveLvals, !N),
-        Uinstr = c_code(Code, LiveLvals)
+        Uinstr = arbitrary_c_code(Code, LiveLvals)
     ;
         Uinstr0 = if_val(Rval0, CodeAddr),
         substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
@@ -409,12 +408,6 @@ substitute_lval_in_uinstr(OldLval, NewLval, Uinstr0, Uinstr, !N) :-
         substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
         Uinstr = reset_ticket(Rval, Reason)
     ;
-        Uinstr0 = prune_ticket,
-        Uinstr = Uinstr0
-    ;
-        Uinstr0 = discard_ticket,
-        Uinstr = Uinstr0
-    ;
         Uinstr0 = mark_ticket_stack(Lval0),
         substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N),
         Uinstr = mark_ticket_stack(Lval)
@@ -428,15 +421,6 @@ substitute_lval_in_uinstr(OldLval, NewLval, Uinstr0, Uinstr, !N) :-
 %       substitute_lval_in_rval(OldLval, NewLval, Rval0, Rval, !N),
 %       Uinstr = discard_tickets_to(Rval)
     ;
-        Uinstr0 = incr_sp(_, _),
-        Uinstr = Uinstr0
-    ;
-        Uinstr0 = decr_sp(_),
-        Uinstr = Uinstr0
-    ;
-        Uinstr0 = decr_sp_and_return(_),
-        Uinstr = Uinstr0
-    ;
         Uinstr0 = pragma_c(Decls, Components0, MayCallMercury,
             MaybeLabel1, MaybeLabel2, MaybeLabel3, MaybeLabel4,
             ReferStackSlot, MayDupl),
@@ -449,9 +433,6 @@ substitute_lval_in_uinstr(OldLval, NewLval, Uinstr0, Uinstr, !N) :-
         Uinstr0 = init_sync_term(Lval0, BranchCount),
         substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N),
         Uinstr = init_sync_term(Lval, BranchCount)
-    ;
-        Uinstr0 = fork(_, _, _),
-        Uinstr = Uinstr0
     ;
         Uinstr0 = join_and_terminate(Lval0),
         substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N),

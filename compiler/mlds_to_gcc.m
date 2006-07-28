@@ -398,7 +398,7 @@ gen_init_fn_defns(MLDS_ModuleName, GlobalInfo0, GlobalInfo) -->
 	{ GCC_RetType = gcc__void_type_node },
 	gcc__build_function_decl(FuncName, FuncName,
 		GCC_RetType, GCC_ParamTypes, GCC_ParamDecls, GCC_FuncDecl),
-	{ Name = export(FuncName) },
+	{ Name = entity_export(FuncName) },
 	{ map__init(SymbolTable) },
 	{ map__init(LabelTable) },
 	{ DefnInfo = defn_info(GlobalInfo,
@@ -766,7 +766,7 @@ build_field_defns([Defn|Defns], ModuleName, GlobalInfo, FieldList,
 	build_field_defn(Defn, ModuleName, GlobalInfo, GCC_FieldDefn),
 	% Insert the field definition into our field symbol table.
 	{ Defn = mlds_defn(Name, _, _, _) },
-	( { Name = data(var(FieldName)) } ->
+	( { Name = entity_data(var(FieldName)) } ->
 		{ GCC_FieldName = ml_var_name_to_string(FieldName) },
 		{ FieldTable1 = map__det_insert(FieldTable0,
 			qual(ModuleName, type_qual, GCC_FieldName),
@@ -1158,7 +1158,7 @@ build_local_data_defn(Name, Flags, Type, Initializer, DefnInfo, GCC_Defn) -->
 	build_type(Type, initializer_array_size(Initializer),
 		DefnInfo ^ global_info, GCC_Type),
 	{ Name = qual(_ModuleName, _QualKind, UnqualName) },
-	( { UnqualName = data(var(VarName0)) } ->
+	( { UnqualName = entity_data(var(VarName0)) } ->
 		{ VarName = VarName0 }
 	;
 		% var/1 should be the only kind of mlds_data_name for which
@@ -1206,7 +1206,7 @@ build_field_data_defn(Name, Type, Initializer, GlobalInfo, GCC_Defn) -->
 	build_type(Type, initializer_array_size(Initializer),
 		GlobalInfo, GCC_Type),
 	{ Name = qual(_ModuleName, _QualKind, UnqualName) },
-	( { UnqualName = data(var(VarName)) } ->
+	( { UnqualName = entity_data(var(VarName)) } ->
 		{ GCC_VarName = ml_var_name_to_string(VarName) },
 		gcc__build_field_decl(GCC_VarName, GCC_Type, GCC_Defn)
 	;
@@ -1298,7 +1298,7 @@ gen_class(Name, Context, ClassDefn, GlobalInfo0, GlobalInfo) -->
 	%
 	{ Name = qual(ModuleName, QualKind, UnqualName) },
 	globals__io_get_globals(Globals),
-	{ UnqualName = type(ClassName, ClassArity) ->
+	{ UnqualName = entity_type(ClassName, ClassArity) ->
 		ClassModuleName = mlds_append_class_qualifier(ModuleName,
 			QualKind, Globals, ClassName, ClassArity)
 	;
@@ -1386,7 +1386,7 @@ gen_class(Name, Context, ClassDefn, GlobalInfo0, GlobalInfo) -->
 
 is_static_member(Defn) :-
 	Defn = mlds_defn(Name, _, Flags, _),
-	(	Name = type(_, _)
+	(	Name = entity_type(_, _)
 	;	per_instance(Flags) = one_copy
 	).
 
@@ -1403,7 +1403,8 @@ mlds_make_base_class(Context, ClassId, MLDS_Defn, BaseNum0, BaseNum) :-
 	% We only need GC tracing code for top-level variables,
 	% not for base classes.
 	GC_TraceCode = no,
-	MLDS_Defn = mlds_defn(data(var(mlds_var_name(BaseName, no))), Context,
+	MLDS_Defn = mlds_defn(
+		entity_data(var(mlds_var_name(BaseName, no))), Context,
 		ml_gen_public_field_decl_flags,
 		mlds_data(Type, no_initializer, GC_TraceCode)),
 	BaseNum = BaseNum0 + 1.
@@ -1491,9 +1492,9 @@ gen_func(Name, Context, Flags, Signature, MaybeBody,
 		GlobalInfo0, GlobalInfo) -->
 	{ GlobalInfo = GlobalInfo0 },
 	(
-		{ MaybeBody = external }
+		{ MaybeBody = body_external }
 	;
-		{ MaybeBody = defined_here(Body) },
+		{ MaybeBody = body_defined_here(Body) },
 		gcc__push_gc_context,
 		make_func_decl_for_defn(Name, Signature, GlobalInfo0,
 			FuncDecl, SymbolTable),
@@ -1599,7 +1600,10 @@ get_qualified_func_name(Name, ModuleName, FuncName, AsmFuncName) :-
 :- pred get_func_name(mlds_entity_name::in,
 		string::out, string::out) is det.
 get_func_name(FunctionName, FuncName, AsmFuncName) :-
-	( FunctionName = function(PredLabel, ProcId, MaybeSeqNum, _PredId) ->
+	(
+		FunctionName = entity_function(PredLabel, ProcId, MaybeSeqNum,
+			_PredId)
+	->
 		%
 		% Generate the AsmFuncName
 		% This needs to be fully name mangled to ensure that it
@@ -1707,7 +1711,7 @@ build_param_types_and_decls([Arg|Args], ModuleName, GlobalInfo,
 		ParamTypes0, ParamDecls0, SymbolTable0),
 	{ Arg = mlds_argument(ArgName, Type, _GC_TraceCode) },
 	build_type(Type, GlobalInfo, GCC_Type),
-	( { ArgName = data(var(ArgVarName)) } ->
+	( { ArgName = entity_data(var(ArgVarName)) } ->
 		{ GCC_ArgVarName = ml_var_name_to_string(ArgVarName) },
 		gcc__build_param_decl(GCC_ArgVarName, GCC_Type, ParamDecl),
 		{ SymbolTable = map__det_insert(SymbolTable0,
@@ -1773,7 +1777,7 @@ build_type(mlds_class_type(Name, Arity, ClassKind), _, GlobalInfo,
 		%
 		{ Name = qual(ModuleName, QualKind, TypeName) },
 		{ EntityName = qual(ModuleName, QualKind,
-			type(TypeName, Arity)) },
+			entity_type(TypeName, Arity)) },
 		(
 			{ map__search(GlobalInfo ^ type_table, EntityName,
 				gcc_type_info(GCC_TypeDecl, _)) }
@@ -2552,15 +2556,15 @@ maybe_add_module_qualifier(QualifiedName, AsmName0, AsmName) :-
 			%
 			% don't module-qualify main/2
 			%
-			Name = function(PredLabel, _, _, _),
+			Name = entity_function(PredLabel, _, _, _),
 			PredLabel = mlds_user_pred_label(predicate, no,
 				"main", 2, model_det, no)
 		;
-			Name = data(mlds_rtti(RttiId)),
+			Name = entity_data(mlds_rtti(RttiId)),
 			module_qualify_name_of_rtti_id(RttiId) = no
 		;
 			% We don't module qualify pragma export names.
-			Name = export(_)
+			Name = entity_export(_)
 		)
 	->
 		AsmName = AsmName0
@@ -2575,14 +2579,14 @@ maybe_add_module_qualifier(QualifiedName, AsmName0, AsmName) :-
 
 :- func build_name(mlds_entity_name) = string.
 
-build_name(type(Name, Arity)) = TypeName :-
+build_name(entity_type(Name, Arity)) = TypeName :-
 	MangledName = name_mangle(Name),
 	TypeName = string__format("%s_%d", [s(MangledName), i(Arity)]).
-build_name(data(DataName)) = build_data_name(DataName).
+build_name(entity_data(DataName)) = build_data_name(DataName).
 build_name(EntityName) = AsmFuncName :-
-	EntityName = function(_, _, _, _),
+	EntityName = entity_function(_, _, _, _),
 	get_func_name(EntityName, _FuncName, AsmFuncName).
-build_name(export(Name)) = Name.
+build_name(entity_export(Name)) = Name.
 
 :- func build_data_name(mlds_data_name) = string.
 
@@ -2603,7 +2607,8 @@ build_data_name(mlds_tabling_ref(ProcLabel, Id)) = TablingPointerName :-
 	% so we can use get_func_name below
 	ProcLabel = mlds_proc_label(PredLabel, ProcId),
 	MaybeSeqNum = no,
-	Name = function(PredLabel, ProcId, MaybeSeqNum, invalid_pred_id),
+	Name = entity_function(PredLabel, ProcId, MaybeSeqNum,
+		invalid_pred_id),
 	get_func_name(Name, _FuncName, AsmFuncName),
 	TablingPointerName = tabling_info_id_str(Id) ++ "_" ++ AsmFuncName.
 
@@ -2810,7 +2815,7 @@ gen_stmt(_DefnInfo, computed_goto(_Expr, _Labels), _) -->
 	% function call/return
 	%
 gen_stmt(DefnInfo, Call, _) -->
-	{ Call = call(_Signature, FuncRval, MaybeObject, CallArgs,
+	{ Call = mlcall(_Signature, FuncRval, MaybeObject, CallArgs,
 		Results, CallKind) },
 	{ expect(unify(MaybeObject, no), this_file, "method call") },
 	build_args(CallArgs, DefnInfo, GCC_ArgList),
@@ -3301,7 +3306,7 @@ build_lval(var(qual(ModuleName, QualKind, VarName), _VarType), DefnInfo,
 	% symbol table.  If it's not in either of those,
 	% we check if its an RTTI enumeration constant.
 	%
-	{ Name = qual(ModuleName, QualKind, data(var(VarName))) },
+	{ Name = qual(ModuleName, QualKind, entity_data(var(VarName))) },
 	(
 		{ map__search(DefnInfo ^ local_vars, Name, LocalVarDecl) }
 	->
@@ -3347,7 +3352,8 @@ get_class_type_name(Type) = Name :-
 		)
 	->
 		ClassName = qual(ModuleName, QualKind, UnqualClassName),
-		Name = qual(ModuleName, QualKind, type(UnqualClassName, Arity))
+		Name = qual(ModuleName, QualKind,
+			entity_type(UnqualClassName, Arity))
 	;
 		unexpected(this_file, "non-class_type in get_type_name")
 	).
@@ -3639,10 +3645,10 @@ build_args([Arg|Args], DefnInfo, GCC_ArgList) -->
 		io__state, io__state).
 :- mode build_rval_const(in, in, out, di, uo) is det.
 
-build_rval_const(true, _, Expr) -->
+build_rval_const(true_const, _, Expr) -->
 	% XXX currently we don't use a separate boolean type
 	gcc__build_int(1, Expr).
-build_rval_const(false, _, Expr) -->
+build_rval_const(false_const, _, Expr) -->
 	% XXX currently we don't use a separate boolean type
 	gcc__build_int(0, Expr).
 build_rval_const(int_const(N), _, Expr) -->
@@ -3677,7 +3683,7 @@ build_code_addr(CodeAddr, GlobalInfo, Expr) -->
 	% so we can use make_func_decl below
 	{ Label = qual(ModuleName, QualKind,
 		mlds_proc_label(PredLabel, ProcId)) },
-	{ Name = qual(ModuleName, QualKind, function(PredLabel, ProcId,
+	{ Name = qual(ModuleName, QualKind, entity_function(PredLabel, ProcId,
 		MaybeSeqNum, invalid_pred_id)) },
 	% build a function declaration for the function,
 	% and take its address.

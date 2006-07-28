@@ -189,8 +189,9 @@ ml_gen_generic_call_2(GenericCall, ArgVars, ArgModes, Determinism, Context,
     % `closure_arg'.
     GC_TraceCode = no,
     ClosureArgType = mlds_generic_type,
-    ClosureArg = mlds_argument(data(var(mlds_var_name("closure_arg", no))),
-        ClosureArgType, GC_TraceCode),
+    ClosureArg =
+        mlds_argument(entity_data(var(mlds_var_name("closure_arg", no))),
+            ClosureArgType, GC_TraceCode),
     Params0 = mlds_func_params(ArgParams0, RetParam),
     Params = mlds_func_params([ClosureArg | ArgParams0], RetParam),
     Signature = mlds_get_func_signature(Params),
@@ -478,7 +479,8 @@ ml_gen_mlds_call(Signature, ObjectRval, FuncRval, ArgRvals0, RetLvals0,
     ;
         CallKind = ordinary_call
     ),
-    Stmt = call(Signature, FuncRval, ObjectRval, ArgRvals, RetLvals, CallKind),
+    Stmt = mlcall(Signature, FuncRval, ObjectRval, ArgRvals, RetLvals,
+        CallKind),
     Statement = statement(Stmt, mlds_make_context(Context)),
     Statements = [Statement].
 
@@ -555,7 +557,8 @@ ml_gen_cont_params_2([Type | Types], ArgNum, [Argument | Arguments]) :-
     % So here we just leave it blank. The caller of ml_gen_cont_param has the
     % reponsibility of fillling this in properly if needed.
     Maybe_GC_TraceCode = no,
-    Argument = mlds_argument(data(var(ArgName)), Type, Maybe_GC_TraceCode),
+    Argument =
+        mlds_argument(entity_data(var(ArgName)), Type, Maybe_GC_TraceCode),
     ml_gen_cont_params_2(Types, ArgNum + 1, Arguments).
 
 :- pred ml_gen_copy_args_to_locals(ml_gen_info::in, list(mlds_lval)::in,

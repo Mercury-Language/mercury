@@ -907,7 +907,7 @@ ml_combine_conj(FirstCodeModel, Context, DoGenFirst, DoGenRest,
 
 ml_decl_is_static_const(Defn) :-
     Defn = mlds_defn(Name, _Context, Flags, _DefnBody),
-    Name = data(_),
+    Name = entity_data(_),
     Flags = ml_static_const_decl_flags.
 
 ml_gen_nondet_label_func(Info, FuncLabel, Context, Statement, Func) :-
@@ -934,7 +934,7 @@ ml_gen_label_func(Info, FuncLabel, FuncParams, Context, Statement, Func) :-
     MaybePredProcId = no,
     Attributes = [],
     FuncDefn = mlds_function(MaybePredProcId, FuncParams,
-        defined_here(Statement), Attributes),
+        body_defined_here(Statement), Attributes),
     Func = mlds_defn(FuncName, mlds_make_context(Context), DeclFlags,
         FuncDefn).
 
@@ -959,9 +959,9 @@ ml_gen_label_func_decl_flags = DeclFlags :-
 %
 
 ml_gen_and(X, Y) =
-    ( X = const(true) ->
+    ( X = const(true_const) ->
         Y
-    ; Y = const(true) ->
+    ; Y = const(true_const) ->
         X
     ;
         binop(logical_and, X, Y)
@@ -1119,13 +1119,13 @@ ml_gen_params_base(ModuleInfo, HeadVarNames, HeadTypes, HeadModes, PredOrFunc,
             ContType = mlds_cont_type([]),
             RetTypes = RetTypes0
         ),
-        ContName = data(var(mlds_var_name("cont", no))),
+        ContName = entity_data(var(mlds_var_name("cont", no))),
         % The cont variable always points to code, not to the heap,
         % so the GC never needs to trace it.
         ContGCTraceCode = no,
         ContArg = mlds_argument(ContName, ContType, ContGCTraceCode),
         ContEnvType = mlds_generic_env_ptr_type,
-        ContEnvName = data(var(mlds_var_name("cont_env_ptr", no))),
+        ContEnvName = entity_data(var(mlds_var_name("cont_env_ptr", no))),
         % The cont_env_ptr always points to the stack, since continuation
         % environments are always allocated on the stack (unless
         % put_nondet_env_on_heap is true, which won't be the case when doing
@@ -1212,7 +1212,7 @@ ml_gen_arg_decl(ModuleInfo, Var, Type, ArgMode, FuncArg, !MaybeInfo) :-
     ;
         MLDS_ArgType = mlds_ptr_type(MLDS_Type)
     ),
-    Name = data(var(Var)),
+    Name = entity_data(var(Var)),
     (
         !.MaybeInfo = yes(Info0),
         % XXX We should fill in this Context properly.
@@ -1271,7 +1271,7 @@ ml_gen_func_label(ModuleInfo, PredId, ProcId, MaybeSeqNum,
         MLDS_Name, MLDS_ModuleName) :-
     ml_gen_pred_label(ModuleInfo, PredId, ProcId,
         MLDS_PredLabel, MLDS_ModuleName),
-    MLDS_Name = function(MLDS_PredLabel, ProcId, MaybeSeqNum, PredId).
+    MLDS_Name = entity_function(MLDS_PredLabel, ProcId, MaybeSeqNum, PredId).
 
     % Allocate a new function label and return an rval containing
     % the function's address.
@@ -1491,14 +1491,14 @@ ml_gen_mlds_var_decl(DataName, MLDS_Type, GC_TraceCode, Context) =
 
 ml_gen_mlds_var_decl(DataName, MLDS_Type, Initializer, GC_TraceCode, Context) =
         MLDS_Defn :-
-    Name = data(DataName),
+    Name = entity_data(DataName),
     Defn = mlds_data(MLDS_Type, Initializer, GC_TraceCode),
     DeclFlags = ml_gen_local_var_decl_flags,
     MLDS_Defn = mlds_defn(Name, Context, DeclFlags, Defn).
 
 ml_gen_static_const_defn(ConstName, ConstType, Access, Initializer, Context) =
         MLDS_Defn :-
-    Name = data(var(ConstName)),
+    Name = entity_data(var(ConstName)),
     % The GC never needs to trace static constants,
     % because they can never point into the heap
     % (only to other static constants).
@@ -1613,7 +1613,7 @@ ml_gen_success(model_semi, Context, [SetSuccessTrue], !Info) :-
     % ===>
     %   succeeded = MR_TRUE;
     %
-    ml_gen_set_success(!.Info, const(true), Context, SetSuccessTrue).
+    ml_gen_set_success(!.Info, const(true_const), Context, SetSuccessTrue).
 ml_gen_success(model_non, Context, [CallCont], !Info) :-
     %
     % nondet succeed:
@@ -1632,7 +1632,7 @@ ml_gen_failure(model_semi, Context, [SetSuccessFalse], !Info) :-
     % ===>
     %   succeeded = MR_FALSE;
     %
-    ml_gen_set_success(!.Info, const(false), Context, SetSuccessFalse).
+    ml_gen_set_success(!.Info, const(false_const), Context, SetSuccessFalse).
 ml_gen_failure(model_non, _, Statements, !Info) :-
     %
     % nondet fail:
@@ -1741,7 +1741,8 @@ ml_gen_call_current_success_cont(Context, Statement, !Info) :-
     ObjectRval = no,
     RetLvals = [],
     CallKind = ordinary_call,
-    Stmt = call(Signature, FuncRval, ObjectRval, ArgRvals, RetLvals, CallKind),
+    Stmt = mlcall(Signature, FuncRval, ObjectRval, ArgRvals, RetLvals,
+        CallKind),
     Statement = statement(Stmt, mlds_make_context(Context)).
 
 ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
@@ -1790,7 +1791,7 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
     InnerArgRvals = list.map(
         (func(mlds_argument(Data, Type, _GC) )
                 = lval(var(qual(MLDS_Module, module_qual, VarName), Type)) :-
-            ( Data = data(var(VarName0)) ->
+            ( Data = entity_data(var(VarName0)) ->
                 VarName = VarName0
             ;
                 unexpected(this_file,
@@ -1802,13 +1803,13 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
     % The passed_cont variable always points to code, not to heap,
     % so the GC never needs to trace it.
     PassedContGCTraceCode = no,
-    PassedContArg = mlds_argument(data(var(PassedContVarName)),
+    PassedContArg = mlds_argument(entity_data(var(PassedContVarName)),
         InnerFuncArgType, PassedContGCTraceCode),
     InnerFuncRval = lval(var(qual(MLDS_Module, module_qual,
         PassedContVarName), InnerFuncArgType)),
     InnerFuncParams = mlds_func_params([PassedContArg | InnerArgs0], Rets),
 
-    InnerStmt = call(Signature, InnerFuncRval, ObjectRval,
+    InnerStmt = mlcall(Signature, InnerFuncRval, ObjectRval,
         InnerArgRvals, RetLvals, CallKind),
     InnerStatement = statement(InnerStmt, MLDS_Context),
 
@@ -1819,8 +1820,9 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
         RetTypes),
     ProxyArgRvals = [ContinuationFuncRval | ArgRvals],
     (
-        Defn = mlds_defn(function(PredLabel, ProcId,
-            yes(SeqNum), _), _, _, mlds_function(_, _, defined_here(_), _))
+        Defn = mlds_defn(EntityName, _, _, EntityDefn),
+        EntityName = entity_function(PredLabel, ProcId, yes(SeqNum), _),
+        EntityDefn = mlds_function(_, _, body_defined_here(_), _)
     ->
         % We call the proxy function.
         ProcLabel = mlds_proc_label(PredLabel, ProcId),
@@ -1829,7 +1831,7 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
             internal(QualProcLabel, SeqNum, ProxySignature))),
 
         % Put it inside a block where we call it.
-        Stmt = call(ProxySignature, ProxyFuncRval, ObjectRval,
+        Stmt = mlcall(ProxySignature, ProxyFuncRval, ObjectRval,
             ProxyArgRvals, RetLvals, CallKind),
         Statement = statement(
             block([Defn], [statement(Stmt, MLDS_Context)]), MLDS_Context)
@@ -1849,7 +1851,7 @@ ml_get_env_ptr(Info, lval(EnvPtrLval)) :-
         mlds_unknown_type, EnvPtrLval).
 
 ml_declare_env_ptr_arg(mlds_argument(Name, Type, GC_TraceCode)) :-
-    Name = data(var(mlds_var_name("env_ptr_arg", no))),
+    Name = entity_data(var(mlds_var_name("env_ptr_arg", no))),
     Type = mlds_generic_env_ptr_type,
     % The env_ptr_arg always points to the stack, since continuation
     % environments are always allocated on the stack (unless
@@ -2112,7 +2114,7 @@ ml_gen_trace_var(Info, VarName, Type, TypeInfoRval, Context, TraceStatement) :-
     % `private_builtin.gc_trace(TypeInfo, (MR_C_Pointer) &Var);'.
     CastVarAddr = unop(cast(CPointerType), mem_addr(VarLval)),
     TraceStatement = statement(
-        call(Signature, FuncAddr, no,
+        mlcall(Signature, FuncAddr, no,
             [TypeInfoRval, CastVarAddr], [], ordinary_call
         ), mlds_make_context(Context)).
 
@@ -2221,8 +2223,7 @@ fixup_newobj_in_stmt(Stmt0, Stmt, !Fixup) :-
         Stmt0 = computed_goto(Rval, Labels),
         Stmt = computed_goto(Rval, Labels)
     ;
-        Stmt0 = call(_Sig, _Func, _Obj, _Args, _RetLvals,
-            _TailCall),
+        Stmt0 = mlcall(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall),
         Stmt = Stmt0
     ;
         Stmt0 = return(_Rvals),

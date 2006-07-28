@@ -209,7 +209,7 @@ ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
     Implements = [],
 
     % Put it all together.
-    MLDS_TypeName = type(MLDS_ClassName, MLDS_ClassArity),
+    MLDS_TypeName = entity_type(MLDS_ClassName, MLDS_ClassArity),
     MLDS_TypeFlags = ml_gen_type_decl_flags,
     MLDS_TypeDefnBody = mlds_class(mlds_class_defn(mlds_enum,
         Imports, Inherits, Implements, [], Members)),
@@ -221,7 +221,7 @@ ml_gen_enum_type(TypeCtor, TypeDefn, Ctors, TagValues,
 :- func ml_gen_enum_value_member(prog_context) = mlds_defn.
 
 ml_gen_enum_value_member(Context) =
-    mlds_defn(data(var(mlds_var_name("value", no))),
+    mlds_defn(entity_data(var(mlds_var_name("value", no))),
         mlds_make_context(Context),
         ml_gen_member_decl_flags,
         mlds_data(mlds_native_int_type, no_initializer, no)).
@@ -246,7 +246,7 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
 
     % Generate an MLDS definition for this enumeration constant.
     unqualify_name(Name, UnqualifiedName),
-    MLDS_Defn = mlds_defn(data(var(mlds_var_name(UnqualifiedName, no))),
+    MLDS_Defn = mlds_defn(entity_data(var(mlds_var_name(UnqualifiedName, no))),
         mlds_make_context(Context),
         ml_gen_enum_constant_decl_flags,
         mlds_data(mlds_native_int_type, init_obj(ConstValue), no)).
@@ -415,7 +415,7 @@ ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
 
     % Put it all together.
     Members = MaybeEqualityMembers ++ TagMembers ++ CtorMembers,
-    MLDS_TypeName = type(BaseClassName, BaseClassArity),
+    MLDS_TypeName = entity_type(BaseClassName, BaseClassArity),
     MLDS_TypeFlags = ml_gen_type_decl_flags,
     MLDS_TypeDefnBody = mlds_class(mlds_class_defn(mlds_class,
         Imports, Inherits, Implements, BaseClassCtorMethods, Members)),
@@ -429,7 +429,7 @@ ml_gen_du_parent_type(ModuleInfo, TypeCtor, TypeDefn, Ctors, TagValues,
 :- func ml_gen_tag_member(string, prog_context) = mlds_defn.
 
 ml_gen_tag_member(Name, Context) =
-    mlds_defn(data(var(mlds_var_name(Name, no))),
+    mlds_defn(entity_data(var(mlds_var_name(Name, no))),
         mlds_make_context(Context),
         ml_gen_member_decl_flags,
         mlds_data(mlds_native_int_type, no_initializer, no)).
@@ -448,7 +448,8 @@ ml_gen_tag_constant(Context, ConsTagValues, Ctor) = MLDS_Defns :-
         Ctor = ctor(_ExistQTVars, _Constraints, Name, _Args),
         unqualify_name(Name, UnqualifiedName),
         ConstValue = const(int_const(SecondaryTag)),
-        MLDS_Defn = mlds_defn(data(var(mlds_var_name(UnqualifiedName, no))),
+        MLDS_Defn = mlds_defn(
+            entity_data(var(mlds_var_name(UnqualifiedName, no))),
             mlds_make_context(Context),
             ml_gen_enum_constant_decl_flags,
             mlds_data(mlds_native_int_type, init_obj(ConstValue), no)),
@@ -538,7 +539,7 @@ ml_gen_secondary_tag_class(MLDS_Context, BaseClassQualifier, BaseClassId,
     Ctors = [],
 
     % Put it all together.
-    MLDS_TypeName = type(UnqualClassName, ClassArity),
+    MLDS_TypeName = entity_type(UnqualClassName, ClassArity),
     MLDS_TypeFlags = ml_gen_type_decl_flags,
     MLDS_TypeDefnBody = mlds_class(mlds_class_defn(mlds_class,
         Imports, Inherits, Implements, Ctors, Members)),
@@ -698,7 +699,7 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
             Implements = [],
 
             % Put it all together.
-            MLDS_TypeName = type(UnqualCtorName, CtorArity),
+            MLDS_TypeName = entity_type(UnqualCtorName, CtorArity),
             MLDS_TypeFlags = ml_gen_type_decl_flags,
             MLDS_TypeDefnBody = mlds_class(mlds_class_defn(
                 mlds_class, Imports, Inherits, Implements, Ctors, Members)),
@@ -771,13 +772,14 @@ gen_constructor_function(Globals, BaseClassId, ClassType, ClassQualifier,
     Attributes = [],
 
     Ctor = mlds_function(no, mlds_func_params(Args, ReturnValues),
-        defined_here(Stmt), Attributes),
+        body_defined_here(Stmt), Attributes),
     CtorFlags = init_decl_flags(public, per_instance, non_virtual,
         overridable, modifiable, concrete),
 
     % Note that the name of constructor is determined by the backend
     % convention.
-    CtorDefn = mlds_defn(export("<constructor>"), Context, CtorFlags, Ctor).
+    CtorDefn = mlds_defn(entity_export("<constructor>"), Context, CtorFlags,
+        Ctor).
 
     % Get the name and type from the field definition, for use as a
     % constructor argument name and type.
@@ -805,7 +807,7 @@ gen_init_field(Target, BaseClassId, ClassType, ClassQualifier, Member) =
         unexpected(this_file, "gen_init_field: non-data member")
     ),
     (
-        EntityName = data(var(VarName0)),
+        EntityName = entity_data(var(VarName0)),
         VarName0 = mlds_var_name(Name0, no)
     ->
         Name = Name0,
@@ -906,7 +908,7 @@ ml_gen_field(ModuleInfo, Context, MaybeFieldName, Type, MLDS_Defn,
     = mlds_defn.
 
 ml_gen_mlds_field_decl(DataName, MLDS_Type, Context) = MLDS_Defn :-
-    Name = data(DataName),
+    Name = entity_data(DataName),
     % We only need GC tracing code for top-level variables, not for fields
     GC_TraceCode = no,
     Defn = mlds_data(MLDS_Type, no_initializer, GC_TraceCode),

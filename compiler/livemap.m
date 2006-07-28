@@ -152,7 +152,7 @@ livemap.build_livemap_instr(Instr0, !Instrs, !Livevals, !ContainsUserCode,
         opt_util.lval_access_rvals(Lval, Rvals),
         livemap.make_live_in_rvals([Rval | Rvals], !Livevals)
     ;
-        Uinstr0 = call(_, _, _, _, _, _),
+        Uinstr0 = llcall(_, _, _, _, _, _),
         livemap.look_for_livevals(!Instrs, !Livevals, "call", yes, _)
     ;
         Uinstr0 = mkframe(_, _)
@@ -290,7 +290,7 @@ livemap.build_livemap_instr(Instr0, !Instrs, !Livevals, !ContainsUserCode,
     ;
         Uinstr0 = join_and_continue(_, _)
     ;
-        Uinstr0 = c_code(_, LiveLvalInfo),
+        Uinstr0 = arbitrary_c_code(_, LiveLvalInfo),
         livemap.build_live_lval_info(LiveLvalInfo,
             !Livevals, !ContainsUserCode)
     ;

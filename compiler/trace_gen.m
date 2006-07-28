@@ -660,7 +660,7 @@ trace_prepare_for_call(CI, TraceCode) :-
         ),
         ResetStmt = MacroStr ++ "(" ++ CallDepthStr ++ ");\n",
         TraceCode = node([
-            c_code(ResetStmt, live_lvals_info(set.init)) - ""
+            arbitrary_c_code(ResetStmt, live_lvals_info(set.init)) - ""
         ])
     ;
         MaybeTraceInfo = no,

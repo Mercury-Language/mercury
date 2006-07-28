@@ -423,7 +423,7 @@ generate_downloop_test([Instr0 | Instrs0], Target, Instrs) :-
 split_rec_code([], _, _) :-
     unexpected(this_file, "did not find call in split_rec_code").
 split_rec_code([Instr0 | Instrs1], Before, After) :-
-    ( Instr0 = call(_, _, _, _, _, _) - _ ->
+    ( Instr0 = llcall(_, _, _, _, _, _) - _ ->
         (
             opt_util.skip_comments(Instrs1, Instrs2),
             Instrs2 = [Instr2 | Instrs3],
@@ -496,13 +496,13 @@ find_used_registers_instr(block(_, _, Instrs), !Used) :-
 find_used_registers_instr(assign(Lval, Rval), !Used) :-
     find_used_registers_lval(Lval, !Used),
     find_used_registers_rval(Rval, !Used).
-find_used_registers_instr(call(_, _, _, _, _, _), !Used).
+find_used_registers_instr(llcall(_, _, _, _, _, _), !Used).
 find_used_registers_instr(mkframe(_, _), !Used).
 find_used_registers_instr(label(_), !Used).
 find_used_registers_instr(goto(_), !Used).
 find_used_registers_instr(computed_goto(Rval, _), !Used) :-
     find_used_registers_rval(Rval, !Used).
-find_used_registers_instr(c_code(_, _), !Used).
+find_used_registers_instr(arbitrary_c_code(_, _), !Used).
 find_used_registers_instr(if_val(Rval, _), !Used) :-
     find_used_registers_rval(Rval, !Used).
 find_used_registers_instr(save_maxfr(Lval), !Used) :-

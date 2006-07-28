@@ -144,7 +144,7 @@ disallowed_instr(Instr - _) :-
     (
         Instr = if_val(_, _)
     ;
-        Instr = call(_, _, _, _, _, _)
+        Instr = llcall(_, _, _, _, _, _)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -185,10 +185,11 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
         standardize_rval(Rval, StdRval, DupProcMap),
         StdInstr = assign(Lval, StdRval)
     ;
-        Instr = call(Target, Cont, LiveInfo, Context, GoalPath, Model),
+        Instr = llcall(Target, Cont, LiveInfo, Context, GoalPath, Model),
         standardize_code_addr(Target, StdTarget, DupProcMap),
         standardize_code_addr(Cont, StdCont, DupProcMap),
-        StdInstr = call(StdTarget, StdCont, LiveInfo, Context, GoalPath, Model)
+        StdInstr = llcall(StdTarget, StdCont, LiveInfo, Context, GoalPath,
+            Model)
     ;
         Instr = mkframe(FrameInfo, MaybeCodeAddr),
         (
@@ -214,7 +215,7 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
         standardize_labels(Targets, StdTargets, DupProcMap),
         StdInstr = computed_goto(Rval, StdTargets)
     ;
-        Instr = c_code(_, _),
+        Instr = arbitrary_c_code(_, _),
         StdInstr = Instr
     ;
         Instr = save_maxfr(_),

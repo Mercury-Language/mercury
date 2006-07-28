@@ -336,7 +336,7 @@ standardize_instr(Instr1, Instr) :-
         standardize_rval(Rval1, Rval),
         Instr = assign(Lval, Rval)
     ;
-        Instr1 = call(_, _, _, _, _, _),
+        Instr1 = llcall(_, _, _, _, _, _),
         Instr = Instr1
     ;
         Instr1 = mkframe(_, _),
@@ -351,7 +351,7 @@ standardize_instr(Instr1, Instr) :-
         Instr1 = computed_goto(_, _),
         Instr = Instr1
     ;
-        Instr1 = c_code(_, _),
+        Instr1 = arbitrary_c_code(_, _),
         Instr = Instr1
     ;
         Instr1 = if_val(Rval1, CodeAddr),
@@ -716,12 +716,12 @@ most_specific_instr(Instr1, Instr2, MaybeInstr) :-
     ;
         ( Instr1 = livevals(_)
         ; Instr1 = block(_, _, _)
-        ; Instr1 = call(_, _, _, _, _, _)
+        ; Instr1 = llcall(_, _, _, _, _, _)
         ; Instr1 = mkframe(_, _)
         ; Instr1 = label(_)
         ; Instr1 = goto(_)
         ; Instr1 = computed_goto(_, _)
-        ; Instr1 = c_code(_, _)
+        ; Instr1 = arbitrary_c_code(_, _)
         ; Instr1 = save_maxfr(_)
         ; Instr1 = restore_maxfr(_)
         ; Instr1 = discard_ticket

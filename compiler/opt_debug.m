@@ -637,7 +637,7 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Instr = assign(Lval, Rval),
         Str = dump_lval(Lval) ++ " := " ++ dump_rval(Rval)
     ;
-        Instr = call(Callee, ReturnLabel, _LiveInfo, _Context, _GoalPath,
+        Instr = llcall(Callee, ReturnLabel, _LiveInfo, _Context, _GoalPath,
             CallModel),
         (
             CallModel = call_model_det,
@@ -699,8 +699,8 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Str = "computed_goto " ++ dump_rval(Rval) ++ ":"
             ++ dump_labels(ProcLabel, Labels)
     ;
-        Instr = c_code(Code, _),
-        Str = "c_code(" ++ Code ++ ")"
+        Instr = arbitrary_c_code(Code, _),
+        Str = "arbitrary_c_code(" ++ Code ++ ")"
     ;
         Instr = if_val(Rval, CodeAddr),
         Str = "if (" ++ dump_rval(Rval) ++ ") goto "

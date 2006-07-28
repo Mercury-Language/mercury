@@ -118,7 +118,7 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI) :-
     goal_info_get_goal_path(GoalInfo, GoalPath),
     CallCode = node([
         livevals(LiveVals) - "",
-        call(Address, label(ReturnLabel), ReturnLiveLvalues, Context,
+        llcall(Address, label(ReturnLabel), ReturnLiveLvalues, Context,
             GoalPath, CallModel) - CallComment,
         label(ReturnLabel) - "continuation label"
     ]),
@@ -233,7 +233,7 @@ generate_generic_call_2(_OuterCodeModel, GenericCall, Args, Modes, Det,
 
     CallCode = node([
         livevals(LiveVals) - "",
-        call(CodeAddr, label(ReturnLabel), ReturnLiveLvalues,
+        llcall(CodeAddr, label(ReturnLabel), ReturnLiveLvalues,
             Context, GoalPath, CallModel) - "Setup and call",
         label(ReturnLabel) - "Continuation label"
     ]),

@@ -78,7 +78,7 @@ wrap_instrs([Instr0 | Instrs0], R0, F0, RevSofar, Instrs) :-
         % because including it in the block causes the test case
         % debugger/all_solutions to fail.
 
-        ( ( Uinstr0 = label(_) ; Uinstr0 = call(_, _, _, _, _, _) ) ->
+        ( ( Uinstr0 = label(_) ; Uinstr0 = llcall(_, _, _, _, _, _) ) ->
             list.reverse(RevSofar, BlockInstrs),
             wrap_instrs(Instrs0, 0, 0, [], Instrs1),
             Instrs = [block(R1, F1, BlockInstrs) - "", Instr0 | Instrs1]

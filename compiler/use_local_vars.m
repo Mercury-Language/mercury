@@ -244,7 +244,7 @@ find_compulsory_lvals([Instr | Instrs], LiveMap, MaybeFallThrough,
             yes, !:MaybeCompulsoryLvals),
         union_maybe_compulsory_lvals(LiveLvals, !MaybeCompulsoryLvals)
     ;
-        Uinstr = call(_, _, _, _, _, _)
+        Uinstr = llcall(_, _, _, _, _, _)
     ->
         expect(unify(PrevLivevals, yes),
             this_file, "find_compulsory_lvals: call without livevals"),
@@ -465,7 +465,7 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
             substitute_lval_in_instr_until_defn(OldLval, NewLval, !Instrs, !N)
         )
     ;
-        Uinstr0 = call(_, _, _, _, _, _)
+        Uinstr0 = llcall(_, _, _, _, _, _)
     ;
         Uinstr0 = mkframe(_, _)
     ;
@@ -526,7 +526,7 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
     ;
         Uinstr0 = join_and_continue(_, _)
     ;
-        Uinstr0 = c_code(_, _)
+        Uinstr0 = arbitrary_c_code(_, _)
     ;
         Uinstr0 = pragma_c(_, _, _, _, _, _, _, _, _)
     ).

@@ -289,7 +289,8 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
     % know that rvals representing e.g. the tags of fields cannot contain
     % labels.
     (
-        Uinstr0 = call(Proc, RetAddr, LiveInfos, Context, GoalPath, CallModel),
+        Uinstr0 = llcall(Proc, RetAddr, LiveInfos, Context, GoalPath,
+            CallModel),
         ( RetAddr = label(RetLabel) ->
             (
                 % Look for det style tailcalls. We look for this even if
@@ -380,7 +381,7 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
                 ( RetLabel = DestLabel ->
                     NewInstrs = [Instr0]
                 ;
-                    NewInstrs = [call(Proc, label(DestLabel), LiveInfos,
+                    NewInstrs = [llcall(Proc, label(DestLabel), LiveInfos,
                         Context, GoalPath, CallModel)
                         - redirect_comment(Comment0)]
                 ),
@@ -750,67 +751,10 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
             )
         )
     ;
-        Uinstr0 = c_code(_, _),
-        NewRemain = usual_case
-    ;
-        Uinstr0 = comment(_),
-        NewRemain = usual_case
-    ;
-        Uinstr0 = livevals(_),
-        NewRemain = usual_case
-    ;
         Uinstr0 = block(_, _, _),
         % These are supposed to be introduced only after jumpopt is run
         % for the last time.
         unexpected(this_file, "instr_list: block")
-    ;
-        Uinstr0 = label(_),
-        NewRemain = usual_case
-    ;
-        Uinstr0 = save_maxfr(_),
-        NewRemain = usual_case
-    ;
-        Uinstr0 = restore_maxfr(_),
-        NewRemain = usual_case
-    ;
-        Uinstr0 = incr_sp(_, _),
-        NewRemain = usual_case
-    ;
-        Uinstr0 = decr_sp(_),
-        NewRemain = usual_case
-    ;
-        Uinstr0 = decr_sp_and_return(_),
-        NewRemain = usual_case
-    ;
-        Uinstr0 = store_ticket(_),
-        NewRemain = usual_case
-    ;
-        Uinstr0 = reset_ticket(_, _),
-        NewRemain = usual_case
-    ;
-        Uinstr0 = discard_ticket,
-        NewRemain = usual_case
-    ;
-        Uinstr0 = prune_ticket,
-        NewRemain = usual_case
-    ;
-        Uinstr0 = prune_tickets_to(_),
-        NewRemain = usual_case
-    ;
-        Uinstr0 = mark_ticket_stack(_),
-        NewRemain = usual_case
-    ;
-        Uinstr0 = mark_hp(_),
-        NewRemain = usual_case
-    ;
-        Uinstr0 = free_heap(_),
-        NewRemain = usual_case
-    ;
-        Uinstr0 = incr_hp(_, _, _, _, _),
-        NewRemain = usual_case
-    ;
-        Uinstr0 = restore_hp(_),
-        NewRemain = usual_case
     ;
         Uinstr0 = fork(Child0, Parent0, NumSlots),
         short_label(Instrmap, Child0, Child),
@@ -827,9 +771,6 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
             NewRemain = specified([Instr], Instrs0)
         )
     ;
-        Uinstr0 = init_sync_term(_, _),
-        NewRemain = usual_case
-    ;
         Uinstr0 = join_and_continue(SyncTerm, Label0),
         short_label(Instrmap, Label0, Label),
         ( Label = Label0 ->
@@ -841,7 +782,28 @@ jumpopt.instr_list([Instr0 | Instrs0], PrevInstr, Instrmap, Blockmap,
             NewRemain = specified([Instr], Instrs0)
         )
     ;
-        Uinstr0 = join_and_terminate(_),
+        ( Uinstr0 = arbitrary_c_code(_, _)
+        ; Uinstr0 = comment(_)
+        ; Uinstr0 = livevals(_)
+        ; Uinstr0 = label(_)
+        ; Uinstr0 = save_maxfr(_)
+        ; Uinstr0 = restore_maxfr(_)
+        ; Uinstr0 = incr_sp(_, _)
+        ; Uinstr0 = decr_sp(_)
+        ; Uinstr0 = decr_sp_and_return(_)
+        ; Uinstr0 = store_ticket(_)
+        ; Uinstr0 = reset_ticket(_, _)
+        ; Uinstr0 = discard_ticket
+        ; Uinstr0 = prune_ticket
+        ; Uinstr0 = prune_tickets_to(_)
+        ; Uinstr0 = mark_ticket_stack(_)
+        ; Uinstr0 = mark_hp(_)
+        ; Uinstr0 = free_heap(_)
+        ; Uinstr0 = incr_hp(_, _, _, _, _)
+        ; Uinstr0 = restore_hp(_)
+        ; Uinstr0 = init_sync_term(_, _)
+        ; Uinstr0 = join_and_terminate(_)
+        ),
         NewRemain = usual_case
     ),
     (

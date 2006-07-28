@@ -102,7 +102,7 @@ rtti_data_list_to_mlds(ModuleInfo, RttiDatas) = MLDS_Defns :-
 
 mlds_defn_is_potentially_duplicated(MLDS_Defn) :-
     MLDS_Defn = mlds_defn(EntityName, _, _, _),
-    EntityName = data(DataName),
+    EntityName = entity_data(DataName),
     DataName = mlds_rtti(ctor_rtti_id(_, RttiName)),
     ( RttiName = type_info(_)
     ; RttiName = pseudo_type_info(_)
@@ -119,7 +119,7 @@ rtti_data_to_mlds(ModuleInfo, RttiData) = MLDS_Defns :-
         MLDS_Defns = []
     ;
         rtti_data_to_id(RttiData, RttiId),
-        Name = data(mlds_rtti(RttiId)),
+        Name = entity_data(mlds_rtti(RttiId)),
         gen_init_rtti_data_defn(RttiData, RttiId, ModuleInfo,
             Initializer, ExtraDefns),
         rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer,
@@ -138,7 +138,7 @@ rtti_name_and_init_to_defn(RttiTypeCtor, RttiName, Initializer, MLDS_Defn) :-
     mlds_defn::out) is det.
 
 rtti_id_and_init_to_defn(RttiId, Initializer, MLDS_Defn) :-
-    Name = data(mlds_rtti(RttiId)),
+    Name = entity_data(mlds_rtti(RttiId)),
     rtti_entity_name_and_init_to_defn(Name, RttiId, Initializer, MLDS_Defn).
 
 :- pred rtti_entity_name_and_init_to_defn(mlds_entity_name::in, rtti_id::in,

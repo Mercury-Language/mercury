@@ -774,10 +774,13 @@ block_refers_to_stack([Instr | Instrs]) = Refers :-
 
 instr_refers_to_stack(Uinstr - _) = Refers :-
     (
-        Uinstr = comment(_),
-        Refers = no
-    ;
-        Uinstr = livevals(_),
+        ( Uinstr = comment(_)
+        ; Uinstr = livevals(_)
+        ; Uinstr = label(_)
+        ; Uinstr = arbitrary_c_code(_, _)
+        ; Uinstr = discard_ticket
+        ; Uinstr = prune_ticket
+        ),
         Refers = no
     ;
         Uinstr = block(_, _, BlockInstrs),
@@ -788,23 +791,17 @@ instr_refers_to_stack(Uinstr - _) = Refers :-
             lval_refers_stackvars(Lval),
             rval_refers_stackvars(Rval))
     ;
-        Uinstr = call(_, _, _, _, _, _),
+        Uinstr = llcall(_, _, _, _, _, _),
         Refers = yes
     ;
         Uinstr = mkframe(_, _),
         Refers = yes
-    ;
-        Uinstr = label(_),
-        Refers = no
     ;
         Uinstr = goto(CodeAddr),
         Refers = code_addr_refers_to_stack(CodeAddr)
     ;
         Uinstr = computed_goto(Rval, _Labels),
         Refers = rval_refers_stackvars(Rval)
-    ;
-        Uinstr = c_code(_, _),
-        Refers = no
     ;
         Uinstr = if_val(Rval, CodeAddr),
         Refers = bool.or(
@@ -836,12 +833,6 @@ instr_refers_to_stack(Uinstr - _) = Refers :-
     ;
         Uinstr = reset_ticket(Rval, _Reason),
         Refers = rval_refers_stackvars(Rval)
-    ;
-        Uinstr = discard_ticket,
-        Refers = no
-    ;
-        Uinstr = prune_ticket,
-        Refers = no
     ;
         Uinstr = mark_ticket_stack(Lval),
         Refers = lval_refers_stackvars(Lval)
@@ -986,12 +977,12 @@ can_instr_branch_away(comment(_), no).
 can_instr_branch_away(livevals(_), no).
 can_instr_branch_away(block(_, _, _), yes).
 can_instr_branch_away(assign(_, _), no).
-can_instr_branch_away(call(_, _, _, _, _, _), yes).
+can_instr_branch_away(llcall(_, _, _, _, _, _), yes).
 can_instr_branch_away(mkframe(_, _), no).
 can_instr_branch_away(label(_), no).
 can_instr_branch_away(goto(_), yes).
 can_instr_branch_away(computed_goto(_, _), yes).
-can_instr_branch_away(c_code(_, _), no).
+can_instr_branch_away(arbitrary_c_code(_, _), no).
 can_instr_branch_away(if_val(_, _), yes).
 can_instr_branch_away(save_maxfr(_), no).
 can_instr_branch_away(restore_maxfr(_), no).
@@ -1063,12 +1054,12 @@ can_instr_fall_through(livevals(_), yes).
 can_instr_fall_through(block(_, _, Instrs), FallThrough) :-
     can_block_fall_through(Instrs, FallThrough).
 can_instr_fall_through(assign(_, _), yes).
-can_instr_fall_through(call(_, _, _, _, _, _), no).
+can_instr_fall_through(llcall(_, _, _, _, _, _), no).
 can_instr_fall_through(mkframe(_, _), yes).
 can_instr_fall_through(label(_), yes).
 can_instr_fall_through(goto(_), no).
 can_instr_fall_through(computed_goto(_, _), no).
-can_instr_fall_through(c_code(_, _), yes).
+can_instr_fall_through(arbitrary_c_code(_, _), yes).
 can_instr_fall_through(if_val(_, _), yes).
 can_instr_fall_through(save_maxfr(_), yes).
 can_instr_fall_through(restore_maxfr(_), yes).
@@ -1110,12 +1101,12 @@ can_use_livevals(comment(_), no).
 can_use_livevals(livevals(_), no).
 can_use_livevals(block(_, _, _), no).
 can_use_livevals(assign(_, _), no).
-can_use_livevals(call(_, _, _, _, _, _), yes).
+can_use_livevals(llcall(_, _, _, _, _, _), yes).
 can_use_livevals(mkframe(_, _), no).
 can_use_livevals(label(_), no).
 can_use_livevals(goto(_), yes).
 can_use_livevals(computed_goto(_, _), no).
-can_use_livevals(c_code(_, _), no).
+can_use_livevals(arbitrary_c_code(_, _), no).
 can_use_livevals(if_val(_, _), yes).
 can_use_livevals(save_maxfr(_), no).
 can_use_livevals(restore_maxfr(_), no).
@@ -1173,13 +1164,13 @@ instr_labels_2(livevals(_), [], []).
 instr_labels_2(block(_, _, Instrs), Labels, CodeAddrs) :-
     instr_list_labels(Instrs, Labels, CodeAddrs).
 instr_labels_2(assign(_,_), [], []).
-instr_labels_2(call(Target, Ret, _, _, _, _), [], [Target, Ret]).
+instr_labels_2(llcall(Target, Ret, _, _, _, _), [], [Target, Ret]).
 instr_labels_2(mkframe(_, yes(Addr)), [], [Addr]).
 instr_labels_2(mkframe(_, no), [], []).
 instr_labels_2(label(_), [], []).
 instr_labels_2(goto(Addr), [], [Addr]).
 instr_labels_2(computed_goto(_, Labels), Labels, []).
-instr_labels_2(c_code(_, _), [], []).
+instr_labels_2(arbitrary_c_code(_, _), [], []).
 instr_labels_2(if_val(_, Addr), [], [Addr]).
 instr_labels_2(save_maxfr(_), [], []).
 instr_labels_2(restore_maxfr(_), [], []).
@@ -1215,7 +1206,7 @@ possible_targets(livevals(_), [], []).
 possible_targets(block(_, _, _), _, _) :-
     unexpected(this_file, "block in possible_targets").
 possible_targets(assign(_, _), [], []).
-possible_targets(call(_, Return, _, _, _, _), Labels, CodeAddrs) :-
+possible_targets(llcall(_, Return, _, _, _, _), Labels, CodeAddrs) :-
     ( Return = label(ReturnLabel) ->
         Labels = [ReturnLabel],
         CodeAddrs = []
@@ -1234,7 +1225,7 @@ possible_targets(goto(CodeAddr), Labels, CodeAddrs) :-
         CodeAddrs = [CodeAddr]
     ).
 possible_targets(computed_goto(_, Labels), Labels, []).
-possible_targets(c_code(_, _), [], []).
+possible_targets(arbitrary_c_code(_, _), [], []).
 possible_targets(if_val(_, CodeAddr), Labels, CodeAddrs) :-
     ( CodeAddr = label(Label) ->
         Labels = [Label],
@@ -1310,12 +1301,12 @@ instr_rvals_and_lvals(livevals(_), [], []).
 instr_rvals_and_lvals(block(_, _, Instrs), Labels, CodeAddrs) :-
     instr_list_rvals_and_lvals(Instrs, Labels, CodeAddrs).
 instr_rvals_and_lvals(assign(Lval,Rval), [Rval], [Lval]).
-instr_rvals_and_lvals(call(_, _, _, _, _, _), [], []).
+instr_rvals_and_lvals(llcall(_, _, _, _, _, _), [], []).
 instr_rvals_and_lvals(mkframe(_, _), [], []).
 instr_rvals_and_lvals(label(_), [], []).
 instr_rvals_and_lvals(goto(_), [], []).
 instr_rvals_and_lvals(computed_goto(Rval, _), [Rval], []).
-instr_rvals_and_lvals(c_code(_, _), [], []).
+instr_rvals_and_lvals(arbitrary_c_code(_, _), [], []).
 instr_rvals_and_lvals(if_val(Rval, _), [Rval], []).
 instr_rvals_and_lvals(save_maxfr(Lval), [], [Lval]).
 instr_rvals_and_lvals(restore_maxfr(Lval), [], [Lval]).
@@ -1442,7 +1433,7 @@ count_temps_instr(block(_, _, _), !R, !F).
 count_temps_instr(assign(Lval, Rval), !R, !F) :-
     count_temps_lval(Lval, !R, !F),
     count_temps_rval(Rval, !R, !F).
-count_temps_instr(call(_, _, _, _, _, _), !R, !F).
+count_temps_instr(llcall(_, _, _, _, _, _), !R, !F).
 count_temps_instr(mkframe(_, _), !R, !F).
 count_temps_instr(label(_), !R, !F).
 count_temps_instr(goto(_), !R, !F).
@@ -1450,7 +1441,7 @@ count_temps_instr(computed_goto(Rval, _), !R, !F) :-
     count_temps_rval(Rval, !R, !F).
 count_temps_instr(if_val(Rval, _), !R, !F) :-
     count_temps_rval(Rval, !R, !F).
-count_temps_instr(c_code(_, _), !R, !F).
+count_temps_instr(arbitrary_c_code(_, _), !R, !F).
 count_temps_instr(save_maxfr(Lval), !R, !F) :-
     count_temps_lval(Lval, !R, !F).
 count_temps_instr(restore_maxfr(Lval), !R, !F) :-
@@ -1578,9 +1569,9 @@ touches_nondet_ctrl_instr(Uinstr, Touch) :-
         ( Uinstr = mkframe(_, _)
         ; Uinstr = goto(_)
         ; Uinstr = computed_goto(_, _)
-        ; Uinstr = call(_, _, _, _, _, _)   % This is a safe approximation.
+        ; Uinstr = llcall(_, _, _, _, _, _) % This is a safe approximation.
         ; Uinstr = if_val(_, _)
-        ; Uinstr = c_code(_, _)
+        ; Uinstr = arbitrary_c_code(_, _)
         ; Uinstr = save_maxfr(_)
         ; Uinstr = restore_maxfr(_)
         ; Uinstr = init_sync_term(_, _)     % This is a safe approximation.
@@ -1819,8 +1810,8 @@ replace_labels_instr(assign(Lval0, Rval0), ReplMap, ReplData,
         Lval = Lval0,
         Rval = Rval0
     ).
-replace_labels_instr(call(Target, Return0, LiveInfo, CXT, GP, CM),
-        ReplMap, _, call(Target, Return, LiveInfo, CXT, GP, CM)) :-
+replace_labels_instr(llcall(Target, Return0, LiveInfo, CXT, GP, CM),
+        ReplMap, _, llcall(Target, Return, LiveInfo, CXT, GP, CM)) :-
     replace_labels_code_addr(Return0, ReplMap, Return).
 replace_labels_instr(mkframe(NondetFrameInfo, MaybeRedoip0), ReplMap,
         ReplData, mkframe(NondetFrameInfo, MaybeRedoip)) :-
@@ -1859,7 +1850,8 @@ replace_labels_instr(computed_goto(Rval0, Labels0), ReplMap,
         Rval = Rval0
     ),
     replace_labels_label_list(Labels0, ReplMap, Labels).
-replace_labels_instr(c_code(Code, Lvals), _, _, c_code(Code, Lvals)).
+replace_labels_instr(arbitrary_c_code(Code, Lvals), _, _,
+        arbitrary_c_code(Code, Lvals)).
 replace_labels_instr(if_val(Rval0, Target0), ReplMap, ReplData,
         if_val(Rval, Target)) :-
     (

@@ -345,7 +345,7 @@ keep_nondet_frame([Instr0 | Instrs0], Instrs, ProcLabel, KeepFrameLabel,
     (
         % Look for nondet style tailcalls which do not need
         % a runtime check.
-        Uinstr0 = call(label(entry(_, ProcLabel)), label(RetLabel),
+        Uinstr0 = llcall(label(entry(_, ProcLabel)), label(RetLabel),
             _, _, _, CallModel),
         CallModel = call_model_nondet(unchecked_tail_call),
         map.search(SuccMap, RetLabel, BetweenIncl),
@@ -1081,11 +1081,11 @@ compute_block_needs_frame(Label, Instrs, NeedsFrame) :-
             list.member(Instr, Instrs),
             Instr = Uinstr - _,
             (
-                Uinstr = call(_, _, _, _, _, _)
+                Uinstr = llcall(_, _, _, _, _, _)
             ;
                 Uinstr = mkframe(_, _)
             ;
-                Uinstr = c_code(_, _)
+                Uinstr = arbitrary_c_code(_, _)
             ;
                 Uinstr = pragma_c(_, _, MayCallMercury, _, MaybeLayout,
                     MaybeOnlyLayout, _, NeedStack, _),
@@ -1338,7 +1338,7 @@ can_clobber_succip([Label | Labels], BlockMap) = CanClobberSuccip :-
         list.member(Instr, Instrs),
         Instr = Uinstr - _,
         (
-            Uinstr = call(_, _, _, _, _, _)
+            Uinstr = llcall(_, _, _, _, _, _)
         ;
             % Only may_call_mercury pragma_c's can clobber succip.
             Uinstr = pragma_c(_, _, may_call_mercury,

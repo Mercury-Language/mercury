@@ -443,7 +443,7 @@ ml_switch_to_if_else_chain([Case | Cases], Default, SwitchRval, MLDS_Context) =
     %
 :- func ml_gen_case_match_conds(mlds_case_match_conds, mlds_rval) = mlds_rval.
 
-ml_gen_case_match_conds([], _) = const(false).
+ml_gen_case_match_conds([], _) = const(false_const).
 ml_gen_case_match_conds([Cond], SwitchRval) =
     ml_gen_case_match_cond(Cond, SwitchRval).
 ml_gen_case_match_conds([Cond1, Cond2 | Conds], SwitchRval) =

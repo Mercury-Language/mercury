@@ -211,11 +211,11 @@
 defns_contain_main(Defns) :-
     list.member(Defn, Defns),
     Defn = mlds_defn(Name, _, _, _),
-    Name = function(FuncName, _, _, _),
+    Name = entity_function(FuncName, _, _, _),
     FuncName = mlds_user_pred_label(predicate, _, "main", 2, _, _).
 
 can_optimize_tailcall(Name, Call) :-
-    Call = call(_Signature, FuncRval, MaybeObject, _CallArgs,
+    Call = mlcall(_Signature, FuncRval, MaybeObject, _CallArgs,
         _Results, CallKind),
     % Check if this call can be optimized as a tail call.
     ( CallKind = tail_call ; CallKind = no_return_call ),
@@ -236,7 +236,7 @@ can_optimize_tailcall(Name, Call) :-
     Name = qual(ModuleName, module_qual, FuncName),
 
     % Check that the PredLabel, ProcId, and MaybeSeqNum match.
-    FuncName = function(PredLabel, ProcId, MaybeSeqNum, _),
+    FuncName = entity_function(PredLabel, ProcId, MaybeSeqNum, _),
 
     % In C++, `this' is a constant, so our usual technique of assigning
     % the arguments won't work if it is a member function. Thus we don't do
@@ -296,7 +296,7 @@ stmt_contains_statement(Stmt, SubStatement) :-
         Stmt = computed_goto(_Rval, _Labels),
         fail
     ;
-        Stmt = call(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall),
+        Stmt = mlcall(_Sig, _Func, _Obj, _Args, _RetLvals, _TailCall),
         fail
     ;
         Stmt = return(_Rvals),
@@ -391,7 +391,7 @@ stmt_contains_var(Stmt, Name) :-
         Stmt = computed_goto(Rval, _Labels),
         rval_contains_var(Rval, Name)
     ;
-        Stmt = call(_Sig, Func, Obj, Args, RetLvals, _TailCall),
+        Stmt = mlcall(_Sig, Func, Obj, Args, RetLvals, _TailCall),
         ( rval_contains_var(Func, Name)
         ; maybe_rval_contains_var(Obj, Name)
         ; rvals_contains_var(Args, Name)
@@ -479,7 +479,7 @@ target_code_component_contains_var(target_code_input(Rval), Name) :-
 target_code_component_contains_var(target_code_output(Lval), Name) :-
     lval_contains_var(Lval, Name).
 target_code_component_contains_var(name(EntityName), DataName) :-
-    EntityName = qual(ModuleName, QualKind, data(UnqualDataName)),
+    EntityName = qual(ModuleName, QualKind, entity_data(UnqualDataName)),
     DataName = qual(ModuleName, QualKind, UnqualDataName),
     % This is a place where we can succeed.
     true.
@@ -499,7 +499,7 @@ has_foreign_languages(Statement, Langs) :-
 
 defn_contains_foreign_code(NativeTargetLang, Defn) :-
     Defn = mlds_defn(_Name, _Context, _Flags, Body),
-    Body = mlds_function(_, _, defined_here(FunctionBody), _),
+    Body = mlds_function(_, _, body_defined_here(FunctionBody), _),
     statement_contains_statement(FunctionBody, Statement),
     Statement = statement(Stmt, _),
     (
@@ -511,18 +511,18 @@ defn_contains_foreign_code(NativeTargetLang, Defn) :-
 
 defn_contains_outline_foreign_proc(ForeignLang, Defn) :-
     Defn = mlds_defn(_Name, _Context, _Flags, Body),
-    Body = mlds_function(_, _, defined_here(FunctionBody), _),
+    Body = mlds_function(_, _, body_defined_here(FunctionBody), _),
     statement_contains_statement(FunctionBody, Statement),
     Statement = statement(Stmt, _),
     Stmt = atomic(outline_foreign_proc(ForeignLang, _, _, _)).
 
 defn_is_type(Defn) :-
     Defn = mlds_defn(Name, _Context, _Flags, _Body),
-    Name = type(_, _).
+    Name = entity_type(_, _).
 
 defn_is_function(Defn) :-
     Defn = mlds_defn(Name, _Context, _Flags, _Body),
-    Name = function(_, _, _, _).
+    Name = entity_function(_, _, _, _).
 
 defn_is_type_ctor_info(Defn) :-
     Defn = mlds_defn(_Name, _Context, _Flags, Body),
@@ -573,8 +573,8 @@ defn_body_contains_var(mlds_class(ClassDefn), Name) :-
 :- pred function_body_contains_var(mlds_function_body::in, mlds_data::in)
     is semidet.
 
-% function_body_contains_var(external, _) :- fail.
-function_body_contains_var(defined_here(Statement), Name) :-
+% function_body_contains_var(body_external, _) :- fail.
+function_body_contains_var(body_defined_here(Statement), Name) :-
     statement_contains_var(Statement, Name).
 
 %-----------------------------------------------------------------------------%
@@ -705,8 +705,8 @@ gen_init_string(String) = init_obj(const(string_const(String))).
 
 gen_init_int(Int) = init_obj(const(int_const(Int))).
 
-gen_init_bool(no) = init_obj(const(false)).
-gen_init_bool(yes) = init_obj(const(true)).
+gen_init_bool(no) = init_obj(const(false_const)).
+gen_init_bool(yes) = init_obj(const(true_const)).
 
 gen_init_boxed_int(Int) =
     init_obj(unop(box(mlds_native_int_type), const(int_const(Int)))).
