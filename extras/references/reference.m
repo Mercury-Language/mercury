@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1998-2000,2002-2004 University of Melbourne.
+% Copyright (C) 1998-2000,2002-2004, 2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -51,7 +51,7 @@
 %  This type is implemented in C.
 :- type reference(T) ---> reference(c_pointer).
 
-:- pragma c_header_code("#include ""c_reference.h""").
+:- pragma foreign_decl("C", "#include ""c_reference.h""").
 
 :- pragma inline(new_reference/2).
 new_reference(X, reference(Ref)) :-
@@ -59,7 +59,10 @@ new_reference(X, reference(Ref)) :-
 
 :- impure pred new_reference_2(T::in, c_pointer::out) is det.
 :- pragma inline(new_reference_2/2).
-:- pragma c_code(new_reference_2(X::in, Ref::out), will_not_call_mercury, "
+:- pragma foreign_proc("C",
+	new_reference_2(X::in, Ref::out),
+	[will_not_call_mercury],
+"
 	MR_incr_hp(Ref, (sizeof(ME_Reference) + sizeof(MR_Word) - 1) / 
 			sizeof(MR_Word));
 	((ME_Reference *) Ref)->value = (void *) X;
@@ -78,7 +81,10 @@ value(reference(Ref), X) :-
 
 :- semipure pred value_2(c_pointer::in, T::out) is det.
 :- pragma inline(value_2/2).
-:- pragma c_code(value_2(Ref::in, X::out), will_not_call_mercury, "
+:- pragma foreign_proc("C",
+	value_2(Ref::in, X::out),
+	[promise_semipure, will_not_call_mercury],
+"
 	X = (MR_Word) ((ME_Reference *) Ref)->value;
 ").
 
@@ -88,7 +94,10 @@ update(reference(Ref), X) :-
 
 :- impure pred update_2(c_pointer::in, T::in) is det.
 :- pragma inline(update_2/2).
-:- pragma c_code(update_2(Ref::in, X::in), will_not_call_mercury, "
+:- pragma foreign_proc("C",
+	update_2(Ref::in, X::in),
+	[will_not_call_mercury],
+"
 	ME_Reference *ref = (ME_Reference *) Ref;
 	if (ref->id != MR_current_choicepoint_id()) {
 		MR_trail_current_value((MR_Word *) (&ref->value));
@@ -127,7 +136,10 @@ init(reference(Ref), X) :-
 
 :- impure pred init_2(c_pointer::in, T::in) is det.
 :- pragma inline(init_2/2).
-:- pragma c_code(init_2(Ref::in, X::in), will_not_call_mercury, "
+:- pragma foreign_proc("C",
+	init_2(Ref::in, X::in),
+	[will_not_call_mercury],
+"
 	((ME_Reference *) Ref)->value = (void *) X;
 	((ME_Reference *) Ref)->id = MR_current_choicepoint_id();
 ").

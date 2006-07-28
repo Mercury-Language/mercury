@@ -404,12 +404,19 @@ get_colour(yellow, yellow).
 
 :- pred chtype(char, int).
 :- mode chtype(in, out) is det.
-:- pragma c_code(chtype(C::in, Ch::out), "Ch = (chtype) C;").
+:- pragma foreign_proc("C",
+	chtype(C::in, Ch::out),
+	[promise_pure, will_not_call_mercury],	
+"
+	Ch = (chtype) C;
+").
 
 :- pred mod_chtype(int, int, int).
 :- mode mod_chtype(in, in, out) is det.
-:- pragma c_code(mod_chtype(Ch0::in, Attr::in, Ch::out),
-	[will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	mod_chtype(Ch0::in, Attr::in, Ch::out),
+	[promise_pure, will_not_call_mercury],
+"
 	Ch = (chtype) Ch0 | Attr;
 ").
 
