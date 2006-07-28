@@ -140,10 +140,11 @@
 
 :- implementation.
 
-:- pragma c_header_code(
-			"#include <curses.h>
-			#include <term.h>"
-		       ).
+:- pragma foreign_decl("C", "
+	
+	#include <curses.h>
+	#include <term.h>
+").
 
 %----------------------------------------------------------------------------%
 
@@ -382,8 +383,10 @@ putch2(Chtype0, [Attrib | Attribs], IO0, IO) :-
 
 :- pred putch3(int, io__state, io__state).
 :- mode putch3(in, di, uo) is det.
-:- pragma c_code(putch3(C::in, IO0::di, IO::uo),
-	[will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	putch3(C::in, IO0::di, IO::uo),
+	[promise_pure, will_not_call_mercury],
+"
 	addch((chtype) C);
 	IO = IO0;
 ").
@@ -404,12 +407,19 @@ get_colour(yellow, yellow).
 
 :- pred chtype(char, int).
 :- mode chtype(in, out) is det.
-:- pragma c_code(chtype(C::in, Ch::out), "Ch = (chtype) C;").
+:- pragma foreign_proc("C",
+	chtype(C::in, Ch::out),
+	[promise_pure, will_not_call_mercury],
+"
+	Ch = (chtype) C;
+").
 
 :- pred mod_chtype(int, int, int).
 :- mode mod_chtype(in, in, out) is det.
-:- pragma c_code(mod_chtype(Ch0::in, Attr::in, Ch::out),
-	[will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	mod_chtype(Ch0::in, Attr::in, Ch::out),
+	[promise_pure, will_not_call_mercury],
+"
 	Ch = (chtype) Ch0 | Attr;
 ").
 
@@ -514,7 +524,12 @@ place_char(Win, X, Y, C - As) -->
 
 :- func u(array(T)) = array(T).
 :- mode (u(in) = array_uo) is det.
-:- pragma c_code(u(A::in) = (B::array_uo), [will_not_call_mercury], "B = A;").
+:- pragma foreign_proc("C",
+	u(A::in) = (B::array_uo),
+	[promise_pure, will_not_call_mercury],
+"
+	B = A;
+").
 
 %----------------------------------------------------------------------------%
 
@@ -549,22 +564,26 @@ update_data([C|Cs], Y, X, Xmax, Data0, Data) :-
 :- pred set_root(win, io__state, io__state).
 :- mode set_root(in, di, uo) is det.
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 	extern MR_Word	curse_root;
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 	MR_Word		curse_root;
 ").
 
-:- pragma c_code(get_root(W::out, IO0::di, IO::uo),
-	[will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	get_root(W::out, IO0::di, IO::uo),
+	[promise_pure, will_not_call_mercury],
+"
 	W = curse_root;
 	IO = IO0;
 ").
 
-:- pragma c_code(set_root(W::in, IO0::di, IO::uo),
-	[will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	set_root(W::in, IO0::di, IO::uo),
+	[promise_pure, will_not_call_mercury],
+"
 	curse_root = W;
 	IO = IO0;
 ").
@@ -598,22 +617,26 @@ set_win(Win, Window) -->
 
 :- pred set_cursor(cursor::in, io__state::di, io__state::uo) is det.
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 	extern MR_Word	curse_cursor;
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 	MR_Word		curse_cursor;
 ").
 
-:- pragma c_code(get_cursor(C::out, I0::di, I::uo),
-	[will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	get_cursor(C::out, I0::di, I::uo),
+	[promise_pure, will_not_call_mercury],
+"
 	C = curse_cursor;
 	I = I0;
 ").
 
-:- pragma c_code(set_cursor(C::in, I0::di, I::uo),
-	[will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	set_cursor(C::in, I0::di, I::uo),
+	[promise_pure, will_not_call_mercury],
+"
 	curse_cursor = C;
 	I = I0;
 ").
@@ -630,16 +653,18 @@ set_win(Win, Window) -->
 
 :- pred set_curse_store(curse_store::di, io__state::di, io__state::uo) is det.
 
-:- pragma c_header_code("
+:- pragma foreign_decl("C", "
 	extern MR_Word	curse_store;
 ").
 
-:- pragma c_code("
+:- pragma foreign_code("C", "
 	MR_Word		curse_store;
 ").
 
-:- pragma c_code(init_curse_store(C::uo),
-	[will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	init_curse_store(C::uo),
+	[promise_pure, will_not_call_mercury],
+"
 	/*
 	** Here we rely on the fact that stores have no
 	** real representation, so we can fill in any
@@ -648,14 +673,18 @@ set_win(Win, Window) -->
 	C = 0;
 ").
 
-:- pragma c_code(get_curse_store(C::uo, I0::di, I::uo),
-	[will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	get_curse_store(C::uo, I0::di, I::uo),
+	[promise_pure, will_not_call_mercury],
+"
 	C = curse_store;
 	I = I0;
 ").
 
-:- pragma c_code(set_curse_store(C::di, I0::di, I::uo),
-	[will_not_call_mercury], "
+:- pragma foreign_proc("C",
+	set_curse_store(C::di, I0::di, I::uo),
+	[promise_pure, will_not_call_mercury],
+"
 	curse_store = C;
 	I = I0;
 ").
