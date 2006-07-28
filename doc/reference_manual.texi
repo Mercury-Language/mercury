@@ -6443,7 +6443,79 @@ to the foreign language's parameter passing convention.
 @node C data passing conventions
 @subsection C data passing conventions
 
-This section is currently documented in @ref{Passing data to and from C}.
+For each of the Mercury types @code{int}, @code{float}, @code{char},
+and @code{string}, there is a C typedef for the corresponding type in C:
+@code{MR_Integer}, @code{MR_Float}, @code{MR_Char},
+and @code{MR_String} respectively.
+
+In the current implementation, @samp{MR_Integer} is a typedef for an
+integral type whose size is the same size as a pointer; @samp{MR_Float} is
+a typedef for @samp{double} (unless the program and the Mercury library
+was compiled with @samp{-DUSE_SINGLE_PREC_FLOAT}, in which case it is
+a typedef for @samp{float}); @samp{MR_Char} is a typedef for @samp{char};
+and @samp{MR_String} is a typedef for @samp{MR_Char *}.
+
+Mercury variables of type @code{int}, @code{float}, @code{char}, or
+@code{string} are passed to and from C as C variables whose type is
+given by the corresponding typedef. 
+
+For the Mercury standard library type @samp{bool.bool}, there is a 
+corresponding C type, @code{MR_bool}.  C code can refer to the boolean 
+data constructors @samp{yes} and @samp{no}, as @code{MR_YES} and
+@code{MR_NO} respectively.
+
+Mercury variables of a type for which there is a C @samp{pragma foreign_type}
+declaration (@pxref{Using foreign types from Mercury}) will be passed as
+the corresponding C type.
+
+Mercury variables of any other type
+are passed as a @samp{MR_Word}, which in the current implementation
+is a typedef for an unsigned type whose size is the same size as a pointer.
+(Note: it would in fact be better for each Mercury type to map to a distinct
+abstract type in C, since that would be more type-safe, and thus we may
+change this in a future release.  We advise programmers who are manipulating
+Mercury types in C code to use typedefs for each user-defined Mercury type,
+and to treat each such type as an abstract data type.  This is good style
+and it will also minimize any compatibility problems if and when we do change
+this.)
+
+Mercury arguments declared with input modes are passed by value to the
+C function.
+For output arguments,
+the Mercury implementation will pass to the C function an address in
+which to store the result. 
+If the Mercury procedure can fail,
+then its C function should return a truth value of type
+@samp{MR_Integer} indicating success or failure:
+non-zero indicates success, and zero indicates failure.
+If the Mercury procedure is a Mercury function that cannot fail,
+and the function result has an output mode,
+then the C function should return the Mercury function result value.
+Otherwise the function result is appended as an extra argument.
+Arguments of type @samp{io.state} or @samp{store.store(_)} are not
+passed at all.
+(The reason for this is that these types represent mutable state,
+and in C modifications to mutable state are done via side effects,
+rather than argument passing.)
+
+@c For the Managed C++ interface, the types are mapped slightly differently:
+@c Mercury variables which are polymorphically typed
+@c have type @samp{MR_Box} rather than @samp{MR_Word}.
+@c XXX We should document the Managed C++ interface somewhere.
+
+Mercury lists can be manipulated by C code using the following macros,
+which are defined by the Mercury implementation.
+
+@example
+MR_list_is_empty(list)     /* test if a list is empty */
+MR_list_head(list)         /* get the head of a list */
+MR_list_tail(list)         /* get the tail of a list */
+MR_list_empty()            /* create an empty list */
+MR_list_cons(head,tail)    /* construct a list with the given head and tail */
+@end example
+
+Note that the use of these macros is subject to some caveats
+(@pxref{Memory management}).
 
 @node IL and C# data passing conventions
 @subsection IL and C# data passing conventions
@@ -8161,79 +8233,7 @@ Mercury User's Guide, and the @samp{man} pages for @samp{mmc} and @samp{ml}.
 @node Passing data to and from C
 @section Passing data to and from C
 
-For each of the Mercury types @code{int}, @code{float}, @code{char},
-and @code{string}, there is a C typedef for the corresponding type in C:
-@code{MR_Integer}, @code{MR_Float}, @code{MR_Char},
-and @code{MR_String} respectively.
-
-In the current implementation, @samp{MR_Integer} is a typedef for an
-integral type whose size is the same size as a pointer; @samp{MR_Float} is
-a typedef for @samp{double} (unless the program and the Mercury library
-was compiled with @samp{-DUSE_SINGLE_PREC_FLOAT}, in which case it is
-a typedef for @samp{float}); @samp{MR_Char} is a typedef for @samp{char};
-and @samp{MR_String} is a typedef for @samp{MR_Char *}.
-
-Mercury variables of type @code{int}, @code{float}, @code{char}, or
-@code{string} are passed to and from C as C variables whose type is
-given by the corresponding typedef. 
-
-For the Mercury standard library type @samp{bool.bool}, there is a 
-corresponding C type, @code{MR_bool}.  C code can refer to the boolean 
-data constructors @samp{yes} and @samp{no}, as @code{MR_YES} and
-@code{MR_NO} respectively.
-
-Mercury variables of a type for which there is a C @samp{pragma foreign_type}
-declaration (@pxref{Using foreign types from Mercury}) will be passed as
-the corresponding C type.
-
-Mercury variables of any other type
-are passed as a @samp{MR_Word}, which in the current implementation
-is a typedef for an unsigned type whose size is the same size as a pointer.
-(Note: it would in fact be better for each Mercury type to map to a distinct
-abstract type in C, since that would be more type-safe, and thus we may
-change this in a future release.  We advise programmers who are manipulating
-Mercury types in C code to use typedefs for each user-defined Mercury type,
-and to treat each such type as an abstract data type.  This is good style
-and it will also minimize any compatibility problems if and when we do change
-this.)
-
-Mercury arguments declared with input modes are passed by value to the
-C function.
-For output arguments,
-the Mercury implementation will pass to the C function an address in
-which to store the result. 
-If the Mercury procedure can fail,
-then its C function should return a truth value of type
-@samp{MR_Integer} indicating success or failure:
-non-zero indicates success, and zero indicates failure.
-If the Mercury procedure is a Mercury function that cannot fail,
-and the function result has an output mode,
-then the C function should return the Mercury function result value.
-Otherwise the function result is appended as an extra argument.
-Arguments of type @samp{io.state} or @samp{store.store(_)} are not
-passed at all.
-(The reason for this is that these types represent mutable state,
-and in C modifications to mutable state are done via side effects,
-rather than argument passing.)
-
-@c For the Managed C++ interface, the types are mapped slightly differently:
-@c Mercury variables which are polymorphically typed
-@c have type @samp{MR_Box} rather than @samp{MR_Word}.
-@c XXX We should document the Managed C++ interface somewhere.
-
-Mercury lists can be manipulated by C code using the following macros,
-which are defined by the Mercury implementation.
-
-@example
-MR_list_is_empty(list)     /* test if a list is empty */
-MR_list_head(list)         /* get the head of a list */
-MR_list_tail(list)         /* get the tail of a list */
-MR_list_empty()            /* create an empty list */
-MR_list_cons(head,tail)    /* construct a list with the given head and tail */
-@end example
-
-Note that the use of these macros is subject to some caveats
-(@pxref{Memory management}).
+This is documented in @ref{C data passing conventions}.
 
 @node Using C pointers
 @section Using C pointers
