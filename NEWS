@@ -61,7 +61,8 @@ Changes to the Mercury compiler:
   consistent with any of the types in scope.
 
 Portability Improvements:
-* We've ported Mercury to the x86_64 (AMD64 / Intel EMT64) architecure.
+* We have made the implementation compatible with gcc 4.1.
+* We have ported Mercury to the x86_64 (AMD64 / Intel EMT64) architecure.
 
 Changes to the Mercury debugger:
 * Users can now see a listing of the source code lines referred to by the
