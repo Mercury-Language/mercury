@@ -2113,7 +2113,14 @@ tabling_reset_pred_name(SimpleCallId, ProcId, SingleProc) =
 :- func tabling_pred_name(string, simple_call_id, proc_id, bool) = sym_name.
 
 tabling_pred_name(Prefix, SimpleCallId, ProcId, SingleProc) = NewSymName :-
-    SimpleCallId = simple_call_id(_PorF, SymName, Arity),
+    SimpleCallId = simple_call_id(PorF, SymName, Arity0),
+    (
+        PorF = predicate,
+        Arity = Arity0
+    ;
+        PorF = function,
+        Arity = Arity0 - 1
+    ),
     (
         SymName = qualified(ModuleName, Name),
         MaybeModuleName = yes(ModuleName)
