@@ -4751,8 +4751,8 @@ This constructs a new mutable variable with access predicates that have the
 following signatures:
 
 @example
-:- semipure get_varname(vartype::out(varinst)) is det.
-:- impure   set_varname(vartype::in(varinst)) is det.
+:- semipure pred get_varname(vartype::out(varinst)) is det.
+:- impure   pred set_varname(vartype::in(varinst)) is det.
 @end example
 
 The initial value of @samp{varname} is @samp{initial_value}, which is set
@@ -4790,10 +4790,10 @@ that have the following signatures:
 This attribute causes the compiler to construct
 only a @samp{get} access predicate, but not a @samp{set} access predicate.
 Since @samp{varname} will always have the initial value given to it,
-the @samp{get} access predicate is pure; its signature will be
+the @samp{get} access predicate is pure; its signature will be:
 
 @example
-:- get_varname(vartype::out(varinst)) is det.
+:- pred get_varname(vartype::out(varinst)) is det.
 @end example
 
 The @samp{constant} attribute cannot be specified together with
