@@ -233,7 +233,7 @@
             % out before we construct the HLDS.  But we can't
             % do that for bi-implications, because if expansion
             % of bi-implications is done before implicit quantification,
-            % then the quantification would be wrong
+            % then the quantification would be wrong.
             %
     --->    bi_implication(hlds_goal, hlds_goal).
 
