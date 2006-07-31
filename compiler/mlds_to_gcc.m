@@ -186,6 +186,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module set.
 :- import_module solutions.
 :- import_module string.
 :- import_module term.
@@ -835,7 +836,9 @@ gen_defn_body(Name, Context, Flags, DefnBody, GlobalInfo0, GlobalInfo) -->
 		{ GlobalInfo = GlobalInfo0 ^ global_vars := GlobalVars }
 	;
 		{ DefnBody = mlds_function(_MaybePredProcId, Signature,
-			FunctionBody, _Attributes) },
+			FunctionBody, _Attributes, EnvVarNames) },
+		{ expect(set.empty(EnvVarNames), this_file,
+			"gen_defn_body: EnvVarNames") },
 		gen_func(Name, Context, Flags, Signature, FunctionBody,
 			GlobalInfo0, GlobalInfo)
 	;
@@ -855,7 +858,7 @@ build_local_defn_body(Name, DefnInfo, _Context, Flags, DefnBody, GCC_Defn) -->
 		build_local_data_defn(Name, Flags, Type,
 			Initializer, DefnInfo, GCC_Defn)
 	;
-		{ DefnBody = mlds_function(_, _, _, _) },
+		{ DefnBody = mlds_function(_, _, _, _, _) },
 		% nested functions should get eliminated by ml_elim_nested,
 		% unless --gcc-nested-functions is enabled.
 		% XXX --gcc-nested-functions is not yet implemented
@@ -883,7 +886,7 @@ build_field_defn_body(Name, _Context, Flags, DefnBody, GlobalInfo,
 			GCC_Defn),
 		add_field_decl_flags(Flags, GCC_Defn)
 	;
-		{ DefnBody = mlds_function(_, _, _, _) },
+		{ DefnBody = mlds_function(_, _, _, _, _) },
 		{ unexpected(this_file, "function nested in type") }
 	;
 		{ DefnBody = mlds_class(_) },
@@ -3296,6 +3299,9 @@ build_lval(field(MaybeTag, PtrRval, named_field(FieldName, CtorType),
 build_lval(mem_ref(PointerRval, _Type), DefnInfo, Expr) -->
 	build_rval(PointerRval, DefnInfo, PointerExpr),
 	gcc__build_pointer_deref(PointerExpr, Expr).
+
+build_lval(global_var_ref(_), _DefnInfo, _Expr) -->
+	{ sorry(this_file, "build_lval: global_var_ref NYI") }.
 
 build_lval(var(qual(ModuleName, QualKind, VarName), _VarType), DefnInfo,
 		Expr) -->

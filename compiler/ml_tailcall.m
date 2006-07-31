@@ -141,7 +141,8 @@ mark_tailcalls_in_defns(Defns) = list.map(mark_tailcalls_in_defn, Defns).
 mark_tailcalls_in_defn(Defn0) = Defn :-
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     (
-        DefnBody0 = mlds_function(PredProcId, Params, FuncBody0, Attributes),
+        DefnBody0 = mlds_function(PredProcId, Params, FuncBody0, Attributes,
+            EnvVarNames),
         % Compute the initial value of the `Locals' and `AtTail' arguments.
         Params = mlds_func_params(Args, RetTypes),
         Locals = [params(Args)],
@@ -153,7 +154,8 @@ mark_tailcalls_in_defn(Defn0) = Defn :-
             AtTail = no
         ),
         FuncBody = mark_tailcalls_in_function_body(FuncBody0, AtTail, Locals),
-        DefnBody = mlds_function(PredProcId, Params, FuncBody, Attributes),
+        DefnBody = mlds_function(PredProcId, Params, FuncBody, Attributes,
+            EnvVarNames),
         Defn = mlds_defn(Name, Context, Flags, DefnBody)
     ;
         DefnBody0 = mlds_data(_, _, _),
@@ -546,7 +548,7 @@ nontailcall_in_defn(ModuleName, Defn, Warning) :-
     Defn = mlds_defn(Name, _Context, _Flags, DefnBody),
     (
         DefnBody = mlds_function(_PredProcId, _Params, FuncBody,
-            _Attributes),
+            _Attributes, _EnvVarNames),
         FuncBody = body_defined_here(Body),
         nontailcall_in_statement(ModuleName, Name, Body, Warning)
     ;

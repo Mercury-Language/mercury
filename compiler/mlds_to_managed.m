@@ -76,6 +76,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module set.
 :- import_module string.
 :- import_module term.
 
@@ -354,10 +355,12 @@ generate_method_code(Lang, _ModuleName, Defn, !IO) :-
     (
         % XXX we ignore the attributes
         Entity = mlds_function(_, Params, body_defined_here(Statement),
-            _Attributes),
+            _Attributes, EnvVarNames),
         has_foreign_languages(Statement, Langs),
         list.member(Lang, Langs)
     ->
+        expect(set.empty(EnvVarNames), this_file,
+            "generate_method_code: EnvVarNames"),
         get_il_data_rep(DataRep, !IO),
         Params = mlds_func_params(Inputs, Outputs),
         (
@@ -684,6 +687,8 @@ write_lval(Lang, mem_ref(Rval, _), !IO) :-
         Lang = lang_csharp
     ),
     write_rval(Lang, Rval, !IO).
+write_lval(_Lang, global_var_ref(_), !IO) :-
+    sorry(this_file, "write_lval: global_var_ref NYI").
 write_lval(_Lang, var(Var, _VarType), !IO) :-
     Var = qual(_, _, VarName),
     write_mlds_var_name_for_parameter(VarName, !IO).

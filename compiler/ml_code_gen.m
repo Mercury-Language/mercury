@@ -1426,7 +1426,8 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcDefnBody, ExtraDefns) :-
             Decls = list.append(MLDS_LocalVars, Decls0),
             Statement = ml_gen_block(Decls, Statements, Context),
             FunctionBody = body_defined_here(Statement)
-        )
+        ),
+        ml_gen_info_get_env_vars(!.Info, EnvVarNames)
     ),
 
     pred_info_get_attributes(PredInfo, Attributes),
@@ -1435,7 +1436,7 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcDefnBody, ExtraDefns) :-
     MLDS_Attributes = attributes_to_mlds_attributes(ModuleInfo, AttributeList),
 
     ProcDefnBody = mlds_function(yes(proc(PredId, ProcId)), MLDS_Params,
-        FunctionBody, MLDS_Attributes).
+        FunctionBody, MLDS_Attributes, EnvVarNames).
 
     % For model_det and model_semi procedures, figure out which output
     % variables are returned by value (rather than being passed by reference)
@@ -2231,8 +2232,6 @@ ml_gen_goal_expr(unify(_LHS, _RHS, _Mode, Unification, _UnifyContext),
 ml_gen_goal_expr(call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
         MaybeTraceRuntimeCond, PragmaImpl), CodeModel, OuterContext,
         Decls, Statements, !Info) :-
-    require(unify(MaybeTraceRuntimeCond, no),
-        "ml_gen_goal_expr: MaybeTraceRuntimeCond NYI"),
     (
         PragmaImpl = fc_impl_ordinary(ForeignCode, MaybeContext),
         (
@@ -2241,15 +2240,24 @@ ml_gen_goal_expr(call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
             MaybeContext = no,
             Context = OuterContext
         ),
-        ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
-            PredId, ProcId, Args, ExtraArgs, ForeignCode,
-            Context, Decls, Statements, !Info)
+        (
+            MaybeTraceRuntimeCond = no,
+            ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
+                PredId, ProcId, Args, ExtraArgs, ForeignCode,
+                Context, Decls, Statements, !Info)
+        ;
+            MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
+            ml_gen_trace_runtime_cond(TraceRuntimeCond, Context,
+                Decls, Statements, !Info)
+        )
     ;
         PragmaImpl = fc_impl_model_non(LocalVarsDecls, LocalVarsContext,
             FirstCode, FirstContext, LaterCode, LaterContext,
             _Treatment, SharedCode, SharedContext),
         expect(unify(ExtraArgs, []), this_file,
             "ml_gen_goal_expr: extra args"),
+        expect(unify(MaybeTraceRuntimeCond, no), this_file,
+            "ml_gen_goal_expr: MaybeTraceRuntimeCond"),
         ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes,
             PredId, ProcId, Args, OuterContext,
             LocalVarsDecls, LocalVarsContext,
@@ -2259,6 +2267,8 @@ ml_gen_goal_expr(call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
         PragmaImpl = fc_impl_import(Name, HandleReturn, Vars, _Context),
         expect(unify(ExtraArgs, []), this_file,
             "ml_gen_goal_expr: extra args"),
+        extra(unify(MaybeTraceRuntimeCond, no), this_file,
+            "ml_gen_goal_expr: MaybeTraceRuntimeCond"),
         ForeignCode = string.append_list([HandleReturn, " ",
             Name, "(", Vars, ");"]),
         ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes,
@@ -2453,6 +2463,43 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
         Ending_C_Code_Statement]
     ]),
     Decls = ConvDecls.
+
+:- pred ml_gen_trace_runtime_cond(trace_expr(trace_runtime)::in,
+    term.context::in, mlds_defns::out, statements::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_trace_runtime_cond(TraceRuntimeCond, Context, Decls, Statements,
+        !Info) :-
+    Decls = [],
+    MLDSContext = mlds_make_context(Context),
+    ml_success_lval(!.Info, SuccessLval),
+    ml_generate_runtime_cond_code(TraceRuntimeCond, CondRval, !Info),
+    Statement = statement(atomic(assign(SuccessLval, CondRval)), MLDSContext),
+    Statements = [Statement].
+
+:- pred ml_generate_runtime_cond_code(trace_expr(trace_runtime)::in,
+    mlds_rval::out, ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_generate_runtime_cond_code(Expr, CondRval, !Info) :-
+    (
+        Expr = trace_base(trace_envvar(EnvVar)),
+        ml_gen_info_add_env_var_name(EnvVar, !Info),
+        EnvVarRval = lval(global_var_ref(env_var_ref(EnvVar))),
+        ZeroRval = const(int_const(0)),
+        CondRval = binop(ne, EnvVarRval, ZeroRval)
+    ;
+        Expr = trace_op(TraceOp, ExprA, ExprB),
+        ml_generate_runtime_cond_code(ExprA, RvalA, !Info),
+        ml_generate_runtime_cond_code(ExprB, RvalB, !Info),
+        (
+            TraceOp = trace_or,
+            Op = logical_or
+        ;
+            TraceOp = trace_and,
+            Op = logical_and
+        ),
+        CondRval = binop(Op, RvalA, RvalB)
+    ).
 
 :- pred ml_gen_ordinary_pragma_foreign_proc(code_model::in,
     pragma_foreign_proc_attributes::in, pred_id::in, proc_id::in,

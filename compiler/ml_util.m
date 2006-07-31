@@ -499,7 +499,7 @@ has_foreign_languages(Statement, Langs) :-
 
 defn_contains_foreign_code(NativeTargetLang, Defn) :-
     Defn = mlds_defn(_Name, _Context, _Flags, Body),
-    Body = mlds_function(_, _, body_defined_here(FunctionBody), _),
+    Body = mlds_function(_, _, body_defined_here(FunctionBody), _, _),
     statement_contains_statement(FunctionBody, Statement),
     Statement = statement(Stmt, _),
     (
@@ -511,7 +511,7 @@ defn_contains_foreign_code(NativeTargetLang, Defn) :-
 
 defn_contains_outline_foreign_proc(ForeignLang, Defn) :-
     Defn = mlds_defn(_Name, _Context, _Flags, Body),
-    Body = mlds_function(_, _, body_defined_here(FunctionBody), _),
+    Body = mlds_function(_, _, body_defined_here(FunctionBody), _, _),
     statement_contains_statement(FunctionBody, Statement),
     Statement = statement(Stmt, _),
     Stmt = atomic(outline_foreign_proc(ForeignLang, _, _, _)).
@@ -561,7 +561,7 @@ defn_contains_var(mlds_defn(_Name, _Context, _Flags, DefnBody), Name) :-
 defn_body_contains_var(mlds_data(_Type, Initializer, _GC_TraceCode), Name) :-
     initializer_contains_var(Initializer, Name).
 defn_body_contains_var(mlds_function(_PredProcId, _Params, FunctionBody,
-        _Attrs), Name) :-
+        _Attrs, _EnvVarNames), Name) :-
     function_body_contains_var(FunctionBody, Name).
 defn_body_contains_var(mlds_class(ClassDefn), Name) :-
     ClassDefn = mlds_class_defn(_Kind, _Imports, _Inherits, _Implements,

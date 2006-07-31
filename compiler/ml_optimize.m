@@ -91,13 +91,15 @@ optimize_in_defns(Defns, Globals, ModuleName) =
 optimize_in_defn(ModuleName, Globals, Defn0) = Defn :-
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     (
-        DefnBody0 = mlds_function(PredProcId, Params, FuncBody0, Attributes),
+        DefnBody0 = mlds_function(PredProcId, Params, FuncBody0, Attributes,
+            EnvVarNames),
         OptInfo = opt_info(Globals, ModuleName, Name, Params, Context),
 
         FuncBody1 = optimize_func(OptInfo, FuncBody0),
         FuncBody = optimize_in_function_body(OptInfo, FuncBody1),
 
-        DefnBody = mlds_function(PredProcId, Params, FuncBody, Attributes),
+        DefnBody = mlds_function(PredProcId, Params, FuncBody, Attributes,
+            EnvVarNames),
         Defn = mlds_defn(Name, Context, Flags, DefnBody)
     ;
         DefnBody0 = mlds_data(_, _, _),
@@ -918,9 +920,9 @@ eliminate_var_in_defn(Defn0, Defn, !VarElimInfo) :-
         % in the containing scope.
         DefnBody = DefnBody0
     ;
-        DefnBody0 = mlds_function(Id, Params, Body0, Attributes),
+        DefnBody0 = mlds_function(Id, Params, Body0, Attributes, EnvVarNames),
         eliminate_var_in_function_body(Body0, Body, !VarElimInfo),
-        DefnBody = mlds_function(Id, Params, Body, Attributes)
+        DefnBody = mlds_function(Id, Params, Body, Attributes, EnvVarNames)
     ),
     Defn = mlds_defn(Name, Context, Flags, DefnBody).
 
@@ -1024,6 +1026,9 @@ eliminate_var_in_lval(Lval0, Lval, !VarElimInfo) :-
         Lval0 = mem_ref(Rval0, Type),
         eliminate_var_in_rval(Rval0, Rval, !VarElimInfo),
         Lval = mem_ref(Rval, Type)
+    ;
+        Lval0 = global_var_ref(_Ref),
+        Lval = Lval0
     ;
         Lval0 = var(VarName, _Type),
         ( VarName = !.VarElimInfo ^ var_name ->

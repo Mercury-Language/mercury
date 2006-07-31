@@ -232,6 +232,8 @@ mlds_lval_type(mem_ref(_, PtrType)) =
     ;
         unexpected(this_file, "mlds_lval_type: mem_ref of non-pointer")
     ).
+mlds_lval_type(global_var_ref(_)) = _ :-
+    sorry(this_file, "mlds_lval_type: global_var_ref NYI").
 
     % Succeeds iff the Rval represents an integer constant.
     %
@@ -587,7 +589,7 @@ find_pointer_addressed_methods([Defn | Defns], !CodeAddrs) :-
     list(mlds_code_addr)::in, list(mlds_code_addr)::out) is det.
 
 method_ptrs_in_entity_defn(mlds_function(_MaybeID, _Params, Body,
-        _Attributes), !CodeAddrs) :-
+        _Attributes, _EnvVars), !CodeAddrs) :-
     (
         Body = body_defined_here(Statement),
         method_ptrs_in_statement(Statement, !CodeAddrs)
@@ -773,6 +775,7 @@ method_ptrs_in_lval(mem_ref(_Rval, _Type), !CodeAddrs).
 method_ptrs_in_lval(field(_MaybeTag, _Rval, _FieldId, _FieldType,
         _PtrType), !CodeAddrs).
 method_ptrs_in_lval(var(_Variable, _Type), !CodeAddrs).
+method_ptrs_in_lval(global_var_ref(_), !CodeAddrs).
 
 %-----------------------------------------------------------------------------%
 %
@@ -947,8 +950,9 @@ generate_call_method(CodeAddr, MethodDefn) :-
     MethodParams = mlds_func_params(MethodArgs, MethodRets),
     MethodMaybeID = no,
     MethodAttribs = [],
+    MethodEnvVarNames = set.init,
     MethodBody   = mlds_function(MethodMaybeID, MethodParams,
-        body_defined_here(Statements), MethodAttribs),
+        body_defined_here(Statements), MethodAttribs, MethodEnvVarNames),
     MethodFlags  = ml_gen_special_member_decl_flags,
     MethodDefn   = mlds_defn(MethodName, Context, MethodFlags, MethodBody).
 
@@ -1172,7 +1176,7 @@ output_defns(Indent, ModuleInfo, ModuleName, CtorData, Defns, !IO) :-
 output_defn(Indent, ModuleInfo, ModuleName, CtorData, Defn, !IO) :-
     Defn = mlds_defn(Name, Context, Flags, DefnBody),
     indent_line(Context, Indent, !IO),
-    ( DefnBody = mlds_function(_, _, body_external, _) ->
+    ( DefnBody = mlds_function(_, _, body_external, _, _) ->
         % This is just a function declaration, with no body.
         % Java doesn't support separate declarations and definitions,
         % so just output the declaration as a comment.
@@ -1200,7 +1204,9 @@ output_defn_body(_, ModuleInfo, Name, _, _, mlds_data(Type, Initializer, _),
     output_data_defn(ModuleInfo, Name, Type, Initializer, !IO).
 output_defn_body(Indent, ModuleInfo, Name, CtorData, Context,
         mlds_function(MaybePredProcId, Signature, MaybeBody,
-        _Attributes), !IO) :-
+        _Attributes, EnvVarNames), !IO) :-
+    expect(set.empty(EnvVarNames), this_file,
+        "output_defn_body: EnvVarNames"),
     output_maybe(MaybePredProcId, output_pred_proc_id, !IO),
     output_func(Indent, ModuleInfo, Name, CtorData, Context, Signature,
         MaybeBody, !IO).
@@ -2962,6 +2968,9 @@ output_lval(ModuleInfo,
 
 output_lval(ModuleInfo, mem_ref(Rval, _Type), ModuleName, !IO) :-
     output_bracketed_rval(ModuleInfo, Rval, ModuleName, !IO).
+
+output_lval(_ModuleInfo, global_var_ref(_), _ModuleName, !IO) :-
+    sorry(this_file, "output_lval: global_var_ref NYI").
 
 output_lval(_, var(qual(ModName, QualKind, Name), _), CurrentModuleName,
         !IO) :-

@@ -5228,7 +5228,8 @@ output_lval_for_assign(global_var_ref(GlobalVar), word, !IO) :-
 
 % The calls to env_var_is_acceptable_char in prog_io_goal.m  ensure that
 % EnvVarName is acceptable as part of a C identifier.
-% The prefix must be identical to envvar_prefix in util/mkinit.c.
+% The prefix must be identical to envvar_prefix in util/mkinit.c and
+% global_var_name in mlds_to_c.m.
 c_global_var_name(env_var_ref(EnvVarName)) = "mercury_envvar_" ++ EnvVarName.
 
 %-----------------------------------------------------------------------------%

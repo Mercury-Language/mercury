@@ -32,6 +32,7 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 %
@@ -724,6 +725,16 @@
     %
 :- pred ml_gen_info_get_extra_defns(ml_gen_info::in, mlds_defns::out) is det.
 
+    % Add the given string as the name of an environment variable used by
+    % the function being generated.
+    %
+:- pred ml_gen_info_add_env_var_name(string::in,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+    % Get the names of the used environment variables.
+    %
+:- pred ml_gen_info_get_env_vars(ml_gen_info::in, set(string)::out) is det.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -750,7 +761,6 @@
 
 :- import_module counter.
 :- import_module pair.
-:- import_module set.
 :- import_module stack.
 :- import_module string.
 :- import_module term.
@@ -933,8 +943,9 @@ ml_gen_label_func(Info, FuncLabel, FuncParams, Context, Statement, Func) :-
     DeclFlags = ml_gen_label_func_decl_flags,
     MaybePredProcId = no,
     Attributes = [],
+    EnvVarNames = set.init,
     FuncDefn = mlds_function(MaybePredProcId, FuncParams,
-        body_defined_here(Statement), Attributes),
+        body_defined_here(Statement), Attributes, EnvVarNames),
     Func = mlds_defn(FuncName, mlds_make_context(Context), DeclFlags,
         FuncDefn).
 
@@ -1822,7 +1833,7 @@ ml_gen_call_current_success_cont_indirectly(Context, Statement, !Info) :-
     (
         Defn = mlds_defn(EntityName, _, _, EntityDefn),
         EntityName = entity_function(PredLabel, ProcId, yes(SeqNum), _),
-        EntityDefn = mlds_function(_, _, body_defined_here(_), _)
+        EntityDefn = mlds_function(_, _, body_defined_here(_), _, _)
     ->
         % We call the proxy function.
         ProcLabel = mlds_proc_label(PredLabel, ProcId),
@@ -2390,7 +2401,8 @@ maybe_tag_rval(yes(Tag), Type, Rval) = unop(cast(Type), mkword(Tag, Rval)).
                                     % constants which should be inserted
                                     % before the definition of the function
                                     % for the current procedure.
-                extra_defns         :: mlds_defns
+                extra_defns         :: mlds_defns,
+                env_var_names       :: set(string)
             ).
 
 ml_gen_info_init(ModuleInfo, PredId, ProcId) = Info :-
@@ -2421,6 +2433,7 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = Info :-
     stack.init(SuccContStack),
     map.init(VarLvals),
     ExtraDefns = [],
+    EnvVarNames = set.init,
 
     Info = ml_gen_info(
             ModuleInfo,
@@ -2439,7 +2452,8 @@ ml_gen_info_init(ModuleInfo, PredId, ProcId) = Info :-
             ConstNumMap,
             SuccContStack,
             VarLvals,
-            ExtraDefns
+            ExtraDefns,
+            EnvVarNames
         ).
 
 ml_gen_info_get_module_info(Info, Info ^ module_info).
@@ -2546,6 +2560,13 @@ ml_gen_info_add_extra_defn(ExtraDefn, !Info) :-
     !:Info = !.Info ^ extra_defns := [ExtraDefn | !.Info ^ extra_defns].
 
 ml_gen_info_get_extra_defns(Info, Info ^ extra_defns).
+
+ml_gen_info_add_env_var_name(Name, !Info) :-
+    EnvVarNames0 = !.Info ^ env_var_names,
+    set.insert(EnvVarNames0, Name, EnvVarNames),
+    !:Info = !.Info ^ env_var_names := EnvVarNames.
+
+ml_gen_info_get_env_vars(Info, Info ^ env_var_names).
 
 %-----------------------------------------------------------------------------%
 

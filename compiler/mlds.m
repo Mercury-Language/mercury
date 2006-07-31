@@ -347,6 +347,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module set.
 
 %-----------------------------------------------------------------------------%
 
@@ -568,9 +569,11 @@
 
                 maybe(pred_proc_id),    % Identifies the original
                                         % Mercury procedure, if any.
-                mlds_func_params,      % The arguments & return types.
-                mlds_function_body,    % The function body.
-                list(mlds_attribute)   % Attributes.
+                mlds_func_params,       % The arguments & return types.
+                mlds_function_body,     % The function body.
+                list(mlds_attribute),   % Attributes.
+                set(string)             % The set of environment variables
+                                        % referred to by the function body.
             )
     ;       mlds_class(
                 % Represents packages, classes, interfaces, structs, enums.
@@ -1476,6 +1479,17 @@
                 mlds_type
             )
 
+    ;       global_var_ref(
+                % A reference to the value of the global variable in the target
+                % language with the given name. At least for now, the global
+                % variable's type must be mlds_generic_type.
+                %
+                % XXX This functionality is currently only supported for
+                % the C backend.
+
+                global_var_ref
+            )
+
     % Variables.
     % These may be local or they may come from some enclosing scope
     % the variable name should be fully qualified.
@@ -1484,6 +1498,9 @@
                 mlds_var,
                 mlds_type
             ).
+
+:- type global_var_ref
+    --->    env_var_ref(string).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1704,7 +1721,7 @@
 
 %-----------------------------------------------------------------------------%
 
-mlds_get_module_name(mlds(ModuleName, _, _, _, _, _)) = ModuleName.
+mlds_get_module_name(MLDS) = MLDS ^ name.
 
 %-----------------------------------------------------------------------------%
 

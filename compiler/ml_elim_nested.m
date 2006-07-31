@@ -460,6 +460,7 @@
 :- import_module list.
 :- import_module pair.
 :- import_module maybe.
+:- import_module set.
 :- import_module solutions.
 :- import_module string.
 
@@ -502,7 +503,7 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0) = Defns :-
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     (
         DefnBody0 = mlds_function(PredProcId, Params0,
-            body_defined_here(FuncBody0), Attributes),
+            body_defined_here(FuncBody0), Attributes, EnvVarNames),
         % Don't add GC tracing code to the gc_trace/1 primitive!
         % (Doing so would just slow things down unnecessarily.)
         \+ (
@@ -653,7 +654,7 @@ ml_elim_nested_defns(Action, ModuleName, Globals, OuterVars, Defn0) = Defns :-
         ),
         Params = mlds_func_params(Arguments, RetValues),
         DefnBody = mlds_function(PredProcId, Params,
-            body_defined_here(FuncBody), Attributes),
+            body_defined_here(FuncBody), Attributes, EnvVarNames),
         Defn = mlds_defn(Name, Context, Flags, DefnBody),
         Defns = list.append(HoistedDefns, [Defn])
     ;
@@ -1011,8 +1012,9 @@ gen_gc_trace_func(FuncName, PredModule, FramePointerDecl, GCTraceStatements,
     DeclFlags = ml_gen_gc_trace_func_decl_flags,
     MaybePredProcId = no,
     Attributes = [],
+    EnvVarNames = set.init,
     FuncDefn = mlds_function(MaybePredProcId, FuncParams,
-        body_defined_here(Statement), Attributes),
+        body_defined_here(Statement), Attributes, EnvVarNames),
     GCTraceFuncDefn = mlds_defn(GCTraceFuncName, Context, DeclFlags,
         FuncDefn).
 
@@ -1101,7 +1103,7 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals, Defn0, Defn,
     Defn0 = mlds_defn(Name, Context, Flags, DefnBody0),
     (
         DefnBody0 = mlds_function(PredProcId, Params,
-            body_defined_here(FuncBody0), Attributes),
+            body_defined_here(FuncBody0), Attributes, EnvVarNames),
         statement_contains_var(FuncBody0, qual(ModuleName, module_qual,
             var(mlds_var_name("env_ptr", no))))
     ->
@@ -1119,7 +1121,7 @@ ml_insert_init_env(Action, TypeName, ModuleName, Globals, Defn0, Defn,
         FuncBody = statement(block([EnvPtrDecl],
             [InitEnvPtr, FuncBody0]), Context),
         DefnBody = mlds_function(PredProcId, Params,
-            body_defined_here(FuncBody), Attributes),
+            body_defined_here(FuncBody), Attributes, EnvVarNames),
         Defn = mlds_defn(Name, Context, Flags, DefnBody),
         Init = yes
     ;
@@ -1541,7 +1543,8 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
         Defns, InitStatements, !Info) :-
     Defn0 = mlds_defn(Name, Context, Flags0, DefnBody0),
     (
-        DefnBody0 = mlds_function(PredProcId, Params, FuncBody0, Attributes),
+        DefnBody0 = mlds_function(PredProcId, Params, FuncBody0, Attributes,
+            EnvVarNames),
         % Recursively flatten the nested function.
         flatten_function_body(FuncBody0, FuncBody, !Info),
 
@@ -1555,7 +1558,8 @@ flatten_nested_defn(Defn0, FollowingDefns, FollowingStatements,
         ;
             Flags = Flags0
         ),
-        DefnBody = mlds_function(PredProcId, Params, FuncBody, Attributes),
+        DefnBody = mlds_function(PredProcId, Params, FuncBody, Attributes,
+            EnvVarNames),
         Defn = mlds_defn(Name, Context, Flags, DefnBody),
         ( Action = hoist_nested_funcs ->
             % Note that we assume that we can safely hoist stuff inside nested
@@ -1685,7 +1689,7 @@ ml_need_to_hoist(ModuleName, DataName,
         statements_contains_defn(FollowingStatements, FollowingDefn)
     ),
     (
-        FollowingDefn = mlds_defn(_, _, _, mlds_function(_, _, _, _)),
+        FollowingDefn = mlds_defn(_, _, _, mlds_function(_, _, _, _, _)),
         defn_contains_var(FollowingDefn, QualDataName)
     ;
         FollowingDefn = mlds_defn(_, _, _, mlds_data(_, Initializer, _)),
@@ -1862,6 +1866,7 @@ fixup_lval(field(MaybeTag, Rval0, FieldId, FieldType, PtrType),
     fixup_rval(Rval0, Rval, !Info).
 fixup_lval(mem_ref(Rval0, Type), mem_ref(Rval, Type), !Info) :-
     fixup_rval(Rval0, Rval, !Info).
+fixup_lval(global_var_ref(Ref), global_var_ref(Ref), !Info).
 fixup_lval(var(Var0, VarType), VarLval, !Info) :-
     fixup_var(Var0, VarType, VarLval, !Info).
 
@@ -2026,7 +2031,7 @@ defn_contains_defn(mlds_defn(_Name, _Context, _Flags, DefnBody), Defn) :-
 
 % defn_body_contains_defn(mlds_data(_Type, _Initializer, _), _Defn) :- fail.
 defn_body_contains_defn(mlds_function(_PredProcId, _Params, FunctionBody,
-        _Attrs), Name) :-
+        _Attrs, _EnvVarNames), Name) :-
     function_body_contains_defn(FunctionBody, Name).
 defn_body_contains_defn(mlds_class(ClassDefn), Name) :-
     ClassDefn = mlds_class_defn(_Kind, _Imports, _Inherits, _Implements,

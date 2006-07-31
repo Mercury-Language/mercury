@@ -263,7 +263,7 @@ static int          mercury_env_var_next = 0;
 
 /*
 ** This should be kept in sync with the code of c_global_var_name
-** in llds_out.m.
+** in llds_out.m and global_var_name in mlds_to_c.m.
 */
 const char  *envvar_prefix = "mercury_envvar_";
 

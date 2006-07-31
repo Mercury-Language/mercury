@@ -108,6 +108,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module set.
 :- import_module solutions.
 :- import_module string.
 :- import_module term.
@@ -259,14 +260,18 @@ mlds_output_src_file(Indent, MLDS, !IO) :-
         InitPreds, FinalPreds),
 
     ForeignCode = mlds_get_c_foreign_code(AllForeignCode),
+    EnvVarNameSet = mlds_get_env_var_names(Defns),
+    set.to_sorted_list(EnvVarNameSet, EnvVarNames),
     mlds_output_src_start(Indent, ModuleName, ForeignCode,
-        InitPreds, FinalPreds, !IO),
+        InitPreds, FinalPreds, EnvVarNames, !IO),
     io.nl(!IO),
     mlds_output_src_imports(Indent, Imports, !IO),
     io.nl(!IO),
 
     mlds_output_c_decls(Indent, ForeignCode, !IO),
     io.nl(!IO),
+
+    list.foldl(mlds_output_env_var_decl, EnvVarNames, !IO),
 
     % The public types have already been defined in the header file, and the
     % public vars, consts, and functions have already been declared in the
@@ -290,8 +295,8 @@ mlds_output_src_file(Indent, MLDS, !IO) :-
         PrivateNonTypeDefns),
     list.filter(defn_is_type, Defns, _TypeDefns, NonTypeDefns),
     list.filter(defn_is_function, NonTypeDefns, FuncDefns),
-    list.filter(defn_is_type_ctor_info, NonTypeDefns,
-        TypeCtorInfoDefns),
+    list.filter(defn_is_type_ctor_info, NonTypeDefns, TypeCtorInfoDefns),
+
     MLDS_ModuleName = mercury_module_name_to_mlds(ModuleName),
     mlds_output_defns(Indent, yes, MLDS_ModuleName, PrivateTypeDefns, !IO),
     io.nl(!IO),
@@ -308,6 +313,25 @@ mlds_output_src_file(Indent, MLDS, !IO) :-
     mlds_output_grade_var(!IO),
     io.nl(!IO),
     mlds_output_src_end(Indent, ModuleName, !IO).
+
+:- func mlds_get_env_var_names(mlds_defns) = set(string).
+
+mlds_get_env_var_names(Defns) = EnvVarNameSet :-
+    list.filter_map(mlds_get_env_var_names_from_defn, Defns, EnvVarNameSets),
+    EnvVarNameSet = set.union_list(EnvVarNameSets).
+
+:- pred mlds_get_env_var_names_from_defn(mlds_defn::in, set(string)::out)
+    is semidet.
+
+mlds_get_env_var_names_from_defn(Defn, EnvVarNameSet) :-
+    Defn = mlds_defn(_, _, _, mlds_function(_, _, _, _, EnvVarNameSet)).
+
+:- pred mlds_output_env_var_decl(string::in, io::di, io::uo) is det.
+
+mlds_output_env_var_decl(EnvVarName, !IO) :-
+    io.write_string("extern MR_Word ", !IO),
+    io.write_string(global_var_name(env_var_ref(EnvVarName)), !IO),
+    io.write_string(";\n", !IO).
 
 :- pred mlds_output_hdr_start(indent::in, mercury_module_name::in,
     io::di, io::uo) is det.
@@ -353,10 +377,10 @@ mlds_output_hdr_start(Indent, ModuleName, !IO) :-
 
 :- pred mlds_output_src_start(indent::in, mercury_module_name::in,
     mlds_foreign_code::in, list(string)::in, list(string)::in,
-    io::di, io::uo) is det.
+    list(string)::in, io::di, io::uo) is det.
 
 mlds_output_src_start(Indent, ModuleName, ForeignCode, InitPreds, FinalPreds,
-        !IO) :-
+        EnvVarNames, !IO) :-
     mlds_output_auto_gen_comment(ModuleName, !IO),
     mlds_indent(Indent, !IO),
     io.write_string("/* :- module ", !IO),
@@ -367,7 +391,7 @@ mlds_output_src_start(Indent, ModuleName, ForeignCode, InitPreds, FinalPreds,
     mlds_output_src_bootstrap_defines(!IO),
     io.nl(!IO),
     mlds_output_init_and_final_comments(ModuleName, InitPreds, FinalPreds,
-        !IO),
+        EnvVarNames, !IO),
 
     mlds_output_src_import(Indent,
         mercury_import(compiler_visible_interface,
@@ -388,10 +412,11 @@ mlds_output_src_start(Indent, ModuleName, ForeignCode, InitPreds, FinalPreds,
     % predicates to call from <module>_init.c.
     %
 :- pred mlds_output_init_and_final_comments(mercury_module_name::in,
-    list(string)::in, list(string)::in, io::di, io::uo) is det.
+    list(string)::in, list(string)::in, list(string)::in, io::di, io::uo)
+    is det.
 
 mlds_output_init_and_final_comments(ModuleName,
-        UserInitPredCNames, UserFinalPredCNames, !IO) :-
+        UserInitPredCNames, UserFinalPredCNames, EnvVarNames, !IO) :-
     io.write_string("/*\n", !IO),
     % In profiling grades the module mercury__<modulename>__init predicate
     % is responsible for calling MR_init_entry, so the INIT comment must be
@@ -416,9 +441,17 @@ mlds_output_init_and_final_comments(ModuleName,
         output_init_name(ModuleName, !IO),
         io.write_string("required_final\n", !IO)
     ),
+    list.foldl(mlds_output_env_var_init, EnvVarNames, !IO),
     % We always write out ENDINIT so that mkinit doesn't scan the whole file.
     io.write_string("ENDINIT\n", !IO),
     io.write_string("*/\n\n", !IO).
+
+:- pred mlds_output_env_var_init(string::in, io::di, io::uo) is det.
+
+mlds_output_env_var_init(EnvVarName, !IO) :-
+    io.write_string("ENVVAR ", !IO),
+    io.write_string(EnvVarName, !IO),
+    io.nl(!IO).
 
     % Output any #defines which are required to bootstrap in the hlc
     % grade.
@@ -1204,7 +1237,7 @@ mlds_output_decl(Indent, ModuleName, Defn, !IO) :-
         globals.io_lookup_bool_option(highlevel_data, HighLevelData, !IO),
         (
             HighLevelData = yes,
-            DefnBody = mlds_function(_, Params, _, _)
+            DefnBody = mlds_function(_, Params, _, _, _)
         ->
             Params = mlds_func_params(Arguments, _RetTypes),
             ParamTypes = mlds_get_arg_types(Arguments),
@@ -1308,7 +1341,7 @@ mlds_output_decl_body(Indent, Name, Context, DefnBody, !IO) :-
             !IO)
     ;
         DefnBody = mlds_function(MaybePredProcId, Signature,
-            _MaybeBody, _Attrs),
+            _MaybeBody, _Attrs, _EnvVarNames),
         mlds_output_maybe(MaybePredProcId, mlds_output_pred_proc_id, !IO),
         mlds_output_func_decl(Indent, Name, Context, Signature, !IO)
     ;
@@ -1328,7 +1361,8 @@ mlds_output_defn_body(Indent, Name, Context, DefnBody, !IO) :-
             !IO)
     ;
         DefnBody = mlds_function(MaybePredProcId, Signature,
-            MaybeBody, _Attributes),
+            MaybeBody, _Attributes, _EnvVarNames),
+        % ZZZ
         mlds_output_maybe(MaybePredProcId, mlds_output_pred_proc_id, !IO),
         mlds_output_func(Indent, Name, Context, Signature, MaybeBody, !IO)
     ;
@@ -2360,7 +2394,7 @@ mlds_output_extern_or_static(Access, PerInstance, DeclOrDefn, Name, DefnBody,
         Name \= entity_type(_, _),
         % Don't output "static" for functions that don't have a body.
         % This can happen for Mercury procedures declared `:- external'
-        DefnBody \= mlds_function(_, _, body_external, _)
+        DefnBody \= mlds_function(_, _, body_external, _, _)
     ->
         io.write_string("static ", !IO)
     ;
@@ -3285,8 +3319,18 @@ mlds_output_lval(field(MaybeTag, PtrRval, named_field(FieldName, CtorType),
 mlds_output_lval(mem_ref(Rval, _Type), !IO) :-
     io.write_string("*", !IO),
     mlds_output_bracketed_rval(Rval, !IO).
+mlds_output_lval(global_var_ref(GobalVar), !IO) :-
+    io.write_string(global_var_name(GobalVar), !IO).
 mlds_output_lval(var(VarName, _VarType), !IO) :-
     mlds_output_var(VarName, !IO).
+
+:- func global_var_name(global_var_ref) = string.
+
+% The calls to env_var_is_acceptable_char in prog_io_goal.m  ensure that
+% EnvVarName is acceptable as part of a C identifier.
+% The prefix must be identical to envvar_prefix in util/mkinit.c
+% and c_global_var_name in llds_out.m.
+global_var_name(env_var_ref(EnvVarName)) = "mercury_envvar_" ++ EnvVarName.
 
 :- pred mlds_output_var(mlds_var::in, io::di, io::uo) is det.
 

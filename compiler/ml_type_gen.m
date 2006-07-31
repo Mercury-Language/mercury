@@ -99,6 +99,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module set.
 :- import_module string.
 :- import_module term.
 
@@ -770,9 +771,9 @@ gen_constructor_function(Globals, BaseClassId, ClassType, ClassQualifier,
 
     Stmt = statement(block([], InitMembers), Context),
     Attributes = [],
-
+    EnvVarNames = set.init,
     Ctor = mlds_function(no, mlds_func_params(Args, ReturnValues),
-        body_defined_here(Stmt), Attributes),
+        body_defined_here(Stmt), Attributes, EnvVarNames),
     CtorFlags = init_decl_flags(public, per_instance, non_virtual,
         overridable, modifiable, concrete),
 

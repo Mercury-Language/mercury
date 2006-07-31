@@ -403,7 +403,7 @@ transform_mlds(MLDS0) = MLDS :-
     list.map(mlds_export_to_mlds_defn, AllExports, ExportDefns),
 
     list.filter((pred(D::in) is semidet :-
-            ( D = mlds_defn(_, _, _, mlds_function(_, _, _, _))
+            ( D = mlds_defn(_, _, _, mlds_function(_, _, _, _, _))
             ; D = mlds_defn(_, _, _, mlds_data(_, _, _))
             )
         ), MLDS0 ^ defns ++ ExportDefns, MercuryCodeMembers, Others),
@@ -433,7 +433,7 @@ rename_defn(mlds_defn(Name, Context, Flags, Entity0))
             rename_maybe_statement(GC_TraceCode))
     ;
         Entity0 = mlds_function(MaybePredProcId, Params, FunctionBody0,
-            Attributes),
+            Attributes, EnvVarNames),
         (
             FunctionBody0 = body_defined_here(Stmt),
             FunctionBody = body_defined_here(rename_statement(Stmt))
@@ -442,7 +442,7 @@ rename_defn(mlds_defn(Name, Context, Flags, Entity0))
             FunctionBody = body_external
         ),
         Entity = mlds_function(MaybePredProcId, Params, FunctionBody,
-            Attributes)
+            Attributes, EnvVarNames)
     ;
         Entity0 = mlds_class(ClassDefn0),
         ClassDefn0 = mlds_class_defn(Kind, Imports, Inherits, Implements,
@@ -581,6 +581,7 @@ rename_lval(field(Tag, Address, FieldName, FieldType, PtrType))
     = field(Tag, rename_rval(Address),
         rename_field_id(FieldName), FieldType, PtrType).
 rename_lval(mem_ref(Rval, Type)) = mem_ref(rename_rval(Rval), Type).
+rename_lval(global_var_ref(Ref)) = global_var_ref(Ref).
 rename_lval(var(Var, Type)) = var(rename_var(Var, Type), Type).
 
 :- func rename_field_id(mlds_field_id) = mlds_field_id.
@@ -633,7 +634,8 @@ mlds_defn_to_ilasm_decl(mlds_defn(Name, Context, Flags0, Data), Decl, !Info) :-
         Data = mlds_data(_Type, _Init, _GC),
         sorry(this_file, "top level data definition!")
     ;
-        Data = mlds_function(_MaybePredProcId, _Params, _MaybeStmts, _Attrs),
+        Data = mlds_function(_MaybePredProcId, _Params, _MaybeStmts, _Attrs,
+            _EnvVarNames),
         sorry(this_file, "top level function definition!")
     ;
         Data = mlds_class(ClassDefn),
@@ -714,8 +716,9 @@ maybe_add_empty_ctor(Ctors0, Kind, Context) = Ctors :-
         Stmt = statement(block([], []), Context),
 
         Attributes = [],
+        EnvVarNames = set.init,
         Ctor = mlds_function(no, mlds_func_params([], []),
-            body_defined_here(Stmt), Attributes),
+            body_defined_here(Stmt), Attributes, EnvVarNames),
         CtorFlags = init_decl_flags(public, per_instance, non_virtual,
             overridable, modifiable, concrete),
 
@@ -1047,7 +1050,9 @@ generate_method(ClassName, _, mlds_defn(Name, Context, Flags, Entity),
 generate_method(_, IsCons, mlds_defn(Name, Context, Flags, Entity),
         ClassMember, !Info) :-
     Entity = mlds_function(_MaybePredProcId, Params, MaybeStatement,
-        Attributes),
+        Attributes, EnvVarNames),
+    expect(set.empty(EnvVarNames), this_file,
+        "generate_method: EnvVarNames"),
 
     il_info_get_module_name(!.Info, ModuleName),
 
@@ -1424,8 +1429,9 @@ mlds_export_to_mlds_defn(ExportDefn, Defn) :-
     ), Context),
 
     Attributes = [],
+    EnvVarNames = set.init,
     DefnEntity = mlds_function(no, Params, body_defined_here(Statement),
-        Attributes),
+        Attributes, EnvVarNames),
 
     Flags = init_decl_flags(public, one_copy, non_virtual, overridable,
         const, concrete),
@@ -2269,7 +2275,8 @@ get_load_store_lval_instrs(Lval, LoadMemRefInstrs, StoreLvalInstrs, !Info) :-
 
 load(lval(Lval), Instrs, !Info) :-
     DataRep = !.Info ^ il_data_rep,
-    ( Lval = var(Var, VarType),
+    (
+        Lval = var(Var, VarType),
         mangle_mlds_var(Var, MangledVarStr),
         ( is_local(MangledVarStr, !.Info) ->
             Instrs = instr_node(ldloc(name(MangledVarStr)))
@@ -2281,7 +2288,8 @@ load(lval(Lval), Instrs, !Info) :-
             FieldRef = make_static_fieldref(DataRep, Var, VarType),
             Instrs = instr_node(ldsfld(FieldRef))
         )
-    ; Lval = field(_MaybeTag, Rval, FieldNum, FieldType, ClassType),
+    ;
+        Lval = field(_MaybeTag, Rval, FieldNum, FieldType, ClassType),
         load(Rval, RvalLoadInstrs, !Info),
         ( FieldNum = offset(OffSet) ->
             SimpleFieldType = mlds_type_to_ilds_simple_type(DataRep,
@@ -2301,13 +2309,17 @@ load(lval(Lval), Instrs, !Info) :-
             OffSetLoadInstrs,
             instr_node(LoadInstruction)
         ])
-    ; Lval = mem_ref(Rval, MLDS_Type),
+    ;
+        Lval = mem_ref(Rval, MLDS_Type),
         SimpleType = mlds_type_to_ilds_simple_type(DataRep, MLDS_Type),
         load(Rval, RvalLoadInstrs, !Info),
         Instrs = tree_list([
             RvalLoadInstrs,
             instr_node(ldind(SimpleType))
         ])
+    ;
+        Lval = global_var_ref(_),
+        Instrs = throw_unimplemented("load lval mem_ref")
     ).
 
 load(mkword(_Tag, _Rval), Instrs, !Info) :-
@@ -2363,7 +2375,8 @@ load(binop(BinOp, R1, R2), Instrs, !Info) :-
 
 load(mem_addr(Lval), Instrs, !Info) :-
     DataRep = !.Info ^ il_data_rep,
-    ( Lval = var(Var, VarType),
+    (
+        Lval = var(Var, VarType),
         mangle_mlds_var(Var, MangledVarStr),
         ( is_local(MangledVarStr, !.Info) ->
             Instrs = instr_node(ldloca(name(MangledVarStr)))
@@ -2375,7 +2388,8 @@ load(mem_addr(Lval), Instrs, !Info) :-
             FieldRef = make_static_fieldref(DataRep, Var, VarType),
             Instrs = instr_node(ldsfld(FieldRef))
         )
-    ; Lval = field(_MaybeTag, Rval, FieldNum, FieldType, ClassType),
+    ;
+        Lval = field(_MaybeTag, Rval, FieldNum, FieldType, ClassType),
         get_fieldref(DataRep, FieldNum, FieldType, ClassType,
             FieldRef, CastClassInstrs),
         load(Rval, RvalLoadInstrs, !Info),
@@ -2384,9 +2398,13 @@ load(mem_addr(Lval), Instrs, !Info) :-
             CastClassInstrs,
             instr_node(ldflda(FieldRef))
         ])
-    ; Lval = mem_ref(_, _),
+    ;
+        Lval = mem_ref(_, _),
         % XXX Implement this.
         Instrs = throw_unimplemented("load mem_addr lval mem_ref")
+    ;
+        Lval = global_var_ref(_),
+        Instrs = throw_unimplemented("load mem_addr lval global_var_ref")
     ).
 
 load(self(_), tree_list([instr_node(ldarg(index(0)))]), !Info).
@@ -2409,6 +2427,9 @@ store(mem_ref(_Rval, _Type), _Instrs, !Info) :-
     % You always need load the reference first, then the value, then stind it.
     % There's no swap instruction. Annoying, eh?
     unexpected(this_file, "store into mem_ref").
+
+store(global_var_ref(_), _Instrs, !Info) :-
+    unexpected(this_file, "store into global_var_ref").
 
 store(var(Var, VarType), Instrs, !Info) :-
     DataRep = !.Info ^ il_data_rep,
@@ -3567,6 +3588,8 @@ is_local_field(Var, VarType, Info, FieldRef) :-
 rval_to_type(lval(var(_, Type)), Type).
 rval_to_type(lval(field(_, _, _, Type, _)), Type).
 rval_to_type(lval(mem_ref(_, Type)), Type).
+rval_to_type(lval(global_var_ref(_)), _) :-
+    sorry(this_file, "rval_to_type: global_var_ref").
 rval_to_type(mkword(_, _), _) :-
     unexpected(this_file, "rval_to_type: mkword").
 rval_to_type(unop(Unop, _), Type) :-
