@@ -9,8 +9,8 @@
 % File: hlds_rtti.m.
 % Main authors: Mark Brown.
 %
-% This module defines the part of the HLDS that deals with predicates
-% and procedures.
+% This module defines the part of the HLDS that keeps track of information
+% relating to RTTI.
 %
 %-----------------------------------------------------------------------------%
 
