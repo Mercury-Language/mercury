@@ -19,7 +19,7 @@
 % by disj_gen, for parallel conjunctions by par_conj_gen, and for foreign_procs
 % by pragma_c_gen. The only goals handled directly by code_gen are sequential
 % conjunctions.
-
+% 
 %---------------------------------------------------------------------------%
 
 :- module ll_backend.code_gen.

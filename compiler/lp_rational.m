@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% file: lp_rational.m
-% main authors: conway, juliensf, vjteag.
+% File: lp_rational.m.
+% Main authors: conway, juliensf, vjteag.
 %
 % This module contains code for creating and manipulating systems of rational
 % linear arithmetic constraints.  It provides the following operations:
@@ -21,7 +21,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module libs.lp_rational.
-
 :- interface.
 
 :- import_module libs.rat.

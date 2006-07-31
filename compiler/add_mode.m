@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: add_mode.m.
-
+% 
 % This submodule of make_hlds handles the declarations of new insts and modes.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.add_mode.

@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: follow_vars.m.
 % Main authors: conway, zs.
-
+% 
 % This module traverses the goal for every procedure, filling in the
 % follow_vars fields of some goals. These fields constitute an advisory
 % indication to the code generator as to what location each variable
@@ -20,11 +20,11 @@
 % accordingly. At each call or higher order call we reset the follow_vars set
 % to reflect where variables should be to make the setting up of the arguments
 % of the call as efficient as possible.
-
+% 
 % See compiler/notes/allocation.html for a description of the framework that
 % this pass operates within, and for a description of which goals have their
 % follow_vars field filled in.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.follow_vars.

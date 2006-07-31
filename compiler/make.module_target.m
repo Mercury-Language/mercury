@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: make.module_target.m.
 % Main author: stayl.
-
+% 
 % Build targets which relate to a single module (e.g. C code, object code,
 % interface files).
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module make.module_target.

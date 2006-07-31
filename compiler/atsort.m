@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: atsort.m.
 % Author: zs.
-
+% 
 % Approximate topological sort. The sort is approximate because it must work
 % even on data that has cycles.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module libs.atsort.

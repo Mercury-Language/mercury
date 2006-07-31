@@ -5,21 +5,21 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% File: ml_simplify_switch.m
-% Main author: fjh
-
+% 
+% File: ml_simplify_switch.m.
+% Main author: fjh.
+% 
 % This module, which is invoked by the various parts of the MLDS code generator
 % that generate switches, converts MLDS switches into computed gotos
 % or if-then-else chains.
-
+% 
 % We should eventually also handle lookup switches and binary search switches
 % here too.
-
+% 
 % The choice of which exactly which simplifications will get
 % performed depends on the target (e.g. whether it understands
 % switches) and the --prefer-switch option.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_simplify_switch.

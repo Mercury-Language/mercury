@@ -5,18 +5,18 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% file: closure_analysis.m
-% main author: juliensf
-
+% 
+% File: closure_analysis.m
+% Main author: juliensf
+% 
 % Perform local closure analysis on procedures.  This involves tracking
 % the possible values that a higher-order variable can take within a
 % procedure.  We attach this information to places where knowing the
 % possible values of a higher-order call may be useful.
-
+% 
 % This is similar to the analysis done by higher-order specialization, except
 % that here, we do care if a higher-order variable can take multiple values.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.closure_analysis.

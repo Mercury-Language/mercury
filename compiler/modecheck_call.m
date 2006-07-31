@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: modecheck_call.m.
 % Main author: fjh.
-
+% 
 % This file contains the code to modecheck a call.
 %
 % Check that there is a mode declaration for the predicate which matches
@@ -16,8 +16,7 @@
 % implied modes.)  If the called predicate is one for which we must infer
 % the modes, then a new mode for the called predicate whose initial insts
 % are the result of normalising the current inst of the arguments.
-
-%-----------------------------------------------------------------------------%
+% 
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.modecheck_call.

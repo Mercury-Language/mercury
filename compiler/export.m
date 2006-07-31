@@ -16,7 +16,6 @@
 % of `pragma import' declarations, which are handled in make_hlds.m.
 % 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- module backend_libs.export.
 :- interface.

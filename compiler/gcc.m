@@ -1,12 +1,12 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2005 The University of Melbourne.
+% Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: gcc.m
 % Main author: fjh
-
+% 
 % This module is the Mercury interface to the GCC compiler back-end.
 %
 % This module provides a thin wrapper around the C types,
@@ -59,7 +59,8 @@
 %	``Never get involved in a land war in Asia.''
 %		-- from the movie "The Princess Bride".
 %
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module gcc.

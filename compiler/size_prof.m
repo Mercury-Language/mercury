@@ -77,7 +77,7 @@
 % for strings and arrays would be desirable, since real programs do contain
 % predicates whose complexity is governed by the length of an array or a
 % string, but this remains future work.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.size_prof.

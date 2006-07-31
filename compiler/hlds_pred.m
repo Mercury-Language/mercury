@@ -5,13 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: hlds_pred.m.
 % Main authors: fjh, conway.
-
+% 
 % This module defines the part of the HLDS that deals with predicates
 % and procedures.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.hlds_pred.

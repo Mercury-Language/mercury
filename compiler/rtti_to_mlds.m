@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: rtti_to_mlds.m.
 % Authors: fjh, zs.
-
+% 
 % This module defines routines to convert from the back-end-independent
 % RTTI data structures into MLDS definitions.
 % The RTTI data structures are used for static data that is used
@@ -33,7 +33,7 @@
 % below which use list.append.  If possible these lists should instead be
 % manipulated through some use of prepending and/or list.reverse instead, so
 % that the algorithm stays O(N).
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.rtti_to_mlds.

@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: deforest.m.
 % Main author: stayl.
-
+% 
 % Deforestation attempts to remove multiple traversals over data structures,
 % and construction followed by immediate deconstruction of data structures.
 % It does this by combining the bodies of pairs of called procedures in a

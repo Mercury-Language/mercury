@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File stack_opt.
 % Author: zs.
-
+% 
 % The input to this module is a HLDS structure with annotations on three kinds
 % of goals:
 %
@@ -65,7 +65,7 @@
 %
 % The principles of this optimization are documented in the paper "Using the
 % heap to eliminate stack accesses" by Zoltan Somogyi and Peter Stuckey.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.stack_opt.

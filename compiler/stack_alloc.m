@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% File stack_alloc.m
+% 
+% File stack_alloc.m.
 % Authors: zs, conway.
-
+% 
 % This module allocates stack slots to the variables that need to be saved
 % across a call, across a goal that may fail, or in a parallel conjunction.
-
+% 
 % The jobs is done in two steps. First we traverse the predicate definition
 % looking for sets of variables that must be saved on the stack at the same
 % time. If --optimize-stack-slots is set, then this phase is done by
@@ -19,7 +19,7 @@
 % module. Then we use a graph colouring algorithm to find an allocation of
 % stack slots (colours) to variables such that in each set of variables that
 % must be saved at the same time, each variable has a different colour.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.stack_alloc.

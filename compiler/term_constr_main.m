@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
-
+% 
 % File: term_constr_main.m. 
 % Main author: juliensf.
-
+% 
 % This module contains the top level of a termination analyser for Mercury.
 % It is responsible for setting up the relevant data structures and invoking
 % all the other passes.
@@ -65,7 +65,6 @@
 %
 %   * experiment with different representation for the polyhedra.
 %
-%----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_main. 

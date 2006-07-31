@@ -5,17 +5,17 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: term_constr_pass2.m.
 % Main author: juliensf.
- 
+%  
 % This module analyses a SCC of the call-graph and tries to prove that
 % it terminates.
 %
 % XXX This version is just a place-holder.  It attempts a very simple
 % proof method which is essentially what the existing termination analyser 
 % does.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_pass2.

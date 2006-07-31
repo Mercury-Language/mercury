@@ -30,7 +30,7 @@
 %
 %   This isn't really a peephole optimization, might be better done
 %   elsewhere.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.il_peephole.

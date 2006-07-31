@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: ctgc.util.m.
 % Main author: nancy.
-
+% 
 % Utility operations for the CTGC-system.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.util.

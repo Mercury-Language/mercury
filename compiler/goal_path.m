@@ -5,13 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: goal_path.m.
 % Main author: zs.
-
+% 
 % This module looks after goal paths, which associate each goal with its
 % position in a procedure definition,
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.goal_path.

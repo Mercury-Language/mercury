@@ -5,25 +5,26 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: higher_order.m.
 % Main author: stayl.
-
+% 
 % Specializes calls to higher order or polymorphic predicates where the value
 % of one or more higher order, type_info or typeclass_info arguments are known.
-
+% 
 % Since this creates a new copy of the called procedure I have limited the
 % specialization to cases where the called procedure's goal contains less than
 % 20 calls and unifications. For predicates above this size the overhead of
 % the higher order call becomes less significant while the increase in code
 % size becomes significant. The limit can be changed using
 % `--higher-order-size-limit'.
-
+% 
 % If a specialization creates new opportunities for specialization, the
 % specialization process will be iterated until no further opportunities
 % arise.  The specialized version for predicate 'foo' is named 'foo.ho<n>',
 % where n is a number that uniquely identifies this specialized version.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.higher_order.

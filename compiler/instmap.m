@@ -5,17 +5,17 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: instmap.m.
 % Main author: bromage.
-
+% 
 % This module contains code which implements the instmap and instmap_delta
 % ADTs.
-
+% 
 % An instmap stores information on what instantiation states a set of
 % variables have.  An instmap_delta stores information on how these
 % instantiation states change across a goal.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module hlds.instmap.

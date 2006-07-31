@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% File: ml_optimize.m
-% Main author: trd, fjh
-
+% 
+% File: ml_optimize.m.
+% Main author: trd, fjh.
+%
 % This module runs various optimizations on the MLDS.
 %
 % Currently the optimizations we do here are
@@ -28,7 +28,7 @@
 % It would probably be a good idea to make each transformation optional.
 % Previously the tailcall transformation depended on emit_c_loops, but
 % this is a bit misleading given the documentation of emit_c_loops.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_optimize.

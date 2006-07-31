@@ -5,18 +5,17 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: modecheck_unify.m.
 % Main author: fjh.
-
+% 
 % This module contains the code to modecheck a unification.
 %
 % Check that the unification doesn't attempt to unify two free variables
 % (or in general two free sub-terms) unless one of them is dead. (Also we
 % ought to split unifications up if necessary to avoid complicated
 % sub-unifications.)
-
-%-----------------------------------------------------------------------------%
+% 
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.modecheck_unify.

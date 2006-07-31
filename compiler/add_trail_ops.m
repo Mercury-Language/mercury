@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: add_trail_ops.m.
 % Authors: fjh, juliensf.
-
+% 
 % This module is an HLDS-to-HLDS transformation that inserts code to
 % handle trailing.  The module implements two ways of doing this:
 %
@@ -23,7 +23,7 @@
 % is generally faster but results in larger executables.  The
 % `--generate-trail-ops-inline' option can be used to control which
 % of the methods is used.
-
+% 
 % This pass is currently only used for the MLDS back-end.
 % For some reason (perhaps efficiency?? or more likely just historical?),
 % the LLDS back-end inserts the trail operations as it is generating
@@ -31,23 +31,23 @@
 %
 % See compiler/notes/trailing.html for more information about trailing
 % in the Mercury implementation.
-
+% 
 % This module also implements trail usage optimization for those backends
 % that use it to implement trailing (see trailing_analysis.m for details).
-
+% 
 % NOTE: it is important that passes following this one do not attempt
 %       to reorder disjunctions.  If trail usage optimization is being
 %       performed and a disjunction is reordered then the trail might
 %       be corrupted.
-
+% 
 % TODO:
 %       - explore the space/time tradeoff between the inlining and
 %         non-inlining methods of implementing trailing.
-
+% 
 %-----------------------------------------------------------------------------%
-
+% 
 % XXX check goal_infos for correctness
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.add_trail_ops.

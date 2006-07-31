@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: tag_switch.m.
 % Author: zs.
-
+% 
 % Generate switches based on primary and secondary tags.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.tag_switch.

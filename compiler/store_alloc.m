@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: store_alloc.m.
 % Original author: conway.
 % Extensive modification by zs.
-
+% 
 % Allocates the storage location for each live variable at the end of
 % each branched structure, so that the code generator will generate code
 % which puts the variable in the same place in each branch.
@@ -22,7 +22,7 @@
 %
 % See compiler/notes/allocation.html for a description of the framework that
 % this pass operates within.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.store_alloc.

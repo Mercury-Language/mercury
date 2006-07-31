@@ -12,7 +12,6 @@
 % This module contains all the error-reporting routines for the mode-checker.
 % 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- module check_hlds.mode_errors.
 :- interface.

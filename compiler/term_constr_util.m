@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
-
+% 
 % File: term_constr_util.m
 % Main author: juliensf
-
+% 
 % This module defines some utility predicates used by the termination analyser.
-
+% 
 %------------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_util.

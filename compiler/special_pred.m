@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% File: special_pred.m
-% Main author: fjh
-
+% 
+% File: special_pred.m.
+% Main author: fjh.
+%
 % Certain predicates are implicitly defined for every type by the compiler.
 % This module defines most of the characteristics of those predicates.
 % (The actual code for these predicates is generated in unify_proc.m.)
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.special_pred.

@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: const_prop.m.
 % Main author: conway.
-
+% 
 % This module provides the facility to evaluate calls to standard library
 % routines at compile time, transforming them to simpler goals such as
 % construction unifications.

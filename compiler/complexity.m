@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: complexity.m.
 % Author: zs.
-
+% 
 % This module performs a program transformation that gathers information about
 % the relationship between the sizes of a procedure's input arguments and the
 % performance cost of the procedure in terms of memory and time.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.complexity.

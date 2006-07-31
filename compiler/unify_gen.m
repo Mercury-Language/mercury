@@ -6,6 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
+% File: unify_gen.m.
+%
 % This module handles code generation for "simple" unifications,
 % i.e. those unifications which are simple enough for us to generate
 % inline code.

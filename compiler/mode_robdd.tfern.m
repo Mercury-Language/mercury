@@ -1,13 +1,13 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2005 The University of Melbourne.
+% Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: mode_robdd.tfern.m.
 % Main author: dmo
 % Stability: low
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module mode_robdd__tfern.

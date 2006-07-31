@@ -5,18 +5,18 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
-
+% 
 % File: term_constr_build.m
 % Main author: juliensf
 % (partially based on code written by vjteag)
-
+% 
 % This module is responsible for building the abstract representation (AR)
 % used by the constraint termination analyser.
 % (The AR is defined in term_constr_data.m).  
 %
 % TODO: make the resulting abstract representations more independent of the
 %       HLDS.
-
+% 
 %------------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_build.

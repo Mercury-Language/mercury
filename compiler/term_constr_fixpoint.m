@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% file: term_constr_fixpoint.m
-% main author: juliensf
+% File: term_constr_fixpoint.m.
+% Main author: juliensf.
 %
 % TODO:
 % * code for handling calls could do with a cleanup.
@@ -19,7 +19,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_fixpoint.
-
 :- interface.
 
 :- import_module hlds.hlds_module. 

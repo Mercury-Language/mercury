@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: term_pass2.m.
 % Main author of original version: crs.
 % Main author of this version: zs.
-
+% 
 % This file contains the code that tries to prove that procedures terminate.
 % For details, please refer to the papers mentioned in termination.m.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_pass2.

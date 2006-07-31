@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: liveness.m.
 % Main authors: conway, zs, trd.
-
+% 
 % This module traverses the goal for each procedure, and adds liveness
 % annotations to the goal_info for each sub-goal.  These annotations are the
 % pre-birth set, the post-birth set, the pre-death set, the post-death set,
@@ -65,7 +65,7 @@
 % resume points and attaches to them a resume_point annotation listing the
 % variables that may be referenced by the code at that resume point as well as
 % the nature of the required entry labels.
-
+% 
 % Typeinfo liveness calculation notes:
 %
 % When using accurate gc or execution tracing, liveness is computed slightly
@@ -120,7 +120,7 @@
 % So typeinfo variables will always be born before they are needed, and die
 % only when no other variable needing them will be live, so the invariant
 % holds.
-
+% 
 % Quantification notes:
 %
 % If a variable is not live on entry to a goal, but the goal gives it a value,
@@ -145,7 +145,7 @@
 % set of nonlocal variables of the goal. Since this module requires *exact*
 % information about nonlocals, it must recompute the nonlocal sets before
 % starting.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.liveness.

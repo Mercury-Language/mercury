@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: mode_constraint_robdd.m
-% Main author: dmo
+% File: mode_constraint_robdd.m.
+% Main author: dmo.
 %
 % This module provides an abstraction layer on top of the ROBDD library
 % modules. It provides for the possibility of storing the constraints in a more
@@ -17,6 +17,8 @@
 %
 % Whether this extra information is stored is controlled by the `debug/0'
 % predicate.
+%
+%-----------------------------------------------------------------------------%
 
 :- module check_hlds.mode_constraint_robdd.
 :- interface.

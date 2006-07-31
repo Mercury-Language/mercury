@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: term_pass1.m.
 % Main author: crs.
 % Significant parts rewritten by zs.
-
+% 
 % This file contains the first pass of the termination analysis, whose job is
 % to discover an upper bound on the difference between the sizes of the output
 % arguments of a procedure on the one hand and the sizes of a selected set of
@@ -17,7 +17,7 @@
 % selected set of input arguments as the "output suppliers".
 %
 % For details, please refer to the papers mentioned in termination.m.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_pass1.

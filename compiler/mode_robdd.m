@@ -1,15 +1,17 @@
 %---------------------------------------------------------------------------%
-% Copyright (C) 2001-2005 The University of Melbourne.
+% Copyright (C) 2001-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: mode_robdd.m.
 % Main author: dmo
-
+% 
 % This module contains the package for mode_robbds, data structures built
 % around reduced ordered binary decision diagrams (ROBDDs) to help implement
 % mode checking via constraints.
+%
+%---------------------------------------------------------------------------%
 
 :- module mode_robdd.
 :- interface.

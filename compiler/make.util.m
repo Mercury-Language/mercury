@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: make.util.m.
 % Main author: stayl.
-
+% 
 % Assorted predicates used to implement `mmc --make'.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module make.util.

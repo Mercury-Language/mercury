@@ -18,7 +18,6 @@
 % It also issues warnings about unused procedures.
 % 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- module transform_hlds.dead_proc_elim.
 :- interface.

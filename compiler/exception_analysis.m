@@ -76,7 +76,6 @@
 % because exception analysis takes place after the tabling transformation.
 % 
 %----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
 
 :- module transform_hlds.exception_analysis.
 :- interface.

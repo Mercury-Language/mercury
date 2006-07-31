@@ -12,7 +12,6 @@
 % Generate code for the foreign language interface to C# and managed C++.
 % 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- module ml_backend.mlds_to_managed.
 :- interface.

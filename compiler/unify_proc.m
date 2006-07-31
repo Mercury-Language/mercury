@@ -37,11 +37,11 @@
 % merge duplicate definitions (like Borland C++).  However the amount of
 % code duplication involved is probably very small, so it's definitely not
 % worth worrying about right now.
-
+% 
 % XXX What about complicated unification of an abstract type in a partially
 % instantiated mode?  Currently we don't implement it correctly. Probably
 % it should be disallowed, but we should issue a proper error message.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.unify_proc.

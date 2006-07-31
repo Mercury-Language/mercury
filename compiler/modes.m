@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: modes.m.
 % Main author: fjh.
-
+% 
 % This module contains the top level of the code for mode checking and mode
 % inference.  It uses code in the subsidiary modules mode_info, delay_info,
 % inst_match, mode_errors, and mode_util.
@@ -26,7 +26,7 @@
 % This pass does not check that `unique' modes are not used in contexts
 % which might require backtracking - that is done by unique_modes.m.
 % N.B. Changes here may also require changes to unique_modes.m!
-
+% 
 % IMPLEMENTATION DOCUMENTATION
 % How does it all work?  Well, mode checking/inference is basically a
 % process of abstract interpretation.  To perform this abstract
@@ -122,8 +122,7 @@
 %     some code can't be scheduled without splitting up unifications.
 %     For example, `p(X) :- X = f(A, B), B is A + 1.', where
 %     p is declared as `:- mode p(bound(f(ground,free))->ground).'.
-
-%-----------------------------------------------------------------------------%
+% 
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.modes.

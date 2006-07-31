@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: unique_modes.m.
 % Main author: fjh
-
+% 
 % This module checks that variables with a unique mode (as opposed to a
 % mostly-unique mode) really are unique, and not nondet live - i.e. that
 % they cannot be referenced on backtracking. (Actually the term "nondet live"
@@ -28,7 +28,7 @@
 %
 % XXX We currently make the conservative assumption that any non-local variable
 % in a disjunction or nondet call is nondet-live - and stays nondet-live.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.unique_modes.

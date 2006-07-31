@@ -3,22 +3,20 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: mode_robbd.check.m.
 % Main author: dmo
 % Stability: low
-
+% 
 % This module implements every one of its operations on two robdds,
 % compares their results, and reports an error if they differ. This makes
 % it easier to debug a new, potantially faster mode_robdd implementation
 % by comparing its operation to the operation of an existing, trusted
 % implementation.
-
-%-----------------------------------------------------------------------------%
+% 
 %-----------------------------------------------------------------------------%
 
 :- module mode_robdd.check.
-
 :- interface.
 
 :- import_module mode_robdd.tfeirn.

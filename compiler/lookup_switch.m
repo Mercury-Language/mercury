@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: lookup_switch.m.
 % Authors: conway, zs.
-
+% 
 % For switches on atomic types in which the cases contain only the
 % construction of constants, generate code which just assigns the values of
 % the output variables by indexing into an array of values for each output
@@ -36,7 +36,7 @@
 % The number of bits per word is taken from the bits_per_word option which
 % uses a flag in the mc script with a value from configuration. This is used
 % when generating bit-vectors.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.lookup_switch.

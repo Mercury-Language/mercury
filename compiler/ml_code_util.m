@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: ml_code_util.m.
 % Main author: fjh.
-
+% 
 % This module is part of the MLDS code generator.
 % It defines the ml_gen_info type and its access routines.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_code_util.

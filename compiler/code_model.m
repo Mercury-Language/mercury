@@ -6,6 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
+% File: code_model.m.
+%
 % This module defines the `code_model' data type, and associated procedures.
 % The `code_model' type is a simplified version of the `determinism' type
 % that is defined in prog_data.m.  It ignores most of the distinctions in
@@ -19,7 +21,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module hlds.code_model.
-
 :- interface.
 
 :- import_module hlds.hlds_goal.

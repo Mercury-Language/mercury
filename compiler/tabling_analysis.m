@@ -48,7 +48,6 @@
 %       - the bits marked `XXX user-defined uc' need to be changed
 %
 %----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
 
 :- module transform_hlds.tabling_analysis.
 :- interface.

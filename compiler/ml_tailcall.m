@@ -5,17 +5,17 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: ml_tailcall.m
 % Main author: fjh
-
+% 
 % This module is an MLDS-to-MLDS transformation that marks function calls
 % as tail calls whenever it is safe to do so, based on the assumptions
 % described below.
-
+% 
 % This module also contains a pass over the MLDS that detects functions
 % which are directly recursive, but not tail-recursive, and warns about them.
-
+% 
 % A function call can safely be marked as a tail call if all three of the
 % following conditions are satisfied:
 %
@@ -50,7 +50,7 @@
 % Note that ml_call_gen.m will also mark calls to procedures with determinism
 % `erroneous' as `no_return_call's (a special case of tail calls)
 % when it generates them.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_tailcall.

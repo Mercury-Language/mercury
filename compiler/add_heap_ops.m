@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: add_heap_ops.m.
 % Author: fjh.
-
+% 
 % This module is an HLDS-to-HLDS transformation that inserts code to
 % handle heap reclamation on backtracking, by saving and restoring
 % the values of the heap pointer.
@@ -23,11 +23,11 @@
 % LLDS code, rather than via an HLDS to HLDS transformation.
 %
 % This module is very similar to add_trail_ops.m.
-
+% 
 %-----------------------------------------------------------------------------%
-
+% 
 % XXX check goal_infos for correctness
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.add_heap_ops.

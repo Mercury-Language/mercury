@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
- 
+%  
 % File: ilds.m.
 % Main author: trd.
-
+% 
 % ilds - The IL instruction set.
 %
 % The IL instruction set is documented in the Microsoft .NET Framework SDK.

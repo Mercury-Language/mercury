@@ -49,7 +49,6 @@
 %     whether or not their arguments modify the trail.
 % 
 %----------------------------------------------------------------------------%
-%----------------------------------------------------------------------------%
 
 :- module transform_hlds.trailing_analysis.
 :- interface.

@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: inst_graph.m.
 % Author: dmo.
-
+% 
 % This module defines operations on instantiation graphs. The purpose of the
 % data structure and of the operations on it are defined in chapter 6 of
 % David Overton's PhD thesis.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module hlds.inst_graph.

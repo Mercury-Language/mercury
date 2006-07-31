@@ -74,7 +74,7 @@
 %
 % Due to the way in which we generate code for model_non pragma_foreign_code,
 % procedures whose body is such a pragma_foreign_code must NOT be inlined.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.inlining.

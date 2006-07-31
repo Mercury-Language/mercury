@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: lambda.m.
 % Main author: fjh.
-
+% 
 % This module is a pass over the HLDS to deal with lambda expressions.
 %
 % Lambda expressions are converted into separate predicates, so for
@@ -63,7 +63,7 @@
 % be different for each call.
 % Currently we don't support second-order polymorphism, so we
 % don't support existentially typed lambda expressions either.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.lambda.

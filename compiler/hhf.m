@@ -5,16 +5,17 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: hhf.m.
 % Author: dmo.
-
+% 
 % Convert superhomogeneous form to hyperhomogeneous form and output an
 % inst graph for the predicate based on this transformation.
 %
 % Hyperhomogeneous form and the transformation are documented in
 % David Overton's PhD thesis.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.hhf.

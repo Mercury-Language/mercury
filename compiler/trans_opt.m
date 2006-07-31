@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% file: trans_opt.m
-% main author: crs
+% File: trans_opt.m.
+% Main author: crs.
 %
 % Transitive intermodule optimization allows the compiler to do intermodule
 % optimization that depends on other .trans_opt files. In comparison to .opt

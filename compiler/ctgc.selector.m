@@ -12,7 +12,6 @@
 % Definition of predicates and functions for the manipulation of selectors.
 % 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.selector.
 :- interface.

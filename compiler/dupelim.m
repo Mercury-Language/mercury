@@ -39,7 +39,7 @@
 % possibly adding a goto at the end to represent falling through to the next
 % label. In all other ways the original and the generalized version will be
 % identical.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.dupelim.

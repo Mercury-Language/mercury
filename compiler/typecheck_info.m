@@ -15,7 +15,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.typecheck_info.
-
 :- interface.
 
 :- import_module hlds.hlds_data.

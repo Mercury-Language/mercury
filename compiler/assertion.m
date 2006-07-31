@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % Module: assertion.m.
 % Main authors: petdr.
-
+% 
 % This module is an abstract interface to the assertion table.
 % Note that this is a first design and will probably change
 % substantially in the future.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module hlds.assertion.

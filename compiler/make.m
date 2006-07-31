@@ -5,8 +5,9 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% File: make.m
-% Main author: stayl
+%
+% File: make.m.
+% Main author: stayl.
 %
 % A builtin Mercury-specific make replacement.
 %

@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: rtti_out.m.
 % Main author: zs.
-
+% 
 % This module contains code to output the RTTI data structures defined in
 % rtti.m as C code.
 %
@@ -19,8 +19,7 @@
 %
 % The MLDS back-end does not use this module; instead it converts the RTTI
 % data structures to MLDS (and then to C or Java, etc.).
-
-%-----------------------------------------------------------------------------%
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.rtti_out.

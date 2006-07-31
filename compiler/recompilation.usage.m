@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: recompilation.usage.m.
 % Main author: stayl.
-
+% 
 % Write the file recording which imported items were used by a compilation.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module recompilation.usage.

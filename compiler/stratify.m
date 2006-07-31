@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: stratify.m.
 % Main authors: ohutch, conway.
-
+% 
 % This module performs stratification analysis.
 % It works by processing the call graph 1 scc at a time. It traverses
 % the goal for each procedure in the scc and reports an error or
@@ -25,7 +25,7 @@
 %
 % The second pass is necessary because the rebuilt call graph does not
 % allow the detection of definite non-stratification.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.stratify.

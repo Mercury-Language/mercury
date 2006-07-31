@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% File: reassign.m
+% 
+% File: reassign.m.
 % Author: zs.
-
+% 
 % This module implements an LLDS->LLDS transformation that optimizes away
 % assignments to locations that already hold the assigned value.  It operates
 % entirely within extended basic blocks.
@@ -92,7 +92,7 @@
 % it clobbers entries in the known contents map whenever an instruction *could*
 % affect the entry, even if it in fact doesn't. For example, we clobber the
 % known contents map at calls, labels and ticket resets.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.reassign.

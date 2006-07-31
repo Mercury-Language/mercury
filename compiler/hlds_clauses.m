@@ -12,6 +12,7 @@
 % This module defines the part of the HLDS that deals with clauses.
 %
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module hlds.hlds_clauses.
 :- interface.

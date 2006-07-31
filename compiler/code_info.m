@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: code_info.m.
 % Main authors: conway, zs.
-
+% 
 % This file defines the code_info type and various operations on it.
 % The code_info structure is the 'state' of the code generator.
 %
@@ -23,7 +23,7 @@
 %   - interfacing to var_locn
 %   - managing the info required by garbage collection and value numbering
 %   - managing stack slots
-
+% 
 %---------------------------------------------------------------------------%
 
 :- module ll_backend.code_info.

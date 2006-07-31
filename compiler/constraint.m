@@ -5,15 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% File: constraint.m
+% 
+% File: constraint.m.
 % Main author: stayl.
-
+% 
 % The constraint propagation transformation attempts to improve the efficiency
 % of a generate-and-test style program by statically scheduling constraints as
 % early as possible, where a "constraint" is any pure goal which has no
 % outputs, can fail, cannot loop and cannot throw an exception.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.constraint.

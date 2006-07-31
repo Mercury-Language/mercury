@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: base_typeclass_info.m.
 % Author: dgj.
-
+% 
 % This module generates the RTTI data for the global variables (or constants)
 % that hold the base_typeclass_info structures of the typeclass instances
 % defined by the current module.
@@ -18,7 +18,7 @@
 % base_typeclass_info structures.
 %
 % XXX The function of this file will soon be taken over by type_class_info.m.
-
+% 
 %---------------------------------------------------------------------------%
 
 :- module backend_libs.base_typeclass_info.

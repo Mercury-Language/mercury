@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: use_local_vars.m
 % Author: zs.
-
+% 
 % This module implements an LLDS->LLDS transformation that optimizes the
 % sequence of instructions in a procedure body by replacing references to
 % relatively expensive locations: fake registers (Mercury abstract machine
@@ -55,7 +55,7 @@
 % structure. Again, we replace the false register or stack slot with a
 % temporary after assigning the value in the false register or stack slot to
 % the temporary.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.use_local_vars.

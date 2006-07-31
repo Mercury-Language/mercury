@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: equiv_type_hlds.m.
 % Main author: stayl.
-
+% 
 % Expand all types in the module_info using all equivalence type definitions,
 % even those local to (transitively) imported modules.
-
+% 
 % This is necessary to avoid problems with back-ends that don't support
 % equivalence types properly (or at all).
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.equiv_type_hlds.

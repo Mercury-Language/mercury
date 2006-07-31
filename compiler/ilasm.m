@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: ilasm.m.
 % Main author: trd.
-
+% 
 % Generate IL for the ilasm assembler.
 %
 % IL assembler syntax is documented in the Microsoft .NET Framework SDK.
@@ -22,7 +22,7 @@
 %   [ ] Add any missing functionality from the assembler grammar
 %       (events, properties, etc).
 %   [ ] Fix up all the XXXs.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ilasm.

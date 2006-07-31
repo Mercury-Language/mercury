@@ -6,7 +6,11 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
+% File: make_hlds_warn.m.
+%
 % Generate whatever warnings the module being transformed to HLDS deserves.
+%
+%-----------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.make_hlds_warn.
 :- interface.

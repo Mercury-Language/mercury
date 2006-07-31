@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: ml_call_gen.m.
 % Main author: fjh.
-
+% 
 % This module is part of the MLDS code generator.  It handles code generation
 % of procedures calls, calls to builtins, and other closely related stuff.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_call_gen.

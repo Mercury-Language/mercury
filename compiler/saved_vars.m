@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: saved_vars.m.
 % Main author: zs.
-
+% 
 % This module traverses the goal for each procedure, looking for and
 % exploiting opportunities to reduce the number of variables that have
 % to be saved across calls.
@@ -21,7 +21,7 @@
 %
 % We thread the SlotInfo structure through the module; this allows us
 % to define new variables.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.saved_vars.

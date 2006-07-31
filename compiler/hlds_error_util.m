@@ -6,13 +6,14 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: error_util.m.
+% File: hlds_error_util.m.
 % Main author: zs.
 %
 % This module contains code that can be helpful in the formatting of
 % error messages. It builds upon parse_tree.error_util, and extends it
 % with predicates that access HLDS data structures.
 %
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.hlds_error_util.

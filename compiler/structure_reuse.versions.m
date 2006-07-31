@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 % 
-% File: structure_reuse.versions.m
-% Main authors: nancy 
+% File: structure_reuse.versions.m.
+% Main authors: nancy.
 %
 % Provide the functionality to create optimised versions of those procedures
 % for which reuse was detected. 

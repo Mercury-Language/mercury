@@ -1,13 +1,13 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-1998, 2003, 2005 The University of Melbourne.
+% Copyright (C) 1997-1998, 2003, 2005-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% file: rat.m
-% authors: vjteag, juliensf 
+% File: rat.m.
+% Authors: vjteag, juliensf.
 % 
 % Implements a rational number type using fixed precision integers.
 % The functionality here is limited to that which is used in the 
@@ -24,7 +24,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module libs.rat.
-
 :- interface.
 
 :- import_module int.

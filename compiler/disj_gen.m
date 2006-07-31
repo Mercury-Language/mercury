@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
-% File: disj_gen.m:
+% 
+% File: disj_gen.m.
 % Main authors: conway, zs.
-
+% 
 % The predicates of this module generate code for disjunctions.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.disj_gen.

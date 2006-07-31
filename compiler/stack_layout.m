@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: stack_layout.m.
 % Main authors: trd, zs.
-
+% 
 % This module generates label, procedure, module and closure layout structures
 % for code in the current module for the LLDS backend. Layout structures are
 % used by the parts of the runtime system that need to look at the stacks
@@ -22,7 +22,7 @@
 %
 % The C types of the structures we generate are defined and documented in
 % runtime/mercury_stack_layout.h.
-
+% 
 %---------------------------------------------------------------------------%
 
 :- module ll_backend.stack_layout.

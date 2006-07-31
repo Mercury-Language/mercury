@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: source_file_map.m.
 % Author: stayl.
-
+% 
 % Maintain a mapping from module name to source file name.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.source_file_map.

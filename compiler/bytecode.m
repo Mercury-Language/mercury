@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: bytecode.m.
 % Author: zs.
-
+% 
 % This module defines the bytecode used by the debugger.
-
+% 
 %---------------------------------------------------------------------------%
 
 :- module bytecode_backend.bytecode.

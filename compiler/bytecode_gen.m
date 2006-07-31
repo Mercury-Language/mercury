@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: bytecode_gen.m.
 % Author: zs.
-
+% 
 % This module generates bytecode, which is intended to be used by a
 % (not yet implemented) bytecode interpreter/debugger.
-
+% 
 %---------------------------------------------------------------------------%
 
 :- module bytecode_backend.bytecode_gen.

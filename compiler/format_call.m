@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: format_call.m.
 % Author: zs.
-
+% 
 % The job of this module is to generate warnings about calls to string.format
 % and io.format in which the format string and the supplied lists of values
 % do not agree. The difficult part of this job is actually finding the values
@@ -74,8 +74,7 @@
 % functions such as string.append. However, there is no convenient way to
 % evaluate the extent of a need for this capability until this change is
 % bootstrapped, so that is left for future work.
-
-%-----------------------------------------------------------------------------%
+% 
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.format_call.

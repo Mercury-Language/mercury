@@ -5,22 +5,21 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: term_constr_data.m.
 % Main author: juliensf.
-
+% 
 % This module defines data structures that are common to all modules in the
 % termination analyser.
 %
 % The main data structure defined here is the abstract representation (AR),
 % which is an abstraction of a Mercury program in terms of linear arithmetic
 % constraints on term sizes.
-
+% 
 %------------------------------------------------------------------------------%
 %
 % AR Goals. 
 %
-
 % The AR has four kinds of goal:
 %
 % * primitives      - a set of primitive constraints representing the 
@@ -34,15 +33,15 @@
 % * calls           - an abstraction of intra-SCC calls.  Calls to
 %                     procedures lower down the call-graph are abstracted
 %                     as primitive AR goals.
-
+% 
 % XXX In order to handle higher-order we need to either modify the
 % exiting AR call goal or add a new AR goal type.
-
+% 
 %------------------------------------------------------------------------------%
 %
 % Mapping the HLDS to the AR
 %
-
+% 
 % 1. unification
 %
 % A HLDS unification of the form: 

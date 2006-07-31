@@ -8,10 +8,10 @@
 %
 % File: string_switch.m.
 % Author: fjh.
-
+% 
 % For switches on strings, we generate a hash table using open addressing
 % to resolve hash conflicts.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.string_switch.

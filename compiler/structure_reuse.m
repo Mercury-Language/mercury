@@ -4,8 +4,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: structure_reuse.m
-% Main author: nancy
+% File: structure_reuse.m.
+% Main author: nancy.
 %
 % Package grouping all the modules related to the structure reuse analysis 
 % part of compile-time garbage collection.

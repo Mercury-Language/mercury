@@ -12,6 +12,7 @@
 % This module manages global data structures for the LLDS backend.
 %
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module ll_backend.global_data.
 :- interface.

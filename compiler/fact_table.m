@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: fact_table.m.
 % Main author: dmo.
-
+% 
 % This module handles compilation of fact tables contained in external
 % files that have been declared with a `pragma fact_table' declaration.
 %
@@ -34,18 +34,18 @@
 % This means that the output data for identical keys in the primary input
 % mode will be grouped together allowing the code that accesses this mode
 % to be just pick the next item in the data array when backtracking.
-
+% 
 % The inferred determinism for each mode is added to the proc_info.  If a
 % determinism has been declared for the procedure it will be tested against
 % the inferred determinism later on in det_report.m.
-
+% 
 % XXX All combinations of `in' and `out' arguments are now supported for all
 % determinisms.  Only the builtin `string', `int' and `float' types are
 % supported at the moment.
-
+% 
 % XXX Cross compilation is not supported for fact tables that are indexed on
 % floats.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.fact_table.

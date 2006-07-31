@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% File: ml_util.m
-% Main author: fjh, trd
-
+% 
+% File: ml_util.m.
+% Main author: fjh, trd.
+% 
 % This module contains utility predicates for manipulating the MLDS.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_util.

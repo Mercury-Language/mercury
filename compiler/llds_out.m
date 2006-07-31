@@ -9,12 +9,9 @@
 % File: llds_out.m.
 % Main authors: conway, fjh, zs.
 %
-% LLDS - The Low-Level Data Structure.
-%
 % This module defines the routines for printing out LLDS,
 % the Low Level Data Structure.
 %
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.llds_out.

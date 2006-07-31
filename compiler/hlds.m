@@ -12,6 +12,7 @@
 
 :- module hlds.
 :- interface.
+
 :- import_module mdbcomp.
 :- import_module parse_tree.
 

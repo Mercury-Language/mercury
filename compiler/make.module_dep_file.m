@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: make.module_dep_file.m.
 % Author: stayl.
-
+% 
 % Code to read and write the `<module>.module_dep' files, which contain
 % information about inter-module dependencies.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module make.module_dep_file.

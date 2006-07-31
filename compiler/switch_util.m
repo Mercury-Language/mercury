@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: switch_util.m.
 % Author: fjh.
-
+% 
 % This module defines stuff for generating switches that is shared
 % between the MLDS and LLDS back-ends.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs.switch_util.

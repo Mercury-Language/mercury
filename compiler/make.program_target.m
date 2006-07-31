@@ -12,7 +12,6 @@
 % Build targets which relate to whole programs or libraries.
 % 
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- module make.program_target.
 :- interface.

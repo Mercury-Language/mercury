@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% File: ml_elim_nested.m
-% Main author: fjh
-
+% 
+% File: ml_elim_nested.m.
+% Main author: fjh.
+% 
 % This module is an MLDS-to-MLDS transformation
 % that has two functions:
 % (1) eliminating nested functions
@@ -24,26 +24,26 @@
 % The word "environment" (as in "environment struct" or "environment pointer")
 % is used to refer to both the environment structs used when eliminating
 % nested functions and also to the frame structs used for accurate GC.
-
+% 
 % XXX Would it be possible to do both in a single pass?
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 % (1) eliminating nested functions
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
+% 
 % Note that this module does not attempt to handle arbitrary MLDS as input;
 % it will only work with the output of the current MLDS code generator.
 % In particular, it assumes that local variables in nested functions can be
 % hoisted into the outermost function's environment. That's not true
 % in general (e.g. if the nested functions are recursive), but it's true
 % for the code that ml_code_gen generates.
-
+% 
 % As well as eliminating nested functions, this transformation also has
 % the effect of fixing up the dangling `env_ptr' references that ml_code_gen.m
 % leaves in the code.
-
+% 
 %-----------------------------------------------------------------------------%
 % TRANSFORMATION SUMMARY
 %-----------------------------------------------------------------------------%
@@ -132,7 +132,7 @@
 % The `env_ptr' variables generated here serve as definitions for
 % the (previously dangling) references to such variables that
 % ml_code_gen puts in calls to the nested functions.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 % (2) accurate GC
@@ -229,7 +229,7 @@
 %   any heap pointers held by user-written C code; we need to provide an API
 %   for registering pointers on the stack. (MR_agc_add_root() only works
 %   for globals, really, since there's no MR_agc_remove_root()).
-
+% 
 % Various optional features of Mercury are not yet supported, e.g.
 %
 % - `--high-level-data' (fixup_newobj_in_atomic_statement
@@ -413,17 +413,14 @@
 %   }
 %
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_elim_nested.
-
 :- interface.
 
 :- import_module ml_backend.mlds.
 
 :- import_module io.
 
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- type action

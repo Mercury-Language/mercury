@@ -1,17 +1,17 @@
-    %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2001, 2003-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: mode_info.m.
 % Main author: fjh.
-
+% 
 % This file defines the mode_info data structure, which is used to hold
 % the information we need during mode analysis.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.mode_info.

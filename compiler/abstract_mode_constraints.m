@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% File: abstract_mode_constraints.m
-% Main author: richardf
-
+% 
+% File: abstract_mode_constraints.m.
+% Main author: richardf.
+% 
 % This module contains data structures designed for use with constraints
 % based mode analysis. It deals specifically with constraints for
 % determining producing and consuming goals for program variables.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.abstract_mode_constraints.

@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: interval.m.
 % Author: zs.
-
+% 
 % This module contains a predicate to build up interval information for a
 % procedure; in particular the start and end points of intervals and the set
 % of variables needed in that interval.  It also contains a procedure to
@@ -26,7 +26,7 @@
 %    the next anchor it reaches is the right anchor of the pair.  We
 %    consider a call to be part of the atomic goals of the interval only if
 %    the call site is the right anchor of the interval, not the left anchor.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs.interval.

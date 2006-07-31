@@ -5,22 +5,22 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: rtti.m.
 % Authors: zs, fjh.
-
+% 
 % Definitions of data structures for representing run-time type information
 % within the compiler. When output by rtti_out.m, values of most these types
 % will correspond to the types defined in runtime/mercury_type_info.h; the
 % documentation of those types can be found there.
 % The code to generate the structures is in type_ctor_info.m.
 % See also pseudo_type_info.m.
-
+% 
 % This module is independent of whether we are compiling to LLDS or MLDS.  It
 % is used as an intermediate data structure that we generate from the HLDS,
 % and which we can then convert to either LLDS or MLDS.  The LLDS actually
 % incorporates this data structure unchanged.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs.rtti.

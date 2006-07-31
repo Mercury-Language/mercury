@@ -94,7 +94,6 @@
 % discovered by the analysis. 
 %
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.structure_reuse.direct.choose_reuse.
 :- interface.

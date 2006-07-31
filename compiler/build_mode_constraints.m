@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% File: build_mode_constraints.m
-% Main author: richardf
-
+% 
+% File: build_mode_constraints.m.
+% Main author: richardf.
+% 
 % This module contains predicates and data structures needed for
 % traversing the HLDS and building a list of abstract constraint formulae to
 % describe variable producers in a Mercury program.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.build_mode_constraints.

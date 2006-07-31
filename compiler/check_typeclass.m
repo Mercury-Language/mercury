@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: check_typeclass.m.
 % Author: dgj.
-
+% 
 % This module checks conformance of instance declarations to the typeclass
 % declaration. It takes various steps to do this.
 %
@@ -61,7 +61,7 @@
 % This pass fills in the super class proofs and instance method pred/proc ids
 % in the instance table of the HLDS, and fills in the fundeps_ancestors in
 % the class table.
-
+% 
 %---------------------------------------------------------------------------%
 
 :- module check_hlds.check_typeclass.

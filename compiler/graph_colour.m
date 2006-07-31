@@ -5,18 +5,18 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: graph_colour.m.
 % Main author: conway.
-
+% 
 % This file contains functionality to find a 'good' colouring of a graph.
 % The predicate group_elements(set(set(T)), set(set(T))),
 % takes a set of sets each containing elements that touch, and returns
 % a set of sets each containing elements that can be assigned the same
 % colour, ensuring that touching elements have different colours.
 % ("Good" means using as few colours as possible.)
-%
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module libs.graph_colour.

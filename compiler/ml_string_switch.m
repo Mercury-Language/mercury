@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% file: ml_string_switch.m
-% author: fjh (adapted from string_switch.m)
-
+% 
+% File: ml_string_switch.m.
+% Author: fjh (adapted from string_switch.m)
+% 
 % For switches on strings, we generate a hash table using open addressing
 % to resolve hash conflicts.
-
+% 
 % WARNING: the code here is quite similar to the code in string_switch.m.
 % Any changes here may require similar changes there and vice versa.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_string_switch.

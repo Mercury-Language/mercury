@@ -5,15 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: mode_constraints.m.
 % Main author: dmo.
-
+% 
 % This module implements the top level of the algorithm described in the
 % paper "Constraint-based mode analysis of Mercury" by David Overton,
 % Zoltan Somogyi and Peter Stuckey. That paper is the main documentation
 % of the concepts behind the algorithm as well as the algorithm itself.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.mode_constraints.

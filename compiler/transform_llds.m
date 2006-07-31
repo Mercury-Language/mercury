@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% Module: transform_llds.
-% Main authors: petdr.
-
+% 
+% File: transform_llds.
+% Main author: petdr.
+% 
 % This module does source to source transformations of the llds data
 % structure. This is sometimes necessary to avoid limits in some compilers.
 %
@@ -17,7 +17,7 @@
 %
 % If accurate GC is enabled, we also append a module containing an end label
 % to the list of comp_gen_c_modules.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.transform_llds.

@@ -12,7 +12,6 @@
 % Determine the indirect reuse.  This requires a fixpoint computation.
 %
 %------------------------------------------------------------------------------%
-%------------------------------------------------------------------------------%
 
 :- module structure_reuse.indirect.
 :- interface.

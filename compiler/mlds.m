@@ -6,8 +6,10 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% MLDS - The Medium-Level Data Structure.
+% File: mlds.m.
 % Main author: fjh.
+%
+% MLDS - The Medium-Level Data Structure.
 %
 % This module defines the MLDS data structure itself.
 % The MLDS is an intermediate data structure used in compilation;
@@ -38,12 +40,12 @@
 % MLDS code in the first place or run some extra simplification passes over
 % the MLDS code before invoking the MLDS->target compiler.
 %
-
+% 
 %-----------------------------------------------------------------------------%
 %
 % Mapping Mercury names to MLDS names
 %
-
+% 
 % 1. Modules
 %
 % Mercury module names map directly to MLDS package names, except that
@@ -51,7 +53,7 @@
 % e.g. `mercury.builtin', `mercury.io', `mercury.univ', etc.
 % [Rationale: omitting the `mercury' prefix would lead to namespace
 % pollution in the generated target language code.]
-
+% 
 % 2. Procedure names
 %
 % HLDS procedure names map directly to MLDS function names.
@@ -64,7 +66,7 @@
 % the HLDS -> MLDS stage, since we don't know what restrictions the target
 % language will impose.  For example, some target languages (e.g. C++, Java)
 % will support overloading, while others (e.g. C) will not.]
-
+% 
 % 3. Procedure signatures
 %
 % MLDS function signatures are determined by the HLDS procedure's
@@ -99,7 +101,7 @@
 % to be stored in the environment structs needed for continuations,
 % and so can't use pass-by-reference for nondet procedures.
 % Others (e.g. Java) don't support pass-by-reference at all.]
-
+% 
 % 4. Variables
 %
 % MLDS variable names are determined by the HLDS variable name and
@@ -116,7 +118,7 @@
 % undesirable, as the original HLDS variable names are what is required
 % (for instance, when interfacing with foreign code which includes
 % references to the original HLDS variable names).]
-
+% 
 % 5. Global data
 %
 % MLDS names for global data are structured; they hold some
@@ -131,7 +133,7 @@
 % string switches), "float_*" (boxed floating point constants),
 % and "obj_*" (reserved objects, for representing constants in
 % discriminated union types).
-
+% 
 % 6. Types
 %
 % If there is an MLDS type corresponding to a Mercury type, then
@@ -142,7 +144,7 @@
 % then some Mercury types may not have corresponding MLDS type names
 % (that is, the corresponding MLDS type may be just `MR_Word' or its
 % equivalent).
-
+% 
 % 7.  Data constructors.
 %
 % With --high-level-data, Mercury data constructors normally get mapped to
@@ -173,14 +175,14 @@
 %       :- type bar ---> f2(foo) ; g2
 % At some point this should be changed so that initialization is performed by 2
 % phases: first allocate all of the objects, then fill in the fields.
-
+% 
 % 8.  Insts and modes
 %
 % Inst and mode definitions do not get translated into MLDS.
 %
 % [Inst and mode definitions do however affect the signatures of the
 % MLDS functions used to implement each procedure.]
-
+% 
 % 9. Type classes.
 %
 % Currently type classes are handled early and at a fairly low level.
@@ -199,16 +201,16 @@
 % `:- instance foo(bar)', then the MLDS type for `bar' will *not* implement
 % the MLDS interface for `foo' -- instead, there will be a new MLDS type
 % for `instance foo(bar)' which implements that interface.
-
+% 
 %-----------------------------------------------------------------------------%
 %
 % Mapping MLDS names to the target language
 %
-
+% 
 % Ultimately the exact choice of how MLDS names are mapped to
 % the target language is up to the target language generator.
 % So the remarks here are just guidelines, not strict rules.
-
+% 
 % 1. Names.
 %
 % If the target language has standard conventions about certain categories
@@ -220,7 +222,7 @@
 % in identifiers, then it is the responsibility of the target language
 % generator to mangle MLDS names accordingly to ensure that they abide
 % by those restrictions.
-
+% 
 % 2. Packages.
 %
 % MLDS packages should be mapped directly to the corresponding notion
@@ -228,7 +230,7 @@
 % If the target doesn't have a notion of packages, then they should be
 % mapped to names of the form "foo.bar.baz" or if dots are not allowed
 % then to "foo__bar__baz".
-
+% 
 % 3. Overloading.
 %
 % If the target does not support overloading, then any Mercury names which
@@ -247,7 +249,7 @@
 % [Rationale: name mangling should be avoided where possible, because
 % this makes it easier for the user to interoperate with other languages
 % and to use tools which do not properly demangle Mercury names.]
-
+% 
 % 4. Procedures.
 %
 % If a procedure name needs to be qualified, the qualification should be
@@ -265,7 +267,7 @@
 % any procedures whose unqualified name matches the pattern for qualified
 % names, i.e. the regular expression `.*_[fp][0-9]*(_[0-9]+)?(_i[0-9]+)?',
 % should always be qualified (even if not overloaded).
-
+% 
 % 5. Types.
 %
 % If a type name needs to be qualified, the qualification should be
@@ -275,12 +277,12 @@
 % any types whose unqualified name matches the pattern for qualified
 % names, i.e. the regular expression `.*_[0-9]+',
 % should always be qualified (even if not overloaded).
-
+% 
 %-----------------------------------------------------------------------------%
 %
 % Notes on garbage collection and liveness.
 %
-
+% 
 % "Liveness-accurate GC" is GC in which the collector does not trace local
 % variables which are definitely not live according to a straight-forward
 % static analysis of definite-deadness/possible-liveness.  Liveness-accurate
@@ -306,7 +308,7 @@
 % generation scheme, this is the case for variables in the `else' of a
 % nondet if-then-else once the `then' has been entered.
 % (XXX Currently ml_code_gen.m does _not_ clobber those variables, though.)
-
+% 
 % The rationale for leaving most of the responsibility for liveness-accurate
 % GC up to the MLDS back-end is as follows: at very least we need the
 % target language implementation's _cooperation_, since if the MLDS code
@@ -323,11 +325,10 @@
 % because that would require assuming an unreasonably smart liveness
 % calculation in the MLDS target back-end, so in such cases we do need
 % to handle it in the HLDS->MLDS code generator.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.mlds.
-
 :- interface.
 
 :- import_module backend_libs.builtin_ops.

@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: term_traversal.m.
 % Main author: crs.
 % Significant rewrite by zs.
-
+% 
 % This module contains the code used to traverse procedure bodies
 % for both passes of termination analysis.
 %
 % For details, please refer to the papers mentioned in termination.m.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_traversal.

@@ -12,10 +12,8 @@
 % This module contains code for tracing the actions of the mode checker.
 %
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- module check_hlds.mode_debug.
-
 :- interface.
 
 :- import_module check_hlds.mode_info.

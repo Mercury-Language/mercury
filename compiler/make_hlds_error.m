@@ -6,12 +6,13 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
+% File: make_hlds_error.m.
+%
 % Utility predicates for writing out warning and error messages when
 % building the HLDS. Error messages specific to a given submodule of
 % make_hlds.m are in that specific submodule; this submodule is for error
 % messages that are needed by more than one submodule.
-%
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module hlds.make_hlds.make_hlds_error.

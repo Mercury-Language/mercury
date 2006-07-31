@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: unneeded_code.m.
 % Author: zs.
-
+% 
 % This module implements two related source-to-source transforms,
 % both of which focus on goals that produce some variables, where these
 % variables are not always required by the following computation.
@@ -53,7 +53,7 @@
 % the semantics options explicitly permit the change in the operational
 % semantics, which will usually be an improvement (e.g. avoiding an infinite
 % loop or an unnecessary exception).
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.unneeded_code.

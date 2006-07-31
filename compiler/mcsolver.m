@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: mcsolver.m
-% Main authors: rafe, richardf
+% File: mcsolver.m.
+% Main authors: rafe, richardf.
 %
 % Original author:
 % Ralph Becket <rafe@cs.mu.oz.au>

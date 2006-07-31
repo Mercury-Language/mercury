@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: inst_check.m
+% File: inst_check.m.
 % Main author: maclarty.
 %
 % This module exports a predicate that checks that each user defined inst is
@@ -20,7 +20,6 @@
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.inst_check.
-
 :- interface.
 
 :- import_module io.

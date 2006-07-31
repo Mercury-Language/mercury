@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: equiv_type.m.
 % Main author: fjh.
-
+% 
 % This module contains a parse-tree to parse-tree transformation
 % that expands equivalence types. It also expands away `with_type`
 % and `with_inst` annotations on predicate and function type declarations.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.equiv_type.

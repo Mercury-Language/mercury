@@ -5,13 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: goal_util.m.
 % Main author: conway.
-
+% 
 % This module provides various utility procedures for manipulating HLDS goals,
 % e.g. some functionality for renaming variables in goals.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.goal_util.

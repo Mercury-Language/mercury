@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: dense_switch.m.
 % Author: fjh.
-
+% 
 % For switches on atomic types, generate code using a dense jump table.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.dense_switch.

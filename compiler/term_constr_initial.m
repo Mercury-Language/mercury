@@ -5,15 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
-
+% 
 % File: term_constr_initial.m.
 % Main author: juliensf.
-
+% 
 % This module fills in the appropriate argument size information and
 % termination property for builtin and compiler generated predicates.
 % It also handles the processing of termination pragmas and sets
 % the termination properties for foreign procedures.
-
+% 
 % Handling of pragma terminates/does_not_terminate
 %
 % At the moment we set the termination status as appropriate, set the arg
@@ -23,10 +23,10 @@
 % will need modifying - in particular we will need to make sure that
 % the identity of the variables in the size_var_map matches those
 % in the constraints. 
-
+% 
 % A lot of this code is based on that in termination.m that does the
 % equivalent jobs for the old termination analyser.
-
+% 
 %----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_initial.

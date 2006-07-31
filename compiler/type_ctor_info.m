@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: type_ctor_info.m.
 % Authors: zs, trd.
-
+% 
 % This module is responsible for the generation of the static type_ctor_info
 % structures of the types defined by the current module. This includes the
 % RTTI data structures that describe the representation of each type.
@@ -30,8 +30,7 @@
 % The documentation of the data structures built in this module is in
 % runtime/mercury_type_info.h; that file also contains a list of all
 % the files that depend on these data structures.
-
-%---------------------------------------------------------------------------%
+% 
 %---------------------------------------------------------------------------%
 
 :- module backend_libs.type_ctor_info.

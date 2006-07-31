@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: dep_par_conj.m.
 % Author: wangp.
-
+% 
 % This module transforms the HLDS to implement dependent parallel conjunction.
 % The transformation involves adding calls to the predicates defined in
 % library/par_builtin.m.
@@ -43,7 +43,7 @@
 % - only run this pass if parallel conjunctions are present in a module
 % - reconsider when this pass is run; in particular par_builtin primitives
 %   ought to be inlined
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.dep_par_conj.

@@ -5,15 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: type_util.m.
 % Main author: fjh.
-
+% 
 % This file provides some utility predicates which operate on types.
 % It is used by various stages of the compilation after type-checking,
 % include the mode checker and the code generator.
-
-%-----------------------------------------------------------------------------%
+% 
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.type_util.

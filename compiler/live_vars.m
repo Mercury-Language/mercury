@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: live_vars.m.
 % Main authors: conway, zs.
-
+% 
 % This module finds out what variables need to be saved across calls,
 % across goals that may fail, and in parallel conjunctions. It then does those
 % things with that information. First, it attaches that information to the
@@ -16,7 +16,7 @@
 % the relevant type class method of the allocator-specific data structure
 % it is passed; the basic stack slot allocator and the optimizing stack slot
 % allocator pass different instances of this type class.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.live_vars.

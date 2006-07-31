@@ -21,7 +21,6 @@
 %   - Finding where these garbage datastructures can be reused.
 %
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.structure_reuse.direct.
 :- interface.

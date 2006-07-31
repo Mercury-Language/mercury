@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: deep_profiling.m.
 % Main author: conway.
-
+% 
 % This module applies the deep profiling transformation described in the paper
 % ``Engineering a profiler for a logic programming language'' by Thomas Conway
 % and Zoltan Somogyi.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.deep_profiling.

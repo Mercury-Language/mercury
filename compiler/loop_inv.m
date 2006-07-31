@@ -89,9 +89,8 @@
 %
 % This may be the subject of a future improvement of the optimization.
 % Similarly for broadening the scope of the optimization to include non
-% model-det recursive paths.
+% model_det recursive paths.
 %
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.loop_inv.

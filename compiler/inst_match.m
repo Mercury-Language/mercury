@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: inst_match.m.
 % Author: fjh.
-
+% 
 % This module defines some utility routines for comparing insts that are used
 % by modes.m and det_analysis.m.
 %
@@ -34,7 +34,7 @@
 % that `bound' and `ground' are represented in the same way as `any', i.e.
 % that we use the type system rather than the mode system to distinguish
 % between different representations.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.inst_match.

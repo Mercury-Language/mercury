@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: c_util.m
+% File: c_util.m.
 % Main author: fjh.
 %
 % This module defines utility routines that are useful when generating and/or

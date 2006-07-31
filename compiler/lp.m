@@ -6,8 +6,8 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% file: lp.m
-% main author: conway,  Oct 1997
+% File: lp.m.
+% Main author: conway.
 %
 % This module implements a linear constraint solver that finds an
 % optimal solution to a set of linear [in]equalities with respect

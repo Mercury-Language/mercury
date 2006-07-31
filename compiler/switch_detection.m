@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% File: switch_detection.
+% 
+% File: switch_detection.m.
 % Main author: fjh.
-
+% 
 % Switch detection - when a disjunction contains disjuncts that unify the
 % same input variable with different function symbols, replace (part of)
 % the disjunction with a switch.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.switch_detection.

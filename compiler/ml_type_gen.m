@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: ml_type_gen.m
 % Main author: fjh
-
+% 
 % MLDS type generation -- convert HLDS types to MLDS.
-
+% 
 % For enumerations, we use a Java-style emulation: we convert them
 % to classes with a single int member, plus a bunch of static (one_copy)
 % const members for the different enumerations consts.
@@ -20,7 +20,7 @@
 % to each of the constructors which are defined from the base class type.
 % For constructors which are represented as the addresses of specially reserved
 % objects, we generate the static (one_copy) members for those objects.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ml_backend.ml_type_gen.

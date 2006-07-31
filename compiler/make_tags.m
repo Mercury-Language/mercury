@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: make_tags.m.
 % Main author: fjh.
-
+% 
 % This module is where we determine the representation for
 % discriminated union types.  Each d.u. type is represented as
 % a word.  In the case of functors with arguments, we allocate
@@ -53,8 +53,7 @@
 % unbound variables).  This is used by HAL, for Herbrand constraints
 % (i.e. Prolog-style logic variables).
 % This also disables enumerations and no_tag types.
-
-%-----------------------------------------------------------------------------%
+% 
 %-----------------------------------------------------------------------------%
 
 :- module hlds.make_tags.

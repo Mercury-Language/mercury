@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% File: delay_construct.m
+% 
+% File: delay_construct.m.
 % Author: zs.
-
+% 
 % This module transforms sequences of goals in procedure bodies.  It looks for
 % a unification that constructs a ground term followed by primitive goals, at
 % least one of which can fail, and none of which take the variable
@@ -16,12 +16,12 @@
 % be constructed even if the following goal would fail, which is wasteful.
 % This module therefore reorders the sequence, moving the construction
 % unification past all the semidet primitives it can.
-
+% 
 % The reason we don't move the construction past calls or composite goals is
 % that this may require storing the input arguments of the construction on the
 % stack, which may cause a slowdown bigger than the speedup available from not
 % having to construct the cell on some execution paths.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.delay_construct.

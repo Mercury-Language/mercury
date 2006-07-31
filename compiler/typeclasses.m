@@ -6,13 +6,12 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: typeclasses.m
+% File: typeclasses.m.
 % Main author: mark (including code by fjh and dgj)
 %
 % The module implements context reduction, which is the part of type checking
 % which implements the type class system.
 %
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.typeclasses.

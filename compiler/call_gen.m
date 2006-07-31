@@ -6,13 +6,12 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: call_gen.m
+% File: call_gen.m.
 % Authors: conway, zs.
 %
 % This module provides predicates for generating procedure calls,
 % including calls to higher-order pred variables.
 %
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- module ll_backend.call_gen.

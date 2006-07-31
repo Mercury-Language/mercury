@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
-
+% 
 % File: hlds_code_util.m.
-
+% 
 % Various utilities routines for use during hlds generation.
-
+% 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.hlds_code_util.

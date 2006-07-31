@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: make.dependencies.m.
 % Author: stayl.
-
+% 
 % Code to find the dependencies for a particular target,
 % e.g. module.c depends on module.m, import.int, etc.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module make.dependencies.

@@ -42,7 +42,7 @@
 % following the event as a parameter. For the first and later arms of
 % nondet pragma C code, there is no such hlds_goal, which is why these events
 % need a bit of special treatment.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module ll_backend.trace_gen.

@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: common.m.
 % Original author: squirrel (Jane Anna Langley).
 % Some bugs fixed by fjh.
 % Extensive revision by zs.
 % More revision by stayl.
-
+% 
 % This module attempts to optimise out instances where a variable is
 % decomposed and then soon after reconstructed from the parts. If possible we
 % would like to "short-circuit" this process.  It also optimizes
@@ -25,7 +25,7 @@
 % information, since the compiler does not yet have such information.  Once we
 % implement ctgc, the assumptions made by this module will have to be
 % revisited.
-
+% 
 %---------------------------------------------------------------------------%
 
 :- module check_hlds.common.

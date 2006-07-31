@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
-% File: var_locn.m
+% 
+% File: var_locn.m.
 % Author: zs.
-
+% 
 % This module defines a set of predicates that operate on the abstract
 % 'var_locn_info' structure which maintains information about where variables
 % are stored, what their values are if they are not stored anywhere,
 % and which registers are reserved for purposes such as holding the arguments
 % of calls and tags that are to be switched upon.
-
+% 
 %----------------------------------------------------------------------------%
 
 :- module ll_backend.var_locn.

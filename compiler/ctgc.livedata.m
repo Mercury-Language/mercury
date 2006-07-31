@@ -16,7 +16,6 @@
 % of the program w.r.t. the program point (goal) looked at.
 %
 %-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.livedata.
 :- interface.
