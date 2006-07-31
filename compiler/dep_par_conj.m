@@ -431,7 +431,7 @@ make_signal(ModuleInfo, FutureMap, ProducedVar, SignalGoal) :-
     InstMapSrc = [],
     Context = term.context_init,
     goal_util.generate_simple_call(ModuleName, PredName, predicate,
-        only_mode, detism_det, purity_pure, Args, Features, InstMapSrc,
+        only_mode, detism_det, purity_impure, Args, Features, InstMapSrc,
         ModuleInfo, Context, SignalGoal).
 
     % Succeed if Var is a variable bound between InstMap and
