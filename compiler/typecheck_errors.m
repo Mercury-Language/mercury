@@ -377,63 +377,98 @@ report_warning_too_much_overloading(Info, !IO) :-
     FirstSpec = error_msg_spec(yes, Context, 0, InitVerboseWarning),
 
     typecheck_info_get_overloaded_symbols(Info, OverloadedSymbolSet),
-    set.to_sorted_list(OverloadedSymbolSet, OverloadedSymbols),
+    map.to_assoc_list(OverloadedSymbolSet, OverloadedSymbols),
+    OverloadedSymbolsSortedContexts =
+        assoc_list.map_values_only(sort_and_remove_dups, OverloadedSymbols),
     (
-        OverloadedSymbols = [],
+        OverloadedSymbolsSortedContexts = [],
         Specs = [FirstSpec]
     ;
         (
-            OverloadedSymbols = [_],
-            SecondSpecPieces =
-                [words("The following symbol was overloaded"),
-                words("in the following context."), nl]
+            OverloadedSymbolsSortedContexts = [_ - Contexts],
+            (
+                Contexts = [],
+                unexpected(this_file,
+                    "report_warning_too_much_overloading: no contexts")
+            ;
+                Contexts = [_],
+                SecondSpecPieces =
+                    [words("The following symbol was overloaded"),
+                    words("in the following context."), nl]
+            ;
+                Contexts = [_, _ | _],
+                SecondSpecPieces =
+                    [words("The following symbol was overloaded"),
+                    words("in the following contexts."), nl]
+            )
         ;
-            OverloadedSymbols = [_, _ | _],
+            OverloadedSymbolsSortedContexts = [_, _ | _],
             SecondSpecPieces =
                 [words("The following symbols were overloaded"),
                 words("in the following contexts."), nl]
         ),
         SecondSpec = error_msg_spec(no, Context, 0, SecondSpecPieces),
         typecheck_info_get_module_info(Info, ModuleInfo),
-        DetailSpecs = list.map(describe_overloaded_symbol(ModuleInfo),
-            OverloadedSymbols),
+        DetailSpecsList = list.map(describe_overloaded_symbol(ModuleInfo),
+            OverloadedSymbolsSortedContexts),
+        list.condense(DetailSpecsList, DetailSpecs),
         Specs = [FirstSpec, SecondSpec | DetailSpecs]
     ),
     record_warning(!IO),
     write_error_specs(Specs, !IO).
 
-:- func describe_overloaded_symbol(module_info, overloaded_symbol)
+:- func describe_overloaded_symbol(module_info,
+    pair(overloaded_symbol, list(prog_context))) = list(error_msg_spec).
+
+describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Specs :-
+    (
+        SortedContexts = [],
+        unexpected(this_file, "describe_overloaded_symbol: no context")
+    ;
+        SortedContexts = [FirstContext | LaterContexts],
+        % We print a detailed message for the first context, but omit
+        % repeating the list of possible matches for any later contexts.
+        (
+            Symbol = overloaded_pred(CallId, PredIds),
+            StartPieces = [words("The predicate symbol"),
+                simple_call_id(CallId), suffix("."), nl,
+                words("The possible matches are:"), nl_indent_delta(1)],
+            PredIdPiecesList = list.map(describe_one_pred_name(ModuleInfo,
+                should_module_qualify), PredIds),
+            PredIdPieces = component_list_to_line_pieces(PredIdPiecesList,
+                [suffix(".")]),
+            FirstPieces = StartPieces ++ PredIdPieces,
+            LaterPieces = [words("The predicate symbol"),
+                simple_call_id(CallId), words("is also overloaded here.")]
+        ;
+            Symbol = overloaded_func(ConsId, Sources),
+            ( ConsId = cons(SymName, Arity) ->
+                ConsIdPiece = sym_name_and_arity(SymName / Arity)
+            ;
+                ConsIdPiece = fixed(cons_id_to_string(ConsId))
+            ),
+            StartPieces = [words("The function symbol"), ConsIdPiece,
+                suffix("."), nl,
+                words("The possible matches are:"), nl_indent_delta(1)],
+            SourcePiecesList = list.map(
+                describe_cons_type_info_source(ModuleInfo), Sources),
+            SourcePieces = component_list_to_line_pieces(SourcePiecesList,
+                [suffix(".")]),
+            FirstPieces = StartPieces ++ SourcePieces,
+            LaterPieces = [words("The function symbol"), ConsIdPiece,
+                words("is also overloaded here.")]
+        ),
+        FirstSpec = error_msg_spec(no, FirstContext, 0, FirstPieces),
+        LaterSpecs = list.map(context_to_error_msg_spec(LaterPieces),
+            LaterContexts),
+        Specs = [FirstSpec | LaterSpecs]
+    ).
+
+:- func context_to_error_msg_spec(list(format_component), prog_context)
     = error_msg_spec.
 
-describe_overloaded_symbol(ModuleInfo, Symbol) = Spec :-
-    Symbol = overloaded_symbol(Context, Info),
-    (
-        Info = overloaded_pred(CallId, PredIds),
-        StartPieces = [words("The predicate symbol"),
-            simple_call_id(CallId), suffix("."), nl,
-            words("The possible matches are:"), nl_indent_delta(1)],
-        PredIdPiecesList = list.map(describe_one_pred_name(ModuleInfo,
-            should_module_qualify), PredIds),
-        PredIdPieces = component_list_to_line_pieces(PredIdPiecesList,
-            [suffix(".")]),
-        Pieces = StartPieces ++ PredIdPieces
-    ;
-        Info = overloaded_func(ConsId, Sources),
-        ( ConsId = cons(SymName, Arity) ->
-            ConsIdPiece = sym_name_and_arity(SymName / Arity)
-        ;
-            ConsIdPiece = fixed(cons_id_to_string(ConsId))
-        ),
-        StartPieces = [words("The function symbol"), ConsIdPiece,
-            suffix("."), nl,
-            words("The possible matches are:"), nl_indent_delta(1)],
-        SourcePiecesList = list.map(describe_cons_type_info_source(ModuleInfo),
-            Sources),
-        SourcePieces = component_list_to_line_pieces(SourcePiecesList,
-            [suffix(".")]),
-        Pieces = StartPieces ++ SourcePieces
-    ),
-    Spec = error_msg_spec(no, Context, 0, Pieces).
+context_to_error_msg_spec(Pieces, Context) =
+    error_msg_spec(no, Context, 0, Pieces).
 
 :- func describe_cons_type_info_source(module_info, cons_type_info_source)
     = list(format_component).

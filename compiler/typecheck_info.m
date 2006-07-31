@@ -29,7 +29,7 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
-:- import_module set.
+:- import_module map.
 
 %-----------------------------------------------------------------------------%
 %
@@ -81,23 +81,20 @@
                 found_error     :: bool,
                                 % Did we find any type errors?
 
-                overloaded_symbols :: set(overloaded_symbol),
-                                % The set of symbols used by the current
-                                % predicate that have more than one accessible
-                                % definition.
+                overloaded_symbols :: overloaded_symbol_map,
+                                % The symbols used by the current predicate
+                                % that have more than one accessible
+                                % definition, mapped to the unsorted list of
+                                % the locations that refer to them.
 
                 warned_about_overloading :: bool
                                 % Have we already warned about highly
                                 % ambiguous overloading?
             ).
 
-:- type overloaded_symbol
-    --->    overloaded_symbol(
-                prog_context,
-                overloaded_symbol_info
-            ).
+:- type overloaded_symbol_map == map(overloaded_symbol, list(prog_context)).
 
-:- type overloaded_symbol_info
+:- type overloaded_symbol
     --->    overloaded_pred(
                 simple_call_id,
                 list(pred_id)
@@ -164,7 +161,7 @@
 :- pred typecheck_info_get_warned_about_overloading(typecheck_info::in,
     bool::out) is det.
 :- pred typecheck_info_get_overloaded_symbols(typecheck_info::in,
-    set(overloaded_symbol)::out) is det.
+    overloaded_symbol_map::out) is det.
 :- pred typecheck_info_get_pred_import_status(typecheck_info::in,
     import_status::out) is det.
 
@@ -182,7 +179,7 @@
     typecheck_info::in, typecheck_info::out) is det.
 :- pred typecheck_info_set_warned_about_overloading(bool::in,
     typecheck_info::in, typecheck_info::out) is det.
-:- pred typecheck_info_set_overloaded_symbols(set(overloaded_symbol)::in,
+:- pred typecheck_info_set_overloaded_symbols(overloaded_symbol_map::in,
     typecheck_info::in, typecheck_info::out) is det.
 :- pred typecheck_info_set_pred_import_status(import_status::in,
     typecheck_info::in, typecheck_info::out) is det.
@@ -200,6 +197,9 @@
 :- pred typecheck_info_get_ctors(typecheck_info::in, cons_table::out) is det.
 :- pred typecheck_info_get_pred_markers(typecheck_info::in, pred_markers::out)
     is det.
+
+:- pred typecheck_info_add_overloaded_symbol(overloaded_symbol::in,
+    prog_context::in, typecheck_info::in, typecheck_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -344,8 +344,8 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
 
-:- import_module map.
 :- import_module pair.
+:- import_module set.
 :- import_module svmap.
 :- import_module term.
 :- import_module varset.
@@ -362,7 +362,7 @@ typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
     map.init(ConstraintMap),
     FoundTypeError = no,
     WarnedAboutOverloading = no,
-    set.init(OverloadedSymbols),
+    map.init(OverloadedSymbols),
     Info = typecheck_info(ModuleInfo, CallPredId, 0, PredId, Status, Markers,
         IsFieldAccessFunction, Context,
         unify_context(explicit, []), VarSet,
@@ -576,6 +576,17 @@ typecheck_info_get_pred_markers(Info, PredMarkers) :-
     typecheck_info_get_predid(Info, PredId),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_markers(PredInfo, PredMarkers).
+
+typecheck_info_add_overloaded_symbol(Symbol, Context, !Info) :-
+    typecheck_info_get_overloaded_symbols(!.Info, SymbolMap0),
+    ( map.search(SymbolMap0, Symbol, OldContexts) ->
+        Contexts = [Context | OldContexts],
+        map.det_update(SymbolMap0, Symbol, Contexts, SymbolMap)
+    ;
+        Contexts = [Context],
+        map.det_insert(SymbolMap0, Symbol, Contexts, SymbolMap)
+    ),
+    typecheck_info_set_overloaded_symbols(SymbolMap, !Info).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

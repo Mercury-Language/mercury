@@ -1528,11 +1528,9 @@ typecheck_call_pred_id(PredId, Args, GoalPath, !Info, !IO) :-
 
 typecheck_call_overloaded_pred(CallId, PredIdList, Args, GoalPath,
         !Info, !IO) :-
-    typecheck_info_get_overloaded_symbols(!.Info, OverloadedSymbols0),
     typecheck_info_get_context(!.Info, Context),
-    Symbol = overloaded_symbol(Context, overloaded_pred(CallId, PredIdList)),
-    set.insert(OverloadedSymbols0, Symbol, OverloadedSymbols),
-    typecheck_info_set_overloaded_symbols(OverloadedSymbols, !Info),
+    Symbol = overloaded_pred(CallId, PredIdList),
+    typecheck_info_add_overloaded_symbol(Symbol, Context, !Info),
 
     % Let the new arg_type_assign_set be the cross-product of the current
     % type_assign_set and the set of possible lists of argument types
@@ -1917,13 +1915,10 @@ typecheck_unify_var_functor(Var, Functor, Args, GoalPath, !Info, !IO) :-
             ConsDefnList = [_]
         ;
             ConsDefnList = [_, _ | _],
-            typecheck_info_get_overloaded_symbols(!.Info, OverloadedSymbols0),
             typecheck_info_get_context(!.Info, Context),
             Sources = list.map(project_cons_type_info_source, ConsDefnList),
-            Symbol = overloaded_symbol(Context,
-                overloaded_func(Functor, Sources)),
-            set.insert(OverloadedSymbols0, Symbol, OverloadedSymbols),
-            typecheck_info_set_overloaded_symbols(OverloadedSymbols, !Info)
+            Symbol = overloaded_func(Functor, Sources),
+            typecheck_info_add_overloaded_symbol(Symbol, Context, !Info)
         ),
 
         % Produce the ConsTypeAssignSet, which is essentially the

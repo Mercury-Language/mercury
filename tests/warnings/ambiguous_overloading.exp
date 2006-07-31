@@ -27,32 +27,22 @@ ambiguous_overloading.m:045:     the type constructor
 ambiguous_overloading.m:045:     `ambiguous_overloading.baz'/0.
 ambiguous_overloading.m:055: In clause for predicate `test_lt/1': warning:
 ambiguous_overloading.m:055:   highly ambiguous overloading.
-ambiguous_overloading.m:055:   The following symbols were overloaded in the
+ambiguous_overloading.m:055:   The following symbol was overloaded in the
 ambiguous_overloading.m:055:   following contexts.
 ambiguous_overloading.m:050:   The predicate symbol predicate `</2'.
 ambiguous_overloading.m:050:   The possible matches are:
 ambiguous_overloading.m:050:     predicate `float.</2',
 ambiguous_overloading.m:050:     predicate `int.</2'.
-ambiguous_overloading.m:051:   The predicate symbol predicate `</2'.
-ambiguous_overloading.m:051:   The possible matches are:
-ambiguous_overloading.m:051:     predicate `float.</2',
-ambiguous_overloading.m:051:     predicate `int.</2'.
-ambiguous_overloading.m:052:   The predicate symbol predicate `</2'.
-ambiguous_overloading.m:052:   The possible matches are:
-ambiguous_overloading.m:052:     predicate `float.</2',
-ambiguous_overloading.m:052:     predicate `int.</2'.
-ambiguous_overloading.m:053:   The predicate symbol predicate `</2'.
-ambiguous_overloading.m:053:   The possible matches are:
-ambiguous_overloading.m:053:     predicate `float.</2',
-ambiguous_overloading.m:053:     predicate `int.</2'.
-ambiguous_overloading.m:054:   The predicate symbol predicate `</2'.
-ambiguous_overloading.m:054:   The possible matches are:
-ambiguous_overloading.m:054:     predicate `float.</2',
-ambiguous_overloading.m:054:     predicate `int.</2'.
-ambiguous_overloading.m:055:   The predicate symbol predicate `</2'.
-ambiguous_overloading.m:055:   The possible matches are:
-ambiguous_overloading.m:055:     predicate `float.</2',
-ambiguous_overloading.m:055:     predicate `int.</2'.
+ambiguous_overloading.m:051:   The predicate symbol predicate `</2' is also
+ambiguous_overloading.m:051:   overloaded here.
+ambiguous_overloading.m:052:   The predicate symbol predicate `</2' is also
+ambiguous_overloading.m:052:   overloaded here.
+ambiguous_overloading.m:053:   The predicate symbol predicate `</2' is also
+ambiguous_overloading.m:053:   overloaded here.
+ambiguous_overloading.m:054:   The predicate symbol predicate `</2' is also
+ambiguous_overloading.m:054:   overloaded here.
+ambiguous_overloading.m:055:   The predicate symbol predicate `</2' is also
+ambiguous_overloading.m:055:   overloaded here.
 ambiguous_overloading.m:071: In clause for predicate `set_browser_param_from_option_table/3':
 ambiguous_overloading.m:071:   warning: highly ambiguous overloading.
 ambiguous_overloading.m:071:   The following symbol was overloaded in the
