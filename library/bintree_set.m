@@ -6,6 +6,7 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %--------------------------------------------------------------------------%
 %
+% File: bintree_set.m.
 % Main authors: fjh.
 % Stability: medium (obsolete).
 %
@@ -17,12 +18,13 @@
 % bintree_set.is_member is a version of bintree_set.member with a more
 % restricted mode, which is implemented much more efficiently using
 % bintree.search.
-
-:- module bintree_set.
-
+% 
+%--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
 
+:- module bintree_set.
 :- interface.
+
 :- import_module list.
 
 :- type bintree_set(_T).

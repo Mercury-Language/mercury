@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: rbtree.m.
 % Main author: petdr.
 % Stability: medium.
-
+% 
 % Contains an implementation of red black trees.
 %
 % *** Exit conditions of main predicates ***

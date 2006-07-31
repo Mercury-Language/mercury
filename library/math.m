@@ -6,9 +6,9 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: math.m
-% Main author: bromage
-% Stability: high
+% File: math.m.
+% Main author: bromage.
+% Stability: high.
 %
 % Higher mathematical operations.  (The basics are in float.m.)
 %
@@ -37,6 +37,7 @@
 % that is enabled; with the checks disabled you only have the information
 % that the floating-point exception signal handler gives you.
 %
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- module math.

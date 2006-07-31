@@ -12,12 +12,11 @@
 % use of state variable notation. The predicates here do the same thing as
 % their counterparts in the bimap module; the only difference is the order
 % of the arguments.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module svbimap.
-
 :- interface.
 
 :- import_module bimap.

@@ -5,14 +5,15 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: svvarset.m.
-
+% 
 % This file provides an interface to the 'varset' ADT that is conducive to the
 % user of state variable notation.  The predicates here do the same thing as
 % their counterparts in the varset module; the only difference is the order of
 % the arguments.
-
+% 
+%--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
 
 :- module svvarset.

@@ -5,8 +5,10 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
-% set_ctree234.m:
+% 
+% File: set_ctree234.m.
+% Author: zs.
+% Stability: high.
 %
 % This module implements sets using 2-3-4 trees extended with element counts.
 % This representation has higher constant factors for most operations than
@@ -17,7 +19,8 @@
 % - for operations that are intrinsically linear in the size of one input
 %   operand or the other, the counts allow us to choose to be linear in the
 %   size of the smaller set.
-
+% 
+%--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
 
 :- module set_ctree234.

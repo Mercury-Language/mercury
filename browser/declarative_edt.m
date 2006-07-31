@@ -5,8 +5,9 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% File: declarative_edt.m
-% Authors: Ian MacLarty, Mark Brown
+%
+% File: declarative_edt.m.
+% Authors: Ian MacLarty, Mark Brown.
 %
 % This module defines Evaluation Dependency Trees (EDTs) which represent the
 % dependencies between calls made during the execution of a buggy program.
@@ -18,7 +19,7 @@
 % like the probability of each node being buggy, based on some heursitic(s).
 %
 % The search space provides a consistent view of the debug tree - combining
-% seperately generated EDT subtrees into one tree.  Each node in the search
+% separately generated EDT subtrees into one tree.  Each node in the search
 % space corresponds to a node either explicitly represented in a generated EDT
 % subtree or the root of an implicitly represented EDT subtree.  We maintain
 % the invarient that search space nodes always correspond with explicit nodes
@@ -55,6 +56,7 @@
 % compiling with the C macro MR_DD_CHECK_SEARCH_SPACE defined (i.e. by
 % putting "EXTRA_CFLAGS=-DMR_DD_CHECK_SEARCH_SPACE" in Mmake.browser.params).
 %
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module mdb.declarative_edt.

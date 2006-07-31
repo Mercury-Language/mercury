@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% File: getopt_io.m
-% Authors: fjh, zs
-% Stability: medium
-
+% 
+% File: getopt_io.m.
+% Authors: fjh, zs.
+% Stability: medium.
+% 
 % This module exports the predicate getopt_io.process_options/6,
 % which can be used to parse command-line options.
 %
@@ -80,6 +80,9 @@
 % Its handling always consists of reading the named file, converting its
 % contents into a sequence of words separated by white space, and interpreting
 % those words as options in the usual manner.
+%
+%-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module getopt_io.
 :- interface.

@@ -6,9 +6,9 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: array.m
-% Main authors: fjh, bromage
-% Stability: medium-low
+% File: array.m.
+% Main authors: fjh, bromage.
+% Stability: medium-low.
 %
 % This module provides dynamically-sized one-dimensional arrays.
 % Array indices start at zero.
@@ -54,7 +54,7 @@
 %       A0I = A0 ^ elem(I),
 %       A1  = A0 ^ elem(I) := X,
 %       Y   = f(A1, A0I)
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

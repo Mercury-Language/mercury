@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: store.m.
 % Main author: fjh.
 % Stability: low.
-
+% 
 % This file provides facilities for manipulating mutable stores.
 % A store can be considered a mapping from abstract keys to their values.
 % A store holds a set of nodes, each of which may contain a value of any
@@ -24,12 +24,13 @@
 % mutvars can only be updated atomically,
 % whereas it is possible to update individual fields of a reference
 % one at a time (presuming the reference refers to a structured term).
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module store.
 :- interface.
+
 :- import_module io.
 
 % Stores and keys are indexed by a type S of typeclass store(S) that

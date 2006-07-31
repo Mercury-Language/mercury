@@ -5,18 +5,18 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: exception.m.
 % Main author: fjh.
-% Stability: medium
-
+% Stability: medium.
+% 
 % This file defines the Mercury interface for exception handling.
-
+% 
 % Note that throwing an exception across the C interface won't work.
 % That is, if a Mercury procedure that is exported to C using `pragma export'
 % throws an exception which is not caught within that procedure, then
 % you will get undefined behaviour.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

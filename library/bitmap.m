@@ -6,9 +6,9 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: bitmap.m
-% Main author: rafe
-% Stability: low
+% File: bitmap.m.
+% Main author: rafe.
+% Stability: low.
 %
 % Efficient bitmap implementation.
 %
@@ -20,9 +20,9 @@
 % code that would otherwise be assured by the compiler.)
 %
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module bitmap.
-
 :- interface.
 
 :- import_module array.

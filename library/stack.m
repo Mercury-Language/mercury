@@ -5,18 +5,20 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: stack.m.
 % Main author: fjh.
 % Stability: high.
-
+% 
 % This file contains a `stack' ADT.
 % Stacks are implemented here using lists.
-
+% 
+%--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
 
 :- module stack.
 :- interface.
+
 :- import_module list.
 
 %--------------------------------------------------------------------------%

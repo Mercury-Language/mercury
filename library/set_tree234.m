@@ -5,9 +5,14 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
-% set_tree234.m - implements a set using 2-3-4 trees.
-
+% 
+% File: set_tree234.m.
+% Author: zs.
+% Stability: high.
+%
+% This module implements sets using 2-3-4 trees.
+% 
+%--------------------------------------------------------------------------%
 %--------------------------------------------------------------------------%
 
 :- module set_tree234.

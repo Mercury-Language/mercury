@@ -5,20 +5,20 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
-
-% File: set.m.
+% 
+% File: svrelation.m.
 % Authors: zs.
 % Stability: high.
-
+% 
 % This file provides an interface to the 'relation' ADT that is conducive to
 % the use of state variable notation. The predicates here do the same thing as
 % their counterparts in the relation module; the only difference is the order
 % of the arguments.
-
+% 
+%------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
 :- module svrelation.
-
 :- interface.
 
 :- import_module assoc_list.

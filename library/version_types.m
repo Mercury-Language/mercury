@@ -1,5 +1,5 @@
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2005 The University of Melbourne.
+% Copyright (C) 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
@@ -31,9 +31,9 @@
 % offering similar levels of performance.
 %
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module version_types.
-
 :- interface.
 
     % This is just to stop the compiler complaining about this module

@@ -5,17 +5,19 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
-% tree234 - implements a map (dictionary) using 2-3-4 trees.
-% main author: conway.
-% stability: medium.
-
+% 
+% File: tree234.m.
+% Main author: conway.
+% Stability: medium.
+%
+% This module implements a map (dictionary) using 2-3-4 trees.
+%
 % See map.m for documentation.
-
+%
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- module tree234.
-
 :- interface.
 
 :- import_module assoc_list.

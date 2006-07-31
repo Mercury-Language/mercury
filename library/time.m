@@ -10,15 +10,15 @@
 %-----------------------------------------------------------------------------%
 %
 % File: time.m.
-% Main authors: Tomas By <T.By@dcs.shef.ac.uk>, fjh
-% Stability: medium
+% Main authors: Tomas By <T.By@dcs.shef.ac.uk>, fjh.
+% Stability: medium.
 %
 % Time functions.
 %
 %-----------------------------------------------------------------------------%
+%-----------------------------------------------------------------------------%
 
 :- module time.
-
 :- interface.
 
 :- import_module io.

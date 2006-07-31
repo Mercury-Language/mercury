@@ -1,13 +1,14 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %---------------------------------------------------------------------------%
-% Copyright (C) 2002-2005 The University of Melbourne.
+% Copyright (C) 2002-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-%
-% Ralph Becket <rafe@cs.mu.oz.au>
-% Mon Feb  3 12:27:53 EST 2003
+% 
+% File: cord.m.
+% Author: Ralph Becket <rafe@cs.mu.oz.au>
+% Stability: medium.
 %
 % A cord is a sequence type supporting O(1) consing and
 % concatenation.  A cord is essentially a tree structure with data stored
@@ -21,9 +22,9 @@
 % head_tail/3 in particular are O(n) in the size of the cord.
 %
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module cord.
-
 :- interface.
 
 :- import_module int.

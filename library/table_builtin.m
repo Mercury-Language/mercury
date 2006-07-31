@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: table_builtin.m.
 % Main authors: zs, fjh, ohutch.
 % Stability: low.
-
+% 
 % This file is automatically imported, as if via `use_module', into every
 % module that contains a tabling pragma (`pragma loopcheck', `pragma memo',
 % or `pragma minimal_model').  It is intended for the builtin procedures
@@ -24,14 +24,11 @@
 % This module is a private part of the Mercury implementation; user modules
 % should never explicitly import this module. The interface for this module
 % does not get included in the Mercury library reference manual.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module table_builtin.
-
-%-----------------------------------------------------------------------------%
-
 :- interface.
 
 % This section of the module contains the predicates that are

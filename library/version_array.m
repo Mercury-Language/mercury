@@ -1,14 +1,14 @@
 %-----------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et tw=0 wm=0 ft=mercury
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2004-2005 The University of Melbourne.
+% Copyright (C) 2004-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 % vim: ft=mercury ts=4 sw=4 et wm=0 tw=0
 %-----------------------------------------------------------------------------%
-% version_array.m
-% Ralph Becket <rafe@cs.mu.oz.au>
-% Wed Jan 21 15:44:04 EST 2004
+%
+% File: version_array.m.
+% Author: Ralph Becket <rafe@cs.mu.oz.au>.
 %
 % (See the header comments in version_types.m for an explanation of version
 % types.)

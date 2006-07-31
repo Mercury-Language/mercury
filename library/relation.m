@@ -6,14 +6,15 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
 %
-% file: relation.m.
-% main author: bromage, petdr.
-% stability: low.
+% File: relation.m.
+% Main author: bromage, petdr.
+% Stability: low.
 %
 % This module defines a data type for binary relations over reflexive
 % domains.
 %
 % In fact, this is exactly equivalent to a graph/1 type.
+%
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 

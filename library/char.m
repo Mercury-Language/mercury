@@ -4,22 +4,21 @@
 % Copyright (C) 1994-2006 The University of Melbourne.
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
-%---------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
+% 
 % File: char.m.
 % Main author: fjh.
 % Stability: high.
-
+% 
 % This module defines some predicates that manipulate characters.
-
+% 
 % The set of characters which are supported and the mapping from
 % characters to integer values are both implementation-dependent.
-
+% 
 % Originally we used `character' rather than `char' for the type name
 % because `char' was used by NU-Prolog to mean something different.
 % But now we use `char' and the use of `character' is discouraged.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

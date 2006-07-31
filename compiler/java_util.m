@@ -74,7 +74,7 @@
 
     % Tags are not used in the Java back-end, as such, all of the tagging
     % operators except for `tag' return no-ops. The `tag' case is handled
-    % seperately in mlds_to_java__output_std_unop.
+    % separately in mlds_to_java__output_std_unop.
     %
 java_unary_prefix_op(mktag,           "/* mktag */ ").
 java_unary_prefix_op(unmktag,         "/* unmktag */ ").

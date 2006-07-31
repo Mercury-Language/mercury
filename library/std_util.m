@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: std_util.m.
 % Main author: fjh.
 % Stability: high.
-
+% 
 % This file contains higher-order programming constructs and other 
 % useful standard utilities.
-
+% 
 % NOTE: fomerly this module contained considerably more functionality but
 %       most of that has now been moved to other modules.  In particular:
 %
@@ -24,10 +24,10 @@
 %       * the `unit' type is now defined in the module unit.
 %
 %       * the `pair' type is now defined in the module pair.
-
+% 
 % This module also used to define a number of RTTI access predicates.  These
 % are now to be found in the modules type_desc, construct and deconstruct.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 

@@ -732,7 +732,7 @@ is_head_class_constraint(HeadTypeVars, constraint(_Name, Types)) :-
     % Check whether the argument types, type quantifiers, and type
     % constraints are identical up to renaming.
     %
-    % Note that we can't compare each of the parts seperately, since
+    % Note that we can't compare each of the parts separately, since
     % we need to ensure that the renaming (if any) is consistent
     % over all the arguments and all the constraints.  So we need
     % to append all the relevant types into one big type list and

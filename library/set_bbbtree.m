@@ -5,17 +5,17 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %------------------------------------------------------------------------------%
-
+% 
 % File: set_bbbtree.m.
 % Main authors: benyi.
 % Stability: low.
-
-% set_bbbtree - implements sets using bounded balanced binary trees.
-
+% 
+% This module implements sets using bounded balanced binary trees.
+% 
+%------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
 :- module set_bbbtree.
-
 :- interface.
 
 :- import_module bool.

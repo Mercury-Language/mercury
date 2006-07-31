@@ -6,9 +6,9 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% file: random.m
-% main author: conway
-% stability: low
+% File: random.m.
+% Main author: conway.
+% Stability: low.
 %
 % Define a set of random number generator predicates. This implementation
 % uses a threaded random-number supply.  The supply can be used in a
@@ -46,14 +46,15 @@
 %	not cover the full range of possible tuples.
 %
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module random.
-
 :- interface.
 
 :- import_module list.
 
 	% The type `random.supply' represents a supply of random numbers.
+    %
 :- type random.supply.
 
 	% random.init(Seed, RS): creates a supply of random numbers RS

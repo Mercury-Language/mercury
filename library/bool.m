@@ -5,18 +5,17 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
-
+% 
 % File: bool.m.
 % Main authors: fjh, zs.
 % Stability: medium to high.
-
+% 
 % This module exports the boolean type `bool' and some operations on bools.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module bool.
-
 :- interface.
 
 :- import_module enum.
@@ -28,6 +27,7 @@
     % Unlike most languages, we use `yes' and `no' as boolean constants
     % rather than `true' and `false'.  This is to avoid confusion
     % with the predicates `true' and `fail'.
+    %
 :- type bool
     --->    no
     ;       yes.

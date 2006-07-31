@@ -5,30 +5,31 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% File: bt_array.m
+% 
+% File: bt_array.m.
 % Main author: bromage.
-% Stability: medium-low
-
+% Stability: medium-low.
+% 
 % This file contains a set of predicates for generating an manipulating
 % a bt_array data structure.  This implementation allows O(log n) access
 % and update time, and does not require the bt_array to be unique.  If you
 % need O(1) access/update time, use the array datatype instead.
 % (`bt_array' is supposed to stand for either "binary tree array"
 % or "backtrackable array".)
-
+% 
 % Implementation obscurity: This implementation is biased towards larger
 % indices.  The access/update time for a bt_array of size N with index I
 % is actually O(log(N-I)).  The reason for this is so that the resize
 % operations can be optimised for a (possibly very) common case, and to
 % exploit accumulator recursion in some operations.  See the documentation
 % of bt_array.resize and bt_array.shrink for more details.
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module bt_array.
 :- interface.
+
 :- import_module int.
 :- import_module list.
 

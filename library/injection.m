@@ -6,8 +6,9 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 %
-% File: injection.m
-% Author: mark
+% File: injection.m.
+% Author: mark.
+% Stability: low.
 %
 % This module provides the `injection' ADT.  An injection is like a `map'
 % (see map.m) but it allows efficient reverse lookups, similarly to `bimap'.

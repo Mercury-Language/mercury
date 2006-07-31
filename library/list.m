@@ -6,16 +6,19 @@
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% Module `list' - defines the list type, and various utility predicates
-% that operate on lists.
-%
+% File: list.m.
 % Authors: fjh, conway, trd, zs, philip, warwick, ...
 % Stability: medium to high.
 %
+% This module defines the list type, and various utility predicates that
+% operate on lists.
+%
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- module list.
 :- interface.
+
 :- import_module int.
 
 %-----------------------------------------------------------------------------%

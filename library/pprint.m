@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU Library General
 % Public License - see the file COPYING.LIB in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
-% File: pprint.m
-% Main author: rafe
-% Stability: medium
-
+% 
+% File: pprint.m.
+% Main author: rafe.
+% Stability: medium.
+% 
 % ABOUT
 % -----
 %
@@ -146,7 +146,7 @@
 %   Look! Goodbye
 %   Look!    cruel
 %   Look!    world
-
+% 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
