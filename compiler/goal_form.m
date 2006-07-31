@@ -310,154 +310,240 @@ goal_can_loop_or_throw(Goal, Result, !ModuleInfo, !IO) :-
 %-----------------------------------------------------------------------------%
 
 goal_cannot_loop(ModuleInfo, Goal) :-
-    goal_cannot_loop_aux(yes(ModuleInfo), Goal).
+    goal_can_loop_func(yes(ModuleInfo), Goal) = no.
 
 goal_can_loop(ModuleInfo, Goal) :-
-    not goal_cannot_loop(ModuleInfo, Goal).
+    goal_can_loop_func(yes(ModuleInfo), Goal) = yes.
 
 goal_cannot_throw(ModuleInfo, Goal) :-
-    goal_cannot_throw_aux(yes(ModuleInfo), Goal).
+    goal_can_throw_func(yes(ModuleInfo), Goal) = no.
 
 goal_can_throw(ModuleInfo, Goal) :-
-    not goal_cannot_throw(ModuleInfo, Goal).
+    goal_can_throw_func(yes(ModuleInfo), Goal) = yes.
 
 goal_cannot_loop_or_throw(ModuleInfo, Goal) :-
-    goal_cannot_loop_aux(yes(ModuleInfo), Goal),
-    goal_cannot_throw_aux(yes(ModuleInfo), Goal).
+    goal_can_loop_func(yes(ModuleInfo), Goal) = no,
+    goal_can_throw_func(yes(ModuleInfo), Goal) = no.
 
 goal_can_loop_or_throw(ModuleInfo, Goal) :-
     not goal_cannot_loop_or_throw(ModuleInfo, Goal).
 
 goal_cannot_loop_or_throw(Goal) :-
-    goal_cannot_loop_aux(no, Goal).
+    goal_can_loop_func(no, Goal) = no,
+    goal_can_throw_func(no, Goal) = no.
 
 goal_can_loop_or_throw(Goal) :-
     not goal_cannot_loop_or_throw(Goal).
 
-:- pred goal_cannot_loop_aux(maybe(module_info)::in, hlds_goal::in) is semidet.
+:- func goal_can_loop_func(maybe(module_info), hlds_goal) = bool.
 
-goal_cannot_loop_aux(MaybeModuleInfo, Goal) :-
-    Goal = GoalExpr - _,
-    goal_cannot_loop_expr(MaybeModuleInfo, GoalExpr).
+goal_can_loop_func(MaybeModuleInfo, GoalExpr - _) =
+    goal_expr_can_loop(MaybeModuleInfo, GoalExpr).
 
-    % XXX This predicate should be replaced by a function returning a bool.
-    %
-:- pred goal_cannot_loop_expr(maybe(module_info)::in, hlds_goal_expr::in)
-    is semidet.
+:- func goal_expr_can_loop(maybe(module_info), hlds_goal_expr) = bool.
 
-goal_cannot_loop_expr(MaybeModuleInfo, conj(plain_conj, Goals)) :-
-    list.member(Goal, Goals) =>
-        goal_cannot_loop_aux(MaybeModuleInfo, Goal).
-goal_cannot_loop_expr(MaybeModuleInfo, disj(Goals)) :-
-    list.member(Goal, Goals) =>
-        goal_cannot_loop_aux(MaybeModuleInfo, Goal).
-goal_cannot_loop_expr(MaybeModuleInfo, switch(_Var, _Category, Cases)) :-
-    list.member(Case, Cases) =>
-        (
-            Case = case(_, Goal),
-            goal_cannot_loop_aux(MaybeModuleInfo, Goal)
-        ).
-goal_cannot_loop_expr(MaybeModuleInfo, negation(Goal)) :-
-    goal_cannot_loop_aux(MaybeModuleInfo, Goal).
-goal_cannot_loop_expr(MaybeModuleInfo, scope(_, Goal)) :-
-    goal_cannot_loop_aux(MaybeModuleInfo, Goal).
-goal_cannot_loop_expr(MaybeModuleInfo, Goal) :-
+goal_expr_can_loop(MaybeModuleInfo, conj(plain_conj, Goals)) =
+    goal_list_can_loop(MaybeModuleInfo, Goals).
+goal_expr_can_loop(_MaybeModuleInfo, conj(parallel_conj, _Goals)) = yes.
+    % In theory, parallel conjunctions can get into deadlocks, which are
+    % effectively a form of nontermination. We can return `no' here only
+    % if we are sure this cannot happen for this conjunction.
+goal_expr_can_loop(MaybeModuleInfo, disj(Goals)) =
+    goal_list_can_loop(MaybeModuleInfo, Goals).
+goal_expr_can_loop(MaybeModuleInfo, switch(_Var, _CanFail, Cases)) =
+    case_list_can_loop(MaybeModuleInfo, Cases).
+goal_expr_can_loop(MaybeModuleInfo, negation(Goal)) =
+    goal_can_loop_func(MaybeModuleInfo, Goal).
+goal_expr_can_loop(MaybeModuleInfo, scope(_, Goal)) =
+    goal_can_loop_func(MaybeModuleInfo, Goal).
+goal_expr_can_loop(MaybeModuleInfo, Goal) = CanLoop :-
     Goal = if_then_else(_Vars, Cond, Then, Else),
-    goal_cannot_loop_aux(MaybeModuleInfo, Cond),
-    goal_cannot_loop_aux(MaybeModuleInfo, Then),
-    goal_cannot_loop_aux(MaybeModuleInfo, Else).
-goal_cannot_loop_expr(_MaybeModuleInfo, Goal) :-
+    ( goal_can_loop_func(MaybeModuleInfo, Cond) = yes ->
+        CanLoop = yes
+    ; goal_can_loop_func(MaybeModuleInfo, Then) = yes ->
+        CanLoop = yes
+    ; goal_can_loop_func(MaybeModuleInfo, Else) = yes ->
+        CanLoop = yes
+    ;
+        CanLoop = no
+    ).
+goal_expr_can_loop(_MaybeModuleInfo, Goal) = CanLoop :-
     Goal = call_foreign_proc(Attributes, _, _, _, _, _, _),
     (
-        terminates(Attributes) = terminates
+        (
+            terminates(Attributes) = terminates
+        ;
+            terminates(Attributes) = depends_on_mercury_calls,
+            may_call_mercury(Attributes) = will_not_call_mercury
+        )
+    ->
+        CanLoop = no
     ;
-        terminates(Attributes) = depends_on_mercury_calls,
-        may_call_mercury(Attributes) = will_not_call_mercury
+        CanLoop = yes
     ).
-goal_cannot_loop_expr(MaybeModuleInfo, Goal) :-
+goal_expr_can_loop(MaybeModuleInfo, Goal) = CanLoop :-
     Goal = plain_call(PredId, ProcId, _, _, _, _),
-    MaybeModuleInfo = yes(ModuleInfo),
-    module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     (
-        proc_info_get_maybe_termination_info(ProcInfo, MaybeTermInfo),
-        MaybeTermInfo = yes(cannot_loop(_))
+        MaybeModuleInfo = yes(ModuleInfo),
+        module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
+        (
+            proc_info_get_maybe_termination_info(ProcInfo, MaybeTermInfo),
+            MaybeTermInfo = yes(cannot_loop(_))
+        ;
+            proc_info_get_termination2_info(ProcInfo, Term2Info),
+            Term2Info ^ term_status = yes(cannot_loop(_))
+        )
+    ->
+        CanLoop = no
     ;
-        proc_info_get_termination2_info(ProcInfo, Term2Info),
-        Term2Info ^ term_status = yes(cannot_loop(_))
+        CanLoop = yes
     ).
-goal_cannot_loop_expr(_, unify(_, _, _, Uni, _)) :-
-    % Complicated unifies are _non_builtin_
+goal_expr_can_loop(_MaybeModuleInfo, Goal) = yes :-
+    % We have no idea whether the called goal can throw exceptions,
+    % at least without closure analysis.
+    Goal = generic_call(_, _, _, _).
+goal_expr_can_loop(_, unify(_, _, _, Uni, _)) = CanLoop :-
     (
-        Uni = assign(_, _)
+        ( Uni = assign(_, _)
+        ; Uni = simple_test(_, _)
+        ; Uni = construct(_, _, _, _, _, _, _)
+        ; Uni = deconstruct(_, _, _, _, _, _)
+        ),
+        CanLoop = no
     ;
-        Uni = simple_test(_, _)
+        Uni = complicated_unify(_, _, _),
+        % It can call, possibly indirectly, a user-specified unification
+        % predicate.
+        CanLoop = yes
+    ).
+goal_expr_can_loop(_, shorthand(_)) = _ :-
+    unexpected(this_file, "goal_expr_can_loop: shorthand").
+
+:- func goal_list_can_loop(maybe(module_info), list(hlds_goal)) = bool.
+
+goal_list_can_loop(_, []) = no.
+goal_list_can_loop(MaybeModuleInfo, [Goal | Goals]) =
+    ( goal_can_loop_func(MaybeModuleInfo, Goal) = yes ->
+        yes
     ;
-        Uni = construct(_, _, _, _, _, _, _)
+        goal_list_can_loop(MaybeModuleInfo, Goals)
+    ).
+
+:- func case_list_can_loop(maybe(module_info), list(case)) = bool.
+
+case_list_can_loop(_, []) = no.
+case_list_can_loop(MaybeModuleInfo, [case(_, Goal) | Cases]) =
+    ( goal_can_loop_func(MaybeModuleInfo, Goal) = yes ->
+        yes
     ;
-        Uni = deconstruct(_, _, _, _, _, _)
+        case_list_can_loop(MaybeModuleInfo, Cases)
     ).
 
 %-----------------------------------------------------------------------------%
 
 goal_cannot_throw(ModuleInfo, Goal) :-
-    goal_cannot_throw_aux(yes(ModuleInfo), Goal).
+    goal_can_throw_func(yes(ModuleInfo), Goal) = no.
 
-:- pred goal_cannot_throw_aux(maybe(module_info)::in, hlds_goal::in)
-    is semidet.
+:- func goal_can_throw_func(maybe(module_info), hlds_goal) = bool.
 
-goal_cannot_throw_aux(MaybeModuleInfo, GoalExpr - GoalInfo) :-
+goal_can_throw_func(MaybeModuleInfo, GoalExpr - GoalInfo) = CanThrow :-
     goal_info_get_determinism(GoalInfo, Determinism),
-    not Determinism = detism_erroneous,
-    goal_cannot_throw_expr(MaybeModuleInfo, GoalExpr).
+    ( Determinism = detism_erroneous ->
+        CanThrow = yes
+    ;
+        CanThrow = goal_expr_can_throw(MaybeModuleInfo, GoalExpr)
+    ).
 
-    % XXX This predicate should be replaced by a function returning a bool.
-    %
-:- pred goal_cannot_throw_expr(maybe(module_info)::in, hlds_goal_expr::in)
-    is semidet.
+:- func goal_expr_can_throw(maybe(module_info), hlds_goal_expr) = bool.
 
-goal_cannot_throw_expr(MaybeModuleInfo, conj(plain_conj, Goals)) :-
-    list.member(Goal, Goals) =>
-        goal_cannot_throw_aux(MaybeModuleInfo, Goal).
-goal_cannot_throw_expr(MaybeModuleInfo, disj(Goals)) :-
-    list.member(Goal, Goals) =>
-        goal_cannot_throw_aux(MaybeModuleInfo, Goal).
-goal_cannot_throw_expr(MaybeModuleInfo, switch(_Var, _Category, Cases)) :-
-    list.member(case(_, Goal), Cases) =>
-        goal_cannot_throw_aux(MaybeModuleInfo, Goal).
-goal_cannot_throw_expr(MaybeModuleInfo, negation(Goal)) :-
-    goal_cannot_throw_aux(MaybeModuleInfo, Goal).
-goal_cannot_throw_expr(MaybeModuleInfo, scope(_, Goal)) :-
-    goal_cannot_throw_aux(MaybeModuleInfo, Goal).
-goal_cannot_throw_expr(MaybeModuleInfo, Goal) :-
+goal_expr_can_throw(MaybeModuleInfo, conj(_ConjType, Goals)) =
+    goal_list_can_throw(MaybeModuleInfo, Goals).
+goal_expr_can_throw(MaybeModuleInfo, disj(Goals)) =
+    goal_list_can_throw(MaybeModuleInfo, Goals).
+goal_expr_can_throw(MaybeModuleInfo, switch(_Var, _Category, Cases)) =
+    case_list_can_throw(MaybeModuleInfo, Cases).
+goal_expr_can_throw(MaybeModuleInfo, negation(Goal)) =
+    goal_can_throw_func(MaybeModuleInfo, Goal).
+goal_expr_can_throw(MaybeModuleInfo, scope(_, Goal)) =
+    goal_can_throw_func(MaybeModuleInfo, Goal).
+goal_expr_can_throw(MaybeModuleInfo, Goal) = CanThrow :-
     Goal = if_then_else(_, Cond, Then, Else),
-    goal_cannot_throw_aux(MaybeModuleInfo, Cond),
-    goal_cannot_throw_aux(MaybeModuleInfo, Then),
-    goal_cannot_throw_aux(MaybeModuleInfo, Else).
-goal_cannot_throw_expr(_MaybeModuleInfo, Goal) :-
+    ( goal_can_throw_func(MaybeModuleInfo, Cond) = yes ->
+        CanThrow = yes
+    ; goal_can_throw_func(MaybeModuleInfo, Then) = yes ->
+        CanThrow = yes
+    ; goal_can_throw_func(MaybeModuleInfo, Else) = yes ->
+        CanThrow = yes
+    ;
+        CanThrow = no
+    ).
+goal_expr_can_throw(_MaybeModuleInfo, Goal) = CanThrow :-
     Goal = call_foreign_proc(Attributes, _, _, _, _, _, _),
     ExceptionStatus = may_throw_exception(Attributes),
     (
-        ExceptionStatus = will_not_throw_exception
+        (
+            ExceptionStatus = will_not_throw_exception
+        ;
+            ExceptionStatus = default_exception_behaviour,
+            may_call_mercury(Attributes) = will_not_call_mercury
+        )
+    ->
+        CanThrow = no
     ;
-        ExceptionStatus = default_exception_behaviour,
-        may_call_mercury(Attributes) = will_not_call_mercury
+        CanThrow = yes
     ).
-goal_cannot_loop_expr(MaybeModuleInfo, Goal) :-
+goal_expr_can_throw(MaybeModuleInfo, Goal) = CanThrow :-
     Goal = plain_call(PredId, ProcId, _, _, _, _),
-    MaybeModuleInfo = yes(ModuleInfo),
-    module_info_get_exception_info(ModuleInfo, ExceptionInfo),
-    map.search(ExceptionInfo, proc(PredId, ProcId), ProcExceptionInfo),
-    ProcExceptionInfo = proc_exception_info(will_not_throw, _).
-goal_cannot_throw_expr(_, unify(_, _, _, Uni, _)) :-
+    (
+        MaybeModuleInfo = yes(ModuleInfo),
+        module_info_get_exception_info(ModuleInfo, ExceptionInfo),
+        map.search(ExceptionInfo, proc(PredId, ProcId), ProcExceptionInfo),
+        ProcExceptionInfo = proc_exception_info(will_not_throw, _)
+    ->
+        CanThrow = no
+    ;
+        CanThrow = yes
+    ).
+goal_expr_can_throw(_MaybeModuleInfo, Goal) = yes :-
+    % We have no idea whether the called goal can throw exceptions,
+    % at least without closure analysis.
+    Goal = generic_call(_, _, _, _).
+goal_expr_can_throw(_, unify(_, _, _, Uni, _)) = CanThrow :-
     % Complicated unifies are _non_builtin_
     (
-        Uni = assign(_, _)
+        ( Uni = assign(_, _)
+        ; Uni = simple_test(_, _)
+        ; Uni = construct(_, _, _, _, _, _, _)
+        ; Uni = deconstruct(_, _, _, _, _, _)
+        ),
+        CanThrow = no
     ;
-        Uni = simple_test(_, _)
+        Uni = complicated_unify(_, _, _),
+        % It can call, possibly indirectly, a user-specified unification
+        % predicate.
+        CanThrow = yes
+    ).
+goal_expr_can_throw(_, shorthand(_)) = _ :-
+    unexpected(this_file, "goal_expr_can_throw: shorthand").
+
+:- func goal_list_can_throw(maybe(module_info), list(hlds_goal)) = bool.
+
+goal_list_can_throw(_, []) = no.
+goal_list_can_throw(MaybeModuleInfo, [Goal | Goals]) =
+    ( goal_can_throw_func(MaybeModuleInfo, Goal) = yes ->
+        yes
     ;
-        Uni = construct(_, _, _, _, _, _, _)
+        goal_list_can_throw(MaybeModuleInfo, Goals)
+    ).
+
+:- func case_list_can_throw(maybe(module_info), list(case)) = bool.
+
+case_list_can_throw(_, []) = no.
+case_list_can_throw(MaybeModuleInfo, [case(_, Goal) | Cases]) =
+    ( goal_can_throw_func(MaybeModuleInfo, Goal) = yes ->
+        yes
     ;
-        Uni = deconstruct(_, _, _, _, _, _)
+        case_list_can_throw(MaybeModuleInfo, Cases)
     ).
 
 %-----------------------------------------------------------------------------%
