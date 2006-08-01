@@ -199,6 +199,8 @@ SINGLEMODULE= \
 	undef_symbol \
 	undef_type \
 	undef_type_mod_qual \
+	unicode1 \
+	unicode2 \
 	unify_mode_error \
 	uniq_modes \
 	uniq_neg \

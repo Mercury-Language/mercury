@@ -216,6 +216,7 @@ ORDINARY_PROGS=	\
 	type_spec_ho_term \
 	type_spec_modes \
 	type_to_term_bug \
+	unicode_test \
 	unify_existq_cons \
 	unify_expression \
 	unify_typeinfo_bug \

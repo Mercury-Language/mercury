@@ -32,6 +32,8 @@ Changes to the Mercury language:
 * ':' is now the type qualification operator, not a module qualifier.
 * To ensure soundness, goals in negated contexts using non-local variables
   with dynamic modes (inst "any") must now be marked as impure.
+* Unicode characters can now be encoded in string literals using an
+  escape sequence.
 
 Changes to the Mercury standard library:
 * We have removed the predicates dealing with runtime type information (RTTI)
@@ -292,6 +294,13 @@ Changes to the Mercury language:
   As usual, the programmer can use "promise_pure" if they are
   sure that the goal is in fact pure, e.g. because they know that
   the goal inside the negation will not instantiate the variable.
+
+* Unicode characters can now be encoded in string literals using an
+  escape sequence.  The escape sequence \uXXXX (or \UXXXXXXXX), where XXXX
+  (or XXXXXXXX) is a Unicode character code in hexidecimal, is replaced with
+  the corresponding Unicode character.  The encoding used to represent the
+  Unicode character is implementation dependent.  For the Melbourne Mercury
+  compiler, Unicode characters are represented using UTF-8 for the C backends.
 
 Changes to the Mercury standard library:
 

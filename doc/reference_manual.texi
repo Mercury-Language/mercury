@@ -220,21 +220,35 @@ number 101.
 
 @item string
 A string is a sequence of characters enclosed in double quotes (@code{"}).
+
 Within a string, two adjacent double quotes stand for a single double quote.
 For example, the string @samp{ """" } is a string of length one, containing
 a single double quote: the outermost pair of double quotes encloses the
 string, and the innermost pair stand for a single double quote.
+
 Strings may also contain backslash escapes.  @samp{\a} stands for ``alert''
 (a beep character), @samp{\b} for backspace, @samp{\r} for carriage-return,
 @samp{\f} for form-feed, @samp{\t} for tab, @samp{\n} for newline,
 @samp{\v} for vertical-tab.  An escaped backslash, single-quote, or
-double-quote stands for itself.  The sequence @samp{\x} introduces
+double-quote stands for itself.
+
+The sequence @samp{\x} introduces
 a hexadecimal escape; it must be followed by a sequence of hexadecimal
 digits and then a closing backslash.  It is replaced
 with the character whose character code is identified by the hexadecimal
 number.  Similarly, a backslash followed by an octal digit is the
 beginning of an octal escape; as with hexadecimal escapes, the sequence
 of octal digits must be terminated with a closing backslash.
+
+The sequence @samp{\u} or @samp{\U} can be used to escape Unicode characters.
+@samp{\u} must be followed by the Unicode character code expressed as four
+hexidecimal digits.
+@samp{\U} must be followed by the Unicode character code expressed as eight
+hexidecimal digits.
+The encoding used for Unicode characters is implementation dependent.
+For the Melbourne Mercury compiler, it is UTF-8 for the C backends and UTF-16
+for the Java and IL backends.
+
 A backslash followed immediately by a newline is deleted; thus an
 escaped newline can be used to continue a string over more than one
 source line.  (String literals may also contain embedded newlines.)

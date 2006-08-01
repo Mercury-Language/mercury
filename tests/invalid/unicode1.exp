@@ -1,0 +1,5 @@
+unicode1.m:005: Syntax error: invalid hex character in Unicode escape.
+unicode1.m:005: Syntax error: unterminated quote.
+unicode1.m:001: Warning: interface for module `unicode1' does not export
+unicode1.m:001:   anything.
+For more information, recompile with `-E'.

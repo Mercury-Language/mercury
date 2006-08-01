@@ -1,0 +1,5 @@
+unicode2.m:005: Syntax error: invalid Unicode character code.
+unicode2.m:005: Syntax error: unterminated quote.
+unicode2.m:001: Warning: interface for module `unicode2' does not export
+unicode2.m:001:   anything.
+For more information, recompile with `-E'.

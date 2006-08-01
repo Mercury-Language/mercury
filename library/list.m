@@ -1021,14 +1021,17 @@
     % Same as list.filter_map/3 except that it only returns the first
     % match:
     %   find_first_map(X, Y, Z) <=> list.filter_map(X, Y, [Z | _])
+    %
 :- pred list.find_first_map(pred(X, Y)::in(pred(in, out) is semidet),
         list(X)::in, Y::out) is semidet.
 
     % Same as list.find_first_map, except with two outputs.
+    %
 :- pred list.find_first_map2(pred(X, A, B)::in(pred(in, out, out) is semidet),
     list(X)::in, A::out, B::out) is semidet.
 
     % Same as list.find_first_map, except with three outputs.
+    %
 :- pred list.find_first_map3(
     pred(X, A, B, C)::in(pred(in, out, out, out) is semidet),
     list(X)::in, A::out, B::out, C::out) is semidet.
