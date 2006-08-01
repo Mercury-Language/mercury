@@ -370,7 +370,6 @@
 
 :- import_module int.
 :- import_module pair.
-:- import_module require.
 :- import_module solutions.
 :- import_module string.
 :- import_module svmap.
@@ -1596,7 +1595,7 @@ generate_simple_call(ModuleName, ProcName, PredOrFunc, ModeNo, Detism, Purity,
     ),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_purity(PredInfo, PredPurity),
-    require(unify(Purity, PredPurity),
+    expect(unify(Purity, PredPurity), this_file,
         "generate_simple_call: purity disagreement"),
     goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
         GoalInfo0),
@@ -1624,7 +1623,7 @@ generate_foreign_proc(ModuleName, ProcName, PredOrFunc, ModeNo, Detism,
     ),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_purity(PredInfo, PredPurity),
-    require(unify(Purity, PredPurity),
+    expect(unify(Purity, PredPurity), this_file,
         "generate_simple_call: purity disagreement"),
     goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context,
         GoalInfo0),
