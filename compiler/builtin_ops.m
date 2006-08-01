@@ -113,7 +113,8 @@
 :- type simple_code(T)
     --->    assign(T, simple_expr(T))
     ;       ref_assign(T, T)
-    ;       test(simple_expr(T)).
+    ;       test(simple_expr(T))
+    ;       noop(list(T)).
 
 :- type simple_expr(T)
     --->    leaf(T)
@@ -132,7 +133,8 @@
 :- inst simple_code
     --->    assign(ground, simple_assign_expr)
     ;       ref_assign(ground, ground)
-    ;       test(simple_test_expr).
+    ;       test(simple_test_expr)
+    ;       noop(ground).
 
 :- inst simple_arg_expr
     --->    leaf(ground)
@@ -163,7 +165,12 @@ translate_builtin(FullyQualifiedModule, PredName, ProcId, Args, Code) :-
     builtin_translation(ModuleName, PredName, ProcInt, Args, Code).
 
 :- pred builtin_translation(string::in, string::in, int::in, list(T)::in,
-    simple_code(T)::out) is semidet.
+    simple_code(T)::out(simple_code)) is semidet.
+
+builtin_translation("private_builtin", "trace_get_io_state", 0, [X],
+    noop([X])).
+builtin_translation("private_builtin", "trace_set_io_state", 0, [_X],
+    noop([])).
 
 builtin_translation("private_builtin", "store_at_ref", 0, [X, Y],
     ref_assign(X, Y)).

@@ -1539,29 +1539,9 @@ no_clauses(PredName) :-
 
 :- interface.
 
-:- import_module io.
-
-:- impure pred trace_get_io_state(io::uo) is det.
-
-:- impure pred trace_set_io_state(io::di) is det.
-
 :- semipure pred trace_evaluate_runtime_condition is semidet.
 
 :- implementation.
-
-:- pragma foreign_proc("C",
-    trace_get_io_state(IO::uo),
-    [will_not_call_mercury, thread_safe],
-"
-    /* mention IO to shut up warning */
-").
-
-:- pragma foreign_proc("C",
-    trace_set_io_state(IO::di),
-    [will_not_call_mercury, thread_safe],
-"
-    /* mention IO to shut up warning */
-").
 
 :- pragma foreign_proc("C",
     trace_evaluate_runtime_condition,

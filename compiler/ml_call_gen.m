@@ -927,7 +927,10 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Statements,
             )
         ;
             SimpleCode = test(_),
-            unexpected(this_file, "malformed det builtin predicate")
+            unexpected(this_file, "malformed model_det builtin predicate")
+        ;
+            SimpleCode = noop(_),
+            Statements = []
         )
     ;
         CodeModel = model_semi,
@@ -938,14 +941,17 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context, Decls, Statements,
             Statements = [Statement]
         ;
             SimpleCode = ref_assign(_, _),
-            unexpected(this_file, "malformed semi builtin predicate")
+            unexpected(this_file, "malformed model_semi builtin predicate")
         ;
             SimpleCode = assign(_, _),
-            unexpected(this_file, "malformed semi builtin predicate")
+            unexpected(this_file, "malformed model_semi builtin predicate")
+        ;
+            SimpleCode = noop(_),
+            unexpected(this_file, "malformed model_semi builtin predicate")
         )
     ;
         CodeModel = model_non,
-        unexpected(this_file, "nondet builtin predicate")
+        unexpected(this_file, "model_non builtin predicate")
     ),
     Decls = [].
 

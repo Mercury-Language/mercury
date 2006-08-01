@@ -405,6 +405,9 @@ gen_builtin(PredId, ProcId, Args, ByteInfo, Code) :-
         ;
             SimpleCode = ref_assign(_Var, _Expr),
             unexpected(this_file, "ref_assign")
+        ;
+            SimpleCode = noop(_DefinedVars),
+            Code = node([])
         )
     ;
         string.append("unknown builtin predicate ", PredName, Msg),

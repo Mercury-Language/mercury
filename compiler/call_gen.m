@@ -47,17 +47,17 @@
     --->    known_num
     ;       unknown.
 
-    % call_gen.generic_call_info(Globals, GenericCall, NumImmediateInputArgs,
-    %   CodeAddr, SpecifierArgInfos, FirstImmediateInputReg, HoCallVariant).
+    % generic_call_info(Globals, GenericCall, NumImmediateInputArgs, CodeAddr,
+    %   SpecifierArgInfos, FirstImmediateInputReg, HoCallVariant).
     %
-:- pred call_gen.generic_call_info(globals::in, generic_call::in, int::in,
+:- pred generic_call_info(globals::in, generic_call::in, int::in,
     code_addr::out, assoc_list(prog_var, arg_info)::out, int::out,
     known_call_variant::out) is det.
 
-:- pred call_gen.input_arg_locs(assoc_list(prog_var, arg_info)::in,
+:- pred input_arg_locs(assoc_list(prog_var, arg_info)::in,
     assoc_list(prog_var, arg_loc)::out) is det.
 
-:- pred call_gen.output_arg_locs(assoc_list(prog_var, arg_info)::in,
+:- pred output_arg_locs(assoc_list(prog_var, arg_info)::in,
     assoc_list(prog_var, arg_loc)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -93,21 +93,19 @@
 %---------------------------------------------------------------------------%
 
 generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI) :-
-
-        % Find out which arguments are input and which are output.
+    % Find out which arguments are input and which are output.
     ArgInfo = code_info.get_pred_proc_arginfo(!.CI, PredId, ProcId),
     assoc_list.from_corresponding_lists(ArgVars, ArgInfo, ArgsInfos),
 
-        % Save the necessary vars on the stack and move the input args
-        % to their registers.
+    % Save the necessary vars on the stack and move the input args
+    % to their registers.
     code_info.setup_call(GoalInfo, ArgsInfos, LiveVals, SetupCode, !CI),
-    call_gen.kill_dead_input_vars(ArgsInfos, GoalInfo, NonLiveOutputs,
-        !CI),
+    kill_dead_input_vars(ArgsInfos, GoalInfo, NonLiveOutputs, !CI),
 
-        % Figure out what the call model is.
+    % Figure out what the call model is.
     call_gen.prepare_for_call(CodeModel, CallModel, TraceCode, !CI),
 
-        % Make the call.
+    % Make the call.
     code_info.get_module_info(!.CI, ModuleInfo),
     Address = code_info.make_entry_label(!.CI, ModuleInfo,
         PredId, ProcId, yes),
@@ -122,21 +120,18 @@ generate_call(CodeModel, PredId, ProcId, ArgVars, GoalInfo, Code, !CI) :-
         label(ReturnLabel) - "continuation label"
     ]),
 
-        % Figure out what variables will be live at the return point,
-        % and where, for use in the accurate garbage collector, and
-        % in the debugger.
+    % Figure out what variables will be live at the return point, and where,
+    % for use in the accurate garbage collector, and in the debugger.
     code_info.get_instmap(!.CI, InstMap),
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
     instmap.apply_instmap_delta(InstMap, InstMapDelta, ReturnInstMap),
 
-        % Update the code generator state to reflect the situation
-        % after the call.
-    call_gen.handle_return(ArgsInfos, GoalInfo, NonLiveOutputs,
+    % Update the code generator state to reflect the situation after the call.
+    handle_return(ArgsInfos, GoalInfo, NonLiveOutputs,
         ReturnInstMap, ReturnLiveLvalues, !CI),
 
-        % If the call can fail, generate code to check for and
-        % handle the failure.
-    call_gen.handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI),
+    % If the call can fail, generate code to check for and handle the failure.
+    handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI),
 
     Code = tree_list([SetupCode, TraceCode, CallCode, FailHandlingCode]).
 
@@ -155,15 +150,14 @@ generate_generic_call(OuterCodeModel, GenericCall, Args0,
     % variables to be saved to the stack.
     ( GenericCall = cast(_) ->
         ( Args0 = [InputArg, OutputArg] ->
-            call_gen.generate_assign_builtin(OutputArg,
-                leaf(InputArg), Code, !CI)
+            generate_assign_builtin(OutputArg, leaf(InputArg), Code, !CI)
         ;
             unexpected(this_file,
                 "generate_generic_call: invalid type/inst cast call")
         )
     ;
-        call_gen.generate_generic_call_2(OuterCodeModel,
-            GenericCall, Args0, Modes0, Det, GoalInfo, Code, !CI)
+        generate_generic_call_2(OuterCodeModel, GenericCall, Args0, Modes0,
+            Det, GoalInfo, Code, !CI)
     ).
 
 :- pred generate_generic_call_2(code_model::in, generic_call::in,
@@ -179,8 +173,8 @@ generate_generic_call_2(_OuterCodeModel, GenericCall, Args, Modes, Det,
     arg_info.compute_in_and_out_vars(ModuleInfo, Args, Modes, Types,
         InVars, OutVars),
     module_info_get_globals(ModuleInfo, Globals),
-    call_gen.generic_call_info(Globals, GenericCall, length(InVars),
-        CodeAddr, SpecifierArgInfos, FirstImmInput, HoCallVariant),
+    generic_call_info(Globals, GenericCall, length(InVars), CodeAddr,
+        SpecifierArgInfos, FirstImmInput, HoCallVariant),
     determinism_to_code_model(Det, CodeModel),
     ( CodeModel = model_semi ->
         FirstOutput = 2
@@ -198,17 +192,16 @@ generate_generic_call_2(_OuterCodeModel, GenericCall, Args, Modes, Det,
         % Save the necessary vars on the stack and move the input args
         % defined by variables to their registers.
     code_info.setup_call(GoalInfo, ArgInfos, LiveVals0, SetupCode, !CI),
-    call_gen.kill_dead_input_vars(ArgInfos, GoalInfo, NonLiveOutputs,
-        !CI),
+    kill_dead_input_vars(ArgInfos, GoalInfo, NonLiveOutputs, !CI),
 
         % Move the input args not defined by variables to their
         % registers. Setting up these arguments last results in
         % slightly more efficient code, since we can use their
         % registers when placing the variables.
-    call_gen.generic_call_nonvar_setup(GenericCall, HoCallVariant,
-        InVars, OutVars, NonVarCode, !CI),
+    generic_call_nonvar_setup(GenericCall, HoCallVariant, InVars, OutVars,
+        NonVarCode, !CI),
 
-    call_gen.extra_livevals(FirstImmInput, ExtraLiveVals),
+    extra_livevals(FirstImmInput, ExtraLiveVals),
     set.insert_list(LiveVals0, ExtraLiveVals, LiveVals),
 
     call_gen.prepare_for_call(CodeModel, CallModel, TraceCode, !CI),
@@ -227,7 +220,7 @@ generate_generic_call_2(_OuterCodeModel, GenericCall, Args, Modes, Det,
 
         % Update the code generator state to reflect the situation
         % after the call.
-    call_gen.handle_return(OutArgsInfos, GoalInfo, NonLiveOutputs,
+    handle_return(OutArgsInfos, GoalInfo, NonLiveOutputs,
         ReturnInstMap, ReturnLiveLvalues, !CI),
 
     CallCode = node([
@@ -239,7 +232,7 @@ generate_generic_call_2(_OuterCodeModel, GenericCall, Args, Modes, Det,
 
         % If the call can fail, generate code to check for and
         % handle the failure.
-    call_gen.handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI),
+    handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI),
 
     Code = tree_list([SetupCode, NonVarCode, TraceCode, CallCode,
         FailHandlingCode]).
@@ -248,23 +241,23 @@ generate_generic_call_2(_OuterCodeModel, GenericCall, Args, Modes, Det,
 
     % The registers before the first input argument are all live.
     %
-:- pred call_gen.extra_livevals(int::in, list(lval)::out) is det.
+:- pred extra_livevals(int::in, list(lval)::out) is det.
 
-call_gen.extra_livevals(FirstInput, ExtraLiveVals) :-
-    call_gen.extra_livevals(1, FirstInput, ExtraLiveVals).
+extra_livevals(FirstInput, ExtraLiveVals) :-
+    extra_livevals_from(1, FirstInput, ExtraLiveVals).
 
-:- pred call_gen.extra_livevals(int::in, int::in, list(lval)::out) is det.
+:- pred extra_livevals_from(int::in, int::in, list(lval)::out) is det.
 
-call_gen.extra_livevals(Reg, FirstInput, ExtraLiveVals) :-
+extra_livevals_from(Reg, FirstInput, ExtraLiveVals) :-
     ( Reg < FirstInput ->
         ExtraLiveVals = [reg(r, Reg) | ExtraLiveVals1],
         NextReg = Reg + 1,
-        call_gen.extra_livevals(NextReg, FirstInput, ExtraLiveVals1)
+        extra_livevals_from(NextReg, FirstInput, ExtraLiveVals1)
     ;
         ExtraLiveVals = []
     ).
 
-call_gen.generic_call_info(Globals, GenericCall, NumInputArgs, CodeAddr,
+generic_call_info(Globals, GenericCall, NumInputArgs, CodeAddr,
         SpecifierArgInfos, FirstImmediateInputReg, HoCallVariant) :-
     (
         GenericCall = higher_order(PredVar, _, _, _),
@@ -316,17 +309,17 @@ call_gen.generic_call_info(Globals, GenericCall, NumInputArgs, CodeAddr,
     % typeclass_info for a method call) are set up together with the
     % arguments being passed the indirectly called code, since with eager
     % code generation this ensures that each target register is reserved
-    % for the variable destined for it. This is set up by
-    % call_gen.generic_call_info. call_gen.generic_call_nonvar_setup
-    % generates code to pass to the dispatch routine the parts of the
-    % indirectly called code's identifier that come from constants.
+    % for the variable destined for it. This is set up by generic_call_info.
+    % generic_call_nonvar_setup generates code to pass to the dispatch routine
+    % the parts of the indirectly called code's identifier that come from
+    % constants.
     %
-:- pred call_gen.generic_call_nonvar_setup(generic_call::in,
-    known_call_variant::in, list(prog_var)::in, list(prog_var)::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+:- pred generic_call_nonvar_setup(generic_call::in, known_call_variant::in,
+    list(prog_var)::in, list(prog_var)::in, code_tree::out,
+    code_info::in, code_info::out) is det.
 
-call_gen.generic_call_nonvar_setup(higher_order(_, _, _, _),
-        HoCallVariant, InVars, _OutVars, Code, !CI) :-
+generic_call_nonvar_setup(higher_order(_, _, _, _), HoCallVariant,
+        InVars, _OutVars, Code, !CI) :-
     (
         HoCallVariant = known_num,
         Code = empty
@@ -339,8 +332,8 @@ call_gen.generic_call_nonvar_setup(higher_order(_, _, _, _),
                 "Assign number of immediate input arguments"
         ])
     ).
-call_gen.generic_call_nonvar_setup(class_method(_, Method, _, _),
-        HoCallVariant, InVars, _OutVars, Code, !CI) :-
+generic_call_nonvar_setup(class_method(_, Method, _, _), HoCallVariant,
+        InVars, _OutVars, Code, !CI) :-
     (
         HoCallVariant = known_num,
         code_info.clobber_regs([reg(r, 2)], !CI),
@@ -359,15 +352,15 @@ call_gen.generic_call_nonvar_setup(class_method(_, Method, _, _),
                 "Assign number of immediate input arguments"
         ])
     ).
-call_gen.generic_call_nonvar_setup(cast(_), _, _, _, _, !CI) :-
+generic_call_nonvar_setup(cast(_), _, _, _, _, !CI) :-
     unexpected(this_file, "generic_call_nonvar_setup: cast").
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen.prepare_for_call(code_model::in, call_model::out,
+:- pred prepare_for_call(code_model::in, call_model::out,
     code_tree::out, code_info::in, code_info::out) is det.
 
-call_gen.prepare_for_call(CodeModel, CallModel, TraceCode, !CI) :-
+prepare_for_call(CodeModel, CallModel, TraceCode, !CI) :-
     code_info.succip_is_used(!CI),
     (
         CodeModel = model_det,
@@ -383,10 +376,10 @@ call_gen.prepare_for_call(CodeModel, CallModel, TraceCode, !CI) :-
     ),
     trace_prepare_for_call(!.CI, TraceCode).
 
-:- pred call_gen.handle_failure(code_model::in, hlds_goal_info::in,
+:- pred handle_failure(code_model::in, hlds_goal_info::in,
     code_tree::out, code_info::in, code_info::out) is det.
 
-call_gen.handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI) :-
+handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI) :-
     ( CodeModel = model_semi ->
         goal_info_get_determinism(GoalInfo, Detism),
         ( Detism = detism_failure ->
@@ -407,11 +400,11 @@ call_gen.handle_failure(CodeModel, GoalInfo, FailHandlingCode, !CI) :-
         FailHandlingCode = empty
     ).
 
-:- pred call_gen.call_comment(code_model::in, string::out) is det.
+:- pred call_comment(code_model::in, string::out) is det.
 
-call_gen.call_comment(model_det,  "branch to det procedure").
-call_gen.call_comment(model_semi, "branch to semidet procedure").
-call_gen.call_comment(model_non,  "branch to nondet procedure").
+call_comment(model_det,  "branch to det procedure").
+call_comment(model_semi, "branch to semidet procedure").
+call_comment(model_non,  "branch to nondet procedure").
 
 %---------------------------------------------------------------------------%
 
@@ -434,23 +427,22 @@ call_gen.call_comment(model_non,  "branch to nondet procedure").
     % It may contain the input arguments as well; kill_dead_input_vars
     % and handle_return ignore them.
     %
-:- pred call_gen.kill_dead_input_vars(assoc_list(prog_var, arg_info)::in,
+:- pred kill_dead_input_vars(assoc_list(prog_var, arg_info)::in,
     hlds_goal_info::in, set(prog_var)::out,
     code_info::in, code_info::out) is det.
 
-call_gen.kill_dead_input_vars(ArgsInfos, GoalInfo, NonLiveOutputs, !CI) :-
+kill_dead_input_vars(ArgsInfos, GoalInfo, NonLiveOutputs, !CI) :-
     code_info.get_forward_live_vars(!.CI, Liveness),
-    call_gen.find_nonlive_outputs(ArgsInfos, Liveness,
-        set.init, NonLiveOutputs),
+    find_nonlive_outputs(ArgsInfos, Liveness, set.init, NonLiveOutputs),
     goal_info_get_post_deaths(GoalInfo, PostDeaths),
     set.difference(PostDeaths, NonLiveOutputs, ImmediatePostDeaths),
     code_info.make_vars_forward_dead(ImmediatePostDeaths, !CI).
 
-:- pred call_gen.handle_return(assoc_list(prog_var, arg_info)::in,
+:- pred handle_return(assoc_list(prog_var, arg_info)::in,
     hlds_goal_info::in, set(prog_var)::in, instmap::in,
     list(liveinfo)::out, code_info::in, code_info::out) is det.
 
-call_gen.handle_return(ArgsInfos, GoalInfo, _NonLiveOutputs, ReturnInstMap,
+handle_return(ArgsInfos, GoalInfo, _NonLiveOutputs, ReturnInstMap,
         ReturnLiveLvalues, !CI) :-
     goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
     ( instmap_delta_is_reachable(InstMapDelta) ->
@@ -460,15 +452,15 @@ call_gen.handle_return(ArgsInfos, GoalInfo, _NonLiveOutputs, ReturnInstMap,
     ),
     code_info.clear_all_registers(OkToDeleteAny, !CI),
     code_info.get_forward_live_vars(!.CI, Liveness),
-    call_gen.rebuild_registers(ArgsInfos, Liveness, OutputArgLocs, !CI),
+    rebuild_registers(ArgsInfos, Liveness, OutputArgLocs, !CI),
     code_info.generate_return_live_lvalues(!.CI, OutputArgLocs,
         ReturnInstMap, OkToDeleteAny, ReturnLiveLvalues).
 
-:- pred call_gen.find_nonlive_outputs(assoc_list(prog_var, arg_info)::in,
+:- pred find_nonlive_outputs(assoc_list(prog_var, arg_info)::in,
     set(prog_var)::in, set(prog_var)::in, set(prog_var)::out) is det.
 
-call_gen.find_nonlive_outputs([], _, NonLiveOutputs, NonLiveOutputs).
-call_gen.find_nonlive_outputs([Var - arg_info(_ArgLoc, Mode) | Args],
+find_nonlive_outputs([], _, NonLiveOutputs, NonLiveOutputs).
+find_nonlive_outputs([Var - arg_info(_ArgLoc, Mode) | Args],
         Liveness, NonLiveOutputs0, NonLiveOutputs) :-
     ( Mode = top_out ->
         ( set.member(Var, Liveness) ->
@@ -479,17 +471,16 @@ call_gen.find_nonlive_outputs([Var - arg_info(_ArgLoc, Mode) | Args],
     ;
         NonLiveOutputs1 = NonLiveOutputs0
     ),
-    call_gen.find_nonlive_outputs(Args, Liveness,
-        NonLiveOutputs1, NonLiveOutputs).
+    find_nonlive_outputs(Args, Liveness, NonLiveOutputs1, NonLiveOutputs).
 
-:- pred call_gen.rebuild_registers(assoc_list(prog_var, arg_info)::in,
+:- pred rebuild_registers(assoc_list(prog_var, arg_info)::in,
     set(prog_var)::in, assoc_list(prog_var, arg_loc)::out,
     code_info::in, code_info::out) is det.
 
-call_gen.rebuild_registers([], _, [], !CI).
-call_gen.rebuild_registers([Var - arg_info(ArgLoc, Mode) | Args], Liveness,
+rebuild_registers([], _, [], !CI).
+rebuild_registers([Var - arg_info(ArgLoc, Mode) | Args], Liveness,
         OutputArgLocs, !CI) :-
-    call_gen.rebuild_registers(Args, Liveness, OutputArgLocs1, !CI),
+    rebuild_registers(Args, Liveness, OutputArgLocs1, !CI),
     (
         Mode = top_out,
         set.member(Var, Liveness)
@@ -503,7 +494,7 @@ call_gen.rebuild_registers([Var - arg_info(ArgLoc, Mode) | Args], Liveness,
 
 %---------------------------------------------------------------------------%
 
-call_gen.generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI) :-
+generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI) :-
     code_info.get_module_info(!.CI, ModuleInfo),
     ModuleName = predicate_module(ModuleInfo, PredId),
     PredName = predicate_name(ModuleInfo, PredId),
@@ -522,7 +513,7 @@ call_gen.generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI) :-
         CodeModel = model_det,
         (
             SimpleCode = assign(Var, AssignExpr),
-            call_gen.generate_assign_builtin(Var, AssignExpr, Code, !CI)
+            generate_assign_builtin(Var, AssignExpr, Code, !CI)
         ;
             SimpleCode = ref_assign(AddrVar, ValueVar),
             produce_variable(AddrVar, AddrVarCode, AddrRval, !CI),
@@ -531,33 +522,38 @@ call_gen.generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI) :-
             Code = tree_list([AddrVarCode, ValueVarCode, StoreCode])
         ;
             SimpleCode = test(_),
-            unexpected(this_file, "malformed det builtin predicate")
+            unexpected(this_file, "malformed model_det builtin predicate")
+        ;
+            SimpleCode = noop(DefinedVars),
+            list.foldl(magically_put_var_in_unused_reg, DefinedVars, !CI),
+            Code = node([])
         )
     ;
         CodeModel = model_semi,
         (
             SimpleCode = test(TestExpr),
-            call_gen.generate_simple_test(TestExpr, Rval,
-                ArgCode, !CI),
+            generate_simple_test(TestExpr, Rval, ArgCode, !CI),
             code_info.fail_if_rval_is_false(Rval, TestCode, !CI),
             Code = tree(ArgCode, TestCode)
         ;
             SimpleCode = assign(_, _),
-            unexpected(this_file, "malformed semi builtin predicate")
+            unexpected(this_file, "malformed model_semi builtin predicate")
         ;
             SimpleCode = ref_assign(_, _),
-            unexpected(this_file, "malformed semi builtin predicate")
+            unexpected(this_file, "malformed model_semi builtin predicate")
+        ;
+            SimpleCode = noop(_),
+            unexpected(this_file, "malformed model_semi builtin predicate")
         )
     ;
         CodeModel = model_non,
-        unexpected(this_file, "nondet builtin predicate")
+        unexpected(this_file, "model_non builtin predicate")
     ).
 
-:- pred call_gen.generate_assign_builtin(prog_var::in,
-    simple_expr(prog_var)::in, code_tree::out,
-    code_info::in, code_info::out) is det.
+:- pred generate_assign_builtin(prog_var::in, simple_expr(prog_var)::in,
+    code_tree::out, code_info::in, code_info::out) is det.
 
-call_gen.generate_assign_builtin(Var, AssignExpr, Code, !CI) :-
+generate_assign_builtin(Var, AssignExpr, Code, !CI) :-
     ( code_info.variable_is_forward_live(!.CI, Var) ->
         Rval = convert_simple_expr(AssignExpr),
         code_info.assign_expr_to_var(Var, Rval, Code, !CI)
@@ -575,30 +571,29 @@ convert_simple_expr(unary(UnOp, Expr)) =
 convert_simple_expr(binary(BinOp, Expr1, Expr2)) =
     binop(BinOp, convert_simple_expr(Expr1), convert_simple_expr(Expr2)).
 
-:- pred call_gen.generate_simple_test(
-    simple_expr(prog_var)::in(simple_test_expr), rval::out,
-    code_tree::out, code_info::in, code_info::out) is det.
+:- pred generate_simple_test(simple_expr(prog_var)::in(simple_test_expr),
+    rval::out, code_tree::out, code_info::in, code_info::out) is det.
 
-call_gen.generate_simple_test(TestExpr, Rval, ArgCode, !CI) :-
+generate_simple_test(TestExpr, Rval, ArgCode, !CI) :-
     (
         TestExpr = binary(BinOp, X0, Y0),
         X1 = convert_simple_expr(X0),
         Y1 = convert_simple_expr(Y0),
-        call_gen.generate_builtin_arg(X1, X, CodeX, !CI),
-        call_gen.generate_builtin_arg(Y1, Y, CodeY, !CI),
+        generate_builtin_arg(X1, X, CodeX, !CI),
+        generate_builtin_arg(Y1, Y, CodeY, !CI),
         Rval = binop(BinOp, X, Y),
         ArgCode = tree(CodeX, CodeY)
     ;
         TestExpr = unary(UnOp, X0),
         X1 = convert_simple_expr(X0),
-        call_gen.generate_builtin_arg(X1, X, ArgCode, !CI),
+        generate_builtin_arg(X1, X, ArgCode, !CI),
         Rval = unop(UnOp, X)
     ).
 
-:- pred call_gen.generate_builtin_arg(rval::in, rval::out, code_tree::out,
+:- pred generate_builtin_arg(rval::in, rval::out, code_tree::out,
     code_info::in, code_info::out) is det.
 
-call_gen.generate_builtin_arg(Rval0, Rval, Code, !CI) :-
+generate_builtin_arg(Rval0, Rval, Code, !CI) :-
     ( Rval0 = var(Var) ->
         code_info.produce_variable(Var, Code, Rval, !CI)
     ;
@@ -609,18 +604,18 @@ call_gen.generate_builtin_arg(Rval0, Rval, Code, !CI) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-call_gen.input_arg_locs([], []).
-call_gen.input_arg_locs([Var - arg_info(Loc, Mode) | Args], Vs) :-
-    call_gen.input_arg_locs(Args, Vs0),
+input_arg_locs([], []).
+input_arg_locs([Var - arg_info(Loc, Mode) | Args], Vs) :-
+    input_arg_locs(Args, Vs0),
     ( Mode = top_in ->
         Vs = [Var - Loc | Vs0]
     ;
         Vs = Vs0
     ).
 
-call_gen.output_arg_locs([], []).
-call_gen.output_arg_locs([Var - arg_info(Loc, Mode) | Args], Vs) :-
-    call_gen.output_arg_locs(Args, Vs0),
+output_arg_locs([], []).
+output_arg_locs([Var - arg_info(Loc, Mode) | Args], Vs) :-
+    output_arg_locs(Args, Vs0),
     ( Mode = top_out ->
         Vs = [Var - Loc | Vs0]
     ;
@@ -629,11 +624,10 @@ call_gen.output_arg_locs([Var - arg_info(Loc, Mode) | Args], Vs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred call_gen.generate_call_vn_livevals(list(arg_loc)::in,
-    set(prog_var)::in, code_tree::out,
-    code_info::in, code_info::out) is det.
+:- pred generate_call_vn_livevals(list(arg_loc)::in, set(prog_var)::in,
+    code_tree::out, code_info::in, code_info::out) is det.
 
-call_gen.generate_call_vn_livevals(InputArgLocs, OutputArgs, Code, !CI) :-
+generate_call_vn_livevals(InputArgLocs, OutputArgs, Code, !CI) :-
     code_info.generate_call_vn_livevals(!.CI, InputArgLocs, OutputArgs,
         LiveVals),
     Code = node([

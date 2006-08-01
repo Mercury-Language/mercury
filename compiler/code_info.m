@@ -3133,7 +3133,9 @@ should_add_trail_ops(CodeInfo, GoalInfo) = AddTrailOps :-
 
 :- pred clear_r1(code_tree::out, code_info::in, code_info::out) is det.
 
-:- type call_direction ---> caller ; callee.
+:- type call_direction
+    --->    caller
+    ;       callee.
 
     % Move variables to where they need to be at the time of the call:
     %
@@ -3178,6 +3180,9 @@ should_add_trail_ops(CodeInfo, GoalInfo) = AddTrailOps :-
     code_info::in, code_info::out) is det.
 
 :- pred max_reg_in_use(code_info::in, int::out) is det.
+
+:- pred magically_put_var_in_unused_reg(prog_var::in,
+    code_info::in, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -3555,6 +3560,11 @@ associate_stack_slot(CI, Var, Var - Slot) :-
 max_reg_in_use(CI, Max) :-
     get_var_locn_info(CI, VarLocnInfo),
     var_locn.max_reg_in_use(VarLocnInfo, Max).
+
+magically_put_var_in_unused_reg(Var, !CI) :-
+    get_var_locn_info(!.CI, VarLocnInfo0),
+    make_vars_forward_live_2([Var], map.init, 1, VarLocnInfo0, VarLocnInfo),
+    set_var_locn_info(VarLocnInfo, !CI).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
