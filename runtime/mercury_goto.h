@@ -275,11 +275,11 @@
   #define MR_ASM_FALLTHROUGH(label) \
   	goto MR_skip(label);
 
-#elif defined(__i386__) || defined(__mc68000__)
+#elif defined(__i386__) || defined(__mc68000__) || defined(__x86_64__)
 
   /*
   ** The following hack works around a stack leak on the i386.
-  ** (and apparently the 68000 too).
+  ** (and apparently the 68000 and x86_64 too).
   **
   ** The problem is that gcc pushes function parameters onto
   ** the stack when calling C functions such as GC_malloc(),
@@ -306,6 +306,11 @@
   	{ register int stack_pointer __asm__("esp");	\
   	__asm__("" : : "g"(stack_pointer)); }		\
   	goto *(label)
+  #elif defined(__x86_64__)
+    #define MR_ASM_JUMP(label)				\
+	{ register int stack_pointer __asm__("rsp");	\
+	__asm__("" : : "g"(stack_pointer)); }		\
+	goto *(label)
   #elif defined(__mc68000__)
     #define MR_ASM_JUMP(label)				\
   	{ register int stack_pointer __asm__("sp");	\

@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2005 The University of Melbourne.
+# Copyright (C) 1995-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -124,16 +124,6 @@ case $mercury_libs in default)
 				mercury_libs=static
 				;;
 			esac
-		;;
-		x86_64-*-linux*)
-			# Shared libraries are also not the default on x86_64
-			# (XXX at least for the moment - eventually they should
-			# be.)
-			case $make_shared_lib in false)
-				mercury_libs=static
-				;;
-			esac
-		;;
 	esac
 	;;
 esac
@@ -152,12 +142,6 @@ case $all_libs in default)
 			# only available for dynamically linked executables
 			# XXX With these defaults linking with Mercury
 			# libraries other than the standard library will fail.
-			case $make_shared_lib in false)
-				all_libs=static
-				;;
-			esac
-			;;
-		x86_64-*-linux*)
 			case $make_shared_lib in false)
 				all_libs=static
 				;;
