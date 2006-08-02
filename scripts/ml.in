@@ -1,7 +1,7 @@
 #! /bin/sh
 # @configure_input@
 #---------------------------------------------------------------------------#
-# Copyright (C) 1995-2005 The University of Melbourne.
+# Copyright (C) 1995-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -119,16 +119,7 @@ case $mercury_libs in default)
 	case $FULLARCH in
 		i*86-*-linux*|i*86-*-freebsd*|i*86-*-cygwin*|i*86-*-solaris*)
 			# shared libraries are not the default on x86
-			#systems that use ELF -- see README.Linux
-			case $make_shared_lib in false)
-				mercury_libs=static
-				;;
-			esac
-		;;
-		x86_64-*-linux*)
-			# Shared libraries are also not the default on x86_64
-			# (XXX at least for the moment - eventually they should
-			# be.)
+			# systems that use ELF -- see README.Linux
 			case $make_shared_lib in false)
 				mercury_libs=static
 				;;
@@ -157,12 +148,6 @@ case $all_libs in default)
 				;;
 			esac
 			;;
-		x86_64-*-linux*)
-			case $make_shared_lib in false)
-				all_libs=static
-				;;
-			esac
-		;;
 	esac
 	;;
 esac

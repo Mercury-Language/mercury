@@ -2120,7 +2120,7 @@ case $ac_cv_prog_gcc in yes)
 	mips-*)
 		CFLAGS_FOR_GOTOS="$CFLAGS_FOR_GOTOS -fomit-frame-pointer"
 		;;
-	i*86-*)
+	i*86-*|x86_64*)
 		CFLAGS_FOR_REGS="-fno-builtin -fno-omit-frame-pointer"
 		;;
 	# We need a special-case hack here, because the auto-config 
@@ -3117,6 +3117,13 @@ case "$host" in
 		NUM_REAL_R_TEMPS=0
 		HAVE_DELAY_SLOT=
 		;;
+	x86_64*)
+		# NUM_REAL_REGS=4
+		# but succip and sp are real regs, so subtract 2
+		NUM_REAL_R_REGS=2
+		NUM_REAL_R_TEMPS=0
+		HAVE_DELAY_SLOT=
+		;;
 	alpha*-*)
 		# NUM_REAL_REGS=7
 		# but succip, sp, and hp are real regs, so subtract 3
@@ -3297,7 +3304,7 @@ ERROR_UNDEFINED=""
 DEFAULT_LINKAGE="shared"
 
 case "$host" in
-	i*86-*-linux|i*86-*-linux-gnu)
+	i*86-*-linux|i*86-*-linux-gnu|x86_64-*-linux*)
 		case $ac_cv_prog_gcc in
 		yes)
 			AC_MSG_RESULT(yes)
@@ -3346,8 +3353,16 @@ case "$host" in
 			esac
 		esac
 		# Shared libraries are not the default on x86 systems that
-		# use ELF -- see README.Linux
-		DEFAULT_LINKAGE=static
+		# use ELF -- see README.Linux.
+		# They are the default on x86_64 systems that use ELF.
+		case "$host" in
+		    i*86-*-linux|i*86-*-linux-gnu)
+		        DEFAULT_LINKAGE=static
+		        ;;
+		    *)
+		        DEFAULT_LINKAGE=shared
+		        ;;
+		esac
 		;;
 	m68*-linux|m68*-linux-gnu)
 		AC_MSG_RESULT(yes)

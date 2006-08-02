@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2005 The University of Melbourne.
+** Copyright (C) 2005-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -15,14 +15,27 @@
 ** At the moment we're only using the callee-save registers
 ** (r12-r15). 
 **
+** The following assignment of global registers assumes that
+** we are using the x86_64's small code model.  (For gcc
+** this is the default code model.)  If we ever use the medium or
+** large code models with PIC then we most probably will *not* be
+** able to use r15 as a global register (because it may be needed in
+** function prologues to calculate the GOT address).  In that case
+** we may be able to use rbx as a global register in place of r15.
+**
+** For further details see section 3.5.3 of:
+**
+**	System V Application Binary Interface
+** 	AMD64 Processor Architecture Supplement
+**
+** which is available at: <http://www.x86-64.org/documentation/>
 */
-
 #define MR_NUM_REAL_REGS 4
 
 register	MR_Word	MR_mr0 __asm__("r12");	/* sp */
 register	MR_Word	MR_mr1 __asm__("r13");	/* succip */
-register	MR_Word	MR_mr2 __asm__("r14");	/* succip */
-register	MR_Word	MR_mr3 __asm__("r15");	/* succip */
+register	MR_Word	MR_mr2 __asm__("r14");	/* r1 */
+register	MR_Word	MR_mr3 __asm__("r15");	/* r2 */
 
 #define MR_real_reg_number_mr0	r12
 #define MR_real_reg_number_mr1	r13

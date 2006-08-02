@@ -441,7 +441,7 @@ case "$FULLARCH" in
             ;;
         esac
         ;;
-    i*86-*)
+    i*86-*|x86_64*)
         # The use of stack_pointer in the ASM_JUMP macro defined in
         # runtime/mercury_goto.h causes lots of warnings about using possibly
         # uninitialized variables; there's no easy way to supress them except
