@@ -42,7 +42,9 @@
 
     % `set_tree234.member(X, Set)' is true iff `X' is a member of `Set'.
     %
-:- pred set_tree234.member(set_tree234(T)::in, T::out) is nondet.
+:- pred set_tree234.member(set_tree234(T), T).
+:- mode set_tree234.member(in, in) is semidet.
+:- mode set_tree234.member(in, out) is nondet.
 
     % `set_tree234.is_member(Set, X, Result)' returns
     % `Result = yes' iff `X' is a member of `Set'.
@@ -293,28 +295,37 @@ set_tree234.make_singleton_set(X) = two(X, empty, empty).
 
 set_tree234.empty(empty).
 
-set_tree234.member(empty, _) :- fail.
-set_tree234.member(two(E0, T0, T1), E) :-
+:- pragma promise_equivalent_clauses(set_tree234.member/2).
+
+set_tree234.member(Set::in, Element::out) :-
+    set_tree234.all_members(Set, Element).
+set_tree234.member(Set::in, Element::in) :-
+    set_tree234.is_member(Set, Element) = yes.
+
+:- pred set_tree234.all_members(set_tree234(T)::in, T::out) is nondet.
+
+set_tree234.all_members(empty, _) :- fail.
+set_tree234.all_members(two(E0, T0, T1), E) :-
     (
         E = E0
     ;
-        set_tree234.member(T0, E)
+        set_tree234.all_members(T0, E)
     ;
-        set_tree234.member(T1, E)
+        set_tree234.all_members(T1, E)
     ).
-set_tree234.member(three(E0, E1, T0, T1, T2), E) :-
+set_tree234.all_members(three(E0, E1, T0, T1, T2), E) :-
     (
         E = E0
     ;
         E = E1
     ;
-        set_tree234.member(T0, E)
+        set_tree234.all_members(T0, E)
     ;
-        set_tree234.member(T1, E)
+        set_tree234.all_members(T1, E)
     ;
-        set_tree234.member(T2, E)
+        set_tree234.all_members(T2, E)
     ).
-set_tree234.member(four(E0, E1, E2, T0, T1, T2, T3), E) :-
+set_tree234.all_members(four(E0, E1, E2, T0, T1, T2, T3), E) :-
     (
         E = E0
     ;
@@ -322,13 +333,13 @@ set_tree234.member(four(E0, E1, E2, T0, T1, T2, T3), E) :-
     ;
         E = E2
     ;
-        set_tree234.member(T0, E)
+        set_tree234.all_members(T0, E)
     ;
-        set_tree234.member(T1, E)
+        set_tree234.all_members(T1, E)
     ;
-        set_tree234.member(T2, E)
+        set_tree234.all_members(T2, E)
     ;
-        set_tree234.member(T3, E)
+        set_tree234.all_members(T3, E)
     ).
 
 set_tree234.is_member(T, E, R) :-

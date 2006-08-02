@@ -377,7 +377,7 @@ expansion_init = set_tree234.init.
 :- pragma inline(expansion_member/2).
 
 expansion_member(E, S) :-
-    set_tree234.member(S, E).
+    set_tree234.is_member(S, E) = yes.
 
 :- pred expansion_insert(inst_match_inputs::in,
     expansions::in, expansions::out) is det.
