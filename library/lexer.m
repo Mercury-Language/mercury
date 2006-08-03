@@ -994,7 +994,7 @@ get_unicode_escape(NumHexChars, QuoteChar, Chars, HexChars, Token, !IO) :-
             get_quoted_name(QuoteChar, list.reverse(UTFChars) ++ Chars,
                 Token, !IO)
         else
-            Token = error("invalid unicode character code")
+            Token = error("invalid Unicode character code")
         )
     else
         io.read_char(Result, !IO),
