@@ -99,6 +99,18 @@
        }
 #      define GC_TEST_AND_SET_DEFINED
 #    endif
+/* local Mercury addition */
+#    if defined(X86_64)
+       inline static int GC_test_and_set(volatile unsigned int *addr) {
+	  char oldval;
+	  /* Note: the "xchg" instruction does not need a "lock" prefix */
+	  __asm__ __volatile__("xchgb %0, %1"
+		: "=q"(oldval), "=m"(*addr)
+		: "0"(0xff), "m"(*addr) : "memory");
+	  return oldval;
+       }
+#      define GC_TEST_AND_SET_DEFINED
+#    endif /* X86_64 */
 #    if defined(IA64)
 #      if defined(__INTEL_COMPILER)
 #        include <ia64intrin.h>
@@ -436,6 +448,27 @@
          __asm__ __volatile__("" : : : "memory");
        }
 #     endif /* I386 */
+
+/* local Mercury addition */
+#     if defined(X86_64)
+#      if !defined(GENERIC_COMPARE_AND_SWAP)
+         /* Returns TRUE if the comparison succeeded. */
+         inline static GC_bool GC_compare_and_exchange(volatile GC_word *addr,
+		  				       GC_word old,
+						       GC_word new_val) 
+         {
+	   char result;
+	   __asm__ __volatile__("lock; cmpxchgq %3, %0; setz %1"
+		: "=m"(*addr), "=q"(result)
+		: "m"(*addr), "r" (new_val), "a"(old) : "memory");
+	   return (GC_bool) result;
+         }
+#      endif /* !GENERIC_COMPARE_AND_SWAP */
+       inline static void GC_memory_barrier()
+       {
+         __asm__ __volatile__("" : : : "memory");
+       }
+#     endif /* X86_64 */
 
 #     if defined(POWERPC)
 #      if !defined(GENERIC_COMPARE_AND_SWAP)
