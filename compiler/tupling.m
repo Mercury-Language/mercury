@@ -108,6 +108,7 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.quantification.
 :- import_module libs.compiler_util.
@@ -1653,11 +1654,14 @@ fix_calls_in_proc(TransformMap, proc(PredId, ProcId), !ModuleInfo) :-
             proc_info_get_goal(!.ProcInfo, Goal0),
             proc_info_get_vartypes(!.ProcInfo, VarTypes0),
             proc_info_get_varset(!.ProcInfo, VarSet0),
+            proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
             fix_calls_in_goal(Goal0, Goal, VarSet0, VarSet,
-                VarTypes0, VarTypes, TransformMap),
+                VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps,
+                TransformMap),
             proc_info_set_goal(Goal, !ProcInfo),
             proc_info_set_varset(VarSet, !ProcInfo),
             proc_info_set_vartypes(VarTypes, !ProcInfo),
+            proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
             requantify_proc(!ProcInfo),
             recompute_instmap_delta_proc(yes, !ProcInfo, !ModuleInfo),
             module_info_set_pred_proc_info(PredId, ProcId,
@@ -1668,16 +1672,18 @@ fix_calls_in_proc(TransformMap, proc(PredId, ProcId), !ModuleInfo) :-
 %-----------------------------------------------------------------------------%
 
 :- pred fix_calls_in_goal(hlds_goal::in, hlds_goal::out, prog_varset::in,
-    prog_varset::out, vartypes::in, vartypes::out, transform_map::in)
+    prog_varset::out, vartypes::in, vartypes::out,
+    rtti_varmaps::in, rtti_varmaps::out, transform_map::in)
     is det.
 
-fix_calls_in_goal(Goal - GoalInfo, Goal - GoalInfo, !_, !_, _TransformMap) :-
+fix_calls_in_goal(Goal - GoalInfo, Goal - GoalInfo, !_, !_, !_, _) :-
     Goal = call_foreign_proc(_, _, _, _, _, _, _).
 
-fix_calls_in_goal(Goal - GoalInfo, Goal - GoalInfo, !_, !_, _TransformMap) :-
+fix_calls_in_goal(Goal - GoalInfo, Goal - GoalInfo, !_, !_, !_, _) :-
     Goal = generic_call(_, _, _, _).
 
-fix_calls_in_goal(Goal0 - GoalInfo0, Goal, !VarSet, !VarTypes, TransformMap) :-
+fix_calls_in_goal(Goal0 - GoalInfo0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
+        TransformMap) :-
     Goal0 = plain_call(CalledPredId0, CalledProcId0, Args0, Builtin,
         _Context, _SymName),
     (
@@ -1703,65 +1709,78 @@ fix_calls_in_goal(Goal0 - GoalInfo0, Goal, !VarSet, !VarTypes, TransformMap) :-
         conj_list_to_goal([ConstructGoal, CallGoal], GoalInfo0, Goal1),
         RequantifyVars = set.from_list([CellVar | Args0]),
         implicitly_quantify_goal(RequantifyVars, _, Goal1, Goal,
-            !VarSet, !VarTypes)
+            !VarSet, !VarTypes, !RttiVarMaps)
     ;
         Goal = Goal0 - GoalInfo0
     ).
 
-fix_calls_in_goal(Goal - GoalInfo, Goal - GoalInfo, !_, !_, _TransformMap) :-
+fix_calls_in_goal(Goal - GoalInfo, Goal - GoalInfo, !_, !_, !_, _) :-
     Goal = unify(_, _, _, _, _).
 
 fix_calls_in_goal(negation(Goal0) - GoalInfo, negation(Goal) - GoalInfo,
-        !VarSet, !VarTypes, TransformMap) :-
-    fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap).
+        !VarSet, !VarTypes, !RttiVarMaps, TransformMap) :-
+    fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
+        TransformMap).
 
 fix_calls_in_goal(scope(Reason, Goal0) - GoalInfo,
         scope(Reason, Goal) - GoalInfo,
-        !VarSet, !VarTypes, TransformMap) :-
-    fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap).
+        !VarSet, !VarTypes, !RttiVarMaps, TransformMap) :-
+    fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
+        TransformMap).
 
 fix_calls_in_goal(conj(ConjType, Goals0) - GoalInfo,
-        conj(ConjType, Goals) - GoalInfo, !VarSet, !VarTypes, TransformMap) :-
+        conj(ConjType, Goals) - GoalInfo, !VarSet, !VarTypes, !RttiVarMaps,
+        TransformMap) :-
     (
         ConjType = plain_conj,
-        fix_calls_in_conj(Goals0, Goals, !VarSet, !VarTypes, TransformMap)
+        fix_calls_in_conj(Goals0, Goals, !VarSet, !VarTypes, !RttiVarMaps,
+            TransformMap)
     ;
         ConjType = parallel_conj,
         % XXX: I am not sure whether parallel conjunctions should be treated
         % with fix_calls_in_goal or fix_calls_in_goal_list.  At any rate,
         % this is untested.
-        fix_calls_in_goal_list(Goals0, Goals, !VarSet, !VarTypes, TransformMap)
+        fix_calls_in_goal_list(Goals0, Goals, !VarSet, !VarTypes,
+            !RttiVarMaps, TransformMap)
     ).
 
 fix_calls_in_goal(disj(Goals0) - GoalInfo, disj(Goals) - GoalInfo,
-        !VarSet, !VarTypes, TransformMap) :-
-    fix_calls_in_goal_list(Goals0, Goals, !VarSet, !VarTypes, TransformMap).
+        !VarSet, !VarTypes, !RttiVarMaps, TransformMap) :-
+    fix_calls_in_goal_list(Goals0, Goals, !VarSet, !VarTypes,
+        !RttiVarMaps, TransformMap).
 
 fix_calls_in_goal(switch(Var, CanFail, Cases0) - GoalInfo,
         switch(Var, CanFail, Cases) - GoalInfo,
-        !VarSet, !VarTypes, TransformMap) :-
-    fix_calls_in_cases(Cases0, Cases, !VarSet, !VarTypes, TransformMap).
+        !VarSet, !VarTypes, !RttiVarMaps, TransformMap) :-
+    fix_calls_in_cases(Cases0, Cases, !VarSet, !VarTypes, !RttiVarMaps,
+        TransformMap).
 
 fix_calls_in_goal(if_then_else(Vars, Cond0, Then0, Else0) - GoalInfo,
         if_then_else(Vars, Cond, Then, Else) - GoalInfo,
-        !VarSet, !VarTypes, TransformMap) :-
-    fix_calls_in_goal(Cond0, Cond, !VarSet, !VarTypes, TransformMap),
-    fix_calls_in_goal(Then0, Then, !VarSet, !VarTypes, TransformMap),
-    fix_calls_in_goal(Else0, Else, !VarSet, !VarTypes, TransformMap).
+        !VarSet, !VarTypes, !RttiVarMaps, TransformMap) :-
+    fix_calls_in_goal(Cond0, Cond, !VarSet, !VarTypes, !RttiVarMaps,
+        TransformMap),
+    fix_calls_in_goal(Then0, Then, !VarSet, !VarTypes, !RttiVarMaps,
+        TransformMap),
+    fix_calls_in_goal(Else0, Else, !VarSet, !VarTypes, !RttiVarMaps,
+        TransformMap).
 
-fix_calls_in_goal(shorthand(_) - _, _, !VarSet, !VarTypes, _TransformMap) :-
+fix_calls_in_goal(shorthand(_) - _, _, _, _, _, _, _, _, _) :-
     unexpected(this_file, "fix_calls_in_goal: unexpected shorthand").
 
 %-----------------------------------------------------------------------------%
 
 :- pred fix_calls_in_conj(hlds_goals::in, hlds_goals::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    transform_map::in) is det.
+    rtti_varmaps::in, rtti_varmaps::out, transform_map::in) is det.
 
-fix_calls_in_conj([], [], !VarSet, !VarTypes, _).
-fix_calls_in_conj([Goal0 | Goals0], Goals, !VarSet, !VarTypes, TransformMap) :-
-    fix_calls_in_goal(Goal0, Goal1, !VarSet, !VarTypes, TransformMap),
-    fix_calls_in_conj(Goals0, Goals1, !VarSet, !VarTypes, TransformMap),
+fix_calls_in_conj([], [], !VarSet, !VarTypes, !RttiVarMaps, _).
+fix_calls_in_conj([Goal0 | Goals0], Goals, !VarSet, !VarTypes, 
+        !RttiVarMaps, TransformMap) :-
+    fix_calls_in_goal(Goal0, Goal1, !VarSet, !VarTypes, !RttiVarMaps,
+        TransformMap),
+    fix_calls_in_conj(Goals0, Goals1, !VarSet, !VarTypes, !RttiVarMaps,
+        TransformMap),
     ( Goal1 = conj(plain_conj, ConjGoals) - _ ->
         Goals = ConjGoals ++ Goals1
     ;
@@ -1770,25 +1789,29 @@ fix_calls_in_conj([Goal0 | Goals0], Goals, !VarSet, !VarTypes, TransformMap) :-
 
 :- pred fix_calls_in_goal_list(hlds_goals::in, hlds_goals::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    transform_map::in) is det.
+    rtti_varmaps::in, rtti_varmaps::out, transform_map::in) is det.
 
-fix_calls_in_goal_list([], [], !VarSet, !VarTypes, _TransformMap).
+fix_calls_in_goal_list([], [], !VarSet, !VarTypes, !RttiVarMaps, _).
 fix_calls_in_goal_list([Goal0 | Goals0], [Goal | Goals], !VarSet, !VarTypes,
-        TransformMap) :-
-    fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap),
-    fix_calls_in_goal_list(Goals0, Goals, !VarSet, !VarTypes, TransformMap).
+        !RttiVarMaps, TransformMap) :-
+    fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
+        TransformMap),
+    fix_calls_in_goal_list(Goals0, Goals, !VarSet, !VarTypes,
+        !RttiVarMaps, TransformMap).
 
 :- pred fix_calls_in_cases(list(case)::in, list(case)::out,
     prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
-    transform_map::in) is det.
+    rtti_varmaps::in, rtti_varmaps::out, transform_map::in) is det.
 
-fix_calls_in_cases([], [], !VarSet, !VarTypes, _TransformMap).
+fix_calls_in_cases([], [], !VarSet, !VarTypes, !RttiVarMaps, _).
 fix_calls_in_cases([Case0 | Cases0], [Case | Cases], !VarSet, !VarTypes,
-        TransformMap) :-
+        !RttiVarMaps, TransformMap) :-
     Case0 = case(Functor, Goal0),
-    fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, TransformMap),
+    fix_calls_in_goal(Goal0, Goal, !VarSet, !VarTypes, !RttiVarMaps,
+        TransformMap),
     Case = case(Functor, Goal),
-    fix_calls_in_cases(Cases0, Cases, !VarSet, !VarTypes, TransformMap).
+    fix_calls_in_cases(Cases0, Cases, !VarSet, !VarTypes,
+        !RttiVarMaps, TransformMap).
 
 %-----------------------------------------------------------------------------%
 

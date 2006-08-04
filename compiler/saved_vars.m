@@ -85,14 +85,14 @@ saved_vars_proc_no_io(TypeInfoLiveness, !ProcInfo, !ModuleInfo) :-
 
     saved_vars_in_goal(Goal0, Goal1, SlotInfo0, SlotInfo),
 
-    final_slot_info(Varset1, VarTypes1, RttiVarMaps, SlotInfo),
+    final_slot_info(Varset1, VarTypes1, RttiVarMaps1, SlotInfo),
     proc_info_get_headvars(!.ProcInfo, HeadVars),
 
     % hlds_out.write_goal(Goal1, !.ModuleInfo, Varset1, 0, "\n"),
 
     % Recompute the nonlocals for each goal.
     implicitly_quantify_clause_body(HeadVars, _Warnings, Goal1, Goal2,
-        Varset1, Varset, VarTypes1, VarTypes),
+        Varset1, Varset, VarTypes1, VarTypes, RttiVarMaps1, RttiVarMaps),
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
     proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
     recompute_instmap_delta(no, Goal2, Goal, VarTypes,

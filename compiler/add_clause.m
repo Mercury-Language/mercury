@@ -62,6 +62,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.pred_table.
 :- import_module hlds.make_hlds.add_pragma.
 :- import_module hlds.make_hlds.add_pred.
@@ -523,8 +524,13 @@ add_clause_transform(Subst, HeadVars, Args0, ParseBody, Context, PredOrFunc,
         finish_goals(Context, FinalSVarMap, [HeadGoal, BodyGoal], Goal0,
             !.SInfo),
         qual_info_get_var_types(!.QualInfo, VarTypes0),
+        %
+        % The RTTI varmaps here are just a dummy value because the real
+        % ones are not introduced until typechecking and polymorphism.
+        %
+        rtti_varmaps_init(EmptyRttiVarmaps),
         implicitly_quantify_clause_body(HeadVars, Warnings, Goal0, Goal,
-            !VarSet, VarTypes0, VarTypes),
+            !VarSet, VarTypes0, VarTypes, EmptyRttiVarmaps, _),
         qual_info_set_var_types(VarTypes, !QualInfo)
     ).
 

@@ -762,14 +762,18 @@ combine_vars(BranchNo, [ExtraVar | ExtraVars], !Vars) :-
 %-----------------------------------------------------------------------------%
 
 requantify_goal(NonLocals, Goal0, Goal, !PDInfo) :-
-    pd_info_get_proc_info(!.PDInfo, ProcInfo0),
-    proc_info_get_varset(ProcInfo0, VarSet0),
-    proc_info_get_vartypes(ProcInfo0, VarTypes0),
-    implicitly_quantify_goal(NonLocals, _, Goal0, Goal,
-        VarSet0, VarSet, VarTypes0, VarTypes),
-    proc_info_set_varset(VarSet, ProcInfo0, ProcInfo1),
-    proc_info_set_vartypes(VarTypes, ProcInfo1, ProcInfo),
-    pd_info_set_proc_info(ProcInfo, !PDInfo).
+    some [!ProcInfo] (
+        pd_info_get_proc_info(!.PDInfo, !:ProcInfo),
+        proc_info_get_varset(!.ProcInfo, VarSet0),
+        proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+        proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
+        implicitly_quantify_goal(NonLocals, _, Goal0, Goal, VarSet0, VarSet,
+            VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
+        proc_info_set_varset(VarSet, !ProcInfo),
+        proc_info_set_vartypes(VarTypes, !ProcInfo),
+        proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
+        pd_info_set_proc_info(!.ProcInfo, !PDInfo)
+    ).
 
 recompute_instmap_delta(Goal0, Goal, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),

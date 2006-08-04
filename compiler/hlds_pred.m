@@ -1681,7 +1681,8 @@ attribute_list_to_attributes(Attributes, Attributes).
     maybe(list(is_live))::out) is det.
 :- pred proc_info_get_declared_determinism(proc_info::in,
     maybe(determinism)::out) is det.
-:- pred proc_info_get_inferred_determinism(proc_info::in, determinism::out) is det.
+:- pred proc_info_get_inferred_determinism(proc_info::in, determinism::out)
+    is det.
 :- pred proc_info_get_goal(proc_info::in, hlds_goal::out) is det.
 :- pred proc_info_get_can_process(proc_info::in, bool::out) is det.
 :- pred proc_info_get_rtti_varmaps(proc_info::in, rtti_varmaps::out) is det.

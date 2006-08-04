@@ -469,14 +469,17 @@ do_process_goal(Goal0, Goal, !Info, !IO) :-
     simplify_goal(Goal0, Goal1, !Info, !IO),
     simplify_info_get_varset(!.Info, VarSet0),
     simplify_info_get_var_types(!.Info, VarTypes0),
+    simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     ( simplify_info_requantify(!.Info) ->
         Goal1 = _ - GoalInfo1,
         goal_info_get_nonlocals(GoalInfo1, NonLocals),
         implicitly_quantify_goal(NonLocals, _, Goal1, Goal2,
-            VarSet0, VarSet1, VarTypes0, VarTypes1),
+            VarSet0, VarSet1, VarTypes0, VarTypes1,
+            RttiVarMaps0, RttiVarMaps1),
 
         simplify_info_set_varset(VarSet1, !Info),
         simplify_info_set_var_types(VarTypes1, !Info),
+        simplify_info_set_rtti_varmaps(RttiVarMaps1, !Info),
 
         % Always recompute instmap_deltas for atomic goals - this is safer
         % in the case where unused variables should no longer be included
@@ -502,12 +505,14 @@ do_process_goal(Goal0, Goal, !Info, !IO) :-
         simplify_info_get_varset(!.Info, VarSet2),
         simplify_info_get_var_types(!.Info, VarTypes2),
         simplify_info_get_det_info(!.Info, DetInfo2),
+        simplify_info_get_rtti_varmaps(!.Info, RttiVarMaps2),
         det_info_get_pred_id(DetInfo2, PredId),
         det_info_get_proc_id(DetInfo2, ProcId),
         module_info_pred_proc_info(ModuleInfo2, PredId, ProcId,
             PredInfo, ProcInfo0),
         proc_info_set_vartypes(VarTypes2, ProcInfo0, ProcInfo1),
-        proc_info_set_varset(VarSet2, ProcInfo1, ProcInfo),
+        proc_info_set_varset(VarSet2, ProcInfo1, ProcInfo2),
+        proc_info_set_rtti_varmaps(RttiVarMaps2, ProcInfo2, ProcInfo),
         module_info_set_pred_proc_info(PredId, ProcId,
             PredInfo, ProcInfo, ModuleInfo2, ModuleInfo3),
         simplify_info_set_module_info(ModuleInfo3, !Info),

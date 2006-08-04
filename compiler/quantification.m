@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: quantification.m.
 % Main authors: fjh, conway.
-
+% 
 % Make implicit quantification explicit, and rename apart variables with the
 % same name that appear in distinct scopes. For the rules on implicit
 % quantification, see the Mercury language reference manual.
@@ -27,7 +27,7 @@
 % know is "Does this goal bind any of its nonlocal variables?".  So, rather
 % than storing a list of the variables which _are_ existentially quantified in
 % the goal_info, we store the set of variables which are _not_ quantified.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module hlds.quantification.
@@ -35,6 +35,7 @@
 
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_rtti.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -71,24 +72,25 @@
 :- pred implicitly_quantify_clause_body(nonlocals_to_recompute::in,
     list(prog_var)::in, list(quant_warning)::out,
     hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
+    vartypes::in, vartypes::out, rtti_varmaps::in, rtti_varmaps::out) is det.
 
     % As above, with `ordinary_nonlocals' passed as the first argument.
     %
 :- pred implicitly_quantify_clause_body(list(prog_var)::in,
     list(quant_warning)::out, hlds_goal::in, hlds_goal::out,
-    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out) is det.
+    prog_varset::in, prog_varset::out, vartypes::in, vartypes::out,
+    rtti_varmaps::in, rtti_varmaps::out) is det.
 
 :- pred implicitly_quantify_goal(nonlocals_to_recompute::in,
     set(prog_var)::in, list(quant_warning)::out,
     hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
+    vartypes::in, vartypes::out, rtti_varmaps::in, rtti_varmaps::out) is det.
 
     % As above, with `ordinary_nonlocals' passed as the first argument.
     %
 :- pred implicitly_quantify_goal(set(prog_var)::in, list(quant_warning)::out,
     hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
+    vartypes::in, vartypes::out, rtti_varmaps::in, rtti_varmaps::out) is det.
 
 :- pred requantify_proc(nonlocals_to_recompute::in,
     proc_info::in, proc_info::out) is det.
@@ -134,8 +136,8 @@
 
     % The `outside vars', `lambda outside vars', and `quant vars'
     % fields are inputs; the `nonlocals' field is output; and
-    % the `seen so far', the varset, the types, and the warnings fields
-    % are threaded (i.e. both input and output).
+    % the `seen so far', the varset, the types, rtti_varmaps, and the
+    % warnings fields are threaded (i.e. both input and output).
     % We use the convention that the input fields are callee save,
     % and the outputs are caller save.
     % The nonlocals_to_recompute field is constant.
@@ -150,7 +152,8 @@
                 seen                    :: set_of_var,
                 varset                  :: prog_varset,
                 vartypes                :: vartypes,
-                warnings                :: list(quant_warning)
+                warnings                :: list(quant_warning),
+                rtti_varmaps            :: rtti_varmaps
             ).
 
     % Until we have user-specified pretty printing in the debugger,
@@ -195,15 +198,15 @@
 %-----------------------------------------------------------------------------%
 
 implicitly_quantify_clause_body(HeadVars, Warnings,
-        !Goal, !Varset, !VarTypes) :-
+        !Goal, !Varset, !VarTypes, !RttiVarMaps) :-
     implicitly_quantify_clause_body(ordinary_nonlocals, HeadVars, Warnings,
-        !Goal, !Varset, !VarTypes).
+        !Goal, !Varset, !VarTypes, !RttiVarMaps).
 
 implicitly_quantify_clause_body(RecomputeNonLocals, HeadVars, Warnings,
-        !Goal, !Varset, !VarTypes) :-
+        !Goal, !Varset, !VarTypes, !RttiVarMaps) :-
     list_to_set(HeadVars, OutsideVars),
     implicitly_quantify_goal(RecomputeNonLocals, OutsideVars, Warnings,
-        !Goal, !Varset, !VarTypes).
+        !Goal, !Varset, !VarTypes, !RttiVarMaps).
 
 requantify_proc(ProcInfo0, ProcInfo) :-
     requantify_proc(ordinary_nonlocals, ProcInfo0, ProcInfo).
@@ -213,20 +216,24 @@ requantify_proc(RecomputeNonLocals, !ProcInfo) :-
     proc_info_get_varset(!.ProcInfo, Varset0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     proc_info_get_goal(!.ProcInfo, Goal0),
+    proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarmaps0),
     implicitly_quantify_clause_body(RecomputeNonLocals, HeadVars, _,
-        Goal0, Goal, Varset0, Varset, VarTypes0, VarTypes),
+        Goal0, Goal, Varset0, Varset, VarTypes0, VarTypes,
+        RttiVarmaps0, RttiVarmaps),
     proc_info_set_varset(Varset, !ProcInfo),
     proc_info_set_vartypes(VarTypes, !ProcInfo),
-    proc_info_set_goal(Goal, !ProcInfo).
+    proc_info_set_goal(Goal, !ProcInfo),
+    proc_info_set_rtti_varmaps(RttiVarmaps, !ProcInfo).
 
-implicitly_quantify_goal(OutsideVars, Warnings, !Goal, !Varset, !VarTypes) :-
+implicitly_quantify_goal(OutsideVars, Warnings, !Goal, !Varset, !VarTypes, 
+        !RttiVarMaps) :-
     implicitly_quantify_goal(ordinary_nonlocals, OutsideVars, Warnings,
-        !Goal, !Varset, !VarTypes).
+        !Goal, !Varset, !VarTypes, !RttiVarMaps).
 
 implicitly_quantify_goal(RecomputeNonLocals, OutsideVars, Warnings,
-        !Goal, !Varset, !VarTypes) :-
+        !Goal, !Varset, !VarTypes, !RttiVarMaps) :-
     implicitly_quantify_goal_2(ordinary_nonlocals, OutsideVars, Warnings,
-        !Goal, !Varset, !VarTypes),
+        !Goal, !Varset, !VarTypes, !RttiVarMaps),
     (
         RecomputeNonLocals = code_gen_nonlocals,
 
@@ -235,7 +242,7 @@ implicitly_quantify_goal(RecomputeNonLocals, OutsideVars, Warnings,
         goal_contains_reconstruction(!.Goal)
     ->
         implicitly_quantify_goal_2(code_gen_nonlocals, OutsideVars, _,
-            !Goal, !Varset, !VarTypes)
+            !Goal, !Varset, !VarTypes, !RttiVarMaps)
     ;
         true
     ).
@@ -243,16 +250,18 @@ implicitly_quantify_goal(RecomputeNonLocals, OutsideVars, Warnings,
 :- pred implicitly_quantify_goal_2(nonlocals_to_recompute::in,
     set(prog_var)::in, list(quant_warning)::out,
     hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
+    vartypes::in, vartypes::out, rtti_varmaps::in, rtti_varmaps::out) is det.
 
 implicitly_quantify_goal_2(RecomputeNonLocals, OutsideVars0, Warnings,
-        !Goal, !Varset, !VarTypes) :-
+        !Goal, !Varset, !VarTypes, !RttiVarMaps) :-
     OutsideVars = set_to_bitset(OutsideVars0),
-    init(RecomputeNonLocals, OutsideVars, !.Varset, !.VarTypes, QuantInfo0),
+    init(RecomputeNonLocals, OutsideVars, !.Varset, !.VarTypes, !.RttiVarMaps,
+        QuantInfo0),
     implicitly_quantify_goal(!Goal, QuantInfo0, QuantInfo),
     get_varset(QuantInfo, !:Varset),
     get_vartypes(QuantInfo, !:VarTypes),
     get_warnings(QuantInfo, Warnings0),
+    get_rtti_varmaps(QuantInfo, !:RttiVarMaps),
     list.reverse(Warnings0, Warnings).
 
 :- pred implicitly_quantify_goal(hlds_goal::in, hlds_goal::out,
@@ -273,7 +282,17 @@ implicitly_quantify_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info) :-
         intersect(SeenVars, LocalVars, RenameVars),
         \+ empty(RenameVars)
     ->
-        rename_apart(RenameVars, _, Goal1 - GoalInfo0, Goal - GoalInfo1, !Info)
+        rename_apart(RenameVars, RenameMap,
+            Goal1 - GoalInfo0, Goal - GoalInfo1, !Info),
+        %
+        % Make sure that the information in the RTTI varmaps is updated
+        % to reflect any new variables that we may have just introduced.
+        %
+        some [!RttiVarMaps] (
+            get_rtti_varmaps(!.Info, !:RttiVarMaps),
+            map.foldl(rtti_var_info_duplicate, RenameMap, !RttiVarMaps),
+            set_rtti_varmaps(!.RttiVarMaps, !Info)
+        )
     ;
         Goal = Goal1,
         GoalInfo1 = GoalInfo0
@@ -1370,12 +1389,14 @@ set_to_bitset(Bitset) = sorted_list_to_set(set.to_sorted_list(Bitset)).
 %-----------------------------------------------------------------------------%
 
 :- pred init(nonlocals_to_recompute::in, set_of_var::in,
-    prog_varset::in, vartypes::in, quant_info::out) is det.
+    prog_varset::in, vartypes::in, rtti_varmaps::in, quant_info::out) is det.
 
-init(RecomputeNonLocals, OutsideVars, Varset, VarTypes, QuantInfo) :-
+init(RecomputeNonLocals, OutsideVars, Varset, VarTypes, RttiVarMaps,
+        QuantInfo) :-
     OverlapWarnings = [],
     QuantInfo = quant_info(RecomputeNonLocals, OutsideVars, QuantVars,
-        LambdaOutsideVars, NonLocals, Seen, Varset, VarTypes, OverlapWarnings),
+        LambdaOutsideVars, NonLocals, Seen, Varset, VarTypes, OverlapWarnings,
+        RttiVarMaps),
     init(QuantVars),
     init(NonLocals),
     init(LambdaOutsideVars),
@@ -1391,6 +1412,7 @@ init(RecomputeNonLocals, OutsideVars, Varset, VarTypes, QuantInfo) :-
 :- pred get_varset(quant_info::in, prog_varset::out) is det.
 :- pred get_vartypes(quant_info::in, vartypes::out) is det.
 :- pred get_warnings(quant_info::in, list(quant_warning)::out) is det.
+:- pred get_rtti_varmaps(quant_info::in, rtti_varmaps::out) is det.
 
 :- pred set_outside(set_of_var::in,
     quant_info::in, quant_info::out) is det.
@@ -1408,6 +1430,8 @@ init(RecomputeNonLocals, OutsideVars, Varset, VarTypes, QuantInfo) :-
     quant_info::in, quant_info::out) is det.
 :- pred set_warnings(list(quant_warning)::in,
     quant_info::in, quant_info::out) is det.
+:- pred set_rtti_varmaps(rtti_varmaps::in,
+    quant_info::in, quant_info::out) is det.
 
 get_nonlocals_to_recompute(Q, Q ^ nonlocals_to_recompute).
 get_outside(Q, Q ^ outside).
@@ -1418,6 +1442,7 @@ get_seen(Q, Q ^ seen).
 get_varset(Q, Q ^ varset).
 get_vartypes(Q, Q ^ vartypes).
 get_warnings(Q, Q ^ warnings).
+get_rtti_varmaps(Q, Q ^ rtti_varmaps).
 
 set_outside(Outside, Q, Q ^ outside := Outside).
 set_quant_vars(QuantVars, Q, Q ^ quant_vars := QuantVars).
@@ -1427,6 +1452,7 @@ set_seen(Seen, Q, Q ^ seen := Seen).
 set_varset(Varset, Q, Q ^ varset := Varset).
 set_vartypes(VarTypes, Q, Q ^ vartypes := VarTypes).
 set_warnings(Warnings, Q, Q ^ warnings := Warnings).
+set_rtti_varmaps(RttiVarMaps, Q, Q ^ rtti_varmaps := RttiVarMaps).
 
 %-----------------------------------------------------------------------------%
 

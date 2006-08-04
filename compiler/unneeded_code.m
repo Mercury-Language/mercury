@@ -243,11 +243,13 @@ pre_process_proc(!ProcInfo) :-
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_varset(!.ProcInfo, Varset0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     implicitly_quantify_clause_body(HeadVars, _Warnings, Goal0, Goal,
-        Varset0, Varset, VarTypes0, VarTypes),
+        Varset0, Varset, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
     proc_info_set_goal(Goal, !ProcInfo),
     proc_info_set_varset(Varset, !ProcInfo),
-    proc_info_set_vartypes(VarTypes, !ProcInfo).
+    proc_info_set_vartypes(VarTypes, !ProcInfo),
+    proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo).
 
 % The source-to-source transform operates in two phases.
 %
@@ -296,10 +298,9 @@ process_proc(!ProcInfo, !ModuleInfo, Successful) :-
     instmap.apply_instmap_delta(InitInstMap, InstMapDelta, FinalInstMap),
     proc_info_instantiated_head_vars(!.ModuleInfo, !.ProcInfo, NeededVarsList),
     map.init(WhereNeededMap0),
-    NeededEverywhere =
-        (pred(Var::in, NeededMap0::in, NeededMap::out) is det :-
-            map.det_insert(NeededMap0, Var, everywhere, NeededMap)
-        ),
+    NeededEverywhere = (pred(Var::in, NeededMap0::in, NeededMap::out) is det :-
+        map.det_insert(NeededMap0, Var, everywhere, NeededMap)
+    ),
     list.foldl(NeededEverywhere, NeededVarsList,
         WhereNeededMap0, WhereNeededMap1),
     module_info_get_globals(!.ModuleInfo, Globals),
@@ -319,13 +320,16 @@ process_proc(!ProcInfo, !ModuleInfo, Successful) :-
             % the nonlocal vars and the non-atomic instmap deltas.
         proc_info_get_headvars(!.ProcInfo, HeadVars),
         proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
+        proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
         implicitly_quantify_clause_body(HeadVars, _Warnings,
-            Goal2, Goal3, Varset0, Varset, VarTypes0, VarTypes),
+            Goal2, Goal3, Varset0, Varset, VarTypes0, VarTypes,
+            RttiVarMaps0, RttiVarMaps),
         recompute_instmap_delta(no, Goal3, Goal, VarTypes, InstVarSet,
             InitInstMap, !ModuleInfo),
         proc_info_set_goal(Goal, !ProcInfo),
         proc_info_set_varset(Varset, !ProcInfo),
         proc_info_set_vartypes(VarTypes, !ProcInfo),
+        proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
         process_proc(!ProcInfo, !ModuleInfo, _),
         Successful = yes
     ;

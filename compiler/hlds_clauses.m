@@ -104,14 +104,16 @@
     % This partial map holds the types specified by any explicit
     % type qualifiers in the clauses.
     %
-:- pred clauses_info_get_explicit_vartypes(clauses_info::in, vartypes::out) is det.
+:- pred clauses_info_get_explicit_vartypes(clauses_info::in, vartypes::out)
+    is det.
 
     % This map contains the types of all the variables, as inferred
     % by typecheck.m.
     %
 :- pred clauses_info_get_vartypes(clauses_info::in, vartypes::out) is det.
 
-:- pred clauses_info_get_rtti_varmaps(clauses_info::in, rtti_varmaps::out) is det.
+:- pred clauses_info_get_rtti_varmaps(clauses_info::in, rtti_varmaps::out)
+    is det.
 
 :- pred clauses_info_get_headvars(clauses_info::in, list(prog_var)::out) is det.
 
@@ -165,6 +167,7 @@
                 clause_context      :: prog_context
             ).
 
+%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.

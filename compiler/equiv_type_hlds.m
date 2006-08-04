@@ -289,41 +289,44 @@ replace_in_maybe_inst_det(EqvMap, known(Inst0, Det), known(Inst, Det),
 
 replace_in_pred(EqvMap, PredId, !ModuleInfo, !Cache) :-
     some [!PredInfo, !EquivTypeInfo] (
-    module_info_get_name(!.ModuleInfo, ModuleName),
-    module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
-    module_info_get_maybe_recompilation_info(!.ModuleInfo, MaybeRecompInfo0),
+        module_info_get_name(!.ModuleInfo, ModuleName),
+        module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
+        module_info_get_maybe_recompilation_info(!.ModuleInfo,
+            MaybeRecompInfo0),
 
-    PredName = pred_info_name(!.PredInfo),
-    equiv_type.maybe_record_expanded_items(ModuleName,
-        qualified(ModuleName, PredName), MaybeRecompInfo0, !:EquivTypeInfo),
+        PredName = pred_info_name(!.PredInfo),
+        equiv_type.maybe_record_expanded_items(ModuleName,
+            qualified(ModuleName, PredName), MaybeRecompInfo0,
+                !:EquivTypeInfo),
 
-    pred_info_get_arg_types(!.PredInfo, ArgTVarSet0, ExistQVars, ArgTypes0),
-    equiv_type.replace_in_type_list(EqvMap, ArgTypes0, ArgTypes,
-        _, ArgTVarSet0, ArgTVarSet1, !EquivTypeInfo),
+        pred_info_get_arg_types(!.PredInfo, ArgTVarSet0, ExistQVars,
+            ArgTypes0),
+        equiv_type.replace_in_type_list(EqvMap, ArgTypes0, ArgTypes,
+            _, ArgTVarSet0, ArgTVarSet1, !EquivTypeInfo),
 
-    % The constraint_proofs aren't used after polymorphism,
-    % so they don't need to be processed.
-    pred_info_get_class_context(!.PredInfo, ClassContext0),
-    equiv_type.replace_in_prog_constraints(EqvMap, ClassContext0,
-        ClassContext, ArgTVarSet1, ArgTVarSet, !EquivTypeInfo),
-    pred_info_set_class_context(ClassContext, !PredInfo),
+        % The constraint_proofs aren't used after polymorphism,
+        % so they don't need to be processed.
+        pred_info_get_class_context(!.PredInfo, ClassContext0),
+        equiv_type.replace_in_prog_constraints(EqvMap, ClassContext0,
+            ClassContext, ArgTVarSet1, ArgTVarSet, !EquivTypeInfo),
+        pred_info_set_class_context(ClassContext, !PredInfo),
         pred_info_set_arg_types(ArgTVarSet, ExistQVars, ArgTypes, !PredInfo),
 
-    ItemId = item_id(pred_or_func_to_item_type(
-        pred_info_is_pred_or_func(!.PredInfo)),
-        item_name(qualified(pred_info_module(!.PredInfo), PredName),
-            pred_info_orig_arity(!.PredInfo))),
-    equiv_type.finish_recording_expanded_items(ItemId,
-        !.EquivTypeInfo, MaybeRecompInfo0, MaybeRecompInfo),
-    module_info_set_maybe_recompilation_info(MaybeRecompInfo, !ModuleInfo),
+        ItemId = item_id(pred_or_func_to_item_type(
+            pred_info_is_pred_or_func(!.PredInfo)),
+            item_name(qualified(pred_info_module(!.PredInfo), PredName),
+                pred_info_orig_arity(!.PredInfo))),
+        equiv_type.finish_recording_expanded_items(ItemId,
+            !.EquivTypeInfo, MaybeRecompInfo0, MaybeRecompInfo),
+        module_info_set_maybe_recompilation_info(MaybeRecompInfo, !ModuleInfo),
 
         pred_info_get_procedures(!.PredInfo, Procs0),
-    map.map_foldl(
-        replace_in_proc(EqvMap), Procs0, Procs,
-            {!.ModuleInfo, !.PredInfo, !.Cache},
-            {!:ModuleInfo, !:PredInfo, !:Cache}),
-        pred_info_set_procedures(Procs, !PredInfo),
-        module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
+        map.map_foldl(
+            replace_in_proc(EqvMap), Procs0, Procs,
+                {!.ModuleInfo, !.PredInfo, !.Cache},
+                {!:ModuleInfo, !:PredInfo, !:Cache}),
+            pred_info_set_procedures(Procs, !PredInfo),
+            module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
     ).
 
 :- pred replace_in_proc(eqv_map::in, proc_id::in,

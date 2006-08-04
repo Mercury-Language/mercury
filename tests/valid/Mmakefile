@@ -87,6 +87,7 @@ OTHER_PROGS= \
 	func_default_modes \
 	func_in_head \
 	func_int_bug_main \
+	hawkins_switch_bug \
 	headvar_not_found \
 	higher_order \
 	higher_order2 \

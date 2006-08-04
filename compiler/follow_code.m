@@ -79,6 +79,7 @@ move_follow_code_in_proc(_PredId, _ProcId, _PredInfo, !ProcInfo,
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_varset(!.ProcInfo, Varset0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
+    proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     (
         move_follow_code_in_goal(Goal0, Goal1, Flags, no, Res),
         % Did the goal change?
@@ -88,7 +89,7 @@ move_follow_code_in_proc(_PredId, _ProcId, _PredInfo, !ProcInfo,
         % and the non-atomic instmap deltas.
         proc_info_get_headvars(!.ProcInfo, HeadVars),
         implicitly_quantify_clause_body(HeadVars, _Warnings, Goal1, Goal2,
-            Varset0, Varset, VarTypes0, VarTypes),
+            Varset0, Varset, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
         proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
         proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
         recompute_instmap_delta(no, Goal2, Goal, VarTypes, InstVarSet,
@@ -96,11 +97,13 @@ move_follow_code_in_proc(_PredId, _ProcId, _PredInfo, !ProcInfo,
     ;
         Goal = Goal0,
         Varset = Varset0,
-        VarTypes = VarTypes0
+        VarTypes = VarTypes0,
+        RttiVarMaps = RttiVarMaps0
     ),
     proc_info_set_goal(Goal, !ProcInfo),
     proc_info_set_varset(Varset, !ProcInfo),
-    proc_info_set_vartypes(VarTypes, !ProcInfo).
+    proc_info_set_vartypes(VarTypes, !ProcInfo),
+    proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
