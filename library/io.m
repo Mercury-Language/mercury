@@ -82,7 +82,8 @@
     ;       error(io.error).
 
     % io.maybe_partial_res is used where it is possible to return
-    % a partial result when an error occurs,
+    % a partial result when an error occurs.
+    %
 :- type io.maybe_partial_res(T)
     --->    ok(T)
     ;       error(T, io.error).
@@ -121,7 +122,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Text input predicates.
+% Text input predicates
 %
 
     % Reads a character from the current input stream.
@@ -353,7 +354,7 @@
 
 %-----------------------------------------------------------------------------%
 %
-% Text output predicates.
+% Text output predicates
 %
 
 % These will all throw an io.error exception if an I/O error occurs.
