@@ -82,7 +82,8 @@
     ;       error(io.error).
 
     % io.maybe_partial_res is used where it is possible to return
-    % a partial result when an error occurs,
+    % a partial result when an error occurs.
+    %
 :- type io.maybe_partial_res(T)
     --->    ok(T)
     ;       error(T, io.error).
@@ -106,14 +107,14 @@
 
     % Poly-type is used for io.write_many and io.format,
     % which do printf-like formatting.
-
+    %
 :- type io.poly_type == string.poly_type.
 
     % io.whence denotes the base for a seek operation.
     %   set - seek relative to the start of the file
     %   cur - seek relative to the current position in the file
     %   end - seek relative to the end of the file.
-
+    %
 :- type io.whence
     --->    set
     ;       cur
