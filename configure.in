@@ -3277,8 +3277,17 @@ case "$host" in
 			EXT_FOR_SHARED_LIB=so
 			AC_MSG_CHECKING(if linker supports --no-undefined)
 			rm -f conftest*
-			echo "int main(void) { return 0; }" > conftest.c
-			$CC -Wl,--no-undefined -o conftest conftest.c
+			if test "$mercury_cv_thread_local_storage" = yes; then
+				# --no-undefined doesn't work with TLS
+				# and older versions of glibc.
+				echo "__thread int x;
+				int main(void) { return x; }" > conftest.c
+				$CC -Wl,--no-undefined -fPIC -shared \
+					-o conftest conftest.c 2>/dev/null
+			else
+				echo "int main(void) { return 0; }" > conftest.c
+				$CC -Wl,--no-undefined -o conftest conftest.c
+			fi
 			if test -f conftest; then
 				AC_MSG_RESULT(yes)
 				ERROR_UNDEFINED="-Wl,--no-undefined"
