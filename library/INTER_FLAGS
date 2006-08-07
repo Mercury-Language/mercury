@@ -2,4 +2,3 @@
 --no-warn-smart-recompilation
 --enable-termination
 --analyse-exceptions
---analyse-trail-usage
