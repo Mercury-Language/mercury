@@ -123,7 +123,7 @@ extern void ML_report_full_memory_stats(void);
 #include <stdlib.h>
 #include ""mercury_prof_mem.h""
 #include ""mercury_heap_profile.h""
-#include ""mercury_wrapper.h""      /* for MR_time_at_last_stat */
+#include ""mercury_wrapper.h""      /* for MR_user_time_at_last_stat */
 
 #ifdef MR_MPROF_PROFILE_MEMORY
 
@@ -178,7 +178,8 @@ extern void ML_report_full_memory_stats(void);
 void
 ML_report_stats(void)
 {
-    int                 time_at_prev_stat;
+    int                 user_time_at_prev_stat;
+    int                 real_time_at_prev_stat;
 #if !defined(MR_HIGHLEVEL_CODE) || !defined(MR_CONSERVATIVE_GC)
     MercuryEngine       *eng;
 #endif
@@ -191,16 +192,24 @@ ML_report_stats(void)
     ** Print timing and stack usage information
     */
 
-    time_at_prev_stat = MR_time_at_last_stat;
-    MR_time_at_last_stat = MR_get_user_cpu_miliseconds();
+    user_time_at_prev_stat = MR_user_time_at_last_stat;
+    MR_user_time_at_last_stat = MR_get_user_cpu_milliseconds();
+
+    real_time_at_prev_stat = MR_real_time_at_last_stat;
+    MR_real_time_at_last_stat = MR_get_real_milliseconds();
 
 #if !defined(MR_HIGHLEVEL_CODE) || !defined(MR_CONSERVATIVE_GC)
     eng = MR_get_engine();
 #endif
 
-    fprintf(stderr, ""[Time: +%.3fs, %.3fs,"",
-        (MR_time_at_last_stat - time_at_prev_stat) / 1000.0,
-        (MR_time_at_last_stat - MR_time_at_start) / 1000.0
+    fprintf(stderr, ""[User time: +%.3fs, %.3fs,"",
+        (MR_user_time_at_last_stat - user_time_at_prev_stat) / 1000.0,
+        (MR_user_time_at_last_stat - MR_user_time_at_start) / 1000.0
+    );
+
+    fprintf(stderr, "" Real time: +%.3fs, %.3fs,"",
+        (MR_real_time_at_last_stat - real_time_at_prev_stat) / 1000.0,
+        (MR_real_time_at_last_stat - MR_real_time_at_start) / 1000.0
     );
 
 #ifndef MR_HIGHLEVEL_CODE
@@ -602,7 +611,7 @@ private static int time_at_last_stat    = 0;
 
 static {
     if (mercury.runtime.Native.isAvailable()) {
-        time_at_start = mercury.runtime.Native.get_user_cpu_miliseconds();
+        time_at_start = mercury.runtime.Native.get_user_cpu_milliseconds();
         time_at_last_stat = time_at_start;
     }
 }
@@ -610,7 +619,7 @@ static {
 private static void
 ML_report_stats() {
     int time_at_prev_stat = time_at_last_stat;
-    time_at_last_stat = get_user_cpu_miliseconds_1_p_0();
+    time_at_last_stat = get_user_cpu_milliseconds_1_p_0();
 
     System.err.print(""[Time: "" +
         ((time_at_last_stat - time_at_prev_stat) / 1000.0) +
@@ -644,9 +653,9 @@ ML_report_full_memory_stats() {
 
 :- pragma promise_pure(benchmark_det/5).
 benchmark_det(Pred, In, Out, Repeats, Time) :-
-    impure get_user_cpu_miliseconds(StartTime),
+    impure get_user_cpu_milliseconds(StartTime),
     impure benchmark_det_loop(Pred, In, Out, Repeats),
-    impure get_user_cpu_miliseconds(EndTime),
+    impure get_user_cpu_milliseconds(EndTime),
     Time0 = EndTime - StartTime,
     cc_multi_equal(Time0, Time).
 
@@ -668,9 +677,9 @@ benchmark_det_loop(Pred, In, Out, Repeats) :-
 :- pragma promise_pure(benchmark_func/5).
 
 benchmark_func(Func, In, Out, Repeats, Time) :-
-    impure get_user_cpu_miliseconds(StartTime),
+    impure get_user_cpu_milliseconds(StartTime),
     impure benchmark_func_loop(Func, In, Out, Repeats),
-    impure get_user_cpu_miliseconds(EndTime),
+    impure get_user_cpu_milliseconds(EndTime),
     Time0 = EndTime - StartTime,
     cc_multi_equal(Time0, Time).
 
@@ -691,9 +700,9 @@ benchmark_func_loop(Func, In, Out, Repeats) :-
 :- pragma promise_pure(benchmark_det_io/7).
 
 benchmark_det_io(Pred, InA, OutA, InB, OutB, Repeats, Time) :-
-    impure get_user_cpu_miliseconds(StartTime),
+    impure get_user_cpu_milliseconds(StartTime),
     impure benchmark_det_loop_io(Pred, InA, OutA, InB, OutB, Repeats),
-    impure get_user_cpu_miliseconds(EndTime),
+    impure get_user_cpu_milliseconds(EndTime),
     Time = EndTime - StartTime.
     % XXX cc_multi_equal(Time0, Time).
 
@@ -717,9 +726,9 @@ benchmark_det_loop_io(Pred, InA, OutA, InB, OutB, Repeats) :-
 :- pragma promise_pure(benchmark_nondet/5).
 
 benchmark_nondet(Pred, In, Count, Repeats, Time) :-
-    impure get_user_cpu_miliseconds(StartTime),
+    impure get_user_cpu_milliseconds(StartTime),
     impure benchmark_nondet_loop(Pred, In, Count, Repeats),
-    impure get_user_cpu_miliseconds(EndTime),
+    impure get_user_cpu_milliseconds(EndTime),
     Time0 = EndTime - StartTime,
     cc_multi_equal(Time0, Time).
 
@@ -746,19 +755,19 @@ repeat(N) :-
     N > 0,
     ( true ; impure repeat(N - 1) ).
 
-:- impure pred get_user_cpu_miliseconds(int::out) is det.
+:- impure pred get_user_cpu_milliseconds(int::out) is det.
 
 :- pragma foreign_proc("C",
-    get_user_cpu_miliseconds(Time::out),
+    get_user_cpu_milliseconds(Time::out),
     [will_not_call_mercury],
 "
-    Time = MR_get_user_cpu_miliseconds();
+    Time = MR_get_user_cpu_milliseconds();
 ").
 
 % XXX Can't seem to get this to work -- perhaps Diagnostics isn't yet
 % available in Beta 1 of the .NET framework.
 % :- pragma foreign_proc("MC++",
-%     get_user_cpu_miliseconds(_Time::out),
+%     get_user_cpu_milliseconds(_Time::out),
 %     [will_not_call_mercury],
 % "
 %     // This won't return the elapsed time since program start,
@@ -768,14 +777,14 @@ repeat(N) :-
 % ").
 
 :- pragma foreign_proc("Java",
-    get_user_cpu_miliseconds(Time::out),
+    get_user_cpu_milliseconds(Time::out),
     [will_not_call_mercury],
 "
     if (mercury.runtime.Native.isAvailable()) {
-        Time = mercury.runtime.Native.get_user_cpu_miliseconds();
+        Time = mercury.runtime.Native.get_user_cpu_milliseconds();
     } else {
         throw new java.lang.RuntimeException(
-            ""get_user_cpu_miliseconds is not implemented in pure Java."" +
+            ""get_user_cpu_milliseconds is not implemented in pure Java."" +
             ""Native dynamic link library is required."");
     }
 ").

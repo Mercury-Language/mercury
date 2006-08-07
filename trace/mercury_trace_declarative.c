@@ -1759,7 +1759,7 @@ MR_trace_start_collecting(MR_Unsigned event, MR_Unsigned seqno,
     MR_edt_inside = MR_FALSE;
     MR_edt_building_supertree = create_supertree;
     MR_edt_suspicion_accumulator = 0;
-    MR_edt_start_time = MR_get_user_cpu_miliseconds();
+    MR_edt_start_time = MR_get_user_cpu_milliseconds();
     MR_edt_first_event = event_info->MR_event_number;
 
     /*
@@ -2307,7 +2307,7 @@ MR_trace_show_progress_subtree(MR_Unsigned event_number)
     if (event_number != MR_edt_last_event &&
         MR_edt_progress_last_tick == 0 &&
         (MR_edt_start_time + MR_DECL_DISPLAY_PROGRESS_DELAY
-        < MR_get_user_cpu_miliseconds()))
+        < MR_get_user_cpu_milliseconds()))
     {
         fprintf(MR_mdb_out, MR_DECL_PROGRESS_MESSAGE_SUBTREE);
         fflush(MR_mdb_out);
@@ -2343,7 +2343,7 @@ MR_trace_show_progress_supertree(MR_Unsigned event_number)
     */
     if (MR_edt_progress_last_tick == 0 &&
         (MR_edt_start_time + MR_DECL_DISPLAY_PROGRESS_DELAY
-        < MR_get_user_cpu_miliseconds()))
+        < MR_get_user_cpu_milliseconds()))
     {
         fprintf(MR_mdb_out, MR_DECL_PROGRESS_MESSAGE_SUPERTREE);
         fflush(MR_mdb_out);
@@ -2351,7 +2351,7 @@ MR_trace_show_progress_supertree(MR_Unsigned event_number)
     } else if ((MR_edt_start_time
         + (MR_edt_progress_last_tick + 1)
         * MR_DECL_DISPLAY_PROGRESS_DELAY)
-        < MR_get_user_cpu_miliseconds())
+        < MR_get_user_cpu_milliseconds())
     {
         MR_edt_progress_last_tick++;
         fprintf(MR_mdb_out, MR_DECL_PROGRESS_TICK_STRING);
@@ -2430,7 +2430,7 @@ MR_decl_print_edt_stats(void)
         MR_edt_stats_total_constructed_nodes);
     fprintf(stderr, "Current event = %i\n", MR_trace_event_number);
     fprintf(stderr, "Total CPU time = %.2f\n",
-        MR_get_user_cpu_miliseconds() / 1000.0);
+        MR_get_user_cpu_milliseconds() / 1000.0);
     pid = getpid();
     sprintf(cmdstr, "ps -p %i -o rss,vsz | tail -1 |"
     	"awk '{print \"RSS = \" $1 \"\\nVSZ = \" $2}' 1>&2", pid);

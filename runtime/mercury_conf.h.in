@@ -153,6 +153,8 @@
 #undef	MR_HAVE_DIRENT_H
 #undef	MR_HAVE_MALLOC_H
 #undef	MR_HAVE_SEMAPHORE_H
+#undef	MR_HAVE_PTHREAD_H
+#undef	MR_HAVE_TIME_H
 
 /*
 ** MR_HAVE_POSIX_TIMES is defined if we have the POSIX
@@ -240,6 +242,7 @@
 **	MR_HAVE_MKDIR		we have the mkdir function.
 **	MR_HAVE_SYMLINK		we have the symlink function.
 **	MR_HAVE_READLINK	we have the readlink function.
+**	MR_HAVE_GETTIMEOFDAY	we have the gettimeofday function.
 */
 #undef	MR_HAVE_GETPID
 #undef	MR_HAVE_SETPGID
@@ -295,6 +298,7 @@
 #undef	MR_HAVE_MKDIR
 #undef	MR_HAVE_SYMLINK
 #undef	MR_HAVE_READLINK
+#undef	MR_HAVE_GETTIMEOFDAY
 
 /*
 ** We use mprotect() and signals to catch stack and heap overflows.

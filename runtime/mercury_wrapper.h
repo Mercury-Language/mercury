@@ -268,8 +268,10 @@ extern	unsigned long	MR_lld_print_max;
 extern	char		*MR_lld_print_more_min_max;
 
 /* timing */
-extern	int		MR_time_at_start;
-extern	int		MR_time_at_last_stat;
+extern	int		MR_user_time_at_start;
+extern	int		MR_user_time_at_last_stat;
+extern	int		MR_real_time_at_start;
+extern	int		MR_real_time_at_last_stat;
 
 /* time profiling */
 enum MR_TimeProfileMethod {

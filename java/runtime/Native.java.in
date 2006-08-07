@@ -1,6 +1,6 @@
 // @configure_input@
 //
-// Copyright (C) 2004 The University of Melbourne.
+// Copyright (C) 2004, 2006 The University of Melbourne.
 // This file may only be copied under the terms of the GNU Library General
 // Public License - see the file COPYING.LIB in the Mercury distribution.
 //
@@ -138,10 +138,10 @@ public class Native {
 	public static native int clk_tck();
 
 	/*
-	** get_user_cpu_miliseconds():
+	** get_user_cpu_milliseconds():
 	**	Native method to return the CPU time consumed by the process,
-	**	in miliseconds, from an arbitrary initial time.
+	**	in milliseconds, from an arbitrary initial time.
 	*/
-	public static native int get_user_cpu_miliseconds();
+	public static native int get_user_cpu_milliseconds();
 }
 

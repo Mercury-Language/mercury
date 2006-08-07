@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1994,1997,2000, 2005 The University of Melbourne.
+** Copyright (C) 1993-1994,1997,2000, 2005-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -17,6 +17,14 @@
   #include <sys/times.h>		/* for times() and `struct tms' */
 #endif
 
+#ifdef MR_HAVE_SYS_TIME_H
+  #include <sys/time.h>
+#endif
+
+#ifdef MR_HAVE_TIME_H
+  #include <time.h>
+#endif
+
 #ifdef MR_WIN32_GETPROCESSTIMES
   #include <windows.h>
 #endif
@@ -24,7 +32,7 @@
 #include "mercury_timing.h"
 
 int
-MR_get_user_cpu_miliseconds(void)
+MR_get_user_cpu_milliseconds(void)
 {
 #if defined(MR_WIN32_GETPROCESSTIMES)
 	#define FILETIME_TO_MILLISEC(time, msec)			\
@@ -50,16 +58,31 @@ MR_get_user_cpu_miliseconds(void)
 	return user_msec + kernel_msec;
 #elif defined(MR_HAVE_SYS_TIMES_H)
   #ifdef MR_CLOCK_TICKS_PER_SECOND
-	const double ticks_per_milisecond = MR_CLOCK_TICKS_PER_SECOND / 1000.0;
+	const double ticks_per_millisecond = MR_CLOCK_TICKS_PER_SECOND / 1000.0;
 	struct tms t;
 
 	if (times(&t) == -1) {
 		return -1;
 	}
-	return (int) (t.tms_utime / ticks_per_milisecond);
+	return (int) (t.tms_utime / ticks_per_millisecond);
   #else
 	return -1;
   #endif
+#else
+	return -1;
+#endif
+}
+
+int
+MR_get_real_milliseconds(void)
+{
+#if defined(MR_HAVE_GETTIMEOFDAY)
+	struct timeval tv;
+
+	if (gettimeofday(&tv, NULL) == -1) {
+		return -1;
+	}
+	return (tv.tv_sec * 1000) + (tv.tv_usec / 1000);
 #else
 	return -1;
 #endif

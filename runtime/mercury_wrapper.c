@@ -261,9 +261,12 @@ unsigned int        MR_num_threads = 1;
 static  MR_bool     MR_print_table_statistics = MR_FALSE;
 
 /* timing */
-int                 MR_time_at_last_stat;
-int                 MR_time_at_start;
-static  int         MR_time_at_finish;
+int                 MR_user_time_at_last_stat;
+int                 MR_user_time_at_start;
+static  int         MR_user_time_at_finish;
+
+int                 MR_real_time_at_last_stat;
+int                 MR_real_time_at_start;
 
 /* time profiling */
 enum MR_TimeProfileMethod
@@ -1845,8 +1848,11 @@ mercury_runtime_main(void)
         MR_CONTEXT(MR_ctxt_nondetstack_zone)->MR_zone_min;
 #endif
 
-    MR_time_at_start = MR_get_user_cpu_miliseconds();
-    MR_time_at_last_stat = MR_time_at_start;
+    MR_user_time_at_start = MR_get_user_cpu_milliseconds();
+    MR_user_time_at_last_stat = MR_user_time_at_start;
+
+    MR_real_time_at_start = MR_get_real_milliseconds();
+    MR_real_time_at_last_stat = MR_real_time_at_start;
 
     for (repcounter = 0; repcounter < repeats; repcounter++) {
 #ifdef  MR_DEEP_PROFILING
@@ -1870,7 +1876,7 @@ mercury_runtime_main(void)
     }
 
     if (use_own_timer) {
-        MR_time_at_finish = MR_get_user_cpu_miliseconds();
+        MR_user_time_at_finish = MR_get_user_cpu_milliseconds();
     }
 
 #if defined(MR_USE_GCC_NONLOCAL_GOTOS) && defined(MR_LOWLEVEL_DEBUG)
@@ -1925,9 +1931,9 @@ mercury_runtime_main(void)
     }
 #endif
 
-        if (use_own_timer) {
+    if (use_own_timer) {
         printf("%8.3fu ",
-            ((double) (MR_time_at_finish - MR_time_at_start)) / 1000);
+            ((double) (MR_user_time_at_finish - MR_user_time_at_start)) / 1000);
     }
 
 #ifdef  MR_TYPE_CTOR_STATS

@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 2004 The University of Melbourne.
+** Copyright (C) 2004, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -42,10 +42,10 @@ JNIEXPORT jint JNICALL Java_mercury_runtime_Native_clk_1tck(JNIEnv *, jclass);
 
 /*
  * Class:     Native
- * Method:    get_user_cpu_miliseconds
+ * Method:    get_user_cpu_milliseconds
  * Signature: ()I
  */
-JNIEXPORT jint JNICALL Java_mercury_runtime_Native_get_1user_1cpu_1miliseconds(
+JNIEXPORT jint JNICALL Java_mercury_runtime_Native_get_1user_1cpu_1milliseconds(
 		JNIEnv *, jclass);
 
 #include "mercury_imp.h"
@@ -108,9 +108,9 @@ JNIEXPORT jint JNICALL Java_mercury_runtime_Native_clk_1tck(
 }
 
 JNIEXPORT jint JNICALL
-Java_mercury_runtime_Native_get_1user_1cpu_1miliseconds(
+Java_mercury_runtime_Native_get_1user_1cpu_1milliseconds(
 		JNIEnv *env, jclass obj)
 {
-	return MR_get_user_cpu_miliseconds();
+	return MR_get_user_cpu_milliseconds();
 }
 

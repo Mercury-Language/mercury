@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1993-1995, 1997, 2000 The University of Melbourne.
+** Copyright (C) 1993-1995, 1997, 2000, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -7,7 +7,7 @@
 /*
 ** mercury_timing.h - interface to timing routines.
 **	Defines `MR_CLOCK_TICKS_PER_SECOND'
-**	and `MR_get_user_cpu_miliseconds()'.
+**	and `MR_get_user_cpu_milliseconds()'.
 */
 
 #ifndef MERCURY_TIMING_H
@@ -42,9 +42,15 @@
 #endif
 
 /*
-** MR_get_user_cpu_miliseconds() returns the CPU time consumed by the
-** process, in miliseconds, from an arbitrary initial time.
+** MR_get_user_cpu_milliseconds() returns the CPU time consumed by the
+** process, in milliseconds, from an arbitrary initial time.
 */
-int MR_get_user_cpu_miliseconds(void);
+int MR_get_user_cpu_milliseconds(void);
+
+/*
+** MR_get_real_milliseconds() returns the real time
+** in milliseconds, from an arbitrary initial time.
+*/
+int MR_get_real_milliseconds(void);
 
 #endif /* MERCURY_TIMING_H */
