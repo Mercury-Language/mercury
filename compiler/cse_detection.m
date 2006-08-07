@@ -193,11 +193,12 @@ detect_cse_in_proc_2(ProcId, PredId, Redo, ModuleInfo0, ModuleInfo) :-
         Redo = yes,
 
         % ModuleInfo should not be changed by detect_cse_in_goal.
-        CseInfo = cse_info(VarSet1, VarTypes1, RttiVarMaps, _),
+        CseInfo = cse_info(VarSet1, VarTypes1, RttiVarMaps1, _),
         proc_info_get_headvars(ProcInfo0, HeadVars),
 
         implicitly_quantify_clause_body(HeadVars, _Warnings,
-            Goal1, Goal, VarSet1, VarSet, VarTypes1, VarTypes),
+            Goal1, Goal, VarSet1, VarSet, VarTypes1, VarTypes,
+            RttiVarMaps1, RttiVarMaps),
 
         proc_info_set_goal(Goal, ProcInfo0, ProcInfo1),
         proc_info_set_varset(VarSet, ProcInfo1, ProcInfo2),

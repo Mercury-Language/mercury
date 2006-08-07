@@ -765,10 +765,12 @@ requantify_goal(NonLocals, Goal0, Goal, !PDInfo) :-
     pd_info_get_proc_info(!.PDInfo, ProcInfo0),
     proc_info_get_varset(ProcInfo0, VarSet0),
     proc_info_get_vartypes(ProcInfo0, VarTypes0),
+    proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps0),
     implicitly_quantify_goal(NonLocals, _, Goal0, Goal,
-        VarSet0, VarSet, VarTypes0, VarTypes),
+        VarSet0, VarSet, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
     proc_info_set_varset(VarSet, ProcInfo0, ProcInfo1),
-    proc_info_set_vartypes(VarTypes, ProcInfo1, ProcInfo),
+    proc_info_set_vartypes(VarTypes, ProcInfo1, ProcInfo2),
+    proc_info_set_rtti_varmaps(RttiVarMaps, ProcInfo2, ProcInfo),
     pd_info_set_proc_info(ProcInfo, !PDInfo).
 
 recompute_instmap_delta(Goal0, Goal, !PDInfo) :-

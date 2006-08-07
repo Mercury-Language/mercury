@@ -187,18 +187,20 @@ process_proc_2(!ProcInfo, !PredInfo, !ModuleInfo) :-
         PredName, !.ModuleInfo, MustRecomputeNonLocals0),
     process_goal(Goal0, Goal1, Info0, Info1),
     Info1 = lambda_info(VarSet1, VarTypes1, Constraints, TypeVarSet,
-        _, RttiVarMaps, _, _, _, !:ModuleInfo, MustRecomputeNonLocals),
+        _, RttiVarMaps1, _, _, _, !:ModuleInfo, MustRecomputeNonLocals),
 
     % Check if we need to requantify.
     (
         MustRecomputeNonLocals = yes,
         implicitly_quantify_clause_body(HeadVars, _Warnings,
-            Goal1, Goal, VarSet1, VarSet, VarTypes1, VarTypes)
+            Goal1, Goal, VarSet1, VarSet, VarTypes1, VarTypes,
+            RttiVarMaps1, RttiVarMaps)
     ;
         MustRecomputeNonLocals = no,
         Goal = Goal1,
         VarSet = VarSet1,
-        VarTypes = VarTypes1
+        VarTypes = VarTypes1,
+        RttiVarMaps = RttiVarMaps1
     ),
 
     % Set the new values of the fields in proc_info and pred_info.

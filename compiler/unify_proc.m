@@ -1201,10 +1201,12 @@ quantify_clauses_body(HeadVars, Goal, Context, Clauses, !Info) :-
 quantify_clause_body(HeadVars, Goal0, Context, Clause, !Info) :-
     info_get_varset(!.Info, Varset0),
     info_get_types(!.Info, Types0),
+    info_get_rtti_varmaps(!.Info, RttiVarMaps0),
     implicitly_quantify_clause_body(HeadVars, _Warnings, Goal0, Goal,
-        Varset0, Varset, Types0, Types),
+        Varset0, Varset, Types0, Types, RttiVarMaps0, RttiVarMaps),
     info_set_varset(Varset, !Info),
     info_set_types(Types, !Info),
+    info_set_rtti_varmaps(RttiVarMaps, !Info),
     Clause = clause([], Goal, mercury, Context).
 
 %-----------------------------------------------------------------------------%
@@ -1975,6 +1977,8 @@ equal_functor = functor(equal_cons_id, no, []).
     unify_proc_info::in, unify_proc_info::out) is det.
 :- pred info_set_types(vartypes::in,
     unify_proc_info::in, unify_proc_info::out) is det.
+:- pred info_set_rtti_varmaps(rtti_varmaps::in,
+    unify_proc_info::in, unify_proc_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -2013,6 +2017,7 @@ info_get_module_info(UPI, UPI ^ module_info).
 
 info_set_varset(VarSet, UPI, UPI ^ varset := VarSet).
 info_set_types(Types, UPI, UPI ^ vartypes := Types).
+info_set_rtti_varmaps(RttiVarMaps, UPI, UPI ^ rtti_varmaps := RttiVarMaps).
 
 %-----------------------------------------------------------------------------%
 

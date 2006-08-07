@@ -5,15 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: mode_constraints.m.
 % Main author: dmo.
-
+%
 % This module implements the top level of the algorithm described in the
 % paper "Constraint-based mode analysis of Mercury" by David Overton,
 % Zoltan Somogyi and Peter Stuckey. That paper is the main documentation
 % of the concepts behind the algorithm as well as the algorithm itself.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.mode_constraints.
@@ -55,6 +55,7 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.hlds_rtti.
 :- import_module hlds.inst_graph.
 :- import_module hlds.passes_aux.
 :- import_module hlds.quantification.
@@ -186,7 +187,7 @@ process_module(!ModuleInfo, !IO) :-
     ).
 
 dump_abstract_constraints(ModuleInfo, ConstraintVarset, ModeConstraints,
-    !IO) :-
+        !IO) :-
 
     hlds_module.module_info_get_name(ModuleInfo, ModuleName),
     CreateDirectories = yes,
@@ -218,40 +219,45 @@ dump_abstract_constraints(ModuleInfo, ConstraintVarset, ModeConstraints,
 
 correct_nonlocals_in_pred(PredId, !ModuleInfo) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
-    some [!ClausesInfo, !Varset, !Vartypes, !Clauses, !Goals] (
+    some [!ClausesInfo, !Varset, !Vartypes, !Clauses, !Goals, !RttiVarMaps] (
         pred_info_clauses_info(PredInfo0, !:ClausesInfo),
         clauses_info_clauses_only(!.ClausesInfo, !:Clauses),
         clauses_info_get_headvars(!.ClausesInfo, Headvars),
         clauses_info_get_varset(!.ClausesInfo, !:Varset),
         clauses_info_get_vartypes(!.ClausesInfo, !:Vartypes),
+        clauses_info_get_rtti_varmaps(!.ClausesInfo, !:RttiVarMaps),
         !:Goals = list.map(func(X) = clause_body(X), !.Clauses),
-        list.map_foldl2(correct_nonlocals_in_clause_body(Headvars), !Goals,
-            !Varset, !Vartypes),
+        list.map_foldl3(correct_nonlocals_in_clause_body(Headvars), !Goals,
+            !Varset, !Vartypes, !RttiVarMaps),
         !:Clauses = list.map_corresponding(
             func(Clause, Goal) = 'clause_body :='(Clause, Goal),
             !.Clauses, !.Goals),
         clauses_info_set_clauses(!.Clauses, !ClausesInfo),
         clauses_info_set_varset(!.Varset, !ClausesInfo),
         clauses_info_set_vartypes(!.Vartypes, !ClausesInfo),
+        clauses_info_set_rtti_varmaps(!.RttiVarMaps, !ClausesInfo),
         pred_info_set_clauses_info(!.ClausesInfo, PredInfo0, PredInfo)
     ),
     module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
 
-    % correct_nonlocals_in_clause_body(Headvars, !Goals, !Varset, !Vartypes)
+    % correct_nonlocals_in_clause_body(Headvars, !Goals, !Varset, !Vartypes,
+    %   !RttiVarMaps)
     % requantifies the clause body Goal. This is to ensure that no variable
     % appears in the nonlocal set of a goal that doesn't also appear
     % in that goal.
     %
 :- pred correct_nonlocals_in_clause_body(list(prog_var)::in,
     hlds_goal::in, hlds_goal::out, prog_varset::in, prog_varset::out,
-    vartypes::in, vartypes::out) is det.
+    vartypes::in, vartypes::out, rtti_varmaps::in, rtti_varmaps::out) is det.
 
-correct_nonlocals_in_clause_body(Headvars, !Goals, !Varset, !Vartypes) :-
-        implicitly_quantify_clause_body(Headvars, Warnings, !Goals, !Varset,
-            !Vartypes),
-    (   Warnings = []
+correct_nonlocals_in_clause_body(Headvars, !Goals, !Varset, !Vartypes,
+        !RttiVarMaps) :-
+    implicitly_quantify_clause_body(Headvars, Warnings, !Goals, !Varset,
+        !Vartypes, !RttiVarMaps),
+    (
+        Warnings = []
     ;
-        Warnings = [_|_],
+        Warnings = [_ | _],
         unexpected(this_file, "Quantification error during constraints" ++
             " based mode analysis")
     ).

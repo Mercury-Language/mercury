@@ -5,19 +5,19 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: polymorphism.m.
 % Main author: fjh.
-
+%
 % This module is a pass over the HLDS.
 % It does a syntactic transformation to implement polymorphism, including
 % typeclasses, by passing extra `type_info' and `typeclass_info' arguments.
 % These arguments are structures that contain, amongst other things,
 % higher order predicate terms for the polymorphic procedures or methods.
-
+%
 % See notes/type_class_transformation.html for a description of the
 % transformation and data structures used to implement type classes.
-
+%
 % XXX The way the code in this module handles existential type classes
 % and type class constraints is a bit ad hoc, in general; there are
 % definitely parts of this code (marked with XXXs below) that could
@@ -168,7 +168,6 @@
 %
 %   then the remainder of the type_infos and typeclass_infos as above.
 %
-%-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.polymorphism.
@@ -1941,10 +1940,12 @@ fixup_quantification(HeadVars, ExistQVars, Goal0, Goal, !Info) :-
     ;
         poly_info_get_varset(!.Info, VarSet0),
         poly_info_get_var_types(!.Info, VarTypes0),
+        poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
         set.list_to_set(HeadVars, OutsideVars),
         implicitly_quantify_goal(OutsideVars, _Warnings, Goal0, Goal,
-            VarSet0, VarSet, VarTypes0, VarTypes),
-        poly_info_set_varset_and_types(VarSet, VarTypes, !Info)
+            VarSet0, VarSet, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
+        poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
+        poly_info_set_rtti_varmaps(RttiVarMaps, !Info)
     ).
 
     % If the lambda goal we are processing is polymorphically typed, we may
@@ -1963,8 +1964,8 @@ fixup_quantification(HeadVars, ExistQVars, Goal0, Goal, !Info) :-
 
 fixup_lambda_quantification(ArgVars, LambdaVars, ExistQVars, !Goal,
         NewOutsideVars, !Info) :-
-    poly_info_get_rtti_varmaps(!.Info, RttiVarMaps),
-    ( rtti_varmaps_no_tvars(RttiVarMaps) ->
+    poly_info_get_rtti_varmaps(!.Info, RttiVarMaps0),
+    ( rtti_varmaps_no_tvars(RttiVarMaps0) ->
         set.init(NewOutsideVars)
     ;
         poly_info_get_varset(!.Info, VarSet0),
@@ -1973,12 +1974,13 @@ fixup_lambda_quantification(ArgVars, LambdaVars, ExistQVars, !Goal,
         goal_info_get_nonlocals(GoalInfo0, NonLocals),
         set.insert_list(NonLocals, ArgVars, NonLocalsPlusArgs0),
         set.insert_list(NonLocalsPlusArgs0, LambdaVars, NonLocalsPlusArgs),
-        goal_util.extra_nonlocal_typeinfos(RttiVarMaps, VarTypes0,
+        goal_util.extra_nonlocal_typeinfos(RttiVarMaps0, VarTypes0,
             ExistQVars, NonLocalsPlusArgs, NewOutsideVars),
         set.union(NonLocals, NewOutsideVars, OutsideVars),
         implicitly_quantify_goal(OutsideVars, _Warnings, !Goal,
-            VarSet0, VarSet, VarTypes0, VarTypes),
-        poly_info_set_varset_and_types(VarSet, VarTypes, !Info)
+            VarSet0, VarSet, VarTypes0, VarTypes, RttiVarMaps0, RttiVarMaps),
+        poly_info_set_varset_and_types(VarSet, VarTypes, !Info),
+        poly_info_set_rtti_varmaps(RttiVarMaps, !Info)
     ).
 
 %-----------------------------------------------------------------------------%

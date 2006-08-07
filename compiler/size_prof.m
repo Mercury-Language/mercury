@@ -245,7 +245,7 @@ process_proc(Transform, PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
     proc_info_get_varset(!.ProcInfo, VarSet0),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     proc_info_get_initial_instmap(!.ProcInfo, !.ModuleInfo, InstMap0),
-    proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps),
+    proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
     % The with_types are needed to avoid a combinatorial explosion
     % of ambiguity in the type checker.
     TypeCtorMap0 = map.init `with_type` type_ctor_map,
@@ -256,10 +256,10 @@ process_proc(Transform, PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
     KnownSizeMap0 = map.init `with_type` known_size_map,
     Info0 = size_prof_info(TypeCtorMap0, TypeInfoMap0,
         RevTypeCtorMap0, RevTypeInfoMap0, TargetTypeInfoMap0,
-        KnownSizeMap0, VarSet0, VarTypes0, Transform, RttiVarMaps,
+        KnownSizeMap0, VarSet0, VarTypes0, Transform, RttiVarMaps0,
         !.ModuleInfo),
-    rtti_varmaps_tvars(RttiVarMaps, TVars),
-    list.foldl(record_typeinfo_in_type_info_varmap(RttiVarMaps), TVars,
+    rtti_varmaps_tvars(RttiVarMaps0, TVars),
+    list.foldl(record_typeinfo_in_type_info_varmap(RttiVarMaps0), TVars,
         Info0, Info1),
     process_goal(Goal0, Goal1, Info1, Info),
 
@@ -268,12 +268,14 @@ process_proc(Transform, PredId, ProcId, !ProcInfo, !ModuleInfo, !IO) :-
     proc_info_get_headvars(!.ProcInfo, HeadVars),
     proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
     implicitly_quantify_clause_body(HeadVars, _Warnings, Goal1, Goal2,
-        Info ^ varset, VarSet, Info ^ vartypes, VarTypes),
+        Info ^ varset, VarSet, Info ^ vartypes, VarTypes,
+        Info ^ rtti_varmaps, RttiVarMaps),
     recompute_instmap_delta(no, Goal2, Goal, VarTypes, InstVarSet,
         InstMap0, !ModuleInfo),
     proc_info_set_goal(Goal, !ProcInfo),
     proc_info_set_varset(VarSet, !ProcInfo),
-    proc_info_set_vartypes(VarTypes, !ProcInfo).
+    proc_info_set_vartypes(VarTypes, !ProcInfo),
+    proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo).
 
 :- pred process_goal(hlds_goal::in, hlds_goal::out, info::in, info::out)
     is det.

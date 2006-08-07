@@ -1220,15 +1220,17 @@ create_call_goal(UnusedArgs, NewPredId, NewProcId, PredModule, PredName,
     % The varset should probably be fixed up, but it shouldn't make
     % too much difference.
     proc_info_get_varset(!.OldProc, VarSet0),
+    proc_info_get_rtti_varmaps(!.OldProc, RttiVarMaps0),
     remove_listof_elements(1, UnusedArgs, HeadVars, NewHeadVars),
     GoalExpr = call(NewPredId, NewProcId, NewHeadVars,
         not_builtin, no, qualified(PredModule, PredName)),
     Goal1 = GoalExpr - GoalInfo1,
     implicitly_quantify_goal(NonLocals, _, Goal1, Goal, VarSet0, VarSet,
-        VarTypes1, VarTypes),
+        VarTypes1, VarTypes, RttiVarMaps0, RttiVarMaps),
     proc_info_set_goal(Goal, !OldProc),
     proc_info_set_varset(VarSet, !OldProc),
-    proc_info_set_vartypes(VarTypes, !OldProc).
+    proc_info_set_vartypes(VarTypes, !OldProc),
+    proc_info_set_rtti_varmaps(RttiVarMaps, !OldProc).
 
     % Create a pred_info for an imported pred with a pragma unused_args
     % in the .opt file.
@@ -1388,11 +1390,14 @@ do_fixup_unused_args(VarUsage, proc(OldPredId, OldProcId), ProcCallInfo,
             Changed = yes,
             % If anything has changed, rerun quantification.
             set.list_to_set(HeadVars, NonLocals),
+            proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps0),
             implicitly_quantify_goal(NonLocals, _, !Goal,
-                VarSet1, VarSet, VarTypes1, VarTypes),
+                VarSet1, VarSet, VarTypes1, VarTypes,
+                RttiVarMaps0, RttiVarMaps),
             proc_info_set_goal(!.Goal, !ProcInfo),
             proc_info_set_varset(VarSet, !ProcInfo),
-            proc_info_set_vartypes(VarTypes, !ProcInfo)
+            proc_info_set_vartypes(VarTypes, !ProcInfo),
+            proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo)
         ;
             Changed = no
         ),
