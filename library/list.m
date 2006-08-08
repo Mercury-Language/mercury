@@ -493,6 +493,7 @@
 
     % list.map4(T, L, M1, M2, M3, M4) uses the closure T
     % to transform the elements of L into the elements of M1, M2, M3 and M4.
+    % 
 :- pred list.map4(pred(A, B, C, D, E), list(A), list(B), list(C), list(D),
     list(E)).
 :- mode list.map4(pred(in, out, out, out, out) is det, in, out, out, out, out)
@@ -511,6 +512,7 @@
     % list.map5(T, L, M1, M2, M3, M4, M5) uses the closure T
     % to transform the elements of L into the elements of M1, M2, M3, M4
     % and M5.
+    % 
 :- pred list.map5(pred(A, B, C, D, E, F), list(A), list(B), list(C), list(D),
     list(E), list(F)).
 :- mode list.map5(pred(in, out, out, out, out, out) is det, in, out, out, out,
@@ -529,6 +531,7 @@
     % list.map6(T, L, M1, M2, M3, M4, M5, M6) uses the closure T
     % to transform the elements of L into the elements of M1, M2, M3, M4,
     % M5 and M6.
+    % 
 :- pred list.map6(pred(A, B, C, D, E, F, G), list(A), list(B), list(C),
     list(D), list(E), list(F), list(G)).
 :- mode list.map6(pred(in, out, out, out, out, out, out) is det, in, out, out,
@@ -547,6 +550,7 @@
     % list.map7(T, L, M1, M2, M3, M4, M5, M6, M7) uses the closure T
     % to transform the elements of L into the elements of M1, M2, M3, M4,
     % M5, M6 and M7.
+    % 
 :- pred list.map7(pred(A, B, C, D, E, F, G, H), list(A), list(B), list(C),
     list(D), list(E), list(F), list(G), list(H)).
 :- mode list.map7(pred(in, out, out, out, out, out, out, out) is det,
@@ -565,6 +569,7 @@
     % list.map8(T, L, M1, M2, M3, M4, M5, M6, M7) uses the closure T
     % to transform the elements of L into the elements of M1, M2, M3, M4,
     % M5, M6, M7 and M8.
+    %
 :- pred list.map8(pred(A, B, C, D, E, F, G, H, I), list(A), list(B), list(C),
     list(D), list(E), list(F), list(G), list(H), list(I)).
 :- mode list.map8(pred(in, out, out, out, out, out, out, out, out) is det,
@@ -594,7 +599,7 @@
     %
 :- func list.map_corresponding3(func(A, B, C) = D, list(A), list(B), list(C))
     = list(D).
-
+    
     % list.filter_map_corresponding/3 is like list.map_corresponding/3
     % except the function argument is semidet and the output list
     % consists of only those applications of the function argument that
@@ -614,6 +619,26 @@
     list(A), list(B), list(C)) = list(D).
 :- mode list.filter_map_corresponding3(func(in, in, in) = out is semidet,
     in, in, in) = out is det.
+
+    % list.map_corresponding_foldl/6 is like list.map_corresponding except
+    % that it has an accumulator threaded through it.
+    %
+:- pred list.map_corresponding_foldl(pred(A, B, C, D, D),
+    list(A), list(B), list(C), D, D).
+:- mode list.map_corresponding_foldl(pred(in, in, out, in, out) is det,
+    in, in, out, in, out) is det.
+:- mode list.map_corresponding_foldl(pred(in, in, out, di, uo) is det,
+    in, in, out, di, uo) is det.
+
+    % list.map_corresponding3_foldl7 is like list.map_corresponding3 except
+    % that it has an accumulator threaded through it.
+    %
+:- pred list.map_corresponding3_foldl(pred(A, B, C, D, E, E),
+    list(A), list(B), list(C), list(D), E, E).
+:- mode list.map_corresponding3_foldl(pred(in, in, in, out, in, out) is det,
+    in, in, in, out, in, out) is det.
+:- mode list.map_corresponding3_foldl(pred(in, in, in, out, di, uo) is det,
+    in, in, in, out, di, uo) is det.
 
     % list.foldl(Pred, List, Start, End) calls Pred with each
     % element of List (working left-to-right) and an accumulator
@@ -894,6 +919,30 @@
 :- mode list.map_foldl3(pred(in, out, in, out, in, out, in, out) is nondet,
     in, out, in, out, in, out, in, out) is nondet.
 
+    % Same as list.map_foldl, but with two mapped outputs and three
+    % accumulators.
+    %
+:- pred list.map2_foldl3(pred(L, M, N, A, A, B, B, C, C),
+    list(L), list(M), list(N), A, A, B, B, C, C).
+:- mode list.map2_foldl3(
+    pred(in, out, out, in, out, in, out, in, out) is det,
+    in, out, out, in, out, in, out, in, out) is det.
+:- mode list.map2_foldl3(
+    pred(in, out, out, in, out, in, out, di, uo) is det,
+    in, out, out, in, out, in, out, di, uo) is det.
+:- mode list.map2_foldl3(
+    pred(in, out, out, in, out, in, out, in, out) is cc_multi,
+    in, out, out, in, out, in, out, in, out) is cc_multi.
+:- mode list.map2_foldl3(
+    pred(in, out, out, in, out, in, out, di, uo) is cc_multi,
+    in, out, out, in, out, in, out, di, uo) is cc_multi.
+:- mode list.map2_foldl3(
+    pred(in, out, out, in, out, in, out, in, out) is semidet,
+    in, out, out, in, out, in, out, in, out) is semidet.
+:- mode list.map2_foldl3(
+    pred(in, out, out, in, out, in, out, in, out) is nondet,
+    in, out, out, in, out, in, out, in, out) is nondet.
+
     % Same as list.map_foldl, but with four accumulators.
     %
 :- pred list.map_foldl4(pred(L, M, A, A, B, B, C, C, D, D), list(L), list(M),
@@ -983,7 +1032,7 @@
 
     % list.filter(Pred, List, TrueList) takes a closure with one
     % input argument and for each member of List `X', calls the closure.
-    % Iff call(Pred, X) is true, then X is included in TrueList.
+    % Iff Pred(X) is true, then X is included in TrueList.
     %
 :- pred list.filter(pred(X)::in(pred(in) is semidet), list(X)::in,
     list(X)::out) is det.
@@ -992,8 +1041,8 @@
 
     % list.filter(Pred, List, TrueList, FalseList) takes a closure with one
     % input argument and for each member of List `X', calls the closure.
-    % Iff call(Pred, X) is true, then X is included in TrueList.
-    % Iff call(Pred, X) is false, then X is included in FalseList.
+    % Iff Pred(X) is true, then X is included in TrueList.
+    % Iff Pred(X) is false, then X is included in FalseList.
     %
 :- pred list.filter(pred(X)::in(pred(in) is semidet), list(X)::in,
     list(X)::out, list(X)::out) is det.
@@ -1245,7 +1294,6 @@ list.index1_det(List, N, Elem) :-
 list.index0_of_first_occurrence(List, Elem, N) :-
     list.index0_of_first_occurrence_2(List, Elem, 0, N).
 
-
 :- pred list.index0_of_first_occurrence_2(list(T)::in, T::in,
     int::in, int::out) is semidet.
 
@@ -1254,10 +1302,8 @@ list.index0_of_first_occurrence_2([X | Xs], Y, N0, N) :-
             ;  list.index0_of_first_occurrence_2(Xs, Y, N0 + 1, N)
     ).
 
-
 list.index1_of_first_occurrence(List, Elem, N + 1) :-
     list.index0_of_first_occurrence(List, Elem, N).
-
 
 list.det_index0_of_first_occurrence(List, Elem) = N :-
     ( list.index0_of_first_occurrence(List, Elem, N0) ->
@@ -1694,46 +1740,46 @@ list.det_split_last(List, AllButLast, Last) :-
 
 list.map(_, [],  []).
 list.map(P, [H0 | T0], [H | T]) :-
-    call(P, H0, H),
+    P(H0, H),
     list.map(P, T0, T).
 
 list.map2(_, [],  [],  []).
 list.map2(P, [H0 | T0], [H1 | T1], [H2 | T2]) :-
-    call(P, H0, H1, H2),
+    P(H0, H1, H2),
     list.map2(P, T0, T1, T2).
 
 list.map3(_, [],  [],  [],  []).
 list.map3(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3]) :-
-    call(P, H0, H1, H2, H3),
+    P(H0, H1, H2, H3),
     list.map3(P, T0, T1, T2, T3).
 
 list.map4(_, [], [], [], [], []).
 list.map4(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4]) :-
-    call(P, H0, H1, H2, H3, H4),
+    P(H0, H1, H2, H3, H4),
     list.map4(P, T0, T1, T2, T3, T4).
 
 list.map5(_, [], [], [], [], [], []).
 list.map5(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5])
         :-
-    call(P, H0, H1, H2, H3, H4, H5),
+    P(H0, H1, H2, H3, H4, H5),
     list.map5(P, T0, T1, T2, T3, T4, T5).
 
 list.map6(_, [], [], [], [], [], [], []).
 list.map6(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5],
         [H6 | T6]) :-
-    call(P, H0, H1, H2, H3, H4, H5, H6),
+    P(H0, H1, H2, H3, H4, H5, H6),
     list.map6(P, T0, T1, T2, T3, T4, T5, T6).
 
 list.map7(_, [], [], [], [], [], [], [], []).
 list.map7(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5],
         [H6 | T6], [H7 | T7]) :-
-    call(P, H0, H1, H2, H3, H4, H5, H6, H7),
+    P(H0, H1, H2, H3, H4, H5, H6, H7),
     list.map7(P, T0, T1, T2, T3, T4, T5, T6, T7).
 
 list.map8(_, [], [], [], [], [], [], [], [], []).
 list.map8(P, [H0 | T0], [H1 | T1], [H2 | T2], [H3 | T3], [H4 | T4], [H5 | T5],
         [H6 | T6], [H7 | T7], [H8 | T8]) :-
-    call(P, H0, H1, H2, H3, H4, H5, H6, H7, H8),
+    P(H0, H1, H2, H3, H4, H5, H6, H7, H8),
     list.map8(P, T0, T1, T2, T3, T4, T5, T6, T7, T8).
 
 list.map_corresponding(_, [], []) = [].
@@ -1798,34 +1844,61 @@ list.filter_map_corresponding3(F, As, Bs, Cs) =
             "mismatched list arguments")
     ).
 
+list.map_corresponding_foldl(_, [], [], [], !Acc).
+list.map_corresponding_foldl(_, [], [_ | _], _, _, _) :-
+    error("list.map_corresponding_foldl: mismatched list arguments").
+list.map_corresponding_foldl(_, [_ | _], [], _, _, _) :-
+    error("list.map_corresponding_foldl: mismatched list arguments").
+list.map_corresponding_foldl(P, [A | As], [B | Bs], [C | Cs], !Acc) :-
+    P(A, B, C, !Acc),
+    list.map_corresponding_foldl(P, As, Bs, Cs, !Acc).
+
+list.map_corresponding3_foldl(_, [], [], [], [], !Acc).
+list.map_corresponding3_foldl(_, [], [_ | _], [_ | _], _, _, _) :-
+    error("list.map_corresponding3_foldl: mismatched list arguments"). 
+list.map_corresponding3_foldl(_, [_ | _], [], [_ | _], _, _, _) :-
+    error("list.map_corresponding3_foldl: mismatched list arguments"). 
+list.map_corresponding3_foldl(_, [_ | _], [_ | _], [], _, _, _) :-
+    error("list.map_corresponding3_foldl: mismatched list arguments"). 
+list.map_corresponding3_foldl(_, [], [], [_ | _], _, _, _) :-
+    error("list.map_corresponding3_foldl: mismatched list arguments"). 
+list.map_corresponding3_foldl(_, [], [_ | _], [], _, _, _) :-
+    error("list.map_corresponding3_foldl: mismatched list arguments"). 
+list.map_corresponding3_foldl(_, [_ | _], [], [], _, _, _) :-
+    error("list.map_corresponding3_foldl: mismatched list arguments"). 
+list.map_corresponding3_foldl(P, [A | As], [B | Bs], [C | Cs], [D | Ds],
+        !Acc) :-
+    P(A, B, C, D, !Acc),
+    list.map_corresponding3_foldl(P, As, Bs, Cs, Ds, !Acc).
+
 list.foldl(_, [], !A).
 list.foldl(P, [H | T], !A) :-
-    call(P, H, !A),
+    P(H, !A),
     list.foldl(P, T, !A).
 
 list.foldl2(_, [], !A, !B).
 list.foldl2(P, [H | T], !A, !B) :-
-    call(P, H, !A, !B),
+    P(H, !A, !B),
     list.foldl2(P, T, !A, !B).
 
 list.foldl3(_, [], !A, !B, !C).
 list.foldl3(P, [H | T], !A, !B, !C) :-
-    call(P, H, !A, !B, !C),
+    P(H, !A, !B, !C),
     list.foldl3(P, T, !A, !B, !C).
 
 list.foldl4(_, [], !A, !B, !C, !D).
 list.foldl4(P, [H | T], !A, !B, !C, !D) :-
-    call(P, H, !A, !B, !C, !D),
+    P(H, !A, !B, !C, !D),
     list.foldl4(P, T, !A, !B, !C, !D).
 
 list.foldl5(_, [], !A, !B, !C, !D, !E).
 list.foldl5(P, [H | T], !A, !B, !C, !D, !E) :-
-    call(P, H, !A, !B, !C, !D, !E),
+    P(H, !A, !B, !C, !D, !E),
     list.foldl5(P, T, !A, !B, !C, !D, !E).
 
 list.foldl6(_, [], !A, !B, !C, !D, !E, !F).
 list.foldl6(P, [H | T], !A, !B, !C, !D, !E, !F) :-
-    call(P, H, !A, !B, !C, !D, !E, !F),
+    P(H, !A, !B, !C, !D, !E, !F),
     list.foldl6(P, T, !A, !B, !C, !D, !E, !F).
 
 list.foldl_corresponding(_, [], [], !Acc).
@@ -1848,48 +1921,53 @@ list.foldl2_corresponding(P, [A | As], [B | Bs], !Acc1, !Acc2) :-
 
 list.map_foldl(_, [], [], !A).
 list.map_foldl(P, [H0 | T0], [H | T], !A) :-
-    call(P, H0, H, !A),
+    P(H0, H, !A),
     list.map_foldl(P, T0, T, !A).
 
 list.map2_foldl(_, [], [], [], !A).
 list.map2_foldl(P, [H0 | T0], [H1 | T1], [H2 | T2], !A) :-
-    call(P, H0, H1, H2, !A),
+    P(H0, H1, H2, !A),
     list.map2_foldl(P, T0, T1, T2, !A).
 
 list.map_foldl2(_, [], [], !A, !B).
 list.map_foldl2(P, [H0 | T0], [H | T], !A, !B) :-
-    call(P, H0, H, !A, !B),
+    P(H0, H, !A, !B),
     list.map_foldl2(P, T0, T, !A, !B).
 
 list.map2_foldl2(_, [], [], [], !A, !B).
 list.map2_foldl2(P, [H0 | T0], [H1 | T1], [H2 | T2], !A, !B) :-
-    call(P, H0, H1, H2, !A, !B),
+    P(H0, H1, H2, !A, !B),
     list.map2_foldl2(P, T0, T1, T2, !A, !B).
 
 list.map_foldl3(_, [], [], !A, !B, !C).
 list.map_foldl3(P, [H0 | T0], [H | T], !A, !B, !C) :-
-    call(P, H0, H, !A, !B, !C),
+    P(H0, H, !A, !B, !C),
     list.map_foldl3(P, T0, T, !A, !B, !C).
+
+list.map2_foldl3(_, [], [], [], !A, !B, !C).
+list.map2_foldl3(P, [H0 | T0], [H1 | T1], [H2 | T2], !A, !B, !C) :-
+    P(H0, H1, H2, !A, !B, !C),
+    list.map2_foldl3(P, T0, T1, T2, !A, !B, !C).
 
 list.map_foldl4(_, [], [], !A, !B, !C, !D).
 list.map_foldl4(P, [H0 | T0], [H | T], !A, !B, !C, !D) :-
-    call(P, H0, H, !A, !B, !C, !D),
+    P(H0, H, !A, !B, !C, !D),
     list.map_foldl4(P, T0, T, !A, !B, !C, !D).
 
 list.map_foldl5(_, [], [], !A, !B, !C, !D, !E).
 list.map_foldl5(P, [H0 | T0], [H | T], !A, !B, !C, !D, !E) :-
-    call(P, H0, H, !A, !B, !C, !D, !E),
+    P(H0, H, !A, !B, !C, !D, !E),
     list.map_foldl5(P, T0, T, !A, !B, !C, !D, !E).
 
 list.map_foldl6(_, [], [], !A, !B, !C, !D, !E, !F).
 list.map_foldl6(P, [H0 | T0], [H | T], !A, !B, !C, !D, !E, !F) :-
-    call(P, H0, H, !A, !B, !C, !D, !E, !F),
+    P(H0, H, !A, !B, !C, !D, !E, !F),
     list.map_foldl6(P, T0, T, !A, !B, !C, !D, !E, !F).
 
 list.foldr(_, [], !A).
 list.foldr(P, [H | T], !A) :-
     list.foldr(P, T, !A),
-    call(P, H, !A).
+    P(H, !A).
 
 list.all_true(_P, []).
 list.all_true(P, [X | Xs]) :-
@@ -1907,7 +1985,7 @@ list.filter(P, Xs, Ys) :-
 list.filter(_, [],  [], []).
 list.filter(P, [H | T], True, False) :-
     list.filter(P, T, TrueTail, FalseTail),
-    ( call(P, H) ->
+    ( P(H) ->
         True = [H | TrueTail],
         False = FalseTail
     ;
@@ -1918,7 +1996,7 @@ list.filter(P, [H | T], True, False) :-
 list.filter_map(_, [],  []).
 list.filter_map(P, [H0 | T0], True) :-
     list.filter_map(P, T0, TrueTail),
-    ( call(P, H0, H) ->
+    ( P(H0, H) ->
         True = [H | TrueTail]
     ;
         True = TrueTail
@@ -1927,7 +2005,7 @@ list.filter_map(P, [H0 | T0], True) :-
 list.filter_map(_, [], [], []).
 list.filter_map(P, [H0 | T0], True, False) :-
     list.filter_map(P, T0, TrueTail, FalseTail),
-    ( call(P, H0, H) ->
+    ( P(H0, H) ->
         True = [H | TrueTail],
         False = FalseTail
     ;
@@ -1936,14 +2014,14 @@ list.filter_map(P, [H0 | T0], True, False) :-
     ).
 
 list.find_first_map(P, [X | Xs], A) :-
-    ( call(P, X, A0) ->
+    ( P(X, A0) ->
         A = A0
     ;
         list.find_first_map(P, Xs, A)
     ).
 
 list.find_first_map2(P, [X | Xs], A, B) :-
-    ( call(P, X, A0, B0) ->
+    ( P(X, A0, B0) ->
         A = A0,
         B = B0
     ;
@@ -1951,7 +2029,7 @@ list.find_first_map2(P, [X | Xs], A, B) :-
     ).
 
 list.find_first_map3(P, [X | Xs], A, B, C) :-
-    ( call(P, X, A0, B0, C0) ->
+    ( P(X, A0, B0, C0) ->
         A = A0,
         B = B0,
         C = C0
@@ -1961,7 +2039,7 @@ list.find_first_map3(P, [X | Xs], A, B, C) :-
 
 list.takewhile(_, [], [], []).
 list.takewhile(P, [X | Xs], Ins, Outs) :-
-    ( call(P, X) ->
+    ( P(X) ->
         Ins = [X | Ins0],
         list.takewhile(P, Xs, Ins0, Outs)
     ;
@@ -2017,7 +2095,7 @@ list.hosort(P, N, L0, L, Rest) :-
         L = [X]
     ; N = 2 ->
         L0 = [X, Y | Rest],
-        call(P, X, Y, C),
+        P(X, Y, C),
         (
             C = (<),
             L = [X, Y]
@@ -2052,7 +2130,7 @@ list.merge_and_remove_dups(_P, [], [], []).
 list.merge_and_remove_dups(_P, [], [Y | Ys], [Y | Ys]).
 list.merge_and_remove_dups(_P, [X | Xs], [], [X | Xs]).
 list.merge_and_remove_dups(P, [H1 | T1], [H2 | T2], L) :-
-    call(P, H1, H2, C),
+    P(H1, H2, C),
     (
         C = (<),
         L = [H1 | T],

@@ -2,9 +2,29 @@ NEWS since 0.13 fork
 --------------------
 
 Changes to the Mercury language:
+
 * Mutables can now be marked as constant, which is useful when working with
   constant data structures that cannot be conveniently represented as constant
   terms.
+* Unicode characters can now be encoded in string literals using an
+  escape sequence.
+
+Changes to the Mercury standard library:
+
+* We have added list.map2_foldl3/10, list.map_corresponding_foldl/6 and
+  list.map_corresponding3_foldl/7 
+
+DETAILED LISTING
+================
+
+Changes to the Mercury language:
+
+* Unicode characters can now be encoded in string literals using an
+  escape sequence.  The escape sequence \uXXXX (or \UXXXXXXXX), where XXXX
+  (or XXXXXXXX) is a Unicode character code in hexadecimal, is replaced with
+  the corresponding Unicode character.  The encoding used to represent the
+  Unicode character is implementation dependent.  For the Melbourne Mercury
+  compiler, Unicode characters are represented using UTF-8 for the C backends.
 
 NEWS since Mercury 0.12
 -----------------------
@@ -32,8 +52,6 @@ Changes to the Mercury language:
 * ':' is now the type qualification operator, not a module qualifier.
 * To ensure soundness, goals in negated contexts using non-local variables
   with dynamic modes (inst "any") must now be marked as impure.
-* Unicode characters can now be encoded in string literals using an
-  escape sequence.
 
 Changes to the Mercury standard library:
 * We have removed the predicates dealing with runtime type information (RTTI)
@@ -64,7 +82,7 @@ Changes to the Mercury compiler:
 
 Portability Improvements:
 * We have made the implementation compatible with gcc 4.1.
-* We have ported Mercury to the x86_64 (AMD64 / Intel EMT64) architecure.
+* We have ported Mercury to the x86_64 (AMD64 / Intel EMT64) architecture.
 
 Changes to the Mercury debugger:
 * Users can now see a listing of the source code lines referred to by the
@@ -78,7 +96,7 @@ Changes to the Mercury debugger:
 * The source command now accepts optional additional arguments which
   are substituted into the sourced file, allowing for parameterised
   scripts.
-* Users can now open terms in their favorite editor, or
+* Users can now open terms in their favourite editor, or
   perform a grep on a term.
 * The `set' command has been replaced by several other commands: the `format',
   `format_param', `list_context_lines', `list_path', `xml_browser_cmd',
@@ -295,13 +313,6 @@ Changes to the Mercury language:
   sure that the goal is in fact pure, e.g. because they know that
   the goal inside the negation will not instantiate the variable.
 
-* Unicode characters can now be encoded in string literals using an
-  escape sequence.  The escape sequence \uXXXX (or \UXXXXXXXX), where XXXX
-  (or XXXXXXXX) is a Unicode character code in hexidecimal, is replaced with
-  the corresponding Unicode character.  The encoding used to represent the
-  Unicode character is implementation dependent.  For the Melbourne Mercury
-  compiler, Unicode characters are represented using UTF-8 for the C backends.
-
 Changes to the Mercury standard library:
 
 * We have added the function `divide_equivalence_classes' to the `eqvclass'
@@ -341,7 +352,7 @@ Changes to the Mercury compiler:
 
 Changes to the Mercury debugger:
 
-* A `list' command has ben added that displays a listing of the source code
+* A `list' command has been added that displays a listing of the source code
   lines referred to by the current environment.  To supporting commands
   `pop_list_dir' and `push_list_dir' have also been added.
  
@@ -361,7 +372,7 @@ Changes to the Mercury debugger:
   the corresponding argument of the `source' command.
 
 * The above two features have been used to create two additional commands: an
-  `open' command that lets users open a term in their favorite editor for 
+  `open' command that lets users open a term in their favourite editor for 
   browsing and a `grep' command that can be used to check if a term contains
   a particular pattern.
   
