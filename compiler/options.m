@@ -865,7 +865,7 @@ option_defaults_2(warning_option, [
     warn_known_bad_format_calls         -   bool(yes),
     warn_unknown_format_calls           -   bool(no),
     warn_obsolete                       -   bool(yes),
-    warn_insts_without_matching_type    -   bool(no)
+    warn_insts_without_matching_type    -   bool(yes)
 ]).
 option_defaults_2(verbosity_option, [
     % Verbosity Options

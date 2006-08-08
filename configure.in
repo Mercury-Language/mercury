@@ -312,10 +312,12 @@ EOF
 		# Note that we need to set --grade to an LLDS grade
 		# when doing this test because term size profiling
 		# requires an LLDS grade.
-		# This also tests for the --shlib-linker-intall-name-flag
-		# and --warn-known-bad-format-calls options.
+		# This also tests for the --shlib-linker-intall-name-flag,
+		# --warn-known-bad-format-calls and 
+		# --warn-insts-without-matching-type options.
 		$BOOTSTRAP_MC \
 			--grade none.gc \
+			--warn-insts-without-matching-type \
 			--warn-known-bad-format-calls \
 			--record-term-sizes-as-words \
 			--output-grade-string \
