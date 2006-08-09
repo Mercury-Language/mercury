@@ -944,7 +944,8 @@ extern void GC_thr_init(void);	/* Needed for Solaris/X86	*/
      * from the statically loaded program section.
      * This circumvents a Solaris 2.X (X<=4) linker bug.
      */
-#   define GC_INIT() { extern end, etext; \
+#   define GC_INIT() { extern void GC_noop(); \
+		       extern int end, etext; \
 		       GC_noop(&end, &etext); }
 #else
 # if defined(__CYGWIN32__) || defined (_AIX)

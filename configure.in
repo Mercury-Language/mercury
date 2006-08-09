@@ -190,6 +190,7 @@ AC_SUBST(CONFIG_LIBDIR)
 
 case "$host" in 
 	i386-pc-solaris2.8)	link_static_opt= ;;
+	*solaris2.10)		link_static_opt= ;;
 	*powerpc*apple*darwin*) link_static_opt= ;;
 	*)			link_static_opt="--linkage static" ;;
 esac
@@ -2483,10 +2484,11 @@ fi
 LDFLAGS_FOR_THREADS=
 LD_LIBFLAGS_FOR_THREADS=
 ENABLE_BOEHM_THREAD_LOCAL_ALLOC=
+ENABLE_BOEHM_PARALLEL_MARK=
 case "$host" in
 	*solaris*)
-		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DSOLARIS_THREADS \
-			-D_SOLARIS_PTHREADS -DGC_SOLARIS_PTHREADS -D_REENTRANT"
+		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE \
+			-DGC_SOLARIS_PTHREADS -D_REENTRANT"
 		THREAD_LIBS="-lpthread -ldl"
 		;;
 
@@ -2588,8 +2590,14 @@ AC_CACHE_VAL(mercury_cv_thread_local_storage,
 )
 AC_MSG_RESULT($mercury_cv_thread_local_storage)
 
+# Thread-local storage is disabled on Solaris as there is a linker problem
+# with shared objects and TLS.
+
 if test "$mercury_cv_thread_local_storage" = yes; then
-	AC_DEFINE(MR_THREAD_LOCAL_STORAGE)
+	case "$host" in 
+		*-solaris2.*)	;;
+		*)		AC_DEFINE(MR_THREAD_LOCAL_STORAGE) ;;
+	esac
 fi
 
 #-----------------------------------------------------------------------------#
