@@ -372,6 +372,8 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
         OutputShLibLinkCommand),
     globals.lookup_bool_option(Globals, filenames_from_stdin,
         FileNamesFromStdin),
+    globals.lookup_bool_option(Globals, output_libgrades,
+        OutputLibGrades),
     globals.lookup_bool_option(Globals, make, Make),
     ( Version = yes ->
         io.stdout_stream(Stdout, !IO),
@@ -403,6 +405,10 @@ main_2([], OptionVariables, OptionArgs, Args, Link, !IO) :-
         io.stdout_stream(Stdout, !IO),
         io.write_string(Stdout, LinkCommand, !IO),
         io.write_string(Stdout, "\n", !IO)
+    ; OutputLibGrades = yes ->
+        globals.lookup_accumulating_option(Globals, libgrades, LibGrades),
+        io.stdout_stream(Stdout, !IO),
+        io.write_list(Stdout, LibGrades, "\n", io.write_string, !IO)
     ; GenerateMapping = yes ->
         source_file_map.write_source_file_map(Args, !IO)
     ; Make = yes ->

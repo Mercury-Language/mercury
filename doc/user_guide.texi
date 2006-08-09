@@ -5727,6 +5727,13 @@ standard output.
 @findex --output-shared-lib-link-command
 Print the command used to link shared libraries to the
 standard output.
+
+@sp 1
+@item --output-libgrades
+@findex --output-libgrades
+Print the list of compilation grades in which a library to
+be installed should be built to the standard output.
+
 @end table
 
 @node Auxiliary output options
