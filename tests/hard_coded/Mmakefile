@@ -569,9 +569,9 @@ nonascii.data:	nonascii_gen
 nonascii_gen:	nonascii_gen.c
 	$(CC) nonascii_gen.c -o nonascii_gen
 
-% The trace_goal_env_1 and trace_goal_env_2 test cases differ from each other
-% only in that the latter is executed with the TRACE_ABC environment variable
-% set.
+# The trace_goal_env_1 and trace_goal_env_2 test cases differ from each other
+# only in that the latter is executed with the TRACE_ABC environment variable
+# set.
 trace_goal_env_1.out:	trace_goal_env_1
 	./trace_goal_env_1 > trace_goal_env_1.out
 
