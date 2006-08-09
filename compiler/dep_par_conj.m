@@ -534,7 +534,8 @@ maybe_transform_par_conj(Conjuncts0, GoalInfo, NewGoal, InstMap,
     % Filter out all the variables which have already have associated futures,
     % i.e. they were head variables which were replaced by futures; signal and
     % wait calls will already have been inserted for them.
-    SharedVars = filter(isnt(contains(!.Info ^ dp_ignore_vars)), SharedVars0),
+    SharedVars = set.filter(isnt(set.contains(!.Info ^ dp_ignore_vars)),
+        SharedVars0),
 
     (if
         set.empty(SharedVars)
