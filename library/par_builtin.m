@@ -42,6 +42,11 @@
     %
 :- pred wait(future(T)::in, T::out) is det.
 
+    % get(Future, Value)
+    % Like wait but assumes the future has been signalled already.
+    %
+:- pred get(future(T)::in, T::out) is det.
+
     % Notify that the variable associated with the given future has been bound
     % to a value.  Threads waiting on the future will be woken.  Future waits
     % on the future will succeed immediately.  A future can only be signalled
@@ -288,6 +293,23 @@ INIT mercury_par_builtin_wait_resume
 ").
 
 :- pragma foreign_proc("C",
+    get(Future::in, Value::out),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail],
+"
+#if (!defined MR_HIGHLEVEL_CODE) && (defined MR_THREAD_SAFE)
+
+    assert(Future->signalled == 1);
+    Value = Future->value;
+
+#else
+
+    MR_fatal_error(""internal error: par_builtin.get"");
+    Value = -1;
+
+#endif
+").
+
+:- pragma foreign_proc("C",
     signal(Future::in, Value::in),
     [will_not_call_mercury, thread_safe, will_not_modify_trail],
 "
@@ -297,9 +319,17 @@ INIT mercury_par_builtin_wait_resume
 
     MR_LOCK(&(Future->lock), ""future.signal"");
 
-    assert(Future->signalled == 0);
-    Future->signalled++;
-    Future->value = Value;
+    /*
+    ** If the same future is passed twice to a procedure then it
+    ** could be signalled twice, but the value must be the same.
+    */
+    if (Future->signalled != 0) {
+        assert(Future->signalled == 1);
+        assert(Future->value == Value);
+    } else {
+        Future->signalled++;
+        Future->value = Value;
+    }
 
     /* Schedule all the contexts which are blocking on this future. */
     ctxt = Future->suspended;

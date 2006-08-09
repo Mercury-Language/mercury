@@ -582,6 +582,7 @@ no_type_info_builtin_2(table_builtin, "table_lookup_insert_typeclassinfo", 3).
 no_type_info_builtin_2(term_size_prof_builtin, "increment_size", 2).
 no_type_info_builtin_2(par_builtin, "new_future", 1).
 no_type_info_builtin_2(par_builtin, "wait", 2).
+no_type_info_builtin_2(par_builtin, "get", 2).
 no_type_info_builtin_2(par_builtin, "signal", 2).
 
     % True iff the given predicate is defined with an :- external

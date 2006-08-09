@@ -1201,6 +1201,7 @@ pred_transform_name(accumulator(Posns)) = "acc_" ++
 pred_transform_name(loop_invariant(Proc)) = "inv_" ++ int_to_string(Proc).
 pred_transform_name(tuple(Proc)) = "tup_" ++ int_to_string(Proc).
 pred_transform_name(untuple(Proc)) = "untup_" ++ int_to_string(Proc).
+pred_transform_name(dependent_parallel_conjunction) = "dep_par_conj_".
 pred_transform_name(return_via_ptr(ProcId, ArgPos)) =
     "retptr_" ++ int_to_string(proc_id_to_int(ProcId)) ++ "_args"
         ++ ints_to_string(ArgPos).

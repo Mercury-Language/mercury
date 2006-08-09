@@ -433,6 +433,7 @@
     ;       untuple(
                 int % The procedure number of the original procedure.
             )
+    ;       dependent_parallel_conjunction
     ;       return_via_ptr(
                 proc_id,
                     % The id of the procedure this predicate is derived from.

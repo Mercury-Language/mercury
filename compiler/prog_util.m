@@ -141,7 +141,8 @@
 :- type new_pred_id
     --->    counter(int, int)                   % Line number, Counter
     ;       type_subst(tvarset, type_subst)
-    ;       unused_args(list(int)).
+    ;       unused_args(list(int))
+    ;       parallel_args(list(int)).
 
 %-----------------------------------------------------------------------------%
 
@@ -569,6 +570,9 @@ make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName,
         list_to_string(SubstToString, TypeSubst, PredIdStr)
     ;
         NewPredId = unused_args(Args),
+        list_to_string(int_to_string, Args, PredIdStr)
+    ;
+        NewPredId = parallel_args(Args),
         list_to_string(int_to_string, Args, PredIdStr)
     ),
 

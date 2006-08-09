@@ -2162,6 +2162,11 @@ simplify_par_conj([], [], _, !Info, !IO).
 simplify_par_conj([Goal0 |Goals0], [Goal | Goals], Info0, !Info, !IO) :-
     simplify_goal(Goal0, Goal, !Info, !IO),
     simplify_info_update_instmap(Goal, !Info),
+    % Reset common_info to what it was at the start of the parallel
+    % conjunction, so as not to introduce more dependencies due to
+    % removal of duplicate calls, etc.
+    simplify_info_get_common_info(Info0, Common),
+    simplify_info_set_common_info(Common, !Info),
     simplify_par_conj(Goals0, Goals, Info0, !Info, !IO).
 
 %-----------------------------------------------------------------------------%

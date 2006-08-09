@@ -304,6 +304,15 @@
 :- pred var_is_ground_in_instmap(module_info::in, instmap::in, prog_var::in)
     is semidet.
 
+    % var_is_bound_in_instmap_delta(ModuleInfo, InstMap,
+    %   InstMapDelta, Var)
+    %
+    % Succeed if Var is a variable bound between InstMap and
+    % InstMap+InstMapDelta.
+    %
+:- pred var_is_bound_in_instmap_delta(module_info::in, instmap::in,
+    instmap_delta::in, prog_var::in) is semidet.
+
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -1162,6 +1171,12 @@ instmap_delta_to_assoc_list(reachable(InstMapping), AL) :-
 var_is_ground_in_instmap(ModuleInfo, InstMap, Var) :-
     lookup_var(InstMap, Var, Inst),
     inst_is_ground(ModuleInfo, Inst).
+
+var_is_bound_in_instmap_delta(ModuleInfo, InstMap, InstMapDelta, Var) :-
+    instmap.lookup_var(InstMap, Var, OldVarInst),
+    inst_is_free(ModuleInfo, OldVarInst),
+    instmap_delta_search_var(InstMapDelta, Var, VarInst),
+    inst_is_bound(ModuleInfo, VarInst).
 
 %-----------------------------------------------------------------------------%
 

@@ -1,3 +1,5 @@
+MCFLAGS-dep_par_11d = --intermod-opt
+
 # These test cases are compiled with --trace deep because they
 # are regression tests for a bug that only shows up with deep
 # tracing.

@@ -17,6 +17,7 @@ DEP_PAR_CONJ_PROGS= \
 	dep_par_5c \
 	dep_par_5d \
 	dep_par_6 \
+	dep_par_6b \
 	dep_par_7 \
 	dep_par_8 \
 	dep_par_9 \
@@ -24,6 +25,7 @@ DEP_PAR_CONJ_PROGS= \
 	dep_par_11 \
 	dep_par_11b \
 	dep_par_11c \
+	dep_par_11d \
 	dep_par_12 \
 	dep_par_13 \
 	dep_par_14 \
@@ -36,7 +38,14 @@ DEP_PAR_CONJ_PROGS= \
 	dep_par_20 \
 	dep_par_21 \
 	dep_par_22 \
-	dep_par_23
+	dep_par_23 \
+	dep_par_24 \
+	dep_par_24b \
+	dep_par_25 \
+	dep_par_25b \
+	dep_par_26 \
+	dep_par_27 \
+	dep_par_28
 
 INDEP_PAR_CONJ_PROGS = \
 	indep_par_append \
