@@ -114,7 +114,7 @@
 :- pred do_inline_call(list(tvar)::in, list(prog_var)::in,
     pred_info::in, proc_info::in, prog_varset::in, prog_varset::out,
     vartypes::in, vartypes::out, tvarset::in, tvarset::out,
-    rtti_varmaps::in, rtti_varmaps::out, hlds_goal::out) is det.
+    rtti_varmaps::in, rtti_varmaps::out, bool::out, hlds_goal::out) is det.
 
     % get_type_substitution(CalleeArgTypes, CallerArgTypes,
     %   HeadTypeParams, CalleeExistQTVars, TypeSubn):
@@ -458,7 +458,7 @@ in_predproc(PredProcId, InlinedProcs, Params, !ModuleInfo, !IO) :-
 
         pred_info_get_univ_quant_tvars(!.PredInfo, UnivQTVars),
         pred_info_get_typevarset(!.PredInfo, TypeVarSet0),
-        pred_info_get_markers(!.PredInfo, Markers),
+        pred_info_get_markers(!.PredInfo, Markers0),
 
         proc_info_get_goal(!.ProcInfo, Goal0),
         proc_info_get_varset(!.ProcInfo, VarSet0),
@@ -471,16 +471,17 @@ in_predproc(PredProcId, InlinedProcs, Params, !ModuleInfo, !IO) :-
         PurityChanged0 = no,
 
         InlineInfo0 = inline_info(VarThresh, HighLevelCode, AnyTracing,
-            InlinedProcs, !.ModuleInfo, UnivQTVars, Markers,
+            InlinedProcs, !.ModuleInfo, UnivQTVars, Markers0,
             VarSet0, VarTypes0, TypeVarSet0, RttiVarMaps0,
             DidInlining0, Requantify0, DetChanged0, PurityChanged0),
 
         inlining_in_goal(Goal0, Goal, InlineInfo0, InlineInfo),
 
-        InlineInfo = inline_info(_, _, _, _, _, _, _, VarSet, VarTypes,
+        InlineInfo = inline_info(_, _, _, _, _, _, Markers, VarSet, VarTypes,
             TypeVarSet, RttiVarMaps, DidInlining, Requantify,
             DetChanged, PurityChanged),
 
+        pred_info_set_markers(Markers, !PredInfo),
         pred_info_set_typevarset(TypeVarSet, !PredInfo),
 
         proc_info_set_varset(VarSet, !ProcInfo),
@@ -597,7 +598,7 @@ inlining_in_goal(Goal0 - GoalInfo0, Goal - GoalInfo, !Info) :-
 inlining_in_call(PredId, ProcId, ArgVars, Builtin,
         Context, Sym, Goal, GoalInfo0, GoalInfo, !Info) :-
     !.Info = inline_info(VarThresh, HighLevelCode, AnyTracing,
-        InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
+        InlinedProcs, ModuleInfo, HeadTypeParams, Markers0,
         VarSet0, VarTypes0, TypeVarSet0, RttiVarMaps0,
         _DidInlining0, Requantify0, DetChanged0, PurityChanged0),
 
@@ -605,7 +606,7 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
     % Should we inline this call?
     (
         should_inline_proc(PredId, ProcId, Builtin, HighLevelCode,
-            AnyTracing, InlinedProcs, Markers, ModuleInfo, UserReq),
+            AnyTracing, InlinedProcs, Markers0, ModuleInfo, UserReq),
         (
             UserReq = yes
         ;
@@ -624,7 +625,7 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
     ->
         do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
             VarSet0, VarSet, VarTypes0, VarTypes, TypeVarSet0, TypeVarSet,
-            RttiVarMaps0, RttiVarMaps, Goal - GoalInfo),
+            RttiVarMaps0, RttiVarMaps, MayHaveParallelConj, Goal - GoalInfo),
 
         % If some of the output variables are not used in the calling
         % procedure, requantify the procedure.
@@ -655,6 +656,15 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
         ;
             DetChanged = yes
         ),
+
+        (
+            MayHaveParallelConj = yes,
+            add_marker(may_have_parallel_conj, Markers0, Markers)
+        ;
+            MayHaveParallelConj = no,
+            Markers = Markers0
+        ),
+
         !:Info = inline_info(VarThresh, HighLevelCode, AnyTracing,
             InlinedProcs, ModuleInfo, HeadTypeParams, Markers,
             VarSet, VarTypes, TypeVarSet, RttiVarMaps,
@@ -668,7 +678,7 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
 
 do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
         VarSet0, VarSet, VarTypes0, VarTypes, TypeVarSet0, TypeVarSet,
-        RttiVarMaps0, RttiVarMaps, Goal) :-
+        RttiVarMaps0, RttiVarMaps, MayHaveParallelConj, Goal) :-
 
     proc_info_get_goal(ProcInfo, CalledGoal),
 
@@ -744,7 +754,11 @@ do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
     % have been produced by extracting type_infos or typeclass_infos
     % from typeclass_infos in the caller, so they won't necessarily
     % be the same.
-    rtti_varmaps_overlay(CalleeRttiVarMaps1, RttiVarMaps0, RttiVarMaps).
+    rtti_varmaps_overlay(CalleeRttiVarMaps1, RttiVarMaps0, RttiVarMaps),
+
+    pred_info_get_markers(PredInfo, CalleeMarkers),
+    MayHaveParallelConj = pred_to_bool(check_marker(CalleeMarkers,
+        may_have_parallel_conj)).
 
 get_type_substitution(HeadTypes, ArgTypes,
         HeadTypeParams, CalleeExistQVars, TypeSubn) :-

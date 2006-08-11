@@ -57,7 +57,7 @@
 
 :- pred simplify_proc_return_msgs(simplifications::in, pred_id::in,
     proc_id::in, module_info::in, module_info::out,
-    proc_info::in, proc_info::out, set(context_det_msg)::out,
+    proc_info::in, proc_info::out, set(context_det_msg)::out, bool::out,
     io::di, io::uo) is det.
 
 :- pred simplify_process_goal(hlds_goal::in, hlds_goal::out,
@@ -326,7 +326,7 @@ simplify_procs(Simplifications, PredId, [ProcId | ProcIds], !ModuleInfo,
     pred_info_get_procedures(!.PredInfo, Procs0),
     map.lookup(Procs0, ProcId, Proc0),
     simplify_proc_return_msgs(Simplifications, PredId, ProcId,
-        !ModuleInfo, Proc0, Proc, ProcMsgSet, !IO),
+        !ModuleInfo, Proc0, Proc, ProcMsgSet, MayHaveParallelConj, !IO),
     map.det_update(Procs0, ProcId, Proc, Procs),
     pred_info_set_procedures(Procs, !PredInfo),
     set.to_sorted_list(ProcMsgSet, ProcMsgs),
@@ -344,20 +344,32 @@ simplify_procs(Simplifications, PredId, [ProcId | ProcIds], !ModuleInfo,
         !.MaybeMsgs = no,
         !:MaybeMsgs = yes(ProcAnyModeMsgSet - ProcAllModeMsgSet)
     ),
+    % This is ugly, but we want to avoid running the dependent parallel
+    % conjunction pass on predicates not containing parallel conjunctions
+    % (nearly all of them).  Since simplification is always done, we use it
+    % to mark predicates containing parallel conjunctions.
+    (
+        MayHaveParallelConj = yes,
+        pred_info_get_markers(!.PredInfo, Markers0),
+        add_marker(may_have_parallel_conj, Markers0, Markers),
+        pred_info_set_markers(Markers, !PredInfo)
+    ;
+        MayHaveParallelConj = no
+    ),
     simplify_procs(Simplifications, PredId, ProcIds, !ModuleInfo, !PredInfo,
         !MaybeMsgs, !IO).
 
 simplify_proc(Simplifications, PredId, ProcId, !ModuleInfo, !Proc, !IO)  :-
     write_pred_progress_message("% Simplifying ", PredId, !.ModuleInfo, !IO),
     simplify_proc_return_msgs(Simplifications, PredId, ProcId, !ModuleInfo,
-        !Proc, _, !IO).
+        !Proc, _, _, !IO).
 
 :- func turn_off_common_struct_threshold = int.
 
 turn_off_common_struct_threshold = 1000.
 
 simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
-        !ProcInfo, DetMsgs, !IO) :-
+        !ProcInfo, DetMsgs, MayHaveParallelConj, !IO) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     proc_info_get_vartypes(!.ProcInfo, VarTypes0),
     NumVars = map.count(VarTypes0),
@@ -431,7 +443,8 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
     ;
         IsDefinedHere = yes,
         DetMsgs = DetMsgs1
-    ).
+    ),
+    MayHaveParallelConj = Info ^ may_have_parallel_conj.
 
 simplify_process_goal(Goal0, Goal, !Info, !IO) :-
     simplify_info_get_simplifications(!.Info, Simplifications0),
@@ -778,7 +791,8 @@ simplify_goal_2(conj(ConjType, Goals0), Goal, GoalInfo0, GoalInfo,
             Goals0 = [_, _ | _],
             GoalInfo = GoalInfo0,
             simplify_par_conj(Goals0, Goals, !.Info, !Info, !IO),
-            Goal = conj(parallel_conj, Goals)
+            Goal = conj(parallel_conj, Goals),
+            !:Info = !.Info ^ may_have_parallel_conj := yes
         )
     ).
 
@@ -2604,9 +2618,11 @@ contains_multisoln_goal(Goals) :-
                 format_calls            :: bool,
                                         % Do we have any calls to
                                         % string.format and io.format?
-                inside_dupl_for_switch  :: bool
+                inside_dupl_for_switch  :: bool,
                                         % Are we currently inside a goal
                                         % that was duplicated for a switch?
+                may_have_parallel_conj  :: bool
+                                        % Have we seen a parallel conjunction?
             ).
 
 simplify_info_init(DetInfo, Simplifications, InstMap, ProcInfo, Info) :-
@@ -2616,7 +2632,7 @@ simplify_info_init(DetInfo, Simplifications, InstMap, ProcInfo, Info) :-
     set.init(Msgs),
     Info = simplify_info(DetInfo, Msgs, Simplifications,
         common_info_init, InstMap, VarSet, InstVarSet,
-        no, no, no, 0, 0, RttiVarMaps, no, no).
+        no, no, no, 0, 0, RttiVarMaps, no, no, no).
 
     % Reinitialise the simplify_info before reprocessing a goal.
     %
@@ -2630,7 +2646,8 @@ simplify_info_reinit(Simplifications, InstMap0, !Info) :-
     !:Info = !.Info ^ requantify := no,
     !:Info = !.Info ^ recompute_atomic := no,
     !:Info = !.Info ^ rerun_det := no,
-    !:Info = !.Info ^ lambdas := 0.
+    !:Info = !.Info ^ lambdas := 0,
+    !:Info = !.Info ^ may_have_parallel_conj := no.
 
     % exported for common.m
 :- interface.

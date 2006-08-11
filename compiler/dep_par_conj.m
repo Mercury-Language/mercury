@@ -56,7 +56,6 @@
 % into sequential conjunctions.
 %
 % TODO:
-% - only run this pass if parallel conjunctions are present in a module
 % - reconsider when this pass is run; in particular par_builtin primitives
 %   ought to be inlined
 % 
@@ -215,9 +214,14 @@ handle_dep_par_conj(ModuleInfo) :-
 
 process_pred_for_dep_par_conj(PredId, !ModuleInfo, !ParProcs, !IO) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
-    ProcIds = pred_info_non_imported_procids(PredInfo),
-    list.foldl3(process_proc_for_dep_par_conj(PredId), ProcIds,
-        !ModuleInfo, !ParProcs, !IO).
+    pred_info_get_markers(PredInfo, Markers),
+    (if check_marker(Markers, may_have_parallel_conj) then
+        ProcIds = pred_info_non_imported_procids(PredInfo),
+        list.foldl3(process_proc_for_dep_par_conj(PredId), ProcIds,
+            !ModuleInfo, !ParProcs, !IO)
+    else
+        true
+    ).
 
 :- pred process_proc_for_dep_par_conj(pred_id::in, proc_id::in,
     module_info::in, module_info::out, par_procs::in, par_procs::out,
@@ -258,7 +262,9 @@ process_proc_for_dep_par_conj_with_ignores(PredId, ProcId, IgnoreVars,
                 !:VarSet, !:VarTypes, _IgnoreVars)
         ),
 
-        % XXX we really only need to run this part if something changed
+        % We really only need to run this part if something changed, but we
+        % only run this predicate on procedures which are likely to have
+        % parallel conjunctions.
         proc_info_set_varset(!.VarSet, !ProcInfo),
         proc_info_set_vartypes(!.VarTypes, !ProcInfo),
         proc_info_set_goal(!.Body, !ProcInfo),

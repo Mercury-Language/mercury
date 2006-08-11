@@ -385,13 +385,18 @@
                         % All calls in this predicate are fully qualified.
                         % This occurs for predicates read from `.opt' files
                         % and compiler-generated predicates.
-    ;       mode_check_clauses.
+    ;       mode_check_clauses
                         % Each clause of the predicate should be modechecked
                         % separately. Used for predicates defined by lots of
                         % clauses (usually facts) for which the compiler's
                         % quadratic behavior during mode checking (in
                         % inst_match.bound_inst_list_contains_instname and
                         % instmap.merge) would be unacceptable.
+
+    ;       may_have_parallel_conj.
+                        % The predicate may contain parallel conjunctions.
+                        % It should be run through the dependent parallel
+                        % conjunction transformation.
 
     % An abstract set of attributes.
 :- type pred_attributes.

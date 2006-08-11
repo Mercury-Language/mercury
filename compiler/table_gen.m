@@ -1930,6 +1930,7 @@ keep_marker(does_not_terminate) = yes.
 keep_marker(check_termination) = no.
 keep_marker(calls_are_fully_qualified) = yes.
 keep_marker(mode_check_clauses) = yes.
+keep_marker(may_have_parallel_conj) = yes.
 
 %-----------------------------------------------------------------------------%
 

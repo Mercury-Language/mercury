@@ -1017,6 +1017,7 @@ marker_name(check_termination, "check_termination").
 marker_name(does_not_terminate, "does_not_terminate").
 marker_name(calls_are_fully_qualified, "calls_are_fully_qualified").
 marker_name(mode_check_clauses, "mode_check_clauses").
+marker_name(may_have_parallel_conj, "may_have_parallel_conj").
 
 write_marker(Marker, !IO) :-
     marker_name(Marker, Name),

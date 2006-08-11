@@ -1801,6 +1801,7 @@ should_output_marker(does_not_terminate, yes).
 should_output_marker(check_termination, no).
 should_output_marker(calls_are_fully_qualified, no).
 should_output_marker(mode_check_clauses, yes).
+should_output_marker(may_have_parallel_conj, no).
 
 :- pred get_pragma_foreign_code_vars(list(foreign_arg)::in, list(mer_mode)::in,
     prog_varset::in, prog_varset::out, list(pragma_var)::out) is det.

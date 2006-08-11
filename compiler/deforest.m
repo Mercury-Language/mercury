@@ -1819,8 +1819,18 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         proc_info_get_rtti_varmaps(ProcInfo0, RttiVarMaps0),
         inlining.do_inline_call(UnivQVars, Args, CalledPredInfo,
             CalledProcInfo, VarSet0, VarSet, VarTypes0, VarTypes,
-            TypeVarSet0, TypeVarSet, RttiVarMaps0, RttiVarMaps, Goal1),
-        pred_info_set_typevarset(TypeVarSet, PredInfo0, PredInfo),
+            TypeVarSet0, TypeVarSet, RttiVarMaps0, RttiVarMaps,
+            MayHaveParallelConj, Goal1),
+        pred_info_set_typevarset(TypeVarSet, PredInfo0, PredInfo1),
+        (
+            MayHaveParallelConj = yes,
+            pred_info_get_markers(PredInfo1, Markers1),
+            add_marker(may_have_parallel_conj, Markers1, Markers),
+            pred_info_set_markers(Markers, PredInfo1, PredInfo)
+        ;
+            MayHaveParallelConj = no,
+            PredInfo = PredInfo1
+        ),
         proc_info_set_varset(VarSet, ProcInfo0, ProcInfo1),
         proc_info_set_vartypes(VarTypes, ProcInfo1, ProcInfo2),
         proc_info_set_rtti_varmaps(RttiVarMaps, ProcInfo2, ProcInfo),

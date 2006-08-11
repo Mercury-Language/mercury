@@ -472,7 +472,12 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         list.append(ArgModes1, Modes, AllArgModes),
         map.apply_to_list(AllArgVars, VarTypes, ArgTypes),
 
-        purity_to_markers(Purity, LambdaMarkers),
+        purity_to_markers(Purity, LambdaMarkers0),
+        (if check_marker(Markers, may_have_parallel_conj) then
+            add_marker(may_have_parallel_conj, LambdaMarkers0, LambdaMarkers)
+        else
+            LambdaMarkers = LambdaMarkers0
+        ),
 
         % Now construct the proc_info and pred_info for the new single-mode
         % predicate, using the information computed above.
