@@ -268,20 +268,12 @@ case $FULLARCH in
 		# On x86 Unix, we need to set the following flags to enable
 		# shared libraries (and we need to use shared libraries to
 		# avoid running out of disk space...)
-		case $BRANCH in
-		    0.11)
-			TEST_MCFLAGS="$TEST_MCFLAGS --pic-reg"
-			;;
-		    *)
-			TEST_MCFLAGS="$TEST_MCFLAGS --mercury-linkage shared --pic-reg"
-		    	;;
-		esac
+		TEST_MCFLAGS="$TEST_MCFLAGS --mercury-linkage shared --linkage shared --pic-reg"
 		TEST_MGNUCFLAGS="$TEST_MGNUCFLAGS --pic-reg"
 		TEST_MLFLAGS="$TEST_MLFLAGS --shared"
 		;;
 	*)
 		# On other platforms shared libraries is the default
-		# XXX Are shared libraries going to be the default on x86_64?
 		;;
 esac
 
