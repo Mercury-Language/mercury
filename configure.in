@@ -2805,13 +2805,13 @@ enable_agc_grades="$enableval",enable_agc_grades=no)
 
 AC_ARG_ENABLE(debug-grades,
 [  --disable-debug-grades  do not install the debugging versions of the library],
-enable_debug_grades="enableval",enable_debug_grades=yes)
+enable_debug_grades="$enableval",enable_debug_grades=yes)
 
 AC_ARG_ENABLE(decl-debug-grades,
 [  --disable-decl-debug-grades
                           do not install the declarative debugging versions
                           of the library],
-enable_decl_debug_grades="enableval",enable_decl_debug_grades=yes)
+enable_decl_debug_grades="$enableval",enable_decl_debug_grades=yes)
 
 AC_ARG_ENABLE(prof-grades,
 [  --disable-prof-grades   do not install profiling versions of the library],
