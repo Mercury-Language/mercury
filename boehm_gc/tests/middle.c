@@ -10,7 +10,6 @@ int main ()
         int i;
 
         GC_all_interior_pointers = 0;
-	GC_INIT();
 
         for (i = 0; i < 20000; ++i) {
                 GC_malloc_atomic (4096);
