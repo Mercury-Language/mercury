@@ -226,34 +226,86 @@ add_builtin(PredId, Types, !PredInfo) :-
     Name = pred_info_name(!.PredInfo),
     pred_info_context(!.PredInfo, Context),
     pred_info_clauses_info(!.PredInfo, ClausesInfo0),
-    clauses_info_get_varset(ClausesInfo0, VarSet),
+    clauses_info_get_varset(ClausesInfo0, VarSet0),
     clauses_info_get_headvars(ClausesInfo0, HeadVars),
 
-    % Construct the pseudo-recursive call to Module.Name(HeadVars).
-    SymName = qualified(Module, Name),
-    % Mode checking will figure it the mode.
-    ModeId = invalid_proc_id,
-    MaybeUnifyContext = no,
+    goal_info_init(Context, GoalInfo0),
+    set.list_to_set(HeadVars, NonLocals),
+    goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
     (
         Module = mercury_private_builtin_module,
         Name = "store_at_ref"
     ->
-        GoalExpr = conj(plain_conj, [])
+        GoalExpr = conj(plain_conj, []),
+        ExtraVars = [],
+        ExtraTypes = [],
+        VarSet = VarSet0
     ;
+        Module = mercury_private_builtin_module,
+        Name = "trace_get_io_state"
+    ->
+        varset.new_var(VarSet0, ZeroVar, VarSet),
+        ExtraVars = [ZeroVar],
+        ExtraTypes = [int_type],
+
+        Free = free,
+        Ground = ground(shared, none),
+        ConsId = int_const(0),
+        LHS = ZeroVar,
+        RHS = functor(ConsId, no, []),
+        UniMode = ((Free - Ground) -> (Ground - Ground)),
+        Unification = construct(ZeroVar, ConsId, [], [UniMode],
+            construct_dynamically, cell_is_shared, no_construct_sub_info),
+        UnifyMode = ((Free -> Ground) - (Ground -> Ground)),
+        UnifyContext = unify_context(explicit, []),
+        AssignExpr = unify(LHS, RHS, UnifyMode, Unification, UnifyContext),
+        goal_info_set_nonlocals(set.make_singleton_set(ZeroVar),
+            GoalInfo0, GoalInfoWithZero),
+        AssignGoal = AssignExpr - GoalInfoWithZero,
+
+        CastExpr = generic_call(cast(unsafe_type_inst_cast),
+            [ZeroVar] ++ HeadVars, [in_mode, uo_mode], detism_det),
+        goal_info_set_nonlocals(set.list_to_set([ZeroVar] ++ HeadVars),
+            GoalInfo0, GoalInfoWithZeroHeadVars),
+        CastGoal = CastExpr - GoalInfoWithZeroHeadVars,
+
+        ConjExpr = conj(plain_conj, [AssignGoal, CastGoal]),
+        ConjGoal = ConjExpr - GoalInfoWithZeroHeadVars,
+
+        Reason = promise_purity(dont_make_implicit_promises, purity_semipure),
+        GoalExpr = scope(Reason, ConjGoal)
+    ;
+        Module = mercury_private_builtin_module,
+        Name = "trace_set_io_state"
+    ->
+        ConjExpr = conj(plain_conj, []),
+        ConjGoal = ConjExpr - GoalInfo,
+        Reason = promise_purity(dont_make_implicit_promises, purity_impure),
+        GoalExpr = scope(Reason, ConjGoal),
+        ExtraVars = [],
+        ExtraTypes = [],
+        VarSet = VarSet0
+    ;
+        % Construct the pseudo-recursive call to Module.Name(HeadVars).
+        SymName = qualified(Module, Name),
+        % Mode checking will figure out the mode.
+        ModeId = invalid_proc_id,
+        MaybeUnifyContext = no,
         GoalExpr = plain_call(PredId, ModeId, HeadVars, inline_builtin,
-            MaybeUnifyContext, SymName)
+            MaybeUnifyContext, SymName),
+        ExtraVars = [],
+        ExtraTypes = [],
+        VarSet = VarSet0
     ),
 
     % Construct a clause containing that pseudo-recursive call.
-    goal_info_init(Context, GoalInfo0),
-    set.list_to_set(HeadVars, NonLocals),
-    goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
     Goal = GoalExpr - GoalInfo,
     Clause = clause([], Goal, mercury, Context),
 
     % Put the clause we just built into the pred_info,
-    % annotateed with the appropriate types.
-    map.from_corresponding_lists(HeadVars, Types, VarTypes),
+    % annotated with the appropriate types.
+    map.from_corresponding_lists(ExtraVars ++ HeadVars, ExtraTypes ++ Types,
+        VarTypes),
     map.init(TVarNameMap),
     rtti_varmaps_init(RttiVarMaps),
     HasForeignClauses = no,

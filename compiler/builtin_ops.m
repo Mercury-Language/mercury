@@ -69,8 +69,8 @@
             % Note that the arguments to `unsigned_le' are just ordinary
             % (signed) Mercury ints, but it does the comparison as
             % if they were first cast to an unsigned type, so e.g.
-            % binary(unsigned_le, int_const(1), int_const(-1) returns true,
-            % since (MR_Unsigned) 1 <= (MR_Unsigned) -1).
+            % binary(unsigned_le, int_const(1), int_const(-1)) returns true,
+            % since (MR_Unsigned) 1 <= (MR_Unsigned) -1.
 
     ;       float_plus
     ;       float_minus
