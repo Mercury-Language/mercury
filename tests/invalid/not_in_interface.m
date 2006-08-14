@@ -10,7 +10,7 @@
 
 :- initialise bar/2.
 
-:- mutable(hello, int, 42, ground, [untrailed, thread_safe]).
+:- mutable(hello, int, 42, ground, [untrailed]).
 
 :- initialise bar/2.
 

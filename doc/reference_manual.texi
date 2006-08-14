@@ -4780,12 +4780,6 @@ The following @samp{attributes} must be supported:
 
 @table @asis
 
-@item @samp{thread_safe}/@samp{not_thread_safe}
-This attribute declares if it is safe for multiple threads to 
-access the mutable concurrently.
-The default, in case none is specified, is @samp{not_thread_safe}.
-(See @ref{Foreign code attributes} for further details.)
-
 @item @samp{trailed}/@samp{untrailed}
 This attribute declares if the implementation should generate code so that
 the effects of @samp{set_varname/1} can be undone on backtracking.
@@ -4813,10 +4807,8 @@ the @samp{get} access predicate is pure; its signature will be:
 The @samp{constant} attribute cannot be specified together with
 the @samp{attach_to_io_state} attribute
 (since they disagree on this signature).
-It also cannot be specified together with explicit
-@samp{not_thread_safe} and @samp{trailed} attributes,
-since accesses consisting of all reads are always thread safe
-and the question of whether to trail updates is moot when there are no updates.
+It also cannot be specified together with an explicit @samp{trailed}
+attribute.
 
 @end table
 

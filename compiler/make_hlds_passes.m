@@ -1204,12 +1204,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
         ),
         set_box_policy(BoxPolicy, Attrs0, Attrs1),
 
-        set_may_call_mercury(will_not_call_mercury, Attrs1, Attrs2),
-        ( mutable_var_thread_safe(MutAttrs) = thread_safe ->
-            set_thread_safe(thread_safe, Attrs2, Attrs)
-        ;
-            Attrs = Attrs2
-        ),
+        set_may_call_mercury(will_not_call_mercury, Attrs1, Attrs),
 
         mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
         (
@@ -1250,7 +1245,8 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
             InitSetPredName =
                 mutable_secret_set_pred_sym_name(ModuleName, Name),
 
-            set_purity(purity_pure, Attrs, ConstantGetAttrs),
+            set_purity(purity_pure, Attrs, ConstantGetAttrs0),
+            set_thread_safe(thread_safe, ConstantGetAttrs0, ConstantGetAttrs),
             ConstantGetClause = pragma(compiler(mutable_decl),
                 foreign_proc(ConstantGetAttrs,
                     mutable_get_pred_sym_name(ModuleName, Name), predicate,

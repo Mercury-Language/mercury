@@ -13,7 +13,7 @@
 :- import_module string.
 
 :- mutable(global, int, 561, ground,
-	[untrailed, thread_safe, attach_to_io_state]).
+	[untrailed, attach_to_io_state]).
 
 :- mutable(const, int, 562, ground, [constant]).
 

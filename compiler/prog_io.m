@@ -1887,7 +1887,6 @@ parse_mutable_inst(InstTerm, InstResult) :-
 
 :- type collected_mutable_attribute
     --->    trailed(trailed)
-    ;       thread_safe(thread_safe)
     ;       foreign_name(foreign_name)
     ;       attach_to_io_state(bool)
     ;       constant(bool).
@@ -1898,10 +1897,8 @@ parse_mutable_inst(InstTerm, InstResult) :-
 parse_mutable_attrs(MutAttrsTerm, MutAttrsResult) :-
     Attributes0 = default_mutable_attributes,
     ConflictingAttributes = [
-        thread_safe(thread_safe) - thread_safe(not_thread_safe),
         trailed(trailed) - trailed(untrailed),
         constant(yes) - trailed(trailed),
-        constant(yes) - thread_safe(not_thread_safe),
         constant(yes) - attach_to_io_state(yes)
     ],
     (
@@ -1933,8 +1930,6 @@ parse_mutable_attrs(MutAttrsTerm, MutAttrsResult) :-
 :- pred process_mutable_attribute(collected_mutable_attribute::in,
     mutable_var_attributes::in, mutable_var_attributes::out) is det.
 
-process_mutable_attribute(thread_safe(ThreadSafe), !Attributes) :-
-    set_mutable_var_thread_safe(ThreadSafe, !Attributes).
 process_mutable_attribute(trailed(Trailed), !Attributes) :-
     set_mutable_var_trailed(Trailed, !Attributes).
 process_mutable_attribute(foreign_name(ForeignName), !Attributes) :-
@@ -1945,7 +1940,6 @@ process_mutable_attribute(constant(Constant), !Attributes) :-
     set_mutable_var_constant(Constant, !Attributes),
     (
         Constant = yes,
-        set_mutable_var_thread_safe(thread_safe, !Attributes),
         set_mutable_var_trailed(untrailed, !Attributes),
         set_mutable_var_attach_to_io_state(no, !Attributes)
     ;
@@ -1967,12 +1961,6 @@ parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
         ;
             String  = "attach_to_io_state",
             MutAttr = attach_to_io_state(yes)
-        ;
-            String = "thread_safe",
-            MutAttr = thread_safe(thread_safe)
-        ;
-            String = "not_thread_safe",
-            MutAttr = thread_safe(not_thread_safe)
         ;
             String = "constant",
             MutAttr = constant(yes)

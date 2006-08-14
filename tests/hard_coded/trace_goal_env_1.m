@@ -11,7 +11,7 @@
 :- import_module int.
 :- import_module string.
 
-:- mutable(x, int, 0, ground, [untrailed, thread_safe]).
+:- mutable(x, int, 0, ground, [untrailed]).
 
 main(!IO) :-
 	promise_pure (

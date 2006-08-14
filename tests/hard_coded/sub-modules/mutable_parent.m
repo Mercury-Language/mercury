@@ -18,7 +18,7 @@
 :- import_module mutable_parent.mutable_child.mutable_grandchild.
 
 :- mutable(parent_global, int, 100, ground,
-	[untrailed, thread_safe, attach_to_io_state]).
+	[untrailed, attach_to_io_state]).
 
 main(!IO) :-
 	mutable_parent.run_parent(!IO),

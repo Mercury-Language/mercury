@@ -27,9 +27,9 @@
 
 %-----------------------------------------------------------------------------%
 
-:- mutable(x, int, 0, ground, [thread_safe]).
+:- mutable(x, int, 0, ground, []).
 
-:- mutable(y, int, 0, ground, [untrailed, thread_safe]).
+:- mutable(y, int, 0, ground, [untrailed]).
 
 main(!IO) :-
     semipure get_x(X0), impure set_x(X0 + 1),
