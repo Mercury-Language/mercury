@@ -2,7 +2,7 @@
 ** vim: ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 1995, 2001-2004 Peter Schachte and The University of Melbourne.
+** Copyright (C) 1995, 2001-2004 Peter Schachte and, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -1126,8 +1126,8 @@ __inline int MR_ROBDD_bitset_empty(MR_ROBDD_bitset *set)
 
 static int MR_ROBDD_removed_nodes = 0;
 
-void MR_ROBDD_remove_node(GC_PTR obj, GC_PTR client_data);
-void MR_ROBDD_remove_node(GC_PTR obj, GC_PTR client_data)
+void MR_ROBDD_remove_node(void *obj, void *client_data);
+void MR_ROBDD_remove_node(void *obj, void *client_data)
 {
     MR_ROBDD_node *n = (MR_ROBDD_node *) obj;
     MR_ROBDD_BRYANT_hidden_node_pointer *bucket =

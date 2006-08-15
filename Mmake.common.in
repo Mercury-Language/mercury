@@ -148,8 +148,7 @@ BOEHM_CFLAGS = @ENABLE_BOEHM_LARGE_CONFIG@
 
 # Additional options to pass to the C compiler when building Boehm-GC for
 # threads.
-BOEHM_CFLAGS_FOR_THREADS = @ENABLE_BOEHM_THREAD_LOCAL_ALLOC@ \
-	@ENABLE_BOEHM_PARALLEL_MARK@
+BOEHM_CFLAGS_FOR_THREADS = @ENABLE_BOEHM_PARALLEL_MARK@
 
 # Do we want to deal with intermodule information when building the library?
 # By default yes, since this way we note immediately when intermodule

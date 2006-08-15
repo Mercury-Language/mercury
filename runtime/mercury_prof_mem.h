@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1996-1997, 1999-2000, 2002 The University of Melbourne.
+** Copyright (C) 1996-1997, 1999-2000, 2002, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -23,9 +23,7 @@
 ** from a profiling interrupt that interrupted another call to MR_GC_malloc().
 ** Doing that is bad news, because MR_GC_malloc() is not guaranteed to be
 ** re-entrant.
-** (If conservative GC is enabled, then MR_GC_malloc() _is_ re-entrant,
-** since for profiling grades we compile the conservative collector without
-** -DNO_SIGNALS [see boehm_gc/README for documentation about -DNO_SIGNALS].
+** (If conservative GC is enabled, then MR_GC_malloc() _is_ re-entrant.)
 ** But if conservative GC is not enabled, then MR_GC_malloc() just
 ** calls malloc(), which is not guaranteed to be re-entrant.)
 **

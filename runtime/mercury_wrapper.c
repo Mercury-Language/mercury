@@ -669,7 +669,7 @@ mercury_runtime_init(int argc, char **argv)
 #ifdef MR_CONSERVATIVE_GC
 
   #ifdef MR_MPS_GC
-    MR_bool GC_quiet = MR_TRUE;
+    MR_bool MR_mps_quiet = MR_TRUE;
   #endif
 
   #ifdef MR_HIGHTAGS
@@ -682,7 +682,7 @@ MR_init_conservative_GC(void)
 {
   #ifdef MR_MPS_GC
 
-    mercury_mps_init(MR_heap_size * 1024, !GC_quiet);
+    mercury_mps_init(MR_heap_size * 1024, !MR_mps_quiet);
 
   #else /* MR_BOEHM_GC */
 
@@ -695,8 +695,6 @@ MR_init_conservative_GC(void)
     ** the problem go away.
     */
     MR_runqueue_head = NULL;
-
-    GC_quiet = MR_TRUE;
 
     /*
     ** Call GC_INIT() to tell the garbage collector about this DLL.
@@ -1521,8 +1519,8 @@ process_options(int argc, char **argv)
                     MR_sregdebug      = MR_TRUE;
                     MR_finaldebug     = MR_TRUE;
                     MR_tracedebug     = MR_TRUE;
-#ifdef MR_CONSERVATIVE_GC
-                    GC_quiet = MR_FALSE;
+#ifdef MR_MPS_GC
+                    MR_mps_quiet = MR_FALSE;
 #endif
 #ifdef MR_NATIVE_GC
                     MR_agc_debug      = MR_TRUE;
@@ -1544,8 +1542,8 @@ process_options(int argc, char **argv)
                 } else if (MR_streq(MR_optarg, "g")) {
                     MR_gotodebug    = MR_TRUE;
                 } else if (MR_streq(MR_optarg, "G")) {
-#ifdef MR_CONSERVATIVE_GC
-                    GC_quiet = MR_FALSE;
+#ifdef MR_MPS_GC
+                    MR_mps_quiet = MR_FALSE;
 #elif defined(MR_NATIVE_GC)
                     MR_agc_debug = MR_TRUE;
 #else

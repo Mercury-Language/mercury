@@ -31,7 +31,6 @@ pid_t
 __GC
 _GC_H
 HIDE_POINTER
-LINUX_THREADS
 REVEAL_POINTER
 #-----------------------------------------------------------------------------#
 # This is defined by mps_gc/code/mercury_mps.h,
@@ -50,11 +49,6 @@ __GNU_LIBRARY__
 # Neither really pollutes the namespace.
 __KERNEL__
 sigcontext_struct
-#-----------------------------------------------------------------------------#
-# This is defined by the mgnuc script in some grades.
-# It is used for configuring the Boehm collector.
-# XXX it should have a GC_ prefix.
-NO_SIGNALS
 #-----------------------------------------------------------------------------#
 # These are defined automatically by GCC -- gcc optionally passes
 # them on the command line when calling cc1, depending on the

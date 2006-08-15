@@ -91,7 +91,7 @@ public class ME_Semaphore {
 
 :- pragma foreign_decl("C", "
 #ifdef MR_CONSERVATIVE_GC
-  void ME_finalize_semaphore(GC_PTR obj, GC_PTR cd);
+  void ME_finalize_semaphore(void *obj, void *cd);
 #endif
 ").
 
@@ -142,7 +142,7 @@ public class ME_Semaphore {
 :- pragma foreign_code("C", "
 #ifdef MR_CONSERVATIVE_GC
   void
-  ME_finalize_semaphore(GC_PTR obj, GC_PTR cd)
+  ME_finalize_semaphore(void *obj, void *cd)
   {
     ME_Semaphore    *sem;
 

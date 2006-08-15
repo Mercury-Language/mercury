@@ -123,14 +123,14 @@
 
 :- pragma foreign_decl("C", "
 #ifdef MR_CONSERVATIVE_GC
-    void MR_finalize_future(GC_PTR obj, GC_PTR cd);
+    void MR_finalize_future(void *obj, void *cd);
 #endif
 ").
 
 :- pragma foreign_code("C", "
 #ifdef MR_CONSERVATIVE_GC
     void
-    MR_finalize_future(GC_PTR obj, GC_PTR cd)
+    MR_finalize_future(void *obj, void *cd)
     {
         MR_Future *fut = (MR_Future *) obj;
 

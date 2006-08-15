@@ -47,7 +47,7 @@
     #include "gc.h"
     #define GC_I_HIDE_POINTERS
     #ifdef MR_INLINE_ALLOC
-      #include "gc_inl.h"
+      #include "gc_inline.h"
     #endif
   #endif
 #else

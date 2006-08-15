@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1996-1997, 1999-2000, 2002 The University of Melbourne.
+** Copyright (C) 1996-1997, 1999-2000, 2002, 2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -13,8 +13,7 @@
 ** it may be in a malloc.  The handling routine may also do a malloc which 
 ** stuffs up the internal state of malloc and cause a seg fault.
 ** If we're using the conservative GC, that doesn't cause a problem,
-** since the Boehm et al collector is signal safe if compiled without
-** -DNO_SIGNALS, which we do for profiling grades.  But if we're not
+** since the Boehm et al collector is signal safe.  But if we're not
 ** using the conservative GC, then the handler will need to call malloc().
 ** To minimize this problem, we use our own version of malloc() which
 ** allocates memory in large chunks, reducing the chance of this

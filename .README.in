@@ -16,13 +16,13 @@ Mercury compiler, version @VERSION@.
 	if the need should arise.
 	
 The subdirectory `boehm_gc' contains a slightly modified copy of
-version 6.5 of the conservative garbage collector distributed
-by Hans Boehm:
+version 7.0 alpha 6 (CVS 2006-08-14) of the conservative garbage collector
+distributed by Hans Boehm:
 
 	Copyright 1988, 1989 Hans-J. Boehm, Alan J. Demers
 	Copyright (c) 1991-1995 by Xerox Corporation.  All rights reserved.
 	Copyright (c) 1996-1999 by Silicon Graphics.  All rights reserved.
-	Copyright (c) 1999-2001 by Hewlett-Packard. All rights reserved.
+	Copyright (c) 1999-2005 Hewlett-Packard Development Company, L.P.
 
 	THIS MATERIAL IS PROVIDED AS IS, WITH ABSOLUTELY NO WARRANTY
 	EXPRESSED OR IMPLIED.  ANY USE IS AT YOUR OWN RISK.

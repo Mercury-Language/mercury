@@ -2483,13 +2483,12 @@ fi
 # Note that changes here may require changes in scripts/ml.in.
 LDFLAGS_FOR_THREADS=
 LD_LIBFLAGS_FOR_THREADS=
-ENABLE_BOEHM_THREAD_LOCAL_ALLOC=
 ENABLE_BOEHM_PARALLEL_MARK=
 case "$host" in
 	*solaris*)
 		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE \
 			-DGC_SOLARIS_PTHREADS -D_REENTRANT"
-		THREAD_LIBS="-lpthread -ldl"
+		THREAD_LIBS="-lpthread -lrt -ldl"
 		;;
 
 	*linux*)
@@ -2497,9 +2496,8 @@ case "$host" in
 		# you may also need to make sure that you don't
 		# pass -ansi to gcc.
 		CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DLINUX_THREADS \
-			-D_THREAD_SAFE -D_REENTRANT -DGC_REDIRECT_TO_LOCAL"
+			-D_THREAD_SAFE -D_REENTRANT"
 		THREAD_LIBS="-lpthread -ldl"
-		ENABLE_BOEHM_THREAD_LOCAL_ALLOC="-DTHREAD_LOCAL_ALLOC"
 		ENABLE_BOEHM_PARALLEL_MARK="-DPARALLEL_MARK"
 		;;
 
@@ -2507,7 +2505,7 @@ case "$host" in
 		THREAD_LIBS=""
 		case "$CC" in
 			*cl* | *CL*)	# cl is the Microsoft C compiler
-				CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DWIN32_THREADS /MD"
+				CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DGC_WIN32_THREADS /MD"
 				LDFLAGS_FOR_THREADS="/MD"
 				LD_LIBFLAGS_FOR_THREADS="/MD"
 				;;
@@ -2520,7 +2518,7 @@ case "$host" in
 		THREAD_LIBS=""
 		case "$CC" in
 			*cl* | *CL*)	# cl is the Microsoft C compiler
-				CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DWIN32_THREADS /MD"
+				CFLAGS_FOR_THREADS="-DMR_THREAD_SAFE -DGC_WIN32_THREADS /MD"
 				LDFLAGS_FOR_THREADS="/MD"
 				LD_LIBFLAGS_FOR_THREADS="/MD"
 				;;
@@ -2575,7 +2573,6 @@ AC_SUBST(CFLAGS_FOR_THREADS)
 AC_SUBST(THREAD_LIBS)
 AC_SUBST(LDFLAGS_FOR_THREADS)
 AC_SUBST(LD_LIBFLAGS_FOR_THREADS)
-AC_SUBST(ENABLE_BOEHM_THREAD_LOCAL_ALLOC)
 AC_SUBST(ENABLE_BOEHM_PARALLEL_MARK)
 
 #-----------------------------------------------------------------------------#

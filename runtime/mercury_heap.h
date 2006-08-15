@@ -1,5 +1,5 @@
 /*
-** Copyright (C) 1995-2005 The University of Melbourne.
+** Copyright (C) 1995-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -77,8 +77,8 @@
   #ifdef MR_INLINE_ALLOC
 
     /*
-    ** The following stuff uses the macros in the `gc_inl.h' header file in the
-    ** Boehm garbage collector.  They improve performance a little for
+    ** The following stuff uses the macros in the `gc_inline.h' header file in
+    ** the Boehm garbage collector.  They improve performance a little for
     ** highly allocation-intensive programs (e.g. the `nrev' benchmark).
     ** You'll probably need to fool around with the `-I' options to get this
     ** to work.  Also, you must make sure that you compile with the same
@@ -104,7 +104,7 @@
       #error "MR_INLINE_ALLOC requires the use of GCC"
     #endif
 
-    #include "gc_inl.h"
+    #include "gc_inline.h"
     #define MR_tag_offset_incr_hp(dest, tag, offset, count)		\
 	( __builtin_constant_p(count) && (count) < 16			\
 	? ({	void * temp;						\

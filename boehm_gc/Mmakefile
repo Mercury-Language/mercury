@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------#
-# Copyright (C) 1995-2004 University of Melbourne. 
+# Copyright (C) 1995-2004, 2006 The University of Melbourne. 
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -12,7 +12,7 @@ GC_GRADE=gc
 
 MAIN_TARGET=lib$(GC_GRADE)
 
-MERCURY_DIR=..
+MERCURY_DIR := $(shell pwd)/..
 LINK_BOEHM_GC_ONLY=yes
 include $(MERCURY_DIR)/Mmake.common
 
@@ -97,9 +97,9 @@ force:
 .PHONY: install
 install: install_headers install_lib install_dll
 
-# As well as installing gc.h (and hence gc_pthread_redirects.h and
-# gc_local_alloc.h), we also install gc_inl.h (and hence gc_priv.h, gc_mark.h,
-# gc_hdrs.h, gc_locks.h, and gcconfig.h), for use with `-DINLINE_ALLOC'.
+# As well as installing gc.h (and hence gc_pthread_redirects.h), we also
+# install gc_inline.h (and hence gc_tiny_fl.h, gc_priv.h, gc_mark.h,
+# gc_hdrs.h, gc_locks.h, and gcconfig.h) for use with `-DINLINE_ALLOC'.
 # If we're using DLLs, we also want libgc_dll.h and libgc_globals.h.
 #
 # IMPORTANT NOTE: the following two lists must include all the header files
@@ -113,8 +113,8 @@ HEADERS= \
 	include/gc.h  \
 	include/gc_config_macros.h \
 	include/gc_pthread_redirects.h \
-	include/gc_local_alloc.h \
-	include/gc_inl.h \
+	include/gc_inline.h \
+	include/gc_tiny_fl.h \
 	include/gc_mark.h \
 	$(LIBGC_DLL_H) $(LIBGC_GLOBALS_H)
 PRIVATE_HEADERS= \

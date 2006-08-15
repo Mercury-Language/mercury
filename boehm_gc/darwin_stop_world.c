@@ -1,5 +1,7 @@
 #include "private/pthread_support.h"
 
+/* This probably needs more porting work to ppc64. */
+
 # if defined(GC_DARWIN_THREADS)
 
 /* From "Inside Mac OS X - Mach-O Runtime Architecture" published by Apple
@@ -36,7 +38,7 @@ unsigned long FindTopOfStack(unsigned int stack_start) {
 #   if CPP_WORDSZ == 32
       __asm__ volatile("lwz	%0,0(r1)" : "=r" (frame));
 #   else
-      __asm__ volatile("ldz	%0,0(r1)" : "=r" (frame));
+      __asm__ volatile("ld	%0,0(r1)" : "=r" (frame));
 #   endif
 # endif
   } else {
@@ -44,7 +46,7 @@ unsigned long FindTopOfStack(unsigned int stack_start) {
   }
 
 # ifdef DEBUG_THREADS
-    /* GC_printf1("FindTopOfStack start at sp = %p\n", frame); */
+    /* GC_printf("FindTopOfStack start at sp = %p\n", frame); */
 # endif
   do {
     if (frame->savedSP == 0) break;
@@ -60,7 +62,7 @@ unsigned long FindTopOfStack(unsigned int stack_start) {
   } while (1); 
 
 # ifdef DEBUG_THREADS
-    /* GC_printf1("FindTopOfStack finish at sp = %p\n", frame); */
+    /* GC_printf("FindTopOfStack finish at sp = %p\n", frame); */
 # endif
 
   return (unsigned long)frame;
@@ -73,7 +75,13 @@ void GC_push_all_stacks() {
   GC_thread p;
   pthread_t me;
   ptr_t lo, hi;
+#if defined(POWERPC)
   ppc_thread_state_t state;
+#elif defined(I386)
+  i386_thread_state_t state;
+#else
+# error FIXME for non-x86 || ppc architectures
+#endif
   mach_msg_type_number_t thread_state_count = MACHINE_THREAD_STATE_COUNT;
   
   me = pthread_self();
@@ -93,6 +101,17 @@ void GC_push_all_stacks() {
 			     &thread_state_count);
 	if(r != KERN_SUCCESS) ABORT("thread_get_state failed");
 	
+#if defined(I386)
+	lo = state.esp;
+
+	GC_push_one(state.eax); 
+	GC_push_one(state.ebx); 
+	GC_push_one(state.ecx); 
+	GC_push_one(state.edx); 
+	GC_push_one(state.edi); 
+	GC_push_one(state.esi); 
+	GC_push_one(state.ebp); 
+#elif defined(POWERPC)
 	lo = (void*)(state.r1 - PPC_RED_ZONE_SIZE);
         
 	GC_push_one(state.r0); 
@@ -126,6 +145,9 @@ void GC_push_all_stacks() {
 	GC_push_one(state.r29); 
 	GC_push_one(state.r30); 
 	GC_push_one(state.r31);
+#else
+# error FIXME for non-x86 || ppc architectures
+#endif
       } /* p != me */
       if(p->flags & MAIN_THREAD)
 	hi = GC_stackbottom;
@@ -147,6 +169,7 @@ void GC_push_all_stacks() {
 
 void GC_push_all_stacks() {
     int i;
+	task_t my_task;
     kern_return_t r;
     mach_port_t me;
     ptr_t lo, hi;
@@ -156,7 +179,8 @@ void GC_push_all_stacks() {
     me = mach_thread_self();
     if (!GC_thr_initialized) GC_thr_init();
     
-    r = task_threads(current_task(), &act_list, &listcount);
+	my_task = current_task();
+    r = task_threads(my_task, &act_list, &listcount);
     if(r != KERN_SUCCESS) ABORT("task_threads failed");
     for(i = 0; i < listcount; i++) {
       thread_act_t thread = act_list[i];
@@ -239,14 +263,16 @@ void GC_push_all_stacks() {
 #      endif /* !POWERPC */
       }
 #     if DEBUG_THREADS
-       GC_printf3("Darwin: Stack for thread 0x%lx = [%lx,%lx)\n",
-		  (unsigned long) thread,
-		  (unsigned long) lo,
-		  (unsigned long) hi
-		 );
+       GC_printf("Darwin: Stack for thread 0x%lx = [%p,%p)\n",
+		  (unsigned long) thread, lo, hi
+		);
 #     endif
       GC_push_all_stack(lo, hi); 
+	  mach_port_deallocate(my_task, thread);
     } /* for(p=GC_threads[i]...) */
+    vm_deallocate(my_task, (vm_address_t)act_list,
+		  sizeof(thread_t) * listcount);
+    mach_port_deallocate(my_task, me);
 }
 #endif /* !DARWIN_DONT_PARSE_STACK */
 
@@ -277,7 +303,7 @@ int GC_suspend_thread_list(thread_act_array_t act_list, int count,
   for(i = 0; i < count; i++) {
     thread_act_t thread = act_list[i];
 #   if DEBUG_THREADS 
-      GC_printf1("Attempting to suspend thread %p\n", thread);
+      GC_printf("Attempting to suspend thread %p\n", thread);
 #   endif
     /* find the current thread in the old list */
     int found = 0;
@@ -315,7 +341,8 @@ int GC_suspend_thread_list(thread_act_array_t act_list, int count,
 	continue;
       }
 #     if DEBUG_THREADS
-        GC_printf2("Thread state for 0x%lx = %d\n", thread, info.run_state);
+        GC_printf("Thread state for 0x%lx = %d\n",
+		  (unsigned long)thread, info.run_state);
 #     endif
       if (!found) {
 	GC_mach_threads[GC_mach_threads_count].already_suspended = info.suspend_count;
@@ -323,7 +350,7 @@ int GC_suspend_thread_list(thread_act_array_t act_list, int count,
       if (info.suspend_count) continue;
       
 #     if DEBUG_THREADS
-        GC_printf1("Suspending 0x%lx\n", thread);
+        GC_printf("Suspending 0x%lx\n", (unsigned long)thread);
 #     endif
       /* Suspend the thread */
       kern_result = thread_suspend(thread);
@@ -340,6 +367,7 @@ int GC_suspend_thread_list(thread_act_array_t act_list, int count,
     } 
     if (!found) GC_mach_threads_count++;
   }
+  mach_port_deallocate(current_task(), my_thread);
   return changed;
 }
 
@@ -347,15 +375,17 @@ int GC_suspend_thread_list(thread_act_array_t act_list, int count,
 /* Caller holds allocation lock.	*/
 void GC_stop_world()
 {
-  int i, changes;
+    int i, changes;
     GC_thread p;
+    task_t my_task = current_task();
     mach_port_t my_thread = mach_thread_self();
     kern_return_t kern_result;
     thread_act_array_t act_list, prev_list;
     mach_msg_type_number_t listcount, prevcount;
     
 #   if DEBUG_THREADS
-      GC_printf1("Stopping the world from 0x%lx\n", mach_thread_self());
+      GC_printf("Stopping the world from 0x%lx\n",
+		(unsigned long)mach_thread_self());
 #   endif
 
     /* clear out the mach threads list table */
@@ -384,12 +414,22 @@ void GC_stop_world()
       prevcount = 0;
       do {
 	int result;
-	kern_result = task_threads(current_task(), &act_list, &listcount);
+	kern_result = task_threads(my_task, &act_list, &listcount);
 	result = GC_suspend_thread_list(act_list, listcount,
 					prev_list, prevcount);
 	changes = result;
 	prev_list = act_list;
 	prevcount = listcount;
+	
+	if(kern_result == KERN_SUCCESS) {
+	    int i;
+	
+	    for(i = 0; i < listcount; i++)
+		mach_port_deallocate(my_task, act_list[i]);
+		
+            vm_deallocate(my_task, (vm_address_t)act_list,
+			  sizeof(thread_t) * listcount);
+	}
       } while (changes);
       
  
@@ -403,15 +443,18 @@ void GC_stop_world()
 #   ifdef PARALLEL_MARK
       GC_release_mark_lock();
 #   endif
-    #if DEBUG_THREADS
-      GC_printf1("World stopped from 0x%lx\n", my_thread);
-    #endif
+#   if DEBUG_THREADS
+      GC_printf("World stopped from 0x%lx\n", (unsigned long)my_thread);
+#   endif
+	  
+    mach_port_deallocate(my_task, my_thread);
 }
 
 /* Caller holds allocation lock, and has held it continuously since	*/
 /* the world stopped.							*/
 void GC_start_world()
 {
+  task_t my_task = current_task();
   mach_port_t my_thread = mach_thread_self();
   int i, j;
   GC_thread p;
@@ -422,7 +465,7 @@ void GC_start_world()
   mach_msg_type_number_t outCount = THREAD_INFO_MAX;
   
 #   if DEBUG_THREADS
-      GC_printf0("World starting\n");
+      GC_printf("World starting\n");
 #   endif
 
 #   ifdef MPROTECT_VDB
@@ -432,7 +475,7 @@ void GC_start_world()
       }
 #   endif
 
-    kern_result = task_threads(current_task(), &act_list, &listcount);
+    kern_result = task_threads(my_task, &act_list, &listcount);
     for(i = 0; i < listcount; i++) {
       thread_act_t thread = act_list[i];
       if (thread != my_thread &&
@@ -442,7 +485,7 @@ void GC_start_world()
 	  if (thread == GC_mach_threads[j].thread) {
 	    if (GC_mach_threads[j].already_suspended) {
 #             if DEBUG_THREADS
-	        GC_printf1("Not resuming already suspended thread %p\n", thread);
+	        GC_printf("Not resuming already suspended thread %p\n", thread);
 #             endif
 	      continue;
 	    }
@@ -450,9 +493,9 @@ void GC_start_world()
 				      (thread_info_t)&info, &outCount);
 	    if(kern_result != KERN_SUCCESS) ABORT("thread_info failed");
 #           if DEBUG_THREADS
-	      GC_printf2("Thread state for 0x%lx = %d\n", thread,
+	      GC_printf("Thread state for 0x%lx = %d\n", (unsigned long)thread,
 			 info.run_state);
-	      GC_printf1("Resuming 0x%lx\n", thread);
+	      GC_printf("Resuming 0x%lx\n", (unsigned long)thread);
 #           endif
 	    /* Resume the thread */
 	    kern_result = thread_resume(thread);
@@ -460,9 +503,14 @@ void GC_start_world()
 	  } 
 	}
       }
+      mach_port_deallocate(my_task, thread);
     }
+    vm_deallocate(my_task, (vm_address_t)act_list,
+		  sizeof(thread_t) * listcount);
+	
+    mach_port_deallocate(my_task, my_thread);
 #   if DEBUG_THREADS
-     GC_printf0("World started\n");
+     GC_printf("World started\n");
 #   endif
 }
 

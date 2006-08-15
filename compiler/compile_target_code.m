@@ -681,7 +681,9 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
     globals.io_lookup_bool_option(inline_alloc, InlineAlloc, !IO),
     (
         InlineAlloc = yes,
-        InlineAllocOpt = "-DMR_INLINE_ALLOC -DSILENT "
+        % XXX disabled because inline allocation is broken in gc7.0 alpha6.
+        % InlineAllocOpt = "-DMR_INLINE_ALLOC "
+        InlineAllocOpt = ""
     ;
         InlineAlloc = no,
         InlineAllocOpt = ""

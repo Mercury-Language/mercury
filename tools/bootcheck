@@ -716,6 +716,8 @@ then
             cp $root/boehm_gc/NT_MAKEFILE .
             cp $root/boehm_gc/gc_cpp.cc .
             $LN_S $root/boehm_gc/machdeps .
+            cp $root/boehm_gc/configure_atomic_ops.sh .
+            cp -r $root/boehm_gc/libatomic_ops-*[0-9] .
             cd $root/$stage2dir
         else
             $LN_S $root/boehm_gc .
