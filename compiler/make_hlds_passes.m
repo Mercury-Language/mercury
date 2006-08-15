@@ -1158,13 +1158,7 @@ add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
             BoxPolicy = native_if_possible
         ),
         set_box_policy(BoxPolicy, Attrs0, Attrs1),
-
-        set_may_call_mercury(will_not_call_mercury, Attrs1, Attrs2),
-        ( mutable_var_thread_safe(MutAttrs) = thread_safe ->
-            set_thread_safe(thread_safe, Attrs2, Attrs)
-        ;
-            Attrs = Attrs2
-        ),
+        set_may_call_mercury(will_not_call_mercury, Attrs1, Attrs),
 
         mutable_var_maybe_foreign_names(MutAttrs) = MaybeForeignNames,
         (

@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: prog_io.m.
 % Main author: fjh.
-
+% 
 % This module defines predicates for parsing Mercury programs.
 %
 % In some ways the representation of programs here is considerably
@@ -52,7 +52,7 @@
 % 3.  improve the error reporting (most of the semidet preds should
 %     be det and should return a meaningful indication of where an
 %     error occurred).
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_io.
@@ -1888,7 +1888,6 @@ parse_mutable_inst(InstTerm, InstResult) :-
 
 :- type collected_mutable_attribute
     --->    trailed(trailed)
-    ;       thread_safe(thread_safe)
     ;       foreign_name(foreign_name)
     ;       attach_to_io_state(bool).
 
@@ -1898,7 +1897,6 @@ parse_mutable_inst(InstTerm, InstResult) :-
 parse_mutable_attrs(MutAttrsTerm, MutAttrsResult) :-
     Attributes0 = default_mutable_attributes,
     ConflictingAttributes = [
-        thread_safe(thread_safe) - thread_safe(not_thread_safe),
         trailed(trailed) - trailed(untrailed)
     ],
     (
@@ -1906,9 +1904,8 @@ parse_mutable_attrs(MutAttrsTerm, MutAttrsResult) :-
         map_parser(parse_mutable_attr, MutAttrTerms, MaybeAttrList),
         MaybeAttrList = ok(CollectedMutAttrs)
     ->
-        % We check for trailed/untrailed and thread_safe/not_thread_safe
-        % conflicts here and deal with conflicting foreign_name attributes in
-        % make_hlds_passes.m.
+        % We check for trailed/untrailed conflicts here and deal with
+        % conflicting foreign_name attributes in make_hlds_passes.m.
         %
         (
             list.member(Conflict1 - Conflict2, ConflictingAttributes),
@@ -1930,8 +1927,6 @@ parse_mutable_attrs(MutAttrsTerm, MutAttrsResult) :-
 :- pred process_mutable_attribute(collected_mutable_attribute::in,
     mutable_var_attributes::in, mutable_var_attributes::out) is det.
 
-process_mutable_attribute(thread_safe(ThreadSafe), !Attributes) :-
-    set_mutable_var_thread_safe(ThreadSafe, !Attributes).
 process_mutable_attribute(trailed(Trailed), !Attributes) :-
     set_mutable_var_trailed(Trailed, !Attributes).
 process_mutable_attribute(foreign_name(ForeignName), !Attributes) :-
@@ -1954,12 +1949,6 @@ parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
         ;
             String  = "attach_to_io_state",
             MutAttr = attach_to_io_state(yes)
-        ;
-            String = "thread_safe",
-            MutAttr = thread_safe(thread_safe)
-        ;
-            String = "not_thread_safe",
-            MutAttr = thread_safe(not_thread_safe)
         )
     ->
         MutAttrResult = ok(MutAttr)

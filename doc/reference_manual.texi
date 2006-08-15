@@ -4742,8 +4742,8 @@ This constructs a new mutable variable with access predicates that have the
 following signatures:
 
 @example
-:- semipure get_varname(vartype::out(varinst)) is det.
-:- impure   set_varname(vartype::in(varinst)) is det.
+:- semipure pred get_varname(vartype::out(varinst)) is det.
+:- impure   pred set_varname(vartype::in(varinst)) is det.
 @end example
 
 The initial value of @samp{varname} is @samp{initial_value}, which is set
@@ -4756,12 +4756,6 @@ type @samp{vartype} and inst @samp{varinst}.
 The following @samp{attributes} must be supported:
 
 @table @asis
-
-@item @samp{thread_safe}/@samp{not_thread_safe}
-This attribute declares if it is safe for multiple threads to 
-access the mutable concurrently.  The default, in case none is
-specified, is @samp{not_thread_safe}.  (See @ref{Foreign code attributes}
-for further details.)
 
 @item @samp{trailed}/@samp{untrailed}
 This attribute declares if the implementation should generate code so that

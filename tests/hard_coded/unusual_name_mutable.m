@@ -10,7 +10,7 @@
 
 :- import_module int.
 
-:- mutable('123$%^abc 7', int, 42, ground, [untrailed, thread_safe]).
+:- mutable('123$%^abc 7', int, 42, ground, [untrailed]).
 
 main(!IO) :-
 	promise_pure ( semipure 'get_123$%^abc 7'(X)),

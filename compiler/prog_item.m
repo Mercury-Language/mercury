@@ -5,19 +5,19 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: prog_item.m.
 % Main author: fjh.
-
+% 
 % This module, together with prog_data, defines a data structure for
 % representing Mercury programs.  
-
+% 
 % This data structure specifies basically the same information as is
 % contained in the source code, but in a parse tree rather than a flat
 % file.  This module defines the parts of the parse tree that are *not*
 % needed by the various compiler backends; parts of the parse tree that
 % are needed by the backends are contained in prog_data.m.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_item.
@@ -325,14 +325,10 @@
 
     % Access functions for the `mutable_var_attributes' structure.
     %
-:- func mutable_var_thread_safe(mutable_var_attributes) = thread_safe.
 :- func mutable_var_trailed(mutable_var_attributes) = trailed.
 :- func mutable_var_maybe_foreign_names(mutable_var_attributes)
     = maybe(list(foreign_name)).
 :- func mutable_var_attach_to_io_state(mutable_var_attributes) = bool.
-
-:- pred set_mutable_var_thread_safe(thread_safe::in,
-    mutable_var_attributes::in, mutable_var_attributes::out) is det.
 
 :- pred set_mutable_var_trailed(trailed::in,
     mutable_var_attributes::in, mutable_var_attributes::out) is det.
@@ -767,14 +763,11 @@
 default_mutable_attributes =
     mutable_var_attributes(trailed, not_thread_safe, no, no).
 
-mutable_var_thread_safe(MVarAttrs) = MVarAttrs ^ mutable_thread_safe.
 mutable_var_trailed(MVarAttrs) = MVarAttrs ^ mutable_trailed.
 mutable_var_maybe_foreign_names(MVarAttrs) = MVarAttrs ^ mutable_foreign_names.
 mutable_var_attach_to_io_state(MVarAttrs) =
     MVarAttrs ^ mutable_attach_to_io_state.
 
-set_mutable_var_thread_safe(ThreadSafe, !Attributes) :-
-    !:Attributes = !.Attributes ^ mutable_thread_safe := ThreadSafe.
 set_mutable_var_trailed(Trailed, !Attributes) :-
     !:Attributes = !.Attributes ^ mutable_trailed := Trailed.
 set_mutable_add_foreign_name(ForeignName, !Attributes) :-

@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+% 
 % File: prog_mutable.m.
 % Main authors: rafe, juliensf.
-
+% 
 % Utility predicates for dealing with mutable declarations.
-
+% 
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_mutable.

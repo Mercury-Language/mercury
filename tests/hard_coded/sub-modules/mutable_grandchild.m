@@ -7,7 +7,7 @@
 :- implementation.
 
 :- mutable(grandchild_global, int, 300, ground,
-	[untrailed, thread_safe, attach_to_io_state]).
+	[untrailed, attach_to_io_state]).
 
 run_grandchild(!IO) :-
 	io.write_string("In grandchild ...\n", !IO),

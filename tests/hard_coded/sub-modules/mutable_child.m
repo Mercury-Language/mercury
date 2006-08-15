@@ -9,7 +9,7 @@
 :- implementation.
 
 :- mutable(child_global, int, 200, ground,
-	[untrailed, thread_safe, attach_to_io_state]).
+	[untrailed, attach_to_io_state]).
 
 run_child(!IO) :-
 	io.write_string("In child ...\n", !IO),
