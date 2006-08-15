@@ -116,6 +116,6 @@ DEFAULT_MCFLAGS=\
 		$(MERCURY_DEFAULT_OPT_LEVEL) \
 		@MMC_USE_SYMLINKS_OPT@ \
 		@LIBGRADE_OPTS@  \
-		--linkage "@DEFAULT_LINAKGE@" \
-		--mercury-linakge "@DEFAULT_LINAKGE@"
+		--linkage "@DEFAULT_LINKAGE@" \
+		--mercury-linkage "@DEFAULT_LINKAGE@"
 
