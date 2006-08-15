@@ -2,7 +2,7 @@
 
 :- interface.
 
-:- mutable(in_interface, int, 0, ground, [untrailed, thread_safe]).
+:- mutable(in_interface, int, 0, ground, [untrailed]).
 
 :- implementation.
 
