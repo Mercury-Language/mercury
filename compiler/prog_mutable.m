@@ -8,9 +8,117 @@
 % 
 % File: prog_mutable.m.
 % Main authors: rafe, juliensf.
+%
+% This module defines utility predicates for dealing with mutable
+% declarations.  It also contains a description of the source-to-source
+% transformation used for implementing mutables.
+%
+%-----------------------------------------------------------------------------%
+%
+% Mutables are implemented as a source-to-source transformation on the
+% parse tree.  The basic transformation is as follows:
+%
+%   :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [attributes]).
 % 
-% Utility predicates for dealing with mutable declarations.
+% ===>
+%   
+%   :- pragma foreign_decl("C", "extern <CType> mutable_<varname>;").
+%   :- pragma foreign_code("C", "<CType> mutable_<varname>;");
+%
+% NOTES: 
+%
+%        * The name of the C global corresponding to mutable_<varname> may be
+%          mangled.
+%
+%        * <CType> is chosen on a backend-specific basis.  If the value stored
+%          in the mutable is always boxed it is `MR_Word' otherwise it may
+%          be some native type, `MR_Integer', `MR_Float' etc.
+%
+%   :- initialise initialise_mutable_<varname>/0.
+%
+%   :- impure pred initialise_mutable_<varname> is det.
+%   
+%   initialise_mutable_<varname> :-
+%       impure set_<varname>(<initval>).
 % 
+%   :- semipure pred get_<varname>(<vartype>::out(<varinst>)) is det.
+%   :- pragma foreign_proc("C",
+%       get_<varname>(X::out(<varinst>)),
+%       [promise_semipure, will_not_call_mercury],
+%   "
+%       X = mutable_<varname>;
+%   ");
+%   
+%   :- impure pred set_<varname>(<vartype>::in(<varinst>)) is det.
+%   :- pragma foreign_proc("C",
+%       set_<varname>(X::in(<varinst>)),
+%       [will_not_call_mercury],
+%   "
+%       MR_trail_current_value(&mutable_<varname>);
+%       mutable_<varname> = X; 
+%   ").
+%
+% NOTE: mutables *are* trailed by default.  The `untrailed' attribute just
+%       causes the call to MR_trail_current_value to be omitted.
+%
+% If the `attach_to_io_state' attribute is specified we also generate:
+%
+%   :- pred get_varname(<vartype>::out(<varinst>), io::di, io::uo) is det.
+%   :- pred set_varname(<vartype>::in(<varinst>),  io::di, io::uo) is det.
+%
+%   :- pragma foreign_proc("C",
+%       get_varname(X::out(<varinst), IO0::di, IO::uo),
+%       [promise_pure, will_not_call_mercury, tabled_for_io],
+%   "
+%       X = mutable_<varname>;
+%       IO = IO0;
+%   ").
+%  
+%   :- pragma foreign_proc("C",
+%       set_varname(X::in(<varinst>), IO0::di, IO::uo),
+%       [promise_pure, will_not_call_mercury, tabled_for_io],
+%   "
+%       mutable_<varname> = X;
+%       IO = IO0;
+%   ").
+% 
+% NOTE: we could implement the above in terms of the impure get and set
+%       predicates.  The reason we don't is so that we can use I/O 
+%       tabling.
+%       XXX If tabling of impure actions is ever implemented we should\
+%           revisit this.
+% 
+% For constant mutables (those with the `constant' attribute), the 
+% transformation is a little different:
+%
+%   :- mutable(<varname>, <vartype>, <initvalue>, <varinst>, [constant]).
+%
+% ===>
+%
+%   (The declarations for the global are as above.)
+%
+%   :- pred get_<varname>(<vartype>::out(<varinst>)) is det.
+%   :- pragma foreign_proc("C",
+%       get_<varname>(X::out(<varinst>)),
+%       [will_not_call_mercury, promise_pure, thread_safe],
+%   "
+%       X = mutable_<varname>;
+%   ").
+% 
+% In order to initialise constant mutables we generate the following:
+%
+%   :- impure pred secret_initialization_only_set_<varname>(
+%       <vartype>::in(<varinst>)) is det.
+% 
+%   :- pragma foreign_proc("C",
+%       secret_initialization_only_set_<varname>(X::in(<varinst>)),
+%       [will_not_call_mercury],
+%   "
+%       mutable_<varname> = X;
+%   ").
+%
+%   :- initialise secret_initialization_only_set_<varname>/0.
+%
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_mutable.
@@ -68,7 +176,7 @@
     % the init predicate needs to do two things: execute arbitrary Mercury code
     % (call functions etc) to generate the initial (and for constant mutables,
     % also final) value of the mutable, and then store this value in persistent
-    % storage. However, even we could create an item that contains both
+    % storage. However, even if we could create an item that contains both
     % Mercury code and backend (e.g. C) code (which is currently not possible),
     % this would require the second part to be a foreign_proc goal. Such goals
     % include a reference to the predicate they implement. That predicate

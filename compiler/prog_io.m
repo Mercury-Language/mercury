@@ -1777,52 +1777,11 @@ parse_finalise_decl(_ModuleName, _VarSet, [Term], Result) :-
     ).
 
 %-----------------------------------------------------------------------------%
-
-% Mutable declaration syntax:
 %
-% :- mutable(name, type, value, inst, <attribute_list>).
-% (The list of attributes at the end is optional.)
+% Mutable declarations
 %
-% e.g.:
+% See prog_mutable.m for implementation details.
 %
-% :- mutable(counter, int, 0, ground, [thread_safe]).
-%
-% This is converted into the following:
-%
-% :- semipure pred get_counter(int::out(ground)) is det.
-% :- pragma foreign_proc("C",
-%   get_counter(X::out(ground)),
-%   [promise_semipure, will_not_call_mercury, thread_safe],
-%   "X = mutable_counter;").
-%
-% :- impure pred set_counter(int::in(ground)) is det.
-% :- pragma foreign_proc("C",
-%   set_counter(X::in(ground)),
-%   [will_not_call_mercury, thread_safe],
-%   "MR_trail_current_value(&mutable_counter);
-%    mutable_counter = X;").
-%
-% :- pragma foreign_decl("C", "extern MR_Word mutable_counter;").
-% :- pragma foreign_code("C", "MR_Word mutable_counter;");
-%
-% :- import_module io.
-% :- initialise initialise_counter.
-% :- impure pred initialise_mutable_counter(io::di, io::uo) is det.
-%
-% initialise_mutable_counter(!IO) :-
-%   impure set_counter(0).
-%
-% If the `thread_safe' attribute is specified in <attribute_list>
-% then foreign_procs are created that have the thread_safe attribute
-% set.  If the `untrailed' attribute is specified in <attribute_list>
-% then the code for trailing the mutable variable in the set predicate
-% is omitted
-
-% NOTE: we must attach the varset to the mutable item because if the
-% initial value is non-ground, then the initial value will be a variable
-% and the mutable initialisation predicate will contain references to it.
-% Ignoring the varset may lead to later compiler passes attempting to reuse
-% this variable when fresh variables are allocated.
 
 :- pred parse_mutable_decl(module_name::in, varset::in, list(term)::in,
     maybe1(item)::out) is semidet.
@@ -1834,6 +1793,9 @@ parse_mutable_decl(_ModuleName, Varset, Terms, Result) :-
     term.coerce(ValueTerm, Value),
     varset.coerce(Varset, ProgVarset),
     parse_mutable_inst(InstTerm, InstResult),
+    %
+    % The list of attributes is optional.
+    %
     (
         OptMutAttrsTerm = [],
         MutAttrsResult = ok1(default_mutable_attributes)
@@ -1847,6 +1809,12 @@ parse_mutable_decl(_ModuleName, Varset, Terms, Result) :-
         InstResult = ok1(Inst),
         MutAttrsResult = ok1(MutAttrs)
     ->
+        % We *must* attach the varset to the mutable item because if the
+        % initial value is non-ground, then the initial value will be a
+        % variable and the mutable initialisation predicate will contain
+        % references to it.  Ignoring the varset may lead to later compiler
+        % passes attempting to reuse this variable when fresh variables are
+        % allocated.
         Result = ok1(mutable(Name, Type, Value, Inst, MutAttrs, ProgVarset))
     ;
         Errors = get_any_errors1(NameResult) ++ get_any_errors1(TypeResult) ++
@@ -1906,9 +1874,9 @@ parse_mutable_attrs(MutAttrsTerm, MutAttrsResult) :-
         map_parser(parse_mutable_attr, MutAttrTerms, MaybeAttrList),
         MaybeAttrList = ok1(CollectedMutAttrs)
     ->
-        % We check for trailed/untrailed and thread_safe/not_thread_safe
-        % conflicts here and deal with conflicting foreign_name attributes in
-        % make_hlds_passes.m.
+        % We check for trailed/untrailed, constant/trailed and
+        % constant/attach_to_io_state conflicts here and deal with
+        % conflicting foreign_name attributes in make_hlds_passes.m.
         %
         (
             list.member(Conflict1 - Conflict2, ConflictingAttributes),

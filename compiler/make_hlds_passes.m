@@ -1189,6 +1189,10 @@ add_item_clause(finalise(Origin, SymName, Arity),
     ).
 add_item_clause(Item, !Status, Context, !ModuleInfo, !QualInfo, !IO) :-
     Item = mutable(Name, Type, InitTerm, Inst, MutAttrs, MutVarset),
+    %
+    % The transformation here is documented in the comments at the
+    % beginning of prog_mutable.m.
+    %
     ( status_defined_in_this_module(!.Status, yes) ->
         module_info_get_name(!.ModuleInfo, ModuleName),
         varset.new_named_var(varset.init, "X", X, ProgVarSet0),
