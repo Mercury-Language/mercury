@@ -364,33 +364,62 @@ classify_type(ModuleInfo, VarType) = TypeCategory :-
     ).
 
 classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
-    PB = mercury_private_builtin_module,
-    ( TypeCtor = type_ctor(unqualified("character"), 0) ->
-        TypeCategory = type_cat_char
-    ; TypeCtor = type_ctor(unqualified("int"), 0) ->
-        TypeCategory = type_cat_int
-    ; TypeCtor = type_ctor(unqualified("float"), 0) ->
-        TypeCategory = type_cat_float
-    ; TypeCtor = type_ctor(unqualified("string"), 0) ->
-        TypeCategory = type_cat_string
-    ; TypeCtor = type_ctor(unqualified("void"), 0) ->
-        TypeCategory = type_cat_void
-    ; TypeCtor = type_ctor(qualified(PB, "type_info"), 0) ->
-        TypeCategory = type_cat_type_info
-    ; TypeCtor = type_ctor(qualified(PB, "type_ctor_info"), 0) ->
-        TypeCategory = type_cat_type_ctor_info
-    ; TypeCtor = type_ctor(qualified(PB, "typeclass_info"), 0) ->
-        TypeCategory = type_cat_typeclass_info
-    ; TypeCtor = type_ctor(qualified(PB, "base_typeclass_info"), 0) ->
-        TypeCategory = type_cat_base_typeclass_info
-    ; type_ctor_is_higher_order(TypeCtor, _, _, _) ->
-        TypeCategory = type_cat_higher_order
-    ; type_ctor_is_tuple(TypeCtor) ->
-        TypeCategory = type_cat_tuple
-    ; type_ctor_is_enumeration(TypeCtor, ModuleInfo) ->
-        TypeCategory = type_cat_enum
+    TypeCtor = type_ctor(TypeSymName, Arity),
+    (
+        TypeSymName = unqualified(TypeName),
+        Arity = 0,
+        (
+            TypeName = "character",
+            TypeCategoryPrime = type_cat_char
+        ;
+            TypeName = "int",
+            TypeCategoryPrime = type_cat_int
+        ;
+            TypeName = "float",
+            TypeCategoryPrime = type_cat_float
+        ;
+            TypeName = "string",
+            TypeCategoryPrime = type_cat_string
+        ;
+            TypeName = "void",
+            TypeCategoryPrime = type_cat_void
+        )
+    ->
+        TypeCategory = TypeCategoryPrime
     ;
-        TypeCategory = type_cat_user_ctor
+        TypeSymName = qualified(ModuleSymName, TypeName),
+        ModuleSymName = mercury_private_builtin_module,
+        Arity = 0,
+        (
+            TypeName = "type_info",
+            TypeCategoryPrime = type_cat_type_info
+        ;
+            TypeName = "type_ctor_info",
+            TypeCategoryPrime = type_cat_type_ctor_info
+        ;
+            TypeName = "typeclass_info",
+            TypeCategoryPrime = type_cat_typeclass_info
+        ;
+            TypeName = "base_typeclass_info",
+            TypeCategoryPrime = type_cat_base_typeclass_info
+        )
+    ->
+        TypeCategory = TypeCategoryPrime
+    ;
+        TypeSymName = qualified(unqualified(ModuleName), TypeName),
+        is_builtin_dummy_argument_type(ModuleName, TypeName, Arity)
+    ->
+        TypeCategory = type_cat_dummy
+    ;
+        ( type_ctor_is_higher_order(TypeCtor, _, _, _) ->
+            TypeCategory = type_cat_higher_order
+        ; type_ctor_is_tuple(TypeCtor) ->
+            TypeCategory = type_cat_tuple
+        ; type_ctor_is_enumeration(TypeCtor, ModuleInfo) ->
+            TypeCategory = type_cat_enum
+        ;
+            TypeCategory = type_cat_user_ctor
+        )
     ).
 
 type_has_user_defined_equality_pred(ModuleInfo, Type, UserEqComp) :-

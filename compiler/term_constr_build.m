@@ -230,7 +230,7 @@ build_abstract_proc(EntryProcs, Options, SCC, Module, PPId, !SizeVarset,
     ChooseArg = (func(Var, Mode) = UseArg :-
         Type = VarTypes ^ det_elem(Var),
         ( 
-            not zero_size_type(Type, Module),
+            not zero_size_type(Module, Type),
             mode_util.mode_is_input(Module, Mode)
         ->  
             UseArg = yes
@@ -1180,7 +1180,7 @@ upper_bound_constraints(Norm, Module, Var, TypeCtor, Ctors, Constraints) :-
     %
     FindUpperBound = (pred(Ctor::in, !.B::in, !:B::out) is semidet :-
         Ctor = ctor(_, _, SymName, Args),
-        all [Arg] (list.member(Arg, Args) => zero_size_type(snd(Arg), Module)),
+        all [Arg] (list.member(Arg, Args) => zero_size_type(Module, snd(Arg))),
         Arity = list.length(Args),
         ConsId = cons(SymName, Arity),
         Bound = functor_lower_bound(Norm, TypeCtor, ConsId, Module),

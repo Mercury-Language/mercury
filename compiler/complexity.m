@@ -516,7 +516,7 @@ classify_args([Var | Vars], [Mode | Modes], ModuleInfo, VarSet, VarTypes,
     ),
     ( mode_is_fully_input(ModuleInfo, Mode) ->
         map.lookup(VarTypes, Var, VarType),
-        ( zero_size_type(VarType, ModuleInfo) ->
+        ( zero_size_type(ModuleInfo, VarType) ->
             Kind = complexity_input_fixed_size
         ;
             Kind = complexity_input_variable_size

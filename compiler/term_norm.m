@@ -64,7 +64,7 @@
     
     % Succeeds if all values of the given type are zero size (for all norms).
     %
-:- pred zero_size_type(mer_type::in, module_info::in) is semidet.
+:- pred zero_size_type(module_info::in, mer_type::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -331,7 +331,7 @@ functor_lower_bound(use_map_and_args(WeightMap), TypeCtor, ConsId, _)
 
 %-----------------------------------------------------------------------------%
 
-zero_size_type(Type, Module) :-
+zero_size_type(Module, Type) :-
     type_util.classify_type(Module, Type) = TypeCategory,
     zero_size_type_category(TypeCategory, yes).
 

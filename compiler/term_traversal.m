@@ -245,7 +245,7 @@ traverse_goal_2(Goal, GoalInfo, Params, !Info, !ModuleInfo, !IO) :-
         ( ClosureValues0 = ClosureValueMap ^ elem(Var) ->
             ClosureValues = set.to_sorted_list(ClosureValues0),
             % XXX intermod
-            list.filter(terminates(!.ModuleInfo), ClosureValues,
+            list.filter(pred_proc_id_terminates(!.ModuleInfo), ClosureValues,
                 Terminating, NonTerminating),
             ( 
                 NonTerminating = [],

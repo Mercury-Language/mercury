@@ -5,15 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: term_util.m.
 % Main author: crs.
-% 
+%
 % This module:
 %
 % - defines the types used by termination analysis
 % - defines some utility predicates
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_util.
@@ -37,7 +37,7 @@
 %-----------------------------------------------------------------------------%
 %
 % The `arg_size_info' and `termination_info' structures
-% 
+%
 
 % The types `arg_size_info' and `termination_info' hold information about
 % procedures which is used for termination analysis.  These types are stored
@@ -141,10 +141,17 @@
 :- pred attributes_imply_termination(pragma_foreign_proc_attributes::in)
     is semidet.
 
-    % terminates(ModuleInfo, PPId).
+    % pred_proc_id_terminates(ModuleInfo, PPId):
+    %
     % Succeeds iff the procedure given by 'PPId' has been proven to terminate.
     %
-:- pred terminates(module_info::in, pred_proc_id::in) is semidet.
+:- pred pred_proc_id_terminates(module_info::in, pred_proc_id::in) is semidet.
+
+    % Succeed if all arguments of the given procedure of the given predicate
+    % are either input or zero size.
+    %
+:- pred all_args_input_or_zero_size(module_info::in, pred_info::in,
+    proc_info::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 
@@ -227,7 +234,7 @@ partition_call_args_2(ModuleInfo, [ArgMode | ArgModes], [Arg | Args],
     %
 split_unification_vars([], Modes, _, Vars, Vars) :-
     bag.init(Vars),
-    ( 
+    (
         Modes = []
     ;
         Modes = [_|_],
@@ -349,7 +356,7 @@ horder_vars([Arg | Args], VarType) :-
 %-----------------------------------------------------------------------------%
 
 get_context_from_scc(SCC, ModuleInfo, Context) :-
-    ( 
+    (
         SCC = [proc(PredId, _) | _],
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         pred_info_context(PredInfo, Context)
@@ -387,10 +394,34 @@ attributes_imply_termination(Attributes) :-
 
 %-----------------------------------------------------------------------------%
 
-terminates(ModuleInfo, PPId) :-
+pred_proc_id_terminates(ModuleInfo, PPId) :-
     module_info_pred_proc_info(ModuleInfo, PPId, _, ProcInfo),
     proc_info_get_maybe_termination_info(ProcInfo, TerminationInfo),
     TerminationInfo = yes(cannot_loop(_)).
+
+%-----------------------------------------------------------------------------%
+
+all_args_input_or_zero_size(ModuleInfo, PredInfo, ProcInfo) :-
+    pred_info_get_arg_types(PredInfo, TypeList),
+    proc_info_get_argmodes(ProcInfo, ModeList),
+    all_args_input_or_zero_size_2(TypeList, ModeList, ModuleInfo).
+
+:- pred all_args_input_or_zero_size_2(list(mer_type)::in, list(mer_mode)::in,
+    module_info::in) is semidet.
+
+all_args_input_or_zero_size_2([], [], _).
+all_args_input_or_zero_size_2([], [_|_], _) :-
+    unexpected(this_file, "all_args_input_or_size_2/3 - unmatched lists.").
+all_args_input_or_zero_size_2([_|_], [], _) :-
+    unexpected(this_file, "all_args_input_or_size_2/3 - unmatched lists.").
+all_args_input_or_zero_size_2([Type | Types], [Mode | Modes], ModuleInfo) :-
+    ( mode_is_input(ModuleInfo, Mode) ->
+        % The variable is an input variables, so its size is irrelevant.
+        all_args_input_or_zero_size_2(Types, Modes, ModuleInfo)
+    ;
+        term_norm.zero_size_type(ModuleInfo, Type),
+        all_args_input_or_zero_size_2(Types, Modes, ModuleInfo)
+    ).
 
 %-----------------------------------------------------------------------------%
 

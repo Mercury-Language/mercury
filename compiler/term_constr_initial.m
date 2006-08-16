@@ -83,6 +83,7 @@
 :- import_module transform_hlds.term_constr_main.
 :- import_module transform_hlds.term_constr_util.
 :- import_module transform_hlds.term_norm.
+:- import_module transform_hlds.term_util.
 
 :- import_module bool.
 :- import_module bag.
@@ -526,7 +527,7 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
     ;   
         all_args_input_or_zero_size(ModuleInfo, PredInfo, ProcInfo0)
     ->
-            Constrs = []
+        Constrs = []
     ;
         unexpected(this_file, "builtin with non-zero size args.")
     ),

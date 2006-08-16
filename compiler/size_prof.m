@@ -789,7 +789,7 @@ process_args([Arg | Args], !KnownSize, !MaybeSizeVar, Context, Goals, !Info) :-
     ( map.search(!.Info ^ known_size_map, Arg, ArgSize) ->
         !:KnownSize = !.KnownSize + ArgSize,
         ArgGoals = []
-    ; zero_size_type(Type, !.Info ^ module_info) ->
+    ; zero_size_type(!.Info ^ module_info, Type) ->
         ArgGoals = []
     ;
         make_type_info(Context, Type, TypeInfoVar, TypeInfoGoals, !Info),

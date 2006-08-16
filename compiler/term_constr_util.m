@@ -5,18 +5,18 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %------------------------------------------------------------------------------%
-% 
+%
 % File: term_constr_util.m
 % Main author: juliensf
-% 
+%
 % This module defines some utility predicates used by the termination analyser.
-% 
+%
 %------------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_util.
 :- interface.
 
-:- import_module hlds.hlds_pred. 
+:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_module.
 :- import_module libs.lp_rational.
 :- import_module libs.polyhedron.
@@ -41,7 +41,7 @@
 :- pred set_pred_proc_ids_constr_arg_size_info(list(pred_proc_id)::in,
     constr_arg_size_info::in, module_info::in, module_info::out) is det.
 
-:- func lookup_proc_constr_arg_size_info(module_info, pred_proc_id) = 
+:- func lookup_proc_constr_arg_size_info(module_info, pred_proc_id) =
     maybe(constr_arg_size_info).
 
     % Retrieve the abstraction representation from the module_info.
@@ -52,7 +52,7 @@
 
 %------------------------------------------------------------------------------%
 %
-% Predicates for size_vars. 
+% Predicates for size_vars.
 %
 
     % Given a list of prog_vars, allocate one size_var per prog_var.
@@ -78,7 +78,7 @@
     % Returns a set containing all the size_vars corresponding to prog_vars
     % that have a type that is always of zero size. i.e. all those for which
     % the functor norm returns zero for all values of the type.
-    % 
+    %
 :- func find_zero_size_vars(module_info, size_var_map, vartypes) = zero_vars.
 
     % create_nonneg_constraints(SizeVarMap, Zeros) = Constraints.
@@ -112,7 +112,7 @@
 %-----------------------------------------------------------------------------%
 
 :- pred add_context_to_constr_termination_info(
-    maybe(pragma_termination_info)::in, prog_context::in,   
+    maybe(pragma_termination_info)::in, prog_context::in,
     maybe(constr_termination_info)::out) is det.
 
 %------------------------------------------------------------------------------%
@@ -121,7 +121,7 @@
     % var_substitution.  Returns the constraints with the specified
     % substitutions made.
     %
-:- func substitute_size_vars(constraints, map(size_var, size_var)) 
+:- func substitute_size_vars(constraints, map(size_var, size_var))
     = constraints.
 
 %------------------------------------------------------------------------------%
@@ -131,22 +131,22 @@
 % In order to use these the option `--debug-term' must be set.
 
     % Call the specified predicate.
-    % 
+    %
 :- pred maybe_write_trace(pred(io, io), io, io).
 :- mode maybe_write_trace(pred(di, uo) is det, di, uo) is det.
 
     % As above but if the boolean argument is `yes', print a newline
     % to stdout before flushing the output.
-    % 
+    %
 :- pred maybe_write_trace(pred(io, io), bool, io, io).
 :- mode maybe_write_trace(pred(di, uo) is det, in, di, uo) is det.
 
     % Write the given string to stdout.
-    % 
+    %
 :- pred maybe_write_string(string::in, io::di, io::uo) is det.
 
     % Write a newline to stdout.
-    % 
+    %
 :- pred maybe_write_nl(io::di, io::uo) is det.
 
 :- pred maybe_write_scc_procs(list(pred_proc_id)::in, module_info::in,
@@ -191,9 +191,6 @@
 :- pred change_procs_constr_arg_size_info(list(proc_id)::in, bool::in,
     constr_arg_size_info::in, proc_table::in, proc_table::out) is det.
 
-:- pred all_args_input_or_zero_size(module_info::in, pred_info::in,
-    proc_info::in) is semidet.
-
 %------------------------------------------------------------------------------%
 %------------------------------------------------------------------------------%
 
@@ -201,17 +198,17 @@
 
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
-:- import_module hlds.hlds_goal. 
-:- import_module hlds.hlds_module. 
+:- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
-:- import_module hlds.hlds_pred. 
-:- import_module hlds.quantification. 
+:- import_module hlds.hlds_pred.
+:- import_module hlds.quantification.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.rat.
 :- import_module parse_tree.mercury_to_mercury.
-:- import_module parse_tree.prog_type. 
+:- import_module parse_tree.prog_type.
 :- import_module transform_hlds.term_constr_errors.
 :- import_module transform_hlds.term_norm.
 
@@ -255,7 +252,7 @@ make_size_var_map(ProgVars, SizeVarset, SizeVarMap) :-
     make_size_var_map(ProgVars, varset.init, SizeVarset, SizeVarMap).
 
 make_size_var_map(ProgVars, !SizeVarset, SizeVarMap) :-
-    list.foldl2(make_size_var_map_2, ProgVars, 
+    list.foldl2(make_size_var_map_2, ProgVars,
         map.init, SizeVarMap, !SizeVarset).
 
 :- pred make_size_var_map_2(prog_var::in, size_var_map::in, size_var_map::out,
@@ -269,7 +266,7 @@ prog_vars_to_size_vars(SizeVarMap, Vars)
     = list.map(prog_var_to_size_var(SizeVarMap), Vars).
 
 prog_var_to_size_var(SizeVarMap, Var) = SizeVar :-
-    ( if    map.search(SizeVarMap, Var, SizeVar0) 
+    ( if    map.search(SizeVarMap, Var, SizeVar0)
       then  SizeVar = SizeVar0
       else  unexpected(this_file,
             "prog_var_to_size_var/2: prog_var not in size_var_map.")
@@ -281,7 +278,7 @@ find_zero_size_vars(ModuleInfo, SizeVarMap, VarTypes) = Zeros :-
         ProgVars),
     %
     % Build zeros from corresponding size_vars.
-    %   
+    %
     ZerosList = prog_vars_to_size_vars(SizeVarMap, ZeroProgVars),
     Zeros = set.from_list(ZerosList).
 
@@ -291,7 +288,7 @@ find_zero_size_vars(ModuleInfo, SizeVarMap, VarTypes) = Zeros :-
 is_zero_size_prog_var(ModuleInfo, VarTypes, Var) :-
     Type = VarTypes ^ det_elem(Var),
     (
-        term_norm.zero_size_type(Type, ModuleInfo)
+        term_norm.zero_size_type(ModuleInfo, Type)
     ;
         % We don't include dummy types in the constraints - they won't tell us
         % anything useful.
@@ -299,7 +296,7 @@ is_zero_size_prog_var(ModuleInfo, VarTypes, Var) :-
     ).
 
 add_context_to_constr_termination_info(no, _, no).
-add_context_to_constr_termination_info(yes(cannot_loop(_)), _, 
+add_context_to_constr_termination_info(yes(cannot_loop(_)), _,
         yes(cannot_loop(import_supplied))).
 add_context_to_constr_termination_info(yes(can_loop(_)), Context,
         yes(can_loop([Context - imported_pred]))).
@@ -335,17 +332,17 @@ create_nonneg_constraints_2(SizeVarMap, Zeros, NonNegs) :-
 create_var_substitution(Args, HeadVars) = SubstMap :-
     create_var_substitution_2(Args, HeadVars, map.init, SubstMap).
 
-:- pred create_var_substitution_2(size_vars::in, size_vars::in, 
+:- pred create_var_substitution_2(size_vars::in, size_vars::in,
     var_substitution::in, var_substitution::out) is det.
 
 create_var_substitution_2([], [], !Subst).
-create_var_substitution_2([_|_], [], _, _) :- 
+create_var_substitution_2([_|_], [], _, _) :-
     unexpected(this_file, "compose_bijections/5: unmatched lists.").
-create_var_substitution_2([], [_|_], _, _) :- 
-    unexpected(this_file, "compose_bijections/5: unmatched lists."). 
+create_var_substitution_2([], [_|_], _, _) :-
+    unexpected(this_file, "compose_bijections/5: unmatched lists.").
 create_var_substitution_2([Arg | Args], [HeadVar | HeadVars],  !Subst) :-
     svmap.det_insert(HeadVar, Arg, !Subst),
-    create_var_substitution_2(Args, HeadVars, !Subst). 
+    create_var_substitution_2(Args, HeadVars, !Subst).
 
 make_arg_constraints([], _) = [].
 make_arg_constraints([Var | Vars], Zeros) = Constraints :-
@@ -389,7 +386,7 @@ maybe_write_string(String, !IO) :-
         Debug = no
     ).
 
-maybe_write_scc_procs(SCC, ModuleInfo, _, !IO) :- 
+maybe_write_scc_procs(SCC, ModuleInfo, _, !IO) :-
     write_scc_procs_2(SCC, ModuleInfo, !IO),
     io.nl(!IO).
 
@@ -397,13 +394,13 @@ maybe_write_scc_procs(SCC, ModuleInfo, _, !IO) :-
     io::di, io::uo) is det.
 
 write_scc_procs_2([], _, !IO).
-write_scc_procs_2([PPId | PPIds], ModuleInfo, !IO) :- 
+write_scc_procs_2([PPId | PPIds], ModuleInfo, !IO) :-
     io.write_char('\t', !IO),
     hlds_out.write_pred_proc_id(ModuleInfo, PPId, !IO),
     io.nl(!IO),
     write_scc_procs_2(PPIds, ModuleInfo, !IO).
 
-maybe_write_proc_name(PPId, String, ModuleInfo, _, !IO) :- 
+maybe_write_proc_name(PPId, String, ModuleInfo, _, !IO) :-
     io.write_string(String, !IO),
     hlds_out.write_pred_proc_id(ModuleInfo, PPId, !IO),
     io.nl(!IO).
@@ -422,11 +419,11 @@ write_size_vars(Varset, Vars, !IO) :-
 dump_size_vars(Vars, Varset, !IO) :-
     dump_size_varset_2(Vars, Varset, !IO).
 
-dump_size_varset(Varset, !IO) :- 
+dump_size_varset(Varset, !IO) :-
     Vars = varset.vars(Varset),
     dump_size_varset_2(Vars, Varset, !IO).
 
-:- pred dump_size_varset_2(size_vars::in, size_varset::in, io::di, io::uo) 
+:- pred dump_size_varset_2(size_vars::in, size_varset::in, io::di, io::uo)
     is det.
 
 dump_size_varset_2([], _, !IO).
@@ -439,8 +436,7 @@ dump_size_varset_2([Var | Vars], Varset, !IO) :-
 %------------------------------------------------------------------------------%
 
 update_arg_size_info(PPID, Polyhedron, !ModuleInfo) :-
-    set_pred_proc_ids_constr_arg_size_info([PPID], Polyhedron,
-        !ModuleInfo). 
+    set_pred_proc_ids_constr_arg_size_info([PPID], Polyhedron, !ModuleInfo).
 
 %------------------------------------------------------------------------------%
 
@@ -449,7 +445,11 @@ change_procs_constr_termination_info([ProcId | ProcIds], Override, Termination,
         !ProcTable) :-
     ProcInfo0 = !.ProcTable ^ det_elem(ProcId),
     proc_info_get_termination2_info(ProcInfo0, TermInfo0),
-    ( (Override = yes ; TermInfo0 ^ term_status = no) ->
+    (
+        ( Override = yes
+        ; TermInfo0 ^ term_status = no
+        )
+    ->
         TermInfo = TermInfo0 ^ term_status := yes(Termination),
         proc_info_set_termination2_info(TermInfo, ProcInfo0, ProcInfo),
         svmap.det_update(ProcId, ProcInfo, !ProcTable)
@@ -464,38 +464,18 @@ change_procs_constr_arg_size_info([ProcId | ProcIds], Override, ArgSize,
         !ProcTable) :-
     ProcInfo0 = !.ProcTable ^ det_elem(ProcId),
     proc_info_get_termination2_info(ProcInfo0, TermInfo0),
-    ( (Override = yes ; TermInfo0 ^ success_constrs = no) ->
+    (
+        ( Override = yes
+        ; TermInfo0 ^ success_constrs = no
+        )
+    ->
         TermInfo = TermInfo0 ^ success_constrs := yes(ArgSize),
         proc_info_set_termination2_info(TermInfo, ProcInfo0, ProcInfo),
         svmap.det_update(ProcId, ProcInfo, !ProcTable)
     ;
         true
     ),
-    change_procs_constr_arg_size_info(ProcIds, Override, ArgSize, 
-        !ProcTable).
-
-all_args_input_or_zero_size(ModuleInfo, PredInfo, ProcInfo) :-
-    pred_info_get_arg_types(PredInfo, TypeList),
-    proc_info_get_argmodes(ProcInfo, ModeList),
-    all_args_input_or_zero_size_2(TypeList, ModeList, ModuleInfo). 
-
-:- pred all_args_input_or_zero_size_2(list(mer_type)::in, list(mer_mode)::in,
-    module_info::in) is semidet.
-
-all_args_input_or_zero_size_2([], [], _).
-all_args_input_or_zero_size_2([], [_|_], _) :- 
-    unexpected(this_file, 
-        "all_args_input_or_zero_size_2/3: unmatched lists.").
-all_args_input_or_zero_size_2([_|_], [], _) :- 
-    unexpected(this_file, 
-        "all_args_input_or_zero_size_2/3: unmatched lists.").
-all_args_input_or_zero_size_2([Type | Types], [Mode | Modes], ModuleInfo) :-
-    ( mode_util.mode_is_input(ModuleInfo, Mode) ->
-        all_args_input_or_zero_size_2(Types, Modes, ModuleInfo)
-    ;
-        term_norm.zero_size_type(Type, ModuleInfo),
-        all_args_input_or_zero_size_2(Types, Modes, ModuleInfo)
-    ).
+    change_procs_constr_arg_size_info(ProcIds, Override, ArgSize, !ProcTable).
 
 %----------------------------------------------------------------------------%
 

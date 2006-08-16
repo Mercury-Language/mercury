@@ -786,31 +786,6 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
     map.det_update(!.ProcTable, ProcId, ProcInfo, !:ProcTable),
     set_builtin_terminates(ProcIds, PredId, PredInfo, ModuleInfo, !ProcTable).
 
-:- pred all_args_input_or_zero_size(module_info::in, pred_info::in,
-    proc_info::in) is semidet.
-
-all_args_input_or_zero_size(ModuleInfo, PredInfo, ProcInfo) :-
-    pred_info_get_arg_types(PredInfo, TypeList),
-    proc_info_get_argmodes(ProcInfo, ModeList),
-    all_args_input_or_zero_size_2(TypeList, ModeList, ModuleInfo).
-
-:- pred all_args_input_or_zero_size_2(list(mer_type)::in, list(mer_mode)::in,
-    module_info::in) is semidet.
-
-all_args_input_or_zero_size_2([], [], _).
-all_args_input_or_zero_size_2([], [_|_], _) :-
-    unexpected(this_file, "all_args_input_or_size_2/3 - unmatched lists.").
-all_args_input_or_zero_size_2([_|_], [], _) :-
-    unexpected(this_file, "all_args_input_or_size_2/3 - unmatched lists.").
-all_args_input_or_zero_size_2([Type | Types], [Mode | Modes], ModuleInfo) :-
-    ( mode_is_input(ModuleInfo, Mode) ->
-        % The variable is an input variables, so its size is irrelevant.
-        all_args_input_or_zero_size_2(Types, Modes, ModuleInfo)
-    ;
-        zero_size_type(Type, ModuleInfo),
-        all_args_input_or_zero_size_2(Types, Modes, ModuleInfo)
-    ).
-
 %----------------------------------------------------------------------------%
 
     % This predicate sets the arg_size_info property of the given list of
