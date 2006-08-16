@@ -1,6 +1,6 @@
 #!/bin/sh
 #---------------------------------------------------------------------------#
-# Copyright (C) 2005 The University of Melbourne.
+# Copyright (C) 2005-2006 The University of Melbourne.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -24,6 +24,9 @@ cp boehm_gc/Mac_files/*.[ch] tmp_dir/boehm_gc/Mac_files
 cp boehm_gc/cord/*.[ch] tmp_dir/boehm_gc/cord
 cp boehm_gc/include/*.[ch] tmp_dir/boehm_gc/include
 cp boehm_gc/include/private/*.[ch] tmp_dir/boehm_gc/include/private
+cp boehm_gc/configure_atomic_ops.sh tmp_dir/boehm_gc
+cp -r boehm_gc/libatomic_ops-*[0-9] tmp_dir/boehm_gc
+rm -fr tmpdir/boehm_gc/libatomic_ops-*[0-9]/src/*.o
 mkdir tmp_dir/runtime
 mkdir tmp_dir/runtime/machdeps
 cp runtime/Mmake* tmp_dir/runtime

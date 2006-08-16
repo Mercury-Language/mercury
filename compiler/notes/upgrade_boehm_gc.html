@@ -121,10 +121,12 @@ last import of the collector.
 <P>
 Now resolve any of the conflicts.
 Bootcheck the compiler in at least asm_fast.gc and hlc.gc.
-Then use the new system to do an install and test that the installed version
-can compile some test programs.
+Then use the new system to do an install (with non-empty LIBGRADES)
+and test that the installed version can compile some test programs.
 This is because the update may have added some new files which may not be
 copied into the install directories.
+Some build scripts may also need to be updated (in particular tools/bootcheck
+and scripts/prepare_tmp_dir_*).
 </P>
 
 <P>
@@ -137,7 +139,7 @@ reflect the current version of the collector being used.
 </P>
 
 <P>
-Last update was $Date: 2005-10-03 12:53:09 $ by $Author: maclarty $@cs.mu.oz.au.
+Last update was $Date: 2006-08-16 04:54:56 $ by $Author: wangp $@cs.mu.oz.au.
 </P>
 
 </body>
