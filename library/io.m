@@ -1087,7 +1087,7 @@
 :- pred io.get_exit_status(int::out, io::di, io::uo) is det.
 :- pred io.set_exit_status(int::in, io::di, io::uo) is det.
 
-    % The io.state includes a `globals' field which is not used by the I/O
+    % The I/O state includes a `globals' field which is not used by the I/O
     % library, but can be used by the application. The globals field is
     % of type `univ' so that the application can store any data it wants there.
     % The following predicates can be used to access this global state.
@@ -1095,8 +1095,20 @@
     % Does not modify the I/O state.
     %
 :- pred io.get_globals(univ::uo, io::di, io::uo) is det.
-
 :- pred io.set_globals(univ::di, io::di, io::uo) is det.
+
+    % io.update_globals(UpdatePred, !IO).
+    % Update the `globals' field in the I/O state based upon its current
+    % value.  This is equivalent to the following:
+    %
+    %   io.get_globals(Globals0, !IO),
+    %   UpdatePred(Globals0, Globals),
+    %   io.set_globals(Globals, !IO)
+    %
+    % In parallel grades calls to io.update_globals/3 are atomic.
+    % 
+:- pred io.update_globals(pred(univ, univ)::in(pred(di, uo) is det),
+    io::di, io::uo) is det.
 
     % The following predicates provide an interface to the environment list.
     % Do not attempt to put spaces or '=' signs in the names of environment
@@ -1530,6 +1542,11 @@
 :- pragma foreign_decl("C", "
     extern MR_Word      ML_io_stream_db;
     extern MR_Word      ML_io_user_globals;
+
+    #ifdef MR_THREAD_SAFE
+        extern MercuryLock ML_io_user_globals_lock;
+    #endif
+    
     extern int          ML_next_stream_id;
     #if 0
       extern MR_Word    ML_io_ops_table;
@@ -1539,6 +1556,11 @@
 :- pragma foreign_code("C", "
     MR_Word         ML_io_stream_db;
     MR_Word         ML_io_user_globals;
+    
+    #ifdef MR_THREAD_SAFE
+        MercuryLock ML_io_user_globals_lock;
+    #endif
+    
     /* a counter used to generate unique stream ids */
     int             ML_next_stream_id;
     #if 0
@@ -4552,56 +4574,114 @@ io.may_delete_stream_info(1, !IO).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
-
-% Global state predicates.
-
+%
+% Global state predicates
+%
     % XXX design flaw with regard to unique modes
     % and io.get_globals/3: the `Globals::uo' mode here is a lie.
 
+io.get_globals(Globals, !IO) :-
+    io.lock_globals(!IO),
+    io.unsafe_get_globals(Globals, !IO),
+    io.unlock_globals(!IO).
+
+io.set_globals(Globals, !IO) :-
+    io.lock_globals(!IO),
+    io.unsafe_set_globals(Globals, !IO),
+    io.unlock_globals(!IO).
+
+io.update_globals(UpdatePred, !IO) :-
+    io.lock_globals(!IO),
+    io.unsafe_get_globals(Globals0, !IO),
+    UpdatePred(Globals0, Globals),
+    io.unsafe_set_globals(Globals, !IO),
+    io.unlock_globals(!IO).
+
+:- pred io.lock_globals(io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.get_globals(Globals::uo, IOState0::di, IOState::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    io.lock_globals(IO0::di, IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
 "
-    Globals = ML_io_user_globals;
-    MR_update_io(IOState0, IOState);
+    #ifdef MR_THREAD_SAFE
+        MR_LOCK(&ML_io_user_globals_lock, \"io.lock_globals/2\");
+    #endif
+    
+    MR_update_io(IO0, IO);
 ").
 
+    % For the non-C backends.
+    %
+lock_globals(!IO).
+
+:- pred io.unlock_globals(io::di, io::uo) is det.
 :- pragma foreign_proc("C",
-    io.set_globals(Globals::di, IOState0::di, IOState::uo),
-    [will_not_call_mercury, promise_pure, tabled_for_io],
+    io.unlock_globals(IO0::di, IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io],
+"
+    #ifdef MR_THREAD_SAFE
+        MR_UNLOCK(&ML_io_user_globals_lock, \"io.unlock_globals/2\");
+    #endif
+
+    MR_update_io(IO0, IO);
+").
+
+    % For the non-C backends.
+    %
+unlock_globals(!IO).
+
+    % NOTE: io.unsafe_{get, set}_globals/3 are marked as `thread_safe' so that
+    % calling them to does not acquire the global lock.  Since calls to these
+    % predicates should be surrounded by calls to io.{lock, unlock}_globals/2
+    % this is safe.
+    % 
+:- pred io.unsafe_get_globals(univ::uo, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+    io.unsafe_get_globals(Globals::uo, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
+"
+    Globals = ML_io_user_globals;
+    MR_update_io(IO0, IO);
+").
+
+:- pred io.unsafe_set_globals(univ::di, io::di, io::uo) is det.
+:- pragma foreign_proc("C",
+    io.unsafe_set_globals(Globals::di, IO0::di, IO::uo),
+    [will_not_call_mercury, promise_pure, tabled_for_io, thread_safe],
 "
     /* XXX need to globalize the memory */
     ML_io_user_globals = Globals;
-    MR_update_io(IOState0, IOState);
+    MR_update_io(IO0, IO);
 ").
 
 :- pragma foreign_proc("C#",
-    io.get_globals(Globals::uo, _IOState0::di, _IOState::uo),
+    io.unsafe_get_globals(Globals::uo, _IOState0::di, _IOState::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Globals = ML_io_user_globals;
 ").
 
 :- pragma foreign_proc("C#",
-    io.set_globals(Globals::di, _IOState0::di, _IOState::uo),
+    io.unsafe_set_globals(Globals::di, _IOState0::di, _IOState::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     ML_io_user_globals = Globals;
 ").
 
 :- pragma foreign_proc("Java",
-    io.get_globals(Globals::uo, _IOState0::di, _IOState::uo),
+    io.unsafe_get_globals(Globals::uo, _IOState0::di, _IOState::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     Globals = ML_io_user_globals;
 ").
 
 :- pragma foreign_proc("Java",
-    io.set_globals(Globals::di, _IOState0::di, _IOState::uo),
+    io.unsafe_set_globals(Globals::di, _IOState0::di, _IOState::uo),
     [will_not_call_mercury, promise_pure, tabled_for_io],
 "
     ML_io_user_globals = Globals;
 ").
+
+%-----------------------------------------------------------------------------%
 
 io.progname_base(DefaultName, PrognameBase, !IO) :-
     io.progname(DefaultName, Progname, !IO),
@@ -5526,6 +5606,10 @@ mercury_init_io(void)
     */
     MR_file(mercury_stdin_binary) = stdin;
     MR_file(mercury_stdout_binary) = stdout;
+#endif
+
+#ifdef MR_THREAD_SAFE
+    pthread_mutex_init(&ML_io_user_globals_lock, MR_MUTEX_ATTR);
 #endif
 }
 

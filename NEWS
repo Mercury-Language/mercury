@@ -14,6 +14,10 @@ Changes to the Mercury standard library:
 * We have added list.map2_foldl3/10, list.map_corresponding_foldl/6 and
   list.map_corresponding3_foldl/7 
 
+* We have added io.update_globals/3 which allows for atomic updates to
+  the globals field in the I/O state in the presence of multiple threads.
+
+
 DETAILED LISTING
 ================
 
