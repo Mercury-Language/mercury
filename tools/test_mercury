@@ -408,8 +408,6 @@ case $HOST in
 					asm_fast.gc.decldebug	\
 					asm_fast.gc.memprof	\
 					asm_fast.gc.prof	\
-					asm_fast.gc.profdeep	\
-					asm_fast.gc.tr.profdeep	\
 					asm_fast.gc.tr		\
 					asm_fast.gc.tr.debug	\
 					asm_fast.gc.mm		\
@@ -430,7 +428,6 @@ case $HOST in
 				asm_fast.gc.tr			\
 				asm_fast.gc.debug.tr 		\
 				asm_fast.gc.prof 		\
-				asm_fast.gc.profdeep 		\
 				asm_fast.gc.tsc	 		\
 				hlc.gc 				\
 				hlc.par.gc			\
@@ -448,7 +445,6 @@ case $HOST in
 					asm_fast.gc.debug.tr	\
 					asm_fast.gc.mmsc	\
 					asm_fast.gc.mm.debug	\
-					asm_fast.gc.profdeep	\
 					hlc.gc"
 		;;
 	swordfish)
@@ -494,9 +490,9 @@ esac
 case $HOST in $ROTD_HOST)
 	CONFIG_OPTS="$CONFIG_OPTS \
 	    --enable-deep-profiler=$TOPDIR/installed_w3/cgi-bin"
-	if test "$INSTALL_LIBGRADES" != ""; then
-		INSTALL_LIBGRADES="$INSTALL_LIBGRADES asm_fast.gc.profdeep"
-	fi
+#	if test "$INSTALL_LIBGRADES" != ""; then
+#		INSTALL_LIBGRADES="$INSTALL_LIBGRADES asm_fast.gc.profdeep"
+#	fi
 	;;
 esac
 
