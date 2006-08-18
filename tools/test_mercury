@@ -472,7 +472,6 @@ case $HOST in
 					asm_fast.gc.tr			\
 					asm_fast.gc.tr.prof 		\
 					asm_fast.gc.tr.memprof 		\
-					asm_fast.gc.tr.profdeep		\
 					asm_fast.gc.tr.decldebug	\
 					hlc.gc"
 				;;
