@@ -189,7 +189,7 @@ AC_SUBST(CONFIG_LIBDIR)
 #-----------------------------------------------------------------------------#
 
 case "$host" in 
-	i386-pc-solaris2.8)	link_static_opt= ;;
+	i*86-*-solaris2.*)	link_static_opt= ;;
 	*solaris2.10)		link_static_opt= ;;
 	*powerpc*apple*darwin*) link_static_opt= ;;
 	*)			link_static_opt="--linkage static" ;;
