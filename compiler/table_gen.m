@@ -2419,10 +2419,11 @@ generate_memo_save_goal(NumberedSaveVars, TableTipVar, BlockSize,
             ModuleInfo, Context, SaveGoal),
         Goals = SavePrefixGoals ++ [SaveGoal]
     ;
+        DebugArgStr = get_debug_arg_string(!.TableInfo),
         MarkAsSucceededPredName = "table_memo_mark_as_succeeded",
         MarkAsSucceededMacroName = "MR_tbl_memo_mark_as_succeeded",
         MarkAsSucceededCode = MarkAsSucceededMacroName ++
-            "(" ++ cur_table_node_name ++ ");",
+            "(" ++ DebugArgStr ++ ", " ++ cur_table_node_name ++ ");",
         table_generate_foreign_proc(MarkAsSucceededPredName, detism_det,
             tabling_c_attributes, [TableArg], [],
             MarkAsSucceededCode, purity_impure, [],
