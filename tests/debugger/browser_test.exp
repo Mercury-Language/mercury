@@ -2,6 +2,7 @@
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
+mdb> list_context_lines 10
 mdb> break big_data
  0: + stop  interface pred browser_test.big_data/1-0 (det)
 mdb> continue

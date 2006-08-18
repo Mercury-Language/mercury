@@ -1,5 +1,6 @@
 echo on
 register --quiet
+list_context_lines 10
 break big_data
 continue
 finish
