@@ -487,8 +487,9 @@ esac
 
 	# The deep profiler needs to be included in the source distribution.
 case $HOST in $ROTD_HOST)
-	CONFIG_OPTS="$CONFIG_OPTS \
-	    --enable-deep-profiler=$TOPDIR/installed_w3/cgi-bin"
+	CONFIG_OPTS="$CONFIG_OPTS --disable-deep-porfiler"
+#	CONFIG_OPTS="$CONFIG_OPTS \
+#	    --enable-deep-profiler=$TOPDIR/installed_w3/cgi-bin"
 #	if test "$INSTALL_LIBGRADES" != ""; then
 #		INSTALL_LIBGRADES="$INSTALL_LIBGRADES asm_fast.gc.profdeep"
 #	fi
