@@ -69,6 +69,16 @@ static  void            MR_process_line_layouts(const MR_Module_File_Layout
                             MR_file_line_callback callback_func,
                             int callback_arg);
 
+static  MR_bool         MR_module_in_arena(const char *name, char **names,
+                            int num_names);
+
+static  int             MR_compare_proc_layout_by_name(const void *ptr1,
+                            const void *ptr2);
+static  int             MR_compare_type_ctor_by_name(const void *ptr1,
+                            const void *ptr2);
+static  int             MR_compare_functor_by_name(const void *ptr1,
+                            const void *ptr2);
+
 static  MR_bool         MR_parse_trailing_number(char *start, char **end,
                             int *number);
 static  void            MR_translate_double_underscores(char *str);
@@ -282,8 +292,8 @@ MR_process_line_layouts(const MR_Module_File_Layout *file_layout, int line,
 
     if (found) {
         /*
-        ** The binary search found *one* label with the given
-        ** linenumber; we now find the *first* such label.
+        ** The binary search found *one* label with the given linenumber;
+        ** we now find the *first* such label.
         */
 
         while (k > 0 && file_layout->MR_mfl_label_lineno[k - 1] == line) {
@@ -372,6 +382,24 @@ MR_dump_module_procs(FILE *fp, const char *name)
     }
 }
 
+static MR_bool
+MR_module_in_arena(const char *name, char **names, int num_names)
+{
+    int i;
+
+    if (num_names == 0) {
+        return MR_TRUE;
+    }
+
+    for (i = 0; i < num_names; i++) {
+        if (MR_streq(name, names[i])) {
+            return MR_TRUE;
+        }
+    }
+
+    return MR_FALSE;
+}
+
 #define MR_proc_compare_name(proc1, proc2)                              \
     strcmp(proc1->MR_sle_user.MR_user_name,                             \
         proc2->MR_sle_user.MR_user_name)
@@ -452,12 +480,10 @@ MR_compare_proc_layout_by_name(const void *ptr1, const void *ptr2)
 }
 
 #define MR_type_compare_name(type1, type2)                              \
-    strcmp(type1->MR_type_ctor_name,                                    \
-        type2->MR_type_ctor_name)
+    strcmp(type1->MR_type_ctor_name, type2->MR_type_ctor_name)
 
 #define MR_type_compare_module_name(type1, type2)                       \
-    strcmp(type1->MR_type_ctor_module_name,                             \
-        type2->MR_type_ctor_module_name)
+    strcmp(type1->MR_type_ctor_module_name, type2->MR_type_ctor_module_name)
 
 #define MR_type_compare_arity(type1, type2)                              \
     (type1->MR_type_ctor_arity - type2->MR_type_ctor_arity)
@@ -494,49 +520,107 @@ MR_compare_type_ctor_by_name(const void *ptr1, const void *ptr2)
     return MR_type_compare_arity(type_ctor1, type_ctor2);
 }
 
-static  MR_bool
-MR_module_in_arena(const char *name, char **names, int num_names)
+typedef struct {
+    const char  *MR_functor_name;
+    int         MR_functor_arity;
+    const char  *MR_functor_type_module;
+    const char  *MR_functor_type_name;
+    int         MR_functor_type_arity;
+} MR_FunctorTypeCtor;
+
+#define MR_functor_compare_name(functor1, functor2)                     \
+    strcmp((functor1).MR_functor_name, (functor2).MR_functor_name)
+
+#define MR_functor_same_name(functor1, functor2)                        \
+    (MR_functor_compare_name(functor1, functor2) == 0)
+
+#define MR_functor_compare_arity(functor1, functor2)                    \
+    ((functor1).MR_functor_arity - (functor2).MR_functor_arity)
+
+#define MR_functor_compare_type_module(functor1, functor2)              \
+    strcmp((functor1).MR_functor_type_module, (functor2).MR_functor_type_module)
+
+#define MR_functor_compare_type_name(functor1, functor2)                \
+    strcmp((functor1).MR_functor_type_name, (functor2).MR_functor_type_name)
+
+#define MR_functor_compare_type_arity(functor1, functor2)               \
+    ((functor1).MR_functor_type_arity - (functor2).MR_functor_type_arity)
+
+static int
+MR_compare_functor_by_name(const void *ptr1, const void *ptr2)
 {
-    int i;
+    const MR_FunctorTypeCtor    *addr1;
+    const MR_FunctorTypeCtor    *addr2;
+    int                         result;
 
-    if (num_names == 0) {
-        return MR_TRUE;
+    addr1 = (const MR_FunctorTypeCtor *) ptr1;
+    addr2 = (const MR_FunctorTypeCtor *) ptr2;
+
+    result = MR_functor_compare_name(*addr1, *addr2);
+    if (result != 0) {
+        return result;
     }
 
-    for (i = 0; i < num_names; i++) {
-        if (MR_streq(name, names[i])) {
-            return MR_TRUE;
-        }
+    result = MR_functor_compare_arity(*addr1, *addr2);
+    if (result != 0) {
+        return result;
     }
 
-    return MR_FALSE;
+    result = MR_functor_compare_type_module(*addr1, *addr2);
+    if (result != 0) {
+        return result;
+    }
+
+    result = MR_functor_compare_type_name(*addr1, *addr2);
+    if (result != 0) {
+        return result;
+    }
+
+    return MR_functor_compare_type_arity(*addr1, *addr2);
 }
 
 void
-MR_print_ambiguities(FILE *fp, char **arena_module_names,
-    int arena_num_modules)
+MR_print_ambiguities(FILE *fp, MR_bool print_procs, MR_bool print_types,
+    MR_bool print_functors, char **arena_module_names, int arena_num_modules)
 {
-    int                     module_num;
-    int                     proc_num;
-    int                     type_num;
-    int                     end_proc_num;
-    int                     end_type_num;
-    int                     num_procs;
-    int                     num_all_types;
-    int                     num_types;
-    int                     next_proc_num;
-    int                     procs_in_module;
-    const MR_Module_Layout  *module;
-    const MR_Proc_Layout    **procs;
-    const MR_Proc_Layout    *cur_proc;
-    MR_TypeCtorInfo         *type_ctors;
-    MR_TypeCtorInfo         type_ctor_info;
-    MR_Dlist                *type_ctor_list;
-    MR_Dlist                *element_ptr;
-    MR_bool                 *report;
-    int                     num_distinct;
-    int                     num_ambiguous;
-    int                     i;
+    int                         module_num;
+    int                         proc_num;
+    int                         type_num;
+    int                         functor_num;
+    int                         end_proc_num;
+    int                         end_type_num;
+    int                         end_functor_num;
+    int                         num_procs;
+    int                         num_all_types;
+    int                         num_types;
+    int                         num_functors;
+    int                         next_proc_num;
+    int                         procs_in_module;
+    const MR_Module_Layout      *module;
+    const MR_Proc_Layout        **procs;
+    const MR_Proc_Layout        *cur_proc;
+    MR_TypeCtorInfo             *type_ctors;
+    MR_TypeCtorInfo             type_ctor_info;
+    MR_FunctorTypeCtor          *functors;
+    MR_Dlist                    *type_ctor_list;
+    MR_Dlist                    *element_ptr;
+    MR_bool                     *report;
+    MR_EnumFunctorDesc          **enum_functors;
+    MR_DuFunctorDesc            **du_functors;
+    MR_MaybeResAddrFunctorDesc  *res_functors;
+    MR_NotagFunctorDesc         *notag_functor;
+    int                         num_distinct;
+    int                         num_ambiguous;
+    int                         num_ambiguous_total;
+    int                         num_ambiguous_max;
+    int                         i;
+
+    /*
+    ** We compute each data structure regardless of the settings of
+    ** print_procs, print_types and print_functors because the implementation
+    ** of one may depend on the other; e.g. we calculate how many function
+    ** symbols to reserve space for while we build the types array.
+    */
 
     num_procs = 0;
     for (module_num = 0; module_num < MR_module_info_next; module_num++) {
@@ -544,8 +628,8 @@ MR_print_ambiguities(FILE *fp, char **arena_module_names,
     }
 
     /*
-    ** num_procs is an conservative estimate of the number of user-defined
-    ** procs.
+    ** num_procs is a conservative estimate of the number of user defined
+    ** procedures.
     */
 
     procs = malloc(sizeof(const MR_Proc_Layout *) * num_procs);
@@ -581,53 +665,69 @@ MR_print_ambiguities(FILE *fp, char **arena_module_names,
     qsort(procs, num_procs, sizeof(const MR_Proc_Layout *),
         MR_compare_proc_layout_by_name);
 
-    fprintf(fp, "Ambiguous predicate and function names:\n");
-    num_ambiguous = 0;
+    if (print_procs) {
+        fprintf(fp, "Ambiguous procedure names:\n");
+        num_ambiguous = 0;
+        num_ambiguous_total = 0;
+        num_ambiguous_max = 0;
 
-    proc_num = 0;
-    while (proc_num < num_procs) {
-        end_proc_num = proc_num + 1;
-        while (end_proc_num < num_procs &&
-            MR_proc_same_name(procs[proc_num], procs[end_proc_num]))
-        {
-            end_proc_num++;
-        }
-
-        if (end_proc_num > proc_num + 1) {
-            report[proc_num] = MR_TRUE;
-            num_distinct = 1;
-
-            for (i = proc_num + 1; i < end_proc_num; i++) {
-                if (MR_proc_same_name_module_pf_arity(procs[i-1], procs[i])) {
-                    report[i] = MR_FALSE;
-                } else {
-                    report[i] = MR_TRUE;
-                    num_distinct++;
-                }
+        proc_num = 0;
+        while (proc_num < num_procs) {
+            end_proc_num = proc_num + 1;
+            while (end_proc_num < num_procs &&
+                MR_proc_same_name(procs[proc_num], procs[end_proc_num]))
+            {
+                end_proc_num++;
             }
 
-            if (num_distinct > 1) {
-                num_ambiguous++;
-                fprintf(fp, "\n");
+            if (end_proc_num > proc_num + 1) {
+                report[proc_num] = MR_TRUE;
+                num_distinct = 1;
 
-                for (i = proc_num; i < end_proc_num; i++) {
-                    if (report[i]) {
-                        fprintf(fp, "%s %s.%s/%d\n",
-                            (procs[i]->MR_sle_user.MR_user_pred_or_func
-                                == MR_PREDICATE ? "pred" : "func"),
-                            procs[i]->MR_sle_user.MR_user_decl_module,
-                            procs[i]->MR_sle_user.MR_user_name,
-                            MR_sle_user_adjusted_arity(procs[i]));
+                for (i = proc_num + 1; i < end_proc_num; i++) {
+                    if (MR_proc_same_name_module_pf_arity(procs[i-1],
+                        procs[i]))
+                    {
+                        report[i] = MR_FALSE;
+                    } else {
+                        report[i] = MR_TRUE;
+                        num_distinct++;
+                    }
+                }
+
+                if (num_distinct > 1) {
+                    num_ambiguous++;
+                    num_ambiguous_total += (end_proc_num - proc_num);
+                    if ((end_proc_num - proc_num) > num_ambiguous_max) {
+                        num_ambiguous_max = end_proc_num - proc_num;
+                    }
+
+                    fprintf(fp, "\n");
+                    for (i = proc_num; i < end_proc_num; i++) {
+                        if (report[i]) {
+                            fprintf(fp, "%s %s.%s/%d\n",
+                                (procs[i]->MR_sle_user.MR_user_pred_or_func
+                                    == MR_PREDICATE ? "pred" : "func"),
+                                procs[i]->MR_sle_user.MR_user_decl_module,
+                                procs[i]->MR_sle_user.MR_user_name,
+                                MR_sle_user_adjusted_arity(procs[i]));
+                        }
                     }
                 }
             }
+
+            proc_num = end_proc_num;
         }
 
-        proc_num = end_proc_num;
-    }
-
-    if (num_ambiguous == 0) {
-        fprintf(fp, "\nNone\n");
+        if (num_ambiguous == 0) {
+            fprintf(fp, "\nNone\n\n");
+        } else {
+            fprintf(fp, "\nTotal: %d names used %d times, ",
+                num_ambiguous, num_ambiguous_total);
+            fprintf(fp, "maximum %d, average: %.2f\n\n",
+                num_ambiguous_max,
+                (float) num_ambiguous_total / (float) num_ambiguous);
+        }
     }
 
     free(procs);
@@ -640,6 +740,7 @@ MR_print_ambiguities(FILE *fp, char **arena_module_names,
         return;
     }
 
+    num_functors = 0;
     type_num = 0;
     MR_for_dlist (element_ptr, type_ctor_list) {
         type_ctor_info = (MR_TypeCtorInfo) MR_dlist_data(element_ptr);
@@ -647,6 +748,37 @@ MR_print_ambiguities(FILE *fp, char **arena_module_names,
             arena_module_names, arena_num_modules))
         {
             type_ctors[type_num] = type_ctor_info;
+
+            switch (MR_type_ctor_rep(type_ctor_info)) {
+                case MR_TYPECTOR_REP_ENUM:
+                case MR_TYPECTOR_REP_ENUM_USEREQ:
+                case MR_TYPECTOR_REP_DUMMY:
+                case MR_TYPECTOR_REP_DU:
+                case MR_TYPECTOR_REP_DU_USEREQ:
+                case MR_TYPECTOR_REP_RESERVED_ADDR:
+                case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
+                case MR_TYPECTOR_REP_NOTAG:
+                case MR_TYPECTOR_REP_NOTAG_USEREQ:
+                case MR_TYPECTOR_REP_NOTAG_GROUND:
+                case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
+                    num_functors += type_ctor_info->MR_type_ctor_num_functors;
+#if 0
+                    /* for debugging only */
+                    fprintf(fp,
+                        "TYPE %s.%s/%" MR_INTEGER_LENGTH_MODIFIER "d\t%s\t%d\n",
+                        type_ctors[type_num]->MR_type_ctor_module_name,
+                        type_ctors[type_num]->MR_type_ctor_name,
+                        type_ctors[type_num]->MR_type_ctor_arity,
+                        MR_ctor_rep_name[
+                            MR_type_ctor_rep(type_ctors[type_num])],
+                        num_functors);
+#endif
+                    break;
+
+                default:
+                    break;
+            }
+
             type_num++;
         }
     }
@@ -655,38 +787,217 @@ MR_print_ambiguities(FILE *fp, char **arena_module_names,
     qsort(type_ctors, num_types, sizeof(MR_TypeCtorInfo),
         MR_compare_type_ctor_by_name);
 
-    fprintf(fp, "\nAmbiguous type names:\n");
-    num_ambiguous = 0;
+    if (print_types) {
+        fprintf(fp, "Ambiguous type names:\n");
+        num_ambiguous = 0;
+        num_ambiguous_total = 0;
+        num_ambiguous_max = 0;
 
-    type_num = 0;
-    while (type_num < num_types) {
-        end_type_num = type_num + 1;
-        while (end_type_num < num_types &&
-            MR_type_same_name(type_ctors[type_num], type_ctors[end_type_num]))
-        {
-            end_type_num++;
-        }
-
-        if (end_type_num > type_num + 1) {
-            num_ambiguous++;
-            fprintf(fp, "\n");
-
-            for (i = type_num; i < end_type_num; i++) {
-                fprintf(fp, "%s.%s/%" MR_INTEGER_LENGTH_MODIFIER "d\n",
-                    type_ctors[i]->MR_type_ctor_module_name,
-                    type_ctors[i]->MR_type_ctor_name,
-                    type_ctors[i]->MR_type_ctor_arity);
+        type_num = 0;
+        while (type_num < num_types) {
+            end_type_num = type_num + 1;
+            while (end_type_num < num_types &&
+                MR_type_same_name(type_ctors[type_num],
+                    type_ctors[end_type_num]))
+            {
+                end_type_num++;
             }
+
+            if (end_type_num > type_num + 1) {
+                num_ambiguous++;
+                num_ambiguous_total += (end_type_num - type_num);
+                if ((end_type_num - type_num) > num_ambiguous_max) {
+                    num_ambiguous_max = end_type_num - type_num;
+                }
+
+                fprintf(fp, "\n");
+
+                for (i = type_num; i < end_type_num; i++) {
+                    fprintf(fp, "%s.%s/%" MR_INTEGER_LENGTH_MODIFIER "d\n",
+                        type_ctors[i]->MR_type_ctor_module_name,
+                        type_ctors[i]->MR_type_ctor_name,
+                        type_ctors[i]->MR_type_ctor_arity);
+                }
+            }
+
+            type_num = end_type_num;
         }
 
-        type_num = end_type_num;
+        if (num_ambiguous == 0) {
+            fprintf(fp, "\nNone\n\n");
+        } else {
+            fprintf(fp, "\nTotal: %d names used %d times, ",
+                num_ambiguous, num_ambiguous_total);
+            fprintf(fp, "maximum %d, average: %.2f\n\n",
+                num_ambiguous_max,
+                (float) num_ambiguous_total / (float) num_ambiguous);
+        }
     }
 
-    if (num_ambiguous == 0) {
-        fprintf(fp, "\nNone\n");
+    functors = malloc(sizeof(MR_FunctorTypeCtor) * num_functors);
+    if (functors == NULL) {
+        fprintf(MR_mdb_err, "Error: could not allocate sufficient memory\n");
+        return;
+    }
+
+    functor_num = 0;
+    for (type_num = 0; type_num < num_types; type_num++) {
+        type_ctor_info = type_ctors[type_num];
+
+#if 0
+        /* for debugging only */
+        fprintf(fp, "FUNCTYPE %s.%s/%" MR_INTEGER_LENGTH_MODIFIER "d\n",
+            type_ctors[type_num]->MR_type_ctor_module_name,
+            type_ctors[type_num]->MR_type_ctor_name,
+            type_ctors[type_num]->MR_type_ctor_arity);
+#endif
+
+        switch (MR_type_ctor_rep(type_ctor_info)) {
+            case MR_TYPECTOR_REP_ENUM:
+            case MR_TYPECTOR_REP_ENUM_USEREQ:
+            case MR_TYPECTOR_REP_DUMMY:
+                enum_functors =
+                    MR_type_ctor_functors(type_ctor_info).MR_functors_enum;
+                i = 0;
+                while (i < type_ctor_info->MR_type_ctor_num_functors) {
+                    functors[functor_num].MR_functor_name =
+                        enum_functors[i]->MR_enum_functor_name;
+                    functors[functor_num].MR_functor_arity = 0;
+                    functors[functor_num].MR_functor_type_module =
+                        type_ctor_info->MR_type_ctor_module_name;
+                    functors[functor_num].MR_functor_type_name =
+                        type_ctor_info->MR_type_ctor_name;
+                    functors[functor_num].MR_functor_type_arity =
+                        type_ctor_info->MR_type_ctor_arity;
+                    functor_num++;
+                    i++;
+                }
+                break;
+
+            case MR_TYPECTOR_REP_DU:
+            case MR_TYPECTOR_REP_DU_USEREQ:
+                du_functors =
+                    MR_type_ctor_functors(type_ctor_info).MR_functors_du;
+                i = 0;
+                while (i < type_ctor_info->MR_type_ctor_num_functors) {
+                    functors[functor_num].MR_functor_name =
+                        du_functors[i]->MR_du_functor_name;
+                    functors[functor_num].MR_functor_arity =
+                        du_functors[i]->MR_du_functor_orig_arity;
+                    functors[functor_num].MR_functor_type_module =
+                        type_ctor_info->MR_type_ctor_module_name;
+                    functors[functor_num].MR_functor_type_name =
+                        type_ctor_info->MR_type_ctor_name;
+                    functors[functor_num].MR_functor_type_arity =
+                        type_ctor_info->MR_type_ctor_arity;
+                    functor_num++;
+                    i++;
+                }
+                break;
+
+            case MR_TYPECTOR_REP_RESERVED_ADDR:
+            case MR_TYPECTOR_REP_RESERVED_ADDR_USEREQ:
+                res_functors =
+                    MR_type_ctor_functors(type_ctor_info).MR_functors_res;
+                i = 0;
+                while (i < type_ctor_info->MR_type_ctor_num_functors) {
+                    functors[functor_num].MR_functor_name =
+                        res_functors[i].MR_maybe_res_name;
+                    functors[functor_num].MR_functor_arity =
+                        res_functors[i].MR_maybe_res_arity;
+                    functors[functor_num].MR_functor_type_module =
+                        type_ctor_info->MR_type_ctor_module_name;
+                    functors[functor_num].MR_functor_type_name =
+                        type_ctor_info->MR_type_ctor_name;
+                    functors[functor_num].MR_functor_type_arity =
+                        type_ctor_info->MR_type_ctor_arity;
+                    functor_num++;
+                    i++;
+                }
+                break;
+                break;
+
+            case MR_TYPECTOR_REP_NOTAG:
+            case MR_TYPECTOR_REP_NOTAG_USEREQ:
+            case MR_TYPECTOR_REP_NOTAG_GROUND:
+            case MR_TYPECTOR_REP_NOTAG_GROUND_USEREQ:
+                notag_functor =
+                    MR_type_ctor_functors(type_ctor_info).MR_functors_notag;
+                functors[functor_num].MR_functor_name =
+                    notag_functor->MR_notag_functor_name;
+                functors[functor_num].MR_functor_arity = 1;
+                functors[functor_num].MR_functor_type_module =
+                    type_ctor_info->MR_type_ctor_module_name;
+                functors[functor_num].MR_functor_type_name =
+                    type_ctor_info->MR_type_ctor_name;
+                functors[functor_num].MR_functor_type_arity =
+                    type_ctor_info->MR_type_ctor_arity;
+                functor_num++;
+                break;
+
+            default:
+                /*
+                ** Other kinds of types do not have user-defined function
+                ** symbols.
+                */
+                break;
+        }
+    }
+
+    qsort(functors, num_functors, sizeof(MR_FunctorTypeCtor),
+        MR_compare_functor_by_name);
+
+    if (print_functors) {
+        fprintf(fp, "Ambiguous function symbols:\n");
+        num_ambiguous = 0;
+        num_ambiguous_total = 0;
+        num_ambiguous_max = 0;
+
+        functor_num = 0;
+        while (functor_num < num_functors) {
+            end_functor_num = functor_num + 1;
+            while (end_functor_num < num_functors &&
+                MR_functor_same_name(functors[functor_num],
+                    functors[end_functor_num]))
+            {
+                end_functor_num++;
+            }
+
+            if (end_functor_num > functor_num + 1) {
+                num_ambiguous++;
+                num_ambiguous_total += (end_functor_num - functor_num);
+                if ((end_functor_num - functor_num) > num_ambiguous_max) {
+                    num_ambiguous_max = end_functor_num - functor_num;
+                }
+
+                fprintf(fp, "\n");
+                for (i = functor_num; i < end_functor_num; i++) {
+                    fprintf(fp, "%s/%d ",
+                        functors[i].MR_functor_name,
+                        functors[i].MR_functor_arity);
+                    fprintf(fp, "%s.%s/%" MR_INTEGER_LENGTH_MODIFIER "d\n",
+                        functors[i].MR_functor_type_module,
+                        functors[i].MR_functor_type_name,
+                        functors[i].MR_functor_type_arity);
+                }
+            }
+
+            functor_num = end_functor_num;
+        }
+
+        if (num_ambiguous == 0) {
+            fprintf(fp, "\nNone\n\n");
+        } else {
+            fprintf(fp, "\nTotal: %d names used %d times, ",
+                num_ambiguous, num_ambiguous_total);
+            fprintf(fp, "maximum %d, average: %.2f\n\n",
+                num_ambiguous_max,
+                (float) num_ambiguous_total / (float) num_ambiguous);
+        }
     }
 
     free(type_ctors);
+    free(functors);
 }
 
 MR_bool
@@ -1390,7 +1701,7 @@ MR_print_proc_id_and_nl(FILE *fp, const MR_Proc_Layout *entry_layout)
     fprintf(fp, "\n");
 }
 
-MR_ConstString	
+MR_ConstString
 MR_get_proc_decl_module(const MR_Proc_Layout *proc)
 {
     if (MR_PROC_LAYOUT_IS_UCI(proc)) {

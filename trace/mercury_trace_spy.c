@@ -639,7 +639,8 @@ MR_add_line_spy_point_callback(const MR_Label_Layout *label, int spy_point_num)
 static int
 MR_compare_spied_labels(const void *l1, const void *l2)
 {
-    const MR_Spied_Label    *label1, *label2;
+    const MR_Spied_Label    *label1;
+    const MR_Spied_Label    *label2;
 
     label1 = (const MR_Spied_Label *) l1;
     label2 = (const MR_Spied_Label *) l2;

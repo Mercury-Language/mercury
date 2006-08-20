@@ -14,6 +14,11 @@
     --->    t1
     ;       t2.
 
+:- type t2
+    --->    t1(int)
+    ;       t1(int, float)
+    ;       u1(t2).
+
 :- type t(T)
     --->    u1
     ;       u2(T).

@@ -1,19 +1,35 @@
-      E1:     C1 CALL pred ambiguity.main/2-0 (det) ambiguity.m:21
+      E1:     C1 CALL pred ambiguity.main/2-0 (det) ambiguity.m:26
 mdb> echo on
 Command echo enabled.
 mdb> register --quiet
 mdb> ambiguity ambiguity
-Ambiguous predicate and function names:
+Ambiguous procedure names:
 
 pred ambiguity.p/2
 func ambiguity.p/1
 func ambiguity.p/2
 func ambiguity.p/3
 
+Total: 1 names used 4 times, maximum 4, average: 4.00
+
 Ambiguous type names:
 
 ambiguity.t/0
 ambiguity.t/1
+
+Total: 1 names used 2 times, maximum 2, average: 2.00
+
+Ambiguous function symbols:
+
+t1/0 ambiguity.t/0
+t1/1 ambiguity.t2/0
+t1/2 ambiguity.t2/0
+
+u1/0 ambiguity.t/1
+u1/1 ambiguity.t2/0
+
+Total: 2 names used 5 times, maximum 3, average: 2.50
+
 mdb> continue
 2.50000000000000
 t1

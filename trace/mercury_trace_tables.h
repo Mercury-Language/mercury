@@ -74,17 +74,19 @@ extern	void		MR_dump_module_list(FILE *fp);
 extern	void		MR_dump_module_procs(FILE *fp, const char *name);
 
 /*
-** Print the names of ambiguous predicates, functions and types. The ambiguity
-** may exist because a predicate, function or type with that name is defined
+** Print the names of ambiguous procedures (predicates and functions), types,
+** and/or function symbols. The ambiguity may exist because a predicate,
+** function, type or (constructor) function symbol with that name is defined
 ** with more than one arity or in more than one module.
 **
 ** If num_modules is positive, then the search for ambiguities should consider
-** only predicates, functions and types in the modules whose names appear in
-** module_names[0] .. module_names[num_modules-1].
+** only predicates, functions, types and function symbols in the modules whose
+** names appear in module_names[0] .. module_names[num_modules-1].
 */
 
-extern	void		MR_print_ambiguities(FILE *fp, char **module_names,
-				int num_modules);
+extern	void		MR_print_ambiguities(FILE *fp, MR_bool print_procs,
+				MR_bool print_types, MR_bool print_functors,
+				char **module_names, int num_modules);
 
 /*
 ** A procedure specification has several components, the meaning of which

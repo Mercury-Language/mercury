@@ -2,7 +2,7 @@
 ** vim:ts=4 sw=4 expandtab
 */
 /*
-** Copyright (C) 2002-2005 The University of Melbourne.
+** Copyright (C) 2002-2006 The University of Melbourne.
 ** This file may only be copied under the terms of the GNU Library General
 ** Public License - see the file COPYING.LIB in the Mercury distribution.
 */
@@ -148,7 +148,7 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
         case MR_TYPECTOR_REP_RESERVED_ADDR:
         {
             MR_ReservedAddrTypeLayout ra_layout;
-        
+
             ra_layout = MR_type_ctor_layout(type_ctor_info).
                 MR_layout_reserved_addr;
             data = *term_ptr;
@@ -176,7 +176,7 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
                     return MR_FALSE;
                 }
             }
-            
+
             /*
             ** Otherwise, it is not one of the reserved addresses,
             ** so handle it like a normal DU type.
@@ -184,7 +184,6 @@ MR_named_arg_num(MR_TypeInfo type_info, MR_Word *term_ptr,
             du_type_layout = ra_layout->MR_ra_other_functors;
             goto du_type;
         }
-
 
         case MR_TYPECTOR_REP_DU_USEREQ:
         case MR_TYPECTOR_REP_DU:
