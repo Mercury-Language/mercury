@@ -1163,9 +1163,9 @@ eliminate_var_in_atomic_stmt(delete_object(Lval0), delete_object(Lval),
         !VarElimInfo) :-
     eliminate_var_in_lval(Lval0, Lval, !VarElimInfo).
 eliminate_var_in_atomic_stmt(new_object(Target0, MaybeTag, HasSecTag, Type,
-            MaybeSize, MaybeCtorName, Args0, ArgTypes),
+            MaybeSize, MaybeCtorName, Args0, ArgTypes, MayUseAtomic),
         new_object(Target, MaybeTag, HasSecTag, Type,
-            MaybeSize, MaybeCtorName, Args, ArgTypes),
+            MaybeSize, MaybeCtorName, Args, ArgTypes, MayUseAtomic),
         !VarElimInfo) :-
     eliminate_var_in_lval(Target0, Target, !VarElimInfo),
     eliminate_var_in_rvals(Args0, Args, !VarElimInfo).

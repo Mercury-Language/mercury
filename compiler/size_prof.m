@@ -609,8 +609,8 @@ process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId, Args, ArgModes,
         unexpected(this_file,
             "size_prof.process_construct: constructing term of variable type")
     ),
-    type_ctor_module(!.Info ^ module_info, VarTypeCtor, VarTypeCtorModule),
-    type_ctor_name(!.Info ^ module_info, VarTypeCtor, VarTypeCtorName),
+    VarTypeCtorModule = type_ctor_module(!.Info ^ module_info, VarTypeCtor),
+    VarTypeCtorName = type_ctor_name(!.Info ^ module_info, VarTypeCtor),
     (
         ctor_is_type_info_related(VarTypeCtorModule, VarTypeCtorName)
     ->
@@ -672,8 +672,8 @@ process_deconstruct(Var, ConsId, Args, ArgModes, Goal0, GoalExpr, !Info) :-
         unexpected(this_file,
             "process_deconstruct: deconstructing term of variable type")
     ),
-    type_ctor_module(!.Info ^ module_info, VarTypeCtor, VarTypeCtorModule),
-    type_ctor_name(!.Info ^ module_info, VarTypeCtor, VarTypeCtorName),
+    VarTypeCtorModule = type_ctor_module(!.Info ^ module_info, VarTypeCtor),
+    VarTypeCtorName = type_ctor_name(!.Info ^ module_info, VarTypeCtor),
     (
         ctor_is_type_info_related(VarTypeCtorModule, VarTypeCtorName)
     ->

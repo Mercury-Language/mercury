@@ -419,17 +419,19 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         code_info.get_module_info(!.CI, ModuleInfo),
         var_types(!.CI, Args, ArgTypes),
         generate_cons_args(Args, ArgTypes, Modes, 0, 1, TakeAddr, ModuleInfo,
-            Rvals, FieldAddrs),
-        construct_cell(Var, Ptag, Rvals, MaybeSize, FieldAddrs, Code, !CI)
+            MaybeRvals, FieldAddrs, MayUseAtomic),
+        construct_cell(Var, Ptag, MaybeRvals, MaybeSize, FieldAddrs,
+            MayUseAtomic, Code, !CI)
     ;
         ConsTag = shared_remote_tag(Ptag, Sectag),
         code_info.get_module_info(!.CI, ModuleInfo),
         var_types(!.CI, Args, ArgTypes),
         generate_cons_args(Args, ArgTypes, Modes, 1, 1, TakeAddr, ModuleInfo,
-            Rvals0, FieldAddrs),
+            MaybeRvals0, FieldAddrs, MayUseAtomic),
         % The first field holds the secondary tag.
-        Rvals = [yes(const(int_const(Sectag))) | Rvals0],
-        construct_cell(Var, Ptag, Rvals, MaybeSize, FieldAddrs, Code, !CI)
+        MaybeRvals = [yes(const(int_const(Sectag))) | MaybeRvals0],
+        construct_cell(Var, Ptag, MaybeRvals, MaybeSize, FieldAddrs,
+            MayUseAtomic, Code, !CI)
     ;
         ConsTag = shared_local_tag(Bits1, Num1),
         code_info.assign_const_to_var(Var,
@@ -601,13 +603,15 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
             NumNewArgsPlusThree_Rval = const(int_const(NumNewArgsPlusThree)),
             code_info.produce_variable(CallPred, OldClosureCode,
                 OldClosure, !CI),
+            % The new closure contains a pointer to the old closure.
+            NewClosureMayUseAtomic = may_not_use_atomic_alloc,
             NewClosureCode = node([
                 comment("build new closure from old closure") - "",
                 assign(NumOldArgs, lval(field(yes(0), OldClosure, Two)))
                     - "get number of arguments",
                 incr_hp(NewClosure, no, no,
                     binop(int_add, lval(NumOldArgs), NumNewArgsPlusThree_Rval),
-                        "closure")
+                    "closure", NewClosureMayUseAtomic)
                     - "allocate new closure",
                 assign(field(yes(0), lval(NewClosure), Zero),
                     lval(field(yes(0), OldClosure, Zero)))
@@ -652,7 +656,7 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
         CodeAddr = code_info.make_entry_label(!.CI, ModuleInfo,
             PredId, ProcId, no),
         code_util.extract_proc_label_from_code_addr(CodeAddr, ProcLabel),
-        CallArgsRval = const(code_addr_const(CodeAddr)),
+        CodeAddrRval = const(code_addr_const(CodeAddr)),
         continuation_info.generate_closure_layout( ModuleInfo, PredId, ProcId,
             ClosureInfo),
         module_info_get_name(ModuleInfo, ModuleName),
@@ -678,15 +682,18 @@ generate_closure(PredId, ProcId, EvalMethod, Var, Args, GoalInfo, Code, !CI) :-
         ClosureLayoutRval = const(data_addr_const(ClosureDataAddr, no)),
         list.length(Args, NumArgs),
         proc_info_arg_info(ProcInfo, ArgInfo),
-        generate_pred_args(Args, ArgInfo, PredArgs),
+        VarTypes = get_var_types(!.CI),
+        MayUseAtomic0 = initial_may_use_atomic(ModuleInfo),
+        generate_pred_args(ModuleInfo, VarTypes, Args, ArgInfo, PredArgs,
+            MayUseAtomic0, MayUseAtomic),
         Vector = [
             yes(ClosureLayoutRval),
-            yes(CallArgsRval),
+            yes(CodeAddrRval),
             yes(const(int_const(NumArgs)))
             | PredArgs
         ],
         code_info.assign_cell_to_var(Var, no, 0, Vector, no, "closure",
-            Code, !CI)
+            MayUseAtomic, Code, !CI)
     ).
 
 :- pred generate_extra_closure_args(list(prog_var)::in, lval::in,
@@ -706,34 +713,39 @@ generate_extra_closure_args([Var | Vars], LoopCounter, NewClosure, Code,
     generate_extra_closure_args(Vars, LoopCounter, NewClosure, Code2, !CI),
     Code = tree_list([Code0, Code1, Code2]).
 
-:- pred generate_pred_args(list(prog_var)::in, list(arg_info)::in,
-    list(maybe(rval))::out) is det.
+:- pred generate_pred_args(module_info::in, vartypes::in, list(prog_var)::in,
+    list(arg_info)::in, list(maybe(rval))::out,
+    may_use_atomic_alloc::in, may_use_atomic_alloc::out) is det.
 
-generate_pred_args([], _, []).
-generate_pred_args([_ | _], [], _) :-
+generate_pred_args(_, _, [], _, [], !MayUseAtomic).
+generate_pred_args(_, _, [_ | _], [], _, !MayUseAtomic) :-
     unexpected(this_file, "generate_pred_args: insufficient args").
-generate_pred_args([Var | Vars], [ArgInfo | ArgInfos],
-        [Rval | Rvals]) :-
+generate_pred_args(ModuleInfo, VarTypes, [Var | Vars], [ArgInfo | ArgInfos],
+        [Rval | Rvals], !MayUseAtomic) :-
     ArgInfo = arg_info(_, ArgMode),
     ( ArgMode = top_in ->
         Rval = yes(var(Var))
     ;
         Rval = no
     ),
-    generate_pred_args(Vars, ArgInfos, Rvals).
+    map.lookup(VarTypes, Var, Type),
+    update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic),
+    generate_pred_args(ModuleInfo, VarTypes, Vars, ArgInfos, Rvals,
+        !MayUseAtomic).
 
 :- pred generate_cons_args(list(prog_var)::in, list(mer_type)::in,
     list(uni_mode)::in, int::in, int::in, list(int)::in, module_info::in,
-    list(maybe(rval))::out, assoc_list(int, prog_var)::out) is det.
+    list(maybe(rval))::out, assoc_list(int, prog_var)::out,
+    may_use_atomic_alloc::out) is det.
 
 generate_cons_args(Vars, Types, Modes, FirstOffset, FirstArgNum, TakeAddr,
-        ModuleInfo, Args, FieldAddrs) :-
+        ModuleInfo, !:Args, !:FieldAddrs, !:MayUseAtomic) :-
+    !:MayUseAtomic = initial_may_use_atomic(ModuleInfo),
     (
         generate_cons_args_2(Vars, Types, Modes, FirstOffset, FirstArgNum,
-            TakeAddr, ModuleInfo, Args0, FieldAddrs0)
+            TakeAddr, ModuleInfo, !:Args, !:FieldAddrs, !MayUseAtomic)
     ->
-        Args = Args0,
-        FieldAddrs = FieldAddrs0
+        true
     ;
         unexpected(this_file, "generate_cons_args: length mismatch")
     ).
@@ -745,16 +757,19 @@ generate_cons_args(Vars, Types, Modes, FirstOffset, FirstArgNum, TakeAddr,
     %
 :- pred generate_cons_args_2(list(prog_var)::in, list(mer_type)::in,
     list(uni_mode)::in, int::in, int::in, list(int)::in, module_info::in,
-    list(maybe(rval))::out, assoc_list(int, prog_var)::out) is semidet.
+    list(maybe(rval))::out, assoc_list(int, prog_var)::out,
+    may_use_atomic_alloc::in, may_use_atomic_alloc::out) is semidet.
 
-generate_cons_args_2([], [], [], _, _, [], _, [], []).
+generate_cons_args_2([], [], [], _, _, [], _, [], [], !MayUseAtomic).
 generate_cons_args_2([Var | Vars], [Type | Types], [UniMode | UniModes],
         FirstOffset, CurArgNum, !.TakeAddr, ModuleInfo, [Rval | Rvals],
-        FieldAddrs) :-
+        FieldAddrs, !MayUseAtomic) :-
+    update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic),
     ( !.TakeAddr = [CurArgNum | !:TakeAddr] ->
         Rval = no,
-        generate_cons_args_2(Vars, Types, UniModes, FirstOffset,
-            CurArgNum + 1, !.TakeAddr, ModuleInfo, Rvals, FieldAddrs1),
+        !:MayUseAtomic = may_not_use_atomic_alloc,
+        generate_cons_args_2(Vars, Types, UniModes, FirstOffset, CurArgNum + 1,
+            !.TakeAddr, ModuleInfo, Rvals, FieldAddrs1, !MayUseAtomic),
         % Whereas CurArgNum starts numbering the arguments from 1, offsets
         % into fields start from zero. However, if FirstOffset = 1, then the
         % first word in the cell is the secondary tag.
@@ -768,15 +783,30 @@ generate_cons_args_2([Var | Vars], [Type | Types], [UniMode | UniModes],
         ;
             Rval = no
         ),
-        generate_cons_args_2(Vars, Types, UniModes, FirstOffset,
-            CurArgNum + 1, !.TakeAddr, ModuleInfo, Rvals, FieldAddrs)
+        generate_cons_args_2(Vars, Types, UniModes, FirstOffset, CurArgNum + 1,
+            !.TakeAddr, ModuleInfo, Rvals, FieldAddrs, !MayUseAtomic)
+    ).
+
+:- func initial_may_use_atomic(module_info) = may_use_atomic_alloc.
+
+initial_may_use_atomic(ModuleInfo) = InitMayUseAtomic :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, use_atomic_cells, UseAtomicCells),
+    (
+        UseAtomicCells = no,
+        InitMayUseAtomic = may_not_use_atomic_alloc
+    ;
+        UseAtomicCells = yes,
+        InitMayUseAtomic = may_use_atomic_alloc
     ).
 
 :- pred construct_cell(prog_var::in, tag::in, list(maybe(rval))::in,
-    maybe(term_size_value)::in, assoc_list(int, prog_var)::in, code_tree::out,
-    code_info::in, code_info::out) is det.
+    maybe(term_size_value)::in, assoc_list(int, prog_var)::in,
+    may_use_atomic_alloc::in, code_tree::out, code_info::in, code_info::out)
+    is det.
 
-construct_cell(Var, Ptag, MaybeRvals, MaybeSize, FieldAddrs, Code, !CI) :-
+construct_cell(Var, Ptag, MaybeRvals, MaybeSize, FieldAddrs, MayUseAtomic,
+        Code, !CI) :-
     VarType = code_info.variable_type(!.CI, Var),
     var_type_msg(VarType, VarTypeMsg),
     % If we're doing accurate GC, then for types which hold RTTI that
@@ -796,7 +826,7 @@ construct_cell(Var, Ptag, MaybeRvals, MaybeSize, FieldAddrs, Code, !CI) :-
         ReserveWordAtStart = no
     ),
     code_info.assign_cell_to_var(Var, ReserveWordAtStart, Ptag, MaybeRvals,
-        MaybeSize, VarTypeMsg, CellCode, !CI),
+        MaybeSize, VarTypeMsg, MayUseAtomic, CellCode, !CI),
     (
         FieldAddrs = [],
         % Optimize common case.

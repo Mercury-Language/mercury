@@ -2729,8 +2729,8 @@ init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
 
 init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorInfoVar,
         TypeCtorInfoGoal, ModuleInfo, !VarSet, !VarTypes, !RttiVarMaps) :-
-    type_util.type_ctor_module(ModuleInfo, TypeCtor, ModuleName),
-    type_util.type_ctor_name(ModuleInfo, TypeCtor, TypeName),
+    ModuleName = type_util.type_ctor_module(ModuleInfo, TypeCtor),
+    TypeName = type_util.type_ctor_name(ModuleInfo, TypeCtor),
     TypeCtor = type_ctor(_, Arity),
     ConsId = type_ctor_info_const(ModuleName, TypeName, Arity),
     TypeInfoTerm = functor(ConsId, no, []),

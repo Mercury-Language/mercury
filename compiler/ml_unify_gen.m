@@ -627,9 +627,18 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
         get_maybe_cons_id_arg_types(MaybeConsId, ArgTypes, Type,
             ModuleInfo, ConsArgTypes),
         FirstOffset = length(ExtraRvals),
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, use_atomic_cells, UseAtomicCells),
+        (
+            UseAtomicCells = yes,
+            MayUseAtomic0 = may_use_atomic_alloc
+        ;
+            UseAtomicCells = no,
+            MayUseAtomic0 = may_not_use_atomic_alloc
+        ),
         ml_gen_cons_args(ArgVars, ArgLvals, ArgTypes, ConsArgTypes, ArgModes,
             FirstOffset, 1, TakeAddr, ModuleInfo, ArgRvals0, MLDS_ArgTypes0,
-            TakeAddrInfos, !Info),
+            TakeAddrInfos, MayUseAtomic0, MayUseAtomic, !Info),
 
         % Insert the extra rvals at the start.
         ArgRvals = ExtraRvals ++ ArgRvals0,
@@ -643,7 +652,8 @@ ml_gen_new_object(MaybeConsId, Tag, HasSecTag, MaybeCtorName, Var,
         % for this term from the heap. The `new_object' statement will also
         % initialize the fields of this term with the specified arguments.
         MakeNewObject = new_object(VarLval, MaybeTag, HasSecTag, MLDS_Type,
-            yes(SizeInWordsRval), MaybeCtorName, ArgRvals, MLDS_ArgTypes),
+            yes(SizeInWordsRval), MaybeCtorName, ArgRvals, MLDS_ArgTypes,
+            MayUseAtomic),
         Stmt = atomic(MakeNewObject),
         Statement = statement(Stmt, mlds_make_context(Context)),
 
@@ -1179,19 +1189,18 @@ ml_cons_name(HLDS_ConsId, QualifiedConsId) :-
     list(mer_type)::in, list(mer_type)::in, list(uni_mode)::in,
     int::in, int::in, list(int)::in, module_info::in, list(mlds_rval)::out,
     list(mlds_type)::out, list(take_addr_info)::out,
+    may_use_atomic_alloc::in, may_use_atomic_alloc::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_cons_args(Vars, Lvals, ArgTypes, ConsArgTypes, UniModes, FirstOffset,
-        FirstArgNum, TakeAddr, ModuleInfo, Rvals, MLDS_Types, TakeAddrInfos,
-        !Info) :-
+        FirstArgNum, TakeAddr, ModuleInfo, !:Rvals, !:MLDS_Types,
+        !:TakeAddrInfos, !MayUseAtomic, !Info) :-
     (
         ml_gen_cons_args_2(Vars, Lvals, ArgTypes, ConsArgTypes, UniModes,
-            FirstOffset, FirstArgNum, TakeAddr, ModuleInfo, RvalsPrime,
-            MLDS_TypesPrime, TakeAddrInfosPrime, !Info)
+            FirstOffset, FirstArgNum, TakeAddr, ModuleInfo, !:Rvals,
+            !:MLDS_Types, !:TakeAddrInfos, !MayUseAtomic, !Info)
     ->
-        Rvals = RvalsPrime,
-        MLDS_Types = MLDS_TypesPrime,
-        TakeAddrInfos = TakeAddrInfosPrime
+        true
     ;
         unexpected(this_file, "ml_gen_cons_args: length mismatch")
     ).
@@ -1200,14 +1209,25 @@ ml_gen_cons_args(Vars, Lvals, ArgTypes, ConsArgTypes, UniModes, FirstOffset,
     list(mer_type)::in, list(mer_type)::in, list(uni_mode)::in,
     int::in, int::in, list(int)::in, module_info::in, list(mlds_rval)::out,
     list(mlds_type)::out, list(take_addr_info)::out,
+    may_use_atomic_alloc::in, may_use_atomic_alloc::out,
     ml_gen_info::in, ml_gen_info::out) is semidet.
 
 ml_gen_cons_args_2([], [], [], [], [], _FirstOffset, _FirstArgNum, _TakeAddr,
-        _ModuleInfo, [], [], [], !Info).
+        _ModuleInfo, [], [], [], !MayUseAtomic, !Info).
 ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
         [ConsArgType | ConsArgTypes], [UniMode | UniModes], FirstOffset,
         CurArgNum, !.TakeAddr, ModuleInfo, [Rval | Rvals],
-        [MLDS_Type | MLDS_Types], TakeAddrInfos, !Info) :-
+        [MLDS_Type | MLDS_Types], TakeAddrInfos, !MayUseAtomic, !Info) :-
+    % It is important to use ArgType instead of ConsArgType here. ConsArgType
+    % is the declared type of the argument of the cons_id, while ArgType is
+    % the actual type of the variable being assigned to the given slot.
+    % ConsArgType may be a type such as pred_id, which is a user-defined type
+    % that may not appear in atomic cells, while ArgType may be a type such
+    % as int, which may appear in atomic cells. This is because the actual type
+    % may see behind abstraction barriers, and may thus see that e.g. pred_id
+    % is actually the same as integer.
+    update_type_may_use_atomic_alloc(ModuleInfo, ArgType, !MayUseAtomic),
+
     % Figure out the type of the field. Note that for the MLDS->C and
     % MLDS->asm back-ends, we need to box floating point fields.
     module_info_get_globals(ModuleInfo, Globals),
@@ -1221,7 +1241,7 @@ ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
         Rval = const(null(MLDS_Type)),
         ml_gen_cons_args_2(Vars, Lvals, ArgTypes, ConsArgTypes, UniModes,
             FirstOffset, CurArgNum + 1, !.TakeAddr, ModuleInfo, Rvals,
-            MLDS_Types, TakeAddrInfosTail, !Info),
+            MLDS_Types, TakeAddrInfosTail, !MayUseAtomic, !Info),
         % Whereas CurArgNum starts numbering the arguments from 1, offsets
         % into fields start from zero. However, if FirstOffset > 0, then the
         % cell contains FirstOffset other things (e.g. a secondary tag) before
@@ -1243,7 +1263,7 @@ ml_gen_cons_args_2([Var | Vars], [Lval | Lvals], [ArgType | ArgTypes],
         ),
         ml_gen_cons_args_2(Vars, Lvals, ArgTypes, ConsArgTypes, UniModes,
             FirstOffset, CurArgNum + 1, !.TakeAddr, ModuleInfo, Rvals,
-            MLDS_Types, TakeAddrInfos, !Info)
+            MLDS_Types, TakeAddrInfos, !MayUseAtomic, !Info)
     ).
 
 %-----------------------------------------------------------------------------%

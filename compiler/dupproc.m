@@ -229,7 +229,7 @@ standardize_instr(Instr, StdInstr, DupProcMap) :-
         standardize_code_addr(Target, StdTarget, DupProcMap),
         StdInstr = if_val(StdRval, StdTarget)
     ;
-        Instr = incr_hp(_, _, _, _, _),
+        Instr = incr_hp(_, _, _, _, _, _),
         StdInstr = Instr
     ;
         Instr = mark_hp(_),

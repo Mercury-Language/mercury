@@ -945,7 +945,7 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
     ;
         map.lookup(VarTypes, X, Type),
         (
-            type_is_atomic(Type, ModuleInfo0),
+            type_is_atomic(ModuleInfo0, Type),
             not type_has_user_defined_equality_pred(ModuleInfo0, Type, _)
         ->
             Unification = simple_test(X, Y)

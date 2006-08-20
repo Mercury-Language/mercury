@@ -351,6 +351,19 @@
     %
 :- func get_secondary_tag(cons_tag) = maybe(int).
 
+    % The atomic variants of the Boehm gc allocator calls (e.g.
+    % GC_malloc_atomic instead of GC_malloc) may yield slightly faster code
+    % since atomic blocks are not scanned for included pointers. However,
+    % this makes them safe to use *only* if the block allocated this way
+    % can never contain any pointer the Boehm collector would be interested
+    % in tracing. In particular, it even if the cell initially contains no
+    % pointers, we must still use may_not_use_atomic_alloc for it if the cell
+    % could possibly be reused later by compile-time garbage collection.
+    %
+:- type may_use_atomic_alloc
+    --->    may_use_atomic_alloc
+    ;       may_not_use_atomic_alloc.
+
 :- implementation.
 
 % In some of the cases where we return `no' here,

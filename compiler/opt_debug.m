@@ -121,6 +121,7 @@
 
 :- import_module backend_libs.name_mangle.
 :- import_module backend_libs.proc_label.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.special_pred.
@@ -712,7 +713,7 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
         Instr = restore_maxfr(Lval),
         Str = "restore_maxfr(" ++ dump_lval(Lval) ++ ")"
     ;
-        Instr = incr_hp(Lval, MaybeTag, MaybeOffset, Size, _),
+        Instr = incr_hp(Lval, MaybeTag, MaybeOffset, Size, _, MayUseAtomic),
         (
             MaybeTag = no,
             T_str = "no"
@@ -728,7 +729,8 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
             string.int_to_string(Offset, O_str)
         ),
         Str = "incr_hp(" ++ dump_lval(Lval) ++ ", " ++ T_str ++ ", " ++ O_str
-            ++ ", " ++ dump_rval(Size) ++ ")"
+            ++ ", " ++ dump_rval(Size) ++
+            ", " ++ dump_may_use_atomic(MayUseAtomic) ++ ")"
     ;
         Instr = mark_hp(Lval),
         Str = "mark_hp(" ++ dump_lval(Lval) ++ ")"
@@ -811,6 +813,11 @@ dump_maybe_label(Msg, ProcLabel, yes(Label)) =
 
 dump_bool(Msg, no)  = Msg ++ " no\n".
 dump_bool(Msg, yes) = Msg ++ " yes\n".
+
+:- func dump_may_use_atomic(may_use_atomic_alloc) = string.
+
+dump_may_use_atomic(may_use_atomic_alloc) = "may_use_atomic_alloc".
+dump_may_use_atomic(may_not_use_atomic_alloc) = "may_not_use_atomic_alloc".
 
 :- func dump_decls(list(pragma_c_decl)) = string.
 

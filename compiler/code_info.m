@@ -3097,11 +3097,12 @@ should_add_trail_ops(CodeInfo, GoalInfo) = AddTrailOps :-
     code_info::in, code_info::out) is det.
 
     % assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector,
-    %   MaybeSize, TypeMsg, Where, Code, !CI).
+    %   MaybeSize, TypeMsg, MayUseAtomic, Where, Code, !CI).
     %
 :- pred assign_cell_to_var(prog_var::in, bool::in, tag::in,
     list(maybe(rval))::in, maybe(term_size_value)::in, string::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    may_use_atomic_alloc::in, code_tree::out,
+    code_info::in, code_info::out) is det.
 
 :- pred place_var(prog_var::in, lval::in, code_tree::out,
     code_info::in, code_info::out) is det.
@@ -3239,13 +3240,13 @@ assign_expr_to_var(Var, Rval, Code, !CI) :-
     set_var_locn_info(VarLocnInfo, !CI).
 
 assign_cell_to_var(Var, ReserveWordAtStart, Ptag, Vector, MaybeSize,
-        TypeMsg, Code, !CI) :-
+        TypeMsg, MayUseAtomic, Code, !CI) :-
     get_var_locn_info(!.CI, VarLocnInfo0),
     get_static_cell_info(!.CI, StaticCellInfo0),
     get_module_info(!.CI, ModuleInfo),
     var_locn.assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
-        Vector, MaybeSize, TypeMsg, Code, StaticCellInfo0, StaticCellInfo,
-        VarLocnInfo0, VarLocnInfo),
+        Vector, MaybeSize, TypeMsg, MayUseAtomic, Code,
+        StaticCellInfo0, StaticCellInfo, VarLocnInfo0, VarLocnInfo),
     set_static_cell_info(StaticCellInfo, !CI),
     set_var_locn_info(VarLocnInfo, !CI).
 

@@ -439,7 +439,7 @@ atomic_stmt_contains_var(assign(Lval, Rval), Name) :-
     ; rval_contains_var(Rval, Name)
     ).
 atomic_stmt_contains_var(new_object(Target, _MaybeTag, _HasSecTag, _Type,
-        _MaybeSize, _MaybeCtorName, Args, _ArgTypes), Name) :-
+        _MaybeSize, _MaybeCtorName, Args, _ArgTypes, _MayUseAtomic), Name) :-
     ( lval_contains_var(Target, Name)
     ; rvals_contains_var(Args, Name)
     ).

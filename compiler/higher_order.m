@@ -2040,7 +2040,7 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
             % cases: here it is a call to a builtin predicate, perhaps preceded
             % by casts; there it is a call to a compiler-generated predicate.
 
-            type_is_atomic(SpecialPredType, ModuleInfo)
+            type_is_atomic(ModuleInfo, SpecialPredType)
         ->
             specialize_unify_or_compare_pred_for_atomic(SpecialPredType,
                 MaybeResult, Arg1, Arg2, MaybeContext, OrigGoalInfo, Goal,
@@ -2064,7 +2064,7 @@ specialize_special_pred(CalledPred, CalledProc, Args, MaybeContext,
             % This could be done for non-atomic types, but it would be a bit
             % more complicated because the type-info for the wrapped type
             % would need to be extracted first.
-            type_is_atomic(WrappedType, ModuleInfo)
+            type_is_atomic(ModuleInfo, WrappedType)
         ->
             specialize_unify_or_compare_pred_for_no_tag(WrappedType,
                 Constructor, MaybeResult, Arg1, Arg2, MaybeContext,

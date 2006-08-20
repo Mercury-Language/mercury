@@ -299,8 +299,12 @@
 
 #define	MR_alloc_heap(dest, count)					\
 	MR_tag_offset_incr_hp((dest), MR_mktag(0), 0, (count))
+#define	MR_alloc_heap_atomic(dest, count)				\
+	MR_tag_offset_incr_hp_atomic((dest), MR_mktag(0), 0, (count))
 #define	MR_tag_alloc_heap(dest, tag, count)				\
 	MR_tag_offset_incr_hp((dest), MR_mktag(tag), 0, (count))
+#define	MR_tag_alloc_heap_atomic(dest, tag, count)			\
+	MR_tag_offset_incr_hp_atomic((dest), MR_mktag(tag), 0, (count))
 
 #ifdef MR_HIGHLEVEL_CODE
 

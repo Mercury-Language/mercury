@@ -201,9 +201,19 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
         )
     #define MR_new_object(type, size, name) \
   		((type *) MR_GC_MALLOC_INLINE(size))
+    /*
+    ** Since the Boehm collector defined GC_MALLOC_WORDS but not
+    ** GC_MALLOC_WORDS_ATOMIC, we can define MR_new_object_atomic here
+    ** to call either MR_GC_MALLOC_ATOMIC or MR_GC_MALLOC_INLINE,
+    ** depending on whether we value atomicity or inline expansion more.
+    */
+    #define MR_new_object_atomic(type, size, name) \
+  		((type *) MR_GC_MALLOC_ATOMIC(size))
   #else /* !MR_INLINE_ALLOC */
     #define MR_new_object(type, size, name) \
   		((type *) GC_MALLOC(size)) 
+    #define MR_new_object_atomic(type, size, name) \
+  		((type *) GC_MALLOC_ATOMIC(size)) 
   #endif /* !MR_INLINE_ALLOC */
 
 #else /* !MR_CONSERVATIVE_GC */
@@ -219,21 +229,22 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
 
   /*
   ** XXX Note that currently we don't need to worry about alignment here,
-  **     other than word alignment, because floating point fields will
-  **	 be boxed if they don't fit in a word.
-  **     This would need to change if we ever start using unboxed
-  **     fields whose alignment requirement is greater than one word.
+  ** other than word alignment, because floating point fields will be boxed
+  ** if they don't fit in a word. This would need to change if we ever start
+  ** using unboxed fields whose alignment requirement is greater than one word.
   */
   #define MR_new_object(type, size, name)				\
-     ({ 								\
-        size_t MR_new_object_num_words;					\
+    ({ 									\
+        size_t 	MR_new_object_num_words;				\
         MR_Word MR_new_object_ptr;					\
 									\
 	MR_new_object_num_words = 					\
 		((size) + sizeof(MR_Word) - 1) / sizeof(MR_Word);	\
 	MR_incr_hp(MR_new_object_ptr, MR_new_object_num_words);		\
 	/* return */ (type *) MR_new_object_ptr;			\
-      })
+    })
+  #define MR_new_object_atomic(type, size, name)			\
+    MR_new_object(type, size, name)
 
 #endif
 
@@ -250,7 +261,7 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
 									\
 	MR_make_hp_float_aligned();					\
 	MR_box_float_ptr = 						\
-		MR_new_object(MR_Float, sizeof(MR_Float), "float");	\
+		MR_new_object_atomic(MR_Float, sizeof(MR_Float), "float"); \
 	*MR_box_float_ptr = (f);					\
 	/* return */ (MR_Box) MR_box_float_ptr;				\
   })
@@ -262,7 +273,7 @@ extern	MR_Word	mercury__private_builtin__dummy_var;
 	MR_Float *ptr;
 
 	MR_make_hp_float_aligned();
-	ptr = MR_new_object(MR_Float, sizeof(MR_Float), "float");
+	ptr = MR_new_object_atomic(MR_Float, sizeof(MR_Float), "float");
 	*ptr = f;
 	return (MR_Box) ptr;
   }

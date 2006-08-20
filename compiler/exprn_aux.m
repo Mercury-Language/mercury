@@ -383,10 +383,10 @@ substitute_lval_in_uinstr(OldLval, NewLval, Uinstr0, Uinstr, !N) :-
         substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N),
         Uinstr = restore_maxfr(Lval)
     ;
-        Uinstr0 = incr_hp(Lval0, MaybeTag, MO, Rval0, TypeCtor),
+        Uinstr0 = incr_hp(Lval0, MaybeTag, MO, Rval0, TypeCtor, MayUseAtomic),
         substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N),
         substitute_lval_in_rval_count(OldLval, NewLval, Rval0, Rval, !N),
-        Uinstr = incr_hp(Lval, MaybeTag, MO, Rval, TypeCtor)
+        Uinstr = incr_hp(Lval, MaybeTag, MO, Rval, TypeCtor, MayUseAtomic)
     ;
         Uinstr0 = mark_hp(Lval0),
         substitute_lval_in_lval_count(OldLval, NewLval, Lval0, Lval, !N),

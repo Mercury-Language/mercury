@@ -7412,6 +7412,13 @@ The number of alternatives in a binary search switch
 must be at least this number (default: 4).
 
 @sp 1
+@item --no-use-atomic-cells
+@findex --no-use-atomic-cells
+@findex --use-atomic-cells
+Don't use the atomic variants of the Boehm gc allocator calls,
+even when this would otherwise be possible.
+
+@sp 1
 @item --no-middle-rec
 @findex --no-middle-rec
 @findex --middle-rec

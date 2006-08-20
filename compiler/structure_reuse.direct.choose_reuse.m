@@ -154,6 +154,28 @@ background_info_init(Strategy, ModuleInfo, ProcInfo) = Background :-
 % constructions and the 'matches' we want to derive from them.
 %
 
+% XXX With the --use-atomic-cells option, the compiler generates code
+% that uses GC_MALLOC_ATOMIC to allocate memory for heap cells that contain
+% no pointers to GCable memory. If we later reuse such a cell and put a pointer
+% to GCable memory into it, the Boehm collector will not see that pointer,
+% which may lead to the heap cell being pointed to being reclaimed prematurely,
+% a bug that will probably be very hard to find.
+%
+% To avoid this situation, we should
+%
+% (1) extend deconstruction_spec with a field of type may_use_atomic_alloc,
+%     indicating whether the potentially reused cell may be atomic or not, and
+% (2) ensure that we reuse atomically-created cells only for connstructions
+%     in which all arguments can be put into atomic cells.
+%
+% These will require applying type_may_use_atomic_alloc to the arguments of
+% both the reused deconstruction unifications and the reusing construction
+% unifications.
+%
+% However, a fix to this problem can wait until structure reuse starts to be
+% used in earnest. Until then, Nancy can simply avoid turning on
+% --use-atomic-cells.
+
     % Details of a deconstruction yielding garbage.
     %
 :- type deconstruction_spec

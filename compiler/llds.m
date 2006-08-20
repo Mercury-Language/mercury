@@ -21,6 +21,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.rtti.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_pred.
@@ -313,12 +314,15 @@
             % Restore maxfr from the saved copy in the given lval. Assumes the
             % lval was saved with save_maxfr.
 
-    ;       incr_hp(lval, maybe(tag), maybe(int), rval, string)
+    ;       incr_hp(lval, maybe(tag), maybe(int), rval, string,
+                may_use_atomic_alloc)
             % Get a memory block of a size given by an rval and put its address
             % in the given lval, possibly after incrementing it by N words
             % (if the maybe(int) is bound to `yes(N)') and/or after tagging it
             % with a given tag. The string gives the name of the type
             % constructor of the memory cell for use in memory profiling.
+            % The last argument says whether we can use the atomic variants
+            % of the Boehm gc allocator calls.
 
     ;       mark_hp(lval)
             % Tell the heap sub-system to store a marker (for later use in

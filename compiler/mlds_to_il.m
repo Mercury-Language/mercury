@@ -530,9 +530,9 @@ rename_atomic(comment(S)) = comment(S).
 rename_atomic(assign(L, R)) = assign(rename_lval(L), rename_rval(R)).
 rename_atomic(delete_object(O)) = delete_object(rename_lval(O)).
 rename_atomic(new_object(L, Tag, HasSecTag, Type, MaybeSize, Ctxt, Args,
-        Types))
+        Types, MayUseAtomic))
     = new_object(rename_lval(L), Tag, HasSecTag, Type, MaybeSize,
-        Ctxt, list.map(rename_rval, Args), Types).
+        Ctxt, list.map(rename_rval, Args), Types, MayUseAtomic).
 rename_atomic(gc_check) = gc_check.
 rename_atomic(mark_hp(L)) = mark_hp(rename_lval(L)).
 rename_atomic(restore_hp(R)) = restore_hp(rename_rval(R)).
@@ -2016,7 +2016,7 @@ atomic_statement_to_il(delete_object(Target), Instrs, !Info) :-
     Instrs = tree_list([LoadInstrs, instr_node(ldnull), StoreInstrs]).
 
 atomic_statement_to_il(new_object(Target, _MaybeTag, HasSecTag, Type, Size,
-        MaybeCtorName, Args0, ArgTypes0), Instrs, !Info) :-
+        MaybeCtorName, Args0, ArgTypes0, _MayUseAtomic), Instrs, !Info) :-
     DataRep = !.Info ^ il_data_rep,
     (
         (

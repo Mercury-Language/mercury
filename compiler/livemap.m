@@ -229,7 +229,7 @@ livemap.build_livemap_instr(Instr0, !Instrs, !Livevals, !ContainsUserCode,
         Uinstr0 = restore_maxfr(Lval),
         livemap.make_live_in_rval(lval(Lval), !Livevals)
     ;
-        Uinstr0 = incr_hp(Lval, _, _, Rval, _),
+        Uinstr0 = incr_hp(Lval, _, _, Rval, _, _),
 
         % Make dead the variable assigned, but make any variables
         % needed to access it live. Make the variables in the size

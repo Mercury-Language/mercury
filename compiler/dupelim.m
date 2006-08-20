@@ -366,10 +366,12 @@ standardize_instr(Instr1, Instr) :-
         standardize_lval(Lval1, Lval),
         Instr = restore_maxfr(Lval)
     ;
-        Instr1 = incr_hp(Lval1, MaybeTag, MaybeOffset, Rval1, Msg),
+        Instr1 = incr_hp(Lval1, MaybeTag, MaybeOffset, Rval1, Msg,
+            MayUseAtomic),
         standardize_lval(Lval1, Lval),
         standardize_rval(Rval1, Rval),
-        Instr = incr_hp(Lval, MaybeTag, MaybeOffset, Rval, Msg)
+        Instr = incr_hp(Lval, MaybeTag, MaybeOffset, Rval, Msg,
+            MayUseAtomic)
     ;
         Instr1 = mark_hp(Lval1),
         standardize_lval(Lval1, Lval),
@@ -629,17 +631,20 @@ most_specific_instr(Instr1, Instr2, MaybeInstr) :-
             MaybeInstr = no
         )
     ;
-        Instr1 = incr_hp(Lval1, MaybeTag1, MaybeOffset1, Rval1, Msg1),
+        Instr1 = incr_hp(Lval1, MaybeTag1, MaybeOffset1, Rval1, Msg1,
+            MayUseAtomic1),
         (
-            Instr2 = incr_hp(Lval2, MaybeTag2, MaybeOffset2, Rval2, Msg2),
+            Instr2 = incr_hp(Lval2, MaybeTag2, MaybeOffset2, Rval2, Msg2,
+                MayUseAtomic2),
             most_specific_lval(Lval1, Lval2, Lval),
             most_specific_rval(Rval1, Rval2, Rval),
             MaybeTag1 = MaybeTag2,
             MaybeOffset1 = MaybeOffset2,
-            Msg1 = Msg2
+            Msg1 = Msg2,
+            MayUseAtomic1 = MayUseAtomic2
         ->
             MaybeInstr = yes(incr_hp(Lval, MaybeTag1, MaybeOffset1, Rval,
-                Msg1))
+                Msg1, MayUseAtomic1))
         ;
             MaybeInstr = no
         )

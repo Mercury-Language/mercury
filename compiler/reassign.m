@@ -220,7 +220,7 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
         !:RevInstrs = [Instr0 | !.RevInstrs],
         clobber_dependents(hp, !KnownContentsMap, !DepLvalMap)
     ;
-        Uinstr0 = incr_hp(Target, _, _, _, _),
+        Uinstr0 = incr_hp(Target, _, _, _, _, _),
         !:RevInstrs = [Instr0 | !.RevInstrs],
         clobber_dependents(Target, !KnownContentsMap, !DepLvalMap),
         clobber_dependents(hp, !KnownContentsMap, !DepLvalMap)

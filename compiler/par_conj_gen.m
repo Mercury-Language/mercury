@@ -170,8 +170,9 @@ generate_par_conj(Goals, GoalInfo, CodeModel, Code, !CI) :-
     MakeTerm = node([
         assign(SpSlot, lval(sp))
             - "save the parent stack pointer",
+        % The may_not_use_atomic here is conservative.
         incr_hp(RegLval, no, no, const(int_const(STSize)),
-            "synchronization vector")
+            "synchronization vector", may_not_use_atomic_alloc)
             - "allocate a synchronization vector",
         init_sync_term(RegLval, NumGoals)
             - "initialize sync term",

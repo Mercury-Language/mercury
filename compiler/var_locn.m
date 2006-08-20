@@ -20,13 +20,14 @@
 :- module ll_backend.var_locn.
 :- interface.
 
-:- import_module parse_tree.prog_data.
-:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
+:- import_module hlds.hlds_module.
+:- import_module libs.options.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.llds.
-:- import_module libs.options.
+:- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -166,7 +167,7 @@
     var_locn_info::in, var_locn_info::out) is det.
 
     % assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag, Vector,
-    %   SizeInfo, TypeMsg, Where, Code, !StaticCellInfo, !VarLocnInfo):
+    %   SizeInfo, TypeMsg, MayUseAtomic, Code, !StaticCellInfo, !VarLocnInfo):
     %
     % Generates code to assign to Var a pointer, tagged by Ptag, to the cell
     % whose contents are given by the other arguments, and updates the state
@@ -178,11 +179,12 @@
     % of whether it is allocated statically or dynamically), and initialize
     % this word with the value determined by SizeVal. (NOTE: ReserveWordAtStart
     % and SizeInfo should not be yes / yes(_), because that will cause an
-    % obvious conflict.) Where will say where the created cell is.
+    % obvious conflict.)
     %
 :- pred assign_cell_to_var(module_info::in, prog_var::in, bool::in, tag::in,
     list(maybe(rval))::in, maybe(term_size_value)::in, string::in,
-    code_tree::out, static_cell_info::in, static_cell_info::out,
+    may_use_atomic_alloc::in, code_tree::out,
+    static_cell_info::in, static_cell_info::out,
     var_locn_info::in, var_locn_info::out) is det.
 
     % place_var(ModuleInfo, Var, Lval, Code, !VarLocnInfo):
@@ -357,6 +359,7 @@
 
 :- import_module check_hlds.type_util.
 :- import_module libs.compiler_util.
+:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module libs.tree.
 :- import_module ll_backend.code_util.
@@ -805,7 +808,7 @@ add_use_ref(ContainedVar, UsingVar, !VarStateMap) :-
 %----------------------------------------------------------------------------%
 
 assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag, MaybeRvals0,
-        SizeInfo, TypeMsg, Code, !StaticCellInfo, !VLI) :-
+        SizeInfo, TypeMsg, MayUseAtomic, Code, !StaticCellInfo, !VLI) :-
     (
         SizeInfo = yes(SizeSource),
         (
@@ -832,15 +835,16 @@ assign_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag, MaybeRvals0,
         Code = empty
     ;
         assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag,
-            MaybeRvals, MaybeOffset, TypeMsg, Code, !VLI)
+            MaybeRvals, MaybeOffset, TypeMsg, MayUseAtomic, Code, !VLI)
     ).
 
 :- pred assign_dynamic_cell_to_var(module_info::in, prog_var::in, bool::in,
     tag::in, list(maybe(rval))::in, maybe(int)::in, string::in,
-    code_tree::out, var_locn_info::in, var_locn_info::out) is det.
+    may_use_atomic_alloc::in, code_tree::out,
+    var_locn_info::in, var_locn_info::out) is det.
 
 assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag, Vector,
-        MaybeOffset, TypeMsg, Code, !VLI) :-
+        MaybeOffset, TypeMsg, MayUseAtomic, Code, !VLI) :-
     check_var_is_unknown(!.VLI, Var),
 
     select_preferred_reg_or_stack_check(!.VLI, Var, Lval),
@@ -865,7 +869,7 @@ assign_dynamic_cell_to_var(ModuleInfo, Var, ReserveWordAtStart, Ptag, Vector,
     ),
     CellCode = node([
         incr_hp(Lval, yes(Ptag), TotalOffset,
-            const(int_const(TotalSize)), TypeMsg)
+            const(int_const(TotalSize)), TypeMsg, MayUseAtomic)
             - string.append("Allocating heap for ", VarName)
     ]),
     set_magic_var_location(Var, Lval, !VLI),

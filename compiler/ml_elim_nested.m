@@ -438,6 +438,7 @@
 :- implementation.
 
 :- import_module check_hlds.type_util.
+:- import_module hlds.hlds_data.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
 :- import_module libs.options.
@@ -785,7 +786,7 @@ ml_create_env_type_name(EnvClassName, ModuleName, Globals) = EnvTypeName :-
 ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
         ModuleName, FuncName, Globals, EnvTypeDefn, EnvDecls, InitEnv,
         GCTraceFuncDefns) :-
-    % generate the following type:
+    % Generate the following type:
     %
     %   struct <EnvClassName> {
     %     #ifdef ACCURATE_GC
@@ -866,9 +867,12 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
     (
         OnHeap = yes,
         EnvVarAddr = lval(var(EnvVar, EnvTypeName)),
+        % OnHeap should be "yes" only on for the IL backend, for which
+        % the value of MayUseAtomic is immaterial.
+        MayUseAtomic = may_not_use_atomic_alloc,
         NewObj = [statement(
             atomic(new_object(var(EnvVar, EnvTypeName),
-                no, no, EnvTypeName, no, no, [], [])),
+                no, no, EnvTypeName, no, no, [], [], MayUseAtomic)),
             Context)]
     ;
         OnHeap = no,
@@ -882,9 +886,8 @@ ml_create_env(Action, EnvClassName, EnvTypeName, LocalVars, Context,
 
 :- pred ml_chain_stack_frames(mlds_defns::in, statements::in,
     mlds_type::in, mlds_context::in, mlds_entity_name::in,
-    mlds_module_name::in, globals::in, mlds_defns::out,
-    mlds_initializer::out, statements::out, mlds_defns::out)
-    is det.
+    mlds_module_name::in, globals::in, mlds_defns::out, mlds_initializer::out,
+    statements::out, mlds_defns::out) is det.
 
 ml_chain_stack_frames(Fields0, GCTraceStatements, EnvTypeName, Context,
         FuncName, ModuleName, Globals, Fields,
@@ -1756,9 +1759,9 @@ fixup_atomic_stmt(assign(Lval0, Rval0), assign(Lval, Rval), !Info) :-
 fixup_atomic_stmt(delete_object(Lval0), delete_object(Lval), !Info) :-
     fixup_lval(Lval0, Lval, !Info).
 fixup_atomic_stmt(new_object(Target0, MaybeTag, HasSecTag, Type, MaybeSize,
-            MaybeCtorName, Args0, ArgTypes),
+            MaybeCtorName, Args0, ArgTypes, MayUseAtomic),
         new_object(Target, MaybeTag, HasSecTag, Type, MaybeSize,
-            MaybeCtorName, Args, ArgTypes), !Info) :-
+            MaybeCtorName, Args, ArgTypes, MayUseAtomic), !Info) :-
     fixup_lval(Target0, Target, !Info),
     fixup_rvals(Args0, Args, !Info).
 fixup_atomic_stmt(gc_check, gc_check, !Info).

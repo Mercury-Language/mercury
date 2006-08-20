@@ -80,6 +80,7 @@
 :- import_module backend_libs.name_mangle.
 :- import_module check_hlds.type_util.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.         % for pred_proc_id.
 :- import_module hlds.passes_aux.
 :- import_module libs.compiler_util.
@@ -538,12 +539,12 @@ mlds_get_c_foreign_code(AllForeignCode) = ForeignCode :-
 
     % Maybe output the function `mercury__<modulename>__init()'.
     % The body of the function consists of calls MR_init_entry(<function>)
-    % for each function defined in the module.  
+    % for each function defined in the module.
     %
     % If there are any user-defined intialisation or finalisation predicates
     % then output the functions: `mercury__<modulename>__required_init()' and
     % `mercury__<modulename>__required_final()' as necessary.
-    %   
+    %
     %
 :- pred mlds_output_init_fn_decls(mlds_module_name::in, list(string)::in,
     list(string)::in, io::di, io::uo) is det.
@@ -660,7 +661,7 @@ output_init_fn_name(ModuleName, Suffix, !IO) :-
     io.write_string("__init", !IO),
     io.write_string(Suffix, !IO),
     io.write_string("(void)", !IO).
-    
+
     % Output a function name of the form:
     %
     %   mercury__<modulename>__<suffix>
@@ -744,11 +745,11 @@ mlds_output_c_hdr_decls(ModuleName, Indent, ForeignCode, !IO) :-
     ;
         SymName = mlds_module_name_to_sym_name(ModuleName)
     ),
-    
+
     DeclGuard = decl_guard(SymName),
     io.write_strings(["#ifndef ", DeclGuard, "\n#define ", DeclGuard, "\n"],
         !IO),
-    % 
+    %
     % We need to make sure we #include the .mih files for any ancestor modules
     % in cases any foreign_types defined in them are referenced by the extern
     % declarations required by mutables.
@@ -816,7 +817,7 @@ mlds_output_c_defns(ModuleName, Indent, ForeignCode, !IO) :-
 
 mlds_output_c_foreign_import_module(Indent, ForeignImport, !IO) :-
     ForeignImport = foreign_import_module(Lang, Import, _),
-    ( 
+    (
         Lang = lang_c,
         mlds_output_src_import(Indent,
             mercury_import(user_visible_interface,
@@ -867,9 +868,8 @@ mlds_output_pragma_export_defn(ModuleName, Indent, PragmaExport, !IO) :-
     mlds_pragma_export::in, io::di, io::uo) is det.
 
 mlds_output_pragma_export_func_name(ModuleName, Indent, Export, !IO) :-
-    Export = ml_pragma_export(Lang, ExportName, _MLDS_Name, Signature, Context),
-    expect(unify(Lang, lang_c), this_file,
-        "export to language other than C."),
+    Export = ml_pragma_export(Lang, ExportName, _MLDSName, Signature, Context),
+    expect(unify(Lang, lang_c), this_file, "export to language other than C."),
     Name = qual(ModuleName, module_qual, entity_export(ExportName)),
     mlds_indent(Context, Indent, !IO),
     % For functions exported using `pragma export',
@@ -943,13 +943,13 @@ mlds_output_pragma_export_type(prefix, mlds_pseudo_type_info_type, !IO) :-
 mlds_output_pragma_export_type(prefix, mlds_rtti_type(_), !IO) :-
     io.write_string("MR_Word", !IO).
 mlds_output_pragma_export_type(prefix, mlds_tabling_type(_), !IO) :-
-    % These types should never occur in procedures exported to C, so the
-    % fact the could generate a more accurate type shouldn't matter. 
+    % These types should never occur in procedures exported to C, so the fact
+    % that we could generate a more accurate type shouldn't matter.
     io.write_string("MR_Word", !IO).
 mlds_output_pragma_export_type(prefix, mlds_unknown_type, !IO) :-
     unexpected(this_file, "mlds_output_pragma_export_type: unknown_type").
 
-    % Output the definition body for a pragma export
+    % Output the definition body for a pragma export.
     %
 :- pred mlds_output_pragma_export_defn_body(mlds_module_name::in,
     mlds_qualified_entity_name::in, mlds_func_params::in, io::di, io::uo)
@@ -958,8 +958,7 @@ mlds_output_pragma_export_type(prefix, mlds_unknown_type, !IO) :-
 mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature, !IO) :-
     Signature = mlds_func_params(Parameters, RetTypes),
 
-    % Declare local variables corresponding to any foreign_type
-    % parameters.
+    % Declare local variables corresponding to any foreign_type parameters.
     IsCForeignType = (pred(Arg::in) is semidet :-
         Arg = mlds_argument(_Name, Type, _GCTraceCode),
         Type = mlds_foreign_type(c(_))
@@ -975,7 +974,7 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature, !IO) :-
     io.write_list(CForeignTypeOutputs, "",
         mlds_output_pragma_export_output_defns(ModuleName), !IO),
 
-    % Declare a local variable or two for the return value, if needed
+    % Declare a local variable or two for the return value, if needed.
     ( RetTypes = [RetType1] ->
         ( RetType1 = mlds_foreign_type(c(_)) ->
             io.write_string("\t", !IO),
@@ -1027,8 +1026,8 @@ mlds_output_pragma_export_defn_body(ModuleName, FuncName, Signature, !IO) :-
     io.write_list(CForeignTypeOutputs, "",
         mlds_output_pragma_output_arg(ModuleName), !IO),
 
-    % Generate the final statement to unbox and return the
-    % return value, if needed.
+    % Generate the final statement to unbox and return the return value,
+    % if needed.
     ( RetTypes = [RetType3] ->
         ( RetType3 = mlds_foreign_type(c(_)) ->
             io.write_string("\tMR_MAYBE_UNBOX_FOREIGN_TYPE(", !IO),
@@ -1183,7 +1182,7 @@ det_func_signature(mlds_func_params(Args, _RetTypes)) = Params :-
     io::di, io::uo) is det.
 
 mlds_output_decls(Indent, ModuleName, Defns, !IO) :-
-    list.foldl(mlds_output_decl(Indent, ModuleName), Defns, !IO).
+    list.foldl(mlds_output_decl_blank_line(Indent, ModuleName), Defns, !IO).
 
 :- pred mlds_output_defns(indent::in, bool::in, mlds_module_name::in,
     mlds_defns::in, io::di, io::uo) is det.
@@ -1203,6 +1202,13 @@ mlds_output_defns(Indent, Separate, ModuleName, Defns, !IO) :-
         GCC_LocalLabels = no,
         list.foldl(OutputDefn, Defns, !IO)
     ).
+
+:- pred mlds_output_decl_blank_line(indent::in, mlds_module_name::in,
+    mlds_defn::in, io::di, io::uo) is det.
+
+mlds_output_decl_blank_line(Indent, ModuleName, Defn, !IO) :-
+    io.nl(!IO),
+    mlds_output_decl(Indent, ModuleName, Defn, !IO).
 
 :- pred mlds_output_decl(indent::in, mlds_module_name::in, mlds_defn::in,
     io::di, io::uo) is det.
@@ -1727,6 +1733,7 @@ mlds_output_func_decl_ho(Indent, QualifiedName, Context, CallingConvention,
     ),
     io.write_char(' ', !IO),
     io.write_string(CallingConvention, !IO),
+    io.nl(!IO),
     mlds_output_fully_qualified_name(QualifiedName, !IO),
     QualifiedName = qual(ModuleName, _, _),
     mlds_output_params(OutputPrefix, OutputSuffix,
@@ -2981,7 +2988,7 @@ mlds_output_atomic_stmt(_Indent, _FuncInfo, delete_object(_Lval), _, !IO) :-
 
 mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context, !IO) :-
     NewObject = new_object(Target, MaybeTag, _HasSecTag, Type, MaybeSize,
-        MaybeCtorName, Args, ArgTypes),
+        MaybeCtorName, Args, ArgTypes, MayUseAtomic),
     mlds_indent(Indent, !IO),
     io.write_string("{\n", !IO),
 
@@ -3055,7 +3062,13 @@ mlds_output_atomic_stmt(Indent, FuncInfo, NewObject, Context, !IO) :-
         mlds_output_cast(Type, !IO),
         EndMkword = ""
     ),
-    io.write_string("MR_new_object(", !IO),
+    (
+        MayUseAtomic = may_not_use_atomic_alloc,
+        io.write_string("MR_new_object(", !IO)
+    ;
+        MayUseAtomic = may_use_atomic_alloc,
+        io.write_string("MR_new_object_atomic(", !IO)
+    ),
     mlds_output_type(Type, !IO),
     io.write_string(", ", !IO),
     (

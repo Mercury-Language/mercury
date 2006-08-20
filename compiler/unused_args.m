@@ -418,21 +418,21 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs, !ModuleInfo,
             (
                 MaybeBestResult = yes({_, unused_args(UnusedArgs), _}),
                 ( 
-                    UnusedArgs = [_|_],
+                    UnusedArgs = [_ | _],
                     proc_info_get_headvars(ProcInfo, HeadVars),
                     list.map(list.index1_det(HeadVars), UnusedArgs,
                         UnusedVars),
                     initialise_vardep(UnusedVars, !.VarDep, VarDep),
-                    svmap.set(proc(PredId, ProcId), VarDep, !VarUsage),
+                    PredProcId = proc(PredId, ProcId),
+                    svmap.set(PredProcId, VarDep, !VarUsage),
                     globals.io_lookup_bool_option(optimize_unused_args,
-                        Optimize, !IO),
+                        OptimizeUnusedArgs, !IO),
                     (
-                        Optimize = yes,
-                        make_imported_unused_args_pred_info(
-                            proc(PredId, ProcId), UnusedArgs, !OptProcs,
-                            !ModuleInfo)
+                        OptimizeUnusedArgs = yes,
+                        make_imported_unused_args_pred_info(PredProcId,
+                            UnusedArgs, !OptProcs, !ModuleInfo)
                     ;
-                        Optimize = no
+                        OptimizeUnusedArgs = no
                     )
                 ;
                     UnusedArgs = [] 
@@ -448,15 +448,15 @@ setup_proc_args(PredId, ProcId, !VarUsage, !PredProcs, !OptProcs, !ModuleInfo,
                         MakeAnalysisRegistry, !IO),
                     (
                         MakeAnalysisRegistry = yes,
-                        ( not is_unify_or_compare_pred(PredInfo) ->
+                        ( is_unify_or_compare_pred(PredInfo) ->
+                            AnalysisInfo = AnalysisInfo1
+                        ;
                             analysis.record_result(PredModuleId, FuncId,
                                 Call, top(Call) : unused_args_answer,
                                 suboptimal, AnalysisInfo1, AnalysisInfo2),
                             analysis.record_request(analysis_name,
                                 PredModuleId, FuncId, Call, AnalysisInfo2,
                                 AnalysisInfo)
-                        ;
-                            AnalysisInfo = AnalysisInfo1
                         )
                     ;
                         MakeAnalysisRegistry = no,
@@ -1146,9 +1146,9 @@ make_new_pred_info(ModuleInfo, UnusedArgs, Status, proc(PredId, ProcId),
             % Fix up special pred names.
             OrigOrigin = special_pred(_SpecialId - TypeCtor)
         ->
-            type_ctor_module(ModuleInfo, TypeCtor, TypeModule),
-            type_ctor_name(ModuleInfo, TypeCtor, TypeName),
-            type_ctor_arity(ModuleInfo, TypeCtor, TypeArity),
+            TypeModule = type_ctor_module(ModuleInfo, TypeCtor),
+            TypeName = type_ctor_name(ModuleInfo, TypeCtor),
+            TypeArity = type_ctor_arity(ModuleInfo, TypeCtor),
             string.int_to_string(TypeArity, TypeArityStr),
             sym_name_to_string(TypeModule, TypeModuleString0),
             string.replace_all(TypeModuleString0, ".", "__", TypeModuleString),

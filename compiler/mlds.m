@@ -335,6 +335,7 @@
 :- import_module backend_libs.foreign.
 :- import_module backend_libs.rtti.
 :- import_module hlds.code_model.
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module libs.globals.
@@ -1222,7 +1223,7 @@
 
     ;       new_object(
                 % new_object(Target, Tag, Type,
-                %   Size, CtorName, Args, ArgTypes):
+                %   Size, CtorName, Args, ArgTypes, MayUseAtomic):
                 % Allocate a memory block of the given size,
                 % initialize it with a new object of the given
                 % type by calling the constructor with the specified
@@ -1258,14 +1259,18 @@
                 % The types of the arguments to the constructor.
                 %
                 % Note that for --low-level-data, we box all fields of objects
-                % created with new_object, i.e. they are reprsented with type
+                % created with new_object, i.e. they are represented with type
                 % mlds_generic_type. We also do that for some fields even
                 % for --high-level-data (e.g. floating point fields for the
                 % MLDS->C and MLDS->asm back-ends). In such cases, the type
                 % here should be mlds_generic_type; it is the responsibility
                 % of the HLDS->MLDS code generator to insert code to box/unbox
                 % the arguments.
-                list(mlds_type)
+                list(mlds_type),
+
+                % Can we use a cell allocated with GC_malloc_atomic to hold
+                % this object in the C backend?
+                may_use_atomic_alloc
             )
 
     ;       gc_check

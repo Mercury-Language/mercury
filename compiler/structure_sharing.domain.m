@@ -521,7 +521,7 @@ add_var_arg_sharing(ModuleInfo, ProcInfo, Var, ConsId, N - Arg, !Sharing) :-
 arg_has_primitive_type(ModuleInfo, ProcInfo, Var):-
     proc_info_get_vartypes(ProcInfo, VarTypes),
     map.lookup(VarTypes, Var, Type),
-    type_is_atomic(Type, ModuleInfo).
+    type_is_atomic(ModuleInfo, Type).
 
     % When two positions within the constructed term refer to the same variable,
     % this must be recorded as an extra sharing pair.
@@ -904,7 +904,7 @@ bottom_sharing_is_safe_approximation(ModuleInfo, ProcInfo) :-
         ArgMode = top_out,
 
         % type is not primitive
-        \+ type_is_atomic(Type, ModuleInfo)
+        \+ type_is_atomic(ModuleInfo, Type)
     ),
     list.filter(Test, ModeTypePairs, TrueModeTypePairs),
     TrueModeTypePairs = [].

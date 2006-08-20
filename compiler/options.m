@@ -570,6 +570,7 @@
     ;         try_switch_size
     ;         binary_switch_size
     ;       static_ground_terms
+    ;       use_atomic_cells
     ;       middle_rec
     ;       simple_neg
     ;       allow_hijacks
@@ -1278,6 +1279,7 @@ option_defaults_2(optimization_option, [
     try_switch_size                     -   int(3),
     binary_switch_size                  -   int(4),
     static_ground_terms                 -   bool(no),
+    use_atomic_cells                    -   bool(no),
     middle_rec                          -   bool(no),
     simple_neg                          -   bool(no),
     allow_hijacks                       -   bool(yes),
@@ -2021,6 +2023,7 @@ long_option("tag-switch-size",      tag_switch_size).
 long_option("try-switch-size",      try_switch_size).
 long_option("binary-switch-size",   binary_switch_size).
 long_option("static-ground-terms",  static_ground_terms).
+long_option("use-atomic-cells",     use_atomic_cells).
 long_option("middle-rec",           middle_rec).
 long_option("simple-neg",           simple_neg).
 long_option("allow-hijacks",        allow_hijacks).
@@ -4153,6 +4156,9 @@ options_help_hlds_llds_optimization -->
         "\tNote that auxiliary data structures created by the compiler",
         "\tfor purposes such as debugging will still be created as",
         "\tstatic constants.",
+        "--no-use-atomic-cells",
+        "\tDon't use the atomic variants of the Boehm gc allocator calls,",
+        "\teven when this would otherwise be possible.",
         "--no-middle-rec",
         "\tDisable the middle recursion optimization.",
         "--no-simple-neg",

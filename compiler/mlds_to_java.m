@@ -671,7 +671,7 @@ method_ptrs_in_stmt(mlcall(_FuncSig, _Rval, _MaybeThis, Rvals, _ReturnVars,
 method_ptrs_in_stmt(atomic(AtomicStatement), !CodeAddrs) :-
     (
         AtomicStatement = new_object(Lval, _MaybeTag, _Bool,
-            _Type, _MemRval, _MaybeCtorName, Rvals, _Types)
+            _Type, _MemRval, _MaybeCtorName, Rvals, _Types, _MayUseAtomic)
     ->
         % We don't need to check "_MemRval" since this just stores
         % the amount of memory needed for the new object.
@@ -2777,7 +2777,7 @@ output_atomic_stmt(_Indent, _, _FuncInfo, delete_object(_Lval), _, _, _) :-
 
 output_atomic_stmt(Indent, ModuleInfo, FuncInfo, NewObject, Context, !IO) :-
     NewObject = new_object(Target, _MaybeTag, HasSecTag, Type,
-        _MaybeSize, MaybeCtorName, Args, ArgTypes),
+        _MaybeSize, MaybeCtorName, Args, ArgTypes, _MayUseAtomic),
     ModuleName = FuncInfo ^ func_info_name ^ mod_name,
 
     indent_line(Indent, !IO),

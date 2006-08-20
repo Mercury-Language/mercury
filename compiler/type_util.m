@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: type_util.m.
 % Main author: fjh.
-% 
+%
 % This file provides some utility predicates which operate on types.
 % It is used by various stages of the compilation after type-checking,
 % include the mode checker and the code generator.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.type_util.
@@ -29,12 +29,18 @@
 
 %-----------------------------------------------------------------------------%
 
+    % Given a type_ctor, look up its module/name/arity.
+    %
+:- func type_ctor_module(module_info, type_ctor) = module_name.
+:- func type_ctor_name(module_info, type_ctor) = string.
+:- func type_ctor_arity(module_info, type_ctor) = arity.
+
     % Succeed iff type is an "atomic" type - one which can be unified
     % using a simple_test rather than a complicated_unify.
     %
-:- pred type_is_atomic(mer_type::in, module_info::in) is semidet.
+:- pred type_is_atomic(module_info::in, mer_type::in) is semidet.
 
-:- pred type_ctor_is_atomic(type_ctor::in, module_info::in) is semidet.
+:- pred type_ctor_is_atomic(module_info::in, type_ctor::in) is semidet.
 
     % Obtain the type definition and type definition body respectively,
     % if known, for the principal type constructor of the given type.
@@ -80,6 +86,8 @@
 
 :- pred is_solver_type(module_info::in, mer_type::in) is semidet.
 
+    % Succeed if the type body is for a solver type.
+    %
 :- pred type_body_is_solver_type(module_info::in, hlds_type_body::in)
     is semidet.
 
@@ -115,14 +123,21 @@
     %
 :- func classify_type_ctor(module_info, type_ctor) = type_category.
 
-    % Given a type_ctor, look up its module/name/arity
+    % Report whether it is OK to include a value of the given time
+    % in a heap cell allocated with GC_malloc_atomic.
     %
-:- pred type_ctor_module(module_info::in, type_ctor::in,
-    module_name::out) is det.
+:- func type_may_use_atomic_alloc(module_info, mer_type) =
+    may_use_atomic_alloc.
 
-:- pred type_ctor_name(module_info::in, type_ctor::in, string::out) is det.
-
-:- pred type_ctor_arity(module_info::in, type_ctor::in, arity::out) is det.
+    % update_type_may_use_atomic_alloc(ModuleInfo, Type, !MaybeUseAtomic):
+    %
+    % Find out whether it is OK to include a value of the given time
+    % in a heap cell allocated with GC_malloc_atomic. If yes, leave
+    % !MaybeUseAtomic alone. If no, set !:MaybeUseAtomic to
+    % may_not_use_atomic_alloc.
+    %
+:- pred update_type_may_use_atomic_alloc(module_info::in, mer_type::in,
+    may_use_atomic_alloc::in, may_use_atomic_alloc::out) is det.
 
     % If the type is a du type or a tuple type, return the list of its
     % constructors.
@@ -134,7 +149,7 @@
     % return the number of alternatives. (It is possible to have a complete
     % switch on any du type and on the builtin type character. It is not
     % feasible to have a complete switch on the builtin types integer,
-    % float, and switch. One cannot have a switch on an abstract type,
+    % float, and string. One cannot have a switch on an abstract type,
     % and equivalence types will have been expanded out by the time
     % we consider switches.)
     %
@@ -172,7 +187,7 @@
 :- pred get_type_and_cons_defn(module_info::in, mer_type::in,
     cons_id::in, hlds_type_defn::out, hlds_cons_defn::out) is det.
 
-    % Like gget_type_and_cons_defn (above), except that it only returns
+    % Like get_type_and_cons_defn (above), except that it only returns
     % the definition of the constructor, not the type.
     %
 :- pred get_cons_defn(module_info::in, type_ctor::in, cons_id::in,
@@ -307,20 +322,19 @@
 
 %-----------------------------------------------------------------------------%
 
-
-type_ctor_module(_ModuleInfo, type_ctor(TypeName, _Arity), ModuleName) :-
+type_ctor_module(_ModuleInfo, type_ctor(TypeName, _Arity)) = ModuleName :-
     sym_name_get_module_name(TypeName, unqualified(""), ModuleName).
 
-type_ctor_name(_ModuleInfo, type_ctor(Name0, _Arity), Name) :-
+type_ctor_name(_ModuleInfo, type_ctor(Name0, _Arity)) = Name :-
     unqualify_name(Name0, Name).
 
-type_ctor_arity(_ModuleInfo, type_ctor(_Name, Arity), Arity).
+type_ctor_arity(_ModuleInfo, type_ctor(_Name, Arity)) = Arity.
 
-type_is_atomic(Type, ModuleInfo) :-
+type_is_atomic(ModuleInfo, Type) :-
     type_to_ctor_and_args(Type, TypeCtor, _),
-    type_ctor_is_atomic(TypeCtor, ModuleInfo).
+    type_ctor_is_atomic(ModuleInfo, TypeCtor).
 
-type_ctor_is_atomic(TypeCtor, ModuleInfo) :-
+type_ctor_is_atomic(ModuleInfo, TypeCtor) :-
     TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
     type_category_is_atomic(TypeCategory) = yes.
 
@@ -341,6 +355,116 @@ type_category_is_atomic(type_cat_typeclass_info) = no.
 type_category_is_atomic(type_cat_base_typeclass_info) = no.
 type_category_is_atomic(type_cat_void) = yes.
 type_category_is_atomic(type_cat_user_ctor) = no.
+
+type_to_type_defn(ModuleInfo, Type, TypeDefn) :-
+    module_info_get_type_table(ModuleInfo, TypeTable),
+    type_to_ctor_and_args(Type, TypeCtor, _TypeArgs),
+    map.search(TypeTable, TypeCtor, TypeDefn).
+
+type_to_type_defn_body(ModuleInfo, Type, TypeBody) :-
+    type_to_type_defn(ModuleInfo, Type, TypeDefn),
+    hlds_data.get_type_defn_body(TypeDefn, TypeBody).
+
+type_has_user_defined_equality_pred(ModuleInfo, Type, UserEqComp) :-
+    type_to_type_defn_body(ModuleInfo, Type, TypeBody),
+    type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, UserEqComp).
+
+type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, UserEqComp) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.get_target(Globals, Target),
+    (
+        TypeBody = du_type(_, _, _, _, _, _),
+        (
+            TypeBody ^ du_type_is_foreign_type = yes(ForeignTypeBody),
+            have_foreign_type_for_backend(Target, ForeignTypeBody, yes)
+        ->
+            UserEqComp = foreign_type_body_has_user_defined_eq_comp_pred(
+                ModuleInfo, ForeignTypeBody)
+        ;
+            TypeBody ^ du_type_usereq = yes(UserEqComp)
+        )
+    ;
+        TypeBody = foreign_type(ForeignTypeBody),
+        UserEqComp = foreign_type_body_has_user_defined_eq_comp_pred(
+            ModuleInfo, ForeignTypeBody)
+    ;
+        TypeBody = solver_type(_SolverTypeDetails, yes(UserEqComp))
+    ).
+
+type_is_solver_type(ModuleInfo, Type) :-
+    type_to_type_defn_body(ModuleInfo, Type, TypeBody),
+    (
+        TypeBody = solver_type(_, _)
+    ;
+        TypeBody = abstract_type(solver_type)
+    ;
+        TypeBody = eqv_type(EqvType),
+        type_is_solver_type(ModuleInfo, EqvType)
+    ).
+
+type_has_solver_type_details(ModuleInfo, Type, SolverTypeDetails) :-
+    type_to_type_defn_body(ModuleInfo, Type, TypeBody),
+    type_body_has_solver_type_details(ModuleInfo, TypeBody,
+        SolverTypeDetails).
+
+type_body_has_solver_type_details(_ModuleInfo,
+        solver_type(SolverTypeDetails, _MaybeUserEqComp), SolverTypeDetails).
+type_body_has_solver_type_details( ModuleInfo,
+        eqv_type(Type), SolverTypeDetails) :-
+    type_has_solver_type_details(ModuleInfo, Type, SolverTypeDetails).
+
+    % XXX We can't assume that type variables refer to solver types
+    % because otherwise the compiler will try to construct initialisation
+    % forwarding predicates for exported abstract types defined to be
+    % equivalent to a type variable parameter.  This, of course, will
+    % lead to the compiler throwing an exception.  The correct solution
+    % is to introduce a solver typeclass, but that's something for another day.
+    %
+is_solver_type(ModuleInfo, Type) :-
+    % Type_to_type_defn_body will fail for builtin types such as `int/0'.
+    % Such types are not solver types so gis_solver_type fails too.
+    % Type_to_type_defn_body also fails for type variables.
+    type_to_type_defn_body(ModuleInfo, Type, TypeBody),
+    type_body_is_solver_type(ModuleInfo, TypeBody).
+
+type_body_is_solver_type(ModuleInfo, TypeBody) :-
+    (
+        TypeBody = solver_type(_, _)
+    ;
+        TypeBody = abstract_type(solver_type)
+    ;
+        TypeBody = eqv_type(Type),
+        is_solver_type(ModuleInfo, Type)
+    ).
+
+is_existq_type(Module, Type) :-
+    type_constructors(Type, Module, Constructors),
+    some [Constructor] (
+        list.member(Constructor, Constructors),
+        Constructor ^ cons_exist \= []
+    ).
+
+is_dummy_argument_type(ModuleInfo, Type) :-
+    ( type_to_ctor_and_args(Type, TypeCtor, _) ->
+        % Keep this in sync with is_dummy_argument_type_with_constructors
+        % above.
+        (
+            TypeCtor = type_ctor(CtorSymName, TypeArity),
+            CtorSymName = qualified(unqualified(ModuleName), TypeName),
+            is_builtin_dummy_argument_type(ModuleName, TypeName, TypeArity)
+        ;
+            module_info_get_type_table(ModuleInfo, TypeTable),
+            % This can fail for some builtin type constructors such as func,
+            % pred, and tuple, none of which are dummy types.
+            map.search(TypeTable, TypeCtor, TypeDefn),
+            get_type_defn_body(TypeDefn, TypeBody),
+            Ctors = TypeBody ^ du_type_ctors,
+            UserEqCmp = TypeBody ^ du_type_usereq,
+            constructor_list_represents_dummy_argument_type(Ctors, UserEqCmp)
+        )
+    ;
+        fail
+    ).
 
 type_ctor_has_hand_defined_rtti(Type, Body) :-
     Type = type_ctor(qualified(mercury_private_builtin_module, Name), 0),
@@ -422,118 +546,6 @@ classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
         )
     ).
 
-type_has_user_defined_equality_pred(ModuleInfo, Type, UserEqComp) :-
-    type_to_type_defn_body(ModuleInfo, Type, TypeBody),
-    type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, UserEqComp).
-
-type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, UserEqComp) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.get_target(Globals, Target),
-    (
-        TypeBody = du_type(_, _, _, _, _, _),
-        (
-            TypeBody ^ du_type_is_foreign_type = yes(ForeignTypeBody),
-            have_foreign_type_for_backend(Target, ForeignTypeBody, yes)
-        ->
-            UserEqComp = foreign_type_body_has_user_defined_eq_comp_pred(
-                ModuleInfo, ForeignTypeBody)
-        ;
-            TypeBody ^ du_type_usereq = yes(UserEqComp)
-        )
-    ;
-        TypeBody = foreign_type(ForeignTypeBody),
-        UserEqComp = foreign_type_body_has_user_defined_eq_comp_pred(
-            ModuleInfo, ForeignTypeBody)
-    ;
-        TypeBody = solver_type(_SolverTypeDetails, yes(UserEqComp))
-    ).
-
-type_is_solver_type(ModuleInfo, Type) :-
-    type_to_type_defn_body(ModuleInfo, Type, TypeBody),
-    (
-        TypeBody = solver_type(_, _)
-    ;
-        TypeBody = abstract_type(solver_type)
-    ;
-        TypeBody = eqv_type(EqvType),
-        type_is_solver_type(ModuleInfo, EqvType)
-    ).
-
-type_has_solver_type_details(ModuleInfo, Type, SolverTypeDetails) :-
-    type_to_type_defn_body(ModuleInfo, Type, TypeBody),
-    type_body_has_solver_type_details(ModuleInfo, TypeBody,
-        SolverTypeDetails).
-
-type_body_has_solver_type_details(_ModuleInfo,
-        solver_type(SolverTypeDetails, _MaybeUserEqComp), SolverTypeDetails).
-type_body_has_solver_type_details( ModuleInfo,
-        eqv_type(Type), SolverTypeDetails) :-
-    type_has_solver_type_details(ModuleInfo, Type, SolverTypeDetails).
-
-type_to_type_defn(ModuleInfo, Type, TypeDefn) :-
-    module_info_get_type_table(ModuleInfo, TypeTable),
-    type_to_ctor_and_args(Type, TypeCtor, _TypeArgs),
-    map.search(TypeTable, TypeCtor, TypeDefn).
-
-type_to_type_defn_body(ModuleInfo, Type, TypeBody) :-
-    type_to_type_defn(ModuleInfo, Type, TypeDefn),
-    hlds_data.get_type_defn_body(TypeDefn, TypeBody).
-
-    % XXX We can't assume that type variables refer to solver types
-    % because otherwise the compiler will try to construct initialisation
-    % forwarding predicates for exported abstract types defined to be
-    % equivalent to a type variable parameter.  This, of course, will
-    % lead to the compiler throwing an exception.  The correct solution
-    % is to introduce a solver typeclass, but that's something for another day.
-    %
-is_solver_type(ModuleInfo, Type) :-
-    % Type_to_type_defn_body will fail for builtin types such as `int/0'.
-    % Such types are not solver types so gis_solver_type fails too.
-    % Type_to_type_defn_body also fails for type variables.
-    type_to_type_defn_body(ModuleInfo, Type, TypeBody),
-    type_body_is_solver_type(ModuleInfo, TypeBody).
-
-    % Succeed if the type body is for a solver type.
-    %
-type_body_is_solver_type(ModuleInfo, TypeBody) :-
-    (
-        TypeBody = solver_type(_, _)
-    ;
-        TypeBody = abstract_type(solver_type)
-    ;
-        TypeBody = eqv_type(Type),
-        is_solver_type(ModuleInfo, Type)
-    ).
-
-is_existq_type(Module, Type) :-
-    type_constructors(Type, Module, Constructors),
-    some [Constructor] (
-        list.member(Constructor, Constructors),
-        Constructor ^ cons_exist \= []
-    ).
-
-is_dummy_argument_type(ModuleInfo, Type) :-
-    ( type_to_ctor_and_args(Type, TypeCtor, _) ->
-        % Keep this in sync with is_dummy_argument_type_with_constructors
-        % above.
-        (
-            TypeCtor = type_ctor(CtorSymName, TypeArity),
-            CtorSymName = qualified(unqualified(ModuleName), TypeName),
-            is_builtin_dummy_argument_type(ModuleName, TypeName, TypeArity)
-        ;
-            module_info_get_type_table(ModuleInfo, TypeTable),
-            % This can fail for some builtin type constructors such as func,
-            % pred, and tuple, none of which are dummy types.
-            map.search(TypeTable, TypeCtor, TypeDefn),
-            get_type_defn_body(TypeDefn, TypeBody),
-            Ctors = TypeBody ^ du_type_ctors,
-            UserEqCmp = TypeBody ^ du_type_usereq,
-            constructor_list_represents_dummy_argument_type(Ctors, UserEqCmp)
-        )
-    ;
-        fail
-    ).
-
 :- pred type_ctor_is_enumeration(type_ctor::in, module_info::in) is semidet.
 
 type_ctor_is_enumeration(TypeCtor, ModuleInfo) :-
@@ -544,7 +556,51 @@ type_ctor_is_enumeration(TypeCtor, ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-    % If the type is a du type, return the list of its constructors.
+update_type_may_use_atomic_alloc(ModuleInfo, Type, !MayUseAtomic) :-
+    (
+        !.MayUseAtomic = may_not_use_atomic_alloc
+        % There is no point in testing Type.
+    ;
+        !.MayUseAtomic = may_use_atomic_alloc,
+        !:MayUseAtomic = type_may_use_atomic_alloc(ModuleInfo, Type)
+    ).
+
+type_may_use_atomic_alloc(ModuleInfo, Type) = TypeMayUseAtomic :-
+    TypeCategory = classify_type(ModuleInfo, Type),
+    (
+        ( TypeCategory = type_cat_int
+        ; TypeCategory = type_cat_char
+        ; TypeCategory = type_cat_enum
+        ; TypeCategory = type_cat_dummy
+        ; TypeCategory = type_cat_type_ctor_info
+        ),
+        TypeMayUseAtomic = may_use_atomic_alloc
+    ;
+        TypeCategory = type_cat_float,
+        module_info_get_globals(ModuleInfo, Globals),
+        globals.lookup_bool_option(Globals, unboxed_float, UBF),
+        (
+            UBF = yes,
+            TypeMayUseAtomic = may_use_atomic_alloc
+        ;
+            UBF = no,
+            TypeMayUseAtomic = may_not_use_atomic_alloc
+        )
+    ;
+        ( TypeCategory = type_cat_string
+        ; TypeCategory = type_cat_higher_order
+        ; TypeCategory = type_cat_tuple
+        ; TypeCategory = type_cat_variable
+        ; TypeCategory = type_cat_type_info
+        ; TypeCategory = type_cat_typeclass_info
+        ; TypeCategory = type_cat_base_typeclass_info
+        ; TypeCategory = type_cat_void
+        ; TypeCategory = type_cat_user_ctor
+        ),
+        TypeMayUseAtomic = may_not_use_atomic_alloc
+    ).
+
+%-----------------------------------------------------------------------------%
 
 type_constructors(Type, ModuleInfo, Constructors) :-
     type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
@@ -563,6 +619,45 @@ type_constructors(Type, ModuleInfo, Constructors) :-
         substitute_type_args(TypeParams, TypeArgs, TypeBody ^ du_type_ctors,
             Constructors)
     ).
+
+    % Substitute the actual values of the type parameters in list of
+    % constructors, for a particular instance of a polymorphic type.
+    %
+:- pred substitute_type_args(list(type_param)::in, list(mer_type)::in,
+    list(constructor)::in, list(constructor)::out) is det.
+
+substitute_type_args(TypeParams, TypeArgs, Constructors0, Constructors) :-
+    (
+        TypeParams = [],
+        Constructors = Constructors0
+    ;
+        TypeParams = [_ | _],
+        map.from_corresponding_lists(TypeParams, TypeArgs, Subst),
+        substitute_type_args_2(Subst, Constructors0, Constructors)
+    ).
+
+:- pred substitute_type_args_2(tsubst::in, list(constructor)::in,
+    list(constructor)::out) is det.
+
+substitute_type_args_2(_, [], []).
+substitute_type_args_2(Subst, [Ctor0 | Ctors0], [Ctor | Ctors]) :-
+    % Note: prog_io.m ensures that the existentially quantified variables,
+    % if any, are distinct from the parameters, and that the (existential)
+    % constraints can only contain existentially quantified variables,
+    % so there's no need to worry about applying the substitution to ExistQVars
+    % or Constraints.
+    Ctor0 = ctor(ExistQVars, Constraints, Name, Args0),
+    substitute_type_args_3(Subst, Args0, Args),
+    substitute_type_args_2(Subst, Ctors0, Ctors),
+    Ctor = ctor(ExistQVars, Constraints, Name, Args).
+
+:- pred substitute_type_args_3(tsubst::in, list(constructor_arg)::in,
+    list(constructor_arg)::out) is det.
+
+substitute_type_args_3(_, [], []).
+substitute_type_args_3(Subst, [Name - Arg0 | Args0], [Name - Arg | Args]) :-
+    apply_subst_to_type(Subst, Arg0, Arg),
+    substitute_type_args_3(Subst, Args0, Args).
 
 %-----------------------------------------------------------------------------%
 
@@ -674,30 +769,6 @@ is_existq_cons(ModuleInfo, VarType, ConsId) :-
 :- pred is_existq_cons(module_info::in, mer_type::in, cons_id::in,
     hlds_cons_defn::out) is semidet.
 
-is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn) :-
-    type_to_ctor_and_args(VarType, TypeCtor, _),
-    get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
-    ConsDefn = hlds_cons_defn(ExistQVars, _, _, _, _),
-    ExistQVars = [_ | _].
-
-    % Given a type and a cons_id, look up the definition of that constructor;
-    % if it is existentially typed, return its definition, otherwise fail.
-get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
-    is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn),
-    ConsDefn = hlds_cons_defn(ExistQVars, Constraints, Args, _, _),
-    assoc_list.values(Args, ArgTypes),
-    module_info_get_type_table(ModuleInfo, Types),
-    type_to_ctor_and_args(VarType, TypeCtor, _),
-    map.lookup(Types, TypeCtor, TypeDefn),
-    hlds_data.get_type_defn_tvarset(TypeDefn, TypeVarSet),
-    hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
-    hlds_data.get_type_defn_kind_map(TypeDefn, KindMap),
-    prog_type.var_list_to_type_list(KindMap, TypeParams, TypeCtorArgs),
-    type_to_ctor_and_args(VarType, TypeCtor, _),
-    construct_type(TypeCtor, TypeCtorArgs, RetType),
-    CtorDefn = ctor_defn(TypeVarSet, ExistQVars, KindMap, Constraints,
-        ArgTypes, RetType).
-
 get_type_and_cons_defn(ModuleInfo, Type, ConsId, TypeDefn, ConsDefn) :-
     (
         type_to_ctor_and_args(Type, TypeCtor, _),
@@ -728,6 +799,30 @@ get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn) :-
         ),
     list.filter(MatchingCons, ConsDefns, [ConsDefn]).
 
+    % Given a type and a cons_id, look up the definition of that constructor;
+    % if it is existentially typed, return its definition, otherwise fail.
+get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
+    is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn),
+    ConsDefn = hlds_cons_defn(ExistQVars, Constraints, Args, _, _),
+    assoc_list.values(Args, ArgTypes),
+    module_info_get_type_table(ModuleInfo, Types),
+    type_to_ctor_and_args(VarType, TypeCtor, _),
+    map.lookup(Types, TypeCtor, TypeDefn),
+    hlds_data.get_type_defn_tvarset(TypeDefn, TypeVarSet),
+    hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
+    hlds_data.get_type_defn_kind_map(TypeDefn, KindMap),
+    prog_type.var_list_to_type_list(KindMap, TypeParams, TypeCtorArgs),
+    type_to_ctor_and_args(VarType, TypeCtor, _),
+    construct_type(TypeCtor, TypeCtorArgs, RetType),
+    CtorDefn = ctor_defn(TypeVarSet, ExistQVars, KindMap, Constraints,
+        ArgTypes, RetType).
+
+is_existq_cons(ModuleInfo, VarType, ConsId, ConsDefn) :-
+    type_to_ctor_and_args(VarType, TypeCtor, _),
+    get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
+    ConsDefn = hlds_cons_defn(ExistQVars, _, _, _, _),
+    ExistQVars = [_ | _].
+
 %-----------------------------------------------------------------------------%
 
 type_is_no_tag_type(ModuleInfo, Type, Ctor, ArgType) :-
@@ -743,47 +838,6 @@ type_is_no_tag_type(ModuleInfo, Type, Ctor, ArgType) :-
         map.from_corresponding_lists(TypeParams, TypeArgs, Subn),
         apply_subst_to_type(Subn, ArgType0, ArgType)
     ).
-
-%-----------------------------------------------------------------------------%
-
-    % Substitute the actual values of the type parameters in list of
-    % constructors, for a particular instance of a polymorphic type.
-    %
-:- pred substitute_type_args(list(type_param)::in, list(mer_type)::in,
-    list(constructor)::in, list(constructor)::out) is det.
-
-substitute_type_args(TypeParams, TypeArgs, Constructors0, Constructors) :-
-    (
-        TypeParams = [],
-        Constructors = Constructors0
-    ;
-        TypeParams = [_ | _],
-        map.from_corresponding_lists(TypeParams, TypeArgs, Subst),
-        substitute_type_args_2(Subst, Constructors0, Constructors)
-    ).
-
-:- pred substitute_type_args_2(tsubst::in, list(constructor)::in,
-    list(constructor)::out) is det.
-
-substitute_type_args_2(_, [], []).
-substitute_type_args_2(Subst, [Ctor0 | Ctors0], [Ctor | Ctors]) :-
-    % Note: prog_io.m ensures that the existentially quantified variables,
-    % if any, are distinct from the parameters, and that the (existential)
-    % constraints can only contain existentially quantified variables,
-    % so there's no need to worry about applying the substitution to ExistQVars
-    % or Constraints.
-    Ctor0 = ctor(ExistQVars, Constraints, Name, Args0),
-    substitute_type_args_3(Subst, Args0, Args),
-    substitute_type_args_2(Subst, Ctors0, Ctors),
-    Ctor = ctor(ExistQVars, Constraints, Name, Args).
-
-:- pred substitute_type_args_3(tsubst::in, list(constructor_arg)::in,
-    list(constructor_arg)::out) is det.
-
-substitute_type_args_3(_, [], []).
-substitute_type_args_3(Subst, [Name - Arg0 | Args0], [Name - Arg | Args]) :-
-    apply_subst_to_type(Subst, Arg0, Arg),
-    substitute_type_args_3(Subst, Args0, Args).
 
 %-----------------------------------------------------------------------------%
 
