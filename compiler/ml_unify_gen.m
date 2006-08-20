@@ -346,7 +346,7 @@ ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval, !Info) :-
     StaticCons = static_cons(ConsId, ArgVars, StaticArgs),
     (
         % Types for which some other constructor has a reserved_address
-        % -- that only makes a difference when % constructing, so here
+        % -- that only makes a difference when constructing, so here
         % we ignore that, and just recurse on the representation for
         % this constructor.
         Tag = shared_with_reserved_addresses(_, ThisTag)
