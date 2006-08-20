@@ -761,8 +761,14 @@ generate_unify_clauses(Type, TypeBody, H1, H2, Context, Clauses, !Info) :-
             )
         ;
             TypeBody = hlds_eqv_type(EqvType),
-            generate_unify_clauses_eqv_type(EqvType, H1, H2,
-                Context, Clauses, !Info)
+            ( is_dummy_argument_type(ModuleInfo, EqvType) ->
+                % Treat this type as if it were a dummy type itself.
+                Goal = true_goal_with_context(Context),
+                quantify_clauses_body([H1, H2], Goal, Context, Clauses, !Info)
+            ;
+                generate_unify_clauses_eqv_type(EqvType, H1, H2,
+                    Context, Clauses, !Info)
+            )
         ;
             TypeBody = hlds_solver_type(_, _),
             % If no user defined equality predicate is given,
@@ -961,13 +967,12 @@ generate_index_clauses(TypeBody, X, Index, Context, Clauses, !Info) :-
             )
         ;
             TypeBody = hlds_eqv_type(_Type),
-            % The only place that the index predicate for a type
-            % can ever be called from is the compare predicate
-            % for that type. However, the compare predicate for
-            % an equivalence type never calls the index predicate
-            % for that type; it calls the compare predicate of
-            % the expanded type instead. Therefore the clause body
-            % we are generating should never be invoked.
+            % The only place that the index predicate for a type can ever
+            % be called from is the compare predicate for that type. However,
+            % the compare predicate for an equivalence type never calls
+            % the index predicate for that type; it calls the compare predicate
+            % of the expanded type instead. Therefore the clause body we are
+            % generating should never be invoked.
             unexpected(this_file, "trying to create index proc for eqv type")
         ;
             TypeBody = hlds_foreign_type(_),
@@ -1015,8 +1020,14 @@ generate_compare_clauses(Type, TypeBody, Res, H1, H2, Context, Clauses,
             )
         ;
             TypeBody = hlds_eqv_type(EqvType),
-            generate_compare_clauses_eqv_type(EqvType,
-                Res, H1, H2, Context, Clauses, !Info)
+            ( is_dummy_argument_type(ModuleInfo, EqvType) ->
+                % Treat this type as if it were a dummy type itself.
+                generate_dummy_compare_clauses(Res, H1, H2, Context, Clauses,
+                    !Info)
+            ;
+                generate_compare_clauses_eqv_type(EqvType,
+                    Res, H1, H2, Context, Clauses, !Info)
+            )
         ;
             TypeBody = hlds_foreign_type(_),
             generate_compare_clauses_eqv_type(c_pointer_type,
