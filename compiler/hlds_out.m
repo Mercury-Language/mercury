@@ -295,8 +295,8 @@
 write_type_ctor(type_ctor(Name, Arity), !IO) :-
     prog_out.write_sym_name_and_arity(Name / Arity, !IO).
 
-type_ctor_to_string(type_ctor(Name, Arity)) = Str :-
-    prog_out.sym_name_and_arity_to_string(Name / Arity, Str).
+type_ctor_to_string(type_ctor(Name, Arity)) =
+    prog_out.sym_name_and_arity_to_string(Name / Arity).
 
 write_class_id(class_id(Name, Arity), !IO) :-
     prog_out.write_sym_name_and_arity(Name / Arity, !IO).
@@ -379,11 +379,11 @@ pred_id_to_string(ModuleInfo, PredId) = Str :-
             Str = Descr ++ ForStr ++ type_name_to_string(TypeCtor)
         ;
             pred_info_get_markers(PredInfo, Markers),
-            check_marker(Markers, class_instance_method)
+            check_marker(Markers, marker_class_instance_method)
         ->
             Str = "type class method implementation"
         ;
-            pred_info_get_goal_type(PredInfo, promise(PromiseType))
+            pred_info_get_goal_type(PredInfo, goal_type_promise(PromiseType))
         ->
             Str = "`" ++ prog_out.promise_to_string(PromiseType)
                 ++ "' declaration"
@@ -404,8 +404,7 @@ pred_proc_id_to_string(ModuleInfo, proc(PredId, ProcId)) =
     pred_proc_id_to_string(ModuleInfo, PredId, ProcId).
 
 write_pred_proc_id(ModuleInfo, PredId, ProcId, !IO) :-
-    io.write_string(
-        pred_proc_id_to_string(ModuleInfo, PredId, ProcId), !IO).
+    io.write_string(pred_proc_id_to_string(ModuleInfo, PredId, ProcId), !IO).
 
 pred_proc_id_to_string(ModuleInfo, PredId, ProcId) = Str :-
     proc_id_to_int(ProcId, ModeNum),
@@ -416,13 +415,12 @@ write_call_id(CallId, !IO) :-
     Str = call_id_to_string(CallId),
     io.write_string(Str, !IO).
 
-call_id_to_string(call(PredCallId)) =
+call_id_to_string(plain_call_id(PredCallId)) =
     simple_call_id_to_string(PredCallId).
-call_id_to_string(generic_call(GenericCallId)) =
+call_id_to_string(generic_call_id(GenericCallId)) =
     generic_call_id_to_string(GenericCallId).
 
-:- pred write_generic_call_id(generic_call_id::in,
-    io::di, io::uo) is det.
+:- pred write_generic_call_id(generic_call_id::in, io::di, io::uo) is det.
 
 write_generic_call_id(GenericCallId, !IO) :-
     Str = generic_call_id_to_string(GenericCallId),
@@ -430,12 +428,12 @@ write_generic_call_id(GenericCallId, !IO) :-
 
 :- func generic_call_id_to_string(generic_call_id) = string.
 
-generic_call_id_to_string(higher_order(Purity, PredOrFunc, _)) =
+generic_call_id_to_string(gcid_higher_order(Purity, PredOrFunc, _)) =
     purity_prefix_to_string(Purity) ++ "higher-order "
     ++ prog_out.pred_or_func_to_full_str(PredOrFunc) ++ " call".
-generic_call_id_to_string(class_method(_ClassId, MethodId)) =
+generic_call_id_to_string(gcid_class_method(_ClassId, MethodId)) =
     simple_call_id_to_string(MethodId).
-generic_call_id_to_string(cast(CastType)) =
+generic_call_id_to_string(gcid_cast(CastType)) =
     cast_type_to_string(CastType).
 
 :- func cast_type_to_string(cast_type) = string.
@@ -469,15 +467,15 @@ call_arg_id_to_string(CallId, ArgNum, PredMarkers) = Str :-
             % `class_method' does not need the "call to"
             % prefix ("in call to higher-order call" is redundant,
             % it's much better to just say "in higher-order call").
-            CallId = generic_call(GenericCall),
-            \+ GenericCall = class_method(_, _)
+            CallId = generic_call_id(GenericCallId),
+            \+ GenericCallId = gcid_class_method(_, _)
         ;
             % For calls from type class instance implementations
             % that were defined using the named syntax rather
             % than the clause syntax, we also omit the "call to",
             % since in that case there was no explicit call in
             % the user's source code.
-            check_marker(PredMarkers, named_class_instance_method)
+            check_marker(PredMarkers, marker_named_class_instance_method)
         )
     ->
         Str2 = Str1
@@ -494,7 +492,8 @@ write_arg_number(CallId, ArgNum, !IO) :-
 
 :- func arg_number_to_string(call_id, int) = string.
 
-arg_number_to_string(call(simple_call_id(PredOrFunc, _, Arity)), ArgNum) =
+arg_number_to_string(plain_call_id(simple_call_id(PredOrFunc, _, Arity)),
+        ArgNum) =
     (
         PredOrFunc = function,
         Arity = ArgNum
@@ -503,8 +502,8 @@ arg_number_to_string(call(simple_call_id(PredOrFunc, _, Arity)), ArgNum) =
     ;
         "argument " ++ int_to_string(ArgNum)
     ).
-arg_number_to_string(generic_call(
-        higher_order(_Purity, PredOrFunc, Arity)), ArgNum) = Str :-
+arg_number_to_string(generic_call_id(
+        gcid_higher_order(_Purity, PredOrFunc, Arity)), ArgNum) = Str :-
     (
         PredOrFunc = function,
         ArgNum = Arity
@@ -523,9 +522,9 @@ arg_number_to_string(generic_call(
         ),
         Str = Main ++ " (i.e. " ++ Expl ++ ")"
     ).
-arg_number_to_string(generic_call(class_method(_, _)), ArgNum) =
+arg_number_to_string(generic_call_id(gcid_class_method(_, _)), ArgNum) =
     "argument " ++ int_to_string(ArgNum).
-arg_number_to_string(generic_call(cast(_)), ArgNum) =
+arg_number_to_string(generic_call_id(gcid_cast(_)), ArgNum) =
     "argument " ++ int_to_string(ArgNum).
 
 %-----------------------------------------------------------------------------%
@@ -551,16 +550,16 @@ unify_context_to_pieces(!First, UnifyContext, !Pieces) :-
 :- pred write_unify_main_context(bool::in, bool::out,
     unify_main_context::in, prog_context::in, io::di, io::uo) is det.
 
-write_unify_main_context(!First, explicit, _, !IO).
-write_unify_main_context(!First, head(ArgNum), Context, !IO) :-
+write_unify_main_context(!First, umc_explicit, _, !IO).
+write_unify_main_context(!First, umc_head(ArgNum), Context, !IO) :-
     write_in_argument(!.First, ArgNum, Context, !IO),
     !:First = no,
     io.write_string(" of clause head:\n", !IO).
-write_unify_main_context(!First, head_result, Context, !IO) :-
+write_unify_main_context(!First, umc_head_result, Context, !IO) :-
     start_in_message(!.First, Context, !IO),
     !:First = no,
     io.write_string("function result term of clause head:\n", !IO).
-write_unify_main_context(!First, call(CallId, ArgNum), Context, !IO) :-
+write_unify_main_context(!First, umc_call(CallId, ArgNum), Context, !IO) :-
     start_in_message(!.First, Context, !IO),
     !:First = no,
     % The markers argument below is used only for type class method
@@ -573,7 +572,7 @@ write_unify_main_context(!First, call(CallId, ArgNum), Context, !IO) :-
     init_markers(Markers),
     write_call_arg_id(CallId, ArgNum, Markers, !IO),
     io.write_string(":\n", !IO).
-write_unify_main_context(!First, implicit(Source), Context, !IO) :-
+write_unify_main_context(!First, umc_implicit(Source), Context, !IO) :-
     start_in_message(!.First, Context, !IO),
     io.format("implicit %s unification:\n", [s(Source)], !IO).
 
@@ -581,16 +580,16 @@ write_unify_main_context(!First, implicit(Source), Context, !IO) :-
     unify_main_context::in,
     list(format_component)::in, list(format_component)::out) is det.
 
-unify_main_context_to_pieces(!First, explicit, !Pieces).
-unify_main_context_to_pieces(!First, head(ArgNum), !Pieces) :-
+unify_main_context_to_pieces(!First, umc_explicit, !Pieces).
+unify_main_context_to_pieces(!First, umc_head(ArgNum), !Pieces) :-
     in_argument_to_pieces(!.First, ArgNum, !Pieces),
     !:First = no,
     !:Pieces = !.Pieces ++ [words("of clause head:"), nl].
-unify_main_context_to_pieces(!First, head_result, !Pieces) :-
+unify_main_context_to_pieces(!First, umc_head_result, !Pieces) :-
     start_in_message_to_pieces(!.First, !Pieces),
     !:First = no,
     !:Pieces = !.Pieces ++ [words("function result term of clause head:"), nl].
-unify_main_context_to_pieces(!First, call(CallId, ArgNum),
+unify_main_context_to_pieces(!First, umc_call(CallId, ArgNum),
         !Pieces) :-
     start_in_message_to_pieces(!.First, !Pieces),
     !:First = no,
@@ -604,7 +603,7 @@ unify_main_context_to_pieces(!First, call(CallId, ArgNum),
     init_markers(Markers),
     ArgIdStr = call_arg_id_to_string(CallId, ArgNum, Markers),
     !:Pieces = !.Pieces ++ [words(ArgIdStr ++ ":"), nl].
-unify_main_context_to_pieces(!First, implicit(Source), !Pieces) :-
+unify_main_context_to_pieces(!First, umc_implicit(Source), !Pieces) :-
     start_in_message_to_pieces(!.First, !Pieces),
     string.format("implicit %s unification:\n", [s(Source)], Msg),
     !:Pieces = !.Pieces ++ [words(Msg), nl].
@@ -997,27 +996,27 @@ set_dump_opts_for_clauses(SavedDumpStr, !IO) :-
 write_marker_list(Markers, !IO) :-
     io.write_list(Markers, ", ", write_marker, !IO).
 
-marker_name(stub, "stub").
-marker_name(infer_type, "infer_type").
-marker_name(infer_modes, "infer_modes").
-marker_name(user_marked_inline, "inline").
-marker_name(user_marked_no_inline, "no_inline").
-marker_name(heuristic_inline, "heuristic_inline").
-marker_name(obsolete, "obsolete").
-marker_name(class_method, "class_method").
-marker_name(class_instance_method, "class_instance_method").
-marker_name(named_class_instance_method, "named_class_instance_method").
-marker_name(is_impure, "impure").
-marker_name(is_semipure, "semipure").
-marker_name(promised_pure, "promise_pure").
-marker_name(promised_semipure, "promise_semipure").
-marker_name(promised_equivalent_clauses, "promise_equivalent_clauses").
-marker_name(terminates, "terminates").
-marker_name(check_termination, "check_termination").
-marker_name(does_not_terminate, "does_not_terminate").
-marker_name(calls_are_fully_qualified, "calls_are_fully_qualified").
-marker_name(mode_check_clauses, "mode_check_clauses").
-marker_name(may_have_parallel_conj, "may_have_parallel_conj").
+marker_name(marker_stub, "stub").
+marker_name(marker_infer_type, "infer_type").
+marker_name(marker_infer_modes, "infer_modes").
+marker_name(marker_user_marked_inline, "inline").
+marker_name(marker_user_marked_no_inline, "no_inline").
+marker_name(marker_heuristic_inline, "heuristic_inline").
+marker_name(marker_obsolete, "obsolete").
+marker_name(marker_class_method, "class_method").
+marker_name(marker_class_instance_method, "class_instance_method").
+marker_name(marker_named_class_instance_method, "named_class_instance_method").
+marker_name(marker_is_impure, "impure").
+marker_name(marker_is_semipure, "semipure").
+marker_name(marker_promised_pure, "promise_pure").
+marker_name(marker_promised_semipure, "promise_semipure").
+marker_name(marker_promised_equivalent_clauses, "promise_equivalent_clauses").
+marker_name(marker_terminates, "terminates").
+marker_name(marker_check_termination, "check_termination").
+marker_name(marker_does_not_terminate, "does_not_terminate").
+marker_name(marker_calls_are_fully_qualified, "calls_are_fully_qualified").
+marker_name(marker_mode_check_clauses, "mode_check_clauses").
+marker_name(marker_may_have_parallel_conj, "may_have_parallel_conj").
 
 write_marker(Marker, !IO) :-
     marker_name(Marker, Name),
@@ -1093,9 +1092,9 @@ write_clause(Indent, ModuleInfo, PredId, VarSet, AppendVarNums, HeadTerms,
         true
     ),
     (
-        Lang = mercury
+        Lang = impl_lang_mercury
     ;
-        Lang = foreign_language(ForeignLang),
+        Lang = impl_lang_foreign(ForeignLang),
         io.write_string("% Language of implementation: ", !IO),
         io.write(ForeignLang, !IO),
         io.nl(!IO)
@@ -1913,7 +1912,7 @@ write_goal_2(unify(A, B, _, Unification, _), ModuleInfo, VarSet, AppendVarNums,
 write_goal_2(call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
         MaybeTraceRuntimeCond, PragmaCode), ModuleInfo, VarSet, AppendVarNums,
         Indent, Follow, _, !IO) :-
-    ForeignLang = foreign_language(Attributes),
+    ForeignLang = get_foreign_language(Attributes),
     write_indent(Indent, !IO),
     io.write_string("$pragma_foreign_proc(/* ", !IO),
     io.write_string(foreign_language_string(ForeignLang), !IO),
@@ -2058,8 +2057,7 @@ write_foreign_args([Arg | Args], VarSet, TVarSet, AppendVarNums, !IO) :-
     ;
         Args = [_ | _],
         io.write_string(", ", !IO),
-        write_foreign_args(Args, VarSet, TVarSet,
-            AppendVarNums, !IO)
+        write_foreign_args(Args, VarSet, TVarSet, AppendVarNums, !IO)
     ).
 
 :- pred write_llds_code_gen_info(hlds_goal_info::in, prog_varset::in,
@@ -2467,9 +2465,9 @@ write_unify_rhs_2(RHS, ModuleInfo, VarSet, InstVarSet, AppendVarNums, Indent,
     prog_varset::in, inst_varset::in, bool::in, int::in, maybe(mer_type)::in,
     maybe_vartypes::in, io::di, io::uo) is det.
 
-write_unify_rhs_3(var(Var), _, VarSet, _, AppendVarNums, _, _, _, !IO) :-
+write_unify_rhs_3(rhs_var(Var), _, VarSet, _, AppendVarNums, _, _, _, !IO) :-
     mercury_output_var(Var, VarSet, AppendVarNums, !IO).
-write_unify_rhs_3(functor(ConsId0, IsExistConstruct, ArgVars), ModuleInfo,
+write_unify_rhs_3(rhs_functor(ConsId0, IsExistConstruct, ArgVars), ModuleInfo,
         VarSet, _, AppendVarNums, _Indent, MaybeType, TypeQual, !IO) :-
     (
         IsExistConstruct = yes,
@@ -2491,7 +2489,7 @@ write_unify_rhs_3(functor(ConsId0, IsExistConstruct, ArgVars), ModuleInfo,
     ;
         true
     ).
-write_unify_rhs_3(lambda_goal(Purity, PredOrFunc, _EvalMethod, NonLocals,
+write_unify_rhs_3(rhs_lambda_goal(Purity, PredOrFunc, _EvalMethod, NonLocals,
         Vars, Modes, Det, Goal), ModuleInfo, VarSet, InstVarSet,
         AppendVarNums, Indent, MaybeType, TypeQual, !IO) :-
     Indent1 = Indent + 1,
@@ -2565,10 +2563,10 @@ write_unify_rhs_3(lambda_goal(Purity, PredOrFunc, _EvalMethod, NonLocals,
         true
     ).
 
-unify_rhs_to_string(var(Var), _ModuleInfo, VarSet, AppendVarNums)
+unify_rhs_to_string(rhs_var(Var), _ModuleInfo, VarSet, AppendVarNums)
     = mercury_var_to_string(Var, VarSet, AppendVarNums).
-unify_rhs_to_string(functor(ConsId0, IsExistConstruct, ArgVars), ModuleInfo,
-        VarSet, AppendVarNums) = Str :-
+unify_rhs_to_string(rhs_functor(ConsId0, IsExistConstruct, ArgVars),
+        ModuleInfo, VarSet, AppendVarNums) = Str :-
     (
         IsExistConstruct = yes,
         ConsId0 = cons(SymName0, Arity)
@@ -2580,7 +2578,7 @@ unify_rhs_to_string(functor(ConsId0, IsExistConstruct, ArgVars), ModuleInfo,
     ),
     Str = functor_cons_id_to_string(ConsId, ArgVars, VarSet, ModuleInfo,
         AppendVarNums).
-unify_rhs_to_string(lambda_goal(_, _, _, _, _, _, _, _), _, _, _)
+unify_rhs_to_string(rhs_lambda_goal(_, _, _, _, _, _, _, _), _, _, _)
     = "lambda goal".
 
 :- pred write_sym_name_and_args(sym_name::in, list(prog_var)::in,
@@ -2904,33 +2902,34 @@ write_instmap_delta_vars(InstMapDelta, VarSet, AppendVarNums, !IO) :-
 write_import_status(Status, !IO) :-
     io.write_string(import_status_to_string(Status), !IO).
 
-import_status_to_string(local) =
+import_status_to_string(status_local) =
     "local".
-import_status_to_string(exported) =
+import_status_to_string(status_exported) =
     "exported".
-import_status_to_string(opt_exported) =
+import_status_to_string(status_opt_exported) =
     "opt_exported".
-import_status_to_string(abstract_exported) =
+import_status_to_string(status_abstract_exported) =
     "abstract_exported".
-import_status_to_string(pseudo_exported) =
+import_status_to_string(status_pseudo_exported) =
     "pseudo_exported".
-import_status_to_string(imported(interface)) =
+import_status_to_string(status_imported(import_locn_interface)) =
     "imported in the interface".
-import_status_to_string(imported(implementation)) =
+import_status_to_string(status_imported(import_locn_implementation)) =
     "imported in the implementation".
-import_status_to_string(imported(ancestor_private_interface)) =
+import_status_to_string(status_imported(
+        import_locn_ancestor_private_interface)) =
     "imported from an ancestor's private interface".
-import_status_to_string(imported(ancestor)) =
+import_status_to_string(status_imported(import_locn_ancestor)) =
     "imported by an ancestor".
-import_status_to_string(external(Status)) =
+import_status_to_string(status_external(Status)) =
     "external (and " ++ import_status_to_string(Status) ++ ")".
-import_status_to_string(abstract_imported) =
+import_status_to_string(status_abstract_imported) =
     "abstract_imported".
-import_status_to_string(opt_imported) =
+import_status_to_string(status_opt_imported) =
     "opt_imported".
-import_status_to_string(pseudo_imported) =
+import_status_to_string(status_pseudo_imported) =
     "pseudo_imported".
-import_status_to_string(exported_to_submodules) =
+import_status_to_string(status_exported_to_submodules) =
     "exported_to_submodules".
 
 :- pred write_type_list(list(mer_type)::in, tvarset::in, bool::in,
@@ -3161,8 +3160,8 @@ write_types_2(Indent, [TypeCtor - TypeDefn | Types], !IO) :-
 
     write_indent(Indent, !IO),
     (
-        ( TypeBody = solver_type(_, _)
-        ; TypeBody = abstract_type(solver_type)
+        ( TypeBody = hlds_solver_type(_, _)
+        ; TypeBody = hlds_abstract_type(solver_type)
         )
     ->
         io.write_string(":- solver type ", !IO)
@@ -3211,7 +3210,7 @@ write_type_params_2(TVarSet, [P | Ps], !IO) :-
 :- pred write_type_body(int::in, tvarset::in, hlds_type_body::in,
     io::di, io::uo) is det.
 
-write_type_body(Indent, TVarSet, du_type(Ctors, Tags, EnumDummy,
+write_type_body(Indent, TVarSet, hlds_du_type(Ctors, Tags, EnumDummy,
         MaybeUserEqComp, ReservedTag, Foreign), !IO) :-
     io.write_string(" --->\n", !IO),
     (
@@ -3243,20 +3242,20 @@ write_type_body(Indent, TVarSet, du_type(Ctors, Tags, EnumDummy,
     ),
     io.write_string(".\n", !IO).
 
-write_type_body(_Indent, TVarSet, eqv_type(Type), !IO) :-
+write_type_body(_Indent, TVarSet, hlds_eqv_type(Type), !IO) :-
     io.write_string(" == ", !IO),
     mercury_output_type(TVarSet, no, Type, !IO),
     io.write_string(".\n", !IO).
 
-write_type_body(_Indent, _TVarSet, abstract_type(_IsSolverType), !IO) :-
+write_type_body(_Indent, _TVarSet, hlds_abstract_type(_IsSolverType), !IO) :-
     io.write_string(".\n", !IO).
 
-write_type_body(_Indent, _TVarSet, foreign_type(_), !IO) :-
+write_type_body(_Indent, _TVarSet, hlds_foreign_type(_), !IO) :-
     % XXX
     io.write_string(" == $foreign_type.\n", !IO).
 
 write_type_body(_Indent, TVarSet,
-        solver_type(SolverTypeDetails, MaybeUserEqComp), !IO) :-
+        hlds_solver_type(SolverTypeDetails, MaybeUserEqComp), !IO) :-
     mercury_output_where_attributes(TVarSet, yes(SolverTypeDetails),
         MaybeUserEqComp, !IO),
     io.write_string(".\n", !IO).
@@ -3781,7 +3780,7 @@ write_proc(Indent, AppendVarNums, ModuleInfo, PredId, ProcId,
     ),
 
     (
-        ImportStatus = pseudo_imported,
+        ImportStatus = status_pseudo_imported,
         hlds_pred.in_in_unification_proc_id(ProcId)
     ->
         true
@@ -4089,7 +4088,8 @@ inst_uniqueness(mostly_clobbered, _) = "mostly_clobbered".
 
 bound_insts_to_term([], _) = _ :-
     unexpected(this_file, "bound_insts_to_term([])").
-bound_insts_to_term([functor(ConsId, Args) | BoundInsts], Context) = Term :-
+bound_insts_to_term([bound_functor(ConsId, Args) | BoundInsts], Context)
+        = Term :-
     (
         cons_id_and_args_to_term(ConsId,
             list.map(map_inst_to_term(Context), Args), FirstTerm)

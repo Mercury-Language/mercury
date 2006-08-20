@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: hlds_goal.m.
 % Main authors: fjh, conway.
-% 
+%
 % The module defines the part of the HLDS that deals with goals.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -466,8 +466,8 @@
     % simple_test/complicated_unify).
     %
 :- type unify_rhs
-    --->    var(prog_var)
-    ;       functor(
+    --->    rhs_var(prog_var)
+    ;       rhs_functor(
                 rhs_functor         :: cons_id,
                 rhs_is_exist_constr :: is_existential_construction,
                                     % The `is_existential_construction' field
@@ -476,7 +476,7 @@
                                     % typed constructions.
                 rhs_args            :: list(prog_var)
             )
-    ;       lambda_goal(
+    ;       rhs_lambda_goal(
                 rhs_purity          :: purity,
                 rhs_p_or_f          :: pred_or_func,
                 rhs_eval_method     :: lambda_eval_method,
@@ -684,26 +684,26 @@
     % unification within a clause
     %
 :- type unify_main_context
-    --->    explicit
+    --->    umc_explicit
             % An explicit call to =/2.
 
-    ;       head(
+    ;       umc_head(
             % A unification in an argument of a clause head.
 
                 int         % The argument number (first argument == no. 1)
             )
 
-    ;       head_result
+    ;       umc_head_result
             % A unification in the function result term of a clause head.
 
-    ;       call(
+    ;       umc_call(
                 % A unification in an argument of a predicate call.
 
                 call_id,    % The name and arity of the predicate.
                 int         % The argument number (first arg == 1).
             )
 
-    ;       implicit(
+    ;       umc_implicit(
                 % A unification added by some syntactic transformation
                 % (e.g. for handling state variables).
 
@@ -1047,7 +1047,7 @@
     ;       contains_trace.
             % This goal contains a scope goal whose scope_reason is
             % trace_goal(...).
-   
+
     % We can think of the goal that defines a procedure to be a tree,
     % whose leaves are primitive goals and whose interior nodes are
     % compound goals. These two types describe the position of a goal
@@ -1105,17 +1105,16 @@
 % goal.
 %
 
-
     % Information describing possible kinds of reuse on a per goal basis.
     % - 'empty': before CTGC analysis, every goal is annotated with the reuse
-    % description 'empty', i.e. no information about any reuse. 
+    % description 'empty', i.e. no information about any reuse.
     % - 'potential_reuse': the value 'potential_reuse' states that in a reuse
     % version of the procedure to which the goal belongs, this goal may safely
     % be replaced by a goal implementing structure reuse.
     % - 'reuse': the value 'reuse' states that in the current procedure (either
     % the specialised reuse version of a procedure, or the original procedure
     % itself) the current goal can safely be replaced by a goal performing
-    % structure reuse. 
+    % structure reuse.
     % - 'missed_reuse': the value 'missed_reuse' gives some feedback when an
     % opportunity for reuse was missed for some reason (only used for calls).
     %
@@ -1133,29 +1132,29 @@
     % allowed to reuse a previously discovered dead term for constructing a
     % new term in the given construction. Details of which term is reused are
     % recorded.
-    % - 'reuse_call' (only applicable to procedure calls): the called 
-    % procedure is an optimised procedure w.r.t. CTGC. Records whether the 
-    % call is conditional or not. 
+    % - 'reuse_call' (only applicable to procedure calls): the called
+    % procedure is an optimised procedure w.r.t. CTGC. Records whether the
+    % call is conditional or not.
     %
-:- type short_reuse_description 
-    --->    cell_died   
+:- type short_reuse_description
+    --->    cell_died
     ;       cell_reused(
                 dead_var,       % The dead variable selected
                                 % for reusing.
-                is_conditional, % states if the reuse is conditional. 
-                list(cons_id),  % What are the possible cons_ids that the 
+                is_conditional, % states if the reuse is conditional.
+                list(cons_id),  % What are the possible cons_ids that the
                                 % variable to be reused can have.
-                list(needs_update)   
-                                % Which of the fields of the cell to be 
+                list(needs_update)
+                                % Which of the fields of the cell to be
                                 % reused already contain the correct value.
             )
     ;       reuse_call(is_conditional).
 
     % Used to represent the fact whether a reuse opportunity is either
-    % always safe (unconditional_reuse) or involves a reuse condition to 
+    % always safe (unconditional_reuse) or involves a reuse condition to
     % be satisfied (conditional_reuse).
     %
-:- type is_conditional 
+:- type is_conditional
     --->    conditional_reuse
     ;       unconditional_reuse.
 
@@ -1176,16 +1175,16 @@
     % fails.
 :- pred goal_info_maybe_get_lfu(hlds_goal_info::in, set(prog_var)::out) is
     semidet.
-:- pred goal_info_maybe_get_lbu(hlds_goal_info::in, set(prog_var)::out) is 
+:- pred goal_info_maybe_get_lbu(hlds_goal_info::in, set(prog_var)::out) is
     semidet.
-:- pred goal_info_maybe_get_reuse(hlds_goal_info::in, reuse_description::out) 
+:- pred goal_info_maybe_get_reuse(hlds_goal_info::in, reuse_description::out)
     is semidet.
 
-:- pred goal_info_set_lfu(set(prog_var)::in, hlds_goal_info::in, 
+:- pred goal_info_set_lfu(set(prog_var)::in, hlds_goal_info::in,
     hlds_goal_info::out) is det.
-:- pred goal_info_set_lbu(set(prog_var)::in, hlds_goal_info::in, 
+:- pred goal_info_set_lbu(set(prog_var)::in, hlds_goal_info::in,
     hlds_goal_info::out) is det.
-:- pred goal_info_set_reuse(reuse_description::in, hlds_goal_info::in, 
+:- pred goal_info_set_reuse(reuse_description::in, hlds_goal_info::in,
     hlds_goal_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -1473,10 +1472,10 @@ make_foreign_args(Vars, NamesModesBoxes, Types, Args) :-
 %
 
 generic_call_id(higher_order(_, Purity, PorF, Arity),
-        generic_call(higher_order(Purity, PorF, Arity))).
+        generic_call_id(gcid_higher_order(Purity, PorF, Arity))).
 generic_call_id(class_method(_, _, ClassId, MethodId),
-        generic_call(class_method(ClassId, MethodId))).
-generic_call_id(cast(CastType), generic_call(cast(CastType))).
+        generic_call_id(gcid_class_method(ClassId, MethodId))).
+generic_call_id(cast(CastType), generic_call_id(gcid_cast(CastType))).
 
 generic_call_pred_or_func(higher_order(_, _, PredOrFunc, _)) = PredOrFunc.
 generic_call_pred_or_func(class_method(_, _, _, CallId)) =
@@ -2049,10 +2048,8 @@ goal_is_atomic(unify(_, _, _, _, _)) = yes.
 goal_is_atomic(generic_call(_, _, _, _)) = yes.
 goal_is_atomic(plain_call(_, _, _, _, _, _)) = yes.
 goal_is_atomic(call_foreign_proc(_, _, _, _, _, _,  _)) = yes.
-goal_is_atomic(conj(_, Conj)) =
-    ( Conj = [] -> yes ; no ).
-goal_is_atomic(disj(Disj)) =
-    ( Disj = [] -> yes ; no ).
+goal_is_atomic(conj(_, Conj)) = ( Conj = [] -> yes ; no ).
+goal_is_atomic(disj(Disj)) = ( Disj = [] -> yes ; no ).
 goal_is_atomic(if_then_else(_, _, _, _)) = no.
 goal_is_atomic(negation(_)) = no.
 goal_is_atomic(switch(_, _, _)) = no.
@@ -2192,7 +2189,7 @@ make_simple_test(X, Y, UnifyMainContext, UnifySubContext, Goal) :-
     instmap_delta_init_reachable(InstMapDelta),
     goal_info_init(list_to_set([X, Y]), InstMapDelta, detism_semi, purity_pure,
         GoalInfo),
-    Goal = unify(X, var(Y), Mode, Unification, UnifyContext) - GoalInfo.
+    Goal = unify(X, rhs_var(Y), Mode, Unification, UnifyContext) - GoalInfo.
 
 %-----------------------------------------------------------------------------%
 
@@ -2265,12 +2262,12 @@ make_char_const_construction(Var, Char, Goal) :-
     make_const_construction(Var, cons(unqualified(String), 0), Goal).
 
 make_const_construction(Var, ConsId, Goal - GoalInfo) :-
-    RHS = functor(ConsId, no, []),
-    Inst = bound(unique, [functor(ConsId, [])]),
+    RHS = rhs_functor(ConsId, no, []),
+    Inst = bound(unique, [bound_functor(ConsId, [])]),
     Mode = (free -> Inst) - (Inst -> Inst),
     Unification = construct(Var, ConsId, [], [],
         construct_dynamically, cell_is_unique, no_construct_sub_info),
-    Context = unify_context(explicit, []),
+    Context = unify_context(umc_explicit, []),
     Goal = unify(Var, RHS, Mode, Unification, Context),
     set.singleton_set(NonLocals, Var),
     instmap_delta_init_reachable(InstMapDelta0),
@@ -2279,13 +2276,13 @@ make_const_construction(Var, ConsId, Goal - GoalInfo) :-
 
 construct_functor(Var, ConsId, Args, Goal) :-
     list.length(Args, Arity),
-    Rhs = functor(ConsId, no, Args),
+    Rhs = rhs_functor(ConsId, no, Args),
     UnifyMode = (free_inst -> ground_inst) - (ground_inst -> ground_inst),
     UniMode = ((free_inst - ground_inst) -> (ground_inst - ground_inst)),
     list.duplicate(Arity, UniMode, UniModes),
     Unification = construct(Var, ConsId, Args, UniModes,
         construct_dynamically, cell_is_unique, no_construct_sub_info),
-    UnifyContext = unify_context(explicit, []),
+    UnifyContext = unify_context(umc_explicit, []),
     Unify = unify(Var, Rhs, UnifyMode, Unification, UnifyContext),
     set.list_to_set([Var | Args], NonLocals),
     instmap_delta_from_assoc_list([Var - ground_inst], InstMapDelta),
@@ -2294,11 +2291,11 @@ construct_functor(Var, ConsId, Args, Goal) :-
 
 deconstruct_functor(Var, ConsId, Args, Goal) :-
     list.length(Args, Arity),
-    Rhs = functor(ConsId, no, Args),
+    Rhs = rhs_functor(ConsId, no, Args),
     UnifyMode = (ground_inst -> free_inst) - (ground_inst -> ground_inst),
     UniMode = ((ground_inst - free_inst) -> (ground_inst - ground_inst)),
     list.duplicate(Arity, UniMode, UniModes),
-    UnifyContext = unify_context(explicit, []),
+    UnifyContext = unify_context(umc_explicit, []),
     Unification = deconstruct(Var, ConsId, Args, UniModes, cannot_fail,
         cannot_cgc),
     Unify = unify(Var, Rhs, UnifyMode, Unification, UnifyContext),
@@ -2347,7 +2344,7 @@ get_pragma_foreign_var_names_2([MaybeName | MaybeNames], !Names) :-
     --->    extra_info(
                 extra_info_ho_vals              :: ho_values,
                 extra_info_maybe_ctgc_info      :: maybe(ctgc_info)
-                    % Any information related to structure reuse (CTGC). 
+                    % Any information related to structure reuse (CTGC).
             ).
 
 :- func hlds_goal_extra_info_init = hlds_goal_extra_info.
@@ -2368,100 +2365,99 @@ goal_info_set_ho_values(Values, !GoalInfo) :-
 :- type ctgc_info
     --->    ctgc_info(
                 % The local forward use set: this set contains the variables
-                % that are syntactically needed during forward execution. 
+                % that are syntactically needed during forward execution.
                 % It is computed as the set of instantiated vars (input vars
                 % + sum(pre_births), minus the set of dead vars
                 % (sum(post_deaths and pre_deaths).
-                % The information is needed for determining the direct reuses. 
+                % The information is needed for determining the direct reuses.
                 lfu     :: set(prog_var),
 
                 % The local backward use set. This set contains the
                 % instantiated variables that are needed upon backtracking
                 % (i.e. syntactically appearing in any nondet call preceding
-                % this goal). 
+                % this goal).
                 lbu     :: set(prog_var),
 
                 % Any structure reuse information related to this call.
                 reuse   :: reuse_description
-        ).
-
+            ).
 
 :- func ctgc_info_init = ctgc_info.
 
 ctgc_info_init = ctgc_info(set.init, set.init, empty).
 
-goal_info_get_lfu(GoalInfo) = LFU :- 
-    ( goal_info_maybe_get_lfu(GoalInfo, LFU0) -> 
+goal_info_get_lfu(GoalInfo) = LFU :-
+    ( goal_info_maybe_get_lfu(GoalInfo, LFU0) ->
         LFU = LFU0
     ;
-        unexpected(this_file, "Requesting LFU information while " ++ 
-            "CTGC field not set.")
+        unexpected(this_file,
+            "Requesting LFU information while CTGC field not set.")
     ).
-goal_info_get_lbu(GoalInfo) = LBU :- 
+goal_info_get_lbu(GoalInfo) = LBU :-
     ( goal_info_maybe_get_lbu(GoalInfo, LBU0) ->
         LBU = LBU0
     ;
-        unexpected(this_file, "Requesting LBU information while " ++ 
-            "CTGC field not set.")
+        unexpected(this_file,
+            "Requesting LBU information while CTGC field not set.")
     ).
-goal_info_get_reuse(GoalInfo) = Reuse :- 
-    ( goal_info_maybe_get_reuse(GoalInfo, Reuse0) -> 
+goal_info_get_reuse(GoalInfo) = Reuse :-
+    ( goal_info_maybe_get_reuse(GoalInfo, Reuse0) ->
         Reuse = Reuse0
-    ;   
-        unexpected(this_file, "Requesting reuse information while " ++ 
-            "CTGC field not set.")
+    ;
+        unexpected(this_file,
+            "Requesting reuse information while CTGC field not set.")
     ).
 
-goal_info_maybe_get_lfu(GoalInfo, LFU) :- 
+goal_info_maybe_get_lfu(GoalInfo, LFU) :-
     MaybeCTGC = GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
     MaybeCTGC = yes(CTGC),
-    LFU = CTGC ^ lfu. 
-goal_info_maybe_get_lbu(GoalInfo, LBU) :- 
+    LFU = CTGC ^ lfu.
+goal_info_maybe_get_lbu(GoalInfo, LBU) :-
     MaybeCTGC = GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
     MaybeCTGC = yes(CTGC),
-    LBU = CTGC ^ lbu. 
-goal_info_maybe_get_reuse(GoalInfo, Reuse) :- 
+    LBU = CTGC ^ lbu.
+goal_info_maybe_get_reuse(GoalInfo, Reuse) :-
     MaybeCTGC = GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
     MaybeCTGC = yes(CTGC),
-    Reuse = CTGC ^ reuse. 
-    
-goal_info_set_lfu(LFU, !GoalInfo) :- 
+    Reuse = CTGC ^ reuse.
+
+goal_info_set_lfu(LFU, !GoalInfo) :-
     MaybeCTGC0 = !.GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
     (
         MaybeCTGC0 = yes(CTGC0)
     ;
-        MaybeCTGC0 = no, 
+        MaybeCTGC0 = no,
         CTGC0 = ctgc_info_init
     ),
     CTGC = CTGC0 ^ lfu := LFU,
     MaybeCTGC = yes(CTGC),
-    !:GoalInfo = !.GoalInfo ^ extra_goal_info 
+    !:GoalInfo = !.GoalInfo ^ extra_goal_info
         ^ extra_info_maybe_ctgc_info := MaybeCTGC.
 
-goal_info_set_lbu(LBU, !GoalInfo) :- 
+goal_info_set_lbu(LBU, !GoalInfo) :-
     MaybeCTGC0 = !.GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
     (
         MaybeCTGC0 = yes(CTGC0)
     ;
-        MaybeCTGC0 = no, 
+        MaybeCTGC0 = no,
         CTGC0 = ctgc_info_init
     ),
     CTGC = CTGC0 ^ lbu := LBU,
     MaybeCTGC = yes(CTGC),
-    !:GoalInfo = !.GoalInfo ^ extra_goal_info 
+    !:GoalInfo = !.GoalInfo ^ extra_goal_info
         ^ extra_info_maybe_ctgc_info := MaybeCTGC.
 
-goal_info_set_reuse(Reuse, !GoalInfo) :- 
+goal_info_set_reuse(Reuse, !GoalInfo) :-
     MaybeCTGC0 = !.GoalInfo ^ extra_goal_info ^ extra_info_maybe_ctgc_info,
     (
         MaybeCTGC0 = yes(CTGC0)
     ;
-        MaybeCTGC0 = no, 
+        MaybeCTGC0 = no,
         CTGC0 = ctgc_info_init
     ),
     CTGC = CTGC0 ^ reuse := Reuse,
     MaybeCTGC = yes(CTGC),
-    !:GoalInfo = !.GoalInfo ^ extra_goal_info 
+    !:GoalInfo = !.GoalInfo ^ extra_goal_info
         ^ extra_info_maybe_ctgc_info := MaybeCTGC.
 
 %-----------------------------------------------------------------------------%

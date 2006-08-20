@@ -263,7 +263,7 @@ ml_gen_construct_2(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
         % ignore that, and just recurse on the representation for this
         % constructor.
 
-        Tag = shared_with_reserved_addresses(_, ThisTag),
+        Tag = shared_with_reserved_addresses_tag(_, ThisTag),
         ml_gen_construct_2(ThisTag, Type, Var, ConsId, Args, ArgModes,
             TakeAddr, HowToConstruct, Context, Decls, Statements, !Info)
     ;
@@ -289,7 +289,7 @@ ml_gen_construct_2(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
             Context, Decls, Statements, !Info)
     ;
         % Ordinary compound terms.
-        ( Tag = single_functor
+        ( Tag = single_functor_tag
         ; Tag = unshared_tag(_TagVal)
         ; Tag = shared_remote_tag(_PrimaryTag, _SecondaryTag)
         ),
@@ -297,15 +297,15 @@ ml_gen_construct_2(Tag, Type, Var, ConsId, Args, ArgModes, TakeAddr,
             HowToConstruct, Context, Decls, Statements, !Info)
     ;
         % Constants.
-        ( Tag = int_constant(_)
-        ; Tag = float_constant(_)
-        ; Tag = string_constant(_)
-        ; Tag = reserved_address(_)
+        ( Tag = int_tag(_)
+        ; Tag = float_tag(_)
+        ; Tag = string_tag(_)
+        ; Tag = reserved_address_tag(_)
         ; Tag = shared_local_tag(_, _)
-        ; Tag = type_ctor_info_constant(_, _, _)
-        ; Tag = base_typeclass_info_constant(_, _, _)
+        ; Tag = type_ctor_info_tag(_, _, _)
+        ; Tag = base_typeclass_info_tag(_, _, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
-        ; Tag = tabling_info_constant(_, _)
+        ; Tag = tabling_info_tag(_, _)
         ; Tag = table_io_decl_tag(_, _)
         ),
         (
@@ -349,7 +349,7 @@ ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval, !Info) :-
         % -- that only makes a difference when constructing, so here
         % we ignore that, and just recurse on the representation for
         % this constructor.
-        Tag = shared_with_reserved_addresses(_, ThisTag)
+        Tag = shared_with_reserved_addresses_tag(_, ThisTag)
     ->
         ml_gen_static_const_arg_2(ThisTag, VarType, Var, StaticCons,
             Rval, !Info)
@@ -372,7 +372,7 @@ ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval, !Info) :-
     ;
         % Compound terms, including lambda expressions.
         ( Tag = pred_closure_tag(_, _, _), TagVal = 0
-        ; Tag = single_functor, TagVal = 0
+        ; Tag = single_functor_tag, TagVal = 0
         ; Tag = unshared_tag(TagVal)
         ; Tag = shared_remote_tag(TagVal, _SecondaryTag)
         )
@@ -409,16 +409,15 @@ ml_gen_static_const_arg_2(Tag, VarType, Var, StaticCons, Rval, !Info) :-
 :- pred ml_gen_constant(cons_tag::in, mer_type::in, mlds_rval::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_constant(string_constant(String), _, const(string_const(String)),
-        !Info).
-ml_gen_constant(int_constant(Int), _, const(int_const(Int)), !Info).
-ml_gen_constant(float_constant(Float), _, const(float_const(Float)), !Info).
+ml_gen_constant(string_tag(String), _, const(string_const(String)), !Info).
+ml_gen_constant(int_tag(Int), _, const(int_const(Int)), !Info).
+ml_gen_constant(float_tag(Float), _, const(float_const(Float)), !Info).
 ml_gen_constant(shared_local_tag(Bits1, Num1), VarType, Rval, !Info) :-
     ml_gen_type(!.Info, VarType, MLDS_Type),
     Rval = unop(cast(MLDS_Type), mkword(Bits1,
         unop(std_unop(mkbody), const(int_const(Num1))))).
 
-ml_gen_constant(type_ctor_info_constant(ModuleName0, TypeName, TypeArity),
+ml_gen_constant(type_ctor_info_tag(ModuleName0, TypeName, TypeArity),
         VarType, Rval, !Info) :-
     ml_gen_type(!.Info, VarType, MLDS_VarType),
     ModuleName = fixup_builtin_module(ModuleName0),
@@ -428,7 +427,7 @@ ml_gen_constant(type_ctor_info_constant(ModuleName0, TypeName, TypeArity),
         mlds_rtti(ctor_rtti_id(RttiTypeCtor, type_ctor_info))),
     Rval = unop(cast(MLDS_VarType), const(data_addr_const(DataAddr))).
 
-ml_gen_constant(base_typeclass_info_constant(ModuleName, ClassId, Instance),
+ml_gen_constant(base_typeclass_info_tag(ModuleName, ClassId, Instance),
         VarType, Rval, !Info) :-
     ml_gen_type(!.Info, VarType, MLDS_VarType),
     MLDS_Module = mercury_module_name_to_mlds(ModuleName),
@@ -437,7 +436,7 @@ ml_gen_constant(base_typeclass_info_constant(ModuleName, ClassId, Instance),
         base_typeclass_info(ModuleName, Instance)))),
     Rval = unop(cast(MLDS_VarType), const(data_addr_const(DataAddr))).
 
-ml_gen_constant(tabling_info_constant(PredId, ProcId), VarType, Rval, !Info) :-
+ml_gen_constant(tabling_info_tag(PredId, ProcId), VarType, Rval, !Info) :-
     ml_gen_type(!.Info, VarType, MLDS_VarType),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_pred_label(ModuleInfo, PredId, ProcId, PredLabel, PredModule),
@@ -453,12 +452,12 @@ ml_gen_constant(table_io_decl_tag(_, _), _, _, !Info) :-
     unexpected(this_file,
         "ml_gen_constant: table_io_decl_tag not yet supported").
 
-ml_gen_constant(reserved_address(ReservedAddr), VarType, Rval, !Info) :-
+ml_gen_constant(reserved_address_tag(ReservedAddr), VarType, Rval, !Info) :-
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     ml_gen_type(!.Info, VarType, MLDS_VarType),
     Rval = ml_gen_reserved_address(ModuleInfo, ReservedAddr, MLDS_VarType).
 
-ml_gen_constant(shared_with_reserved_addresses(_, ThisTag), VarType, Rval,
+ml_gen_constant(shared_with_reserved_addresses_tag(_, ThisTag), VarType, Rval,
         !Info) :-
     % For shared_with_reserved_address, the sharing is only important for
     % tag tests, not for constructions, so here we just recurse on the
@@ -471,7 +470,7 @@ ml_gen_constant(shared_with_reserved_addresses(_, ThisTag), VarType, Rval,
 
 ml_gen_constant(no_tag, _, _, !Info) :-
     unexpected(this_file, "ml_gen_constant: no_tag").
-ml_gen_constant(single_functor, _, _, !Info) :-
+ml_gen_constant(single_functor_tag, _, _, !Info) :-
     unexpected(this_file, "ml_gen_constant: single_functor").
 ml_gen_constant(unshared_tag(_), _, _, !Info) :-
     unexpected(this_file, "ml_gen_constant: unshared_tag").
@@ -1301,13 +1300,13 @@ ml_gen_det_deconstruct_2(Tag, Type, Var, ConsId, Args, Modes, Context,
     % For constants, if the deconstruction is det, then we already know
     % the value of the constant, so Statements = [].
     (
-        ( Tag = string_constant(_String)
-        ; Tag = int_constant(_Int)
-        ; Tag = float_constant(_Float)
+        ( Tag = string_tag(_String)
+        ; Tag = int_tag(_Int)
+        ; Tag = float_tag(_Float)
         ; Tag = pred_closure_tag(_, _, _)
-        ; Tag = type_ctor_info_constant(_, _, _)
-        ; Tag = base_typeclass_info_constant(_, _, _)
-        ; Tag = tabling_info_constant(_, _)
+        ; Tag = type_ctor_info_tag(_, _, _)
+        ; Tag = base_typeclass_info_tag(_, _, _)
+        ; Tag = tabling_info_tag(_, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ; Tag = table_io_decl_tag(_, _)
         ),
@@ -1327,7 +1326,7 @@ ml_gen_det_deconstruct_2(Tag, Type, Var, ConsId, Args, Modes, Context,
             unexpected(this_file, "ml_code_gen: no_tag: arity != 1")
         )
     ;
-        Tag = single_functor,
+        Tag = single_functor_tag,
         ml_gen_var(!.Info, Var, VarLval),
         ml_variable_types(!.Info, Args, ArgTypes),
         ml_field_names_and_types(!.Info, Type, ConsId, ArgTypes, Fields),
@@ -1358,13 +1357,13 @@ ml_gen_det_deconstruct_2(Tag, Type, Var, ConsId, Args, Modes, Context,
     ;
         % For constants, if the deconstruction is det, then we already
         % know the value of the constant, so Statements = [].
-        Tag = reserved_address(_),
+        Tag = reserved_address_tag(_),
         Statements = []
     ;
         % For shared_with_reserved_address, the sharing is only important
         % for tag tests, not for det deconstructions, so here we just recurse
         % on the real representation.
-        Tag = shared_with_reserved_addresses(_, ThisTag),
+        Tag = shared_with_reserved_addresses_tag(_, ThisTag),
         ml_gen_det_deconstruct_2(ThisTag, Type, Var, ConsId, Args,
             Modes, Context, Statements, !Info)
     ).
@@ -1379,7 +1378,7 @@ ml_gen_det_deconstruct_2(Tag, Type, Var, ConsId, Args, Modes, Context,
 
 ml_tag_offset_and_argnum(Tag, TagBits, OffSet, ArgNum) :-
     (
-        Tag = single_functor,
+        Tag = single_functor_tag,
         TagBits = 0,
         OffSet = 0,
         ArgNum = 1
@@ -1394,22 +1393,22 @@ ml_tag_offset_and_argnum(Tag, TagBits, OffSet, ArgNum) :-
         OffSet = 1,
         ArgNum = 1
     ;
-        Tag = shared_with_reserved_addresses(_, ThisTag),
+        Tag = shared_with_reserved_addresses_tag(_, ThisTag),
         % Just recurse on ThisTag.
         ml_tag_offset_and_argnum(ThisTag, TagBits, OffSet, ArgNum)
     ;
-        ( Tag = string_constant(_String)
-        ; Tag = int_constant(_Int)
-        ; Tag = float_constant(_Float)
+        ( Tag = string_tag(_String)
+        ; Tag = int_tag(_Int)
+        ; Tag = float_tag(_Float)
         ; Tag = pred_closure_tag(_, _, _)
-        ; Tag = type_ctor_info_constant(_, _, _)
-        ; Tag = base_typeclass_info_constant(_, _, _)
-        ; Tag = tabling_info_constant(_, _)
+        ; Tag = type_ctor_info_tag(_, _, _)
+        ; Tag = base_typeclass_info_tag(_, _, _)
+        ; Tag = tabling_info_tag(_, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ; Tag = table_io_decl_tag(_, _)
         ; Tag = no_tag
         ; Tag = shared_local_tag(_Bits1, _Num1)
-        ; Tag = reserved_address(_)
+        ; Tag = reserved_address_tag(_)
         ),
         unexpected(this_file, "ml_tag_offset_and_argnum")
     ).
@@ -1675,28 +1674,28 @@ ml_gen_tag_test(Var, ConsId, TagTestDecls, TagTestStatements,
 :- func ml_gen_tag_test_rval(cons_tag, mer_type, module_info, mlds_rval)
     = mlds_rval.
 
-ml_gen_tag_test_rval(string_constant(String), _, _, Rval) =
+ml_gen_tag_test_rval(string_tag(String), _, _, Rval) =
     binop(str_eq, Rval, const(string_const(String))).
-ml_gen_tag_test_rval(float_constant(Float), _, _, Rval) =
+ml_gen_tag_test_rval(float_tag(Float), _, _, Rval) =
     binop(float_eq, Rval, const(float_const(Float))).
-ml_gen_tag_test_rval(int_constant(Int), _, _, Rval) =
+ml_gen_tag_test_rval(int_tag(Int), _, _, Rval) =
     binop(eq, Rval, const(int_const(Int))).
 ml_gen_tag_test_rval(pred_closure_tag(_, _, _), _, _, _Rval) = _TestRval :-
     % This should never happen, since the error will be detected
     % during mode checking.
     unexpected(this_file, "Attempted higher-order unification").
-ml_gen_tag_test_rval(type_ctor_info_constant(_, _, _), _, _, _) = _ :-
+ml_gen_tag_test_rval(type_ctor_info_tag(_, _, _), _, _, _) = _ :-
     unexpected(this_file, "Attempted type_ctor_info unification").
-ml_gen_tag_test_rval(base_typeclass_info_constant(_, _, _), _, _, _) = _ :-
+ml_gen_tag_test_rval(base_typeclass_info_tag(_, _, _), _, _, _) = _ :-
     unexpected(this_file, "Attempted base_typeclass_info unification").
-ml_gen_tag_test_rval(tabling_info_constant(_, _), _, _, _) = _ :-
+ml_gen_tag_test_rval(tabling_info_tag(_, _), _, _, _) = _ :-
     unexpected(this_file, "Attempted tabling_info unification").
 ml_gen_tag_test_rval(deep_profiling_proc_layout_tag(_, _), _, _, _) = _ :-
     unexpected(this_file, "Attempted deep_profiling_proc_layout unification").
 ml_gen_tag_test_rval(table_io_decl_tag(_, _), _, _, _) = _ :-
     unexpected(this_file, "Attempted table_io_decl unification").
 ml_gen_tag_test_rval(no_tag, _, _, _Rval) = const(true_const).
-ml_gen_tag_test_rval(single_functor, _, _, _Rval) = const(true_const).
+ml_gen_tag_test_rval(single_functor_tag, _, _, _Rval) = const(true_const).
 ml_gen_tag_test_rval(unshared_tag(UnsharedTag), _, _, Rval) =
     binop(eq, unop(std_unop(tag), Rval),
         unop(std_unop(mktag), const(int_const(UnsharedTag)))).
@@ -1723,18 +1722,19 @@ ml_gen_tag_test_rval(shared_local_tag(Bits, Num), VarType, ModuleInfo, Rval) =
     TestRval = binop(eq, Rval,
         unop(cast(MLDS_VarType), mkword(Bits,
         unop(std_unop(mkbody), const(int_const(Num)))))).
-ml_gen_tag_test_rval(reserved_address(ReservedAddr), VarType, ModuleInfo,
+ml_gen_tag_test_rval(reserved_address_tag(ReservedAddr), VarType, ModuleInfo,
         Rval) = TestRval :-
     MLDS_VarType = mercury_type_to_mlds_type(ModuleInfo, VarType),
     ReservedAddrRval = ml_gen_reserved_address(ModuleInfo, ReservedAddr,
         MLDS_VarType),
     TestRval = binop(eq, Rval, ReservedAddrRval).
-ml_gen_tag_test_rval(shared_with_reserved_addresses(ReservedAddrs, ThisTag),
+ml_gen_tag_test_rval(
+        shared_with_reserved_addresses_tag(ReservedAddrs, ThisTag),
         VarType, ModuleInfo, Rval) = FinalTestRval :-
     % We first check that the Rval doesn't match any of the ReservedAddrs,
     % and then check that it matches ThisTag.
     CheckReservedAddrs = (func(RA, TestRval0) = TestRval :-
-        EqualRA = ml_gen_tag_test_rval(reserved_address(RA), VarType,
+        EqualRA = ml_gen_tag_test_rval(reserved_address_tag(RA), VarType,
             ModuleInfo, Rval),
         TestRval = ml_gen_and(ml_gen_not(EqualRA), TestRval0)
     ),
@@ -1796,7 +1796,7 @@ ml_gen_hl_tag_field_id(Type, ModuleInfo) = FieldId :-
     module_info_get_type_table(ModuleInfo, TypeTable),
     TypeDefn = map.lookup(TypeTable, TypeCtor),
     hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
-    ( TypeDefnBody = du_type(Ctors, TagValues, _, _, _ReservedTag, _) ->
+    ( TypeDefnBody = hlds_du_type(Ctors, TagValues, _, _, _ReservedTag, _) ->
         % XXX we probably shouldn't ignore ReservedTag here
         (
             some [Ctor] (

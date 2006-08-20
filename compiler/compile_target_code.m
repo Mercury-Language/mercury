@@ -326,8 +326,9 @@ compile_csharp_file(ErrorStream, Imports, CSharpFileName0, DLLFileName,
         Prefix = "/r:"
     ),
     ForeignDeps = list.map(
-        (func(M) = foreign_import_module_name(M, Imports ^ module_name)),
-        Imports ^ foreign_import_module_info ),
+        (func(M) =
+            foreign_import_module_name_from_module(M, Imports ^ module_name)),
+        Imports ^ foreign_import_modules),
     ReferencedDlls = referenced_dlls(Imports ^ module_name,
         Imports ^ int_deps ++ Imports ^ impl_deps ++ ForeignDeps),
     list.map_foldl(
@@ -387,7 +388,7 @@ compile_c_file(ErrorStream, PIC, C_File, O_File, Succeeded, !IO) :-
     globals.io_lookup_accumulating_option(c_include_directory,
         C_Incl_Dirs, !IO),
     InclOpt = string.append_list(list.condense(list.map(
-        (func(C_INCL) = ["-I", quote_arg(C_INCL), " "] ), C_Incl_Dirs))),
+        (func(C_INCL) = ["-I", quote_arg(C_INCL), " "]), C_Incl_Dirs))),
     globals.io_lookup_bool_option(highlevel_code, HighLevelCode, !IO),
     (
         HighLevelCode = yes,

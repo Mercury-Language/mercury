@@ -77,8 +77,6 @@
     % with module qualifiers separated by the standard Mercury module
     % qualifier operator.
     %
-:- pred sym_name_and_arity_to_string(sym_name_and_arity::in, string::out)
-    is det.
 :- func sym_name_and_arity_to_string(sym_name_and_arity) = string.
 
 :- pred write_simple_call_id(simple_call_id::in, io::di, io::uo) is det.
@@ -264,13 +262,10 @@ write_quoted_sym_name(SymName, !IO) :-
     write_sym_name(SymName, !IO),
     io.write_string("'", !IO).
 
-sym_name_and_arity_to_string(SymName/Arity, String) :-
+sym_name_and_arity_to_string(SymName/Arity) = String :-
     sym_name_to_string(SymName, SymNameString),
     string.int_to_string(Arity, ArityString),
     string.append_list([SymNameString, "/", ArityString], String).
-
-sym_name_and_arity_to_string(SymName/Arity) = String :-
-    sym_name_and_arity_to_string(SymName/Arity, String).
 
 write_simple_call_id(simple_call_id(PredOrFunc, Name, Arity), !IO) :-
     Str = simple_call_id_to_string(PredOrFunc, Name, Arity),

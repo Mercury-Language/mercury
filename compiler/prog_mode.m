@@ -329,9 +329,9 @@ inst_name_apply_substitution(_, typed_ground(Uniq, T), typed_ground(Uniq, T)).
 
 alt_list_apply_substitution(_, [], []).
 alt_list_apply_substitution(Subst, [Alt0 | Alts0], [Alt | Alts]) :-
-    Alt0 = functor(Name, Args0),
+    Alt0 = bound_functor(Name, Args0),
     inst_list_apply_substitution_2(Subst, Args0, Args),
-    Alt = functor(Name, Args),
+    Alt = bound_functor(Name, Args),
     alt_list_apply_substitution(Subst, Alts0, Alts).
 
 :- pred ground_inst_info_apply_substitution(inst_var_sub::in, uniqueness::in,
@@ -381,8 +381,9 @@ rename_apart_inst_vars_in_inst(_, any(U), any(U)).
 rename_apart_inst_vars_in_inst(_, free, free).
 rename_apart_inst_vars_in_inst(_, free(T), free(T)).
 rename_apart_inst_vars_in_inst(Sub, bound(U, BIs0), bound(U, BIs)) :-
-    list.map((pred(functor(C, Is0)::in, functor(C, Is)::out) is det :-
-        list.map(rename_apart_inst_vars_in_inst(Sub), Is0, Is)),
+    list.map(
+        (pred(bound_functor(C, Is0)::in, bound_functor(C, Is)::out) is det :-
+            list.map(rename_apart_inst_vars_in_inst(Sub), Is0, Is)),
         BIs0, BIs).
 rename_apart_inst_vars_in_inst(Sub, ground(U, GI0), ground(U, GI)) :-
     (
@@ -434,7 +435,7 @@ rename_apart_inst_vars_in_inst_name(_, typed_ground(U, T), typed_ground(U, T)).
 
 inst_contains_unconstrained_var(bound(_Uniqueness, BoundInsts)) :-
     list.member(BoundInst, BoundInsts),
-    BoundInst = functor(_ConsId, ArgInsts),
+    BoundInst = bound_functor(_ConsId, ArgInsts),
     list.member(ArgInst, ArgInsts),
     inst_contains_unconstrained_var(ArgInst).
 inst_contains_unconstrained_var(ground(_Uniqueness, GroundInstInfo)) :-
@@ -492,7 +493,7 @@ inst_contains_unconstrained_var(abstract_inst(_SymName, Insts)) :-
 
 functors_to_cons_ids([], []).
 functors_to_cons_ids([Functor | Functors], [ConsId | ConsIds]) :-
-    Functor = functor(ConsId, _ArgInsts),
+    Functor = bound_functor(ConsId, _ArgInsts),
     functors_to_cons_ids(Functors, ConsIds).
 
 %-----------------------------------------------------------------------------%
@@ -519,7 +520,7 @@ get_arg_insts(any(Uniq), _ConsId, Arity, ArgInsts) :-
     is semidet.
 
 get_arg_insts_2([BoundInst | BoundInsts], ConsId, ArgInsts) :-
-    ( BoundInst = functor(ConsId, ArgInsts0) ->
+    ( BoundInst = bound_functor(ConsId, ArgInsts0) ->
         ArgInsts = ArgInsts0
     ;
         get_arg_insts_2(BoundInsts, ConsId, ArgInsts)
@@ -600,9 +601,9 @@ strip_builtin_qualifiers_from_bound_inst_list(Insts0, Insts) :-
     bound_inst::out) is det.
 
 strip_builtin_qualifiers_from_bound_inst(BoundInst0, BoundInst) :-
-    BoundInst0 = functor(ConsId0, Insts0),
+    BoundInst0 = bound_functor(ConsId0, Insts0),
     strip_builtin_qualifier_from_cons_id(ConsId0, ConsId),
-    BoundInst = functor(ConsId, Insts),
+    BoundInst = bound_functor(ConsId, Insts),
     list.map(strip_builtin_qualifiers_from_inst, Insts0, Insts).
 
 :- pred strip_builtin_qualifiers_from_inst_name(inst_name::in, inst_name::out)

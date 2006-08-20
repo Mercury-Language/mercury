@@ -1195,7 +1195,7 @@ goal_inputs(MI, unify(LHS, UnifyRHS, _, Kind, _) - _) = Inputs :-
             % Both sides of a complicated unification are inputs.
             %
         Kind   = complicated_unify(_, _, _),
-        Inputs = ( if UnifyRHS = var(RHS) then [LHS, RHS] else [LHS] )
+        Inputs = ( if UnifyRHS = rhs_var(RHS) then [LHS, RHS] else [LHS] )
     ).
 
 goal_inputs(_MI, conj(_, _) - _) = _ :-

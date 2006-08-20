@@ -215,7 +215,7 @@ handle_dep_par_conj(ModuleInfo) :-
 process_pred_for_dep_par_conj(PredId, !ModuleInfo, !ParProcs, !IO) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
-    (if check_marker(Markers, may_have_parallel_conj) then
+    (if check_marker(Markers, marker_may_have_parallel_conj) then
         ProcIds = pred_info_non_imported_procids(PredInfo),
         list.foldl3(process_proc_for_dep_par_conj(PredId), ProcIds,
             !ModuleInfo, !ParProcs, !IO)
@@ -361,7 +361,7 @@ add_pending_par_proc_2(proc(OldPredId, OldProcId), proc(PredId, ProcId),
             PredInfo = PredInfo0
         else
             pred_info_get_markers(PredInfo0, Markers0),
-            add_marker(is_impure, Markers0, Markers),
+            add_marker(marker_is_impure, Markers0, Markers),
             pred_info_set_markers(Markers, PredInfo0, PredInfo)
         ),
 
@@ -1333,7 +1333,7 @@ create_new_pred(FutureArgs, OrigPPId, proc(NewPredId, ProcId), NewPredName,
     module_info_pred_proc_info(!.ModuleInfo, OrigPPId,
         OrigPredInfo, OrigProcInfo),
 
-    Status = local,
+    Status = status_local,
     make_new_pred_info(FutureArgs, Status, OrigPPId, OrigPredInfo,
         NewPredInfo0),
     NewPredName = pred_info_name(NewPredInfo0),

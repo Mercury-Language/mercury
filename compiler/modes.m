@@ -546,7 +546,7 @@ copy_pred_body(OldPredTable, PredId, PredTable0, PredTable) :-
         % and because copying from the clauses_info doesn't
         % work for them.
         pred_info_get_markers(PredInfo0, Markers),
-        check_marker(Markers, class_method)
+        check_marker(Markers, marker_class_method)
     ->
         PredTable = PredTable0
     ;
@@ -580,19 +580,15 @@ copy_proc_body(OldProcTable, ProcId, ProcTable0, ProcTable) :-
 should_modecheck_pred(PredInfo) = ShouldModeCheck :-
     (
         (
-            %
-            % don't modecheck imported predicates
-            %
+            % Don't modecheck imported predicates.
             ( pred_info_is_imported(PredInfo)
             ; pred_info_is_pseudo_imported(PredInfo)
             )
         ;
-            %
-            % don't modecheck class methods, because they are generated
+            % Don't modecheck class methods, because they are generated
             % already mode-correct and with correct instmap deltas.
-            %
             pred_info_get_markers(PredInfo, PredMarkers),
-            check_marker(PredMarkers, class_method)
+            check_marker(PredMarkers, marker_class_method)
         )
     ->
         ShouldModeCheck = no
@@ -635,7 +631,7 @@ maybe_modecheck_pred(WhatToCheck, MayChangeCalledProc, PredId,
 
 write_modes_progress_message(PredId, PredInfo, ModuleInfo, WhatToCheck, !IO) :-
     pred_info_get_markers(PredInfo, Markers),
-    ( check_marker(Markers, infer_modes) ->
+    ( check_marker(Markers, marker_infer_modes) ->
         (
             WhatToCheck = check_modes,
             write_pred_progress_message("% Mode-analysing ",
@@ -809,7 +805,7 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
         mode_info_set_changed_flag(!.Changed, !ModeInfo),
 
         pred_info_get_markers(PredInfo, Markers),
-        ( check_marker(Markers, infer_modes) ->
+        ( check_marker(Markers, marker_infer_modes) ->
             InferModes = yes
         ;
             InferModes = no
@@ -818,7 +814,7 @@ do_modecheck_proc(ProcId, PredId, WhatToCheck, MayChangeCalledProc,
 
         (
             InferModes = no,
-            check_marker(Markers, mode_check_clauses),
+            check_marker(Markers, marker_mode_check_clauses),
             (
                 Body0 = disj(Disjuncts0) - BodyGoalInfo0,
                 Disjuncts0 = [_ | _],
@@ -1488,7 +1484,8 @@ modecheck_goal_expr(plain_call(PredId, ProcId0, Args0, _, Context, PredName),
     mode_checkpoint(enter, CallString, !ModeInfo, !IO),
 
     mode_info_get_call_id(!.ModeInfo, PredId, CallId),
-    mode_info_set_call_context(call(call(CallId)), !ModeInfo),
+    mode_info_set_call_context(call_context_call(plain_call_id(CallId)),
+        !ModeInfo),
 
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     DeterminismKnown = no,
@@ -1511,7 +1508,7 @@ modecheck_goal_expr(generic_call(GenericCall, Args0, Modes0, _),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
 
     hlds_goal.generic_call_id(GenericCall, CallId),
-    mode_info_set_call_context(call(CallId), !ModeInfo),
+    mode_info_set_call_context(call_context_call(CallId), !ModeInfo),
     (
         GenericCall = higher_order(PredVar, _, PredOrFunc, _),
         modecheck_higher_order_call(PredOrFunc, PredVar,
@@ -1542,7 +1539,7 @@ modecheck_goal_expr(generic_call(GenericCall, Args0, Modes0, _),
             Mode1 = in_mode,
             Mode2 = out_mode,
             instmap.lookup_var(InstMap, Arg1, Inst1),
-            Inst1 = bound(Unique, [functor(ConsId, [])]),
+            Inst1 = bound(Unique, [bound_functor(ConsId, [])]),
             mode_info_get_module_info(!.ModeInfo, ModuleInfo),
             module_info_get_type_table(ModuleInfo, TypeTable),
             mode_info_get_var_types(!.ModeInfo, VarTypes),
@@ -1554,7 +1551,7 @@ modecheck_goal_expr(generic_call(GenericCall, Args0, Modes0, _),
             map.lookup(ConsTagValues, ConsId, ConsTag),
             ConsTag = shared_local_tag(_, LocalTag)
         ->
-            BoundInst = functor(int_const(LocalTag), []),
+            BoundInst = bound_functor(int_const(LocalTag), []),
             NewMode2 = (free -> bound(Unique, [BoundInst])),
             Modes = [Mode1, NewMode2]
         ;
@@ -1575,7 +1572,7 @@ modecheck_goal_expr(generic_call(GenericCall, Args0, Modes0, _),
 modecheck_goal_expr(unify(LHS0, RHS0, _, UnifyInfo0, UnifyContext), GoalInfo0,
         Goal, !ModeInfo, !IO) :-
     mode_checkpoint(enter, "unify", !ModeInfo, !IO),
-    mode_info_set_call_context(unify(UnifyContext), !ModeInfo),
+    mode_info_set_call_context(call_context_unify(UnifyContext), !ModeInfo),
     modecheck_unification(LHS0, RHS0, UnifyInfo0, UnifyContext, GoalInfo0,
         Goal, !ModeInfo, !IO),
     mode_info_unset_call_context(!ModeInfo),
@@ -1611,7 +1608,8 @@ modecheck_goal_expr(ForeignProc, GoalInfo, Goal, !ModeInfo, !IO) :-
     mode_info_get_call_id(!.ModeInfo, PredId, CallId),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     DeterminismKnown = no,
-    mode_info_set_call_context(call(call(CallId)), !ModeInfo),
+    mode_info_set_call_context(call_context_call(plain_call_id(CallId)),
+        !ModeInfo),
     ArgVars0 = list.map(foreign_arg_var, Args0),
     modecheck_call_pred(PredId, DeterminismKnown, ProcId0, ProcId,
         ArgVars0, ArgVars, GoalInfo, ExtraGoals, !ModeInfo),
@@ -2352,23 +2350,18 @@ candidate_init_vars_2(ModeInfo, Goals, !NonFree, !CandidateVars) :-
     set(prog_var)::in, set(prog_var)::out) is nondet.
 
 candidate_init_vars_3(_ModeInfo, Goal, !NonFree, !CandidateVars) :-
-        % A var/var unification.
-        %
+    % A var/var unification.
     Goal = unify(X, RHS, _, _, _) - _GoalInfo,
-    RHS  = var(Y),
-    (
-        set.member(X, !.NonFree)
-    ->
+    RHS  = rhs_var(Y),
+    ( set.member(X, !.NonFree) ->
         not set.member(Y, !.NonFree),
-            % It is an assignment from X to Y.
+        % It is an assignment from X to Y.
         !:NonFree = set.insert(!.NonFree, Y)
-    ;
-        set.member(Y, !.NonFree)
-    ->
-            % It is an assignment from Y to X.
+    ; set.member(Y, !.NonFree) ->
+        % It is an assignment from Y to X.
         !:NonFree = set.insert(!.NonFree, X)
     ;
-            % It is an assignment one way or the other.
+        % It is an assignment one way or the other.
         (
             !:NonFree       = set.insert(!.NonFree, X),
             !:CandidateVars = set.insert(!.CandidateVars, Y)
@@ -2379,48 +2372,49 @@ candidate_init_vars_3(_ModeInfo, Goal, !NonFree, !CandidateVars) :-
     ).
 
 candidate_init_vars_3(_ModeInfo, Goal, !NonFree, !CandidateVars) :-
-        % A var/functor unification, which can only be deterministic
-        % if it is a construction.
-        %
+    % A var/functor unification, which can only be deterministic
+    % if it is a construction.
     Goal = unify(X, RHS, _, _, _) - _GoalInfo,
-    RHS  = functor(_, _, Args),
-        % If this is a construction then X must be free.
+    RHS  = rhs_functor(_, _, Args),
+
+    % If this is a construction then X must be free.
     not set.member(X, !.NonFree),
-        % But X becomes instantiated.
+
+    % But X becomes instantiated.
     !:NonFree = set.insert(!.NonFree, X),
-        % And the Args are potential candidates for initialisation.
+
+    % And the Args are potential candidates for initialisation.
     !:CandidateVars = set.insert_list(!.CandidateVars, Args).
 
 candidate_init_vars_3(_ModeInfo, Goal, !NonFree, !CandidateVars) :-
-        % A var/lambda unification, which can only be deterministic
-        % if it is a construction.  The non-locals in the lambda are
-        % *not* candidates for initialisation because that could
-        % permit violations of referential transparency (executing
-        % the lambda could otherwise further constrain a solver
-        % variable that was not supplied as an argument).
-        %
+    % A var/lambda unification, which can only be deterministic if it is
+    % a construction.  The non-locals in the lambda are *not* candidates
+    % for initialisation because that could permit violations of referential
+    % transparency (executing the lambda could otherwise further constrain
+    % a solver variable that was not supplied as an argument).
+    %
     Goal = unify(X, RHS, _, _, _) - _GoalInfo,
-    RHS  = lambda_goal(_, _, _, _, _, _, _, _),
-        % If this is a construction then X must be free.
+    RHS  = rhs_lambda_goal(_, _, _, _, _, _, _, _),
+
+    % If this is a construction then X must be free.
     not set.member(X, !.NonFree),
-        % But X becomes instantiated.
+
+    % But X becomes instantiated.
     !:NonFree = set.insert(!.NonFree, X).
 
 candidate_init_vars_3(_ModeInfo, Goal, !NonFree, !CandidateVars) :-
-        % Disjunctions are tricky, because we don't perform
-        % switch analysis until after mode analysis.  So
-        % here we assume that the disjunction is a det switch
-        % and that we can ignore it for the purposes of identifying
-        % candidate vars for initialisation.
+    % Disjunctions are tricky, because we don't perform switch analysis
+    % until after mode analysis. So here we assume that the disjunction
+    % is a det switch and that we can ignore it for the purposes of identifying
+    % candidate vars for initialisation.
     Goal = disj(_Goals) - _GoalInfo.
 
 candidate_init_vars_3(ModeInfo, Goal, !NonFree, !CandidateVars) :-
-        % We ignore the condition of an if-then-else goal,
-        % other than to assume that it binds its non-solver-type
-        % non-locals, but proceed on the assumption that the then
-        % and else arms are det.  This isn't very accurate and may
-        % need refinement.
-        %
+    % We ignore the condition of an if-then-else goal, other than to assume
+    % that it binds its non-solver-type non-locals, but proceed on the
+    % assumption that the then and else arms are det. This isn't very accurate
+    % and may need refinement.
+    %
     Goal = if_then_else(_LocalVars, CondGoal, ThenGoal, ElseGoal) - _GoalInfo,
 
     CondGoal = _CondGoalExpr - CondGoalInfo,
@@ -2654,7 +2648,7 @@ is_headvar_unification_goal(HeadVars, delayed_goal(_, _, Goal - _)) :-
     (
         list.member(Var, HeadVars)
     ;
-        RHS = var(OtherVar),
+        RHS = rhs_var(OtherVar),
         list.member(OtherVar, HeadVars)
     ).
 
@@ -2749,8 +2743,8 @@ modecheck_functor_test(Var, ConsId, !ModeInfo) :-
 
         % record the fact that Var was bound to ConsId in the instmap
     list.duplicate(AdjustedArity, free, ArgInsts),
-    modecheck_set_var_inst(Var, bound(unique, [functor(ConsId, ArgInsts)]),
-        no, !ModeInfo).
+    modecheck_set_var_inst(Var,
+        bound(unique, [bound_functor(ConsId, ArgInsts)]), no, !ModeInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -3058,7 +3052,7 @@ handle_implied_mode(Var0, VarInst0, InitialInst0, Var, !ExtraGoals,
         mode_info_get_context(!.ModeInfo, Context),
         mode_info_get_mode_context(!.ModeInfo, ModeContext),
         mode_context_to_unify_context(!.ModeInfo, ModeContext, UnifyContext),
-        CallUnifyContext = yes(call_unify_context(Var, var(Var),
+        CallUnifyContext = yes(call_unify_context(Var, rhs_var(Var),
             UnifyContext)),
         (
             mode_info_get_errors(!.ModeInfo, ModeErrors),
@@ -3213,7 +3207,7 @@ build_call(CalleeModuleName, CalleePredName, ArgVars, ArgTypes, NonLocals,
 mode_context_to_unify_context(_, mode_context_unify(UnifyContext, _),
         UnifyContext).
 mode_context_to_unify_context(_, mode_context_call(CallId, Arg),
-        unify_context(call(CallId, Arg), [])).
+        unify_context(umc_call(CallId, Arg), [])).
 mode_context_to_unify_context(_, mode_context_uninitialized, _) :-
     unexpected(this_file,
         "mode_context_to_unify_context: uninitialized context").

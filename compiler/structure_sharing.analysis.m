@@ -630,9 +630,9 @@ write_pred_sharing_info(ModuleInfo, PredId, !IO) :-
     TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
     (
         (
-            ImportStatus = exported
+            ImportStatus = status_exported
         ;
-            ImportStatus = opt_exported
+            ImportStatus = status_opt_exported
         ),
         \+ is_unify_or_compare_pred(PredInfo),
 

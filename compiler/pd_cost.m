@@ -95,7 +95,7 @@ goal_cost(unify(_, _, _, Unification, _) - GoalInfo, Cost) :-
     unify_cost(NonLocals, Unification, Cost).
 
 goal_cost(call_foreign_proc(Attributes, _, _, Args, _, _, _) - _, Cost) :-
-    ( may_call_mercury(Attributes) = will_not_call_mercury ->
+    ( get_may_call_mercury(Attributes) = proc_will_not_call_mercury ->
         Cost1 = 0
     ;
         Cost1 = cost_of_stack_flush

@@ -120,7 +120,7 @@ module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
     ),
     (
         MaybeModes = yes(Modes),
-        ( check_marker(Markers, class_method) ->
+        ( check_marker(Markers, marker_class_method) ->
             IsClassMethod = yes
         ;
             IsClassMethod = no
@@ -149,8 +149,8 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
     % Only preds with opt_imported clauses are tagged as opt_imported, so
     % that the compiler doesn't look for clauses for other preds read in
     % from optimization interfaces.
-    ( ItemStatus = opt_imported ->
-        Status = imported(interface)
+    ( ItemStatus = status_opt_imported ->
+        Status = status_imported(import_locn_interface)
     ;
         Status = ItemStatus
     ),
@@ -172,8 +172,9 @@ add_new_pred(TVarSet, ExistQVars, PredName, Types, Purity, ClassContext,
         markers_to_marker_list(PurityMarkers, MarkersList),
         list.foldl(add_marker, MarkersList, Markers0, Markers),
         pred_info_init(ModuleName, PredName, Arity, PredOrFunc, Context,
-            user(PredName), Status, none, Markers, Types, TVarSet, ExistQVars,
-            ClassContext, Proofs, ConstraintMap, ClausesInfo, PredInfo0),
+            user(PredName), Status, goal_type_none, Markers, Types, TVarSet,
+            ExistQVars, ClassContext, Proofs, ConstraintMap, ClausesInfo,
+            PredInfo0),
         (
             predicate_table_search_pf_m_n_a(PredTable0,
                 is_fully_qualified, PredOrFunc, MNameOfPred,
@@ -252,12 +253,12 @@ add_builtin(PredId, Types, !PredInfo) :-
         Ground = ground(shared, none),
         ConsId = int_const(0),
         LHS = ZeroVar,
-        RHS = functor(ConsId, no, []),
+        RHS = rhs_functor(ConsId, no, []),
         UniMode = ((Free - Ground) -> (Ground - Ground)),
         Unification = construct(ZeroVar, ConsId, [], [UniMode],
             construct_dynamically, cell_is_shared, no_construct_sub_info),
         UnifyMode = ((Free -> Ground) - (Ground -> Ground)),
-        UnifyContext = unify_context(explicit, []),
+        UnifyContext = unify_context(umc_explicit, []),
         AssignExpr = unify(LHS, RHS, UnifyMode, Unification, UnifyContext),
         goal_info_set_nonlocals(set.make_singleton_set(ZeroVar),
             GoalInfo0, GoalInfoWithZero),
@@ -300,7 +301,7 @@ add_builtin(PredId, Types, !PredInfo) :-
 
     % Construct a clause containing that pseudo-recursive call.
     Goal = GoalExpr - GoalInfo,
-    Clause = clause([], Goal, mercury, Context),
+    Clause = clause([], Goal, impl_lang_mercury, Context),
 
     % Put the clause we just built into the pred_info,
     % annotated with the appropriate types.
@@ -320,7 +321,7 @@ add_builtin(PredId, Types, !PredInfo) :-
     % predicates. The code generator will still generate inline code for calls
     % to these predicates.
     pred_info_get_markers(!.PredInfo, Markers0),
-    add_marker(user_marked_no_inline, Markers0, Markers),
+    add_marker(marker_user_marked_no_inline, Markers0, Markers),
     pred_info_set_markers(Markers, !PredInfo).
 
 %-----------------------------------------------------------------------------%
@@ -392,7 +393,7 @@ module_do_add_mode(InstVarSet, Arity, Modes, MaybeDet, IsClassMethod, MContext,
         ( IsClassMethod = yes ->
             unspecified_det_for_method(PredSymName, Arity, PredOrFunc,
                 MContext, !IO)
-        ; status_is_exported(ImportStatus, yes) ->
+        ; status_is_exported(ImportStatus) = yes ->
             unspecified_det_for_exported(PredSymName, Arity, PredOrFunc,
                 MContext, !IO)
         ;
@@ -471,9 +472,9 @@ preds_add_implicit_2(ClausesInfo, ModuleInfo, ModuleName, PredName, Arity,
     ExistQVars = [],
     init_markers(Markers0),
     pred_info_init(ModuleName, PredName, Arity, PredOrFunc, Context,
-        Origin, Status, none, Markers0, Types, TVarSet, ExistQVars,
+        Origin, Status, goal_type_none, Markers0, Types, TVarSet, ExistQVars,
         ClassContext, Proofs, ConstraintMap, ClausesInfo, PredInfo0),
-    add_marker(infer_type, Markers0, Markers),
+    add_marker(marker_infer_type, Markers0, Markers),
     pred_info_set_markers(Markers, PredInfo0, PredInfo),
     (
         \+ predicate_table_search_pf_sym_arity(!.PredicateTable,

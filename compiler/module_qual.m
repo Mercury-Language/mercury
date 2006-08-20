@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: module_qual.m.
 % Main authors: stayl, fjh.
-% 
+%
 % Module qualifies types, insts and modes within declaration items.  The
 % head of all declarations should be module qualified in prog_io.m.
 % This module qualifies the bodies of the declarations.  Checks for
@@ -18,7 +18,7 @@
 % option is set, warns about modules imported in the interface that do
 % not need to be in the interface.  The modes of lambda expressions are
 % qualified in modes.m.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.module_qual.
@@ -57,14 +57,14 @@
 
     % This is called from make_hlds.m to qualify the modes in a
     % clause mode annotation.
-    % 
+    %
 :- pred module_qual.qualify_clause_mode_list(list(mer_mode)::in,
     list(mer_mode)::out, prog_context::in, mq_info::in, mq_info::out,
     io::di, io::uo) is det.
 
     % This is called from make_hlds.m to qualify an
     % explicit type qualification.
-    % 
+    %
 :- pred module_qual.qualify_type_qualification(mer_type::in, mer_type::out,
     prog_context::in, mq_info::in, mq_info::out, io::di, io::uo) is det.
 
@@ -205,7 +205,7 @@ module_qual.qualify_type_qualification(Type0, Type, Context, !Info, !IO) :-
                 unused_interface_modules    :: set(module_name),
 
                 % Import status of the current item.
-                import_status               :: import_status,
+                import_status               :: mq_import_status,
 
                 % The number of errors found.
                 num_errors                  :: int,
@@ -241,11 +241,11 @@ mq_info_get_partial_qualifier_info(MQInfo, QualifierInfo) :-
     % We only need to keep track of what is exported and what isn't,
     % so we use a simpler data type here than hlds_pred.import_status.
     %
-:- type import_status
-    --->    exported
-    ;       local
-    ;       imported(import_locn)
-    ;       abstract_imported.
+:- type mq_import_status
+    --->    mq_status_exported
+    ;       mq_status_local
+    ;       mq_status_imported(import_locn)
+    ;       mq_status_abstract_imported.
 
     % Pass over the item list collecting all defined module, type, mode and
     % inst ids, all module synonym definitions, and the names of all
@@ -255,7 +255,7 @@ mq_info_get_partial_qualifier_info(MQInfo, QualifierInfo) :-
 
 collect_mq_info([], !Info).
 collect_mq_info([Item - _ | Items], !Info) :-
-    ( Item = module_defn(_, transitively_imported) ->
+    ( Item = item_module_defn(_, md_transitively_imported) ->
         % Don't process the transitively imported items (from `.int2'
         % files). They can't be used in the current module.
         true
@@ -266,10 +266,10 @@ collect_mq_info([Item - _ | Items], !Info) :-
 
 :- pred collect_mq_info_2(item::in, mq_info::in, mq_info::out) is det.
 
-collect_mq_info_2(clause(_, _, _, _, _, _), !Info).
-collect_mq_info_2(type_defn(_, SymName, Params, _, _), !Info) :-
+collect_mq_info_2(item_clause(_, _, _, _, _, _), !Info).
+collect_mq_info_2(item_type_defn(_, SymName, Params, _, _), !Info) :-
     % This item is not visible in the current module.
-    ( mq_info_get_import_status(!.Info, abstract_imported) ->
+    ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
         true
     ;
         list.length(Params, Arity),
@@ -282,9 +282,9 @@ collect_mq_info_2(type_defn(_, SymName, Params, _, _), !Info) :-
         mq_info_set_types(Types, !Info),
         mq_info_set_impl_types(ImplTypes, !Info)
     ).
-collect_mq_info_2(inst_defn(_, SymName, Params, _, _), !Info) :-
+collect_mq_info_2(item_inst_defn(_, SymName, Params, _, _), !Info) :-
     % This item is not visible in the current module.
-    ( mq_info_get_import_status(!.Info, abstract_imported) ->
+    ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
         true
     ;
         list.length(Params, Arity),
@@ -293,9 +293,9 @@ collect_mq_info_2(inst_defn(_, SymName, Params, _, _), !Info) :-
         id_set_insert(NeedQualifier, mq_id(SymName, Arity), Insts0, Insts),
         mq_info_set_insts(Insts, !Info)
     ).
-collect_mq_info_2(mode_defn(_, SymName, Params, _, _), !Info) :-
+collect_mq_info_2(item_mode_defn(_, SymName, Params, _, _), !Info) :-
     % This item is not visible in the current module.
-    ( mq_info_get_import_status(!.Info, abstract_imported) ->
+    ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
         true
     ;
         list.length(Params, Arity),
@@ -304,44 +304,42 @@ collect_mq_info_2(mode_defn(_, SymName, Params, _, _), !Info) :-
         id_set_insert(NeedQualifier, mq_id(SymName, Arity), Modes0, Modes),
         mq_info_set_modes(Modes, !Info)
     ).
-collect_mq_info_2(module_defn(_, ModuleDefn), !Info) :-
+collect_mq_info_2(item_module_defn(_, ModuleDefn), !Info) :-
     process_module_defn(ModuleDefn, !Info).
-collect_mq_info_2(pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _), !Info).
-collect_mq_info_2(pred_or_func_mode(_, _, _, _, _, _, _), !Info).
-collect_mq_info_2(pragma(_, _), !Info).
-collect_mq_info_2(promise(_PromiseType, Goal, _ProgVarSet, _UnivVars),
+collect_mq_info_2(item_pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _),
+        !Info).
+collect_mq_info_2(item_pred_or_func_mode(_, _, _, _, _, _, _), !Info).
+collect_mq_info_2(item_pragma(_, _), !Info).
+collect_mq_info_2(item_promise(_PromiseType, Goal, _ProgVarSet, _UnivVars),
         !Info) :-
     process_assert(Goal, SymNames, Success),
     (
         Success = yes,
         list.foldl(collect_mq_info_qualified_symname, SymNames, !Info)
     ;
-            % Any unqualified symbol in the promise might come
-            % from *any* of the imported modules. There's no way
-            % for us to tell which ones.  So we conservatively
-            % assume that it uses all of them.
+        % Any unqualified symbol in the promise might come from *any* of the
+        % imported modules. There's no way for us to tell which ones.
+        % So we conservatively assume that it uses all of them.
         Success = no,
         set.init(UnusedInterfaceModules),
-        mq_info_set_unused_interface_modules(UnusedInterfaceModules,
-            !Info)
+        mq_info_set_unused_interface_modules(UnusedInterfaceModules, !Info)
     ).
-collect_mq_info_2(nothing(_), !Info).
-collect_mq_info_2(typeclass(_, _, SymName, Params, _, _), !Info) :-
+collect_mq_info_2(item_nothing(_), !Info).
+collect_mq_info_2(item_typeclass(_, _, SymName, Params, _, _), !Info) :-
     % This item is not visible in the current module.
-    ( mq_info_get_import_status(!.Info, abstract_imported) ->
+    ( mq_info_get_import_status(!.Info, mq_status_abstract_imported) ->
         true
     ;
         list.length(Params, Arity),
         mq_info_get_classes(!.Info, Classes0),
         mq_info_get_need_qual_flag(!.Info, NeedQualifier),
-        id_set_insert(NeedQualifier, mq_id(SymName, Arity),
-            Classes0, Classes),
+        id_set_insert(NeedQualifier, mq_id(SymName, Arity), Classes0, Classes),
         mq_info_set_classes(Classes, !Info)
     ).
-collect_mq_info_2(instance(_, _, _, _, _, _), !Info).
-collect_mq_info_2(initialise(_, _, _), !Info).
-collect_mq_info_2(finalise(_, _, _), !Info).
-collect_mq_info_2(mutable(_, _, _, _, _, _), !Info).
+collect_mq_info_2(item_instance(_, _, _, _, _, _), !Info).
+collect_mq_info_2(item_initialise(_, _, _), !Info).
+collect_mq_info_2(item_finalise(_, _, _), !Info).
+collect_mq_info_2(item_mutable(_, _, _, _, _, _), !Info).
 
 :- pred collect_mq_info_qualified_symname(sym_name::in,
     mq_info::in, mq_info::out) is det.
@@ -368,38 +366,39 @@ collect_mq_info_qualified_symname(SymName, !Info) :-
     %
 :- pred process_module_defn(module_defn::in, mq_info::in, mq_info::out) is det.
 
-process_module_defn(module(ModuleName), !Info) :-
+process_module_defn(md_module(ModuleName), !Info) :-
     add_module_defn(ModuleName, !Info).
-process_module_defn(include_module(ModuleNameList), !Info) :-
+process_module_defn(md_include_module(ModuleNameList), !Info) :-
     list.foldl(add_module_defn, ModuleNameList, !Info).
-process_module_defn(interface, !Info) :-
-    mq_info_set_import_status(exported, !Info).
-process_module_defn(private_interface, !Info) :-
-    mq_info_set_import_status(local, !Info).
-process_module_defn(implementation, !Info) :-
-    mq_info_set_import_status(local, !Info).
-process_module_defn(imported(Locn), !Info) :-
-    mq_info_set_import_status(imported(Locn), !Info),
+process_module_defn(md_interface, !Info) :-
+    mq_info_set_import_status(mq_status_exported, !Info).
+process_module_defn(md_private_interface, !Info) :-
+    mq_info_set_import_status(mq_status_local, !Info).
+process_module_defn(md_implementation, !Info) :-
+    mq_info_set_import_status(mq_status_local, !Info).
+process_module_defn(md_imported(Locn), !Info) :-
+    mq_info_set_import_status(mq_status_imported(Locn), !Info),
     mq_info_set_need_qual_flag(may_be_unqualified, !Info).
-process_module_defn(used(Locn), !Info) :-
-    mq_info_set_import_status(imported(Locn), !Info),
+process_module_defn(md_used(Locn), !Info) :-
+    mq_info_set_import_status(mq_status_imported(Locn), !Info),
     mq_info_set_need_qual_flag(must_be_qualified, !Info).
-process_module_defn(opt_imported, !Info) :-
-    mq_info_set_import_status(imported(implementation), !Info),
+process_module_defn(md_opt_imported, !Info) :-
+    mq_info_set_import_status(mq_status_imported(import_locn_implementation),
+        !Info),
     mq_info_set_need_qual_flag(must_be_qualified, !Info).
-process_module_defn(abstract_imported, !Info) :-
-    mq_info_set_import_status(abstract_imported, !Info),
+process_module_defn(md_abstract_imported, !Info) :-
+    mq_info_set_import_status(mq_status_abstract_imported, !Info),
     mq_info_set_need_qual_flag(must_be_qualified, !Info).
-process_module_defn(transitively_imported, !Info) :-
+process_module_defn(md_transitively_imported, !Info) :-
     unexpected(this_file, "process_module_defn: transitively_imported item").
-process_module_defn(external(_, _), !Info).
-process_module_defn(end_module(_), !Info).
-process_module_defn(export(_), !Info).
-process_module_defn(import(Imports), !Info) :-
+process_module_defn(md_external(_, _), !Info).
+process_module_defn(md_end_module(_), !Info).
+process_module_defn(md_export(_), !Info).
+process_module_defn(md_import(Imports), !Info) :-
     add_imports(Imports, !Info).
-process_module_defn(use(Imports), !Info) :-
+process_module_defn(md_use(Imports), !Info) :-
     add_imports(Imports, !Info).
-process_module_defn(version_numbers(_, _), !Info).
+process_module_defn(md_version_numbers(_, _), !Info).
 
 :- pred add_module_defn(module_name::in, mq_info::in, mq_info::out) is det.
 
@@ -413,7 +412,7 @@ add_module_defn(ModuleName, !Info) :-
 :- pred add_imports(sym_list::in, mq_info::in, mq_info::out) is det.
 
 add_imports(Imports, !Info) :-
-    ( Imports = module(ImportedModules) ->
+    ( Imports = list_module(ImportedModules) ->
         add_imports_2(ImportedModules, !Info)
     ;
         true
@@ -430,9 +429,9 @@ add_imports_2(Imports, !Info) :-
     % by the current module.
     %
     (
-        ( Status = local
-        ; Status = exported
-        ; Status = imported(ancestor_private_interface)
+        ( Status = mq_status_local
+        ; Status = mq_status_exported
+        ; Status = mq_status_imported(import_locn_ancestor_private_interface)
         )
     ->
         mq_info_get_imported_modules(!.Info, Modules0),
@@ -447,7 +446,7 @@ add_imports_2(Imports, !Info) :-
     % used in the interface.
     %
     (
-        Status = exported
+        Status = mq_status_exported
     ->
         mq_info_get_unused_interface_modules(!.Info,
             UnusedIntModules0),
@@ -462,8 +461,8 @@ add_imports_2(Imports, !Info) :-
     % interface of ancestor modules may be used in the interface.
     %
     (
-        ( Status = exported
-        ; Status = imported(ancestor_private_interface)
+        ( Status = mq_status_exported
+        ; Status = mq_status_imported(import_locn_ancestor_private_interface)
         )
     ->
         mq_info_get_interface_visible_modules(!.Info, IntModules0),
@@ -626,42 +625,42 @@ do_module_qualify_items([Item0 | Items0], [Item | Items], !Info, !IO) :-
 :- pred module_qualify_item(item_and_context::in, item_and_context::out,
     mq_info::in, mq_info::out, bool::out, io::di, io::uo) is det.
 
-module_qualify_item(Clause @ (clause(_,_,_,_,_,_) - _), Clause, !Info, yes,
-    !IO).
+module_qualify_item(Clause @ (item_clause(_,_,_,_,_,_) - _), Clause, !Info,
+        yes, !IO).
 
 module_qualify_item(
-        type_defn(TVarSet, SymName, Params, TypeDefn0, C) - Context,
-        type_defn(TVarSet, SymName, Params, TypeDefn, C) - Context,
+        item_type_defn(TVarSet, SymName, Params, TypeDefn0, C) - Context,
+        item_type_defn(TVarSet, SymName, Params, TypeDefn, C) - Context,
         !Info, yes, !IO) :-
     list.length(Params, Arity),
     mq_info_set_error_context(mqec_type(mq_id(SymName, Arity)) - Context,
         !Info),
     qualify_type_defn(TypeDefn0, TypeDefn, !Info, !IO).
 
-module_qualify_item(inst_defn(A, SymName, Params, InstDefn0, C) - Context,
-        inst_defn(A, SymName, Params, InstDefn, C) - Context,
+module_qualify_item(item_inst_defn(A, SymName, Params, InstDefn0, C) - Context,
+        item_inst_defn(A, SymName, Params, InstDefn, C) - Context,
         !Info, yes, !IO) :-
     list.length(Params, Arity),
     mq_info_set_error_context(mqec_inst(mq_id(SymName, Arity)) - Context,
         !Info),
     qualify_inst_defn(InstDefn0, InstDefn, !Info, !IO).
 
-module_qualify_item(mode_defn(A, SymName, Params, ModeDefn0, C) - Context,
-        mode_defn(A, SymName, Params, ModeDefn, C) - Context,
+module_qualify_item(item_mode_defn(A, SymName, Params, ModeDefn0, C) - Context,
+        item_mode_defn(A, SymName, Params, ModeDefn, C) - Context,
         !Info, yes, !IO) :-
     list.length(Params, Arity),
     mq_info_set_error_context(mqec_mode(mq_id(SymName, Arity)) - Context,
         !Info),
     qualify_mode_defn(ModeDefn0, ModeDefn, !Info, !IO).
 
-module_qualify_item(module_defn(A, ModuleDefn) - Context,
-        module_defn(A, ModuleDefn) - Context, !Info, Continue, !IO) :-
+module_qualify_item(item_module_defn(A, ModuleDefn) - Context,
+        item_module_defn(A, ModuleDefn) - Context, !Info, Continue, !IO) :-
     update_import_status(ModuleDefn, !Info, Continue).
 
 module_qualify_item(
-        pred_or_func(A, IVs, B, PredOrFunc, SymName, TypesAndModes0,
+        item_pred_or_func(A, IVs, B, PredOrFunc, SymName, TypesAndModes0,
             WithType0, WithInst0, C, D, E, Constraints0) - Context,
-        pred_or_func(A, IVs, B, PredOrFunc, SymName, TypesAndModes,
+        item_pred_or_func(A, IVs, B, PredOrFunc, SymName, TypesAndModes,
             WithType, WithInst, C, D, E, Constraints) - Context,
         !Info, yes, !IO) :-
     list.length(TypesAndModes0, Arity),
@@ -673,9 +672,9 @@ module_qualify_item(
     map_fold2_maybe(qualify_inst, WithInst0, WithInst, !Info, !IO).
 
 module_qualify_item(
-        pred_or_func_mode(A, PredOrFunc, SymName, Modes0,
+        item_pred_or_func_mode(A, PredOrFunc, SymName, Modes0,
             WithInst0, C, D) - Context,
-        pred_or_func_mode(A, PredOrFunc, SymName, Modes,
+        item_pred_or_func_mode(A, PredOrFunc, SymName, Modes,
             WithInst, C, D) - Context,
         !Info, yes, !IO) :-
     list.length(Modes0, Arity),
@@ -685,17 +684,18 @@ module_qualify_item(
     qualify_mode_list(Modes0, Modes, !Info, !IO),
     map_fold2_maybe(qualify_inst, WithInst0, WithInst, !Info, !IO).
 module_qualify_item(Item0, Item, !Info, yes, !IO) :-
-    Item0 = pragma(Origin, Pragma0) - Context,
+    Item0 = item_pragma(Origin, Pragma0) - Context,
     mq_info_set_error_context(mqec_pragma - Context, !Info),
     qualify_pragma(Pragma0, Pragma, !Info, !IO),
-    Item  = pragma(Origin, Pragma)  - Context.
-module_qualify_item(promise(T, G, V, U) - Context,
-        promise(T, G, V, U) - Context, !Info, yes, !IO).
-module_qualify_item(nothing(A) - Context, nothing(A) - Context,
+    Item  = item_pragma(Origin, Pragma)  - Context.
+module_qualify_item(item_promise(T, G, V, U) - Context,
+        item_promise(T, G, V, U) - Context, !Info, yes, !IO).
+module_qualify_item(item_nothing(A) - Context, item_nothing(A) - Context,
         !Info, yes, !IO).
-module_qualify_item(typeclass(Constraints0, FunDeps, Name, Vars, Interface0,
-            VarSet) - Context,
-        typeclass(Constraints, FunDeps, Name, Vars, Interface, VarSet)
+module_qualify_item(
+        item_typeclass(Constraints0, FunDeps, Name, Vars, Interface0, VarSet)
+            - Context,
+        item_typeclass(Constraints, FunDeps, Name, Vars, Interface, VarSet)
             - Context,
         !Info, yes, !IO) :-
     list.length(Vars, Arity),
@@ -711,9 +711,9 @@ module_qualify_item(typeclass(Constraints0, FunDeps, Name, Vars, Interface0,
     ).
 
 module_qualify_item(
-        instance(Constraints0, Name0, Types0, Body0, VarSet,
+        item_instance(Constraints0, Name0, Types0, Body0, VarSet,
             ModName) - Context,
-        instance(Constraints, Name, Types, Body, VarSet,
+        item_instance(Constraints, Name, Types, Body, VarSet,
             ModName) - Context,
         !Info, yes, !IO) :-
     list.length(Types0, Arity),
@@ -728,18 +728,18 @@ module_qualify_item(
     qualify_instance_body(Name, Body0, Body).
 
 module_qualify_item(
-        initialise(Origin, PredSymName, Arity) - Context,
-        initialise(Origin, PredSymName, Arity) - Context,
+        item_initialise(Origin, PredSymName, Arity) - Context,
+        item_initialise(Origin, PredSymName, Arity) - Context,
         !Info, yes, !IO).
 
 module_qualify_item(
-        finalise(Origin, PredSymName, Arity) - Context,
-        finalise(Origin, PredSymName, Arity) - Context,
+        item_finalise(Origin, PredSymName, Arity) - Context,
+        item_finalise(Origin, PredSymName, Arity) - Context,
         !Info, yes, !IO).
 
 module_qualify_item(
-        mutable(Name, Type0, InitTerm, Inst0, Attrs, Varset) - Context,
-        mutable(Name, Type, InitTerm, Inst, Attrs, Varset) - Context,
+        item_mutable(Name, Type0, InitTerm, Inst0, Attrs, Varset) - Context,
+        item_mutable(Name, Type, InitTerm, Inst, Attrs, Varset) - Context,
         !Info, yes, !IO) :-
     mq_info_set_error_context(mqec_mutable(Name) - Context, !Info),
     qualify_type(Type0, Type, !Info, !IO),
@@ -748,26 +748,26 @@ module_qualify_item(
 :- pred update_import_status(module_defn::in, mq_info::in, mq_info::out,
     bool::out) is det.
 
-update_import_status(opt_imported, !Info, no).
-update_import_status(abstract_imported, !Info, yes) :-
-    mq_info_set_import_status(abstract_imported, !Info).
-update_import_status(transitively_imported, !Info, no).
-update_import_status(module(_), !Info, yes).
-update_import_status(interface, !Info, yes) :-
-    mq_info_set_import_status(exported, !Info).
-update_import_status(implementation, !Info, yes) :-
-    mq_info_set_import_status(local, !Info).
-update_import_status(private_interface, !Info, yes) :-
-    mq_info_set_import_status(local, !Info).
-update_import_status(imported(_), !Info, no).
-update_import_status(used(_), !Info, no).
-update_import_status(external(_, _), !Info, yes).
-update_import_status(end_module(_), !Info, yes).
-update_import_status(export(_), !Info, yes).
-update_import_status(import(_), !Info, yes).
-update_import_status(use(_), !Info, yes).
-update_import_status(version_numbers(_, _), !Info, yes).
-update_import_status(include_module(_), !Info, yes) :-
+update_import_status(md_opt_imported, !Info, no).
+update_import_status(md_abstract_imported, !Info, yes) :-
+    mq_info_set_import_status(mq_status_abstract_imported, !Info).
+update_import_status(md_transitively_imported, !Info, no).
+update_import_status(md_module(_), !Info, yes).
+update_import_status(md_interface, !Info, yes) :-
+    mq_info_set_import_status(mq_status_exported, !Info).
+update_import_status(md_implementation, !Info, yes) :-
+    mq_info_set_import_status(mq_status_local, !Info).
+update_import_status(md_private_interface, !Info, yes) :-
+    mq_info_set_import_status(mq_status_local, !Info).
+update_import_status(md_imported(_), !Info, no).
+update_import_status(md_used(_), !Info, no).
+update_import_status(md_external(_, _), !Info, yes).
+update_import_status(md_end_module(_), !Info, yes).
+update_import_status(md_export(_), !Info, yes).
+update_import_status(md_import(_), !Info, yes).
+update_import_status(md_use(_), !Info, yes).
+update_import_status(md_version_numbers(_, _), !Info, yes).
+update_import_status(md_include_module(_), !Info, yes) :-
     % The sub-module might make use of *any* of the imported modules.
     % There's no way for us to tell which ones.
     % So we conservatively assume that it uses all of them.
@@ -779,8 +779,8 @@ update_import_status(include_module(_), !Info, yes) :-
 :- pred qualify_type_defn(type_defn::in, type_defn::out,
     mq_info::in, mq_info::out, io::di, io::uo) is det.
 
-qualify_type_defn(du_type(Ctors0, MaybeUserEqComp0),
-        du_type(Ctors, MaybeUserEqComp),
+qualify_type_defn(parse_tree_du_type(Ctors0, MaybeUserEqComp0),
+        parse_tree_du_type(Ctors, MaybeUserEqComp),
         !Info, !IO) :-
     qualify_constructors(Ctors0, Ctors, !Info, !IO),
     %
@@ -790,12 +790,13 @@ qualify_type_defn(du_type(Ctors0, MaybeUserEqComp0),
     % resolution, etc.  Thus we don't module-qualify them here.
     %
     MaybeUserEqComp = MaybeUserEqComp0.
-qualify_type_defn(eqv_type(Type0), eqv_type(Type), !Info, !IO) :-
+qualify_type_defn(parse_tree_eqv_type(Type0), parse_tree_eqv_type(Type),
+        !Info, !IO) :-
     qualify_type(Type0, Type, !Info, !IO).
-qualify_type_defn(abstract_type(_) @ Defn, Defn, !Info, !IO).
-qualify_type_defn(foreign_type(_, _, _) @ Defn, Defn, !Info, !IO).
-qualify_type_defn(solver_type(SolverTypeDetails0, MaybeUserEqComp),
-        solver_type(SolverTypeDetails, MaybeUserEqComp),
+qualify_type_defn(parse_tree_abstract_type(_) @ Defn, Defn, !Info, !IO).
+qualify_type_defn(parse_tree_foreign_type(_, _, _) @ Defn, Defn, !Info, !IO).
+qualify_type_defn(parse_tree_solver_type(SolverTypeDetails0, MaybeUserEqComp),
+        parse_tree_solver_type(SolverTypeDetails, MaybeUserEqComp),
         !Info, !IO) :-
     SolverTypeDetails0 = solver_type_details(RepnType0, InitPred,
         GroundInst0, AnyInst0, MutableItems),
@@ -967,8 +968,8 @@ qualify_inst_name(typed_inst(_, _), _, !Info, !IO) :-
     mq_info::in, mq_info::out, io::di, io::uo) is det.
 
 qualify_bound_inst_list([], [], !Info, !IO).
-qualify_bound_inst_list([functor(ConsId, Insts0) | BoundInsts0],
-         [functor(ConsId, Insts) | BoundInsts], !Info, !IO) :-
+qualify_bound_inst_list([bound_functor(ConsId, Insts0) | BoundInsts0],
+         [bound_functor(ConsId, Insts) | BoundInsts], !Info, !IO) :-
     ( ConsId = cons(Name, Arity) ->
         Id = item_name(Name, Arity),
         update_recompilation_info(
@@ -1057,24 +1058,25 @@ qualify_type(kinded(Type0, Kind), kinded(Type, Kind), !Info, !IO) :-
 :- pred qualify_pragma((pragma_type)::in, (pragma_type)::out,
     mq_info::in, mq_info::out, io::di, io::uo) is det.
 
-qualify_pragma(X@source_file(_), X, !Info, !IO).
-qualify_pragma(X@foreign_decl(_, _, _), X, !Info, !IO).
-qualify_pragma(X@foreign_code(_, _), X, !Info, !IO).
-qualify_pragma(X@foreign_import_module(_, _), X, !Info, !IO).
-qualify_pragma(foreign_proc(Attrs0, Name, PredOrFunc, Vars0, Varset, 
-        InstVarset, Impl), foreign_proc(Attrs, Name, PredOrFunc, Vars, Varset,
-        InstVarset, Impl), !Info, !IO) :-
-    qualify_pragma_vars(Vars0, Vars, !Info, !IO), 
-    UserSharing0 = user_annotated_sharing(Attrs0),
+qualify_pragma(X @ pragma_source_file(_), X, !Info, !IO).
+qualify_pragma(X @ pragma_foreign_decl(_, _, _), X, !Info, !IO).
+qualify_pragma(X @ pragma_foreign_code(_, _), X, !Info, !IO).
+qualify_pragma(X @ pragma_foreign_import_module(_, _), X, !Info, !IO).
+qualify_pragma(X, Y, !Info, !IO) :-
+    X = pragma_foreign_proc(Attrs0, Name, PredOrFunc, Vars0, Varset,
+        InstVarset, Impl),
+    qualify_pragma_vars(Vars0, Vars, !Info, !IO),
+    UserSharing0 = get_user_annotated_sharing(Attrs0),
     qualify_user_sharing(UserSharing0, UserSharing, !Info, !IO),
-    set_user_annotated_sharing(UserSharing, Attrs0, Attrs).  
+    set_user_annotated_sharing(UserSharing, Attrs0, Attrs),
+    Y = pragma_foreign_proc(Attrs, Name, PredOrFunc, Vars, Varset,
+        InstVarset, Impl).
 % qualify_pragma(X, Y, !Info, !IO) :-
     % PragmaVars0 = X ^ proc_vars,
     % qualify_pragma_vars(PragmaVars0, PragmaVars, !Info, !IO),
     % Y = X ^ proc_vars := PragmaVars.
-qualify_pragma(tabled(EvalMethod, Name, Arity, PredOrFunc, MModes0, Attrs),
-        tabled(EvalMethod, Name, Arity, PredOrFunc, MModes, Attrs),
-        !Info, !IO) :-
+qualify_pragma(X, Y, !Info, !IO) :-
+    X = pragma_tabled(EvalMethod, Name, Arity, PredOrFunc, MModes0, Attrs),
     (
         MModes0 = yes(Modes0),
         qualify_mode_list(Modes0, Modes, !Info, !IO),
@@ -1082,24 +1084,25 @@ qualify_pragma(tabled(EvalMethod, Name, Arity, PredOrFunc, MModes0, Attrs),
     ;
         MModes0 = no,
         MModes = no
-    ).
-qualify_pragma(X@inline(_, _), X, !Info, !IO).
-qualify_pragma(X@no_inline(_, _), X, !Info, !IO).
-qualify_pragma(X@obsolete(_, _), X, !Info, !IO).
-qualify_pragma(import(Name, PredOrFunc, Modes0, Attributes, CFunc),
-        import(Name, PredOrFunc, Modes, Attributes, CFunc),
-        !Info, !IO) :-
-    qualify_mode_list(Modes0, Modes, !Info, !IO).
-qualify_pragma(foreign_export(Lang, Name, PredOrFunc, Modes0, CFunc),
-        foreign_export(Lang, Name, PredOrFunc, Modes, CFunc), !Info, !IO) :-
-    qualify_mode_list(Modes0, Modes, !Info, !IO).
-qualify_pragma(X@unused_args(_, _, _, _, _), X, !Info, !IO).
-qualify_pragma(X@exceptions(_, _, _, _, _), X, !Info, !IO).
-qualify_pragma(X@trailing_info(_, _, _, _, _), X, !Info, !IO).
-qualify_pragma(X@mm_tabling_info(_, _, _, _, _), X, !Info, !IO).
-qualify_pragma(type_spec(A, B, C, D, MaybeModes0, Subst0, G, H),
-        type_spec(A, B, C, D, MaybeModes, Subst, G, H),
-        !Info, !IO) :-
+    ),
+    Y = pragma_tabled(EvalMethod, Name, Arity, PredOrFunc, MModes, Attrs).
+qualify_pragma(X @ pragma_inline(_, _), X, !Info, !IO).
+qualify_pragma(X @ pragma_no_inline(_, _), X, !Info, !IO).
+qualify_pragma(X @ pragma_obsolete(_, _), X, !Info, !IO).
+qualify_pragma(X, Y, !Info, !IO) :-
+    X = pragma_import(Name, PredOrFunc, Modes0, Attributes, CFunc),
+    qualify_mode_list(Modes0, Modes, !Info, !IO),
+    Y = pragma_import(Name, PredOrFunc, Modes, Attributes, CFunc).
+qualify_pragma(X, Y, !Info, !IO) :-
+    X = pragma_foreign_export(Lang, Name, PredOrFunc, Modes0, CFunc),
+    qualify_mode_list(Modes0, Modes, !Info, !IO),
+    Y = pragma_foreign_export(Lang, Name, PredOrFunc, Modes, CFunc).
+qualify_pragma(X @ pragma_unused_args(_, _, _, _, _), X, !Info, !IO).
+qualify_pragma(X @ pragma_exceptions(_, _, _, _, _), X, !Info, !IO).
+qualify_pragma(X @ pragma_trailing_info(_, _, _, _, _), X, !Info, !IO).
+qualify_pragma(X @ pragma_mm_tabling_info(_, _, _, _, _), X, !Info, !IO).
+qualify_pragma(X, Y, !Info, !IO) :-
+    X = pragma_type_spec(A, B, C, D, MaybeModes0, Subst0, G, H),
     (
         MaybeModes0 = yes(Modes0),
         qualify_mode_list(Modes0, Modes, !Info, !IO),
@@ -1108,37 +1111,39 @@ qualify_pragma(type_spec(A, B, C, D, MaybeModes0, Subst0, G, H),
         MaybeModes0 = no,
         MaybeModes = no
     ),
-    qualify_type_spec_subst(Subst0, Subst, !Info, !IO).
-qualify_pragma(X@fact_table(_, _, _), X, !Info, !IO).
-qualify_pragma(X@reserve_tag(_, _), X, !Info, !IO).
-qualify_pragma(X@promise_pure(_, _), X, !Info, !IO).
-qualify_pragma(X@promise_semipure(_, _), X, !Info, !IO).
-qualify_pragma(X@promise_equivalent_clauses(_, _), X, !Info, !IO).
-qualify_pragma(termination_info(PredOrFunc, SymName, ModeList0, Args, Term),
-        termination_info(PredOrFunc, SymName, ModeList, Args, Term),
-        !Info, !IO) :-
-    qualify_mode_list(ModeList0, ModeList, !Info, !IO).
-qualify_pragma(structure_sharing(PredOrFunc, SymName, ModeList0, Vars, Types,
+    qualify_type_spec_subst(Subst0, Subst, !Info, !IO),
+    Y = pragma_type_spec(A, B, C, D, MaybeModes, Subst, G, H).
+qualify_pragma(X @ pragma_fact_table(_, _, _), X, !Info, !IO).
+qualify_pragma(X @ pragma_reserve_tag(_, _), X, !Info, !IO).
+qualify_pragma(X @ pragma_promise_pure(_, _), X, !Info, !IO).
+qualify_pragma(X @ pragma_promise_semipure(_, _), X, !Info, !IO).
+qualify_pragma(X @ pragma_promise_equivalent_clauses(_, _), X, !Info, !IO).
+qualify_pragma(X, Y, !Info, !IO) :-
+    X = pragma_termination_info(PredOrFunc, SymName, ModeList0, Args, Term),
+    qualify_mode_list(ModeList0, ModeList, !Info, !IO),
+    Y = pragma_termination_info(PredOrFunc, SymName, ModeList, Args, Term).
+qualify_pragma(X, Y, !Info, !IO) :-
+    X = pragma_structure_sharing(PredOrFunc, SymName, ModeList0, Vars, Types,
         Sharing),
-        structure_sharing(PredOrFunc, SymName, ModeList, Vars, Types, Sharing),
-        !Info, !IO) :-
-    qualify_mode_list(ModeList0, ModeList, !Info, !IO).
-qualify_pragma(structure_reuse(PredOrFunc, SymName, ModeList0, Vars, Types,
+    qualify_mode_list(ModeList0, ModeList, !Info, !IO),
+    Y = pragma_structure_sharing(PredOrFunc, SymName, ModeList, Vars, Types,
+        Sharing).
+qualify_pragma(X, Y, !Info, !IO) :-
+    X = pragma_structure_reuse(PredOrFunc, SymName, ModeList0, Vars, Types,
         ReuseTuples),
-        structure_reuse(PredOrFunc, SymName, ModeList, Vars, Types, 
-            ReuseTuples),
-        !Info, !IO) :-
-    qualify_mode_list(ModeList0, ModeList, !Info, !IO).
-qualify_pragma(termination2_info(PredOrFunc, SymName, ModeList0,
-            SuccessArgs, FailureArgs, Term), 
-        termination2_info(PredOrFunc, SymName, ModeList,
-            SuccessArgs, FailureArgs, Term), 
-        !Info, !IO)  :-
-    qualify_mode_list(ModeList0, ModeList, !Info, !IO).
-qualify_pragma(X@terminates(_, _), X, !Info, !IO).
-qualify_pragma(X@does_not_terminate(_, _), X, !Info, !IO).
-qualify_pragma(X@check_termination(_, _), X, !Info, !IO).
-qualify_pragma(X@mode_check_clauses(_, _), X, !Info, !IO).
+    qualify_mode_list(ModeList0, ModeList, !Info, !IO),
+    Y = pragma_structure_reuse(PredOrFunc, SymName, ModeList, Vars, Types,
+        ReuseTuples).
+qualify_pragma(X, Y, !Info, !IO)  :-
+    X = pragma_termination2_info(PredOrFunc, SymName, ModeList0,
+        SuccessArgs, FailureArgs, Term),
+    qualify_mode_list(ModeList0, ModeList, !Info, !IO),
+    Y = pragma_termination2_info(PredOrFunc, SymName, ModeList,
+        SuccessArgs, FailureArgs, Term).
+qualify_pragma(X @ pragma_terminates(_, _), X, !Info, !IO).
+qualify_pragma(X @ pragma_does_not_terminate(_, _), X, !Info, !IO).
+qualify_pragma(X @ pragma_check_termination(_, _), X, !Info, !IO).
+qualify_pragma(X @ pragma_mode_check_clauses(_, _), X, !Info, !IO).
 
 :- pred qualify_pragma_vars(list(pragma_var)::in, list(pragma_var)::out,
     mq_info::in, mq_info::out, io::di, io::uo) is det.
@@ -1208,10 +1213,10 @@ qualify_class_interface([M0 | M0s], [M | Ms], !Info, !IO) :-
     % There is no need to qualify the method name, since that is
     % done when the item is parsed.
 qualify_class_method(
-        pred_or_func(TypeVarset, InstVarset, ExistQVars, PredOrFunc,
+        method_pred_or_func(TypeVarset, InstVarset, ExistQVars, PredOrFunc,
             Name, TypesAndModes0, WithType0, WithInst0, MaybeDet,
             Cond, Purity, ClassContext0, Context),
-        pred_or_func(TypeVarset, InstVarset, ExistQVars, PredOrFunc,
+        method_pred_or_func(TypeVarset, InstVarset, ExistQVars, PredOrFunc,
             Name, TypesAndModes, WithType, WithInst, MaybeDet,
             Cond, Purity, ClassContext, Context),
         !Info, !IO) :-
@@ -1220,9 +1225,9 @@ qualify_class_method(
     map_fold2_maybe(qualify_type, WithType0, WithType, !Info, !IO),
     map_fold2_maybe(qualify_inst, WithInst0, WithInst, !Info, !IO).
 qualify_class_method(
-        pred_or_func_mode(Varset, PredOrFunc, Name, Modes0,
+        method_pred_or_func_mode(Varset, PredOrFunc, Name, Modes0,
             WithInst0, MaybeDet, Cond, Context),
-        pred_or_func_mode(Varset, PredOrFunc, Name, Modes,
+        method_pred_or_func_mode(Varset, PredOrFunc, Name, Modes,
             WithInst, MaybeDet, Cond, Context),
         !Info, !IO) :-
     qualify_mode_list(Modes0, Modes, !Info, !IO),
@@ -1285,7 +1290,7 @@ find_unique_match(Id0, Id, Ids, TypeOfId, !Info, !IO) :-
     mq_info_get_modules(!.Info, Modules),
     id_set_search_sym_arity(Ids, SymName0, Arity, Modules, MatchingModules0),
 
-    ( mq_info_get_import_status(!.Info, exported) ->
+    ( mq_info_get_import_status(!.Info, mq_status_exported) ->
         % Items in the interface may only refer to modules
         % imported in the interface.
         mq_info_get_interface_visible_modules(!.Info, InterfaceImports),
@@ -1300,8 +1305,7 @@ find_unique_match(Id0, Id, Ids, TypeOfId, !Info, !IO) :-
         % No matches for this id.
         Id = Id0,
         ( mq_info_get_report_error_flag(!.Info, yes) ->
-            report_undefined(MatchingModules0, !.Info, Id0,
-                TypeOfId, !IO),
+            report_undefined(MatchingModules0, !.Info, Id0, TypeOfId, !IO),
             mq_info_set_error_flag(TypeOfId, !Info),
             mq_info_incr_errors(!Info)
         ;
@@ -1355,8 +1359,8 @@ convert_simple_item_type(mode_id) = mode_item.
 convert_simple_item_type(inst_id) = inst_item.
 convert_simple_item_type(class_id) = typeclass_item.
 
-:- pred qualify_user_sharing(user_annotated_sharing::in, 
-    user_annotated_sharing::out, mq_info::in, mq_info::out, 
+:- pred qualify_user_sharing(user_annotated_sharing::in,
+    user_annotated_sharing::out, mq_info::in, mq_info::out,
     io::di, io::uo) is det.
 
 qualify_user_sharing(!UserSharing, !Info, !IO) :-
@@ -1365,13 +1369,12 @@ qualify_user_sharing(!UserSharing, !Info, !IO) :-
     ;
         !.UserSharing = user_sharing(Sharing, MaybeTypes0),
         (
-            MaybeTypes0 = yes(user_type_info(Types0, TVarset))
-        ->
+            MaybeTypes0 = yes(user_type_info(Types0, TVarset)),
             qualify_type_list(Types0, Types, !Info, !IO),
-            MaybeTypes = yes(user_type_info(Types, TVarset)), 
+            MaybeTypes = yes(user_type_info(Types, TVarset)),
             !:UserSharing = user_sharing(Sharing, MaybeTypes)
         ;
-            true
+            MaybeTypes0 = no
         )
     ).
 %-----------------------------------------------------------------------------%
@@ -1521,7 +1524,7 @@ mq_error_context_to_pieces(mqec_class(Id)) =
     [words("declaration of typeclass"), wrap_id(Id)].
 mq_error_context_to_pieces(mqec_instance(Id)) =
     [words("declaration of instance of typeclass"), wrap_id(Id)].
-mq_error_context_to_pieces(mqec_mutable(Name)) = 
+mq_error_context_to_pieces(mqec_mutable(Name)) =
     [
         words("declaration for mutable "),
         prefix("`"),
@@ -1639,7 +1642,7 @@ init_mq_info(Items, Globals, ReportErrors, ModuleName, Info) :-
     ),
     Info = mq_info(ImportedModules, InterfaceVisibleModules,
         Empty, Empty, Empty, Empty, Empty, Empty,
-        InterfaceModules0, local, 0,
+        InterfaceModules0, mq_status_local, 0,
         no, no, ReportErrors, ErrorContext, ModuleName,
         may_be_unqualified, MaybeRecompInfo).
 
@@ -1655,7 +1658,7 @@ init_mq_info(Items, Globals, ReportErrors, ModuleName, Info) :-
 :- pred mq_info_get_classes(mq_info::in, class_id_set::out) is det.
 :- pred mq_info_get_unused_interface_modules(mq_info::in,
     set(module_name)::out) is det.
-:- pred mq_info_get_import_status(mq_info::in, import_status::out) is det.
+:- pred mq_info_get_import_status(mq_info::in, mq_import_status::out) is det.
 % :- pred mq_info_get_num_errors(mq_info::in, int::out) is det.
 % :- pred mq_info_get_type_error_flag(mq_info::in, bool::out) is det.
 % :- pred mq_info_get_mode_error_flag(mq_info::in, bool::out) is det.
@@ -1698,7 +1701,7 @@ mq_info_get_recompilation_info(Info, Info ^ maybe_recompilation_info).
     mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_unused_interface_modules(set(module_name)::in,
     mq_info::in, mq_info::out) is det.
-:- pred mq_info_set_import_status(import_status::in,
+:- pred mq_info_set_import_status(mq_import_status::in,
     mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_type_error_flag(mq_info::in, mq_info::out) is det.
 :- pred mq_info_set_mode_error_flag(mq_info::in, mq_info::out) is det.
@@ -1755,7 +1758,7 @@ mq_info_set_error_flag_2(class_id, !Info) :-
     is det.
 
 mq_info_set_module_used(Module, !Info) :-
-    ( mq_info_get_import_status(!.Info, exported) ->
+    ( mq_info_get_import_status(!.Info, mq_status_exported) ->
         mq_info_get_unused_interface_modules(!.Info, Modules0),
         set.delete(Modules0, Module, Modules),
         mq_info_set_unused_interface_modules(Modules, !Info),
@@ -1839,7 +1842,7 @@ id_set_search_sym_arity(IdSet, Sym, Arity, Modules, MatchingModules) :-
             %
             % Do a recursive search to find nested modules
             % that match the specified module name.
-            % 
+            %
             ModuleArity = 0,
             id_set_search_sym_arity(Modules, Module, ModuleArity,
                 Modules, MatchingParentModules),

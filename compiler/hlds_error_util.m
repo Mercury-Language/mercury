@@ -110,18 +110,15 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
             Pieces = [words(Descr), words("for type constructor"),
                 sym_name(TypeSymName)]
         )
-    ; check_marker(Markers, class_instance_method) ->
+    ; check_marker(Markers, marker_class_instance_method) ->
         Pieces = [words("type class method implementation")]
-    ; pred_info_get_goal_type(PredInfo, promise(PromiseType)) ->
+    ; pred_info_get_goal_type(PredInfo, goal_type_promise(PromiseType)) ->
         Pieces = [words("`" ++ promise_to_string(PromiseType) ++ "'"),
             words("declaration")]
     ;
-        ( check_marker(Markers, class_method) ->
-            Prefix = [
-                        words("type class"),
-                        pred_or_func(PredOrFunc),
-                        words("method")
-                     ]
+        ( check_marker(Markers, marker_class_method) ->
+            Prefix = [words("type class"), pred_or_func(PredOrFunc),
+                words("method")]
         ;
             Prefix = [pred_or_func(PredOrFunc)]
         ),

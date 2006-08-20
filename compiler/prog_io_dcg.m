@@ -679,7 +679,7 @@ term_list_append_term(List0, Term, List) :-
     prog_var::in, goal::in, maybe1(item)::out) is det.
 
 process_dcg_clause(ok2(Name, Args0), VarSet, Var0, Var, Body,
-        ok1(clause(user, VarSet, predicate, Name, Args, Body))) :-
+        ok1(item_clause(user, VarSet, predicate, Name, Args, Body))) :-
     list.map(term.coerce, Args0, Args1),
-    list.append(Args1, [term.variable(Var0), term.variable(Var)], Args).
+    Args = Args1 ++ [term.variable(Var0), term.variable(Var)].
 process_dcg_clause(error2(Errors), _, _, _, _, error1(Errors)).

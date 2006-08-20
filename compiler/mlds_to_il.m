@@ -368,9 +368,8 @@ get_il_data_rep(ILDataRep, !IO) :-
     ILEnvPtrType = choose_il_envptr_type(Globals),
     ILDataRep = il_data_rep(HighLevelData, ILEnvPtrType).
 
-:- pred has_foreign_code_defined(
-        map(foreign_language, mlds_foreign_code)::in,
-        foreign_language::in) is semidet.
+:- pred has_foreign_code_defined(map(foreign_language, mlds_foreign_code)::in,
+    foreign_language::in) is semidet.
 
 has_foreign_code_defined(ForeignCodeMap, Lang) :-
     ForeignCode = map.search(ForeignCodeMap, Lang),

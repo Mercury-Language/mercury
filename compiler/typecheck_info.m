@@ -354,7 +354,7 @@
 typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
         TypeVarSet, VarSet, VarTypes, HeadTypeParams,
         Constraints, Status, Markers, Info) :-
-    CallPredId = call(simple_call_id(predicate, unqualified(""), 0)),
+    CallPredId = plain_call_id(simple_call_id(predicate, unqualified(""), 0)),
     term.context_init(Context),
     map.init(TypeBindings),
     map.init(Proofs),
@@ -364,7 +364,7 @@ typecheck_info_init(ModuleInfo, PredId, IsFieldAccessFunction,
     map.init(OverloadedSymbols),
     Info = typecheck_info(ModuleInfo, CallPredId, 0, PredId, Status, Markers,
         IsFieldAccessFunction, Context,
-        unify_context(explicit, []), VarSet,
+        unify_context(umc_explicit, []), VarSet,
         [type_assign(VarTypes, TypeVarSet, HeadTypeParams,
             TypeBindings, Constraints, Proofs, ConstraintMap)],
         FoundTypeError, OverloadedSymbols, WarnedAboutOverloading

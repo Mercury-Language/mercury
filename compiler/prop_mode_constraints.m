@@ -444,8 +444,8 @@ make_unification(Context, Var0, Var, !Unifications, !SeenSoFar, !Varset,
         %
         % Make new unification.
         %
-        create_atomic_complicated_unification(Var0, var(Var), Context,
-            implicit("Making call arguments unique for constraints" ++
+        create_atomic_complicated_unification(Var0, rhs_var(Var), Context,
+            umc_implicit("Making call arguments unique for constraints" ++
             " based mode analysis"), [], purity_pure,
             UnificationGoalExpr - UnificationGoalInfo0),
         goal_info_set_nonlocals(set.from_list([Var0, Var]),
@@ -495,7 +495,7 @@ module_info_pred_status_is_imported(ModuleInfo, PredId) :-
     % The following used because pred_info_is_imported/2 is not
     % as comprehensive as status_is_imported/2.
     pred_info_get_import_status(PredInfo, Status),
-    status_is_imported(Status, yes).
+    status_is_imported(Status) = yes.
 
 %----------------------------------------------------------------------------%
 

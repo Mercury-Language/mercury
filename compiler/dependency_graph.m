@@ -328,7 +328,7 @@ dependency_graph.add_proc_arcs([ProcId | ProcIds], PredId, ModuleInfo,
     ;
         IncludeImported = include_imported,
         pred_info_get_import_status(PredInfo0, ImportStatus),
-        status_is_imported(ImportStatus, Imported),
+        Imported = status_is_imported(ImportStatus),
         (
             Imported = yes
         ;

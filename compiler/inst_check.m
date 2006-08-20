@@ -70,39 +70,38 @@ check_insts_have_matching_types(Module, !IO) :-
     FunctorsToTypeDefs = index_types_by_unqualified_functors(
         UserVisibleTypeDefs),
     list.foldl_corresponding(check_inst(FunctorsToTypeDefs),
-        assoc_list.keys(InstIdDefPairsForCurrentModule), 
+        assoc_list.keys(InstIdDefPairsForCurrentModule),
         assoc_list.values(InstIdDefPairsForCurrentModule), !IO).
 
     % Returns yes if a type definition with the given import status
     % is user visible in the current module.
     %
-:- pred status_implies_type_defn_is_user_visible(import_status::in, bool::out)
-    is det.
+:- func status_implies_type_defn_is_user_visible(import_status) = bool.
 
-status_implies_type_defn_is_user_visible(imported(_),               yes).
-status_implies_type_defn_is_user_visible(external(_),               no).
-status_implies_type_defn_is_user_visible(abstract_imported,         no).
-status_implies_type_defn_is_user_visible(pseudo_imported,           no).
-status_implies_type_defn_is_user_visible(opt_imported,              no).
-status_implies_type_defn_is_user_visible(exported,                  yes).
-status_implies_type_defn_is_user_visible(opt_exported,              yes).
-status_implies_type_defn_is_user_visible(abstract_exported,         yes).
-status_implies_type_defn_is_user_visible(pseudo_exported,           yes).
-status_implies_type_defn_is_user_visible(exported_to_submodules,    yes).
-status_implies_type_defn_is_user_visible(local,                     yes).
+status_implies_type_defn_is_user_visible(status_imported(_)) =             yes.
+status_implies_type_defn_is_user_visible(status_external(_)) =             no.
+status_implies_type_defn_is_user_visible(status_abstract_imported) =       no.
+status_implies_type_defn_is_user_visible(status_pseudo_imported) =         no.
+status_implies_type_defn_is_user_visible(status_opt_imported) =            no.
+status_implies_type_defn_is_user_visible(status_exported) =                yes.
+status_implies_type_defn_is_user_visible(status_opt_exported) =            yes.
+status_implies_type_defn_is_user_visible(status_abstract_exported) =       yes.
+status_implies_type_defn_is_user_visible(status_pseudo_exported) =         yes.
+status_implies_type_defn_is_user_visible(status_exported_to_submodules) =  yes.
+status_implies_type_defn_is_user_visible(status_local) =                   yes.
 
 :- pred inst_is_defined_in_current_module(pair(inst_id, hlds_inst_defn)::in)
     is semidet.
 
 inst_is_defined_in_current_module(_ - InstDef) :-
     ImportStatus = InstDef ^ inst_status,
-    status_defined_in_this_module(ImportStatus, yes).
+    status_defined_in_this_module(ImportStatus) = yes.
 
 :- pred type_is_user_visible(hlds_type_defn::in) is semidet.
 
 type_is_user_visible(TypeDef) :-
     get_type_defn_status(TypeDef, ImportStatus),
-    status_implies_type_defn_is_user_visible(ImportStatus, yes).
+    status_implies_type_defn_is_user_visible(ImportStatus) = yes.
 
 :- type functors_to_types == multi_map(sym_name_and_arity, hlds_type_defn).
 
@@ -136,7 +135,7 @@ check_inst(FunctorsToTypes, InstId, InstDef, !IO) :-
             ;
                 true
             )
-        ; 
+        ;
             ( Inst = any(_)
             ; Inst = free
             ; Inst = free(_)
@@ -206,7 +205,7 @@ find_types_for_functor(FunctorsToTypes, Functor, Types) :-
             TypesExceptTuple = TypesExceptChar
         ),
         (
-            % 
+            %
             % The inst could match a tuple type, which won't be explicitly
             % declared.
             %
@@ -230,7 +229,7 @@ find_types_for_functor(FunctorsToTypes, Functor, Types) :-
 :- pred bound_inst_to_functor(bound_inst::in, bound_inst_functor::out)
     is semidet.
 
-bound_inst_to_functor(functor(ConsId, _), Functor) :-
+bound_inst_to_functor(bound_functor(ConsId, _), Functor) :-
     get_functor_if_must_check_for_type(ConsId, yes(Functor)).
 
     % Return the functor for the given cons_id if we should look for
@@ -291,25 +290,24 @@ strip_qualifiers(qualified(_, Name)) = unqualified(Name).
 get_du_functors_for_type_def(TypeDef) = Functors :-
     get_type_defn_body(TypeDef, TypeDefBody),
     (
-        TypeDefBody = du_type(Constructors, _, _, _, _, _),
+        TypeDefBody = hlds_du_type(Constructors, _, _, _, _, _),
         Functors = list.map(constructor_to_sym_name_and_arity, Constructors)
     ;
-        ( TypeDefBody = eqv_type(_)
-        ; TypeDefBody = foreign_type(_)
-        ; TypeDefBody = solver_type(_, _)
-        ; TypeDefBody = abstract_type(_)
+        ( TypeDefBody = hlds_eqv_type(_)
+        ; TypeDefBody = hlds_foreign_type(_)
+        ; TypeDefBody = hlds_solver_type(_, _)
+        ; TypeDefBody = hlds_abstract_type(_)
         ),
         Functors = []
     ).
 
 :- func constructor_to_sym_name_and_arity(constructor) = sym_name_and_arity.
 
-constructor_to_sym_name_and_arity(ctor(_, _, Name, Args)) = 
+constructor_to_sym_name_and_arity(ctor(_, _, Name, Args)) =
     Name / list.length(Args).
 
-    % multi_map_set is the same as multi_map.set, except that the 
-    % arguments are in an order convenient for use in
-    % index_types_by_unqualified_functors.
+    % multi_map_set is the same as multi_map.set, except that the arguments are
+    % in an order convenient for use in index_types_by_unqualified_functors.
     %
 :- func multi_map_set(V, K, multi_map(K, V)) = multi_map(K, V).
 

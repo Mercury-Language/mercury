@@ -155,7 +155,7 @@
     % du = discriminated union, eqv_type = equivalence type (a type defined
     % to be equivalent to some other type), and solver_type.
 :- type hlds_type_body
-    --->    du_type(
+    --->    hlds_du_type(
                 % The ctors for this type.
                 du_type_ctors           :: list(constructor),
 
@@ -175,10 +175,10 @@
                 % this type?
                 du_type_is_foreign_type :: maybe(foreign_type_body)
             )
-    ;       eqv_type(mer_type)
-    ;       foreign_type(foreign_type_body)
-    ;       solver_type(solver_type_details, maybe(unify_compare))
-    ;       abstract_type(is_solver_type).
+    ;       hlds_eqv_type(mer_type)
+    ;       hlds_foreign_type(foreign_type_body)
+    ;       hlds_solver_type(solver_type_details, maybe(unify_compare))
+    ;       hlds_abstract_type(is_solver_type).
 
 :- type enum_or_dummy
     --->    is_enum
@@ -214,17 +214,17 @@
     % values which do not fit into a word are represented by a (possibly
     % tagged) pointer to memory on the heap.
 :- type cons_tag
-    --->    string_constant(string)
+    --->    string_tag(string)
             % Strings are represented using the MR_string_const() macro;
             % in the current implementation, Mercury strings are represented
             % just as C null-terminated strings.
 
-    ;       float_constant(float)
+    ;       float_tag(float)
             % Floats are represented using the MR_float_to_word(),
             % MR_word_to_float(), and MR_float_const() macros. The default
             % implementation of these is to use boxed double-precision floats.
 
-    ;       int_constant(int)
+    ;       int_tag(int)
             % This means the constant is represented just as a word containing
             % the specified integer value. This is used for enumerations and
             % character constants as well as for int constants.
@@ -236,12 +236,12 @@
             % vector hold the number of args and the address of the procedure
             % respectively. The remaining words hold the arguments.
 
-    ;       type_ctor_info_constant(module_name, string, arity)
+    ;       type_ctor_info_tag(module_name, string, arity)
             % This is how we refer to type_ctor_info structures represented
             % as global data. The args are the name of the module the type
             % is defined in, and the name of the type, and its arity.
 
-    ;       base_typeclass_info_constant(module_name, class_id, string)
+    ;       base_typeclass_info_tag(module_name, class_id, string)
             % This is how we refer to base_typeclass_info structures
             % represented as global data. The first argument is the name
             % of the module containing the instance declaration, the second
@@ -249,7 +249,7 @@
             % uniquely identifies the instance declaration (it is made from
             % the type of the arguments to the instance decl).
 
-    ;       tabling_info_constant(pred_id, proc_id)
+    ;       tabling_info_tag(pred_id, proc_id)
             % This is how we refer to the global structures containing
             % tabling pointer variables and related data. The word just
             % contains the address of the global struct.
@@ -263,7 +263,7 @@
             % to decode the contents of the memory block containing the
             % headvars of I/O primitives.
 
-    ;       single_functor
+    ;       single_functor_tag
             % This is for types with a single functor (and possibly also some
             % constants represented using reserved addresses -- see below).
             % For these types, we don't need any tags. We just store a pointer
@@ -297,11 +297,12 @@
             % case, we don't need to store the functor, and instead we store
             % the argument directly.
 
-    ;       reserved_address(reserved_address)
+    ;       reserved_address_tag(reserved_address)
             % This is for constants represented as null pointers, or as
             % other reserved values in the address space.
 
-    ;       shared_with_reserved_addresses(list(reserved_address), cons_tag).
+    ;       shared_with_reserved_addresses_tag(list(reserved_address),
+                cons_tag).
             % This is for constructors of discriminated union types where
             % one or more of the *other* constructors for that type is
             % represented as a reserved address. Any semidet deconstruction
@@ -369,42 +370,42 @@
 % In some of the cases where we return `no' here,
 % it would probably be OK to return `yes(0)'.
 % But it's safe to be conservative...
-get_primary_tag(string_constant(_)) = no.
-get_primary_tag(float_constant(_)) = no.
-get_primary_tag(int_constant(_)) = no.
+get_primary_tag(string_tag(_)) = no.
+get_primary_tag(float_tag(_)) = no.
+get_primary_tag(int_tag(_)) = no.
 get_primary_tag(pred_closure_tag(_, _, _)) = no.
-get_primary_tag(type_ctor_info_constant(_, _, _)) = no.
-get_primary_tag(base_typeclass_info_constant(_, _, _)) = no.
-get_primary_tag(tabling_info_constant(_, _)) = no.
+get_primary_tag(type_ctor_info_tag(_, _, _)) = no.
+get_primary_tag(base_typeclass_info_tag(_, _, _)) = no.
+get_primary_tag(tabling_info_tag(_, _)) = no.
 get_primary_tag(deep_profiling_proc_layout_tag(_, _)) = no.
 get_primary_tag(table_io_decl_tag(_, _)) = no.
-get_primary_tag(single_functor) = yes(0).
+get_primary_tag(single_functor_tag) = yes(0).
 get_primary_tag(unshared_tag(PrimaryTag)) = yes(PrimaryTag).
 get_primary_tag(shared_remote_tag(PrimaryTag, _SecondaryTag)) =
         yes(PrimaryTag).
 get_primary_tag(shared_local_tag(PrimaryTag, _)) = yes(PrimaryTag).
 get_primary_tag(no_tag) = no.
-get_primary_tag(reserved_address(_)) = no.
-get_primary_tag(shared_with_reserved_addresses(_ReservedAddresses, TagValue))
+get_primary_tag(reserved_address_tag(_)) = no.
+get_primary_tag(shared_with_reserved_addresses_tag(_RAs, TagValue))
         = get_primary_tag(TagValue).
 
-get_secondary_tag(string_constant(_)) = no.
-get_secondary_tag(float_constant(_)) = no.
-get_secondary_tag(int_constant(_)) = no.
+get_secondary_tag(string_tag(_)) = no.
+get_secondary_tag(float_tag(_)) = no.
+get_secondary_tag(int_tag(_)) = no.
 get_secondary_tag(pred_closure_tag(_, _, _)) = no.
-get_secondary_tag(type_ctor_info_constant(_, _, _)) = no.
-get_secondary_tag(base_typeclass_info_constant(_, _, _)) = no.
-get_secondary_tag(tabling_info_constant(_, _)) = no.
+get_secondary_tag(type_ctor_info_tag(_, _, _)) = no.
+get_secondary_tag(base_typeclass_info_tag(_, _, _)) = no.
+get_secondary_tag(tabling_info_tag(_, _)) = no.
 get_secondary_tag(deep_profiling_proc_layout_tag(_, _)) = no.
 get_secondary_tag(table_io_decl_tag(_, _)) = no.
-get_secondary_tag(single_functor) = no.
+get_secondary_tag(single_functor_tag) = no.
 get_secondary_tag(unshared_tag(_)) = no.
 get_secondary_tag(shared_remote_tag(_PrimaryTag, SecondaryTag)) =
         yes(SecondaryTag).
 get_secondary_tag(shared_local_tag(_, _)) = no.
 get_secondary_tag(no_tag) = no.
-get_secondary_tag(reserved_address(_)) = no.
-get_secondary_tag(shared_with_reserved_addresses(_ReservedAddresses, TagValue))
+get_secondary_tag(reserved_address_tag(_)) = no.
+get_secondary_tag(shared_with_reserved_addresses_tag(_RAs, TagValue))
         = get_secondary_tag(TagValue).
 
 :- type hlds_type_defn
@@ -500,12 +501,12 @@ set_type_defn_in_exported_eqv(InExportedEqv, Defn,
 :- type mostly_uniq_inst_table == map(inst_name, maybe_inst).
 
 :- type maybe_inst
-    --->    unknown
-    ;       known(mer_inst).
+    --->    inst_unknown
+    ;       inst_known(mer_inst).
 
 :- type maybe_inst_det
-    --->    unknown
-    ;       known(mer_inst, determinism).
+    --->    inst_det_unknown
+    ;       inst_det_known(mer_inst, determinism).
 
     % An `hlds_inst_defn' holds the information we need to store
     % about inst definitions such as
@@ -590,12 +591,12 @@ set_type_defn_in_exported_eqv(InExportedEqv, Defn,
 
 :- type inst_table
     --->    inst_table(
-                inst_table_user     :: user_inst_table,
-                inst_table_unify    :: unify_inst_table,
-                inst_table_merge    :: merge_inst_table,
-                inst_table_ground   :: ground_inst_table,
-                inst_table_any      :: any_inst_table,
-                inst_table_shared   :: shared_inst_table,
+                inst_table_user         :: user_inst_table,
+                inst_table_unify        :: unify_inst_table,
+                inst_table_merge        :: merge_inst_table,
+                inst_table_ground       :: ground_inst_table,
+                inst_table_any          :: any_inst_table,
+                inst_table_shared       :: shared_inst_table,
                 inst_table_mostly_uniq  :: mostly_uniq_inst_table
             ).
 

@@ -250,7 +250,7 @@ generate_goal_2(GoalExpr, GoalInfo, CodeModel, Code, !CI) :-
     ;
         GoalExpr = call_foreign_proc(Attributes, PredId, ProcId,
             Args, ExtraArgs, MaybeTraceRuntimeCond, PragmaCode),
-        ( foreign_language(Attributes) = lang_c ->
+        ( get_foreign_language(Attributes) = lang_c ->
             pragma_c_gen.generate_pragma_c_code(CodeModel, Attributes,
                 PredId, ProcId, Args, ExtraArgs, MaybeTraceRuntimeCond,
                 PragmaCode, GoalInfo, Code, !CI)

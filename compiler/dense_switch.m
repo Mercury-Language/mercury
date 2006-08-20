@@ -79,9 +79,9 @@ is_dense_switch(CI, CaseVar, TaggedCases, CanFail0, ReqDensity,
     list.length(TaggedCases, NumCases),
     NumCases > 2,
     TaggedCases = [FirstCase | _],
-    FirstCase = case(_, int_constant(FirstCaseVal), _, _),
+    FirstCase = case(_, int_tag(FirstCaseVal), _, _),
     list.index1_det(TaggedCases, NumCases, LastCase),
-    LastCase = case(_, int_constant(LastCaseVal), _, _),
+    LastCase = case(_, int_tag(LastCaseVal), _, _),
     Span = LastCaseVal - FirstCaseVal,
     Range = Span + 1,
     dense_switch.calc_density(NumCases, Range, Density),
@@ -210,7 +210,7 @@ generate_case(!Cases, NextVal, CodeModel, SwitchGoalInfo, !MaybeEnd, Code,
         Comment, !CI) :-
     (
         !.Cases = [Case | !:Cases],
-        Case = case(_, int_constant(NextVal), _, Goal)
+        Case = case(_, int_tag(NextVal), _, Goal)
     ->
         Comment = "case of dense switch",
         % We need to save the expression cache, etc.,

@@ -180,7 +180,7 @@ create_type_ctor_gen(ModuleInfo, TypeTable, TypeCtor, TypeModuleName,
         map.lookup(TypeTable, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         (
-            ( TypeBody = abstract_type(_)
+            ( TypeBody = hlds_abstract_type(_)
             ; type_ctor_has_hand_defined_rtti(TypeCtor, TypeBody)
             )
         ->
@@ -199,7 +199,7 @@ create_type_ctor_gen(ModuleInfo, TypeTable, TypeCtor, TypeModuleName,
             (
                 are_equivalence_types_expanded(ModuleInfo)
             =>
-                TypeBody \= eqv_type(_)
+                TypeBody \= hlds_eqv_type(_)
             )
         )
     ).
@@ -212,8 +212,8 @@ builtin_type_defn = TypeDefn :-
     varset.init(TVarSet),
     Params = [],
     map.init(Kinds),
-    Body = abstract_type(non_solver_type),
-    ImportStatus = local,
+    Body = hlds_abstract_type(non_solver_type),
+    ImportStatus = status_local,
     NeedQualifier = may_be_unqualified,
     term.context_init(Context),
     hlds_data.set_type_defn(TVarSet, Params, Kinds, Body, ImportStatus, no,
@@ -300,7 +300,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
     % It is an error for a type body to be an abstract type unless
     % we are generating the RTTI for builtins.
     (
-        TypeBody = abstract_type(_),
+        TypeBody = hlds_abstract_type(_),
         \+ compiler_generated_rtti_for_builtins(ModuleInfo)
     ->
         unexpected(this_file, "gen_type_ctor_data: abstract_type")
@@ -323,13 +323,13 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
         Details = impl_artifact(ImplCtor)
     ;
         (
-            TypeBody = abstract_type(_),
+            TypeBody = hlds_abstract_type(_),
             unexpected(this_file, "gen_type_ctor_data: abstract_type")
         ;
             % We treat solver_types as being equivalent to their representation
             % types for RTTI purposes. Which may cause problems with construct,
             % similar to those for abstract types.
-            TypeBody = solver_type(SolverTypeDetails, _MaybeUserEqComp),
+            TypeBody = hlds_solver_type(SolverTypeDetails, _MaybeUserEqComp),
             RepnType = SolverTypeDetails ^ representation_type,
             % There can be no existentially typed args to an equivalence.
             UnivTvars = TypeArity,
@@ -338,12 +338,12 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
                 UnivTvars, ExistTvars, MaybePseudoTypeInfo),
             Details = eqv(MaybePseudoTypeInfo)
         ;
-            TypeBody = foreign_type(ForeignBody),
+            TypeBody = hlds_foreign_type(ForeignBody),
             foreign_type_body_to_exported_type(ModuleInfo, ForeignBody, _, _,
                 Assertions),
             (
-                list.member(can_pass_as_mercury_type, Assertions),
-                list.member(stable, Assertions)
+                list.member(foreign_type_can_pass_as_mercury_type, Assertions),
+                list.member(foreign_type_stable, Assertions)
             ->
                 IsStable = is_stable
             ;
@@ -351,7 +351,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
             ),
             Details = foreign(IsStable)
         ;
-            TypeBody = eqv_type(Type),
+            TypeBody = hlds_eqv_type(Type),
             % There can be no existentially typed args to an equivalence.
             UnivTvars = TypeArity,
             ExistTvars = [],
@@ -359,8 +359,8 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
                 UnivTvars, ExistTvars, MaybePseudoTypeInfo),
             Details = eqv(MaybePseudoTypeInfo)
         ;
-            TypeBody = du_type(Ctors, ConsTagMap, EnumDummy, MaybeUserEqComp,
-                ReservedTag, _),
+            TypeBody = hlds_du_type(Ctors, ConsTagMap, EnumDummy,
+                MaybeUserEqComp, ReservedTag, _),
             (
                 MaybeUserEqComp = yes(_),
                 EqualityAxioms = user_defined
@@ -394,7 +394,7 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
     ),
     some [!Flags] (
         !:Flags = set.init,
-        ( TypeBody = du_type(_, _, _, _, _, _) ->
+        ( TypeBody = hlds_du_type(_, _, _, _, _, _) ->
             svset.insert(kind_of_du_flag, !Flags),
             ( TypeBody ^ du_type_reserved_tag = yes -> 
                 svset.insert(reserve_tag_flag, !Flags)
@@ -604,7 +604,7 @@ make_enum_functors([Functor | Functors], NextOrdinal0, ConsTagMap,
         "functor in enum has nonzero arity"),
     ConsId = make_cons_id_from_qualified_sym_name(SymName, FunctorArgs),
     map.lookup(ConsTagMap, ConsId, ConsTag),
-    expect(unify(ConsTag, int_constant(NextOrdinal0)), this_file,
+    expect(unify(ConsTag, int_tag(NextOrdinal0)), this_file,
         "mismatch on constant assigned to functor in enum"),
     unqualify_name(SymName, FunctorName),
     EnumFunctor = enum_functor(FunctorName, NextOrdinal0),
@@ -728,7 +728,7 @@ make_maybe_res_functors([Functor | Functors], NextOrdinal, ConsTagMap,
 
 process_cons_tag(ConsTag, ConsRep) :-
     (
-        ConsTag = single_functor,
+        ConsTag = single_functor_tag,
         ConsPtag = 0,
         ConsRep = du_rep(du_ll_rep(ConsPtag, sectag_none))
     ;
@@ -741,22 +741,22 @@ process_cons_tag(ConsTag, ConsRep) :-
         ConsTag = shared_remote_tag(ConsPtag, ConsStag),
         ConsRep = du_rep(du_ll_rep(ConsPtag, sectag_remote(ConsStag)))
     ;
-        ConsTag = reserved_address(ReservedAddr),
+        ConsTag = reserved_address_tag(ReservedAddr),
         ConsRep = reserved_rep(ReservedAddr)
     ;
-        ConsTag = shared_with_reserved_addresses(_RAs, ThisTag),
+        ConsTag = shared_with_reserved_addresses_tag(_RAs, ThisTag),
         % Here we can just ignore the fact that this cons_tag is
         % shared with reserved addresses.
         process_cons_tag(ThisTag, ConsRep)
     ;
         ( ConsTag = no_tag
-        ; ConsTag = string_constant(_)
-        ; ConsTag = int_constant(_)
-        ; ConsTag = float_constant(_)
+        ; ConsTag = string_tag(_)
+        ; ConsTag = int_tag(_)
+        ; ConsTag = float_tag(_)
         ; ConsTag = pred_closure_tag(_, _, _)
-        ; ConsTag = type_ctor_info_constant(_, _, _)
-        ; ConsTag = base_typeclass_info_constant(_, _, _)
-        ; ConsTag = tabling_info_constant(_, _)
+        ; ConsTag = type_ctor_info_tag(_, _, _)
+        ; ConsTag = base_typeclass_info_tag(_, _, _)
+        ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ; ConsTag = table_io_decl_tag(_, _)
         ),

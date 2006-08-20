@@ -176,7 +176,7 @@ assign_constructor_tags(Ctors, UserEqCmp, TypeCtor, ReservedTagPragma, Globals,
             % for the remaining constructors.
             RemainingCtors = LeftOverConstants ++ Functors,
             ReservedAddresses = list.filter_map(
-                (func(reserved_address(RA)) = RA is semidet),
+                (func(reserved_address_tag(RA)) = RA is semidet),
                 map.values(CtorTags2)),
             assign_unshared_tags(RemainingCtors, 0, 0, ReservedAddresses,
                 CtorTags2, CtorTags)
@@ -197,7 +197,7 @@ assign_enum_constants([], _, !CtorTags).
 assign_enum_constants([Ctor | Rest], Val, !CtorTags) :-
     Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
     ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
-    Tag = int_constant(Val),
+    Tag = int_tag(Val),
     svmap.set(ConsId, Tag, !CtorTags),
     assign_enum_constants(Rest, Val + 1, !CtorTags).
 
@@ -218,9 +218,9 @@ assign_reserved_numeric_addresses([Ctor | Rest], LeftOverConstants,
         Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
         ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
         ( Address = 0 ->
-            Tag = reserved_address(null_pointer)
+            Tag = reserved_address_tag(null_pointer)
         ;
-            Tag = reserved_address(small_pointer(Address))
+            Tag = reserved_address_tag(small_pointer(Address))
         ),
         svmap.set(ConsId, Tag, !CtorTags),
         assign_reserved_numeric_addresses(Rest, LeftOverConstants,
@@ -242,7 +242,7 @@ assign_reserved_symbolic_addresses([Ctor | Ctors], LeftOverConstants, TypeCtor,
     ;
         Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
         Arity = list.length(Args),
-        Tag = reserved_address(reserved_object(TypeCtor, Name, Arity)),
+        Tag = reserved_address_tag(reserved_object(TypeCtor, Name, Arity)),
         ConsId = make_cons_id_from_qualified_sym_name(Name, Args),
         svmap.set(ConsId, Tag, !CtorTags),
         assign_reserved_symbolic_addresses(Ctors, LeftOverConstants,
@@ -287,7 +287,8 @@ assign_unshared_tags([Ctor | Rest], Val, MaxTag, ReservedAddresses,
         Val = 0,
         Rest = []
     ->
-        Tag = maybe_add_reserved_addresses(ReservedAddresses, single_functor),
+        Tag = maybe_add_reserved_addresses(ReservedAddresses,
+            single_functor_tag),
         svmap.set(ConsId, Tag, !CtorTags)
     ;
         % If we're about to run out of unshared tags, start assigning
@@ -342,7 +343,7 @@ maybe_add_reserved_addresses(ReservedAddresses, Tag0) = Tag :-
         Tag = Tag0
     ;
         ReservedAddresses = [_ | _],
-        Tag = shared_with_reserved_addresses(ReservedAddresses, Tag0)
+        Tag = shared_with_reserved_addresses_tag(ReservedAddresses, Tag0)
     ).
 
 %-----------------------------------------------------------------------------%

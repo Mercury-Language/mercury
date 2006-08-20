@@ -648,8 +648,8 @@ trail_generate_foreign_proc(PredName, Purity, InstMap,
     some [!ForeignProcAttrs] (
         % XXX handle other target languages here.
         !:ForeignProcAttrs = default_attributes(lang_c),
-        set_may_call_mercury(will_not_call_mercury, !ForeignProcAttrs),
-        set_thread_safe(thread_safe, !ForeignProcAttrs),
+        set_may_call_mercury(proc_will_not_call_mercury, !ForeignProcAttrs),
+        set_thread_safe(proc_thread_safe, !ForeignProcAttrs),
         FinalForeignProcAttrs = !.ForeignProcAttrs
     ),
     ExtraArgs  = [],

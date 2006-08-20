@@ -489,8 +489,8 @@ add_svar_unifier(MaybeFeature, RHSMap, Context, StateVar, Var, Unifiers0)
     = hlds_goal.
 
 svar_unification(MaybeFeature, Context, SVar, Var) = Unification :-
-    create_atomic_complicated_unification(SVar, var(Var), Context,
-        implicit("state variable"), [], Unification0),
+    create_atomic_complicated_unification(SVar, rhs_var(Var), Context,
+        umc_implicit("state variable"), [], Unification0),
     (
         MaybeFeature = no,
         Unification = Unification0
@@ -980,7 +980,7 @@ expand_method_bsvs(IM0) = IM :-
     Cs  = list.map(expand_item_bsvs, Cs0),
         % Note that the condition should always succeed...
         %
-    ( Cs = [clause(_, _, _, _, Args, _) | _] ->
+    ( Cs = [item_clause(_, _, _, _, Args, _) | _] ->
         adjust_func_arity(PredOrFunc, Arity, list.length(Args))
     ;
         Arity = Arity0
@@ -992,8 +992,8 @@ expand_method_bsvs(IM0) = IM :-
 :- func expand_item_bsvs(item) = item.
 
 expand_item_bsvs(Item) =
-    ( Item = clause(Origin, VarSet, PredOrFunc, SymName, Args, Body) ->
-        clause(Origin, VarSet, PredOrFunc, SymName,
+    ( Item = item_clause(Origin, VarSet, PredOrFunc, SymName, Args, Body) ->
+        item_clause(Origin, VarSet, PredOrFunc, SymName,
             expand_bang_state_var_args(Args), Body)
     ;
         Item

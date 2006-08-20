@@ -5,16 +5,16 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: export.m.
 % Main author: dgj.
-% 
+%
 % This module defines predicates to produce the functions which are
 % exported to a foreign language via a `pragma foreign_export' declaration.
-% 
+%
 % NOTE: any changes here might also require similar changes to the handling
 % of `pragma import' declarations, which are handled in make_hlds.m.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module backend_libs.export.
@@ -144,7 +144,7 @@ get_foreign_export_decls_2(Preds, [E | ExportedProcs], Globals,
         ; Lang = lang_il
         ),
         sorry(this_file,  ":- pragma foreign_export for non-C backends.")
-    ),          
+    ),
     ExportDecl = foreign_export_decl(Lang, RetType, ExportName, ArgDecls),
     get_foreign_export_decls_2(Preds, ExportedProcs, Globals, ModuleInfo,
         ExportDecls0),
@@ -366,7 +366,7 @@ get_export_info_for_lang_c(Preds, PredId, ProcId, _Globals, ModuleInfo,
         (
             procedure_is_exported(ModuleInfo, PredInfo, ProcId)
         ;
-            status_defined_in_this_module(Status, no)
+            status_defined_in_this_module(Status) = no
         )
     ->
         HowToDeclareLabel = "MR_declare_entry"

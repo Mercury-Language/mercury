@@ -453,19 +453,19 @@ generate_runtime_cond_code(Expr, CondRval, !CI) :-
 ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
         C_Code, Context, GoalInfo, CanOptAwayUnnamedArgs, Code, !CI) :-
     % Extract the attributes.
-    MayCallMercury = may_call_mercury(Attributes),
-    ThreadSafe = thread_safe(Attributes),
+    MayCallMercury = get_may_call_mercury(Attributes),
+    ThreadSafe = get_thread_safe(Attributes),
 
     % The maybe_thread_safe attribute should have been changed
     % to the real value by now.
     (
-        ThreadSafe = thread_safe
+        ThreadSafe = proc_thread_safe
     ;
-        ThreadSafe = maybe_thread_safe,
+        ThreadSafe = proc_maybe_thread_safe,
         unexpected(this_file,
             "ordinary_pragma_c_code: maybe_thread_safe encountered.")
     ;
-        ThreadSafe = not_thread_safe
+        ThreadSafe = proc_not_thread_safe
     ),
     % First we need to get a list of input and output arguments.
     ArgInfos = code_info.get_pred_proc_arginfo(!.CI, PredId, ProcId),
@@ -482,10 +482,10 @@ ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
 
     % Generate code to <save live variables on stack>.
     (
-        MayCallMercury = will_not_call_mercury,
+        MayCallMercury = proc_will_not_call_mercury,
         SaveVarsCode = empty
     ;
-        MayCallMercury = may_call_mercury,
+        MayCallMercury = proc_may_call_mercury,
         % The C code might call back Mercury code which clobbers the succip.
         code_info.succip_is_used(!CI),
 
@@ -524,24 +524,24 @@ ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
 
     % MR_save_registers(); /* see notes (1) and (2) above */
     (
-        MayCallMercury = will_not_call_mercury,
+        MayCallMercury = proc_will_not_call_mercury,
         SaveRegsComp = pragma_c_raw_code("", cannot_branch_away,
             live_lvals_info(set.init))
     ;
-        MayCallMercury = may_call_mercury,
+        MayCallMercury = proc_may_call_mercury,
         SaveRegsComp = pragma_c_raw_code("\tMR_save_registers();\n",
             cannot_branch_away, live_lvals_info(set.init))
     ),
 
     % Code fragments to obtain and release the global lock.
     (
-        ThreadSafe = thread_safe,
+        ThreadSafe = proc_thread_safe,
         ObtainLock = pragma_c_raw_code("", cannot_branch_away,
             live_lvals_info(set.init)),
         ReleaseLock = pragma_c_raw_code("", cannot_branch_away,
             live_lvals_info(set.init))
     ;
-        ThreadSafe = not_thread_safe,
+        ThreadSafe = proc_not_thread_safe,
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         Name = pred_info_name(PredInfo),
         c_util.quote_string(Name, MangledName),
@@ -592,10 +592,10 @@ ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
     %   MR_restore_registers(); /* see notes (1) and (3) above */
     % #endif
     (
-        MayCallMercury = will_not_call_mercury,
+        MayCallMercury = proc_will_not_call_mercury,
         RestoreRegsComp = pragma_c_noop
     ;
-        MayCallMercury = may_call_mercury,
+        MayCallMercury = proc_may_call_mercury,
         RestoreRegsComp = pragma_c_raw_code(
             "#ifndef MR_CONSERVATIVE_GC\n\t" ++
                 "MR_restore_registers();\n#endif\n",
@@ -607,9 +607,9 @@ ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
     % in which case we need to tell the code_info that they have been
     % clobbered.
     (
-        MayCallMercury = will_not_call_mercury
+        MayCallMercury = proc_will_not_call_mercury
     ;
-        MayCallMercury = may_call_mercury,
+        MayCallMercury = proc_may_call_mercury,
         goal_info_get_instmap_delta(GoalInfo, InstMapDelta),
         ( instmap_delta_is_reachable(InstMapDelta) ->
             OkToDelete = no
@@ -637,7 +637,7 @@ ordinary_pragma_c_code(CodeModel, Attributes, PredId, ProcId, Args, ExtraArgs,
         ExtraArgs = [_ | _],
         MaybeDupl = no
     ),
-    ExtraAttributes = extra_attributes(Attributes),
+    ExtraAttributes = get_extra_attributes(Attributes),
     ( list.member(refers_to_llds_stack, ExtraAttributes) ->
         RefersToLLDSSTack = yes
     ;
@@ -722,7 +722,7 @@ nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
     expect(unify(CodeModel, model_non), this_file,
         "inappropriate code model for nondet pragma C code"),
     % Extract the may_call_mercury attribute.
-    MayCallMercury = may_call_mercury(Attributes),
+    MayCallMercury = get_may_call_mercury(Attributes),
 
     % Generate #define MR_PROC_LABEL <procedure label> /* see note (5) */
     % and #undef MR_PROC_LABEL.
@@ -805,18 +805,14 @@ nondet_pragma_c_code(CodeModel, Attributes, PredId, ProcId,
          LaterTraceCode]),
 
     % MR_save_registers(); /* see notes (1) and (2) above */
-    (
-        MayCallMercury = will_not_call_mercury,
-        SaveRegs = ""
-    ;
-        MayCallMercury = may_call_mercury,
-        SaveRegs = "\tMR_save_registers();\n"
-    ),
-
     % MR_restore_registers(); /* see notes (1) and (3) above */
-    ( MayCallMercury = will_not_call_mercury ->
+    (
+        MayCallMercury = proc_will_not_call_mercury,
+        SaveRegs = "",
         RestoreRegs = ""
     ;
+        MayCallMercury = proc_may_call_mercury,
+        SaveRegs = "\tMR_save_registers();\n",
         RestoreRegs = "\tMR_restore_registers();\n"
     ),
 
@@ -1345,7 +1341,8 @@ get_maybe_foreign_type_info(CI, Type) = MaybeForeignTypeInfo :-
         type_to_ctor_and_args(Type, TypeId, _SubTypes),
         map.search(Types, TypeId, Defn),
         hlds_data.get_type_defn_body(Defn, Body),
-        Body = foreign_type(foreign_type_body(_MaybeIL, MaybeC, _MaybeJava))
+        Body = hlds_foreign_type(
+            foreign_type_body(_MaybeIL, MaybeC, _MaybeJava))
     ->
         (
             MaybeC = yes(Data),

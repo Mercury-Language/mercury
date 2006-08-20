@@ -365,9 +365,10 @@
     module_info::in, module_info::out) is det.
 
 :- pred module_info_get_foreign_import_module(module_info::in,
-    foreign_import_module_info::out) is det.
+    foreign_import_module_info_list::out) is det.
 
-:- pred module_info_set_foreign_import_module(foreign_import_module_info::in,
+:- pred module_info_set_foreign_import_module(
+    foreign_import_module_info_list::in,
     module_info::in, module_info::out) is det.
 
 :- pred module_add_foreign_decl(foreign_language::in,
@@ -665,7 +666,7 @@
                 contains_foreign_type       :: bool,
                 foreign_decl_info           :: foreign_decl_info,
                 foreign_body_info           :: foreign_body_info,
-                foreign_import_module_info  :: foreign_import_module_info,
+                foreign_import_modules      :: foreign_import_module_info_list,
 
                 % The names of the files containing fact tables implementing
                 % predicates defined in this module.
@@ -852,7 +853,7 @@ module_info_contains_foreign_type(MI) :-
 module_info_get_foreign_decl(MI, MI ^ sub_info ^ foreign_decl_info).
 module_info_get_foreign_body_code(MI, MI ^ sub_info ^ foreign_body_info).
 module_info_get_foreign_import_module(MI,
-    MI ^ sub_info ^ foreign_import_module_info).
+    MI ^ sub_info ^ foreign_import_modules).
 module_info_get_maybe_dependency_info(MI,
     MI ^ sub_info ^ maybe_dependency_info).
 module_info_get_num_errors(MI, MI ^ sub_info ^ num_errors).
@@ -950,7 +951,7 @@ module_info_set_foreign_decl(NewVal, MI,
 module_info_set_foreign_body_code(NewVal, MI,
     MI ^ sub_info ^ foreign_body_info := NewVal).
 module_info_set_foreign_import_module(NewVal, MI,
-    MI ^ sub_info ^ foreign_import_module_info := NewVal).
+    MI ^ sub_info ^ foreign_import_modules := NewVal).
 module_info_set_maybe_dependency_info(NewVal, MI,
     MI ^ sub_info ^ maybe_dependency_info := NewVal).
 module_info_set_num_errors(NewVal, MI,
@@ -1190,7 +1191,7 @@ module_add_foreign_import_module(Lang, ModuleName, Context, !Module) :-
     module_info_get_foreign_import_module(!.Module, ForeignImportIndex0),
     % Store the decls in reverse order and reverse them later for efficiency.
     ForeignImportIndex =
-        [foreign_import_module(Lang, ModuleName, Context) |
+        [foreign_import_module_info(Lang, ModuleName, Context) |
             ForeignImportIndex0],
     module_info_set_foreign_import_module(ForeignImportIndex, !Module).
 

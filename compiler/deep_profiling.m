@@ -356,7 +356,7 @@ figure_out_rec_call_numbers(Goal, !N, !TailCallSites) :-
     Goal = GoalExpr - GoalInfo,
     (
         GoalExpr = call_foreign_proc(Attrs, _, _, _, _, _, _),
-        ( may_call_mercury(Attrs) = may_call_mercury ->
+        ( get_may_call_mercury(Attrs) = proc_may_call_mercury ->
             !:N = !.N + 1
         ;
             true
@@ -985,7 +985,7 @@ transform_goal(_, shorthand(_) - _, _, _, !DeepInfo) :-
 transform_goal(Path, Goal0 - GoalInfo0, GoalAndInfo, AddedImpurity,
         !DeepInfo) :-
     Goal0 = call_foreign_proc(Attrs, _, _, _, _, _, _),
-    ( may_call_mercury(Attrs) = may_call_mercury ->
+    ( get_may_call_mercury(Attrs) = proc_may_call_mercury ->
         wrap_foreign_code(Path, Goal0 - GoalInfo0, GoalAndInfo, !DeepInfo),
         AddedImpurity = yes
     ;
@@ -1623,11 +1623,11 @@ generate_unify(ConsId, Var, Goal) :-
     Determinism = detism_det,
     goal_info_init(NonLocals, InstMapDelta, Determinism, purity_pure,
         GoalInfo),
-    Goal = unify(Var, functor(ConsId, no, []),
+    Goal = unify(Var, rhs_functor(ConsId, no, []),
         (free -> Ground) - (Ground -> Ground),
         construct(Var, ConsId, [], [], construct_statically([]),
             cell_is_shared, no_construct_sub_info),
-        unify_context(explicit, [])) - GoalInfo.
+        unify_context(umc_explicit, [])) - GoalInfo.
 
 :- pred generate_cell_unify(int::in, cons_id::in, list(prog_var)::in,
     prog_var::in, hlds_goal::out) is det.
@@ -1641,11 +1641,11 @@ generate_cell_unify(Length, ConsId, Args, Var, Goal) :-
         GoalInfo),
     ArgMode = ((free - Ground) -> (Ground - Ground)),
     list.duplicate(Length, ArgMode, ArgModes),
-    Goal = unify(Var, functor(ConsId, no, Args),
+    Goal = unify(Var, rhs_functor(ConsId, no, Args),
         (free -> Ground) - (Ground -> Ground),
         construct(Var, ConsId, Args, ArgModes,
             construct_statically([]), cell_is_shared, no_construct_sub_info),
-        unify_context(explicit, [])) - GoalInfo.
+        unify_context(umc_explicit, [])) - GoalInfo.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

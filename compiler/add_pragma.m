@@ -16,7 +16,6 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.mercury_to_mercury.
 
 :- import_module assoc_list.
 :- import_module io.
@@ -38,9 +37,9 @@
     prog_context::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-:- pred add_pragma_type_spec(pragma_type::in(type_spec), term.context::in,
-    module_info::in, module_info::out, qual_info::in, qual_info::out,
-    io::di, io::uo) is det.
+:- pred add_pragma_type_spec(pragma_type::in(pragma_type_spec),
+    term.context::in, module_info::in, module_info::out,
+    qual_info::in, qual_info::out, io::di, io::uo) is det.
 
 :- pred add_pragma_termination2_info(pred_or_func::in, sym_name::in,
     list(mer_mode)::in, maybe(pragma_constr_arg_size_info)::in,
@@ -145,6 +144,7 @@
 :- import_module ml_backend.mlds.
 :- import_module ml_backend.mlds_to_c.
 :- import_module parse_tree.error_util.
+:- import_module parse_tree.mercury_to_mercury.
 :- import_module parse_tree.modules.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_foreign.
@@ -196,48 +196,50 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
     (
         % Ignore `pragma source_file' declarations - they're dealt
         % with elsewhere.
-        Pragma = source_file(_)
+        Pragma = pragma_source_file(_)
     ;
-        Pragma = foreign_code(Lang, Body_Code),
+        Pragma = pragma_foreign_code(Lang, Body_Code),
         module_add_foreign_body_code(Lang, Body_Code, Context, !ModuleInfo)
     ;
-        Pragma  = foreign_decl(Lang, IsLocal, C_Header),
+        Pragma  = pragma_foreign_decl(Lang, IsLocal, C_Header),
         module_add_foreign_decl(Lang, IsLocal, C_Header, Context, !ModuleInfo)
     ;
-        Pragma  = foreign_import_module(Lang, Import),
+        Pragma  = pragma_foreign_import_module(Lang, Import),
         module_add_foreign_import_module(Lang, Import, Context, !ModuleInfo)
     ;
         % Handle pragma foreign procs later on (when we process clauses).
-        Pragma = foreign_proc(_, _, _, _, _, _, _)
+        Pragma = pragma_foreign_proc(_, _, _, _, _, _, _)
     ;
         % Handle pragma tabled decls later on (when we process clauses).
-        Pragma = tabled(_, _, _, _, _, _)
+        Pragma = pragma_tabled(_, _, _, _, _, _)
     ;
-        Pragma = inline(Name, Arity),
+        Pragma = pragma_inline(Name, Arity),
         add_pred_marker("inline", Name, Arity, ImportStatus, Context,
-            user_marked_inline, [user_marked_no_inline], !ModuleInfo, !IO)
+            marker_user_marked_inline, [marker_user_marked_no_inline],
+            !ModuleInfo, !IO)
     ;
-        Pragma = no_inline(Name, Arity),
+        Pragma = pragma_no_inline(Name, Arity),
         add_pred_marker("no_inline", Name, Arity, ImportStatus, Context,
-            user_marked_no_inline, [user_marked_inline], !ModuleInfo, !IO)
+            marker_user_marked_no_inline, [marker_user_marked_inline],
+            !ModuleInfo, !IO)
     ;
-        Pragma = obsolete(Name, Arity),
+        Pragma = pragma_obsolete(Name, Arity),
         add_pred_marker("obsolete", Name, Arity, ImportStatus,
-            Context, obsolete, [], !ModuleInfo, !IO)
+            Context, marker_obsolete, [], !ModuleInfo, !IO)
     ;
         % Handle pragma import decls later on (when we process
         % clauses and pragma c_code).
-        Pragma = import(_, _, _, _, _)
+        Pragma = pragma_import(_, _, _, _, _)
     ;
         % Handle pragma foreign_export decls later on, after default
         % function modes have been added.
-        Pragma = foreign_export(_, _, _, _, _)
+        Pragma = pragma_foreign_export(_, _, _, _, _)
     ;
         % Used for inter-module unused argument elimination.
         % This can only appear in .opt files.
-        Pragma = unused_args(PredOrFunc, SymName, Arity, ModeNum,
+        Pragma = pragma_unused_args(PredOrFunc, SymName, Arity, ModeNum,
             UnusedArgs),
-        ( ImportStatus \= opt_imported ->
+        ( ImportStatus \= status_opt_imported ->
             module_info_incr_errors(!ModuleInfo),
             Pieces = [words("Error: illegal use of pragma `unused_args'.")],
             write_error_pieces(Context, 0, Pieces, !IO)
@@ -246,8 +248,9 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
                 UnusedArgs, Context, !ModuleInfo, !IO)
         )
     ;
-        Pragma = exceptions(PredOrFunc, SymName, Arity, ModeNum, ThrowStatus),
-        ( ImportStatus \= opt_imported ->
+        Pragma = pragma_exceptions(PredOrFunc, SymName, Arity, ModeNum,
+            ThrowStatus),
+        ( ImportStatus \= status_opt_imported ->
             module_info_incr_errors(!ModuleInfo),
             Pieces = [words("Error: illegal use of pragma `exceptions'.")],
             write_error_pieces(Context, 0, Pieces, !IO)
@@ -256,9 +259,9 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
                 ThrowStatus, Context, !ModuleInfo, !IO)
         )
     ;
-        Pragma = trailing_info(PredOrFunc, SymName, Arity, ModeNum,
+        Pragma = pragma_trailing_info(PredOrFunc, SymName, Arity, ModeNum,
             TrailingStatus),
-        ( ImportStatus \= opt_imported ->
+        ( ImportStatus \= status_opt_imported ->
             module_info_incr_errors(!ModuleInfo),
             Pieces = [words("Error: illegal use of pragma `trailing_info'.")],
             write_error_pieces(Context, 0, Pieces, !IO)
@@ -267,9 +270,9 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
                 TrailingStatus, Context, !ModuleInfo, !IO)
         )
     ;
-        Pragma = mm_tabling_info(PredOrFunc, SymName, Arity, ModeNum,
+        Pragma = pragma_mm_tabling_info(PredOrFunc, SymName, Arity, ModeNum,
             MM_TablingStatus),
-        ( ImportStatus \= opt_imported ->
+        ( ImportStatus \= status_opt_imported ->
             module_info_incr_errors(!ModuleInfo),
             Pieces =
                 [words("Error: illegal use of pragma `mm_tabling_info',")],
@@ -280,60 +283,61 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
         )
     ;
         % Handle pragma type_spec decls later on (when we process clauses).
-        Pragma = type_spec(_, _, _, _, _, _, _, _)
+        Pragma = pragma_type_spec(_, _, _, _, _, _, _, _)
     ;
         % Handle pragma fact_table decls later on (when we process clauses
         % -- since these decls take the place of clauses).
-        Pragma = fact_table(_, _, _)
+        Pragma = pragma_fact_table(_, _, _)
     ;
         % Handle pragma reserve_tag decls later on (when we process clauses
         % -- they need to be handled after the type definitions
         % have been added).
-        Pragma = reserve_tag(_, _)
+        Pragma = pragma_reserve_tag(_, _)
     ;
-        Pragma = promise_pure(Name, Arity),
+        Pragma = pragma_promise_pure(Name, Arity),
         add_pred_marker("promise_pure", Name, Arity, ImportStatus,
-            Context, promised_pure, [], !ModuleInfo, !IO)
+            Context, marker_promised_pure, [], !ModuleInfo, !IO)
     ;
-        Pragma = promise_semipure(Name, Arity),
+        Pragma = pragma_promise_semipure(Name, Arity),
         add_pred_marker("promise_semipure", Name, Arity, ImportStatus,
-            Context, promised_semipure, [], !ModuleInfo, !IO)
+            Context, marker_promised_semipure, [], !ModuleInfo, !IO)
     ;
-        Pragma = promise_equivalent_clauses(Name, Arity),
+        Pragma = pragma_promise_equivalent_clauses(Name, Arity),
         add_pred_marker("promise_equivalent_clauses", Name, Arity,
-            ImportStatus, Context, promised_equivalent_clauses, [],
+            ImportStatus, Context, marker_promised_equivalent_clauses, [],
             !ModuleInfo, !IO)
     ;
         % Handle pragma termination_info decls later on, in pass 3 --
         % we need to add function default modes before handling
         % these pragmas
-        Pragma = termination_info(_, _, _, _, _)
+        Pragma = pragma_termination_info(_, _, _, _, _)
     ;
         % As for termination_info pragmas
-        Pragma = termination2_info(_, _, _, _, _, _)
+        Pragma = pragma_termination2_info(_, _, _, _, _, _)
     ;
-        Pragma = terminates(Name, Arity),
+        Pragma = pragma_terminates(Name, Arity),
         add_pred_marker("terminates", Name, Arity, ImportStatus, Context,
-            terminates, [check_termination, does_not_terminate], !ModuleInfo,
-            !IO)
+            marker_terminates,
+            [marker_check_termination, marker_does_not_terminate],
+            !ModuleInfo, !IO)
     ;
-        Pragma = does_not_terminate(Name, Arity),
+        Pragma = pragma_does_not_terminate(Name, Arity),
         add_pred_marker("does_not_terminate", Name, Arity, ImportStatus,
-            Context, does_not_terminate, [check_termination, terminates],
-            !ModuleInfo, !IO)
+            Context, marker_does_not_terminate,
+            [marker_check_termination, marker_terminates], !ModuleInfo, !IO)
     ;
-        Pragma = check_termination(Name, Arity),
+        Pragma = pragma_check_termination(Name, Arity),
         add_pred_marker("check_termination", Name, Arity, ImportStatus,
-            Context, check_termination, [terminates, does_not_terminate],
-            !ModuleInfo, !IO)
+            Context, marker_check_termination,
+            [marker_terminates, marker_does_not_terminate], !ModuleInfo, !IO)
     ;
-        Pragma = structure_sharing(_, _, _, _, _, _)
+        Pragma = pragma_structure_sharing(_, _, _, _, _, _)
     ;
-        Pragma = structure_reuse(_, _, _, _, _, _)
+        Pragma = pragma_structure_reuse(_, _, _, _, _, _)
     ;
-        Pragma = mode_check_clauses(Name, Arity),
+        Pragma = pragma_mode_check_clauses(Name, Arity),
         add_pred_marker("mode_check_clauses", Name, Arity, ImportStatus,
-            Context, mode_check_clauses, [], !ModuleInfo, !IO),
+            Context, marker_mode_check_clauses, [], !ModuleInfo, !IO),
 
         % Allowing the predicate to be inlined could lead to code generator
         % aborts. This is because the caller that inlines this predicate may
@@ -341,8 +345,8 @@ add_pragma(Origin, Pragma, Context, !Status, !ModuleInfo, !IO) :-
         % which would invalidate the instmap_deltas that the mode_check_clauses
         % feature prevents the recomputation of.
         add_pred_marker("mode_check_clauses", Name, Arity, ImportStatus,
-            Context, user_marked_no_inline, [user_marked_inline], !ModuleInfo,
-            !IO)
+            Context, marker_user_marked_no_inline, [marker_user_marked_inline],
+            !ModuleInfo, !IO)
     ).
 
 add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
@@ -367,7 +371,9 @@ add_pragma_foreign_export(Origin, Lang, Name, PredOrFunc, Modes,
             % a determinism declaration until after determinism analysis.
             (
                 MaybeDet = yes(Det),
-                ( Det = detism_non ; Det = detism_multi )
+                ( Det = detism_non
+                ; Det = detism_multi
+                )
             ->
                 Pieces = [words("Error: "),
                     fixed("`:- pragma foreign_export' declaration"),
@@ -495,9 +501,9 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
             not (
                 TypeStatus = PragmaStatus
             ;
-                TypeStatus = abstract_exported,
-                ( PragmaStatus = local
-                ; PragmaStatus = exported_to_submodules
+                TypeStatus = status_abstract_exported,
+                ( PragmaStatus = status_local
+                ; PragmaStatus = status_exported_to_submodules
                 )
             )
         ->
@@ -512,7 +518,7 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
             module_info_incr_errors(!ModuleInfo)
 
         ;
-            TypeBody0 = du_type(Body, _CtorTags0, _IsEnum0,
+            TypeBody0 = hlds_du_type(Body, _CtorTags0, _IsEnum0,
                 MaybeUserEqComp, ReservedTag0, IsForeign)
         ->
             (
@@ -520,7 +526,7 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
                 % make doubly sure that we don't get any
                 % spurious warnings with intermodule
                 % optimization...
-                TypeStatus \= opt_imported
+                TypeStatus \= status_opt_imported
             ->
                 write_error_pieces(Context, 0, ErrorPieces1, !IO),
                 ErrorPieces2 = [
@@ -542,7 +548,7 @@ add_pragma_reserve_tag(TypeName, TypeArity, PragmaStatus, Context, !ModuleInfo,
             module_info_get_globals(!.ModuleInfo, Globals),
             assign_constructor_tags(Body, MaybeUserEqComp, TypeCtor,
                 ReservedTag, Globals, CtorTags, EnumDummy),
-            TypeBody = du_type(Body, CtorTags, EnumDummy, MaybeUserEqComp,
+            TypeBody = hlds_du_type(Body, CtorTags, EnumDummy, MaybeUserEqComp,
                 ReservedTag, IsForeign),
             hlds_data.set_type_defn_body(TypeBody, TypeDefn0, TypeDefn),
             map.set(Types0, TypeCtor, TypeDefn, Types),
@@ -689,7 +695,7 @@ add_pragma_mm_tabling_info(PredOrFunc, SymName, Arity, ModeNum,
 %-----------------------------------------------------------------------------%
 
 add_pragma_type_spec(Pragma, Context, !ModuleInfo, !QualInfo, !IO) :-
-    Pragma = type_spec(SymName, _, Arity, MaybePredOrFunc, _, _, _, _),
+    Pragma = pragma_type_spec(SymName, _, Arity, MaybePredOrFunc, _, _, _, _),
     module_info_get_predicate_table(!.ModuleInfo, Preds),
     (
         (
@@ -712,13 +718,13 @@ add_pragma_type_spec(Pragma, Context, !ModuleInfo, !QualInfo, !IO) :-
         module_info_incr_errors(!ModuleInfo)
     ).
 
-:- pred add_pragma_type_spec_2(pragma_type::in(type_spec), prog_context::in,
-    pred_id::in, module_info::in, module_info::out,
+:- pred add_pragma_type_spec_2(pragma_type::in(pragma_type_spec),
+    prog_context::in, pred_id::in, module_info::in, module_info::out,
     qual_info::in, qual_info::out, io::di, io::uo) is det.
 
 add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
         !IO) :-
-    Pragma0 = type_spec(SymName, SpecName, Arity, _, MaybeModes, Subst,
+    Pragma0 = pragma_type_spec(SymName, SpecName, Arity, _, MaybeModes, Subst,
         TVarSet0, ExpandedItems),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
     handle_pragma_type_spec_subst(Context, Subst, PredInfo0,
@@ -784,7 +790,7 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
             %
             do_construct_pred_or_func_call(PredId, PredOrFunc,
                 SymName, Args, GoalInfo, Goal),
-            Clause = clause(ProcIds, Goal, mercury, Context),
+            Clause = clause(ProcIds, Goal, impl_lang_mercury, Context),
             map.init(TVarNameMap),
             rtti_varmaps_init(RttiVarMaps),
             HasForeignClauses = no,
@@ -792,12 +798,12 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
             Clauses = clauses_info(ArgVarSet, VarTypes0, TVarNameMap,
                 VarTypes0, Args, ClausesRep, RttiVarMaps, HasForeignClauses),
             pred_info_get_markers(PredInfo0, Markers0),
-            add_marker(calls_are_fully_qualified, Markers0, Markers),
+            add_marker(marker_calls_are_fully_qualified, Markers0, Markers),
             map.init(Proofs),
             map.init(ConstraintMap),
 
             ( pred_info_is_imported(PredInfo0) ->
-                Status = opt_imported
+                Status = status_opt_imported
             ;
                 pred_info_get_import_status(PredInfo0, Status)
             ),
@@ -808,9 +814,9 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
             Origin = transformed(type_specialization(SubstDesc),
                 OrigOrigin, PredId),
             pred_info_init(ModuleName, SpecName, PredArity, PredOrFunc,
-                Context, Origin, Status, none, Markers, Types, TVarSet,
-                ExistQVars, ClassContext, Proofs, ConstraintMap,
-                Clauses, NewPredInfo0),
+                Context, Origin, Status, goal_type_none, Markers,
+                Types, TVarSet, ExistQVars, ClassContext, Proofs,
+                ConstraintMap, Clauses, NewPredInfo0),
             pred_info_set_procedures(Procs, NewPredInfo0, NewPredInfo),
             module_info_get_predicate_table(!.ModuleInfo, PredTable0),
             predicate_table_insert(NewPredInfo, NewPredId,
@@ -829,26 +835,23 @@ add_pragma_type_spec_2(Pragma0, Context, PredId, !ModuleInfo, !QualInfo,
             set.insert_list(ProcsToSpec0, PredProcIds, ProcsToSpec),
             set.insert(ForceVersions0, NewPredId, ForceVersions),
 
-            ( Status = opt_imported ->
-                % For imported predicates dead_proc_elim.m
-                % needs to know that if the original predicate
-                % is used, the predicate to force the
-                % production of the specialised interface is
-                % also used.
+            ( Status = status_opt_imported ->
+                % For imported predicates dead_proc_elim.m needs to know that
+                % if the original predicate is used, the predicate to force
+                % the production of the specialised interface is also used.
                 multi_map.set(SpecMap0, PredId, NewPredId, SpecMap)
             ;
                 SpecMap = SpecMap0
             ),
-            Pragma = type_spec(SymName, SpecName, Arity, yes(PredOrFunc),
-                MaybeModes, map.to_assoc_list(RenamedSubst), TVarSet,
-                ExpandedItems),
+            Pragma = pragma_type_spec(SymName, SpecName, Arity,
+                yes(PredOrFunc), MaybeModes, map.to_assoc_list(RenamedSubst),
+                TVarSet, ExpandedItems),
             multi_map.set(PragmaMap0, PredId, Pragma, PragmaMap),
             TypeSpecInfo = type_spec_info(ProcsToSpec, ForceVersions, SpecMap,
                 PragmaMap),
-            module_info_set_type_spec_info(TypeSpecInfo,
-                !ModuleInfo),
+            module_info_set_type_spec_info(TypeSpecInfo, !ModuleInfo),
 
-            status_is_imported(Status, IsImported),
+            IsImported = status_is_imported(Status),
             (
                 IsImported = yes,
                 ItemType = pred_or_func_to_item_type(PredOrFunc),
@@ -1400,8 +1403,8 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
     % Opt_imported preds are initially tagged as imported and are tagged as
     % opt_imported only if/when we see a clause (including a `pragma import'
     % clause) for them.
-    ( Status = opt_imported ->
-        pred_info_set_import_status(opt_imported, PredInfo0, PredInfo1)
+    ( Status = status_opt_imported ->
+        pred_info_set_import_status(status_opt_imported, PredInfo0, PredInfo1)
     ;
         PredInfo1 = PredInfo0
     ),
@@ -1418,7 +1421,7 @@ module_add_pragma_import(PredName, PredOrFunc, Modes, Attributes, C_Function,
             words("with preceding clauses.")],
         write_error_pieces(Context, 0, Pieces, !IO)
     ;
-        pred_info_update_goal_type(pragmas, PredInfo1, PredInfo2),
+        pred_info_update_goal_type(goal_type_foreign, PredInfo1, PredInfo2),
             % Add the pragma declaration to the proc_info for this procedure.
         pred_info_get_procedures(PredInfo2, Procs),
         map.to_assoc_list(Procs, ExistingProcs),
@@ -1487,22 +1490,25 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
     %
     globals.io_get_globals(Globals, !IO),
     globals.get_maybe_thread_safe(Globals, MaybeThreadSafe),
-    ThreadSafe = Attributes0 ^ thread_safe,
-    ( ThreadSafe = maybe_thread_safe ->
+    ThreadSafe = get_thread_safe(Attributes0),
+    (
+        ThreadSafe = proc_maybe_thread_safe,
         (
             MaybeThreadSafe = yes,
-            set_thread_safe(thread_safe, Attributes0, Attributes)
+            set_thread_safe(proc_thread_safe, Attributes0, Attributes)
         ;
             MaybeThreadSafe = no,
-            set_thread_safe(not_thread_safe, Attributes0, Attributes)
+            set_thread_safe(proc_not_thread_safe, Attributes0, Attributes)
         )
     ;
+        ( ThreadSafe = proc_thread_safe
+        ; ThreadSafe = proc_not_thread_safe
+        ),
         Attributes = Attributes0
     ),
     module_info_get_name(!.ModuleInfo, ModuleName),
-    PragmaForeignLanguage = foreign_language(Attributes),
+    PragmaForeignLanguage = get_foreign_language(Attributes),
     list.length(PVars, Arity),
-        % print out a progress message
     globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
     (
         VeryVerbose = yes,
@@ -1515,9 +1521,9 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
 
     globals.io_get_backend_foreign_languages(BackendForeignLangs, !IO),
 
-        % Lookup the pred declaration in the predicate table.
-        % (If it's not there, print an error message and insert
-        % a dummy declaration for the predicate.)
+    % Lookup the pred declaration in the predicate table.
+    % (If it's not there, print an error message and insert
+    % a dummy declaration for the predicate.)
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
     (
         predicate_table_search_pf_sym_arity(PredTable0, is_fully_qualified,
@@ -1531,19 +1537,19 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
             PredId, !ModuleInfo, !IO)
     ),
 
-        % Lookup the pred_info for this pred, add the pragma to the proc_info
-        % in the proc_table in the pred_info, and save the pred_info.
+    % Lookup the pred_info for this pred, add the pragma to the proc_info
+    % in the proc_table in the pred_info, and save the pred_info.
     module_info_get_predicate_table(!.ModuleInfo, PredTable1),
     predicate_table_get_preds(PredTable1, Preds0),
     some [!PredInfo] (
         map.lookup(Preds0, PredId, !:PredInfo),
         PredInfo0 = !.PredInfo,
 
-        % opt_imported preds are initially tagged as imported and are
-        % tagged as opt_imported only if/when we see a clause (including
-        % a `pragma c_code' clause) for them
-        ( Status = opt_imported ->
-            pred_info_set_import_status(opt_imported, !PredInfo)
+        % status_opt_imported preds are initially tagged as status_imported
+        % and are tagged as status_opt_imported only if/when we see a clause
+        % (including a `foreign_proc' clause) for them.
+        ( Status = status_opt_imported ->
+            pred_info_set_import_status(status_opt_imported, !PredInfo)
         ;
             true
         ),
@@ -1558,8 +1564,8 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
             ClauseList = list.map(
                 (func(C) = Res :-
                     AllProcIds = pred_info_all_procids(!.PredInfo),
-                    ( C = clause([], Goal, mercury, Ctxt) ->
-                        Res = clause(AllProcIds, Goal, mercury, Ctxt)
+                    ( C = clause([], Goal, impl_lang_mercury, Ctxt) ->
+                        Res = clause(AllProcIds, Goal, impl_lang_mercury, Ctxt)
                     ;
                         Res = C
                     )
@@ -1571,7 +1577,7 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
         ),
         lookup_current_backend(CurrentBackend, !IO),
         (
-            ExtraAttrs = extra_attributes(Attributes),
+            ExtraAttrs = get_extra_attributes(Attributes),
             is_applicable_for_current_backend(CurrentBackend, ExtraAttrs) = no
         ->
             % Ignore this foreign_proc.
@@ -1591,7 +1597,8 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
             % we can generate code for.
             not list.member(PragmaForeignLanguage, BackendForeignLangs)
         ->
-            pred_info_update_goal_type(pragmas, PredInfo0, !:PredInfo),
+            pred_info_update_goal_type(goal_type_foreign,
+                PredInfo0, !:PredInfo),
             module_info_set_pred_info(PredId, !.PredInfo, !ModuleInfo)
         ;
             % Add the pragma declaration to the proc_info for this procedure.
@@ -1622,7 +1629,7 @@ module_add_pragma_foreign_proc(Attributes0, PredName, PredOrFunc, PVars,
                     ArgTypes, PragmaImpl, Context, PredOrFunc, PredName,
                     Arity, Markers, Clauses0, Clauses, !ModuleInfo, !IO),
                 pred_info_set_clauses_info(Clauses, !PredInfo),
-                pred_info_update_goal_type(pragmas, !PredInfo),
+                pred_info_update_goal_type(goal_type_foreign, !PredInfo),
                 map.det_update(Preds0, PredId, !.PredInfo, Preds),
                 predicate_table_set_preds(Preds, PredTable1, PredTable),
                 module_info_set_predicate_table(PredTable, !ModuleInfo),
@@ -1779,7 +1786,7 @@ module_add_pragma_tabled_2(EvalMethod0, PredName, Arity0, MaybePredOrFunc,
     globals.io_lookup_bool_option(warn_table_with_inline, WarnInline, !IO),
     SimpleCallId = simple_call_id(PredOrFunc, PredName, Arity),
     (
-        check_marker(Markers, user_marked_inline),
+        check_marker(Markers, marker_user_marked_inline),
         WarnInline = yes
     ->
         TablePragmaStr = string.format("`:- pragma %s'", [s(EvalMethodStr)]),
@@ -2014,7 +2021,7 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
     WithType = no,
     WithInst = no,
     Condition = true,
-    StatsPredDecl = pred_or_func(VarSet0, InstVarSet, ExistQVars,
+    StatsPredDecl = item_pred_or_func(VarSet0, InstVarSet, ExistQVars,
         predicate, StatsPredSymName, ArgDecls, WithType, WithInst,
         yes(detism_det), Condition, purity_pure, Constraints),
     ItemStatus0 = item_status(!.Status, may_be_unqualified),
@@ -2026,8 +2033,8 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
         % It is easier to construct a complex Mercury structure if we are
         % allowed to use Mercury code to build it out of simple components
         % of primitive types.
-        set_may_call_mercury(may_call_mercury, !Attrs),
-        set_thread_safe(thread_safe, !Attrs),
+        set_may_call_mercury(proc_may_call_mercury, !Attrs),
+        set_thread_safe(proc_thread_safe, !Attrs),
         set_purity(purity_pure, !Attrs),
         varset.init(!:VarSet),
         svvarset.new_named_var("Stats", Stats, !VarSet),
@@ -2039,8 +2046,8 @@ create_tabling_statistics_pred(ProcId, Context, SimpleCallId, SingleProc,
 
         Global = table_info_global_var_name(!.ModuleInfo, SimpleCallId,
             ProcId),
-        StatsPredClause = pragma(compiler(pragma_memo_attribute),
-            foreign_proc(!.Attrs, StatsPredSymName, predicate,
+        StatsPredClause = item_pragma(compiler(pragma_memo_attribute),
+            pragma_foreign_proc(!.Attrs, StatsPredSymName, predicate,
                 [Arg1, Arg2, Arg3], !.VarSet, InstVarSet,
                 fc_impl_ordinary(
                     "MR_get_tabling_stats(&" ++ Global ++ ", &Stats);",
@@ -2069,7 +2076,7 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
     WithType = no,
     WithInst = no,
     Condition = true,
-    ResetPredDecl = pred_or_func(VarSet0, InstVarSet, ExistQVars,
+    ResetPredDecl = item_pred_or_func(VarSet0, InstVarSet, ExistQVars,
         predicate, ResetPredSymName, ArgDecls, WithType, WithInst,
         yes(detism_det), Condition, purity_pure, Constraints),
     ItemStatus0 = item_status(!.Status, may_be_unqualified),
@@ -2078,8 +2085,8 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
 
     some [!Attrs, !VarSet] (
         !:Attrs = default_attributes(lang_c),
-        set_may_call_mercury(will_not_call_mercury, !Attrs),
-        set_thread_safe(thread_safe, !Attrs),
+        set_may_call_mercury(proc_will_not_call_mercury, !Attrs),
+        set_thread_safe(proc_thread_safe, !Attrs),
         set_purity(purity_pure, !Attrs),
         varset.init(!:VarSet),
         svvarset.new_named_var("IO0", IO0, !VarSet),
@@ -2089,8 +2096,8 @@ create_tabling_reset_pred(ProcId, Context, SimpleCallId, SingleProc,
 
         Global = table_info_global_var_name(!.ModuleInfo, SimpleCallId,
             ProcId),
-        ResetPredClause = pragma(compiler(pragma_memo_attribute),
-            foreign_proc(!.Attrs, ResetPredSymName, predicate,
+        ResetPredClause = item_pragma(compiler(pragma_memo_attribute),
+            pragma_foreign_proc(!.Attrs, ResetPredSymName, predicate,
                 [Arg1, Arg2], !.VarSet, InstVarSet,
                 fc_impl_ordinary(
                     Global ++ ".MR_pt_tablenode.MR_integer = 0;",
@@ -2365,8 +2372,8 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
         ProcInfo, ArgTypes, !.ModuleInfo, C_ProcCode, C_ExtraCode, !IO),
 
     Attrs0 = default_attributes(lang_c),
-    set_may_call_mercury(will_not_call_mercury, Attrs0, Attrs1),
-    set_thread_safe(thread_safe, Attrs1, Attrs2),
+    set_may_call_mercury(proc_will_not_call_mercury, Attrs0, Attrs1),
+    set_thread_safe(proc_thread_safe, Attrs1, Attrs2),
     % Fact tables procedures should be considered pure.
     set_purity(purity_pure, Attrs2, Attrs3),
     add_extra_attribute(refers_to_llds_stack, Attrs3, Attrs),
@@ -2385,7 +2392,7 @@ module_add_fact_table_proc(ProcID, PrimaryProcID, ProcTable, SymName,
     % So we must disable inlining for fact_table procedures.
     %
     add_pred_marker("fact_table", SymName, Arity, Status, Context,
-        user_marked_no_inline, [], !ModuleInfo, !IO).
+        marker_user_marked_no_inline, [], !ModuleInfo, !IO).
 
     % Create a list(pragma_var) that looks like the ones that are created
     % for foreign_proc in prog_io.m.
@@ -2444,7 +2451,7 @@ clauses_info_add_pragma_foreign_proc(Origin, Purity, Attributes0,
         % (that is, their index in the list).
     globals.io_get_globals(Globals, !IO),
     globals.io_get_target(Target, !IO),
-    NewLang = foreign_language(Attributes0),
+    NewLang = get_foreign_language(Attributes0),
     list.foldl2(decide_action(Globals, Target, NewLang, ProcId), ClauseList,
         add, FinalAction, 1, _),
 
@@ -2510,13 +2517,13 @@ clauses_info_add_pragma_foreign_proc(Origin, Purity, Attributes0,
         % 
         (
             ( Origin = pragma_import_foreign_proc 
-            ; check_marker(Markers, promised_pure)
-            ; check_marker(Markers, promised_semipure)
+            ; check_marker(Markers, marker_promised_pure)
+            ; check_marker(Markers, marker_promised_semipure)
             )
         -> 
             true
         ;
-            ForeignAttributePurity = purity(Attributes1),
+            ForeignAttributePurity = get_purity(Attributes1),
             (
                 ForeignAttributePurity \= Purity 
             ->
@@ -2551,7 +2558,7 @@ clauses_info_add_pragma_foreign_proc(Origin, Purity, Attributes0,
         implicitly_quantify_clause_body(HeadVars, _Warnings,
             HldsGoal0, HldsGoal, VarSet0, VarSet, EmptyVarTypes, _,
             EmptyRttiVarmaps, _),
-        NewClause = clause([ProcId], HldsGoal, foreign_language(NewLang),
+        NewClause = clause([ProcId], HldsGoal, impl_lang_foreign(NewLang),
             Context),
         (
             FinalAction = ignore,
@@ -2593,7 +2600,7 @@ maybe_rename_user_annotated_sharing_information(ActualHeadVars, FormalHeadVars,
     ;
         SharingAnalysis = yes, 
         rename_user_annotated_sharing(ActualHeadVars, FormalHeadVars,
-            FormalTypes, user_annotated_sharing(!.Attributes), 
+            FormalTypes, get_user_annotated_sharing(!.Attributes), 
             FormalUserSharing),
         set_user_annotated_sharing(FormalUserSharing, !Attributes)
     ).
@@ -2655,7 +2662,7 @@ lookup_current_backend(CurrentBackend, !IO) :-
 decide_action(Globals, Target, NewLang, ProcId, Clause, !Action, !ClauseNum) :-
     Clause = clause(ProcIds, Body, ClauseLang, Context),
     (
-        ClauseLang = mercury,
+        ClauseLang = impl_lang_mercury,
         ( ProcIds = [ProcId] ->
             !:Action = replace(!.ClauseNum)
         ; list.delete_first(ProcIds, ProcId, MercuryProcIds) ->
@@ -2666,7 +2673,7 @@ decide_action(Globals, Target, NewLang, ProcId, Clause, !Action, !ClauseNum) :-
             true
         )
     ;
-        ClauseLang = foreign_language(OldLang),
+        ClauseLang = impl_lang_foreign(OldLang),
         ( list.member(ProcId, ProcIds) ->
             (
                 yes = prefer_foreign_language(Globals, Target,
@@ -2826,8 +2833,8 @@ match_corresponding_inst_lists_with_renaming(ModuleInfo,
 match_corresponding_bound_inst_lists_with_renaming(_, [], [], !Renaming).
 match_corresponding_bound_inst_lists_with_renaming(ModuleInfo,
         [A | As ], [B | Bs], !Renaming) :-
-    A = functor(ConsId, ArgsA),
-    B = functor(ConsId, ArgsB),
+    A = bound_functor(ConsId, ArgsA),
+    B = bound_functor(ConsId, ArgsB),
     match_corresponding_inst_lists_with_renaming(ModuleInfo, ArgsA, ArgsB,
         map.init, Renaming0),
     merge_inst_var_renamings(Renaming0, !Renaming),

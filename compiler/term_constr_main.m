@@ -537,8 +537,9 @@ output_pred_termination2_info(ModuleInfo, PredId, !IO) :-
         module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
         TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
         ( 
-            (ImportStatus = exported
-            ;ImportStatus = opt_exported),
+            ( ImportStatus = status_exported
+            ; ImportStatus = status_opt_exported
+            ),
             not hlds_pred.is_unify_or_compare_pred(PredInfo),
             not set.member(PredId, TypeSpecForcePreds)
         ->

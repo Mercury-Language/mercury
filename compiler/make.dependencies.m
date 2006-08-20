@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: make.dependencies.m.
 % Author: stayl.
-% 
+%
 % Code to find the dependencies for a particular target,
 % e.g. module.c depends on module.m, import.int, etc.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module make.dependencies.
@@ -226,7 +226,7 @@ target_dependencies(_, intermodule_interface) =
             long_interface `of` non_intermod_direct_imports,
             short_interface `of` non_intermod_indirect_imports
         ]).
-target_dependencies(_, analysis_registry) = 
+target_dependencies(_, analysis_registry) =
     combine_deps_list([
         source `of` self,
         private_interface `of` parents,
@@ -643,7 +643,7 @@ find_module_foreign_imports_2(Languages, ModuleName,
         MaybeImports = yes(Imports),
         ForeignModules = set.list_to_set(
             get_foreign_imported_modules(Languages,
-            Imports ^ foreign_import_module_info)),
+            Imports ^ foreign_import_modules)),
         Success = yes
     ;
         MaybeImports = no,
@@ -651,31 +651,32 @@ find_module_foreign_imports_2(Languages, ModuleName,
         Success = no
     ).
 
-:- func get_foreign_imported_modules(foreign_import_module_info) =
+:- func get_foreign_imported_modules(foreign_import_module_info_list) =
     list(module_name).
 
 get_foreign_imported_modules(ForeignImportModules) =
     get_foreign_imported_modules_2(no, ForeignImportModules).
 
 :- func get_foreign_imported_modules(set(foreign_language),
-    foreign_import_module_info) = list(module_name).
+    foreign_import_module_info_list) = list(module_name).
 
 get_foreign_imported_modules(Languages, ForeignImportModules) =
     get_foreign_imported_modules_2(yes(Languages), ForeignImportModules).
 
 :- func get_foreign_imported_modules_2(maybe(set(foreign_language)),
-    foreign_import_module_info) = list(module_name).
+    foreign_import_module_info_list) = list(module_name).
 
 get_foreign_imported_modules_2(MaybeLanguages, ForeignImportModules) =
     list.filter_map(get_foreign_imported_modules_3(MaybeLanguages),
         ForeignImportModules).
 
 :- func get_foreign_imported_modules_3(maybe(set(foreign_language)),
-    foreign_import_module) = module_name is semidet.
+    foreign_import_module_info) = module_name is semidet.
 
 get_foreign_imported_modules_3(MaybeLanguages, ForeignImportModule)
         = ForeignModule :-
-    ForeignImportModule = foreign_import_module(Language, ForeignModule, _),
+    ForeignImportModule = foreign_import_module_info(Language, ForeignModule,
+        _),
     (
         MaybeLanguages = yes(Languages),
         set.member(Language, Languages)
@@ -685,7 +686,6 @@ get_foreign_imported_modules_3(MaybeLanguages, ForeignImportModule)
 
 %-----------------------------------------------------------------------------%
 
-    
     % foreign_imports(Lang, ModuleName, Success, Modules, !Info, !IO)
     %
     % From the module, ModuleName, extract the set of modules, Modules,
@@ -702,8 +702,8 @@ foreign_imports(Lang, ModuleName, Success, Modules, !Info, !IO) :-
         MaybeImports = yes(Imports),
         list.filter_map(
             (pred(FI::in, M::out) is semidet :-
-                FI = foreign_import_module(Lang, M, _)
-            ), Imports ^ foreign_import_module_info, ModulesList),
+                FI = foreign_import_module_info(Lang, M, _)
+            ), Imports ^ foreign_import_modules, ModulesList),
         set.list_to_set(ModulesList, Modules),
         Success = yes
     ;
@@ -876,7 +876,7 @@ find_transitive_module_dependencies_2(KeepGoing, DependenciesType,
                         Imports ^ parent_deps,
                         Imports ^ children,
                         get_foreign_imported_modules(
-                            Imports ^ foreign_import_module_info)
+                            Imports ^ foreign_import_modules)
                         ])
                 ),
                 ImportingModule = !.Info ^ importing_module,

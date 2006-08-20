@@ -485,7 +485,7 @@ add_goal_expr_constraints(_ModuleInfo, ProgVarset, PredId,
     prog_var_at_path(ProgVarset, PredId, LHSvar, GoalPath,
         LHSvarProducedHere, !VarInfo),
     (
-        RHS = var(RHSvar),
+        RHS = rhs_var(RHSvar),
         % Goal: LHSvar = RHSvar
         % At most one of the left and right hand sides of a unification
         % is produced at the unification.
@@ -494,9 +494,9 @@ add_goal_expr_constraints(_ModuleInfo, ProgVarset, PredId,
         not_both(GoalContext, LHSvarProducedHere, RHSvarProducedHere,
             !Constraints)
     ;
-        RHS = functor(_Functor, _IsExistConstr, Args),
-        prog_vars_at_path(ProgVarset, PredId, Args, GoalPath,
-            ArgsProducedHere, !VarInfo),
+        RHS = rhs_functor(_Functor, _IsExistConstr, Args),
+        prog_vars_at_path(ProgVarset, PredId, Args, GoalPath, ArgsProducedHere,
+            !VarInfo),
         (
             ArgsProducedHere = [OneArgProducedHere, _Two| _],
             % Goal: LHSvar = functor(Args)
@@ -518,7 +518,7 @@ add_goal_expr_constraints(_ModuleInfo, ProgVarset, PredId,
             % - it could be a test, so no constraints.
         )
     ;
-        RHS = lambda_goal(_, _, _, _, _, _, _, _),
+        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _),
         sorry(this_file, "unify with lambda goal")
     ).
 

@@ -90,16 +90,18 @@ replace_in_hlds(!ModuleInfo) :-
 
 add_type_to_eqv_map(TypeCtor, Defn, !EqvMap, !EqvExportTypes) :-
     hlds_data.get_type_defn_body(Defn, Body),
-    ( Body = eqv_type(EqvType) ->
+    ( Body = hlds_eqv_type(EqvType) ->
         hlds_data.get_type_defn_tvarset(Defn, TVarSet),
         hlds_data.get_type_defn_tparams(Defn, Params),
         hlds_data.get_type_defn_status(Defn, Status),
         svmap.det_insert(TypeCtor, eqv_type_body(TVarSet, Params, EqvType),
             !EqvMap),
-        ( status_is_exported(Status, yes) ->
+        IsExported = status_is_exported(Status),
+        (
+            IsExported = yes,
             add_type_ctors_to_set(EqvType, !EqvExportTypes)
         ;
-            true
+            IsExported = no
         )
     ;
         true
@@ -142,31 +144,31 @@ replace_in_type_defn(ModuleName, EqvMap, TypeCtor, !Defn, !MaybeRecompInfo) :-
     equiv_type.maybe_record_expanded_items(ModuleName, TypeCtorSymName,
         !.MaybeRecompInfo, EquivTypeInfo0),
     (
-        Body0 = du_type(Ctors0, _, _, _, _, _),
+        Body0 = hlds_du_type(Ctors0, _, _, _, _, _),
         equiv_type.replace_in_ctors(EqvMap, Ctors0, Ctors,
             TVarSet0, TVarSet, EquivTypeInfo0, EquivTypeInfo),
         Body = Body0 ^ du_type_ctors := Ctors
     ;
-        Body0 = eqv_type(Type0),
+        Body0 = hlds_eqv_type(Type0),
         equiv_type.replace_in_type(EqvMap, Type0, Type, _,
             TVarSet0, TVarSet, EquivTypeInfo0, EquivTypeInfo),
-        Body = eqv_type(Type)
+        Body = hlds_eqv_type(Type)
     ;
-        Body0 = foreign_type(_),
+        Body0 = hlds_foreign_type(_),
         EquivTypeInfo = EquivTypeInfo0,
         Body = Body0,
         TVarSet = TVarSet0
     ;
-        Body0 = solver_type(SolverTypeDetails0, UserEq),
+        Body0 = hlds_solver_type(SolverTypeDetails0, UserEq),
         SolverTypeDetails0 = solver_type_details(RepnType0, InitPred,
             GroundInst, AnyInst, MutableItems),
         equiv_type.replace_in_type(EqvMap, RepnType0, RepnType, _,
             TVarSet0, TVarSet, EquivTypeInfo0, EquivTypeInfo),
         SolverTypeDetails = solver_type_details(RepnType, InitPred,
             GroundInst, AnyInst, MutableItems),
-        Body = solver_type(SolverTypeDetails, UserEq)
+        Body = hlds_solver_type(SolverTypeDetails, UserEq)
     ;
-        Body0 = abstract_type(_),
+        Body0 = hlds_abstract_type(_),
         EquivTypeInfo = EquivTypeInfo0,
         Body = Body0,
         TVarSet = TVarSet0
@@ -266,8 +268,8 @@ replace_in_merge_inst_table(EqvMap, Map0, Map, !Cache) :-
 :- pred replace_in_maybe_inst(eqv_map::in, maybe_inst::in, maybe_inst::out,
     inst_cache::in, inst_cache::out) is det.
 
-replace_in_maybe_inst(_, unknown, unknown, !Cache).
-replace_in_maybe_inst(EqvMap, known(Inst0), known(Inst), !Cache) :-
+replace_in_maybe_inst(_, inst_unknown, inst_unknown, !Cache).
+replace_in_maybe_inst(EqvMap, inst_known(Inst0), inst_known(Inst), !Cache) :-
     % XXX We don't have a valid tvarset here.
     varset.init(TVarSet),
     replace_in_inst(EqvMap, Inst0, Inst, _, TVarSet, _, !Cache).
@@ -276,9 +278,9 @@ replace_in_maybe_inst(EqvMap, known(Inst0), known(Inst), !Cache) :-
     maybe_inst_det::in, maybe_inst_det::out,
     inst_cache::in, inst_cache::out) is det.
 
-replace_in_maybe_inst_det(_, unknown, unknown, !Cache).
-replace_in_maybe_inst_det(EqvMap, known(Inst0, Det), known(Inst, Det),
-        !Cache) :-
+replace_in_maybe_inst_det(_, inst_det_unknown, inst_det_unknown, !Cache).
+replace_in_maybe_inst_det(EqvMap, inst_det_known(Inst0, Det),
+        inst_det_known(Inst, Det), !Cache) :-
     % XXX We don't have a valid tvarset here.
     varset.init(TVarSet),
     replace_in_inst(EqvMap, Inst0, Inst, _, TVarSet, _, !Cache).
@@ -501,7 +503,7 @@ type_may_occur_in_inst(abstract_inst(_, Insts)) =
 :- func type_may_occur_in_bound_insts(list(bound_inst)) = bool.
 
 type_may_occur_in_bound_insts([]) = no.
-type_may_occur_in_bound_insts([functor(_, Insts) | BoundInsts]) =
+type_may_occur_in_bound_insts([bound_functor(_, Insts) | BoundInsts]) =
     ( type_may_occur_in_insts(Insts) = yes ->
         yes
     ;
@@ -647,13 +649,14 @@ replace_in_inst_name(EqvMap, InstName0 @ typed_inst(Type0, Name0),
     inst_cache::in, inst_cache::out) is det.
 
 replace_in_bound_insts(_EqvMap, [], [], no, !TVarSet, !Cache).
-replace_in_bound_insts(EqvMap, List0 @ [functor(ConsId, Insts0) | BoundInsts0],
+replace_in_bound_insts(EqvMap,
+        List0 @ [bound_functor(ConsId, Insts0) | BoundInsts0],
         List, Changed, !TVarSet, !Cache) :-
     replace_in_insts(EqvMap, Insts0, Insts, InstsChanged, !TVarSet, !Cache),
     replace_in_bound_insts(EqvMap, BoundInsts0, BoundInsts,
         BoundInstsChanged, !TVarSet, !Cache),
     Changed = InstsChanged `or` BoundInstsChanged,
-    ( Changed = yes, List = [functor(ConsId, Insts) | BoundInsts]
+    ( Changed = yes, List = [bound_functor(ConsId, Insts) | BoundInsts]
     ; Changed = no, List = List0
     ).
 
@@ -828,7 +831,7 @@ replace_in_goal_expr(EqvMap, Goal0 @ unify(Var, _, _, _, _), Goal,
         TypeCat = type_cat_type_info,
         map.search(Types, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, Body),
-        Body = eqv_type(_)
+        Body = hlds_eqv_type(_)
     ->
         Changed = yes,
         pred_info_set_typevarset(!.Info ^ tvarset, !.Info ^ pred_info,
@@ -869,7 +872,7 @@ replace_in_goal_expr(EqvMap, Goal0 @ unify(Var, _, _, _, _), Goal,
         TypeCat = type_cat_type_ctor_info,
         map.search(Types, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, Body),
-        Body = eqv_type(_)
+        Body = hlds_eqv_type(_)
     ->
         Changed = yes,
         Goal = conj(plain_conj, []),

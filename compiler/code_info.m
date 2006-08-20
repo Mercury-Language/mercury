@@ -1867,7 +1867,7 @@ prepare_for_semi_commit(AddTrailOps, SemiCommitInfo, Code, !CI) :-
                     cannot_branch_away, live_lvals_info(set.init))
             ],
             MarkCode = node([
-                pragma_c([], Components, will_not_call_mercury,
+                pragma_c([], Components, proc_will_not_call_mercury,
                     no, no, no, no, no, yes) - ""
             ])
         ;
@@ -1942,8 +1942,8 @@ generate_semi_commit(SemiCommitInfo, Code, !CI) :-
                     cannot_branch_away, live_lvals_info(set.init))
             ],
             CutCode = node([
-                pragma_c([], Components, will_not_call_mercury, no, no, no,
-                    no, no, yes) - "commit for temp frame hijack"
+                pragma_c([], Components, proc_will_not_call_mercury,
+                    no, no, no, no, no, yes) - "commit for temp frame hijack"
             ])
         ;
             UseMinimalModel = no,

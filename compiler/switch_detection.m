@@ -228,7 +228,7 @@ detect_switches_in_goal_2(ModuleInfo, VarTypes, InstMap0, GoalInfo,
         Goal = scope(Reason, SubGoal)
     ;
         Goal0 = unify(_, RHS0, _, _, _),
-        ( RHS0 = lambda_goal(_, _, _, _, Vars, Modes, _, LambdaGoal0) ->
+        ( RHS0 = rhs_lambda_goal(_, _, _, _, Vars, Modes, _, LambdaGoal0) ->
             % We need to insert the initial insts for the lambda variables
             % in the instmap before processing the lambda goal.
             instmap.pre_lambda_update(ModuleInfo, Vars, Modes,

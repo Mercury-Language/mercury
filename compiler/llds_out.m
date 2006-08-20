@@ -2688,7 +2688,7 @@ output_pragma_input(Input, !IO) :-
             % invokes memcpy when given a word-sized type.
             (
                 ( c_type_is_word_sized_int_or_ptr(ForeignType)
-                ; list.member(can_pass_as_mercury_type, Assertions)
+                ; list.member(foreign_type_can_pass_as_mercury_type, Assertions)
                 )
             ->
                 % Note that for this cast to be correct the foreign
@@ -2770,7 +2770,7 @@ output_pragma_output(Output, !IO) :-
         (
             MaybeForeignType = yes(ForeignTypeInfo),
             ForeignTypeInfo = pragma_c_foreign_type(ForeignType, Assertions),
-            ( list.member(can_pass_as_mercury_type, Assertions) ->
+            ( list.member(foreign_type_can_pass_as_mercury_type, Assertions) ->
                 output_lval_as_word(Lval, !IO),
                 io.write_string(" = ", !IO),
                 output_llds_type_cast(word, !IO),

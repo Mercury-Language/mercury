@@ -621,7 +621,7 @@ sharing_as_for_foreign_proc(ModuleInfo, Attributes, ForeignPPId,
     pragma_foreign_proc_attributes::in, sharing_as::out) is semidet.
 
 sharing_as_from_user_annotated_sharing(Attributes, UserSharingAs) :- 
-    UserSharing = user_annotated_sharing(Attributes),
+    UserSharing = get_user_annotated_sharing(Attributes),
     UserSharing = user_sharing(SharingDomain, _MaybeTypes), 
     % Accept only the value "bottom" and "real" for the structure sharing.
     % If the user has annotated the sharing with unknown sharing, we might

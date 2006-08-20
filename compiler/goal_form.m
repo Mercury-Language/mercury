@@ -247,13 +247,13 @@ goal_can_throw_2(OuterGoal, _, Result, !ModuleInfo, !IO) :-
     goal_can_throw(InnerGoal, Result, !ModuleInfo, !IO).
 goal_can_throw_2(Goal, _, Result, !ModuleInfo, !IO) :-
     Goal = call_foreign_proc(Attributes, _, _, _, _, _, _),
-    ExceptionStatus = may_throw_exception(Attributes),
+    ExceptionStatus = get_may_throw_exception(Attributes),
     (
         (
-            ExceptionStatus = will_not_throw_exception
+            ExceptionStatus = proc_will_not_throw_exception
         ;
             ExceptionStatus = default_exception_behaviour,
-            may_call_mercury(Attributes) = will_not_call_mercury
+            get_may_call_mercury(Attributes) = proc_will_not_call_mercury
         )
     ->
         Result = cannot_throw
@@ -371,11 +371,12 @@ goal_expr_can_loop(MaybeModuleInfo, Goal) = CanLoop :-
 goal_expr_can_loop(_MaybeModuleInfo, Goal) = CanLoop :-
     Goal = call_foreign_proc(Attributes, _, _, _, _, _, _),
     (
+        Terminates = get_terminates(Attributes),
         (
-            terminates(Attributes) = terminates
+            Terminates = proc_terminates
         ;
-            terminates(Attributes) = depends_on_mercury_calls,
-            may_call_mercury(Attributes) = will_not_call_mercury
+            Terminates = depends_on_mercury_calls,
+            get_may_call_mercury(Attributes) = proc_will_not_call_mercury
         )
     ->
         CanLoop = no
@@ -480,13 +481,13 @@ goal_expr_can_throw(MaybeModuleInfo, Goal) = CanThrow :-
     ).
 goal_expr_can_throw(_MaybeModuleInfo, Goal) = CanThrow :-
     Goal = call_foreign_proc(Attributes, _, _, _, _, _, _),
-    ExceptionStatus = may_throw_exception(Attributes),
+    ExceptionStatus = get_may_throw_exception(Attributes),
     (
         (
-            ExceptionStatus = will_not_throw_exception
+            ExceptionStatus = proc_will_not_throw_exception
         ;
             ExceptionStatus = default_exception_behaviour,
-            may_call_mercury(Attributes) = will_not_call_mercury
+            get_may_call_mercury(Attributes) = proc_will_not_call_mercury
         )
     ->
         CanThrow = no

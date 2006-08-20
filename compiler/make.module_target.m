@@ -713,6 +713,7 @@ get_pic_flags(link_with_pic) = ["--pic-reg"].
 get_pic_flags(non_pic) = [].
 
     % Find the files which could be touched by a compilation task.
+    %
 :- pred touched_files(target_file::in, compilation_task_type::in,
     list(target_file)::out, list(file_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
@@ -726,10 +727,9 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
         Imports = Imports0
     ;
         MaybeImports = no,
-        % This error should have been caught earlier.
-        % We shouldn't be attempting to build a target
-        % if we couldn't find the dependencies for the
-        % module.
+        % This error should have been caught earlier. We shouldn't be
+        % attempting to build a target if we couldn't find the dependencies
+        % for the module.
         unexpected(this_file, "touched_files: no module dependencies")
     ),
 
@@ -740,16 +740,15 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
         MaybeNestedImportsList, !Info, !IO),
     (
         list.map(
-            (pred(yes(NestedModuleImports)::in,
-                NestedModuleImports::out) is semidet),
+            (pred(yes(NestedModuleImports)::in, NestedModuleImports::out)
+                is semidet),
             MaybeNestedImportsList, NestedImportsList)
     ->
         ModuleImportsList = [Imports | NestedImportsList]
     ;
-        % This error should have been caught earlier.
-        % We shouldn't be attempting to build a target
-        % if we couldn't find the dependencies for the
-        % module or its nested sub-modules.
+        % This error should have been caught earlier. We shouldn't be
+        % attempting to build a target if we couldn't find the dependencies
+        % for the module or its nested sub-modules.
         unexpected(this_file, "touched_files: no nested module dependencies")
     ),
 
@@ -758,9 +757,8 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
         Task = compile_to_target_code,
         CompilationTarget = target_asm
     ->
-        % For `--target asm' the code for the nested children
-        % is placed in the `.s' file for the top-level module
-        % in the source file.
+        % For `--target asm' the code for the nested children is placed
+        % in the `.s' file for the top-level module in the source file.
         TargetModuleNames = [ModuleName]
     ;
         TargetModuleNames = SourceFileModuleNames
@@ -770,8 +768,7 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
     % Find out what header files are generated.
     %
     (
-        Task = compile_to_target_code
-    ->
+        Task = compile_to_target_code,
         list.map_foldl(
             external_foreign_code_files(target_type_to_pic(FileType)),
                 ModuleImportsList, ForeignCodeFileList, !IO),
@@ -803,7 +800,8 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
             HeaderModuleNames =
                 list.filter_map(
                     (func(MImports) = MImports ^ module_name is semidet :-
-                        contains_foreign_code(_) = MImports ^ foreign_code
+                        contains_foreign_code(_) =
+                            MImports ^ has_foreign_code
                     ), ModuleImportsList),
             HeaderTargets0 = make_target_list(HeaderModuleNames, c_header(mih))
         ;
@@ -829,8 +827,7 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
         TouchedTargetFiles0 = make_target_list(TargetModuleNames, FileType),
         TouchedTargetFiles = TouchedTargetFiles0 ++ HeaderTargets
     ;
-        Task = make_interface
-    ->
+        Task = make_interface,
         % Both long and short interface files are produced
         % when making the interface.
         ForeignCodeFiles = [],
@@ -838,6 +835,12 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
             make_target_list(TargetModuleNames, long_interface) ++
             make_target_list(TargetModuleNames, short_interface)
     ;
+        ( Task = errorcheck
+        ; Task = make_short_interface
+        ; Task = make_private_interface
+        ; Task = make_optimization_interface
+        ; Task = make_analysis_registry
+        ),
         ForeignCodeFiles = [],
         TouchedTargetFiles = make_target_list(TargetModuleNames, FileType)
     ),
@@ -845,9 +848,7 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
     list.foldl2(
         (pred((TargetModuleName - TargetFileType)::in, !.TimestampFiles::in,
             !:TimestampFiles::out, !.IO::di, !:IO::uo) is det :-
-        (
-            TimestampExt = timestamp_extension(Globals, TargetFileType)
-        ->
+        ( TimestampExt = timestamp_extension(Globals, TargetFileType) ->
             module_name_to_file_name(TargetModuleName, TimestampExt, no,
                 TimestampFile, !IO),
             list.cons(TimestampFile, !TimestampFiles)
@@ -855,7 +856,7 @@ touched_files(TargetFile, process_module(Task), TouchedTargetFiles,
             true
         )
     ), TouchedTargetFiles, [], TimestampFileNames, !IO),
-    TouchedFileNames = list.condense([ForeignCodeFiles, TimestampFileNames]).
+    TouchedFileNames = ForeignCodeFiles ++ TimestampFileNames.
 
 touched_files(TargetFile, target_code_to_object_code(_), [TargetFile], [],
         !Info, !IO).
@@ -884,7 +885,7 @@ external_foreign_code_files(PIC, Imports, ForeignFiles, !IO) :-
     ModuleName = Imports ^ module_name,
     (
         CompilationTarget = target_asm,
-        Imports ^ foreign_code = contains_foreign_code(Langs),
+        Imports ^ has_foreign_code = contains_foreign_code(Langs),
         set.member(lang_c, Langs)
     ->
         module_name_to_file_name(
@@ -896,7 +897,7 @@ external_foreign_code_files(PIC, Imports, ForeignFiles, !IO) :-
         ForeignFiles0 = [foreign_code_file(lang_c, CCodeFileName, ObjFileName)]
     ;
         CompilationTarget = target_il,
-        Imports ^ foreign_code = contains_foreign_code(Langs)
+        Imports ^ has_foreign_code = contains_foreign_code(Langs)
     ->
         list.map_foldl(external_foreign_code_files_for_il(ModuleName),
             set.to_sorted_list(Langs), ForeignFilesList, !IO),

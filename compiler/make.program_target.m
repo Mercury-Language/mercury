@@ -225,14 +225,14 @@ get_foreign_object_targets(PIC, ModuleName, ObjectTargets, !Info, !IO) :-
     ),
     (
         CompilationTarget = target_asm,
-        Imports ^ foreign_code = contains_foreign_code(Langs),
+        Imports ^ has_foreign_code = contains_foreign_code(Langs),
         set.member(lang_c, Langs)
     ->
         ForeignObjectTargets =
             [target(ModuleName - foreign_object(PIC, lang_c))]
     ;
         CompilationTarget = target_il,
-        Imports ^ foreign_code = contains_foreign_code(Langs)
+        Imports ^ has_foreign_code = contains_foreign_code(Langs)
     ->
         ForeignObjectTargets = list.map(
             (func(L) = target(ModuleName - foreign_il_asm(L))
@@ -1020,7 +1020,7 @@ install_grade_ints_and_headers(LinkSucceeded, GradeDir, ModuleName, Succeeded,
                 HighLevelCode = yes
             ;
                 Target = target_asm,
-                Imports ^ foreign_code = contains_foreign_code(_)
+                Imports ^ has_foreign_code = contains_foreign_code(_)
             )
         ->
             GradeIncDir = LibDir/"lib"/GradeDir/"inc",

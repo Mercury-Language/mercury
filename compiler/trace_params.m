@@ -216,7 +216,7 @@ eff_trace_level(PredInfo, ProcInfo, TraceLevel) = EffTraceLevel :-
             pred_info_get_import_status(PredInfo, Status),
             (
                 TraceLevel = shallow,
-                status_is_exported(Status, no),
+                status_is_exported(Status) = no,
                 proc_info_get_is_address_taken(ProcInfo, address_is_not_taken)
             ->
                 EffTraceLevel = none

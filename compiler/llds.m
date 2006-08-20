@@ -52,7 +52,7 @@
 
                 % Info about stuff imported from C:
                 foreign_decl_info,
-                foreign_import_module_info,
+                foreign_import_module_info_list,
                 foreign_body_info,
 
                 % Info about stuff exported to C:
@@ -423,7 +423,7 @@
     ;       pragma_c(
                 pragma_c_decls          :: list(pragma_c_decl),
                 pragma_c_components     :: list(pragma_c_component),
-                pragma_c_may_call_merc  :: may_call_mercury,
+                pragma_c_may_call_merc  :: proc_may_call_mercury,
                 pragma_c_fix_nolayout   :: maybe(label),
                 pragma_c_fix_layout     :: maybe(label),
                 pragma_c_fix_onlylayout :: maybe(label),

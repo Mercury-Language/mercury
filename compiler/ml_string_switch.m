@@ -248,7 +248,7 @@ gen_hash_slot(Slot, HashSlotMap, CodeModel, MLDS_Context,
     ( map.search(HashSlotMap, Slot, hash_slot(Case, Next)) ->
         NextSlotRval = const(int_const(Next)),
         Case = case(_, ConsTag, _, Goal),
-        ( ConsTag = string_constant(String0) ->
+        ( ConsTag = string_tag(String0) ->
             String = String0
         ;
             unexpected(this_file, "gen_hash_slots: string expected")

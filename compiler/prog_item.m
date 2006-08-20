@@ -5,19 +5,19 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: prog_item.m.
 % Main author: fjh.
-% 
+%
 % This module, together with prog_data, defines a data structure for
-% representing Mercury programs.  
-% 
+% representing Mercury programs.
+%
 % This data structure specifies basically the same information as is
 % contained in the source code, but in a parse tree rather than a flat
 % file.  This module defines the parts of the parse tree that are *not*
 % needed by the various compiler backends; parts of the parse tree that
 % are needed by the backends are contained in prog_data.m.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -47,15 +47,15 @@
 :- type message_list == list(pair(string, term)).
 
 :- type compilation_unit
-    --->    module(
+    --->    unit_module(
                 module_name,
                 item_list
             ).
-    
+
     % Did an item originate in user code or was it added by the compiler as
     % part of a source-to-source transformation, e.g.  the initialise
     % declarations.
-    % 
+    %
 :- type item_origin
     --->    user
     ;       compiler(item_compiler_origin).
@@ -66,7 +66,7 @@
     --->    initialise_decl
             % The item was introduced by the transformation for `:- initialise'
             % decls. This should only apply to export pragms.
-    
+
     ;       finalise_decl
             % This item was introduced by the transformation for `:- finalise'
             % decls. This should only apply to export pragmas.
@@ -75,14 +75,14 @@
             % The item was introduced by the transformation for `:- mutable'
             % decls. This should only apply to `:- initialise' decls and
             % export pragmas.
-    
+
     ;       solver_type
             % Solver types cause the compiler to create foreign procs for the
             % init and representation functions.
 
     ;       pragma_memo_attribute
             % This item was introduced for an attribute given in a pragma memo.
-    
+
     ;       foreign_imports.
             % The compiler sometimes needs to insert additional foreign_import
             % pragmas. XXX Why?
@@ -92,7 +92,7 @@
 :- type item_and_context == pair(item, prog_context).
 
 :- type item
-    --->    clause(
+    --->    item_clause(
                 cl_origin                       :: item_origin,
                 cl_varset                       :: prog_varset,
                 cl_pred_or_func                 :: pred_or_func,
@@ -103,7 +103,7 @@
 
             % `:- type ...':
             % a definition of a type, or a declaration of an abstract type.
-    ;       type_defn(
+    ;       item_type_defn(
                 td_tvarset                      :: tvarset,
                 td_ctor_name                    :: sym_name,
                 td_ctor_args                    :: list(type_param),
@@ -113,7 +113,7 @@
 
             % `:- inst ... = ...':
             % a definition of an inst.
-    ;       inst_defn(
+    ;       item_inst_defn(
                 id_varset                       :: inst_varset,
                 id_inst_name                    :: sym_name,
                 id_inst_args                    :: list(inst_var),
@@ -123,7 +123,7 @@
 
             % `:- mode ... = ...':
             % a definition of a mode.
-    ;       mode_defn(
+    ;       item_mode_defn(
                 md_varset                       :: inst_varset,
                 md_mode_name                    :: sym_name,
                 md_mode_args                    :: list(inst_var),
@@ -131,7 +131,7 @@
                 md_cond                         :: condition
             )
 
-    ;       module_defn(
+    ;       item_module_defn(
                 module_defn_varset              :: prog_varset,
                 module_defn_module_defn         :: module_defn
             )
@@ -140,7 +140,7 @@
             % a predicate or function declaration.
             % This specifies the type of the predicate or function,
             % and it may optionally also specify the mode and determinism.
-    ;       pred_or_func(
+    ;       item_pred_or_func(
                 pf_tvarset                      :: tvarset,
                 pf_instvarset                   :: inst_varset,
                 pf_existqvars                   :: existq_tvars,
@@ -161,7 +161,7 @@
 
             % `:- mode ...':
             % a mode declaration for a predicate or function.
-    ;       pred_or_func_mode(
+    ;       item_pred_or_func_mode(
                 pfm_instvarset                  :: inst_varset,
                 pfm_which                       :: maybe(pred_or_func),
                 pfm_name                        :: sym_name,
@@ -174,19 +174,19 @@
             %   which is syntactic sugar that is expanded by
             %   equiv_type.m. equiv_type.m will set the field to `no'.
 
-    ;       pragma(
+    ;       item_pragma(
                 pragma_origin                   :: item_origin,
                 pragma_type                     :: pragma_type
             )
 
-    ;       promise(
+    ;       item_promise(
                 prom_type                       :: promise_type,
                 prom_clause                     :: goal,
                 prom_varset                     :: prog_varset,
                 prom_univ_quant_vars            :: prog_vars
             )
 
-    ;       typeclass(
+    ;       item_typeclass(
                 tc_constraints                  :: list(prog_constraint),
                 tc_fundeps                      :: list(prog_fundep),
                 tc_class_name                   :: class_name,
@@ -195,7 +195,7 @@
                 tc_varset                       :: tvarset
             )
 
-    ;       instance(
+    ;       item_instance(
                 ci_deriving_class               :: list(prog_constraint),
                 ci_class_name                   :: class_name,
                 ci_types                        :: list(mer_type),
@@ -205,21 +205,21 @@
             )
 
             % :- initialise pred_name.
-    ;       initialise(
+    ;       item_initialise(
                 item_origin,
                 sym_name,
                 arity
             )
-    
+
             % :- finalise pred_name.
-    ;       finalise(
+    ;       item_finalise(
                 item_origin,
                 sym_name,
                 arity
             )
-    
+
             % :- mutable(var_name, type, inst, value, attrs).
-    ;       mutable(
+    ;       item_mutable(
                 mut_name                        :: string,
                 mut_type                        :: mer_type,
                 mut_init_value                  :: prog_term,
@@ -230,7 +230,7 @@
 
             % Used for items that should be ignored (for the
             % purposes of backwards compatibility etc).
-    ;       nothing(
+    ;       item_nothing(
                 nothing_maybe_warning           :: maybe(item_warning)
             ).
 
@@ -246,14 +246,14 @@
 %
 % Type classes
 %
-    
+
     % The name class_method is a slight misnomer; this type actually represents
     % any declaration that occurs in the body of a type class definition.
     % Such declarations may either declare class methods, or they may declare
     % modes of class methods.
     %
 :- type class_method
-    --->    pred_or_func(
+    --->    method_pred_or_func(
                 % pred_or_func(...) here represents a `pred ...' or `func ...'
                 % declaration in a type class body, which declares
                 % a predicate or function method.  Such declarations
@@ -277,7 +277,7 @@
                 prog_context        % the declaration's context
             )
 
-    ;       pred_or_func_mode(
+    ;       method_pred_or_func_mode(
                 % pred_or_func_mode(...) here represents a `mode ...'
                 % declaration in a type class body.  Such a declaration
                 % declares a mode for one of the type class methods.
@@ -305,9 +305,9 @@
 
     % Indicates if updates to the mutable are trailed or untrailed.
     %
-:- type trailed
-    --->    trailed
-    ;       untrailed.
+:- type mutable_trailed
+    --->    mutable_trailed
+    ;       mutable_untrailed.
 
     % Has the user specified a name for us to use on the target code side
     % of the FLI?
@@ -329,13 +329,13 @@
 
     % Access functions for the `mutable_var_attributes' structure.
     %
-:- func mutable_var_trailed(mutable_var_attributes) = trailed.
+:- func mutable_var_trailed(mutable_var_attributes) = mutable_trailed.
 :- func mutable_var_maybe_foreign_names(mutable_var_attributes)
     = maybe(list(foreign_name)).
 :- func mutable_var_constant(mutable_var_attributes) = bool.
 :- func mutable_var_attach_to_io_state(mutable_var_attributes) = bool.
 
-:- pred set_mutable_var_trailed(trailed::in,
+:- pred set_mutable_var_trailed(mutable_trailed::in,
     mutable_var_attributes::in, mutable_var_attributes::out) is det.
 
 :- pred set_mutable_add_foreign_name(foreign_name::in,
@@ -357,18 +357,18 @@
     % Foreign language interfacing pragmas
     %
             % A foreign language declaration, such as C header code.
-    --->    foreign_decl(
+    --->    pragma_foreign_decl(
                 decl_lang               :: foreign_language,
                 decl_is_local           :: foreign_decl_is_local,
                 decl_decl               :: string
             )
 
-    ;       foreign_code(
+    ;       pragma_foreign_code(
                 code_lang               :: foreign_language,
                 code_code               :: string
             )
 
-    ;       foreign_proc(
+    ;       pragma_foreign_proc(
                 proc_attrs              :: pragma_foreign_proc_attributes,
                 proc_name               :: sym_name,
                 proc_p_or_f             :: pred_or_func,
@@ -384,7 +384,7 @@
                 % VarNames, Foreign Code Implementation Info
             )
 
-    ;       foreign_import_module(
+    ;       pragma_foreign_import_module(
                 imp_lang                :: foreign_language,
                 imp_module              :: module_name
                 % Equivalent to
@@ -393,7 +393,7 @@
                 % hard-coded, and mmake can use the dependency information.
             )
 
-    ;       foreign_export(
+    ;       pragma_foreign_export(
                 exp_language            :: foreign_language,
                 exp_predname            :: sym_name,
                 exp_p_or_f              :: pred_or_func,
@@ -402,7 +402,7 @@
                 % Predname, Predicate/function, Modes, foreign function name.
             )
 
-    ;       import(
+    ;       pragma_import(
                 import_pred_name        :: sym_name,
                 import_p_or_f           :: pred_or_func,
                 import_modes            :: list(mer_mode),
@@ -417,7 +417,7 @@
     %
     % Optimization pragmas
     %
-    ;       type_spec(
+    ;       pragma_type_spec(
                 tspec_pred_name         :: sym_name,
                 tspec_new_name          :: sym_name,
                 tspec_arity             :: arity,
@@ -432,19 +432,19 @@
                 % declaration), TVarSet, Equivalence types used
             )
 
-    ;       inline(
+    ;       pragma_inline(
                 inline_name             :: sym_name,
                 inline_arity            :: arity
                 % Predname, Arity
             )
 
-    ;       no_inline(
+    ;       pragma_no_inline(
                 noinline_name           :: sym_name,
                 noinline_arity          :: arity
                 % Predname, Arity
             )
 
-    ;       unused_args(
+    ;       pragma_unused_args(
                 unused_p_or_f           :: pred_or_func,
                 unused_name             :: sym_name,
                 unused_arity            :: arity,
@@ -455,7 +455,7 @@
                 % appear in .opt files.
             )
 
-    ;       exceptions(
+    ;       pragma_exceptions(
                 exceptions_p_or_f       :: pred_or_func,
                 exceptions_name         :: sym_name,
                 exceptions_arity        :: arity,
@@ -465,7 +465,7 @@
                 % Should only appear in `.opt' or `.trans_opt' files.
             )
 
-    ;       trailing_info(
+    ;       pragma_trailing_info(
                 trailing_info_p_or_f    :: pred_or_func,
                 trailing_info_name      :: sym_name,
                 trailing_info_arity     :: arity,
@@ -474,8 +474,8 @@
             )
                 % PredName, Arity, Mode number, Trailing status.
                 % Should on appear in `.opt' or `.trans_opt' files.
-   
-    ;       mm_tabling_info(
+
+    ;       pragma_mm_tabling_info(
                 mm_tabling_info_p_or_f  :: pred_or_func,
                 mm_tabling_info_name    :: sym_name,
                 mm_tabling_info_arity   :: arity,
@@ -484,19 +484,19 @@
             )
                 % PredName, Arity, Mode number, MM Tabling status.
                 % Should on appear in `.opt' or `.trans_opt' files.
-    
+
     %
     % Diagnostics pragmas (pragmas related to compiler warnings/errors)
     %
 
-    ;       obsolete(
+    ;       pragma_obsolete(
                 obsolete_name           :: sym_name,
                 obsolete_arity          :: arity
                 % Predname, Arity
             )
 
-    ;       source_file(
-                source_file             :: string
+    ;       pragma_source_file(
+                pragma_source_file      :: string
                 % Source file name.
             )
 
@@ -504,7 +504,7 @@
     % Evaluation method pragmas
     %
 
-    ;       tabled(
+    ;       pragma_tabled(
                 tabled_method           :: eval_method,
                 tabled_name             :: sym_name,
                 tabled_arity            :: int,
@@ -514,14 +514,14 @@
                 % Tabling type, Predname, Arity, PredOrFunc?, Mode?
             )
 
-    ;       fact_table(
+    ;       pragma_fact_table(
                 fact_table_name         :: sym_name,
                 fact_table_arity        :: arity,
                 fact_table_file         :: string
                 % Predname, Arity, Fact file name.
             )
 
-    ;       reserve_tag(
+    ;       pragma_reserve_tag(
                 restag_type             :: sym_name,
                 restag_arity            :: arity
                 % Typename, Arity
@@ -531,19 +531,19 @@
     % Purity pragmas
     %
 
-    ;       promise_equivalent_clauses(
+    ;       pragma_promise_equivalent_clauses(
                 eqv_clauses_name        :: sym_name,
                 eqv_clauses_arity       :: arity
                 % Predname, Arity
             )
 
-    ;       promise_pure(
+    ;       pragma_promise_pure(
                 pure_name               :: sym_name,
                 pure_arity              :: arity
                 % Predname, Arity
             )
 
-    ;       promise_semipure(
+    ;       pragma_promise_semipure(
                 semipure_name           :: sym_name,
                 semipure_arity          :: arity
                 % Predname, Arity
@@ -553,7 +553,7 @@
     % Termination analysis pragmas
     %
 
-    ;       termination_info(
+    ;       pragma_termination_info(
                 terminfo_p_or_f         :: pred_or_func,
                 terminfo_name           :: sym_name,
                 terminfo_mode           :: list(mer_mode),
@@ -570,34 +570,34 @@
                 % files.
             )
 
-    ;       termination2_info(
-                terminfo2_p_or_f        :: pred_or_func, 
-                terminfo2_name          :: sym_name, 
+    ;       pragma_termination2_info(
+                terminfo2_p_or_f        :: pred_or_func,
+                terminfo2_name          :: sym_name,
                 terminfo2_mode          :: list(mer_mode),
                 terminfo2_args          :: maybe(pragma_constr_arg_size_info),
                 terminfo2_args2         :: maybe(pragma_constr_arg_size_info),
                 terminfo2_term          :: maybe(pragma_termination_info)
             )
 
-    ;       terminates(
+    ;       pragma_terminates(
                 term_name               :: sym_name,
                 term_arity              :: arity
                 % Predname, Arity
             )
 
-    ;       does_not_terminate(
+    ;       pragma_does_not_terminate(
                 noterm_name             :: sym_name,
                 noterm_arity            :: arity
                 % Predname, Arity
             )
 
-    ;       check_termination(
+    ;       pragma_check_termination(
                 checkterm_name          :: sym_name,
                 checkterm_arity         :: arity
                 % Predname, Arity
             )
 
-    ;       mode_check_clauses(
+    ;       pragma_mode_check_clauses(
                 mode_check_clause_name  :: sym_name,
                 mode_check_clause_arity :: arity
             )
@@ -605,39 +605,41 @@
     %
     % CTGC pragmas: structure sharing / structure reuse analysis.
     %
-    
-    ;
-            structure_sharing(
+
+    ;       pragma_structure_sharing(
                 sharing_p_or_f          :: pred_or_func,
                 sharing_name            :: sym_name,
                 sharing_mode            :: list(mer_mode),
-                sharing_headvars        :: prog_vars, 
+                sharing_headvars        :: prog_vars,
                 sharing_headvartypes    :: list(mer_type),
                 sharing_description     :: maybe(structure_sharing_domain)
             )
             % After structure sharing analysis, the compiler generates
             % structure sharing pragmas to be stored in and read from
-            % optimization interface files. 
+            % optimization interface files.
             %
             % The list of modes consists of the declared argmodes (or inferred
-            % argmodes if there are no declared ones). 
-    ;
-            structure_reuse(
+            % argmodes if there are no declared ones).
+
+    ;       pragma_structure_reuse(
                 reuse_p_or_f          :: pred_or_func,
                 reuse_name            :: sym_name,
                 reuse_mode            :: list(mer_mode),
-                reuse_headvars        :: prog_vars, 
+                reuse_headvars        :: prog_vars,
                 reuse_headvartypes    :: list(mer_type),
                 reuse_description     :: maybe(structure_reuse_domain)
             ).
             % After reuse analysis, the compiler generates structure reuse
             % pragmas to be stored in and read from optimization interface
-            % files. 
+            % files.
             %
             % The list of modes consists of the declared argmodes (or inferred
-            % argmodes if there are no declared ones). 
+            % argmodes if there are no declared ones).
             % The last sym_name (reuse_optimised_name) stores the name of the
             % optimised version of the exported predicate.
+
+:- inst pragma_type_spec == bound(pragma_type_spec(ground, ground, ground,
+    ground, ground, ground, ground, ground)).
 
 %-----------------------------------------------------------------------------%
 %
@@ -723,30 +725,30 @@
 %
 % Module system
 %
-    
-    % This is how module-system declarations (such as imports
-    % and exports) are represented.
+
+    % This is how module-system declarations (such as imports and exports)
+    % are represented.
     %
 :- type module_defn
-    --->    module(module_name)
-    ;       end_module(module_name)
+    --->    md_module(module_name)
+    ;       md_end_module(module_name)
 
-    ;       interface
-    ;       implementation
+    ;       md_interface
+    ;       md_implementation
 
-    ;       private_interface
+    ;       md_private_interface
             % This is used internally by the compiler, to identify items
             % which originally came from an implementation section for a
             % module that contains sub-modules; such items need to be exported
             % to the sub-modules.
 
-    ;       imported(import_locn)
+    ;       md_imported(import_locn)
             % This is used internally by the compiler, to identify declarations
             % which originally came from some other module imported with a
             % `:- import_module' declaration, and which section the module
             % was imported.
 
-    ;       used(import_locn)
+    ;       md_used(import_locn)
             % This is used internally by the compiler, to identify declarations
             % which originally came from some other module and for which all
             % uses must be module qualified. This applies to items from modules
@@ -754,17 +756,17 @@
             % files. It also records from which section the module was
             % imported.
 
-    ;       abstract_imported
+    ;       md_abstract_imported
             % This is used internally by the compiler, to identify items which
             % originally came from the implementation section of an interface
             % file; usually type declarations (especially equivalence types)
             % which should be used in code generation but not in type checking.
 
-    ;       opt_imported
+    ;       md_opt_imported
             % This is used internally by the compiler, to identify items which
             % originally came from a .opt file.
 
-    ;       transitively_imported
+    ;       md_transitively_imported
             % This is used internally by the compiler, to identify items which
             % originally came from a `.opt' or `.int2' file. These should not
             % be allowed to match items in the current module. Note that unlike
@@ -774,15 +776,15 @@
             % following items in the list, not just up to the next
             % pseudo-declaration.
 
-    ;       external(maybe(backend), sym_name_specifier)
+    ;       md_external(maybe(backend), sym_name_specifier)
 
-    ;       export(sym_list)
-    ;       import(sym_list)
-    ;       use(sym_list)
+    ;       md_export(sym_list)
+    ;       md_import(sym_list)
+    ;       md_use(sym_list)
 
-    ;       include_module(list(module_name))
+    ;       md_include_module(list(module_name))
 
-    ;       version_numbers(module_name, recompilation.version_numbers).
+    ;       md_version_numbers(module_name, recompilation.version_numbers).
             % This is used to represent the version numbers of items in an
             % interface file for use in smart recompilation.
 
@@ -792,7 +794,7 @@
 :- implementation.
 
 %-----------------------------------------------------------------------------%
-% 
+%
 % Mutable variables
 %
 
@@ -800,14 +802,14 @@
     %
 :- type mutable_var_attributes
     --->    mutable_var_attributes(
-                mutable_trailed             :: trailed,
+                mutable_trailed             :: mutable_trailed,
                 mutable_foreign_names       :: maybe(list(foreign_name)),
                 mutable_attach_to_io_state  :: bool,
                 mutable_constant            :: bool
             ).
 
 default_mutable_attributes =
-    mutable_var_attributes(trailed, no, no, no).
+    mutable_var_attributes(mutable_trailed, no, no, no).
 
 mutable_var_trailed(MVarAttrs) = MVarAttrs ^ mutable_trailed.
 mutable_var_maybe_foreign_names(MVarAttrs) = MVarAttrs ^ mutable_foreign_names.

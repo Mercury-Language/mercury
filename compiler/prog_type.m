@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-
+%
 % File: prog_type.m.
 % Main author: fjh.
-
+%
 % Utility predicates dealing with type in the parse tree. The predicates for
 % doing type substitutions are in prog_type_subst.m, while utility predicates
 % for dealing with types in the HLDS are in type_util.m.
-
+%
 %-----------------------------------------------------------------------------%
 
 :- module parse_tree.prog_type.

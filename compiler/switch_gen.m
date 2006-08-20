@@ -106,9 +106,9 @@ generate_switch(CodeModel, CaseVar, CanFail, Cases, GoalInfo, Code, !CI) :-
         list.member(Case, TaggedCases),
         Case = case(_Priority, Tag, _ConsId, _Goal),
         (
-            Tag = reserved_address(_)
+            Tag = reserved_address_tag(_)
         ;
-            Tag = shared_with_reserved_addresses(_, _)
+            Tag = shared_with_reserved_addresses_tag(_, _)
         )
     ->
         % XXX This may be be inefficient in some cases.

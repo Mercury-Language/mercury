@@ -95,7 +95,7 @@ report_termination2_errors(SCC, Errors, !ModuleInfo, !IO) :-
             module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, _),
             not pred_info_is_imported(PredInfo),
             pred_info_get_markers(PredInfo, Markers),
-            check_marker(Markers, check_termination)
+            check_marker(Markers, marker_check_termination)
         ),
         CheckTermPPIds = list.filter(IsCheckTerm, SCC),
         list.is_not_empty(CheckTermPPIds)

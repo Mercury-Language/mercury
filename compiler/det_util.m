@@ -113,13 +113,13 @@ delete_unreachable_cases([Case | Cases0], [ConsId | ConsIds], Cases) :-
         delete_unreachable_cases([Case | Cases0], ConsIds, Cases)
     ).
 
-interpret_unify(X, var(Y), !Subst) :-
+interpret_unify(X, rhs_var(Y), !Subst) :-
     term.unify(variable(X), variable(Y), !Subst).
-interpret_unify(X, functor(ConsId, _, ArgVars), !Subst) :-
+interpret_unify(X, rhs_functor(ConsId, _, ArgVars), !Subst) :-
     term.var_list_to_term_list(ArgVars, ArgTerms),
     cons_id_and_args_to_term(ConsId, ArgTerms, RhsTerm),
     term.unify(variable(X), RhsTerm, !Subst).
-interpret_unify(_X, lambda_goal(_, _, _, _, _, _, _, _), !Subst).
+interpret_unify(_X, rhs_lambda_goal(_, _, _, _, _, _, _, _), !Subst).
     % For ease of implementation we just ignore unifications with lambda terms.
     % This is a safe approximation, it just prevents us from optimizing them
     % as well as we would like.

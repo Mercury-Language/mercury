@@ -9,9 +9,9 @@
 % File: prog_mutable.m.
 % Main authors: rafe, juliensf.
 %
-% This module defines utility predicates for dealing with mutable
-% declarations.  It also contains a description of the source-to-source
-% transformation used for implementing mutables.
+% This module defines utility predicates for dealing with mutable declarations.
+% It also contains a description of the source-to-source transformation
+% used for implementing mutables.
 %
 %-----------------------------------------------------------------------------%
 %
@@ -213,7 +213,7 @@ std_get_pred_decl(ModuleName, Name, Type, Inst) = GetPredDecl :-
     InstVarSet = varset.init,
     ExistQVars = [],
     Constraints = constraints([], []),
-    GetPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
+    GetPredDecl = item_pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
         mutable_get_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, out_mode(Inst))],
         no /* with_type */, no /* with_inst */, yes(detism_det),
@@ -224,7 +224,7 @@ std_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
     InstVarSet = varset.init,
     ExistQVars = [],
     Constraints = constraints([], []),
-    SetPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
+    SetPredDecl = item_pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
         mutable_set_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, in_mode(Inst))],
         no /* with_type */, no /* with_inst */, yes(detism_det),
@@ -235,7 +235,7 @@ constant_get_pred_decl(ModuleName, Name, Type, Inst) = GetPredDecl :-
     InstVarSet = varset.init,
     ExistQVars = [],
     Constraints = constraints([], []),
-    GetPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
+    GetPredDecl = item_pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
         mutable_get_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, out_mode(Inst))],
         no /* with_type */, no /* with_inst */, yes(detism_det),
@@ -246,7 +246,7 @@ constant_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
     InstVarSet = varset.init,
     ExistQVars = [],
     Constraints = constraints([], []),
-    SetPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
+    SetPredDecl = item_pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
         mutable_secret_set_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, in_mode(Inst))],
         no /* with_type */, no /* with_inst */, yes(detism_det),
@@ -257,7 +257,7 @@ io_get_pred_decl(ModuleName, Name, Type, Inst) = GetPredDecl :-
     InstVarSet = varset.init,
     ExistQVars = [],
     Constraints = constraints([], []),
-    GetPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
+    GetPredDecl = item_pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
         mutable_get_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, out_mode(Inst)),
         type_and_mode(io_state_type, di_mode),
@@ -270,7 +270,7 @@ io_set_pred_decl(ModuleName, Name, Type, Inst) = SetPredDecl :-
     InstVarSet = varset.init,
     ExistQVars = [],
     Constraints = constraints([], []),
-    SetPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
+    SetPredDecl = item_pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
         mutable_set_pred_sym_name(ModuleName, Name),
         [type_and_mode(Type, in_mode(Inst)),
         type_and_mode(io_state_type, di_mode),
@@ -287,7 +287,7 @@ mutable_init_pred_decl(ModuleName, Name) = InitPredDecl :-
     WithType = no,
     WithInst = no,
     Condition = true,
-    InitPredDecl = pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
+    InitPredDecl = item_pred_or_func(VarSet, InstVarSet, ExistQVars, predicate,
         mutable_init_pred_sym_name(ModuleName, Name), ArgDecls,
         WithType, WithInst, yes(detism_det), Condition,
         purity_impure, Constraints).

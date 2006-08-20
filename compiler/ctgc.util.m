@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: ctgc.util.m.
 % Main author: nancy.
-% 
+%
 % Utility operations for the CTGC-system.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.ctgc.util.
@@ -36,18 +36,18 @@
 :- pred pred_requires_no_analysis(module_info::in, pred_id::in) is semidet.
 :- pred pred_requires_analysis(module_info::in, pred_id::in) is semidet.
 
-    % Given the pred_proc_id of a procedure call and its actual arguments, 
+    % Given the pred_proc_id of a procedure call and its actual arguments,
     % determine the variable renaming to rename anything which is defined
     % in terms of the formal arguments of the called procedure to the context
     % of the actual arguments.
     %
-:- func get_variable_renaming(module_info, pred_proc_id, prog_vars) = 
-    prog_var_renaming. 
+:- func get_variable_renaming(module_info, pred_proc_id, prog_vars) =
+    prog_var_renaming.
 
-    % Same as above, but then in the context of the types of the called 
-    % procedures. 
+    % Same as above, but then in the context of the types of the called
+    % procedures.
     %
-:- func get_type_substitution(module_info, pred_proc_id, 
+:- func get_type_substitution(module_info, pred_proc_id,
     list(mer_type), tvarset) = tsubst.
 
 %-----------------------------------------------------------------------------%
@@ -63,22 +63,22 @@
 :- import_module map.
 :- import_module string.
 
-pred_requires_no_analysis(ModuleInfo, PredId) :- 
+pred_requires_no_analysis(ModuleInfo, PredId) :-
     module_info_get_special_pred_map(ModuleInfo, SpecialPredMap),
     map.values(SpecialPredMap, SpecialPreds),
     (
         list.member(PredId, SpecialPreds)
-    ;   
+    ;
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         pred_info_get_import_status(PredInfo, Status),
-        status_defined_in_this_module(Status, no)
+        status_defined_in_this_module(Status) = no
     ).
 
-pred_requires_analysis(ModuleInfo, PredId) :- 
+pred_requires_analysis(ModuleInfo, PredId) :-
     \+ pred_requires_no_analysis(ModuleInfo, PredId).
 
-:- func get_pred_id(pred_proc_id) = pred_id. 
-get_pred_id(proc(PredId, _)) = PredId. 
+:- func get_pred_id(pred_proc_id) = pred_id.
+get_pred_id(proc(PredId, _)) = PredId.
 
 preds_requiring_no_analysis(ModuleInfo, PPIds) :-
     list.takewhile(pred_requires_analysis(ModuleInfo),
@@ -91,17 +91,17 @@ preds_requiring_no_analysis(ModuleInfo, PPIds) :-
 not_defined_in_this_module(ModuleInfo, proc(PredId, _)):-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_import_status(PredInfo, Status),
-    status_defined_in_this_module(Status, no).
+    status_defined_in_this_module(Status) = no.
 
-get_variable_renaming(ModuleInfo, PPId, ActualArgs) = VariableRenaming :- 
+get_variable_renaming(ModuleInfo, PPId, ActualArgs) = VariableRenaming :-
     module_info_pred_proc_info(ModuleInfo, PPId, _PredInfo, ProcInfo),
 
     % head variables.
     proc_info_get_headvars(ProcInfo, FormalVars),
     map.from_corresponding_lists(FormalVars, ActualArgs, VariableRenaming).
 
-get_type_substitution(ModuleInfo, PPId, ActualTypes, _TVarSet) = 
-        TypeSubstitution :- 
+get_type_substitution(ModuleInfo, PPId, ActualTypes, _TVarSet) =
+        TypeSubstitution :-
     module_info_pred_proc_info(ModuleInfo, PPId, PredInfo, _ProcInfo),
 
     % types of the head variables.

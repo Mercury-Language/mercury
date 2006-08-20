@@ -166,8 +166,7 @@
 
     % Perform a substitution on a goal.
     %
-:- pred rename_in_goal(prog_var::in, prog_var::in,
-    goal::in, goal::out) is det.
+:- pred rename_in_goal(prog_var::in, prog_var::in, goal::in, goal::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -584,22 +583,23 @@ make_pred_name(ModuleName, Prefix, MaybePredOrFunc, PredName,
     list(T)::in, string::out) is det.
 
 list_to_string(Pred, List, String) :-
-    list_to_string_2(Pred, List, Strings, ["]"]),
+    list_to_string_2(Pred, List, ["]"], Strings),
     string.append_list(["[" | Strings], String).
 
 :- pred list_to_string_2(pred(T, string)::in(pred(in, out) is det),
-    list(T)::in, list(string)::out, list(string)::in) is det.
+    list(T)::in, list(string)::in, list(string)::out) is det.
 
-list_to_string_2(_, []) --> [].
-list_to_string_2(Pred, [T | Ts]) -->
-    { call(Pred, T, String) },
-    [String],
-    ( { Ts = [] } ->
-        []
+list_to_string_2(_, [], !Strings).
+list_to_string_2(Pred, [T | Ts], !Strings) :-
+    (
+        Ts = []
     ;
-        [", "],
-        list_to_string_2(Pred, Ts)
-    ).
+        Ts = [_ | _],
+        list_to_string_2(Pred, Ts, !Strings),
+        !:Strings = [", " | !.Strings]
+    ),
+    call(Pred, T, String),
+    !:Strings = [String | !.Strings].
 
 %-----------------------------------------------------------------------------%
 

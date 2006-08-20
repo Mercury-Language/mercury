@@ -172,7 +172,7 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, Inst, Det,
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_unify_insts(InstTable0, UnifyInsts0),
     ( map.search(UnifyInsts0, ThisInstPair, Result) ->
-        ( Result = known(UnifyInst, UnifyDet) ->
+        ( Result = inst_det_known(UnifyInst, UnifyDet) ->
             Inst0 = UnifyInst,
             Det = UnifyDet
         ;
@@ -186,7 +186,8 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, Inst, Det,
         Inst1 = Inst0
     ;
         % Insert ThisInstPair into the table with value `unknown'.
-        svmap.det_insert(ThisInstPair, unknown, UnifyInsts0, UnifyInsts1),
+        svmap.det_insert(ThisInstPair, inst_det_unknown,
+            UnifyInsts0, UnifyInsts1),
         inst_table_set_unify_insts(UnifyInsts1, InstTable0, InstTable1),
         module_info_set_inst_table(InstTable1, !ModuleInfo),
         % Unify the insts.
@@ -206,7 +207,7 @@ abstractly_unify_inst(Live, InstA, InstB, UnifyIsReal, Inst, Det,
         % Now update the value associated with ThisInstPair.
         module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_unify_insts(InstTable2, UnifyInsts2),
-        map.det_update(UnifyInsts2, ThisInstPair, known(Inst1, Det),
+        map.det_update(UnifyInsts2, ThisInstPair, inst_det_known(Inst1, Det),
             UnifyInsts),
         inst_table_set_unify_insts(UnifyInsts, InstTable2, InstTable),
         module_info_set_inst_table(InstTable, !ModuleInfo)
@@ -528,7 +529,8 @@ abstractly_unify_inst_functor_2(live, not_reached, _, _, _, _, _,
         not_reached, detism_erroneous, !ModuleInfo).
 
 abstractly_unify_inst_functor_2(live, free, ConsId, Args0, ArgLives, _Real,
-        _, bound(unique, [functor(ConsId, Args)]), detism_det, !ModuleInfo) :-
+        _, bound(unique, [bound_functor(ConsId, Args)]), detism_det,
+        !ModuleInfo) :-
     inst_list_is_ground_or_any_or_dead(Args0, ArgLives, !.ModuleInfo),
     maybe_make_shared_inst_list(Args0, ArgLives, Args, !ModuleInfo).
 
@@ -539,7 +541,7 @@ abstractly_unify_inst_functor_2(live, any(Uniq), ConsId, ArgInsts,
     \+ type_util.is_solver_type(!.ModuleInfo, Type),
     make_any_inst_list_lives(ArgInsts, live, ArgLives, Uniq, Real,
         AnyArgInsts, Det, !ModuleInfo),
-    Inst = bound(Uniq, [functor(ConsId, AnyArgInsts)]).
+    Inst = bound(Uniq, [bound_functor(ConsId, AnyArgInsts)]).
 
 abstractly_unify_inst_functor_2(live, bound(Uniq, ListX), ConsId, Args,
         ArgLives, Real, _, bound(Uniq, List), Det,
@@ -551,7 +553,7 @@ abstractly_unify_inst_functor_2(live, ground(Uniq, _), ConsId, ArgInsts,
         ArgLives, Real, _, Inst, Det, !ModuleInfo) :-
     make_ground_inst_list_lives(ArgInsts, live, ArgLives, Uniq, Real,
         GroundArgInsts, Det, !ModuleInfo),
-    Inst = bound(Uniq, [functor(ConsId, GroundArgInsts)]).
+    Inst = bound(Uniq, [bound_functor(ConsId, GroundArgInsts)]).
 
 % abstractly_unify_inst_functor_2(live, abstract_inst(_,_), _, _, _, _, _,
 %       _, _) :-
@@ -561,18 +563,18 @@ abstractly_unify_inst_functor_2(dead, not_reached, _, _, _, _, _,
         not_reached, detism_erroneous, !ModuleInfo).
 
 abstractly_unify_inst_functor_2(dead, free, ConsId, Args, _ArgLives, _Real, _,
-        bound(unique, [functor(ConsId, Args)]), detism_det, !ModuleInfo).
+        bound(unique, [bound_functor(ConsId, Args)]), detism_det, !ModuleInfo).
 
 abstractly_unify_inst_functor_2(dead, any(Uniq), ConsId, ArgInsts,
         _ArgLives, Real, Type, Inst, Det, !ModuleInfo) :-
     \+ type_util.is_solver_type(!.ModuleInfo, Type),
     make_any_inst_list(ArgInsts, dead, Uniq, Real, AnyArgInsts, Det,
         !ModuleInfo),
-    Inst = bound(Uniq, [functor(ConsId, AnyArgInsts)]).
+    Inst = bound(Uniq, [bound_functor(ConsId, AnyArgInsts)]).
 
 abstractly_unify_inst_functor_2(dead, bound(Uniq, ListX), ConsId, Args,
         _ArgLives, Real, _, bound(Uniq, List), Det, !ModuleInfo) :-
-    ListY = [functor(ConsId, Args)],
+    ListY = [bound_functor(ConsId, Args)],
     abstractly_unify_bound_inst_list(dead, ListX, ListY, Real, List, Det,
         !ModuleInfo).
 
@@ -580,7 +582,7 @@ abstractly_unify_inst_functor_2(dead, ground(Uniq, _), ConsId, ArgInsts,
         _ArgLives, Real, _, Inst, Det, !ModuleInfo) :-
     make_ground_inst_list(ArgInsts, dead, Uniq, Real, GroundArgInsts, Det,
         !ModuleInfo),
-    Inst = bound(Uniq, [functor(ConsId, GroundArgInsts)]).
+    Inst = bound(Uniq, [bound_functor(ConsId, GroundArgInsts)]).
 
 % abstractly_unify_inst_functor_2(dead, abstract_inst(_,_), _, _, _, _,
 %       _, _, _) :-
@@ -628,8 +630,8 @@ abstractly_unify_bound_inst_list(Live, Xs, Ys, Real, L, Det, !ModuleInfo) :-
         % determinism.
         %
         (
-            Xs = [functor(ConsIdX, _)],
-            Ys = [functor(ConsIdY, _)],
+            Xs = [bound_functor(ConsIdX, _)],
+            Ys = [bound_functor(ConsIdY, _)],
             cons_ids_match(ConsIdX, ConsIdY)
         ->
             Det = Det0
@@ -652,8 +654,8 @@ abstractly_unify_bound_inst_list_2(_, [_ | _], [], _, [], detism_failure,
         !ModuleInfo).
 abstractly_unify_bound_inst_list_2(Live, [X | Xs], [Y | Ys], Real, L, Det,
         !ModuleInfo) :-
-    X = functor(ConsIdX, ArgsX),
-    Y = functor(ConsIdY, ArgsY),
+    X = bound_functor(ConsIdX, ArgsX),
+    Y = bound_functor(ConsIdY, ArgsY),
     ( cons_ids_match(ConsIdX, ConsIdY) ->
         abstractly_unify_inst_list(ArgsX, ArgsY, Live, Real,
             Args, Det1, !ModuleInfo),
@@ -665,7 +667,7 @@ abstractly_unify_bound_inst_list_2(Live, [X | Xs], [Y | Ys], Real, L, Det,
         ( determinism_components(Det1, _, at_most_zero) ->
             L = L1
         ;
-            L = [functor(ConsIdX, Args) | L1]
+            L = [bound_functor(ConsIdX, Args) | L1]
         ),
         det_switch_detism(Det1, Det2, Det)
     ;
@@ -688,13 +690,11 @@ abstractly_unify_bound_inst_list_lives([], _, _, _, _, [], detism_failure,
         !ModuleInfo).
 abstractly_unify_bound_inst_list_lives([X | Xs], ConsIdY, ArgsY, LivesY, Real,
         L, Det, !ModuleInfo) :-
-    X = functor(ConsIdX, ArgsX),
-    (
-        cons_ids_match(ConsIdX, ConsIdY)
-    ->
+    X = bound_functor(ConsIdX, ArgsX),
+    ( cons_ids_match(ConsIdX, ConsIdY) ->
         abstractly_unify_inst_list_lives(ArgsX, ArgsY, LivesY, Real,
             Args, Det, !ModuleInfo),
-        L = [functor(ConsIdX, Args)]
+        L = [bound_functor(ConsIdX, Args)]
     ;
         abstractly_unify_bound_inst_list_lives(Xs, ConsIdY, ArgsY,
             LivesY, Real, L, Det, !ModuleInfo)
@@ -716,23 +716,18 @@ abstractly_unify_inst_list_lives([X | Xs], [Y | Ys], [Live | Lives], Real,
 %-----------------------------------------------------------------------------%
 
 :- pred abstractly_unify_constrained_inst_vars(is_live::in, set(inst_var)::in,
-    mer_inst::in, mer_inst::in, unify_is_real::in,
-    mer_inst::out, determinism::out,
-    module_info::in, module_info::out) is semidet.
+    mer_inst::in, mer_inst::in, unify_is_real::in, mer_inst::out,
+    determinism::out, module_info::in, module_info::out) is semidet.
 
 abstractly_unify_constrained_inst_vars(IsLive, InstVars, InstConstraint, InstB,
         UnifyIsReal, Inst, Det, !ModuleInfo) :-
     abstractly_unify_inst(IsLive, InstConstraint, InstB, UnifyIsReal,
         Inst0, Det, !ModuleInfo),
-    (
-        \+ inst_matches_final(Inst0, InstConstraint, !.ModuleInfo)
-    ->
+    ( \+ inst_matches_final(Inst0, InstConstraint, !.ModuleInfo) ->
         % The inst has become too instantiated so the
         % constrained_inst_vars must be removed.
         Inst = Inst0
-    ;
-        Inst0 = constrained_inst_vars(InstVars0, Inst1)
-    ->
+    ; Inst0 = constrained_inst_vars(InstVars0, Inst1) ->
         % Avoid nested constrained_inst_vars.
         Inst = constrained_inst_vars(set.union(InstVars0, InstVars), Inst1)
     ;
@@ -744,32 +739,28 @@ abstractly_unify_constrained_inst_vars(IsLive, InstVars, InstConstraint, InstB,
 %-----------------------------------------------------------------------------%
 
     % Unifying shared with either shared or unique gives shared.
-    % Unifying unique with unique gives shared if live, unique if
-    % dead.  Unifying clobbered with anything gives clobbered,
-    % except that if live then it is an internal error (a clobbered
-    % value should not be live, right?), and except that unifying
-    % with clobbered is not allowed for semidet unifications,
-    % unless they are "fake".
+    % Unifying unique with unique gives shared if live, unique if dead.
+    % Unifying clobbered with anything gives clobbered, except that if live
+    % then it is an internal error (a clobbered value should not be live,
+    % right?), and except that unifying with clobbered is not allowed for
+    % semidet unifications, unless they are "fake".
     %
-    % The only way this predicate can abort is if a clobbered value
-    % is live.
+    % The only way this predicate can abort is if a clobbered value is live.
     %
     % The only way this predicate can fail (indicating a unique mode error)
-    % is if we are attempting to unify with a clobbered value, and
-    % this was a "real" unification, not a "fake" one,
-    % and the determinism of the unification is semidet.
-    % (See comment in prog_data.m for more info on "real" v.s. "fake".)
-    % Note that if a unification or sub-unification is det, then it is
-    % OK to unify with a clobbered value.  This can occur e.g. with
-    % unifications between free and clobbered, or with free and
-    % bound(..., clobbered, ...).  Such det unifications are OK because
-    % the clobbered value will not be examined, instead all that will
-    % happen is that a variable or a field of a variable will become
-    % bound to the clobbered value; and since the final inst will also
-    % be clobbered, the variable or field's value can never be examined
-    % later either.  Only semidet unifications would test the value
-    % of a clobbered variable, so those are the only ones we need to
-    % disallow.
+    % is if we are attempting to unify with a clobbered value, and this was
+    % a "real" unification, not a "fake" one, and the determinism of the
+    % unification is semidet. (See comment in prog_data.m for more info
+    % on "real" v.s. "fake".) Note that if a unification or sub-unification
+    % is det, then it is OK to unify with a clobbered value. This can occur
+    % e.g. with unifications between free and clobbered, or with free and
+    % bound(..., clobbered, ...). Such det unifications are OK because the
+    % clobbered value will not be examined, instead all that will happen
+    % is that a variable or a field of a variable will become bound to the
+    % clobbered value; and since the final inst will also be clobbered,
+    % the variable or field's value can never be examined later either.
+    % Only semidet unifications would test the value of a clobbered variable,
+    % so those are the only ones we need to disallow.
     %
 :- pred unify_uniq(is_live::in, unify_is_real::in, determinism::in,
     uniqueness::in, uniqueness::in, uniqueness::out) is semidet.
@@ -916,7 +907,7 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
     inst_table_get_ground_insts(InstTable0, GroundInsts0),
     GroundInstKey = ground_inst(InstName, IsLive, Uniq, Real),
     ( map.search(GroundInsts0, GroundInstKey, Result) ->
-        ( Result = known(GroundInst0, Det0) ->
+        ( Result = inst_det_known(GroundInst0, Det0) ->
             GroundInst = GroundInst0,
             Det = Det0
         ;
@@ -929,7 +920,8 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
     ;
         % Insert the inst name in the ground_inst table, with value `unknown'
         % for the moment.
-        svmap.det_insert(GroundInstKey, unknown, GroundInsts0, GroundInsts1),
+        svmap.det_insert(GroundInstKey, inst_det_unknown,
+            GroundInsts0, GroundInsts1),
         inst_table_set_ground_insts(GroundInsts1, InstTable0, InstTable1),
         module_info_set_inst_table(InstTable1, !ModuleInfo),
 
@@ -944,7 +936,7 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
         % value `known(GroundInst, Det)' in the ground_inst table.
         module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_ground_insts(InstTable2, GroundInsts2),
-        svmap.det_update(GroundInstKey, known(GroundInst, Det),
+        svmap.det_update(GroundInstKey, inst_det_known(GroundInst, Det),
             GroundInsts2, GroundInsts),
         inst_table_set_ground_insts(GroundInsts, InstTable2, InstTable),
         module_info_set_inst_table(InstTable, !ModuleInfo)
@@ -964,10 +956,10 @@ make_ground_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
 make_ground_bound_inst_list([], _, _, _, [], detism_det, !ModuleInfo).
 make_ground_bound_inst_list([Bound0 | Bounds0], IsLive, Uniq, Real,
             [Bound | Bounds], Det, !ModuleInfo) :-
-    Bound0 = functor(ConsId, ArgInsts0),
+    Bound0 = bound_functor(ConsId, ArgInsts0),
     make_ground_inst_list(ArgInsts0, IsLive, Uniq, Real, ArgInsts, Det1,
         !ModuleInfo),
-    Bound = functor(ConsId, ArgInsts),
+    Bound = bound_functor(ConsId, ArgInsts),
     make_ground_bound_inst_list(Bounds0, IsLive, Uniq, Real, Bounds, Det2,
         !ModuleInfo),
     det_par_conjunction_detism(Det1, Det2, Det).
@@ -1022,7 +1014,7 @@ make_any_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
     inst_table_get_any_insts(InstTable0, AnyInsts0),
     AnyInstKey = any_inst(InstName, IsLive, Uniq, Real),
     ( map.search(AnyInsts0, AnyInstKey, Result) ->
-        ( Result = known(AnyInst0, Det0) ->
+        ( Result = inst_det_known(AnyInst0, Det0) ->
             AnyInst = AnyInst0,
             Det = Det0
         ;
@@ -1035,7 +1027,7 @@ make_any_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
     ;
         % Insert the inst name in the any_inst table, with value `unknown'
         % for the moment.
-        svmap.det_insert(AnyInstKey, unknown, AnyInsts0, AnyInsts1),
+        svmap.det_insert(AnyInstKey, inst_det_unknown, AnyInsts0, AnyInsts1),
         inst_table_set_any_insts(AnyInsts1, InstTable0, InstTable1),
         module_info_set_inst_table(InstTable1, !ModuleInfo),
 
@@ -1043,14 +1035,14 @@ make_any_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
         % expansion.
         inst_lookup(!.ModuleInfo, InstName, Inst0),
         inst_expand(!.ModuleInfo, Inst0, Inst1),
-        make_any_inst(Inst1, IsLive, Uniq, Real, AnyInst, Det,
-            !ModuleInfo),
+        make_any_inst(Inst1, IsLive, Uniq, Real, AnyInst, Det, !ModuleInfo),
 
         % Now that we have determined the resulting Inst, store the appropriate
         % value `known(AnyInst, Det)' in the any_inst table.
         module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_any_insts(InstTable2, AnyInsts2),
-        svmap.det_update(AnyInstKey, known(AnyInst, Det), AnyInsts2, AnyInsts),
+        svmap.det_update(AnyInstKey, inst_det_known(AnyInst, Det),
+            AnyInsts2, AnyInsts),
         inst_table_set_any_insts(AnyInsts, InstTable2, InstTable),
         module_info_set_inst_table(InstTable, !ModuleInfo)
     ),
@@ -1069,10 +1061,10 @@ make_any_inst(defined_inst(InstName), IsLive, Uniq, Real, Inst, Det,
 make_any_bound_inst_list([], _, _, _, [], detism_det, !ModuleInfo).
 make_any_bound_inst_list([Bound0 | Bounds0], IsLive, Uniq, Real,
         [Bound | Bounds], Det, !ModuleInfo) :-
-    Bound0 = functor(ConsId, ArgInsts0),
+    Bound0 = bound_functor(ConsId, ArgInsts0),
     make_any_inst_list(ArgInsts0, IsLive, Uniq, Real,
         ArgInsts, Det1, !ModuleInfo),
-    Bound = functor(ConsId, ArgInsts),
+    Bound = bound_functor(ConsId, ArgInsts),
     make_any_bound_inst_list(Bounds0, IsLive, Uniq, Real, Bounds, Det2,
         !ModuleInfo),
     det_par_conjunction_detism(Det1, Det2, Det).
@@ -1193,7 +1185,7 @@ make_shared_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_shared_insts(InstTable0, SharedInsts0),
     ( map.search(SharedInsts0, InstName, Result) ->
-        ( Result = known(SharedInst0) ->
+        ( Result = inst_known(SharedInst0) ->
             SharedInst = SharedInst0
         ;
             SharedInst = defined_inst(InstName)
@@ -1201,7 +1193,7 @@ make_shared_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
     ;
         % Insert the inst name in the shared_inst table, with value `unknown'
         % for the moment.
-        svmap.det_insert(InstName, unknown, SharedInsts0, SharedInsts1),
+        svmap.det_insert(InstName, inst_unknown, SharedInsts0, SharedInsts1),
         inst_table_set_shared_insts(SharedInsts1, InstTable0, InstTable1),
         module_info_set_inst_table(InstTable1, !ModuleInfo),
 
@@ -1215,7 +1207,7 @@ make_shared_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
         % value `known(SharedInst)' in the shared_inst table.
         module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_shared_insts(InstTable2, SharedInsts2),
-        svmap.det_update(InstName, known(SharedInst),
+        svmap.det_update(InstName, inst_known(SharedInst),
             SharedInsts2, SharedInsts),
         inst_table_set_shared_insts(SharedInsts, InstTable2, InstTable),
         module_info_set_inst_table(InstTable, !ModuleInfo)
@@ -1241,9 +1233,9 @@ make_shared(clobbered, clobbered).
 make_shared_bound_inst_list([], [], !ModuleInfo).
 make_shared_bound_inst_list([Bound0 | Bounds0], [Bound | Bounds],
         !ModuleInfo) :-
-    Bound0 = functor(ConsId, ArgInsts0),
+    Bound0 = bound_functor(ConsId, ArgInsts0),
     make_shared_inst_list(ArgInsts0, ArgInsts, !ModuleInfo),
-    Bound = functor(ConsId, ArgInsts),
+    Bound = bound_functor(ConsId, ArgInsts),
     make_shared_bound_inst_list(Bounds0, Bounds, !ModuleInfo).
 
 %-----------------------------------------------------------------------------%
@@ -1282,7 +1274,7 @@ make_mostly_uniq_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
     module_info_get_inst_table(!.ModuleInfo, InstTable0),
     inst_table_get_mostly_uniq_insts(InstTable0, NondetLiveInsts0),
     ( map.search(NondetLiveInsts0, InstName, Result) ->
-        ( Result = known(NondetLiveInst0) ->
+        ( Result = inst_known(NondetLiveInst0) ->
             NondetLiveInst = NondetLiveInst0
         ;
             NondetLiveInst = defined_inst(InstName)
@@ -1290,7 +1282,8 @@ make_mostly_uniq_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
     ;
         % Insert the inst name in the mostly_uniq_inst table, with value
         % `unknown' for the moment.
-        map.det_insert(NondetLiveInsts0, InstName, unknown, NondetLiveInsts1),
+        svmap.det_insert(InstName, inst_unknown,
+            NondetLiveInsts0, NondetLiveInsts1),
         inst_table_set_mostly_uniq_insts(NondetLiveInsts1,
             InstTable0, InstTable1),
         module_info_set_inst_table(InstTable1, !ModuleInfo),
@@ -1305,7 +1298,7 @@ make_mostly_uniq_inst(defined_inst(InstName), Inst, !ModuleInfo) :-
         % value `known(NondetLiveInst)' in the mostly_uniq_inst table.
         module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_mostly_uniq_insts(InstTable2, NondetLiveInsts2),
-        svmap.det_update(InstName, known(NondetLiveInst),
+        svmap.det_update(InstName, inst_known(NondetLiveInst),
             NondetLiveInsts2, NondetLiveInsts),
         inst_table_set_mostly_uniq_insts(NondetLiveInsts,
             InstTable2, InstTable),
@@ -1332,9 +1325,9 @@ make_mostly_uniq(clobbered, clobbered).
 make_mostly_uniq_bound_inst_list([], [], !ModuleInfo).
 make_mostly_uniq_bound_inst_list([Bound0 | Bounds0], [Bound | Bounds],
         !ModuleInfo) :-
-    Bound0 = functor(ConsId, ArgInsts0),
+    Bound0 = bound_functor(ConsId, ArgInsts0),
     make_mostly_uniq_inst_list(ArgInsts0, ArgInsts, !ModuleInfo),
-    Bound = functor(ConsId, ArgInsts),
+    Bound = bound_functor(ConsId, ArgInsts),
     make_mostly_uniq_bound_inst_list(Bounds0, Bounds, !ModuleInfo).
 
 :- pred make_mostly_uniq_inst_list(list(mer_inst)::in, list(mer_inst)::out,
@@ -1364,15 +1357,15 @@ inst_merge(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
     inst_table_get_merge_insts(InstTable0, MergeInstTable0),
     ThisInstPair = InstA - InstB,
     ( map.search(MergeInstTable0, ThisInstPair, Result) ->
-        ( Result = known(MergedInst) ->
+        ( Result = inst_known(MergedInst) ->
             Inst0 = MergedInst
         ;
             Inst0 = defined_inst(merge_inst(InstA, InstB))
         )
     ;
         % Insert ThisInstPair into the table with value `unknown'.
-        map.det_insert(MergeInstTable0, ThisInstPair, unknown,
-            MergeInstTable1),
+        svmap.det_insert(ThisInstPair, inst_unknown,
+            MergeInstTable0, MergeInstTable1),
         inst_table_set_merge_insts(MergeInstTable1, InstTable0, InstTable1),
         module_info_set_inst_table(InstTable1, !ModuleInfo),
 
@@ -1382,8 +1375,8 @@ inst_merge(InstA, InstB, MaybeType, Inst, !ModuleInfo) :-
         % Now update the value associated with ThisInstPair.
         module_info_get_inst_table(!.ModuleInfo, InstTable2),
         inst_table_get_merge_insts(InstTable2, MergeInstTable2),
-        map.det_update(MergeInstTable2, ThisInstPair, known(Inst0),
-            MergeInstTable3),
+        svmap.det_update(ThisInstPair, inst_known(Inst0),
+            MergeInstTable2, MergeInstTable3),
         inst_table_set_merge_insts(MergeInstTable3, InstTable2, InstTable3),
         module_info_set_inst_table(InstTable3, !ModuleInfo)
     ),
@@ -1564,7 +1557,7 @@ merge_uniq_bound(UniqA, UniqB, ListB, ModuleInfo, Uniq) :-
 merge_bound_inst_list_uniq([], Uniq, _, !Expansions, Uniq).
 merge_bound_inst_list_uniq([BoundInst | BoundInsts], Uniq0, ModuleInfo,
         !Expansions, Uniq) :-
-    BoundInst = functor(_ConsId, ArgInsts),
+    BoundInst = bound_functor(_ConsId, ArgInsts),
     merge_inst_list_uniq(ArgInsts, Uniq0, ModuleInfo, !Expansions, Uniq1),
     merge_bound_inst_list_uniq(BoundInsts, Uniq1, ModuleInfo, !Expansions,
         Uniq).
@@ -1669,13 +1662,13 @@ bound_inst_list_merge(Xs, Ys, MaybeType, Zs, !ModuleInfo) :-
     ;
         Xs = [X | Xs1],
         Ys = [Y | Ys1],
-        X = functor(ConsIdX, ArgsX),
-        Y = functor(ConsIdY, ArgsY),
+        X = bound_functor(ConsIdX, ArgsX),
+        Y = bound_functor(ConsIdY, ArgsY),
         ( cons_ids_match(ConsIdX, ConsIdY) ->
             maybe_get_cons_id_arg_types(!.ModuleInfo, MaybeType,
                 ConsIdX, list.length(ArgsX), MaybeTypes),
             inst_list_merge(ArgsX, ArgsY, MaybeTypes, Args, !ModuleInfo),
-            Z = functor(ConsIdX, Args),
+            Z = bound_functor(ConsIdX, Args),
             Zs = [Z | Zs1],
             bound_inst_list_merge(Xs1, Ys1, MaybeType, Zs1, !ModuleInfo)
         ; compare(<, ConsIdX, ConsIdY) ->
@@ -1702,7 +1695,7 @@ inst_contains_nonstandard_func_mode_2(ModuleInfo, ground(_, GroundInstInfo),
     ground_inst_info_is_nonstandard_func_mode(ModuleInfo, GroundInstInfo).
 inst_contains_nonstandard_func_mode_2(ModuleInfo, bound(_, BoundInsts),
         Expansions) :-
-    list.member(functor(_, Insts), BoundInsts),
+    list.member(bound_functor(_, Insts), BoundInsts),
     list.member(Inst, Insts),
     inst_contains_nonstandard_func_mode_2(ModuleInfo, Inst, Expansions).
 inst_contains_nonstandard_func_mode_2(_, inst_var(_), _) :-
@@ -1726,7 +1719,7 @@ inst_contains_any(ModuleInfo, Inst) :-
 inst_contains_any_2(_ModuleInfo, any(_), _Expansions).
 
 inst_contains_any_2(ModuleInfo, bound(_, BoundInsts), Expansions) :-
-    list.member(functor(_, Insts), BoundInsts),
+    list.member(bound_functor(_, Insts), BoundInsts),
     list.member(Inst, Insts),
     inst_contains_any_2(ModuleInfo, Inst, Expansions).
 

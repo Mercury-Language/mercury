@@ -173,14 +173,20 @@ expand_eqv_types(ModuleName, Items0, Items, Error, EqvMap, !Info, !IO) :-
 
 build_eqv_map([], !EqvMap, !EqvInstMap).
 build_eqv_map([Item - _Context | Items0], !EqvMap, !EqvInstMap) :-
-    ( Item = module_defn(_, abstract_imported) ->
+    (
+        Item = item_module_defn(_, md_abstract_imported)
+    ->
         skip_abstract_imported_items(Items0, Items)
-    ; Item = type_defn(VarSet, Name, Args, eqv_type(Body), _Cond) ->
+    ;
+        Item = item_type_defn(VarSet, Name, Args, parse_tree_eqv_type(Body), _)
+    ->
         Items = Items0,
         list.length(Args, Arity),
         TypeCtor = type_ctor(Name, Arity),
         svmap.set(TypeCtor, eqv_type_body(VarSet, Args, Body), !EqvMap)
-    ; Item = inst_defn(VarSet, Name, Args, eqv_inst(Body), _) ->
+    ;
+        Item = item_inst_defn(VarSet, Name, Args, eqv_inst(Body), _)
+    ->
         Items = Items0,
         list.length(Args, Arity),
         InstId = inst_id(Name, Arity),
@@ -196,9 +202,9 @@ build_eqv_map([Item - _Context | Items0], !EqvMap, !EqvInstMap) :-
 skip_abstract_imported_items([], []).
 skip_abstract_imported_items([Item - _ | Items0], Items) :-
     (
-        Item = module_defn(_, Defn),
+        Item = item_module_defn(_, Defn),
         is_section_defn(Defn) = yes,
-        Defn \= abstract_imported
+        Defn \= md_abstract_imported
     ->
         Items = Items0
     ;
@@ -207,27 +213,27 @@ skip_abstract_imported_items([Item - _ | Items0], Items) :-
 
 :- func is_section_defn(module_defn) = bool.
 
-is_section_defn(module(_)) = yes.
-is_section_defn(end_module(_)) = yes.
-is_section_defn(interface) = yes.
-is_section_defn(implementation) = yes.
-is_section_defn(private_interface) = yes.
-is_section_defn(imported(_)) = yes.
-is_section_defn(used(_)) = yes.
-is_section_defn(abstract_imported) = yes.
-is_section_defn(opt_imported) = yes.
-is_section_defn(transitively_imported) = yes.
-is_section_defn(external(_, _)) = no.
-is_section_defn(export(_)) = no.
-is_section_defn(import(_)) = no.
-is_section_defn(use(_)) = no.
-is_section_defn(include_module(_)) = no.
-is_section_defn(version_numbers(_, _)) = no.
+is_section_defn(md_module(_)) = yes.
+is_section_defn(md_end_module(_)) = yes.
+is_section_defn(md_interface) = yes.
+is_section_defn(md_implementation) = yes.
+is_section_defn(md_private_interface) = yes.
+is_section_defn(md_imported(_)) = yes.
+is_section_defn(md_used(_)) = yes.
+is_section_defn(md_abstract_imported) = yes.
+is_section_defn(md_opt_imported) = yes.
+is_section_defn(md_transitively_imported) = yes.
+is_section_defn(md_external(_, _)) = no.
+is_section_defn(md_export(_)) = no.
+is_section_defn(md_import(_)) = no.
+is_section_defn(md_use(_)) = no.
+is_section_defn(md_include_module(_)) = no.
+is_section_defn(md_version_numbers(_, _)) = no.
 
-    % The following predicate replace_in_item_list
-    % performs substititution of equivalence types on a list
-    % of items.  Similarly the replace_in_<foo> predicates that
-    % follow perform substitution of equivalence types on <foo>s.
+    % The following predicate replace_in_item_list performs substitution
+    % of equivalence types on a list of items. Similarly the replace_in_<foo>
+    % predicates that follow perform substitution of equivalence types
+    % on <foo>s.
     %
 :- pred replace_in_item_list(module_name::in,
     list(item_and_context)::in, eqv_map::in, eqv_inst_map::in,
@@ -257,8 +263,8 @@ replace_in_item_list(ModuleName, [ItemAndContext0 | Items0],
         ItemAndContext = ItemAndContext0,
         !:ReplItems = [ItemAndContext | !.ReplItems]
     ),
-    replace_in_item_list(ModuleName, Items0, EqvMap,
-        EqvInstMap, !ReplItems, !Errors, !Info).
+    replace_in_item_list(ModuleName, Items0, EqvMap, EqvInstMap,
+        !ReplItems, !Errors, !Info).
 
 :- pred replace_in_item(module_name::in, item::in,
     prog_context::in, eqv_map::in, eqv_inst_map::in, item::out,
@@ -266,9 +272,9 @@ replace_in_item_list(ModuleName, [ItemAndContext0 | Items0],
     maybe(recompilation_info)::in, maybe(recompilation_info)::out) is semidet.
 
 replace_in_item(ModuleName,
-        type_defn(VarSet0, Name, TArgs, TypeDefn0, Cond) @ Item,
+        item_type_defn(VarSet0, Name, TArgs, TypeDefn0, Cond) @ Item,
         Context, EqvMap, _EqvInstMap,
-        type_defn(VarSet, Name, TArgs, TypeDefn, Cond),
+        item_type_defn(VarSet, Name, TArgs, TypeDefn, Cond),
         Error, !Info) :-
     list.length(TArgs, Arity),
     maybe_record_expanded_items(ModuleName, Name, !.Info, UsedTypeCtors0),
@@ -286,11 +292,11 @@ replace_in_item(ModuleName,
     finish_recording_expanded_items(ItemId, UsedTypeCtors, !Info).
 
 replace_in_item(ModuleName,
-        pred_or_func(TypeVarSet0, InstVarSet, ExistQVars, PredOrFunc,
+        item_pred_or_func(TypeVarSet0, InstVarSet, ExistQVars, PredOrFunc,
             PredName, TypesAndModes0, MaybeWithType0,
             MaybeWithInst0, Det0, Cond, Purity, ClassContext0),
         Context, EqvMap, EqvInstMap,
-        pred_or_func(TypeVarSet, InstVarSet, ExistQVars, PredOrFunc,
+        item_pred_or_func(TypeVarSet, InstVarSet, ExistQVars, PredOrFunc,
             PredName, TypesAndModes, MaybeWithType,
             MaybeWithInst, Det, Cond, Purity, ClassContext),
         Errors, !Info) :-
@@ -310,10 +316,10 @@ replace_in_item(ModuleName,
     finish_recording_expanded_items(ItemId, ExpandedItems, !Info).
 
 replace_in_item(ModuleName,
-        pred_or_func_mode(InstVarSet, MaybePredOrFunc0, PredName,
+        item_pred_or_func_mode(InstVarSet, MaybePredOrFunc0, PredName,
             Modes0, WithInst0, Det0, Cond),
         Context, _EqvMap, EqvInstMap,
-        pred_or_func_mode(InstVarSet, MaybePredOrFunc, PredName,
+        item_pred_or_func_mode(InstVarSet, MaybePredOrFunc, PredName,
             Modes, WithInst, Det, Cond),
         Errors, !Info) :-
     maybe_record_expanded_items(ModuleName, PredName, !.Info, ExpandedItems0),
@@ -341,10 +347,10 @@ replace_in_item(ModuleName,
     ).
 
 replace_in_item(ModuleName,
-        typeclass(Constraints0, FunDeps, ClassName, Vars,
+        item_typeclass(Constraints0, FunDeps, ClassName, Vars,
             ClassInterface0, VarSet0),
         _Context, EqvMap, EqvInstMap,
-        typeclass(Constraints, FunDeps, ClassName, Vars,
+        item_typeclass(Constraints, FunDeps, ClassName, Vars,
             ClassInterface, VarSet),
         Errors, !Info) :-
     list.length(Vars, Arity),
@@ -368,9 +374,11 @@ replace_in_item(ModuleName,
     finish_recording_expanded_items(ItemId, ExpandedItems, !Info).
 
 replace_in_item(ModuleName,
-        instance(Constraints0, ClassName, Ts0, InstanceBody, VarSet0, ModName),
+        item_instance(Constraints0, ClassName, Ts0, InstanceBody, VarSet0,
+            ModName),
         _Context, EqvMap, _EqvInstMap,
-        instance(Constraints, ClassName, Ts, InstanceBody, VarSet, ModName),
+        item_instance(Constraints, ClassName, Ts, InstanceBody, VarSet,
+            ModName),
         [], !Info) :-
     (
         ( !.Info = no
@@ -391,10 +399,10 @@ replace_in_item(ModuleName,
     finish_recording_expanded_items(ItemId, UsedTypeCtors, !Info).
 
 replace_in_item(ModuleName,
-        pragma(Origin, type_spec(PredName, B, Arity, D, E,
+        item_pragma(Origin, pragma_type_spec(PredName, B, Arity, D, E,
             Subst0, VarSet0, ItemIds0)),
         _Context, EqvMap, _EqvInstMap,
-        pragma(Origin, type_spec(PredName, B, Arity, D, E,
+        item_pragma(Origin, pragma_type_spec(PredName, B, Arity, D, E,
             Subst, VarSet, ItemIds)),
         [], !Info) :-
     (
@@ -416,16 +424,16 @@ replace_in_item(ModuleName,
     ).
 
 replace_in_item(ModuleName,
-        pragma(Origin, foreign_proc(Attrs0, PName, PredOrFunc, 
+        item_pragma(Origin, pragma_foreign_proc(Attrs0, PName, PredOrFunc, 
             ProcVars, ProcVarset, ProcInstVarset, ProcImpl)),
         _Context, EqvMap, _EqvInstMap,
-        pragma(Origin, foreign_proc(Attrs, PName, PredOrFunc, 
+        item_pragma(Origin, pragma_foreign_proc(Attrs, PName, PredOrFunc, 
             ProcVars, ProcVarset, ProcInstVarset, ProcImpl)),
         [], !Info) :-
     some [!EquivTypeInfo] (
         maybe_record_expanded_items(ModuleName, PName, !.Info, 
             !:EquivTypeInfo),
-        UserSharing0 = user_annotated_sharing(Attrs0), 
+        UserSharing0 = get_user_annotated_sharing(Attrs0), 
         (   
             UserSharing0 = user_sharing(Sharing0, MaybeTypes0),
             MaybeTypes0 = yes(user_type_info(Types0, TVarset0))
@@ -446,9 +454,9 @@ replace_in_item(ModuleName,
     ). 
 
 replace_in_item(ModuleName,
-        mutable(MutName, Type0, InitValue, Inst0, Attrs, Varset),
+        item_mutable(MutName, Type0, InitValue, Inst0, Attrs, Varset),
         _Context, EqvMap, EqvInstMap,
-        mutable(MutName, Type, InitValue, Inst, Attrs, Varset),
+        item_mutable(MutName, Type, InitValue, Inst, Attrs, Varset),
         [], !Info) :-
     QualName = qualified(ModuleName, MutName),
     maybe_record_expanded_items(ModuleName, QualName, !.Info, ExpandedItems0),
@@ -464,19 +472,19 @@ replace_in_item(ModuleName,
     type_defn::in, type_defn::out, bool::out, tvarset::in, tvarset::out,
     equiv_type_info::in, equiv_type_info::out) is semidet.
 
-replace_in_type_defn(EqvMap, TypeCtor, eqv_type(TBody0),
-        eqv_type(TBody), ContainsCirc, !VarSet, !Info) :-
+replace_in_type_defn(EqvMap, TypeCtor, parse_tree_eqv_type(TBody0),
+        parse_tree_eqv_type(TBody), ContainsCirc, !VarSet, !Info) :-
     replace_in_type_2(EqvMap, [TypeCtor], TBody0, TBody,
         _, ContainsCirc, !VarSet, !Info).
 
 replace_in_type_defn(EqvMap, _,
-        du_type(TBody0, EqPred),
-        du_type(TBody, EqPred), no, !VarSet, !Info) :-
+        parse_tree_du_type(TBody0, EqPred),
+        parse_tree_du_type(TBody, EqPred), no, !VarSet, !Info) :-
     replace_in_ctors(EqvMap, TBody0, TBody, !VarSet, !Info).
 
 replace_in_type_defn(EqvMap, TypeCtor,
-        solver_type(SolverTypeDetails0, MaybeUserEqComp),
-        solver_type(SolverTypeDetails,  MaybeUserEqComp),
+        parse_tree_solver_type(SolverTypeDetails0, MaybeUserEqComp),
+        parse_tree_solver_type(SolverTypeDetails,  MaybeUserEqComp),
         ContainsCirc, !VarSet, !Info) :-
     SolverTypeDetails0 = solver_type_details(RepresentationType0, InitPred,
         GroundInst, AnyInst, MutableItems),
@@ -525,10 +533,10 @@ replace_in_class_interface(ClassInterface0, EqvMap, EqvInstMap,
     equiv_type_info::in, equiv_type_info::out) is det.
 
 replace_in_class_method(EqvMap, EqvInstMap,
-        pred_or_func(TypeVarSet0, InstVarSet, ExistQVars, PredOrFunc,
+        method_pred_or_func(TypeVarSet0, InstVarSet, ExistQVars, PredOrFunc,
             PredName, TypesAndModes0, WithType0, WithInst0,
             Det0, Cond, Purity, ClassContext0, Context),
-        pred_or_func(TypeVarSet, InstVarSet, ExistQVars, PredOrFunc,
+        method_pred_or_func(TypeVarSet, InstVarSet, ExistQVars, PredOrFunc,
             PredName, TypesAndModes, WithType, WithInst,
             Det, Cond, Purity, ClassContext, Context),
         !Errors, !Info) :-
@@ -539,9 +547,9 @@ replace_in_class_method(EqvMap, EqvInstMap,
     !:Errors = NewErrors ++ !.Errors.
 
 replace_in_class_method(_, EqvInstMap,
-        pred_or_func_mode(InstVarSet, MaybePredOrFunc0, PredName,
+        method_pred_or_func_mode(InstVarSet, MaybePredOrFunc0, PredName,
             Modes0, WithInst0, Det0, Cond, Context),
-        pred_or_func_mode(InstVarSet, MaybePredOrFunc, PredName,
+        method_pred_or_func_mode(InstVarSet, MaybePredOrFunc, PredName,
             Modes, WithInst, Det, Cond, Context),
         !Errors, !Info) :-
     replace_in_pred_mode(PredName, length(Modes0), Context,
@@ -1072,8 +1080,8 @@ finish_recording_expanded_items(Item, yes(_ - ExpandedItems),
 
 report_error(circular_equivalence(Item) - Context, !IO) :-
     (
-        Item = type_defn(_, SymName, Params, TypeDefn, _),
-        TypeDefn = eqv_type(_)
+        Item = item_type_defn(_, SymName, Params, TypeDefn, _),
+        TypeDefn = parse_tree_eqv_type(_)
     ->
         Pieces = [words("Error: circular equivalence type"),
             fixed(describe_sym_name_and_arity(SymName / length(Params))),

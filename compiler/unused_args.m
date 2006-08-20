@@ -358,7 +358,7 @@ maybe_setup_pred_args(PredId, !VarUsage, !PredProcList, !OptProcs, !ModuleInfo,
             pred_info_is_builtin(PredInfo)
         ;
             pred_info_get_markers(PredInfo, Markers),
-            check_marker(Markers, stub)
+            check_marker(Markers, marker_stub)
         )
     ->
         true
@@ -722,7 +722,7 @@ traverse_goal(Info, Goal, !VarDep) :-
             % These should be transformed into calls by polymorphism.m.
             % This is here to cover the case where unused arguments is called
             % with --error-check-only and polymorphism has not been run.
-            ( RHS = var(RHSVar) ->
+            ( RHS = rhs_var(RHSVar) ->
                 set_var_used(RHSVar, !VarDep),
                 set_var_used(LHS, !VarDep)
             ;
@@ -1043,7 +1043,7 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
         UnusedArgs = [_ | _],
         pred_info_get_import_status(OrigPredInfo, Status0),
         (
-            Status0 = opt_imported,
+            Status0 = status_opt_imported,
             IntermodResultsTriples = [_ | _],
             IntermodOldArgLists = []
         ->
@@ -1051,15 +1051,15 @@ create_new_pred(UnusedArgInfo, proc(PredId, ProcId), !ProcCallInfo,
             % have been removed than in the original module, then leave the
             % import status as opt_imported so that dead_proc_elim will remove
             % it if no other optimization is performed on it.
-            Status = opt_imported
+            Status = status_opt_imported
         ;
-            status_is_exported(Status0, yes)
+            status_is_exported(Status0) = yes
         ->
             % This specialized version of the predicate will be declared
             % in the analysis file for this module so it must be exported.
             Status = Status0
         ;
-            Status = local
+            Status = status_local
         ),
         make_new_pred_info(!.ModuleInfo, UnusedArgs, Status,
             proc(PredId, ProcId), OrigPredInfo, NewPredInfo0),
@@ -1109,7 +1109,7 @@ make_intermod_proc(PredId, NewPredId, ProcId, NewPredName,
         OrigPredInfo, OrigProcInfo, UnusedArgs, UnusedArgs2, !ModuleInfo) :-
     % Add an exported predicate with the number of removed arguments promised
     % in the analysis file which just calls the new predicate.
-    make_new_pred_info(!.ModuleInfo, UnusedArgs2, exported,
+    make_new_pred_info(!.ModuleInfo, UnusedArgs2, status_exported,
         proc(PredId, ProcId), OrigPredInfo, ExtraPredInfo0),
     PredModule = pred_info_module(OrigPredInfo),
     create_call_goal(UnusedArgs, NewPredId, ProcId,
@@ -1243,8 +1243,9 @@ make_imported_unused_args_pred_info(OptProc, UnusedArgs, !ProcCallInfo,
     OptProc = proc(PredId, ProcId),
     module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
         PredInfo0, ProcInfo0),
-    make_new_pred_info(!.ModuleInfo, UnusedArgs, imported(interface),
-        OptProc, PredInfo0, NewPredInfo0),
+    make_new_pred_info(!.ModuleInfo, UnusedArgs,
+        status_imported(import_locn_interface), OptProc,
+        PredInfo0, NewPredInfo0),
     pred_info_get_procedures(NewPredInfo0, NewProcs0),
 
     % Assign the old procedure to a new predicate.
@@ -1714,7 +1715,7 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
         (
             Name = pred_info_name(PredInfo),
             \+ pred_info_is_imported(PredInfo),
-            \+ pred_info_get_import_status(PredInfo, opt_imported),
+            \+ pred_info_get_import_status(PredInfo, status_opt_imported),
 
             % Don't warn about builtins that have unused arguments.
             \+ pred_info_is_builtin(PredInfo),
@@ -1724,7 +1725,7 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
             % in that case, we *expect* that none of the arguments
             % will be used,
             pred_info_get_markers(PredInfo, Markers),
-            \+ check_marker(Markers, stub),
+            \+ check_marker(Markers, marker_stub),
 
             % Don't warn about lambda expressions not using arguments.
             % (The warning message for these doesn't contain context,
@@ -1742,8 +1743,8 @@ output_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, WriteOptPragmas,
             % XXX We don't currently generate pragmas for the automatically
             % generated class instance methods because the compiler aborts
             % when trying to read them back in from the `.opt' files.
-            \+ check_marker(Markers, class_instance_method),
-            \+ check_marker(Markers, named_class_instance_method)
+            \+ check_marker(Markers, marker_class_instance_method),
+            \+ check_marker(Markers, marker_named_class_instance_method)
         ->
             write_unused_args_to_opt_file(WriteOptPragmas,
                 PredInfo, ProcId, UnusedArgs, !IO),

@@ -74,20 +74,20 @@ are_equivalence_types_expanded(ModuleInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-cons_id_to_tag(int_const(I), _, _) = int_constant(I).
-cons_id_to_tag(float_const(F), _, _) = float_constant(F).
-cons_id_to_tag(string_const(S), _, _) = string_constant(S).
+cons_id_to_tag(int_const(I), _, _) = int_tag(I).
+cons_id_to_tag(float_const(F), _, _) = float_tag(F).
+cons_id_to_tag(string_const(S), _, _) = string_tag(S).
 cons_id_to_tag(pred_const(ShroudedPredProcId, EvalMethod), _, _) =
         pred_closure_tag(PredId, ProcId, EvalMethod) :-
     proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId).
 cons_id_to_tag(type_ctor_info_const(M,T,A), _, _) =
-        type_ctor_info_constant(M,T,A).
+        type_ctor_info_tag(M,T,A).
 cons_id_to_tag(base_typeclass_info_const(M,C,_,N), _, _) =
-        base_typeclass_info_constant(M,C,N).
+        base_typeclass_info_tag(M,C,N).
 cons_id_to_tag(type_info_cell_constructor(_), _, _) = unshared_tag(0).
 cons_id_to_tag(typeclass_info_cell_constructor, _, _) = unshared_tag(0).
 cons_id_to_tag(tabling_info_const(ShroudedPredProcId), _, _) =
-        tabling_info_constant(PredId, ProcId) :-
+        tabling_info_tag(PredId, ProcId) :-
     proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId).
 cons_id_to_tag(deep_profiling_proc_layout(ShroudedPredProcId), _, _) =
         deep_profiling_proc_layout_tag(PredId, ProcId) :-
@@ -103,14 +103,14 @@ cons_id_to_tag(cons(Name, Arity), Type, ModuleInfo) = Tag :-
         string.char_to_string(Char, ConsName)
     ->
         char.to_int(Char, CharCode),
-        Tag = int_constant(CharCode)
+        Tag = int_tag(CharCode)
     ;
         % Tuples do not need a tag. Note that unary tuples are not treated
         % as no_tag types. There's no reason why they couldn't be, it's just
         % not worth the effort.
         type_is_tuple(Type, _)
     ->
-        Tag = single_functor
+        Tag = single_functor_tag
     ;
         % Use the type to determine the type_ctor.
         ( type_to_ctor_and_args(Type, TypeCtor0, _) ->

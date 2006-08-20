@@ -203,7 +203,7 @@ grab_optfiles(TransOptDeps, !Module, FoundError, !IO) :-
 
     read_trans_opt_files(TransOptDeps, [], OptItems, no, FoundError, !IO),
 
-    append_pseudo_decl(opt_imported, !Module),
+    append_pseudo_decl(md_opt_imported, !Module),
     module_imports_get_items(!.Module, Items0),
     list.append(Items0, OptItems, Items),
     module_imports_set_items(Items, !Module),

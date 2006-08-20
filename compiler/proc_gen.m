@@ -598,8 +598,8 @@ generate_category_code(model_det, ProcContext, Goal, ResumePoint,
         code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
         (
             MaybeTraceInfo = yes(TraceInfo),
-            generate_external_event_code(call, TraceInfo, ProcContext,
-                MaybeCallExternalInfo, !CI),
+            generate_external_event_code(external_port_call, TraceInfo,
+                ProcContext, MaybeCallExternalInfo, !CI),
             (
                 MaybeCallExternalInfo = yes(CallExternalInfo),
                 CallExternalInfo = external_event_info(TraceCallLabel, _,
@@ -634,8 +634,8 @@ generate_category_code(model_semi, ProcContext, Goal, ResumePoint,
     code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
     (
         MaybeTraceInfo = yes(TraceInfo),
-        generate_external_event_code(call, TraceInfo, ProcContext,
-            MaybeCallExternalInfo, !CI),
+        generate_external_event_code(external_port_call, TraceInfo,
+            ProcContext, MaybeCallExternalInfo, !CI),
         (
             MaybeCallExternalInfo = yes(CallExternalInfo),
             CallExternalInfo = external_event_info(TraceCallLabel, _,
@@ -658,8 +658,8 @@ generate_category_code(model_semi, ProcContext, Goal, ResumePoint,
         code_info.set_forward_live_vars(ResumeVars, !CI),
         % XXX A context that gives the end of the procedure definition
         % would be better than ProcContext.
-        generate_external_event_code(fail, TraceInfo, ProcContext,
-            MaybeFailExternalInfo, !CI),
+        generate_external_event_code(external_port_fail, TraceInfo,
+            ProcContext, MaybeFailExternalInfo, !CI),
         (
             MaybeFailExternalInfo = yes(FailExternalInfo),
             FailExternalInfo = external_event_info(_, _, TraceFailCode)
@@ -687,8 +687,8 @@ generate_category_code(model_non, ProcContext, Goal, ResumePoint,
     code_info.get_maybe_trace_info(!.CI, MaybeTraceInfo),
     (
         MaybeTraceInfo = yes(TraceInfo),
-        generate_external_event_code(call, TraceInfo, ProcContext,
-            MaybeCallExternalInfo, !CI),
+        generate_external_event_code(external_port_call, TraceInfo,
+            ProcContext, MaybeCallExternalInfo, !CI),
         (
             MaybeCallExternalInfo = yes(CallExternalInfo),
             CallExternalInfo = external_event_info(TraceCallLabel, _,
@@ -711,8 +711,8 @@ generate_category_code(model_non, ProcContext, Goal, ResumePoint,
         code_info.set_forward_live_vars(ResumeVars, !CI),
         % XXX A context that gives the end of the procedure definition
         % would be better than ProcContext.
-        generate_external_event_code(fail, TraceInfo, ProcContext,
-            MaybeFailExternalInfo, !CI),
+        generate_external_event_code(external_port_fail, TraceInfo,
+            ProcContext, MaybeFailExternalInfo, !CI),
         (
             MaybeFailExternalInfo = yes(FailExternalInfo),
             FailExternalInfo = external_event_info(_, _, TraceFailCode)
@@ -852,7 +852,7 @@ generate_entry(CI, CodeModel, Goal, OutsideResumePoint, FrameInfo,
             AllocCode = node([
                 mkframe(NondetFrameInfo, yes(OutsideResumeAddress))
                     - "Allocate stack frame",
-                pragma_c([], DefineComponents, will_not_call_mercury,
+                pragma_c([], DefineComponents, proc_will_not_call_mercury,
                     no, no, no, no, no, no) - ""
             ]),
             NondetPragma = yes
@@ -929,7 +929,7 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
         UndefComponents = [pragma_c_raw_code(UndefStr, cannot_branch_away,
             live_lvals_info(set.init))],
         UndefCode = node([
-            pragma_c([], UndefComponents, will_not_call_mercury,
+            pragma_c([], UndefComponents, proc_will_not_call_mercury,
                 no, no, no, no, no, no) - ""
         ]),
         RestoreDeallocCode = empty, % always empty for nondet code
@@ -1019,8 +1019,8 @@ generate_exit(CodeModel, FrameInfo, TraceSlotInfo, ProcContext,
             MaybeTraceInfo = yes(TraceInfo),
             % XXX A context that gives the end of the procedure definition
             % would be better than CallContext.
-            generate_external_event_code(exit, TraceInfo, ProcContext,
-                MaybeExitExternalInfo, !CI),
+            generate_external_event_code(external_port_exit, TraceInfo,
+                ProcContext, MaybeExitExternalInfo, !CI),
             (
                 MaybeExitExternalInfo = yes(ExitExternalInfo),
                 ExitExternalInfo = external_event_info(_, TypeInfoDatas,
@@ -1173,7 +1173,7 @@ bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
 
     BytecodeInstructions = [
         label(Entry) - "Procedure entry point",
-        pragma_c([], BytecodeInstructionsComponents, may_call_mercury,
+        pragma_c([], BytecodeInstructionsComponents, proc_may_call_mercury,
             no, no, no, no, no, no) - "Entry stub"
     ].
 

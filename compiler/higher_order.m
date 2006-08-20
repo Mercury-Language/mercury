@@ -1293,7 +1293,7 @@ maybe_specialize_pred_const(Goal0 - GoalInfo, Goal - GoalInfo, !Info) :-
             NewConsId = pred_const(NewShroudedPredProcId, EvalMethod),
             Unify = construct(LVar, NewConsId, NewArgs, UniModes,
                 HowToConstruct, CellIsUnique, no_construct_sub_info),
-            Goal2 = unify(LVar, functor(NewConsId, no, NewArgs),
+            Goal2 = unify(LVar, rhs_functor(NewConsId, no, NewArgs),
                 UniMode, Unify, Context),
 
             % Make sure any constants in the ExtraTypeInfoGoals are recorded.
@@ -1447,8 +1447,8 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
             % If we don't have clauses for the callee, we can't specialize
             % any higher-order arguments. We may be able to do user guided
             % type specialization.
-            CalleeStatus \= imported(_),
-            CalleeStatus \= external(_),
+            CalleeStatus \= status_imported(_),
+            CalleeStatus \= status_external(_),
             type_is_higher_order(CalleeArgType)
         ;
             true
@@ -1618,9 +1618,9 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
                 UserTypeSpec = yes,
                 pred_info_get_markers(CalledPredInfo, Markers),
                 (
-                    check_marker(Markers, class_method)
+                    check_marker(Markers, marker_class_method)
                 ;
-                    check_marker(Markers, class_instance_method)
+                    check_marker(Markers, marker_class_instance_method)
                 )
             ;
                 HigherOrder = yes,
@@ -1782,8 +1782,8 @@ version_matches(Params, ModuleInfo, Request, Version, Match) :-
         pred_info_get_markers(CalleePredInfo, Markers),
 
         % Always fully specialize calls to class methods.
-        \+ check_marker(Markers, class_method),
-        \+ check_marker(Markers, class_instance_method),
+        \+ check_marker(Markers, marker_class_method),
+        \+ check_marker(Markers, marker_class_instance_method),
         (
             Params ^ type_spec = no
         ;
@@ -1959,8 +1959,8 @@ interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
         list.index1_det(OtherVars, Index, TypeInfoArg),
         maybe_add_alias(TypeInfoVar, TypeInfoArg, !Info),
         Uni = assign(TypeInfoVar, TypeInfoArg),
-        Goal = unify(TypeInfoVar, var(TypeInfoArg), out_mode - in_mode,
-            Uni, unify_context(explicit, [])),
+        Goal = unify(TypeInfoVar, rhs_var(TypeInfoArg), out_mode - in_mode,
+            Uni, unify_context(umc_explicit, [])),
         !:Info = !.Info ^ changed := changed
     ;
         Goal = Goal0
@@ -2130,8 +2130,8 @@ specialize_unify_or_compare_pred_for_atomic(SpecialPredType, MaybeResult,
     (
         MaybeResult = no,
         in_mode(In),
-        GoalExpr = unify(Arg1, var(Arg2), (In - In),
-            simple_test(Arg1, Arg2), unify_context(explicit, []))
+        GoalExpr = unify(Arg1, rhs_var(Arg2), (In - In),
+            simple_test(Arg1, Arg2), unify_context(umc_explicit, []))
     ;
         MaybeResult = yes(ComparisonResult),
         find_builtin_type_with_equivalent_compare(ModuleInfo,
@@ -2187,9 +2187,9 @@ specialize_unify_or_compare_pred_for_no_tag(WrappedType, Constructor,
         NonLocals = NonLocals0,
         instmap_delta_init_reachable(InstMapDelta),
         Detism = detism_semi,
-        SpecialGoal = unify(UnwrappedArg1, var(UnwrappedArg2), (In - In),
+        SpecialGoal = unify(UnwrappedArg1, rhs_var(UnwrappedArg2), (In - In),
             simple_test(UnwrappedArg1, UnwrappedArg2),
-            unify_context(explicit, [])),
+            unify_context(umc_explicit, [])),
         goal_info_init(NonLocals, InstMapDelta, Detism, purity_pure,
             Context, GoalInfo),
         GoalExpr = conj(plain_conj,
@@ -2375,11 +2375,11 @@ unwrap_no_tag_arg(WrappedType, Context, Constructor, Arg, UnwrappedArg, Goal,
         InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, Context,
         GoalInfo),
-    Goal = unify(Arg, functor(ConsId, no, [UnwrappedArg]),
+    Goal = unify(Arg, rhs_functor(ConsId, no, [UnwrappedArg]),
         in_mode - out_mode,
         deconstruct(Arg, ConsId, [UnwrappedArg], UniModes,
             cannot_fail, cannot_cgc),
-        unify_context(explicit, [])) - GoalInfo.
+        unify_context(umc_explicit, [])) - GoalInfo.
 
 %-----------------------------------------------------------------------------%
 %
@@ -2598,7 +2598,7 @@ create_new_pred(Request, NewPred, !Info, !IO) :-
         string.append_list([Name0, "__ho", IdStr], PredName),
         SymName = qualified(PredModule, PredName),
         Transform = higher_order_specialization(Id),
-        Status = local
+        Status = status_local
     ),
 
     list.length(Types, ActualArity),
@@ -3116,12 +3116,12 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
             ConstInstMapDelta),
         goal_info_init(ConstNonLocals, ConstInstMapDelta, detism_det,
             purity_pure, ConstGoalInfo),
-        RHS = functor(ConsId, no, CurriedHeadVars1),
+        RHS = rhs_functor(ConsId, no, CurriedHeadVars1),
         UniMode = (free -> ConstInst) - (ConstInst -> ConstInst),
         ConstGoal = unify(LVar, RHS, UniMode,
             construct(LVar, ConsId, CurriedHeadVars1, UniModes,
                 construct_dynamically, cell_is_unique, no_construct_sub_info),
-            unify_context(explicit, [])) - ConstGoalInfo,
+            unify_context(umc_explicit, [])) - ConstGoalInfo,
         ConstGoals0 = CurriedConstGoals ++ [ConstGoal]
     ;
         IsConst = no,

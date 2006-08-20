@@ -253,15 +253,17 @@ detect_cse_in_goal_2(Goal @ plain_call(_, _, _, _, _, _), _, _, !CseInfo,
 detect_cse_in_goal_2(unify(LHS, RHS0, Mode, Unify,  UnifyContext), _, InstMap0,
         !CseInfo, Redo, unify(LHS, RHS, Mode,Unify, UnifyContext)) :-
     (
-        RHS0 = lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
-            Vars, Modes, Det, Goal0)
-    ->
+        RHS0 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
+            Vars, Modes, Det, Goal0),
         ModuleInfo = !.CseInfo ^ module_info,
         instmap.pre_lambda_update(ModuleInfo, Vars, Modes, InstMap0, InstMap),
         detect_cse_in_goal(Goal0, InstMap, !CseInfo, Redo, Goal),
-        RHS = lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
+        RHS = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
             Vars, Modes, Det, Goal)
     ;
+        ( RHS0 = rhs_var(_)
+        ; RHS0 = rhs_functor(_, _, _)
+        ),
         RHS = RHS0,
         Redo = no
     ).
@@ -580,22 +582,21 @@ find_bind_var_for_cse_in_deconstruct(Var, Goal0, Goals,
 construct_common_unify(Var, GoalExpr0 - GoalInfo, !CseInfo, OldNewVars,
         HoistedGoal, Replacements) :-
     (
-        GoalExpr0 = unify(_, Term, Umode, Unif0, Ucontext),
+        GoalExpr0 = unify(_, RHS, Umode, Unif0, Ucontext),
         Unif0 = deconstruct(_, Consid, Args, Submodes, CanFail, CanCGC)
     ->
         Unif = deconstruct(Var, Consid, Args, Submodes, CanFail, CanCGC),
-        ( Term = functor(_, _, _) ->
-            GoalExpr1 = unify(Var, Term, Umode, Unif, Ucontext)
+        ( RHS = rhs_functor(_, _, _) ->
+            GoalExpr1 = unify(Var, RHS, Umode, Unif, Ucontext)
         ;
             unexpected(this_file,
                 "non-functor unify in construct_common_unify")
         ),
         goal_info_get_context(GoalInfo, Context),
-        create_parallel_subterms(Args, Context, Ucontext,
-            !CseInfo, OldNewVars, Replacements),
+        create_parallel_subterms(Args, Context, Ucontext, !CseInfo,
+            OldNewVars, Replacements),
         map.from_assoc_list(OldNewVars, Sub),
-        goal_util.rename_vars_in_goal(Sub,
-            GoalExpr1 - GoalInfo, HoistedGoal)
+        goal_util.rename_vars_in_goal(Sub, GoalExpr1 - GoalInfo, HoistedGoal)
     ;
         unexpected(this_file, "non-unify goal in construct_common_unify")
     ).
@@ -631,7 +632,7 @@ create_parallel_subterm(OFV, Context, UnifyContext, !CseInfo, !OldNewVar,
     % mode analysis on the resulting goal. It would be nicer to generate
     % the right assignment unification directly, but that would require keeping
     % track of the inst of OFV.
-    create_atomic_complicated_unification(OFV, var(NFV),
+    create_atomic_complicated_unification(OFV, rhs_var(NFV),
         Context, MainCtxt, SubCtxt, Goal),
     !:CseInfo = !.CseInfo ^ varset := VarSet,
     !:CseInfo = !.CseInfo ^ vartypes := VarTypes.
@@ -678,7 +679,7 @@ pair_subterms([OldVar - HoistedVar | OldHoistedVars], Context, UnifyContext,
         % mode analysis on the resulting goal. It would be nicer to generate
         % the right assignment unification directly, but that would require
         % keeping track of the inst of OldVar.
-        create_atomic_complicated_unification(HoistedVar, var(OldVar),
+        create_atomic_complicated_unification(HoistedVar, rhs_var(OldVar),
             Context, MainCtxt, SubCtxt, Goal),
         Replacements = [Goal | Replacements1]
     ).

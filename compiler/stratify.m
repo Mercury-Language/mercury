@@ -706,8 +706,8 @@ check_goal1(unify(_Var, RHS, _Mode, Unification, _Context), !Calls,
         % Currently this code assumes that all procs called in a lambda goal
         % have addresses taken. This is not always to case, but should be
         % a suitable approximation for the stratification analysis.
-        RHS = lambda_goal(_Purity, _PredOrFunc, _EvalMethod, _NonLocals, _Vars,
-            _Modes, _Determinism, Goal - _GoalInfo)
+        RHS = rhs_lambda_goal(_Purity, _PredOrFunc, _EvalMethod, _NonLocals,
+            _Vars, _Modes, _Determinism, Goal - _GoalInfo)
     ->
         get_called_procs(Goal, [], CalledProcs),
         set.insert_list(!.HasAT, CalledProcs, !:HasAT)
@@ -786,8 +786,8 @@ get_called_procs(unify(_Var, RHS, _Mode, Unification, _Context), !Calls) :-
         % Currently this code assumes that all procs called in a lambda goal
         % have addresses taken. This is not always to case, but should be
         % a suitable approximation for the stratification analysis.
-        RHS = lambda_goal(_Purity, _PredOrFunc, _EvalMethod, _NonLocals, _Vars,
-            _Modes, _Determinism, Goal - _GoalInfo)
+        RHS = rhs_lambda_goal(_Purity, _PredOrFunc, _EvalMethod, _NonLocals,
+            _Vars, _Modes, _Determinism, Goal - _GoalInfo)
     ->
         get_called_procs(Goal, !Calls)
     ;

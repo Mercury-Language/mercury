@@ -174,7 +174,7 @@ expand_set_field_function_call_2(Context, MainContext, SubContext0,
         FieldSubContext = Functor - SubContext0,
         Goals1 = [Goal]
     ),
-    ArgContext = functor(Functor, MainContext, SubContext0),
+    ArgContext = ac_functor(Functor, MainContext, SubContext0),
     goal_info_init(Context, GoalInfo),
     conj_list_to_goal(Goals1, GoalInfo, Conj0),
     insert_arg_unifications(FieldArgVars, FieldArgs, Context, ArgContext,
@@ -186,7 +186,7 @@ expand_dcg_field_extraction_goal(Context, MainContext, SubContext, FieldNames,
         FieldValueVar, TermInputVar, TermOutputVar, Functor, FieldSubContext,
         Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO) :-
     % Unify the DCG input and output variables.
-    make_atomic_unification(TermOutputVar, var(TermInputVar), Context,
+    make_atomic_unification(TermOutputVar, rhs_var(TermInputVar), Context,
         MainContext, SubContext, UnifyDCG, !QualInfo),
     UnifyAdded = 1,
 
@@ -255,7 +255,7 @@ expand_get_field_function_call_2(Context, MainContext, SubContext0,
         Goals2 = [Goal],
         FieldAdded = 1
     ),
-    ArgContext = functor(Functor, MainContext, SubContext0),
+    ArgContext = ac_functor(Functor, MainContext, SubContext0),
     goal_info_init(Context, GoalInfo),
     conj_list_to_goal(Goals2, GoalInfo, Conj0),
     insert_arg_unifications(FieldArgVars, FieldArgs, Context, ArgContext,
@@ -274,7 +274,7 @@ construct_field_access_function_call(AccessType, Context, MainContext,
     field_access_function_name(AccessType, FieldName, FuncName),
     list.length(Args, Arity),
     Functor = cons(FuncName, Arity),
-    make_atomic_unification(RetArg, functor(Functor, no, Args),
+    make_atomic_unification(RetArg, rhs_functor(Functor, no, Args),
         Context, MainContext, SubContext, Purity, Goal, !QualInfo).
 
 parse_field_list(Term, MaybeFieldNames) :-

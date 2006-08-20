@@ -659,7 +659,7 @@ inlining_in_call(PredId, ProcId, ArgVars, Builtin,
 
         (
             MayHaveParallelConj = yes,
-            add_marker(may_have_parallel_conj, Markers0, Markers)
+            add_marker(marker_may_have_parallel_conj, Markers0, Markers)
         ;
             MayHaveParallelConj = no,
             Markers = Markers0
@@ -758,7 +758,7 @@ do_inline_call(HeadTypeParams, ArgVars, PredInfo, ProcInfo,
 
     pred_info_get_markers(PredInfo, CalleeMarkers),
     MayHaveParallelConj = pred_to_bool(check_marker(CalleeMarkers,
-        may_have_parallel_conj)).
+        marker_may_have_parallel_conj)).
 
 get_type_substitution(HeadTypes, ArgTypes,
         HeadTypeParams, CalleeExistQVars, TypeSubn) :-
@@ -876,10 +876,10 @@ should_inline_proc(PredId, ProcId, BuiltinState, HighLevelCode,
     % OK, we could inline it - but should we?  Apply our heuristic.
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
-    ( check_marker(Markers, user_marked_inline) ->
+    ( check_marker(Markers, marker_user_marked_inline) ->
         UserReq = yes
     ;
-        ( check_marker(Markers, heuristic_inline)
+        ( check_marker(Markers, marker_heuristic_inline)
         ; set.member(proc(PredId, ProcId), InlinedProcs)
         )
     ->
@@ -958,7 +958,7 @@ can_inline_proc_2(PredId, ProcId, BuiltinState, HighLevelCode,
         (
             CalledGoal = call_foreign_proc(ForeignAttributes,
                 _, _, _, _, _, _) - _,
-            ForeignLanguage = foreign_language(ForeignAttributes)
+            ForeignLanguage = get_foreign_language(ForeignAttributes)
         )
     =>
         ok_to_inline_language(ForeignLanguage, Target)

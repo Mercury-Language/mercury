@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: intermod.m.
 % Main author: stayl.
-% 
+%
 % This module writes out the interface for inter-module optimization.
 % The .opt file includes:
 %   - The clauses for exported preds that can be inlined.
@@ -32,7 +32,7 @@
 % determinism declarations do not have clauses exported, since this would
 % require running mode analysis and determinism analysis before writing the
 % .opt file, significantly increasing compile time for a very small gain.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.intermod.
@@ -305,7 +305,7 @@ should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
         )
     ;
         ProcessLocalPreds = yes,
-        pred_info_get_import_status(PredInfo, local)
+        pred_info_get_import_status(PredInfo, status_local)
     ),
     (
         pred_info_clauses_info(PredInfo, ClauseInfo),
@@ -324,11 +324,11 @@ should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
         % goals which can't be written to `.opt' files (they can't be read
         % back in). They will be recreated in the importing module.
         pred_info_get_markers(PredInfo, Markers),
-        \+ check_marker(Markers, class_method),
-        \+ check_marker(Markers, class_instance_method),
+        \+ check_marker(Markers, marker_class_method),
+        \+ check_marker(Markers, marker_class_instance_method),
 
         % Don't write stub clauses to `.opt' files.
-        \+ check_marker(Markers, stub),
+        \+ check_marker(Markers, marker_stub),
 
         % Don't export builtins since they will be recreated in the
         % importing module anyway.
@@ -349,7 +349,7 @@ should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
         (
             inlining.is_simple_clause_list(Clauses, InlineThreshold + Arity),
             pred_info_get_markers(PredInfo, Markers),
-            \+ check_marker(Markers, user_marked_no_inline)
+            \+ check_marker(Markers, marker_user_marked_no_inline)
         ;
             pred_info_requested_inlining(PredInfo)
         ;
@@ -363,14 +363,13 @@ should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
             % in each disjunct. The disjunction adds one to the goal size,
             % hence the `+1'.
             DeforestThreshold = InlineThreshold * 2 + 1,
-            inlining.is_simple_clause_list(Clauses,
-                DeforestThreshold + Arity),
+            inlining.is_simple_clause_list(Clauses, DeforestThreshold + Arity),
             clause_list_is_deforestable(PredId, Clauses)
         )
     ;
-        % Promises that are in the interface should always get
-        % included in the .opt file.
-        pred_info_get_goal_type(PredInfo, promise(_))
+        % Promises that are in the interface should always get included
+        % in the .opt file.
+        pred_info_get_goal_type(PredInfo, goal_type_promise(_))
     ).
 
     % If the clauses contains foreign code which requires an external
@@ -382,7 +381,7 @@ should_be_processed(ProcessLocalPreds, PredId, PredInfo, TypeSpecForcePreds,
 clauses_contain_noninlinable_foreign_code(Target, [C | _Cs]) :-
     Target = target_il,
     Lang = C ^ clause_lang,
-    Lang = foreign_language(ForeignLang),
+    Lang = impl_lang_foreign(ForeignLang),
     ( ForeignLang = lang_csharp
     ; ForeignLang = lang_managed_cplusplus
     ).
@@ -598,7 +597,7 @@ add_proc_2(PredId, DoWrite, !Info) :-
         % which is a pity.
         %
         (
-            check_marker(Markers, infer_modes)
+            check_marker(Markers, marker_infer_modes)
         ;
             pred_info_get_procedures(PredInfo, Procs),
             list.member(ProcId, ProcIds),
@@ -636,10 +635,10 @@ add_proc_2(PredId, DoWrite, !Info) :-
         % special.
         %
         (
-            Status = exported
+            Status = status_exported
         ;
-            Status = external(ExternalStatus),
-            status_is_exported(ExternalStatus, yes)
+            Status = status_external(ExternalStatus),
+            status_is_exported(ExternalStatus) = yes
         )
     ->
         DoWrite = yes
@@ -650,7 +649,7 @@ add_proc_2(PredId, DoWrite, !Info) :-
         % are always written to the `.opt' file.
         %
         pred_info_get_markers(PredInfo, Markers),
-        check_marker(Markers, class_method)
+        check_marker(Markers, marker_class_method)
     ->
         DoWrite = yes
     ;
@@ -666,8 +665,8 @@ add_proc_2(PredId, DoWrite, !Info) :-
         set.insert(PredDecls0, PredId, PredDecls),
         intermod_info_set_pred_decls(PredDecls, !Info)
     ;
-        ( Status = imported(_)
-        ; Status = opt_imported
+        ( Status = status_imported(_)
+        ; Status = status_opt_imported
         )
     ->
         %
@@ -691,12 +690,12 @@ add_proc_2(PredId, DoWrite, !Info) :-
     unify_rhs::out, bool::out, intermod_info::in,
     intermod_info::out) is det.
 
-module_qualify_unify_rhs(_LHS, RHS @ var(_Var), RHS, yes, !Info).
+module_qualify_unify_rhs(_LHS, RHS @ rhs_var(_Var), RHS, yes, !Info).
 module_qualify_unify_rhs(_LHS,
-        lambda_goal(A, B, C, D, E, F, G,Goal0),
-        lambda_goal(A, B, C, D, E, F, G,Goal), DoWrite, !Info) :-
+        rhs_lambda_goal(A, B, C, D, E, F, G,Goal0),
+        rhs_lambda_goal(A, B, C, D, E, F, G,Goal), DoWrite, !Info) :-
     traverse_goal(Goal0, Goal, DoWrite, !Info).
-module_qualify_unify_rhs(_LHS, RHS @ functor(Functor, _Exist, _Vars),
+module_qualify_unify_rhs(_LHS, RHS @ rhs_functor(Functor, _Exist, _Vars),
         RHS, DoWrite, !Info) :-
     % Is this a higher-order predicate or higher-order function
     % term?
@@ -743,14 +742,14 @@ gather_instances_2(ModuleInfo, ClassId, InstanceDefns, !Info) :-
 gather_instances_3(ModuleInfo, ClassId, InstanceDefn, !Info) :-
     InstanceDefn = hlds_instance_defn(A, Status, C, D, E, Interface0,
         MaybePredProcIds, H, I),
+    DefinedThisModule = status_defined_in_this_module(Status),
     (
+        DefinedThisModule = yes,
         %
         % The bodies are always stripped from instance declarations
         % before writing them to `int' files, so the full instance
         % declaration should be written even for exported instances.
         %
-        status_defined_in_this_module(Status, yes)
-    ->
         SaveInfo = !.Info,
         (
             Interface0 = concrete(Methods0),
@@ -805,7 +804,7 @@ gather_instances_3(ModuleInfo, ClassId, InstanceDefn, !Info) :-
             (
                 Interface = abstract
             =>
-                status_is_exported(Status, no)
+                status_is_exported(Status) = no
             )
         ->
             InstanceDefnToWrite = hlds_instance_defn(A, Status, C, D, E,
@@ -817,7 +816,7 @@ gather_instances_3(ModuleInfo, ClassId, InstanceDefn, !Info) :-
             true
         )
     ;
-        true
+        DefinedThisModule = no
     ).
 
     % Resolve overloading of instance methods before writing them
@@ -964,9 +963,8 @@ gather_types_2(TypeCtor, TypeDefn0, !Info) :-
     ( should_write_type(ModuleName, TypeCtor, TypeDefn0) ->
         hlds_data.get_type_defn_body(TypeDefn0, TypeBody0),
         (
-            TypeBody0 = du_type(Ctors, Tags, Enum, MaybeUserEqComp0,
-                ReservedTag, MaybeForeign0)
-        ->
+            TypeBody0 = hlds_du_type(Ctors, Tags, Enum, MaybeUserEqComp0,
+                ReservedTag, MaybeForeign0),
             module_info_get_globals(ModuleInfo, Globals),
             globals.get_target(Globals, Target),
 
@@ -995,20 +993,23 @@ gather_types_2(TypeCtor, TypeDefn0, !Info) :-
                     MaybeUserEqComp0, MaybeUserEqComp, !Info),
                 MaybeForeign = MaybeForeign0
             ),
-            TypeBody = du_type(Ctors, Tags, Enum, MaybeUserEqComp,
+            TypeBody = hlds_du_type(Ctors, Tags, Enum, MaybeUserEqComp,
                 ReservedTag, MaybeForeign),
             hlds_data.set_type_defn_body(TypeBody, TypeDefn0, TypeDefn)
         ;
-            TypeBody0 = foreign_type(ForeignTypeBody0)
-        ->
+            TypeBody0 = hlds_foreign_type(ForeignTypeBody0),
             % The header code must be written since it could be used
             % by the foreign type.
             intermod_info_set_write_header(!Info),
             resolve_foreign_type_body_overloading(ModuleInfo, TypeCtor,
                 ForeignTypeBody0, ForeignTypeBody, !Info),
-            TypeBody = foreign_type(ForeignTypeBody),
+            TypeBody = hlds_foreign_type(ForeignTypeBody),
             hlds_data.set_type_defn_body(TypeBody, TypeDefn0, TypeDefn)
         ;
+            ( TypeBody0 = hlds_eqv_type(_)
+            ; TypeBody0 = hlds_solver_type(_, _)
+            ; TypeBody0 = hlds_abstract_type(_)
+            ),
             TypeDefn = TypeDefn0
         ),
         intermod_info_get_types(!.Info, Types0),
@@ -1111,7 +1112,7 @@ resolve_user_special_pred_overloading(ModuleInfo, SpecialId,
     module_info_pred_info(ModuleInfo, UnifyPredId, UnifyPredInfo),
     pred_info_get_arg_types(UnifyPredInfo, TVarSet, _, ArgTypes),
     init_markers(Markers0),
-    add_marker(calls_are_fully_qualified, Markers0, Markers),
+    add_marker(marker_calls_are_fully_qualified, Markers0, Markers),
     resolve_pred_overloading(ModuleInfo, Markers, ArgTypes,
         TVarSet, Pred0, Pred, UserEqPredId),
     add_proc(UserEqPredId, _, !Info).
@@ -1153,8 +1154,8 @@ write_intermod_info(IntermodInfo, !IO) :-
         \+ (
             map.member(Types, _, TypeDefn),
             hlds_data.get_type_defn_status(TypeDefn, Status),
-            ( Status = abstract_exported
-            ; Status = exported_to_submodules
+            ( Status = status_abstract_exported
+            ; Status = status_exported_to_submodules
             )
         )
     ->
@@ -1199,7 +1200,7 @@ write_intermod_info_2(IntermodInfo, !IO) :-
 
         list.foldl(
             (pred(ForeignImport::in, IO0::di, IO::uo) is det :-
-                ForeignImport = foreign_import_module(Lang, Import, _),
+                ForeignImport = foreign_import_module_info(Lang, Import, _),
                 mercury_output_pragma_foreign_import_module(Lang, Import,
                     IO0, IO)
             ), ForeignImports, !IO)
@@ -1230,8 +1231,7 @@ write_modules([Module | Rest], !IO) :-
 write_types(Types, !IO) :-
     list.foldl(write_type, Types, !IO).
 
-:- pred write_type(pair(type_ctor, hlds_type_defn)::in,
-    io::di, io::uo) is det.
+:- pred write_type(pair(type_ctor, hlds_type_defn)::in, io::di, io::uo) is det.
 
 write_type(TypeCtor - TypeDefn, !IO) :-
     hlds_data.get_type_defn_tvarset(TypeDefn, VarSet),
@@ -1240,26 +1240,25 @@ write_type(TypeCtor - TypeDefn, !IO) :-
     hlds_data.get_type_defn_context(TypeDefn, Context),
     TypeCtor = type_ctor(Name, Arity),
     (
-        Ctors = Body ^ du_type_ctors,
-        MaybeUserEqComp = Body ^ du_type_usereq,
-        TypeBody = du_type(Ctors, MaybeUserEqComp)
+        Body = hlds_du_type(Ctors, _, _, MaybeUserEqComp, _, _),
+        TypeBody = parse_tree_du_type(Ctors, MaybeUserEqComp)
     ;
-        Body = eqv_type(EqvType),
-        TypeBody = eqv_type(EqvType)
+        Body = hlds_eqv_type(EqvType),
+        TypeBody = parse_tree_eqv_type(EqvType)
     ;
-        Body = abstract_type(IsSolverType),
-        TypeBody = abstract_type(IsSolverType)
+        Body = hlds_abstract_type(IsSolverType),
+        TypeBody = parse_tree_abstract_type(IsSolverType)
     ;
-        Body = foreign_type(_),
-        TypeBody = abstract_type(non_solver_type)
+        Body = hlds_foreign_type(_),
+        TypeBody = parse_tree_abstract_type(non_solver_type)
     ;
-        Body = solver_type(SolverTypeDetails, MaybeUserEqComp),
-        TypeBody = solver_type(SolverTypeDetails, MaybeUserEqComp)
+        Body = hlds_solver_type(SolverTypeDetails, MaybeUserEqComp),
+        TypeBody = parse_tree_solver_type(SolverTypeDetails, MaybeUserEqComp)
     ),
-    mercury_output_item(type_defn(VarSet, Name, Args, TypeBody, true), Context,
-        !IO),
+    mercury_output_item(item_type_defn(VarSet, Name, Args, TypeBody, true),
+        Context, !IO),
     (
-        ( Body = foreign_type(ForeignTypeBody)
+        ( Body = hlds_foreign_type(ForeignTypeBody)
         ; Body ^ du_type_is_foreign_type = yes(ForeignTypeBody)
         ),
         ForeignTypeBody = foreign_type_body(MaybeIL, MaybeC, MaybeJava)
@@ -1269,8 +1268,8 @@ write_type(TypeCtor - TypeDefn, !IO) :-
             DataIL = foreign_type_lang_data(ILForeignType, ILMaybeUserEqComp,
                 AssertionsIL),
             mercury_output_item(
-                type_defn(VarSet, Name, Args,
-                    foreign_type(il(ILForeignType),
+                item_type_defn(VarSet, Name, Args,
+                    parse_tree_foreign_type(il(ILForeignType),
                         ILMaybeUserEqComp, AssertionsIL),
                 true),
                 Context, !IO)
@@ -1282,8 +1281,8 @@ write_type(TypeCtor - TypeDefn, !IO) :-
             DataC = foreign_type_lang_data(CForeignType,
                 CMaybeUserEqComp, AssertionsC),
             mercury_output_item(
-                type_defn(VarSet, Name, Args,
-                    foreign_type(c(CForeignType),
+                item_type_defn(VarSet, Name, Args,
+                    parse_tree_foreign_type(c(CForeignType),
                         CMaybeUserEqComp, AssertionsC),
                     true),
                 Context, !IO)
@@ -1295,8 +1294,8 @@ write_type(TypeCtor - TypeDefn, !IO) :-
             DataJava = foreign_type_lang_data(JavaForeignType,
                 JavaMaybeUserEqComp, AssertionsJava),
             mercury_output_item(
-                type_defn(VarSet, Name, Args,
-                    foreign_type(java(JavaForeignType),
+                item_type_defn(VarSet, Name, Args,
+                    parse_tree_foreign_type(java(JavaForeignType),
                         JavaMaybeUserEqComp, AssertionsJava),
                     true),
                 Context, !IO)
@@ -1311,8 +1310,8 @@ write_type(TypeCtor - TypeDefn, !IO) :-
         ReservedTag = yes
     ->
         % The pragma_origin doesn't matter here.
-        mercury_output_item(pragma(user, reserve_tag(Name, Arity)), Context,
-            !IO)
+        mercury_output_item(item_pragma(user, pragma_reserve_tag(Name, Arity)),
+            Context, !IO)
     ;
         true
     ).
@@ -1337,7 +1336,7 @@ write_mode(ModuleName, ModeId, ModeDefn, !IO) :-
         import_status_to_write(ImportStatus)
     ->
         mercury_output_item(
-            mode_defn(Varset, SymName, Args, eqv_mode(Mode), true),
+            item_mode_defn(Varset, SymName, Args, eqv_mode(Mode), true),
             Context, !IO)
     ;
         true
@@ -1369,8 +1368,8 @@ write_inst(ModuleName, InstId, InstDefn, !IO) :-
             Body = abstract_inst,
             InstBody = abstract_inst
         ),
-        mercury_output_item(inst_defn(Varset, SymName, Args, InstBody, true),
-            Context, !IO)
+        mercury_output_item(item_inst_defn(Varset, SymName, Args, InstBody,
+            true), Context, !IO)
     ;
         true
     ).
@@ -1395,7 +1394,7 @@ write_class(ModuleName, ClassId, ClassDefn, !IO) :-
         import_status_to_write(ImportStatus)
     ->
         FunDeps = list.map(unmake_hlds_class_fundep(TVars), HLDSFunDeps),
-        Item = typeclass(Constraints, FunDeps, QualifiedClassName, TVars,
+        Item = item_typeclass(Constraints, FunDeps, QualifiedClassName, TVars,
             Interface, TVarSet),
         mercury_output_item(Item, Context, !IO)
     ;
@@ -1431,7 +1430,8 @@ write_instance(ClassId - InstanceDefn, !IO) :-
     InstanceDefn = hlds_instance_defn(ModuleName, _, Context, Constraints,
         Types, Body, _, TVarSet, _),
     ClassId = class_id(ClassName, _),
-    Item = instance(Constraints, ClassName, Types, Body, TVarSet, ModuleName),
+    Item = item_instance(Constraints, ClassName, Types, Body, TVarSet,
+        ModuleName),
     mercury_output_item(Item, Context, !IO).
 
     % We need to write all the declarations for local predicates so
@@ -1452,25 +1452,25 @@ write_pred_decls(ModuleInfo, [PredId | PredIds], !IO) :-
     pred_info_get_class_context(PredInfo, ClassContext),
     pred_info_get_goal_type(PredInfo, GoalType),
     (
-        GoalType = pragmas,
+        GoalType = goal_type_foreign,
         % For foreign code goals we can't append variable numbers to type
         % variables in the predicate declaration because the foreign code
         % may contain references to variables such as `TypeInfo_for_T'
         % which will break if `T' is written as `T_1' in the pred declaration.
         AppendVarNums = no
     ;
-        GoalType = clauses_and_pragmas,
+        GoalType = goal_type_clause_and_foreign,
         % Because pragmas may be present, we treat this case like
         % pragmas above.
         AppendVarNums = no
     ;
-        GoalType = clauses,
+        GoalType = goal_type_clause,
         AppendVarNums = yes
     ;
-        GoalType = promise(_),
+        GoalType = goal_type_promise(_),
         AppendVarNums = yes
     ;
-        GoalType = none,
+        GoalType = goal_type_none,
         AppendVarNums = yes
     ),
     (
@@ -1554,7 +1554,7 @@ write_preds(ModuleInfo, [PredId | PredIds], !IO) :-
     clauses_info_clauses_only(ClausesInfo, Clauses),
     clauses_info_get_vartypes(ClausesInfo, VarTypes),
 
-    ( pred_info_get_goal_type(PredInfo, promise(PromiseType)) ->
+    ( pred_info_get_goal_type(PredInfo, goal_type_promise(PromiseType)) ->
         ( Clauses = [Clause] ->
             hlds_out.write_promise(PromiseType, 0, ModuleInfo,
                 PredId, VarSet, no, HeadVars, PredOrFunc, Clause, no, !IO)
@@ -1576,7 +1576,7 @@ write_preds(ModuleInfo, [PredId | PredIds], !IO) :-
 
 write_clause(ModuleInfo, PredId, VarSet, HeadVars, PredOrFunc, _SymName,
         MaybeVarTypes, Clause0, !IO) :-
-    Clause0 = clause(_, _, mercury, _),
+    Clause0 = clause(_, _, impl_lang_mercury, _),
     strip_headvar_unifications(HeadVars, Clause0, ClauseHeadVars, Clause),
     % Variable numbers need to be appended for the case
     % where the added arguments for a DCG pred expression
@@ -1589,7 +1589,7 @@ write_clause(ModuleInfo, PredId, VarSet, HeadVars, PredOrFunc, _SymName,
 
 write_clause(ModuleInfo, PredId, VarSet, _HeadVars, PredOrFunc, SymName,
         _, Clause, !IO) :-
-    Clause = clause(ProcIds, Goal, foreign_language(_), _),
+    Clause = clause(ProcIds, Goal, impl_lang_foreign(_), _),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_procedures(PredInfo, Procs),
     (
@@ -1621,14 +1621,13 @@ write_foreign_clause(Procs, PredOrFunc, PragmaImpl,
         Attributes, Args, ProgVarset0, SymName, ProcId, !IO) :-
     map.lookup(Procs, ProcId, ProcInfo),
     proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
-    ( 
+    (
         MaybeArgModes = yes(ArgModes),
         get_pragma_foreign_code_vars(Args, ArgModes,
             ProgVarset0, ProgVarset, PragmaVars),
         proc_info_get_inst_varset(ProcInfo, InstVarset),
         mercury_output_pragma_foreign_code(Attributes, SymName,
-            PredOrFunc, PragmaVars, ProgVarset, InstVarset, PragmaImpl, 
-            !IO)
+            PredOrFunc, PragmaVars, ProgVarset, InstVarset, PragmaImpl, !IO)
     ;
         MaybeArgModes = no,
         unexpected(this_file, "write_clause: no mode declaration")
@@ -1689,10 +1688,10 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
         Goal = unify(LHSVar, RHS, _, _, _) - _,
         list.member(LHSVar, HeadVars),
         (
-            RHS = var(RHSVar),
+            RHS = rhs_var(RHSVar),
             RHSTerm = term.variable(RHSVar)
         ;
-            RHS = functor(ConsId, _, Args),
+            RHS = rhs_functor(ConsId, _, Args),
             term.context_init(Context),
             (
                 ConsId = int_const(Int),
@@ -1762,7 +1761,7 @@ write_type_spec_pragmas(ModuleInfo, PredId, !IO) :-
 :- pred write_type_spec_pragma(pragma_type::in, io::di, io::uo) is det.
 
 write_type_spec_pragma(Pragma, !IO) :-
-    ( Pragma = type_spec(_, _, _, _, _, _, _, _) ->
+    ( Pragma = pragma_type_spec(_, _, _, _, _, _, _, _) ->
         AppendVarnums = yes,
         mercury_output_pragma_type_spec(Pragma, AppendVarnums, !IO)
     ;
@@ -1774,34 +1773,34 @@ write_type_spec_pragma(Pragma, !IO) :-
     %
 :- pred should_output_marker(marker::in, bool::out) is det.
 
-should_output_marker(stub, no).
+should_output_marker(marker_stub, no).
     % Since the inferred declarations are output, these
     % don't need to be done in the importing module.
-should_output_marker(infer_type, no).
-should_output_marker(infer_modes, no).
+should_output_marker(marker_infer_type, no).
+should_output_marker(marker_infer_modes, no).
     % Purity is output as part of the pred/func decl.
-should_output_marker(is_impure, no).
-should_output_marker(is_semipure, no).
+should_output_marker(marker_is_impure, no).
+should_output_marker(marker_is_semipure, no).
     % There is no pragma required for generated class methods.
-should_output_marker(class_method, no).
-should_output_marker(class_instance_method, no).
-should_output_marker(named_class_instance_method, no).
+should_output_marker(marker_class_method, no).
+should_output_marker(marker_class_instance_method, no).
+should_output_marker(marker_named_class_instance_method, no).
     % The warning for calls to local obsolete predicates should appear
     % once in the defining module, not in importing modules.
-should_output_marker(obsolete, no).
-should_output_marker(user_marked_inline, yes).
-should_output_marker(user_marked_no_inline, yes).
-should_output_marker(heuristic_inline, no).
-should_output_marker(promised_pure, yes).
-should_output_marker(promised_semipure, yes).
-should_output_marker(promised_equivalent_clauses, yes).
-should_output_marker(terminates, yes).
-should_output_marker(does_not_terminate, yes).
+should_output_marker(marker_obsolete, no).
+should_output_marker(marker_user_marked_inline, yes).
+should_output_marker(marker_user_marked_no_inline, yes).
+should_output_marker(marker_heuristic_inline, no).
+should_output_marker(marker_promised_pure, yes).
+should_output_marker(marker_promised_semipure, yes).
+should_output_marker(marker_promised_equivalent_clauses, yes).
+should_output_marker(marker_terminates, yes).
+should_output_marker(marker_does_not_terminate, yes).
     % Termination should only be checked in the defining module.
-should_output_marker(check_termination, no).
-should_output_marker(calls_are_fully_qualified, no).
-should_output_marker(mode_check_clauses, yes).
-should_output_marker(may_have_parallel_conj, no).
+should_output_marker(marker_check_termination, no).
+should_output_marker(marker_calls_are_fully_qualified, no).
+should_output_marker(marker_mode_check_clauses, yes).
+should_output_marker(marker_may_have_parallel_conj, no).
 
 :- pred get_pragma_foreign_code_vars(list(foreign_arg)::in, list(mer_mode)::in,
     prog_varset::in, prog_varset::out, list(pragma_var)::out) is det.
@@ -2000,7 +1999,7 @@ adjust_type_status(!ModuleInfo) :-
 adjust_type_status_2(TypeCtor - TypeDefn0, TypeCtor - TypeDefn, !ModuleInfo) :-
     module_info_get_name(!.ModuleInfo, ModuleName),
     ( should_write_type(ModuleName, TypeCtor, TypeDefn0) ->
-        hlds_data.set_type_defn_status(exported, TypeDefn0, TypeDefn),
+        hlds_data.set_type_defn_status(status_exported, TypeDefn0, TypeDefn),
         fixup_special_preds(TypeCtor, !ModuleInfo)
     ;
         TypeDefn = TypeDefn0
@@ -2033,7 +2032,7 @@ adjust_class_status(!ModuleInfo) :-
 adjust_class_status_2(ClassId - ClassDefn0, ClassId - ClassDefn,
         !ModuleInfo) :-
     ( import_status_to_write(ClassDefn0 ^ class_status) ->
-        ClassDefn = ClassDefn0 ^ class_status := exported,
+        ClassDefn = ClassDefn0 ^ class_status := status_exported,
         class_procs_to_pred_ids(ClassDefn ^ class_hlds_interface, PredIds),
         set_list_of_preds_exported(PredIds, !ModuleInfo)
     ;
@@ -2078,7 +2077,7 @@ adjust_instance_status_3(Instance0, Instance, !ModuleInfo) :-
         Constraints, Types, Body, HLDSClassInterface,
         TVarSet, ConstraintProofs),
     ( import_status_to_write(Status0) ->
-        Instance = hlds_instance_defn(InstanceModule, exported,
+        Instance = hlds_instance_defn(InstanceModule, status_exported,
             Context, Constraints, Types, Body, HLDSClassInterface,
             TVarSet, ConstraintProofs),
         (
@@ -2116,13 +2115,13 @@ set_list_of_preds_exported_2([PredId | PredIds], !Preds) :-
             pred_info_get_origin(PredInfo0, Origin),
             Origin = special_pred(spec_pred_unify - _)
         ->
-            NewStatus = pseudo_exported
+            NewStatus = status_pseudo_exported
         ;
-            Status = external(_)
+            Status = status_external(_)
         ->
-            NewStatus = external(opt_exported)
+            NewStatus = status_external(status_opt_exported)
         ;
-            NewStatus = opt_exported
+            NewStatus = status_opt_exported
         ),
         pred_info_set_import_status(NewStatus, PredInfo0, PredInfo),
         map.det_update(!.Preds, PredId, PredInfo, !:Preds)
@@ -2140,22 +2139,18 @@ import_status_to_write(Status) :-
 
 :- func import_status_to_write(import_status) = bool.
 
-import_status_to_write(imported(_)) = no.
-import_status_to_write(abstract_imported) = no.
-import_status_to_write(pseudo_imported) = no.
-import_status_to_write(opt_imported) = no.
-import_status_to_write(exported) = no.
-import_status_to_write(opt_exported) = yes.
-import_status_to_write(abstract_exported) = yes.
-import_status_to_write(pseudo_exported) = no.
-import_status_to_write(exported_to_submodules) = yes.
-import_status_to_write(local) = yes.
-import_status_to_write(external(Status)) = ToWrite :-
-    ( status_is_exported(Status, yes) ->
-        ToWrite = no
-    ;
-        ToWrite = yes
-    ).
+import_status_to_write(status_imported(_)) = no.
+import_status_to_write(status_abstract_imported) = no.
+import_status_to_write(status_pseudo_imported) = no.
+import_status_to_write(status_opt_imported) = no.
+import_status_to_write(status_exported) = no.
+import_status_to_write(status_opt_exported) = yes.
+import_status_to_write(status_abstract_exported) = yes.
+import_status_to_write(status_pseudo_exported) = no.
+import_status_to_write(status_exported_to_submodules) = yes.
+import_status_to_write(status_local) = yes.
+import_status_to_write(status_external(Status)) =
+    bool.not(status_is_exported(Status)).
 
 %-----------------------------------------------------------------------------%
 
@@ -2180,7 +2175,7 @@ grab_optfiles(!Module, FoundError, !IO) :-
     % psuedo-declaration to let make_hlds know the opt_imported stuff
     % is coming.
     module_imports_get_items(!.Module, Items0),
-    Items1 = Items0 ++ [make_pseudo_decl(opt_imported) | OptItems],
+    Items1 = Items0 ++ [make_pseudo_decl(md_opt_imported) | OptItems],
     module_imports_set_items(Items1, !Module),
 
     % Get the :- pragma unused_args(...) declarations created when writing
@@ -2193,8 +2188,8 @@ grab_optfiles(!Module, FoundError, !IO) :-
         read_optimization_interfaces(no, ModuleName, [ModuleName],
             set.init, [], LocalItems, no, UAError, !IO),
         IsPragmaUnusedArgs = (pred(Item::in) is semidet :-
-            Item = pragma(_, PragmaType) - _,
-            PragmaType = unused_args(_,_,_,_,_)
+            Item = item_pragma(_, PragmaType) - _,
+            PragmaType = pragma_unused_args(_,_,_,_,_)
         ),
         list.filter(IsPragmaUnusedArgs, LocalItems, PragmaItems),
 
@@ -2210,8 +2205,8 @@ grab_optfiles(!Module, FoundError, !IO) :-
     Int0Files = list.delete_all(
         list.condense(list.map(get_ancestors, OptFiles)), ModuleName),
     process_module_private_interfaces(ReadModules, Int0Files,
-        make_pseudo_decl(opt_imported),
-        make_pseudo_decl(opt_imported),
+        make_pseudo_decl(md_opt_imported),
+        make_pseudo_decl(md_opt_imported),
         [], AncestorImports1,
         [], AncestorImports2, !Module, !IO),
 
@@ -2229,12 +2224,13 @@ grab_optfiles(!Module, FoundError, !IO) :-
 
     % Read in the .int, and .int2 files needed by the .opt files.
     map.init(ReadModules),
-    process_module_long_interfaces(ReadModules, must_be_qualified, NewDeps,
-        ".int", make_pseudo_decl(opt_imported), make_pseudo_decl(opt_imported),
+    process_module_long_interfaces(ReadModules, must_be_qualified,
+        NewDeps, ".int",
+        make_pseudo_decl(md_opt_imported), make_pseudo_decl(md_opt_imported),
         [], NewIndirectDeps, [], NewImplIndirectDeps, !Module, !IO),
-    process_module_short_interfaces_and_impls_transitively(
-        ReadModules, NewIndirectDeps ++ NewImplIndirectDeps, ".int2",
-        make_pseudo_decl(opt_imported), make_pseudo_decl(opt_imported),
+    process_module_short_interfaces_and_impls_transitively(ReadModules,
+        NewIndirectDeps ++ NewImplIndirectDeps, ".int2",
+        make_pseudo_decl(md_opt_imported), make_pseudo_decl(md_opt_imported),
         !Module, !IO),
 
     % Figure out whether anything went wrong.

@@ -128,7 +128,7 @@ add_special_preds(TVarSet, Type, TypeCtor, Body, Context, Status,
     ->
         add_special_pred(spec_pred_unify, TVarSet, Type, TypeCtor, Body,
             Context, Status, !ModuleInfo),
-        status_defined_in_this_module(Status, ThisModule),
+        ThisModule = status_defined_in_this_module(Status),
         (
             ThisModule = yes,
             (
@@ -259,16 +259,16 @@ do_add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
     % if the type was imported, then the special preds for that
     % type should be imported too
     (
-        ( Status = imported(_)
-        ; Status = pseudo_imported
+        ( Status = status_imported(_)
+        ; Status = status_pseudo_imported
         )
     ->
         pred_info_set_import_status(Status, PredInfo0, PredInfo1)
     ;
         TypeBody ^ du_type_usereq = yes(_),
         pred_info_get_import_status(PredInfo0, OldStatus),
-        OldStatus = pseudo_imported,
-        status_is_imported(Status, no)
+        OldStatus = status_pseudo_imported,
+        status_is_imported(Status) = no
     ->
         % We can only get here with --no-special-preds if the old
         % status is from an abstract declaration of the type.
@@ -287,7 +287,7 @@ do_add_special_pred_for_real(SpecialPredId, TVarSet, Type0, TypeCtor,
         Context, !.ModuleInfo, ClausesInfo),
     pred_info_set_clauses_info(ClausesInfo, PredInfo1, PredInfo2),
     pred_info_get_markers(PredInfo2, Markers2),
-    add_marker(calls_are_fully_qualified, Markers2, Markers),
+    add_marker(marker_calls_are_fully_qualified, Markers2, Markers),
     pred_info_set_markers(Markers, PredInfo2, PredInfo3),
     pred_info_set_origin(special_pred(SpecialPredId - TypeCtor),
         PredInfo3, PredInfo),
@@ -366,7 +366,7 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
     ClassContext = constraints([], []),
     ExistQVars = [],
     pred_info_init(ModuleName, PredName, Arity, predicate, Context,
-        Origin, Status, none, Markers, ArgTypes, TVarSet, ExistQVars,
+        Origin, Status, goal_type_none, Markers, ArgTypes, TVarSet, ExistQVars,
         ClassContext, Proofs, ConstraintMap, ClausesInfo0, PredInfo0),
     ArgLives = no,
     varset.init(InstVarSet),
@@ -388,16 +388,15 @@ do_add_special_pred_decl_for_real(SpecialPredId, TVarSet, Type, TypeCtor,
 
 add_special_pred_unify_status(TypeBody, Status0, Status) :-
     ( TypeBody ^ du_type_usereq = yes(_) ->
-        % If the type has user-defined equality, then we create a real
-        % unify predicate for it, whose body calls the user-specified
-        % predicate. The compiler's usual type checking algorithm
-        % will handle any necessary disambiguation from predicates
-        % with the same name but different argument types, and the usual
-        % mode checking algorithm will select the right mode of the chosen
-        % predicate.
+        % If the type has user-defined equality, then we create a real unify
+        % predicate for it, whose body calls the user-specified predicate.
+        % The compiler's usual type checking algorithm will handle any
+        % necessary disambiguation from predicates with the same name
+        % but different argument types, and the usual mode checking algorithm
+        % will select the right mode of the chosen predicate.
         Status = Status0
     ;
-        Status = pseudo_imported
+        Status = status_pseudo_imported
     ).
 
 :- pred adjust_special_pred_status(special_pred_id::in,
@@ -405,15 +404,15 @@ add_special_pred_unify_status(TypeBody, Status0, Status) :-
 
 adjust_special_pred_status(SpecialPredId, !Status) :-
     (
-        ( !.Status = opt_imported
-        ; !.Status = abstract_imported
+        ( !.Status = status_opt_imported
+        ; !.Status = status_abstract_imported
         )
     ->
-        !:Status = imported(interface)
+        !:Status = status_imported(import_locn_interface)
     ;
-        !.Status = abstract_exported
+        !.Status = status_abstract_exported
     ->
-        !:Status = exported
+        !:Status = status_exported
     ;
         true
     ),
@@ -421,10 +420,10 @@ adjust_special_pred_status(SpecialPredId, !Status) :-
     % Unification predicates are special - they are
     % "pseudo"-imported/exported (only mode 0 is imported/exported).
     ( SpecialPredId = spec_pred_unify ->
-        ( !.Status = imported(_) ->
-            !:Status = pseudo_imported
-        ; !.Status = exported ->
-            !:Status = pseudo_exported
+        ( !.Status = status_imported(_) ->
+            !:Status = status_pseudo_imported
+        ; !.Status = status_exported ->
+            !:Status = status_pseudo_exported
         ;
             true
         )

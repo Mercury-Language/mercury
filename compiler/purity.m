@@ -256,7 +256,7 @@ check_preds_purity_2([PredId | PredIds], !ModuleInfo, !NumErrors, !IO) :-
 
     % Finish processing of promise declarations.
     pred_info_get_goal_type(PredInfo, GoalType),
-    ( GoalType = promise(PromiseType) ->
+    ( GoalType = goal_type_promise(PromiseType) ->
         post_typecheck.finish_promise(PromiseType, PredId, !ModuleInfo, !IO)
     ;
         true
@@ -364,11 +364,11 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
     ->
         (
             OldPurity = purity_pure,
-            remove_marker(promised_semipure, Markers0, Markers1),
-            add_marker(promised_pure, Markers1, Markers)
+            remove_marker(marker_promised_semipure, Markers0, Markers1),
+            add_marker(marker_promised_pure, Markers1, Markers)
         ;
             OldPurity = purity_semipure,
-            add_marker(promised_semipure, Markers0, Markers)
+            add_marker(marker_promised_semipure, Markers0, Markers)
         ;
             OldPurity = purity_impure,
             Markers = Markers0
@@ -385,12 +385,12 @@ repuritycheck_proc(ModuleInfo, proc(_PredId, ProcId), !PredInfo) :-
         % because optimizations can make some procedures more pure than others.
         (
             Bodypurity = purity_pure,
-            remove_marker(is_impure, Markers0, Markers1),
-            remove_marker(is_semipure, Markers1, Markers)
+            remove_marker(marker_is_impure, Markers0, Markers1),
+            remove_marker(marker_is_semipure, Markers1, Markers)
         ;
             Bodypurity = purity_semipure,
-            remove_marker(is_impure, Markers0, Markers1),
-            add_marker(is_semipure, Markers1, Markers)
+            remove_marker(marker_is_impure, Markers0, Markers1),
+            add_marker(marker_is_semipure, Markers1, Markers)
         ;
             Bodypurity = purity_impure,
             Markers = Markers0
@@ -425,10 +425,10 @@ compute_purity([Clause0 | Clauses0], [Clause | Clauses], PredInfo, !Purity,
             applies_to_all_modes(Clause0, ProcIds)
         ;
             pred_info_get_markers(PredInfo, Markers),
-            check_marker(Markers, promised_equivalent_clauses)
+            check_marker(Markers, marker_promised_equivalent_clauses)
         ;
             pred_info_get_goal_type(PredInfo, GoalType),
-            GoalType = pragmas
+            GoalType = goal_type_foreign
         )
     ->
         ClausePurity = purity_pure
@@ -515,12 +515,11 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity,
         ContainsTrace, !Info) :-
     Unif0 = unify(Var, RHS0, Mode, Unification, UnifyContext),
     (
-        RHS0 = lambda_goal(LambdaPurity, F, EvalMethod, H, Vars,
-            Modes, K, Goal0 - Info0)
-    ->
-        RHS = lambda_goal(LambdaPurity, F, EvalMethod, H, Vars,
-            Modes, K, Goal - Info0),
+        RHS0 = rhs_lambda_goal(LambdaPurity, F, EvalMethod, H, Vars,
+            Modes, K, Goal0 - Info0),
         compute_expr_purity(Goal0, Goal, Info0, GoalPurity, _, !Info),
+        RHS = rhs_lambda_goal(LambdaPurity, F, EvalMethod, H, Vars,
+            Modes, K, Goal - Info0),
         check_closure_purity(GoalInfo, LambdaPurity, GoalPurity, !Info),
         GoalExpr = unify(Var, RHS, Mode, Unification, UnifyContext),
         % the unification itself is always pure,
@@ -536,8 +535,7 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity,
         ActualPurity = purity_pure,
         ContainsTrace = contains_no_trace_goal
     ;
-        RHS0 = functor(ConsId, _, Args)
-    ->
+        RHS0 = rhs_functor(ConsId, _, Args),
         RunPostTypecheck = !.Info ^ run_post_typecheck,
         (
             RunPostTypecheck = yes,
@@ -567,6 +565,7 @@ compute_expr_purity(Unif0, GoalExpr, GoalInfo, ActualPurity,
         ),
         Goal = GoalExpr - _
     ;
+        RHS0 = rhs_var(_),
         GoalExpr = Unif0,
         ActualPurity = purity_pure,
         ContainsTrace = contains_no_trace_goal
@@ -645,7 +644,9 @@ compute_expr_purity(ForeignProc0, ForeignProc, _, Purity,
     Attributes = ForeignProc0 ^ foreign_attr,
     PredId = ForeignProc0 ^ foreign_pred_id,
     ModuleInfo = !.Info ^ module_info,
-    ( legacy_purity_behaviour(Attributes) = yes ->
+    LegacyBehaviour = get_legacy_purity_behaviour(Attributes),
+    (
+        LegacyBehaviour = yes,
         % Get the purity from the declaration, and set it here so that
         % it is correct for later use.
 
@@ -654,8 +655,9 @@ compute_expr_purity(ForeignProc0, ForeignProc, _, Purity,
         set_purity(Purity, Attributes, NewAttributes),
         ForeignProc = ForeignProc0 ^ foreign_attr := NewAttributes
     ;
+        LegacyBehaviour = no,
         ForeignProc = ForeignProc0,
-        Purity = purity(Attributes)
+        Purity = get_purity(Attributes)
     ).
 compute_expr_purity(shorthand(_), _, _, _, _, !Info) :-
     % These should have been expanded out by now.
@@ -787,15 +789,15 @@ perform_pred_purity_checks(PredInfo, ActualPurity, DeclaredPurity,
         pred_info_get_markers(PredInfo, Markers),
         pred_info_get_goal_type(PredInfo, GoalType),
         (
-            GoalType = pragmas
+            GoalType = goal_type_foreign
         ;
-            GoalType = clauses_and_pragmas
+            GoalType = goal_type_clause_and_foreign
         ;
-            check_marker(Markers, class_method)
+            check_marker(Markers, marker_class_method)
         ;
-            check_marker(Markers, class_instance_method)
+            check_marker(Markers, marker_class_instance_method)
         ;
-            check_marker(Markers, stub)
+            check_marker(Markers, marker_stub)
         )
     ->
         PurityCheckResult = no_worries
@@ -849,9 +851,9 @@ perform_goal_purity_checks(Context, PredId, DeclaredPurity, ActualPurity,
 
         pred_info_get_markers(PredInfo, Markers),
         (
-            check_marker(Markers, class_method)
+            check_marker(Markers, marker_class_method)
         ;
-            check_marker(Markers, class_instance_method)
+            check_marker(Markers, marker_class_instance_method)
         )
     ->
         true

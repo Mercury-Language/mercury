@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: mode_ordering.m.
 % Main author: dmo.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module check_hlds.mode_ordering.
@@ -223,7 +223,7 @@ mode_order_goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
     set_atomic_prod_vars(ProdVars, !GoalInfo, !MOI),
     InstGraph = !.MOI ^ inst_graph,
     (
-        RHS0 = var(VarB),
+        RHS0 = rhs_var(VarB),
         RHS = RHS0,
         ( ProdVars `contains` VarA ->
             Unification = assign(VarA, VarB),
@@ -249,7 +249,7 @@ mode_order_goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
                 fail
             )))
     ;
-        RHS0 = functor(_ConsId, _IsExistConstruct, ArgVars),
+        RHS0 = rhs_functor(_ConsId, _IsExistConstruct, ArgVars),
         RHS = RHS0,
         ( ProdVars `contains` VarA ->
             % Unification = construct(VarA, ConsId, ArgVars,
@@ -270,10 +270,10 @@ mode_order_goal_2(Goal0, Goal, !GoalInfo, !MOI) :-
         % Unification = construct(VarA, _ConsId, _ArgVars,
         %   _UniModes, _HowTo, _CellUniq, _MaybeRLExprId),
         Unification = Unification0, % XXX
-        RHS0 = lambda_goal(A, B, C, NonLocals, LambdaVars, Modes0,
+        RHS0 = rhs_lambda_goal(A, B, C, NonLocals, LambdaVars, Modes0,
             G, SubGoal0),
         Modes = Modes0, % XXX
-        RHS = lambda_goal(A, B, C, NonLocals, LambdaVars, Modes,
+        RHS = rhs_lambda_goal(A, B, C, NonLocals, LambdaVars, Modes,
             G, SubGoal),
 
         goal_info_get_goal_path(!.GoalInfo, GoalPath),

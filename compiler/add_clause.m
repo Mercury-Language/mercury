@@ -116,7 +116,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
                 is_fully_qualified, PredOrFunc, PredName, Arity, [PredId0])
         ->
             PredId = PredId0,
-            ( GoalType = promise(_) ->
+            ( GoalType = goal_type_promise(_) ->
                 sym_name_to_string(PredName, NameString),
                 string.format("%s %s %s (%s).\n",
                     [s("Attempted to introduce a predicate"),
@@ -130,7 +130,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
         ;
                 % A promise will not have a corresponding pred declaration.
             (
-                GoalType = promise(_)
+                GoalType = goal_type_promise(_)
             ->
                 term.term_list_to_var_list(Args, HeadVars),
                 preds_add_implicit_for_assertion(HeadVars, !.ModuleInfo,
@@ -170,10 +170,11 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
 
         % opt_imported preds are initially tagged as imported and are
         % tagged as opt_imported only if/when we see a clause for them
-        ( Status = opt_imported ->
-            pred_info_set_import_status(opt_imported, !PredInfo),
+        ( Status = status_opt_imported ->
+            pred_info_set_import_status(status_opt_imported, !PredInfo),
             pred_info_get_markers(!.PredInfo, InitMarkers0),
-            add_marker(calls_are_fully_qualified, InitMarkers0, InitMarkers),
+            add_marker(marker_calls_are_fully_qualified,
+                InitMarkers0, InitMarkers),
             pred_info_set_markers(InitMarkers, !PredInfo)
         ;
             true
@@ -196,7 +197,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
 
             % Don't report errors for clauses for field access
             % function clauses in `.opt' files.
-            Status \= opt_imported
+            Status \= status_opt_imported
         ->
             module_info_incr_errors(!ModuleInfo),
             CallId = simple_call_id(PredOrFunc, PredName, Arity),
@@ -243,10 +244,11 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
                 GoalType, Goal, VarSet, TVarSet, Clauses0, Clauses, Warnings,
                 !ModuleInfo, !QualInfo, !IO),
             pred_info_set_clauses_info(Clauses, !PredInfo),
-            ( GoalType = promise(PromiseType) ->
-                pred_info_set_goal_type(promise(PromiseType), !PredInfo)
+            ( GoalType = goal_type_promise(PromiseType) ->
+                pred_info_set_goal_type(goal_type_promise(PromiseType),
+                    !PredInfo)
             ;
-                pred_info_update_goal_type(clauses, !PredInfo)
+                pred_info_update_goal_type(goal_type_clause, !PredInfo)
             ),
             pred_info_set_typevarset(TVarSet, !PredInfo),
             pred_info_get_arg_types(!.PredInfo, _ArgTVarSet, ExistQVars,
@@ -261,7 +263,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
             (
                 ProcIds = [],
                 pred_info_get_markers(!.PredInfo, EndMarkers0),
-                add_marker(infer_modes, EndMarkers0, EndMarkers),
+                add_marker(marker_infer_modes, EndMarkers0, EndMarkers),
                 pred_info_set_markers(EndMarkers, !PredInfo)
             ;
                 ProcIds = [_ | _]
@@ -269,7 +271,7 @@ module_add_clause(ClauseVarSet, PredOrFunc, PredName, Args0, Body, Status,
             map.det_update(Preds0, PredId, !.PredInfo, Preds),
             predicate_table_set_preds(Preds, !PredicateTable),
             module_info_set_predicate_table(!.PredicateTable, !ModuleInfo),
-            ( Status = opt_imported ->
+            ( Status = status_opt_imported ->
                 true
             ;
                 % Warn about singleton variables.
@@ -303,7 +305,7 @@ select_applicable_modes(Args0, VarSet, Status, Context, PredId, PredInfo,
         % on clauses from `.opt' files will already be fully module
         % qualified.
         %
-        ( Status = opt_imported ->
+        ( Status = status_opt_imported ->
             ModeList = ModeList0
         ;
             qual_info_get_mq_info(!.QualInfo, MQInfo0),
@@ -471,7 +473,7 @@ clauses_info_add_clause(ModeIds0, CVarSet, TVarSet0, Args, Body, Context,
             ForeignModeIds = list.condense(list.filter_map(
                 (func(C) = ProcIds is semidet :-
                     C = clause(ProcIds, _, ClauseLang, _),
-                    not ClauseLang = mercury
+                    not ClauseLang = impl_lang_mercury
                 ),
                 AnyOrderClauseList)),
             ModeIds = list.delete_elems(ModeIds0, ForeignModeIds),
@@ -480,12 +482,12 @@ clauses_info_add_clause(ModeIds0, CVarSet, TVarSet0, Args, Body, Context,
                 ClausesRep = ClausesRep0
             ;
                 ModeIds = [_ | _],
-                Clause = clause(ModeIds, Goal, mercury, Context),
+                Clause = clause(ModeIds, Goal, impl_lang_mercury, Context),
                 add_clause(Clause, ClausesRep0, ClausesRep)
             )
         ;
             HasForeignClauses = no,
-            Clause = clause(ModeIds0, Goal, mercury, Context),
+            Clause = clause(ModeIds0, Goal, impl_lang_mercury, Context),
             add_clause(Clause, ClausesRep0, ClausesRep)
         ),
         qual_info_get_var_types(!.QualInfo, ExplicitVarTypes),
@@ -509,10 +511,10 @@ add_clause_transform(Subst, HeadVars, Args0, ParseBody, Context, PredOrFunc,
         term.apply_substitution_to_list(Args0, Subst, Args1),
         substitute_state_var_mappings(Args1, Args, !VarSet, !SInfo, !IO),
         HeadGoal0 = true_goal,
-        ( GoalType = promise(_) ->
+        ( GoalType = goal_type_promise(_) ->
             HeadGoal = HeadGoal0
         ;
-            ArgContext = head(PredOrFunc, Arity),
+            ArgContext = ac_head(PredOrFunc, Arity),
             insert_arg_unifications(HeadVars, Args, Context, ArgContext,
                 HeadGoal0, HeadGoal1, _, !VarSet, !ModuleInfo, !QualInfo,
                 !SInfo, !IO),
@@ -789,14 +791,14 @@ transform_goal_2(call_expr(Name, Args0, Purity), Context, Subst, Goal,
             MaybeUnifyContext = no,
             Call = plain_call(PredId, ModeId, HeadVars, not_builtin,
                 MaybeUnifyContext, Name),
-            CallId = call(simple_call_id(predicate, Name, Arity))
+            CallId = plain_call_id(simple_call_id(predicate, Name, Arity))
         ),
         goal_info_init(Context, GoalInfo0),
         goal_info_set_purity(Purity, GoalInfo0, GoalInfo),
         Goal0 = Call - GoalInfo,
 
         record_called_pred_or_func(predicate, Name, Arity, !QualInfo),
-        insert_arg_unifications(HeadVars, Args, Context, call(CallId),
+        insert_arg_unifications(HeadVars, Args, Context, ac_call(CallId),
             Goal0, Goal, NumAdded, !VarSet, !ModuleInfo, !QualInfo,
             !SInfo, !IO),
         finish_call(!VarSet, !SInfo)
@@ -817,7 +819,7 @@ transform_goal_2(unify_expr(A0, B0, Purity), Context, Subst, Goal,
         prepare_for_call(!SInfo),
         term.apply_substitution(A0, Subst, A),
         term.apply_substitution(B0, Subst, B),
-        unravel_unification(A, B, Context, explicit, [], Purity, Goal,
+        unravel_unification(A, B, Context, umc_explicit, [], Purity, Goal,
             NumAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
         finish_call(!VarSet, !SInfo)
     ).
@@ -1015,16 +1017,16 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
     ( ArgVars = [FieldValueVar, TermInputVar, TermOutputVar] ->
         (
             AccessType = set,
-            expand_set_field_function_call(Context, explicit, [], FieldNames,
-                FieldValueVar, TermInputVar, TermOutputVar, Functor,
-                InnermostFunctor - InnermostSubContext, Goal0, SetAdded,
-                !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
+            expand_set_field_function_call(Context, umc_explicit, [],
+                FieldNames, FieldValueVar, TermInputVar, TermOutputVar,
+                Functor, InnermostFunctor - InnermostSubContext, Goal0,
+                SetAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
 
             FieldArgNumber = 2,
-            FieldArgContext = functor(InnermostFunctor, explicit,
+            FieldArgContext = ac_functor(InnermostFunctor, umc_explicit,
                 InnermostSubContext),
             InputTermArgNumber = 1,
-            InputTermArgContext = functor(Functor, explicit, []),
+            InputTermArgContext = ac_functor(Functor, umc_explicit, []),
             ( Functor = cons(FuncName0, FuncArity0) ->
                 FuncName = FuncName0,
                 FuncArity = FuncArity0
@@ -1035,7 +1037,7 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
             % so this context should never be used.
             OutputTermArgNumber = 3,
             SimpleCallId = simple_call_id(function, FuncName, FuncArity),
-            OutputTermArgContext = call(call(SimpleCallId)),
+            OutputTermArgContext = ac_call(plain_call_id(SimpleCallId)),
 
             ArgContexts = [
                 FieldArgNumber - FieldArgContext,
@@ -1048,12 +1050,12 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
             NumAdded = SetAdded + ArgAdded
         ;
             AccessType = get,
-            expand_dcg_field_extraction_goal(Context, explicit, [], FieldNames,
-                FieldValueVar, TermInputVar, TermOutputVar, Functor,
-                InnermostFunctor - _InnerSubContext, Goal0, ExtractAdded,
-                !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
+            expand_dcg_field_extraction_goal(Context, umc_explicit, [],
+                FieldNames, FieldValueVar, TermInputVar, TermOutputVar,
+                Functor, InnermostFunctor - _InnerSubContext, Goal0,
+                ExtractAdded, !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
             InputTermArgNumber = 1,
-            InputTermArgContext = functor(Functor, explicit, []),
+            InputTermArgContext = ac_functor(Functor, umc_explicit, []),
 
             ( InnermostFunctor = cons(FuncName0, FuncArity0) ->
                 FuncName = FuncName0,
@@ -1063,12 +1065,12 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context, Goal,
             ),
             FieldArgNumber = 2,
             SimpleCallId = simple_call_id(function, FuncName, FuncArity),
-            FieldArgContext = call(call(SimpleCallId)),
+            FieldArgContext = ac_call(plain_call_id(SimpleCallId)),
 
             % DCG arguments should always be distinct variables,
             % so this context should never be used.
             OutputTermArgNumber = 1,
-            OutputTermArgContext = functor(Functor, explicit, []),
+            OutputTermArgContext = ac_functor(Functor, umc_explicit, []),
             ArgContexts = [
                 FieldArgNumber - FieldArgContext,
                 InputTermArgNumber - InputTermArgContext,
@@ -1087,7 +1089,7 @@ qualify_lambda_mode_list_if_not_opt_imported(Modes0, Modes, Context,
         !QualInfo, !IO) :-
     % The modes in `.opt' files are already fully module qualified.
     qual_info_get_import_status(!.QualInfo, ImportStatus),
-    ( ImportStatus \= opt_imported ->
+    ( ImportStatus \= status_opt_imported ->
         qual_info_get_mq_info(!.QualInfo, MQInfo0),
         qualify_lambda_mode_list(Modes0, Modes, Context, MQInfo0, MQInfo, !IO),
         qual_info_set_mq_info(MQInfo, !QualInfo)

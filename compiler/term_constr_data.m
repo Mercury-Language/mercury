@@ -256,38 +256,38 @@
     % works with.
     %
 :- type abstract_goal
-    --->    disj(
-            disj_goals     :: abstract_goals,
-            disj_size      :: int,
-                    % We keep track of the number of disjuncts for use
-                    % in heuristics that may speed up the convex hull
-                    % calculation.
-                    
-            disj_locals    :: local_vars,
-            disj_nonlocals :: nonlocal_vars
-        )
-    
-    ;   conj(
-            conj_goals     :: abstract_goals, 
-            conj_locals    :: local_vars, 
-            conj_nonlocals :: nonlocal_vars
-        )
-    
-    ;   call(
-            call_ppid      :: abstract_ppid, 
-            call_context   :: prog_context, 
-            call_vars      :: call_vars, 
-            call_zeros     :: zero_vars, 
-            call_locals    :: local_vars, 
-            call_nonlocals :: nonlocal_vars,
-            call_constrs   :: polyhedron
-        )
-    
-    ;   primitive(
-            prim_constrs   :: polyhedron,
-            prim_locals    :: local_vars,
-            prim_nonlocals :: nonlocal_vars
-        ). 
+    --->    term_disj(
+                disj_goals     :: abstract_goals,
+                disj_size      :: int,
+                        % We keep track of the number of disjuncts for use
+                        % in heuristics that may speed up the convex hull
+                        % calculation.
+                        
+                disj_locals    :: local_vars,
+                disj_nonlocals :: nonlocal_vars
+            )
+        
+    ;       term_conj(
+                conj_goals     :: abstract_goals, 
+                conj_locals    :: local_vars, 
+                conj_nonlocals :: nonlocal_vars
+            )
+        
+    ;       term_call(
+                call_ppid      :: abstract_ppid, 
+                call_context   :: prog_context, 
+                call_vars      :: call_vars, 
+                call_zeros     :: zero_vars, 
+                call_locals    :: local_vars, 
+                call_nonlocals :: nonlocal_vars,
+                call_constrs   :: polyhedron
+            )
+        
+    ;       term_primitive(
+                prim_constrs   :: polyhedron,
+                prim_locals    :: local_vars,
+                prim_nonlocals :: nonlocal_vars
+            ). 
 
 :- type abstract_goals == list(abstract_goal). 
 
@@ -405,38 +405,43 @@
 
 update_local_and_nonlocal_vars(Goal0, Locals0, NonLocals0) = Goal :-
     (
-        Goal0     = disj(Goals, Size, Locals1, NonLocals1),
+        Goal0     = term_disj(Goals, Size, Locals1, NonLocals1),
         Locals    = Locals0 ++ Locals1,
         NonLocals = NonLocals0 ++ NonLocals1,
-        Goal      = disj(Goals, Size, Locals,  NonLocals)
+        Goal      = term_disj(Goals, Size, Locals,  NonLocals)
     ;
-        Goal0     = conj(Goals, Locals1, NonLocals1),
+        Goal0     = term_conj(Goals, Locals1, NonLocals1),
         Locals    = Locals0 ++ Locals1,
         NonLocals = NonLocals0 ++ NonLocals1,
-        Goal      = conj(Goals, Locals, NonLocals)
+        Goal      = term_conj(Goals, Locals, NonLocals)
     ;
-        Goal0     = call(PPId, Context, CallVars, Zeros, Locals1, NonLocals1,
-                        Polyhedron),
+        Goal0     = term_call(PPId, Context, CallVars, Zeros, Locals1,
+                        NonLocals1, Polyhedron),
         Locals    = Locals0 ++ Locals1,
         NonLocals = NonLocals0 ++ NonLocals1,
-        Goal      = call(PPId, Context, CallVars, Zeros, Locals, NonLocals,
-                        Polyhedron)
+        Goal      = term_call(PPId, Context, CallVars, Zeros, Locals,
+                        NonLocals, Polyhedron)
     ;
-        Goal0     = primitive(Polyhedron, Locals1, NonLocals1),
+        Goal0     = term_primitive(Polyhedron, Locals1, NonLocals1),
         Locals    = Locals0 ++ Locals1,
         NonLocals = NonLocals0 ++ NonLocals1,
-        Goal      = primitive(Polyhedron, Locals, NonLocals)
+        Goal      = term_primitive(Polyhedron, Locals, NonLocals)
     ).  
 
-scc_contains_recursion([]) :- unexpected(this_file, "empty SCC.").
-scc_contains_recursion([Proc | _]) :- Proc ^ recursion \= none. 
+scc_contains_recursion([]) :-
+    unexpected(this_file, "empty SCC.").
+scc_contains_recursion([Proc | _]) :-
+    Proc ^ recursion \= none. 
 
-proc_is_recursive(Proc) :- not Proc ^ recursion = none.
+proc_is_recursive(Proc) :-
+    not Proc ^ recursion = none.
 
-varset_from_abstract_scc([]) = _ :- unexpected(this_file, "empty SCC.").
+varset_from_abstract_scc([]) = _ :-
+    unexpected(this_file, "empty SCC.").
 varset_from_abstract_scc([Proc | _]) = Proc ^ varset.
 
-analysis_depends_on_ho(Proc) :- list.is_not_empty(Proc ^ ho).
+analysis_depends_on_ho(Proc) :-
+    list.is_not_empty(Proc ^ ho).
 
 %-----------------------------------------------------------------------------%
 %
@@ -450,7 +455,8 @@ simplify_abstract_rep(Goal0) = Goal :- simplify_abstract_rep(Goal0, Goal).
 
 :- pred simplify_abstract_rep(abstract_goal::in, abstract_goal::out) is det.
 
-simplify_abstract_rep(disj(!.Disjuncts, _Size0, Locals, NonLocals), Goal) :-
+simplify_abstract_rep(term_disj(!.Disjuncts, _Size0, Locals, NonLocals),
+        Goal) :-
     %
     % Begin by simplifying each disjunct.
     %
@@ -466,13 +472,13 @@ simplify_abstract_rep(disj(!.Disjuncts, _Size0, Locals, NonLocals), Goal) :-
     ;   
         !.Disjuncts = [] 
     ->
-        Goal = primitive(polyhedron.universe, [], [])
+        Goal = term_primitive(polyhedron.universe, [], [])
     ;
         Size = list.length(!.Disjuncts),
-        Goal = disj(!.Disjuncts, Size, Locals, NonLocals) 
+        Goal = term_disj(!.Disjuncts, Size, Locals, NonLocals) 
     ).
 
-simplify_abstract_rep(conj(!.Conjuncts, Locals, NonLocals), Goal) :-
+simplify_abstract_rep(term_conj(!.Conjuncts, Locals, NonLocals), Goal) :-
     list.map(simplify_abstract_rep, !Conjuncts),
     list.filter(isnt(is_empty_primitive), !Conjuncts),
     flatten_conjuncts(!Conjuncts),
@@ -485,11 +491,11 @@ simplify_abstract_rep(conj(!.Conjuncts, Locals, NonLocals), Goal) :-
         Goal = update_local_and_nonlocal_vars(Conjunct, Locals,
             NonLocals) 
     ; 
-        Goal = conj(!.Conjuncts, Locals, NonLocals)
+        Goal = term_conj(!.Conjuncts, Locals, NonLocals)
     ).
 
-simplify_abstract_rep(Goal @ primitive(_,_,_),      Goal).
-simplify_abstract_rep(Goal @ call(_,_,_,_,_,_,_), Goal).
+simplify_abstract_rep(Goal @ term_primitive(_,_,_),      Goal).
+simplify_abstract_rep(Goal @ term_call(_,_,_,_,_,_,_), Goal).
 
     % Given a conjuntion of abstract goals take the intersection
     % of all consecutive primitive goals in the list of abstract goals.
@@ -524,7 +530,7 @@ flatten_conjuncts(Goals0 @ [_, _ | _], Goals) :-
 
 flatten_conjuncts_2([], !Goals).
 flatten_conjuncts_2([Goal0 | Goals0], !Goals) :-
-    ( Goal0 = primitive(_, _, _) ->
+    ( Goal0 = term_primitive(_, _, _) ->
         list.takewhile(is_primitive, Goals0, Primitives, NextNonPrimitive),
         ( Primitives = [_|_] ->
             NewPrimitive = list.foldl(combine_primitives, Primitives, Goal0)
@@ -542,19 +548,19 @@ flatten_conjuncts_2([Goal0 | Goals0], !Goals) :-
     %
 :- pred is_primitive(abstract_goal::in) is semidet.
 
-is_primitive(primitive(_, _, _)).
+is_primitive(term_primitive(_, _, _)).
 
 :- func combine_primitives(abstract_goal, abstract_goal) = abstract_goal.
 
 combine_primitives(GoalA, GoalB) = Goal :-
     (
-        GoalA = primitive(PolyA, LocalsA, NonLocalsA),
-        GoalB = primitive(PolyB, LocalsB, NonLocalsB)
+        GoalA = term_primitive(PolyA, LocalsA, NonLocalsA),
+        GoalB = term_primitive(PolyB, LocalsB, NonLocalsB)
     -> 
         Poly = polyhedron.intersection(PolyA, PolyB),
         Locals = LocalsA ++ LocalsB,
         NonLocals = NonLocalsA ++ NonLocalsB,
-        Goal = primitive(Poly, Locals, NonLocals)
+        Goal = term_primitive(Poly, Locals, NonLocals)
     ;
         unexpected(this_file, "intersect_primitives called with "
             ++ "non-primitive goals.")
@@ -565,21 +571,22 @@ combine_primitives(GoalA, GoalB) = Goal :-
     %
 :- pred is_empty_primitive(abstract_goal::in) is semidet.
 
-is_empty_primitive(primitive(Poly, _, _)) :- polyhedron.is_universe(Poly).  
+is_empty_primitive(term_primitive(Poly, _, _)) :-
+    polyhedron.is_universe(Poly).  
 
     % We end up with `empty' conjunctions by abstracting conjunctions
     % that involve variables that have zero size.
     %
 :- pred is_empty_conj(abstract_goal::in) is semidet.
 
-is_empty_conj(conj([], _, _)).
+is_empty_conj(term_conj([], _, _)).
 
     % We end up with `empty' disjunctions by abstracting disjunctions
     % that involve variables that have zero size.
     %
 :- pred is_empty_disj(abstract_goal::in) is semidet.
 
-is_empty_disj(disj([], _, _, _)).
+is_empty_disj(term_disj([], _, _, _)).
 
 %-----------------------------------------------------------------------------%
 %
@@ -605,13 +612,13 @@ combine_recursion_types(both,        both)        = both.
 
 combine_primitive_goals(GoalA, GoalB) = Goal :-
     (
-        GoalA = primitive(PolyA, LocalsA, NonLocalsA),
-        GoalB = primitive(PolyB, LocalsB, NonLocalsB)
+        GoalA = term_primitive(PolyA, LocalsA, NonLocalsA),
+        GoalB = term_primitive(PolyB, LocalsB, NonLocalsB)
     ->  
         Poly      = polyhedron.intersection(PolyA, PolyB),  
         Locals    = LocalsA ++ LocalsB,
         NonLocals = NonLocalsA ++ NonLocalsB, 
-        Goal      = primitive(Poly, Locals, NonLocals)
+        Goal      = term_primitive(Poly, Locals, NonLocals)
     ;
         unexpected(this_file, 
             "non-primitive goals passed to combine_primitive_goals")
@@ -658,16 +665,17 @@ recursion_type_to_string(both)        = "mutual and direct recursion".
 dump_abstract_disjuncts([], _, _, _, !IO).
 dump_abstract_disjuncts([Goal | Goals], Varset, Indent, Module, !IO) :-
     dump_abstract_goal(Module, Varset, Indent + 1, Goal, !IO),
-    ( Goals \= [] ->
+    (
+        Goals = [_ | _],
         indent_line(Indent, !IO),
         io.write_string(";\n", !IO)
     ;   
-        true
+        Goals = []
     ),
     dump_abstract_disjuncts(Goals, Varset, Indent, Module, !IO).
 
 dump_abstract_goal(Module, Varset, Indent,
-        disj(Goals, Size, Locals, NonLocals), !IO) :-
+        term_disj(Goals, Size, Locals, NonLocals), !IO) :-
     indent_line(Indent, !IO),
     io.format("disj[%d](\n", [i(Size)], !IO),
     dump_abstract_disjuncts(Goals, Varset, Indent, Module, !IO),
@@ -686,7 +694,7 @@ dump_abstract_goal(Module, Varset, Indent,
     indent_line(Indent, !IO),
     io.write_string(")\n", !IO).
 
-dump_abstract_goal(Module, Varset, Indent, conj(Goals, Locals, NonLocals),
+dump_abstract_goal(Module, Varset, Indent, term_conj(Goals, Locals, NonLocals),
         !IO)  :-
     indent_line(Indent, !IO),
     io.write_string("conj(\n", !IO),
@@ -706,8 +714,8 @@ dump_abstract_goal(Module, Varset, Indent, conj(Goals, Locals, NonLocals),
     indent_line(Indent, !IO),
     io.write_string(")\n", !IO).
 
-dump_abstract_goal(Module, Varset, Indent, call(PPId0, _, CallVars, _, _, _, 
-        CallPoly), !IO) :-
+dump_abstract_goal(Module, Varset, Indent,
+        term_call(PPId0, _, CallVars, _, _, _, CallPoly), !IO) :-
     indent_line(Indent, !IO),
     io.write_string("call: ", !IO),
     PPId0 = real(PPId),
@@ -725,7 +733,7 @@ dump_abstract_goal(Module, Varset, Indent, call(PPId0, _, CallVars, _, _, _,
     indent_line(Indent, !IO),
     io.write_string("]\n", !IO).
     
-dump_abstract_goal(_, Varset, Indent, primitive(Poly, _, _), !IO) :-
+dump_abstract_goal(_, Varset, Indent, term_primitive(Poly, _, _), !IO) :-
     indent_line(Indent, !IO),
     io.write_string("[\n", !IO),
     polyhedron.write_polyhedron(Poly, Varset, !IO),
@@ -757,13 +765,13 @@ simplify_conjuncts(Goals0, Goals) :-
         % If the list of conjuncts starts with two primitives
         % join them together into a single primitive.
         Goals0 = [GoalA, GoalB | OtherGoals],
-        GoalA  = primitive(PolyA,  LocalsA, NonLocalsA),
-        GoalB  = primitive(PolyB,  LocalsB, NonLocalsB)
+        GoalA  = term_primitive(PolyA,  LocalsA, NonLocalsA),
+        GoalB  = term_primitive(PolyB,  LocalsB, NonLocalsB)
     ->  
         Poly = polyhedron.intersection(PolyA, PolyB),
         Locals = LocalsA ++ LocalsB,
         NonLocals = NonLocalsA ++ NonLocalsB, 
-        Goal = primitive(Poly, Locals, NonLocals),
+        Goal = term_primitive(Poly, Locals, NonLocals),
         Goals1 = [Goal | OtherGoals],
         simplify_conjuncts(Goals1, Goals)
     ;

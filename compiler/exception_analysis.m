@@ -284,7 +284,7 @@ combine_individual_proc_results(ProcResults @ [_|_], SCC_Result,
             EResult ^ status \= may_throw(_),
         some [CResult] (
             list.member(CResult, ProcResults),
-            CResult ^ status = conditional
+            CResult ^ status = throw_conditional
         )
     ->
         SCC_Result = handle_mixed_conditional_scc(ProcResults)
@@ -500,10 +500,10 @@ check_goal_for_exceptions_2(_, _, Goal, _, !Result, !ModuleInfo ,!IO) :-
     % *always* be optimal (since we always rely on user annotation), so
     % there's nothing to do here.
     %
-    MayCallMercury = may_call_mercury(Attributes),
+    MayCallMercury = get_may_call_mercury(Attributes),
     ( 
-        MayCallMercury = may_call_mercury,
-        may_throw_exception(Attributes) = MayThrowException,
+        MayCallMercury = proc_may_call_mercury,
+        get_may_throw_exception(Attributes) = MayThrowException,
         %
         % We do not need to deal with erroneous predicates here because they
         % will have already been processed.
@@ -512,10 +512,10 @@ check_goal_for_exceptions_2(_, _, Goal, _, !Result, !ModuleInfo ,!IO) :-
             MayThrowException = default_exception_behaviour,
             !:Result = !.Result ^ status := may_throw(user_exception)
         ;
-            MayThrowException = will_not_throw_exception 
+            MayThrowException = proc_will_not_throw_exception 
         )
     ;
-        MayCallMercury = will_not_call_mercury
+        MayCallMercury = proc_will_not_call_mercury
     ).
 check_goal_for_exceptions_2(_, _, shorthand(_), _, _, _, _, _, _, _) :-
     unexpected(this_file,
@@ -557,7 +557,7 @@ check_goals_for_exceptions(SCC, VarTypes, [ Goal | Goals ], !Result,
         CurrentStatus = may_throw(user_exception)
     ;
         ( CurrentStatus = will_not_throw
-        ; CurrentStatus = conditional
+        ; CurrentStatus = throw_conditional
         ; CurrentStatus = may_throw(type_exception)
         ),
         check_goals_for_exceptions(SCC, VarTypes, Goals, !Result, !ModuleInfo,
@@ -631,7 +631,7 @@ get_closure_exception_status(IntermodAnalysis, SCC, ExceptionInfo, PPId,
     ;
         !.MaybeWillNotThrow = maybe_will_not_throw(Conditionals),
         (
-            ExceptionStatus = conditional,
+            ExceptionStatus = throw_conditional,
             !:MaybeWillNotThrow = maybe_will_not_throw([PPId | Conditionals])
         ;
             ExceptionStatus = will_not_throw
@@ -662,11 +662,13 @@ update_proc_result(CurrentStatus, CurrentAnalysisStatus, !Result) :-
 combine_exception_status(will_not_throw, Y) = Y.
 combine_exception_status(X @ may_throw(user_exception), _) = X.
 combine_exception_status(X @ may_throw(type_exception), will_not_throw) = X.
-combine_exception_status(X @ may_throw(type_exception), conditional) = X.
+combine_exception_status(X @ may_throw(type_exception), throw_conditional) = X.
 combine_exception_status(may_throw(type_exception), Y @ may_throw(_)) = Y.
-combine_exception_status(conditional, conditional) = conditional.
-combine_exception_status(conditional, will_not_throw) = conditional.
-combine_exception_status(conditional, Y @ may_throw(_)) = Y.
+combine_exception_status(throw_conditional, throw_conditional) =
+    throw_conditional.
+combine_exception_status(throw_conditional, will_not_throw) =
+    throw_conditional.
+combine_exception_status(throw_conditional, Y @ may_throw(_)) = Y.
 
 :- pred combine_maybe_analysis_status(maybe(analysis_status)::in,
     maybe(analysis_status)::in, maybe(analysis_status)::out) is det.
@@ -717,7 +719,7 @@ check_nonrecursive_call(SCC, VarTypes, PPId, Args, Imported, !Result,
                 update_proc_result(may_throw(ExceptionType),
                     MaybeAnalysisStatus, !Result)
             ;
-                CalleeExceptionStatus = conditional,
+                CalleeExceptionStatus = throw_conditional,
                 check_vars(!.ModuleInfo, VarTypes, Args, MaybeAnalysisStatus,
                     !Result)
             )
@@ -743,8 +745,7 @@ check_vars(ModuleInfo, VarTypes, Vars, MaybeAnalysisStatus, !Result) :-
             !Result)
     ;
         TypeStatus = type_conditional,
-        update_proc_result(conditional, MaybeAnalysisStatus,
-            !Result)
+        update_proc_result(throw_conditional, MaybeAnalysisStatus, !Result)
     ).
 
 %----------------------------------------------------------------------------%
@@ -776,7 +777,7 @@ handle_mixed_conditional_scc(Results) =
         all [TypeStatus] list.member(Result, Results) =>
             Result ^ rec_calls \= type_may_throw
     ->
-        conditional
+        throw_conditional
     ;
         % Somewhere a type that causes an exception is being
         % passed around the SCC via one or more of the recursive
@@ -1012,9 +1013,9 @@ analysis_name = "exception_analysis".
 :- pred exception_status_more_precise_than(exception_status::in,
     exception_status::in) is semidet.
 
-exception_status_more_precise_than(will_not_throw, conditional).
+exception_status_more_precise_than(will_not_throw, throw_conditional).
 exception_status_more_precise_than(will_not_throw, may_throw(_)).
-exception_status_more_precise_than(conditional, may_throw(_)).
+exception_status_more_precise_than(throw_conditional, may_throw(_)).
 exception_status_more_precise_than(may_throw(type_exception),
     may_throw(user_exception)).
 
@@ -1039,7 +1040,7 @@ answer_from_string(String) = exception_analysis_answer(Status) :-
 :- mode exception_status_to_string(out, in) is semidet.
 
 exception_status_to_string(will_not_throw, "will_not_throw").
-exception_status_to_string(conditional, "conditional").
+exception_status_to_string(throw_conditional, "conditional").
 exception_status_to_string(may_throw(type_exception),
     "may_throw(type_exception)").
 exception_status_to_string(may_throw(user_exception),
@@ -1163,8 +1164,8 @@ record_exception_analysis_result(ModuleInfo, Status, ResultStatus, PPId,
 should_write_exception_info(ModuleInfo, PredId, PredInfo, ShouldWrite) :-
     pred_info_get_import_status(PredInfo, ImportStatus),
     (   
-        ( ImportStatus = exported 
-        ; ImportStatus = opt_exported 
+        ( ImportStatus = status_exported 
+        ; ImportStatus = status_opt_exported 
         ),
         not is_unify_or_compare_pred(PredInfo),
         module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
@@ -1176,8 +1177,8 @@ should_write_exception_info(ModuleInfo, PredId, PredInfo, ShouldWrite) :-
         % back in.
         %
         pred_info_get_markers(PredInfo, Markers),
-        not check_marker(Markers, class_instance_method),
-        not check_marker(Markers, named_class_instance_method)
+        not check_marker(Markers, marker_class_instance_method),
+        not check_marker(Markers, marker_named_class_instance_method)
     ->
         ShouldWrite = yes
     ;
@@ -1206,8 +1207,7 @@ make_optimization_interface(ModuleInfo, !IO) :-
     module_info_get_name(ModuleInfo, ModuleName),
     module_name_to_file_name(ModuleName, ".opt.tmp", no, OptFileName, !IO),
     globals.io_lookup_bool_option(verbose, Verbose, !IO),
-    maybe_write_string(Verbose,
-        "% Appending exceptions pragmas to `", !IO),
+    maybe_write_string(Verbose, "% Appending exceptions pragmas to `", !IO),
     maybe_write_string(Verbose, OptFileName, !IO),
     maybe_write_string(Verbose, "'...", !IO),
     maybe_flush_output(Verbose, !IO),

@@ -506,10 +506,10 @@ check_generic_call_for_mm_tabling(Details, Result, MaybeAnalysisStatus,
 get_mm_tabling_status_from_attributes(Attributes) = 
     ( 
         (
-            may_call_mm_tabled(Attributes) = will_not_call_mm_tabled
+            get_may_call_mm_tabled(Attributes) = will_not_call_mm_tabled
         ;
-            may_call_mm_tabled(Attributes) = default_calls_mm_tabled,
-            may_call_mercury(Attributes) = will_not_call_mercury
+            get_may_call_mm_tabled(Attributes) = default_calls_mm_tabled,
+            get_may_call_mercury(Attributes) = proc_will_not_call_mercury
         )
     ->
         mm_tabled_will_not_call 
@@ -840,8 +840,8 @@ write_pragma_mm_tabling_info(ModuleInfo, TablingInfo, PredId, !IO) :-
 should_write_mm_tabling_info(ModuleInfo, PredId, PredInfo, ShouldWrite) :-
     pred_info_get_import_status(PredInfo, ImportStatus),
     (   
-        ( ImportStatus = exported 
-        ; ImportStatus = opt_exported 
+        ( ImportStatus = status_exported 
+        ; ImportStatus = status_opt_exported 
         ),
         not is_unify_or_compare_pred(PredInfo),
         module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
@@ -853,8 +853,8 @@ should_write_mm_tabling_info(ModuleInfo, PredId, PredInfo, ShouldWrite) :-
         % back in.
         %
         pred_info_get_markers(PredInfo, Markers),
-        not check_marker(Markers, class_instance_method),
-        not check_marker(Markers, named_class_instance_method)
+        not check_marker(Markers, marker_class_instance_method),
+        not check_marker(Markers, marker_named_class_instance_method)
     ->
         ShouldWrite = yes
     ;

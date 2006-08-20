@@ -70,9 +70,9 @@
     % (The same comment applies to the type `trace_port' in llds.m.)
     %
 :- type external_trace_port
-    --->    call
-    ;       exit
-    ;       fail.
+    --->    external_port_call
+    ;       external_port_exit
+    ;       external_port_fail.
 
     % These ports are different from other internal ports (even neg_enter)
     % because their goal path identifies not the goal we are about to enter
@@ -615,7 +615,7 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
     ),
     TraceCode1 = node([
         pragma_c([], [pragma_c_raw_code(TraceStmt1, cannot_branch_away,
-            live_lvals_info(set.init))], will_not_call_mercury,
+            live_lvals_info(set.init))], proc_will_not_call_mercury,
             no, no, MaybeLayoutLabel, no, yes, no)
             - ""
     ]),
@@ -635,7 +635,7 @@ generate_slot_fill_code(CI, TraceInfo, TraceCode) :-
         TraceCode3 = node([
             pragma_c([], [pragma_c_raw_code(TraceStmt3, cannot_branch_away,
                 live_lvals_info(set.init))],
-                will_not_call_mercury, no, no, no, no, yes, no) - ""
+                proc_will_not_call_mercury, no, no, no, no, yes, no) - ""
         ])
     ;
         MaybeCallTableLval = no,
@@ -888,7 +888,7 @@ generate_event_code(Port, PortInfo, TraceInfo, Context, HideEvent, Label,
                 % eliminate this other label.
             pragma_c([], [pragma_c_raw_code(TraceStmt, cannot_branch_away,
                 live_lvals_info(LiveLvalSet))],
-                may_call_mercury, no, no, yes(Label), no, yes, no) - ""
+                proc_may_call_mercury, no, no, yes(Label), no, yes, no) - ""
         ]),
     Code = tree(ProduceCode, TraceCode).
 
@@ -1021,9 +1021,9 @@ stackref_to_string(Lval, LvalStr) :-
 
 :- func convert_external_port_type(external_trace_port) = trace_port.
 
-convert_external_port_type(call) = call.
-convert_external_port_type(exit) = exit.
-convert_external_port_type(fail) = fail.
+convert_external_port_type(external_port_call) = call.
+convert_external_port_type(external_port_exit) = exit.
+convert_external_port_type(external_port_fail) = fail.
 
 :- func convert_nondet_pragma_port_type(nondet_pragma_trace_port) = trace_port.
 

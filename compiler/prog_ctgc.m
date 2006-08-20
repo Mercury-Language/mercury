@@ -203,7 +203,7 @@ parse_unit_selector(Term) = UnitSelector :-
     ->
         (
             Cons = "sel",
-            Args = [ ConsTerm, ArityTerm, PosTerm ]
+            Args = [ConsTerm, ArityTerm, PosTerm]
         ->
             (
                 sym_name_and_args(ConsTerm, ConsIdName, []),

@@ -812,11 +812,11 @@ mlds_output_c_defns(ModuleName, Indent, ForeignCode, !IO) :-
     io.write_list(ExportDefns, "\n",
         mlds_output_pragma_export_defn(ModuleName, Indent), !IO).
 
-:- pred mlds_output_c_foreign_import_module(int::in, foreign_import_module::in,
-    io::di, io::uo) is det.
+:- pred mlds_output_c_foreign_import_module(int::in,
+    foreign_import_module_info::in, io::di, io::uo) is det.
 
 mlds_output_c_foreign_import_module(Indent, ForeignImport, !IO) :-
-    ForeignImport = foreign_import_module(Lang, Import, _),
+    ForeignImport = foreign_import_module_info(Lang, Import, _),
     (
         Lang = lang_c,
         mlds_output_src_import(Indent,

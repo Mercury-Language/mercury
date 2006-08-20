@@ -721,7 +721,7 @@ check_for_indistinguishable_mode(ModuleInfo, PredId, ProcId1,
             % the declarations for a predicate from the `.int'
             % and `.int0' files, so ignore the error in that case.
             (
-                status_defined_in_this_module(Status, yes)
+                status_defined_in_this_module(Status) = yes
             ;
                 Intermod = no
             ;
@@ -819,7 +819,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         ProcId = invalid_proc_id,
         list.append(ArgVars0, [X0], ArgVars),
         FuncCallUnifyContext = call_unify_context(X0,
-            functor(ConsId0, no, ArgVars0), UnifyContext),
+            rhs_functor(ConsId0, no, ArgVars0), UnifyContext),
         FuncCall = plain_call(PredId, ProcId, ArgVars, not_builtin,
             yes(FuncCallUnifyContext), QualifiedFuncName),
         Goal = FuncCall - GoalInfo0
@@ -846,7 +846,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         get_proc_id(ModuleInfo, PredId, ProcId),
         ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
         ConsId = pred_const(ShroudedPredProcId, EvalMethod),
-        Goal = unify(X0, functor(ConsId, no, ArgVars0), Mode0,
+        Goal = unify(X0, rhs_functor(ConsId, no, ArgVars0), Mode0,
             Unification0, UnifyContext) - GoalInfo0
     ;
         % Is it a call to an automatically generated field access function.
@@ -885,7 +885,7 @@ resolve_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         ;
             ConsId = ConsId0
         ),
-        Goal = unify(X0, functor(ConsId, no, ArgVars0), Mode0,
+        Goal = unify(X0, rhs_functor(ConsId, no, ArgVars0), Mode0,
             Unification0, UnifyContext) - GoalInfo0
     ).
 
@@ -995,7 +995,7 @@ translate_get_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet, FieldName,
 
     goal_info_get_nonlocals(OldGoalInfo, RestrictNonLocals),
     create_atomic_unification_with_nonlocals(TermInputVar,
-        functor(ConsId, no, ArgVars), OldGoalInfo,
+        rhs_functor(ConsId, no, ArgVars), OldGoalInfo,
         RestrictNonLocals, [FieldVar, TermInputVar],
         UnifyContext, FunctorGoal),
     FunctorGoal = GoalExpr - _.
@@ -1034,7 +1034,7 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
         DeconstructRestrictNonLocals),
 
     create_atomic_unification_with_nonlocals(TermInputVar,
-        functor(ConsId0, no, DeconstructArgs), OldGoalInfo,
+        rhs_functor(ConsId0, no, DeconstructArgs), OldGoalInfo,
         DeconstructRestrictNonLocals, [TermInputVar | DeconstructArgs],
         UnifyContext, DeconstructGoal),
 
@@ -1058,7 +1058,7 @@ translate_set_function(ModuleInfo, !PredInfo, !VarTypes, !VarSet,
     ),
 
     create_atomic_unification_with_nonlocals(TermOutputVar,
-        functor(ConsId, no, ConstructArgs), OldGoalInfo,
+        rhs_functor(ConsId, no, ConstructArgs), OldGoalInfo,
         ConstructRestrictNonLocals, [TermOutputVar | ConstructArgs],
         UnifyContext, ConstructGoal),
 
@@ -1302,10 +1302,9 @@ check_for_missing_definitions_2(TypeCtor, TypeDefn, !NumErrors,
         !FoundTypeError, !IO) :-
     (
         get_type_defn_status(TypeDefn, ImportStatus),
-        status_defined_in_this_module(ImportStatus, LocalDefn),
-        LocalDefn = yes,
+        status_defined_in_this_module(ImportStatus) = yes,
         get_type_defn_body(TypeDefn, TypeBody),
-        TypeBody = abstract_type(_)
+        TypeBody = hlds_abstract_type(_)
     ->
         % We expect the builtin types character, float, int and
         % string to have abstract declarations with no

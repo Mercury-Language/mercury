@@ -466,7 +466,7 @@ is_error_important(Error) :-
         % An error is important unless it is a non-explicit unification,
         % i.e. a head unification or a call argument unification.
         ModeContext = mode_context_unify(unify_context(UnifyContext, _), _),
-        UnifyContext \= explicit,
+        UnifyContext \= umc_explicit,
 
         % Except that errors in lambda goals are important even if the
         % unification that creates the lambda goal is an implicit one.
@@ -1162,7 +1162,7 @@ purity_error_lambda_should_be_impure_to_specs(ModeInfo, Vars) = Specs :-
 
 maybe_report_error_no_modes(PredId, PredInfo, ModuleInfo, !IO) :-
     pred_info_get_import_status(PredInfo, ImportStatus),
-    ( ImportStatus = local ->
+    ( ImportStatus = status_local ->
         globals.io_lookup_bool_option(infer_modes, InferModesOpt, !IO),
         (
             InferModesOpt = yes
@@ -1202,7 +1202,7 @@ write_mode_inference_messages([PredId | PredIds], OutputDetism, ModuleInfo,
         !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
-    ( check_marker(Markers, infer_modes) ->
+    ( check_marker(Markers, marker_infer_modes) ->
         ProcIds = pred_info_all_procids(PredInfo),
         pred_info_get_procedures(PredInfo, Procs),
         write_mode_inference_messages_2(ProcIds, Procs, PredInfo,

@@ -687,9 +687,9 @@ check_imported_module(Term, !Info, !IO) :-
         (
             MaybeUsedItemsTerm = yes(UsedItemsTerm),
             Items = [InterfaceItem, VersionNumberItem | OtherItems],
-            InterfaceItem = module_defn(_, interface) - _,
-            VersionNumberItem = module_defn(_,
-                version_numbers(_, VersionNumbers)) - _
+            InterfaceItem = item_module_defn(_, md_interface) - _,
+            VersionNumberItem = item_module_defn(_,
+                md_version_numbers(_, VersionNumbers)) - _
         ->
             check_module_used_items(ImportedModuleName, NeedQualifier,
                 RecordedTimestamp, UsedItemsTerm, VersionNumbers,
@@ -843,10 +843,10 @@ check_instance_version_number(ModuleName, NewInstanceVersionNumbers,
     item_version_numbers::in, item_and_context::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_for_ambiguities(_, _, _, clause(_, _, _, _, _, _) - _, !Info) :-
+check_for_ambiguities(_, _, _, item_clause(_, _, _, _, _, _) - _, !Info) :-
     unexpected(this_file, "check_for_ambiguities: clause").
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
-        type_defn(_, Name, Params, Body, _) - _, !Info) :-
+        item_type_defn(_, Name, Params, Body, _) - _, !Info) :-
     Arity = list.length(Params),
     check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
         VersionNumbers, type_item, Name, Arity, NeedsCheck, !Info),
@@ -858,15 +858,15 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
         NeedsCheck = no
     ).
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
-        inst_defn(_, Name, Params, _, _) - _, !Info) :-
+        item_inst_defn(_, Name, Params, _, _) - _, !Info) :-
     check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
         VersionNumbers, inst_item, Name, list.length(Params), _, !Info).
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
-        mode_defn(_, Name, Params, _, _) - _, !Info) :-
+        item_mode_defn(_, Name, Params, _, _) - _, !Info) :-
     check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
         VersionNumbers, mode_item, Name, list.length(Params), _, !Info).
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
-        typeclass(_, _, Name, Params, Interface, _) - _, !Info) :-
+        item_typeclass(_, _, Name, Params, Interface, _) - _, !Info) :-
     check_for_simple_item_ambiguity(NeedQualifier, OldTimestamp,
         VersionNumbers, typeclass_item, Name, list.length(Params),
         NeedsCheck, !Info),
@@ -880,20 +880,20 @@ check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
         true
     ).
 check_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
-        pred_or_func(_, _, _, PredOrFunc, Name, Args,
+        item_pred_or_func(_, _, _, PredOrFunc, Name, Args,
             WithType, _, _, _, _, _) - _, !Info) :-
     check_for_pred_or_func_item_ambiguity(no, NeedQualifier, OldTimestamp,
         VersionNumbers, PredOrFunc, Name, Args, WithType, !Info).
 check_for_ambiguities(_, _, _,
-        pred_or_func_mode(_, _, _, _, _, _, _) - _, !Info).
-check_for_ambiguities(_, _, _, pragma(_, _) - _, !Info).
-check_for_ambiguities(_, _, _, promise(_, _, _, _) - _, !Info).
-check_for_ambiguities(_, _, _, module_defn(_, _) - _, !Info).
-check_for_ambiguities(_, _, _, instance(_, _, _, _, _, _) - _, !Info).
-check_for_ambiguities(_, _, _, initialise(_, _, _) - _, !Info).
-check_for_ambiguities(_, _, _, finalise(_, _, _) - _, !Info).
-check_for_ambiguities(_, _, _, mutable(_, _, _, _, _, _) - _, !Info).
-check_for_ambiguities(_, _, _, nothing(_) - _, !Info).
+        item_pred_or_func_mode(_, _, _, _, _, _, _) - _, !Info).
+check_for_ambiguities(_, _, _, item_pragma(_, _) - _, !Info).
+check_for_ambiguities(_, _, _, item_promise(_, _, _, _) - _, !Info).
+check_for_ambiguities(_, _, _, item_module_defn(_, _) - _, !Info).
+check_for_ambiguities(_, _, _, item_instance(_, _, _, _, _, _) - _, !Info).
+check_for_ambiguities(_, _, _, item_initialise(_, _, _) - _, !Info).
+check_for_ambiguities(_, _, _, item_finalise(_, _, _) - _, !Info).
+check_for_ambiguities(_, _, _, item_mutable(_, _, _, _, _, _) - _, !Info).
+check_for_ambiguities(_, _, _, item_nothing(_) - _, !Info).
 
 :- pred check_class_method_for_ambiguities(need_qualifier::in, timestamp::in,
     item_version_numbers::in, class_method::in,
@@ -902,13 +902,13 @@ check_for_ambiguities(_, _, _, nothing(_) - _, !Info).
 check_class_method_for_ambiguities(NeedQualifier, OldTimestamp, VersionNumbers,
         ClassMethod, !Info) :-
     (
-        ClassMethod = pred_or_func(_, _, _, PredOrFunc, MethodName,
+        ClassMethod = method_pred_or_func(_, _, _, PredOrFunc, MethodName,
             MethodArgs, MethodWithType, _, _, _, _, _, _),
         check_for_pred_or_func_item_ambiguity(yes, NeedQualifier, OldTimestamp,
             VersionNumbers, PredOrFunc, MethodName, MethodArgs, MethodWithType,
             !Info)
     ;
-        ClassMethod = pred_or_func_mode(_, _, _, _, _, _, _, _)
+        ClassMethod = method_pred_or_func_mode(_, _, _, _, _, _, _, _)
     ).
 
 :- pred item_is_new_or_changed(timestamp::in, item_version_numbers::in,
@@ -1107,14 +1107,17 @@ check_for_pred_or_func_item_ambiguity_2(ItemType, NeedQualifier,
     type_ctor::in, type_defn::in,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
-check_type_defn_ambiguity_with_functor(_, _, abstract_type(_), !Info).
-check_type_defn_ambiguity_with_functor(_, _, eqv_type(_), !Info).
+check_type_defn_ambiguity_with_functor(_, _, parse_tree_abstract_type(_),
+    !Info).
+check_type_defn_ambiguity_with_functor(_, _, parse_tree_eqv_type(_), !Info).
 check_type_defn_ambiguity_with_functor(NeedQualifier, TypeCtor,
-        du_type(Ctors, _), !Info) :-
+        parse_tree_du_type(Ctors, _), !Info) :-
     list.foldl(check_functor_ambiguities(NeedQualifier, TypeCtor), Ctors,
         !Info).
-check_type_defn_ambiguity_with_functor(_, _, foreign_type(_, _, _), !Info).
-check_type_defn_ambiguity_with_functor(_, _, solver_type(_, _), !Info).
+check_type_defn_ambiguity_with_functor(_, _, parse_tree_foreign_type(_, _, _),
+    !Info).
+check_type_defn_ambiguity_with_functor(_, _, parse_tree_solver_type(_, _),
+    !Info).
 
 :- pred check_functor_ambiguities(need_qualifier::in, type_ctor::in,
     constructor::in,

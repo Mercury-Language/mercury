@@ -1371,14 +1371,17 @@ related(GS, VarTypes, ModuleInfo, Var, Related) :-
 
 %-----------------------------------------------------------------------------%
 
-:- inst call ---> plain_call(ground, ground, ground, ground, ground, ground).
-:- inst hlds_call ---> call - ground.
-:- inst call_goal ---> hlds_call - ground.
+:- inst plain_call
+    ---> plain_call(ground, ground, ground, ground, ground, ground).
+:- inst hlds_plain_call
+    ---> plain_call - ground.
+:- inst plain_call_goal
+    ---> hlds_plain_call - ground.
 
     % Do a goal_store_lookup where the result is known to be a call.
     %
-:- pred lookup_call(goal_store::in, goal_id::in, stored_goal::out(call_goal))
-    is det.
+:- pred lookup_call(goal_store::in, goal_id::in,
+    stored_goal::out(plain_call_goal)) is det.
 
 lookup_call(GoalStore, Id, Call - InstMap) :-
     goal_store_lookup(GoalStore, Id, Goal - InstMap),
@@ -1506,7 +1509,7 @@ acc_pred_info(NewTypes, OutVars, NewProcInfo, OrigPredId, OrigPredInfo,
     OutVarNums = list.map(term.var_to_int, OutVars),
     Origin = transformed(accumulator(OutVarNums), OldOrigin, OrigPredId),
     pred_info_create(ModuleName, SymName, PredOrFunc, PredContext, Origin,
-        local, Markers, Types, TypeVarSet, ExistQVars, ClassContext,
+        status_local, Markers, Types, TypeVarSet, ExistQVars, ClassContext,
         Assertions, NewProcInfo, NewProcId, NewPredInfo).
 
 %-----------------------------------------------------------------------------%
@@ -1535,8 +1538,9 @@ create_goal(RecCallId, Accs, AccPredId, AccProcId, AccName, Substs,
     % to the accumulator version of the call, which can have the
     % substitutions applied to it easily.
     %
-:- func create_acc_call(hlds_goal::in(hlds_call), prog_vars::in, pred_id::in,
-    proc_id::in, sym_name::in) = (hlds_goal::out(hlds_call)) is det.
+:- func create_acc_call(hlds_goal::in(hlds_plain_call), prog_vars::in,
+    pred_id::in, proc_id::in, sym_name::in) = (hlds_goal::out(hlds_plain_call))
+    is det.
 
 create_acc_call(OrigCall, Accs, AccPredId, AccProcId, AccName) = Call :-
     OrigCall = plain_call(_PredId, _ProcId, Args, Builtin, Context, _Name)
@@ -1663,8 +1667,8 @@ acc_unification(Out - Acc, Goal) :-
     out_mode(LHSMode),
     in_mode(RHSMode),
     UniMode = LHSMode - RHSMode,
-    Context = unify_context(explicit, []),
-    Expr = unify(Out, var(Acc), UniMode, assign(Out,Acc), Context),
+    Context = unify_context(umc_explicit, []),
+    Expr = unify(Out, rhs_var(Acc), UniMode, assign(Out,Acc), Context),
     set.list_to_set([Out,Acc], NonLocalVars),
     instmap_delta_from_assoc_list([Out - ground(shared, none)], InstMapDelta),
     goal_info_init(NonLocalVars, InstMapDelta, detism_det, purity_pure, Info),

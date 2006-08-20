@@ -424,9 +424,9 @@ build_abstract_goal_2(Goal - _, AbstractGoal, !Info) :-
     % being incorrect here.
     %
     build_abstract_goal(Else, AbstractElse, !Info), 
-    AbstractFailureGoal = conj([CondFail, AbstractElse], [], []),
+    AbstractFailureGoal = term_conj([CondFail, AbstractElse], [], []),
     AbstractDisjuncts = [AbstractSuccessGoal, AbstractFailureGoal],
-    AbstractGoal = disj(AbstractDisjuncts, 2, [], []).
+    AbstractGoal = term_disj(AbstractDisjuncts, 2, [], []).
 
 build_abstract_goal_2(scope(_, Goal)-_, AbstractGoal, !Info) :- 
     build_abstract_goal(Goal, AbstractGoal, !Info).
@@ -470,10 +470,10 @@ build_abstract_goal_2(Goal - GoalInfo, AbstractGoal, !Info) :-
     Constraints = make_arg_constraints(SizeVars, !.Info ^ zeros),
     ( 
         ( 
-            terminates(Attrs) = terminates
+            get_terminates(Attrs) = proc_terminates
         ; 
-            terminates(Attrs) = depends_on_mercury_calls,
-            may_call_mercury(Attrs) = will_not_call_mercury
+            get_terminates(Attrs) = depends_on_mercury_calls,
+            get_may_call_mercury(Attrs) = proc_will_not_call_mercury
         )
     ->
         true
@@ -483,7 +483,7 @@ build_abstract_goal_2(Goal - GoalInfo, AbstractGoal, !Info) :-
         info_update_errors(Error, !Info)
     ),
     Polyhedron = polyhedron.from_constraints(Constraints),
-    AbstractGoal = primitive(Polyhedron, [], []).
+    AbstractGoal = term_primitive(Polyhedron, [], []).
 
     % XXX At the moment all higher-order calls are eventually treated
     % as an error.  We do not record them as a normal type of error
@@ -494,7 +494,7 @@ build_abstract_goal_2(Goal - GoalInfo, AbstractGoal, !Info) :-
 build_abstract_goal_2(Goal - GoalInfo, AbstractGoal, !Info) :-
     Goal = generic_call(_, _, _, _),
     goal_info_get_context(GoalInfo, Context),
-    AbstractGoal = primitive(polyhedron.universe, [], []),
+    AbstractGoal = term_primitive(polyhedron.universe, [], []),
     info_update_ho_info(Context, !Info).
 
     % shorthand/1 goals ought to have been transformed away by
@@ -514,7 +514,7 @@ build_abstract_goal_2(shorthand(_) - _, _, _, _) :-
 build_abstract_conj(Conjuncts, AbstractGoal, !Info) :-
     list.map_foldl(build_abstract_goal,Conjuncts, AbstractGoals0, !Info),
     AbstractGoals = simplify_conjuncts(AbstractGoals0),
-    AbstractGoal = conj(AbstractGoals, [], []).
+    AbstractGoal = term_conj(AbstractGoals, [], []).
 
 %------------------------------------------------------------------------------%
 %
@@ -550,7 +550,7 @@ build_recursive_call(CalleePPId, CallerArgs, Context, AbstractGoal, !Info) :-
     CallerArgConstrs = make_arg_constraints(CallerArgs, CallerZeros), 
     CallerArgPoly = polyhedron.from_constraints(CallerArgConstrs),
     info_increment_maxcalls(!Info),
-    AbstractGoal = call(real(CalleePPId), Context, CallerArgs,
+    AbstractGoal = term_call(real(CalleePPId), Context, CallerArgs,
         CallerZeros, [], [], CallerArgPoly). 
 
     % For non-recursive calls look up the argument size constraints for the
@@ -620,7 +620,7 @@ build_non_recursive_call(CalleePPId, CallerArgs, Context, AbstractGoal,
         )
     ),
     Polyhedron = polyhedron.from_constraints(Constraints),
-    AbstractGoal = primitive(Polyhedron, [], []).
+    AbstractGoal = term_primitive(Polyhedron, [], []).
     
 %------------------------------------------------------------------------------%
 %
@@ -655,14 +655,14 @@ build_abstract_disj(Type, AbstractGoal, !Info) :-
     ),
     ( 
         AbstractGoals = [],
-        AbstractGoal = primitive(polyhedron.universe, [], [])
+        AbstractGoal = term_primitive(polyhedron.universe, [], [])
     ;
         AbstractGoals = [Goal],
         AbstractGoal = Goal
     ;
         AbstractGoals = [_, _ | _],
         DisjSize = list.length(AbstractGoals),
-        AbstractGoal = disj(AbstractGoals, DisjSize, [], [])
+        AbstractGoal = term_disj(AbstractGoals, DisjSize, [], [])
     ).
 
 :- pred build_abstract_disj_acc(hlds_goals::in, abstract_goals::in, 
@@ -730,8 +730,8 @@ build_abstract_switch_acc(SwitchProgVar, [case(ConsId, Goal) | Cases],
             ExtraConstr = []
         ),
         ExtraPoly = polyhedron.from_constraints(ExtraConstr),
-        ExtraGoal = primitive(ExtraPoly, [], []),
-        AbstractGoal = conj([ExtraGoal, AbstractGoal0], [], [])
+        ExtraGoal = term_primitive(ExtraPoly, [], []),
+        AbstractGoal = term_conj([ExtraGoal, AbstractGoal0], [], [])
     ),
     list.cons(AbstractGoal, !AbstractGoals),
     build_abstract_switch_acc(SwitchProgVar, Cases, !AbstractGoals, !Info). 
@@ -918,7 +918,7 @@ build_abstract_simple_or_assign_unify(LeftProgVar, RightProgVar,
     %
 :- func build_goal_from_unify(constraints) = abstract_goal.
 
-build_goal_from_unify(Constraints) = primitive(Polyhedron, [], []) :-
+build_goal_from_unify(Constraints) = term_primitive(Polyhedron, [], []) :-
     Polyhedron = polyhedron.from_constraints(Constraints),
     ( if    polyhedron.is_empty(Polyhedron)
       then  unexpected(this_file, "empty polyhedron from unification.")
@@ -1038,7 +1038,7 @@ find_failure_constraint_for_goal(Goal, Info) = AbstractGoal :-
         Constraints = make_arg_constraints(NonLocalSizeVars,
             Info ^ zeros),
         FailPoly = polyhedron.from_constraints(Constraints),
-        AbstractGoal = primitive(FailPoly, [], [])
+        AbstractGoal = term_primitive(FailPoly, [], [])
     ).
 
 :- pred find_failure_constraint_for_goal_2(hlds_goal::in,
@@ -1075,12 +1075,12 @@ find_failure_constraint_for_goal_2(Goal - _, Info, AbstractGoal) :-
         )
     ),
     FailurePolyhedron = polyhedron.from_constraints(FailureConstraints),
-    AbstractGoal = primitive(FailurePolyhedron, [], []).
+    AbstractGoal = term_primitive(FailurePolyhedron, [], []).
 
 find_failure_constraint_for_goal_2(Goal @ unify(_, _, _, _, _) - _, Info, 
         AbstractGoal) :-
     find_deconstruct_fail_bound(Goal, Info, Polyhedron),
-    AbstractGoal = primitive(Polyhedron, [], []).   
+    AbstractGoal = term_primitive(Polyhedron, [], []).   
 
     % Given a deconstruction unification and assuming that it has
     % failed, find a bound on the size of the variable being

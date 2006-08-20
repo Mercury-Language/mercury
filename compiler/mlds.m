@@ -904,7 +904,7 @@
 :- type mlds_foreign_code
     --->    mlds_foreign_code(
                 foreign_decl_info,
-                foreign_import_module_info,
+                foreign_import_module_info_list,
                 list(user_foreign_code),
                 list(mlds_pragma_export)
             ).
@@ -1769,7 +1769,7 @@ mercury_type_to_mlds_type(ModuleInfo, Type) = MLDSType :-
         module_info_get_type_table(ModuleInfo, Types),
         map.search(Types, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_body(TypeDefn, Body),
-        Body = foreign_type(foreign_type_body(MaybeIL, MaybeC, MaybeJava))
+        Body = hlds_foreign_type(foreign_type_body(MaybeIL, MaybeC, MaybeJava))
     ->
         module_info_get_globals(ModuleInfo, Globals),
         globals.get_target(Globals, Target),

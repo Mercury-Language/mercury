@@ -229,7 +229,7 @@ should_io_procedure_be_transformed(TransformAll, Require, BodyGoal,
     ;
         TabledForIoAttrs = [TabledForIoAttr],
         (
-            TabledForIoAttr = not_tabled_for_io,
+            TabledForIoAttr = proc_not_tabled_for_io,
             (
                 Require = yes,
                 \+ any_mercury_builtin_module(PredModuleName)
@@ -244,9 +244,7 @@ should_io_procedure_be_transformed(TransformAll, Require, BodyGoal,
                 ;
                     TransformAll = yes,
                     may_call_mercury_attributes(BodyGoal, MayCallMercuryAttrs),
-                    (
-                        MayCallMercuryAttrs = [may_call_mercury]
-                    ->
+                    ( MayCallMercuryAttrs = [proc_may_call_mercury] ->
                         TransformInfo = no
                     ;
                         TransformInfo = yes(table_io_alone)
@@ -254,16 +252,16 @@ should_io_procedure_be_transformed(TransformAll, Require, BodyGoal,
                 )
             )
         ;
-            TabledForIoAttr = tabled_for_descendant_io,
+            TabledForIoAttr = proc_tabled_for_descendant_io,
             AnnotationIsMissing = no,
             % The procedure itself doesn't do any I/O, so don't transform it.
             TransformInfo = no
         ;
-            TabledForIoAttr = tabled_for_io,
+            TabledForIoAttr = proc_tabled_for_io,
             AnnotationIsMissing = no,
             TransformInfo = yes(table_io_alone)
         ;
-            TabledForIoAttr = tabled_for_io_unitize,
+            TabledForIoAttr = proc_tabled_for_io_unitize,
             AnnotationIsMissing = no,
             TransformInfo = yes(table_io_unitize)
         )
@@ -275,39 +273,39 @@ should_io_procedure_be_transformed(TransformAll, Require, BodyGoal,
             "different tabled_for_io attributes in one procedure")
     ).
 
-:- pred may_call_mercury_attributes(hlds_goal::in, list(may_call_mercury)::out)
-    is det.
+:- pred may_call_mercury_attributes(hlds_goal::in,
+    list(proc_may_call_mercury)::out) is det.
 
 may_call_mercury_attributes(Goal, MayCallMercuryAttrs) :-
     solutions.solutions(subgoal_may_call_mercury_attribute(Goal),
         MayCallMercuryAttrs).
 
 :- pred subgoal_may_call_mercury_attribute(hlds_goal::in,
-    may_call_mercury::out) is nondet.
+    proc_may_call_mercury::out) is nondet.
 
 subgoal_may_call_mercury_attribute(Goal, MayCallMercuryAttr) :-
     some [SubGoal, Attrs] (
         goal_contains_goal(Goal, SubGoal),
         SubGoal = call_foreign_proc(Attrs, _, _, _, _, _, _) - _,
-        MayCallMercuryAttr = may_call_mercury(Attrs)
+        MayCallMercuryAttr = get_may_call_mercury(Attrs)
     ).
 
-:- pred tabled_for_io_attributes(hlds_goal::in, list(tabled_for_io)::out)
+:- pred tabled_for_io_attributes(hlds_goal::in, list(proc_tabled_for_io)::out)
     is det.
 
 tabled_for_io_attributes(Goal, TabledForIoAttrs) :-
     solutions.solutions(subgoal_tabled_for_io_attribute(Goal),
         TabledForIoAttrs).
 
-:- pred subgoal_tabled_for_io_attribute(hlds_goal::in, tabled_for_io::out)
+:- pred subgoal_tabled_for_io_attribute(hlds_goal::in, proc_tabled_for_io::out)
     is nondet.
 
 subgoal_tabled_for_io_attribute(Goal, TabledForIoAttr) :-
     some [SubGoal, Attrs] (
         goal_contains_goal(Goal, SubGoal),
         SubGoal = call_foreign_proc(Attrs, _, _, _, _, _, _) - _,
-        TabledForIoAttr = tabled_for_io(Attrs),
-        \+ TabledForIoAttr = not_tabled_for_io
+        TabledForIoAttr = get_tabled_for_io(Attrs),
+        \+ TabledForIoAttr = proc_not_tabled_for_io
     ).
 
 :- pred report_missing_tabled_for_io(module_info::in, pred_info::in,
@@ -1211,7 +1209,7 @@ create_new_io_goal(OrigGoal, TableDecl, Unitize, TableIoStates,
     ModuleInfo0 = !.TableInfo ^ table_module_info,
     module_info_pred_info(ModuleInfo0, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
-    ( check_marker(Markers, user_marked_no_inline) ->
+    ( check_marker(Markers, marker_user_marked_no_inline) ->
         %
         % If the predicate should not be inlined, then we create a new
         % predicate with the same body as the original predicate, which is
@@ -1810,7 +1808,7 @@ clone_pred_info(OrigPredId, PredInfo0, HeadVars, NumberedOutputVars,
     PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
     pred_info_context(PredInfo0, Context),
     % The generator is local even if the original predicate is exported.
-    Status = local,
+    Status = status_local,
     pred_info_get_goal_type(PredInfo0, GoalType),
     pred_info_get_markers(PredInfo0, Markers0),
     pred_info_get_arg_types(PredInfo0, ArgTypes0),
@@ -1879,8 +1877,8 @@ clone_proc_and_create_call(PredInfo, ProcId, CallExpr, !ModuleInfo) :-
     pred_info_get_assertions(PredInfo, PredAssertions),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_create(ModuleName, NewPredName, PredOrFunc, PredContext,
-        created(io_tabling), local, Markers, PredArgTypes, PredTypeVarSet,
-        PredExistQVars, PredClassContext, PredAssertions,
+        created(io_tabling), status_local, Markers, PredArgTypes,
+        PredTypeVarSet, PredExistQVars, PredClassContext, PredAssertions,
         NewProcInfo, NewProcId, NewPredInfo),
     module_info_get_predicate_table(!.ModuleInfo, PredicateTable0),
     predicate_table_insert(NewPredInfo, NewPredId,
@@ -1910,27 +1908,27 @@ filter_marker(Marker) :-
 
 :- func keep_marker(marker) = bool.
 
-keep_marker(stub) = no.
-keep_marker(infer_type) = no.
-keep_marker(infer_modes) = no.
-keep_marker(obsolete) = no.
-keep_marker(user_marked_inline) = no.
-keep_marker(user_marked_no_inline) = no.
-keep_marker(heuristic_inline) = no.
-keep_marker(class_method) = no.
-keep_marker(class_instance_method) = no.
-keep_marker(named_class_instance_method) = no.
-keep_marker(is_impure) = yes.
-keep_marker(is_semipure) = yes.
-keep_marker(promised_pure) = yes.
-keep_marker(promised_semipure) = yes.
-keep_marker(promised_equivalent_clauses) = yes.
-keep_marker(terminates) = yes.
-keep_marker(does_not_terminate) = yes.
-keep_marker(check_termination) = no.
-keep_marker(calls_are_fully_qualified) = yes.
-keep_marker(mode_check_clauses) = yes.
-keep_marker(may_have_parallel_conj) = yes.
+keep_marker(marker_stub) = no.
+keep_marker(marker_infer_type) = no.
+keep_marker(marker_infer_modes) = no.
+keep_marker(marker_obsolete) = no.
+keep_marker(marker_user_marked_inline) = no.
+keep_marker(marker_user_marked_no_inline) = no.
+keep_marker(marker_heuristic_inline) = no.
+keep_marker(marker_class_method) = no.
+keep_marker(marker_class_instance_method) = no.
+keep_marker(marker_named_class_instance_method) = no.
+keep_marker(marker_is_impure) = yes.
+keep_marker(marker_is_semipure) = yes.
+keep_marker(marker_promised_pure) = yes.
+keep_marker(marker_promised_semipure) = yes.
+keep_marker(marker_promised_equivalent_clauses) = yes.
+keep_marker(marker_terminates) = yes.
+keep_marker(marker_does_not_terminate) = yes.
+keep_marker(marker_check_termination) = no.
+keep_marker(marker_calls_are_fully_qualified) = yes.
+keep_marker(marker_mode_check_clauses) = yes.
+keep_marker(marker_may_have_parallel_conj) = yes.
 
 %-----------------------------------------------------------------------------%
 
@@ -3512,13 +3510,13 @@ var_is_io_state(VarTypes, Var) :-
 
 tabling_c_attributes = Attrs :-
     Attrs0 = default_attributes(lang_c),
-    set_may_call_mercury(will_not_call_mercury, Attrs0, Attrs).
+    set_may_call_mercury(proc_will_not_call_mercury, Attrs0, Attrs).
 
 :- func make_generator_c_attributes = pragma_foreign_proc_attributes.
 
 make_generator_c_attributes = Attrs :-
     Attrs0 = default_attributes(lang_c),
-    set_may_call_mercury(may_call_mercury, Attrs0, Attrs).
+    set_may_call_mercury(proc_may_call_mercury, Attrs0, Attrs).
 
 :- func dummy_type_var = mer_type.
 

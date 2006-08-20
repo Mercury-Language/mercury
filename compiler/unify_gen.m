@@ -271,13 +271,13 @@ generate_tag_test_rval(Var, ConsId, TestRval, Code, !CI) :-
 
 generate_tag_test_rval_2(ConsTag, Rval, TestRval) :-
     (
-        ConsTag = string_constant(String),
+        ConsTag = string_tag(String),
         TestRval = binop(str_eq, Rval, const(string_const(String)))
     ;
-        ConsTag = float_constant(Float),
+        ConsTag = float_tag(Float),
         TestRval = binop(float_eq, Rval, const(float_const(Float)))
     ;
-        ConsTag = int_constant(Int),
+        ConsTag = int_tag(Int),
         TestRval = binop(eq, Rval, const(int_const(Int)))
     ;
         ConsTag = pred_closure_tag(_, _, _),
@@ -285,13 +285,13 @@ generate_tag_test_rval_2(ConsTag, Rval, TestRval) :-
         % during mode checking.
         unexpected(this_file, "Attempted higher-order unification")
     ;
-        ConsTag = type_ctor_info_constant(_, _, _),
+        ConsTag = type_ctor_info_tag(_, _, _),
         unexpected(this_file, "Attempted type_ctor_info unification")
     ;
-        ConsTag = base_typeclass_info_constant(_, _, _),
+        ConsTag = base_typeclass_info_tag(_, _, _),
         unexpected(this_file, "Attempted base_typeclass_info unification")
     ;
-        ConsTag = tabling_info_constant(_, _),
+        ConsTag = tabling_info_tag(_, _),
         unexpected(this_file, "Attempted tabling_info unification")
     ;
         ConsTag = deep_profiling_proc_layout_tag(_, _),
@@ -304,7 +304,7 @@ generate_tag_test_rval_2(ConsTag, Rval, TestRval) :-
         ConsTag = no_tag,
         TestRval = const(true)
     ;
-        ConsTag = single_functor,
+        ConsTag = single_functor_tag,
         TestRval = const(true)
     ;
         ConsTag = unshared_tag(UnsharedTag),
@@ -325,14 +325,14 @@ generate_tag_test_rval_2(ConsTag, Rval, TestRval) :-
         ConstStag = mkword(Bits, unop(mkbody, const(int_const(Num)))),
         TestRval = binop(eq, Rval, ConstStag)
     ;
-        ConsTag = reserved_address(RA),
+        ConsTag = reserved_address_tag(RA),
         TestRval = binop(eq, Rval, generate_reserved_address(RA))
     ;
-        ConsTag = shared_with_reserved_addresses(ReservedAddrs, ThisTag),
+        ConsTag = shared_with_reserved_addresses_tag(ReservedAddrs, ThisTag),
         % We first check that the Rval doesn't match any of the ReservedAddrs,
         % and then check that it matches ThisTag.
         CheckReservedAddrs = (func(RA, InnerTestRval0) = InnerTestRval :-
-            generate_tag_test_rval_2(reserved_address(RA), Rval, EqualRA),
+            generate_tag_test_rval_2(reserved_address_tag(RA), Rval, EqualRA),
             InnerTestRval = binop(logical_and,
                 unop(logical_not, EqualRA), InnerTestRval0)
         ),
@@ -379,15 +379,15 @@ generate_construction(Var, ConsId, Args, Modes, TakeAddr, MaybeSize, GoalInfo,
 generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
         GoalInfo, Code, !CI) :-
     (
-        ConsTag = string_constant(String),
+        ConsTag = string_tag(String),
         code_info.assign_const_to_var(Var, const(string_const(String)), !CI),
         Code = empty
     ;
-        ConsTag = int_constant(Int),
+        ConsTag = int_tag(Int),
         code_info.assign_const_to_var(Var, const(int_const(Int)), !CI),
         Code = empty
     ;
-        ConsTag = float_constant(Float),
+        ConsTag = float_tag(Float),
         code_info.assign_const_to_var(Var, const(float_const(Float)), !CI),
         Code = empty
     ;
@@ -410,7 +410,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
                 "generate_construction_2: no_tag: arity != 1")
         )
     ;
-        ConsTag = single_functor,
+        ConsTag = single_functor_tag,
         % Treat single_functor the same as unshared_tag(0).
         generate_construction_2(unshared_tag(0),
             Var, Args, Modes, TakeAddr, MaybeSize, GoalInfo, Code, !CI)
@@ -438,7 +438,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
             mkword(Bits1, unop(mkbody, const(int_const(Num1)))), !CI),
         Code = empty
     ;
-        ConsTag = type_ctor_info_constant(ModuleName, TypeName, TypeArity),
+        ConsTag = type_ctor_info_tag(ModuleName, TypeName, TypeArity),
         expect(unify(Args, []), this_file,
             "generate_construction_2: type_ctor_info constant has args"),
         RttiTypeCtor = rtti_type_ctor(ModuleName, TypeName, TypeArity),
@@ -447,7 +447,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
             const(data_addr_const(DataAddr, no)), !CI),
         Code = empty
     ;
-        ConsTag = base_typeclass_info_constant(ModuleName, ClassId, Instance),
+        ConsTag = base_typeclass_info_tag(ModuleName, ClassId, Instance),
         expect(unify(Args, []), this_file,
             "generate_construction_2: base_typeclass_info constant has args"),
         TCName = generate_class_name(ClassId),
@@ -456,7 +456,7 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
                 base_typeclass_info(ModuleName, Instance))), no)), !CI),
         Code = empty
     ;
-        ConsTag = tabling_info_constant(PredId, ProcId),
+        ConsTag = tabling_info_tag(PredId, ProcId),
         expect(unify(Args, []), this_file,
             "generate_construction_2: tabling_info constant has args"),
         code_info.get_module_info(!.CI, ModuleInfo),
@@ -495,13 +495,13 @@ generate_construction_2(ConsTag, Var, Args, Modes, TakeAddr, MaybeSize,
             const(data_addr_const(DataAddr, no)), !CI),
         Code = empty
     ;
-        ConsTag = reserved_address(RA),
+        ConsTag = reserved_address_tag(RA),
         expect(unify(Args, []), this_file,
             "generate_construction_2: reserved_address constant has args"),
         code_info.assign_const_to_var(Var, generate_reserved_address(RA), !CI),
         Code = empty
     ;
-        ConsTag = shared_with_reserved_addresses(_RAs, ThisTag),
+        ConsTag = shared_with_reserved_addresses_tag(_RAs, ThisTag),
         % For shared_with_reserved_address, the sharing is only important
         % for tag tests, not for constructions, so here we just recurse
         % on the real representation.
@@ -906,16 +906,16 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
     % For constants, if the deconstruction is det, then we already know
     % the value of the constant, so Code = empty.
     (
-        ( Tag = string_constant(_String)
-        ; Tag = int_constant(_Int)
-        ; Tag = float_constant(_Float)
+        ( Tag = string_tag(_String)
+        ; Tag = int_tag(_Int)
+        ; Tag = float_tag(_Float)
         ; Tag = pred_closure_tag(_, _, _)
-        ; Tag = type_ctor_info_constant(_, _, _)
-        ; Tag = base_typeclass_info_constant(_, _, _)
-        ; Tag = tabling_info_constant(_, _)
+        ; Tag = type_ctor_info_tag(_, _, _)
+        ; Tag = base_typeclass_info_tag(_, _, _)
+        ; Tag = tabling_info_tag(_, _)
         ; Tag = deep_profiling_proc_layout_tag(_, _)
         ; Tag = shared_local_tag(_Ptag, _Sectag2)
-        ; Tag = reserved_address(_RA)
+        ; Tag = reserved_address_tag(_RA)
         ),
         Code = empty
     ;
@@ -954,7 +954,7 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
                 "generate_det_deconstruction: no_tag: arity != 1")
         )
     ;
-        Tag = single_functor,
+        Tag = single_functor_tag,
         % Treat single_functor the same as unshared_tag(0).
         generate_det_deconstruction_2(Var, Cons, Args, Modes, unshared_tag(0),
             Code, !CI)
@@ -974,7 +974,7 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
         % For shared_with_reserved_address, the sharing is only important
         % for tag tests, not for det deconstructions, so here we just recurse
         % on the real representation.
-        Tag = shared_with_reserved_addresses(_RAs, ThisTag),
+        Tag = shared_with_reserved_addresses_tag(_RAs, ThisTag),
         generate_det_deconstruction_2(Var, Cons, Args, Modes, ThisTag, Code,
             !CI)
     ).
@@ -986,8 +986,8 @@ generate_det_deconstruction_2(Var, Cons, Args, Modes, Tag, Code, !CI) :-
     % followed by a deterministic deconstruction.
     %
 :- pred generate_semi_deconstruction(prog_var::in, cons_id::in,
-    list(prog_var)::in, list(uni_mode)::in,
-    code_tree::out, code_info::in, code_info::out) is det.
+    list(prog_var)::in, list(uni_mode)::in, code_tree::out,
+    code_info::in, code_info::out) is det.
 
 generate_semi_deconstruction(Var, Tag, Args, Modes, Code, !CI) :-
     generate_tag_test(Var, Tag, branch_on_success, SuccLab, TagTestCode, !CI),

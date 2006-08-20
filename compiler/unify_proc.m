@@ -292,7 +292,7 @@ request_unify(UnifyId, InstVarSet, Determinism, Context, !ModuleInfo) :-
                 TypeName = qualified(TypeModuleName, _),
                 module_info_get_name(!.ModuleInfo, ModuleName),
                 ModuleName = TypeModuleName,
-                TypeBody = abstract_type(_)
+                TypeBody = hlds_abstract_type(_)
             ;
                 type_ctor_has_hand_defined_rtti(TypeCtor, TypeBody)
             )
@@ -511,13 +511,13 @@ add_lazily_generated_unify_pred(TypeCtor, PredId, !ModuleInfo) :-
 
         CtorSymName = unqualified("{}"),
         ConsId = cons(CtorSymName, TupleArity),
-        map.from_assoc_list([ConsId - single_functor], ConsTagValues),
+        map.from_assoc_list([ConsId - single_functor_tag], ConsTagValues),
         UnifyPred = no,
         IsEnum = not_enum_or_dummy,
         IsForeign = no,
         ReservedTag = no,
         IsForeign = no,
-        TypeBody = du_type([Ctor], ConsTagValues, IsEnum, UnifyPred,
+        TypeBody = hlds_du_type([Ctor], ConsTagValues, IsEnum, UnifyPred,
             ReservedTag, IsForeign),
         construct_type(TypeCtor, TupleArgTypes, Type),
 
@@ -532,10 +532,10 @@ add_lazily_generated_unify_pred(TypeCtor, PredId, !ModuleInfo) :-
     ->
         % If the unification predicate has another status it should
         % already have been generated.
-        UnifyPredStatus = pseudo_imported,
+        UnifyPredStatus = status_pseudo_imported,
         Item = clauses
     ;
-        UnifyPredStatus = imported(implementation),
+        UnifyPredStatus = status_imported(import_locn_implementation),
         Item = declaration
     ),
     add_lazily_generated_special_pred(spec_pred_unify, Item, TVarSet, Type,
@@ -547,7 +547,7 @@ add_lazily_generated_compare_pred_decl(TypeCtor, PredId, !ModuleInfo) :-
 
     % If the compare predicate has another status, it should already have been
     % generated.
-    ImportStatus = imported(implementation),
+    ImportStatus = status_imported(import_locn_implementation),
     add_lazily_generated_special_pred(spec_pred_compare, declaration, TVarSet,
         Type, TypeCtor, TypeBody, Context, ImportStatus, PredId, !ModuleInfo).
 
@@ -697,7 +697,7 @@ generate_initialise_clauses(_Type, TypeBody, X, Context, Clauses, !Info) :-
         % If this is an equivalence type then we just generate a call
         % to the initialisation pred of the type on the RHS of the equivalence
         % and cast the result back to the type on the LHS of the equivalence.
-        TypeBody = eqv_type(EqvType)
+        TypeBody = hlds_eqv_type(EqvType)
     ->
         goal_info_init(Context, GoalInfo),
         make_fresh_named_var_from_type(EqvType, "PreCast_HeadVar", 1, X0,
@@ -744,11 +744,10 @@ generate_unify_clauses(Type, TypeBody, H1, H2, Context, Clauses, !Info) :-
             Clauses, !Info)
     ;
         (
-            Ctors = TypeBody ^ du_type_ctors,
-            EnumDummy = TypeBody ^ du_type_is_enum,
+            TypeBody = hlds_du_type(Ctors, _, EnumDummy, _, _, _),
             (
                 EnumDummy = is_enum,
-                make_simple_test(H1, H2, explicit, [], Goal),
+                make_simple_test(H1, H2, umc_explicit, [], Goal),
                 quantify_clauses_body([H1, H2], Goal, Context, Clauses, !Info)
             ;
                 EnumDummy = is_dummy,
@@ -761,25 +760,25 @@ generate_unify_clauses(Type, TypeBody, H1, H2, Context, Clauses, !Info) :-
                     !Info)
             )
         ;
-            TypeBody = eqv_type(EqvType),
+            TypeBody = hlds_eqv_type(EqvType),
             generate_unify_clauses_eqv_type(EqvType, H1, H2,
                 Context, Clauses, !Info)
         ;
-            TypeBody = solver_type(_, _),
+            TypeBody = hlds_solver_type(_, _),
             % If no user defined equality predicate is given,
             % we treat solver types as if they were an equivalent
             % to the builtin type c_pointer.
             generate_unify_clauses_eqv_type(c_pointer_type,
                 H1, H2, Context, Clauses, !Info)
         ;
-            TypeBody = foreign_type(_),
+            TypeBody = hlds_foreign_type(_),
             % If no user defined equality predicate is given,
             % we treat foreign_type as if they were an equivalent
             % to the builtin type c_pointer.
             generate_unify_clauses_eqv_type(c_pointer_type,
                 H1, H2, Context, Clauses, !Info)
         ;
-            TypeBody = abstract_type(_),
+            TypeBody = hlds_abstract_type(_),
             ( compiler_generated_rtti_for_builtins(ModuleInfo) ->
                 TypeCategory = classify_type(ModuleInfo, Type),
                 generate_builtin_unify(TypeCategory,
@@ -887,7 +886,7 @@ generate_user_defined_unify_clauses(UserEqCompare, H1, H2, Context, Clauses,
         CallGoal = Call - GoalInfo,
 
         create_atomic_complicated_unification(ResultVar, equal_functor,
-            Context, explicit, [], UnifyGoal),
+            Context, umc_explicit, [], UnifyGoal),
         Goal = conj(plain_conj, [CallGoal, UnifyGoal]) - GoalInfo
     ;
         unexpected(this_file, "generate_user_defined_unify_clauses")
@@ -912,8 +911,8 @@ generate_unify_clauses_eqv_type(EqvType, H1, H2, Context, Clauses, !Info) :-
         !Info),
     generate_cast(equiv_type_cast, H1, CastVar1, Context, Cast1Goal),
     generate_cast(equiv_type_cast, H2, CastVar2, Context, Cast2Goal),
-    create_atomic_complicated_unification(CastVar1, var(CastVar2), Context,
-        explicit, [], UnifyGoal),
+    create_atomic_complicated_unification(CastVar1, rhs_var(CastVar2), Context,
+        umc_explicit, [], UnifyGoal),
 
     goal_info_init(GoalInfo0),
     goal_info_set_context(Context, GoalInfo0, GoalInfo),
@@ -942,8 +941,7 @@ generate_index_clauses(TypeBody, X, Index, Context, Clauses, !Info) :-
             "trying to create index proc for non-canonical type")
     ;
         (
-            Ctors = TypeBody ^ du_type_ctors,
-            EnumDummy = TypeBody ^ du_type_is_enum,
+            TypeBody = hlds_du_type(Ctors, _, EnumDummy, _, _, _),
             (
                 % For enum types, the generated comparison predicate performs
                 % an integer comparison, and does not call the type's index
@@ -962,7 +960,7 @@ generate_index_clauses(TypeBody, X, Index, Context, Clauses, !Info) :-
                     !Info)
             )
         ;
-            TypeBody = eqv_type(_Type),
+            TypeBody = hlds_eqv_type(_Type),
             % The only place that the index predicate for a type
             % can ever be called from is the compare predicate
             % for that type. However, the compare predicate for
@@ -972,15 +970,15 @@ generate_index_clauses(TypeBody, X, Index, Context, Clauses, !Info) :-
             % we are generating should never be invoked.
             unexpected(this_file, "trying to create index proc for eqv type")
         ;
-            TypeBody = foreign_type(_),
+            TypeBody = hlds_foreign_type(_),
             unexpected(this_file,
                 "trying to create index proc for a foreign type")
         ;
-            TypeBody = solver_type(_, _),
+            TypeBody = hlds_solver_type(_, _),
             unexpected(this_file,
                 "trying to create index proc for a solver type")
         ;
-            TypeBody = abstract_type(_),
+            TypeBody = hlds_abstract_type(_),
             unexpected(this_file,
                 "trying to create index proc for abstract type")
         )
@@ -1001,8 +999,7 @@ generate_compare_clauses(Type, TypeBody, Res, H1, H2, Context, Clauses,
             Res, H1, H2, Context, Clauses, !Info)
     ;
         (
-            Ctors = TypeBody ^ du_type_ctors,
-            EnumDummy = TypeBody ^ du_type_is_enum,
+            TypeBody = hlds_du_type(Ctors, _, EnumDummy, _, _, _),
             (
                 EnumDummy = is_enum,
                 generate_enum_compare_clauses(Res, H1, H2, Context, Clauses,
@@ -1017,19 +1014,19 @@ generate_compare_clauses(Type, TypeBody, Res, H1, H2, Context, Clauses,
                     Context, Clauses, !Info)
             )
         ;
-            TypeBody = eqv_type(EqvType),
+            TypeBody = hlds_eqv_type(EqvType),
             generate_compare_clauses_eqv_type(EqvType,
                 Res, H1, H2, Context, Clauses, !Info)
         ;
-            TypeBody = foreign_type(_),
+            TypeBody = hlds_foreign_type(_),
             generate_compare_clauses_eqv_type(c_pointer_type,
                 Res, H1, H2, Context, Clauses, !Info)
         ;
-            TypeBody = solver_type(_, _),
+            TypeBody = hlds_solver_type(_, _),
             generate_compare_clauses_eqv_type(c_pointer_type,
                 Res, H1, H2, Context, Clauses, !Info)
         ;
-            TypeBody = abstract_type(_),
+            TypeBody = hlds_abstract_type(_),
             ( compiler_generated_rtti_for_builtins(ModuleInfo) ->
                 TypeCategory = classify_type(ModuleInfo, Type),
                 generate_builtin_compare(TypeCategory, Res,
@@ -1210,7 +1207,7 @@ quantify_clause_body(HeadVars, Goal0, Context, Clause, !Info) :-
     info_set_varset(Varset, !Info),
     info_set_types(Types, !Info),
     info_set_rtti_varmaps(RttiVarMaps, !Info),
-    Clause = clause([], Goal, mercury, Context).
+    Clause = clause([], Goal, impl_lang_mercury, Context).
 
 %-----------------------------------------------------------------------------%
 
@@ -1276,26 +1273,26 @@ generate_du_unify_clauses([Ctor | Ctors], X, Y, Context, [Clause | Clauses],
         can_compare_constants_as_ints(!.Info) = yes
     ->
         create_atomic_complicated_unification(X,
-            functor(FunctorConsId, no, []), Context,
-            explicit, [], UnifyX_Goal),
+            rhs_functor(FunctorConsId, no, []), Context,
+            umc_explicit, [], UnifyX_Goal),
         info_new_named_var(int_type, "CastX", CastX, !Info),
         info_new_named_var(int_type, "CastY", CastY, !Info),
         generate_cast(unsafe_type_cast, X, CastX, Context, CastXGoal0),
         generate_cast(unsafe_type_cast, Y, CastY, Context, CastYGoal0),
         goal_add_feature(keep_constant_binding, CastXGoal0, CastXGoal),
         goal_add_feature(keep_constant_binding, CastYGoal0, CastYGoal),
-        create_atomic_complicated_unification(CastY, var(CastX), Context,
-            explicit, [], UnifyY_Goal),
+        create_atomic_complicated_unification(CastY, rhs_var(CastX), Context,
+            umc_explicit, [], UnifyY_Goal),
         GoalList = [UnifyX_Goal, CastXGoal, CastYGoal, UnifyY_Goal]
     ;
         make_fresh_vars(ArgTypes, ExistQTVars, Vars1, !Info),
         make_fresh_vars(ArgTypes, ExistQTVars, Vars2, !Info),
         create_atomic_complicated_unification(X,
-            functor(FunctorConsId, no, Vars1),
-            Context, explicit, [], UnifyX_Goal),
+            rhs_functor(FunctorConsId, no, Vars1),
+            Context, umc_explicit, [], UnifyX_Goal),
         create_atomic_complicated_unification(Y,
-            functor(FunctorConsId, no, Vars2),
-            Context, explicit, [], UnifyY_Goal),
+            rhs_functor(FunctorConsId, no, Vars2),
+            Context, umc_explicit, [], UnifyY_Goal),
         unify_var_lists(ArgTypes, ExistQTVars, Vars1, Vars2, UnifyArgs_Goals,
             !Info),
         GoalList = [UnifyX_Goal, UnifyY_Goal | UnifyArgs_Goals]
@@ -1350,8 +1347,8 @@ generate_du_index_clauses([Ctor | Ctors], X, Index, Context, N,
     FunctorConsId = cons(FunctorName, FunctorArity),
     make_fresh_vars(ArgTypes, ExistQTVars, ArgVars, !Info),
     create_atomic_complicated_unification(X,
-        functor(FunctorConsId, no, ArgVars),
-        Context, explicit, [], UnifyX_Goal),
+        rhs_functor(FunctorConsId, no, ArgVars),
+        Context, umc_explicit, [], UnifyX_Goal),
     make_int_const_construction(Index, N, UnifyIndex_Goal),
     GoalList = [UnifyX_Goal, UnifyIndex_Goal],
     goal_info_init(GoalInfo0),
@@ -1583,8 +1580,8 @@ generate_du_linear_compare_clauses_2(Type, Ctors, Res, X, Y, Context, Goal,
     make_const_construction(Res, cons(qualified(Builtin, ">"), 0),
         Return_Greater_Than),
 
-    create_atomic_complicated_unification(Res, var(R), Context, explicit, [],
-        Return_R),
+    create_atomic_complicated_unification(Res, rhs_var(R), Context,
+        umc_explicit, [], Return_R),
 
     generate_compare_cases(Ctors, R, X, Y, Context, Cases, !Info),
     CasesGoal = disj(Cases) - GoalInfo,
@@ -1653,7 +1650,7 @@ generate_compare_case(Ctor, R, X, Y, Context, Kind, Case, !Info) :-
     (
         ArgTypes = [],
         create_atomic_complicated_unification(X,
-            functor(FunctorConsId, no, []), Context, explicit, [],
+            rhs_functor(FunctorConsId, no, []), Context, umc_explicit, [],
             UnifyX_Goal),
         generate_return_equal(R, Context, EqualGoal),
         (
@@ -1665,7 +1662,7 @@ generate_compare_case(Ctor, R, X, Y, Context, Kind, Case, !Info) :-
         ;
             Kind = quad,
             create_atomic_complicated_unification(Y,
-                functor(FunctorConsId, no, []), Context, explicit, [],
+                rhs_functor(FunctorConsId, no, []), Context, umc_explicit, [],
                 UnifyY_Goal),
             GoalList = [UnifyX_Goal, UnifyY_Goal, EqualGoal]
         )
@@ -1674,10 +1671,10 @@ generate_compare_case(Ctor, R, X, Y, Context, Kind, Case, !Info) :-
         make_fresh_vars(ArgTypes, ExistQTVars, Vars1, !Info),
         make_fresh_vars(ArgTypes, ExistQTVars, Vars2, !Info),
         create_atomic_complicated_unification(X,
-            functor(FunctorConsId, no, Vars1), Context, explicit, [],
+            rhs_functor(FunctorConsId, no, Vars1), Context, umc_explicit, [],
             UnifyX_Goal),
         create_atomic_complicated_unification(Y,
-            functor(FunctorConsId, no, Vars2), Context, explicit, [],
+            rhs_functor(FunctorConsId, no, Vars2), Context, umc_explicit, [],
             UnifyY_Goal),
         compare_args(ArgTypes, ExistQTVars, Vars1, Vars2, R,
             Context, CompareArgs_Goal, !Info),
@@ -1702,10 +1699,10 @@ generate_asymmetric_compare_case(Ctor1, Ctor2, CompareOp, R, X, Y, Context,
     make_fresh_vars(ArgTypes1, ExistQTVars1, Vars1, !Info),
     make_fresh_vars(ArgTypes2, ExistQTVars2, Vars2, !Info),
     create_atomic_complicated_unification(X,
-        functor(FunctorConsId1, no, Vars1), Context, explicit, [],
+        rhs_functor(FunctorConsId1, no, Vars1), Context, umc_explicit, [],
         UnifyX_Goal),
     create_atomic_complicated_unification(Y,
-        functor(FunctorConsId2, no, Vars2), Context, explicit, [],
+        rhs_functor(FunctorConsId2, no, Vars2), Context, umc_explicit, [],
         UnifyY_Goal),
     mercury_public_builtin_module(Builtin),
     make_const_construction(R, cons(qualified(Builtin, CompareOp), 0),
@@ -1793,8 +1790,8 @@ compare_args_2([_Name - Type | ArgTypes], ExistQTVars, [X | Xs], [Y | Ys], R,
         make_const_construction(R1, equal_cons_id, Check_Equal),
         Check_Not_Equal = negation(Check_Equal) - GoalInfo,
 
-        create_atomic_complicated_unification(R, var(R1),
-            Context, explicit, [], Return_R1),
+        create_atomic_complicated_unification(R, rhs_var(R1),
+            Context, umc_explicit, [], Return_R1),
         Condition = conj(plain_conj, [Do_Comparison, Check_Not_Equal])
             - GoalInfo,
         compare_args_2(ArgTypes, ExistQTVars, Xs, Ys, R, Context, ElseCase,
@@ -1927,7 +1924,6 @@ unify_var_lists_2([], _, [], [], [], !Info).
 unify_var_lists_2([_Name - Type | ArgTypes], ExistQTVars, [X | Xs], [Y | Ys],
         [Goal | Goals], !Info) :-
     term.context_init(Context),
-
     (
         info_get_module_info(!.Info, ModuleInfo),
         is_dummy_argument_type(ModuleInfo, Type)
@@ -1945,8 +1941,8 @@ unify_var_lists_2([_Name - Type | ArgTypes], ExistQTVars, [X | Xs], [Y | Ys],
     ->
         build_call("typed_unify", [X, Y], Context, Goal, !Info)
     ;
-        create_atomic_complicated_unification(X, var(Y),
-            Context, explicit, [], Goal)
+        create_atomic_complicated_unification(X, rhs_var(Y),
+            Context, umc_explicit, [], Goal)
     ),
     unify_var_lists_2(ArgTypes, ExistQTVars, Xs, Ys, Goals, !Info).
 
@@ -1958,7 +1954,7 @@ equal_cons_id = cons(qualified(mercury_public_builtin_module, "="), 0).
 
 :- func equal_functor = unify_rhs.
 
-equal_functor = functor(equal_cons_id, no, []).
+equal_functor = rhs_functor(equal_cons_id, no, []).
 
 %-----------------------------------------------------------------------------%
 

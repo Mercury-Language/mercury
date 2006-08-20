@@ -480,13 +480,13 @@ number_robdd_variables_in_goal_2(InstGraph, GoalPath, ParentNonLocals, _,
     number_robdd_info::in, number_robdd_info::out) is det.
 
 number_robdd_variables_in_rhs(_, _, Vars, !RHS, !NRInfo) :-
-    !.RHS = var(VarR),
+    !.RHS = rhs_var(VarR),
     Vars = [VarR].
 number_robdd_variables_in_rhs(_, _, Vars, !RHS, !NRInfo) :-
-    !.RHS = functor(_, _, Args),
+    !.RHS = rhs_functor(_, _, Args),
     Vars = Args.
 number_robdd_variables_in_rhs(InstGraph, GoalPath, Vars, !RHS, !NRInfo) :-
-    !.RHS = lambda_goal(_, _, _, LambdaNonLocals, LambdaVars, _, _,
+    !.RHS = rhs_lambda_goal(_, _, _, LambdaNonLocals, LambdaVars, _, _,
         LambdaGoal0),
     Vars = LambdaNonLocals,
     VarTypes = !.NRInfo ^ vartypes,
@@ -1542,7 +1542,7 @@ disj_constraints(NonLocals, CanSucceed, !Constraint,
     goal_constraints_info::in, goal_constraints_info::out) is det.
 
 unify_constraints(A, GoalPath, RHS, RHS, !Constraint, !GCInfo) :-
-    RHS = var(B),
+    RHS = rhs_var(B),
     InstGraph = !.GCInfo ^ inst_graph,
     Generator =
         (pred((V - W)::out) is multi :-
@@ -1565,7 +1565,7 @@ unify_constraints(A, GoalPath, RHS, RHS, !Constraint, !GCInfo) :-
     !:GCInfo = !.GCInfo ^ ho_modes := HoModes.
 
 unify_constraints(A, GoalPath, RHS, RHS, !Constraint, !GCInfo) :-
-    RHS = functor(_ConsId, _IsExistConstruct, Args),
+    RHS = rhs_functor(_ConsId, _IsExistConstruct, Args),
     get_var(out(A), Aout, !GCInfo),
     !:Constraint = !.Constraint ^ var(Aout),
     ( update_mc_info(using_simple_mode_constraints, !GCInfo) ->
@@ -1603,7 +1603,7 @@ unify_constraints(A, GoalPath, RHS, RHS, !Constraint, !GCInfo) :-
     ).
 
 unify_constraints(Var, GoalPath, RHS0, RHS, !Constraint, !GCInfo) :-
-    RHS0 = lambda_goal(_, _, _, NonLocals, LambdaVars, Modes, _, Goal0),
+    RHS0 = rhs_lambda_goal(_, _, _, NonLocals, LambdaVars, Modes, _, Goal0),
     InstGraph = !.GCInfo ^ inst_graph,
 
     % Variable Var is made ground by this goal.
@@ -1854,7 +1854,8 @@ add_imported_preds(ModuleInfo, SCCs0, SCCs) :-
 :- pred cons_id_in_bound_insts(cons_id::in, list(bound_inst)::in,
         list(mer_inst)::out) is semidet.
 
-cons_id_in_bound_insts(ConsId, [functor(ConsId0, Insts0) | BIs], Insts) :-
+cons_id_in_bound_insts(ConsId, [bound_functor(ConsId0, Insts0) | BIs],
+        Insts) :-
     ( equivalent_cons_ids(ConsId0, ConsId) ->
         Insts = Insts0
     ;

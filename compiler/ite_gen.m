@@ -439,15 +439,15 @@ make_pneg_context_wrappers(Globals, GoalInfo, PNegCondCode, PNegThenCode,
                 cannot_branch_away, live_lvals_info(set.init))
         ],
         PNegCondCode = node([
-            pragma_c([], PNegCondComponents, will_not_call_mercury,
+            pragma_c([], PNegCondComponents, proc_will_not_call_mercury,
                 no, no, no, no, yes, yes) - ""
         ]),
         PNegThenCode = node([
-            pragma_c([], PNegThenComponents, will_not_call_mercury,
+            pragma_c([], PNegThenComponents, proc_will_not_call_mercury,
                 no, no, no, no, yes, yes) - ""
         ]),
         PNegElseCode = node([
-            pragma_c([], PNegElseComponents, will_not_call_mercury,
+            pragma_c([], PNegElseComponents, proc_will_not_call_mercury,
                 no, no, no, no, yes, yes) - ""
         ])
     ;

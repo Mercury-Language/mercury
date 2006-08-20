@@ -5,11 +5,11 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
-% 
+%
 % File: termination.m.
 % Main author: crs.
 % Significant modifications by zs.
-% 
+%
 % This termination analysis is based on the algorithm given by Gerhard Groeger
 % and Lutz Plumer in their paper "Handling of Mutual Recursion in Automatic
 % Termination Proofs for Logic Programs"  which was printed in JICSLP '92 (the
@@ -26,7 +26,7 @@
 % The termination analysis may use a number of different norms to calculate
 % the size of a term.  These are set by using the --termination-norm string
 % option.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.termination.
@@ -134,11 +134,11 @@ analyse_termination_in_module(!ModuleInfo, !IO) :-
 
     globals.io_lookup_bool_option(make_optimization_interface, MakeOptInt,
         !IO),
-    ( 
-        MakeOptInt = yes, 
+    (
+        MakeOptInt = yes,
         make_termination_opt_int(PredIds, !.ModuleInfo, !IO)
     ;
-        MakeOptInt = no 
+        MakeOptInt = no
     ),
     run_post_term_analysis(!.ModuleInfo, !IO).
 
@@ -191,14 +191,14 @@ check_foreign_code_attributes_2([PPId], !ModuleInfo, !IO) :-
                 % procedure then check that the foreign code attributes do not
                 % contradict this.
                 MaybeTermination = yes(cannot_loop(_)),
-                ( terminates(Attributes) = does_not_terminate ->
+                ( get_terminates(Attributes) = proc_does_not_terminate ->
                     TermErr = Context - inconsistent_annotations,
                     TermStatus = yes(can_loop([TermErr])),
                     % XXX intermod
                     proc_info_set_maybe_termination_info(TermStatus, !ProcInfo),
                     ProcNamePieces = describe_one_proc_name(!.ModuleInfo,
                         should_module_qualify, PPId),
-                    Components = 
+                    Components =
                         [ words("Warning:") | ProcNamePieces ] ++
                         [
                             words("has a `pragma terminates'"),
@@ -215,7 +215,7 @@ check_foreign_code_attributes_2([PPId], !ModuleInfo, !IO) :-
                 % declaration - check that the foreign code attribute
                 % does not contradict this.
                 MaybeTermination = yes(can_loop(TermErrs0)),
-                ( terminates(Attributes) = terminates ->
+                ( get_terminates(Attributes) = proc_terminates ->
                     TermErr = Context - inconsistent_annotations,
                     TermErrs = [TermErr | TermErrs0 ],
                     TermStatus =  yes(can_loop(TermErrs)),
@@ -297,7 +297,7 @@ check_scc_pragmas_are_consistent(SCC, !ModuleInfo, !IO) :-
             % Force any procedures in the SCC whose termination status is
             % unknown to have the same termination status as those that are
             % known.
-            set_termination_infos(SCCTerminationUnknown, KnownTermStatus,   
+            set_termination_infos(SCCTerminationUnknown, KnownTermStatus,
                 !ModuleInfo)
         ;
             % There is a conflict between the user-supplied termination
@@ -366,7 +366,7 @@ analyse_termination_in_scc(PassInfo, SCC, !ModuleInfo, !IO) :-
         proc_info_get_maybe_arg_size_info(ProcInfo, yes(_))
     ),
     list.filter(IsArgSizeKnown, SCC, _SCCArgSizeKnown, SCCArgSizeUnknown),
-    ( 
+    (
         SCCArgSizeUnknown = [],
         ArgSizeErrors = [],
         TermErrors = []
@@ -388,7 +388,7 @@ analyse_termination_in_scc(PassInfo, SCC, !ModuleInfo, !IO) :-
     ),
     list.filter(is_termination_known(!.ModuleInfo), SCC,
         _SCCTerminationKnown, SCCTerminationUnknown),
-    ( 
+    (
         % We may possibly have encountered inconsistent
         % terminates/does_not_terminate pragmas for this SCC, so we need to
         % report errors here as well.
@@ -404,7 +404,7 @@ analyse_termination_in_scc(PassInfo, SCC, !ModuleInfo, !IO) :-
         ),
         list.filter(IsFatal, ArgSizeErrors, FatalErrors),
         BothErrors = TermErrors ++ FatalErrors,
-        ( 
+        (
             BothErrors = [_|_],
             % These errors prevent pass 2 from proving termination
             % in any case, so we may as well not prove it quickly.
@@ -420,7 +420,7 @@ analyse_termination_in_scc(PassInfo, SCC, !ModuleInfo, !IO) :-
         ),
         set_termination_infos(SCCTerminationUnknown, TerminationResult,
             !ModuleInfo),
-        ( 
+        (
             TerminationResult = can_loop(TerminationErrors),
             report_termination_errors(SCC, TerminationErrors,
                 !ModuleInfo, !IO)
@@ -507,7 +507,7 @@ report_termination_errors(SCC, Errors, !ModuleInfo, !IO) :-
             module_info_pred_proc_info(!.ModuleInfo, PPId, PredInfo, _),
             \+ pred_info_is_imported(PredInfo),
             pred_info_get_markers(PredInfo, Markers),
-            check_marker(Markers, check_termination)
+            check_marker(Markers, marker_check_termination)
         ),
         list.filter(IsCheckTerm, SCC, CheckTermPPIds),
         CheckTermPPIds = [_ | _]
@@ -614,47 +614,46 @@ check_preds([PredId | PredIds], !ModuleInfo, !IO) :-
     ->
         ProcTable2 = ProcTable1
     ;
-        status_defined_in_this_module(ImportStatus, yes)
+        status_defined_in_this_module(ImportStatus) = yes
     ->
-        ( check_marker(Markers, terminates) ->
-            change_procs_termination_info(ProcIds, yes,
-                cannot_loop(unit), ProcTable0, ProcTable2)
+        ( check_marker(Markers, marker_terminates) ->
+            change_procs_termination_info(ProcIds, yes, cannot_loop(unit),
+                ProcTable0, ProcTable2)
         ;
             ProcTable2 = ProcTable0
         )
     ;
         % Not defined in this module.
 
-        % All of the predicates that are processed in this section
-        % are imported in some way.
-        % With imported predicates, any 'check_termination'
-        % pragmas will be checked by the compiler when it compiles
-        % the relevant source file (that the predicate was imported
-        % from).  When making the intermodule optimizations, the
-        % check_termination will not be checked when the relevant
-        % source file is compiled, so it cannot be depended upon.
+        % All of the predicates that are processed in this section are imported
+        % in some way. With imported predicates, any 'check_termination'
+        % pragmas will be checked by the compiler when it compiles the
+        % relevant source file (that the predicate was imported from).
+        % When making the intermodule optimizations, the check_termination
+        % will not be checked when the relevant source file is compiled,
+        % so it cannot be depended upon.
         (
             (
-                check_marker(Markers, terminates)
+                check_marker(Markers, marker_terminates)
             ;
                 MakeOptInt = no,
-                check_marker(Markers, check_termination)
+                check_marker(Markers, marker_check_termination)
             )
         ->
-            change_procs_termination_info(ProcIds, yes,
-                cannot_loop(unit), ProcTable0, ProcTable1)
+            change_procs_termination_info(ProcIds, yes, cannot_loop(unit),
+                ProcTable0, ProcTable1)
         ;
             TerminationError = Context - imported_pred,
             TerminationInfo = can_loop([TerminationError]),
-            change_procs_termination_info(ProcIds, no,
-                TerminationInfo, ProcTable0, ProcTable1)
+            change_procs_termination_info(ProcIds, no, TerminationInfo,
+                ProcTable0, ProcTable1)
         ),
         ArgSizeError = imported_pred,
         ArgSizeInfo = infinite([Context - ArgSizeError]),
         change_procs_arg_size_info(ProcIds, no, ArgSizeInfo,
             ProcTable1, ProcTable2)
     ),
-    ( check_marker(Markers, does_not_terminate) ->
+    ( check_marker(Markers, marker_does_not_terminate) ->
         RequestError = Context - does_not_term_pragma(PredId),
         RequestTerminationInfo = can_loop([RequestError]),
         change_procs_termination_info(ProcIds, yes,
@@ -713,11 +712,11 @@ set_compiler_gen_terminates(PredInfo, ProcIds, PredId, ModuleInfo,
 set_generated_terminates([], _, !ProcTable).
 set_generated_terminates([ProcId | ProcIds], SpecialPredId, !ProcTable) :-
     %
-    % We don't need to do anything special for solver type initialisation 
+    % We don't need to do anything special for solver type initialisation
     % predicates.  Leaving it up to the analyser may result in better
     % argument size information anyway.
-    % 
-    ( SpecialPredId \= spec_pred_init -> 
+    %
+    ( SpecialPredId \= spec_pred_init ->
         map.lookup(!.ProcTable, ProcId, ProcInfo0),
         proc_info_get_headvars(ProcInfo0, HeadVars),
         special_pred_id_to_termination(SpecialPredId, HeadVars,
@@ -896,9 +895,9 @@ write_pred_termination_info(ModuleInfo, PredId, !IO) :-
 
     (
         (
-            ImportStatus = exported
+            ImportStatus = status_exported
         ;
-            ImportStatus = opt_exported
+            ImportStatus = status_opt_exported
         ),
         \+ is_unify_or_compare_pred(PredInfo),
 

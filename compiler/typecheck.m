@@ -353,7 +353,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
         (
             clause_list_is_empty(ClausesRep0) = yes,
             globals.lookup_bool_option(Globals, allow_stubs, yes),
-            \+ check_marker(Markers0, class_method)
+            \+ check_marker(Markers0, marker_class_method)
         ->
             globals.lookup_bool_option(Globals, warn_stubs, WarnStubs),
             (
@@ -380,7 +380,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
             ClausesRep1IsEmpty = yes,
             % There are no clauses for class methods. The clauses are generated
             % later on, in polymorphism.expand_class_method_bodies.
-            ( check_marker(Markers0, class_method) ->
+            ( check_marker(Markers0, marker_class_method) ->
                 % For the moment, we just insert the types of the head varss
                 % into the clauses_info.
                 map.from_corresponding_lists(HeadVars, ArgTypes0, VarTypes),
@@ -404,7 +404,7 @@ typecheck_pred(Iteration, PredId, !PredInfo, !ModuleInfo, Error, Changed,
             ClausesRep1IsEmpty = no,
             pred_info_get_typevarset(!.PredInfo, TypeVarSet0),
             pred_info_get_import_status(!.PredInfo, Status),
-            ( check_marker(Markers0, infer_type) ->
+            ( check_marker(Markers0, marker_infer_type) ->
                 % For a predicate whose type is inferred, the predicate is
                 % allowed to bind the type variables in the head of the
                 % predicate's type declaration. Such predicates are given an
@@ -621,7 +621,7 @@ generate_stub_clause(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
     % Mark the predicate as a stub
     % (i.e. record that it originally had no clauses)
     pred_info_get_markers(!.PredInfo, Markers0),
-    add_marker(stub, Markers0, Markers),
+    add_marker(marker_stub, Markers0, Markers),
     pred_info_set_markers(Markers, !PredInfo),
 
     % Generate `PredName = "<PredName>"'.
@@ -644,7 +644,7 @@ generate_stub_clause(PredName, !PredInfo, ModuleInfo, StubClause, !VarSet) :-
     % Combine the unification and call into a conjunction.
     goal_info_init(Context, GoalInfo),
     Body = conj(plain_conj, [UnifyGoal, CallGoal]) - GoalInfo,
-    StubClause = clause([], Body, mercury, Context).
+    StubClause = clause([], Body, impl_lang_mercury, Context).
 
 :- pred rename_instance_method_constraints(tvar_renaming::in,
     pred_origin::in, pred_origin::out) is det.
@@ -841,7 +841,7 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
     (
         pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
         clause_list_is_empty(ClausesRep0) = yes,
-        status_defined_in_this_module(ImportStatus, yes)
+        status_defined_in_this_module(ImportStatus) = yes
     ->
         clauses_info_get_headvars(ClausesInfo0, HeadVars),
         pred_args_to_func_args(HeadVars, FuncArgs, FuncRetVal),
@@ -852,19 +852,19 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
         adjust_func_arity(function, FuncArity, PredArity),
         FuncSymName = qualified(FuncModule, FuncName),
         create_atomic_complicated_unification(FuncRetVal,
-            functor(cons(FuncSymName, FuncArity), no, FuncArgs),
-            Context, explicit, [], Goal0),
+            rhs_functor(cons(FuncSymName, FuncArity), no, FuncArgs),
+            Context, umc_explicit, [], Goal0),
         Goal0 = GoalExpr - GoalInfo0,
         set.list_to_set(HeadVars, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo0, GoalInfo),
         Goal = GoalExpr - GoalInfo,
         ProcIds = [], % the clause applies to all procedures.
-        Clause = clause(ProcIds, Goal, mercury, Context),
+        Clause = clause(ProcIds, Goal, impl_lang_mercury, Context),
         clauses_info_set_clauses([Clause], ClausesInfo0, ClausesInfo),
-        pred_info_update_goal_type(clauses, !PredInfo),
+        pred_info_update_goal_type(goal_type_clause_and_foreign, !PredInfo),
         pred_info_set_clauses_info(ClausesInfo, !PredInfo),
         pred_info_get_markers(!.PredInfo, Markers0),
-        add_marker(calls_are_fully_qualified, Markers0, Markers),
+        add_marker(marker_calls_are_fully_qualified, Markers0, Markers),
         pred_info_set_markers(Markers, !PredInfo)
     ;
         true
@@ -1068,7 +1068,7 @@ find_headvar_names_in_goal(VarSet, HeadVars, Goal, HeadVarMap0) = HeadVarMap :-
     prog_var::out, prog_var::out) is semidet.
 
 goal_is_headvar_unification(HeadVars, Goal, HeadVar, OtherVar) :-
-    Goal = unify(LVar, var(RVar), _, _, _) - _,
+    Goal = unify(LVar, rhs_var(RVar), _, _, _) - _,
     ( list.member(LVar, HeadVars) ->
         HeadVar = LVar,
         OtherVar = RVar
@@ -1286,7 +1286,7 @@ typecheck_goal_2(GoalExpr0, GoalExpr, GoalInfo, !Info, !IO) :-
         checkpoint("call", !Info, !IO),
         list.length(Args, Arity),
         CurCall = simple_call_id(predicate, Name, Arity),
-        typecheck_info_set_called_predid(call(CurCall), !Info),
+        typecheck_info_set_called_predid(plain_call_id(CurCall), !Info),
         goal_info_get_goal_path(GoalInfo, GoalPath),
         typecheck_call_pred(CurCall, Args, GoalPath, PredId, !Info, !IO),
         GoalExpr = plain_call(PredId, ProcId, Args, BI, UC, Name)
@@ -1862,17 +1862,17 @@ check_warn_too_much_overloading(!Info, !IO) :-
     goal_path::in, typecheck_info::in, typecheck_info::out,
     io::di, io::uo) is det.
 
-typecheck_unification(X, var(Y), var(Y), _, !Info, !IO) :-
+typecheck_unification(X, rhs_var(Y), rhs_var(Y), _, !Info, !IO) :-
     typecheck_unify_var_var(X, Y, !Info, !IO).
-typecheck_unification(X, functor(F, E, As), functor(F, E, As), GoalPath,
-        !Info, !IO) :-
+typecheck_unification(X, rhs_functor(F, E, As), rhs_functor(F, E, As),
+        GoalPath, !Info, !IO) :-
     typecheck_info_get_type_assign_set(!.Info, OrigTypeAssignSet),
     typecheck_unify_var_functor(X, F, As, GoalPath, !Info, !IO),
     perform_context_reduction(OrigTypeAssignSet, !Info, !IO).
 typecheck_unification(X,
-        lambda_goal(Purity, PredOrFunc, EvalMethod,
+        rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
             NonLocals, Vars, Modes, Det, Goal0),
-        lambda_goal(Purity, PredOrFunc, EvalMethod,
+        rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
             NonLocals, Vars, Modes, Det, Goal), _, !Info, !IO) :-
     typecheck_lambda_var_has_type(Purity, PredOrFunc, EvalMethod, X, Vars,
         !Info, !IO),
@@ -2764,7 +2764,7 @@ typecheck_info_get_ctor_list(Info, Functor, Arity, GoalPath, ConsInfos,
         % not constructor applications or function calls. The clauses in
         % `.opt' files will already have been expanded into unifications.
         Info ^ is_field_access_function = yes,
-        Info ^ import_status \= opt_imported
+        Info ^ import_status \= status_opt_imported
     ->
         (
             builtin_field_access_function_type(Info, GoalPath,
@@ -2983,17 +2983,17 @@ convert_cons_defn(Info, GoalPath, Action, HLDS_ConsDefn, ConsTypeInfo) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     (
         Body ^ du_type_is_foreign_type = yes(_),
-        \+ pred_info_get_goal_type(PredInfo, clauses_and_pragmas),
+        \+ pred_info_get_goal_type(PredInfo, goal_type_clause_and_foreign),
         \+ is_unify_or_compare_pred(PredInfo),
-        \+ pred_info_get_import_status(PredInfo, opt_imported)
+        \+ pred_info_get_import_status(PredInfo, status_opt_imported)
     ->
         ConsTypeInfo = error(foreign_type_constructor(TypeCtor, TypeDefn))
     ;
         % Do not allow constructors for abstract_imported types unless
         % the current predicate is opt_imported.
-        hlds_data.get_type_defn_status(TypeDefn, abstract_imported),
+        hlds_data.get_type_defn_status(TypeDefn, status_abstract_imported),
         \+ is_unify_or_compare_pred(PredInfo),
-        \+ pred_info_get_import_status(PredInfo, opt_imported)
+        \+ pred_info_get_import_status(PredInfo, status_opt_imported)
     ->
         ConsTypeInfo = error(abstract_imported_type)
     ;

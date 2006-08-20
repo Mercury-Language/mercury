@@ -648,20 +648,20 @@ convert_simple_builtin_inst_2("unique",         ground(unique, none)).
 convert_simple_builtin_inst_2("mostly_unique",  ground(mostly_unique, none)).
 convert_simple_builtin_inst_2("clobbered",      ground(clobbered, none)).
 convert_simple_builtin_inst_2("mostly_clobbered",
-                        ground(mostly_clobbered, none)).
+    ground(mostly_clobbered, none)).
 
     % `not_reached' inst
 convert_simple_builtin_inst_2("not_reached", not_reached).
 
-standard_det("det", detism_det).
+standard_det("det",       detism_det).
 standard_det("cc_nondet", detism_cc_non).
-standard_det("cc_multi", detism_cc_multi).
-standard_det("nondet", detism_non).
-standard_det("multi", detism_multi).
-standard_det("multidet", detism_multi).
-standard_det("semidet", detism_semi).
+standard_det("cc_multi",  detism_cc_multi).
+standard_det("nondet",    detism_non).
+standard_det("multi",     detism_multi).
+standard_det("multidet",  detism_multi).
+standard_det("semidet",   detism_semi).
 standard_det("erroneous", detism_erroneous).
-standard_det("failure", detism_failure).
+standard_det("failure",   detism_failure).
 
 :- pred parse_bound_inst_list(allow_constrained_inst_var::in, term::in,
     uniqueness::in, mer_inst::out) is semidet.
@@ -675,8 +675,8 @@ parse_bound_inst_list(AllowConstrainedInstVar, Disj, Uniqueness,
     \+ (
         list.append(_, SubList, Functors),
         SubList = [F1, F2 | _],
-        F1 = functor(ConsId, _),
-        F2 = functor(ConsId, _)
+        F1 = bound_functor(ConsId, _),
+        F2 = bound_functor(ConsId, _)
     ).
 
 :- pred convert_bound_inst_list(allow_constrained_inst_var::in, list(term)::in,
@@ -690,7 +690,8 @@ convert_bound_inst_list(AllowConstrainedInstVar, [H0 | T0], [H | T]) :-
 :- pred convert_bound_inst(allow_constrained_inst_var::in, term::in,
     bound_inst::out) is semidet.
 
-convert_bound_inst(AllowConstrainedInstVar, InstTerm, functor(ConsId, Args)) :-
+convert_bound_inst(AllowConstrainedInstVar, InstTerm,
+        bound_functor(ConsId, Args)) :-
     InstTerm = term.functor(Functor, Args0, _),
     ( Functor = term.atom(_) ->
         parse_qualified_term(InstTerm, InstTerm, "inst", ok2(SymName, Args1)),
@@ -717,9 +718,9 @@ list_to_conjunction(Context, First, [Second | Rest], Term) :-
 sum_to_list(Term, List) :-
     binop_term_to_list("+", Term, List).
 
-    % general predicate to convert terms separated by any specified
-    % operator into a list
-
+    % General predicate to convert terms separated by any specified operator
+    % into a list.
+    %
 :- pred binop_term_to_list(string::in, term(T)::in, list(term(T))::out) is det.
 
 binop_term_to_list(Op, Term, List) :-

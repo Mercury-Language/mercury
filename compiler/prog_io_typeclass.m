@@ -98,7 +98,7 @@ parse_non_empty_class(ModuleName, Name, Methods, VarSet, Result) :-
             Result = error1(Errors)
         ;
             MaybeParsedNameAndVars = ok1(ParsedNameAndVars),
-            ( ParsedNameAndVars = typeclass(_, _, _, _, _, _) ->
+            ( ParsedNameAndVars = item_typeclass(_, _, _, _, _, _) ->
                 Result = ok1((ParsedNameAndVars
                     ^ tc_class_methods := concrete(MethodList))
                     ^ tc_varset := TVarSet)
@@ -139,7 +139,7 @@ parse_constrained_class(ModuleName, Decl, Constraints, VarSet, Result) :-
             Result = Result0
         ;
             Result0 = ok1(Item),
-            ( Item = typeclass(_, _, _, _, _, _) ->
+            ( Item = item_typeclass(_, _, _, _, _, _) ->
                 (
                     % Check for type variables in the constraints which do not
                     % occur in the type class parameters.
@@ -236,7 +236,8 @@ parse_unconstrained_class(ModuleName, Name, TVarSet, Result) :-
             list.sort_and_remove_dups(TermVars, SortedTermVars),
             list.length(SortedTermVars) = list.length(TermVars) : int
         ->
-            Result = ok1(typeclass([], [], ClassName, Vars, abstract, TVarSet))
+            Result = ok1(item_typeclass([], [], ClassName, Vars, abstract,
+                TVarSet))
         ;
             Msg = "expected distinct variables as class parameters",
             Result = error1([Msg - Name])
@@ -272,10 +273,11 @@ parse_class_methods(ModuleName, Methods, VarSet, Result) :-
 
 item_to_class_method(error2(Errors), _, error1(Errors)).
 item_to_class_method(ok2(Item, Context), Term, Result) :-
-    ( Item = pred_or_func(A, B, C, D, E, F, G, H, I, J, K, L) ->
-        Result = ok1(pred_or_func(A, B, C, D, E, F, G, H, I, J, K, L, Context))
-    ; Item = pred_or_func_mode(A, B, C, D, E, F, G) ->
-        Result = ok1(pred_or_func_mode(A, B, C, D, E, F, G, Context))
+    ( Item = item_pred_or_func(A, B, C, D, E, F, G, H, I, J, K, L) ->
+        Result = ok1(method_pred_or_func(A, B, C, D, E, F, G, H, I, J, K, L,
+            Context))
+    ; Item = item_pred_or_func_mode(A, B, C, D, E, F, G) ->
+        Result = ok1(method_pred_or_func_mode(A, B, C, D, E, F, G, Context))
     ;
         Msg = "Only pred, func and mode declarations " ++
             "allowed in class interface",
@@ -552,8 +554,8 @@ parse_derived_instance(ModuleName, Decl, Constraints, TVarSet, Result) :-
             Result = Result0
         ;
             Result0 = ok1(Item),
-            ( Item = instance(_, Name, Types, Body, VarSet, ModName) ->
-                Result = ok1(instance(ConstraintList, Name, Types, Body,
+            ( Item = item_instance(_, Name, Types, Body, VarSet, ModName) ->
+                Result = ok1(item_instance(ConstraintList, Name, Types, Body,
                     VarSet, ModName))
             ;
                 % If the item we get back isn't an instance,
@@ -612,7 +614,7 @@ parse_underived_instance_2(ErrorTerm, ClassName, ok1(Types), TVarSet,
             "with distinct variables as arguments",
         Result = error1([Msg - ErrorTerm])
     ;
-        Result = ok1(instance([], ClassName, Types, abstract, TVarSet,
+        Result = ok1(item_instance([], ClassName, Types, abstract, TVarSet,
             ModuleName))
     ).
 
@@ -661,10 +663,10 @@ parse_non_empty_instance(ModuleName, Name, Methods, VarSet, TVarSet, Result) :-
         ;
             MaybeParsedNameAndTypes = ok1(ParsedNameAndTypes),
             (
-                ParsedNameAndTypes = instance(Constraints, NameString,
+                ParsedNameAndTypes = item_instance(Constraints, NameString,
                     Types, _, _, ModName)
             ->
-                Result0 = ok1(instance(Constraints, NameString, Types,
+                Result0 = ok1(item_instance(Constraints, NameString, Types,
                     concrete(MethodList), TVarSet, ModName)),
                 check_tvars_in_instance_constraint(Result0, Name, Result)
             ;
@@ -684,7 +686,7 @@ parse_non_empty_instance(ModuleName, Name, Methods, VarSet, TVarSet, Result) :-
 check_tvars_in_instance_constraint(error1(Errors), _, error1(Errors)).
 check_tvars_in_instance_constraint(ok1(Item), InstanceTerm, Result) :-
     (
-        Item = instance(Constraints, _Name, Types, _Methods, _TVarSet,
+        Item = item_instance(Constraints, _Name, Types, _Methods, _TVarSet,
             _ModName)
     ->
         % Check that all of the type variables in the constraints
@@ -784,8 +786,8 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm, Result) :-
         ;
             Result0 = ok2(Item, Context),
             (
-                Item = clause(_Origin, _VarNames, PredOrFunc, ClassMethodName,
-                    HeadArgs, _ClauseBody)
+                Item = item_clause(_Origin, _VarNames, PredOrFunc,
+                    ClassMethodName, HeadArgs, _ClauseBody)
             ->
                 adjust_func_arity(PredOrFunc, ArityInt, list.length(HeadArgs)),
                 Result = ok1(instance_method(PredOrFunc, ClassMethodName,

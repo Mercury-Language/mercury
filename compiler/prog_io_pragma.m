@@ -85,11 +85,13 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
                 Result0 = ok1(Item0)
             ->
                 (
-                    Item0 = type_defn(_, _, _, _, _),
-                    foreign_type(Type, _, Assertions) = Item0 ^ td_ctor_defn
+                    Item0 = item_type_defn(_, _, _, _, _),
+                    Item0 ^ td_ctor_defn =
+                        parse_tree_foreign_type(Type, _, Assertions)
                 ->
                     Result = ok1(Item0 ^ td_ctor_defn :=
-                        foreign_type(Type, MaybeUserEqComp, Assertions))
+                        parse_tree_foreign_type(Type, MaybeUserEqComp,
+                            Assertions))
                 ;
                     Msg = "unexpected `where equality/comparison is'",
                     Result = error1([Msg - SinglePragmaTerm0])
@@ -111,7 +113,7 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Result) :-
 parse_pragma_type(_, "source_file", PragmaTerms, ErrorTerm, _VarSet, Result) :-
     ( PragmaTerms = [SourceFileTerm] ->
         ( SourceFileTerm = term.functor(term.string(SourceFile), [], _) ->
-            Result = ok1(pragma(user, source_file(SourceFile)))
+            Result = ok1(item_pragma(user, pragma_source_file(SourceFile)))
         ;
             Msg = "string expected in `:- pragma source_file' declaration",
             Result = error1([Msg - SourceFileTerm])
@@ -152,9 +154,10 @@ parse_pragma_type(ModuleName, "foreign_type", PragmaTerms, ErrorTerm, VarSet,
                     ->
                             % rafe: XXX I'm not sure that `no' here is right
                             % - we might need some more parsing...
-                        Result = ok1(type_defn(TVarSet, MercuryTypeSymName,
-                            MercuryParams,
-                            foreign_type( ForeignType, no, Assertions),
+                        Result = ok1(item_type_defn(TVarSet,
+                            MercuryTypeSymName, MercuryParams,
+                            parse_tree_foreign_type(ForeignType, no,
+                                Assertions),
                             true))
                     ;
                         MaybeAssertionTerm = yes(ErrorAssertionTerm)
@@ -223,8 +226,8 @@ parse_pragma_type(_ModuleName, "foreign_export", PragmaTerms, ErrorTerm,
             (
                 PredAndModesResult = ok2(PredName - PredOrFunc, Modes),
                 ( parse_foreign_language(LangTerm, ForeignLanguage) ->
-                    Result = ok1(pragma(user,
-                        foreign_export(ForeignLanguage, PredName,
+                    Result = ok1(item_pragma(user,
+                        pragma_foreign_export(ForeignLanguage, PredName,
                             PredOrFunc, Modes, Function)))
                 ;
                     Msg = "invalid foreign language in " ++
@@ -279,7 +282,8 @@ parse_pragma_type(_ModuleName, "c_import_module", PragmaTerms, ErrorTerm,
         PragmaTerms = [ImportTerm],
         sym_name_and_args(ImportTerm, Import, [])
     ->
-        Result = ok1(pragma(user, foreign_import_module(lang_c, Import)))
+        Result = ok1(item_pragma(user,
+            pragma_foreign_import_module(lang_c, Import)))
     ;
         Msg = "wrong number of arguments or invalid module name " ++
             "in `:- pragma c_import_module' declaration",
@@ -293,8 +297,8 @@ parse_pragma_type(_ModuleName, "foreign_import_module", PragmaTerms, ErrorTerm,
         sym_name_and_args(ImportTerm, Import, [])
     ->
         ( parse_foreign_language(LangTerm, Language) ->
-            Result = ok1(pragma(user,
-                foreign_import_module(Language, Import)))
+            Result = ok1(item_pragma(user,
+                pragma_foreign_import_module(Language, Import)))
         ;
             Msg = "invalid foreign language in " ++
                 "`:- pragma foreign_import_module' declaration",
@@ -464,11 +468,11 @@ parse_foreign_type_assertions(Term, Assertions) :-
 parse_foreign_type_assertion(Term, Assertion) :-
     Term = term.functor(term.atom(Constant), [], _),
     Constant = "can_pass_as_mercury_type",
-    Assertion = can_pass_as_mercury_type.
+    Assertion = foreign_type_can_pass_as_mercury_type.
 parse_foreign_type_assertion(Term, Assertion) :-
     Term = term.functor(term.atom(Constant), [], _),
     Constant = "stable",
-    Assertion = stable.
+    Assertion = foreign_type_stable.
 
     % This predicate parses both c_header_code and foreign_decl pragmas.
     %
@@ -490,8 +494,9 @@ parse_pragma_foreign_decl_pragma(_ModuleName, Pragma, PragmaTerms,
     ->
         ( parse_foreign_language(LangTerm, ForeignLanguage) ->
             ( HeaderTerm = term.functor(term.string( HeaderCode), [], _) ->
-                DeclCode = foreign_decl(ForeignLanguage, IsLocal, HeaderCode),
-                Result = ok1(pragma(user, DeclCode))
+                DeclCode = pragma_foreign_decl(ForeignLanguage, IsLocal,
+                    HeaderCode),
+                Result = ok1(item_pragma(user, DeclCode))
             ;
                 ErrMsg = "-- expected string for foreign declaration code",
                 Result = error1([string.append(InvalidDeclStr, ErrMsg) -
@@ -538,7 +543,8 @@ parse_pragma_foreign_code_pragma(_ModuleName, Pragma, PragmaTerms,
         Errs = LangErrs ++ CodeErrs,
         (
             Errs = [],
-            Result = ok1(pragma(user, foreign_code(ForeignLanguage, Code)))
+            Result = ok1(item_pragma(user,
+                pragma_foreign_code(ForeignLanguage, Code)))
         ;
             Errs = [_ | _],
             Result = error1(Errs)
@@ -848,8 +854,8 @@ parse_pragma_type(ModuleName, "import", PragmaTerms, ErrorTerm, VarSet,
                 PredAndArgModesResult = ok2(PredName - PredOrFunc, ArgModes),
                 (
                     FlagsResult = ok1(Attributes),
-                    Result = ok1(pragma(user, import(PredName, PredOrFunc,
-                        ArgModes, Attributes, Function)))
+                    Result = ok1(item_pragma(user, pragma_import(PredName,
+                        PredOrFunc, ArgModes, Attributes, Function)))
                 ;
                     FlagsResult = error1(FlagsErrors2),
                     Result = error1(FlagsErrors2)
@@ -875,8 +881,8 @@ parse_pragma_type(_ModuleName, "export", PragmaTerms, ErrorTerm, _VarSet,
                 "`:- pragma export' declaration", PredAndModesResult),
             (
                 PredAndModesResult = ok2(PredName - PredOrFunc, Modes),
-                Result = ok1(pragma(user,
-                    foreign_export(lang_c, PredName, PredOrFunc, Modes,
+                Result = ok1(item_pragma(user,
+                    pragma_foreign_export(lang_c, PredName, PredOrFunc, Modes,
                         Function)))
             ;
                 PredAndModesResult = error2(PredAndModesErrors),
@@ -895,14 +901,14 @@ parse_pragma_type(_ModuleName, "export", PragmaTerms, ErrorTerm, _VarSet,
 parse_pragma_type(ModuleName, "inline", PragmaTerms, ErrorTerm, _VarSet,
         Result) :-
     MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-        Pragma = inline(Name, Arity)),
+        Pragma = pragma_inline(Name, Arity)),
     parse_simple_pragma(ModuleName, "inline", MakePragma, PragmaTerms,
         ErrorTerm, Result).
 
 parse_pragma_type(ModuleName, "no_inline", PragmaTerms, ErrorTerm, _VarSet,
         Result) :-
     MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-        Pragma = no_inline(Name, Arity)),
+        Pragma = pragma_no_inline(Name, Arity)),
     parse_simple_pragma(ModuleName, "no_inline", MakePragma, PragmaTerms,
         ErrorTerm, Result).
 
@@ -926,7 +932,7 @@ parse_pragma_type(ModuleName, "minimal_model", PragmaTerms, ErrorTerm, _VarSet,
 parse_pragma_type(ModuleName, "obsolete", PragmaTerms, ErrorTerm, _VarSet,
         Result) :-
     MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-        Pragma = obsolete(Name, Arity)),
+        Pragma = pragma_obsolete(Name, Arity)),
     parse_simple_pragma(ModuleName, "obsolete", MakePragma, PragmaTerms,
         ErrorTerm, Result).
 
@@ -955,8 +961,8 @@ parse_pragma_type(ModuleName, "unused_args", PragmaTerms, ErrorTerm, _VarSet,
         convert_int_list(UnusedArgsTerm, UnusedArgsResult),
         UnusedArgsResult = ok1(UnusedArgs)
     ->
-        Result = ok1(pragma(user, unused_args(PredOrFunc, PredName, Arity,
-            ModeNum, UnusedArgs)))
+        Result = ok1(item_pragma(user, pragma_unused_args(PredOrFunc, PredName,
+            Arity, ModeNum, UnusedArgs)))
     ;
         Result = error1(["error in `:- pragma unused_args'" - ErrorTerm])
     ).
@@ -1001,9 +1007,10 @@ parse_pragma_type(ModuleName, "type_spec", PragmaTerms, ErrorTerm, VarSet0,
                         UnqualName, type_subst(TVarSet, TypeSubn),
                         SpecializedName)
                 ),
-                TypeSpecPragma = type_spec(PredName, SpecializedName, Arity,
-                    MaybePredOrFunc, MaybeModes, TypeSubn, TVarSet, set.init),
-                Result = ok1(pragma(user, TypeSpecPragma))
+                TypeSpecPragma = pragma_type_spec(PredName, SpecializedName,
+                    Arity, MaybePredOrFunc, MaybeModes, TypeSubn, TVarSet,
+                    set.init),
+                Result = ok1(item_pragma(user, TypeSpecPragma))
             ;
                 Msg = "expected type substitution in " ++
                     "`:- pragma type_spec' declaration",
@@ -1021,7 +1028,7 @@ parse_pragma_type(ModuleName, "type_spec", PragmaTerms, ErrorTerm, VarSet0,
 parse_pragma_type(ModuleName, "reserve_tag", PragmaTerms, ErrorTerm, _VarSet,
         Result) :-
     MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-        Pragma = reserve_tag(Name, Arity)),
+        Pragma = pragma_reserve_tag(Name, Arity)),
     parse_simple_type_pragma(ModuleName, "reserve_tag", MakePragma,
         PragmaTerms, ErrorTerm, Result).
 
@@ -1033,8 +1040,8 @@ parse_pragma_type(ModuleName, "fact_table", PragmaTerms, ErrorTerm, _VarSet,
         (
             NameArityResult = ok2(PredName, Arity),
             ( FileNameTerm = term.functor(term.string(FileName), [], _) ->
-                Result = ok1(pragma(user,
-                    fact_table(PredName, Arity, FileName)))
+                Result = ok1(item_pragma(user,
+                    pragma_fact_table(PredName, Arity, FileName)))
             ;
                 Result = error1(["expected string for fact table filename" -
                     FileNameTerm])
@@ -1052,21 +1059,21 @@ parse_pragma_type(ModuleName, "fact_table", PragmaTerms, ErrorTerm, _VarSet,
 parse_pragma_type(ModuleName, "promise_equivalent_clauses", PragmaTerms,
         ErrorTerm, _VarSet, Result) :-
     MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-        Pragma = promise_equivalent_clauses(Name, Arity)),
+        Pragma = pragma_promise_equivalent_clauses(Name, Arity)),
     parse_simple_pragma(ModuleName, "promise_equivalent_clauses", MakePragma,
         PragmaTerms, ErrorTerm, Result).
 
 parse_pragma_type(ModuleName, "promise_pure", PragmaTerms, ErrorTerm, _VarSet,
         Result) :-
     MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-        Pragma = promise_pure(Name, Arity)),
+        Pragma = pragma_promise_pure(Name, Arity)),
     parse_simple_pragma(ModuleName, "promise_pure", MakePragma,
         PragmaTerms, ErrorTerm, Result).
 
 parse_pragma_type(ModuleName, "promise_semipure", PragmaTerms, ErrorTerm,
         _VarSet, Result) :-
     MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-        Pragma = promise_semipure(Name, Arity)),
+        Pragma = pragma_promise_semipure(Name, Arity)),
     parse_simple_pragma(ModuleName, "promise_semipure", MakePragma,
         PragmaTerms, ErrorTerm, Result).
 
@@ -1105,8 +1112,8 @@ parse_pragma_type(ModuleName, "termination_info", PragmaTerms, ErrorTerm,
             TerminationTerm = term.functor(term.atom("cannot_loop"), [], _),
             MaybeTerminationInfo = yes(cannot_loop(unit))
         ),
-        Result0 = ok1(pragma(user, termination_info(PredOrFunc, PredName,
-            ModeList, MaybeArgSizeInfo, MaybeTerminationInfo)))
+        Result0 = ok1(item_pragma(user, pragma_termination_info(PredOrFunc,
+            PredName, ModeList, MaybeArgSizeInfo, MaybeTerminationInfo)))
     ->
         Result = Result0
     ;
@@ -1141,8 +1148,8 @@ parse_pragma_type(ModuleName, "termination2_info", PragmaTerms, ErrorTerm,
             TerminationTerm = term.functor(term.atom("cannot_loop"), [], _),
             MaybeTerminationInfo = yes(cannot_loop(unit))
         ),
-        Result0 = ok1(pragma(user, termination2_info(PredOrFunc, PredName,
-            ModeList, SuccessArgSizeInfo, FailureArgSizeInfo,
+        Result0 = ok1(item_pragma(user, pragma_termination2_info(PredOrFunc,
+            PredName, ModeList, SuccessArgSizeInfo, FailureArgSizeInfo,
             MaybeTerminationInfo)))
     ->
         Result = Result0
@@ -1154,21 +1161,21 @@ parse_pragma_type(ModuleName, "termination2_info", PragmaTerms, ErrorTerm,
 parse_pragma_type(ModuleName, "terminates", PragmaTerms, ErrorTerm, _VarSet,
         Result) :-
     MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-        Pragma = terminates(Name, Arity)),
+        Pragma = pragma_terminates(Name, Arity)),
     parse_simple_pragma(ModuleName, "terminates", MakePragma,
         PragmaTerms, ErrorTerm, Result).
 
 parse_pragma_type(ModuleName, "does_not_terminate", PragmaTerms, ErrorTerm,
         _VarSet, Result) :-
     MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-        Pragma = does_not_terminate(Name, Arity)),
+        Pragma = pragma_does_not_terminate(Name, Arity)),
     parse_simple_pragma(ModuleName, "does_not_terminate", MakePragma,
         PragmaTerms, ErrorTerm, Result).
 
 parse_pragma_type(ModuleName, "check_termination", PragmaTerms, ErrorTerm,
         _VarSet, Result) :-
     MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-        Pragma = check_termination(Name, Arity)),
+        Pragma = pragma_check_termination(Name, Arity)),
     parse_simple_pragma(ModuleName, "check_termination", MakePragma,
         PragmaTerms, ErrorTerm, Result).
 
@@ -1186,7 +1193,7 @@ parse_pragma_type(ModuleName, "structure_sharing", PragmaTerms, ErrorTerm,
             NameAndModesResult),
         NameAndModesResult = ok2(PredName - PredOrFunc, ModeList),
 
-        % Parse the headvariables:
+        % Parse the head variables:
         HeadVarsTerm = term.functor(term.atom("vars"), ListHVTerm, _),
         term.vars_list(ListHVTerm, HeadVarsGeneric),
         list.map(term.coerce_var, HeadVarsGeneric, HeadVars),
@@ -1208,8 +1215,8 @@ parse_pragma_type(ModuleName, "structure_sharing", PragmaTerms, ErrorTerm,
             MaybeSharingAs = yes(parse_structure_sharing_domain(SharingAsTerm))
         ),
 
-        Result0 = ok1(pragma(user, structure_sharing(PredOrFunc, PredName,
-            ModeList, HeadVars, Types, MaybeSharingAs)))
+        Result0 = ok1(item_pragma(user, pragma_structure_sharing(PredOrFunc,
+            PredName, ModeList, HeadVars, Types, MaybeSharingAs)))
     ->
         Result = Result0
     ;
@@ -1253,8 +1260,8 @@ parse_pragma_type(ModuleName, "structure_reuse", PragmaTerms, ErrorTerm,
             MaybeStructureReuse = yes(StructureReuse)
         ),
 
-        Result0 = ok1(pragma(user, structure_reuse(PredOrFunc, PredName,
-            ModeList, HeadVars, Types, MaybeStructureReuse)))
+        Result0 = ok1(item_pragma(user, pragma_structure_reuse(PredOrFunc,
+            PredName, ModeList, HeadVars, Types, MaybeStructureReuse)))
     ->
         Result = Result0
     ;
@@ -1300,10 +1307,10 @@ parse_pragma_type(ModuleName, "exceptions", PragmaTerms, ErrorTerm, _VarSet,
             ThrowStatus = may_throw(ExceptionType)
         ;
             ThrowStatusTerm = term.functor( term.atom("conditional"), [], _),
-            ThrowStatus = conditional
+            ThrowStatus = throw_conditional
         )
     ->
-        Result = ok1(pragma(user, exceptions(PredOrFunc, PredName,
+        Result = ok1(item_pragma(user, pragma_exceptions(PredOrFunc, PredName,
             Arity, ModeNum, ThrowStatus)))
     ;
         Result = error1(["error in `:- pragma exceptions'" - ErrorTerm])
@@ -1332,19 +1339,19 @@ parse_pragma_type(ModuleName, "trailing_info", PragmaTerms, ErrorTerm,
         (
             TrailingStatusTerm = term.functor(
                 term.atom("will_not_modify_trail"), [], _),
-            TrailingStatus = will_not_modify_trail
+            TrailingStatus = trail_will_not_modify
         ;
             TrailingStatusTerm = term.functor(
                 term.atom("may_modify_trail"), [], _),
-            TrailingStatus = may_modify_trail
+            TrailingStatus = trail_may_modify
         ;
             TrailingStatusTerm = term.functor(
                 term.atom("conditional"), [], _),
-            TrailingStatus = conditional
+            TrailingStatus = trail_conditional
         )
     ->
-        Result = ok1(pragma(user, trailing_info(PredOrFunc, PredName,
-            Arity, ModeNum, TrailingStatus)))
+        Result = ok1(item_pragma(user, pragma_trailing_info(PredOrFunc,
+            PredName, Arity, ModeNum, TrailingStatus)))
     ;
         Result = error1(["error in `:- pragma trailing_info'" - ErrorTerm])
     ).
@@ -1384,8 +1391,8 @@ parse_pragma_type(ModuleName, "mm_tabling_info", PragmaTerms, ErrorTerm,
             MM_TablingStatus = mm_tabled_conditional
         )
     ->
-        Result = ok1(pragma(user, mm_tabling_info(PredOrFunc, PredName,
-            Arity, ModeNum, MM_TablingStatus)))
+        Result = ok1(item_pragma(user, pragma_mm_tabling_info(PredOrFunc,
+            PredName, Arity, ModeNum, MM_TablingStatus)))
     ;
         Result = error1(["error in `:- pragma mm_tabling_info'" - ErrorTerm])
     ).
@@ -1393,7 +1400,7 @@ parse_pragma_type(ModuleName, "mm_tabling_info", PragmaTerms, ErrorTerm,
 parse_pragma_type(ModuleName, "mode_check_clauses", PragmaTerms, ErrorTerm,
         _VarSet, Result) :-
     MakePragma = (pred(Name::in, Arity::in, Pragma::out) is det :-
-        Pragma = mode_check_clauses(Name, Arity)),
+        Pragma = pragma_mode_check_clauses(Name, Arity)),
     parse_simple_pragma(ModuleName, "mode_check_clauses", MakePragma,
         PragmaTerms, ErrorTerm, Result).
 
@@ -1433,7 +1440,7 @@ parse_simple_pragma_base(ModuleName, PragmaType, NameKind, MakePragma,
         (
             NameArityResult = ok2(PredName, Arity),
             call(MakePragma, PredName, Arity, Pragma),
-            Result = ok1(pragma(user, Pragma))
+            Result = ok1(item_pragma(user, Pragma))
         ;
             NameArityResult = error2(Errors),
             Result = error1(Errors)
@@ -1477,19 +1484,19 @@ parse_pragma_keyword(ExpectedKeyword, Term, StringArg, StartContext) :-
 %-----------------------------------------------------------------------------%
 
 :- type collected_pragma_foreign_proc_attribute
-    --->    may_call_mercury(may_call_mercury)
-    ;       thread_safe(thread_safe)
-    ;       tabled_for_io(tabled_for_io)
-    ;       purity(purity)
-    ;       user_annotated_sharing(user_annotated_sharing)
-    ;       max_stack_size(int)
-    ;       backend(backend)
-    ;       terminates(terminates)
-    ;       will_not_throw_exception
-    ;       ordinary_despite_detism
-    ;       may_modify_trail(may_modify_trail)
-    ;       may_call_mm_tabled(may_call_mm_tabled)
-    ;       box_policy(box_policy).
+    --->    coll_may_call_mercury(proc_may_call_mercury)
+    ;       coll_thread_safe(proc_thread_safe)
+    ;       coll_tabled_for_io(proc_tabled_for_io)
+    ;       coll_purity(purity)
+    ;       coll_user_annotated_sharing(user_annotated_sharing)
+    ;       coll_max_stack_size(int)
+    ;       coll_backend(backend)
+    ;       coll_terminates(proc_terminates)
+    ;       coll_will_not_throw_exception
+    ;       coll_ordinary_despite_detism
+    ;       coll_may_modify_trail(proc_may_modify_trail)
+    ;       coll_may_call_mm_tabled(may_call_mm_tabled)
+    ;       coll_box_policy(box_policy).
 
 :- pred parse_pragma_foreign_proc_attributes_term(foreign_language::in,
     string::in, varset::in, term::in,
@@ -1505,32 +1512,36 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Varset,
         Attributes2 = Attributes0
     ),
     ConflictingAttributes = [
-        may_call_mercury(will_not_call_mercury) -
-            may_call_mercury(may_call_mercury),
-        thread_safe(thread_safe) - thread_safe(not_thread_safe),
-        tabled_for_io(tabled_for_io) -
-            tabled_for_io(tabled_for_io_unitize),
-        tabled_for_io(tabled_for_io) -
-            tabled_for_io(tabled_for_descendant_io),
-        tabled_for_io(tabled_for_io) -
-            tabled_for_io(not_tabled_for_io),
-        tabled_for_io(tabled_for_io_unitize) -
-            tabled_for_io(tabled_for_descendant_io),
-        tabled_for_io(tabled_for_io_unitize) -
-            tabled_for_io(not_tabled_for_io),
-        tabled_for_io(tabled_for_descendant_io) -
-            tabled_for_io(not_tabled_for_io),
-        purity(purity_pure) - purity(purity_impure),
-        purity(purity_pure) - purity(purity_semipure),
-        purity(purity_semipure) - purity(purity_impure),
-        terminates(terminates) - terminates(does_not_terminate),
-        terminates(depends_on_mercury_calls) - terminates(terminates),
-        terminates(depends_on_mercury_calls) - terminates(does_not_terminate),
-        may_modify_trail(may_modify_trail) -
-            may_modify_trail(will_not_modify_trail),
-        may_call_mercury(will_not_call_mercury) -
-            may_call_mm_tabled(may_call_mm_tabled),
-        box_policy(native_if_possible) - box_policy(always_boxed)
+        coll_may_call_mercury(proc_will_not_call_mercury) -
+            coll_may_call_mercury(proc_may_call_mercury),
+        coll_thread_safe(proc_thread_safe) -
+            coll_thread_safe(proc_not_thread_safe),
+        coll_tabled_for_io(proc_tabled_for_io) -
+            coll_tabled_for_io(proc_tabled_for_io_unitize),
+        coll_tabled_for_io(proc_tabled_for_io) -
+            coll_tabled_for_io(proc_tabled_for_descendant_io),
+        coll_tabled_for_io(proc_tabled_for_io) -
+            coll_tabled_for_io(proc_not_tabled_for_io),
+        coll_tabled_for_io(proc_tabled_for_io_unitize) -
+            coll_tabled_for_io(proc_tabled_for_descendant_io),
+        coll_tabled_for_io(proc_tabled_for_io_unitize) -
+            coll_tabled_for_io(proc_not_tabled_for_io),
+        coll_tabled_for_io(proc_tabled_for_descendant_io) -
+            coll_tabled_for_io(proc_not_tabled_for_io),
+        coll_purity(purity_pure) - coll_purity(purity_impure),
+        coll_purity(purity_pure) - coll_purity(purity_semipure),
+        coll_purity(purity_semipure) - coll_purity(purity_impure),
+        coll_terminates(proc_terminates) -
+            coll_terminates(proc_does_not_terminate),
+        coll_terminates(depends_on_mercury_calls) -
+            coll_terminates(proc_terminates),
+        coll_terminates(depends_on_mercury_calls) -
+            coll_terminates(proc_does_not_terminate),
+        coll_may_modify_trail(proc_may_modify_trail) -
+            coll_may_modify_trail(proc_will_not_modify_trail),
+        coll_may_call_mercury(proc_will_not_call_mercury) -
+            coll_may_call_mm_tabled(may_call_mm_tabled),
+        coll_box_policy(native_if_possible) - coll_box_policy(always_boxed)
     ],
     (
         parse_pragma_foreign_proc_attributes_term0(Varset, Term, AttrList)
@@ -1559,31 +1570,31 @@ parse_pragma_foreign_proc_attributes_term(ForeignLanguage, Pragma, Varset,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
-process_attribute(may_call_mercury(MayCallMercury), !Attrs) :-
+process_attribute(coll_may_call_mercury(MayCallMercury), !Attrs) :-
     set_may_call_mercury(MayCallMercury, !Attrs).
-process_attribute(thread_safe(ThreadSafe), !Attrs) :-
+process_attribute(coll_thread_safe(ThreadSafe), !Attrs) :-
     set_thread_safe(ThreadSafe, !Attrs).
-process_attribute(tabled_for_io(TabledForIO), !Attrs) :-
+process_attribute(coll_tabled_for_io(TabledForIO), !Attrs) :-
     set_tabled_for_io(TabledForIO, !Attrs).
-process_attribute(purity(Pure), !Attrs) :-
+process_attribute(coll_purity(Pure), !Attrs) :-
     set_purity(Pure, !Attrs).
-process_attribute(terminates(Terminates), !Attrs) :-
+process_attribute(coll_terminates(Terminates), !Attrs) :-
     set_terminates(Terminates, !Attrs).
-process_attribute(will_not_throw_exception, !Attrs) :-
-    set_may_throw_exception(will_not_throw_exception, !Attrs).
-process_attribute(max_stack_size(Size), !Attrs) :-
+process_attribute(coll_will_not_throw_exception, !Attrs) :-
+    set_may_throw_exception(proc_will_not_throw_exception, !Attrs).
+process_attribute(coll_max_stack_size(Size), !Attrs) :-
     add_extra_attribute(max_stack_size(Size), !Attrs).
-process_attribute(backend(Backend), !Attrs) :-
+process_attribute(coll_backend(Backend), !Attrs) :-
     add_extra_attribute(backend(Backend), !Attrs).
-process_attribute(ordinary_despite_detism, !Attrs) :-
+process_attribute(coll_ordinary_despite_detism, !Attrs) :-
     set_ordinary_despite_detism(yes, !Attrs).
-process_attribute(may_modify_trail(TrailMod), !Attrs) :-
+process_attribute(coll_may_modify_trail(TrailMod), !Attrs) :-
     set_may_modify_trail(TrailMod, !Attrs).
-process_attribute(may_call_mm_tabled(MayCallTabled), !Attrs) :-
+process_attribute(coll_may_call_mm_tabled(MayCallTabled), !Attrs) :-
     set_may_call_mm_tabled(MayCallTabled, !Attrs).
-process_attribute(box_policy(BoxPolicy), !Attrs) :-
+process_attribute(coll_box_policy(BoxPolicy), !Attrs) :-
     set_box_policy(BoxPolicy, !Attrs).
-process_attribute(user_annotated_sharing(UserSharing), !Attrs) :-
+process_attribute(coll_user_annotated_sharing(UserSharing), !Attrs) :-
     set_user_annotated_sharing(UserSharing, !Attrs).
 
     % Check whether all the required attributes have been set for
@@ -1598,8 +1609,9 @@ check_required_attributes(lang_managed_cplusplus, Attrs, _Term) = ok1(Attrs).
 check_required_attributes(lang_csharp, Attrs, _Term) = ok1(Attrs).
 check_required_attributes(lang_il, Attrs, Term) = Res :-
     MaxStackAttrs = list.filter_map(
-        (func(X) = X is semidet :- X = max_stack_size(_)),
-        Attrs ^ extra_attributes),
+        (func(X) = X is semidet :-
+            X = max_stack_size(_)),
+        get_extra_attributes(Attrs)),
     (
         MaxStackAttrs = [],
         Res = error1(["expecting max_stack_size attribute for IL code" - Term])
@@ -1633,61 +1645,63 @@ parse_pragma_foreign_proc_attributes_term0(Varset, Term, Flags) :-
 
 parse_single_pragma_foreign_proc_attribute(Varset, Term, Flag) :-
     ( parse_may_call_mercury(Term, MayCallMercury) ->
-        Flag = may_call_mercury(MayCallMercury)
+        Flag = coll_may_call_mercury(MayCallMercury)
     ; parse_threadsafe(Term, ThreadSafe) ->
-        Flag = thread_safe(ThreadSafe)
+        Flag = coll_thread_safe(ThreadSafe)
     ; parse_tabled_for_io(Term, TabledForIo) ->
-        Flag = tabled_for_io(TabledForIo)
+        Flag = coll_tabled_for_io(TabledForIo)
     ; parse_user_annotated_sharing(Varset, Term, UserSharing) ->
-        Flag = user_annotated_sharing(UserSharing)
+        Flag = coll_user_annotated_sharing(UserSharing)
     ; parse_max_stack_size(Term, Size) ->
-        Flag = max_stack_size(Size)
+        Flag = coll_max_stack_size(Size)
     ; parse_backend(Term, Backend) ->
-        Flag = backend(Backend)
+        Flag = coll_backend(Backend)
     ; parse_purity_promise(Term, Purity) ->
-        Flag = purity(Purity)
+        Flag = coll_purity(Purity)
     ; parse_terminates(Term, Terminates) ->
-        Flag = terminates(Terminates)
+        Flag = coll_terminates(Terminates)
     ; parse_no_exception_promise(Term) ->
-        Flag = will_not_throw_exception
+        Flag = coll_will_not_throw_exception
     ; parse_ordinary_despite_detism(Term) ->
-        Flag = ordinary_despite_detism
+        Flag = coll_ordinary_despite_detism
     ; parse_may_modify_trail(Term, TrailMod) ->
-        Flag = may_modify_trail(TrailMod)
+        Flag = coll_may_modify_trail(TrailMod)
     ; parse_may_call_mm_tabled(Term, CallsTabled) ->
-        Flag = may_call_mm_tabled(CallsTabled)
+        Flag = coll_may_call_mm_tabled(CallsTabled)
     ; parse_box_policy(Term, BoxPolicy) ->
-        Flag = box_policy(BoxPolicy)
+        Flag = coll_box_policy(BoxPolicy)
     ;
         fail
     ).
 
-:- pred parse_may_call_mercury(term::in, may_call_mercury::out) is semidet.
+:- pred parse_may_call_mercury(term::in, proc_may_call_mercury::out)
+    is semidet.
 
 parse_may_call_mercury(term.functor(term.atom("recursive"), [], _),
-    may_call_mercury).
+    proc_may_call_mercury).
 parse_may_call_mercury(term.functor(term.atom("non_recursive"), [], _),
-    will_not_call_mercury).
+    proc_will_not_call_mercury).
 parse_may_call_mercury(term.functor(term.atom("may_call_mercury"), [], _),
-    may_call_mercury).
-parse_may_call_mercury(term.functor(term.atom("will_not_call_mercury"), [],
-    _), will_not_call_mercury).
+    proc_may_call_mercury).
+parse_may_call_mercury(term.functor(term.atom("will_not_call_mercury"), [], _),
+    proc_will_not_call_mercury).
 
-:- pred parse_threadsafe(term::in, thread_safe::out) is semidet.
+:- pred parse_threadsafe(term::in, proc_thread_safe::out) is semidet.
 
 parse_threadsafe(term.functor(term.atom("thread_safe"), [], _),
-    thread_safe).
+    proc_thread_safe).
 parse_threadsafe(term.functor(term.atom("not_thread_safe"), [], _),
-    not_thread_safe).
+    proc_not_thread_safe).
 parse_threadsafe(term.functor(term.atom("maybe_thread_safe"), [], _),
-    maybe_thread_safe).
+    proc_maybe_thread_safe).
 
-:- pred parse_may_modify_trail(term::in, may_modify_trail::out) is semidet.
+:- pred parse_may_modify_trail(term::in, proc_may_modify_trail::out)
+    is semidet.
 
 parse_may_modify_trail(term.functor(term.atom("may_modify_trail"), [], _),
-    may_modify_trail).
+    proc_may_modify_trail).
 parse_may_modify_trail(term.functor(term.atom("will_not_modify_trail"), [], _),
-    will_not_modify_trail).
+    proc_will_not_modify_trail).
 
 :- pred parse_may_call_mm_tabled(term::in, may_call_mm_tabled::out) is semidet.
 
@@ -1703,21 +1717,21 @@ parse_box_policy(term.functor(term.atom("native_if_possible"), [], _),
 parse_box_policy(term.functor(term.atom("always_boxed"), [], _),
     always_boxed).
 
-:- pred parse_tabled_for_io(term::in, tabled_for_io::out) is semidet.
+:- pred parse_tabled_for_io(term::in, proc_tabled_for_io::out) is semidet.
 
 parse_tabled_for_io(term.functor(term.atom(Str), [], _), TabledForIo) :-
     (
         Str = "tabled_for_io",
-        TabledForIo = tabled_for_io
+        TabledForIo = proc_tabled_for_io
     ;
         Str = "tabled_for_io_unitize",
-        TabledForIo = tabled_for_io_unitize
+        TabledForIo = proc_tabled_for_io_unitize
     ;
         Str = "tabled_for_descendant_io",
-        TabledForIo = tabled_for_descendant_io
+        TabledForIo = proc_tabled_for_descendant_io
     ;
         Str = "not_tabled_for_io",
-        TabledForIo = not_tabled_for_io
+        TabledForIo = proc_not_tabled_for_io
     ).
 
 :- pred parse_max_stack_size(term::in, int::out) is semidet.
@@ -1744,12 +1758,12 @@ parse_purity_promise(term.functor(term.atom("promise_pure"), [], _),
 parse_purity_promise(term.functor(term.atom("promise_semipure"), [], _),
         purity_semipure).
 
-:- pred parse_terminates(term::in, terminates::out) is semidet.
+:- pred parse_terminates(term::in, proc_terminates::out) is semidet.
 
 parse_terminates(term.functor(term.atom("terminates"), [], _),
-        terminates).
+        proc_terminates).
 parse_terminates(term.functor(term.atom("does_not_terminate"), [], _),
-        does_not_terminate).
+        proc_does_not_terminate).
 
 :- pred parse_no_exception_promise(term::in) is semidet.
 
@@ -1788,8 +1802,8 @@ parse_pragma_foreign_code(ModuleName, Flags, PredAndVarsTerm0,
             Error = no,
             varset.coerce(VarSet0, ProgVarSet),
             varset.coerce(VarSet0, InstVarSet),
-            Result = ok1(pragma(user, foreign_proc(Flags, PredName, PredOrFunc,
-                PragmaVars, ProgVarSet, InstVarSet, PragmaImpl)))
+            Result = ok1(item_pragma(user, pragma_foreign_proc(Flags, PredName,
+                PredOrFunc, PragmaVars, ProgVarSet, InstVarSet, PragmaImpl)))
         ;
             Error = yes(ErrorMessage),
             Result = error1([ErrorMessage - PredAndVarsTerm0])
@@ -1857,9 +1871,9 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
                 MaybePredOrFunc, MaybeModes)),
             (
                 MaybeAttrs = no,
-                PragmaType = tabled(TablingType, PredName, Arity,
+                PragmaType = pragma_tabled(TablingType, PredName, Arity,
                     MaybePredOrFunc, MaybeModes, no),
-                Result = ok1(pragma(user, PragmaType))
+                Result = ok1(item_pragma(user, PragmaType))
             ;
                 MaybeAttrs = yes(AttrsListTerm),
                 convert_maybe_list(AttrsListTerm,
@@ -1871,9 +1885,10 @@ parse_tabling_pragma(ModuleName, PragmaName, TablingType, PragmaTerms,
                         default_memo_table_attributes, MaybeAttributes),
                     (
                         MaybeAttributes = ok1(Attributes),
-                        PragmaType = tabled(TablingType, PredName, Arity,
-                            MaybePredOrFunc, MaybeModes, yes(Attributes)),
-                        Result = ok1(pragma(user, PragmaType))
+                        PragmaType = pragma_tabled(TablingType, PredName,
+                            Arity, MaybePredOrFunc, MaybeModes,
+                            yes(Attributes)),
+                        Result = ok1(item_pragma(user, PragmaType))
                     ;
                         MaybeAttributes = error1(Errors),
                         Result = error1(Errors)

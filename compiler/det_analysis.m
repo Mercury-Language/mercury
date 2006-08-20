@@ -973,7 +973,8 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, PragmaCode,
         MaybeDetism = yes(Detism0),
         determinism_components(Detism0, CanFail, NumSolns0),
         (
-            may_throw_exception(Attributes) = will_not_throw_exception,
+            get_may_throw_exception(Attributes) =
+                proc_will_not_throw_exception,
             Detism0 = detism_erroneous
         ->
             proc_info_get_context(ProcInfo, ProcContext),
@@ -1038,25 +1039,26 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
         GoalFailingContexts, !:Msgs) :-
     % Unifications are either deterministic or semideterministic.
     (
-        RHS0 = lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
-            Vars, Modes, LambdaDeclaredDet, Goal0)
-    ->
+        RHS0 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
+            Vars, Modes, LambdaDeclaredDet, Goal0),
         ( determinism_components(LambdaDeclaredDet, _, at_most_many_cc) ->
             LambdaSolnContext = first_soln
         ;
             LambdaSolnContext = all_solns
         ),
         det_info_get_module_info(DetInfo, ModuleInfo),
-        instmap.pre_lambda_update(ModuleInfo, Vars, Modes,
-            InstMap0, InstMap1),
+        instmap.pre_lambda_update(ModuleInfo, Vars, Modes, InstMap0, InstMap1),
         det_infer_goal(Goal0, Goal, InstMap1, LambdaSolnContext, [],
             no, DetInfo, LambdaInferredDet, _LambdaFailingContexts, GoalMsgs),
         det_check_lambda(LambdaDeclaredDet, LambdaInferredDet,
             Goal, GoalInfo, DetInfo, CheckLambdaMsgs),
-        list.append(GoalMsgs, CheckLambdaMsgs, !:Msgs),
-        RHS = lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
+        !:Msgs = GoalMsgs ++ CheckLambdaMsgs,
+        RHS = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocalVars,
             Vars, Modes, LambdaDeclaredDet, Goal)
     ;
+        ( RHS0 = rhs_var(_)
+        ; RHS0 = rhs_functor(_, _, _)
+        ),
         RHS = RHS0,
         !:Msgs = []
     ),
@@ -1077,7 +1079,7 @@ det_infer_unify(LHS, RHS0, Unify, UnifyContext, RHS, GoalInfo, InstMap0,
             unexpected(this_file, "can_fail assign")
         ;
             Unify = complicated_unify(_, _, _),
-            ( RHS = var(RHSVar) ->
+            ( RHS = rhs_var(RHSVar) ->
                 GoalFailingContexts = [Context - test_goal(LHS, RHSVar)]
             ;
                 unexpected(this_file, "complicated_unify but no var")
@@ -1557,7 +1559,7 @@ segregate_procs_2(ModuleInfo, [PredProcId | PredProcIds],
             hlds_pred.in_in_unification_proc_id(ProcId)
         ;
             pred_info_get_markers(Pred, Markers),
-            check_marker(Markers, class_method)
+            check_marker(Markers, marker_class_method)
         )
     ->
         !:NoInferProcs = [PredProcId | !.NoInferProcs]

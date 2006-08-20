@@ -106,15 +106,15 @@
     % would return the module_name
     %   unqualified("module__cpp_code")
     %
-:- func foreign_import_module_name(foreign_import_module) = module_name.
+:- func foreign_import_module_name(foreign_import_module_info) = module_name.
 
-    % foreign_import_module_name(ForeignImport, CurrentModule)
+    % foreign_import_module_name_from_module(ForeignImport, CurrentModule)
     %
     % returns the module name needed to refer to ForeignImport from the
     % CurrentModule.
     %
-:- func foreign_import_module_name(foreign_import_module, module_name) =
-    module_name.
+:- func foreign_import_module_name_from_module(foreign_import_module_info,
+    module_name) = module_name.
 
     % Sub-type of foreign_language for languages for which
     % we generate external files for foreign code.
@@ -198,7 +198,7 @@
 %-----------------------------------------------------------------------------%
 
 foreign_import_module_name(ImportModule) = ModuleName :-
-    ImportModule = foreign_import_module(Lang, ForeignImportModule, _),
+    ImportModule = foreign_import_module_info(Lang, ForeignImportModule, _),
     (
         Lang = lang_c,
         ModuleName = ForeignImportModule
@@ -210,16 +210,15 @@ foreign_import_module_name(ImportModule) = ModuleName :-
         ModuleName = ForeignImportModule
     ;
         Lang = lang_managed_cplusplus,
-        ModuleName = foreign_language_module_name(ForeignImportModule,
-                Lang)
+        ModuleName = foreign_language_module_name(ForeignImportModule, Lang)
     ;
         Lang = lang_csharp,
         ModuleName = foreign_language_module_name(ForeignImportModule, Lang)
     ).
 
-foreign_import_module_name(ModuleForeignImported, CurrentModule) =
+foreign_import_module_name_from_module(ModuleForeignImported, CurrentModule) =
         ImportedForeignCodeModuleName :-
-    ModuleForeignImported = foreign_import_module(Lang, _, _),
+    ModuleForeignImported = foreign_import_module_info(Lang, _, _),
     ImportedForeignCodeModuleName1 = ModuleForeignImported ^
         foreign_import_module_name,
     (
@@ -227,20 +226,20 @@ foreign_import_module_name(ModuleForeignImported, CurrentModule) =
         ImportedForeignCodeModuleName = ImportedForeignCodeModuleName1
     ;
         Lang = lang_il,
-        ImportedForeignCodeModuleName = handle_std_library(
-            CurrentModule, ImportedForeignCodeModuleName1)
+        ImportedForeignCodeModuleName = handle_std_library(CurrentModule,
+            ImportedForeignCodeModuleName1)
     ;
         Lang = lang_managed_cplusplus,
-        ImportedForeignCodeModuleName = handle_std_library(
-            CurrentModule, ImportedForeignCodeModuleName1)
+        ImportedForeignCodeModuleName = handle_std_library(CurrentModule,
+            ImportedForeignCodeModuleName1)
     ;
         Lang = lang_csharp,
-        ImportedForeignCodeModuleName = handle_std_library(
-            CurrentModule, ImportedForeignCodeModuleName1)
+        ImportedForeignCodeModuleName = handle_std_library(CurrentModule,
+            ImportedForeignCodeModuleName1)
     ;
         Lang = lang_java,
-        ImportedForeignCodeModuleName = handle_std_library(
-            CurrentModule, ImportedForeignCodeModuleName1)
+        ImportedForeignCodeModuleName = handle_std_library(CurrentModule,
+            ImportedForeignCodeModuleName1)
     ).
 
     % On the il backend, we need to refer to the module "mercury" when

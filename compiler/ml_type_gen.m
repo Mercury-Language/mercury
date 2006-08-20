@@ -128,23 +128,26 @@ ml_gen_types(ModuleInfo, MLDS_TypeDefns, !IO) :-
 ml_gen_type_defn(ModuleInfo, TypeTable, TypeCtor, MLDS_Defns0, MLDS_Defns) :-
     map.lookup(TypeTable, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_status(TypeDefn, Status),
-    ( status_defined_in_this_module(Status, yes) ->
+    DefinedThisModule = status_defined_in_this_module(Status),
+    (
+        DefinedThisModule = yes,
         hlds_data.get_type_defn_body(TypeDefn, TypeBody),
         ml_gen_type_2(TypeBody, ModuleInfo, TypeCtor, TypeDefn,
             MLDS_Defns0, MLDS_Defns)
     ;
+        DefinedThisModule = no,
         MLDS_Defns = MLDS_Defns0
     ).
 
 :- pred ml_gen_type_2(hlds_type_body::in, module_info::in, type_ctor::in,
     hlds_type_defn::in, mlds_defns::in, mlds_defns::out) is det.
 
-ml_gen_type_2(abstract_type(_), _, _, _, !Defns).
-ml_gen_type_2(eqv_type(_EqvType), _, _, _, !Defns).
+ml_gen_type_2(hlds_abstract_type(_), _, _, _, !Defns).
+ml_gen_type_2(hlds_eqv_type(_EqvType), _, _, _, !Defns).
     % XXX Fixme!
     % For a description of the problems with equivalence types,
     % see our BABEL'01 paper "Compiling Mercury to the .NET CLR".
-ml_gen_type_2(du_type(Ctors, TagValues, EnumDummy, MaybeUserEqComp,
+ml_gen_type_2(hlds_du_type(Ctors, TagValues, EnumDummy, MaybeUserEqComp,
         _ReservedTag, _), ModuleInfo, TypeCtor, TypeDefn, !Defns) :-
     % XXX we probably shouldn't ignore _ReservedTag
     ml_gen_equality_members(MaybeUserEqComp, MaybeEqualityMembers),
@@ -164,8 +167,8 @@ ml_gen_type_2(du_type(Ctors, TagValues, EnumDummy, MaybeUserEqComp,
             Ctors, TagValues, MaybeEqualityMembers, !Defns)
     ).
     % XXX Fixme!  Same issues here as for eqv_type/1.
-ml_gen_type_2(foreign_type(_), _, _, _, !Defns).
-ml_gen_type_2(solver_type(_, _), _, _, _, !Defns).
+ml_gen_type_2(hlds_foreign_type(_), _, _, _, !Defns).
+ml_gen_type_2(hlds_solver_type(_, _), _, _, _, !Defns).
 
 %-----------------------------------------------------------------------------%
 %
@@ -235,7 +238,7 @@ ml_gen_enum_constant(Context, ConsTagValues, Ctor) = MLDS_Defn :-
     Ctor = ctor(_ExistQTVars, _Constraints, Name, Args),
     list.length(Args, Arity),
     map.lookup(ConsTagValues, cons(Name, Arity), TagVal),
-    ( TagVal = int_constant(Int) ->
+    ( TagVal = int_tag(Int) ->
         ConstValue = const(int_const(Int))
     ;
         unexpected(this_file,
@@ -497,8 +500,8 @@ ml_uses_reserved_addr(ConsTagValues, Ctor, RA) :-
 :- pred tagval_is_reserved_addr(cons_tag::in, reserved_address::out)
     is semidet.
 
-tagval_is_reserved_addr(reserved_address(RA), RA).
-tagval_is_reserved_addr(shared_with_reserved_addresses(_, TagVal), RA) :-
+tagval_is_reserved_addr(reserved_address_tag(RA), RA).
+tagval_is_reserved_addr(shared_with_reserved_addresses_tag(_, TagVal), RA) :-
     tagval_is_reserved_addr(TagVal, RA).
 
 :- func get_tagval(cons_tag_values, constructor) = cons_tag.
@@ -658,12 +661,13 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
             % which is used to construct the class that is used for
             % reserved_objects.
             (
-                TagVal = shared_with_reserved_addresses(RAs, single_functor),
+                TagVal = shared_with_reserved_addresses_tag(RAs,
+                    single_functor_tag),
                 some [RA] (
                     list.member(RA, RAs),
                     RA = reserved_object(_, _, _)
                 ),
-                Members \= []
+                Members = [_ | _]
             ->
                 ZeroArgCtor = gen_constructor_function(Globals, BaseClassId,
                     CtorClassType, CtorClassQualifier, SecondaryTagClassId,
@@ -714,8 +718,8 @@ ml_gen_du_ctor_member(ModuleInfo, BaseClassId, BaseClassQualifier,
 % A constructor is represented using the base class rather than a derived
 % class if there is only a single functor, or if there is a single
 % functor and some constants represented using reserved addresses.
-ml_tag_uses_base_class(single_functor).
-ml_tag_uses_base_class(shared_with_reserved_addresses(_RAs, Tag)) :-
+ml_tag_uses_base_class(single_functor_tag).
+ml_tag_uses_base_class(shared_with_reserved_addresses_tag(_RAs, Tag)) :-
     ml_tag_uses_base_class(Tag).
 
 :- func target_uses_constructors(compilation_target) = bool.

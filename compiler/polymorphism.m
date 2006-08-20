@@ -803,7 +803,7 @@ setup_headvars_2(PredInfo, ClassContext, ExtraHeadVars0,
         ActualExistConstraints),
     (
         pred_info_get_markers(PredInfo, PredMarkers),
-        check_marker(PredMarkers, class_method)
+        check_marker(PredMarkers, marker_class_method)
     ->
         % For class methods we record the type_info_locns even for the
         % existential constraints.  It's easier to do it here than when we
@@ -996,8 +996,8 @@ assign_var(Var1, Var2, Goal) :-
         Goal = true_goal
     ;
         term.context_init(Context),
-        create_atomic_complicated_unification(Var1, var(Var2), Context,
-            explicit, [], Goal)
+        create_atomic_complicated_unification(Var1, rhs_var(Var2), Context,
+            umc_explicit, [], Goal)
     ).
 
 :- pred get_improved_exists_head_constraints(constraint_map::in,
@@ -1136,7 +1136,7 @@ type_info_vars(ModuleInfo, [Arg | Args], InitString) = String :-
 process_unify(XVar, Y, Mode, Unification0, UnifyContext, GoalInfo0, Goal,
         !Info) :-
     (
-        Y = var(_YVar),
+        Y = rhs_var(_YVar),
 
         % Var-var unifications (simple_test, assign, or complicated_unify)
         % are basically left unchanged. Complicated unifications will
@@ -1156,11 +1156,11 @@ process_unify(XVar, Y, Mode, Unification0, UnifyContext, GoalInfo0, Goal,
             GoalInfo0, GoalInfo, !Info),
         Goal = unify(XVar, Y, Mode, Unification, UnifyContext) - GoalInfo
     ;
-        Y = functor(ConsId, _, Args),
+        Y = rhs_functor(ConsId, _, Args),
         process_unify_functor(XVar, ConsId, Args, Mode,
             Unification0, UnifyContext, GoalInfo0, Goal, !Info)
     ;
-        Y = lambda_goal(Purity, PredOrFunc, EvalMethod, ArgVars0,
+        Y = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, ArgVars0,
             LambdaVars, Modes, Det, LambdaGoal0),
 
         % For lambda expressions, we must recursively traverse the lambda goal.
@@ -1172,7 +1172,7 @@ process_unify(XVar, Y, Mode, Unification0, UnifyContext, GoalInfo0, Goal,
             LambdaGoal1, LambdaGoal, NonLocalTypeInfos, !Info),
         set.to_sorted_list(NonLocalTypeInfos, NonLocalTypeInfosList),
         list.append(NonLocalTypeInfosList, ArgVars0, ArgVars),
-        Y1 = lambda_goal(Purity, PredOrFunc, EvalMethod, ArgVars,
+        Y1 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, ArgVars,
             LambdaVars, Modes, Det, LambdaGoal),
         goal_info_get_nonlocals(GoalInfo0, NonLocals0),
         set.union(NonLocals0, NonLocalTypeInfos, NonLocals),
@@ -1322,7 +1322,7 @@ process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
         unification_typeinfos(TypeOfX,
             Unification0, Unification, GoalInfo1, GoalInfo, !Info),
 
-        Unify = unify(X0, functor(ConsId, IsConstruction, ArgVars),
+        Unify = unify(X0, rhs_functor(ConsId, IsConstruction, ArgVars),
             Mode0, Unification, UnifyContext) - GoalInfo,
         list.append(ExtraGoals, [Unify], GoalList),
         conj_list_to_goal(GoalList, GoalInfo0, Goal)
@@ -1333,7 +1333,7 @@ process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0, UnifyContext,
 
         unification_typeinfos(TypeOfX,
             Unification0, Unification, GoalInfo0, GoalInfo, !Info),
-        Goal = unify(X0, functor(ConsId0, no, ArgVars0), Mode0,
+        Goal = unify(X0, rhs_functor(ConsId0, no, ArgVars0), Mode0,
             Unification, UnifyContext) - GoalInfo
     ).
 
@@ -1354,7 +1354,7 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     QualifiedPName = qualified(PredModule, PredName),
 
     CallUnifyContext = call_unify_context(X0,
-        functor(cons(QualifiedPName, list.length(ArgVars0)), no, ArgVars0),
+        rhs_functor(cons(QualifiedPName, list.length(ArgVars0)), no, ArgVars0),
         UnifyContext),
     LambdaGoalExpr = plain_call(PredId, ProcId, Args, not_builtin,
         yes(CallUnifyContext), QualifiedPName),
@@ -1398,7 +1398,7 @@ convert_pred_to_lambda_goal(Purity, EvalMethod, X0, PredId, ProcId,
     % Construct the lambda expression.
 
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    Functor = lambda_goal(Purity, PredOrFunc, EvalMethod, ArgVars0,
+    Functor = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, ArgVars0,
         LambdaVars, LambdaModes, LambdaDet, LambdaGoal).
 
 :- pred make_fresh_vars(list(mer_type)::in, list(prog_var)::out,
@@ -2278,14 +2278,14 @@ construct_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
     make_instance_string(InstanceTypes, InstanceString),
     ConsId = base_typeclass_info_const(InstanceModuleName, ClassId,
         InstanceNum, InstanceString),
-    BaseTypeClassInfoTerm = functor(ConsId, no, []),
+    BaseTypeClassInfoTerm = rhs_functor(ConsId, no, []),
 
     % Create the construction unification to initialize the variable.
     BaseUnification = construct(BaseVar, ConsId, [], [],
         construct_dynamically, cell_is_shared, no_construct_sub_info),
     BaseUnifyMode = (free -> ground(shared, none)) -
         (ground(shared, none) -> ground(shared, none)),
-    BaseUnifyContext = unify_context(explicit, []),
+    BaseUnifyContext = unify_context(umc_explicit, []),
     % XXX The UnifyContext is wrong.
     BaseUnify = unify(BaseVar, BaseTypeClassInfoTerm, BaseUnifyMode,
         BaseUnification, BaseUnifyContext),
@@ -2302,7 +2302,7 @@ construct_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
     % Build a unification to add the argvars to the base_typeclass_info.
     NewConsId = typeclass_info_cell_constructor,
     NewArgVars = [BaseVar | ArgVars],
-    TypeClassInfoTerm = functor(NewConsId, no, NewArgVars),
+    TypeClassInfoTerm = rhs_functor(NewConsId, no, NewArgVars),
 
     new_typeclass_info_var(Constraint, ClassNameString, NewVar, !Info),
 
@@ -2315,7 +2315,7 @@ construct_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
         construct_dynamically, cell_is_unique, no_construct_sub_info),
     UnifyMode = (free -> ground(shared, none)) -
         (ground(shared, none) -> ground(shared, none)),
-    UnifyContext = unify_context(explicit, []),
+    UnifyContext = unify_context(umc_explicit, []),
     % XXX The UnifyContext is wrong.
     Unify = unify(NewVar, TypeClassInfoTerm, UnifyMode, Unification,
         UnifyContext),
@@ -2329,7 +2329,7 @@ construct_typeclass_info(ArgUnconstrainedTypeInfoVars, ArgTypeInfoVars,
     % but it shouldn't make any difference.
     InstConsId = cell_inst_cons_id(typeclass_info_cell, NumArgVars),
     instmap_delta_from_assoc_list(
-        [NewVar - bound(unique, [functor(InstConsId, ArgInsts)])],
+        [NewVar - bound(unique, [bound_functor(InstConsId, ArgInsts)])],
         InstMapDelta),
     goal_info_set_instmap_delta(InstMapDelta, GoalInfo1, GoalInfo2),
     goal_info_set_determinism(detism_det, GoalInfo2, GoalInfo),
@@ -2690,7 +2690,7 @@ init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
             "init_type_info_var: type_to_ctor_and_args failed")
     ),
     ConsId = cell_cons_id(Cell),
-    TypeInfoTerm = functor(ConsId, no, ArgVars),
+    TypeInfoTerm = rhs_functor(ConsId, no, ArgVars),
     % Introduce a new variable.
     (
         MaybePreferredVar = yes(TypeInfoVar)
@@ -2709,7 +2709,7 @@ init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
         construct_dynamically, cell_is_unique, no_construct_sub_info),
     UnifyMode = (free -> ground(shared, none)) -
         (ground(shared, none) -> ground(shared, none)),
-    UnifyContext = unify_context(explicit, []),
+    UnifyContext = unify_context(umc_explicit, []),
     % XXX The UnifyContext is wrong.
     Unify = unify(TypeInfoVar, TypeInfoTerm, UnifyMode, Unification,
         UnifyContext),
@@ -2721,7 +2721,7 @@ init_type_info_var(Type, ArgVars, MaybePreferredVar, TypeInfoVar, TypeInfoGoal,
     % but it shouldn't make any difference.
     InstConsId = cell_inst_cons_id(Cell, NumArgVars),
     instmap_delta_from_assoc_list(
-        [TypeInfoVar - bound(unique, [functor(InstConsId, ArgInsts)])],
+        [TypeInfoVar - bound(unique, [bound_functor(InstConsId, ArgInsts)])],
         InstMapDelta),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure, GoalInfo),
 
@@ -2733,7 +2733,7 @@ init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorInfoVar,
     TypeName = type_util.type_ctor_name(ModuleInfo, TypeCtor),
     TypeCtor = type_ctor(_, Arity),
     ConsId = type_ctor_info_const(ModuleName, TypeName, Arity),
-    TypeInfoTerm = functor(ConsId, no, []),
+    TypeInfoTerm = rhs_functor(ConsId, no, []),
 
     % Introduce a new variable.
     new_type_info_var_raw(Type, type_ctor_info, TypeCtorInfoVar,
@@ -2744,7 +2744,7 @@ init_const_type_ctor_info_var(Type, TypeCtor, TypeCtorInfoVar,
         construct_dynamically, cell_is_shared, no_construct_sub_info),
     UnifyMode = (free -> ground(shared, none)) -
         (ground(shared, none) -> ground(shared, none)),
-    UnifyContext = unify_context(explicit, []),
+    UnifyContext = unify_context(umc_explicit, []),
     % XXX The UnifyContext is wrong.
     Unify = unify(TypeCtorInfoVar, TypeInfoTerm, UnifyMode,
         Unification, UnifyContext),
@@ -3184,7 +3184,7 @@ expand_one_body(hlds_class_proc(PredId, ProcId), !ProcNum, !ModuleInfo) :-
     map.det_update(ProcTable0, ProcId, ProcInfo, ProcTable),
     pred_info_set_procedures(ProcTable, PredInfo0, PredInfo1),
     ( pred_info_is_imported(PredInfo1) ->
-        pred_info_set_import_status(opt_imported, PredInfo1, PredInfo)
+        pred_info_set_import_status(status_opt_imported, PredInfo1, PredInfo)
     ;
         PredInfo = PredInfo1
     ),

@@ -111,7 +111,7 @@ module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
                 OldConstraints, Vars, VarSet, Constraints)
         ->
             % Always report the error, even in `.opt' files.
-            DummyStatus = local,
+            DummyStatus = status_local,
             multiple_def_error(DummyStatus, Name, ClassArity, "typeclass",
                 Context, OldContext, _, !IO),
             prog_out.write_context(Context, !IO),
@@ -123,7 +123,7 @@ module_add_class_defn(Constraints, FunDeps, Name, Vars, Interface, VarSet,
             \+ class_fundeps_are_identical(OldFunDeps, HLDSFunDeps)
         ->
             % Always report the error, even in `.opt' files.
-            DummyStatus = local,
+            DummyStatus = status_local,
             multiple_def_error(DummyStatus, Name, ClassArity, "typeclass",
                 Context, OldContext, _, !IO),
             prog_out.write_context(Context, !IO),
@@ -283,7 +283,7 @@ module_add_class_interface(Name, Vars, Methods, Status, PredProcIds,
 :- pred is_class_method_mode_item(class_method::in) is semidet.
 
 is_class_method_mode_item(Method) :-
-    Method = pred_or_func_mode(_, _, _, _, _, _, _, _).
+    Method = method_pred_or_func_mode(_, _, _, _, _, _, _, _).
         
 :- pred add_class_pred_or_func_mode_method(sym_name::in,
     list(tvar)::in, item_status::in, class_method::in,
@@ -294,11 +294,11 @@ is_class_method_mode_item(Method) :-
 add_class_pred_or_func_mode_method(Name, Vars, Status, Method,
         !PredProcIds, !ModuleInfo, !IO) :-
     (
-        Method = pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _, _),
+        Method = method_pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _, _),
         unexpected(this_file, "add_class_pred_or_func_mode_method: " ++
             "pred_or_func method item")
     ;
-        Method = pred_or_func_mode(_VarSet, MaybePredOrFunc, PredName,
+        Method = method_pred_or_func_mode(_VarSet, MaybePredOrFunc, PredName,
             Modes, _WithInst, _MaybeDet, _Cond, Context)
     ),
     module_info_get_predicate_table(!.ModuleInfo, PredTable),
@@ -326,7 +326,7 @@ add_class_pred_or_func_mode_method(Name, Vars, Status, Method,
             Preds = [PredId],
             module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
             pred_info_get_markers(PredInfo, PredMarkers),
-            ( check_marker(PredMarkers, class_method) ->
+            ( check_marker(PredMarkers, marker_class_method) ->
                 module_add_class_method(Method, Name, Vars, Status,
                     PredProcId, !ModuleInfo, !IO),
                 list.cons(PredProcId, !PredProcIds)
@@ -366,9 +366,9 @@ add_class_pred_or_func_methods(Name, Vars, [M | Ms], Status, [P | Ps],
 module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
         !ModuleInfo, !IO) :-
     (
-        Method = pred_or_func(TypeVarSet, InstVarSet, ExistQVars, PredOrFunc,
-            PredName, TypesAndModes, _WithType, _WithInst, MaybeDet, _Cond,
-            Purity, ClassContext, Context),
+        Method = method_pred_or_func(TypeVarSet, InstVarSet, ExistQVars,
+            PredOrFunc, PredName, TypesAndModes, _WithType, _WithInst,
+            MaybeDet, _Cond, Purity, ClassContext, Context),
         % XXX kind inference:
         % We set the kinds to `star' at the moment.  This will be different
         % when we have a kind system.
@@ -377,12 +377,12 @@ module_add_class_method(Method, Name, Vars, Status, MaybePredIdProcId,
         NewUnivCnstrs = [constraint(Name, Args) | UnivCnstrs],
         NewClassContext = constraints(NewUnivCnstrs, ExistCnstrs),
         init_markers(Markers0),
-        add_marker(class_method, Markers0, Markers),
+        add_marker(marker_class_method, Markers0, Markers),
         module_add_pred_or_func(TypeVarSet, InstVarSet, ExistQVars, PredOrFunc,
             PredName, TypesAndModes, MaybeDet, Purity, NewClassContext,
             Markers, Context, Status, MaybePredIdProcId, !ModuleInfo, !IO)
     ;
-        Method = pred_or_func_mode(VarSet, MaybePredOrFunc, PredName,
+        Method = method_pred_or_func_mode(VarSet, MaybePredOrFunc, PredName,
             Modes, _WithInst, MaybeDet, _Cond, Context),
         (
             MaybePredOrFunc = yes(PredOrFunc),
@@ -435,9 +435,8 @@ update_superclass_table_2(ClassId, Vars, VarSet, Constraint, !Supers) :-
 check_method_modes([], !PredProcIds, !ModuleInfo, !IO).
 check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !IO) :-
     (
-        Method = pred_or_func(_, _, _, PorF, QualName, TypesAndModes,
-            _WithType, _WithInst, _, _, _, _, _)
-    ->
+        Method = method_pred_or_func(_, _, _, PorF, QualName, TypesAndModes,
+            _WithType, _WithInst, _, _, _, _, _),
         (
             QualName = qualified(ModuleName0, Name0),
             ModuleName = ModuleName0,
@@ -480,7 +479,7 @@ check_method_modes([Method | Methods], !PredProcIds, !ModuleInfo, !IO) :-
             unexpected(this_file, "handle_methods_with_no_modes")
         )
     ;
-        true
+        Method = method_pred_or_func_mode(_, _, _, _, _, _, _, _)
     ),
     check_method_modes(Methods, !PredProcIds, !ModuleInfo, !IO).
 
@@ -553,9 +552,9 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         goal_info_set_context(Context, GoalInfo0, GoalInfo1),
         set.list_to_set(HeadVars, NonLocals),
         goal_info_set_nonlocals(NonLocals, GoalInfo1, GoalInfo2),
-        ( check_marker(Markers, is_impure) ->
+        ( check_marker(Markers, marker_is_impure) ->
             goal_info_set_purity(purity_impure, GoalInfo2, GoalInfo)
-        ; check_marker(Markers, is_semipure) ->
+        ; check_marker(Markers, marker_is_semipure) ->
             goal_info_set_purity(purity_semipure, GoalInfo2, GoalInfo)
         ;
             GoalInfo = GoalInfo2
@@ -565,7 +564,8 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
         make_n_fresh_vars("HeadVar__", PredArity, HeadVars, VarSet0, VarSet),
         construct_pred_or_func_call(invalid_pred_id, PredOrFunc,
             InstancePredName, HeadVars, GoalInfo, IntroducedGoal, !QualInfo),
-        IntroducedClause = clause([], IntroducedGoal, mercury, Context),
+        IntroducedClause = clause([], IntroducedGoal, impl_lang_mercury,
+            Context),
 
         map.from_corresponding_lists(HeadVars, ArgTypes, VarTypes),
         map.init(TVarNameMap),
@@ -592,7 +592,7 @@ do_produce_instance_method_clauses(InstanceProcDefn, PredOrFunc, PredArity,
 produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
         !ModuleInfo, !QualInfo, !ClausesInfo, !IO) :-
     (
-        InstanceClause = clause(_Origin, CVarSet, PredOrFunc, PredName,
+        InstanceClause = item_clause(_Origin, CVarSet, PredOrFunc, PredName,
             HeadTerms0, Body)
     ->
         ( illegal_state_var_func_result(PredOrFunc, HeadTerms0, StateVar) ->
@@ -608,7 +608,7 @@ produce_instance_method_clause(PredOrFunc, Context, Status, InstanceClause,
 
             ProcIds = [],
             % Means this clause applies to _every_ mode of the procedure.
-            GoalType = none,    % goal is not a promise
+            GoalType = goal_type_none,    % goal is not a promise
             clauses_info_add_clause(ProcIds, CVarSet, TVarSet0, HeadTerms,
                 Body, Context, Status, PredOrFunc, Arity, GoalType, Goal,
                 VarSet, _TVarSet, !ClausesInfo, Warnings, !ModuleInfo,

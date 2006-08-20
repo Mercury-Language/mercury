@@ -496,8 +496,8 @@ get_end_module(ModuleName, RevItems0, RevItems, EndModule) :-
         % for a nested module, and so we leave it alone. If it is not for a
         % nested module, the error will be caught by make_hlds.
 
-        RevItems0 = [module_defn(_VarSet, end_module(ModuleName)) - Context
-            | RevItemsPrime]
+        RevItems0 = [Item - Context | RevItemsPrime],
+        Item = item_module_defn(_VarSet, md_end_module(ModuleName))
     ->
         RevItems = RevItemsPrime,
         EndModule = module_end_yes(ModuleName, Context)
@@ -513,15 +513,14 @@ get_end_module(ModuleName, RevItems0, RevItems, EndModule) :-
     % and construct the final parsing result.
     %
 :- pred check_end_module(module_end::in, message_list::in, message_list::out,
-    item_list::in, item_list::out, module_error::in, module_error::out)
-    is det.
+    item_list::in, item_list::out, module_error::in, module_error::out) is det.
 
 check_end_module(EndModule, !Messages, !Items, !Error) :-
     % Double-check that the first item is a `:- module ModuleName' declaration,
     % and remove it from the front of the item list.
     (
         !.Items = [Item | !:Items],
-        Item = module_defn(_VarSet, module(ModuleName1)) - _Context1
+        Item = item_module_defn(_VarSet, md_module(ModuleName1)) - _Context1
     ->
         % Check that the end module declaration (if any) matches
         % the begin module declaration.
@@ -677,15 +676,15 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
         % Apply and then skip `pragma source_file' decls, by calling ourselves
         % recursively with the new source file name.
         MaybeFirstItem = ok(FirstItem, _),
-        FirstItem = pragma(_, source_file(NewSourceFileName))
+        FirstItem = item_pragma(_, pragma_source_file(NewSourceFileName))
     ->
         read_first_item(DefaultModuleName, NewSourceFileName,
             ModuleName, Messages, Items, MaybeSecondTerm, Error, !IO)
     ;
         % Check if the first term was a `:- module' decl.
         MaybeFirstItem = ok(FirstItem, FirstContext),
-        FirstItem = module_defn(_VarSet, ModuleDefn),
-        ModuleDefn = module(StartModuleName)
+        FirstItem = item_module_defn(_VarSet, ModuleDefn),
+        ModuleDefn = md_module(StartModuleName)
     ->
         % If so, then check that it matches the expected module name,
         % and if not, report a warning.
@@ -723,9 +722,8 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
         (
             WarnMissing = yes,
             dummy_term_with_context(FirstContext, FirstTerm),
-            add_warning("module should start with a " ++
-                "`:- module' declaration", FirstTerm, [],
-                Messages)
+            add_warning("module should start with a `:- module' declaration",
+                FirstTerm, [], Messages)
         ;
             WarnMissing = no,
             Messages = []
@@ -746,8 +744,8 @@ read_first_item(DefaultModuleName, SourceFileName, ModuleName,
 
 make_module_decl(ModuleName, Context, Item - Context) :-
     varset.init(EmptyVarSet),
-    ModuleDefn = module(ModuleName),
-    Item = module_defn(EmptyVarSet, ModuleDefn).
+    ModuleDefn = md_module(ModuleName),
+    Item = item_module_defn(EmptyVarSet, ModuleDefn).
 
 :- pred maybe_add_warning(bool::in, read_term::in, term.context::in,
     string::in, message_list::in, message_list::out) is det.
@@ -828,7 +826,7 @@ read_items_loop_2(MaybeItemOrEOF, !.ModuleName, !.SourceFileName, !Msgs,
 
 read_items_loop_ok(Item0, Context, !ModuleName, !SourceFileName, !Msgs, !Items,
         !Error, !IO) :-
-    ( Item0 = nothing(yes(Warning)) ->
+    ( Item0 = item_nothing(yes(Warning)) ->
         Warning = item_warning(MaybeOption, Msg, Term),
         (
             MaybeOption = yes(Option),
@@ -851,7 +849,7 @@ read_items_loop_ok(Item0, Context, !ModuleName, !SourceFileName, !Msgs, !Items,
         ;
             Warn = no
         ),
-        Item = nothing(no)
+        Item = item_nothing(no)
     ;
         Item = Item0
     ),
@@ -863,26 +861,26 @@ read_items_loop_ok(Item0, Context, !ModuleName, !SourceFileName, !Msgs, !Items,
     % parsing context according.  Next, unless the item is a
     % `pragma source_file' declaration, insert it into the item list.
     % Then continue looping.
-    ( Item = pragma(_, source_file(NewSourceFileName)) ->
+    ( Item = item_pragma(_, pragma_source_file(NewSourceFileName)) ->
         !:SourceFileName = NewSourceFileName
-    ; Item = module_defn(_VarSet, module(NestedModuleName)) ->
+    ; Item = item_module_defn(_VarSet, md_module(NestedModuleName)) ->
         !:ModuleName = NestedModuleName,
         !:Items = [Item - Context | !.Items]
-    ; Item = module_defn(_VarSet, end_module(NestedModuleName)) ->
+    ; Item = item_module_defn(_VarSet, md_end_module(NestedModuleName)) ->
         root_module_name(RootModuleName),
         sym_name_get_module_name(NestedModuleName, RootModuleName,
             ParentModuleName),
         !:ModuleName = ParentModuleName,
         !:Items = [Item - Context | !.Items]
-    ; Item = module_defn(VarSet, import(module(Modules))) ->
+    ; Item = item_module_defn(VarSet, md_import(list_module(Modules))) ->
         ImportItems = list.map(make_pseudo_import_module_decl(VarSet, Context),
             Modules),
         list.append(ImportItems, !Items)
-    ; Item = module_defn(VarSet, use(module(Modules))) ->
+    ; Item = item_module_defn(VarSet, md_use(list_module(Modules))) ->
         UseItems = list.map(make_pseudo_use_module_decl(VarSet, Context),
             Modules),
         list.append(UseItems, !Items)
-    ; Item = module_defn(VarSet, include_module(Modules)) ->
+    ; Item = item_module_defn(VarSet, md_include_module(Modules)) ->
         IncludeItems = list.map(
             make_pseudo_include_module_decl(VarSet, Context),
             Modules),
@@ -895,19 +893,20 @@ read_items_loop_ok(Item0, Context, !ModuleName, !SourceFileName, !Msgs, !Items,
     module_specifier) = item_and_context.
 
 make_pseudo_import_module_decl(Varset, Context, ModuleSpecifier) =
-    module_defn(Varset, import(module([ModuleSpecifier]))) - Context.
+    item_module_defn(Varset, md_import(list_module([ModuleSpecifier])))
+        - Context.
 
 :- func make_pseudo_use_module_decl(prog_varset, prog_context,
     module_specifier) = item_and_context.
 
 make_pseudo_use_module_decl(Varset, Context, ModuleSpecifier) =
-    module_defn(Varset, use(module([ModuleSpecifier]))) - Context.
+    item_module_defn(Varset, md_use(list_module([ModuleSpecifier]))) - Context.
 
 :- func make_pseudo_include_module_decl(prog_varset, prog_context,
     module_name) = item_and_context.
 
 make_pseudo_include_module_decl(Varset, Context, ModuleSpecifier) =
-    module_defn(Varset, include_module([ModuleSpecifier])) - Context.
+    item_module_defn(Varset, md_include_module([ModuleSpecifier])) - Context.
 
 %-----------------------------------------------------------------------------%
 
@@ -1004,7 +1003,7 @@ process_clause(ModuleName, Term, Head, Body0, TheContext, ProgVarSet0,
     maybe1(item)::out) is det.
 
 process_pred_clause(ok2(Name, Args0), VarSet, Body,
-        ok1(clause(user, VarSet, predicate, Name, Args, Body))) :-
+        ok1(item_clause(user, VarSet, predicate, Name, Args, Body))) :-
     list.map(term.coerce, Args0, Args).
 process_pred_clause(error2(Errors0), _, _, error1(Errors)) :-
     Errors = assoc_list.map_values_only(term.coerce, Errors0).
@@ -1013,7 +1012,7 @@ process_pred_clause(error2(Errors0), _, _, error1(Errors)) :-
     goal::in, maybe1(item)::out) is det.
 
 process_func_clause(ok2(Name, Args0), Result0, VarSet, Body,
-        ok1(clause(user, VarSet, function, Name, Args, Body))) :-
+        ok1(item_clause(user, VarSet, function, Name, Args, Body))) :-
     list.append(Args0, [Result0], Args1),
     list.map(term.coerce, Args1, Args).
 process_func_clause(error2(Errors0), _, _, _, error1(Errors)) :-
@@ -1207,12 +1206,12 @@ process_decl(_ModuleName, VarSet, "export_op", [OpSpec], Attributes, Result) :-
 
 process_decl(_ModuleName, VarSet0, "interface", [], Attributes, Result) :-
     varset.coerce(VarSet0, VarSet),
-    Result0 = ok1(module_defn(VarSet, interface)),
+    Result0 = ok1(item_module_defn(VarSet, md_interface)),
     check_no_attributes(Result0, Attributes, Result).
 
 process_decl(_ModuleName, VarSet0, "implementation", [], Attributes, Result) :-
     varset.coerce(VarSet0, VarSet),
-    Result0 = ok1(module_defn(VarSet, implementation)),
+    Result0 = ok1(item_module_defn(VarSet, md_implementation)),
     check_no_attributes(Result0, Attributes, Result).
 
 process_decl(ModuleName, VarSet, "external", Args, Attributes, Result) :-
@@ -1242,7 +1241,7 @@ process_decl(DefaultModuleName, VarSet0, "module", [ModuleName], Attributes,
     (
         Result0 = ok1(ModuleNameSym),
         varset.coerce(VarSet0, VarSet),
-        Result1 = ok1(module_defn(VarSet, module(ModuleNameSym)))
+        Result1 = ok1(item_module_defn(VarSet, md_module(ModuleNameSym)))
     ;
         Result0 = error1(Errors),
         Result1 = error1(Errors)
@@ -1255,7 +1254,8 @@ process_decl(DefaultModuleName, VarSet0, "include_module", [ModuleNames],
     (
         Result0 = ok1(ModuleNameSyms),
         varset.coerce(VarSet0, VarSet),
-        Result1 = ok1(module_defn(VarSet, include_module(ModuleNameSyms)))
+        Result1 = ok1(item_module_defn(VarSet,
+            md_include_module(ModuleNameSyms)))
     ;
         Result0 = error1(Errors),
         Result1 = error1(Errors)
@@ -1275,7 +1275,7 @@ process_decl(DefaultModuleName, VarSet0, "end_module", [ModuleName],
     (
         Result0 = ok1(ModuleNameSym),
         varset.coerce(VarSet0, VarSet),
-        Result1 = ok1(module_defn(VarSet, end_module(ModuleNameSym)))
+        Result1 = ok1(item_module_defn(VarSet, md_end_module(ModuleNameSym)))
     ;
         Result0 = error1(Errors),
         Result1 = error1(Errors)
@@ -1329,8 +1329,8 @@ process_decl(ModuleName, VarSet0, "version_numbers",
             (
                 Result0 = ok1(VersionNumbers),
                 varset.coerce(VarSet0, VarSet),
-                Result1 = ok1(module_defn(VarSet,
-                    version_numbers(ModuleName, VersionNumbers))),
+                Result1 = ok1(item_module_defn(VarSet,
+                    md_version_numbers(ModuleName, VersionNumbers))),
                 check_no_attributes(Result1, Attributes, Result)
             ;
                 Result0 = error1(Errors),
@@ -1347,7 +1347,7 @@ process_decl(ModuleName, VarSet0, "version_numbers",
             dummy_term_with_context(Context, DummyTerm),
             Warning = item_warning(yes(warn_smart_recompilation),
                 Msg, DummyTerm),
-            Result = ok1(nothing(yes(Warning)))
+            Result = ok1(item_nothing(yes(Warning)))
         ;
             Msg = "invalid version number in `:- version_numbers'",
             Result = error1([Msg - VersionNumberTerm])
@@ -1434,7 +1434,7 @@ parse_promise(ModuleName, PromiseType, VarSet, [Term], Attributes, Result) :-
             list.map(term.coerce_var, UnivVars0, UnivVars),
             Goal0 = Goal
         ),
-        Result = ok1(promise(PromiseType, Goal, ProgVarSet, UnivVars))
+        Result = ok1(item_promise(PromiseType, Goal, ProgVarSet, UnivVars))
     ;
         MaybeGoal0 = error1(Errors),
         Result = error1(Errors)
@@ -1464,14 +1464,14 @@ parse_type_decl(ModuleName, VarSet, TypeDecl, Attributes, Result) :-
     item::out) is det.
 
 make_type_defn(VarSet0, Cond, processed_type_body(Name, Args, TypeDefn),
-        type_defn(VarSet, Name, Args, TypeDefn, Cond)) :-
+        item_type_defn(VarSet, Name, Args, TypeDefn, Cond)) :-
     varset.coerce(VarSet0, VarSet).
 
 :- pred make_external(varset::in, maybe(backend)::in, sym_name_specifier::in,
     item::out) is det.
 
 make_external(VarSet0, MaybeBackend, SymSpec,
-        module_defn(VarSet, external(MaybeBackend, SymSpec))) :-
+        item_module_defn(VarSet, md_external(MaybeBackend, SymSpec))) :-
     varset.coerce(VarSet0, VarSet).
 
 :- pred get_is_solver_type(is_solver_type::out,
@@ -1738,7 +1738,7 @@ parse_initialise_decl(_ModuleName, _VarSet, [Term], Result) :-
             (
                 ( Arity = 0 ; Arity = 2 )
             ->
-                Result = ok1(initialise(user, SymName, Arity))
+                Result = ok1(item_initialise(user, SymName, Arity))
             ;
                 Msg = "`initialise' declaration specifies a predicate " ++
                     "whose arity is not zero or two",
@@ -1767,7 +1767,7 @@ parse_finalise_decl(_ModuleName, _VarSet, [Term], Result) :-
             (
                 ( Arity = 0 ; Arity = 2 )
             ->
-                Result = ok1(finalise(user, SymName, Arity))
+                Result = ok1(item_finalise(user, SymName, Arity))
             ;
                 Msg = "`finalise' declaration specifies a predicate " ++
                     "whose arity is not zero or two",
@@ -1815,7 +1815,8 @@ parse_mutable_decl(_ModuleName, Varset, Terms, Result) :-
         % references to it.  Ignoring the varset may lead to later compiler
         % passes attempting to reuse this variable when fresh variables are
         % allocated.
-        Result = ok1(mutable(Name, Type, Value, Inst, MutAttrs, ProgVarset))
+        Result = ok1(item_mutable(Name, Type, Value, Inst, MutAttrs,
+            ProgVarset))
     ;
         Errors = get_any_errors1(NameResult) ++ get_any_errors1(TypeResult) ++
             get_any_errors1(InstResult) ++ get_any_errors1(MutAttrsResult),
@@ -1854,10 +1855,10 @@ parse_mutable_inst(InstTerm, InstResult) :-
     ).
 
 :- type collected_mutable_attribute
-    --->    trailed(trailed)
-    ;       foreign_name(foreign_name)
-    ;       attach_to_io_state(bool)
-    ;       constant(bool).
+    --->    mutable_attr_trailed(mutable_trailed)
+    ;       mutable_attr_foreign_name(foreign_name)
+    ;       mutable_attr_attach_to_io_state(bool)
+    ;       mutable_attr_constant(bool).
 
 :- pred parse_mutable_attrs(term::in,
     maybe1(mutable_var_attributes)::out) is det.
@@ -1865,9 +1866,10 @@ parse_mutable_inst(InstTerm, InstResult) :-
 parse_mutable_attrs(MutAttrsTerm, MutAttrsResult) :-
     Attributes0 = default_mutable_attributes,
     ConflictingAttributes = [
-        trailed(trailed) - trailed(untrailed),
-        constant(yes) - trailed(trailed),
-        constant(yes) - attach_to_io_state(yes)
+        mutable_attr_trailed(mutable_trailed) -
+            mutable_attr_trailed(mutable_untrailed),
+        mutable_attr_constant(yes) - mutable_attr_trailed(mutable_trailed),
+        mutable_attr_constant(yes) - mutable_attr_attach_to_io_state(yes)
     ],
     (
         list_term_to_term_list(MutAttrsTerm, MutAttrTerms),
@@ -1898,17 +1900,19 @@ parse_mutable_attrs(MutAttrsTerm, MutAttrsResult) :-
 :- pred process_mutable_attribute(collected_mutable_attribute::in,
     mutable_var_attributes::in, mutable_var_attributes::out) is det.
 
-process_mutable_attribute(trailed(Trailed), !Attributes) :-
+process_mutable_attribute(mutable_attr_trailed(Trailed), !Attributes) :-
     set_mutable_var_trailed(Trailed, !Attributes).
-process_mutable_attribute(foreign_name(ForeignName), !Attributes) :-
+process_mutable_attribute(mutable_attr_foreign_name(ForeignName),
+        !Attributes) :-
     set_mutable_add_foreign_name(ForeignName, !Attributes).
-process_mutable_attribute(attach_to_io_state(AttachToIOState), !Attributes) :-
+process_mutable_attribute(mutable_attr_attach_to_io_state(AttachToIOState),
+        !Attributes) :-
     set_mutable_var_attach_to_io_state(AttachToIOState, !Attributes).
-process_mutable_attribute(constant(Constant), !Attributes) :-
+process_mutable_attribute(mutable_attr_constant(Constant), !Attributes) :-
     set_mutable_var_constant(Constant, !Attributes),
     (
         Constant = yes,
-        set_mutable_var_trailed(untrailed, !Attributes),
+        set_mutable_var_trailed(mutable_untrailed, !Attributes),
         set_mutable_var_attach_to_io_state(no, !Attributes)
     ;
         Constant = no
@@ -1922,16 +1926,16 @@ parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
         MutAttrTerm = term.functor(term.atom(String), [], _),
         (
             String  = "untrailed",
-            MutAttr = trailed(untrailed)
+            MutAttr = mutable_attr_trailed(mutable_untrailed)
         ;
             String = "trailed",
-            MutAttr = trailed(trailed)
+            MutAttr = mutable_attr_trailed(mutable_trailed)
         ;
             String  = "attach_to_io_state",
-            MutAttr = attach_to_io_state(yes)
+            MutAttr = mutable_attr_attach_to_io_state(yes)
         ;
             String = "constant",
-            MutAttr = constant(yes)
+            MutAttr = mutable_attr_constant(yes)
         )
     ->
         MutAttrResult = ok1(MutAttr)
@@ -1941,7 +1945,7 @@ parse_mutable_attr(MutAttrTerm, MutAttrResult) :-
         parse_foreign_language(LangTerm, Lang),
         ForeignNameTerm = term.functor(term.string(ForeignName), [], _)
     ->
-        MutAttr = foreign_name(foreign_name(Lang, ForeignName)),
+        MutAttr = mutable_attr_foreign_name(foreign_name(Lang, ForeignName)),
         MutAttrResult = ok1(MutAttr)
     ;
         Msg = "unrecognised attribute in mutable declaration",
@@ -2477,7 +2481,8 @@ process_solver_type(ModuleName, Head, MaybeSolverTypeDetails, MaybeUserEqComp,
                 Result = error1([Msg - Head])
             ;
                 Result = ok1(processed_type_body(Name, Params,
-                    solver_type(SolverTypeDetails, MaybeUserEqComp)))
+                    parse_tree_solver_type(SolverTypeDetails,
+                        MaybeUserEqComp)))
             )
         )
     ;
@@ -2513,7 +2518,8 @@ process_eqv_type_2(ok2(Name, Params), Body0, Result) :-
         parse_type(Body0, BodyResult),
         (
             BodyResult = ok1(Body),
-            Result = ok1(processed_type_body(Name, Params, eqv_type(Body)))
+            Result = ok1(processed_type_body(Name, Params,
+                parse_tree_eqv_type(Body)))
         ;
             BodyResult = error1(Errors),
             Result = error1(Errors)
@@ -2607,7 +2613,7 @@ process_du_type_2(Functor, Params, Body, Ctors, MaybeUserEqComp, Result) :-
         Result = error1([Msg - Body])
     ;
         Result = ok1(processed_type_body(Functor, Params,
-            du_type(Ctors, MaybeUserEqComp)))
+            parse_tree_du_type(Ctors, MaybeUserEqComp)))
     ).
 
 %-----------------------------------------------------------------------------%
@@ -2633,7 +2639,7 @@ process_abstract_type(ModuleName, Head, Attributes0, Result) :-
 process_abstract_type_2(error2(Errors), _, error1(Errors)).
 process_abstract_type_2(ok2(Functor, Params), IsSolverType, Result) :-
     Result = ok1(processed_type_body(Functor, Params,
-        abstract_type(IsSolverType))).
+        parse_tree_abstract_type(IsSolverType))).
 
 %-----------------------------------------------------------------------------%
 
@@ -2839,7 +2845,7 @@ process_pred_or_func_2(PredOrFunc, ok2(F, As0), PredType, VarSet0,
                 get_purity(Purity, Attributes0, Attributes),
                 varset.coerce(VarSet0, TVarSet),
                 varset.coerce(VarSet0, IVarSet),
-                Result0 = ok1(pred_or_func(TVarSet, IVarSet, ExistQVars,
+                Result0 = ok1(item_pred_or_func(TVarSet, IVarSet, ExistQVars,
                     PredOrFunc, F, As, WithType, WithInst, MaybeDet, Cond,
                     Purity, ClassContext)),
                 check_no_attributes(Result0, Attributes, Result)
@@ -3111,9 +3117,9 @@ process_func_3(ok2(F, As0), FuncTerm, ReturnTypeTerm, FullTerm, VarSet0,
                 (
                     inst_var_constraints_are_consistent_in_type_and_modes(Args)
                 ->
-                    Result0 = ok1(pred_or_func(TVarSet, IVarSet, ExistQVars,
-                        function, F, Args, no, no, MaybeDet, Cond, Purity,
-                        ClassContext)),
+                    Result0 = ok1(item_pred_or_func(TVarSet, IVarSet,
+                        ExistQVars, function, F, Args, no, no, MaybeDet, Cond,
+                        Purity, ClassContext)),
                     check_no_attributes(Result0, Attributes, Result)
                 ;
                     Msg = "inconsistent constraints on inst variables " ++
@@ -3206,7 +3212,7 @@ process_pred_or_func_mode(ok2(F, As0), ModuleName, PredMode, VarSet0, WithInst,
                     % until we expand out the inst.
                     PredOrFunc = no
                 ),
-                Result0 = ok1(pred_or_func_mode(VarSet, PredOrFunc, F, As,
+                Result0 = ok1(item_pred_or_func_mode(VarSet, PredOrFunc, F, As,
                     WithInst, MaybeDet, Cond))
             ;
                 Msg = "inconsistent constraints on inst variables " ++
@@ -3245,8 +3251,8 @@ process_func_mode(ok2(F, As0), ModuleName, FuncMode, RetMode0, FullTerm,
                 varset.coerce(VarSet0, VarSet),
                 list.append(As, [RetMode], ArgModes),
                 ( inst_var_constraints_are_consistent_in_modes(ArgModes) ->
-                    Result0 = ok1(pred_or_func_mode(VarSet, yes(function), F,
-                        ArgModes, no, MaybeDet, Cond))
+                    Result0 = ok1(item_pred_or_func_mode(VarSet, yes(function),
+                        F, ArgModes, no, MaybeDet, Cond))
                 ;
                     Msg = "inconsistent constraints on inst variables " ++
                         "in function mode declaration",
@@ -3286,8 +3292,9 @@ constrain_inst_vars_in_inst(_, any(U), any(U)).
 constrain_inst_vars_in_inst(_, free, free).
 constrain_inst_vars_in_inst(_, free(T), free(T)).
 constrain_inst_vars_in_inst(InstConstraints, bound(U, BIs0), bound(U, BIs)) :-
-    list.map((pred(functor(C, Is0)::in, functor(C, Is)::out) is det :-
-        list.map(constrain_inst_vars_in_inst(InstConstraints), Is0, Is)),
+    list.map(
+        (pred(bound_functor(C, Is0)::in, bound_functor(C, Is)::out) is det :-
+            list.map(constrain_inst_vars_in_inst(InstConstraints), Is0, Is)),
         BIs0, BIs).
 constrain_inst_vars_in_inst(_, ground(U, none), ground(U, none)).
 constrain_inst_vars_in_inst(InstConstraints,
@@ -3384,8 +3391,9 @@ inst_var_constraints_are_consistent_in_inst(any(_), !Sub).
 inst_var_constraints_are_consistent_in_inst(free, !Sub).
 inst_var_constraints_are_consistent_in_inst(free(_), !Sub).
 inst_var_constraints_are_consistent_in_inst(bound(_, BoundInsts), !Sub) :-
-    list.foldl((pred(functor(_, Insts)::in, in, out) is semidet -->
-        inst_var_constraints_are_consistent_in_insts(Insts)),
+    list.foldl(
+        (pred(bound_functor(_, Insts)::in, in, out) is semidet -->
+            inst_var_constraints_are_consistent_in_insts(Insts)),
         BoundInsts, !Sub).
 inst_var_constraints_are_consistent_in_inst(ground(_, GroundInstInfo), !Sub) :-
     (
@@ -3557,7 +3565,7 @@ convert_abstract_inst_defn_2(ok2(Name, ArgTerms), Head, Result) :-
     item::out) is det.
 
 make_inst_defn(VarSet0, Cond, processed_inst_body(Name, Params, InstDefn),
-        inst_defn(VarSet, Name, Params, InstDefn, Cond)) :-
+        item_inst_defn(VarSet, Name, Params, InstDefn, Cond)) :-
     varset.coerce(VarSet0, VarSet).
 
 %-----------------------------------------------------------------------------%
@@ -3664,7 +3672,7 @@ convert_type_and_mode(InstConstraints, Term, Result) :-
     item::out) is det.
 
 make_mode_defn(VarSet0, Cond, processed_mode_body(Name, Params, ModeDefn),
-        mode_defn(VarSet, Name, Params, ModeDefn, Cond)) :-
+        item_mode_defn(VarSet, Name, Params, ModeDefn, Cond)) :-
     varset.coerce(VarSet0, VarSet).
 
 %-----------------------------------------------------------------------------%
@@ -3688,7 +3696,7 @@ parse_symlist_decl(ParserPred, MakeSymListPred, MakeModuleDefnPred,
     is det.
 
 make_module_defn(MakeSymListPred, MakeModuleDefnPred, VarSet0, T,
-        module_defn(VarSet, ModuleDefn)) :-
+        item_module_defn(VarSet, ModuleDefn)) :-
     varset.coerce(VarSet0, VarSet),
     call(MakeSymListPred, T, SymList),
     call(MakeModuleDefnPred, SymList, ModuleDefn).
@@ -3712,28 +3720,28 @@ process_maybe1_to_t(_, error1(Errors), error1(Errors)).
 %-----------------------------------------------------------------------------%
 
 :- pred make_module(list(module_specifier)::in, sym_list::out) is det.
-make_module(X, module(X)).
+make_module(X, list_module(X)).
 
 :- pred make_sym(list(sym_specifier)::in, sym_list::out) is det.
-make_sym(X, sym(X)).
+make_sym(X, list_sym(X)).
 
 :- pred make_pred(list(pred_specifier)::in, sym_list::out) is det.
-make_pred(X, pred(X)).
+make_pred(X, list_pred(X)).
 
 :- pred make_func(list(func_specifier)::in, sym_list::out) is det.
-make_func(X, func(X)).
+make_func(X, list_func(X)).
 
 :- pred make_cons(list(cons_specifier)::in, sym_list::out) is det.
-make_cons(X, cons(X)).
+make_cons(X, list_cons(X)).
 
 :- pred make_type(list(type_specifier)::in, sym_list::out) is det.
-make_type(X, type(X)).
+make_type(X, list_type(X)).
 
 :- pred make_adt(list(adt_specifier)::in, sym_list::out) is det.
-make_adt(X, adt(X)).
+make_adt(X, list_adt(X)).
 
 :- pred make_op(list(op_specifier)::in, sym_list::out) is det.
-make_op(X, op(X)).
+make_op(X, list_op(X)).
 
 %-----------------------------------------------------------------------------%
 %
@@ -3798,42 +3806,43 @@ parse_symbol_specifier(MainTerm, Result) :-
 :- pred make_pred_symbol_specifier(pred_specifier::in, sym_specifier::out)
     is det.
 
-make_pred_symbol_specifier(PredSpec, pred(PredSpec)).
+make_pred_symbol_specifier(PredSpec, spec_pred(PredSpec)).
 
 :- pred make_func_symbol_specifier(func_specifier::in, sym_specifier::out)
     is det.
 
-make_func_symbol_specifier(FuncSpec, func(FuncSpec)).
+make_func_symbol_specifier(FuncSpec, spec_func(FuncSpec)).
 
 :- pred make_cons_symbol_specifier(cons_specifier::in, sym_specifier::out)
     is det.
 
-make_cons_symbol_specifier(ConsSpec, cons(ConsSpec)).
+make_cons_symbol_specifier(ConsSpec, spec_cons(ConsSpec)).
 
 :- pred make_type_symbol_specifier(type_specifier::in, sym_specifier::out)
     is det.
 
-make_type_symbol_specifier(TypeSpec, type(TypeSpec)).
+make_type_symbol_specifier(TypeSpec, spec_type(TypeSpec)).
 
 :- pred make_adt_symbol_specifier(adt_specifier::in, sym_specifier::out)
     is det.
 
-make_adt_symbol_specifier(ADT_Spec, adt(ADT_Spec)).
+make_adt_symbol_specifier(ADT_Spec, spec_adt(ADT_Spec)).
 
 :- pred make_op_symbol_specifier(op_specifier::in, sym_specifier::out) is det.
 
-make_op_symbol_specifier(OpSpec, op(OpSpec)).
+make_op_symbol_specifier(OpSpec, spec_op(OpSpec)).
 
 :- pred make_module_symbol_specifier(module_specifier::in, sym_specifier::out)
     is det.
 
-make_module_symbol_specifier(ModuleSpec, module(ModuleSpec)).
+make_module_symbol_specifier(ModuleSpec, spec_module(ModuleSpec)).
 
 :- pred cons_specifier_to_sym_specifier(cons_specifier::in,
     sym_specifier::out) is det.
 
-cons_specifier_to_sym_specifier(sym(SymSpec), sym(SymSpec)).
-cons_specifier_to_sym_specifier(typed(SymSpec), typed_sym(SymSpec)).
+cons_specifier_to_sym_specifier(consspec_sym(SymSpec), spec_sym(SymSpec)).
+cons_specifier_to_sym_specifier(consspec_typed(SymSpec),
+    spec_typed_sym(SymSpec)).
 
 %-----------------------------------------------------------------------------%
 
@@ -3918,13 +3927,13 @@ parse_predicate_specifier(Term, Result) :-
 process_typed_predicate_specifier(ok2(Name, Args0), Result) :-
     (
         Args0 = [],
-        Result = ok1(sym(name(Name)))
+        Result = ok1(predspec_sym(name(Name)))
     ;
         Args0 = [_ | _],
         parse_types(Args0, ArgsResult),
         (
             ArgsResult = ok1(Args),
-            Result = ok1(name_args(Name, Args))
+            Result = ok1(predspec_name_args(Name, Args))
         ;
             ArgsResult = error1(Errors),
             Result = error1(Errors)
@@ -3935,7 +3944,7 @@ process_typed_predicate_specifier(error2(Errors), error1(Errors)).
 :- pred make_arity_predicate_specifier(sym_name_specifier::in,
     pred_specifier::out) is det.
 
-make_arity_predicate_specifier(Result, sym(Result)).
+make_arity_predicate_specifier(Result, predspec_sym(Result)).
 
 %-----------------------------------------------------------------------------%
 
@@ -3970,14 +3979,17 @@ process_typed_constructor_specifier(ok1(NameArgs), ok1(ResType),
 :- pred process_typed_cons_spec_2(pred_specifier::in, mer_type::in,
     cons_specifier::out) is det.
 
-process_typed_cons_spec_2(sym(Name), Res, typed(name_res(Name, Res))).
-process_typed_cons_spec_2(name_args(Name, Args), Res,
-    typed(name_args_res(Name, Args, Res))).
+process_typed_cons_spec_2(predspec_sym(Name), Res,
+    consspec_typed(name_res(Name, Res))).
+process_typed_cons_spec_2(predspec_name_args(Name, Args), Res,
+    consspec_typed(name_args_res(Name, Args, Res))).
 
 :- pred make_untyped_cons_spec(pred_specifier::in, cons_specifier::out) is det.
 
-make_untyped_cons_spec(sym(Name), sym(Name)).
-make_untyped_cons_spec(name_args(Name, Args), typed(name_args(Name, Args))).
+make_untyped_cons_spec(predspec_sym(Name),
+    consspec_sym(Name)).
+make_untyped_cons_spec(predspec_name_args(Name, Args),
+    consspec_typed(name_args(Name, Args))).
 
 %-----------------------------------------------------------------------------%
 
@@ -3991,20 +4003,16 @@ make_untyped_cons_spec(name_args(Name, Args), typed(name_args(Name, Args))).
 
 parse_symbol_name_specifier(Term, Result) :-
     root_module_name(DefaultModule),
-    parse_implicitly_qualified_symbol_name_specifier(DefaultModule,
-        Term, Result).
+    parse_implicitly_qualified_symbol_name_specifier(DefaultModule, Term,
+        Result).
 
 :- pred parse_implicitly_qualified_symbol_name_specifier(module_name::in,
     term::in, maybe1(sym_name_specifier)::out) is det.
 
 parse_implicitly_qualified_symbol_name_specifier(DefaultModule, Term,
         Result) :-
-    (
-        Term = term.functor(term.atom("/"), [NameTerm, ArityTerm], _Context)
-    ->
-        (
-            ArityTerm = term.functor(term.integer(Arity), [], _Context2)
-        ->
+    ( Term = term.functor(term.atom("/"), [NameTerm, ArityTerm], _Context) ->
+        ( ArityTerm = term.functor(term.integer(Arity), [], _Context2) ->
             ( Arity >= 0 ->
                 parse_implicitly_qualified_symbol_name(DefaultModule, NameTerm,
                     NameResult),
@@ -4190,15 +4198,15 @@ parse_qualified_term(Term, ContainingTerm, Msg, Result) :-
 
 :- pred make_use(sym_list::in, module_defn::out) is det.
 
-make_use(Syms, use(Syms)).
+make_use(Syms, md_use(Syms)).
 
 :- pred make_import(sym_list::in, module_defn::out) is det.
 
-make_import(Syms, import(Syms)).
+make_import(Syms, md_import(Syms)).
 
 :- pred make_export(sym_list::in, module_defn::out) is det.
 
-make_export(Syms, export(Syms)).
+make_export(Syms, md_export(Syms)).
 
 %-----------------------------------------------------------------------------%
 
@@ -4236,7 +4244,7 @@ parse_op_specifier(Term, Result) :-
 
 :- pred make_op_specifier(sym_name_specifier::in, op_specifier::out) is det.
 
-make_op_specifier(X, sym(X)).
+make_op_specifier(X, opspec_sym(X)).
 
 %-----------------------------------------------------------------------------%
 

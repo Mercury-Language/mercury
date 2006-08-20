@@ -866,11 +866,11 @@ bound_inst_list_MSG(Xs, Ys, Expansions, ModuleInfo, Uniq, List, Inst) :-
     ;
         Xs = [X | Xs1],
         Ys = [Y | Ys1],
-        X = functor(ConsId, ArgsX),
-        Y = functor(ConsId, ArgsY)
+        X = bound_functor(ConsId, ArgsX),
+        Y = bound_functor(ConsId, ArgsY)
     ->
         inst_list_MSG(ArgsX, ArgsY, Expansions, ModuleInfo, Args),
-        Z = functor(ConsId, Args),
+        Z = bound_functor(ConsId, Args),
         bound_inst_list_MSG(Xs1, Ys1, Expansions,
             ModuleInfo, Uniq, List, Inst1),
         ( Inst1 = bound(Uniq, Zs) ->
@@ -927,7 +927,7 @@ inst_size_2(ModuleInfo, bound(_, Functors), Expansions, Size) :-
     set(inst_name)::in, int::in, int::out) is det.
 
 bound_inst_size(_, [], _, Size, Size).
-bound_inst_size(ModuleInfo, [functor(_, ArgInsts) | Insts],
+bound_inst_size(ModuleInfo, [bound_functor(_, ArgInsts) | Insts],
         Expansions, Size0, Size) :-
     inst_list_size(ModuleInfo, ArgInsts, Expansions, Size0, Size1),
     Size2 = Size1 + 1,

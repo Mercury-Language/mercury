@@ -59,8 +59,8 @@
     ;       right.
 
 :- type call_context
-    --->    unify(unify_context)
-    ;       call(call_id).
+    --->    call_context_unify(unify_context)
+    ;       call_context_call(call_id).
 
 :- type var_lock_reason
     --->    var_lock_negation
@@ -554,9 +554,9 @@ mode_info_get_modes(ModeInfo, Modes) :-
 mode_info_get_insts(ModeInfo, Insts) :-
     module_info_get_inst_table(ModeInfo ^ module_info, Insts).
 
-mode_info_set_call_context(unify(UnifyContext), !MI) :-
+mode_info_set_call_context(call_context_unify(UnifyContext), !MI) :-
     mode_info_set_mode_context(mode_context_unify(UnifyContext, left), !MI).
-mode_info_set_call_context(call(CallId), !MI) :-
+mode_info_set_call_context(call_context_call(CallId), !MI) :-
     mode_info_set_mode_context(mode_context_call(CallId, 0), !MI).
 
 mode_info_set_call_arg_context(ArgNum, ModeInfo0, ModeInfo) :-

@@ -764,8 +764,8 @@ generate_assign(ToVar, FromVar, UniMode, _, Goal, !Info) :-
     UniMode = ((_ - ToVarInst0) -> (_ - ToVarInst)),
     ( types_match_exactly(ToVarType, FromVarType) ->
         UnifyMode = (ToVarInst0 -> ToVarInst) - (ToVarInst -> ToVarInst),
-        UnifyContext = unify_context(explicit, []),
-        GoalExpr = unify(ToVar, var(FromVar), UnifyMode,
+        UnifyContext = unify_context(umc_explicit, []),
+        GoalExpr = unify(ToVar, rhs_var(FromVar), UnifyMode,
             assign(ToVar, FromVar), UnifyContext)
     ;
         % If the cells we are optimizing don't have exactly the same

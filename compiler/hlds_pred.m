@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: hlds_pred.m.
 % Main authors: fjh, conway.
-% 
+%
 % This module defines the part of the HLDS that deals with predicates
 % and procedures.
-% 
+%
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -77,7 +77,8 @@
 
 :- type pred_id.
 :- type proc_id.
-:- type pred_proc_id    --->    proc(pred_id, proc_id).
+:- type pred_proc_id
+    --->    proc(pred_id, proc_id).
 
     % Predicate and procedure ids are abstract data types. One important
     % advantage of this arrangement is to make it harder to accidentally
@@ -132,30 +133,30 @@
 :- pred next_mode_id(proc_table::in, proc_id::out) is det.
 
 :- type call_id
-    --->    call(simple_call_id)
-    ;       generic_call(generic_call_id).
+    --->    plain_call_id(simple_call_id)
+    ;       generic_call_id(generic_call_id).
 
 :- type generic_call_id
-    --->    higher_order(purity, pred_or_func, arity)
-    ;       class_method(class_id, simple_call_id)
-    ;       cast(cast_type).
+    --->    gcid_higher_order(purity, pred_or_func, arity)
+    ;       gcid_class_method(class_id, simple_call_id)
+    ;       gcid_cast(cast_type).
 
 :- type pred_proc_list  ==  list(pred_proc_id).
 
 %-----------------------------------------------------------------------------%
 
 :- type implementation_language
-    --->    mercury
-    ;       foreign_language(foreign_language).
+    --->    impl_lang_mercury
+    ;       impl_lang_foreign(foreign_language).
 
     % The type of goals that have been given for a pred.
 
 :- type goal_type
-    --->    pragmas         % pragma foreign_proc(...)
-    ;       clauses
-    ;       clauses_and_pragmas % both clauses and pragmas
-    ;       promise(promise_type)
-    ;       none.
+    --->    goal_type_clause
+    ;       goal_type_foreign               % pragma foreign_proc(...)
+    ;       goal_type_clause_and_foreign    % both clauses and foreign_procs
+    ;       goal_type_promise(promise_type)
+    ;       goal_type_none.
 
     % Note: `liveness' and `liveness_info' record liveness in the sense
     % used by code generation.  This is *not* the same thing as the notion
@@ -213,41 +214,41 @@
     % Only types can have status abstract_exported or abstract_imported.
     %
 :- type import_status
-    --->    external(import_status)
+    --->    status_external(import_status)
                 % Declared `:- external'. This means that the implementation
                 % for this procedure will be provided by some external source,
                 % rather than via Mercury clauses (including `pragma
                 % foreign_code' clauses). It can be through the use of another
                 % language, or it could be through some other method we haven't
                 % thought of yet.
-    ;       imported(import_locn)
+    ;       status_imported(import_locn)
                 % Defined in the interface of some other module.
-    ;       opt_imported
+    ;       status_opt_imported
                 % Defined in the optimization interface of another module.
-    ;       abstract_imported
+    ;       status_abstract_imported
                 % Describes a type with only an abstract declaration imported,
                 % maybe with the body of the type imported from a .opt file.
-    ;       pseudo_imported
+    ;       status_pseudo_imported
                 % This is used for entities that are defined in the interface
                 % of some other module but for which we may generate some code
                 % in this module - in particular, this is used for unification
                 % predicates (see comments in unify_proc.m).
-    ;       exported
+    ;       status_exported
                 % Defined in the interface of this module.
-    ;       opt_exported
+    ;       status_opt_exported
                 % A local item for which the import-status has been changed
                 % due to its presence in the .opt files
                 % (intermod.adjust_pred_import_status).
-    ;       abstract_exported
+    ;       status_abstract_exported
                 % Describes a type with only an abstract declaration exported.
-    ;       pseudo_exported
+    ;       status_pseudo_exported
                 % The converse of pseudo_imported; this means that only the
                 % (in, in) mode of a unification is exported.
-    ;       exported_to_submodules
+    ;       status_exported_to_submodules
                 % Defined in the implementation of this module, and thus in
                 % a sense local, but the module contains sub-modules, so the
                 % entity needs to be exported to those sub-modules.
-    ;       local.
+    ;       status_local.
                 % Defined in the implementation of this module, and the module
                 % does not contain any sub-modules.
 
@@ -255,26 +256,25 @@
     % in any way exported -- that is, if it could be used
     % by any other module, or by sub-modules of this module.
     %
-:- pred status_is_exported(import_status::in, bool::out) is det.
+:- func status_is_exported(import_status) = bool.
 
     % Returns yes if the status indicates that the item was
     % exported to importing modules (not just to sub-modules).
     %
-:- pred status_is_exported_to_non_submodules(import_status::in, bool::out)
-    is det.
+:- func status_is_exported_to_non_submodules(import_status) = bool.
 
     % Returns yes if the status indicates that the item was
     % in any way imported -- that is, if it was defined in
     % some other module, or in a sub-module of this module.
     % This is the opposite of status_defined_in_this_module.
     %
-:- pred status_is_imported(import_status::in, bool::out) is det.
+:- func status_is_imported(import_status) = bool.
 
     % Returns yes if the status indicates that the item was
     % defined in this module.  This is the opposite of
     % status_is_imported.
     %
-:- pred status_defined_in_this_module(import_status::in, bool::out) is det.
+:- func status_defined_in_this_module(import_status) = bool.
 
     % Are calls from a predicate with the given import_status always fully
     % qualified. For calls occurring in `.opt' files this will return
@@ -288,49 +288,52 @@
 :- type pred_markers.
 
 :- type marker
-    --->    stub        % The predicate has no clauses. typecheck.m will
+    --->    marker_stub % The predicate has no clauses. typecheck.m will
                         % generate a body for the predicate which just throws
                         % an exception. This marker is used to tell purity
                         % analysis and determinism analysis not to issue
                         % warnings for these predicates.
 
-    ;       infer_type  % Requests type inference for the predicate.
+    ;       marker_infer_type
+                        % Requests type inference for the predicate.
                         % These markers are inserted by make_hlds
                         % for undeclared predicates.
 
-    ;       infer_modes % Requests mode inference for the predicate.
+    ;       marker_infer_modes
+                        % Requests mode inference for the predicate.
                         % These markers are inserted by make_hlds
                         % for undeclared predicates.
 
-    ;       obsolete    % Requests warnings if this predicate is used.
+    ;       marker_obsolete
+                        % Requests warnings if this predicate is used.
                         % Used for pragma(obsolete).
 
 
-    ;       user_marked_inline
+    ;       marker_user_marked_inline
                         % The user requests that this be predicate should
                         % be inlined, even if it exceeds the usual size limits.
                         % Used for pragma(inline).
                         % Mutually exclusive with user_marked_no_inline.
 
-    ;       user_marked_no_inline
+    ;       marker_user_marked_no_inline
                         % The user requests that this be predicate should
                         % not be inlined. Used for pragma(no_inline).
                         % Mutually exclusive with user_marked_inline.
 
-    ;       heuristic_inline
+    ;       marker_heuristic_inline
                         % The compiler (meaning probably inlining.m) requests
                         % that this predicate be inlined. Does not override
                         % user_marked_no_inline.
 
-    ;       class_method
+    ;       marker_class_method
                         % Requests that this predicate be transformed into
                         % the appropriate call to a class method.
 
-    ;       class_instance_method
+    ;       marker_class_instance_method
                         % This predicate was automatically generated for the
                         % implementation of a class method for an instance.
 
-    ;       named_class_instance_method
+    ;       marker_named_class_instance_method
                         % This predicate was automatically generated for the
                         % implementation of a class method for an instance,
                         % and the instance was defined using the named syntax
@@ -338,29 +341,31 @@
                         % syntax. (For such predicates, we output slightly
                         % different error messages.)
 
-    ;       is_impure   % Requests that no transformation that would be
+    ;       marker_is_impure
+                        % Requests that no transformation that would be
                         % inappropriate for impure code be performed on calls
                         % to this predicate. This includes reordering calls
                         % to it relative to other goals (in both conjunctions
                         % and disjunctions), and removing redundant calls
                         % to it.
 
-    ;       is_semipure % Requests that no transformation that would be
+    ;       marker_is_semipure
+                        % Requests that no transformation that would be
                         % inappropriate for semipure code be performed on
                         % calls to this predicate. This includes removing
                         % redundant calls to it on different sides of an
                         % impure goal.
 
-    ;       promised_pure
+    ;       marker_promised_pure
                         % Requests that calls to this predicate be transformed
                         % as usual, despite any impure or semipure markers
                         % present.
 
-    ;       promised_semipure
+    ;       marker_promised_semipure
                         % Requests that calls to this predicate be treated as
                         % semipure, despite any impure calls in the body.
 
-    ;       promised_equivalent_clauses
+    ;       marker_promised_equivalent_clauses
                         % Promises that all modes of the predicate have
                         % equivalent semantics, event if they are defined by
                         % different sets of mode-specific clauses.
@@ -369,23 +374,24 @@
     % to ensure that conflicting declarations are not made by the user.
     % Otherwise, the information could be added to the ProcInfos directly.
 
-    ;       terminates  % The user guarantees that this predicate will
+    ;       marker_terminates
+                        % The user guarantees that this predicate will
                         % terminate for all (finite?) input.
-    ;       does_not_terminate
+    ;       marker_does_not_terminate
                         % States that this predicate does not terminate.
                         % This is useful for pragma foreign_code, which the
                         % compiler assumes to be terminating.
-    ;       check_termination
+    ;       marker_check_termination
                         % The user requires the compiler to guarantee
                         % the termination of this predicate. If the compiler
                         % cannot guarantee termination then it must give an
                         % error message.
 
-    ;       calls_are_fully_qualified
+    ;       marker_calls_are_fully_qualified
                         % All calls in this predicate are fully qualified.
                         % This occurs for predicates read from `.opt' files
                         % and compiler-generated predicates.
-    ;       mode_check_clauses
+    ;       marker_mode_check_clauses
                         % Each clause of the predicate should be modechecked
                         % separately. Used for predicates defined by lots of
                         % clauses (usually facts) for which the compiler's
@@ -393,7 +399,7 @@
                         % inst_match.bound_inst_list_contains_instname and
                         % instmap.merge) would be unacceptable.
 
-    ;       may_have_parallel_conj.
+    ;       marker_may_have_parallel_conj.
                         % The predicate may contain parallel conjunctions.
                         % It should be run through the dependent parallel
                         % conjunction transformation.
@@ -733,7 +739,7 @@
 
 :- pred purity_to_markers(purity::in, pred_markers::out) is det.
 
-:- pred terminates_to_markers(terminates::in, pred_markers::out) is det.
+:- pred terminates_to_markers(proc_terminates::in, pred_markers::out) is det.
 
 :- pred pred_info_get_call_id(pred_info::in, simple_call_id::out) is det.
 
@@ -827,46 +833,44 @@ next_mode_id(Procs, ModeId) :-
     list.length(List, ModeInt),
     proc_id_to_int(ModeId, ModeInt).
 
-status_is_exported(imported(_),             no).
-status_is_exported(external(_),             no).
-status_is_exported(abstract_imported,       no).
-status_is_exported(pseudo_imported,         no).
-status_is_exported(opt_imported,            no).
-status_is_exported(exported,                yes).
-status_is_exported(opt_exported,            yes).
-status_is_exported(abstract_exported,       yes).
-status_is_exported(pseudo_exported,         yes).
-status_is_exported(exported_to_submodules,  yes).
-status_is_exported(local,                   no).
+status_is_exported(status_imported(_)) =             no.
+status_is_exported(status_external(_)) =             no.
+status_is_exported(status_abstract_imported) =       no.
+status_is_exported(status_pseudo_imported) =         no.
+status_is_exported(status_opt_imported) =            no.
+status_is_exported(status_exported) =                yes.
+status_is_exported(status_opt_exported) =            yes.
+status_is_exported(status_abstract_exported) =       yes.
+status_is_exported(status_pseudo_exported) =         yes.
+status_is_exported(status_exported_to_submodules) =  yes.
+status_is_exported(status_local) =                   no.
 
-status_is_exported_to_non_submodules(Status, Result) :-
+status_is_exported_to_non_submodules(Status) =
     (
-        status_is_exported(Status, yes),
-        Status \= exported_to_submodules
+        status_is_exported(Status) = yes,
+        Status \= status_exported_to_submodules
     ->
-        Result = yes
+        yes
     ;
-        Result = no
+        no
     ).
 
-status_is_imported(Status, Imported) :-
-    status_defined_in_this_module(Status, InThisModule),
-    bool.not(InThisModule, Imported).
+status_is_imported(Status) = bool.not(status_defined_in_this_module(Status)).
 
-status_defined_in_this_module(imported(_),              no).
-status_defined_in_this_module(external(_),              no).
-status_defined_in_this_module(abstract_imported,        no).
-status_defined_in_this_module(pseudo_imported,          no).
-status_defined_in_this_module(opt_imported,             no).
-status_defined_in_this_module(exported,                 yes).
-status_defined_in_this_module(opt_exported,             yes).
-status_defined_in_this_module(abstract_exported,        yes).
-status_defined_in_this_module(pseudo_exported,          yes).
-status_defined_in_this_module(exported_to_submodules,   yes).
-status_defined_in_this_module(local,                    yes).
+status_defined_in_this_module(status_imported(_)) =             no.
+status_defined_in_this_module(status_external(_)) =             no.
+status_defined_in_this_module(status_abstract_imported) =       no.
+status_defined_in_this_module(status_pseudo_imported) =         no.
+status_defined_in_this_module(status_opt_imported) =            no.
+status_defined_in_this_module(status_exported) =                yes.
+status_defined_in_this_module(status_opt_exported) =            yes.
+status_defined_in_this_module(status_abstract_exported) =       yes.
+status_defined_in_this_module(status_pseudo_exported) =         yes.
+status_defined_in_this_module(status_exported_to_submodules) =  yes.
+status_defined_in_this_module(status_local) =                   yes.
 
 calls_are_fully_qualified(Markers) =
-    ( check_marker(Markers, calls_are_fully_qualified) ->
+    ( check_marker(Markers, marker_calls_are_fully_qualified) ->
         is_fully_qualified
     ;
         may_be_partially_qualified
@@ -1034,7 +1038,7 @@ pred_info_create(ModuleName, SymName, PredOrFunc, Context, Origin, Status,
     map.det_insert(Procs0, ProcId, ProcInfo, Procs),
 
     PredInfo = pred_info(ModuleName, PredName, Arity, PredOrFunc,
-        Context, Origin, Status, clauses, Markers, Attributes,
+        Context, Origin, Status, goal_type_clause, Markers, Attributes,
         ArgTypes, TypeVarSet, TypeVarSet, Kinds, ExistQVars, ExistQVarBindings,
         HeadTypeParams, ClassContext, ClassProofs, ClassConstraintMap,
         UnprovenBodyConstraints, inst_graph_info_init, [], Assertions,
@@ -1057,7 +1061,7 @@ define_new_pred(Origin, Goal0, Goal, ArgVars0, ExtraTypeInfos,
     % Similarly if the address of a procedure of this predicate is taken,
     % so that we can copy the closure.
     module_info_get_globals(ModuleInfo0, Globals),
-    ExportStatus = local,
+    ExportStatus = status_local,
     non_special_interface_should_use_typeinfo_liveness(ExportStatus,
         IsAddressTaken, Globals, TypeInfoLiveness),
     (
@@ -1125,8 +1129,7 @@ compute_arg_types_modes([Var | Vars], VarTypes, InstMap0, InstMap,
     instmap.lookup_var(InstMap0, Var, Inst0),
     instmap.lookup_var(InstMap, Var, Inst),
     Mode = (Inst0 -> Inst),
-    compute_arg_types_modes(Vars, VarTypes, InstMap0, InstMap,
-        Types, Modes).
+    compute_arg_types_modes(Vars, VarTypes, InstMap0, InstMap, Types, Modes).
 
 %-----------------------------------------------------------------------------%
 
@@ -1194,11 +1197,11 @@ pred_info_procids(PredInfo) = ValidProcIds :-
 
 pred_info_non_imported_procids(PredInfo) = ProcIds :-
     pred_info_get_import_status(PredInfo, ImportStatus),
-    ( ImportStatus = imported(_) ->
+    ( ImportStatus = status_imported(_) ->
         ProcIds = []
-    ; ImportStatus = external(_) ->
+    ; ImportStatus = status_external(_) ->
         ProcIds = []
-    ; ImportStatus = pseudo_imported ->
+    ; ImportStatus = status_pseudo_imported ->
         ProcIds0 = pred_info_procids(PredInfo),
         % for pseduo_imported preds, procid 0 is imported
         list.delete_all(ProcIds0, 0, ProcIds)
@@ -1208,11 +1211,11 @@ pred_info_non_imported_procids(PredInfo) = ProcIds :-
 
 pred_info_all_non_imported_procids(PredInfo) = ProcIds :-
     pred_info_get_import_status(PredInfo, ImportStatus),
-    ( ImportStatus = imported(_) ->
+    ( ImportStatus = status_imported(_) ->
         ProcIds = []
-    ; ImportStatus = external(_) ->
+    ; ImportStatus = status_external(_) ->
         ProcIds = []
-    ; ImportStatus = pseudo_imported ->
+    ; ImportStatus = status_pseudo_imported ->
         ProcIds0 = pred_info_procids(PredInfo),
         % for pseduo_imported preds, procid 0 is imported
         list.delete_all(ProcIds0, 0, ProcIds)
@@ -1223,14 +1226,14 @@ pred_info_all_non_imported_procids(PredInfo) = ProcIds :-
 pred_info_exported_procids(PredInfo) = ProcIds :-
     pred_info_get_import_status(PredInfo, ImportStatus),
     (
-        ( ImportStatus = exported
-        ; ImportStatus = opt_exported
-        ; ImportStatus = exported_to_submodules
+        ( ImportStatus = status_exported
+        ; ImportStatus = status_opt_exported
+        ; ImportStatus = status_exported_to_submodules
         )
     ->
         ProcIds = pred_info_procids(PredInfo)
     ;
-        ImportStatus = pseudo_exported
+        ImportStatus = status_pseudo_exported
     ->
         ProcIds = [0]
     ;
@@ -1259,29 +1262,29 @@ pred_info_set_proc_info(ProcId, ProcInfo, PredInfo0, PredInfo) :-
 
 pred_info_is_imported(PredInfo) :-
     pred_info_get_import_status(PredInfo, Status),
-    ( Status = imported(_)
-    ; Status = external(_)
+    ( Status = status_imported(_)
+    ; Status = status_external(_)
     ).
 
 pred_info_is_pseudo_imported(PredInfo) :-
     pred_info_get_import_status(PredInfo, ImportStatus),
-    ImportStatus = pseudo_imported.
+    ImportStatus = status_pseudo_imported.
 
 pred_info_is_exported(PredInfo) :-
     pred_info_get_import_status(PredInfo, ImportStatus),
-    ImportStatus = exported.
+    ImportStatus = status_exported.
 
 pred_info_is_opt_exported(PredInfo) :-
     pred_info_get_import_status(PredInfo, ImportStatus),
-    ImportStatus = opt_exported.
+    ImportStatus = status_opt_exported.
 
 pred_info_is_exported_to_submodules(PredInfo) :-
     pred_info_get_import_status(PredInfo, ImportStatus),
-    ImportStatus = exported_to_submodules.
+    ImportStatus = status_exported_to_submodules.
 
 pred_info_is_pseudo_exported(PredInfo) :-
     pred_info_get_import_status(PredInfo, ImportStatus),
-    ImportStatus = pseudo_exported.
+    ImportStatus = status_pseudo_exported.
 
 procedure_is_exported(ModuleInfo, PredInfo, ProcId) :-
     (
@@ -1295,8 +1298,8 @@ procedure_is_exported(ModuleInfo, PredInfo, ProcId) :-
         in_in_unification_proc_id(ProcId)
     ;
         pred_info_get_import_status(PredInfo, ImportStatus),
-        ImportStatus = external(ExternalImportStatus),
-        status_is_exported(ExternalImportStatus, yes)
+        ImportStatus = status_external(ExternalImportStatus),
+        status_is_exported(ExternalImportStatus) = yes
     ;
         pred_info_get_origin(PredInfo, special_pred(SpecialPred)),
         SpecialPred = SpecialId - TypeCtor,
@@ -1323,7 +1326,7 @@ procedure_is_exported(ModuleInfo, PredInfo, ProcId) :-
 
 pred_info_mark_as_external(PredInfo0, PredInfo) :-
     PredInfo = PredInfo0 ^ import_status :=
-        external(PredInfo0 ^ import_status).
+        status_external(PredInfo0 ^ import_status).
 
 pred_info_clause_goal_type(PredInfo) :-
     clause_goal_type(PredInfo ^ goal_type).
@@ -1333,59 +1336,64 @@ pred_info_pragma_goal_type(PredInfo) :-
 
 :- pred clause_goal_type(goal_type::in) is semidet.
 
-clause_goal_type(clauses).
-clause_goal_type(clauses_and_pragmas).
+clause_goal_type(goal_type_clause).
+clause_goal_type(goal_type_clause_and_foreign).
 
 :- pred pragma_goal_type(goal_type::in) is semidet.
 
-pragma_goal_type(pragmas).
-pragma_goal_type(clauses_and_pragmas).
+pragma_goal_type(goal_type_foreign).
+pragma_goal_type(goal_type_clause_and_foreign).
 
 pred_info_update_goal_type(GoalType1, !PredInfo) :-
     pred_info_get_goal_type(!.PredInfo, GoalType0),
     (
-        GoalType0 = none,
+        GoalType0 = goal_type_none,
         GoalType = GoalType1
     ;
-        GoalType0 = pragmas,
+        GoalType0 = goal_type_foreign,
         ( clause_goal_type(GoalType1) ->
-            GoalType = clauses_and_pragmas
+            GoalType = goal_type_clause_and_foreign
         ;
-            GoalType = pragmas
+            GoalType = goal_type_foreign
         )
     ;
-        GoalType0 = clauses,
+        GoalType0 = goal_type_clause,
         ( pragma_goal_type(GoalType1) ->
-            GoalType = clauses_and_pragmas
+            GoalType = goal_type_clause_and_foreign
         ;
-            GoalType = clauses
+            GoalType = goal_type_clause
         )
     ;
-        GoalType0 = clauses_and_pragmas,
+        GoalType0 = goal_type_clause_and_foreign,
         GoalType = GoalType0
     ;
-        GoalType0 = promise(_),
+        GoalType0 = goal_type_promise(_),
         unexpected(this_file, "pred_info_update_goal_type")
     ),
-    pred_info_set_goal_type(GoalType, !PredInfo).
+    ( GoalType = GoalType0 ->
+        % Avoid unnecessary memory allocation.
+        true
+    ;
+        pred_info_set_goal_type(GoalType, !PredInfo)
+    ).
 
 pred_info_requested_inlining(PredInfo0) :-
     pred_info_get_markers(PredInfo0, Markers),
     (
-        check_marker(Markers, user_marked_inline)
+        check_marker(Markers, marker_user_marked_inline)
     ;
-        check_marker(Markers, heuristic_inline)
+        check_marker(Markers, marker_heuristic_inline)
     ).
 
 pred_info_requested_no_inlining(PredInfo0) :-
     pred_info_get_markers(PredInfo0, Markers),
-    check_marker(Markers, user_marked_no_inline).
+    check_marker(Markers, marker_user_marked_no_inline).
 
 pred_info_get_purity(PredInfo0, Purity) :-
     pred_info_get_markers(PredInfo0, Markers),
-    ( check_marker(Markers, is_impure) ->
+    ( check_marker(Markers, marker_is_impure) ->
         Purity = purity_impure
-    ; check_marker(Markers, is_semipure) ->
+    ; check_marker(Markers, marker_is_semipure) ->
         Purity = purity_semipure
     ;
         Purity = purity_pure
@@ -1393,9 +1401,9 @@ pred_info_get_purity(PredInfo0, Purity) :-
 
 pred_info_get_promised_purity(PredInfo0, PromisedPurity) :-
     pred_info_get_markers(PredInfo0, Markers),
-    ( check_marker(Markers, promised_pure) ->
+    ( check_marker(Markers, marker_promised_pure) ->
         PromisedPurity = purity_pure
-    ; check_marker(Markers, promised_semipure) ->
+    ; check_marker(Markers, marker_promised_semipure) ->
         PromisedPurity = purity_semipure
     ;
         PromisedPurity = purity_impure
@@ -1403,14 +1411,14 @@ pred_info_get_promised_purity(PredInfo0, PromisedPurity) :-
 
 pred_info_infer_modes(PredInfo) :-
     pred_info_get_markers(PredInfo, Markers),
-    check_marker(Markers, infer_modes).
+    check_marker(Markers, marker_infer_modes).
 
 purity_to_markers(purity_pure, []).
-purity_to_markers(purity_semipure, [is_semipure]).
-purity_to_markers(purity_impure, [is_impure]).
+purity_to_markers(purity_semipure, [marker_is_semipure]).
+purity_to_markers(purity_impure, [marker_is_impure]).
 
-terminates_to_markers(terminates, [terminates]).
-terminates_to_markers(does_not_terminate, [does_not_terminate]).
+terminates_to_markers(proc_terminates, [marker_terminates]).
+terminates_to_markers(proc_does_not_terminate, [marker_does_not_terminate]).
 terminates_to_markers(depends_on_mercury_calls, []).
 
 pred_info_get_univ_quant_tvars(PredInfo, UnivQVars) :-
@@ -2095,40 +2103,45 @@ attribute_list_to_attributes(Attributes, Attributes).
     % imported_sharing to temporarely store the imported sharing information.
     %
 :- type imported_sharing
-    ---> imported_sharing(
-            s_headvars        :: prog_vars,
+    --->    imported_sharing(
                 % The list of headvars in which terms the imported sharing
                 % is expressed.
-            s_types           :: list(mer_type),
+                s_headvars        :: prog_vars,
+
                 % The types of the headvars.
-            s_sharing         :: structure_sharing_domain
-        ).
+                s_types           :: list(mer_type),
+
+                s_sharing         :: structure_sharing_domain
+            ).
 
 :- func structure_sharing_info_init = structure_sharing_info.
 
 structure_sharing_info_init = structure_sharing_info(no, no).
 
 :- type structure_reuse_info
-    ---> structure_reuse_info(
-            maybe_reuse           :: maybe(structure_reuse_domain),
-            maybe_imported_reuse  :: maybe(imported_reuse)
+    --->    structure_reuse_info(
+                maybe_reuse           :: maybe(structure_reuse_domain),
+
+                maybe_imported_reuse  :: maybe(imported_reuse)
                 % Records the reuse information from any `.opt' or
                 % `.trans_opt' file. This information needs to be processed
                 % at the beginning of structure reuse analysis. After that
                 % this field is of no use.
-        ).
+            ).
 
     % Same rationale as for imported_sharing.
     %
 :- type imported_reuse
-    ---> imported_reuse(
-            r_headvars        :: prog_vars,
+    --->    imported_reuse(
                 % The list of headvars in which terms the imported reuse
                 % information is expressed.
-            r_types           :: list(mer_type),
+                r_headvars        :: prog_vars,
+
                 % The types of the headvars.
-            r_reuse           :: structure_reuse_domain
-        ).
+                r_types           :: list(mer_type),
+
+                r_reuse           :: structure_reuse_domain
+            ).
 
 :- func structure_reuse_info_init = structure_reuse_info.
 
@@ -2492,7 +2505,7 @@ non_special_interface_should_use_typeinfo_liveness(Status, IsAddressTaken,
             % If the predicate is exported, its address may have
             % been taken elsewhere. If it is imported, then it
             % follows that it must be exported somewhere.
-            Status \= local
+            Status \= status_local
         ;
             % If term size profiling (of either form) is enabled,
             % then we may need to access the typeinfo of any
@@ -2876,14 +2889,14 @@ valid_determinism_for_eval_method(eval_minimal(_), Detism) = Valid :-
     %
     % Reason 3:
     % Minimal model semantics requires computing to a fixpoint, and this is
-    % incompatible with the notion of Committed choice.
+    % incompatible with the notion of committed choice.
     %
     % Reason 4:
     % Doing the analysis required to ensure that a predicate can't have more
     % than one solution is much harder if the predicate concerned is
     % minimal_model. In theory, this analysis could be done, but it would
     % take a lot of programming, and since there is a simple workaround
-    % make the predicate nondet, and check the number of solutions at the
+    % (make the predicate nondet, and check the number of solutions at the
     % caller), this would not be cost-effective.
     (
         Detism = detism_det,

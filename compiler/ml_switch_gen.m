@@ -143,9 +143,9 @@ ml_gen_switch(CaseVar, CanFail, Cases, CodeModel, Context, Decls, Statements,
         list.member(Case, TaggedCases),
         Case = case(_Priority, Tag, _ConsId, _Goal),
         (
-            Tag = reserved_address(_)
+            Tag = reserved_address_tag(_)
         ;
-            Tag = shared_with_reserved_addresses(_, _)
+            Tag = shared_with_reserved_addresses_tag(_, _)
         )
     ->
         % XXX This may be inefficient in some cases.
@@ -423,9 +423,9 @@ ml_switch_generate_mlds_cases([Case | Cases], CodeModel,
 
 ml_switch_generate_mlds_case(Case, CodeModel, MLDS_Case, !Info) :-
     Case = case(_Priority, Tag, _ConsId, Goal),
-    ( Tag = int_constant(Int) ->
+    ( Tag = int_tag(Int) ->
         Rval = const(int_const(Int))
-    ; Tag = string_constant(String) ->
+    ; Tag = string_tag(String) ->
         Rval = const(string_const(String))
     ;
         unexpected(this_file, "ml_switch_gen.m: invalid tag type")

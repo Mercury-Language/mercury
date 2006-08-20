@@ -909,7 +909,7 @@ find_items_used_by_item(type_item, TypeCtorItem, !Info) :-
     TypeCtor = item_name_to_type_ctor(TypeCtorItem),
     map.lookup(Types, TypeCtor, TypeDefn),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
-    ( TypeBody = eqv_type(Type) ->
+    ( TypeBody = hlds_eqv_type(Type) ->
         % If we use an equivalence type we also use the type
         % it is equivalent to.
         find_items_used_by_type(Type, !Info)
@@ -1019,12 +1019,12 @@ find_items_used_by_instance(ClassId, Defn, !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_class_method(Method, !Info) :-
-    Method = pred_or_func(_, _, _, _, _, ArgTypesAndModes, _, _, _, _, _,
-        Constraints, _),
+    Method = method_pred_or_func(_, _, _, _, _, ArgTypesAndModes, _, _, _, _,
+        _, Constraints, _),
     find_items_used_by_class_context(Constraints, !Info),
     list.foldl(find_items_used_by_type_and_mode, ArgTypesAndModes, !Info).
 find_items_used_by_class_method(Method, !Info) :-
-    Method = pred_or_func_mode(_, _, _, Modes, _, _, _, _),
+    Method = method_pred_or_func_mode(_, _, _, Modes, _, _, _, _),
     find_items_used_by_modes(Modes, !Info).
 
 :- pred find_items_used_by_type_and_mode(type_and_mode::in,
@@ -1042,15 +1042,14 @@ find_items_used_by_type_and_mode(TypeAndMode, !Info) :-
 :- pred find_items_used_by_type_body(hlds_type_body::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
-find_items_used_by_type_body(TypeBody, !Info) :-
-    Ctors = TypeBody ^ du_type_ctors,
+find_items_used_by_type_body(hlds_du_type(Ctors, _, _, _, _, _), !Info) :-
     list.foldl(find_items_used_by_ctor, Ctors, !Info).
-find_items_used_by_type_body(eqv_type(Type), !Info) :-
+find_items_used_by_type_body(hlds_eqv_type(Type), !Info) :-
     find_items_used_by_type(Type, !Info).
-find_items_used_by_type_body(abstract_type(_), !Info).
-find_items_used_by_type_body(foreign_type(_), !Info).
+find_items_used_by_type_body(hlds_abstract_type(_), !Info).
+find_items_used_by_type_body(hlds_foreign_type(_), !Info).
     % rafe: XXX Should we trace the representation type?
-find_items_used_by_type_body(solver_type(_, _), !Info).
+find_items_used_by_type_body(hlds_solver_type(_, _), !Info).
 
 :- pred find_items_used_by_ctor(constructor::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
@@ -1132,7 +1131,7 @@ find_items_used_by_pred(PredOrFunc, Name - Arity, PredId - PredModule,
         % Items used by class methods are recorded when processing
         % the typeclass declaration. Make sure that is done.
         pred_info_get_markers(PredInfo, Markers),
-        check_marker(Markers, class_method)
+        check_marker(Markers, marker_class_method)
     ->
         % The typeclass for which the predicate is a method is the first
         % of the universal class constraints in the pred_info.
@@ -1178,7 +1177,7 @@ find_items_used_by_proc_arg_modes(_ProcId, ProcInfo, !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_type_spec(Pragma, !Info) :-
-    ( Pragma = type_spec(_, _, _, _, MaybeModes, Subst, _, _) ->
+    ( Pragma = pragma_type_spec(_, _, _, _, MaybeModes, Subst, _, _) ->
         (
             MaybeModes = yes(Modes),
             find_items_used_by_modes(Modes, !Info)
@@ -1332,7 +1331,7 @@ find_items_used_by_inst(abstract_inst(Name, ArgInsts), !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_bound_inst(BoundInst, !Info) :-
-    BoundInst = functor(ConsId, ArgInsts),
+    BoundInst = bound_functor(ConsId, ArgInsts),
     ( ConsId = cons(Name, Arity) ->
         record_used_functor(Name - Arity, !Info)
     ;

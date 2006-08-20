@@ -153,23 +153,23 @@ find_weights(ModuleInfo, Weights) :-
 find_weights_for_type(TypeCtor - TypeDefn, !Weights) :-
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     (
-        Constructors = TypeBody ^ du_type_ctors,
+        TypeBody = hlds_du_type(Constructors, _, _, _, _, _),
         hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
         list.foldl(find_weights_for_cons(TypeCtor, TypeParams),
             Constructors, !Weights)
     ;
-        % This type does not introduce any functors
-        TypeBody = eqv_type(_)
+        % This type does not introduce any functors.
+        TypeBody = hlds_eqv_type(_)
     ;
         % This type may introduce some functors,
-        % but we will never see them in this analysis
-        TypeBody = abstract_type(_)
+        % but we will never see them in this analysis.
+        TypeBody = hlds_abstract_type(_)
     ;
-        % This type does not introduce any functors
-        TypeBody = foreign_type(_)
+        % This type does not introduce any functors.
+        TypeBody = hlds_foreign_type(_)
     ;
-        % This type does not introduce any functors
-        TypeBody = solver_type(_, _)
+        % This type does not introduce any functors.
+        TypeBody = hlds_solver_type(_, _)
     ).
 
 :- pred find_weights_for_cons(type_ctor::in, list(type_param)::in,

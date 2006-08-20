@@ -1870,10 +1870,10 @@ write_inference_messages([PredId | PredIds], ModuleInfo, !IO) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     (
-        check_marker(Markers, infer_type),
+        check_marker(Markers, marker_infer_type),
         module_info_predids(ModuleInfo, ValidPredIds),
         list.member(PredId, ValidPredIds),
-        \+ pred_info_get_goal_type(PredInfo, promise(_))
+        \+ pred_info_get_goal_type(PredInfo, goal_type_promise(_))
     ->
         write_inference_message(PredInfo, !IO)
     ;

@@ -194,9 +194,9 @@ is_lookup_switch(CaseVar, TaggedCases0, GoalInfo, SwitchCanFail0, ReqDensity,
     % cheaper than a branch.
     list.length(TaggedCases, NumCases),
     TaggedCases = [FirstCase | _],
-    FirstCase = case(_, int_constant(FirstCaseVal), _, _),
+    FirstCase = case(_, int_tag(FirstCaseVal), _, _),
     list.index1_det(TaggedCases, NumCases, LastCase),
-    LastCase = case(_, int_constant(LastCaseVal), _, _),
+    LastCase = case(_, int_tag(LastCaseVal), _, _),
     Span = LastCaseVal - FirstCaseVal,
     Range = Span + 1,
     dense_switch.calc_density(NumCases, Range, Density),
@@ -323,7 +323,7 @@ generate_constants([], _Vars, _StoreMap, !MaybeEnd, [], no, !ResumeVars,
     !GoalTrailOps, !CI).
 generate_constants([Case | Cases], Vars, StoreMap, !MaybeEnd, [CaseVal | Rest],
         MaybeLiveness, !ResumeVars, !GoalTrailOps, !CI) :-
-    Case = case(_, int_constant(CaseTag), _, Goal),
+    Case = case(_, int_tag(CaseTag), _, Goal),
     Goal = GoalExpr - GoalInfo,
 
     % Goals with these features need special treatment in generate_goal.

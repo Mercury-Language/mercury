@@ -798,10 +798,10 @@ dump_instr(ProcLabel, PrintComments, Instr) = Str :-
             ++ ")"
     ).
 
-:- func dump_may_call_mercury(may_call_mercury) = string.
+:- func dump_may_call_mercury(proc_may_call_mercury) = string.
 
-dump_may_call_mercury(may_call_mercury) = "may_call_mercury".
-dump_may_call_mercury(will_not_call_mercury) = "will_not_call_mercury".
+dump_may_call_mercury(proc_may_call_mercury) = "may_call_mercury".
+dump_may_call_mercury(proc_will_not_call_mercury) = "will_not_call_mercury".
 
 :- func dump_maybe_label(string, proc_label, maybe(label)) = string.
 

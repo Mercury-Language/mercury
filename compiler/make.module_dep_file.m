@@ -5,13 +5,13 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: make.module_dep_file.m.
 % Author: stayl.
-% 
+%
 % Code to read and write the `<module>.module_dep' files, which contain
 % information about inter-module dependencies.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module make.module_dep_file.
@@ -259,7 +259,10 @@ do_write_module_dep_file(Imports, !IO) :-
         io.write_list(Imports ^ fact_table_deps,
             ", ", io.write, !IO),
         io.write_string("},\n\t{", !IO),
-        ( Imports ^ foreign_code = contains_foreign_code(ForeignLanguages0) ->
+        (
+            Imports ^ has_foreign_code =
+                contains_foreign_code(ForeignLanguages0)
+        ->
             ForeignLanguages = set.to_sorted_list(ForeignLanguages0)
         ;
             ForeignLanguages = []
@@ -267,9 +270,9 @@ do_write_module_dep_file(Imports, !IO) :-
         io.write_list(ForeignLanguages, ", ",
             mercury_output_foreign_language_string, !IO),
         io.write_string("},\n\t{", !IO),
-        io.write_list(Imports  ^ foreign_import_module_info, ", ",
+        io.write_list(Imports  ^ foreign_import_modules, ", ",
             (pred(ForeignImportModule::in, di, uo) is det -->
-                { ForeignImportModule = foreign_import_module(Lang,
+                { ForeignImportModule = foreign_import_module_info(Lang,
                     ForeignImport, _) },
                 mercury_output_foreign_language_string(Lang),
                 io.write_string(" - "),
@@ -361,7 +364,7 @@ read_module_dependencies(RebuildDeps, ModuleName, !Info, !IO) :-
                         Language),
                     sym_name_and_args(ImportedModuleTerm, ImportedModuleName,
                         []),
-                    ForeignImportModule = foreign_import_module(Language,
+                    ForeignImportModule = foreign_import_module_info(Language,
                         ImportedModuleName, term.context_init)
                 ), ForeignImportTerms, ForeignImports),
 
@@ -401,8 +404,8 @@ read_module_dependencies(RebuildDeps, ModuleName, !Info, !IO) :-
             Imports ^ public_children = [], % not used.
             Imports ^ nested_children = NestedChildren,
             Imports ^ fact_table_deps = FactDeps,
-            Imports ^ foreign_code = ContainsForeignCode,
-            Imports ^ foreign_import_module_info = ForeignImports,
+            Imports ^ has_foreign_code = ContainsForeignCode,
+            Imports ^ foreign_import_modules = ForeignImports,
             Imports ^ contains_foreign_export = ContainsForeignExport,
             Imports ^ items = [],       % not used.
             Imports ^ error = no_module_errors, % not used.

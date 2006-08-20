@@ -103,7 +103,7 @@ modecheck_unification(X, RHS, Unification0, UnifyContext, UnifyGoalInfo0,
             % If this is a lambda unification containing some inst any
             % nonlocals, then the lambda should be marked as impure.
             %
-        RHS = lambda_goal(Purity, _, _, NonLocals, _, _, _, _),
+        RHS = rhs_lambda_goal(Purity, _, _, NonLocals, _, _, _, _),
         Purity \= purity_impure,
         mode_info_get_module_info(!.ModeInfo, ModuleInfo),
         mode_info_get_instmap(!.ModeInfo, InstMap),
@@ -125,8 +125,8 @@ modecheck_unification(X, RHS, Unification0, UnifyContext, UnifyGoalInfo0,
     unify_context::in, hlds_goal_info::in, hlds_goal_expr::out,
     mode_info::in, mode_info::out, io::di, io::uo) is det.
 
-modecheck_unification_2(X, var(Y), Unification0, UnifyContext, UnifyGoalInfo0,
-        Unify, !ModeInfo, !IO) :-
+modecheck_unification_2(X, rhs_var(Y), Unification0, UnifyContext,
+        UnifyGoalInfo0, Unify, !ModeInfo, !IO) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     mode_info_get_var_types(!.ModeInfo, VarTypes),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
@@ -213,10 +213,11 @@ modecheck_unification_2(X, var(Y), Unification0, UnifyContext, UnifyGoalInfo0,
         ModeOfX = (InstOfX -> Inst),
         ModeOfY = (InstOfY -> Inst),
         Modes = ModeOfX - ModeOfY,
-        Unify = unify(X, var(Y), Modes, Unification, UnifyContext)
+        Unify = unify(X, rhs_var(Y), Modes, Unification, UnifyContext)
     ).
 
-modecheck_unification_2(X0, functor(ConsId0, IsExistConstruction, ArgVars0),
+modecheck_unification_2(X0,
+        rhs_functor(ConsId0, IsExistConstruction, ArgVars0),
         Unification0, UnifyContext, GoalInfo0, Goal, !ModeInfo, !IO) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
     mode_info_get_var_types(!.ModeInfo, VarTypes0),
@@ -266,7 +267,7 @@ modecheck_unification_2(X0, functor(ConsId0, IsExistConstruction, ArgVars0),
 
 modecheck_unification_2(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
         unify(X, RHS, Mode, Unification, UnifyContext), !ModeInfo, !IO) :-
-    LambdaGoal = lambda_goal(Purity, PredOrFunc, EvalMethod,
+    LambdaGoal = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
         ArgVars, Vars, Modes0, Det, Goal0),
 
     % First modecheck the lambda goal itself:
@@ -400,7 +401,7 @@ modecheck_unification_2(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
 
         % Now modecheck the unification of X with the lambda-expression.
 
-        RHS0 = lambda_goal(Purity, PredOrFunc, EvalMethod, ArgVars,
+        RHS0 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, ArgVars,
             Vars, Modes, Det, Goal),
         modecheck_unify_lambda(X, PredOrFunc, ArgVars, Modes, Det,
             RHS0, RHS, Unification0, Unification, Mode, !ModeInfo)
@@ -422,7 +423,7 @@ modecheck_unification_2(X, LambdaGoal, Unification0, UnifyContext, _GoalInfo,
                 "modecheck_unification_2(lambda): very strange var")
         ),
         % Return any old garbage.
-        RHS = lambda_goal(Purity, PredOrFunc, EvalMethod, ArgVars,
+        RHS = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, ArgVars,
             Vars, Modes0, Det, Goal0),
         Mode = (free -> free) - (free -> free),
         Unification = Unification0
@@ -547,7 +548,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
     mode_info_get_instmap(!.ModeInfo, InstMap1),
     instmap.lookup_vars(ArgVars0, InstMap1, InstArgs),
     mode_info_var_list_is_live(!.ModeInfo, ArgVars0, LiveArgs),
-    InstOfY = bound(unique, [functor(InstConsId, InstArgs)]),
+    InstOfY = bound(unique, [bound_functor(InstConsId, InstArgs)]),
     (
         % The occur check: X = f(X) is considered a mode error unless X is
         % ground. (Actually it wouldn't be that hard to generate code for it
@@ -715,7 +716,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
             WarnCannotSucceed = no
         )
     ;
-        Functor = functor(ConsId, IsExistConstruction, ArgVars),
+        Functor = rhs_functor(ConsId, IsExistConstruction, ArgVars),
         Unify = unify(X, Functor, Mode, Unification, UnifyContext),
         %
         % Modecheck_unification sometimes needs to introduce new goals
@@ -854,7 +855,7 @@ create_var_var_unification(Var0, Var, Type, ModeInfo, Goal - GoalInfo) :-
     mode_context_to_unify_context(ModeInfo, ModeContext, UnifyContext),
     UnifyContext = unify_context(MainContext, SubContexts),
 
-    create_atomic_complicated_unification(Var0, var(Var), Context,
+    create_atomic_complicated_unification(Var0, rhs_var(Var), Context,
         MainContext, SubContexts, Goal0 - GoalInfo0),
 
     %
@@ -1009,7 +1010,8 @@ categorize_unify_var_var(ModeOfX, ModeOfY, LiveX, LiveY, X, Y, Det,
             WarnCannotSucceed = no
         )
     ;
-        Unify = unify(X, var(Y), ModeOfX - ModeOfY, Unification, UnifyContext)
+        Unify = unify(X, rhs_var(Y), ModeOfX - ModeOfY,
+            Unification, UnifyContext)
     ).
 
     % If we optimize away a singleton variable in a unification in one branch
@@ -1066,7 +1068,7 @@ modecheck_complicated_unify(X, Y, Type, ModeOfX, ModeOfY, Det, UnifyContext,
         UnifyTypeInfoVars = [_ | _],
         list.length(UnifyTypeInfoVars, NumTypeInfoVars),
         list.duplicate(NumTypeInfoVars, ground(shared, none), ExpectedInsts),
-        mode_info_set_call_context(unify(UnifyContext), !ModeInfo),
+        mode_info_set_call_context(call_context_unify(UnifyContext), !ModeInfo),
         NeedExactMatch = no,
         InitialArgNum = 0,
         modecheck_var_has_inst_list(UnifyTypeInfoVars, ExpectedInsts,
@@ -1191,13 +1193,13 @@ categorize_unify_var_lambda(ModeOfX, ArgModes0, X, ArgVars, PredOrFunc,
             proc(PredId, ProcId) =
                 unshroud_pred_proc_id(ShroudedPredProcId),
             (
-                RHS0 = lambda_goal(_, _, EvalMethod, _, _, _, _, Goal),
+                RHS0 = rhs_lambda_goal(_, _, EvalMethod, _, _, _, _, Goal),
                 Goal = plain_call(PredId, ProcId, _, _, _, _) - _
             ->
                 module_info_pred_info(ModuleInfo, PredId, PredInfo),
                 PredModule = pred_info_module(PredInfo),
                 PredName = pred_info_name(PredInfo),
-                RHS = functor(cons(qualified(PredModule, PredName), Arity),
+                RHS = rhs_functor(cons(qualified(PredModule, PredName), Arity),
                     no, ArgVars)
             ;
                 unexpected(this_file,
@@ -1329,7 +1331,8 @@ check_type_info_args_are_ground([ArgVar | ArgVars], VarTypes, UnifyContext,
         map.lookup(VarTypes, ArgVar, ArgType),
         is_introduced_type_info_type(ArgType)
     ->
-        mode_info_set_call_context(unify(UnifyContext), !ModeInfo),
+        mode_info_set_call_context(call_context_unify(UnifyContext),
+            !ModeInfo),
         NeedExactMatch = no,
         InitialArgNum = 0,
         modecheck_var_has_inst_list([ArgVar], [ground(shared, none)],
@@ -1369,7 +1372,7 @@ try_bind_args(bound(_Uniq, List), Args, UnifyArgInsts, !ModeInfo) :-
         mode_info_set_instmap(InstMap, !ModeInfo)
     ;
         List = [_ | _],
-        List = [functor(_, InstList)],
+        List = [bound_functor(_, InstList)],
         try_bind_args_2(Args, InstList, UnifyArgInsts, !ModeInfo)
     ).
 try_bind_args(constrained_inst_vars(_, Inst), Args, UnifyArgInsts,
@@ -1417,7 +1420,7 @@ get_mode_of_args(bound(_Uniq, List), ArgInstsA, ArgModes) :-
         mode_set_args(ArgInstsA, not_reached, ArgModes)
     ;
         List = [_ | _],
-        List = [functor(_Name, ArgInstsB)],
+        List = [bound_functor(_Name, ArgInstsB)],
         get_mode_of_args_2(ArgInstsA, ArgInstsB, ArgModes)
     ).
 get_mode_of_args(constrained_inst_vars(_, Inst), ArgInsts, ArgModes) :-

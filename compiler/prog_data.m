@@ -332,7 +332,7 @@
     % (no structure sharing), top (any kind of structure sharing), or
     % a list of structure sharing pairs.
     %
-    % This is the public representation of the type "sharing_as". 
+    % This is the public representation of the type "sharing_as".
     %
 :- type structure_sharing_domain
     --->    structure_sharing_bottom
@@ -377,7 +377,7 @@
 :- type user_annotated_sharing
     --->    no_user_annotated_sharing
     ;       user_sharing(
-                sharing     ::  structure_sharing_domain, 
+                sharing     ::  structure_sharing_domain,
                 maybe_types ::  maybe(user_sharing_type_information)
             ).
 
@@ -404,7 +404,7 @@
 :- type live_datastruct == datastruct.
 :- type live_datastructs == list(live_datastruct).
 
-    % This is the public representation of the type "reuse_as". 
+    % This is the public representation of the type "reuse_as".
     %
 :- type structure_reuse_domain
     --->    has_no_reuse
@@ -415,9 +415,9 @@
 
     % A structure reuse condition specifies all the information needed to
     % verify whether some memory cells can safely be considered as dead at
-    % some program point, depending on the calling context. 
-    % This information consists of three parts: 
-    %   - a list of dead datastructures specifying which memory cells 
+    % some program point, depending on the calling context.
+    % This information consists of three parts:
+    %   - a list of dead datastructures specifying which memory cells
     %   might become dead, hence reuseable;
     %   - a list of live datastructures that specifies which memory cells
     %   are always live at the place where the above dead datastructures might
@@ -425,13 +425,13 @@
     %   - a description of the structure sharing existing at the place
     %   where these datastructures might become dead.
     %
-:- type structure_reuse_condition 
+:- type structure_reuse_condition
     --->    structure_reuse_condition(
                 dead_nodes          :: dead_datastructs,
-                local_use_nodes     :: live_datastructs, 
+                local_use_nodes     :: live_datastructs,
                 local_sharing       :: structure_sharing_domain
             ).
-            
+
 %-----------------------------------------------------------------------------%
 %
 % Stuff for the `unused_args' pragma
@@ -458,7 +458,7 @@
             % This procedure may throw an exception. The exception is
             % classified by the `exception_type' type.
 
-    ;       conditional.
+    ;       throw_conditional.
             % Whether the procedure will not throw an exception depends upon
             % the value of one or more polymorphic arguments. XXX This needs
             % to be extended for ho preds. (See exception_analysis.m for
@@ -481,9 +481,9 @@
 %
 
 :- type trailing_status
-    --->    may_modify_trail
-    ;       will_not_modify_trail
-    ;       conditional.
+    --->    trail_may_modify
+    ;       trail_will_not_modify
+    ;       trail_conditional.
 
 %-----------------------------------------------------------------------------%
 %
@@ -491,7 +491,7 @@
 %
 
 :- type mm_tabling_status
-    --->    mm_tabled_may_call 
+    --->    mm_tabled_may_call
     ;       mm_tabled_will_not_call
     ;       mm_tabled_conditional.
 
@@ -583,11 +583,11 @@
     ;       share
     ;       automatic.
 
-:- type foreign_import_module_info  == list(foreign_import_module).
+:- type foreign_import_module_info_list  == list(foreign_import_module_info).
                     % in reverse order
 
-:- type foreign_import_module
-    --->    foreign_import_module(
+:- type foreign_import_module_info
+    --->    foreign_import_module_info(
                 foreign_language,
                 module_name,
                 prog_context
@@ -679,30 +679,34 @@
 :- type pragma_foreign_proc_attributes.
 
 :- func default_attributes(foreign_language) = pragma_foreign_proc_attributes.
-:- func may_call_mercury(pragma_foreign_proc_attributes) = may_call_mercury.
-:- func thread_safe(pragma_foreign_proc_attributes) = thread_safe.
-:- func purity(pragma_foreign_proc_attributes) = purity.
-:- func terminates(pragma_foreign_proc_attributes) = terminates.
-:- func user_annotated_sharing(pragma_foreign_proc_attributes) = 
+:- func get_may_call_mercury(pragma_foreign_proc_attributes) =
+    proc_may_call_mercury.
+:- func get_thread_safe(pragma_foreign_proc_attributes) = proc_thread_safe.
+:- func get_purity(pragma_foreign_proc_attributes) = purity.
+:- func get_terminates(pragma_foreign_proc_attributes) = proc_terminates.
+:- func get_user_annotated_sharing(pragma_foreign_proc_attributes) =
     user_annotated_sharing.
-:- func foreign_language(pragma_foreign_proc_attributes) = foreign_language.
-:- func tabled_for_io(pragma_foreign_proc_attributes) = tabled_for_io.
-:- func legacy_purity_behaviour(pragma_foreign_proc_attributes) = bool.
-:- func may_throw_exception(pragma_foreign_proc_attributes) =
-    may_throw_exception.
-:- func ordinary_despite_detism(pragma_foreign_proc_attributes) = bool.
-:- func may_modify_trail(pragma_foreign_proc_attributes) = may_modify_trail.
-:- func may_call_mm_tabled(pragma_foreign_proc_attributes) = 
+:- func get_foreign_language(pragma_foreign_proc_attributes) =
+    foreign_language.
+:- func get_tabled_for_io(pragma_foreign_proc_attributes) =
+    proc_tabled_for_io.
+:- func get_legacy_purity_behaviour(pragma_foreign_proc_attributes) = bool.
+:- func get_may_throw_exception(pragma_foreign_proc_attributes) =
+    proc_may_throw_exception.
+:- func get_ordinary_despite_detism(pragma_foreign_proc_attributes) = bool.
+:- func get_may_modify_trail(pragma_foreign_proc_attributes) =
+    proc_may_modify_trail.
+:- func get_may_call_mm_tabled(pragma_foreign_proc_attributes) =
     may_call_mm_tabled.
-:- func box_policy(pragma_foreign_proc_attributes) = box_policy.
-:- func extra_attributes(pragma_foreign_proc_attributes)
+:- func get_box_policy(pragma_foreign_proc_attributes) = box_policy.
+:- func get_extra_attributes(pragma_foreign_proc_attributes)
     = pragma_foreign_proc_extra_attributes.
 
-:- pred set_may_call_mercury(may_call_mercury::in,
+:- pred set_may_call_mercury(proc_may_call_mercury::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
-:- pred set_thread_safe(thread_safe::in,
+:- pred set_thread_safe(proc_thread_safe::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
@@ -710,7 +714,7 @@
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
-:- pred set_tabled_for_io(tabled_for_io::in,
+:- pred set_tabled_for_io(proc_tabled_for_io::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
@@ -718,15 +722,15 @@
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
-:- pred set_terminates(terminates::in,
+:- pred set_terminates(proc_terminates::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
-:- pred set_user_annotated_sharing(user_annotated_sharing::in, 
+:- pred set_user_annotated_sharing(user_annotated_sharing::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
-:- pred set_may_throw_exception(may_throw_exception::in,
+:- pred set_may_throw_exception(proc_may_throw_exception::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
@@ -738,7 +742,7 @@
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
-:- pred set_may_modify_trail(may_modify_trail::in,
+:- pred set_may_modify_trail(proc_may_modify_trail::in,
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
@@ -754,49 +758,49 @@
     pragma_foreign_proc_attributes::in,
     pragma_foreign_proc_attributes::out) is det.
 
-    % For pragma c_code, there are two different calling conventions,
-    % one for C code that may recursively call Mercury code, and another
-    % more efficient one for the case when we know that the C code will
+    % For foreign_procs, there are two different calling conventions,
+    % one for foreign code that may recursively call Mercury code, and another
+    % more efficient one for the case when we know that the foreign code will
     % not recursively invoke Mercury code.
-:- type may_call_mercury
-    --->    may_call_mercury
-    ;       will_not_call_mercury.
+:- type proc_may_call_mercury
+    --->    proc_may_call_mercury
+    ;       proc_will_not_call_mercury.
 
     % If thread_safe execution is enabled, then we need to put a mutex
-    % around the C code for each `pragma c_code' declaration, unless
-    % it's declared to be thread_safe.  If a piece of foreign code is
-    % declared to be maybe_thread_safe whether we put the mutex around
-    % the foreign code depends upon the `--maybe-thread-safe' compiler flag.
+    % around the foreign code for each foreign_proc, unless it is declared
+    % to be thread_safe.  If a piece of foreign code is declared to be
+    % maybe_thread_safe whether we put the mutex around the foreign code
+    % depends upon the `--maybe-thread-safe' compiler flag.
     %
-:- type thread_safe
-    --->    not_thread_safe
-    ;       thread_safe
-    ;       maybe_thread_safe.
+:- type proc_thread_safe
+    --->    proc_not_thread_safe
+    ;       proc_thread_safe
+    ;       proc_maybe_thread_safe.
 
-:- type tabled_for_io
-    --->    not_tabled_for_io
-    ;       tabled_for_io
-    ;       tabled_for_io_unitize
-    ;       tabled_for_descendant_io.
+:- type proc_tabled_for_io
+    --->    proc_not_tabled_for_io
+    ;       proc_tabled_for_io
+    ;       proc_tabled_for_io_unitize
+    ;       proc_tabled_for_descendant_io.
 
-:- type may_modify_trail
-    --->    may_modify_trail
-    ;       will_not_modify_trail.
+:- type proc_may_modify_trail
+    --->    proc_may_modify_trail
+    ;       proc_will_not_modify_trail.
 
 :- type may_call_mm_tabled
     --->    may_call_mm_tabled
             % The foreign code may make callbacks to minimal model tabled
             % procedures.
-            
+
     ;       will_not_call_mm_tabled
             % The foreign code may make callbacks to Mercury, but they will
             % not be to minimal model tabled code.
-    
-    ;       default_calls_mm_tabled. 
+
+    ;       default_calls_mm_tabled.
             % If either of the above are not specified:
             %   - for `will_not_call_mercury' set `will_not_call_mm_tabled'
             %   - for `may_call_mercury' set `may_call_mm_tabled'
-    
+
 :- type pragma_var
     --->    pragma_var(prog_var, string, mer_mode, box_policy).
             % variable, name, mode
@@ -810,12 +814,12 @@
     % This type specifies the termination property of a procedure
     % defined using pragma c_code or pragma foreign_proc.
     %
-:- type terminates
-    --->    terminates
+:- type proc_terminates
+    --->    proc_terminates
             % The foreign code will terminate for all input assuming
             % that any input streams are finite.
 
-    ;       does_not_terminate
+    ;       proc_does_not_terminate
             % The foreign code will not necessarily terminate for some
             % (possibly all) input.
 
@@ -823,8 +827,8 @@
             % The termination of the foreign code depends on whether the code
             % makes calls back to Mercury (See termination.m for details).
 
-:- type may_throw_exception
-    --->    will_not_throw_exception
+:- type proc_may_throw_exception
+    --->    proc_will_not_throw_exception
             % The foreign code will not result in an exception being thrown.
 
     ;       default_exception_behaviour.
@@ -1013,29 +1017,29 @@
 % type_defn/3 is defined in prog_item.m as a constructor for item/0
 
 :- type type_defn
-    --->    du_type(
+    --->    parse_tree_du_type(
                 du_ctors            :: list(constructor),
                 du_user_uc          :: maybe(unify_compare)
             )
-    ;       eqv_type(
+    ;       parse_tree_eqv_type(
                 eqv_type            :: mer_type
             )
-    ;       abstract_type(
+    ;       parse_tree_abstract_type(
                 abstract_is_solver  :: is_solver_type
             )
-    ;       solver_type(
+    ;       parse_tree_solver_type(
                 solver_details      :: solver_type_details,
                 solver_user_uc      :: maybe(unify_compare)
             )
-    ;       foreign_type(
+    ;       parse_tree_foreign_type(
                 foreign_lang_type   :: foreign_language_type,
                 foreign_user_uc     :: maybe(unify_compare),
                 foreign_assertions  :: list(foreign_type_assertion)
             ).
 
 :- type foreign_type_assertion
-    --->    can_pass_as_mercury_type
-    ;       stable.
+    --->    foreign_type_can_pass_as_mercury_type
+    ;       foreign_type_stable.
 
 :- type constructor
     --->    ctor(
@@ -1217,7 +1221,8 @@
             % after kind inference, all remaining kind variables will be
             % bound to `star'.
 
-:- type kvar_type   --->    kind_var.
+:- type kvar_type
+    --->    kind_var.
 :- type kvar        ==  var(kvar_type).
 
     % The kinds of type variables. For efficiency, we only have entries
@@ -1316,7 +1321,7 @@
     --->    inst_id(sym_name, arity).
 
 :- type bound_inst
-    --->    functor(cons_id, list(mer_inst)).
+    --->    bound_functor(cons_id, list(mer_inst)).
 
 :- type inst_var_type
     --->    inst_var_type.
@@ -1412,53 +1417,53 @@
     ;       low_level_backend.
 
 :- type section
-    --->    implementation
-    ;       interface.
+    --->    section_implementation
+    ;       section_interface.
 
     % An import_locn is used to describe the place where an item was
     % imported from.
 :- type import_locn
-    --->    implementation
+    --->    import_locn_implementation
             % The item is from a module imported in the implementation.
 
-    ;       interface
+    ;       import_locn_interface
             % The item is from a module imported in the interface.
 
-    ;       ancestor
+    ;       import_locn_ancestor
             % The item is from a module imported by an ancestor.
 
-    ;       ancestor_private_interface.
+    ;       import_locn_ancestor_private_interface.
             % The item is from the private interface of an ancestor module.
 
 :- type sym_list
-    --->    sym(list(sym_specifier))
-    ;       pred(list(pred_specifier))
-    ;       func(list(func_specifier))
-    ;       cons(list(cons_specifier))
-    ;       op(list(op_specifier))
-    ;       adt(list(adt_specifier))
-    ;       type(list(type_specifier))
-    ;       module(list(module_specifier)).
+    --->    list_sym(list(sym_specifier))
+    ;       list_pred(list(pred_specifier))
+    ;       list_func(list(func_specifier))
+    ;       list_cons(list(cons_specifier))
+    ;       list_op(list(op_specifier))
+    ;       list_adt(list(adt_specifier))
+    ;       list_type(list(type_specifier))
+    ;       list_module(list(module_specifier)).
 
 :- type sym_specifier
-    --->    sym(sym_name_specifier)
-    ;       typed_sym(typed_cons_specifier)
-    ;       pred(pred_specifier)
-    ;       func(func_specifier)
-    ;       cons(cons_specifier)
-    ;       op(op_specifier)
-    ;       adt(adt_specifier)
-    ;       type(type_specifier)
-    ;       module(module_specifier).
+    --->    spec_sym(sym_name_specifier)
+    ;       spec_typed_sym(typed_cons_specifier)
+    ;       spec_pred(pred_specifier)
+    ;       spec_func(func_specifier)
+    ;       spec_cons(cons_specifier)
+    ;       spec_op(op_specifier)
+    ;       spec_adt(adt_specifier)
+    ;       spec_type(type_specifier)
+    ;       spec_module(module_specifier).
 
 :- type pred_specifier
-    --->    sym(sym_name_specifier)
-    ;       name_args(sym_name, list(mer_type)).
+    --->    predspec_sym(sym_name_specifier)
+    ;       predspec_name_args(sym_name, list(mer_type)).
 
 :- type func_specifier  ==  cons_specifier.
 :- type cons_specifier
-    --->    sym(sym_name_specifier)
-    ;       typed(typed_cons_specifier).
+    --->    consspec_sym(sym_name_specifier)
+    ;       consspec_typed(typed_cons_specifier).
 
 :- type typed_cons_specifier
     --->    name_args(sym_name, list(mer_type))
@@ -1469,8 +1474,8 @@
 :- type type_specifier  ==  sym_name_specifier.
 
 :- type op_specifier
-    --->    sym(sym_name_specifier)
-    ;       fixity(sym_name_specifier, fixity).
+    --->    opspec_sym(sym_name_specifier)
+    ;       opspec_fixity(sym_name_specifier, fixity).
             % operator fixity specifiers not yet implemented
 
 :- type fixity
@@ -1520,59 +1525,74 @@ default_memo_table_attributes =
 
 :- type pragma_foreign_proc_attributes
     --->    attributes(
-                foreign_language        :: foreign_language,
-                may_call_mercury        :: may_call_mercury,
-                thread_safe             :: thread_safe,
-                tabled_for_io           :: tabled_for_io,
-                purity                  :: purity,
-                terminates              :: terminates,
-                user_annotated_sharing  :: user_annotated_sharing,
-                may_throw_exception     :: may_throw_exception,
+                attr_foreign_language           :: foreign_language,
+                attr_may_call_mercury           :: proc_may_call_mercury,
+                attr_thread_safe                :: proc_thread_safe,
+                attr_tabled_for_io              :: proc_tabled_for_io,
+                attr_purity                     :: purity,
+                attr_terminates                 :: proc_terminates,
+                attr_user_annotated_sharing     :: user_annotated_sharing,
+                attr_may_throw_exception        :: proc_may_throw_exception,
 
                 % There is some special case behaviour for pragma c_code
                 % and pragma import purity if legacy_purity_behaviour is `yes'.
-                legacy_purity_behaviour :: bool,
-                ordinary_despite_detism :: bool,
-                may_modify_trail        :: may_modify_trail,
-                may_call_mm_tabled      :: may_call_mm_tabled,
-                box_policy              :: box_policy,
-                extra_attributes        ::
-                                list(pragma_foreign_proc_extra_attribute)
+                attr_legacy_purity_behaviour    :: bool,
+                attr_ordinary_despite_detism    :: bool,
+                attr_may_modify_trail           :: proc_may_modify_trail,
+                attr_may_call_mm_tabled         :: may_call_mm_tabled,
+                attr_box_policy                 :: box_policy,
+                attr_extra_attributes ::
+                    list(pragma_foreign_proc_extra_attribute)
             ).
 
 default_attributes(Language) =
-    attributes(Language, may_call_mercury, not_thread_safe,
-        not_tabled_for_io, purity_impure, depends_on_mercury_calls,
-        no_user_annotated_sharing, default_exception_behaviour, 
-        no, no, may_modify_trail, default_calls_mm_tabled, 
+    attributes(Language, proc_may_call_mercury, proc_not_thread_safe,
+        proc_not_tabled_for_io, purity_impure, depends_on_mercury_calls,
+        no_user_annotated_sharing, default_exception_behaviour,
+        no, no, proc_may_modify_trail, default_calls_mm_tabled,
         native_if_possible, []).
 
+get_may_call_mercury(Attrs) = Attrs ^ attr_may_call_mercury.
+get_thread_safe(Attrs) = Attrs ^ attr_thread_safe.
+get_foreign_language(Attrs) = Attrs ^ attr_foreign_language.
+get_tabled_for_io(Attrs) = Attrs ^ attr_tabled_for_io.
+get_purity(Attrs) = Attrs ^ attr_purity.
+get_terminates(Attrs) = Attrs ^ attr_terminates.
+get_user_annotated_sharing(Attrs) = Attrs ^ attr_user_annotated_sharing.
+get_may_throw_exception(Attrs) = Attrs ^ attr_may_throw_exception.
+get_legacy_purity_behaviour(Attrs) = Attrs ^ attr_legacy_purity_behaviour.
+get_ordinary_despite_detism(Attrs) = Attrs ^ attr_ordinary_despite_detism.
+get_may_modify_trail(Attrs) = Attrs ^ attr_may_modify_trail.
+get_may_call_mm_tabled(Attrs) = Attrs ^ attr_may_call_mm_tabled.
+get_box_policy(Attrs) = Attrs ^ attr_box_policy.
+get_extra_attributes(Attrs) = Attrs ^ attr_extra_attributes.
+
 set_may_call_mercury(MayCallMercury, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ may_call_mercury := MayCallMercury.
+    Attrs = Attrs0 ^ attr_may_call_mercury := MayCallMercury.
 set_thread_safe(ThreadSafe, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ thread_safe := ThreadSafe.
+    Attrs = Attrs0 ^ attr_thread_safe := ThreadSafe.
 set_foreign_language(ForeignLanguage, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ foreign_language := ForeignLanguage.
+    Attrs = Attrs0 ^ attr_foreign_language := ForeignLanguage.
 set_tabled_for_io(TabledForIo, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ tabled_for_io := TabledForIo.
+    Attrs = Attrs0 ^ attr_tabled_for_io := TabledForIo.
 set_purity(Purity, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ purity := Purity.
+    Attrs = Attrs0 ^ attr_purity := Purity.
 set_terminates(Terminates, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ terminates := Terminates.
+    Attrs = Attrs0 ^ attr_terminates := Terminates.
 set_user_annotated_sharing(UserSharing, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ user_annotated_sharing := UserSharing.
+    Attrs = Attrs0 ^ attr_user_annotated_sharing := UserSharing.
 set_may_throw_exception(MayThrowException, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ may_throw_exception := MayThrowException.
+    Attrs = Attrs0 ^ attr_may_throw_exception := MayThrowException.
 set_legacy_purity_behaviour(Legacy, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ legacy_purity_behaviour := Legacy.
+    Attrs = Attrs0 ^ attr_legacy_purity_behaviour := Legacy.
 set_ordinary_despite_detism(OrdinaryDespiteDetism, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ ordinary_despite_detism := OrdinaryDespiteDetism.
+    Attrs = Attrs0 ^ attr_ordinary_despite_detism := OrdinaryDespiteDetism.
 set_may_modify_trail(MayModifyTrail, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ may_modify_trail := MayModifyTrail.
+    Attrs = Attrs0 ^ attr_may_modify_trail := MayModifyTrail.
 set_may_call_mm_tabled(MayCallMM_Tabled, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ may_call_mm_tabled := MayCallMM_Tabled.
+    Attrs = Attrs0 ^ attr_may_call_mm_tabled := MayCallMM_Tabled.
 set_box_policy(BoxPolicyStr, Attrs0, Attrs) :-
-    Attrs = Attrs0 ^ box_policy := BoxPolicyStr.
+    Attrs = Attrs0 ^ attr_box_policy := BoxPolicyStr.
 
 attributes_to_strings(Attrs) = StringList :-
     % We ignore Lang because it isn't an attribute that you can put
@@ -1583,33 +1603,33 @@ attributes_to_strings(Attrs) = StringList :-
         OrdinaryDespiteDetism, MayModifyTrail, MayCallMM_Tabled,
         BoxPolicy, ExtraAttributes),
     (
-        MayCallMercury = may_call_mercury,
+        MayCallMercury = proc_may_call_mercury,
         MayCallMercuryStr = "may_call_mercury"
     ;
-        MayCallMercury = will_not_call_mercury,
+        MayCallMercury = proc_will_not_call_mercury,
         MayCallMercuryStr = "will_not_call_mercury"
     ),
     (
-        ThreadSafe = not_thread_safe,
+        ThreadSafe = proc_not_thread_safe,
         ThreadSafeStr = "not_thread_safe"
     ;
-        ThreadSafe = thread_safe,
+        ThreadSafe = proc_thread_safe,
         ThreadSafeStr = "thread_safe"
     ;
-        ThreadSafe = maybe_thread_safe,
+        ThreadSafe = proc_maybe_thread_safe,
         ThreadSafeStr = "maybe_thread_safe"
     ),
     (
-        TabledForIO = tabled_for_io,
+        TabledForIO = proc_tabled_for_io,
         TabledForIOStr = "tabled_for_io"
     ;
-        TabledForIO = tabled_for_io_unitize,
+        TabledForIO = proc_tabled_for_io_unitize,
         TabledForIOStr = "tabled_for_io_unitize"
     ;
-        TabledForIO = tabled_for_descendant_io,
+        TabledForIO = proc_tabled_for_descendant_io,
         TabledForIOStr = "tabled_for_descendant_io"
     ;
-        TabledForIO = not_tabled_for_io,
+        TabledForIO = proc_not_tabled_for_io,
         TabledForIOStr = "not_tabled_for_io"
     ),
     (
@@ -1623,17 +1643,17 @@ attributes_to_strings(Attrs) = StringList :-
         PurityStrList = []
     ),
     (
-        Terminates = terminates,
+        Terminates = proc_terminates,
         TerminatesStrList = ["terminates"]
     ;
-        Terminates = does_not_terminate,
+        Terminates = proc_does_not_terminate,
         TerminatesStrList = ["does_not_terminate"]
     ;
         Terminates = depends_on_mercury_calls,
         TerminatesStrList = []
     ),
     (
-        Exceptions = will_not_throw_exception,
+        Exceptions = proc_will_not_throw_exception,
         ExceptionsStrList = ["will_not_throw_exception"]
     ;
         Exceptions = default_exception_behaviour,
@@ -1647,10 +1667,10 @@ attributes_to_strings(Attrs) = StringList :-
         OrdinaryDespiteDetismStrList = []
     ),
     (
-        MayModifyTrail = may_modify_trail,
+        MayModifyTrail = proc_may_modify_trail,
         MayModifyTrailStrList = ["may_modify_trail"]
     ;
-        MayModifyTrail = will_not_modify_trail,
+        MayModifyTrail = proc_will_not_modify_trail,
         MayModifyTrailStrList = ["will_not_modify_trail"]
     ),
     (
@@ -1677,8 +1697,8 @@ attributes_to_strings(Attrs) = StringList :-
         list.map(extra_attribute_to_string, ExtraAttributes).
 
 add_extra_attribute(NewAttribute, Attributes0,
-    Attributes0 ^ extra_attributes :=
-        [NewAttribute | Attributes0 ^ extra_attributes]).
+    Attributes0 ^ attr_extra_attributes :=
+        [NewAttribute | Attributes0 ^ attr_extra_attributes]).
 
 :- func extra_attribute_to_string(pragma_foreign_proc_extra_attribute)
     = string.

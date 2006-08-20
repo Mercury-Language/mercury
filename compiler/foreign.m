@@ -99,8 +99,9 @@
     % the list of mis-matches.
     %
 :- pred filter_imports(foreign_language::in,
-    foreign_import_module_info::in, foreign_import_module_info::out,
-    foreign_import_module_info::out) is det.
+    foreign_import_module_info_list::in,
+    foreign_import_module_info_list::out, foreign_import_module_info_list::out)
+    is det.
 
     % Filter the bodys for the given foreign language.
     % The first return value is the list of matches, the second is
@@ -184,7 +185,7 @@ filter_decls(WantedLang, Decls0, LangDecls, NotLangDecls) :-
     list.filter(IsWanted, Decls0, LangDecls, NotLangDecls).
 
 filter_imports(WantedLang, Imports0, LangImports, NotLangImports) :-
-    IsWanted = (pred(foreign_import_module(Lang, _, _)::in) is semidet :-
+    IsWanted = (pred(foreign_import_module_info(Lang, _, _)::in) is semidet :-
         WantedLang = Lang),
     list.filter(IsWanted, Imports0, LangImports, NotLangImports).
 
@@ -201,7 +202,7 @@ extrude_pragma_implementation([TargetLang | TargetLangs], _PragmaVars,
         _PredName, _PredOrFunc, _Context, !ModuleInfo, !Attributes, !Impl) :-
     % We just use the first target language for now, it might be nice
     % to try a few others if the backend supports multiple ones.
-    ForeignLanguage = foreign_language(!.Attributes),
+    ForeignLanguage = get_foreign_language(!.Attributes),
 
     % If the foreign language is available as a target language,
     % we don't need to do anything.
@@ -530,7 +531,7 @@ to_exported_type(ModuleInfo, Type) = ExportType :-
         map.search(Types, TypeCtor, TypeDefn)
     ->
         hlds_data.get_type_defn_body(TypeDefn, Body),
-        ( Body = foreign_type(ForeignTypeBody) ->
+        ( Body = hlds_foreign_type(ForeignTypeBody) ->
             foreign_type_body_to_exported_type(ModuleInfo, ForeignTypeBody,
                 ForeignTypeName, _, Assertions),
             ExportType = foreign(ForeignTypeName, Assertions)

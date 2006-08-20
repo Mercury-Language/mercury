@@ -171,7 +171,7 @@ do_copy_clauses_to_procs(PredInfo) :-
     % Don't process typeclass methods, because their proc_infos
     % are generated already mode-correct.
     pred_info_get_markers(PredInfo, PredMarkers),
-    \+ check_marker(PredMarkers, class_method).
+    \+ check_marker(PredMarkers, marker_class_method).
 
 :- pred copy_clauses_to_procs(pred_info::in, pred_info::out) is det.
 

@@ -220,7 +220,7 @@ warn_singletons_in_goal_2(Goal, GoalInfo, _QuantVars, _VarSet, PredCallId,
         MI, !IO) :-
     Goal = call_foreign_proc(Attrs, _, _, Args, _, _, PragmaImpl),
     goal_info_get_context(GoalInfo, Context),
-    Lang = foreign_language(Attrs),
+    Lang = get_foreign_language(Attrs),
     NamesModes = list.map(foreign_arg_maybe_name_mode, Args),
     warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang,
         NamesModes, Context, PredCallId, MI, !IO).
@@ -265,37 +265,34 @@ warn_singletons_in_cases([Case | Cases], QuantVars, VarSet, CallPredId, MI,
     hlds_goal_info::in, set(prog_var)::in, prog_varset::in,
     simple_call_id::in, module_info::in, io::di, io::uo) is det.
 
-warn_singletons_in_unify(X, var(Y), GoalInfo, QuantVars, VarSet, CallPredId, _,
-        !IO) :-
+warn_singletons_in_unify(X, rhs_var(Y), GoalInfo, QuantVars, VarSet,
+        CallPredId, _, !IO) :-
     goal_info_get_nonlocals(GoalInfo, NonLocals),
     goal_info_get_context(GoalInfo, Context),
     warn_singletons([X, Y], GoalInfo, NonLocals, QuantVars, VarSet,
         Context, CallPredId, !IO).
-warn_singletons_in_unify(X, functor(_ConsId, _, Vars), GoalInfo,
+warn_singletons_in_unify(X, rhs_functor(_ConsId, _, Vars), GoalInfo,
         QuantVars, VarSet, CallPredId, _, !IO) :-
     goal_info_get_nonlocals(GoalInfo, NonLocals),
     goal_info_get_context(GoalInfo, Context),
     warn_singletons([X | Vars], GoalInfo, NonLocals, QuantVars, VarSet,
         Context, CallPredId, !IO).
-warn_singletons_in_unify(X, lambda_goal(_Purity, _PredOrFunc, _Eval,
+warn_singletons_in_unify(X, rhs_lambda_goal(_Purity, _PredOrFunc, _Eval,
         _NonLocals, LambdaVars, _Modes, _Det, LambdaGoal),
         GoalInfo, QuantVars, VarSet, CallPredId, MI, !IO) :-
-    %
-    % warn if any lambda-quantified variables occur only in the quantifier
-    %
+    % Warn if any lambda-quantified variables occur only in the quantifier.
     LambdaGoal = _ - LambdaGoalInfo,
     goal_info_get_nonlocals(LambdaGoalInfo, LambdaNonLocals),
     goal_info_get_context(GoalInfo, Context),
     warn_singletons(LambdaVars, GoalInfo, LambdaNonLocals, QuantVars,
         VarSet, Context, CallPredId, !IO),
 
-    %
-    % warn if X (the variable we're unifying the lambda expression with)
-    % is singleton
-    %
+    % Warn if X (the variable we're unifying the lambda expression with)
+    % is singleton.
     goal_info_get_nonlocals(GoalInfo, NonLocals),
     warn_singletons([X], GoalInfo, NonLocals, QuantVars, VarSet, Context,
         CallPredId, !IO),
+
     % Warn if the lambda-goal contains singletons.
     warn_singletons_in_goal(LambdaGoal, QuantVars, VarSet, CallPredId, MI,
         !IO).
@@ -305,11 +302,12 @@ warn_singletons_in_unify(X, lambda_goal(_Purity, _PredOrFunc, _Eval,
 maybe_warn_pragma_singletons(PragmaImpl, Lang, ArgInfo, Context, CallId, MI,
         !IO) :-
     globals.io_lookup_bool_option(warn_singleton_vars, WarnSingletonVars, !IO),
-    ( WarnSingletonVars = yes ->
+    (
+        WarnSingletonVars = yes,
         warn_singletons_in_pragma_foreign_proc(PragmaImpl, Lang,
             ArgInfo, Context, CallId, MI, !IO)
     ;
-        true
+        WarnSingletonVars = no
     ).
 
     % warn_singletons_in_pragma_foreign_proc checks to see if each variable

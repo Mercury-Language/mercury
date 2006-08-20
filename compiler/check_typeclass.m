@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: check_typeclass.m.
 % Author: dgj.
-% 
+%
 % This module checks conformance of instance declarations to the typeclass
 % declaration. It takes various steps to do this.
 %
@@ -61,7 +61,7 @@
 % This pass fills in the super class proofs and instance method pred/proc ids
 % in the instance table of the HLDS, and fills in the fundeps_ancestors in
 % the class table.
-% 
+%
 %---------------------------------------------------------------------------%
 
 :- module check_hlds.check_typeclass.
@@ -202,7 +202,7 @@ check_one_class(ClassTable, ClassId - InstanceDefns0,
         _Ancestors, ClassVars, _Kinds, Interface, ClassInterface,
         ClassVarSet, TermContext),
     (
-        status_defined_in_this_module(ImportStatus, yes),
+        status_defined_in_this_module(ImportStatus) = yes,
         Interface = abstract
     ->
         ClassId = class_id(ClassName, ClassArity),
@@ -282,7 +282,7 @@ check_concrete_class_instance(ClassId, Vars, HLDSClassInterface,
             words("Error: instance declaration for"),
             words("abstract typeclass"),
             sym_name_and_arity(ClassName / ClassArity),
-            suffix(".") 
+            suffix(".")
         ],
         !:Errors = [TermContext - ErrorPieces | !.Errors]
     ;
@@ -379,7 +379,7 @@ format_method_name(Method) = MethodName :-
     MethodName = [
         pred_or_func(PredOrFunc),
         sym_name_and_arity(Name / PredArity)
-    ].  
+    ].
 
 %----------------------------------------------------------------------------%
 
@@ -441,7 +441,7 @@ check_instance_pred(ClassId, ClassVars, ClassInterface, PredId,
     pred_info_get_arg_types(PredInfo, ArgTypeVars, ExistQVars, ArgTypes),
     pred_info_get_class_context(PredInfo, ClassContext0),
     pred_info_get_markers(PredInfo, Markers0),
-    remove_marker(class_method, Markers0, Markers),
+    remove_marker(marker_class_method, Markers0, Markers),
     % The first constraint in the class context of a class method is always
     % the constraint for the class of which it is a member. Seeing that we are
     % checking an instance declaration, we don't check that constraint...
@@ -587,10 +587,10 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
         sym_name_to_string(ClassName, ClassNameString),
         InstanceTypesString = mercury_type_list_to_string(InstanceVarSet,
             InstanceTypes),
-        
+
         Error = [words("In instance declaration for"),
-            fixed("`" ++ ClassNameString 
-                ++ "(" ++ InstanceTypesString 
+            fixed("`" ++ ClassNameString
+                ++ "(" ++ InstanceTypesString
                 ++ ")'"),
             suffix(":"),
             words("no implementation for type class"),
@@ -598,7 +598,7 @@ check_instance_pred_procs(ClassId, ClassVars, MethodName, Markers,
             words("method"),
             sym_name_and_arity(MethodName / Arity),
             suffix(".")
-        ], 
+        ],
         Errors = [InstanceContext - Error | Errors0],
         Info = instance_method_info(ModuleInfo, QualInfo, PredName,
             Arity, ExistQVars, ArgTypes, ClassContext,
@@ -713,20 +713,23 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
     % given in the instance declaration.
     map.init(Proofs),
     map.init(ConstraintMap),
-    add_marker(class_instance_method, Markers0, Markers1),
+    add_marker(marker_class_instance_method, Markers0, Markers1),
     ( InstancePredDefn = name(_) ->
         % For instance methods which are defined using the named syntax
         % (e.g. "pred(...) is ...") rather than the clauses syntax, we record
         % an additional marker; the only effect of this marker is that we
         % output slightly different error messages for such predicates.
-        add_marker(named_class_instance_method, Markers1, Markers)
+        add_marker(marker_named_class_instance_method, Markers1, Markers)
     ;
         Markers = Markers1
     ),
 
-    ( status_is_imported(Status0, yes) ->
-        Status = opt_imported
+    IsImported = status_is_imported(Status0),
+    (
+        IsImported = yes,
+        Status = status_opt_imported
     ;
+        IsImported = no,
         Status = Status0
     ),
 
@@ -741,7 +744,7 @@ produce_auxiliary_procs(ClassId, ClassVars, Markers0,
     MethodConstraints = instance_method_constraints(ClassId,
         InstanceTypes, InstanceConstraints, ClassMethodClassContext),
     pred_info_init(InstanceModuleName, PredName, PredArity, PredOrFunc,
-        Context, instance_method(MethodConstraints), Status, none,
+        Context, instance_method(MethodConstraints), Status, goal_type_none,
         Markers, ArgTypes, TVarSet, ExistQVars, ClassContext,
         Proofs, ConstraintMap, ClausesInfo, PredInfo0),
     pred_info_set_clauses_info(ClausesInfo, PredInfo0, PredInfo1),
@@ -847,7 +850,7 @@ check_superclass_conformance(ClassId, ProgSuperClasses0, ClassVars0,
     init_hlds_constraint_list(InstanceProgConstraints, InstanceConstraints),
     make_hlds_constraints(ClassTable, InstanceVarSet1, SuperClasses,
         InstanceConstraints, Constraints0),
-        
+
     % Try to reduce the superclass constraints, using the declared instance
     % constraints and the usual context reduction rules.
     map.init(ConstraintMap0),
@@ -924,8 +927,8 @@ check_for_missing_concrete_instances(!ModuleInfo, FoundError, !IO) :-
     % Search the instance_table and create a table of abstract
     % instances that occur in the module interface and a table of
     % concrete instances that occur in the module implementation.
-    % Imported instances are not included at all. 
-    %   
+    % Imported instances are not included at all.
+    %
 :- pred gather_abstract_and_concrete_instances(instance_table::in,
     instance_table::out, instance_table::out) is det.
 
@@ -948,20 +951,20 @@ partition_instances_for_class(ClassId, Instances, !Abstracts, !Concretes) :-
     list.foldl2(partition_instances_for_class_2(ClassId), Instances,
         !Abstracts, !Concretes).
 
-:- pred partition_instances_for_class_2(class_id::in, hlds_instance_defn::in, 
+:- pred partition_instances_for_class_2(class_id::in, hlds_instance_defn::in,
     instance_table::in, instance_table::out,
     instance_table::in, instance_table::out) is det.
 
 partition_instances_for_class_2(ClassId, InstanceDefn, !Abstracts,
         !Concretes) :-
     ImportStatus = InstanceDefn ^ instance_status,
-    status_is_imported(ImportStatus, IsImported),
+    IsImported = status_is_imported(ImportStatus),
     (
         IsImported = no,
         Body = InstanceDefn ^ instance_body,
         (
             Body = abstract,
-            status_is_exported_to_non_submodules(ImportStatus, IsExported),
+            IsExported = status_is_exported_to_non_submodules(ImportStatus),
             (
                 IsExported = yes,
                 svmulti_map.add(ClassId, InstanceDefn, !Abstracts)
@@ -970,7 +973,7 @@ partition_instances_for_class_2(ClassId, InstanceDefn, !Abstracts,
             )
         ;
             Body = concrete(_),
-            svmulti_map.add(ClassId, InstanceDefn, !Concretes) 
+            svmulti_map.add(ClassId, InstanceDefn, !Concretes)
         )
     ;
         IsImported = yes
@@ -989,9 +992,9 @@ check_for_corresponding_instances(Concretes, ClassId, InstanceDefns,
     hlds_instance_defn::in, bool::in, bool::out, io::di, io::uo) is det.
 
 check_for_corresponding_instances_2(Concretes, ClassId, AbstractInstance,
-        !FoundError, !IO) :- 
+        !FoundError, !IO) :-
     AbstractTypes = AbstractInstance ^ instance_types,
-    ( multi_map.search(Concretes, ClassId, ConcreteInstances) ->        
+    ( multi_map.search(Concretes, ClassId, ConcreteInstances) ->
         (
             list.member(ConcreteInstance, ConcreteInstances),
             ConcreteTypes = ConcreteInstance ^ instance_types,
@@ -1002,7 +1005,7 @@ check_for_corresponding_instances_2(Concretes, ClassId, AbstractInstance,
             % There were concrete instances for ClassId in the implementation
             % but none of them matches the abstract instance we have.
             MissingConcreteError = yes
-        )               
+        )
     ;
         % There were no concrete instances for ClassId in the implementation.
         MissingConcreteError = yes
@@ -1021,11 +1024,11 @@ check_for_corresponding_instances_2(Concretes, ClassId, AbstractInstance,
             words("for"), fixed(AbstractInstanceName),
             words("has no corresponding concrete"),
             words("instance in the implementation.")
-        ],  
+        ],
         AbstractInstanceContext = AbstractInstance ^ instance_context,
         write_error_pieces(AbstractInstanceContext, 0, ErrorPieces, !IO),
         !:FoundError = yes,
-        io.set_exit_status(1, !IO)  
+        io.set_exit_status(1, !IO)
     ;
         MissingConcreteError = no
     ).
@@ -1383,7 +1386,7 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
     ErrorPiecesB = [
         words("Here is the conflicting instance.")
     ],
-        
+
     write_error_pieces(ContextA, 0, ErrorPiecesA, !IO),
     write_error_pieces(ContextB, 0, ErrorPiecesB, !IO),
     io.set_exit_status(1, !IO).
@@ -1416,7 +1419,7 @@ check_pred_constraints(PredId, !ModuleInfo, !FoundError, !IO) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     (
         pred_info_get_import_status(PredInfo, ImportStatus),
-        needs_no_ambiguity_check(ImportStatus)
+        needs_ambiguity_check(ImportStatus) = no
     ->
         true
     ;
@@ -1426,12 +1429,19 @@ check_pred_constraints(PredId, !ModuleInfo, !FoundError, !IO) :-
         check_constraint_quant(PredInfo, !ModuleInfo, !FoundError, !IO)
     ).
 
-:- pred needs_no_ambiguity_check(import_status::in) is semidet.
+:- func needs_ambiguity_check(import_status) = bool.
 
-needs_no_ambiguity_check(imported(_)).
-needs_no_ambiguity_check(opt_imported).
-needs_no_ambiguity_check(abstract_imported).
-needs_no_ambiguity_check(pseudo_imported).
+needs_ambiguity_check(status_imported(_)) =             no.
+needs_ambiguity_check(status_external(_)) =             yes.
+needs_ambiguity_check(status_abstract_imported) =       no.
+needs_ambiguity_check(status_pseudo_imported) =         no.
+needs_ambiguity_check(status_opt_imported) =            no.
+needs_ambiguity_check(status_exported) =                yes.
+needs_ambiguity_check(status_opt_exported) =            yes.
+needs_ambiguity_check(status_abstract_exported) =       yes.
+needs_ambiguity_check(status_pseudo_exported) =         yes.
+needs_ambiguity_check(status_exported_to_submodules) =  yes.
+needs_ambiguity_check(status_local) =                   yes.
 
 :- pred check_pred_type_ambiguities(pred_info::in, module_info::in,
     module_info::out, bool::in, bool::out, io::di, io::uo) is det.
@@ -1457,7 +1467,7 @@ check_pred_type_ambiguities(PredInfo, !ModuleInfo, !FoundError, !IO) :-
 check_ctor_constraints(TypeTable, TypeCtor, !ModuleInfo, !FoundError, !IO) :-
     map.lookup(TypeTable, TypeCtor, TypeDefn),
     get_type_defn_body(TypeDefn, Body),
-    ( Body = du_type(Ctors, _, _, _, _, _) ->
+    ( Body = hlds_du_type(Ctors, _, _, _, _, _) ->
         list.foldl3(check_ctor_type_ambiguities(TypeCtor, TypeDefn),
             Ctors, !ModuleInfo, !FoundError, !IO)
     ;

@@ -522,7 +522,7 @@ eliminate_pred(Pass, PredId, !ElimInfo, !IO) :-
         % Find out if the predicate is defined in this module.
         % If yes, find out also whether any of its procedures must be kept.
         (
-            Status = local,
+            Status = status_local,
             Keep = no,
             (
                 % Don't warn for unify or comparison preds,
@@ -547,11 +547,11 @@ eliminate_pred(Pass, PredId, !ElimInfo, !IO) :-
                 WarnForThisProc = yes
             )
         ;
-            Status = pseudo_imported,
+            Status = status_pseudo_imported,
             Keep = no,
             WarnForThisProc = no
         ;
-            Status = pseudo_exported,
+            Status = status_pseudo_exported,
             hlds_pred.in_in_unification_proc_id(InitProcId),
             Keep = yes(InitProcId),
             WarnForThisProc = no
@@ -571,7 +571,7 @@ eliminate_pred(Pass, PredId, !ElimInfo, !IO) :-
         % called with `Pass = final_optimization_pass' only after inlining
         % and specialization is complete).
         Pass = final_optimization_pass,
-        Status = opt_imported
+        Status = status_opt_imported
     ->
         Changed = yes,
         ProcIds = pred_info_procids(PredInfo0),
@@ -588,7 +588,7 @@ eliminate_pred(Pass, PredId, !ElimInfo, !IO) :-
             ),
         list.foldl(DestroyGoal, ProcIds, ProcTable0, ProcTable),
         pred_info_set_procedures(ProcTable, PredInfo0, PredInfo1),
-        pred_info_set_import_status(imported(interface),
+        pred_info_set_import_status(status_imported(import_locn_interface),
             PredInfo1, PredInfo),
         map.det_update(PredTable0, PredId, PredInfo, PredTable),
         globals.io_lookup_bool_option(very_verbose, VeryVerbose, !IO),
@@ -781,7 +781,7 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
                 % Don't attempt to eliminate local preds here, since we want
                 % to do semantic checking on those even if they aren't used.
                 \+ pred_info_is_imported(PredInfo),
-                \+ pred_info_get_import_status(PredInfo, opt_imported)
+                \+ pred_info_get_import_status(PredInfo, status_opt_imported)
             ;
                 % Don't eliminate predicates declared in this module with a
                 % `:- external' or `:- pragma base_relation' declaration.
@@ -796,7 +796,7 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
                 PredArity = 1
             ;
                 % Don't eliminate the clauses for promises.
-                pred_info_get_goal_type(PredInfo, promise(_))
+                pred_info_get_goal_type(PredInfo, goal_type_promise(_))
             )
         ->
             svset.insert(qualified(PredModule, PredName), !NeededNames),
@@ -875,14 +875,14 @@ pre_modecheck_examine_goal(shorthand(_) - _, !DeadInfo) :-
 :- pred pre_modecheck_examine_unify_rhs(unify_rhs::in,
     dead_pred_info::in, dead_pred_info::out) is det.
 
-pre_modecheck_examine_unify_rhs(var(_), !DeadInfo).
-pre_modecheck_examine_unify_rhs(functor(Functor, _, _), !DeadInfo) :-
+pre_modecheck_examine_unify_rhs(rhs_var(_), !DeadInfo).
+pre_modecheck_examine_unify_rhs(rhs_functor(Functor, _, _), !DeadInfo) :-
     ( Functor = cons(Name, _) ->
         dead_pred_info_add_pred_name(Name, !DeadInfo)
     ;
         true
     ).
-pre_modecheck_examine_unify_rhs(lambda_goal(_, _, _, _, _, _, _, Goal),
+pre_modecheck_examine_unify_rhs(rhs_lambda_goal(_, _, _, _, _, _, _, Goal),
         !DeadInfo) :-
     pre_modecheck_examine_goal(Goal, !DeadInfo).
 

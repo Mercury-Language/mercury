@@ -488,7 +488,7 @@ complexity_generate_foreign_proc(PredName, Detism, Args, ExtraArgs,
         Code, BoundVars, ModuleInfo, Context, Goal) :-
     mercury_term_size_prof_builtin_module(BuiltinModule),
     Attrs0 = default_attributes(lang_c),
-    set_may_call_mercury(will_not_call_mercury, Attrs0, Attrs),
+    set_may_call_mercury(proc_will_not_call_mercury, Attrs0, Attrs),
     MaybeTraceRuntimeCond = no,
     goal_util.generate_foreign_proc(BuiltinModule, PredName, predicate,
         only_mode, Detism, purity_impure, Attrs, Args, ExtraArgs,

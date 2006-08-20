@@ -152,25 +152,25 @@ evaluate_call_2(Module, Pred, ModeNum, Args, Goal, !GoalInfo) :-
     % Integer arithmetic
 
 evaluate_det_call("int", "+", 0, [X, Y], Y, int_const(YVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
     YVal = XVal.
 
 evaluate_det_call("int", "-", 0, [X, Y], Y, int_const(YVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
     YVal = -XVal.
 
 evaluate_det_call("int", "\\", 0, [X, Y], Y, int_const(YVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
     YVal = \ XVal.
 
     % Floating point arithmetic
 
 evaluate_det_call("float", "+", 0, [X, Y], Y, int_const(YVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
     YVal = XVal.
 
 evaluate_det_call("float", "-", 0, [X, Y], Y, int_const(YVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
     YVal = -XVal.
 
 %
@@ -180,146 +180,146 @@ evaluate_det_call("float", "-", 0, [X, Y], Y, int_const(YVal)) :-
     % Integer arithmetic
 
 evaluate_det_call("int", "+", 0, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     ZVal = XVal + YVal.
 evaluate_det_call("int", "+", 1, [X, Y, Z], X, int_const(XVal)) :-
-    Z ^ arg_inst = bound(_ZUniq, [functor(int_const(ZVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    Z ^ arg_inst = bound(_ZUniq, [bound_functor(int_const(ZVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     XVal = ZVal - YVal.
 evaluate_det_call("int", "+", 2, [X, Y, Z], Y, int_const(YVal)) :-
-    Z ^ arg_inst = bound(_ZUniq, [functor(int_const(ZVal), [])]),
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
+    Z ^ arg_inst = bound(_ZUniq, [bound_functor(int_const(ZVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
     YVal = ZVal - XVal.
 
 evaluate_det_call("int", "-", 0, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     ZVal = XVal - YVal.
 evaluate_det_call("int", "-", 1, [X, Y, Z], X, int_const(XVal)) :-
-    Z ^ arg_inst = bound(_ZUniq, [functor(int_const(ZVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    Z ^ arg_inst = bound(_ZUniq, [bound_functor(int_const(ZVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     XVal = YVal + ZVal.
 evaluate_det_call("int", "-", 2, [X, Y, Z], Y, int_const(YVal)) :-
-    Z ^ arg_inst = bound(_ZUniq, [functor(int_const(ZVal), [])]),
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
+    Z ^ arg_inst = bound(_ZUniq, [bound_functor(int_const(ZVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
     YVal = XVal - ZVal.
 
 evaluate_det_call("int", "*", 0, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     ZVal = XVal * YVal.
 
 evaluate_det_call("int", "//", 0, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     YVal \= 0,
     ZVal = XVal // YVal.
 
 evaluate_det_call("int", "plus", 0, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     ZVal = XVal + YVal.
 
 evaluate_det_call("int", "minus", 0, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     ZVal = XVal - YVal.
 
 evaluate_det_call("int", "times", 0, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     ZVal = XVal * YVal.
 
 evaluate_det_call("int", "unchecked_quotient", 0, [X, Y, Z], Z,
         int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     YVal \= 0,
     ZVal = unchecked_quotient(XVal, YVal).
 
 evaluate_det_call("int", "mod", 0, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     YVal \= 0,
     ZVal = XVal mod YVal.
 
 evaluate_det_call("int", "rem", 0, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     YVal \= 0,
     ZVal = XVal rem YVal.
 
 evaluate_det_call("int", "unchecked_rem", 0, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     YVal \= 0,
     ZVal = unchecked_rem(XVal, YVal).
 
 evaluate_det_call("int", "unchecked_left_shift",
         0, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     ZVal = unchecked_left_shift(XVal, YVal).
 
 evaluate_det_call("int", "<<", 0, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     ZVal = XVal << YVal.
 
 evaluate_det_call("int", "unchecked_right_shift",
         0, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     ZVal = unchecked_right_shift(XVal, YVal).
 
 evaluate_det_call("int", ">>", 0, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     ZVal = XVal >> YVal.
 
 evaluate_det_call("int", "/\\", 0, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     ZVal = XVal /\ YVal.
 
 evaluate_det_call("int", "\\/", 0, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     ZVal = XVal \/ YVal.
 
 evaluate_det_call("int", "xor", 0, [X, Y, Z], Z, int_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     ZVal = XVal `xor` YVal.
 
     % float arithmetic
 
 evaluate_det_call("float", "+", 0, [X, Y, Z], Z, float_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(float_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(float_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(float_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(float_const(YVal), [])]),
     ZVal = XVal + YVal.
 
 evaluate_det_call("float", "-", 0, [X, Y, Z], Z, float_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(float_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(float_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(float_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(float_const(YVal), [])]),
     ZVal = XVal - YVal.
 
 evaluate_det_call("float", "*", 0, [X, Y, Z], Z, float_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(float_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(float_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(float_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(float_const(YVal), [])]),
     ZVal = XVal * YVal.
 
 evaluate_det_call("float", "/", 0, [X, Y, Z], Z, float_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(float_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(float_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(float_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(float_const(YVal), [])]),
     YVal \= 0.0,
     ZVal = XVal / YVal.
 
 evaluate_det_call("float", "unchecked_quotient", 0, [X, Y, Z], Z,
         float_const(ZVal)) :-
-    X ^ arg_inst = bound(_XUniq, [functor(float_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(float_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(float_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(float_const(YVal), [])]),
     YVal \= 0.0,
     ZVal = unchecked_quotient(XVal, YVal).
 
@@ -329,8 +329,8 @@ evaluate_det_call("string", Name, _, [X, Y, Z], Z, string_const(ZVal)) :-
     ( Name = "++"
     ; Name = "append"
     ),
-    X ^ arg_inst = bound(_XUniq, [functor(string_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(string_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(string_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(string_const(YVal), [])]),
 
         % We can only do the append if Z is free (this allows us to ignore
         % the mode number and pick up both the predicate and function versions
@@ -359,8 +359,8 @@ evaluate_det_call("string", Name, _, [X, Y, Z], Z, string_const(ZVal)) :-
 
 evaluate_test("int", "<", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     ( XVal < YVal ->
         Result = yes
     ;
@@ -368,8 +368,8 @@ evaluate_test("int", "<", 0, Args, Result) :-
     ).
 evaluate_test("int", "=<", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     ( XVal =< YVal ->
         Result = yes
     ;
@@ -377,8 +377,8 @@ evaluate_test("int", "=<", 0, Args, Result) :-
     ).
 evaluate_test("int", ">", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     ( XVal > YVal ->
         Result = yes
     ;
@@ -386,8 +386,8 @@ evaluate_test("int", ">", 0, Args, Result) :-
     ).
 evaluate_test("int", ">=", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_XUniq, [functor(int_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(int_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(int_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(int_const(YVal), [])]),
     ( XVal >= YVal ->
         Result = yes
     ;
@@ -398,8 +398,8 @@ evaluate_test("int", ">=", 0, Args, Result) :-
 
 evaluate_test("float", "<", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_XUniq, [functor(float_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(float_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(float_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(float_const(YVal), [])]),
     ( XVal < YVal ->
         Result = yes
     ;
@@ -407,8 +407,8 @@ evaluate_test("float", "<", 0, Args, Result) :-
     ).
 evaluate_test("float", "=<", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_XUniq, [functor(float_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(float_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(float_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(float_const(YVal), [])]),
     ( XVal =< YVal ->
         Result = yes
     ;
@@ -416,8 +416,8 @@ evaluate_test("float", "=<", 0, Args, Result) :-
     ).
 evaluate_test("float", ">", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_XUniq, [functor(float_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(float_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(float_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(float_const(YVal), [])]),
     ( XVal > YVal ->
         Result = yes
     ;
@@ -425,8 +425,8 @@ evaluate_test("float", ">", 0, Args, Result) :-
     ).
 evaluate_test("float", ">=", 0, Args, Result) :-
     Args = [X, Y],
-    X ^ arg_inst = bound(_XUniq, [functor(float_const(XVal), [])]),
-    Y ^ arg_inst = bound(_YUniq, [functor(float_const(YVal), [])]),
+    X ^ arg_inst = bound(_XUniq, [bound_functor(float_const(XVal), [])]),
+    Y ^ arg_inst = bound(_YUniq, [bound_functor(float_const(YVal), [])]),
     ( XVal >= YVal ->
         Result = yes
     ;
@@ -507,8 +507,8 @@ eval_unify(X, Y, Result) :-
     ->
         Result = yes
     ;
-        X ^ arg_inst = bound(_, [functor(XCtor, XArgVars)]),
-        Y ^ arg_inst = bound(_, [functor(YCtor, YArgVars)])
+        X ^ arg_inst = bound(_, [bound_functor(XCtor, XArgVars)]),
+        Y ^ arg_inst = bound(_, [bound_functor(YCtor, YArgVars)])
     ->
         ( XCtor = YCtor, XArgVars = YArgVars ->
             Result = yes
@@ -543,8 +543,8 @@ make_assignment_goal(OutputArg, InputArg, Goal, !GoalInfo) :-
 make_construction_goal(OutputArg, Cons, Goal, !GoalInfo) :-
     make_construction(OutputArg, Cons, Goal),
     goal_info_get_instmap_delta(!.GoalInfo, Delta0),
-    instmap_delta_set(OutputArg ^ arg_var, bound(unique, [functor(Cons, [])]),
-        Delta0, Delta),
+    instmap_delta_set(OutputArg ^ arg_var, bound(unique,
+        [bound_functor(Cons, [])]), Delta0, Delta),
     goal_info_set_instmap_delta(Delta, !GoalInfo),
     goal_info_set_determinism(detism_det, !GoalInfo).
 
@@ -558,8 +558,9 @@ make_assignment(OutputArg, InputArg, Goal) :-
     OutputArgMode = (free -> Inst),
     InputArgMode = (Inst -> Inst),
     UniMode = OutputArgMode - InputArgMode,
-    Context = unify_context(explicit, []),
-    Goal = unify(OutVar, var(InVar), UniMode, assign(OutVar, InVar), Context).
+    Context = unify_context(umc_explicit, []),
+    Goal = unify(OutVar, rhs_var(InVar), UniMode, assign(OutVar, InVar),
+        Context).
 
     % recompute_instmap_delta is run by simplify.m if anything changes,
     % so the insts are not important here.

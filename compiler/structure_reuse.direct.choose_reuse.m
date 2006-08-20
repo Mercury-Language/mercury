@@ -1003,7 +1003,7 @@ has_secondary_tag(ModuleInfo, VarTypes, Var, ConsId, SecondaryTag) :-
     (
         map.lookup(VarTypes, Var, Type),
         type_to_type_defn_body(ModuleInfo, Type, TypeBody),
-        TypeBody = du_type(_, ConsTagValues, _, _, _, _),
+        TypeBody = hlds_du_type(_, ConsTagValues, _, _, _, _),
         map.search(ConsTagValues, ConsId, ConsTag),
         MaybeSecondaryTag = get_secondary_tag(ConsTag), 
         MaybeSecondaryTag = yes(_)

@@ -62,17 +62,18 @@
 
 compute_version_numbers(SourceFileTime, Items, MaybeOldItems,
         version_numbers(ItemVersionNumbers, InstanceVersionNumbers)) :-
-    gather_items(implementation, Items, GatheredItems, InstanceItems),
+    gather_items(section_implementation, Items, GatheredItems,
+        InstanceItems),
     (
         MaybeOldItems = yes(OldItems0),
         OldItems0 = [FirstItem, VersionNumberItem | OldItems],
-        FirstItem = module_defn(_, interface) - _,
-        VersionNumberItem = module_defn(_,
-            version_numbers(_, OldVersionNumbers)) - _
+        FirstItem = item_module_defn(_, md_interface) - _,
+        VersionNumberItem = item_module_defn(_,
+            md_version_numbers(_, OldVersionNumbers)) - _
     ->
         OldVersionNumbers = version_numbers(OldItemVersionNumbers,
             OldInstanceVersionNumbers),
-        gather_items(implementation, OldItems, GatheredOldItems,
+        gather_items(section_implementation, OldItems, GatheredOldItems,
             OldInstanceItems)
     ;
         % There were no old version numbers, so every item
@@ -219,10 +220,10 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
     (
         % Does this pragma match any of the methods of this class.
         list.member(_ - ClassItem, !.ClassItems),
-        ClassItem = typeclass(_, _, _, _, Interface, _) - _,
+        ClassItem = item_typeclass(_, _, _, _, Interface, _) - _,
         Interface = concrete(Methods),
         list.member(Method, Methods),
-        Method = pred_or_func(_, _, _, MethodPredOrFunc, SymName,
+        Method = method_pred_or_func(_, _, _, MethodPredOrFunc, SymName,
             TypesAndModes, WithType, _, _, _, _, _, _),
         ( MaybePredOrFunc = yes(MethodPredOrFunc)
         ; MaybePredOrFunc = no
@@ -266,39 +267,39 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
 gather_items_2(ItemAndContext, !Section, !Info) :-
     ItemAndContext = Item - ItemContext,
     (
-        Item = module_defn(_, interface)
+        Item = item_module_defn(_, md_interface)
     ->
-        !:Section = interface
+        !:Section = section_interface
     ;
-        Item = module_defn(_, implementation)
+        Item = item_module_defn(_, md_implementation)
     ->
-        !:Section = implementation
+        !:Section = section_implementation
     ;
-        Item = type_defn(VarSet, Name, Args, Body, Cond)
+        Item = item_type_defn(VarSet, Name, Args, Body, Cond)
     ->
         (
-            Body = abstract_type(_),
+            Body = parse_tree_abstract_type(_),
             NameItem = Item,
             % The body of an abstract type can be recorded as used when
             % generating a call to the automatically generated unification
             % procedure.
             BodyItem = Item
         ;
-            Body = du_type(_, _),
-            NameItem = type_defn(VarSet, Name, Args,
-                abstract_type(non_solver_type), Cond),
+            Body = parse_tree_du_type(_, _),
+            NameItem = item_type_defn(VarSet, Name, Args,
+                parse_tree_abstract_type(non_solver_type), Cond),
             BodyItem = Item
         ;
-            Body = eqv_type(_),
+            Body = parse_tree_eqv_type(_),
             % When we use an equivalence type we always use the body.
             NameItem = Item,
             BodyItem = Item
         ;
-            Body = solver_type(_, _),
+            Body = parse_tree_solver_type(_, _),
             NameItem = Item,
             BodyItem = Item
         ;
-            Body = foreign_type(_, _, _),
+            Body = parse_tree_foreign_type(_, _, _),
             NameItem = Item,
             BodyItem = Item
         ),
@@ -310,7 +311,7 @@ gather_items_2(ItemAndContext, !Section, !Info) :-
             ItemContext, !.Section, yes, GatheredItems1, GatheredItems),
         !:Info = !.Info ^ gathered_items := GatheredItems
     ;
-        Item = instance(_, ClassName, ClassArgs, _, _, _)
+        Item = item_instance(_, ClassName, ClassArgs, _, _, _)
     ->
         Instances0 = !.Info ^ instances,
         ClassArity = list.length(ClassArgs),
@@ -328,8 +329,8 @@ gather_items_2(ItemAndContext, !Section, !Info) :-
         % the pred_or_func and arity here won't be correct, but equiv_type.m
         % will record the dependency on the version number with the `incorrect'
         % pred_or_func and arity, so this will work.
-        Item = pred_or_func_mode(_, MaybePredOrFunc, SymName, Modes, WithInst,
-            _, _),
+        Item = item_pred_or_func_mode(_, MaybePredOrFunc, SymName, Modes,
+            WithInst, _, _),
         MaybePredOrFunc = no,
         WithInst = yes(_)
     ->
@@ -348,7 +349,7 @@ gather_items_2(ItemAndContext, !Section, !Info) :-
             GatheredItems0, GatheredItems),
         !:Info = !.Info ^ gathered_items := GatheredItems
     ;
-        Item = pragma(_, PragmaType),
+        Item = item_pragma(_, PragmaType),
         is_pred_pragma(PragmaType, yes(PredOrFuncId))
     ->
         PragmaItems = !.Info ^ pragma_items,
@@ -396,7 +397,7 @@ add_gathered_item_2(Item, ItemType, NameArity, ItemContext, Section,
     % That needs to be done here as well the item list read from the interface
     % file will match the item list generated here.
     (
-        Item = pred_or_func(TVarSet, InstVarSet, ExistQVars, PredOrFunc,
+        Item = item_pred_or_func(TVarSet, InstVarSet, ExistQVars, PredOrFunc,
             PredName, TypesAndModes, WithType, WithInst, Det, Cond, Purity,
             ClassContext),
         split_types_and_modes(TypesAndModes, Types, MaybeModes),
@@ -407,9 +408,9 @@ add_gathered_item_2(Item, ItemType, NameArity, ItemContext, Section,
     ->
         TypesWithoutModes = list.map((func(Type) = type_only(Type)), Types),
         varset.init(EmptyInstVarSet),
-        PredOrFuncItem = pred_or_func(TVarSet, EmptyInstVarSet, ExistQVars,
-            PredOrFunc, PredName, TypesWithoutModes, WithType, no, no, Cond,
-            Purity, ClassContext),
+        PredOrFuncItem = item_pred_or_func(TVarSet, EmptyInstVarSet,
+            ExistQVars, PredOrFunc, PredName, TypesWithoutModes, WithType,
+            no, no, Cond, Purity, ClassContext),
         (
             WithInst = yes(_),
             % MaybePredOrFunc needs to be `no' here because when the item
@@ -420,8 +421,8 @@ add_gathered_item_2(Item, ItemType, NameArity, ItemContext, Section,
             WithInst = no,
             MaybePredOrFunc = yes(PredOrFunc)
         ),
-        PredOrFuncModeItem = pred_or_func_mode(InstVarSet, MaybePredOrFunc,
-            PredName, Modes, WithInst, Det, Cond),
+        PredOrFuncModeItem = item_pred_or_func_mode(InstVarSet,
+            MaybePredOrFunc, PredName, Modes, WithInst, Det, Cond),
         MatchingItems =
             [Section - (PredOrFuncItem - ItemContext),
             Section - (PredOrFuncModeItem - ItemContext)
@@ -444,10 +445,10 @@ add_gathered_item_2(Item, ItemType, NameArity, ItemContext, Section,
 
 :- func split_class_method_types_and_modes(class_method) = class_methods.
 
-split_class_method_types_and_modes(Method0) = Items :-
+split_class_method_types_and_modes(Method0) = Methods :-
     % Always strip the context from the item -- this is needed
     % so the items can be easily tested for equality.
-    Method0 = pred_or_func(TVarSet, InstVarSet, ExistQVars, PredOrFunc,
+    Method0 = method_pred_or_func(TVarSet, InstVarSet, ExistQVars, PredOrFunc,
         SymName, TypesAndModes, WithType, WithInst, MaybeDet, Cond,
         Purity, ClassContext, _),
     (
@@ -468,23 +469,24 @@ split_class_method_types_and_modes(Method0) = Items :-
             WithInst = no,
             MaybePredOrFunc = yes(PredOrFunc)
         ),
-        PredOrFuncModeItem = pred_or_func_mode(InstVarSet, MaybePredOrFunc,
-            SymName, Modes, WithInst, MaybeDet, Cond, term.context_init),
+        PredOrFuncModeItem = method_pred_or_func_mode(InstVarSet,
+            MaybePredOrFunc, SymName, Modes, WithInst, MaybeDet, Cond,
+            term.context_init),
         PredOrFuncModeItems = [PredOrFuncModeItem]
     ;
         TypesWithoutModes = TypesAndModes,
         PredOrFuncModeItems = []
     ),
     varset.init(EmptyInstVarSet),
-    PredOrFuncItem = pred_or_func(TVarSet, EmptyInstVarSet, ExistQVars,
+    PredOrFuncItem = method_pred_or_func(TVarSet, EmptyInstVarSet, ExistQVars,
         PredOrFunc, SymName, TypesWithoutModes, WithType, no, no, Cond, Purity,
         ClassContext, term.context_init),
-    Items = [PredOrFuncItem | PredOrFuncModeItems].
+    Methods = [PredOrFuncItem | PredOrFuncModeItems].
 split_class_method_types_and_modes(Method0) = [Method] :-
     % Always strip the context from the item -- this is needed
     % so the items can be easily tested for equality.
-    Method0 = pred_or_func_mode(A, B, C, D, E, F, G, _),
-    Method = pred_or_func_mode(A, B, C, D, E, F, G, term.context_init).
+    Method0 = method_pred_or_func_mode(A, B, C, D, E, F, G, _),
+    Method = method_pred_or_func_mode(A, B, C, D, E, F, G, term.context_init).
 
 :- pred item_to_item_id(item::in, item_id::out) is semidet.
 
@@ -493,20 +495,20 @@ item_to_item_id(Item, ItemId) :-
 
 :- pred item_to_item_id_2(item::in, maybe(item_id)::out) is det.
 
-item_to_item_id_2(clause(_, _, _, _, _, _), no).
-item_to_item_id_2(type_defn(_, Name, Params, _, _),
+item_to_item_id_2(item_clause(_, _, _, _, _, _), no).
+item_to_item_id_2(item_type_defn(_, Name, Params, _, _),
         yes(item_id(type_item, item_name(Name, Arity)))) :-
     list.length(Params, Arity).
-item_to_item_id_2(inst_defn(_, Name, Params, _, _),
+item_to_item_id_2(item_inst_defn(_, Name, Params, _, _),
         yes(item_id(inst_item, item_name(Name, Arity)))) :-
     list.length(Params, Arity).
-item_to_item_id_2(mode_defn(_, Name, Params, _, _),
+item_to_item_id_2(item_mode_defn(_, Name, Params, _, _),
         yes(item_id(mode_item, item_name(Name, Arity)))) :-
     list.length(Params, Arity).
-item_to_item_id_2(module_defn(_, _), no).
+item_to_item_id_2(item_module_defn(_, _), no).
 item_to_item_id_2(Item, yes(item_id(ItemType, item_name(SymName, Arity)))) :-
-    Item = pred_or_func(_, _, _, PredOrFunc, SymName, TypesAndModes, WithType,
-        _, _, _, _, _),
+    Item = item_pred_or_func(_, _, _, PredOrFunc, SymName, TypesAndModes,
+        WithType, _, _, _, _, _),
     % For predicates or functions defined using `with_type` annotations
     % the arity here won't be correct, but equiv_type.m will record
     % the dependency on the version number with the `incorrect' arity,
@@ -521,7 +523,7 @@ item_to_item_id_2(Item, yes(item_id(ItemType, item_name(SymName, Arity)))) :-
     ItemType = pred_or_func_to_item_type(PredOrFunc).
 
 item_to_item_id_2(Item, ItemId) :-
-    Item = pred_or_func_mode(_, MaybePredOrFunc, SymName, Modes, _, _, _),
+    Item = item_pred_or_func_mode(_, MaybePredOrFunc, SymName, Modes, _, _, _),
     (
         MaybePredOrFunc = yes(PredOrFunc),
         adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
@@ -536,76 +538,76 @@ item_to_item_id_2(Item, ItemId) :-
 
     % We need to handle these separately because some pragmas
     % may affect a predicate and a function.
-item_to_item_id_2(pragma(_, _), no).
-item_to_item_id_2(promise(_, _, _, _), no).
+item_to_item_id_2(item_pragma(_, _), no).
+item_to_item_id_2(item_promise(_, _, _, _), no).
 item_to_item_id_2(Item,
         yes(item_id(typeclass_item, item_name(ClassName, ClassArity)))) :-
-    Item = typeclass(_, _, ClassName, ClassVars, _, _),
+    Item = item_typeclass(_, _, ClassName, ClassVars, _, _),
     list.length(ClassVars, ClassArity).
 
     % Instances are handled separately (unlike other items, the module
     % qualifier on an instance declaration is the module containing
     % the class, not the module containing the instance).
-item_to_item_id_2(instance(_, _, _, _, _, _), no).
-item_to_item_id_2(initialise(_, _, _), no).
-item_to_item_id_2(finalise(_, _, _), no).
-item_to_item_id_2(mutable(_, _, _, _, _, _), no).
-item_to_item_id_2(nothing(_), no).
+item_to_item_id_2(item_instance(_, _, _, _, _, _), no).
+item_to_item_id_2(item_initialise(_, _, _), no).
+item_to_item_id_2(item_finalise(_, _, _), no).
+item_to_item_id_2(item_mutable(_, _, _, _, _, _), no).
+item_to_item_id_2(item_nothing(_), no).
 
 :- type maybe_pred_or_func_id == pair(maybe(pred_or_func), sym_name_and_arity).
 
 :- pred is_pred_pragma(pragma_type::in, maybe(maybe_pred_or_func_id)::out)
     is det.
 
-is_pred_pragma(foreign_decl(_, _, _), no).
-is_pred_pragma(foreign_import_module(_, _), no).
-is_pred_pragma(foreign_code(_, _), no).
-is_pred_pragma(foreign_proc(_, Name, PredOrFunc, Args, _, _, _),
+is_pred_pragma(pragma_foreign_decl(_, _, _), no).
+is_pred_pragma(pragma_foreign_import_module(_, _), no).
+is_pred_pragma(pragma_foreign_code(_, _), no).
+is_pred_pragma(pragma_foreign_proc(_, Name, PredOrFunc, Args, _, _, _),
         yes(yes(PredOrFunc) - Name / Arity)) :-
     adjust_func_arity(PredOrFunc, Arity, list.length(Args)).
-is_pred_pragma(type_spec(Name, _, Arity, MaybePredOrFunc, _, _, _, _),
+is_pred_pragma(pragma_type_spec(Name, _, Arity, MaybePredOrFunc, _, _, _, _),
         yes(MaybePredOrFunc - Name / Arity)).
-is_pred_pragma(inline(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(no_inline(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(obsolete(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(foreign_export(_, Name, PredOrFunc, Modes, _),
+is_pred_pragma(pragma_inline(Name, Arity), yes(no - Name / Arity)).
+is_pred_pragma(pragma_no_inline(Name, Arity), yes(no - Name / Arity)).
+is_pred_pragma(pragma_obsolete(Name, Arity), yes(no - Name / Arity)).
+is_pred_pragma(pragma_foreign_export(_, Name, PredOrFunc, Modes, _),
         yes(yes(PredOrFunc) - Name / Arity)) :-
     adjust_func_arity(PredOrFunc, Arity, list.length(Modes)).
     % Pragma import declarations are never used directly by Mercury code.
-is_pred_pragma(import(_, _, _, _, _), no).
-is_pred_pragma(source_file(_), no).
-is_pred_pragma(unused_args(PredOrFunc, Name, Arity, _, _),
+is_pred_pragma(pragma_import(_, _, _, _, _), no).
+is_pred_pragma(pragma_source_file(_), no).
+is_pred_pragma(pragma_unused_args(PredOrFunc, Name, Arity, _, _),
         yes(yes(PredOrFunc) - Name / Arity)).
-is_pred_pragma(exceptions(PredOrFunc, Name, Arity, _, _),
+is_pred_pragma(pragma_exceptions(PredOrFunc, Name, Arity, _, _),
         yes(yes(PredOrFunc) - Name / Arity)).
-is_pred_pragma(trailing_info(PredOrFunc, Name, Arity, _, _),
+is_pred_pragma(pragma_trailing_info(PredOrFunc, Name, Arity, _, _),
 		yes(yes(PredOrFunc) - Name / Arity)).
-is_pred_pragma(mm_tabling_info(PredOrFunc, Name, Arity, _, _),
+is_pred_pragma(pragma_mm_tabling_info(PredOrFunc, Name, Arity, _, _),
         yes(yes(PredOrFunc) - Name / Arity)).
-is_pred_pragma(fact_table(Name, Arity, _), yes(no - Name / Arity)).
-is_pred_pragma(reserve_tag(_TypeName, _TypeArity), no).
-is_pred_pragma(tabled(_, Name, Arity, MaybePredOrFunc, _, _Attrs),
+is_pred_pragma(pragma_fact_table(Name, Arity, _), yes(no - Name / Arity)).
+is_pred_pragma(pragma_reserve_tag(_TypeName, _TypeArity), no).
+is_pred_pragma(pragma_tabled(_, Name, Arity, MaybePredOrFunc, _, _Attrs),
         yes(MaybePredOrFunc - Name / Arity)).
-is_pred_pragma(promise_pure(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(promise_semipure(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(promise_equivalent_clauses(Name, Arity),
+is_pred_pragma(pragma_promise_pure(Name, Arity), yes(no - Name / Arity)).
+is_pred_pragma(pragma_promise_semipure(Name, Arity), yes(no - Name / Arity)).
+is_pred_pragma(pragma_promise_equivalent_clauses(Name, Arity),
         yes(no - Name / Arity)).
-is_pred_pragma(termination_info(PredOrFunc, Name, Modes, _, _),
+is_pred_pragma(pragma_termination_info(PredOrFunc, Name, Modes, _, _),
         yes(yes(PredOrFunc) - Name / Arity)) :-
     adjust_func_arity(PredOrFunc, Arity, list.length(Modes)).  
-is_pred_pragma(structure_sharing(PredOrFunc, Name, Modes, _, _, _),
+is_pred_pragma(pragma_structure_sharing(PredOrFunc, Name, Modes, _, _, _),
         yes(yes(PredOrFunc) - Name / Arity)) :-
     adjust_func_arity(PredOrFunc, Arity, list.length(Modes)).  
-is_pred_pragma(structure_reuse(PredOrFunc, Name, Modes, _, _, _),
+is_pred_pragma(pragma_structure_reuse(PredOrFunc, Name, Modes, _, _, _),
         yes(yes(PredOrFunc) - Name / Arity)) :-
     adjust_func_arity(PredOrFunc, Arity, list.length(Modes)).  
-is_pred_pragma(termination2_info(PredOrFunc, Name, Modes, _, _, _),
+is_pred_pragma(pragma_termination2_info(PredOrFunc, Name, Modes, _, _, _),
         yes(yes(PredOrFunc) - Name / Arity)) :-
     adjust_func_arity(PredOrFunc, Arity, list.length(Modes)).  
-is_pred_pragma(terminates(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(does_not_terminate(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(check_termination(Name, Arity), yes(no - Name / Arity)).
-is_pred_pragma(mode_check_clauses(Name, Arity), yes(no - Name / Arity)).
+is_pred_pragma(pragma_terminates(Name, Arity), yes(no - Name / Arity)).
+is_pred_pragma(pragma_does_not_terminate(Name, Arity), yes(no - Name / Arity)).
+is_pred_pragma(pragma_check_termination(Name, Arity), yes(no - Name / Arity)).
+is_pred_pragma(pragma_mode_check_clauses(Name, Arity), yes(no - Name / Arity)).
 
     % XXX This is a bit brittle (need to be careful with term.contexts).
     % For example, it won't work for clauses.
@@ -650,17 +652,17 @@ items_are_unchanged([Section - (Item1 - _) | Items1],
     %
 :- func item_is_unchanged(item, item) = bool.
 
-item_is_unchanged(type_defn(_, Name, Args, Defn, Cond), Item2) =
-    ( Item2 = type_defn(_, Name, Args, Defn, Cond) -> yes ; no ).
-item_is_unchanged(mode_defn(_VarSet, Name, Args, Defn, Cond), Item2) =
-    ( Item2 = mode_defn(_, Name, Args, Defn, Cond) -> yes ; no ).
-item_is_unchanged(inst_defn(_VarSet, Name, Args, Defn, Cond), Item2) =
-    ( Item2 = inst_defn(_, Name, Args, Defn, Cond) -> yes ; no ).
-item_is_unchanged(module_defn(_VarSet, Defn), Item2) =
-    ( Item2 = module_defn(_, Defn) -> yes ; no ).
-item_is_unchanged(instance(Constraints, Name, Types, Body, _VarSet, Module),
-        Item2) =
-    ( Item2 = instance(Constraints, Name, Types, Body, _, Module) ->
+item_is_unchanged(item_type_defn(_, Name, Args, Defn, Cond), Item2) =
+    ( Item2 = item_type_defn(_, Name, Args, Defn, Cond) -> yes ; no ).
+item_is_unchanged(item_mode_defn(_VarSet, Name, Args, Defn, Cond), Item2) =
+    ( Item2 = item_mode_defn(_, Name, Args, Defn, Cond) -> yes ; no ).
+item_is_unchanged(item_inst_defn(_VarSet, Name, Args, Defn, Cond), Item2) =
+    ( Item2 = item_inst_defn(_, Name, Args, Defn, Cond) -> yes ; no ).
+item_is_unchanged(item_module_defn(_VarSet, Defn), Item2) =
+    ( Item2 = item_module_defn(_, Defn) -> yes ; no ).
+item_is_unchanged(item_instance(Constraints, Name, Types, Body, _VarSet,
+        Module), Item2) =
+    ( Item2 = item_instance(Constraints, Name, Types, Body, _, Module) ->
         yes
     ;
         no
@@ -669,24 +671,22 @@ item_is_unchanged(instance(Constraints, Name, Types, Body, _VarSet, Module),
     % XXX Need to compare the goals properly in clauses and assertions.
     % That's not necessary at the moment because smart recompilation
     % doesn't work with inter-module optimization yet.
-item_is_unchanged(clause(_, _VarSet, PorF, SymName, Args, Goal), Item2) =
-        ( Item2 = clause(_, _, PorF, SymName, Args, Goal) -> yes ; no ).
-item_is_unchanged(promise(PromiseType, Goal, _, UnivVars), Item2) =
-        ( Item2 = promise(PromiseType, Goal, _, UnivVars) -> yes ; no ).
+item_is_unchanged(item_clause(_, _VarSet, PorF, SymName, Args, Goal), Item2) =
+        ( Item2 = item_clause(_, _, PorF, SymName, Args, Goal) -> yes ; no ).
+item_is_unchanged(item_promise(PromiseType, Goal, _, UnivVars), Item2) =
+        ( Item2 = item_promise(PromiseType, Goal, _, UnivVars) -> yes ; no ).
 
     % We do need to compare the variable names in `:- pragma type_spec'
     % declarations because the names of the variables are used
     % to find the corresponding variables in the predicate or
     % function type declaration.
-item_is_unchanged(pragma(_, PragmaType1), Item2) = Result :-
-    ( Item2 = pragma(_, PragmaType2) ->
+item_is_unchanged(item_pragma(_, PragmaType1), Item2) = Result :-
+    ( Item2 = item_pragma(_, PragmaType2) ->
         (
-            PragmaType1 = type_spec(Name, SpecName, Arity,
-                MaybePredOrFunc, MaybeModes, TypeSubst1,
-                TVarSet1, _),
-            PragmaType2 = type_spec(Name, SpecName, Arity,
-                MaybePredOrFunc, MaybeModes, TypeSubst2,
-                TVarSet2, _)
+            PragmaType1 = pragma_type_spec(Name, SpecName, Arity,
+                MaybePredOrFunc, MaybeModes, TypeSubst1, TVarSet1, _),
+            PragmaType2 = pragma_type_spec(Name, SpecName, Arity,
+                MaybePredOrFunc, MaybeModes, TypeSubst2, TVarSet2, _)
         ->
             assoc_list.keys_and_values(TypeSubst1, TVars1, Types1),
             assoc_list.keys_and_values(TypeSubst2, TVars2, Types2),
@@ -711,20 +711,21 @@ item_is_unchanged(pragma(_, PragmaType1), Item2) = Result :-
     ;
         Result = no
     ).
-item_is_unchanged(nothing(A), Item2) = ( Item2 = nothing(A) -> yes ; no ).
-item_is_unchanged(initialise(O, A, B), Item2) =
-    ( Item2 = initialise(O, A, B) -> yes ; no ).
-item_is_unchanged(finalise(O, A, B), Item2) = 
-    ( Item2 = finalise(O, A, B) -> yes ; no ).
-item_is_unchanged(mutable(A, B, C, D, E, F), Item2) =
-    ( Item2 = mutable(A, B, C, D, E, F) -> yes ; no ).
+item_is_unchanged(item_nothing(A), Item2) =
+    ( Item2 = item_nothing(A) -> yes ; no ).
+item_is_unchanged(item_initialise(O, A, B), Item2) =
+    ( Item2 = item_initialise(O, A, B) -> yes ; no ).
+item_is_unchanged(item_finalise(O, A, B), Item2) = 
+    ( Item2 = item_finalise(O, A, B) -> yes ; no ).
+item_is_unchanged(item_mutable(A, B, C, D, E, F), Item2) =
+    ( Item2 = item_mutable(A, B, C, D, E, F) -> yes ; no ).
 
 item_is_unchanged(Item1, Item2) = Result :-
-    Item1 = pred_or_func(TVarSet1, _, ExistQVars1, PredOrFunc,
+    Item1 = item_pred_or_func(TVarSet1, _, ExistQVars1, PredOrFunc,
         Name, TypesAndModes1, WithType1, _,
         Det1, Cond, Purity, Constraints1),
     (
-        Item2 = pred_or_func(TVarSet2, _, ExistQVars2,
+        Item2 = item_pred_or_func(TVarSet2, _, ExistQVars2,
             PredOrFunc, Name, TypesAndModes2, WithType2,
             _, Det2, Cond, Purity, Constraints2),
 
@@ -754,10 +755,10 @@ item_is_unchanged(Item1, Item2) = Result :-
     ).
 
 item_is_unchanged(Item1, Item2) = Result :-
-    Item1 = pred_or_func_mode(InstVarSet1, PredOrFunc, Name, Modes1,
+    Item1 = item_pred_or_func_mode(InstVarSet1, PredOrFunc, Name, Modes1,
             WithInst1, Det, Cond),
     (
-        Item2 = pred_or_func_mode(InstVarSet2, PredOrFunc,
+        Item2 = item_pred_or_func_mode(InstVarSet2, PredOrFunc,
             Name, Modes2, WithInst2, Det, Cond),
         pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, WithInst1,
             InstVarSet2, Modes2, WithInst2)
@@ -768,10 +769,10 @@ item_is_unchanged(Item1, Item2) = Result :-
     ).
 
 item_is_unchanged(Item1, Item2) = Result :-
-    Item1 = typeclass(Constraints, FunDeps, Name, Vars, Interface1,
+    Item1 = item_typeclass(Constraints, FunDeps, Name, Vars, Interface1,
         _VarSet),
     (
-        Item2 = typeclass(Constraints, FunDeps, Name, Vars, Interface2,
+        Item2 = item_typeclass(Constraints, FunDeps, Name, Vars, Interface2,
             _),
         class_interface_is_unchanged(Interface1, Interface2)
     ->
@@ -800,7 +801,6 @@ item_is_unchanged(Item1, Item2) = Result :-
 pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndModes1,
         MaybeWithType1, Constraints1, TVarSet2, ExistQVars2,
         TypesAndModes2, MaybeWithType2, Constraints2) :-
-
     GetArgTypes =
         (func(TypeAndMode0) = Type :-
             (
@@ -956,10 +956,10 @@ class_interface_is_unchanged(concrete(Methods1), concrete(Methods2)) :-
 class_methods_are_unchanged([], []).
 class_methods_are_unchanged([Method1 | Methods1], [Method2 | Methods2]) :-
     (
-        Method1 = pred_or_func(TVarSet1, _, ExistQVars1, PredOrFunc,
+        Method1 = method_pred_or_func(TVarSet1, _, ExistQVars1, PredOrFunc,
             Name, TypesAndModes1, WithType1, _,
             Detism, Cond, Purity, Constraints1, _),
-        Method2 = pred_or_func(TVarSet2, _, ExistQVars2, PredOrFunc,
+        Method2 = method_pred_or_func(TVarSet2, _, ExistQVars2, PredOrFunc,
             Name, TypesAndModes2, WithType2, _,
             Detism, Cond, Purity, Constraints2, _),
         pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1,
@@ -967,9 +967,9 @@ class_methods_are_unchanged([Method1 | Methods1], [Method2 | Methods2]) :-
             TVarSet2, ExistQVars2, TypesAndModes2, WithType2,
             Constraints2)
     ;
-        Method1 = pred_or_func_mode(InstVarSet1, PredOrFunc, Name,
+        Method1 = method_pred_or_func_mode(InstVarSet1, PredOrFunc, Name,
             Modes1, WithInst1, Det, Cond, _),
-        Method2 = pred_or_func_mode(InstVarSet2, PredOrFunc, Name,
+        Method2 = method_pred_or_func_mode(InstVarSet2, PredOrFunc, Name,
             Modes2, WithInst2, Det, Cond, _),
         pred_or_func_mode_is_unchanged(InstVarSet1, Modes1, WithInst1,
             InstVarSet2, Modes2, WithInst2)

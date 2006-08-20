@@ -244,10 +244,10 @@ check_determinism(PredId, ProcId, PredInfo0, ProcInfo0, !ModuleInfo, !IO) :-
                 % the determinism in the `:- typeclass' declaration will be
                 % the loosest of all possible instances. This is similar to
                 % the reason we don't report warnings for lambda expressions.
-                \+ check_marker(Markers, class_instance_method),
+                \+ check_marker(Markers, marker_class_instance_method),
 
                 % Don't report warnings for procedures with no clauses.
-                \+ check_marker(Markers, stub),
+                \+ check_marker(Markers, marker_stub),
 
                 % Don't report warnings for compiler-generated Unify, Compare
                 % or Index procedures, since the user has no way to shut
@@ -1010,7 +1010,7 @@ det_report_unify_context(!.First, Last, Context, UnifyContext, DetInfo,
     ),
     ( varset.search_name(VarSet, LHS, _) ->
         (
-            RHS = var(RV),
+            RHS = rhs_var(RV),
             \+ varset.search_name(VarSet, RV, _)
         ->
             Pieces = [words(StartWords), words("with"),

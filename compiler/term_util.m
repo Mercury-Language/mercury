@@ -386,10 +386,10 @@ is_termination_known(ModuleInfo, PPId) :-
 
 attributes_imply_termination(Attributes) :-
     (
-        terminates(Attributes) = terminates
+        get_terminates(Attributes) = proc_terminates
     ;
-        terminates(Attributes) = depends_on_mercury_calls,
-        may_call_mercury(Attributes) = will_not_call_mercury
+        get_terminates(Attributes) = depends_on_mercury_calls,
+        get_may_call_mercury(Attributes) = proc_will_not_call_mercury
     ).
 
 %-----------------------------------------------------------------------------%

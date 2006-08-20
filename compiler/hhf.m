@@ -286,15 +286,15 @@ process_goal_expr(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI) :-
     prog_var::in, unify_mode::in, unification::in, unify_context::in,
     hlds_goal_expr::out, hhf_info::in, hhf_info::out) is det.
 
-process_unify(var(Y), _, _, X, Mode, Unif, Context, GoalExpr, !HI) :-
-    GoalExpr = unify(X, var(Y), Mode, Unif, Context).
-process_unify(lambda_goal(A,B,C,D,E,F,G,LambdaGoal0), NonLocals, _, X, Mode,
-        Unif, Context, GoalExpr, !HI) :-
+process_unify(rhs_var(Y), _, _, X, Mode, Unif, Context, GoalExpr, !HI) :-
+    GoalExpr = unify(X, rhs_var(Y), Mode, Unif, Context).
+process_unify(rhs_lambda_goal(A,B,C,D,E,F,G,LambdaGoal0), NonLocals, _, X,
+        Mode, Unif, Context, GoalExpr, !HI) :-
     process_goal(NonLocals, LambdaGoal0, LambdaGoal, !HI),
-    GoalExpr = unify(X, lambda_goal(A,B,C,D,E,F,G,LambdaGoal), Mode,
+    GoalExpr = unify(X, rhs_lambda_goal(A,B,C,D,E,F,G,LambdaGoal), Mode,
         Unif, Context).
-process_unify(functor(ConsId0, IsExistConstruct, ArgsA), NonLocals, GoalInfo0,
-        X, Mode, Unif, Context, GoalExpr, !HI) :-
+process_unify(rhs_functor(ConsId0, IsExistConstruct, ArgsA), NonLocals,
+        GoalInfo0, X, Mode, Unif, Context, GoalExpr, !HI) :-
     TypeOfX = !.HI ^ vartypes ^ det_elem(X),
     qualify_cons_id(TypeOfX, ArgsA, ConsId0, _, ConsId),
     InstGraph0 = !.HI ^ inst_graph,
@@ -316,7 +316,7 @@ process_unify(functor(ConsId0, IsExistConstruct, ArgsA), NonLocals, GoalInfo0,
     goal_info_get_nonlocals(GoalInfo0, GINonlocals0),
     GINonlocals = GINonlocals0 `set.union` list_to_set(Args),
     goal_info_set_nonlocals(GINonlocals, GoalInfo0, GoalInfo),
-    UnifyGoal = unify(X, functor(ConsId, IsExistConstruct, Args),
+    UnifyGoal = unify(X, rhs_functor(ConsId, IsExistConstruct, Args),
         Mode, Unif, Context) - GoalInfo,
     GoalExpr = conj(plain_conj, [UnifyGoal | Unifications]).
 
@@ -330,7 +330,7 @@ make_unifications([_ | _], [], _, _, _, _, _) :-
 make_unifications([], [_ | _], _, _, _, _, _) :-
     unexpected(this_file, "hhf_make_unifications: length mismatch (2)").
 make_unifications([A | As], [B | Bs], GI0, M, U, C,
-        [unify(A, var(B), M, U, C) - GI | Us]) :-
+        [unify(A, rhs_var(B), M, U, C) - GI | Us]) :-
     goal_info_get_nonlocals(GI0, GINonlocals0),
     GINonlocals = GINonlocals0 `set.insert` A `set.insert` B,
     goal_info_set_nonlocals(GINonlocals, GI0, GI),
@@ -365,7 +365,7 @@ add_unifications([A | As], NonLocals, GI0, M, U, C, [V | Vs], Goals, !HI) :-
         goal_info_get_nonlocals(GI0, GINonlocals0),
         GINonlocals = GINonlocals0 `set.insert` V,
         goal_info_set_nonlocals(GINonlocals, GI0, GI),
-        Goals = [unify(A, var(V), M, U, C) - GI | Goals0]
+        Goals = [unify(A, rhs_var(V), M, U, C) - GI | Goals0]
     ;
         V = A,
         Goals = Goals0

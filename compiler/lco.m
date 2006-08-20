@@ -290,7 +290,7 @@ lco_proc(LowerSCCVariants, SCC, CurProc, !ModuleInfo, !CurSCCVariants,
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
             PredInfo, ProcInfo0),
         pred_info_get_import_status(PredInfo, Status),
-        status_defined_in_this_module(Status, DefInThisModule),
+        DefInThisModule = status_defined_in_this_module(Status),
         proc_info_get_inferred_determinism(ProcInfo0, Detism),
         (
             ( DefInThisModule = no
@@ -707,16 +707,16 @@ update_construct(Subst, Goal0, Goal) :-
             % We must update RHS because quantification gets the set of
             % variables in the unification from there, not from Unification.
             (
-                RHS0 = var(_),
+                RHS0 = rhs_var(_),
                 unexpected(this_file, "update_construct: var RHS")
             ;
-                RHS0 = functor(RHSConsId, IsExistConstr, RHSVars0),
+                RHS0 = rhs_functor(RHSConsId, IsExistConstr, RHSVars0),
                 expect(unify(ConsId, RHSConsId), this_file,
                     "update_construct: cons_id mismatch"),
                 rename_var_list(no, Subst, RHSVars0, RHSVars),
-                RHS = functor(RHSConsId, IsExistConstr, RHSVars)
+                RHS = rhs_functor(RHSConsId, IsExistConstr, RHSVars)
             ;
-                RHS0 = lambda_goal(_, _, _, _, _, _, _, _),
+                RHS0 = rhs_lambda_goal(_, _, _, _, _, _, _, _),
                 unexpected(this_file, "update_construct: lambda RHS")
             ),
             GoalExpr = unify(LHS, RHS, Mode, Unification, UnifyContext),

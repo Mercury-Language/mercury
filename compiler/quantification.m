@@ -668,11 +668,11 @@ implicitly_quantify_atomic_goal(HeadVars, !Info) :-
     quant_info::in, quant_info::out) is det.
 
 implicitly_quantify_unify_rhs(_, _, !RHS, !Unification, !Info) :-
-    !.RHS = var(X),
+    !.RHS = rhs_var(X),
     singleton_set(Vars, X),
     set_nonlocals(Vars, !Info).
 implicitly_quantify_unify_rhs(ReuseArgs, _, !RHS, !Unification, !Info) :-
-    !.RHS = functor(_, _, ArgVars),
+    !.RHS = rhs_functor(_, _, ArgVars),
     get_nonlocals_to_recompute(!.Info, NonLocalsToRecompute),
     (
         NonLocalsToRecompute = code_gen_nonlocals,
@@ -687,7 +687,7 @@ implicitly_quantify_unify_rhs(ReuseArgs, _, !RHS, !Unification, !Info) :-
     ),
     set_nonlocals(Vars, !Info).
 implicitly_quantify_unify_rhs(_, Context, !RHS, !Unification, !Info) :-
-    !.RHS = lambda_goal(Purity, PredOrFunc, EvalMethod,
+    !.RHS = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
         LambdaNonLocals0, LambdaVars0, Modes, Det, Goal0),
     %
     % Note: make_hlds.m has already done most of the hard work for
@@ -733,7 +733,7 @@ implicitly_quantify_unify_rhs(_, Context, !RHS, !Unification, !Info) :-
     set_lambda_outside(LambdaOutsideVars, !Info),
     implicitly_quantify_goal(Goal1, Goal, !Info),
 
-    !:RHS = lambda_goal(Purity, PredOrFunc, EvalMethod,
+    !:RHS = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
         LambdaNonLocals, LambdaVars, Modes, Det, Goal),
 
     get_nonlocals(!.Info, NonLocals0),
@@ -1231,9 +1231,9 @@ goal_vars_2_shorthand(NonLocalsToRecompute, bi_implication(LHS, RHS), !Set,
 :- mode unify_rhs_vars(in(code_gen_nonlocals), in, in, in, out, in, out)
     is det.
 
-unify_rhs_vars(_, var(Y), _, !Set, !LambdaSet) :-
+unify_rhs_vars(_, rhs_var(Y), _, !Set, !LambdaSet) :-
     insert(!.Set, Y, !:Set).
-unify_rhs_vars(NonLocalsToRecompute, functor(_, _, ArgVars), MaybeSetArgs,
+unify_rhs_vars(NonLocalsToRecompute, rhs_functor(_, _, ArgVars), MaybeSetArgs,
         !Set, !LambdaSet) :-
     (
         NonLocalsToRecompute = code_gen_nonlocals,
@@ -1246,7 +1246,7 @@ unify_rhs_vars(NonLocalsToRecompute, functor(_, _, ArgVars), MaybeSetArgs,
         insert_list(!.Set, ArgVars, !:Set)
     ).
 unify_rhs_vars(NonLocalsToRecompute,
-        lambda_goal(_, _, _, _, LambdaVars, _, _, Goal), _,
+        rhs_lambda_goal(_, _, _, _, LambdaVars, _, _, Goal), _,
         !Set, !LambdaSet) :-
     % Note that the NonLocals list is not counted, since all the
     % variables in that list must occur in the goal.

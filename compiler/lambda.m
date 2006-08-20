@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: lambda.m.
 % Main author: fjh.
-% 
+%
 % This module is a pass over the HLDS to deal with lambda expressions.
 %
 % Lambda expressions are converted into separate predicates, so for
@@ -63,7 +63,7 @@
 % be different for each call.
 % Currently we don't support second-order polymorphism, so we
 % don't support existentially typed lambda expressions either.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module transform_hlds.lambda.
@@ -283,7 +283,7 @@ process_cases([case(ConsId, Goal0) | Cases0], [case(ConsId, Goal) | Cases],
 
 process_unify_goal(XVar, Y0, Mode, Unification0, Context, GoalExpr, !Info) :-
     (
-        Y0 = lambda_goal(Purity, PredOrFunc, EvalMethod,
+        Y0 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
             NonLocalVars, Vars, Modes, Det, LambdaGoal0)
     ->
         % First, process the lambda goal recursively, in case it contains
@@ -473,9 +473,10 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         map.apply_to_list(AllArgVars, VarTypes, ArgTypes),
 
         purity_to_markers(Purity, LambdaMarkers0),
-        (if check_marker(Markers, may_have_parallel_conj) then
-            add_marker(may_have_parallel_conj, LambdaMarkers0, LambdaMarkers)
-        else
+        ( check_marker(Markers, marker_may_have_parallel_conj) ->
+            add_marker(marker_may_have_parallel_conj,
+                LambdaMarkers0, LambdaMarkers)
+        ;
             LambdaMarkers = LambdaMarkers0
         ),
 
@@ -500,9 +501,9 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
         ),
         set.init(Assertions),
         pred_info_create(ModuleName, PredName, PredOrFunc, LambdaContext,
-            lambda(OrigFile, OrigLine, LambdaCount), local, LambdaMarkers,
-            ArgTypes, TVarSet, ExistQVars, Constraints, Assertions,
-            ProcInfo, ProcId, PredInfo),
+            lambda(OrigFile, OrigLine, LambdaCount), status_local,
+            LambdaMarkers, ArgTypes, TVarSet, ExistQVars, Constraints,
+            Assertions, ProcInfo, ProcId, PredInfo),
 
         % Save the new predicate in the predicate table.
         module_info_get_predicate_table(ModuleInfo1, PredicateTable0),
@@ -513,7 +514,7 @@ process_lambda(Purity, PredOrFunc, EvalMethod, Vars, Modes, Detism,
     ),
     ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
     ConsId = pred_const(ShroudedPredProcId, EvalMethod),
-    Functor = functor(ConsId, no, ArgVars),
+    Functor = rhs_functor(ConsId, no, ArgVars),
 
     Unification = construct(Var, ConsId, ArgVars, UniModes,
         construct_dynamically, cell_is_unique, no_construct_sub_info),

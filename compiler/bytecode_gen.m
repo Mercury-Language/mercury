@@ -84,8 +84,8 @@ gen_module(ModuleInfo, Code, !IO) :-
     tree.flatten(CodeTree, CodeList),
     list.condense(CodeList, Code).
 
-:- pred gen_preds(list(pred_id)::in, module_info::in,
-    byte_tree::out, io::di, io::uo) is det.
+:- pred gen_preds(list(pred_id)::in, module_info::in, byte_tree::out,
+    io::di, io::uo) is det.
 
 gen_preds([], _ModuleInfo, empty, !IO).
 gen_preds([PredId | PredIds], ModuleInfo, Code, !IO) :-
@@ -102,10 +102,10 @@ gen_preds([PredId | PredIds], ModuleInfo, Code, !IO) :-
         list.length(ProcIds, ProcsCount),
         Arity = pred_info_orig_arity(PredInfo),
         get_is_func(PredInfo, IsFunc),
-        EnterCode = node([enter_pred(PredName, Arity, IsFunc,
+        EnterCode = node([byte_enter_pred(PredName, Arity, IsFunc,
             ProcsCount)]),
-        EndofCode = node([endof_pred]),
-        PredCode = tree(EnterCode, tree(ProcsCode, EndofCode))
+        EndofCode = node([byte_endof_pred]),
+        PredCode = tree_list([EnterCode, ProcsCode, EndofCode])
     ),
     gen_preds(PredIds, ModuleInfo, OtherCode, !IO),
     Code = tree(PredCode, OtherCode).
@@ -164,22 +164,23 @@ gen_proc(ProcId, PredInfo, ModuleInfo, Code) :-
     get_next_label(EndLabel, ByteInfo3, ByteInfo),
     get_counts(ByteInfo, LabelCount, TempCount),
 
-    ZeroLabelCode = node([label(ZeroLabel)]),
+    ZeroLabelCode = node([byte_label(ZeroLabel)]),
     BodyTree = tree_list([PickupCode, ZeroLabelCode, GoalCode, PlaceCode]),
     tree.flatten(BodyTree, BodyList),
     list.condense(BodyList, BodyCode0),
-    ( list.member(not_supported, BodyCode0) ->
-        BodyCode = node([not_supported])
+    ( list.member(byte_not_supported, BodyCode0) ->
+        BodyCode = node([byte_not_supported])
     ;
         BodyCode = node(BodyCode0)
     ),
     proc_id_to_int(ProcId, ProcInt),
-    EnterCode = node([enter_proc(ProcInt, Detism, LabelCount, EndLabel,
+    EnterCode = node([byte_enter_proc(ProcInt, Detism, LabelCount, EndLabel,
         TempCount, VarInfos)]),
     ( CodeModel = model_semi ->
-        EndofCode = node([semidet_succeed, label(EndLabel), endof_proc])
+        EndofCode = node([byte_semidet_succeed, byte_label(EndLabel),
+            byte_endof_proc])
     ;
-        EndofCode = node([label(EndLabel), endof_proc])
+        EndofCode = node([byte_label(EndLabel), byte_endof_proc])
     ),
     Code = tree_list([EnterCode, BodyCode, EndofCode]).
 
@@ -192,7 +193,7 @@ gen_goal(GoalExpr - GoalInfo, !ByteInfo, Code) :-
     gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, GoalCode),
     goal_info_get_context(GoalInfo, Context),
     term.context_line(Context, Line),
-    Code = tree(node([context(Line)]), GoalCode).
+    Code = tree(node([byte_context(Line)]), GoalCode).
 
 :- pred gen_goal_expr(hlds_goal_expr::in, hlds_goal_info::in,
     byte_info::in, byte_info::out, byte_tree::out) is det.
@@ -210,7 +211,7 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
             % "bytecode for ", GenericCallFunctor, " calls"], Msg),
             % sorry(this_file, Msg)
             functor(GenericCallType, canonicalize, _GenericCallFunctor, _),
-            Code = node([not_supported])
+            Code = node([byte_not_supported])
         )
     ;
         GoalExpr = plain_call(PredId, ProcId, ArgVars, BuiltinState, _, _),
@@ -228,9 +229,9 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
         gen_goal(Goal, !ByteInfo, SomeCode),
         get_next_label(EndLabel, !ByteInfo),
         get_next_temp(FrameTemp, !ByteInfo),
-        EnterCode = node([enter_negation(FrameTemp, EndLabel)]),
-        EndofCode = node([endof_negation_goal(FrameTemp),
-            label(EndLabel), endof_negation]),
+        EnterCode = node([byte_enter_negation(FrameTemp, EndLabel)]),
+        EndofCode = node([byte_endof_negation_goal(FrameTemp),
+            byte_label(EndLabel), byte_endof_negation]),
         Code =  tree_list([EnterCode, SomeCode, EndofCode])
     ;
         GoalExpr = scope(_, InnerGoal),
@@ -244,8 +245,8 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
             Code = InnerCode
         ;
             get_next_temp(Temp, !ByteInfo),
-            EnterCode = node([enter_commit(Temp)]),
-            EndofCode = node([endof_commit(Temp)]),
+            EnterCode = node([byte_enter_commit(Temp)]),
+            EndofCode = node([byte_endof_commit(Temp)]),
             Code = tree_list([EnterCode, InnerCode, EndofCode])
         )
     ;
@@ -258,13 +259,13 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
         GoalExpr = disj(GoalList),
         (
             GoalList = [],
-            Code = node([fail])
+            Code = node([byte_fail])
         ;
             GoalList = [_ | _],
             get_next_label(EndLabel, !ByteInfo),
             gen_disj(GoalList, EndLabel, !ByteInfo, DisjCode),
-            EnterCode = node([enter_disjunction(EndLabel)]),
-            EndofCode = node([endof_disjunction, label(EndLabel)]),
+            EnterCode = node([byte_enter_disjunction(EndLabel)]),
+            EndofCode = node([byte_endof_disjunction, byte_label(EndLabel)]),
             Code = tree_list([EnterCode, DisjCode, EndofCode])
         )
     ;
@@ -272,8 +273,8 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
         get_next_label(EndLabel, !ByteInfo),
         gen_switch(CasesList, Var, EndLabel, !ByteInfo, SwitchCode),
         map_var(!.ByteInfo, Var, ByteVar),
-        EnterCode = node([enter_switch(ByteVar, EndLabel)]),
-        EndofCode = node([endof_switch, label(EndLabel)]),
+        EnterCode = node([byte_enter_switch(ByteVar, EndLabel)]),
+        EndofCode = node([byte_endof_switch, byte_label(EndLabel)]),
         Code = tree_list([EnterCode, SwitchCode, EndofCode])
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
@@ -283,16 +284,16 @@ gen_goal_expr(GoalExpr, GoalInfo, !ByteInfo, Code) :-
         gen_goal(Cond, !ByteInfo, CondCode),
         gen_goal(Then, !ByteInfo, ThenCode),
         gen_goal(Else, !ByteInfo, ElseCode),
-        EnterIfCode = node([enter_if(ElseLabel, EndLabel, FrameTemp)]),
-        EnterThenCode = node([enter_then(FrameTemp)]),
-        EndofThenCode = node([endof_then(EndLabel), label(ElseLabel),
-            enter_else(FrameTemp)]),
-        EndofIfCode = node([endof_if, label(EndLabel)]),
+        EnterIfCode = node([byte_enter_if(ElseLabel, EndLabel, FrameTemp)]),
+        EnterThenCode = node([byte_enter_then(FrameTemp)]),
+        EndofThenCode = node([byte_endof_then(EndLabel), byte_label(ElseLabel),
+            byte_enter_else(FrameTemp)]),
+        EndofIfCode = node([byte_endof_if, byte_label(EndLabel)]),
         Code = tree_list([EnterIfCode, CondCode, EnterThenCode, ThenCode,
             EndofThenCode, ElseCode, EndofIfCode])
     ;
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
-        Code = node([not_supported])
+        Code = node([byte_not_supported])
     ;
         GoalExpr = shorthand(_),
         % these should have been expanded out by now
@@ -308,7 +309,7 @@ gen_places([], _, empty).
 gen_places([Var - Loc | OutputArgs], ByteInfo, Code) :-
     gen_places(OutputArgs, ByteInfo, OtherCode),
     map_var(ByteInfo, Var, ByteVar),
-    Code = tree(node([place_arg(r, Loc, ByteVar)]), OtherCode).
+    Code = tree(node([byte_place_arg(r, Loc, ByteVar)]), OtherCode).
 
 :- pred gen_pickups(list(pair(prog_var, arg_loc))::in,
     byte_info::in, byte_tree::out) is det.
@@ -317,7 +318,7 @@ gen_pickups([], _, empty).
 gen_pickups([Var - Loc | OutputArgs], ByteInfo, Code) :-
     gen_pickups(OutputArgs, ByteInfo, OtherCode),
     map_var(ByteInfo, Var, ByteVar),
-    Code = tree(node([pickup_arg(r, Loc, ByteVar)]), OtherCode).
+    Code = tree(node([byte_pickup_arg(r, Loc, ByteVar)]), OtherCode).
 
 %---------------------------------------------------------------------------%
 
@@ -344,9 +345,10 @@ gen_higher_order_call(PredVar, ArgVars, ArgModes, Detism, ByteInfo, Code) :-
     gen_pickups(OutputArgs, ByteInfo, PickupArgs),
 
     map_var(ByteInfo, PredVar, BytePredVar),
-    Call = node([higher_order_call(BytePredVar, NInVars, NOutVars, Detism)]),
+    Call = node([byte_higher_order_call(BytePredVar, NInVars, NOutVars,
+        Detism)]),
     ( CodeModel = model_semi ->
-        Check = node([semidet_success_check])
+        Check = node([byte_semidet_success_check])
     ;
         Check = empty
     ),
@@ -374,10 +376,10 @@ gen_call(PredId, ProcId, ArgVars, Detism, ByteInfo, Code) :-
 
     predicate_id(ModuleInfo, PredId, ModuleName, PredName, Arity),
     proc_id_to_int(ProcId, ProcInt),
-    Call = node([call(ModuleName, PredName, Arity, IsFunc, ProcInt)]),
+    Call = node([byte_call(ModuleName, PredName, Arity, IsFunc, ProcInt)]),
     determinism_to_code_model(Detism, CodeModel),
     ( CodeModel = model_semi ->
-        Check = node([semidet_success_check])
+        Check = node([byte_semidet_success_check])
     ;
         Check = empty
     ),
@@ -422,11 +424,11 @@ map_test(ByteInfo, TestExpr, Code) :-
         TestExpr = binary(Binop, X, Y),
         map_arg(ByteInfo, X, ByteX),
         map_arg(ByteInfo, Y, ByteY),
-        Code = node([builtin_bintest(Binop, ByteX, ByteY)])
+        Code = node([byte_builtin_bintest(Binop, ByteX, ByteY)])
     ;
         TestExpr = unary(Unop, X),
         map_arg(ByteInfo, X, ByteX),
-        Code = node([builtin_untest(Unop, ByteX)])
+        Code = node([byte_builtin_untest(Unop, ByteX)])
     ).
 
 :- pred map_assign(byte_info::in, prog_var::in,
@@ -438,17 +440,17 @@ map_assign(ByteInfo, Var, Expr, Code) :-
         map_arg(ByteInfo, X, ByteX),
         map_arg(ByteInfo, Y, ByteY),
         map_var(ByteInfo, Var, ByteVar),
-        Code = node([builtin_binop(Binop, ByteX, ByteY, ByteVar)])
+        Code = node([byte_builtin_binop(Binop, ByteX, ByteY, ByteVar)])
     ;
         Expr = unary(Unop, X),
         map_arg(ByteInfo, X, ByteX),
         map_var(ByteInfo, Var, ByteVar),
-        Code = node([builtin_unop(Unop, ByteX, ByteVar)])
+        Code = node([byte_builtin_unop(Unop, ByteX, ByteVar)])
     ;
         Expr = leaf(X),
         map_var(ByteInfo, X, ByteX),
         map_var(ByteInfo, Var, ByteVar),
-        Code = node([assign(ByteVar, ByteX)])
+        Code = node([byte_assign(ByteVar, ByteX)])
     ).
 
 :- pred map_arg(byte_info::in, simple_expr(prog_var)::in(simple_arg_expr),
@@ -480,17 +482,17 @@ gen_unify(construct(Var, ConsId, Args, UniModes, _, _, _), _, _,
     map_vars(ByteInfo, Args, ByteArgs),
     map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
     ( ByteConsId = pred_const(_, _, _, _, _) ->
-        Code = node([construct(ByteVar, ByteConsId, ByteArgs)])
+        Code = node([byte_construct(ByteVar, ByteConsId, ByteArgs)])
     ;
         % Don't call map_uni_modes until after
         % the pred_const test fails, since the arg-modes on
         % unifications that create closures aren't like other arg-modes.
         map_uni_modes(UniModes, Args, ByteInfo, Dirs),
         ( all_dirs_same(Dirs, to_var) ->
-            Code = node([construct(ByteVar, ByteConsId, ByteArgs)])
+            Code = node([byte_construct(ByteVar, ByteConsId, ByteArgs)])
         ;
             assoc_list.from_corresponding_lists(ByteArgs, Dirs, Pairs),
-            Code = node([complex_construct(ByteVar, ByteConsId, Pairs)])
+            Code = node([byte_complex_construct(ByteVar, ByteConsId, Pairs)])
         )
     ).
 gen_unify(deconstruct(Var, ConsId, Args, UniModes, _, _), _, _,
@@ -500,15 +502,15 @@ gen_unify(deconstruct(Var, ConsId, Args, UniModes, _, _), _, _,
     map_cons_id(ByteInfo, Var, ConsId, ByteConsId),
     map_uni_modes(UniModes, Args, ByteInfo, Dirs),
     ( all_dirs_same(Dirs, to_arg) ->
-        Code = node([deconstruct(ByteVar, ByteConsId, ByteArgs)])
+        Code = node([byte_deconstruct(ByteVar, ByteConsId, ByteArgs)])
     ;
         assoc_list.from_corresponding_lists(ByteArgs, Dirs, Pairs),
-        Code = node([complex_deconstruct(ByteVar, ByteConsId, Pairs)])
+        Code = node([byte_complex_deconstruct(ByteVar, ByteConsId, Pairs)])
     ).
 gen_unify(assign(Target, Source), _, _, ByteInfo, Code) :-
     map_var(ByteInfo, Target, ByteTarget),
     map_var(ByteInfo, Source, ByteSource),
-    Code = node([assign(ByteTarget, ByteSource)]).
+    Code = node([byte_assign(ByteTarget, ByteSource)]).
 gen_unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
     map_var(ByteInfo, Var1, ByteVar1),
     map_var(ByteInfo, Var2, ByteVar2),
@@ -574,7 +576,7 @@ gen_unify(simple_test(Var1, Var2), _, _, ByteInfo, Code) :-
         TypeCategory = type_cat_base_typeclass_info,
         unexpected(this_file, "base_typeclass_info_type in simple_test")
     ),
-    Code = node([test(ByteVar1, ByteVar2, TestId)]).
+    Code = node([byte_test(ByteVar1, ByteVar2, TestId)]).
 gen_unify(complicated_unify(_,_,_), _Var, _RHS, _ByteInfo, _Code) :-
     unexpected(this_file, "complicated unifications " ++
         "should have been handled by polymorphism.m").
@@ -647,15 +649,16 @@ gen_disj([Disjunct | Disjuncts], EndLabel, !ByteInfo, Code) :-
     gen_goal(Disjunct, !ByteInfo, ThisCode),
     (
         Disjuncts = [],
-        EnterCode = node([enter_disjunct(-1)]),
-        EndofCode = node([endof_disjunct(EndLabel)]),
+        EnterCode = node([byte_enter_disjunct(-1)]),
+        EndofCode = node([byte_endof_disjunct(EndLabel)]),
         Code = tree_list([EnterCode, ThisCode, EndofCode])
     ;
         Disjuncts = [_ | _],
         gen_disj(Disjuncts, EndLabel, !ByteInfo, OtherCode),
         get_next_label(NextLabel, !ByteInfo),
-        EnterCode = node([enter_disjunct(NextLabel)]),
-        EndofCode = node([endof_disjunct(EndLabel), label(NextLabel)]),
+        EnterCode = node([byte_enter_disjunct(NextLabel)]),
+        EndofCode = node([byte_endof_disjunct(EndLabel),
+            byte_label(NextLabel)]),
         Code = tree_list([EnterCode, ThisCode, EndofCode, OtherCode])
     ).
 
@@ -673,8 +676,8 @@ gen_switch([case(ConsId, Goal) | Cases], Var, EndLabel,
     gen_goal(Goal, !ByteInfo, ThisCode),
     gen_switch(Cases, Var, EndLabel, !ByteInfo, OtherCode),
     get_next_label(NextLabel, !ByteInfo),
-    EnterCode = node([enter_switch_arm(ByteConsId, NextLabel)]),
-    EndofCode = node([endof_switch_arm(EndLabel), label(NextLabel)]),
+    EnterCode = node([byte_enter_switch_arm(ByteConsId, NextLabel)]),
+    EndofCode = node([byte_endof_switch_arm(EndLabel), byte_label(NextLabel)]),
     Code = tree_list([EnterCode, ThisCode, EndofCode, OtherCode]).
 
 %---------------------------------------------------------------------------%
@@ -758,30 +761,30 @@ map_cons_id(ByteInfo, Var, ConsId, ByteConsId) :-
 map_cons_tag(no_tag, no_tag).
     % `single_functor' is just an optimized version of `unshared_tag(0)'
     % this optimization is not important for the bytecode
-map_cons_tag(single_functor, unshared_tag(0)).
+map_cons_tag(single_functor_tag, unshared_tag(0)).
 map_cons_tag(unshared_tag(Primary), unshared_tag(Primary)).
 map_cons_tag(shared_remote_tag(Primary, Secondary),
     shared_remote_tag(Primary, Secondary)).
 map_cons_tag(shared_local_tag(Primary, Secondary),
     shared_local_tag(Primary, Secondary)).
-map_cons_tag(string_constant(_), _) :-
-    unexpected(this_file, "string_constant cons tag " ++
+map_cons_tag(string_tag(_), _) :-
+    unexpected(this_file, "string_tag cons tag " ++
         "for non-string_constant cons id").
-map_cons_tag(int_constant(IntVal), enum_tag(IntVal)).
-map_cons_tag(float_constant(_), _) :-
-    unexpected(this_file, "float_constant cons tag " ++
+map_cons_tag(int_tag(IntVal), enum_tag(IntVal)).
+map_cons_tag(float_tag(_), _) :-
+    unexpected(this_file, "float_tag cons tag " ++
         "for non-float_constant cons id").
 map_cons_tag(pred_closure_tag(_, _, _), _) :-
     unexpected(this_file, "pred_closure_tag cons tag " ++
         "for non-pred_const cons id").
-map_cons_tag(type_ctor_info_constant(_, _, _), _) :-
-    unexpected(this_file, "type_ctor_info_constant cons tag " ++
+map_cons_tag(type_ctor_info_tag(_, _, _), _) :-
+    unexpected(this_file, "type_ctor_info_tag cons tag " ++
         "for non-type_ctor_info_constant cons id").
-map_cons_tag(base_typeclass_info_constant(_, _, _), _) :-
-    unexpected(this_file, "base_typeclass_info_constant cons tag " ++
+map_cons_tag(base_typeclass_info_tag(_, _, _), _) :-
+    unexpected(this_file, "base_typeclass_info_tag cons tag " ++
         "for non-base_typeclass_info_constant cons id").
-map_cons_tag(tabling_info_constant(_, _), _) :-
-    unexpected(this_file, "tabling_info_constant cons tag " ++
+map_cons_tag(tabling_info_tag(_, _), _) :-
+    unexpected(this_file, "tabling_info_tag cons tag " ++
         "for non-tabling_info_constant cons id").
 map_cons_tag(deep_profiling_proc_layout_tag(_, _), _) :-
     unexpected(this_file, "deep_profiling_proc_layout_tag cons tag " ++
@@ -789,12 +792,12 @@ map_cons_tag(deep_profiling_proc_layout_tag(_, _), _) :-
 map_cons_tag(table_io_decl_tag(_, _), _) :-
     unexpected(this_file, "table_io_decl_tag cons tag " ++
         "for non-table_io_decl cons id").
-map_cons_tag(reserved_address(_), _) :-
+map_cons_tag(reserved_address_tag(_), _) :-
     % These should only be generated if the --num-reserved-addresses
     % or --num-reserved-objects options are used.
     sorry(this_file, "bytecode with --num-reserved-addresses " ++
         "or --num-reserved-objects").
-map_cons_tag(shared_with_reserved_addresses(_, _), _) :-
+map_cons_tag(shared_with_reserved_addresses_tag(_, _), _) :-
     % These should only be generated if the --num-reserved-addresses
     % or --num-reserved-objects options are used.
     sorry(this_file, "bytecode with --num-reserved-addresses " ++

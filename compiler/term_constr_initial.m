@@ -5,15 +5,15 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
-% 
+%
 % File: term_constr_initial.m.
 % Main author: juliensf.
-% 
+%
 % This module fills in the appropriate argument size information and
 % termination property for builtin and compiler generated predicates.
 % It also handles the processing of termination pragmas and sets
 % the termination properties for foreign procedures.
-% 
+%
 % Handling of pragma terminates/does_not_terminate
 %
 % At the moment we set the termination status as appropriate, set the arg
@@ -22,11 +22,11 @@
 % If we ever support user specified arg size constraints this scheme
 % will need modifying - in particular we will need to make sure that
 % the identity of the variables in the size_var_map matches those
-% in the constraints. 
-% 
+% in the constraints.
+%
 % A lot of this code is based on that in termination.m that does the
 % equivalent jobs for the old termination analyser.
-% 
+%
 %----------------------------------------------------------------------------%
 
 :- module transform_hlds.term_constr_initial.
@@ -66,7 +66,7 @@
 :- import_module hlds.special_pred.
 :- import_module libs.compiler_util.
 :- import_module libs.globals.
-:- import_module libs.lp_rational. 
+:- import_module libs.lp_rational.
 :- import_module libs.options.
 :- import_module libs.polyhedron.
 :- import_module libs.rat.
@@ -110,7 +110,7 @@
 % Sets termination to `cannot_loop' if:
 %   - there is a `terminates' pragma defined for the predicate.
 %   - there is a `check_termination' pragma defined for the predicate
-%     *and* the compiler is not currently generating the intermodule 
+%     *and* the compiler is not currently generating the intermodule
 %     optimization file.
 %   - the predicate is builtin or compiler generated.  (These are assumed
 %     to terminate.)
@@ -120,7 +120,7 @@
 %   - the predicate is imported and there is no other source of information
 %   - about it (termination_info pragmas, terminates pragmas, builtin).
 %
-% XXX This does the wrong thing for copy/2 & typed_unify/2.  In both 
+% XXX This does the wrong thing for copy/2 & typed_unify/2.  In both
 % cases the constraints should that |HeadVar__1| = |HeadVar__2|.
 
 preprocess_module(!ModuleInfo, !IO) :-
@@ -134,7 +134,7 @@ preprocess_module(!ModuleInfo, !IO) :-
 %
 
 % When interargument size constraints are imported from other modules there
-% are two parts.  The first of the these is a list of ints.  Each int 
+% are two parts.  The first of the these is a list of ints.  Each int
 % represents one of a procedure's arguments (including typeinfo related ones).
 %
 % XXX Since typeinfos all became zero sized we don't actually need this list.
@@ -144,14 +144,14 @@ preprocess_module(!ModuleInfo, !IO) :-
 % modules).
 %
 % The second piece of information here is the constraints themselves which
-% have been using the integer variable ids to represent actual variables.  
-% 
+% have been using the integer variable ids to represent actual variables.
+%
 % We now know the actual head_vars so we create size_vars and substitute
 % these into the actual constraints.
 %
 
 :- pred process_imported_preds(list(pred_id)::in,
-    module_info::in, module_info::out) is det.  
+    module_info::in, module_info::out) is det.
 
 process_imported_preds(PredIds, !ModuleInfo) :-
     list.foldl(process_imported_pred, PredIds, !ModuleInfo).
@@ -192,8 +192,8 @@ process_imported_proc(ProcId, !ProcTable) :-
         !:ProcInfo = !.ProcTable ^ det_elem(ProcId),
         proc_info_get_termination2_info(!.ProcInfo, TermInfo0),
         (
-            % Check that there is something to import. 
-            TermInfo0 ^ import_success = yes(_) 
+            % Check that there is something to import.
+            TermInfo0 ^ import_success = yes(_)
         ->
             process_imported_term_info(!.ProcInfo, TermInfo0, TermInfo),
             proc_info_set_termination2_info(TermInfo, !ProcInfo),
@@ -211,7 +211,7 @@ process_imported_term_info(ProcInfo, !TermInfo) :-
     make_size_var_map(HeadVars, _SizeVarset, SizeVarMap),
     list.length(HeadVars, NumHeadVars),
     HeadVarIds = 0 .. NumHeadVars - 1,
-    map.from_corresponding_lists(HeadVarIds, HeadVars, IdsToProgVars),  
+    map.from_corresponding_lists(HeadVarIds, HeadVars, IdsToProgVars),
     create_substitution_map(HeadVarIds, IdsToProgVars, SizeVarMap, SubstMap),
     create_arg_size_polyhedron(SubstMap, !.TermInfo ^ import_success,
         MaybeSuccessPoly),
@@ -246,16 +246,16 @@ create_arg_size_polyhedron(SubstMap, yes(PragmaArgSizeInfo),
         yes(Polyhedron)) :-
     list.map(create_arg_size_constraint(SubstMap), PragmaArgSizeInfo,
         Constraints),
-    Polyhedron = polyhedron.from_constraints(Constraints).  
+    Polyhedron = polyhedron.from_constraints(Constraints).
 
 :- pred create_arg_size_constraint(map(int, var)::in, arg_size_constr::in,
     constraint::out) is det.
 
 create_arg_size_constraint(SubstMap, le(Terms0, Constant), Constraint) :-
-    list.map(create_lp_term(SubstMap), Terms0, Terms), 
+    list.map(create_lp_term(SubstMap), Terms0, Terms),
     Constraint = constraint(Terms, (=<), Constant).
-create_arg_size_constraint(SubstMap, eq(Terms0, Constant), Constraint) :- 
-    list.map(create_lp_term(SubstMap), Terms0, Terms), 
+create_arg_size_constraint(SubstMap, eq(Terms0, Constant), Constraint) :-
+    list.map(create_lp_term(SubstMap), Terms0, Terms),
     Constraint = constraint(Terms, (=), Constant).
 
 :- pred create_lp_term(map(int, var)::in, pair(int, rat)::in, lp_term::out)
@@ -273,10 +273,10 @@ create_lp_term(SubstMap, VarId - Coefficient, Var - Coefficient) :-
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 process_builtin_preds([], !ModuleInfo, !IO).
-process_builtin_preds([PredId | PredIds], !ModuleInfo, !IO) :- 
-    write_pred_progress_message("% Termination checking ", PredId, 
+process_builtin_preds([PredId | PredIds], !ModuleInfo, !IO) :-
+    write_pred_progress_message("% Termination checking ", PredId,
         !.ModuleInfo, !IO),
-    globals.io_lookup_bool_option(make_optimization_interface, MakeOptInt, 
+    globals.io_lookup_bool_option(make_optimization_interface, MakeOptInt,
         !IO),
     some [!PredTable] (
         module_info_preds(!.ModuleInfo, !:PredTable),
@@ -292,7 +292,7 @@ process_builtin_preds([PredId | PredIds], !ModuleInfo, !IO) :-
     % predicates to be imported or locally defined, so they
     % must be covered here separately.
     %
-:- pred process_builtin_procs(bool::in, pred_id::in, module_info::in, 
+:- pred process_builtin_procs(bool::in, pred_id::in, module_info::in,
     pred_info::in, pred_info::out) is det.
 
 process_builtin_procs(MakeOptInt, PredId, ModuleInfo, !PredInfo) :-
@@ -302,13 +302,13 @@ process_builtin_procs(MakeOptInt, PredId, ModuleInfo, !PredInfo) :-
     some [!ProcTable] (
         pred_info_get_procedures(!.PredInfo, !:ProcTable),
         ProcIds = pred_info_procids(!.PredInfo),
-        ( 
+        (
             set_compiler_gen_terminates(!.PredInfo, ProcIds, PredId,
                 ModuleInfo, !ProcTable)
         ->
             true
-        ;   
-            status_defined_in_this_module(ImportStatus, yes)
+        ;
+            status_defined_in_this_module(ImportStatus) = yes
         ->
             % XXX At the moment if a procedure has a pragma terminates
             % declaration its argument size information is set to true.
@@ -319,13 +319,13 @@ process_builtin_procs(MakeOptInt, PredId, ModuleInfo, !PredInfo) :-
             % current workaround  is to set up a dummy size_var_map for
             % each procedure.
             %
-            ( check_marker(Markers, terminates) ->
+            ( check_marker(Markers, marker_terminates) ->
                 TermStatus = cannot_loop(pragma_supplied),
-                change_procs_constr_termination_info(ProcIds, 
-                    yes, TermStatus, !ProcTable),
+                change_procs_constr_termination_info(ProcIds, yes, TermStatus,
+                    !ProcTable),
                 ArgSizeInfo = polyhedron.universe,
-                change_procs_constr_arg_size_info(ProcIds, yes,
-                    ArgSizeInfo, !ProcTable),
+                change_procs_constr_arg_size_info(ProcIds, yes, ArgSizeInfo,
+                    !ProcTable),
                 initialise_size_var_maps(ProcIds, !ProcTable)
             ;
                 true
@@ -340,29 +340,29 @@ process_builtin_procs(MakeOptInt, PredId, ModuleInfo, !PredInfo) :-
             % the predicate was imported from).  When making the
             % intermodule optimization interfaces, the check_termination
             % will not be checked when the relevant source file is compiled,
-            % so it cannot be depended upon. 
+            % so it cannot be depended upon.
             (
                 (
-                    check_marker(Markers, terminates)
-                ; 
+                    check_marker(Markers, marker_terminates)
+                ;
                     MakeOptInt = no,
-                    check_marker(Markers, check_termination)
+                    check_marker(Markers, marker_check_termination)
                 )
-            ->  
+            ->
                 change_procs_constr_termination_info(ProcIds, yes,
-                    cannot_loop(pragma_supplied), !ProcTable) 
-            ;   
+                    cannot_loop(pragma_supplied), !ProcTable)
+            ;
                 change_procs_constr_termination_info(ProcIds, no,
                     can_loop([]), !ProcTable)
             ),
-            ArgSizeInfo = polyhedron.universe, 
+            ArgSizeInfo = polyhedron.universe,
             change_procs_constr_arg_size_info(ProcIds, yes, ArgSizeInfo,
                 !ProcTable)
         ),
-        ( check_marker(Markers, does_not_terminate) ->
-            TerminationInfo = 
+        ( check_marker(Markers, marker_does_not_terminate) ->
+            TerminationInfo =
                 can_loop([Context - does_not_term_pragma(PredId)]),
-                NonTermArgSizeInfo = polyhedron.universe, 
+                NonTermArgSizeInfo = polyhedron.universe,
                 change_procs_constr_termination_info(ProcIds, yes,
                     TerminationInfo, !ProcTable),
                 change_procs_constr_arg_size_info(ProcIds, yes,
@@ -373,17 +373,17 @@ process_builtin_procs(MakeOptInt, PredId, ModuleInfo, !PredInfo) :-
         ),
         pred_info_set_procedures(!.ProcTable, !PredInfo)
     ).
-:- pred set_compiler_gen_terminates(pred_info::in, list(proc_id)::in, 
-    pred_id::in, module_info::in, proc_table::in, proc_table::out) 
+:- pred set_compiler_gen_terminates(pred_info::in, list(proc_id)::in,
+    pred_id::in, module_info::in, proc_table::in, proc_table::out)
     is semidet.
 
 set_compiler_gen_terminates(PredInfo, ProcIds, PredId, ModuleInfo,
         !ProcTable) :-
     ( hlds_pred.pred_info_is_builtin(PredInfo) ->
-        set_builtin_terminates(ProcIds, PredId, PredInfo, ModuleInfo, 
+        set_builtin_terminates(ProcIds, PredId, PredInfo, ModuleInfo,
             !ProcTable)
     ;
-        ( 
+        (
             Name  = pred_info_name(PredInfo),
             Arity = pred_info_orig_arity(PredInfo),
             special_pred_name_arity(SpecPredId0, Name, _, Arity),
@@ -393,20 +393,20 @@ set_compiler_gen_terminates(PredInfo, ProcIds, PredId, ModuleInfo,
             SpecialPredId = SpecPredId0
         ;
             pred_info_get_origin(PredInfo, PredOrigin),
-            PredOrigin = special_pred(SpecialPredId - _)    
+            PredOrigin = special_pred(SpecialPredId - _)
         )
     ->
-        set_generated_terminates(ProcIds, SpecialPredId, ModuleInfo, 
+        set_generated_terminates(ProcIds, SpecialPredId, ModuleInfo,
             !ProcTable)
     ;
         fail
     ).
 
-:- pred set_generated_terminates(list(proc_id)::in, special_pred_id::in, 
+:- pred set_generated_terminates(list(proc_id)::in, special_pred_id::in,
     module_info::in, proc_table::in, proc_table::out) is det.
 
 set_generated_terminates([], _, _, !ProcTable).
-set_generated_terminates([ProcId | ProcIds], SpecialPredId, ModuleInfo, 
+set_generated_terminates([ProcId | ProcIds], SpecialPredId, ModuleInfo,
         !ProcTable) :-
     %
     % We don't need to do anything special for solver type initialisation
@@ -417,7 +417,7 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, ModuleInfo,
         ProcInfo0 = !.ProcTable ^ det_elem(ProcId),
         proc_info_get_headvars(ProcInfo0, HeadVars),
         proc_info_get_vartypes(ProcInfo0, VarTypes),
-        special_pred_id_to_termination(SpecialPredId, HeadVars, ModuleInfo, 
+        special_pred_id_to_termination(SpecialPredId, HeadVars, ModuleInfo,
             VarTypes, ArgSize, Termination, VarMap, HeadSizeVars),
         some [!TermInfo] (
             proc_info_get_termination2_info(ProcInfo0, !:TermInfo),
@@ -439,8 +439,8 @@ set_generated_terminates([ProcId | ProcIds], SpecialPredId, ModuleInfo,
     % XXX argument size constraints for unify predicates for types
     % with user-defined equality may not be correct.
     %
-:- pred special_pred_id_to_termination(special_pred_id::in, prog_vars::in, 
-    module_info::in, vartypes::in, constr_arg_size_info::out, 
+:- pred special_pred_id_to_termination(special_pred_id::in, prog_vars::in,
+    module_info::in, vartypes::in, constr_arg_size_info::out,
     constr_termination_info::out, size_var_map::out, size_vars::out) is det.
 
 special_pred_id_to_termination(spec_pred_compare, HeadProgVars, ModuleInfo,
@@ -449,7 +449,7 @@ special_pred_id_to_termination(spec_pred_compare, HeadProgVars, ModuleInfo,
         SizeVarMap, HeadSizeVars).
 special_pred_id_to_termination(spec_pred_unify, HeadProgVars, ModuleInfo,
         VarTypes, ArgSizeInfo, Termination, SizeVarMap, HeadSizeVars) :-
-    make_size_var_map(HeadProgVars, _SizeVarset, SizeVarMap), 
+    make_size_var_map(HeadProgVars, _SizeVarset, SizeVarMap),
     HeadSizeVars = prog_vars_to_size_vars(SizeVarMap, HeadProgVars),
     Zeros = find_zero_size_vars(ModuleInfo, SizeVarMap, VarTypes),
     NonZeroHeadSizeVars = list.filter(isnt(is_zero_size_var(Zeros)),
@@ -462,16 +462,16 @@ special_pred_id_to_termination(spec_pred_unify, HeadProgVars, ModuleInfo,
     % arguments are zero sized) or it contains two elements.
     %
     ( NonZeroHeadSizeVars = [] ->
-        Constrs  = [] 
+        Constrs  = []
     ; NonZeroHeadSizeVars = [VarA, VarB] ->
         Constrs  = [make_vars_eq_constraint(VarA, VarB)]
-    ; 
+    ;
         unexpected(this_file, "special_pred_id_to_termination/7: " ++
              "wrong number of args for unify.")
     ),
     Polyhedron  = polyhedron.from_constraints(Constrs),
     ArgSizeInfo = Polyhedron,
-    Termination = cannot_loop(builtin).     
+    Termination = cannot_loop(builtin).
 special_pred_id_to_termination(spec_pred_index, HeadProgVars, ModuleInfo,
         VarTypes, ArgSize, Termination, SizeVarMap, HeadSizeVars) :-
     NumToDrop = list.length(HeadProgVars) - 2,
@@ -479,7 +479,7 @@ special_pred_id_to_termination(spec_pred_index, HeadProgVars, ModuleInfo,
         make_info(HeadProgVars, ModuleInfo, VarTypes, ArgSize,
             Termination, SizeVarMap, HeadSizeVars)
     ;
-        unexpected(this_file, 
+        unexpected(this_file,
             "Less than two arguments to builtin index.")
     ).
 special_pred_id_to_termination(spec_pred_init, _, _, _, _, _, _, _) :-
@@ -504,16 +504,16 @@ make_info(HeadProgVars, ModuleInfo, VarTypes, ArgSize, Termination, SizeVarMap,
     Termination = cannot_loop(builtin),
     HeadSizeVars = prog_vars_to_size_vars(SizeVarMap, HeadProgVars).
 
-    % Set the termination information for builtin 
+    % Set the termination information for builtin
     % predicates.  The list of proc_ids must refer to builtin predicates.
     %
-:- pred set_builtin_terminates(list(proc_id)::in, pred_id::in, pred_info::in, 
+:- pred set_builtin_terminates(list(proc_id)::in, pred_id::in, pred_info::in,
     module_info::in, proc_table::in, proc_table::out) is det.
 
 set_builtin_terminates([], _, _, _, !ProcTable).
-set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo, 
+set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
         !ProcTable) :-
-    ProcInfo0 = !.ProcTable ^ det_elem(ProcId), 
+    ProcInfo0 = !.ProcTable ^ det_elem(ProcId),
     proc_info_get_headvars(ProcInfo0, HeadVars),
     PredModule = pred_info_module(PredInfo),
     PredName   = pred_info_name(PredInfo),
@@ -524,7 +524,7 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
     ->
         Constrs = process_no_type_info_builtin(PredName, HeadVars,
             SizeVarMap)
-    ;   
+    ;
         all_args_input_or_zero_size(ModuleInfo, PredInfo, ProcInfo0)
     ->
         Constrs = []
@@ -548,12 +548,12 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
     set_builtin_terminates(ProcIds, PredId, PredInfo, ModuleInfo,
         !ProcTable).
 
-:- func process_no_type_info_builtin(string, prog_vars, size_var_map) 
+:- func process_no_type_info_builtin(string, prog_vars, size_var_map)
     = constraints.
 
 process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
-    ( 
-        HeadVars = [HVar1, HVar2], 
+    (
+        HeadVars = [HVar1, HVar2],
         (
             (
                 PredName = "unsafe_type_cast"
@@ -561,7 +561,7 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
                 PredName = "unsafe_promise_unique"
             )
         ->
-            SizeVar1 = prog_var_to_size_var(SizeVarMap, HVar1), 
+            SizeVar1 = prog_var_to_size_var(SizeVarMap, HVar1),
             SizeVar2 = prog_var_to_size_var(SizeVarMap, HVar2),
             ConstraintsPrime = [make_vars_eq_constraint(SizeVar1, SizeVar2)]
         ;
@@ -574,7 +574,7 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
     ->
         Constraints = ConstraintsPrime
     ;
-        unexpected(this_file,  
+        unexpected(this_file,
             "Unrecognised predicate passed to process_special_builtin.")
     ).
 

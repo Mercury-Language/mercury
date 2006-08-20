@@ -276,7 +276,8 @@ init_fixpoint_info(ModuleInfo, Varset, PPId, MaxMatrixSize, HeadVars, Zeros) =
 :- pred traverse_abstract_goal(fixpoint_info::in, abstract_goal::in,
     polyhedron::in, polyhedron::out) is det.
 
-traverse_abstract_goal(Info, disj(Goals, _Size, Locals, _), !Polyhedron) :- 
+traverse_abstract_goal(Info, term_disj(Goals, _Size, Locals, _),
+        !Polyhedron) :- 
     %
     % There are number of possible improvements that should be made here:
     %
@@ -296,13 +297,13 @@ traverse_abstract_goal(Info, disj(Goals, _Size, Locals, _), !Polyhedron) :-
         Polyhedron0),
     post_process_abstract_goal(Locals, Info, Polyhedron0, !Polyhedron).
 
-traverse_abstract_goal(Info, conj(Goals, Locals, _), !Polyhedron) :- 
+traverse_abstract_goal(Info, term_conj(Goals, Locals, _), !Polyhedron) :- 
     list.foldl(traverse_abstract_goal(Info), Goals, polyhedron.universe,
         Polyhedron0),
     post_process_abstract_goal(Locals, Info, Polyhedron0, !Polyhedron).
 
 traverse_abstract_goal(Info, AbstractGoal, !Polyhedron) :- 
-    AbstractGoal = call(CallPPId0, _, CallVars, CallZeros, Locals, _,
+    AbstractGoal = term_call(CallPPId0, _, CallVars, CallZeros, Locals, _,
         CallArgsPoly),
     CallPPId0 = real(CallPPId),
     module_info_pred_proc_info(Info ^ module_info, CallPPId, _, 
@@ -341,7 +342,7 @@ traverse_abstract_goal(Info, AbstractGoal, !Polyhedron) :-
         )
     ).
 
-traverse_abstract_goal(Info, primitive(Poly, Locals, _), !Polyhedron) :- 
+traverse_abstract_goal(Info, term_primitive(Poly, Locals, _), !Polyhedron) :- 
     post_process_abstract_goal(Locals, Info, Poly, !Polyhedron).
 
 %------------------------------------------------------------------------------%

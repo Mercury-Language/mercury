@@ -1870,7 +1870,7 @@ expand_equiv_types(ModuleName, Items0, Verbose, Stats, Items, CircularTypes,
 make_hlds(Module, Items, MQInfo, EqvMap, Verbose, Stats, HLDS, QualInfo,
         UndefTypes, UndefModes, FoundSemanticError, !IO) :-
     maybe_write_string(Verbose, "% Converting parse tree to hlds...\n", !IO),
-    Prog = module(Module, Items),
+    Prog = unit_module(Module, Items),
     parse_tree_to_hlds(Prog, MQInfo, EqvMap, HLDS, QualInfo,
         UndefTypes, UndefModes, !IO),
     module_info_get_num_errors(HLDS, NumErrors),
@@ -4224,11 +4224,12 @@ make_decl_guards(ModuleName, StartGuard, EndGuard) :-
     EndGuard = foreign_decl_code(lang_c, foreign_decl_is_exported, End,
         term.context_init).
 
-:- pred make_foreign_import_header_code(foreign_import_module::in,
+:- pred make_foreign_import_header_code(foreign_import_module_info::in,
     foreign_decl_code::out, io::di, io::uo) is det.
 
 make_foreign_import_header_code(ForeignImportModule, Include, !IO) :-
-    ForeignImportModule = foreign_import_module(Lang, ModuleName, Context),
+    ForeignImportModule = foreign_import_module_info(Lang, ModuleName,
+        Context),
     (
         Lang = lang_c,
         module_name_to_search_file_name(ModuleName, ".mh", HeaderFileName,

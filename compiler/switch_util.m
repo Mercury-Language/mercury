@@ -46,6 +46,7 @@
     ;       other_switch.
 
     % Convert a type category to a switch category.
+    %
 :- func type_cat_to_switch_cat(type_category) = switch_category.
 
     % Return the priority of a constructor test.
@@ -56,6 +57,7 @@
 :- func switch_priority(cons_tag) = int.
 
     % type_range(TypeCategory, Type, ModuleInfo, Min, Max):
+    %
     % Determine the range [Min..Max] of an atomic type.
     % Fail if the type isn't the sort of type that has a range
     % or if the type's range is too big to switch on (e.g. int).
@@ -113,22 +115,23 @@
     % Group together all the cases that depend on the given variable
     % having the same primary tag value.
     %
-:- pred group_cases_by_ptag(cases_list::in,
-    ptag_case_map::in, ptag_case_map::out) is det.
+:- pred group_cases_by_ptag(cases_list::in, ptag_case_map::in,
+    ptag_case_map::out) is det.
 
     % Order the primary tags based on the number of secondary tags
     % associated with them, putting the ones with the most secondary tags
-    % first. We use selection sort.
-    % Note that it is not an error for a primary tag to have no case list;
-    % this can happen in semidet switches, or in det switches
-    % where the initial inst of the switch variable is a bound(...) inst
-    % representing a subtype.
+    % first.
     %
-:- pred order_ptags_by_count(ptag_count_list::in,
-    ptag_case_map::in, ptag_case_list::out) is det.
+    % Note that it is not an error for a primary tag to have no case list;
+    % this can happen in semidet switches, or in det switches where the
+    % initial inst of the switch variable is a bound(...) inst representing
+    % a subtype.
+    %
+:- pred order_ptags_by_count(ptag_count_list::in, ptag_case_map::in,
+    ptag_case_list::out) is det.
 
-    % order_ptags_by_value(FirstPtag, MaxPtag,
-    %   PtagCaseMap0, PtagCaseList):
+    % order_ptags_by_value(FirstPtag, MaxPtag, PtagCaseMap0, PtagCaseList):
+    %
     % Order the primary tags based on their value, lowest value first.
     % We scan through the primary tags values from zero to maximum.
     % Note that it is not an error for a primary tag to have no case list,
@@ -161,7 +164,7 @@ string_hash_cases([], _, Map) :-
     map.init(Map).
 string_hash_cases([Case | Cases], HashMask, Map) :-
     string_hash_cases(Cases, HashMask, Map0),
-    ( Case = case(_, string_constant(String0), _, _) ->
+    ( Case = case(_, string_tag(String0), _, _) ->
         String = String0
     ;
         unexpected(this_file, "string_hash_cases: non-string case?")
@@ -178,20 +181,17 @@ calc_hash_slots(HashValList, HashMap, Map) :-
     calc_hash_slots_1(HashValList, HashMap, map.init, Map, 0, _).
 
 :- pred calc_hash_slots_1(assoc_list(int, cases_list)::in,
-    map(int, cases_list)::in,
-    map(int, hash_slot)::in, map(int, hash_slot)::out,
-    int::in, int::out) is det.
+    map(int, cases_list)::in, map(int, hash_slot)::in,
+    map(int, hash_slot)::out, int::in, int::out) is det.
 
 calc_hash_slots_1([], _, !Map, !LastUsed).
-calc_hash_slots_1([HashVal - Cases | Rest], HashMap,
-        !Map, !LastUsed) :-
+calc_hash_slots_1([HashVal - Cases | Rest], HashMap, !Map, !LastUsed) :-
     calc_hash_slots_2(Cases, HashVal, HashMap, !Map, !LastUsed),
     calc_hash_slots_1(Rest, HashMap, !Map, !LastUsed).
 
-:- pred calc_hash_slots_2(cases_list::in, int::in,
-    map(int, cases_list)::in,
-    map(int, hash_slot)::in, map(int, hash_slot)::out,
-    int::in, int::out) is det.
+:- pred calc_hash_slots_2(cases_list::in, int::in, map(int, cases_list)::in,
+    map(int, hash_slot)::in, map(int, hash_slot)::out, int::in, int::out)
+    is det.
 
 calc_hash_slots_2([], _HashVal, _HashMap, !Map, !LastUsed).
 calc_hash_slots_2([Case | Cases], HashVal, HashMap, !Map, !LastUsed) :-
@@ -268,21 +268,21 @@ type_cat_to_switch_cat(type_cat_base_typeclass_info) = _ :-
     unexpected(this_file, "type_cat_to_switch_cat: base_typeclass_info").
 
 switch_priority(no_tag) = 0.       % should never occur
-switch_priority(int_constant(_)) = 1.
-switch_priority(reserved_address(_)) = 1.
+switch_priority(int_tag(_)) = 1.
+switch_priority(reserved_address_tag(_)) = 1.
 switch_priority(shared_local_tag(_, _)) = 1.
-switch_priority(single_functor) = 2.
+switch_priority(single_functor_tag) = 2.
 switch_priority(unshared_tag(_)) = 2.
-switch_priority(float_constant(_)) = 3.
+switch_priority(float_tag(_)) = 3.
 switch_priority(shared_remote_tag(_, _)) = 4.
-switch_priority(string_constant(_)) = 5.
-switch_priority(shared_with_reserved_addresses(RAs, Tag)) =
+switch_priority(string_tag(_)) = 5.
+switch_priority(shared_with_reserved_addresses_tag(RAs, Tag)) =
     switch_priority(Tag) + list.length(RAs).
     % The following tags should all never occur in switches.
 switch_priority(pred_closure_tag(_, _, _)) = 6.
-switch_priority(type_ctor_info_constant(_, _, _)) = 6.
-switch_priority(base_typeclass_info_constant(_, _, _)) = 6.
-switch_priority(tabling_info_constant(_, _)) = 6.
+switch_priority(type_ctor_info_tag(_, _, _)) = 6.
+switch_priority(base_typeclass_info_tag(_, _, _)) = 6.
+switch_priority(tabling_info_tag(_, _)) = 6.
 switch_priority(deep_profiling_proc_layout_tag(_, _)) = 6.
 switch_priority(table_io_decl_tag(_, _)) = 6.
 
@@ -333,21 +333,20 @@ get_ptag_counts(Type, ModuleInfo, MaxPrimary, PtagCountMap) :-
 :- pred get_ptag_counts_2(list(cons_tag)::in, int::in, int::out,
     ptag_count_map::in, ptag_count_map::out) is det.
 
-get_ptag_counts_2([], !Max, !PtagCountMap).
-get_ptag_counts_2([ConsTag | TagList], !MaxPrimary, !PtagCountMap) :-
+get_ptag_counts_2([], !MaxPrimary, !PtagCountMap).
+get_ptag_counts_2([Tag | Tags], !MaxPrimary, !PtagCountMap) :-
     (
-        ( ConsTag = single_functor, Primary = 0
-        ; ConsTag = unshared_tag(Primary)
-        )
-    ->
+        ( Tag = single_functor_tag, Primary = 0
+        ; Tag = unshared_tag(Primary)
+        ),
         int.max(Primary, !MaxPrimary),
         ( map.search(!.PtagCountMap, Primary, _) ->
             unexpected(this_file, "unshared tag is shared")
         ;
-            map.det_insert(!.PtagCountMap, Primary, none - (-1),
-                !:PtagCountMap)
+            svmap.det_insert(Primary, none - (-1), !PtagCountMap)
         )
-    ; ConsTag = shared_remote_tag(Primary, Secondary) ->
+    ;
+        Tag = shared_remote_tag(Primary, Secondary),
         int.max(Primary, !MaxPrimary),
         ( map.search(!.PtagCountMap, Primary, Target) ->
             Target = TagType - MaxSoFar,
@@ -357,13 +356,12 @@ get_ptag_counts_2([ConsTag | TagList], !MaxPrimary, !PtagCountMap) :-
                 unexpected(this_file, "remote tag is shared with non-remote")
             ),
             int.max(Secondary, MaxSoFar, Max),
-            map.det_update(!.PtagCountMap, Primary, remote - Max,
-                !:PtagCountMap)
+            svmap.det_update(Primary, remote - Max, !PtagCountMap)
         ;
-            map.det_insert(!.PtagCountMap, Primary,
-                remote - Secondary, !:PtagCountMap)
+            svmap.det_insert(Primary, remote - Secondary, !PtagCountMap)
         )
-    ; ConsTag = shared_local_tag(Primary, Secondary) ->
+    ;
+        Tag = shared_local_tag(Primary, Secondary),
         int.max(Primary, !MaxPrimary),
         ( map.search(!.PtagCountMap, Primary, Target) ->
             Target = TagType - MaxSoFar,
@@ -373,31 +371,38 @@ get_ptag_counts_2([ConsTag | TagList], !MaxPrimary, !PtagCountMap) :-
                 unexpected(this_file, "local tag is shared with non-local")
             ),
             int.max(Secondary, MaxSoFar, Max),
-            map.det_update(!.PtagCountMap, Primary, local - Max,
-                !:PtagCountMap)
+            svmap.det_update(Primary, local - Max, !PtagCountMap)
         ;
-            map.det_insert(!.PtagCountMap, Primary,
-                local - Secondary, !:PtagCountMap)
+            svmap.det_insert(Primary, local - Secondary, !PtagCountMap)
         )
     ;
+        ( Tag = no_tag
+        ; Tag = string_tag(_)
+        ; Tag = float_tag(_)
+        ; Tag = int_tag(_)
+        ; Tag = pred_closure_tag(_, _, _)
+        ; Tag = type_ctor_info_tag(_, _, _)
+        ; Tag = base_typeclass_info_tag(_, _, _)
+        ; Tag = tabling_info_tag(_, _)
+        ; Tag = deep_profiling_proc_layout_tag(_, _)
+        ; Tag = table_io_decl_tag(_, _)
+        ; Tag = reserved_address_tag(_)
+        ; Tag = shared_with_reserved_addresses_tag(_, _)
+        ),
         unexpected(this_file, "non-du tag in get_ptag_counts_2")
     ),
-    get_ptag_counts_2(TagList, !MaxPrimary, !PtagCountMap).
+    get_ptag_counts_2(Tags, !MaxPrimary, !PtagCountMap).
 
 %-----------------------------------------------------------------------------%
-
-    % Group together all the cases that depend on the given variable
-    % having the same primary tag value.
 
 group_cases_by_ptag([], !PtagCaseMap).
 group_cases_by_ptag([Case0 | Cases0], !PtagCaseMap) :-
     Case0 = case(_Priority, Tag, ConsId, Goal),
     ConsIdGoal = stag_goal(ConsId, Goal),
     (
-        ( Tag = single_functor, Primary = 0
+        ( Tag = single_functor_tag, Primary = 0
         ; Tag = unshared_tag(Primary)
-        )
-    ->
+        ),
         ( map.search(!.PtagCaseMap, Primary, _Group) ->
             unexpected(this_file, "unshared tag is shared")
         ;
@@ -406,7 +411,8 @@ group_cases_by_ptag([Case0 | Cases0], !PtagCaseMap) :-
             svmap.det_insert(Primary, ptag_case(none, StagGoalMap),
                 !PtagCaseMap)
         )
-    ; Tag = shared_remote_tag(Primary, Secondary) ->
+    ;
+        Tag = shared_remote_tag(Primary, Secondary),
         ( map.search(!.PtagCaseMap, Primary, Group) ->
             Group = ptag_case(StagLoc, StagGoalMap0),
             expect(unify(StagLoc, remote), this_file,
@@ -420,7 +426,8 @@ group_cases_by_ptag([Case0 | Cases0], !PtagCaseMap) :-
             svmap.det_insert(Primary, ptag_case(remote, StagGoalMap),
                 !PtagCaseMap)
         )
-    ; Tag = shared_local_tag(Primary, Secondary) ->
+    ;
+        Tag = shared_local_tag(Primary, Secondary),
         ( map.search(!.PtagCaseMap, Primary, Group) ->
             Group = ptag_case(StagLoc, StagGoalMap0),
             expect(unify(StagLoc, local), this_file,
@@ -435,23 +442,27 @@ group_cases_by_ptag([Case0 | Cases0], !PtagCaseMap) :-
                 !PtagCaseMap)
         )
     ;
+        ( Tag = no_tag
+        ; Tag = string_tag(_)
+        ; Tag = float_tag(_)
+        ; Tag = int_tag(_)
+        ; Tag = pred_closure_tag(_, _, _)
+        ; Tag = type_ctor_info_tag(_, _, _)
+        ; Tag = base_typeclass_info_tag(_, _, _)
+        ; Tag = tabling_info_tag(_, _)
+        ; Tag = deep_profiling_proc_layout_tag(_, _)
+        ; Tag = table_io_decl_tag(_, _)
+        ; Tag = reserved_address_tag(_)
+        ; Tag = shared_with_reserved_addresses_tag(_, _)
+        ),
         unexpected(this_file, "non-du tag in group_cases_by_ptag")
     ),
     group_cases_by_ptag(Cases0, !PtagCaseMap).
 
 %-----------------------------------------------------------------------------%
 
-    % Order the primary tags based on the number of secondary tags
-    % associated with them, putting the ones with the most secondary tags
-    % first.
-    % Note that it is not an error for a primary tag to have no case list;
-    % this can happen in semidet switches, or in det switches
-    % where the initial inst of the switch variable is a bound(...) inst
-    % representing a subtype.
-    %
-    % We use selection sort.
-
 order_ptags_by_count(PtagCountList0, PtagCaseMap0, PtagCaseList) :-
+    % We use selection sort.
     ( select_frequent_ptag(PtagCountList0, Primary, _, PtagCountList1) ->
         ( map.search(PtagCaseMap0, Primary, PtagCase) ->
             map.delete(PtagCaseMap0, Primary, PtagCaseMap1),
@@ -492,11 +503,6 @@ select_frequent_ptag([PtagCount0 | PtagCountList1], Primary,
     ).
 
 %-----------------------------------------------------------------------------%
-
-    % Order the primary tags based on their value, lowest value first.
-    % We scan through the primary tags values from zero to maximum.
-    % Note that it is not an error for a primary tag to have no case list,
-    % since this can happen in semidet switches.
 
 order_ptags_by_value(Ptag, MaxPtag, PtagCaseMap0, PtagCaseList) :-
     ( MaxPtag >= Ptag ->

@@ -178,9 +178,9 @@ fill_expr_slots(GoalInfo, Path0, SlotInfo, Goal0, Goal) :-
         Goal = if_then_else(A, Cond, Then, Else)
     ;
         Goal0 = unify(LHS, RHS0, Mode, Kind, Context),
-        ( RHS0 = lambda_goal(A, B, C, D, E, F, G, LambdaGoal0) ->
+        ( RHS0 = rhs_lambda_goal(A, B, C, D, E, F, G, LambdaGoal0) ->
             fill_goal_slots(Path0, SlotInfo, LambdaGoal0, LambdaGoal),
-            RHS = lambda_goal(A, B, C, D, E, F, G, LambdaGoal)
+            RHS = rhs_lambda_goal(A, B, C, D, E, F, G, LambdaGoal)
         ;
             RHS = RHS0
         ),

@@ -836,7 +836,7 @@ ml_gen_foreign_code(ModuleInfo, AllForeignCode, !IO) :-
         BackendForeignLanguages, map.init, AllForeignCode).
 
 :- pred ml_gen_foreign_code_lang(module_info::in, foreign_decl_info::in,
-    foreign_body_info::in, foreign_import_module_info::in,
+    foreign_body_info::in, foreign_import_module_info_list::in,
     foreign_language::in,
     map(foreign_language, mlds_foreign_code)::in,
     map(foreign_language, mlds_foreign_code)::out) is det.
@@ -884,7 +884,10 @@ ml_gen_imports(ModuleInfo, MLDS_ImportList) :-
 foreign_type_required_imports(target_c, _) = [].
 foreign_type_required_imports(target_il, TypeDefn) = Imports :-
     hlds_data.get_type_defn_body(TypeDefn, Body),
-    ( Body = foreign_type(foreign_type_body(MaybeIL, _MaybeC, _MaybeJava)) ->
+    (
+        Body = hlds_foreign_type(
+            foreign_type_body(MaybeIL, _MaybeC, _MaybeJava))
+    ->
         (
             MaybeIL = yes(Data),
             Data = foreign_type_lang_data(il_type(_, Location, _), _, _)
@@ -959,12 +962,12 @@ ml_gen_preds_2(ModuleInfo, PredIds0, PredTable, !Defns, !IO) :-
         pred_info_get_import_status(PredInfo, ImportStatus),
         (
             (
-                ImportStatus = imported(_)
+                ImportStatus = status_imported(_)
             ;
                 % We generate incorrect and unnecessary code for the external
                 % special preds which are pseudo_imported, so just ignore them.
                 is_unify_or_compare_pred(PredInfo),
-                ImportStatus = external(pseudo_imported)
+                ImportStatus = status_external(status_pseudo_imported)
             )
         ->
             true
@@ -985,7 +988,7 @@ ml_gen_preds_2(ModuleInfo, PredIds0, PredTable, !Defns, !IO) :-
     is det.
 
 ml_gen_pred(ModuleInfo, PredId, PredInfo, ImportStatus, !Defns, !IO) :-
-    ( ImportStatus = external(_) ->
+    ( ImportStatus = status_external(_) ->
         ProcIds = pred_info_procids(PredInfo)
     ;
         ProcIds = pred_info_non_imported_procids(PredInfo)
@@ -1366,7 +1369,7 @@ ml_gen_proc_defn(ModuleInfo, PredId, ProcId, ProcDefnBody, ExtraDefns) :-
     some [!Info] (
         !:Info = ml_gen_info_init(ModuleInfo, PredId, ProcId),
 
-        ( ImportStatus = external(_) ->
+        ( ImportStatus = status_external(_) ->
             % For Mercury procedures declared `:- external', we generate an
             % MLDS definition for them with no function body. The MLDS ->
             % target code pass can treat this accordingly, e.g. for C
@@ -2346,7 +2349,7 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
         FirstCode, FirstContext, LaterCode, LaterContext,
         SharedCode, SharedContext, Decls, Statements, !Info) :-
 
-    Lang = foreign_language(Attributes),
+    Lang = get_foreign_language(Attributes),
     ( Lang = lang_csharp ->
         sorry(this_file, "nondet pragma foreign_proc for C#")
     ;
@@ -2381,7 +2384,7 @@ ml_gen_nondet_pragma_foreign_proc(CodeModel, Attributes, PredId, _ProcId,
         AssignOutputsList, ConvDecls, ConvStatements, !Info),
 
     % Generate code fragments to obtain and release the global lock.
-    ThreadSafe = thread_safe(Attributes),
+    ThreadSafe = get_thread_safe(Attributes),
     ml_gen_obtain_release_global_lock(!.Info, ThreadSafe, PredId,
         ObtainLock, ReleaseLock),
 
@@ -2508,7 +2511,7 @@ ml_generate_runtime_cond_code(Expr, CondRval, !Info) :-
 
 ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
         Args, ExtraArgs, Foreign_Code, Context, Decls, Statements, !Info) :-
-    Lang = foreign_language(Attributes),
+    Lang = get_foreign_language(Attributes),
     (
         CodeModel = model_det,
         OrdinaryKind = kind_det
@@ -2526,7 +2529,7 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
         )
     ;
         CodeModel = model_non,
-        OrdinaryDespiteDetism = ordinary_despite_detism(Attributes),
+        OrdinaryDespiteDetism = get_ordinary_despite_detism(Attributes),
         (
             OrdinaryDespiteDetism = no,
             unexpected(this_file,
@@ -2574,7 +2577,7 @@ ml_gen_ordinary_pragma_foreign_proc(CodeModel, Attributes, PredId, ProcId,
 ml_gen_ordinary_pragma_java_proc(_CodeModel, Attributes, _PredId, _ProcId,
         Args, ExtraArgs, JavaCode, Context, Decls, Statements, !Info) :-
 
-    Lang = foreign_language(Attributes),
+    Lang = get_foreign_language(Attributes),
 
     % Generate <declaration of one local variable for each arg>
     ml_gen_pragma_c_decls(!.Info, Lang, Args, ArgDeclsList),
@@ -2629,7 +2632,7 @@ ml_gen_ordinary_pragma_managed_proc(OrdinaryKind, Attributes, _PredId, _ProcId,
     expect(unify(ExtraArgs, []), this_file,
         "ml_gen_ordinary_pragma_managed_proc: extra args"),
 
-    ForeignLang = foreign_language(Attributes),
+    ForeignLang = get_foreign_language(Attributes),
     MLDSContext = mlds_make_context(Context),
     ml_gen_info_get_value_output_vars(!.Info, OutputVars),
     ml_gen_var_list(!.Info, OutputVars, OutputVarLvals),
@@ -2771,7 +2774,7 @@ ml_gen_ordinary_pragma_il_proc(_CodeModel, Attributes, PredId, ProcId,
     OutlineStmt = inline_target_code(lang_il, [
         user_target_code(ForeignCode, yes(Context),
             get_target_code_attributes(lang_il,
-                Attributes ^ extra_attributes))
+                get_extra_attributes(Attributes)))
         ]),
 
     ILCodeFragment = statement(atomic(OutlineStmt), MLDSContext),
@@ -2939,7 +2942,7 @@ ml_gen_pragma_il_proc_var_decl_defn(ModuleInfo, MLDSModuleName, ArgMap, VarSet,
 ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
         OrigArgs, ExtraArgs, C_Code, Context, Decls, Statements, !Info) :-
 
-    Lang = foreign_language(Attributes),
+    Lang = get_foreign_language(Attributes),
 
     % Generate <declaration of one local variable for each arg>
     list.append(OrigArgs, ExtraArgs, Args),
@@ -2953,7 +2956,7 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
         AssignOutputsList, ConvDecls, ConvStatements, !Info),
 
     % Generate code fragments to obtain and release the global lock.
-    ThreadSafe = thread_safe(Attributes),
+    ThreadSafe = get_thread_safe(Attributes),
     ml_gen_obtain_release_global_lock(!.Info, ThreadSafe, PredId,
         ObtainLock, ReleaseLock),
 
@@ -3045,8 +3048,8 @@ ml_gen_ordinary_pragma_c_proc(OrdinaryKind, Attributes, PredId, _ProcId,
     % Generate code fragments to obtain and release the global lock
     % (this is used for ensuring thread safety in a concurrent implementation).
     %
-:- pred ml_gen_obtain_release_global_lock(ml_gen_info::in, thread_safe::in,
-    pred_id::in, string::out, string::out) is det.
+:- pred ml_gen_obtain_release_global_lock(ml_gen_info::in,
+    proc_thread_safe::in, pred_id::in, string::out, string::out) is det.
 
 ml_gen_obtain_release_global_lock(Info, ThreadSafe, PredId,
         ObtainLock, ReleaseLock) :-
@@ -3055,7 +3058,7 @@ ml_gen_obtain_release_global_lock(Info, ThreadSafe, PredId,
     globals.lookup_bool_option(Globals, parallel, Parallel),
     (
         Parallel = yes,
-        ThreadSafe = not_thread_safe
+        ThreadSafe = proc_not_thread_safe
     ->
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         Name = pred_info_name(PredInfo),
@@ -3232,7 +3235,7 @@ ml_gen_pragma_c_gen_input_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
         ;
             Lang = lang_c,
             IsForeign = yes(Assertions),
-            list.member(can_pass_as_mercury_type, Assertions),
+            list.member(foreign_type_can_pass_as_mercury_type, Assertions),
             MaybeCast = yes("(" ++ TypeString ++ ") ")
         )
     ->
@@ -3423,7 +3426,7 @@ ml_gen_pragma_c_gen_output_arg(Lang, Var, ArgName, OrigType, BoxPolicy,
         ;
             Lang = lang_c,
             IsForeign = yes(Assertions),
-            list.member(can_pass_as_mercury_type, Assertions),
+            list.member(foreign_type_can_pass_as_mercury_type, Assertions),
             Cast = yes
         )
     ->

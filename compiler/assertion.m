@@ -5,14 +5,14 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % Module: assertion.m.
 % Main authors: petdr.
-% 
+%
 % This module is an abstract interface to the assertion table.
 % Note that this is a first design and will probably change
 % substantially in the future.
-% 
+%
 %-----------------------------------------------------------------------------%
 
 :- module hlds.assertion.
@@ -420,7 +420,7 @@ is_construction_equivalence_assertion(Module, AssertId, ConsId, PredId) :-
 
 single_construction(unify(_, UnifyRhs, _, _, _) - _,
         cons(QualifiedSymName, Arity)) :-
-    UnifyRhs = functor(cons(UnqualifiedSymName, Arity), _, _),
+    UnifyRhs = rhs_functor(cons(UnqualifiedSymName, Arity), _, _),
     match_sym_name(UnqualifiedSymName, QualifiedSymName).
 
     % The side containing the predicate call must be a single call
@@ -437,7 +437,7 @@ predicate_call(Goal, PredId) :-
         P = (pred(G::in) is semidet :-
             not (
                 G = unify(_, UnifyRhs, _, _, _) - _,
-                UnifyRhs = functor(_, _, _)
+                UnifyRhs = rhs_functor(_, _, _)
             )
         ),
         list.filter(P, Unifications, [])
@@ -589,15 +589,15 @@ equal_vars([VA | VAs], [VB | VBs], !Subst) :-
 :- pred equal_unification(unify_rhs::in, unify_rhs::in, subst::in, subst::out)
     is semidet.
 
-equal_unification(var(A), var(B), !Subst) :-
+equal_unification(rhs_var(A), rhs_var(B), !Subst) :-
     equal_vars([A], [B], !Subst).
-equal_unification(functor(ConsId, E, VarsA), functor(ConsId, E, VarsB),
+equal_unification(rhs_functor(ConsId, E, VarsA), rhs_functor(ConsId, E, VarsB),
         !Subst) :-
     equal_vars(VarsA, VarsB, !Subst).
 equal_unification(LambdaGoalA, LambdaGoalB, !Subst) :-
-    LambdaGoalA = lambda_goal(Purity, PredOrFunc, EvalMethod,
+    LambdaGoalA = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
         NLVarsA, LVarsA, Modes, Det, GoalA),
-    LambdaGoalB = lambda_goal(Purity, PredOrFunc, EvalMethod,
+    LambdaGoalB = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
         NLVarsB, LVarsB, Modes, Det, GoalB),
     equal_vars(NLVarsA, NLVarsB, !Subst),
     equal_vars(LVarsA, LVarsB, !Subst),
@@ -730,8 +730,8 @@ in_interface_check(plain_call(PredId,_,_,_,_,SymName) - GoalInfo, _PredInfo,
         goal_info_get_context(GoalInfo, Context),
         PredOrFunc = pred_info_is_pred_or_func(CallPredInfo),
         Arity = pred_info_orig_arity(CallPredInfo),
-        write_assertion_interface_error(Context,
-            call(PredOrFunc, SymName, Arity), !Module, !IO)
+        IdStr = simple_call_id_to_string(PredOrFunc, SymName, Arity),
+        write_assertion_interface_error(Context, IdStr, !Module, !IO)
     ;
         true
     ).
@@ -750,8 +750,8 @@ in_interface_check(call_foreign_proc(_, PredId, _, _, _, _, _) -
         Name = pred_info_name(PragmaPredInfo),
         SymName = unqualified(Name),
         Arity = pred_info_orig_arity(PragmaPredInfo),
-        write_assertion_interface_error(Context,
-            call(PredOrFunc, SymName, Arity), !Module, !IO)
+        IdStr = simple_call_id_to_string(PredOrFunc, SymName, Arity),
+        write_assertion_interface_error(Context, IdStr, !Module, !IO)
     ;
         true
     ).
@@ -788,8 +788,8 @@ in_interface_check_shorthand(bi_implication(LHS, RHS), PredInfo,
     prog_context::in, pred_info::in, module_info::in, module_info::out,
     io::di, io::uo) is det.
 
-in_interface_check_unify_rhs(var(_), _, _, _, !Module, !IO).
-in_interface_check_unify_rhs(functor(ConsId, _, _), Var, Context,
+in_interface_check_unify_rhs(rhs_var(_), _, _, _, !Module, !IO).
+in_interface_check_unify_rhs(rhs_functor(ConsId, _, _), Var, Context,
         PredInfo, !Module, !IO) :-
     pred_info_clauses_info(PredInfo, ClausesInfo),
     clauses_info_get_vartypes(ClausesInfo, VarTypes),
@@ -799,8 +799,9 @@ in_interface_check_unify_rhs(functor(ConsId, _, _), Var, Context,
         map.lookup(Types, TypeCtor, TypeDefn),
         hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
         ( is_defined_in_implementation_section(TypeStatus) = yes ->
-            write_assertion_interface_error(Context, cons(ConsId),
-                !Module, !IO)
+            ConsIdStr = cons_id_to_string(ConsId),
+            IdStr = "constructor `" ++ ConsIdStr ++ "'",
+            write_assertion_interface_error(Context, IdStr, !Module, !IO)
         ;
             true
         )
@@ -808,7 +809,7 @@ in_interface_check_unify_rhs(functor(ConsId, _, _), Var, Context,
         unexpected(this_file,
             "in_interface_check_unify_rhs: type_to_ctor_and_args failed.")
     ).
-in_interface_check_unify_rhs(lambda_goal(_, _, _, _, _, _, _, Goal),
+in_interface_check_unify_rhs(rhs_lambda_goal(_, _, _, _, _, _, _, Goal),
         _Var, _Context, PredInfo, !Module, !IO) :-
     in_interface_check(Goal, PredInfo, !Module, !IO).
 
@@ -829,48 +830,40 @@ in_interface_check_list([Goal0 | Goal0s], PredInfo, !Module, !IO) :-
     %
 :- func is_defined_in_implementation_section(import_status) = bool.
 
-is_defined_in_implementation_section(abstract_exported) = yes.
-is_defined_in_implementation_section(exported_to_submodules) = yes.
-is_defined_in_implementation_section(local) = yes.
-is_defined_in_implementation_section(imported(implementation)) = yes.
-
-is_defined_in_implementation_section(imported(interface)) = no.
-is_defined_in_implementation_section(imported(ancestor)) = no.
-is_defined_in_implementation_section(imported(ancestor_private_interface))
-    = no.
-is_defined_in_implementation_section(opt_imported) = no.
-is_defined_in_implementation_section(abstract_imported) = no.
-is_defined_in_implementation_section(pseudo_imported) = no.
-is_defined_in_implementation_section(exported) = no.
-is_defined_in_implementation_section(opt_exported) = yes.
-is_defined_in_implementation_section(pseudo_exported) = no.
-
-is_defined_in_implementation_section(external(Status)) =
+is_defined_in_implementation_section(status_abstract_exported) = yes.
+is_defined_in_implementation_section(status_exported_to_submodules) = yes.
+is_defined_in_implementation_section(status_local) = yes.
+is_defined_in_implementation_section(status_opt_imported) = no.
+is_defined_in_implementation_section(status_abstract_imported) = no.
+is_defined_in_implementation_section(status_pseudo_imported) = no.
+is_defined_in_implementation_section(status_exported) = no.
+is_defined_in_implementation_section(status_opt_exported) = yes.
+is_defined_in_implementation_section(status_pseudo_exported) = no.
+is_defined_in_implementation_section(status_external(Status)) =
     is_defined_in_implementation_section(Status).
+is_defined_in_implementation_section(status_imported(ImportLocn)) = Impl :-
+    (
+        ImportLocn = import_locn_implementation,
+        Impl = yes
+    ;
+        ( ImportLocn = import_locn_interface
+        ; ImportLocn = import_locn_ancestor
+        ; ImportLocn = import_locn_ancestor_private_interface
+        ),
+        Impl = yes
+    ).
 
 %-----------------------------------------------------------------------------%
 
-:- type call_or_consid
-    --->    call(pred_or_func, sym_name, arity)
-    ;       cons(cons_id).
-
-:- pred write_assertion_interface_error(prog_context::in, call_or_consid::in,
+:- pred write_assertion_interface_error(prog_context::in, string::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-write_assertion_interface_error(Context, Type, !Module, !IO) :-
+write_assertion_interface_error(Context, IdStr, !Module, !IO) :-
     module_info_incr_errors(!Module),
     module_info_get_name(!.Module, ModuleName),
     ModuleStr = describe_sym_name(ModuleName),
     write_error_pieces(Context, 0,
         [words("In interface for module"), fixed(ModuleStr ++ ":")], !IO),
-    (
-        Type = call(PredOrFunc, SymName, Arity),
-        IdStr = simple_call_id_to_string(PredOrFunc, SymName, Arity)
-    ;
-        Type = cons(ConsId),
-        ConsIdStr = cons_id_to_string(ConsId),
-        IdStr = "constructor `" ++ ConsIdStr ++ "'"
-    ),
     write_error_pieces_not_first_line(Context, 0,
         [words("error: exported promise refers to"),
         words(IdStr), words("which is defined in the "),

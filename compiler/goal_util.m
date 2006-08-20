@@ -411,8 +411,8 @@ create_renaming_2([OrigVar | OrigVars], InstMapDelta, !VarSet, !VarTypes,
     ),
     Mode = ((NewInst -> NewInst) - (free -> NewInst)),
     UnifyInfo = assign(OrigVar, NewVar),
-    UnifyContext = unify_context(explicit, []),
-    GoalExpr = unify(OrigVar, var(NewVar), Mode, UnifyInfo, UnifyContext),
+    UnifyContext = unify_context(umc_explicit, []),
+    GoalExpr = unify(OrigVar, rhs_var(NewVar), Mode, UnifyInfo, UnifyContext),
     set.list_to_set([OrigVar, NewVar], NonLocals),
     instmap_delta_from_assoc_list([OrigVar - NewInst], UnifyInstMapDelta),
     goal_info_init(NonLocals, UnifyInstMapDelta, detism_det, purity_pure,
@@ -636,15 +636,15 @@ rename_vars_in_cases(Must, Subn,
 :- pred rename_unify_rhs(bool::in, prog_var_renaming::in,
     unify_rhs::in, unify_rhs::out) is det.
 
-rename_unify_rhs(Must, Subn, var(Var0), var(Var)) :-
+rename_unify_rhs(Must, Subn, rhs_var(Var0), rhs_var(Var)) :-
     rename_var(Must, Subn, Var0, Var).
 rename_unify_rhs(Must, Subn,
-        functor(Functor, E, ArgVars0), functor(Functor, E, ArgVars)) :-
+        rhs_functor(Functor, E, ArgVars0), rhs_functor(Functor, E, ArgVars)) :-
     rename_var_list(Must, Subn, ArgVars0, ArgVars).
 rename_unify_rhs(Must, Subn,
-        lambda_goal(Purity, PredOrFunc, EvalMethod,
+        rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
             NonLocals0, Vars0, Modes, Det, Goal0),
-        lambda_goal(Purity, PredOrFunc, EvalMethod,
+        rhs_lambda_goal(Purity, PredOrFunc, EvalMethod,
             NonLocals, Vars, Modes, Det, Goal)) :-
     rename_var_list(Must, Subn, NonLocals0, NonLocals),
     rename_var_list(Must, Subn, Vars0, Vars),
@@ -877,13 +877,13 @@ cases_goal_vars([case(_, Goal - _) | Cases], !Set) :-
     set(prog_var)::in, set(prog_var)::out) is det.
 
 rhs_goal_vars(RHS, !Set) :-
-    RHS = var(X),
+    RHS = rhs_var(X),
     svset.insert(X, !Set).
 rhs_goal_vars(RHS, !Set) :-
-    RHS = functor(_Functor, _, ArgVars),
+    RHS = rhs_functor(_Functor, _, ArgVars),
     svset.insert_list(ArgVars, !Set).
 rhs_goal_vars(RHS, !Set) :-
-    RHS = lambda_goal(_, _, _, NonLocals, LambdaVars, _, _, Goal - _),
+    RHS = rhs_lambda_goal(_, _, _, NonLocals, LambdaVars, _, _, Goal - _),
     svset.insert_list(NonLocals, !Set),
     svset.insert_list(LambdaVars, !Set),
     goal_vars_2(Goal, !Set).
@@ -1284,10 +1284,10 @@ case_to_disjunct(Var, ConsId, CaseGoal, InstMap, Disjunct, !VarSet, !VarTypes,
     ),
     list.map(InstToUniMode, ArgInsts, UniModes),
     UniMode = (Inst0 -> Inst0) - (Inst0 -> Inst0),
-    UnifyContext = unify_context(explicit, []),
+    UnifyContext = unify_context(umc_explicit, []),
     Unification = deconstruct(Var, ConsId, ArgVars, UniModes, can_fail,
         cannot_cgc),
-    ExtraGoal = unify(Var, functor(ConsId, no, ArgVars), UniMode,
+    ExtraGoal = unify(Var, rhs_functor(ConsId, no, ArgVars), UniMode,
         Unification, UnifyContext),
     set.singleton_set(NonLocals, Var),
     instmap_delta_init_reachable(ExtraInstMapDelta0),

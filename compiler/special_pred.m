@@ -210,8 +210,8 @@ special_pred_is_generated_lazily(ModuleInfo, TypeCtor, Body, Status) :-
     % mode analysis and we therefore require the appropriate names to
     % appear in the symbol table.
 
-    Body \= solver_type(_, _),
-    Body \= abstract_type(solver_type),
+    Body \= hlds_solver_type(_, _),
+    Body \= hlds_abstract_type(solver_type),
 
     TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor),
     (
@@ -229,7 +229,7 @@ special_pred_is_generated_lazily(ModuleInfo, TypeCtor, Body, Status) :-
 
 special_pred_is_generated_lazily_2(ModuleInfo, _TypeCtor, Body, Status) :-
     (
-        status_defined_in_this_module(Status, no)
+        status_defined_in_this_module(Status) = no
     ;
         module_info_get_globals(ModuleInfo, Globals),
         globals.lookup_bool_option(Globals, special_preds, no)
@@ -241,7 +241,7 @@ special_pred_is_generated_lazily_2(ModuleInfo, _TypeCtor, Body, Status) :-
     % polymorphism.process_generated_pred can't handle calls to polymorphic
     % procedures after the initial polymorphism pass.
     %
-    Body \= foreign_type(_),
+    Body \= hlds_foreign_type(_),
 
     % The special predicates for types with user-defined equality or
     % existentially typed constructors are always generated immediately
@@ -271,7 +271,7 @@ special_pred_for_type_needs_typecheck(ModuleInfo, SpecialPredId, Body) :-
 
 can_generate_special_pred_clauses_for_type(ModuleInfo, TypeCtor, Body) :-
     (
-        Body \= abstract_type(_)
+        Body \= hlds_abstract_type(_)
     ;
         % Only the types which have it's unification and comparison
         % predicates defined in private_builtin.m

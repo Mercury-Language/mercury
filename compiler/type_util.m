@@ -373,7 +373,7 @@ type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, UserEqComp) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_target(Globals, Target),
     (
-        TypeBody = du_type(_, _, _, _, _, _),
+        TypeBody = hlds_du_type(_, _, _, _, _, _),
         (
             TypeBody ^ du_type_is_foreign_type = yes(ForeignTypeBody),
             have_foreign_type_for_backend(Target, ForeignTypeBody, yes)
@@ -384,21 +384,21 @@ type_body_has_user_defined_equality_pred(ModuleInfo, TypeBody, UserEqComp) :-
             TypeBody ^ du_type_usereq = yes(UserEqComp)
         )
     ;
-        TypeBody = foreign_type(ForeignTypeBody),
+        TypeBody = hlds_foreign_type(ForeignTypeBody),
         UserEqComp = foreign_type_body_has_user_defined_eq_comp_pred(
             ModuleInfo, ForeignTypeBody)
     ;
-        TypeBody = solver_type(_SolverTypeDetails, yes(UserEqComp))
+        TypeBody = hlds_solver_type(_SolverTypeDetails, yes(UserEqComp))
     ).
 
 type_is_solver_type(ModuleInfo, Type) :-
     type_to_type_defn_body(ModuleInfo, Type, TypeBody),
     (
-        TypeBody = solver_type(_, _)
+        TypeBody = hlds_solver_type(_, _)
     ;
-        TypeBody = abstract_type(solver_type)
+        TypeBody = hlds_abstract_type(solver_type)
     ;
-        TypeBody = eqv_type(EqvType),
+        TypeBody = hlds_eqv_type(EqvType),
         type_is_solver_type(ModuleInfo, EqvType)
     ).
 
@@ -407,11 +407,13 @@ type_has_solver_type_details(ModuleInfo, Type, SolverTypeDetails) :-
     type_body_has_solver_type_details(ModuleInfo, TypeBody,
         SolverTypeDetails).
 
-type_body_has_solver_type_details(_ModuleInfo,
-        solver_type(SolverTypeDetails, _MaybeUserEqComp), SolverTypeDetails).
-type_body_has_solver_type_details( ModuleInfo,
-        eqv_type(Type), SolverTypeDetails) :-
-    type_has_solver_type_details(ModuleInfo, Type, SolverTypeDetails).
+type_body_has_solver_type_details(ModuleInfo, Type, SolverTypeDetails) :-
+    (
+        Type = hlds_solver_type(SolverTypeDetails, _MaybeUserEqComp)
+    ;
+        Type = hlds_eqv_type(EqvType),
+        type_has_solver_type_details(ModuleInfo, EqvType, SolverTypeDetails)
+    ).
 
     % XXX We can't assume that type variables refer to solver types
     % because otherwise the compiler will try to construct initialisation
@@ -429,11 +431,11 @@ is_solver_type(ModuleInfo, Type) :-
 
 type_body_is_solver_type(ModuleInfo, TypeBody) :-
     (
-        TypeBody = solver_type(_, _)
+        TypeBody = hlds_solver_type(_, _)
     ;
-        TypeBody = abstract_type(solver_type)
+        TypeBody = hlds_abstract_type(solver_type)
     ;
-        TypeBody = eqv_type(Type),
+        TypeBody = hlds_eqv_type(Type),
         is_solver_type(ModuleInfo, Type)
     ).
 
@@ -473,9 +475,9 @@ type_ctor_has_hand_defined_rtti(Type, Body) :-
     ; Name = "typeclass_info"
     ; Name = "base_typeclass_info"
     ),
-    \+ ( Body = du_type(_, _, _, _, _, yes(_))
-       ; Body = foreign_type(_)
-       ; Body = solver_type(_, _)
+    \+ ( Body = hlds_du_type(_, _, _, _, _, yes(_))
+       ; Body = hlds_foreign_type(_)
+       ; Body = hlds_solver_type(_, _)
        ).
 
 %-----------------------------------------------------------------------------%
@@ -545,6 +547,8 @@ classify_type_ctor(ModuleInfo, TypeCtor) = TypeCategory :-
             TypeCategory = type_cat_user_ctor
         )
     ).
+
+%-----------------------------------------------------------------------------%
 
 :- pred type_ctor_is_enumeration(type_ctor::in, module_info::in) is semidet.
 

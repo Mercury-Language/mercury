@@ -87,7 +87,12 @@
 
 multiple_def_error(Status, Name, Arity, DefType, Context, OrigContext,
         FoundError, !IO) :-
-    ( Status \= opt_imported ->
+    ( Status = status_opt_imported ->
+        % We don't take care not to read the same declaration from multiple
+        % sources with inter-module optimization, so ignore multiple definition
+        % errors in the items read for inter-module optimization.
+        FoundError = no
+    ;
         Pieces = [words("Error:"),
             fixed(DefType), sym_name_and_arity(Name / Arity),
             words("multiply defined.")],
@@ -98,12 +103,6 @@ multiple_def_error(Status, Name, Arity, DefType, Context, OrigContext,
         write_error_pieces(OrigContext, 0, OrigPieces, !IO),
         io.set_exit_status(1, !IO),
         FoundError = yes
-    ;
-        % We don't take care not to read the same declaration
-        % from multiple sources with inter-module optimization
-        % so ignore multiple definition errors in the items read
-        % for inter-module optimization.
-        FoundError = no
     ).
 
 undefined_pred_or_func_error(Name, Arity, Context, Description, !IO) :-
@@ -183,8 +182,8 @@ output_mode_decl_for_pred_info(PredInfo, ProcId, !IO) :-
     %
 maybe_undefined_pred_error(Name, Arity, PredOrFunc, Status, IsClassMethod,
         Context, Description, !IO) :-
-    status_defined_in_this_module(Status, DefinedInThisModule),
-    status_is_exported(Status, IsExported),
+    DefinedInThisModule = status_defined_in_this_module(Status),
+    IsExported = status_is_exported(Status),
     globals.io_lookup_bool_option(infer_types, InferTypes, !IO),
     (
         DefinedInThisModule = yes,
@@ -222,7 +221,7 @@ error_is_exported(Context, Message, !IO) :-
     io.set_exit_status(1, !IO).
 
 error_if_exported(Status, Context, Message, !IO) :-
-    ( Status = exported ->
+    ( Status = status_exported ->
         error_is_exported(Context, Message, !IO)
     ;
         true

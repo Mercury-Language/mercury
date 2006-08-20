@@ -125,7 +125,7 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
         % are zero or one modes for the called predicate specially.
         %
         ProcIds = [],
-        \+ check_marker(Markers, infer_modes)
+        \+ check_marker(Markers, marker_infer_modes)
     ->
         set.init(WaitingVars),
         mode_info_error(WaitingVars, mode_error_no_mode_decl, !ModeInfo),
@@ -134,7 +134,7 @@ modecheck_call_pred(PredId, DeterminismKnown, ProcId0, TheProcId,
         ExtraGoals = no_extra_goals
     ;
         ProcIds = [ProcId],
-        ( \+ check_marker(Markers, infer_modes)
+        ( \+ check_marker(Markers, marker_infer_modes)
         ; MayChangeCalledProc = may_not_change_called_proc
         )
     ->
@@ -319,7 +319,7 @@ no_matching_modes(PredId, ArgVars, DeterminismKnown, WaitingVars, TheProcId,
     mode_info_get_preds(!.ModeInfo, Preds),
     map.lookup(Preds, PredId, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
-    ( check_marker(Markers, infer_modes) ->
+    ( check_marker(Markers, marker_infer_modes) ->
         insert_new_mode(PredId, ArgVars, DeterminismKnown, TheProcId,
             !ModeInfo),
         % we don't yet know the final insts for the newly created mode

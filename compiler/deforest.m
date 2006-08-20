@@ -1825,7 +1825,7 @@ unfold_call(CheckImprovement, CheckVars, PredId, ProcId, Args,
         (
             MayHaveParallelConj = yes,
             pred_info_get_markers(PredInfo1, Markers1),
-            add_marker(may_have_parallel_conj, Markers1, Markers),
+            add_marker(marker_may_have_parallel_conj, Markers1, Markers),
             pred_info_set_markers(Markers, PredInfo1, PredInfo)
         ;
             MayHaveParallelConj = no,

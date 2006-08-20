@@ -363,7 +363,7 @@ get_single_arg_inst(constrained_inst_vars(_, Inst), ModuleInfo, ConsId,
     is semidet.
 
 get_single_arg_inst_2([BoundInst | BoundInsts], ConsId, ArgInst) :-
-    ( BoundInst = functor(ConsId, [ArgInst0]) ->
+    ( BoundInst = bound_functor(ConsId, [ArgInst0]) ->
         ArgInst = ArgInst0
     ;
         get_single_arg_inst_2(BoundInsts, ConsId, ArgInst)
@@ -393,7 +393,7 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_unify_insts(InstTable, UnifyInstTable),
         map.lookup(UnifyInstTable, InstName, MaybeInst),
-        ( MaybeInst = known(Inst0, _) ->
+        ( MaybeInst = inst_det_known(Inst0, _) ->
             Inst = Inst0
         ;
             Inst = defined_inst(InstName)
@@ -403,7 +403,7 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_merge_insts(InstTable, MergeInstTable),
         map.lookup(MergeInstTable, A - B, MaybeInst),
-        ( MaybeInst = known(Inst0) ->
+        ( MaybeInst = inst_known(Inst0) ->
             Inst = Inst0
         ;
             Inst = defined_inst(InstName)
@@ -413,7 +413,7 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_ground_insts(InstTable, GroundInstTable),
         map.lookup(GroundInstTable, InstName, MaybeInst),
-        ( MaybeInst = known(Inst0, _) ->
+        ( MaybeInst = inst_det_known(Inst0, _) ->
             Inst = Inst0
         ;
             Inst = defined_inst(InstName)
@@ -423,7 +423,7 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_any_insts(InstTable, AnyInstTable),
         map.lookup(AnyInstTable, InstName, MaybeInst),
-        ( MaybeInst = known(Inst0, _) ->
+        ( MaybeInst = inst_det_known(Inst0, _) ->
             Inst = Inst0
         ;
             Inst = defined_inst(InstName)
@@ -433,7 +433,7 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         module_info_get_inst_table(ModuleInfo, InstTable),
         inst_table_get_shared_insts(InstTable, SharedInstTable),
         map.lookup(SharedInstTable, SharedInstName, MaybeInst),
-        ( MaybeInst = known(Inst0) ->
+        ( MaybeInst = inst_known(Inst0) ->
             Inst = Inst0
         ;
             Inst = defined_inst(InstName)
@@ -444,7 +444,7 @@ inst_lookup(ModuleInfo, InstName, Inst) :-
         inst_table_get_mostly_uniq_insts(InstTable,
             NondetLiveInstTable),
         map.lookup(NondetLiveInstTable, NondetLiveInstName, MaybeInst),
-        ( MaybeInst = known(Inst0) ->
+        ( MaybeInst = inst_known(Inst0) ->
             Inst = Inst0
         ;
             Inst = defined_inst(InstName)
@@ -767,7 +767,7 @@ constructors_to_bound_insts_2(ModuleInfo, Uniq, [Ctor | Ctors], ArgInst,
     Ctor = ctor(_ExistQVars, _Constraints, Name, Args),
     ctor_arg_list_to_inst_list(Args, ArgInst, Insts),
     list.length(Insts, Arity),
-    BoundInst = functor(cons(Name, Arity), Insts),
+    BoundInst = bound_functor(cons(Name, Arity), Insts),
     constructors_to_bound_insts_2(ModuleInfo, Uniq, Ctors,
         ArgInst, BoundInsts).
 
@@ -809,7 +809,7 @@ propagate_ctor_info_2(ModuleInfo, Type, BoundInsts0, BoundInsts) :-
     bound_inst::in, bound_inst::out) is det.
 
 propagate_ctor_info_tuple(ModuleInfo, TupleArgTypes, BoundInst0, BoundInst) :-
-    BoundInst0 = functor(Functor, ArgInsts0),
+    BoundInst0 = bound_functor(Functor, ArgInsts0),
     (
         Functor = cons(unqualified("{}"), _),
         list.length(ArgInsts0, ArgInstsLen),
@@ -827,7 +827,7 @@ propagate_ctor_info_tuple(ModuleInfo, TupleArgTypes, BoundInst0, BoundInst) :-
         % tries to match with the inst.
         ArgInsts = ArgInsts0
     ),
-    BoundInst = functor(Functor, ArgInsts).
+    BoundInst = bound_functor(Functor, ArgInsts).
 
 :- pred propagate_ctor_info_3(module_info::in, tsubst::in,
     module_name::in, list(constructor)::in,
@@ -836,7 +836,7 @@ propagate_ctor_info_tuple(ModuleInfo, TupleArgTypes, BoundInst0, BoundInst) :-
 propagate_ctor_info_3(_, _, _, _, [], []).
 propagate_ctor_info_3(ModuleInfo, Subst, TypeModule, Constructors,
         [BoundInst0 | BoundInsts0], [BoundInst | BoundInsts]) :-
-    BoundInst0 = functor(ConsId0, ArgInsts0),
+    BoundInst0 = bound_functor(ConsId0, ArgInsts0),
     ( ConsId0 = cons(unqualified(Name), Ar) ->
         ConsId = cons(qualified(TypeModule, Name), Ar)
     ;
@@ -857,13 +857,13 @@ propagate_ctor_info_3(ModuleInfo, Subst, TypeModule, Constructors,
         list.map(GetArgTypes, Args, ArgTypes),
         propagate_types_into_inst_list(ModuleInfo, Subst, ArgTypes,
             ArgInsts0, ArgInsts),
-        BoundInst = functor(ConsId, ArgInsts)
+        BoundInst = bound_functor(ConsId, ArgInsts)
     ;
         % The cons_id is not a valid constructor for the type,
         % so leave it alone. This can only happen in a user defined
         % bound_inst. A mode error should be reported if anything
         % tries to match with the inst.
-        BoundInst = functor(ConsId, ArgInsts0)
+        BoundInst = bound_functor(ConsId, ArgInsts0)
     ),
     propagate_ctor_info_3(ModuleInfo, Subst, TypeModule,
         Constructors, BoundInsts0, BoundInsts).
@@ -951,7 +951,7 @@ recompute_instmap_delta_1(RecomputeAtomic, Goal0 - GoalInfo0, Goal - GoalInfo,
     (
         RecomputeAtomic = no,
         goal_is_atomic(Goal0),
-        Goal0 \= unify(_, lambda_goal(_, _, _, _, _, _, _, _), _, _, _)
+        Goal0 \= unify(_, rhs_lambda_goal(_, _, _, _, _, _, _, _), _, _, _)
         % Lambda expressions always need to be processed.
     ->
         Goal = Goal0,
@@ -1069,7 +1069,7 @@ recompute_instmap_delta_2(Atomic, unify(LHS, RHS0, UniMode0, Uni, Context),
         GoalInfo, unify(LHS, RHS, UniMode, Uni, Context), VarTypes,
         InstMap0, InstMapDelta, !RI) :-
     (
-        RHS0 = lambda_goal(Purity, PorF, EvalMethod, NonLocals,
+        RHS0 = rhs_lambda_goal(Purity, PorF, EvalMethod, NonLocals,
             LambdaVars, Modes, Det, Goal0)
     ->
         ModuleInfo0 = !.RI ^ module_info,
@@ -1077,7 +1077,7 @@ recompute_instmap_delta_2(Atomic, unify(LHS, RHS0, UniMode0, Uni, Context),
             InstMap0, InstMap),
         recompute_instmap_delta_1(Atomic, Goal0, Goal, VarTypes,
             InstMap, _, !RI),
-        RHS = lambda_goal(Purity, PorF, EvalMethod, NonLocals,
+        RHS = rhs_lambda_goal(Purity, PorF, EvalMethod, NonLocals,
             LambdaVars, Modes, Det, Goal)
     ;
         RHS = RHS0

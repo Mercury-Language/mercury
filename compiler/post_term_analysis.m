@@ -125,13 +125,13 @@ warn_non_term_user_special_pred(ModuleInfo, TypeTable,
     ->
         map.lookup(TypeTable, TypeCtor, TypeDefn),
         get_type_defn_status(TypeDefn, ImportStatus),
+        DefinedThisModule = status_defined_in_this_module(ImportStatus),
         (
-            status_defined_in_this_module(ImportStatus, yes)
-        ->
+            DefinedThisModule = yes,
             process_special_pred_for_type(ModuleInfo,
                 SpecialPredId, TypeCtor, PredId, TypeDefn, !IO)
         ;
-            true
+            DefinedThisModule = no
         )       
     ;
         true
@@ -208,13 +208,13 @@ special_pred_needs_term_check(ModuleInfo, SpecialPredId, TypeDefn) :-
     unify_compare::out) is semidet.
 
 get_user_unify_compare(_ModuleInfo, TypeBody, UnifyCompare) :-
-    TypeBody = du_type(_, _, _, yes(UnifyCompare), _, _).
+    TypeBody = hlds_du_type(_, _, _, yes(UnifyCompare), _, _).
 get_user_unify_compare(ModuleInfo, TypeBody, UnifyCompare) :-
-    TypeBody = foreign_type(ForeignTypeBody),
+    TypeBody = hlds_foreign_type(ForeignTypeBody),
     UnifyCompare = foreign_type_body_has_user_defined_eq_comp_pred(
         ModuleInfo, ForeignTypeBody).
 get_user_unify_compare(_ModuleInfo, TypeBody, UnifyCompare) :-
-    TypeBody = solver_type(_, yes(UnifyCompare)).
+    TypeBody = hlds_solver_type(_, yes(UnifyCompare)).
 
 :- pred emit_non_term_user_special_warning(prog_context::in,
     special_pred_id::in, type_ctor::in, io::di, io::uo) is det.

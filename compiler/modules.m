@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: modules.m.
 % Main author: fjh.
-% 
+%
 % This module contains all the code for handling module imports and exports,
 % for computing module dependencies, and for generating makefile fragments to
 % record those dependencies.
@@ -256,83 +256,70 @@
     % for those imported or ancestor modules.
 
 :- type module_imports --->
-    module_imports(
-        source_file_name            :: file_name,
-                                    % The source file
+        module_imports(
+            % The source file.
+            source_file_name            :: file_name,
 
-        source_file_module_name     :: module_name,
-                                    % The name of the top-level module in
-                                    % the source file containing the module
-                                    % that we are compiling.
+            % The name of the top-level module in the source file
+            % containing the module that we are compiling.
+            source_file_module_name     :: module_name,
 
-        module_name                 :: module_name,
-                                    % The module (or sub-module)
-                                    % that we are compiling.
+            % The module (or sub-module) that we are compiling.
+            module_name                 :: module_name,
 
-        parent_deps                 :: list(module_name),
-                                    % The list of ancestor modules it inherits
+            % The list of ancestor modules it inherits.
+            parent_deps                 :: list(module_name),
 
-        int_deps                    :: list(module_name),
-                                    % The list of modules it directly imports
-                                    % in the interface
-                                    % (imports via ancestors count as direct)
+            % The list of modules it directly imports in the interface
+            % (imports via ancestors count as direct).
+            int_deps                    :: list(module_name),
 
-        impl_deps                   :: list(module_name),
-                                    % The list of modules it directly imports
-                                    % in the implementation.
+            % The list of modules it directly imports in the implementation.
+            impl_deps                   :: list(module_name),
 
-        indirect_deps               :: list(module_name),
-                                    % The list of modules it indirectly imports
+            % The list of modules it indirectly imports.
+            indirect_deps               :: list(module_name),
 
-        children                    :: list(module_name),
+            children                    :: list(module_name),
 
-        public_children             :: list(module_name),
-                                    % The list of its public children,
-                                    % i.e. child modules that it includes
-                                    % in the interface section.
+            % The list of its public children, i.e. child modules that
+            % it includes in the interface section.
+            public_children             :: list(module_name),
 
-        nested_children             :: list(module_name),
-                                    % The modules included in the same source
-                                    % file. This field is only set for the
-                                    % top-level module in each file.
+            % The modules included in the same source file. This field
+            % is only set for the top-level module in each file.
+            nested_children             :: list(module_name),
 
-        fact_table_deps             :: list(string),
-                                    % The list of filenames for fact tables
-                                    % in this module.
+            % The list of filenames for fact tables in this module.
+            fact_table_deps             :: list(string),
 
-        foreign_code                :: contains_foreign_code,
-                                    % Whether or not the module contains
-                                    % foreign code (and which languages
-                                    % if it does)
+            % Whether or not the module contains foreign code, and if yes,
+            % which languages they use.
+            has_foreign_code            :: contains_foreign_code,
 
-        foreign_import_module_info  :: foreign_import_module_info,
-                                    % The `:- pragma foreign_import_module'
-                                    % declarations.
+            % The `:- pragma foreign_import_module' declarations.
+            foreign_import_modules      :: foreign_import_module_info_list,
 
-        contains_foreign_export     :: contains_foreign_export,
-                                    % Does the module contain any
-                                    % `:- pragma export' declarations.
+            % Does the module contain any `:- pragma export' declarations?
+            contains_foreign_export     :: contains_foreign_export,
 
-        items                       :: item_list,
-                                    % The contents of the module and
-                                    % its imports
+            % The contents of the module and its imports.
+            items                       :: item_list,
 
-        error                       :: module_error,
-                                    % Whether an error has been encountered
-                                    % when reading in this module.
+            % Whether an error has been encountered when reading in
+            % this module.
+            error                       :: module_error,
 
-        maybe_timestamps            :: maybe(module_timestamps),
-                                    % If we are doing smart recompilation,
-                                    % we need to keep the timestamps of the
-                                    % modules read in.
+            % If we are doing smart recompilation, we need to keep
+            % the timestamps of the modules read in.
+            maybe_timestamps            :: maybe(module_timestamps),
 
-        has_main                    :: has_main,
-                                    % Does this module contain main/2.
+            % Does this module contain main/2?
+            has_main                    :: has_main,
 
-        module_dir                  :: dir_name
-                                    % The directory containing the module
-                                    % source.
-    ).
+            % The directory containing the module source.
+            module_dir                  :: dir_name
+        ).
 
 :- type contains_foreign_code
     --->    contains_foreign_code(set(foreign_language))
@@ -1311,7 +1298,7 @@ make_private_interface(SourceFileName, SourceFileModuleName, ModuleName,
             list.reverse(Items6, Items),
             write_interface_file(SourceFileName, ModuleName,
                 ".int0", MaybeTimestamp,
-                [make_pseudo_decl(interface) | Items], !IO),
+                [make_pseudo_decl(md_interface) | Items], !IO),
             touch_interface_datestamp(ModuleName, ".date0", !IO)
         )
     ).
@@ -1324,14 +1311,14 @@ make_private_interface(SourceFileName, SourceFileModuleName, ModuleName,
     item_list::in, item_list::out) is det.
 
  handle_mutables_in_private_interface(ModuleName, !Items) :-
-    list.foldl(handle_mutable_in_private_interface(ModuleName), !.Items, 
+    list.foldl(handle_mutable_in_private_interface(ModuleName), !.Items,
         [], !:Items).
 
 :- pred handle_mutable_in_private_interface(module_name::in,
     item_and_context::in, item_list::in, item_list::out) is det.
 
 handle_mutable_in_private_interface(ModuleName, Item - Context, !Items) :-
-    ( Item = mutable(MutableName, Type, _Value, Inst, Attrs, _Varset) ->
+    ( Item = item_mutable(MutableName, Type, _Value, Inst, Attrs, _Varset) ->
         ConstantInterface = mutable_var_constant(Attrs),
         (
             ConstantInterface = yes,
@@ -1352,10 +1339,10 @@ handle_mutable_in_private_interface(ModuleName, Item - Context, !Items) :-
             IOStateInterface = mutable_var_attach_to_io_state(Attrs),
             (
                 IOStateInterface = yes,
-                PureGetPredDecl = 
+                PureGetPredDecl =
                     io_get_pred_decl(ModuleName, MutableName, Type, Inst),
                 list.cons(PureGetPredDecl - Context, !Items),
-                PureSetPredDecl = 
+                PureSetPredDecl =
                     io_set_pred_decl(ModuleName, MutableName, Type, Inst),
                 list.cons(PureSetPredDecl - Context, !Items)
             ;
@@ -1363,7 +1350,7 @@ handle_mutable_in_private_interface(ModuleName, Item - Context, !Items) :-
             )
         )
     ;
-        list.cons(Item - Context, !Items) 
+        list.cons(Item - Context, !Items)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1457,11 +1444,11 @@ strip_imported_items(Items0, Items) :-
 strip_imported_items([], !Items) :-
     list.reverse(!Items).
 strip_imported_items([Item - Context | Rest], !Items) :-
-    ( Item = module_defn(_, imported(_)) ->
+    ( Item = item_module_defn(_, md_imported(_)) ->
         list.reverse(!Items)
-    ; Item = module_defn(_, used(_)) ->
+    ; Item = item_module_defn(_, md_used(_)) ->
         list.reverse(!Items)
-    ; Item = module_defn(_, abstract_imported) ->
+    ; Item = item_module_defn(_, md_abstract_imported) ->
         list.reverse(!Items)
     ;
         strip_imported_items(Rest, [Item - Context | !.Items], !:Items)
@@ -1471,7 +1458,7 @@ strip_imported_items([Item - Context | Rest], !Items) :-
 
 strip_assertions([], []).
 strip_assertions([Item - Context | Rest], Items) :-
-    ( Item = promise(true, _, _, _) ->
+    ( Item = item_promise(true, _, _, _) ->
         strip_assertions(Rest, Items)
     ;
         strip_assertions(Rest, Items0),
@@ -1517,7 +1504,7 @@ strip_unnecessary_impl_defns_2(Items0, Items) :-
                 map.member(!.ImplTypesMap, TypeCtor, Defns),
                 \+ (
                     list.member(Defn, Defns),
-                    Defn \= abstract_type(_) - _
+                    Defn \= parse_tree_abstract_type(_) - _
                 ),
                 multi_map.contains(!.IntTypesMap, TypeCtor)
             ),
@@ -1537,7 +1524,7 @@ strip_unnecessary_impl_defns_2(Items0, Items) :-
                     ), Defns, !ImplItems)
             ), !.ImplTypesMap, !ImplItems),
 
-        IntItems = [make_pseudo_decl(interface) | IntItems0],
+        IntItems = [make_pseudo_decl(md_interface) | IntItems0],
 
         maybe_strip_import_decls(!ImplItems),
         strip_unnecessary_impl_imports(NecessaryImplImports, !ImplItems),
@@ -1563,7 +1550,7 @@ strip_unnecessary_impl_defns_2(Items0, Items) :-
             ;
                 Unexpected = no,
                 list.reverse(RevRemainderItems, RemainderItems),
-                list.condense([IntItems, [make_pseudo_decl(implementation)],
+                list.condense([IntItems, [make_pseudo_decl(md_implementation)],
                     ImportItems, UseItems, TypeDefnItems, RemainderItems],
                     Items)
             )
@@ -1572,13 +1559,13 @@ strip_unnecessary_impl_defns_2(Items0, Items) :-
 
 :- inst item_context(I) == bound(I - ground).
 
-:- inst one_module_spec ==  bound(module(bound([ground | bound([])]))).
-:- inst import_item     ==  bound(module_defn(ground,
-                                bound(import(one_module_spec)))).
-:- inst use_item        ==  bound(module_defn(ground,
-                                bound(use(one_module_spec)))).
-:- inst type_defn_item  ==  bound(type_defn(ground, ground, ground, ground,
-                                ground)).
+:- inst one_module_spec ==  bound(list_module(bound([ground | bound([])]))).
+:- inst import_item     ==  bound(item_module_defn(ground,
+                                bound(md_import(one_module_spec)))).
+:- inst use_item        ==  bound(item_module_defn(ground,
+                                bound(md_use(one_module_spec)))).
+:- inst type_defn_item  ==  bound(item_type_defn(ground, ground, ground,
+                                ground, ground)).
 
 :- pred standardize_impl_items(item_list::in, bool::in, bool::out,
     item_list::in, item_list::out,
@@ -1595,67 +1582,67 @@ standardize_impl_items([], !Unexpected, !RevRemainderItems,
 standardize_impl_items([ItemAndContext | ItemAndContexts], !Unexpected,
         !RevRemainderItems, !ImportItems, !UseItems, !TypeDefnItems) :-
     ItemAndContext = Item - Context,
-    ( Item = module_defn(_VarSet, ModuleDefn) ->
+    ( Item = item_module_defn(_VarSet, ModuleDefn) ->
         (
-            ModuleDefn = import(ImportModules),
-            ( ImportModules = module([_ImportModule]) ->
+            ModuleDefn = md_import(ImportModules),
+            ( ImportModules = list_module([_ImportModule]) ->
                 insert_import_module(Context, Item, !ImportItems)
             ;
                 unexpected(this_file, "standardize_impl_items: " ++
                     "non-singleton-module import")
             )
         ;
-            ModuleDefn = use(UseModules),
-            ( UseModules = module([_UseModule]) ->
+            ModuleDefn = md_use(UseModules),
+            ( UseModules = list_module([_UseModule]) ->
                 insert_use_module(Context, Item, !UseItems)
             ;
                 unexpected(this_file, "standardize_impl_items: " ++
                     "non-singleton-module use")
             )
         ;
-            ModuleDefn = module(_),
+            ModuleDefn = md_module(_),
             !:Unexpected = yes
         ;
-            ModuleDefn = end_module(_),
+            ModuleDefn = md_end_module(_),
             !:Unexpected = yes
         ;
-            ModuleDefn = imported(_),
+            ModuleDefn = md_imported(_),
             !:Unexpected = yes
         ;
-            ModuleDefn = used(_),
+            ModuleDefn = md_used(_),
             !:Unexpected = yes
         ;
-            ModuleDefn = abstract_imported,
+            ModuleDefn = md_abstract_imported,
             !:Unexpected = yes
         ;
-            ModuleDefn = opt_imported,
+            ModuleDefn = md_opt_imported,
             !:Unexpected = yes
         ;
-            ModuleDefn = transitively_imported,
+            ModuleDefn = md_transitively_imported,
             !:Unexpected = yes
         ;
-            ModuleDefn = external(_, _),
+            ModuleDefn = md_external(_, _),
             !:Unexpected = yes
         ;
-            ModuleDefn = export(_),
+            ModuleDefn = md_export(_),
             !:Unexpected = yes
         ;
-            ModuleDefn = include_module(_),
+            ModuleDefn = md_include_module(_),
             !:RevRemainderItems = [ItemAndContext | !.RevRemainderItems]
         ;
-            ModuleDefn = interface,
+            ModuleDefn = md_interface,
             !:Unexpected = yes
         ;
-            ModuleDefn = implementation,
+            ModuleDefn = md_implementation,
             !:Unexpected = yes
         ;
-            ModuleDefn = private_interface,
+            ModuleDefn = md_private_interface,
             !:Unexpected = yes
         ;
-            ModuleDefn = version_numbers(_, _),
+            ModuleDefn = md_version_numbers(_, _),
             !:Unexpected = yes
         )
-    ; Item = type_defn(_, _, _, _, _) ->
+    ; Item = item_type_defn(_, _, _, _, _) ->
         insert_type_defn(Context, Item, !TypeDefnItems)
     ;
         !:RevRemainderItems = [ItemAndContext | !.RevRemainderItems]
@@ -1673,16 +1660,14 @@ insert_import_module(Context, Item, [Head | Tail], Result) :-
     % The lack of alias tracking prevents the compiler from figuring out
     % that this predicate is only called with values of Item for which
     % this test succeeds.
-    ( Item = module_defn(_, import(module([ModulePrime]))) ->
+    ( Item = item_module_defn(_, md_import(list_module([ModulePrime]))) ->
         Module = ModulePrime
     ;
         unexpected(this_file, "insert_import_module: bad item")
     ),
-    HeadItem = module_defn(_, import(module([HeadModule]))),
+    HeadItem = item_module_defn(_, md_import(list_module([HeadModule]))),
     compare(CompareSymName, Module, HeadModule),
-    (
-        CompareSymName = (<)
-    ->
+    ( CompareSymName = (<) ->
         Result = [Item - Context, Head | Tail]
     ;
         insert_import_module(Context, Item, Tail, TailResult),
@@ -1699,16 +1684,14 @@ insert_use_module(Context, Item, [Head | Tail], Result) :-
     % The lack of alias tracking prevents the compiler from figuring out
     % that this predicate is only called with values of Item for which
     % this test succeeds.
-    ( Item = module_defn(_, use(module([ModulePrime]))) ->
+    ( Item = item_module_defn(_, md_use(list_module([ModulePrime]))) ->
         Module = ModulePrime
     ;
         unexpected(this_file, "insert_import_module: bad item")
     ),
-    HeadItem = module_defn(_, use(module([HeadModule]))),
+    HeadItem = item_module_defn(_, md_use(list_module([HeadModule]))),
     compare(CompareSymName, Module, HeadModule),
-    (
-        CompareSymName = (<)
-    ->
+    ( CompareSymName = (<) ->
         Result = [Item - Context, Head | Tail]
     ;
         insert_use_module(Context, Item, Tail, TailResult),
@@ -1722,8 +1705,8 @@ insert_use_module(Context, Item, [Head | Tail], Result) :-
 insert_type_defn(Context, Item, [], [Item - Context]).
 insert_type_defn(Context, Item, [Head | Tail], Result) :-
     Head = HeadItem - _HeadContext,
-    Item = type_defn(_, SymName, Params, _, _),
-    HeadItem = type_defn(_, HeadSymName, HeadParams, _, _),
+    Item = item_type_defn(_, SymName, Params, _, _),
+    HeadItem = item_type_defn(_, HeadSymName, HeadParams, _, _),
     compare(CompareSymName, SymName, HeadSymName),
     (
         (
@@ -1748,10 +1731,11 @@ insert_type_defn(Context, Item, [Head | Tail], Result) :-
 
 make_impl_type_abstract(_TypeCtor, !TypeDefnPairs) :-
     (
-        !.TypeDefnPairs = [du_type(Ctors, MaybeEqCmp) - (Item0 - Context)],
+        !.TypeDefnPairs = [parse_tree_du_type(Ctors, MaybeEqCmp)
+            - (Item0 - Context)],
         not constructor_list_represents_dummy_argument_type(Ctors, MaybeEqCmp)
     ->
-        Defn = abstract_type(non_solver_type),
+        Defn = parse_tree_abstract_type(non_solver_type),
         ( Item = Item0 ^ td_ctor_defn := Defn ->
             !:TypeDefnPairs = [Defn - (Item - Context)]
         ;
@@ -1782,13 +1766,13 @@ strip_unnecessary_impl_imports(NecessaryImports, !Items) :-
 
 is_necessary_impl_import(NecessaryImports, ItemAndContext) :-
     ItemAndContext = Item - _,
-    ( Item = module_defn(_, Defn) ->
+    ( Item = item_module_defn(_, Defn) ->
         (
-            ( Defn = use(Module)
-            ; Defn = import(Module)
+            ( Defn = md_use(Module)
+            ; Defn = md_import(Module)
             )
         ->
-            ( Module = module([ModuleName]) ->
+            ( Module = list_module([ModuleName]) ->
                 set.member(ModuleName, NecessaryImports)
             ;
                 unexpected(this_file, "is_necessary_impl_import: " ++
@@ -1817,7 +1801,7 @@ strip_unnecessary_impl_types(NecessaryTypeCtors, !Items) :-
 
 is_necessary_impl_type(NecessaryTypeCtors, ItemAndContext) :-
     ItemAndContext = Item - _,
-    ( Item = type_defn(_, SymName, Params, _, _) ->
+    ( Item = item_type_defn(_, SymName, Params, _, _) ->
         TypeCtor = type_ctor(SymName, list.length(Params)),
         set.member(TypeCtor, NecessaryTypeCtors)
     ;
@@ -1868,17 +1852,17 @@ accumulate_abs_impl_exported_type_lhs(InterfaceTypeMap,
     % that are in there.
     %
     (
-        TypeDefn = eqv_type(_RhsType),
+        TypeDefn = parse_tree_eqv_type(_RhsType),
         map.search(InterfaceTypeMap, TypeCtor, _)
     ->
         svset.insert(TypeCtor, !AbsEqvLhsTypeCtors)
     ;
-        TypeDefn = foreign_type(_, _, _),
+        TypeDefn = parse_tree_foreign_type(_, _, _),
         map.search(InterfaceTypeMap, TypeCtor, _)
     ->
         svset.insert(TypeCtor, !AbsEqvLhsTypeCtors)
     ;
-        TypeDefn = du_type(Ctors, MaybeEqCmp),
+        TypeDefn = parse_tree_du_type(Ctors, MaybeEqCmp),
         constructor_list_represents_dummy_argument_type(Ctors, MaybeEqCmp)
     ->
         svset.insert(TypeCtor, !DummyTypeCtors)
@@ -1908,9 +1892,7 @@ accumulate_abs_eqv_type_rhs(ImplTypeMap, TypeCtor, !AbsEqvRhsTypeCtors,
 
 accumulate_abs_eqv_type_rhs_2(ImplTypeMap, TypeDefn - _, !AbsEqvRhsTypeCtors,
         !Modules) :-
-    (
-        TypeDefn = eqv_type(RhsType)
-    ->
+    ( TypeDefn = parse_tree_eqv_type(RhsType) ->
         type_to_type_ctor_set(RhsType, set.init, RhsTypeCtors),
         set.difference(RhsTypeCtors, !.AbsEqvRhsTypeCtors, NewRhsTypeCtors),
         set.fold(accumulate_modules, NewRhsTypeCtors, !Modules),
@@ -1984,11 +1966,11 @@ gather_type_defns(_, [], IntItems, reverse(IntItems),
         ImplItems, reverse(ImplItems), !IntTypes, !ImplTypes).
 gather_type_defns(!.InInterface, [Item - Context | ItemContexts],
         !IntItems, !ImplItems, !IntTypes, !ImplTypes) :-
-    ( Item = module_defn(_, interface) ->
+    ( Item = item_module_defn(_, md_interface) ->
         !:InInterface = yes
-    ; Item = module_defn(_, implementation) ->
+    ; Item = item_module_defn(_, md_implementation) ->
         !:InInterface = no
-    ; Item = type_defn(_, Name, Args, Body, _) ->
+    ; Item = item_type_defn(_, Name, Args, Body, _) ->
         TypeCtor = type_ctor(Name, length(Args)),
         (
             !.InInterface = yes,
@@ -2027,13 +2009,13 @@ check_for_clauses_in_interface([], [], !IO).
 check_for_clauses_in_interface([ItemAndContext0 | Items0], Items, !IO) :-
     ItemAndContext0 = Item0 - Context,
     (
-        Item0 = clause(_, _, _, _, _, _)
+        Item0 = item_clause(_, _, _, _, _, _)
     ->
         ClauseWarning = [words("Warning: clause in module interface.")],
         report_warning(Context, 0, ClauseWarning, !IO),
         check_for_clauses_in_interface(Items0, Items, !IO)
     ;
-        Item0 = pragma(_, Pragma),
+        Item0 = item_pragma(_, Pragma),
         pragma_allowed_in_interface(Pragma, no)
     ->
         PragmaWarning = [words("Warning: pragma in module interface.")],
@@ -2069,21 +2051,21 @@ split_clauses_and_decls([ItemAndContext0 | Items0],
         ClauseItems, InterfaceItems) :-
     ItemAndContext0 = Item0 - _Context,
     (
-        ( Item0 = module_defn(_, interface)
-        ; Item0 = module_defn(_, implementation)
+        ( Item0 = item_module_defn(_, md_interface)
+        ; Item0 = item_module_defn(_, md_implementation)
         )
     ->
         split_clauses_and_decls(Items0, ClauseItems, InterfaceItems)
     ;
         (
-            Item0 = clause(_,_,_,_,_,_)
+            Item0 = item_clause(_,_,_,_,_,_)
         ;
-            Item0 = pragma(_, Pragma),
+            Item0 = item_pragma(_, Pragma),
             pragma_allowed_in_interface(Pragma, no)
         ;
-            Item0 = initialise(_, _, _)
+            Item0 = item_initialise(_, _, _)
         ;
-            Item0 = finalise(_, _, _)
+            Item0 = item_finalise(_, _, _)
         )
      ->
          split_clauses_and_decls(Items0, ClauseItems1, InterfaceItems),
@@ -2103,38 +2085,38 @@ split_clauses_and_decls([ItemAndContext0 | Items0],
 % but if we do allow it, we should put it in the generated
 % header file, which currently we don't.
 
-pragma_allowed_in_interface(foreign_decl(_, _, _), no).
-pragma_allowed_in_interface(foreign_import_module(_, _), yes).
-pragma_allowed_in_interface(foreign_code(_, _), no).
-pragma_allowed_in_interface(foreign_proc(_, _, _, _, _, _, _), no).
-pragma_allowed_in_interface(inline(_, _), no).
-pragma_allowed_in_interface(no_inline(_, _), no).
-pragma_allowed_in_interface(obsolete(_, _), yes).
-pragma_allowed_in_interface(foreign_export(_, _, _, _, _), no).
-pragma_allowed_in_interface(import(_, _, _, _, _), no).
-pragma_allowed_in_interface(source_file(_), yes).
+pragma_allowed_in_interface(pragma_foreign_decl(_, _, _), no).
+pragma_allowed_in_interface(pragma_foreign_import_module(_, _), yes).
+pragma_allowed_in_interface(pragma_foreign_code(_, _), no).
+pragma_allowed_in_interface(pragma_foreign_proc(_, _, _, _, _, _, _), no).
+pragma_allowed_in_interface(pragma_inline(_, _), no).
+pragma_allowed_in_interface(pragma_no_inline(_, _), no).
+pragma_allowed_in_interface(pragma_obsolete(_, _), yes).
+pragma_allowed_in_interface(pragma_foreign_export(_, _, _, _, _), no).
+pragma_allowed_in_interface(pragma_import(_, _, _, _, _), no).
+pragma_allowed_in_interface(pragma_source_file(_), yes).
     % yes, but the parser will strip out `source_file' pragmas anyway...
-pragma_allowed_in_interface(fact_table(_, _, _), no).
-pragma_allowed_in_interface(tabled(_, _, _, _, _, _), no).
+pragma_allowed_in_interface(pragma_fact_table(_, _, _), no).
+pragma_allowed_in_interface(pragma_tabled(_, _, _, _, _, _), no).
     % `reserve_tag' must be in the interface iff the corresponding
     % type definition is in the interface. This is checked in make_hlds.m.
-pragma_allowed_in_interface(reserve_tag(_, _), yes).
-pragma_allowed_in_interface(promise_pure(_, _), no).
-pragma_allowed_in_interface(promise_semipure(_, _), no).
-pragma_allowed_in_interface(promise_equivalent_clauses(_, _), no).
-pragma_allowed_in_interface(unused_args(_, _, _, _, _), no).
-pragma_allowed_in_interface(exceptions(_, _, _, _, _), no).
-pragma_allowed_in_interface(trailing_info(_, _, _, _, _), no).
-pragma_allowed_in_interface(mm_tabling_info(_, _, _, _, _), no).
-pragma_allowed_in_interface(type_spec(_, _, _, _, _, _, _, _), yes).
-pragma_allowed_in_interface(termination_info(_, _, _, _, _), yes).
-pragma_allowed_in_interface(termination2_info(_,_, _, _, _, _), yes).
-pragma_allowed_in_interface(terminates(_, _), yes).
-pragma_allowed_in_interface(does_not_terminate(_, _), yes).
-pragma_allowed_in_interface(check_termination(_, _), yes).
-pragma_allowed_in_interface(structure_sharing(_, _, _, _, _, _), yes).
-pragma_allowed_in_interface(structure_reuse(_, _, _, _, _, _), yes).
-pragma_allowed_in_interface(mode_check_clauses(_, _), yes).
+pragma_allowed_in_interface(pragma_reserve_tag(_, _), yes).
+pragma_allowed_in_interface(pragma_promise_pure(_, _), no).
+pragma_allowed_in_interface(pragma_promise_semipure(_, _), no).
+pragma_allowed_in_interface(pragma_promise_equivalent_clauses(_, _), no).
+pragma_allowed_in_interface(pragma_unused_args(_, _, _, _, _), no).
+pragma_allowed_in_interface(pragma_exceptions(_, _, _, _, _), no).
+pragma_allowed_in_interface(pragma_trailing_info(_, _, _, _, _), no).
+pragma_allowed_in_interface(pragma_mm_tabling_info(_, _, _, _, _), no).
+pragma_allowed_in_interface(pragma_type_spec(_, _, _, _, _, _, _, _), yes).
+pragma_allowed_in_interface(pragma_termination_info(_, _, _, _, _), yes).
+pragma_allowed_in_interface(pragma_termination2_info(_,_, _, _, _, _), yes).
+pragma_allowed_in_interface(pragma_terminates(_, _), yes).
+pragma_allowed_in_interface(pragma_does_not_terminate(_, _), yes).
+pragma_allowed_in_interface(pragma_check_termination(_, _), yes).
+pragma_allowed_in_interface(pragma_structure_sharing(_, _, _, _, _, _), yes).
+pragma_allowed_in_interface(pragma_structure_reuse(_, _, _, _, _, _), yes).
+pragma_allowed_in_interface(pragma_mode_check_clauses(_, _), yes).
 
 check_for_no_exports(Items, ModuleName, !IO) :-
     globals.io_lookup_bool_option(warn_nothing_exported, ExportWarning, !IO),
@@ -2158,10 +2140,10 @@ check_int_for_no_exports([], ModuleName, !IO) :-
 check_int_for_no_exports([Item - _Context | Items], ModuleName, !IO) :-
     (
         (
-            Item = nothing(_)
+            Item = item_nothing(_)
         ;
-            Item = module_defn(_, ModuleDefn),
-            ModuleDefn \= include_module(_)
+            Item = item_module_defn(_, ModuleDefn),
+            ModuleDefn \= md_include_module(_)
         )
     ->
         % nothing useful - keep searching
@@ -2244,17 +2226,17 @@ write_interface_file(_SourceFileName, ModuleName, Suffix, MaybeTimestamp,
             ),
             recompilation.version.compute_version_numbers(Timestamp,
                 InterfaceItems0, MaybeOldItems, VersionNumbers),
-            VersionNumberItem = module_defn(varset.init,
-                version_numbers(ModuleName, VersionNumbers))
+            VersionNumberItem = item_module_defn(varset.init,
+                md_version_numbers(ModuleName, VersionNumbers))
                 - term.context_init,
             (
                 InterfaceItems0 = [FirstItem | InterfaceItems1],
-                FirstItem = module_defn(_, interface) - _
+                FirstItem = item_module_defn(_, md_interface) - _
             ->
                 InterfaceItems = [FirstItem, VersionNumberItem
                     | InterfaceItems1]
             ;
-                InterfaceItems = [make_pseudo_decl(interface),
+                InterfaceItems = [make_pseudo_decl(md_interface),
                     VersionNumberItem | InterfaceItems0]
             )
         ;
@@ -2438,11 +2420,9 @@ touch_datestamp(OutputFileName, !IO) :-
 %-----------------------------------------------------------------------------%
 
 grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
-        NestedChildren, ReadModules, MaybeTimestamp,
-        Items0, !:Module, Error, !IO) :-
-        %
-        % Find out which modules this one depends on
-        %
+        NestedChildren, ReadModules, MaybeTimestamp, Items0, !:Module,
+        Error, !IO) :-
+    % Find out which modules this one depends on.
     AncestorModules = get_ancestors(ModuleName),
     get_dependencies(Items0, IntImportedModules0, IntUsedModules0,
         ImpImportedModules0, ImpUsedModules0),
@@ -2475,13 +2455,13 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
     init_module_imports(SourceFileName, SourceFileModuleName, ModuleName,
         Items0, PublicChildren, NestedChildren, FactDeps,
         MaybeTimestamps, !:Module),
-    
-        % If this module has any separately-compiled sub-modules,
-        % then we need to make everything in the implementation
-        % of this module exported_to_submodules.  We do that by
-        % splitting out the implementation declarations and putting
-        % them in a special `:- private_interface' section.
-        %
+
+    % If this module has any separately-compiled sub-modules, then
+    % we need to make everything in the implementation of this module
+    % exported_to_submodules.  We do that by splitting out the implementation
+    % declarations and putting them in a special `:- private_interface'
+    % section.
+    %
     get_children(Items0, Children),
     (
         Children = [],
@@ -2490,38 +2470,37 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
         Children = [_ | _],
         split_clauses_and_decls(ImplItems, Clauses, ImplDecls),
         list.condense(
-            [[make_pseudo_decl(interface) | InterfaceItems],
-            [make_pseudo_decl(private_interface) | ImplDecls],
-            [make_pseudo_decl(implementation) | Clauses]], Items1),
+            [[make_pseudo_decl(md_interface) | InterfaceItems],
+            [make_pseudo_decl(md_private_interface) | ImplDecls],
+            [make_pseudo_decl(md_implementation) | Clauses]], Items1),
         module_imports_set_items(Items1, !Module)
     ),
 
-        % Add `builtin' and `private_builtin' to the
-        % list of imported modules
+    % Add `builtin' and `private_builtin' to the list of imported modules.
     globals.io_get_globals(Globals, !IO),
     add_implicit_imports(Items1, Globals,
         IntImportedModules1, IntImportedModules2,
         IntUsedModules1, IntUsedModules2),
 
-        % Process the ancestor modules
-        % Uses of the items declared in ancestor modules
-        % do not need module qualifiers. Modules imported
-        % by ancestors are considered to be visible
-        % in the current module.
+    % Process the ancestor modules.
+    %
+    % Uses of the items declared in ancestor modules do not need
+    % module qualifiers. Modules imported by ancestors are considered
+    % to be visible in the current module.
     process_module_private_interfaces(ReadModules, AncestorModules,
-        make_pseudo_decl(imported(ancestor_private_interface)),
-        make_pseudo_decl(abstract_imported),
+        make_pseudo_decl(md_imported(import_locn_ancestor_private_interface)),
+        make_pseudo_decl(md_abstract_imported),
         IntImportedModules2, IntImportedModules,
         IntUsedModules2, IntUsedModules, !Module, !IO),
 
-        % Process the modules imported using `import_module'.
-        % Uses of these items do not need module qualifiers.
+    % Process the modules imported using `import_module'.
+    % Uses of these items do not need module qualifiers.
     IntIndirectImports0 = [],
     IntImpIndirectImports0 = [],
     process_module_long_interfaces(ReadModules, may_be_unqualified,
         IntImportedModules, ".int",
-        make_pseudo_decl(imported(interface)),
-        make_pseudo_decl(abstract_imported),
+        make_pseudo_decl(md_imported(import_locn_interface)),
+        make_pseudo_decl(md_abstract_imported),
         IntIndirectImports0, IntIndirectImports1,
         IntImpIndirectImports0, IntImpIndirectImports1,
         !Module, !IO),
@@ -2530,57 +2509,56 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
     ImpImpIndirectImports0 = [],
     process_module_long_interfaces(ReadModules, may_be_unqualified,
         ImpImportedModules, ".int",
-        make_pseudo_decl(imported(implementation)),
-        make_pseudo_decl(abstract_imported),
+        make_pseudo_decl(md_imported(import_locn_implementation)),
+        make_pseudo_decl(md_abstract_imported),
         ImpIndirectImports0, ImpIndirectImports1,
         ImpImpIndirectImports0, ImpImpIndirectImports1,
         !Module, !IO),
 
-        % Process the modules imported using `use_module' .
+    % Process the modules imported using `use_module' .
     process_module_long_interfaces(ReadModules, must_be_qualified,
         IntUsedModules, ".int",
-        make_pseudo_decl(used(interface)),
-        make_pseudo_decl(abstract_imported),
+        make_pseudo_decl(md_used(import_locn_interface)),
+        make_pseudo_decl(md_abstract_imported),
         IntIndirectImports1, IntIndirectImports,
         IntImpIndirectImports1, IntImpIndirectImports2,
         !Module, !IO),
     process_module_long_interfaces(ReadModules, must_be_qualified,
         ImpUsedModules, ".int",
-        make_pseudo_decl(used(implementation)),
-        make_pseudo_decl(abstract_imported),
+        make_pseudo_decl(md_used(import_locn_implementation)),
+        make_pseudo_decl(md_abstract_imported),
         ImpIndirectImports1, ImpIndirectImports,
         ImpImpIndirectImports1, ImpImpIndirectImports2,
         !Module, !IO),
 
-        % Process the short interfaces for indirectly imported modules.
-        % The short interfaces are treated as if
-        % they are imported using `use_module'.
-    append_pseudo_decl(transitively_imported, !Module),
+    % Process the short interfaces for indirectly imported modules.
+    % The short interfaces are treated as if they are imported
+    % using `use_module'.
+    append_pseudo_decl(md_transitively_imported, !Module),
     process_module_short_interfaces_transitively(ReadModules,
         IntIndirectImports, ".int2",
-        make_pseudo_decl(used(interface)),
-        make_pseudo_decl(abstract_imported),
+        make_pseudo_decl(md_used(import_locn_interface)),
+        make_pseudo_decl(md_abstract_imported),
         IntImpIndirectImports2, IntImpIndirectImports, !Module, !IO),
     process_module_short_interfaces_transitively(ReadModules,
         ImpIndirectImports, ".int2",
-        make_pseudo_decl(used(implementation)),
-        make_pseudo_decl(abstract_imported),
+        make_pseudo_decl(md_used(import_locn_implementation)),
+        make_pseudo_decl(md_abstract_imported),
         ImpImpIndirectImports2, ImpImpIndirectImports, !Module, !IO),
 
-        % Process the short interfaces for modules imported in
-        % the implementation of indirectly imported modules.
-        % The items in these modules shouldn't be visible
-        % to typechecking -- they are used for fully expanding
-        % equivalence types after the semantic checking passes.
+    % Process the short interfaces for modules imported in the implementation
+    % of indirectly imported modules. The items in these modules shouldn't be
+    % visible to typechecking -- they are used for fully expanding equivalence
+    % types after the semantic checking passes.
     process_module_short_interfaces_and_impls_transitively(
         ReadModules, IntImpIndirectImports, ".int2",
-        make_pseudo_decl(abstract_imported),
-        make_pseudo_decl(abstract_imported),
+        make_pseudo_decl(md_abstract_imported),
+        make_pseudo_decl(md_abstract_imported),
         !Module, !IO),
     process_module_short_interfaces_and_impls_transitively(
         ReadModules, ImpImpIndirectImports, ".int2",
-        make_pseudo_decl(abstract_imported),
-        make_pseudo_decl(abstract_imported),
+        make_pseudo_decl(md_abstract_imported),
+        make_pseudo_decl(md_abstract_imported),
         !Module, !IO),
 
     module_imports_get_items(!.Module, Items),
@@ -2597,87 +2575,81 @@ grab_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
     %
 grab_unqual_imported_modules(SourceFileName, SourceFileModuleName, ModuleName,
         Items0, !:Module, Error, !IO) :-
-        %
-        % Find out which modules this one depends on
-        %
+    % Find out which modules this one depends on.
     ParentDeps = get_ancestors(ModuleName),
     get_dependencies(Items0, IntImportDeps0, IntUseDeps0,
         ImpImportDeps, ImpUseDeps),
 
-        %
-        % Construct the initial module import structure.
-        %
+    % Construct the initial module import structure.
     init_module_imports(SourceFileName, SourceFileModuleName, ModuleName,
         Items0, [], [], [], no, !:Module),
 
-        % Add `builtin' and `private_builtin' to the imported modules.
+    % Add `builtin' and `private_builtin' to the imported modules.
     globals.io_get_globals(Globals, !IO),
     add_implicit_imports(Items0, Globals,
         IntImportDeps0, IntImportDeps, IntUseDeps0, IntUseDeps),
 
-        %
-        % Get the .int3s and .int0s that the current module depends on.
-        %
+    % Get the .int3s and .int0s that the current module depends on.
     map.init(ReadModules),
 
-        % first the .int0s for parent modules
+    % First the .int0s for parent modules.
     process_module_private_interfaces(ReadModules, ParentDeps,
-        make_pseudo_decl(imported(ancestor_private_interface)),
-        make_pseudo_decl(abstract_imported),
+        make_pseudo_decl(md_imported(import_locn_ancestor_private_interface)),
+        make_pseudo_decl(md_abstract_imported),
         [], ParentImportDeps, [], ParentUseDeps, !Module, !IO),
 
-        % then the .int3s for `:- import'-ed modules
+    % Then the .int3s for `:- import'-ed modules.
     process_module_long_interfaces(ReadModules, may_be_unqualified,
         ParentImportDeps, ".int3",
-        make_pseudo_decl(imported(ancestor)),
-        make_pseudo_decl(abstract_imported),
+        make_pseudo_decl(md_imported(import_locn_ancestor)),
+        make_pseudo_decl(md_abstract_imported),
         [], IntIndirectImportDeps0, [], _, !Module, !IO),
     process_module_long_interfaces(ReadModules, may_be_unqualified,
         IntImportDeps, ".int3",
-        make_pseudo_decl(imported(interface)),
-        make_pseudo_decl(abstract_imported),
+        make_pseudo_decl(md_imported(import_locn_interface)),
+        make_pseudo_decl(md_abstract_imported),
         IntIndirectImportDeps0, IntIndirectImportDeps1,
         [], _, !Module, !IO),
     process_module_long_interfaces(ReadModules, may_be_unqualified,
         ImpImportDeps, ".int3",
-        make_pseudo_decl(imported(implementation)),
-        make_pseudo_decl(abstract_imported),
+        make_pseudo_decl(md_imported(import_locn_implementation)),
+        make_pseudo_decl(md_abstract_imported),
         [], ImpIndirectImportDeps0,
         [], _, !Module, !IO),
 
-        % then (after appropriate `:- used' decls)
-        % the .int3s for `:- use'-ed modules
+    % Then (after appropriate `:- used' decls) the .int3s for `:- use'-ed
+    % modules.
     process_module_long_interfaces(ReadModules, may_be_unqualified,
         ParentUseDeps, ".int3",
-        make_pseudo_decl(imported(ancestor)),
-        make_pseudo_decl(abstract_imported),
+        make_pseudo_decl(md_imported(import_locn_ancestor)),
+        make_pseudo_decl(md_abstract_imported),
         IntIndirectImportDeps1, IntIndirectImportDeps2,
         [], _, !Module, !IO),
     process_module_long_interfaces(ReadModules, must_be_qualified,
         IntUseDeps, ".int3",
-        make_pseudo_decl(used(interface)),
-        make_pseudo_decl(abstract_imported),
+        make_pseudo_decl(md_used(import_locn_interface)),
+        make_pseudo_decl(md_abstract_imported),
         IntIndirectImportDeps2, IntIndirectImportDeps,
         [], _, !Module, !IO),
     process_module_long_interfaces(ReadModules, must_be_qualified,
         ImpUseDeps, ".int3",
-        make_pseudo_decl(used(implementation)),
-        make_pseudo_decl(abstract_imported),
+        make_pseudo_decl(md_used(import_locn_implementation)),
+        make_pseudo_decl(md_abstract_imported),
         ImpIndirectImportDeps0, ImpIndirectImportDeps,
         [], _, !Module, !IO),
 
-        % then (after appropriate `:- used' decl)
-        % the .int3s for indirectly imported modules
+    % Then (after appropriate `:- used' decl) the .int3s for indirectly
+    % imported modules.
     process_module_short_interfaces_transitively(ReadModules,
         IntIndirectImportDeps, ".int3",
-        make_pseudo_decl(used(interface)),
-        make_pseudo_decl(abstract_imported),
+        make_pseudo_decl(md_used(import_locn_interface)),
+        make_pseudo_decl(md_abstract_imported),
         [], _, !Module, !IO),
 
     process_module_short_interfaces_transitively(ReadModules,
         ImpIndirectImportDeps, ".int3",
-        make_pseudo_decl(used(implementation)),
-        make_pseudo_decl(abstract_imported),
+        make_pseudo_decl(md_used(import_locn_implementation)),
+        make_pseudo_decl(md_abstract_imported),
         [], _, !Module, !IO),
 
     module_imports_get_items(!.Module, Items),
@@ -2736,7 +2708,7 @@ append_pseudo_decl(PseudoDecl, Module0, Module) :-
     Module = Module0 ^ items := Items.
 
 make_pseudo_decl(PseudoDecl) =
-    module_defn(varset.init, PseudoDecl) - term.context_init.
+    item_module_defn(varset.init, PseudoDecl) - term.context_init.
 
 %-----------------------------------------------------------------------------%
 
@@ -2811,17 +2783,17 @@ add_implicit_imports(Items, Globals, !ImportDeps, !UseDeps) :-
 
 contains_tabling_pragma([Item | Items]) :-
     (
-        Item = pragma(_, Pragma) - _Context,
-        Pragma = tabled(_, _, _, _, _, _)
+        Item = item_pragma(_, Pragma) - _Context,
+        Pragma = pragma_tabled(_, _, _, _, _, _)
     ;
         contains_tabling_pragma(Items)
     ).
 
+    % Warn if a module imports itself, or an ancestor.
+    %
 :- pred warn_if_import_self_or_ancestor(module_name::in, list(module_name)::in,
     list(module_name)::in, list(module_name)::in,
     io::di, io::uo) is det.
-
-% Warn if a module imports itself, or an ancestor.
 
 warn_if_import_self_or_ancestor(ModuleName, AncestorModules,
         ImportedModules, UsedModules, !IO) :-
@@ -3393,8 +3365,8 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
 
         list.filter_map(
             (pred(ForeignImportMod::in, Import::out) is semidet :-
-                Import = foreign_import_module_name(ForeignImportMod,
-                    SourceFileModuleName),
+                Import = foreign_import_module_name_from_module(
+                    ForeignImportMod, SourceFileModuleName),
 
                 % XXX We can't include mercury.dll as mmake can't find it,
                 % but we know that it exists.
@@ -3630,7 +3602,7 @@ write_dependency_file(Module, AllDepsSet, MaybeTransOptDeps, !IO) :-
     % scripts/Mmake.rules).
     %
 :- pred write_foreign_dependency_for_il(io.output_stream::in,sym_name::in,
-    list(module_name)::in, foreign_import_module_info::in,
+    list(module_name)::in, foreign_import_module_info_list::in,
     foreign_language::in, io::di, io::uo) is det.
 
 write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps,
@@ -3677,7 +3649,8 @@ write_foreign_dependency_for_il(DepStream, ModuleName, AllDeps,
                 Prefix = "/r:"
             ),
             ForeignDeps = list.map(
-                (func(M) = foreign_import_module_name(M, ModuleName)),
+                (func(M) = foreign_import_module_name_from_module(M,
+                    ModuleName)),
                 ForeignImports),
             Deps = AllDeps ++ ForeignDeps,
             write_dll_dependencies_list(referenced_dlls(ModuleName, Deps),
@@ -4229,10 +4202,10 @@ generate_dependencies_write_d_files([Dep | Deps],
         % Assume we need the `.mh' files for all imported modules
         % (we will if they define foreign types).
         ForeignImports = list.map(
-            (func(ThisDep) = foreign_import_module(Lang, ThisDep,
+            (func(ThisDep) = foreign_import_module_info(Lang, ThisDep,
                 term.context_init)),
             IndirectOptDeps),
-        !:Module = !.Module ^ foreign_import_module_info := ForeignImports,
+        !:Module = !.Module ^ foreign_import_modules := ForeignImports,
 
         module_imports_set_int_deps(IntDeps, !Module),
         module_imports_set_impl_deps(ImplDeps, !Module),
@@ -4310,9 +4283,9 @@ generate_deps_map(!.Modules, Search, !DepsMap, !IO) :-
             map.set(!.DepsMap, Module, deps(yes, ModuleImports), !:DepsMap),
             ForeignImportedModules =
                 list.map(
-                    (func(foreign_import_module(_, ImportedModule, _))
+                    (func(foreign_import_module_info(_, ImportedModule, _))
                         = ImportedModule),
-                    ModuleImports ^ foreign_import_module_info),
+                    ModuleImports ^ foreign_import_modules),
             list.condense(
                 [ModuleImports ^ parent_deps,
                 ModuleImports ^ int_deps,
@@ -5294,7 +5267,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
 
     module_name_to_file_name(ModuleName, ".dep", no, DepFileName, !IO),
     module_name_to_file_name(ModuleName, ".dv", no, DvFileName, !IO),
-    
+
     io.write_strings(DepStream, [
         InitFileName, " : ", DepFileName, "\n",
         "\techo > ", InitFileName, "\n"
@@ -5303,7 +5276,7 @@ generate_dep_file(SourceFileName, ModuleName, DepsMap, DepStream, !IO) :-
         "\t$(MKLIBINIT) ", "$(", MakeVarName, ".cs)", " >> ",
         InitFileName, "\n"
     ], !IO),
-    
+
     % $(EXTRA_INIT_COMMAND) should expand to a command to
     % generate extra entries in the `.init' file for a library.
     % It may expand to the empty string.
@@ -5695,7 +5668,7 @@ foreign_modules(Modules, DepsMap) = ForeignModules :-
 
 module_needs_header(DepsMap, Module) :-
     map.lookup(DepsMap, Module, deps(_, ModuleImports)),
-    ModuleImports ^ foreign_code = contains_foreign_code(Langs),
+    ModuleImports ^ has_foreign_code = contains_foreign_code(Langs),
     set.member(lang_c, Langs).
 
     % Succeed iff we need to generate a foreign language output file
@@ -5706,7 +5679,7 @@ module_needs_header(DepsMap, Module) :-
 
 module_has_foreign(DepsMap, Module, LangList) :-
     map.lookup(DepsMap, Module, deps(_, ModuleImports)),
-    ModuleImports ^ foreign_code = contains_foreign_code(Langs),
+    ModuleImports ^ has_foreign_code = contains_foreign_code(Langs),
     LangList = set.to_sorted_list(Langs).
 
     % get_extra_link_objects(Modules, DepsMap, Target, ExtraLinkObjs):
@@ -5745,7 +5718,7 @@ get_extra_link_objects_2([Module | Modules], DepsMap, Target,
     %
     (
         Target = target_asm,
-        ModuleImports ^ foreign_code = contains_foreign_code(Langs),
+        ModuleImports ^ has_foreign_code = contains_foreign_code(Langs),
         set.member(lang_c, Langs)
     ->
         sym_name_to_string(Module, ".", FileName),
@@ -5760,12 +5733,12 @@ get_extra_link_objects_2([Module | Modules], DepsMap, Target,
     module_foreign_info(
         used_foreign_languages          :: set(foreign_language),
         foreign_proc_languages          :: map(sym_name, foreign_language),
-        all_foreign_import_module_info  :: foreign_import_module_info,
+        all_foreign_import_module_info  :: foreign_import_module_info_list,
         module_contains_foreign_export  :: contains_foreign_export
     ).
 
 :- pred get_item_list_foreign_code(globals::in, item_list::in,
-    set(foreign_language)::out, foreign_import_module_info::out,
+    set(foreign_language)::out, foreign_import_module_info_list::out,
     contains_foreign_export::out) is det.
 
 get_item_list_foreign_code(Globals, Items, LangSet, ForeignImports,
@@ -5781,9 +5754,9 @@ get_item_list_foreign_code(Globals, Items, LangSet, ForeignImports,
     module_foreign_info::in, module_foreign_info::out) is det.
 
 get_item_foreign_code(Globals, Item - Context, !Info) :-
-    ( Item = pragma(_, Pragma) ->
+    ( Item = item_pragma(_, Pragma) ->
         do_get_item_foreign_code(Globals, Pragma, Context, !Info)
-    ; Item = mutable(_, _, _, _, _, _) ->
+    ; Item = item_mutable(_, _, _, _, _, _) ->
         % Mutables introduce foreign_procs, but mutable declarations
         % won't have been expanded by the time we get here so we need
         % to handle them separately.
@@ -5792,15 +5765,15 @@ get_item_foreign_code(Globals, Item - Context, !Info) :-
         % (See do_get_item_foreign_code for details/5).
         !:Info = !.Info ^ used_foreign_languages :=
             set.insert(!.Info ^ used_foreign_languages, lang_c)
-    ; ( Item = initialise(_, _, _) ; Item = finalise(_, _, _) ) ->
+    ; ( Item = item_initialise(_, _, _) ; Item = item_finalise(_, _, _) ) ->
         % Intialise/finalise declarations introduce export pragmas, but
         % again they won't have been expanded by the time we get here.
-        % XXX we don't currently support these on non-C backends. 
+        % XXX we don't currently support these on non-C backends.
         !:Info = !.Info ^ used_foreign_languages :=
             set.insert(!.Info ^ used_foreign_languages, lang_c),
         !:Info = !.Info ^ module_contains_foreign_export :=
             contains_foreign_export
-    ;      
+    ;
         true
     ).
 
@@ -5812,24 +5785,22 @@ do_get_item_foreign_code(Globals, Pragma, Context, Info0, Info) :-
     globals.get_backend_foreign_languages(Globals, BackendLangs),
     globals.get_target(Globals, Target),
 
-    % The code here should match the way that mlds_to_gcc.m
-    % decides whether or not to call mlds_to_c.m.  XXX Note
-    % that we do NOT count foreign_decls here.  We only
-    % link in a foreign object file if mlds_to_gcc called
-    % mlds_to_c.m to generate it, which it will only do if
-    % there is some foreign_code, not just foreign_decls.
-    % Counting foreign_decls here causes problems with
-    % intermodule optimization.
+    % The code here should match the way that mlds_to_gcc.m decides whether
+    % or not to call mlds_to_c.m.  XXX Note that we do NOT count foreign_decls
+    % here. We only link in a foreign object file if mlds_to_gcc called
+    % mlds_to_c.m to generate it, which it will only do if there is some
+    % foreign_code, not just foreign_decls. Counting foreign_decls here
+    % causes problems with intermodule optimization.
     (
-        Pragma = foreign_code(Lang, _),
+        Pragma = pragma_foreign_code(Lang, _),
         list.member(Lang, BackendLangs)
     ->
         Info = Info0 ^ used_foreign_languages :=
             set.insert(Info0 ^ used_foreign_languages, Lang)
     ;
-        Pragma = foreign_proc(Attrs, Name, _, _, _, _, _)
+        Pragma = pragma_foreign_proc(Attrs, Name, _, _, _, _, _)
     ->
-        NewLang = foreign_language(Attrs),
+        NewLang = get_foreign_language(Attrs),
         ( OldLang = Info0 ^ foreign_proc_languages ^ elem(Name) ->
             % is it better than an existing one?
             (
@@ -5849,14 +5820,12 @@ do_get_item_foreign_code(Globals, Pragma, Context, Info0, Info) :-
             )
         )
     ;
-        % XXX `pragma export' should not be treated as
-        % foreign, but currently mlds_to_gcc.m doesn't
-        % handle that declaration, and instead just
-        % punts it on to mlds_to_c.m, thus generating C
-        % code for it, rather than assembler code.  So
-        % we need to treat `pragma export' like the
-        % other pragmas for foreign code.
-        Pragma = foreign_export(Lang, _, _, _, _),
+        % XXX `pragma export' should not be treated as foreign, but currently
+        % mlds_to_gcc.m doesn't handle that declaration, and instead just
+        % punts it on to mlds_to_c.m, thus generating C code for it,
+        % rather than assembler code. So we need to treat `pragma export'
+        % like the other pragmas for foreign code.
+        Pragma = pragma_foreign_export(Lang, _, _, _, _),
         list.member(Lang, BackendLangs)
     ->
         Info1 = Info0 ^ used_foreign_languages :=
@@ -5864,11 +5833,11 @@ do_get_item_foreign_code(Globals, Pragma, Context, Info0, Info) :-
         Info = Info1 ^ module_contains_foreign_export :=
             contains_foreign_export
     ;
-        Pragma = foreign_import_module(Lang, Import),
+        Pragma = pragma_foreign_import_module(Lang, Import),
         list.member(Lang, BackendLangs)
     ->
         Info = Info0 ^ all_foreign_import_module_info :=
-            [foreign_import_module(Lang, Import, Context) |
+            [foreign_import_module_info(Lang, Import, Context) |
                 Info0 ^ all_foreign_import_module_info]
     ;
         % We generate some C code for fact tables,
@@ -5878,7 +5847,7 @@ do_get_item_foreign_code(Globals, Pragma, Context, Info0, Info) :-
         ( Target = target_asm
         ; Target = target_c
         ),
-        Pragma = fact_table(_, _, _)
+        Pragma = pragma_fact_table(_, _, _)
     ->
         Info = Info0 ^ used_foreign_languages :=
             set.insert(Info0 ^ used_foreign_languages, lang_c)
@@ -6166,7 +6135,7 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
     % may need to import its `.mh' file.
     get_foreign_self_imports(Items, SelfImportLangs),
     ForeignSelfImports = list.map(
-        (func(Lang) = foreign_import_module(Lang, ModuleName,
+        (func(Lang) = foreign_import_module_info(Lang, ModuleName,
             term.context_init)),
         SelfImportLangs),
     ForeignImports = ForeignSelfImports ++ ForeignImports0,
@@ -6176,7 +6145,7 @@ init_dependencies(FileName, SourceFileModuleName, NestedModuleNames,
     %
     (
         list.member(Item, Items),
-        Item = pred_or_func(_, _, _, predicate, Name, [_, _], WithType,
+        Item = item_pred_or_func(_, _, _, predicate, Name, [_, _], WithType,
             _, _, _, _, _) - _,
         unqualify_name(Name, "main"),
 
@@ -6505,7 +6474,7 @@ process_module_long_interfaces(ReadModules, NeedQualifier, [Import | Imports],
             ++ IndirectUses1,
         !:ImplIndirectImports = !.ImplIndirectImports
             ++ ImplIndirectImports1 ++ ImplIndirectUses1,
-        list.append(ModItems0, Items, ModItems),
+        ModItems = ModItems0 ++ Items,
         !:Module = !.Module ^ impl_deps := ModImplementationImports,
         !:Module = !.Module ^ items := ModItems,
         !:Module = !.Module ^ error := ModError,
@@ -6550,20 +6519,22 @@ check_module_accessibility(ModuleName, AccessibleSubModules, Items,
             % declaration(s), so we need to search the item
             % list again to find them.
             FindImports = (pred(Item::in) is semidet :-
-                Item = module_defn(_, ModuleDefn) - _,
-                ( ModuleDefn = import(module(Mods))
-                ; ModuleDefn = use(module(Mods))
+                Item = item_module_defn(_, ModuleDefn) - _,
+                ( ModuleDefn = md_import(list_module(Mods))
+                ; ModuleDefn = md_use(list_module(Mods))
                 ),
                 list.member(ImportedModule, Mods)
             ),
             list.filter(FindImports, Items, ImportItems),
-            ( ImportItems = [] ->
+            (
+                ImportItems = [],
                 unexpected(this_file, "check_parent_module")
             ;
-                true
+                ImportItems = [_ | _]
             ),
-            list.foldl(report_inaccessible_module_error(
-                ModuleName, ParentModule, SubModule),
+            list.foldl(
+                report_inaccessible_module_error(
+                    ModuleName, ParentModule, SubModule),
                 ImportItems, !IO)
         )
     ;
@@ -6586,9 +6557,9 @@ check_module_accessibility(ModuleName, AccessibleSubModules, Items,
 
 report_inaccessible_module_error(ModuleName, ParentModule, SubModule,
         Item - Context, !IO) :-
-    ( Item = module_defn(_, import(module(_))) ->
+    ( Item = item_module_defn(_, md_import(list_module(_))) ->
         DeclName = "import_module"
-    ; Item = module_defn(_, use(module(_))) ->
+    ; Item = item_module_defn(_, md_use(list_module(_))) ->
         DeclName = "use_module"
     ;
         unexpected(this_file,
@@ -6704,12 +6675,12 @@ replace_section_decls(IntStatusItem, ImpStatusItem, !Items) :-
     list.map(
         (pred(Item0::in, Item::out) is det :-
             (
-                Item0 = module_defn(_, Defn) - _,
+                Item0 = item_module_defn(_, Defn) - _,
                 (
-                    Defn = interface,
+                    Defn = md_interface,
                     Item1 = IntStatusItem
                 ;
-                    Defn = implementation,
+                    Defn = md_implementation,
                     Item1 = ImpStatusItem
                 )
             ->
@@ -6756,8 +6727,8 @@ get_children(Items, IncludeDeps) :-
 
 get_children_2([], IncludeDeps, IncludeDeps).
 get_children_2([Item - _Context | Items], IncludeDeps0, IncludeDeps) :-
-    ( Item = module_defn(_VarSet, include_module(Modules)) ->
-        list.append(IncludeDeps0, Modules, IncludeDeps1)
+    ( Item = item_module_defn(_VarSet, md_include_module(Modules)) ->
+        IncludeDeps1 = IncludeDeps0 ++ Modules
     ;
         IncludeDeps1 = IncludeDeps0
     ),
@@ -6779,25 +6750,25 @@ get_accessible_children(Items, IncludeDeps) :-
 get_accessible_children_2(_, [], !IncludeDeps).
 get_accessible_children_2(!.Visible, [Item - _ | Items], !IncludeDeps) :-
     (
-        Item = module_defn(_VarSet, Defn),
-        ( Defn = abstract_imported
-        ; Defn = opt_imported
-        ; Defn = transitively_imported
+        Item = item_module_defn(_VarSet, Defn),
+        ( Defn = md_abstract_imported
+        ; Defn = md_opt_imported
+        ; Defn = md_transitively_imported
         )
     ->
         !:Visible = no
     ;
-        Item = module_defn(_VarSet, Defn),
-        ( Defn = imported(_)
-        ; Defn = used(_)
-        ; Defn = interface
-        ; Defn = implementation
-        ; Defn = private_interface
+        Item = item_module_defn(_VarSet, Defn),
+        ( Defn = md_imported(_)
+        ; Defn = md_used(_)
+        ; Defn = md_interface
+        ; Defn = md_implementation
+        ; Defn = md_private_interface
         )
     ->
         !:Visible = yes
     ;
-        Item = module_defn(_VarSet, include_module(Modules)),
+        Item = item_module_defn(_VarSet, md_include_module(Modules)),
         !.Visible = yes
     ->
         !:IncludeDeps = !.IncludeDeps ++ Modules
@@ -6811,8 +6782,8 @@ get_accessible_children_2(!.Visible, [Item - _ | Items], !IncludeDeps) :-
 get_dependencies(Items, ImportDeps, UseDeps) :-
     get_dependencies_implementation(Items,
         [], IntImportDeps, [], IntUseDeps, [], ImpImportDeps, [], ImpUseDeps),
-    list.append(IntImportDeps, ImpImportDeps, ImportDeps),
-    list.append(IntUseDeps, ImpUseDeps, UseDeps).
+    ImportDeps = IntImportDeps ++ ImpImportDeps,
+    UseDeps = IntUseDeps ++ ImpUseDeps.
 
     % get_dependencies(Items, IntImportDeps, IntUseDeps,
     %   ImpImportDeps, ImpUseDeps):
@@ -6839,8 +6810,8 @@ get_dependencies(Items, ImportDeps, UseDeps) :-
     list(module_name)::out, list(module_name)::out,
     list(module_name)::out, list(module_name)::out) is det.
 
-get_dependencies(Items, IntImportDeps, IntUseDeps, ImpImportDeps, ImpUseDeps)
-        :-
+get_dependencies(Items, IntImportDeps, IntUseDeps,
+        ImpImportDeps, ImpUseDeps) :-
     get_dependencies_implementation(Items,
         [], IntImportDeps, [], IntUseDeps, [], ImpImportDeps, [], ImpUseDeps).
 
@@ -6854,14 +6825,14 @@ get_dependencies_implementation([],
         !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps).
 get_dependencies_implementation([Item - _Context | Items],
         !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps) :-
-    ( Item = module_defn(_VarSet, interface) ->
+    ( Item = item_module_defn(_VarSet, md_interface) ->
         get_dependencies_interface(Items,
             !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
     ;
-        ( Item = module_defn(_VarSet, import(module(Modules))) ->
-            list.append(!.ImpImportDeps, Modules, !:ImpImportDeps)
-        ; Item = module_defn(_VarSet, use(module(Modules))) ->
-            list.append(!.ImpUseDeps, Modules, !:ImpUseDeps)
+        ( Item = item_module_defn(_VarSet, md_import(list_module(Modules))) ->
+            !:ImpImportDeps = !.ImpImportDeps ++ Modules
+        ; Item = item_module_defn(_VarSet, md_use(list_module(Modules))) ->
+            !:ImpUseDeps = !.ImpUseDeps ++ Modules
         ;
             true
         ),
@@ -6879,14 +6850,14 @@ get_dependencies_interface([],
         !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps).
 get_dependencies_interface([Item - _Context | Items],
         !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps) :-
-    ( Item = module_defn(_VarSet, implementation) ->
+    ( Item = item_module_defn(_VarSet, md_implementation) ->
         get_dependencies_implementation(Items,
             !IntImportDeps, !IntUseDeps, !ImpImportDeps, !ImpUseDeps)
     ;
-        ( Item = module_defn(_VarSet, import(module(Modules))) ->
-            list.append(!.IntImportDeps, Modules, !:IntImportDeps)
-        ; Item = module_defn(_VarSet, use(module(Modules))) ->
-            list.append(!.IntUseDeps, Modules, !:IntUseDeps)
+        ( Item = item_module_defn(_VarSet, md_import(list_module(Modules))) ->
+            !:IntImportDeps = !.IntImportDeps ++ Modules
+        ; Item = item_module_defn(_VarSet, md_use(list_module(Modules))) ->
+            !:IntUseDeps = !.IntUseDeps ++ Modules
         ;
             true
         ),
@@ -6907,7 +6878,7 @@ get_fact_table_dependencies(Items, Deps) :-
 
 get_fact_table_dependencies_2([], Deps, Deps).
 get_fact_table_dependencies_2([Item - _Context | Items], Deps0, Deps) :-
-    ( Item = pragma(_, fact_table(_SymName, _Arity, FileName)) ->
+    ( Item = item_pragma(_, pragma_fact_table(_SymName, _Arity, FileName)) ->
         Deps1 = [FileName | Deps0]
     ;
         Deps1 = Deps0
@@ -6926,17 +6897,14 @@ split_into_submodules(ModuleName, Items0, ModuleList, !IO) :-
     split_into_submodules_2(ModuleName, Items0, InParentInterface,
         Items, ModuleList, !IO),
 
-    %
     % Check that there are no items after the end_module declaration.
-    %
-    ( Items = [ _ - Context | _] ->
+    ( Items = [_ - Context | _] ->
         report_items_after_end_module(Context, !IO)
     ;
         true
     ),
-    %
-    % check for modules declared as both nested and separate sub-modules
-    %
+
+    % Check for modules declared as both nested and separate sub-modules.
     get_children(Items0, NestedSubmodules),
     assoc_list.keys(ModuleList, SeparateSubModules),
     Duplicates = set.intersect(
@@ -6970,59 +6938,43 @@ split_into_submodules_3(ModuleName, [Item | Items1],
         InParentInterface, InInterface0,
         ThisModuleItems, OtherItems, SubModules, !IO) :-
     (
-        %
-        % Check for a `module' declaration, which signals
-        % the start of a nested module.
-        %
-        Item = module_defn(VarSet, module(SubModuleName)) - Context
+        % Check for a `module' declaration, which signals the start
+        % of a nested module.
+        Item = item_module_defn(VarSet, md_module(SubModuleName)) - Context
     ->
-        %
         % Parse in the items for the nested submodule.
-        %
         split_into_submodules_2(SubModuleName, Items1, InInterface0,
             Items2, SubModules0, !IO),
-        %
+
         % Parse in the remaining items for this module.
-        %
         split_into_submodules_3(ModuleName, Items2, InParentInterface,
             InInterface0, ThisModuleItems0, Items3, SubModules1, !IO),
 
-        %
         % Combine the sub-module declarations from the previous two steps.
-        %
         list.foldl(add_submodule, SubModules0, SubModules1, SubModules),
-        %
+
         % Replace the nested submodule with an `include_module' declaration.
-        %
-        IncludeSubMod = module_defn(VarSet,
-            include_module([SubModuleName])) - Context,
+        IncludeSubMod = item_module_defn(VarSet,
+            md_include_module([SubModuleName])) - Context,
         ThisModuleItems = [IncludeSubMod | ThisModuleItems0],
         OtherItems = Items3
     ;
-        %
         % Check for a matching `end_module' declaration.
-        %
-        Item = module_defn(_VarSet, end_module(ModuleName)) - _
+        Item = item_module_defn(_VarSet, md_end_module(ModuleName)) - _
     ->
-        %
-        % if so, thats the end of this module
-        %
+        % If so, that's the end of this module.
         ThisModuleItems = [],
         OtherItems = Items1,
         map.init(SubModules)
     ;
-        %
         % Otherwise, process the next item in this module.
-        %
 
-        %
         % Update the flag which records whether we're currently in the
         % interface section, and report an error if there is an
         % `implementation' section inside an `interface' section.
-        %
-        ( Item = module_defn(_, interface) - _Context ->
+        ( Item = item_module_defn(_, md_interface) - _Context ->
             InInterface1 = yes
-        ; Item = module_defn(_, implementation) - ImplContext ->
+        ; Item = item_module_defn(_, md_implementation) - ImplContext ->
             (
                 InParentInterface = yes,
                 report_error_implementation_in_interface(ModuleName,
@@ -7034,13 +6986,12 @@ split_into_submodules_3(ModuleName, [Item | Items1],
         ;
             InInterface1 = InInterface0
         ),
-        %
+
         % Check to make sure that a non-abstract instance declaration
         % does not occur in a module interface.
-        %
         (
             InInterface1 = yes,
-            Item = instance(_, _, _, Body, _, _) - InstanceContext,
+            Item = item_instance(_, _, _, Body, _, _) - InstanceContext,
             Body \= abstract
         ->
             report_non_abstract_instance_in_interface(InstanceContext, !IO)
@@ -7048,16 +6999,13 @@ split_into_submodules_3(ModuleName, [Item | Items1],
             true
         ),
 
-        %
         % Parse the remaining items for this module.
-        %
         split_into_submodules_3(ModuleName, Items1,
             InParentInterface, InInterface1,
             ThisModuleItems0, Items2, SubModules, !IO),
-        %
+
         % Put the current item back onto the front of the item list
         % for this module.
-        %
         ThisModuleItems = [Item | ThisModuleItems0],
         OtherItems = Items2
     ).
@@ -7066,17 +7014,13 @@ split_into_submodules_3(ModuleName, [Item | Items1],
     submodule_map::in, submodule_map::out) is det.
 
 add_submodule(ModuleName - ModuleItemList, !SubModules) :-
-    %
-    % If the same module name occurs twice, then just append
-    % the lists of items together.
-    % Perhaps we should be a bit more strict about this, for
-    % example by only allowing one `:- implementation' section
-    % and one `:- interface' section for each module?
-    % (That is what the Mercury language reference manual mandates.
-    % On the other hand, it also says that top-level modules
-    % should only have one `:- interface' and one `:- implementation'
-    % section, and we don't enforce that either...)
-    %
+    % If the same module name occurs twice, then just append the lists of items
+    % together. Perhaps we should be a bit more strict about this, for example
+    % by only allowing one `:- implementation' section and one `:- interface'
+    % section for each module? (That is what the Mercury language reference
+    % manual mandates. On the other hand, it also says that top-level modules
+    % should only have one `:- interface' and one `:- implementation' section,
+    % and we don't enforce that either...)
     ( map.search(!.SubModules, ModuleName, ItemList0) ->
         list.append(ModuleItemList, ItemList0, ItemList),
         svmap.det_update(ModuleName, ItemList, !SubModules)
@@ -7109,11 +7053,11 @@ report_duplicate_modules(Duplicates, Items, !IO) :-
     IsDuplicateError =
         (pred(SubModuleName - Context::out) is nondet :-
             list.member(Item, Items),
-            Item = module_defn(_VarSet, ModuleDefn) - Context,
+            Item = item_module_defn(_VarSet, ModuleDefn) - Context,
             (
-                ModuleDefn = module(SubModuleName)
+                ModuleDefn = md_module(SubModuleName)
             ;
-                ModuleDefn = include_module(SubModuleNames),
+                ModuleDefn = md_include_module(SubModuleNames),
                 list.member(SubModuleName, SubModuleNames)
             ),
             set.member(SubModuleName, Duplicates)
@@ -7189,10 +7133,10 @@ get_interface_and_implementation(ModuleName, IncludeImplTypes,
 maybe_add_foreign_import_module(ModuleName, Items0, Items) :-
     get_foreign_self_imports(Items0, Langs),
     MakeForeignImport = (func(Lang) = ImportItem :-
-            Origin     = compiler(foreign_imports),
-            Pragma     = foreign_import_module(Lang, ModuleName),
-            Context    = term.context_init,
-            ImportItem = pragma(Origin, Pragma) - Context
+        Origin     = compiler(foreign_imports),
+        Pragma     = pragma_foreign_import_module(Lang, ModuleName),
+        Context    = term.context_init,
+        ImportItem = item_pragma(Origin, Pragma) - Context
     ),
     Imports = list.map(MakeForeignImport, Langs),
     Items = Imports ++ Items0.
@@ -7220,22 +7164,22 @@ get_interface_and_implementation_2(IncludeImplTypes, [ItemAndContext | Rest],
         InInterface0, !IntItems, AddImplItem, !ImplItems) :-
     ItemAndContext = Item - Context,
     (
-        Item = module_defn(_, interface)
+        Item = item_module_defn(_, md_interface)
     ->
         !:IntItems = [ItemAndContext | !.IntItems],
         InInterface1 = yes,
         Continue = yes
     ;
-        Item = module_defn(_, Defn),
-        ( Defn = imported(_)
-        ; Defn = used(_)
+        Item = item_module_defn(_, Defn),
+        ( Defn = md_imported(_)
+        ; Defn = md_used(_)
         )
     ->
         % Items after here are not part of this module.
         InInterface1 = no,
         Continue = no
     ;
-        Item = module_defn(_, implementation)
+        Item = item_module_defn(_, md_implementation)
     ->
         !:IntItems = [ItemAndContext | !.IntItems],
         InInterface1 = no,
@@ -7328,26 +7272,26 @@ get_short_interface_2([ItemAndContext | Rest], Kind, Items0, Items) :-
 
 :- pred include_in_short_interface(item::in) is semidet.
 
-include_in_short_interface(type_defn(_, _, _, _, _)).
-include_in_short_interface(inst_defn(_, _, _, _, _)).
-include_in_short_interface(mode_defn(_, _, _, _, _)).
-include_in_short_interface(module_defn(_, _)).
-include_in_short_interface(instance(_, _, _, _, _, _)).
-include_in_short_interface(pragma(_, foreign_import_module(_, _))).
+include_in_short_interface(item_type_defn(_, _, _, _, _)).
+include_in_short_interface(item_inst_defn(_, _, _, _, _)).
+include_in_short_interface(item_mode_defn(_, _, _, _, _)).
+include_in_short_interface(item_module_defn(_, _)).
+include_in_short_interface(item_instance(_, _, _, _, _, _)).
+include_in_short_interface(item_pragma(_, pragma_foreign_import_module(_, _))).
 
     % Could this item use items from imported modules.
 :- func item_needs_imports(item) = bool.
 
-item_needs_imports(clause(_, _, _, _, _, _)) = yes.
-item_needs_imports(Item @ type_defn(_, _, _, _, _)) =
-        ( Item ^ td_ctor_defn = abstract_type(_) -> no ; yes ).
-item_needs_imports(inst_defn(_, _, _, _, _)) = yes.
-item_needs_imports(mode_defn(_, _, _, _, _)) = yes.
-item_needs_imports(module_defn(_, _)) = no.
-item_needs_imports(pragma(_, _)) = yes.
-item_needs_imports(pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _)) = yes.
-item_needs_imports(pred_or_func_mode(_, _, _, _, _, _, _)) = yes.
-item_needs_imports(Item @ typeclass(_, _, _, _, _, _)) =
+item_needs_imports(item_clause(_, _, _, _, _, _)) = yes.
+item_needs_imports(Item @ item_type_defn(_, _, _, _, _)) =
+        ( Item ^ td_ctor_defn = parse_tree_abstract_type(_) -> no ; yes ).
+item_needs_imports(item_inst_defn(_, _, _, _, _)) = yes.
+item_needs_imports(item_mode_defn(_, _, _, _, _)) = yes.
+item_needs_imports(item_module_defn(_, _)) = no.
+item_needs_imports(item_pragma(_, _)) = yes.
+item_needs_imports(item_pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _)) = yes.
+item_needs_imports(item_pred_or_func_mode(_, _, _, _, _, _, _)) = yes.
+item_needs_imports(Item @ item_typeclass(_, _, _, _, _, _)) =
     (
         Item ^ tc_class_methods = abstract,
         \+ (
@@ -7361,51 +7305,56 @@ item_needs_imports(Item @ typeclass(_, _, _, _, _, _)) =
     ;
         yes
     ).
-item_needs_imports(instance(_, _, _, _, _, _)) = yes.
-item_needs_imports(promise(_, _, _, _)) = yes.
-item_needs_imports(initialise(_, _, _)) = yes.
-item_needs_imports(finalise(_, _, _)) = yes.
-item_needs_imports(mutable(_, _, _, _, _, _)) = yes.
-item_needs_imports(nothing(_)) = no.
+item_needs_imports(item_instance(_, _, _, _, _, _)) = yes.
+item_needs_imports(item_promise(_, _, _, _)) = yes.
+item_needs_imports(item_initialise(_, _, _)) = yes.
+item_needs_imports(item_finalise(_, _, _)) = yes.
+item_needs_imports(item_mutable(_, _, _, _, _, _)) = yes.
+item_needs_imports(item_nothing(_)) = no.
 
 :- pred item_needs_foreign_imports(item::in, foreign_language::out) is nondet.
 
-item_needs_foreign_imports(pragma(_, foreign_export(Lang, _, _, _, _)), Lang).
+item_needs_foreign_imports(item_pragma(_,
+        pragma_foreign_export(Lang, _, _, _, _)), Lang).
 
     % `:- pragma import' is only supported for C.
-item_needs_foreign_imports(pragma(_, import(_, _, _, _, _)), lang_c).
-item_needs_foreign_imports(Item @ type_defn(_, _, _, _, _), Lang) :-
-    Item ^ td_ctor_defn = foreign_type(ForeignType, _, _),
+item_needs_foreign_imports(item_pragma(_, pragma_import(_, _, _, _, _)),
+        lang_c).
+item_needs_foreign_imports(Item @ item_type_defn(_, _, _, _, _), Lang) :-
+    Item ^ td_ctor_defn = parse_tree_foreign_type(ForeignType, _, _),
     Lang = foreign_type_language(ForeignType).
-item_needs_foreign_imports(pragma(_, foreign_decl(Lang, _, _)), Lang).
-item_needs_foreign_imports(pragma(_, foreign_code(Lang, _)), Lang).
-item_needs_foreign_imports(pragma(_, foreign_proc(Attrs, _, _, _, _, _, _)),
-        foreign_language(Attrs)).
-item_needs_foreign_imports(mutable(_, _, _, _, _, _), Lang) :-
+item_needs_foreign_imports(item_pragma(_, pragma_foreign_decl(Lang, _, _)),
+        Lang).
+item_needs_foreign_imports(item_pragma(_, pragma_foreign_code(Lang, _)), Lang).
+item_needs_foreign_imports(item_pragma(_,
+        pragma_foreign_proc(Attrs, _, _, _, _, _, _)),
+        get_foreign_language(Attrs)).
+item_needs_foreign_imports(item_mutable(_, _, _, _, _, _), Lang) :-
     foreign_language(Lang).
 
 :- pred include_in_int_file_implementation(item::in) is semidet.
 
-include_in_int_file_implementation(type_defn(_, _, _, _, _)).
-include_in_int_file_implementation(module_defn(_, Defn)) :-
-    Defn \= external(_, _).
+include_in_int_file_implementation(item_type_defn(_, _, _, _, _)).
+include_in_int_file_implementation(item_module_defn(_, Defn)) :-
+    Defn \= md_external(_, _).
 
     % `:- typeclass declarations' may be referred to
     % by the constructors in type declarations.
     % Since these constructors are abstractly exported,
     % we won't need the local instance declarations.
     %
-include_in_int_file_implementation(typeclass(_, _, _, _, _, _)).
-include_in_int_file_implementation(pragma(_, foreign_import_module(_, _))).
+include_in_int_file_implementation(item_typeclass(_, _, _, _, _, _)).
+include_in_int_file_implementation(item_pragma(_,
+    pragma_foreign_import_module(_, _))).
 
 :- pred make_abstract_defn(item::in, short_interface_kind::in, item::out)
     is semidet.
 
-make_abstract_defn(type_defn(_VarSet, _Name, _Args, TypeDefn, _Cond) @ Item0,
-        ShortInterfaceKind,
-        Item0 ^ td_ctor_defn := abstract_type(IsSolverType)) :-
+make_abstract_defn(Item0 @ item_type_defn(_VarSet, _Name, _Args, TypeDefn,
+        _Cond), ShortInterfaceKind,
+        Item0 ^ td_ctor_defn := parse_tree_abstract_type(IsSolverType)) :-
     (
-        TypeDefn = du_type(_, _),
+        TypeDefn = parse_tree_du_type(_, _),
         IsSolverType = non_solver_type,
         % For the `.int2' files, we need the full definitions of
         % discriminated union types.  Even if the functors for a type
@@ -7413,15 +7362,15 @@ make_abstract_defn(type_defn(_VarSet, _Name, _Args, TypeDefn, _Cond) @ Item0,
         % comparing insts, e.g. for comparing `ground' and `bound(...)'.
         ShortInterfaceKind = int3
     ;
-        TypeDefn = abstract_type(IsSolverType)
+        TypeDefn = parse_tree_abstract_type(IsSolverType)
     ;
-        TypeDefn = solver_type(_, _),
+        TypeDefn = parse_tree_solver_type(_, _),
         % rafe: XXX we need to also export the details of the
         % forwarding type for the representation and the forwarding
         % pred for initialization.
         IsSolverType = solver_type
     ;
-        TypeDefn = eqv_type(_),
+        TypeDefn = parse_tree_eqv_type(_),
         % rafe: XXX what *should* IsSolverType be here?  We need
         % to know properly.
         IsSolverType = non_solver_type,
@@ -7435,34 +7384,36 @@ make_abstract_defn(type_defn(_VarSet, _Name, _Args, TypeDefn, _Cond) @ Item0,
         % types only for the `.int3' files.
         ShortInterfaceKind = int3
     ;
-        TypeDefn = foreign_type(_, _, _),
+        TypeDefn = parse_tree_foreign_type(_, _, _),
         % We always need the definitions of foreign types
         % to handle inter-language interfacing correctly.
         IsSolverType = non_solver_type,
         semidet_fail
     ).
-make_abstract_defn(instance(_, _, _, _, _, _) @ Item0, int2, Item) :-
+make_abstract_defn(item_instance(_, _, _, _, _, _) @ Item0, int2, Item) :-
     make_abstract_instance(Item0, Item).
-make_abstract_defn(typeclass(_, _, _, _, _, _) @ Item, _,
+make_abstract_defn(item_typeclass(_, _, _, _, _, _) @ Item, _,
         Item ^ tc_class_methods := abstract).
 
 :- pred make_abstract_unify_compare(item::in, short_interface_kind::in,
     item::out) is semidet.
 
-make_abstract_unify_compare(type_defn(VarSet, Name, Args, TypeDefn0, Cond),
-        int2, type_defn(VarSet, Name, Args, TypeDefn, Cond)) :-
+make_abstract_unify_compare(
+        item_type_defn(VarSet, Name, Args, TypeDefn0, Cond), int2,
+        item_type_defn(VarSet, Name, Args, TypeDefn, Cond)) :-
     (
-        TypeDefn0 = du_type(Constructors, yes(_UserEqComp)),
-        TypeDefn  = du_type(Constructors, yes(
+        TypeDefn0 = parse_tree_du_type(Constructors, yes(_UserEqComp)),
+        TypeDefn  = parse_tree_du_type(Constructors, yes(
                 abstract_noncanonical_type(non_solver_type)))
     ;
-        TypeDefn0 = foreign_type(ForeignType, yes(_UserEqComp), Assertions),
-        TypeDefn  = foreign_type(ForeignType, yes(
-            abstract_noncanonical_type(non_solver_type)),
-            Assertions)
+        TypeDefn0 = parse_tree_foreign_type(ForeignType,
+            yes(_UserEqComp), Assertions),
+        TypeDefn  = parse_tree_foreign_type(ForeignType,
+            yes(abstract_noncanonical_type(non_solver_type)), Assertions)
     ;
-        TypeDefn0 = solver_type(SolverTypeDetails, yes(_UserEqComp)),
-        TypeDefn  = solver_type(SolverTypeDetails,
+        TypeDefn0 = parse_tree_solver_type(SolverTypeDetails,
+            yes(_UserEqComp)),
+        TypeDefn  = parse_tree_solver_type(SolverTypeDetails,
             yes(abstract_noncanonical_type(solver_type)))
     ).
 
@@ -7474,7 +7425,7 @@ make_abstract_unify_compare(type_defn(VarSet, Name, Args, TypeDefn0, Cond),
 :- pred make_abstract_instance(item::in, item::out) is semidet.
 
 make_abstract_instance(Item0, Item) :-
-    Item0 = instance(_Constraints, _Class, _ClassTypes, Body0,
+    Item0 = item_instance(_Constraints, _Class, _ClassTypes, Body0,
         _TVarSet, _ModName),
     Body0 = concrete(_),
     Body = abstract,
@@ -7494,9 +7445,9 @@ maybe_strip_import_decls(!Items) :-
         list.filter(
             (pred((ThisItem - _)::in) is semidet :-
                 \+ (
-                    ThisItem = module_defn(_, Defn),
-                    ( Defn = import(_)
-                    ; Defn = use(_)
+                    ThisItem = item_module_defn(_, Defn),
+                    ( Defn = md_import(_)
+                    ; Defn = md_use(_)
                     )
                 )
             ), !Items)
@@ -7511,7 +7462,7 @@ maybe_strip_import_decls(!Items) :-
     ;
         list.filter(
             (pred((ThisItem - _)::in) is semidet :-
-                ThisItem \= pragma(_, foreign_import_module(_, _))
+                ThisItem \= item_pragma(_, pragma_foreign_import_module(_, _))
             ), !Items)
     ).
 
@@ -7530,18 +7481,18 @@ maybe_strip_import_decls(!Items) :-
 order_items(Items0, Items) :-
     filter_unnecessary_flips(Items0, other, Items1),
     do_order_items(Items1, Items2),
-        % Delete any redundant :- interface and :- implementation markers
-        % at the end, to make Items as insensitive as we can to the number
-        % of interface sections in the source file. If some of the
-        % implementation sections are not empty, we won't be fully successful.
+    % Delete any redundant :- interface and :- implementation markers at the
+    % end, to make Items as insensitive as we can to the number of interface
+    % sections in the source file. If some of the implementation sections
+    % are not empty, we won't be fully successful.
     list.reverse(Items2, RevItems2),
     list.takewhile(interface_or_import_marker, RevItems2, _, RevItems),
     list.reverse(RevItems, Items).
 
 :- pred interface_or_import_marker(item_and_context::in) is semidet.
 
-interface_or_import_marker(module_defn(_, interface) - _).
-interface_or_import_marker(module_defn(_, implementation) - _).
+interface_or_import_marker(item_module_defn(_, md_interface) - _).
+interface_or_import_marker(item_module_defn(_, md_implementation) - _).
 
     % Which section of the module we are in. The "other" alternative
     % reflects my ignorance (based on the lack of documentation) of
@@ -7561,20 +7512,20 @@ filter_unnecessary_flips([Item], _, [Item]).
 filter_unnecessary_flips([Item1, Item2 | Items0], CurPos, Items) :-
     (
         CurPos = in_interface,
-        Item1 = module_defn(_, implementation) - _,
-        Item2 = module_defn(_, interface) - _
+        Item1 = item_module_defn(_, md_implementation) - _,
+        Item2 = item_module_defn(_, md_interface) - _
     ->
         filter_unnecessary_flips(Items0, CurPos, Items)
     ;
         CurPos = in_implementation,
-        Item1 = module_defn(_, interface) - _,
-        Item2 = module_defn(_, implementation) - _
+        Item1 = item_module_defn(_, md_interface) - _,
+        Item2 = item_module_defn(_, md_implementation) - _
     ->
         filter_unnecessary_flips(Items0, CurPos, Items)
     ;
-        ( Item1 = module_defn(_, implementation) - _ ->
+        ( Item1 = item_module_defn(_, md_implementation) - _ ->
             NextPos = in_implementation
-        ; Item1 = module_defn(_, interface) - _ ->
+        ; Item1 = item_module_defn(_, md_interface) - _ ->
             NextPos = in_interface
         ; chunkable_item_and_context(Item1) = yes ->
             NextPos = CurPos
@@ -7606,8 +7557,8 @@ do_order_items([Item0 | Items0], OrderedItems) :-
             ImportReorderableItems, NonImportReorderableItems),
         list.filter(symname_orderable, NonReorderableItems,
             SymNameItems, NonSymNameItems),
-            % We rely on the sort being stable to keep the items
-            % with the same sym_names in their original order.
+        % We rely on the sort being stable to keep the items with the same
+        % sym_names in their original order.
         list.sort(compare_by_symname, SymNameItems, OrderedSymNameItems),
         do_order_items(RemainItems, OrderedRemainItems),
         OrderedItems = list.sort(ImportReorderableItems) ++
@@ -7620,8 +7571,8 @@ do_order_items([Item0 | Items0], OrderedItems) :-
 
 :- pred import_or_use(item_and_context::in) is semidet.
 
-import_or_use(module_defn(_, import(_)) - _).
-import_or_use(module_defn(_, use(_)) - _).
+import_or_use(item_module_defn(_, md_import(_)) - _).
+import_or_use(item_module_defn(_, md_use(_)) - _).
 
 :- pred is_reorderable(item_and_context::in) is semidet.
 
@@ -7646,68 +7597,68 @@ reorderable_item_and_context(Item - _Context) =
     %
 :- func reorderable_item(item) = bool.
 
-reorderable_item(module_defn(_, ModuleDefn)) = Reorderable :-
-    ( ModuleDefn = import(_), Reorderable = yes
-    ; ModuleDefn = abstract_imported, Reorderable = no
-    ; ModuleDefn = end_module(_), Reorderable = no
-    ; ModuleDefn = export(_), Reorderable = yes
-    ; ModuleDefn = external(_, _), Reorderable = yes
-    ; ModuleDefn = implementation, Reorderable = no
-    ; ModuleDefn = imported(_), Reorderable = no
-    ; ModuleDefn = include_module(_), Reorderable = no
-    ; ModuleDefn = interface, Reorderable = no
-    ; ModuleDefn = module(_), Reorderable = no
-    ; ModuleDefn = opt_imported, Reorderable = no
-    ; ModuleDefn = private_interface, Reorderable = no
-    ; ModuleDefn = transitively_imported, Reorderable = no
-    ; ModuleDefn = use(_), Reorderable = yes
-    ; ModuleDefn = used(_), Reorderable = no
-    ; ModuleDefn = version_numbers(_, _), Reorderable = no
+reorderable_item(item_module_defn(_, ModuleDefn)) = Reorderable :-
+    ( ModuleDefn = md_import(_), Reorderable = yes
+    ; ModuleDefn = md_abstract_imported, Reorderable = no
+    ; ModuleDefn = md_end_module(_), Reorderable = no
+    ; ModuleDefn = md_export(_), Reorderable = yes
+    ; ModuleDefn = md_external(_, _), Reorderable = yes
+    ; ModuleDefn = md_implementation, Reorderable = no
+    ; ModuleDefn = md_imported(_), Reorderable = no
+    ; ModuleDefn = md_include_module(_), Reorderable = no
+    ; ModuleDefn = md_interface, Reorderable = no
+    ; ModuleDefn = md_module(_), Reorderable = no
+    ; ModuleDefn = md_opt_imported, Reorderable = no
+    ; ModuleDefn = md_private_interface, Reorderable = no
+    ; ModuleDefn = md_transitively_imported, Reorderable = no
+    ; ModuleDefn = md_use(_), Reorderable = yes
+    ; ModuleDefn = md_used(_), Reorderable = no
+    ; ModuleDefn = md_version_numbers(_, _), Reorderable = no
     ).
-reorderable_item(pragma(_, Pragma)) = Reorderable :-
-    ( Pragma = check_termination(_, _), Reorderable = yes
-    ; Pragma = does_not_terminate(_, _), Reorderable = yes
-    ; Pragma = exceptions(_, _, _, _, _), Reorderable = yes
-    ; Pragma = trailing_info(_, _, _, _, _), Reorderable = yes
-    ; Pragma = mm_tabling_info(_, _, _, _, _), Reorderable = yes
-    ; Pragma = foreign_export(_, _, _, _, _), Reorderable = yes
-    ; Pragma = fact_table(_, _, _), Reorderable = no
-    ; Pragma = foreign_code(_, _), Reorderable = no
-    ; Pragma = foreign_decl(_, _, _), Reorderable = no
-    ; Pragma = foreign_import_module(_, _), Reorderable = no
-    ; Pragma = foreign_proc(_, _, _, _, _, _, _), Reorderable = no
-    ; Pragma = import(_, _, _, _, _), Reorderable = no
-    ; Pragma = inline(_, _), Reorderable = yes
-    ; Pragma = mode_check_clauses(_, _), Reorderable = yes
-    ; Pragma = no_inline(_, _), Reorderable = yes
-    ; Pragma = obsolete(_, _), Reorderable = yes
-    ; Pragma = promise_pure(_, _), Reorderable = yes
-    ; Pragma = promise_semipure(_, _), Reorderable = yes
-    ; Pragma = promise_equivalent_clauses(_, _), Reorderable = yes
-    ; Pragma = reserve_tag(_, _), Reorderable = yes
-    ; Pragma = source_file(_), Reorderable = no
-    ; Pragma = tabled(_, _, _, _, _, _), Reorderable = yes
-    ; Pragma = terminates(_, _), Reorderable = yes
-    ; Pragma = termination2_info(_, _, _, _, _, _), Reorderable = no
-    ; Pragma = termination_info(_, _, _, _, _), Reorderable = yes
-    ; Pragma = structure_sharing(_, _, _, _, _, _), Reorderable = yes
-    ; Pragma = structure_reuse(_, _, _, _, _, _), Reorderable = yes
-    ; Pragma = type_spec(_, _, _, _, _, _, _, _), Reorderable = yes
-    ; Pragma = unused_args(_, _, _, _, _), Reorderable = yes
+reorderable_item(item_pragma(_, Pragma)) = Reorderable :-
+    ( Pragma = pragma_check_termination(_, _), Reorderable = yes
+    ; Pragma = pragma_does_not_terminate(_, _), Reorderable = yes
+    ; Pragma = pragma_exceptions(_, _, _, _, _), Reorderable = yes
+    ; Pragma = pragma_trailing_info(_, _, _, _, _), Reorderable = yes
+    ; Pragma = pragma_mm_tabling_info(_, _, _, _, _), Reorderable = yes
+    ; Pragma = pragma_foreign_export(_, _, _, _, _), Reorderable = yes
+    ; Pragma = pragma_fact_table(_, _, _), Reorderable = no
+    ; Pragma = pragma_foreign_code(_, _), Reorderable = no
+    ; Pragma = pragma_foreign_decl(_, _, _), Reorderable = no
+    ; Pragma = pragma_foreign_import_module(_, _), Reorderable = no
+    ; Pragma = pragma_foreign_proc(_, _, _, _, _, _, _), Reorderable = no
+    ; Pragma = pragma_import(_, _, _, _, _), Reorderable = no
+    ; Pragma = pragma_inline(_, _), Reorderable = yes
+    ; Pragma = pragma_mode_check_clauses(_, _), Reorderable = yes
+    ; Pragma = pragma_no_inline(_, _), Reorderable = yes
+    ; Pragma = pragma_obsolete(_, _), Reorderable = yes
+    ; Pragma = pragma_promise_pure(_, _), Reorderable = yes
+    ; Pragma = pragma_promise_semipure(_, _), Reorderable = yes
+    ; Pragma = pragma_promise_equivalent_clauses(_, _), Reorderable = yes
+    ; Pragma = pragma_reserve_tag(_, _), Reorderable = yes
+    ; Pragma = pragma_source_file(_), Reorderable = no
+    ; Pragma = pragma_tabled(_, _, _, _, _, _), Reorderable = yes
+    ; Pragma = pragma_terminates(_, _), Reorderable = yes
+    ; Pragma = pragma_termination2_info(_, _, _, _, _, _), Reorderable = no
+    ; Pragma = pragma_termination_info(_, _, _, _, _), Reorderable = yes
+    ; Pragma = pragma_structure_sharing(_, _, _, _, _, _), Reorderable = yes
+    ; Pragma = pragma_structure_reuse(_, _, _, _, _, _), Reorderable = yes
+    ; Pragma = pragma_type_spec(_, _, _, _, _, _, _, _), Reorderable = yes
+    ; Pragma = pragma_unused_args(_, _, _, _, _), Reorderable = yes
     ).
-reorderable_item(type_defn(_, _, _, _, _)) = yes.
-reorderable_item(inst_defn(_, _, _, _, _)) = yes.
-reorderable_item(mode_defn(_, _, _, _, _)) = yes.
-reorderable_item(promise(_, _, _, _)) = yes.
-reorderable_item(typeclass(_, _, _, _, _, _)) = yes.
-reorderable_item(instance(_, _, _, _, _, _)) = yes.
-reorderable_item(clause(_, _, _, _, _, _)) = no.
-reorderable_item(nothing(_)) = no.
-reorderable_item(pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _)) = no.
-reorderable_item(pred_or_func_mode(_, _, _, _, _, _, _)) = no.
-reorderable_item(initialise(_, _, _)) = no.
-reorderable_item(finalise(_, _, _)) = no.
-reorderable_item(mutable(_, _, _, _, _, _)) = no.
+reorderable_item(item_type_defn(_, _, _, _, _)) = yes.
+reorderable_item(item_inst_defn(_, _, _, _, _)) = yes.
+reorderable_item(item_mode_defn(_, _, _, _, _)) = yes.
+reorderable_item(item_promise(_, _, _, _)) = yes.
+reorderable_item(item_typeclass(_, _, _, _, _, _)) = yes.
+reorderable_item(item_instance(_, _, _, _, _, _)) = yes.
+reorderable_item(item_clause(_, _, _, _, _, _)) = no.
+reorderable_item(item_nothing(_)) = no.
+reorderable_item(item_pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _)) = no.
+reorderable_item(item_pred_or_func_mode(_, _, _, _, _, _, _)) = no.
+reorderable_item(item_initialise(_, _, _)) = no.
+reorderable_item(item_finalise(_, _, _)) = no.
+reorderable_item(item_mutable(_, _, _, _, _, _)) = no.
 
 :- pred is_chunkable(item_and_context::in) is semidet.
 
@@ -7729,68 +7680,68 @@ chunkable_item_and_context(Item - _Context) =
     %
 :- func chunkable_item(item) = bool.
 
-chunkable_item(module_defn(_, ModuleDefn)) = Reorderable :-
-    ( ModuleDefn = abstract_imported, Reorderable = no
-    ; ModuleDefn = end_module(_), Reorderable = no
-    ; ModuleDefn = export(_), Reorderable = yes
-    ; ModuleDefn = external(_, _), Reorderable = yes
-    ; ModuleDefn = implementation, Reorderable = no
-    ; ModuleDefn = import(_), Reorderable = yes
-    ; ModuleDefn = imported(_), Reorderable = no
-    ; ModuleDefn = include_module(_), Reorderable = no
-    ; ModuleDefn = interface, Reorderable = no
-    ; ModuleDefn = module(_), Reorderable = no
-    ; ModuleDefn = opt_imported, Reorderable = no
-    ; ModuleDefn = private_interface, Reorderable = no
-    ; ModuleDefn = transitively_imported, Reorderable = no
-    ; ModuleDefn = use(_), Reorderable = yes
-    ; ModuleDefn = used(_), Reorderable = no
-    ; ModuleDefn = version_numbers(_, _), Reorderable = no
+chunkable_item(item_module_defn(_, ModuleDefn)) = Reorderable :-
+    ( ModuleDefn = md_abstract_imported, Reorderable = no
+    ; ModuleDefn = md_end_module(_), Reorderable = no
+    ; ModuleDefn = md_export(_), Reorderable = yes
+    ; ModuleDefn = md_external(_, _), Reorderable = yes
+    ; ModuleDefn = md_implementation, Reorderable = no
+    ; ModuleDefn = md_import(_), Reorderable = yes
+    ; ModuleDefn = md_imported(_), Reorderable = no
+    ; ModuleDefn = md_include_module(_), Reorderable = no
+    ; ModuleDefn = md_interface, Reorderable = no
+    ; ModuleDefn = md_module(_), Reorderable = no
+    ; ModuleDefn = md_opt_imported, Reorderable = no
+    ; ModuleDefn = md_private_interface, Reorderable = no
+    ; ModuleDefn = md_transitively_imported, Reorderable = no
+    ; ModuleDefn = md_use(_), Reorderable = yes
+    ; ModuleDefn = md_used(_), Reorderable = no
+    ; ModuleDefn = md_version_numbers(_, _), Reorderable = no
     ).
-chunkable_item(pragma(_, Pragma)) = Reorderable :-
-    ( Pragma = check_termination(_, _), Reorderable = yes
-    ; Pragma = does_not_terminate(_, _), Reorderable = yes
-    ; Pragma = exceptions(_, _, _, _, _), Reorderable = no
-    ; Pragma = foreign_export(_, _, _, _, _), Reorderable = yes
-    ; Pragma = fact_table(_, _, _), Reorderable = no
-    ; Pragma = foreign_code(_, _), Reorderable = no
-    ; Pragma = foreign_decl(_, _, _), Reorderable = no
-    ; Pragma = foreign_import_module(_, _), Reorderable = no
-    ; Pragma = foreign_proc(_, _, _, _, _, _, _), Reorderable = no
-    ; Pragma = import(_, _, _, _, _), Reorderable = no
-    ; Pragma = inline(_, _), Reorderable = yes
-    ; Pragma = mode_check_clauses(_, _), Reorderable = yes
-    ; Pragma = no_inline(_, _), Reorderable = yes
-    ; Pragma = obsolete(_, _), Reorderable = yes
-    ; Pragma = promise_pure(_, _), Reorderable = yes
-    ; Pragma = promise_semipure(_, _), Reorderable = yes
-    ; Pragma = promise_equivalent_clauses(_, _), Reorderable = yes
-    ; Pragma = reserve_tag(_, _), Reorderable = yes
-    ; Pragma = source_file(_), Reorderable = no
-    ; Pragma = tabled(_, _, _, _, _, _), Reorderable = yes
-    ; Pragma = terminates(_, _), Reorderable = yes
-    ; Pragma = termination2_info( _, _, _, _, _, _), Reorderable = no
-    ; Pragma = termination_info(_, _, _, _, _), Reorderable = yes
-    ; Pragma = structure_sharing(_, _, _, _, _, _), Reorderable = yes
-    ; Pragma = structure_reuse(_, _, _, _, _, _), Reorderable = yes
-    ; Pragma = trailing_info(_, _, _, _, _), Reorderable = yes
-    ; Pragma = mm_tabling_info(_, _, _, _, _), Reorderable = yes
-    ; Pragma = type_spec(_, _, _, _, _, _, _, _), Reorderable = yes
-    ; Pragma = unused_args(_, _, _, _, _), Reorderable = yes
+chunkable_item(item_pragma(_, Pragma)) = Reorderable :-
+    ( Pragma = pragma_check_termination(_, _), Reorderable = yes
+    ; Pragma = pragma_does_not_terminate(_, _), Reorderable = yes
+    ; Pragma = pragma_exceptions(_, _, _, _, _), Reorderable = no
+    ; Pragma = pragma_foreign_export(_, _, _, _, _), Reorderable = yes
+    ; Pragma = pragma_fact_table(_, _, _), Reorderable = no
+    ; Pragma = pragma_foreign_code(_, _), Reorderable = no
+    ; Pragma = pragma_foreign_decl(_, _, _), Reorderable = no
+    ; Pragma = pragma_foreign_import_module(_, _), Reorderable = no
+    ; Pragma = pragma_foreign_proc(_, _, _, _, _, _, _), Reorderable = no
+    ; Pragma = pragma_import(_, _, _, _, _), Reorderable = no
+    ; Pragma = pragma_inline(_, _), Reorderable = yes
+    ; Pragma = pragma_mode_check_clauses(_, _), Reorderable = yes
+    ; Pragma = pragma_no_inline(_, _), Reorderable = yes
+    ; Pragma = pragma_obsolete(_, _), Reorderable = yes
+    ; Pragma = pragma_promise_pure(_, _), Reorderable = yes
+    ; Pragma = pragma_promise_semipure(_, _), Reorderable = yes
+    ; Pragma = pragma_promise_equivalent_clauses(_, _), Reorderable = yes
+    ; Pragma = pragma_reserve_tag(_, _), Reorderable = yes
+    ; Pragma = pragma_source_file(_), Reorderable = no
+    ; Pragma = pragma_tabled(_, _, _, _, _, _), Reorderable = yes
+    ; Pragma = pragma_terminates(_, _), Reorderable = yes
+    ; Pragma = pragma_termination2_info( _, _, _, _, _, _), Reorderable = no
+    ; Pragma = pragma_termination_info(_, _, _, _, _), Reorderable = yes
+    ; Pragma = pragma_structure_sharing(_, _, _, _, _, _), Reorderable = yes
+    ; Pragma = pragma_structure_reuse(_, _, _, _, _, _), Reorderable = yes
+    ; Pragma = pragma_trailing_info(_, _, _, _, _), Reorderable = yes
+    ; Pragma = pragma_mm_tabling_info(_, _, _, _, _), Reorderable = yes
+    ; Pragma = pragma_type_spec(_, _, _, _, _, _, _, _), Reorderable = yes
+    ; Pragma = pragma_unused_args(_, _, _, _, _), Reorderable = yes
     ).
-chunkable_item(type_defn(_, _, _, _, _)) = yes.
-chunkable_item(inst_defn(_, _, _, _, _)) = yes.
-chunkable_item(mode_defn(_, _, _, _, _)) = yes.
-chunkable_item(pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _)) = yes.
-chunkable_item(pred_or_func_mode(_, _, _, _, _, _, _)) = yes.
-chunkable_item(promise(_, _, _, _)) = yes.
-chunkable_item(typeclass(_, _, _, _, _, _)) = yes.
-chunkable_item(instance(_, _, _, _, _, _)) = yes.
-chunkable_item(clause(_, _, _, _, _, _)) = yes.
-chunkable_item(initialise(_, _, _)) = yes.
-chunkable_item(finalise(_, _, _)) = yes.
-chunkable_item(mutable(_, _, _, _, _, _)) = no.
-chunkable_item(nothing(_)) = yes.
+chunkable_item(item_type_defn(_, _, _, _, _)) = yes.
+chunkable_item(item_inst_defn(_, _, _, _, _)) = yes.
+chunkable_item(item_mode_defn(_, _, _, _, _)) = yes.
+chunkable_item(item_pred_or_func(_, _, _, _, _, _, _, _, _, _, _, _)) = yes.
+chunkable_item(item_pred_or_func_mode(_, _, _, _, _, _, _)) = yes.
+chunkable_item(item_promise(_, _, _, _)) = yes.
+chunkable_item(item_typeclass(_, _, _, _, _, _)) = yes.
+chunkable_item(item_instance(_, _, _, _, _, _)) = yes.
+chunkable_item(item_clause(_, _, _, _, _, _)) = yes.
+chunkable_item(item_initialise(_, _, _)) = yes.
+chunkable_item(item_finalise(_, _, _)) = yes.
+chunkable_item(item_mutable(_, _, _, _, _, _)) = no.
+chunkable_item(item_nothing(_)) = yes.
 
     % Given a list of items for which symname_ordered succeeds, we need to keep
     % the relative order of the items with the same sym_name as returned by
@@ -7799,8 +7750,9 @@ chunkable_item(nothing(_)) = yes.
     %
 :- pred symname_ordered(item_and_context::in, sym_name::out) is semidet.
 
-symname_ordered(pred_or_func(_, _, _, _, Name, _, _, _, _, _, _, _) - _, Name).
-symname_ordered(pred_or_func_mode(_, _, Name, _, _, _, _) - _, Name).
+symname_ordered(item_pred_or_func(_, _, _, _, Name, _, _, _, _, _, _, _) - _,
+        Name).
+symname_ordered(item_pred_or_func_mode(_, _, Name, _, _, _, _) - _, Name).
 
 :- pred symname_orderable(item_and_context::in) is semidet.
 
@@ -7987,7 +7939,7 @@ get_install_name_option(OutputFileName, InstallNameOpt, !IO) :-
         InstallNamePath = InstallPrefix / "lib" / "mercury" / "lib" / GradeDir
     ;
         InstallNamePath = InstallNamePath0
-    ),   
+    ),
     InstallNameOpt = InstallNameFlag ++ InstallNamePath / OutputFileName.
 
 %-----------------------------------------------------------------------------%

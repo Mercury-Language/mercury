@@ -146,7 +146,7 @@ init_qual_info(MQInfo0, EqvMap, QualInfo) :-
     map.init(VarTypes),
     FoundSyntaxError = no,
     QualInfo = qual_info(EqvMap, TVarSet, Renaming, Index, VarTypes,
-        MQInfo, local, FoundSyntaxError).
+        MQInfo, status_local, FoundSyntaxError).
 
 update_qual_info(TVarNameMap, TVarSet, VarTypes, Status, !QualInfo) :-
     !.QualInfo = qual_info(EqvMap, _TVarSet0, _Renaming0, _TVarNameMap0,
@@ -189,7 +189,7 @@ process_type_qualification(Var, Type0, VarSet, Context, !ModuleInfo,
         !QualInfo, !IO) :-
     !.QualInfo = qual_info(EqvMap, TVarSet0, TVarRenaming0,
         TVarNameMap0, VarTypes0, MQInfo0, Status, FoundError),
-    ( Status = opt_imported ->
+    ( Status = status_opt_imported ->
         % Types in `.opt' files should already be fully module qualified.
         Type1 = Type0,
         MQInfo = MQInfo0
@@ -248,11 +248,11 @@ make_atomic_unification(Var, Rhs, Context, MainContext, SubContext,
 make_atomic_unification(Var, Rhs, Context, MainContext, SubContext, Purity,
         Goal, !QualInfo) :-
     (
-        Rhs = var(_)
+        Rhs = rhs_var(_)
     ;
-        Rhs = lambda_goal(_, _, _, _, _, _, _, _)
+        Rhs = rhs_lambda_goal(_, _, _, _, _, _, _, _)
     ;
-        Rhs = functor(ConsId, _, _),
+        Rhs = rhs_functor(ConsId, _, _),
         record_used_functor(ConsId, !QualInfo)
     ),
     create_atomic_complicated_unification(Var, Rhs, Context,
@@ -297,7 +297,7 @@ do_construct_pred_or_func_call(PredId, PredOrFunc, SymName, Args,
         ConsId = cons(SymName, Arity),
         goal_info_get_context(GoalInfo, Context),
         create_atomic_complicated_unification(RetArg,
-            functor(ConsId, no, FuncArgs), Context, explicit, [],
+            rhs_functor(ConsId, no, FuncArgs), Context, umc_explicit, [],
             GoalExpr - _),
         Goal = GoalExpr - GoalInfo
     ).

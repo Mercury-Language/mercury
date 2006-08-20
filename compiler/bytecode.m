@@ -5,12 +5,12 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
-% 
+%
 % File: bytecode.m.
 % Author: zs.
-% 
+%
 % This module defines the bytecode used by the debugger.
-% 
+%
 %---------------------------------------------------------------------------%
 
 :- module bytecode_backend.bytecode.
@@ -32,52 +32,52 @@
 :- type byte_tree   ==  tree(list(byte_code)).
 
 :- type byte_code
-    --->    enter_pred(byte_pred_id, int, byte_is_func, int)
-    ;       endof_pred
-    ;       enter_proc(byte_proc_id, determinism, int, int, int,
+    --->    byte_enter_pred(byte_pred_id, int, byte_is_func, int)
+    ;       byte_endof_pred
+    ;       byte_enter_proc(byte_proc_id, determinism, int, int, int,
                 list(byte_var_info))
-    ;       endof_proc
-    ;       label(byte_label_id)
-    ;       enter_disjunction(byte_label_id)
-    ;       endof_disjunction
-    ;       enter_disjunct(byte_label_id)
-    ;       endof_disjunct(byte_label_id)
-    ;       enter_switch(byte_var, byte_label_id)
-    ;       endof_switch
-    ;       enter_switch_arm(byte_cons_id, byte_label_id)
-    ;       endof_switch_arm(byte_label_id)
-    ;       enter_if(byte_label_id, byte_label_id, byte_temp)
-    ;       enter_then(byte_temp)
-    ;       endof_then(byte_label_id)
-    ;       enter_else(byte_temp)
-    ;       endof_if
-    ;       enter_negation(byte_temp, byte_label_id)
-    ;       endof_negation_goal(byte_temp)
-    ;       endof_negation
-    ;       enter_commit(byte_temp)
-    ;       endof_commit(byte_temp)
-    ;       assign(byte_var, byte_var)
-    ;       test(byte_var, byte_var, byte_test_id)
-    ;       construct(byte_var, byte_cons_id, list(byte_var))
-    ;       deconstruct(byte_var, byte_cons_id, list(byte_var))
-    ;       complex_construct(byte_var, byte_cons_id,
+    ;       byte_endof_proc
+    ;       byte_label(byte_label_id)
+    ;       byte_enter_disjunction(byte_label_id)
+    ;       byte_endof_disjunction
+    ;       byte_enter_disjunct(byte_label_id)
+    ;       byte_endof_disjunct(byte_label_id)
+    ;       byte_enter_switch(byte_var, byte_label_id)
+    ;       byte_endof_switch
+    ;       byte_enter_switch_arm(byte_cons_id, byte_label_id)
+    ;       byte_endof_switch_arm(byte_label_id)
+    ;       byte_enter_if(byte_label_id, byte_label_id, byte_temp)
+    ;       byte_enter_then(byte_temp)
+    ;       byte_endof_then(byte_label_id)
+    ;       byte_enter_else(byte_temp)
+    ;       byte_endof_if
+    ;       byte_enter_negation(byte_temp, byte_label_id)
+    ;       byte_endof_negation_goal(byte_temp)
+    ;       byte_endof_negation
+    ;       byte_enter_commit(byte_temp)
+    ;       byte_endof_commit(byte_temp)
+    ;       byte_assign(byte_var, byte_var)
+    ;       byte_test(byte_var, byte_var, byte_test_id)
+    ;       byte_construct(byte_var, byte_cons_id, list(byte_var))
+    ;       byte_deconstruct(byte_var, byte_cons_id, list(byte_var))
+    ;       byte_complex_construct(byte_var, byte_cons_id,
                 list(pair(byte_var, byte_dir)))
-    ;       complex_deconstruct(byte_var, byte_cons_id,
-            list(pair(byte_var, byte_dir)))
-    ;       place_arg(byte_reg_type, int, byte_var)
-    ;       pickup_arg(byte_reg_type, int, byte_var)
-    ;       call(byte_module_id, byte_pred_id, arity, byte_is_func,
+    ;       byte_complex_deconstruct(byte_var, byte_cons_id,
+                list(pair(byte_var, byte_dir)))
+    ;       byte_place_arg(byte_reg_type, int, byte_var)
+    ;       byte_pickup_arg(byte_reg_type, int, byte_var)
+    ;       byte_call(byte_module_id, byte_pred_id, arity, byte_is_func,
                 byte_proc_id)
-    ;       higher_order_call(byte_var, arity, arity, determinism)
-    ;       builtin_binop(binary_op, byte_arg, byte_arg, byte_var)
-    ;       builtin_unop(unary_op, byte_arg, byte_var)
-    ;       builtin_bintest(binary_op, byte_arg, byte_arg)
-    ;       builtin_untest(unary_op, byte_arg)
-    ;       semidet_succeed
-    ;       semidet_success_check
-    ;       fail
-    ;       context(int)
-    ;       not_supported.
+    ;       byte_higher_order_call(byte_var, arity, arity, determinism)
+    ;       byte_builtin_binop(binary_op, byte_arg, byte_arg, byte_var)
+    ;       byte_builtin_unop(unary_op, byte_arg, byte_var)
+    ;       byte_builtin_bintest(binary_op, byte_arg, byte_arg)
+    ;       byte_builtin_untest(unary_op, byte_arg)
+    ;       byte_semidet_succeed
+    ;       byte_semidet_success_check
+    ;       byte_fail
+    ;       byte_context(int)
+    ;       byte_not_supported.
 
     % Currently we only support integer registers.
     % This might one day be extended to support separate
@@ -227,14 +227,14 @@ debug_bytecode_list([ByteCode | ByteCodes], !IO) :-
 
 :- pred output_args(byte_code::in, io::di, io::uo) is det.
 
-output_args(enter_pred(PredId, PredArity, IsFunc, ProcCount), !IO) :-
+output_args(byte_enter_pred(PredId, PredArity, IsFunc, ProcCount), !IO) :-
     output_pred_id(PredId, !IO),
     output_length(PredArity, !IO),
     output_is_func(IsFunc, !IO),
     output_length(ProcCount, !IO).
-output_args(endof_pred, !IO).
-output_args(enter_proc(ProcId, Detism, LabelCount, LabelId, TempCount, Vars),
-        !IO) :-
+output_args(byte_endof_pred, !IO).
+output_args(byte_enter_proc(ProcId, Detism, LabelCount, LabelId, TempCount,
+        Vars), !IO) :-
     output_proc_id(ProcId, !IO),
     output_determinism(Detism, !IO),
     output_length(LabelCount, !IO),
@@ -243,128 +243,128 @@ output_args(enter_proc(ProcId, Detism, LabelCount, LabelId, TempCount, Vars),
     list.length(Vars, VarCount),
     output_length(VarCount, !IO),
     output_var_infos(Vars, !IO).
-output_args(endof_proc, !IO).
-output_args(label(LabelId), !IO) :-
+output_args(byte_endof_proc, !IO).
+output_args(byte_label(LabelId), !IO) :-
     output_label_id(LabelId, !IO).
-output_args(enter_disjunction(LabelId), !IO) :-
+output_args(byte_enter_disjunction(LabelId), !IO) :-
     output_label_id(LabelId, !IO).
-output_args(endof_disjunction, !IO).
-output_args(enter_disjunct(LabelId), !IO) :-
+output_args(byte_endof_disjunction, !IO).
+output_args(byte_enter_disjunct(LabelId), !IO) :-
     output_label_id(LabelId, !IO).
-output_args(endof_disjunct(LabelId), !IO) :-
+output_args(byte_endof_disjunct(LabelId), !IO) :-
     output_label_id(LabelId, !IO).
-output_args(enter_switch(Var, LabelId), !IO) :-
+output_args(byte_enter_switch(Var, LabelId), !IO) :-
     output_var(Var, !IO),
     output_label_id(LabelId, !IO).
-output_args(endof_switch, !IO).
-output_args(enter_switch_arm(ConsId, NextLabelId), !IO) :-
+output_args(byte_endof_switch, !IO).
+output_args(byte_enter_switch_arm(ConsId, NextLabelId), !IO) :-
     output_cons_id(ConsId, !IO),
     output_label_id(NextLabelId, !IO).
-output_args(endof_switch_arm(LabelId), !IO) :-
+output_args(byte_endof_switch_arm(LabelId), !IO) :-
     output_label_id(LabelId, !IO).
-output_args(enter_if(ElseLabelId, FollowLabelId, FramePtrTemp), !IO) :-
+output_args(byte_enter_if(ElseLabelId, FollowLabelId, FramePtrTemp), !IO) :-
     output_label_id(ElseLabelId, !IO),
     output_label_id(FollowLabelId, !IO),
     output_temp(FramePtrTemp, !IO).
-output_args(enter_then(FramePtrTemp), !IO) :-
+output_args(byte_enter_then(FramePtrTemp), !IO) :-
     output_temp(FramePtrTemp, !IO).
-output_args(endof_then(FollowLabelId), !IO) :-
+output_args(byte_endof_then(FollowLabelId), !IO) :-
     output_label_id(FollowLabelId, !IO).
-output_args(enter_else(FramePtrTemp), !IO) :-
+output_args(byte_enter_else(FramePtrTemp), !IO) :-
     output_temp(FramePtrTemp, !IO).
-output_args(endof_if, !IO).
-output_args(enter_negation(FramePtrTemp, LabelId), !IO) :-
+output_args(byte_endof_if, !IO).
+output_args(byte_enter_negation(FramePtrTemp, LabelId), !IO) :-
     output_temp(FramePtrTemp, !IO),
     output_label_id(LabelId, !IO).
-output_args(endof_negation_goal(FramePtrTemp), !IO) :-
+output_args(byte_endof_negation_goal(FramePtrTemp), !IO) :-
     output_temp(FramePtrTemp, !IO).
-output_args(endof_negation, !IO).
-output_args(enter_commit(Temp), !IO) :-
+output_args(byte_endof_negation, !IO).
+output_args(byte_enter_commit(Temp), !IO) :-
     output_temp(Temp, !IO).
-output_args(endof_commit(Temp), !IO) :-
+output_args(byte_endof_commit(Temp), !IO) :-
     output_temp(Temp, !IO).
-output_args(assign(Var1, Var2), !IO) :-
+output_args(byte_assign(Var1, Var2), !IO) :-
     output_var(Var1, !IO),
     output_var(Var2, !IO).
-output_args(test(Var1, Var2, TestId), !IO) :-
+output_args(byte_test(Var1, Var2, TestId), !IO) :-
     output_var(Var1, !IO),
     output_var(Var2, !IO),
     output_test_id(TestId, !IO).
-output_args(construct(Var, ConsId, Vars), !IO) :-
+output_args(byte_construct(Var, ConsId, Vars), !IO) :-
     output_var(Var, !IO),
     output_cons_id(ConsId, !IO),
     list.length(Vars, Length),
     output_length(Length, !IO),
     output_vars(Vars, !IO).
-output_args(deconstruct(Var, ConsId, Vars), !IO) :-
+output_args(byte_deconstruct(Var, ConsId, Vars), !IO) :-
     output_var(Var, !IO),
     output_cons_id(ConsId, !IO),
     list.length(Vars, Length),
     output_length(Length, !IO),
     output_vars(Vars, !IO).
-output_args(complex_construct(Var, ConsId, VarDirs), !IO) :-
+output_args(byte_complex_construct(Var, ConsId, VarDirs), !IO) :-
     output_var(Var, !IO),
     output_cons_id(ConsId, !IO),
     list.length(VarDirs, Length),
     output_length(Length, !IO),
     output_var_dirs(VarDirs, !IO).
-output_args(complex_deconstruct(Var, ConsId, VarDirs), !IO) :-
+output_args(byte_complex_deconstruct(Var, ConsId, VarDirs), !IO) :-
     output_var(Var, !IO),
     output_cons_id(ConsId, !IO),
     list.length(VarDirs, Length),
     output_length(Length, !IO),
     output_var_dirs(VarDirs, !IO).
-output_args(place_arg(RegType, RegNum, Var), !IO) :-
+output_args(byte_place_arg(RegType, RegNum, Var), !IO) :-
     output_reg(RegType, RegNum, !IO),
     output_var(Var, !IO).
-output_args(pickup_arg(RegType, RegNum, Var), !IO) :-
+output_args(byte_pickup_arg(RegType, RegNum, Var), !IO) :-
     output_reg(RegType, RegNum, !IO),
     output_var(Var, !IO).
-output_args(call(ModuleId, PredId, Arity, IsFunc, ProcId), !IO) :-
+output_args(byte_call(ModuleId, PredId, Arity, IsFunc, ProcId), !IO) :-
     output_module_id(ModuleId, !IO),
     output_pred_id(PredId, !IO),
     output_length(Arity, !IO),
     output_is_func(IsFunc, !IO),
     output_proc_id(ProcId, !IO).
-output_args(higher_order_call(PredVar, InVarCount, OutVarCount, Detism),
+output_args(byte_higher_order_call(PredVar, InVarCount, OutVarCount, Detism),
         !IO) :-
     output_var(PredVar, !IO),
     output_length(InVarCount, !IO),
     output_length(OutVarCount, !IO),
     output_determinism(Detism, !IO).
-output_args(builtin_binop(Binop, Var1, Var2, Var3), !IO) :-
+output_args(byte_builtin_binop(Binop, Var1, Var2, Var3), !IO) :-
     output_binop(Binop, !IO),
     output_arg(Var1, !IO),
     output_arg(Var2, !IO),
     output_var(Var3, !IO).
-output_args(builtin_unop(Unop, Var1, Var2), !IO) :-
+output_args(byte_builtin_unop(Unop, Var1, Var2), !IO) :-
     output_unop(Unop, !IO),
     output_arg(Var1, !IO),
     output_var(Var2, !IO).
-output_args(builtin_bintest(Binop, Var1, Var2), !IO) :-
+output_args(byte_builtin_bintest(Binop, Var1, Var2), !IO) :-
     output_binop(Binop, !IO),
     output_arg(Var1, !IO),
     output_arg(Var2, !IO).
-output_args(builtin_untest(Unop, Var1), !IO) :-
+output_args(byte_builtin_untest(Unop, Var1), !IO) :-
     output_unop(Unop, !IO),
     output_arg(Var1, !IO).
-output_args(semidet_succeed, !IO).
-output_args(semidet_success_check, !IO).
-output_args(fail, !IO).
-output_args(context(Line), !IO) :-
+output_args(byte_semidet_succeed, !IO).
+output_args(byte_semidet_success_check, !IO).
+output_args(byte_fail, !IO).
+output_args(byte_context(Line), !IO) :-
     output_short(Line, !IO).
-output_args(not_supported, !IO).
+output_args(byte_not_supported, !IO).
 
 :- pred debug_args(byte_code::in, io::di, io::uo) is det.
 
-debug_args(enter_pred(PredId, PredArity, IsFunc, ProcsCount), !IO) :-
+debug_args(byte_enter_pred(PredId, PredArity, IsFunc, ProcsCount), !IO) :-
     debug_pred_id(PredId, !IO),
     debug_length(PredArity, !IO),
     debug_is_func(IsFunc, !IO),
     debug_length(ProcsCount, !IO).
-debug_args(endof_pred, !IO).
-debug_args(enter_proc(ProcId, Detism, LabelCount, LabelId, TempCount, Vars),
-        !IO) :-
+debug_args(byte_endof_pred, !IO).
+debug_args(byte_enter_proc(ProcId, Detism, LabelCount, LabelId, TempCount,
+        Vars), !IO) :-
     debug_proc_id(ProcId, !IO),
     debug_determinism(Detism, !IO),
     debug_length(LabelCount, !IO),
@@ -373,116 +373,117 @@ debug_args(enter_proc(ProcId, Detism, LabelCount, LabelId, TempCount, Vars),
     list.length(Vars, VarCount),
     debug_length(VarCount, !IO),
     debug_var_infos(Vars, !IO).
-debug_args(endof_proc, !IO).
-debug_args(label(LabelId), !IO) :-
+debug_args(byte_endof_proc, !IO).
+debug_args(byte_label(LabelId), !IO) :-
     debug_label_id(LabelId, !IO).
-debug_args(enter_disjunction(LabelId), !IO) :-
+debug_args(byte_enter_disjunction(LabelId), !IO) :-
     debug_label_id(LabelId, !IO).
-debug_args(endof_disjunction, !IO).
-debug_args(enter_disjunct(LabelId), !IO) :-
+debug_args(byte_endof_disjunction, !IO).
+debug_args(byte_enter_disjunct(LabelId), !IO) :-
     debug_label_id(LabelId, !IO).
-debug_args(endof_disjunct(LabelId), !IO) :-
+debug_args(byte_endof_disjunct(LabelId), !IO) :-
     debug_label_id(LabelId, !IO).
-debug_args(enter_switch(Var, LabelId), !IO) :-
+debug_args(byte_enter_switch(Var, LabelId), !IO) :-
     debug_var(Var, !IO),
     debug_label_id(LabelId, !IO).
-debug_args(endof_switch, !IO).
-debug_args(enter_switch_arm(ConsId, NextLabelId), !IO) :-
+debug_args(byte_endof_switch, !IO).
+debug_args(byte_enter_switch_arm(ConsId, NextLabelId), !IO) :-
     debug_cons_id(ConsId, !IO),
     debug_label_id(NextLabelId, !IO).
-debug_args(endof_switch_arm(LabelId), !IO) :-
+debug_args(byte_endof_switch_arm(LabelId), !IO) :-
     debug_label_id(LabelId, !IO).
-debug_args(enter_if(ElseLabelId, FollowLabelId, FramePtrTemp), !IO) :-
+debug_args(byte_enter_if(ElseLabelId, FollowLabelId, FramePtrTemp), !IO) :-
     debug_label_id(ElseLabelId, !IO),
     debug_label_id(FollowLabelId, !IO),
     debug_temp(FramePtrTemp, !IO).
-debug_args(enter_then(FramePtrTemp), !IO) :-
+debug_args(byte_enter_then(FramePtrTemp), !IO) :-
     debug_temp(FramePtrTemp, !IO).
-debug_args(endof_then(FollowLabelId), !IO) :-
+debug_args(byte_endof_then(FollowLabelId), !IO) :-
     debug_label_id(FollowLabelId, !IO).
-debug_args(enter_else(FramePtrTemp), !IO) :-
+debug_args(byte_enter_else(FramePtrTemp), !IO) :-
     debug_temp(FramePtrTemp, !IO).
-debug_args(endof_if, !IO).
-debug_args(enter_negation(FramePtrTemp, LabelId), !IO) :-
+debug_args(byte_endof_if, !IO).
+debug_args(byte_enter_negation(FramePtrTemp, LabelId), !IO) :-
     debug_temp(FramePtrTemp, !IO),
     debug_label_id(LabelId, !IO).
-debug_args(endof_negation_goal(FramePtrTemp), !IO) :-
+debug_args(byte_endof_negation_goal(FramePtrTemp), !IO) :-
     debug_temp(FramePtrTemp, !IO).
-debug_args(endof_negation, !IO).
-debug_args(enter_commit(Temp), !IO) :-
+debug_args(byte_endof_negation, !IO).
+debug_args(byte_enter_commit(Temp), !IO) :-
     debug_temp(Temp, !IO).
-debug_args(endof_commit(Temp), !IO) :-
+debug_args(byte_endof_commit(Temp), !IO) :-
     debug_temp(Temp, !IO).
-debug_args(assign(Var1, Var2), !IO) :-
+debug_args(byte_assign(Var1, Var2), !IO) :-
     debug_var(Var1, !IO),
     debug_var(Var2, !IO).
-debug_args(test(Var1, Var2, TestId), !IO) :-
+debug_args(byte_test(Var1, Var2, TestId), !IO) :-
     debug_var(Var1, !IO),
     debug_var(Var2, !IO),
     debug_test_id(TestId, !IO).
-debug_args(construct(Var, ConsId, Vars), !IO) :-
+debug_args(byte_construct(Var, ConsId, Vars), !IO) :-
     debug_var(Var, !IO),
     debug_cons_id(ConsId, !IO),
     list.length(Vars, Length),
     debug_length(Length, !IO),
     debug_vars(Vars, !IO).
-debug_args(deconstruct(Var, ConsId, Vars), !IO) :-
+debug_args(byte_deconstruct(Var, ConsId, Vars), !IO) :-
     debug_var(Var, !IO),
     debug_cons_id(ConsId, !IO),
     list.length(Vars, Length),
     debug_length(Length, !IO),
     debug_vars(Vars, !IO).
-debug_args(complex_construct(Var, ConsId, VarDirs), !IO) :-
+debug_args(byte_complex_construct(Var, ConsId, VarDirs), !IO) :-
     debug_var(Var, !IO),
     debug_cons_id(ConsId, !IO),
     list.length(VarDirs, Length),
     debug_length(Length, !IO),
     debug_var_dirs(VarDirs, !IO).
-debug_args(complex_deconstruct(Var, ConsId, VarDirs), !IO) :-
+debug_args(byte_complex_deconstruct(Var, ConsId, VarDirs), !IO) :-
     debug_var(Var, !IO),
     debug_cons_id(ConsId, !IO),
     list.length(VarDirs, Length),
     debug_length(Length, !IO),
     debug_var_dirs(VarDirs, !IO).
-debug_args(place_arg(RegType, RegNum, Var), !IO) :-
+debug_args(byte_place_arg(RegType, RegNum, Var), !IO) :-
     debug_reg(RegType, RegNum, !IO),
     debug_var(Var, !IO).
-debug_args(pickup_arg(RegType, RegNum, Var), !IO) :-
+debug_args(byte_pickup_arg(RegType, RegNum, Var), !IO) :-
     debug_reg(RegType, RegNum, !IO),
     debug_var(Var, !IO).
-debug_args(call(ModuleId, PredId, Arity, IsFunc, ProcId), !IO) :-
+debug_args(byte_call(ModuleId, PredId, Arity, IsFunc, ProcId), !IO) :-
     debug_module_id(ModuleId, !IO),
     debug_pred_id(PredId, !IO),
     debug_length(Arity, !IO),
     debug_is_func(IsFunc, !IO),
     debug_proc_id(ProcId, !IO).
-debug_args(higher_order_call(PredVar, InVarCount, OutVarCount, Detism), !IO) :-
+debug_args(byte_higher_order_call(PredVar, InVarCount, OutVarCount, Detism),
+        !IO) :-
     debug_var(PredVar, !IO),
     debug_length(InVarCount, !IO),
     debug_length(OutVarCount, !IO),
     debug_determinism(Detism, !IO).
-debug_args(builtin_binop(Binop, Var1, Var2, Var3), !IO) :-
+debug_args(byte_builtin_binop(Binop, Var1, Var2, Var3), !IO) :-
     debug_binop(Binop, !IO),
     debug_arg(Var1, !IO),
     debug_arg(Var2, !IO),
     debug_var(Var3, !IO).
-debug_args(builtin_unop(Unop, Var1, Var2), !IO) :-
+debug_args(byte_builtin_unop(Unop, Var1, Var2), !IO) :-
     debug_unop(Unop, !IO),
     debug_arg(Var1, !IO),
     debug_var(Var2, !IO).
-debug_args(builtin_bintest(Binop, Var1, Var2), !IO) :-
+debug_args(byte_builtin_bintest(Binop, Var1, Var2), !IO) :-
     debug_binop(Binop, !IO),
     debug_arg(Var1, !IO),
     debug_arg(Var2, !IO).
-debug_args(builtin_untest(Unop, Var1), !IO) :-
+debug_args(byte_builtin_untest(Unop, Var1), !IO) :-
     debug_unop(Unop, !IO),
     debug_arg(Var1, !IO).
-debug_args(semidet_succeed, !IO).
-debug_args(semidet_success_check, !IO).
-debug_args(fail, !IO).
-debug_args(context(Line), !IO) :-
+debug_args(byte_semidet_succeed, !IO).
+debug_args(byte_semidet_success_check, !IO).
+debug_args(byte_fail, !IO).
+debug_args(byte_context(Line), !IO) :-
     debug_int(Line, !IO).
-debug_args(not_supported, !IO).
+debug_args(byte_not_supported, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -910,93 +911,93 @@ debug_unop(Unop, !IO) :-
 
 :- pred byte_code(byte_code::in, int::out) is det.
 
-byte_code(enter_pred(_, _, _, _),        0).
-byte_code(endof_pred,                1).
-byte_code(enter_proc(_, _, _, _, _, _),      2).
-byte_code(endof_proc,                3).
-byte_code(label(_),              4).
-byte_code(enter_disjunction(_),          5).
-byte_code(endof_disjunction,             6).
-byte_code(enter_disjunct(_),             7).
-byte_code(endof_disjunct(_),             8).
-byte_code(enter_switch(_, _),            9).
-byte_code(endof_switch,             10).
-byte_code(enter_switch_arm(_, _),       11).
-byte_code(endof_switch_arm(_),          12).
-byte_code(enter_if(_, _, _),            13).
-byte_code(enter_then(_),            14).
-byte_code(endof_then(_),            15).
-byte_code(endof_if,             16).
-byte_code(enter_negation(_, _),         17).
-byte_code(endof_negation,           18).
-byte_code(enter_commit(_),          19).
-byte_code(endof_commit(_),          20).
-byte_code(assign(_, _),             21).
-byte_code(test(_, _, _),            22).
-byte_code(construct(_, _, _),           23).
-byte_code(deconstruct(_, _, _),         24).
-byte_code(complex_construct(_, _, _),       25).
-byte_code(complex_deconstruct(_, _, _),     26).
-byte_code(place_arg(_, _, _),           27).
-byte_code(pickup_arg(_, _, _),          28).
-byte_code(call(_, _, _, _, _),          29).
-byte_code(higher_order_call(_, _, _, _),    30).
-byte_code(builtin_binop(_, _, _, _),        31).
-byte_code(builtin_unop(_, _, _),        32).
-byte_code(builtin_bintest(_, _, _),     33).
-byte_code(builtin_untest(_, _),         34).
-byte_code(semidet_succeed,          35).
-byte_code(semidet_success_check,        36).
-byte_code(fail,                 37).
-byte_code(context(_),               38).
-byte_code(not_supported,            39).
-byte_code(enter_else(_),            40).
-byte_code(endof_negation_goal(_),       41).
+byte_code(byte_enter_pred(_, _, _, _),            0).
+byte_code(byte_endof_pred,                        1).
+byte_code(byte_enter_proc(_, _, _, _, _, _),      2).
+byte_code(byte_endof_proc,                        3).
+byte_code(byte_label(_),                          4).
+byte_code(byte_enter_disjunction(_),              5).
+byte_code(byte_endof_disjunction,                 6).
+byte_code(byte_enter_disjunct(_),                 7).
+byte_code(byte_endof_disjunct(_),                 8).
+byte_code(byte_enter_switch(_, _),                9).
+byte_code(byte_endof_switch,                     10).
+byte_code(byte_enter_switch_arm(_, _),           11).
+byte_code(byte_endof_switch_arm(_),              12).
+byte_code(byte_enter_if(_, _, _),                13).
+byte_code(byte_enter_then(_),                    14).
+byte_code(byte_endof_then(_),                    15).
+byte_code(byte_endof_if,                         16).
+byte_code(byte_enter_negation(_, _),             17).
+byte_code(byte_endof_negation,                   18).
+byte_code(byte_enter_commit(_),                  19).
+byte_code(byte_endof_commit(_),                  20).
+byte_code(byte_assign(_, _),                     21).
+byte_code(byte_test(_, _, _),                    22).
+byte_code(byte_construct(_, _, _),               23).
+byte_code(byte_deconstruct(_, _, _),             24).
+byte_code(byte_complex_construct(_, _, _),       25).
+byte_code(byte_complex_deconstruct(_, _, _),     26).
+byte_code(byte_place_arg(_, _, _),               27).
+byte_code(byte_pickup_arg(_, _, _),              28).
+byte_code(byte_call(_, _, _, _, _),              29).
+byte_code(byte_higher_order_call(_, _, _, _),    30).
+byte_code(byte_builtin_binop(_, _, _, _),        31).
+byte_code(byte_builtin_unop(_, _, _),            32).
+byte_code(byte_builtin_bintest(_, _, _),         33).
+byte_code(byte_builtin_untest(_, _),             34).
+byte_code(byte_semidet_succeed,                  35).
+byte_code(byte_semidet_success_check,            36).
+byte_code(byte_fail,                             37).
+byte_code(byte_context(_),                       38).
+byte_code(byte_not_supported,                    39).
+byte_code(byte_enter_else(_),                    40).
+byte_code(byte_endof_negation_goal(_),           41).
 
 :- pred byte_debug(byte_code::in, string::out) is det.
 
-byte_debug(enter_pred(_, _, _, _),          "enter_pred").
-byte_debug(endof_pred,                      "endof_pred").
-byte_debug(enter_proc(_, _, _, _, _, _),    "enter_proc").
-byte_debug(endof_proc,                      "endof_proc").
-byte_debug(label(_),                        "label").
-byte_debug(enter_disjunction(_),            "enter_disjunction").
-byte_debug(endof_disjunction,               "endof_disjunction").
-byte_debug(enter_disjunct(_),               "enter_disjunct").
-byte_debug(endof_disjunct(_),               "endof_disjunct").
-byte_debug(enter_switch(_, _),              "enter_switch").
-byte_debug(endof_switch,                    "endof_switch").
-byte_debug(enter_switch_arm(_, _),          "enter_switch_arm").
-byte_debug(endof_switch_arm(_),             "endof_switch_arm").
-byte_debug(enter_if(_, _, _),               "enter_if").
-byte_debug(enter_then(_),                   "enter_then").
-byte_debug(endof_then(_),                   "endof_then").
-byte_debug(enter_else(_),                   "enter_else").
-byte_debug(endof_if,                        "endof_if").
-byte_debug(enter_negation(_,_),             "enter_negation").
-byte_debug(endof_negation_goal(_),          "endof_negation_goal").
-byte_debug(endof_negation,                  "endof_negation").
-byte_debug(enter_commit(_),                 "enter_commit").
-byte_debug(endof_commit(_),                 "endof_commit").
-byte_debug(assign(_, _),                    "assign").
-byte_debug(test(_, _, _),                   "test").
-byte_debug(construct(_, _, _),              "construct").
-byte_debug(deconstruct(_, _, _),            "deconstruct").
-byte_debug(complex_construct(_, _, _),      "complex_construct").
-byte_debug(complex_deconstruct(_, _, _),    "complex_deconstruct").
-byte_debug(place_arg(_, _, _),              "place_arg").
-byte_debug(pickup_arg(_, _, _),             "pickup_arg").
-byte_debug(call(_, _, _, _, _),             "call").
-byte_debug(higher_order_call(_, _, _, _),   "higher_order_call").
-byte_debug(builtin_binop(_, _, _, _),       "builtin_binop").
-byte_debug(builtin_unop(_, _, _),           "builtin_unop").
-byte_debug(builtin_bintest(_, _, _),        "builtin_bintest").
-byte_debug(builtin_untest(_, _),            "builtin_untest").
-byte_debug(semidet_succeed,                 "semidet_succeed").
-byte_debug(semidet_success_check,           "semidet_success_check").
-byte_debug(fail,                            "fail").
-byte_debug(context(_),                      "context").
-byte_debug(not_supported,                   "not_supported").
+byte_debug(byte_enter_pred(_, _, _, _),          "enter_pred").
+byte_debug(byte_endof_pred,                      "endof_pred").
+byte_debug(byte_enter_proc(_, _, _, _, _, _),    "enter_proc").
+byte_debug(byte_endof_proc,                      "endof_proc").
+byte_debug(byte_label(_),                        "label").
+byte_debug(byte_enter_disjunction(_),            "enter_disjunction").
+byte_debug(byte_endof_disjunction,               "endof_disjunction").
+byte_debug(byte_enter_disjunct(_),               "enter_disjunct").
+byte_debug(byte_endof_disjunct(_),               "endof_disjunct").
+byte_debug(byte_enter_switch(_, _),              "enter_switch").
+byte_debug(byte_endof_switch,                    "endof_switch").
+byte_debug(byte_enter_switch_arm(_, _),          "enter_switch_arm").
+byte_debug(byte_endof_switch_arm(_),             "endof_switch_arm").
+byte_debug(byte_enter_if(_, _, _),               "enter_if").
+byte_debug(byte_enter_then(_),                   "enter_then").
+byte_debug(byte_endof_then(_),                   "endof_then").
+byte_debug(byte_enter_else(_),                   "enter_else").
+byte_debug(byte_endof_if,                        "endof_if").
+byte_debug(byte_enter_negation(_,_),             "enter_negation").
+byte_debug(byte_endof_negation_goal(_),          "endof_negation_goal").
+byte_debug(byte_endof_negation,                  "endof_negation").
+byte_debug(byte_enter_commit(_),                 "enter_commit").
+byte_debug(byte_endof_commit(_),                 "endof_commit").
+byte_debug(byte_assign(_, _),                    "assign").
+byte_debug(byte_test(_, _, _),                   "test").
+byte_debug(byte_construct(_, _, _),              "construct").
+byte_debug(byte_deconstruct(_, _, _),            "deconstruct").
+byte_debug(byte_complex_construct(_, _, _),      "complex_construct").
+byte_debug(byte_complex_deconstruct(_, _, _),    "complex_deconstruct").
+byte_debug(byte_place_arg(_, _, _),              "place_arg").
+byte_debug(byte_pickup_arg(_, _, _),             "pickup_arg").
+byte_debug(byte_call(_, _, _, _, _),             "call").
+byte_debug(byte_higher_order_call(_, _, _, _),   "higher_order_call").
+byte_debug(byte_builtin_binop(_, _, _, _),       "builtin_binop").
+byte_debug(byte_builtin_unop(_, _, _),           "builtin_unop").
+byte_debug(byte_builtin_bintest(_, _, _),        "builtin_bintest").
+byte_debug(byte_builtin_untest(_, _),            "builtin_untest").
+byte_debug(byte_semidet_succeed,                 "semidet_succeed").
+byte_debug(byte_semidet_success_check,           "semidet_success_check").
+byte_debug(byte_fail,                            "fail").
+byte_debug(byte_context(_),                      "context").
+byte_debug(byte_not_supported,                   "not_supported").
 
 :- pred determinism_code(determinism::in, int::out) is det.
 
@@ -1127,7 +1128,7 @@ unop_debug(logical_not,         "not").
 %---------------------------------------------------------------------------%
 
     % debug_cstring prints a string quoted in the manner of C.
-
+    %
 :- pred debug_cstring(string::in, io::di, io::uo) is det.
 
 debug_cstring(Str, !IO) :-

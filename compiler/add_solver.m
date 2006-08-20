@@ -197,9 +197,9 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
     Attrs0            = default_attributes(lang_c),
     some [!Attrs] (
         !:Attrs = Attrs0,
-        set_may_call_mercury(will_not_call_mercury, !Attrs),
-        set_thread_safe(thread_safe, !Attrs),
-        set_terminates(terminates, !Attrs),
+        set_may_call_mercury(proc_will_not_call_mercury, !Attrs),
+        set_thread_safe(proc_thread_safe, !Attrs),
+        set_terminates(proc_terminates, !Attrs),
         Attrs = !.Attrs
     ),
 
@@ -212,7 +212,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
     YTGPragmaVar = pragma_var(Y, "Y", OutGroundMode, native_if_possible),
     ToGroundRepnArgs = [XTGPragmaVar, YTGPragmaVar],
     ToGroundRepnForeignProc =
-        foreign_proc(
+        pragma_foreign_proc(
             Attrs,
             ToGroundRepnSymName,
             function,
@@ -221,7 +221,8 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
             InstVarSet, 
             Impl
         ),
-    ToGroundRepnItem = pragma(compiler(solver_type), ToGroundRepnForeignProc),
+    ToGroundRepnItem = item_pragma(compiler(solver_type),
+        ToGroundRepnForeignProc),
     add_item_clause(ToGroundRepnItem, !Status, Context, !ModuleInfo, !QualInfo,
         !IO),
 
@@ -232,7 +233,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
     YTAPragmaVar = pragma_var(Y, "Y", OutAnyMode, native_if_possible),
     ToAnyRepnArgs = [XTAPragmaVar, YTAPragmaVar],
     ToAnyRepnForeignProc =
-        foreign_proc(
+        pragma_foreign_proc(
             Attrs,
             ToAnyRepnSymName,
             function,
@@ -241,7 +242,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
             InstVarSet,
             Impl
         ),
-    ToAnyRepnItem = pragma(compiler(solver_type), ToAnyRepnForeignProc),
+    ToAnyRepnItem = item_pragma(compiler(solver_type), ToAnyRepnForeignProc),
     add_item_clause(ToAnyRepnItem, !Status, Context, !ModuleInfo, !QualInfo,
         !IO),
 
@@ -252,7 +253,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
     YFGPragmaVar = pragma_var(Y, "Y", out_mode, native_if_possible),
     FromGroundRepnArgs = [XFGPragmaVar, YFGPragmaVar],
     FromGroundRepnForeignProc =
-        foreign_proc(
+        pragma_foreign_proc(
             Attrs,
             FromGroundRepnSymName,
             function,
@@ -261,7 +262,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
             InstVarSet,
             Impl
         ),
-    FromGroundRepnItem = pragma(compiler(solver_type),
+    FromGroundRepnItem = item_pragma(compiler(solver_type),
         FromGroundRepnForeignProc),
     add_item_clause(FromGroundRepnItem, !Status, Context, !ModuleInfo,
         !QualInfo, !IO),
@@ -273,7 +274,7 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
     YFAPragmaVar = pragma_var(Y, "Y", out_any_mode, native_if_possible),
     FromAnyRepnArgs = [XFAPragmaVar, YFAPragmaVar],
     FromAnyRepnForeignProc =
-        foreign_proc(
+        pragma_foreign_proc(
             Attrs,
             FromAnyRepnSymName,
             function,
@@ -282,7 +283,8 @@ add_solver_type_clause_items(TypeSymName, TypeParams, SolverTypeDetails,
             InstVarSet,
             Impl
         ),
-    FromAnyRepnItem = pragma(compiler(solver_type), FromAnyRepnForeignProc),
+    FromAnyRepnItem = item_pragma(compiler(solver_type),
+        FromAnyRepnForeignProc),
     add_item_clause(FromAnyRepnItem, !Status, Context, !ModuleInfo, !QualInfo,
         !IO).
 

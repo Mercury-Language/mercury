@@ -276,8 +276,9 @@ generate_foreign_header_code(Lang, ModuleName, ForeignCode, !IO) :-
         list.foldl(
             (pred(ForeignImport::in, !.IO::di, !:IO::uo) is det :-
                 module_name_to_search_file_name(
-                    foreign_import_module_name(ForeignImport, ModuleName),
-                        ".dll", FileName, !IO),
+                    foreign_import_module_name_from_module(ForeignImport,
+                        ModuleName),
+                    ".dll", FileName, !IO),
                 io.write_strings(["#using """, FileName, """\n"], !IO)
             ), Imports, !IO)
     ;

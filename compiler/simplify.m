@@ -5,10 +5,10 @@
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
-% 
+%
 % File: simplify.m.
 % Main authors: zs, stayl.
-% 
+%
 % The two jobs of the simplification module are
 %
 %   to find and exploit opportunities for simplifying the internal form
@@ -351,7 +351,7 @@ simplify_procs(Simplifications, PredId, [ProcId | ProcIds], !ModuleInfo,
     (
         MayHaveParallelConj = yes,
         pred_info_get_markers(!.PredInfo, Markers0),
-        add_marker(may_have_parallel_conj, Markers0, Markers),
+        add_marker(marker_may_have_parallel_conj, Markers0, Markers),
         pred_info_set_markers(Markers, !PredInfo)
     ;
         MayHaveParallelConj = no
@@ -390,7 +390,7 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
     simplify_info_get_pred_info(Info0, PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     (
-        check_marker(Markers, mode_check_clauses),
+        check_marker(Markers, marker_mode_check_clauses),
         Goal0 = GoalExpr0 - GoalInfo0,
         ( GoalExpr0 = disj(_)
         ; GoalExpr0 = switch(_, _, _)
@@ -433,7 +433,7 @@ simplify_proc_return_msgs(Simplifications0, PredId, ProcId, !ModuleInfo,
         DetMsgs1 = DetMsgs0
     ),
     pred_info_get_import_status(PredInfo, Status),
-    status_defined_in_this_module(Status, IsDefinedHere),
+    IsDefinedHere = status_defined_in_this_module(Status),
     (
         IsDefinedHere = no,
         % Don't generate any warnings or even errors if the predicate isn't
@@ -1017,15 +1017,13 @@ simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
 simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
     Goal0 = unify(LT0, RT0, M, U0, C),
     (
-        % A unification of the form X = X can be safely
-        % optimised away.
-
-        RT0 = var(LT0)
+        % A unification of the form X = X can be safely optimised away.
+        RT0 = rhs_var(LT0)
     ->
         goal_info_get_context(GoalInfo0, Context),
         Goal - GoalInfo = true_goal_with_context(Context)
     ;
-        RT0 = lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocals,
+        RT0 = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocals,
             Vars, Modes, LambdaDeclaredDet, LambdaGoal0)
     ->
         simplify_info_enter_lambda(!Info),
@@ -1044,7 +1042,7 @@ simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
         simplify_goal(LambdaGoal0, LambdaGoal, !Info, !IO),
         simplify_info_set_common_info(Common1, !Info),
         simplify_info_set_instmap(InstMap1, !Info),
-        RT = lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocals,
+        RT = rhs_lambda_goal(Purity, PredOrFunc, EvalMethod, NonLocals,
             Vars, Modes, LambdaDeclaredDet, LambdaGoal),
         simplify_info_leave_lambda(!Info),
         Goal = unify(LT0, RT, M, U0, C),
@@ -1052,7 +1050,7 @@ simplify_goal_2(Goal0, Goal, GoalInfo0, GoalInfo, !Info, !IO) :-
     ;
         U0 = complicated_unify(UniMode, CanFail, TypeInfoVars)
     ->
-        ( RT0 = var(V) ->
+        ( RT0 = rhs_var(V) ->
             process_compl_unify(LT0, V, UniMode, CanFail, TypeInfoVars, C,
                 GoalInfo0, Goal1, !Info, !IO),
             Goal1 = Goal - GoalInfo
@@ -1408,14 +1406,14 @@ simplify_goal_2(scope(Reason0, SubGoal0), GoalExpr, ScopeGoalInfo, GoalInfo,
                             sorry(this_file, "NYI: runtime trace conditions "
                                 ++ "in languages other than C")
                         ),
-                        set_may_call_mercury(will_not_call_mercury,
+                        set_may_call_mercury(proc_will_not_call_mercury,
                             !EvalAttributes),
-                        set_thread_safe(thread_safe, !EvalAttributes),
+                        set_thread_safe(proc_thread_safe, !EvalAttributes),
                         set_purity(purity_semipure, !EvalAttributes),
-                        set_terminates(terminates, !EvalAttributes),
-                        set_may_throw_exception(will_not_throw_exception,
+                        set_terminates(proc_terminates, !EvalAttributes),
+                        set_may_throw_exception(proc_will_not_throw_exception,
                             !EvalAttributes),
-                        set_may_modify_trail(will_not_modify_trail,
+                        set_may_modify_trail(proc_will_not_modify_trail,
                             !EvalAttributes),
                         set_may_call_mm_tabled(will_not_call_mm_tabled,
                             !EvalAttributes),
@@ -1464,7 +1462,7 @@ simplify_goal_2(scope(Reason0, SubGoal0), GoalExpr, ScopeGoalInfo, GoalInfo,
 simplify_goal_2(Goal0, Goal, GoalInfo, GoalInfo, !Info, !IO) :-
     Goal0 = call_foreign_proc(Attributes, PredId, ProcId, Args0, ExtraArgs0,
         MaybeTraceRuntimeCond, Impl),
-    BoxPolicy = box_policy(Attributes),
+    BoxPolicy = get_box_policy(Attributes),
     (
         BoxPolicy = native_if_possible,
         Args = Args0,
@@ -1474,7 +1472,7 @@ simplify_goal_2(Goal0, Goal, GoalInfo, GoalInfo, !Info, !IO) :-
         BoxPolicy = always_boxed,
         Args = list.map(make_arg_always_boxed, Args0),
         ExtraArgs = list.map(make_arg_always_boxed, ExtraArgs0),
-        Goal1 = call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs, 
+        Goal1 = call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
             MaybeTraceRuntimeCond, Impl)
     ),
     (
@@ -1585,12 +1583,12 @@ inequality_goal(TI, X, Y, Inequality, Invert, GoalInfo, GoalExpr, GoalInfo,
 
     % Construct the unification R = Inequality.
     ConsId   = cons(qualified(BuiltinModule, Inequality), 0),
-    Bound    = bound(shared,  [functor(ConsId, [])]),
+    Bound    = bound(shared, [bound_functor(ConsId, [])]),
     UMode    = ((Unique -> Bound) - (Bound -> Bound)),
-    RHS      = functor(ConsId, no, []),
+    RHS      = rhs_functor(ConsId, no, []),
     UKind    = deconstruct(R, ConsId, [], [], can_fail, cannot_cgc),
-    UContext = unify_context(implicit(
-                "replacement of inequality with call to compare/3"), []),
+    UContext = unify_context(umc_implicit(
+        "replacement of inequality with call to compare/3"), []),
     UfyExpr  = unify(R, RHS, UMode, UKind, UContext),
     goal_info_get_nonlocals(GoalInfo, UfyNonLocals0),
     goal_info_set_nonlocals(UfyNonLocals0 `insert` R, GoalInfo, UfyInfo),
@@ -1619,7 +1617,7 @@ call_goal(PredId, ProcId, Args, IsBuiltin, Goal0, Goal, GoalInfo0, GoalInfo,
     (
         simplify_do_warn_obsolete(!.Info),
         pred_info_get_markers(PredInfo, Markers),
-        check_marker(Markers, obsolete),
+        check_marker(Markers, marker_obsolete),
 
         simplify_info_get_det_info(!.Info, DetInfo0),
         det_info_get_pred_id(DetInfo0, ThisPredId),
@@ -1634,7 +1632,7 @@ call_goal(PredId, ProcId, Args, IsBuiltin, Goal0, Goal, GoalInfo0, GoalInfo,
         % spurious warnings.
         module_info_pred_info(ModuleInfo, ThisPredId, ThisPredInfo),
         pred_info_get_markers(ThisPredInfo, ThisPredMarkers),
-        not check_marker(ThisPredMarkers, obsolete)
+        not check_marker(ThisPredMarkers, marker_obsolete)
     ->
         goal_info_get_context(GoalInfo0, Context1),
         ObsoleteMsg = warn_obsolete(PredId),
@@ -1871,7 +1869,7 @@ call_specific_unify(TypeCtor, TypeInfoVars, XVar, YVar, ProcId, ModuleInfo,
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     SymName = qualified(ModuleName, PredName),
-    CallContext = call_unify_context(XVar, var(YVar), Context),
+    CallContext = call_unify_context(XVar, rhs_var(YVar), Context),
     CallExpr = plain_call(PredId, ProcId, ArgVars, not_builtin,
         yes(CallContext), SymName),
 
@@ -2401,10 +2399,10 @@ create_test_unification(Var, ConsId, ConsArity, ExtraGoal - ExtraGoalInfo,
         ),
     list.map(InstToUniMode, ArgInsts, UniModes),
     UniMode = (Inst0 -> Inst0) - (Inst0 -> Inst0),
-    UnifyContext = unify_context(explicit, []),
+    UnifyContext = unify_context(umc_explicit, []),
     Unification = deconstruct(Var, ConsId, ArgVars, UniModes, can_fail,
         cannot_cgc),
-    ExtraGoal = unify(Var, functor(ConsId, no, ArgVars),
+    ExtraGoal = unify(Var, rhs_functor(ConsId, no, ArgVars),
         UniMode, Unification, UnifyContext),
     set.singleton_set(NonLocals, Var),
 

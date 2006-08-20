@@ -32,13 +32,13 @@
 %-----------------------------------------------------------------------------%
 
 :- type arg_context
-    --->    head(pred_or_func, arity)
+    --->    ac_head(pred_or_func, arity)
             % the arguments in the head of the clause
 
-    ;       call(call_id)
+    ;       ac_call(call_id)
             % the arguments in a call to a predicate
 
-    ;       functor(            % the arguments in a functor
+    ;       ac_functor(            % the arguments in a functor
                 cons_id,
                 unify_main_context,
                 unify_sub_contexts
@@ -438,8 +438,8 @@ classify_unravel_unification(TermX, TermY, Context, MainContext, SubContext,
         % `X = Y' needs no unravelling.
         TermX = term.variable(X),
         TermY = term.variable(Y),
-        make_atomic_unification(X, var(Y), Context, MainContext, SubContext,
-            Purity, Goal, !QualInfo),
+        make_atomic_unification(X, rhs_var(Y), Context, MainContext,
+            SubContext, Purity, Goal, !QualInfo),
         NumAdded = 0
     ;
         TermX = term.variable(X),
@@ -678,7 +678,7 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
             FieldNames, X, InputTermVar, Purity, Functor, _, Goal0, CallAdded,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
 
-        ArgContext = functor(Functor, MainContext, SubContext),
+        ArgContext = ac_functor(Functor, MainContext, SubContext),
         do_insert_arg_unifications([InputTermVar], [InputTerm],
             FunctorContext, ArgContext, Goal0, Goal, no, ArgAdded,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
@@ -701,9 +701,10 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
             Functor, InnerFunctor - FieldSubContext, Goal0, CallAdded,
             !VarSet, !ModuleInfo, !QualInfo, !SInfo, !IO),
 
-        TermArgContext = functor(Functor, MainContext, SubContext),
+        TermArgContext = ac_functor(Functor, MainContext, SubContext),
         TermArgNumber = 1,
-        FieldArgContext = functor(InnerFunctor, MainContext, FieldSubContext),
+        FieldArgContext = ac_functor(InnerFunctor, MainContext,
+            FieldSubContext),
         FieldArgNumber = 2,
         ArgContexts = [TermArgNumber - TermArgContext,
             FieldArgNumber - FieldArgContext],
@@ -731,8 +732,8 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
         ),
         (
             FunctorArgs = [],
-            make_atomic_unification(X, functor(ConsId, no, []), Context,
-                MainContext, SubContext, Purity, Goal0, !QualInfo),
+            make_atomic_unification(X, rhs_functor(ConsId, no, []),
+                Context, MainContext, SubContext, Purity, Goal0, !QualInfo),
             NumAdded = 1,
             Goal0 = GoalExpr - GoalInfo0,
             goal_info_set_purity(Purity, GoalInfo0, GoalInfo),
@@ -744,10 +745,10 @@ unravel_var_functor_unification(X, F, Args1, FunctorContext,
         ;
             FunctorArgs = [_ | _],
             make_fresh_arg_vars(FunctorArgs, HeadVars, !VarSet, !SInfo, !IO),
-            make_atomic_unification(X, functor(ConsId, no, HeadVars), Context,
-                MainContext, SubContext, Purity, Goal0, !QualInfo),
+            make_atomic_unification(X, rhs_functor(ConsId, no, HeadVars),
+                Context, MainContext, SubContext, Purity, Goal0, !QualInfo),
             MainFunctorAdded = 1,
-            ArgContext = functor(ConsId, MainContext, SubContext),
+            ArgContext = ac_functor(ConsId, MainContext, SubContext),
             % Should this be insert_... rather than append_...?
             % No, because that causes efficiency problems
             % with type-checking :-(
@@ -876,7 +877,7 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, PredOrFunc,
         ),
 
         map.init(Substitution),
-        ArgContext = head(PredOrFunc, NumArgs),
+        ArgContext = ac_head(PredOrFunc, NumArgs),
         %
         % Create the unifications that need to come before the body of
         % the lambda expression; those corresponding to args whose mode
@@ -935,9 +936,9 @@ build_lambda_expression(X, UnificationPurity, LambdaPurity, PredOrFunc,
             LambdaNonLocals = set.to_sorted_list(!.LambdaGoalVars)
         ),
 
-        LambdaGoal = lambda_goal(LambdaPurity, PredOrFunc, EvalMethod,
+        LambdaRHS = rhs_lambda_goal(LambdaPurity, PredOrFunc, EvalMethod,
             LambdaNonLocals, LambdaVars, Modes, Det, HLDS_Goal),
-        make_atomic_unification(X, LambdaGoal, Context, MainContext,
+        make_atomic_unification(X, LambdaRHS, Context, MainContext,
             SubContext, UnificationPurity, Goal, !QualInfo)
     ).
 
@@ -998,18 +999,19 @@ ground_terms([Term | Terms]) :-
 :- pred arg_context_to_unify_context(arg_context::in, int::in,
     unify_main_context::out, unify_sub_contexts::out) is det.
 
-arg_context_to_unify_context(head(PredOrFunc, Arity), ArgNum,
+arg_context_to_unify_context(ac_head(PredOrFunc, Arity), ArgNum,
         ArgContext, []) :-
     ( PredOrFunc = function, ArgNum = Arity ->
-        % it's the function result term in the head
-        ArgContext = head_result
+        % It's the function result term in the head.
+        ArgContext = umc_head_result
     ;
-        % it's a head argument
-        ArgContext = head(ArgNum)
+        % It's a head argument.
+        ArgContext = umc_head(ArgNum)
     ).
-arg_context_to_unify_context(call(PredId), ArgNum, call(PredId, ArgNum), []).
-arg_context_to_unify_context(functor(ConsId, MainContext, SubContexts), ArgNum,
-    MainContext, [ConsId - ArgNum | SubContexts]).
+arg_context_to_unify_context(ac_call(PredId), ArgNum,
+        umc_call(PredId, ArgNum), []).
+arg_context_to_unify_context(ac_functor(ConsId, MainContext, SubContexts),
+        ArgNum, MainContext, [ConsId - ArgNum | SubContexts]).
 
 %-----------------------------------------------------------------------------%
 
