@@ -102,10 +102,10 @@
 
 :- type term_to_type_arg_context
     --->    arg_context(
-            const,      % functor
-            int,        % argument number (starting from 1)
-            context     % filename & line number
-        ).
+                const,      % functor
+                int,        % argument number (starting from 1)
+                context     % filename & line number
+            ).
 
     % term_to_type(Term, Type) :- try_term_to_type(Term, ok(Type)).
     %
