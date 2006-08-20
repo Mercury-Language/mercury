@@ -200,8 +200,8 @@ AC_PATH_PROG(BOOTSTRAP_MC,mmc)
 if test "$BOOTSTRAP_MC" != ""; then
 	AC_MSG_CHECKING(whether the above mmc works and is sufficiently recent)
 	cat > conftest.m << EOF
-		% this module contains features which didn't work in
-		% previous versions of the Mercury compiler
+		% This module contains features which didn't work in
+		% previous versions of the Mercury compiler.
 		% We may also test to see if the installed compiler is
 		% recent enough by checking what flags mmc takes.
 		% Use [[ ]] for lists.
@@ -301,11 +301,10 @@ if test "$BOOTSTRAP_MC" != ""; then
 			).
 EOF
 	if
-		# Test for the `--force-disable-tracing' option
 		echo $BOOTSTRAP_MC conftest >&AC_FD_CC 2>&1 &&
 		$BOOTSTRAP_MC \
 			--verbose \
-			--force-disable-tracing \
+			--trace-io-builtins-2006-08-14 \
 			--halt-at-warn $link_static_opt conftest \
 			</dev/null >&AC_FD_CC 2>&1 &&
 		test "`./conftest 2>&1 | tr -d '\015'`" = "Hello, world" &&

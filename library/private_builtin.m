@@ -1539,7 +1539,13 @@ no_clauses(PredName) :-
 
 :- interface.
 
+:- import_module io.
+
 :- semipure pred trace_evaluate_runtime_condition is semidet.
+
+:- semipure pred trace_get_io_state(io::uo) is det.
+
+:- impure pred trace_set_io_state(io::di) is det.
 
 :- implementation.
 
