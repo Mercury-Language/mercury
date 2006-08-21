@@ -411,6 +411,8 @@ case $HOST in
 					asm_fast.gc.tr		\
 					asm_fast.gc.tr.debug	\
 					asm_fast.gc.mm		\
+					asm_fast.gc.profdeep	\
+					asm_fast.gc.tr.profdeep	\
 					hlc.gc			\
 					hlc.gc.tr		\
 					hlc.par.gc		\
@@ -428,6 +430,7 @@ case $HOST in
 				asm_fast.gc.tr			\
 				asm_fast.gc.debug.tr 		\
 				asm_fast.gc.prof 		\
+				asm_fast.gc.profdeep		\
 				asm_fast.gc.tsc	 		\
 				hlc.gc 				\
 				hlc.par.gc			\
@@ -445,6 +448,7 @@ case $HOST in
 					asm_fast.gc.debug.tr	\
 					asm_fast.gc.mmsc	\
 					asm_fast.gc.mm.debug	\
+					asm_fast.gc.profdeep	\
 					hlc.gc"
 		;;
 	swordfish)
@@ -472,6 +476,7 @@ case $HOST in
 					asm_fast.gc.tr			\
 					asm_fast.gc.tr.prof 		\
 					asm_fast.gc.tr.memprof 		\
+					asm_fast.gc.tr.profdeep		\
 					asm_fast.gc.tr.decldebug	\
 					hlc.gc"
 				;;
@@ -487,12 +492,11 @@ esac
 
 	# The deep profiler needs to be included in the source distribution.
 case $HOST in $ROTD_HOST)
-	CONFIG_OPTS="$CONFIG_OPTS --disable-deep-porfiler"
-#	CONFIG_OPTS="$CONFIG_OPTS \
-#	    --enable-deep-profiler=$TOPDIR/installed_w3/cgi-bin"
-#	if test "$INSTALL_LIBGRADES" != ""; then
-#		INSTALL_LIBGRADES="$INSTALL_LIBGRADES asm_fast.gc.profdeep"
-#	fi
+	CONFIG_OPTS="$CONFIG_OPTS \
+	    --enable-deep-profiler=$TOPDIR/installed_w3/cgi-bin"
+	if test "$INSTALL_LIBGRADES" != ""; then
+		INSTALL_LIBGRADES="$INSTALL_LIBGRADES asm_fast.gc.profdeep"
+	fi
 	;;
 esac
 
