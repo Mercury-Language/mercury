@@ -422,7 +422,7 @@ MR_trace_cmd_list_context_lines(char **words, int word_count,
 {
     int                 n;
 
-    if (word_count == 2 && MR_trace_is_natural_number(words[2], &n)) {
+    if (word_count == 2 && MR_trace_is_natural_number(words[1], &n)) {
         MR_num_context_lines = n;
     } else if (word_count == 1) {
         fprintf(MR_mdb_out,
