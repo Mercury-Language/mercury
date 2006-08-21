@@ -1098,7 +1098,7 @@ reclaim_heap_nondet_pragma_foreign_code :-
 :- pragma foreign_code("C#", "
     
 public static bool
-special.Unify.private_builtin.heap_pointer_0_0(object[] x, object[] y)
+special__Unify__private_builtin__heap_pointer_0_0(object[] x, object[] y)
 {
     mercury.runtime.Errors.fatal_error(
         ""called unify for type `private_builtin:heap_pointer'"");
@@ -1106,7 +1106,7 @@ special.Unify.private_builtin.heap_pointer_0_0(object[] x, object[] y)
 }
 
 public static void
-special.Compare.private_builtin.heap_pointer_0_0(
+special__Compare__private_builtin__heap_pointer_0_0(
     ref object[] result, object[] x, object[] y)
 {
     mercury.runtime.Errors.fatal_error(
@@ -1114,14 +1114,14 @@ special.Compare.private_builtin.heap_pointer_0_0(
 }
 
 public static bool
-special.Unify.private_builtin.ref_1_0(
+special__Unify__private_builtin__ref_1_0(
     object[] type_info, object[] x, object[] y)
 {
     return x == y;
 }
 
 public static void
-special.Compare.private_builtin.ref_1_0(
+special__Compare__private_builtin__ref_1_0(
     object[] type_info, ref object[] result, object[] x, object[] y)
 {
     mercury.runtime.Errors.fatal_error(
