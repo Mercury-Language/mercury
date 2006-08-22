@@ -70,7 +70,11 @@ endif
 clean_local:
 	rm -rf Release/ Debug/
 	rm -f *.obj gc.lib libgc.lib libpar_gc.lib libpar_gc.dll
-
+	cd libatomic_ops-1.2 && $(MAKE) clean
+	rm -f libatomic_ops-1.2/Makefile libatomic_ops-1.2/tests/Makefile
+	rm -f libatomic_ops-1.2/src/Makefile
+	rm -f libatomic_ops-1.2/src/atomic_ops/Makefile
+	rm -rf libatomic_ops-install
 else 
 
 submake: force
@@ -83,7 +87,12 @@ submake: force
 clean_local:
 	MAKEFLAGS=""; export MAKEFLAGS; \
 	$(MAKE) $(BOEHMGC_MAKEFILE) $(MMAKEFLAGS) clean
+	cd libatomic_ops-1.2 && $(MAKE) $(MMAKEFLAGS) clean
 	rm -f libgc.$A libgc.so libpar_gc.$A libpar_gc.dll
+	rm -f libatomic_ops-1.2/Makefile libatomic_ops-1.2/tests/Makefile
+	rm -f libatomic_ops-1.2/src/Makefile
+	rm -f libatomic_ops-1.2/src/atomic_ops/Makefile
+	rm -rf libatomic_ops-install
 
 endif
 

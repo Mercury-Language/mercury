@@ -1,3 +1,5 @@
 .deps
 Makefile
 list_atomic.i
+list_atomic.c
+test_atomic_include.h
